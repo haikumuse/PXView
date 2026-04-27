@@ -1,26 +1,24 @@
-![PXLogic](PXView/icons/logo.svg)
+![DreamSourceLab Logo](DSView/icons/dsl_logo.svg)
 
 
-# PXView 
-- [PXLogic](https://marrychip.com)(https://marrychip.com)
-
-PXView is a GUI program for supporting various instruments from [PXLogic](https://github.com/PXLogic/PXView), including logic analyzers, oscilloscopes, etc. PXView is based on the [sigrok project](https://sigrok.org).
+# DSView 
+DSView is a GUI program for supporting various instruments from [DreamSourceLab](http://www.dreamsourcelab.com), including logic analyzers, oscilloscopes, etc. DSView is based on the [sigrok project](https://sigrok.org).
 
 The sigrok project aims at creating a portable, cross-platform, Free/Libre/Open-Source signal analysis software suite that supports various device types (such as logic analyzers, oscilloscopes, multimeters, and more).
 
 # Status
 
-The PXView software is in a usable state and has official tarball releases. However, it is still a work in progress. Some basic functionality is available and working, but other things are always on the TODO list.
+The DSView software is in a usable state and has official tarball releases. However, it is still a work in progress. Some basic functionality is available and working, but other things are always on the TODO list.
 
 # Useful links
 
-- [sigrok.org](https://sigrok.org)
 - [dreamsourcelab.com](https://www.dreamsourcelab.com)
-
+- [kickstarter.com](https://www.kickstarter.com/projects/dreamsourcelab/dslogic-multifunction-instruments-for-everyone)
+- [sigrok.org](https://sigrok.org)
 
 # Copyright and license
 
-PXView software is licensed under the terms of the GNU General Public License
+DSView software is licensed under the terms of the GNU General Public License
 (GPL), version 3 or later.
 
 While some individual source code files are licensed under the GPLv2+, and

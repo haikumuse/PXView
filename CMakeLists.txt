@@ -1,5 +1,5 @@
 ##
-## This file is part of the PXView project.
+## This file is part of the DSView project.
 ##
 ## Copyright (C) 2012 Joel Holdsworth <joel@airwebreathe.org.uk>
 ## Copyright (C) 2012-2013 Alexandru Gagniuc <mr.nuke.me@gmail.com>
@@ -19,26 +19,25 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 2.8.6)
 
-project(PXView)
+project(DSView)
 
 #===============================================================================
 #= Config Header
 #-------------------------------------------------------------------------------
 
-set(PX_TITLE PXView)
+set(DS_TITLE PXView)
+set(DS_DESCRIPTION "A GUI for instruments of PXTOOL")
 
-set(PX_DESCRIPTION "A GUI for instruments of PX")
-
-set(PX_VERSION_MAJOR 1)
-set(PX_VERSION_MINOR 4)
-set(PX_VERSION_MICRO 9)
-set(PX_VERSION_STRING  ${PX_VERSION_MAJOR}.${PX_VERSION_MINOR}.${PX_VERSION_MICRO} )
+set(DS_VERSION_MAJOR 1)
+set(DS_VERSION_MINOR 5)
+set(DS_VERSION_MICRO 0)
+set(DS_VERSION_STRING  ${DS_VERSION_MAJOR}.${DS_VERSION_MINOR}.${DS_VERSION_MICRO})
 
 configure_file (
-	${PROJECT_SOURCE_DIR}/PXView/src/config.h.in
-	${PROJECT_BINARY_DIR}/PXView/src/config.h
+	${PROJECT_SOURCE_DIR}/DSView/config.h.in
+	${PROJECT_BINARY_DIR}/DSView/config.h
 )
 
 #===============================================================================
@@ -63,8 +62,8 @@ endif()
 set(DISABLE_WERROR TRUE) #Build without -Werror
 set(ENABLE_SIGNALS TRUE) #Build with UNIX signals
 set(ENABLE_COTIRE FALSE) #Enable cotire
+set(ENABLE_TESTS  FALSE) #Enable unit tests
 set(STATIC_PKGDEPS_LIBS FALSE) #Statically link to (pkg-config) libraries
-
 
 if(WIN32)
 	# On Windows/MinGW we need to statically link to libraries.
@@ -85,9 +84,9 @@ endif()
 #= first search path
 #-------------------------------------------------------------------------------
 include_directories(
-   ./PXView
-   ./libsigrok
-   ./libsigrokdecode
+   ./DSView
+   ./libsigrok4DSL
+   ./libsigrokdecode4DSL
    ./common
 )
 
@@ -110,10 +109,10 @@ link_directories(${GLIB_LIBDIR})
 #= python3
 #-------------------------------------------------------------------------------
 
-find_package(Python3 COMPONENTS Development QUIET)
+#find_package(Python3 COMPONENTS Development QUIET)
 
 if (Python3_FOUND)
-	message("----- python3:")
+	message("----- 1python3:")
 	message(STATUS "	 includes:" ${Python3_INCLUDE_DIRS})
 	message(STATUS "	 libraries:" ${Python3_LIBRARIES})
 	include_directories(${Python3_INCLUDE_DIRS})
@@ -122,7 +121,7 @@ else()
      find_package(PythonLibs 3 QUIET)
 
      if(PYTHONLIBS_FOUND)
-     	message("----- python(${PYTHONLIBS_VERSION_STRING}):")
+     	message("----- 2python(${PYTHONLIBS_VERSION_STRING}):")
 	message(STATUS "	 includes:" ${PYTHON_INCLUDE_DIRS})
 	message(STATUS "	 libraries:" ${PYTHON_LIBRARIES})
 	include_directories(${PYTHON_INCLUDE_DIRS})
@@ -253,124 +252,131 @@ include_directories(${Boost_INCLUDE_DIRS})
 find_package(Threads)
 
 #===============================================================================
-#= SARibbonBar
-#-------------------------------------------------------------------------------
-#if (WIN32)
-#set(SARibbonBar_DIR "./window/bin_qt5.15.10_GNU_x64/lib/cmake/SARibbonBar")
-#endif()
-#find_package(SARibbonBar REQUIRED)
-
-#===============================================================================
-#= PXView sources
+#= DSView sources
 #-------------------------------------------------------------------------------
 
-set(PXView_SOURCES
-	PXView/src/log.cpp
-	PXView/src/main.cpp
-	PXView/src/utility/path.cpp
-	PXView/src/utility/array.cpp
-	PXView/src/utility/encoding.cpp
-	PXView/src/config/appconfig.cpp
-	PXView/src/decode/rowdata.cpp
-	PXView/src/decode/annotationrestable.cpp
-	PXView/src/decode/decoder.cpp
-	PXView/src/decode/row.cpp
-	PXView/src/decode/annotation.cpp
-	PXView/src/decode/decoderstatus.cpp
-	PXView/src/prop/property.cpp
-	PXView/src/prop/double.cpp
-	PXView/src/prop/int.cpp
-	PXView/src/prop/bool.cpp
-	PXView/src/prop/enum.cpp
-	PXView/src/prop/string.cpp
-	PXView/src/prop/binding/deviceoptions.cpp
-	PXView/src/prop/binding/decoderoptions.cpp
-	PXView/src/prop/binding/probeoptions.cpp
-	PXView/src/prop/binding/binding.cpp
-	PXView/src/dialogs/protocollist.cpp
-	PXView/src/dialogs/interval.cpp
-	PXView/src/dialogs/search.cpp
-	PXView/src/dialogs/fftoptions.cpp
-	PXView/src/dialogs/waitingdialog.cpp
-	PXView/src/dialogs/regionoptions.cpp
-	PXView/src/dialogs/deviceoptions.cpp
-	PXView/src/dialogs/decoderoptionsdlg.cpp
-	PXView/src/dialogs/applicationpardlg.cpp
-	PXView/src/dialogs/storeprogress.cpp
-	PXView/src/dialogs/shadow.cpp
-	PXView/src/dialogs/protocolexp.cpp
-	PXView/src/dialogs/calibration.cpp
-	PXView/src/dialogs/dsdialog.cpp
-	PXView/src/dialogs/about.cpp
-	PXView/src/dialogs/mathoptions.cpp
-	PXView/src/dialogs/dsmessagebox.cpp
-	PXView/src/dialogs/lissajousoptions.cpp
-	PXView/src/dialogs/dsomeasure.cpp
-	PXView/src/view/viewport.cpp
-	PXView/src/view/view.cpp
-	PXView/src/view/groupsignal.cpp
-	PXView/src/view/devmode.cpp
-	PXView/src/view/dsosignal.cpp
-	PXView/src/view/timemarker.cpp
-	PXView/src/view/viewstatus.cpp
-	PXView/src/view/mathtrace.cpp
-	PXView/src/view/trace.cpp
-	PXView/src/view/logicsignal.cpp
-	PXView/src/view/dsldial.cpp
-	PXView/src/view/spectrumtrace.cpp
-	PXView/src/view/analogsignal.cpp
-	PXView/src/view/signal.cpp
-	PXView/src/view/cursor.cpp
-	PXView/src/view/header.cpp
-	PXView/src/view/ruler.cpp
-	PXView/src/view/decodetrace.cpp
-	PXView/src/view/lissajoustrace.cpp
-	PXView/src/view/xcursor.cpp
-	PXView/src/appcore/mainframe.cpp
-	PXView/src/appcore/appcontrol.cpp
-	PXView/src/appcore/deviceagent.cpp
-	PXView/src/appcore/mainwindow.cpp
-	PXView/src/appcore/eventobject.cpp
-	PXView/src/appcore/sigsession.cpp
-	PXView/src/com/storesession.cpp
-	PXView/src/com/zipmaker.cpp
-	PXView/src/com/dstimer.cpp
-	PXView/src/widgets/decodergroupbox.cpp
-	PXView/src/widgets/decodermenu.cpp
-	PXView/src/widgets/border.cpp
-	PXView/src/widgets/fakelineedit.cpp
-	PXView/src/ui/dscombobox.cpp
-	PXView/src/ui/langresource.cpp
-	PXView/src/ui/fn.cpp
-	PXView/src/ui/msgbox.cpp
-	PXView/src/dock/triggerdock.cpp
-	PXView/src/dock/keywordlineedit.cpp
-	PXView/src/dock/searchcombobox.cpp
-	PXView/src/dock/measuredock.cpp
-	PXView/src/dock/dsotriggerdock.cpp
-	PXView/src/dock/searchdock.cpp
-	PXView/src/dock/protocolitemlayer.cpp
-	PXView/src/dock/protocoldock.cpp
-	PXView/src/toolbars/samplingbar.cpp
-	PXView/src/toolbars/logobar.cpp
-	PXView/src/toolbars/trigbar.cpp
-	PXView/src/toolbars/titlebar.cpp
-	PXView/src/toolbars/filebar.cpp
-	PXView/src/data/analogsnapshot.cpp
-	PXView/src/data/decodermodel.cpp
-	PXView/src/data/signaldata.cpp
-	PXView/src/data/snapshot.cpp
-	PXView/src/data/dsosnapshot.cpp
-	PXView/src/data/mathstack.cpp
-	PXView/src/data/logicsnapshot.cpp
-	PXView/src/data/decoderstack.cpp
-	PXView/src/data/spectrumstack.cpp
-	PXView/src/QRibbon/QRibbon.cpp
-	PXView/src/QRibbon/qribbon.ui
+set(DSView_SOURCES
+    DSView/main.cpp
+    DSView/dsapplication.cpp
+    DSView/pv/log.cpp
+    DSView/pv/sigsession.cpp
+    DSView/pv/mainwindow.cpp
+    DSView/pv/data/snapshot.cpp
+    DSView/pv/data/signaldata.cpp
+    DSView/pv/data/logicsnapshot.cpp
+    DSView/pv/data/analogsnapshot.cpp
+    DSView/pv/dialogs/deviceoptions.cpp
+    DSView/pv/prop/property.cpp
+    DSView/pv/prop/int.cpp
+    DSView/pv/prop/enum.cpp
+    DSView/pv/prop/double.cpp
+    DSView/pv/prop/bool.cpp
+    DSView/pv/prop/binding/binding.cpp
+    DSView/pv/toolbars/samplingbar.cpp
+    DSView/pv/view/viewport.cpp
+    DSView/pv/view/view.cpp
+    DSView/pv/view/timemarker.cpp
+    DSView/pv/view/signal.cpp
+    DSView/pv/view/ruler.cpp
+    DSView/pv/view/logicsignal.cpp
+    DSView/pv/view/header.cpp
+    DSView/pv/view/cursor.cpp
+    DSView/pv/view/analogsignal.cpp
+    DSView/pv/prop/binding/deviceoptions.cpp
+    DSView/pv/toolbars/trigbar.cpp
+    DSView/pv/toolbars/filebar.cpp
+    DSView/pv/dock/protocoldock.cpp
+    DSView/pv/dock/triggerdock.cpp
+    DSView/pv/dock/measuredock.cpp
+    DSView/pv/dock/searchdock.cpp
+    DSView/pv/toolbars/logobar.cpp
+    DSView/pv/dialogs/about.cpp
+    DSView/pv/dialogs/search.cpp
+    DSView/pv/data/dsosnapshot.cpp
+    DSView/pv/view/dsosignal.cpp
+    DSView/pv/view/dsldial.cpp
+    DSView/pv/dock/dsotriggerdock.cpp
+    DSView/pv/view/trace.cpp
+    DSView/pv/view/selectableitem.cpp
+    DSView/pv/data/decoderstack.cpp
+    DSView/pv/data/decode/rowdata.cpp
+    DSView/pv/data/decode/row.cpp
+    DSView/pv/data/decode/decoder.cpp
+    DSView/pv/data/decode/annotation.cpp
+    DSView/pv/view/decodetrace.cpp
+    DSView/pv/prop/binding/decoderoptions.cpp
+    DSView/pv/widgets/fakelineedit.cpp
+    DSView/pv/widgets/decodermenu.cpp
+    DSView/pv/widgets/decodergroupbox.cpp
+    DSView/pv/prop/string.cpp
+    DSView/pv/dialogs/storeprogress.cpp
+    DSView/pv/storesession.cpp
+    DSView/pv/view/devmode.cpp
+    DSView/pv/dialogs/waitingdialog.cpp
+    DSView/pv/dialogs/dsomeasure.cpp
+    DSView/pv/dialogs/calibration.cpp
+    DSView/pv/data/decodermodel.cpp
+    DSView/pv/dialogs/protocollist.cpp
+    DSView/pv/dialogs/protocolexp.cpp
+    DSView/pv/dialogs/fftoptions.cpp
+    DSView/pv/data/mathstack.cpp
+    DSView/pv/view/mathtrace.cpp   
+    DSView/pv/toolbars/titlebar.cpp
+    DSView/pv/mainframe.cpp
+    DSView/pv/widgets/border.cpp
+    DSView/pv/dialogs/dsmessagebox.cpp
+    DSView/pv/dialogs/shadow.cpp
+    DSView/pv/dialogs/dsdialog.cpp
+    DSView/pv/dialogs/interval.cpp
+    DSView/pv/prop/binding/probeoptions.cpp
+    DSView/pv/view/viewstatus.cpp
+    DSView/pv/dialogs/lissajousoptions.cpp
+    DSView/pv/view/lissajoustrace.cpp
+    DSView/pv/view/spectrumtrace.cpp
+    DSView/pv/data/spectrumstack.cpp
+    DSView/pv/dialogs/mathoptions.cpp
+    DSView/pv/dialogs/regionoptions.cpp
+    DSView/pv/view/xcursor.cpp
+    DSView/pv/dock/protocoldock.cpp
+    DSView/pv/data/decoderstack.cpp
+    DSView/pv/data/decode/annotation.cpp
+    DSView/pv/data/decode/decoder.cpp
+    DSView/pv/data/decode/row.cpp
+    DSView/pv/data/decode/rowdata.cpp
+    DSView/pv/prop/binding/decoderoptions.cpp
+    DSView/pv/view/decodetrace.cpp
+    DSView/pv/widgets/decodergroupbox.cpp
+    DSView/pv/widgets/decodermenu.cpp
+    DSView/pv/config/appconfig.cpp
+    DSView/pv/appcontrol.cpp
+    DSView/pv/dstimer.cpp
+    DSView/pv/eventobject.cpp
+    DSView/pv/ZipMaker.cpp
+    DSView/pv/data/decode/annotationrestable.cpp
+    DSView/pv/data/decode/decoderstatus.cpp
+    DSView/pv/dock/protocolitemlayer.cpp
+    DSView/pv/ui/msgbox.cpp
+    DSView/pv/ui/dscombobox.cpp
+    DSView/pv/dsvdef.cpp
+    DSView/pv/dialogs/applicationpardlg.cpp
+    DSView/pv/dock/keywordlineedit.cpp
+    DSView/pv/dock/searchcombobox.cpp
+    DSView/pv/dialogs/decoderoptionsdlg.cpp
+    DSView/pv/utility/encoding.cpp
+    DSView/pv/utility/path.cpp
+    DSView/pv/utility/array.cpp
+    DSView/pv/deviceagent.cpp
+    DSView/pv/ui/langresource.cpp
+    DSView/pv/ui/fn.cpp
+    DSView/pv/ui/xtoolbutton.cpp
+    DSView/pv/ui/uimanager.cpp
+    DSView/pv/ui/popupdlglist.cpp
+    DSView/pv/QRibbon/QRibbon.cpp
+	DSView/pv/QRibbon/qribbon.ui
 )
 
 set(UIS
-	PXView/src/QRibbon/qribbon.ui
+    DSView/pv/QRibbon/qribbon.ui
 )
 
 if(APPLE)
@@ -386,144 +392,185 @@ else()
 	endif()
 endif()
 
-#if(NOT QT_VERSION_FORCE OR "${QT_VERSION_FORCE}" STREQUAL "5")
-#	find_package(Qt6Core QUIET)
-#	if(Qt6Core)
-#		qt6_wrap_ui(UI_HEADERS ${UIS})
-#	else()
-#		qt5_wrap_ui(UI_HEADERS ${UIS})
-#	endif()
-#endif()
+# Windows-specific QT source files
+if(WIN32)
+	list(APPEND DSView_SOURCES
+		DSView/pv/winnativewidget.cpp
+		DSView/pv/winshadow.cpp
+	)
+endif ()
 
+set(DSView_HEADERS
+    DSView/mystyle.h
+    DSView/pv/log.h
+    DSView/pv/sigsession.h
+    DSView/pv/mainwindow.h
+    DSView/pv/dialogs/deviceoptions.h
+    DSView/pv/prop/property.h
+    DSView/pv/prop/int.h
+    DSView/pv/prop/enum.h
+    DSView/pv/prop/double.h
+    DSView/pv/prop/bool.h
+    DSView/pv/toolbars/samplingbar.h
+    DSView/pv/view/viewport.h
+    DSView/pv/view/view.h
+    DSView/pv/view/timemarker.h
+    DSView/pv/view/ruler.h
+    DSView/pv/view/header.h
+    DSView/pv/view/cursor.h
+    DSView/pv/toolbars/trigbar.h
+    DSView/pv/toolbars/filebar.h
+    DSView/pv/dock/protocoldock.h
+    DSView/pv/dock/triggerdock.h
+    DSView/pv/dock/measuredock.h
+    DSView/pv/dock/searchdock.h
+    DSView/pv/toolbars/logobar.h
+    DSView/pv/dialogs/about.h
+    DSView/pv/dialogs/search.h
+    DSView/pv/dock/dsotriggerdock.h
+    DSView/pv/view/trace.h
+    DSView/pv/view/selectableitem.h
+    DSView/pv/data/decoderstack.h
+    DSView/pv/view/decodetrace.h
+    DSView/pv/widgets/fakelineedit.h
+    DSView/pv/widgets/decodermenu.h
+    DSView/pv/widgets/decodergroupbox.h
+    DSView/pv/prop/string.h
+    DSView/pv/dialogs/storeprogress.h
+    DSView/pv/storesession.h
+    DSView/pv/view/devmode.h
+    DSView/pv/dialogs/waitingdialog.h
+    DSView/pv/dialogs/dsomeasure.h
+    DSView/pv/dialogs/calibration.h
+    DSView/pv/dialogs/protocollist.h
+    DSView/pv/dialogs/protocolexp.h
+    DSView/pv/dialogs/fftoptions.h
+    DSView/pv/data/mathstack.h
+    DSView/pv/view/mathtrace.h
+    DSView/pv/view/viewstatus.h
+    DSView/pv/toolbars/titlebar.h
+    DSView/pv/mainframe.h
+    DSView/pv/widgets/border.h
+    DSView/pv/dialogs/dsmessagebox.h
+    DSView/pv/dialogs/shadow.h
+    DSView/pv/dialogs/dsdialog.h
+    DSView/pv/dialogs/interval.h
+    DSView/pv/dialogs/lissajousoptions.h
+    DSView/pv/view/lissajoustrace.h
+    DSView/pv/view/spectrumtrace.h
+    DSView/pv/data/spectrumstack.h
+    DSView/pv/dialogs/mathoptions.h
+    DSView/pv/dialogs/regionoptions.h
+    DSView/pv/view/xcursor.h
+    DSView/pv/view/signal.h
+    DSView/pv/view/logicsignal.h
+    DSView/pv/view/analogsignal.h
+    DSView/pv/view/dsosignal.h 
+    DSView/pv/dock/protocoldock.h
+    DSView/pv/data/decoderstack.h
+    DSView/pv/view/decodetrace.h
+    DSView/pv/widgets/decodergroupbox.h
+    DSView/pv/widgets/decodermenu.h
+    DSView/pv/config/appconfig.h
+    DSView/pv/appcontrol.h
+    DSView/pv/dstimer.h
+    DSView/pv/eventobject.h
+    DSView/pv/ZipMaker.h
+    DSView/pv/data/decode/annotationrestable.h
+    DSView/pv/data/decode/decoderstatus.h
+    DSView/pv/dock/protocolitemlayer.h
+    DSView/pv/ui/msgbox.h
+    DSView/pv/ui/dscombobox.h
+    DSView/pv/dsvdef.h
+    DSView/pv/dialogs/applicationpardlg.h
+    DSView/pv/dock/keywordlineedit.h
+    DSView/pv/dock/searchcombobox.h
+    DSView/pv/dialogs/decoderoptionsdlg.h
+    DSView/pv/utility/encoding.h
+    DSView/pv/utility/path.h
+    DSView/pv/utility/array.h
+    DSView/pv/deviceagent.h
+    DSView/pv/ui/fn.h
+    DSView/pv/ui/xtoolbutton.h
+    DSView/pv/QRibbon/QRibbon.h
+    ${UI_HEADERS}
+)
+ 
+# Windows-specific QT headers
+if(WIN32)
+	list(APPEND DSView_HEADERS
+		DSView/pv/winnativewidget.h
+		DSView/pv/winshadow.h
+	)
+endif ()
 
-#qt_wrap_ui(UI_HEADERS ${UIS})
+#===============================================================================
+#= libsigrok4DSL source
+#-------------------------------------------------------------------------------
+set(libsigrok4DSL_SOURCES
+    libsigrok4DSL/version.c
+    libsigrok4DSL/strutil.c
+    libsigrok4DSL/std.c
+    libsigrok4DSL/session_driver.c
+    libsigrok4DSL/session.c
+    libsigrok4DSL/log.c
+    libsigrok4DSL/hwdriver.c
+    libsigrok4DSL/error.c
+    libsigrok4DSL/backend.c
+    libsigrok4DSL/output/output.c
+    libsigrok4DSL/input/input.c
+    libsigrok4DSL/hardware/demo/demo.c
+    libsigrok4DSL/input/in_binary.c
+    libsigrok4DSL/input/in_vcd.c
+    libsigrok4DSL/input/in_wav.c
+    libsigrok4DSL/output/csv.c
+    libsigrok4DSL/output/gnuplot.c
+    libsigrok4DSL/output/srzip.c
+    libsigrok4DSL/output/vcd.c
+    libsigrok4DSL/hardware/DSL/dslogic.c
+    libsigrok4DSL/hardware/common/usb.c
+    libsigrok4DSL/hardware/common/ezusb.c
+    libsigrok4DSL/trigger.c
+    libsigrok4DSL/dsdevice.c
+    libsigrok4DSL/hardware/DSL/dscope.c
+    libsigrok4DSL/hardware/DSL/command.c
+    libsigrok4DSL/hardware/DSL/dsl.c
+    libsigrok4DSL/hardware/pxlogic/pxlogic.c
+    libsigrok4DSL/hardware/pxlogic/usb_ctrl.c
+    libsigrok4DSL/lib_main.c
+)
 
-set(PXView_HEADERS
-	PXView/src/mystyle.h 
-	PXView/src/prop/double.h
-	PXView/src/prop/bool.h
-	PXView/src/prop/enum.h
-	PXView/src/prop/property.h
-	PXView/src/prop/int.h
-	PXView/src/prop/string.h
-	PXView/src/dialogs/deviceoptions.h
-	PXView/src/dialogs/calibration.h
-	PXView/src/dialogs/protocollist.h
-	PXView/src/dialogs/waitingdialog.h
-	PXView/src/dialogs/search.h
-	PXView/src/dialogs/regionoptions.h
-	PXView/src/dialogs/fftoptions.h
-	PXView/src/dialogs/dsmessagebox.h
-	PXView/src/dialogs/dsdialog.h
-	PXView/src/dialogs/dsomeasure.h
-	PXView/src/dialogs/lissajousoptions.h
-	PXView/src/dialogs/about.h
-	PXView/src/dialogs/shadow.h
-	PXView/src/dialogs/decoderoptionsdlg.h
-	PXView/src/dialogs/interval.h
-	PXView/src/dialogs/protocolexp.h
-	PXView/src/dialogs/storeprogress.h
-	PXView/src/dialogs/mathoptions.h
-	PXView/src/view/viewport.h
-	PXView/src/view/mathtrace.h
-	PXView/src/view/xcursor.h
-	PXView/src/view/spectrumtrace.h
-	PXView/src/view/decodetrace.h
-	PXView/src/view/devmode.h
-	PXView/src/view/ruler.h
-	PXView/src/view/logicsignal.h
-	PXView/src/view/lissajoustrace.h
-	PXView/src/view/signal.h
-	PXView/src/view/cursor.h
-	PXView/src/view/viewstatus.h
-	PXView/src/view/timemarker.h
-	PXView/src/view/trace.h
-	PXView/src/view/analogsignal.h
-	PXView/src/view/dsosignal.h
-	PXView/src/view/header.h
-	PXView/src/view/view.h  
-	PXView/src/appcore/mainframe.h
-	PXView/src/appcore/eventobject.h
-	PXView/src/appcore/mainwindow.h
-	PXView/src/com/dstimer.h
-	PXView/src/com/storesession.h
-	PXView/src/widgets/fakelineedit.h
-	PXView/src/widgets/decodermenu.h
-	PXView/src/widgets/decodergroupbox.h
-	PXView/src/widgets/border.h
-	PXView/src/ui/dscombobox.h
-	PXView/src/dock/searchdock.h
-	PXView/src/dock/protocolitemlayer.h
-	PXView/src/dock/searchcombobox.h
-	PXView/src/dock/triggerdock.h
-	PXView/src/dock/keywordlineedit.h
-	PXView/src/dock/protocoldock.h
-	PXView/src/dock/measuredock.h
-	PXView/src/dock/dsotriggerdock.h
-	PXView/src/toolbars/samplingbar.h
-	PXView/src/toolbars/trigbar.h
-	PXView/src/toolbars/titlebar.h
-	PXView/src/toolbars/filebar.h
-	PXView/src/toolbars/logobar.h
-	PXView/src/data/signaldata.h
-	PXView/src/data/decoderstack.h
-	PXView/src/data/spectrumstack.h
-	PXView/src/data/mathstack.h
-	PXView/src/QRibbon/QRibbon.h
-	${UI_HEADERS}
+set(libsigrok4DSL_HEADERS
+    libsigrok4DSL/version.h
+    libsigrok4DSL/libsigrok-internal.h
+    libsigrok4DSL/libsigrok.h
+    libsigrok4DSL/config.h
+    libsigrok4DSL/hardware/DSL/command.h
+    libsigrok4DSL/hardware/DSL/dsl.h
 )
  
 #===============================================================================
-#= libsigrok source
+#= libsigrokdecode4DSL source
 #-------------------------------------------------------------------------------
-set(libsigrok4PX_SOURCES
-	libsigrok/version.c
-	libsigrok/strutil.c
-	libsigrok/std.c
-	libsigrok/session_driver.c
-	libsigrok/session.c
-	libsigrok/log.c
-	libsigrok/hwdriver.c
-	libsigrok/error.c
-	libsigrok/backend.c
-	libsigrok/output/output.c
-	libsigrok/input/input.c
-	libsigrok/hardware/demo/demo.c
-	libsigrok/input/in_binary.c
-	libsigrok/input/in_vcd.c
-	libsigrok/input/in_wav.c
-	libsigrok/output/csv.c
-	libsigrok/output/gnuplot.c
-	libsigrok/output/srzip.c
-	libsigrok/output/vcd.c
-	libsigrok/hardware/DSL/dslogic.c
-	libsigrok/hardware/common/usb.c
-	libsigrok/hardware/common/ezusb.c
-	libsigrok/trigger.c
-	libsigrok/dsdevice.c
-	libsigrok/hardware/DSL/dscope.c
-	libsigrok/hardware/DSL/command.c
-	libsigrok/hardware/DSL/dsl.c
-	libsigrok/hardware/pxlogic/pxlogic.c
-    libsigrok/hardware/pxlogic/usb_ctrl.c
-	libsigrok/lib_main.c
+set(libsigrokdecode4DSL_SOURCES
+    libsigrokdecode4DSL/type_decoder.c
+    libsigrokdecode4DSL/srd.c
+    libsigrokdecode4DSL/module_sigrokdecode.c
+    libsigrokdecode4DSL/decoder.c
+    libsigrokdecode4DSL/error.c
+    libsigrokdecode4DSL/exception.c
+    libsigrokdecode4DSL/instance.c
+    libsigrokdecode4DSL/log.c
+    libsigrokdecode4DSL/session.c
+    libsigrokdecode4DSL/util.c
+    libsigrokdecode4DSL/version.c
 )
- 
-#===============================================================================
-#= libsigrokdecode source
-#-------------------------------------------------------------------------------
-set(libsigrokdecode_SOURCES
-	libsigrokdecode/type_decoder.c
-	libsigrokdecode/srd.c
-	libsigrokdecode/module_sigrokdecode.c
-	libsigrokdecode/decoder.c
-	libsigrokdecode/error.c
-	libsigrokdecode/exception.c
-	libsigrokdecode/instance.c
-	libsigrokdecode/log.c
-	libsigrokdecode/session.c
-	libsigrokdecode/util.c
-	libsigrokdecode/version.c
+
+set(libsigrokdecode4DSL_HEADERS
+    libsigrokdecode4DSL/libsigrokdecode-internal.h
+    libsigrokdecode4DSL/libsigrokdecode.h
+    libsigrokdecode4DSL/config.h
+    libsigrokdecode4DSL/version.h
 )
 
 #===============================================================================
@@ -531,46 +578,53 @@ set(libsigrokdecode_SOURCES
 #-------------------------------------------------------------------------------
 
 set(common_SOURCES
-	common/minizip/zip.c
-	common/minizip/unzip.c
-	common/minizip/ioapi.c
-	common/log/xlog.c
-	common/mem/alloc.c
+    common/minizip/zip.c
+    common/minizip/unzip.c
+    common/minizip/ioapi.c
+    common/log/xlog.c
+)
+
+set(common_HEADERS
+    common/minizip/zip.h
+    common/minizip/unzip.h
+    common/minizip/ioapi.h
+    common/log/xlog.h
 )
 
 #===============================================================================
 #= compile config
 #-------------------------------------------------------------------------------
 
-set(PXView_FORMS
+set(DSView_FORMS
 )
 
-set(PXView_RESOURCES
-    PXView/PXView.qrc
-    PXView/themes/breeze.qrc
-    PXView/languages/language.qrc
-	PXView/src/QRibbon/QRibbon.qrc
+set(DSView_RESOURCES
+    DSView/DSView.qrc
+    DSView/themes/breeze.qrc
+    DSView/languages/language.qrc
 )
 
 
 if(WIN32)
-	# Use the PXView icon for the PXView.exe executable.
+	# Use the DSView icon for the DSView.exe executable.
 	set(CMAKE_RC_COMPILE_OBJECT "${CMAKE_RC_COMPILER} -O coff -I${CMAKE_CURRENT_SOURCE_DIR} <SOURCE> <OBJECT>")
 	enable_language(RC)
 	# app icon
-        list(APPEND PXView_SOURCES applogo.rc)
+        list(APPEND DSView_SOURCES applogo.rc)
+	# MinGW Unicode support
+	add_definitions(-municode)
 endif()
 
 if(Qt5Core_FOUND)
-	qt5_wrap_cpp(PXView_HEADERS_MOC ${PXView_HEADERS})
-	qt5_wrap_ui(PXView_FORMS_HEADERS ${PXView_FORMS})
-	qt5_add_resources(PXView_RESOURCES_RCC ${PXView_RESOURCES})
+	qt5_wrap_cpp(DSView_HEADERS_MOC ${DSView_HEADERS})
+	qt5_wrap_ui(DSView_FORMS_HEADERS ${DSView_FORMS})
+	qt5_add_resources(DSView_RESOURCES_RCC ${DSView_RESOURCES})
 endif()
 
 if(Qt6Core_FOUND)
-	qt6_wrap_cpp(PXView_HEADERS_MOC ${PXView_HEADERS})
-	qt6_wrap_ui(PXView_FORMS_HEADERS ${PXView_FORMS})
-	qt6_add_resources(PXView_RESOURCES_RCC ${PXView_RESOURCES})
+	qt6_wrap_cpp(DSView_HEADERS_MOC ${DSView_HEADERS})
+	qt6_wrap_ui(DSView_FORMS_HEADERS ${DSView_FORMS})
+	qt6_add_resources(DSView_RESOURCES_RCC ${DSView_RESOURCES})
 endif()
 
 
@@ -614,7 +668,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 #-------------------------------------------------------------------------------
 
 
-set(PXView_LINK_LIBS
+set(DSVIEW_LINK_LIBS
 	-lz
 	-lglib-2.0
 	${CMAKE_THREAD_LIBS_INIT}
@@ -622,32 +676,31 @@ set(PXView_LINK_LIBS
 	${LIBUSB_1_LIBRARIES}
 	${FFTW_LIBRARIES}
 	${PY_LIB}
-	#SARibbonBar
 )
 
 if(STATIC_PKGDEPS_LIBS)
 	link_directories(${PKGDEPS_STATIC_LIBRARY_DIRS})
-	list(APPEND PXView_LINK_LIBS ${PKGDEPS_STATIC_LIBRARIES})
+	list(APPEND DSVIEW_LINK_LIBS ${PKGDEPS_STATIC_LIBRARIES})
 if(WIN32)
 	# Workaround for a MinGW linking issue.
 	list(APPEND PULSEVIEW_LINK_LIBS "-llzma -llcms2")
 endif()
 else()
 	link_directories(${PKGDEPS_LIBRARY_DIRS})
-	list(APPEND PXView_LINK_LIBS ${PKGDEPS_LIBRARIES})
+	list(APPEND DSVIEW_LINK_LIBS ${PKGDEPS_LIBRARIES})
 endif()
 
 add_executable(${PROJECT_NAME}
 	${common_SOURCES}
-	${PXView_SOURCES}
-	${PXView_HEADERS_MOC}
-	${PXView_FORMS_HEADERS}
-	${PXView_RESOURCES_RCC}
-	${libsigrok4PX_SOURCES}
-        ${libsigrokdecode_SOURCES}
+	${DSView_SOURCES}
+	${DSView_HEADERS_MOC}
+	${DSView_FORMS_HEADERS}
+	${DSView_RESOURCES_RCC}
+	${libsigrok4DSL_SOURCES}
+	${libsigrokdecode4DSL_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} ${PXView_LINK_LIBS})
+target_link_libraries(${PROJECT_NAME} ${DSVIEW_LINK_LIBS})
 
 if(WIN32)
 # Pass -mwindows so that no "DOS box" will open when PulseView is started.
@@ -660,10 +713,10 @@ if(APPLE)
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_GUI_IDENTIFIER com.pxlogic.${PROJECT_NAME}
         MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
-        MACOSX_BUNDLE_BUNDLE_VERSION ${PX_VERSION_STRING}
-        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PX_VERSION_STRING}
+        MACOSX_BUNDLE_BUNDLE_VERSION ${DS_VERSION_STRING}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${DS_VERSION_STRING}
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/mac_appbundle_template.plist.in
-        MACOSX_BUNDLE_ICON_FILE PXView.icns
+        MACOSX_BUNDLE_ICON_FILE DSView.icns
     )
 endif()
 
@@ -687,52 +740,63 @@ if(APPLE)
     set(MAC_RES_PREFIX ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app/Contents/Resources/)
 
     # Adding icon via add_executable / target_sources does not work, hack around this
-    install(FILES PXView.icns DESTINATION ${MAC_RES_PREFIX})
+    install(FILES DSView.icns DESTINATION ${MAC_RES_PREFIX})
 else()
     install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 endif()
+install(DIRECTORY DSView/res DESTINATION ${MAC_RES_PREFIX}share/DSView)
+install(DIRECTORY DSView/demo DESTINATION ${MAC_RES_PREFIX}share/DSView)
+install(FILES DSView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/DSView RENAME logo.svg)
+install(FILES DSView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/icons/hicolor/scalable/apps RENAME dsview.svg)
+install(FILES DSView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/pixmaps RENAME dsview.svg)
 
-install(DIRECTORY PXView/res DESTINATION ${MAC_RES_PREFIX}share/PXView)
-install(DIRECTORY PXView/demo DESTINATION ${MAC_RES_PREFIX}share/PXView)
-install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME logo.svg)
-install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/icons/hicolor/scalable/apps RENAME pxview.svg)
-install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/pixmaps RENAME pxview.svg)
-
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-	install(FILES PXView/PXView.desktop DESTINATION /usr/share/applications RENAME pxview.desktop)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")	
+	install(FILES DSView/DSView.desktop DESTINATION /usr/share/applications RENAME dsview.desktop)
 	
+	#add_compile_definitions(_DEFAULT_SOURCE)
+
 	if(IS_DIRECTORY /usr/lib/udev/rules.d)
-		install(FILES PXView/px.rules DESTINATION /usr/lib/udev/rules.d RENAME 60-px.rules)
+		install(FILES DSView/DreamSourceLab.rules DESTINATION /usr/lib/udev/rules.d RENAME 60-dreamsourcelab.rules)
 	elseif(IS_DIRECTORY /lib/udev/rules.d)
-		install(FILES PXView/px.rules DESTINATION /lib/udev/rules.d RENAME 60-px.rules)
+		install(FILES DSView/DreamSourceLab.rules DESTINATION /lib/udev/rules.d RENAME 60-dreamsourcelab.rules)
 	elseif(IS_DIRECTORY /etc/udev/rules.d)
-		install(FILES PXView/px.rules DESTINATION /etc/udev/rules.d RENAME 60-px.rules)
+		install(FILES DSView/DreamSourceLab.rules DESTINATION /etc/udev/rules.d RENAME 60-dreamsourcelab.rules)
 	endif()
 
 endif()
 
-install(FILES doc/NEWS25 DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME NEWS25)
-install(FILES doc/NEWS31 DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME NEWS31)
-install(FILES doc/ug25.pdf DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME ug25.pdf)
-install(FILES doc/ug31.pdf DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME ug31.pdf)
+install(FILES NEWS25 DESTINATION ${MAC_RES_PREFIX}share/DSView RENAME NEWS25)
+install(FILES NEWS31 DESTINATION ${MAC_RES_PREFIX}share/DSView RENAME NEWS31)
+install(FILES ug25.pdf DESTINATION ${MAC_RES_PREFIX}share/DSView RENAME ug25.pdf)
+install(FILES ug31.pdf DESTINATION ${MAC_RES_PREFIX}share/DSView RENAME ug31.pdf)
 
-install(DIRECTORY libsigrokdecode/decoders DESTINATION ${MAC_RES_PREFIX}share/PXView/libsigrokdecode)
-install(DIRECTORY lang DESTINATION ${MAC_RES_PREFIX}share/PXView)
+install(DIRECTORY libsigrokdecode4DSL/decoders DESTINATION ${MAC_RES_PREFIX}share/libsigrokdecode4DSL)
+install(DIRECTORY lang DESTINATION ${MAC_RES_PREFIX}share/DSView)
 
 #===============================================================================
 #= Packaging (handled by CPack)
 #-------------------------------------------------------------------------------
 
-set(CPACK_PACKAGE_VERSION_MAJOR ${PX_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${PX_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${PX_VERSION_MICRO})
-set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/PXView/README)
-set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/PXView/COPYING)
+set(CPACK_PACKAGE_VERSION_MAJOR ${DS_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${DS_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${DS_VERSION_MICRO})
+set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/DSView/README)
+set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/DSView/COPYING)
 set(CPACK_SOURCE_IGNORE_FILES ${CMAKE_CURRENT_BINARY_DIR} ".gitignore" ".git")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME
-	"${CMAKE_PROJECT_NAME}-${PX_VERSION_MAJOR}.${PX_VERSION_MINOR}.${PX_VERSION_MICRO}")
+	"${CMAKE_PROJECT_NAME}-${DS_VERSION_MAJOR}.${DS_VERSION_MINOR}.${DS_VERSION_MICRO}")
 set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_PACKAGE_CONTACT "913461865@qq.com")
 include(CPack)
+
+#===============================================================================
+#= Tests
+#-------------------------------------------------------------------------------
+
+if(ENABLE_TESTS)
+	add_subdirectory(test)
+	enable_testing()
+	add_test(test ${CMAKE_CURRENT_BINARY_DIR}/DSView/test/DSView-test)
+endif(ENABLE_TESTS)
 
 

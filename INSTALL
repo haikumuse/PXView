@@ -34,7 +34,7 @@ Debian/Ubuntu:
  	 	
    How to install qt on ubuntu?
    	qt5: qt5-default,qtbase5-dev
-   	qt6: qt6-base-dev,libQt6Svg*,libgl1-mesa-dev*
+   	qt6: qt6-base-dev,libQt6Svg*,libgl1-mesa-dev*,libxkbcommon-dev,libvulkan-dev
 
 Fedora (18, 19):
  $ sudo yum install git gcc g++ make cmake libtool pkgconfig glib2-devel \
@@ -64,27 +64,16 @@ Mac:
 
 
 Step2: Get the DSView source code
- $ git clone https://github.com/PXLogic/PXView
+ $ git clone https://github.com/DreamSourceLab/DSView
 
-Step3: Building SARRibbon
- $ cd other lib
- $ tar -xvf ./other_lib/SARibbon.tar.xz  -C ./
- $ cd SARibbon
+Step3: Building
  $ cmake .
  $ make 
  $ sudo make install
-
-Step4: Building
- $ cmake .
- $ make 
- $ sudo make install
-
-or 
-sudo ./build_linux
 
 See the following wiki page for more (OS-specific) instructions:
  http://sigrok.org/wiki/Building
  
 The latest source code:
- https://github.com/PXLogic/PXView
+ https://github.com/DreamSourceLab/DSView
  

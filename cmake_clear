@@ -1,14 +1,5 @@
 echo "clean cmake cache begin..."
 
-rm -rf ./SARibbon
-rm -rf ./install.dir
-
-echo "rm ./_CPack_Packages"
-rm -rf ./_CPack_Packages
-
-echo "rm ./build"
-rm -rf ./build
-
 echo "rm ./build.dir"
 rm -rf ./build.dir
 
