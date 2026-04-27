@@ -1,9 +1,0 @@
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/DSView.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/package.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/package_source.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/edit_cache.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/rebuild_cache.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/list_install_components.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/install.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/install/local.dir
-E:/Project/other_prj/DSView-main-pxlogic/DSView-main/build/CMakeFiles/install/strip.dir
