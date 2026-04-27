@@ -208,29 +208,31 @@ if(NOT QT_VERSION_FORCE OR "${QT_VERSION_FORCE}" STREQUAL "5")
 	endif()
 endif()
 
-if(NOT Qt5Core_FOUND OR "${QT_VERSION_FORCE}" STREQUAL "6")
-	find_package(Qt6 REQUIRED COMPONENTS Core)
-    message("----- Qt6:")
-	message(STATUS "	 includes:" ${Qt6Core_INCLUDE_DIRS})
-        find_package(Qt6Widgets REQUIRED)
-        find_package(Qt6Gui REQUIRED)
-        find_package(Qt6Svg REQUIRED)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt6Widgets_EXECUTABLE_COMPILE_FLAGS}")
-	set(QT_INCLUDE_DIRS ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS})
-        set(QT_LIBRARIES Qt6::Gui Qt6::Widgets Qt6::Svg)
-	add_definitions(${Qt6Gui_DEFINITIONS} ${Qt6Widgets_DEFINITIONS})
+# Qt6 support disabled for Linux build
+#if(NOT Qt5Core_FOUND OR "${QT_VERSION_FORCE}" STREQUAL "6")
+#	find_package(Qt6 REQUIRED COMPONENTS Core)
+#    message("----- Qt6:")
+#	message(STATUS "	 includes:" ${Qt6Core_INCLUDE_DIRS})
+#        find_package(Qt6Widgets REQUIRED)
+#        find_package(Qt6Gui REQUIRED)
+#        find_package(Qt6Svg REQUIRED)
+#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt6Widgets_EXECUTABLE_COMPILE_FLAGS}")
+#	set(QT_INCLUDE_DIRS ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS})
+#        set(QT_LIBRARIES Qt6::Gui Qt6::Widgets Qt6::Svg)
+#	add_definitions(${Qt6Gui_DEFINITIONS} ${Qt6Widgets_DEFINITIONS})
+#
+#	if(APPLE)
+#		find_package(Qt6DBus REQUIRED)
+#		set(QT_LIBRARIES ${QT_LIBRARIES} Qt6::DBus)
+#	endif()
+#endif()
 
-	if(APPLE)
-		find_package(Qt6DBus REQUIRED)
-		set(QT_LIBRARIES ${QT_LIBRARIES} Qt6::DBus)
-	endif()
-endif()
-
-if(NOT Qt5Core_FOUND AND NOT Qt6Core_FOUND)
-	message("Error!The qt5 or qt6 can't find, if them has been installed, please append the install path to CMAKE_PREFIX_PATH, the command as:")
+if(NOT Qt5Core_FOUND)
+	message("Error! Qt5 can't be found, if it has been installed, please append the install path to CMAKE_PREFIX_PATH, the command as:")
 	message("list(APPEND CMAKE_PREFIX_PATH \"xxx install path\")" )
-	message(FATAL_ERROR  "Can't find Qt5 or Qt6!")
+	message(FATAL_ERROR  "Can't find Qt5!")
 endif()
+
 
 #===============================================================================
 #= boost
@@ -621,11 +623,7 @@ if(Qt5Core_FOUND)
 	qt5_add_resources(DSView_RESOURCES_RCC ${DSView_RESOURCES})
 endif()
 
-if(Qt6Core_FOUND)
-	qt6_wrap_cpp(DSView_HEADERS_MOC ${DSView_HEADERS})
-	qt6_wrap_ui(DSView_FORMS_HEADERS ${DSView_FORMS})
-	qt6_add_resources(DSView_RESOURCES_RCC ${DSView_RESOURCES})
-endif()
+
 
 
 add_definitions(${QT_DEFINITIONS})
