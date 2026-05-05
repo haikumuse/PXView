@@ -87,7 +87,7 @@ public:
         LOGIC_MOVE,
         LOGIC_ZOOM,
         LOGIC_JUMP,
-
+        RESIZE_SIGNAL,
         DSO_XM_STEP0,
         DSO_XM_STEP1,
         DSO_XM_STEP2,
@@ -182,6 +182,7 @@ private:
     double      _curScale;
     int64_t     _curOffset;
     int         _curSignalHeight;
+    int         _curVOffset;
 
     bool        _measure_en;
     ActionType  _action_type;
@@ -236,6 +237,11 @@ private:
     int             _dso_ym_end;
     int             _waiting_trig;
     bool            _dso_trig_moved;
+    Trace       *_resize_trace_upper;
+    Trace       *_resize_trace_lower;
+    int         _resize_mouse_down_y;
+    int         _resize_upper_height;
+    int         _resize_lower_height;
     bool            _curs_moved;
     bool            _xcurs_moved;
 

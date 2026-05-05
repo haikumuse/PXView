@@ -1,0 +1,8 @@
+- [x] SignalGroup 结构体定义完成，compute_signal_groups() 正确计算分组（解码器绑定的信号同组，未绑定的自成一组）
+- [x] signals_changed() 按分组顺序排列 trace，组间有 GroupGap 间距
+- [x] Viewport 在 LOGIC 模式下为每个分组绘制圆角矩形卡片背景
+- [x] Header 绘制与 Viewport 对齐的分组卡片背景
+- [x] QSS 中定义了分组卡片颜色（stylesheet.qss、dark.qss、light.qss）
+- [x] 组内拖拽交换信号顺序正常工作
+- [x] 组间拖拽交换整组位置正常工作
+- [x] 项目编译无错误

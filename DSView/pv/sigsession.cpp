@@ -33,6 +33,7 @@
 #include "data/decodermodel.h"
 #include "data/spectrumstack.h"
 #include "data/mathstack.h"
+#include "data/sessionsnapshot.h"
 
 #include "view/analogsignal.h"
 #include "view/dsosignal.h"
@@ -2570,6 +2571,42 @@ namespace pv
     void SigSession::apply_samplerate()
     {
         on_load_config_end();
+    }
+
+    data::LogicSnapshot* SigSession::get_logic_snapshot() {
+        return _view_data->get_logic();
+    }
+
+    data::AnalogSnapshot* SigSession::get_analog_snapshot() {
+        return _view_data->get_analog();
+    }
+
+    data::DsoSnapshot* SigSession::get_dso_snapshot() {
+        return _view_data->get_dso();
+    }
+
+    data::SessionSnapshot* SigSession::capture_snapshot() {
+        ds_lock_guard lock(_data_mutex);
+
+        data::SessionSnapshot *snap = new data::SessionSnapshot();
+        snap->set_samplerate(_view_data->_cur_snap_samplerate);
+        snap->set_samplelimits(_view_data->_cur_samplelimits);
+        snap->set_trigger_pos(_view_data->_trig_pos);
+
+        snap->copy_from_logic(_view_data->get_logic());
+        snap->copy_from_analog(_view_data->get_analog());
+        snap->copy_from_dso(_view_data->get_dso());
+
+        auto &sig_list = get_signals();
+        for (auto sig : sig_list) {
+            snap->get_signals().push_back(sig);
+        }
+        auto &dec_list = get_decode_signals();
+        for (auto dec : dec_list) {
+            snap->get_decode_signals().push_back(dec);
+        }
+
+        return snap;
     }
 
 } // namespace pv

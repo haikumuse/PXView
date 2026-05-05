@@ -1,0 +1,29 @@
+- [x] DockOptions 结构体包含 deviceOptionsDock 字段，默认值为 false
+- [x] DeviceOptionsDock 类继承 QScrollArea 和 IUiWindow，头文件和实现文件已创建
+- [x] DeviceOptionsDock 构造函数创建滚动面板 + Mode 分组框 + 动态面板 + 应用按钮
+- [x] DeviceOptionsDock 包含 Mode 属性区域，显示所有设备属性控件
+- [x] DeviceOptionsDock 在 LOGIC 模式下显示 Channel 分组框（通道模式单选按钮 + 通道复选框 + Enable/Disable All 按钮）
+- [x] DeviceOptionsDock 在 DSO 模式下显示 Calibration 分组框（Auto/Manual Calibration 按钮）
+- [x] DeviceOptionsDock 在 ANALOG 模式下显示 Channel 分组框（通道标签页 + Enable 复选框 + 探针属性）
+- [x] 应用按钮点击后提交所有设备属性、通道启用状态、探针选项
+- [x] 应用按钮点击后校验至少一个通道启用，否则弹出警告
+- [x] 应用按钮点击后发射 settings_applied() 信号
+- [x] 模式检查定时器在 Dock 可见时启动，不可见时停止
+- [x] 工作模式变化时动态面板自动重建
+- [x] IUiWindow 三个接口方法已实现（UpdateLanguage/UpdateTheme/UpdateFont）
+- [x] MainWindow 中创建了 _device_options_dock（QDockWidget）和 _device_options_widget（DeviceOptionsDock）
+- [x] MainWindow::on_device_options(bool) 槽函数控制 Dock 显隐
+- [x] settings_applied() 信号连接到 SamplingBar 的后续处理逻辑（commit_settings、update_sample_rate_list 等）
+- [x] DSV_MSG_DEVICE_OPTIONS_UPDATED 消息处理中调用 _device_options_widget->device_updated()
+- [x] SamplingBar::on_configure() 不再创建模态对话框，改为发射 sig_device_options_toggle() 信号
+- [x] SamplingBar::config_device() 适配新逻辑
+- [x] TrigBar 新增 _device_options_button 和 _device_options_action
+- [x] TrigBar::device_options_clicked() 实现互斥逻辑（与现有 4 个按钮一致）
+- [x] TrigBar::update_checked_status() 同步 _device_options_button 选中状态
+- [x] TrigBar::reload() 根据工作模式控制 _device_options_action 可见性
+- [x] TrigBar::update_view_status() 控制 _device_options_button 启用状态
+- [x] 右侧工具栏包含 _device_options_action
+- [x] Dock 状态持久化到 AppConfig（DockOptions.deviceOptionsDock）
+- [x] CMakeLists.txt 包含新源文件
+- [x] 项目可正常编译，无语法错误（我们修改的文件全部编译通过）
+- [x] 原有 dialogs::DeviceOptions 文件未被修改，仍可编译

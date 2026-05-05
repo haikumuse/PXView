@@ -79,8 +79,10 @@ public:
     static const uint64_t ProgressRows = 100000;
 
 public:
-    ProtocolDock(QWidget *parent, view::View &view, SigSession *session);
+    ProtocolDock(QWidget *parent, view::View *view, SigSession *session);
     ~ProtocolDock();
+
+    void set_view(view::View *view);
 
     void del_all_protocol(); 
     bool add_protocol_by_id(QString id, bool silent, std::list<pv::data::decode::Decoder*> &sub_decoders);
@@ -144,7 +146,7 @@ private slots:
 
 private:
     SigSession *_session;
-    view::View &_view;
+    view::View *_view;
     QSortFilterProxyModel _model_proxy;
     int _cur_search_index;
     QStringList _str_list;

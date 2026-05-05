@@ -88,6 +88,7 @@ void Double::commit()
 		return;
 
 	_setter(g_variant_new_double(_spin_box->value()));
+	emit committed();
 }
 
 void Double::on_value_changed(double)

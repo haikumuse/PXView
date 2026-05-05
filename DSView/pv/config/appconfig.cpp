@@ -176,6 +176,7 @@ static void _loadDockOptions(DockOptions &o, QSettings &st, const char *group)
     getFiled("triggerDoc", st, o.triggerDock, false);
     getFiled("measureDoc", st, o.measureDock, false);
     getFiled("searchDoc", st, o.searchDock, false);
+    getFiled("deviceOptionsDoc", st, o.deviceOptionsDock, false);
     st.endGroup();
 }
 
@@ -186,6 +187,7 @@ static void _saveDockOptions(DockOptions &o, QSettings &st, const char *group)
     setFiled("triggerDoc", st, o.triggerDock);
     setFiled("measureDoc", st, o.measureDock);
     setFiled("searchDoc", st, o.searchDock);
+    setFiled("deviceOptionsDoc", st, o.deviceOptionsDock);
     st.endGroup();
 }
 

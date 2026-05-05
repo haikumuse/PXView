@@ -28,7 +28,7 @@ CMAKE_AR:FILEPATH=D:/msys64/mingw64/bin/ar.exe
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=RELEASE
+CMAKE_BUILD_TYPE:STRING=Release
 
 //CXX compiler
 CMAKE_CXX_COMPILER:FILEPATH=D:/msys64/mingw64/bin/c++.exe
@@ -331,6 +331,9 @@ DSView_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
 DSView_SOURCE_DIR:STATIC=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb
+
+//Enable UI debug hover helper
+ENABLE_DEBUG_HELPER:BOOL=OFF
 
 //Path to a file.
 FFTW_INCLUDE_DIR:PATH=D:/msys64/mingw64/include

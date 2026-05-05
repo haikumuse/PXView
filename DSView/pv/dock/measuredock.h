@@ -92,8 +92,10 @@ private:
     static const int Max_Measure_Limits = 15;
 
 public:
-    MeasureDock(QWidget *parent, pv::view::View &view, SigSession *session);
+    MeasureDock(QWidget *parent, pv::view::View *view, SigSession *session);
     ~MeasureDock();
+
+    void set_view(view::View *view);
 
     void reload();
 
@@ -142,7 +144,7 @@ public slots:
 
 private:
     SigSession *_session;
-    view::View &_view;
+    view::View *_view;
 
     QWidget *_widget;
     QGroupBox *_mouse_groupBox;

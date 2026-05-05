@@ -50,7 +50,7 @@ namespace dock {
 
 using namespace pv::view;
 
-MeasureDock::MeasureDock(QWidget *parent, View &view, SigSession *session) :
+MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     QScrollArea(parent),
     _session(session),
     _view(view)
@@ -153,8 +153,11 @@ MeasureDock::MeasureDock(QWidget *parent, View &view, SigSession *session) :
 
     connect(_dist_add_btn, SIGNAL(clicked()), this, SLOT(add_dist_measure()));
     connect(_edge_add_btn, SIGNAL(clicked()), this, SLOT(add_edge_measure()));
-    connect(_fen_checkBox, SIGNAL(stateChanged(int)), &_view, SLOT(set_measure_en(int)));
-    connect(&_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
+    connect(_fen_checkBox, SIGNAL(stateChanged(int)), _view, SLOT(set_measure_en(int)));
+    connect(_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
+    connect(_view, SIGNAL(cursor_update()), this, SLOT(cursor_update()));
+    connect(_view, SIGNAL(cursor_moving()), this, SLOT(cursor_moving()));
+    connect(_view, SIGNAL(cursor_moved()), this, SLOT(reCalc()));
 
     ADD_UI(this);
 }
@@ -162,6 +165,27 @@ MeasureDock::MeasureDock(QWidget *parent, View &view, SigSession *session) :
 MeasureDock::~MeasureDock()
 {
     REMOVE_UI(this);
+}
+
+void MeasureDock::set_view(view::View *view)
+{
+    if (_view) {
+        disconnect(_view, SIGNAL(cursor_update()), this, SLOT(cursor_update()));
+        disconnect(_view, SIGNAL(cursor_moving()), this, SLOT(cursor_moving()));
+        disconnect(_view, SIGNAL(cursor_moved()), this, SLOT(reCalc()));
+        disconnect(_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
+        disconnect(_fen_checkBox, SIGNAL(stateChanged(int)), _view, SLOT(set_measure_en(int)));
+    }
+
+    _view = view;
+
+    if (_view) {
+        connect(_view, SIGNAL(cursor_update()), this, SLOT(cursor_update()));
+        connect(_view, SIGNAL(cursor_moving()), this, SLOT(cursor_moving()));
+        connect(_view, SIGNAL(cursor_moved()), this, SLOT(reCalc()));
+        connect(_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
+        connect(_fen_checkBox, SIGNAL(stateChanged(int)), _view, SLOT(set_measure_en(int)));
+    }
 }
 
 void MeasureDock::retranslateUi()
@@ -237,10 +261,10 @@ void MeasureDock::reload()
 
 void MeasureDock::measure_updated()
 {
-    _width_label->setText(_view.get_measure("width"));
-    _period_label->setText(_view.get_measure("period"));
-    _freq_label->setText(_view.get_measure("frequency"));
-    _duty_label->setText(_view.get_measure("duty"));
+    _width_label->setText(_view->get_measure("width"));
+    _period_label->setText(_view->get_measure("period"));
+    _freq_label->setText(_view->get_measure("frequency"));
+    _duty_label->setText(_view->get_measure("duty"));
     adjusLabelSize();
 }
 
@@ -555,7 +579,7 @@ void MeasureDock::del_edge_measure()
 
 void MeasureDock::popup_all_coursors()
 {
-    auto &cursor_list = _view.get_cursorList();
+    auto &cursor_list = _view->get_cursorList();
 
     if (cursor_list.empty()) {
         QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_PLEASE_INSERT_CURSOR), 
@@ -647,7 +671,7 @@ void MeasureDock::set_sel_cursor()
 
 void MeasureDock::update_dist()
 {
-    auto &cursor_list = _view.get_cursorList();
+    auto &cursor_list = _view->get_cursorList();
 
     QColor bkColor = AppConfig::Instance().GetStyleColor(); 
 
@@ -675,9 +699,9 @@ void MeasureDock::update_dist()
         set_cursor_btn_color(inf.end_bt);
 
         if (inf.cursor1 != -1 && inf.cursor2 != -1) {
-            int64_t delta = _view.get_cursor_samples(inf.cursor1-1) -
-                            _view.get_cursor_samples(inf.cursor2-1);
-            QString delta_text = _view.get_cm_delta(inf.cursor1-1, inf.cursor2-1) +
+            int64_t delta = _view->get_cursor_samples(inf.cursor1-1) -
+                            _view->get_cursor_samples(inf.cursor2-1);
+            QString delta_text = _view->get_cm_delta(inf.cursor1-1, inf.cursor2-1) +
                                  "/" + QString::number(delta);
             if (delta < 0)
                 delta_text.replace('+', '-');
@@ -691,7 +715,7 @@ void MeasureDock::update_dist()
 
 void MeasureDock::update_edge()
 { 
-    auto &cursor_list = _view.get_cursorList();
+    auto &cursor_list = _view->get_cursorList();
     auto mode_rows = get_mode_rows();
 
     for (auto &inf : mode_rows->_edge_row_list)
@@ -726,8 +750,8 @@ void MeasureDock::update_edge()
                   {
                     view::LogicSignal *logicSig = (view::LogicSignal*)s;
 
-                    if (logicSig->edges(_view.get_cursor_samples(inf.cursor2-1),
-                            _view.get_cursor_samples(inf.cursor1-1), rising_edges, falling_edges)) 
+                    if (logicSig->edges(_view->get_cursor_samples(inf.cursor2-1),
+                            _view->get_cursor_samples(inf.cursor1-1), rising_edges, falling_edges)) 
                     {
                         QString delta_text = QString::number(rising_edges) + "/" +
                                              QString::number(falling_edges) + "/" +
@@ -747,7 +771,7 @@ void MeasureDock::update_edge()
 
 void MeasureDock::update_cursor_info()
 { 
-    auto &cursor_list = _view.get_cursorList();
+    auto &cursor_list = _view->get_cursorList();
     auto mode_rows = get_mode_rows();
 
     int num_cursors = cursor_list.size();
@@ -762,8 +786,8 @@ void MeasureDock::update_cursor_info()
     for(int i = 0; i < num_cursors; i++)
     {   
         if (mode_rows->_opt_row_list[i].info_label != NULL){
-            QString cur_pos = _view.get_cm_time(i) + "/" 
-                    + QString::number(_view.get_cursor_samples(i));
+            QString cur_pos = _view->get_cm_time(i) + "/" 
+                    + QString::number(_view->get_cursor_samples(i));
             mode_rows->_opt_row_list[i].info_label->setText(cur_pos);
         }
     }
@@ -816,7 +840,7 @@ void MeasureDock::adjusLabelSize()
 
 void MeasureDock::cursor_moving()
 {
-    if (_view.cursors_shown()) {      
+    if (_view->cursors_shown()) {      
         update_cursor_info();
     }
 
@@ -843,7 +867,7 @@ void MeasureDock::goto_cursor()
     for (auto it = mode_rows->_opt_row_list.begin(); it != mode_rows->_opt_row_list.end(); it++)
     {
         if ( (*it).goto_bt == src){
-            _view.set_cursor_middle(index);
+            _view->set_cursor_middle(index);
             break;
         }
         index++;
@@ -887,7 +911,7 @@ void MeasureDock::build_cursor_pannel()
     int index = 1;
     int cursor_dex = 0;
     QString iconPath = GetIconPath();
-    auto &cursor_list = _view.get_cursorList();
+    auto &cursor_list = _view->get_cursorList();
 
     if (cursor_list.size() == 0){
         return;
@@ -900,8 +924,8 @@ void MeasureDock::build_cursor_pannel()
         QPushButton *cursor_pushButton = new QPushButton(QString::number(index), _widget);
         set_cursor_btn_color(cursor_pushButton);
 
-        QString cur_pos = _view.get_cm_time(cursor_dex) + "/" 
-                    + QString::number(_view.get_cursor_samples(cursor_dex));
+        QString cur_pos = _view->get_cm_time(cursor_dex) + "/" 
+                    + QString::number(_view->get_cursor_samples(cursor_dex));
         QLabel *curpos_label = new QLabel(cur_pos, _widget); 
 
         _cursor_layout->addWidget(del_btn, 1+index, 0);
@@ -930,7 +954,7 @@ void MeasureDock::del_cursor()
     assert(src);
     
     Cursor* cursor = NULL;
-    auto &cursor_list = _view.get_cursorList();
+    auto &cursor_list = _view->get_cursorList();
     auto mode_rows = get_mode_rows();
     
     for (auto it = mode_rows->_opt_row_list.begin(); it != mode_rows->_opt_row_list.end(); it++)
@@ -942,12 +966,12 @@ void MeasureDock::del_cursor()
     }
 
     if (cursor)
-        _view.del_cursor(cursor);
+        _view->del_cursor(cursor);
     if (cursor_list.empty())
-        _view.show_cursors(false);
+        _view->show_cursors(false);
 
     cursor_update();
-    _view.update();
+    _view->update();
 }
 
 void MeasureDock::UpdateLanguage()

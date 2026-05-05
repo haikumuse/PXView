@@ -67,6 +67,7 @@ void String::commit()
 
     QByteArray ba = _line_edit->text().toUtf8();
     _setter(g_variant_new_string(ba.data()));
+    emit committed();
 }
 
 void String::on_text_edited(const QString&)

@@ -105,8 +105,12 @@ namespace pv
 
             void commit_settings();
 
+            void set_context(SigSession *session, pv::view::View *view);
+            void set_readonly(bool readonly);
+
         signals:
             void sig_store_session_data();
+            void sig_device_options_toggle();
 
         private:
             void retranslateUi();
@@ -175,6 +179,7 @@ namespace pv
             ds_device_handle    _next_switch_device;
             int                 _last_device_index;
             bool                _is_run_as_instant;
+            bool                _is_readonly;
             view::View          *_view;
 
             bool                _updating_sample_rate;

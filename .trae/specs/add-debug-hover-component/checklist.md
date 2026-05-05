@@ -1,0 +1,9 @@
+- [x] DebugHelper 类已创建，包含 toggle、eventFilter、updateInfo、install、uninstall 方法
+- [x] 鼠标悬停时浮动信息面板正确显示：类名、objectName、父级链路、几何信息、可见性
+- [x] 信息面板使用半透明深色背景、等宽字体、不拦截鼠标事件
+- [x] 高亮遮罩在悬停控件周围显示红色半透明边框
+- [x] 快捷键 Ctrl+Shift+D 可切换调试模式，控制台输出 ON/OFF 提示
+- [x] 调试模式关闭时无任何鼠标行为干扰
+- [x] MainWindow 中正确创建和销毁 DebugHelper 实例
+- [x] CMakeLists.txt 已添加新源文件和头文件
+- [ ] 项目可成功编译，无编译错误

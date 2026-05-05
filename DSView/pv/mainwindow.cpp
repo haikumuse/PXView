@@ -72,6 +72,7 @@
 #include "dock/measuredock.h"
 #include "dock/searchdock.h"
 #include "dock/protocoldock.h"
+#include "dock/deviceoptionsdock.h"
 
 #include "view/view.h"
 #include "view/trace.h"
@@ -79,6 +80,8 @@
 #include "view/dsosignal.h"
 #include "view/logicsignal.h"
 #include "view/analogsignal.h"
+#include "ui/draggabletabwidget.h"
+#include "tabcontext.h"
 
 /* __STDC_FORMAT_MACROS is required for PRIu64 and friends (in C++). */
 #include <inttypes.h>
@@ -103,6 +106,9 @@
 #include "dsvdef.h"
 #include <thread>
 #include "ui/uimanager.h"
+#ifdef ENABLE_DEBUG_HELPER
+#include "ui/debughelper.h"
+#endif
 
 #include <QWidgetAction>
 #include<QShortcut>
@@ -267,6 +273,21 @@ namespace pv
         _last_key_press_time = high_resolution_clock::now();
 
         update_title_bar_text();
+#ifdef ENABLE_DEBUG_HELPER
+        _debug_helper = new pv::ui::DebugHelper(this);
+        _debug_helper->install();
+#endif
+    }
+
+    MainWindow::~MainWindow()
+    {
+#ifdef ENABLE_DEBUG_HELPER
+        if (_debug_helper) {
+            _debug_helper->uninstall();
+            delete _debug_helper;
+            _debug_helper = nullptr;
+        }
+#endif
     }
 
     void MainWindow::setup_ui()
@@ -315,9 +336,16 @@ namespace pv
         _dso_trigger_widget = new dock::DsoTriggerDock(_dso_trigger_dock, _session);
         _dso_trigger_dock->setWidget(_dso_trigger_widget);
 
-        // Setup _view widget
-        _view = new pv::view::View(_session, _sampling_bar, this);
-        _vertical_layout->addWidget(_view);
+        _tab_widget = new pv::ui::DraggableTabWidget(this);
+        _vertical_layout->addWidget(_tab_widget);
+
+        pv::view::View *initial_view = new pv::view::View(_session, _sampling_bar, this);
+        pv::TabContext *initial_ctx = new pv::TabContext(initial_view, _session);
+        initial_ctx->set_live(true);
+        initial_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+        _tab_contexts.append(initial_ctx);
+        _tab_widget->addTab(initial_view, initial_ctx->title());
+        _current_tab_index = 0;
 
 
         // setIconSize(QSize(40, 40));
@@ -340,7 +368,7 @@ namespace pv
         _protocol_dock->setFeatures(QDockWidget::DockWidgetMovable);
         _protocol_dock->setAllowedAreas(Qt::RightDockWidgetArea);
         _protocol_dock->setVisible(false);
-        _protocol_widget = new dock::ProtocolDock(_protocol_dock, *_view, _session);
+        _protocol_widget = new dock::ProtocolDock(_protocol_dock, initial_view, _session);
         _protocol_dock->setWidget(_protocol_widget);
 
         _session->set_decoder_pannel(_protocol_widget);
@@ -351,7 +379,7 @@ namespace pv
         _measure_dock->setFeatures(QDockWidget::DockWidgetMovable);
         _measure_dock->setAllowedAreas(Qt::RightDockWidgetArea);
         _measure_dock->setVisible(false);
-        _measure_widget = new dock::MeasureDock(_measure_dock, *_view, _session);
+        _measure_widget = new dock::MeasureDock(_measure_dock, initial_view, _session);
         _measure_dock->setWidget(_measure_widget);
 
         // search dock
@@ -364,8 +392,22 @@ namespace pv
         _search_dock->setAllowedAreas(Qt::RightDockWidgetArea);
         _search_dock->setVisible(false);
 
-        _search_widget = new dock::SearchDock(_search_dock, *_view, _session);
+        _search_widget = new dock::SearchDock(_search_dock, initial_view, _session);
         _search_dock->setWidget(_search_widget);
+
+        _device_options_dock = new QDockWidget(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"), this);
+        _device_options_dock->setObjectName("device_options_dock");
+        _device_options_dock->setFeatures(QDockWidget::DockWidgetMovable);
+        _device_options_dock->setAllowedAreas(Qt::RightDockWidgetArea);
+        _device_options_dock->setVisible(false);
+        _device_options_widget = new dock::DeviceOptionsDock(_device_options_dock, _session);
+        _device_options_dock->setWidget(_device_options_widget);
+        connect(_device_options_widget, &dock::DeviceOptionsDock::settings_applied, this, [this](){
+            if (_session->have_view_data() == false)
+                _sampling_bar->commit_settings();
+            _sampling_bar->update_sample_rate_list();
+            _sampling_bar->reload();
+        });
 
         addDockWidget(Qt::RightDockWidgetArea, _protocol_dock);
         addDockWidget(Qt::RightDockWidgetArea, _trigger_dock);
@@ -373,9 +415,10 @@ namespace pv
         addDockWidget(Qt::RightDockWidgetArea, _measure_dock);
         // addDockWidget(Qt::BottomDockWidgetArea, _search_dock);
         addDockWidget(Qt::RightDockWidgetArea, _search_dock);
+        addDockWidget(Qt::RightDockWidgetArea, _device_options_dock);
 
         // event filter
-        _view->installEventFilter(this);
+        initial_view->installEventFilter(this);
         _sampling_bar->installEventFilter(this);
         _trig_bar->installEventFilter(this);
         _file_bar->installEventFilter(this);
@@ -385,17 +428,19 @@ namespace pv
         _protocol_dock->installEventFilter(this);
         _measure_dock->installEventFilter(this);
         _search_dock->installEventFilter(this);
+        _device_options_dock->installEventFilter(this);
 
         // defaut language
         AppConfig &app = AppConfig::Instance();
         switchLanguage(app.frameOptions.language);
         switchTheme(app.frameOptions.style);
 
-        _sampling_bar->set_view(_view);
+        _sampling_bar->set_view(initial_view);
 
         // event
         connect(&_event, SIGNAL(session_error()), this, SLOT(on_session_error()));
         connect(&_event, SIGNAL(signals_changed()), this, SLOT(on_signals_changed()));
+        connect(&_event, SIGNAL(signals_changed()), _search_widget, SLOT(on_device_updated()));
         connect(&_event, SIGNAL(receive_trigger(quint64)), this, SLOT(on_receive_trigger(quint64)));
         connect(&_event, SIGNAL(frame_ended()), this, SLOT(on_frame_ended()), Qt::DirectConnection);
         connect(&_event, SIGNAL(frame_began()), this, SLOT(on_frame_began()), Qt::DirectConnection);
@@ -406,19 +451,17 @@ namespace pv
         connect(&_event, SIGNAL(trigger_message(int)), this, SLOT(on_trigger_message(int)));
 
         // view
-        connect(_view, SIGNAL(cursor_update()), _measure_widget, SLOT(cursor_update()));
-        connect(_view, SIGNAL(cursor_moving()), _measure_widget, SLOT(cursor_moving()));
-        connect(_view, SIGNAL(cursor_moved()), _measure_widget, SLOT(reCalc()));
-        connect(_view, SIGNAL(prgRate(int)), this, SIGNAL(prgRate(int)));
-        connect(_view, SIGNAL(auto_trig(int)), _dso_trigger_widget, SLOT(auto_trig(int)));
+        connect(initial_view, SIGNAL(prgRate(int)), this, SIGNAL(prgRate(int)));
+        connect(initial_view, SIGNAL(auto_trig(int)), _dso_trigger_widget, SLOT(auto_trig(int)));
 
         // trig_bar
         connect(_trig_bar, SIGNAL(sig_protocol(bool)), this, SLOT(on_protocol(bool)));
         connect(_trig_bar, SIGNAL(sig_trigger(bool)), this, SLOT(on_trigger(bool)));
         connect(_trig_bar, SIGNAL(sig_measure(bool)), this, SLOT(on_measure(bool)));
         connect(_trig_bar, SIGNAL(sig_search(bool)), this, SLOT(on_search(bool)));
+        connect(_sampling_bar, SIGNAL(sig_device_options_toggle()), this, SLOT(on_device_options_toggle()));
         connect(_trig_bar, SIGNAL(sig_setTheme(QString)), this, SLOT(switchTheme(QString)));
-        connect(_trig_bar, SIGNAL(sig_show_lissajous(bool)), _view, SLOT(show_lissajous(bool)));
+        connect(_trig_bar, SIGNAL(sig_show_lissajous(bool)), initial_view, SLOT(show_lissajous(bool)));
 
         // file toolbar
         connect(_file_bar, SIGNAL(sig_load_file(QString)), this, SLOT(on_load_file(QString)));
@@ -437,11 +480,43 @@ namespace pv
         connect(_sampling_bar, SIGNAL(sig_store_session_data()), this, SLOT(on_save()));
 
         //
-        connect(_dso_trigger_widget, SIGNAL(set_trig_pos(int)), _view, SLOT(set_trig_pos(int)));
+        connect(_dso_trigger_widget, SIGNAL(set_trig_pos(int)), initial_view, SLOT(set_trig_pos(int)));
 
         _delay_prop_msg_timer.SetCallback(std::bind(&MainWindow::on_delay_prop_msg, this));
  
         _logo_bar->set_mainform_callback(this);
+
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::tabDetached, this, &MainWindow::on_tab_detach);
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::newTabRequested, this, &MainWindow::on_new_tab_requested);
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::tabCloseRequested, this, &MainWindow::remove_tab);
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::tabRenamed, this, [this](int index, const QString &title) {
+            if (index >= 0 && index < _tab_contexts.size()) {
+                _tab_contexts[index]->set_title(title);
+                update_tab_style(index);
+            }
+        });
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::tabAttached, this, [this](QWidget *widget, const QString &title) {
+            pv::view::View *view = qobject_cast<pv::view::View*>(widget);
+            if (view) {
+                pv::TabContext *existing_ctx = nullptr;
+                for (auto c : _tab_contexts) {
+                    if (c->view() == view) {
+                        existing_ctx = c;
+                        break;
+                    }
+                }
+                if (existing_ctx) {
+                    (void)title;
+                } else {
+                    pv::TabContext *ctx = new pv::TabContext(view, _session);
+                    ctx->set_title(title);
+                    ctx->set_live(false);
+                    ctx->capture_snapshot();
+                    _tab_contexts.append(ctx);
+                }
+            }
+        });
 
         // Try load from file.
         QString ldFileName(AppControl::Instance()->_open_file_name.c_str());
@@ -482,11 +557,22 @@ namespace pv
         _protocol_dock->setWindowTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PROTOCOL_DOCK_TITLE), "Decode Protocol"));
         _measure_dock->setWindowTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MEASURE_DOCK_TITLE), "Measurement"));
         _search_dock->setWindowTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_DOCK_TITLE), "Search..."));
+        _device_options_dock->setWindowTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
         Ribbon_retranslateUi();
     }
 
     void MainWindow::on_load_file(QString file_name)
     {
+        pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
+        pv::TabContext *ctx = new pv::TabContext(new_view, _session);
+
+        QFileInfo fi(file_name);
+        ctx->set_title(fi.baseName());
+        ctx->set_file_path(file_name);
+        ctx->set_live(true);
+
+        add_tab(ctx);
+
         try
         {
             if (_device_agent->is_hardware()){
@@ -494,6 +580,8 @@ namespace pv
             }
 
             _session->set_file(file_name);
+            ctx->capture_snapshot();
+            update_tab_style(_tab_contexts.indexOf(ctx));
         }
         catch (QString e)
         {   
@@ -626,9 +714,11 @@ namespace pv
     void MainWindow::on_protocol(bool visible)
     {
         _protocol_dock->setVisible(visible);
+        if (visible)
+            _device_options_dock->setVisible(false);
 
         if (!visible)
-            _view->setFocus();
+            current_view()->setFocus();
     }
 
     void MainWindow::on_trigger(bool visible)
@@ -645,26 +735,63 @@ namespace pv
             _trigger_dock->setVisible(false);
             _dso_trigger_dock->setVisible(visible);
         }
-
-        if (!visible)
-            _view->setFocus();
+        if (visible)
+            _device_options_dock->setVisible(false);
+        if (!visible) current_view()->setFocus();
     }
 
     void MainWindow::on_measure(bool visible)
     {
         _measure_dock->setVisible(visible);
+        if (visible)
+            _device_options_dock->setVisible(false);
 
         if (!visible)
-            _view->setFocus();
+            current_view()->setFocus();
     }
 
     void MainWindow::on_search(bool visible)
     {
         _search_dock->setVisible(visible);
-        _view->show_search_cursor(visible);
+        current_view()->show_search_cursor(visible);
+        if (visible)
+            _device_options_dock->setVisible(false);
 
         if (!visible)
-            _view->setFocus();
+            current_view()->setFocus();
+    }
+
+    void MainWindow::on_device_options(bool visible)
+    {
+        _device_options_dock->setVisible(visible);
+        if (visible) {
+            _device_options_widget->update_view();
+        }
+        if (!visible) current_view()->setFocus();
+    }
+
+    void MainWindow::on_device_options_toggle()
+    {
+        bool visible = _device_options_dock->isVisible();
+        on_device_options(!visible);
+
+        ::DockOptions *opt = _trig_bar->getDockOptions();
+        if (opt) {
+            opt->deviceOptionsDock = !visible;
+            if (!visible) {
+                opt->decodeDock = false;
+                opt->triggerDock = false;
+                opt->measureDock = false;
+                opt->searchDock = false;
+                _protocol_dock->setVisible(false);
+                _trigger_dock->setVisible(false);
+                _dso_trigger_dock->setVisible(false);
+                _measure_dock->setVisible(false);
+                _search_dock->setVisible(false);
+            }
+            _trig_bar->update_checked_status();
+            AppConfig::Instance().SaveFrame();
+        }
     }
 
     void MainWindow::on_screenShot()
@@ -756,7 +883,7 @@ namespace pv
         _session->set_saving(true);
 
         StoreProgress *dlg = new StoreProgress(_session, this);
-        dlg->SetView(_view);
+        dlg->SetView(current_view());
         dlg->save_run(this);
     }
 
@@ -770,7 +897,7 @@ namespace pv
         }
 
         StoreProgress *dlg = new StoreProgress(_session, this);
-        dlg->SetView(_view);
+        dlg->SetView(current_view());
         dlg->export_run();
     }
 
@@ -943,7 +1070,7 @@ namespace pv
 
         if (_device_agent->get_work_mode() == DSO)
         {
-            sessionVar["measure"] = _view->get_viewstatus()->get_session();
+            sessionVar["measure"] = current_view()->get_viewstatus()->get_session();
         }
 
         if (gvar_opts != NULL)
@@ -1224,7 +1351,7 @@ namespace pv
         // update UI settings
         _sampling_bar->update_sample_rate_list();
         _trigger_widget->device_updated();
-        _view->header_updated();
+        current_view()->header_updated();
 
         // load trigger settings
         if (sessionObj.contains("trigger"))
@@ -1241,14 +1368,14 @@ namespace pv
                 haveDecoder = true;
                 StoreSession ss(_session);
                 ss.load_decoders(_protocol_widget, deArray);
-                _view->update_all_trace_postion();
+                current_view()->update_all_trace_postion();
             }
         }
 
         // load measure
         if (sessionObj.contains("measure"))
         {
-            auto *bottom_bar = _view->get_viewstatus();
+            auto *bottom_bar = current_view()->get_viewstatus();
             bottom_bar->load_session(sessionObj["measure"].toArray(), format_ver);
         }
 
@@ -1286,7 +1413,7 @@ namespace pv
                 i++;
             }
 
-            _view->update_all_trace_postion();
+            current_view()->update_all_trace_postion();
         }
     }
     
@@ -1423,21 +1550,21 @@ namespace pv
                 break;
 
             case Qt::Key_PageUp:
-                _view->set_scale_offset(_view->scale(),
-                                        _view->offset() - _view->get_view_width());
+                current_view()->set_scale_offset(current_view()->scale(),
+                                        current_view()->offset() - current_view()->get_view_width());
                 break;
             case Qt::Key_PageDown:
-                _view->set_scale_offset(_view->scale(),
-                                        _view->offset() + _view->get_view_width());
+                current_view()->set_scale_offset(current_view()->scale(),
+                                        current_view()->offset() + current_view()->get_view_width());
 
                 break;
 
             case Qt::Key_Left:
-                _view->zoom(1);
+                current_view()->zoom(1);
                 break;
 
             case Qt::Key_Right:
-                _view->zoom(-1);
+                current_view()->zoom(-1);
                 break;
 
             case Qt::Key_0:
@@ -1452,7 +1579,7 @@ namespace pv
                             dsoSig->set_vDialActive(false);
                     }
                 }
-                _view->setFocus();
+                current_view()->setFocus();
                 update();
                 break;
 
@@ -1468,7 +1595,7 @@ namespace pv
                             dsoSig->set_vDialActive(false);
                     }
                 }
-                _view->setFocus();
+                current_view()->setFocus();
                 update();
                 break;
 
@@ -1576,7 +1703,7 @@ namespace pv
     void MainWindow::on_data_updated()
     {
         _measure_widget->reCalc();
-        _view->data_updated();
+        current_view()->data_updated();
     }
 
     void MainWindow::on_open_doc()
@@ -1595,7 +1722,7 @@ namespace pv
 
     void MainWindow::update_capture()
     {
-        _view->update_hori_res();
+        current_view()->update_hori_res();
     }
 
     void MainWindow::cur_snap_samplerate_changed()
@@ -1617,7 +1744,7 @@ namespace pv
 
     void MainWindow::on_signals_changed()
     {
-        _view->signals_changed(NULL);
+        current_view()->signals_changed(NULL);
     }
 
     void MainWindow::receive_trigger(quint64 trigger_pos)
@@ -1627,7 +1754,7 @@ namespace pv
 
     void MainWindow::on_receive_trigger(quint64 trigger_pos)
     {
-        _view->receive_trigger(trigger_pos);
+        current_view()->receive_trigger(trigger_pos);
     }
 
     void MainWindow::frame_ended()
@@ -1637,7 +1764,7 @@ namespace pv
 
     void MainWindow::on_frame_ended()
     {
-        _view->receive_end();
+        current_view()->receive_end();
     }
 
     void MainWindow::frame_began()
@@ -1647,23 +1774,34 @@ namespace pv
 
     void MainWindow::on_frame_began()
     {
-        _view->frame_began();
+        pv::TabContext *ctx = current_context();
+        if (ctx && !ctx->is_live()) {
+            ctx->make_live();
+            update_tab_style(_current_tab_index);
+        }
+        for (int i = 0; i < _tab_contexts.size(); i++) {
+            if (i != _current_tab_index && _tab_contexts[i]->is_live()) {
+                _tab_contexts[i]->capture_snapshot();
+                update_tab_style(i);
+            }
+        }
+        current_view()->frame_began();
     }
 
     void MainWindow::show_region(uint64_t start, uint64_t end, bool keep)
     {
-        _view->show_region(start, end, keep);
+        current_view()->show_region(start, end, keep);
     }
 
     void MainWindow::show_wait_trigger()
     {
-        _view->show_wait_trigger();
+        current_view()->show_wait_trigger();
     }
 
     void MainWindow::repeat_hold(int percent)
     {
         (void)percent;
-        _view->repeat_show();
+        current_view()->repeat_show();
     }
 
     void MainWindow::decode_done()
@@ -1683,7 +1821,7 @@ namespace pv
 
     void MainWindow::on_receive_data_len(quint64 len)
     {
-        _view->set_receive_len(len);
+        current_view()->set_receive_len(len);
     }
 
     void MainWindow::receive_header()
@@ -1734,9 +1872,9 @@ namespace pv
     void MainWindow::reset_all_view()
     {
         _sampling_bar->reload();
-        _view->status_clear();
-        _view->reload();
-        _view->set_device();
+        current_view()->status_clear();
+        current_view()->reload();
+        current_view()->set_device();
         _trigger_widget->update_view();
         _trigger_widget->device_updated();
         _trig_bar->reload(); 
@@ -1744,9 +1882,9 @@ namespace pv
         _measure_widget->reload();
 
         if (_device_agent->get_work_mode() == ANALOG)
-            _view->get_viewstatus()->setVisible(false);
+            current_view()->get_viewstatus()->setVisible(false);
         else
-            _view->get_viewstatus()->setVisible(true);
+            current_view()->get_viewstatus()->setVisible(true);
     }
 
     bool MainWindow::confirm_to_store_data()
@@ -1951,22 +2089,22 @@ namespace pv
                 else if (_device_agent->get_work_mode() == DSO)
                     _dso_trigger_widget->check_setting();
 
-                _view->capture_init();
-                _view->on_state_changed(false);
+                current_view()->capture_init();
+                current_view()->on_state_changed(false);
                 break;
             }
             case DSV_MSG_START_COLLECT_WORK:
             {
                 update_toolbar_view_status();
-                _view->on_state_changed(false);
+                current_view()->on_state_changed(false);
                 _protocol_widget->update_view_status();
                 break;
             }        
             case DSV_MSG_COLLECT_END:
             {
                 prgRate(0);
-                _view->repeat_unshow();
-                _view->on_state_changed(true);                 
+                current_view()->repeat_unshow();
+                current_view()->on_state_changed(true);                 
                 break;
             }
             case DSV_MSG_END_COLLECT_WORK:
@@ -1981,10 +2119,10 @@ namespace pv
                     _msg->close();
                     _msg = NULL;
                 }
-                _view->hide_calibration();
+                current_view()->hide_calibration();
 
                 _protocol_widget->del_all_protocol();
-                _view->reload();
+                current_view()->reload();
                 break;
             }
             case DSV_MSG_CURRENT_DEVICE_CHANGED:
@@ -2004,7 +2142,7 @@ namespace pv
                 }                
                 
                 if (_device_agent->get_work_mode() == LOGIC && _device_agent->is_file() == false)
-                    _view->auto_set_max_scale();
+                    current_view()->auto_set_max_scale();
 
                 if (_device_agent->is_file())
                 {
@@ -2028,7 +2166,7 @@ namespace pv
                         }                    
                     }
 
-                    _view->update_all_trace_postion();                
+                    current_view()->update_all_trace_postion();                
                     QTimer::singleShot(100, this, [this](){
                         _session->start_capture(true);
                     });
@@ -2039,7 +2177,7 @@ namespace pv
                     {
                         _pattern_mode = _device_agent->get_demo_operation_mode();
                         _protocol_widget->del_all_protocol();
-                        _view->auto_set_max_scale();
+                        current_view()->auto_set_max_scale();
 
                         if(_pattern_mode != "random"){
                         load_demo_decoder_config(_pattern_mode);
@@ -2058,23 +2196,24 @@ namespace pv
             case DSV_MSG_DEVICE_OPTIONS_UPDATED:
             {
                 _trigger_widget->device_updated();
+                _device_options_widget->device_updated();
                 _measure_widget->reload();
-                _view->check_calibration();                      
+                current_view()->check_calibration();                      
                 break;
             }
             case DSV_MSG_DEVICE_DURATION_UPDATED:
             {
                 _trigger_widget->device_updated();
-                _view->timebase_changed();
+                current_view()->timebase_changed();
                 break;
             }
             case DSV_MSG_DEVICE_MODE_CHANGED:
             {
-                _view->mode_changed(); 
+                current_view()->mode_changed(); 
                 reset_all_view();
                 load_device_config();
                 update_title_bar_text();
-                _view->hide_calibration();
+                current_view()->hide_calibration();
 
                 update_toolbar_view_status();
                 _sampling_bar->update_sample_rate_list();
@@ -2083,7 +2222,7 @@ namespace pv
                     _session->on_load_config_end();
                 
                 if (_device_agent->get_work_mode() == LOGIC)
-                    _view->auto_set_max_scale();
+                    current_view()->auto_set_max_scale();
 
                 if(_device_agent->is_demo())
                 {
@@ -2173,7 +2312,7 @@ namespace pv
                 // Save current config, and switch to the last device.
                 _session->device_event_object()->device_updated();
                 save_config();
-                _view->hide_calibration();
+                current_view()->hide_calibration();
 
                 if (_session->is_saving()){
                     dsv_info("Device detached:Waitting for store the data. and will switch to new device.");
@@ -2231,7 +2370,7 @@ namespace pv
                 }
                 if (msg == DSV_MSG_COLLECT_MODE_CHANGED){
                     _trigger_widget->device_updated();
-                    _view->update();
+                    current_view()->update();
                 }           
                 break;
             }
@@ -2276,7 +2415,7 @@ namespace pv
             }
             case DSV_MSG_DATA_POOL_CHANGED:
             {
-                _view->check_measure();
+                current_view()->check_measure();
                 break;
             }            
         }
@@ -2355,12 +2494,167 @@ namespace pv
             load_channel_view_indexs(doc);
         }
         
-        _view->update_all_trace_postion();
+        current_view()->update_all_trace_postion();
     }
 
     QWidget* MainWindow::GetBodyView()
     {
-        return _view;
+        return current_view();
+    }
+
+    pv::view::View* MainWindow::current_view()
+    {
+        if (_current_tab_index >= 0 && _current_tab_index < _tab_contexts.size()) {
+            return _tab_contexts[_current_tab_index]->view();
+        }
+        return nullptr;
+    }
+
+    pv::TabContext* MainWindow::current_context()
+    {
+        if (_current_tab_index >= 0 && _current_tab_index < _tab_contexts.size()) {
+            return _tab_contexts[_current_tab_index];
+        }
+        return nullptr;
+    }
+
+    void MainWindow::add_tab(pv::TabContext *ctx)
+    {
+        pv::view::View *view = ctx->view();
+        _tab_contexts.append(ctx);
+        _tab_widget->addTab(view, ctx->title());
+        _tab_widget->setCurrentIndex(_tab_widget->count() - 1);
+        update_tab_style(_tab_widget->count() - 1);
+    }
+
+    void MainWindow::remove_tab(int index)
+    {
+        if (index < 0 || index >= _tab_contexts.size())
+            return;
+
+        pv::TabContext *ctx = _tab_contexts[index];
+        bool was_live = ctx->is_live();
+        if (was_live && _session->is_working()) {
+            _session->stop_capture();
+        }
+
+        _tab_contexts.removeAt(index);
+        disconnect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
+        _tab_widget->removeTab(index);
+        delete ctx;
+
+        if (_tab_contexts.isEmpty()) {
+            pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
+            pv::TabContext *new_ctx = new pv::TabContext(new_view, _session);
+            new_ctx->set_live(true);
+            new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+            _tab_contexts.append(new_ctx);
+            _tab_widget->addTab(new_view, new_ctx->title());
+            _current_tab_index = 0;
+
+            _sampling_bar->set_context(_session, new_view);
+            _sampling_bar->set_readonly(false);
+            _sampling_bar->set_view(new_view);
+            _measure_widget->set_view(new_view);
+            _search_widget->set_view(new_view);
+            _protocol_widget->set_view(new_view);
+            new_view->installEventFilter(this);
+            update_tab_style(0);
+        } else {
+            if (_current_tab_index >= _tab_contexts.size()) {
+                _current_tab_index = _tab_contexts.size() - 1;
+            }
+            _tab_contexts[_current_tab_index]->activate();
+            update_tab_style(_current_tab_index);
+
+            pv::view::View *view = current_view();
+            if (view) {
+                _sampling_bar->set_context(_session, view);
+                _sampling_bar->set_readonly(false);
+                _sampling_bar->set_view(view);
+                _measure_widget->set_view(view);
+                _search_widget->set_view(view);
+                _protocol_widget->set_view(view);
+                view->installEventFilter(this);
+            }
+        }
+
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
+    }
+
+    void MainWindow::update_tab_style(int index)
+    {
+        if (index < 0 || index >= _tab_contexts.size())
+            return;
+
+        pv::TabContext *ctx = _tab_contexts[index];
+        QString title = ctx->title();
+
+        if (ctx->is_live()) {
+            _tab_widget->setTabText(index, QString::fromUtf8("\xe2\x97\x8f ") + title);
+            _tab_widget->tabBar()->setTabTextColor(index, QColor(76, 175, 80));
+        } else {
+            _tab_widget->setTabText(index, title);
+            _tab_widget->tabBar()->setTabTextColor(index, QColor(180, 180, 180));
+        }
+    }
+
+    void MainWindow::on_tab_changed(int index)
+    {
+        if (index < 0 || index >= _tab_contexts.size())
+            return;
+
+        if (_current_tab_index >= 0 && _current_tab_index < _tab_contexts.size() && _current_tab_index != index) {
+            _tab_contexts[_current_tab_index]->deactivate();
+            update_tab_style(_current_tab_index);
+        }
+
+        _current_tab_index = index;
+        _tab_contexts[index]->activate();
+        update_tab_style(index);
+
+        pv::view::View *view = current_view();
+        if (view) {
+            _sampling_bar->set_context(_session, view);
+            _sampling_bar->set_readonly(false);
+            _sampling_bar->set_view(view);
+            _measure_widget->set_view(view);
+            _search_widget->set_view(view);
+            _protocol_widget->set_view(view);
+            view->installEventFilter(this);
+        }
+
+        update_title_bar_text();
+    }
+
+    void MainWindow::on_tab_detach(int index, QWidget *widget, const QString &title)
+    {
+        (void)index;
+        (void)title;
+
+        pv::TabContext *ctx = nullptr;
+        for (auto c : _tab_contexts) {
+            if (c->view() == widget) {
+                ctx = c;
+                break;
+            }
+        }
+
+        if (ctx) {
+            _tab_contexts.removeOne(ctx);
+            if (_current_tab_index >= _tab_contexts.size()) {
+                _current_tab_index = _tab_contexts.size() - 1;
+            }
+        }
+    }
+
+    void MainWindow::on_new_tab_requested()
+    {
+        pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
+        pv::TabContext *new_ctx = new pv::TabContext(new_view, _session);
+        new_ctx->set_live(true);
+        new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+        add_tab(new_ctx);
     }   
   
 } // namespace pv

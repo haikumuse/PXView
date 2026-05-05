@@ -87,8 +87,14 @@ Viewport::Viewport(View &parent, View_type type) :
     _dso_ym_valid(false),
     _waiting_trig(0),
     _dso_trig_moved(false),
+    _resize_trace_upper(NULL),
+    _resize_trace_lower(NULL),
+    _resize_mouse_down_y(0),
+    _resize_upper_height(0),
+    _resize_lower_height(0),
     _curs_moved(false),
-    _xcurs_moved(false)
+    _xcurs_moved(false),
+    _curVOffset(0)
 {
 	setMouseTracking(true);
 	setAutoFillBackground(true);
@@ -190,6 +196,42 @@ void Viewport::doPaint()
     QColor back(QWidget::palette().color(QWidget::backgroundRole()));
     fore.setAlpha(View::ForeAlpha);
     _view.set_back(false);
+
+    if (_type == TIME_VIEW && _view.session().get_device()->get_work_mode() == LOGIC) {
+        const auto &groups = _view.get_signal_groups();
+        if (!groups.empty()) {
+            QColor cardColor = _view.get_group_card_color();
+            QColor separatorColor = back;
+
+            int vOffset = _view.get_vOffset();
+            for (const auto &group : groups) {
+                if (group.traces.empty()) continue;
+                int groupTop = INT_MAX;
+                int groupBottom = INT_MIN;
+                for (auto gt : group.traces) {
+                    int traceTop = gt->get_v_offset() - gt->get_totalHeight() / 2 - View::SignalMargin;
+                    int traceBottom = gt->get_v_offset() + gt->get_totalHeight() / 2 + View::SignalMargin;
+                    groupTop = min(groupTop, traceTop);
+                    groupBottom = max(groupBottom, traceBottom);
+                }
+                
+                int cardTop = groupTop - View::GroupGap / 2 - vOffset;
+                int cardHeight = groupBottom - groupTop + View::GroupGap;
+                
+                QRectF cardRect(-View::GroupCardRadius, cardTop, width() + View::GroupCardRadius + 1, cardHeight);
+                p.setPen(Qt::NoPen);
+                p.setBrush(cardColor);
+                p.drawRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
+
+                for (int i = 0; i < (int)group.traces.size() - 1; i++) {
+                    int bottomI = group.traces[i]->get_v_offset() + group.traces[i]->get_totalHeight() / 2 + View::SignalMargin - vOffset;
+                    int topJ = group.traces[i + 1]->get_v_offset() - group.traces[i + 1]->get_totalHeight() / 2 - View::SignalMargin - vOffset;
+                    int sepY = (bottomI + topJ) / 2;
+                    p.fillRect(QRectF(-View::GroupCardRadius, sepY, width() + View::GroupCardRadius + 1, 1), separatorColor);
+                }
+            }
+        }
+    }
   
     std::vector<Trace*> traces;
     _view.get_traces(_type, traces);
@@ -285,8 +327,16 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
         bool bFirst = true;
         uint64_t end_align_sample;
 
+        p.save();
+        p.translate(0, -_view.get_vOffset());
+
         for(auto t : traces){
             if (t->enabled()){
+                int traceTop = t->get_v_offset() - t->get_totalHeight()/2 - _view.get_vOffset();
+                int traceBottom = t->get_v_offset() + t->get_totalHeight()/2 - _view.get_vOffset();
+                if (traceBottom < 0 || traceTop > height())
+                    continue;
+
                 _index_list = t->get_index_list();
 
                 QColor color = PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
@@ -306,15 +356,18 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
                 }               
             }                
         }
+        p.restore();
     } 
     else {
         if (_view.scale() != _curScale ||
             _view.offset() != _curOffset ||
             _view.get_signalHeight() != _curSignalHeight ||
+            _view.get_vOffset() != _curVOffset ||
             _need_update) {
             _curScale = _view.scale();
             _curOffset = _view.offset();
             _curSignalHeight = _view.get_signalHeight();
+            _curVOffset = _view.get_vOffset();
 
             _pixmap = QPixmap(size());
             _pixmap.fill(Qt::transparent);
@@ -345,7 +398,10 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
             }
             _need_update = false;
         }
+        p.save();
+        p.translate(0, -_view.get_vOffset());
         p.drawPixmap(0, 0, _pixmap);
+        p.restore();
     }
 
     // plot cursors
@@ -663,6 +719,30 @@ void Viewport::mousePressEvent(QMouseEvent *event)
     _drag_strength = 0;
     _elapsed_time.restart();
 
+    if (_type == TIME_VIEW && _view.session().get_device()->get_work_mode() == LOGIC) {
+        std::vector<Trace*> traces;
+        _view.get_traces(TIME_VIEW, traces);
+        int mouseY = event->pos().y() + _view.get_vOffset();
+        const int HitBorderMargin = 5;
+
+        for (int i = 0; i < (int)traces.size() - 1; i++) {
+            if (!traces[i]->enabled()) continue;
+            if (i + 1 < (int)traces.size() && !traces[i+1]->enabled()) continue;
+
+            int traceBottom = traces[i]->get_v_offset() + traces[i]->get_totalHeight() / 2 + View::SignalMargin;
+
+            if (abs(mouseY - traceBottom) < HitBorderMargin) {
+                _action_type = RESIZE_SIGNAL;
+                _resize_trace_upper = traces[i];
+                _resize_trace_lower = traces[i + 1];
+                _resize_mouse_down_y = event->pos().y();
+                _resize_upper_height = traces[i]->get_totalHeight();
+                _resize_lower_height = traces[i + 1]->get_totalHeight();
+                return;
+            }
+        }
+    }
+
     if (_action_type == NO_ACTION
         && event->button() == Qt::RightButton
         && _view.session().is_stopped_status())
@@ -808,6 +888,40 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
     _hover_hit = false;
     int mode = _view.session().get_device()->get_work_mode();
 
+    if (_action_type == NO_ACTION && _type == TIME_VIEW &&
+        _view.session().get_device()->get_work_mode() == LOGIC) {
+        std::vector<Trace*> traces;
+        _view.get_traces(TIME_VIEW, traces);
+        int mouseY = event->pos().y() + _view.get_vOffset();
+        const int HitBorderMargin = 5;
+        bool onBorder = false;
+
+        for (int i = 0; i < (int)traces.size() - 1; i++) {
+            if (!traces[i]->enabled()) continue;
+            if (i + 1 < (int)traces.size() && !traces[i+1]->enabled()) continue;
+
+            int traceBottom = traces[i]->get_v_offset() + traces[i]->get_totalHeight() / 2 + View::SignalMargin;
+
+            if (abs(mouseY - traceBottom) < HitBorderMargin) {
+                onBorder = true;
+                break;
+            }
+        }
+
+        setCursor(onBorder ? Qt::SplitVCursor : Qt::ArrowCursor);
+    }
+
+    if (_action_type == RESIZE_SIGNAL) {
+        int deltaY = event->pos().y() - _resize_mouse_down_y;
+        int newUpperHeight = _resize_upper_height + deltaY;
+
+        if (newUpperHeight >= View::MinSignalHeight) {
+            _resize_trace_upper->set_own_height(newUpperHeight);
+            _view.signals_changed(NULL);
+        }
+        return;
+    }
+
     if (event->buttons() & Qt::LeftButton) {
         if (_type == TIME_VIEW) {
             if (_action_type == NO_ACTION) {
@@ -941,7 +1055,7 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
         }
     }
 
-    _mouse_point = event->pos();
+    _mouse_point = event->pos() + QPoint(0, _view.get_vOffset());
 
     measure();
    
@@ -1212,6 +1326,13 @@ void Viewport::mouseReleaseEvent(QMouseEvent *event)
 
     int mode = _view.session().get_device()->get_work_mode();
 
+    if (_action_type == RESIZE_SIGNAL) {
+        _resize_trace_upper = NULL;
+        _resize_trace_lower = NULL;
+        set_action(NO_ACTION);
+        return;
+    }
+
     if (mode == LOGIC){
         onLogicMouseRelease(event);
     }
@@ -1267,6 +1388,27 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event)
         return;
 
     int mode = _view.session().get_device()->get_work_mode();
+
+    if (_type == TIME_VIEW && _view.session().get_device()->get_work_mode() == LOGIC) {
+        std::vector<Trace*> traces;
+        _view.get_traces(TIME_VIEW, traces);
+        int mouseY = event->pos().y() + _view.get_vOffset();
+        const int HitBorderMargin = 5;
+
+        for (int i = 0; i < (int)traces.size() - 1; i++) {
+            if (!traces[i]->enabled()) continue;
+            if (i + 1 < (int)traces.size() && !traces[i+1]->enabled()) continue;
+
+            int traceBottom = traces[i]->get_v_offset() + traces[i]->get_totalHeight() / 2 + View::SignalMargin;
+
+            if (abs(mouseY - traceBottom) < HitBorderMargin) {
+                traces[i]->set_own_height(-1);
+                traces[i + 1]->set_own_height(-1);
+                _view.signals_changed(NULL);
+                return;
+            }
+        }
+    }
 
     if (mode == LOGIC)
     {
@@ -1394,6 +1536,15 @@ void Viewport::wheelEvent(QWheelEvent *event)
     else if (_type == TIME_VIEW)
     {
         static bool bLstTime = false;
+
+        if (event->modifiers() & Qt::ControlModifier)
+        {
+            double vsteps = delta / 80;
+            if (ABS_VAL(delta) <= 80)
+                vsteps = delta > 0 ? 1.5 : -1.5;
+            _view.zoom_vertical(vsteps);
+            return;
+        }
 
         if (isVertical)
         {

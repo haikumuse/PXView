@@ -62,6 +62,11 @@ Header::Header(View &parent) :
     _colorFlag = false;
     _nameFlag = false;
     _context_trace = NULL;
+    _resize_trace_upper = NULL;
+    _resize_trace_lower = NULL;
+    _resize_mouse_down_y = 0;
+    _resize_upper_height = 0;
+    _resize_lower_height = 0;
     _mouse_is_down = false;
     
     nameEdit = new PopupLineEdit(this);
@@ -122,6 +127,43 @@ void Header::paintEvent(QPaintEvent*)
     style()->drawPrimitive(QStyle::PE_Widget, &o, &painter, this);
 
 	const int w = width();
+
+    if (_view.session().get_device()->get_work_mode() == LOGIC) {
+        const auto &groups = _view.get_signal_groups();
+        if (!groups.empty()) {
+            QColor cardColor = _view.get_group_card_color();
+            QColor separatorColor = QWidget::palette().color(QWidget::backgroundRole());
+
+            int vOffset = _view.get_vOffset();
+            for (const auto &group : groups) {
+                if (group.traces.empty()) continue;
+                int groupTop = INT_MAX;
+                int groupBottom = INT_MIN;
+                for (auto gt : group.traces) {
+                    int traceTop = gt->get_v_offset() - gt->get_totalHeight() / 2 - View::SignalMargin;
+                    int traceBottom = gt->get_v_offset() + gt->get_totalHeight() / 2 + View::SignalMargin;
+                    groupTop = min(groupTop, traceTop);
+                    groupBottom = max(groupBottom, traceBottom);
+                }
+                
+                int cardTop = groupTop - View::GroupGap / 2 - vOffset;
+                int cardHeight = groupBottom - groupTop + View::GroupGap;
+                
+                QRectF cardRect(0, cardTop, w + View::GroupCardRadius + 1, cardHeight);
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(cardColor);
+                painter.drawRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
+
+                for (int i = 0; i < (int)group.traces.size() - 1; i++) {
+                    int bottomI = group.traces[i]->get_v_offset() + group.traces[i]->get_totalHeight() / 2 + View::SignalMargin - vOffset;
+                    int topJ = group.traces[i + 1]->get_v_offset() - group.traces[i + 1]->get_totalHeight() / 2 - View::SignalMargin - vOffset;
+                    int sepY = (bottomI + topJ) / 2;
+                    painter.fillRect(QRectF(0, sepY, w + View::GroupCardRadius + 1, 1), separatorColor);
+                }
+            }
+        }
+    }
+
     std::vector<Trace*> traces;
     _view.get_traces(ALL_VIEW, traces);
 
@@ -136,11 +178,15 @@ void Header::paintEvent(QPaintEvent*)
     font.setPointSizeF(fSize);
     painter.setFont(font);
 
+    painter.save();
+    painter.translate(0, -_view.get_vOffset());
+
     for(auto t : traces)
 	{
         t->paint_label(painter, w, dragging ? QPoint(-1, -1) : _mouse_point, fore);
 	}
 
+	painter.restore();
 	painter.end();
 }
 
@@ -186,8 +232,31 @@ void Header::mousePressEvent(QMouseEvent *event)
         return;
     }
 
+    if (_view.session().get_device()->get_work_mode() == LOGIC) {
+        std::vector<Trace*> traces;
+        _view.get_traces(ALL_VIEW, traces);
+        int mouseY = event->pos().y() + _view.get_vOffset();
+        const int HitBorderMargin = 5;
+
+        for (int i = 0; i < (int)traces.size() - 1; i++) {
+            if (!traces[i]->enabled()) continue;
+            if (i + 1 < (int)traces.size() && !traces[i+1]->enabled()) continue;
+
+            int traceBottom = traces[i]->get_v_offset() + traces[i]->get_totalHeight() / 2 + View::SignalMargin;
+
+            if (abs(mouseY - traceBottom) < HitBorderMargin) {
+                _resize_trace_upper = traces[i];
+                _resize_trace_lower = traces[i + 1];
+                _resize_mouse_down_y = event->pos().y();
+                _resize_upper_height = traces[i]->get_totalHeight();
+                _resize_lower_height = traces[i + 1]->get_totalHeight();
+                return;
+            }
+        }
+    }
+
 	if (event->button() & Qt::LeftButton) {
-		_mouse_down_point = event->pos();
+		_mouse_down_point = event->pos() + QPoint(0, _view.get_vOffset());
 
         // Save the offsets of any Traces which will be dragged
         for(auto t : traces){
@@ -203,6 +272,13 @@ void Header::mousePressEvent(QMouseEvent *event)
         }
         else if (action == Trace::NAME && mTrace) {
             _nameFlag = true;
+            mTrace->select(true);
+
+            if (~QApplication::keyboardModifiers() & Qt::ControlModifier)
+                _drag_traces.clear();
+            
+            _drag_traces.push_back(make_pair(mTrace, mTrace->get_zero_vpos()));
+            mTrace->set_old_v_offset(mTrace->get_v_offset());
         }
         else if (action == Trace::LABEL && mTrace) {
             mTrace->select(true);
@@ -241,6 +317,12 @@ void Header::mouseReleaseEvent(QMouseEvent *event)
 
     _mouse_is_down = false;
 
+    if (_resize_trace_upper || _resize_trace_lower) {
+        _resize_trace_upper = NULL;
+        _resize_trace_lower = NULL;
+        return;
+    }
+
     // judge for color / name / trigger / move
     int action;
     const auto mTrace = get_mTrace(action, event->pos());
@@ -251,7 +333,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event)
             changeColor(event);
             _view.set_all_update(true);
         }
-        else if (action == Trace::NAME && _nameFlag) {
+        else if (action == Trace::NAME && _nameFlag && !_moveFlag) {
             _context_trace = mTrace;
             changeName(event);
         }
@@ -261,21 +343,61 @@ void Header::mouseReleaseEvent(QMouseEvent *event)
     int mode = _view.session().get_device()->get_work_mode();    
     if (_moveFlag && mode == LOGIC)
     {
-        std::vector<Trace*> traces;
-
-        for (auto s : _view.session().get_decode_signals()){
-            traces.push_back(s);
+        const auto &groups = _view.get_signal_groups();
+        
+        if (groups.size() <= 1) {
+            std::vector<Trace*> traces;
+            for (auto s : _view.session().get_decode_signals()){
+                traces.push_back(s);
+            }
+            for (auto s : _view.session().get_signals()){
+                traces.push_back(s);
+            }
+            sort(traces.begin(), traces.end(), View::compare_trace_y);
+            int index = 0;
+            for (auto t : traces){
+                t->set_view_index(index++);
+            }
         }
-
-        for (auto s : _view.session().get_signals()){
-            traces.push_back(s);
-        }
-    
-        sort(traces.begin(), traces.end(), View::compare_trace_y);
-
-        int index = 0;
-        for (auto t : traces){
-            t->set_view_index(index++);
+        else {
+            Trace *draggedTrace = NULL;
+            if (!_drag_traces.empty())
+                draggedTrace = _drag_traces.front().first;
+            
+            int draggedGroupIndex = -1;
+            if (draggedTrace) {
+                for (int gi = 0; gi < (int)groups.size(); gi++) {
+                    for (auto gt : groups[gi].traces) {
+                        if (gt == draggedTrace) {
+                            draggedGroupIndex = gi;
+                            break;
+                        }
+                    }
+                    if (draggedGroupIndex != -1) break;
+                }
+            }
+            
+            std::vector<int> groupOrder;
+            for (int i = 0; i < (int)groups.size(); i++)
+                groupOrder.push_back(i);
+            
+            sort(groupOrder.begin(), groupOrder.end(), [&groups](int a, int b) {
+                int minA = INT_MAX, minB = INT_MAX;
+                for (auto gt : groups[a].traces)
+                    minA = min(minA, gt->get_v_offset());
+                for (auto gt : groups[b].traces)
+                    minB = min(minB, gt->get_v_offset());
+                return minA < minB;
+            });
+            
+            int index = 0;
+            for (int gi : groupOrder) {
+                std::vector<Trace*> groupTraces = groups[gi].traces;
+                sort(groupTraces.begin(), groupTraces.end(), View::compare_trace_y);
+                for (auto t : groupTraces) {
+                    t->set_view_index(index++);
+                }
+            }
         }
     }
 
@@ -290,6 +412,9 @@ void Header::mouseReleaseEvent(QMouseEvent *event)
         for(auto t : traces){
             t->select(false);
         }            
+    }
+    else if (!_drag_traces.empty()) {
+        _drag_traces.clear();
     }
 
     _colorFlag = false;
@@ -419,7 +544,18 @@ void Header::mouseMoveEvent(QMouseEvent *event)
         return;
     }
 
-	_mouse_point = event->pos();
+	_mouse_point = event->pos() + QPoint(0, _view.get_vOffset());
+
+    if (_resize_trace_upper && _resize_trace_lower) {
+        int deltaY = event->pos().y() - _resize_mouse_down_y;
+        int newUpperHeight = _resize_upper_height + deltaY;
+
+        if (newUpperHeight >= View::MinSignalHeight) {
+            _resize_trace_upper->set_own_height(newUpperHeight);
+            _view.signals_changed(NULL);
+        }
+        return;
+    }
 
     // Move the Traces if we are dragging
     if (!_drag_traces.empty()) {

@@ -1,0 +1,12 @@
+- [x] View 类新增 _vOffset、_signalHeightScale 成员及 zoom_vertical() 方法，编译通过
+- [x] Trace 类新增 _ownHeight 成员，signals_changed() 支持独立高度，LOGIC 模式下不再强制封顶
+- [x] 垂直滚动条在波形总高度超出窗口时正确显示，拖动滚动条时波形和 Header 同步滚动
+- [x] Ctrl+Wheel 在 TIME_VIEW 中调整波形高度，无 Ctrl 时保持原有水平缩放行为
+- [x] Viewport 绘制时正确应用垂直偏移 translate(0, -_vOffset)，缓存判断包含 _vOffset 变化检测
+- [x] Viewport 鼠标事件坐标加上 _vOffset 偏移后命中测试正确
+- [x] Header 绘制和鼠标交互同步应用垂直偏移
+- [x] 鼠标悬停信号边界线时光标变为 SplitVCursor
+- [x] 拖拽边界线可单独调整上方/下方信号高度，高度不低于 MinSignalHeight
+- [x] 双击边界线恢复全局统一高度
+- [x] 不可见信号被裁剪跳过绘制，不浪费性能
+- [x] 项目编译无错误，Ctrl+Wheel、垂直滚动、拖拽调整三项功能基本可用

@@ -165,6 +165,7 @@ private:
     bool _data_out_off_range;
  
     friend class DsoSnapshotTest::Basic;
+    friend class SessionSnapshot;
 };
 
 } // namespace data

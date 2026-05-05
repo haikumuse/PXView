@@ -1,0 +1,13 @@
+- [x] 拖拽标签出窗口只创建一个浮动窗口，不出现两个空白窗口
+- [x] "+" 按钮在标签栏右侧始终可见且可点击，深色主题下也可见
+- [x] 点击标签关闭按钮（×）触发 MainWindow::remove_tab 逻辑，不直接删除 widget
+- [x] 右键菜单"关闭"触发 MainWindow::remove_tab 逻辑
+- [x] 浮动窗口关闭后标签还原回 DraggableTabWidget
+- [x] capture_snapshot 完整拷贝波形数据（Logic/Analog/Dso Snapshot 深拷贝）
+- [x] capture_snapshot 拷贝 Signal 引用列表
+- [x] 标签切换时 SamplingBar 调用 set_context 和 set_readonly
+- [x] 切换到历史标签时 SamplingBar 为只读状态
+- [x] 切换到活跃标签时 SamplingBar 恢复可操作状态
+- [x] 内联重命名标签后 TabContext 标题同步更新
+- [x] on_load_file 创建的新标签正确设置 live 状态（先 live=true，capture_snapshot 后自动变 false）
+- [x] 项目编译通过无错误（DSView.exe 4,664,040 字节）
