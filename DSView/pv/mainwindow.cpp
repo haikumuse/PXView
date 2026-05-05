@@ -321,7 +321,7 @@ namespace pv
 
 
         // setIconSize(QSize(40, 40));
-        // addToolBar(_sampling_bar);
+        addToolBar(Qt::TopToolBarArea, _sampling_bar);
         // addToolBar(_trig_bar);
         // addToolBar(_file_bar);
         // addToolBar(_logo_bar);

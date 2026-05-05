@@ -747,6 +747,18 @@ if(WIN32)
     endforeach()
 
     message(STATUS "Language files copied to: ${EXECUTABLE_OUTPUT_PATH}/lang")
+
+    # Copy decoder files to output directory
+    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/decoders)
+    file(GLOB DECODER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/package/decoders/*)
+    foreach(dir ${DECODER_DIRS})
+        if(IS_DIRECTORY ${dir})
+            get_filename_component(dir_name ${dir} NAME)
+            file(COPY ${dir} DESTINATION ${EXECUTABLE_OUTPUT_PATH}/decoders)
+        endif()
+    endforeach()
+
+    message(STATUS "Decoder files copied to: ${EXECUTABLE_OUTPUT_PATH}/decoders")
 endif()
 
 #===============================================================================
