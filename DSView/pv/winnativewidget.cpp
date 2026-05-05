@@ -451,7 +451,7 @@ LRESULT WinNativeWidget::hitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
     {
         QRect titleRect = _titleBarWidget->geometry(); 
 
-        int titleWidth = titleRect.width() * k - 55 * k;
+        int titleWidth = titleRect.width() * k - 138 * k;
         int titleHeight = titleRect.height() * k;
     
         if (x > left + 2 * k && x < left + titleWidth)

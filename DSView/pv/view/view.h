@@ -32,10 +32,12 @@
 #include <QSizeF>
 #include <QDateTime>
 #include <QSplitter>
+#include <QPaintEvent>
 
  
 #include "../toolbars/samplingbar.h"
 #include "../data/signaldata.h"
+#include "../data/datasource.h"
 #include "../view/viewport.h"
 #include "cursor.h"
 #include "xcursor.h"
@@ -69,10 +71,17 @@ class Trace;
 class Viewport;
 class LissajousFigure;
 
+struct SignalGroup {
+    int group_id;
+    std::vector<Trace*> traces;
+    SignalGroup() : group_id(-1) {}
+};
+
 //created by MainWindow
 class View : public QScrollArea, public IUiWindow
 {
 	Q_OBJECT
+	Q_PROPERTY(QColor groupCardColor READ get_group_card_color WRITE set_group_card_color)
 
 private:
 	static const int LabelMarginWidth;
@@ -82,6 +91,11 @@ private:
     static const int MaxHeightUnit;
 
 public:
+    static const int MinSignalHeight = 10;
+    static const int MaxSignalHeight = 500;
+    static const int GroupGap = 5;
+    static const int GroupCardRadius = 6;
+
     //static const int SignalHeight;
 	static const int SignalMargin;
 	static const int SignalSnapGridSize;
@@ -112,7 +126,9 @@ public:
 
     ~View();
 
-	inline SigSession& session(){
+	void set_data_source(pv::data::DataSource *source);
+
+    inline SigSession& session(){
         return *_session;
     }
 
@@ -192,6 +208,14 @@ public:
     inline int get_signalHeight(){
         return _signalHeight;
     }
+
+    inline int get_vOffset() { return _vOffset; }
+    inline void set_vOffset(int offset) { _vOffset = offset; }
+    void zoom_vertical(double steps);
+    void compute_signal_groups();
+    inline const std::vector<SignalGroup>& get_signal_groups() { return _signal_groups; }
+    QColor get_group_card_color();
+    void set_group_card_color(QColor color) { _group_card_color = color; }
 
     int headerWidth();
 
@@ -357,6 +381,7 @@ private:
     void reconstruct();  
 	bool eventFilter(QObject *object, QEvent *event);
 	bool viewportEvent(QEvent *e);
+    void paintEvent(QPaintEvent *event);
 	void resizeEvent(QResizeEvent *e);
 
 public:
@@ -432,6 +457,7 @@ public:
 
 private:
 	SigSession                  *_session;
+    pv::data::DataSource        *_data_source;
     pv::toolbars::SamplingBar   *_sampling_bar;
 
     QWidget                 *_viewcenter;
@@ -459,6 +485,10 @@ private:
     int64_t     _preOffset;
     int         _spanY;
     int         _signalHeight;
+    int         _vOffset;
+    int         _signalHeightScale;
+    std::vector<SignalGroup> _signal_groups;
+    QColor _group_card_color;
     bool        _updating_scroll;
 
     // trigger position fix

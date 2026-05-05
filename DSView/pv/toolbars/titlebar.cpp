@@ -72,8 +72,14 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     if (_isTop) {
         _minimizeButton = new QToolButton(this);
         _minimizeButton->setObjectName("MinimizeButton");
+        _minimizeButton->setFixedSize(46, 32);
+        _minimizeButton->setIconSize(QSize(16, 16));
+        _minimizeButton->setAutoRaise(true);
         _maximizeButton = new QToolButton(this);
         _maximizeButton->setObjectName("MaximizeButton");
+        _maximizeButton->setFixedSize(46, 32);
+        _maximizeButton->setIconSize(QSize(16, 16));
+        _maximizeButton->setAutoRaise(true);
 
         lay1->addWidget(_minimizeButton);
         lay1->addWidget(_maximizeButton);
@@ -87,6 +93,9 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     if (_isTop || _hasClose) {
         _closeButton= new QToolButton(this);
         _closeButton->setObjectName("CloseButton");
+        _closeButton->setFixedSize(46, 32);
+        _closeButton->setIconSize(QSize(16, 16));
+        _closeButton->setAutoRaise(true);
         lay1->addWidget(_closeButton);
         connect(_closeButton, SIGNAL( clicked()), parent, SLOT(close()));
     }

@@ -260,6 +260,7 @@ private:
 	friend class LogicSnapshotTest::LargeData;
 	friend class LogicSnapshotTest::Pulses;
 	friend class LogicSnapshotTest::LongPulses;
+    friend class SessionSnapshot;
 };
 
 } // namespace data

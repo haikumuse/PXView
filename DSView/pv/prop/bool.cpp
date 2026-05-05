@@ -86,6 +86,7 @@ void Bool::commit()
 
 	_setter(g_variant_new_boolean(
 		_check_box->checkState() == Qt::Checked));
+	emit committed();
 }
 
 

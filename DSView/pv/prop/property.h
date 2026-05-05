@@ -60,6 +60,9 @@ public:
 
 	virtual void commit() = 0;
 
+signals:
+    void committed();
+
 protected:
 	const Getter _getter;
 	const Setter _setter;

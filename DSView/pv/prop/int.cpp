@@ -191,6 +191,7 @@ void Int::commit()
     _value = new_value;
 
     _setter(new_value);
+    emit committed();
 }
 
 void Int::on_value_changed(int)

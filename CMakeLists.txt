@@ -267,6 +267,7 @@ set(DSView_SOURCES
     DSView/pv/data/signaldata.cpp
     DSView/pv/data/logicsnapshot.cpp
     DSView/pv/data/analogsnapshot.cpp
+    DSView/pv/data/sessionsnapshot.cpp
     DSView/pv/dialogs/deviceoptions.cpp
     DSView/pv/prop/property.cpp
     DSView/pv/prop/int.cpp
@@ -291,6 +292,7 @@ set(DSView_SOURCES
     DSView/pv/dock/triggerdock.cpp
     DSView/pv/dock/measuredock.cpp
     DSView/pv/dock/searchdock.cpp
+    DSView/pv/dock/deviceoptionsdock.cpp
     DSView/pv/toolbars/logobar.cpp
     DSView/pv/dialogs/about.cpp
     DSView/pv/dialogs/search.cpp
@@ -308,6 +310,7 @@ set(DSView_SOURCES
     DSView/pv/view/decodetrace.cpp
     DSView/pv/prop/binding/decoderoptions.cpp
     DSView/pv/widgets/fakelineedit.cpp
+    DSView/pv/widgets/searchpatterninput.cpp
     DSView/pv/widgets/decodermenu.cpp
     DSView/pv/widgets/decodergroupbox.cpp
     DSView/pv/prop/string.cpp
@@ -371,8 +374,11 @@ set(DSView_SOURCES
     DSView/pv/ui/langresource.cpp
     DSView/pv/ui/fn.cpp
     DSView/pv/ui/xtoolbutton.cpp
+    DSView/pv/ui/draggabletabbar.cpp
+    DSView/pv/ui/draggabletabwidget.cpp
     DSView/pv/ui/uimanager.cpp
     DSView/pv/ui/popupdlglist.cpp
+    DSView/pv/tabcontext.cpp
     DSView/pv/QRibbon/QRibbon.cpp
 	DSView/pv/QRibbon/qribbon.ui
 )
@@ -426,6 +432,7 @@ set(DSView_HEADERS
     DSView/pv/dock/triggerdock.h
     DSView/pv/dock/measuredock.h
     DSView/pv/dock/searchdock.h
+    DSView/pv/dock/deviceoptionsdock.h
     DSView/pv/toolbars/logobar.h
     DSView/pv/dialogs/about.h
     DSView/pv/dialogs/search.h
@@ -435,6 +442,7 @@ set(DSView_HEADERS
     DSView/pv/data/decoderstack.h
     DSView/pv/view/decodetrace.h
     DSView/pv/widgets/fakelineedit.h
+    DSView/pv/widgets/searchpatterninput.h
     DSView/pv/widgets/decodermenu.h
     DSView/pv/widgets/decodergroupbox.h
     DSView/pv/prop/string.h
@@ -461,6 +469,9 @@ set(DSView_HEADERS
     DSView/pv/view/lissajoustrace.h
     DSView/pv/view/spectrumtrace.h
     DSView/pv/data/spectrumstack.h
+    DSView/pv/data/decodermodel.h
+    DSView/pv/data/datasource.h
+    DSView/pv/data/sessionsnapshot.h
     DSView/pv/dialogs/mathoptions.h
     DSView/pv/dialogs/regionoptions.h
     DSView/pv/view/xcursor.h
@@ -494,6 +505,9 @@ set(DSView_HEADERS
     DSView/pv/deviceagent.h
     DSView/pv/ui/fn.h
     DSView/pv/ui/xtoolbutton.h
+    DSView/pv/ui/draggabletabbar.h
+    DSView/pv/ui/draggabletabwidget.h
+    DSView/pv/tabcontext.h
     DSView/pv/QRibbon/QRibbon.h
     ${UI_HEADERS}
 )
@@ -505,6 +519,16 @@ if(WIN32)
 		DSView/pv/winshadow.h
 	)
 endif ()
+
+#===============================================================================
+#= Debug Helper option
+#-------------------------------------------------------------------------------
+option(ENABLE_DEBUG_HELPER "Enable UI debug hover helper" OFF)
+if(ENABLE_DEBUG_HELPER)
+	list(APPEND DSView_SOURCES DSView/pv/ui/debughelper.cpp)
+	list(APPEND DSView_HEADERS DSView/pv/ui/debughelper.h)
+	add_definitions(-DENABLE_DEBUG_HELPER)
+endif()
 
 #===============================================================================
 #= libsigrok4DSL source

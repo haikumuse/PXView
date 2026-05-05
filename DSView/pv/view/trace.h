@@ -150,6 +150,14 @@ public:
          _totalHeight = height;
     }
 
+    inline int get_own_height(){
+        return _ownHeight;
+    }
+
+    inline void set_own_height(int height){
+         _ownHeight = height;
+    }
+
     /**
      * Geom
      */
@@ -342,6 +350,7 @@ protected:
     int _sec_index;
     int _old_v_offset;
     int _totalHeight;
+    int _ownHeight;
     int _typeWidth;
     int _view_index;
 

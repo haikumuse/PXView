@@ -64,7 +64,7 @@ namespace dock {
 
 //-----------ProtocolDock
    
-ProtocolDock::ProtocolDock(QWidget *parent, view::View &view, SigSession *session) :
+ProtocolDock::ProtocolDock(QWidget *parent, view::View *view, SigSession *session) :
     QScrollArea(parent),
     _view(view)
 {
@@ -236,6 +236,11 @@ ProtocolDock::~ProtocolDock()
    RELEASE_ARRAY(_decoderInfoList);
 
    REMOVE_UI(this);
+}
+
+void ProtocolDock::set_view(view::View *view)
+{
+    _view = view;
 }
 
 void ProtocolDock::retranslateUi()
@@ -623,7 +628,7 @@ void ProtocolDock::nav_table_view()
 
     auto decoder_stack = decoder_model->getDecoderStack();
     if (decoder_stack) {
-        uint64_t offset = _view.offset() * (decoder_stack->samplerate() * _view.scale());
+        uint64_t offset = _view->offset() * (decoder_stack->samplerate() * _view->scale());
         std::map<const pv::data::decode::Row, bool> rows = decoder_stack->get_rows_lshow();
         int column = _model_proxy.filterKeyColumn();
         for (std::map<const pv::data::decode::Row, bool>::const_iterator i = rows.begin();
@@ -651,8 +656,8 @@ void ProtocolDock::nav_table_view()
                 }
 
                 decoder_stack->set_mark_index((ann.start_sample()+ann.end_sample())/2);
-                _view.set_all_update(true);
-                _view.update();
+                _view->set_all_update(true);
+                _view->update();
             }           
         }
     }

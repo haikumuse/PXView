@@ -38,6 +38,8 @@
 #include <QWidgetAction>
 #include<QShortcut>
 #include "QRibbon/QRibbon.h"
+#include "ui/draggabletabwidget.h"
+#include "tabcontext.h"
 
 class QAction;
 class QMenuBar;
@@ -71,12 +73,19 @@ class TriggerDock;
 class DsoTriggerDock;
 class MeasureDock;
 class SearchDock;
+class DeviceOptionsDock;
 }
 
 namespace view {
 class View;
 }
- 
+
+#ifdef ENABLE_DEBUG_HELPER
+namespace ui {
+class DebugHelper;
+}
+#endif
+
 //The mainwindow,referenced by MainFrame
 //TODO: create graph view,toolbar,and show device list
 class MainWindow : 
@@ -96,6 +105,7 @@ public:
      
 public:
     explicit MainWindow(toolbars::TitleBar *title_bar, QWidget *parent = 0);
+    ~MainWindow();
 
     void openDoc();
 
@@ -110,6 +120,8 @@ private slots:
     void on_trigger(bool visible);
     void on_measure(bool visible);
     void on_search(bool visible);
+    void on_device_options(bool visible);
+    void on_device_options_toggle();
     void on_screenShot();
     void on_save();
 
@@ -129,6 +141,9 @@ private slots:
     void on_trigger_message(int msg);
     void on_delay_prop_msg();
     void on_load_device_first();
+    void on_tab_changed(int index);
+    void on_tab_detach(int index, QWidget *widget, const QString &title);
+    void on_new_tab_requested();
   
 signals:
     void prgRate(int progress);
@@ -149,6 +164,12 @@ private:
     void update_toolbar_view_status();
     void calc_min_height();    
     void update_title_bar_text();
+
+    pv::view::View* current_view();
+    pv::TabContext* current_context();
+    void add_tab(pv::TabContext *ctx);
+    void remove_tab(int index);
+    void update_tab_style(int index);
 
     //json operation
 private:
@@ -193,7 +214,9 @@ private:
     void OnMessage(int msg) override;
 
 private: 
-	pv::view::View          *_view;
+	pv::ui::DraggableTabWidget *_tab_widget;
+    QList<pv::TabContext*> _tab_contexts;
+    int _current_tab_index;
     dialogs::DSMessageBox   *_msg;
 
 	// QMenuBar                *_menu_bar;
@@ -230,6 +253,8 @@ private:
     dock::MeasureDock       *_measure_widget;
     QDockWidget             *_search_dock;
     dock::SearchDock        *_search_widget;
+    QDockWidget             *_device_options_dock;
+    dock::DeviceOptionsDock *_device_options_widget;
 
     QTranslator     _qtTrans;
     QTranslator     _myTrans;
@@ -248,6 +273,9 @@ private:
 
     int         _key_value;
     bool        _key_vaild;
+#ifdef ENABLE_DEBUG_HELPER
+    pv::ui::DebugHelper *_debug_helper;
+#endif
 
 
     void MainWindowRibbonHelper();

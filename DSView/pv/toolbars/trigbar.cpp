@@ -114,7 +114,7 @@ TrigBar::TrigBar(SigSession *session, QWidget *parent) :
     _measure_action = widgetToAction(&_measure_button);
     _search_action = widgetToAction(&_search_button);
     _function_action = widgetToAction(&_function_button); 
-    _display_action = widgetToAction(&_setting_button); //must be created
+    _display_action = widgetToAction(&_setting_button);
 
     connect(&_trig_button, SIGNAL(clicked()),this, SLOT(trigger_clicked()));
     connect(&_protocol_button, SIGNAL(clicked()),this, SLOT(protocol_clicked()));
@@ -127,12 +127,6 @@ TrigBar::TrigBar(SigSession *session, QWidget *parent) :
     connect(_dark_style, SIGNAL(triggered()), this, SLOT(on_actionDark_triggered()));
     connect(_light_style, SIGNAL(triggered()), this, SLOT(on_actionLight_triggered()));
     connect(_action_dispalyOptions, SIGNAL(triggered()), this, SLOT(on_display_setting()));
-
-    // buttonGroup = new QButtonGroup(this);
-    // buttonGroup->addButton(&_trig_button);
-    // buttonGroup->addButton(&_protocol_button);
-    // buttonGroup->addButton(&_measure_button);
-    // buttonGroup->addButton(&_search_button);
 
     ADD_UI(this);
 }
@@ -197,6 +191,7 @@ void TrigBar::protocol_clicked()
         opt->triggerDock = false;
         opt->measureDock = false;
         opt->searchDock  = false;
+        opt->deviceOptionsDock = false;
         sig_protocol(opt->decodeDock);
         sig_trigger(opt->triggerDock);
         sig_measure(opt->measureDock);
@@ -216,6 +211,7 @@ void TrigBar::trigger_clicked()
         opt->decodeDock = false;
         opt->measureDock = false;
         opt->searchDock  = false;
+        opt->deviceOptionsDock = false;
         sig_trigger(opt->triggerDock);
         sig_protocol(opt->decodeDock);
         sig_measure(opt->measureDock);
@@ -235,6 +231,7 @@ void TrigBar::measure_clicked()
         opt->decodeDock = false;
         opt->triggerDock = false;
         opt->searchDock  = false;
+        opt->deviceOptionsDock = false;
         sig_measure(opt->measureDock);
         sig_protocol(opt->decodeDock);
         sig_trigger(opt->triggerDock);
@@ -254,6 +251,7 @@ void TrigBar::search_clicked()
         opt->decodeDock = false;
         opt->triggerDock = false;
         opt->measureDock = false;
+        opt->deviceOptionsDock = false;
         sig_search(opt->searchDock);
         sig_protocol(opt->decodeDock);
         sig_trigger(opt->triggerDock);

@@ -100,6 +100,7 @@ void Enum::commit()
 		return;
 
 	_setter((GVariant*)_selector->itemData(index).value<void*>());
+	emit committed();
 }
 
 void Enum::on_current_item_changed(int)

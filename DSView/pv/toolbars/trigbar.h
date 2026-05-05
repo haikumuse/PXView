@@ -39,8 +39,6 @@ class SigSession;
 
 namespace toolbars {
 
-//boolbar, referenced by MainWindow
-//TODO:show the property panel about protocol\trigger
 class TrigBar : public QToolBar, public IUiWindow
 {
     Q_OBJECT
@@ -50,12 +48,12 @@ public:
     ~TrigBar();
     void reload();
     void update_view_status();
+    DockOptions* getDockOptions();
+    void update_checked_status();
 
 private:
     void retranslateUi();
     void reStyle();
-    DockOptions* getDockOptions();
-    void update_checked_status();
 
      //IUiWindow
     void UpdateLanguage() override;
@@ -64,9 +62,9 @@ private:
 
 signals:
     void sig_setTheme(QString style);
-    void sig_protocol(bool visible); //post decode button click event,to show or hide protocol property panel
-    void sig_trigger(bool visible); //post decode button click event,to show or hide trigger property panel
-    void sig_measure(bool visible);//post decode button click event,to show or hide measure property panel
+    void sig_protocol(bool visible);
+    void sig_trigger(bool visible);
+    void sig_measure(bool visible);
     void sig_search(bool visible);
     void sig_show_lissajous(bool visible);
 

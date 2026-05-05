@@ -75,6 +75,7 @@ namespace pv
             _updating_sample_rate = false;
             _updating_sample_count = false;
             _is_run_as_instant = false;
+            _is_readonly = false;
 
             _last_device_handle = NULL_HANDLE;
             _last_device_index = -1;
@@ -273,65 +274,13 @@ namespace pv
 
         void SamplingBar::on_configure()
         {
-            int ret;
-
             if (_device_agent->have_instance() == false)
             {
                 dsv_info("Have no device, can't to set device config.");
                 return;
             }
 
-            _session->broadcast_msg(DSV_MSG_BEGIN_DEVICE_OPTIONS);
-
-            pv::dialogs::DeviceOptions dlg(this);
-            connect(_session->device_event_object(), SIGNAL(device_updated()), &dlg, SLOT(reject()));
-
-            ret = dlg.exec();
-
-            if (ret == QDialog::Accepted)
-            {
-                if (_session->have_view_data() == false)
-                    this->commit_settings();
-
-                _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
-
-                update_sample_rate_list();
-
-                int mode = _device_agent->get_work_mode();
-                bool zero = false;
-                bool test;
-                bool ret;
-
-                if (mode == DSO){
-                    _device_agent->get_config_bool(SR_CONF_ZERO, zero);
-                   
-                    if (zero){
-                        zero_adj();
-                        return;
-                    }
-                }
-
-                ret = _device_agent->get_config_bool(SR_CONF_TEST, test);
-                if (ret)
-                {
-                    if (test)
-                    {
-                        update_sample_rate_selector_value();
-                        _sample_count.setDisabled(true);
-                        _sample_rate.setDisabled(true);
-                    }
-                    else
-                    {
-                        _sample_count.setDisabled(false);
-                        if (mode != DSO)
-                            _sample_rate.setDisabled(false);
-                    }
-                }
-
-                this->reload();
-            }
-
-            _session->broadcast_msg(DSV_MSG_END_DEVICE_OPTIONS);
+            emit sig_device_options_toggle();
         }
 
         void SamplingBar::zero_adj()
@@ -856,6 +805,9 @@ namespace pv
         // start or stop capture
         bool SamplingBar::action_run_stop()
         {    
+            if (_is_readonly)
+                return false;
+
             if (_session->is_doing_action()){
                 dsv_info("Task is busy.");              
                 return false;
@@ -925,6 +877,9 @@ namespace pv
 
         bool SamplingBar::action_instant_stop()
         { 
+            if (_is_readonly)
+                return false;
+
             if (_session->is_doing_action()){
                 dsv_info("Task is busy.");
                 return false;
@@ -1182,10 +1137,10 @@ namespace pv
         }
 
         void SamplingBar::config_device()
-        {   
+        {
             if (_configure_button.isVisible() && _configure_button.isEnabled()){
-                on_configure();
-            }            
+                emit sig_device_options_toggle();
+            }
         }
 
         void SamplingBar::update_view_status()
@@ -1322,6 +1277,28 @@ namespace pv
             _mode_button.click();
         }
 
+
+        void SamplingBar::set_context(SigSession *session, pv::view::View *view)
+        {
+            _session = session;
+            _device_agent = _session->get_device();
+            _view = view;
+            update_device_list();
+            update_sample_rate_list();
+        }
+
+        void SamplingBar::set_readonly(bool readonly)
+        {
+            _is_readonly = readonly;
+
+            _run_stop_button.setEnabled(!readonly);
+            _instant_button.setEnabled(!readonly);
+            _device_selector.setEnabled(!readonly);
+            _sample_rate.setEnabled(!readonly);
+            _sample_count.setEnabled(!readonly);
+            _configure_button.setEnabled(!readonly);
+            _mode_button.setEnabled(!readonly);
+        }
 
         void SamplingBar::set_sample_count_index(int index)
         {

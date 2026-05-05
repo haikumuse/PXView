@@ -21,23 +21,14 @@
 
 #include "searchdock.h"
 #include "../sigsession.h"
-#include "../view/cursor.h"
 #include "../view/view.h"
-#include "../view/timemarker.h"
-#include "../view/ruler.h"
-#include "../dialogs/search.h"
+#include "../view/logicsignal.h"
 #include "../data/snapshot.h"
 #include "../data/logicsnapshot.h"
-#include "../dialogs/dsmessagebox.h"
 
 #include <QObject>
-#include <QPainter> 
-#include <QRect>
-#include <QMouseEvent>
-#include <QFuture>
-#include <QProgressDialog>
-#include <QtConcurrent/QtConcurrent>
-#include <stdint.h> 
+#include <QPainter>
+#include <stdint.h>
 #include "../config/appconfig.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
@@ -48,42 +39,78 @@ namespace pv {
 namespace dock {
 
 using namespace pv::view;
-using namespace pv::widgets;
 
-SearchDock::SearchDock(QWidget *parent, View &view, SigSession *session) :
+SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     QWidget(parent),
     _session(session),
-    _view(view)
-{ 
+    _view(view),
+    _pattern_input(nullptr),
+    _bit_range_layout(nullptr),
+    _search_button(nullptr),
+    _result_table(nullptr),
+    _legend_col1(nullptr),
+    _legend_col2(nullptr),
+    _legend_col3(nullptr),
+    _logic_channel_count(0)
+{
+    _bit_range_layout = new QHBoxLayout();
+    _bit_range_layout->setSpacing(0);
+    _bit_range_layout->setContentsMargins(0, 0, 0, 0);
+
+    _pattern_input = new widgets::SearchPatternInput(this);
+    connect(_pattern_input, SIGNAL(pattern_changed()), this, SLOT(on_pattern_changed()));
+
     _search_button = new QPushButton(this);
-    _search_button->setFixedWidth(_search_button->height());
-    _search_button->setDisabled(true);
+    connect(_search_button, SIGNAL(clicked()), this, SLOT(on_search_clicked()));
 
-    QLineEdit *_search_parent = new QLineEdit(this);
-    _search_parent->setVisible(false);
-    _search_value = new FakeLineEdit(_search_parent);
+    QHBoxLayout *input_row = new QHBoxLayout();
+    input_row->addWidget(_pattern_input);
+    input_row->addWidget(_search_button);
+    input_row->addStretch(1);
 
-    QHBoxLayout *search_layout = new QHBoxLayout();
-    search_layout->addWidget(_search_button);
-    search_layout->addStretch();
-    search_layout->setContentsMargins(0, 0, 0, 0);
-    _search_value->setLayout(search_layout);
-    _search_value->setTextMargins(_search_button->width(), 0, 0, 0);
-    _search_value->setReadOnly(true);
+    _result_table = new QTableWidget(this);
+    _result_table->setColumnCount(3);
+    _result_table->setHorizontalHeaderLabels(
+        QStringList() << "#" << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
+                      << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length")));
+    _result_table->horizontalHeader()->setStretchLastSection(true);
+    _result_table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    _result_table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    _result_table->setSelectionMode(QAbstractItemView::SingleSelection);
+    _result_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    _result_table->verticalHeader()->setVisible(false);
+    _result_table->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    connect(_result_table, SIGNAL(cellClicked(int, int)),
+            this, SLOT(on_result_clicked(int, int)));
 
-    connect(_search_value, SIGNAL(trigger()), this, SLOT(on_set()));
+    QFrame *separator = new QFrame(this);
+    separator->setFrameShape(QFrame::HLine);
+    separator->setFrameShadow(QFrame::Sunken);
 
-    QHBoxLayout *layout = new QHBoxLayout();
-    layout->addStretch(1);
-    layout->addWidget(&_pre_button);
-    layout->addWidget(_search_value);
-    layout->addWidget(&_nxt_button);
-    layout->addStretch(1);
+    _legend_col1 = new QLabel(this);
+    _legend_col2 = new QLabel(this);
+    _legend_col3 = new QLabel(this);
 
-    setLayout(layout);
+    QHBoxLayout *legend_layout = new QHBoxLayout();
+    legend_layout->setSpacing(16);
+    legend_layout->addWidget(_legend_col1);
+    legend_layout->addWidget(_legend_col2);
+    legend_layout->addWidget(_legend_col3);
+    legend_layout->addStretch(1);
 
-    connect(&_pre_button, SIGNAL(clicked()), this, SLOT(on_previous()));
-    connect(&_nxt_button, SIGNAL(clicked()),this, SLOT(on_next()));
+    QVBoxLayout *main_layout = new QVBoxLayout();
+    main_layout->addLayout(_bit_range_layout);
+    main_layout->addLayout(input_row);
+    main_layout->addWidget(separator);
+    main_layout->addLayout(legend_layout);
+    main_layout->addWidget(_result_table, 1);
+
+    setLayout(main_layout);
+
+    connect(_session->device_event_object(), SIGNAL(device_updated()),
+            this, SLOT(on_device_updated()));
+
+    rebuild_pattern();
 
     ADD_UI(this);
 }
@@ -93,154 +120,152 @@ SearchDock::~SearchDock()
     REMOVE_UI(this);
 }
 
+void SearchDock::set_view(view::View *view)
+{
+    _view = view;
+}
+
+void SearchDock::rebuild_pattern()
+{
+    int count = 0;
+    for (auto s : _session->get_signals()) {
+        if (s->signal_type() == SR_CHANNEL_LOGIC)
+            count++;
+    }
+
+    _logic_channel_count = count;
+
+    while (_bit_range_layout->count() > 0) {
+        QLayoutItem *item = _bit_range_layout->takeAt(0);
+        delete item->widget();
+        delete item;
+    }
+
+    int num_groups = (count + 7) / 8;
+    for (int g = num_groups - 1; g >= 0; g--) {
+        int high = g * 8 + 7;
+        if (high >= count)
+            high = count - 1;
+        int low = g * 8;
+
+        if (high == low) {
+            QLabel *label = new QLabel(QString::number(high), this);
+            _bit_range_layout->addWidget(label);
+        } else {
+            QLabel *label = new QLabel(
+                QString::number(high) + "---" + QString::number(low), this);
+            _bit_range_layout->addWidget(label);
+        }
+
+        if (g > 0) {
+            QSpacerItem *spacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
+            _bit_range_layout->addItem(spacer);
+        }
+    }
+
+    _pattern_input->set_channel_count(count);
+    _pattern_input->set_pattern(_pattern);
+
+    std::set<uint16_t> active_indices;
+    for (auto s : _session->get_signals()) {
+        if (s->signal_type() == SR_CHANNEL_LOGIC)
+            active_indices.insert(s->get_index());
+    }
+    for (auto it = _pattern.begin(); it != _pattern.end(); ) {
+        if (active_indices.find(it->first) == active_indices.end())
+            it = _pattern.erase(it);
+        else
+            ++it;
+    }
+}
+
+void SearchDock::on_pattern_changed()
+{
+    _pattern = _pattern_input->get_pattern();
+    _view->set_search_pos(_view->get_search_pos(), false);
+}
+
+void SearchDock::on_device_updated()
+{
+    rebuild_pattern();
+}
+
+void SearchDock::on_search_clicked()
+{
+    do_search();
+}
+
+void SearchDock::do_search()
+{
+    const auto snapshot = _session->get_snapshot(SR_CHANNEL_LOGIC);
+    if (!snapshot) return;
+    const auto logic_snapshot = dynamic_cast<data::LogicSnapshot*>(snapshot);
+    if (!logic_snapshot || logic_snapshot->empty()) {
+        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_NO_SAMPLE_DATA), "No Sample data!"));
+        MsgBox::Show(strMsg);
+        return;
+    }
+
+    _pattern = _pattern_input->get_pattern();
+    _search_results.clear();
+
+    const int64_t end = logic_snapshot->get_sample_count() - 1;
+    int64_t pos = 0;
+    const int max_results = 10000;
+
+    while (pos <= end && (int)_search_results.size() < max_results) {
+        bool ret = logic_snapshot->pattern_search(0, end, pos, _pattern, true);
+        if (!ret)
+            break;
+        _search_results.push_back(pos);
+        pos++;
+    }
+
+    _result_table->setRowCount(_search_results.size());
+    for (int i = 0; i < (int)_search_results.size(); i++) {
+        _result_table->setItem(i, 0, new QTableWidgetItem(QString::number(i + 1)));
+        _result_table->setItem(i, 1, new QTableWidgetItem(QString::number(_search_results[i])));
+        _result_table->setItem(i, 2, new QTableWidgetItem("1"));
+    }
+}
+
+void SearchDock::on_result_clicked(int row, int col)
+{
+    (void)col;
+    if (row >= 0 && row < (int)_search_results.size()) {
+        _view->set_search_pos(_search_results[row], true);
+    }
+}
+
 void SearchDock::retranslateUi()
 {
-    _search_value->setPlaceholderText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH), "search"));
+    _legend_col1->setText(
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_X), "X: Don't care")) + "\n" +
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_R), "R: Rising edge")));
+    _legend_col2->setText(
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_0), "0: Low level")) + "\n" +
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_F), "F: Falling edge")));
+    _legend_col3->setText(
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_1), "1: High level")) + "\n" +
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_C), "C: Rising/Falling edge")));
+
+    if (_result_table) {
+        QStringList headers;
+        headers << "#" 
+                << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
+                << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length"));
+        _result_table->setHorizontalHeaderLabels(headers);
+    }
 }
 
 void SearchDock::reStyle()
 {
     QString iconPath = GetIconPath();
-
-    _pre_button.setIcon(QIcon(iconPath+"/pre.svg"));
-    _nxt_button.setIcon(QIcon(iconPath+"/next.svg"));
     _search_button->setIcon(QIcon(iconPath+"/search.svg"));
 }
 
 void SearchDock::paintEvent(QPaintEvent *)
 {
-//    QStyleOption opt;
-//    opt.init(this);
-//    QPainter p(this);
-//    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
-}
-
-void SearchDock::on_previous()
-{
-    bool ret;
-    int64_t last_pos;
-    bool last_hit;
-    const auto snapshot = _session->get_snapshot(SR_CHANNEL_LOGIC);
-    assert(snapshot);
-    const auto logic_snapshot = dynamic_cast<data::LogicSnapshot*>(snapshot);
-
-    if (logic_snapshot == NULL || logic_snapshot->empty()) {
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_NO_SAMPLE_DATA), "No Sample data!"));
-        MsgBox::Show(strMsg);        
-        return;
-    }
-
-    const int64_t end = logic_snapshot->get_sample_count() - 1;
-    last_pos = _view.get_search_pos();
-    last_hit = _view.get_search_hit();
-    if (last_pos == 0) {
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_SEARCH_AT_START), "Search cursor at the start position!"));
-        MsgBox::Show(strMsg);
-        return;
-    }
-    else {
-        QFuture<void> future;
-        future = QtConcurrent::run([&]{
-            last_pos -= last_hit;
-            ret = logic_snapshot->pattern_search(0, end, last_pos, _pattern, false);
-        });
-        Qt::WindowFlags flags = Qt::CustomizeWindowHint;
-        QProgressDialog dlg(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_PREVIOUS), "Search Previous..."),
-                            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CANCEL), "Cancel"),0,0,this,flags);
-        dlg.setWindowModality(Qt::WindowModal);
-        dlg.setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint |
-                           Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
-        dlg.setCancelButton(NULL);
-
-        QFutureWatcher<void> watcher;
-        connect(&watcher,SIGNAL(finished()),&dlg,SLOT(cancel()));
-        watcher.setFuture(future);
-        dlg.exec();
-
-        if (!ret) {
-            QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_PATTERN_NOT_FOUND), "Pattern not found!"));
-            MsgBox::Show(strMsg);
-            return;
-        } else {
-            _view.set_search_pos(last_pos, true);
-        }
-    }
-}
-
-void SearchDock::on_next()
-{
-    bool ret;
-    int64_t last_pos;
-    const auto snapshot = _session->get_snapshot(SR_CHANNEL_LOGIC);
-    assert(snapshot);
-    const auto logic_snapshot = dynamic_cast<data::LogicSnapshot*>(snapshot);
-
-    if (logic_snapshot == NULL || logic_snapshot->empty()) {
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_NO_SAMPLE_DATA), "No Sample data!"));
-        MsgBox::Show(strMsg);
-        return;
-    }
-
-    const int64_t end = logic_snapshot->get_sample_count() - 1;
-    last_pos = _view.get_search_pos() + _view.get_search_hit();
-    if (last_pos >= end) {
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_SEARCH_AT_END), "Search cursor at the end position!"));
-        MsgBox::Show(strMsg);
-        return;
-    } else {
-        QFuture<void> future;
-        future = QtConcurrent::run([&]{
-            ret = logic_snapshot->pattern_search(0, end, last_pos, _pattern, true);
-        });
-        Qt::WindowFlags flags = Qt::CustomizeWindowHint;
-        QProgressDialog dlg(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_NEXT), "Search Next..."),
-                            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CANCEL), "Cancel"),0,0,this,flags);
-        dlg.setWindowModality(Qt::WindowModal);
-        dlg.setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint |
-                           Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
-        dlg.setCancelButton(NULL);
-
-        QFutureWatcher<void> watcher;
-        connect(&watcher,SIGNAL(finished()),&dlg,SLOT(cancel()));
-        watcher.setFuture(future);
-        dlg.exec();
-
-        if (!ret) {
-            QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_PATTERN_NOT_FOUND), "Pattern not found!"));
-            MsgBox::Show(strMsg);
-            return;
-        } else {
-            _view.set_search_pos(last_pos, true);
-        }
-    }
-}
-
-void SearchDock::on_set()
-{
-    dialogs::Search dlg(this, _session, _pattern);
-    connect(_session->device_event_object(), SIGNAL(device_updated()), &dlg, SLOT(reject()));
-
-    if (dlg.exec()) {
-        std::map<uint16_t, QString> new_pattern = dlg.get_pattern();
-
-        QString search_label;
-        for (auto& iter:new_pattern) {
-            iter.second.remove(QChar(' '), Qt::CaseInsensitive);
-            iter.second = iter.second.toUpper();
-            search_label.push_back(iter.second);
-        }
-
-        _search_value->setText(search_label);
-        QFontMetrics fm = this->fontMetrics();
-        //fm.width(search_label)
-        int tw = fm.boundingRect(search_label).width();
-        _search_value->setFixedWidth(tw + _search_button->width()+20);
-
-        if (new_pattern != _pattern) {
-            _view.set_search_pos(_view.get_search_pos(), false);
-            _pattern = new_pattern;
-        }
-    }
 }
 
 void SearchDock::UpdateLanguage()
@@ -255,9 +280,12 @@ void SearchDock::UpdateTheme()
 
 void SearchDock::UpdateFont()
 {
-    QFont font = this->font();
+    QFont font("Source Code Pro");
+    font.setStyleHint(QFont::Monospace);
+    font.setFixedPitch(true);
     font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    _search_value->setFont(font);
+    _pattern_input->setFont(font);
+    _pattern_input->update();
 }
 
 } // namespace dock

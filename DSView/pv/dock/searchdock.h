@@ -26,21 +26,17 @@
 #include <QDockWidget>
 #include <QPushButton>
 #include <QLabel>
-#include <QRadioButton>
-#include <QSlider>
 #include <QLineEdit>
-#include <QSpinBox>
+#include <QFrame>
 #include <QTableWidget>
-#include <QCheckBox>
-
-#include <QVector>
-#include <QGridLayout>
+#include <QHeaderView>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 
 #include <vector>
+#include <set>
 
-#include "../widgets/fakelineedit.h"
+#include "../widgets/searchpatterninput.h"
 #include "../ui/dscombobox.h"
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
@@ -53,10 +49,6 @@ namespace view {
     class View;
 }
 
-namespace widgets {
-    class FakeLineEdit;
-}
-
 namespace dock {
 
 class SearchDock : public QWidget, public IUiWindow
@@ -64,34 +56,43 @@ class SearchDock : public QWidget, public IUiWindow
     Q_OBJECT
 
 public:
-    SearchDock(QWidget *parent, pv::view::View &view, SigSession *session);
+    SearchDock(QWidget *parent, pv::view::View *view, SigSession *session);
     ~SearchDock();
+
+    void set_view(view::View *view);
 
     void paintEvent(QPaintEvent *);
 
 private:     
     void retranslateUi();
     void reStyle();
+    void rebuild_pattern();
+    void do_search();
 
-    //IUiWindow
     void UpdateLanguage() override;
     void UpdateTheme() override;
     void UpdateFont() override;
 
 public slots:
-    void on_previous();
-    void on_next();
-    void on_set();
+    void on_pattern_changed();
+    void on_device_updated();
+    void on_search_clicked();
+    void on_result_clicked(int row, int col);
 
 private:
     SigSession *_session;
-    view::View &_view;
+    view::View *_view;
     std::map<uint16_t, QString> _pattern;
 
-    QPushButton _pre_button;
-    QPushButton _nxt_button;
-    widgets::FakeLineEdit* _search_value;
+    widgets::SearchPatternInput *_pattern_input;
+    QHBoxLayout *_bit_range_layout;
     QPushButton *_search_button;
+    QTableWidget *_result_table;
+    QLabel *_legend_col1;
+    QLabel *_legend_col2;
+    QLabel *_legend_col3;
+    int _logic_channel_count;
+    std::vector<int64_t> _search_results;
 };
 
 } // namespace dock

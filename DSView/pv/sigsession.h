@@ -34,6 +34,7 @@
 
 #include "view/mathtrace.h"
 #include "data/mathstack.h"
+#include "data/datasource.h"
 #include "interface/icallbacks.h"
 #include "dstimer.h"
 #include <libsigrok.h>
@@ -42,6 +43,7 @@
 #include "data/logicsnapshot.h"
 #include "data/analogsnapshot.h"
 #include "data/dsosnapshot.h"
+#include "data/sessionsnapshot.h"
  
 struct srd_decoder;
 struct srd_channel;
@@ -123,7 +125,8 @@ using namespace pv::data;
 //created by MainWindow
 class SigSession:
     public IMessageListener,
-    public IDeviceAgentCallback
+    public IDeviceAgentCallback,
+    public pv::data::DataSource
 {
 private:
     static constexpr float Oversampling = 2.0f;
@@ -173,10 +176,10 @@ public:
     bool switch_work_mode(int mode);
 
     uint64_t cur_samplerate();
-    uint64_t cur_snap_samplerate();
-    uint64_t cur_samplelimits();
-    double cur_sampletime();
-    double cur_snap_sampletime();
+    uint64_t cur_snap_samplerate() override;
+    uint64_t cur_samplelimits() override;
+    double cur_sampletime() override;
+    double cur_snap_sampletime() override;
     double cur_view_time();
 
     inline bool re_start(){
@@ -197,7 +200,7 @@ public:
         return _is_triged;
     }
 
-    inline uint64_t get_trigger_pos(){
+    inline uint64_t get_trigger_pos() override{
         return _view_data->_trig_pos;
     }
 
@@ -208,7 +211,7 @@ public:
         _confirm_store_time_id = _work_time_id;
     }
 
-	std::vector<view::Signal*>& get_signals(); 
+	std::vector<view::Signal*>& get_signals() override; 
 
     bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus, 
                         std::list<pv::data::decode::Decoder*> &sub_decoders, view::Trace* &out_trace);
@@ -216,26 +219,26 @@ public:
     void remove_decoder(int index);
     void remove_decoder_by_key_handel(void *handel); 
 
-    inline std::vector<view::DecodeTrace*>& get_decode_signals(){
+    inline std::vector<view::DecodeTrace*>& get_decode_signals() override{
         return _decode_traces;
     }
 
     void rst_decoder(int index); 
     void rst_decoder_by_key_handel(void *handel);
 
-    inline pv::data::DecoderModel* get_decoder_model(){
+    inline pv::data::DecoderModel* get_decoder_model() override{
          return _decoder_model;
     }
 
-    inline std::vector<view::SpectrumTrace*>& get_spectrum_traces(){
+    inline std::vector<view::SpectrumTrace*>& get_spectrum_traces() override{
         return _spectrum_traces;
     }
 
-    inline view::LissajousTrace* get_lissajous_trace(){
+    inline view::LissajousTrace* get_lissajous_trace() override{
         return _lissajous_trace;
     }
 
-    inline view::MathTrace* get_math_trace(){
+    inline view::MathTrace* get_math_trace() override{
         return _math_trace;
     }
  
@@ -264,7 +267,13 @@ public:
         return _trigger_ch;
     }
 
-    data::Snapshot* get_snapshot(int type);
+    data::Snapshot* get_snapshot(int type) override;
+
+    data::LogicSnapshot* get_logic_snapshot() override;
+    data::AnalogSnapshot* get_analog_snapshot() override;
+    data::DsoSnapshot* get_dso_snapshot() override;
+
+    data::SessionSnapshot* capture_snapshot();
 
     inline SESSION_ERROR_STATUS get_error(){
         return _error;

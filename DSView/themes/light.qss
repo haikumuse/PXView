@@ -1217,14 +1217,7 @@ QSlider::sub-page:disabled
 
 QToolButton#MaximizeButton {
     background-color: transparent;
-    border-left: 1px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1,
-                                            stop: 0.0 #F8F8F8, stop: 0.3 #606060,
-                                            stop: 0.5 #707070,
-                                            stop: 0.7 #606060, stop: 1 #F8F8F8);
-    border-right: 1px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1,
-                                            stop: 0.0 #F8F8F8, stop: 0.3 #606060,
-                                            stop: 0.5 #707070,
-                                            stop: 0.7 #606060, stop: 1 #F8F8F8);
+    border: none;
     border-radius: 0px;
     margin: 0px;
     padding: 0px;
@@ -1233,18 +1226,15 @@ QToolButton#MaximizeButton {
 QToolButton#MinimizeButton,
 QToolButton#CloseButton {
     background-color: transparent;
-    border: 1px transparent;
+    border: none;
     border-radius: 0px;
     margin: 0px;
     padding: 0px;
 }
 
 QToolButton#FileCloseButton {
-    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1,
-                                       stop: 0.0 #F8F8F8, stop: 0.1 #D50F25,
-                                       stop: 0.5 #D50F25,
-                                       stop: 0.9 #D50F25, stop: 1 #F8F8F8);
-    border: 1px transparent;
+    background-color: #C42B1C;
+    border: none;
     border-radius: 0px;
     margin: 0px;
     padding: 0px;
@@ -1252,21 +1242,28 @@ QToolButton#FileCloseButton {
 
 QToolButton#MinimizeButton:hover, QToolButton#MinimizeButton::menu-button:hover,
 QToolButton#MaximizeButton:hover, QToolButton#MaximizeButton::menu-button:hover{
-    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1,
-                                       stop: 0.0 #F8F8F8, stop: 0.4 #4E4D4D,
-                                       stop: 0.5 #4A4949,
-                                       stop: 0.6 #4E4D4D, stop: 1 #F8F8F8);
+    background-color: rgba(0, 0, 0, 13);
+}
+
+QToolButton#MinimizeButton:pressed, QToolButton#MinimizeButton::menu-button:pressed,
+QToolButton#MaximizeButton:pressed, QToolButton#MaximizeButton::menu-button:pressed{
+    background-color: rgba(0, 0, 0, 7);
 }
 
 QToolButton#CloseButton:hover, QToolButton#CloseButton::menu-button:hover {
-background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1,
-                                   stop: 0.0 #F8F8F8, stop: 0.1 #D50F25,
-                                   stop: 0.5 #D50F25,
-                                   stop: 0.9 #D50F25, stop: 1 #F8F8F8);
+    background-color: #C42B1C;
+}
+
+QToolButton#CloseButton:pressed, QToolButton#CloseButton::menu-button:pressed {
+    background-color: #B22218;
 }
 
 QToolButton#FileCloseButton:hover, QToolButton#FileCloseButton::menu-button:hover {
-    padding-top: 2px;
+    background-color: #D43D2E;
+}
+
+QToolButton#FileCloseButton:pressed, QToolButton#FileCloseButton::menu-button:pressed {
+    background-color: #B22218;
 }
 
 QToolButton

@@ -100,6 +100,11 @@ private:
     PopupLineEdit *nameEdit;
     std::list<std::pair<Trace*, int> > _drag_traces;
     Trace *_context_trace;
+    Trace       *_resize_trace_upper;
+    Trace       *_resize_trace_lower;
+    int         _resize_mouse_down_y;
+    int         _resize_upper_height;
+    int         _resize_lower_height;
     bool    _mouse_is_down;
 };
 
