@@ -160,6 +160,7 @@ namespace pv
         _right_tool_bar->addAction(_sampling_bar->_configure_action);
         _right_tool_bar->addAction(_sampling_bar->_mode_action);
         _right_tool_bar->addAction(_sampling_bar->_run_stop_action);
+        _right_tool_bar->addAction(_sampling_bar->_instant_action);
         // _right_tool_bar->setFloatable(false);
         _right_tool_bar->setMovable(false);
         //parent->addToolBar(Qt::RightToolBarArea, _right_tool_bar);
@@ -256,9 +257,9 @@ namespace pv
 
         _pattern_mode = "random";
         _QRibbon = NULL;
-        // _QRibbon = new QRibbon();
+        _QRibbon = new QRibbon();
         setup_ui();
-        // _QRibbon->install(this);
+        _QRibbon->install(this);
 
         setContextMenuPolicy(Qt::NoContextMenu);
 
