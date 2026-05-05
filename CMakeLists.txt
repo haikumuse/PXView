@@ -19,7 +19,7 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-cmake_minimum_required(VERSION 2.8.6)
+cmake_minimum_required(VERSION 3.5)
 
 project(DSView)
 
@@ -725,6 +725,29 @@ endif()
 
 message(STATUS "Output dir: ${CMAKE_CURRENT_SOURCE_DIR}/build.dir")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build.dir")
+
+#===============================================================================
+#= Copy language files to output directory (for development)
+#-------------------------------------------------------------------------------
+if(WIN32)
+    # Create lang directories in output directory
+    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/lang/cn)
+    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/lang/en)
+
+    # Copy language files
+    file(GLOB CN_LANG_FILES ${CMAKE_CURRENT_SOURCE_DIR}/lang/cn/*.json)
+    file(GLOB EN_LANG_FILES ${CMAKE_CURRENT_SOURCE_DIR}/lang/en/*.json)
+
+    foreach(file ${CN_LANG_FILES})
+        file(COPY ${file} DESTINATION ${EXECUTABLE_OUTPUT_PATH}/lang/cn)
+    endforeach()
+
+    foreach(file ${EN_LANG_FILES})
+        file(COPY ${file} DESTINATION ${EXECUTABLE_OUTPUT_PATH}/lang/en)
+    endforeach()
+
+    message(STATUS "Language files copied to: ${EXECUTABLE_OUTPUT_PATH}/lang")
+endif()
 
 #===============================================================================
 #= Installation

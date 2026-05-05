@@ -146,7 +146,8 @@ namespace pv
             _run_stop_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
             _run_stop_action = widgetToAction(&_run_stop_button);
             _instant_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-            _instant_action = widgetToAction(&_instant_button); 
+            _instant_action = widgetToAction(&_instant_button);
+            _instant_action->setVisible(true);
 
             update_view_status();
 
