@@ -341,7 +341,6 @@ namespace pv
 
         pv::view::View *initial_view = new pv::view::View(_session, _sampling_bar, this);
         pv::TabContext *initial_ctx = new pv::TabContext(initial_view, _session);
-        initial_ctx->set_live(true);
         initial_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         _tab_contexts.append(initial_ctx);
         _tab_widget->addTab(initial_view, initial_ctx->title());
@@ -506,13 +505,9 @@ namespace pv
                         break;
                     }
                 }
-                if (existing_ctx) {
-                    (void)title;
-                } else {
+                if (!existing_ctx) {
                     pv::TabContext *ctx = new pv::TabContext(view, _session);
                     ctx->set_title(title);
-                    ctx->set_live(false);
-                    ctx->capture_snapshot();
                     _tab_contexts.append(ctx);
                 }
             }
@@ -569,7 +564,6 @@ namespace pv
         QFileInfo fi(file_name);
         ctx->set_title(fi.baseName());
         ctx->set_file_path(file_name);
-        ctx->set_live(true);
 
         add_tab(ctx);
 
@@ -580,7 +574,6 @@ namespace pv
             }
 
             _session->set_file(file_name);
-            ctx->capture_snapshot();
             update_tab_style(_tab_contexts.indexOf(ctx));
         }
         catch (QString e)
@@ -1775,15 +1768,10 @@ namespace pv
     void MainWindow::on_frame_began()
     {
         pv::TabContext *ctx = current_context();
-        if (ctx && !ctx->is_live()) {
+        if (ctx) {
             ctx->make_live();
+            ctx->activate();
             update_tab_style(_current_tab_index);
-        }
-        for (int i = 0; i < _tab_contexts.size(); i++) {
-            if (i != _current_tab_index && _tab_contexts[i]->is_live()) {
-                _tab_contexts[i]->capture_snapshot();
-                update_tab_style(i);
-            }
         }
         current_view()->frame_began();
     }
@@ -2532,9 +2520,11 @@ namespace pv
         if (index < 0 || index >= _tab_contexts.size())
             return;
 
+        if (_tab_contexts.size() <= 1)
+            return;
+
         pv::TabContext *ctx = _tab_contexts[index];
-        bool was_live = ctx->is_live();
-        if (was_live && _session->is_working()) {
+        if (ctx->is_live() && _session->is_working()) {
             _session->stop_capture();
         }
 
@@ -2543,40 +2533,25 @@ namespace pv
         _tab_widget->removeTab(index);
         delete ctx;
 
-        if (_tab_contexts.isEmpty()) {
-            pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
-            pv::TabContext *new_ctx = new pv::TabContext(new_view, _session);
-            new_ctx->set_live(true);
-            new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-            _tab_contexts.append(new_ctx);
-            _tab_widget->addTab(new_view, new_ctx->title());
-            _current_tab_index = 0;
+        if (_current_tab_index >= _tab_contexts.size()) {
+            _current_tab_index = _tab_contexts.size() - 1;
+        } else if (index < _current_tab_index) {
+            _current_tab_index--;
+        }
 
-            _sampling_bar->set_context(_session, new_view);
+        _tab_contexts[_current_tab_index]->activate();
+        _tab_widget->setCurrentIndex(_current_tab_index);
+        update_tab_style(_current_tab_index);
+
+        pv::view::View *view = current_view();
+        if (view) {
+            _sampling_bar->set_context(_session, view);
             _sampling_bar->set_readonly(false);
-            _sampling_bar->set_view(new_view);
-            _measure_widget->set_view(new_view);
-            _search_widget->set_view(new_view);
-            _protocol_widget->set_view(new_view);
-            new_view->installEventFilter(this);
-            update_tab_style(0);
-        } else {
-            if (_current_tab_index >= _tab_contexts.size()) {
-                _current_tab_index = _tab_contexts.size() - 1;
-            }
-            _tab_contexts[_current_tab_index]->activate();
-            update_tab_style(_current_tab_index);
-
-            pv::view::View *view = current_view();
-            if (view) {
-                _sampling_bar->set_context(_session, view);
-                _sampling_bar->set_readonly(false);
-                _sampling_bar->set_view(view);
-                _measure_widget->set_view(view);
-                _search_widget->set_view(view);
-                _protocol_widget->set_view(view);
-                view->installEventFilter(this);
-            }
+            _sampling_bar->set_view(view);
+            _measure_widget->set_view(view);
+            _search_widget->set_view(view);
+            _protocol_widget->set_view(view);
+            view->installEventFilter(this);
         }
 
         connect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
@@ -2593,9 +2568,12 @@ namespace pv
         if (ctx->is_live()) {
             _tab_widget->setTabText(index, QString::fromUtf8("\xe2\x97\x8f ") + title);
             _tab_widget->tabBar()->setTabTextColor(index, QColor(76, 175, 80));
+        } else if (ctx->has_data()) {
+            _tab_widget->setTabText(index, title);
+            _tab_widget->tabBar()->setTabTextColor(index, QColor(200, 200, 200));
         } else {
             _tab_widget->setTabText(index, title);
-            _tab_widget->tabBar()->setTabTextColor(index, QColor(180, 180, 180));
+            _tab_widget->tabBar()->setTabTextColor(index, QColor(120, 120, 120));
         }
     }
 
@@ -2645,6 +2623,11 @@ namespace pv
             if (_current_tab_index >= _tab_contexts.size()) {
                 _current_tab_index = _tab_contexts.size() - 1;
             }
+            if (!_tab_contexts.isEmpty()) {
+                _tab_contexts[_current_tab_index]->activate();
+                update_tab_style(_current_tab_index);
+            }
+            delete ctx;
         }
     }
 
@@ -2652,7 +2635,6 @@ namespace pv
     {
         pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
         pv::TabContext *new_ctx = new pv::TabContext(new_view, _session);
-        new_ctx->set_live(true);
         new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         add_tab(new_ctx);
     }   

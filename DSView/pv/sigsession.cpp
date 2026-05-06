@@ -2599,11 +2599,27 @@ namespace pv
 
         auto &sig_list = get_signals();
         for (auto sig : sig_list) {
-            snap->get_signals().push_back(sig);
-        }
-        auto &dec_list = get_decode_signals();
-        for (auto dec : dec_list) {
-            snap->get_decode_signals().push_back(dec);
+            int type = sig->signal_type();
+            switch(type) {
+                case SR_CHANNEL_LOGIC: {
+                    view::LogicSignal *s = (view::LogicSignal*)sig;
+                    view::LogicSignal *copy = new view::LogicSignal(s, snap->get_logic_snapshot(), (sr_channel*)s->probe());
+                    snap->get_signals().push_back(copy);
+                    break;
+                }
+                case SR_CHANNEL_ANALOG: {
+                    view::AnalogSignal *s = (view::AnalogSignal*)sig;
+                    view::AnalogSignal *copy = new view::AnalogSignal(s, snap->get_analog_snapshot(), (sr_channel*)s->probe());
+                    snap->get_signals().push_back(copy);
+                    break;
+                }
+                case SR_CHANNEL_DSO: {
+                    // DsoSignal doesn't have a copy constructor, so we reference the original
+                    // and update its _data pointer in set_data_source
+                    snap->get_signals().push_back(sig);
+                    break;
+                }
+            }
         }
 
         return snap;

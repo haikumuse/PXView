@@ -74,6 +74,9 @@ public:
      */
     void set_name(QString name);
 
+    inline const sr_channel* probe(){
+        return _probe;
+    }
 
 protected: 
     sr_channel *const _probe;

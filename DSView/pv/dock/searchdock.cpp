@@ -40,38 +40,35 @@ namespace dock {
 
 using namespace pv::view;
 
+static const int kBatchSize = 200;
+
 SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     QWidget(parent),
     _session(session),
     _view(view),
     _pattern_input(nullptr),
-    _bit_range_layout(nullptr),
-    _search_button(nullptr),
     _result_table(nullptr),
     _legend_col1(nullptr),
     _legend_col2(nullptr),
     _legend_col3(nullptr),
-    _logic_channel_count(0)
+    _logic_channel_count(0),
+    _table_fill_index(0),
+    _table_fill_timer(nullptr)
 {
-    _bit_range_layout = new QHBoxLayout();
-    _bit_range_layout->setSpacing(0);
-    _bit_range_layout->setContentsMargins(0, 0, 0, 0);
-
     _pattern_input = new widgets::SearchPatternInput(this);
+    _pattern_input->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     connect(_pattern_input, SIGNAL(pattern_changed()), this, SLOT(on_pattern_changed()));
 
-    _search_button = new QPushButton(this);
-    connect(_search_button, SIGNAL(clicked()), this, SLOT(on_search_clicked()));
-
-    QHBoxLayout *input_row = new QHBoxLayout();
-    input_row->addWidget(_pattern_input);
-    input_row->addWidget(_search_button);
-    input_row->addStretch(1);
+    QHBoxLayout *input_layout = new QHBoxLayout();
+    input_layout->addStretch(1);
+    input_layout->addWidget(_pattern_input);
+    input_layout->addStretch(1);
 
     _result_table = new QTableWidget(this);
     _result_table->setColumnCount(3);
     _result_table->setHorizontalHeaderLabels(
-        QStringList() << "#" << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
+        QStringList() << "#"
+                      << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
                       << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length")));
     _result_table->horizontalHeader()->setStretchLastSection(true);
     _result_table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -80,12 +77,17 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     _result_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     _result_table->verticalHeader()->setVisible(false);
     _result_table->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    _result_table->setShowGrid(true);
+    _result_table->setGridStyle(Qt::DotLine);
+    _result_table->setFrameShape(QFrame::NoFrame);
+    _result_table->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    _result_table->setStyleSheet(
+        "QTableWidget { border: none; gridline-color: #d0d0d0; }"
+        "QTableWidget::item { padding: 2px; }"
+        "QHeaderView::section { background: transparent; border: none; "
+        "border-bottom: 1px solid #d0d0d0; font-weight: normal; padding: 2px; }");
     connect(_result_table, SIGNAL(cellClicked(int, int)),
             this, SLOT(on_result_clicked(int, int)));
-
-    QFrame *separator = new QFrame(this);
-    separator->setFrameShape(QFrame::HLine);
-    separator->setFrameShadow(QFrame::Sunken);
 
     _legend_col1 = new QLabel(this);
     _legend_col2 = new QLabel(this);
@@ -99,9 +101,7 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     legend_layout->addStretch(1);
 
     QVBoxLayout *main_layout = new QVBoxLayout();
-    main_layout->addLayout(_bit_range_layout);
-    main_layout->addLayout(input_row);
-    main_layout->addWidget(separator);
+    main_layout->addLayout(input_layout);
     main_layout->addLayout(legend_layout);
     main_layout->addWidget(_result_table, 1);
 
@@ -109,6 +109,10 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
 
     connect(_session->device_event_object(), SIGNAL(device_updated()),
             this, SLOT(on_device_updated()));
+
+    _table_fill_timer = new QTimer(this);
+    _table_fill_timer->setSingleShot(false);
+    connect(_table_fill_timer, SIGNAL(timeout()), this, SLOT(fill_table_batch()));
 
     rebuild_pattern();
 
@@ -135,34 +139,6 @@ void SearchDock::rebuild_pattern()
 
     _logic_channel_count = count;
 
-    while (_bit_range_layout->count() > 0) {
-        QLayoutItem *item = _bit_range_layout->takeAt(0);
-        delete item->widget();
-        delete item;
-    }
-
-    int num_groups = (count + 7) / 8;
-    for (int g = num_groups - 1; g >= 0; g--) {
-        int high = g * 8 + 7;
-        if (high >= count)
-            high = count - 1;
-        int low = g * 8;
-
-        if (high == low) {
-            QLabel *label = new QLabel(QString::number(high), this);
-            _bit_range_layout->addWidget(label);
-        } else {
-            QLabel *label = new QLabel(
-                QString::number(high) + "---" + QString::number(low), this);
-            _bit_range_layout->addWidget(label);
-        }
-
-        if (g > 0) {
-            QSpacerItem *spacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
-            _bit_range_layout->addItem(spacer);
-        }
-    }
-
     _pattern_input->set_channel_count(count);
     _pattern_input->set_pattern(_pattern);
 
@@ -183,6 +159,7 @@ void SearchDock::on_pattern_changed()
 {
     _pattern = _pattern_input->get_pattern();
     _view->set_search_pos(_view->get_search_pos(), false);
+    do_search();
 }
 
 void SearchDock::on_device_updated()
@@ -190,9 +167,44 @@ void SearchDock::on_device_updated()
     rebuild_pattern();
 }
 
-void SearchDock::on_search_clicked()
+int64_t SearchDock::find_match_end(data::LogicSnapshot *snapshot, int64_t start_pos)
 {
-    do_search();
+    const int64_t end = snapshot->get_sample_count() - 1;
+    bool has_edge = false;
+    for (auto &it : _pattern) {
+        QChar ch = it.second.at(0).toUpper();
+        if (ch == 'R' || ch == 'F' || ch == 'C') {
+            has_edge = true;
+            break;
+        }
+    }
+
+    if (has_edge)
+        return start_pos;
+
+    int64_t pos = start_pos + 1;
+    while (pos <= end) {
+        bool match = true;
+        for (auto &it : _pattern) {
+            QChar ch = it.second.at(0).toUpper();
+            int sig_index = it.first;
+            if (ch == '0') {
+                if (snapshot->get_sample(pos, sig_index)) {
+                    match = false;
+                    break;
+                }
+            } else if (ch == '1') {
+                if (!snapshot->get_sample(pos, sig_index)) {
+                    match = false;
+                    break;
+                }
+            }
+        }
+        if (!match)
+            break;
+        pos++;
+    }
+    return pos - 1;
 }
 
 void SearchDock::do_search()
@@ -201,8 +213,8 @@ void SearchDock::do_search()
     if (!snapshot) return;
     const auto logic_snapshot = dynamic_cast<data::LogicSnapshot*>(snapshot);
     if (!logic_snapshot || logic_snapshot->empty()) {
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_NO_SAMPLE_DATA), "No Sample data!"));
-        MsgBox::Show(strMsg);
+        _search_results.clear();
+        _result_table->setRowCount(0);
         return;
     }
 
@@ -211,21 +223,33 @@ void SearchDock::do_search()
 
     const int64_t end = logic_snapshot->get_sample_count() - 1;
     int64_t pos = 0;
-    const int max_results = 10000;
+    const int max_results = 100000;
 
     while (pos <= end && (int)_search_results.size() < max_results) {
         bool ret = logic_snapshot->pattern_search(0, end, pos, _pattern, true);
         if (!ret)
             break;
-        _search_results.push_back(pos);
-        pos++;
+        int64_t match_end = find_match_end(logic_snapshot, pos);
+        _search_results.push_back(SearchData(pos, match_end));
+        pos = match_end + 1;
     }
 
     _result_table->setRowCount(_search_results.size());
-    for (int i = 0; i < (int)_search_results.size(); i++) {
+    _table_fill_index = 0;
+    _table_fill_timer->start(0);
+}
+
+void SearchDock::fill_table_batch()
+{
+    int end = qMin(_table_fill_index + kBatchSize, (int)_search_results.size());
+    for (int i = _table_fill_index; i < end; i++) {
         _result_table->setItem(i, 0, new QTableWidgetItem(QString::number(i + 1)));
-        _result_table->setItem(i, 1, new QTableWidgetItem(QString::number(_search_results[i])));
-        _result_table->setItem(i, 2, new QTableWidgetItem("1"));
+        _result_table->setItem(i, 1, new QTableWidgetItem(QString::number(_search_results[i].start)));
+        _result_table->setItem(i, 2, new QTableWidgetItem(QString::number(_search_results[i].end - _search_results[i].start + 1)));
+    }
+    _table_fill_index = end;
+    if (_table_fill_index >= (int)_search_results.size()) {
+        _table_fill_timer->stop();
     }
 }
 
@@ -233,7 +257,7 @@ void SearchDock::on_result_clicked(int row, int col)
 {
     (void)col;
     if (row >= 0 && row < (int)_search_results.size()) {
-        _view->set_search_pos(_search_results[row], true);
+        _view->set_search_pos(_search_results[row].start, true);
     }
 }
 
@@ -251,7 +275,7 @@ void SearchDock::retranslateUi()
 
     if (_result_table) {
         QStringList headers;
-        headers << "#" 
+        headers << "#"
                 << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
                 << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length"));
         _result_table->setHorizontalHeaderLabels(headers);
@@ -260,8 +284,6 @@ void SearchDock::retranslateUi()
 
 void SearchDock::reStyle()
 {
-    QString iconPath = GetIconPath();
-    _search_button->setIcon(QIcon(iconPath+"/search.svg"));
 }
 
 void SearchDock::paintEvent(QPaintEvent *)

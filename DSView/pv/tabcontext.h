@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * Foundation, Inc., 51 Franklin St, Boston, MA  02110-1301 USA
  */
 
 #ifndef DSVIEW_PV_TABCONTEXT_H
@@ -51,20 +51,17 @@ public:
     inline QString title() const { return _title; }
     inline QString file_path() const { return _file_path; }
     inline bool is_live() const { return _is_live; }
+    inline bool has_data() const { return _has_data; }
     inline QDateTime timestamp() const { return _timestamp; }
 
     inline void set_title(const QString &title) { _title = title; }
     inline void set_file_path(const QString &path) { _file_path = path; }
-    inline void set_live(bool live) { _is_live = live; }
-    inline void set_snapshot(data::SessionSnapshot *snapshot) { _snapshot = snapshot; }
 
     void activate();
     void deactivate();
+    void make_live();
 
     data::DataSource* get_data_source();
-
-    void capture_snapshot();
-    void make_live();
 
     static int _next_session_id;
 
@@ -75,6 +72,7 @@ private:
     QString             _title;
     QString             _file_path;
     bool                _is_live;
+    bool                _has_data;
     QDateTime           _timestamp;
 };
 

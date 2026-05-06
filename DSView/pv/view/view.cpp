@@ -39,6 +39,7 @@
 #include "devmode.h"
 #include "ruler.h"
 #include "signal.h"
+#include "logicsignal.h"
 #include "dsosignal.h"
 #include "view.h"
 #include "viewport.h"
@@ -221,6 +222,29 @@ View::~View()
 void View::set_data_source(pv::data::DataSource *source)
 {
     _data_source = source;
+
+    auto &sigs = _session->get_signals();
+    for (auto sig : sigs) {
+        int type = sig->signal_type();
+        switch(type) {
+            case SR_CHANNEL_LOGIC: {
+                view::LogicSignal *s = static_cast<view::LogicSignal*>(sig);
+                s->set_data(_data_source->get_logic_snapshot());
+                break;
+            }
+            case SR_CHANNEL_ANALOG: {
+                view::AnalogSignal *s = static_cast<view::AnalogSignal*>(sig);
+                s->set_data(_data_source->get_analog_snapshot());
+                break;
+            }
+            case SR_CHANNEL_DSO: {
+                view::DsoSignal *s = static_cast<view::DsoSignal*>(sig);
+                s->set_data(_data_source->get_dso_snapshot());
+                break;
+            }
+        }
+    }
+
     if (_time_viewport) {
         _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
     }
