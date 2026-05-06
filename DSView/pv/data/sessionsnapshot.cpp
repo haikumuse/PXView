@@ -26,6 +26,7 @@
 #include "analogsnapshot.h"
 #include "dsosnapshot.h"
 #include "snapshot.h"
+#include "../view/signal.h"
 
 #include <libsigrok.h>
 #include <string.h>
@@ -46,6 +47,14 @@ SessionSnapshot::SessionSnapshot() :
 
 SessionSnapshot::~SessionSnapshot()
 {
+    for (auto sig : _signals) {
+        // Only delete copied signals (Logic/Analog), not referenced ones (DSO)
+        int type = sig->signal_type();
+        if (type == SR_CHANNEL_LOGIC || type == SR_CHANNEL_ANALOG) {
+            delete sig;
+        }
+    }
+    _signals.clear();
 }
 
 std::vector<view::Signal*>& SessionSnapshot::get_signals()
@@ -75,6 +84,8 @@ view::MathTrace* SessionSnapshot::get_math_trace()
 
 uint64_t SessionSnapshot::cur_snap_samplerate()
 {
+    if (_samplerate == 0)
+        return 1;
     return _samplerate;
 }
 
@@ -137,9 +148,11 @@ uint64_t SessionSnapshot::get_trigger_pos()
 void SessionSnapshot::set_samplerate(uint64_t rate)
 {
     _samplerate = rate;
-    _logic.set_samplerate(rate);
-    _analog.set_samplerate(rate);
-    _dso.set_samplerate(rate);
+    if (rate > 0) {
+        _logic.set_samplerate(rate);
+        _analog.set_samplerate(rate);
+        _dso.set_samplerate(rate);
+    }
 }
 
 void SessionSnapshot::set_samplelimits(uint64_t limits)

@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * Foundation, Inc., 51 Franklin St, Boston, MA  02110-1301 USA
  */
 
 #include "tabcontext.h"
@@ -37,9 +37,15 @@ TabContext::TabContext(view::View *view, SigSession *session) :
     _title(QString("Session %1").arg(_next_session_id)),
     _file_path(""),
     _is_live(true),
+    _has_data(false),
     _timestamp(QDateTime::currentDateTime())
 {
     _next_session_id++;
+
+    // Create an empty snapshot so empty tabs show empty data
+    if (!session->have_view_data()) {
+        _snapshot = session->capture_snapshot();
+    }
 }
 
 TabContext::~TabContext()
@@ -50,9 +56,9 @@ TabContext::~TabContext()
 
 void TabContext::activate()
 {
-    if (_is_live) {
-        _view->set_data_source(_session);
-    } else if (_snapshot) {
+    _is_live = true;
+
+    if (_snapshot) {
         _view->set_data_source(_snapshot);
     } else {
         _view->set_data_source(_session);
@@ -61,11 +67,23 @@ void TabContext::activate()
 
 void TabContext::deactivate()
 {
-    if (_is_live && _session->have_view_data()) {
+    if (_is_live && _session->have_view_data() && _has_data) {
         if (_snapshot)
             delete _snapshot;
         _snapshot = _session->capture_snapshot();
     }
+
+    _is_live = false;
+}
+
+void TabContext::make_live()
+{
+    if (_snapshot) {
+        delete _snapshot;
+        _snapshot = nullptr;
+    }
+    _is_live = true;
+    _has_data = true;
 }
 
 data::DataSource* TabContext::get_data_source()
@@ -76,19 +94,6 @@ data::DataSource* TabContext::get_data_source()
         return _snapshot;
     else
         return _session;
-}
-
-void TabContext::capture_snapshot()
-{
-    if (_snapshot)
-        delete _snapshot;
-    _snapshot = _session->capture_snapshot();
-    _is_live = false;
-}
-
-void TabContext::make_live()
-{
-    _is_live = true;
 }
 
 } // namespace pv

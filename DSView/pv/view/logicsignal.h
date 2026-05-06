@@ -67,10 +67,6 @@ public:
 
 	virtual ~LogicSignal();
 
-    inline const sr_channel* probe(){
-        return _probe;
-    }
-
     inline data::LogicSnapshot* data(){
         return _data;
     }

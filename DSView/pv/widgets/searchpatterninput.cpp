@@ -26,15 +26,11 @@
 #include <QMouseEvent>
 #include <QFocusEvent>
 #include <QFontMetrics>
-#include <QStyleOption>
+#include <QApplication>
+#include <QInputMethodEvent>
 
 namespace pv {
 namespace widgets {
-
-static const int kCellWidth = 22;
-static const int kCellHeight = 26;
-static const int kBorderRadius = 4;
-static const int kPadding = 1;
 
 SearchPatternInput::SearchPatternInput(QWidget *parent) :
     QWidget(parent),
@@ -42,8 +38,10 @@ SearchPatternInput::SearchPatternInput(QWidget *parent) :
     _cursor_pos(0),
     _has_focus(false)
 {
-    setFocusPolicy(Qt::StrongFocus);
+    setFocusPolicy(Qt::ClickFocus);
     setCursor(Qt::IBeamCursor);
+    setAttribute(Qt::WA_InputMethodEnabled, false);
+    setAttribute(Qt::WA_KeyCompression, false);
 }
 
 void SearchPatternInput::set_channel_count(int count)
@@ -84,15 +82,15 @@ void SearchPatternInput::set_pattern(const std::map<uint16_t, QString> &pattern)
 
 QSize SearchPatternInput::sizeHint() const
 {
-    return QSize(_channel_count * kCellWidth + kPadding * 2, kCellHeight + kPadding * 2);
+    return QSize(_channel_count * kCellWidth + kPadding * 2,
+                 kLabelHeight + kCellHeight + kPadding * 2);
 }
 
 int SearchPatternInput::cellWidth() const
 {
     if (_channel_count <= 0)
         return kCellWidth;
-    int inner_width = width() - kPadding * 2;
-    return inner_width / _channel_count;
+    return kCellWidth;
 }
 
 int SearchPatternInput::charIndexAt(int x) const
@@ -107,24 +105,42 @@ int SearchPatternInput::charIndexAt(int x) const
 void SearchPatternInput::paintEvent(QPaintEvent *)
 {
     QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    QStyleOption opt;
-    opt.initFrom(this);
+    p.setRenderHint(QPainter::Antialiasing, false);
 
     QColor bgColor = palette().color(QPalette::Base);
-    QColor borderColor = palette().color(QPalette::Mid);
     QColor textColor = palette().color(QPalette::Text);
-    QColor selBgColor = palette().color(QPalette::Highlight);
-    QColor selTextColor = palette().color(QPalette::HighlightedText);
-    QColor separatorColor = palette().color(QPalette::Mid);
+    QColor selBgColor(0x35, 0x87, 0xFE);
+    QColor selTextColor(Qt::white);
+    QColor labelColor = palette().color(QPalette::WindowText);
 
     int cw = cellWidth();
     int totalW = _channel_count * cw;
+    int cellTop = kPadding + kLabelHeight;
+
+    QFont labelFont("Source Code Pro");
+    labelFont.setStyleHint(QFont::Monospace);
+    labelFont.setFixedPitch(true);
+    labelFont.setPixelSize(14);
+    p.setFont(labelFont);
+    p.setPen(labelColor);
+
+    for (int i = 0; i < _channel_count; i++) {
+        int x = kPadding + i * cw;
+        uint16_t ch_index = _channel_count - 1 - i;
+        p.drawText(QRect(x, kPadding, cw, kLabelHeight), Qt::AlignCenter, QString::number(ch_index));
+    }
 
     p.setPen(Qt::NoPen);
     p.setBrush(bgColor);
-    p.drawRoundedRect(kPadding, kPadding, totalW, kCellHeight, kBorderRadius, kBorderRadius);
+    p.drawRoundedRect(kPadding, cellTop, totalW, kCellHeight, 4, 4);
+
+    QFont charFont("Source Code Pro");
+    charFont.setStyleHint(QFont::Monospace);
+    charFont.setFixedPitch(true);
+    charFont.setPixelSize(12);
+
+    QFontMetrics charFm(charFont);
+    int letterSpacing = 7;
 
     for (int i = 0; i < _channel_count; i++) {
         int x = kPadding + i * cw;
@@ -132,32 +148,21 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
         if (_has_focus && i == _cursor_pos) {
             p.setPen(Qt::NoPen);
             p.setBrush(selBgColor);
-            p.drawRect(x, kPadding, cw, kCellHeight);
-        }
-
-        if (i > 0) {
-            p.setPen(QPen(separatorColor, 1));
-            p.drawLine(x, kPadding + 2, x, kPadding + kCellHeight - 2);
+            p.drawRect(x, cellTop, cw, kCellHeight);
         }
 
         QChar ch = (i < _chars.size()) ? _chars[i] : 'X';
-        QFont font("Source Code Pro");
-        font.setStyleHint(QFont::Monospace);
-        font.setFixedPitch(true);
-        font.setPointSizeF(10);
-        p.setFont(font);
+        p.setFont(charFont);
 
         if (_has_focus && i == _cursor_pos)
             p.setPen(selTextColor);
         else
             p.setPen(textColor);
 
-        p.drawText(QRect(x, kPadding, cw, kCellHeight), Qt::AlignCenter, QString(ch));
+        int charX = x + (cw - charFm.boundingRect(ch).width() - letterSpacing) / 2 + letterSpacing / 2;
+        int charY = cellTop + (kCellHeight + charFm.ascent() - charFm.descent()) / 2 - 1;
+        p.drawText(charX, charY, QString(ch));
     }
-
-    p.setPen(QPen(borderColor, 1));
-    p.setBrush(Qt::NoBrush);
-    p.drawRoundedRect(kPadding, kPadding, totalW, kCellHeight, kBorderRadius, kBorderRadius);
 }
 
 void SearchPatternInput::keyPressEvent(QKeyEvent *event)
@@ -168,6 +173,7 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
         if (_cursor_pos > 0)
             _cursor_pos--;
         update();
+        event->accept();
         return;
     }
 
@@ -175,6 +181,7 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
         if (_cursor_pos < _channel_count - 1)
             _cursor_pos++;
         update();
+        event->accept();
         return;
     }
 
@@ -185,6 +192,7 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
             emit pattern_changed();
         }
         update();
+        event->accept();
         return;
     }
 
@@ -194,6 +202,7 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
             emit pattern_changed();
         }
         update();
+        event->accept();
         return;
     }
 
@@ -206,7 +215,7 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
     case Qt::Key_C: ch = 'C'; break;
     case Qt::Key_X: ch = 'X'; break;
     default:
-        QWidget::keyPressEvent(event);
+        event->ignore();
         return;
     }
 
@@ -217,14 +226,21 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
         emit pattern_changed();
     }
     update();
+    event->accept();
 }
 
 void SearchPatternInput::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
-        _cursor_pos = charIndexAt(event->x());
+        int cellTop = kPadding + kLabelHeight;
+        int y = event->y();
+        if (y >= cellTop && y < cellTop + kCellHeight) {
+            _cursor_pos = charIndexAt(event->x());
+        }
         _has_focus = true;
+        setFocus(Qt::MouseFocusReason);
         update();
+        event->accept();
     }
 }
 
