@@ -25,6 +25,9 @@
 #include "view/view.h"
 #include "view/signal.h"
 #include "data/sessiondocument.h"
+#include "deviceagent.h"
+#include "log.h"
+#include <QDebug>
 
 namespace pv {
 
@@ -60,8 +63,30 @@ bool TabContext::has_data()
 
 void TabContext::activate()
 {
+    fprintf(stderr, "DBG TabContext::activate() doc=%p has_config=%d has_data=%d is_working=%d\n",
+        _document,
+        _document ? _document->has_signal_config() : 0,
+        _document ? _document->has_data() : 0,
+        _session->is_working());
+    fflush(stderr);
+
     _session->set_active_document(_document);
     _state = LIVE;
+    if (_document && _document->has_signal_config()) {
+        if (!_session->is_working()) {
+            dsv_info("TabContext::activate() applying signal config, work_mode=%d ch_count=%d",
+                _document->get_signal_config().work_mode,
+                (int)_document->get_signal_config().channels.size());
+            _document->apply_signal_config(_session->get_device());
+            _session->reload();
+        } else {
+            dsv_info("TabContext::activate() session working, saving pending config");
+            _document->_pending_device_config = _document->_signal_config;
+        }
+        _view->rebuild_signals_from_config(_document->get_signal_config());
+        dsv_info("TabContext::activate() rebuild_signals_from_config done, own_signals=%d",
+            (int)_view->get_own_signals().size());
+    }
     if (_document && _document->has_data()) {
         _view->set_data_document(_document);
         auto &sigs = _view->get_own_signals();
@@ -72,15 +97,21 @@ void TabContext::activate()
             }
         }
     } else {
+        dsv_info("TabContext::activate() no data, setting data source to session");
         _view->set_data_source(_session);
         _view->set_signal_data_from_source(_session);
     }
     _view->update_scale_offset();
     _view->signals_changed(nullptr);
+    dsv_info("TabContext::activate() completed");
 }
 
 void TabContext::deactivate()
 {
+    dsv_info("TabContext::deactivate() doc=%p", _document);
+    if (_document) {
+        _document->save_signal_config(_session->get_device());
+    }
     _state = HISTORICAL;
 }
 

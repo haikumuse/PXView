@@ -62,6 +62,7 @@ namespace dialogs {
 
 namespace data {
     class SessionDocument;
+    struct SignalConfig;
 }
 
 class SigSession;
@@ -346,6 +347,7 @@ public:
 
     void check_calibration();
     void rebuild_signals();
+    void rebuild_signals_from_config(const data::SignalConfig &config);
 
     inline std::vector<Signal*>& get_own_signals() {
         return _own_signals;
@@ -477,6 +479,7 @@ private:
     pv::data::SessionDocument   *_document;
     pv::toolbars::SamplingBar   *_sampling_bar;
     std::vector<Signal*>        _own_signals;
+    std::vector<sr_channel*>    _config_probes;
 
     QWidget                 *_viewcenter;
     ViewStatus              *_viewbottom;

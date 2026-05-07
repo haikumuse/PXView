@@ -31,6 +31,7 @@
 #include <QGroupBox>
 #include <QTabWidget>
 #include <QRadioButton>
+#include <QComboBox>
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -1013,13 +1014,17 @@ QJsonObject DeviceOptionsDock::get_session()
     int mode = _device_agent->get_work_mode();
     obj["work_mode"] = mode;
 
-    int opt_mode;
-    if (_device_agent->get_config_int16(SR_CONF_OPERATION_MODE, opt_mode))
-        obj["operation_mode"] = opt_mode;
+    obj["operation_mode"] = _opt_mode;
 
     if (mode == LOGIC) {
         int ch_mode = 0;
-        _device_agent->get_config_int16(SR_CONF_CHANNEL_MODE, ch_mode);
+        for (auto &p : _channel_mode_indexs) {
+            QRadioButton *bt = static_cast<QRadioButton*>(p.key);
+            if (bt->isChecked()) {
+                ch_mode = p.value;
+                break;
+            }
+        }
         obj["channel_mode"] = ch_mode;
     }
 
@@ -1029,24 +1034,60 @@ QJsonObject DeviceOptionsDock::get_session()
         sr_channel *const probe = (sr_channel*)l->data;
         QJsonObject ch_obj;
         ch_obj["index"] = (int)probe->index;
-        ch_obj["enabled"] = probe->enabled;
 
         if (idx < (int)_probes_checkBox_list.size()) {
-            ch_obj["ui_enabled"] = _probes_checkBox_list[idx]->isChecked();
+            ch_obj["enabled"] = _probes_checkBox_list[idx]->isChecked();
+        } else {
+            ch_obj["enabled"] = probe->enabled;
         }
 
         if (mode == ANALOG || mode == DSO) {
-            uint64_t vdiv;
-            if (_device_agent->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe, NULL))
-                ch_obj["vdiv"] = (qint64)vdiv;
+            if (idx < (int)_probe_options_binding_list.size()) {
+                auto *binding = _probe_options_binding_list[idx];
+                const auto &properties = binding->properties();
 
-            int coupling;
-            if (_device_agent->get_config_int16(SR_CONF_PROBE_COUPLING, coupling, probe, NULL))
-                ch_obj["coupling"] = coupling;
+                for (auto p : properties) {
+                    if (p->name().contains("Volts/div")) {
+                        QWidget *w = p->get_widget(nullptr);
+                        QComboBox *combo = qobject_cast<QComboBox*>(w);
+                        if (combo && combo->currentIndex() >= 0) {
+                            GVariant *gvar = (GVariant*)combo->itemData(combo->currentIndex()).value<void*>();
+                            if (gvar && g_variant_is_of_type(gvar, G_VARIANT_TYPE("t"))) {
+                                uint64_t vdiv = g_variant_get_uint64(gvar);
+                                ch_obj["vdiv"] = (qint64)vdiv;
+                            }
+                        }
+                    } else if (p->name().contains("Coupling")) {
+                        QWidget *w = p->get_widget(nullptr);
+                        QComboBox *combo = qobject_cast<QComboBox*>(w);
+                        if (combo && combo->currentIndex() >= 0) {
+                            GVariant *gvar = (GVariant*)combo->itemData(combo->currentIndex()).value<void*>();
+                            if (gvar && g_variant_is_of_type(gvar, G_VARIANT_TYPE("y"))) {
+                                int coupling = g_variant_get_byte(gvar);
+                                ch_obj["coupling"] = coupling;
+                            }
+                        }
+                    } else if (p->name().contains("Map Default")) {
+                        QWidget *w = p->get_widget(nullptr);
+                        QCheckBox *checkBox = qobject_cast<QCheckBox*>(w);
+                        if (checkBox) {
+                            ch_obj["map_default"] = checkBox->checkState() == Qt::Checked;
+                        }
+                    }
+                }
+            } else {
+                uint64_t vdiv;
+                if (_device_agent->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe, NULL))
+                    ch_obj["vdiv"] = (qint64)vdiv;
 
-            bool map_default = true;
-            _device_agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default, probe, NULL);
-            ch_obj["map_default"] = map_default;
+                int coupling;
+                if (_device_agent->get_config_int16(SR_CONF_PROBE_COUPLING, coupling, probe, NULL))
+                    ch_obj["coupling"] = coupling;
+
+                bool map_default = true;
+                _device_agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default, probe, NULL);
+                ch_obj["map_default"] = map_default;
+            }
         }
 
         ch_array.append(ch_obj);

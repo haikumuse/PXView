@@ -503,8 +503,7 @@ private:
         clear_all_decode_task(run_dex);
     }
    
-    void decode_task_proc();
-    view::DecodeTrace* get_top_decode_task();    
+    void decode_single_task(view::DecodeTrace *task);
 
     void capture_init(); 
     void nodata_timeout();
@@ -573,13 +572,12 @@ private:
 private:
     mutable std::mutex      _sampling_mutex;
     mutable std::mutex      _data_mutex;
-    mutable std::mutex      _decode_task_mutex;  
-    std::thread             _decode_thread;
-    volatile bool           _is_decoding;
- 
+    mutable std::mutex      _running_tasks_mutex;
+    std::vector<std::thread> _decode_threads;
+    std::vector<view::DecodeTrace*> _running_tasks;
+
 	std::vector<view::Signal*>      _signals; 
     static std::vector<view::DecodeTrace*> _empty_decode_traces;
-    std::vector<view::DecodeTrace*> _decode_tasks;
     pv::data::DecoderModel          *_decoder_model;
     std::vector<view::SpectrumTrace*> _spectrum_traces;
     view::LissajousTrace            *_lissajous_trace;

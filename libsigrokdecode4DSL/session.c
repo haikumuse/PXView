@@ -131,8 +131,16 @@ static int srd_inst_send_meta(struct srd_decoder_inst *di, int key,
 	PyGILState_STATE gstate;
 
 	if (key != SRD_CONF_SAMPLERATE)
-		/* This is the only key we pass on to the decoder for now. */
 		return SRD_OK;
+
+	if (di->is_c_inst) {
+		for (l = di->next_di; l; l = l->next) {
+			next_di = l->data;
+			if ((ret = srd_inst_send_meta(next_di, key, data)) != SRD_OK)
+				return ret;
+		}
+		return SRD_OK;
+	}
 
 	gstate = PyGILState_Ensure();
 
@@ -145,7 +153,6 @@ static int srd_inst_send_meta(struct srd_decoder_inst *di, int key,
 
 	PyGILState_Release(gstate);
 
-	/* Push metadata to all the PDs stacked on top of this one. */
 	for (l = di->next_di; l; l = l->next) {
 		next_di = l->data;
 		if ((ret = srd_inst_send_meta(next_di, key, data)) != SRD_OK)
@@ -443,12 +450,22 @@ SRD_API int srd_session_end(struct srd_session *sess, char **error)
 	{
 		di = d->data;
 
+		if (di->is_c_inst) {
+			if (di->next_di != NULL){
+				ret = srd_call_sub_decoder_end(di, error);
+				if (ret != SRD_OK){
+					PyGILState_Release(gstate);
+					return ret;
+				}
+			}
+			continue;
+		}
+
 		if (PyObject_HasAttrString(di->py_inst, "end"))
 		{
-			//set the last sample index
 			PyObject *py_cur_samplenum = PyLong_FromUnsignedLongLong(di->abs_cur_samplenum);
-            PyObject_SetAttrString(di->py_inst, "last_samplenum", py_cur_samplenum);
-            Py_DECREF(py_cur_samplenum);
+			PyObject_SetAttrString(di->py_inst, "last_samplenum", py_cur_samplenum);
+			Py_DECREF(py_cur_samplenum);
 
 			py_res = PyObject_CallMethod(di->py_inst, "end", NULL);
 
@@ -481,10 +498,18 @@ SRD_PRIV int srd_call_sub_decoder_end(struct srd_decoder_inst *di, char **error)
 
 	GSList *l;
 	struct srd_decoder_inst *sub_dec;
-	PyObject *py_res; 
+	PyObject *py_res;
 
 	for (l = di->next_di; l; l = l->next){
 		sub_dec = l->data;
+
+		if (sub_dec->is_c_inst) {
+			if (sub_dec->next_di != NULL){
+				if (srd_call_sub_decoder_end(sub_dec, error) != SRD_OK)
+					return SRD_ERR_PYTHON;
+			}
+			continue;
+		}
 
 		if (PyObject_HasAttrString(sub_dec->py_inst, "end"))
 		{
@@ -498,7 +523,6 @@ SRD_PRIV int srd_call_sub_decoder_end(struct srd_decoder_inst *di, char **error)
 			}
 		}
 
-		//next level decoder
 		if (sub_dec->next_di != NULL){
 			if (srd_call_sub_decoder_end(sub_dec, error) != SRD_OK)
 				return SRD_ERR_PYTHON;

@@ -22,6 +22,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <string.h>
 #include <cmath>
 
 #include <QEvent>
@@ -221,6 +222,13 @@ View::~View()
     for (auto sig : _own_signals)
         delete sig;
     _own_signals.clear();
+
+    for (auto p : _config_probes) {
+        g_free(p->name);
+        g_free(p->trigger);
+        delete p;
+    }
+    _config_probes.clear();
 
     DESTROY_OBJECT(_trig_cursor);
     DESTROY_OBJECT(_search_cursor);
@@ -1777,8 +1785,110 @@ int View::get_cursor_index_by_key(uint64_t key)
     return -1;
 }
 
+void View::rebuild_signals_from_config(const data::SignalConfig &config)
+{
+    qDebug() << "View::rebuild_signals_from_config() work_mode=" << config.work_mode << "ch_count=" << config.channels.size() << "is_valid=" << config.is_valid;
+    dsv_info("View::rebuild_signals_from_config() work_mode=%d ch_count=%d is_valid=%d",
+        config.work_mode, (int)config.channels.size(), config.is_valid);
+
+    for (auto sig : _own_signals)
+        delete sig;
+    _own_signals.clear();
+
+    for (auto p : _config_probes) {
+        g_free(p->name);
+        g_free(p->trigger);
+        delete p;
+    }
+    _config_probes.clear();
+
+    int channel_type;
+    switch (config.work_mode) {
+    case LOGIC:
+        channel_type = SR_CHANNEL_LOGIC;
+        break;
+    case DSO:
+        channel_type = SR_CHANNEL_DSO;
+        break;
+    case ANALOG:
+        channel_type = SR_CHANNEL_ANALOG;
+        break;
+    default:
+        signals_changed(NULL);
+        return;
+    }
+
+    int view_index = 0;
+    for (const auto &ch : config.channels) {
+        sr_channel *probe = new sr_channel;
+        memset(probe, 0, sizeof(sr_channel));
+        probe->index = ch.index;
+        probe->type = channel_type;
+        probe->enabled = ch.enabled;
+        probe->vdiv = ch.vdiv;
+        probe->coupling = ch.coupling;
+        probe->map_default = ch.map_default;
+        probe->name = g_strdup(QString::number(ch.index).toUtf8().data());
+        probe->trigger = NULL;
+
+        _config_probes.push_back(probe);
+
+        Signal *signal = nullptr;
+        switch (config.work_mode) {
+        case LOGIC:
+            signal = new LogicSignal(nullptr, probe);
+            break;
+        case DSO:
+            signal = new DsoSignal(nullptr, probe);
+            break;
+        case ANALOG:
+            signal = new AnalogSignal(nullptr, probe);
+            break;
+        }
+
+        if (signal) {
+            signal->set_enabled(ch.enabled);
+            signal->set_visible(ch.enabled);
+            signal->set_view_index(view_index++);
+            _own_signals.push_back(signal);
+        }
+    }
+
+    if (_document && _document->has_data()) {
+        for (auto sig : _own_signals) {
+            int type = sig->signal_type();
+            switch(type) {
+            case SR_CHANNEL_LOGIC: {
+                view::LogicSignal *s = static_cast<view::LogicSignal*>(sig);
+                s->set_data(_document->get_active_logic());
+                break;
+            }
+            case SR_CHANNEL_ANALOG: {
+                view::AnalogSignal *s = static_cast<view::AnalogSignal*>(sig);
+                s->set_data(_document->get_active_analog());
+                break;
+            }
+            case SR_CHANNEL_DSO: {
+                view::DsoSignal *s = static_cast<view::DsoSignal*>(sig);
+                s->set_data(_document->get_active_dso());
+                break;
+            }
+            }
+        }
+    }
+
+    signals_changed(NULL);
+}
+
 void View::rebuild_signals()
 {
+    dsv_info("View::rebuild_signals() doc=%p has_config=%d",
+        _document, _document ? _document->has_signal_config() : 0);
+    if (_document && _document->has_signal_config()) {
+        rebuild_signals_from_config(_document->get_signal_config());
+        return;
+    }
+
     if (!_data_source)
         return;
 
@@ -1789,6 +1899,13 @@ void View::rebuild_signals()
     for (auto sig : _own_signals)
         delete sig;
     _own_signals.clear();
+
+    for (auto p : _config_probes) {
+        g_free(p->name);
+        g_free(p->trigger);
+        delete p;
+    }
+    _config_probes.clear();
 
     for (auto sig : shared_sigs) {
         auto cloned = sig->clone();

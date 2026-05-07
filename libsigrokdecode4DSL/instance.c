@@ -114,6 +114,10 @@ SRD_API int srd_inst_option_set(struct srd_decoder_inst *di,
 		return SRD_ERR_ARG;
 	}
 
+	if (di->is_c_inst) {
+		return SRD_OK;
+	}
+
 	gstate = PyGILState_Ensure();
 
 	if (!PyObject_HasAttrString(di->decoder->py_dec, "options")) {
@@ -323,6 +327,111 @@ SRD_API int srd_inst_channel_set_all(struct srd_decoder_inst *di,
 }
 
 /**
+ * Create a new C protocol decoder instance.
+ *
+ * @param sess The session holding the protocol decoder instance.
+ *             Must not be NULL.
+ * @param dec The decoder to create an instance of.
+ * @param options GHashtable of options which override the defaults set in
+ *                the decoder class. May be NULL.
+ *
+ * @return Pointer to a newly allocated struct srd_decoder_inst, or
+ *         NULL in case of failure.
+ *
+ * @private
+ */
+SRD_PRIV struct srd_decoder_inst *create_c_decoder_inst(struct srd_session *sess,
+		struct srd_decoder *dec, GHashTable *options)
+{
+	struct srd_decoder_inst *di;
+	char *inst_id;
+	int i;
+
+	if (!sess || !dec)
+		return NULL;
+
+	di = malloc(sizeof(struct srd_decoder_inst));
+	if (di == NULL) {
+		srd_err("%s,ERROR:failed to alloc memory.", __func__);
+		return NULL;
+	}
+	memset(di, 0, sizeof(struct srd_decoder_inst));
+
+	di->decoder = dec;
+	di->sess = sess;
+
+	if (options) {
+		inst_id = g_hash_table_lookup(options, "id");
+		if (inst_id)
+			di->inst_id = g_strdup(inst_id);
+		g_hash_table_remove(options, "id");
+	}
+
+	/* Create a unique instance ID (as none was provided). */
+	i = 1;
+	if (!di->inst_id) {
+		di->inst_id = g_strdup_printf("%s-%d", dec->id, i++);
+		while (srd_inst_find_by_id(sess, di->inst_id)) {
+			g_free(di->inst_id);
+			di->inst_id = g_strdup_printf("%s-%d", dec->id, i++);
+		}
+	}
+
+	di->dec_num_channels = g_slist_length(di->decoder->channels) +
+			g_slist_length(di->decoder->opt_channels);
+
+	if (di->dec_num_channels > 0) {
+		di->dec_channelmap = malloc(sizeof(int) * di->dec_num_channels);
+		if (di->dec_channelmap == NULL) {
+			srd_err("%s,ERROR:failed to alloc memory.", __func__);
+			g_free(di->inst_id);
+			g_free(di);
+			return NULL;
+		}
+		for (i = 0; i < di->dec_num_channels; i++)
+			di->dec_channelmap[i] = i;
+	}
+
+	/* Default to the initial pins being the same as in sample 0. */
+	oldpins_array_seed(di);
+
+	di->condition_list = NULL;
+	di->match_array = 0;
+	di->abs_start_samplenum = 0;
+	di->abs_end_samplenum = 0;
+	di->inbuf = NULL;
+	di->inbuflen = 0;
+	di->abs_cur_samplenum = 0;
+	di->thread_handle = NULL;
+	di->got_new_samples = FALSE;
+	di->handled_all_samples = FALSE;
+	di->want_wait_terminate = FALSE;
+	di->decoder_state = SRD_OK;
+	di->python_proc_error = NULL;
+	di->is_task_stop_signal = FALSE;
+
+	di->is_c_inst = TRUE;
+	di->c_dec_inst = dec->c_dec;
+	di->user_data = NULL;
+	di->error_message = NULL;
+
+	g_cond_init(&di->got_new_samples_cond);
+	g_cond_init(&di->handled_all_samples_cond);
+	g_mutex_init(&di->data_mutex);
+
+	if (di->c_dec_inst->reset)
+		di->c_dec_inst->reset(di);
+	if (di->c_dec_inst->start)
+		di->c_dec_inst->start(di);
+
+	/* Instance takes input from a frontend by default. */
+	sess->di_list = g_slist_append(sess->di_list, di);
+	srd_dbg("Creating new C decoder instance %s.", di->inst_id);
+
+	return di;
+}
+
+/**
  * Create a new protocol decoder instance.
  *
  * @param sess The session holding the protocol decoder instance.
@@ -353,6 +462,10 @@ SRD_API struct srd_decoder_inst *srd_inst_new(struct srd_session *sess,
 	if (!(dec = srd_decoder_get_by_id(decoder_id))) {
 		srd_err("Protocol decoder %s not found.", decoder_id);
 		return NULL;
+	}
+
+	if (dec->is_c_decoder) {
+		return create_c_decoder_inst(sess, dec, options);
 	}
 
 	di = malloc(sizeof(struct srd_decoder_inst));
@@ -703,6 +816,20 @@ SRD_PRIV int srd_inst_start(struct srd_decoder_inst *di, char **error)
 	PyGILState_STATE gstate;
 
 	srd_dbg("Calling start() of instance %s.", di->inst_id);
+
+	if (di->is_c_inst) {
+		di->first_pos = TRUE;
+		di->abs_cur_matched = FALSE;
+		di->skip_zero = FALSE;
+
+		for (l = di->next_di; l; l = l->next) {
+			next_di = l->data;
+			if ((ret = srd_inst_start(next_di, error)) != SRD_OK)
+				return ret;
+		}
+
+		return SRD_OK;
+	}
 
 	gstate = PyGILState_Ensure();
 
@@ -1061,6 +1188,42 @@ SRD_PRIV int process_samples_until_condition_match(struct srd_decoder_inst *di, 
  *
  * @return NULL if there was an error.
  */
+/**
+ * Worker thread for C protocol decoders.
+ *
+ * @param data Pointer to the lowest-level PD's device instance.
+ *             Must not be NULL.
+ *
+ * @return NULL.
+ */
+static gpointer c_di_thread(gpointer data)
+{
+	struct srd_decoder_inst *di;
+	int wanted_term = 0;
+
+	assert(data);
+
+	di = data;
+
+	srd_dbg("%s: Starting thread routine for C decoder.", di->inst_id);
+
+	if (di->c_dec_inst->decode)
+		di->c_dec_inst->decode(di);
+
+	srd_dbg("%s: C decode() terminated.", di->inst_id);
+
+	g_mutex_lock(&di->data_mutex);
+	wanted_term = di->want_wait_terminate;
+	di->want_wait_terminate = TRUE;
+	di->handled_all_samples = TRUE;
+	g_cond_signal(&di->handled_all_samples_cond);
+	g_mutex_unlock(&di->data_mutex);
+
+	srd_dbg("%s: C decode() terminated (req %d).", di->inst_id, wanted_term);
+
+	return NULL;
+}
+
 static gpointer di_thread(gpointer data)
 {
 	PyObject *py_res;
@@ -1219,6 +1382,48 @@ SRD_PRIV int srd_inst_decode(struct srd_decoder_inst *di,
 		return SRD_ERR_ARG;
 	}
 
+	if (di->is_c_inst) {
+		if (di->first_pos) {
+			di->abs_cur_samplenum = abs_start_samplenum;
+		}
+
+		if (abs_start_samplenum != di->abs_cur_samplenum ||
+			abs_end_samplenum < abs_start_samplenum) {
+			return SRD_ERR_ARG;
+		}
+
+		if (!di->thread_handle) {
+			srd_dbg("No worker thread for this C decoder stack "
+				"exists yet, creating one: %s.", di->inst_id);
+			di->thread_handle = g_thread_new(di->inst_id,
+								c_di_thread, di);
+		}
+
+		g_mutex_lock(&di->data_mutex);
+		di->abs_start_samplenum = abs_start_samplenum & ~7ULL;
+		di->abs_end_samplenum = abs_end_samplenum;
+		di->inbuf = inbuf;
+		di->inbuf_const = inbuf_const;
+		di->inbuflen = inbuflen;
+		di->got_new_samples = TRUE;
+		di->handled_all_samples = FALSE;
+		g_cond_signal(&di->got_new_samples_cond);
+		g_mutex_unlock(&di->data_mutex);
+
+		g_mutex_lock(&di->data_mutex);
+		while (!di->handled_all_samples && !di->want_wait_terminate)
+			g_cond_wait(&di->handled_all_samples_cond, &di->data_mutex);
+		g_mutex_unlock(&di->data_mutex);
+
+		if (di->error_message) {
+			*error = di->error_message;
+			di->error_message = NULL;
+			return SRD_ERR_TERM_REQ;
+		}
+
+		return SRD_OK;
+	}
+
     if (di->first_pos) {
         di->abs_cur_samplenum = abs_start_samplenum;
     }
@@ -1308,31 +1513,22 @@ SRD_PRIV int srd_inst_terminate_reset(struct srd_decoder_inst *di)
 	if (!di)
 		return SRD_ERR_ARG;
 
-	/*
-	 * Request termination and wait for previously initiated
-	 * background operation to finish. Reset internal state, but
-	 * do not start releasing resources yet. This shall result in
-	 * decoders' state just like after creation. This block handles
-	 * the C language library side.
-	 */
 	srd_dbg("Terminating instance %s", di->inst_id);
 	srd_inst_join_decode_thread(di);
 	srd_inst_reset_state(di);
 
-	/*
-	 * Have the Python side's .reset() method executed (if the PD
-	 * implements it). It's assumed that .reset() assigns variables
-	 * very much like __init__() used to do in the past. Thus memory
-	 * that was allocated in previous calls gets released by Python
-	 * as it's not referenced any longer.
-	 */
-	gstate = PyGILState_Ensure();
-	if (PyObject_HasAttrString(di->py_inst, "reset")) {
-		srd_dbg("Calling reset() of instance %s", di->inst_id);
-		py_ret = PyObject_CallMethod(di->py_inst, "reset", NULL);
-		Py_XDECREF(py_ret);
+	if (di->is_c_inst) {
+		if (di->c_dec_inst && di->c_dec_inst->reset)
+			di->c_dec_inst->reset(di);
+	} else {
+		gstate = PyGILState_Ensure();
+		if (PyObject_HasAttrString(di->py_inst, "reset")) {
+			srd_dbg("Calling reset() of instance %s", di->inst_id);
+			py_ret = PyObject_CallMethod(di->py_inst, "reset", NULL);
+			Py_XDECREF(py_ret);
+		}
+		PyGILState_Release(gstate);
 	}
-	PyGILState_Release(gstate);
 
 	/* Pass the "restart" request to all stacked decoders. */
 	for (l = di->next_di; l; l = l->next) {
@@ -1357,12 +1553,25 @@ SRD_PRIV void srd_inst_free(struct srd_decoder_inst *di)
 
 	srd_inst_reset_state(di);
 
-	gstate = PyGILState_Ensure();
-	Py_DecRef(di->py_inst);
-    if (di->py_pinvalues) {
-        Py_DecRef(di->py_pinvalues);
-    }
-	PyGILState_Release(gstate);
+	if (di->is_c_inst) {
+		if (di->c_dec_inst && di->c_dec_inst->destroy)
+			di->c_dec_inst->destroy(di);
+		if (di->user_data) {
+			g_free(di->user_data);
+			di->user_data = NULL;
+		}
+		if (di->error_message) {
+			g_free(di->error_message);
+			di->error_message = NULL;
+		}
+	} else {
+		gstate = PyGILState_Ensure();
+		Py_DecRef(di->py_inst);
+		if (di->py_pinvalues) {
+			Py_DecRef(di->py_pinvalues);
+		}
+		PyGILState_Release(gstate);
+	}
 
 	g_free(di->inst_id);
 	g_free(di->dec_channelmap);
@@ -1370,10 +1579,10 @@ SRD_PRIV void srd_inst_free(struct srd_decoder_inst *di)
 	for (l = di->pd_output; l; l = l->next) {
 		pdo = l->data;
 		g_free(pdo->proto_id);
-        if (pdo->meta_name)
-            g_free(pdo->meta_name);
-        if (pdo->meta_descr)
-            g_free(pdo->meta_descr);
+		if (pdo->meta_name)
+			g_free(pdo->meta_name);
+		if (pdo->meta_descr)
+			g_free(pdo->meta_descr);
 		g_free(pdo);
 	}
 	g_slist_free(di->pd_output);

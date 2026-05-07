@@ -23,7 +23,10 @@
 #include "analogsnapshot.h"
 #include "dsosnapshot.h"
 
+class DeviceAgent;
+
 namespace pv {
+class TabContext;
 namespace view { class Signal; }
 namespace view { class DecodeTrace; }
 namespace view { class SpectrumTrace; }
@@ -34,6 +37,29 @@ namespace data {
 
 class DecoderStack;
 class DecoderModel;
+
+struct ChannelConfig {
+    int index;
+    bool enabled;
+    uint64_t vdiv;
+    int coupling;
+    bool map_default;
+
+    ChannelConfig() : index(0), enabled(false), vdiv(0), coupling(0), map_default(true) {}
+};
+
+struct SignalConfig {
+    int work_mode;
+    int operation_mode;
+    int channel_mode;
+    bool is_demo;
+    QString demo_operation_mode;
+    std::vector<ChannelConfig> channels;
+    bool is_valid;
+
+    SignalConfig() : work_mode(0), operation_mode(0), channel_mode(0),
+                     is_demo(false), is_valid(false) {}
+};
 
 class SessionDocument : public DataSource
 {
@@ -99,6 +125,17 @@ public:
     QJsonObject _dock_trigger_session;
     QJsonObject _dock_dso_trigger_session;
     QJsonObject _dock_device_options_session;
+    QString _dock_protocol_search_text;
+    QJsonArray _dock_protocol_expanded_states;
+
+    QJsonObject signal_config_to_json() const;
+    void signal_config_from_json(const QJsonObject &obj);
+    void save_signal_config(DeviceAgent *agent);
+    void apply_signal_config(DeviceAgent *agent);
+    void apply_pending_config(DeviceAgent *agent);
+    bool has_signal_config() const;
+    bool has_pending_config() const;
+    const SignalConfig& get_signal_config() const { return _signal_config; }
 
 private:
     LogicSnapshot   _logic;
@@ -112,6 +149,10 @@ private:
     std::vector<view::DecodeTrace*> _decode_traces;
     std::vector<view::Signal*> _signals;
     std::vector<view::SpectrumTrace*> _spectrum_traces;
+    SignalConfig _signal_config;
+    SignalConfig _pending_device_config;
+
+    friend class pv::TabContext;
 };
 
 } // namespace data

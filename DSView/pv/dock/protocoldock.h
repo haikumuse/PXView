@@ -153,6 +153,7 @@ private slots:
 private:
     SigSession *_session;
     view::View *_view;
+    TabContext *_context;
     QSortFilterProxyModel _model_proxy;
     int _cur_search_index;
     QStringList _str_list;

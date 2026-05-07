@@ -250,6 +250,7 @@ namespace pv
     MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
         : QMainWindow(parent)
     {
+        dsv_info("DBG MainWindow::MainWindow() START");
         _msg = NULL;
         _frame = parent; 
 
@@ -350,7 +351,11 @@ namespace pv
         _session->register_document(initial_doc);
         initial_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         _tab_contexts.append(initial_ctx);
+        qDebug() << "MainWindow::setup_ui() before addTab, initial_doc=" << initial_doc << "has_config=" << initial_doc->has_signal_config();
+        dsv_info("DBG before addTab has_config=%d", initial_doc->has_signal_config());
         _tab_widget->addTab(initial_view, initial_ctx->title());
+        dsv_info("DBG after addTab");
+        fprintf(stderr, "DBG MainWindow::setup_ui() after addTab\n"); fflush(stderr);
         _current_tab_index = 0;
 
 
@@ -1801,9 +1806,11 @@ namespace pv
 
     void MainWindow::on_frame_ended()
     {
+        dsv_info("MainWindow::on_frame_ended()");
         pv::TabContext *ctx = current_context();
         if (ctx && ctx->document()) {
             _session->copy_data_to_document(ctx->document());
+            ctx->document()->save_signal_config(_session->get_device());
             ctx->activate();
         }
         current_view()->receive_end();
@@ -2151,7 +2158,13 @@ namespace pv
             case DSV_MSG_END_COLLECT_WORK:
             {
                 update_toolbar_view_status();
-                _protocol_widget->update_view_status();   
+                _protocol_widget->update_view_status();
+
+                pv::TabContext *ctx = current_context();
+                if (ctx && ctx->document() && ctx->document()->has_pending_config()) {
+                    ctx->document()->apply_pending_config(_session->get_device());
+                    _device_options_widget->update_view();
+                }
                 break;
             }
             case DSV_MSG_CURRENT_DEVICE_CHANGE_PREV:
@@ -2242,6 +2255,11 @@ namespace pv
                 current_view()->check_calibration();
                 current_view()->rebuild_signals();
                 current_view()->signals_changed(NULL);
+
+                pv::TabContext *ctx = current_context();
+                if (ctx && ctx->document()) {
+                    ctx->document()->save_signal_config(_session->get_device());
+                }
                 break;
             }
             case DSV_MSG_DEVICE_DURATION_UPDATED:
@@ -2604,6 +2622,15 @@ namespace pv
         _tab_widget->setCurrentIndex(_current_tab_index);
         update_tab_style(_current_tab_index);
 
+        pv::TabContext *new_ctx = _tab_contexts[_current_tab_index];
+        _sampling_bar->bind_context(new_ctx);
+        _measure_widget->bind_context(new_ctx);
+        _search_widget->bind_context(new_ctx);
+        _protocol_widget->bind_context(new_ctx);
+        _device_options_widget->bind_context(new_ctx);
+        _trigger_widget->bind_context(new_ctx);
+        _dso_trigger_widget->bind_context(new_ctx);
+
         pv::view::View *view = current_view();
         if (view) {
             _sampling_bar->set_context(_session, view);
@@ -2644,6 +2671,7 @@ namespace pv
             return;
 
         int old_index = _current_tab_index;
+        dsv_info("MainWindow::on_tab_changed(%d) old=%d", index, old_index);
 
         if (old_index >= 0 && old_index < _tab_contexts.size() && old_index != index) {
             _tab_contexts[old_index]->deactivate();
