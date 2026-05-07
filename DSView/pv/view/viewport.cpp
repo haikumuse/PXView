@@ -148,6 +148,19 @@ int Viewport::get_total_height()
     std::vector<Trace*> traces;
     _view.get_traces(_type, traces);
 
+    if (_view.session().get_device()->get_work_mode() == LOGIC && _type == TIME_VIEW) {
+        const auto &groups = _view.get_signal_groups();
+        if (!groups.empty()) {
+            for (const auto &group : groups) {
+                for (auto gt : group.traces) {
+                    h += (int)(gt->get_totalHeight()) + 2 * View::SignalMargin;
+                }
+                h += View::GroupGap;
+            }
+            return h;
+        }
+    }
+
     for(auto t : traces) {
         h += (int)(t->get_totalHeight());
     }
@@ -325,7 +338,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
     if (_view.session().get_device()->get_work_mode() == LOGIC) 
     {
         bool bFirst = true;
-        uint64_t end_align_sample;
+        uint64_t end_align_sample = 0;
 
         p.save();
         p.translate(0, -_view.get_vOffset());
@@ -344,7 +357,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
                 {
                     LogicSignal *logic_signal = (LogicSignal*)t;
                 
-                    if (bFirst)
+                    if (bFirst && logic_signal->data())
                         end_align_sample = logic_signal->data()->get_ring_sample_count();
             
                     //logic_signal->paint_mid_align_sample(p, 0, t->get_view_rect().right(), fore, back, end_align_sample);

@@ -216,7 +216,8 @@ void MathTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QColor 
         const float zeroY = _zero_vrate * height + top;
 
         const double scale = _view->scale();
-        assert(scale > 0);
+        if (scale <= 0)
+            return;
         const int64_t offset = _view->offset();
 
         const double pixels_offset = offset;

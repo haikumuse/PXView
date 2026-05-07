@@ -44,6 +44,7 @@
 #include "data/analogsnapshot.h"
 #include "data/dsosnapshot.h"
 #include "data/sessionsnapshot.h"
+#include "data/sessiondocument.h"
  
 struct srd_decoder;
 struct srd_channel;
@@ -273,8 +274,6 @@ public:
     data::AnalogSnapshot* get_analog_snapshot() override;
     data::DsoSnapshot* get_dso_snapshot() override;
 
-    data::SessionSnapshot* capture_snapshot();
-
     inline SESSION_ERROR_STATUS get_error(){
         return _error;
     }
@@ -456,6 +455,10 @@ public:
         return _view_data->get_dso()->data_is_out_off_range();
     }
 
+    void set_active_document(data::SessionDocument *doc) { _active_document = doc; }
+    data::SessionDocument* get_active_document() { return _active_document; }
+    void copy_data_to_document(data::SessionDocument *doc);
+
     void update_lang_text();
 
     bool have_decoded_result();
@@ -498,7 +501,6 @@ private:
     void nodata_timeout();
     void feed_timeout();    
     void clear_decode_result();
-    void attach_data_to_signal(SessionData *data);
 
     bool action_start_capture(bool instant);
     bool action_stop_capture();
@@ -625,6 +627,7 @@ private:
     DeviceEventObject   _device_event;
     SessionData       *_view_data;
     SessionData       *_capture_data;
+    data::SessionDocument *_active_document;
     std::vector<SessionData*> _data_list;
     IDecoderPannel  *_decoder_pannel;
     sr_status       _dso_status;

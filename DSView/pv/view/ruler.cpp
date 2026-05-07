@@ -430,25 +430,35 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
         return;
     }
 
+    double scale = _view.scale();
+    if (scale <= 0) {
+        return;
+    }
+
+    data::DataSource *ds = _view.effective_data_source();
+    if (!ds) {
+        return;
+    }
+    uint64_t samplerate = ds->cur_snap_samplerate();
+    if (samplerate == 0) {
+        return;
+    }
+
     const double SpacingIncrement = 32.0;
     const double MinValueSpacing = 16.0;
     const int ValueMargin = 5;
-    const double abs_min_period = 10.0 / _view.session().cur_snap_samplerate();
+    const double abs_min_period = 10.0 / samplerate;
 
     double min_width = SpacingIncrement;
     double typical_width;
     double tick_period = 0;
-    double scale = _view.scale();
     int64_t offset = _view.offset();
 
     const uint64_t cur_period_scale = ceil((scale * min_width) / abs_min_period);
 
-    // Find tick spacing, and number formatting that does not cause
-    // value to collide.
     _min_period = cur_period_scale * abs_min_period;
 
     const int order = (int)floorf(log10f(scale * _view.get_view_width()));
-    //const double order_decimal = pow(10, order);
     const unsigned int prefix = (order - FirstSIPrefixPower) / 3;
     _cur_prefix = prefix;
     assert(prefix < countof(SIPrefixes));
@@ -461,17 +471,19 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
 
     } while(typical_width > tick_period / scale);
 
+    if (tick_period <= 0) {
+        return;
+    }
+
     const int text_height = p.boundingRect(0, 0, INT_MAX, INT_MAX,
         AlignLeft | AlignTop, "8").height();
 
-    // Draw the tick marks
     QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
     fore.setAlpha(View::ForeAlpha);
     p.setPen(fore);
 
     const double minor_tick_period = tick_period / MinPeriodScale;
     const int minor_order = (int)floorf(log10f(minor_tick_period));
-    //const double minor_order_decimal = pow(10, minor_order);
     const unsigned int minor_prefix = (minor_order - FirstSIPrefixPower) / 3;
     assert(minor_prefix < countof(SIPrefixes));
 

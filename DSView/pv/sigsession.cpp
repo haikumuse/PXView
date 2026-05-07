@@ -102,6 +102,7 @@ namespace pv
         _is_stream_mode = false;
         _is_action = false;
         _decoder_pannel = NULL;
+        _active_document = nullptr;
         _is_triged = false;
         _dso_status_valid = false;
 
@@ -691,15 +692,19 @@ namespace pv
 
         // Set the buffer to store the captured data
         if (bSwapBuffer){
-            int buf_index = 0;
+            int buf_index = -1;
             for(int i=0; i<(int)_data_list.size(); i++){
-                if (_data_list[i] == _view_data){
+                if (_data_list[i] != _view_data){
                     buf_index = i;
                     break;
                 }
             }
 
-            buf_index = (buf_index + 1) % 2;
+            if (buf_index < 0) {
+                _data_list.push_back(new SessionData());
+                buf_index = (int)_data_list.size() - 1;
+            }
+
             _capture_data = _data_list[buf_index];
             _capture_data->clear();
 
@@ -1605,6 +1610,10 @@ namespace pv
             {
                 _decode_traces.push_back(trace);
 
+                if (_active_document) {
+                    _active_document->add_decode_trace(trace);
+                }
+
                 // add decode task from ui
                 if (!silent && have_view_data())
                 {
@@ -2263,7 +2272,6 @@ namespace pv
                             _view_data->clear();
                         
                         _view_data = _capture_data; 
-                        attach_data_to_signal(_view_data); 
                         set_session_time(_trig_time);
 
                         _callback->receive_trigger(_view_data->_trig_pos); //Update trig position.
@@ -2279,6 +2287,10 @@ namespace pv
                             de->frame_ended();
                             add_decode_task(de);
                         }
+                    }
+
+                    if (_active_document) {
+                        _active_document->get_decode_traces() = _decode_traces;
                     }
 
                     _callback->frame_ended();
@@ -2379,33 +2391,6 @@ namespace pv
             de->decoder()->set_capture_end_flag(false);
         }
         _callback->trigger_message(DSV_MSG_CLEAR_DECODE_DATA);
-    }
-
-    void SigSession::attach_data_to_signal(SessionData *data)
-    {
-        assert(data);
-
-        view::LogicSignal *s1;
-        view::AnalogSignal *s2;
-        view::DsoSignal *s3;
-
-        for (auto sig : _signals){
-            int type = sig->signal_type();
-            switch(type){
-                case SR_CHANNEL_LOGIC:
-                    s1 = (view::LogicSignal*)sig;
-                    s1->set_data(data->get_logic());
-                    break;
-                case SR_CHANNEL_ANALOG:
-                    s2 = (view::AnalogSignal*)sig;
-                    s2->set_data(data->get_analog());
-                    break;
-                case SR_CHANNEL_DSO:
-                    s3 = (view::DsoSignal*)sig;
-                    s3->set_data(data->get_dso());
-                    break;
-            }
-        }
     }
 
     void SigSession::clear_signals()
@@ -2585,44 +2570,18 @@ namespace pv
         return _view_data->get_dso();
     }
 
-    data::SessionSnapshot* SigSession::capture_snapshot() {
-        ds_lock_guard lock(_data_mutex);
+    void SigSession::copy_data_to_document(data::SessionDocument *doc)
+    {
+        if (!doc || !_view_data || !have_view_data())
+            return;
 
-        data::SessionSnapshot *snap = new data::SessionSnapshot();
-        snap->set_samplerate(_view_data->_cur_snap_samplerate);
-        snap->set_samplelimits(_view_data->_cur_samplelimits);
-        snap->set_trigger_pos(_view_data->_trig_pos);
+        doc->set_samplerate(_view_data->_cur_snap_samplerate);
+        doc->set_samplelimits(_view_data->_cur_samplelimits);
+        doc->set_trigger_pos(_view_data->_trig_pos);
 
-        snap->copy_from_logic(_view_data->get_logic());
-        snap->copy_from_analog(_view_data->get_analog());
-        snap->copy_from_dso(_view_data->get_dso());
-
-        auto &sig_list = get_signals();
-        for (auto sig : sig_list) {
-            int type = sig->signal_type();
-            switch(type) {
-                case SR_CHANNEL_LOGIC: {
-                    view::LogicSignal *s = (view::LogicSignal*)sig;
-                    view::LogicSignal *copy = new view::LogicSignal(s, snap->get_logic_snapshot(), (sr_channel*)s->probe());
-                    snap->get_signals().push_back(copy);
-                    break;
-                }
-                case SR_CHANNEL_ANALOG: {
-                    view::AnalogSignal *s = (view::AnalogSignal*)sig;
-                    view::AnalogSignal *copy = new view::AnalogSignal(s, snap->get_analog_snapshot(), (sr_channel*)s->probe());
-                    snap->get_signals().push_back(copy);
-                    break;
-                }
-                case SR_CHANNEL_DSO: {
-                    // DsoSignal doesn't have a copy constructor, so we reference the original
-                    // and update its _data pointer in set_data_source
-                    snap->get_signals().push_back(sig);
-                    break;
-                }
-            }
-        }
-
-        return snap;
+        doc->copy_from_logic(_view_data->get_logic());
+        doc->copy_from_analog(_view_data->get_analog());
+        doc->copy_from_dso(_view_data->get_dso());
     }
 
 } // namespace pv

@@ -35,6 +35,7 @@
 #include "../interface/icallbacks.h"
 #include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"
+#include "../interface/icontextaware.h"
 #include <QLabel>
 
 struct st_dev_inst;
@@ -60,7 +61,7 @@ namespace pv
     namespace toolbars
     {
 
-        class SamplingBar : public QToolBar, public IUiWindow
+        class SamplingBar : public QToolBar, public IContextAware, public IUiWindow
         {
             Q_OBJECT
 
@@ -104,6 +105,9 @@ namespace pv
             }
 
             void commit_settings();
+
+            void bind_context(TabContext *ctx) override;
+            void unbind_context() override;
 
             void set_context(SigSession *session, pv::view::View *view);
             void set_readonly(bool readonly);

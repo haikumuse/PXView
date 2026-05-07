@@ -42,6 +42,7 @@
 #include "../interface/icallbacks.h"
 #include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"
+#include "../interface/icontextaware.h"
 
 namespace pv {
 
@@ -84,7 +85,7 @@ struct row_list_item
 
 #define MODE_ROWS_LENGTH    3
 
-class MeasureDock : public QScrollArea, public IUiWindow
+class MeasureDock : public QScrollArea, public IContextAware, public IUiWindow
 {
     Q_OBJECT
 
@@ -94,6 +95,9 @@ private:
 public:
     MeasureDock(QWidget *parent, pv::view::View *view, SigSession *session);
     ~MeasureDock();
+
+    void bind_context(TabContext *ctx) override;
+    void unbind_context() override;
 
     void set_view(view::View *view);
 

@@ -44,6 +44,7 @@
 #include "../interface/icallbacks.h"
 #include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"
+#include "../interface/icontextaware.h"
 
 struct DecoderInfoItem{
     void  *_data_handle; //srd_decoder* type
@@ -71,7 +72,8 @@ public IProtocolItemLayerCallback,
 public IKeywordActive,
 public ISearchItemClick,
 public IDecoderPannel,
-public IUiWindow
+public IUiWindow,
+public IContextAware
 {
     Q_OBJECT
 
@@ -86,6 +88,9 @@ public:
 
     void del_all_protocol(); 
     bool add_protocol_by_id(QString id, bool silent, std::list<pv::data::decode::Decoder*> &sub_decoders);
+
+    void bind_context(TabContext *ctx) override;
+    void unbind_context() override;
 
     void reset_view();
     void update_view_status();

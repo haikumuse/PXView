@@ -261,6 +261,7 @@ private:
 	friend class LogicSnapshotTest::Pulses;
 	friend class LogicSnapshotTest::LongPulses;
     friend class SessionSnapshot;
+    friend class SessionDocument;
 };
 
 } // namespace data

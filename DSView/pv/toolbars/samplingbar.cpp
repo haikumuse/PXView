@@ -39,6 +39,7 @@
 #include "../ui/langresource.h"
 #include "../view/view.h"
 #include "../ui/fn.h"
+#include "../tabcontext.h"
 
 #include <QWidgetAction>
 #include <QSpacerItem>
@@ -168,6 +169,18 @@ namespace pv
         SamplingBar::~SamplingBar()
         {
             REMOVE_UI(this);
+        }
+
+        void SamplingBar::bind_context(TabContext *ctx)
+        {
+            assert(ctx);
+            set_context(ctx->session(), ctx->view());
+            set_readonly(!ctx->is_live());
+        }
+
+        void SamplingBar::unbind_context()
+        {
+            set_readonly(false);
         }
 
         void SamplingBar::retranslateUi()

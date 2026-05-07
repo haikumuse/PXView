@@ -56,6 +56,7 @@
 #include "../ui/langresource.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../tabcontext.h"
 
 using namespace std;
 
@@ -241,6 +242,20 @@ ProtocolDock::~ProtocolDock()
 void ProtocolDock::set_view(view::View *view)
 {
     _view = view;
+}
+
+void ProtocolDock::bind_context(TabContext *ctx)
+{
+    assert(ctx);
+    _session = ctx->session();
+    _view = ctx->view();
+    _table_view->setModel(_session->get_decoder_model());
+    _model_proxy.setSourceModel(_session->get_decoder_model());
+    update_view_status();
+}
+
+void ProtocolDock::unbind_context()
+{
 }
 
 void ProtocolDock::retranslateUi()

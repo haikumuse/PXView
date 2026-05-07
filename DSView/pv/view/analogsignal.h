@@ -56,6 +56,8 @@ public:
 
 	virtual ~AnalogSignal();
 
+    AnalogSignal* clone() const override;
+
     inline void set_scale(int height){
         _scale = height / (_ref_max - _ref_min);
     }

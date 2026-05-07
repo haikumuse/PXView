@@ -58,6 +58,11 @@ LogicSignal::LogicSignal(view::LogicSignal *s,
     _paint_align_sample_count = 0;
 }
 
+LogicSignal* LogicSignal::clone() const
+{
+    return new LogicSignal(const_cast<LogicSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+}
+
 LogicSignal::~LogicSignal()
 {
     _cur_edges.clear();
@@ -96,6 +101,8 @@ bool LogicSignal::commit_trig()
 
 void LogicSignal::paint_mid(QPainter &p, int left, int right, QColor fore, QColor back)
 {
+    if (!_data)
+        return;
     uint64_t end_align_sample = _data->get_ring_sample_count() - 1;
     paint_mid_align(p, left, right, fore, back, end_align_sample);
 }
@@ -111,13 +118,15 @@ void LogicSignal::paint_mid_align(QPainter &p, int left, int right, QColor fore,
 
     (void)back;
 
-	assert(_data);
+    if (!_data)
+        return;
     assert(_view);
 	assert(right >= left);
 
     const int y = get_y() + _totalHeight * 0.5;
     const double scale = _view->scale();
-    assert(scale > 0);
+    if (scale <= 0)
+        return;
     const int64_t offset = _view->offset();
 
     const int high_offset = y - _totalHeight + 0.5f;
@@ -445,6 +454,8 @@ bool LogicSignal::edges(const QPointF &p, uint64_t start, uint64_t &rising, uint
     uint64_t end;
     const float gap = abs(p.y() - get_y());
     if (gap < get_totalHeight() * 0.5) {
+        if (!_data)
+            return false;
         end = _data->samplerate() * _view->scale() * (_view->offset() + p.x());
         return edges(end, start, rising, falling);
     }
@@ -576,7 +587,6 @@ void LogicSignal::paint_mark(QPainter &p, int xstart, int xend, int type)
 
 void LogicSignal::set_data(data::LogicSnapshot* data)
 {
-    assert(data);
     _data = data;
 }
 

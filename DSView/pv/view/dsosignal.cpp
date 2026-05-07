@@ -111,6 +111,82 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
     load_settings();
 }
 
+DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data, sr_channel *probe) :
+    Signal(*s, probe),
+    _data(data),
+    _scale(s->_scale),
+    _stop_scale(s->_stop_scale),
+    _en_lock(false),
+    _show(s->_show),
+    _vDialActive(s->_vDialActive),
+    _acCoupling(s->_acCoupling),
+    _bits(s->_bits),
+    _ref_min(s->_ref_min),
+    _ref_max(s->_ref_max),
+    _trig_value(s->_trig_value),
+    _trig_delta(s->_trig_delta),
+    _zero_offset(s->_zero_offset),
+    _mValid(false),
+    _max(0),
+    _min(0),
+    _period(0),
+    _level_valid(false),
+    _high(0),
+    _low(0),
+    _rms(0),
+    _mean(0),
+    _rise_time(0),
+    _fall_time(0),
+    _high_time(0),
+    _burst_time(0),
+    _pcount(0),
+    _autoV(false),
+    _autoH(false),
+    _autoV_over(false),
+    _auto_cnt(0),
+    _hover_en(false),
+    _hover_index(0),
+    _hover_point(QPointF(-1, -1)),
+    _hover_value(0)
+{
+    QVector<uint64_t> vValue;
+    QVector<QString> vUnit;
+
+    for(uint64_t i = 0; i < vDialUnitCount; i++){
+        vUnit.append(vDialUnit[i]);
+    }
+
+    GVariant *gvar_list, *gvar_list_vdivs;
+    gvar_list = session->get_device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
+
+    if (gvar_list != NULL)
+    {
+        assert(gvar_list);
+        if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list,
+                "vdivs", G_VARIANT_TYPE("at")))) {
+            GVariant *gvar;
+            GVariantIter iter;
+            g_variant_iter_init(&iter, gvar_list_vdivs);
+
+            while(NULL != (gvar = g_variant_iter_next_value(&iter))) {
+                vValue.push_back(g_variant_get_uint64(gvar));
+                g_variant_unref(gvar);
+            }
+
+            g_variant_unref(gvar_list_vdivs);
+            g_variant_unref(gvar_list);
+        }
+    }
+    _vDial = new dslDial(vValue.count(), vDialValueStep, vValue, vUnit, false);
+    _vDial->set_sel(s->_vDial->get_sel());
+    _vDial->set_factor(s->_vDial->get_factor());
+}
+
+DsoSignal* DsoSignal::clone() const
+{
+    return new DsoSignal(const_cast<DsoSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+}
+
 DsoSignal::~DsoSignal()
 {
     DESTROY_OBJECT(_vDial);  
@@ -512,7 +588,7 @@ QString DsoSignal::get_measure(enum DSO_MEASURE_TYPE type)
     const QString mNone = "--";
     QString mString;
 
-    if (_data->empty()){
+    if (!_data || _data->empty()){
         return mNone;
     }
 
@@ -649,7 +725,7 @@ void DsoSignal::paint_prepare()
 {
     assert(_view);
 
-    if (_data->empty() || !_data->has_data(get_index()))
+    if (!_data || _data->empty() || !_data->has_data(get_index()))
         return; 
 
     if (session->trigd()) {
@@ -772,7 +848,9 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore, QColor 
         return;
     }
 
-    assert(_data);
+    if (!_data)
+        return;
+
     assert(_view); 
 
     if (enabled()) {
@@ -781,10 +859,11 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore, QColor 
         const float zeroY = get_zero_vpos();
 
         const double scale = _view->scale();
-        assert(scale > 0);
+        if (scale <= 0)
+            return;
         const int64_t offset = _view->offset();
 
-        if (_data->empty() || !_data->has_data(index))
+        if (!_data || _data->empty() || !_data->has_data(index))
             return;
 
         const uint16_t enabled_channels = _data->get_channel_num();
@@ -1290,7 +1369,7 @@ void DsoSignal::paint_hover_measure(QPainter &p, QColor fore, QColor back)
         float pt_value;
 
         int chan_index = (*i)->index();
-        if (_data->has_data(chan_index) == false){
+        if (!_data || _data->has_data(chan_index) == false){
             i++;
             continue;
         }
@@ -1438,7 +1517,7 @@ bool DsoSignal::measure(const QPointF &p)
     if (!window.contains(p))
         return false;
 
-    if (_data->empty())
+    if (!_data || _data->empty())
         return false;
 
     _hover_index = _view->pixel2index(p.x());
@@ -1471,7 +1550,7 @@ QPointF DsoSignal::get_point(uint64_t index, float &value)
 {
     QPointF pt = QPointF(-1, -1);
 
-    if (!enabled())
+    if (!enabled() || !_data)
         return pt;
 
     if (_data->empty())
@@ -1493,7 +1572,7 @@ QPointF DsoSignal::get_point(uint64_t index, float &value)
 
 double DsoSignal::get_voltage(uint64_t index)
 {
-    if (!enabled())
+    if (!enabled() || !_data)
         return 1;
 
     if (_data->empty())
@@ -1501,8 +1580,6 @@ double DsoSignal::get_voltage(uint64_t index)
 
     if (index >= _data->get_sample_count())
         return 1;
-    
-    assert(_data);
 
     const double value = *_data->get_samples(index, index, get_index());
     const int hw_offset = get_hw_offset();
@@ -1524,7 +1601,8 @@ QString DsoSignal::get_voltage(double v, int p, bool scaled)
         assert(false);
     }
 
-    assert(_data);
+    if (!_data)
+        return QString("--");
 
     uint64_t k = _data->get_measure_voltage_factor(this->get_index());
     float data_scale = _data->get_data_scale(this->get_index());
@@ -1551,7 +1629,6 @@ void DsoSignal::call_auto_end(){
 
 void DsoSignal::set_data(data::DsoSnapshot *data)
 {
-    assert(data);
     _data = data;
 }
 

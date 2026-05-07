@@ -80,6 +80,9 @@
 #include "view/dsosignal.h"
 #include "view/logicsignal.h"
 #include "view/analogsignal.h"
+#include "data/sessiondocument.h"
+#include "sessionmanager.h"
+#include "interface/icontextaware.h"
 #include "ui/draggabletabwidget.h"
 #include "tabcontext.h"
 
@@ -340,7 +343,8 @@ namespace pv
         _vertical_layout->addWidget(_tab_widget);
 
         pv::view::View *initial_view = new pv::view::View(_session, _sampling_bar, this);
-        pv::TabContext *initial_ctx = new pv::TabContext(initial_view, _session);
+        pv::data::SessionDocument *initial_doc = new pv::data::SessionDocument();
+        pv::TabContext *initial_ctx = SessionManager::instance()->create_context(initial_view, _session, initial_doc);
         initial_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         _tab_contexts.append(initial_ctx);
         _tab_widget->addTab(initial_view, initial_ctx->title());
@@ -487,6 +491,7 @@ namespace pv
 
         connect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
         connect(_tab_widget, &pv::ui::DraggableTabWidget::tabDetached, this, &MainWindow::on_tab_detach);
+        connect(_tab_widget, &pv::ui::DraggableTabWidget::tabAttached, this, &MainWindow::on_tab_attached);
         connect(_tab_widget, &pv::ui::DraggableTabWidget::newTabRequested, this, &MainWindow::on_new_tab_requested);
         connect(_tab_widget, &pv::ui::DraggableTabWidget::tabCloseRequested, this, &MainWindow::remove_tab);
         connect(_tab_widget, &pv::ui::DraggableTabWidget::tabRenamed, this, [this](int index, const QString &title) {
@@ -506,9 +511,21 @@ namespace pv
                     }
                 }
                 if (!existing_ctx) {
-                    pv::TabContext *ctx = new pv::TabContext(view, _session);
-                    ctx->set_title(title);
-                    _tab_contexts.append(ctx);
+                    QVariant var = view->property("detached_ctx");
+                    if (var.isValid()) {
+                        existing_ctx = (pv::TabContext*)(var.value<quintptr>());
+                        if (existing_ctx) {
+                            existing_ctx->set_title(title);
+                            _tab_contexts.append(existing_ctx);
+                            view->setProperty("detached_ctx", QVariant());
+                        }
+                    }
+                    if (!existing_ctx) {
+                        pv::data::SessionDocument *doc = new pv::data::SessionDocument();
+                        pv::TabContext *ctx = SessionManager::instance()->create_context(view, _session, doc);
+                        ctx->set_title(title);
+                        _tab_contexts.append(ctx);
+                    }
                 }
             }
         });
@@ -559,7 +576,8 @@ namespace pv
     void MainWindow::on_load_file(QString file_name)
     {
         pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
-        pv::TabContext *ctx = new pv::TabContext(new_view, _session);
+        pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
+        pv::TabContext *ctx = SessionManager::instance()->create_context(new_view, _session, new_doc);
 
         QFileInfo fi(file_name);
         ctx->set_title(fi.baseName());
@@ -574,6 +592,8 @@ namespace pv
             }
 
             _session->set_file(file_name);
+            ctx->make_live();
+            ctx->activate();
             update_tab_style(_tab_contexts.indexOf(ctx));
         }
         catch (QString e)
@@ -1757,6 +1777,11 @@ namespace pv
 
     void MainWindow::on_frame_ended()
     {
+        pv::TabContext *ctx = current_context();
+        if (ctx && ctx->document()) {
+            _session->copy_data_to_document(ctx->document());
+            ctx->activate();
+        }
         current_view()->receive_end();
     }
 
@@ -1770,8 +1795,11 @@ namespace pv
         pv::TabContext *ctx = current_context();
         if (ctx) {
             ctx->make_live();
-            ctx->activate();
-            update_tab_style(_current_tab_index);
+            if (ctx->document()) {
+                ctx->document()->clear();
+                _session->set_active_document(ctx->document());
+            }
+            current_view()->set_signal_data_from_source(_session);
         }
         current_view()->frame_began();
     }
@@ -2528,10 +2556,15 @@ namespace pv
             _session->stop_capture();
         }
 
+        if (_session->get_active_document() == ctx->document()) {
+            _session->set_active_document(nullptr);
+        }
+
         _tab_contexts.removeAt(index);
         disconnect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
         _tab_widget->removeTab(index);
-        delete ctx;
+        ctx->view()->deleteLater();
+        SessionManager::instance()->destroy_context(ctx);
 
         if (_current_tab_index >= _tab_contexts.size()) {
             _current_tab_index = _tab_contexts.size() - 1;
@@ -2582,9 +2615,11 @@ namespace pv
         if (index < 0 || index >= _tab_contexts.size())
             return;
 
-        if (_current_tab_index >= 0 && _current_tab_index < _tab_contexts.size() && _current_tab_index != index) {
-            _tab_contexts[_current_tab_index]->deactivate();
-            update_tab_style(_current_tab_index);
+        int old_index = _current_tab_index;
+
+        if (old_index >= 0 && old_index < _tab_contexts.size() && old_index != index) {
+            _tab_contexts[old_index]->deactivate();
+            update_tab_style(old_index);
         }
 
         _current_tab_index = index;
@@ -2593,16 +2628,24 @@ namespace pv
 
         pv::view::View *view = current_view();
         if (view) {
-            _sampling_bar->set_context(_session, view);
-            _sampling_bar->set_readonly(false);
-            _sampling_bar->set_view(view);
-            _measure_widget->set_view(view);
-            _search_widget->set_view(view);
-            _protocol_widget->set_view(view);
+            if (old_index >= 0 && old_index < _tab_contexts.size() && old_index != index) {
+                _sampling_bar->unbind_context();
+                _measure_widget->unbind_context();
+                _search_widget->unbind_context();
+                _protocol_widget->unbind_context();
+            }
+
+            pv::TabContext *new_ctx = _tab_contexts[index];
+            _sampling_bar->bind_context(new_ctx);
+            _measure_widget->bind_context(new_ctx);
+            _search_widget->bind_context(new_ctx);
+            _protocol_widget->bind_context(new_ctx);
+
             view->installEventFilter(this);
         }
 
         update_title_bar_text();
+        SessionManager::instance()->set_active_context(_tab_contexts[index]);
     }
 
     void MainWindow::on_tab_detach(int index, QWidget *widget, const QString &title)
@@ -2619,6 +2662,9 @@ namespace pv
         }
 
         if (ctx) {
+            if (ctx->is_live()) {
+                ctx->deactivate();
+            }
             _tab_contexts.removeOne(ctx);
             if (_current_tab_index >= _tab_contexts.size()) {
                 _current_tab_index = _tab_contexts.size() - 1;
@@ -2627,14 +2673,32 @@ namespace pv
                 _tab_contexts[_current_tab_index]->activate();
                 update_tab_style(_current_tab_index);
             }
-            delete ctx;
+            SessionManager::instance()->detach_context(ctx);
+            ctx->view()->setProperty("detached_ctx", QVariant::fromValue((quintptr)ctx));
         }
+    }
+
+    void MainWindow::on_tab_attached(QWidget *widget, const QString &title)
+    {
+        (void)title;
+        QVariant prop = widget->property("detached_ctx");
+        if (!prop.isValid() || prop.isNull())
+            return;
+
+        pv::TabContext *ctx = reinterpret_cast<pv::TabContext*>(prop.value<quintptr>());
+        if (!ctx)
+            return;
+
+        _tab_contexts.append(ctx);
+        SessionManager::instance()->attach_context(ctx);
+        widget->setProperty("detached_ctx", QVariant());
     }
 
     void MainWindow::on_new_tab_requested()
     {
         pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
-        pv::TabContext *new_ctx = new pv::TabContext(new_view, _session);
+        pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
+        pv::TabContext *new_ctx = SessionManager::instance()->create_context(new_view, _session, new_doc);
         new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         add_tab(new_ctx);
     }   
