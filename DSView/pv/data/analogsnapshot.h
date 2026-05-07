@@ -123,6 +123,7 @@ private:
     struct Envelope _envelope_levels[DS_MAX_ANALOG_PROBES_NUM][ScaleStepCount];
 	friend class AnalogSnapshotTest::Basic;
     friend class SessionSnapshot;
+    friend class SessionDocument;
     std::vector<int>        _enabled_channel_indexs;
 };
 

@@ -34,6 +34,7 @@
 #include "../ui/msgbox.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../tabcontext.h"
 
 namespace pv {
 namespace dock {
@@ -127,6 +128,22 @@ SearchDock::~SearchDock()
 void SearchDock::set_view(view::View *view)
 {
     _view = view;
+}
+
+void SearchDock::bind_context(TabContext *ctx)
+{
+    assert(ctx);
+    _session = ctx->session();
+    _view = ctx->view();
+    _search_results.clear();
+    _result_table->setRowCount(0);
+    rebuild_pattern();
+}
+
+void SearchDock::unbind_context()
+{
+    _search_results.clear();
+    _result_table->setRowCount(0);
 }
 
 void SearchDock::rebuild_pattern()

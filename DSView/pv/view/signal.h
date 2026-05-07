@@ -64,9 +64,8 @@ protected:
     Signal(const Signal &s, sr_channel * const probe);
 
 public: 
-    /**
-     * Returns true if the trace is visible and enabled.
-     */
+    virtual Signal* clone() const = 0;
+
     bool enabled();
 
     /**

@@ -49,6 +49,7 @@
 
 #include "../sigsession.h"
 #include "../data/logicsnapshot.h"
+#include "../data/sessiondocument.h"
 #include "../dialogs/calibration.h"
 #include "../dialogs/lissajousoptions.h"
 #include "../dsvdef.h"
@@ -67,6 +68,8 @@ const int View::RulerHeight = 50;
 
 const int View::MaxScrollValue = INT_MAX / 2;
 const int View::MaxHeightUnit = 20;
+const int View::MinSignalHeight = 10;
+const int View::MaxSignalHeight = 500;
 
 //const int View::SignalHeight = 30;s
 const int View::SignalMargin = 7;
@@ -112,6 +115,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
 
    _session = session;
    _data_source = session;
+   _document = nullptr;
    _device_agent = session->get_device();
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
@@ -214,6 +218,10 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
 
 View::~View()
 {
+    for (auto sig : _own_signals)
+        delete sig;
+    _own_signals.clear();
+
     DESTROY_OBJECT(_trig_cursor);
     DESTROY_OBJECT(_search_cursor);
     REMOVE_UI(this);
@@ -223,23 +231,44 @@ void View::set_data_source(pv::data::DataSource *source)
 {
     _data_source = source;
 
-    auto &sigs = _session->get_signals();
-    for (auto sig : sigs) {
+    if (_own_signals.empty() && _data_source) {
+        auto &shared_sigs = _data_source->get_signals();
+        if (!shared_sigs.empty()) {
+            for (auto sig : shared_sigs) {
+                auto cloned = sig->clone();
+                cloned->set_view_index(sig->get_view_index());
+                _own_signals.push_back(cloned);
+            }
+        }
+    }
+
+    if (_time_viewport) {
+        _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    }
+    if (_fft_viewport) {
+        _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    }
+    update();
+}
+
+void View::clear_signal_data()
+{
+    for (auto sig : _own_signals) {
         int type = sig->signal_type();
         switch(type) {
             case SR_CHANNEL_LOGIC: {
                 view::LogicSignal *s = static_cast<view::LogicSignal*>(sig);
-                s->set_data(_data_source->get_logic_snapshot());
+                s->set_data(nullptr);
                 break;
             }
             case SR_CHANNEL_ANALOG: {
                 view::AnalogSignal *s = static_cast<view::AnalogSignal*>(sig);
-                s->set_data(_data_source->get_analog_snapshot());
+                s->set_data(nullptr);
                 break;
             }
             case SR_CHANNEL_DSO: {
                 view::DsoSignal *s = static_cast<view::DsoSignal*>(sig);
-                s->set_data(_data_source->get_dso_snapshot());
+                s->set_data(nullptr);
                 break;
             }
         }
@@ -252,6 +281,111 @@ void View::set_data_source(pv::data::DataSource *source)
         _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
     }
     update();
+}
+
+void View::set_signal_data_from_source(pv::data::DataSource *source)
+{
+    for (auto sig : _own_signals) {
+        int type = sig->signal_type();
+        switch(type) {
+            case SR_CHANNEL_LOGIC: {
+                view::LogicSignal *s = static_cast<view::LogicSignal*>(sig);
+                s->set_data(source->get_logic_snapshot());
+                break;
+            }
+            case SR_CHANNEL_ANALOG: {
+                view::AnalogSignal *s = static_cast<view::AnalogSignal*>(sig);
+                s->set_data(source->get_analog_snapshot());
+                break;
+            }
+            case SR_CHANNEL_DSO: {
+                view::DsoSignal *s = static_cast<view::DsoSignal*>(sig);
+                s->set_data(source->get_dso_snapshot());
+                break;
+            }
+        }
+    }
+
+    if (_time_viewport) {
+        _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    }
+    if (_fft_viewport) {
+        _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    }
+    update();
+}
+
+void View::set_data_document(pv::data::SessionDocument *doc)
+{
+    if (!doc)
+        return;
+
+    _document = doc;
+
+    if (!doc->has_data())
+        return;
+
+    if (_own_signals.empty()) {
+        auto &shared_sigs = _data_source->get_signals();
+        for (auto sig : shared_sigs) {
+            auto cloned = sig->clone();
+            cloned->set_view_index(sig->get_view_index());
+            _own_signals.push_back(cloned);
+        }
+    }
+
+    for (auto sig : _own_signals) {
+        int type = sig->signal_type();
+        switch(type) {
+            case SR_CHANNEL_LOGIC: {
+                view::LogicSignal *s = static_cast<view::LogicSignal*>(sig);
+                s->set_data(doc->get_active_logic());
+                break;
+            }
+            case SR_CHANNEL_ANALOG: {
+                view::AnalogSignal *s = static_cast<view::AnalogSignal*>(sig);
+                s->set_data(doc->get_active_analog());
+                break;
+            }
+            case SR_CHANNEL_DSO: {
+                view::DsoSignal *s = static_cast<view::DsoSignal*>(sig);
+                s->set_data(doc->get_active_dso());
+                break;
+            }
+        }
+    }
+
+    if (_time_viewport) {
+        _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    }
+    if (_fft_viewport) {
+        _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    }
+    update();
+}
+
+void View::clone_signals_for_document(pv::data::SessionDocument *doc)
+{
+    if (!doc)
+        return;
+
+    _own_signals.clear();
+
+    auto &shared_sigs = _data_source->get_signals();
+    for (auto sig : shared_sigs) {
+        auto cloned = sig->clone();
+        cloned->set_view_index(sig->get_view_index());
+        _own_signals.push_back(cloned);
+    }
+
+    set_data_document(doc);
+}
+
+data::DataSource* View::effective_data_source()
+{
+    if (_document && _document->has_data())
+        return _document;
+    return _data_source;
 }
 
 void View::show_wait_trigger()
@@ -278,10 +412,13 @@ void View::capture_init()
     else if (!_session->is_repeating())
         show_trig_cursor(false);
  
-    _maxscale = _data_source->cur_sampletime() / (width * MaxViewRate);
+    double sampletime = effective_data_source()->cur_sampletime();
+    if (sampletime > 0) {
+        _maxscale = sampletime / (width * MaxViewRate);
 
-    if (mode == ANALOG){
-        set_scale_offset(_maxscale, 0);
+        if (mode == ANALOG){
+            set_scale_offset(_maxscale, 0);
+        }
     }
     
     status_clear();
@@ -444,6 +581,12 @@ void View::compute_signal_groups()
             _signal_groups.push_back(group);
         }
     }
+
+    for (auto &group : _signal_groups) {
+        sort(group.traces.begin(), group.traces.end(), [](Trace *a, Trace *b) {
+            return a->get_v_offset() < b->get_v_offset();
+        });
+    }
 }
 
 QColor View::get_group_card_color()
@@ -501,11 +644,11 @@ void View::get_traces(int type, std::vector<Trace*> &traces)
 {
     assert(_session);
 
-    auto &sigs = _data_source->get_signals();
+    auto &sigs = _own_signals;
  
-    const auto &decode_sigs = _data_source->get_decode_signals();
+    const auto &decode_sigs = effective_data_source()->get_decode_signals();
  
-    const auto &spectrums = _data_source->get_spectrum_traces();
+    const auto &spectrums = effective_data_source()->get_spectrum_traces();
  
     for(auto t : sigs) {
         if (type == ALL_VIEW || _trace_view_map[t->get_type()] == type)
@@ -522,13 +665,13 @@ void View::get_traces(int type, std::vector<Trace*> &traces)
             traces.push_back(t);
     }
 
-    auto lissajous = _data_source->get_lissajous_trace();
+    auto lissajous = effective_data_source()->get_lissajous_trace();
     if (lissajous && lissajous->enabled() &&
         (type == ALL_VIEW || _trace_view_map[lissajous->get_type()] == type)){
         traces.push_back(lissajous);
     }
 
-    auto math = _data_source->get_math_trace();
+    auto math = effective_data_source()->get_math_trace();
     if (math && math->enabled() &&
         (type == ALL_VIEW || _trace_view_map[math->get_type()] == type)){
         traces.push_back(math);
@@ -634,7 +777,7 @@ void View::receive_end()
         if (ret && rle) {
             ret = _device_agent->get_config_uint64(SR_CONF_ACTUAL_SAMPLES, actual_samples);
             if (ret) {
-                if (actual_samples != _data_source->cur_samplelimits()) {
+                if (actual_samples != effective_data_source()->cur_samplelimits()) {
                     _viewbottom->set_rle_depth(actual_samples);
                 }
             }
@@ -647,13 +790,13 @@ void View::receive_end()
 void View::receive_trigger(quint64 trig_pos1)
 {
     (void)trig_pos1;
-    uint64_t trig_pos = _data_source->get_trigger_pos();
+    uint64_t trig_pos = effective_data_source()->get_trigger_pos();
     set_trig_cursor_posistion(trig_pos);
 }
 
 void View::set_trig_cursor_posistion(uint64_t trig_pos)
 {   
-    const double time = trig_pos * 1.0 / _data_source->cur_snap_samplerate();
+    const double time = trig_pos * 1.0 / effective_data_source()->cur_snap_samplerate();
     _trig_cursor->set_index(trig_pos);
 
     int width = get_view_width();
@@ -676,7 +819,7 @@ void View::set_trig_cursor_posistion(uint64_t trig_pos)
 
 void View::set_trig_pos(int percent)
 {
-    uint64_t index = _data_source->cur_samplelimits() * percent / 100;
+    uint64_t index = effective_data_source()->cur_samplelimits() * percent / 100;
 
     if (_session->have_view_data() == false
         || _session->is_working()){
@@ -689,7 +832,7 @@ void View::set_search_pos(uint64_t search_pos, bool hit)
     QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
     fore.setAlpha(View::BackAlpha);
 
-    const double time = search_pos * 1.0 / _data_source->cur_snap_samplerate();
+    const double time = search_pos * 1.0 / effective_data_source()->cur_snap_samplerate();
     _search_pos = search_pos;
     _search_hit = hit;
     _search_cursor->set_index(search_pos);
@@ -728,7 +871,7 @@ void View::normalize_layout()
 
 void View::get_scroll_layout(int64_t &length, int64_t &offset)
 {
-    length = ceil(_data_source->cur_snap_sampletime() / _scale);
+    length = ceil(effective_data_source()->cur_snap_sampletime() / _scale);
     offset = _offset;
 }
 
@@ -769,6 +912,10 @@ void View::update_scroll()
     if (_time_viewport)
         totalContentHeight = _time_viewport->get_total_height();
     int vRange = max(0, totalContentHeight - areaSize.height());
+    if (vRange > 0)
+        setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    else
+        setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     verticalScrollBar()->setPageStep(areaSize.height());
     verticalScrollBar()->setRange(0, vRange);
     verticalScrollBar()->setSliderPosition(_vOffset);
@@ -782,16 +929,24 @@ void View::update_scale_offset()
     }
 
     if (_device_agent->get_work_mode() != DSO) {
-        _maxscale = _data_source->cur_sampletime() / (width * MaxViewRate);     
-        _minscale = (1.0 / _data_source->cur_snap_samplerate()) / MaxPixelsPerSample;
+        double sampletime = effective_data_source()->cur_sampletime();
+        uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
+        if (sampletime > 0 && samplerate > 0) {
+            _maxscale = sampletime / (width * MaxViewRate);     
+            _minscale = (1.0 / samplerate) / MaxPixelsPerSample;
+        } else {
+            _maxscale = 1e9;
+            _minscale = 1e-15;
+        }
+        _scale = max(min(_scale, _maxscale), _minscale);
     }
     else {
         _scale = _session->cur_view_time() / width;     
         _maxscale = 1e9;
         _minscale = 1e-15;
+        _scale = max(min(_scale, _maxscale), _minscale);
     }
 
-    _scale = max(min(_scale, _maxscale), _minscale);
     _offset = max(min(_offset, get_max_offset()), get_min_offset());
 
     _preScale = _scale;
@@ -803,13 +958,30 @@ void View::update_scale_offset()
 
 void View::mode_changed()
 {
-    if (_device_agent->is_virtual())
-        _scale = WellSamplesPerPixel * 1.0 / _data_source->cur_snap_samplerate();
+    if (_device_agent->is_virtual()) {
+        uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
+        if (samplerate > 0)
+            _scale = WellSamplesPerPixel * 1.0 / samplerate;
+    }
     _scale = max(min(_scale, _maxscale), _minscale);
 }
 
 void View::signals_changed(const Trace* eventTrace)
 {
+    if (_own_signals.empty() && _data_source) {
+        auto &shared_sigs = _data_source->get_signals();
+        if (!shared_sigs.empty()) {
+            for (auto sig : shared_sigs) {
+                auto cloned = sig->clone();
+                cloned->set_view_index(sig->get_view_index());
+                _own_signals.push_back(cloned);
+            }
+            if (_document && _document->has_data()) {
+                set_data_document(_document);
+            }
+        }
+    }
+
     double actualMargin = SignalMargin;
     int total_rows = 0;
     int label_size = 0;
@@ -1078,7 +1250,7 @@ void View::resizeEvent(QResizeEvent*)
     }
 
     if (_device_agent->get_work_mode() != DSO)
-        _maxscale = _data_source->cur_sampletime() / (width * MaxViewRate);
+        _maxscale = effective_data_source()->cur_sampletime() / (width * MaxViewRate);
     else
         _maxscale = 1e9;
 
@@ -1268,7 +1440,7 @@ void View::set_cursor_middle(int index)
         i++;
     }
 
-    set_scale_offset(_scale, (*i)->index() / (_data_source->cur_snap_samplerate() * _scale) - (width / 2));
+    set_scale_offset(_scale, (*i)->index() / (effective_data_source()->cur_snap_samplerate() * _scale) - (width / 2));
 }
 
 void View::on_measure_updated()
@@ -1288,7 +1460,7 @@ QString View::get_measure(QString option)
 QString View::get_cm_time(int index)
 {
     uint64_t sampleIndex = get_cursor_samples(index);
-    uint64_t sampleRate = _data_source->cur_snap_samplerate();
+    uint64_t sampleRate = effective_data_source()->cur_snap_samplerate();
     return _ruler->format_real_time(sampleIndex, sampleRate);
 }
 
@@ -1300,7 +1472,7 @@ QString View::get_cm_delta(int index1, int index2)
     uint64_t samples1 = get_cursor_samples(index1);
     uint64_t samples2 = get_cursor_samples(index2);
     uint64_t delta_sample = (samples1 > samples2) ? samples1 - samples2 : samples2 - samples1;
-    return _ruler->format_real_time(delta_sample, _data_source->cur_snap_samplerate());
+    return _ruler->format_real_time(delta_sample, effective_data_source()->cur_snap_samplerate());
 }
 
 QString View::get_index_delta(uint64_t start, uint64_t end)
@@ -1309,7 +1481,7 @@ QString View::get_index_delta(uint64_t start, uint64_t end)
         return "0";
 
     uint64_t delta_sample = (start > end) ? start - end : end - start;
-    return _ruler->format_real_time(delta_sample, _data_source->cur_snap_samplerate());
+    return _ruler->format_real_time(delta_sample, effective_data_source()->cur_snap_samplerate());
 }
 
 uint64_t View::get_cursor_samples(int index)
@@ -1347,7 +1519,7 @@ void View::on_state_changed(bool stop)
 QRect View::get_view_rect()
 {
     if (_device_agent->get_work_mode() == DSO) {
-        const auto &sigs = _data_source->get_signals();
+        const auto &sigs = _own_signals;
         if(sigs.size() > 0) {
             return sigs[0]->get_view_rect();
         }
@@ -1360,7 +1532,7 @@ int View::get_view_width()
 {
     int view_width = 0;
     if (_device_agent->get_work_mode() == DSO) {
-        for(auto s : _data_source->get_signals()) {
+        for(auto s : _own_signals) {
             view_width = max(view_width, s->get_view_rect().width());
         }
     }
@@ -1379,12 +1551,12 @@ int View::get_view_height()
 {
     int view_height = 0;
     if (_device_agent->get_work_mode() == DSO) {
-        for(auto s : _data_source->get_signals()) {
+        for(auto s : _own_signals) {
             view_height = max(view_height, s->get_view_rect().height());
         }
     }
     else {
-        view_height = _viewcenter->height();
+        view_height = _time_viewport ? _time_viewport->height() : 0;
     }
 
     return view_height;
@@ -1406,7 +1578,7 @@ int64_t View::get_max_offset()
     int width = get_view_width();
     assert(width > 0);
 
-    return ceil((_data_source->cur_snap_sampletime() / _scale) -
+    return ceil((effective_data_source()->cur_snap_sampletime() / _scale) -
                 (width * MaxViewRate));
 }
 
@@ -1456,7 +1628,7 @@ void View::vDial_updated()
         _cali->update_device_info();
     }
 
-    auto math_trace = _data_source->get_math_trace();
+    auto math_trace = effective_data_source()->get_math_trace();
     if (math_trace && math_trace->enabled()) {
         math_trace->update_vDial();
     }
@@ -1464,7 +1636,7 @@ void View::vDial_updated()
 
 void View::dso_factor_updated()
 {
-    auto math_trace = _data_source->get_math_trace();
+    auto math_trace = effective_data_source()->get_math_trace();
     if (math_trace && math_trace->enabled()) {
         math_trace->update_vDial();
     }
@@ -1491,14 +1663,14 @@ void View::show_region(uint64_t start, uint64_t end, bool keep)
         update();
     }
     else if (_session->get_map_zoom() == 0) {
-        const double ideal_scale = (end-start) * 2.0 / _data_source->cur_snap_samplerate() / width;
+        const double ideal_scale = (end-start) * 2.0 / effective_data_source()->cur_snap_samplerate() / width;
         const double new_scale = max (min(ideal_scale, _maxscale), _minscale);
-        const double new_off = (start + end)  * 0.5 / (_data_source->cur_snap_samplerate() * new_scale) - (width / 2);
+        const double new_off = (start + end)  * 0.5 / (effective_data_source()->cur_snap_samplerate() * new_scale) - (width / 2);
         set_scale_offset(new_scale, new_off);
     }
     else {
         const double new_scale = scale();
-        const double new_off = (start + end)  * 0.5 / (_data_source->cur_snap_samplerate() * new_scale) - (width/ 2);
+        const double new_off = (start + end)  * 0.5 / (effective_data_source()->cur_snap_samplerate() * new_scale) - (width/ 2);
         set_scale_offset(new_scale, new_off);
     }
 }
@@ -1567,7 +1739,7 @@ bool View::get_dso_trig_moved()
 
 double View::index2pixel(uint64_t index, bool has_hoff)
 {
-    const uint64_t rateValue = _data_source->cur_snap_samplerate();
+    const uint64_t rateValue = effective_data_source()->cur_snap_samplerate();
     const double scaleValue = scale();
     const int64_t offsetValue = offset();    
     const double hoffValue = trig_hoff();
@@ -1597,7 +1769,7 @@ double View::index2pixel(uint64_t index, bool has_hoff)
 
 uint64_t View::pixel2index(double pixel)
 {   
-    const uint64_t rateValue = _data_source->cur_snap_samplerate();
+    const uint64_t rateValue = effective_data_source()->cur_snap_samplerate();
     const double scaleValue = scale();
     const int64_t offsetValue = offset();    
     const double hoffValue = trig_hoff();
@@ -1667,7 +1839,7 @@ void View::set_scale(double scale)
 
 void View::auto_set_max_scale()
 {
-    const double limitTime = _data_source->cur_sampletime();
+    const double limitTime = effective_data_source()->cur_sampletime();
     const int width = get_view_width();
 
     if (width > 0)

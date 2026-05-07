@@ -23,77 +23,57 @@
 #include "tabcontext.h"
 #include "sigsession.h"
 #include "view/view.h"
-#include "data/sessionsnapshot.h"
-#include "data/datasource.h"
+#include "data/sessiondocument.h"
 
 namespace pv {
 
 int TabContext::_next_session_id = 1;
 
-TabContext::TabContext(view::View *view, SigSession *session) :
+TabContext::TabContext(view::View *view, SigSession *session, data::SessionDocument *doc) :
     _view(view),
     _session(session),
-    _snapshot(nullptr),
+    _document(doc),
     _title(QString("Session %1").arg(_next_session_id)),
     _file_path(""),
-    _is_live(true),
-    _has_data(false),
+    _state(LIVE),
     _timestamp(QDateTime::currentDateTime())
 {
     _next_session_id++;
-
-    // Create an empty snapshot so empty tabs show empty data
-    if (!session->have_view_data()) {
-        _snapshot = session->capture_snapshot();
-    }
 }
 
 TabContext::~TabContext()
 {
-    if (_snapshot)
-        delete _snapshot;
-}
-
-void TabContext::activate()
-{
-    _is_live = true;
-
-    if (_snapshot) {
-        _view->set_data_source(_snapshot);
-    } else {
-        _view->set_data_source(_session);
-    }
-}
-
-void TabContext::deactivate()
-{
-    if (_is_live && _session->have_view_data() && _has_data) {
-        if (_snapshot)
-            delete _snapshot;
-        _snapshot = _session->capture_snapshot();
-    }
-
-    _is_live = false;
+    if (_document)
+        delete _document;
 }
 
 void TabContext::make_live()
 {
-    if (_snapshot) {
-        delete _snapshot;
-        _snapshot = nullptr;
-    }
-    _is_live = true;
-    _has_data = true;
+    _state = LIVE;
 }
 
-data::DataSource* TabContext::get_data_source()
+bool TabContext::has_data()
 {
-    if (_is_live)
-        return _session;
-    else if (_snapshot)
-        return _snapshot;
-    else
-        return _session;
+    return _document && _document->has_data();
+}
+
+void TabContext::activate()
+{
+    _state = LIVE;
+    if (_document && _document->has_data()) {
+        _view->set_data_source(_document);
+        _view->set_data_document(_document);
+    } else {
+        _view->set_data_source(_session);
+        _view->clear_signal_data();
+    }
+    _view->update_scale_offset();
+    _view->signals_changed(nullptr);
+}
+
+void TabContext::deactivate()
+{
+    _state = HISTORICAL;
 }
 
 } // namespace pv

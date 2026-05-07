@@ -224,7 +224,8 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QColo
     }
 
     const double scale = _view->scale();
-    assert(scale > 0);
+    if (scale <= 0)
+        return;
 
     double samplerate = _decoder_stack->samplerate();
 

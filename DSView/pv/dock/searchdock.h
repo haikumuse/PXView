@@ -39,6 +39,7 @@
 #include "../ui/dscombobox.h"
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
+#include "../interface/icontextaware.h"
 
 namespace pv {
 
@@ -60,7 +61,7 @@ struct SearchData {
     SearchData(int64_t s, int64_t e) : start(s), end(e) {}
 };
 
-class SearchDock : public QWidget, public IUiWindow
+class SearchDock : public QWidget, public IContextAware, public IUiWindow
 {
     Q_OBJECT
 
@@ -69,6 +70,9 @@ public:
     ~SearchDock();
 
     void set_view(view::View *view);
+
+    void bind_context(TabContext *ctx) override;
+    void unbind_context() override;
 
     void paintEvent(QPaintEvent *);
 

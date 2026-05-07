@@ -101,6 +101,11 @@ AnalogSignal::AnalogSignal(view::AnalogSignal *s, pv::data::AnalogSnapshot *data
     _scale = s->get_scale();
 }
 
+AnalogSignal* AnalogSignal::clone() const
+{
+    return new AnalogSignal(const_cast<AnalogSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+}
+
 AnalogSignal::~AnalogSignal()
 {
     if (_rects) {
@@ -156,11 +161,12 @@ bool AnalogSignal::measure(const QPointF &p)
     if (!window.contains(p))
         return false;
 
-    if (_data->have_data() == false)
+    if (!_data || _data->have_data() == false)
         return false;
 
     const double scale = _view->scale();
-    assert(scale > 0);
+    if (scale <= 0)
+        return false;
     const int64_t pixels_offset = _view->offset();
     const double samplerate = _view->session().cur_snap_samplerate();
     const double samples_per_pixel = samplerate * scale;
@@ -189,7 +195,7 @@ QPointF AnalogSignal::get_point(uint64_t index, float &value)
 {
     QPointF pt = QPointF(-1, -1);
 
-    if (!enabled())
+    if (!enabled() || !_data)
         return pt;
 
     const int order = _data->get_ch_order(get_index());
@@ -197,7 +203,8 @@ QPointF AnalogSignal::get_point(uint64_t index, float &value)
         return pt;
 
     const double scale = _view->scale();
-    assert(scale > 0);
+    if (scale <= 0)
+        return pt;
     const int64_t pixels_offset = _view->offset();
     const double samplerate = _view->session().cur_snap_samplerate();
     const double samples_per_pixel = samplerate * scale;
@@ -397,7 +404,8 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore, QCol
     (void)fore;
     (void)back;
 
-    assert(_data);
+    if (!_data)
+        return;
     assert(_view);
     assert(right >= left);
 
@@ -409,7 +417,8 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore, QCol
 
     const double scale = _view->scale();
 
-    assert(scale > 0);
+    if (scale <= 0)
+        return;
     const int64_t offset = _view->offset();
 
     const int order = _data->get_ch_order(get_index());
@@ -678,7 +687,6 @@ QString AnalogSignal::get_voltage(double v, int p, bool scaled)
 
 void AnalogSignal::set_data(data::AnalogSnapshot *data)
 {
-    assert(data);
     _data = data;
 }
 

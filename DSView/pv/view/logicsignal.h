@@ -67,6 +67,8 @@ public:
 
 	virtual ~LogicSignal();
 
+    LogicSignal* clone() const override;
+
     inline data::LogicSnapshot* data(){
         return _data;
     }

@@ -46,8 +46,6 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
             this, &DraggableTabWidget::onDetachTab);
     connect(this, &QTabWidget::tabCloseRequested,
             this, &DraggableTabWidget::onTabCloseRequested);
-    connect(_draggable_tab_bar, &DraggableTabBar::tabCloseRequested,
-            this, &DraggableTabWidget::onTabCloseRequested);
     connect(_draggable_tab_bar, &DraggableTabBar::tabRenameRequested,
             this, &DraggableTabWidget::onTabRenameRequested);
     connect(_draggable_tab_bar, &DraggableTabBar::tabRenameRequested,
@@ -195,8 +193,8 @@ void DraggableTabWidget::onTabRenameRequested(int index)
 void DraggableTabWidget::onDetachedWindowClosed(QWidget *content, const QString &title)
 {
     int idx = addTab(content, title);
-    setCurrentIndex(idx);
     emit tabAttached(content, title);
+    setCurrentIndex(idx);
 
     DetachedWindow *window = qobject_cast<DetachedWindow*>(sender());
     if (window)

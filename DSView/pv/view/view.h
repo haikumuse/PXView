@@ -60,6 +60,10 @@ namespace dialogs {
     class Lissajous;
 }
 
+namespace data {
+    class SessionDocument;
+}
+
 class SigSession;
 
 namespace view {
@@ -91,8 +95,8 @@ private:
     static const int MaxHeightUnit;
 
 public:
-    static const int MinSignalHeight = 10;
-    static const int MaxSignalHeight = 500;
+    static const int MinSignalHeight;
+    static const int MaxSignalHeight;
     static const int GroupGap = 5;
     static const int GroupCardRadius = 6;
 
@@ -127,6 +131,10 @@ public:
     ~View();
 
 	void set_data_source(pv::data::DataSource *source);
+	void set_data_document(pv::data::SessionDocument *doc);
+	void clone_signals_for_document(pv::data::SessionDocument *doc);
+	void set_signal_data_from_source(pv::data::DataSource *source);
+	void clear_signal_data();
 
     inline SigSession& session(){
         return *_session;
@@ -449,6 +457,9 @@ private:
     void make_cursors_order();
 
 public:
+    data::DataSource* effective_data_source();
+
+public:
     void show_wait_trigger();
     void set_device();
     void set_receive_len(uint64_t len);
@@ -458,7 +469,9 @@ public:
 private:
 	SigSession                  *_session;
     pv::data::DataSource        *_data_source;
+    pv::data::SessionDocument   *_document;
     pv::toolbars::SamplingBar   *_sampling_bar;
+    std::vector<Signal*>        _own_signals;
 
     QWidget                 *_viewcenter;
     ViewStatus              *_viewbottom;

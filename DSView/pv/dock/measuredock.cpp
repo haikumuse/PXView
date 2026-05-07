@@ -42,6 +42,7 @@
 #include "../ui/fn.h"
 #include "../log.h"
 #include "../ui/xtoolbutton.h"
+#include "../tabcontext.h"
 
 using namespace boost;
 
@@ -186,6 +187,19 @@ void MeasureDock::set_view(view::View *view)
         connect(_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
         connect(_fen_checkBox, SIGNAL(stateChanged(int)), _view, SLOT(set_measure_en(int)));
     }
+}
+
+void MeasureDock::bind_context(TabContext *ctx)
+{
+    assert(ctx);
+    _session = ctx->session();
+    set_view(ctx->view());
+    reload();
+}
+
+void MeasureDock::unbind_context()
+{
+    set_view(nullptr);
 }
 
 void MeasureDock::retranslateUi()

@@ -166,6 +166,7 @@ private:
  
     friend class DsoSnapshotTest::Basic;
     friend class SessionSnapshot;
+    friend class SessionDocument;
 };
 
 } // namespace data

@@ -262,12 +262,14 @@ set(DSView_SOURCES
     DSView/dsapplication.cpp
     DSView/pv/log.cpp
     DSView/pv/sigsession.cpp
+    DSView/pv/sessionmanager.cpp
     DSView/pv/mainwindow.cpp
     DSView/pv/data/snapshot.cpp
     DSView/pv/data/signaldata.cpp
     DSView/pv/data/logicsnapshot.cpp
     DSView/pv/data/analogsnapshot.cpp
     DSView/pv/data/sessionsnapshot.cpp
+    DSView/pv/data/sessiondocument.cpp
     DSView/pv/dialogs/deviceoptions.cpp
     DSView/pv/prop/property.cpp
     DSView/pv/prop/int.cpp
@@ -412,6 +414,8 @@ set(DSView_HEADERS
     DSView/mystyle.h
     DSView/pv/log.h
     DSView/pv/sigsession.h
+    DSView/pv/sessionmanager.h
+    DSView/pv/interface/icontextaware.h
     DSView/pv/mainwindow.h
     DSView/pv/dialogs/deviceoptions.h
     DSView/pv/prop/property.h
@@ -472,6 +476,7 @@ set(DSView_HEADERS
     DSView/pv/data/decodermodel.h
     DSView/pv/data/datasource.h
     DSView/pv/data/sessionsnapshot.h
+    DSView/pv/data/sessiondocument.h
     DSView/pv/dialogs/mathoptions.h
     DSView/pv/dialogs/regionoptions.h
     DSView/pv/view/xcursor.h

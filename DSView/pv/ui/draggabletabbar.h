@@ -39,7 +39,6 @@ signals:
     void detachTab(int index, const QPoint &dropPos);
     void tabContextMenuRequested(int index, const QPoint &pos);
     void tabRenameRequested(int index);
-    void tabCloseRequested(int index);
     void tabCloseOthersRequested(int index);
     void tabCloseRightRequested(int index);
 

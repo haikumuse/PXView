@@ -595,6 +595,7 @@ void Header::mouseMoveEvent(QMouseEvent *event)
                         if (y_snap != t->get_v_offset()) {
                             _moveFlag = true;
                             t->set_v_offset(y_snap);
+                            traces_moved();
                         }
                     }
                 }

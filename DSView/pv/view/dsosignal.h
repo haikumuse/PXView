@@ -85,7 +85,11 @@ public:
     DsoSignal(pv::data::DsoSnapshot *data,
               sr_channel *probe);
 
+    DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data, sr_channel *probe);
+
     virtual ~DsoSignal();
+
+    DsoSignal* clone() const override;
 
     inline data::DsoSnapshot* data(){
         return _data;
