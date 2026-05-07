@@ -51,6 +51,7 @@ signals:
     void windowClosed(QWidget *content, const QString &title);
 
 public slots:
+    void close();
     void showNormal();
     void showMaximized();
     void showMinimized();

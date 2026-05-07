@@ -66,6 +66,7 @@ WinNativeWidget::WinNativeWidget(const int x, const int y, const int width,
     _hWnd = NULL;
     _event_callback = NULL;
     _is_lose_foreground = false;
+    _is_closing = false;
     _hCurrentMonitor = NULL;
     _shadow = NULL; 
     _titleBarWidget = NULL;
@@ -230,20 +231,21 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
         }
         case WM_NCACTIVATE:
         {   
-            // Is activing.
             if (wParam){
+                return 0;
+            }
+
+            if (self->_is_closing){
                 return 0;
             }
 
             HWND hForegWnd = GetForegroundWindow();
             HWND hActiveWnd = GetActiveWindow();
 
-            // Is not the foreground window.
             if (hForegWnd != hActiveWnd){
                 return 0;
             }
             
-            //Is the foreground window, but is not actived, maybe opening a child dialog.
             SetWindowRedraw(hWnd, FALSE);
             LRESULT result = DefWindowProc(hWnd, message, wParam, lParam);
             SetWindowRedraw(hWnd, TRUE);

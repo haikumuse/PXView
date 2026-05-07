@@ -1063,14 +1063,7 @@ void View::signals_changed(const Trace* eventTrace)
         int mode = _device_agent->get_work_mode();
 
         if (mode == LOGIC) {
-            if (height < 2*actualMargin) {
-                actualMargin /= 2;
-                _signalHeight = max(1.0, (_time_viewport->height()
-                                          - 2 * actualMargin * label_size) * 1.0 / total_rows);
-            }
-            else {
-                _signalHeight = _signalHeightScale;
-            }
+            _signalHeight = _signalHeightScale;
         }
         else if (_device_agent->get_work_mode() == DSO) {
             _signalHeight = (_header->height()

@@ -1968,15 +1968,18 @@ namespace pv
 
         // make sure the running task can stop
         runningDex = -1;
-        int dex = 0;
-        for (auto trace : decode_traces())
-        {
-            if (trace->decoder()->IsRunning())
+        for (auto doc : _all_documents) {
+            int dex = 0;
+            for (auto trace : doc->get_decode_traces())
             {
-                trace->decoder()->stop_decode_work();
-                runningDex = dex;
+                if (trace->decoder()->IsRunning())
+                {
+                    trace->decoder()->stop_decode_work();
+                    if (doc == _active_document)
+                        runningDex = dex;
+                }
+                dex++;
             }
-            dex++;
         }
 
         // Wait the thread end.
@@ -2589,6 +2592,21 @@ namespace pv
 
     data::DsoSnapshot* SigSession::get_dso_snapshot() {
         return _view_data->get_dso();
+    }
+
+    void SigSession::set_active_document(data::SessionDocument *doc)
+    {
+        if (_active_document == nullptr && doc != nullptr && !_empty_decode_traces.empty()) {
+            doc->get_decode_traces() = _empty_decode_traces;
+            for (auto trace : _empty_decode_traces) {
+                if (trace->decoder()) {
+                    trace->decoder()->set_owner_document(doc);
+                    doc->get_decoder_stacks().push_back(trace->decoder());
+                }
+            }
+            _empty_decode_traces.clear();
+        }
+        _active_document = doc;
     }
 
     void SigSession::copy_data_to_document(data::SessionDocument *doc)
