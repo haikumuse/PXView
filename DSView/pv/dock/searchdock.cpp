@@ -35,6 +35,7 @@
 #include "../appcontrol.h"
 #include "../ui/fn.h"
 #include "../tabcontext.h"
+#include <QCoreApplication>
 
 namespace pv {
 namespace dock {
@@ -79,10 +80,11 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     _result_table->verticalHeader()->setVisible(false);
     _result_table->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     _result_table->setShowGrid(true);
-    _result_table->setGridStyle(Qt::DotLine);
+    _result_table->setGridStyle(Qt::SolidLine);
     _result_table->setFrameShape(QFrame::NoFrame);
     _result_table->setMinimumWidth(0);
     _result_table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    _result_table->horizontalHeader()->setVisible(true);
     _result_table->setStyleSheet(
         "QTableWidget { border: none; gridline-color: #d0d0d0; }"
         "QTableWidget::item { padding: 2px; }"
@@ -118,6 +120,7 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     _table_fill_timer->setSingleShot(false);
     connect(_table_fill_timer, SIGNAL(timeout()), this, SLOT(fill_table_batch()));
 
+    retranslateUi();
     rebuild_pattern();
 
     ADD_UI(this);
@@ -179,7 +182,9 @@ void SearchDock::on_pattern_changed()
 {
     _pattern = _pattern_input->get_pattern();
     _view->set_search_pos(_view->get_search_pos(), false);
-    do_search();
+    
+    // Use a single shot timer to debounce search and avoid lag
+    QTimer::singleShot(150, this, SLOT(do_search()));
 }
 
 void SearchDock::on_device_updated()
@@ -252,6 +257,11 @@ void SearchDock::do_search()
         int64_t match_end = find_match_end(logic_snapshot, pos);
         _search_results.push_back(SearchData(pos, match_end));
         pos = match_end + 1;
+        
+        // Yield every 1000 results to keep UI responsive if searching millions of samples
+        if (_search_results.size() % 1000 == 0) {
+            QCoreApplication::processEvents();
+        }
     }
 
     _result_table->setRowCount(_search_results.size());

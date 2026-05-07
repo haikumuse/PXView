@@ -80,8 +80,6 @@ private:
     void retranslateUi();
     void reStyle();
     void rebuild_pattern();
-    void do_search();
-    void fill_table_batch();
     int64_t find_match_end(pv::data::LogicSnapshot *snapshot, int64_t start_pos);
 
     void UpdateLanguage() override;
@@ -92,6 +90,8 @@ public slots:
     void on_pattern_changed();
     void on_device_updated();
     void on_result_clicked(int row, int col);
+    void do_search();
+    void fill_table_batch();
 
 private:
     SigSession *_session;
