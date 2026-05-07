@@ -391,7 +391,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
 
             if (_view.session().get_device()->get_work_mode() == DSO)
             {
-                auto lis_trace = _view.session().get_lissajous_trace();
+                auto lis_trace = _view.effective_data_source()->get_lissajous_trace();
                 if (lis_trace && lis_trace->enabled()){
                     isLissa = true;
                 }
@@ -777,7 +777,7 @@ void Viewport::mousePressEvent(QMouseEvent *event)
         event->button() == Qt::LeftButton &&
         _view.session().get_device()->get_work_mode() == DSO) {
 
-       for(auto s : _view.session().get_signals()) 
+       for(auto s : _view.get_own_signals()) 
        { 
             if (s->signal_type() == SR_CHANNEL_DSO && s->enabled()) {
                 DsoSignal *dsoSig = (DsoSignal*)s;
@@ -840,7 +840,7 @@ void Viewport::mousePressEvent(QMouseEvent *event)
                     break;
                 }
                 else if ((*i)->get_map_rect(xrect).contains(_view.hover_point())) {
-                    auto &sigs = _view.session().get_signals();
+                    auto &sigs = _view.get_own_signals();
                     auto s = sigs.begin();
                     bool sig_looped = ((*i)->channel() == NULL);
                     bool no_dsoSig = true;
@@ -944,7 +944,7 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
             _drag_strength = (_mouse_down_point - event->pos()).x();
         }
         else if (_type == FFT_VIEW) {
-            for(auto t: _view.session().get_spectrum_traces()) {
+            for(auto t: _view.effective_data_source()->get_spectrum_traces()) {
                 if(t->enabled()) {
                     double delta = (_mouse_point - event->pos()).x();
                     t->set_offset(delta);
@@ -972,7 +972,7 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
                     uint64_t index0 = 0, index1 = 0, index2 = 0;
                     bool logic = false;
 
-                   for(auto s : _view.session().get_signals()) {                     
+                   for(auto s : _view.get_own_signals()) {                     
                         if (mode == LOGIC && s->signal_type() == SR_CHANNEL_LOGIC) {
                             view::LogicSignal *logicSig = (view::LogicSignal*)s;
                             if (logicSig->measure(event->pos(), index0, index1, index2)) {
@@ -1055,7 +1055,7 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
         }
         if (!(event->buttons() | Qt::NoButton)) {
             if (_action_type == DSO_XM_STEP1 || _action_type == DSO_XM_STEP2) {
-                for(auto s : _view.session().get_signals()) {
+                for(auto s : _view.get_own_signals()) {
                     if (!s->get_view_rect().contains(event->pos())) {
                         clear_dso_xm();
                     }
@@ -1132,7 +1132,7 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event)
                 // priority 2
                 if (_action_type == NO_ACTION) {
                     if (_mouse_down_point.x() == event->pos().x()) {
-                        const auto &sigs = _view.session().get_signals();
+                        const auto &sigs = _view.get_own_signals();
 
                         for(auto s : sigs) { 
                             if (s->signal_type() == SR_CHANNEL_LOGIC) {
@@ -1159,7 +1159,7 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event)
                 // priority 3
                 if (_action_type == NO_ACTION) {
                     if (_mouse_down_point.x() == event->pos().x()) {
-                        const auto  &sigs = _view.session().get_signals();
+                        const auto  &sigs = _view.get_own_signals();
 
                         for(auto s : sigs) {
                             if (abs(event->pos().y() - s->get_y()) < _view.get_signalHeight()) {
@@ -1437,7 +1437,7 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event)
             uint64_t index0 = 0, index1 = 0, index2 = 0;
 
             if (mode == LOGIC) {
-                for(auto s : _view.session().get_signals()) {
+                for(auto s : _view.get_own_signals()) {
                     if (s->signal_type() == SR_CHANNEL_LOGIC) {
                         view::LogicSignal *logicSig  = (view::LogicSignal*)s;
                         if (logicSig->measure(event->pos(), index0, index1, index2)) {
@@ -1476,7 +1476,7 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event)
             measure_updated();
         }
         else if (_action_type == NO_ACTION) {
-            for(auto s : _view.session().get_signals()) {
+            for(auto s : _view.get_own_signals()) {
                 if (s->get_view_rect().contains(event->pos())) {
                     _dso_xm_index[0] = _view.pixel2index(event->pos().x());
                     _dso_xm_y = event->pos().y();
@@ -1537,7 +1537,7 @@ void Viewport::wheelEvent(QWheelEvent *event)
 
     if (_type == FFT_VIEW)
     {
-        for (auto t : _view.session().get_spectrum_traces())
+        for (auto t : _view.effective_data_source()->get_spectrum_traces())
         { 
             if (t->enabled())
             {
@@ -1600,7 +1600,7 @@ void Viewport::wheelEvent(QWheelEvent *event)
         }
     }
 
-    const auto &sigs = _view.session().get_signals();
+    const auto &sigs = _view.get_own_signals();
     for (auto s : sigs)
     {
         if (s->signal_type() == SR_CHANNEL_DSO){   
@@ -1771,7 +1771,7 @@ void Viewport::measure()
     if (_type == TIME_VIEW) {
         const uint64_t sample_rate = _view.session().cur_snap_samplerate();
 
-        for(auto s : _view.session().get_signals()) {
+        for(auto s : _view.get_own_signals()) {
             if (s->signal_type() == SR_CHANNEL_LOGIC) {
                 view::LogicSignal *logicSig  = (view::LogicSignal*)s;
                 
@@ -1851,7 +1851,7 @@ void Viewport::measure()
                 }
             }
         }
-        const auto mathTrace = _view.session().get_math_trace();
+        const auto mathTrace = _view.effective_data_source()->get_math_trace();
         if (mathTrace && mathTrace->enabled()) {
             if (_measure_en && mathTrace->measure(_view.hover_point())) {
                 _measure_type = DSO_VALUE;
@@ -1861,7 +1861,7 @@ void Viewport::measure()
         }
     }
     else if (_type == FFT_VIEW) {
-        for(auto t : _view.session().get_spectrum_traces()) {
+        for(auto t : _view.effective_data_source()->get_spectrum_traces()) {
             if(t->enabled()) {
                 t->measure(_mouse_point);
             }
@@ -1934,7 +1934,7 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back)
     if (_action_type == NO_ACTION &&
         _measure_type == DSO_VALUE) {
 
-        for(auto s : _view.session().get_signals()) {
+        for(auto s : _view.get_own_signals()) {
             if (s->signal_type() == SR_CHANNEL_DSO) {
                 uint64_t index;
                 double value;
@@ -1963,7 +1963,7 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back)
     }
 
     if (_dso_ym_valid) {
-        for(auto s : _view.session().get_signals()) {          
+        for(auto s : _view.get_own_signals()) {          
             if (s->signal_type() == SR_CHANNEL_DSO) {
                 view::DsoSignal *dsoSig = (view::DsoSignal*)s;
                 if (dsoSig->get_index() == _dso_ym_sig_index) {

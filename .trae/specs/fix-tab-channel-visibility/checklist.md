@@ -1,0 +1,18 @@
+- [x] Trace 类添加了 `_visible` 字段，默认为 `true`，拷贝构造函数正确初始化
+- [x] Trace 类添加了 `visible()` 和 `set_visible()` 访问方法
+- [x] Signal 类添加了 `_local_enabled` 字段，默认为 `true`，拷贝构造函数正确初始化
+- [x] Signal 类添加了 `set_enabled()` 方法
+- [x] Signal::enabled() 返回 `_local_enabled` 而非 `_probe->enabled`
+- [x] 各 Signal 子类（LogicSignal、AnalogSignal、DsoSignal）的 clone() 正确拷贝 `_local_enabled` 和 `_visible`
+- [x] View::signals_changed() 中布局计算使用 `visible()` 替代 `enabled()` 判断可见性
+- [x] View::rebuild_signals() 方法从数据源重新克隆信号，并根据标签类型设置 `visible` 和 `_local_enabled`
+- [x] View::signals_changed() 不再包含信号克隆逻辑，只负责布局计算
+- [x] View::set_data_source() 使用 `rebuild_signals()` 替代内联克隆代码
+- [x] MainWindow::OnMessage() 中 DSV_MSG_DEVICE_OPTIONS_UPDATED 对活跃标签调用 `rebuild_signals()`，对历史标签只调用 `signals_changed(NULL)`
+- [x] TabContext::activate() 历史标签不调用 `set_data_source()`，避免重建信号
+- [x] 编译通过，无编译错误
+- [ ] 活跃标签修改设备通道后信号列表实时更新（需运行时验证）
+- [ ] 历史标签修改设备通道后信号显示不受影响（需运行时验证）
+- [ ] 波形拖拽排序功能正常，排序不被覆盖（需运行时验证）
+- [ ] 波形高度拉伸功能正常，高度不被覆盖（需运行时验证）
+- [ ] 标签切换后历史标签保持原有信号可见性（需运行时验证）

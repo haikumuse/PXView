@@ -103,6 +103,7 @@ Trace::Trace(const Trace &t) :
     _totalHeight(t._totalHeight),
     _ownHeight(-1),
     _typeWidth(t._typeWidth),
+    _visible(t._visible),
     _text_size(t._text_size)
 {
     _view_index = -1;

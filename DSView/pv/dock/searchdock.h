@@ -26,14 +26,19 @@
 #include <QDockWidget>
 #include <QLabel>
 #include <QFrame>
-#include <QTableWidget>
+#include <QTableView>
 #include <QHeaderView>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTimer>
+#include <QMutex>
+#include <QFuture>
+#include <QFutureWatcher>
+#include <QAbstractTableModel>
 
 #include <vector>
 #include <set>
+#include <atomic>
 
 #include "../widgets/searchpatterninput.h"
 #include "../ui/dscombobox.h"
@@ -61,6 +66,28 @@ struct SearchData {
     SearchData(int64_t s, int64_t e) : start(s), end(e) {}
 };
 
+// 自定义 Model 类，用于高效显示大量搜索结果
+class SearchResultModel : public QAbstractTableModel
+{
+    Q_OBJECT
+
+public:
+    SearchResultModel(std::vector<SearchData>& results, QMutex& mutex, QObject *parent = nullptr);
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+
+    void updateRowCount(int newCount);
+    void clear();
+
+private:
+    std::vector<SearchData>& _results;
+    QMutex& _mutex;
+    int _current_count;
+};
+
 class SearchDock : public QWidget, public IContextAware, public IUiWindow
 {
     Q_OBJECT
@@ -76,7 +103,7 @@ public:
 
     void paintEvent(QPaintEvent *);
 
-private:     
+private:
     void retranslateUi();
     void reStyle();
     void rebuild_pattern();
@@ -86,27 +113,46 @@ private:
     void UpdateTheme() override;
     void UpdateFont() override;
 
+    void stop_search();
+    void start_search_async();
+    void search_worker();
+
 public slots:
     void on_pattern_changed();
     void on_device_updated();
-    void on_result_clicked(int row, int col);
+    void on_result_clicked(const QModelIndex& index);
     void do_search();
-    void fill_table_batch();
+    void on_search_finished();
+    void refresh_ui_model();  // 用于接收搜索线程的信号更新UI
+
+signals:
+    void search_result_found();  // 搜索线程发射此信号通知UI更新
 
 private:
     SigSession *_session;
     view::View *_view;
     std::map<uint16_t, QString> _pattern;
+    TabContext *_context;
 
     widgets::SearchPatternInput *_pattern_input;
-    QTableWidget *_result_table;
+    
+    // 使用 QTableView + Model 替代 QTableWidget
+    QTableView *_result_view;
+    SearchResultModel *_result_model;
+    
     QLabel *_legend_col1;
     QLabel *_legend_col2;
     QLabel *_legend_col3;
     int _logic_channel_count;
+
+    // Search result storage
     std::vector<SearchData> _search_results;
-    int _table_fill_index;
-    QTimer *_table_fill_timer;
+    QMutex _results_mutex;
+
+    // Async search state
+    std::atomic<int> _search_state; // 0=idle, 1=running, 2=params_changed, 3=stop_requested
+    QFuture<void> _search_future;
+    QFutureWatcher<void> _search_watcher;
 };
 
 } // namespace dock

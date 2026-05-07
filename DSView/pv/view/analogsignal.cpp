@@ -103,7 +103,10 @@ AnalogSignal::AnalogSignal(view::AnalogSignal *s, pv::data::AnalogSnapshot *data
 
 AnalogSignal* AnalogSignal::clone() const
 {
-    return new AnalogSignal(const_cast<AnalogSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+    AnalogSignal* cloned = new AnalogSignal(const_cast<AnalogSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+    cloned->_local_enabled = _local_enabled;
+    cloned->_visible = _visible;
+    return cloned;
 }
 
 AnalogSignal::~AnalogSignal()

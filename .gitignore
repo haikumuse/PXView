@@ -2,6 +2,7 @@
 build/
 build.dir/
 install.dir/
+package/
 
 # CMake generated files
 CMakeCache.txt

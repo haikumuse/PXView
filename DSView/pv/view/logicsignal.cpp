@@ -60,7 +60,10 @@ LogicSignal::LogicSignal(view::LogicSignal *s,
 
 LogicSignal* LogicSignal::clone() const
 {
-    return new LogicSignal(const_cast<LogicSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+    LogicSignal* cloned = new LogicSignal(const_cast<LogicSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+    cloned->_local_enabled = _local_enabled;
+    cloned->_visible = _visible;
+    return cloned;
 }
 
 LogicSignal::~LogicSignal()
@@ -132,8 +135,8 @@ void LogicSignal::paint_mid_align(QPainter &p, int left, int right, QColor fore,
     const int high_offset = y - _totalHeight + 0.5f;
     const int low_offset = y + 0.5f;
 
-    double samplerate = _data->samplerate();
-    if (_data->empty() || samplerate == 0)
+    double samplerate = _data ? _data->samplerate() : 0;
+    if (!_data || _data->empty() || samplerate == 0)
 		return;
   
     if (!_data->has_data(_probe->index))
@@ -301,8 +304,7 @@ bool LogicSignal::measure(const QPointF &p, uint64_t &index0, uint64_t &index1, 
 {
     const float gap = abs(p.y() - get_y());
     if (gap < get_totalHeight() * 0.5) {
-
-        if (_data->empty() || !_data->has_data(_probe->index))
+        if (!_data || _data->empty() || !_data->has_data(_probe->index))
             return false;
 
         const uint64_t end = _data->get_ring_sample_count() - 1;
@@ -355,7 +357,7 @@ bool LogicSignal::is_by_edge(const QPointF &p, uint64_t &index, int radius)
     const float gap = abs(p.y() - get_y());
 
     if (gap < get_totalHeight() * 0.5) {
-        if (_data->empty() || !_data->has_data(_probe->index))
+        if (!_data || _data->empty() || !_data->has_data(_probe->index))
             return false;
 
         const uint64_t end = _data->get_ring_sample_count() - 1;
@@ -408,7 +410,7 @@ bool LogicSignal::edge(const QPointF &p, uint64_t &index, int radius)
     const float gap = abs(p.y() - get_y());
 
     if (gap < get_totalHeight() * 0.5) {
-        if (_data->empty() || !_data->has_data(_probe->index))
+        if (!_data || _data->empty() || !_data->has_data(_probe->index))
             return false;
 
         const uint64_t end = _data->get_ring_sample_count() - 1;
@@ -464,7 +466,7 @@ bool LogicSignal::edges(const QPointF &p, uint64_t start, uint64_t &rising, uint
 
 bool LogicSignal::edges(uint64_t end, uint64_t start, uint64_t &rising, uint64_t &falling)
 {  
-    if (_data->empty() || !_data->has_data(_probe->index))
+    if (!_data || _data->empty() || !_data->has_data(_probe->index))
         return false;
 
     uint64_t index = min(start, end);

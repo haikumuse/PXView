@@ -149,6 +149,7 @@ public slots:
 private:
     SigSession *_session;
     view::View *_view;
+    TabContext *_context;
 
     QWidget *_widget;
     QGroupBox *_mouse_groupBox;

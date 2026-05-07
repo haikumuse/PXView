@@ -30,10 +30,12 @@
 #include <QLabel>
 #include <QRadioButton>
 #include <vector>
+#include <QJsonObject>
 #include "../ui/dscombobox.h"
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
 #include "keywordlineedit.h"
+#include "../interface/icontextaware.h"
 
 namespace pv {
 
@@ -41,7 +43,7 @@ class SigSession;
 
 namespace dock {
 
-class DsoTriggerDock : public QScrollArea, public IUiWindow
+class DsoTriggerDock : public QScrollArea, public IUiWindow, public IContextAware
 {
     Q_OBJECT
 
@@ -52,6 +54,12 @@ public:
     void device_change();
     void update_view();
     void check_setting();
+
+    QJsonObject get_session();
+    void set_session(QJsonObject &obj);
+
+    void bind_context(TabContext *ctx) override;
+    void unbind_context() override;
 
 private:
     void paintEvent(QPaintEvent *e);
@@ -109,6 +117,7 @@ private:
     QRadioButton *_ch1_radioButton;
     QRadioButton *_ch0a1_radioButton;
     QRadioButton *_ch0o1_radioButton;
+    TabContext *_context;
 };
 
 } // namespace dock

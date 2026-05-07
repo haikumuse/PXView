@@ -1920,6 +1920,7 @@ namespace pv
         _trig_bar->reload(); 
         _dso_trigger_widget->update_view();
         _measure_widget->reload();
+        _device_options_widget->update_view();
 
         if (_device_agent->get_work_mode() == ANALOG)
             current_view()->get_viewstatus()->setVisible(false);
@@ -2238,7 +2239,9 @@ namespace pv
                 _trigger_widget->device_updated();
                 _device_options_widget->device_updated();
                 _measure_widget->reload();
-                current_view()->check_calibration();                      
+                current_view()->check_calibration();
+                current_view()->rebuild_signals();
+                current_view()->signals_changed(NULL);
                 break;
             }
             case DSV_MSG_DEVICE_DURATION_UPDATED:
@@ -2658,6 +2661,9 @@ namespace pv
                 _measure_widget->unbind_context();
                 _search_widget->unbind_context();
                 _protocol_widget->unbind_context();
+                _device_options_widget->unbind_context();
+                _trigger_widget->unbind_context();
+                _dso_trigger_widget->unbind_context();
             }
 
             pv::TabContext *new_ctx = _tab_contexts[index];
@@ -2665,6 +2671,9 @@ namespace pv
             _measure_widget->bind_context(new_ctx);
             _search_widget->bind_context(new_ctx);
             _protocol_widget->bind_context(new_ctx);
+            _device_options_widget->bind_context(new_ctx);
+            _trigger_widget->bind_context(new_ctx);
+            _dso_trigger_widget->bind_context(new_ctx);
 
             view->installEventFilter(this);
         }

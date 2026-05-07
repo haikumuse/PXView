@@ -158,9 +158,9 @@ public:
          _ownHeight = height;
     }
 
-    /**
-     * Geom
-     */
+    inline bool visible() { return _visible; }
+    inline void set_visible(bool v) { _visible = v; }
+
     inline int get_leftWidth(){
         // return SquareWidth/2 + Margin;
         return SquareWidth + Margin;
@@ -353,6 +353,7 @@ protected:
     int _ownHeight;
     int _typeWidth;
     int _view_index;
+    bool _visible = true;
 
     QSizeF _text_size;  
 };

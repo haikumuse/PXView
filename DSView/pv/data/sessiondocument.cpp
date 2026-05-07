@@ -22,7 +22,11 @@ SessionDocument::SessionDocument() :
     _samplerate(0),
     _samplelimits(0),
     _trigger_pos(0),
-    _decoder_model(nullptr)
+    _decoder_model(nullptr),
+    _dock_sample_rate(0),
+    _dock_sample_limit(0),
+    _dock_collect_mode(0),
+    _dock_measure_fen_enabled(false)
 {
 }
 

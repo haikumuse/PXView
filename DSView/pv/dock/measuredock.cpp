@@ -43,6 +43,7 @@
 #include "../log.h"
 #include "../ui/xtoolbutton.h"
 #include "../tabcontext.h"
+#include "../data/sessiondocument.h"
 
 using namespace boost;
 
@@ -54,7 +55,8 @@ using namespace pv::view;
 MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     QScrollArea(parent),
     _session(session),
-    _view(view)
+    _view(view),
+    _context(nullptr)
 {     
     _widget = new QWidget(this);  
 
@@ -192,14 +194,88 @@ void MeasureDock::set_view(view::View *view)
 void MeasureDock::bind_context(TabContext *ctx)
 {
     assert(ctx);
+    _context = ctx;
     _session = ctx->session();
     set_view(ctx->view());
     reload();
+    if (ctx && ctx->document()) {
+        _fen_checkBox->setChecked(ctx->document()->_dock_measure_fen_enabled);
+
+        auto &dist_rows = ctx->document()->_dock_measure_dist_rows;
+        auto &edge_rows = ctx->document()->_dock_measure_edge_rows;
+
+        if ((dist_rows.size() > 0 || edge_rows.size() > 0) && _session->get_device() && _session->get_device()->have_instance()) {
+            auto mode_rows = get_mode_rows();
+
+            if (mode_rows) {
+                mode_rows->_dist_row_list.clear();
+                for (int i = 0; i < dist_rows.size(); i++) {
+                    QJsonObject row_obj = dist_rows[i].toObject();
+                    cursor_row_info inf;
+                    inf.cursor1 = row_obj["cursor1"].toInt();
+                    inf.cursor2 = row_obj["cursor2"].toInt();
+                    inf.channelIndex = 0;
+                    inf.del_bt = NULL;
+                    inf.start_bt = NULL;
+                    inf.end_bt = NULL;
+                    inf.r_label = NULL;
+                    inf.box = NULL;
+                    mode_rows->_dist_row_list.push_back(inf);
+                }
+
+                mode_rows->_edge_row_list.clear();
+                for (int i = 0; i < edge_rows.size(); i++) {
+                    QJsonObject row_obj = edge_rows[i].toObject();
+                    cursor_row_info inf;
+                    inf.cursor1 = row_obj["cursor1"].toInt();
+                    inf.cursor2 = row_obj["cursor2"].toInt();
+                    inf.channelIndex = row_obj["channelIndex"].toInt();
+                    inf.del_bt = NULL;
+                    inf.start_bt = NULL;
+                    inf.end_bt = NULL;
+                    inf.r_label = NULL;
+                    inf.box = NULL;
+                    mode_rows->_edge_row_list.push_back(inf);
+                }
+
+                build_dist_pannel();
+                build_edge_pannel();
+            }
+        }
+    }
 }
 
 void MeasureDock::unbind_context()
 {
+    if (_context && _context->document() && _session && _session->get_device() && _session->get_device()->have_instance()) {
+        _context->document()->_dock_measure_fen_enabled = _fen_checkBox->isChecked();
+
+        QJsonArray dist_rows;
+        QJsonArray edge_rows;
+        auto mode_rows = get_mode_rows();
+
+        if (mode_rows) {
+            for (auto &inf : mode_rows->_dist_row_list) {
+                QJsonObject row_obj;
+                row_obj["cursor1"] = inf.cursor1;
+                row_obj["cursor2"] = inf.cursor2;
+                dist_rows.append(row_obj);
+            }
+
+            for (auto &inf : mode_rows->_edge_row_list) {
+                QJsonObject row_obj;
+                row_obj["cursor1"] = inf.cursor1;
+                row_obj["cursor2"] = inf.cursor2;
+                row_obj["channelIndex"] = inf.channelIndex;
+                edge_rows.append(row_obj);
+            }
+        }
+
+        _context->document()->_dock_measure_dist_rows = dist_rows;
+        _context->document()->_dock_measure_edge_rows = edge_rows;
+    }
     set_view(nullptr);
+    _context = nullptr;
 }
 
 void MeasureDock::retranslateUi()
@@ -757,7 +833,7 @@ void MeasureDock::update_edge()
             uint64_t rising_edges;
             uint64_t falling_edges;
 
-            for(auto s : _session->get_signals()) {
+            for(auto s : _view->get_own_signals()) {
                 if (s->signal_type() == SR_CHANNEL_LOGIC
                         && s->enabled()
                         && s->get_index() == inf.box->currentText().toInt())
@@ -840,7 +916,7 @@ void MeasureDock::update_probe_selector(QComboBox *selector)
 {
     selector->clear(); 
 
-    for(auto s : _session->get_signals()) {
+    for(auto s : _view->get_own_signals()) {
         if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled()){
             selector->addItem(QString::number(s->get_index()));
         }

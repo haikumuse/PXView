@@ -24,6 +24,8 @@
 
 #include <QTabBar>
 #include <QPoint>
+#include <QLabel>
+#include <QPixmap>
 
 namespace pv {
 namespace ui {
@@ -34,6 +36,7 @@ class DraggableTabBar : public QTabBar
 
 public:
     explicit DraggableTabBar(QWidget *parent = nullptr);
+    ~DraggableTabBar();
 
 signals:
     void detachTab(int index, const QPoint &dropPos);
@@ -50,10 +53,18 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 private:
+    void create_drag_preview(int index);
+    void update_drag_preview_pos(const QPoint &global_pos);
+    void destroy_drag_preview();
+
     bool _drag_started;
     int _drag_index;
     QPoint _drag_start_pos;
     static const int _drag_threshold = 20;
+
+    QLabel *_drag_preview;
+    bool _drag_outside;
+    QPoint _drag_offset;
 };
 
 } // namespace ui

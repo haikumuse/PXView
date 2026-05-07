@@ -40,6 +40,7 @@
 #include "../view/view.h"
 #include "../ui/fn.h"
 #include "../tabcontext.h"
+#include "../data/sessiondocument.h"
 
 #include <QWidgetAction>
 #include <QSpacerItem>
@@ -77,6 +78,7 @@ namespace pv
             _updating_sample_count = false;
             _is_run_as_instant = false;
             _is_readonly = false;
+            _context = nullptr;
 
             _last_device_handle = NULL_HANDLE;
             _last_device_index = -1;
@@ -174,12 +176,32 @@ namespace pv
         void SamplingBar::bind_context(TabContext *ctx)
         {
             assert(ctx);
-            set_context(ctx->session(), ctx->view());
+            _context = ctx;
+            _session = ctx->session();
+            _view = ctx->view();
+            _device_agent = _session->get_device();
             set_readonly(!ctx->is_live());
+            if (_device_agent && _device_agent->have_instance()) {
+                update_device_list();
+                auto doc = ctx->document();
+                if (doc && doc->_dock_sample_rate > 0) {
+                    _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, doc->_dock_sample_rate);
+                    _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, doc->_dock_sample_limit);
+                    _session->set_collect_mode((DEVICE_COLLECT_MODE)doc->_dock_collect_mode);
+                }
+                update_sample_rate_selector();
+            }
         }
 
         void SamplingBar::unbind_context()
         {
+            if (_context && _context->document() && _device_agent && _session && _device_agent->have_instance()) {
+                auto doc = _context->document();
+                doc->_dock_sample_rate = _device_agent->get_sample_rate();
+                doc->_dock_sample_limit = _device_agent->get_sample_limit();
+                doc->_dock_collect_mode = (int)_session->get_collect_mode();
+            }
+            _context = nullptr;
             set_readonly(false);
         }
 

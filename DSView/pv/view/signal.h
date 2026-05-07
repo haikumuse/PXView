@@ -67,6 +67,7 @@ public:
     virtual Signal* clone() const = 0;
 
     bool enabled();
+    void set_enabled(bool en);
 
     /**
      * Sets the name of the signal.
@@ -79,7 +80,8 @@ public:
 
 protected: 
     sr_channel *const _probe;
-    SigSession      *session;    
+    SigSession      *session;
+    bool _local_enabled = true;
 };
 
 } // namespace view

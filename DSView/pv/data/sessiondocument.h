@@ -14,6 +14,10 @@
 
 #include <stdint.h>
 #include <vector>
+#include <map>
+#include <QString>
+#include <QJsonObject>
+#include <QJsonArray>
 #include "datasource.h"
 #include "logicsnapshot.h"
 #include "analogsnapshot.h"
@@ -84,6 +88,17 @@ public:
     double cur_sampletime() override;
     double cur_snap_sampletime() override;
     data::Snapshot* get_snapshot(int type) override;
+
+    uint64_t _dock_sample_rate;
+    uint64_t _dock_sample_limit;
+    int _dock_collect_mode;
+    std::map<uint16_t, QString> _dock_search_pattern;
+    bool _dock_measure_fen_enabled;
+    QJsonArray _dock_measure_dist_rows;
+    QJsonArray _dock_measure_edge_rows;
+    QJsonObject _dock_trigger_session;
+    QJsonObject _dock_dso_trigger_session;
+    QJsonObject _dock_device_options_session;
 
 private:
     LogicSnapshot   _logic;

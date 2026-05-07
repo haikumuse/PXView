@@ -185,6 +185,7 @@ namespace pv
             bool                _is_run_as_instant;
             bool                _is_readonly;
             view::View          *_view;
+            TabContext          *_context;
 
             bool                _updating_sample_rate;
             bool                _updating_sample_count;

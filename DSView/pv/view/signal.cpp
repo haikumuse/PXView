@@ -40,14 +40,20 @@ Signal::Signal(sr_channel *probe) :
 
 Signal::Signal(const Signal &s, sr_channel *probe) :
     Trace((const Trace &)s), 
-    _probe(probe)
+    _probe(probe),
+    _local_enabled(s._local_enabled)
 {   
     session = AppControl::Instance()->GetSession();
 }
 
 bool Signal::enabled()
 {
-    return _probe->enabled;
+    return _local_enabled;
+}
+
+void Signal::set_enabled(bool en)
+{
+    _local_enabled = en;
 }
 
 void Signal::set_name(QString name)

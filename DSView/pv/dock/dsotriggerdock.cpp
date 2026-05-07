@@ -38,6 +38,8 @@
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
 #include "keywordlineedit.h"
+#include "../tabcontext.h"
+#include "../data/sessiondocument.h"
 
 using namespace boost;
 using namespace std;
@@ -47,7 +49,8 @@ namespace dock {
 
 DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session) :
     QScrollArea(parent),
-    _session(session)
+    _session(session),
+    _context(nullptr)
 {
     this->setWidgetResizable(true);
     _widget = new QWidget(this);
@@ -500,6 +503,79 @@ void DsoTriggerDock::UpdateFont()
     ui::set_form_font(this, font);
     font.setPointSizeF(font.pointSizeF() + 1);
     this->parentWidget()->setFont(font);
+}
+
+QJsonObject DsoTriggerDock::get_session()
+{
+    QJsonObject obj;
+    obj["triggerPos"] = _position_slider->value();
+    obj["triggerSource"] = _source_group->checkedId();
+    obj["triggerSlope"] = _type_group->checkedId();
+    obj["holdoffValue"] = _holdoff_spinBox->value();
+    obj["holdoffUnit"] = _holdoff_comboBox->currentIndex();
+    obj["margin"] = _margin_slider->value();
+
+    if (_channel_comboBox->count() > 0) {
+        obj["channelIndex"] = _channel_comboBox->currentIndex();
+    }
+
+    return obj;
+}
+
+void DsoTriggerDock::set_session(QJsonObject &obj)
+{
+    if (obj.contains("triggerPos")) {
+        _position_slider->setValue(obj["triggerPos"].toInt());
+    }
+    if (obj.contains("triggerSource")) {
+        int src = obj["triggerSource"].toInt();
+        auto btn = _source_group->button(src);
+        if (btn) btn->setChecked(true);
+        _session->get_device()->set_config_byte(SR_CONF_TRIGGER_SOURCE, src);
+    }
+    if (obj.contains("triggerSlope")) {
+        int slope = obj["triggerSlope"].toInt();
+        auto btn = _type_group->button(slope);
+        if (btn) btn->setChecked(true);
+        _session->get_device()->set_config_byte(SR_CONF_TRIGGER_SLOPE, slope);
+    }
+    if (obj.contains("holdoffUnit")) {
+        _holdoff_comboBox->setCurrentIndex(obj["holdoffUnit"].toInt());
+    }
+    if (obj.contains("holdoffValue")) {
+        _holdoff_spinBox->setValue(obj["holdoffValue"].toInt());
+        _holdoff_slider->setValue(obj["holdoffValue"].toInt());
+    }
+    if (obj.contains("margin")) {
+        _margin_slider->setValue(obj["margin"].toInt());
+    }
+    if (obj.contains("channelIndex")) {
+        int ch_idx = obj["channelIndex"].toInt();
+        if (ch_idx < _channel_comboBox->count()) {
+            _channel_comboBox->setCurrentIndex(ch_idx);
+        }
+    }
+}
+
+void DsoTriggerDock::bind_context(TabContext *ctx)
+{
+    assert(ctx);
+    _context = ctx;
+    _session = ctx->session();
+    if (ctx && ctx->document()) {
+        auto &saved = ctx->document()->_dock_dso_trigger_session;
+        if (!saved.isEmpty()) {
+            set_session(saved);
+        }
+    }
+}
+
+void DsoTriggerDock::unbind_context()
+{
+    if (_context && _context->document()) {
+        _context->document()->_dock_dso_trigger_session = get_session();
+    }
+    _context = nullptr;
 }
 
 } // namespace dock
