@@ -345,6 +345,11 @@ public:
     int get_cursor_index_by_key(uint64_t key);
 
     void check_calibration();
+    void rebuild_signals();
+
+    inline std::vector<Signal*>& get_own_signals() {
+        return _own_signals;
+    }
 
     void update_view_port();
 

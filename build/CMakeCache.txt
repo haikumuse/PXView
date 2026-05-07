@@ -375,6 +375,9 @@ QT_ADDITIONAL_PACKAGES_PREFIX_PATH:STRING=
 //Force the use of Qt6 by setting this option to 6
 QT_VERSION_FORCE:STRING=
 
+//The directory containing a CMake configuration file for Qt5Concurrent.
+Qt5Concurrent_DIR:PATH=D:/anaconda3/Library/lib/cmake/Qt5Concurrent
+
 //The directory containing a CMake configuration file for Qt5Core.
 Qt5Core_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt5Core
 

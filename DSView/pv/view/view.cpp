@@ -230,20 +230,7 @@ View::~View()
 void View::set_data_source(pv::data::DataSource *source)
 {
     _data_source = source;
-
-    if (_data_source) {
-        auto &shared_sigs = _data_source->get_signals();
-        if (!shared_sigs.empty()) {
-            for (auto sig : _own_signals)
-                delete sig;
-            _own_signals.clear();
-            for (auto sig : shared_sigs) {
-                auto cloned = sig->clone();
-                cloned->set_view_index(sig->get_view_index());
-                _own_signals.push_back(cloned);
-            }
-        }
-    }
+    rebuild_signals();
 
     if (_time_viewport) {
         _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
@@ -971,23 +958,6 @@ void View::mode_changed()
 
 void View::signals_changed(const Trace* eventTrace)
 {
-    if (_data_source) {
-        auto &shared_sigs = _data_source->get_signals();
-        if (!shared_sigs.empty()) {
-            for (auto sig : _own_signals)
-                delete sig;
-            _own_signals.clear();
-            for (auto sig : shared_sigs) {
-                auto cloned = sig->clone();
-                cloned->set_view_index(sig->get_view_index());
-                _own_signals.push_back(cloned);
-            }
-            if (_document && _document->has_data()) {
-                set_data_document(_document);
-            }
-        }
-    }
-
     double actualMargin = SignalMargin;
     int total_rows = 0;
     int label_size = 0;
@@ -1009,7 +979,7 @@ void View::signals_changed(const Trace* eventTrace)
             time_traces.push_back(t);
         }
         else if (_trace_view_map[t->get_type()] == FFT_VIEW){
-            if (t->enabled())
+            if (t->visible())
                 fft_traces.push_back(t);
         }
 
@@ -1053,7 +1023,7 @@ void View::signals_changed(const Trace* eventTrace)
 
     if (!time_traces.empty() && _time_viewport) {
         for(auto t : time_traces) {
-            if (dynamic_cast<DsoSignal*>(t) || t->enabled())
+            if (dynamic_cast<DsoSignal*>(t) || t->visible())
                 total_rows += t->rows_size();
             if (t->rows_size() != 0)
                 label_size++;
@@ -1805,6 +1775,38 @@ int View::get_cursor_index_by_key(uint64_t key)
         ++dex;
     }
     return -1;
+}
+
+void View::rebuild_signals()
+{
+    if (!_data_source)
+        return;
+
+    auto &shared_sigs = _data_source->get_signals();
+    if (shared_sigs.empty())
+        return;
+
+    for (auto sig : _own_signals)
+        delete sig;
+    _own_signals.clear();
+
+    for (auto sig : shared_sigs) {
+        auto cloned = sig->clone();
+        cloned->set_view_index(sig->get_view_index());
+        _own_signals.push_back(cloned);
+    }
+
+    for (auto sig : _own_signals) {
+        auto s = dynamic_cast<Signal*>(sig);
+        if (s) {
+            s->set_enabled(s->probe()->enabled);
+            sig->set_visible(s->probe()->enabled);
+        }
+    }
+
+    if (_document && _document->has_data()) {
+        set_data_document(_document);
+    }
 }
 
 void View::check_calibration()

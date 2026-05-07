@@ -184,7 +184,10 @@ DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data, sr_channel *prob
 
 DsoSignal* DsoSignal::clone() const
 {
-    return new DsoSignal(const_cast<DsoSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+    DsoSignal* cloned = new DsoSignal(const_cast<DsoSignal*>(this), nullptr, const_cast<sr_channel*>(_probe));
+    cloned->_local_enabled = _local_enabled;
+    cloned->_visible = _visible;
+    return cloned;
 }
 
 DsoSignal::~DsoSignal()

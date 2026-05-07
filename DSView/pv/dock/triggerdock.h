@@ -43,6 +43,7 @@
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
 #include "keywordlineedit.h"
+#include "../interface/icontextaware.h"
 
 namespace pv {
 
@@ -50,7 +51,7 @@ class SigSession;
 
 namespace dock {
 
-class TriggerDock : public QScrollArea, public IUiWindow
+class TriggerDock : public QScrollArea, public IUiWindow, public IContextAware
 {
     Q_OBJECT
 
@@ -69,6 +70,9 @@ public:
     void device_updated();
 
     void try_commit_trigger();
+
+    void bind_context(TabContext *ctx) override;
+    void unbind_context() override;
 
 private:
     void retranslateUi();
@@ -151,6 +155,7 @@ private:
     QLabel *_serial_note_label;
     QLabel *_data_bits_label;
     bool    _is_serial_val_setting;
+    TabContext *_context;
 
     QVector <QLabel *>  _inv_exp_label_list;
     QVector <QLabel *>  _count_exp_label_list;

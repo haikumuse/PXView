@@ -347,10 +347,10 @@ void Header::mouseReleaseEvent(QMouseEvent *event)
         
         if (groups.size() <= 1) {
             std::vector<Trace*> traces;
-            for (auto s : _view.session().get_decode_signals()){
+            for (auto s : _view.effective_data_source()->get_decode_signals()){
                 traces.push_back(s);
             }
-            for (auto s : _view.session().get_signals()){
+            for (auto s : _view.get_own_signals()){
                 traces.push_back(s);
             }
             sort(traces.begin(), traces.end(), View::compare_trace_y);

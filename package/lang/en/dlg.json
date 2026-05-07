@@ -714,5 +714,37 @@
     {
         "id": "IDS_DLG_ABORT",
         "text": "Abort"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_LABEL_X",
+        "text": "X: Don't care"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_LABEL_0",
+        "text": "0: Low level"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_LABEL_1",
+        "text": "1: High level"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_LABEL_R",
+        "text": "R: Rising edge"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_LABEL_F",
+        "text": "F: Falling edge"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_LABEL_C",
+        "text": "C: Rising/Falling edge"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_START",
+        "text": "Start"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_LENGTH",
+        "text": "Length"
     }
 ]

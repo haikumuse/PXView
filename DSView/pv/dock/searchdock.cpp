@@ -35,27 +35,113 @@
 #include "../appcontrol.h"
 #include "../ui/fn.h"
 #include "../tabcontext.h"
+#include "../data/sessiondocument.h"
 #include <QCoreApplication>
+#include <QtConcurrent/QtConcurrent>
+#include <QElapsedTimer>
 
 namespace pv {
 namespace dock {
 
 using namespace pv::view;
 
-static const int kBatchSize = 200;
+static const int kMaxResults = 100000;
+
+// ============================================================================
+// SearchResultModel 实现
+// ============================================================================
+
+SearchResultModel::SearchResultModel(std::vector<SearchData>& results, QMutex& mutex, QObject *parent)
+    : QAbstractTableModel(parent), _results(results), _mutex(mutex), _current_count(0)
+{
+}
+
+int SearchResultModel::rowCount(const QModelIndex &/*parent*/) const
+{
+    return _current_count;
+}
+
+int SearchResultModel::columnCount(const QModelIndex &/*parent*/) const
+{
+    return 3;
+}
+
+QVariant SearchResultModel::data(const QModelIndex &index, int role) const
+{
+    if (!index.isValid() || role != Qt::DisplayRole)
+        return QVariant();
+
+    int row = index.row();
+    int col = index.column();
+
+    QMutexLocker locker(&_mutex);
+    if (row >= (int)_results.size())
+        return QVariant();
+
+    const SearchData &sd = _results[row];
+
+    if (col == 0) return QString::number(row + 1);
+    if (col == 1) return QString::number(sd.start);
+    if (col == 2) return QString::number(sd.end - sd.start + 1);
+
+    return QVariant();
+}
+
+QVariant SearchResultModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
+        return QVariant();
+
+    if (section == 0) return "#";
+    if (section == 1) return QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"));
+    if (section == 2) return QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length"));
+
+    return QVariant();
+}
+
+void SearchResultModel::updateRowCount(int newCount)
+{
+    if (newCount > _current_count) {
+        beginInsertRows(QModelIndex(), _current_count, newCount - 1);
+        _current_count = newCount;
+        endInsertRows();
+    } else if (newCount == 0 && _current_count > 0) {
+        beginResetModel();
+        _current_count = 0;
+        endResetModel();
+    } else if (newCount < _current_count) {
+        beginRemoveRows(QModelIndex(), newCount, _current_count - 1);
+        _current_count = newCount;
+        endRemoveRows();
+    }
+}
+
+void SearchResultModel::clear()
+{
+    if (_current_count > 0) {
+        beginResetModel();
+        _current_count = 0;
+        endResetModel();
+    }
+}
+
+// ============================================================================
+// SearchDock 实现
+// ============================================================================
 
 SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     QWidget(parent),
     _session(session),
     _view(view),
+    _context(nullptr),
     _pattern_input(nullptr),
-    _result_table(nullptr),
+    _result_view(nullptr),
+    _result_model(nullptr),
     _legend_col1(nullptr),
     _legend_col2(nullptr),
     _legend_col3(nullptr),
     _logic_channel_count(0),
-    _table_fill_index(0),
-    _table_fill_timer(nullptr)
+    _search_state(0)
 {
     _pattern_input = new widgets::SearchPatternInput(this);
     connect(_pattern_input, SIGNAL(pattern_changed()), this, SLOT(on_pattern_changed()));
@@ -65,33 +151,40 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     input_layout->addWidget(_pattern_input);
     input_layout->addStretch(1);
 
-    _result_table = new QTableWidget(this);
-    _result_table->setColumnCount(3);
-    _result_table->setHorizontalHeaderLabels(
-        QStringList() << "#"
-                      << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
-                      << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length")));
-    _result_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    _result_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    _result_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
-    _result_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    _result_table->setSelectionMode(QAbstractItemView::SingleSelection);
-    _result_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    _result_table->verticalHeader()->setVisible(false);
-    _result_table->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-    _result_table->setShowGrid(true);
-    _result_table->setGridStyle(Qt::SolidLine);
-    _result_table->setFrameShape(QFrame::NoFrame);
-    _result_table->setMinimumWidth(0);
-    _result_table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    _result_table->horizontalHeader()->setVisible(true);
-    _result_table->setStyleSheet(
-        "QTableWidget { border: none; gridline-color: #d0d0d0; }"
-        "QTableWidget::item { padding: 2px; }"
+    // 创建 Model 和 View
+    _result_model = new SearchResultModel(_search_results, _results_mutex, this);
+    
+    _result_view = new QTableView(this);
+    _result_view->setModel(_result_model);
+    
+    // 设置表格样式和行为
+    // 使用 Interactive 代替 ResizeToContents，避免大数据量时列宽计算卡顿
+    _result_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
+    _result_view->setColumnWidth(0, 60); // 序号列固定宽度
+    _result_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    _result_view->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    _result_view->setSelectionBehavior(QAbstractItemView::SelectRows);
+    _result_view->setSelectionMode(QAbstractItemView::SingleSelection);
+    _result_view->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    _result_view->verticalHeader()->setVisible(false);
+    // 强制固定行高，避免行高计算开销
+    _result_view->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    _result_view->verticalHeader()->setDefaultSectionSize(24);
+    _result_view->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    _result_view->setShowGrid(true);
+    _result_view->setGridStyle(Qt::SolidLine);
+    _result_view->setFrameShape(QFrame::NoFrame);
+    _result_view->setMinimumWidth(0);
+    _result_view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    _result_view->horizontalHeader()->setVisible(true);
+    _result_view->setStyleSheet(
+        "QTableView { border: none; gridline-color: #d0d0d0; }"
+        "QTableView::item { padding: 2px; }"
         "QHeaderView::section { background: transparent; border: none; "
         "border-bottom: 1px solid #d0d0d0; font-weight: normal; padding: 2px; }");
-    connect(_result_table, SIGNAL(cellClicked(int, int)),
-            this, SLOT(on_result_clicked(int, int)));
+    
+    connect(_result_view, SIGNAL(clicked(const QModelIndex&)),
+            this, SLOT(on_result_clicked(const QModelIndex&)));
 
     _legend_col1 = new QLabel(this);
     _legend_col1->setWordWrap(true);
@@ -109,16 +202,17 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     QVBoxLayout *main_layout = new QVBoxLayout();
     main_layout->addLayout(input_layout);
     main_layout->addLayout(legend_layout);
-    main_layout->addWidget(_result_table, 1);
+    main_layout->addWidget(_result_view, 1);
 
     setLayout(main_layout);
 
     connect(_session->device_event_object(), SIGNAL(device_updated()),
             this, SLOT(on_device_updated()));
 
-    _table_fill_timer = new QTimer(this);
-    _table_fill_timer->setSingleShot(false);
-    connect(_table_fill_timer, SIGNAL(timeout()), this, SLOT(fill_table_batch()));
+    // 连接信号：搜索线程找到结果时立即刷新UI
+    connect(this, SIGNAL(search_result_found()), this, SLOT(refresh_ui_model()), Qt::QueuedConnection);
+
+    connect(&_search_watcher, SIGNAL(finished()), this, SLOT(on_search_finished()));
 
     retranslateUi();
     rebuild_pattern();
@@ -128,6 +222,7 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
 
 SearchDock::~SearchDock()
 {
+    stop_search();
     REMOVE_UI(this);
 }
 
@@ -139,17 +234,34 @@ void SearchDock::set_view(view::View *view)
 void SearchDock::bind_context(TabContext *ctx)
 {
     assert(ctx);
+    _context = ctx;
     _session = ctx->session();
     _view = ctx->view();
+    stop_search();
+    _results_mutex.lock();
     _search_results.clear();
-    _result_table->setRowCount(0);
+    _results_mutex.unlock();
+    _result_model->clear();
+    if (ctx && ctx->document()) {
+        auto &saved = ctx->document()->_dock_search_pattern;
+        if (!saved.empty()) {
+            _pattern = saved;
+        }
+    }
     rebuild_pattern();
 }
 
 void SearchDock::unbind_context()
 {
+    if (_context && _context->document()) {
+        _context->document()->_dock_search_pattern = _pattern;
+    }
+    _context = nullptr;
+    stop_search();
+    _results_mutex.lock();
     _search_results.clear();
-    _result_table->setRowCount(0);
+    _results_mutex.unlock();
+    _result_model->clear();
 }
 
 void SearchDock::rebuild_pattern()
@@ -182,8 +294,8 @@ void SearchDock::on_pattern_changed()
 {
     _pattern = _pattern_input->get_pattern();
     _view->set_search_pos(_view->get_search_pos(), false);
-    
-    // Use a single shot timer to debounce search and avoid lag
+
+    // Debounce search to avoid lag during rapid input
     QTimer::singleShot(150, this, SLOT(do_search()));
 }
 
@@ -232,62 +344,160 @@ int64_t SearchDock::find_match_end(data::LogicSnapshot *snapshot, int64_t start_
     return pos - 1;
 }
 
-void SearchDock::do_search()
+void SearchDock::stop_search()
+{
+    int expected = 1;
+    if (_search_state.compare_exchange_strong(expected, 3)) {
+        // State was running, set to stop requested
+    } else {
+        expected = 2;
+        if (_search_state.compare_exchange_strong(expected, 3)) {
+            // State was params changed, set to stop requested
+        }
+    }
+
+    _search_watcher.waitForFinished();
+
+    _results_mutex.lock();
+    _search_state.store(0);
+    _results_mutex.unlock();
+}
+
+void SearchDock::start_search_async()
+{
+    stop_search();
+
+    _results_mutex.lock();
+    _search_results.clear();
+    // 预分配内存，避免搜索过程中频繁重分配导致锁竞争
+    _search_results.reserve(kMaxResults);
+    _results_mutex.unlock();
+
+    // 清空 UI
+    _result_model->clear();
+
+    _search_state.store(1);
+    _search_future = QtConcurrent::run(this, &SearchDock::search_worker);
+    _search_watcher.setFuture(_search_future);
+}
+
+void SearchDock::search_worker()
 {
     const auto snapshot = _session->get_snapshot(SR_CHANNEL_LOGIC);
     if (!snapshot) return;
     const auto logic_snapshot = dynamic_cast<data::LogicSnapshot*>(snapshot);
     if (!logic_snapshot || logic_snapshot->empty()) {
-        _search_results.clear();
-        _result_table->setRowCount(0);
+        _search_state.store(0);
         return;
     }
 
-    _pattern = _pattern_input->get_pattern();
-    _search_results.clear();
+    std::map<uint16_t, QString> local_pattern;
+    {
+        _results_mutex.lock();
+        local_pattern = _pattern;
+        _results_mutex.unlock();
+    }
 
     const int64_t end = logic_snapshot->get_sample_count() - 1;
     int64_t pos = 0;
-    const int max_results = 100000;
 
-    while (pos <= end && (int)_search_results.size() < max_results) {
-        bool ret = logic_snapshot->pattern_search(0, end, pos, _pattern, true);
+    // 局部缓存：批量写入，大幅减少锁竞争
+    std::vector<SearchData> local_batch;
+    local_batch.reserve(1000);
+    
+    // 用于控制UI刷新频率，每500ms刷新一次
+    QElapsedTimer ui_timer;
+    ui_timer.start();
+    bool has_new_results = false;
+
+    while (pos <= end) {
+        int state = _search_state.load();
+        if (state == 3) {
+            // Stop requested
+            break;
+        }
+
+        bool ret = logic_snapshot->pattern_search(0, end, pos, local_pattern, true);
         if (!ret)
             break;
+
         int64_t match_end = find_match_end(logic_snapshot, pos);
-        _search_results.push_back(SearchData(pos, match_end));
-        pos = match_end + 1;
-        
-        // Yield every 1000 results to keep UI responsive if searching millions of samples
-        if (_search_results.size() % 1000 == 0) {
-            QCoreApplication::processEvents();
+
+        // 先存入局部缓存，不加锁！
+        local_batch.push_back(SearchData(pos, match_end));
+        has_new_results = true;
+
+        // 凑够 1000 条再批量写入全局数组
+        if (local_batch.size() >= 1000) {
+            _results_mutex.lock();
+            _search_results.insert(_search_results.end(), local_batch.begin(), local_batch.end());
+            _results_mutex.unlock();
+
+            local_batch.clear();
+
+            // 检查是否需要刷新UI（每500ms一次）
+            if (ui_timer.elapsed() >= 500) {
+                ui_timer.restart();
+                emit search_result_found();
+            }
+
+            if ((int)_search_results.size() >= kMaxResults)
+                break;
         }
+
+        pos = match_end + 1;
     }
 
-    _result_table->setRowCount(_search_results.size());
-    _table_fill_index = 0;
-    _table_fill_timer->start(0);
+    // 收尾：把剩余数据写入
+    if (!local_batch.empty()) {
+        _results_mutex.lock();
+        if ((int)_search_results.size() < kMaxResults) {
+            _search_results.insert(_search_results.end(), local_batch.begin(), local_batch.end());
+        }
+        _results_mutex.unlock();
+    }
+    
+    // 搜索结束，确保最后一次UI刷新
+    if (has_new_results) {
+        emit search_result_found();
+    }
+
+    _search_state.store(0);
 }
 
-void SearchDock::fill_table_batch()
+void SearchDock::do_search()
 {
-    int end = qMin(_table_fill_index + kBatchSize, (int)_search_results.size());
-    for (int i = _table_fill_index; i < end; i++) {
-        _result_table->setItem(i, 0, new QTableWidgetItem(QString::number(i + 1)));
-        _result_table->setItem(i, 1, new QTableWidgetItem(QString::number(_search_results[i].start)));
-        _result_table->setItem(i, 2, new QTableWidgetItem(QString::number(_search_results[i].end - _search_results[i].start + 1)));
-    }
-    _table_fill_index = end;
-    if (_table_fill_index >= (int)_search_results.size()) {
-        _table_fill_timer->stop();
-    }
+    start_search_async();
 }
 
-void SearchDock::on_result_clicked(int row, int col)
+void SearchDock::on_search_finished()
 {
-    (void)col;
+    // 确保最后一次数据更新到 UI
+    refresh_ui_model();
+}
+
+void SearchDock::refresh_ui_model()
+{
+    _results_mutex.lock();
+    int current_size = (int)_search_results.size();
+    _results_mutex.unlock();
+
+    _result_model->updateRowCount(current_size);
+}
+
+void SearchDock::on_result_clicked(const QModelIndex& index)
+{
+    if (!index.isValid()) return;
+    
+    int row = index.row();
+
+    _results_mutex.lock();
     if (row >= 0 && row < (int)_search_results.size()) {
-        _view->set_search_pos(_search_results[row].start, true);
+        int64_t start_pos = _search_results[row].start;
+        _results_mutex.unlock();
+        _view->set_search_pos(start_pos, true);
+    } else {
+        _results_mutex.unlock();
     }
 }
 
@@ -303,13 +513,8 @@ void SearchDock::retranslateUi()
         QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_1), "1: High level")) + "\n" +
         QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_C), "C: Rising/Falling edge")));
 
-    if (_result_table) {
-        QStringList headers;
-        headers << "#"
-                << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
-                << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length"));
-        _result_table->setHorizontalHeaderLabels(headers);
-    }
+    // 更新表头
+    _result_model->headerDataChanged(Qt::Horizontal, 0, 2);
 }
 
 void SearchDock::reStyle()

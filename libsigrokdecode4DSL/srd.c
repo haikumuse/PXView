@@ -18,8 +18,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef _POSIX_C_SOURCE
+#include <Python.h>
 #include "config.h"
-#include "libsigrokdecode-internal.h" /* First, so we avoid a _POSIX_C_SOURCE warning. */
+#include "libsigrokdecode-internal.h"
 #include "libsigrokdecode.h"
 #include <glib.h>
 #include "log.h"
@@ -28,6 +30,8 @@
 
 /* Python module search paths */
 SRD_PRIV GSList *searchpaths = NULL;
+
+static wchar_t *_srd_python_home = NULL;
 
 /* session.c */
 extern SRD_PRIV GSList *sessions;
@@ -205,7 +209,38 @@ SRD_API int srd_init(const char *path)
 	PyImport_AppendInittab("sigrokdecode", PyInit_sigrokdecode);
 
 	/* Initialize the Python interpreter. */
-    Py_InitializeEx(0); 
+	if (_srd_python_home) {
+		PyStatus status;
+		PyConfig config;
+		PyConfig_InitPythonConfig(&config);
+		PyConfig_SetString(&config, &config.home, _srd_python_home);
+
+		srd_dbg("Python home: %ls", _srd_python_home);
+
+		status = PyConfig_Read(&config);
+		if (PyStatus_Exception(status)) {
+			srd_err("PyConfig_Read failed: %s", status.err_msg ? status.err_msg : "unknown");
+			PyConfig_Clear(&config);
+			return SRD_ERR_PYTHON;
+		}
+
+		srd_dbg("PyConfig_Read calculated %d module search paths:", config.module_search_paths.length);
+		for (Py_ssize_t i = 0; i < config.module_search_paths.length; i++) {
+			srd_dbg("  path[%d]: %ls", (int)i, config.module_search_paths.items[i]);
+		}
+
+		status = Py_InitializeFromConfig(&config);
+		PyConfig_Clear(&config);
+		if (PyStatus_Exception(status)) {
+			srd_err("Py_InitializeFromConfig failed: %s (func: %s)",
+				status.err_msg ? status.err_msg : "unknown",
+				status.func ? status.func : "unknown");
+			return SRD_ERR_PYTHON;
+		}
+		srd_dbg("Py_InitializeFromConfig succeeded.");
+	} else {
+		Py_InitializeEx(0);
+	}
 
 #ifdef DECODERS_DIR
 	/* Hardcoded decoders install location, if defined. */
@@ -395,7 +430,12 @@ SRD_API GSList *srd_searchpaths_get(void)
 //set python home directory
 SRD_API void srd_set_python_home(const wchar_t *path)
 {
-	Py_SetPythonHome((wchar_t*)path);
+	if (_srd_python_home) {
+		g_free(_srd_python_home);
+	}
+	size_t len = wcslen(path) + 1;
+	_srd_python_home = (wchar_t *)g_malloc(len * sizeof(wchar_t));
+	memcpy(_srd_python_home, path, len * sizeof(wchar_t));
 }
 
 /** @} */

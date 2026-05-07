@@ -23,6 +23,7 @@
 #include "tabcontext.h"
 #include "sigsession.h"
 #include "view/view.h"
+#include "view/signal.h"
 #include "data/sessiondocument.h"
 
 namespace pv {
@@ -62,11 +63,17 @@ void TabContext::activate()
     _session->set_active_document(_document);
     _state = LIVE;
     if (_document && _document->has_data()) {
-        _view->set_data_source(_document);
         _view->set_data_document(_document);
+        auto &sigs = _view->get_own_signals();
+        for (auto sig : sigs) {
+            auto s = dynamic_cast<view::Signal*>(sig);
+            if (s && s->probe()) {
+                const_cast<sr_channel*>(s->probe())->enabled = s->enabled();
+            }
+        }
     } else {
         _view->set_data_source(_session);
-        _view->clear_signal_data();
+        _view->set_signal_data_from_source(_session);
     }
     _view->update_scale_offset();
     _view->signals_changed(nullptr);

@@ -45,7 +45,7 @@ XCursor::XCursor(View &view, int order, double value0, double value1) :
     _sig_index = -1;
     _colour = Qt::blue;
     
-    for(auto s : _view.session().get_signals()) {        
+    for(auto s : _view.get_own_signals()) {        
         if (s->signal_type() == SR_CHANNEL_DSO){
             DsoSignal *dsoSig = (DsoSignal*)s;
             if (dsoSig->enabled()) {

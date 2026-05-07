@@ -94,15 +94,25 @@ bool AppControl::Init()
 
     srd_log_set_context(dsv_log_context());
 
-#if defined(_WIN32) && defined(DEBUG_INFO)
-    //able run debug with qtcreator
-    QString pythonHome = "c:/python";
-    QDir pydir;
-    if (pydir.exists(pythonHome)){
+#if defined(_WIN32)
+    // Set Python home to application directory for embedded Python
+    QString pythonHome = QCoreApplication::applicationDirPath();
+    QDir pydir(pythonHome);
+    QStringList zipFiles = pydir.entryList(QStringList() << "python*.zip", QDir::Files);
+    if (!zipFiles.isEmpty()) {
         const wchar_t *pyhome = reinterpret_cast<const wchar_t*>(pythonHome.utf16());
         srd_set_python_home(pyhome);
+        dsv_info("Set Python home to: %s", pythonHome.toUtf8().data());
     }
-  
+#if defined(DEBUG_INFO)
+    //able run debug with qtcreator
+    QString pythonHomeDebug = "c:/python";
+    QDir pydirDebug;
+    if (pydirDebug.exists(pythonHomeDebug)){
+        const wchar_t *pyhome = reinterpret_cast<const wchar_t*>(pythonHomeDebug.utf16());
+        srd_set_python_home(pyhome);
+    }
+#endif
 #endif
     
     //the python script path of decoder

@@ -29,6 +29,7 @@
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QShowEvent>
+#include <QJsonObject>
 #include <vector>
 
 #include "../ui/uimanager.h"
@@ -37,12 +38,13 @@
 #include "../dialogs/deviceoptions.h"
 #include "../sigsession.h"
 #include "../deviceagent.h"
+#include "../interface/icontextaware.h"
 
 namespace pv {
 
 namespace dock {
 
-class DeviceOptionsDock : public QScrollArea, public IUiWindow, public IChannelCheck
+class DeviceOptionsDock : public QScrollArea, public IUiWindow, public IChannelCheck, public IContextAware
 {
     Q_OBJECT
 
@@ -52,6 +54,12 @@ public:
 
     void update_view();
     void device_updated();
+
+    void bind_context(TabContext *ctx) override;
+    void unbind_context() override;
+
+    QJsonObject get_session();
+    void set_session(QJsonObject &obj);
 
 signals:
     void settings_applied();
@@ -111,6 +119,7 @@ private:
     std::vector<struct sr_channel*> _dso_channel_list;
     std::vector<bool>   _lst_probe_enabled_status;
     SigSession *_session;
+    TabContext *_context;
 };
 
 } // namespace dock

@@ -110,7 +110,7 @@ void LissajousTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QC
 
     if (enabled()) {
 
-        if (_data->empty())
+        if (!_data || _data->empty())
             return;
 
         int channel_num = _data->get_channel_num();

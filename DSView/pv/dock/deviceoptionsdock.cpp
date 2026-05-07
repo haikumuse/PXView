@@ -47,6 +47,8 @@
 #include "../ui/msgbox.h"
 #include "../ui/fn.h"
 #include "../interface/icallbacks.h"
+#include "../tabcontext.h"
+#include "../data/sessiondocument.h"
 
 using namespace boost;
 using namespace std;
@@ -56,7 +58,8 @@ namespace dock {
 
 DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session) :
     QScrollArea(parent),
-    _session(session)
+    _session(session),
+    _context(nullptr)
 {
     _scroll_panel = NULL;
     _scroll = this;
@@ -978,6 +981,136 @@ void DeviceOptionsDock::hideEvent(QHideEvent *event)
 {
     QScrollArea::hideEvent(event);
     _mode_check_timer.stop();
+}
+
+void DeviceOptionsDock::bind_context(TabContext *ctx)
+{
+    _context = ctx;
+    if (_device_agent && _device_agent->have_instance()) {
+        auto &saved = ctx->document()->_dock_device_options_session;
+        if (!saved.isEmpty()) {
+            set_session(saved);
+        } else {
+            update_view();
+        }
+    } else {
+        update_view();
+    }
+}
+
+void DeviceOptionsDock::unbind_context()
+{
+    if (_context && _context->document() && _device_agent && _device_agent->have_instance()) {
+        _context->document()->_dock_device_options_session = get_session();
+    }
+    _context = nullptr;
+}
+
+QJsonObject DeviceOptionsDock::get_session()
+{
+    QJsonObject obj;
+
+    int mode = _device_agent->get_work_mode();
+    obj["work_mode"] = mode;
+
+    int opt_mode;
+    if (_device_agent->get_config_int16(SR_CONF_OPERATION_MODE, opt_mode))
+        obj["operation_mode"] = opt_mode;
+
+    if (mode == LOGIC) {
+        int ch_mode = 0;
+        _device_agent->get_config_int16(SR_CONF_CHANNEL_MODE, ch_mode);
+        obj["channel_mode"] = ch_mode;
+    }
+
+    QJsonArray ch_array;
+    int idx = 0;
+    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+        sr_channel *const probe = (sr_channel*)l->data;
+        QJsonObject ch_obj;
+        ch_obj["index"] = (int)probe->index;
+        ch_obj["enabled"] = probe->enabled;
+
+        if (idx < (int)_probes_checkBox_list.size()) {
+            ch_obj["ui_enabled"] = _probes_checkBox_list[idx]->isChecked();
+        }
+
+        if (mode == ANALOG || mode == DSO) {
+            uint64_t vdiv;
+            if (_device_agent->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe, NULL))
+                ch_obj["vdiv"] = (qint64)vdiv;
+
+            int coupling;
+            if (_device_agent->get_config_int16(SR_CONF_PROBE_COUPLING, coupling, probe, NULL))
+                ch_obj["coupling"] = coupling;
+
+            bool map_default = true;
+            _device_agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default, probe, NULL);
+            ch_obj["map_default"] = map_default;
+        }
+
+        ch_array.append(ch_obj);
+        idx++;
+    }
+    obj["channels"] = ch_array;
+
+    if (_device_agent->is_demo()) {
+        obj["demo_operation_mode"] = _device_agent->get_demo_operation_mode();
+    }
+
+    return obj;
+}
+
+void DeviceOptionsDock::set_session(QJsonObject &obj)
+{
+    if (obj.contains("operation_mode")) {
+        _device_agent->set_config_int16(SR_CONF_OPERATION_MODE, obj["operation_mode"].toInt());
+    }
+
+    if (obj.contains("channel_mode")) {
+        _device_agent->set_config_int16(SR_CONF_CHANNEL_MODE, obj["channel_mode"].toInt());
+    }
+
+    if (obj.contains("demo_operation_mode")) {
+        QString demo_mode = obj["demo_operation_mode"].toString();
+        _device_agent->set_config_string(SR_CONF_PATTERN_MODE, demo_mode.toLocal8Bit().data());
+    }
+
+    update_view();
+
+    int mode = _device_agent->get_work_mode();
+
+    if (obj.contains("channels")) {
+        QJsonArray ch_array = obj["channels"].toArray();
+        int idx = 0;
+        for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+            sr_channel *const probe = (sr_channel*)l->data;
+            if (idx < ch_array.size()) {
+                QJsonObject ch_obj = ch_array[idx].toObject();
+                probe->enabled = ch_obj["enabled"].toBool();
+                if (idx < (int)_probes_checkBox_list.size()) {
+                    _probes_checkBox_list[idx]->setChecked(probe->enabled);
+                }
+
+                if (mode == ANALOG || mode == DSO) {
+                    if (ch_obj.contains("vdiv")) {
+                        _device_agent->set_config_uint64(SR_CONF_PROBE_VDIV, (uint64_t)ch_obj["vdiv"].toVariant().toULongLong(), probe, NULL);
+                    }
+                    if (ch_obj.contains("coupling")) {
+                        _device_agent->set_config_int16(SR_CONF_PROBE_COUPLING, ch_obj["coupling"].toInt(), probe, NULL);
+                    }
+                    if (ch_obj.contains("map_default")) {
+                        _device_agent->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT, ch_obj["map_default"].toBool(), probe, NULL);
+                    }
+                }
+            }
+            idx++;
+        }
+    }
+
+    _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
+    if (_device_agent->is_demo())
+        _demo_operation_mode = _device_agent->get_demo_operation_mode();
 }
 
 } // namespace dock

@@ -25,6 +25,9 @@
 #include <QApplication>
 #include <QMenu>
 #include <QContextMenuEvent>
+#include <QPainter>
+#include <QPaintEvent>
+#include <QStyleOption>
 
 namespace pv {
 namespace ui {
@@ -32,8 +35,15 @@ namespace ui {
 DraggableTabBar::DraggableTabBar(QWidget *parent)
     : QTabBar(parent),
       _drag_started(false),
-      _drag_index(-1)
+      _drag_index(-1),
+      _drag_preview(nullptr),
+      _drag_outside(false)
 {
+}
+
+DraggableTabBar::~DraggableTabBar()
+{
+    destroy_drag_preview();
 }
 
 void DraggableTabBar::mousePressEvent(QMouseEvent *event)
@@ -42,6 +52,11 @@ void DraggableTabBar::mousePressEvent(QMouseEvent *event)
         _drag_index = tabAt(event->pos());
         _drag_start_pos = event->pos();
         _drag_started = false;
+
+        if (_drag_index >= 0) {
+            QRect tr = tabRect(_drag_index);
+            _drag_offset = event->pos() - tr.topLeft();
+        }
     }
     QTabBar::mousePressEvent(event);
 }
@@ -65,10 +80,15 @@ void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
             }
 
             if (!bar_rect.contains(event->pos())) {
-                emit detachTab(_drag_index, global_pos);
-                _drag_started = false;
-                _drag_index = -1;
+                if (!_drag_outside) {
+                    _drag_outside = true;
+                    create_drag_preview(_drag_index);
+                }
+                update_drag_preview_pos(global_pos);
                 return;
+            } else if (_drag_outside) {
+                _drag_outside = false;
+                destroy_drag_preview();
             }
         }
     }
@@ -77,8 +97,16 @@ void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
 
 void DraggableTabBar::mouseReleaseEvent(QMouseEvent *event)
 {
+    if (_drag_outside && _drag_index >= 0) {
+        QPoint global_pos = mapToGlobal(event->pos());
+        destroy_drag_preview();
+        emit detachTab(_drag_index, global_pos);
+    } else {
+        destroy_drag_preview();
+    }
     _drag_started = false;
     _drag_index = -1;
+    _drag_outside = false;
     QTabBar::mouseReleaseEvent(event);
 }
 
@@ -116,6 +144,57 @@ void DraggableTabBar::mouseDoubleClickEvent(QMouseEvent *event)
         emit tabRenameRequested(index);
     }
     QTabBar::mouseDoubleClickEvent(event);
+}
+
+void DraggableTabBar::create_drag_preview(int index)
+{
+    destroy_drag_preview();
+
+    if (index < 0 || index >= count())
+        return;
+
+    QRect tab_rect = this->tabRect(index);
+    QPixmap pixmap(tab_rect.size() * devicePixelRatioF());
+    pixmap.setDevicePixelRatio(devicePixelRatioF());
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    QStyleOptionTab opt;
+    opt.initFrom(this);
+    opt.rect = QRect(0, 0, tab_rect.width(), tab_rect.height());
+    opt.text = tabText(index);
+    opt.icon = tabIcon(index);
+    opt.state = QStyle::State_Selected | QStyle::State_Enabled | QStyle::State_Active;
+    opt.iconSize = iconSize();
+
+    style()->drawControl(QStyle::CE_TabBarTab, &opt, &painter, this);
+
+    _drag_preview = new QLabel(nullptr,
+        static_cast<Qt::WindowFlags>(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint));
+    _drag_preview->setAttribute(Qt::WA_ShowWithoutActivating);
+    _drag_preview->setAttribute(Qt::WA_TranslucentBackground);
+    _drag_preview->setWindowOpacity(0.8);
+    _drag_preview->setPixmap(pixmap);
+    _drag_preview->setFixedSize(pixmap.size() / devicePixelRatioF());
+    _drag_preview->show();
+}
+
+void DraggableTabBar::update_drag_preview_pos(const QPoint &global_pos)
+{
+    if (_drag_preview) {
+        _drag_preview->move(global_pos - _drag_offset);
+    }
+}
+
+void DraggableTabBar::destroy_drag_preview()
+{
+    if (_drag_preview) {
+        _drag_preview->close();
+        _drag_preview->deleteLater();
+        _drag_preview = nullptr;
+    }
 }
 
 } // namespace ui

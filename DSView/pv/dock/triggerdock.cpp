@@ -53,6 +53,8 @@
 #include "../data/decode/annotationrestable.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../tabcontext.h"
+#include "../data/sessiondocument.h"
 
 namespace pv {
 namespace dock {
@@ -61,9 +63,9 @@ const int TriggerDock::MinTrigPosition = 1;
 
 TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
     QScrollArea(parent),
-    _session(session)
+    _session(session),
+    _context(nullptr)
 {
-    
     _cur_ch_num = 16;
     if (_session->get_device()->have_instance()) {
         _session->get_device()->get_config_int16(SR_CONF_TOTAL_CH_NUM, _cur_ch_num);
@@ -1118,6 +1120,27 @@ void TriggerDock::UpdateFont()
     pageHeight += 250;
   
     _serial_groupBox->setFixedHeight(pageHeight);
+}
+
+void TriggerDock::bind_context(TabContext *ctx)
+{
+    assert(ctx);
+    _context = ctx;
+    _session = ctx->session();
+    if (ctx && ctx->document()) {
+        auto &saved = ctx->document()->_dock_trigger_session;
+        if (!saved.isEmpty()) {
+            set_session(saved);
+        }
+    }
+}
+
+void TriggerDock::unbind_context()
+{
+    if (_context && _context->document()) {
+        _context->document()->_dock_trigger_session = get_session();
+    }
+    _context = nullptr;
 }
 
 } // namespace dock
