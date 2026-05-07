@@ -137,6 +137,23 @@ enum srd_output_type {
 	SRD_OUTPUT_META,
 };
 
+enum srd_term_type {
+	SRD_TERM_HIGH,
+	SRD_TERM_LOW,
+	SRD_TERM_RISING_EDGE,
+	SRD_TERM_FALLING_EDGE,
+	SRD_TERM_EITHER_EDGE,
+	SRD_TERM_NO_EDGE,
+	SRD_TERM_SKIP,
+};
+
+struct srd_term {
+	int type;
+	int channel;
+	uint64_t num_samples_to_skip;
+	uint64_t num_samples_already_skipped;
+};
+
 enum srd_configkey {
 	SRD_CONF_SAMPLERATE = 10000,
 };
@@ -211,6 +228,9 @@ struct srd_decoder {
 
 	/** sigrokdecode.Decoder class. */
 	void *py_dec;
+
+	gboolean is_c_decoder;
+	struct srd_c_decoder *c_dec;
 };
 
 enum srd_initial_pin {
@@ -326,6 +346,78 @@ struct srd_decoder_inst {
 
 	/** the task normal ends flag */
 	int  is_task_stop_signal;
+
+	gboolean is_c_inst;
+	struct srd_c_decoder *c_dec_inst;
+	void *user_data;
+	char *error_message;
+};
+
+struct srd_c_decoder {
+    const char *id;
+    const char *name;
+    const char *longname;
+    const char *desc;
+    const char *license;
+
+    const struct srd_channel *channels;
+    int num_channels;
+    const struct srd_channel *optional_channels;
+    int num_optional_channels;
+    const struct srd_decoder_option *options;
+    int num_options;
+
+    int num_annotations;
+    const char *(*ann_labels)[2];
+    int num_annotation_rows;
+    const struct srd_decoder_annotation_row *annotation_rows;
+
+    void (*reset)(void *inst);
+    void (*start)(void *inst);
+    void (*decode)(void *inst);
+    void (*destroy)(void *inst);
+};
+
+struct srd_c_decoder_inst {
+    struct srd_c_decoder *c_dec;
+    struct srd_session *sess;
+    void *user_data;
+    char *inst_id;
+
+    GSList *pd_output;
+    int dec_num_channels;
+    int *dec_channelmap;
+    GSList *next_di;
+
+    GSList *condition_list;
+    uint64_t match_array;
+
+    uint64_t abs_start_samplenum;
+    uint64_t abs_end_samplenum;
+    const uint8_t **inbuf;
+    const uint8_t *inbuf_const;
+    uint64_t inbuflen;
+    uint64_t abs_cur_samplenum;
+    gboolean abs_cur_matched;
+
+    GArray *old_pins_array;
+
+    GThread *thread_handle;
+    gboolean got_new_samples;
+    gboolean handled_all_samples;
+    gboolean want_wait_terminate;
+    gboolean first_pos;
+    gboolean skip_zero;
+
+    int decoder_state;
+    char *error_message;
+    int is_task_stop_signal;
+
+    GCond got_new_samples_cond;
+    GCond handled_all_samples_cond;
+    GMutex data_mutex;
+
+    gboolean is_c_inst;
 };
 
 struct srd_pd_output {
@@ -435,6 +527,23 @@ SRD_API int srd_lib_version_current_get(void);
 SRD_API int srd_lib_version_revision_get(void);
 SRD_API int srd_lib_version_age_get(void);
 SRD_API const char *srd_lib_version_string_get(void);
+
+SRD_API int srd_c_decoder_register(struct srd_c_decoder *dec);
+SRD_API int srd_c_decoder_load_all(void);
+
+struct srd_c_annotation {
+    int ann_class;
+    char **ann_text;
+};
+
+SRD_API int c_decoder_put(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, struct srd_c_annotation *ann);
+SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
+    GSList *condition_list, uint64_t *samplenum, uint64_t *matched);
+SRD_API int c_decoder_has_channel(struct srd_decoder_inst *di, int ch);
+SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
+    int output_type, const char *proto_id);
 
 #include "version.h"
 

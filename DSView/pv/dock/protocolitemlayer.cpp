@@ -37,6 +37,7 @@ ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName, IPro
         m_bSetting = false;
         m_decoderStatus = NULL;
         _trace = NULL;
+        m_expanded = true;
 
         _protocol_label = new QLabel(parent);
         _progress_label = new QLabel(parent);

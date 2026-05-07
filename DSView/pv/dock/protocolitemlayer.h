@@ -75,9 +75,10 @@ private slots:
     void on_format_select_changed(int index);
 
 public:
-    DecoderStatus *m_decoderStatus; //DecoderStatus
+    DecoderStatus *m_decoderStatus;
     QString        m_protocolId;
     pv::view::Trace *_trace;
+    bool           m_expanded;
   
 private:
     QLabel *_protocol_label;

@@ -1,0 +1,27 @@
+- [x] SessionDocument 包含 SignalConfig 结构体，保存 work_mode、operation_mode、channel_mode、每通道配置
+- [x] SessionDocument 包含 _signal_config 和 _pending_device_config 字段
+- [x] SignalConfig 支持序列化/反序列化（toJSON/fromJSON）
+- [x] SessionDocument::save_signal_config() 能从 DeviceAgent 读取当前硬件配置并保存
+- [x] SessionDocument::apply_signal_config() 能将 SignalConfig 写入 DeviceAgent 恢复硬件
+- [x] SessionDocument::apply_pending_config() 能检查并应用待生效配置
+- [x] View::rebuild_signals_from_config() 能根据 SignalConfig 创建独立信号对象
+- [x] View::rebuild_signals() 优先从 Document._signal_config 重建，无 config 时回退到旧逻辑
+- [x] 新创建的信号对象数据指针指向 SessionDocument 的 Snapshot
+- [x] TabContext::activate() 非采集状态下恢复硬件配置
+- [x] TabContext::activate() 采集状态下将配置保存到 _pending_device_config
+- [x] TabContext::activate() 调用 rebuild_signals_from_config() 从 SignalConfig 重建信号
+- [x] TabContext::deactivate() 调用 save_signal_config() 保存当前硬件配置
+- [x] 采集停止后自动检查并应用 _pending_device_config
+- [x] DeviceOptionsDock::get_session() 从 UI 控件读取而非硬件实时值
+- [x] DeviceOptionsDock bind→set→unbind→get 往返一致性验证通过
+- [x] ProtocolDock::unbind_context() 保存搜索关键词和协议层展开状态
+- [x] ProtocolDock::bind_context() 恢复搜索关键词和展开状态
+- [x] MeasureDock edge_rows JSON 包含 channelIndex 字段
+- [x] MeasureDock bind_context 正确恢复 channelIndex
+- [x] remove_tab 删除标签后对新活跃标签执行完整 unbind + bind 流程
+- [x] on_frame_ended 后自动调用 save_signal_config()
+- [x] DeviceOptionsDock 配置变更时立即保存到 _signal_config
+- [ ] 同模式标签切换（LOGIC 8ch ↔ LOGIC 16ch）硬件配置正确恢复（需运行时验证）
+- [ ] 采集中切换标签不中断采集，pending 配置在停止后应用（需运行时验证）
+- [ ] 跨模式标签切换（LOGIC ↔ DSO）work_mode 正确切换（需运行时验证）
+- [ ] 非活跃标签信号列表不受全局 SigSession::_signals 变化影响（需运行时验证）

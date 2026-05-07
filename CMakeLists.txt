@@ -598,6 +598,8 @@ set(libsigrokdecode4DSL_SOURCES
     libsigrokdecode4DSL/session.c
     libsigrokdecode4DSL/util.c
     libsigrokdecode4DSL/version.c
+    libsigrokdecode4DSL/c_decoder_api.c
+    libsigrokdecode4DSL/c_decoders/spi_c.c
 )
 
 set(libsigrokdecode4DSL_HEADERS

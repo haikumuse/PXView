@@ -67,7 +67,8 @@ namespace dock {
    
 ProtocolDock::ProtocolDock(QWidget *parent, view::View *view, SigSession *session) :
     QScrollArea(parent),
-    _view(view)
+    _view(view),
+    _context(nullptr)
 {
     _session = session;
     _cur_search_index = -1;
@@ -247,16 +248,39 @@ void ProtocolDock::set_view(view::View *view)
 void ProtocolDock::bind_context(TabContext *ctx)
 {
     assert(ctx);
+    _context = ctx;
     _session = ctx->session();
     _view = ctx->view();
     _table_view->setModel(_session->get_decoder_model());
     _model_proxy.setSourceModel(_session->get_decoder_model());
     rebuild_protocol_layers();
     update_view_status();
+
+    if (ctx->document()) {
+        auto doc = ctx->document();
+        if (!doc->_dock_protocol_search_text.isEmpty()) {
+            _ann_search_edit->setText(doc->_dock_protocol_search_text);
+            search_done();
+        }
+        const QJsonArray &expanded_states = doc->_dock_protocol_expanded_states;
+        for (int i = 0; i < (int)_protocol_lay_items.size() && i < expanded_states.size(); i++) {
+            _protocol_lay_items[i]->m_expanded = expanded_states[i].toBool(true);
+        }
+    }
 }
 
 void ProtocolDock::unbind_context()
 {
+    if (_context && _context->document()) {
+        auto doc = _context->document();
+        doc->_dock_protocol_search_text = _ann_search_edit->text();
+        QJsonArray expanded_states;
+        for (auto layer : _protocol_lay_items) {
+            expanded_states.append(layer->m_expanded);
+        }
+        doc->_dock_protocol_expanded_states = expanded_states;
+    }
+    _context = nullptr;
 }
 
 void ProtocolDock::retranslateUi()

@@ -1,0 +1,12 @@
+- [x] SigSession解码任务调度从单线程串行改为多线程并行，`add_decode_task()`为每个任务创建独立线程
+- [x] `_decode_thread`替换为`_decode_threads`（vector），新增`_running_tasks`跟踪运行中的任务
+- [x] `remove_decode_task()`在多线程环境下正确停止指定解码器线程，不影响其他并行任务
+- [x] `clear_all_decode_task()`能停止所有并行解码线程并正确join
+- [x] 线程完成后自动从`_running_tasks`移除、join线程、触发`decode_end()`
+- [x] `RowData::push_annotation()`在多线程并发写入时线程安全
+- [x] `DecoderStack::annotation_callback()`在多线程并发调用时线程安全
+- [x] `LogicSnapshot::get_samples()`在多线程并发读取时线程安全
+- [x] Python GIL在多线程并行解码场景下无死锁
+- [ ] 单解码器解码功能与改动前一致
+- [ ] 多解码器并行解码功能正常，解码结果正确
+- [ ] 实时采集模式下并行解码功能正常

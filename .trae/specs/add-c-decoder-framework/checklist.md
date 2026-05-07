@@ -1,0 +1,23 @@
+- [x] `srd_c_decoder`结构体定义完整，包含id/name/channels/options/annotations元数据和reset/start/decode/destroy方法指针
+- [x] `srd_c_decoder_inst`结构体定义完整，复用GCond/GMutex线程同步原语和pd_output输出回调
+- [x] `srd_decoder`结构体新增`is_c_decoder`和`c_dec`字段
+- [x] `c_decoder_put()`实现SRD_OUTPUT_ANN输出，直接构造`srd_proto_data_annotation`并调用回调
+- [x] `c_decoder_put()`实现SRD_OUTPUT_PYTHON输出，可将C数据转换为Python对象传递给上层Python解码器
+- [x] `c_decoder_wait()`在纯C层完成条件匹配，使用GCond/GMutex同步，无需GIL
+- [x] `c_di_thread()`不获取Python GIL，直接调用C decode()函数
+- [x] `srd_inst_new()`根据`is_c_decoder`标志创建C或Python解码器实例
+- [x] `create_c_decoder_inst()`正确初始化C解码器实例（通道映射、线程同步、调用start()）
+- [x] `srd_session_send()`支持C解码器和Python解码器混合调度
+- [x] `srd_c_decoder_register()`将C解码器包装为`srd_decoder`添加到全局pd_list
+- [x] `srd_decoder_load_all()`同时加载Python解码器和C解码器
+- [x] C解码器与Python解码器可共存于同一个session
+- [x] C解码器SRD_OUTPUT_PYTHON输出可正确传递给堆叠的上层Python解码器
+- [x] Python解码器SRD_OUTPUT_PYTHON输出可正确传递给堆叠的上层C解码器
+- [x] C++前端`Decoder::create_decoder_inst()`适配C解码器
+- [x] C++前端`DecoderStack::execute_decode_stack()`适配C解码器实例
+- [x] SPI C解码器实现完整，支持CLK/MISO/MOSI/CS#通道和CPOL/CPHA等选项
+- [x] SPI C解码器输出注解格式与Python SPI解码器一致
+- [ ] SPI C解码器单独解码功能正确
+- [ ] C解码器与Python解码器共存时功能正常
+- [ ] C解码器在多线程并行解码下正确运行
+- [ ] C解码器删除/停止/清理正确

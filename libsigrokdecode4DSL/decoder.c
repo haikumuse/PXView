@@ -164,10 +164,12 @@ static void decoder_free(struct srd_decoder *dec)
 	if (!dec)
 		return;
 
-	gstate = PyGILState_Ensure();
-	Py_XDECREF(dec->py_dec);
-	Py_XDECREF(dec->py_mod);
-	PyGILState_Release(gstate);
+	if (!dec->is_c_decoder) {
+		gstate = PyGILState_Ensure();
+		Py_XDECREF(dec->py_dec);
+		Py_XDECREF(dec->py_mod);
+		PyGILState_Release(gstate);
+	}
 
 	g_slist_free_full(dec->options, &decoder_option_free);
 	g_slist_free_full(dec->binary, (GDestroyNotify)&g_strfreev);
@@ -952,6 +954,10 @@ SRD_API char *srd_decoder_doc_get(const struct srd_decoder *dec)
 	if (!dec)
 		return NULL;
 
+	if (dec->is_c_decoder) {
+		return g_strdup(dec->desc ? dec->desc : "");
+	}
+
 	gstate = PyGILState_Ensure();
 
 	if (!PyObject_HasAttrString(dec->py_mod, "__doc__"))
@@ -1139,9 +1145,11 @@ SRD_API int srd_decoder_load_all(void)
 	if (!srd_check_init())
 		return SRD_ERR;
 
-    for (l = searchpaths; l; l = l->next){
+    for (l = searchpaths; l; l->next){
 		srd_decoder_load_all_path(l->data);
     }
+
+	srd_c_decoder_load_all();
 
 	return SRD_OK;
 }
@@ -1165,6 +1173,69 @@ SRD_API int srd_decoder_unload_all(void)
 	g_slist_foreach(pd_list, srd_decoder_unload_cb, NULL);
 	g_slist_free(pd_list);
 	pd_list = NULL;
+
+	return SRD_OK;
+}
+
+SRD_API int srd_c_decoder_register(struct srd_c_decoder *dec)
+{
+	struct srd_decoder *d;
+	int i;
+
+	if (!dec || !dec->id)
+		return SRD_ERR_ARG;
+
+	d = g_malloc0(sizeof(struct srd_decoder));
+	if (!d)
+		return SRD_ERR_MALLOC;
+
+	d->id = g_strdup(dec->id);
+	d->name = g_strdup(dec->name ? dec->name : dec->id);
+	d->longname = g_strdup(dec->longname ? dec->longname : dec->name);
+	d->desc = g_strdup(dec->desc ? dec->desc : "");
+	d->license = g_strdup(dec->license ? dec->license : "gplv2+");
+	d->is_c_decoder = TRUE;
+	d->c_dec = dec;
+	d->py_mod = NULL;
+	d->py_dec = NULL;
+
+	d->channels = NULL;
+	if (dec->num_channels > 0 && dec->channels) {
+		for (i = 0; i < dec->num_channels; i++) {
+			struct srd_channel *ch = g_malloc(sizeof(struct srd_channel));
+			memcpy(ch, &dec->channels[i], sizeof(struct srd_channel));
+			d->channels = g_slist_append(d->channels, ch);
+		}
+	}
+
+	d->opt_channels = NULL;
+	if (dec->num_optional_channels > 0 && dec->optional_channels) {
+		for (i = 0; i < dec->num_optional_channels; i++) {
+			struct srd_channel *ch = g_malloc(sizeof(struct srd_channel));
+			memcpy(ch, &dec->optional_channels[i], sizeof(struct srd_channel));
+			d->opt_channels = g_slist_append(d->opt_channels, ch);
+		}
+	}
+
+	d->options = NULL;
+	d->annotations = NULL;
+	d->annotation_rows = NULL;
+	d->binary = NULL;
+	d->inputs = NULL;
+	d->outputs = NULL;
+	d->tags = NULL;
+
+	pd_list = g_slist_append(pd_list, d);
+	srd_dbg("Registered C decoder %s.", dec->id);
+
+	return SRD_OK;
+}
+
+SRD_API int srd_c_decoder_load_all(void)
+{
+	extern struct srd_c_decoder spi_c_decoder;
+
+	srd_c_decoder_register(&spi_c_decoder);
 
 	return SRD_OK;
 }
