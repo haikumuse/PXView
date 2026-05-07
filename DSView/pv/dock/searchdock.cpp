@@ -92,15 +92,17 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
             this, SLOT(on_result_clicked(int, int)));
 
     _legend_col1 = new QLabel(this);
+    _legend_col1->setWordWrap(true);
     _legend_col2 = new QLabel(this);
+    _legend_col2->setWordWrap(true);
     _legend_col3 = new QLabel(this);
+    _legend_col3->setWordWrap(true);
 
-    QHBoxLayout *legend_layout = new QHBoxLayout();
-    legend_layout->setSpacing(16);
+    QVBoxLayout *legend_layout = new QVBoxLayout();
+    legend_layout->setSpacing(4);
     legend_layout->addWidget(_legend_col1);
     legend_layout->addWidget(_legend_col2);
     legend_layout->addWidget(_legend_col3);
-    legend_layout->addStretch(1);
 
     QVBoxLayout *main_layout = new QVBoxLayout();
     main_layout->addLayout(input_layout);
