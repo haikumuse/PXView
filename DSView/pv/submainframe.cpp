@@ -11,6 +11,7 @@
 #include <QGuiApplication>
 #include <QWindow>
 #include <QTimer>
+#include <QApplication>
 
 #include "dsvdef.h"
 #include "config/appconfig.h"
@@ -134,6 +135,13 @@ SubMainFrame::SubMainFrame(QWidget *content, const QString &title, QWidget *pare
 
 SubMainFrame::~SubMainFrame()
 {
+#ifdef _WIN32
+    if (_parentNativeWidget != NULL) {
+        SetWindowLongPtr(_parentNativeWidget->Handle(), GWLP_USERDATA, 0);
+        delete _parentNativeWidget;
+        _parentNativeWidget = NULL;
+    }
+#endif
 }
 
 void SubMainFrame::showAt(const QPoint &pos, const QSize &size)
@@ -148,7 +156,6 @@ void SubMainFrame::showAt(const QPoint &pos, const QSize &size)
 
 #ifdef _WIN32
     if (_is_win32_parent_window){
-        QFrame::show();
         AttachNativeWindow();
     }
 #endif
@@ -174,24 +181,21 @@ void SubMainFrame::AttachNativeWindow()
         return;
     }
 
-    QFrame::show();
-
     nativeWindow->SetChildWidget(this);
     nativeWindow->SetNativeEventCallback(this);
     nativeWindow->SetTitleBarWidget(_titleBar);
     nativeWindow->SetBodyViewWidget(_contentWidget);
     _titleBar->EnableAbleDrag(false);
 
-    setWindowFlags(Qt::FramelessWindowHint);
+    (void)winId();
     SetWindowLong((HWND)winId(), GWL_STYLE, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+    SetWindowLong((HWND)winId(), GWL_EXSTYLE, 0);
     SetParent((HWND)winId(), nativeWindow->Handle());
 
     setVisible(true);
 
     nativeWindow->Show(true);
     nativeWindow->ResizeChild();
-
-    setVisible(true);
 
     nativeWindow->SetBorderColor(QColor(0x80, 0x80, 0x80));
     _parentNativeWidget = nativeWindow;
@@ -242,13 +246,23 @@ void SubMainFrame::OnParentNativeEvent(ParentNativeEvent msg)
     (void)msg;
 }
 
+void SubMainFrame::close()
+{
+#ifdef _WIN32
+    if (_parentNativeWidget != NULL){
+        _parentNativeWidget->SetClosing(true);
+        ::ShowWindow(_parentNativeWidget->Handle(), SW_HIDE);
+    }
+#endif
+    QFrame::close();
+}
+
 void SubMainFrame::closeEvent(QCloseEvent *event)
 {
 #ifdef _WIN32
     if (_parentNativeWidget != NULL){
+        SetParent((HWND)winId(), NULL);
         _parentNativeWidget->SetChildWidget(NULL);
-        setVisible(false);
-        _parentNativeWidget->Show(false);
     }
 #endif
 
@@ -257,6 +271,7 @@ void SubMainFrame::closeEvent(QCloseEvent *event)
         content->setParent(NULL);
         content->hide();
     }
+
     emit windowClosed(content, _title);
     event->accept();
 }

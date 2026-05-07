@@ -27,7 +27,6 @@
 #include <QFocusEvent>
 #include <QFontMetrics>
 #include <QApplication>
-#include <QInputMethodEvent>
 
 namespace pv {
 namespace widgets {
@@ -38,10 +37,11 @@ SearchPatternInput::SearchPatternInput(QWidget *parent) :
     _cursor_pos(0),
     _has_focus(false)
 {
-    setFocusPolicy(Qt::ClickFocus);
+    setFocusPolicy(Qt::StrongFocus);
     setCursor(Qt::IBeamCursor);
     setAttribute(Qt::WA_InputMethodEnabled, false);
     setAttribute(Qt::WA_KeyCompression, false);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 }
 
 void SearchPatternInput::set_channel_count(int count)
@@ -51,7 +51,9 @@ void SearchPatternInput::set_channel_count(int count)
     _chars.clear();
     for (int i = 0; i < count; i++)
         _chars.push_back('X');
-    setFixedSize(sizeHint());
+    setMaximumSize(sizeHint());
+    setMinimumSize(0, sizeHint().height());
+    updateGeometry();
     update();
 }
 
@@ -90,7 +92,10 @@ int SearchPatternInput::cellWidth() const
 {
     if (_channel_count <= 0)
         return kCellWidth;
-    return kCellWidth;
+    int available = width() - kPadding * 2;
+    if (available <= 0)
+        return kCellWidth;
+    return available / _channel_count;
 }
 
 int SearchPatternInput::charIndexAt(int x) const
@@ -107,14 +112,14 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, false);
 
-    QColor bgColor = palette().color(QPalette::Base);
-    QColor textColor = palette().color(QPalette::Text);
+    QColor bgColor(0x1a, 0x1a, 0x1a);
+    QColor textColor(Qt::white);
     QColor selBgColor(0x35, 0x87, 0xFE);
     QColor selTextColor(Qt::white);
-    QColor labelColor = palette().color(QPalette::WindowText);
+    QColor labelColor(0xaa, 0xaa, 0xaa);
 
     int cw = cellWidth();
-    int totalW = _channel_count * cw;
+    int totalW = width() - kPadding * 2;
     int cellTop = kPadding + kLabelHeight;
 
     QFont labelFont("Source Code Pro");
@@ -139,9 +144,6 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
     charFont.setFixedPitch(true);
     charFont.setPixelSize(12);
 
-    QFontMetrics charFm(charFont);
-    int letterSpacing = 7;
-
     for (int i = 0; i < _channel_count; i++) {
         int x = kPadding + i * cw;
 
@@ -159,9 +161,7 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
         else
             p.setPen(textColor);
 
-        int charX = x + (cw - charFm.boundingRect(ch).width() - letterSpacing) / 2 + letterSpacing / 2;
-        int charY = cellTop + (kCellHeight + charFm.ascent() - charFm.descent()) / 2 - 1;
-        p.drawText(charX, charY, QString(ch));
+        p.drawText(QRect(x, cellTop, cw, kCellHeight), Qt::AlignCenter, QString(ch));
     }
 }
 
@@ -215,7 +215,7 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
     case Qt::Key_C: ch = 'C'; break;
     case Qt::Key_X: ch = 'X'; break;
     default:
-        event->ignore();
+        QWidget::keyPressEvent(event);
         return;
     }
 

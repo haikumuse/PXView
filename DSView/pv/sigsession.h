@@ -456,7 +456,7 @@ public:
         return _view_data->get_dso()->data_is_out_off_range();
     }
 
-    void set_active_document(data::SessionDocument *doc) { _active_document = doc; }
+    void set_active_document(data::SessionDocument *doc);
     data::SessionDocument* get_active_document() { return _active_document; }
     void copy_data_to_document(data::SessionDocument *doc);
 

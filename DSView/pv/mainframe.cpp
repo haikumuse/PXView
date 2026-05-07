@@ -114,8 +114,12 @@ MainFrame::MainFrame()
   
    setMinimumWidth(MainWindow::Min_Width);
    setMinimumHeight(MainWindow::Min_Height);  
-  
-    // Set the window icon
+
+    setAutoFillBackground(true);
+    QPalette framePal = palette();
+    framePal.setColor(QPalette::Window, AppConfig::Instance().GetStyleColor());
+    setPalette(framePal);
+
     QIcon icon;
     icon.addFile(QString::fromUtf8(":/icons/logo.svg"), QSize(), QIcon::Normal, QIcon::Off);
     setWindowIcon(icon);
@@ -751,18 +755,16 @@ void MainFrame::AttachNativeWindow()
         dsv_info("ERROR: get point screen error.");
     }
 
-    //Show the qt window before bind parent, the icon can show at the task bar first time.
-    QFrame::show();
-
     nativeWindow->SetChildWidget(this);
     nativeWindow->SetNativeEventCallback(this);
     nativeWindow->SetBodyViewWidget(_mainWindow->GetBodyView());
     nativeWindow->UpdateChildDpi();
     nativeWindow->SetTitleBarWidget(_titleBar);
     _titleBar->EnableAbleDrag(false);
-  
-    setWindowFlags(Qt::FramelessWindowHint);
-    SetWindowLong((HWND)winId(), GWL_STYLE, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);    
+
+    (void)winId();
+    SetWindowLong((HWND)winId(), GWL_STYLE, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+    SetWindowLong((HWND)winId(), GWL_EXSTYLE, 0);
     SetParent((HWND)winId(), nativeWindow->Handle());
 
     setVisible(true);

@@ -57,7 +57,6 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     _table_fill_timer(nullptr)
 {
     _pattern_input = new widgets::SearchPatternInput(this);
-    _pattern_input->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     connect(_pattern_input, SIGNAL(pattern_changed()), this, SLOT(on_pattern_changed()));
 
     QHBoxLayout *input_layout = new QHBoxLayout();
@@ -71,8 +70,9 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
         QStringList() << "#"
                       << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"))
                       << QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length")));
-    _result_table->horizontalHeader()->setStretchLastSection(true);
-    _result_table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    _result_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    _result_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    _result_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
     _result_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     _result_table->setSelectionMode(QAbstractItemView::SingleSelection);
     _result_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -81,7 +81,8 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     _result_table->setShowGrid(true);
     _result_table->setGridStyle(Qt::DotLine);
     _result_table->setFrameShape(QFrame::NoFrame);
-    _result_table->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    _result_table->setMinimumWidth(0);
+    _result_table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     _result_table->setStyleSheet(
         "QTableWidget { border: none; gridline-color: #d0d0d0; }"
         "QTableWidget::item { padding: 2px; }"

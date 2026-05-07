@@ -94,6 +94,10 @@ public:
         _titleBarWidget = w;
     }
 
+    inline void SetClosing(bool closing){
+        _is_closing = closing;
+    }
+
     int GetDevicePixelRatio();
     bool IsVisible();
 
@@ -125,6 +129,7 @@ private:
     IParentNativeEventCallback *_event_callback;
    
     bool        _is_native_border;
+    bool        _is_closing;
     HMONITOR    _hCurrentMonitor;
     WinShadow   *_shadow;
     QColor      _border_color;

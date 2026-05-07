@@ -551,6 +551,10 @@ namespace pv
         }
 
         on_load_device_first();
+
+        if (!_tab_contexts.isEmpty()) {
+            _tab_contexts[0]->activate();
+        }
     }
 
     void MainWindow::on_load_device_first()
