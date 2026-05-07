@@ -62,6 +62,7 @@ WinNativeWidget::WinNativeWidget(const int x, const int y, const int width,
 {   
     _childWindow = nullptr;
     _childWidget = nullptr;
+    _bodyViewWidget = nullptr;
     _hWnd = NULL;
     _event_callback = NULL;
     _is_lose_foreground = false;
@@ -127,7 +128,7 @@ WinNativeWidget::~WinNativeWidget()
     }  
 }
 
-void WinNativeWidget::SetChildWidget(MainFrame *w)
+void WinNativeWidget::SetChildWidget(QWidget *w)
 { 
     _childWidget = w;
     _childWindow = NULL;
@@ -137,8 +138,13 @@ void WinNativeWidget::SetChildWidget(MainFrame *w)
     }
     else if (_shadow != NULL){
         _shadow->hideShadow();
-        _shadow->close(); //Set null, the applictoin will exit.
+        _shadow->close();
     }
+}
+
+void WinNativeWidget::SetBodyViewWidget(QWidget *w)
+{
+    _bodyViewWidget = w;
 }
 
 void WinNativeWidget::ReShowWindow()
@@ -177,15 +183,18 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
         }
         case WM_KEYDOWN:
         { 
-            //enable the hot key.
             QKeyEvent keyEvent(QEvent::KeyPress, (int)wParam, 0);
-            QApplication::sendEvent(self->_childWidget->GetBodyView(), &keyEvent);
+            QWidget *target = self->_bodyViewWidget ? self->_bodyViewWidget : self->_childWidget;
+            if (target)
+                QApplication::sendEvent(target, &keyEvent);
             break;
         }
         case WM_KEYUP:
         {   
             QKeyEvent keyEvent(QEvent::KeyRelease, (int)wParam, 0);
-            QApplication::sendEvent(self->_childWidget->GetBodyView(), &keyEvent);
+            QWidget *target = self->_bodyViewWidget ? self->_bodyViewWidget : self->_childWidget;
+            if (target)
+                QApplication::sendEvent(target, &keyEvent);
             break;
         }
         case WM_ENTERSIZEMOVE:

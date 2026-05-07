@@ -26,11 +26,12 @@
 #include <set>
 #include <string>
 #include <vector>
-#include <stdint.h> 
+#include <stdint.h>
 #include <QString>
 #include <thread>
 #include <QDateTime>
 #include <list>
+#include <algorithm>
 
 #include "view/mathtrace.h"
 #include "data/mathstack.h"
@@ -221,7 +222,7 @@ public:
     void remove_decoder_by_key_handel(void *handel); 
 
     inline std::vector<view::DecodeTrace*>& get_decode_signals() override{
-        return _decode_traces;
+        return _active_document ? _active_document->get_decode_signals() : _empty_decode_traces;
     }
 
     void rst_decoder(int index); 
@@ -459,6 +460,14 @@ public:
     data::SessionDocument* get_active_document() { return _active_document; }
     void copy_data_to_document(data::SessionDocument *doc);
 
+    void register_document(data::SessionDocument *doc) { _all_documents.push_back(doc); }
+    void unregister_document(data::SessionDocument *doc) { auto it = std::find(_all_documents.begin(), _all_documents.end(), doc); if (it != _all_documents.end()) _all_documents.erase(it); }
+    void clear_all_documents_decoders();
+
+    inline std::vector<view::DecodeTrace*>& decode_traces() {
+        return _active_document ? _active_document->get_decode_traces() : _empty_decode_traces;
+    }
+
     void update_lang_text();
 
     bool have_decoded_result();
@@ -569,7 +578,7 @@ private:
     volatile bool           _is_decoding;
  
 	std::vector<view::Signal*>      _signals; 
-    std::vector<view::DecodeTrace*> _decode_traces;
+    static std::vector<view::DecodeTrace*> _empty_decode_traces;
     std::vector<view::DecodeTrace*> _decode_tasks;
     pv::data::DecoderModel          *_decoder_model;
     std::vector<view::SpectrumTrace*> _spectrum_traces;
@@ -628,6 +637,7 @@ private:
     SessionData       *_view_data;
     SessionData       *_capture_data;
     data::SessionDocument *_active_document;
+    std::vector<data::SessionDocument*> _all_documents;
     std::vector<SessionData*> _data_list;
     IDecoderPannel  *_decoder_pannel;
     sr_status       _dso_status;

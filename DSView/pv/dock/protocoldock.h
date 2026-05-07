@@ -88,6 +88,7 @@ public:
 
     void del_all_protocol(); 
     bool add_protocol_by_id(QString id, bool silent, std::list<pv::data::decode::Decoder*> &sub_decoders);
+    void rebuild_protocol_layers();
 
     void bind_context(TabContext *ctx) override;
     void unbind_context() override;

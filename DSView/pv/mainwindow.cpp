@@ -345,6 +345,7 @@ namespace pv
         pv::view::View *initial_view = new pv::view::View(_session, _sampling_bar, this);
         pv::data::SessionDocument *initial_doc = new pv::data::SessionDocument();
         pv::TabContext *initial_ctx = SessionManager::instance()->create_context(initial_view, _session, initial_doc);
+        _session->register_document(initial_doc);
         initial_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         _tab_contexts.append(initial_ctx);
         _tab_widget->addTab(initial_view, initial_ctx->title());
@@ -523,6 +524,7 @@ namespace pv
                     if (!existing_ctx) {
                         pv::data::SessionDocument *doc = new pv::data::SessionDocument();
                         pv::TabContext *ctx = SessionManager::instance()->create_context(view, _session, doc);
+                        _session->register_document(doc);
                         ctx->set_title(title);
                         _tab_contexts.append(ctx);
                     }
@@ -578,6 +580,7 @@ namespace pv
         pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
         pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
         pv::TabContext *ctx = SessionManager::instance()->create_context(new_view, _session, new_doc);
+        _session->register_document(new_doc);
 
         QFileInfo fi(file_name);
         ctx->set_title(fi.baseName());
@@ -714,7 +717,9 @@ namespace pv
         if (_device_agent->is_hardware() && _session->have_hardware_data() == false){
             _sampling_bar->commit_settings();
         }
-        // not used, refer to closeEvent of mainFrame
+
+        _tab_widget->closeAllDetachedWindows();
+
         save_config();
         
         if (confirm_to_store_data()){
@@ -2563,6 +2568,7 @@ namespace pv
         _tab_contexts.removeAt(index);
         disconnect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
         _tab_widget->removeTab(index);
+        _session->unregister_document(ctx->document());
         ctx->view()->deleteLater();
         SessionManager::instance()->destroy_context(ctx);
 
@@ -2699,6 +2705,7 @@ namespace pv
         pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
         pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
         pv::TabContext *new_ctx = SessionManager::instance()->create_context(new_view, _session, new_doc);
+        _session->register_document(new_doc);
         new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         add_tab(new_ctx);
     }   

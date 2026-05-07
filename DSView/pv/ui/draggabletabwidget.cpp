@@ -9,7 +9,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,8 +21,8 @@
 
 #include "draggabletabwidget.h"
 #include "draggabletabbar.h"
+#include "../submainframe.h"
 
-#include <QMainWindow>
 #include <QPushButton>
 #include <QHBoxLayout>
 #include <QStyle>
@@ -137,14 +137,14 @@ void DraggableTabWidget::onDetachTab(int index, const QPoint &dropPos)
 
     removeTab(index);
 
-    DetachedWindow *floating_window = new DetachedWindow(widget, title);
-    connect(floating_window, &DetachedWindow::windowClosed,
+    SubMainFrame *floating_window = new SubMainFrame(widget, title);
+    connect(floating_window, &SubMainFrame::windowClosed,
             this, &DraggableTabWidget::onDetachedWindowClosed);
 
+    _detached_windows.append(QPointer<SubMainFrame>(floating_window));
+
     QPoint window_pos = dropPos - QPoint(100, 20);
-    floating_window->move(window_pos);
-    floating_window->resize(800, 600);
-    floating_window->show();
+    floating_window->showAt(window_pos, QSize(800, 600));
 
     emit tabDetached(index, widget, title);
 }
@@ -196,9 +196,21 @@ void DraggableTabWidget::onDetachedWindowClosed(QWidget *content, const QString 
     emit tabAttached(content, title);
     setCurrentIndex(idx);
 
-    DetachedWindow *window = qobject_cast<DetachedWindow*>(sender());
-    if (window)
+    SubMainFrame *window = qobject_cast<SubMainFrame*>(sender());
+    if (window) {
+        _detached_windows.removeOne(QPointer<SubMainFrame>(window));
         window->deleteLater();
+    }
+}
+
+void DraggableTabWidget::closeAllDetachedWindows()
+{
+    for (auto &ptr : _detached_windows) {
+        if (ptr) {
+            ptr->close();
+        }
+    }
+    _detached_windows.clear();
 }
 
 } // namespace ui

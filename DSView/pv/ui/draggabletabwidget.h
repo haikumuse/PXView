@@ -26,43 +26,14 @@
 #include <QList>
 #include <QPointer>
 #include <QPushButton>
-#include <QMainWindow>
 
 namespace pv {
+
+class SubMainFrame;
+
 namespace ui {
 
 class DraggableTabBar;
-
-class DetachedWindow : public QMainWindow
-{
-    Q_OBJECT
-
-public:
-    DetachedWindow(QWidget *content, const QString &title, QWidget *parent = nullptr)
-        : QMainWindow(parent), _content(content), _title(title)
-    {
-        setWindowTitle(title);
-        setMinimumSize(400, 300);
-        setCentralWidget(content);
-        content->show();
-    }
-
-signals:
-    void windowClosed(QWidget *content, const QString &title);
-
-protected:
-    void closeEvent(QCloseEvent *event) override
-    {
-        QWidget *content = centralWidget();
-        takeCentralWidget();
-        emit windowClosed(content, _title);
-        QMainWindow::closeEvent(event);
-    }
-
-private:
-    QWidget *_content;
-    QString _title;
-};
 
 class DraggableTabWidget : public QTabWidget
 {
@@ -73,6 +44,8 @@ public:
 
     int addTab(QWidget *page, const QString &label);
     int addTab(QWidget *page, const QIcon &icon, const QString &label);
+
+    void closeAllDetachedWindows();
 
 signals:
     void tabDetached(int index, QWidget *widget, const QString &title);
@@ -101,6 +74,7 @@ protected:
 private:
     DraggableTabBar *_draggable_tab_bar;
     QPushButton *_add_button;
+    QList<QPointer<SubMainFrame>> _detached_windows;
 };
 
 } // namespace ui

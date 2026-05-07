@@ -77,6 +77,7 @@ namespace pv
 
     // TODO: This should not be necessary
     SigSession *SigSession::_session = NULL;
+    std::vector<view::DecodeTrace*> SigSession::_empty_decode_traces;
 
     SigSession::SigSession()
     {
@@ -244,7 +245,7 @@ namespace pv
         else
             dsv_info("Switch to device \"%s\" done.", _device_agent.name().toUtf8().data());
 
-        clear_all_decoder();
+        clear_all_documents_decoders();
 
         _view_data->clear();
         _capture_data->clear();
@@ -422,7 +423,7 @@ namespace pv
         }
   
         // DecoderStack
-        for (auto d : _decode_traces)
+        for (auto d : decode_traces())
         {
             d->decoder()->set_samplerate(samplerate);
         }
@@ -721,7 +722,7 @@ namespace pv
 
         if (mode == LOGIC)
         {
-            for (auto de : _decode_traces){
+            for (auto de : decode_traces()){
                 if (bAddDecoder){
                     de->decoder()->set_capture_end_flag(false);                 
                     de->frame_ended();
@@ -1568,7 +1569,7 @@ namespace pv
             decoder_stack->stack().front()->set_probes(probes);
 
             // Create the decode signal
-            view::DecodeTrace *trace = new view::DecodeTrace(this, decoder_stack, _decode_traces.size());
+            view::DecodeTrace *trace = new view::DecodeTrace(this, decoder_stack, decode_traces().size());
             assert(trace);
 
             // add sub decoder
@@ -1608,10 +1609,11 @@ namespace pv
 
             if (ret)
             {
-                _decode_traces.push_back(trace);
+                decode_traces().push_back(trace);
+                trace->decoder()->set_owner_document(_active_document);
 
-                if (_active_document) {
-                    _active_document->add_decode_trace(trace);
+                if (_active_document && trace->decoder()) {
+                    _active_document->get_decoder_stacks().push_back(trace->decoder());
                 }
 
                 // add decode task from ui
@@ -1644,7 +1646,7 @@ namespace pv
     {
         int dex = 0;
 
-        for (auto tr : _decode_traces)
+        for (auto tr : decode_traces())
         {
             if (tr->decoder()->get_key_handel() == handel)
             {
@@ -1658,12 +1660,19 @@ namespace pv
 
     void SigSession::remove_decoder(int index)
     {
-        int size = (int)_decode_traces.size();
+        int size = (int)decode_traces().size();
         assert(index < size);
 
-        auto it = _decode_traces.begin() + index;
+        auto it = decode_traces().begin() + index;
         auto trace = (*it);
-        _decode_traces.erase(it);
+        decode_traces().erase(it);
+
+        if (_active_document && trace->decoder()) {
+            auto &stacks = _active_document->get_decoder_stacks();
+            auto sit = std::find(stacks.begin(), stacks.end(), trace->decoder());
+            if (sit != stacks.end())
+                stacks.erase(sit);
+        }
 
         bool isRunning = trace->decoder()->IsRunning();
 
@@ -1856,7 +1865,7 @@ namespace pv
         _bClose = true;
 
         // Stop decode thread.
-        clear_all_decoder(false);
+        clear_all_documents_decoders();
 
         dsv_info("SigSession::Close(), stop capture");
         stop_capture();
@@ -1902,29 +1911,45 @@ namespace pv
 
     void SigSession::clear_all_decoder(bool bUpdateView)
     {
-        if (_decode_traces.empty())
+        if (decode_traces().empty())
             return;
 
-        // create the wait task deque
         int dex = -1;
         clear_all_decode_task(dex);
 
         view::DecodeTrace *runningTrace = NULL;
         if (dex != -1)
         {
-            runningTrace = _decode_traces[dex];
-            runningTrace->_delete_flag = true; // destroy it in thread
+            runningTrace = decode_traces()[dex];
+            runningTrace->_delete_flag = true;
         }
 
-        for (auto trace : _decode_traces)
+        for (auto trace : decode_traces())
         {
             if (trace != runningTrace)
                 delete trace;
         }
-        _decode_traces.clear();
+        decode_traces().clear();
+
+        if (_active_document)
+            _active_document->get_decoder_stacks().clear();
 
         if (!_bClose && bUpdateView)
             signals_changed();
+    }
+
+    void SigSession::clear_all_documents_decoders()
+    {
+        clear_all_decode_task2();
+
+        for (auto doc : _all_documents) {
+            auto &traces = doc->get_decode_traces();
+            for (auto trace : traces) {
+                delete trace;
+            }
+            traces.clear();
+            doc->get_decoder_stacks().clear();
+        }
     }
 
     void SigSession::clear_all_decode_task(int &runningDex)
@@ -1944,7 +1969,7 @@ namespace pv
         // make sure the running task can stop
         runningDex = -1;
         int dex = 0;
-        for (auto trace : _decode_traces)
+        for (auto trace : decode_traces())
         {
             if (trace->decoder()->IsRunning())
             {
@@ -1961,9 +1986,9 @@ namespace pv
 
     view::DecodeTrace *SigSession::get_decoder_trace(int index)
     {
-        if (index >= 0 && index < (int)_decode_traces.size())
+        if (index >= 0 && index < (int)decode_traces().size())
         {
-            return _decode_traces[index];
+            return decode_traces()[index];
         }
         assert(false);
     }
@@ -2279,7 +2304,7 @@ namespace pv
                         _callback->trigger_message(DSV_MSG_DATA_POOL_CHANGED);
                     }
 
-                    for (auto de : _decode_traces)
+                    for (auto de : decode_traces())
                     {
                         de->decoder()->set_capture_end_flag(true);
 
@@ -2287,10 +2312,6 @@ namespace pv
                             de->frame_ended();
                             add_decode_task(de);
                         }
-                    }
-
-                    if (_active_document) {
-                        _active_document->get_decode_traces() = _decode_traces;
                     }
 
                     _callback->frame_ended();
@@ -2386,7 +2407,7 @@ namespace pv
 
     void SigSession::clear_decode_result()
     {
-        for (auto de : _decode_traces){
+        for (auto de : decode_traces()){
             de->decoder()->init();
             de->decoder()->set_capture_end_flag(false);
         }
@@ -2544,7 +2565,7 @@ namespace pv
 
     bool SigSession::have_decoded_result()
     {
-        for (auto trace : _decode_traces){
+        for (auto trace : decode_traces()){
             if (trace->decoder()->get_result_count() > 0){
                 return true;
             }

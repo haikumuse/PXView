@@ -251,6 +251,7 @@ void ProtocolDock::bind_context(TabContext *ctx)
     _view = ctx->view();
     _table_view->setModel(_session->get_decoder_model());
     _model_proxy.setSourceModel(_session->get_decoder_model());
+    rebuild_protocol_layers();
     update_view_status();
 }
 
@@ -432,6 +433,56 @@ bool ProtocolDock::add_protocol_by_id(QString id, bool silent, std::list<pv::dat
     adjustPannelSize();
 
     return true;
+}
+
+void ProtocolDock::rebuild_protocol_layers()
+{
+    for (auto layer : _protocol_lay_items) {
+        if (layer->_trace) {
+            auto dt = static_cast<view::DecodeTrace*>(layer->_trace);
+            disconnect(dt, SIGNAL(decoded_progress(int)), this, SLOT(decoded_progress(int)));
+        }
+        _top_layout->removeItem(layer);
+        DESTROY_QT_LATER(layer);
+    }
+    _protocol_lay_items.clear();
+
+    const auto &decode_sigs = _session->get_decode_signals();
+    for (auto trace : decode_sigs) {
+        auto stack = trace->decoder();
+        DecoderStatus *dstatus = (DecoderStatus*)stack->get_key_handel();
+
+        auto &decoders = stack->stack();
+        QString protocolName(decoders.back()->decoder()->name);
+        QString protocolId(decoders.back()->decoder()->id);
+
+        ProtocolItemLayer *layer = new ProtocolItemLayer(_top_panel, protocolName, this);
+        _protocol_lay_items.push_back(layer);
+        _top_layout->insertLayout(_protocol_lay_items.size(), layer);
+        layer->m_decoderStatus = dstatus;
+        layer->m_protocolId = protocolId;
+        layer->_trace = trace;
+
+        static const char* formatNames[] = {"hex", "dec", "oct", "bin", "ascii"};
+        int fmt = dstatus->m_format;
+        if (fmt >= 0 && fmt <= 4) {
+            layer->SetProtocolFormat(formatNames[fmt]);
+        }
+
+        int pg = trace->get_progress();
+        QString err;
+        if (stack->out_of_memory())
+            err = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OUT_OF_MEMORY), "Out of Memory");
+        layer->SetProgress(pg, err);
+        if (pg == 100 && dstatus != NULL) {
+            layer->enable_format(dstatus->m_bNumeric);
+        }
+
+        connect(trace, SIGNAL(decoded_progress(int)), this, SLOT(decoded_progress(int)));
+    }
+
+    protocol_updated();
+    adjustPannelSize();
 }
  
  void ProtocolDock::on_del_all_protocol(){

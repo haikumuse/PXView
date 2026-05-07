@@ -50,6 +50,7 @@ class LogicSignal;
 namespace data {
 
 class LogicSnapshot;
+class SessionDocument;
 
 namespace decode {
 class Annotation;
@@ -187,6 +188,9 @@ public:
         return _result_count;
     }
 
+    void set_owner_document(data::SessionDocument *doc) { _owner_document = doc; }
+    data::SessionDocument* get_owner_document() { return _owner_document; }
+
 private:
     void decode_data(const uint64_t decode_start, const uint64_t decode_end, srd_session *const session);
 	void execute_decode_stack();
@@ -207,6 +211,7 @@ private:
     std::map<std::pair<const srd_decoder*, int>, decode::Row> _class_rows;
   
     SigSession      *_session;
+    data::SessionDocument *_owner_document;
     decode_state    _decode_state;
     volatile bool   _options_changed;
     volatile bool   _no_memory;
