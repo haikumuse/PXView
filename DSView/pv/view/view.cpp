@@ -231,9 +231,12 @@ void View::set_data_source(pv::data::DataSource *source)
 {
     _data_source = source;
 
-    if (_own_signals.empty() && _data_source) {
+    if (_data_source) {
         auto &shared_sigs = _data_source->get_signals();
         if (!shared_sigs.empty()) {
+            for (auto sig : _own_signals)
+                delete sig;
+            _own_signals.clear();
             for (auto sig : shared_sigs) {
                 auto cloned = sig->clone();
                 cloned->set_view_index(sig->get_view_index());
@@ -968,9 +971,12 @@ void View::mode_changed()
 
 void View::signals_changed(const Trace* eventTrace)
 {
-    if (_own_signals.empty() && _data_source) {
+    if (_data_source) {
         auto &shared_sigs = _data_source->get_signals();
         if (!shared_sigs.empty()) {
+            for (auto sig : _own_signals)
+                delete sig;
+            _own_signals.clear();
             for (auto sig : shared_sigs) {
                 auto cloned = sig->clone();
                 cloned->set_view_index(sig->get_view_index());

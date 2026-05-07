@@ -27,6 +27,7 @@
 #include <QFocusEvent>
 #include <QFontMetrics>
 #include <QApplication>
+#include "../log.h"
 
 namespace pv {
 namespace widgets {
@@ -95,12 +96,14 @@ int SearchPatternInput::cellWidth() const
     int available = width() - kPadding * 2;
     if (available <= 0)
         return kCellWidth;
-    return available / _channel_count;
+    int cw = available / _channel_count;
+    return (cw > 0) ? cw : 1;
 }
 
 int SearchPatternInput::charIndexAt(int x) const
 {
     int cw = cellWidth();
+    if (cw <= 0) return 0;
     int idx = (x - kPadding) / cw;
     if (idx < 0) idx = 0;
     if (idx >= _channel_count) idx = _channel_count - 1;
@@ -168,7 +171,8 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
 void SearchPatternInput::keyPressEvent(QKeyEvent *event)
 {
     int key = event->key();
-
+    QString text = event->text().toUpper();
+    
     if (key == Qt::Key_Left) {
         if (_cursor_pos > 0)
             _cursor_pos--;
@@ -176,6 +180,7 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
         event->accept();
         return;
     }
+
 
     if (key == Qt::Key_Right) {
         if (_cursor_pos < _channel_count - 1)
@@ -207,16 +212,27 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
     }
 
     QChar ch;
-    switch (key) {
-    case Qt::Key_0: ch = '0'; break;
-    case Qt::Key_1: ch = '1'; break;
-    case Qt::Key_R: ch = 'R'; break;
-    case Qt::Key_F: ch = 'F'; break;
-    case Qt::Key_C: ch = 'C'; break;
-    case Qt::Key_X: ch = 'X'; break;
-    default:
-        QWidget::keyPressEvent(event);
-        return;
+    if (!text.isEmpty()) {
+        QChar t = text.at(0);
+        if (t == '0' || t == '1' || t == 'R' || t == 'F' || t == 'C' || t == 'X') {
+            ch = t;
+        } else {
+            QWidget::keyPressEvent(event);
+            return;
+        }
+    } else {
+        // Fallback to key code if text is empty
+        switch (key) {
+        case Qt::Key_0: ch = '0'; break;
+        case Qt::Key_1: ch = '1'; break;
+        case Qt::Key_R: ch = 'R'; break;
+        case Qt::Key_F: ch = 'F'; break;
+        case Qt::Key_C: ch = 'C'; break;
+        case Qt::Key_X: ch = 'X'; break;
+        default:
+            QWidget::keyPressEvent(event);
+            return;
+        }
     }
 
     if (_cursor_pos < _channel_count) {

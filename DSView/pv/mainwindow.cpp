@@ -43,6 +43,7 @@
 #include <QJsonValue>
 #include <QJsonArray>
 #include <functional>
+#include "widgets/searchpatterninput.h"
 
 //include with qt5
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -126,6 +127,7 @@ namespace pv
     namespace{
         QString tmp_file;
     }
+
 
     void MainWindow::MainWindowRibbonHelper()
     {
@@ -1517,8 +1519,21 @@ namespace pv
     
         if (event->type() == QEvent::KeyPress)
         {
-            const auto &sigs = _session->get_signals();
+            static bool in_filter = false;
+            if (in_filter) return false;
+
             QKeyEvent *ke = (QKeyEvent *)event;
+            QWidget *focused = qApp->focusWidget();
+
+            if (focused && qobject_cast<pv::widgets::SearchPatternInput*>(focused)) {
+                // Manually forward the event to the focused search input with recursion guard
+                in_filter = true;
+                qApp->sendEvent(focused, event);
+                in_filter = false;
+                return true; 
+            }
+
+            const auto &sigs = _session->get_signals();
             
             int modifier = ke->modifiers(); 
  
@@ -1654,7 +1669,7 @@ namespace pv
                 _sampling_bar->device_selected();
                 break;
             default:
-                QWidget::keyPressEvent((QKeyEvent *)event);
+                return false;
             }
             return true;
         }
