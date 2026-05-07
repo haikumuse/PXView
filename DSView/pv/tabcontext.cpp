@@ -59,6 +59,7 @@ bool TabContext::has_data()
 
 void TabContext::activate()
 {
+    _session->set_active_document(_document);
     _state = LIVE;
     if (_document && _document->has_data()) {
         _view->set_data_source(_document);

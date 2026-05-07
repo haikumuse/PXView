@@ -35,6 +35,7 @@
 #include "decodetrace.h"
 #include "../sigsession.h"
 #include "../data/decoderstack.h"
+#include "../data/sessiondocument.h"
 #include "../data/decode/decoder.h"
 #include "../data/logicsnapshot.h"
 #include "../data/decode/annotation.h"
@@ -164,7 +165,11 @@ void DecodeTrace::paint_back(QPainter &p, int left, int right, QColor fore, QCol
     p.drawLine(left, sigY, right, sigY);
 
     // --draw decode region control
-    const double samples_per_pixel = _session->cur_snap_samplerate() * _view->scale();
+    uint64_t doc_samplerate = 0;
+    if (_session->get_active_document()) {
+        doc_samplerate = _session->get_active_document()->cur_snap_samplerate();
+    }
+    const double samples_per_pixel = (doc_samplerate > 0 ? doc_samplerate : _session->cur_snap_samplerate()) * _view->scale();
     const double startX = _decode_start/samples_per_pixel - _view->offset();
     const double endX = _decode_end/samples_per_pixel - _view->offset();
     const double regionY = get_y() - _totalHeight*0.5 - ControlRectWidth;

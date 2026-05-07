@@ -323,15 +323,25 @@ std::vector<view::DecodeTrace*>& SessionDocument::get_decode_traces()
 
 void SessionDocument::add_decode_trace(view::DecodeTrace *trace)
 {
-    if (trace)
+    if (trace) {
         _decode_traces.push_back(trace);
+        if (trace->decoder()) {
+            _decoder_stacks.push_back(trace->decoder());
+        }
+    }
 }
 
 void SessionDocument::remove_decode_trace(view::DecodeTrace *trace)
 {
     auto it = std::find(_decode_traces.begin(), _decode_traces.end(), trace);
-    if (it != _decode_traces.end())
+    if (it != _decode_traces.end()) {
+        if (trace->decoder()) {
+            auto sit = std::find(_decoder_stacks.begin(), _decoder_stacks.end(), trace->decoder());
+            if (sit != _decoder_stacks.end())
+                _decoder_stacks.erase(sit);
+        }
         _decode_traces.erase(it);
+    }
 }
 
 std::vector<view::Signal*>& SessionDocument::get_signals()

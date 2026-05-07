@@ -55,7 +55,8 @@ public:
  
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-    void SetChildWidget(MainFrame *w);
+    void SetChildWidget(QWidget *w);
+    void SetBodyViewWidget(QWidget *w);
 
     void setGeometry(const int x, const int y, const int width, const int height);
 
@@ -116,7 +117,8 @@ private:
     LRESULT hitTest(HWND hWnd, WPARAM wParam, LPARAM lParam);
 
 private: 
-    MainFrame*  _childWidget;
+    QWidget*    _childWidget;
+    QWidget*    _bodyViewWidget;
     HWND        _childWindow;
     HWND        _hWnd;
     QWidget     *_titleBarWidget;

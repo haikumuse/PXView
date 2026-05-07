@@ -330,6 +330,7 @@ set(DSView_SOURCES
     DSView/pv/view/mathtrace.cpp   
     DSView/pv/toolbars/titlebar.cpp
     DSView/pv/mainframe.cpp
+    DSView/pv/submainframe.cpp
     DSView/pv/widgets/border.cpp
     DSView/pv/dialogs/dsmessagebox.cpp
     DSView/pv/dialogs/shadow.cpp
@@ -464,6 +465,7 @@ set(DSView_HEADERS
     DSView/pv/view/viewstatus.h
     DSView/pv/toolbars/titlebar.h
     DSView/pv/mainframe.h
+    DSView/pv/submainframe.h
     DSView/pv/widgets/border.h
     DSView/pv/dialogs/dsmessagebox.h
     DSView/pv/dialogs/shadow.h

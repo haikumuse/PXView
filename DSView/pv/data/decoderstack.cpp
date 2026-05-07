@@ -27,6 +27,7 @@
 
 #include "decoderstack.h"
 #include "logicsnapshot.h"
+#include "sessiondocument.h"
 #include "decode/decoder.h"
 #include "decode/annotation.h"
 #include "decode/rowdata.h"
@@ -70,6 +71,7 @@ DecoderStack::DecoderStack(pv::SigSession *session,
     _progress = 0;
     _is_decoding = false;
     _result_count = 0;
+    _owner_document = nullptr;
     
     _stack.push_back(new decode::Decoder(dec));
  
@@ -437,29 +439,31 @@ void DecoderStack::do_decode_work()
 
     _snapshot = NULL;
 
-	// Check that all decoders have the required channels
     if (!check_required_probes()) {
         _error_message = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_WORK_ERROR),
                             "One or more required channels have not been specified");
         dsv_err("ERROR:%s", _error_message.toStdString().c_str());
         return;
-	}
+    }
 
-	// We get the logic data of the first channel in the list.
-	// This works because we are currently assuming all
-	// LogicSignals have the same data/snapshot
-    for (auto dec : _stack) {
-        if (dec->have_probes()) {
-            for(auto s :  _session->get_signals()) {
-                if(s->get_index() == dec->first_probe_index() && s->signal_type() == SR_CHANNEL_LOGIC)
-                { 
-                    _snapshot = ((pv::view::LogicSignal*)s)->data();
-                    if (_snapshot != NULL)
-                        break;
+    if (_owner_document && _owner_document->has_data()) {
+        _snapshot = _owner_document->get_active_logic();
+    }
+
+    if (_snapshot == NULL) {
+        for (auto dec : _stack) {
+            if (dec->have_probes()) {
+                for(auto s : _session->get_signals()) {
+                    if(s->get_index() == dec->first_probe_index() && s->signal_type() == SR_CHANNEL_LOGIC)
+                    { 
+                        _snapshot = ((pv::view::LogicSignal*)s)->data();
+                        if (_snapshot != NULL)
+                            break;
+                    }
                 }
+                if (_snapshot != NULL)
+                    break;
             }
-            if (_snapshot != NULL)
-                break;
         }
     }
 

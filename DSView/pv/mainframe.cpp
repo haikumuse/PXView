@@ -756,6 +756,7 @@ void MainFrame::AttachNativeWindow()
 
     nativeWindow->SetChildWidget(this);
     nativeWindow->SetNativeEventCallback(this);
+    nativeWindow->SetBodyViewWidget(_mainWindow->GetBodyView());
     nativeWindow->UpdateChildDpi();
     nativeWindow->SetTitleBarWidget(_titleBar);
     _titleBar->EnableAbleDrag(false);
