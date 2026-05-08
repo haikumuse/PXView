@@ -37,13 +37,11 @@
 
 #include <QWidgetAction>
 #include<QShortcut>
-#include "QRibbon/QRibbon.h"
 #include "ui/draggabletabwidget.h"
 #include "tabcontext.h"
 #include "widgets/slidingdrawer.h"
 
 class QAction;
-class QMenuBar;
 class QMenu;
 class QVBoxLayout;
 class QStatusBar;
@@ -220,20 +218,6 @@ private:
     int _current_tab_index;
     dialogs::DSMessageBox   *_msg;
 
-	// QMenuBar                *_menu_bar;
-	QMenu                   *_menu_file;
-	QAction                 *_action_open;
-	QAction                 *_action_connect;
-	QAction                 *_action_quit;
-
-	QMenu                   *_menu_view;
-	QAction                 *_action_view_zoom_in;
-	QAction                 *_action_view_zoom_out;
-	QAction                 *_action_view_show_cursors;
-
-	QMenu                   *_menu_help;
-	QAction                 *_action_about;
-
 	QWidget                 *_central_widget;
 	QVBoxLayout             *_vertical_layout;
 
@@ -300,14 +284,9 @@ private:
 
     QToolBar* _right_tool_bar;
 
-    QMenuBar *_menu_bar;
-    QMenu* _category_file;
-    QMenu* _category_display;
-    QMenu* _category_help;
-
-    QRibbon* _QRibbon;
-
-
+    int _category_file_index;
+    int _category_display_index;
+    int _category_help_index;
 
 };
 

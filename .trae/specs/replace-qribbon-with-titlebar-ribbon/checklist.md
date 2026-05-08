@@ -1,0 +1,12 @@
+- [ ] TitleBar内嵌Ribbon：TabBar和工具面板正常显示和交互
+- [ ] Tab切换时工具面板自动展开，点击已选中Tab时折叠
+- [ ] 选中Tab hover时保持选中背景色，不出现深色/灰色效果
+- [ ] 未选中Tab hover时显示轻微高亮
+- [ ] TabBar与工具面板之间无多余间距
+- [ ] 主题切换不崩溃，Ribbon样式正确跟随主题
+- [ ] 所有原有Action（File/Settings/Help分类）以QToolButton形式正确显示
+- [ ] 工具按钮点击触发正确的Action
+- [ ] QRibbon相关文件已删除（QRibbon.h、QRibbon.cpp、qribbon.ui、QRibbon.qrc）
+- [ ] CMakeLists.txt中QRibbon引用已移除
+- [ ] MainWindow中QRibbon相关代码已清理
+- [ ] 编译无错误

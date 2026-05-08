@@ -424,6 +424,9 @@ boost_headers_DIR:PATH=D:/msys64/mingw64/lib/cmake/boost_headers-1.91.0
 decoder_4b5b_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_c2_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_can_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
@@ -434,6 +437,9 @@ decoder_cec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_counter_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_dali_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_dcf77_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -461,6 +467,9 @@ decoder_i2s_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_ir_nec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ir_rc5_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_iso7816_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;

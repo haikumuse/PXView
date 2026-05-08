@@ -384,12 +384,9 @@ set(DSView_SOURCES
     DSView/pv/ui/uimanager.cpp
     DSView/pv/ui/popupdlglist.cpp
     DSView/pv/tabcontext.cpp
-    DSView/pv/QRibbon/QRibbon.cpp
-	DSView/pv/QRibbon/qribbon.ui
 )
 
 set(UIS
-    DSView/pv/QRibbon/qribbon.ui
 )
 
 if(APPLE)
@@ -518,7 +515,6 @@ set(DSView_HEADERS
     DSView/pv/ui/draggabletabbar.h
     DSView/pv/ui/draggabletabwidget.h
     DSView/pv/tabcontext.h
-    DSView/pv/QRibbon/QRibbon.h
     ${UI_HEADERS}
 )
  
@@ -772,7 +768,7 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build.dir")
 
 set(C_DECODER_OUTPUT_DIR "${EXECUTABLE_OUTPUT_PATH}/decoders/c_decoders")
 
-set(C_DECODERS spi_c i2c_c uart_c can_c jtag_c swd_c onewire_c i2s_c lin_c hdlc_c microwire_c mdio_c ps2_c dmx512_c nrzi_c ir_nec_c dcf77_c cec_c spdif_c usb_signalling_c 4b5b_c can_fd_c iso7816_c lpc_c)
+set(C_DECODERS spi_c i2c_c uart_c can_c jtag_c swd_c onewire_c i2s_c lin_c hdlc_c microwire_c mdio_c ps2_c dmx512_c nrzi_c ir_nec_c ir_rc5_c dcf77_c cec_c spdif_c usb_signalling_c 4b5b_c can_fd_c iso7816_c lpc_c dali_c c2_c)
 
 foreach(dec ${C_DECODERS})
 	add_library(decoder_${dec} MODULE

@@ -891,8 +891,12 @@ QTabBar::tab:!selected
     background-color: #202020;
 }
 
-QTabBar::tab:hover {
+QTabBar::tab:hover:!selected {
     background-color: #101010;
+}
+
+QTabBar::tab:selected:hover {
+    background-color: #202020;
 }
 
 QTabBar::tab:disabled

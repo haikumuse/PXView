@@ -24,6 +24,10 @@
 
 #include <QWidget>
 #include <QToolButton>
+#include <QTabBar>
+#include <QPropertyAnimation>
+#include <QAction>
+#include <QStackedWidget>
 
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
@@ -31,7 +35,7 @@
 
 class QHBoxLayout;
 class QLabel;
-class QTabBar;
+class QVBoxLayout;
 
 namespace pv {
 
@@ -50,6 +54,7 @@ namespace toolbars {
 class TitleBar : public QWidget, public IUiWindow
 {
     Q_OBJECT
+    Q_PROPERTY(qreal slideProgress READ slideProgress WRITE setSlideProgress)
 
 public:
     TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose);
@@ -58,8 +63,12 @@ public:
     void setTitle(QString title);
     QString title();
 
-    void setTabBar(QTabBar *tabBar);
-    QTabBar* tabBar() const;
+    int addCategory(const QString &title);
+    void addAction(int categoryIndex, QAction *action);
+    void addSeparator(int categoryIndex);
+    void retranslateUi(int categoryIndex, const QString &title);
+    void expandRibbon();
+    void hideRibbon();
 
     //IUiWindow
     void UpdateLanguage() override;
@@ -82,6 +91,10 @@ private:
     bool ParentIsMaxsized();
     bool isOnTabBar(const QPoint &pos) const;
 
+    qreal slideProgress() const;
+    void setSlideProgress(qreal progress);
+    void updateRibbonGeometry();
+
 signals:
     void normalShow();
     void maximizedShow();
@@ -90,6 +103,10 @@ public slots:
     void showMaxRestore();
     void setRestoreButton(bool max);
     inline bool IsMoving(){return _moving;}
+
+private slots:
+    void onTabClicked(int index);
+    void onTabChanged(int index);
 
 protected:
     void paintEvent(QPaintEvent *event);
@@ -104,6 +121,15 @@ protected:
     QToolButton *_closeButton;
     QLabel      *_title;
     QTabBar     *_tabBar;
+
+    QWidget         *_ribbonPanel;
+    QVBoxLayout     *_ribbonLayout;
+    QStackedWidget  *_categoryStack;
+    QList<QHBoxLayout*> _categoryLayouts;
+    QPropertyAnimation *_ribbonAnimation;
+    bool            _ribbonExpanded;
+    int             _ribbonExpandedHeight;
+    qreal           _slideProgress;
 
     bool        _moving;
     bool        _is_draging;
