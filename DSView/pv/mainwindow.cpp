@@ -331,6 +331,7 @@ namespace pv
         _logo_bar->setObjectName("logo_bar");
 
         _sampling_bar->setAllowedAreas(Qt::RightToolBarArea);
+        _sampling_bar->hide();
         _trig_bar->setFloatable(false);
         _trig_bar->hide();
         _file_bar->setFloatable(false);
