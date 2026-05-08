@@ -496,7 +496,7 @@ void SlidingDrawer::resizeEvent(QResizeEvent *event)
 
 bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event)
 {
-    if (obj == _backdrop && event->type() == QEvent::MouseButtonRelease) {
+    if (obj == _backdrop && event->type() == QEvent::MouseButtonPress) {
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton) {
             close();
@@ -531,6 +531,15 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event)
 
 void SlidingDrawer::mousePressEvent(QMouseEvent *event)
 {
+    if (_is_open && !_is_animating && event->button() == Qt::LeftButton) {
+        int mouse_x = event->pos().x();
+        int panel_left = _panel->geometry().left();
+        if (mouse_x < panel_left) {
+            close();
+            return;
+        }
+    }
+
     QWidget::mousePressEvent(event);
 }
 

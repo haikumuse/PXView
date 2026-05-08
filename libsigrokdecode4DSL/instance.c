@@ -49,6 +49,99 @@ extern SRD_PRIV GSList *sessions;
  * @{
  */
 
+static int c_decoder_wait_impl(struct srd_decoder_inst *di,
+    GSList *condition_list, uint64_t *samplenum, uint64_t *matched)
+{
+    gboolean found_match;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    if (condition_list) {
+        condition_list_free(di);
+        di->condition_list = condition_list;
+    }
+
+    while (1) {
+        g_mutex_lock(&di->data_mutex);
+        while (!di->got_new_samples && !di->want_wait_terminate)
+            g_cond_wait(&di->got_new_samples_cond, &di->data_mutex);
+
+        if (di->want_wait_terminate) {
+            g_mutex_unlock(&di->data_mutex);
+            return SRD_ERR_TERM_REQ;
+        }
+
+        di->got_new_samples = FALSE;
+
+        found_match = FALSE;
+        process_samples_until_condition_match(di, &found_match);
+
+        if (found_match) {
+            di->first_pos = FALSE;
+            if (samplenum)
+                *samplenum = di->abs_cur_samplenum;
+            if (matched)
+                *matched = di->match_array;
+            g_mutex_unlock(&di->data_mutex);
+            return SRD_OK;
+        }
+
+        di->handled_all_samples = TRUE;
+        di->abs_start_samplenum = 0;
+        di->abs_end_samplenum = 0;
+        di->inbuf = NULL;
+        di->inbuflen = 0;
+        g_cond_signal(&di->handled_all_samples_cond);
+
+        if (di->want_wait_terminate) {
+            g_mutex_unlock(&di->data_mutex);
+            return SRD_ERR_TERM_REQ;
+        }
+
+        g_mutex_unlock(&di->data_mutex);
+    }
+
+    return SRD_OK;
+}
+
+static uint8_t c_decoder_get_pin_impl(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
+{
+    int sig_idx;
+    uint64_t byte_offset;
+    uint8_t bit_offset;
+
+    if (!di || ch < 0 || ch >= di->dec_num_channels)
+        return 0;
+    sig_idx = di->dec_channelmap[ch];
+    if (sig_idx < 0 || !di->inbuf || !di->inbuf[sig_idx])
+        return 0;
+    byte_offset = (samplenum - di->abs_start_samplenum) / 8;
+    bit_offset = (samplenum - di->abs_start_samplenum) % 8;
+    return (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
+}
+
+static void *c_decoder_get_private_impl(struct srd_decoder_inst *di)
+{
+    if (!di)
+        return NULL;
+    return di->user_data;
+}
+
+static void c_decoder_set_private_impl(struct srd_decoder_inst *di, void *data)
+{
+    if (!di)
+        return;
+    di->user_data = data;
+}
+
+static const struct srd_decoder_runtime c_decoder_runtime = {
+    .wait = c_decoder_wait_impl,
+    .get_pin = c_decoder_get_pin_impl,
+    .get_private = c_decoder_get_private_impl,
+    .set_private = c_decoder_set_private_impl,
+};
+
 static void oldpins_array_seed(struct srd_decoder_inst *di)
 {
 	size_t count;
@@ -428,6 +521,7 @@ SRD_PRIV struct srd_decoder_inst *create_c_decoder_inst(struct srd_session *sess
 	di->error_message = NULL;
 	di->samplerate = 0;
 	di->c_options = NULL;
+	di->runtime = &c_decoder_runtime;
 
 	g_cond_init(&di->got_new_samples_cond);
 	g_cond_init(&di->handled_all_samples_cond);
