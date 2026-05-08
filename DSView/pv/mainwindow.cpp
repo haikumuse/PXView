@@ -272,7 +272,6 @@ namespace pv
         _QRibbon = new QRibbon();
         setup_ui();
         _QRibbon->install(this);
-        _QRibbon->initialize(this);
         setMenuBar(nullptr); 
         _vertical_layout->insertWidget(0, _QRibbon);
 

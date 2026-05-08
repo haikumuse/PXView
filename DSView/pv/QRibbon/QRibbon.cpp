@@ -18,6 +18,7 @@
 #include <QDebug>
 #include <QTimer>
 #include <QMainWindow>
+#include "../log.h"
 
 
 //const auto MINIMUM_HEIGHT = 62;
@@ -123,8 +124,11 @@ void QRibbon::initialize(QMainWindow *window)
 
     if (!menuBar)
     {
+        dsv_info("QRibbon::initialize() menuBar is NULL!");
         return;
     }
+
+    dsv_info("QRibbon::initialize() menuBar found, actions count=%d", menuBar->actions().size());
 
     //_normalGeom = _mainWindow->geometry();
 
@@ -134,6 +138,7 @@ void QRibbon::initialize(QMainWindow *window)
     ui->tabWidgetMenuBar->clear();
 
     auto menus = menuBar->actions();
+    int tabIndex = 0;
     for (auto i : menus)
     {
         auto menu = i->menu();
@@ -144,16 +149,19 @@ void QRibbon::initialize(QMainWindow *window)
         if (!menu)
         {
             actions.push_back(i);
+            dsv_info("QRibbon tab[%d] text='%s' NO menu, single action", tabIndex, i->text().toUtf8().constData());
         }
         else
         {
             actions = menu->actions();
+            dsv_info("QRibbon tab[%d] text='%s' menu actions=%d", tabIndex, i->text().toUtf8().constData(), actions.size());
         }
 
         auto widget = new QWidget;
         auto layout = new QHBoxLayout(widget);
         widget->setLayout(layout);
 
+        int btnCount = 0;
         for (auto a : actions)
         {
             QWidget *w;
@@ -199,12 +207,18 @@ void QRibbon::initialize(QMainWindow *window)
                 {
                     static QIcon defaultIcon(":/icons/light/gear.svg");
                     a->setIcon(defaultIcon);
+                    dsv_info("  action '%s' icon was NULL, set default, defaultIcon.isNull=%d", a->text().toUtf8().constData(), defaultIcon.isNull());
+                }
+                else
+                {
+                    dsv_info("  action '%s' icon exists", a->text().toUtf8().constData());
                 }
                 btn->setDefaultAction(a);
 
                 //connect(a, &QAction::triggered, btn, &QToolButton::triggered);
 
                 w = btn;
+                btnCount++;
             }
             layout->addWidget(w);
         }
@@ -212,13 +226,18 @@ void QRibbon::initialize(QMainWindow *window)
         layout->setSpacing(6);
         layout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding));
         ui->tabWidgetMenuBar->addTab(widget, i->text());
+        dsv_info("QRibbon tab[%d] added, buttons=%d tabWidget count=%d", tabIndex, btnCount, ui->tabWidgetMenuBar->count());
 
         //ui->tabWidgetMenuBar->setTabEnabled(ui->tabWidgetMenuBar->count() - 1, (*i));
 
         menuBar->removeAction(i);	/// 从菜单栏移除原有菜单项，否则当鼠标单击菜单位置时。仍会弹出菜单项
         //addAction(i);
         // menu->setEnabled(false);
+        tabIndex++;
     }
+
+    dsv_info("QRibbon::initialize() total tabs=%d", ui->tabWidgetMenuBar->count());
+    dsv_info("QRibbon::initialize() QRibbon height=%d minimumHeight=%d", this->height(), this->minimumHeight());
 
     window->setWindowFlag(Qt::FramelessWindowHint, true);
 
@@ -240,6 +259,8 @@ void QRibbon::initialize(QMainWindow *window)
     //window->show();
     //window->hide();
     hideTab();
+
+    dsv_info("QRibbon::initialize() AFTER hideTab, height=%d minimumHeight=%d", this->height(), this->minimumHeight());
 }
 
 
@@ -496,6 +517,10 @@ void QRibbon::onHideTabFinished()
 
 void QRibbon::expandTab()
 {
+    dsv_info("QRibbon::expandTab() height=%d minHeight=%d maxHeight=%d animStart=%d animEnd=%d",
+        this->height(), this->minimumHeight(), this->maximumHeight(),
+        _->animationHideBar.startValue().toInt(), _->animationHideBar.endValue().toInt());
+
     _->animationHideBar.setDirection(QAbstractAnimation::Backward);
     _->animationHideBar.start();
 
@@ -526,6 +551,9 @@ void QRibbon::hideTab()
 
 void QRibbon::clickTab()
 {
+    dsv_info("QRibbon::clickTab() expandStatus=%d height=%d minHeight=%d",
+        m_bExpandStaus, this->height(), this->minimumHeight());
+
     if(m_bExpandStaus == false)
     {
         expandTab();
