@@ -421,10 +421,25 @@ ZLIB_LIBRARY_RELEASE:FILEPATH=D:/msys64/mingw64/lib/libz.dll.a
 boost_headers_DIR:PATH=D:/msys64/mingw64/lib/cmake/boost_headers-1.91.0
 
 //Dependencies for the target
+decoder_4b5b_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_can_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_can_fd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_cec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_counter_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_dcf77_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_dmx512_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_ds1307_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -436,13 +451,49 @@ decoder_ds3231_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_graycode_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_hdlc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_i2c_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_i2s_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ir_nec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_iso7816_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_jtag_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_lin_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_lm75_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_lpc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mdio_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_microwire_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_nrzi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_numbers_and_state_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_onewire_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ps2_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_pwm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -451,10 +502,19 @@ decoder_pwm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_seven_segment_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_spdif_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_spi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_swd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_uart_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_usb_signalling_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Path to a library.
 pkgcfg_lib_GLIB_glib-2.0:FILEPATH=D:/msys64/mingw64/lib/libglib-2.0.dll.a

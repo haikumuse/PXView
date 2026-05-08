@@ -91,7 +91,7 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
     case SRD_OUTPUT_BINARY:
         _srd_err("C decoder %s: Use c_decoder_put_binary() for BINARY output "
                  "instead of c_decoder_put().", di->c_dec_inst->name);
-        /* fall through */
+        return SRD_ERR_ARG;
     case SRD_OUTPUT_META:
         if ((cb = srd_pd_output_callback_find_c(di->sess, pdo->output_type))) {
             pdata.data = ann;
@@ -149,10 +149,37 @@ SRD_API int c_decoder_put_binary(struct srd_decoder_inst *di,
     return SRD_OK;
 }
 
+SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
+    GSList *condition_list, uint64_t *samplenum, uint64_t *matched)
+{
+    if (!di)
+        return SRD_ERR_ARG;
+
+    if (di->runtime && di->runtime->wait)
+        return di->runtime->wait(di, condition_list, samplenum, matched);
+
+    return SRD_ERR_ARG;
+}
+
+SRD_API uint8_t c_decoder_get_pin(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
+{
+    if (!di)
+        return 0;
+
+    if (di->runtime && di->runtime->get_pin)
+        return di->runtime->get_pin(di, ch, samplenum);
+
+    return 0;
+}
+
 SRD_API void *c_decoder_get_private(struct srd_decoder_inst *di)
 {
     if (!di)
         return NULL;
+
+    if (di->runtime && di->runtime->get_private)
+        return di->runtime->get_private(di);
+
     return di->user_data;
 }
 
@@ -160,260 +187,13 @@ SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data)
 {
     if (!di)
         return;
-    di->user_data = data;
-}
 
-struct srd_cond_builder {
-    GSList *or_groups;
-    GSList *current_and;
-};
-
-SRD_API srd_cond_builder *c_cond_new(void)
-{
-    srd_cond_builder *b = g_malloc0(sizeof(srd_cond_builder));
-    return b;
-}
-
-static srd_cond_builder *c_cond_add_term(srd_cond_builder *b, int type, int ch)
-{
-    if (!b)
-        return NULL;
-    struct srd_term *t = g_malloc0(sizeof(struct srd_term));
-    t->type = type;
-    t->channel = ch;
-    b->current_and = g_slist_append(b->current_and, t);
-    return b;
-}
-
-SRD_API srd_cond_builder *c_cond_rise(srd_cond_builder *b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_RISING_EDGE, ch);
-}
-
-SRD_API srd_cond_builder *c_cond_fall(srd_cond_builder *b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_FALLING_EDGE, ch);
-}
-
-SRD_API srd_cond_builder *c_cond_high(srd_cond_builder *b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_HIGH, ch);
-}
-
-SRD_API srd_cond_builder *c_cond_low(srd_cond_builder *b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_LOW, ch);
-}
-
-SRD_API srd_cond_builder *c_cond_edge(srd_cond_builder *b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_EITHER_EDGE, ch);
-}
-
-SRD_API srd_cond_builder *c_cond_noedge(srd_cond_builder *b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_NO_EDGE, ch);
-}
-
-SRD_API srd_cond_builder *c_cond_skip(srd_cond_builder *b, uint64_t count)
-{
-    if (!b)
-        return NULL;
-    struct srd_term *t = g_malloc0(sizeof(struct srd_term));
-    t->type = SRD_TERM_SKIP;
-    t->channel = -1;
-    t->num_samples_to_skip = count;
-    t->num_samples_already_skipped = 0;
-    b->current_and = g_slist_append(b->current_and, t);
-    return b;
-}
-
-SRD_API srd_cond_builder *c_cond_or(srd_cond_builder *b)
-{
-    if (!b)
-        return NULL;
-    if (b->current_and) {
-        b->or_groups = g_slist_append(b->or_groups, b->current_and);
-        b->current_and = NULL;
-    }
-    return b;
-}
-
-SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
-    uint64_t *samplenum, uint64_t *matched)
-{
-    if (!b || !di)
-        return SRD_ERR_ARG;
-
-    if (b->current_and) {
-        b->or_groups = g_slist_append(b->or_groups, b->current_and);
-        b->current_and = NULL;
-    }
-
-    int ret = c_decoder_wait(di, b->or_groups, samplenum, matched);
-
-    b->or_groups = NULL;
-
-    return ret;
-}
-
-static void c_cond_free_term_list(gpointer data)
-{
-    g_slist_free_full((GSList *)data, g_free);
-}
-
-SRD_API void c_cond_free(srd_cond_builder *b)
-{
-    if (!b)
+    if (di->runtime && di->runtime->set_private) {
+        di->runtime->set_private(di, data);
         return;
-    if (b->current_and)
-        g_slist_free_full(b->current_and, g_free);
-    if (b->or_groups)
-        g_slist_free_full(b->or_groups, c_cond_free_term_list);
-    g_free(b);
-}
-
-SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
-    GSList *condition_list, uint64_t *samplenum, uint64_t *matched)
-{
-    if (!di)
-        return SRD_ERR_ARG;
-
-    if (condition_list) {
-        if (di->condition_list) {
-            g_slist_free_full(di->condition_list, g_free);
-        }
-        di->condition_list = condition_list;
     }
 
-    while (1) {
-        g_mutex_lock(&di->data_mutex);
-
-        while (!di->got_new_samples && !di->want_wait_terminate)
-            g_cond_wait(&di->got_new_samples_cond, &di->data_mutex);
-
-        if (di->want_wait_terminate) {
-            g_mutex_unlock(&di->data_mutex);
-            return SRD_ERR_TERM_REQ;
-        }
-
-        di->got_new_samples = FALSE;
-
-        gboolean found = FALSE;
-        uint64_t i = di->abs_start_samplenum;
-
-        if (!di->condition_list) {
-            if (!di->first_pos && di->abs_cur_samplenum)
-                i = di->abs_cur_samplenum + 1;
-            found = TRUE;
-        } else {
-            for (; i < di->abs_end_samplenum; i++) {
-                uint64_t cur_match = 0;
-                GSList *cond;
-                int cond_idx = 0;
-                for (cond = di->condition_list; cond; cond = cond->next, cond_idx++) {
-                    GSList *terms = cond->data;
-                    gboolean all_match = TRUE;
-                    GSList *term;
-                    for (term = terms; term; term = term->next) {
-                        struct srd_term *t = term->data;
-                        int ch = t->channel;
-                        if (ch >= 0 && ch < di->dec_num_channels) {
-                            int sig_idx = di->dec_channelmap[ch];
-                            if (sig_idx >= 0 && di->inbuf && di->inbuf[sig_idx]) {
-                                uint64_t byte_offset = i / 8;
-                                uint8_t bit_offset = i % 8;
-                                uint8_t val = (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
-                                if (t->type == SRD_TERM_SKIP) {
-                                    if (t->num_samples_already_skipped < t->num_samples_to_skip) {
-                                        t->num_samples_already_skipped++;
-                                        all_match = FALSE;
-                                        break;
-                                    }
-                                    continue;
-                                } else if (t->type == SRD_TERM_HIGH && val != 1) {
-                                    all_match = FALSE;
-                                    break;
-                                } else if (t->type == SRD_TERM_LOW && val != 0) {
-                                    all_match = FALSE;
-                                    break;
-                                } else if (t->type == SRD_TERM_RISING_EDGE) {
-                                    uint8_t old_val = 0;
-                                    if (i > 0) {
-                                        uint64_t prev_byte = (i - 1) / 8;
-                                        uint8_t prev_bit = (i - 1) % 8;
-                                        old_val = (di->inbuf[sig_idx][prev_byte] >> prev_bit) & 1;
-                                    }
-                                    if (!(old_val == 0 && val == 1)) {
-                                        all_match = FALSE;
-                                        break;
-                                    }
-                                } else if (t->type == SRD_TERM_FALLING_EDGE) {
-                                    uint8_t old_val = 0;
-                                    if (i > 0) {
-                                        uint64_t prev_byte = (i - 1) / 8;
-                                        uint8_t prev_bit = (i - 1) % 8;
-                                        old_val = (di->inbuf[sig_idx][prev_byte] >> prev_bit) & 1;
-                                    }
-                                    if (!(old_val == 1 && val == 0)) {
-                                        all_match = FALSE;
-                                        break;
-                                    }
-                                } else if (t->type == SRD_TERM_EITHER_EDGE) {
-                                    uint8_t old_val = 0;
-                                    if (i > 0) {
-                                        uint64_t prev_byte = (i - 1) / 8;
-                                        uint8_t prev_bit = (i - 1) % 8;
-                                        old_val = (di->inbuf[sig_idx][prev_byte] >> prev_bit) & 1;
-                                    }
-                                    if (!((old_val == 0 && val == 1) || (old_val == 1 && val == 0))) {
-                                        all_match = FALSE;
-                                        break;
-                                    }
-                                } else if (t->type == SRD_TERM_NO_EDGE) {
-                                    uint8_t old_val = 0;
-                                    if (i > 0) {
-                                        uint64_t prev_byte = (i - 1) / 8;
-                                        uint8_t prev_bit = (i - 1) % 8;
-                                        old_val = (di->inbuf[sig_idx][prev_byte] >> prev_bit) & 1;
-                                    }
-                                    if (!((old_val == 0 && val == 0) || (old_val == 1 && val == 1))) {
-                                        all_match = FALSE;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (all_match) {
-                        cur_match |= (1ULL << cond_idx);
-                        found = TRUE;
-                    }
-                }
-                if (found) {
-                    di->abs_cur_samplenum = i;
-                    di->match_array = cur_match;
-                    break;
-                }
-            }
-        }
-
-        if (found) {
-            di->first_pos = FALSE;
-            if (samplenum)
-                *samplenum = di->abs_cur_samplenum;
-            if (matched)
-                *matched = di->match_array;
-            g_mutex_unlock(&di->data_mutex);
-            return SRD_OK;
-        }
-
-        di->handled_all_samples = TRUE;
-        g_cond_signal(&di->handled_all_samples_cond);
-        g_mutex_unlock(&di->data_mutex);
-    }
-
-    return SRD_OK;
+    di->user_data = data;
 }
 
 SRD_API int c_decoder_has_channel(struct srd_decoder_inst *di, int ch)
@@ -504,4 +284,126 @@ SRD_API const char *c_decoder_get_option_string(struct srd_decoder_inst *di,
     if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING))
         return g_variant_get_string(val, NULL);
     return defval;
+}
+
+struct srd_cond_builder {
+    GSList *or_groups;
+    GSList *current_and;
+    gboolean waited;
+};
+
+SRD_API srd_cond_builder *c_cond_new(void)
+{
+    srd_cond_builder *b = g_malloc0(sizeof(srd_cond_builder));
+    return b;
+}
+
+static srd_cond_builder *c_cond_add_term(srd_cond_builder *b, int type, int ch)
+{
+    struct srd_term *t;
+    if (!b)
+        return NULL;
+    t = g_malloc0(sizeof(struct srd_term));
+    t->type = type;
+    t->channel = ch;
+    b->current_and = g_slist_append(b->current_and, t);
+    return b;
+}
+
+SRD_API srd_cond_builder *c_cond_rise(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_RISING_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_fall(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_FALLING_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_high(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_HIGH, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_low(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_LOW, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_edge(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_EITHER_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_noedge(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_NO_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_skip(srd_cond_builder *b, uint64_t count)
+{
+    struct srd_term *t;
+    if (!b)
+        return NULL;
+    t = g_malloc0(sizeof(struct srd_term));
+    t->type = SRD_TERM_SKIP;
+    t->channel = -1;
+    t->num_samples_to_skip = count;
+    t->num_samples_already_skipped = 0;
+    b->current_and = g_slist_append(b->current_and, t);
+    return b;
+}
+
+SRD_API srd_cond_builder *c_cond_or(srd_cond_builder *b)
+{
+    if (!b)
+        return NULL;
+    if (b->current_and) {
+        b->or_groups = g_slist_append(b->or_groups, b->current_and);
+        b->current_and = NULL;
+    }
+    return b;
+}
+
+SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
+    uint64_t *samplenum, uint64_t *matched)
+{
+    int ret;
+
+    if (!b || !di)
+        return SRD_ERR_ARG;
+
+    if (b->waited) {
+        _srd_err("c_cond_wait() called on a builder that was already used. "
+                 "Create a new builder for each wait call.");
+        return SRD_ERR_ARG;
+    }
+
+    if (b->current_and) {
+        b->or_groups = g_slist_append(b->or_groups, b->current_and);
+        b->current_and = NULL;
+    }
+
+    ret = c_decoder_wait(di, b->or_groups, samplenum, matched);
+
+    b->or_groups = NULL;
+    b->waited = TRUE;
+
+    return ret;
+}
+
+static void c_cond_free_term_list(gpointer data)
+{
+    g_slist_free_full((GSList *)data, g_free);
+}
+
+SRD_API void c_cond_free(srd_cond_builder *b)
+{
+    if (!b)
+        return;
+    if (b->current_and)
+        g_slist_free_full(b->current_and, g_free);
+    if (b->or_groups)
+        g_slist_free_full(b->or_groups, c_cond_free_term_list);
+    g_free(b);
 }

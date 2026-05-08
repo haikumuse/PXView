@@ -280,6 +280,16 @@ struct srd_decoder_binary {
 	const char *desc;
 };
 
+struct srd_decoder_inst;
+
+struct srd_decoder_runtime {
+    int (*wait)(struct srd_decoder_inst *di,
+        GSList *condition_list, uint64_t *samplenum, uint64_t *matched);
+    uint8_t (*get_pin)(struct srd_decoder_inst *di, int ch, uint64_t samplenum);
+    void *(*get_private)(struct srd_decoder_inst *di);
+    void (*set_private)(struct srd_decoder_inst *di, void *data);
+};
+
 struct srd_decoder_inst {
 	struct srd_decoder *decoder;
 	struct srd_session *sess;
@@ -361,6 +371,7 @@ struct srd_decoder_inst {
 	char *error_message;
 	uint64_t samplerate;
 	GHashTable *c_options;
+	const struct srd_decoder_runtime *runtime;
 };
 
 #define SRD_C_DECODER_API_VERSION 3
@@ -564,14 +575,14 @@ SRD_API void *c_decoder_get_private(struct srd_decoder_inst *di);
 SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data);
 
 #define C_ANN_PUT(di, ss, es, out_id, cls, ...) do { \
-    char *_txts[] = {__VA_ARGS__, NULL}; \
-    struct srd_c_annotation _ann = {cls, 0, _txts}; \
+    const char *_txts[] = {__VA_ARGS__, NULL}; \
+    struct srd_c_annotation _ann = {cls, 0, (char **)_txts}; \
     c_decoder_put(di, ss, es, out_id, &_ann); \
 } while(0)
 
 #define C_ANN_PUT_TYPE(di, ss, es, out_id, cls, tp, ...) do { \
-    char *_txts[] = {__VA_ARGS__, NULL}; \
-    struct srd_c_annotation _ann = {cls, tp, _txts}; \
+    const char *_txts[] = {__VA_ARGS__, NULL}; \
+    struct srd_c_annotation _ann = {cls, tp, (char **)_txts}; \
     c_decoder_put(di, ss, es, out_id, &_ann); \
 } while(0)
 
@@ -590,17 +601,7 @@ SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
     uint64_t *samplenum, uint64_t *matched);
 SRD_API void c_cond_free(srd_cond_builder *b);
 
-static inline uint8_t c_decoder_get_pin(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
-{
-    if (ch < 0 || ch >= di->dec_num_channels)
-        return 0;
-    int sig_idx = di->dec_channelmap[ch];
-    if (sig_idx < 0 || !di->inbuf || !di->inbuf[sig_idx])
-        return 0;
-    uint64_t byte_offset = samplenum / 8;
-    uint8_t bit_offset = samplenum % 8;
-    return (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
-}
+SRD_API uint8_t c_decoder_get_pin(struct srd_decoder_inst *di, int ch, uint64_t samplenum);
 
 #include "version.h"
 

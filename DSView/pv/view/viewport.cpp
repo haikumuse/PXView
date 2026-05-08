@@ -38,6 +38,7 @@
 #include <QPainterPath> 
 #include <math.h>
 #include <QWheelEvent>
+#include <QScrollBar>
  
 #include "../config/appconfig.h"
 #include "../dsvdef.h"
@@ -1556,6 +1557,15 @@ void Viewport::wheelEvent(QWheelEvent *event)
             if (ABS_VAL(delta) <= 80)
                 vsteps = delta > 0 ? 1.5 : -1.5;
             _view.zoom_vertical(vsteps);
+            return;
+        }
+
+        if (event->modifiers() & Qt::ShiftModifier)
+        {
+            int vOffset = _view.get_vOffset();
+            vOffset -= delta;
+            vOffset = max(0, vOffset);
+            _view.verticalScrollBar()->setSliderPosition(vOffset);
             return;
         }
 

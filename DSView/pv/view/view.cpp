@@ -514,6 +514,14 @@ void View::zoom_vertical(double steps)
         _signalHeightScale -= step;
     _signalHeightScale = max(MinSignalHeight, min(_signalHeightScale, MaxSignalHeight));
     if (_signalHeightScale != oldHeight) {
+        double scale = (double)_signalHeightScale / oldHeight;
+        std::vector<Trace*> traces;
+        get_traces(ALL_VIEW, traces);
+        for (auto t : traces) {
+            if (t->get_own_height() > 0) {
+                t->set_own_height(max(MinSignalHeight, (int)(t->get_own_height() * scale)));
+            }
+        }
         signals_changed(NULL);
         update_scroll();
         viewport_update();

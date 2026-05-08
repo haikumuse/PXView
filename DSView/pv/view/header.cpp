@@ -29,6 +29,7 @@
 #include <QPainter>
 #include <QRect>
 #include <QStyleOption>
+#include <QScrollBar>
 #include <QApplication>
 #include <assert.h>
 #include <algorithm>
@@ -462,6 +463,15 @@ void Header::wheelEvent(QWheelEvent *event)
 
     if (isVertical)
     {
+        if (event->modifiers() & Qt::ShiftModifier)
+        {
+            int vOffset = _view.get_vOffset();
+            vOffset -= delta;
+            vOffset = max(0, vOffset);
+            _view.verticalScrollBar()->setSliderPosition(vOffset);
+            return;
+        }
+
         std::vector<Trace*> traces;
         _view.get_traces(ALL_VIEW, traces);
         // Vertical scrolling
