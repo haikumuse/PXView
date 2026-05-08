@@ -242,6 +242,7 @@ void SlidingDrawer::open(int pageIndex)
     // Show this widget and set initial state
     setVisible(true);
     raise();
+    parentWidget()->installEventFilter(this);
     updatePanelGeometry();
 
     // Start open animation from current progress (smooth reverse on interrupt)
@@ -399,6 +400,8 @@ void SlidingDrawer::finishClose()
     if (_current_page >= 0 && _current_page < _pages.size()) {
         _pages[_current_page].content->hide();
     }
+    if (parentWidget())
+        parentWidget()->removeEventFilter(this);
     setVisible(false);
     _current_page = -1;
 }
@@ -419,6 +422,10 @@ void SlidingDrawer::resizeEvent(QResizeEvent *event)
 
 bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event)
 {
+    if (obj == parentWidget() && event->type() == QEvent::Resize) {
+        updatePanelGeometry();
+    }
+
     if (obj == _edge_grip && event->type() == QEvent::MouseButtonPress) {
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton && _is_open && !_is_animating) {

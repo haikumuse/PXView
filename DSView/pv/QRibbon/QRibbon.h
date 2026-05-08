@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QMenuBar>
+#include <QTabBar>
+#include <QTabWidget>
 
 class QMainWindow;
 class QMouseEvent;
@@ -43,6 +45,9 @@ public:
     void uninstall();
 
     void setStyleButtonVisible(bool visible);
+
+    QTabBar* getTabBar() const;
+    QTabWidget* getTabWidget() const;
 
 public slots:
 

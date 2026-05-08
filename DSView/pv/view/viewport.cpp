@@ -53,6 +53,135 @@ using namespace std;
 namespace pv {
 namespace view {
 
+struct BrutalStyle {
+    QColor bg;
+    QColor text;
+};
+
+static BrutalStyle getBrutalStyle(const QColor &back, const QColor &panelBg, const QColor &panelText)
+{
+    double luminance = (back.red() * 0.299 + back.green() * 0.587 + back.blue() * 0.114);
+    bool isDark = luminance < 128;
+
+    if (isDark) {
+        return { panelBg, panelText };
+    } else {
+        return { panelText, panelBg };
+    }
+}
+
+static void drawFloatingPanel(QPainter &p,
+                              const QPointF &cursorPos,
+                              double viewWidth, double viewHeight,
+                              const QColor &back,
+                              const QColor &panelBg,
+                              const QColor &panelText,
+                              const vector<pair<QString, QString>> &rows)
+{
+    BrutalStyle style = getBrutalStyle(back, panelBg, panelText);
+
+    QFont labelFont = p.font();
+    labelFont.setPointSizeF(7.5);
+    labelFont.setWeight(QFont::Black);
+    labelFont.setCapitalization(QFont::AllUppercase);
+    labelFont.setLetterSpacing(QFont::AbsoluteSpacing, 0.5);
+
+    QFont valueFont = p.font();
+    valueFont.setPointSizeF(12.0);
+    valueFont.setWeight(QFont::Black);
+    valueFont.setFamily("Space Mono, Courier New, monospace");
+
+    QFontMetrics fmLabel(labelFont);
+    QFontMetrics fmValue(valueFont);
+
+    const int pad = 14;
+    const int gridGapH = 14;
+    const int gridGapV = 10;
+    const int labelValueGap = 2;
+
+    bool hasLabels = false;
+    for (const auto &row : rows) {
+        if (!row.first.isEmpty()) { hasLabels = true; break; }
+    }
+
+    int cols = (hasLabels && rows.size() >= 2) ? 2 : 1;
+    int gridRows = ((int)rows.size() + cols - 1) / cols;
+
+    int cellH = fmLabel.height() + labelValueGap + fmValue.height();
+    int cellH_noLabel = fmValue.height();
+
+    int colWidths[2] = {0, 0};
+    for (size_t i = 0; i < rows.size(); i++) {
+        int col = (int)i % cols;
+        QString cleanLabel = rows[i].first.trimmed().toUpper();
+        if (cleanLabel.endsWith(':')) cleanLabel.chop(1);
+        int labelW = cleanLabel.isEmpty() ? 0 : fmLabel.horizontalAdvance(cleanLabel);
+
+        QString val = rows[i].second;
+        if (val.startsWith('+')) val.remove(0, 1);
+        int valW = fmValue.horizontalAdvance(val);
+
+        colWidths[col] = qMax(colWidths[col], qMax(labelW, valW));
+    }
+
+    double panelW, panelH;
+    if (cols == 2)
+        panelW = pad * 2 + colWidths[0] + gridGapH + colWidths[1];
+    else
+        panelW = pad * 2 + colWidths[0];
+
+    int usedCellH = hasLabels ? cellH : cellH_noLabel;
+    panelH = pad * 2 + gridRows * usedCellH + (gridRows - 1) * gridGapV;
+
+    const double offsetX = 15, offsetY = 20;
+    double px = cursorPos.x() + offsetX;
+    double py = cursorPos.y() + offsetY;
+    if (px + panelW > viewWidth)
+        px = cursorPos.x() - panelW - offsetX;
+    if (py + panelH > viewHeight)
+        py = cursorPos.y() - panelH - offsetY;
+
+    QRectF panelRect(px, py, panelW, panelH);
+
+    p.setRenderHint(QPainter::Antialiasing, false);
+
+    p.setPen(Qt::NoPen);
+    p.setBrush(style.bg);
+    p.drawRect(panelRect);
+
+    double y = panelRect.top() + pad;
+    for (size_t i = 0; i < rows.size(); i++) {
+        int col = (int)i % cols;
+        int row = (int)i / cols;
+
+        double cellX = panelRect.left() + pad + col * (colWidths[0] + gridGapH);
+        double cellY = y + row * (usedCellH + gridGapV);
+
+        QString cleanLabel = rows[i].first.trimmed();
+        if (cleanLabel.endsWith(':') || cleanLabel.endsWith(QChar(0xFF1A)))
+            cleanLabel.chop(1);
+        cleanLabel = cleanLabel.trimmed();
+
+        if (!cleanLabel.isEmpty()) {
+            p.setFont(labelFont);
+            p.setPen(style.text);
+            QString upperLabel = cleanLabel.toUpper();
+            double labelY = cellY + fmLabel.ascent();
+            p.drawText(QPointF(cellX, labelY), upperLabel);
+        }
+
+        p.setFont(valueFont);
+        p.setPen(style.text);
+        double valueY = cleanLabel.isEmpty()
+            ? cellY + fmValue.ascent()
+            : cellY + fmLabel.height() + labelValueGap + fmValue.ascent();
+
+        QString valText = rows[i].second;
+        if (valText.startsWith('+')) valText.remove(0, 1);
+        p.drawText(QPointF(cellX, valueY), valText);
+    }
+}
+
 const double Viewport::DragDamping = 1.05;
 const double Viewport::MinorDragRateUp = 10;
 
@@ -1902,42 +2031,15 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back)
         }
 
         if (_measure_en) {
-            int typical_width = p.boundingRect(0, 0, INT_MAX, INT_MAX,
-                Qt::AlignLeft | Qt::AlignTop, _mm_width).width();
-            typical_width = max(typical_width, p.boundingRect(0, 0, INT_MAX, INT_MAX,
-                Qt::AlignLeft | Qt::AlignTop, _mm_period).width());
-            typical_width = max(typical_width, p.boundingRect(0, 0, INT_MAX, INT_MAX,
-                Qt::AlignLeft | Qt::AlignTop, _mm_freq).width());
-            typical_width = max(typical_width, p.boundingRect(0, 0, INT_MAX, INT_MAX,
-                Qt::AlignLeft | Qt::AlignTop, _mm_duty).width());
-            typical_width = typical_width + 100;
+            vector<pair<QString, QString>> rows = {
+                {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WIDTH), "Width: "), _mm_width},
+                {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PERIOD), "Period: "), _mm_period},
+                {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FREQUENCY), "Frequency: "), _mm_freq},
+                {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DUTY_CYCLE), "Duty Cycle: "), _mm_duty}
+            };
 
-            const double width = _view.get_view_width();
-            const double height = _view.viewport()->height();
-            const double left = _view.hover_point().x();
-            const double top = _view.hover_point().y();
-            const double right = left + typical_width;
-            const double bottom = top + 80;
-            QPointF org_pos = QPointF(right > width ? left - typical_width : left, bottom > height ? top - 80 : top);
-            QRectF measure_rect = QRectF(org_pos.x(), org_pos.y(), (double)typical_width, 80.0);
-            QRectF measure1_rect = QRectF(org_pos.x(), org_pos.y(), (double)typical_width, 20.0);
-            QRectF measure2_rect = QRectF(org_pos.x(), org_pos.y()+20, (double)typical_width, 20.0);
-            QRectF measure3_rect = QRectF(org_pos.x(), org_pos.y()+40, (double)typical_width, 20.0);
-            QRectF measure4_rect = QRectF(org_pos.x(), org_pos.y()+60, (double)typical_width, 20.0);
-
-            p.setPen(Qt::NoPen);
-            p.setBrush(View::LightBlue);
-            p.drawRect(measure_rect);
-
-            p.setPen(active_color);
-            p.drawText(measure1_rect, Qt::AlignRight | Qt::AlignVCenter,
-                       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WIDTH), "Width: ") + _mm_width);
-            p.drawText(measure2_rect, Qt::AlignRight | Qt::AlignVCenter,
-                       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PERIOD), "Period: ") + _mm_period);
-            p.drawText(measure3_rect, Qt::AlignRight | Qt::AlignVCenter,
-                       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FREQUENCY), "Frequency: ") + _mm_freq);
-            p.drawText(measure4_rect, Qt::AlignRight | Qt::AlignVCenter,
-                      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DUTY_CYCLE), "Duty Cycle: ") + _mm_duty);
+            drawFloatingPanel(p, _view.hover_point(), _view.get_view_width(),
+                              _view.viewport()->height(), back, _panelBgColor, _panelTextColor, rows);
         }
     } 
 
@@ -2108,35 +2210,15 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back)
         p.drawLine(QLineF(_cur_aftX, _cur_midY-5, _cur_aftX, _cur_midY+5));
         p.drawLine(QLineF(_cur_preX, _cur_midY, _cur_aftX, _cur_midY));
 
-        int typical_width = p.boundingRect(0, 0, INT_MAX, INT_MAX,
-            Qt::AlignLeft | Qt::AlignTop, _em_edges).width();
-        typical_width = max(typical_width, p.boundingRect(0, 0, INT_MAX, INT_MAX,
-            Qt::AlignLeft | Qt::AlignTop, _em_rising).width());
-        typical_width = max(typical_width, p.boundingRect(0, 0, INT_MAX, INT_MAX,
-            Qt::AlignLeft | Qt::AlignTop, _em_falling).width());
+        vector<pair<QString, QString>> rows = {
+            {"", _em_edges},
+            {"", _em_rising},
+            {"", _em_falling}
+        };
 
-        typical_width = typical_width + 60;
+        drawFloatingPanel(p, _view.hover_point(), _view.get_view_width(),
+                          _view.viewport()->height(), back, _panelBgColor, _panelTextColor, rows);
 
-        const double width = _view.get_view_width();
-        const double height = _view.viewport()->height();
-        const double left = _view.hover_point().x();
-        const double top = _view.hover_point().y();
-        const double right = left + typical_width;
-        const double bottom = top + 60;
-        QPointF org_pos = QPointF(right > width ? left - typical_width : left, bottom > height ? top - 80 : top);
-        QRectF measure_rect = QRectF(org_pos.x(), org_pos.y(), (double)typical_width, 60.0);
-        QRectF measure1_rect = QRectF(org_pos.x(), org_pos.y(), (double)typical_width, 20.0);
-        QRectF measure2_rect = QRectF(org_pos.x(), org_pos.y()+20, (double)typical_width, 20.0);
-        QRectF measure3_rect = QRectF(org_pos.x(), org_pos.y()+40, (double)typical_width, 20.0);
-
-        p.setPen(Qt::NoPen);
-        p.setBrush(View::LightBlue);
-        p.drawRect(measure_rect);
-
-        p.setPen(active_color);
-        p.drawText(measure1_rect, Qt::AlignRight | Qt::AlignVCenter, _em_edges);
-        p.drawText(measure2_rect, Qt::AlignRight | Qt::AlignVCenter, _em_rising);
-        p.drawText(measure3_rect, Qt::AlignRight | Qt::AlignVCenter, _em_falling);
     }
 
     if (_action_type == LOGIC_JUMP) {
@@ -2172,22 +2254,13 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back)
             int64_t delta = max(_edge_start, _edge_end) - min(_edge_start, _edge_end);
             QString delta_text = _view.get_index_delta(_edge_start, _edge_end) +
                                  "/" + QString::number(delta);
-            QFontMetrics fm = this->fontMetrics();
-           
-            const int rectW = fm.boundingRect(delta_text).width() + 60;
-            const int rectH = fm.height() + 10;
-             
-            const int rectY = (height() - _view.hover_point().y() < rectH + 20) ? _view.hover_point().y() - 10 - rectH : _view.hover_point().y() + 20;
-            const int rectX = (width() - _view.hover_point().x() < rectW) ? _view.hover_point().x() - rectW : _view.hover_point().x();
-            QRectF jump_rect = QRectF(rectX, rectY, rectW, rectH);
 
-            p.setPen(Qt::NoPen);
-            p.setBrush(View::LightBlue);
-            p.drawRect(jump_rect);
+            vector<pair<QString, QString>> rows = {
+                {"", delta_text}
+            };
 
-            p.setPen(active_color);
-            p.setBrush(Qt::NoBrush);
-            p.drawText(jump_rect, Qt::AlignCenter | Qt::AlignVCenter, delta_text);
+            drawFloatingPanel(p, _view.hover_point(), _view.get_view_width(),
+                              _view.viewport()->height(), back, _panelBgColor, _panelTextColor, rows);
 
             QPainterPath path(QPoint(_cur_preX, _cur_preY));
             QPoint c1((_cur_preX+_cur_aftX)/2, _cur_preY);

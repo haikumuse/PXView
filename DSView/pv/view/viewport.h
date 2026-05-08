@@ -66,6 +66,8 @@ class View;
 class Viewport : public QWidget, public IUiWindow
 {
 	Q_OBJECT
+	Q_PROPERTY(QColor panelBgColor READ panelBgColor WRITE setPanelBgColor)
+	Q_PROPERTY(QColor panelTextColor READ panelTextColor WRITE setPanelTextColor)
 
 public:
     static const int HitCursorMargin = 10;
@@ -105,6 +107,11 @@ public:
 public:
     explicit Viewport(View &parent, View_type type);
     ~Viewport();
+
+    QColor panelBgColor() const { return _panelBgColor; }
+    void setPanelBgColor(QColor c) { _panelBgColor = c; }
+    QColor panelTextColor() const { return _panelTextColor; }
+    void setPanelTextColor(QColor c) { _panelTextColor = c; }
 
     int get_total_height();
     QPoint get_mouse_point();
@@ -249,6 +256,9 @@ private:
     int             _tigger_wait_times;
     QAction         *_yAction;
     QAction         *_xAction;
+
+    QColor          _panelBgColor = QColor("#1a1a1a");
+    QColor          _panelTextColor = QColor("#f5f0e5");
 };
 
 } // namespace view

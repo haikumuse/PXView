@@ -288,6 +288,16 @@ void QRibbon::setStyleButtonVisible(bool visible)
     _styleMenu->setVisible(visible);
 }
 
+QTabBar* QRibbon::getTabBar() const
+{
+    return ui->tabWidgetMenuBar->tabBar();
+}
+
+QTabWidget* QRibbon::getTabWidget() const
+{
+    return ui->tabWidgetMenuBar;
+}
+
 void QRibbon::install(QMainWindow *window)
 {
     // 该window已安装过QRibbon
