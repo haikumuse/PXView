@@ -27,7 +27,6 @@
 /libsigrokdecode4DSL4DSL4DSL4DSL-*.tar.*
 /libsigrokdecode4DSL.pc
 /libtool
-/version.h
 __pycache__/
 *.pyc
 stamp-h?
