@@ -119,6 +119,7 @@
 
 #include <QMenu>
 #include <QMenuBar>
+#include <QTabBar>
 #include "QRibbon/QRibbon.h"
 
 namespace pv
@@ -271,6 +272,14 @@ namespace pv
         _QRibbon = new QRibbon();
         setup_ui();
         _QRibbon->install(this);
+
+        // Move QRibbon tab bar to title bar
+        if (_title_bar && _QRibbon) {
+            QTabBar *ribbonTabBar = _QRibbon->getTabBar();
+            if (ribbonTabBar) {
+                _title_bar->setTabBar(ribbonTabBar);
+            }
+        }
 
         setContextMenuPolicy(Qt::NoContextMenu);
 

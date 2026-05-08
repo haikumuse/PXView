@@ -31,12 +31,13 @@
 
 class QHBoxLayout;
 class QLabel;
+class QTabBar;
 
 namespace pv {
 
 class ITitleParent
 {
-public: 
+public:
     virtual void MoveWindow(int x, int y)=0;
     virtual QPoint GetParentPos()=0;
     virtual bool ParentIsMaxsized()=0;
@@ -53,9 +54,12 @@ class TitleBar : public QWidget, public IUiWindow
 public:
     TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose);
     ~TitleBar();
-    
-    void setTitle(QString title); 
+
+    void setTitle(QString title);
     QString title();
+
+    void setTabBar(QTabBar *tabBar);
+    QTabBar* tabBar() const;
 
     //IUiWindow
     void UpdateLanguage() override;
@@ -72,10 +76,11 @@ public:
 
     void EnableAbleDrag(bool bEnabled);
 
-private: 
+private:
     void reStyle();
 
     bool ParentIsMaxsized();
+    bool isOnTabBar(const QPoint &pos) const;
 
 signals:
     void normalShow();
@@ -92,13 +97,14 @@ protected:
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void mouseDoubleClickEvent(QMouseEvent *event);
- 
-    
+
+
     QToolButton *_minimizeButton;
     QToolButton *_maximizeButton;
     QToolButton *_closeButton;
     QLabel      *_title;
-  
+    QTabBar     *_tabBar;
+
     bool        _moving;
     bool        _is_draging;
     bool        _isTop;

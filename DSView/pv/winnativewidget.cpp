@@ -467,7 +467,23 @@ LRESULT WinNativeWidget::hitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
     
         if (x > left + 2 * k && x < left + titleWidth)
         {
-            if (y > top + 2 * k && y < top + titleHeight){                        
+            if (y > top + 2 * k && y < top + titleHeight){
+                QPoint globalPos(GET_X_LPARAM(lParam) / k, GET_Y_LPARAM(lParam) / k);
+                QPoint localPos = _titleBarWidget->mapFromGlobal(globalPos);
+
+                if (_titleBarWidget->rect().contains(localPos)) {
+                    QWidget *child = _titleBarWidget->childAt(localPos);
+                    if (child) {
+                        QWidget *temp = child;
+                        while (temp && temp != _titleBarWidget) {
+                            if (temp->inherits("QTabBar") || temp->inherits("QToolButton")) {
+                                return HTCLIENT;
+                            }
+                            temp = temp->parentWidget();
+                        }
+                    }
+                }
+
                 return HTCAPTION;
             }
         }
