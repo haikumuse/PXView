@@ -97,9 +97,8 @@ void TabContext::activate()
             }
         }
     } else {
-        dsv_info("TabContext::activate() no data, setting data source to session");
-        _view->set_data_source(_session);
-        _view->set_signal_data_from_source(_session);
+        dsv_info("TabContext::activate() no data, clearing signal data bindings");
+        _view->clear_signal_data();
     }
     _view->update_scale_offset();
     _view->signals_changed(nullptr);

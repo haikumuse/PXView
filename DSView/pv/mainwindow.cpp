@@ -347,6 +347,14 @@ namespace pv
 
         pv::view::View *initial_view = new pv::view::View(_session, _sampling_bar, this);
         pv::data::SessionDocument *initial_doc = new pv::data::SessionDocument();
+
+        if (_device_agent && _device_agent->have_instance()) {
+            initial_doc->save_signal_config(_device_agent);
+            dsv_info("MainWindow::setup_ui() saved initial signal config, mode=%d ch_count=%d",
+                initial_doc->get_signal_config().work_mode,
+                (int)initial_doc->get_signal_config().channels.size());
+        }
+
         pv::TabContext *initial_ctx = SessionManager::instance()->create_context(initial_view, _session, initial_doc);
         _session->register_document(initial_doc);
         initial_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
@@ -357,6 +365,8 @@ namespace pv
         dsv_info("DBG after addTab");
         fprintf(stderr, "DBG MainWindow::setup_ui() after addTab\n"); fflush(stderr);
         _current_tab_index = 0;
+
+        initial_ctx->activate();
 
 
         // setIconSize(QSize(40, 40));
@@ -2185,16 +2195,26 @@ namespace pv
                 load_device_config();
                 update_title_bar_text();
                 _sampling_bar->update_device_list();
-                
+
                 _logo_bar->dsl_connected(_session->get_device()->is_hardware());
                 update_toolbar_view_status();
                 _session->device_event_object()->device_updated();
 
+                // Save signal config for current tab and rebuild signals
+                {
+                    pv::TabContext *ctx = current_context();
+                    if (ctx && ctx->document()) {
+                        ctx->document()->save_signal_config(_session->get_device());
+                        current_view()->rebuild_signals();
+                        dsv_info("DSV_MSG_CURRENT_DEVICE_CHANGED: saved config and rebuilt signals for current tab");
+                    }
+                }
+
                 if (_device_agent->is_hardware())
                 {
                     _session->on_load_config_end();
-                }                
-                
+                }
+
                 if (_device_agent->get_work_mode() == LOGIC && _device_agent->is_file() == false)
                     current_view()->auto_set_max_scale();
 
@@ -2760,6 +2780,14 @@ namespace pv
     {
         pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
         pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
+
+        if (_device_agent && _device_agent->have_instance()) {
+            new_doc->save_signal_config(_device_agent);
+            dsv_info("MainWindow::on_new_tab_requested() saved signal config, mode=%d ch_count=%d",
+                new_doc->get_signal_config().work_mode,
+                (int)new_doc->get_signal_config().channels.size());
+        }
+
         pv::TabContext *new_ctx = SessionManager::instance()->create_context(new_view, _session, new_doc);
         _session->register_document(new_doc);
         new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
