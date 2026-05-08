@@ -69,6 +69,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     QHBoxLayout *lay1 = new QHBoxLayout(this);
 
     _title = new QLabel(this);
+    _title->setAlignment(Qt::AlignCenter);
     lay1->addWidget(_title);
 
     if (_isTop) {
@@ -103,7 +104,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     }
 
     lay1->insertStretch(0, 500);
-    lay1->insertStretch(1, 500);
+    lay1->insertStretch(2, 500);
     lay1->setContentsMargins(0,0,0,0);
     lay1->setSpacing(0);
 
@@ -375,7 +376,8 @@ void TitleBar::setTabBar(QTabBar *tabBar)
         _tabBar->setParent(this);
         QHBoxLayout *lay = qobject_cast<QHBoxLayout*>(layout());
         if (lay) {
-            lay->insertWidget(0, _tabBar);
+            lay->insertSpacing(0, 15);
+            lay->insertWidget(1, _tabBar);
         }
         _tabBar->setShape(QTabBar::RoundedNorth);
         _tabBar->setDrawBase(false);

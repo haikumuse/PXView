@@ -21,7 +21,7 @@
 
 
 //const auto MINIMUM_HEIGHT = 62;
-const auto MINIMUM_HEIGHT = 30;
+const auto MINIMUM_HEIGHT = 0;
 
 /**
  * QRibbon成员封装
@@ -226,10 +226,13 @@ void QRibbon::initialize(QMainWindow *window)
 
     window->installEventFilter(this);
 
-    window->menuBar()->setParent(0);
-    window->setMenuBar(this);
+    //window->menuBar()->setParent(0);
+    //window->setMenuBar(this);
 
     _styleMenu->actions()[0]->trigger();
+
+    this->setStyleSheet("background: transparent; border: none;");
+    ui->tabWidgetMenuBar->setStyleSheet("QTabWidget::pane { border: 0; background: transparent; } ");
 
     _->_originGeometry = window->normalGeometry();
 
