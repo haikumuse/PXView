@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the DSView project.
  * DSView is based on PulseView.
  *
@@ -272,6 +272,9 @@ namespace pv
         _QRibbon = new QRibbon();
         setup_ui();
         _QRibbon->install(this);
+        _QRibbon->initialize(this);
+        setMenuBar(nullptr); 
+        _vertical_layout->insertWidget(0, _QRibbon);
 
         // Move QRibbon tab bar to title bar
         if (_title_bar && _QRibbon) {
