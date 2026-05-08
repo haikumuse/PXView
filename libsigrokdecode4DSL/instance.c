@@ -360,7 +360,7 @@ SRD_API int srd_inst_channel_set_all(struct srd_decoder_inst *di,
 		return SRD_ERR_ARG;
 	}
 
-	new_channelmap = malloc(sizeof(int) * di->dec_num_channels);
+	new_channelmap = g_malloc_n(di->dec_num_channels, sizeof(int));
 	if (new_channelmap == NULL){
 		srd_err("%s,ERROR:failed to alloc memory.", __func__);
 		return SRD_ERR;
@@ -455,12 +455,11 @@ SRD_PRIV struct srd_decoder_inst *create_c_decoder_inst(struct srd_session *sess
 	if (!sess || !dec)
 		return NULL;
 
-	di = malloc(sizeof(struct srd_decoder_inst));
+	di = g_malloc0(sizeof(struct srd_decoder_inst));
 	if (di == NULL) {
 		srd_err("%s,ERROR:failed to alloc memory.", __func__);
 		return NULL;
 	}
-	memset(di, 0, sizeof(struct srd_decoder_inst));
 
 	di->decoder = dec;
 	di->sess = sess;
@@ -486,7 +485,7 @@ SRD_PRIV struct srd_decoder_inst *create_c_decoder_inst(struct srd_session *sess
 			g_slist_length(di->decoder->opt_channels);
 
 	if (di->dec_num_channels > 0) {
-		di->dec_channelmap = malloc(sizeof(int) * di->dec_num_channels);
+		di->dec_channelmap = g_malloc_n(di->dec_num_channels, sizeof(int));
 		if (di->dec_channelmap == NULL) {
 			srd_err("%s,ERROR:failed to alloc memory.", __func__);
 			g_free(di->inst_id);
@@ -576,12 +575,11 @@ SRD_API struct srd_decoder_inst *srd_inst_new(struct srd_session *sess,
 		return create_c_decoder_inst(sess, dec, options);
 	}
 
-	di = malloc(sizeof(struct srd_decoder_inst));
+	di = g_malloc0(sizeof(struct srd_decoder_inst));
 	if (di == NULL){
 		srd_err("%s,ERROR:failed to alloc memory.", __func__);
 		return NULL;
 	}
-	memset(di, 0, sizeof(struct srd_decoder_inst));
 	
 	di->decoder = dec;
 	di->sess = sess;
@@ -613,7 +611,7 @@ SRD_API struct srd_decoder_inst *srd_inst_new(struct srd_session *sess,
 			g_slist_length(di->decoder->opt_channels);
 			
 	if (di->dec_num_channels > 0) {
-		di->dec_channelmap = malloc(sizeof(int) * di->dec_num_channels);
+		di->dec_channelmap = g_malloc_n(di->dec_num_channels, sizeof(int));
 
 		if (di->dec_channelmap == NULL){
 			PyGILState_Release(gstate);

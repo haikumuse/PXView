@@ -127,6 +127,39 @@ bool AppControl::Init()
         return false;
     }
 
+    // Add C decoder search paths
+    {
+        QString cDecDir = GetAppDataDir();
+#ifdef Q_OS_DARWIN
+        QDir cDecPath(cDecDir);
+        if (cDecPath.cd("../Resources/share/libsigrokdecode4DSL/c_decoders")) {
+            std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
+            srd_c_decoder_path_add(cs.c_str());
+            dsv_info("C decoder path: \"%s\"", cs.c_str());
+        }
+#elif defined(Q_OS_UNIX)
+        QDir cDecPath(cDecDir);
+        if (cDecPath.cd("../share/libsigrokdecode4DSL/c_decoders")) {
+            std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
+            srd_c_decoder_path_add(cs.c_str());
+            dsv_info("C decoder path: \"%s\"", cs.c_str());
+        }
+#else
+        QDir cDecPath(cDecDir);
+        if (cDecPath.cd("decoders/c_decoders")) {
+            std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
+            srd_c_decoder_path_add(cs.c_str());
+            dsv_info("C decoder path: \"%s\"", cs.c_str());
+        }
+        cDecPath = QDir(cDecDir);
+        if (cDecPath.cd("../share/libsigrokdecode4DSL/c_decoders")) {
+            std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
+            srd_c_decoder_path_add(cs.c_str());
+            dsv_info("C decoder path: \"%s\"", cs.c_str());
+        }
+#endif
+    }
+
     // Load the protocol decoders
     if (srd_decoder_load_all() != SRD_OK)
     {

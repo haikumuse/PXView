@@ -125,6 +125,13 @@ void TitleBar::reStyle()
 {
     QString iconPath = GetIconPath();
 
+    if (_tabBar) {
+        setAutoFillBackground(true);
+        QPalette pal = palette();
+        pal.setColor(QPalette::Window, QColor(43, 87, 154));
+        setPalette(pal);
+    }
+
     if (_isTop) {
         _minimizeButton->setIcon(QIcon(iconPath+"/minimize.svg"));
         if (ParentIsMaxsized())
@@ -379,9 +386,17 @@ void TitleBar::setTabBar(QTabBar *tabBar)
             lay->insertSpacing(0, 15);
             lay->insertWidget(1, _tabBar);
         }
+        _tabBar->show();
+        _tabBar->setMinimumWidth(100);
         _tabBar->setShape(QTabBar::RoundedNorth);
         _tabBar->setDrawBase(false);
         _tabBar->setFixedHeight(32);
+
+        setAutoFillBackground(true);
+        QPalette pal = palette();
+        pal.setColor(QPalette::Window, QColor(43, 87, 154));
+        setPalette(pal);
+
         _tabBar->setStyleSheet(
             "QTabBar {"
             "    background: transparent;"

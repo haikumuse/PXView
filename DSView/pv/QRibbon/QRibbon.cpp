@@ -22,6 +22,7 @@
 
 //const auto MINIMUM_HEIGHT = 62;
 const auto MINIMUM_HEIGHT = 0;
+const auto EXPANDED_HEIGHT = 95;
 
 /**
  * QRibbon成员封装
@@ -196,7 +197,7 @@ void QRibbon::initialize(QMainWindow *window)
                 // 无图标则自动添加默认图标
                 if ( a->icon().isNull() )
                 {
-                    static QIcon defaultIcon(":/image/Bar.net.png");
+                    static QIcon defaultIcon(":/icons/light/gear.svg");
                     a->setIcon(defaultIcon);
                 }
                 btn->setDefaultAction(a);
@@ -507,7 +508,7 @@ void QRibbon::hideTab()
     {
         _->animationHideBar.setTargetObject(this);
         _->animationHideBar.setPropertyName("minimumHeight");
-        _->animationHideBar.setStartValue(height());
+        _->animationHideBar.setStartValue(EXPANDED_HEIGHT);
         _->animationHideBar.setEndValue(MINIMUM_HEIGHT);
         _->animationHideBar.setEasingCurve(QEasingCurve::Linear);  // 缓和曲线风格
     }

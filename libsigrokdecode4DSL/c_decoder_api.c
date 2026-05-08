@@ -211,7 +211,7 @@ SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
     if (!di)
         return SRD_ERR_ARG;
 
-    pdo = g_malloc(sizeof(struct srd_pd_output));
+    pdo = g_malloc0(sizeof(struct srd_pd_output));
     pdo->pdo_id = g_slist_length(di->pd_output);
     pdo->output_type = output_type;
     pdo->di = di;
