@@ -599,7 +599,6 @@ set(libsigrokdecode4DSL_SOURCES
     libsigrokdecode4DSL/util.c
     libsigrokdecode4DSL/version.c
     libsigrokdecode4DSL/c_decoder_api.c
-    libsigrokdecode4DSL/c_decoders/spi_c.c
 )
 
 set(libsigrokdecode4DSL_HEADERS
@@ -734,6 +733,10 @@ add_executable(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} ${DSVIEW_LINK_LIBS})
 
+if(NOT WIN32 AND NOT APPLE)
+	target_link_libraries(${PROJECT_NAME} "-Wl,--export-dynamic")
+endif()
+
 if(WIN32)
 # Pass -mwindows so that no "DOS box" will open when PulseView is started.
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-mwindows")
@@ -759,6 +762,42 @@ endif()
 
 message(STATUS "Output dir: ${CMAKE_CURRENT_SOURCE_DIR}/build.dir")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build.dir")
+
+#===============================================================================
+#= C decoder DLL/SO build rules
+#-------------------------------------------------------------------------------
+
+set(C_DECODER_OUTPUT_DIR "${EXECUTABLE_OUTPUT_PATH}/decoders/c_decoders")
+
+set(C_DECODERS spi_c i2c_c uart_c can_c)
+
+foreach(dec ${C_DECODERS})
+	add_library(decoder_${dec} MODULE
+		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode4DSL/c_decoders/${dec}.c
+		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode4DSL/c_decoder_api.c
+	)
+
+	target_include_directories(decoder_${dec} PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode4DSL
+		${CMAKE_CURRENT_SOURCE_DIR}/common
+		${GLIB_INCLUDE_DIRS}
+		${PYTHON_INCLUDE_DIRS}
+	)
+
+	target_compile_definitions(decoder_${dec} PRIVATE
+		SRD_C_DECODER_DLL
+	)
+
+	target_link_libraries(decoder_${dec}
+		-lglib-2.0
+	)
+
+	set_target_properties(decoder_${dec} PROPERTIES
+		OUTPUT_NAME ${dec}
+		LIBRARY_OUTPUT_DIRECTORY ${C_DECODER_OUTPUT_DIR}
+		RUNTIME_OUTPUT_DIRECTORY ${C_DECODER_OUTPUT_DIR}
+	)
+endforeach()
 
 #===============================================================================
 #= Copy language files to output directory (for development)
@@ -793,6 +832,10 @@ if(WIN32)
     endforeach()
 
     message(STATUS "Decoder files copied to: ${EXECUTABLE_OUTPUT_PATH}/decoders")
+
+    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/decoders/c_decoders)
+
+    message(STATUS "C decoder output directory: ${EXECUTABLE_OUTPUT_PATH}/decoders/c_decoders")
 endif()
 
 #===============================================================================
@@ -838,6 +881,13 @@ install(FILES ug25.pdf DESTINATION ${MAC_RES_PREFIX}share/DSView RENAME ug25.pdf
 install(FILES ug31.pdf DESTINATION ${MAC_RES_PREFIX}share/DSView RENAME ug31.pdf)
 
 install(DIRECTORY libsigrokdecode4DSL/decoders DESTINATION ${MAC_RES_PREFIX}share/libsigrokdecode4DSL)
+
+foreach(dec ${C_DECODERS})
+	install(TARGETS decoder_${dec}
+		DESTINATION ${MAC_RES_PREFIX}share/libsigrokdecode4DSL/c_decoders
+	)
+endforeach()
+
 install(DIRECTORY lang DESTINATION ${MAC_RES_PREFIX}share/DSView)
 
 #===============================================================================

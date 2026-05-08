@@ -115,6 +115,18 @@ SRD_API int srd_inst_option_set(struct srd_decoder_inst *di,
 	}
 
 	if (di->is_c_inst) {
+		if (!di->c_options) {
+			di->c_options = g_hash_table_new_full(g_str_hash, g_str_equal,
+				g_free, (GDestroyNotify)g_variant_unref);
+		}
+		GHashTableIter iter;
+		gpointer key, value;
+		g_hash_table_iter_init(&iter, options);
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			g_hash_table_insert(di->c_options,
+				g_strdup((const char *)key),
+				g_variant_ref((GVariant *)value));
+		}
 		return SRD_OK;
 	}
 
@@ -414,6 +426,8 @@ SRD_PRIV struct srd_decoder_inst *create_c_decoder_inst(struct srd_session *sess
 	di->c_dec_inst = dec->c_dec;
 	di->user_data = NULL;
 	di->error_message = NULL;
+	di->samplerate = 0;
+	di->c_options = NULL;
 
 	g_cond_init(&di->got_new_samples_cond);
 	g_cond_init(&di->handled_all_samples_cond);
@@ -1563,6 +1577,10 @@ SRD_PRIV void srd_inst_free(struct srd_decoder_inst *di)
 		if (di->error_message) {
 			g_free(di->error_message);
 			di->error_message = NULL;
+		}
+		if (di->c_options) {
+			g_hash_table_destroy(di->c_options);
+			di->c_options = NULL;
 		}
 	} else {
 		gstate = PyGILState_Ensure();

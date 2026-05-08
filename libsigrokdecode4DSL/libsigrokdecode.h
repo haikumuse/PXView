@@ -272,6 +272,12 @@ struct srd_decoder_annotation_row {
 	GSList *ann_classes;
 };
 
+struct srd_decoder_binary {
+	int bin_class;
+	const char *id;
+	const char *desc;
+};
+
 struct srd_decoder_inst {
 	struct srd_decoder *decoder;
 	struct srd_session *sess;
@@ -351,7 +357,20 @@ struct srd_decoder_inst {
 	struct srd_c_decoder *c_dec_inst;
 	void *user_data;
 	char *error_message;
+	uint64_t samplerate;
+	GHashTable *c_options;
 };
+
+#define SRD_C_DECODER_API_VERSION 1
+
+#ifdef _WIN32
+  #define SRD_C_DECODER_EXPORT __declspec(dllexport)
+#else
+  #define SRD_C_DECODER_EXPORT __attribute__((visibility("default")))
+#endif
+
+typedef struct srd_c_decoder* (*srd_c_decoder_entry_func)(void);
+typedef int (*srd_c_decoder_api_version_func)(void);
 
 struct srd_c_decoder {
     const char *id;
@@ -371,6 +390,15 @@ struct srd_c_decoder {
     const char *(*ann_labels)[2];
     int num_annotation_rows;
     const struct srd_decoder_annotation_row *annotation_rows;
+
+    const char **inputs;
+    int num_inputs;
+    const char **outputs;
+    int num_outputs;
+    const struct srd_decoder_binary *binary;
+    int num_binary;
+    const char **tags;
+    int num_tags;
 
     void (*reset)(void *inst);
     void (*start)(void *inst);
@@ -530,6 +558,7 @@ SRD_API const char *srd_lib_version_string_get(void);
 
 SRD_API int srd_c_decoder_register(struct srd_c_decoder *dec);
 SRD_API int srd_c_decoder_load_all(void);
+SRD_API int srd_c_decoder_path_set(const char *path);
 
 struct srd_c_annotation {
     int ann_class;
@@ -544,6 +573,13 @@ SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
 SRD_API int c_decoder_has_channel(struct srd_decoder_inst *di, int ch);
 SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
     int output_type, const char *proto_id);
+SRD_API uint64_t c_decoder_get_samplerate(struct srd_decoder_inst *di);
+SRD_API int64_t c_decoder_get_option_int(struct srd_decoder_inst *di,
+    const char *key, int64_t defval);
+SRD_API double c_decoder_get_option_double(struct srd_decoder_inst *di,
+    const char *key, double defval);
+SRD_API const char *c_decoder_get_option_string(struct srd_decoder_inst *di,
+    const char *key, const char *defval);
 
 #include "version.h"
 

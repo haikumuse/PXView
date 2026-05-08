@@ -2,12 +2,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
-#include <Python.h>
 #include "libsigrokdecode.h"
-#include "libsigrokdecode-internal.h"
-#include "log.h"
 
+#ifdef SRD_C_DECODER_DLL
+  #define _srd_err(fmt, ...) fprintf(stderr, "libsigrokdecode: " fmt "\n", ##__VA_ARGS__)
+#else
+  #include <Python.h>
+  #include "libsigrokdecode-internal.h"
+  #include "log.h"
+  #define _srd_err srd_err
+#endif
+
+#ifndef SRD_C_DECODER_DLL
 extern GSList *pd_list;
+#endif
 
 static struct srd_pd_callback *srd_pd_output_callback_find_c(struct srd_session *sess, int output_type)
 {
@@ -41,7 +49,7 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
 
     GSList *out_list = g_slist_nth(di->pd_output, output_id);
     if (!out_list) {
-        srd_err("C decoder %s submitted invalid output ID %d.",
+        _srd_err("C decoder %s submitted invalid output ID %d.",
             di->c_dec_inst->name, output_id);
         return SRD_ERR_ARG;
     }
@@ -64,18 +72,12 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
         break;
 
     case SRD_OUTPUT_PYTHON:
-        for (l = di->next_di; l; l = l->next) {
-            struct srd_decoder_inst *next_di = l->data;
-            if (next_di->py_inst) {
-                PyGILState_STATE gstate = PyGILState_Ensure();
-                PyObject *py_data = Py_BuildValue("(KK)", start_sample, end_sample);
-                PyObject *py_res = PyObject_CallMethod(
-                    next_di->py_inst, "decode", "KKO",
-                    start_sample, end_sample, py_data);
-                Py_XDECREF(py_res);
-                Py_XDECREF(py_data);
-                PyGILState_Release(gstate);
-            }
+        if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_ANN))) {
+            pdata.data = &pda;
+            memset(&pda, 0, sizeof(pda));
+            pda.ann_class = ann ? ann->ann_class : 0;
+            pda.ann_text = ann ? ann->ann_text : NULL;
+            cb->cb(&pdata, cb->cb_data);
         }
         if ((cb = srd_pd_output_callback_find_c(di->sess, pdo->output_type))) {
             pdata.data = ann;
@@ -92,7 +94,7 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
         break;
 
     default:
-        srd_err("C decoder %s submitted invalid output type %d.",
+        _srd_err("C decoder %s submitted invalid output type %d.",
             di->c_dec_inst->name, pdo->output_type);
         return SRD_ERR_ARG;
     }
@@ -152,6 +154,11 @@ SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
                                 uint8_t bit_offset = i % 8;
                                 uint8_t val = (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
                                 if (t->type == SRD_TERM_SKIP) {
+                                    if (t->num_samples_already_skipped < t->num_samples_to_skip) {
+                                        t->num_samples_already_skipped++;
+                                        all_match = FALSE;
+                                        break;
+                                    }
                                     continue;
                                 } else if (t->type == SRD_TERM_HIGH && val != 1) {
                                     all_match = FALSE;
@@ -240,4 +247,62 @@ SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
     di->pd_output = g_slist_append(di->pd_output, pdo);
 
     return pdo->pdo_id;
+}
+
+SRD_API uint64_t c_decoder_get_samplerate(struct srd_decoder_inst *di)
+{
+    if (!di)
+        return 0;
+    return di->samplerate;
+}
+
+SRD_API int64_t c_decoder_get_option_int(struct srd_decoder_inst *di,
+    const char *key, int64_t defval)
+{
+    if (!di || !di->c_options || !key)
+        return defval;
+    GVariant *val = g_hash_table_lookup(di->c_options, key);
+    if (!val)
+        return defval;
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_INT64))
+        return g_variant_get_int64(val);
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_UINT64))
+        return (int64_t)g_variant_get_uint64(val);
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_INT32))
+        return (int64_t)g_variant_get_int32(val);
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_UINT32))
+        return (int64_t)g_variant_get_uint32(val);
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_DOUBLE))
+        return (int64_t)g_variant_get_double(val);
+    return defval;
+}
+
+SRD_API double c_decoder_get_option_double(struct srd_decoder_inst *di,
+    const char *key, double defval)
+{
+    if (!di || !di->c_options || !key)
+        return defval;
+    GVariant *val = g_hash_table_lookup(di->c_options, key);
+    if (!val)
+        return defval;
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_DOUBLE))
+        return g_variant_get_double(val);
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_INT64))
+        return (double)g_variant_get_int64(val);
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_UINT64))
+        return (double)g_variant_get_uint64(val);
+    return defval;
+}
+
+SRD_API const char *c_decoder_get_option_string(struct srd_decoder_inst *di,
+    const char *key, const char *defval)
+{
+    if (!di || !di->c_options || !key)
+        return defval;
+    GVariant *val = g_hash_table_lookup(di->c_options, key);
+    if (!val)
+        return defval;
+    if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING))
+        return g_variant_get_string(val, NULL);
+    return defval;
 }
