@@ -92,7 +92,7 @@ public:
     }
 
     inline void reset_start(){
-        _decode_start = _decode_start_back;
+        _decode_start = 0;
     }
 
     inline uint64_t decode_end(){
@@ -114,15 +114,9 @@ private:
  
     std::map<const srd_channel*, int>   _probes;
 	std::map<std::string, GVariant*>    _options;
-    std::map<const srd_channel*, int>   _probes_back;
-    std::map<std::string, GVariant*>    _options_back;
-
     uint64_t        _decode_start;
     uint64_t        _decode_end;
-    uint64_t        _decode_start_back;
-    uint64_t        _decode_end_back;
 
-    bool            _setted;
     bool            _shown;
 };
 
