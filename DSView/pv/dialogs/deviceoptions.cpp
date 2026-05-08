@@ -82,7 +82,7 @@ ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
     int h = fh + _box->height() + 2;
     setFixedHeight(h);
     setMinimumWidth(w);
-    // Allow horizontal stretching to fill grid cell
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     connect(_box, SIGNAL(released()), this, SLOT(on_checked()));
 }
@@ -354,6 +354,14 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout)
     _device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num);
 
     // channels
+    int total_channels = 0;
+    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+        total_channels++;
+    }
+
+    int cols = qMin(total_channels, 8);
+    if (cols <= 0) cols = 8;
+
     QWidget *channel_pannel = new QWidget();
     QGridLayout *channel_grid = new QGridLayout();
     channel_grid->setContentsMargins(0,0,0,0);
@@ -375,12 +383,12 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout)
             probe->enabled = false;
 
         ChannelLabel *ch_item = new ChannelLabel(this, NULL, probe->index);
-        channel_grid->addWidget(ch_item, channel_row, channel_column++, Qt::AlignCenter);
+        channel_grid->addWidget(ch_item, channel_row, channel_column++);
         _probes_checkBox_list.push_back(ch_item->getCheckBox());
         ch_item->getCheckBox()->setCheckState(probe->enabled ? Qt::Checked : Qt::Unchecked);
         channel_line_height = ch_item->height();
 
-         if (channel_column == 8){
+         if (channel_column == cols){
             channel_column = 0;
             channel_row++;
             
@@ -389,6 +397,10 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout)
             }
          }
 	}
+
+    for (int c = 0; c < cols; c++) {
+        channel_grid->setColumnStretch(c, 1);
+    }
 
     layout.addWidget(channel_pannel);
 

@@ -1570,10 +1570,6 @@ SRD_PRIV void srd_inst_free(struct srd_decoder_inst *di)
 	if (di->is_c_inst) {
 		if (di->c_dec_inst && di->c_dec_inst->destroy)
 			di->c_dec_inst->destroy(di);
-		if (di->user_data) {
-			g_free(di->user_data);
-			di->user_data = NULL;
-		}
 		if (di->error_message) {
 			g_free(di->error_message);
 			di->error_message = NULL;

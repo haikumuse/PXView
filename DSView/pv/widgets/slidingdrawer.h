@@ -131,6 +131,7 @@ private:
     bool _drag_active;
     int _drag_start_drawer_width;
     QPoint _drag_start_pos;
+    QWidget *_edge_grip;
 
     static constexpr int EDGE_GRIP_WIDTH = 6; // pixels from left edge for resize grip
 };

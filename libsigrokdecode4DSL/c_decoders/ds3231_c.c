@@ -3,7 +3,6 @@
 #include <string.h>
 #include <glib.h>
 #include "libsigrokdecode.h"
-#include "c_decoder_utils.h"
 
 enum ds3231_state {
     STATE_IDLE,
@@ -21,47 +20,58 @@ static struct srd_decoder_option ds3231_options[] = {
 };
 
 static const char *ds3231_inputs[] = {"i2c", NULL};
-static const char *ds3231_outputs[] = {, NULL};
+static const char *ds3231_outputs[] = {"ds3231", NULL};
 static const char *ds3231_tags[] = {"Clock/timing", "IC", NULL};
 
-static void ds3231_reset(void *inst)
+static const char *ds3231_ann_labels[][3] = {
+    {"", "datetime", "Date/Time"},
+    {"", "register", "Register"},
+};
+
+static const int ds3231_row_datetime_classes[] = {0};
+static const int ds3231_row_register_classes[] = {1};
+static const struct srd_c_ann_row ds3231_ann_rows[] = {
+    {"datetime", "Date/Time", ds3231_row_datetime_classes, 1},
+    {"registers", "Registers", ds3231_row_register_classes, 1},
+};
+
+static void ds3231_reset(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    if (!di->user_data) {
-        di->user_data = g_malloc0(sizeof(ds3231_state));
+    if (!c_decoder_get_private(di)) {
+        c_decoder_set_private(di, g_malloc0(sizeof(ds3231_state)));
     }
-    ds3231_state *s = (ds3231_state *)di->user_data;
+    ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(ds3231_state));
     s->state = STATE_IDLE;
 }
 
-static void ds3231_start(void *inst)
+static void ds3231_start(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
     c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds3231");
 }
 
-static void ds3231_decode(void *inst)
+static void ds3231_decode(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    ds3231_state *s = (ds3231_state *)di->user_data;
+    ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
     while (1) {
-        GSList *cond = NULL;
-        int ret = c_decoder_wait(di, cond, &samplenum, &matched);
+        srd_cond_builder *cb = c_cond_new();
+        c_cond_edge(cb, 0);
+        int ret = c_cond_wait(cb, di, &samplenum, &matched);
+        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
     }
 }
 
-static void ds3231_destroy(void *inst)
+static void ds3231_destroy(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    if (di->user_data) {
-        g_free(di->user_data);
-        di->user_data = NULL;
+    void *priv = c_decoder_get_private(di);
+    if (priv) {
+        g_free(priv);
+        c_decoder_set_private(di, NULL);
     }
 }
 
@@ -77,14 +87,14 @@ struct srd_c_decoder ds3231_c_decoder = {
     .num_optional_channels = 0,
     .options = ds3231_options,
     .num_options = 1,
-    .num_annotations = 0,
-    .ann_labels = NULL,
-    .num_annotation_rows = 0,
-    .annotation_rows = NULL,
+    .num_annotations = 2,
+    .ann_labels = ds3231_ann_labels,
+    .num_annotation_rows = 2,
+    .annotation_rows = ds3231_ann_rows,
     .inputs = ds3231_inputs,
     .num_inputs = 1,
     .outputs = ds3231_outputs,
-    .num_outputs = 0,
+    .num_outputs = 1,
     .binary = NULL,
     .num_binary = 0,
     .tags = ds3231_tags,

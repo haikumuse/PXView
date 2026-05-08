@@ -128,7 +128,14 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     _stacked_widget->setObjectName("sliding_drawer_stack");
     content_layout->addWidget(_stacked_widget, 1);
 
-    // Install event filter on backdrop for click-to-close
+    _edge_grip = new QWidget(_panel);
+    _edge_grip->setObjectName("sliding_drawer_edge_grip");
+    _edge_grip->setFixedWidth(EDGE_GRIP_WIDTH);
+    _edge_grip->setCursor(Qt::SplitHCursor);
+    _edge_grip->setAttribute(Qt::WA_TranslucentBackground);
+    _edge_grip->installEventFilter(this);
+    _edge_grip->raise();
+
     _backdrop->installEventFilter(this);
 
     // --- Open animation group ---
@@ -453,6 +460,9 @@ void SlidingDrawer::updatePanelGeometry()
 
     // Content is always at (0,0) inside the panel — no shift, the whole thing moves together
     _panel_content->setGeometry(0, 0, _drawer_width, parent_h);
+
+    _edge_grip->setGeometry(0, 0, EDGE_GRIP_WIDTH, parent_h);
+    _edge_grip->raise();
 }
 
 void SlidingDrawer::finishClose()
@@ -486,11 +496,21 @@ void SlidingDrawer::resizeEvent(QResizeEvent *event)
 
 bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event)
 {
-    // --- Backdrop click to close ---
     if (obj == _backdrop && event->type() == QEvent::MouseButtonRelease) {
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton) {
             close();
+            return true;
+        }
+    }
+
+    if (obj == _edge_grip && event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton && _is_open && !_is_animating) {
+            _drag_active = true;
+            _drag_start_pos = me->globalPos();
+            _drag_start_drawer_width = _drawer_width;
+            grabMouse(Qt::SplitHCursor);
             return true;
         }
     }
@@ -500,27 +520,10 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event)
 
 void SlidingDrawer::mouseMoveEvent(QMouseEvent *event)
 {
-    if (!_is_open) {
-        QWidget::mouseMoveEvent(event);
-        return;
-    }
-
     if (_drag_active) {
-        // Dragging left edge left = wider, right = narrower
         int dx = _drag_start_pos.x() - event->globalPos().x();
         int new_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
         setDrawerWidth(new_width);
-    } else {
-        // Update cursor based on position near the left edge of the panel
-        int panel_left = _panel->geometry().left();
-        int mouse_x = event->pos().x();
-        int dist_to_edge = mouse_x - panel_left;
-
-        if (dist_to_edge >= 0 && dist_to_edge < EDGE_GRIP_WIDTH) {
-            setCursor(Qt::SplitHCursor);
-        } else {
-            unsetCursor();
-        }
     }
 
     QWidget::mouseMoveEvent(event);
@@ -528,20 +531,6 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event)
 
 void SlidingDrawer::mousePressEvent(QMouseEvent *event)
 {
-    if (_is_open && event->button() == Qt::LeftButton) {
-        int panel_left = _panel->geometry().left();
-        int mouse_x = event->pos().x();
-        int dist_to_edge = mouse_x - panel_left;
-
-        if (dist_to_edge >= 0 && dist_to_edge < EDGE_GRIP_WIDTH) {
-            _drag_active = true;
-            _drag_start_pos = event->globalPos();
-            _drag_start_drawer_width = _drawer_width;
-            grabMouse();
-            return;
-        }
-    }
-
     QWidget::mousePressEvent(event);
 }
 
@@ -550,6 +539,7 @@ void SlidingDrawer::mouseReleaseEvent(QMouseEvent *event)
     if (_drag_active) {
         _drag_active = false;
         releaseMouse();
+        unsetCursor();
         return;
     }
 
