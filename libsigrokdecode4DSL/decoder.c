@@ -237,12 +237,11 @@ static int get_channels(const struct srd_decoder* d, const char* attr,
                 d->name, attr);
             goto err_out;
         }
-        pdch = malloc(sizeof(struct srd_channel));
+        pdch = g_malloc0(sizeof(struct srd_channel));
         if (pdch == NULL) {
             srd_err("%s,ERROR:failed to alloc memory.", __func__);
             goto err_out;
         }
-        memset(pdch, 0, sizeof(struct srd_channel));
 
         /* Add to list right away so it doesn't get lost. */
         pdchl = g_slist_prepend(pdchl, pdch);
@@ -324,12 +323,11 @@ static int get_options(struct srd_decoder* d)
             goto err_out;
         }
 
-        o = malloc(sizeof(struct srd_decoder_option));
+        o = g_malloc0(sizeof(struct srd_decoder_option));
         if (o == NULL) {
             srd_err("%s,ERROR:failed to alloc memory.", __func__);
             goto err_out;
         }
-        memset(o, 0, sizeof(struct srd_decoder_option));
 
         /* Add to list right away so it doesn't get lost. */
         options = g_slist_prepend(options, o);
@@ -538,12 +536,11 @@ static int get_annotation_rows(struct srd_decoder* dec)
                 dec->name);
             goto err_out;
         }
-        ann_row = malloc(sizeof(struct srd_decoder_annotation_row));
+        ann_row = g_malloc0(sizeof(struct srd_decoder_annotation_row));
         if (ann_row == NULL) {
             srd_err("%s,ERROR:failed to alloc memory.", __func__);
             goto err_out;
         }
-        memset(ann_row, 0, sizeof(struct srd_decoder_annotation_row));
 
         /* Add to list right away so it doesn't get lost. */
         annotation_rows = g_slist_prepend(annotation_rows, ann_row);
@@ -769,12 +766,11 @@ SRD_API int srd_decoder_load(const char* module_name)
         return SRD_OK;
     }
 
-    d = malloc(sizeof(struct srd_decoder));
+    d = g_malloc0(sizeof(struct srd_decoder));
     if (d == NULL) {
         srd_err("%s,ERROR:failed to alloc memory.", __func__);
         goto err_out;
     }
-    memset(d, 0, sizeof(struct srd_decoder));
 
     fail_txt = NULL;
 

@@ -337,7 +337,7 @@ static int convert_binary(struct srd_decoder_inst *di, PyObject *obj,
 	pdb = pdata->data;
 	pdb->bin_class = bin_class;
 	pdb->size = size;
-	if (!(pdb->data = malloc(pdb->size))){
+	if (!(pdb->data = g_malloc(pdb->size))){
 		srd_err("%s,ERROR:failed to alloc memory.", __func__);
 		return SRD_ERR_MALLOC;
 	}
@@ -675,13 +675,12 @@ static PyObject *Decoder_register(PyObject *self, PyObject *args,
 		return py_new_output_id;
 	}
 
-	pdo = malloc(sizeof(struct srd_pd_output));
+	pdo = g_malloc0(sizeof(struct srd_pd_output));
 	if (pdo == NULL){
 		PyGILState_Release(gstate);
 		srd_err("%s,ERROR:failed to alloc memory.", __func__);
 		return NULL;
 	}
-    memset(pdo, 0, sizeof(struct srd_pd_output));
 
 	/* pdo_id is just a simple index, nothing is deleted from this list anyway. */
 	pdo->pdo_id = g_slist_length(di->pd_output);
@@ -826,9 +825,8 @@ static int create_term_list(PyObject *py_dict, GSList **term_list, gboolean cur_
 				goto err;
 			} 
 
-			term = malloc(sizeof(struct srd_term));
+			term = g_malloc0(sizeof(struct srd_term));
 			if (term != NULL){
-                memset(term, 0, sizeof(struct srd_term));
 				term->type = get_term_type(term_str);
 				term->channel = PyLong_AsLong(py_key);
 			}
@@ -845,9 +843,8 @@ static int create_term_list(PyObject *py_dict, GSList **term_list, gboolean cur_
 				srd_err("Failed to get number of samples to skip.");
 				goto err;
 			}
-			term = malloc(sizeof(struct srd_term));
+			term = g_malloc0(sizeof(struct srd_term));
 			if (term != NULL){
-                memset(term, 0, sizeof(struct srd_term));
 				term->type = SRD_TERM_SKIP;
 				term->num_samples_to_skip = num_samples_to_skip;
 				term->num_samples_already_skipped = cur_matched ? (term->num_samples_to_skip != 0) : 0;
@@ -1016,9 +1013,8 @@ static int set_skip_condition(struct srd_decoder_inst *di, uint64_t count)
 
 	condition_list_free(di);
 
-	term = malloc(sizeof(struct srd_term));
+	term = g_malloc0(sizeof(struct srd_term));
 	if (term != NULL){
-		memset(term, 0, sizeof(struct srd_term));
 		term->type = SRD_TERM_SKIP;
 		term->num_samples_to_skip = count;
 		term->num_samples_already_skipped = di->abs_cur_matched ? (term->num_samples_to_skip != 0) : 0;
