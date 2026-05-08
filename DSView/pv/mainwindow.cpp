@@ -25,7 +25,6 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QMenu>
-#include <QMenuBar>
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -117,10 +116,7 @@
 #include <QWidgetAction>
 #include<QShortcut>
 
-#include <QMenu>
-#include <QMenuBar>
 #include <QTabBar>
-#include "QRibbon/QRibbon.h"
 
 namespace pv
 {
@@ -132,17 +128,14 @@ namespace pv
 
     void MainWindow::MainWindowRibbonHelper()
     {
-        
-        
         _right_tool_bar = new QToolBar();
 
-        // Categories
-        _menu_bar = new QMenuBar(this);
-        this->setMenuBar(_menu_bar);
-
-        _category_file = _menu_bar->addMenu(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-        _category_display = _menu_bar->addMenu(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
-        _category_help = _menu_bar->addMenu(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
+        _category_file_index = _title_bar->addCategory(
+            L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+        _category_display_index = _title_bar->addCategory(
+            L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
+        _category_help_index = _title_bar->addCategory(
+            L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
     }
 
     void MainWindow::Ribbon_setupUi() {
@@ -181,70 +174,53 @@ namespace pv
 
     void MainWindow::setupFileCategory()
     {
+        _title_bar->addAction(_category_file_index, _file_bar->_action_load);
+        _title_bar->addAction(_category_file_index, _file_bar->_action_store);
+        _title_bar->addAction(_category_file_index, _file_bar->_action_default);
 
-        _category_file->addAction(_file_bar->_action_load);
-        _category_file->addAction(_file_bar->_action_store);
-        _category_file->addAction(_file_bar->_action_default);
+        _title_bar->addSeparator(_category_file_index);
 
-        _category_file->addSeparator();
+        _title_bar->addAction(_category_file_index, _file_bar->_action_open);
+        _title_bar->addAction(_category_file_index, _file_bar->_action_save);
+        _title_bar->addSeparator(_category_file_index);
 
-        _category_file->addAction(_file_bar->_action_open);
-        _category_file->addAction(_file_bar->_action_save);
-        _category_file->addSeparator();
-
-        _category_file->addAction(_file_bar->_action_export);
-        _category_file->addAction(_file_bar->_action_capture);
-
-
-
-
+        _title_bar->addAction(_category_file_index, _file_bar->_action_export);
+        _title_bar->addAction(_category_file_index, _file_bar->_action_capture);
     }
 
     void MainWindow::setupDisplayCategory()
     {
- 
-        // _category_display->addAction(_trig_bar->_action_cn);
-        // _category_display->addAction(_trig_bar->_action_en);
-        _category_display->addAction(_logo_bar->_action_cn);
-        _category_display->addAction(_logo_bar->_action_en);
+        _title_bar->addAction(_category_display_index, _logo_bar->_action_cn);
+        _title_bar->addAction(_category_display_index, _logo_bar->_action_en);
 
-        _category_display->addSeparator();
+        _title_bar->addSeparator(_category_display_index);
 
-        _category_display->addAction(_trig_bar->_light_style);
-        _category_display->addAction(_trig_bar->_dark_style);
-        _category_display->addSeparator();
+        _title_bar->addAction(_category_display_index, _trig_bar->_light_style);
+        _title_bar->addAction(_category_display_index, _trig_bar->_dark_style);
+        _title_bar->addSeparator(_category_display_index);
 
-        _category_display->addAction(_trig_bar->_action_dispalyOptions);
+        _title_bar->addAction(_category_display_index, _trig_bar->_action_dispalyOptions);
     }
 
     void MainWindow::setupHelpCategory()
     {
-
-        _category_help->addAction(_logo_bar->_about);
-        _category_help->addAction(_logo_bar->_manual);
-        _category_help->addAction(_logo_bar->_issue);
-        _category_help->addAction(_logo_bar->_update);
-        _category_help->addAction(_logo_bar->_log);
-
+        _title_bar->addAction(_category_help_index, _logo_bar->_about);
+        _title_bar->addAction(_category_help_index, _logo_bar->_manual);
+        _title_bar->addAction(_category_help_index, _logo_bar->_issue);
+        _title_bar->addAction(_category_help_index, _logo_bar->_update);
+        _title_bar->addAction(_category_help_index, _logo_bar->_log);
     }
 
     void MainWindow::Ribbon_retranslateUi()
     {
-        // TODO: covert this to PXView translation style
-        _category_file->setTitle(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-        _category_display->setTitle(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
-        _category_help->setTitle(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
-
-        // QString style = AppConfig::Instance().frameOptions.style;
-
-        if(_QRibbon != NULL){
-            _QRibbon->reinitialize(this,0,L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
-
-            _QRibbon->reinitialize(this,1,L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
-
-            _QRibbon->reinitialize(this,2,L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
+        if (_title_bar) {
+            _title_bar->retranslateUi(_category_file_index,
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+            _title_bar->retranslateUi(_category_display_index,
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Settings"));
+            _title_bar->retranslateUi(_category_help_index,
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
         }
-        
     }
 
     MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
@@ -252,7 +228,10 @@ namespace pv
     {
         dsv_info("DBG MainWindow::MainWindow() START");
         _msg = NULL;
-        _frame = parent; 
+        _frame = parent;
+        _category_file_index = -1;
+        _category_display_index = -1;
+        _category_help_index = -1;
 
         assert(title_bar);
         assert(_frame);
@@ -268,20 +247,8 @@ namespace pv
         _is_save_confirm_msg = false;
 
         _pattern_mode = "random";
-        _QRibbon = NULL;
-        _QRibbon = new QRibbon();
         setup_ui();
-        _QRibbon->install(this);
-        setMenuBar(nullptr); 
-        _vertical_layout->insertWidget(0, _QRibbon);
-
-        // Move QRibbon tab bar to title bar
-        if (_title_bar && _QRibbon) {
-            QTabBar *ribbonTabBar = _QRibbon->getTabBar();
-            if (ribbonTabBar) {
-                _title_bar->setTabBar(ribbonTabBar);
-            }
-        }
+        setMenuBar(nullptr);
 
         setContextMenuPolicy(Qt::NoContextMenu);
 

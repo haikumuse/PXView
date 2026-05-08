@@ -8,7 +8,7 @@ DSView 使用 libsigrokdecode4DSL 库来支持协议解码器。原始解码器�
 
 - **已完成 C 解码器**：24 个（14 个完整协议 + 10 个本轮新增 + 8 个 stub）
 - **C 解码器架构**：每个解码器编译为独立 DLL，通过 `srd_c_decoder` 结构体导出
-- **运行时加载**：主程序扫描 c_decoders 目录，加载 DLL 并注册解码器
+- **运行时加载**：主程序扫描 c\_decoders 目录，加载 DLL 并注册解码器
 
 ### 编译指令
 
@@ -20,7 +20,7 @@ DSView 使用 libsigrokdecode4DSL 库来支持协议解码器。原始解码器�
 cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=../install.dir -DENABLE_DEBUG_HELPER=ON
 ```
 
----
+***
 
 ## 一、C 解码器文件结构
 
@@ -141,26 +141,26 @@ SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)
 }
 ```
 
----
+***
 
 ## 二、核心 API 详解
 
-### 2.1 条件等待系统（c_cond_*）
+### 2.1 条件等待系统（c\_cond\_\*）
 
 这是 C 解码器最核心的机制，替代了 Python 解码器中的 `self.wait()` 调用。
 
 **Python → C 对照表：**
 
-| Python | C |
-|--------|---|
-| `self.wait({0: 'r'})` | `c_cond_rise(cb, 0); c_cond_wait(cb, di, &sn, &m);` |
-| `self.wait({0: 'f'})` | `c_cond_fall(cb, 0); c_cond_wait(cb, di, &sn, &m);` |
-| `self.wait({0: 'e'})` | `c_cond_edge(cb, 0); c_cond_wait(cb, di, &sn, &m);` |
-| `self.wait({0: 'h'})` | `c_cond_high(cb, 0); c_cond_wait(cb, di, &sn, &m);` |
-| `self.wait({0: 'l'})` | `c_cond_low(cb, 0); c_cond_wait(cb, di, &sn, &m);` |
-| `self.wait([{'skip': N}])` | `c_cond_skip(cb, N); c_cond_wait(cb, di, &sn, &m);` |
+| Python                            | C                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| `self.wait({0: 'r'})`             | `c_cond_rise(cb, 0); c_cond_wait(cb, di, &sn, &m);`                       |
+| `self.wait({0: 'f'})`             | `c_cond_fall(cb, 0); c_cond_wait(cb, di, &sn, &m);`                       |
+| `self.wait({0: 'e'})`             | `c_cond_edge(cb, 0); c_cond_wait(cb, di, &sn, &m);`                       |
+| `self.wait({0: 'h'})`             | `c_cond_high(cb, 0); c_cond_wait(cb, di, &sn, &m);`                       |
+| `self.wait({0: 'l'})`             | `c_cond_low(cb, 0); c_cond_wait(cb, di, &sn, &m);`                        |
+| `self.wait([{'skip': N}])`        | `c_cond_skip(cb, N); c_cond_wait(cb, di, &sn, &m);`                       |
 | `self.wait([{0: 'e'}, {1: 'e'}])` | `c_cond_edge(cb, 0); c_cond_or(cb); c_cond_edge(cb, 1); c_cond_wait(...)` |
-| `self.wait()` | `c_cond_wait(c_cond_new(), di, &sn, &m);` |
+| `self.wait()`                     | `c_cond_wait(c_cond_new(), di, &sn, &m);`                                 |
 
 **使用模式：**
 
@@ -253,7 +253,7 @@ int has_ch = c_decoder_has_channel(di, channel_index);   /* 检查通道是否�
 int out_id = c_decoder_register_output(di, SRD_OUTPUT_ANN, "proto_id");  /* 注册输出 */
 ```
 
----
+***
 
 ## 三、Python → C 重写步骤
 
@@ -273,17 +273,17 @@ int out_id = c_decoder_register_output(di, SRD_OUTPUT_ANN, "proto_id");  /* 注�
 
 ### 步骤2：映射数据结构
 
-| Python | C |
-|--------|---|
-| `self.xxx` 实例变量 | `xxx_priv` 结构体字段 |
-| `self.state = 'IDLE'` | `s->state = STATE_IDLE` |
-| `self.samplenum` | `samplenum` 局部变量（由 c_cond_wait 返回） |
-| `self.matched` | `matched` 局部变量（由 c_cond_wait 返回） |
-| `self.wait(...)` | `c_cond_new()` + `c_cond_xxx()` + `c_cond_wait()` + `c_cond_free()` |
-| `self.put(ss, es, out, [cls, [texts]])` | `C_ANN_PUT(di, ss, es, out, cls, texts...)` |
-| `self.register(srd.OUTPUT_ANN)` | `c_decoder_register_output(di, SRD_OUTPUT_ANN, "proto_id")` |
-| `self.options['key']` | `c_decoder_get_option_xxx(di, "key", default)` |
-| `pins[0]` / `self.wait()[0]` | `c_decoder_get_pin(di, 0, samplenum)` |
+| Python                                  | C                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------- |
+| `self.xxx` 实例变量                         | `xxx_priv` 结构体字段                                                    |
+| `self.state = 'IDLE'`                   | `s->state = STATE_IDLE`                                             |
+| `self.samplenum`                        | `samplenum` 局部变量（由 c\_cond\_wait 返回）                                |
+| `self.matched`                          | `matched` 局部变量（由 c\_cond\_wait 返回）                                  |
+| `self.wait(...)`                        | `c_cond_new()` + `c_cond_xxx()` + `c_cond_wait()` + `c_cond_free()` |
+| `self.put(ss, es, out, [cls, [texts]])` | `C_ANN_PUT(di, ss, es, out, cls, texts...)`                         |
+| `self.register(srd.OUTPUT_ANN)`         | `c_decoder_register_output(di, SRD_OUTPUT_ANN, "proto_id")`         |
+| `self.options['key']`                   | `c_decoder_get_option_xxx(di, "key", default)`                      |
+| `pins[0]` / `self.wait()[0]`            | `c_decoder_get_pin(di, 0, samplenum)`                               |
 
 ### 步骤3：翻译状态机
 
@@ -323,10 +323,12 @@ static void xxx_decode(struct srd_decoder_inst *di)
 这是最关键的翻译步骤。Python 的 `wait()` 有多种调用模式：
 
 **模式1：等待单个条件**
+
 ```python
 # Python
 (can_rx,) = self.wait({0: 'f'})
 ```
+
 ```c
 // C
 srd_cond_builder *cb = c_cond_new();
@@ -337,10 +339,12 @@ uint8_t can_rx = c_decoder_get_pin(di, 0, samplenum);
 ```
 
 **模式2：等待多个条件（OR）**
+
 ```python
 # Python
 (dp, dm) = self.wait([{0: 'e'}, {1: 'e'}])
 ```
+
 ```c
 // C
 srd_cond_builder *cb = c_cond_new();
@@ -354,10 +358,12 @@ uint8_t dm = c_decoder_get_pin(di, 1, samplenum);
 ```
 
 **模式3：等待跳过（skip）**
+
 ```python
 # Python
 (pins,) = self.wait([{'skip': N}])
 ```
+
 ```c
 // C
 srd_cond_builder *cb = c_cond_new();
@@ -367,6 +373,7 @@ c_cond_free(cb);
 ```
 
 **模式4：混合条件（skip + edge）**
+
 ```python
 # Python
 (can_rx,) = self.wait([{'skip': pos - self.samplenum}, {0: 'f'}])
@@ -375,6 +382,7 @@ if (self.matched & (0b1 << 1)):
 if (self.matched & (0b1 << 0)):
     self.handle_bit(can_rx)
 ```
+
 ```c
 // C
 srd_cond_builder *cb = c_cond_new();
@@ -389,10 +397,12 @@ if (matched & 1) handle_bit(di, s, can_rx);
 ```
 
 **模式5：无条件等待（下一采样点）**
+
 ```python
 # Python
 pins = self.wait()
 ```
+
 ```c
 // C
 srd_cond_builder *cb = c_cond_new();
@@ -406,6 +416,7 @@ c_cond_free(cb);
 # Python
 self.put(ss, es, self.out_ann, [cls, ['text1', 'text2', 'text3']])
 ```
+
 ```c
 // C
 C_ANN_PUT(di, ss, es, s->out_ann, cls, "text1", "text2", "text3");
@@ -425,7 +436,7 @@ set(C_DECODERS spi_c i2c_c uart_c can_c ... xxx_c)
 cmake --build build --target decoder_xxx_c
 ```
 
----
+***
 
 ## 四、常见模式与技巧
 
@@ -532,7 +543,7 @@ static uint64_t bitpack_msb(int bits[], int count)
 }
 ```
 
-### 4.7 选项初始化（srd_c_decoder_entry）
+### 4.7 选项初始化（srd\_c\_decoder\_entry）
 
 选项的 GVariant 值必须在 `srd_c_decoder_entry()` 中初始化，不能在静态初始化中完成：
 
@@ -578,13 +589,14 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 }
 ```
 
----
+***
 
 ## 五、注意事项
 
 ### 5.1 不要使用 C++ 特性
 
 C 解码器必须是纯 C 代码（`.c` 文件），不能使用 C++ 特性：
+
 - ❌ `new`/`delete`，使用 `g_malloc0()`/`g_free()`
 - ❌ `class`，使用 `struct`
 - ❌ `std::string`，使用 `char[]`/`snprintf()`
@@ -604,7 +616,7 @@ static const char *inputs[] = {"logic", NULL};   /* ✅ 正确 */
 static const char *inputs[] = {"logic"};          /* ❌ 缺少 NULL */
 ```
 
-### 5.4 c_cond_wait 只能调用一次
+### 5.4 c\_cond\_wait 只能调用一次
 
 ```c
 srd_cond_builder *cb = c_cond_new();
@@ -628,111 +640,111 @@ c_cond_free(cb);
 
 通道索引按定义顺序：`channels[0]` = 索引0，`channels[1]` = 索引1，`optional_channels[0]` = 索引 `num_channels`，以此类推。
 
----
+***
 
 ## 六、已完成的 C 解码器清单
 
 ### 完整协议实现（14个）
 
-| 解码器 | 文件 | 协议 | 通道数 |
-|--------|------|------|--------|
-| spi_c | spi_c.c | SPI | 4 (SCLK, MOSI, MISO, CS) |
-| i2c_c | i2c.c | I2C | 2 (SCL, SDA) |
-| uart_c | uart_c.c | UART | 2 opt (RX, TX) |
-| can_c | can_c.c | CAN 2.0 | 1 (CAN_RX) |
-| jtag_c | jtag_c.c | JTAG | 4+3 opt (TCK,TMS,TDI,TDO) |
-| swd_c | swd_c.c | SWD | 2 (SWCLK, SWDIO) |
-| onewire_c | onewire_c.c | 1-Wire | 1 (OWR) |
-| i2s_c | i2s_c.c | I2S | 3 (SCLK, WS, SD) |
-| lin_c | lin_c.c | LIN | 1 (LIN) |
-| hdlc_c | hdlc_c.c | HDLC | 1 (DATA) |
-| microwire_c | microwire_c.c | Microwire | 4 (CS, SK, SI, SO) |
-| mdio_c | mdio_c.c | MDIO | 2 (MDC, MDIO) |
-| ps2_c | ps2_c.c | PS/2 | 2 (CLK, DATA) |
-| dmx512_c | dmx512_c.c | DMX512 | 1 (DATA) |
+| 解码器          | 文件             | 协议        | 通道数                       |
+| ------------ | -------------- | --------- | ------------------------- |
+| spi\_c       | spi\_c.c       | SPI       | 4 (SCLK, MOSI, MISO, CS)  |
+| i2c\_c       | i2c.c          | I2C       | 2 (SCL, SDA)              |
+| uart\_c      | uart\_c.c      | UART      | 2 opt (RX, TX)            |
+| can\_c       | can\_c.c       | CAN 2.0   | 1 (CAN\_RX)               |
+| jtag\_c      | jtag\_c.c      | JTAG      | 4+3 opt (TCK,TMS,TDI,TDO) |
+| swd\_c       | swd\_c.c       | SWD       | 2 (SWCLK, SWDIO)          |
+| onewire\_c   | onewire\_c.c   | 1-Wire    | 1 (OWR)                   |
+| i2s\_c       | i2s\_c.c       | I2S       | 3 (SCLK, WS, SD)          |
+| lin\_c       | lin\_c.c       | LIN       | 1 (LIN)                   |
+| hdlc\_c      | hdlc\_c.c      | HDLC      | 1 (DATA)                  |
+| microwire\_c | microwire\_c.c | Microwire | 4 (CS, SK, SI, SO)        |
+| mdio\_c      | mdio\_c.c      | MDIO      | 2 (MDC, MDIO)             |
+| ps2\_c       | ps2\_c.c       | PS/2      | 2 (CLK, DATA)             |
+| dmx512\_c    | dmx512\_c.c    | DMX512    | 1 (DATA)                  |
 
 ### 本轮新增（10个）
 
-| 解码器 | 文件 | 协议 | 通道数 |
-|--------|------|------|--------|
-| nrzi_c | nrzi_c.c | NRZ-I 编码 | 1 (DATA) |
-| ir_nec_c | ir_nec_c.c | NEC 红外 | 1 (IR) |
-| dcf77_c | dcf77_c.c | DCF77 时钟 | 1 (DATA) |
-| cec_c | cec_c.c | HDMI CEC | 1 (CEC) |
-| spdif_c | spdif_c.c | S/PDIF | 1 (DATA) |
-| usb_signalling_c | usb_signalling_c.c | USB LS/FS | 2 (DP, DM) |
-| 4b5b_c | 4b5b_c.c | 4B/5B+NRZI | 1 (DATA) |
-| can_fd_c | can_fd_c.c | CAN-FD | 1 (CAN_RX) |
-| iso7816_c | iso7816_c.c | ISO 7816 | 2 (CLK, DATA) |
-| lpc_c | lpc_c.c | LPC | 6+7 opt (LFRAME,LCLK,LAD[0-3]) |
+| 解码器                | 文件                   | 协议         | 通道数                             |
+| ------------------ | -------------------- | ---------- | ------------------------------- |
+| nrzi\_c            | nrzi\_c.c            | NRZ-I 编码   | 1 (DATA)                        |
+| ir\_nec\_c         | ir\_nec\_c.c         | NEC 红外     | 1 (IR)                          |
+| dcf77\_c           | dcf77\_c.c           | DCF77 时钟   | 1 (DATA)                        |
+| cec\_c             | cec\_c.c             | HDMI CEC   | 1 (CEC)                         |
+| spdif\_c           | spdif\_c.c           | S/PDIF     | 1 (DATA)                        |
+| usb\_signalling\_c | usb\_signalling\_c.c | USB LS/FS  | 2 (DP, DM)                      |
+| 4b5b\_c            | 4b5b\_c.c            | 4B/5B+NRZI | 1 (DATA)                        |
+| can\_fd\_c         | can\_fd\_c.c         | CAN-FD     | 1 (CAN\_RX)                     |
+| iso7816\_c         | iso7816\_c.c         | ISO 7816   | 2 (CLK, DATA)                   |
+| lpc\_c             | lpc\_c.c             | LPC        | 6+7 opt (LFRAME,LCLK,LAD\[0-3]) |
 
 ### Stub 解码器（8个）
 
-pwm_c, counter_c, graycode_c, numbers_and_state_c, seven_segment_c, ds1307_c, ds3231_c, lm75_c
+pwm\_c, counter\_c, graycode\_c, numbers\_and\_state\_c, seven\_segment\_c, ds1307\_c, ds3231\_c, lm75\_c
 
----
+***
 
 ## 七、待重写的 Python 解码器优先级
 
 ### 第一优先级：`inputs=['logic']` 底层协议（性能收益最大）
 
-| 优先级 | 解码器 | 协议 | 复杂度 |
-|--------|--------|------|--------|
-| ★★★★ | usb_power_delivery | USB PD | 高 |
-| ★★★★ | ethernet | 以太网 | 高（依赖4b5b） |
-| ★★★★ | flexray | FlexRay | 高 |
-| ★★★★ | z80 | Z80 CPU | 高 |
-| ★★★ | lpc | ✅ 已完成 | - |
-| ★★★ | spdif | ✅ 已完成 | - |
-| ★★★ | cec | ✅ 已完成 | - |
-| ★★★ | iso7816 | ✅ 已完成 | - |
-| ★★★ | spacewire | SpaceWire | 中 |
-| ★★★ | iebus | IEBus | 中 |
-| ★★★ | sdcard_sd | SD卡(SD模式) | 中 |
-| ★★★ | qspi | QSPI | 中 |
-| ★★★ | ac97 | AC97 | 中 |
-| ★★★ | tmc | TMC步进驱动 | 中 |
-| ★★★ | sent | SENT传感器 | 中 |
-| ★★★ | mipi_rffe | MIPI RFFE | 中 |
-| ★★★ | avr_pdi | AVR PDI | 中 |
-| ★★★ | fsi | FSI | 中 |
-| ★★★ | gpib | GPIB | 中 |
-| ★★ | parallel | 并口 | 低 |
-| ★★ | dali | DALI照明 | 低 |
-| ★★ | dcc | DCC模型火车 | 低 |
-| ★★ | wiegand | Wiegand门禁 | 低 |
-| ★★ | c2 | C2协议 | 低 |
-| ★★ | swim | SWIM | 低 |
-| ★★ | rgb_led_ws281x | WS281x LED | 低 |
-| ★★ | ir_rc5 | RC5红外 | 低 |
-| ★★ | ir_sirc | SIRC红外 | 低 |
-| ★★ | opentherm | OpenTherm | 低 |
-| ★★ | dcf77 | ✅ 已完成 | - |
-| ★★ | ir_nec | ✅ 已完成 | - |
-| ★★ | nrzi | ✅ 已完成 | - |
+| 优先级  | 解码器                  | 协议         | 复杂度       |
+| ---- | -------------------- | ---------- | --------- |
+| ★★★★ | usb\_power\_delivery | USB PD     | 高         |
+| ★★★★ | ethernet             | 以太网        | 高（依赖4b5b） |
+| ★★★★ | flexray              | FlexRay    | 高         |
+| ★★★★ | z80                  | Z80 CPU    | 高         |
+| ★★★  | lpc                  | ✅ 已完成      | -         |
+| ★★★  | spdif                | ✅ 已完成      | -         |
+| ★★★  | cec                  | ✅ 已完成      | -         |
+| ★★★  | iso7816              | ✅ 已完成      | -         |
+| ★★★  | spacewire            | SpaceWire  | 中         |
+| ★★★  | iebus                | IEBus      | 中         |
+| ★★★  | sdcard\_sd           | SD卡(SD模式)  | 中         |
+| ★★★  | qspi                 | QSPI       | 中         |
+| ★★★  | ac97                 | AC97       | 中         |
+| ★★★  | tmc                  | TMC步进驱动    | 中         |
+| ★★★  | sent                 | SENT传感器    | 中         |
+| ★★★  | mipi\_rffe           | MIPI RFFE  | 中         |
+| ★★★  | avr\_pdi             | AVR PDI    | 中         |
+| ★★★  | fsi                  | FSI        | 中         |
+| ★★★  | gpib                 | GPIB       | 中         |
+| ★★   | parallel             | 并口         | 低         |
+| ★★   | dali                 | DALI照明     | 低         |
+| ★★   | dcc                  | DCC模型火车    | 低         |
+| ★★   | wiegand              | Wiegand门禁  | 低         |
+| ★★   | c2                   | C2协议       | 低         |
+| ★★   | swim                 | SWIM       | 低         |
+| ★★   | rgb\_led\_ws281x     | WS281x LED | 低         |
+| ★★   | ir\_rc5              | RC5红外      | 低         |
+| ★★   | ir\_sirc             | SIRC红外     | 低         |
+| ★★   | opentherm            | OpenTherm  | 低         |
+| ★★   | dcf77                | ✅ 已完成      | -         |
+| ★★   | ir\_nec              | ✅ 已完成      | -         |
+| ★★   | nrzi                 | ✅ 已完成      | -         |
 
 ### 第二优先级：上层解码器（依赖其他解码器输出）
 
-| 解码器 | 依赖 | 备注 |
-|--------|------|------|
-| eeprom93xx | microwire | ✅ microwire_c 已完成 |
-| spiflash | spi | ✅ spi_c 已完成 |
-| eeprom24xx | i2c | ✅ i2c_c 已完成 |
-| i2c_packet | i2c | ✅ i2c_c 已完成 |
-| ps2_keyboard | ps2 | ✅ ps2_c 已完成 |
-| ps2_mouse | ps2 | ✅ ps2_c 已完成 |
-| midi | uart | ✅ uart_c 已完成 |
-| modbus | uart | ✅ uart_c 已完成 |
-| usb_packet | usb_signalling | ✅ usb_signalling_c 已完成 |
-| jtag_avr/stm32/ejtag | jtag | ✅ jtag_c 已完成 |
+| 解码器                   | 依赖              | 备注                       |
+| --------------------- | --------------- | ------------------------ |
+| eeprom93xx            | microwire       | ✅ microwire\_c 已完成       |
+| spiflash              | spi             | ✅ spi\_c 已完成             |
+| eeprom24xx            | i2c             | ✅ i2c\_c 已完成             |
+| i2c\_packet           | i2c             | ✅ i2c\_c 已完成             |
+| ps2\_keyboard         | ps2             | ✅ ps2\_c 已完成             |
+| ps2\_mouse            | ps2             | ✅ ps2\_c 已完成             |
+| midi                  | uart            | ✅ uart\_c 已完成            |
+| modbus                | uart            | ✅ uart\_c 已完成            |
+| usb\_packet           | usb\_signalling | ✅ usb\_signalling\_c 已完成 |
+| jtag\_avr/stm32/ejtag | jtag            | ✅ jtag\_c 已完成            |
 
 **注意**：上层解码器需要 C 解码器支持堆叠（stacked）模式，目前架构尚未完全支持。上层解码器暂时仍使用 Python 实现。
 
----
+***
 
 ## 八、架构说明
 
-### 8.1 运行时函数指针表（srd_decoder_runtime）
+### 8.1 运行时函数指针表（srd\_decoder\_runtime）
 
 C 解码器 DLL 不直接访问 `srd_decoder_inst` 的内部字段，而是通过 `di->runtime` 函数指针表调用：
 
@@ -746,6 +758,7 @@ struct srd_decoder_runtime {
 ```
 
 DLL 中的 `c_decoder_wait()`、`c_decoder_get_pin()` 等函数内部委托到 `di->runtime` 的对应函数指针。这样：
+
 - DLL 不需要知道主程序的内部数据结构
 - 主程序可以自由修改内部实现而不影响 DLL 兼容性
 - API 版本通过 `SRD_C_DECODER_API_VERSION` 控制
@@ -768,3 +781,4 @@ DLL 中的 `c_decoder_wait()`、`c_decoder_get_pin()` 等函数内部委托到 `
 5. 条件匹配后读取引脚值、处理逻辑、输出注解
 6. 当数据流结束，`c_cond_wait()` 返回非 `SRD_OK`，`decode()` 退出
 7. 主程序调用 `destroy()` 释放资源
+
