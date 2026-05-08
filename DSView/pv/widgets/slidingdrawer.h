@@ -70,12 +70,6 @@ public:
     void setAnimationDuration(int ms);
     int animationDuration() const;
 
-    void setBackdropEnabled(bool enabled);
-    bool backdropEnabled() const;
-
-    void setBackdropColor(const QColor &color);
-    QColor backdropColor() const;
-
     void setPageTitle(int index, const QString &title);
 
 signals:
@@ -110,10 +104,6 @@ private:
     QWidget *_title_bar;
     QLabel *_title_label;
 
-    // Backdrop (semi-transparent overlay)
-    QWidget *_backdrop;
-    QGraphicsOpacityEffect *_backdrop_opacity_effect;
-
     // Animation
     QParallelAnimationGroup *_open_group;
     QParallelAnimationGroup *_close_group;
@@ -121,8 +111,6 @@ private:
     qreal _slide_progress;      // 0.0 = closed (off-screen right), 1.0 = open (fully visible)
     int _drawer_width;
     int _animation_duration;
-    bool _backdrop_enabled;
-    QColor _backdrop_color;
     int _current_page;
     bool _is_open;
     bool _is_animating;

@@ -333,7 +333,7 @@ DSView_IS_TOP_LEVEL:STATIC=ON
 DSView_SOURCE_DIR:STATIC=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb
 
 //Enable UI debug hover helper
-ENABLE_DEBUG_HELPER:BOOL=OFF
+ENABLE_DEBUG_HELPER:BOOL=ON
 
 //Path to a file.
 FFTW_INCLUDE_DIR:PATH=D:/msys64/mingw64/include

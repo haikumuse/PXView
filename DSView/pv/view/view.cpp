@@ -1893,8 +1893,19 @@ void View::rebuild_signals()
     dsv_info("View::rebuild_signals() doc=%p has_config=%d",
         _document, _document ? _document->has_signal_config() : 0);
     if (_document && _document->has_signal_config()) {
-        rebuild_signals_from_config(_document->get_signal_config());
-        return;
+        const auto& config = _document->get_signal_config();
+        // 检查配置的通道数是否与设备当前的通道数匹配
+        // 如果不匹配，说明通道模式已切换，需要从设备重新创建信号
+        int device_ch_count = 0;
+        for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+            device_ch_count++;
+        }
+        if (config.channels.size() == device_ch_count) {
+            rebuild_signals_from_config(config);
+            return;
+        }
+        dsv_info("View::rebuild_signals() config ch_count=%d != device ch_count=%d, ignore config",
+            (int)config.channels.size(), device_ch_count);
     }
 
     if (!_data_source)
