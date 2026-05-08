@@ -28,6 +28,7 @@
  */
 #include <Python.h>
 #include "libsigrokdecode.h"
+#include "dll_registry.h"
 #include "log.h"
 #include <glib.h>
 
@@ -335,6 +336,7 @@ SRD_API int srd_exit(void)
     sessions = NULL;
 
     srd_decoder_unload_all();
+    srd_c_dll_registry_cleanup();
     g_slist_free_full(searchpaths, g_free);
     searchpaths = NULL;
 

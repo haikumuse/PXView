@@ -53,15 +53,17 @@ ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
     _index = chanIndex;  
 
     QGridLayout *lay = new QGridLayout();
-    lay->setContentsMargins(0,0,0,0);
+    lay->setContentsMargins(2, 2, 2, 2);
     lay->setSpacing(0);
     this->setLayout(lay);
     QLabel *lb = new QLabel(QString::number(chanIndex));
     lb->setAlignment(Qt::AlignCenter);
     _box = new QCheckBox();
     _box->setFixedSize(20,20);
-    lay->addWidget(lb, 0, 0, Qt::AlignCenter);
+    lay->addWidget(lb, 0, 0);
     lay->addWidget(_box, 1, 0, Qt::AlignCenter);
+    lay->setRowStretch(0, 1);
+    lay->setRowStretch(1, 0);
 
     QFont font = this->font();
     font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
@@ -78,7 +80,9 @@ ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
 
     w = w < 30 ? 30 : w;
     int h = fh + _box->height() + 2;
-    setFixedSize(w, h);
+    setFixedHeight(h);
+    setMinimumWidth(w);
+    // Allow horizontal stretching to fill grid cell
 
     connect(_box, SIGNAL(released()), this, SLOT(on_checked()));
 }

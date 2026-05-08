@@ -333,6 +333,7 @@ set(DSView_SOURCES
     DSView/pv/mainframe.cpp
     DSView/pv/submainframe.cpp
     DSView/pv/widgets/border.cpp
+    DSView/pv/widgets/slidingdrawer.cpp
     DSView/pv/dialogs/dsmessagebox.cpp
     DSView/pv/dialogs/shadow.cpp
     DSView/pv/dialogs/dsdialog.cpp
@@ -468,6 +469,7 @@ set(DSView_HEADERS
     DSView/pv/mainframe.h
     DSView/pv/submainframe.h
     DSView/pv/widgets/border.h
+    DSView/pv/widgets/slidingdrawer.h
     DSView/pv/dialogs/dsmessagebox.h
     DSView/pv/dialogs/shadow.h
     DSView/pv/dialogs/dsdialog.h
@@ -591,6 +593,7 @@ set(libsigrokdecode4DSL_SOURCES
     libsigrokdecode4DSL/srd.c
     libsigrokdecode4DSL/module_sigrokdecode.c
     libsigrokdecode4DSL/decoder.c
+    libsigrokdecode4DSL/dll_registry.c
     libsigrokdecode4DSL/error.c
     libsigrokdecode4DSL/exception.c
     libsigrokdecode4DSL/instance.c

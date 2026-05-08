@@ -45,6 +45,10 @@
 #include <QWidgetAction>
 #include <QSpacerItem>
 #include <QHBoxLayout>
+#include <QGroupBox>
+#include <QGridLayout>
+#include <QButtonGroup>
+#include <QRadioButton>
 
 #define SINGLE_ACTION_ICON  "/once.svg"
 #define REPEAT_ACTION_ICON  "/repeat.svg"
@@ -84,6 +88,10 @@ namespace pv
             _last_device_index = -1;
             _next_switch_device = NULL_HANDLE;
             _view = NULL;
+            _mode_group = nullptr;
+            _radio_single = nullptr;
+            _radio_repeat = nullptr;
+            _radio_loop = nullptr;
 
             _session = session;
             _device_agent = _session->get_device();
@@ -116,7 +124,8 @@ namespace pv
             addWidget(&_device_selector);
             
             _configure_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-            // addWidget(&_configure_button);
+            _configure_button.setCheckable(true);
+            _configure_button.setChecked(false);
 
             addWidget(new QLabel("  "));
 
@@ -171,6 +180,102 @@ namespace pv
         SamplingBar::~SamplingBar()
         {
             REMOVE_UI(this);
+        }
+
+        QGroupBox* SamplingBar::createSamplingSettingsWidget(QWidget *parent)
+        {
+            QGroupBox *group = new QGroupBox(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLING_SETTINGS), "采样设置"), parent);
+            QGridLayout *grid = new QGridLayout(group);
+            grid->setHorizontalSpacing(8);
+            grid->setVerticalSpacing(4);
+            grid->setContentsMargins(8, 16, 8, 8);
+            grid->setColumnStretch(1, 1);
+
+            QFont font = group->font();
+            font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+            group->setFont(font);
+
+            // Row 0: 设备
+            QLabel *devLabel = new QLabel(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE), "设备"), group);
+            devLabel->setFont(font);
+            grid->addWidget(devLabel, 0, 0, Qt::AlignRight | Qt::AlignVCenter);
+
+            QHBoxLayout *devRow = new QHBoxLayout();
+            devRow->setSpacing(4);
+            devRow->setContentsMargins(0, 0, 0, 0);
+            devRow->addStretch();
+            devRow->addWidget(&_device_type);
+            devRow->addWidget(&_device_selector);
+            grid->addLayout(devRow, 0, 1, Qt::AlignLeft);
+
+            // Row 1: 采样深度
+            QLabel *depthLabel = new QLabel(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_DEPTH), "采样深度"), group);
+            depthLabel->setFont(font);
+            grid->addWidget(depthLabel, 1, 0, Qt::AlignRight | Qt::AlignVCenter);
+
+            QHBoxLayout *depthRow = new QHBoxLayout();
+            depthRow->setSpacing(0);
+            depthRow->setContentsMargins(0, 0, 0, 0);
+            depthRow->addStretch();
+            depthRow->addWidget(&_sample_count);
+            grid->addLayout(depthRow, 1, 1, Qt::AlignLeft);
+
+            // Row 2: 采样率
+            QLabel *rateLabel = new QLabel(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_RATE), "采样率"), group);
+            rateLabel->setFont(font);
+            grid->addWidget(rateLabel, 2, 0, Qt::AlignRight | Qt::AlignVCenter);
+
+            QHBoxLayout *rateRow = new QHBoxLayout();
+            rateRow->setSpacing(0);
+            rateRow->setContentsMargins(0, 0, 0, 0);
+            rateRow->addStretch();
+            rateRow->addWidget(&_sample_rate);
+            grid->addLayout(rateRow, 2, 1, Qt::AlignLeft);
+
+            // Row 3: 捕获模式
+            QLabel *modeLabel = new QLabel(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_ROW), "捕获模式"), group);
+            modeLabel->setFont(font);
+            modeLabel->setObjectName("mode_label");
+            grid->addWidget(modeLabel, 3, 0, Qt::AlignRight | Qt::AlignVCenter);
+
+            _mode_group = new QButtonGroup(group);
+            _radio_single = new QRadioButton(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_SINGLE), "单次"), group);
+            _radio_repeat = new QRadioButton(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_REPEAT), "重复"), group);
+            _radio_loop = new QRadioButton(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_LOOP), "循环"), group);
+            _radio_single->setFont(font);
+            _radio_repeat->setFont(font);
+            _radio_loop->setFont(font);
+            _mode_group->addButton(_radio_single, COLLECT_SINGLE);
+            _mode_group->addButton(_radio_repeat, COLLECT_REPEAT);
+            _mode_group->addButton(_radio_loop, COLLECT_LOOP);
+
+            QHBoxLayout *modeRow = new QHBoxLayout();
+            modeRow->setSpacing(4);
+            modeRow->setContentsMargins(0, 0, 0, 0);
+            modeRow->addStretch();
+            modeRow->addWidget(_radio_single);
+            modeRow->addWidget(_radio_repeat);
+            modeRow->addWidget(_radio_loop);
+            grid->addLayout(modeRow, 3, 1, Qt::AlignLeft);
+
+            connect(_mode_group, SIGNAL(buttonClicked(int)), this, SLOT(on_mode_radio_clicked(int)));
+
+            // 控件从 QToolBar 移出时 QWidgetAction::releaseWidget() 会自动 hide()，
+            // 需要显式 show() 恢复可见性
+            _device_type.show();
+            _device_selector.show();
+            _sample_count.show();
+            _sample_rate.show();
+
+            return group;
         }
 
         void SamplingBar::bind_context(TabContext *ctx)
@@ -312,10 +417,11 @@ namespace pv
             if (_device_agent->have_instance() == false)
             {
                 dsv_info("Have no device, can't to set device config.");
+                _configure_button.setChecked(false);
                 return;
             }
 
-            emit sig_device_options_toggle();
+            emit sig_device_options(_configure_button.isChecked());
         }
 
         void SamplingBar::zero_adj()
@@ -1028,47 +1134,97 @@ namespace pv
         {
             QString iconPath = GetIconPath();
 
-            _action_loop->setVisible(false);
-
+            bool show_mode_row = false;
+            bool show_loop = false;
             int mode = _device_agent->get_work_mode();
+
             if (mode == LOGIC)
             {
-                if (_device_agent->is_file()){
-                    _mode_action->setVisible(false);
-                }
-                else
-                {
-                    update_mode_icon();
-                    _mode_action->setVisible(true);
-                    _action_repeat->setVisible(true);    
+                if (!_device_agent->is_file()) {
+                    show_mode_row = true;
+                    if (_device_agent->is_stream_mode() || _device_agent->is_demo())
+                        show_loop = true;
 
-                    if (_session->is_loop_mode() && _device_agent->is_stream_mode() == false 
-                        && _device_agent->is_hardware()){
+                    if (_session->is_loop_mode() && !_device_agent->is_stream_mode()
+                        && _device_agent->is_hardware()) {
                         _session->set_collect_mode(COLLECT_SINGLE);
                     }
-
-                    if (_device_agent->is_stream_mode() || _device_agent->is_demo())
-                        _action_loop->setVisible(true);
                 }
                 _run_stop_action->setVisible(true);
-                _instant_action->setVisible(true);      
+                _instant_action->setVisible(true);
             }
             else if (mode == ANALOG)
             {
-                _mode_action->setVisible(false);
                 _run_stop_action->setVisible(true);
                 _instant_action->setVisible(false);
             }
             else if (mode == DSO)
             {
-                _mode_action->setVisible(false);
                 _run_stop_action->setVisible(true);
                 _instant_action->setVisible(true);
             }
-        
+
+            if (_radio_single) {
+                _radio_single->setVisible(show_mode_row);
+                _radio_repeat->setVisible(show_mode_row);
+                _radio_loop->setVisible(show_mode_row && show_loop);
+                QLabel *ml = _radio_single->parentWidget()->findChild<QLabel*>("mode_label");
+                if (ml) ml->setVisible(show_mode_row);
+
+                if (show_mode_row) {
+                    int cur_mode = _session->get_collect_mode();
+                    if (cur_mode == COLLECT_SINGLE) _radio_single->setChecked(true);
+                    else if (cur_mode == COLLECT_REPEAT) _radio_repeat->setChecked(true);
+                    else if (cur_mode == COLLECT_LOOP) _radio_loop->setChecked(true);
+                }
+            }
+
             retranslateUi();
             reStyle();
             update();
+        }
+
+        void SamplingBar::on_mode_radio_clicked(int id)
+        {
+            if (_is_readonly)
+                return;
+
+            switch (id) {
+            case COLLECT_SINGLE:
+                _session->set_collect_mode(COLLECT_SINGLE);
+                if (_device_agent->is_demo()) {
+                    _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "protocol");
+                    _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+                }
+                break;
+            case COLLECT_REPEAT:
+                if (_device_agent->is_stream_mode() || _device_agent->is_demo()) {
+                    _session->set_repeat_intvl(0.1);
+                    _session->set_collect_mode(COLLECT_REPEAT);
+                } else {
+                    pv::dialogs::Interval interval_dlg(this);
+                    interval_dlg.set_interval(_session->get_repeat_intvl());
+                    interval_dlg.exec();
+                    if (interval_dlg.is_done()) {
+                        _session->set_repeat_intvl(interval_dlg.get_interval());
+                        _session->set_collect_mode(COLLECT_REPEAT);
+                    } else {
+                        return;
+                    }
+                }
+                if (_device_agent->is_demo()) {
+                    _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
+                    _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+                }
+                break;
+            case COLLECT_LOOP:
+                _session->set_collect_mode(COLLECT_LOOP);
+                if (_device_agent->is_demo()) {
+                    _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
+                    _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+                }
+                break;
+            }
         }
 
         void SamplingBar::on_collect_mode()
@@ -1174,7 +1330,8 @@ namespace pv
         void SamplingBar::config_device()
         {
             if (_configure_button.isVisible() && _configure_button.isEnabled()){
-                emit sig_device_options_toggle();
+                _configure_button.setChecked(true);
+                emit sig_device_options(true);
             }
         }
 
@@ -1184,16 +1341,21 @@ namespace pv
             int mode = _session->get_device()->get_work_mode();
 
             _device_type.setEnabled(bEnable);
-            _mode_button.setEnabled(bEnable);
             _configure_button.setEnabled(bEnable);
             _device_selector.setEnabled(bEnable);
-            _action_loop->setVisible(false);
+
+            if (_radio_single) {
+                _radio_single->setEnabled(bEnable);
+                _radio_repeat->setEnabled(bEnable);
+                _radio_loop->setEnabled(bEnable);
+                _radio_loop->setVisible(false);
+            }
 
             if (_session->get_device()->is_file()){
                 _sample_rate.setEnabled(false);
-                _sample_count.setEnabled(false);                
+                _sample_count.setEnabled(false);
             }
-            else if (mode == DSO){               
+            else if (mode == DSO){
                 _sample_rate.setEnabled(false);
                 _sample_count.setEnabled(bEnable);
 
@@ -1216,11 +1378,11 @@ namespace pv
                         }
                     }
                 }
-                
+
                 if (mode == LOGIC && _device_agent->is_file() == false){
                     if (_device_agent->is_stream_mode() || _device_agent->is_demo())
-                        _action_loop->setVisible(true);
-                }                
+                        if (_radio_loop) _radio_loop->setVisible(true);
+                }
             }
 
             if (_session->is_working()){

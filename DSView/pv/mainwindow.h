@@ -40,6 +40,7 @@
 #include "QRibbon/QRibbon.h"
 #include "ui/draggabletabwidget.h"
 #include "tabcontext.h"
+#include "widgets/slidingdrawer.h"
 
 class QAction;
 class QMenuBar;
@@ -121,7 +122,6 @@ private slots:
     void on_measure(bool visible);
     void on_search(bool visible);
     void on_device_options(bool visible);
-    void on_device_options_toggle();
     void on_screenShot();
     void on_save();
 
@@ -256,6 +256,16 @@ private:
     dock::SearchDock        *_search_widget;
     QDockWidget             *_device_options_dock;
     dock::DeviceOptionsDock *_device_options_widget;
+
+    // Sliding drawer panel
+    widgets::SlidingDrawer  *_sliding_drawer;
+    int _drawer_page_protocol;
+    int _drawer_page_trigger;
+    int _drawer_page_dso_trigger;
+    int _drawer_page_measure;
+    int _drawer_page_search;
+    int _drawer_page_device_options;
+    int _drawer_current_page; // -1 = no page open
 
     QTranslator     _qtTrans;
     QTranslator     _myTrans;

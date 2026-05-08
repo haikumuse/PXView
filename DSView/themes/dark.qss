@@ -1658,3 +1658,20 @@ QLineEdit#PathLine{
 QTextEdit#PathLine{
     color:#eff0f1;
 }
+
+/* Sliding Drawer */
+#sliding_drawer_backdrop
+{
+    background: transparent;
+}
+
+#sliding_drawer_panel
+{
+    background: transparent;
+}
+
+#sliding_drawer_panel_content
+{
+    background: #252526;
+    border-left: 1px solid #3f3f46;
+}

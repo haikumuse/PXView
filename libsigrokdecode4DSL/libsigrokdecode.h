@@ -26,6 +26,8 @@
 #include <glib.h>
 #include <log/xlog.h>
 
+struct srd_c_dll_entry;
+
 #define DECODE_NUM_HEX_MAX_LEN		 256
 
 #ifdef __cplusplus
@@ -361,7 +363,8 @@ struct srd_decoder_inst {
 	GHashTable *c_options;
 };
 
-#define SRD_C_DECODER_API_VERSION 1
+#define SRD_C_DECODER_API_VERSION 3
+#define SRD_C_DECODER_API_MIN_VERSION 3
 
 #ifdef _WIN32
   #define SRD_C_DECODER_EXPORT __declspec(dllexport)
@@ -371,6 +374,13 @@ struct srd_decoder_inst {
 
 typedef struct srd_c_decoder* (*srd_c_decoder_entry_func)(void);
 typedef int (*srd_c_decoder_api_version_func)(void);
+
+struct srd_c_ann_row {
+    const char *id;
+    const char *desc;
+    const int *ann_classes;
+    int num_ann_classes;
+};
 
 struct srd_c_decoder {
     const char *id;
@@ -387,9 +397,9 @@ struct srd_c_decoder {
     int num_options;
 
     int num_annotations;
-    const char *(*ann_labels)[2];
+    const char *(*ann_labels)[3];
     int num_annotation_rows;
-    const struct srd_decoder_annotation_row *annotation_rows;
+    const struct srd_c_ann_row *annotation_rows;
 
     const char **inputs;
     int num_inputs;
@@ -400,52 +410,12 @@ struct srd_c_decoder {
     const char **tags;
     int num_tags;
 
-    void (*reset)(void *inst);
-    void (*start)(void *inst);
-    void (*decode)(void *inst);
-    void (*destroy)(void *inst);
-};
-
-struct srd_c_decoder_inst {
-    struct srd_c_decoder *c_dec;
-    struct srd_session *sess;
-    void *user_data;
-    char *inst_id;
-
-    GSList *pd_output;
-    int dec_num_channels;
-    int *dec_channelmap;
-    GSList *next_di;
-
-    GSList *condition_list;
-    uint64_t match_array;
-
-    uint64_t abs_start_samplenum;
-    uint64_t abs_end_samplenum;
-    const uint8_t **inbuf;
-    const uint8_t *inbuf_const;
-    uint64_t inbuflen;
-    uint64_t abs_cur_samplenum;
-    gboolean abs_cur_matched;
-
-    GArray *old_pins_array;
-
-    GThread *thread_handle;
-    gboolean got_new_samples;
-    gboolean handled_all_samples;
-    gboolean want_wait_terminate;
-    gboolean first_pos;
-    gboolean skip_zero;
-
-    int decoder_state;
-    char *error_message;
-    int is_task_stop_signal;
-
-    GCond got_new_samples_cond;
-    GCond handled_all_samples_cond;
-    GMutex data_mutex;
-
-    gboolean is_c_inst;
+    void (*reset)(struct srd_decoder_inst *di);
+    void (*start)(struct srd_decoder_inst *di);
+    void (*decode)(struct srd_decoder_inst *di);
+    void (*end)(struct srd_decoder_inst *di);
+    void (*metadata)(struct srd_decoder_inst *di, int key, uint64_t value);
+    void (*destroy)(struct srd_decoder_inst *di);
 };
 
 struct srd_pd_output {
@@ -559,15 +529,25 @@ SRD_API const char *srd_lib_version_string_get(void);
 SRD_API int srd_c_decoder_register(struct srd_c_decoder *dec);
 SRD_API int srd_c_decoder_load_all(void);
 SRD_API int srd_c_decoder_path_set(const char *path);
+SRD_API int srd_c_decoder_path_add(const char *path);
+SRD_API void srd_c_decoder_paths_clear(void);
+SRD_API int srd_c_decoder_load(const char *dll_path);
+SRD_API int srd_c_decoder_unload(const char *decoder_id);
+SRD_API const GSList *srd_c_dll_registry_get(void);
+SRD_API const struct srd_c_dll_entry *srd_c_dll_info_get(const char *decoder_id);
 
 struct srd_c_annotation {
     int ann_class;
+    int ann_type;
     char **ann_text;
 };
 
 SRD_API int c_decoder_put(struct srd_decoder_inst *di,
     uint64_t start_sample, uint64_t end_sample,
     int output_id, struct srd_c_annotation *ann);
+SRD_API int c_decoder_put_binary(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, int bin_class, uint64_t size, const unsigned char *data);
 SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
     GSList *condition_list, uint64_t *samplenum, uint64_t *matched);
 SRD_API int c_decoder_has_channel(struct srd_decoder_inst *di, int ch);
@@ -580,6 +560,47 @@ SRD_API double c_decoder_get_option_double(struct srd_decoder_inst *di,
     const char *key, double defval);
 SRD_API const char *c_decoder_get_option_string(struct srd_decoder_inst *di,
     const char *key, const char *defval);
+SRD_API void *c_decoder_get_private(struct srd_decoder_inst *di);
+SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data);
+
+#define C_ANN_PUT(di, ss, es, out_id, cls, ...) do { \
+    char *_txts[] = {__VA_ARGS__, NULL}; \
+    struct srd_c_annotation _ann = {cls, 0, _txts}; \
+    c_decoder_put(di, ss, es, out_id, &_ann); \
+} while(0)
+
+#define C_ANN_PUT_TYPE(di, ss, es, out_id, cls, tp, ...) do { \
+    char *_txts[] = {__VA_ARGS__, NULL}; \
+    struct srd_c_annotation _ann = {cls, tp, _txts}; \
+    c_decoder_put(di, ss, es, out_id, &_ann); \
+} while(0)
+
+typedef struct srd_cond_builder srd_cond_builder;
+
+SRD_API srd_cond_builder *c_cond_new(void);
+SRD_API srd_cond_builder *c_cond_or(srd_cond_builder *b);
+SRD_API srd_cond_builder *c_cond_rise(srd_cond_builder *b, int ch);
+SRD_API srd_cond_builder *c_cond_fall(srd_cond_builder *b, int ch);
+SRD_API srd_cond_builder *c_cond_high(srd_cond_builder *b, int ch);
+SRD_API srd_cond_builder *c_cond_low(srd_cond_builder *b, int ch);
+SRD_API srd_cond_builder *c_cond_edge(srd_cond_builder *b, int ch);
+SRD_API srd_cond_builder *c_cond_noedge(srd_cond_builder *b, int ch);
+SRD_API srd_cond_builder *c_cond_skip(srd_cond_builder *b, uint64_t count);
+SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
+    uint64_t *samplenum, uint64_t *matched);
+SRD_API void c_cond_free(srd_cond_builder *b);
+
+static inline uint8_t c_decoder_get_pin(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
+{
+    if (ch < 0 || ch >= di->dec_num_channels)
+        return 0;
+    int sig_idx = di->dec_channelmap[ch];
+    if (sig_idx < 0 || !di->inbuf || !di->inbuf[sig_idx])
+        return 0;
+    uint64_t byte_offset = samplenum / 8;
+    uint8_t bit_offset = samplenum % 8;
+    return (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
+}
 
 #include "version.h"
 

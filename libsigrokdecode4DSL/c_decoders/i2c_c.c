@@ -39,28 +39,36 @@ static struct srd_channel i2c_channels[] = {
     {"sda", "SDA", "Serial data line", 1, SRD_CHANNEL_SDATA, NULL},
 };
 
-static const char *i2c_ann_labels[][2] = {
-    {"START", "Start condition"},
-    {"STOP", "Stop condition"},
-    {"ACK", "ACK"},
-    {"NACK", "NACK"},
-    {"ADDRESS READ", "Address read"},
-    {"ADDRESS WRITE", "Address write"},
-    {"DATA READ", "Data read"},
-    {"DATA WRITE", "Data write"},
+static const char *i2c_ann_labels[][3] = {
+    {"", "START", "Start condition"},
+    {"", "STOP", "Stop condition"},
+    {"", "ACK", "ACK"},
+    {"", "NACK", "NACK"},
+    {"", "ADDRESS READ", "Address read"},
+    {"", "ADDRESS WRITE", "Address write"},
+    {"", "DATA READ", "Data read"},
+    {"", "DATA WRITE", "Data write"},
+};
+
+static const int i2c_row_bits_classes[] = {ANN_START, ANN_STOP, -1};
+static const int i2c_row_data_classes[] = {ANN_ADDRESS_READ, ANN_ADDRESS_WRITE, ANN_DATA_READ, ANN_DATA_WRITE, -1};
+static const int i2c_row_ack_classes[] = {ANN_ACK, ANN_NACK, -1};
+static const struct srd_c_ann_row i2c_ann_rows[] = {
+    {"bits", "Bits", i2c_row_bits_classes, 3},
+    {"data", "Data", i2c_row_data_classes, 4},
+    {"ack", "ACK/NACK", i2c_row_ack_classes, 2},
 };
 
 static const char *i2c_inputs[] = {"logic", NULL};
 static const char *i2c_outputs[] = {"i2c", NULL};
 static const char *i2c_tags[] = {"Embedded/industrial", NULL};
 
-static void i2c_reset(void *inst)
+static void i2c_reset(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    if (!di->user_data) {
-        di->user_data = g_malloc0(sizeof(i2c_decoder_state));
+    if (!c_decoder_get_private(di)) {
+        c_decoder_set_private(di, g_malloc0(sizeof(i2c_decoder_state)));
     }
-    i2c_decoder_state *s = (i2c_decoder_state *)di->user_data;
+    i2c_decoder_state *s = (i2c_decoder_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(i2c_decoder_state));
     s->state = STATE_FIND_START;
     s->is_write = -1;
@@ -68,61 +76,33 @@ static void i2c_reset(void *inst)
     s->bitwidth = 0;
 }
 
-static void i2c_start(void *inst)
+static void i2c_start(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
     c_decoder_register_output(di, SRD_OUTPUT_ANN, "i2c");
 }
 
-static uint8_t get_pin(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
+static void i2c_decode(struct srd_decoder_inst *di)
 {
-    if (ch < 0 || ch >= di->dec_num_channels)
-        return 0;
-    int sig_idx = di->dec_channelmap[ch];
-    if (sig_idx < 0 || !di->inbuf || !di->inbuf[sig_idx])
-        return 0;
-    uint64_t byte_offset = samplenum / 8;
-    uint8_t bit_offset = samplenum % 8;
-    return (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
-}
-
-static void i2c_decode(void *inst)
-{
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    i2c_decoder_state *s = (i2c_decoder_state *)di->user_data;
+    i2c_decoder_state *s = (i2c_decoder_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
     while (1) {
-        GSList *cond = NULL;
-        struct srd_term *t;
+        srd_cond_builder *cb;
         int ret;
 
         switch (s->state) {
 
         case STATE_FIND_START: {
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_FALLING_EDGE;
-            t->channel = SDA;
-            GSList *term_list = g_slist_append(NULL, t);
-
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_HIGH;
-            t->channel = SCL;
-            term_list = g_slist_append(term_list, t);
-
-            cond = g_slist_append(NULL, term_list);
-
-            ret = c_decoder_wait(di, cond, &samplenum, &matched);
-            g_slist_free(cond);
+            cb = c_cond_new();
+            c_cond_fall(cb, SDA);
+            c_cond_high(cb, SCL);
+            ret = c_cond_wait(cb, di, &samplenum, &matched);
+            c_cond_free(cb);
             if (ret != SRD_OK)
                 return;
 
-            {
-                char *ann_text[] = {"Start", "S", NULL};
-                struct srd_c_annotation ann = {ANN_START, ann_text};
-                c_decoder_put(di, samplenum, samplenum, 0, &ann);
-            }
+            C_ANN_PUT(di, samplenum, samplenum, 0, ANN_START, "Start", "S");
 
             s->state = STATE_FIND_ADDRESS;
             s->bit_count = 0;
@@ -134,19 +114,15 @@ static void i2c_decode(void *inst)
         }
 
         case STATE_FIND_ADDRESS: {
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_RISING_EDGE;
-            t->channel = SCL;
-            GSList *term_list = g_slist_append(NULL, t);
-            cond = g_slist_append(NULL, term_list);
-
-            ret = c_decoder_wait(di, cond, &samplenum, &matched);
-            g_slist_free(cond);
+            cb = c_cond_new();
+            c_cond_rise(cb, SCL);
+            ret = c_cond_wait(cb, di, &samplenum, &matched);
+            c_cond_free(cb);
             if (ret != SRD_OK)
                 return;
 
             {
-                int sda_val = get_pin(di, SDA, samplenum);
+                int sda_val = c_decoder_get_pin(di, SDA, samplenum);
 
                 if (s->bit_count == 0)
                     s->byte_start_sample = samplenum;
@@ -173,15 +149,11 @@ static void i2c_decode(void *inst)
                     if (s->is_write) {
                         snprintf(long_str, sizeof(long_str),
                                  "Address write: %s", val_str);
-                        char *ann_text[] = {long_str, "AW", val_str, NULL};
-                        struct srd_c_annotation ann = {ANN_ADDRESS_WRITE, ann_text};
-                        c_decoder_put(di, s->byte_start_sample, byte_end, 0, &ann);
+                        C_ANN_PUT(di, s->byte_start_sample, byte_end, 0, ANN_ADDRESS_WRITE, long_str, "AW", val_str);
                     } else {
                         snprintf(long_str, sizeof(long_str),
                                  "Address read: %s", val_str);
-                        char *ann_text[] = {long_str, "AR", val_str, NULL};
-                        struct srd_c_annotation ann = {ANN_ADDRESS_READ, ann_text};
-                        c_decoder_put(di, s->byte_start_sample, byte_end, 0, &ann);
+                        C_ANN_PUT(di, s->byte_start_sample, byte_end, 0, ANN_ADDRESS_READ, long_str, "AR", val_str);
                     }
 
                     s->bit_count = 0;
@@ -193,30 +165,22 @@ static void i2c_decode(void *inst)
         }
 
         case STATE_FIND_ACK: {
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_RISING_EDGE;
-            t->channel = SCL;
-            GSList *term_list = g_slist_append(NULL, t);
-            cond = g_slist_append(NULL, term_list);
-
-            ret = c_decoder_wait(di, cond, &samplenum, &matched);
-            g_slist_free(cond);
+            cb = c_cond_new();
+            c_cond_rise(cb, SCL);
+            ret = c_cond_wait(cb, di, &samplenum, &matched);
+            c_cond_free(cb);
             if (ret != SRD_OK)
                 return;
 
             {
-                int sda_val = get_pin(di, SDA, samplenum);
+                int sda_val = c_decoder_get_pin(di, SDA, samplenum);
                 uint64_t ack_end = samplenum
                     + (s->bitwidth > 0 ? s->bitwidth : 1);
 
                 if (sda_val == 0) {
-                    char *ann_text[] = {"ACK", "A", NULL};
-                    struct srd_c_annotation ann = {ANN_ACK, ann_text};
-                    c_decoder_put(di, samplenum, ack_end, 0, &ann);
+                    C_ANN_PUT(di, samplenum, ack_end, 0, ANN_ACK, "ACK", "A");
                 } else {
-                    char *ann_text[] = {"NACK", "N", NULL};
-                    struct srd_c_annotation ann = {ANN_NACK, ann_text};
-                    c_decoder_put(di, samplenum, ack_end, 0, &ann);
+                    C_ANN_PUT(di, samplenum, ack_end, 0, ANN_NACK, "NACK", "N");
                 }
 
                 s->state = STATE_FIND_DATA;
@@ -225,40 +189,21 @@ static void i2c_decode(void *inst)
         }
 
         case STATE_FIND_DATA: {
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_RISING_EDGE;
-            t->channel = SCL;
-            GSList *term_list0 = g_slist_append(NULL, t);
-
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_FALLING_EDGE;
-            t->channel = SDA;
-            GSList *term_list1 = g_slist_append(NULL, t);
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_HIGH;
-            t->channel = SCL;
-            term_list1 = g_slist_append(term_list1, t);
-
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_RISING_EDGE;
-            t->channel = SDA;
-            GSList *term_list2 = g_slist_append(NULL, t);
-            t = g_malloc0(sizeof(struct srd_term));
-            t->type = SRD_TERM_HIGH;
-            t->channel = SCL;
-            term_list2 = g_slist_append(term_list2, t);
-
-            cond = g_slist_append(NULL, term_list0);
-            cond = g_slist_append(cond, term_list1);
-            cond = g_slist_append(cond, term_list2);
-
-            ret = c_decoder_wait(di, cond, &samplenum, &matched);
-            g_slist_free(cond);
+            cb = c_cond_new();
+            c_cond_rise(cb, SCL);
+            c_cond_or(cb);
+            c_cond_fall(cb, SDA);
+            c_cond_high(cb, SCL);
+            c_cond_or(cb);
+            c_cond_rise(cb, SDA);
+            c_cond_high(cb, SCL);
+            ret = c_cond_wait(cb, di, &samplenum, &matched);
+            c_cond_free(cb);
             if (ret != SRD_OK)
                 return;
 
             if (matched & (1ULL << 0)) {
-                int sda_val = get_pin(di, SDA, samplenum);
+                int sda_val = c_decoder_get_pin(di, SDA, samplenum);
 
                 if (s->bit_count == 0)
                     s->byte_start_sample = samplenum;
@@ -282,17 +227,11 @@ static void i2c_decode(void *inst)
                     if (s->is_write) {
                         snprintf(long_str, sizeof(long_str),
                                  "Data write: %s", val_str);
-                        char *ann_text[] = {long_str, "DW", val_str, NULL};
-                        struct srd_c_annotation ann = {ANN_DATA_WRITE, ann_text};
-                        c_decoder_put(di, s->byte_start_sample,
-                                      byte_end, 0, &ann);
+                        C_ANN_PUT(di, s->byte_start_sample, byte_end, 0, ANN_DATA_WRITE, long_str, "DW", val_str);
                     } else {
                         snprintf(long_str, sizeof(long_str),
                                  "Data read: %s", val_str);
-                        char *ann_text[] = {long_str, "DR", val_str, NULL};
-                        struct srd_c_annotation ann = {ANN_DATA_READ, ann_text};
-                        c_decoder_put(di, s->byte_start_sample,
-                                      byte_end, 0, &ann);
+                        C_ANN_PUT(di, s->byte_start_sample, byte_end, 0, ANN_DATA_READ, long_str, "DR", val_str);
                     }
 
                     s->bit_count = 0;
@@ -300,18 +239,14 @@ static void i2c_decode(void *inst)
                     s->state = STATE_FIND_ACK;
                 }
             } else if (matched & (1ULL << 1)) {
-                char *ann_text[] = {"Start repeat", "Sr", NULL};
-                struct srd_c_annotation ann = {ANN_START, ann_text};
-                c_decoder_put(di, samplenum, samplenum, 0, &ann);
+                C_ANN_PUT(di, samplenum, samplenum, 0, ANN_START, "Start repeat", "Sr");
 
                 s->state = STATE_FIND_ADDRESS;
                 s->bit_count = 0;
                 s->databyte = 0;
                 s->is_write = -1;
             } else if (matched & (1ULL << 2)) {
-                char *ann_text[] = {"Stop", "P", NULL};
-                struct srd_c_annotation ann = {ANN_STOP, ann_text};
-                c_decoder_put(di, samplenum, samplenum, 0, &ann);
+                C_ANN_PUT(di, samplenum, samplenum, 0, ANN_STOP, "Stop", "P");
 
                 s->state = STATE_FIND_START;
                 s->bit_count = 0;
@@ -326,12 +261,12 @@ static void i2c_decode(void *inst)
     }
 }
 
-static void i2c_destroy(void *inst)
+static void i2c_destroy(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    if (di->user_data) {
-        g_free(di->user_data);
-        di->user_data = NULL;
+    void *priv = c_decoder_get_private(di);
+    if (priv) {
+        g_free(priv);
+        c_decoder_set_private(di, NULL);
     }
 }
 
@@ -349,8 +284,8 @@ struct srd_c_decoder i2c_c_decoder = {
     .num_options = 0,
     .num_annotations = 8,
     .ann_labels = i2c_ann_labels,
-    .num_annotation_rows = 0,
-    .annotation_rows = NULL,
+    .num_annotation_rows = 3,
+    .annotation_rows = i2c_ann_rows,
     .inputs = i2c_inputs,
     .num_inputs = 1,
     .outputs = i2c_outputs,

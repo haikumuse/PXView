@@ -42,7 +42,6 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
     struct srd_pd_callback *cb;
     struct srd_proto_data pdata;
     struct srd_proto_data_annotation pda;
-    GSList *l;
 
     if (!di)
         return SRD_ERR_ARG;
@@ -66,12 +65,16 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
             pdata.data = &pda;
             memset(&pda, 0, sizeof(pda));
             pda.ann_class = ann->ann_class;
+            pda.ann_type = ann->ann_type;
             pda.ann_text = ann->ann_text;
             cb->cb(&pdata, cb->cb_data);
         }
         break;
 
     case SRD_OUTPUT_PYTHON:
+        _srd_err("C decoder %s: SRD_OUTPUT_PYTHON output is not fully "
+                 "compatible with Python decoder stack. Consider using "
+                 "SRD_OUTPUT_ANN instead.", di->c_dec_inst->name);
         if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_ANN))) {
             pdata.data = &pda;
             memset(&pda, 0, sizeof(pda));
@@ -86,6 +89,9 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
         break;
 
     case SRD_OUTPUT_BINARY:
+        _srd_err("C decoder %s: Use c_decoder_put_binary() for BINARY output "
+                 "instead of c_decoder_put().", di->c_dec_inst->name);
+        /* fall through */
     case SRD_OUTPUT_META:
         if ((cb = srd_pd_output_callback_find_c(di->sess, pdo->output_type))) {
             pdata.data = ann;
@@ -100,6 +106,171 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
     }
 
     return SRD_OK;
+}
+
+SRD_API int c_decoder_put_binary(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, int bin_class, uint64_t size, const unsigned char *data)
+{
+    struct srd_pd_output *pdo;
+    struct srd_pd_callback *cb;
+    struct srd_proto_data pdata;
+    struct srd_proto_data_binary pdb;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    if (!out_list) {
+        _srd_err("C decoder %s submitted invalid output ID %d.",
+            di->c_dec_inst->name, output_id);
+        return SRD_ERR_ARG;
+    }
+    pdo = out_list->data;
+
+    if (pdo->output_type != SRD_OUTPUT_BINARY) {
+        _srd_err("C decoder %s: c_decoder_put_binary() called for non-BINARY output type %d.",
+            di->c_dec_inst->name, pdo->output_type);
+        return SRD_ERR_ARG;
+    }
+
+    pdata.start_sample = start_sample;
+    pdata.end_sample = end_sample;
+    pdata.pdo = pdo;
+
+    if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_BINARY))) {
+        pdb.bin_class = bin_class;
+        pdb.size = size;
+        pdb.data = data;
+        pdata.data = &pdb;
+        cb->cb(&pdata, cb->cb_data);
+    }
+
+    return SRD_OK;
+}
+
+SRD_API void *c_decoder_get_private(struct srd_decoder_inst *di)
+{
+    if (!di)
+        return NULL;
+    return di->user_data;
+}
+
+SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data)
+{
+    if (!di)
+        return;
+    di->user_data = data;
+}
+
+struct srd_cond_builder {
+    GSList *or_groups;
+    GSList *current_and;
+};
+
+SRD_API srd_cond_builder *c_cond_new(void)
+{
+    srd_cond_builder *b = g_malloc0(sizeof(srd_cond_builder));
+    return b;
+}
+
+static srd_cond_builder *c_cond_add_term(srd_cond_builder *b, int type, int ch)
+{
+    if (!b)
+        return NULL;
+    struct srd_term *t = g_malloc0(sizeof(struct srd_term));
+    t->type = type;
+    t->channel = ch;
+    b->current_and = g_slist_append(b->current_and, t);
+    return b;
+}
+
+SRD_API srd_cond_builder *c_cond_rise(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_RISING_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_fall(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_FALLING_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_high(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_HIGH, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_low(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_LOW, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_edge(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_EITHER_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_noedge(srd_cond_builder *b, int ch)
+{
+    return c_cond_add_term(b, SRD_TERM_NO_EDGE, ch);
+}
+
+SRD_API srd_cond_builder *c_cond_skip(srd_cond_builder *b, uint64_t count)
+{
+    if (!b)
+        return NULL;
+    struct srd_term *t = g_malloc0(sizeof(struct srd_term));
+    t->type = SRD_TERM_SKIP;
+    t->channel = -1;
+    t->num_samples_to_skip = count;
+    t->num_samples_already_skipped = 0;
+    b->current_and = g_slist_append(b->current_and, t);
+    return b;
+}
+
+SRD_API srd_cond_builder *c_cond_or(srd_cond_builder *b)
+{
+    if (!b)
+        return NULL;
+    if (b->current_and) {
+        b->or_groups = g_slist_append(b->or_groups, b->current_and);
+        b->current_and = NULL;
+    }
+    return b;
+}
+
+SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
+    uint64_t *samplenum, uint64_t *matched)
+{
+    if (!b || !di)
+        return SRD_ERR_ARG;
+
+    if (b->current_and) {
+        b->or_groups = g_slist_append(b->or_groups, b->current_and);
+        b->current_and = NULL;
+    }
+
+    int ret = c_decoder_wait(di, b->or_groups, samplenum, matched);
+
+    b->or_groups = NULL;
+
+    return ret;
+}
+
+static void c_cond_free_term_list(gpointer data)
+{
+    g_slist_free_full((GSList *)data, g_free);
+}
+
+SRD_API void c_cond_free(srd_cond_builder *b)
+{
+    if (!b)
+        return;
+    if (b->current_and)
+        g_slist_free_full(b->current_and, g_free);
+    if (b->or_groups)
+        g_slist_free_full(b->or_groups, c_cond_free_term_list);
+    g_free(b);
 }
 
 SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
@@ -188,6 +359,28 @@ SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
                                         all_match = FALSE;
                                         break;
                                     }
+                                } else if (t->type == SRD_TERM_EITHER_EDGE) {
+                                    uint8_t old_val = 0;
+                                    if (i > 0) {
+                                        uint64_t prev_byte = (i - 1) / 8;
+                                        uint8_t prev_bit = (i - 1) % 8;
+                                        old_val = (di->inbuf[sig_idx][prev_byte] >> prev_bit) & 1;
+                                    }
+                                    if (!((old_val == 0 && val == 1) || (old_val == 1 && val == 0))) {
+                                        all_match = FALSE;
+                                        break;
+                                    }
+                                } else if (t->type == SRD_TERM_NO_EDGE) {
+                                    uint8_t old_val = 0;
+                                    if (i > 0) {
+                                        uint64_t prev_byte = (i - 1) / 8;
+                                        uint8_t prev_bit = (i - 1) % 8;
+                                        old_val = (di->inbuf[sig_idx][prev_byte] >> prev_bit) & 1;
+                                    }
+                                    if (!((old_val == 0 && val == 0) || (old_val == 1 && val == 1))) {
+                                        all_match = FALSE;
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -243,6 +436,12 @@ SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
     pdo->output_type = output_type;
     pdo->di = di;
     pdo->proto_id = g_strdup(proto_id ? proto_id : "");
+
+    if (output_type == SRD_OUTPUT_PYTHON) {
+        _srd_err("C decoder %s: Registering SRD_OUTPUT_PYTHON output. "
+                 "This output type cannot be properly consumed by "
+                 "upper-layer Python decoders.", di->c_dec_inst->name);
+    }
 
     di->pd_output = g_slist_append(di->pd_output, pdo);
 

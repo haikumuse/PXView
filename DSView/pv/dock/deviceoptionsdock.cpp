@@ -82,7 +82,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _container_lay = new QVBoxLayout();
   _container_lay->setDirection(QBoxLayout::TopToBottom);
   _container_lay->setAlignment(Qt::AlignTop);
-  _container_lay->setContentsMargins(0, 0, 0, 0);
+  _container_lay->setContentsMargins(8, 8, 8, 8);
   _container_lay->setSpacing(5);
   _container_panel->setLayout(_container_lay);
 
@@ -239,6 +239,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
     i++;
   }
 
+  layout->setColumnStretch(0, 1);
   return layout;
 }
 
@@ -300,12 +301,13 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   QWidget *channel_pannel = new QWidget();
   QGridLayout *channel_grid = new QGridLayout();
   channel_grid->setContentsMargins(0, 0, 0, 0);
-  channel_grid->setSpacing(0);
+  channel_grid->setSpacing(2);
   channel_pannel->setLayout(channel_grid);
 
   int channel_row = 0;
   int channel_column = 0;
   int channel_line_height = 0;
+  int channel_columns = 8; // columns per row
   row2++;
 
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
@@ -318,14 +320,13 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
       probe->enabled = false;
 
     ChannelLabel *ch_item = new ChannelLabel(this, NULL, probe->index);
-    channel_grid->addWidget(ch_item, channel_row, channel_column++,
-                            Qt::AlignCenter);
+    channel_grid->addWidget(ch_item, channel_row, channel_column++);
     _probes_checkBox_list.push_back(ch_item->getCheckBox());
     ch_item->getCheckBox()->setCheckState(probe->enabled ? Qt::Checked
                                                          : Qt::Unchecked);
     channel_line_height = ch_item->height();
 
-    if (channel_column == 8) {
+    if (channel_column == channel_columns) {
       channel_column = 0;
       channel_row++;
 
@@ -333,6 +334,11 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
         row2++;
       }
     }
+  }
+
+  // Make columns stretch equally so channel items fill the width
+  for (int c = 0; c < channel_columns; c++) {
+    channel_grid->setColumnStretch(c, 1);
   }
 
   layout.addWidget(channel_pannel);
@@ -364,8 +370,8 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
       enable_all_probes->fontMetrics().width(enable_all_probes->text()) + 20;
 #endif
 
-  enable_all_probes->setMaximumWidth(bt_width);
-  disable_all_probes->setMaximumWidth(bt_width);
+  enable_all_probes->setMinimumWidth(bt_width);
+  disable_all_probes->setMinimumWidth(bt_width);
 
   ui::set_form_font(this, font);
 
@@ -377,8 +383,8 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   connect(disable_all_probes, SIGNAL(clicked()), this,
           SLOT(disable_all_probes()));
 
-  line_lay->addWidget(enable_all_probes);
-  line_lay->addWidget(disable_all_probes);
+  line_lay->addWidget(enable_all_probes, 1);
+  line_lay->addWidget(disable_all_probes, 1);
 
   _groupHeight2 = contentHeight + (row1 + row2) * 2 + 38;
 
@@ -790,13 +796,23 @@ void DeviceOptionsDock::build_dynamic_panel() {
     _dynamic_panel->setFont(font);
     _container_lay->addWidget(_dynamic_panel);
 
+    QLayout *inner;
     if (_device_agent->get_work_mode() == LOGIC)
-      _dynamic_panel->setLayout(new QVBoxLayout());
+      inner = new QVBoxLayout();
     else
-      _dynamic_panel->setLayout(new QGridLayout());
+      inner = new QGridLayout();
+
+    QHBoxLayout *outer = new QHBoxLayout();
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->addLayout(inner);
+    _dynamic_panel->setLayout(outer);
   }
 
-  QString title = dynamic_widget(_dynamic_panel->layout());
+  QLayout *inner = nullptr;
+  QHBoxLayout *outer = qobject_cast<QHBoxLayout*>(_dynamic_panel->layout());
+  if (outer && outer->count() > 0)
+    inner = outer->itemAt(0)->layout();
+  QString title = dynamic_widget(inner);
   QGroupBox *box = dynamic_cast<QGroupBox *>(_dynamic_panel);
   box->setFont(font);
   box->setTitle(title);
