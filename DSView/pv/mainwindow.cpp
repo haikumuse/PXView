@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the DSView project.
  * DSView is based on PulseView.
  *
@@ -279,8 +279,9 @@ namespace pv
 
         update_title_bar_text();
 #ifdef ENABLE_DEBUG_HELPER
-        _debug_helper = new pv::ui::DebugHelper(this);
-        _debug_helper->install();
+        _debug_helper = pv::ui::DebugHelper::Instance();
+        _debug_helper->setEnabled(true);
+        DEBUG_INSTALL_TREE(this);
 #endif
     }
 
@@ -288,8 +289,7 @@ namespace pv
     {
 #ifdef ENABLE_DEBUG_HELPER
         if (_debug_helper) {
-            _debug_helper->uninstall();
-            delete _debug_helper;
+            _debug_helper->setEnabled(false);
             _debug_helper = nullptr;
         }
 #endif
@@ -449,7 +449,7 @@ namespace pv
         _sliding_drawer = new widgets::SlidingDrawer(_central_widget);
         _sliding_drawer->setDrawerWidth(350);
         _sliding_drawer->setAnimationDuration(300);
-        _sliding_drawer->setBackdropEnabled(false); // Don't overlay; dock pushes content
+        // Backdrop removed: drawer now only covers its own area, allowing interaction with left side content
 
         // Take content widgets out of QDockWidget and add to SlidingDrawer
         // Protocol

@@ -19,8 +19,6 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QPainter>
-#include <QGraphicsOpacityEffect>
 #include <QApplication>
 #include <QPropertyAnimation>
 #include <QEasingCurve>
@@ -75,8 +73,6 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     , _slide_progress(0.0)
     , _drawer_width(DEFAULT_DRAWER_WIDTH)
     , _animation_duration(DEFAULT_ANIMATION_DURATION)
-    , _backdrop_enabled(true)
-    , _backdrop_color(0, 0, 0, 80)
     , _current_page(-1)
     , _is_open(false)
     , _is_animating(false)
@@ -85,15 +81,6 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     // This widget covers the entire parent area as an overlay
     setVisible(false);
     setMouseTracking(true);
-
-    // --- Backdrop ---
-    _backdrop = new QWidget(this);
-    _backdrop->setObjectName("sliding_drawer_backdrop");
-    _backdrop->installEventFilter(this);
-
-    _backdrop_opacity_effect = new QGraphicsOpacityEffect(_backdrop);
-    _backdrop_opacity_effect->setOpacity(0.0);
-    _backdrop->setGraphicsEffect(_backdrop_opacity_effect);
 
     // --- Panel (translates as a whole unit) ---
     _panel = new QWidget(this);
@@ -136,8 +123,6 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     _edge_grip->installEventFilter(this);
     _edge_grip->raise();
 
-    _backdrop->installEventFilter(this);
-
     // --- Open animation group ---
     _open_group = new QParallelAnimationGroup(this);
 
@@ -147,13 +132,6 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     open_slide->setDuration(_animation_duration);
     open_slide->setEasingCurve(QEasingCurve::OutCubic);
     _open_group->addAnimation(open_slide);
-
-    QPropertyAnimation *open_backdrop = new QPropertyAnimation(_backdrop_opacity_effect, "opacity");
-    open_backdrop->setStartValue(0.0);
-    open_backdrop->setEndValue(1.0);
-    open_backdrop->setDuration(_animation_duration);
-    open_backdrop->setEasingCurve(QEasingCurve::OutCubic);
-    _open_group->addAnimation(open_backdrop);
 
     connect(_open_group, &QParallelAnimationGroup::finished, this, [this]() {
         _is_animating = false;
@@ -170,13 +148,6 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     close_slide->setDuration(_animation_duration);
     close_slide->setEasingCurve(makeTailwindCurve());
     _close_group->addAnimation(close_slide);
-
-    QPropertyAnimation *close_backdrop = new QPropertyAnimation(_backdrop_opacity_effect, "opacity");
-    close_backdrop->setStartValue(1.0);
-    close_backdrop->setEndValue(0.0);
-    close_backdrop->setDuration(_animation_duration);
-    close_backdrop->setEasingCurve(makeTailwindCurve());
-    _close_group->addAnimation(close_backdrop);
 
     connect(_close_group, &QParallelAnimationGroup::finished, this, [this]() {
         _is_animating = false;
@@ -273,23 +244,14 @@ void SlidingDrawer::open(int pageIndex)
     raise();
     updatePanelGeometry();
 
-    // Show backdrop if enabled
-    if (_backdrop_enabled)
-        _backdrop->setVisible(true);
-
     // Start open animation from current progress (smooth reverse on interrupt)
     qreal startProgress = _slide_progress;
     if (startProgress >= 1.0) startProgress = 0.0;
 
     QPropertyAnimation *open_slide = qobject_cast<QPropertyAnimation*>(_open_group->animationAt(0));
-    QPropertyAnimation *open_backdrop = qobject_cast<QPropertyAnimation*>(_open_group->animationAt(1));
     if (open_slide) {
         open_slide->setStartValue(startProgress);
         open_slide->setEndValue(1.0);
-    }
-    if (open_backdrop) {
-        open_backdrop->setStartValue(startProgress);
-        open_backdrop->setEndValue(1.0);
     }
 
     _is_animating = true;
@@ -312,14 +274,9 @@ void SlidingDrawer::close()
     if (startProgress <= 0.0) startProgress = 1.0;
 
     QPropertyAnimation *close_slide = qobject_cast<QPropertyAnimation*>(_close_group->animationAt(0));
-    QPropertyAnimation *close_backdrop = qobject_cast<QPropertyAnimation*>(_close_group->animationAt(1));
     if (close_slide) {
         close_slide->setStartValue(startProgress);
         close_slide->setEndValue(0.0);
-    }
-    if (close_backdrop) {
-        close_backdrop->setStartValue(startProgress);
-        close_backdrop->setEndValue(0.0);
     }
 
     _is_animating = true;
@@ -385,29 +342,7 @@ int SlidingDrawer::animationDuration() const
     return _animation_duration;
 }
 
-void SlidingDrawer::setBackdropEnabled(bool enabled)
-{
-    _backdrop_enabled = enabled;
-    if (_backdrop) {
-        _backdrop->setVisible(enabled && (_is_open || _is_animating));
-    }
-}
 
-bool SlidingDrawer::backdropEnabled() const
-{
-    return _backdrop_enabled;
-}
-
-void SlidingDrawer::setBackdropColor(const QColor &color)
-{
-    _backdrop_color = color;
-    update();
-}
-
-QColor SlidingDrawer::backdropColor() const
-{
-    return _backdrop_color;
-}
 
 void SlidingDrawer::setPageTitle(int index, const QString &title)
 {
@@ -444,19 +379,13 @@ void SlidingDrawer::updatePanelGeometry()
     int parent_w = p->width();
     int parent_h = p->height();
 
-    // Resize this overlay to fill parent
-    setGeometry(0, 0, parent_w, parent_h);
-
-    // Backdrop covers entire area
-    _backdrop->setGeometry(0, 0, parent_w, parent_h);
-
-    // KEY: Panel translates as a whole unit (translate-x style)
-    // _slide_progress 0.0 = panel is off-screen right
-    // _slide_progress 1.0 = panel is fully visible, left edge at (parent_w - drawer_width)
+    // Resize this overlay to fill parent vertically, but only cover the drawer width horizontally
+    // This allows clicking on the left side content when drawer is open
     int panel_x = parent_w - qRound(_drawer_width * _slide_progress);
+    setGeometry(panel_x, 0, _drawer_width, parent_h);
 
     // Panel always has full drawer_width — it just moves left/right
-    _panel->setGeometry(panel_x, 0, _drawer_width, parent_h);
+    _panel->setGeometry(0, 0, _drawer_width, parent_h);
 
     // Content is always at (0,0) inside the panel — no shift, the whole thing moves together
     _panel_content->setGeometry(0, 0, _drawer_width, parent_h);
@@ -479,13 +408,7 @@ void SlidingDrawer::finishClose()
 void SlidingDrawer::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
-
-    if (!_backdrop_enabled || !_backdrop->isVisible())
-        return;
-
-    // Draw backdrop fill
-    QPainter painter(_backdrop);
-    painter.fillRect(_backdrop->rect(), _backdrop_color);
+    // No backdrop painting needed
 }
 
 void SlidingDrawer::resizeEvent(QResizeEvent *event)
@@ -496,14 +419,6 @@ void SlidingDrawer::resizeEvent(QResizeEvent *event)
 
 bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event)
 {
-    if (obj == _backdrop && event->type() == QEvent::MouseButtonPress) {
-        QMouseEvent *me = static_cast<QMouseEvent*>(event);
-        if (me->button() == Qt::LeftButton) {
-            close();
-            return true;
-        }
-    }
-
     if (obj == _edge_grip && event->type() == QEvent::MouseButtonPress) {
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton && _is_open && !_is_animating) {
@@ -531,15 +446,8 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event)
 
 void SlidingDrawer::mousePressEvent(QMouseEvent *event)
 {
-    if (_is_open && !_is_animating && event->button() == Qt::LeftButton) {
-        int mouse_x = event->pos().x();
-        int panel_left = _panel->geometry().left();
-        if (mouse_x < panel_left) {
-            close();
-            return;
-        }
-    }
-
+    // Removed: click outside to close logic
+    // Now the drawer only covers its own area, so clicks outside go to other widgets
     QWidget::mousePressEvent(event);
 }
 
