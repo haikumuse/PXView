@@ -20,11 +20,21 @@
 
 #undef _POSIX_C_SOURCE
 #include "config.h"
-#include "libsigrokdecode-internal.h"
+
+/* 
+ * We need the full Python API (not limited API) for PyConfig.
+ * libsigrokdecode-internal.h defines Py_LIMITED_API, so we include
+ * Python.h first with the full API, then include the internal header.
+ */
+#include <Python.h>
 #include "libsigrokdecode.h"
 #include "log.h"
-#include <Python.h>
 #include <glib.h>
+
+/* Include internal header but avoid double include of Python.h */
+#define Py_PYTHON_H  /* Prevent Python.h from being included again */
+#include "libsigrokdecode-internal.h"
+#undef Py_PYTHON_H
 
 /** @cond PRIVATE */
 
