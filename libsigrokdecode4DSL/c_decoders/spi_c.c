@@ -193,3 +193,13 @@ struct srd_c_decoder spi_c_decoder = {
     .decode = spi_decode,
     .destroy = spi_destroy,
 };
+
+SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+{
+    return &spi_c_decoder;
+}
+
+SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)
+{
+    return SRD_C_DECODER_API_VERSION;
+}

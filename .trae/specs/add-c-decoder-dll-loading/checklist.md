@@ -1,0 +1,17 @@
+- [x] `srd_c_decoder`结构体新增inputs/outputs/annotations/binary/tags字段，与Python解码器元数据对齐
+- [x] `srd_c_decoder_register()`完整映射所有元数据到`srd_decoder`的GSList
+- [x] 定义`SRD_C_DECODER_API_VERSION`常量和`SRD_C_DECODER_EXPORT`导出宏
+- [x] 定义标准DLL导出函数签名`srd_c_decoder_entry()`和`srd_c_decoder_api_version()`
+- [x] `srd_c_decoder_path_set()`函数可设置C解码器DLL搜索路径
+- [x] `srd_c_decoder_load_all()`从DLL目录扫描加载，替代硬编码注册
+- [x] DLL加载失败时跳过并记录日志，不影响其他解码器
+- [x] 跨平台支持（Windows LoadLibrary + Linux dlopen）
+- [x] `c_decoder_wait()`正确处理SRD_TERM_SKIP条件
+- [x] `c_decoder_put()`的SRD_OUTPUT_PYTHON输出修复
+- [x] SPI C解码器补全元数据和DLL导出
+- [x] I2C C解码器实现完整，使用SRD_C_DECODER_EXPORT宏导出
+- [x] UART C解码器实现完整，使用SRD_C_DECODER_EXPORT宏导出
+- [x] CAN C解码器实现完整，使用SRD_C_DECODER_EXPORT宏导出
+- [x] CMakeLists.txt将C解码器编译为独立DLL
+- [x] DLL输出目录为decoders/c_decoders/
+- [x] 构建成功，生成DSView.exe + 4个C解码器DLL

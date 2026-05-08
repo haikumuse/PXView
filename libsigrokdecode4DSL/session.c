@@ -134,6 +134,8 @@ static int srd_inst_send_meta(struct srd_decoder_inst *di, int key,
 		return SRD_OK;
 
 	if (di->is_c_inst) {
+		if (key == SRD_CONF_SAMPLERATE && data)
+			di->samplerate = g_variant_get_uint64(data);
 		for (l = di->next_di; l; l = l->next) {
 			next_di = l->data;
 			if ((ret = srd_inst_send_meta(next_di, key, data)) != SRD_OK)
