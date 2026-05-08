@@ -40,6 +40,9 @@
 
 struct st_dev_inst;
 class QAction;
+class QGroupBox;
+class QButtonGroup;
+class QRadioButton;
 struct ds_device_info;
 
 class DeviceAgent;
@@ -99,6 +102,8 @@ namespace pv
 
             void run_or_stop_instant();
 
+            QGroupBox* createSamplingSettingsWidget(QWidget *parent);
+
             inline void update_sample_rate_list()
             {
                 update_sample_rate_selector();
@@ -114,7 +119,7 @@ namespace pv
 
         signals:
             void sig_store_session_data();
-            void sig_device_options_toggle();
+            void sig_device_options(bool visible);
 
         private:
             void retranslateUi();
@@ -145,6 +150,7 @@ namespace pv
 
         private slots:
             void on_collect_mode();
+            void on_mode_radio_clicked(int id);
             void on_run_stop();
             void on_instant_stop();
             void on_device_selected();
@@ -187,6 +193,10 @@ namespace pv
             view::View          *_view;
             TabContext          *_context;
 
+            QButtonGroup        *_mode_group;
+            QRadioButton        *_radio_single;
+            QRadioButton        *_radio_repeat;
+            QRadioButton        *_radio_loop;
             bool                _updating_sample_rate;
             bool                _updating_sample_count;
             bool                _updating_device_list;

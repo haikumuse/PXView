@@ -27,17 +27,21 @@ static struct srd_channel spi_optional_channels[] = {
     {"cs", "CS#", "Chip Select", 3, SRD_CHANNEL_COMMON, NULL},
 };
 
-static const char *spi_ann_labels[][2] = {
-    {"DATA", "SPI data"},
+static const char *spi_ann_labels[][3] = {
+    {"", "DATA", "SPI data"},
 };
 
-static void spi_reset(void *inst)
+static const int spi_row_data_classes[] = {0};
+static const struct srd_c_ann_row spi_ann_rows[] = {
+    {"data", "Data", spi_row_data_classes, 1},
+};
+
+static void spi_reset(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    if (!di->user_data) {
-        di->user_data = g_malloc0(sizeof(spi_state));
+    if (!c_decoder_get_private(di)) {
+        c_decoder_set_private(di, g_malloc0(sizeof(spi_state)));
     }
-    spi_state *s = (spi_state *)di->user_data;
+    spi_state *s = (spi_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(spi_state));
     s->cpol = 0;
     s->cpha = 0;
@@ -47,29 +51,14 @@ static void spi_reset(void *inst)
     s->last_clk = -1;
 }
 
-static void spi_start(void *inst)
+static void spi_start(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-
     c_decoder_register_output(di, SRD_OUTPUT_ANN, "spi");
 }
 
-static uint8_t get_pin(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
+static void spi_decode(struct srd_decoder_inst *di)
 {
-    if (ch < 0 || ch >= di->dec_num_channels)
-        return 0;
-    int sig_idx = di->dec_channelmap[ch];
-    if (sig_idx < 0 || !di->inbuf || !di->inbuf[sig_idx])
-        return 0;
-    uint64_t byte_offset = samplenum / 8;
-    uint8_t bit_offset = samplenum % 8;
-    return (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
-}
-
-static void spi_decode(void *inst)
-{
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    spi_state *s = (spi_state *)di->user_data;
+    spi_state *s = (spi_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
@@ -79,30 +68,18 @@ static void spi_decode(void *inst)
     int CS = 3;
 
     while (1) {
-        GSList *cond = NULL;
-        struct srd_term *t;
-
-        t = g_malloc0(sizeof(struct srd_term));
-        t->type = SRD_TERM_RISING_EDGE;
-        t->channel = CLK;
-        GSList *term_list = g_slist_append(NULL, t);
-
-        t = g_malloc0(sizeof(struct srd_term));
-        t->type = SRD_TERM_FALLING_EDGE;
-        t->channel = CLK;
-        term_list = g_slist_append(term_list, t);
-
-        cond = g_slist_append(NULL, term_list);
-
-        int ret = c_decoder_wait(di, cond, &samplenum, &matched);
-
-        g_slist_free(cond);
+        srd_cond_builder *cb = c_cond_new();
+        c_cond_rise(cb, CLK);
+        c_cond_or(cb);
+        c_cond_fall(cb, CLK);
+        int ret = c_cond_wait(cb, di, &samplenum, &matched);
+        c_cond_free(cb);
 
         if (ret != SRD_OK)
             return;
 
         int cs_val = (di->dec_num_channels > CS && di->dec_channelmap[CS] >= 0)
-                     ? get_pin(di, CS, samplenum) : 1;
+                     ? c_decoder_get_pin(di, CS, samplenum) : 1;
 
         s->cs_active = (s->cs_polarity == 0) ? (cs_val == 0) : (cs_val == 1);
 
@@ -122,7 +99,7 @@ static void spi_decode(void *inst)
             s->start_sample = samplenum;
 
         if (di->dec_num_channels > MOSI && di->dec_channelmap[MOSI] >= 0) {
-            int mosi_val = get_pin(di, MOSI, samplenum);
+            int mosi_val = c_decoder_get_pin(di, MOSI, samplenum);
             if (s->bit_order == 0)
                 s->mosi_byte = (s->mosi_byte << 1) | mosi_val;
             else
@@ -130,7 +107,7 @@ static void spi_decode(void *inst)
         }
 
         if (di->dec_num_channels > MISO && di->dec_channelmap[MISO] >= 0) {
-            int miso_val = get_pin(di, MISO, samplenum);
+            int miso_val = c_decoder_get_pin(di, MISO, samplenum);
             if (s->bit_order == 0)
                 s->miso_byte = (s->miso_byte << 1) | miso_val;
             else
@@ -142,20 +119,9 @@ static void spi_decode(void *inst)
         if (s->bit_count == 8) {
             char mosi_str[16];
             char miso_str[16];
-            char *ann_texts[3] = {NULL, NULL, NULL};
-
             snprintf(mosi_str, sizeof(mosi_str), "0x%02X", s->mosi_byte);
             snprintf(miso_str, sizeof(miso_str), "0x%02X", s->miso_byte);
-
-            ann_texts[0] = mosi_str;
-            ann_texts[1] = miso_str;
-
-            struct srd_c_annotation ann;
-            ann.ann_class = 0;
-            ann.ann_text = ann_texts;
-
-            c_decoder_put(di, s->start_sample, samplenum, 0, &ann);
-
+            C_ANN_PUT(di, s->start_sample, samplenum, 0, 0, mosi_str, miso_str);
             s->bit_count = 0;
             s->mosi_byte = 0;
             s->miso_byte = 0;
@@ -163,12 +129,12 @@ static void spi_decode(void *inst)
     }
 }
 
-static void spi_destroy(void *inst)
+static void spi_destroy(struct srd_decoder_inst *di)
 {
-    struct srd_decoder_inst *di = (struct srd_decoder_inst *)inst;
-    if (di->user_data) {
-        g_free(di->user_data);
-        di->user_data = NULL;
+    void *priv = c_decoder_get_private(di);
+    if (priv) {
+        g_free(priv);
+        c_decoder_set_private(di, NULL);
     }
 }
 
@@ -186,8 +152,8 @@ struct srd_c_decoder spi_c_decoder = {
     .num_options = 0,
     .num_annotations = 1,
     .ann_labels = spi_ann_labels,
-    .num_annotation_rows = 0,
-    .annotation_rows = NULL,
+    .num_annotation_rows = 1,
+    .annotation_rows = spi_ann_rows,
     .reset = spi_reset,
     .start = spi_start,
     .decode = spi_decode,

@@ -424,7 +424,31 @@ boost_headers_DIR:PATH=D:/msys64/mingw64/lib/cmake/boost_headers-1.91.0
 decoder_can_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_counter_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ds1307_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ds3231_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_graycode_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_i2c_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_lm75_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_numbers_and_state_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_pwm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_seven_segment_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_spi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;

@@ -136,6 +136,9 @@ static int srd_inst_send_meta(struct srd_decoder_inst *di, int key,
 	if (di->is_c_inst) {
 		if (key == SRD_CONF_SAMPLERATE && data)
 			di->samplerate = g_variant_get_uint64(data);
+		if (di->c_dec_inst->metadata) {
+			di->c_dec_inst->metadata(di, key, di->samplerate);
+		}
 		for (l = di->next_di; l; l = l->next) {
 			next_di = l->data;
 			if ((ret = srd_inst_send_meta(next_di, key, data)) != SRD_OK)
@@ -453,6 +456,9 @@ SRD_API int srd_session_end(struct srd_session *sess, char **error)
 		di = d->data;
 
 		if (di->is_c_inst) {
+			if (di->c_dec_inst->end) {
+				di->c_dec_inst->end(di);
+			}
 			if (di->next_di != NULL){
 				ret = srd_call_sub_decoder_end(di, error);
 				if (ret != SRD_OK){
@@ -506,6 +512,9 @@ SRD_PRIV int srd_call_sub_decoder_end(struct srd_decoder_inst *di, char **error)
 		sub_dec = l->data;
 
 		if (sub_dec->is_c_inst) {
+			if (sub_dec->c_dec_inst->end) {
+				sub_dec->c_dec_inst->end(sub_dec);
+			}
 			if (sub_dec->next_di != NULL){
 				if (srd_call_sub_decoder_end(sub_dec, error) != SRD_OK)
 					return SRD_ERR_PYTHON;

@@ -169,7 +169,6 @@ namespace pv
         _right_tool_bar->addAction(_trig_bar->_search_action);
         _right_tool_bar->addAction(_trig_bar->_function_action);
         _right_tool_bar->addAction(_sampling_bar->_configure_action);
-        _right_tool_bar->addAction(_sampling_bar->_mode_action);
         _right_tool_bar->addAction(_sampling_bar->_run_stop_action);
         _right_tool_bar->addAction(_sampling_bar->_instant_action);
         // _right_tool_bar->setFloatable(false);
@@ -370,7 +369,7 @@ namespace pv
 
 
         // setIconSize(QSize(40, 40));
-        addToolBar(Qt::TopToolBarArea, _sampling_bar);
+        // addToolBar(Qt::TopToolBarArea, _sampling_bar);  // moved into device_options_dock
         // addToolBar(_trig_bar);
         // addToolBar(_file_bar);
         // addToolBar(_logo_bar);
@@ -422,7 +421,14 @@ namespace pv
         _device_options_dock->setAllowedAreas(Qt::RightDockWidgetArea);
         _device_options_dock->setVisible(false);
         _device_options_widget = new dock::DeviceOptionsDock(_device_options_dock, _session);
-        _device_options_dock->setWidget(_device_options_widget);
+
+        QWidget *dock_container = new QWidget();
+        QVBoxLayout *dock_lay = new QVBoxLayout(dock_container);
+        dock_lay->setContentsMargins(0, 0, 0, 0);
+        dock_lay->setSpacing(0);
+        dock_lay->addWidget(_sampling_bar->createSamplingSettingsWidget(dock_container));
+        dock_lay->addWidget(_device_options_widget);
+        // Note: dock_container will be added to SlidingDrawer below, not to QDockWidget
         connect(_device_options_widget, &dock::DeviceOptionsDock::settings_applied, this, [this](){
             if (_session->have_view_data() == false)
                 _sampling_bar->commit_settings();
@@ -430,13 +436,77 @@ namespace pv
             _sampling_bar->reload();
         });
 
-        addDockWidget(Qt::RightDockWidgetArea, _protocol_dock);
-        addDockWidget(Qt::RightDockWidgetArea, _trigger_dock);
-        addDockWidget(Qt::RightDockWidgetArea, _dso_trigger_dock);
-        addDockWidget(Qt::RightDockWidgetArea, _measure_dock);
-        // addDockWidget(Qt::BottomDockWidgetArea, _search_dock);
-        addDockWidget(Qt::RightDockWidgetArea, _search_dock);
-        addDockWidget(Qt::RightDockWidgetArea, _device_options_dock);
+        // Do NOT add dock widgets to the main window layout.
+        // They are hidden containers; content is shown via SlidingDrawer instead.
+        _protocol_dock->setVisible(false);
+        _trigger_dock->setVisible(false);
+        _dso_trigger_dock->setVisible(false);
+        _measure_dock->setVisible(false);
+        _search_dock->setVisible(false);
+        _device_options_dock->setVisible(false);
+
+        // --- Create SlidingDrawer ---
+        _sliding_drawer = new widgets::SlidingDrawer(_central_widget);
+        _sliding_drawer->setDrawerWidth(350);
+        _sliding_drawer->setAnimationDuration(300);
+        _sliding_drawer->setBackdropEnabled(false); // Don't overlay; dock pushes content
+
+        // Take content widgets out of QDockWidget and add to SlidingDrawer
+        // Protocol
+        _protocol_dock->setWidget(nullptr);
+        _drawer_page_protocol = _sliding_drawer->addPage(
+            _protocol_widget,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PROTOCOL_DOCK_TITLE), "Decode Protocol"));
+
+        // Trigger (logic analyzer)
+        _trigger_dock->setWidget(nullptr);
+        _drawer_page_trigger = _sliding_drawer->addPage(
+            _trigger_widget,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE), "Trigger Setting..."));
+
+        // DSO Trigger
+        _dso_trigger_dock->setWidget(nullptr);
+        _drawer_page_dso_trigger = _sliding_drawer->addPage(
+            _dso_trigger_widget,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE), "Trigger Setting..."));
+
+        // Measure
+        _measure_dock->setWidget(nullptr);
+        _drawer_page_measure = _sliding_drawer->addPage(
+            _measure_widget,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MEASURE_DOCK_TITLE), "Measurement"));
+
+        // Search
+        _search_dock->setWidget(nullptr);
+        _drawer_page_search = _sliding_drawer->addPage(
+            _search_widget,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_DOCK_TITLE), "Search..."));
+
+        // Device Options (includes sampling settings)
+        _device_options_dock->setWidget(nullptr);
+        _drawer_page_device_options = _sliding_drawer->addPage(
+            dock_container,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
+
+        _drawer_current_page = -1;
+
+        // When drawer closes, update toolbar state
+        connect(_sliding_drawer, &widgets::SlidingDrawer::drawerClosed, this, [this]() {
+            _drawer_current_page = -1;
+            // Update toolbar checked status
+            ::DockOptions *opt = _trig_bar->getDockOptions();
+            if (opt) {
+                opt->decodeDock = false;
+                opt->triggerDock = false;
+                opt->measureDock = false;
+                opt->searchDock = false;
+                opt->deviceOptionsDock = false;
+                _trig_bar->update_checked_status();
+                _sampling_bar->_configure_button.setChecked(false);
+                AppConfig::Instance().SaveFrame();
+            }
+            current_view()->setFocus();
+        });
 
         // event filter
         initial_view->installEventFilter(this);
@@ -480,7 +550,7 @@ namespace pv
         connect(_trig_bar, SIGNAL(sig_trigger(bool)), this, SLOT(on_trigger(bool)));
         connect(_trig_bar, SIGNAL(sig_measure(bool)), this, SLOT(on_measure(bool)));
         connect(_trig_bar, SIGNAL(sig_search(bool)), this, SLOT(on_search(bool)));
-        connect(_sampling_bar, SIGNAL(sig_device_options_toggle()), this, SLOT(on_device_options_toggle()));
+        connect(_sampling_bar, SIGNAL(sig_device_options(bool)), this, SLOT(on_device_options(bool)));
         connect(_trig_bar, SIGNAL(sig_setTheme(QString)), this, SLOT(switchTheme(QString)));
         connect(_trig_bar, SIGNAL(sig_show_lissajous(bool)), initial_view, SLOT(show_lissajous(bool)));
 
@@ -593,6 +663,23 @@ namespace pv
         _measure_dock->setWindowTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MEASURE_DOCK_TITLE), "Measurement"));
         _search_dock->setWindowTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_DOCK_TITLE), "Search..."));
         _device_options_dock->setWindowTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
+
+        // Update drawer page titles
+        if (_sliding_drawer) {
+            _sliding_drawer->setPageTitle(_drawer_page_protocol,
+                L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PROTOCOL_DOCK_TITLE), "Decode Protocol"));
+            _sliding_drawer->setPageTitle(_drawer_page_trigger,
+                L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE), "Trigger Setting..."));
+            _sliding_drawer->setPageTitle(_drawer_page_dso_trigger,
+                L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_DOCK_TITLE), "Trigger Setting..."));
+            _sliding_drawer->setPageTitle(_drawer_page_measure,
+                L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MEASURE_DOCK_TITLE), "Measurement"));
+            _sliding_drawer->setPageTitle(_drawer_page_search,
+                L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_DOCK_TITLE), "Search..."));
+            _sliding_drawer->setPageTitle(_drawer_page_device_options,
+                L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
+        }
+
         Ribbon_retranslateUi();
     }
 
@@ -752,9 +839,26 @@ namespace pv
 
     void MainWindow::on_protocol(bool visible)
     {
-        _protocol_dock->setVisible(visible);
-        if (visible)
-            _device_options_dock->setVisible(false);
+        if (visible) {
+            _sliding_drawer->open(_drawer_page_protocol);
+            _drawer_current_page = _drawer_page_protocol;
+            // Update dock options
+            ::DockOptions *opt = _trig_bar->getDockOptions();
+            if (opt) {
+                opt->decodeDock = true;
+                opt->triggerDock = false;
+                opt->measureDock = false;
+                opt->searchDock = false;
+                opt->deviceOptionsDock = false;
+                _trig_bar->update_checked_status();
+                _sampling_bar->_configure_button.setChecked(false);
+                AppConfig::Instance().SaveFrame();
+            }
+        } else {
+            if (_drawer_current_page == _drawer_page_protocol) {
+                _sliding_drawer->close();
+            }
+        }
 
         if (!visible)
             current_view()->setFocus();
@@ -762,28 +866,59 @@ namespace pv
 
     void MainWindow::on_trigger(bool visible)
     {
-        if (_device_agent->get_work_mode() != DSO)
-        {
-            _trigger_widget->update_view();
-            _trigger_dock->setVisible(visible);
-            _dso_trigger_dock->setVisible(false);
+        if (visible) {
+            if (_device_agent->get_work_mode() != DSO) {
+                _trigger_widget->update_view();
+                _sliding_drawer->open(_drawer_page_trigger);
+                _drawer_current_page = _drawer_page_trigger;
+            } else {
+                _dso_trigger_widget->update_view();
+                _sliding_drawer->open(_drawer_page_dso_trigger);
+                _drawer_current_page = _drawer_page_dso_trigger;
+            }
+            // Update dock options
+            ::DockOptions *opt = _trig_bar->getDockOptions();
+            if (opt) {
+                opt->decodeDock = false;
+                opt->triggerDock = true;
+                opt->measureDock = false;
+                opt->searchDock = false;
+                opt->deviceOptionsDock = false;
+                _trig_bar->update_checked_status();
+                _sampling_bar->_configure_button.setChecked(false);
+                AppConfig::Instance().SaveFrame();
+            }
+        } else {
+            if (_drawer_current_page == _drawer_page_trigger ||
+                _drawer_current_page == _drawer_page_dso_trigger) {
+                _sliding_drawer->close();
+            }
         }
-        else
-        {
-            _dso_trigger_widget->update_view();
-            _trigger_dock->setVisible(false);
-            _dso_trigger_dock->setVisible(visible);
-        }
-        if (visible)
-            _device_options_dock->setVisible(false);
         if (!visible) current_view()->setFocus();
     }
 
     void MainWindow::on_measure(bool visible)
     {
-        _measure_dock->setVisible(visible);
-        if (visible)
-            _device_options_dock->setVisible(false);
+        if (visible) {
+            _sliding_drawer->open(_drawer_page_measure);
+            _drawer_current_page = _drawer_page_measure;
+            // Update dock options
+            ::DockOptions *opt = _trig_bar->getDockOptions();
+            if (opt) {
+                opt->decodeDock = false;
+                opt->triggerDock = false;
+                opt->measureDock = true;
+                opt->searchDock = false;
+                opt->deviceOptionsDock = false;
+                _trig_bar->update_checked_status();
+                _sampling_bar->_configure_button.setChecked(false);
+                AppConfig::Instance().SaveFrame();
+            }
+        } else {
+            if (_drawer_current_page == _drawer_page_measure) {
+                _sliding_drawer->close();
+            }
+        }
 
         if (!visible)
             current_view()->setFocus();
@@ -791,10 +926,27 @@ namespace pv
 
     void MainWindow::on_search(bool visible)
     {
-        _search_dock->setVisible(visible);
         current_view()->show_search_cursor(visible);
-        if (visible)
-            _device_options_dock->setVisible(false);
+        if (visible) {
+            _sliding_drawer->open(_drawer_page_search);
+            _drawer_current_page = _drawer_page_search;
+            // Update dock options
+            ::DockOptions *opt = _trig_bar->getDockOptions();
+            if (opt) {
+                opt->decodeDock = false;
+                opt->triggerDock = false;
+                opt->measureDock = false;
+                opt->searchDock = true;
+                opt->deviceOptionsDock = false;
+                _trig_bar->update_checked_status();
+                _sampling_bar->_configure_button.setChecked(false);
+                AppConfig::Instance().SaveFrame();
+            }
+        } else {
+            if (_drawer_current_page == _drawer_page_search) {
+                _sliding_drawer->close();
+            }
+        }
 
         if (!visible)
             current_view()->setFocus();
@@ -802,35 +954,27 @@ namespace pv
 
     void MainWindow::on_device_options(bool visible)
     {
-        _device_options_dock->setVisible(visible);
         if (visible) {
             _device_options_widget->update_view();
-        }
-        if (!visible) current_view()->setFocus();
-    }
-
-    void MainWindow::on_device_options_toggle()
-    {
-        bool visible = _device_options_dock->isVisible();
-        on_device_options(!visible);
-
-        ::DockOptions *opt = _trig_bar->getDockOptions();
-        if (opt) {
-            opt->deviceOptionsDock = !visible;
-            if (!visible) {
+            _sliding_drawer->open(_drawer_page_device_options);
+            _drawer_current_page = _drawer_page_device_options;
+            // Update dock options — same pattern as on_protocol/on_trigger
+            ::DockOptions *opt = _trig_bar->getDockOptions();
+            if (opt) {
+                opt->deviceOptionsDock = true;
                 opt->decodeDock = false;
                 opt->triggerDock = false;
                 opt->measureDock = false;
                 opt->searchDock = false;
-                _protocol_dock->setVisible(false);
-                _trigger_dock->setVisible(false);
-                _dso_trigger_dock->setVisible(false);
-                _measure_dock->setVisible(false);
-                _search_dock->setVisible(false);
+                _trig_bar->update_checked_status();
+                AppConfig::Instance().SaveFrame();
             }
-            _trig_bar->update_checked_status();
-            AppConfig::Instance().SaveFrame();
+        } else {
+            if (_drawer_current_page == _drawer_page_device_options) {
+                _sliding_drawer->close();
+            }
         }
+        if (!visible) current_view()->setFocus();
     }
 
     void MainWindow::on_screenShot()
@@ -1508,22 +1652,9 @@ namespace pv
 
     void MainWindow::restore_dock()
     { 
-        // default dockwidget size
-        AppConfig &app = AppConfig::Instance();
-        QByteArray st = app.frameOptions.windowState;
-        if (!st.isEmpty())
-        {
-            try
-            {
-                restoreState(st);
-            }
-            catch (...)
-            {
-                MsgBox::Show(NULL, L_S(STR_PAGE_MSG, S_ID(IDS_MSG_RESTORE_WINDOW_ERROR), "restore window status error!"));
-            }
-        }
-
-        // Resotre the dock pannel.
+        // Restore dock panel visibility from saved DockOptions.
+        // Note: We no longer use QMainWindow::restoreState() for docks
+        // because dock content is now hosted in SlidingDrawer.
         if (_device_agent->have_instance())
             _trig_bar->reload();
     }

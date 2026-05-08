@@ -23,6 +23,7 @@
 #include "libsigrokdecode-internal.h"
 #include "libsigrokdecode.h"
 #include "log.h"
+#include "dll_registry.h"
 #include <glib.h>
 
 #ifdef _WIN32
@@ -1250,17 +1251,27 @@ SRD_API int srd_c_decoder_register(struct srd_c_decoder* dec)
     if (dec->num_annotations > 0 && dec->ann_labels) {
         for (i = 0; i < dec->num_annotations; i++) {
             char** pair = g_malloc0(3 * sizeof(char*));
-            pair[0] = g_strdup(dec->ann_labels[i][0]);
-            pair[1] = dec->ann_labels[i][1] ? g_strdup(dec->ann_labels[i][1]) : NULL;
+            pair[0] = dec->ann_labels[i][1] ? g_strdup(dec->ann_labels[i][1]) : NULL;
+            pair[1] = dec->ann_labels[i][2] ? g_strdup(dec->ann_labels[i][2]) : NULL;
             d->annotations = g_slist_append(d->annotations, pair);
+            d->ann_types = g_slist_append(d->ann_types, GINT_TO_POINTER(i));
         }
     }
 
     d->annotation_rows = NULL;
     if (dec->num_annotation_rows > 0 && dec->annotation_rows) {
         for (i = 0; i < dec->num_annotation_rows; i++) {
-            struct srd_decoder_annotation_row* r = g_malloc(sizeof(struct srd_decoder_annotation_row));
-            memcpy(r, &dec->annotation_rows[i], sizeof(struct srd_decoder_annotation_row));
+            struct srd_decoder_annotation_row* r = g_malloc0(sizeof(struct srd_decoder_annotation_row));
+            r->id = g_strdup(dec->annotation_rows[i].id ? dec->annotation_rows[i].id : "");
+            r->desc = g_strdup(dec->annotation_rows[i].desc ? dec->annotation_rows[i].desc : "");
+            r->ann_classes = NULL;
+            if (dec->annotation_rows[i].ann_classes && dec->annotation_rows[i].num_ann_classes > 0) {
+                int j;
+                for (j = 0; j < dec->annotation_rows[i].num_ann_classes; j++) {
+                    r->ann_classes = g_slist_append(r->ann_classes,
+                        GSIZE_TO_POINTER(dec->annotation_rows[i].ann_classes[j]));
+                }
+            }
             d->annotation_rows = g_slist_append(d->annotation_rows, r);
         }
     }
@@ -1302,13 +1313,203 @@ SRD_API int srd_c_decoder_register(struct srd_c_decoder* dec)
     return SRD_OK;
 }
 
-static char* c_decoder_path = NULL;
+static GSList *c_decoder_paths = NULL;
 
 SRD_API int srd_c_decoder_path_set(const char* path)
 {
-    g_free(c_decoder_path);
-    c_decoder_path = g_strdup(path);
+    g_slist_free_full(c_decoder_paths, g_free);
+    c_decoder_paths = NULL;
+    if (path)
+        c_decoder_paths = g_slist_append(c_decoder_paths, g_strdup(path));
     return SRD_OK;
+}
+
+SRD_API int srd_c_decoder_path_add(const char *path)
+{
+    if (!path)
+        return SRD_ERR_ARG;
+    GSList *l;
+    for (l = c_decoder_paths; l; l = l->next) {
+        if (g_strcmp0((const char *)l->data, path) == 0)
+            return SRD_OK;
+    }
+    c_decoder_paths = g_slist_append(c_decoder_paths, g_strdup(path));
+    return SRD_OK;
+}
+
+SRD_API void srd_c_decoder_paths_clear(void)
+{
+    g_slist_free_full(c_decoder_paths, g_free);
+    c_decoder_paths = NULL;
+}
+
+static int srd_c_decoder_check_version(int dll_version)
+{
+    if (dll_version == SRD_C_DECODER_API_VERSION)
+        return SRD_OK;
+    if (dll_version >= SRD_C_DECODER_API_MIN_VERSION &&
+        dll_version < SRD_C_DECODER_API_VERSION) {
+        srd_info("C decoder DLL API version %d is compatible (current=%d, min=%d).",
+            dll_version, SRD_C_DECODER_API_VERSION, SRD_C_DECODER_API_MIN_VERSION);
+        return SRD_OK;
+    }
+    srd_warn("C decoder DLL API version %d is incompatible (current=%d, min=%d).",
+        dll_version, SRD_C_DECODER_API_VERSION, SRD_C_DECODER_API_MIN_VERSION);
+    return SRD_ERR;
+}
+
+static int srd_c_decoder_load_single(const char *full_path)
+{
+    if (!full_path)
+        return SRD_ERR_ARG;
+
+    struct srd_c_dll_entry *existing = srd_c_dll_registry_find_by_path(full_path);
+    if (existing) {
+        srd_dbg("C decoder '%s' already loaded, skipping.", full_path);
+        return SRD_OK;
+    }
+
+#ifdef _WIN32
+    HMODULE handle = LoadLibraryA(full_path);
+    if (!handle) {
+        srd_warn("Failed to load C decoder DLL '%s': error %lu",
+            full_path, GetLastError());
+        srd_c_dll_registry_add(full_path, NULL, 0, SRD_C_DLL_LOAD_FAILED, NULL, NULL);
+        return SRD_ERR;
+    }
+
+    srd_c_decoder_api_version_func version_func = (srd_c_decoder_api_version_func)GetProcAddress(handle, "srd_c_decoder_api_version");
+    srd_c_decoder_entry_func entry_func = (srd_c_decoder_entry_func)GetProcAddress(handle, "srd_c_decoder_entry");
+
+    if (!entry_func) {
+        srd_warn("C decoder DLL '%s' has no srd_c_decoder_entry symbol.", full_path);
+        FreeLibrary(handle);
+        srd_c_dll_registry_add(full_path, NULL, 0, SRD_C_DLL_ENTRY_MISSING, NULL, NULL);
+        return SRD_ERR;
+    }
+
+    int dll_version = version_func ? version_func() : 0;
+    if (srd_c_decoder_check_version(dll_version) != SRD_OK) {
+        FreeLibrary(handle);
+        srd_c_dll_registry_add(full_path, NULL, dll_version, SRD_C_DLL_VERSION_MISMATCH, NULL, NULL);
+        return SRD_ERR;
+    }
+#else
+    void *handle = dlopen(full_path, RTLD_LAZY);
+    if (!handle) {
+        srd_warn("Failed to load C decoder SO '%s': %s", full_path, dlerror());
+        srd_c_dll_registry_add(full_path, NULL, 0, SRD_C_DLL_LOAD_FAILED, NULL, NULL);
+        return SRD_ERR;
+    }
+
+    srd_c_decoder_api_version_func version_func = (srd_c_decoder_api_version_func)dlsym(handle, "srd_c_decoder_api_version");
+    srd_c_decoder_entry_func entry_func = (srd_c_decoder_entry_func)dlsym(handle, "srd_c_decoder_entry");
+
+    if (!entry_func) {
+        srd_warn("C decoder SO '%s' has no srd_c_decoder_entry symbol.", full_path);
+        dlclose(handle);
+        srd_c_dll_registry_add(full_path, NULL, 0, SRD_C_DLL_ENTRY_MISSING, NULL, NULL);
+        return SRD_ERR;
+    }
+
+    int dll_version = version_func ? version_func() : 0;
+    if (srd_c_decoder_check_version(dll_version) != SRD_OK) {
+        dlclose(handle);
+        srd_c_dll_registry_add(full_path, NULL, dll_version, SRD_C_DLL_VERSION_MISMATCH, NULL, NULL);
+        return SRD_ERR;
+    }
+#endif
+
+    struct srd_c_decoder *dec = entry_func();
+    if (dec) {
+        srd_c_decoder_register(dec);
+        srd_c_dll_registry_add(full_path, handle, dll_version, SRD_C_DLL_LOADED, dec->id, dec);
+        srd_dbg("Loaded C decoder '%s' from %s.", dec->id, full_path);
+    } else {
+        srd_warn("C decoder DLL '%s' entry returned NULL.", full_path);
+#ifdef _WIN32
+        FreeLibrary(handle);
+#else
+        dlclose(handle);
+#endif
+        return SRD_ERR;
+    }
+
+    return SRD_OK;
+}
+
+SRD_API int srd_c_decoder_load(const char *dll_path)
+{
+    if (!dll_path)
+        return SRD_ERR_ARG;
+    if (!g_path_is_absolute(dll_path)) {
+        srd_warn("srd_c_decoder_load: path must be absolute, got '%s'.", dll_path);
+        return SRD_ERR_ARG;
+    }
+    return srd_c_decoder_load_single(dll_path);
+}
+
+SRD_API int srd_c_decoder_unload(const char *decoder_id)
+{
+    if (!decoder_id)
+        return SRD_ERR_ARG;
+
+    struct srd_c_dll_entry *entry = srd_c_dll_registry_find_by_id(decoder_id);
+    if (!entry) {
+        srd_warn("srd_c_decoder_unload: decoder '%s' not found in registry.", decoder_id);
+        return SRD_ERR_ARG;
+    }
+
+    if (entry->status != SRD_C_DLL_LOADED || !entry->handle) {
+        srd_warn("srd_c_decoder_unload: decoder '%s' is not in loaded state.", decoder_id);
+        return SRD_ERR_ARG;
+    }
+
+    GSList *sl;
+    for (sl = sessions; sl; sl = sl->next) {
+        struct srd_session *sess = sl->data;
+        GSList *dl;
+        for (dl = sess->di_list; dl; dl = dl->next) {
+            struct srd_decoder_inst *di = dl->data;
+            if (di->is_c_inst && di->c_dec_inst &&
+                g_strcmp0(di->c_dec_inst->id, decoder_id) == 0 &&
+                di->decoder_state != 0) {
+                srd_warn("srd_c_decoder_unload: decoder '%s' has active instances.", decoder_id);
+                return SRD_ERR_ARG;
+            }
+        }
+    }
+
+    GSList *l;
+    for (l = pd_list; l; l = l->next) {
+        struct srd_decoder *d = l->data;
+        if (d->is_c_decoder && d->c_dec &&
+            g_strcmp0(d->c_dec->id, decoder_id) == 0) {
+            pd_list = g_slist_remove(pd_list, d);
+            break;
+        }
+    }
+
+#ifdef _WIN32
+    FreeLibrary((HMODULE)entry->handle);
+    srd_dbg("Unloaded C decoder DLL '%s'.", entry->file_path);
+#else
+    dlclose(entry->handle);
+    srd_dbg("Unloaded C decoder SO '%s'.", entry->file_path);
+#endif
+
+    srd_c_dll_registry_remove(decoder_id);
+    return SRD_OK;
+}
+
+SRD_API const GSList *srd_c_dll_registry_get(void)
+{
+    return c_dll_registry;
+}
+
+SRD_API const struct srd_c_dll_entry *srd_c_dll_info_get(const char *decoder_id)
+{
+    return srd_c_dll_registry_find_by_id(decoder_id);
 }
 
 SRD_API int srd_c_decoder_load_all(void)
@@ -1317,8 +1518,8 @@ SRD_API int srd_c_decoder_load_all(void)
     const char* base_path;
     char* c_dec_path;
 
-    if (c_decoder_path) {
-        search_paths_list = g_slist_append(search_paths_list, g_strdup(c_decoder_path));
+    for (l = c_decoder_paths; l; l = l->next) {
+        search_paths_list = g_slist_append(search_paths_list, g_strdup((const char *)l->data));
     }
 
     for (l = searchpaths; l; l = l->next) {
@@ -1349,68 +1550,7 @@ SRD_API int srd_c_decoder_load_all(void)
 #endif
 
             char* full_path = g_build_filename(dir_path, filename, NULL);
-
-#ifdef _WIN32
-            HMODULE handle = LoadLibraryA(full_path);
-            if (!handle) {
-                srd_warn("Failed to load C decoder DLL '%s': error %lu",
-                    full_path, GetLastError());
-                g_free(full_path);
-                continue;
-            }
-
-            srd_c_decoder_api_version_func version_func = (srd_c_decoder_api_version_func)GetProcAddress(handle, "srd_c_decoder_api_version");
-            srd_c_decoder_entry_func entry_func = (srd_c_decoder_entry_func)GetProcAddress(handle, "srd_c_decoder_entry");
-
-            if (!entry_func) {
-                srd_warn("C decoder DLL '%s' has no srd_c_decoder_entry symbol.", full_path);
-                FreeLibrary(handle);
-                g_free(full_path);
-                continue;
-            }
-
-            if (version_func && version_func() != SRD_C_DECODER_API_VERSION) {
-                srd_warn("C decoder DLL '%s' API version mismatch (got %d, expected %d).",
-                    full_path, version_func(), SRD_C_DECODER_API_VERSION);
-                FreeLibrary(handle);
-                g_free(full_path);
-                continue;
-            }
-#else
-            void* handle = dlopen(full_path, RTLD_LAZY);
-            if (!handle) {
-                srd_warn("Failed to load C decoder SO '%s': %s", full_path, dlerror());
-                g_free(full_path);
-                continue;
-            }
-
-            srd_c_decoder_api_version_func version_func = (srd_c_decoder_api_version_func)dlsym(handle, "srd_c_decoder_api_version");
-            srd_c_decoder_entry_func entry_func = (srd_c_decoder_entry_func)dlsym(handle, "srd_c_decoder_entry");
-
-            if (!entry_func) {
-                srd_warn("C decoder SO '%s' has no srd_c_decoder_entry symbol.", full_path);
-                dlclose(handle);
-                g_free(full_path);
-                continue;
-            }
-
-            if (version_func && version_func() != SRD_C_DECODER_API_VERSION) {
-                srd_warn("C decoder SO '%s' API version mismatch (got %d, expected %d).",
-                    full_path, version_func(), SRD_C_DECODER_API_VERSION);
-                dlclose(handle);
-                g_free(full_path);
-                continue;
-            }
-#endif
-
-            struct srd_c_decoder* dec = entry_func();
-            if (dec) {
-                srd_c_decoder_register(dec);
-                srd_dbg("Loaded C decoder '%s' from %s.", dec->id, full_path);
-            } else {
-                srd_warn("C decoder DLL '%s' entry returned NULL.", full_path);
-            }
-
+            srd_c_decoder_load_single(full_path);
             g_free(full_path);
         }
 
