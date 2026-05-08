@@ -95,9 +95,7 @@ Thumbs.db
 .dirstamp
 .libs/
 
-# Generated config headers
-config.h
-version.h
+
 
 # Test logs
 /test-suite.log
