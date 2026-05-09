@@ -55,7 +55,8 @@ namespace toolbars {
 class TitleBar : public QWidget, public IUiWindow
 {
     Q_OBJECT
-    Q_PROPERTY(qreal slideProgress READ slideProgress WRITE setSlideProgress)
+    // 使用 int 类型的 ribbonHeight 属性替代 qreal slideProgress，避免浮点精度丢失和布局抖动
+    Q_PROPERTY(int ribbonHeight READ ribbonHeight WRITE setRibbonHeight)
 
 public:
     TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose);
@@ -86,15 +87,20 @@ public:
 
     void EnableAbleDrag(bool bEnabled);
 
+    // 用于动画的属性访问器
+    int ribbonHeight() const;
+    void setRibbonHeight(int h);
+
+    // 查询动画状态，外部可以用此避免在动画期间做重计算
+    inline bool isRibbonAnimating() const {
+        return _ribbonAnimation && _ribbonAnimation->state() == QAbstractAnimation::Running;
+    }
+
 private:
     void reStyle();
 
     bool ParentIsMaxsized();
     bool isOnTabBar(const QPoint &pos) const;
-
-    qreal slideProgress() const;
-    void setSlideProgress(qreal progress);
-    void updateRibbonGeometry();
 
 signals:
     void normalShow();
@@ -130,7 +136,6 @@ protected:
     QPropertyAnimation *_ribbonAnimation;
     bool            _ribbonExpanded;
     int             _ribbonExpandedHeight;
-    qreal           _slideProgress;
 
     bool        _moving;
     bool        _is_draging;
