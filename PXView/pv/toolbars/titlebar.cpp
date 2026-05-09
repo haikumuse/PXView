@@ -166,7 +166,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     _ribbonContainer->setObjectName("RibbonContainer");
     _ribbonContainer->setContentsMargins(0,0,0,0);
     _ribbonContainer->setFixedHeight(_ribbonExpandedHeight);
-    _ribbonContainer->setAttribute(Qt::WA_ClipChildren, true);
     _ribbonContainer->hide();
 
     // _ribbonPanel: 实际内容面板，在容器内做 Y 轴平移
