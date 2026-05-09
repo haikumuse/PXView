@@ -50,6 +50,8 @@ const double DecoderStack::DecodeThreshold = 0.2;
 const int64_t DecoderStack::DecodeChunkLength = 4 * 1024; 
 const unsigned int DecoderStack::DecodeNotifyPeriod = 1024;
  
+std::mutex DecoderStack::_srd_mutex;
+ 
 DecoderStack::DecoderStack(pv::SigSession *session,
 	const srd_decoder *const dec, DecoderStatus *decoder_status) :
 	_session(session)
@@ -692,6 +694,7 @@ void DecoderStack::decode_data(const uint64_t decode_start, const uint64_t decod
 
 void DecoderStack::execute_decode_stack()
 {  
+    std::lock_guard<std::mutex> lock(_srd_mutex);
 	srd_session *session = NULL;
 	srd_decoder_inst *prev_di = NULL;
     uint64_t decode_start = 0;

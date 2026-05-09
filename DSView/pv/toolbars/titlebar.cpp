@@ -269,8 +269,8 @@ void TitleBar::addSeparator(int categoryIndex)
     QHBoxLayout *layout = _categoryLayouts[categoryIndex];
 
     QWidget *line = new QWidget();
+    line->setObjectName("RibbonSeparator");
     line->setFixedWidth(1);
-    line->setStyleSheet("background:#555555");
 
     int insertPos = layout->count() - 1;
     if (insertPos < 0) insertPos = 0;
@@ -379,52 +379,6 @@ void TitleBar::updateRibbonGeometry()
 void TitleBar::reStyle()
 {
     QString iconPath = GetIconPath();
-
-    this->setStyleSheet(
-        "QWidget#TitleBar {"
-        "    background: #202020;"
-        "}"
-        "QWidget#TitleRow {"
-        "    background: #202020;"
-        "}"
-        "QTabBar {"
-        "    background: #202020;"
-        "}"
-        "QTabBar::tab {"
-        "    height: 28px;"
-        "    padding: 2px 12px;"
-        "    margin: 0px;"
-        "    font-size: 12px;"
-        "    color: #ffffff;"
-        "    background: transparent;"
-        "    border: none;"
-        "}"
-        "QTabBar::tab:selected {"
-        "    background: transparent;"
-        "    border-bottom: 2px solid #ffffff;"
-        "}"
-        "QTabBar::tab:hover:!selected {"
-        "    background: rgba(255,255,255,0.08);"
-        "}"
-        "QTabBar::tab:selected:hover {"
-        "    background: transparent;"
-        "}"
-        "QWidget#RibbonPanel {"
-        "    background: #2d2d2d;"
-        "}"
-        "QToolButton {"
-        "    background: transparent;"
-        "    color: #cccccc;"
-        "    border: none;"
-        "    padding: 2px;"
-        "}"
-        "QToolButton:hover {"
-        "    background: rgba(255,255,255,0.08);"
-        "}"
-        "QToolButton:pressed {"
-        "    background: rgba(255,255,255,0.15);"
-        "}"
-    );
 
     if (_isTop) {
         _minimizeButton->setIcon(QIcon(iconPath+"/minimize.svg"));

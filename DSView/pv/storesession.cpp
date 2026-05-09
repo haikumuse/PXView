@@ -1557,6 +1557,9 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
                     }
                 }
             }
+
+            // Call frame_ended() to set _options_changed flag, allowing decode to work properly
+            new_dsig->frame_ended();
         }
     }
 

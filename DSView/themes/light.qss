@@ -1725,6 +1725,50 @@ QTextEdit#PathLine{
     color:#2A2A2A;
 }
 
+/* TitleBar */
+QWidget#TitleBar {
+    background: #F8F8F8;
+}
+
+QWidget#TitleRow {
+    background: #F8F8F8;
+}
+
+QTabBar {
+    background: #F8F8F8;
+}
+
+QTabBar::tab {
+    height: 28px;
+    padding: 2px 12px;
+    margin: 0px;
+    font-size: 12px;
+    color: #2A2A2A;
+    background: transparent;
+    border: none;
+}
+
+QTabBar::tab:selected {
+    background: transparent;
+    border-bottom: 2px solid #2A2A2A;
+}
+
+QTabBar::tab:hover:!selected {
+    background: rgba(0,0,0,0.08);
+}
+
+QTabBar::tab:selected:hover {
+    background: transparent;
+}
+
+QWidget#RibbonPanel {
+    background: #e8e8e8;
+}
+
+QWidget#RibbonSeparator {
+    background: #b4b4b4;
+}
+
 /* Sliding Drawer */
 #sliding_drawer_backdrop
 {

@@ -21,6 +21,8 @@
 
 #include "dstimer.h" 
 #include <assert.h>
+#include <QThread>
+#include "log.h"
 
  
 DsTimer::DsTimer()
@@ -50,6 +52,7 @@ void DsTimer::TimeOut(int millsec)
 
 void DsTimer::Start(int millsec, CALLBACL_FUNC f)
  {  
+     dsv_info("DsTimer::Start(millsec, f) called from thread: %p", QThread::currentThread());
      if (_isActived)
         return;
 
@@ -90,6 +93,7 @@ void DsTimer::SetCallback(CALLBACL_FUNC f)
 
  void DsTimer::Stop()
  {
+     dsv_info("DsTimer::Stop() called from thread: %p", QThread::currentThread());
      if (_isActived)
         _timer.stop();
      _isActived = false;
