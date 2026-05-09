@@ -88,15 +88,14 @@ static int c_decoder_wait_impl(struct srd_decoder_inst *di,
             di->c_pin_cache_samplenum = di->abs_cur_samplenum;
             di->c_pin_cache_inbuf_serial++;
             for (int i = 0; i < di->dec_num_channels; i++) {
-                int si = di->dec_channelmap[i];
-                if (si < 0 || !di->inbuf || !di->inbuf[si]) {
+                if (!di->inbuf || !di->inbuf[i]) {
                     di->c_pin_cache[i] = (di->inbuf_const && di->inbuf_const[i]) ? 1 : 0;
                 } else {
                     uint64_t off = di->abs_cur_samplenum - di->abs_start_samplenum;
                     uint64_t bo = off / 8;
                     uint8_t bi = off % 8;
                     if (bo < (di->inbuflen + 7) / 8)
-                        di->c_pin_cache[i] = (di->inbuf[si][bo] >> bi) & 1;
+                        di->c_pin_cache[i] = (di->inbuf[i][bo] >> bi) & 1;
                     else
                         di->c_pin_cache[i] = 0;
                 }
@@ -127,7 +126,6 @@ static int c_decoder_wait_impl(struct srd_decoder_inst *di,
 
 static uint8_t c_decoder_get_pin_impl(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
 {
-    int sig_idx;
     uint64_t byte_offset;
     uint8_t bit_offset;
     uint64_t offset;
@@ -141,8 +139,7 @@ static uint8_t c_decoder_get_pin_impl(struct srd_decoder_inst *di, int ch, uint6
 
     g_mutex_lock(&di->data_mutex);
 
-    sig_idx = di->dec_channelmap[ch];
-    if (sig_idx < 0 || !di->inbuf || !di->inbuf[sig_idx]) {
+    if (!di->inbuf || !di->inbuf[ch]) {
         g_mutex_unlock(&di->data_mutex);
         return 0;
     }
@@ -159,7 +156,7 @@ static uint8_t c_decoder_get_pin_impl(struct srd_decoder_inst *di, int ch, uint6
 
     byte_offset = offset / 8;
     bit_offset = offset % 8;
-    val = (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
+    val = (di->inbuf[ch][byte_offset] >> bit_offset) & 1;
 
     g_mutex_unlock(&di->data_mutex);
     return val;
@@ -1123,12 +1120,11 @@ static void update_old_pins_array(struct srd_decoder_inst *di)
 
 	oldpins_array_seed(di);
 	for (i = 0; i < di->dec_num_channels; i++) {
-        int si = di->dec_channelmap[i];
-        if (si < 0 || *(di->inbuf + si) == NULL) {
-            sample = (si >= 0 && di->inbuf_const && *(di->inbuf_const + si)) ? 1 : 0;
+        if (*(di->inbuf + i) == NULL) {
+            sample = *(di->inbuf_const + i) ? 1 : 0;
             di->old_pins_array->data[i] = sample;
         } else {
-            sample_pos = *(di->inbuf + si) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);
+            sample_pos = *(di->inbuf + i) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);
             bit_offset = (di->abs_cur_samplenum - di->abs_start_samplenum) % 8;
             sample = *sample_pos & (1 << bit_offset) ? 1 : 0;
             di->old_pins_array->data[i] = sample;
@@ -1179,12 +1175,11 @@ static gboolean term_matches(struct srd_decoder_inst *di,
     }
 
 	ch = term->channel;
-	int sig_idx = di->dec_channelmap[ch];
-    if (sig_idx < 0 || *(di->inbuf + sig_idx) == NULL) {
-        sample = (sig_idx >= 0 && di->inbuf_const && *(di->inbuf_const + sig_idx)) ? 1 : 0;
+    if (*(di->inbuf + ch) == NULL) {
+        sample = *(di->inbuf_const + ch) ? 1 : 0;
         *skip_allow = TRUE;
     } else {
-        sample_pos = *(di->inbuf + sig_idx) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);
+        sample_pos = *(di->inbuf + ch) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);
         bit_offset = (di->abs_cur_samplenum - di->abs_start_samplenum) % 8;
         sample = *sample_pos & (1 << bit_offset) ? 1 : 0;
     }

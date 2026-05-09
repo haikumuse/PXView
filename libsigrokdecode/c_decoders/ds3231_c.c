@@ -4,16 +4,24 @@
 #include <glib.h>
 #include "libsigrokdecode.h"
 
-enum ds3231_state {
-    STATE_IDLE,
+enum {
+    ANN_DATETIME = 0,
+    ANN_REGISTER,
+    ANN_ALARM,
+    ANN_CONTROL,
+    ANN_TEMPERATURE,
+    ANN_READ_DATETIME,
+    ANN_WRITE_DATETIME,
+    ANN_READ_ALARM,
+    ANN_WRITE_ALARM,
+    ANN_READ_TEMP,
+    ANN_WARN,
+    NUM_ANN,
 };
 
 typedef struct {
-    enum ds3231_state state;
-    uint64_t start_sample;
+    int out_ann;
 } ds3231_state;
-
-static struct srd_channel ds3231_channels[] = {};
 
 static struct srd_decoder_option ds3231_options[] = {
     {"day0", NULL, "First day of week", NULL, NULL},
@@ -26,13 +34,32 @@ static const char *ds3231_tags[] = {"Clock/timing", "IC", NULL};
 static const char *ds3231_ann_labels[][3] = {
     {"", "datetime", "Date/Time"},
     {"", "register", "Register"},
+    {"", "alarm", "Alarm"},
+    {"", "control", "Control/Status"},
+    {"", "temperature", "Temperature"},
+    {"", "read-datetime", "Read date/time"},
+    {"", "write-datetime", "Write date/time"},
+    {"", "read-alarm", "Read alarm"},
+    {"", "write-alarm", "Write alarm"},
+    {"", "read-temp", "Read temperature"},
+    {"", "warning", "Warning"},
 };
 
-static const int ds3231_row_datetime_classes[] = {0};
-static const int ds3231_row_register_classes[] = {1};
+static const int ds3231_row_datetime_classes[] = {ANN_DATETIME, ANN_READ_DATETIME, ANN_WRITE_DATETIME, -1};
+static const int ds3231_row_register_classes[] = {ANN_REGISTER, -1};
+static const int ds3231_row_alarm_classes[] = {ANN_ALARM, ANN_READ_ALARM, ANN_WRITE_ALARM, -1};
+static const int ds3231_row_control_classes[] = {ANN_CONTROL, -1};
+static const int ds3231_row_temperature_classes[] = {ANN_TEMPERATURE, ANN_READ_TEMP, -1};
+static const int ds3231_row_actions_classes[] = {ANN_READ_DATETIME, ANN_WRITE_DATETIME, ANN_READ_ALARM, ANN_WRITE_ALARM, ANN_READ_TEMP, -1};
+static const int ds3231_row_warnings_classes[] = {ANN_WARN, -1};
 static const struct srd_c_ann_row ds3231_ann_rows[] = {
-    {"datetime", "Date/Time", ds3231_row_datetime_classes, 1},
+    {"datetime", "Date/Time", ds3231_row_datetime_classes, 3},
     {"registers", "Registers", ds3231_row_register_classes, 1},
+    {"alarms", "Alarms", ds3231_row_alarm_classes, 3},
+    {"control", "Control/Status", ds3231_row_control_classes, 1},
+    {"temperature", "Temperature", ds3231_row_temperature_classes, 2},
+    {"actions", "Actions", ds3231_row_actions_classes, 5},
+    {"warnings", "Warnings", ds3231_row_warnings_classes, 1},
 };
 
 static void ds3231_reset(struct srd_decoder_inst *di)
@@ -42,17 +69,16 @@ static void ds3231_reset(struct srd_decoder_inst *di)
     }
     ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(ds3231_state));
-    s->state = STATE_IDLE;
 }
 
 static void ds3231_start(struct srd_decoder_inst *di)
 {
-    c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds3231");
+    ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
+    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds3231");
 }
 
 static void ds3231_decode(struct srd_decoder_inst *di)
 {
-    ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
@@ -87,9 +113,9 @@ struct srd_c_decoder ds3231_c_decoder = {
     .num_optional_channels = 0,
     .options = ds3231_options,
     .num_options = 1,
-    .num_annotations = 2,
+    .num_annotations = NUM_ANN,
     .ann_labels = ds3231_ann_labels,
-    .num_annotation_rows = 2,
+    .num_annotation_rows = 7,
     .annotation_rows = ds3231_ann_rows,
     .inputs = ds3231_inputs,
     .num_inputs = 1,
@@ -107,6 +133,7 @@ struct srd_c_decoder ds3231_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    ds3231_options[0].def = g_variant_new_int64(0);
     return &ds3231_c_decoder;
 }
 

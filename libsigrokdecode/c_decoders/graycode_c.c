@@ -39,8 +39,6 @@ static uint32_t gray_to_binary(uint32_t gray, int bits)
     return bin;
 }
 
-static struct srd_channel gray_code_channels[] = {};
-
 static struct srd_decoder_option gray_code_options[] = {
     {"edges", NULL, "Edges per rotation", NULL, NULL},
     {"avg_period", NULL, "Averaging period (ms)", NULL, NULL},

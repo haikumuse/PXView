@@ -4,16 +4,20 @@
 #include <glib.h>
 #include "libsigrokdecode.h"
 
-enum ds1307_state {
-    STATE_IDLE,
+enum {
+    ANN_DATETIME = 0,
+    ANN_REGISTER,
+    ANN_READ_DATETIME,
+    ANN_WRITE_DATETIME,
+    ANN_READ_REG,
+    ANN_WRITE_REG,
+    ANN_WARN,
+    NUM_ANN,
 };
 
 typedef struct {
-    enum ds1307_state state;
-    uint64_t start_sample;
+    int out_ann;
 } ds1307_state;
-
-static struct srd_channel ds1307_channels[] = {};
 
 static const char *ds1307_inputs[] = {"i2c", NULL};
 static const char *ds1307_outputs[] = {"ds1307", NULL};
@@ -22,13 +26,22 @@ static const char *ds1307_tags[] = {"Clock/timing", "IC", NULL};
 static const char *ds1307_ann_labels[][3] = {
     {"", "datetime", "Date/Time"},
     {"", "register", "Register"},
+    {"", "read-datetime", "Read date/time"},
+    {"", "write-datetime", "Write date/time"},
+    {"", "read-reg", "Register read"},
+    {"", "write-reg", "Register write"},
+    {"", "warning", "Warning"},
 };
 
-static const int ds1307_row_datetime_classes[] = {0};
-static const int ds1307_row_register_classes[] = {1};
+static const int ds1307_row_datetime_classes[] = {ANN_DATETIME, ANN_READ_DATETIME, ANN_WRITE_DATETIME, -1};
+static const int ds1307_row_register_classes[] = {ANN_REGISTER, ANN_READ_REG, ANN_WRITE_REG, -1};
+static const int ds1307_row_actions_classes[] = {ANN_READ_DATETIME, ANN_WRITE_DATETIME, ANN_READ_REG, ANN_WRITE_REG, -1};
+static const int ds1307_row_warnings_classes[] = {ANN_WARN, -1};
 static const struct srd_c_ann_row ds1307_ann_rows[] = {
-    {"datetime", "Date/Time", ds1307_row_datetime_classes, 1},
-    {"registers", "Registers", ds1307_row_register_classes, 1},
+    {"datetime", "Date/Time", ds1307_row_datetime_classes, 3},
+    {"registers", "Registers", ds1307_row_register_classes, 3},
+    {"actions", "Actions", ds1307_row_actions_classes, 4},
+    {"warnings", "Warnings", ds1307_row_warnings_classes, 1},
 };
 
 static void ds1307_reset(struct srd_decoder_inst *di)
@@ -38,17 +51,16 @@ static void ds1307_reset(struct srd_decoder_inst *di)
     }
     ds1307_state *s = (ds1307_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(ds1307_state));
-    s->state = STATE_IDLE;
 }
 
 static void ds1307_start(struct srd_decoder_inst *di)
 {
-    c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds1307");
+    ds1307_state *s = (ds1307_state *)c_decoder_get_private(di);
+    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds1307");
 }
 
 static void ds1307_decode(struct srd_decoder_inst *di)
 {
-    ds1307_state *s = (ds1307_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
@@ -83,9 +95,9 @@ struct srd_c_decoder ds1307_c_decoder = {
     .num_optional_channels = 0,
     .options = NULL,
     .num_options = 0,
-    .num_annotations = 2,
+    .num_annotations = NUM_ANN,
     .ann_labels = ds1307_ann_labels,
-    .num_annotation_rows = 2,
+    .num_annotation_rows = 4,
     .annotation_rows = ds1307_ann_rows,
     .inputs = ds1307_inputs,
     .num_inputs = 1,

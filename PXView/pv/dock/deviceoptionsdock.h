@@ -31,6 +31,8 @@
 #include <QGridLayout>
 #include <QShowEvent>
 #include <QJsonObject>
+#include <QSpinBox>
+#include <QGroupBox>
 #include <vector>
 
 #include "../ui/uimanager.h"
@@ -75,6 +77,8 @@ private:
     void build_dynamic_panel();
     void try_resize_scroll();
     void channel_checkbox_clicked(QCheckBox *sc);
+    void build_glitch_filter_panel();
+    void update_glitch_filter_state();
 
     void ChannelChecked(int index, QObject *object);
 
@@ -97,6 +101,10 @@ private slots:
     void on_calibration();
     void on_analog_channel_enable();
     void on_anlog_tab_changed(int index);
+    void on_apply_glitch_filter();
+    void on_restore_original_data();
+    void on_glitch_select_all();
+    void on_glitch_deselect_all();
 
 private:
     std::vector<QCheckBox *> _probes_checkBox_list;
@@ -119,6 +127,12 @@ private:
     std::vector<ChannelModePair>    _channel_mode_indexs;
     std::vector<struct sr_channel*> _dso_channel_list;
     std::vector<bool>   _lst_probe_enabled_status;
+    QGroupBox *_glitch_filter_group;
+    std::vector<QCheckBox*> _glitch_checkBox_list;
+    std::vector<QSpinBox*> _glitch_spinbox_list;
+    QPushButton *_apply_filter_btn;
+    QPushButton *_restore_data_btn;
+    QLabel *_filter_status_label;
     SigSession *_session;
     TabContext *_context;
 };

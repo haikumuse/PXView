@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <algorithm>
+#include <functional>
  
 #include "logicsnapshot.h"
 #include "../dsvdef.h"
@@ -58,6 +59,7 @@ LogicSnapshot::LogicSnapshot() :
     _is_loop = false;
     _loop_offset = 0;
     _able_free = true;
+    _glitch_filtered = false;
 }
 
 LogicSnapshot::~LogicSnapshot()
@@ -488,6 +490,61 @@ void LogicSnapshot::capture_ended()
 
             calc_mipmap(chan, index0, index1, offset * 8, true);
         }  
+    }
+}
+
+void LogicSnapshot::copy_from(const LogicSnapshot &src)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    free_data();
+
+    _capacity = src._capacity;
+    _channel_num = src._channel_num;
+    _sample_count = src._sample_count;
+    _total_sample_count = src._total_sample_count;
+    _ring_sample_count = src._ring_sample_count;
+    _unit_size = src._unit_size;
+    _unit_bytes = src._unit_bytes;
+    _unit_pitch = src._unit_pitch;
+    _memory_failed = src._memory_failed;
+    _last_ended = src._last_ended;
+    _samplerate = src._samplerate;
+    _ch_index = src._ch_index;
+
+    _byte_fraction = src._byte_fraction;
+    _ch_fraction = src._ch_fraction;
+    _dest_ptr = NULL;
+    memcpy(_last_sample, src._last_sample, sizeof(_last_sample));
+    memcpy(_last_calc_count, src._last_calc_count, sizeof(_last_calc_count));
+    _is_loop = src._is_loop;
+    _loop_offset = src._loop_offset;
+    _able_free = src._able_free;
+    memcpy(_cur_ref_block_indexs, src._cur_ref_block_indexs, sizeof(_cur_ref_block_indexs));
+    _lst_free_block_index = src._lst_free_block_index;
+
+    for (size_t i = 0; i < src._ch_data.size(); i++) {
+        std::vector<struct RootNode> new_channel;
+        for (size_t j = 0; j < src._ch_data[i].size(); j++) {
+            const RootNode &rn = src._ch_data[i][j];
+            RootNode new_rn;
+            new_rn.tog = rn.tog;
+            new_rn.first = rn.first;
+            new_rn.last = rn.last;
+            for (unsigned int k = 0; k < Scale; k++) {
+                if (rn.lbp[k] != NULL) {
+                    new_rn.lbp[k] = malloc(LeafBlockSpace);
+                    if (new_rn.lbp[k])
+                        memcpy(new_rn.lbp[k], rn.lbp[k], LeafBlockSpace);
+                    else
+                        _memory_failed = true;
+                } else {
+                    new_rn.lbp[k] = NULL;
+                }
+            }
+            new_channel.push_back(new_rn);
+        }
+        _ch_data.push_back(std::move(new_channel));
     }
 }
 
@@ -1524,6 +1581,301 @@ int LogicSnapshot::get_block_with_sample(uint64_t index, uint64_t *out_offset)
     int block =  index / LeafBlockSamples;
     *out_offset = index % LeafBlockSamples;
     return block;
+}
+
+void LogicSnapshot::set_sample_range(uint64_t start, uint64_t end, bool level, int sig_index)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    start += _loop_offset;
+    end += _loop_offset;
+
+    int order = get_ch_order(sig_index);
+    if (order == -1 || (unsigned int)order >= _ch_data.size())
+        return;
+
+    uint64_t max_sample = _ring_sample_count + _loop_offset;
+    if (end > max_sample)
+        end = max_sample;
+    if (start >= end)
+        return;
+
+    for (uint64_t pos = start; pos < end; )
+    {
+        uint64_t index0 = pos >> (LeafBlockPower + RootScalePower);
+        uint64_t index1 = (pos & RootMask) >> LeafBlockPower;
+
+        if (index0 >= _ch_data[order].size())
+            break;
+
+        uint64_t block_start = (index0 << (LeafBlockPower + RootScalePower)) + (index1 << LeafBlockPower);
+        uint64_t block_end = block_start + LeafBlockSamples;
+        uint64_t seg_end = min(end, block_end);
+
+        if (_ch_data[order][index0].lbp[index1] == NULL)
+        {
+            bool const_val = (_ch_data[order][index0].first & (1ULL << index1)) != 0;
+
+            void *lbp = malloc(LeafBlockSpace);
+            if (lbp == NULL) {
+                _memory_failed = true;
+                return;
+            }
+
+            if (const_val)
+                memset(lbp, 0xFF, LeafBlockSamples / 8);
+            else
+                memset(lbp, 0, LeafBlockSamples / 8);
+
+            memset((uint8_t*)lbp + LeafBlockSamples / 8, 0, LeafBlockSpace - LeafBlockSamples / 8);
+
+            _ch_data[order][index0].lbp[index1] = lbp;
+            _ch_data[order][index0].tog &= ~(1ULL << index1);
+        }
+
+        uint8_t *lbp = (uint8_t*)_ch_data[order][index0].lbp[index1];
+
+        for (uint64_t i = pos; i < seg_end; i++)
+        {
+            uint64_t bit_offset = i & LeafMask;
+            uint64_t byte_offset = bit_offset / 8;
+            uint8_t bit_mask = 1ULL << (bit_offset % 8);
+
+            if (level)
+                lbp[byte_offset] |= bit_mask;
+            else
+                lbp[byte_offset] &= ~bit_mask;
+        }
+
+        pos = seg_end;
+    }
+}
+
+void LogicSnapshot::recalc_mipmap(unsigned int order, uint64_t index0, uint64_t index1)
+{
+    void *lbp = _ch_data[order][index0].lbp[index1];
+
+    if (lbp == NULL)
+        return;
+
+    if (index1 > 0) {
+        if (_ch_data[order][index0].lbp[index1 - 1] != NULL) {
+            uint64_t *prev_lbp = (uint64_t*)_ch_data[order][index0].lbp[index1 - 1];
+            _last_sample[order] = (prev_lbp[LeafBlockSamples / Scale - 1] & MSB) ? ~0ULL : 0ULL;
+        } else {
+            bool prev_val = (_ch_data[order][index0].last & (1ULL << (index1 - 1))) != 0;
+            _last_sample[order] = prev_val ? ~0ULL : 0ULL;
+        }
+    } else if (index0 > 0) {
+        bool prev_val = (_ch_data[order][index0 - 1].last & MSB) != 0;
+        _last_sample[order] = prev_val ? ~0ULL : 0ULL;
+    } else {
+        _last_sample[order] = 0;
+    }
+
+    memset((uint8_t*)lbp + LeafBlockSamples / 8, 0, LeafBlockSpace - LeafBlockSamples / 8);
+
+    _ch_data[order][index0].tog &= ~(1ULL << index1);
+    _ch_data[order][index0].first &= ~(1ULL << index1);
+    _ch_data[order][index0].last &= ~(1ULL << index1);
+
+    _last_calc_count[order] = 0;
+
+    calc_mipmap(order, index0, index1, LeafBlockSamples, true);
+}
+
+LogicSnapshot* LogicSnapshot::clone_data()
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    LogicSnapshot *clone = new LogicSnapshot();
+
+    clone->_capacity = _capacity;
+    clone->_channel_num = _channel_num;
+    clone->_sample_count = _sample_count;
+    clone->_total_sample_count = _total_sample_count;
+    clone->_ring_sample_count = _ring_sample_count;
+    clone->_unit_size = _unit_size;
+    clone->_unit_bytes = _unit_bytes;
+    clone->_unit_pitch = _unit_pitch;
+    clone->_memory_failed = _memory_failed;
+    clone->_last_ended = _last_ended;
+    clone->_samplerate = _samplerate;
+    clone->_ch_index = _ch_index;
+
+    clone->_glitch_filtered = _glitch_filtered;
+
+    clone->_is_loop = _is_loop;
+    clone->_loop_offset = _loop_offset;
+    clone->_able_free = _able_free;
+    clone->_byte_fraction = _byte_fraction;
+    clone->_ch_fraction = _ch_fraction;
+    clone->_lst_free_block_index = _lst_free_block_index;
+
+    memcpy(clone->_last_sample, _last_sample, sizeof(_last_sample));
+    memcpy(clone->_last_calc_count, _last_calc_count, sizeof(_last_calc_count));
+    memcpy(clone->_cur_ref_block_indexs, _cur_ref_block_indexs, sizeof(_cur_ref_block_indexs));
+
+    clone->_ch_data.resize(_ch_data.size());
+    for (size_t ch = 0; ch < _ch_data.size(); ch++) {
+        clone->_ch_data[ch].resize(_ch_data[ch].size());
+        for (size_t rn = 0; rn < _ch_data[ch].size(); rn++) {
+            clone->_ch_data[ch][rn] = _ch_data[ch][rn];
+            for (size_t lb = 0; lb < Scale; lb++) {
+                if (_ch_data[ch][rn].lbp[lb] != NULL) {
+                    void *new_lbp = malloc(LeafBlockSpace);
+                    if (new_lbp == NULL) {
+                        clone->_memory_failed = true;
+                        return clone;
+                    }
+                    memcpy(new_lbp, _ch_data[ch][rn].lbp[lb], LeafBlockSpace);
+                    clone->_ch_data[ch][rn].lbp[lb] = new_lbp;
+                }
+            }
+        }
+    }
+
+    clone->_dest_ptr = NULL;
+
+    return clone;
+}
+
+void LogicSnapshot::apply_glitch_filter(int sig_index, uint32_t threshold, std::function<void(int)> progress_callback)
+{
+    if (threshold == 0)
+        return;
+
+    int order = get_ch_order(sig_index);
+    if (order == -1 || (unsigned int)order >= _ch_data.size())
+        return;
+
+    uint64_t max_sample = _ring_sample_count;
+    if (max_sample == 0)
+        return;
+
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    _ring_sample_count += _loop_offset;
+
+    uint64_t start_sample = 0;
+    uint64_t last_start_sample = 0;
+    int last_progress = -1;
+
+    while (start_sample < max_sample)
+    {
+        uint64_t abs_pos = start_sample + _loop_offset;
+        bool current_level = get_sample_self(abs_pos, sig_index);
+
+        uint64_t edge_abs = abs_pos;
+        bool found = get_nxt_edge_self(edge_abs, current_level, max_sample + _loop_offset - 1, 0, sig_index);
+
+        if (!found) {
+            break;
+        }
+
+        uint64_t seg_len = edge_abs - abs_pos;
+
+        if (seg_len <= threshold) {
+            bool new_level = !current_level;
+
+            for (uint64_t pos = abs_pos; pos < edge_abs; )
+            {
+                uint64_t idx0 = pos >> (LeafBlockPower + RootScalePower);
+                uint64_t idx1 = (pos & RootMask) >> LeafBlockPower;
+
+                if (idx0 >= _ch_data[order].size())
+                    break;
+
+                uint64_t block_start = (idx0 << (LeafBlockPower + RootScalePower)) + (idx1 << LeafBlockPower);
+                uint64_t block_end = block_start + LeafBlockSamples;
+                uint64_t seg_end = min(edge_abs, block_end);
+
+                if (_ch_data[order][idx0].lbp[idx1] == NULL)
+                {
+                    bool const_val = (_ch_data[order][idx0].first & (1ULL << idx1)) != 0;
+                    void *lbp = malloc(LeafBlockSpace);
+                    if (lbp == NULL) {
+                        _memory_failed = true;
+                        _ring_sample_count -= _loop_offset;
+                        return;
+                    }
+                    if (const_val)
+                        memset(lbp, 0xFF, LeafBlockSamples / 8);
+                    else
+                        memset(lbp, 0, LeafBlockSamples / 8);
+                    memset((uint8_t*)lbp + LeafBlockSamples / 8, 0, LeafBlockSpace - LeafBlockSamples / 8);
+                    _ch_data[order][idx0].lbp[idx1] = lbp;
+                    _ch_data[order][idx0].tog &= ~(1ULL << idx1);
+                }
+
+                uint8_t *lbp = (uint8_t*)_ch_data[order][idx0].lbp[idx1];
+
+                for (uint64_t i = pos; i < seg_end; i++)
+                {
+                    uint64_t bit_offset = i & LeafMask;
+                    uint64_t byte_offset = bit_offset / 8;
+                    uint8_t bit_mask = 1ULL << (bit_offset % 8);
+                    if (new_level)
+                        lbp[byte_offset] |= bit_mask;
+                    else
+                        lbp[byte_offset] &= ~bit_mask;
+                }
+
+                pos = seg_end;
+            }
+
+            uint64_t edge_logical = edge_abs - _loop_offset;
+            if (edge_logical - last_start_sample > threshold) {
+                last_start_sample = edge_logical - threshold - 1;
+                start_sample = last_start_sample;
+            } else {
+                start_sample = edge_logical;
+            }
+        } else {
+            last_start_sample = start_sample;
+            start_sample = start_sample + seg_len;
+        }
+
+        int progress = (int)(start_sample * 100 / max_sample);
+        if (progress != last_progress && progress_callback) {
+            progress_callback(progress);
+            last_progress = progress;
+        }
+    }
+
+    for (size_t rn = 0; rn < _ch_data[order].size(); rn++) {
+        for (size_t lb = 0; lb < Scale; lb++) {
+            if (_ch_data[order][rn].lbp[lb] != NULL) {
+                recalc_mipmap(order, rn, lb);
+            }
+        }
+    }
+
+    _ring_sample_count -= _loop_offset;
+}
+
+void LogicSnapshot::apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback)
+{
+    for (int i = 0; i < (int)_ch_index.size(); i++) {
+        if (i < (int)thresholds.size() && thresholds[i] > 0) {
+            apply_glitch_filter(_ch_index[i], thresholds[i], nullptr);
+        }
+        if (progress_callback) {
+            int progress = (i + 1) * 100 / _ch_index.size();
+            progress_callback(progress);
+        }
+    }
+    _glitch_filtered = true;
+}
+
+bool LogicSnapshot::is_glitch_filtered()
+{
+    return _glitch_filtered;
+}
+
+void LogicSnapshot::set_glitch_filtered(bool filtered)
+{
+    _glitch_filtered = filtered;
 }
 
 } // namespace data
