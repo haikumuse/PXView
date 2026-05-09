@@ -336,10 +336,6 @@ void TitleBar::onTabChanged(int index)
     if (index >= 0 && index < _categoryStack->count()) {
         _categoryStack->setCurrentIndex(index);
     }
-
-    if (!_ribbonExpanded) {
-        expandRibbon();
-    }
 }
 
 qreal TitleBar::slideProgress() const
