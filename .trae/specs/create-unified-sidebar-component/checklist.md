@@ -1,0 +1,18 @@
+- [ ] SideBar 类继承 QWidget 和 IUiWindow，头文件和实现文件已创建
+- [ ] SideBar 提供 addItem()、addSeparator()、setItemVisible()、setItemEnabled()、setItemChecked()、clearAllChecked() 接口
+- [ ] SideBar 区分 DockItem 和 ActionItem 两种按钮类型
+- [ ] DockItem 按钮点击后与其他 DockItem 按钮互斥，发射 dockItemClicked(int) 信号
+- [ ] ActionItem 按钮点击后仅发射 actionItemClicked(int) 信号，不影响其他按钮
+- [ ] SideBar 实现 IUiWindow 接口：UpdateLanguage() 更新所有按钮文本，UpdateTheme() 更新所有按钮图标，UpdateFont() 更新字体
+- [ ] SideBar 使用 QVBoxLayout 自定义布局，替代 QToolBar
+- [ ] TrigBar 已移除所有侧边栏按钮成员和相关逻辑，仅保留菜单逻辑
+- [ ] SamplingBar 已移除侧边栏按钮成员和相关逻辑，仅保留采样参数逻辑
+- [ ] MainWindow 使用 SideBar 替代 QToolBar，通过 addItem() 统一注册按钮
+- [ ] MainWindow 的 on_side_bar_dock_clicked() 正确打开对应 SlidingDrawer 页面
+- [ ] MainWindow 的 on_side_bar_action_clicked() 正确调用 SamplingBar 的 run/stop/instant 方法
+- [ ] SlidingDrawer 关闭时调用 SideBar::clearAllChecked() 更新按钮状态
+- [ ] DockOptions 互斥逻辑由 SideBar 统一处理，不再分散在各个槽函数中
+- [ ] CMakeLists.txt 包含新源文件
+- [ ] 项目可正常编译，无语法错误
+- [ ] 主题切换后侧边栏图标正确更新
+- [ ] 语言切换后侧边栏文字正确更新

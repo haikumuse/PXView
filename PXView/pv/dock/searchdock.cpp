@@ -405,7 +405,7 @@ void SearchDock::search_worker()
     // 局部缓存：批量写入，大幅减少锁竞争
     std::vector<SearchData> local_batch;
     local_batch.reserve(1000);
-    int batch_threshold = 200;
+    int batch_threshold = 40;
     
     QElapsedTimer ui_timer;
     ui_timer.start();
