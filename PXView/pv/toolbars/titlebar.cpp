@@ -84,12 +84,14 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
    _titleParent = titleParent;
    _is_done_moved = false;
    _is_able_drag = true;
+   _ribbonContainer = NULL;
    _ribbonPanel = NULL;
    _ribbonLayout = NULL;
    _categoryStack = NULL;
    _ribbonAnimation = NULL;
    _ribbonExpanded = false;
    _ribbonExpandedHeight = 65;
+   _slideOffset = 65;
 
     assert(parent);
 
@@ -157,15 +159,23 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
 
     mainLayout->addWidget(titleRow);
 
-    // --- 覆盖式 Ribbon Panel ---
-    // _ribbonPanel 作为 TitleBar 的子控件，但使用绝对定位浮在主界面上方
-    // 这样动画期间不会触发任何父级布局重排
-    _ribbonPanel = new QWidget(this);
+    // --- 平移滑动式 Ribbon ---
+    // _ribbonContainer: 裁切容器，固定高度，作为 _parent 的子控件浮在主界面上方
+    // 开启 WA_ClipChildren 让超出容器边界的面板部分被裁切，实现真正的平移滑动效果
+    _ribbonContainer = new QWidget(parent);
+    _ribbonContainer->setObjectName("RibbonContainer");
+    _ribbonContainer->setContentsMargins(0,0,0,0);
+    _ribbonContainer->setFixedHeight(_ribbonExpandedHeight);
+    _ribbonContainer->setAttribute(Qt::WA_ClipChildren, true);
+    _ribbonContainer->hide();
+
+    // _ribbonPanel: 实际内容面板，在容器内做 Y 轴平移
+    // 初始位置在容器上方(y=-65)，完全被裁切不可见
+    _ribbonPanel = new QWidget(_ribbonContainer);
     _ribbonPanel->setObjectName("RibbonPanel");
     _ribbonPanel->setContentsMargins(0,0,0,0);
-    _ribbonPanel->setFixedHeight(0);
-    // 初始隐藏，展开时才显示
-    _ribbonPanel->hide();
+    _ribbonPanel->setFixedHeight(_ribbonExpandedHeight);
+    _ribbonPanel->move(0, -_ribbonExpandedHeight);
 
     _ribbonLayout = new QVBoxLayout(_ribbonPanel);
     _ribbonLayout->setContentsMargins(0,0,0,0);
@@ -176,18 +186,18 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     _categoryStack->setFixedHeight(_ribbonExpandedHeight);
     _ribbonLayout->addWidget(_categoryStack, 0, Qt::AlignTop);
 
-    // TitleBar 高度固定为 32px，不随 Ribbon 变化
-    // Ribbon 通过绝对定位浮在主界面上方
+    // TitleBar 高度固定 32px，不随 Ribbon 变化
     setFixedHeight(32);
 
-    // --- 动画引擎 ---
-    _ribbonAnimation = new QPropertyAnimation(this, "ribbonHeight");
+    // --- 动画引擎：Y轴平移 ---
+    // slideOffset 从 _ribbonExpandedHeight(面板在容器上方,隐藏) 到 0(面板完全可见)
+    _ribbonAnimation = new QPropertyAnimation(this, "slideOffset");
     _ribbonAnimation->setDuration(250);
     _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
 
     connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this](){
         if (!_ribbonExpanded) {
-            _ribbonPanel->hide();
+            _ribbonContainer->hide();
         }
     });
 
@@ -291,14 +301,13 @@ void TitleBar::expandRibbon()
         _ribbonAnimation->stop();
     }
 
-    // 定位 Ribbon 在 TitleBar 底部下方，浮在主界面上方
-    positionRibbonPanel();
+    positionRibbonContainer();
+    _ribbonContainer->show();
+    _ribbonContainer->raise();
 
-    _ribbonPanel->show();
-    _ribbonPanel->setFixedHeight(_ribbonPanel->height()); // 从当前高度开始
-
-    _ribbonAnimation->setStartValue(_ribbonPanel->height());
-    _ribbonAnimation->setEndValue(_ribbonExpandedHeight);
+    // slideOffset: 从当前值到 0(完全显示)
+    _ribbonAnimation->setStartValue(_slideOffset);
+    _ribbonAnimation->setEndValue(0);
     _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
     _ribbonAnimation->start();
     _ribbonExpanded = true;
@@ -309,19 +318,20 @@ void TitleBar::hideRibbon()
     if (_ribbonAnimation->state() == QAbstractAnimation::Running) {
         _ribbonAnimation->stop();
     }
-    _ribbonAnimation->setStartValue(_ribbonPanel->height());
-    _ribbonAnimation->setEndValue(0);
+
+    // slideOffset: 从当前值到 _ribbonExpandedHeight(完全隐藏)
+    _ribbonAnimation->setStartValue(_slideOffset);
+    _ribbonAnimation->setEndValue(_ribbonExpandedHeight);
     _ribbonAnimation->setEasingCurve(makeTailwindCurve());
     _ribbonAnimation->start();
     _ribbonExpanded = false;
 }
 
-void TitleBar::positionRibbonPanel()
+void TitleBar::positionRibbonContainer()
 {
-    // 将 Ribbon 定位到 TitleBar 底部边缘下方，覆盖在主界面上方
-    QPoint bottomLeft = QPoint(0, height());
-    _ribbonPanel->move(bottomLeft);
-    _ribbonPanel->setFixedWidth(width());
+    QPoint posInParent = mapTo(_parent, QPoint(0, height()));
+    _ribbonContainer->move(posInParent);
+    _ribbonContainer->setFixedWidth(width());
 }
 
 void TitleBar::onTabClicked(int index)
@@ -340,18 +350,18 @@ void TitleBar::onTabChanged(int index)
     }
 }
 
-int TitleBar::ribbonHeight() const
+int TitleBar::slideOffset() const
 {
-    return _ribbonPanel->height();
+    return _slideOffset;
 }
 
-void TitleBar::setRibbonHeight(int h)
+void TitleBar::setSlideOffset(int offset)
 {
-    _ribbonPanel->setFixedHeight(h);
-    // 确保 Ribbon 宽度跟随 TitleBar
-    if (_ribbonPanel->width() != width()) {
-        _ribbonPanel->setFixedWidth(width());
-    }
+    _slideOffset = offset;
+    // 平移面板：offset = _ribbonExpandedHeight 时面板在容器上方(隐藏)
+    // offset = 0 时面板完全在容器内(可见)
+    // 容器开启了 WA_ClipChildren，超出部分被裁切
+    _ribbonPanel->move(0, -offset);
 }
 
 bool TitleBar::isOnTabBar(const QPoint &pos) const
@@ -359,8 +369,11 @@ bool TitleBar::isOnTabBar(const QPoint &pos) const
     if (_tabBar->rect().contains(_tabBar->mapFrom(this, pos))) {
         return true;
     }
-    if (_ribbonExpanded && _ribbonPanel->rect().contains(_ribbonPanel->mapFrom(this, pos))) {
-        return true;
+    if (_ribbonExpanded && _ribbonContainer->isVisible()) {
+        QPoint posInContainer = _ribbonContainer->mapFrom(this, pos);
+        if (_ribbonContainer->rect().contains(posInContainer)) {
+            return true;
+        }
     }
     return false;
 }
@@ -398,9 +411,8 @@ void TitleBar::paintEvent(QPaintEvent *event)
 void TitleBar::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
-    // 当 TitleBar 宽度变化时，同步 Ribbon 宽度
-    if (_ribbonPanel->isVisible()) {
-        positionRibbonPanel();
+    if (_ribbonContainer->isVisible()) {
+        positionRibbonContainer();
     }
 }
 
