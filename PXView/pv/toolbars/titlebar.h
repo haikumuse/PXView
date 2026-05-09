@@ -101,6 +101,7 @@ private:
 
     bool ParentIsMaxsized();
     bool isOnTabBar(const QPoint &pos) const;
+    void positionRibbonPanel();
 
 signals:
     void normalShow();
@@ -117,6 +118,7 @@ private slots:
 
 protected:
     void paintEvent(QPaintEvent *event);
+    void resizeEvent(QResizeEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);

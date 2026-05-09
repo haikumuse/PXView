@@ -207,6 +207,9 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
     if (_type == SR_CHANNEL_FFT && !enabled())
         return;
 
+    if (_type != SR_CHANNEL_DSO && _type != SR_CHANNEL_MATH && !visible())
+        return;
+
     compute_text_size(p);
     const int y = get_y();
 

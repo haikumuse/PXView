@@ -2426,13 +2426,14 @@ namespace pv
                 _device_options_widget->device_updated();
                 _measure_widget->reload();
                 current_view()->check_calibration();
-                current_view()->rebuild_signals();
-                current_view()->signals_changed(NULL);
 
                 pv::TabContext *ctx = current_context();
                 if (ctx && ctx->document()) {
                     ctx->document()->save_signal_config(_session->get_device());
                 }
+
+                current_view()->rebuild_signals();
+                current_view()->signals_changed(NULL);
                 break;
             }
             case DSV_MSG_DEVICE_DURATION_UPDATED:
