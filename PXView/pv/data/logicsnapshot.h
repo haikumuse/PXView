@@ -31,6 +31,7 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <functional>
 
 #define CHANNEL_MAX_COUNT 64
 
@@ -111,6 +112,8 @@ public:
 
     void capture_ended();
 
+    void copy_from(const LogicSnapshot &src);
+
     bool get_display_edges(std::vector<std::pair<bool, bool>> &edges,
                            std::vector<std::pair<uint16_t, bool>> &togs,
                            uint64_t start, uint64_t end, uint16_t width,
@@ -122,6 +125,13 @@ public:
 
     bool get_pre_edge(uint64_t &index, bool last_sample,
                       double min_length, int sig_index);
+
+    void set_sample_range(uint64_t start, uint64_t end, bool level, int sig_index);
+    LogicSnapshot* clone_data();
+    void apply_glitch_filter(int sig_index, uint32_t threshold, std::function<void(int)> progress_callback);
+    void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback);
+    bool is_glitch_filtered();
+    void set_glitch_filtered(bool filtered);
 
     bool has_data(int sig_index);
     int get_block_num();
@@ -171,6 +181,7 @@ private:
     int get_ch_order(int sig_index);
 
     void calc_mipmap(unsigned int order, uint8_t index0, uint8_t index1, uint64_t samples, bool isEnd);
+    void recalc_mipmap(unsigned int order, uint64_t index0, uint64_t index1);
 
     void append_cross_payload(const sr_datafeed_logic &logic);
 
@@ -255,6 +266,7 @@ private:
     std::vector<void*> _free_block_list;
     struct BlockIndex _cur_ref_block_indexs[CHANNEL_MAX_COUNT];
     int         _lst_free_block_index;
+    bool        _glitch_filtered;
  
 	friend class LogicSnapshotTest::Pow2;
 	friend class LogicSnapshotTest::Basic;

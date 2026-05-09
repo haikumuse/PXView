@@ -116,6 +116,9 @@ public:
     uint64_t       _cur_snap_samplerate;
     uint64_t       _cur_samplelimits;
     uint64_t       _trig_pos;
+    data::LogicSnapshot *_logic_backup;
+    bool           _glitch_filter_active;
+    std::vector<uint32_t> _glitch_filter_thresholds;
 
 private:
     data::LogicSnapshot   logic;
@@ -475,6 +478,10 @@ public:
 
     void apply_samplerate();
 
+    void set_glitch_filter(const std::vector<uint32_t> &thresholds);
+    void clear_glitch_filter();
+    bool is_glitch_filter_active();
+
 private:
     void set_cur_samplelimits(uint64_t samplelimits);
     void set_cur_snap_samplerate(uint64_t samplerate);
@@ -559,6 +566,8 @@ private:
 
     void clear_signals(); 
 
+    void glitch_filter_task(const std::vector<uint32_t> thresholds);
+
     inline void data_lock(){
         _data_lock = true;
     }
@@ -641,6 +650,9 @@ private:
     IDecoderPannel  *_decoder_pannel;
     sr_status       _dso_status;
     bool            _dso_status_valid;
+
+    std::thread     *_glitch_filter_thread;
+    bool            _glitch_filter_running;
    
 private:
 	// TODO: This should not be necessary. Multiple concurrent

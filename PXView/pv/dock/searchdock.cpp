@@ -225,12 +225,13 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     col3->addWidget(_legend_c);
 
     QHBoxLayout *legend_layout = new QHBoxLayout();
-    legend_layout->setSpacing(16);
+    legend_layout->setSpacing(0);
     legend_layout->setContentsMargins(0, 0, 0, 0);
     legend_layout->addLayout(col1);
+    legend_layout->addStretch(1);
     legend_layout->addLayout(col2);
+    legend_layout->addStretch(1);
     legend_layout->addLayout(col3);
-    legend_layout->addStretch();
 
     QVBoxLayout *main_layout = new QVBoxLayout();
     main_layout->setContentsMargins(12, 8, 12, 8);

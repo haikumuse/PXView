@@ -71,6 +71,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _isBuilding = false;
   _cur_analog_tag_index = 0;
   _opt_mode = 0;
+  _glitch_filter_group = NULL;
 
   _device_agent = session->get_device();
   _device_options_binding = NULL;
@@ -101,6 +102,11 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     minWid->setFixedHeight(1);
     minWid->setMinimumWidth(230);
     _container_lay->addWidget(minWid);
+
+    build_glitch_filter_panel();
+    if (_glitch_filter_group) {
+        _container_lay->addWidget(_glitch_filter_group);
+    }
 
     QGroupBox *props_box = new QGroupBox(
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
@@ -904,6 +910,9 @@ void DeviceOptionsDock::update_view() {
   _probes_checkBox_list.clear();
   _channel_mode_indexs.clear();
   _dso_channel_list.clear();
+  _glitch_checkBox_list.clear();
+  _glitch_spinbox_list.clear();
+  _glitch_filter_group = NULL;
 
   if (_device_options_binding == NULL)
     return;
@@ -917,6 +926,11 @@ void DeviceOptionsDock::update_view() {
   minWid->setFixedHeight(1);
   minWid->setMinimumWidth(230);
   _container_lay->addWidget(minWid);
+
+  build_glitch_filter_panel();
+  if (_glitch_filter_group) {
+    _container_lay->addWidget(_glitch_filter_group);
+  }
 
   QGroupBox *props_box = new QGroupBox(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
@@ -1111,6 +1125,15 @@ QJsonObject DeviceOptionsDock::get_session() {
     obj["demo_operation_mode"] = _device_agent->get_demo_operation_mode();
   }
 
+  QJsonArray glitch_array;
+  for (size_t i = 0; i < _glitch_checkBox_list.size(); i++) {
+    QJsonObject ch_obj;
+    ch_obj["enable"] = _glitch_checkBox_list[i]->isChecked();
+    ch_obj["num"] = _glitch_spinbox_list[i]->value();
+    glitch_array.append(ch_obj);
+  }
+  obj["glitch_filter"] = glitch_array;
+
   return obj;
 }
 
@@ -1173,6 +1196,192 @@ void DeviceOptionsDock::set_session(QJsonObject &obj) {
   _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
   if (_device_agent->is_demo())
     _demo_operation_mode = _device_agent->get_demo_operation_mode();
+
+  if (obj.contains("glitch_filter")) {
+    QJsonArray glitch_array = obj["glitch_filter"].toArray();
+    for (int i = 0; i < glitch_array.size() && i < (int)_glitch_checkBox_list.size(); i++) {
+      QJsonObject ch_obj = glitch_array[i].toObject();
+      _glitch_checkBox_list[i]->setChecked(ch_obj["enable"].toBool());
+      _glitch_spinbox_list[i]->setValue(ch_obj["num"].toInt());
+    }
+  }
+}
+
+void DeviceOptionsDock::build_glitch_filter_panel()
+{
+    if (_glitch_filter_group) {
+        delete _glitch_filter_group;
+        _glitch_filter_group = NULL;
+    }
+
+    _glitch_checkBox_list.clear();
+    _glitch_spinbox_list.clear();
+
+    if (_device_agent->get_work_mode() != LOGIC)
+        return;
+
+    QFont font = this->font();
+    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+
+    _glitch_filter_group = new QGroupBox("毛刺过滤", _container_panel);
+    _glitch_filter_group->setFont(font);
+
+    QVBoxLayout *layout = new QVBoxLayout(_glitch_filter_group);
+    layout->setContentsMargins(5, 20, 5, 5);
+    layout->setSpacing(3);
+
+    int ch_idx = 0;
+    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+        sr_channel *const probe = (sr_channel *)l->data;
+        if (probe->type != SR_CHANNEL_LOGIC)
+            continue;
+
+        QHBoxLayout *ch_layout = new QHBoxLayout();
+        ch_layout->setSpacing(3);
+
+        QCheckBox *ch_check = new QCheckBox(QString("Ch%1").arg(probe->index), _glitch_filter_group);
+        ch_check->setFont(font);
+        ch_check->setEnabled(probe->enabled);
+        _glitch_checkBox_list.push_back(ch_check);
+
+        QLabel *le_label = new QLabel("≤", _glitch_filter_group);
+        le_label->setFont(font);
+
+        QSpinBox *spin = new QSpinBox(_glitch_filter_group);
+        spin->setRange(1, 999);
+        spin->setValue(1);
+        spin->setFont(font);
+        spin->setEnabled(false);
+        _glitch_spinbox_list.push_back(spin);
+
+        QLabel *unit_label = new QLabel("采样周期", _glitch_filter_group);
+        unit_label->setFont(font);
+
+        ch_layout->addWidget(ch_check);
+        ch_layout->addWidget(le_label);
+        ch_layout->addWidget(spin);
+        ch_layout->addWidget(unit_label);
+        ch_layout->addStretch();
+
+        layout->addLayout(ch_layout);
+
+        connect(ch_check, &QCheckBox::toggled, [spin](bool checked) {
+            spin->setEnabled(checked);
+        });
+
+        ch_idx++;
+    }
+
+    QHBoxLayout *btn_layout = new QHBoxLayout();
+    btn_layout->setSpacing(5);
+
+    QPushButton *select_all_btn = new QPushButton("全选", _glitch_filter_group);
+    QPushButton *deselect_all_btn = new QPushButton("取消全选", _glitch_filter_group);
+    select_all_btn->setFont(font);
+    deselect_all_btn->setFont(font);
+    select_all_btn->setMaximumHeight(28);
+    deselect_all_btn->setMaximumHeight(28);
+
+    connect(select_all_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_glitch_select_all);
+    connect(deselect_all_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_glitch_deselect_all);
+
+    btn_layout->addWidget(select_all_btn);
+    btn_layout->addWidget(deselect_all_btn);
+    btn_layout->addStretch();
+    layout->addLayout(btn_layout);
+
+    QLabel *hint_label = new QLabel("*勾选通道后，小于设定宽度的脉冲将被滤除", _glitch_filter_group);
+    hint_label->setFont(font);
+    layout->addWidget(hint_label);
+
+    QHBoxLayout *action_layout = new QHBoxLayout();
+    action_layout->setSpacing(5);
+
+    _apply_filter_btn = new QPushButton("应用滤波", _glitch_filter_group);
+    _restore_data_btn = new QPushButton("恢复原始数据", _glitch_filter_group);
+    _apply_filter_btn->setFont(font);
+    _restore_data_btn->setFont(font);
+    _apply_filter_btn->setMaximumHeight(28);
+    _restore_data_btn->setMaximumHeight(28);
+    _restore_data_btn->setEnabled(false);
+
+    connect(_apply_filter_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_apply_glitch_filter);
+    connect(_restore_data_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_restore_original_data);
+
+    action_layout->addWidget(_apply_filter_btn);
+    action_layout->addWidget(_restore_data_btn);
+    action_layout->addStretch();
+    layout->addLayout(action_layout);
+
+    _filter_status_label = new QLabel("", _glitch_filter_group);
+    _filter_status_label->setFont(font);
+    layout->addWidget(_filter_status_label);
+}
+
+void DeviceOptionsDock::on_apply_glitch_filter()
+{
+    std::vector<uint32_t> thresholds;
+    int ch_idx = 0;
+    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+        sr_channel *const probe = (sr_channel *)l->data;
+        if (probe->type != SR_CHANNEL_LOGIC)
+            continue;
+
+        uint32_t threshold = 0;
+        if (ch_idx < (int)_glitch_checkBox_list.size() && _glitch_checkBox_list[ch_idx]->isChecked()) {
+            threshold = _glitch_spinbox_list[ch_idx]->value();
+        }
+        thresholds.push_back(threshold);
+        ch_idx++;
+    }
+
+    _session->set_glitch_filter(thresholds);
+}
+
+void DeviceOptionsDock::on_restore_original_data()
+{
+    _session->clear_glitch_filter();
+}
+
+void DeviceOptionsDock::on_glitch_select_all()
+{
+    for (size_t i = 0; i < _glitch_checkBox_list.size(); i++) {
+        int ch_idx = 0;
+        for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+            sr_channel *const probe = (sr_channel *)l->data;
+            if (probe->type != SR_CHANNEL_LOGIC)
+                continue;
+            if (ch_idx == (int)i && probe->enabled) {
+                _glitch_checkBox_list[i]->setChecked(true);
+                break;
+            }
+            ch_idx++;
+        }
+    }
+}
+
+void DeviceOptionsDock::on_glitch_deselect_all()
+{
+    for (auto cb : _glitch_checkBox_list) {
+        cb->setChecked(false);
+    }
+}
+
+void DeviceOptionsDock::update_glitch_filter_state()
+{
+    bool is_active = _session->is_glitch_filter_active();
+
+    if (_filter_status_label) {
+        _filter_status_label->setText(is_active ? "已滤波" : "");
+    }
+
+    if (_restore_data_btn) {
+        _restore_data_btn->setEnabled(is_active);
+    }
+
+    if (_apply_filter_btn) {
+        _apply_filter_btn->setEnabled(!is_active);
+    }
 }
 
 } // namespace dock

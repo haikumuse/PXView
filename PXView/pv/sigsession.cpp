@@ -50,6 +50,7 @@
 #include <sys/stat.h>
 #include <map>
 #include <QString>
+#include <functional>
 
 #include "data/decode/decoderstatus.h"
 #include "dsvdef.h"
@@ -66,6 +67,8 @@ namespace pv
         _cur_snap_samplerate = 0;
         _cur_samplelimits = 0;
         _trig_pos = 0;
+        _logic_backup = nullptr;
+        _glitch_filter_active = false;
     }
 
     void SessionData::clear()
@@ -74,6 +77,12 @@ namespace pv
         analog.clear();
         dso.clear();
         _trig_pos = 0;
+        if (_logic_backup) {
+            delete _logic_backup;
+            _logic_backup = nullptr;
+        }
+        _glitch_filter_active = false;
+        _glitch_filter_thresholds.clear();
     }
 
     // TODO: This should not be necessary
@@ -107,6 +116,8 @@ namespace pv
         _active_document = nullptr;
         _is_triged = false;
         _dso_status_valid = false;
+        _glitch_filter_thread = nullptr;
+        _glitch_filter_running = false;
 
         _data_list.push_back(new SessionData());
         _data_list.push_back(new SessionData());
@@ -546,6 +557,13 @@ namespace pv
         _capture_times = 0;
         _dso_packet_count = 0;
         _dso_status_valid = false;
+
+        if (_view_data->_logic_backup) {
+            delete _view_data->_logic_backup;
+            _view_data->_logic_backup = nullptr;
+        }
+        _view_data->_glitch_filter_active = false;
+        _view_data->_glitch_filter_thresholds.clear();
 
         _capture_data = _view_data;
         set_cur_snap_samplerate(_device_agent.get_sample_rate());
@@ -2596,6 +2614,87 @@ namespace pv
         doc->copy_from_logic(_view_data->get_logic());
         doc->copy_from_analog(_view_data->get_analog());
         doc->copy_from_dso(_view_data->get_dso());
+    }
+
+    void SigSession::set_glitch_filter(const std::vector<uint32_t> &thresholds)
+    {
+        if (_glitch_filter_running)
+            return;
+
+        if (_view_data->get_logic()->empty())
+            return;
+
+        bool has_filter = false;
+        for (auto t : thresholds) {
+            if (t > 0) { has_filter = true; break; }
+        }
+        if (!has_filter)
+            return;
+
+        _glitch_filter_running = true;
+        _callback->trigger_message(DSV_MSG_GLITCH_FILTER_STARTED);
+
+        if (_glitch_filter_thread) {
+            _glitch_filter_thread->join();
+            delete _glitch_filter_thread;
+        }
+
+        _glitch_filter_thread = new std::thread(&SigSession::glitch_filter_task, this, thresholds);
+    }
+
+    void SigSession::glitch_filter_task(const std::vector<uint32_t> thresholds)
+    {
+        if (!_view_data->_logic_backup) {
+            _view_data->_logic_backup = new data::LogicSnapshot();
+            _view_data->_logic_backup->copy_from(*(_view_data->get_logic()));
+            if (_view_data->_logic_backup->memory_failed()) {
+                delete _view_data->_logic_backup;
+                _view_data->_logic_backup = nullptr;
+                _glitch_filter_running = false;
+                _callback->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
+                return;
+            }
+        } else {
+            _view_data->get_logic()->copy_from(*_view_data->_logic_backup);
+        }
+
+        _view_data->get_logic()->apply_glitch_filter_all(thresholds, [this](int progress) {
+            (void)progress;
+            _callback->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS);
+        });
+
+        _view_data->_glitch_filter_active = true;
+        _view_data->_glitch_filter_thresholds = thresholds;
+        _glitch_filter_running = false;
+
+        _callback->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
+        _callback->data_updated();
+    }
+
+    void SigSession::clear_glitch_filter()
+    {
+        if (_glitch_filter_running)
+            return;
+
+        if (!_view_data->_glitch_filter_active)
+            return;
+
+        if (_view_data->_logic_backup) {
+            _view_data->get_logic()->copy_from(*_view_data->_logic_backup);
+            delete _view_data->_logic_backup;
+            _view_data->_logic_backup = nullptr;
+        }
+
+        _view_data->_glitch_filter_active = false;
+        _view_data->_glitch_filter_thresholds.clear();
+
+        _callback->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
+        _callback->data_updated();
+    }
+
+    bool SigSession::is_glitch_filter_active()
+    {
+        return _view_data->_glitch_filter_active;
     }
 
 } // namespace pv

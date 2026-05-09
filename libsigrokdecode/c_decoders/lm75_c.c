@@ -17,8 +17,6 @@ typedef struct {
     int out_ann;
 } lm75_state;
 
-static struct srd_channel lm75_channels[] = {};
-
 static const char *lm75_inputs[] = {"i2c", NULL};
 static const char *lm75_outputs[] = {"lm75", NULL};
 static const char *lm75_tags[] = {"Sensor", NULL};
