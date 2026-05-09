@@ -1663,6 +1663,50 @@ QTextEdit#PathLine{
     color:#eff0f1;
 }
 
+/* TitleBar */
+QWidget#TitleBar {
+    background: #202020;
+}
+
+QWidget#TitleRow {
+    background: #202020;
+}
+
+QTabBar {
+    background: #202020;
+}
+
+QTabBar::tab {
+    height: 28px;
+    padding: 2px 12px;
+    margin: 0px;
+    font-size: 12px;
+    color: #ffffff;
+    background: transparent;
+    border: none;
+}
+
+QTabBar::tab:selected {
+    background: transparent;
+    border-bottom: 2px solid #ffffff;
+}
+
+QTabBar::tab:hover:!selected {
+    background: rgba(255,255,255,0.08);
+}
+
+QTabBar::tab:selected:hover {
+    background: transparent;
+}
+
+QWidget#RibbonPanel {
+    background: #2d2d2d;
+}
+
+QWidget#RibbonSeparator {
+    background: #555555;
+}
+
 /* Sliding Drawer */
 #sliding_drawer_backdrop
 {

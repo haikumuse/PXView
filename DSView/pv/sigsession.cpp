@@ -49,6 +49,7 @@
 #include <sys/stat.h>
 #include <map>
 #include <QString>
+#include <QThread>
 
 #include "data/decode/decoderstatus.h"
 #include "dsvdef.h"
@@ -83,6 +84,7 @@ namespace pv
     {
         // TODO: This should not be necessary
         _session = this; 
+        dsv_info("SigSession constructor: %p", this);
 
         _map_zoom = 0;
         _repeat_hold_prg = 0;
@@ -141,6 +143,7 @@ namespace pv
 
     SigSession::~SigSession()
     {
+        dsv_info("SigSession destructor: %p", this);
         for(auto p : _data_list){
             p->clear();
             delete p;
@@ -536,6 +539,7 @@ namespace pv
             return false;
         }
 
+        dsv_info("action_start_capture start");
         clear_all_decode_task2();
         clear_decode_result(); 
         
@@ -615,9 +619,10 @@ namespace pv
                 _refresh_rt_timer.Start(1000 / 30);
             }
 
+            dsv_info("action_start_capture success");
             return true;
         }
-
+        dsv_info("action_start_capture failed");
         return false;
     }
 
@@ -735,6 +740,7 @@ namespace pv
 
     bool SigSession::stop_capture()
     {
+        dsv_info("stop_capture");
         _is_action = true;
         int ret = action_stop_capture();
         _is_action = false;
@@ -746,7 +752,7 @@ namespace pv
         if (!_is_working)
             return false;
 
-        dsv_info("Stop collect.");
+        dsv_info("action_stop_capture start");
 
         if (_bClose)
         {
@@ -1875,12 +1881,16 @@ namespace pv
 
     void SigSession::add_decode_task(view::DecodeTrace *trace)
     {
+        dsv_info("add_decode_task called from thread: %p, trace: %p", QThread::currentThread(), trace);
         {
             std::lock_guard<std::mutex> lock(_running_tasks_mutex);
             _running_tasks.push_back(trace);
         }
 
-        _decode_threads.push_back(std::thread(&SigSession::decode_single_task, this, trace));
+        {
+            std::lock_guard<std::mutex> lock(_running_tasks_mutex);
+            _decode_threads.push_back(std::thread(&SigSession::decode_single_task, this, trace));
+        }
     }
 
     void SigSession::remove_decode_task(view::DecodeTrace *trace)
@@ -1893,20 +1903,13 @@ namespace pv
         if (decode_traces().empty())
             return;
 
+        dsv_info("clear_all_decoder start");
         int dex = -1;
         clear_all_decode_task(dex);
 
-        view::DecodeTrace *runningTrace = NULL;
-        if (dex != -1)
-        {
-            runningTrace = decode_traces()[dex];
-            runningTrace->_delete_flag = true;
-        }
-
         for (auto trace : decode_traces())
         {
-            if (trace != runningTrace)
-                delete trace;
+            delete trace;
         }
         decode_traces().clear();
 
@@ -1915,6 +1918,7 @@ namespace pv
 
         if (!_bClose && bUpdateView)
             signals_changed();
+        dsv_info("clear_all_decoder end");
     }
 
     void SigSession::clear_all_documents_decoders()
@@ -1933,6 +1937,7 @@ namespace pv
 
     void SigSession::clear_all_decode_task(int &runningDex)
     {
+        dsv_info("clear_all_decode_task start");
         {
             std::lock_guard<std::mutex> lock(_running_tasks_mutex);
             for (auto trace : _running_tasks)
@@ -1957,17 +1962,21 @@ namespace pv
             }
         }
 
-        for (auto &t : _decode_threads)
         {
-            if (t.joinable())
-                t.join();
+            std::lock_guard<std::mutex> lock(_running_tasks_mutex);
+            for (auto &t : _decode_threads)
+            {
+                if (t.joinable())
+                    t.join();
+            }
+            _decode_threads.clear();
         }
-        _decode_threads.clear();
 
         {
             std::lock_guard<std::mutex> lock(_running_tasks_mutex);
             _running_tasks.clear();
         }
+        dsv_info("clear_all_decode_task end");
     }
 
     view::DecodeTrace *SigSession::get_decoder_trace(int index)
@@ -1981,16 +1990,37 @@ namespace pv
 
     void SigSession::decode_single_task(view::DecodeTrace *task)
     {
-        dsv_info("------->decode thread start");
+        dsv_info("decode_single_task thread start, task: %p", task);
 
         if (!task->_delete_flag)
         {
             task->decoder()->begin_decode_work();
         }
 
+        // Remove task from _running_tasks before potentially deleting it
+        {
+            std::lock_guard<std::mutex> lock(_running_tasks_mutex);
+            auto it = std::find(_running_tasks.begin(), _running_tasks.end(), task);
+            if (it != _running_tasks.end())
+                _running_tasks.erase(it);
+
+            if (_running_tasks.empty())
+            {
+                // Check if _view_data and its logic snapshot are valid before calling decode_end
+                if (_view_data != nullptr && _view_data->get_logic() != nullptr)
+                {
+                    _view_data->get_logic()->decode_end();
+                }
+            }
+        }
+
         if (task->_delete_flag)
         {
             dsv_info("destroy a decoder in task thread");
+
+            // Disconnect signals before deleting to prevent queued signal delivery
+            QObject::disconnect(task->decoder(), SIGNAL(new_decode_data()), task, SLOT(on_new_decode_data()));
+            QObject::disconnect(task->decoder(), SIGNAL(decode_done()), task, SLOT(on_decode_done()));
 
             DESTROY_QT_LATER(task);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -2000,19 +2030,7 @@ namespace pv
             }
         }
 
-        {
-            std::lock_guard<std::mutex> lock(_running_tasks_mutex);
-            auto it = std::find(_running_tasks.begin(), _running_tasks.end(), task);
-            if (it != _running_tasks.end())
-                _running_tasks.erase(it);
-
-            if (_running_tasks.empty())
-            {
-                _view_data->get_logic()->decode_end();
-            }
-        }
-
-        dsv_info("------->decode thread end");
+        dsv_info("decode_single_task thread end, task: %p", task);
     }
 
     Snapshot *SigSession::get_signal_snapshot()

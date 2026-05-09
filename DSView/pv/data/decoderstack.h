@@ -72,6 +72,9 @@ class DecoderStack : public QObject, public SignalData
 	Q_OBJECT
 
 private:
+    static std::mutex _srd_mutex;
+
+private:
 	static const double DecodeMargin;
 	static const double DecodeThreshold;
 	static const int64_t DecodeChunkLength;

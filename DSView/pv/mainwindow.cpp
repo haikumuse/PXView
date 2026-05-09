@@ -117,6 +117,7 @@
 #include<QShortcut>
 
 #include <QTabBar>
+#include <QScrollArea>
 
 namespace pv
 {
@@ -409,7 +410,19 @@ namespace pv
         dock_lay->setSpacing(0);
         dock_lay->addWidget(_sampling_bar->createSamplingSettingsWidget(dock_container));
         dock_lay->addWidget(_device_options_widget);
-        // Note: dock_container will be added to SlidingDrawer below, not to QDockWidget
+
+        // Wrap the entire dock_container (sampling bar + device options) in a ScrollArea.
+        // This is the ONLY page that needs an external scroll wrapper to prevent "crushing".
+        QScrollArea *dock_scroll = new QScrollArea();
+        dock_scroll->setWidgetResizable(true);
+        dock_scroll->setFrameShape(QFrame::NoFrame);
+        dock_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        
+        // VITAL: Ensure the container doesn't shrink, triggering the scrollbar instead.
+        dock_container->setMinimumHeight(1000); 
+        dock_scroll->setWidget(dock_container);
+
+        // Note: dock_scroll will be added to SlidingDrawer below
         connect(_device_options_widget, &dock::DeviceOptionsDock::settings_applied, this, [this](){
             if (_session->have_view_data() == false)
                 _sampling_bar->commit_settings();
@@ -466,7 +479,7 @@ namespace pv
         // Device Options (includes sampling settings)
         _device_options_dock->setWidget(nullptr);
         _drawer_page_device_options = _sliding_drawer->addPage(
-            dock_container,
+            dock_scroll,
             L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
 
         _drawer_current_page = -1;
