@@ -113,6 +113,7 @@ TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
 
 
     QVBoxLayout *layout = new QVBoxLayout(_widget);
+    layout->setContentsMargins(12, 8, 12, 8);
     QGridLayout *gLayout = new QGridLayout();
     gLayout->setVerticalSpacing(5);
     gLayout->addWidget(_simple_radioButton, 0, 0);
@@ -132,6 +133,8 @@ TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
     layout->addStretch(1);
     _widget->setLayout(layout);
 
+    this->setFrameShape(QFrame::NoFrame);
+    this->setObjectName("dock_trigger_scroll");
     this->setWidget(_widget);
     _widget->setObjectName("triggerWidget");
 

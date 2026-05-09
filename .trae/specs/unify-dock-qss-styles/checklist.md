@@ -1,0 +1,28 @@
+- [ ] dark.qss Color Tokens 包含 @drawer-title-bg、@drawer-title-fg、@drawer-title-border、@drawer-edge-hover、@dock-gridline、@dock-groupbox-border、@dock-groupbox-title、@dock-status-ok、@dock-status-error 令牌
+- [ ] light.qss Color Tokens 包含对应的亮色值令牌
+- [ ] dark.qss 包含 #sliding_drawer_titlebar 样式（背景色 + 底部分隔线）
+- [ ] dark.qss 包含 #sliding_drawer_title 样式（颜色 + 字体大小 + 粗细）
+- [ ] dark.qss 包含 #sliding_drawer_edge_grip 和 :hover 样式
+- [ ] dark.qss 包含 #sliding_drawer_stack 样式（透明背景 + 无边框）
+- [ ] light.qss 包含与 dark.qss 结构一致的 SlidingDrawer 完整样式
+- [ ] dark.qss 包含各 Dock 页面 QScrollArea 无边框样式
+- [ ] dark.qss 包含 #dock_search_result_view 表格样式（使用 @dock-gridline 令牌）
+- [ ] dark.qss 包含 #dock_protocol_table_view QHeaderView 字体样式
+- [ ] dark.qss 包含 [status="ok"] 和 [status="error"] 动态属性选择器样式
+- [ ] light.qss 包含与 dark.qss 对应的所有 Dock 页面样式
+- [ ] dark.qss 中 QDockWidget 及其子选择器样式块已删除
+- [ ] light.qss 中 QDockWidget 及其子选择器样式块已删除
+- [ ] stylesheet.qss 中 QDockWidget / QScrollArea #measureWidget 等旧样式块已删除
+- [ ] searchdock.cpp 中 _result_view->setStyleSheet(...) 已删除，改用 objectName + QSS
+- [ ] deviceoptionsdock.cpp 中 this->setStyleSheet("QScrollArea{border:none;}") 已删除
+- [ ] measuredock.cpp 中按钮颜色不再硬编码，改用 QPalette 获取主题色
+- [ ] protocoldock.cpp 中 _table_view->setStyleSheet(style) 已删除，改用 objectName + QSS
+- [ ] protocolitemlayer.cpp 中 color:green / color:red 改为 setProperty("status", ...) + QSS
+- [ ] searchcombobox.cpp 中 _scroll->setStyleSheet("QScrollArea{border:none;}") 已删除
+- [ ] 所有 Dock 页面 QScrollArea 设置了 setFrameShape(QFrame::NoFrame)
+- [ ] 所有 Dock 页面内容区域 margin 统一为 (12, 8, 12, 8)
+- [ ] 项目可正常编译，无语法错误
+- [ ] 暗色主题下所有 Dock 页面样式正确显示
+- [ ] 亮色主题下所有 Dock 页面样式正确显示
+- [ ] 主题切换后所有 Dock 页面样式正确更新
+- [ ] C++ 代码中无 setStyleSheet 硬编码颜色值残留

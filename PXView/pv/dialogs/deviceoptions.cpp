@@ -32,6 +32,7 @@
 #include <QLayoutItem>
 #include <QPainter>
 #include <QMouseEvent>
+#include <QPropertyAnimation>
 #include <assert.h>
 
 #include "dsmessagebox.h"
@@ -50,21 +51,21 @@ using namespace std;
 //--------------------------ChannelLabel
 
 const QColor ChannelLabel::PROBE_COLORS[8] = {
-    QColor(0x75, 0x50, 0x7B),
-    QColor(0x34, 0x65, 0xA4),
-    QColor(0x73, 0xD2, 0x16),
-    QColor(0xED, 0xD4, 0x00),
-    QColor(0xF5, 0x79, 0x00),
-    QColor(0xCC, 0x00, 0x00),
-    QColor(0x8F, 0x52, 0x02),
-    QColor(0x50, 0x50, 0x50),
+    QColor(0x92, 0x52, 0xE8),
+    QColor(0x34, 0x62, 0xF6),
+    QColor(0x14, 0x8C, 0x1E),
+    QColor(0xD1, 0xB1, 0x01),
+    QColor(0xF0, 0x9A, 0x37),
+    QColor(0xE2, 0x49, 0x3A),
+    QColor(0x85, 0x42, 0x2D),
+    QColor(0x89, 0x89, 0x89),
 };
 
 ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
-: QWidget(parent)
+: QWidget(parent), _animBgColor(Qt::transparent), _bgAnim(nullptr)
 {
     _checked = check;
-    _index = chanIndex;  
+    _index = chanIndex;
 
     _box = new QCheckBox(this);
     _box->hide();
@@ -73,7 +74,20 @@ ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     setCursor(Qt::PointingHandCursor);
 
-    connect(_box, SIGNAL(stateChanged(int)), this, SLOT(update()));
+    _bgAnim = new QPropertyAnimation(this, "animBgColor");
+    _bgAnim->setDuration(100);
+    _bgAnim->setEasingCurve(QEasingCurve::Linear);
+
+    connect(_box, SIGNAL(stateChanged(int)), this, SLOT(on_checked()));
+}
+
+void ChannelLabel::animateBgTo(const QColor &target)
+{
+    if (_bgAnim->state() == QAbstractAnimation::Running)
+        _bgAnim->stop();
+    _bgAnim->setStartValue(_animBgColor);
+    _bgAnim->setEndValue(target);
+    _bgAnim->start();
 }
 
 void ChannelLabel::paintEvent(QPaintEvent *event)
@@ -89,10 +103,10 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
     QRectF r = rect();
 
     if (!enabled) {
-        p.setBrush(QColor(240, 240, 240));
-        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(0xD5, 0xD5, 0xD5));
+        p.setPen(QPen(QColor(0xD5, 0xD5, 0xD5), 1));
         p.drawRoundedRect(r, 4, 4);
-        p.setPen(QColor(200, 200, 200));
+        p.setPen(QColor(0xB2, 0xB2, 0xB2));
         QFont font = this->font();
         font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
         font.setBold(false);
@@ -102,16 +116,16 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
     }
 
     if (checked) {
-        p.setBrush(color);
+        p.setBrush(_animBgColor);
         p.setPen(Qt::NoPen);
     } else {
-        p.setBrush(Qt::transparent);
+        p.setBrush(_animBgColor);
         p.setPen(QPen(color, 1));
     }
 
     p.drawRoundedRect(r, 4, 4);
 
-    p.setPen(checked ? Qt::white : color);
+    p.setPen(checked ? QColor(0xFF, 0xFF, 0xFF) : color);
     QFont font = this->font();
     font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
     font.setBold(checked);
@@ -122,7 +136,10 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
 void ChannelLabel::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton && _box->isEnabled()) {
-        _box->setChecked(!_box->isChecked());
+        bool willCheck = !_box->isChecked();
+        _box->setChecked(willCheck);
+        QColor color = PROBE_COLORS[_index % 8];
+        animateBgTo(willCheck ? color : Qt::transparent);
         if (_checked) {
             _checked->ChannelChecked(_index, _box);
         }

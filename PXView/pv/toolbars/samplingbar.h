@@ -120,7 +120,6 @@ namespace pv
 
         signals:
             void sig_store_session_data();
-            void sig_device_options(bool visible);
 
         private:
             void retranslateUi();
@@ -157,7 +156,6 @@ namespace pv
             void on_device_selected();
             void on_samplerate_sel(int index);
             void on_samplecount_sel(int index);
-            void on_configure();
             void zero_adj();
             void on_run_stop_action();
             void on_instant_stop_action();    
@@ -168,16 +166,10 @@ namespace pv
             QLabel              *_device_type_label;
             XToolButton         _device_type;
             DsComboBox          _device_selector;
-            XToolButton         _configure_button;           
             DsComboBox          _sample_count;
-            DsComboBox          _sample_rate;          
-            XToolButton         _run_stop_button;
-            XToolButton         _instant_button;
+            DsComboBox          _sample_rate;
             XToolButton         _mode_button;
 
-            QAction             *_configure_action;
-            QAction             *_run_stop_action;
-            QAction             *_instant_action;
             QAction             *_mode_action;
          
             QMenu               *_mode_menu;

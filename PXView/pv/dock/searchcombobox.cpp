@@ -123,7 +123,7 @@ void SearchComboBox::ShowDlg(QWidget *editline)
  
     _scroll = new QScrollArea(panel);
     _scroll->setWidget(listPanel);
-    _scroll->setStyleSheet("QScrollArea{border:none;}");
+    _scroll->setObjectName("dock_search_combo_scroll");
     _scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     _scroll->setFixedSize(w, h - eh);
 

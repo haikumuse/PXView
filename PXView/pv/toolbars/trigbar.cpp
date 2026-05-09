@@ -35,21 +35,13 @@
 #include "../ui/langresource.h"
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
-#include <QWidgetAction>
 
 namespace pv {
 namespace toolbars {
- 
+
 TrigBar::TrigBar(SigSession *session, QWidget *parent) :
     QToolBar("Trig Bar", parent),
-    _session(session),
- 
-    _trig_button(this),
-    _protocol_button(this),
-    _measure_button(this),
-    _search_button(this),
-    _function_button(this),
-    _setting_button(this)
+    _session(session)
 {
     _enable = true;
 
@@ -58,69 +50,37 @@ TrigBar::TrigBar(SigSession *session, QWidget *parent) :
 
     _action_fft = new QAction(this);
     _action_fft->setObjectName(QString::fromUtf8("actionFft"));
-   
+
     _action_math = new QAction(this);
     _action_math->setObjectName(QString::fromUtf8("actionMath"));
-     
+
     _function_menu = new QMenu(this);
     _function_menu->setContentsMargins(0,0,0,0);
     _function_menu->addAction(_action_fft);
     _function_menu->addAction(_action_math);
-    _function_button.setPopupMode(QToolButton::InstantPopup);
-    _function_button.setMenu(_function_menu);
 
     _action_lissajous = new QAction(this);
     _action_lissajous->setObjectName(QString::fromUtf8("actionLissajous"));
-   
+
     _dark_style = new QAction(this);
     _dark_style->setObjectName(QString::fromUtf8("actionDark"));
-    
+
     _light_style = new QAction(this);
     _light_style->setObjectName(QString::fromUtf8("actionLight"));
-     
+
     _themes = new QMenu(this);
     _themes->setObjectName(QString::fromUtf8("menuThemes"));
     _themes->addAction(_light_style);
     _themes->addAction(_dark_style);
 
-     _action_dispalyOptions = new QAction(this);
+    _action_dispalyOptions = new QAction(this);
 
     _display_menu = new QMenu(this);
     _display_menu->setContentsMargins(0,0,0,0);
-    
-    _display_menu->addAction(_action_lissajous);    
+
+    _display_menu->addAction(_action_lissajous);
     _display_menu->addMenu(_themes);
-	_display_menu->addAction(_action_dispalyOptions);
-
-    auto widgetToAction = [](QWidget* widget, QWidget* parent = nullptr) -> QAction* {
-        QWidgetAction *action = new QWidgetAction(parent);
-        action->setDefaultWidget(widget);
-        return action;
-    };
-    
-    _setting_button.setPopupMode(QToolButton::InstantPopup);
-    _setting_button.setMenu(_display_menu);
-
-    _trig_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    _protocol_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    _measure_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    _search_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    _function_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    _setting_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-
-    _protocol_button.setContentsMargins(0,0,0,0);
-
-    _trig_action = widgetToAction(&_trig_button);
-    _protocol_action = widgetToAction(&_protocol_button);
-    _measure_action = widgetToAction(&_measure_button);
-    _search_action = widgetToAction(&_search_button);
-    _function_action = widgetToAction(&_function_button); 
-    _display_action = widgetToAction(&_setting_button);
-
-    connect(&_trig_button, SIGNAL(clicked()),this, SLOT(trigger_clicked()));
-    connect(&_protocol_button, SIGNAL(clicked()),this, SLOT(protocol_clicked()));
-    connect(&_measure_button, SIGNAL(clicked()),this, SLOT(measure_clicked()));
-    connect(&_search_button, SIGNAL(clicked()), this, SLOT(search_clicked()));
+    _display_menu->addAction(_action_dispalyOptions);
 
     connect(_action_fft, SIGNAL(triggered()), this, SLOT(on_actionFft_triggered()));
     connect(_action_math, SIGNAL(triggered()), this, SLOT(on_actionMath_triggered()));
@@ -139,17 +99,9 @@ TrigBar::~TrigBar()
 
 void TrigBar::retranslateUi()
 {
-    _trig_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_TRIGGER), "Trigger"));
-    _protocol_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DECODE), "Decode"));
-    _measure_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_MEASURE), "Measure"));
-    _search_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SEARCH), "Search"));
-    _function_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FUNCTION), "Function"));
-
-    _setting_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY), "Display"));    
     _themes->setTitle(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_THEMES), "Themes"));
     _action_lissajous->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_LISSAJOUS), "Lissajous"));
 
-   
     _dark_style->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_THEMES_DARK), "Dark"));
     _light_style->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_THEMES_LIGHT), "Light"));
 
@@ -163,13 +115,6 @@ void TrigBar::reStyle()
 {
     QString iconPath = GetIconPath();
 
-    _trig_button.setIcon(QIcon(iconPath+"/trigger.svg"));
-    _protocol_button.setIcon(QIcon(iconPath+"/protocol.svg"));
-    _measure_button.setIcon(QIcon(iconPath+"/measure.svg"));
-    _search_button.setIcon(QIcon(iconPath+"/search-bar.svg"));
-    _function_button.setIcon(QIcon(iconPath+"/function.svg"));
-    _setting_button.setIcon(QIcon(iconPath+"/display.svg"));
-
     _action_fft->setIcon(QIcon(iconPath+"/fft.svg"));
     _action_math->setIcon(QIcon(iconPath+"/math.svg"));
     _action_lissajous->setIcon(QIcon(iconPath+"/lissajous.svg"));
@@ -178,138 +123,15 @@ void TrigBar::reStyle()
 
     _action_dispalyOptions->setIcon(QIcon(iconPath+"/gear.svg"));
 
-     AppConfig &app = AppConfig::Instance();
-     QString icon_fname = iconPath +"/"+ app.frameOptions.style +".svg";  
+    AppConfig &app = AppConfig::Instance();
+    QString icon_fname = iconPath +"/"+ app.frameOptions.style +".svg";
     _themes->setIcon(QIcon(icon_fname));
 }
 
-void TrigBar::protocol_clicked()
-{  
-    if (_protocol_button.isVisible() && _protocol_button.isEnabled())
-    {
-        DockOptions *opt = getDockOptions();
-        opt->decodeDock = !opt->decodeDock;
-        opt->triggerDock = false;
-        opt->measureDock = false;
-        opt->searchDock  = false;
-        opt->deviceOptionsDock = false;
-        sig_protocol(opt->decodeDock);
-        sig_trigger(opt->triggerDock);
-        sig_measure(opt->measureDock);
-        sig_search(opt->searchDock);
-        AppConfig::Instance().SaveFrame();
-
-        update_checked_status();
-    }
-}
-
-void TrigBar::trigger_clicked()
-{
-    if (_trig_button.isVisible() && _trig_button.isEnabled())
-    {
-        DockOptions *opt = getDockOptions();
-        opt->triggerDock = !opt->triggerDock;
-        opt->decodeDock = false;
-        opt->measureDock = false;
-        opt->searchDock  = false;
-        opt->deviceOptionsDock = false;
-        sig_trigger(opt->triggerDock);
-        sig_protocol(opt->decodeDock);
-        sig_measure(opt->measureDock);
-        sig_search(opt->searchDock);
-        AppConfig::Instance().SaveFrame();
-
-        update_checked_status();
-    }
-}
-
-void TrigBar::measure_clicked()
-{   
-    if (_measure_button.isVisible() && _measure_button.isEnabled())
-    {
-        DockOptions *opt = getDockOptions();
-        opt->measureDock = !opt->measureDock;
-        opt->decodeDock = false;
-        opt->triggerDock = false;
-        opt->searchDock  = false;
-        opt->deviceOptionsDock = false;
-        sig_measure(opt->measureDock);
-        sig_protocol(opt->decodeDock);
-        sig_trigger(opt->triggerDock);
-        sig_search(opt->searchDock);
-        AppConfig::Instance().SaveFrame();
-
-        update_checked_status();
-    }
-}
-
-void TrigBar::search_clicked()
-{
-    if (_search_button.isVisible() && _search_button.isEnabled())
-    {   
-        DockOptions *opt = getDockOptions();
-        opt->searchDock = !opt->searchDock;
-        opt->decodeDock = false;
-        opt->triggerDock = false;
-        opt->measureDock = false;
-        opt->deviceOptionsDock = false;
-        sig_search(opt->searchDock);
-        sig_protocol(opt->decodeDock);
-        sig_trigger(opt->triggerDock);
-        sig_measure(opt->measureDock);
-        AppConfig::Instance().SaveFrame();
-
-        update_checked_status();
-    }  
-}
-
 void TrigBar::reload()
-{ 
-    int mode = _session->get_device()->get_work_mode();
-
-    if (mode == LOGIC) {
-        _trig_action->setVisible(true);
-        _protocol_action->setVisible(true);
-        _measure_action->setVisible(true);
-        _search_action->setVisible(true);
-        _function_action->setVisible(false);
-        _action_lissajous->setVisible(false);
-        _action_dispalyOptions->setVisible(true);
-
-    } else if (mode == ANALOG) {
-        _trig_action->setVisible(false);
-        _protocol_action->setVisible(false);
-        _measure_action->setVisible(true);
-        _search_action->setVisible(false);
-        _function_action->setVisible(false);
-        _action_lissajous->setVisible(false);
-        _action_dispalyOptions->setVisible(true);
-
-    } else if (mode == DSO) {
-        _trig_action->setVisible(true);
-        _protocol_action->setVisible(false);
-        _measure_action->setVisible(true);
-        _search_action->setVisible(false);
-        _function_action->setVisible(true);
-        _action_lissajous->setVisible(true);
-        _action_dispalyOptions->setVisible(true);
-    }
-
-    DockOptions *opt = getDockOptions();
-
-    bool bDecoder = _protocol_action->isVisible() && opt->decodeDock;
-    bool bTrigger = _trig_action->isVisible() && opt->triggerDock;
-    bool bMeasure = _measure_action->isVisible() && opt->measureDock;
-    bool bSearch = _search_action->isVisible() && opt->searchDock;
-
-    sig_protocol(bDecoder);
-    sig_trigger(bTrigger);
-    sig_measure(bMeasure);
-    sig_search(bSearch);
-   
-    update_view_status(); 
-    update_checked_status();
-    update();    
+{
+    update_view_status();
+    update();
 }
 
 void TrigBar::on_actionFft_triggered()
@@ -348,60 +170,14 @@ void TrigBar::on_actionLissajous_triggered()
 }
 
  void TrigBar::on_display_setting()
- {    
+ {
     pv::dialogs::ApplicationParamDlg dlg;
     dlg.ShowDlg(this);
  }
 
- DockOptions* TrigBar::getDockOptions()
- {
-    AppConfig &app = AppConfig::Instance(); 
-    int mode = _session->get_device()->get_work_mode();
-
-    if (mode == LOGIC)
-        return &app.frameOptions._logicDock;
-     else if (mode == DSO)
-        return &app.frameOptions._dsoDock;
-    else
-        return &app.frameOptions._analogDock;
- }
-
  void TrigBar::update_view_status()
  {
-    bool bEnable = _session->is_working() == false;
-
-    _trig_button.setEnabled(bEnable);
-    _protocol_button.setEnabled(bEnable);
-    _measure_button.setEnabled(bEnable);
-    _search_button.setEnabled(bEnable);
-    _function_button.setEnabled(bEnable);
-    _setting_button.setEnabled(bEnable);
-
-    if (_session->is_working() && _session->get_device()->get_work_mode() == DSO){
-        if (_session->is_instant() == false){
-            _trig_button.setEnabled(true);
-            _measure_button.setEnabled(true);
-            _function_button.setEnabled(true);
-            _setting_button.setEnabled(true);
-        }
-    }
  }
-
-void TrigBar::update_checked_status()
-{
-    DockOptions *opt = getDockOptions();
-    assert(opt);
-
-    _trig_button.setCheckable(true); 
-    _protocol_button.setCheckable(true); 
-    _measure_button.setCheckable(true);
-    _search_button.setCheckable(true);
-
-    _trig_button.setChecked(opt->triggerDock);
-    _protocol_button.setChecked(opt->decodeDock);
-    _measure_button.setChecked(opt->measureDock);
-    _search_button.setChecked(opt->searchDock);
-}
 
 void TrigBar::UpdateLanguage()
 {
@@ -414,7 +190,7 @@ void TrigBar::UpdateTheme()
 }
 
 void TrigBar::UpdateFont()
-{ 
+{
     QFont font = this->font();
     font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
     ui::set_toolbar_font(this, font);

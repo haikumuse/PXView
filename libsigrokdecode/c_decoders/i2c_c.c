@@ -304,7 +304,7 @@ static void i2c_destroy(struct srd_decoder_inst *di)
 
 struct srd_c_decoder i2c_c_decoder = {
     .id = "i2c_c",
-    .name = "I2C(C)",
+    .name = "I²C(C)",
     .longname = "Inter-Integrated Circuit (C)",
     .desc = "I2C protocol decoder (C implementation, faster than Python)",
     .license = "gplv2+",

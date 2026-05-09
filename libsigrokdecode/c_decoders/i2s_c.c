@@ -171,7 +171,7 @@ static void i2s_destroy(struct srd_decoder_inst *di)
 
 struct srd_c_decoder i2s_c_decoder = {
     .id = "i2s_c",
-    .name = "I2S(C)",
+    .name = "I²S(C)",
     .longname = "Inter-IC Sound (C)",
     .desc = "I2S protocol decoder (C implementation)",
     .license = "gplv2+",

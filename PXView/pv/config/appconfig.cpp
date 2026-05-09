@@ -467,34 +467,23 @@ QString GetAppDataDir()
 //applicationDirPath not end with '/'
 #ifdef Q_OS_LINUX
     QDir dir(QCoreApplication::applicationDirPath());
-    if (dir.cd("..") && dir.cd("share") && dir.cd("DSView"))
+    if (dir.cd("..") && dir.cd("share") && dir.cd("PXView"))
     {
          return dir.absolutePath();        
     }
-    QDir dir1("/usr/local/share/DSView");
+    QDir dir1("/usr/local/share/PXView");
     if (dir1.exists()){
         return dir1.absolutePath();
     }
 
-    dsv_err("Data directory is not exists: ../share/DSView");
+    dsv_err("Data directory is not exists: ../share/PXView");
     assert(false);   
 #else
 
 #ifdef Q_OS_DARWIN
-    // QDir dir1(QCoreApplication::applicationDirPath());
-    // //"./res" is not exists
-    // if (dir1.cd("res") == false){
-    //     QDir dir(QCoreApplication::applicationDirPath());
-    //     // ../share/DSView
-    //     if (dir.cd("..") && dir.cd("share") && dir.cd("DSView"))
-    //     {
-    //         return dir.absolutePath();
-    //     }
-    // }
-
     QDir dir1(QCoreApplication::applicationDirPath());
-    // "../Resources/share/DSView"
-    if (dir1.cd("..") && dir1.cd("Resources") && dir1.cd("share") && dir1.cd("DSView")){
+    // "../Resources/share/PXView"
+    if (dir1.cd("..") && dir1.cd("Resources") && dir1.cd("share") && dir1.cd("PXView")){
         return dir1.absolutePath();
     }
 
@@ -523,15 +512,15 @@ QString GetFirmwareDir()
     }
 
     QDir dir(QCoreApplication::applicationDirPath());
-    // ../share/DSView/res
-    if (dir.cd("..") && dir.cd("share") && dir.cd("DSView") && dir.cd("res"))
+    // ../share/PXView/res
+    if (dir.cd("..") && dir.cd("share") && dir.cd("PXView") && dir.cd("res"))
     {
          return dir.absolutePath();
     }
  
 #ifdef Q_OS_DARWIN
     // macOS bundle (../Resources/share/PXView/res)
-    if (dir.cd("..") && dir.cd("Resources") && dir.cd("share") && dir.cd("DSView") && dir.cd("res"))
+    if (dir.cd("..") && dir.cd("Resources") && dir.cd("share") && dir.cd("PXView") && dir.cd("res"))
     {
          return dir.absolutePath();
     }

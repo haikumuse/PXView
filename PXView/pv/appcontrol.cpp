@@ -158,6 +158,12 @@ bool AppControl::Init()
             srd_c_decoder_path_add(cs.c_str());
             dsv_info("C decoder path: \"%s\"", cs.c_str());
         }
+        QDir appBinPath(QCoreApplication::applicationDirPath());
+        if (appBinPath.cd("decoders/c_decoders")) {
+            std::string cs = pv::path::ConvertPath(appBinPath.absolutePath());
+            srd_c_decoder_path_add(cs.c_str());
+            dsv_info("C decoder path (bin): \"%s\"", cs.c_str());
+        }
 #endif
     }
 

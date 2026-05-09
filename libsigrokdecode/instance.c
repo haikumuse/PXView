@@ -72,8 +72,6 @@ static int c_decoder_wait_impl(struct srd_decoder_inst *di,
             return SRD_ERR_TERM_REQ;
         }
 
-        di->got_new_samples = FALSE;
-
         found_match = FALSE;
         process_samples_until_condition_match(di, &found_match);
 
@@ -87,6 +85,7 @@ static int c_decoder_wait_impl(struct srd_decoder_inst *di,
             return SRD_OK;
         }
 
+        di->got_new_samples = FALSE;
         di->handled_all_samples = TRUE;
         di->abs_start_samplenum = 0;
         di->abs_end_samplenum = 0;
