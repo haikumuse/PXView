@@ -138,9 +138,12 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     _pattern_input(nullptr),
     _result_view(nullptr),
     _result_model(nullptr),
-    _legend_col1(nullptr),
-    _legend_col2(nullptr),
-    _legend_col3(nullptr),
+    _legend_x(nullptr),
+    _legend_r(nullptr),
+    _legend_0(nullptr),
+    _legend_f(nullptr),
+    _legend_1(nullptr),
+    _legend_c(nullptr),
     _logic_channel_count(0),
     _search_state(0)
 {
@@ -183,18 +186,51 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     connect(_result_view, SIGNAL(clicked(const QModelIndex&)),
             this, SLOT(on_result_clicked(const QModelIndex&)));
 
-    _legend_col1 = new QLabel(this);
-    _legend_col1->setWordWrap(true);
-    _legend_col2 = new QLabel(this);
-    _legend_col2->setWordWrap(true);
-    _legend_col3 = new QLabel(this);
-    _legend_col3->setWordWrap(true);
+    _legend_x = new QLabel(this);
+    _legend_r = new QLabel(this);
+    _legend_0 = new QLabel(this);
+    _legend_f = new QLabel(this);
+    _legend_1 = new QLabel(this);
+    _legend_c = new QLabel(this);
 
-    QVBoxLayout *legend_layout = new QVBoxLayout();
-    legend_layout->setSpacing(4);
-    legend_layout->addWidget(_legend_col1);
-    legend_layout->addWidget(_legend_col2);
-    legend_layout->addWidget(_legend_col3);
+    QFont legendFont;
+    legendFont.setPixelSize(14);
+
+    QColor legendColor("#8e8e8e");
+
+    QList<QLabel*> legendLabels = {_legend_x, _legend_r, _legend_0, _legend_f, _legend_1, _legend_c};
+    for (auto *label : legendLabels) {
+        label->setFont(legendFont);
+        QPalette pal = label->palette();
+        pal.setColor(QPalette::WindowText, legendColor);
+        label->setPalette(pal);
+    }
+
+    QVBoxLayout *col1 = new QVBoxLayout();
+    col1->setSpacing(5);
+    col1->setContentsMargins(0, 0, 0, 0);
+    col1->addWidget(_legend_x);
+    col1->addWidget(_legend_r);
+
+    QVBoxLayout *col2 = new QVBoxLayout();
+    col2->setSpacing(5);
+    col2->setContentsMargins(0, 0, 0, 0);
+    col2->addWidget(_legend_0);
+    col2->addWidget(_legend_f);
+
+    QVBoxLayout *col3 = new QVBoxLayout();
+    col3->setSpacing(5);
+    col3->setContentsMargins(0, 0, 0, 0);
+    col3->addWidget(_legend_1);
+    col3->addWidget(_legend_c);
+
+    QHBoxLayout *legend_layout = new QHBoxLayout();
+    legend_layout->setSpacing(16);
+    legend_layout->setContentsMargins(0, 0, 0, 0);
+    legend_layout->addLayout(col1);
+    legend_layout->addLayout(col2);
+    legend_layout->addLayout(col3);
+    legend_layout->addStretch();
 
     QVBoxLayout *main_layout = new QVBoxLayout();
     main_layout->setContentsMargins(12, 8, 12, 8);
@@ -498,15 +534,12 @@ void SearchDock::on_result_clicked(const QModelIndex& index)
 
 void SearchDock::retranslateUi()
 {
-    _legend_col1->setText(
-        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_X), "X: Don't care")) + "\n" +
-        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_R), "R: Rising edge")));
-    _legend_col2->setText(
-        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_0), "0: Low level")) + "\n" +
-        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_F), "F: Falling edge")));
-    _legend_col3->setText(
-        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_1), "1: High level")) + "\n" +
-        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_C), "C: Rising/Falling edge")));
+    _legend_x->setText(QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_X), "X: Don't care")));
+    _legend_r->setText(QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_R), "R: Rising edge")));
+    _legend_0->setText(QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_0), "0: Low level")));
+    _legend_f->setText(QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_F), "F: Falling edge")));
+    _legend_1->setText(QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_1), "1: High level")));
+    _legend_c->setText(QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_C), "C: Rising/Falling edge")));
 
     // 更新表头
     _result_model->headerDataChanged(Qt::Horizontal, 0, 2);

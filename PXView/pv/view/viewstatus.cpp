@@ -54,19 +54,13 @@ ViewStatus::ViewStatus(SigSession *session, View &parent) :
     _hit_rect(-1),
     _last_sig_index(-1)
 {
+    setAttribute(Qt::WA_TranslucentBackground);
+    setAutoFillBackground(false);
 }
 
 void ViewStatus::paintEvent(QPaintEvent *)
 {
-    QStyleOption opt;
- #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-      opt.initFrom(this);
- #else
-      opt.init(this);
- #endif
-
     QPainter p(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
     QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
 
     QFont font = p.font();

@@ -367,6 +367,9 @@ struct srd_decoder_inst {
 
 	gboolean is_c_inst;
 	struct srd_c_decoder *c_dec_inst;
+	uint8_t *c_pin_cache;
+	uint64_t c_pin_cache_samplenum;
+	uint64_t c_pin_cache_inbuf_serial;
 	void *user_data;
 	char *error_message;
 	uint64_t samplerate;

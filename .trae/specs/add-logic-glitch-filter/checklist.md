@@ -1,0 +1,26 @@
+- [ ] LogicSnapshot::set_sample_range() 能正确修改指定区间的采样电平
+- [ ] LogicSnapshot::set_sample_range() 正确处理已压缩释放的 LeafBlock（lbp==NULL 时重新分配内存）
+- [ ] LogicSnapshot::set_sample_range() 正确处理跨 LeafBlock 边界的区间
+- [ ] LogicSnapshot::recalc_mipmap() 修改数据后重建 mipmap，边沿搜索结果与数据一致
+- [ ] LogicSnapshot::recalc_mipmap() 修改后若块变为恒值则释放内存（与 calc_mipmap 优化一致）
+- [ ] LogicSnapshot::clone_data() 深拷贝后独立于原始数据，修改克隆不影响原始数据
+- [ ] LogicSnapshot::apply_glitch_filter() 正确滤除宽度 ≤ 阈值的脉冲
+- [ ] LogicSnapshot::apply_glitch_filter() 级联回退检查正确处理合并后的新短脉冲
+- [ ] LogicSnapshot::apply_glitch_filter() 阈值=0 时不修改任何数据
+- [ ] SigSession::set_glitch_filter() 克隆原始数据并在克隆上执行滤波
+- [ ] SigSession::clear_glitch_filter() 恢复原始数据，释放克隆
+- [ ] 修改滤波参数后重新滤波从原始数据重新克隆，不产生累积误差
+- [ ] 新采集开始时自动清除滤波状态
+- [ ] DeviceOptionsDock Logic 模式下在 Channel 和 Mode 分组框之间显示"毛刺过滤"分组框
+- [ ] DeviceOptionsDock 非 Logic 模式下不显示"毛刺过滤"分组框
+- [ ] 每个已启用逻辑通道可独立设置滤波阈值（1-999 采样周期）
+- [ ] 全选/取消全选功能正常
+- [ ] "应用滤波"按钮点击后启动滤波流程，滤波期间按钮禁用
+- [ ] "恢复原始数据"按钮点击后恢复原始数据
+- [ ] 无数据或采集中时"应用滤波"和"恢复原始数据"按钮禁用
+- [ ] 滤波完成后波形自动刷新，状态标签显示"已滤波"
+- [ ] 恢复原始数据后状态标签显示"未滤波"
+- [ ] 滤波进行中状态栏显示进度反馈
+- [ ] 滤波参数通过 DeviceOptionsDock::get_session() 保存到会话 JSON
+- [ ] 加载会话时通过 DeviceOptionsDock::set_session() 恢复滤波设置并自动执行滤波
+- [ ] 毛刺过滤分组框 QSS 样式与项目现有 UI 风格一致

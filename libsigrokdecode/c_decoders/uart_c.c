@@ -63,6 +63,9 @@ typedef struct {
     double stop_bits;
     enum uart_parity parity_type;
     int bit_order_msb;
+    int format;
+    int invert_rx;
+    int invert_tx;
 
     double bit_width;
     double half_bit_width;
@@ -73,6 +76,7 @@ typedef struct {
     int has_tx;
 
     int out_ann;
+    int show_data_point;
 } uart_state;
 
 static struct srd_channel uart_optional_channels[] = {
@@ -80,51 +84,16 @@ static struct srd_channel uart_optional_channels[] = {
     {"tx", "TX", "UART transmit line", 1, SRD_CHANNEL_SDATA, NULL},
 };
 
-static GVariant *baudrate_values[] = {
-    NULL,
-};
-
-static GVariant *data_bits_values_list[] = {
-    NULL,
-};
-
-static GVariant *stop_bits_values_list[] = {
-    NULL,
-};
-
-static GVariant *parity_values_list[] = {
-    NULL,
-};
-
 static struct srd_decoder_option uart_options[] = {
-    {
-        .id = "baudrate",
-        .idn = NULL,
-        .desc = "Baud rate(\xe6\xb3\xa2\xe7\x89\xb9\xe7\x8e\x87)",
-        .def = NULL,
-        .values = NULL,
-    },
-    {
-        .id = "data_bits",
-        .idn = NULL,
-        .desc = "Data bits(\xe6\x95\xb0\xe6\x8d\xae\xe4\xbd\x8d\xe6\x95\xb0)",
-        .def = NULL,
-        .values = NULL,
-    },
-    {
-        .id = "stop_bits",
-        .idn = NULL,
-        .desc = "Stop bits(\xe5\x81\x9c\xe6\xad\xa2\xe4\xbd\x8d)",
-        .def = NULL,
-        .values = NULL,
-    },
-    {
-        .id = "parity",
-        .idn = NULL,
-        .desc = "Parity(\xe6\xa0\xa1\xe9\xaa\x8c\xe4\xbd\x8d)",
-        .def = NULL,
-        .values = NULL,
-    },
+    {"baudrate", NULL, "Baud rate(\xe6\xb3\xa2\xe7\x89\xb9\xe7\x8e\x87)", NULL, NULL},
+    {"data_bits", NULL, "Data bits(\xe6\x95\xb0\xe6\x8d\xae\xe4\xbd\x8d\xe6\x95\xb0)", NULL, NULL},
+    {"stop_bits", NULL, "Stop bits(\xe5\x81\x9c\xe6\xad\xa2\xe4\xbd\x8d)", NULL, NULL},
+    {"parity", NULL, "Parity(\xe6\xa0\xa1\xe9\xaa\x8c\xe4\xbd\x8d)", NULL, NULL},
+    {"bit_order", NULL, "Bit order(\xe4\xbd\x8d\xe5\xba\x8f)", NULL, NULL},
+    {"format", NULL, "Data format(\xe6\x95\xb0\xe6\x8d\xae\xe6\xa0\xbc\xe5\xbc\x8f)", NULL, NULL},
+    {"invert_rx", NULL, "Invert RX(\xe5\x8f\x8d\xe8\xbd\xacRX)", NULL, NULL},
+    {"invert_tx", NULL, "Invert TX(\xe5\x8f\x8d\xe8\xbd\xacTX)", NULL, NULL},
+    {"show_data_point", NULL, "Show data point(\xe6\x95\xb0\xe6\x8d\xae\xe7\x82\xb9\xe6\x98\xbe\xe7\xa4\xba)", NULL, NULL},
 };
 
 static const char *uart_ann_labels[][3] = {
@@ -151,13 +120,34 @@ static const char *uart_ann_labels[][3] = {
     {"", "atk-data-point", "ATK Data point"},
 };
 
-static const int uart_row_rx_classes[] = {RX_DATA, RX_START, RX_PARITY_OK, RX_STOP, RX_BREAK, RX_PACKET, RX_SAMPLES};
-static const int uart_row_tx_classes[] = {TX_DATA, TX_START, TX_PARITY_OK, TX_STOP, TX_BREAK, TX_PACKET, TX_SAMPLES};
-static const int uart_row_err_classes[] = {RX_PARITY_ERR, TX_PARITY_ERR, RX_WARN, TX_WARN};
+static const int uart_row_rx_bits_classes[] = {RX_DATA_BIT, -1};
+static const int uart_row_rx_samples_classes[] = {RX_SAMPLES, -1};
+static const int uart_row_rx_data_classes[] = {RX_DATA, -1};
+static const int uart_row_rx_warn_classes[] = {RX_WARN, RX_PARITY_ERR, -1};
+static const int uart_row_rx_break_classes[] = {RX_BREAK, -1};
+static const int uart_row_rx_packet_classes[] = {RX_PACKET, -1};
+static const int uart_row_tx_bits_classes[] = {TX_DATA_BIT, -1};
+static const int uart_row_tx_samples_classes[] = {TX_SAMPLES, -1};
+static const int uart_row_tx_data_classes[] = {TX_DATA, -1};
+static const int uart_row_tx_warn_classes[] = {TX_WARN, TX_PARITY_ERR, -1};
+static const int uart_row_tx_break_classes[] = {TX_BREAK, -1};
+static const int uart_row_tx_packet_classes[] = {TX_PACKET, -1};
+static const int uart_row_atk_classes[] = {ATK_POINT, -1};
+
 static const struct srd_c_ann_row uart_ann_rows[] = {
-    {"rx", "RX", uart_row_rx_classes, 7},
-    {"tx", "TX", uart_row_tx_classes, 7},
-    {"err", "Errors", uart_row_err_classes, 4},
+    {"rx-data-bits", "RX bits", uart_row_rx_bits_classes, 1},
+    {"rx-samples", "RX samples", uart_row_rx_samples_classes, 1},
+    {"rx-data-vals", "RX data", uart_row_rx_data_classes, 1},
+    {"rx-warnings", "RX warnings", uart_row_rx_warn_classes, 2},
+    {"rx-breaks", "RX breaks", uart_row_rx_break_classes, 1},
+    {"rx-packets", "RX packets", uart_row_rx_packet_classes, 1},
+    {"tx-data-bits", "TX bits", uart_row_tx_bits_classes, 1},
+    {"tx-samples", "TX samples", uart_row_tx_samples_classes, 1},
+    {"tx-data-vals", "TX data", uart_row_tx_data_classes, 1},
+    {"tx-warnings", "TX warnings", uart_row_tx_warn_classes, 2},
+    {"tx-breaks", "TX breaks", uart_row_tx_break_classes, 1},
+    {"tx-packets", "TX packets", uart_row_tx_packet_classes, 1},
+    {"atk-signs", "ATK signs", uart_row_atk_classes, 1},
 };
 
 static const char *uart_inputs[] = {"logic"};
@@ -170,8 +160,7 @@ static int parity_ok(enum uart_parity ptype, int parity_bit, int data, int data_
         return 1;
 
     int ones = 0;
-    int i;
-    for (i = 0; i < data_bits; i++) {
+    for (int i = 0; i < data_bits; i++) {
         if (data & (1 << i))
             ones++;
     }
@@ -183,13 +172,6 @@ static int parity_ok(enum uart_parity ptype, int parity_bit, int data, int data_
         return (ones % 2) == 0;
 
     return 1;
-}
-
-static void uart_put_ann(struct srd_decoder_inst *di, uint64_t ss, uint64_t es,
-    int ann_class, const char *text)
-{
-    uart_state *s = (uart_state *)c_decoder_get_private(di);
-    C_ANN_PUT(di, ss, es, s->out_ann, ann_class, text);
 }
 
 static void uart_reset(struct srd_decoder_inst *di)
@@ -211,7 +193,11 @@ static void uart_reset(struct srd_decoder_inst *di)
     s->stop_bits = 1.0;
     s->parity_type = PARITY_NONE;
     s->bit_order_msb = 0;
+    s->format = 0;
+    s->invert_rx = 0;
+    s->invert_tx = 0;
     s->out_ann = 0;
+    s->show_data_point = 1;
 }
 
 static void uart_start(struct srd_decoder_inst *di)
@@ -232,6 +218,26 @@ static void uart_start(struct srd_decoder_inst *di)
     else
         s->parity_type = PARITY_NONE;
 
+    const char *show_dp_str = c_decoder_get_option_string(di, "show_data_point", "yes");
+    s->show_data_point = (strcmp(show_dp_str, "yes") == 0) ? 1 : 0;
+
+    const char *bit_order_str = c_decoder_get_option_string(di, "bit_order", "lsb-first");
+    s->bit_order_msb = (strcmp(bit_order_str, "msb-first") == 0) ? 1 : 0;
+
+    const char *format_str = c_decoder_get_option_string(di, "format", "hex");
+    if (format_str && strcmp(format_str, "ascii") == 0)
+        s->format = 1;
+    else if (format_str && strcmp(format_str, "dec") == 0)
+        s->format = 2;
+    else
+        s->format = 0;
+
+    const char *inv_rx_str = c_decoder_get_option_string(di, "invert_rx", "no");
+    s->invert_rx = (strcmp(inv_rx_str, "yes") == 0) ? 1 : 0;
+
+    const char *inv_tx_str = c_decoder_get_option_string(di, "invert_tx", "no");
+    s->invert_tx = (strcmp(inv_tx_str, "yes") == 0) ? 1 : 0;
+
     s->has_rx = c_decoder_has_channel(di, 0);
     s->has_tx = c_decoder_has_channel(di, 1);
 
@@ -248,11 +254,6 @@ static void uart_start(struct srd_decoder_inst *di)
         frame_samples *= s->bit_width;
         s->frame_len_samples = frame_samples;
     }
-}
-
-static uint64_t get_bit_sample_point(uart_state *s, int bit_num)
-{
-    return (uint64_t)(s->frame_start[0] + (uint64_t)round(bit_num * s->bit_width + s->bit_samplenum));
 }
 
 static uint64_t get_bit_sample_point_for_rxtx(uart_state *s, int rxtx, int bit_num)
@@ -280,12 +281,25 @@ static void handle_data_complete(struct srd_decoder_inst *di, int rxtx)
     uint64_t es = get_bit_end(s, rxtx, s->data_bits);
 
     char val_str[32];
-    if (s->data_bits <= 8)
-        snprintf(val_str, sizeof(val_str), "%02X", data);
-    else
-        snprintf(val_str, sizeof(val_str), "%03X", data);
+    if (s->format == 1) {
+        if (data >= 0x20 && data <= 0x7E)
+            snprintf(val_str, sizeof(val_str), "%c", data);
+        else
+            snprintf(val_str, sizeof(val_str), "\\x%02X", data);
+    } else if (s->format == 2) {
+        snprintf(val_str, sizeof(val_str), "%d", data);
+    } else {
+        if (s->data_bits <= 8)
+            snprintf(val_str, sizeof(val_str), "%02X", data);
+        else
+            snprintf(val_str, sizeof(val_str), "%03X", data);
+    }
 
-    uart_put_ann(di, ss, es, RX_DATA + rxtx, val_str);
+    C_ANN_PUT(di, ss, es, s->out_ann, RX_DATA + rxtx, val_str);
+
+    if (s->show_data_point) {
+        C_ANN_PUT(di, ss, es, s->out_ann, ATK_POINT, "color:#F32FDC");
+    }
 }
 
 static void handle_frame_complete(struct srd_decoder_inst *di, int rxtx)
@@ -295,15 +309,23 @@ static void handle_frame_complete(struct srd_decoder_inst *di, int rxtx)
     if (!s->frame_valid[rxtx]) {
         uint64_t ss = s->frame_start[rxtx];
         uint64_t es = ss + (uint64_t)round(s->frame_len_samples);
-        uart_put_ann(di, ss, es, RX_WARN + rxtx, "Frame err");
+        C_ANN_PUT(di, ss, es, s->out_ann, RX_WARN + rxtx, "Frame err");
     }
+}
+
+static int get_rxtx_pin(uart_state *s, struct srd_decoder_inst *di, int rxtx, int ch, uint64_t samplenum)
+{
+    int val = c_decoder_get_pin(di, ch, samplenum);
+    if ((rxtx == RX && s->invert_rx) || (rxtx == TX && s->invert_tx))
+        val = val ? 0 : 1;
+    return val;
 }
 
 static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplenum)
 {
     uart_state *s = (uart_state *)c_decoder_get_private(di);
     int ch = rxtx;
-    int signal = c_decoder_get_pin(di, ch, samplenum);
+    int signal = get_rxtx_pin(s, di, rxtx, ch, samplenum);
 
     switch (s->state[rxtx]) {
     case WAIT_FOR_START_BIT:
@@ -322,7 +344,7 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
         {
             uint64_t sample_point = get_bit_sample_point_for_rxtx(s, rxtx, 0);
             if (samplenum >= sample_point) {
-                int start_bit = c_decoder_get_pin(di, ch, sample_point);
+                int start_bit = get_rxtx_pin(s, di, rxtx, ch, sample_point);
                 uint64_t ss = get_bit_start(s, rxtx, 0);
                 uint64_t es = get_bit_end(s, rxtx, 0);
 
@@ -345,7 +367,7 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
             int bit_idx = s->databit_count[rxtx];
             uint64_t sample_point = get_bit_sample_point_for_rxtx(s, rxtx, bit_idx + 1);
             if (samplenum >= sample_point) {
-                int bit_val = c_decoder_get_pin(di, ch, sample_point);
+                int bit_val = get_rxtx_pin(s, di, rxtx, ch, sample_point);
                 uint64_t ss = get_bit_start(s, rxtx, bit_idx + 1);
                 uint64_t es = get_bit_end(s, rxtx, bit_idx + 1);
 
@@ -380,7 +402,7 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
             int parity_bit_num = 1 + s->data_bits;
             uint64_t sample_point = get_bit_sample_point_for_rxtx(s, rxtx, parity_bit_num);
             if (samplenum >= sample_point) {
-                int parity_val = c_decoder_get_pin(di, ch, sample_point);
+                int parity_val = get_rxtx_pin(s, di, rxtx, ch, sample_point);
                 s->paritybit[rxtx] = parity_val;
                 uint64_t ss = get_bit_start(s, rxtx, parity_bit_num);
                 uint64_t es = get_bit_end(s, rxtx, parity_bit_num);
@@ -406,16 +428,14 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
 
             stop_bit_num += s->stopbit_count[rxtx];
 
-            double stop_bit_width = s->bit_width;
+            uint64_t sample_point;
             int is_half_stop = 0;
 
             double remaining_stop = s->stop_bits - s->stopbit_count[rxtx];
             if (remaining_stop > 0.4 && remaining_stop < 0.6) {
-                stop_bit_width = s->bit_width * 0.5;
                 is_half_stop = 1;
             }
 
-            uint64_t sample_point;
             if (is_half_stop) {
                 sample_point = s->frame_start[rxtx] +
                     (uint64_t)round(stop_bit_num * s->bit_width + s->bit_samplenum * 0.5);
@@ -424,7 +444,7 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
             }
 
             if (samplenum >= sample_point) {
-                int stop_val = c_decoder_get_pin(di, ch, sample_point);
+                int stop_val = get_rxtx_pin(s, di, rxtx, ch, sample_point);
                 uint64_t ss, es;
 
                 if (is_half_stop) {
@@ -480,6 +500,8 @@ static void uart_decode(struct srd_decoder_inst *di)
 
     if (!s->has_rx && !s->has_tx)
         return;
+
+    C_ANN_PUT(di, 0, 0, s->out_ann, ATK_POINT, "color:#F32FDC");
 
     while (1) {
         srd_cond_builder *b = c_cond_new();
@@ -606,10 +628,10 @@ struct srd_c_decoder uart_c_decoder = {
     .optional_channels = uart_optional_channels,
     .num_optional_channels = 2,
     .options = uart_options,
-    .num_options = 4,
+    .num_options = 9,
     .num_annotations = NUM_ANN,
     .ann_labels = uart_ann_labels,
-    .num_annotation_rows = 3,
+    .num_annotation_rows = 13,
     .annotation_rows = uart_ann_rows,
     .inputs = uart_inputs,
     .num_inputs = 1,

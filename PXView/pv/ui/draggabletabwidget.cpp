@@ -42,6 +42,7 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
 
     setTabsClosable(true);
     setMovable(true);
+    setDocumentMode(true);
 
     connect(_draggable_tab_bar, &DraggableTabBar::detachTab,
             this, &DraggableTabWidget::onDetachTab);

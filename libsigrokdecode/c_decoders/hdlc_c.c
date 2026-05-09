@@ -74,13 +74,15 @@ static const char *hdlc_ann_labels[][3] = {
 
 static const int hdlc_row_rxbits_classes[] = {ANN_RX_BIT};
 static const int hdlc_row_datavals_classes[] = {ANN_DATA};
-static const int hdlc_row_datatypes_classes[] = {ANN_DATA_TYPE, ANN_TRANSFER};
+static const int hdlc_row_datatypes_classes[] = {ANN_DATA_TYPE};
+static const int hdlc_row_transfers_classes[] = {ANN_TRANSFER};
 static const int hdlc_row_other_classes[] = {ANN_WARNING};
 
 static const struct srd_c_ann_row hdlc_ann_rows[] = {
     {"rx-bits", "RX bits", hdlc_row_rxbits_classes, 1},
     {"data-vals", "data", hdlc_row_datavals_classes, 1},
-    {"data-types", "type", hdlc_row_datatypes_classes, 2},
+    {"data-types", "type", hdlc_row_datatypes_classes, 1},
+    {"transfers", "transfers", hdlc_row_transfers_classes, 1},
     {"other", "Other", hdlc_row_other_classes, 1},
 };
 
@@ -301,7 +303,7 @@ struct srd_c_decoder hdlc_c_decoder = {
     .num_options = 2,
     .num_annotations = NUM_ANN,
     .ann_labels = hdlc_ann_labels,
-    .num_annotation_rows = 4,
+    .num_annotation_rows = 5,
     .annotation_rows = hdlc_ann_rows,
     .inputs = hdlc_inputs,
     .num_inputs = 1,

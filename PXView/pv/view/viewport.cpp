@@ -23,6 +23,7 @@
 
 #include "viewport.h"
 #include "ruler.h"
+#include "viewstatus.h"
 
 #include "signal.h"
 #include "dsosignal.h"
@@ -1827,7 +1828,11 @@ void Viewport::leaveEvent(QEvent *)
 
 void Viewport::resizeEvent(QResizeEvent*)
 {
-
+    ViewStatus *vs = _view.get_viewstatus();
+    if (vs) {
+        int h = vs->height();
+        vs->setGeometry(0, height() - h, width(), h);
+    }
 }
 
 void Viewport::set_receive_len(quint64 length)

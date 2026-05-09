@@ -17,6 +17,7 @@ struct ow_priv {
     int bit_cnt;
     uint64_t ss_byte;
     uint64_t ss_slot;
+    int overdrive;
     int out_ann;
 };
 
@@ -26,9 +27,16 @@ struct ow_priv {
 #define ANN_BYTE           3
 #define ANN_RESET          4
 #define ANN_SLOT           5
+#define ANN_WARN           6
+#define ANN_OVERDRIVE      7
+#define NUM_ANN            8
 
 static struct srd_channel ow_channels[] = {
     {"ow", "OW", "1-Wire data line", 0, SRD_CHANNEL_SDATA, NULL},
+};
+
+static struct srd_decoder_option ow_options[] = {
+    {"overdrive", NULL, "Overdrive speed", NULL, NULL},
 };
 
 static const char *ow_ann_labels[][3] = {
@@ -38,15 +46,21 @@ static const char *ow_ann_labels[][3] = {
     {"", "BYTE", "Data byte"},
     {"", "RESET", "Reset pulse"},
     {"", "SLOT", "Time slot"},
+    {"", "warnings", "Warnings"},
+    {"", "overdrive", "Overdrive speed"},
 };
 
 static const int ow_row_bits_classes[] = {ANN_BIT, ANN_SLOT};
 static const int ow_row_bytes_classes[] = {ANN_BYTE};
 static const int ow_row_control_classes[] = {ANN_RESET_PRESENCE, ANN_PRESENCE, ANN_RESET};
+static const int ow_row_warnings_classes[] = {ANN_WARN, -1};
+static const int ow_row_overdrive_classes[] = {ANN_OVERDRIVE, -1};
 static const struct srd_c_ann_row ow_ann_rows[] = {
     {"bits", "Bits", ow_row_bits_classes, 2},
     {"bytes", "Bytes", ow_row_bytes_classes, 1},
     {"control", "Control", ow_row_control_classes, 3},
+    {"warnings", "Warnings", ow_row_warnings_classes, 1},
+    {"overdrive", "Overdrive", ow_row_overdrive_classes, 1},
 };
 
 static const char *ow_inputs[] = {"logic", NULL};
@@ -67,6 +81,8 @@ static void onewire_start(struct srd_decoder_inst *di)
 {
     struct ow_priv *s = (struct ow_priv *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "onewire");
+    const char *od = c_decoder_get_option_string(di, "overdrive", "no");
+    s->overdrive = (strcmp(od, "yes") == 0) ? 1 : 0;
 }
 
 static void onewire_decode(struct srd_decoder_inst *di)
@@ -79,6 +95,12 @@ static void onewire_decode(struct srd_decoder_inst *di)
     uint64_t short_thresh = 15 * samplerate / 1000000;
     uint64_t long_thresh = 60 * samplerate / 1000000;
     uint64_t ss_fall = 0;
+
+    if (s->overdrive) {
+        reset_thresh = 48 * samplerate / 1000000;
+        short_thresh = 1 * samplerate / 1000000;
+        long_thresh = 6 * samplerate / 1000000;
+    }
 
     while (1) {
         srd_cond_builder *cb;
@@ -121,6 +143,8 @@ static void onewire_decode(struct srd_decoder_inst *di)
                     bit_val = 0;
                 } else {
                     bit_val = 1;
+                    C_ANN_PUT(di, ss_fall, samplenum, s->out_ann, ANN_WARN,
+                               "Ambiguous bit width");
                 }
 
                 char bit_str[8];
@@ -138,6 +162,23 @@ static void onewire_decode(struct srd_decoder_inst *di)
                     char byte_str[16];
                     snprintf(byte_str, sizeof(byte_str), "0x%02X", s->byte_val);
                     C_ANN_PUT(di, s->ss_byte, samplenum, s->out_ann, ANN_BYTE, byte_str);
+
+                    if (s->byte_val == 0x3C && !s->overdrive) {
+                        s->overdrive = 1;
+                        C_ANN_PUT(di, s->ss_byte, samplenum, s->out_ann, ANN_OVERDRIVE,
+                                   "Overdrive mode ON");
+                        reset_thresh = 48 * samplerate / 1000000;
+                        short_thresh = 1 * samplerate / 1000000;
+                        long_thresh = 6 * samplerate / 1000000;
+                    } else if (s->byte_val == 0xE3 && s->overdrive) {
+                        s->overdrive = 0;
+                        C_ANN_PUT(di, s->ss_byte, samplenum, s->out_ann, ANN_OVERDRIVE,
+                                   "Overdrive mode OFF");
+                        reset_thresh = 480 * samplerate / 1000000;
+                        short_thresh = 15 * samplerate / 1000000;
+                        long_thresh = 60 * samplerate / 1000000;
+                    }
+
                     s->bit_cnt = 0;
                     s->byte_val = 0;
                 }
@@ -197,11 +238,11 @@ struct srd_c_decoder onewire_c_decoder = {
     .num_channels = 1,
     .optional_channels = NULL,
     .num_optional_channels = 0,
-    .options = NULL,
-    .num_options = 0,
-    .num_annotations = 6,
+    .options = ow_options,
+    .num_options = 1,
+    .num_annotations = NUM_ANN,
     .ann_labels = ow_ann_labels,
-    .num_annotation_rows = 3,
+    .num_annotation_rows = 5,
     .annotation_rows = ow_ann_rows,
     .inputs = ow_inputs,
     .num_inputs = 1,
@@ -219,6 +260,7 @@ struct srd_c_decoder onewire_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    ow_options[0].def = g_variant_new_string("no");
     return &onewire_c_decoder;
 }
 

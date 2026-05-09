@@ -141,9 +141,12 @@ private:
     QTableView *_result_view;
     SearchResultModel *_result_model;
     
-    QLabel *_legend_col1;
-    QLabel *_legend_col2;
-    QLabel *_legend_col3;
+    QLabel *_legend_x;
+    QLabel *_legend_r;
+    QLabel *_legend_0;
+    QLabel *_legend_f;
+    QLabel *_legend_1;
+    QLabel *_legend_c;
     int _logic_channel_count;
 
     // Search result storage

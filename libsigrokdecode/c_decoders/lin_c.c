@@ -32,6 +32,7 @@ struct lin_priv {
     uint64_t samplerate;
     int baudrate;
     int bit_time;
+    int version;
     uint64_t ss_break;
     uint64_t ss_sync;
     uint64_t ss_pid;
@@ -128,6 +129,7 @@ static struct srd_channel lin_channels[] = {
 
 static struct srd_decoder_option lin_options[] = {
     {"baudrate", NULL, "Baud rate", NULL, NULL},
+    {"version", NULL, "Protocol version", NULL, NULL},
 };
 
 static const char *lin_ann_labels[][3] = {
@@ -171,6 +173,7 @@ static void lin_start(struct srd_decoder_inst *di)
     priv->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "lin");
     priv->samplerate = c_decoder_get_samplerate(di);
     priv->baudrate = (int)c_decoder_get_option_int(di, "baudrate", 9600);
+    priv->version = (int)c_decoder_get_option_int(di, "version", 2);
     if (priv->samplerate > 0 && priv->baudrate > 0)
         priv->bit_time = (int)(priv->samplerate / (uint64_t)priv->baudrate);
 }
@@ -324,7 +327,7 @@ static void lin_decode(struct srd_decoder_inst *di)
             priv->checksum = byte_val;
 
             int id = priv->pid & 0x3F;
-            int enhanced = (id != 60 && id != 61);
+            int enhanced = (priv->version >= 2) ? (id != 60 && id != 61) : 0;
             uint8_t expected = lin_checksum_compute(priv->pid, priv->data, priv->data_len, enhanced);
             int checksum_ok = (byte_val == expected);
 
@@ -381,7 +384,7 @@ static struct srd_c_decoder lin_c_decoder = {
     .optional_channels = NULL,
     .num_optional_channels = 0,
     .options = lin_options,
-    .num_options = 1,
+    .num_options = 2,
     .num_annotations = NUM_ANN,
     .ann_labels = lin_ann_labels,
     .num_annotation_rows = 2,
@@ -403,6 +406,7 @@ static struct srd_c_decoder lin_c_decoder = {
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
     lin_options[0].def = g_variant_new_uint64(9600);
+    lin_options[1].def = g_variant_new_int64(2);
     return &lin_c_decoder;
 }
 
