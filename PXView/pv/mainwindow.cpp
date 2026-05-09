@@ -40,6 +40,10 @@
 #include <libusb-1.0/libusb.h>
 #include <QGuiApplication>
 #include <QTextStream>
+#include <QRegularExpression>
+#include <QHash>
+#include <QList>
+#include <algorithm>
 #include <QJsonValue>
 #include <QJsonArray>
 #include <functional>
@@ -1862,9 +1866,32 @@ namespace pv
 
         QString qssRes = ":/" + style + ".qss";
         QFile qss(qssRes);
-        qss.open(QFile::ReadOnly | QFile::Text);
-        qApp->setStyleSheet(qss.readAll());
+        if (!qss.open(QFile::ReadOnly | QFile::Text)) {
+            return;
+        }
+        QString qssContent = qss.readAll();
         qss.close();
+
+        QHash<QString, QString> tokens;
+        QRegularExpression tokenRe("@([\\w-]+):\\s*([^\\r\\n]+?)\\s*(?:\\*/|\\r|\\n)");
+        QRegularExpressionMatchIterator it = tokenRe.globalMatch(qssContent);
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            QString tokenName = "@" + match.captured(1);
+            QString tokenValue = match.captured(2).trimmed();
+            tokens[tokenName] = tokenValue;
+        }
+
+        QList<QString> keys = tokens.keys();
+        std::sort(keys.begin(), keys.end(), [](const QString &a, const QString &b) {
+            return a.length() > b.length();
+        });
+
+        for (const QString &key : keys) {
+            qssContent.replace(key, tokens[key]);
+        }
+
+        qApp->setStyleSheet(qssContent);
 
         UiManager::Instance()->Update(UI_UPDATE_ACTION_THEME);
         UiManager::Instance()->Update(UI_UPDATE_ACTION_FONT);

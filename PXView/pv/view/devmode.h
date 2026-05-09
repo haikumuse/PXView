@@ -32,6 +32,7 @@
 #include <QPushButton>
 #include <QVector> 
 #include <QLabel>
+#include <QIcon>
 #include <libsigrok.h> 
 
 #include "../interface/icallbacks.h"
@@ -73,6 +74,7 @@ private:
 	void mouseMoveEvent(QMouseEvent *event);
 	void leaveEvent(QEvent *event); 
     const dev_mode_name* get_mode_name(int mode);
+    QIcon getCollapseIcon(bool expand);
 
      //IUiWindow
     void UpdateLanguage() override;
@@ -83,10 +85,14 @@ public slots:
     void set_device();
     void on_mode_change();
     void on_close();
+    void on_collapse_toggle();
 
 private slots:
 
- 
+
+
+signals:
+    void header_collapse_changed(bool collapsed);
 
 private:
     SigSession *_session;
@@ -95,7 +101,9 @@ private:
     QMenu           *_pop_menu;
     QPoint          _mouse_point;
     XToolButton     *_close_button;
+    XToolButton     *_collapse_btn;
     bool            _bFile;
+    bool            _header_collapsed;
 
     DeviceAgent     *_device_agent;
 };

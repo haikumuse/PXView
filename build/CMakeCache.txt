@@ -28,7 +28,7 @@ CMAKE_AR:FILEPATH=D:/msys64/mingw64/bin/ar.exe
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Debug
+CMAKE_BUILD_TYPE:STRING=RELEASE
 
 //CXX compiler
 CMAKE_CXX_COMPILER:FILEPATH=D:/msys64/mingw64/bin/c++.exe
@@ -203,6 +203,9 @@ CMAKE_OBJCOPY:FILEPATH=D:/msys64/mingw64/bin/objcopy.exe
 
 //Path to a program.
 CMAKE_OBJDUMP:FILEPATH=D:/msys64/mingw64/bin/objdump.exe
+
+//No help, variable specified on the command line.
+CMAKE_POLICY_VERSION_MINIMUM:UNINITIALIZED=3.5
 
 //Value Computed by CMake
 CMAKE_PROJECT_COMPAT_VERSION:STATIC=

@@ -348,7 +348,8 @@ void Viewport::doPaint()
             QColor separatorColor = back;
 
             int vOffset = _view.get_vOffset();
-            for (const auto &group : groups) {
+            for (size_t gi = 0; gi < groups.size(); gi++) {
+                const auto &group = groups[gi];
                 if (group.traces.empty()) continue;
                 int groupTop = INT_MAX;
                 int groupBottom = INT_MIN;
@@ -373,6 +374,16 @@ void Viewport::doPaint()
                     int sepY = (bottomI + topJ) / 2;
                     p.fillRect(QRectF(-View::GroupCardRadius, sepY, width() + View::GroupCardRadius + 1, 1), separatorColor);
                 }
+
+                if (gi + 1 < groups.size() && !groups[gi + 1].traces.empty()) {
+                    int nextGroupTop = INT_MAX;
+                    for (auto gt : groups[gi + 1].traces) {
+                        int traceTop = gt->get_v_offset() - gt->get_totalHeight() / 2 - View::SignalMargin;
+                        nextGroupTop = min(nextGroupTop, traceTop);
+                    }
+                    int sepY = (groupBottom + nextGroupTop) / 2 - vOffset;
+                    p.fillRect(QRectF(-View::GroupCardRadius, sepY, width() + View::GroupCardRadius + 1, 1), separatorColor);
+                }
             }
         }
     }
@@ -380,11 +391,14 @@ void Viewport::doPaint()
     std::vector<Trace*> traces;
     _view.get_traces(_type, traces);
 
+    p.save();
+    p.translate(0, -_view.get_vOffset());
     for(auto t : traces){
         t->paint_back(p, 0, _view.get_view_width(), fore, back);
         if (_view.back_ready())
             break;
-    } 
+    }
+    p.restore(); 
 
     int mode = _view.session().get_device()->get_work_mode();
 
@@ -431,10 +445,13 @@ void Viewport::doPaint()
         paintSignals(p, fore, back);
     }
 
+    p.save();
+    p.translate(0, -_view.get_vOffset());
     for(auto t : traces){
         if (t->enabled())
             t->paint_fore(p, 0, _view.get_view_width(), fore, back);
     }
+    p.restore();
 
     if (_view.get_signalHeight() != _curSignalHeight)
             _curSignalHeight = _view.get_signalHeight();

@@ -47,12 +47,12 @@ class Trace : public SelectableItem
 	Q_OBJECT
 
 protected:
-    static const int Margin = 3;
     static const int SquareNum = 5;
 	static const int LabelHitPadding;
 
 public:
     static const int SquareWidth = 20;
+    static const int Margin = 3;
     static const int COLOR = 1;
     static const int NAME = 2;
     static const int LABEL = 8;

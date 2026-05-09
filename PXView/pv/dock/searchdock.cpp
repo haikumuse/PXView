@@ -405,8 +405,8 @@ void SearchDock::search_worker()
     // 局部缓存：批量写入，大幅减少锁竞争
     std::vector<SearchData> local_batch;
     local_batch.reserve(1000);
+    int batch_threshold = 200;
     
-    // 用于控制UI刷新频率，每500ms刷新一次
     QElapsedTimer ui_timer;
     ui_timer.start();
     bool has_new_results = false;
@@ -414,7 +414,6 @@ void SearchDock::search_worker()
     while (pos <= end) {
         int state = _search_state.load();
         if (state == 3) {
-            // Stop requested
             break;
         }
 
@@ -424,19 +423,17 @@ void SearchDock::search_worker()
 
         int64_t match_end = find_match_end(logic_snapshot, pos);
 
-        // 先存入局部缓存，不加锁！
         local_batch.push_back(SearchData(pos, match_end));
         has_new_results = true;
 
-        // 凑够 1000 条再批量写入全局数组
-        if (local_batch.size() >= 1000) {
+        if (local_batch.size() >= batch_threshold) {
             _results_mutex.lock();
             _search_results.insert(_search_results.end(), local_batch.begin(), local_batch.end());
             _results_mutex.unlock();
 
             local_batch.clear();
+            batch_threshold = 1000;
 
-            // 检查是否需要刷新UI（每500ms一次）
             if (ui_timer.elapsed() >= 500) {
                 ui_timer.restart();
                 emit search_result_found();

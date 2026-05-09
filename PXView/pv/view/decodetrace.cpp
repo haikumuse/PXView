@@ -619,9 +619,9 @@ void DecodeTrace::paint_type_options(QPainter &p, int right, const QPoint pt, QC
         if ((*i) == last_index + 1 && index_string.indexOf("-") < 3 && index_string.indexOf("-") > 0)
             index_string.replace(QString::number(last_index), QString::number((*i)));
         else if ((*i) == last_index + 1)
-            index_string = QString::number((*i)) + "-" + index_string;
+            index_string = index_string + "-" + QString::number((*i));
         else
-            index_string = QString::number((*i)) + "," + index_string;
+            index_string = index_string + "," + QString::number((*i));
         last_index = (*i);
     }
     

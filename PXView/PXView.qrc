@@ -42,6 +42,8 @@
         <file>icons/light/bug.svg</file>
         <file>icons/light/capture.svg</file>
         <file>icons/light/close.svg</file>
+        <file>icons/light/header-collapse.svg</file>
+        <file>icons/light/header-expand.svg</file>
         <file>icons/light/dark.svg</file>
         <file>icons/light/del.svg</file>
         <file>icons/light/display.svg</file>
@@ -75,6 +77,8 @@
         <file>icons/dark/bug.svg</file>
         <file>icons/dark/capture.svg</file>
         <file>icons/dark/close.svg</file>
+        <file>icons/dark/header-collapse.svg</file>
+        <file>icons/dark/header-expand.svg</file>
         <file>icons/dark/dark.svg</file>
         <file>icons/dark/del.svg</file>
         <file>icons/dark/display.svg</file>

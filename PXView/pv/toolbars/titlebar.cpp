@@ -24,6 +24,7 @@
 #include <QPropertyAnimation>
 #include <QAction>
 #include <QSpacerItem>
+#include <QElapsedTimer>
 
 #include "../config/appconfig.h"
 #include "../appcontrol.h"
@@ -304,13 +305,27 @@ int TitleBar::ribbonHeight() const
 
 void TitleBar::setRibbonHeight(int h)
 {
-    // setFixedHeight 内部只触发一次 Layout Request，远胜于设置 Min/Max
+    // 测量帧间隔：两次调用之间的时间差
+    static QElapsedTimer frameTimer;
+    static bool frameTimerStarted = false;
+    qint64 frameDeltaNs = 0;
+
+    if (frameTimerStarted) {
+        frameDeltaNs = frameTimer.nsecsElapsed();
+    }
+    frameTimer.start();
+    frameTimerStarted = true;
+
     _ribbonPanel->setFixedHeight(h);
-    
-    // 同步更新 TitleBar 自身的固定高度，避免布局系统反复计算
-    // titleRow 高度为 32，加上 ribbonPanel 的动态高度
     int totalHeight = 32 + h;
     setFixedHeight(totalHeight);
+
+    // 帧间隔超过 16.6ms(60fps) 说明掉帧
+    double frameDeltaMs = frameDeltaNs / 1000000.0;
+    if (frameDeltaMs > 16.6) {
+        dsv_info("[PERF] DROP FRAME h=%d frameDelta=%.1fms (>16.6ms = dropped)",
+            h, frameDeltaMs);
+    }
 }
 
 // 核心优化 2：替换掉极度耗性能的 childAt(pos)
