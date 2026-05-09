@@ -25,15 +25,19 @@ namespace pv {
 namespace widgets {
 
 SideBar::SideBar(QWidget *parent) :
-    QWidget(parent),
+    QToolBar(parent),
     _next_index(0)
 {
+    setMovable(false);
     setObjectName("sidebar");
 
-    _layout = new QVBoxLayout(this);
+    _container = new QWidget(this);
+    _layout = new QVBoxLayout(_container);
     _layout->setContentsMargins(0, 0, 0, 0);
     _layout->setSpacing(2);
     _layout->addStretch();
+
+    addWidget(_container);
 
     ADD_UI(this);
 }
@@ -46,7 +50,7 @@ SideBar::~SideBar()
 int SideBar::addItem(const QString &iconName, const char *textId, const QString &defaultText,
                      ItemType type, int drawerPageIndex)
 {
-    XToolButton *btn = new XToolButton(this);
+    XToolButton *btn = new XToolButton(_container);
     btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     btn->setIconSize(QSize(24, 24));
 
@@ -75,7 +79,7 @@ int SideBar::addItem(const QString &iconName, const char *textId, const QString 
 
 void SideBar::addSeparator()
 {
-    QFrame *line = new QFrame(this);
+    QFrame *line = new QFrame(_container);
     line->setFrameShape(QFrame::HLine);
     line->setFrameShadow(QFrame::Sunken);
     _layout->insertWidget(_layout->count() - 1, line);

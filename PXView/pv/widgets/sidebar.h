@@ -17,7 +17,7 @@
 #ifndef DSVIEW_PV_WIDGETS_SIDEBAR_H
 #define DSVIEW_PV_WIDGETS_SIDEBAR_H
 
-#include <QWidget>
+#include <QToolBar>
 #include <QVBoxLayout>
 #include <QList>
 #include "../ui/xtoolbutton.h"
@@ -28,7 +28,7 @@ class QFrame;
 namespace pv {
 namespace widgets {
 
-class SideBar : public QWidget, public IUiWindow
+class SideBar : public QToolBar, public IUiWindow
 {
     Q_OBJECT
 
@@ -72,6 +72,7 @@ private:
     void UpdateFont() override;
 
     QVBoxLayout *_layout;
+    QWidget *_container;
     QList<ItemInfo> _items;
     int _next_index;
 };

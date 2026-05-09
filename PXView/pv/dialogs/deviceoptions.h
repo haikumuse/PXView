@@ -56,7 +56,6 @@ public:
 class ChannelLabel : public QWidget 
 {
 Q_OBJECT
-Q_PROPERTY(QColor animBgColor READ animBgColor WRITE setAnimBgColor)
 
 public:
     ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex);
@@ -64,9 +63,6 @@ public:
     inline QCheckBox* getCheckBox(){
         return _box;
     }
-
-    QColor animBgColor() const { return _animBgColor; }
-    void setAnimBgColor(const QColor &c) { _animBgColor = c; update(); }
 
 private slots:
     void on_checked();
@@ -76,13 +72,9 @@ protected:
     void mousePressEvent(QMouseEvent *event) override;
 
 private:
-    void animateBgTo(const QColor &target);
-
     QCheckBox *_box;
     IChannelCheck *_checked;
     int     _index;
-    QColor  _animBgColor;
-    QPropertyAnimation *_bgAnim;
     static const QColor PROBE_COLORS[8];
 };
 
