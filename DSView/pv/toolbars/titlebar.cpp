@@ -155,8 +155,8 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     mainLayout->addWidget(_ribbonPanel);
 
     _ribbonAnimation = new QPropertyAnimation(this, "slideProgress");
-    _ribbonAnimation->setDuration(150);
-    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    _ribbonAnimation->setDuration(250);
+    _ribbonAnimation->setEasingCurve(QEasingCurve::InOutCubic);
 
     connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this](){
         if (_slideProgress <= 0.01) {
@@ -330,11 +330,28 @@ void TitleBar::setSlideProgress(qreal progress)
 void TitleBar::updateRibbonGeometry()
 {
     int visibleH = qRound(_ribbonExpandedHeight * _slideProgress);
-    _ribbonPanel->setFixedHeight(visibleH);
 
-    if (layout()) {
+    // Batch all geometry changes to avoid partial-frame rendering.
+    // setUpdatesEnabled(false) suppresses repaints until re-enabled,
+    // preventing the "old height + new content" tearing effect.
+    bool needsBatch = (_ribbonAnimation->state() == QAbstractAnimation::Running);
+    if (needsBatch)
+        _ribbonPanel->setUpdatesEnabled(false);
+
+    // Use setMinimumHeight/setMaximumHeight separately instead of
+    // setFixedHeight to avoid triggering two consecutive constraint
+    // invalidations (setFixedHeight calls both setMin and setMax
+    // internally, each one invalidating the layout).
+    _ribbonPanel->setMinimumHeight(visibleH);
+    _ribbonPanel->setMaximumHeight(visibleH);
+
+    // Force synchronous layout so the parent VBoxLayout resolves
+    // all child positions within this frame — not deferred to next.
+    if (layout())
         layout()->activate();
-    }
+
+    if (needsBatch)
+        _ribbonPanel->setUpdatesEnabled(true);
 }
 
 void TitleBar::reStyle()
