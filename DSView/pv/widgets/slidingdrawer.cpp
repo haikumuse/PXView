@@ -381,15 +381,16 @@ void SlidingDrawer::updatePanelGeometry()
     int parent_h = p->height();
 
     // Resize this overlay to fill parent vertically, but only cover the drawer width horizontally
-    // This allows clicking on the left side content when drawer is open
     int panel_x = parent_w - qRound(_drawer_width * _slide_progress);
     setGeometry(panel_x, 0, _drawer_width, parent_h);
 
-    // Panel always has full drawer_width — it just moves left/right
-    _panel->setGeometry(0, 0, _drawer_width, parent_h);
-
-    // Content is always at (0,0) inside the panel — no shift, the whole thing moves together
-    _panel_content->setGeometry(0, 0, _drawer_width, parent_h);
+    // VITAL FIX: Do not force the internal content to shrink with the parent window.
+    // By keeping the panel height at its full required size (or at least the parent's max height),
+    // we prevent the "crushing" effect where all buttons try to cram into a smaller space.
+    // The parent setGeometry already acts as a clipping mask.
+    int content_h = qMax(parent_h, 1000); // Ensure it's tall enough to not squash content
+    _panel->setGeometry(0, 0, _drawer_width, content_h);
+    _panel_content->setGeometry(0, 0, _drawer_width, content_h);
 
     _edge_grip->setGeometry(0, 0, EDGE_GRIP_WIDTH, parent_h);
     _edge_grip->raise();

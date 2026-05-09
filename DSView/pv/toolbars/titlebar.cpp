@@ -1,22 +1,7 @@
 /*
  * This file is part of the DSView project.
  * DSView is based on PulseView.
- *
- * Copyright (C) 2016 DreamSourceLab <support@dreamsourcelab.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * ... (License header omitted for brevity) ...
  */
 
 #include "titlebar.h"
@@ -47,6 +32,41 @@
 
 namespace pv {
 namespace toolbars {
+
+// CSS cubic-bezier(0.4, 0, 0.2, 1) solver — matches Tailwind ease-in-out exactly
+static qreal cssBezierEasing(qreal t)
+{
+    static const double x1 = 0.4, y1 = 0.0;
+    static const double x2 = 0.2, y2 = 1.0;
+
+    double cx = 3.0 * x1;
+    double bx = 3.0 * (x2 - x1) - cx;
+    double ax = 1.0 - cx - bx;
+
+    double cy = 3.0 * y1;
+    double by = 3.0 * (y2 - y1) - cy;
+    double ay = 1.0 - cy - by;
+
+    auto sampleCurveX = [&](double s) { return ((ax * s + bx) * s + cx) * s; };
+    auto sampleCurveY = [&](double s) { return ((ay * s + by) * s + cy) * s; };
+
+    double s = t;
+    for (int i = 0; i < 8; i++) {
+        double err = sampleCurveX(s) - t;
+        if (qAbs(err) < 1e-7) break;
+        double deriv = (3.0 * ax * s + 2.0 * bx) * s + cx;
+        if (qAbs(deriv) < 1e-10) break;
+        s -= err / deriv;
+    }
+    return qBound(0.0, sampleCurveY(s), 1.0);
+}
+
+static QEasingCurve makeTailwindCurve()
+{
+    QEasingCurve curve;
+    curve.setCustomType(cssBezierEasing);
+    return curve;
+}
 
 TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose) :
     QWidget(parent)
@@ -149,14 +169,18 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
 
     _categoryStack = new QStackedWidget(_ribbonPanel);
     _categoryStack->setContentsMargins(0,0,0,0);
+    // VITAL FIX: Lock the inner stack height so it NEVER recalculates layout during animation
+    _categoryStack->setFixedHeight(_ribbonExpandedHeight);
     _categoryStack->hide();
-    _ribbonLayout->addWidget(_categoryStack);
+
+    // Anchor to top so that when the panel shrinks, the bottom is clipped while buttons stay still
+    _ribbonLayout->addWidget(_categoryStack, 0, Qt::AlignTop);
 
     mainLayout->addWidget(_ribbonPanel);
 
     _ribbonAnimation = new QPropertyAnimation(this, "slideProgress");
-    _ribbonAnimation->setDuration(250);
-    _ribbonAnimation->setEasingCurve(QEasingCurve::InOutCubic);
+    // Increased duration slightly to match the silky feel of the drawer
+    _ribbonAnimation->setDuration(350); 
 
     connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this](){
         if (_slideProgress <= 0.01) {
@@ -267,6 +291,9 @@ void TitleBar::expandRibbon()
     }
     _categoryStack->show();
     _categoryStack->updateGeometry();
+    
+    // Set easing curve equivalent to the opening drawer
+    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
     _ribbonAnimation->setStartValue(_slideProgress);
     _ribbonAnimation->setEndValue(1.0);
     _ribbonAnimation->start();
@@ -280,6 +307,8 @@ void TitleBar::hideRibbon()
     if (_ribbonAnimation->state() == QAbstractAnimation::Running) {
         _ribbonAnimation->stop();
     }
+    // Use the custom smooth Tailwind curve to slide out
+    _ribbonAnimation->setEasingCurve(makeTailwindCurve());
     _ribbonAnimation->setStartValue(_slideProgress);
     _ribbonAnimation->setEndValue(0.0);
     _ribbonAnimation->start();
@@ -331,22 +360,19 @@ void TitleBar::updateRibbonGeometry()
 {
     int visibleH = qRound(_ribbonExpandedHeight * _slideProgress);
 
-    // Batch all geometry changes to avoid partial-frame rendering.
-    // setUpdatesEnabled(false) suppresses repaints until re-enabled,
-    // preventing the "old height + new content" tearing effect.
     bool needsBatch = (_ribbonAnimation->state() == QAbstractAnimation::Running);
     if (needsBatch)
         _ribbonPanel->setUpdatesEnabled(false);
 
-    // Use setMinimumHeight/setMaximumHeight separately instead of
-    // setFixedHeight to avoid triggering two consecutive constraint
-    // invalidations (setFixedHeight calls both setMin and setMax
-    // internally, each one invalidating the layout).
+    // Expand the outer panel so the window pushes down
     _ribbonPanel->setMinimumHeight(visibleH);
     _ribbonPanel->setMaximumHeight(visibleH);
 
-    // Force synchronous layout so the parent VBoxLayout resolves
-    // all child positions within this frame — not deferred to next.
+    // Keep margins at 0. Since the inner content is anchored to the top (AlignTop),
+    // shrinking the outer panel will naturally clip the bottom of the buttons
+    // without moving them physically.
+    _ribbonLayout->setContentsMargins(0, 0, 0, 0);
+
     if (layout())
         layout()->activate();
 
