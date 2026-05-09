@@ -500,6 +500,15 @@ QString GetAppDataDir()
 
 #endif
 
+#ifdef Q_OS_WIN
+    // On Windows, try ../share/PXView first (install directory structure)
+    QDir dir(QCoreApplication::applicationDirPath());
+    if (dir.cd("..") && dir.cd("share") && dir.cd("PXView"))
+    {
+         return dir.absolutePath();        
+    }
+#endif
+
     // The bin location
     return QCoreApplication::applicationDirPath();
 #endif
@@ -549,13 +558,13 @@ QString GetDecodeScriptDir()
     // ./decoders
     if (dir1.exists(path))
     {
-         return path;     QColor GetStyleColor();
+         return path;
     }
 
     // QDir dir(QCoreApplication::applicationDirPath());
     // if (dir.cd("..") && dir.cd("share") && dir.cd("libsigrokdecode") && dir.cd("decoders"))
     // {
-    //      return dir.absolutePath();        
+    //      return dir.absolutePath();
     // }
 
 #ifdef Q_OS_DARWIN
@@ -573,7 +582,15 @@ QString GetDecodeScriptDir()
     //if (dir.cd("..") && dir.cd("share")&& dir.cd("PXView")  && dir.cd("libsigrokdecode") && dir.cd("decoders"))
     if (dir.cd("..") && dir.cd("share") && dir.cd("libsigrokdecode") && dir.cd("decoders"))
     {
-        return dir.absolutePath();        
+        return dir.absolutePath();
+    }
+
+#elif defined(Q_OS_WIN)
+    // On Windows, try ../share/libsigrokdecode/decoders (install directory structure)
+    QDir dir(QCoreApplication::applicationDirPath());
+    if (dir.cd("..") && dir.cd("share") && dir.cd("libsigrokdecode") && dir.cd("decoders"))
+    {
+        return dir.absolutePath();
     }
 #endif
     return "";

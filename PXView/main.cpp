@@ -168,6 +168,12 @@ bool bHighScale = true;
 	}
 #endif 
 
+	//----------------------GPU Hardware Acceleration
+	// 启用 OpenGL 硬件加速渲染
+	QApplication::setAttribute(Qt::AA_UseDesktopOpenGL);
+	// 启用高分屏 OpenGL 支持
+	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
 	//----------------------init app
     QApplication a(argcFinal, argvFinal);
     a.setStyle(new MyStyle);

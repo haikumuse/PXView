@@ -1217,11 +1217,24 @@ void View::paintEvent(QPaintEvent *event)
     QScrollArea::paintEvent(event);
 }
 
-void View::resizeEvent(QResizeEvent*)
+void View::resizeEvent(QResizeEvent *event)
 {
     int width = get_view_width();
 
     if (width == 0){
+        return;
+    }
+
+    // 优化：如果只是高度变化（如 TitleBar Ribbon 展开/折叠），且宽度不变，
+    // 则跳过大部分重计算，因为 viewport 只是被平移，内容没有变化
+    static int lastWidth = -1;
+    bool widthChanged = (lastWidth != width);
+    lastWidth = width;
+
+    if (!widthChanged) {
+        // 仅更新必要的部分，避免重绘 viewport
+        setViewportMargins(headerWidth(), RulerHeight, 0, 0);
+        _header->header_resize();
         return;
     }
 

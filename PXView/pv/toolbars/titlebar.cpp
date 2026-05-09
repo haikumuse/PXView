@@ -34,41 +34,6 @@
 namespace pv {
 namespace toolbars {
 
-// CSS cubic-bezier(0.4, 0, 0.2, 1) solver — matches Tailwind ease-in-out exactly
-static qreal cssBezierEasing(qreal t)
-{
-    static const double x1 = 0.4, y1 = 0.0;
-    static const double x2 = 0.2, y2 = 1.0;
-
-    double cx = 3.0 * x1;
-    double bx = 3.0 * (x2 - x1) - cx;
-    double ax = 1.0 - cx - bx;
-
-    double cy = 3.0 * y1;
-    double by = 3.0 * (y2 - y1) - cy;
-    double ay = 1.0 - cy - by;
-
-    auto sampleCurveX = [&](double s) { return ((ax * s + bx) * s + cx) * s; };
-    auto sampleCurveY = [&](double s) { return ((ay * s + by) * s + cy) * s; };
-
-    double s = t;
-    for (int i = 0; i < 8; i++) {
-        double err = sampleCurveX(s) - t;
-        if (qAbs(err) < 1e-7) break;
-        double deriv = (3.0 * ax * s + 2.0 * bx) * s + cx;
-        if (qAbs(deriv) < 1e-10) break;
-        s -= err / deriv;
-    }
-    return qBound(0.0, sampleCurveY(s), 1.0);
-}
-
-static QEasingCurve makeTailwindCurve()
-{
-    QEasingCurve curve;
-    curve.setCustomType(cssBezierEasing);
-    return curve;
-}
-
 TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose) :
     QWidget(parent)
 {
@@ -91,7 +56,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
    _ribbonAnimation = NULL;
    _ribbonExpanded = false;
    _ribbonExpandedHeight = 65;
-   _slideProgress = 0.0;
 
     assert(parent);
 
@@ -159,9 +123,11 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
 
     mainLayout->addWidget(titleRow);
 
+    // --- 优化的 Ribbon Panel ---
     _ribbonPanel = new QWidget(this);
     _ribbonPanel->setObjectName("RibbonPanel");
     _ribbonPanel->setContentsMargins(0,0,0,0);
+    // VITAL: 初始强制固定高度为0，彻底锁死布局
     _ribbonPanel->setFixedHeight(0);
 
     _ribbonLayout = new QVBoxLayout(_ribbonPanel);
@@ -170,29 +136,30 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
 
     _categoryStack = new QStackedWidget(_ribbonPanel);
     _categoryStack->setContentsMargins(0,0,0,0);
-    // VITAL FIX: Lock the inner stack height so it NEVER recalculates layout during animation
+    // VITAL: 锁死内部堆栈高度，使其在父容器缩放时永远不重算布局
     _categoryStack->setFixedHeight(_ribbonExpandedHeight);
-    _categoryStack->hide();
-
-    // Anchor to top so that when the panel shrinks, the bottom is clipped while buttons stay still
+    
+    // 移除 .hide()。让它一直处于显示状态，只是被 _ribbonPanel 的 0 高度"裁切"掉了。
+    // 这样在展开时不会产生重建渲染树的卡顿。
     _ribbonLayout->addWidget(_categoryStack, 0, Qt::AlignTop);
 
     mainLayout->addWidget(_ribbonPanel);
 
-    _ribbonAnimation = new QPropertyAnimation(this, "slideProgress");
-    // Increased duration slightly to match the silky feel of the drawer
-    _ribbonAnimation->setDuration(350); 
-
-    connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this](){
-        if (_slideProgress <= 0.01) {
-            _categoryStack->hide();
-        }
-    });
+    // --- 优化的动画引擎 ---
+    // 直接操作 ribbonHeight 属性 (对应 int setRibbonHeight)
+    _ribbonAnimation = new QPropertyAnimation(this, "ribbonHeight");
+    
+    // UI反馈建议：350ms 太长会有粘滞感，250ms 更符合现代流畅 UI 标准
+    _ribbonAnimation->setDuration(250);
+    
+    // QEasingCurve::OutCubic: 像抽屉一样，开头快，结尾柔和，非常丝滑
+    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
 
     connect(_tabBar, &QTabBar::tabBarClicked, this, &TitleBar::onTabClicked);
     connect(_tabBar, &QTabBar::currentChanged, this, &TitleBar::onTabChanged);
 
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    // TitleBar 高度固定为 titleRow(32) + ribbonPanel(动态)，使用 Fixed 避免布局抖动
+    setFixedHeight(32); // 初始只有标题行高度
 
     ADD_UI(this);
 }
@@ -290,17 +257,13 @@ void TitleBar::expandRibbon()
     if (_ribbonAnimation->state() == QAbstractAnimation::Running) {
         _ribbonAnimation->stop();
     }
-    _categoryStack->show();
-    _categoryStack->updateGeometry();
     
-    // Set easing curve equivalent to the opening drawer
-    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
-    _ribbonAnimation->setStartValue(_slideProgress);
-    _ribbonAnimation->setEndValue(1.0);
+    // 从当前高度动态开始，防止反向点击时跳跃
+    _ribbonAnimation->setStartValue(_ribbonPanel->height());
+    _ribbonAnimation->setEndValue(_ribbonExpandedHeight);
+    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic); // 展开时用 OutCubic
     _ribbonAnimation->start();
     _ribbonExpanded = true;
-
-    dsv_info("TitleBar::expandRibbon expandedHeight=%d", _ribbonExpandedHeight);
 }
 
 void TitleBar::hideRibbon()
@@ -308,20 +271,16 @@ void TitleBar::hideRibbon()
     if (_ribbonAnimation->state() == QAbstractAnimation::Running) {
         _ribbonAnimation->stop();
     }
-    // Use the custom smooth Tailwind curve to slide out
-    _ribbonAnimation->setEasingCurve(makeTailwindCurve());
-    _ribbonAnimation->setStartValue(_slideProgress);
-    _ribbonAnimation->setEndValue(0.0);
+    _ribbonAnimation->setStartValue(_ribbonPanel->height());
+    _ribbonAnimation->setEndValue(0);
+    // 收起时可以用 InOutCubic 或者 OutCubic
+    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
     _ribbonAnimation->start();
     _ribbonExpanded = false;
-
-    dsv_info("TitleBar::hideRibbon");
 }
 
 void TitleBar::onTabClicked(int index)
 {
-    dsv_info("TitleBar::onTabClicked index=%d expanded=%d currentIndex=%d",
-        index, _ribbonExpanded, _tabBar->currentIndex());
 
     if (_ribbonExpanded && index == _tabBar->currentIndex()) {
         hideRibbon();
@@ -332,49 +291,39 @@ void TitleBar::onTabClicked(int index)
 
 void TitleBar::onTabChanged(int index)
 {
-    dsv_info("TitleBar::onTabChanged index=%d", index);
-
     if (index >= 0 && index < _categoryStack->count()) {
         _categoryStack->setCurrentIndex(index);
     }
 }
 
-qreal TitleBar::slideProgress() const
+// 核心优化：直接固定高度，一次性解决布局计算，杜绝抽搐
+int TitleBar::ribbonHeight() const
 {
-    return _slideProgress;
+    return _ribbonPanel->height();
 }
 
-void TitleBar::setSlideProgress(qreal progress)
+void TitleBar::setRibbonHeight(int h)
 {
-    progress = qBound(0.0, progress, 1.0);
-    if (qFuzzyCompare(_slideProgress, progress))
-        return;
-    _slideProgress = progress;
-    updateRibbonGeometry();
+    // setFixedHeight 内部只触发一次 Layout Request，远胜于设置 Min/Max
+    _ribbonPanel->setFixedHeight(h);
+    
+    // 同步更新 TitleBar 自身的固定高度，避免布局系统反复计算
+    // titleRow 高度为 32，加上 ribbonPanel 的动态高度
+    int totalHeight = 32 + h;
+    setFixedHeight(totalHeight);
 }
 
-void TitleBar::updateRibbonGeometry()
+// 核心优化 2：替换掉极度耗性能的 childAt(pos)
+bool TitleBar::isOnTabBar(const QPoint &pos) const
 {
-    int visibleH = qRound(_ribbonExpandedHeight * _slideProgress);
-
-    bool needsBatch = (_ribbonAnimation->state() == QAbstractAnimation::Running);
-    if (needsBatch)
-        _ribbonPanel->setUpdatesEnabled(false);
-
-    // Expand the outer panel so the window pushes down
-    _ribbonPanel->setMinimumHeight(visibleH);
-    _ribbonPanel->setMaximumHeight(visibleH);
-
-    // Keep margins at 0. Since the inner content is anchored to the top (AlignTop),
-    // shrinking the outer panel will naturally clip the bottom of the buttons
-    // without moving them physically.
-    _ribbonLayout->setContentsMargins(0, 0, 0, 0);
-
-    if (layout())
-        layout()->activate();
-
-    if (needsBatch)
-        _ribbonPanel->setUpdatesEnabled(true);
+    // 直接用坐标几何判断，避免 O(N) 复杂度的控件树遍历
+    if (_tabBar->rect().contains(_tabBar->mapFrom(this, pos))) {
+        return true;
+    }
+    if (_ribbonExpanded && _ribbonPanel->rect().contains(_ribbonPanel->mapFrom(this, pos))) {
+        return true;
+    }
+    return false;
 }
 
 void TitleBar::reStyle()
@@ -450,26 +399,9 @@ void TitleBar::setRestoreButton(bool max)
     }
 }
 
-bool TitleBar::isOnTabBar(const QPoint &pos) const
-{
-    QWidget *child = childAt(pos);
-    if (!child)
-        return false;
-
-    if (child == _tabBar || child == _ribbonPanel)
-        return true;
-
-    QWidget *w = child;
-    while (w) {
-        if (w == _tabBar || w == _ribbonPanel)
-            return true;
-        w = w->parentWidget();
-    }
-    return false;
-}
-
 void TitleBar::mousePressEvent(QMouseEvent* event)
 {
+    // 使用优化后的判断方法
     if (isOnTabBar(event->pos())) {
         QWidget::mousePressEvent(event);
         return;

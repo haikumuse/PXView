@@ -2800,7 +2800,7 @@ namespace pv
         QString title = ctx->title();
 
         if (ctx->is_live()) {
-            _tab_widget->setTabText(index, QString::fromUtf8("\xe2\x97\x8f ") + title);
+            _tab_widget->setTabText(index, title);
             _tab_widget->tabBar()->setTabTextColor(index, QColor(76, 175, 80));
         } else if (ctx->has_data()) {
             _tab_widget->setTabText(index, title);
@@ -2916,7 +2916,7 @@ namespace pv
 
         pv::TabContext *new_ctx = SessionManager::instance()->create_context(new_view, _session, new_doc);
         _session->register_document(new_doc);
-        new_ctx->set_title(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
+        new_ctx->set_title(QString::fromUtf8("标签%1").arg(_tab_contexts.size() + 1));
         add_tab(new_ctx);
     }   
   

@@ -1697,6 +1697,7 @@ QTabBar::tab:hover:!selected {
 
 QTabBar::tab:selected:hover {
     background: transparent;
+    border-bottom: 2px solid #ffffff;
 }
 
 QWidget#RibbonPanel {

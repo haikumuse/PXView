@@ -640,13 +640,12 @@ set(PXView_RESOURCES
 
 
 if(WIN32)
-	# Use the DSView icon for the DSView.exe executable.
-	set(CMAKE_RC_COMPILE_OBJECT "${CMAKE_RC_COMPILER} -O coff -I${CMAKE_CURRENT_SOURCE_DIR} <SOURCE> <OBJECT>")
+	# Use the PXView icon for the PXView.exe executable.
 	enable_language(RC)
 	# app icon
-        list(APPEND DSView_SOURCES applogo.rc)
-	# MinGW Unicode support
-	add_definitions(-municode)
+        list(APPEND PXView_SOURCES applogo.rc)
+	# Unicode support for Windows API
+	add_definitions(-DUNICODE -D_UNICODE)
 endif()
 
 if(Qt5Core_FOUND)
@@ -659,10 +658,14 @@ endif()
 
 
 add_definitions(${QT_DEFINITIONS})
-add_definitions(-Wall -Wextra -Wno-return-type -Wno-ignored-qualifiers)
+
+# Compiler warnings - only for C/C++, not for RC
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-return-type -Wno-ignored-qualifiers")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-return-type -Wno-ignored-qualifiers")
 
 if(NOT DISABLE_WERROR)
-        add_definitions(-Werror)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 endif()
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -804,14 +807,20 @@ endforeach()
 if(WIN32)
     # Create lang directories in output directory
     file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/lang/cn)
+    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/lang/cn/dec)
     file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/lang/en)
 
     # Copy language files
     file(GLOB CN_LANG_FILES ${CMAKE_CURRENT_SOURCE_DIR}/lang/cn/*.json)
+    file(GLOB CN_DEC_LANG_FILES ${CMAKE_CURRENT_SOURCE_DIR}/lang/cn/dec/*.json)
     file(GLOB EN_LANG_FILES ${CMAKE_CURRENT_SOURCE_DIR}/lang/en/*.json)
 
     foreach(file ${CN_LANG_FILES})
         file(COPY ${file} DESTINATION ${EXECUTABLE_OUTPUT_PATH}/lang/cn)
+    endforeach()
+
+    foreach(file ${CN_DEC_LANG_FILES})
+        file(COPY ${file} DESTINATION ${EXECUTABLE_OUTPUT_PATH}/lang/cn/dec)
     endforeach()
 
     foreach(file ${EN_LANG_FILES})

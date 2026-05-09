@@ -209,16 +209,16 @@ void LogoBar::on_actionManual_triggered()
 
 void LogoBar::on_actionIssue_triggered()
 {
-    QDesktopServices::openUrl(QUrl(QLatin1String("https://github.com/DreamSourceLab/DSView/issues")));
+    QDesktopServices::openUrl(QUrl(QLatin1String("https://github.com/PXLogic/PXView/issues")));
 }
 
  void LogoBar::on_action_update()
  {
      if (AppConfig::Instance().frameOptions.language == LAN_CN){
-         QDesktopServices::openUrl(QUrl(QLatin1String("https://dreamsourcelab.cn/download/")));
+         QDesktopServices::openUrl(QUrl(QLatin1String("https://github.com/PXLogic/PXView")));
      }
      else{
-         QDesktopServices::openUrl(QUrl(QLatin1String("https://www.dreamsourcelab.com/download/")));
+         QDesktopServices::openUrl(QUrl(QLatin1String("https://github.com/PXLogic/PXView")));
      }
  }
 
