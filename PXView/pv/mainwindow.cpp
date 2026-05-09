@@ -28,7 +28,6 @@
 #include <QMenu>
 #include <QStatusBar>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QWidget>
 #include <QDesktopServices>
 #include <QKeyEvent>
@@ -176,13 +175,7 @@ namespace pv
         _side_bar->addItem("single.svg", S_ID(IDS_TOOLBAR_ONE_INSTANT), "Instant",
                             widgets::SideBar::ActionItem);
 
-        _vertical_layout->removeWidget(_tab_widget);
-        QHBoxLayout *hbox = new QHBoxLayout();
-        hbox->setSpacing(0);
-        hbox->setContentsMargins(0, 0, 0, 0);
-        hbox->addWidget(_tab_widget, 1);
-        hbox->addWidget(_side_bar, 0);
-        _vertical_layout->addLayout(hbox);
+        addToolBar(Qt::RightToolBarArea, _side_bar);
 
         connect(_side_bar, &widgets::SideBar::dockItemClicked,
                 this, &MainWindow::on_side_bar_dock_clicked);

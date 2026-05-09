@@ -109,14 +109,26 @@ static uint8_t c_decoder_get_pin_impl(struct srd_decoder_inst *di, int ch, uint6
     int sig_idx;
     uint64_t byte_offset;
     uint8_t bit_offset;
+    uint64_t offset;
 
     if (!di || ch < 0 || ch >= di->dec_num_channels)
         return 0;
     sig_idx = di->dec_channelmap[ch];
     if (sig_idx < 0 || !di->inbuf || !di->inbuf[sig_idx])
         return 0;
-    byte_offset = (samplenum - di->abs_start_samplenum) / 8;
-    bit_offset = (samplenum - di->abs_start_samplenum) % 8;
+
+    /* abs_start_samplenum is aligned to 8-byte boundary, but
+     * abs_cur_samplenum starts from the original unaligned value.
+     * This means samplenum - abs_start_samplenum can exceed inbuflen,
+     * causing out-of-bounds access. Guard against it. */
+    if (samplenum < di->abs_start_samplenum)
+        return 0;
+    offset = samplenum - di->abs_start_samplenum;
+    if (offset >= di->inbuflen)
+        return 0;
+
+    byte_offset = offset / 8;
+    bit_offset = offset % 8;
     return (di->inbuf[sig_idx][byte_offset] >> bit_offset) & 1;
 }
 
@@ -1505,11 +1517,12 @@ SRD_PRIV int srd_inst_decode(struct srd_decoder_inst *di,
 		}
 
 		g_mutex_lock(&di->data_mutex);
+		uint64_t align_offset = abs_start_samplenum & 7;
 		di->abs_start_samplenum = abs_start_samplenum & ~7ULL;
 		di->abs_end_samplenum = abs_end_samplenum;
 		di->inbuf = inbuf;
 		di->inbuf_const = inbuf_const;
-		di->inbuflen = inbuflen;
+		di->inbuflen = inbuflen + align_offset;
 		di->got_new_samples = TRUE;
 		di->handled_all_samples = FALSE;
 		g_cond_signal(&di->got_new_samples_cond);

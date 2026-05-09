@@ -793,7 +793,16 @@ void DeviceOptionsDock::build_dynamic_panel() {
   _isBuilding = true;
 
   if (_dynamic_panel != NULL) {
-    _container_lay->removeWidget(_dynamic_panel);
+    int idx = 0;
+    QLayoutItem *item = nullptr;
+    while ((item = _container_lay->itemAt(idx)) != nullptr) {
+      if (item->widget() == _dynamic_panel) {
+        _container_lay->takeAt(idx);
+        delete item;
+        break;
+      }
+      idx++;
+    }
     delete _dynamic_panel;
     _dynamic_panel = NULL;
   }
@@ -802,7 +811,7 @@ void DeviceOptionsDock::build_dynamic_panel() {
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
 
   if (_dynamic_panel == NULL) {
-    _dynamic_panel = new QGroupBox("group", _dynamic_panel);
+    _dynamic_panel = new QGroupBox("group", _container_panel);
     _dynamic_panel->setFont(font);
     _container_lay->insertWidget(0, _dynamic_panel);
 
