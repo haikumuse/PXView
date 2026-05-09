@@ -266,6 +266,7 @@ void TitleBar::expandRibbon()
         _ribbonAnimation->stop();
     }
     _categoryStack->show();
+    _categoryStack->updateGeometry();
     _ribbonAnimation->setStartValue(_slideProgress);
     _ribbonAnimation->setEndValue(1.0);
     _ribbonAnimation->start();
@@ -331,8 +332,8 @@ void TitleBar::updateRibbonGeometry()
     int visibleH = qRound(_ribbonExpandedHeight * _slideProgress);
     _ribbonPanel->setFixedHeight(visibleH);
 
-    if (visibleH > 0 && !_categoryStack->isVisible()) {
-        _categoryStack->show();
+    if (layout()) {
+        layout()->activate();
     }
 }
 
