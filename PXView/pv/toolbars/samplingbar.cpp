@@ -71,11 +71,8 @@ namespace pv
         SamplingBar::SamplingBar(SigSession *session, QWidget *parent) : QToolBar("Sampling Bar", parent),
                                                                          _device_type(this),
                                                                          _device_selector(this),
-                                                                         _configure_button(this),
                                                                          _sample_count(this),
                                                                          _sample_rate(this),
-                                                                         _run_stop_button(this),
-                                                                         _instant_button(this),
                                                                          _mode_button(this)
         {
             _updating_device_list = false;
@@ -108,9 +105,6 @@ namespace pv
             _sample_count.setSizeAdjustPolicy(DsComboBox::AdjustToContents);
             _device_selector.setMaximumWidth(ComboBoxMaxWidth);
 
-            //tr
-            _run_stop_button.setObjectName("run_stop_button");
-
             QWidget *leftMargin = new QWidget(this);
             leftMargin->setFixedWidth(4);
             addWidget(leftMargin);
@@ -123,12 +117,6 @@ namespace pv
             addWidget(_device_type_label);
             addWidget(new QLabel("  "));
             addWidget(&_device_selector);
-            
-            _configure_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-            _configure_button.setCheckable(true);
-            _configure_button.setChecked(false);
-
-            addWidget(new QLabel("  "));
 
             addWidget(&_sample_count);
             //tr
@@ -152,23 +140,12 @@ namespace pv
                 return action;
             };
 
-            _configure_action = widgetToAction(&_configure_button);
-
             _mode_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
             _mode_action = widgetToAction(&_mode_button);
-
-            _run_stop_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-            _run_stop_action = widgetToAction(&_run_stop_button);
-            _instant_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-            _instant_action = widgetToAction(&_instant_button);
-            _instant_action->setVisible(true);
 
             update_view_status();
 
             connect(&_device_selector, SIGNAL(currentIndexChanged(int)), this, SLOT(on_device_selected()));
-            connect(&_configure_button, SIGNAL(clicked()), this, SLOT(on_configure()));
-            connect(&_run_stop_button, SIGNAL(clicked()), this, SLOT(on_run_stop()));
-            connect(&_instant_button, SIGNAL(clicked()), this, SLOT(on_instant_stop()));
             connect(&_sample_count, SIGNAL(currentIndexChanged(int)), this, SLOT(on_samplecount_sel(int)));
             connect(_action_single, SIGNAL(triggered()), this, SLOT(on_collect_mode()));
             connect(_action_repeat, SIGNAL(triggered()), this, SLOT(on_collect_mode()));
@@ -338,36 +315,7 @@ namespace pv
                         _device_type_label->setText("USB UNKNOWN");
                 }
             }
-            _configure_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options"));
            _mode_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE), "Mode"));
-
-            int mode = _device_agent->get_work_mode();
-            bool is_working = _session->is_working();
-
-            auto str_start = L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_RUN_START), "Start");
-            auto str_stop  = L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_RUN_STOP), "Stop");
-            auto str_single  = L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_ONE_SINGLE), "Single");
-            auto str_instant  = L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_ONE_INSTANT), "Instant");
-            auto str_one_stop  = L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_ONE_STOP), "Stop");
-
-            if (_is_run_as_instant)
-            {
-                if (bDev && mode == DSO)
-                    _instant_button.setText(is_working ? str_one_stop : str_single);
-                else
-                    _instant_button.setText(is_working ? str_one_stop : str_instant);
-
-                _run_stop_button.setText(str_start);
-            }
-            else
-            {
-                _run_stop_button.setText(is_working ? str_stop: str_start);
-
-                if (bDev && mode == DSO)
-                    _instant_button.setText(str_single);
-                else
-                    _instant_button.setText(str_instant);
-            }
 
             _action_single->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_SINGLE), "&Single"));
             _action_repeat->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_REPEAT), "&Repetitive"));
@@ -399,11 +347,6 @@ namespace pv
             if (true)
             {
                 QString iconPath = GetIconPath();
-                _configure_button.setIcon(QIcon(iconPath + "/params.svg"));
-            
-                QString icon2 = _session->is_working() ? "stop.svg" : "start.svg";
-                _run_stop_button.setIcon(QIcon(iconPath + "/" + icon2));
-                _instant_button.setIcon(QIcon(iconPath + "/single.svg"));
 
                 _action_single->setIcon(QIcon(iconPath + SINGLE_ACTION_ICON));
                 _action_repeat->setIcon(QIcon(iconPath + REPEAT_ACTION_ICON));
@@ -411,18 +354,6 @@ namespace pv
 
                 update_mode_icon();
             }
-        }
-
-        void SamplingBar::on_configure()
-        {
-            if (_device_agent->have_instance() == false)
-            {
-                dsv_info("Have no device, can't to set device config.");
-                _configure_button.setChecked(false);
-                return;
-            }
-
-            emit sig_device_options(_configure_button.isChecked());
         }
 
         void SamplingBar::zero_adj()
@@ -934,14 +865,12 @@ namespace pv
 
         void SamplingBar::on_run_stop()
         {
-            _run_stop_button.setEnabled(false);
             QTimer::singleShot(10, this, &SamplingBar::on_run_stop_action);
         }
 
         void SamplingBar::on_run_stop_action()
         {
             action_run_stop();
-            _run_stop_button.setEnabled(true);
         }
       
         // start or stop capture
@@ -1004,17 +933,12 @@ namespace pv
 
         void SamplingBar::on_instant_stop()
         {
-            if (_instant_action->isVisible() == false){
-                return;
-            }
-            _instant_button.setEnabled(false);
             QTimer::singleShot(10, this, &SamplingBar::on_instant_stop_action);
         }
 
         void SamplingBar::on_instant_stop_action()
         {
             action_instant_stop();
-            _instant_button.setEnabled(true);
         }
 
         bool SamplingBar::action_instant_stop()
@@ -1151,18 +1075,12 @@ namespace pv
                         _session->set_collect_mode(COLLECT_SINGLE);
                     }
                 }
-                _run_stop_action->setVisible(true);
-                _instant_action->setVisible(true);
             }
             else if (mode == ANALOG)
             {
-                _run_stop_action->setVisible(true);
-                _instant_action->setVisible(false);
             }
             else if (mode == DSO)
             {
-                _run_stop_action->setVisible(true);
-                _instant_action->setVisible(true);
             }
 
             if (_radio_single) {
@@ -1330,10 +1248,6 @@ namespace pv
 
         void SamplingBar::config_device()
         {
-            if (_configure_button.isVisible() && _configure_button.isEnabled()){
-                _configure_button.setChecked(true);
-                emit sig_device_options(true);
-            }
         }
 
         void SamplingBar::update_view_status()
@@ -1342,7 +1256,6 @@ namespace pv
             int mode = _session->get_device()->get_work_mode();
 
             _device_type.setEnabled(bEnable);
-            _configure_button.setEnabled(bEnable);
             _device_selector.setEnabled(bEnable);
 
             if (_radio_single) {
@@ -1386,23 +1299,6 @@ namespace pv
                 }
             }
 
-            if (_session->is_working()){
-                if (_is_run_as_instant)
-                    _run_stop_button.setEnabled(false);
-                else
-                    _instant_button.setEnabled(false);
-            } else {
-                _run_stop_button.setEnabled(true);
-                _instant_button.setEnabled(true);                
-            }
- 
-            QString iconPath = GetIconPath();
-
-            if (_is_run_as_instant)
-                _instant_button.setIcon(!bEnable ? QIcon(iconPath + "/stop.svg") : QIcon(iconPath + "/single.svg"));
-            else
-                _run_stop_button.setIcon(!bEnable ? QIcon(iconPath + "/stop.svg") : QIcon(iconPath + "/start.svg"));
- 
             retranslateUi();
 
             if (bEnable){
@@ -1489,12 +1385,9 @@ namespace pv
         {
             _is_readonly = readonly;
 
-            _run_stop_button.setEnabled(!readonly);
-            _instant_button.setEnabled(!readonly);
             _device_selector.setEnabled(!readonly);
             _sample_rate.setEnabled(!readonly);
             _sample_count.setEnabled(!readonly);
-            _configure_button.setEnabled(!readonly);
             _mode_button.setEnabled(!readonly);
         }
 

@@ -142,6 +142,7 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     _cursor_layout->setContentsMargins(5, 15, 5, 5);
 
     QVBoxLayout *layout = new QVBoxLayout(_widget);
+    layout->setContentsMargins(12, 8, 12, 8);
     layout->addWidget(_mouse_groupBox);
     layout->addWidget(_dist_groupBox);
     layout->addWidget(_edge_groupBox);
@@ -149,6 +150,8 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     layout->addStretch(1);
     _widget->setLayout(layout);
 
+    this->setFrameShape(QFrame::NoFrame);
+    this->setObjectName("dock_measure_scroll");
     this->setWidget(_widget);
     _widget->setGeometry(0, 0, sizeHint().width(), 2000);
     _widget->setObjectName("measureWidget");
@@ -897,10 +900,11 @@ void MeasureDock::set_cursor_btn_color(QPushButton *btn, QColor cursorColor, QCo
 {  
     QString border_width = isCursor ? "0px" : "1px";
     QString hoverColor = isCursor ? cursorColor.darker().name() : bkColor.name();
+    QString textColor = palette().color(QPalette::WindowText).name();
     QString normal = "{background-color:" + cursorColor.name() +
-            "; color:black" + "; border-width:" + border_width + ";}";
+            "; color:" + textColor + "; border-width:" + border_width + ";}";
     QString hover = "{background-color:" + hoverColor +
-            "; color:black" + "; border-width:" + border_width + ";}";
+            "; color:" + textColor + "; border-width:" + border_width + ";}";
     QString style = "QPushButton:hover" + hover +
                     "QPushButton" + normal;
     btn->setStyleSheet(style);

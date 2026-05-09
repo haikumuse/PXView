@@ -334,6 +334,7 @@ set(PXView_SOURCES
     PXView/pv/submainframe.cpp
     PXView/pv/widgets/border.cpp
     PXView/pv/widgets/slidingdrawer.cpp
+    PXView/pv/widgets/sidebar.cpp
     PXView/pv/dialogs/dsmessagebox.cpp
     PXView/pv/dialogs/shadow.cpp
     PXView/pv/dialogs/dsdialog.cpp
@@ -467,6 +468,7 @@ set(PXView_HEADERS
     PXView/pv/submainframe.h
     PXView/pv/widgets/border.h
     PXView/pv/widgets/slidingdrawer.h
+    PXView/pv/widgets/sidebar.h
     PXView/pv/dialogs/dsmessagebox.h
     PXView/pv/dialogs/shadow.h
     PXView/pv/dialogs/dsdialog.h

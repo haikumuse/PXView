@@ -77,13 +77,13 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
 
   this->setWidgetResizable(true);
   this->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  this->setStyleSheet("QScrollArea{border:none;}");
+  this->setObjectName("dock_device_options_scroll");
 
   _container_panel = new QWidget();
   _container_lay = new QVBoxLayout();
   _container_lay->setDirection(QBoxLayout::TopToBottom);
   _container_lay->setAlignment(Qt::AlignTop);
-  _container_lay->setContentsMargins(8, 8, 8, 8);
+  _container_lay->setContentsMargins(12, 8, 12, 8);
   _container_lay->setSpacing(5);
   _container_panel->setLayout(_container_lay);
 
@@ -220,23 +220,22 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
       lable_text = QString(lang_str);
     }
 
-    QLabel *lb = new QLabel(lable_text, parent);
-    lb->setFont(font);
-    layout->addWidget(lb, i, 0);
+    QWidget *wid = p->get_widget(parent, true);
+    wid->setFont(font);
 
-    int labelWidth = lb->fontMetrics().boundingRect(lable_text).width() + 15;
-    if (labelWidth > maxLabelWidth)
-      maxLabelWidth = labelWidth;
-
-    if (label == QString("Operation Mode")) {
-      QWidget *wid = p->get_widget(parent, true);
-      wid->setFont(font);
-      layout->addWidget(wid, i, 1);
+    if (p->labeled_widget()) {
+      layout->addWidget(wid, i, 0, 1, 2);
     } else {
-      QWidget *wid = p->get_widget(parent, true);
-      wid->setFont(font);
+      QLabel *lb = new QLabel(lable_text, parent);
+      lb->setFont(font);
+      layout->addWidget(lb, i, 0);
       layout->addWidget(wid, i, 1);
+
+      int labelWidth = lb->fontMetrics().boundingRect(lable_text).width() + 15;
+      if (labelWidth > maxLabelWidth)
+        maxLabelWidth = labelWidth;
     }
+
     layout->setRowMinimumHeight(i, 22);
 
     connect(p, &pv::prop::Property::committed, this,
@@ -794,7 +793,8 @@ void DeviceOptionsDock::build_dynamic_panel() {
   _isBuilding = true;
 
   if (_dynamic_panel != NULL) {
-    _dynamic_panel->deleteLater();
+    _container_lay->removeWidget(_dynamic_panel);
+    delete _dynamic_panel;
     _dynamic_panel = NULL;
   }
 

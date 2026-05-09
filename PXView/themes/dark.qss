@@ -77,6 +77,15 @@
  * @splitter-edge-h: #333333
  * @splitter-mid-v: #606060
  * @splitter-edge-v: #505050
+ * @drawer-title-bg: #2d2d2d
+ * @drawer-title-fg: #eff0f1
+ * @drawer-title-border: #3f3f46
+ * @drawer-edge-hover: rgba(255, 255, 255, 30)
+ * @dock-gridline: #3f3f46
+ * @dock-groupbox-border: #3f3f46
+ * @dock-groupbox-title: #cccccc
+ * @dock-status-ok: #4ec9b0
+ * @dock-status-error: #f44747
  */
 
 
@@ -977,47 +986,6 @@ QTabWidget::tab-bar
     alignment: left;
 }
 
-QDockWidget
-{
-    background: @bg-base;
-    border: 1px transparent;
-    titlebar-close-icon: url(:/dark/transparent.svg);
-    titlebar-normal-icon: url(:/dark/transparent.svg);
-}
-
-QDockWidget::close-button,
-QDockWidget::float-button
-{
-    border: 1px solid transparent;
-    border-radius: 2px;
-    background: transparent;
-}
-
-QDockWidget::float-button
-{
-    image: url(:/dark/undock.svg);
-}
-
-QDockWidget::float-button:hover
-{
-    image: url(:/dark/undock-hover.svg) ;
-}
-
-QDockWidget::close-button
-{
-    image: url(:/dark/close.svg) ;
-}
-
-QDockWidget::close-button:hover
-{
-    image: url(:/dark/close-hover.svg) ;
-}
-
-QDockWidget::close-button:pressed
-{
-    image: url(:/dark/close-pressed.svg) ;
-}
-
 QTreeView,
 QListView
 {
@@ -1635,6 +1603,21 @@ QWidget#RibbonPanel {
     background: @bg-overlay;
 }
 
+QToolButton#PinButton {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+QToolButton#PinButton:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+QToolButton#PinButton:pressed {
+    background: rgba(255, 255, 255, 0.05);
+}
+
 QWidget#RibbonSeparator {
     background: @ribbon-sep;
 }
@@ -1649,4 +1632,93 @@ QWidget#RibbonSeparator {
 {
     background: @bg-elevated;
     border-left: 1px solid @drawer-border;
+}
+
+#sliding_drawer_titlebar
+{
+    background: @drawer-title-bg;
+    border-bottom: 1px solid @drawer-title-border;
+}
+
+#sliding_drawer_title
+{
+    color: @drawer-title-fg;
+    font-size: 13pt;
+    font-weight: bold;
+}
+
+#sliding_drawer_edge_grip
+{
+    background: transparent;
+}
+
+#sliding_drawer_edge_grip:hover
+{
+    background: @drawer-edge-hover;
+}
+
+#sliding_drawer_stack
+{
+    background: transparent;
+    border: none;
+}
+
+/* Dock Page — shared scroll areas */
+#dock_trigger_scroll,
+#dock_dso_trigger_scroll,
+#dock_measure_scroll,
+#dock_protocol_scroll,
+#dock_device_options_scroll,
+#dock_search_combo_scroll
+{
+    border: none;
+    background: transparent;
+}
+
+/* Dock Page — Search result table */
+#dock_search_result_view
+{
+    border: none;
+    gridline-color: @dock-gridline;
+    background-color: @bg-base;
+}
+
+#dock_search_result_view QHeaderView::section
+{
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+    font-weight: normal;
+    padding: 2px;
+    color: @fg-base;
+}
+
+/* Dock Page — Protocol table */
+#dock_protocol_table_view
+{
+    border: none;
+    gridline-color: @dock-gridline;
+    background-color: @bg-base;
+    alternate-background-color: @alternate-row;
+}
+
+#dock_protocol_table_view QHeaderView::section
+{
+    background: @bg-overlay;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+    border-right: 1px solid @dock-gridline;
+    padding: 4px;
+    color: @fg-base;
+}
+
+/* Dock Page — status dynamic property */
+QLabel[status="ok"]
+{
+    color: @dock-status-ok;
+}
+
+QLabel[status="error"]
+{
+    color: @dock-status-error;
 }

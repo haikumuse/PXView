@@ -197,8 +197,17 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   split_widget->setCollapsible(0, false);
   split_widget->setCollapsible(1, false);
 
+  this->setFrameShape(QFrame::NoFrame);
+  this->setObjectName("dock_protocol_scroll");
   this->setWidgetResizable(true);
-  this->setWidget(split_widget);
+
+  QWidget *scroll_content = new QWidget();
+  QVBoxLayout *scroll_content_layout = new QVBoxLayout(scroll_content);
+  scroll_content_layout->setContentsMargins(12, 8, 12, 8);
+  scroll_content_layout->setSpacing(0);
+  scroll_content_layout->addWidget(split_widget);
+  this->setWidget(scroll_content);
+
   split_widget->setObjectName("protocolWidget");
 
   connect(_dn_nav_button, SIGNAL(clicked()), this, SLOT(nav_table_view()));
@@ -1158,10 +1167,7 @@ void ProtocolDock::UpdateFont() {
   _table_view->horizontalHeader()->setFont(font);
   _table_view->verticalHeader()->setFont(font);
 
-  _table_view->setObjectName("DecodedDataView");
-  QString style = "#DecodedDataView QHeaderView{font-size: %1pt}";
-  style = style.arg(AppConfig::Instance().appOptions.fontSize);
-  _table_view->setStyleSheet(style);
+  _table_view->setObjectName("dock_protocol_table_view");
 
   adjustPannelSize();
 }

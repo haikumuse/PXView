@@ -133,6 +133,7 @@ DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session) :
     _type_group->setId(_falling_radioButton, DSO_TRIGGER_FALLING);
 
     QVBoxLayout *layout = new QVBoxLayout(_widget);
+    layout->setContentsMargins(12, 8, 12, 8);
     QGridLayout *gLayout = new QGridLayout();
     gLayout->setVerticalSpacing(5);
     gLayout->addWidget(_position_label, 0, 0);
@@ -171,6 +172,8 @@ DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session) :
     layout->addStretch(1);
     _widget->setLayout(layout);
 
+    this->setFrameShape(QFrame::NoFrame);
+    this->setObjectName("dock_dso_trigger_scroll");
     this->setWidget(_widget);
     //_widget->setGeometry(0, 0, sizeHint().width(), sizeHint().height());
     _widget->setObjectName("dsoTriggerWidget");

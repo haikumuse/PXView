@@ -178,11 +178,7 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     _result_view->setMinimumWidth(0);
     _result_view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     _result_view->horizontalHeader()->setVisible(true);
-    _result_view->setStyleSheet(
-        "QTableView { border: none; gridline-color: #d0d0d0; }"
-        "QTableView::item { padding: 2px; }"
-        "QHeaderView::section { background: transparent; border: none; "
-        "border-bottom: 1px solid #d0d0d0; font-weight: normal; padding: 2px; }");
+    _result_view->setObjectName("dock_search_result_view");
     
     connect(_result_view, SIGNAL(clicked(const QModelIndex&)),
             this, SLOT(on_result_clicked(const QModelIndex&)));
@@ -201,6 +197,7 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     legend_layout->addWidget(_legend_col3);
 
     QVBoxLayout *main_layout = new QVBoxLayout();
+    main_layout->setContentsMargins(12, 8, 12, 8);
     main_layout->addLayout(input_layout);
     main_layout->addLayout(legend_layout);
     main_layout->addWidget(_result_view, 1);
@@ -405,11 +402,11 @@ void SearchDock::search_worker()
     // 局部缓存：批量写入，大幅减少锁竞争
     std::vector<SearchData> local_batch;
     local_batch.reserve(1000);
-    int batch_threshold = 40;
     
     QElapsedTimer ui_timer;
     ui_timer.start();
     bool has_new_results = false;
+    bool first_flush = true;
 
     while (pos <= end) {
         int state = _search_state.load();
@@ -426,18 +423,18 @@ void SearchDock::search_worker()
         local_batch.push_back(SearchData(pos, match_end));
         has_new_results = true;
 
-        if (local_batch.size() >= batch_threshold) {
+        bool should_flush = first_flush ? (local_batch.size() >= 40) : (ui_timer.elapsed() >= 500);
+
+        if (should_flush) {
             _results_mutex.lock();
             _search_results.insert(_search_results.end(), local_batch.begin(), local_batch.end());
             _results_mutex.unlock();
 
             local_batch.clear();
-            batch_threshold = 1000;
 
-            if (ui_timer.elapsed() >= 500) {
-                ui_timer.restart();
-                emit search_result_found();
-            }
+            ui_timer.restart();
+            emit search_result_found();
+            first_flush = false;
 
             if ((int)_search_results.size() >= kMaxResults)
                 break;

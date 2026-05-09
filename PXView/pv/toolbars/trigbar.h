@@ -24,15 +24,11 @@
 #ifndef DSVIEW_PV_TOOLBARS_TRIGBAR_H
 #define DSVIEW_PV_TOOLBARS_TRIGBAR_H
 
-#include <QToolBar> 
+#include <QToolBar>
 #include <QAction>
 #include <QMenu>
 #include "../interface/icallbacks.h"
-#include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"
-#include <QButtonGroup>
-
-class DockOptions;
 
 namespace pv {
 
@@ -49,8 +45,6 @@ public:
     ~TrigBar();
     void reload();
     void update_view_status();
-    DockOptions* getDockOptions();
-    void update_checked_status();
 
 private:
     void retranslateUi();
@@ -63,10 +57,6 @@ private:
 
 signals:
     void sig_setTheme(QString style);
-    void sig_protocol(bool visible);
-    void sig_trigger(bool visible);
-    void sig_measure(bool visible);
-    void sig_search(bool visible);
     void sig_show_lissajous(bool visible);
 
 private slots:
@@ -77,29 +67,10 @@ private slots:
     void on_actionMath_triggered();
     void on_display_setting();
 
-public slots:
-    void protocol_clicked();
-    void trigger_clicked();
-    void measure_clicked();
-    void search_clicked();
-
 // private:
 public:
     SigSession  *_session;
     bool        _enable;
-    QButtonGroup *buttonGroup;
-    XToolButton _trig_button;
-    XToolButton _protocol_button;
-    XToolButton _measure_button;
-    XToolButton _search_button;
-    XToolButton _function_button;
-    XToolButton _setting_button;
-    QAction     *_trig_action;
-    QAction     *_protocol_action;
-    QAction     *_measure_action;
-    QAction     *_search_action;
-    QAction     *_function_action; 
-    QAction     *_display_action;
 
     QMenu       *_function_menu;
     QAction     *_action_fft;

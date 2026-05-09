@@ -28,6 +28,7 @@
 #include <QMenu>
 #include <QStatusBar>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QWidget>
 #include <QDesktopServices>
 #include <QKeyEvent>
@@ -48,6 +49,7 @@
 #include <QJsonArray>
 #include <functional>
 #include "widgets/searchpatterninput.h"
+#include "widgets/sidebar.h"
 
 //include with qt5
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -134,8 +136,6 @@ namespace pv
 
     void MainWindow::MainWindowRibbonHelper()
     {
-        _right_tool_bar = new QToolBar();
-
         _category_file_index = _title_bar->addCategory(
             L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE), "File"));
         _category_display_index = _title_bar->addCategory(
@@ -145,37 +145,49 @@ namespace pv
     }
 
     void MainWindow::Ribbon_setupUi() {
-
-        // setupQuickAccessBar();
-        //setupRightToolBar(_main_window);
-        setupRightToolBar();
         setupFileCategory();
         setupDisplayCategory();
         setupHelpCategory();
-        //Ribbon_retranslateUi();
     }
     // void MainWindow::setupQuickAccessBar()
     // {
 
     // }
 
-    void MainWindow::setupRightToolBar()
+    void MainWindow::setupSideBar()
     {
-        // _right_tool_bar->setMinimumSize(100, 100);
-        _right_tool_bar->setIconSize(QSize(24, 24));
-        _right_tool_bar->addAction(_trig_bar->_trig_action);
-        _right_tool_bar->addAction(_trig_bar->_protocol_action);
-        _right_tool_bar->addAction(_trig_bar->_measure_action);
-        _right_tool_bar->addAction(_trig_bar->_search_action);
-        _right_tool_bar->addAction(_trig_bar->_function_action);
-        _right_tool_bar->addAction(_sampling_bar->_configure_action);
-        _right_tool_bar->addAction(_sampling_bar->_run_stop_action);
-        _right_tool_bar->addAction(_sampling_bar->_instant_action);
-        // _right_tool_bar->setFloatable(false);
-        _right_tool_bar->setMovable(false);
-        //parent->addToolBar(Qt::RightToolBarArea, _right_tool_bar);
-        addToolBar(Qt::RightToolBarArea, _right_tool_bar);
-        
+        _side_bar = new widgets::SideBar(this);
+
+        _side_bar->addItem("trigger.svg", S_ID(IDS_TOOLBAR_TRIGGER), "Trigger",
+                            widgets::SideBar::DockItem, _drawer_page_trigger);
+        _side_bar->addItem("protocol.svg", S_ID(IDS_TOOLBAR_DECODE), "Decode",
+                            widgets::SideBar::DockItem, _drawer_page_protocol);
+        _side_bar->addItem("measure.svg", S_ID(IDS_TOOLBAR_MEASURE), "Measure",
+                            widgets::SideBar::DockItem, _drawer_page_measure);
+        _side_bar->addItem("search-bar.svg", S_ID(IDS_TOOLBAR_SEARCH), "Search",
+                            widgets::SideBar::DockItem, _drawer_page_search);
+        _side_bar->addItem("function.svg", S_ID(IDS_TOOLBAR_FUNCTION), "Function",
+                            widgets::SideBar::DockItem);
+        _side_bar->addItem("params.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
+                            widgets::SideBar::DockItem, _drawer_page_device_options);
+        _side_bar->addSeparator();
+        _side_bar->addItem("start.svg", S_ID(IDS_TOOLBAR_RUN_START), "Start",
+                            widgets::SideBar::ActionItem);
+        _side_bar->addItem("single.svg", S_ID(IDS_TOOLBAR_ONE_INSTANT), "Instant",
+                            widgets::SideBar::ActionItem);
+
+        _vertical_layout->removeWidget(_tab_widget);
+        QHBoxLayout *hbox = new QHBoxLayout();
+        hbox->setSpacing(0);
+        hbox->setContentsMargins(0, 0, 0, 0);
+        hbox->addWidget(_tab_widget, 1);
+        hbox->addWidget(_side_bar, 0);
+        _vertical_layout->addLayout(hbox);
+
+        connect(_side_bar, &widgets::SideBar::dockItemClicked,
+                this, &MainWindow::on_side_bar_dock_clicked);
+        connect(_side_bar, &widgets::SideBar::actionItemClicked,
+                this, &MainWindow::on_side_bar_action_clicked);
     }
 
     void MainWindow::setupFileCategory()
@@ -489,19 +501,20 @@ namespace pv
 
         _drawer_current_page = -1;
 
+        setupSideBar();
+
         // When drawer closes, update toolbar state
         connect(_sliding_drawer, &widgets::SlidingDrawer::drawerClosed, this, [this]() {
             _drawer_current_page = -1;
-            // Update toolbar checked status
-            ::DockOptions *opt = _trig_bar->getDockOptions();
+            _side_bar->clearAllChecked();
+            current_view()->show_search_cursor(false);
+            ::DockOptions *opt = getDockOptions();
             if (opt) {
                 opt->decodeDock = false;
                 opt->triggerDock = false;
                 opt->measureDock = false;
                 opt->searchDock = false;
                 opt->deviceOptionsDock = false;
-                _trig_bar->update_checked_status();
-                _sampling_bar->_configure_button.setChecked(false);
                 AppConfig::Instance().SaveFrame();
             }
             current_view()->setFocus();
@@ -545,11 +558,6 @@ namespace pv
         connect(initial_view, SIGNAL(auto_trig(int)), _dso_trigger_widget, SLOT(auto_trig(int)));
 
         // trig_bar
-        connect(_trig_bar, SIGNAL(sig_protocol(bool)), this, SLOT(on_protocol(bool)));
-        connect(_trig_bar, SIGNAL(sig_trigger(bool)), this, SLOT(on_trigger(bool)));
-        connect(_trig_bar, SIGNAL(sig_measure(bool)), this, SLOT(on_measure(bool)));
-        connect(_trig_bar, SIGNAL(sig_search(bool)), this, SLOT(on_search(bool)));
-        connect(_sampling_bar, SIGNAL(sig_device_options(bool)), this, SLOT(on_device_options(bool)));
         connect(_trig_bar, SIGNAL(sig_setTheme(QString)), this, SLOT(switchTheme(QString)));
         connect(_trig_bar, SIGNAL(sig_show_lissajous(bool)), initial_view, SLOT(show_lissajous(bool)));
 
@@ -836,144 +844,87 @@ namespace pv
         return true;
     }
 
-    void MainWindow::on_protocol(bool visible)
+    void MainWindow::on_side_bar_dock_clicked(int index)
     {
-        if (visible) {
-            _sliding_drawer->open(_drawer_page_protocol);
-            _drawer_current_page = _drawer_page_protocol;
-            // Update dock options
-            ::DockOptions *opt = _trig_bar->getDockOptions();
+        bool isChecked = _side_bar->getItem(index)->button->isChecked();
+
+        if (!isChecked) {
+            if (_sliding_drawer->isOpen())
+                _sliding_drawer->close();
+            current_view()->show_search_cursor(false);
+            ::DockOptions *opt = getDockOptions();
             if (opt) {
-                opt->decodeDock = true;
+                opt->decodeDock = false;
                 opt->triggerDock = false;
                 opt->measureDock = false;
                 opt->searchDock = false;
                 opt->deviceOptionsDock = false;
-                _trig_bar->update_checked_status();
-                _sampling_bar->_configure_button.setChecked(false);
                 AppConfig::Instance().SaveFrame();
             }
-        } else {
-            if (_drawer_current_page == _drawer_page_protocol) {
-                _sliding_drawer->close();
-            }
+            current_view()->setFocus();
+            return;
         }
 
-        if (!visible)
-            current_view()->setFocus();
-    }
+        int drawerPage = -1;
 
-    void MainWindow::on_trigger(bool visible)
-    {
-        if (visible) {
+        switch (index) {
+        case SIDEBAR_TRIGGER:
             if (_device_agent->get_work_mode() != DSO) {
                 _trigger_widget->update_view();
-                _sliding_drawer->open(_drawer_page_trigger);
-                _drawer_current_page = _drawer_page_trigger;
+                drawerPage = _drawer_page_trigger;
             } else {
                 _dso_trigger_widget->update_view();
-                _sliding_drawer->open(_drawer_page_dso_trigger);
-                _drawer_current_page = _drawer_page_dso_trigger;
+                drawerPage = _drawer_page_dso_trigger;
             }
-            // Update dock options
-            ::DockOptions *opt = _trig_bar->getDockOptions();
-            if (opt) {
-                opt->decodeDock = false;
-                opt->triggerDock = true;
-                opt->measureDock = false;
-                opt->searchDock = false;
-                opt->deviceOptionsDock = false;
-                _trig_bar->update_checked_status();
-                _sampling_bar->_configure_button.setChecked(false);
-                AppConfig::Instance().SaveFrame();
-            }
-        } else {
-            if (_drawer_current_page == _drawer_page_trigger ||
-                _drawer_current_page == _drawer_page_dso_trigger) {
-                _sliding_drawer->close();
-            }
-        }
-        if (!visible) current_view()->setFocus();
-    }
-
-    void MainWindow::on_measure(bool visible)
-    {
-        if (visible) {
-            _sliding_drawer->open(_drawer_page_measure);
-            _drawer_current_page = _drawer_page_measure;
-            // Update dock options
-            ::DockOptions *opt = _trig_bar->getDockOptions();
-            if (opt) {
-                opt->decodeDock = false;
-                opt->triggerDock = false;
-                opt->measureDock = true;
-                opt->searchDock = false;
-                opt->deviceOptionsDock = false;
-                _trig_bar->update_checked_status();
-                _sampling_bar->_configure_button.setChecked(false);
-                AppConfig::Instance().SaveFrame();
-            }
-        } else {
-            if (_drawer_current_page == _drawer_page_measure) {
-                _sliding_drawer->close();
-            }
-        }
-
-        if (!visible)
-            current_view()->setFocus();
-    }
-
-    void MainWindow::on_search(bool visible)
-    {
-        current_view()->show_search_cursor(visible);
-        if (visible) {
-            _sliding_drawer->open(_drawer_page_search);
-            _drawer_current_page = _drawer_page_search;
-            // Update dock options
-            ::DockOptions *opt = _trig_bar->getDockOptions();
-            if (opt) {
-                opt->decodeDock = false;
-                opt->triggerDock = false;
-                opt->measureDock = false;
-                opt->searchDock = true;
-                opt->deviceOptionsDock = false;
-                _trig_bar->update_checked_status();
-                _sampling_bar->_configure_button.setChecked(false);
-                AppConfig::Instance().SaveFrame();
-            }
-        } else {
-            if (_drawer_current_page == _drawer_page_search) {
-                _sliding_drawer->close();
-            }
-        }
-
-        if (!visible)
-            current_view()->setFocus();
-    }
-
-    void MainWindow::on_device_options(bool visible)
-    {
-        if (visible) {
+            break;
+        case SIDEBAR_DECODE:
+            drawerPage = _drawer_page_protocol;
+            break;
+        case SIDEBAR_MEASURE:
+            drawerPage = _drawer_page_measure;
+            break;
+        case SIDEBAR_SEARCH:
+            current_view()->show_search_cursor(true);
+            drawerPage = _drawer_page_search;
+            break;
+        case SIDEBAR_FUNCTION:
+            break;
+        case SIDEBAR_OPTIONS:
             _device_options_widget->update_view();
-            _sliding_drawer->open(_drawer_page_device_options);
-            _drawer_current_page = _drawer_page_device_options;
-            // Update dock options — same pattern as on_protocol/on_trigger
-            ::DockOptions *opt = _trig_bar->getDockOptions();
-            if (opt) {
-                opt->deviceOptionsDock = true;
-                opt->decodeDock = false;
-                opt->triggerDock = false;
-                opt->measureDock = false;
-                opt->searchDock = false;
-                _trig_bar->update_checked_status();
-                AppConfig::Instance().SaveFrame();
-            }
-        } else {
-            if (_drawer_current_page == _drawer_page_device_options) {
-                _sliding_drawer->close();
-            }
+            drawerPage = _drawer_page_device_options;
+            break;
         }
-        if (!visible) current_view()->setFocus();
+
+        if (drawerPage >= 0) {
+            _sliding_drawer->open(drawerPage);
+            _drawer_current_page = drawerPage;
+        } else if (_sliding_drawer->isOpen()) {
+            _sliding_drawer->close();
+        }
+
+        ::DockOptions *opt = getDockOptions();
+        if (opt) {
+            opt->decodeDock = (index == SIDEBAR_DECODE);
+            opt->triggerDock = (index == SIDEBAR_TRIGGER);
+            opt->measureDock = (index == SIDEBAR_MEASURE);
+            opt->searchDock = (index == SIDEBAR_SEARCH);
+            opt->deviceOptionsDock = (index == SIDEBAR_OPTIONS);
+            AppConfig::Instance().SaveFrame();
+        }
+
+        current_view()->setFocus();
+    }
+
+    void MainWindow::on_side_bar_action_clicked(int index)
+    {
+        switch (index) {
+        case SIDEBAR_RUNSTOP:
+            _sampling_bar->run_or_stop();
+            break;
+        case SIDEBAR_INSTANT:
+            _sampling_bar->run_or_stop_instant();
+            break;
+        }
     }
 
     void MainWindow::on_screenShot()
@@ -1649,13 +1600,59 @@ namespace pv
         return true;
     }
 
+    ::DockOptions* MainWindow::getDockOptions()
+    {
+        AppConfig &app = AppConfig::Instance();
+        int mode = _device_agent->get_work_mode();
+        if (mode == LOGIC)
+            return &app.frameOptions._logicDock;
+        else if (mode == DSO)
+            return &app.frameOptions._dsoDock;
+        else
+            return &app.frameOptions._analogDock;
+    }
+
     void MainWindow::restore_dock()
     { 
-        // Restore dock panel visibility from saved DockOptions.
-        // Note: We no longer use QMainWindow::restoreState() for docks
-        // because dock content is now hosted in SlidingDrawer.
         if (_device_agent->have_instance())
             _trig_bar->reload();
+
+        _side_bar->clearAllChecked();
+
+        ::DockOptions *opt = getDockOptions();
+        if (opt) {
+            if (opt->decodeDock) {
+                _side_bar->setItemChecked(SIDEBAR_DECODE, true);
+                _sliding_drawer->open(_drawer_page_protocol);
+                _drawer_current_page = _drawer_page_protocol;
+            } else if (opt->triggerDock) {
+                _side_bar->setItemChecked(SIDEBAR_TRIGGER, true);
+                int mode = _device_agent->get_work_mode();
+                if (mode != DSO) {
+                    _trigger_widget->update_view();
+                    _sliding_drawer->open(_drawer_page_trigger);
+                    _drawer_current_page = _drawer_page_trigger;
+                } else {
+                    _dso_trigger_widget->update_view();
+                    _sliding_drawer->open(_drawer_page_dso_trigger);
+                    _drawer_current_page = _drawer_page_dso_trigger;
+                }
+            } else if (opt->measureDock) {
+                _side_bar->setItemChecked(SIDEBAR_MEASURE, true);
+                _sliding_drawer->open(_drawer_page_measure);
+                _drawer_current_page = _drawer_page_measure;
+            } else if (opt->searchDock) {
+                _side_bar->setItemChecked(SIDEBAR_SEARCH, true);
+                current_view()->show_search_cursor(true);
+                _sliding_drawer->open(_drawer_page_search);
+                _drawer_current_page = _drawer_page_search;
+            } else if (opt->deviceOptionsDock) {
+                _side_bar->setItemChecked(SIDEBAR_OPTIONS, true);
+                _device_options_widget->update_view();
+                _sliding_drawer->open(_drawer_page_device_options);
+                _drawer_current_page = _drawer_page_device_options;
+            }
+        }
     }
 
     bool MainWindow::eventFilter(QObject *object, QEvent *event)
@@ -1712,23 +1709,23 @@ namespace pv
                 break;
 
             case Qt::Key_T:
-                _trig_bar->trigger_clicked();
+                _side_bar->getItem(SIDEBAR_TRIGGER)->button->click();
                 break;
 
             case Qt::Key_D:
-                _trig_bar->protocol_clicked();
+                _side_bar->getItem(SIDEBAR_DECODE)->button->click();
                 break;
 
             case Qt::Key_M:
-                _trig_bar->measure_clicked();
+                _side_bar->getItem(SIDEBAR_MEASURE)->button->click();
                 break;
 
             case Qt::Key_R:
-                _trig_bar->search_clicked();
+                _side_bar->getItem(SIDEBAR_SEARCH)->button->click();
                 break;
 
             case Qt::Key_O:
-                _sampling_bar->config_device();
+                _side_bar->getItem(SIDEBAR_OPTIONS)->button->click();
                 break;
 
             case Qt::Key_PageUp:
@@ -2091,6 +2088,9 @@ namespace pv
         _dso_trigger_widget->update_view();
         _measure_widget->reload();
         _device_options_widget->update_view();
+        if (_sliding_drawer->isOpen())
+            _sliding_drawer->close();
+        _side_bar->clearAllChecked();
 
         if (_device_agent->get_work_mode() == ANALOG)
             current_view()->get_viewstatus()->setVisible(false);
@@ -2282,6 +2282,56 @@ namespace pv
         _sampling_bar->update_view_status();
         _file_bar->update_view_status();
         _trig_bar->update_view_status();
+
+        bool bEnable = _session->is_working() == false;
+        int mode = _device_agent->get_work_mode();
+
+        _side_bar->setItemEnabled(SIDEBAR_TRIGGER, bEnable);
+        _side_bar->setItemEnabled(SIDEBAR_DECODE, bEnable);
+        _side_bar->setItemEnabled(SIDEBAR_MEASURE, bEnable);
+        _side_bar->setItemEnabled(SIDEBAR_SEARCH, bEnable);
+        _side_bar->setItemEnabled(SIDEBAR_FUNCTION, bEnable);
+        _side_bar->setItemEnabled(SIDEBAR_OPTIONS, bEnable);
+        _side_bar->setItemEnabled(SIDEBAR_RUNSTOP, true);
+        _side_bar->setItemEnabled(SIDEBAR_INSTANT, true);
+
+        if (_session->is_working() && mode == DSO) {
+            if (_session->is_instant() == false) {
+                _side_bar->setItemEnabled(SIDEBAR_TRIGGER, true);
+                _side_bar->setItemEnabled(SIDEBAR_MEASURE, true);
+                _side_bar->setItemEnabled(SIDEBAR_FUNCTION, true);
+                _side_bar->setItemEnabled(SIDEBAR_OPTIONS, true);
+            }
+        }
+
+        if (mode == LOGIC) {
+            _side_bar->setItemVisible(SIDEBAR_TRIGGER, true);
+            _side_bar->setItemVisible(SIDEBAR_DECODE, true);
+            _side_bar->setItemVisible(SIDEBAR_MEASURE, true);
+            _side_bar->setItemVisible(SIDEBAR_SEARCH, true);
+            _side_bar->setItemVisible(SIDEBAR_FUNCTION, false);
+            _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+            _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
+            _side_bar->setItemVisible(SIDEBAR_INSTANT, true);
+        } else if (mode == ANALOG) {
+            _side_bar->setItemVisible(SIDEBAR_TRIGGER, false);
+            _side_bar->setItemVisible(SIDEBAR_DECODE, false);
+            _side_bar->setItemVisible(SIDEBAR_MEASURE, true);
+            _side_bar->setItemVisible(SIDEBAR_SEARCH, false);
+            _side_bar->setItemVisible(SIDEBAR_FUNCTION, false);
+            _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+            _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
+            _side_bar->setItemVisible(SIDEBAR_INSTANT, false);
+        } else if (mode == DSO) {
+            _side_bar->setItemVisible(SIDEBAR_TRIGGER, true);
+            _side_bar->setItemVisible(SIDEBAR_DECODE, false);
+            _side_bar->setItemVisible(SIDEBAR_MEASURE, true);
+            _side_bar->setItemVisible(SIDEBAR_SEARCH, false);
+            _side_bar->setItemVisible(SIDEBAR_FUNCTION, true);
+            _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+            _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
+            _side_bar->setItemVisible(SIDEBAR_INSTANT, true);
+        }
     }
 
     void MainWindow::OnMessage(int msg)

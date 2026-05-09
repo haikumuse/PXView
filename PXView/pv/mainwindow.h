@@ -41,6 +41,8 @@
 #include "ui/draggabletabwidget.h"
 #include "tabcontext.h"
 #include "widgets/slidingdrawer.h"
+#include "widgets/sidebar.h"
+#include "config/appconfig.h"
 
 class QAction;
 class QMenu;
@@ -116,11 +118,8 @@ public slots:
 private slots:
 	void on_load_file(QString file_name);
     void on_open_doc();  
-    void on_protocol(bool visible);
-    void on_trigger(bool visible);
-    void on_measure(bool visible);
-    void on_search(bool visible);
-    void on_device_options(bool visible);
+    void on_side_bar_dock_clicked(int index);
+    void on_side_bar_action_clicked(int index);
     void on_screenShot();
     void on_save();
 
@@ -278,12 +277,25 @@ private:
     void Ribbon_setupUi();
     void Ribbon_retranslateUi();
     void setupQuickAccessBar();
-    void setupRightToolBar();
+    void setupSideBar();
     void setupFileCategory();
     void setupDisplayCategory();
     void setupHelpCategory();
 
-    QToolBar* _right_tool_bar;
+    widgets::SideBar* _side_bar;
+
+    enum {
+        SIDEBAR_TRIGGER = 0,
+        SIDEBAR_DECODE = 1,
+        SIDEBAR_MEASURE = 2,
+        SIDEBAR_SEARCH = 3,
+        SIDEBAR_FUNCTION = 4,
+        SIDEBAR_OPTIONS = 5,
+        SIDEBAR_RUNSTOP = 6,
+        SIDEBAR_INSTANT = 7
+    };
+
+    ::DockOptions* getDockOptions();
 
     int _category_file_index;
     int _category_display_index;
