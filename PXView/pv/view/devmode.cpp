@@ -54,6 +54,7 @@ DevMode::DevMode(QWidget *parent, SigSession *session) :
     QWidget(parent) 
 {
     _bFile = false;
+    _header_collapsed = false;
 
     _session = session;
     _device_agent = session->get_device();
@@ -65,7 +66,6 @@ DevMode::DevMode(QWidget *parent, SigSession *session) :
     _close_button = new XToolButton();
     _close_button->setObjectName("FileCloseButton");
     _close_button->setContentsMargins(0, 0, 0, 0);
-    //_close_button->setFixedWidth(10);
     _close_button->setFixedWidth(20);
     _close_button->setFixedHeight(height());
     _close_button->setIconSize(QSize(20, 20));
@@ -78,21 +78,27 @@ DevMode::DevMode(QWidget *parent, SigSession *session) :
     _mode_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     _mode_btn->setContentsMargins(0, 0, 0, 0);  
     _mode_btn->setPopupMode(QToolButton::InstantPopup);
-    _mode_btn->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
-
-   // _mode_btn->setArrowType(Qt::NoArrow);
+    _mode_btn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 
     _pop_menu = new QMenu(this);
     _pop_menu->setContentsMargins(15,0,0,0);
     _mode_btn->setMenu(_pop_menu);
 
-    layout->addWidget(_close_button);
-    layout->addWidget(_mode_btn); 
+    _collapse_btn = new XToolButton();
+    _collapse_btn->setObjectName("HeaderCollapseButton");
+    _collapse_btn->setIcon(getCollapseIcon(false));
+    _collapse_btn->setFixedSize(24, 24);
+    _collapse_btn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    _collapse_btn->setContentsMargins(0, 0, 0, 0);
 
-    layout->setStretch(1, 100); 
+    layout->addWidget(_close_button);
+    layout->addWidget(_mode_btn, 1); 
+    layout->addWidget(_collapse_btn);
+
     setLayout(layout);
 
     connect(_close_button, SIGNAL(clicked()), this, SLOT(on_close()));
+    connect(_collapse_btn, SIGNAL(clicked()), this, SLOT(on_collapse_toggle()));
 
     ADD_UI(this);
 }
@@ -243,6 +249,23 @@ void DevMode::on_close()
     }
 }
 
+void DevMode::on_collapse_toggle()
+{
+    _header_collapsed = !_header_collapsed;
+
+    if (_header_collapsed) {
+        _collapse_btn->setIcon(getCollapseIcon(true));
+        _close_button->hide();
+        _mode_btn->hide();
+    } else {
+        _collapse_btn->setIcon(getCollapseIcon(false));
+        _close_button->show();
+        _mode_btn->show();
+    }
+
+    emit header_collapse_changed(_header_collapsed);
+}
+
 void DevMode::mousePressEvent(QMouseEvent *event)
 {
 	assert(event);
@@ -302,6 +325,13 @@ void DevMode::UpdateFont()
     { 
         (*it).first->setFont(font);
     }
+}
+
+QIcon DevMode::getCollapseIcon(bool expand)
+{
+    QString iconPath = GetIconPath();
+    QString name = expand ? "/header-expand.svg" : "/header-collapse.svg";
+    return QIcon(iconPath + name);
 }
 
 } // namespace view

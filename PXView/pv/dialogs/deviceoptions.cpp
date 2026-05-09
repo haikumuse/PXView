@@ -30,6 +30,8 @@
 #include <QScreen>
 #include <QScrollArea>
 #include <QLayoutItem>
+#include <QPainter>
+#include <QMouseEvent>
 #include <assert.h>
 
 #include "dsmessagebox.h"
@@ -47,45 +49,84 @@ using namespace std;
 
 //--------------------------ChannelLabel
 
+const QColor ChannelLabel::PROBE_COLORS[8] = {
+    QColor(0x75, 0x50, 0x7B),
+    QColor(0x34, 0x65, 0xA4),
+    QColor(0x73, 0xD2, 0x16),
+    QColor(0xED, 0xD4, 0x00),
+    QColor(0xF5, 0x79, 0x00),
+    QColor(0xCC, 0x00, 0x00),
+    QColor(0x8F, 0x52, 0x02),
+    QColor(0x50, 0x50, 0x50),
+};
+
 ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
 : QWidget(parent)
 {
     _checked = check;
     _index = chanIndex;  
 
-    QGridLayout *lay = new QGridLayout();
-    lay->setContentsMargins(2, 2, 2, 2);
-    lay->setSpacing(0);
-    this->setLayout(lay);
-    QLabel *lb = new QLabel(QString::number(chanIndex));
-    lb->setAlignment(Qt::AlignCenter);
-    _box = new QCheckBox();
-    _box->setFixedSize(20,20);
-    lay->addWidget(lb, 0, 0);
-    lay->addWidget(_box, 1, 0, Qt::AlignCenter);
-    lay->setRowStretch(0, 1);
-    lay->setRowStretch(1, 0);
+    _box = new QCheckBox(this);
+    _box->hide();
 
+    setFixedSize(23, 20);
+    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    setCursor(Qt::PointingHandCursor);
+
+    connect(_box, SIGNAL(stateChanged(int)), this, SLOT(update()));
+}
+
+void ChannelLabel::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    QColor color = PROBE_COLORS[_index % 8];
+    bool checked = _box->isChecked();
+    bool enabled = _box->isEnabled();
+
+    QRectF r = rect().adjusted(1.5, 1.5, -1.5, -1.5);
+
+    if (!enabled) {
+        p.setBrush(Qt::transparent);
+        p.setPen(QPen(QColor(200, 200, 200), 1.5));
+        p.drawRoundedRect(r, 5, 5);
+        p.setPen(QColor(200, 200, 200));
+        QFont font = this->font();
+        font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+        font.setBold(false);
+        p.setFont(font);
+        p.drawText(rect(), Qt::AlignCenter, QString::number(_index));
+        return;
+    }
+
+    if (checked) {
+        p.setBrush(color);
+        p.setPen(QPen(color, 2));
+    } else {
+        p.setBrush(Qt::transparent);
+        p.setPen(QPen(color, 2));
+    }
+
+    p.drawRoundedRect(r, 5, 5);
+
+    p.setPen(checked ? Qt::white : color);
     QFont font = this->font();
     font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    lb->setFont(font);
+    font.setBold(checked);
+    p.setFont(font);
+    p.drawText(rect(), Qt::AlignCenter, QString::number(_index));
+}
 
-    int fh = lb->fontMetrics().height();
-    //int w = lb->fontMetrics().horizontalAdvance(lb->text()) + 5;
-
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        int w = lb->fontMetrics().horizontalAdvance(lb->text()) + 5;
-    #else
-        int w = lb->fontMetrics().width(lb->text()) + 5;
-    #endif
-
-    w = w < 30 ? 30 : w;
-    int h = fh + _box->height() + 2;
-    setFixedHeight(h);
-    setMinimumWidth(w);
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-    connect(_box, SIGNAL(released()), this, SLOT(on_checked()));
+void ChannelLabel::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton && _box->isEnabled()) {
+        _box->setChecked(!_box->isChecked());
+        if (_checked) {
+            _checked->ChannelChecked(_index, _box);
+        }
+    }
 }
 
 void ChannelLabel::on_checked()
@@ -550,6 +591,8 @@ void DeviceOptions::mode_check_timeout()
                 for (auto box : _probes_checkBox_list) {
                     box->setCheckState(Qt::Checked);
                     box->setDisabled(true);
+                    if (box->parentWidget())
+                        box->parentWidget()->update();
                 }
             }
         } 

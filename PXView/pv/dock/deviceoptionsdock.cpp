@@ -95,6 +95,13 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   if (_device_agent->have_instance()) {
     _device_options_binding = new pv::prop::binding::DeviceOptions();
 
+    this->build_dynamic_panel();
+
+    QWidget *minWid = new QWidget();
+    minWid->setFixedHeight(1);
+    minWid->setMinimumWidth(230);
+    _container_lay->addWidget(minWid);
+
     QGroupBox *props_box = new QGroupBox(
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
     props_box->setFont(font);
@@ -104,13 +111,6 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     props_lay->setContentsMargins(5, 20, 5, 5);
     props_box->setLayout(props_lay);
     _container_lay->addWidget(props_box);
-
-    QWidget *minWid = new QWidget();
-    minWid->setFixedHeight(1);
-    minWid->setMinimumWidth(230);
-    _container_lay->addWidget(minWid);
-
-    this->build_dynamic_panel();
 
     _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
 
@@ -207,6 +207,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
   QFont font = this->font();
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
 
+  int maxLabelWidth = 0;
   int i = 0;
   for (auto p : properties) {
     const QString label = p->labeled_widget() ? QString() : p->label();
@@ -222,6 +223,10 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
     QLabel *lb = new QLabel(lable_text, parent);
     lb->setFont(font);
     layout->addWidget(lb, i, 0);
+
+    int labelWidth = lb->fontMetrics().boundingRect(lable_text).width() + 15;
+    if (labelWidth > maxLabelWidth)
+      maxLabelWidth = labelWidth;
 
     if (label == QString("Operation Mode")) {
       QWidget *wid = p->get_widget(parent, true);
@@ -240,7 +245,10 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
     i++;
   }
 
-  layout->setColumnStretch(0, 1);
+  layout->setColumnMinimumWidth(0, maxLabelWidth);
+  layout->setColumnStretch(0, 0);
+  layout->setColumnStretch(1, 0);
+  layout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
   return layout;
 }
 
@@ -302,13 +310,13 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   QWidget *channel_pannel = new QWidget();
   QGridLayout *channel_grid = new QGridLayout();
   channel_grid->setContentsMargins(0, 0, 0, 0);
-  channel_grid->setSpacing(2);
+  channel_grid->setSpacing(3);
   channel_pannel->setLayout(channel_grid);
 
   int channel_row = 0;
   int channel_column = 0;
   int channel_line_height = 0;
-  int channel_columns = 8; // columns per row
+  int channel_columns = 8;
   row2++;
 
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
@@ -321,7 +329,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
       probe->enabled = false;
 
     ChannelLabel *ch_item = new ChannelLabel(this, NULL, probe->index);
-    channel_grid->addWidget(ch_item, channel_row, channel_column++);
+    channel_grid->addWidget(ch_item, channel_row, channel_column++, Qt::AlignLeft | Qt::AlignTop);
     _probes_checkBox_list.push_back(ch_item->getCheckBox());
     ch_item->getCheckBox()->setCheckState(probe->enabled ? Qt::Checked
                                                          : Qt::Unchecked);
@@ -337,9 +345,8 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
     }
   }
 
-  // Make columns stretch equally so channel items fill the width
   for (int c = 0; c < channel_columns; c++) {
-    channel_grid->setColumnStretch(c, 1);
+    channel_grid->setColumnStretch(c, 0);
   }
 
   layout.addWidget(channel_pannel);
@@ -483,6 +490,8 @@ void DeviceOptionsDock::mode_check_timeout() {
         for (auto box : _probes_checkBox_list) {
           box->setCheckState(Qt::Checked);
           box->setDisabled(true);
+          if (box->parentWidget())
+            box->parentWidget()->update();
         }
       }
     }
@@ -795,7 +804,7 @@ void DeviceOptionsDock::build_dynamic_panel() {
   if (_dynamic_panel == NULL) {
     _dynamic_panel = new QGroupBox("group", _dynamic_panel);
     _dynamic_panel->setFont(font);
-    _container_lay->addWidget(_dynamic_panel);
+    _container_lay->insertWidget(0, _dynamic_panel);
 
     QLayout *inner;
     if (_device_agent->get_work_mode() == LOGIC)
@@ -893,6 +902,13 @@ void DeviceOptionsDock::update_view() {
   QFont font = this->font();
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
 
+  build_dynamic_panel();
+
+  QWidget *minWid = new QWidget();
+  minWid->setFixedHeight(1);
+  minWid->setMinimumWidth(230);
+  _container_lay->addWidget(minWid);
+
   QGroupBox *props_box = new QGroupBox(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
   props_box->setFont(font);
@@ -902,13 +918,6 @@ void DeviceOptionsDock::update_view() {
   props_lay->setContentsMargins(5, 20, 5, 5);
   props_box->setLayout(props_lay);
   _container_lay->addWidget(props_box);
-
-  QWidget *minWid = new QWidget();
-  minWid->setFixedHeight(1);
-  minWid->setMinimumWidth(230);
-  _container_lay->addWidget(minWid);
-
-  build_dynamic_panel();
 
   _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
 

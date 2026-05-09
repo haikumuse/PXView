@@ -133,6 +133,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
     _trace_view_map[SR_CHANNEL_MATH] = TIME_VIEW;
 
     _active_viewport = NULL;
+    _header_collapsed = false;
     _ruler = new Ruler(*this);
     _header = new Header(*this);
     _devmode = new DevMode(this, session);
@@ -171,6 +172,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
     layout->addWidget(_vsplitter, 0, 0);
     _viewbottom = new ViewStatus(_session, *this);
     _viewbottom->setFixedHeight(StatusHeight);
+    _viewbottom->hide();
     layout->addWidget(_viewbottom, 1, 0);
 
 #ifdef Q_OS_DARWIN
@@ -214,6 +216,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
       
     connect(_header, SIGNAL(traces_moved()),this, SLOT(on_traces_moved()));
     connect(_header, SIGNAL(header_updated()),this, SLOT(header_updated()));
+    connect(_devmode, SIGNAL(header_collapse_changed(bool)), this, SLOT(on_header_collapse_changed(bool)));
 
     ADD_UI(this);
 }
@@ -1194,6 +1197,12 @@ bool View::viewportEvent(QEvent *e)
 
 int View::headerWidth()
 {
+    if (_header_collapsed) {
+        int w = Trace::SquareWidth + 2 * Trace::Margin;
+        setViewportMargins(w, RulerHeight, 0, 0);
+        return w;
+    }
+
     int headerWidth = _header->get_nameEditWidth();
 
     std::vector<Trace*> traces;
@@ -1217,6 +1226,12 @@ void View::paintEvent(QPaintEvent *event)
     QScrollArea::paintEvent(event);
 }
 
+void View::scrollContentsBy(int dx, int dy)
+{
+    (void)dx;
+    (void)dy;
+}
+
 void View::resizeEvent(QResizeEvent *event)
 {
     int width = get_view_width();
@@ -1232,9 +1247,10 @@ void View::resizeEvent(QResizeEvent *event)
     lastWidth = width;
 
     if (!widthChanged) {
-        // 仅更新必要的部分，避免重绘 viewport
         setViewportMargins(headerWidth(), RulerHeight, 0, 0);
         _header->header_resize();
+        update_scroll();
+        viewport_update();
         return;
     }
 
@@ -1336,6 +1352,17 @@ void View::header_updated()
 
     viewport_update();
     _header->update();
+}
+
+void View::on_header_collapse_changed(bool collapsed)
+{
+    _header_collapsed = collapsed;
+    headerWidth();
+    update_margins();
+    update_scroll();
+    viewport_update();
+    _header->update();
+    _ruler->update();
 }
 
 void View::marker_time_changed()

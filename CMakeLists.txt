@@ -896,6 +896,15 @@ foreach(dec ${C_DECODERS})
 	)
 endforeach()
 
+if(WIN32)
+	foreach(dec ${C_DECODERS})
+		install(TARGETS decoder_${dec}
+			RUNTIME DESTINATION bin/decoders/c_decoders
+			LIBRARY DESTINATION bin/decoders/c_decoders
+		)
+	endforeach()
+endif()
+
 install(DIRECTORY lang DESTINATION ${MAC_RES_PREFIX}share/PXView)
 
 #===============================================================================

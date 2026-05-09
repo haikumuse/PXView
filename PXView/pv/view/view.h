@@ -346,6 +346,7 @@ private:
   bool viewportEvent(QEvent *e);
   void paintEvent(QPaintEvent *event);
   void resizeEvent(QResizeEvent *e);
+  void scrollContentsBy(int dx, int dy);
 
 public:
   static bool compare_trace_view_index(const Trace *a, const Trace *b);
@@ -406,6 +407,7 @@ private slots:
 
   void splitterMoved(int pos, int index);
   void on_calibration_closed();
+  void on_header_collapse_changed(bool collapsed);
 
 private:
   void set_trig_cursor_posistion(uint64_t percent);
@@ -441,6 +443,7 @@ private:
   Ruler *_ruler;
   Header *_header;
   DevMode *_devmode;
+  bool _header_collapsed;
 
   /// The view time scale in seconds per pixel.
   double _scale;

@@ -67,10 +67,15 @@ public:
 private slots:
     void on_checked();
 
+protected:
+    void paintEvent(QPaintEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+
 private:
     QCheckBox *_box;
     IChannelCheck *_checked;
     int     _index;
+    static const QColor PROBE_COLORS[8];
 };
 
 struct ChannelModePair

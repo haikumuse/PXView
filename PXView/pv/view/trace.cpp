@@ -211,18 +211,13 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
     const int y = get_y();
 
     const QRectF color_rect = get_rect("color", y, right);
-    const QRectF name_rect  = get_rect("name",  y, right);
-    const QRectF label_rect = get_rect("label", get_zero_vpos(), right);
 
     // Paint the ColorButton
     QColor foreBack = fore;
-    // foreBack.setAlpha(View::BackAlpha);
     p.setPen(Qt::transparent);
-    // p.setBrush(enabled() ? (_colour.isValid() ? _colour : fore) : foreBack);
     QColor color_set_rect = PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
     p.setBrush(enabled() ? (_colour.isValid() ? _colour : color_set_rect) : foreBack);
 
-    // p.drawRect(color_rect);
     int radius = 3; 
     p.drawRoundedRect(color_rect, radius, radius);
     
@@ -231,6 +226,26 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
         p.setPen(enabled() ?  Qt::white: foreBack);
         p.drawText(color_rect, Qt::AlignCenter | Qt::AlignVCenter, _name);
     }
+
+    if (right <= get_leftWidth() + get_rightWidth()) {
+        if (enabled()) {
+            p.setPen(Qt::white);
+            if (_type == SR_CHANNEL_GROUP)
+                p.drawText(color_rect, Qt::AlignCenter | Qt::AlignVCenter, "G");
+            else if (_type == SR_CHANNEL_DECODER)
+                p.drawText(color_rect, Qt::AlignCenter | Qt::AlignVCenter, "D");
+            else if (_type == SR_CHANNEL_FFT)
+                p.drawText(color_rect, Qt::AlignCenter | Qt::AlignVCenter, "F");
+            else if (_type == SR_CHANNEL_MATH)
+                p.drawText(color_rect, Qt::AlignCenter | Qt::AlignVCenter, "M");
+            else
+                p.drawText(color_rect, Qt::AlignCenter | Qt::AlignVCenter, QString::number(_index_list.front()));
+        }
+        return;
+    }
+
+    const QRectF name_rect  = get_rect("name",  y, right);
+    const QRectF label_rect = get_rect("label", get_zero_vpos(), right);
 
     if (_type != SR_CHANNEL_DSO) {
         // Paint the signal name
@@ -261,8 +276,7 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
         } else {
             QColor color = PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
             p.setBrush(enabled() ? (_colour.isValid() ? _colour : color) : foreBack);
-            //p.setBrush(color);
-            p.drawPolygon(points, countof(points)); //绘制指示
+            p.drawPolygon(points, countof(points));
         }
 
         p.setPen(Qt::white);
