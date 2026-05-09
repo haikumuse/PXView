@@ -173,7 +173,8 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
     _viewbottom = new ViewStatus(_session, *this);
     _viewbottom->setFixedHeight(StatusHeight);
     _viewbottom->hide();
-    layout->addWidget(_viewbottom, 1, 0);
+    _viewbottom->setParent(_time_viewport);
+    _viewbottom->setGeometry(0, _time_viewport->height() - StatusHeight, _time_viewport->width(), StatusHeight);
 
 #ifdef Q_OS_DARWIN
     QWidget *lineSpan = new QWidget(this);
@@ -1744,6 +1745,8 @@ void View::reconstruct()
         _viewbottom->setFixedHeight(DsoStatusHeight);
     else
         _viewbottom->setFixedHeight(StatusHeight);
+    _viewbottom->setGeometry(0, _time_viewport->height() - _viewbottom->height(),
+                             _time_viewport->width(), _viewbottom->height());
     _viewbottom->reload();
 }
 

@@ -4,13 +4,17 @@
 #include <glib.h>
 #include "libsigrokdecode.h"
 
-enum lm75_state {
-    STATE_IDLE,
+enum {
+    ANN_CELSIUS = 0,
+    ANN_KELVIN,
+    ANN_TEXT_VERBOSE,
+    ANN_TEXT,
+    ANN_WARN,
+    NUM_ANN,
 };
 
 typedef struct {
-    enum lm75_state state;
-    uint64_t start_sample;
+    int out_ann;
 } lm75_state;
 
 static struct srd_channel lm75_channels[] = {};
@@ -20,15 +24,22 @@ static const char *lm75_outputs[] = {"lm75", NULL};
 static const char *lm75_tags[] = {"Sensor", NULL};
 
 static const char *lm75_ann_labels[][3] = {
-    {"", "temp", "Temperature"},
-    {"", "register", "Register"},
+    {"", "celsius", "Temperature in degrees Celsius"},
+    {"", "kelvin", "Temperature in Kelvin"},
+    {"", "text-verbose", "Human-readable text (verbose)"},
+    {"", "text", "Human-readable text"},
+    {"", "warnings", "Warnings"},
 };
 
-static const int lm75_row_temp_classes[] = {0};
-static const int lm75_row_register_classes[] = {1};
+static const int lm75_row_celsius_classes[] = {ANN_CELSIUS, -1};
+static const int lm75_row_kelvin_classes[] = {ANN_KELVIN, -1};
+static const int lm75_row_text_classes[] = {ANN_TEXT_VERBOSE, ANN_TEXT, -1};
+static const int lm75_row_warnings_classes[] = {ANN_WARN, -1};
 static const struct srd_c_ann_row lm75_ann_rows[] = {
-    {"temperature", "Temperature", lm75_row_temp_classes, 1},
-    {"registers", "Registers", lm75_row_register_classes, 1},
+    {"celsius", "Celsius", lm75_row_celsius_classes, 1},
+    {"kelvin", "Kelvin", lm75_row_kelvin_classes, 1},
+    {"text", "Text", lm75_row_text_classes, 2},
+    {"warnings", "Warnings", lm75_row_warnings_classes, 1},
 };
 
 static void lm75_reset(struct srd_decoder_inst *di)
@@ -38,17 +49,16 @@ static void lm75_reset(struct srd_decoder_inst *di)
     }
     lm75_state *s = (lm75_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(lm75_state));
-    s->state = STATE_IDLE;
 }
 
 static void lm75_start(struct srd_decoder_inst *di)
 {
-    c_decoder_register_output(di, SRD_OUTPUT_ANN, "lm75");
+    lm75_state *s = (lm75_state *)c_decoder_get_private(di);
+    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "lm75");
 }
 
 static void lm75_decode(struct srd_decoder_inst *di)
 {
-    lm75_state *s = (lm75_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
@@ -83,9 +93,9 @@ struct srd_c_decoder lm75_c_decoder = {
     .num_optional_channels = 0,
     .options = NULL,
     .num_options = 0,
-    .num_annotations = 2,
+    .num_annotations = NUM_ANN,
     .ann_labels = lm75_ann_labels,
-    .num_annotation_rows = 2,
+    .num_annotation_rows = 4,
     .annotation_rows = lm75_ann_rows,
     .inputs = lm75_inputs,
     .num_inputs = 1,

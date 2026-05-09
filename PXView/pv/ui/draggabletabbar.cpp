@@ -40,6 +40,7 @@ DraggableTabBar::DraggableTabBar(QWidget *parent)
       _drag_preview(nullptr),
       _drag_outside(false)
 {
+    setDrawBase(false);
 }
 
 DraggableTabBar::~DraggableTabBar()

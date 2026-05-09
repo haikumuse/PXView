@@ -131,40 +131,12 @@ bool AppControl::Init()
     // Add C decoder search paths
     {
         QString cDecDir = GetAppDataDir();
-#ifdef Q_OS_DARWIN
         QDir cDecPath(cDecDir);
-        if (cDecPath.cd("../Resources/share/libsigrokdecode/c_decoders")) {
+        if (cDecPath.cd("../libsigrokdecode/c_decoders")) {
             std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
             srd_c_decoder_path_add(cs.c_str());
             dsv_info("C decoder path: \"%s\"", cs.c_str());
         }
-#elif defined(Q_OS_UNIX)
-        QDir cDecPath(cDecDir);
-        if (cDecPath.cd("../share/libsigrokdecode/c_decoders")) {
-            std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
-            srd_c_decoder_path_add(cs.c_str());
-            dsv_info("C decoder path: \"%s\"", cs.c_str());
-        }
-#else
-        QDir cDecPath(cDecDir);
-        if (cDecPath.cd("decoders/c_decoders")) {
-            std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
-            srd_c_decoder_path_add(cs.c_str());
-            dsv_info("C decoder path: \"%s\"", cs.c_str());
-        }
-        cDecPath = QDir(cDecDir);
-        if (cDecPath.cd("../share/libsigrokdecode/c_decoders")) {
-            std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
-            srd_c_decoder_path_add(cs.c_str());
-            dsv_info("C decoder path: \"%s\"", cs.c_str());
-        }
-        QDir appBinPath(QCoreApplication::applicationDirPath());
-        if (appBinPath.cd("decoders/c_decoders")) {
-            std::string cs = pv::path::ConvertPath(appBinPath.absolutePath());
-            srd_c_decoder_path_add(cs.c_str());
-            dsv_info("C decoder path (bin): \"%s\"", cs.c_str());
-        }
-#endif
     }
 
     // Load the protocol decoders

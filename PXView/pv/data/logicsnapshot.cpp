@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <algorithm>
  
 #include "logicsnapshot.h"
 #include "../dsvdef.h"
@@ -578,13 +579,7 @@ void LogicSnapshot::calc_mipmap(unsigned int order, uint8_t index0, uint8_t inde
         _ch_data[order][index0].tog |= 1ULL << index1;
     }
     else if (isEnd){
-        uint64_t ref_root = _cur_ref_block_indexs[order].root_index;
-        uint64_t ref_lbp  = _cur_ref_block_indexs[order].lbp_index;
-
-        if (_able_free || index0 > ref_root || (index0 == ref_root && index1 > ref_lbp))
-            free(_ch_data[order][index0].lbp[index1]);
-        else
-            _free_block_list.push_back(_ch_data[order][index0].lbp[index1]);
+        _free_block_list.push_back(_ch_data[order][index0].lbp[index1]);
 
         _ch_data[order][index0].lbp[index1] = NULL;
     }
@@ -1463,7 +1458,7 @@ void LogicSnapshot::move_first_node_to_last()
         for (int x=0; x<(int)Scale; x++)
         {
             if (rn.lbp[x] != NULL){
-                free(rn.lbp[x]);
+                _free_block_list.push_back(rn.lbp[x]);
                 rn.lbp[x] = NULL;
             }
         }
@@ -1480,6 +1475,8 @@ void LogicSnapshot::decode_end()
 {
    std::lock_guard<std::mutex> lock(_mutex);
 
+   std::sort(_free_block_list.begin(), _free_block_list.end());
+   _free_block_list.erase(std::unique(_free_block_list.begin(), _free_block_list.end()), _free_block_list.end());
    for(void *p : _free_block_list){
         free(p);
     }
@@ -1492,13 +1489,10 @@ void LogicSnapshot::free_decode_lpb(void *lbp)
 
     std::lock_guard<std::mutex> lock(_mutex);
 
-    for (auto it = _free_block_list.begin(); it != _free_block_list.end(); it++)
-    {
-        if ((*it) == lbp){
-            _free_block_list.erase(it);
-            free(lbp);
-            break;
-        }
+    auto new_end = std::remove(_free_block_list.begin(), _free_block_list.end(), lbp);
+    if (new_end != _free_block_list.end()) {
+        free(lbp);
+        _free_block_list.erase(new_end, _free_block_list.end());
     }
 }
 
@@ -1511,7 +1505,7 @@ void LogicSnapshot::free_head_blocks(int count)
     {
         for (int j=_lst_free_block_index; j<count; j++){
             if (_ch_data[i][0].lbp[j] != NULL){
-                free(_ch_data[i][0].lbp[j]);
+                _free_block_list.push_back(_ch_data[i][0].lbp[j]);
                 _ch_data[i][0].lbp[j] = NULL;
             }
 
