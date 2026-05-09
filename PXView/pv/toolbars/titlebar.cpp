@@ -24,7 +24,6 @@
 #include <QPropertyAnimation>
 #include <QAction>
 #include <QSpacerItem>
-#include <QElapsedTimer>
 
 #include "../config/appconfig.h"
 #include "../appcontrol.h"
@@ -34,6 +33,40 @@
 
 namespace pv {
 namespace toolbars {
+
+static qreal cssBezierEasing(qreal t)
+{
+    static const double x1 = 0.4, y1 = 0.0;
+    static const double x2 = 0.2, y2 = 1.0;
+
+    double cx = 3.0 * x1;
+    double bx = 3.0 * (x2 - x1) - cx;
+    double ax = 1.0 - cx - bx;
+
+    double cy = 3.0 * y1;
+    double by = 3.0 * (y2 - y1) - cy;
+    double ay = 1.0 - cy - by;
+
+    auto sampleCurveX = [&](double s) { return ((ax * s + bx) * s + cx) * s; };
+    auto sampleCurveY = [&](double s) { return ((ay * s + by) * s + cy) * s; };
+
+    double s = t;
+    for (int i = 0; i < 8; i++) {
+        double err = sampleCurveX(s) - t;
+        if (qAbs(err) < 1e-7) break;
+        double deriv = (3.0 * ax * s + 2.0 * bx) * s + cx;
+        if (qAbs(deriv) < 1e-10) break;
+        s -= err / deriv;
+    }
+    return qBound(0.0, sampleCurveY(s), 1.0);
+}
+
+static QEasingCurve makeTailwindCurve()
+{
+    QEasingCurve curve;
+    curve.setCustomType(cssBezierEasing);
+    return curve;
+}
 
 TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose) :
     QWidget(parent)
@@ -124,12 +157,15 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
 
     mainLayout->addWidget(titleRow);
 
-    // --- 优化的 Ribbon Panel ---
+    // --- 覆盖式 Ribbon Panel ---
+    // _ribbonPanel 作为 TitleBar 的子控件，但使用绝对定位浮在主界面上方
+    // 这样动画期间不会触发任何父级布局重排
     _ribbonPanel = new QWidget(this);
     _ribbonPanel->setObjectName("RibbonPanel");
     _ribbonPanel->setContentsMargins(0,0,0,0);
-    // VITAL: 初始强制固定高度为0，彻底锁死布局
     _ribbonPanel->setFixedHeight(0);
+    // 初始隐藏，展开时才显示
+    _ribbonPanel->hide();
 
     _ribbonLayout = new QVBoxLayout(_ribbonPanel);
     _ribbonLayout->setContentsMargins(0,0,0,0);
@@ -137,30 +173,26 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
 
     _categoryStack = new QStackedWidget(_ribbonPanel);
     _categoryStack->setContentsMargins(0,0,0,0);
-    // VITAL: 锁死内部堆栈高度，使其在父容器缩放时永远不重算布局
     _categoryStack->setFixedHeight(_ribbonExpandedHeight);
-    
-    // 移除 .hide()。让它一直处于显示状态，只是被 _ribbonPanel 的 0 高度"裁切"掉了。
-    // 这样在展开时不会产生重建渲染树的卡顿。
     _ribbonLayout->addWidget(_categoryStack, 0, Qt::AlignTop);
 
-    mainLayout->addWidget(_ribbonPanel);
+    // TitleBar 高度固定为 32px，不随 Ribbon 变化
+    // Ribbon 通过绝对定位浮在主界面上方
+    setFixedHeight(32);
 
-    // --- 优化的动画引擎 ---
-    // 直接操作 ribbonHeight 属性 (对应 int setRibbonHeight)
+    // --- 动画引擎 ---
     _ribbonAnimation = new QPropertyAnimation(this, "ribbonHeight");
-    
-    // UI反馈建议：350ms 太长会有粘滞感，250ms 更符合现代流畅 UI 标准
     _ribbonAnimation->setDuration(250);
-    
-    // QEasingCurve::OutCubic: 像抽屉一样，开头快，结尾柔和，非常丝滑
     _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
+
+    connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this](){
+        if (!_ribbonExpanded) {
+            _ribbonPanel->hide();
+        }
+    });
 
     connect(_tabBar, &QTabBar::tabBarClicked, this, &TitleBar::onTabClicked);
     connect(_tabBar, &QTabBar::currentChanged, this, &TitleBar::onTabChanged);
-
-    // TitleBar 高度固定为 titleRow(32) + ribbonPanel(动态)，使用 Fixed 避免布局抖动
-    setFixedHeight(32); // 初始只有标题行高度
 
     ADD_UI(this);
 }
@@ -258,11 +290,16 @@ void TitleBar::expandRibbon()
     if (_ribbonAnimation->state() == QAbstractAnimation::Running) {
         _ribbonAnimation->stop();
     }
-    
-    // 从当前高度动态开始，防止反向点击时跳跃
+
+    // 定位 Ribbon 在 TitleBar 底部下方，浮在主界面上方
+    positionRibbonPanel();
+
+    _ribbonPanel->show();
+    _ribbonPanel->setFixedHeight(_ribbonPanel->height()); // 从当前高度开始
+
     _ribbonAnimation->setStartValue(_ribbonPanel->height());
     _ribbonAnimation->setEndValue(_ribbonExpandedHeight);
-    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic); // 展开时用 OutCubic
+    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
     _ribbonAnimation->start();
     _ribbonExpanded = true;
 }
@@ -274,15 +311,21 @@ void TitleBar::hideRibbon()
     }
     _ribbonAnimation->setStartValue(_ribbonPanel->height());
     _ribbonAnimation->setEndValue(0);
-    // 收起时可以用 InOutCubic 或者 OutCubic
-    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    _ribbonAnimation->setEasingCurve(makeTailwindCurve());
     _ribbonAnimation->start();
     _ribbonExpanded = false;
 }
 
+void TitleBar::positionRibbonPanel()
+{
+    // 将 Ribbon 定位到 TitleBar 底部边缘下方，覆盖在主界面上方
+    QPoint bottomLeft = QPoint(0, height());
+    _ribbonPanel->move(bottomLeft);
+    _ribbonPanel->setFixedWidth(width());
+}
+
 void TitleBar::onTabClicked(int index)
 {
-
     if (_ribbonExpanded && index == _tabBar->currentIndex()) {
         hideRibbon();
     } else {
@@ -297,7 +340,6 @@ void TitleBar::onTabChanged(int index)
     }
 }
 
-// 核心优化：直接固定高度，一次性解决布局计算，杜绝抽搐
 int TitleBar::ribbonHeight() const
 {
     return _ribbonPanel->height();
@@ -305,33 +347,15 @@ int TitleBar::ribbonHeight() const
 
 void TitleBar::setRibbonHeight(int h)
 {
-    // 测量帧间隔：两次调用之间的时间差
-    static QElapsedTimer frameTimer;
-    static bool frameTimerStarted = false;
-    qint64 frameDeltaNs = 0;
-
-    if (frameTimerStarted) {
-        frameDeltaNs = frameTimer.nsecsElapsed();
-    }
-    frameTimer.start();
-    frameTimerStarted = true;
-
     _ribbonPanel->setFixedHeight(h);
-    int totalHeight = 32 + h;
-    setFixedHeight(totalHeight);
-
-    // 帧间隔超过 16.6ms(60fps) 说明掉帧
-    double frameDeltaMs = frameDeltaNs / 1000000.0;
-    if (frameDeltaMs > 16.6) {
-        dsv_info("[PERF] DROP FRAME h=%d frameDelta=%.1fms (>16.6ms = dropped)",
-            h, frameDeltaMs);
+    // 确保 Ribbon 宽度跟随 TitleBar
+    if (_ribbonPanel->width() != width()) {
+        _ribbonPanel->setFixedWidth(width());
     }
 }
 
-// 核心优化 2：替换掉极度耗性能的 childAt(pos)
 bool TitleBar::isOnTabBar(const QPoint &pos) const
 {
-    // 直接用坐标几何判断，避免 O(N) 复杂度的控件树遍历
     if (_tabBar->rect().contains(_tabBar->mapFrom(this, pos))) {
         return true;
     }
@@ -369,6 +393,15 @@ bool TitleBar::ParentIsMaxsized()
 void TitleBar::paintEvent(QPaintEvent *event)
 {
     QWidget::paintEvent(event);
+}
+
+void TitleBar::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    // 当 TitleBar 宽度变化时，同步 Ribbon 宽度
+    if (_ribbonPanel->isVisible()) {
+        positionRibbonPanel();
+    }
 }
 
 void TitleBar::setTitle(QString title)
@@ -416,7 +449,6 @@ void TitleBar::setRestoreButton(bool max)
 
 void TitleBar::mousePressEvent(QMouseEvent* event)
 {
-    // 使用优化后的判断方法
     if (isOnTabBar(event->pos())) {
         QWidget::mousePressEvent(event);
         return;

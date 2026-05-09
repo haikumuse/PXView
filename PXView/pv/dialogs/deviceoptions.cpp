@@ -86,12 +86,12 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
     bool checked = _box->isChecked();
     bool enabled = _box->isEnabled();
 
-    QRectF r = rect().adjusted(1.5, 1.5, -1.5, -1.5);
+    QRectF r = rect().adjusted(1, 1, -1, -1);
 
     if (!enabled) {
         p.setBrush(Qt::transparent);
-        p.setPen(QPen(QColor(200, 200, 200), 1.5));
-        p.drawRoundedRect(r, 5, 5);
+        p.setPen(QPen(QColor(200, 200, 200), 1));
+        p.drawRoundedRect(r, 3, 3);
         p.setPen(QColor(200, 200, 200));
         QFont font = this->font();
         font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
@@ -103,13 +103,13 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
 
     if (checked) {
         p.setBrush(color);
-        p.setPen(QPen(color, 2));
+        p.setPen(QPen(color, 1.5));
     } else {
         p.setBrush(Qt::transparent);
-        p.setPen(QPen(color, 2));
+        p.setPen(QPen(color, 1.5));
     }
 
-    p.drawRoundedRect(r, 5, 5);
+    p.drawRoundedRect(r, 3, 3);
 
     p.setPen(checked ? Qt::white : color);
     QFont font = this->font();
