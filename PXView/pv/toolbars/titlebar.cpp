@@ -8,6 +8,7 @@
 #include "titlebar.h"
 #include <QStyle>
 #include <QLabel>
+#include <QApplication>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QEvent>
@@ -350,15 +351,15 @@ void TitleBar::expandRibbon()
     _ribbonContainer->show();
     _ribbonContainer->raise();
 
-    // 【核心修复】：加上这一句，确保内部面板不论发生了什么都会现身！
     _ribbonPanel->show();
 
-    // slideOffset: 从当前值到 0(完全显示)
     _ribbonAnimation->setStartValue(_slideOffset);
     _ribbonAnimation->setEndValue(0);
     _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
     _ribbonAnimation->start();
     _ribbonExpanded = true;
+
+    qApp->installEventFilter(this);
 }
 
 void TitleBar::hideRibbon()
@@ -367,12 +368,13 @@ void TitleBar::hideRibbon()
         _ribbonAnimation->stop();
     }
 
-    // slideOffset: 从当前值到 _ribbonExpandedHeight(完全隐藏)
     _ribbonAnimation->setStartValue(_slideOffset);
     _ribbonAnimation->setEndValue(_ribbonExpandedHeight);
     _ribbonAnimation->setEasingCurve(makeTailwindCurve());
     _ribbonAnimation->start();
     _ribbonExpanded = false;
+
+    qApp->removeEventFilter(this);
 }
 
 void TitleBar::expandRibbonPinned()
@@ -583,6 +585,25 @@ void TitleBar::setRestoreButton(bool max)
     }
 }
 
+bool TitleBar::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *me = static_cast<QMouseEvent*>(event);
+        QPoint globalPos = me->globalPos();
+
+        bool onTitleBar = rect().contains(mapFromGlobal(globalPos));
+        bool onRibbon = _ribbonContainer->isVisible() &&
+            _ribbonContainer->rect().contains(
+                _ribbonContainer->mapFromGlobal(globalPos));
+
+        if (!onTitleBar && !onRibbon) {
+            hideRibbon();
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
 void TitleBar::mousePressEvent(QMouseEvent* event)
 {
     if (isOnTabBar(event->pos())) {
@@ -730,6 +751,8 @@ void TitleBar::onPinToggled(bool checked)
         _pinButton->setIcon(QIcon(iconPath + "/unpin.svg"));
         _pinButton->setToolTip(tr("Unpin Ribbon"));
 
+        qApp->removeEventFilter(this);
+
         if (_ribbonExpanded) {
             // 停止浮动动画
             if (_ribbonAnimation->state() == QAbstractAnimation::Running)
@@ -750,6 +773,7 @@ void TitleBar::onPinToggled(bool checked)
         _pinButton->setToolTip(tr("Pin Ribbon"));
 
         if (_ribbonExpanded) {
+            qApp->installEventFilter(this);
             // 核心修复：固定 -> 浮动！保持面板展开，瞬间切为悬浮。
             if (_pinnedAnimation->state() == QAbstractAnimation::Running)
                 _pinnedAnimation->stop();
