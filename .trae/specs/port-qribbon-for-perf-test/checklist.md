@@ -1,0 +1,6 @@
+- [ ] QRibbon 源文件已复制到 PXView/pv/QRibbon/ 目录
+- [ ] CMakeLists.txt 已添加 QRibbon 源文件
+- [ ] MainWindow 构造函数中创建了 QMenuBar + QMenu 并安装了 QRibbon
+- [ ] 编译成功，程序可运行
+- [ ] QRibbon Tab 展开/收起动画正常工作
+- [ ] Viewport paintEvent 日志输出帧率数据
