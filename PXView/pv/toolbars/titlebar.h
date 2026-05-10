@@ -23,11 +23,12 @@
 #ifndef DSVIEW_PV_TOOLBARS_TITLEBAR_H
 #define DSVIEW_PV_TOOLBARS_TITLEBAR_H
 
-#include <QWidget>
+#include <QMenuBar>
 #include <QToolButton>
 #include <QTabBar>
 #include <QPropertyAnimation>
 #include <QAction>
+#include <QWidgetAction>
 #include <QStackedWidget>
 
 #include "../interface/icallbacks.h"
@@ -52,7 +53,7 @@ public:
 
 namespace toolbars {
 
-class TitleBar : public QWidget, public IUiWindow
+class TitleBar : public QMenuBar, public IUiWindow
 {
     Q_OBJECT
     Q_PROPERTY(int slideOffset READ slideOffset WRITE setSlideOffset)
@@ -98,7 +99,6 @@ public:
 private:
     void reStyle();
     void positionPinButton();
-    void reparentRibbonToContainer();
 
     bool ParentIsMaxsized();
     bool isOnTabBar(const QPoint &pos) const;
@@ -134,7 +134,6 @@ protected:
     QLabel      *_title;
     QTabBar     *_tabBar;
 
-    QVBoxLayout     *_mainLayout;
     QWidget         *_ribbonContainer;
     QWidget         *_ribbonPanel;
     QVBoxLayout     *_ribbonLayout;
@@ -148,7 +147,6 @@ protected:
     QToolButton     *_pinButton;
     bool            _ribbonPinned;
     QPropertyAnimation *_pinnedAnimation;
-    int             _pinnedFullHeight;
 
     bool        _moving;
     bool        _is_draging;

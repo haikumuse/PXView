@@ -25,7 +25,7 @@
 namespace pv {
 
 SubMainFrame::SubMainFrame(QWidget *content, const QString &title, QWidget *parent) :
-    QFrame(parent),
+    QMainWindow(parent),
     _contentWidget(content),
     _title(title)
 {
@@ -73,17 +73,10 @@ SubMainFrame::SubMainFrame(QWidget *content, const QString &title, QWidget *pare
     _titleBar = new toolbars::TitleBar(true, this, this, true);
     _titleBar->setTitle(title);
 
-    QVBoxLayout *vbox = new QVBoxLayout();
-    vbox->setContentsMargins(0, 0, 0, 0);
-    vbox->setSpacing(0);
-    vbox->addWidget(_titleBar);
-    if (content) {
-        content->setParent(this);
-        vbox->addWidget(content);
-        content->show();
-    }
+    setMenuBar(_titleBar);
 
-    _layout = new QGridLayout(this);
+    QWidget *centralWidget = new QWidget(this);
+    _layout = new QGridLayout(centralWidget);
     _layout->setSpacing(0);
     _layout->setContentsMargins(0, 0, 0, 0);
 
@@ -120,15 +113,25 @@ SubMainFrame::SubMainFrame(QWidget *content, const QString &title, QWidget *pare
         _layout->addWidget(_top, 0, 1);
         _layout->addWidget(_top_right, 0, 2);
         _layout->addWidget(_left, 1, 0);
-        _layout->addLayout(vbox, 1, 1);
+        if (content) {
+            content->setParent(this);
+            _layout->addWidget(content, 1, 1);
+            content->show();
+        }
         _layout->addWidget(_right, 1, 2);
         _layout->addWidget(_bottom_left, 2, 0);
         _layout->addWidget(_bottom, 2, 1);
         _layout->addWidget(_bottom_right, 2, 2);
     }
     else{
-        _layout->addLayout(vbox, 0, 0);
+        if (content) {
+            content->setParent(this);
+            _layout->addWidget(content, 0, 0);
+            content->show();
+        }
     }
+
+    setCentralWidget(centralWidget);
 
     installEventFilter(this);
 }
@@ -150,7 +153,7 @@ void SubMainFrame::showAt(const QPoint &pos, const QSize &size)
     resize(size);
 
     if (!_is_win32_parent_window){
-        QFrame::show();
+        QMainWindow::show();
         return;
     }
 
@@ -254,7 +257,7 @@ void SubMainFrame::close()
         ::ShowWindow(_parentNativeWidget->Handle(), SW_HIDE);
     }
 #endif
-    QFrame::close();
+    QMainWindow::close();
 }
 
 void SubMainFrame::closeEvent(QCloseEvent *event)
@@ -278,7 +281,7 @@ void SubMainFrame::closeEvent(QCloseEvent *event)
 
 void SubMainFrame::resizeEvent(QResizeEvent *event)
 {
-    QFrame::resizeEvent(event);
+    QMainWindow::resizeEvent(event);
 
     if (_layout == NULL){
         return;
@@ -306,7 +309,7 @@ void SubMainFrame::showNormal()
     }
 #endif
 
-    QFrame::showNormal();
+    QMainWindow::showNormal();
 }
 
 void SubMainFrame::showMaximized()
@@ -320,7 +323,7 @@ void SubMainFrame::showMaximized()
     }
 #endif
 
-    QFrame::showMaximized();
+    QMainWindow::showMaximized();
 }
 
 void SubMainFrame::showMinimized()
@@ -332,7 +335,7 @@ void SubMainFrame::showMinimized()
     }
 #endif
 
-    QFrame::showMinimized();
+    QMainWindow::showMinimized();
 }
 
 void SubMainFrame::hide_border()
@@ -413,7 +416,7 @@ bool SubMainFrame::IsMaxsized()
         return _parentNativeWidget->IsMaxsized();
     }
 #endif
-    return QFrame::isMaximized();
+    return QMainWindow::isMaximized();
 }
 
 bool SubMainFrame::IsNormalsized()
@@ -423,7 +426,7 @@ bool SubMainFrame::IsNormalsized()
         return _parentNativeWidget->IsNormalsized();
     }
 #endif
-    if (!QFrame::isMaximized() && !QFrame::isMinimized()){
+    if (!QMainWindow::isMaximized() && !QMainWindow::isMinimized()){
         return true;
     }
     return false;
@@ -436,7 +439,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
 
 #ifdef _WIN32
     if (_parentNativeWidget != NULL){
-        return QFrame::eventFilter(object, event);
+        return QMainWindow::eventFilter(object, event);
     }
 #endif
 
@@ -444,11 +447,11 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
         && type != QEvent::MouseButtonPress
         && type != QEvent::MouseButtonRelease
         && type != QEvent::Leave){
-        return QFrame::eventFilter(object, event);
+        return QMainWindow::eventFilter(object, event);
     }
 
     if (IsMaxsized()){
-        return QFrame::eventFilter(object, event);
+        return QMainWindow::eventFilter(object, event);
     }
 
     if (!_bDraging && type == QEvent::MouseMove && (!(mouse_event->buttons() | Qt::NoButton))){
@@ -480,7 +483,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
             _hit_border = 0;
             setCursor(Qt::ArrowCursor);
         }
-        return QFrame::eventFilter(object, event);
+        return QMainWindow::eventFilter(object, event);
     }
 
     if (type == QEvent::MouseMove) {
@@ -562,7 +565,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
         setCursor(Qt::ArrowCursor);
     }
 
-    return QFrame::eventFilter(object, event);
+    return QMainWindow::eventFilter(object, event);
 }
 
 bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, long *result)
