@@ -235,16 +235,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
             // 展开完毕
             if (_ribbonPinned) {
                 setFixedHeight(_pinnedFullHeight);
-
-                // 【关键修改】：动画放完、空位腾好后，把面板从浮动容器里接回 TitleBar 里
-                if (_ribbonPanel->parent() != this) {
-                    _ribbonContainer->hide();          // 功成身退
-                    _ribbonPanel->setParent(this);     // 回到 TitleBar
-                    _ribbonPanel->move(0, 32);         // 准确落位
-                    _ribbonPanel->setFixedWidth(width());
-                    _ribbonPanel->show();
-                    _ribbonPanel->raise();             // 确保在最上层
-                }
             }
         }
         positionPinButton();
@@ -741,22 +731,19 @@ void TitleBar::onPinToggled(bool checked)
         _pinButton->setToolTip(tr("Unpin Ribbon"));
 
         if (_ribbonExpanded) {
-            // 【关键修改】：不要隐藏浮动容器！让它继续盖在上面。
+            // 停止浮动动画
             if (_ribbonAnimation->state() == QAbstractAnimation::Running)
                 _ribbonAnimation->stop();
 
-            // 我们不调用 expandRibbonPinned()，而是在原地撑开 TitleBar：
-            if (_pinnedAnimation->state() == QAbstractAnimation::Running)
-                _pinnedAnimation->stop();
+            // 【核心性能修复】：立即隐藏浮动容器！浮动容器的 TranslucentBackground 在下方视图重绘时会导致极度卡顿
+            _ribbonContainer->hide();
+            
+            // 提升 TitleBar 的 Z-Order 层级！
+            // 这样一来，直接放入 TitleBar 的 _ribbonPanel 即使溢出（因为此时高度只有32），
+            // 也依然会盖在主视图上方，绝不会被遮挡，完美实现了刚才“浮动容器掩护”的效果，且没有任何性能损耗！
+            this->raise();
 
-            _pinnedFullHeight = 32 + _ribbonExpandedHeight;
-            setMaximumHeight(_pinnedFullHeight); // 放开天花板
-
-            // 撑大 TitleBar，把主界面往下推。在此期间，浮动容器会完美掩护动作
-            _pinnedAnimation->setStartValue(height());
-            _pinnedAnimation->setEndValue(_pinnedFullHeight);
-            _pinnedAnimation->setEasingCurve(QEasingCurve::OutCubic);
-            _pinnedAnimation->start();
+            expandRibbonPinned();
         }
     } else {
         _pinButton->setIcon(QIcon(iconPath + "/pin.svg"));
