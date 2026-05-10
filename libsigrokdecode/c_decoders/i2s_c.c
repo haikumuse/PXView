@@ -11,6 +11,7 @@ struct i2s_priv {
     int clk_rising_edge;
     int bit_shift;
     int bit_align_left;
+    int skip_next_bit;
     uint32_t left_data;
     uint32_t right_data;
     int left_bits;
@@ -20,6 +21,7 @@ struct i2s_priv {
     uint64_t ss_right;
     uint64_t ss_frame;
     int out_ann;
+    int out_python;
 };
 
 #define ANN_LEFT  0
@@ -81,6 +83,7 @@ static void i2s_start(struct srd_decoder_inst *di)
 {
     struct i2s_priv *s = (struct i2s_priv *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "i2s");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "i2s");
 
     const char *ws_pol = c_decoder_get_option_string(di, "ws_polarity", "left-high");
     s->ws_polarity_left_high = (strcmp(ws_pol, "left-high") == 0) ? 1 : 0;
@@ -119,7 +122,7 @@ static void i2s_decode(struct srd_decoder_inst *di)
         int ws = c_decoder_get_pin(di, 1, samplenum);
         int sd = c_decoder_get_pin(di, 2, samplenum);
 
-        int ws_is_left = s->ws_polarity_left_high ? (ws == 0) : (ws == 1);
+        int ws_is_left = s->ws_polarity_left_high ? (ws == 1) : (ws == 0);
 
         if (s->last_ws == -1) {
             s->last_ws = ws;
@@ -131,7 +134,7 @@ static void i2s_decode(struct srd_decoder_inst *di)
         }
 
         if (ws != s->last_ws) {
-            int prev_was_left = s->ws_polarity_left_high ? (s->last_ws == 0) : (s->last_ws == 1);
+            int prev_was_left = s->ws_polarity_left_high ? (s->last_ws == 1) : (s->last_ws == 0);
 
             if (prev_was_left && s->left_bits > 0) {
                 uint32_t val = s->left_data;
@@ -141,6 +144,8 @@ static void i2s_decode(struct srd_decoder_inst *di)
                 snprintf(word_str, sizeof(word_str), "L: 0x%0*X",
                          (s->bit_depth + 3) / 4, val);
                 C_ANN_PUT(di, s->ss_left, samplenum, s->out_ann, ANN_LEFT, word_str);
+                unsigned char val_bytes[4] = {val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF, (val >> 24) & 0xFF};
+                c_decoder_put_python(di, s->ss_left, samplenum, s->out_python, "DATA", val_bytes, sizeof(val_bytes));
             } else if (!prev_was_left && s->right_bits > 0) {
                 uint32_t val = s->right_data;
                 if (s->bit_align_left && s->right_bits < s->bit_depth)
@@ -149,6 +154,8 @@ static void i2s_decode(struct srd_decoder_inst *di)
                 snprintf(word_str, sizeof(word_str), "R: 0x%0*X",
                          (s->bit_depth + 3) / 4, val);
                 C_ANN_PUT(di, s->ss_right, samplenum, s->out_ann, ANN_RIGHT, word_str);
+                unsigned char rval_bytes[4] = {val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF, (val >> 24) & 0xFF};
+                c_decoder_put_python(di, s->ss_right, samplenum, s->out_python, "DATA", rval_bytes, sizeof(rval_bytes));
             }
 
             s->left_data = 0;
@@ -156,6 +163,12 @@ static void i2s_decode(struct srd_decoder_inst *di)
             s->left_bits = 0;
             s->right_bits = 0;
             s->last_ws = ws;
+            s->skip_next_bit = s->bit_shift;
+        }
+
+        if (s->skip_next_bit > 0) {
+            s->skip_next_bit--;
+            continue;
         }
 
         if (ws_is_left) {

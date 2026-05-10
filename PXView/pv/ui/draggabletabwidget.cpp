@@ -30,6 +30,8 @@
 #include <QLineEdit>
 #include <QTimer>
 #include <QResizeEvent>
+#include <QPaintEvent>
+#include <QStylePainter>
 
 namespace pv {
 namespace ui {
@@ -127,6 +129,11 @@ void DraggableTabWidget::resizeEvent(QResizeEvent *event)
 {
     QTabWidget::resizeEvent(event);
     update_add_button_position();
+}
+
+void DraggableTabWidget::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
 }
 
 void DraggableTabWidget::onDetachTab(int index, const QPoint &dropPos)

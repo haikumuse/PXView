@@ -70,6 +70,8 @@ public:
     void retranslateUi(int categoryIndex, const QString &title);
     void expandRibbon();
     void hideRibbon();
+    void expandRibbonPinned();
+    void hideRibbonPinned();
 
     //IUiWindow
     void UpdateLanguage() override;
@@ -95,12 +97,12 @@ public:
 
 private:
     void reStyle();
+    void positionPinButton();
+    void reparentRibbonToContainer();
 
     bool ParentIsMaxsized();
     bool isOnTabBar(const QPoint &pos) const;
     void positionRibbonContainer();
-    void updatePinButtonIcon();
-    void positionPinButton();
 
 signals:
     void normalShow();
@@ -114,7 +116,7 @@ public slots:
 private slots:
     void onTabClicked(int index);
     void onTabChanged(int index);
-    void onPinClicked();
+    void onPinToggled(bool checked);
 
 protected:
     void paintEvent(QPaintEvent *event);
@@ -123,27 +125,29 @@ protected:
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void mouseDoubleClickEvent(QMouseEvent *event);
-    bool eventFilter(QObject *obj, QEvent *event);
 
 
     QToolButton *_minimizeButton;
     QToolButton *_maximizeButton;
     QToolButton *_closeButton;
-    QToolButton *_pinButton;
     QLabel      *_title;
     QTabBar     *_tabBar;
 
+    QVBoxLayout     *_mainLayout;
     QWidget         *_ribbonContainer;
     QWidget         *_ribbonPanel;
     QVBoxLayout     *_ribbonLayout;
-    QVBoxLayout     *_mainLayout;
     QStackedWidget  *_categoryStack;
     QList<QHBoxLayout*> _categoryLayouts;
     QPropertyAnimation *_ribbonAnimation;
     bool            _ribbonExpanded;
-    bool            _ribbonPinned;
     int             _ribbonExpandedHeight;
     int             _slideOffset;
+
+    QToolButton     *_pinButton;
+    bool            _ribbonPinned;
+    QPropertyAnimation *_pinnedAnimation;
+    int             _pinnedFullHeight;
 
     bool        _moving;
     bool        _is_draging;

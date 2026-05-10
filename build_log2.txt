@@ -1,0 +1,1 @@
+ninja: build stopped: cannot make progress due to previous errors.

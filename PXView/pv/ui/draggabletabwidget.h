@@ -68,6 +68,7 @@ private:
     void update_add_button_position();
 
 protected:
+    void paintEvent(QPaintEvent *event) override;
     void tabInserted(int index) override;
     void tabRemoved(int index) override;
     void resizeEvent(QResizeEvent *event) override;

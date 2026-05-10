@@ -116,7 +116,11 @@
         <file>icons/lissajous.svg</file>
         <file>icons/dark/single.svg</file>
         <file>icons/dark/measure.svg</file>
+        <file>icons/dark/pin.svg</file>
+        <file>icons/dark/unpin.svg</file>
         <file>icons/light/measure.svg</file>
+        <file>icons/light/pin.svg</file>
+        <file>icons/light/unpin.svg</file>
         <file>icons/dark/daq.svg</file>
         <file>icons/dark/la.svg</file>
         <file>icons/dark/osc.svg</file>
@@ -138,14 +142,10 @@
         <file>icons/dark/logo_color.svg</file>
         <file>icons/dark/logo_noColor.svg</file>
         <file>icons/light/minimize.svg</file>
-        <file>icons/light/pin.svg</file>
-        <file>icons/light/unpin.svg</file>
         <file>icons/dark/restore.svg</file>
         <file>icons/light/restore.svg</file>
         <file>icons/dsl_logo.svg</file>
         <file>icons/dark/minimize.svg</file>
-        <file>icons/dark/pin.svg</file>
-        <file>icons/dark/unpin.svg</file>
         <file>icons/logo.svg</file>
         <file>icons/light/loop.svg</file>
         <file>icons/dark/loop.svg</file>

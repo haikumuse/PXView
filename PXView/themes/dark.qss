@@ -289,12 +289,12 @@ QMenuBar::item
 QMenuBar::item:selected
 {
     background: transparent;
-    border: none;
+    border: 1px transparent;
 }
 
 QMenuBar::item:pressed
 {
-    border: none;
+    border: 1px transparent;
     background-color: @accent;
     color: @fg-base;
     margin-bottom: -1px;
@@ -303,7 +303,7 @@ QMenuBar::item:pressed
 
 QMenu
 {
-    border: none;
+    border: 1px transparent;
     color: @fg-base;
     margin: 0px;
 }
@@ -386,7 +386,7 @@ QAbstractItemView
 {
     alternate-background-color: @alternate-row;
     color: @fg-base;
-    border: none;
+    border: 1px transparent;
     border-radius: 2px;
     padding: 1px
 }
@@ -429,7 +429,7 @@ QScrollBar:horizontal
 {
     height: 12px;
     margin: 3px 12px 3px 12px;
-    border: none;
+    border: 1px transparent;
     border-radius: 3px;
     background-color: @bg-base;
 }
@@ -500,7 +500,7 @@ QScrollBar:vertical
     background-color: @bg-base;
     width: 12px;
     margin: 12px 3px 12px 3px;
-    border: none;
+    border: 1px transparent;
     border-radius: 3px;
 }
 
@@ -592,17 +592,17 @@ QFrame
 QFrame[frameShape="0"]
 {
     border-radius: 2px;
-    border: none;
+    border: 1px transparent;
 }
 
 QStackedWidget
 {
-    border: none;
+    border: 1px transparent;
 }
 
 QToolBar
 {
-    border: none;
+    border: 1px transparent;
     background-color: @bg-base;
     padding: 0px;
 }
@@ -828,25 +828,25 @@ QTabWidget::pane
 
 QTabWidget::pane:top
 {
-    border: none;
+    border: 1px transparent;
     top: -1px;
 }
 
 QTabWidget::pane:bottom
 {
-    border: none;
+    border: 1px transparent;
     bottom: -1px;
 }
 
 QTabWidget::pane:left
 {
-    border: none;
+    border: 1px transparent;
     right: -1px;
 }
 
 QTabWidget::pane:right
 {
-    border: none;
+    border: 1px transparent;
     left: -1px;
 }
 
@@ -883,21 +883,21 @@ QTabBar::tab:top
 {
     border: none;
     border-top: none;
-    border-bottom: none;
+    border-bottom: 1px transparent;
 }
 
 QTabBar::tab:top:!selected
 {
     border: none;
     border-top: none;
-    border-bottom: none;
+    border-bottom: 1px transparent;
 }
 
 QTabBar::tab:top:hover
 {
     border: none;
     border-top: none;
-    border-bottom: none;
+    border-bottom: 1px transparent;
 }
 
 
@@ -905,19 +905,19 @@ QTabBar::tab:top:hover
 QTabBar::tab:bottom
 {
     border: none;
-    border-top: none;
+    border-top: 1px transparent;
 }
 
 QTabBar::tab:bottom:!selected
 {
     border: none;
-    border-top: none;
+    border-top: 1px transparent;
 }
 
 QTabBar::tab:bottom:hover
 {
     border: none;
-    border-top: none;
+    border-top: 1px transparent;
 }
 
 
@@ -925,19 +925,19 @@ QTabBar::tab:bottom:hover
 QTabBar::tab:left
 {
     border: none;
-    border-left: none;
+    border-left: 1px transparent;
 }
 
 QTabBar::tab:left:!selected
 {
     border: none;
-    border-left: none;
+    border-left: 1px transparent;
 }
 
 QTabBar::tab:left:hover
 {
     border: none;
-    border-left: none;
+    border-left: 1px transparent;
 }
 
 
@@ -945,19 +945,19 @@ QTabBar::tab:left:hover
 QTabBar::tab:right
 {
     border: none;
-    border-right: none;
+    border-right: 1px transparent;
 }
 
 QTabBar::tab:right:!selected
 {
     border: none;
-    border-right: none;
+    border-right: 1px transparent;
 }
 
 QTabBar::tab:right:hover
 {
     border: none;
-    border-right: none;
+    border-right: 1px transparent;
 }
 
 
@@ -1267,7 +1267,7 @@ QPushButton::menu-indicator
 
 QTableView
 {
-    border: none;
+    border: 1px transparent;
     gridline-color: @gridline;
     background-color: @bg-base;
 }
@@ -1311,7 +1311,7 @@ QTreeView::item:hover
 
 QHeaderView
 {
-    border: none;
+    border: 1px transparent;
     border-radius: 2px;
     margin: 0px;
     padding: 0px;
@@ -1322,7 +1322,7 @@ QHeaderView::section
     background-color: @bg-base;
     color: @fg-base;
     padding: 4px;
-    border: none;
+    border: 1px transparent;
     border-radius: 0px;
     text-align: center;
 }
@@ -1330,7 +1330,7 @@ QHeaderView::section
 QHeaderView::section::vertical::first,
 QHeaderView::section::vertical::only-one
 {
-    border-top: none;
+    border-top: 1px transparent;
 }
 
 QHeaderView::section::vertical
@@ -1341,7 +1341,7 @@ QHeaderView::section::vertical
 QHeaderView::section::horizontal::first,
 QHeaderView::section::horizontal::only-one
 {
-    border-left: none;
+    border-left: 1px transparent;
 }
 
 QHeaderView::section::horizontal
@@ -1371,7 +1371,7 @@ QHeaderView::up-arrow
 QTableCornerButton::section
 {
     background-color: @bg-base;
-    border: none;
+    border: 1px transparent;
     border-radius: 2px;
 }
 
@@ -1460,7 +1460,7 @@ QProgressBar:horizontal
 QProgressBar::chunk:horizontal
 {
     background-color: @accent;
-    border: none;
+    border: 1px transparent;
     border-radius: 3px;
 }
 
@@ -1603,21 +1603,6 @@ QWidget#RibbonPanel {
     background: @bg-overlay;
 }
 
-QToolButton#PinButton {
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    padding: 2px;
-}
-
-QToolButton#PinButton:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-QToolButton#PinButton:pressed {
-    background: rgba(255, 255, 255, 0.05);
-}
-
 QWidget#RibbonSeparator {
     background: @ribbon-sep;
 }
@@ -1636,13 +1621,12 @@ QWidget#RibbonSeparator {
 
 #sliding_drawer_titlebar
 {
-    background: transparent;
+    background: @drawer-title-bg;
     border-bottom: 1px solid @drawer-title-border;
 }
 
 #sliding_drawer_title
 {
-    background: transparent;
     color: @drawer-title-fg;
     font-size: 13pt;
     font-weight: bold;

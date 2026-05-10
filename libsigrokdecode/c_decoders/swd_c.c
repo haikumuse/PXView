@@ -48,6 +48,7 @@ struct swd_priv {
     int orundetect;
     int dparity;
     int out_ann;
+    int out_python;
     uint64_t ss_linereset;
 };
 
@@ -184,6 +185,7 @@ static void swd_start(struct srd_decoder_inst *di)
 {
     struct swd_priv *s = (struct swd_priv *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "swd");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "swd");
     const char *strict = c_decoder_get_option_string(di, "strict_start", "no");
     if (strcmp(strict, "no") == 0)
         s->state = REQ;
@@ -214,6 +216,7 @@ static void swd_decode(struct srd_decoder_inst *di)
             } else {
                 if (s->linereset_count >= 50) {
                     C_ANN_PUT(di, s->ss_linereset, samplenum, s->out_ann, ANN_RESET, "LINERESET");
+                    c_decoder_put_python(di, s->ss_linereset, samplenum, s->out_python, "LINE RESET", NULL, 0);
                     swd_reset_state(s);
                 }
                 s->linereset_count = 0;
@@ -365,8 +368,19 @@ static void swd_decode(struct srd_decoder_inst *di)
                 char ptext[4];
                 snprintf(ptext, sizeof(ptext), "%d%d", s->dparity, parity_received);
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_PARITY, ptext);
-            } else if (s->rw == 0) {
-                handle_completed_write(s);
+            } else {
+                unsigned char py_data[8];
+                uint32_t addr32 = (uint32_t)s->addr;
+                memcpy(py_data, &addr32, 4);
+                memcpy(py_data + 4, &s->data, 4);
+                if (s->rw == 1) {
+                    c_decoder_put_python(di, s->ss_req, samplenum, s->out_python,
+                        s->apdp ? "AP READ" : "DP READ", py_data, 8);
+                } else {
+                    c_decoder_put_python(di, s->ss_req, samplenum, s->out_python,
+                        s->apdp ? "AP WRITE" : "DP WRITE", py_data, 8);
+                    handle_completed_write(s);
+                }
             }
             swd_next_state(s);
             break;

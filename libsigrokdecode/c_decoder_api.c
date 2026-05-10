@@ -65,8 +65,15 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
             pdata.data = &pda;
             memset(&pda, 0, sizeof(pda));
             pda.ann_class = ann->ann_class;
-            pda.ann_type = ann->ann_type;
+            if (ann->ann_class >= 0 && ann->ann_class < (int)g_slist_length(di->decoder->ann_types)) {
+                pda.ann_type = GPOINTER_TO_INT(g_slist_nth_data(di->decoder->ann_types, ann->ann_class));
+            } else {
+                pda.ann_type = ann->ann_class;
+            }
             pda.ann_text = ann->ann_text;
+            strncpy(pda.str_number_hex, ann->str_number_hex, DECODE_NUM_HEX_MAX_LEN - 1);
+            pda.str_number_hex[DECODE_NUM_HEX_MAX_LEN - 1] = '\0';
+            pda.numberic_value = ann->numberic_value;
             cb->cb(&pdata, cb->cb_data);
         }
         break;
@@ -284,6 +291,162 @@ SRD_API const char *c_decoder_get_option_string(struct srd_decoder_inst *di,
     if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING))
         return g_variant_get_string(val, NULL);
     return defval;
+}
+
+SRD_API int c_decoder_register_output_meta(struct srd_decoder_inst *di,
+    int output_type, const char *proto_id,
+    const char *meta_type_str, const char *meta_name, const char *meta_descr)
+{
+    struct srd_pd_output *pdo;
+    int pdo_id;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    pdo_id = c_decoder_register_output(di, output_type, proto_id);
+    if (pdo_id < 0)
+        return pdo_id;
+
+    GSList *out_list = g_slist_nth(di->pd_output, pdo_id);
+    if (!out_list)
+        return SRD_ERR_ARG;
+
+    pdo = out_list->data;
+    if (meta_type_str) {
+        if (strcmp(meta_type_str, "int") == 0)
+            pdo->meta_type = G_VARIANT_TYPE_INT64;
+        else if (strcmp(meta_type_str, "float") == 0 || strcmp(meta_type_str, "double") == 0)
+            pdo->meta_type = G_VARIANT_TYPE_DOUBLE;
+    }
+    pdo->meta_name = g_strdup(meta_name ? meta_name : "");
+    pdo->meta_descr = g_strdup(meta_descr ? meta_descr : "");
+
+    return pdo_id;
+}
+
+SRD_API int c_decoder_put_meta_int(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, int64_t value)
+{
+    struct srd_pd_output *pdo;
+    struct srd_pd_callback *cb;
+    struct srd_proto_data pdata;
+    struct srd_proto_data_meta pdm;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    if (!out_list)
+        return SRD_ERR_ARG;
+    pdo = out_list->data;
+
+    pdata.start_sample = start_sample;
+    pdata.end_sample = end_sample;
+    pdata.pdo = pdo;
+    pdata.data = &pdm;
+    pdm.key = pdo->pdo_id;
+    pdm.value = g_variant_new_int64(value);
+
+    if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_META))) {
+        cb->cb(&pdata, cb->cb_data);
+    }
+
+    g_variant_unref(pdm.value);
+    return SRD_OK;
+}
+
+SRD_API int c_decoder_put_meta_double(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, double value)
+{
+    struct srd_pd_output *pdo;
+    struct srd_pd_callback *cb;
+    struct srd_proto_data pdata;
+    struct srd_proto_data_meta pdm;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    if (!out_list)
+        return SRD_ERR_ARG;
+    pdo = out_list->data;
+
+    pdata.start_sample = start_sample;
+    pdata.end_sample = end_sample;
+    pdata.pdo = pdo;
+    pdata.data = &pdm;
+    pdm.key = pdo->pdo_id;
+    pdm.value = g_variant_new_double(value);
+
+    if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_META))) {
+        cb->cb(&pdata, cb->cb_data);
+    }
+
+    g_variant_unref(pdm.value);
+    return SRD_OK;
+}
+
+SRD_API uint64_t c_decoder_get_last_samplenum(struct srd_decoder_inst *di)
+{
+    if (!di)
+        return 0;
+    return di->last_samplenum;
+}
+
+SRD_API int c_decoder_put_python(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, const char *cmd, const unsigned char *data, uint64_t data_len)
+{
+    struct srd_pd_output *pdo;
+    struct srd_pd_callback *cb;
+    struct srd_proto_data pdata;
+    struct srd_proto_data_annotation pda;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    if (!out_list)
+        return SRD_ERR_ARG;
+    pdo = out_list->data;
+
+    pdata.start_sample = start_sample;
+    pdata.end_sample = end_sample;
+    pdata.pdo = pdo;
+    pdata.data = NULL;
+
+    if (pdo->output_type == SRD_OUTPUT_PYTHON) {
+        if (di->next_di) {
+            GSList *l;
+            for (l = di->next_di; l; l = l->next) {
+                struct srd_decoder_inst *next_di = l->data;
+                if (next_di->is_c_inst && next_di->c_dec_inst) {
+                    if (next_di->c_dec_inst->recv_proto) {
+                        next_di->c_dec_inst->recv_proto(next_di, start_sample, end_sample, cmd, data, data_len);
+                    }
+                }
+            }
+        }
+
+        if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_ANN))) {
+            pdata.data = &pda;
+            memset(&pda, 0, sizeof(pda));
+            char ann_text[256];
+            if (data && data_len > 0)
+                snprintf(ann_text, sizeof(ann_text), "%s: 0x%02X", cmd ? cmd : "", data[0]);
+            else
+                snprintf(ann_text, sizeof(ann_text), "%s", cmd ? cmd : "");
+            char *ann_texts[] = {ann_text, NULL};
+            pda.ann_class = 0;
+            pda.ann_type = 0;
+            pda.ann_text = ann_texts;
+            cb->cb(&pdata, cb->cb_data);
+        }
+    }
+
+    return SRD_OK;
 }
 
 struct srd_cond_builder {

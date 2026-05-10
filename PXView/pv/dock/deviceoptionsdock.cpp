@@ -212,6 +212,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
 
   QFont font = this->font();
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFontMetrics fm(font);
 
   int maxLabelWidth = 0;
   int i = 0;
@@ -237,7 +238,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
       layout->addWidget(lb, i, 0);
       layout->addWidget(wid, i, 1);
 
-      int labelWidth = lb->fontMetrics().boundingRect(lable_text).width() + 15;
+      int labelWidth = fm.boundingRect(lable_text).width() + 15;
       if (labelWidth > maxLabelWidth)
         maxLabelWidth = labelWidth;
     }
@@ -248,6 +249,15 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
             &DeviceOptionsDock::on_property_committed);
 
     i++;
+  }
+
+  for (int row = 0; row < layout->rowCount(); row++) {
+    QLayoutItem *labelItem = layout->itemAtPosition(row, 0);
+    if (labelItem && labelItem->widget()) {
+      QLabel *lb = qobject_cast<QLabel*>(labelItem->widget());
+      if (lb)
+        lb->setFixedWidth(maxLabelWidth);
+    }
   }
 
   layout->setColumnMinimumWidth(0, maxLabelWidth);
@@ -827,16 +837,10 @@ void DeviceOptionsDock::build_dynamic_panel() {
     else
       inner = new QGridLayout();
 
-    QHBoxLayout *outer = new QHBoxLayout();
-    outer->setContentsMargins(0, 0, 0, 0);
-    outer->addLayout(inner);
-    _dynamic_panel->setLayout(outer);
+    _dynamic_panel->setLayout(inner);
   }
 
-  QLayout *inner = nullptr;
-  QHBoxLayout *outer = qobject_cast<QHBoxLayout*>(_dynamic_panel->layout());
-  if (outer && outer->count() > 0)
-    inner = outer->itemAt(0)->layout();
+  QLayout *inner = _dynamic_panel->layout();
   QString title = dynamic_widget(inner);
   QGroupBox *box = dynamic_cast<QGroupBox *>(_dynamic_panel);
   box->setFont(font);
@@ -857,7 +861,7 @@ void DeviceOptionsDock::try_resize_scroll() {
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
   QFontMetrics fm(font);
 
-  auto labels = this->findChildren<QLabel *>();
+  auto labels = _dynamic_panel->findChildren<QLabel *>();
   int max_label_width = 0;
   for (auto o : labels) {
     QRect rc = fm.boundingRect(o->text());
@@ -1225,10 +1229,24 @@ void DeviceOptionsDock::build_glitch_filter_panel()
 
     _glitch_filter_group = new QGroupBox("毛刺过滤", _container_panel);
     _glitch_filter_group->setFont(font);
+    _glitch_filter_group->setMinimumWidth(230);
+    _glitch_filter_group->setAlignment(Qt::AlignTop);
 
     QVBoxLayout *layout = new QVBoxLayout(_glitch_filter_group);
     layout->setContentsMargins(5, 20, 5, 5);
     layout->setSpacing(3);
+
+    QScrollArea *ch_scroll = new QScrollArea(_glitch_filter_group);
+    ch_scroll->setWidgetResizable(true);
+    ch_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ch_scroll->setMinimumHeight(120);
+    ch_scroll->setMaximumHeight(250);
+
+    QWidget *ch_container = new QWidget();
+    QVBoxLayout *ch_layout_main = new QVBoxLayout(ch_container);
+    ch_layout_main->setContentsMargins(2, 2, 2, 2);
+    ch_layout_main->setSpacing(2);
+    ch_layout_main->setAlignment(Qt::AlignTop);
 
     int ch_idx = 0;
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
@@ -1239,22 +1257,25 @@ void DeviceOptionsDock::build_glitch_filter_panel()
         QHBoxLayout *ch_layout = new QHBoxLayout();
         ch_layout->setSpacing(3);
 
-        QCheckBox *ch_check = new QCheckBox(QString("Ch%1").arg(probe->index), _glitch_filter_group);
+        QCheckBox *ch_check = new QCheckBox(QString("Ch%1").arg(probe->index), ch_container);
         ch_check->setFont(font);
         ch_check->setEnabled(probe->enabled);
+        ch_check->setFixedWidth(55);
         _glitch_checkBox_list.push_back(ch_check);
 
-        QLabel *le_label = new QLabel("≤", _glitch_filter_group);
+        QLabel *le_label = new QLabel("≤", ch_container);
         le_label->setFont(font);
+        le_label->setFixedWidth(12);
 
-        QSpinBox *spin = new QSpinBox(_glitch_filter_group);
+        QSpinBox *spin = new QSpinBox(ch_container);
         spin->setRange(1, 999);
         spin->setValue(1);
         spin->setFont(font);
         spin->setEnabled(false);
+        spin->setFixedWidth(65);
         _glitch_spinbox_list.push_back(spin);
 
-        QLabel *unit_label = new QLabel("采样周期", _glitch_filter_group);
+        QLabel *unit_label = new QLabel("采样周期", ch_container);
         unit_label->setFont(font);
 
         ch_layout->addWidget(ch_check);
@@ -1263,7 +1284,7 @@ void DeviceOptionsDock::build_glitch_filter_panel()
         ch_layout->addWidget(unit_label);
         ch_layout->addStretch();
 
-        layout->addLayout(ch_layout);
+        ch_layout_main->addLayout(ch_layout);
 
         connect(ch_check, &QCheckBox::toggled, [spin](bool checked) {
             spin->setEnabled(checked);
@@ -1271,6 +1292,9 @@ void DeviceOptionsDock::build_glitch_filter_panel()
 
         ch_idx++;
     }
+
+    ch_scroll->setWidget(ch_container);
+    layout->addWidget(ch_scroll);
 
     QHBoxLayout *btn_layout = new QHBoxLayout();
     btn_layout->setSpacing(5);
