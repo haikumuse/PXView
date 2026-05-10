@@ -95,7 +95,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
    _ribbonExpandedHeight = 65;
    _slideOffset = 65;
    _pinButton = NULL;
-   _ribbonPinned = false;
+   _ribbonPinned = true;
    _pinnedAnimation = NULL;
    _pinnedFullHeight = 32 + 65;
 
@@ -200,9 +200,9 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     _pinButton->setIconSize(QSize(14, 14));
     _pinButton->setAutoRaise(true);
     _pinButton->setCheckable(true);
-    _pinButton->setChecked(false);
-    _pinButton->setToolTip(tr("Pin Ribbon"));
-    _pinButton->setIcon(QIcon(GetIconPath() + "/pin.svg"));
+    _pinButton->setChecked(true);
+    _pinButton->setToolTip(tr("Unpin Ribbon"));
+    _pinButton->setIcon(QIcon(GetIconPath() + "/unpin.svg"));
     connect(_pinButton, &QToolButton::toggled, this, &TitleBar::onPinToggled);
 
     // TitleBar 高度固定 32px，不随 Ribbon 变化

@@ -375,6 +375,9 @@ QT_ADDITIONAL_HOST_PACKAGES_PREFIX_PATH:STRING=
 //Additional directories where find(Qt6 ...) components are searched
 QT_ADDITIONAL_PACKAGES_PREFIX_PATH:STRING=
 
+//No help, variable specified on the command line.
+QT_FEATURE_paint_debug:UNINITIALIZED=ON
+
 //Force the use of Qt6 by setting this option to 6
 QT_VERSION_FORCE:STRING=
 
