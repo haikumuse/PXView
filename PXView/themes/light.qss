@@ -103,18 +103,6 @@ QWidget
     outline: 0;
 }
 
-/*
-QWidget:item:hover
-{
-    background-color: @accent;
-    color: @fg-base;
-}
-
-QWidget:item:selected
-{
-    background-color: @accent;
-}
-*/
 
 QPushButton#flat{
     text-align:left;
@@ -185,7 +173,7 @@ QCheckBox::indicator:indeterminate
 }
 
 QCheckBox::indicator:indeterminate:focus,
-QCheckBox::indicator:indeterminate:hover
+QCheckBox::indicator:indeterminate:hover,
 QCheckBox::indicator:indeterminate:pressed
 {
     image: url(:/light/checkbox_indeterminate-hover.svg);
@@ -1092,14 +1080,12 @@ QTreeView::branch:!has-children:!has-siblings:adjoins-item
 QTreeView::branch:has-children:!has-siblings:closed,
 QTreeView::branch:closed:has-children:has-siblings
 {
-    image: url(:/light/stylesheet-branch-end-closed.svg) 0;
     image: url(:/light/branch_closed.svg);
 }
 
 QTreeView::branch:open:has-children:!has-siblings,
 QTreeView::branch:open:has-children:has-siblings
 {
-    image: url(:/light/stylesheet-branch-end-open.svg) 0;
     image: url(:/light/branch_open.svg);
 }
 
@@ -1325,7 +1311,6 @@ QToolButton::menu-arrow:open
 
 QToolButton#ModeButton::menu-arrow
 {
-    /*image: url(:/light/mode_down_arrow.svg);*/
     image:none;
 }
 
