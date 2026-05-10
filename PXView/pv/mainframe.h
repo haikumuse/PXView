@@ -26,7 +26,7 @@
 
 #include "widgets/border.h"
 
-#include <QFrame>
+#include <QMainWindow>
 #include <QGridLayout>
 #include <QTimer>
 #include <QRect>
@@ -69,7 +69,7 @@ struct FormInitInfo
 };
 
 class MainFrame : 
-    public QFrame,
+    public QMainWindow,
     public ITitleParent,
     public IParentNativeEventCallback
 {

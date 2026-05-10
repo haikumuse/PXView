@@ -313,10 +313,13 @@ bool Viewport::event(QEvent *event)
     return QWidget::event(event);
 }
 
+static int s_paintCount = 0;
+
 void Viewport::paintEvent(QPaintEvent *event)
 {
-    (void)event; 
-
+    (void)event;
+    s_paintCount++;
+    dsv_info("Viewport::paintEvent count=%d", s_paintCount);
     doPaint();
 }
 
@@ -1826,8 +1829,11 @@ void Viewport::leaveEvent(QEvent *)
     clear_measure();
 }
 
-void Viewport::resizeEvent(QResizeEvent*)
+void Viewport::resizeEvent(QResizeEvent *e)
 {
+    dsv_info("Viewport::resizeEvent old=%dx%d new=%dx%d",
+             e->oldSize().width(), e->oldSize().height(),
+             e->size().width(), e->size().height());
     ViewStatus *vs = _view.get_viewstatus();
     if (vs) {
         int h = vs->height();

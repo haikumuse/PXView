@@ -70,7 +70,7 @@ static QEasingCurve makeTailwindCurve()
 }
 
 TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose) :
-    QWidget(parent)
+    QMenuBar(parent)
 {
    _minimizeButton = NULL;
    _maximizeButton = NULL;
@@ -85,7 +85,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
    _titleParent = titleParent;
    _is_done_moved = false;
    _is_able_drag = true;
-   _mainLayout = NULL;
    _ribbonContainer = NULL;
    _ribbonPanel = NULL;
    _ribbonLayout = NULL;
@@ -97,41 +96,35 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
    _pinButton = NULL;
    _ribbonPinned = true;
    _pinnedAnimation = NULL;
-   _pinnedFullHeight = 32 + 65;
 
     assert(parent);
 
     setObjectName("TitleBar");
     setContentsMargins(0,0,0,0);
 
-    _mainLayout = new QVBoxLayout(this);
-    _mainLayout->setContentsMargins(0,0,0,0);
-    _mainLayout->setSpacing(0);
-    _mainLayout->setAlignment(Qt::AlignTop);
-
     QWidget *titleRow = new QWidget(this);
     titleRow->setObjectName("TitleRow");
     titleRow->setFixedHeight(32);
     titleRow->setContentsMargins(0,0,0,0);
 
-    QHBoxLayout *lay1 = new QHBoxLayout(titleRow);
-    lay1->setContentsMargins(0,0,0,0);
-    lay1->setSpacing(0);
+    QHBoxLayout *titleRowLayout = new QHBoxLayout(titleRow);
+    titleRowLayout->setContentsMargins(0,0,0,0);
+    titleRowLayout->setSpacing(0);
 
     _tabBar = new QTabBar(titleRow);
     _tabBar->setDrawBase(false);
     _tabBar->setFixedHeight(32);
     _tabBar->setShape(QTabBar::RoundedNorth);
     _tabBar->setMinimumWidth(100);
-    lay1->addWidget(_tabBar);
+    titleRowLayout->addWidget(_tabBar);
 
-    lay1->addStretch(500);
+    titleRowLayout->addStretch(500);
 
     _title = new QLabel(titleRow);
     _title->setAlignment(Qt::AlignCenter);
-    lay1->addWidget(_title);
+    titleRowLayout->addWidget(_title);
 
-    lay1->addStretch(500);
+    titleRowLayout->addStretch(500);
 
     if (_isTop) {
         _minimizeButton = new QToolButton(titleRow);
@@ -145,8 +138,8 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
         _maximizeButton->setIconSize(QSize(16, 16));
         _maximizeButton->setAutoRaise(true);
 
-        lay1->addWidget(_minimizeButton);
-        lay1->addWidget(_maximizeButton);
+        titleRowLayout->addWidget(_minimizeButton);
+        titleRowLayout->addWidget(_maximizeButton);
 
         connect(this, SIGNAL(normalShow()), parent, SLOT(showNormal()));
         connect(this, SIGNAL(maximizedShow()), parent, SLOT(showMaximized()));
@@ -160,11 +153,15 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
         _closeButton->setFixedSize(46, 32);
         _closeButton->setIconSize(QSize(16, 16));
         _closeButton->setAutoRaise(true);
-        lay1->addWidget(_closeButton);
+        titleRowLayout->addWidget(_closeButton);
         connect(_closeButton, SIGNAL(clicked()), parent, SLOT(close()));
     }
 
-    _mainLayout->addWidget(titleRow);
+    titleRow->setParent(this);
+    titleRow->move(0, 0);
+    titleRow->show();
+
+    setFixedHeight(32);
 
     // --- 平移滑动式 Ribbon ---
     // _ribbonContainer: 裁切容器，固定高度，作为 _parent 的子控件浮在主界面上方
@@ -179,11 +176,12 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
 
     // _ribbonPanel: 实际内容面板，在容器内做 Y 轴平移
     // 初始位置在容器上方(y=-65)，完全被裁切不可见
-    _ribbonPanel = new QWidget(_ribbonContainer);
+    _ribbonPanel = new QWidget(this);
     _ribbonPanel->setObjectName("RibbonPanel");
     _ribbonPanel->setContentsMargins(0,0,0,0);
-    _ribbonPanel->setFixedHeight(_ribbonExpandedHeight);
-    _ribbonPanel->move(0, -_ribbonExpandedHeight);
+    _ribbonPanel->setFixedSize(1, _ribbonExpandedHeight);
+    _ribbonPanel->move(0, 32);
+    _ribbonPanel->hide();
 
     _ribbonLayout = new QVBoxLayout(_ribbonPanel);
     _ribbonLayout->setContentsMargins(0,0,0,0);
@@ -224,21 +222,22 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
         dsv_info("pinnedAnimation finished: _ribbonExpanded=%d _ribbonPinned=%d height=%d",
                  _ribbonExpanded, _ribbonPinned, height());
         if (!_ribbonExpanded) {
-            // 收回完毕：隐藏 ribbonPanel，强行锁定回 32px
             _ribbonPanel->hide();
             setFixedHeight(32);
 
             if (!_ribbonPinned) {
-                // 已经取消 pin 了，归还到浮动容器
-                reparentRibbonToContainer();
+                _ribbonPanel->setParent(_ribbonContainer);
+                _ribbonPanel->move(0, -_ribbonExpandedHeight);
+                _ribbonPanel->setFixedWidth(_ribbonContainer->width());
             }
         } else {
-            // 展开完毕
-            if (_ribbonPinned) {
-                setFixedHeight(_pinnedFullHeight);
-            }
+            setFixedHeight(32 + _ribbonExpandedHeight);
         }
         positionPinButton();
+    });
+
+    connect(_pinnedAnimation, &QPropertyAnimation::valueChanged, this, [this](const QVariant &value){
+        dsv_info("pinnedAnimation frame: minH=%d actualH=%d", value.toInt(), height());
     });
 
     connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this](){
@@ -379,40 +378,30 @@ void TitleBar::hideRibbon()
 
 void TitleBar::expandRibbonPinned()
 {
-    dsv_info("expandRibbonPinned: _ribbonPanel parent=%p this=%p", _ribbonPanel->parentWidget(), this);
-
-    // 从 mainLayout 中彻底移除，改用绝对定位，防止布局系统因为高度不足而推挤内容
-    if (_mainLayout->indexOf(_ribbonPanel) >= 0) {
-        _mainLayout->removeWidget(_ribbonPanel);
-    }
-
-    if (_ribbonPanel->parent() != this) {
-        _ribbonPanel->setParent(this);
-    }
-
-    // 绝对定位！钉死在 Y=32 的位置
-    _ribbonPanel->move(0, 32);
-    _ribbonPanel->setFixedHeight(_ribbonExpandedHeight);
-    _ribbonPanel->setFixedWidth(width());
-    _ribbonPanel->show();
-    _ribbonPanel->raise();
+    dsv_info("expandRibbonPinned: panel parent=%p this=%p minH=%d maxH=%d height=%d",
+             _ribbonPanel->parentWidget(), this, minimumHeight(), maximumHeight(), height());
 
     if (_pinnedAnimation->state() == QAbstractAnimation::Running)
         _pinnedAnimation->stop();
 
-    _pinnedFullHeight = 32 + _ribbonExpandedHeight;
+    if (_ribbonPanel->parentWidget() != this) {
+        _ribbonContainer->hide();
+        _ribbonPanel->setParent(this);
+    }
 
-    // 展开：为了让 minimumHeight 能撑大控件，我们必须提前放开 maximumHeight 这个“天花板”限制
-    setMaximumHeight(_pinnedFullHeight);
+    _ribbonPanel->setFixedSize(width(), _ribbonExpandedHeight);
+    _ribbonPanel->move(0, 32);
+    _ribbonPanel->show();
 
-    // 此时动画引擎推大 minimumHeight，外框就会被硬生生平滑撑大
-    _pinnedAnimation->setStartValue(height());
-    _pinnedAnimation->setEndValue(_pinnedFullHeight);
+    setMaximumHeight(32 + _ribbonExpandedHeight);
+
+    dsv_info("expandRibbonPinned: anim start=%d end=%d", minimumHeight(), 32 + _ribbonExpandedHeight);
+    _pinnedAnimation->setStartValue(minimumHeight());
+    _pinnedAnimation->setEndValue(32 + _ribbonExpandedHeight);
     _pinnedAnimation->setEasingCurve(QEasingCurve::OutCubic);
     _pinnedAnimation->start();
 
     _ribbonExpanded = true;
-    dsv_info("expandRibbonPinned: animation started %d -> %d", height(), _pinnedFullHeight);
 }
 
 void TitleBar::hideRibbonPinned()
@@ -422,9 +411,7 @@ void TitleBar::hideRibbonPinned()
     if (_pinnedAnimation->state() == QAbstractAnimation::Running)
         _pinnedAnimation->stop();
 
-    // 保持 maximumHeight 为展开后的高度，我们靠慢慢降低 minimumHeight 到 32。
-    // 因为控件本能(sizeHint)就是 32，所以高度就会完美跟着 minimumHeight 往下掉！
-    _pinnedAnimation->setStartValue(height());
+    _pinnedAnimation->setStartValue(minimumHeight());
     _pinnedAnimation->setEndValue(32);
     _pinnedAnimation->setEasingCurve(makeTailwindCurve());
     _pinnedAnimation->start();
@@ -527,17 +514,28 @@ bool TitleBar::ParentIsMaxsized()
 
 void TitleBar::paintEvent(QPaintEvent *event)
 {
-    QWidget::paintEvent(event);
+    QMenuBar::paintEvent(event);
 }
 
 void TitleBar::resizeEvent(QResizeEvent *event)
 {
-    QWidget::resizeEvent(event);
+    dsv_info("TitleBar::resizeEvent old=%dx%d new=%dx%d minH=%d maxH=%d",
+             event->oldSize().width(), event->oldSize().height(),
+             event->size().width(), event->size().height(),
+             minimumHeight(), maximumHeight());
+    QMenuBar::resizeEvent(event);
+
+    QWidget *titleRow = findChild<QWidget*>("TitleRow");
+    if (titleRow) {
+        titleRow->setFixedWidth(width());
+    }
+
     if (_ribbonContainer->isVisible()) {
         positionRibbonContainer();
     }
-    if (_ribbonPinned && _ribbonPanel->parent() == this) {
+    if (_ribbonPinned && _ribbonPanel->parentWidget() == this && _ribbonPanel->isVisible()) {
         _ribbonPanel->setFixedWidth(width());
+        _ribbonPanel->move(0, 32);
         positionPinButton();
     }
 }
@@ -601,13 +599,13 @@ bool TitleBar::eventFilter(QObject *watched, QEvent *event)
             return true;
         }
     }
-    return QWidget::eventFilter(watched, event);
+    return QMenuBar::eventFilter(watched, event);
 }
 
 void TitleBar::mousePressEvent(QMouseEvent* event)
 {
     if (isOnTabBar(event->pos())) {
-        QWidget::mousePressEvent(event);
+        QMenuBar::mousePressEvent(event);
         return;
     }
 
@@ -639,7 +637,7 @@ void TitleBar::mousePressEvent(QMouseEvent* event)
             return;
         }
     }
-    QWidget::mousePressEvent(event);
+    QMenuBar::mousePressEvent(event);
 }
 
 void TitleBar::mouseMoveEvent(QMouseEvent *event)
@@ -699,7 +697,7 @@ void TitleBar::mouseMoveEvent(QMouseEvent *event)
         event->accept();
         return;
     }
-    QWidget::mouseMoveEvent(event);
+    QMenuBar::mouseMoveEvent(event);
 }
 
 void TitleBar::mouseReleaseEvent(QMouseEvent* event)
@@ -709,12 +707,12 @@ void TitleBar::mouseReleaseEvent(QMouseEvent* event)
     }
     _moving = false;
     _is_draging = false;
-    QWidget::mouseReleaseEvent(event);
+    QMenuBar::mouseReleaseEvent(event);
 }
 
 void TitleBar::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    QWidget::mouseDoubleClickEvent(event);
+    QMenuBar::mouseDoubleClickEvent(event);
 
     if (_isTop){
 
@@ -750,23 +748,22 @@ void TitleBar::onPinToggled(bool checked)
     if (checked) {
         _pinButton->setIcon(QIcon(iconPath + "/unpin.svg"));
         _pinButton->setToolTip(tr("Unpin Ribbon"));
-
         qApp->removeEventFilter(this);
 
         if (_ribbonExpanded) {
-            // 停止浮动动画
             if (_ribbonAnimation->state() == QAbstractAnimation::Running)
                 _ribbonAnimation->stop();
-
-            // 【核心性能修复】：立即隐藏浮动容器！浮动容器的 TranslucentBackground 在下方视图重绘时会导致极度卡顿
             _ribbonContainer->hide();
-            
-            // 提升 TitleBar 的 Z-Order 层级！
-            // 这样一来，直接放入 TitleBar 的 _ribbonPanel 即使溢出（因为此时高度只有32），
-            // 也依然会盖在主视图上方，绝不会被遮挡，完美实现了刚才“浮动容器掩护”的效果，且没有任何性能损耗！
-            this->raise();
-
+            _ribbonPanel->setParent(this);
+            _ribbonPanel->move(0, 32);
+            _ribbonPanel->setFixedWidth(width());
+            _ribbonPanel->show();
             expandRibbonPinned();
+        } else {
+            _ribbonPanel->setParent(this);
+            _ribbonPanel->move(0, 32);
+            _ribbonPanel->setFixedWidth(width());
+            _ribbonPanel->hide();
         }
     } else {
         _pinButton->setIcon(QIcon(iconPath + "/pin.svg"));
@@ -774,44 +771,24 @@ void TitleBar::onPinToggled(bool checked)
 
         if (_ribbonExpanded) {
             qApp->installEventFilter(this);
-            // 核心修复：固定 -> 浮动！保持面板展开，瞬间切为悬浮。
             if (_pinnedAnimation->state() == QAbstractAnimation::Running)
                 _pinnedAnimation->stop();
-
-            // 1. 瞬间将 TitleBar 高度恢复 32px，让下方的主界面瞬间弹上来
             setFixedHeight(32);
-
-            // 2. 将面板放回浮动容器，保持为 y=0（完全显示状态）
             _ribbonPanel->setParent(_ribbonContainer);
             _slideOffset = 0;
             _ribbonPanel->move(0, 0);
             _ribbonPanel->setFixedWidth(_ribbonContainer->width());
-            _ribbonPanel->show(); // 确保可见
-
-            // 3. 更新容器位置并显示
+            _ribbonPanel->show();
             positionRibbonContainer();
             _ribbonContainer->show();
             _ribbonContainer->raise();
         } else {
-            // 已收起状态下取消 pin：直接把面板归还给浮动容器
-            reparentRibbonToContainer();
+            _ribbonPanel->setParent(_ribbonContainer);
+            _ribbonPanel->move(0, -_ribbonExpandedHeight);
+            _ribbonPanel->setFixedWidth(_ribbonContainer->width());
+            setFixedHeight(32);
         }
     }
-}
-
-void TitleBar::reparentRibbonToContainer()
-{
-    if (_mainLayout->indexOf(_ribbonPanel) >= 0) {
-        _mainLayout->removeWidget(_ribbonPanel);
-    }
-    _ribbonPanel->setParent(_ribbonContainer);
-    _ribbonPanel->move(0, -_ribbonExpandedHeight);
-    _ribbonPanel->setFixedWidth(_ribbonContainer->width());
-
-    // 恢复 TitleBar 为纯 32px
-    setFixedHeight(32);
-
-    dsv_info("reparentRibbonToContainer: done");
 }
 
 void TitleBar::positionPinButton()

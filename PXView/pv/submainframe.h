@@ -4,7 +4,7 @@
 
 #include "widgets/border.h"
 
-#include <QFrame>
+#include <QMainWindow>
 #include <QGridLayout>
 #include <QRect>
 
@@ -15,7 +15,7 @@ namespace pv {
 class WinNativeWidget;
 
 class SubMainFrame :
-    public QFrame,
+    public QMainWindow,
     public ITitleParent,
     public IParentNativeEventCallback
 {
