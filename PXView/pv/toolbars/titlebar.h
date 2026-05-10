@@ -30,6 +30,7 @@
 #include <QAction>
 #include <QWidgetAction>
 #include <QStackedWidget>
+#include <QElapsedTimer>
 
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
@@ -57,6 +58,7 @@ class TitleBar : public QMenuBar, public IUiWindow
 {
     Q_OBJECT
     Q_PROPERTY(int slideOffset READ slideOffset WRITE setSlideOffset)
+    Q_PROPERTY(int animHeight READ animHeight WRITE setAnimHeight)
 
 public:
     TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose);
@@ -91,6 +93,9 @@ public:
 
     int slideOffset() const;
     void setSlideOffset(int offset);
+
+    int animHeight() const;
+    void setAnimHeight(int h);
 
     inline bool isRibbonAnimating() const {
         return _ribbonAnimation && _ribbonAnimation->state() == QAbstractAnimation::Running;
@@ -147,6 +152,9 @@ protected:
     QToolButton     *_pinButton;
     bool            _ribbonPinned;
     QPropertyAnimation *_pinnedAnimation;
+    QElapsedTimer   _frameTimer;
+    qint64          _lastFrameTime;
+    int             _animHeight;
 
     bool        _moving;
     bool        _is_draging;
