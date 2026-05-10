@@ -95,9 +95,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
    _slideOffset = 65;
    _pinButton = NULL;
    _ribbonPinned = true;
-   _pinnedAnimation = NULL;
-   _lastFrameTime = 0;
-   _animHeight = 32;
 
     assert(parent);
 
@@ -215,48 +212,20 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool ha
     _ribbonAnimation->setDuration(250);
     _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
 
-    // --- Pin 模式动画引擎 ---
-    // 采用你的建议：直接动画化内置的 minimumHeight
-    // 配合 sizeHint=32 的“弹簧效应”，实现最丝滑的推拉
-    _pinnedAnimation = new QPropertyAnimation(this, "animHeight");
-    _pinnedAnimation->setDuration(250);
-    _pinnedAnimation->setStartValue(32 + _ribbonExpandedHeight);
-    _pinnedAnimation->setEndValue(32);
-    _pinnedAnimation->setDirection(QAbstractAnimation::Forward);
-    _pinnedAnimation->setEasingCurve(QEasingCurve::Linear);
-
-    connect(_pinnedAnimation, &QPropertyAnimation::finished, this, [this](){
-        dsv_info("pinnedAnimation finished: _ribbonExpanded=%d _ribbonPinned=%d height=%d animH=%d",
-                 _ribbonExpanded, _ribbonPinned, height(), _animHeight);
-        if (!_ribbonExpanded) {
-            _ribbonPanel->hide();
-            _animHeight = 32;
-            setFixedHeight(32);
-
-            if (!_ribbonPinned) {
-                _ribbonPanel->setParent(_ribbonContainer);
-                _ribbonPanel->move(0, -_ribbonExpandedHeight);
-                _ribbonPanel->setFixedWidth(_ribbonContainer->width());
-            }
-        }
-        positionPinButton();
-    });
-
-    connect(_pinnedAnimation, &QPropertyAnimation::valueChanged, this, [this](const QVariant &value){
-        int h = value.toInt();
-        if (h > 32 && !_ribbonPanel->isVisible()) {
-            _ribbonPanel->show();
-        }
-        qint64 now = _frameTimer.elapsed();
-        qint64 delta = now - _lastFrameTime;
-        _lastFrameTime = now;
-        dsv_info("TitleBar frame: animH=%d minH=%d maxH=%d h=%d delta=%lldms",
-                 h, minimumHeight(), maximumHeight(), height(), delta);
-    });
-
     connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this](){
-        if (!_ribbonExpanded) {
+        if (_ribbonExpanded && _ribbonPinned) {
+            _ribbonPanel->setParent(this);
+            _ribbonPanel->move(0, 32);
+            _ribbonPanel->setFixedWidth(width());
+            _ribbonPanel->show();
+            setFixedHeight(32 + _ribbonExpandedHeight);
             _ribbonContainer->hide();
+            positionPinButton();
+        } else if (!_ribbonExpanded) {
+            _ribbonContainer->hide();
+            if (_ribbonPinned) {
+                setFixedHeight(32);
+            }
         }
     });
 
@@ -392,32 +361,27 @@ void TitleBar::hideRibbon()
 
 void TitleBar::expandRibbonPinned()
 {
-    dsv_info("expandRibbonPinned: minH=%d maxH=%d height=%d animH=%d",
-             minimumHeight(), maximumHeight(), height(), _animHeight);
+    dsv_info("expandRibbonPinned");
 
-    if (_pinnedAnimation->state() == QAbstractAnimation::Running)
-        _pinnedAnimation->stop();
+    if (_ribbonAnimation->state() == QAbstractAnimation::Running)
+        _ribbonAnimation->stop();
 
-    if (_ribbonPanel->parentWidget() != this) {
-        _ribbonContainer->hide();
-        _ribbonPanel->setParent(this);
+    if (_ribbonPanel->parentWidget() != _ribbonContainer) {
+        _ribbonPanel->setParent(_ribbonContainer);
     }
 
-    _ribbonPanel->setFixedSize(width(), _ribbonExpandedHeight);
-    _ribbonPanel->move(0, 32);
-    _ribbonPanel->hide();
+    _ribbonPanel->setFixedSize(_parent->width(), _ribbonExpandedHeight);
+    _ribbonPanel->move(0, -_ribbonExpandedHeight);
+    _ribbonPanel->show();
 
-    int currentH = _animHeight;
+    positionRibbonContainer();
+    _ribbonContainer->show();
+    _ribbonContainer->raise();
 
-    _pinnedAnimation->blockSignals(true);
-    _pinnedAnimation->setStartValue(currentH);
-    _pinnedAnimation->setEndValue(32 + _ribbonExpandedHeight);
-    _pinnedAnimation->setDirection(QAbstractAnimation::Forward);
-    _pinnedAnimation->blockSignals(false);
-
-    _frameTimer.start();
-    _lastFrameTime = 0;
-    _pinnedAnimation->start();
+    _ribbonAnimation->setStartValue(_ribbonExpandedHeight);
+    _ribbonAnimation->setEndValue(0);
+    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    _ribbonAnimation->start();
 
     _ribbonExpanded = true;
 }
@@ -426,20 +390,27 @@ void TitleBar::hideRibbonPinned()
 {
     dsv_info("hideRibbonPinned");
 
-    if (_pinnedAnimation->state() == QAbstractAnimation::Running)
-        _pinnedAnimation->stop();
+    if (_ribbonAnimation->state() == QAbstractAnimation::Running)
+        _ribbonAnimation->stop();
 
-    int currentH = _animHeight;
+    setFixedHeight(32);
 
-    _pinnedAnimation->blockSignals(true);
-    _pinnedAnimation->setStartValue(currentH);
-    _pinnedAnimation->setEndValue(32);
-    _pinnedAnimation->setDirection(QAbstractAnimation::Forward);
-    _pinnedAnimation->blockSignals(false);
+    if (_ribbonPanel->parentWidget() != _ribbonContainer) {
+        _ribbonPanel->setParent(_ribbonContainer);
+    }
 
-    _frameTimer.start();
-    _lastFrameTime = 0;
-    _pinnedAnimation->start();
+    _ribbonPanel->setFixedSize(_parent->width(), _ribbonExpandedHeight);
+    _ribbonPanel->move(0, 0);
+    _ribbonPanel->show();
+
+    positionRibbonContainer();
+    _ribbonContainer->show();
+    _ribbonContainer->raise();
+
+    _ribbonAnimation->setStartValue(0);
+    _ribbonAnimation->setEndValue(_ribbonExpandedHeight);
+    _ribbonAnimation->setEasingCurve(makeTailwindCurve());
+    _ribbonAnimation->start();
 
     _ribbonExpanded = false;
 }
@@ -481,23 +452,6 @@ void TitleBar::setSlideOffset(int offset)
         _ribbonPanel->setFixedWidth(_ribbonContainer->width());
     }
     positionPinButton();
-}
-
-int TitleBar::animHeight() const
-{
-    return _animHeight;
-}
-
-void TitleBar::setAnimHeight(int h)
-{
-    _animHeight = h;
-    if (h >= minimumHeight()) {
-        setMaximumHeight(h);
-        setMinimumHeight(h);
-    } else {
-        setMinimumHeight(h);
-        setMaximumHeight(h);
-    }
 }
 
 bool TitleBar::isOnTabBar(const QPoint &pos) const
@@ -799,7 +753,8 @@ void TitleBar::onPinToggled(bool checked)
             _ribbonPanel->move(0, 32);
             _ribbonPanel->setFixedWidth(width());
             _ribbonPanel->show();
-            expandRibbonPinned();
+            setFixedHeight(32 + _ribbonExpandedHeight);
+            positionPinButton();
         } else {
             _ribbonPanel->setParent(this);
             _ribbonPanel->move(0, 32);
@@ -812,9 +767,8 @@ void TitleBar::onPinToggled(bool checked)
 
         if (_ribbonExpanded) {
             qApp->installEventFilter(this);
-            if (_pinnedAnimation->state() == QAbstractAnimation::Running)
-                _pinnedAnimation->stop();
-            _animHeight = 32;
+            if (_ribbonAnimation->state() == QAbstractAnimation::Running)
+                _ribbonAnimation->stop();
             setFixedHeight(32);
             _ribbonPanel->setParent(_ribbonContainer);
             _slideOffset = 0;
@@ -828,7 +782,6 @@ void TitleBar::onPinToggled(bool checked)
             _ribbonPanel->setParent(_ribbonContainer);
             _ribbonPanel->move(0, -_ribbonExpandedHeight);
             _ribbonPanel->setFixedWidth(_ribbonContainer->width());
-            _animHeight = 32;
             setFixedHeight(32);
         }
     }
