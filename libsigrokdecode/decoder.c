@@ -1250,7 +1250,13 @@ SRD_API int srd_c_decoder_register(struct srd_c_decoder* dec)
             pair[0] = dec->ann_labels[i][1] ? g_strdup(dec->ann_labels[i][1]) : NULL;
             pair[1] = dec->ann_labels[i][2] ? g_strdup(dec->ann_labels[i][2]) : NULL;
             d->annotations = g_slist_append(d->annotations, pair);
-            d->ann_types = g_slist_append(d->ann_types, GINT_TO_POINTER(i));
+            int ann_type = i;
+            if (dec->ann_labels[i][0] && dec->ann_labels[i][0][0] != '\0') {
+                int parsed = atoi(dec->ann_labels[i][0]);
+                if (parsed > 0)
+                    ann_type = parsed;
+            }
+            d->ann_types = g_slist_append(d->ann_types, GINT_TO_POINTER(ann_type));
         }
     }
 

@@ -1,0 +1,17 @@
+- [x] I2S WS 极性映射正确：ws_polarity=left-high 时 WS=1 为左声道
+- [x] I2S bit_shift="right-shifted by one" 选项生效
+- [x] JTAG 初始状态为 RUN-TEST/IDLE
+- [x] JTAG SHIFT-DR/SHIFT-IR 跳过首 bit
+- [x] JTAG bitstring 格式包含十六进制值和 bit 数
+- [x] SPI format 选项生效（hex/dec/oct/bin/ascii）
+- [x] SPI CS-CHANGE 通知输出
+- [x] UART 支持 zero/one/ignore parity 类型
+- [x] UART 支持 oct/bin format 类型
+- [x] I2C C 解码器输出 SRD_OUTPUT_PYTHON 协议数据
+- [x] SPI C 解码器输出 SRD_OUTPUT_PYTHON 协议数据
+- [x] UART C 解码器输出 SRD_OUTPUT_PYTHON 协议数据
+- [x] JTAG C 解码器输出 SRD_OUTPUT_PYTHON 协议数据
+- [x] SWD C 解码器输出 SRD_OUTPUT_PYTHON 协议数据
+- [x] HDLC C 解码器输出 SRD_OUTPUT_PYTHON 协议数据
+- [x] I2S C 解码器输出 SRD_OUTPUT_PYTHON 协议数据
+- [x] 所有 C 解码器编译通过

@@ -30,6 +30,7 @@ struct hdlc_priv {
     int en_active_high;
     int cpol;
     int out_ann;
+    int out_python;
     int pending_flag;
     int pending_abort;
     uint64_t ss_pending_start;
@@ -122,6 +123,7 @@ static void hdlc_start(struct srd_decoder_inst *di)
 {
     struct hdlc_priv *priv = (struct hdlc_priv *)c_decoder_get_private(di);
     priv->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "hdlc");
+    priv->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "hdlc");
     const char *en_pol = c_decoder_get_option_string(di, "en_polarity", "active-high");
     priv->en_active_high = (en_pol && strcmp(en_pol, "active-low") == 0) ? 0 : 1;
     priv->cpol = (int)c_decoder_get_option_int(di, "cpol", 1);
@@ -160,6 +162,8 @@ static void hdlc_putt(struct srd_decoder_inst *di, struct hdlc_priv *priv)
 
     C_ANN_PUT(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
               priv->out_ann, ANN_TRANSFER, hex_str);
+    c_decoder_put_python(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
+        priv->out_python, "TRANSFER", priv->rxbytes, cnt - 2);
 }
 
 static void hdlc_shift_bit(struct hdlc_priv *priv, int data, uint64_t samplenum)

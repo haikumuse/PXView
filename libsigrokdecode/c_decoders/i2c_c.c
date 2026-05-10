@@ -37,6 +37,7 @@ typedef struct {
     i2c_bit_entry bits[8];
     int out_ann;
     int out_binary;
+    int out_python;
     int address_shifted;
     int show_data_point;
 } i2c_decoder_state;
@@ -145,6 +146,7 @@ static void i2c_start(struct srd_decoder_inst *di)
 
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "i2c");
     s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "i2c");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "i2c");
 
     const char *addr_fmt = c_decoder_get_option_string(di, "address_format", "shifted");
     s->address_shifted = (strcmp(addr_fmt, "shifted") == 0) ? 1 : 0;
@@ -252,9 +254,11 @@ static void i2c_handle_start(struct srd_decoder_inst *di, i2c_decoder_state *s, 
 
     if (s->is_repeat_start == 1) {
         C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_REPEAT_START, "Start repeat", "Sr");
+        c_decoder_put_python(di, samplenum, samplenum, s->out_python, "START REPEAT", NULL, 0);
         i2c_handle_packet(di, s, 1);
     } else {
         C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_START, "Start", "S");
+        c_decoder_put_python(di, samplenum, samplenum, s->out_python, "START", NULL, 0);
         i2c_handle_packet(di, s, 0);
         s->packet_ss = samplenum;
     }
@@ -332,6 +336,14 @@ static void i2c_handle_address_or_data(struct srd_decoder_inst *di, i2c_decoder_
         c_decoder_put_binary(di, s->ss_byte, byte_end, s->out_binary, bin_class, 1, &d);
     }
 
+    if (s->state == STATE_FIND_ADDRESS) {
+        c_decoder_put_python(di, s->ss_byte, byte_end, s->out_python,
+            s->wr ? "ADDRESS WRITE" : "ADDRESS READ", &d, 1);
+    } else if (s->state == STATE_FIND_DATA) {
+        c_decoder_put_python(di, s->ss_byte, byte_end, s->out_python,
+            s->wr ? "DATA WRITE" : "DATA READ", &d, 1);
+    }
+
     for (int i = 0; i < 8; i++) {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[i].sda);
@@ -386,8 +398,10 @@ static void i2c_get_ack(struct srd_decoder_inst *di, i2c_decoder_state *s,
 
     if (sda_val == 0) {
         C_ANN_PUT(di, samplenum, ack_end, s->out_ann, ANN_ACK, "ACK", "A");
+        c_decoder_put_python(di, samplenum, ack_end, s->out_python, "ACK", NULL, 0);
     } else {
         C_ANN_PUT(di, samplenum, ack_end, s->out_ann, ANN_NACK, "NACK", "N");
+        c_decoder_put_python(di, samplenum, ack_end, s->out_python, "NACK", NULL, 0);
     }
 
     s->state = STATE_FIND_DATA;
@@ -398,6 +412,7 @@ static void i2c_handle_stop(struct srd_decoder_inst *di, i2c_decoder_state *s, u
     s->packet_es = samplenum;
     i2c_handle_packet(di, s, 0);
     C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_STOP, "Stop", "P");
+    c_decoder_put_python(di, samplenum, samplenum, s->out_python, "STOP", NULL, 0);
 
     s->state = STATE_FIND_START;
     s->is_repeat_start = 0;

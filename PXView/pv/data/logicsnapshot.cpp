@@ -1775,6 +1775,11 @@ void LogicSnapshot::apply_glitch_filter(int sig_index, uint32_t threshold, std::
 
         uint64_t seg_len = edge_abs - abs_pos;
 
+        if (seg_len == 0) {
+            start_sample++;
+            continue;
+        }
+
         if (seg_len <= threshold) {
             bool new_level = !current_level;
 
@@ -1825,10 +1830,11 @@ void LogicSnapshot::apply_glitch_filter(int sig_index, uint32_t threshold, std::
             }
 
             uint64_t edge_logical = edge_abs - _loop_offset;
-            if (edge_logical - last_start_sample > threshold) {
+            if (edge_logical > last_start_sample && edge_logical - last_start_sample > threshold) {
                 last_start_sample = edge_logical - threshold - 1;
                 start_sample = last_start_sample;
             } else {
+                last_start_sample = start_sample;
                 start_sample = edge_logical;
             }
         } else {
@@ -1845,9 +1851,7 @@ void LogicSnapshot::apply_glitch_filter(int sig_index, uint32_t threshold, std::
 
     for (size_t rn = 0; rn < _ch_data[order].size(); rn++) {
         for (size_t lb = 0; lb < Scale; lb++) {
-            if (_ch_data[order][rn].lbp[lb] != NULL) {
-                recalc_mipmap(order, rn, lb);
-            }
+            recalc_mipmap(order, rn, lb);
         }
     }
 

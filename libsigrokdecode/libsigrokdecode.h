@@ -373,6 +373,7 @@ struct srd_decoder_inst {
 	void *user_data;
 	char *error_message;
 	uint64_t samplerate;
+	uint64_t last_samplenum;
 	GHashTable *c_options;
 	const struct srd_decoder_runtime *runtime;
 };
@@ -430,6 +431,9 @@ struct srd_c_decoder {
     void (*end)(struct srd_decoder_inst *di);
     void (*metadata)(struct srd_decoder_inst *di, int key, uint64_t value);
     void (*destroy)(struct srd_decoder_inst *di);
+    void (*recv_proto)(struct srd_decoder_inst *di,
+        uint64_t start_sample, uint64_t end_sample,
+        const char *cmd, const unsigned char *data, uint64_t data_len);
 };
 
 struct srd_pd_output {
@@ -460,6 +464,10 @@ struct srd_proto_data_binary {
 	int bin_class;
 	uint64_t size;
 	const unsigned char *data;
+};
+struct srd_proto_data_meta {
+	int key;
+	GVariant *value;
 };
 
 typedef void (*srd_pd_output_callback)(struct srd_proto_data *pdata,
@@ -554,6 +562,8 @@ struct srd_c_annotation {
     int ann_class;
     int ann_type;
     char **ann_text;
+    char str_number_hex[DECODE_NUM_HEX_MAX_LEN];
+    long long numberic_value;
 };
 
 SRD_API int c_decoder_put(struct srd_decoder_inst *di,
@@ -567,7 +577,20 @@ SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
 SRD_API int c_decoder_has_channel(struct srd_decoder_inst *di, int ch);
 SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
     int output_type, const char *proto_id);
+SRD_API int c_decoder_register_output_meta(struct srd_decoder_inst *di,
+    int output_type, const char *proto_id,
+    const char *meta_type, const char *meta_name, const char *meta_descr);
+SRD_API int c_decoder_put_meta_int(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, int64_t value);
+SRD_API int c_decoder_put_meta_double(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, double value);
+SRD_API int c_decoder_put_python(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, const char *cmd, const unsigned char *data, uint64_t data_len);
 SRD_API uint64_t c_decoder_get_samplerate(struct srd_decoder_inst *di);
+SRD_API uint64_t c_decoder_get_last_samplenum(struct srd_decoder_inst *di);
 SRD_API int64_t c_decoder_get_option_int(struct srd_decoder_inst *di,
     const char *key, int64_t defval);
 SRD_API double c_decoder_get_option_double(struct srd_decoder_inst *di,
@@ -579,13 +602,20 @@ SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data);
 
 #define C_ANN_PUT(di, ss, es, out_id, cls, ...) do { \
     const char *_txts[] = {__VA_ARGS__, NULL}; \
-    struct srd_c_annotation _ann = {cls, 0, (char **)_txts}; \
+    struct srd_c_annotation _ann = {cls, 0, (char **)_txts, "", 0}; \
     c_decoder_put(di, ss, es, out_id, &_ann); \
 } while(0)
 
 #define C_ANN_PUT_TYPE(di, ss, es, out_id, cls, tp, ...) do { \
     const char *_txts[] = {__VA_ARGS__, NULL}; \
-    struct srd_c_annotation _ann = {cls, tp, (char **)_txts}; \
+    struct srd_c_annotation _ann = {cls, tp, (char **)_txts, "", 0}; \
+    c_decoder_put(di, ss, es, out_id, &_ann); \
+} while(0)
+
+#define C_ANN_PUT_VAL(di, ss, es, out_id, cls, val, ...) do { \
+    const char *_txts[] = {__VA_ARGS__, NULL}; \
+    struct srd_c_annotation _ann = {cls, 0, (char **)_txts, "", (long long)(val)}; \
+    snprintf(_ann.str_number_hex, DECODE_NUM_HEX_MAX_LEN, "0x%X", (unsigned int)(val)); \
     c_decoder_put(di, ss, es, out_id, &_ann); \
 } while(0)
 

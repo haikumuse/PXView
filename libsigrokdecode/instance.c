@@ -88,7 +88,9 @@ static int c_decoder_wait_impl(struct srd_decoder_inst *di,
             di->c_pin_cache_samplenum = di->abs_cur_samplenum;
             di->c_pin_cache_inbuf_serial++;
             for (int i = 0; i < di->dec_num_channels; i++) {
-                if (!di->inbuf || !di->inbuf[i]) {
+                if (di->dec_channelmap[i] < 0) {
+                    di->c_pin_cache[i] = 0xFF;
+                } else if (!di->inbuf || !di->inbuf[i]) {
                     di->c_pin_cache[i] = (di->inbuf_const && di->inbuf_const[i]) ? 1 : 0;
                 } else {
                     uint64_t off = di->abs_cur_samplenum - di->abs_start_samplenum;
@@ -133,6 +135,9 @@ static uint8_t c_decoder_get_pin_impl(struct srd_decoder_inst *di, int ch, uint6
 
     if (!di || ch < 0 || ch >= di->dec_num_channels)
         return 0;
+
+    if (di->dec_channelmap[ch] < 0)
+        return 0xFF;
 
     if (di->c_pin_cache && samplenum == di->c_pin_cache_samplenum)
         return di->c_pin_cache[ch];

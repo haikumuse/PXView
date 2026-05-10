@@ -1,0 +1,12 @@
+- [x] `srd_c_annotation` 结构体包含 `str_number_hex` 和 `numberic_value` 字段，与 `srd_proto_data_annotation` 对齐
+- [x] `C_ANN_PUT_VAL` 宏可用，支持传入数值参数
+- [x] `c_decoder_put()` SRD_OUTPUT_ANN 路径正确填充 `str_number_hex` 和 `numberic_value`
+- [x] `srd_c_decoder_register()` 正确处理 `ann_labels[i][0]` 中的 type 信息，非空时解析为整数
+- [x] `c_decoder_register_output_meta()` API 可用，支持 META 类型注册
+- [x] `c_decoder_put_meta_int()` 和 `c_decoder_put_meta_double()` 便捷函数可用
+- [x] `c_decoder_get_last_samplenum()` API 可用
+- [x] `c_decoder_get_pin()` 对未映射的可选通道返回 `0xFF`
+- [x] C→Python 堆叠桥接可用：`c_decoder_put_python()` API 已实现
+- [x] C→C 堆叠支持可用：`recv_proto` 回调已添加到 `srd_c_decoder`
+- [x] 所有 37 个 C 解码器编译通过
+- [x] 现有 C 解码器行为不受影响（向后兼容）

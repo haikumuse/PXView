@@ -65,8 +65,10 @@ struct jtag_priv {
     uint64_t ss_item;
     uint64_t es_item;
     gboolean first;
+    gboolean first_shift_bit;
     gboolean data_ready;
     int out_ann;
+    int out_python;
 };
 
 static const int next_state[16][2] = {
@@ -151,8 +153,8 @@ static void jtag_reset(struct srd_decoder_inst *di)
     }
     struct jtag_priv *priv = (struct jtag_priv *)c_decoder_get_private(di);
     memset(priv, 0, sizeof(struct jtag_priv));
-    priv->state = TEST_LOGIC_RESET;
-    priv->oldstate = TEST_LOGIC_RESET;
+    priv->state = RUN_TEST_IDLE;
+    priv->oldstate = RUN_TEST_IDLE;
     priv->first = TRUE;
 }
 
@@ -160,6 +162,7 @@ static void jtag_start(struct srd_decoder_inst *di)
 {
     struct jtag_priv *priv = (struct jtag_priv *)c_decoder_get_private(di);
     priv->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "jtag");
+    priv->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "jtag");
 }
 
 static void jtag_decode(struct srd_decoder_inst *di)
@@ -183,6 +186,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
                 if (priv->state != TEST_LOGIC_RESET) {
                     C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, priv->state,
                               jtag_ann_labels[priv->state][1], jtag_ann_labels[priv->state][2]);
+                    c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
                     ss_state = samplenum;
                 }
                 priv->oldstate = priv->state;
@@ -198,50 +202,80 @@ static void jtag_decode(struct srd_decoder_inst *di)
         int oldstate = priv->state;
         int newstate = next_state[oldstate][tms];
 
+        if ((newstate == SHIFT_DR && oldstate != SHIFT_DR) ||
+            (newstate == SHIFT_IR && oldstate != SHIFT_IR)) {
+            priv->first_shift_bit = TRUE;
+        }
+
         if (oldstate == SHIFT_DR || oldstate == SHIFT_IR) {
-            int tdi_val = c_decoder_get_pin(di, TDI, samplenum);
-            int tdo_val = c_decoder_get_pin(di, TDO, samplenum);
+            if (priv->first_shift_bit) {
+                priv->first_shift_bit = FALSE;
+            } else {
+                int tdi_val = c_decoder_get_pin(di, TDI, samplenum);
+                int tdo_val = c_decoder_get_pin(di, TDO, samplenum);
 
-            if (priv->first) {
-                priv->ss_bitstring = samplenum;
+                if (priv->first) {
+                    priv->ss_bitstring = samplenum;
+                    priv->ss_item = samplenum;
+                    priv->first = FALSE;
+                }
+
+                if (priv->bits_cnt < 256) {
+                    priv->bits_tdi[priv->bits_cnt] = tdi_val;
+                    priv->bits_tdo[priv->bits_cnt] = tdo_val;
+                }
+
+                char tdi_str[4];
+                char tdo_str[4];
+                snprintf(tdi_str, sizeof(tdi_str), "%d", tdi_val);
+                snprintf(tdo_str, sizeof(tdo_str), "%d", tdo_val);
+                C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDI, tdi_str);
+                C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDO, tdo_str);
+
+                priv->es_item = samplenum;
                 priv->ss_item = samplenum;
-                priv->first = FALSE;
+                priv->bits_cnt++;
+                priv->data_ready = TRUE;
             }
-
-            if (priv->bits_cnt < 256) {
-                priv->bits_tdi[priv->bits_cnt] = tdi_val;
-                priv->bits_tdo[priv->bits_cnt] = tdo_val;
-            }
-
-            char tdi_str[4];
-            char tdo_str[4];
-            snprintf(tdi_str, sizeof(tdi_str), "%d", tdi_val);
-            snprintf(tdo_str, sizeof(tdo_str), "%d", tdo_val);
-            C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDI, tdi_str);
-            C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDO, tdo_str);
-
-            priv->es_item = samplenum;
-            priv->ss_item = samplenum;
-            priv->bits_cnt++;
-            priv->data_ready = TRUE;
         }
 
         if ((oldstate == SHIFT_DR && newstate == EXIT1_DR) ||
             (oldstate == SHIFT_IR && newstate == EXIT1_IR)) {
             if (priv->data_ready && priv->bits_cnt > 0) {
-                char tdi_str[257];
-                char tdo_str[257];
+                char tdi_str[128];
+                char tdo_str[128];
                 int i;
                 int cnt = priv->bits_cnt > 256 ? 256 : priv->bits_cnt;
+                uint64_t tdi_val = 0, tdo_val = 0;
                 for (i = 0; i < cnt; i++) {
-                    tdi_str[i] = priv->bits_tdi[i] ? '1' : '0';
-                    tdo_str[i] = priv->bits_tdo[i] ? '1' : '0';
+                    tdi_val |= ((uint64_t)priv->bits_tdi[i] << i);
+                    tdo_val |= ((uint64_t)priv->bits_tdo[i] << i);
                 }
-                tdi_str[cnt] = '\0';
-                tdo_str[cnt] = '\0';
+                const char *dr_ir = (oldstate == SHIFT_DR) ? "DR" : "IR";
+                snprintf(tdi_str, sizeof(tdi_str), "%s TDI: (0x%llX), %d bits", dr_ir, (unsigned long long)tdi_val, cnt);
+                snprintf(tdo_str, sizeof(tdo_str), "%s TDO: (0x%llX), %d bits", dr_ir, (unsigned long long)tdo_val, cnt);
 
                 C_ANN_PUT(di, priv->ss_bitstring, samplenum, priv->out_ann, ANN_BITSTRING_TDI, tdi_str);
                 C_ANN_PUT(di, priv->ss_bitstring, samplenum, priv->out_ann, ANN_BITSTRING_TDO, tdo_str);
+
+                {
+                    int is_ir = (oldstate == SHIFT_IR);
+                    int byte_count = (cnt + 7) / 8;
+                    unsigned char tdi_bytes[32];
+                    unsigned char tdo_bytes[32];
+                    memset(tdi_bytes, 0, sizeof(tdi_bytes));
+                    memset(tdo_bytes, 0, sizeof(tdo_bytes));
+                    for (i = 0; i < cnt; i++) {
+                        if (priv->bits_tdi[i])
+                            tdi_bytes[i / 8] |= (1 << (i % 8));
+                        if (priv->bits_tdo[i])
+                            tdo_bytes[i / 8] |= (1 << (i % 8));
+                    }
+                    c_decoder_put_python(di, priv->ss_bitstring, samplenum, priv->out_python,
+                        is_ir ? "IR TDI" : "DR TDI", tdi_bytes, byte_count);
+                    c_decoder_put_python(di, priv->ss_bitstring, samplenum, priv->out_python,
+                        is_ir ? "IR TDO" : "DR TDO", tdo_bytes, byte_count);
+                }
             }
             priv->bits_cnt = 0;
             priv->first = TRUE;
@@ -251,6 +285,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
         if (newstate != oldstate) {
             C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, oldstate,
                       jtag_ann_labels[oldstate][1], jtag_ann_labels[oldstate][2]);
+            c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
             ss_state = samplenum;
         }
 

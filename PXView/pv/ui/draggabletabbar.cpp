@@ -29,6 +29,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QStyleOption>
+#include <QStylePainter>
 
 namespace pv {
 namespace ui {
@@ -46,6 +47,20 @@ DraggableTabBar::DraggableTabBar(QWidget *parent)
 DraggableTabBar::~DraggableTabBar()
 {
     destroy_drag_preview();
+}
+
+void DraggableTabBar::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
+    QStylePainter p(this);
+
+    for (int i = 0; i < count(); ++i) {
+        if (!tabRect(i).isValid())
+            continue;
+        QStyleOptionTab opt;
+        initStyleOption(&opt, i);
+        p.drawControl(QStyle::CE_TabBarTab, opt);
+    }
 }
 
 void DraggableTabBar::mousePressEvent(QMouseEvent *event)

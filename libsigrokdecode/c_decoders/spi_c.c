@@ -15,6 +15,7 @@ enum spi_ann {
     ANN_ATK_DATA_POINT,
     ANN_ATK_RISING_EDGE,
     ANN_ATK_FALLING_EDGE,
+    ANN_CS_CHANGE,
     NUM_ANN,
 };
 
@@ -35,6 +36,7 @@ typedef struct {
     int sample_edge_rise;
     int wordsize;
     int out_ann;
+    int out_python;
 
     uint64_t miso_bits_ss[64];
     uint64_t miso_bits_es[64];
@@ -45,6 +47,7 @@ typedef struct {
     uint64_t last_bit_sample;
     uint64_t transfer_start;
     int show_data_point;
+    int format;
 } spi_state;
 
 static struct srd_channel spi_channels[] = {
@@ -78,6 +81,7 @@ static const char *spi_ann_labels[][3] = {
     {"", "ATK Data point", "ATK Data point"},
     {"", "ATK Rising edge", "ATK Rising edge"},
     {"", "ATK Falling edge", "ATK Falling edge"},
+    {"", "CS change", "CS change"},
 };
 
 static const int spi_row_miso_bits_classes[] = {ANN_MISO_BIT, -1};
@@ -88,6 +92,7 @@ static const int spi_row_mosi_data_classes[] = {ANN_MOSI_DATA, -1};
 static const int spi_row_mosi_transfer_classes[] = {ANN_MOSI_TRANSFER, -1};
 static const int spi_row_other_classes[] = {ANN_WARNING, -1};
 static const int spi_row_atk_classes[] = {ANN_ATK_DATA_POINT, ANN_ATK_RISING_EDGE, ANN_ATK_FALLING_EDGE, -1};
+static const int spi_row_cs_change_classes[] = {ANN_CS_CHANGE, -1};
 
 static const struct srd_c_ann_row spi_ann_rows[] = {
     {"miso-bits", "MISO bits", spi_row_miso_bits_classes, 1},
@@ -98,6 +103,7 @@ static const struct srd_c_ann_row spi_ann_rows[] = {
     {"mosi-transfers", "MOSI transfers", spi_row_mosi_transfer_classes, 1},
     {"other", "Other", spi_row_other_classes, 1},
     {"atk-signs", "ATK signs", spi_row_atk_classes, 3},
+    {"cs-change", "CS change", spi_row_cs_change_classes, 1},
 };
 
 static const char *spi_inputs[] = {"logic"};
@@ -150,6 +156,7 @@ static void spi_start(struct srd_decoder_inst *di)
 {
     spi_state *s = (spi_state *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spi");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "spi");
 
     const char *cs_pol_str = c_decoder_get_option_string(di, "cs_polarity", "active-low");
     s->cs_polarity = (strcmp(cs_pol_str, "active-low") == 0) ? 0 : 1;
@@ -166,6 +173,20 @@ static void spi_start(struct srd_decoder_inst *di)
 
     const char *show_dp_str = c_decoder_get_option_string(di, "show_data_point", "yes");
     s->show_data_point = (strcmp(show_dp_str, "yes") == 0) ? 1 : 0;
+
+    const char *format_str = c_decoder_get_option_string(di, "format", "hex");
+    if (strcmp(format_str, "hex") == 0)
+        s->format = 0;
+    else if (strcmp(format_str, "dec") == 0)
+        s->format = 1;
+    else if (strcmp(format_str, "oct") == 0)
+        s->format = 2;
+    else if (strcmp(format_str, "bin") == 0)
+        s->format = 3;
+    else if (strcmp(format_str, "ascii") == 0)
+        s->format = 4;
+    else
+        s->format = 0;
 
     s->have_miso = c_decoder_has_channel(di, 1);
     s->have_mosi = c_decoder_has_channel(di, 2);
@@ -194,7 +215,14 @@ static void spi_reset_word(spi_state *s)
 
 static void spi_put_data(struct srd_decoder_inst *di, spi_state *s)
 {
-    const char *fmt = "hex";
+    const char *fmt;
+    switch (s->format) {
+        case 1: fmt = "dec"; break;
+        case 2: fmt = "oct"; break;
+        case 3: fmt = "bin"; break;
+        case 4: fmt = "ascii"; break;
+        default: fmt = "hex"; break;
+    }
     char miso_str[128];
     char mosi_str[128];
 
@@ -258,6 +286,10 @@ static void spi_decode(struct srd_decoder_inst *di)
                 int was_active = s->cs_active;
                 s->cs_active = spi_cs_asserted(s, cs_val);
 
+                const char *cs_change_str = s->cs_active ? "CS active" : "CS inactive";
+                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_CS_CHANGE, cs_change_str);
+                c_decoder_put_python(di, samplenum, samplenum, s->out_python, "CS-CHANGE", NULL, 0);
+
                 if (was_active && !s->cs_active && s->transfer_start > 0 && s->bit_count == 0) {
                     if (s->have_miso) {
                         C_ANN_PUT(di, s->transfer_start, samplenum, s->out_ann, ANN_MISO_TRANSFER, "");
@@ -265,6 +297,7 @@ static void spi_decode(struct srd_decoder_inst *di)
                     if (s->have_mosi) {
                         C_ANN_PUT(di, s->transfer_start, samplenum, s->out_ann, ANN_MOSI_TRANSFER, "");
                     }
+                    c_decoder_put_python(di, s->transfer_start, samplenum, s->out_python, "TRANSFER", NULL, 0);
                 }
 
                 spi_reset_word(s);
@@ -345,6 +378,10 @@ static void spi_decode(struct srd_decoder_inst *di)
 
         if (s->bit_count == s->wordsize) {
             spi_put_data(di, s);
+            unsigned char data_bytes[2];
+            data_bytes[0] = (unsigned char)s->mosi_byte;
+            data_bytes[1] = (unsigned char)s->miso_byte;
+            c_decoder_put_python(di, s->start_sample, s->last_bit_sample, s->out_python, "DATA", data_bytes, 2);
             spi_reset_word(s);
         }
     }
@@ -373,7 +410,7 @@ struct srd_c_decoder spi_c_decoder = {
     .num_options = 7,
     .num_annotations = NUM_ANN,
     .ann_labels = spi_ann_labels,
-    .num_annotation_rows = 8,
+    .num_annotation_rows = 9,
     .annotation_rows = spi_ann_rows,
     .inputs = spi_inputs,
     .num_inputs = 1,

@@ -454,6 +454,7 @@ SRD_API int srd_session_end(struct srd_session *sess, char **error)
 		di = d->data;
 
 		if (di->is_c_inst) {
+			di->last_samplenum = di->abs_cur_samplenum;
 			if (di->c_dec_inst->end) {
 				di->c_dec_inst->end(di);
 			}
