@@ -69,21 +69,25 @@ About::About(QWidget *parent) :
         site_url = "https://" + site_url;
     }
 
-    QString url = tr("Website: <a href=\"%1\" style=\"color:#C0C0C0\">%1</a><br />"
-                     "Github: <a href=\"%2\" style=\"color:#C0C0C0\">%2</a><br />"
-                     "Copyright: <label href=\"#\" style=\"color:#C0C0C0\">%3</label><br />"
+    QString linkColor = AppConfig::Instance().GetThemeTokenValue("@about-link-color");
+    if (linkColor.isEmpty()) linkColor = "#C0C0C0";
+    QString linkStyle = "color:" + linkColor;
+    QString url = tr("Website: <a href=\"%1\" style=\"%2\">%1</a><br />"
+                     "Github: <a href=\"%3\" style=\"%4\">%3</a><br />"
+                     "Copyright: <label href=\"#\" style=\"%5\">%6</label><br />"
                      "<br /><br />")
-                  .arg(site_url)
-                  .arg("https://github.com/PXLogic/PXView")
+                  .arg(site_url, linkStyle)
+                  .arg("https://github.com/PXLogic/PXView", linkStyle)
+                  .arg(linkStyle)
                   .arg(tr("© PX. All rights reserved."));
 
     QString thanks = tr("<font size=16>Special Thanks</font><br />"
-                        "<a href=\"%1\" style=\"color:#C0C0C0\">All members of DSView projectr</a><br />"
-                        "<a href=\"%2\" style=\"color:#C0C0C0\">All members of Sigrok project</a><br />"
+                        "<a href=\"%1\" style=\"%2\">All members of DSView projectr</a><br />"
+                        "<a href=\"%3\" style=\"%4\">All members of Sigrok project</a><br />"
                         "All contributors of all open-source projects</a><br />"
                         "<br /><br />")
-                        .arg("https://github.com/DreamSourceLab/DSView")
-                        .arg("http://sigrok.org/");
+                        .arg("https://github.com/DreamSourceLab/DSView", linkStyle)
+                        .arg("http://sigrok.org/", linkStyle);
 
     QString changlogs = tr("<font size=16>Changelogs</font><br />");
 

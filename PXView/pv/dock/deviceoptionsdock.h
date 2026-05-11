@@ -78,6 +78,7 @@ private:
     void try_resize_scroll();
     void channel_checkbox_clicked(QCheckBox *sc);
     void build_glitch_filter_panel();
+    void rebuild_glitch_filter_panel();
     void update_glitch_filter_state();
 
     void ChannelChecked(int index, QObject *object);

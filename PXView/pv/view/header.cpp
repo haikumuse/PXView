@@ -131,50 +131,73 @@ void Header::paintEvent(QPaintEvent*)
 	const int w = width();
 
     if (_view.session().get_device()->get_work_mode() == LOGIC) {
-        if (w > Trace::SquareWidth + 2 * Trace::Margin) {
-            const auto &groups = _view.get_signal_groups();
+        const auto &groups = _view.get_signal_groups();
             if (!groups.empty()) {
             QColor cardColor = _view.get_group_card_color();
-            QColor separatorColor = QWidget::palette().color(QWidget::backgroundRole());
+            QColor separatorColor = cardColor.lightness() > 128
+                ? cardColor.darker(140)
+                : cardColor.lighter(160);
 
             int vOffset = _view.get_vOffset();
             for (size_t gi = 0; gi < groups.size(); gi++) {
                 const auto &group = groups[gi];
                 if (group.traces.empty()) continue;
-                int groupTop = INT_MAX;
-                int groupBottom = INT_MIN;
+                double groupTop = 1e9;
+                double groupBottom = -1e9;
                 for (auto gt : group.traces) {
-                    int traceTop = gt->get_v_offset() - gt->get_totalHeight() / 2 - View::SignalMargin;
-                    int traceBottom = gt->get_v_offset() + gt->get_totalHeight() / 2 + View::SignalMargin;
+                    double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
+                    double traceBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
                     groupTop = min(groupTop, traceTop);
                     groupBottom = max(groupBottom, traceBottom);
                 }
                 
-                int cardTop = groupTop - View::GroupGap / 2 - vOffset;
-                int cardHeight = groupBottom - groupTop + View::GroupGap;
+                double cardTop = groupTop - View::GroupGap * 0.5 - vOffset;
+                double cardHeight = groupBottom - groupTop + View::GroupGap;
                 
                 QRectF cardRect(0, cardTop, w + View::GroupCardRadius + 1, cardHeight);
                 painter.setPen(Qt::NoPen);
                 painter.setBrush(cardColor);
                 painter.drawRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
-
-                for (int i = 0; i < (int)group.traces.size() - 1; i++) {
-                    int bottomI = group.traces[i]->get_v_offset() + group.traces[i]->get_totalHeight() / 2 + View::SignalMargin - vOffset;
-                    int topJ = group.traces[i + 1]->get_v_offset() - group.traces[i + 1]->get_totalHeight() / 2 - View::SignalMargin - vOffset;
-                    int sepY = (bottomI + topJ) / 2;
-                    painter.fillRect(QRectF(0, sepY, w + View::GroupCardRadius + 1, 1), separatorColor);
-                }
-
-                if (gi + 1 < groups.size() && !groups[gi + 1].traces.empty()) {
-                    int nextGroupTop = INT_MAX;
-                    for (auto gt : groups[gi + 1].traces) {
-                        int traceTop = gt->get_v_offset() - gt->get_totalHeight() / 2 - View::SignalMargin;
-                        nextGroupTop = min(nextGroupTop, traceTop);
-                    }
-                    int sepY = (groupBottom + nextGroupTop) / 2 - vOffset;
-                    painter.fillRect(QRectF(0, sepY, w + View::GroupCardRadius + 1, 1), separatorColor);
-                }
             }
+
+            if (w > Trace::SquareWidth + 2 * Trace::Margin) {
+                for (size_t gi = 0; gi < groups.size(); gi++) {
+                    const auto &group = groups[gi];
+                    if (group.traces.empty()) continue;
+
+                    double sepX = w;
+                    for (auto gt : group.traces) {
+                        if (gt->get_type() == SR_CHANNEL_LOGIC) {
+                            int nameW = gt->get_name_width();
+                            int leftW = gt->get_leftWidth();
+                            int rightW = gt->get_rightWidth();
+                            double x = leftW + (w - leftW - rightW) + Trace::Margin;
+                            sepX = min(sepX, x);
+                        }
+                    }
+
+                    for (int i = 0; i < (int)group.traces.size() - 1; i++) {
+                        double bottomI = group.traces[i]->get_v_offset() + group.traces[i]->get_totalHeight() * 0.5 + View::SignalMargin - vOffset;
+                        double topJ = group.traces[i + 1]->get_v_offset() - group.traces[i + 1]->get_totalHeight() * 0.5 - View::SignalMargin - vOffset;
+                        double sepY = (bottomI + topJ) * 0.5;
+                        painter.fillRect(QRectF(sepX, sepY, w + View::GroupCardRadius + 1 - sepX, 1), separatorColor);
+                    }
+
+                    if (gi + 1 < groups.size() && !groups[gi + 1].traces.empty()) {
+                        double groupBottom = -1e9;
+                        for (auto gt : group.traces) {
+                            double traceBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
+                            groupBottom = max(groupBottom, traceBottom);
+                        }
+                        double nextGroupTop = 1e9;
+                        for (auto gt : groups[gi + 1].traces) {
+                            double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
+                            nextGroupTop = min(nextGroupTop, traceTop);
+                        }
+                        double sepY = (groupBottom + nextGroupTop) * 0.5 - vOffset;
+                        painter.fillRect(QRectF(sepX, sepY, w + View::GroupCardRadius + 1 - sepX, 1), separatorColor);
+                    }
+                }
             }
         }
     }

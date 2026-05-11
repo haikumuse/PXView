@@ -229,13 +229,14 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
 
     QWidget *wid = p->get_widget(parent, true);
     wid->setFont(font);
+    wid->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
 
     if (p->labeled_widget()) {
       layout->addWidget(wid, i, 0, 1, 2);
     } else {
       QLabel *lb = new QLabel(lable_text, parent);
       lb->setFont(font);
-      layout->addWidget(lb, i, 0);
+      layout->addWidget(lb, i, 0, Qt::AlignRight | Qt::AlignVCenter);
       layout->addWidget(wid, i, 1);
 
       int labelWidth = fm.boundingRect(lable_text).width() + 15;
@@ -989,6 +990,8 @@ void DeviceOptionsDock::device_updated() {
 
   if (_device_options_binding == NULL) {
     update_view();
+  } else {
+    rebuild_glitch_filter_panel();
   }
 }
 
@@ -1265,7 +1268,6 @@ void DeviceOptionsDock::build_glitch_filter_panel()
 
         QLabel *le_label = new QLabel("≤", ch_container);
         le_label->setFont(font);
-        le_label->setFixedWidth(12);
 
         QSpinBox *spin = new QSpinBox(ch_container);
         spin->setRange(1, 999);
@@ -1340,6 +1342,35 @@ void DeviceOptionsDock::build_glitch_filter_panel()
     _filter_status_label = new QLabel("", _glitch_filter_group);
     _filter_status_label->setFont(font);
     layout->addWidget(_filter_status_label);
+}
+
+void DeviceOptionsDock::rebuild_glitch_filter_panel()
+{
+    if (_glitch_filter_group) {
+        _container_lay->removeWidget(_glitch_filter_group);
+        delete _glitch_filter_group;
+        _glitch_filter_group = NULL;
+    }
+
+    build_glitch_filter_panel();
+    if (_glitch_filter_group) {
+        int idx = 0;
+        int count = _container_lay->count();
+        for (int i = 0; i < count; i++) {
+            QWidget *w = _container_lay->itemAt(i)->widget();
+            if (w && w != _dynamic_panel) {
+                QGroupBox *box = qobject_cast<QGroupBox*>(w);
+                if (box && box->title() == L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode")) {
+                    idx = i;
+                    break;
+                }
+            }
+        }
+        if (idx > 0)
+            _container_lay->insertWidget(idx, _glitch_filter_group);
+        else
+            _container_lay->addWidget(_glitch_filter_group);
+    }
 }
 
 void DeviceOptionsDock::on_apply_glitch_filter()

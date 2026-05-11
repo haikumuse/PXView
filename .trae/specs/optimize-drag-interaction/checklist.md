@@ -1,0 +1,11 @@
+- [ ] Trace 类新增动画属性（_anim_v_offset, _anim_target_v_offset, _anim_start_v_offset, _is_animating）及 getter/setter/get_effective_v_offset()
+- [ ] View 类实现布局动画引擎（QTimer 驱动，ease_out_cubic 缓动，start/stop/step 方法）
+- [ ] Header 拖拽时显示目标位置占位指示线（_drag_target_y + paintEvent 绘制高亮线）
+- [ ] Header 拖拽时被拖拽的 trace 不再推动其他 trace，仅跟随鼠标并显示占位线
+- [ ] Header 释放时启动过渡动画而非瞬间跳变
+- [ ] Header 和 Viewport 的 paintEvent 使用 get_effective_v_offset() 读取动画中间值
+- [ ] 拖拽中的 trace 在 Header 和 Viewport 中以 60% 透明度绘制
+- [ ] 动画期间 Viewport 的 QPixmap 缓存被正确禁用
+- [ ] 动画期间用户发起新拖拽或滚轮操作时，动画被正确停止
+- [ ] DSO/Analog 通道拖拽行为不受影响（不显示占位线、不触发过渡动画）
+- [ ] 实时采集期间动画与数据刷新不冲突

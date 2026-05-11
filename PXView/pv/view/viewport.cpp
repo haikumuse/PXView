@@ -228,6 +228,11 @@ Viewport::Viewport(View &parent, View_type type) :
     _xcurs_moved(false),
     _curVOffset(0)
 {
+    _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
+    if (!_panelBgColor.isValid()) _panelBgColor = QColor("#1a1a1a");
+    _panelTextColor = AppConfig::Instance().GetThemeColor("@panel-text");
+    if (!_panelTextColor.isValid()) _panelTextColor = QColor("#f5f0e5");
+
 	setMouseTracking(true);
 	setAutoFillBackground(true);
     setBackgroundRole(QPalette::Base);
@@ -349,44 +354,56 @@ void Viewport::doPaint()
         const auto &groups = _view.get_signal_groups();
         if (!groups.empty()) {
             QColor cardColor = _view.get_group_card_color();
-            QColor separatorColor = back;
+            QColor separatorColor = cardColor.lightness() > 128
+                ? cardColor.darker(140)
+                : cardColor.lighter(160);
 
             int vOffset = _view.get_vOffset();
             for (size_t gi = 0; gi < groups.size(); gi++) {
                 const auto &group = groups[gi];
                 if (group.traces.empty()) continue;
-                int groupTop = INT_MAX;
-                int groupBottom = INT_MIN;
+                double groupTop = 1e9;
+                double groupBottom = -1e9;
                 for (auto gt : group.traces) {
-                    int traceTop = gt->get_v_offset() - gt->get_totalHeight() / 2 - View::SignalMargin;
-                    int traceBottom = gt->get_v_offset() + gt->get_totalHeight() / 2 + View::SignalMargin;
+                    double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
+                    double traceBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
                     groupTop = min(groupTop, traceTop);
                     groupBottom = max(groupBottom, traceBottom);
                 }
                 
-                int cardTop = groupTop - View::GroupGap / 2 - vOffset;
-                int cardHeight = groupBottom - groupTop + View::GroupGap;
+                double cardTop = groupTop - View::GroupGap * 0.5 - vOffset;
+                double cardHeight = groupBottom - groupTop + View::GroupGap;
                 
                 QRectF cardRect(-View::GroupCardRadius, cardTop, width() + View::GroupCardRadius + 1, cardHeight);
                 p.setPen(Qt::NoPen);
                 p.setBrush(cardColor);
                 p.drawRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
+            }
+
+            for (size_t gi = 0; gi < groups.size(); gi++) {
+                const auto &group = groups[gi];
+                if (group.traces.empty()) continue;
 
                 for (int i = 0; i < (int)group.traces.size() - 1; i++) {
-                    int bottomI = group.traces[i]->get_v_offset() + group.traces[i]->get_totalHeight() / 2 + View::SignalMargin - vOffset;
-                    int topJ = group.traces[i + 1]->get_v_offset() - group.traces[i + 1]->get_totalHeight() / 2 - View::SignalMargin - vOffset;
-                    int sepY = (bottomI + topJ) / 2;
-                    p.fillRect(QRectF(-View::GroupCardRadius, sepY, width() + View::GroupCardRadius + 1, 1), separatorColor);
+                    double bottomI = group.traces[i]->get_v_offset() + group.traces[i]->get_totalHeight() * 0.5 + View::SignalMargin - vOffset;
+                    double topJ = group.traces[i + 1]->get_v_offset() - group.traces[i + 1]->get_totalHeight() * 0.5 - View::SignalMargin - vOffset;
+                    double sepY = (bottomI + topJ) * 0.5;
+                    p.fillRect(QRectF(0, sepY, width(), 1), separatorColor);
                 }
 
                 if (gi + 1 < groups.size() && !groups[gi + 1].traces.empty()) {
-                    int nextGroupTop = INT_MAX;
+                    double groupBottom = -1e9;
+                    for (auto gt : group.traces) {
+                        double traceBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
+                        groupBottom = max(groupBottom, traceBottom);
+                    }
+                    double nextGroupTop = 1e9;
                     for (auto gt : groups[gi + 1].traces) {
-                        int traceTop = gt->get_v_offset() - gt->get_totalHeight() / 2 - View::SignalMargin;
+                        double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
                         nextGroupTop = min(nextGroupTop, traceTop);
                     }
-                    int sepY = (groupBottom + nextGroupTop) / 2 - vOffset;
-                    p.fillRect(QRectF(-View::GroupCardRadius, sepY, width() + View::GroupCardRadius + 1, 1), separatorColor);
+                    double sepY = (groupBottom + nextGroupTop) * 0.5 - vOffset;
+                    p.fillRect(QRectF(0, sepY, width(), 1), separatorColor);
                 }
             }
         }
@@ -398,6 +415,8 @@ void Viewport::doPaint()
     p.save();
     p.translate(0, -_view.get_vOffset());
     for(auto t : traces){
+        if (!t->enabled() && !dynamic_cast<DsoSignal*>(t))
+            continue;
         t->paint_back(p, 0, _view.get_view_width(), fore, back);
         if (_view.back_ready())
             break;
@@ -497,8 +516,8 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
 
         for(auto t : traces){
             if (t->enabled()){
-                int traceTop = t->get_v_offset() - t->get_totalHeight()/2 - _view.get_vOffset();
-                int traceBottom = t->get_v_offset() + t->get_totalHeight()/2 - _view.get_vOffset();
+                int traceTop = t->get_v_offset() - qRound(t->get_totalHeight() * 0.5) - _view.get_vOffset();
+                int traceBottom = t->get_v_offset() + t->get_totalHeight() / 2 - _view.get_vOffset();
                 if (traceBottom < 0 || traceTop > height())
                     continue;
 
@@ -709,7 +728,9 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
                 if (_view.session().dso_data_is_out_off_range()){
                     QString data_status = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DATA_OUT_OFF_RANGE), "Out off range");
                     data_status += "! ";
-                    p.setPen(QColor(255,0,0,200));
+                    QColor warnRed = AppConfig::Instance().GetThemeColor("@warn-red");
+                    if (!warnRed.isValid()) warnRed = QColor(255,0,0,200);
+                    p.setPen(warnRed);
                     p.drawText(_view.get_view_rect(), Qt::AlignRight | Qt::AlignTop, data_status);
                     p.setPen(fore);
                 }                 
@@ -1293,8 +1314,8 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event)
                                     set_action(LOGIC_JUMP);                                    
                                     _cur_preX = _view.index2pixel(_edge_start);
                                     _cur_preY = logicSig->get_y();
-                                    _cur_preY_top = logicSig->get_y() - logicSig->get_totalHeight()/2 - 12;
-                                    _cur_preY_bottom = logicSig->get_y() + logicSig->get_totalHeight()/2 + 2;
+                                    _cur_preY_top = logicSig->get_y() - qRound(logicSig->get_totalHeight() * 0.5) - 12;
+                                    _cur_preY_bottom = logicSig->get_y() + logicSig->get_totalHeight() / 2 + 2;
                                     _cur_aftX = _cur_preX;
                                     _cur_aftY = _cur_preY;
 
@@ -1972,7 +1993,7 @@ void Viewport::measure()
                     if (logicSig->edges(_view.hover_point(), _edge_start, _edge_rising, _edge_falling)) {
                         _cur_preX = _view.index2pixel(_edge_start);
                         _cur_aftX = _view.hover_point().x();
-                        _cur_midY = logicSig->get_y() - logicSig->get_totalHeight()/2 - 5;
+                        _cur_midY = logicSig->get_y() - qRound(logicSig->get_totalHeight() * 0.5) - 5;
 
                         _em_rising = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RISING), "Rising: ") + QString::number(_edge_rising);
                         _em_falling = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FALLING), "Falling: ") + QString::number(_edge_falling);

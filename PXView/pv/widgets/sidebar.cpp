@@ -82,6 +82,7 @@ void SideBar::addSeparator()
     QFrame *line = new QFrame(_container);
     line->setFrameShape(QFrame::HLine);
     line->setFrameShadow(QFrame::Sunken);
+    line->setFixedHeight(1);
     _layout->insertWidget(_layout->count() - 1, line);
 }
 

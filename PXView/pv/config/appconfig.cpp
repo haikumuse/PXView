@@ -443,12 +443,73 @@ bool AppConfig::IsDarkStyle()
 
 QColor AppConfig::GetStyleColor()
 {
+    QColor c = GetThemeColor("@bg-base");
+    if (c.isValid())
+        return c;
     if (IsDarkStyle()){
         return QColor(38, 38, 38);
     }
     else{
         return QColor(248, 248, 248);
     }
+}
+
+void AppConfig::SetThemeTokens(const QHash<QString, QString> &tokens)
+{
+    _themeTokens = tokens;
+}
+
+QString AppConfig::GetThemeTokenValue(const QString &tokenName) const
+{
+    return _themeTokens.value(tokenName, QString());
+}
+
+QColor AppConfig::GetThemeColor(const QString &tokenName) const
+{
+    QString val = GetThemeTokenValue(tokenName);
+    if (val.isEmpty())
+        return QColor();
+
+    val = val.trimmed();
+
+    if (val.startsWith("rgba(")) {
+        QString inner = val.mid(5, val.length() - 6);
+        QStringList parts = inner.split(',');
+        if (parts.size() == 4) {
+            bool ok1, ok2, ok3, ok4;
+            int r = parts[0].trimmed().toInt(&ok1);
+            int g = parts[1].trimmed().toInt(&ok2);
+            int b = parts[2].trimmed().toInt(&ok3);
+            int a = parts[3].trimmed().toInt(&ok4);
+            if (ok1 && ok2 && ok3 && ok4)
+                return QColor(r, g, b, a);
+        }
+        return QColor();
+    }
+
+    if (val.startsWith("rgb(")) {
+        QString inner = val.mid(4, val.length() - 5);
+        QStringList parts = inner.split(',');
+        if (parts.size() >= 3) {
+            bool ok1, ok2, ok3;
+            int r = parts[0].trimmed().toInt(&ok1);
+            int g = parts[1].trimmed().toInt(&ok2);
+            int b = parts[2].trimmed().toInt(&ok3);
+            if (ok1 && ok2 && ok3) {
+                if (parts.size() == 4) {
+                    bool ok4;
+                    int a = parts[3].trimmed().toInt(&ok4);
+                    if (ok4)
+                        return QColor(r, g, b, a);
+                }
+                return QColor(r, g, b);
+            }
+        }
+        return QColor();
+    }
+
+    QColor c(val);
+    return c;
 }
 
 

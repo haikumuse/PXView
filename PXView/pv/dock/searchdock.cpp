@@ -160,31 +160,37 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     
     _result_view = new QTableView(this);
     _result_view->setModel(_result_model);
-    
-    // 设置表格样式和行为
-    // 使用 Interactive 代替 ResizeToContents，避免大数据量时列宽计算卡顿
+
     _result_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
-    _result_view->setColumnWidth(0, 60); // 序号列固定宽度
+    _result_view->setColumnWidth(0, 60);
     _result_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     _result_view->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
     _result_view->setSelectionBehavior(QAbstractItemView::SelectRows);
     _result_view->setSelectionMode(QAbstractItemView::SingleSelection);
     _result_view->setEditTriggers(QAbstractItemView::NoEditTriggers);
     _result_view->verticalHeader()->setVisible(false);
-    // 强制固定行高，避免行高计算开销
     _result_view->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    _result_view->verticalHeader()->setDefaultSectionSize(24);
+    _result_view->verticalHeader()->setDefaultSectionSize(36);
     _result_view->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-    _result_view->setShowGrid(true);
-    _result_view->setGridStyle(Qt::SolidLine);
-    _result_view->setFrameShape(QFrame::NoFrame);
+    _result_view->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+    _result_view->setShowGrid(false);
+    _result_view->horizontalHeader()->setHighlightSections(false);
+    _result_view->setFrameShape(QFrame::StyledPanel);
     _result_view->setMinimumWidth(0);
     _result_view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     _result_view->horizontalHeader()->setVisible(true);
     _result_view->setObjectName("dock_search_result_view");
-    
+    _result_view->setMouseTracking(true);
+
+    _hover_delegate = new RowHoverDelegate();
+    _result_view->setItemDelegate(_hover_delegate);
+
+    _result_view->viewport()->installEventFilter(this);
+
     connect(_result_view, SIGNAL(clicked(const QModelIndex&)),
             this, SLOT(on_result_clicked(const QModelIndex&)));
+    connect(_result_view, SIGNAL(entered(const QModelIndex&)),
+            this, SLOT(on_table_hover(const QModelIndex&)));
 
     _legend_x = new QLabel(this);
     _legend_r = new QLabel(this);
@@ -196,7 +202,8 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session) :
     QFont legendFont;
     legendFont.setPixelSize(14);
 
-    QColor legendColor("#8e8e8e");
+    QColor legendColor = AppConfig::Instance().GetThemeColor("@legend-color");
+    if (!legendColor.isValid()) legendColor = QColor("#8e8e8e");
 
     QList<QLabel*> legendLabels = {_legend_x, _legend_r, _legend_0, _legend_f, _legend_1, _legend_c};
     for (auto *label : legendLabels) {
@@ -337,6 +344,13 @@ void SearchDock::on_pattern_changed()
 void SearchDock::on_device_updated()
 {
     rebuild_pattern();
+}
+
+void SearchDock::on_frame_ended()
+{
+    if (!_pattern.empty()) {
+        do_search();
+    }
 }
 
 int64_t SearchDock::find_match_end(data::LogicSnapshot *snapshot, int64_t start_pos)
@@ -531,6 +545,27 @@ void SearchDock::on_result_clicked(const QModelIndex& index)
     } else {
         _results_mutex.unlock();
     }
+}
+
+void SearchDock::on_table_hover(const QModelIndex& index)
+{
+    if (!_hover_delegate) return;
+    int old_row = _hover_delegate->_hover_row;
+    int new_row = index.isValid() ? index.row() : -1;
+    if (old_row == new_row) return;
+    _hover_delegate->_hover_row = new_row;
+    _result_view->viewport()->update();
+}
+
+bool SearchDock::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == _result_view->viewport() && event->type() == QEvent::Leave) {
+        if (_hover_delegate && _hover_delegate->_hover_row != -1) {
+            _hover_delegate->_hover_row = -1;
+            _result_view->viewport()->update();
+        }
+    }
+    return QWidget::eventFilter(obj, event);
 }
 
 void SearchDock::retranslateUi()

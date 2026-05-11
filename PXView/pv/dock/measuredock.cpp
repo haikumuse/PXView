@@ -114,7 +114,6 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
 
     /* cursor edges group */
     _edge_groupBox = new QGroupBox(_widget);
-    _edge_groupBox->setMinimumWidth(300);
     _edge_add_btn = new XToolButton(_widget);
 
     _channel_label = new QLabel(_widget);
@@ -152,6 +151,8 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
 
     this->setFrameShape(QFrame::NoFrame);
     this->setObjectName("dock_measure_scroll");
+    this->setWidgetResizable(true);
+    this->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     this->setWidget(_widget);
     _widget->setGeometry(0, 0, sizeHint().width(), 2000);
     _widget->setObjectName("measureWidget");
@@ -1093,20 +1094,10 @@ void MeasureDock::UpdateFont()
 void MeasureDock::adjust_form_size(QWidget *wid)
 {
     assert(wid);
- 
-    QGroupBox *mainGroup = _dist_groupBox;
 
-    QString str = "+12345678999ms/12345678999";
     QFont font = this->font();
     font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
     QFontMetrics fm(font); 
-    //int max_label_width = fm.horizontalAdvance(str) + 100;
-
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        int max_label_width = fm.horizontalAdvance(str) + 100;
-    #else
-        int max_label_width = fm.width(str) + 100;
-    #endif
 
     auto labels = wid->findChildren<QLabel*>();
     for(auto o : labels)
@@ -1115,8 +1106,6 @@ void MeasureDock::adjust_form_size(QWidget *wid)
         QSize size(rc.width() + 15, rc.height()); 
         o->setFixedSize(size);
     }
-
-    //int mouse_info_label_width = fm.horizontalAdvance("############");
 
     #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         int mouse_info_label_width = fm.horizontalAdvance("############");
@@ -1128,17 +1117,6 @@ void MeasureDock::adjust_form_size(QWidget *wid)
     _period_label->setFixedWidth(mouse_info_label_width);
     _freq_label->setFixedWidth(mouse_info_label_width);
     _duty_label->setFixedWidth(mouse_info_label_width);
-   
-    auto groups = wid->findChildren<QGroupBox*>();
-    for(auto o : groups)
-    { 
-        o->setFixedWidth(max_label_width + 10);
-    }
-
-    QWidget *pannel = dynamic_cast<QWidget*>(mainGroup->parent());
-    if (pannel != NULL){ 
-        pannel->setFixedWidth(max_label_width + 20);
-    }
 }
 
 row_list_item* MeasureDock::get_mode_rows()

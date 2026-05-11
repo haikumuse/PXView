@@ -67,7 +67,9 @@ class View;
 }
 
 namespace dock {
-  
+
+class RowHoverDelegate;
+
 class ProtocolDock : public QScrollArea, 
 public IProtocolItemLayerCallback, 
 public IKeywordActive,
@@ -128,6 +130,7 @@ private:
     void UpdateFont() override;
 
     void adjustPannelSize();
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 signals:
     void protocol_updated();
@@ -143,6 +146,7 @@ private slots:
     void export_table_view();
     void nav_table_view();
     void item_clicked(const QModelIndex &index);
+    void on_table_hover(const QModelIndex &index);
     void column_resize(int index, int old_size, int new_size);
     void search_pre();
     void search_nxt();
@@ -161,6 +165,7 @@ private:
 
     QWidget     *_top_panel; 
     QTableView  *_table_view;
+    RowHoverDelegate *_hover_delegate;
     QPushButton *_pre_button;
     QPushButton *_nxt_button;
     PopupLineEdit *_ann_search_edit; 

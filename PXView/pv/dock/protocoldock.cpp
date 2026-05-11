@@ -21,6 +21,7 @@
  */
 
 #include "protocoldock.h"
+#include "searchdock.h"
 #include "../data/decodermodel.h"
 #include "../data/decoderstack.h"
 #include "../dialogs/protocolexp.h"
@@ -170,11 +171,28 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
 
   _table_view = new QTableView(bot_panel);
   _table_view->setModel(_session->get_decoder_model());
-  _table_view->setAlternatingRowColors(true);
+  _table_view->setObjectName("dock_protocol_table_view");
   _table_view->setShowGrid(false);
   _table_view->horizontalHeader()->setStretchLastSection(true);
+  _table_view->horizontalHeader()->setHighlightSections(false);
   _table_view->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
   _table_view->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+  _table_view->verticalHeader()->setVisible(false);
+  _table_view->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+  _table_view->verticalHeader()->setDefaultSectionSize(36);
+  _table_view->setFrameShape(QFrame::StyledPanel);
+  _table_view->setSelectionBehavior(QAbstractItemView::SelectRows);
+  _table_view->setSelectionMode(QAbstractItemView::SingleSelection);
+  _table_view->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  _table_view->setMouseTracking(true);
+
+  _hover_delegate = new RowHoverDelegate();
+  _table_view->setItemDelegate(_hover_delegate);
+
+  _table_view->viewport()->installEventFilter(this);
+
+  connect(_table_view, SIGNAL(entered(const QModelIndex&)),
+          this, SLOT(on_table_hover(const QModelIndex&)));
 
   _matchs_title_label = new QLabel();
   _matchs_label = new QLabel();
@@ -656,7 +674,7 @@ void ProtocolDock::item_clicked(const QModelIndex &index) {
       }
 
       decoder_stack->set_mark_index((ann.start_sample() + ann.end_sample()) /
-                                    2);
+                                     2);
       _session->show_region(ann.start_sample(), ann.end_sample(), false);
     }
   }
@@ -1167,8 +1185,6 @@ void ProtocolDock::UpdateFont() {
   _table_view->horizontalHeader()->setFont(font);
   _table_view->verticalHeader()->setFont(font);
 
-  _table_view->setObjectName("dock_protocol_table_view");
-
   adjustPannelSize();
 }
 
@@ -1189,6 +1205,27 @@ void ProtocolDock::adjustPannelSize() {
   }
 
   _top_panel->setMinimumHeight(pannelHeight);
+}
+
+void ProtocolDock::on_table_hover(const QModelIndex &index)
+{
+  if (!_hover_delegate) return;
+  int old_row = _hover_delegate->_hover_row;
+  int new_row = index.isValid() ? index.row() : -1;
+  if (old_row == new_row) return;
+  _hover_delegate->_hover_row = new_row;
+  _table_view->viewport()->update();
+}
+
+bool ProtocolDock::eventFilter(QObject *obj, QEvent *event)
+{
+  if (obj == _table_view->viewport() && event->type() == QEvent::Leave) {
+    if (_hover_delegate && _hover_delegate->_hover_row != -1) {
+      _hover_delegate->_hover_row = -1;
+      _table_view->viewport()->update();
+    }
+  }
+  return QScrollArea::eventFilter(obj, event);
 }
 
 } // namespace dock

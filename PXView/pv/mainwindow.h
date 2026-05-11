@@ -54,7 +54,6 @@ class QWidget;
 class QDockWidget;
 class AppControl;
 class DeviceAgent;
-class QRibbon;
 
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
@@ -303,7 +302,6 @@ private:
     int _category_display_index;
     int _category_help_index;
 
-    QRibbon       *_QRibbon;
     QMenuBar      *_menu_bar;
     QMenu         *_category_file;
     QMenu         *_category_display;

@@ -1,4 +1,5 @@
 #include "debughelper.h"
+#include "../config/appconfig.h"
 
 #include <QApplication>
 #include <QMouseEvent>
@@ -162,16 +163,22 @@ DebugHelper::DebugHelper(QObject *parent)
 {
     _tooltipLabel = new QLabel(nullptr, Qt::ToolTip | Qt::FramelessWindowHint);
     _tooltipLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    QString dbgBg = AppConfig::Instance().GetThemeTokenValue("@debug-tooltip-bg");
+    QString dbgFg = AppConfig::Instance().GetThemeTokenValue("@debug-tooltip-fg");
+    QString dbgBorder = AppConfig::Instance().GetThemeTokenValue("@debug-tooltip-border");
+    if (dbgBg.isEmpty()) dbgBg = "#2d2d2d";
+    if (dbgFg.isEmpty()) dbgFg = "#00ff00";
+    if (dbgBorder.isEmpty()) dbgBorder = "#00ff00";
     _tooltipLabel->setStyleSheet(
-        "QLabel {"
-        "  background-color: #2d2d2d;"
-        "  color: #00ff00;"
-        "  border: 1px solid #00ff00;"
+        QStringLiteral("QLabel {"
+        "  background-color: %1;"
+        "  color: %2;"
+        "  border: 1px solid %3;"
         "  padding: 8px;"
         "  font-family: monospace;"
         "  font-size: 11px;"
         "}"
-    );
+    ).arg(dbgBg, dbgFg, dbgBorder));
     _tooltipLabel->setFrameStyle(QFrame::Panel | QFrame::Raised);
 
     _hideTimer = new QTimer(this);

@@ -385,11 +385,9 @@ set(PXView_SOURCES
     PXView/pv/ui/uimanager.cpp
     PXView/pv/ui/popupdlglist.cpp
     PXView/pv/tabcontext.cpp
-    PXView/pv/QRibbon/QRibbon.cpp
 )
 
 set(UIS
-    PXView/pv/QRibbon/qribbon.ui
 )
 
 if(APPLE)
@@ -466,7 +464,6 @@ set(PXView_HEADERS
     PXView/pv/view/mathtrace.h
     PXView/pv/view/viewstatus.h
     PXView/pv/toolbars/titlebar.h
-    PXView/pv/QRibbon/QRibbon.h
     PXView/pv/mainframe.h
     PXView/pv/submainframe.h
     PXView/pv/widgets/border.h

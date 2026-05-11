@@ -27,6 +27,7 @@
 #include <QString>
 #include <QByteArray>
 #include <QColor>
+#include <QHash>
 
 #define LAN_CN  25
 #define LAN_EN  31
@@ -165,8 +166,15 @@ public:
 
   QColor GetStyleColor();
 
+  void SetThemeTokens(const QHash<QString, QString> &tokens);
+  QColor GetThemeColor(const QString &tokenName) const;
+  QString GetThemeTokenValue(const QString &tokenName) const;
+
 public:
   AppOptions    appOptions;
   UserHistory   userHistory;
   FrameOptions  frameOptions;
+
+private:
+  QHash<QString, QString> _themeTokens;
 };
