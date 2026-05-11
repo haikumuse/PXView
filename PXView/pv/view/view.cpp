@@ -30,6 +30,7 @@
 #include <QMouseEvent>
 #include <QScrollBar>
 #include <QPainter>
+#include <QtGlobal>
 #include <QPaintEvent>
 #include <algorithm>
 
@@ -81,13 +82,20 @@ const QColor View::CursorAreaColour(220, 231, 243);
 const QSizeF View::LabelPadding(4, 4);
 const QString View::Unknown_Str = "########";
 
-const QColor View::Red = QColor(213, 15, 37, 255);
-const QColor View::Orange = QColor(238, 178, 17, 255);
-const QColor View::Blue = QColor(17, 133, 209,  255);
-const QColor View::Green = QColor(0, 153, 37, 255);
-const QColor View::Purple = QColor(109, 50, 156, 255);
-const QColor View::LightBlue = QColor(17, 133, 209, 200);
-const QColor View::LightRed = QColor(213, 15, 37, 200);
+const QColor View::Red = AppConfig::Instance().GetThemeColor("@signal-red").isValid()
+    ? AppConfig::Instance().GetThemeColor("@signal-red") : QColor(213, 15, 37, 255);
+const QColor View::Orange = AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
+    ? AppConfig::Instance().GetThemeColor("@signal-orange") : QColor(238, 178, 17, 255);
+const QColor View::Blue = AppConfig::Instance().GetThemeColor("@signal-blue").isValid()
+    ? AppConfig::Instance().GetThemeColor("@signal-blue") : QColor(17, 133, 209, 255);
+const QColor View::Green = AppConfig::Instance().GetThemeColor("@signal-green").isValid()
+    ? AppConfig::Instance().GetThemeColor("@signal-green") : QColor(0, 153, 37, 255);
+const QColor View::Purple = AppConfig::Instance().GetThemeColor("@signal-purple").isValid()
+    ? AppConfig::Instance().GetThemeColor("@signal-purple") : QColor(109, 50, 156, 255);
+const QColor View::LightBlue = AppConfig::Instance().GetThemeColor("@signal-light-blue").isValid()
+    ? AppConfig::Instance().GetThemeColor("@signal-light-blue") : QColor(17, 133, 209, 200);
+const QColor View::LightRed = AppConfig::Instance().GetThemeColor("@signal-light-red").isValid()
+    ? AppConfig::Instance().GetThemeColor("@signal-light-red") : QColor(213, 15, 37, 200);
 
 
 View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget *parent) :
@@ -584,13 +592,22 @@ void View::compute_signal_groups()
         _signal_groups.push_back(group);
     }
     
+    std::vector<Trace*> unassigned;
     for (auto lt : logic_traces) {
         if (assigned_signals.find(lt->get_index()) == assigned_signals.end()) {
-            SignalGroup group;
-            group.group_id = group_id++;
-            group.traces.push_back(lt);
-            _signal_groups.push_back(group);
+            unassigned.push_back(lt);
         }
+    }
+    sort(unassigned.begin(), unassigned.end(), [](Trace *a, Trace *b) {
+        return a->get_view_index() < b->get_view_index();
+    });
+    if (!unassigned.empty()) {
+        SignalGroup group;
+        group.group_id = group_id++;
+        for (auto lt : unassigned) {
+            group.traces.push_back(lt);
+        }
+        _signal_groups.push_back(group);
     }
 
     for (auto &group : _signal_groups) {
@@ -602,6 +619,9 @@ void View::compute_signal_groups()
 
 QColor View::get_group_card_color()
 {
+    QColor c = AppConfig::Instance().GetThemeColor("@group-card-bg");
+    if (c.isValid())
+        return c;
     AppConfig &app = AppConfig::Instance();
     if (app.frameOptions.style == THEME_STYLE_DARK)
         return QColor(0x1a, 0x1a, 0x1a);
@@ -1072,7 +1092,7 @@ void View::signals_changed(const Trace* eventTrace)
         }
 
         _spanY = _signalHeight + 2 * actualMargin;
-        int next_v_offset = actualMargin;
+        double next_v_offset = actualMargin;
         
         if (mode == LOGIC)
         {   
@@ -1107,6 +1127,9 @@ void View::signals_changed(const Trace* eventTrace)
             if (t->rows_size() == 0)
                 continue;
 
+            if (!dynamic_cast<DsoSignal*>(t) && !t->visible())
+                continue;
+
             int trace_group_id = -1;
             for (auto &group : _signal_groups) {
                 for (auto gt : group.traces) {
@@ -1123,10 +1146,17 @@ void View::signals_changed(const Trace* eventTrace)
             }
             current_group_id = trace_group_id;
 
-            const double traceHeight = (t->get_own_height() > 0) ? 
-                t->get_own_height() : _signalHeight*t->rows_size();
+            double traceHeight;
+            if (t->get_own_height() > 0) {
+                traceHeight = t->get_own_height();
+            } else {
+                traceHeight = _signalHeight * t->rows_size();
+                if (t->get_type() == SR_CHANNEL_DECODER && t->get_totalHeight() > traceHeight) {
+                    traceHeight = t->get_totalHeight();
+                }
+            }
             t->set_totalHeight((int)traceHeight);
-            t->set_v_offset(next_v_offset + 0.5 * traceHeight + actualMargin);
+            t->set_v_offset(qRound(next_v_offset + 0.5 * traceHeight + actualMargin));
             next_v_offset += traceHeight + 2 * actualMargin;
 
             if (t->signal_type() == SR_CHANNEL_DSO)
@@ -1144,8 +1174,15 @@ void View::signals_changed(const Trace* eventTrace)
         _session->update_dso_data_scale();
     }
 
-    header_updated();
     normalize_layout();
+
+    for (auto &group : _signal_groups) {
+        sort(group.traces.begin(), group.traces.end(), [](Trace *a, Trace *b) {
+            return a->get_v_offset() < b->get_v_offset();
+        });
+    }
+
+    header_updated();
     update_scale_offset();
     data_updated();
 }

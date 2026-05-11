@@ -36,6 +36,8 @@
 #include <QFuture>
 #include <QFutureWatcher>
 #include <QAbstractTableModel>
+#include <QStyledItemDelegate>
+#include <QPainter>
 
 #include <vector>
 #include <set>
@@ -65,6 +67,22 @@ struct SearchData {
     int64_t start;
     int64_t end;
     SearchData(int64_t s, int64_t e) : start(s), end(e) {}
+};
+
+class RowHoverDelegate : public QStyledItemDelegate
+{
+public:
+    int _hover_row = -1;
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override
+    {
+        QStyleOptionViewItem opt = option;
+        if (index.row() == _hover_row) {
+            opt.state |= QStyle::State_MouseOver;
+        }
+        QStyledItemDelegate::paint(painter, opt, index);
+    }
 };
 
 // 自定义 Model 类，用于高效显示大量搜索结果
@@ -103,6 +121,7 @@ public:
     void unbind_context() override;
 
     void paintEvent(QPaintEvent *);
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     void retranslateUi();
@@ -121,7 +140,9 @@ private:
 public slots:
     void on_pattern_changed();
     void on_device_updated();
+    void on_frame_ended();
     void on_result_clicked(const QModelIndex& index);
+    void on_table_hover(const QModelIndex& index);
     void do_search();
     void on_search_finished();
     void refresh_ui_model();  // 用于接收搜索线程的信号更新UI
@@ -140,6 +161,7 @@ private:
     // 使用 QTableView + Model 替代 QTableWidget
     QTableView *_result_view;
     SearchResultModel *_result_model;
+    RowHoverDelegate *_hover_delegate;
     
     QLabel *_legend_x;
     QLabel *_legend_r;

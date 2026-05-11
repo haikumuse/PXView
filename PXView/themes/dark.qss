@@ -35,41 +35,42 @@
  * @bg-overlay: #2d2d2d
  * @fg-base: #eff0f1
  * @fg-bright: #ffffff
- * @fg-muted: #454545
+ * @fg-muted: #7a7a7a
  * @border: #393939
- * @border-subtle: #76797c
- * @accent: #1185D1
- * @accent-hover: #177cb0
- * @accent-light: #3d8ec9
+ * @border-subtle: #2a2a2a
+ * @border-strong: #76797c
+ * @accent: #1185d1
+ * @accent-hover: #3a9ee8
+ * @accent-light: #5aacf0
  * @accent-muted: #334e5e
- * @danger: #C42B1C
- * @danger-hover: #D43D2E
- * @danger-pressed: #B22218
- * @scrollbar: #5F5F5F
+ * @danger: #c42b1c
+ * @danger-hover: #d43d2e
+ * @danger-pressed: #b22218
+ * @scrollbar: #5f5f5f
  * @slider-groove: #808080
- * @slider-inactive: #5F5F5F
- * @slider-disabled: #76797C
+ * @slider-inactive: #5f5f5f
+ * @slider-disabled: #76797c
  * @progress-track: #626568
  * @btn-checked-mid: #737373
  * @gridline: #6c6c6c
  * @tab-text: #ffffff
  * @tab-indicator: #ffffff
  * @tab-hover: rgba(255,255,255,0.08)
- * @winbtn-hover: rgba(255, 255, 255, 31)
- * @winbtn-pressed: rgba(255, 255, 255, 15)
+ * @winbtn-hover: rgba(255,255,255,0.12)
+ * @winbtn-pressed: rgba(255,255,255,0.06)
  * @tooltip-bg: #202020
  * @tooltip-fg: #eff0f1
- * @toolbtn-hover: #151515
+ * @toolbtn-hover: #353535
  * @flat-hover-bg: #177cb0
- * @flat-hover-fg: #801dae
+ * @flat-hover-fg: #ffffff
  * @drawer-border: #3f3f46
  * @ribbon-sep: #555555
- * @btn-border: #131313
- * @header-h-bg: #5F5F5F
+ * @btn-border: #3a3a3a
+ * @header-h-bg: #5f5f5f
  * @alternate-row: #393939
  * @combo-active: #626873
  * @combo-selection: #3d8ec9
- * @combo-on-sel: #4a4a4a
+ * @combo-highlight: #4a4a4a
  * @input-bg: #232629
  * @frame-border: #444444
  * @slider-v-border: #626568
@@ -80,12 +81,38 @@
  * @drawer-title-bg: #2d2d2d
  * @drawer-title-fg: #eff0f1
  * @drawer-title-border: #3f3f46
- * @drawer-edge-hover: rgba(255, 255, 255, 30)
+ * @drawer-edge-hover: rgba(255,255,255,0.12)
  * @dock-gridline: #3f3f46
+ * @item-hover: rgba(255,255,255,0.06)
  * @dock-groupbox-border: #3f3f46
  * @dock-groupbox-title: #cccccc
  * @dock-status-ok: #4ec9b0
  * @dock-status-error: #f44747
+ * @ribbon-menu-text: #eff0f1
+ * @tab-add-color: #8a8a8a
+ * @tab-add-hover-color: #ffffff
+ * @debug-tooltip-bg: #2d2d2d
+ * @debug-tooltip-fg: #00ff00
+ * @debug-tooltip-border: #00ff00
+ * @about-link-color: #C0C0C0
+ * @legend-color: #8e8e8e
+ * @tab-status-live: #4CAF50
+ * @tab-status-data: #C8C8C8
+ * @tab-status-empty: #787878
+ * @group-card-bg: #1A1A1A
+ * @panel-bg: #1a1a1a
+ * @panel-text: #f5f0e5
+ * @channel-disabled-bg: #2d2d2d
+ * @channel-disabled-fg: #7a7a7a
+ * @row-hover: rgba(128,128,128,30)
+ * @signal-red: #D50F25
+ * @signal-orange: #EEB211
+ * @signal-blue: #1185D1
+ * @signal-green: #009925
+ * @signal-purple: #6D329C
+ * @signal-light-blue: rgba(17,133,209,200)
+ * @signal-light-red: rgba(213,15,37,200)
+ * @warn-red: rgba(255,0,0,200)
  */
 
 
@@ -565,7 +592,7 @@ QTextEdit
 QMenu::separator
 {
     height: 1px;
-    background-color: @border-subtle;
+    background-color: @border-strong;
     padding-left: 4px;
     margin-left: 10px;
     margin-right: 5px;
@@ -581,6 +608,13 @@ QFrame[frameShape="0"]
 {
     border-radius: 2px;
     border: 1px transparent;
+}
+
+QFrame[frameShape="4"],
+QFrame[frameShape="5"]
+{
+    border: none;
+    background-color: @border-strong;
 }
 
 QStackedWidget
@@ -707,7 +741,7 @@ QComboBox:on
     background-color: @combo-active;
     padding-top: 3px;
     padding-left: 4px;
-    selection-background-color: @combo-on-sel;
+    selection-background-color: @combo-highlight;
 }
 
 QComboBox
@@ -749,7 +783,7 @@ QComboBox::down-arrow:focus
 QAbstractSpinBox
 {
     padding: 2px;
-    border: 1px solid @border-subtle;
+    border: 1px solid @border-strong;
     background-color: @input-bg;
     color: @fg-base;
     border-radius: 2px;
@@ -977,7 +1011,7 @@ QTabWidget::tab-bar
 QTreeView,
 QListView
 {
-    border: 1px solid @border-subtle;
+    border: 1px solid @border-strong;
     background-color: @bg-base;
 }
 
@@ -1212,7 +1246,7 @@ QToolButton::menu-arrow
 
 QToolButton::menu-arrow:open
 {
-    border: 1px solid @border-subtle;
+    border: 1px solid @border-strong;
 }
 
 QToolButton#ModeButton::menu-arrow
@@ -1369,7 +1403,7 @@ QStatusBar::item
 QFrame[height="3"],
 QFrame[width="3"]
 {
-    background-color: @border-subtle;
+    background-color: @border-strong;
 }
 
 QAbstractScrollArea
@@ -1601,7 +1635,7 @@ QWidget#RibbonSeparator {
 
 #sliding_drawer_panel_content
 {
-    background: @bg-elevated;
+    background: @bg-base;
     border-left: 1px solid @drawer-border;
 }
 
@@ -1613,7 +1647,8 @@ QWidget#RibbonSeparator {
 
 #sliding_drawer_title
 {
-    color: transparent;
+    color: @drawer-title-fg;
+    background: transparent;
     font-size: 13pt;
     font-weight: bold;
 }
@@ -1649,38 +1684,101 @@ QWidget#RibbonSeparator {
 /* Dock Page — Search result table */
 #dock_search_result_view
 {
-    border: none;
-    gridline-color: @dock-gridline;
+    border: 1px solid @dock-gridline;
     background-color: @bg-base;
+    outline: none;
+}
+
+#dock_search_result_view::item
+{
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+    padding-left: 8px;
+    padding-right: 12px;
+    color: @fg-base;
+}
+
+#dock_search_result_view::item:hover
+{
+    background-color: @item-hover;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_search_result_view::item:selected
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_search_result_view::item:selected:hover
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
 }
 
 #dock_search_result_view QHeaderView::section
 {
-    background: transparent;
+    background: @bg-overlay;
+    color: @fg-muted;
+    font-weight: bold;
     border: none;
     border-bottom: 1px solid @dock-gridline;
-    font-weight: normal;
-    padding: 2px;
-    color: @fg-base;
+    padding: 6px 8px;
 }
 
 /* Dock Page — Protocol table */
 #dock_protocol_table_view
 {
-    border: none;
-    gridline-color: @dock-gridline;
+    border: 1px solid @dock-gridline;
     background-color: @bg-base;
-    alternate-background-color: @alternate-row;
+    outline: none;
+}
+
+#dock_protocol_table_view::item
+{
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+    padding-left: 8px;
+    padding-right: 12px;
+    color: @fg-base;
+}
+
+#dock_protocol_table_view::item:hover
+{
+    background-color: @item-hover;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_protocol_table_view::item:selected
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_protocol_table_view::item:selected:hover
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
 }
 
 #dock_protocol_table_view QHeaderView::section
 {
     background: @bg-overlay;
+    color: @fg-muted;
+    font-weight: bold;
     border: none;
     border-bottom: 1px solid @dock-gridline;
-    border-right: 1px solid @dock-gridline;
-    padding: 4px;
-    color: @fg-base;
+    padding: 6px 8px;
 }
 
 /* Dock Page — status dynamic property */

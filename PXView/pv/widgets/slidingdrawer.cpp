@@ -222,6 +222,7 @@ void SlidingDrawer::open(int pageIndex)
         _stacked_widget->setCurrentIndex(pageIndex);
         _title_label->setText(_pages[pageIndex].title);
         _pages[pageIndex].content->show();
+        emit drawerOpened(pageIndex);
         return;
     }
 

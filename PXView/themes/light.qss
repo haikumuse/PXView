@@ -30,57 +30,82 @@
 /*
  * === Color Tokens ===
  *
- * @bg-base: #F8F8F8
- * @bg-elevated: #FCFCFC
+ * @bg-base: #f8f8f8
+ * @bg-elevated: #fcfcfc
  * @bg-overlay: #e8e8e8
- * @fg-base: #2A2A2A
+ * @fg-base: #2a2a2a
  * @fg-bright: #000000
- * @fg-muted: #b4b4b4
- * @border: #2A2A2A
+ * @fg-muted: #8a8a8a
+ * @border: #2a2a2a
  * @border-subtle: #b4b4b4
- * @accent: #1185D1
+ * @accent: #1185d1
  * @accent-hover: #44cef6
  * @accent-light: #47b8f3
  * @accent-muted: #b9dae7
- * @danger: #C42B1C
- * @danger-hover: #D43D2E
- * @danger-pressed: #B22218
+ * @danger: #c42b1c
+ * @danger-hover: #d43d2e
+ * @danger-pressed: #b22218
  * @scrollbar: #808080
  * @slider-groove: #808080
  * @slider-inactive: #808080
- * @slider-disabled: #B4B4B4
- * @progress-track: #BABEC2
- * @btn-checked-mid: #A3A3A3
- * @gridline: #2A2A2A
- * @tab-text: #2A2A2A
- * @tab-indicator: #2A2A2A
+ * @slider-disabled: #b4b4b4
+ * @progress-track: #babec2
+ * @btn-checked-mid: #a3a3a3
+ * @gridline: #2a2a2a
+ * @tab-text: #2a2a2a
+ * @tab-indicator: #2a2a2a
  * @tab-hover: rgba(0,0,0,0.08)
  * @tab-hover-bg: #e0e0e0
- * @winbtn-hover: rgba(0, 0, 0, 13)
- * @winbtn-pressed: rgba(0, 0, 0, 7)
+ * @winbtn-hover: rgba(0,0,0,0.05)
+ * @winbtn-pressed: rgba(0,0,0,0.03)
  * @tooltip-bg: #000000
  * @tooltip-fg: #ffffff
- * @toolbtn-hover: #FFFAf0
+ * @toolbtn-hover: #e0e0e0
  * @flat-hover-bg: #44cef6
- * @flat-hover-fg: #801dae
+ * @flat-hover-fg: #1a1a1a
  * @drawer-border: #b4b4b4
  * @ribbon-sep: #b4b4b4
- * @btn-border: #2A2A2A
+ * @btn-border: #2a2a2a
  * @btn-disabled-bg: #e0e1e2
- * @header-h-bg: #F8F8F8
- * @alternate-row: #F8F8F8
- * @combo-on-sel: #4a4a4a
- * @input-bg: #D9D8D7
- * @item-hover: rgba(61, 173, 232, 0.1)
+ * @header-h-bg: #f8f8f8
+ * @alternate-row: #f8f8f8
+ * @combo-highlight: #4a4a4a
+ * @input-bg: #d9d8d7
+ * @item-hover: rgba(61,173,232,0.1)
  * @drawer-title-bg: #e8e8e8
  * @drawer-title-fg: #333333
  * @drawer-title-border: #b4b4b4
- * @drawer-edge-hover: rgba(0, 0, 0, 30)
+ * @drawer-edge-hover: rgba(0,0,0,0.12)
  * @dock-gridline: #d0d0d0
  * @dock-groupbox-border: #b4b4b4
  * @dock-groupbox-title: #333333
  * @dock-status-ok: #008000
  * @dock-status-error: #cc0000
+ * @ribbon-menu-text: #000000
+ * @tab-add-color: #8a8a8a
+ * @tab-add-hover-color: #2a2a2a
+ * @debug-tooltip-bg: #2d2d2d
+ * @debug-tooltip-fg: #00ff00
+ * @debug-tooltip-border: #00ff00
+ * @about-link-color: #C0C0C0
+ * @legend-color: #8e8e8e
+ * @tab-status-live: #4CAF50
+ * @tab-status-data: #C8C8C8
+ * @tab-status-empty: #787878
+ * @group-card-bg: #FAFAFA
+ * @panel-bg: #1a1a1a
+ * @panel-text: #f5f0e5
+ * @channel-disabled-bg: #F0F0F0
+ * @channel-disabled-fg: #C8C8C8
+ * @row-hover: rgba(128,128,128,30)
+ * @signal-red: #D50F25
+ * @signal-orange: #EEB211
+ * @signal-blue: #1185D1
+ * @signal-green: #009925
+ * @signal-purple: #6D329C
+ * @signal-light-blue: rgba(17,133,209,200)
+ * @signal-light-red: rgba(213,15,37,200)
+ * @warn-red: rgba(255,0,0,200)
  */
 
 
@@ -603,6 +628,13 @@ QFrame[frameShape="0"]
     border: 1px transparent;
 }
 
+QFrame[frameShape="4"],
+QFrame[frameShape="5"]
+{
+    border: none;
+    background-color: @border-strong;
+}
+
 QStackedWidget
 {
     border: 1px transparent;
@@ -749,7 +781,7 @@ QComboBox:on
 {
     padding-top: 3px;
     padding-left: 4px;
-    selection-background-color: @combo-on-sel;
+    selection-background-color: @combo-highlight;
 }
 
 QComboBox
@@ -1705,7 +1737,8 @@ QWidget#RibbonSeparator {
 
 #sliding_drawer_title
 {
-    color: transparent;
+    color: @drawer-title-fg;
+    background: transparent;
     font-size: 13pt;
     font-weight: bold;
 }
@@ -1741,38 +1774,101 @@ QWidget#RibbonSeparator {
 /* Dock Page — Search result table */
 #dock_search_result_view
 {
-    border: none;
-    gridline-color: @dock-gridline;
+    border: 1px solid @dock-gridline;
     background-color: @bg-elevated;
+    outline: none;
+}
+
+#dock_search_result_view::item
+{
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+    padding-left: 8px;
+    padding-right: 12px;
+    color: @fg-base;
+}
+
+#dock_search_result_view::item:hover
+{
+    background-color: @item-hover;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_search_result_view::item:selected
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_search_result_view::item:selected:hover
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
 }
 
 #dock_search_result_view QHeaderView::section
 {
-    background: transparent;
+    background: @bg-overlay;
+    color: @fg-muted;
+    font-weight: bold;
     border: none;
     border-bottom: 1px solid @dock-gridline;
-    font-weight: normal;
-    padding: 2px;
-    color: @fg-base;
+    padding: 6px 8px;
 }
 
 /* Dock Page — Protocol table */
 #dock_protocol_table_view
 {
-    border: none;
-    gridline-color: @dock-gridline;
+    border: 1px solid @dock-gridline;
     background-color: @bg-elevated;
-    alternate-background-color: @alternate-row;
+    outline: none;
+}
+
+#dock_protocol_table_view::item
+{
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+    padding-left: 8px;
+    padding-right: 12px;
+    color: @fg-base;
+}
+
+#dock_protocol_table_view::item:hover
+{
+    background-color: @item-hover;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_protocol_table_view::item:selected
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
+}
+
+#dock_protocol_table_view::item:selected:hover
+{
+    background-color: @accent;
+    color: @fg-base;
+    border: none;
+    border-bottom: 1px solid @dock-gridline;
 }
 
 #dock_protocol_table_view QHeaderView::section
 {
     background: @bg-overlay;
+    color: @fg-muted;
+    font-weight: bold;
     border: none;
     border-bottom: 1px solid @dock-gridline;
-    border-right: 1px solid @dock-gridline;
-    padding: 4px;
-    color: @fg-base;
+    padding: 6px 8px;
 }
 
 /* Dock Page — status dynamic property */

@@ -278,14 +278,8 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QColo
                         const uint64_t min_annotation =
                                 _decoder_stack->get_min_annotation(row);
                         const double min_annWidth = min_annotation / samples_per_pixel;
-
-                        const uint64_t max_annotation =
-                                _decoder_stack->get_max_annotation(row);
-                        const double max_annWidth = max_annotation / samples_per_pixel;
                         
-                        if ((max_annWidth > 100) ||
-                            (max_annWidth > 10 && (min_annWidth > 1 || samples_per_pixel < 50)) ||
-                            (max_annWidth == 0 && samples_per_pixel < 10)) {
+                        {
                             std::vector<Annotation*> annotations;
                             _decoder_stack->get_annotation_subset(annotations, row,
                                 start_sample, end_sample);
@@ -300,9 +294,6 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QColo
                                         0, min_annWidth, fore, back, last_x);
                                 }
                             }
-                        }
-                        else {
-                            draw_nodetail(p, annotation_height, left, right, y, 0, fore, back);
                         }
 
                         y += annotation_height;
@@ -416,7 +407,7 @@ void DecodeTrace::draw_nodetail(QPainter &p,
     (void)base_colour;
     (void)back;
 
-    const QRectF nodetail_rect(left, y - h/2 + 0.5, right - left, h);
+    const QRectF nodetail_rect(left, y - h*0.5 + 0.5, right - left, h);
     QString info = L_S(STR_PAGE_DLG, S_ID(ZOOM_IN_FOR_DETAILS), "Zoom in for details");
     int info_left = nodetail_rect.center().x() - p.boundingRect(QRectF(), 0, info).width();
     int info_right = nodetail_rect.center().x() + p.boundingRect(QRectF(), 0, info).width();
@@ -444,12 +435,12 @@ void DecodeTrace::draw_instant(const pv::data::decode::Annotation &a, QPainter &
 //	const double w = min((double)p.boundingRect(QRectF(), 0, text).width(),
 //		0.0) + h;
     const double w = min(min_annWidth, (double)h);
-	const QRectF rect(x - w / 2, y - h / 2, w, h);
+	const QRectF rect(x - w / 2, y - h * 0.5, w, h);
 
     //p.setPen(outline);
     p.setPen(QPen(Qt::NoPen));
 	p.setBrush(fill);
-	p.drawRoundedRect(rect, h / 2, h / 2);
+	p.drawRoundedRect(rect, h * 0.5, h * 0.5);
 
 	p.setPen(text_color);
 	p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter, text);
@@ -461,8 +452,8 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
 {
     (void)fore;
 
-	const double top = y + .5 - h / 2;
-	const double bottom = y + .5 + h / 2;
+	const double top = y + .5 - h * 0.5;
+	const double bottom = y + .5 + h * 0.5;
 	const std::vector<QString> annotations = a.annotations();
 
     p.setPen(outline);
@@ -492,7 +483,7 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
 	if (annotations.empty())
 		return;
 
-	QRectF rect(start + cap_width, y - h / 2,
+	QRectF rect(start + cap_width, y - h * 0.5,
 		end - start - cap_width * 2, h);
 	if (rect.width() <= 4)
 		return;
@@ -522,7 +513,7 @@ void DecodeTrace::draw_error(QPainter &p, const QString &message,
 	const int y = get_y();
     const int h = get_totalHeight();
 
-    const QRectF text_rect(left, y - h/2 + 0.5, right - left, h);
+    const QRectF text_rect(left, y - h*0.5 + 0.5, right - left, h);
     const QRectF bounding_rect = p.boundingRect(text_rect,
             Qt::AlignCenter, message);
     p.setPen(Qt::red);
@@ -538,7 +529,7 @@ void DecodeTrace::draw_unshown_row(QPainter &p, int y, int h, int left,
 {
     (void)back;
 
-    const QRectF unshown_rect(left, y - h/2 + 0.5, right - left, h);
+    const QRectF unshown_rect(left, y - h*0.5 + 0.5, right - left, h);
     int info_left = unshown_rect.center().x() - p.boundingRect(QRectF(), 0, info).width();
     int info_right = unshown_rect.center().x() + p.boundingRect(QRectF(), 0, info).width();
     int height = p.boundingRect(QRectF(), 0, info).height();

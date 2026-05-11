@@ -89,10 +89,14 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
     QRectF r = rect();
 
     if (!enabled) {
-        p.setBrush(QColor(240, 240, 240));
+        QColor disabledBg = AppConfig::Instance().GetThemeColor("@channel-disabled-bg");
+        if (!disabledBg.isValid()) disabledBg = QColor(240, 240, 240);
+        QColor disabledFg = AppConfig::Instance().GetThemeColor("@channel-disabled-fg");
+        if (!disabledFg.isValid()) disabledFg = QColor(200, 200, 200);
+        p.setBrush(disabledBg);
         p.setPen(Qt::NoPen);
         p.drawRoundedRect(r, 4, 4);
-        p.setPen(QColor(200, 200, 200));
+        p.setPen(disabledFg);
         QFont font = this->font();
         font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
         font.setBold(false);

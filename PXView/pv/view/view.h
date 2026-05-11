@@ -97,7 +97,7 @@ private:
 public:
   static const int MinSignalHeight;
   static const int MaxSignalHeight;
-  static const int GroupGap = 5;
+  static const int GroupGap = 10;
   static const int GroupCardRadius = 6;
 
   // static const int SignalHeight;

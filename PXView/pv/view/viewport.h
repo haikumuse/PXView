@@ -258,8 +258,8 @@ private:
     QAction         *_yAction;
     QAction         *_xAction;
 
-    QColor          _panelBgColor = QColor("#1a1a1a");
-    QColor          _panelTextColor = QColor("#f5f0e5");
+    QColor          _panelBgColor;
+    QColor          _panelTextColor;
 };
 
 } // namespace view

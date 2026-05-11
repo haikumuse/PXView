@@ -32,6 +32,8 @@
 #include <QDesktopServices>
 #include <QKeyEvent>
 #include <QEvent>
+#include <QLineEdit>
+#include <QAbstractSpinBox>
 #include <QtGlobal>
 #include <QApplication>
 #include <QStandardPaths>
@@ -513,6 +515,36 @@ namespace pv
             current_view()->setFocus();
         });
 
+        connect(_sliding_drawer, &widgets::SlidingDrawer::drawerOpened, this, [this](int page) {
+            QWidget *content = _sliding_drawer->page(page);
+            if (content) {
+                QWidget *focus_target = content;
+                QScrollArea *scroll = qobject_cast<QScrollArea*>(content);
+                if (scroll && scroll->widget()) {
+                    focus_target = scroll->widget();
+                }
+                QWidget *first_focusable = nullptr;
+                QWidget *prev = focus_target;
+                while (prev) {
+                    QWidget *next = prev->nextInFocusChain();
+                    if (!next || next == focus_target)
+                        break;
+                    if (next->isVisible() && next->isEnabled() &&
+                        next->focusPolicy() & Qt::TabFocus) {
+                        if (_sliding_drawer->isAncestorOf(next)) {
+                            first_focusable = next;
+                            break;
+                        }
+                    }
+                    prev = next;
+                }
+                if (first_focusable)
+                    first_focusable->setFocus();
+                else
+                    content->setFocus();
+            }
+        });
+
         // event filter
         initial_view->installEventFilter(this);
         _sampling_bar->installEventFilter(this);
@@ -525,6 +557,7 @@ namespace pv
         _measure_dock->installEventFilter(this);
         _search_dock->installEventFilter(this);
         _device_options_dock->installEventFilter(this);
+        _sliding_drawer->installEventFilter(this);
 
         // defaut language
         AppConfig &app = AppConfig::Instance();
@@ -537,6 +570,7 @@ namespace pv
         connect(&_event, SIGNAL(session_error()), this, SLOT(on_session_error()));
         connect(&_event, SIGNAL(signals_changed()), this, SLOT(on_signals_changed()));
         connect(&_event, SIGNAL(signals_changed()), _search_widget, SLOT(on_device_updated()));
+        connect(&_event, SIGNAL(frame_ended()), _search_widget, SLOT(on_frame_ended()));
         connect(&_event, SIGNAL(receive_trigger(quint64)), this, SLOT(on_receive_trigger(quint64)));
         connect(&_event, SIGNAL(frame_ended()), this, SLOT(on_frame_ended()), Qt::DirectConnection);
         connect(&_event, SIGNAL(frame_began()), this, SLOT(on_frame_began()), Qt::DirectConnection);
@@ -1661,11 +1695,19 @@ namespace pv
             QWidget *focused = qApp->focusWidget();
 
             if (focused && qobject_cast<pv::widgets::SearchPatternInput*>(focused)) {
-                // Manually forward the event to the focused search input with recursion guard
                 in_filter = true;
                 qApp->sendEvent(focused, event);
                 in_filter = false;
                 return true; 
+            }
+
+            if (focused && (qobject_cast<QLineEdit*>(focused) ||
+                            qobject_cast<QAbstractSpinBox*>(focused))) {
+                return false;
+            }
+
+            if (focused && _sliding_drawer && _sliding_drawer->isAncestorOf(focused)) {
+                return false;
             }
 
             const auto &sigs = _session->get_signals();
@@ -1880,6 +1922,8 @@ namespace pv
         for (const QString &key : keys) {
             qssContent.replace(key, tokens[key]);
         }
+
+        app.SetThemeTokens(tokens);
 
         qApp->setStyleSheet(qssContent);
 
@@ -2870,15 +2914,22 @@ namespace pv
         pv::TabContext *ctx = _tab_contexts[index];
         QString title = ctx->title();
 
+        QColor liveColor = AppConfig::Instance().GetThemeColor("@tab-status-live");
+        QColor dataColor = AppConfig::Instance().GetThemeColor("@tab-status-data");
+        QColor emptyColor = AppConfig::Instance().GetThemeColor("@tab-status-empty");
+        if (!liveColor.isValid()) liveColor = QColor(76, 175, 80);
+        if (!dataColor.isValid()) dataColor = QColor(200, 200, 200);
+        if (!emptyColor.isValid()) emptyColor = QColor(120, 120, 120);
+
         if (ctx->is_live()) {
             _tab_widget->setTabText(index, title);
-            _tab_widget->tabBar()->setTabTextColor(index, QColor(76, 175, 80));
+            _tab_widget->tabBar()->setTabTextColor(index, liveColor);
         } else if (ctx->has_data()) {
             _tab_widget->setTabText(index, title);
-            _tab_widget->tabBar()->setTabTextColor(index, QColor(200, 200, 200));
+            _tab_widget->tabBar()->setTabTextColor(index, dataColor);
         } else {
             _tab_widget->setTabText(index, title);
-            _tab_widget->tabBar()->setTabTextColor(index, QColor(120, 120, 120));
+            _tab_widget->tabBar()->setTabTextColor(index, emptyColor);
         }
     }
 

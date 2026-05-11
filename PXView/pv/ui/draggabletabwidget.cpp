@@ -23,6 +23,7 @@
 #include "draggabletabwidget.h"
 #include "draggabletabbar.h"
 #include "../submainframe.h"
+#include "../config/appconfig.h"
 
 #include <QPushButton>
 #include <QHBoxLayout>
@@ -63,18 +64,22 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
     _add_button->setFixedSize(QSize(24, 24));
     _add_button->setToolTip(tr("New Tab"));
     _add_button->setCursor(Qt::PointingHandCursor);
+    QString addBtnColor = AppConfig::Instance().GetThemeTokenValue("@tab-add-color");
+    QString addBtnHoverColor = AppConfig::Instance().GetThemeTokenValue("@tab-add-hover-color");
+    if (addBtnColor.isEmpty()) addBtnColor = "#aaa";
+    if (addBtnHoverColor.isEmpty()) addBtnHoverColor = "#fff";
     _add_button->setStyleSheet(
         QStringLiteral("QPushButton {"
             "border: none;"
             "font-size: 20px;"
             "font-weight: normal;"
             "padding: 0px;"
-            "color: #aaa;"
+            "color: %1;"
             "background: transparent;"
             "}"
             "QPushButton:hover {"
-            "color: #fff;"
-            "}"));
+            "color: %2;"
+            "}").arg(addBtnColor, addBtnHoverColor));
     _add_button->raise();
     _add_button->show();
 
