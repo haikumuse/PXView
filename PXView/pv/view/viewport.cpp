@@ -350,13 +350,23 @@ void Viewport::doPaint()
     fore.setAlpha(View::ForeAlpha);
     _view.set_back(false);
 
+    std::vector<Trace*> anim_check_traces;
+    _view.get_traces(_type, anim_check_traces);
+    bool any_animating = false;
+    for (auto t : anim_check_traces) {
+        if (t->is_animating()) { any_animating = true; break; }
+    }
+    if (any_animating)
+        _need_update = true;
+
     if (_type == TIME_VIEW && _view.session().get_device()->get_work_mode() == LOGIC) {
         const auto &groups = _view.get_signal_groups();
         if (!groups.empty()) {
             QColor cardColor = _view.get_group_card_color();
-            QColor separatorColor = cardColor.lightness() > 128
-                ? cardColor.darker(140)
-                : cardColor.lighter(160);
+
+            auto get_trace_y = [](Trace* t) -> double {
+                return t->is_animating() ? t->get_anim_v_offset() : t->get_v_offset();
+            };
 
             int vOffset = _view.get_vOffset();
             for (size_t gi = 0; gi < groups.size(); gi++) {
@@ -365,8 +375,8 @@ void Viewport::doPaint()
                 double groupTop = 1e9;
                 double groupBottom = -1e9;
                 for (auto gt : group.traces) {
-                    double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
-                    double traceBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
+                    double traceTop = get_trace_y(gt) - gt->get_totalHeight() * 0.5 - View::SignalMargin;
+                    double traceBottom = get_trace_y(gt) + gt->get_totalHeight() * 0.5 + View::SignalMargin;
                     groupTop = min(groupTop, traceTop);
                     groupBottom = max(groupBottom, traceBottom);
                 }
@@ -379,33 +389,6 @@ void Viewport::doPaint()
                 p.setBrush(cardColor);
                 p.drawRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
             }
-
-            for (size_t gi = 0; gi < groups.size(); gi++) {
-                const auto &group = groups[gi];
-                if (group.traces.empty()) continue;
-
-                for (int i = 0; i < (int)group.traces.size() - 1; i++) {
-                    double bottomI = group.traces[i]->get_v_offset() + group.traces[i]->get_totalHeight() * 0.5 + View::SignalMargin - vOffset;
-                    double topJ = group.traces[i + 1]->get_v_offset() - group.traces[i + 1]->get_totalHeight() * 0.5 - View::SignalMargin - vOffset;
-                    double sepY = (bottomI + topJ) * 0.5;
-                    p.fillRect(QRectF(0, sepY, width(), 1), separatorColor);
-                }
-
-                if (gi + 1 < groups.size() && !groups[gi + 1].traces.empty()) {
-                    double groupBottom = -1e9;
-                    for (auto gt : group.traces) {
-                        double traceBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
-                        groupBottom = max(groupBottom, traceBottom);
-                    }
-                    double nextGroupTop = 1e9;
-                    for (auto gt : groups[gi + 1].traces) {
-                        double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
-                        nextGroupTop = min(nextGroupTop, traceTop);
-                    }
-                    double sepY = (groupBottom + nextGroupTop) * 0.5 - vOffset;
-                    p.fillRect(QRectF(0, sepY, width(), 1), separatorColor);
-                }
-            }
         }
     }
   
@@ -414,13 +397,54 @@ void Viewport::doPaint()
 
     p.save();
     p.translate(0, -_view.get_vOffset());
-    for(auto t : traces){
-        if (!t->enabled() && !dynamic_cast<DsoSignal*>(t))
-            continue;
-        t->paint_back(p, 0, _view.get_view_width(), fore, back);
-        if (_view.back_ready())
-            break;
+
+    if (_type == TIME_VIEW && _view.session().get_device()->get_work_mode() == LOGIC) {
+        QColor separatorColor = _view.get_group_card_color().lightness() > 128
+            ? _view.get_group_card_color().darker(140)
+            : _view.get_group_card_color().lighter(160);
+
+        for (int i = 0; i < (int)traces.size(); i++) {
+            auto t = traces[i];
+            if (!t->enabled() && !dynamic_cast<DsoSignal*>(t))
+                continue;
+            if (t->is_animating()) {
+                int saved = t->get_v_offset();
+                t->set_v_offset((int)t->get_anim_v_offset());
+                t->paint_back(p, 0, _view.get_view_width(), fore, back);
+                t->set_v_offset(saved);
+            } else {
+                t->paint_back(p, 0, _view.get_view_width(), fore, back);
+            }
+
+            if (i + 1 < (int)traces.size() && traces[i + 1]->enabled()) {
+                double curY = t->is_animating() ? t->get_anim_v_offset() : t->get_v_offset();
+                double nextY = traces[i + 1]->is_animating() ? traces[i + 1]->get_anim_v_offset() : traces[i + 1]->get_v_offset();
+                double bottomY = curY + t->get_totalHeight() * 0.5 + View::SignalMargin;
+                double nextTopY = nextY - traces[i + 1]->get_totalHeight() * 0.5 - View::SignalMargin;
+                double sepY = (bottomY + nextTopY) * 0.5;
+                p.fillRect(QRectF(0, sepY, _view.get_view_width(), 1), separatorColor);
+            }
+
+            if (_view.back_ready())
+                break;
+        }
+    } else {
+        for(auto t : traces){
+            if (!t->enabled() && !dynamic_cast<DsoSignal*>(t))
+                continue;
+            if (t->is_animating()) {
+                int saved = t->get_v_offset();
+                t->set_v_offset((int)t->get_anim_v_offset());
+                t->paint_back(p, 0, _view.get_view_width(), fore, back);
+                t->set_v_offset(saved);
+            } else {
+                t->paint_back(p, 0, _view.get_view_width(), fore, back);
+            }
+            if (_view.back_ready())
+                break;
+        }
     }
+
     p.restore(); 
 
     int mode = _view.session().get_device()->get_work_mode();
@@ -471,8 +495,16 @@ void Viewport::doPaint()
     p.save();
     p.translate(0, -_view.get_vOffset());
     for(auto t : traces){
-        if (t->enabled())
-            t->paint_fore(p, 0, _view.get_view_width(), fore, back);
+        if (t->enabled()) {
+            if (t->is_animating()) {
+                int saved = t->get_v_offset();
+                t->set_v_offset((int)t->get_anim_v_offset());
+                t->paint_fore(p, 0, _view.get_view_width(), fore, back);
+                t->set_v_offset(saved);
+            } else {
+                t->paint_fore(p, 0, _view.get_view_width(), fore, back);
+            }
+        }
     }
     p.restore();
 
@@ -516,8 +548,9 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
 
         for(auto t : traces){
             if (t->enabled()){
-                int traceTop = t->get_v_offset() - qRound(t->get_totalHeight() * 0.5) - _view.get_vOffset();
-                int traceBottom = t->get_v_offset() + t->get_totalHeight() / 2 - _view.get_vOffset();
+                int curVOffset = t->is_animating() ? (int)t->get_anim_v_offset() : t->get_v_offset();
+                int traceTop = curVOffset - qRound(t->get_totalHeight() * 0.5) - _view.get_vOffset();
+                int traceBottom = curVOffset + t->get_totalHeight() / 2 - _view.get_vOffset();
                 if (traceBottom < 0 || traceTop > height())
                     continue;
 
@@ -531,12 +564,25 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
                     if (bFirst && logic_signal->data())
                         end_align_sample = logic_signal->data()->get_ring_sample_count();
             
-                    //logic_signal->paint_mid_align_sample(p, 0, t->get_view_rect().right(), fore, back, end_align_sample);
-                    logic_signal->paint_mid_align_sample(p, 0, t->get_view_rect().right(), color, back, end_align_sample);
+                    if (t->is_animating()) {
+                        int saved = t->get_v_offset();
+                        t->set_v_offset((int)t->get_anim_v_offset());
+                        logic_signal->paint_mid_align_sample(p, 0, t->get_view_rect().right(), color, back, end_align_sample);
+                        t->set_v_offset(saved);
+                    } else {
+                        logic_signal->paint_mid_align_sample(p, 0, t->get_view_rect().right(), color, back, end_align_sample);
+                    }
                     bFirst = false;
                 }
                 else{
-                    t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
+                    if (t->is_animating()) {
+                        int saved = t->get_v_offset();
+                        t->set_v_offset((int)t->get_anim_v_offset());
+                        t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
+                        t->set_v_offset(saved);
+                    } else {
+                        t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
+                    }
                 }               
             }                
         }
@@ -577,7 +623,14 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
                     if (isLissa && t->signal_type() == SR_CHANNEL_MATH)
                         continue;
                     
-                    t->paint_mid(dbp, 0, t->get_view_rect().right(), fore, back);
+                    if (t->is_animating()) {
+                        int saved = t->get_v_offset();
+                        t->set_v_offset((int)t->get_anim_v_offset());
+                        t->paint_mid(dbp, 0, t->get_view_rect().right(), fore, back);
+                        t->set_v_offset(saved);
+                    } else {
+                        t->paint_mid(dbp, 0, t->get_view_rect().right(), fore, back);
+                    }
                 }                    
             }
             _need_update = false;
