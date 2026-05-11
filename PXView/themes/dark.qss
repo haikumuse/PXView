@@ -1613,7 +1613,7 @@ QWidget#RibbonSeparator {
 
 #sliding_drawer_title
 {
-    color: @drawer-title-fg;
+    color: transparent;
     font-size: 13pt;
     font-weight: bold;
 }
