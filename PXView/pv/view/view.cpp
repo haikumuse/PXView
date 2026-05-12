@@ -554,17 +554,25 @@ void View::compute_signal_groups()
     
     std::vector<Trace*> decode_traces;
     std::vector<Trace*> logic_traces;
-    
+
     for (auto t : all_traces) {
         if (t->get_type() == SR_CHANNEL_DECODER && t->enabled())
             decode_traces.push_back(t);
         else if (t->get_type() == SR_CHANNEL_LOGIC && t->enabled())
             logic_traces.push_back(t);
     }
-    
+
+    // 按 view_index 排序，确保分组顺序与布局顺序一致
+    sort(decode_traces.begin(), decode_traces.end(), [](Trace *a, Trace *b) {
+        return a->get_view_index() < b->get_view_index();
+    });
+    sort(logic_traces.begin(), logic_traces.end(), [](Trace *a, Trace *b) {
+        return a->get_view_index() < b->get_view_index();
+    });
+
     std::set<int> assigned_signals;
     int group_id = 0;
-    
+
     for (auto dt : decode_traces) {
         DecodeTrace *dtrace = dynamic_cast<DecodeTrace*>(dt);
         if (!dtrace) continue;
@@ -1142,7 +1150,7 @@ void View::signals_changed(const Trace* eventTrace)
             }
             
             if (current_group_id != -1 && trace_group_id != current_group_id) {
-                next_v_offset += GroupGap;
+                next_v_offset += GroupGap + 5;
             }
             current_group_id = trace_group_id;
 
