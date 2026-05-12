@@ -1744,8 +1744,8 @@ QWidget#RibbonSeparator {
 
 #sliding_drawer_titlebar
 {
-    background: @drawer-title-bg;
-    border-bottom: 1px solid @drawer-title-border;
+    background: @bg-base;
+    border: none;
 }
 
 #sliding_drawer_title
