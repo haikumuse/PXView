@@ -609,11 +609,22 @@ void View::compute_signal_groups()
     sort(unassigned.begin(), unassigned.end(), [](Trace *a, Trace *b) {
         return a->get_view_index() < b->get_view_index();
     });
+    // 连续的未分配逻辑通道合并成一个组，不连续的单独成组
     if (!unassigned.empty()) {
         SignalGroup group;
         group.group_id = group_id++;
-        for (auto lt : unassigned) {
-            group.traces.push_back(lt);
+        group.traces.push_back(unassigned[0]);
+        for (size_t i = 1; i < unassigned.size(); i++) {
+            // 检查是否连续（view_index 相差1）
+            if (unassigned[i]->get_view_index() == unassigned[i-1]->get_view_index() + 1) {
+                group.traces.push_back(unassigned[i]);
+            } else {
+                // 不连续，创建新组
+                _signal_groups.push_back(group);
+                group = SignalGroup();
+                group.group_id = group_id++;
+                group.traces.push_back(unassigned[i]);
+            }
         }
         _signal_groups.push_back(group);
     }

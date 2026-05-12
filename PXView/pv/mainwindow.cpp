@@ -454,11 +454,11 @@ namespace pv
         _search_dock->setVisible(false);
         _device_options_dock->setVisible(false);
 
-        // --- Create SlidingDrawer ---
+        // --- Create SlidingDrawer (overlay child of _central_widget, push via margin) ---
         _sliding_drawer = new widgets::SlidingDrawer(_central_widget);
         _sliding_drawer->setDrawerWidth(350);
         _sliding_drawer->setAnimationDuration(300);
-        // Backdrop removed: drawer now only covers its own area, allowing interaction with left side content
+        _sliding_drawer->setPushLayout(_vertical_layout);
 
         // Take content widgets out of QDockWidget and add to SlidingDrawer
         // Protocol

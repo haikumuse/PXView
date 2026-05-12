@@ -18,35 +18,40 @@
 #define DSVIEW_PV_WIDGETS_SLIDINGDRAWER_H
 
 #include <QWidget>
-#include <QParallelAnimationGroup>
+#include <QPropertyAnimation>
 #include <QStackedWidget>
 #include <QPaintEvent>
 #include <QResizeEvent>
 #include <QMouseEvent>
 
 class QLabel;
-class QGraphicsOpacityEffect;
+class QVBoxLayout;
 
 namespace pv {
 namespace widgets {
 
 /**
- * A sliding drawer panel that translates in from the right side of the parent widget,
- * overlaying the content. Similar to Tailwind UI drawer pattern.
+ * A sliding drawer that uses "overlay during animation, push after animation"
+ * — the same pattern as TitleBar's Ribbon panel.
  *
- * The panel slides as a whole unit (translate-x), NOT clip-reveal.
- * Supports drag-to-resize via the left edge of the panel.
+ * Opening:
+ *   1. Drawer is an overlay child of its parentWidget(), translates in from right
+ *      (no layout recalculation = smooth animation)
+ *   2. When animation finishes, set right margin on the push layout
+ *      → tab widget shrinks instantly (push mode), drawer now sits in empty space
  *
- * Usage:
- *   SlidingDrawer *drawer = new SlidingDrawer(parent);
- *   drawer->addPage(myWidget, "Page Title");
- *   drawer->open(0);  // open page index 0
- *   drawer->close();
+ * Closing:
+ *   1. Remove right margin from push layout → tab widget expands instantly
+ *   2. Drawer starts overlay translate-X animation to slide out to the right
+ *   3. When animation finishes, drawer is hidden
+ *
+ * This avoids per-frame layout recalculations (no jank) while still giving
+ * the "push" behavior once the animation completes.
  */
 class SlidingDrawer : public QWidget
 {
     Q_OBJECT
-    Q_PROPERTY(qreal slideProgress READ slideProgress WRITE setSlideProgress)
+    Q_PROPERTY(int slideOffset READ slideOffset WRITE setSlideOffset)
 
 public:
     explicit SlidingDrawer(QWidget *parent = nullptr);
@@ -72,6 +77,12 @@ public:
 
     void setPageTitle(int index, const QString &title);
 
+    /**
+     * Set the layout whose right margin will be adjusted for push mode.
+     * Typically the QVBoxLayout that contains the tab widget.
+     */
+    void setPushLayout(QVBoxLayout *layout);
+
 signals:
     void drawerOpened(int pageIndex);
     void drawerClosed();
@@ -85,9 +96,12 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
-    qreal slideProgress() const;
-    void setSlideProgress(qreal progress);
-    void updatePanelGeometry();
+    int slideOffset() const;
+    void setSlideOffset(int offset);
+
+    void applyPushMargin();
+    void removePushMargin();
+    void positionOverlay();
     void finishClose();
 
     struct PageInfo {
@@ -98,17 +112,17 @@ private:
     QVector<PageInfo> _pages;
     QStackedWidget *_stacked_widget;
 
-    // Panel: always full drawer_width, translates left/right
-    QWidget *_panel;
+    // Content area
     QWidget *_panel_content;
     QWidget *_title_bar;
     QLabel *_title_label;
 
-    // Animation
-    QParallelAnimationGroup *_open_group;
-    QParallelAnimationGroup *_close_group;
+    // Push layout (the QVBoxLayout whose right margin we adjust)
+    QVBoxLayout *_push_layout;
 
-    qreal _slide_progress;      // 0.0 = closed (off-screen right), 1.0 = open (fully visible)
+    // Animation
+    QPropertyAnimation *_animation;
+    int _slide_offset;         // 0 = fully visible, _drawer_width = hidden (off-screen right)
     int _drawer_width;
     int _animation_duration;
     int _current_page;
@@ -121,7 +135,7 @@ private:
     QPoint _drag_start_pos;
     QWidget *_edge_grip;
 
-    static constexpr int EDGE_GRIP_WIDTH = 6; // pixels from left edge for resize grip
+    static constexpr int EDGE_GRIP_WIDTH = 6;
 };
 
 } // namespace widgets
