@@ -27,6 +27,8 @@
 #include <QMessageBox>
 #include <QMenu>
 #include <QStatusBar>
+#include <QComboBox>
+#include <QAbstractButton>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QDesktopServices>
@@ -57,6 +59,7 @@
 #include <QDesktopWidget>
 #endif
 
+#include "log.h"
 #include "mainwindow.h"
 
 #include "data/logicsnapshot.h"
@@ -1694,6 +1697,10 @@ namespace pv
             QKeyEvent *ke = (QKeyEvent *)event;
             QWidget *focused = qApp->focusWidget();
 
+            dsv_info("MainWindow::eventFilter key=%d, object=%p (%s), focused=%p (%s)", 
+                     ke->key(), object, object->metaObject()->className(), 
+                     focused, focused ? focused->metaObject()->className() : "NULL");
+
             if (focused && qobject_cast<pv::widgets::SearchPatternInput*>(focused)) {
                 in_filter = true;
                 qApp->sendEvent(focused, event);
@@ -1701,14 +1708,69 @@ namespace pv
                 return true; 
             }
 
-            if (focused && (qobject_cast<QLineEdit*>(focused) ||
-                            qobject_cast<QAbstractSpinBox*>(focused))) {
-                return false;
+            // Manually forward events to focus widget if it's an input or in the drawer
+            if (focused && (
+                qobject_cast<QLineEdit*>(focused) ||
+                qobject_cast<QAbstractSpinBox*>(focused) ||
+                qobject_cast<QComboBox*>(focused) ||
+                qobject_cast<QAbstractButton*>(focused) ||
+                (_sliding_drawer && _sliding_drawer->isAncestorOf(focused)) ||
+                (_device_options_widget && _device_options_widget->isAncestorOf(focused)) ||
+                (_search_widget && _search_widget->isAncestorOf(focused)) ||
+                (_trigger_widget && _trigger_widget->isAncestorOf(focused)) ||
+                (_protocol_widget && _protocol_widget->isAncestorOf(focused)) ||
+                (_dso_trigger_widget && _dso_trigger_widget->isAncestorOf(focused)) ||
+                (_measure_widget && _measure_widget->isAncestorOf(focused))
+            )) {
+                QWidget *target = focused;
+                if (focused->focusProxy()) {
+                    target = focused->focusProxy();
+                } else if (qobject_cast<QAbstractSpinBox*>(focused) || qobject_cast<QComboBox*>(focused)) {
+                    QLineEdit *le = focused->findChild<QLineEdit*>();
+                    if (le) {
+                        target = le;
+                    }
+                }
+                
+                QString text = ke->text();
+                uint key = ke->key();
+                
+                // Fix for WinNativeWidget's raw VK codes
+                if (key == 0x08) key = Qt::Key_Backspace;
+                else if (key == 0x0D) key = Qt::Key_Return;
+                else if (key == 0x25) key = Qt::Key_Left;
+                else if (key == 0x26) key = Qt::Key_Up;
+                else if (key == 0x27) key = Qt::Key_Right;
+                else if (key == 0x28) key = Qt::Key_Down;
+                else if (key == 0x2E) key = Qt::Key_Delete;
+                else if (key == 0x24) key = Qt::Key_Home;
+                else if (key == 0x23) key = Qt::Key_End;
+
+                if (text.isEmpty() && target->inherits("QLineEdit")) {
+                    if (ke->key() >= Qt::Key_Space && ke->key() <= Qt::Key_AsciiTilde) {
+                        char c = (char)ke->key();
+                        bool shift = (ke->modifiers() & Qt::ShiftModifier);
+                        if (c >= 'A' && c <= 'Z' && !shift) {
+                            c += 32; 
+                        } else if (c >= 'a' && c <= 'z' && shift) {
+                            c -= 32;
+                        }
+                        text = QString(QChar(c));
+                    }
+                }
+
+                QKeyEvent newEvent(ke->type(), key, ke->modifiers(), text, ke->isAutoRepeat(), ke->count());
+
+                dsv_info("  Forwarding event to focused widget: %s (target: %s, text: %s, mapped_key: %d)", 
+                         focused->metaObject()->className(), target->metaObject()->className(), text.toStdString().c_str(), key);
+                in_filter = true;
+                qApp->sendEvent(target, &newEvent);
+                in_filter = false;
+                return true; 
             }
 
-            if (focused && _sliding_drawer && _sliding_drawer->isAncestorOf(focused)) {
-                return false;
-            }
+
+
 
             const auto &sigs = _session->get_signals();
             
