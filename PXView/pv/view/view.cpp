@@ -1252,7 +1252,7 @@ bool View::viewportEvent(QEvent *e)
 int View::headerWidth()
 {
     if (_header_collapsed) {
-        int w = Trace::SquareWidth + 2 * Trace::Margin;
+        int w = Trace::SquareWidth + 2 * Trace::Margin + 10;
         setViewportMargins(w, RulerHeight, 0, 0);
         return w;
     }

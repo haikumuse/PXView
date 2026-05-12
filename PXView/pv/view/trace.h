@@ -164,7 +164,7 @@ public:
 
     inline int get_leftWidth(){
         // return SquareWidth/2 + Margin;
-        return SquareWidth + Margin;
+        return SquareWidth + Margin + 10;
     }
 
     inline int get_rightWidth(){
