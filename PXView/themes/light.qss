@@ -107,6 +107,9 @@
  * @signal-light-blue: rgba(17,133,209,200)
  * @signal-light-red: rgba(213,15,37,200)
  * @warn-red: rgba(255,0,0,200)
+ * @search-input-bg: #e8e8e8
+ * @search-input-text: #2a2a2a
+ * @search-input-label: #8a8a8a
  */
 
 
@@ -633,6 +636,15 @@ QFrame[frameShape="4"],
 QFrame[frameShape="5"]
 {
     border: none;
+    background-color: @border-strong;
+}
+
+/* Sidebar separator - symmetric margins */
+#sidebar QFrame[frameShape="4"],
+#sidebar QFrame[frameShape="5"]
+{
+    margin-left: 8px;
+    margin-right: 8px;
     background-color: @border-strong;
 }
 

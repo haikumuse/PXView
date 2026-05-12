@@ -229,7 +229,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
 
     QWidget *wid = p->get_widget(parent, true);
     wid->setFont(font);
-    wid->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    wid->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     if (p->labeled_widget()) {
       layout->addWidget(wid, i, 0, 1, 2);

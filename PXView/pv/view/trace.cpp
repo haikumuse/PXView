@@ -419,7 +419,7 @@ int Trace::rows_size()
 
 QRectF Trace::get_rect(const char *s, int y, int right)
 {
-    const QSizeF color_size(get_leftWidth() - Margin, SquareWidth);
+    const QSizeF color_size(SquareWidth, SquareWidth);
     //const QSizeF color_size(SquareWidth, SquareWidth);
    // const QSizeF name_size(right - get_leftWidth() - get_rightWidth(), SquareWidth);
     const QSizeF name_size(right - get_leftWidth() - get_rightWidth(), SquareWidth);
@@ -437,13 +437,13 @@ QRectF Trace::get_rect(const char *s, int y, int right)
             label_size.width(), label_size.height());
     else if (!strcmp(s, "color"))
         return QRectF(
-            2,
+            12,
             y - color_size.height() / 2,
             color_size.width(), color_size.height());
             //right - 2, color_size.height());
     else
         return QRectF(
-            2,
+            12,
             y - SquareWidth / 2,
             SquareWidth, SquareWidth);
 }

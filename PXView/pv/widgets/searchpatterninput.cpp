@@ -29,6 +29,7 @@
 #include <QFontMetrics>
 #include <QApplication>
 #include "../log.h"
+#include "../config/appconfig.h"
 
 namespace pv {
 namespace widgets {
@@ -116,11 +117,21 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, false);
 
-    QColor bgColor(0x1a, 0x1a, 0x1a);
-    QColor textColor(Qt::white);
-    QColor selBgColor(0x35, 0x87, 0xFE);
-    QColor selTextColor(Qt::white);
-    QColor labelColor(0xaa, 0xaa, 0xaa);
+    // 从主题获取颜色，如果不存在则使用默认值
+    QColor bgColor = AppConfig::Instance().GetThemeColor("@search-input-bg");
+    if (!bgColor.isValid()) bgColor = QColor(0x1a, 0x1a, 0x1a);
+
+    QColor textColor = AppConfig::Instance().GetThemeColor("@search-input-text");
+    if (!textColor.isValid()) textColor = QColor(Qt::white);
+
+    QColor selBgColor = AppConfig::Instance().GetThemeColor("@accent");
+    if (!selBgColor.isValid()) selBgColor = QColor(0x35, 0x87, 0xFE);
+
+    QColor selTextColor = AppConfig::Instance().GetThemeColor("@fg-bright");
+    if (!selTextColor.isValid()) selTextColor = QColor(Qt::white);
+
+    QColor labelColor = AppConfig::Instance().GetThemeColor("@search-input-label");
+    if (!labelColor.isValid()) labelColor = QColor(0xaa, 0xaa, 0xaa);
 
     int cw = cellWidth();
     int totalW = width() - kPadding * 2;

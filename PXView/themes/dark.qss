@@ -113,6 +113,9 @@
  * @signal-light-blue: rgba(17,133,209,200)
  * @signal-light-red: rgba(213,15,37,200)
  * @warn-red: rgba(255,0,0,200)
+ * @search-input-bg: #1a1a1a
+ * @search-input-text: #ffffff
+ * @search-input-label: #aaaaaa
  */
 
 
@@ -614,6 +617,15 @@ QFrame[frameShape="4"],
 QFrame[frameShape="5"]
 {
     border: none;
+    background-color: @border-strong;
+}
+
+/* Sidebar separator - symmetric margins */
+#sidebar QFrame[frameShape="4"],
+#sidebar QFrame[frameShape="5"]
+{
+    margin-left: 8px;
+    margin-right: 8px;
     background-color: @border-strong;
 }
 

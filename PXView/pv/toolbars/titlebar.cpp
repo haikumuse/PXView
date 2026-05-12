@@ -590,7 +590,9 @@ bool TitleBar::eventFilter(QObject *watched, QEvent *event)
                 _ribbonContainer->mapFromGlobal(globalPos));
 
         if (!onTitleBar && !onRibbon) {
-            hideRibbon();
+            if (!_ribbonPinned) {
+                hideRibbon();
+            }
             return true;
         }
     }

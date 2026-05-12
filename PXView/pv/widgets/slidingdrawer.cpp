@@ -385,19 +385,9 @@ void SlidingDrawer::positionOverlay()
     int pw_width = pw->width();
     int pw_height = pw->height();
 
-    // Drawer is fixed-width, positioned at (pw_width - drawer_width + offset, 0)
-    // offset=0 means fully visible (left edge at pw_width - drawer_width)
-    // offset=drawer_width means fully hidden (left edge at pw_width, off-screen)
     int x = pw_width - _drawer_width + _slide_offset;
     setGeometry(x, 0, _drawer_width, pw_height);
-
-    // Content fills the drawer
-    if (_panel_content)
-        _panel_content->setGeometry(0, 0, _drawer_width, pw_height);
-    if (_edge_grip && pw_height > 0) {
-        _edge_grip->setGeometry(0, 0, EDGE_GRIP_WIDTH, pw_height);
-        _edge_grip->raise();
-    }
+    // Child geometry is handled by resizeEvent — avoid double setGeometry per frame
 }
 
 void SlidingDrawer::finishClose()
