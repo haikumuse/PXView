@@ -341,7 +341,9 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
 		return;
     }
 
-    if (end - last_x <= 0.5 && end - start < 1){
+    // 放宽密集标注的跳过条件：只有当标注完全重叠时才跳过
+    // 这样即使缩放到最小，也能看到竖线标记
+    if (end <= last_x && end - start < 0.5){
         return;
     }
     
