@@ -174,19 +174,22 @@ namespace pv
             font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
             group->setFont(font);
 
+            // Synchronize widths based on device selector
+            int target_w = 200;
+            _device_selector.setFixedWidth(target_w);
+            _sample_count.setFixedWidth(target_w);
+            _sample_rate.setFixedWidth(target_w);
+
             // Row 0: 设备
             QLabel *devLabel = new QLabel(
                 L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE), "设备"), group);
             devLabel->setFont(font);
             grid->addWidget(devLabel, 0, 0, Qt::AlignRight | Qt::AlignVCenter);
 
-            QHBoxLayout *devRow = new QHBoxLayout();
-            devRow->setSpacing(4);
-            devRow->setContentsMargins(0, 0, 0, 0);
-            devRow->addStretch();
-            devRow->addWidget(&_device_type);
-            devRow->addWidget(&_device_selector);
-            grid->addLayout(devRow, 0, 1, Qt::AlignLeft);
+            grid->addWidget(&_device_type, 0, 1, Qt::AlignRight | Qt::AlignVCenter);
+            
+            _device_selector.setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+            grid->addWidget(&_device_selector, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
 
             // Row 1: 采样深度
             QLabel *depthLabel = new QLabel(
@@ -194,12 +197,8 @@ namespace pv
             depthLabel->setFont(font);
             grid->addWidget(depthLabel, 1, 0, Qt::AlignRight | Qt::AlignVCenter);
 
-            QHBoxLayout *depthRow = new QHBoxLayout();
-            depthRow->setSpacing(0);
-            depthRow->setContentsMargins(0, 0, 0, 0);
-            depthRow->addStretch();
-            depthRow->addWidget(&_sample_count);
-            grid->addLayout(depthRow, 1, 1, Qt::AlignLeft);
+            _sample_count.setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+            grid->addWidget(&_sample_count, 1, 2, Qt::AlignRight | Qt::AlignVCenter);
 
             // Row 2: 采样率
             QLabel *rateLabel = new QLabel(
@@ -207,12 +206,8 @@ namespace pv
             rateLabel->setFont(font);
             grid->addWidget(rateLabel, 2, 0, Qt::AlignRight | Qt::AlignVCenter);
 
-            QHBoxLayout *rateRow = new QHBoxLayout();
-            rateRow->setSpacing(0);
-            rateRow->setContentsMargins(0, 0, 0, 0);
-            rateRow->addStretch();
-            rateRow->addWidget(&_sample_rate);
-            grid->addLayout(rateRow, 2, 1, Qt::AlignLeft);
+            _sample_rate.setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+            grid->addWidget(&_sample_rate, 2, 2, Qt::AlignRight | Qt::AlignVCenter);
 
             // Row 3: 捕获模式
             QLabel *modeLabel = new QLabel(
@@ -242,7 +237,7 @@ namespace pv
             modeRow->addWidget(_radio_single);
             modeRow->addWidget(_radio_repeat);
             modeRow->addWidget(_radio_loop);
-            grid->addLayout(modeRow, 3, 1, Qt::AlignLeft);
+            grid->addLayout(modeRow, 3, 1, 1, 2);
 
             connect(_mode_group, SIGNAL(buttonClicked(int)), this, SLOT(on_mode_radio_clicked(int)));
 
@@ -468,7 +463,7 @@ namespace pv
                 g_variant_unref(gvar_list);
             }
 
-            _sample_rate.setMinimumWidth(_sample_rate.sizeHint().width() + 15);
+            // _sample_rate.setMinimumWidth(_sample_rate.sizeHint().width() + 15);
             _sample_rate.view()->setMinimumWidth(_sample_rate.sizeHint().width() + 30);
 
             _updating_sample_rate = false;
@@ -634,6 +629,8 @@ namespace pv
                     not_last = (duration / SR_SEC(1) * samplerate >= SR_KB(1));
 
             } while (not_last);
+
+            _sample_count.view()->setMinimumWidth(_sample_count.sizeHint().width() + 30);
 
             _updating_sample_count = true;
 
@@ -1240,7 +1237,9 @@ namespace pv
 
             _last_device_index = select_index;
             int width = _device_selector.sizeHint().width();
-            _device_selector.setFixedWidth(min(width + 15, _device_selector.maximumWidth()));
+            _device_selector.setFixedWidth(200);
+            _sample_count.setFixedWidth(200);
+            _sample_rate.setFixedWidth(200);
             _device_selector.view()->setMinimumWidth(width + 30);
 
             _updating_device_list = false;
