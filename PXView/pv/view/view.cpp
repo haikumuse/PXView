@@ -70,7 +70,7 @@ const int View::LabelMarginWidth = 70;
 const int View::RulerHeight = 50;
 
 const int View::MaxScrollValue = INT_MAX / 2;
-const int View::MaxHeightUnit = 20;
+const int View::MaxHeightUnit = 40;
 const int View::MinSignalHeight = 10;
 const int View::MaxSignalHeight = 500;
 
@@ -129,6 +129,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
    _device_agent = session->get_device();
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    setStyleSheet(QString("QScrollBar:vertical { margin-top: %1px; }").arg(RulerHeight));
   
     // trace viewport map
     _trace_view_map[SR_CHANNEL_LOGIC] = TIME_VIEW;
@@ -1390,7 +1391,7 @@ void View::update_margins()
 
     if (width > 0)
     {
-        _ruler->setGeometry(_viewcenter->x(), 0,  width, _viewcenter->y());
+        _ruler->setGeometry(_viewcenter->x(), 0,  this->width() - _viewcenter->x(), _viewcenter->y());
         _header->setGeometry(0, _viewcenter->y(), _viewcenter->x(), _viewcenter->height());
         _devmode->setGeometry(0, 0, _viewcenter->x(), _viewcenter->y());
     } 
