@@ -149,11 +149,20 @@ void Header::paintEvent(QPaintEvent*)
 
     if (_view.session().get_device()->get_work_mode() == LOGIC) {
         const auto &groups = _view.get_signal_groups();
-        if (!groups.empty()) {
+            if (!groups.empty()) {
             QColor cardColor = _view.get_group_card_color();
 
-            for (size_t gi = 0; gi < groups.size(); gi++) {
-                const auto &group = groups[gi];
+            // 创建索引数组并按组的实际位置排序
+            std::vector<size_t> group_indices(groups.size());
+            for (size_t i = 0; i < groups.size(); i++) group_indices[i] = i;
+            std::sort(group_indices.begin(), group_indices.end(), [&groups](size_t a, size_t b) {
+                if (groups[a].traces.empty()) return false;
+                if (groups[b].traces.empty()) return true;
+                return groups[a].traces[0]->get_v_offset() < groups[b].traces[0]->get_v_offset();
+            });
+
+            for (size_t idx = 0; idx < group_indices.size(); idx++) {
+                const auto &group = groups[group_indices[idx]];
                 if (group.traces.empty()) continue;
                 double groupTop = 1e9;
                 double groupBottom = -1e9;

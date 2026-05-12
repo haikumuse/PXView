@@ -1,0 +1,9 @@
+- [ ] SlidingDrawer 类添加 `drawerWidthChanged(int width)` 信号
+- [ ] SlidingDrawer 类添加 `visibleWidth() const` 方法
+- [ ] SlidingDrawer::updatePanelGeometry() 发射 drawerWidthChanged 信号
+- [ ] MainWindow 连接 drawerWidthChanged 信号
+- [ ] MainWindow::on_drawer_width_changed() 调整 _tab_widget 右边距
+- [ ] 抽屉打开时主视图宽度正确缩小
+- [ ] 抽屉关闭时主视图宽度恢复全宽
+- [ ] 拖拽调整抽屉宽度时主视图实时同步
+- [ ] 动画过程中无闪烁或跳跃现象
