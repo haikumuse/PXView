@@ -38,6 +38,7 @@
  * @fg-muted: #8a8a8a
  * @border: #2a2a2a
  * @border-subtle: #b4b4b4
+ * @border-strong: #d5d5d5 
  * @accent: #1185d1
  * @accent-hover: #44cef6
  * @accent-light: #47b8f3
@@ -1718,7 +1719,7 @@ QWidget#RibbonSeparator {
 }
 
 /* Sliding Drawer */
-#sliding_drawer_panel
+#sliding_drawer
 {
     background: transparent;
 }

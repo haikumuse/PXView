@@ -18,9 +18,7 @@
 
 #include <QLabel>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QApplication>
-#include <QPropertyAnimation>
 #include <QEasingCurve>
 
 namespace pv {
@@ -31,10 +29,9 @@ static constexpr int DEFAULT_ANIMATION_DURATION = 500;
 static constexpr int TITLE_BAR_HEIGHT = 40;
 static constexpr int MIN_DRAWER_WIDTH = 200;
 
-// CSS cubic-bezier(0.4, 0, 0.2, 1) solver — matches Tailwind ease-in-out exactly
+// CSS cubic-bezier(0.4, 0, 0.2, 1)
 static qreal cssBezierEasing(qreal t)
 {
-    // cubic-bezier(0.4, 0, 0.2, 1)
     static const double x1 = 0.4, y1 = 0.0;
     static const double x2 = 0.2, y2 = 1.0;
 
@@ -49,7 +46,6 @@ static qreal cssBezierEasing(qreal t)
     auto sampleCurveX = [&](double s) { return ((ax * s + bx) * s + cx) * s; };
     auto sampleCurveY = [&](double s) { return ((ay * s + by) * s + cy) * s; };
 
-    // Newton's method to solve sampleCurveX(s) = t
     double s = t;
     for (int i = 0; i < 8; i++) {
         double err = sampleCurveX(s) - t;
@@ -68,34 +64,38 @@ static QEasingCurve makeTailwindCurve()
     return curve;
 }
 
+// ============================================================================
+
 SlidingDrawer::SlidingDrawer(QWidget *parent)
     : QWidget(parent)
-    , _slide_progress(0.0)
+    , _stacked_widget(nullptr)
+    , _panel_content(nullptr)
+    , _title_bar(nullptr)
+    , _title_label(nullptr)
+    , _push_layout(nullptr)
+    , _animation(nullptr)
+    , _slide_offset(DEFAULT_DRAWER_WIDTH) // fully hidden initially
     , _drawer_width(DEFAULT_DRAWER_WIDTH)
     , _animation_duration(DEFAULT_ANIMATION_DURATION)
     , _current_page(-1)
     , _is_open(false)
     , _is_animating(false)
     , _drag_active(false)
+    , _drag_start_drawer_width(0)
+    , _edge_grip(nullptr)
 {
-    // This widget covers the entire parent area as an overlay
-    setVisible(false);
+    setObjectName("sliding_drawer");
     setMouseTracking(true);
 
-    // --- Panel (translates as a whole unit) ---
-    _panel = new QWidget(this);
-    _panel->setObjectName("sliding_drawer_panel");
-
-    // --- Panel content (fixed width, always at 0,0 inside _panel) ---
-    _panel_content = new QWidget(_panel);
+    // --- Content area (fills the entire drawer widget) ---
+    _panel_content = new QWidget(this);
     _panel_content->setObjectName("sliding_drawer_panel_content");
-    _panel_content->setFixedWidth(_drawer_width);
 
     QVBoxLayout *content_layout = new QVBoxLayout(_panel_content);
     content_layout->setContentsMargins(0, 0, 0, 0);
     content_layout->setSpacing(0);
 
-    // Title bar (no close button)
+    // Title bar
     _title_bar = new QWidget(_panel_content);
     _title_bar->setObjectName("sliding_drawer_titlebar");
     _title_bar->setFixedHeight(TITLE_BAR_HEIGHT);
@@ -115,7 +115,8 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     _stacked_widget->setObjectName("sliding_drawer_stack");
     content_layout->addWidget(_stacked_widget, 1);
 
-    _edge_grip = new QWidget(_panel);
+    // Edge grip for drag-to-resize (left edge of drawer)
+    _edge_grip = new QWidget(this);
     _edge_grip->setObjectName("sliding_drawer_edge_grip");
     _edge_grip->setFixedWidth(EDGE_GRIP_WIDTH);
     _edge_grip->setCursor(Qt::SplitHCursor);
@@ -123,43 +124,61 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     _edge_grip->installEventFilter(this);
     _edge_grip->raise();
 
-    // --- Open animation group ---
-    _open_group = new QParallelAnimationGroup(this);
+    // --- Animation: X-axis translate offset ---
+    _animation = new QPropertyAnimation(this, "slideOffset");
+    _animation->setDuration(_animation_duration);
 
-    QPropertyAnimation *open_slide = new QPropertyAnimation(this, "slideProgress");
-    open_slide->setStartValue(0.0);
-    open_slide->setEndValue(1.0);
-    open_slide->setDuration(_animation_duration);
-    open_slide->setEasingCurve(QEasingCurve::OutCubic);
-    _open_group->addAnimation(open_slide);
-
-    connect(_open_group, &QParallelAnimationGroup::finished, this, [this]() {
+    connect(_animation, &QPropertyAnimation::finished, this, [this]() {
         _is_animating = false;
-        _is_open = true;
-        emit drawerOpened(_current_page);
+
+        if (_is_open) {
+            // Opening animation done → apply push margin so tab widget shrinks
+            applyPushMargin();
+            // Reposition drawer to sit in the margin area (no offset now)
+            _slide_offset = 0;
+            positionOverlay();
+            emit drawerOpened(_current_page);
+        } else {
+            // Closing animation done → hide and clean up
+            finishClose();
+            emit drawerClosed();
+        }
     });
 
-    // --- Close animation group ---
-    _close_group = new QParallelAnimationGroup(this);
-
-    QPropertyAnimation *close_slide = new QPropertyAnimation(this, "slideProgress");
-    close_slide->setStartValue(1.0);
-    close_slide->setEndValue(0.0);
-    close_slide->setDuration(_animation_duration);
-    close_slide->setEasingCurve(makeTailwindCurve());
-    _close_group->addAnimation(close_slide);
-
-    connect(_close_group, &QParallelAnimationGroup::finished, this, [this]() {
-        _is_animating = false;
-        _is_open = false;
-        finishClose();
-        emit drawerClosed();
-    });
+    // Start hidden: positioned off-screen right
+    hide();
+    if (parentWidget())
+        parentWidget()->installEventFilter(this);
 }
 
 SlidingDrawer::~SlidingDrawer()
 {
 }
+
+// ---- Push layout management ----
+
+void SlidingDrawer::setPushLayout(QVBoxLayout *layout)
+{
+    _push_layout = layout;
+}
+
+void SlidingDrawer::applyPushMargin()
+{
+    if (!_push_layout)
+        return;
+    // Set right margin = drawer width → tab widget shrinks, drawer sits in empty space
+    _push_layout->setContentsMargins(0, 0, _drawer_width, 0);
+}
+
+void SlidingDrawer::removePushMargin()
+{
+    if (!_push_layout)
+        return;
+    // Remove right margin → tab widget expands to fill
+    _push_layout->setContentsMargins(0, 0, 0, 0);
+}
+
+// ---- Page management ----
 
 int SlidingDrawer::addPage(QWidget *content, const QString &title)
 {
@@ -207,6 +226,8 @@ int SlidingDrawer::pageCount() const
     return _pages.size();
 }
 
+// ---- Open / Close ----
+
 void SlidingDrawer::open(int pageIndex)
 {
     if (pageIndex < 0 || pageIndex >= _pages.size())
@@ -216,7 +237,7 @@ void SlidingDrawer::open(int pageIndex)
     if (_is_open && _current_page == pageIndex && !_is_animating)
         return;
 
-    // If already open with a DIFFERENT page, just switch content instantly (no slide animation)
+    // If already open with a DIFFERENT page, just switch content instantly
     if (_is_open && !_is_animating) {
         _current_page = pageIndex;
         _stacked_widget->setCurrentIndex(pageIndex);
@@ -226,10 +247,9 @@ void SlidingDrawer::open(int pageIndex)
         return;
     }
 
-    // If currently animating, stop it and resume from current progress
+    // If currently animating, stop it
     if (_is_animating) {
-        _open_group->stop();
-        _close_group->stop();
+        _animation->stop();
         _is_animating = false;
     }
 
@@ -240,24 +260,25 @@ void SlidingDrawer::open(int pageIndex)
     _title_label->setText(_pages[pageIndex].title);
     _pages[pageIndex].content->show();
 
-    // Show this widget and set initial state
-    setVisible(true);
+    // Ensure push margin is removed (overlay mode during animation)
+    removePushMargin();
+
+    // Make drawer visible as overlay, positioned at right edge
+    setFixedSize(_drawer_width, parentWidget()->height());
     raise();
-    parentWidget()->installEventFilter(this);
-    updatePanelGeometry();
+    show();
 
-    // Start open animation from current progress (smooth reverse on interrupt)
-    qreal startProgress = _slide_progress;
-    if (startProgress >= 1.0) startProgress = 0.0;
+    // Start from current offset (support smooth interrupt)
+    int startOffset = _slide_offset;
+    if (startOffset <= 0) startOffset = _drawer_width; // fully hidden
 
-    QPropertyAnimation *open_slide = qobject_cast<QPropertyAnimation*>(_open_group->animationAt(0));
-    if (open_slide) {
-        open_slide->setStartValue(startProgress);
-        open_slide->setEndValue(1.0);
-    }
+    _animation->setStartValue(startOffset);
+    _animation->setEndValue(0); // slide to fully visible
+    _animation->setEasingCurve(QEasingCurve::OutCubic);
 
+    _is_open = true;
     _is_animating = true;
-    _open_group->start();
+    _animation->start();
 }
 
 void SlidingDrawer::close()
@@ -265,31 +286,34 @@ void SlidingDrawer::close()
     if (!_is_open && !_is_animating)
         return;
 
-    // If currently animating, stop it and resume from current progress
+    // If currently animating, stop it
     if (_is_animating) {
-        _open_group->stop();
-        _close_group->stop();
+        _animation->stop();
+        _is_animating = false;
     }
 
-    // Start close animation from current progress (smooth reverse on interrupt)
-    qreal startProgress = _slide_progress;
-    if (startProgress <= 0.0) startProgress = 1.0;
+    // Step 1: Remove push margin → tab widget expands instantly
+    removePushMargin();
 
-    QPropertyAnimation *close_slide = qobject_cast<QPropertyAnimation*>(_close_group->animationAt(0));
-    if (close_slide) {
-        close_slide->setStartValue(startProgress);
-        close_slide->setEndValue(0.0);
-    }
+    // Drawer is now overlay (tab is full-width, drawer covers right side)
 
+    // Start from current offset (support smooth interrupt)
+    int startOffset = _slide_offset;
+    if (startOffset >= _drawer_width) startOffset = 0; // fully visible
+
+    _animation->setStartValue(startOffset);
+    _animation->setEndValue(_drawer_width); // slide to fully hidden
+    _animation->setEasingCurve(makeTailwindCurve());
+
+    _is_open = false;
     _is_animating = true;
-    _close_group->start();
+    _animation->start();
 }
 
 void SlidingDrawer::toggle(int pageIndex)
 {
-    // If animating: reverse direction (opening → close, closing → open)
     if (_is_animating) {
-        if (_slide_progress > 0.01) {
+        if (_slide_offset > 0) {
             close();
         } else {
             open(pageIndex);
@@ -317,8 +341,12 @@ bool SlidingDrawer::isAnimating() const
 void SlidingDrawer::setDrawerWidth(int width)
 {
     _drawer_width = qMax(MIN_DRAWER_WIDTH, width);
-    _panel_content->setFixedWidth(_drawer_width);
-    updatePanelGeometry();
+    // If currently open (push mode), update margin and reposition
+    if (_is_open && !_is_animating) {
+        applyPushMargin();
+        setFixedSize(_drawer_width, parentWidget()->height());
+        positionOverlay();
+    }
 }
 
 int SlidingDrawer::drawerWidth() const
@@ -329,22 +357,13 @@ int SlidingDrawer::drawerWidth() const
 void SlidingDrawer::setAnimationDuration(int ms)
 {
     _animation_duration = qMax(50, ms);
-    for (int i = 0; i < _open_group->animationCount(); i++) {
-        QPropertyAnimation *anim = qobject_cast<QPropertyAnimation*>(_open_group->animationAt(i));
-        if (anim) anim->setDuration(_animation_duration);
-    }
-    for (int i = 0; i < _close_group->animationCount(); i++) {
-        QPropertyAnimation *anim = qobject_cast<QPropertyAnimation*>(_close_group->animationAt(i));
-        if (anim) anim->setDuration(_animation_duration);
-    }
+    _animation->setDuration(_animation_duration);
 }
 
 int SlidingDrawer::animationDuration() const
 {
     return _animation_duration;
 }
-
-
 
 void SlidingDrawer::setPageTitle(int index, const QString &title)
 {
@@ -355,43 +374,30 @@ void SlidingDrawer::setPageTitle(int index, const QString &title)
         _title_label->setText(title);
 }
 
-// ---- Property animation support ----
+// ---- Overlay positioning ----
 
-qreal SlidingDrawer::slideProgress() const
+void SlidingDrawer::positionOverlay()
 {
-    return _slide_progress;
-}
-
-void SlidingDrawer::setSlideProgress(qreal progress)
-{
-    progress = qBound(0.0, progress, 1.0);
-    if (qFuzzyCompare(_slide_progress, progress))
+    QWidget *pw = parentWidget();
+    if (!pw)
         return;
 
-    _slide_progress = progress;
-    updatePanelGeometry();
-}
+    int pw_width = pw->width();
+    int pw_height = pw->height();
 
-void SlidingDrawer::updatePanelGeometry()
-{
-    if (!parentWidget())
-        return;
+    // Drawer is fixed-width, positioned at (pw_width - drawer_width + offset, 0)
+    // offset=0 means fully visible (left edge at pw_width - drawer_width)
+    // offset=drawer_width means fully hidden (left edge at pw_width, off-screen)
+    int x = pw_width - _drawer_width + _slide_offset;
+    setGeometry(x, 0, _drawer_width, pw_height);
 
-    QWidget *p = parentWidget();
-    int parent_w = p->width();
-    int parent_h = p->height();
-
-    // Resize this overlay to fill parent vertically, but only cover the drawer width horizontally
-    int panel_x = parent_w - qRound(_drawer_width * _slide_progress);
-    setGeometry(panel_x, 0, _drawer_width, parent_h);
-
-    // Let the content fill the visible area. 
-    // Scrolling is handled by the page content if it's a QScrollArea.
-    _panel->setGeometry(0, 0, _drawer_width, parent_h);
-    _panel_content->setGeometry(0, 0, _drawer_width, parent_h);
-
-    _edge_grip->setGeometry(0, 0, EDGE_GRIP_WIDTH, parent_h);
-    _edge_grip->raise();
+    // Content fills the drawer
+    if (_panel_content)
+        _panel_content->setGeometry(0, 0, _drawer_width, pw_height);
+    if (_edge_grip && pw_height > 0) {
+        _edge_grip->setGeometry(0, 0, EDGE_GRIP_WIDTH, pw_height);
+        _edge_grip->raise();
+    }
 }
 
 void SlidingDrawer::finishClose()
@@ -399,10 +405,27 @@ void SlidingDrawer::finishClose()
     if (_current_page >= 0 && _current_page < _pages.size()) {
         _pages[_current_page].content->hide();
     }
-    if (parentWidget())
-        parentWidget()->removeEventFilter(this);
-    setVisible(false);
+
+    hide();
+    _slide_offset = _drawer_width;
     _current_page = -1;
+}
+
+// ---- Property animation: slideOffset ----
+
+int SlidingDrawer::slideOffset() const
+{
+    return _slide_offset;
+}
+
+void SlidingDrawer::setSlideOffset(int offset)
+{
+    offset = qBound(0, offset, _drawer_width);
+    if (_slide_offset == offset)
+        return;
+
+    _slide_offset = offset;
+    positionOverlay();
 }
 
 // ---- Events ----
@@ -410,19 +433,28 @@ void SlidingDrawer::finishClose()
 void SlidingDrawer::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
-    // No backdrop painting needed
 }
 
 void SlidingDrawer::resizeEvent(QResizeEvent *event)
 {
     Q_UNUSED(event);
-    updatePanelGeometry();
+    if (_panel_content) {
+        _panel_content->setGeometry(0, 0, width(), height());
+    }
+    if (_edge_grip && height() > 0) {
+        _edge_grip->setGeometry(0, 0, EDGE_GRIP_WIDTH, height());
+        _edge_grip->raise();
+    }
 }
 
 bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event)
 {
+    // Track parent widget resize to reposition the drawer
     if (obj == parentWidget() && event->type() == QEvent::Resize) {
-        updatePanelGeometry();
+        if (_is_open || _is_animating) {
+            setFixedSize(_drawer_width, parentWidget()->height());
+            positionOverlay();
+        }
     }
 
     if (obj == _edge_grip && event->type() == QEvent::MouseButtonPress) {
@@ -452,8 +484,6 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event)
 
 void SlidingDrawer::mousePressEvent(QMouseEvent *event)
 {
-    // Removed: click outside to close logic
-    // Now the drawer only covers its own area, so clicks outside go to other widgets
     QWidget::mousePressEvent(event);
 }
 
