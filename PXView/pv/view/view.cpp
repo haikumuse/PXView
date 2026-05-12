@@ -33,7 +33,6 @@
 #include <QtGlobal>
 #include <QPaintEvent>
 #include <algorithm>
-#include <map>
 
 #include "groupsignal.h"
 #include "decodetrace.h"
@@ -116,15 +115,10 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
     _hover_point(-1, -1),
     _dso_auto(true),
     _show_lissajous(false),
-    _vOffset(0),
     _back_ready(false),
+    _vOffset(0),
     _signalHeightScale(MaxHeightUnit)
 {  
-   _layout_anim_timer = new QTimer(this);
-   _layout_anim_frame = 0;
-   _skip_anim_on_signals_changed = false;
-   connect(_layout_anim_timer, SIGNAL(timeout()), this, SLOT(on_layout_anim_tick()));
-
    _trig_cursor = NULL;
    _search_cursor = NULL;
    _cali = NULL;
@@ -885,32 +879,6 @@ void View::set_search_pos(uint64_t search_pos, bool hit)
     }
 }
 
-void View::finalize_layout_animation_internal()
-{
-    std::vector<Trace*> traces;
-    get_traces(ALL_VIEW, traces);
-
-    for (auto trace : traces) {
-        if (trace->is_animating()) {
-            trace->stop_animation();
-        }
-    }
-
-    normalize_layout();
-
-    if (_time_viewport) {
-        _time_viewport->set_update_flag();
-        _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-    }
-    if (_fft_viewport && _fft_viewport->isVisible()) {
-        _fft_viewport->set_update_flag();
-        _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-    }
-    if (_header) {
-        _header->update();
-    }
-}
-
 void View::normalize_layout()
 {   
     int v_min = INT_MAX;
@@ -930,81 +898,6 @@ void View::normalize_layout()
     _vOffset = 0;
     verticalScrollBar()->setSliderPosition(0);
 	v_scroll_value_changed(0);
-}
-
-void View::start_layout_animation()
-{
-    if (_layout_anim_timer->isActive()) {
-        _layout_anim_timer->stop();
-        finalize_layout_animation_internal();
-    }
-
-    _layout_anim_frame = 0;
-
-    std::vector<Trace*> traces;
-    get_traces(ALL_VIEW, traces);
-
-    bool has_anim = false;
-    for (auto t : traces) {
-        if (t->is_animating()) {
-            has_anim = true;
-            break;
-        }
-    }
-
-    if (!has_anim)
-        return;
-
-    _layout_anim_timer->start(LayoutAnimInterval);
-}
-
-void View::stop_layout_animation()
-{
-    if (_layout_anim_timer->isActive()) {
-        _layout_anim_timer->stop();
-        finalize_layout_animation_internal();
-    }
-}
-
-bool View::is_layout_animating()
-{
-    return _layout_anim_timer->isActive();
-}
-
-void View::on_layout_anim_tick()
-{
-    _layout_anim_frame++;
-
-    double t = (double)_layout_anim_frame / LayoutAnimFrames;
-    if (t > 1.0) t = 1.0;
-
-    std::vector<Trace*> traces;
-    get_traces(ALL_VIEW, traces);
-
-    for (auto trace : traces) {
-        if (trace->is_animating()) {
-            double start = trace->get_anim_start_v_offset();
-            double target = trace->get_anim_target_v_offset();
-            trace->set_anim_v_offset(start + (target - start) * t);
-        }
-    }
-
-    if (_time_viewport) {
-        _time_viewport->set_update_flag();
-        _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-    }
-    if (_fft_viewport && _fft_viewport->isVisible()) {
-        _fft_viewport->set_update_flag();
-        _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-    }
-    if (_header) {
-        _header->update();
-    }
-
-    if (_layout_anim_frame >= LayoutAnimFrames) {
-        _layout_anim_timer->stop();
-        finalize_layout_animation_internal();
-    }
 }
 
 void View::get_scroll_layout(int64_t &length, int64_t &offset)
@@ -1121,13 +1014,6 @@ void View::signals_changed(const Trace* eventTrace)
     compute_signal_groups();
 
     get_traces(ALL_VIEW, traces);
-
-    std::map<Trace*, int> pre_anim_offsets;
-    if (!_skip_anim_on_signals_changed) {
-        for (auto t : traces) {
-            pre_anim_offsets[t] = t->get_v_offset();
-        }
-    }
 
     for(auto t : traces) {
         if (_trace_view_map[t->get_type()] == TIME_VIEW){
@@ -1256,7 +1142,7 @@ void View::signals_changed(const Trace* eventTrace)
             }
             
             if (current_group_id != -1 && trace_group_id != current_group_id) {
-                next_v_offset += GroupGap * 2;
+                next_v_offset += GroupGap;
             }
             current_group_id = trace_group_id;
 
@@ -1265,9 +1151,6 @@ void View::signals_changed(const Trace* eventTrace)
                 traceHeight = t->get_own_height();
             } else {
                 traceHeight = _signalHeight * t->rows_size();
-                if (t->get_type() == SR_CHANNEL_DECODER && t->get_totalHeight() > traceHeight) {
-                    traceHeight = t->get_totalHeight();
-                }
             }
             t->set_totalHeight((int)traceHeight);
             t->set_v_offset(qRound(next_v_offset + 0.5 * traceHeight + actualMargin));
@@ -1299,28 +1182,6 @@ void View::signals_changed(const Trace* eventTrace)
     header_updated();
     update_scale_offset();
     data_updated();
-
-    if (!_skip_anim_on_signals_changed && !pre_anim_offsets.empty()) {
-        std::vector<Trace*> post_traces;
-        get_traces(ALL_VIEW, post_traces);
-        bool has_change = false;
-        for (auto t : post_traces) {
-            auto it = pre_anim_offsets.find(t);
-            if (it != pre_anim_offsets.end()) {
-                int old_off = it->second;
-                int new_off = t->get_v_offset();
-                if (old_off != new_off) {
-                    t->set_v_offset(old_off);
-                    t->start_animation(new_off);
-                    has_change = true;
-                }
-            }
-        }
-        if (has_change) {
-            start_layout_animation();
-        }
-    }
-    _skip_anim_on_signals_changed = false;
 }
 
 bool View::eventFilter(QObject *object, QEvent *event)

@@ -1,8 +1,0 @@
-- [x] Trace 类包含动画状态属性（_anim_v_offset、_animating、_anim_start_v_offset、_anim_target_v_offset）和相关方法
-- [x] View 类包含布局动画驱动器（QTimer、帧计数、start_layout_animation、on_layout_anim_tick、finalize_layout_animation_internal）
-- [x] 拖拽释放后通道以 150ms 线性动画平滑滑动到新位置，而非瞬间跳转
-- [x] Header 和 Viewport 的 paintEvent 在动画期间读取 trace 的动画中间 v_offset 值绘制
-- [x] 动画期间 DSO/ANALOG 模式的 QPixmap 缓存被禁用，动画结束后恢复
-- [x] 动画播放期间用户再次拖拽时，动画立即停止并从中间位置响应新拖拽
-- [x] 通道增删（解码通道添加、通道 enable/disable）后同样有 150ms 平滑过渡动画
-- [x] 动画结束后调用 normalize_layout() 确保 v_offset 为正值
