@@ -35,7 +35,6 @@
 #include <assert.h>
 #include <algorithm>
 #include <QFont>
-#include <map>
 
 #include "view.h"
 #include "trace.h"
@@ -131,39 +130,6 @@ void Header::paintEvent(QPaintEvent*)
 
 	const int w = width();
 
-    if (_view.session().get_device()->get_work_mode() == LOGIC) {
-        const auto &groups = _view.get_signal_groups();
-            if (!groups.empty()) {
-            QColor cardColor = _view.get_group_card_color();
-
-            auto get_trace_y = [](Trace* t) -> double {
-                return t->is_animating() ? t->get_anim_v_offset() : t->get_v_offset();
-            };
-
-            int vOffset = _view.get_vOffset();
-            for (size_t gi = 0; gi < groups.size(); gi++) {
-                const auto &group = groups[gi];
-                if (group.traces.empty()) continue;
-                double groupTop = 1e9;
-                double groupBottom = -1e9;
-                for (auto gt : group.traces) {
-                    double traceTop = get_trace_y(gt) - gt->get_totalHeight() * 0.5 - View::SignalMargin;
-                    double traceBottom = get_trace_y(gt) + gt->get_totalHeight() * 0.5 + View::SignalMargin;
-                    groupTop = min(groupTop, traceTop);
-                    groupBottom = max(groupBottom, traceBottom);
-                }
-                
-                double cardTop = groupTop - View::GroupGap * 0.5 - vOffset;
-                double cardHeight = groupBottom - groupTop + View::GroupGap;
-                
-                QRectF cardRect(0, cardTop, w + View::GroupCardRadius + 1, cardHeight);
-                painter.setPen(Qt::NoPen);
-                painter.setBrush(cardColor);
-                painter.drawRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
-            }
-        }
-    }
-
     std::vector<Trace*> traces;
     _view.get_traces(ALL_VIEW, traces);
 
@@ -178,51 +144,39 @@ void Header::paintEvent(QPaintEvent*)
     font.setPointSizeF(fSize);
     painter.setFont(font);
 
-    bool has_anim = false;
-    for (auto t : traces) {
-        if (t->is_animating()) { has_anim = true; break; }
-    }
-
     painter.save();
     painter.translate(0, -_view.get_vOffset());
 
-    if (_view.session().get_device()->get_work_mode() == LOGIC && w > Trace::SquareWidth + 2 * Trace::Margin) {
-        QColor separatorColor = _view.get_group_card_color().lightness() > 128
-            ? _view.get_group_card_color().darker(140)
-            : _view.get_group_card_color().lighter(160);
+    if (_view.session().get_device()->get_work_mode() == LOGIC) {
+        const auto &groups = _view.get_signal_groups();
+        if (!groups.empty()) {
+            QColor cardColor = _view.get_group_card_color();
 
-        for (int i = 0; i < (int)traces.size(); i++) {
-            auto t = traces[i];
-            if (has_anim && t->is_animating()) {
-                int saved = t->get_v_offset();
-                t->set_v_offset((int)t->get_anim_v_offset());
-                t->paint_label(painter, w, dragging ? QPoint(-1, -1) : _mouse_point, fore);
-                t->set_v_offset(saved);
-            } else {
-                t->paint_label(painter, w, dragging ? QPoint(-1, -1) : _mouse_point, fore);
-            }
-
-            if (i + 1 < (int)traces.size() && traces[i + 1]->enabled()) {
-                double curY = t->is_animating() ? t->get_anim_v_offset() : t->get_v_offset();
-                double nextY = traces[i + 1]->is_animating() ? traces[i + 1]->get_anim_v_offset() : traces[i + 1]->get_v_offset();
-                double bottomY = curY + t->get_totalHeight() * 0.5 + View::SignalMargin;
-                double nextTopY = nextY - traces[i + 1]->get_totalHeight() * 0.5 - View::SignalMargin;
-                double sepY = (bottomY + nextTopY) * 0.5;
-                double sepX = t->get_leftWidth() + (w - t->get_leftWidth() - t->get_rightWidth()) + Trace::Margin;
-                painter.fillRect(QRectF(sepX, sepY, w + View::GroupCardRadius + 1 - sepX, 1), separatorColor);
+            for (size_t gi = 0; gi < groups.size(); gi++) {
+                const auto &group = groups[gi];
+                if (group.traces.empty()) continue;
+                double groupTop = 1e9;
+                double groupBottom = -1e9;
+                for (auto gt : group.traces) {
+                    double traceTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
+                    double traceBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
+                    groupTop = min(groupTop, traceTop);
+                    groupBottom = max(groupBottom, traceBottom);
+                }
+                
+                double cardTop = groupTop - View::GroupGap * 0.5;
+                double cardHeight = groupBottom - groupTop + View::GroupGap;
+                
+                QRectF cardRect(0, cardTop, w + View::GroupCardRadius + 1, cardHeight);
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(cardColor);
+                painter.drawRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
             }
         }
-    } else {
-        for(auto t : traces) {
-            if (has_anim && t->is_animating()) {
-                int saved = t->get_v_offset();
-                t->set_v_offset((int)t->get_anim_v_offset());
-                t->paint_label(painter, w, dragging ? QPoint(-1, -1) : _mouse_point, fore);
-                t->set_v_offset(saved);
-            } else {
-                t->paint_label(painter, w, dragging ? QPoint(-1, -1) : _mouse_point, fore);
-            }
-        }
+    }
+
+    for(auto t : traces) {
+        t->paint_label(painter, w, dragging ? QPoint(-1, -1) : _mouse_point, fore);
     }
 
 	painter.restore();
@@ -259,10 +213,6 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event)
 void Header::mousePressEvent(QMouseEvent *event)
 {
 	assert(event);
-
-    if (_view.is_layout_animating()) {
-        _view.stop_layout_animation();
-    }
 
     _mouse_is_down = true;
 
@@ -445,35 +395,16 @@ void Header::mouseReleaseEvent(QMouseEvent *event)
     }
 
     if (_moveFlag) {
-        std::vector<Trace*> all_traces;
-        _view.get_traces(ALL_VIEW, all_traces);
-
-        std::map<Trace*, int> old_offsets;
-        for (auto t : all_traces) {
-            old_offsets[t] = t->get_v_offset();
-        }
-
         _drag_traces.clear();
-        _view.set_skip_anim_on_signals_changed(true);
         _view.signals_changed(mTrace);
+        _view.set_all_update(true);
 
-        std::vector<Trace*> new_traces;
-        _view.get_traces(ALL_VIEW, new_traces);
-        for (auto t : new_traces) {
-            auto it = old_offsets.find(t);
-            int old_off = (it != old_offsets.end()) ? it->second : t->get_v_offset();
-            int new_off = t->get_v_offset();
-            if (old_off != new_off) {
-                t->set_v_offset(old_off);
-                t->start_animation(new_off);
-            }
-        }
+        std::vector<Trace*> traces;
+        _view.get_traces(ALL_VIEW, traces);
 
-        _view.start_layout_animation();
-
-        for(auto t : new_traces){
+        for(auto t : traces){
             t->select(false);
-        }
+        }            
     }
     else if (!_drag_traces.empty()) {
         _drag_traces.clear();
@@ -483,9 +414,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event)
     _nameFlag = false;
     _moveFlag = false;
 
-    if (!_view.is_layout_animating()) {
-        _view.normalize_layout();
-    }
+    _view.normalize_layout();
 }
 
 void Header::wheelEvent(QWheelEvent *event)

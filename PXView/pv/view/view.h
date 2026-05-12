@@ -33,7 +33,6 @@
 #include <QScrollArea>
 #include <QSizeF>
 #include <QSplitter>
-#include <QTimer>
 
 #include "../data/datasource.h"
 #include "../data/signaldata.h"
@@ -98,7 +97,7 @@ private:
 public:
   static const int MinSignalHeight;
   static const int MaxSignalHeight;
-  static const int GroupGap = 5;
+  static const int GroupGap = 10;
   static const int GroupCardRadius = 6;
 
   // static const int SignalHeight;
@@ -310,12 +309,7 @@ public:
 
   inline void update_all_trace_postion() { signals_changed(NULL); }
 
-    void start_layout_animation();
-    void stop_layout_animation();
-    bool is_layout_animating();
-    void set_skip_anim_on_signals_changed(bool skip) { _skip_anim_on_signals_changed = skip; }
-
-    inline Viewport *get_time_view() { return _time_viewport; }
+  inline Viewport *get_time_view() { return _time_viewport; }
 
   void update_font();
   void check_measure();
@@ -404,7 +398,6 @@ private slots:
   void marker_time_changed();
   void on_traces_moved();
   void set_trig_pos(int percent);
-  void on_layout_anim_tick();
 
   // calibration for oscilloscope
   void show_calibration();
@@ -419,7 +412,6 @@ private slots:
 private:
   void set_trig_cursor_posistion(uint64_t percent);
   void make_cursors_order();
-  void finalize_layout_animation_internal();
 
 public:
   data::DataSource *effective_data_source();
@@ -493,12 +485,6 @@ private:
   bool _show_lissajous;
   bool _back_ready;
   DeviceAgent *_device_agent;
-
-  QTimer *_layout_anim_timer;
-  int _layout_anim_frame;
-  static const int LayoutAnimFrames = 10;
-  static const int LayoutAnimInterval = 16;
-  bool _skip_anim_on_signals_changed;
 };
 
 } // namespace view

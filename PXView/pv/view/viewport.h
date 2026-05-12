@@ -123,7 +123,6 @@ public:
     void clear_measure();
     void clear_dso_xm();
     void set_need_update(bool update);
-    void set_update_flag() { _need_update = true; }
     bool get_dso_trig_moved();
     void set_receive_len(quint64 length);
     void unshow_wait_trigger();

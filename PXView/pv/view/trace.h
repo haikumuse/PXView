@@ -159,25 +159,6 @@ public:
          _ownHeight = height;
     }
 
-    inline double get_anim_v_offset() { return _anim_v_offset; }
-    inline void set_anim_v_offset(double v) { _anim_v_offset = v; }
-    inline bool is_animating() { return _animating; }
-    inline void set_animating(bool a) { _animating = a; }
-    inline double get_anim_start_v_offset() { return _anim_start_v_offset; }
-    inline double get_anim_target_v_offset() { return _anim_target_v_offset; }
-
-    void start_animation(double target_v_offset) {
-        _anim_start_v_offset = _v_offset;
-        _anim_target_v_offset = target_v_offset;
-        _anim_v_offset = _v_offset;
-        _animating = true;
-    }
-
-    void stop_animation() {
-        _v_offset = (int)_anim_target_v_offset;
-        _animating = false;
-    }
-
     inline bool visible() { return _visible; }
     inline void set_visible(bool v) { _visible = v; }
 
@@ -374,10 +355,6 @@ protected:
     int _typeWidth;
     int _view_index;
     bool _visible = true;
-    double _anim_v_offset = 0;
-    double _anim_start_v_offset = 0;
-    double _anim_target_v_offset = 0;
-    bool _animating = false;
 
     QSizeF _text_size;  
 };

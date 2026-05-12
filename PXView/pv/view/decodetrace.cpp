@@ -161,7 +161,7 @@ void DecodeTrace::paint_back(QPainter &p, int left, int right, QColor fore, QCol
     QPen pen(backFore);
     pen.setStyle(Qt::DotLine);
     p.setPen(pen);
-    const double sigY = get_y() - (_totalHeight - _view->get_signalHeight())*0.5;
+    const double sigY = get_y();
     p.drawLine(left, sigY, right, sigY);
 
     // --draw decode region control
@@ -191,7 +191,9 @@ void DecodeTrace::paint_back(QPainter &p, int left, int right, QColor fore, QCol
     p.drawPolygon(end_points, countof(end_points));
 
     // --draw headings
-    const int row_height = _view->get_signalHeight();
+    const int row_height = (_totalHeight > 0 && _cur_row_headings.size() > 0)
+        ? _totalHeight / (int)_cur_row_headings.size()
+        : _view->get_signalHeight();
     for (size_t i = 0; i < _cur_row_headings.size(); i++)
     {
         const int y = i * row_height + get_y() - _totalHeight * 0.5;
@@ -257,11 +259,12 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QColo
     if (end_sample < start_sample)
         return;
 
-    const int annotation_height = _view->get_signalHeight();
+    const int row_count = rows_size();
+    const int annotation_height = (row_count > 0) ? (_totalHeight / row_count) : _view->get_signalHeight();
 
     // Iterate through the rows
     assert(_view);
-    int y =  get_y() - (_totalHeight - annotation_height)*0.5;
+    int y = get_y() - (_totalHeight - annotation_height) * 0.5;
 
     assert(_decoder_stack);
 
@@ -553,7 +556,11 @@ void DecodeTrace::on_new_decode_data()
 
     if (_view && _view->session().is_stopped_status())
         _view->data_updated();
-    if (_totalHeight/_view->get_signalHeight() != rows_size())
+    
+    // 计算期望的高度（基于当前行数）
+    const int expectedHeight = rows_size() * _view->get_signalHeight();
+    // 如果当前高度与期望高度不一致，触发重新布局
+    if (_totalHeight != expectedHeight)
         _view->signals_changed(NULL);
 }
 
