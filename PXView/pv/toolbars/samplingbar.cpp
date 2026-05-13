@@ -200,6 +200,7 @@ namespace pv
             grid->addWidget(&_device_type, 0, 1, Qt::AlignCenter);
 
             _device_selector.setMinimumWidth(target_w);
+            _device_selector.setMaximumWidth(QWIDGETSIZE_MAX);
             _device_selector.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             grid->addWidget(&_device_selector, 0, 2);
 
