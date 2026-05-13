@@ -20,122 +20,124 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-
 #ifndef DSVIEW_PV_DEVICEOPTIONSDOCK_H
 #define DSVIEW_PV_DEVICEOPTIONSDOCK_H
 
-#include <QScrollArea>
-#include <QTimer>
 #include <QCheckBox>
-#include <QVBoxLayout>
+#include <QFrame>
 #include <QGridLayout>
-#include <QShowEvent>
 #include <QJsonObject>
+#include <QLabel>
+#include <QScrollArea>
+#include <QShowEvent>
 #include <QSpinBox>
-#include <QGroupBox>
+#include <QTimer>
+#include <QVBoxLayout>
 #include <vector>
 
-#include "../ui/uimanager.h"
+#include "../deviceagent.h"
+#include "../dialogs/deviceoptions.h"
+#include "../interface/icontextaware.h"
 #include "../prop/binding/deviceoptions.h"
 #include "../prop/binding/probeoptions.h"
-#include "../dialogs/deviceoptions.h"
 #include "../sigsession.h"
-#include "../deviceagent.h"
-#include "../interface/icontextaware.h"
+#include "../ui/uimanager.h"
 
 namespace pv {
 
 namespace dock {
 
-class DeviceOptionsDock : public QScrollArea, public IUiWindow, public IChannelCheck, public IContextAware
-{
-    Q_OBJECT
+class DeviceOptionsDock : public QScrollArea,
+                          public IUiWindow,
+                          public IChannelCheck,
+                          public IContextAware {
+  Q_OBJECT
 
 public:
-    DeviceOptionsDock(QWidget *parent, SigSession *session);
-    ~DeviceOptionsDock();
+  DeviceOptionsDock(QWidget *parent, SigSession *session);
+  ~DeviceOptionsDock();
 
-    void update_view();
-    void device_updated();
+  void update_view();
+  void device_updated();
 
-    void bind_context(TabContext *ctx) override;
-    void unbind_context() override;
+  void bind_context(TabContext *ctx) override;
+  void unbind_context() override;
 
-    QJsonObject get_session();
-    void set_session(QJsonObject &obj);
+  QJsonObject get_session();
+  void set_session(QJsonObject &obj);
 
 signals:
-    void settings_applied();
+  void settings_applied();
 
 private:
-    QLayout *get_property_form(QWidget *parent);
-    void logic_probes(QVBoxLayout& layout);
-    void analog_probes(QGridLayout& layout);
-    QString dynamic_widget(QLayout *lay);
-    void set_all_probes(bool set);
-    void enable_max_probes();
-    void build_dynamic_panel();
-    void try_resize_scroll();
-    void channel_checkbox_clicked(QCheckBox *sc);
-    void build_glitch_filter_panel();
-    void rebuild_glitch_filter_panel();
-    void update_glitch_filter_state();
+  QLayout *get_property_form(QWidget *parent);
+  void logic_probes(QVBoxLayout &layout);
+  void analog_probes(QGridLayout &layout);
+  QString dynamic_widget(QLayout *lay);
+  void set_all_probes(bool set);
+  void enable_max_probes();
+  void build_dynamic_panel();
+  void try_resize_scroll();
+  void channel_checkbox_clicked(QCheckBox *sc);
+  void build_glitch_filter_panel();
+  void rebuild_glitch_filter_panel();
+  void update_glitch_filter_state();
 
-    void ChannelChecked(int index, QObject *object);
+  void ChannelChecked(int index, QObject *object);
 
-    void UpdateLanguage() override;
-    void UpdateTheme() override;
-    void UpdateFont() override;
+  void UpdateLanguage() override;
+  void UpdateTheme() override;
+  void UpdateFont() override;
 
-    void showEvent(QShowEvent *event) override;
-    void hideEvent(QHideEvent *event) override;
+  void showEvent(QShowEvent *event) override;
+  void hideEvent(QHideEvent *event) override;
 
 private slots:
-    void on_property_committed();
-    void commit_channels();
-    void enable_all_probes();
-    void disable_all_probes();
-    void zero_adj();
-    void mode_check_timeout();
-    void channel_check();
-    void analog_channel_check();
-    void on_calibration();
-    void on_analog_channel_enable();
-    void on_anlog_tab_changed(int index);
-    void on_apply_glitch_filter();
-    void on_restore_original_data();
-    void on_glitch_select_all();
-    void on_glitch_deselect_all();
+  void on_property_committed();
+  void commit_channels();
+  void enable_all_probes();
+  void disable_all_probes();
+  void zero_adj();
+  void mode_check_timeout();
+  void channel_check();
+  void analog_channel_check();
+  void on_calibration();
+  void on_analog_channel_enable();
+  void on_anlog_tab_changed(int index);
+  void on_apply_glitch_filter();
+  void on_restore_original_data();
+  void on_glitch_select_all();
+  void on_glitch_deselect_all();
 
 private:
-    std::vector<QCheckBox *> _probes_checkBox_list;
-    QTimer      _mode_check_timer;
-    int         _opt_mode;
-    QWidget     *_scroll_panel;
-    QScrollArea *_scroll;
-    QWidget     *_container_panel;
-    QVBoxLayout *_container_lay;
-    QWidget     *_dynamic_panel;
-    int     _width;
-    int     _groupHeight1;
-    int     _groupHeight2;
-    volatile bool _isBuilding;
-    DeviceAgent *_device_agent;
-    int     _cur_analog_tag_index;
-    QString _demo_operation_mode;
-    pv::prop::binding::DeviceOptions *_device_options_binding;
-    std::vector<pv::prop::binding::ProbeOptions *> _probe_options_binding_list;
-    std::vector<ChannelModePair>    _channel_mode_indexs;
-    std::vector<struct sr_channel*> _dso_channel_list;
-    std::vector<bool>   _lst_probe_enabled_status;
-    QGroupBox *_glitch_filter_group;
-    std::vector<QCheckBox*> _glitch_checkBox_list;
-    std::vector<QSpinBox*> _glitch_spinbox_list;
-    QPushButton *_apply_filter_btn;
-    QPushButton *_restore_data_btn;
-    QLabel *_filter_status_label;
-    SigSession *_session;
-    TabContext *_context;
+  std::vector<QCheckBox *> _probes_checkBox_list;
+  QTimer _mode_check_timer;
+  int _opt_mode;
+  QWidget *_scroll_panel;
+  QScrollArea *_scroll;
+  QWidget *_container_panel;
+  QVBoxLayout *_container_lay;
+  QWidget *_dynamic_panel;
+  int _width;
+  int _groupHeight1;
+  int _groupHeight2;
+  volatile bool _isBuilding;
+  DeviceAgent *_device_agent;
+  int _cur_analog_tag_index;
+  QString _demo_operation_mode;
+  pv::prop::binding::DeviceOptions *_device_options_binding;
+  std::vector<pv::prop::binding::ProbeOptions *> _probe_options_binding_list;
+  std::vector<ChannelModePair> _channel_mode_indexs;
+  std::vector<struct sr_channel *> _dso_channel_list;
+  std::vector<bool> _lst_probe_enabled_status;
+  QWidget *_glitch_filter_group;
+  std::vector<QCheckBox *> _glitch_checkBox_list;
+  std::vector<QSpinBox *> _glitch_spinbox_list;
+  QPushButton *_apply_filter_btn;
+  QPushButton *_restore_data_btn;
+  QLabel *_filter_status_label;
+  SigSession *_session;
+  TabContext *_context;
 };
 
 } // namespace dock

@@ -24,7 +24,7 @@
 
 #include <QComboBox>
 #include <QDoubleSpinBox>
-#include <QGroupBox>
+#include <QFrame>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHideEvent>
@@ -105,18 +105,26 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
 
     build_glitch_filter_panel();
     if (_glitch_filter_group) {
-        _container_lay->addWidget(_glitch_filter_group);
+      _container_lay->addWidget(_glitch_filter_group);
     }
 
-    QGroupBox *props_box = new QGroupBox(
+    QLabel *mode_title = new QLabel(
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
-    props_box->setFont(font);
-    props_box->setMinimumHeight(70);
-    props_box->setAlignment(Qt::AlignTop);
-    QLayout *props_lay = get_property_form(props_box);
-    props_lay->setContentsMargins(5, 20, 5, 5);
-    props_box->setLayout(props_lay);
-    _container_lay->addWidget(props_box);
+    mode_title->setObjectName("dock_section_title");
+    mode_title->setFont(font);
+    QWidget *mode_section = new QWidget(_container_panel);
+    mode_section->setObjectName("dock_mode_section");
+    mode_section->setMinimumHeight(70);
+    QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
+    mode_vbox->setContentsMargins(0, 0, 0, 0);
+    mode_vbox->setSpacing(0);
+    mode_vbox->addWidget(mode_title);
+    QWidget *mode_inner = new QWidget(mode_section);
+    QLayout *props_lay = get_property_form(mode_inner);
+    props_lay->setContentsMargins(5, 2, 5, 5);
+    mode_vbox->addWidget(mode_inner);
+    mode_vbox->setAlignment(Qt::AlignTop);
+    _container_lay->addWidget(mode_section);
 
     _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
 
@@ -255,7 +263,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
   for (int row = 0; row < layout->rowCount(); row++) {
     QLayoutItem *labelItem = layout->itemAtPosition(row, 0);
     if (labelItem && labelItem->widget()) {
-      QLabel *lb = qobject_cast<QLabel*>(labelItem->widget());
+      QLabel *lb = qobject_cast<QLabel *>(labelItem->widget());
       if (lb)
         lb->setFixedWidth(maxLabelWidth);
     }
@@ -345,7 +353,8 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
       probe->enabled = false;
 
     ChannelLabel *ch_item = new ChannelLabel(this, NULL, probe->index);
-    channel_grid->addWidget(ch_item, channel_row, channel_column++, Qt::AlignLeft | Qt::AlignTop);
+    channel_grid->addWidget(ch_item, channel_row, channel_column++,
+                            Qt::AlignLeft | Qt::AlignTop);
     _probes_checkBox_list.push_back(ch_item->getCheckBox());
     ch_item->getCheckBox()->setCheckState(probe->enabled ? Qt::Checked
                                                          : Qt::Unchecked);
@@ -828,9 +837,12 @@ void DeviceOptionsDock::build_dynamic_panel() {
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
 
   if (_dynamic_panel == NULL) {
-    _dynamic_panel = new QGroupBox("group", _container_panel);
-    _dynamic_panel->setFont(font);
+    _dynamic_panel = new QWidget(_container_panel);
     _container_lay->insertWidget(0, _dynamic_panel);
+
+    QLabel *dyn_title = new QLabel("group", _dynamic_panel);
+    dyn_title->setObjectName("dock_section_title");
+    dyn_title->setFont(font);
 
     QLayout *inner;
     if (_device_agent->get_work_mode() == LOGIC)
@@ -838,20 +850,33 @@ void DeviceOptionsDock::build_dynamic_panel() {
     else
       inner = new QGridLayout();
 
-    _dynamic_panel->setLayout(inner);
+    QVBoxLayout *dyn_vbox = new QVBoxLayout(_dynamic_panel);
+    dyn_vbox->setContentsMargins(0, 0, 0, 0);
+    dyn_vbox->setSpacing(0);
+    dyn_vbox->addWidget(dyn_title);
+    dyn_vbox->addLayout(inner);
   }
 
-  QLayout *inner = _dynamic_panel->layout();
+  QVBoxLayout *outer_vbox =
+      qobject_cast<QVBoxLayout *>(_dynamic_panel->layout());
+  QLayout *inner = nullptr;
+  if (outer_vbox && outer_vbox->count() > 1) {
+    QLayoutItem *item = outer_vbox->itemAt(1);
+    if (item)
+      inner = item->layout();
+  }
   QString title = dynamic_widget(inner);
-  QGroupBox *box = dynamic_cast<QGroupBox *>(_dynamic_panel);
-  box->setFont(font);
-  box->setTitle(title);
+  QLabel *dyn_title = _dynamic_panel->findChild<QLabel *>("dock_section_title");
+  if (dyn_title)
+    dyn_title->setFont(font);
+  dyn_title->setText(title);
 
   if (title == "") {
-    box->setVisible(false);
+    _dynamic_panel->setVisible(false);
   }
 
-  _dynamic_panel->layout()->setContentsMargins(5, 20, 5, 5);
+  if (inner)
+    inner->setContentsMargins(5, 2, 5, 5);
 
   _isBuilding = false;
 }
@@ -937,15 +962,23 @@ void DeviceOptionsDock::update_view() {
     _container_lay->addWidget(_glitch_filter_group);
   }
 
-  QGroupBox *props_box = new QGroupBox(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
-  props_box->setFont(font);
-  props_box->setMinimumHeight(70);
-  props_box->setAlignment(Qt::AlignTop);
-  QLayout *props_lay = get_property_form(props_box);
-  props_lay->setContentsMargins(5, 20, 5, 5);
-  props_box->setLayout(props_lay);
-  _container_lay->addWidget(props_box);
+  QLabel *mode_title = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"),
+                                  _container_panel);
+  mode_title->setObjectName("dock_section_title");
+  mode_title->setFont(font);
+  QWidget *mode_section = new QWidget(_container_panel);
+  mode_section->setObjectName("dock_mode_section");
+  mode_section->setMinimumHeight(70);
+  QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
+  mode_vbox->setContentsMargins(0, 0, 0, 0);
+  mode_vbox->setSpacing(0);
+  mode_vbox->addWidget(mode_title);
+  QWidget *mode_inner = new QWidget(mode_section);
+  QLayout *props_lay = get_property_form(mode_inner);
+  props_lay->setContentsMargins(5, 2, 5, 5);
+  mode_vbox->addWidget(mode_inner);
+  mode_vbox->setAlignment(Qt::AlignTop);
+  _container_lay->addWidget(mode_section);
 
   _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
 
@@ -1206,7 +1239,9 @@ void DeviceOptionsDock::set_session(QJsonObject &obj) {
 
   if (obj.contains("glitch_filter")) {
     QJsonArray glitch_array = obj["glitch_filter"].toArray();
-    for (int i = 0; i < glitch_array.size() && i < (int)_glitch_checkBox_list.size(); i++) {
+    for (int i = 0;
+         i < glitch_array.size() && i < (int)_glitch_checkBox_list.size();
+         i++) {
       QJsonObject ch_obj = glitch_array[i].toObject();
       _glitch_checkBox_list[i]->setChecked(ch_obj["enable"].toBool());
       _glitch_spinbox_list[i]->setValue(ch_obj["num"].toInt());
@@ -1214,229 +1249,236 @@ void DeviceOptionsDock::set_session(QJsonObject &obj) {
   }
 }
 
-void DeviceOptionsDock::build_glitch_filter_panel()
-{
-    if (_glitch_filter_group) {
-        delete _glitch_filter_group;
-        _glitch_filter_group = NULL;
+void DeviceOptionsDock::build_glitch_filter_panel() {
+  if (_glitch_filter_group) {
+    delete _glitch_filter_group;
+    _glitch_filter_group = NULL;
+  }
+
+  _glitch_checkBox_list.clear();
+  _glitch_spinbox_list.clear();
+
+  if (_device_agent->get_work_mode() != LOGIC)
+    return;
+
+  QFont font = this->font();
+  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+
+  _glitch_filter_group = new QWidget(_container_panel);
+  _glitch_filter_group->setMinimumWidth(230);
+
+  QLabel *glitch_title = new QLabel("毛刺过滤", _glitch_filter_group);
+  glitch_title->setObjectName("dock_section_title");
+  glitch_title->setFont(font);
+
+  QVBoxLayout *layout = new QVBoxLayout(_glitch_filter_group);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+  layout->addWidget(glitch_title);
+
+  QVBoxLayout *inner_layout = new QVBoxLayout();
+  inner_layout->setContentsMargins(5, 2, 5, 5);
+  inner_layout->setSpacing(3);
+  layout->addLayout(inner_layout);
+
+  QScrollArea *ch_scroll = new QScrollArea(_glitch_filter_group);
+  ch_scroll->setWidgetResizable(true);
+  ch_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  ch_scroll->setMinimumHeight(120);
+  ch_scroll->setMaximumHeight(250);
+
+  QWidget *ch_container = new QWidget();
+  QVBoxLayout *ch_layout_main = new QVBoxLayout(ch_container);
+  ch_layout_main->setContentsMargins(2, 2, 2, 2);
+  ch_layout_main->setSpacing(2);
+  ch_layout_main->setAlignment(Qt::AlignTop);
+
+  int ch_idx = 0;
+  for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+    sr_channel *const probe = (sr_channel *)l->data;
+    if (probe->type != SR_CHANNEL_LOGIC)
+      continue;
+
+    QHBoxLayout *ch_layout = new QHBoxLayout();
+    ch_layout->setSpacing(3);
+
+    QCheckBox *ch_check =
+        new QCheckBox(QString("Ch%1").arg(probe->index), ch_container);
+    ch_check->setFont(font);
+    ch_check->setEnabled(probe->enabled);
+    ch_check->setFixedWidth(55);
+    _glitch_checkBox_list.push_back(ch_check);
+
+    QLabel *le_label = new QLabel("≤", ch_container);
+    le_label->setFont(font);
+
+    QSpinBox *spin = new QSpinBox(ch_container);
+    spin->setRange(1, 999);
+    spin->setValue(1);
+    spin->setFont(font);
+    spin->setEnabled(false);
+    spin->setFixedWidth(65);
+    _glitch_spinbox_list.push_back(spin);
+
+    QLabel *unit_label = new QLabel("采样周期", ch_container);
+    unit_label->setFont(font);
+
+    ch_layout->addWidget(ch_check);
+    ch_layout->addWidget(le_label);
+    ch_layout->addWidget(spin);
+    ch_layout->addWidget(unit_label);
+    ch_layout->addStretch();
+
+    ch_layout_main->addLayout(ch_layout);
+
+    connect(ch_check, &QCheckBox::toggled,
+            [spin](bool checked) { spin->setEnabled(checked); });
+
+    ch_idx++;
+  }
+
+  ch_scroll->setWidget(ch_container);
+  inner_layout->addWidget(ch_scroll);
+
+  QHBoxLayout *btn_layout = new QHBoxLayout();
+  btn_layout->setSpacing(5);
+
+  QPushButton *select_all_btn = new QPushButton("全选", _glitch_filter_group);
+  QPushButton *deselect_all_btn =
+      new QPushButton("取消全选", _glitch_filter_group);
+  select_all_btn->setFont(font);
+  deselect_all_btn->setFont(font);
+  select_all_btn->setMaximumHeight(28);
+  deselect_all_btn->setMaximumHeight(28);
+
+  connect(select_all_btn, &QPushButton::clicked, this,
+          &DeviceOptionsDock::on_glitch_select_all);
+  connect(deselect_all_btn, &QPushButton::clicked, this,
+          &DeviceOptionsDock::on_glitch_deselect_all);
+
+  btn_layout->addWidget(select_all_btn);
+  btn_layout->addWidget(deselect_all_btn);
+  btn_layout->addStretch();
+  inner_layout->addLayout(btn_layout);
+
+  QLabel *hint_label = new QLabel("*勾选通道后，小于设定宽度的脉冲将被滤除",
+                                  _glitch_filter_group);
+  hint_label->setFont(font);
+  inner_layout->addWidget(hint_label);
+
+  QHBoxLayout *action_layout = new QHBoxLayout();
+  action_layout->setSpacing(5);
+
+  _apply_filter_btn = new QPushButton("应用滤波", _glitch_filter_group);
+  _restore_data_btn = new QPushButton("恢复原始数据", _glitch_filter_group);
+  _apply_filter_btn->setFont(font);
+  _restore_data_btn->setFont(font);
+  _apply_filter_btn->setMaximumHeight(28);
+  _restore_data_btn->setMaximumHeight(28);
+  _restore_data_btn->setEnabled(false);
+
+  connect(_apply_filter_btn, &QPushButton::clicked, this,
+          &DeviceOptionsDock::on_apply_glitch_filter);
+  connect(_restore_data_btn, &QPushButton::clicked, this,
+          &DeviceOptionsDock::on_restore_original_data);
+
+  action_layout->addWidget(_apply_filter_btn);
+  action_layout->addWidget(_restore_data_btn);
+  action_layout->addStretch();
+  inner_layout->addLayout(action_layout);
+
+  _filter_status_label = new QLabel("", _glitch_filter_group);
+  _filter_status_label->setFont(font);
+  inner_layout->addWidget(_filter_status_label);
+}
+
+void DeviceOptionsDock::rebuild_glitch_filter_panel() {
+  if (_glitch_filter_group) {
+    _container_lay->removeWidget(_glitch_filter_group);
+    delete _glitch_filter_group;
+    _glitch_filter_group = NULL;
+  }
+
+  build_glitch_filter_panel();
+  if (_glitch_filter_group) {
+    int idx = 0;
+    int count = _container_lay->count();
+    for (int i = 0; i < count; i++) {
+      QWidget *w = _container_lay->itemAt(i)->widget();
+      if (w && w != _dynamic_panel) {
+        if (w && w->objectName() == "dock_mode_section") {
+          idx = i;
+          break;
+        }
+      }
     }
+    if (idx > 0)
+      _container_lay->insertWidget(idx, _glitch_filter_group);
+    else
+      _container_lay->addWidget(_glitch_filter_group);
+  }
+}
 
-    _glitch_checkBox_list.clear();
-    _glitch_spinbox_list.clear();
+void DeviceOptionsDock::on_apply_glitch_filter() {
+  std::vector<uint32_t> thresholds;
+  int ch_idx = 0;
+  for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+    sr_channel *const probe = (sr_channel *)l->data;
+    if (probe->type != SR_CHANNEL_LOGIC)
+      continue;
 
-    if (_device_agent->get_work_mode() != LOGIC)
-        return;
+    uint32_t threshold = 0;
+    if (ch_idx < (int)_glitch_checkBox_list.size() &&
+        _glitch_checkBox_list[ch_idx]->isChecked()) {
+      threshold = _glitch_spinbox_list[ch_idx]->value();
+    }
+    thresholds.push_back(threshold);
+    ch_idx++;
+  }
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  _session->set_glitch_filter(thresholds);
+}
 
-    _glitch_filter_group = new QGroupBox("毛刺过滤", _container_panel);
-    _glitch_filter_group->setFont(font);
-    _glitch_filter_group->setMinimumWidth(230);
-    _glitch_filter_group->setAlignment(Qt::AlignTop);
+void DeviceOptionsDock::on_restore_original_data() {
+  _session->clear_glitch_filter();
+}
 
-    QVBoxLayout *layout = new QVBoxLayout(_glitch_filter_group);
-    layout->setContentsMargins(5, 20, 5, 5);
-    layout->setSpacing(3);
-
-    QScrollArea *ch_scroll = new QScrollArea(_glitch_filter_group);
-    ch_scroll->setWidgetResizable(true);
-    ch_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    ch_scroll->setMinimumHeight(120);
-    ch_scroll->setMaximumHeight(250);
-
-    QWidget *ch_container = new QWidget();
-    QVBoxLayout *ch_layout_main = new QVBoxLayout(ch_container);
-    ch_layout_main->setContentsMargins(2, 2, 2, 2);
-    ch_layout_main->setSpacing(2);
-    ch_layout_main->setAlignment(Qt::AlignTop);
-
+void DeviceOptionsDock::on_glitch_select_all() {
+  for (size_t i = 0; i < _glitch_checkBox_list.size(); i++) {
     int ch_idx = 0;
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
-        sr_channel *const probe = (sr_channel *)l->data;
-        if (probe->type != SR_CHANNEL_LOGIC)
-            continue;
-
-        QHBoxLayout *ch_layout = new QHBoxLayout();
-        ch_layout->setSpacing(3);
-
-        QCheckBox *ch_check = new QCheckBox(QString("Ch%1").arg(probe->index), ch_container);
-        ch_check->setFont(font);
-        ch_check->setEnabled(probe->enabled);
-        ch_check->setFixedWidth(55);
-        _glitch_checkBox_list.push_back(ch_check);
-
-        QLabel *le_label = new QLabel("≤", ch_container);
-        le_label->setFont(font);
-
-        QSpinBox *spin = new QSpinBox(ch_container);
-        spin->setRange(1, 999);
-        spin->setValue(1);
-        spin->setFont(font);
-        spin->setEnabled(false);
-        spin->setFixedWidth(65);
-        _glitch_spinbox_list.push_back(spin);
-
-        QLabel *unit_label = new QLabel("采样周期", ch_container);
-        unit_label->setFont(font);
-
-        ch_layout->addWidget(ch_check);
-        ch_layout->addWidget(le_label);
-        ch_layout->addWidget(spin);
-        ch_layout->addWidget(unit_label);
-        ch_layout->addStretch();
-
-        ch_layout_main->addLayout(ch_layout);
-
-        connect(ch_check, &QCheckBox::toggled, [spin](bool checked) {
-            spin->setEnabled(checked);
-        });
-
-        ch_idx++;
+      sr_channel *const probe = (sr_channel *)l->data;
+      if (probe->type != SR_CHANNEL_LOGIC)
+        continue;
+      if (ch_idx == (int)i && probe->enabled) {
+        _glitch_checkBox_list[i]->setChecked(true);
+        break;
+      }
+      ch_idx++;
     }
-
-    ch_scroll->setWidget(ch_container);
-    layout->addWidget(ch_scroll);
-
-    QHBoxLayout *btn_layout = new QHBoxLayout();
-    btn_layout->setSpacing(5);
-
-    QPushButton *select_all_btn = new QPushButton("全选", _glitch_filter_group);
-    QPushButton *deselect_all_btn = new QPushButton("取消全选", _glitch_filter_group);
-    select_all_btn->setFont(font);
-    deselect_all_btn->setFont(font);
-    select_all_btn->setMaximumHeight(28);
-    deselect_all_btn->setMaximumHeight(28);
-
-    connect(select_all_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_glitch_select_all);
-    connect(deselect_all_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_glitch_deselect_all);
-
-    btn_layout->addWidget(select_all_btn);
-    btn_layout->addWidget(deselect_all_btn);
-    btn_layout->addStretch();
-    layout->addLayout(btn_layout);
-
-    QLabel *hint_label = new QLabel("*勾选通道后，小于设定宽度的脉冲将被滤除", _glitch_filter_group);
-    hint_label->setFont(font);
-    layout->addWidget(hint_label);
-
-    QHBoxLayout *action_layout = new QHBoxLayout();
-    action_layout->setSpacing(5);
-
-    _apply_filter_btn = new QPushButton("应用滤波", _glitch_filter_group);
-    _restore_data_btn = new QPushButton("恢复原始数据", _glitch_filter_group);
-    _apply_filter_btn->setFont(font);
-    _restore_data_btn->setFont(font);
-    _apply_filter_btn->setMaximumHeight(28);
-    _restore_data_btn->setMaximumHeight(28);
-    _restore_data_btn->setEnabled(false);
-
-    connect(_apply_filter_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_apply_glitch_filter);
-    connect(_restore_data_btn, &QPushButton::clicked, this, &DeviceOptionsDock::on_restore_original_data);
-
-    action_layout->addWidget(_apply_filter_btn);
-    action_layout->addWidget(_restore_data_btn);
-    action_layout->addStretch();
-    layout->addLayout(action_layout);
-
-    _filter_status_label = new QLabel("", _glitch_filter_group);
-    _filter_status_label->setFont(font);
-    layout->addWidget(_filter_status_label);
+  }
 }
 
-void DeviceOptionsDock::rebuild_glitch_filter_panel()
-{
-    if (_glitch_filter_group) {
-        _container_lay->removeWidget(_glitch_filter_group);
-        delete _glitch_filter_group;
-        _glitch_filter_group = NULL;
-    }
-
-    build_glitch_filter_panel();
-    if (_glitch_filter_group) {
-        int idx = 0;
-        int count = _container_lay->count();
-        for (int i = 0; i < count; i++) {
-            QWidget *w = _container_lay->itemAt(i)->widget();
-            if (w && w != _dynamic_panel) {
-                QGroupBox *box = qobject_cast<QGroupBox*>(w);
-                if (box && box->title() == L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode")) {
-                    idx = i;
-                    break;
-                }
-            }
-        }
-        if (idx > 0)
-            _container_lay->insertWidget(idx, _glitch_filter_group);
-        else
-            _container_lay->addWidget(_glitch_filter_group);
-    }
+void DeviceOptionsDock::on_glitch_deselect_all() {
+  for (auto cb : _glitch_checkBox_list) {
+    cb->setChecked(false);
+  }
 }
 
-void DeviceOptionsDock::on_apply_glitch_filter()
-{
-    std::vector<uint32_t> thresholds;
-    int ch_idx = 0;
-    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
-        sr_channel *const probe = (sr_channel *)l->data;
-        if (probe->type != SR_CHANNEL_LOGIC)
-            continue;
+void DeviceOptionsDock::update_glitch_filter_state() {
+  bool is_active = _session->is_glitch_filter_active();
 
-        uint32_t threshold = 0;
-        if (ch_idx < (int)_glitch_checkBox_list.size() && _glitch_checkBox_list[ch_idx]->isChecked()) {
-            threshold = _glitch_spinbox_list[ch_idx]->value();
-        }
-        thresholds.push_back(threshold);
-        ch_idx++;
-    }
+  if (_filter_status_label) {
+    _filter_status_label->setText(is_active ? "已滤波" : "");
+  }
 
-    _session->set_glitch_filter(thresholds);
-}
+  if (_restore_data_btn) {
+    _restore_data_btn->setEnabled(is_active);
+  }
 
-void DeviceOptionsDock::on_restore_original_data()
-{
-    _session->clear_glitch_filter();
-}
-
-void DeviceOptionsDock::on_glitch_select_all()
-{
-    for (size_t i = 0; i < _glitch_checkBox_list.size(); i++) {
-        int ch_idx = 0;
-        for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
-            sr_channel *const probe = (sr_channel *)l->data;
-            if (probe->type != SR_CHANNEL_LOGIC)
-                continue;
-            if (ch_idx == (int)i && probe->enabled) {
-                _glitch_checkBox_list[i]->setChecked(true);
-                break;
-            }
-            ch_idx++;
-        }
-    }
-}
-
-void DeviceOptionsDock::on_glitch_deselect_all()
-{
-    for (auto cb : _glitch_checkBox_list) {
-        cb->setChecked(false);
-    }
-}
-
-void DeviceOptionsDock::update_glitch_filter_state()
-{
-    bool is_active = _session->is_glitch_filter_active();
-
-    if (_filter_status_label) {
-        _filter_status_label->setText(is_active ? "已滤波" : "");
-    }
-
-    if (_restore_data_btn) {
-        _restore_data_btn->setEnabled(is_active);
-    }
-
-    if (_apply_filter_btn) {
-        _apply_filter_btn->setEnabled(!is_active);
-    }
+  if (_apply_filter_btn) {
+    _apply_filter_btn->setEnabled(!is_active);
+  }
 }
 
 } // namespace dock

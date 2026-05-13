@@ -157,7 +157,11 @@ void TriggerDock::retranslateUi()
     _serial_edge_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLOCK_FLAG), "Clock Flag: "));
     _serial_data_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DATA_CHANNEL), "Data Channel: "));
     _serial_value_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DATA_VALUE), "Data Value: "));
-    _serial_groupBox->setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SERIAL_TRIGGER), "Serial Trigger"));
+    {
+        QLabel *serial_title = _serial_groupBox->findChild<QLabel*>("dock_section_title");
+        if (serial_title)
+            serial_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SERIAL_TRIGGER), "Serial Trigger"));
+    }
     _serial_hex_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SERIAL_HEX), "Hex: "));
     _serial_hex_ck_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SERIAL_INPUT_AS_HEX), "Input hex"));
 
@@ -180,7 +184,9 @@ void TriggerDock::retranslateUi()
     }
 
     for (int i = 0; i < _stage_groupBox_list.length(); i++){
-        _stage_groupBox_list.at(i)->setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STAGE), "Stage")+QString::number(i));
+        QLabel *stage_title = _stage_groupBox_list.at(i)->findChild<QLabel*>("dock_section_title");
+        if (stage_title)
+            stage_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STAGE), "Stage")+QString::number(i));
     }
 
     for (int i = 0; i < _stage_note_label_list.length(); i++){
@@ -719,18 +725,19 @@ void TriggerDock::setup_adv_tab()
         stage_layout->addWidget(stage_note_label);
         stage_layout->addStretch(1);
 
-        QGroupBox *stage_groupBox = new QGroupBox(_stage_tabWidget);
-        stage_groupBox->setContentsMargins(5, 15, 5, 5);
-        stage_groupBox->setFlat(true);
-        stage_groupBox->setLayout(stage_layout);
+        QWidget *stage_groupBox = new QWidget(_stage_tabWidget);
+        stage_groupBox->setContentsMargins(5, 5, 5, 5);
+        QVBoxLayout *stage_vbox = new QVBoxLayout(stage_groupBox);
+        stage_vbox->setContentsMargins(0, 0, 0, 0);
+        stage_vbox->setSpacing(0);
+        stage_vbox->addLayout(stage_layout);
         _stage_groupBox_list.push_back(stage_groupBox);
 
-        _stage_tabWidget->addTab((QWidget *)stage_groupBox, QString::number(i));
+        _stage_tabWidget->addTab(stage_groupBox, QString::number(i));
     }
 
-    _serial_groupBox = new QGroupBox(_widget);
-    _serial_groupBox->setContentsMargins(5, 15, 5, 5);
-    _serial_groupBox->setFlat(true);
+    _serial_groupBox = new QWidget(_widget);
+    _serial_groupBox->setContentsMargins(5, 5, 5, 5);
 
     _serial_start_label = new QLabel(_serial_groupBox);
     _serial_start_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);

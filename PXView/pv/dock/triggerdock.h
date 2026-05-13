@@ -30,7 +30,7 @@
 #include <QRadioButton>
 #include <QSlider>
 #include <QSpinBox>
-#include <QGroupBox>
+#include <QFrame>
 #include <QCheckBox>
 #include <QTableWidget>
 #include <QJsonObject>
@@ -121,7 +121,7 @@ private:
 
     QTabWidget *_stage_tabWidget;
 
-    QVector <QGroupBox *> _stage_groupBox_list;
+    QVector <QWidget *> _stage_groupBox_list;
     QVector <QLabel *>    _mu_label_list;
     QVector <DsComboBox *> _logic_comboBox_list;
     QVector <PopupLineEdit *> _value0_lineEdit_list;
@@ -134,7 +134,7 @@ private:
     QVector <QCheckBox *> _contiguous_checkbox_list;
 
     QTabWidget *_adv_tabWidget;
-    QGroupBox *_serial_groupBox;
+    QWidget *_serial_groupBox;
     QLabel *_serial_start_label;
     PopupLineEdit *_serial_start_lineEdit;
     PopupLineEdit *_serial_start_ext32_lineEdit;

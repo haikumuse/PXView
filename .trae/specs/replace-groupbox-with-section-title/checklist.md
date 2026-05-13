@@ -1,0 +1,27 @@
+- [x] dark.qss 新增 @dock-section-title-fg 和 @dock-section-separator-color 颜色令牌
+- [x] light.qss 新增 @dock-section-title-fg 和 @dock-section-separator-color 颜色令牌
+- [x] dark.qss 新增 #dock_section_title 样式（字体加粗、颜色 @dock-section-title-fg）
+- [x] dark.qss 新增 #dock_section_separator 样式（1px solid @dock-section-separator-color、上下 8px 间距）
+- [x] light.qss 新增 #dock_section_title 和 #dock_section_separator 样式
+- [x] dark.qss 中 QGroupBox 边框样式改为 none，margin-top 改为 0
+- [x] light.qss 中 QGroupBox 边框样式改为 none，margin-top 改为 0
+- [x] dark.qss 中删除 @dock-groupbox-border 和 @dock-groupbox-title 令牌
+- [x] light.qss 中删除 @dock-groupbox-border 和 @dock-groupbox-title 令牌
+- [x] measuredock.h 中 4 个 QGroupBox* 成员替换为 QLabel* 子标题成员
+- [x] measuredock.cpp 中 _mouse_groupBox 替换为子标题 QLabel + 原有 QGridLayout
+- [x] measuredock.cpp 中 _dist_groupBox 替换为子标题 QLabel + 原有 QGridLayout
+- [x] measuredock.cpp 中 _edge_groupBox 替换为子标题 QLabel + 原有 QGridLayout
+- [x] measuredock.cpp 中 _cursor_groupBox 替换为子标题 QLabel + 原有 QGridLayout
+- [x] measuredock.cpp 主布局中各组之间插入 QFrame 分隔线
+- [x] deviceoptionsdock.h 中 _dynamic_panel 类型从 QGroupBox* 改为 QWidget*
+- [x] deviceoptionsdock.h 中 _glitch_filter_group 类型从 QGroupBox* 改为 QWidget*
+- [x] deviceoptionsdock.cpp build_dynamic_panel() 中 QGroupBox 替换为 QWidget + 子标题
+- [x] deviceoptionsdock.cpp 构造函数/reload() 中 props_box QGroupBox 替换为子标题 QLabel（objectName=dock_mode_section）
+- [x] deviceoptionsdock.cpp build_glitch_filter_panel() 中 QGroupBox 替换为 QWidget + 子标题
+- [x] deviceoptionsdock.cpp rebuild_glitch_filter_panel() 中查找 Mode 分组逻辑改为 objectName 查找
+- [x] triggerdock.h 中 _stage_groupBox_list 类型从 QVector<QGroupBox*> 改为 QVector<QWidget*>
+- [x] triggerdock.h 中 _serial_groupBox 类型从 QGroupBox* 改为 QWidget*
+- [x] triggerdock.cpp 中阶段 QGroupBox 替换为 QWidget + 子标题 QLabel
+- [x] triggerdock.cpp 中 _serial_groupBox 替换为 QWidget + 子标题 QLabel
+- [x] 所有 Dock 面板中原有控件布局和功能保持不变
+- [x] 编译通过，无 QGroupBox 相关编译错误

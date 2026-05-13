@@ -84,8 +84,8 @@
  * @drawer-edge-hover: rgba(255,255,255,0.12)
  * @dock-gridline: #3f3f46
  * @item-hover: rgba(255,255,255,0.06)
- * @dock-groupbox-border: #3f3f46
- * @dock-groupbox-title: #cccccc
+ * @dock-section-title-fg: #cccccc
+ * @dock-section-separator-color: #3f3f46
  * @dock-status-ok: #4ec9b0
  * @dock-status-error: #f44747
  * @ribbon-menu-text: #eff0f1
@@ -429,18 +429,22 @@ QLineEdit
 
 QGroupBox
 {
-    border: 1px solid @border;
-    border-radius: 2px;
-    margin-top: 20px;
+    border: none;
+    margin-top: 0px;
 }
 
-QGroupBox::title
+#dock_section_title
 {
-    subcontrol-origin: margin;
-    subcontrol-position: top center;
-    padding-left: 10px;
-    padding-right: 10px;
-    padding-top: 10px;
+    color: @dock-section-title-fg;
+    font-weight: bold;
+}
+
+#dock_section_separator
+{
+    color: @dock-section-separator-color;
+    max-height: 1px;
+    margin-top: 8px;
+    margin-bottom: 8px;
 }
 
 QScrollBar:horizontal
