@@ -56,6 +56,7 @@
 #include "../ui/fn.h"
 #include "../tabcontext.h"
 #include "../data/sessiondocument.h"
+#include "../ui/dockfonts.h"
 
 namespace pv {
 namespace dock {
@@ -83,6 +84,7 @@ TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
     _adv_radioButton = new QRadioButton(_widget);
 
     _position_label = new QLabel(_widget);
+    _position_label->setObjectName("dock_label");
     _position_spinBox = new PopupLineEdit(_widget);
     _position_spinBox->setRange(MinTrigPosition, DS_MAX_TRIG_PERCENT);
     _position_spinBox->setValue(1);
@@ -93,6 +95,7 @@ TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
     connect(_position_spinBox, SIGNAL(valueChanged(int)), _position_slider, SLOT(setValue(int)));
 
     _stages_label = new QLabel(_widget);
+    _stages_label->setObjectName("dock_label");
     _stages_label->setDisabled(true);
     stages_comboBox = new DsComboBox(_widget);
 
@@ -580,8 +583,8 @@ void TriggerDock::setup_adv_tab()
    // font.setStyleHint(QFont::Monospace);
    // font.setFixedPitch(true);
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont labelFont = dock_font_label();
+    QFont contentFont = dock_font_content();
 
     _stage_tabWidget = new QTabWidget(_widget);
     _stage_tabWidget->setTabPosition(QTabWidget::East);
@@ -593,13 +596,15 @@ void TriggerDock::setup_adv_tab()
 
     for (int i = 0; i < TriggerStages; i++) {
         DsComboBox *_logic_comboBox = new DsComboBox(_stage_tabWidget);
+        _logic_comboBox->setObjectName("dock_content");
         _logic_comboBox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OR), "Or"));
         _logic_comboBox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AND), "And"));
         _logic_comboBox->setCurrentIndex(1);
         _logic_comboBox_list.push_back(_logic_comboBox);
 
         PopupLineEdit *_value0_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _stage_tabWidget);
-        _value0_lineEdit->setFont(font);
+        _value0_lineEdit->setObjectName("dock_content");
+        _value0_lineEdit->setFont(contentFont);
         _value0_lineEdit->setValidator(value_validator);
         _value0_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
         _value0_lineEdit->setInputMask(mask);
@@ -611,19 +616,22 @@ void TriggerDock::setup_adv_tab()
         //_count_spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
         _count_spinBox_list.push_back(_count_spinBox);
         DsComboBox *_inv0_comboBox = new DsComboBox(_stage_tabWidget);
+        _inv0_comboBox->setObjectName("dock_content");
         //tr
         _inv0_comboBox->addItem("==");
         _inv0_comboBox->addItem("!=");
         _inv0_comboBox_list.push_back(_inv0_comboBox);
 
         PopupLineEdit *_value1_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _stage_tabWidget);
-        _value1_lineEdit->setFont(font);
+        _value1_lineEdit->setObjectName("dock_content");
+        _value1_lineEdit->setFont(contentFont);
         _value1_lineEdit->setValidator(value_validator);
         _value1_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
         _value1_lineEdit->setInputMask(mask);
         _value1_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         _value1_lineEdit_list.push_back(_value1_lineEdit);
         DsComboBox *_inv1_comboBox = new DsComboBox(_stage_tabWidget);
+        _inv1_comboBox->setObjectName("dock_content");
         //tr
         _inv1_comboBox->addItem("==");
         _inv1_comboBox->addItem("!=");
@@ -636,15 +644,20 @@ void TriggerDock::setup_adv_tab()
         _contiguous_checkbox_list.push_back(_contiguous_checkbox);
 
         QLabel *value0_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _stage_tabWidget);
-        value0_exp_label->setFont(font);
+        value0_exp_label->setObjectName("dock_label");
+        value0_exp_label->setFont(labelFont);
         QLabel *inv0_exp_label = new QLabel(_stage_tabWidget);
+        inv0_exp_label->setObjectName("dock_label");
         _inv_exp_label_list.push_back(inv0_exp_label);
         QLabel *value1_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _stage_tabWidget);
-        value1_exp_label->setFont(font);
+        value1_exp_label->setObjectName("dock_label");
+        value1_exp_label->setFont(labelFont);
         QLabel *inv1_exp_label = new QLabel(_stage_tabWidget);
+        inv1_exp_label->setObjectName("dock_label");
         _inv_exp_label_list.push_back(inv1_exp_label);
 
         QLabel *count_exp_label = new QLabel(_stage_tabWidget);
+        count_exp_label->setObjectName("dock_label");
         _count_exp_label_list.push_back(count_exp_label);
 
         QVBoxLayout *stage_layout = new QVBoxLayout();
@@ -654,7 +667,8 @@ void TriggerDock::setup_adv_tab()
         row = 1;
         if (_cur_ch_num == 32) {
             PopupLineEdit *_value0_ext32_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _stage_tabWidget);
-            _value0_ext32_lineEdit->setFont(font);
+            _value0_ext32_lineEdit->setObjectName("dock_content");
+            _value0_ext32_lineEdit->setFont(contentFont);
             _value0_ext32_lineEdit->setValidator(value_validator);
             _value0_ext32_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
             _value0_ext32_lineEdit->setInputMask(mask);
@@ -662,7 +676,8 @@ void TriggerDock::setup_adv_tab()
             _value0_ext32_lineEdit_list.push_back(_value0_ext32_lineEdit);
 
             PopupLineEdit *_value1_ext32_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _stage_tabWidget);
-            _value1_ext32_lineEdit->setFont(font);
+            _value1_ext32_lineEdit->setObjectName("dock_content");
+            _value1_ext32_lineEdit->setFont(contentFont);
             _value1_ext32_lineEdit->setValidator(value_validator);
             _value1_ext32_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
             _value1_ext32_lineEdit->setInputMask(mask);
@@ -670,9 +685,11 @@ void TriggerDock::setup_adv_tab()
             _value1_ext32_lineEdit_list.push_back(_value1_ext32_lineEdit);
 
             QLabel *value0_ext32_exp_label = new QLabel("31 --------- 24 23 ---------- 16", _stage_tabWidget);
-            value0_ext32_exp_label->setFont(font);
+            value0_ext32_exp_label->setObjectName("dock_label");
+            value0_ext32_exp_label->setFont(labelFont);
             QLabel *value1_ext32_exp_label = new QLabel("31 --------- 24 23 ---------- 16", _stage_tabWidget);
-            value1_ext32_exp_label->setFont(font);
+            value1_ext32_exp_label->setObjectName("dock_label");
+            value1_ext32_exp_label->setFont(labelFont);
 
             stage_glayout->addWidget(value0_ext32_exp_label, row++, 0);
             stage_glayout->addWidget(_value0_ext32_lineEdit, row++, 0);
@@ -712,6 +729,7 @@ void TriggerDock::setup_adv_tab()
         stage_glayout->addWidget(new QLabel(_stage_tabWidget), row++, 0);
 
         QLabel *contiguous_label = new QLabel(_stage_tabWidget);
+        contiguous_label->setObjectName("dock_label");
         _contiguous_label_list.push_back(contiguous_label);
         stage_glayout->addWidget(contiguous_label, row, 1, 1, 2);
         stage_glayout->addWidget(_contiguous_checkbox, row++, 0, 1, 1, Qt::AlignRight);
@@ -721,6 +739,7 @@ void TriggerDock::setup_adv_tab()
         stage_layout->addLayout(stage_glayout);
         stage_layout->addSpacing(20);
         QLabel *stage_note_label = new QLabel(_stage_tabWidget);
+        stage_note_label->setObjectName("dock_label");
         _stage_note_label_list.push_back(stage_note_label);
         stage_layout->addWidget(stage_note_label);
         stage_layout->addStretch(1);
@@ -740,39 +759,49 @@ void TriggerDock::setup_adv_tab()
     _serial_groupBox->setContentsMargins(5, 5, 5, 5);
 
     _serial_start_label = new QLabel(_serial_groupBox);
+    _serial_start_label->setObjectName("dock_label");
     _serial_start_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);
-    _serial_start_lineEdit->setFont(font);
+    _serial_start_lineEdit->setObjectName("dock_content");
+    _serial_start_lineEdit->setFont(contentFont);
     _serial_start_lineEdit->setValidator(value_validator);
     _serial_start_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
     _serial_start_lineEdit->setInputMask(mask);
     _serial_start_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
     _serial_stop_label = new QLabel(_serial_groupBox);
+    _serial_stop_label->setObjectName("dock_label");
     _serial_stop_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);
-    _serial_stop_lineEdit->setFont(font);
+    _serial_stop_lineEdit->setObjectName("dock_content");
+    _serial_stop_lineEdit->setFont(contentFont);
     _serial_stop_lineEdit->setValidator(value_validator);
     _serial_stop_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
     _serial_stop_lineEdit->setInputMask(mask);
     _serial_stop_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
     _serial_edge_label = new QLabel(_serial_groupBox);
+    _serial_edge_label->setObjectName("dock_label");
     _serial_edge_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);
-    _serial_edge_lineEdit->setFont(font);
+    _serial_edge_lineEdit->setObjectName("dock_content");
+    _serial_edge_lineEdit->setFont(contentFont);
     _serial_edge_lineEdit->setValidator(value_validator);
     _serial_edge_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
     _serial_edge_lineEdit->setInputMask(mask);
     _serial_edge_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
     _serial_data_label = new QLabel(_serial_groupBox);
+    _serial_data_label->setObjectName("dock_label");
     _serial_data_comboBox = new DsComboBox(_serial_groupBox);
+    _serial_data_comboBox->setObjectName("dock_content");
 
     for(int i = 0; i < _cur_ch_num; i++){
         _serial_data_comboBox->addItem(QString::number(i));
     }
 
     _serial_value_label = new QLabel(_serial_groupBox);
+    _serial_value_label->setObjectName("dock_label");
     _serial_value_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);
-    _serial_value_lineEdit->setFont(font);
+    _serial_value_lineEdit->setObjectName("dock_content");
+    _serial_value_lineEdit->setFont(contentFont);
     _serial_value_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
     _serial_value_lineEdit->setInputMask(mask);
     _serial_value_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -782,7 +811,9 @@ void TriggerDock::setup_adv_tab()
     _serial_value_lineEdit->setValidator(value_validator2);
 
     _serial_hex_label = new QLabel(_serial_groupBox);
+    _serial_hex_label->setObjectName("dock_label");
     _serial_hex_lineEdit = new PopupLineEdit("", _serial_groupBox);
+    _serial_hex_lineEdit->setObjectName("dock_content");
     _serial_hex_lineEdit->setMaxLength(4);
     QRegularExpression value_rx_hex("[0-9a-fA-F]+");
     QValidator *value_validator_hex = new QRegularExpressionValidator(value_rx_hex, _stage_tabWidget);
@@ -792,6 +823,7 @@ void TriggerDock::setup_adv_tab()
 
     QCheckBox *hex_ckbox = new QCheckBox();
     _serial_hex_ck_label = new QLabel();
+    _serial_hex_ck_label->setObjectName("dock_label");
     hex_ckbox->setMaximumWidth(18);
 
     QHBoxLayout *hex_lay = new QHBoxLayout();
@@ -807,6 +839,7 @@ void TriggerDock::setup_adv_tab()
     connect(hex_ckbox, SIGNAL(clicked(bool)), this, SLOT(on_hex_checkbox_click(bool))); 
   
     _serial_bits_comboBox = new DsComboBox(_serial_groupBox);
+    _serial_bits_comboBox->setObjectName("dock_content");
 
     for(int i = 1; i <= 16; i++){
         _serial_bits_comboBox->addItem(QString::number(i));
@@ -819,21 +852,24 @@ void TriggerDock::setup_adv_tab()
     row = 1;
     if (_cur_ch_num == 32) {
         _serial_start_ext32_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);
-        _serial_start_ext32_lineEdit->setFont(font);
+        _serial_start_ext32_lineEdit->setObjectName("dock_content");
+        _serial_start_ext32_lineEdit->setFont(contentFont);
         _serial_start_ext32_lineEdit->setValidator(value_validator);
         _serial_start_ext32_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
         _serial_start_ext32_lineEdit->setInputMask(mask);
         _serial_start_ext32_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
         _serial_stop_ext32_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);
-        _serial_stop_ext32_lineEdit->setFont(font);
+        _serial_stop_ext32_lineEdit->setObjectName("dock_content");
+        _serial_stop_ext32_lineEdit->setFont(contentFont);
         _serial_stop_ext32_lineEdit->setValidator(value_validator);
         _serial_stop_ext32_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
         _serial_stop_ext32_lineEdit->setInputMask(mask);
         _serial_stop_ext32_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
         _serial_edge_ext32_lineEdit = new PopupLineEdit("X X X X X X X X X X X X X X X X", _serial_groupBox);
-        _serial_edge_ext32_lineEdit->setFont(font);
+        _serial_edge_ext32_lineEdit->setObjectName("dock_content");
+        _serial_edge_ext32_lineEdit->setFont(contentFont);
         _serial_edge_ext32_lineEdit->setValidator(value_validator);
         _serial_edge_ext32_lineEdit->setMaxLength(TriggerProbes * 2 - 1);
         _serial_edge_ext32_lineEdit->setInputMask(mask);
@@ -844,12 +880,14 @@ void TriggerDock::setup_adv_tab()
         connect(_serial_edge_ext32_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
 
         QLabel *serial0_value_exp_label = new QLabel("31 --------- 24 23 ---------- 16", _serial_groupBox);
-        serial0_value_exp_label->setFont(font);
+        serial0_value_exp_label->setObjectName("dock_label");
+        serial0_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial0_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_start_ext32_lineEdit, row, 1, 1, 3);
         serial_glayout->addWidget(new QLabel(_serial_groupBox), row++, 4);
         QLabel *serial1_value_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _serial_groupBox);
-        serial1_value_exp_label->setFont(font);
+        serial1_value_exp_label->setObjectName("dock_label");
+        serial1_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial1_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_start_label, row, 0);
         serial_glayout->addWidget(_serial_start_lineEdit, row, 1, 1, 3);
@@ -858,11 +896,13 @@ void TriggerDock::setup_adv_tab()
         serial_glayout->addWidget(new QLabel(_stage_tabWidget), row++, 0);
 
         QLabel *serial2_value_exp_label = new QLabel("31 --------- 24 23 ---------- 16", _serial_groupBox);
-        serial2_value_exp_label->setFont(font);
+        serial2_value_exp_label->setObjectName("dock_label");
+        serial2_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial2_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_stop_ext32_lineEdit, row++, 1, 1, 3);
         QLabel *serial3_value_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _serial_groupBox);
-        serial3_value_exp_label->setFont(font);
+        serial3_value_exp_label->setObjectName("dock_label");
+        serial3_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial3_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_stop_label, row, 0);
         serial_glayout->addWidget(_serial_stop_lineEdit, row++, 1, 1, 3);
@@ -870,18 +910,21 @@ void TriggerDock::setup_adv_tab()
         serial_glayout->addWidget(new QLabel(_stage_tabWidget), row++, 0);
 
         QLabel *serial4_value_exp_label = new QLabel("31 --------- 24 23 ---------- 16", _serial_groupBox);
-        serial4_value_exp_label->setFont(font);
+        serial4_value_exp_label->setObjectName("dock_label");
+        serial4_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial4_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_edge_ext32_lineEdit, row++, 1, 1, 3);
         QLabel *serial5_value_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _serial_groupBox);
-        serial5_value_exp_label->setFont(font);
+        serial5_value_exp_label->setObjectName("dock_label");
+        serial5_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial5_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_edge_label, row, 0);
         serial_glayout->addWidget(_serial_edge_lineEdit, row++, 1, 1, 3);
     }
     else {
         QLabel *serial0_value_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _serial_groupBox);
-        serial0_value_exp_label->setFont(font);
+        serial0_value_exp_label->setObjectName("dock_label");
+        serial0_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial0_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_start_label, row, 0);
         serial_glayout->addWidget(_serial_start_lineEdit, row, 1, 1, 3);
@@ -890,7 +933,8 @@ void TriggerDock::setup_adv_tab()
         serial_glayout->addWidget(new QLabel(_stage_tabWidget), row++, 0);
 
         QLabel *serial1_value_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _serial_groupBox);
-        serial1_value_exp_label->setFont(font);
+        serial1_value_exp_label->setObjectName("dock_label");
+        serial1_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial1_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_stop_label, row, 0);
         serial_glayout->addWidget(_serial_stop_lineEdit, row++, 1, 1, 3);
@@ -898,7 +942,8 @@ void TriggerDock::setup_adv_tab()
         serial_glayout->addWidget(new QLabel(_stage_tabWidget), row++, 0);
 
         QLabel *serial2_value_exp_label = new QLabel("15 ---------- 8 7 ----------- 0 ", _serial_groupBox);
-        serial2_value_exp_label->setFont(font);
+        serial2_value_exp_label->setObjectName("dock_label");
+        serial2_value_exp_label->setFont(labelFont);
         serial_glayout->addWidget(serial2_value_exp_label, row++, 1, 1, 3);
         serial_glayout->addWidget(_serial_edge_label, row, 0);
         serial_glayout->addWidget(_serial_edge_lineEdit, row++, 1, 1, 3);
@@ -908,6 +953,7 @@ void TriggerDock::setup_adv_tab()
     serial_glayout->addWidget(_serial_data_label, row, 0);
     serial_glayout->addWidget(_serial_data_comboBox, row++, 1);
     _data_bits_label = new QLabel(_serial_groupBox);
+    _data_bits_label->setObjectName("dock_label");
     serial_glayout->addWidget(_data_bits_label, row, 0);
     serial_glayout->addWidget(_serial_bits_comboBox, row++, 1);
     serial_glayout->addWidget(_serial_value_label, row, 0);
@@ -916,6 +962,7 @@ void TriggerDock::setup_adv_tab()
     serial_glayout->addWidget(hex_wid, row++, 1, 1, 3);
 
     _serial_note_label = new QLabel(_serial_groupBox);
+    _serial_note_label->setObjectName("dock_label");
     serial_layout->addLayout(serial_glayout);
     serial_layout->addSpacing(20);
     serial_layout->addWidget(_serial_note_label);
@@ -1090,20 +1137,16 @@ void TriggerDock::UpdateTheme()
 
 void TriggerDock::UpdateFont()
 {
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    ui::set_form_font(this, font);
-    font.setPointSizeF(font.pointSizeF() + 1);
-    this->parentWidget()->setFont(font);
+    ui::set_dock_form_font(this);
+    QFont labelFont = dock_font_label();
+    this->parentWidget()->setFont(labelFont);
     
-    _adv_tabWidget->setFont(font);
-    _adv_tabWidget->widget(0)->setFont(font);
-    _adv_tabWidget->widget(1)->setFont(font);
-    _adv_tabWidget->tabBar()->setFont(font);
+    _adv_tabWidget->setFont(labelFont);
+    _adv_tabWidget->widget(0)->setFont(labelFont);
+    _adv_tabWidget->widget(1)->setFont(labelFont);
+    _adv_tabWidget->tabBar()->setFont(labelFont);
 
-    QFont font2 = this->font();
-    font2.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    QFontMetrics fm(font2);  
+    QFontMetrics fm(labelFont);  
 
     auto edits = this->findChildren<PopupLineEdit*>();
     int lineH = 30;

@@ -21,155 +21,196 @@
  */
 
 #include "fn.h"
-#include <assert.h>
-#include <QPushButton>
-#include <QComboBox>
-#include <QLabel>
+#include "dockfonts.h"
 #include <QAction>
-#include <QToolBar>
-#include <QWidget>
-#include <QLineEdit>
-#include <QTabWidget>
-#include <QGroupBox>
-#include <QTextEdit>
-#include <QRadioButton>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDebug>
 #include <QFontMetrics>
+#include <QGroupBox>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QSpinBox>
+#include <QTabWidget>
+#include <QTextEdit>
+#include <QToolBar>
+#include <QWidget>
+#include <assert.h>
 
 #include "../config/appconfig.h"
 #include "../ui/xtoolbutton.h"
 
-namespace ui
-{
+namespace ui {
 
-    void set_font_param(QFont &font, struct FontParam &param)
-    {
-        font.setPointSizeF(param.size >= 9.0f ? param.size : 9.0f);
+void set_font_param(QFont &font, struct FontParam &param) {
+  font.setPointSizeF(param.size >= 9.0f ? param.size : 9.0f);
 
-        if (param.name != ""){
-            font.setFamily(param.name);
-        }
-    }
+  if (param.name != "") {
+    font.setFamily(param.name);
+  }
+}
 
-    void set_toolbar_font(QToolBar *bar, QFont font)
-    {
-        assert(bar);
+void set_toolbar_font(QToolBar *bar, QFont font) {
+  assert(bar);
 
-        auto buttons = bar->findChildren<QToolButton*>();
-        for(auto o : buttons)
-        { 
-            o->setFont(font);
-        }
+  auto buttons = bar->findChildren<QToolButton *>();
+  for (auto o : buttons) {
+    o->setFont(font);
+  }
 
-        auto buttons2 = bar->findChildren<QPushButton*>();
-        for(auto o : buttons2)
-        { 
-            o->setFont(font);
-        }
+  auto buttons2 = bar->findChildren<QPushButton *>();
+  for (auto o : buttons2) {
+    o->setFont(font);
+  }
 
-        auto comboxs = bar->findChildren<QComboBox*>();
-        for(auto o : comboxs)
-        { 
-            o->setFont(font);
-        }
+  auto comboxs = bar->findChildren<QComboBox *>();
+  for (auto o : comboxs) {
+    o->setFont(font);
+  }
 
-        auto labels = bar->findChildren<QLabel*>();
-        for(auto o : labels)
-        { 
-            o->setFont(font);
-        }
+  auto labels = bar->findChildren<QLabel *>();
+  for (auto o : labels) {
+    o->setFont(font);
+  }
 
-        auto actions = bar->findChildren<QAction*>();
-        for(auto o : actions)
-        { 
-            o->setFont(font);
-        }
-    }
-    
-    void set_form_font(QWidget *wid, QFont font)
-    {
-        assert(wid);
+  auto actions = bar->findChildren<QAction *>();
+  for (auto o : actions) {
+    o->setFont(font);
+  }
+}
 
-        auto buttons2 = wid->findChildren<QPushButton*>();
-        for(auto o : buttons2)
-        { 
-            o->setFont(font);
-        }
+void set_form_font(QWidget *wid, QFont font) {
+  assert(wid);
 
-        auto comboxs = wid->findChildren<QComboBox*>();
-        for(auto o : comboxs)
-        { 
-            o->setFont(font);
-        }
+  auto buttons2 = wid->findChildren<QPushButton *>();
+  for (auto o : buttons2) {
+    o->setFont(font);
+  }
 
-        auto labels = wid->findChildren<QLabel*>();
-        for(auto o : labels)
-        { 
-            o->setFont(font);
-        }
+  auto comboxs = wid->findChildren<QComboBox *>();
+  for (auto o : comboxs) {
+    o->setFont(font);
+  }
 
-        auto edits = wid->findChildren<QLineEdit*>();
-        for(auto o : edits)
-        { 
-            o->setFont(font);
-        }
+  auto labels = wid->findChildren<QLabel *>();
+  for (auto o : labels) {
+    o->setFont(font);
+  }
 
-        auto textEdits = wid->findChildren<QTextEdit*>();
-        for(auto o : textEdits)
-        { 
-            o->setFont(font);
-        }
+  auto edits = wid->findChildren<QLineEdit *>();
+  for (auto o : edits) {
+    o->setFont(font);
+  }
 
-        auto radios = wid->findChildren<QRadioButton*>();
-        for(auto o : radios)
-        { 
-            o->setFont(font);
-        }
+  auto textEdits = wid->findChildren<QTextEdit *>();
+  for (auto o : textEdits) {
+    o->setFont(font);
+  }
 
-        auto checks = wid->findChildren<QCheckBox*>();
-        for(auto o : checks)
-        { 
-            o->setFont(font);
-        }
+  auto radios = wid->findChildren<QRadioButton *>();
+  for (auto o : radios) {
+    o->setFont(font);
+  }
 
-        // Magnify the size.
-        font.setPointSizeF(font.pointSizeF() + 1);
+  auto checks = wid->findChildren<QCheckBox *>();
+  for (auto o : checks) {
+    o->setFont(font);
+  }
 
-        auto tabs = wid->findChildren<QTabWidget*>();
-        for(auto o : tabs)
-        { 
-            o->setFont(font); 
-        }
+  // Magnify the size.
+  font.setPointSizeF(font.pointSizeF() + 1);
 
-        auto groups = wid->findChildren<QGroupBox*>();
-        for(auto o : groups)
-        { 
-            o->setFont(font);
-        }
-    }
+  auto tabs = wid->findChildren<QTabWidget *>();
+  for (auto o : tabs) {
+    o->setFont(font);
+  }
 
-    QSize measure_string(QFont font, QString str)
-    {
-        QFontMetrics fm(font); 
-        QRect rc = fm.boundingRect(str);
-        return rc.size();
-    }
+  auto groups = wid->findChildren<QGroupBox *>();
+  for (auto o : groups) {
+    o->setFont(font);
+  }
+}
 
-    void adjust_label_size(QLabel *ctrl, AdjustSizeAction action)
-    {
-        QSize sz = measure_string(ctrl->font(), ctrl->text());
+void set_dock_form_font(QWidget *wid) {
+  assert(wid);
 
-        if (action == ADJUST_WIDTH){
-            ctrl->setFixedWidth(sz.width() + 5);
-        }
-        else if (action == ADJUST_HEIGHT){
-            ctrl->setFixedHeight(sz.height() + 5);
-        }
-        else{
-            ctrl->setFixedHeight(sz.height() + 5);
-            ctrl->setFixedWidth(sz.width() + 5);
-        }
-    }
+  QFont sectionFont = dock_font_section_title();
+  QFont labelFont = dock_font_label();
+  QFont contentFont = dock_font_content();
+
+  auto labels = wid->findChildren<QLabel *>();
+  for (auto o : labels) {
+    if (o->objectName() == QLatin1String("dock_section_title"))
+      o->setFont(sectionFont);
+    else
+      o->setFont(labelFont);
+  }
+
+  auto buttons = wid->findChildren<QPushButton *>();
+  for (auto o : buttons) {
+    o->setFont(contentFont);
+  }
+
+  auto comboxs = wid->findChildren<QComboBox *>();
+  for (auto o : comboxs) {
+    o->setFont(contentFont);
+  }
+
+  auto edits = wid->findChildren<QLineEdit *>();
+  for (auto o : edits) {
+    o->setFont(contentFont);
+  }
+
+  auto textEdits = wid->findChildren<QTextEdit *>();
+  for (auto o : textEdits) {
+    o->setFont(contentFont);
+  }
+
+  auto radios = wid->findChildren<QRadioButton *>();
+  for (auto o : radios) {
+    o->setFont(contentFont);
+  }
+
+  auto checks = wid->findChildren<QCheckBox *>();
+  for (auto o : checks) {
+    o->setFont(contentFont);
+  }
+
+  auto spinboxes = wid->findChildren<QSpinBox *>();
+  for (auto o : spinboxes) {
+    o->setFont(contentFont);
+  }
+
+  auto tabs = wid->findChildren<QTabWidget *>();
+  for (auto o : tabs) {
+    o->setFont(labelFont);
+  }
+
+  auto groups = wid->findChildren<QGroupBox *>();
+  for (auto o : groups) {
+    o->setFont(labelFont);
+  }
+}
+
+QSize measure_string(QFont font, QString str) {
+  QFontMetrics fm(font);
+  QRect rc = fm.boundingRect(str);
+  return rc.size();
+}
+
+void adjust_label_size(QLabel *ctrl, AdjustSizeAction action) {
+  QSize sz = measure_string(ctrl->font(), ctrl->text());
+
+  if (action == ADJUST_WIDTH) {
+    ctrl->setFixedWidth(sz.width() + 5);
+  } else if (action == ADJUST_HEIGHT) {
+    ctrl->setFixedHeight(sz.height() + 5);
+  } else {
+    ctrl->setFixedHeight(sz.height() + 5);
+    ctrl->setFixedWidth(sz.width() + 5);
+  }
+}
 
 } // namespace ui

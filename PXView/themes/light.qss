@@ -110,6 +110,10 @@
  * @search-input-bg: #e8e8e8
  * @search-input-text: #2a2a2a
  * @search-input-label: #8a8a8a
+ * @dock-font-main-title: 18px
+ * @dock-font-section-title: 16px
+ * @dock-font-label: 14px
+ * @dock-font-content: 12px
  */
 
 
@@ -433,6 +437,7 @@ QGroupBox:disabled
 {
     color: @dock-section-title-fg;
     font-weight: bold;
+    font-size: 16px;
 }
 
 #dock_section_separator
@@ -445,6 +450,16 @@ QGroupBox:disabled
     margin-right: 10px;
     margin-top: 20px;
     margin-bottom: 10px;
+}
+
+#dock_label
+{
+    font-size: 14px;
+}
+
+#dock_content
+{
+    font-size: 12px;
 }
 
 QScrollBar:horizontal
@@ -1760,7 +1775,7 @@ QWidget#RibbonSeparator {
 {
     color: @drawer-title-fg;
     background: transparent;
-    font-size: 13pt;
+    font-size: 18px;
     font-weight: bold;
 }
 
@@ -1786,7 +1801,8 @@ QWidget#RibbonSeparator {
 #dock_measure_scroll,
 #dock_protocol_scroll,
 #dock_device_options_scroll,
-#dock_search_combo_scroll
+#dock_search_combo_scroll,
+#dock_search_scroll
 {
     border: none;
     background: transparent;

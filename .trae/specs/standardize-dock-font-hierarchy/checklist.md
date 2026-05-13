@@ -1,0 +1,31 @@
+- [x] `PXView/pv/ui/dockfonts.h` 存在，包含 `DockFontSizes` 命名空间常量（MainTitle=18, SectionTitle=16, Label=14, Content=12）
+- [x] `dock_font_main_title()` / `dock_font_section_title()` / `dock_font_label()` / `dock_font_content()` 辅助函数已实现并返回正确 pixelSize 的 QFont
+- [x] `ui::set_dock_form_font(QWidget *wid)` 已实现，按层级设置字体（QLabel 14px、内容控件 12px、section_title 16px）
+- [x] dark.qss Color Tokens 注释区包含字号令牌说明（@dock-font-main-title, @dock-font-section-title, @dock-font-label, @dock-font-content）
+- [x] light.qss Color Tokens 注释区包含同样的字号令牌说明
+- [x] dark.qss 中 `#sliding_drawer_title` 的 font-size 为 18px
+- [x] dark.qss 中 `#dock_section_title` 包含 `font-size: 16px`
+- [x] dark.qss 中包含 `#dock_label { font-size: 14px; }` 选择器
+- [x] dark.qss 中包含 `#dock_content { font-size: 12px; }` 选择器
+- [x] light.qss 中包含与 dark.qss 相同的字号层级 QSS 规则
+- [x] deviceoptionsdock.cpp 中无 `font.setPointSizeF(AppConfig::Instance().appOptions.fontSize)` 残留
+- [x] deviceoptionsdock.cpp 中属性标签 QLabel 使用 objectName `"dock_label"`
+- [x] deviceoptionsdock.cpp 中 QComboBox/QPushButton/QSpinBox/QCheckBox/QRadioButton 使用 objectName `"dock_content"`
+- [x] deviceoptionsdock.cpp 中 `ui::set_form_font` 已替换为 `ui::set_dock_form_font`
+- [x] samplingbar.cpp 中采样设置标签使用 objectName `"dock_label"`，下拉框使用 objectName `"dock_content"`
+- [x] samplingbar.cpp 中标题标签使用 `dock_font_section_title()`
+- [x] measuredock.cpp 中无 `font.setPointSizeF(AppConfig::Instance().appOptions.fontSize)` 残留
+- [x] measuredock.cpp 中标签使用 objectName `"dock_label"`，按钮和下拉框使用 objectName `"dock_content"`
+- [x] triggerdock.cpp 中无 `font.setPointSizeF(AppConfig::Instance().appOptions.fontSize)` 残留
+- [x] triggerdock.cpp 中标签使用 objectName `"dock_label"`，输入框使用 objectName `"dock_content"`
+- [x] dsotriggerdock.cpp 中无 `font.setPointSizeF(AppConfig::Instance().appOptions.fontSize)` 残留
+- [x] protocoldock.cpp 中无 `font.setPointSizeF(AppConfig::Instance().appOptions.fontSize)` 残留
+- [x] searchdock.cpp 中无 `font.setPointSizeF(AppConfig::Instance().appOptions.fontSize)` 残留
+- [x] searchcombobox.cpp / protocolitemlayer.cpp / keywordlineedit.cpp 中无 `font.setPointSizeF(AppConfig::Instance().appOptions.fontSize)` 残留
+- [ ] 项目可正常编译，无语法错误
+- [ ] DeviceOptionsDock 中主标题（SlidingDrawer 标题）显示为 18px
+- [ ] DeviceOptionsDock 中二级标题（"Channel"、"毛刺过滤"、"Mode"）显示为 16px
+- [ ] DeviceOptionsDock 中标签文字（"Enable:"、属性名）显示为 14px
+- [ ] DeviceOptionsDock 中内容文字（下拉框选项、按钮）显示为 12px
+- [ ] MeasureDock 中二级标题显示为 16px，标签为 14px，内容为 12px
+- [ ] 暗色主题和亮色主题下字号层级均正确显示

@@ -48,6 +48,7 @@
 #include "../prop/property.h"
 #include "../sigsession.h"
 #include "../tabcontext.h"
+#include "../ui/dockfonts.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
@@ -91,18 +92,19 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
 
   this->setWidget(_container_panel);
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-
   if (_device_agent->have_instance()) {
     _device_options_binding = new pv::prop::binding::DeviceOptions();
 
-    this->build_dynamic_panel();
+    if (_sampling_settings_widget) {
+      _container_lay->addWidget(_sampling_settings_widget);
 
-    QWidget *minWid = new QWidget();
-    minWid->setFixedHeight(1);
-    minWid->setMinimumWidth(230);
-    _container_lay->addWidget(minWid);
+      QFrame *sep0 = new QFrame(_container_panel);
+      sep0->setObjectName("dock_section_separator");
+      sep0->setFrameShape(QFrame::HLine);
+      _container_lay->addWidget(sep0);
+    }
+
+    this->build_dynamic_panel();
 
     build_glitch_filter_panel();
     if (_glitch_filter_group) {
@@ -121,7 +123,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     QLabel *mode_title = new QLabel(
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
     mode_title->setObjectName("dock_section_title");
-    mode_title->setFont(font);
+    mode_title->setFont(dock_font_section_title());
     QWidget *mode_section = new QWidget(_container_panel);
     mode_section->setObjectName("dock_mode_section");
     mode_section->setMinimumHeight(70);
@@ -228,9 +230,9 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
   layout->setVerticalSpacing(2);
   const auto &properties = _device_options_binding->properties();
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-  QFontMetrics fm(font);
+  QFont labelFont = dock_font_label();
+  QFont contentFont = dock_font_content();
+  QFontMetrics fm(labelFont);
 
   int maxLabelWidth = 0;
   int i = 0;
@@ -246,14 +248,15 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
     }
 
     QWidget *wid = p->get_widget(parent, true);
-    wid->setFont(font);
+    wid->setFont(contentFont);
     wid->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     if (p->labeled_widget()) {
       layout->addWidget(wid, i, 0, 1, 2);
     } else {
       QLabel *lb = new QLabel(lable_text, parent);
-      lb->setFont(font);
+      lb->setObjectName("dock_label");
+      lb->setFont(labelFont);
       layout->addWidget(lb, i, 0, Qt::AlignRight | Qt::AlignVCenter);
       layout->addWidget(wid, i, 1);
 
@@ -299,8 +302,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
 
   _probes_checkBox_list.clear();
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont contentFont = dock_font_content();
 
   if (_device_agent->get_work_mode() == LOGIC) {
     GVariant *gvar_opts =
@@ -320,7 +322,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
         QString mode_bt_text = LangResource::Instance()->get_lang_text(
             STR_PAGE_DSL, plist->name, plist->name);
         QRadioButton *mode_button = new QRadioButton(mode_bt_text);
-        mode_button->setFont(font);
+        mode_button->setFont(contentFont);
         ChannelModePair mode_index;
         mode_index.key = mode_button;
         mode_index.value = plist->id;
@@ -401,8 +403,10 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISABLE_ALL), "Disable All"));
   enable_all_probes->setMaximumHeight(33);
   disable_all_probes->setMaximumHeight(33);
-  enable_all_probes->setFont(font);
-  disable_all_probes->setFont(font);
+  enable_all_probes->setObjectName("dock_content");
+  disable_all_probes->setObjectName("dock_content");
+  enable_all_probes->setFont(contentFont);
+  disable_all_probes->setFont(contentFont);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   int bt_width = enable_all_probes->fontMetrics().horizontalAdvance(
@@ -416,7 +420,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   enable_all_probes->setMinimumWidth(bt_width);
   disable_all_probes->setMinimumWidth(bt_width);
 
-  ui::set_form_font(this, font);
+  ui::set_dock_form_font(this);
 
   contentHeight += enable_all_probes->sizeHint().height();
   contentHeight += channel_line_height * row2 + 50;
@@ -679,8 +683,8 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
   tabWidget->setTabPosition(QTabWidget::North);
   tabWidget->setUsesScrollButtons(false);
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont labelFont = dock_font_label();
+  QFont contentFont = dock_font_content();
 
   int ch_dex = 0;
 
@@ -702,6 +706,7 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
     ch_dex++;
 
     QCheckBox *probe_checkBox = new QCheckBox(_container_panel);
+    probe_checkBox->setObjectName("dock_content");
     QVariant vlayout = QVariant::fromValue((void *)probe_layout);
     probe_checkBox->setProperty("Layout", vlayout);
     probe_checkBox->setProperty("Enable", true);
@@ -710,7 +715,8 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
 
     QLabel *en_label = new QLabel(
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_ENABLE), "Enable: "), _container_panel);
-    en_label->setFont(font);
+    en_label->setObjectName("dock_label");
+    en_label->setFont(labelFont);
     en_label->setProperty("Enable", true);
     probe_layout->addWidget(en_label, 0, 0, 1, 1);
     probe_layout->addWidget(probe_checkBox, 0, 1, 1, 3);
@@ -722,12 +728,13 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
     for (auto p : properties) {
       const QString label = p->labeled_widget() ? QString() : p->label();
       QLabel *lb = new QLabel(label, probe_widget);
-      lb->setFont(font);
+      lb->setObjectName("dock_label");
+      lb->setFont(labelFont);
       probe_layout->addWidget(lb, i, 0, 1, 1);
 
       QWidget *pow = p->get_widget(probe_widget);
       pow->setEnabled(probe_checkBox->isChecked());
-      pow->setFont(font);
+      pow->setFont(contentFont);
 
       if (p->name().contains("Map Default")) {
         pow->setProperty("index", probe->index);
@@ -761,7 +768,7 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
 
   layout.addWidget(tabWidget, 0, 0, 1, 1);
 
-  ui::set_form_font(this, font);
+  ui::set_dock_form_font(this);
   _groupHeight2 = tabWidget->sizeHint().height() + 50;
 
   connect(tabWidget, SIGNAL(currentChanged(int)), this,
@@ -788,15 +795,15 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
       QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
       assert(grid);
 
-      QFont font = this->font();
-      font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+      QFont contentFont = dock_font_content();
 
       if (have_zero) {
         auto config_button =
             new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AUTO_CALIBRATION),
                                 "Auto Calibration"),
                             _container_panel);
-        config_button->setFont(font);
+        config_button->setObjectName("dock_content");
+        config_button->setFont(contentFont);
         grid->addWidget(config_button, 0, 0, 1, 1);
         connect(config_button, SIGNAL(clicked()), this, SLOT(zero_adj()));
 
@@ -804,7 +811,8 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
             new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MANUAL_CALIBRATION),
                                 "Manual Calibration"),
                             _container_panel);
-        cali_button->setFont(font);
+        cali_button->setObjectName("dock_content");
+        cali_button->setFont(contentFont);
         grid->addWidget(cali_button, 1, 0, 1, 1);
         connect(cali_button, SIGNAL(clicked()), this, SLOT(on_calibration()));
 
@@ -843,8 +851,7 @@ void DeviceOptionsDock::build_dynamic_panel() {
     _dynamic_panel = NULL;
   }
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont sectionTitleFont = dock_font_section_title();
 
   if (_dynamic_panel == NULL) {
     _dynamic_panel = new QWidget(_container_panel);
@@ -852,7 +859,7 @@ void DeviceOptionsDock::build_dynamic_panel() {
 
     QLabel *dyn_title = new QLabel("group", _dynamic_panel);
     dyn_title->setObjectName("dock_section_title");
-    dyn_title->setFont(font);
+    dyn_title->setFont(sectionTitleFont);
 
     QLayout *inner;
     if (_device_agent->get_work_mode() == LOGIC)
@@ -878,7 +885,7 @@ void DeviceOptionsDock::build_dynamic_panel() {
   QString title = dynamic_widget(inner);
   QLabel *dyn_title = _dynamic_panel->findChild<QLabel *>("dock_section_title");
   if (dyn_title)
-    dyn_title->setFont(font);
+    dyn_title->setFont(sectionTitleFont);
   dyn_title->setText(title);
 
   if (title == "") {
@@ -893,9 +900,8 @@ void DeviceOptionsDock::build_dynamic_panel() {
 
 void DeviceOptionsDock::try_resize_scroll() {
 #ifdef _WIN32
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-  QFontMetrics fm(font);
+  QFont labelFont = dock_font_label();
+  QFontMetrics fm(labelFont);
 
   auto labels = _dynamic_panel->findChildren<QLabel *>();
   int max_label_width = 0;
@@ -963,8 +969,7 @@ void DeviceOptionsDock::update_view() {
   if (_device_options_binding == NULL)
     return;
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont sectionTitleFont = dock_font_section_title();
 
   build_dynamic_panel();
 
@@ -990,7 +995,7 @@ void DeviceOptionsDock::update_view() {
   QLabel *mode_title = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"),
                                   _container_panel);
   mode_title->setObjectName("dock_section_title");
-  mode_title->setFont(font);
+  mode_title->setFont(sectionTitleFont);
   QWidget *mode_section = new QWidget(_container_panel);
   mode_section->setObjectName("dock_mode_section");
   mode_section->setMinimumHeight(70);
@@ -1020,7 +1025,8 @@ void DeviceOptionsDock::update_view() {
 void DeviceOptionsDock::update_widgets_status() {
   bool bEnable = !_session->is_working();
 
-  // Update all widgets in the container except the sampling widget (it handles its own state)
+  // Update all widgets in the container except the sampling widget (it handles
+  // its own state)
   for (int i = 0; i < _container_lay->count(); ++i) {
     QLayoutItem *item = _container_lay->itemAt(i);
     if (item->widget() && item->widget() != _sampling_settings_widget) {
@@ -1302,15 +1308,16 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   if (_device_agent->get_work_mode() != LOGIC)
     return;
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont sectionTitleFont = dock_font_section_title();
+  QFont labelFont = dock_font_label();
+  QFont contentFont = dock_font_content();
 
   _glitch_filter_group = new QWidget(_container_panel);
   _glitch_filter_group->setMinimumWidth(230);
 
   QLabel *glitch_title = new QLabel("毛刺过滤", _glitch_filter_group);
   glitch_title->setObjectName("dock_section_title");
-  glitch_title->setFont(font);
+  glitch_title->setFont(sectionTitleFont);
 
   QVBoxLayout *layout = new QVBoxLayout(_glitch_filter_group);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -1345,24 +1352,28 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
 
     QCheckBox *ch_check =
         new QCheckBox(QString("Ch%1").arg(probe->index), ch_container);
-    ch_check->setFont(font);
+    ch_check->setObjectName("dock_content");
+    ch_check->setFont(contentFont);
     ch_check->setEnabled(probe->enabled);
     ch_check->setFixedWidth(55);
     _glitch_checkBox_list.push_back(ch_check);
 
     QLabel *le_label = new QLabel("≤", ch_container);
-    le_label->setFont(font);
+    le_label->setObjectName("dock_label");
+    le_label->setFont(labelFont);
 
     QSpinBox *spin = new QSpinBox(ch_container);
     spin->setRange(1, 999);
     spin->setValue(1);
-    spin->setFont(font);
+    spin->setObjectName("dock_content");
+    spin->setFont(contentFont);
     spin->setEnabled(false);
     spin->setFixedWidth(65);
     _glitch_spinbox_list.push_back(spin);
 
     QLabel *unit_label = new QLabel("采样周期", ch_container);
-    unit_label->setFont(font);
+    unit_label->setObjectName("dock_label");
+    unit_label->setFont(labelFont);
 
     ch_layout->addWidget(ch_check);
     ch_layout->addWidget(le_label);
@@ -1387,8 +1398,10 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   QPushButton *select_all_btn = new QPushButton("全选", _glitch_filter_group);
   QPushButton *deselect_all_btn =
       new QPushButton("取消全选", _glitch_filter_group);
-  select_all_btn->setFont(font);
-  deselect_all_btn->setFont(font);
+  select_all_btn->setObjectName("dock_content");
+  deselect_all_btn->setObjectName("dock_content");
+  select_all_btn->setFont(contentFont);
+  deselect_all_btn->setFont(contentFont);
   select_all_btn->setMaximumHeight(28);
   deselect_all_btn->setMaximumHeight(28);
 
@@ -1404,7 +1417,7 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
 
   QLabel *hint_label = new QLabel("*勾选通道后，小于设定宽度的脉冲将被滤除",
                                   _glitch_filter_group);
-  hint_label->setFont(font);
+  hint_label->setFont(contentFont);
   inner_layout->addWidget(hint_label);
 
   QHBoxLayout *action_layout = new QHBoxLayout();
@@ -1412,8 +1425,10 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
 
   _apply_filter_btn = new QPushButton("应用滤波", _glitch_filter_group);
   _restore_data_btn = new QPushButton("恢复原始数据", _glitch_filter_group);
-  _apply_filter_btn->setFont(font);
-  _restore_data_btn->setFont(font);
+  _apply_filter_btn->setObjectName("dock_content");
+  _restore_data_btn->setObjectName("dock_content");
+  _apply_filter_btn->setFont(contentFont);
+  _restore_data_btn->setFont(contentFont);
   _apply_filter_btn->setMaximumHeight(28);
   _restore_data_btn->setMaximumHeight(28);
   _restore_data_btn->setEnabled(false);
@@ -1429,7 +1444,7 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   inner_layout->addLayout(action_layout);
 
   _filter_status_label = new QLabel("", _glitch_filter_group);
-  _filter_status_label->setFont(font);
+  _filter_status_label->setFont(contentFont);
   inner_layout->addWidget(_filter_status_label);
 }
 

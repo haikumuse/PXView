@@ -21,7 +21,6 @@
  */
 
 #include "protocoldock.h"
-#include "searchdock.h"
 #include "../data/decodermodel.h"
 #include "../data/decoderstack.h"
 #include "../dialogs/protocolexp.h"
@@ -29,6 +28,7 @@
 #include "../sigsession.h"
 #include "../view/decodetrace.h"
 #include "../view/view.h"
+#include "searchdock.h"
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
@@ -37,6 +37,7 @@
 #include "../dsvdef.h"
 #include "../log.h"
 #include "../tabcontext.h"
+#include "../ui/dockfonts.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
@@ -117,8 +118,10 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   QWidget *bot_panel = new QWidget();
 
   _pro_add_button = new QPushButton(top_panel);
+  _pro_add_button->setObjectName("dock_content");
   _pro_add_button->setFlat(true);
   _del_all_button = new QPushButton(top_panel);
+  _del_all_button->setObjectName("dock_content");
   _del_all_button->setFlat(true);
   _del_all_button->setCheckable(true);
   _pro_keyword_edit = new KeywordLineEdit(top_panel, this);
@@ -140,12 +143,16 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
 
   //-----------------------------bottom panel
   _bot_set_button = new QPushButton(bot_panel);
+  _bot_set_button->setObjectName("dock_content");
   _bot_set_button->setFlat(true);
   _bot_save_button = new QPushButton(bot_panel);
+  _bot_save_button->setObjectName("dock_content");
   _bot_save_button->setFlat(true);
   _dn_nav_button = new QPushButton(bot_panel);
+  _dn_nav_button->setObjectName("dock_content");
   _dn_nav_button->setFlat(true);
   _bot_title_label = new QLabel(bot_panel);
+  _bot_title_label->setObjectName("dock_label");
 
   QHBoxLayout *bot_title_layout = new QHBoxLayout();
   bot_title_layout->setSpacing(2);
@@ -155,8 +162,11 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   bot_title_layout->addWidget(_dn_nav_button);
 
   _pre_button = new QPushButton(bot_panel);
-  _ann_search_button = new QPushButton(bot_panel); // search icon
+  _pre_button->setObjectName("dock_content");
+  _ann_search_button = new QPushButton(bot_panel);
+  _ann_search_button->setObjectName("dock_content");
   _nxt_button = new QPushButton(bot_panel);
+  _nxt_button->setObjectName("dock_content");
   _ann_search_edit = new PopupLineEdit(bot_panel);
 
   _ann_search_button->setFixedWidth(_ann_search_button->height());
@@ -191,11 +201,13 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
 
   _table_view->viewport()->installEventFilter(this);
 
-  connect(_table_view, SIGNAL(entered(const QModelIndex&)),
-          this, SLOT(on_table_hover(const QModelIndex&)));
+  connect(_table_view, SIGNAL(entered(const QModelIndex &)), this,
+          SLOT(on_table_hover(const QModelIndex &)));
 
   _matchs_title_label = new QLabel();
+  _matchs_title_label->setObjectName("dock_label");
   _matchs_label = new QLabel();
+  _matchs_label->setObjectName("dock_label");
   QHBoxLayout *match_layout = new QHBoxLayout();
   match_layout->addWidget(_matchs_title_label, 0, Qt::AlignLeft);
   match_layout->addWidget(_matchs_label, 0, Qt::AlignLeft);
@@ -674,7 +686,7 @@ void ProtocolDock::item_clicked(const QModelIndex &index) {
       }
 
       decoder_stack->set_mark_index((ann.start_sample() + ann.end_sample()) /
-                                     2);
+                                    2);
       _session->show_region(ann.start_sample(), ann.end_sample(), false);
     }
   }
@@ -1124,9 +1136,8 @@ void ProtocolDock::show_protocol_select() {
     panel->AddDataItem(QString(dec->id), QString(dec->name), info);
   }
 
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-  ui::set_form_font(panel, font);
+  QFont font = dock_font_content();
+  ui::set_dock_form_font(panel);
 
   panel->SetItemClickHandle(this);
   panel->ShowDlg(_pro_keyword_edit);
@@ -1171,28 +1182,26 @@ void ProtocolDock::UpdateLanguage() { retranslateUi(); }
 void ProtocolDock::UpdateTheme() { reStyle(); }
 
 void ProtocolDock::UpdateFont() {
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-  ui::set_form_font(this, font);
-  _table_view->setFont(font);
+  ui::set_dock_form_font(this);
+  QFont contentFont = dock_font_content();
+  _table_view->setFont(contentFont);
 
   for (auto lay : _protocol_lay_items) {
     lay->update_font();
   }
 
-  font.setPointSizeF(font.pointSizeF() + 1);
-  this->parentWidget()->setFont(font);
-  _table_view->horizontalHeader()->setFont(font);
-  _table_view->verticalHeader()->setFont(font);
+  QFont labelFont = dock_font_label();
+  this->parentWidget()->setFont(labelFont);
+  _table_view->horizontalHeader()->setFont(labelFont);
+  _table_view->verticalHeader()->setFont(labelFont);
 
   adjustPannelSize();
 }
 
 void ProtocolDock::adjustPannelSize() {
   QString str = "DECODER";
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-  QFontMetrics fm(font);
+  QFont contentFont = dock_font_content();
+  QFontMetrics fm(contentFont);
   QRect rc = fm.boundingRect(str);
 
   int lineHeight = rc.height() + 15;
@@ -1207,18 +1216,18 @@ void ProtocolDock::adjustPannelSize() {
   _top_panel->setMinimumHeight(pannelHeight);
 }
 
-void ProtocolDock::on_table_hover(const QModelIndex &index)
-{
-  if (!_hover_delegate) return;
+void ProtocolDock::on_table_hover(const QModelIndex &index) {
+  if (!_hover_delegate)
+    return;
   int old_row = _hover_delegate->_hover_row;
   int new_row = index.isValid() ? index.row() : -1;
-  if (old_row == new_row) return;
+  if (old_row == new_row)
+    return;
   _hover_delegate->_hover_row = new_row;
   _table_view->viewport()->update();
 }
 
-bool ProtocolDock::eventFilter(QObject *obj, QEvent *event)
-{
+bool ProtocolDock::eventFilter(QObject *obj, QEvent *event) {
   if (obj == _table_view->viewport() && event->type() == QEvent::Leave) {
     if (_hover_delegate && _hover_delegate->_hover_row != -1) {
       _hover_delegate->_hover_row = -1;

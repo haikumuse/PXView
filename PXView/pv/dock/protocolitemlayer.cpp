@@ -2,7 +2,7 @@
  * This file is part of the PXView project.
  * PXView is based on DSView.
  * PXView is based on PulseView.
- * 
+ *
  * Copyright (C) 2021 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,163 +21,158 @@
  */
 
 #include "protocolitemlayer.h"
-#include "../dsvdef.h"
-#include <assert.h> 
 #include "../config/appconfig.h"
- 
+#include "../dsvdef.h"
+#include "../ui/dockfonts.h"
+#include <assert.h>
+
 namespace pv {
 namespace dock {
-  
-ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName, IProtocolItemLayerCallback *callback)
-{
-        assert(parent);
-        assert(callback);
 
-        m_callback = callback;
-        _protocolName = protocolName;
-        m_bSetting = false;
-        m_decoderStatus = NULL;
-        _trace = NULL;
-        m_expanded = true;
+ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName,
+                                     IProtocolItemLayerCallback *callback) {
+  assert(parent);
+  assert(callback);
 
-        _protocol_label = new QLabel(parent);
-        _progress_label = new QLabel(parent);
-        _set_button = new QPushButton(parent);
-        _del_button = new QPushButton(parent);
-        _format_combox = new DsComboBox(parent);
+  m_callback = callback;
+  _protocolName = protocolName;
+  m_bSetting = false;
+  m_decoderStatus = NULL;
+  _trace = NULL;
+  m_expanded = true;
 
-        QString iconPath = GetIconPath();
-        _del_button->setFlat(true);
-        _del_button->setIcon(QIcon(iconPath + "/del.svg"));
-        _set_button->setFlat(true);
-        _set_button->setIcon(QIcon(iconPath + "/gear.svg"));
-        _protocol_label->setText(protocolName);
+  _protocol_label = new QLabel(parent);
+  _progress_label = new QLabel(parent);
+  _set_button = new QPushButton(parent);
+  _del_button = new QPushButton(parent);
+  _format_combox = new DsComboBox(parent);
 
-        m_singleFlag = true;     
+  QString iconPath = GetIconPath();
+  _del_button->setFlat(true);
+  _del_button->setIcon(QIcon(iconPath + "/del.svg"));
+  _set_button->setFlat(true);
+  _set_button->setIcon(QIcon(iconPath + "/gear.svg"));
+  _protocol_label->setText(protocolName);
 
-        LoadFormatSelect(false);
- 
-        QHBoxLayout *hori_layout = this;
-        hori_layout->addWidget(_set_button);
-        hori_layout->addWidget(_del_button);
-        hori_layout->addWidget(_format_combox);
-        hori_layout->addWidget(_protocol_label);
-        hori_layout->addWidget(_progress_label);   
+  m_singleFlag = true;
 
-        hori_layout->addStretch(1);
+  LoadFormatSelect(false);
 
-        enable_format(false);
+  QHBoxLayout *hori_layout = this;
+  hori_layout->addWidget(_set_button);
+  hori_layout->addWidget(_del_button);
+  hori_layout->addWidget(_format_combox);
+  hori_layout->addWidget(_protocol_label);
+  hori_layout->addWidget(_progress_label);
 
-        connect(_del_button, SIGNAL(clicked()),this, SLOT(on_del_protocol()));        
-        connect(_set_button, SIGNAL(clicked()),this, SLOT(on_set_protocol()));
-        connect(_format_combox, SIGNAL(currentIndexChanged(int)),this, SLOT(on_format_select_changed(int)));
+  hori_layout->addStretch(1);
 
-        update_font();
+  enable_format(false);
+
+  connect(_del_button, SIGNAL(clicked()), this, SLOT(on_del_protocol()));
+  connect(_set_button, SIGNAL(clicked()), this, SLOT(on_set_protocol()));
+  connect(_format_combox, SIGNAL(currentIndexChanged(int)), this,
+          SLOT(on_format_select_changed(int)));
+
+  update_font();
 }
 
-ProtocolItemLayer::~ProtocolItemLayer(){ 
-     DESTROY_QT_OBJECT(_progress_label);
-     DESTROY_QT_OBJECT(_protocol_label);
-     DESTROY_QT_OBJECT(_set_button);
-     DESTROY_QT_OBJECT(_del_button);
-     DESTROY_QT_OBJECT(_format_combox);
+ProtocolItemLayer::~ProtocolItemLayer() {
+  DESTROY_QT_OBJECT(_progress_label);
+  DESTROY_QT_OBJECT(_protocol_label);
+  DESTROY_QT_OBJECT(_set_button);
+  DESTROY_QT_OBJECT(_del_button);
+  DESTROY_QT_OBJECT(_format_combox);
 }
- 
 
 //-------------control event
-void ProtocolItemLayer::on_set_protocol()
-{
-    m_callback->OnProtocolSetting(this);
+void ProtocolItemLayer::on_set_protocol() {
+  m_callback->OnProtocolSetting(this);
 }
 
-void ProtocolItemLayer::on_del_protocol(){
-    m_callback->OnProtocolDelete(this);
+void ProtocolItemLayer::on_del_protocol() {
+  m_callback->OnProtocolDelete(this);
 }
 
-void ProtocolItemLayer::on_format_select_changed(int index){
-    if (index >= 0 && !m_bSetting){
-        QString text = _format_combox->currentText();
-        m_callback->OnProtocolFormatChanged(text, this);
-    } 
+void ProtocolItemLayer::on_format_select_changed(int index) {
+  if (index >= 0 && !m_bSetting) {
+    QString text = _format_combox->currentText();
+    m_callback->OnProtocolFormatChanged(text, this);
+  }
 }
 //-----------------
 
- void ProtocolItemLayer::SetProgress(int progress, QString text){
-      QString str = QString::number(progress) + "%" + text;
+void ProtocolItemLayer::SetProgress(int progress, QString text) {
+  QString str = QString::number(progress) + "%" + text;
 
-       if (progress == 100){
-            _progress_label->setProperty("status", "ok");
-            _progress_label->style()->unpolish(_progress_label);
-            _progress_label->style()->polish(_progress_label);
-       } else {
-            _progress_label->setProperty("status", "error");
-            _progress_label->style()->unpolish(_progress_label);
-            _progress_label->style()->polish(_progress_label);
-       }
+  if (progress == 100) {
+    _progress_label->setProperty("status", "ok");
+    _progress_label->style()->unpolish(_progress_label);
+    _progress_label->style()->polish(_progress_label);
+  } else {
+    _progress_label->setProperty("status", "error");
+    _progress_label->style()->unpolish(_progress_label);
+    _progress_label->style()->polish(_progress_label);
+  }
 
-        if (progress >= 0)
-            _progress_label->setText(str);
-        else
-            _progress_label->setText("");
- }
-
-void ProtocolItemLayer::ResetStyle(){
-    QString iconPath = GetIconPath();
-     _del_button->setIcon(QIcon(iconPath + "/del.svg"));
-    _set_button->setIcon(QIcon(iconPath + "/gear.svg"));
+  if (progress >= 0)
+    _progress_label->setText(str);
+  else
+    _progress_label->setText("");
 }
 
-void ProtocolItemLayer::LoadFormatSelect(bool bSingle)
-{
-    if (bSingle == m_singleFlag){
-        return;
-    }
-    m_singleFlag = bSingle;
-
-    m_bSetting = true;
-    _format_combox->clear(); 
-
-    if (!bSingle){
-        _format_combox->addItem("hex");
-        _format_combox->addItem("dec");       
-        _format_combox->addItem("oct");
-        _format_combox->addItem("bin");
-    }
-    _format_combox->addItem("ascii");
-    
-    _format_combox->setCurrentIndex(0);
-    m_bSetting = false;
+void ProtocolItemLayer::ResetStyle() {
+  QString iconPath = GetIconPath();
+  _del_button->setIcon(QIcon(iconPath + "/del.svg"));
+  _set_button->setIcon(QIcon(iconPath + "/gear.svg"));
 }
 
- void ProtocolItemLayer::SetProtocolFormat(const char *format)
- {
-     assert(format);
+void ProtocolItemLayer::LoadFormatSelect(bool bSingle) {
+  if (bSingle == m_singleFlag) {
+    return;
+  }
+  m_singleFlag = bSingle;
 
-     m_bSetting = true;
-     int dex = DecoderDataFormat::Parse(format);
-     if (dex < (int)_format_combox->count()){
-        _format_combox->setCurrentIndex(dex);
-     }
-     m_bSetting = false;
- }
+  m_bSetting = true;
+  _format_combox->clear();
 
- void ProtocolItemLayer::enable_format(bool flag)
- {  
-    _format_combox->setDisabled(!flag);
- }
+  if (!bSingle) {
+    _format_combox->addItem("hex");
+    _format_combox->addItem("dec");
+    _format_combox->addItem("oct");
+    _format_combox->addItem("bin");
+  }
+  _format_combox->addItem("ascii");
 
- void ProtocolItemLayer::set_label_name(QString name)
- {
-    _protocol_label->setText(name);
- }
+  _format_combox->setCurrentIndex(0);
+  m_bSetting = false;
+}
 
- void ProtocolItemLayer::update_font()
- {
-    QFont font = _protocol_label->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    _protocol_label->setFont(font);
-    _format_combox->setFont(font);
- }
+void ProtocolItemLayer::SetProtocolFormat(const char *format) {
+  assert(format);
 
-} //dock
-} //pv
+  m_bSetting = true;
+  int dex = DecoderDataFormat::Parse(format);
+  if (dex < (int)_format_combox->count()) {
+    _format_combox->setCurrentIndex(dex);
+  }
+  m_bSetting = false;
+}
+
+void ProtocolItemLayer::enable_format(bool flag) {
+  _format_combox->setDisabled(!flag);
+}
+
+void ProtocolItemLayer::set_label_name(QString name) {
+  _protocol_label->setText(name);
+}
+
+void ProtocolItemLayer::update_font() {
+  QFont labelFont = dock_font_label();
+  QFont contentFont = dock_font_content();
+  _protocol_label->setFont(labelFont);
+  _format_combox->setFont(contentFont);
+}
+
+} // namespace dock
+} // namespace pv
