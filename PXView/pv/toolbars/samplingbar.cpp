@@ -103,6 +103,9 @@ namespace pv
             _device_selector.setSizeAdjustPolicy(DsComboBox::AdjustToMinimumContentsLengthWithIcon);
             _sample_rate.setSizeAdjustPolicy(DsComboBox::AdjustToMinimumContentsLengthWithIcon);
             _sample_count.setSizeAdjustPolicy(DsComboBox::AdjustToMinimumContentsLengthWithIcon);
+            _device_selector.setMinimumContentsLength(15);
+            _sample_rate.setMinimumContentsLength(15);
+            _sample_count.setMinimumContentsLength(15);
             _device_selector.setMaximumWidth(ComboBoxMaxWidth);
 
             QWidget *leftMargin = new QWidget(this);
@@ -175,9 +178,12 @@ namespace pv
             QWidget *inner = new QWidget(group);
             QGridLayout *grid = new QGridLayout(inner);
             int target_w = 200;
-            grid->setColumnStretch(0, 0);
-            grid->setColumnStretch(1, 1);
-            grid->setColumnMinimumWidth(1, target_w);
+            
+            //设置为 3 列布局
+            grid->setColumnStretch(0, 0); // 第0列：文字标签
+            grid->setColumnStretch(1, 0); // 第1列：USB图标（紧凑）
+            grid->setColumnStretch(2, 1); // 第2列：下拉框（拉伸填满）
+            grid->setColumnMinimumWidth(2, target_w); // 仅约束下拉框列的最小宽度
 
             QFont font = group->font();
             font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
@@ -190,16 +196,12 @@ namespace pv
             devLabel->setFont(font);
             grid->addWidget(devLabel, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-            // int target_w = 200; (Moved up)
+            // 拆除原来的 QHBoxLayout，图标放第1列，下拉框放第2列
+            grid->addWidget(&_device_type, 0, 1, Qt::AlignCenter);
 
-            QHBoxLayout *devLayout = new QHBoxLayout();
-            devLayout->setContentsMargins(0, 0, 0, 0);
-            devLayout->setSpacing(4);
-            devLayout->addStretch();
-            devLayout->addWidget(&_device_type);
-            _device_selector.setFixedWidth(target_w);
-            devLayout->addWidget(&_device_selector);
-            grid->addLayout(devLayout, 0, 1, Qt::AlignRight | Qt::AlignVCenter);
+            _device_selector.setMinimumWidth(target_w);
+            _device_selector.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            grid->addWidget(&_device_selector, 0, 2);
 
             // Row 1: 采样深度
             QLabel *depthLabel = new QLabel(
@@ -207,8 +209,9 @@ namespace pv
             depthLabel->setFont(font);
             grid->addWidget(depthLabel, 1, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-            _sample_count.setFixedWidth(target_w);
-            grid->addWidget(&_sample_count, 1, 1, Qt::AlignRight | Qt::AlignVCenter);
+            _sample_count.setMinimumWidth(target_w);
+            _sample_count.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            grid->addWidget(&_sample_count, 1, 2); // 注意这里放在第2列
 
             // Row 2: 采样率
             QLabel *rateLabel = new QLabel(
@@ -216,8 +219,9 @@ namespace pv
             rateLabel->setFont(font);
             grid->addWidget(rateLabel, 2, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-            _sample_rate.setFixedWidth(target_w);
-            grid->addWidget(&_sample_rate, 2, 1, Qt::AlignRight | Qt::AlignVCenter);
+            _sample_rate.setMinimumWidth(target_w);
+            _sample_rate.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            grid->addWidget(&_sample_rate, 2, 2); // 注意这里放在第2列
 
             // Row 3: 捕获模式
             QLabel *modeLabel = new QLabel(
@@ -247,7 +251,9 @@ namespace pv
             modeRow->addWidget(_radio_single);
             modeRow->addWidget(_radio_repeat);
             modeRow->addWidget(_radio_loop);
-            grid->addLayout(modeRow, 3, 1, Qt::AlignRight | Qt::AlignVCenter);
+            
+            // 底部单选框，跨两列（第1列和第2列），靠右对齐
+            grid->addLayout(modeRow, 3, 1, 1, 2, Qt::AlignRight | Qt::AlignVCenter);
 
             connect(_mode_group, SIGNAL(buttonClicked(int)), this, SLOT(on_mode_radio_clicked(int)));
 
