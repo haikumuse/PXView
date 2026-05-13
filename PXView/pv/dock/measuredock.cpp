@@ -45,6 +45,7 @@
 #include "../ui/xtoolbutton.h"
 #include "../tabcontext.h"
 #include "../data/sessiondocument.h"
+#include "../ui/dockfonts.h"
 
 using namespace boost;
 
@@ -71,14 +72,22 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     _fen_checkBox = new QCheckBox(_mouse_section);
     _fen_checkBox->setChecked(true);
     _width_label = new QLabel(_mouse_section);
+    _width_label->setObjectName("dock_label");
     _period_label = new QLabel(_mouse_section);
+    _period_label->setObjectName("dock_label");
     _freq_label = new QLabel(_mouse_section);
+    _freq_label->setObjectName("dock_label");
     _duty_label = new QLabel(_mouse_section);
+    _duty_label->setObjectName("dock_label");
 
     _w_label = new QLabel(_mouse_section);
+    _w_label->setObjectName("dock_label");
     _p_label = new QLabel(_mouse_section);
+    _p_label->setObjectName("dock_label");
     _f_label = new QLabel(_mouse_section);
+    _f_label->setObjectName("dock_label");
     _d_label = new QLabel(_mouse_section);
+    _d_label->setObjectName("dock_label");
 
     QGridLayout *mouse_layout = new QGridLayout();
     mouse_layout->setVerticalSpacing(5);
@@ -112,6 +121,7 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     _dist_layout->addWidget(_dist_add_btn, 0, 0);
     _dist_layout->addWidget(new QLabel(_dist_section), 0, 1, 1, 3);
     _add_dec_label = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TIME_SAMPLES), "Time/Samples"), _dist_section);
+    _add_dec_label->setObjectName("dock_label");
     _dist_layout->addWidget(_add_dec_label, 0, 4);
     _dist_layout->addWidget(new QLabel(_dist_section), 0, 5, 1, 2);
     _dist_layout->setColumnStretch(1, 50);
@@ -129,7 +139,9 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     _edge_add_btn = new XToolButton(_edge_section);
 
     _channel_label = new QLabel(_edge_section);
+    _channel_label->setObjectName("dock_label");
     _edge_label = new QLabel(_edge_section);
+    _edge_label->setObjectName("dock_label");
     _edge_layout = new QGridLayout();
     _edge_layout->setVerticalSpacing(5);
     _edge_layout->addWidget(_edge_add_btn, 0, 0);
@@ -148,6 +160,7 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     _cursor_title = new QLabel(_cursor_section);
     _cursor_title->setObjectName("dock_section_title");
     _time_label = new QLabel(_cursor_section);
+    _time_label->setObjectName("dock_label");
     _cursor_layout = new QGridLayout();
     _cursor_layout->addWidget(_time_label, 0, 2);
     _cursor_layout->addWidget(new QLabel(_cursor_section), 0, 3);
@@ -401,8 +414,8 @@ void MeasureDock::build_dist_pannel()
         _dist_pannel = NULL;
     }
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont labelFont = dock_font_label();
+    QFont contentFont = dock_font_content();
 
     QGridLayout  *lay = new QGridLayout();
     _dist_pannel = new QWidget();    
@@ -414,7 +427,7 @@ void MeasureDock::build_dist_pannel()
     
     int dex = 0;
     QLabel cal_lb;
-    cal_lb.setFont(font);
+    cal_lb.setFont(contentFont);
     //int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
 
     #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -457,10 +470,15 @@ void MeasureDock::build_dist_pannel()
         row_layout->addSpacing(5);
         row_layout->addWidget(r_label, 100);
 
-        r_label->setFont(font);
-        s_btn->setFont(font);
-        e_btn->setFont(font);
-        g_label->setFont(font);
+        r_label->setObjectName("dock_label");
+        g_label->setObjectName("dock_label");
+        s_btn->setObjectName("dock_content");
+        e_btn->setObjectName("dock_content");
+
+        r_label->setFont(labelFont);
+        s_btn->setFont(contentFont);
+        e_btn->setFont(contentFont);
+        g_label->setFont(labelFont);
 
         s_btn->setFixedWidth(bt_w);
         e_btn->setFixedWidth(bt_w);
@@ -542,8 +560,8 @@ void MeasureDock::build_edge_pannel()
         _edge_pannel = NULL;
     }
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont labelFont = dock_font_label();
+    QFont contentFont = dock_font_content();
     QGridLayout  *lay = new QGridLayout();
     _edge_pannel = new QWidget();   
     _edge_pannel->setLayout(lay);
@@ -554,7 +572,7 @@ void MeasureDock::build_edge_pannel()
   
     int dex = 0;
     QLabel cal_lb;
-    cal_lb.setFont(font);
+    cal_lb.setFont(contentFont);
     //int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
     #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
@@ -605,12 +623,19 @@ void MeasureDock::build_edge_pannel()
         row_layout->addSpacing(5);
         row_layout->addWidget(r_label, 100);
 
-        g_label->setFont(font);
-        a_label->setFont(font);
-        s_btn->setFont(font);
-        e_btn->setFont(font);
-        r_label->setFont(font);
-        ch_cmb->setFont(font);
+        g_label->setObjectName("dock_label");
+        a_label->setObjectName("dock_label");
+        r_label->setObjectName("dock_label");
+        s_btn->setObjectName("dock_content");
+        e_btn->setObjectName("dock_content");
+        ch_cmb->setObjectName("dock_content");
+
+        g_label->setFont(labelFont);
+        a_label->setFont(labelFont);
+        s_btn->setFont(contentFont);
+        e_btn->setFont(contentFont);
+        r_label->setFont(labelFont);
+        ch_cmb->setFont(contentFont);
 
         s_btn->setFixedWidth(bt_w);
         e_btn->setFixedWidth(bt_w);
@@ -720,8 +745,7 @@ void MeasureDock::popup_all_coursors()
     cursor_dlg.setWindowFlags(Qt::FramelessWindowHint | Qt::Popup | Qt::WindowSystemMenuHint |
                               Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont contentFont = dock_font_content();
 
     int index = 0;
     QGridLayout *glayout = new QGridLayout(&cursor_dlg);
@@ -730,7 +754,8 @@ void MeasureDock::popup_all_coursors()
         QPushButton *cursor_btn = new QPushButton(&cursor_dlg);
         cursor_btn->setText(QString::number(index+1));
         set_cursor_btn_color(cursor_btn);
-        cursor_btn->setFont(font);
+        cursor_btn->setObjectName("dock_content");
+        cursor_btn->setFont(contentFont);
         glayout->addWidget(cursor_btn, index/4, index%4, 1, 1);
 
         connect(cursor_btn, SIGNAL(clicked()), &cursor_dlg, SLOT(accept()));
@@ -1022,11 +1047,11 @@ void MeasureDock::build_cursor_pannel()
     }
     mode_rows->_opt_row_list.clear();
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont labelFont = dock_font_label();
+    QFont contentFont = dock_font_content();
 
     QLabel cal_lb;
-    cal_lb.setFont(font);
+    cal_lb.setFont(contentFont);
     //int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
 
     #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -1058,8 +1083,10 @@ void MeasureDock::build_cursor_pannel()
         _cursor_layout->addWidget(del_btn, 1+index, 0);
         _cursor_layout->addWidget(cursor_pushButton, 1 + index, 1);
         _cursor_layout->addWidget(curpos_label, 1 + index, 2);
-        curpos_label->setFont(font);
-        cursor_pushButton->setFont(font);
+        curpos_label->setObjectName("dock_label");
+        cursor_pushButton->setObjectName("dock_content");
+        cursor_pushButton->setFont(contentFont);
+        curpos_label->setFont(labelFont);
         cursor_pushButton->setFixedWidth(bt_w);
 
         connect(del_btn, SIGNAL(clicked()), this, SLOT(del_cursor()));
@@ -1113,11 +1140,9 @@ void MeasureDock::UpdateTheme()
 
 void MeasureDock::UpdateFont()
 {
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    ui::set_form_font(this, font);
-    font.setPointSizeF(font.pointSizeF() + 1);
-    this->parentWidget()->setFont(font);
+    ui::set_dock_form_font(this);
+    QFont labelFont = dock_font_label();
+    this->parentWidget()->setFont(labelFont);
 
     adjusLabelSize();
 }
@@ -1126,9 +1151,8 @@ void MeasureDock::adjust_form_size(QWidget *wid)
 {
     assert(wid);
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    QFontMetrics fm(font); 
+    QFont labelFont = dock_font_label();
+    QFontMetrics fm(labelFont); 
 
     auto labels = wid->findChildren<QLabel*>();
     for(auto o : labels)

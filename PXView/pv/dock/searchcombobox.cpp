@@ -29,6 +29,7 @@
 #include "../config/appconfig.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 
 //----------------------ComboButtonItem
 
@@ -105,8 +106,7 @@ void SearchComboBox::ShowDlg(QWidget *editline)
     listLay->setSpacing(0);
     listLay->setAlignment(Qt::AlignTop);
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = dock_font_content();
 
     for(auto o : _items)
     { 
