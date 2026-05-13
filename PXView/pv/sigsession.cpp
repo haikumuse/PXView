@@ -613,7 +613,7 @@ namespace pv
             _view_data->get_dso()->set_ref_range(ref_max, ref_min);
         }
        
-        update_view();
+        _callback->trigger_message(DSV_MSG_CAPTURE_STATE_CHANGED);
 
         // update setting
         if (_device_agent.is_file())
