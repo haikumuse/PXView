@@ -1007,6 +1007,11 @@ void DeviceOptionsDock::update_view() {
 
   if (_sampling_settings_widget) {
     _container_lay->insertWidget(0, _sampling_settings_widget);
+
+    QFrame *sep = new QFrame(_container_panel);
+    sep->setObjectName("dock_section_separator");
+    sep->setFrameShape(QFrame::HLine);
+    _container_lay->insertWidget(1, sep);
   }
 
   try_resize_scroll();
