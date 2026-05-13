@@ -29,7 +29,7 @@
 #include <QRadioButton>
 #include <QSlider>
 #include <QSpinBox>
-#include <QGroupBox>
+#include <QFrame>
 #include <QTableWidget>
 #include <QCheckBox>
 #include <QVector>
@@ -153,25 +153,30 @@ private:
     TabContext *_context;
 
     QWidget *_widget;
-    QGroupBox *_mouse_groupBox;
+    QWidget *_mouse_section;
+    QLabel *_mouse_title;
     QCheckBox *_fen_checkBox;
     QLabel *_width_label;
     QLabel *_period_label;
     QLabel *_freq_label;
     QLabel *_duty_label;
     QLabel *_add_dec_label;
+    QWidget *_dist_section;
     QGridLayout *_dist_layout;
-    QGroupBox *_dist_groupBox;
+    QLabel *_dist_title;
     XToolButton *_dist_add_btn;
+    QWidget *_edge_section;
     QGridLayout *_edge_layout;
-    QGroupBox *_edge_groupBox;
+    QLabel *_edge_title;
+    QFrame *_edge_sep;
     XToolButton *_edge_add_btn;
     QPushButton *_sel_btn;
     QWidget     *_dist_pannel;
     QWidget     *_edge_pannel;
 
+    QWidget     *_cursor_section;
     QGridLayout     *_cursor_layout;
-    QGroupBox       *_cursor_groupBox;
+    QLabel       *_cursor_title;
 
     row_list_item   _mode_rows[MODE_ROWS_LENGTH];
 

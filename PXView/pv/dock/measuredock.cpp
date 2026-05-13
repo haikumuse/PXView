@@ -65,18 +65,20 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     _edge_pannel = NULL;
     _bSetting = false;
 
-    _mouse_groupBox = new QGroupBox(_widget);
-    _fen_checkBox = new QCheckBox(_widget);
+    _mouse_section = new QWidget(_widget);
+    _mouse_title = new QLabel(_mouse_section);
+    _mouse_title->setObjectName("dock_section_title");
+    _fen_checkBox = new QCheckBox(_mouse_section);
     _fen_checkBox->setChecked(true);
-    _width_label = new QLabel(_widget);
-    _period_label = new QLabel(_widget);
-    _freq_label = new QLabel(_widget);
-    _duty_label = new QLabel(_widget);
+    _width_label = new QLabel(_mouse_section);
+    _period_label = new QLabel(_mouse_section);
+    _freq_label = new QLabel(_mouse_section);
+    _duty_label = new QLabel(_mouse_section);
 
-    _w_label = new QLabel(_widget);
-    _p_label = new QLabel(_widget);
-    _f_label = new QLabel(_widget);
-    _d_label = new QLabel(_widget);
+    _w_label = new QLabel(_mouse_section);
+    _p_label = new QLabel(_mouse_section);
+    _f_label = new QLabel(_mouse_section);
+    _d_label = new QLabel(_mouse_section);
 
     QGridLayout *mouse_layout = new QGridLayout();
     mouse_layout->setVerticalSpacing(5);
@@ -91,63 +93,93 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     mouse_layout->addWidget(_duty_label, 2, 1);
     mouse_layout->addWidget(_f_label, 2, 3);
     mouse_layout->addWidget(_freq_label, 2, 4);    
- 
-    _mouse_groupBox->setLayout(mouse_layout);
-    mouse_layout->setContentsMargins(5, 15, 5, 5);
 
-    /* cursor distance group */
-    _dist_groupBox = new QGroupBox(_widget);
-    _dist_groupBox->setMinimumWidth(300);
-    _dist_add_btn = new XToolButton(_widget);   
+    mouse_layout->setContentsMargins(5, 2, 5, 5);
+    QVBoxLayout *mouse_vbox = new QVBoxLayout(_mouse_section);
+    mouse_vbox->setContentsMargins(0, 0, 0, 0);
+    mouse_vbox->setSpacing(0);
+    mouse_vbox->addWidget(_mouse_title);
+    mouse_vbox->addLayout(mouse_layout);
 
-    _dist_layout = new QGridLayout(_widget);
+    _dist_section = new QWidget(_widget);
+    _dist_title = new QLabel(_dist_section);
+    _dist_title->setObjectName("dock_section_title");
+
+    _dist_add_btn = new XToolButton(_dist_section);   
+
+    _dist_layout = new QGridLayout();
     _dist_layout->setVerticalSpacing(5);
     _dist_layout->addWidget(_dist_add_btn, 0, 0);
-    _dist_layout->addWidget(new QLabel(_widget), 0, 1, 1, 3);
-    _add_dec_label = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TIME_SAMPLES), "Time/Samples"), _widget);
+    _dist_layout->addWidget(new QLabel(_dist_section), 0, 1, 1, 3);
+    _add_dec_label = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TIME_SAMPLES), "Time/Samples"), _dist_section);
     _dist_layout->addWidget(_add_dec_label, 0, 4);
-    _dist_layout->addWidget(new QLabel(_widget), 0, 5, 1, 2);
+    _dist_layout->addWidget(new QLabel(_dist_section), 0, 5, 1, 2);
     _dist_layout->setColumnStretch(1, 50);
     _dist_layout->setColumnStretch(6, 100);
-    _dist_groupBox->setLayout(_dist_layout);
-    _dist_layout->setContentsMargins(5, 15, 5, 5);
+    _dist_layout->setContentsMargins(5, 2, 5, 5);
+    QVBoxLayout *dist_vbox = new QVBoxLayout(_dist_section);
+    dist_vbox->setContentsMargins(0, 0, 0, 0);
+    dist_vbox->setSpacing(0);
+    dist_vbox->addWidget(_dist_title);
+    dist_vbox->addLayout(_dist_layout);
 
-    /* cursor edges group */
-    _edge_groupBox = new QGroupBox(_widget);
-    _edge_add_btn = new XToolButton(_widget);
+    _edge_section = new QWidget(_widget);
+    _edge_title = new QLabel(_edge_section);
+    _edge_title->setObjectName("dock_section_title");
+    _edge_add_btn = new XToolButton(_edge_section);
 
-    _channel_label = new QLabel(_widget);
-    _edge_label = new QLabel(_widget);
-    _edge_layout = new QGridLayout(_widget);
+    _channel_label = new QLabel(_edge_section);
+    _edge_label = new QLabel(_edge_section);
+    _edge_layout = new QGridLayout();
     _edge_layout->setVerticalSpacing(5);
     _edge_layout->addWidget(_edge_add_btn, 0, 0);
-    _edge_layout->addWidget(new QLabel(_widget), 0, 1, 1, 4);
+    _edge_layout->addWidget(new QLabel(_edge_section), 0, 1, 1, 4);
     _edge_layout->addWidget(_channel_label, 0, 5);
     _edge_layout->addWidget(_edge_label, 0, 6);
     _edge_layout->setColumnStretch(1, 50);
-    _edge_groupBox->setLayout(_edge_layout);
-    _edge_layout->setContentsMargins(5, 15, 5, 5);
+    _edge_layout->setContentsMargins(5, 2, 5, 5);
+    QVBoxLayout *edge_vbox = new QVBoxLayout(_edge_section);
+    edge_vbox->setContentsMargins(0, 0, 0, 0);
+    edge_vbox->setSpacing(0);
+    edge_vbox->addWidget(_edge_title);
+    edge_vbox->addLayout(_edge_layout);
 
-    /* cursors group */
-    _time_label = new QLabel(_widget);
-    _cursor_groupBox = new QGroupBox(_widget);
-    _cursor_layout = new QGridLayout(_widget);
+    _cursor_section = new QWidget(_widget);
+    _cursor_title = new QLabel(_cursor_section);
+    _cursor_title->setObjectName("dock_section_title");
+    _time_label = new QLabel(_cursor_section);
+    _cursor_layout = new QGridLayout();
     _cursor_layout->addWidget(_time_label, 0, 2);
-    _cursor_layout->addWidget(new QLabel(_widget), 0, 3);
+    _cursor_layout->addWidget(new QLabel(_cursor_section), 0, 3);
     _cursor_layout->setColumnStretch(3, 1);
     _cursor_layout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
 
-    _cursor_groupBox->setLayout(_cursor_layout);
-    _cursor_layout->setContentsMargins(5, 15, 5, 5);
+    _cursor_layout->setContentsMargins(5, 2, 5, 5);
+    QVBoxLayout *cursor_vbox = new QVBoxLayout(_cursor_section);
+    cursor_vbox->setContentsMargins(0, 0, 0, 0);
+    cursor_vbox->setSpacing(0);
+    cursor_vbox->addWidget(_cursor_title);
+    cursor_vbox->addLayout(_cursor_layout);
 
     QVBoxLayout *layout = new QVBoxLayout(_widget);
     layout->setContentsMargins(12, 8, 12, 8);
-    layout->addWidget(_mouse_groupBox);
-    layout->addWidget(_dist_groupBox);
-    layout->addWidget(_edge_groupBox);
-    layout->addWidget(_cursor_groupBox);
+    layout->addWidget(_mouse_section);
+    QFrame *sep1 = new QFrame(_widget);
+    sep1->setObjectName("dock_section_separator");
+    sep1->setFrameShape(QFrame::HLine);
+    layout->addWidget(sep1);
+    layout->addWidget(_dist_section);
+    _edge_sep = new QFrame(_widget);
+    _edge_sep->setObjectName("dock_section_separator");
+    _edge_sep->setFrameShape(QFrame::HLine);
+    layout->addWidget(_edge_sep);
+    layout->addWidget(_edge_section);
+    QFrame *sep3 = new QFrame(_widget);
+    sep3->setObjectName("dock_section_separator");
+    sep3->setFrameShape(QFrame::HLine);
+    layout->addWidget(sep3);
+    layout->addWidget(_cursor_section);
     layout->addStretch(1);
-    _widget->setLayout(layout);
 
     this->setFrameShape(QFrame::NoFrame);
     this->setObjectName("dock_measure_scroll");
@@ -285,11 +317,11 @@ void MeasureDock::unbind_context()
 
 void MeasureDock::retranslateUi()
 {
-    _mouse_groupBox->setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MOUSE_MEASUREMENT), "Mouse measurement"));
+    _mouse_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MOUSE_MEASUREMENT), "Mouse measurement"));
     _fen_checkBox->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_ENABLE_FLOATING_MEASUREMENT), "Enable floating measurement"));
-    _dist_groupBox->setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CURSOR_DISTANCE), "Cursor Distance"));
-    _edge_groupBox->setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_EDGES), "Edges"));
-    _cursor_groupBox->setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CURSORS), "Cursors"));
+    _dist_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CURSOR_DISTANCE), "Cursor Distance"));
+    _edge_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_EDGES), "Edges"));
+    _cursor_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CURSORS), "Cursors"));
 
     _channel_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHANNEL), "Channel"));
     _edge_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RIS_OR_FAL_EDGE), "Rising/Falling/Edges"));
@@ -338,10 +370,9 @@ void MeasureDock::reStyle()
 
 void MeasureDock::reload()
 {
-    if (_session->get_device()->get_work_mode() == LOGIC)
-        _edge_groupBox->setVisible(true);
-    else
-        _edge_groupBox->setVisible(false);
+    bool isLogic = _session->get_device()->get_work_mode() == LOGIC;
+    _edge_section->setVisible(isLogic);
+    _edge_sep->setVisible(isLogic);
 
     _bSetting = true;
 

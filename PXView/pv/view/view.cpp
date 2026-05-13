@@ -70,7 +70,7 @@ const int View::LabelMarginWidth = 70;
 const int View::RulerHeight = 50;
 
 const int View::MaxScrollValue = INT_MAX / 2;
-const int View::MaxHeightUnit = 40;
+const int View::MaxHeightUnit = 24;
 const int View::MinSignalHeight = 10;
 const int View::MaxSignalHeight = 500;
 
