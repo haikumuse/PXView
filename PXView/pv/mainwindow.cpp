@@ -31,6 +31,7 @@
 #include <QAbstractButton>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QFrame>
 #include <QDesktopServices>
 #include <QKeyEvent>
 #include <QEvent>
@@ -423,7 +424,15 @@ namespace pv
         QVBoxLayout *dock_lay = new QVBoxLayout(dock_container);
         dock_lay->setContentsMargins(0, 0, 0, 0);
         dock_lay->setSpacing(0);
-        dock_lay->addWidget(_sampling_bar->createSamplingSettingsWidget(dock_container));
+        QWidget *sampling_widget = _sampling_bar->createSamplingSettingsWidget(dock_container);
+        dock_lay->addWidget(sampling_widget);
+        _device_options_widget->set_sampling_widget(sampling_widget);
+
+        QFrame *sep = new QFrame(dock_container);
+        sep->setObjectName("dock_section_separator");
+        sep->setFrameShape(QFrame::HLine);
+        dock_lay->addWidget(sep);
+
         dock_lay->addWidget(_device_options_widget);
 
         // Wrap the entire dock_container (sampling bar + device options) in a ScrollArea.
@@ -613,6 +622,15 @@ namespace pv
         _delay_prop_msg_timer.SetCallback(std::bind(&MainWindow::on_delay_prop_msg, this));
  
         _logo_bar->set_mainform_callback(this);
+
+        // Bind initial context to docks
+        _sampling_bar->bind_context(initial_ctx);
+        _measure_widget->bind_context(initial_ctx);
+        _search_widget->bind_context(initial_ctx);
+        _protocol_widget->bind_context(initial_ctx);
+        _device_options_widget->bind_context(initial_ctx);
+        _trigger_widget->bind_context(initial_ctx);
+        _dso_trigger_widget->bind_context(initial_ctx);
 
         connect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this, &MainWindow::on_tab_changed);
         connect(_tab_widget, &pv::ui::DraggableTabWidget::tabDetached, this, &MainWindow::on_tab_detach);
@@ -2458,8 +2476,15 @@ namespace pv
                 update_toolbar_view_status();
                 current_view()->on_state_changed(false);
                 _protocol_widget->update_view_status();
+                _device_options_widget->update_widgets_status();
                 break;
             }        
+            case DSV_MSG_CAPTURE_STATE_CHANGED:
+            {
+                update_toolbar_view_status();
+                _device_options_widget->update_widgets_status();
+                break;
+            }
             case DSV_MSG_COLLECT_END:
             {
                 prgRate(0);
@@ -2476,6 +2501,8 @@ namespace pv
                 if (ctx && ctx->document() && ctx->document()->has_pending_config()) {
                     ctx->document()->apply_pending_config(_session->get_device());
                     _device_options_widget->update_view();
+                } else {
+                    _device_options_widget->update_widgets_status();
                 }
                 break;
             }

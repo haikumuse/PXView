@@ -100,9 +100,9 @@ namespace pv
 
             _mode_button.setPopupMode(QToolButton::InstantPopup);
 
-            _device_selector.setSizeAdjustPolicy(DsComboBox::AdjustToContents);
-            _sample_rate.setSizeAdjustPolicy(DsComboBox::AdjustToContents);
-            _sample_count.setSizeAdjustPolicy(DsComboBox::AdjustToContents);
+            _device_selector.setSizeAdjustPolicy(DsComboBox::AdjustToMinimumContentsLengthWithIcon);
+            _sample_rate.setSizeAdjustPolicy(DsComboBox::AdjustToMinimumContentsLengthWithIcon);
+            _sample_count.setSizeAdjustPolicy(DsComboBox::AdjustToMinimumContentsLengthWithIcon);
             _device_selector.setMaximumWidth(ComboBoxMaxWidth);
 
             QWidget *leftMargin = new QWidget(this);
@@ -160,69 +160,79 @@ namespace pv
             REMOVE_UI(this);
         }
 
-        QGroupBox* SamplingBar::createSamplingSettingsWidget(QWidget *parent)
+        QWidget* SamplingBar::createSamplingSettingsWidget(QWidget *parent)
         {
-            QGroupBox *group = new QGroupBox(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLING_SETTINGS), "采样设置"), parent);
-            QGridLayout *grid = new QGridLayout(group);
-            grid->setHorizontalSpacing(8);
-            grid->setVerticalSpacing(4);
-            grid->setContentsMargins(8, 16, 8, 8);
+            QWidget *group = new QWidget(parent);
+            QVBoxLayout *vbox = new QVBoxLayout(group);
+            vbox->setContentsMargins(0, 0, 0, 0);
+            vbox->setSpacing(0);
+
+            QLabel *titleLabel = new QLabel(
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLING_SETTINGS), "采样设置"), group);
+            titleLabel->setObjectName("dock_section_title");
+            vbox->addWidget(titleLabel);
+
+            QWidget *inner = new QWidget(group);
+            QGridLayout *grid = new QGridLayout(inner);
+            int target_w = 200;
+            grid->setColumnStretch(0, 0);
             grid->setColumnStretch(1, 1);
+            grid->setColumnMinimumWidth(1, target_w);
 
             QFont font = group->font();
             font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-            group->setFont(font);
-
-            // Synchronize widths based on device selector
-            int target_w = 200;
-            _device_selector.setFixedWidth(target_w);
-            _sample_count.setFixedWidth(target_w);
-            _sample_rate.setFixedWidth(target_w);
+            inner->setFont(font);
+            titleLabel->setFont(font);
 
             // Row 0: 设备
             QLabel *devLabel = new QLabel(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE), "设备"), group);
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE), "设备"), inner);
             devLabel->setFont(font);
-            grid->addWidget(devLabel, 0, 0, Qt::AlignRight | Qt::AlignVCenter);
+            grid->addWidget(devLabel, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-            grid->addWidget(&_device_type, 0, 1, Qt::AlignRight | Qt::AlignVCenter);
-            
-            _device_selector.setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-            grid->addWidget(&_device_selector, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
+            // int target_w = 200; (Moved up)
+
+            QHBoxLayout *devLayout = new QHBoxLayout();
+            devLayout->setContentsMargins(0, 0, 0, 0);
+            devLayout->setSpacing(4);
+            devLayout->addStretch();
+            devLayout->addWidget(&_device_type);
+            _device_selector.setFixedWidth(target_w);
+            devLayout->addWidget(&_device_selector);
+            grid->addLayout(devLayout, 0, 1, Qt::AlignRight | Qt::AlignVCenter);
 
             // Row 1: 采样深度
             QLabel *depthLabel = new QLabel(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_DEPTH), "采样深度"), group);
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_DEPTH), "采样深度"), inner);
             depthLabel->setFont(font);
-            grid->addWidget(depthLabel, 1, 0, Qt::AlignRight | Qt::AlignVCenter);
+            grid->addWidget(depthLabel, 1, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-            _sample_count.setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-            grid->addWidget(&_sample_count, 1, 2, Qt::AlignRight | Qt::AlignVCenter);
+            _sample_count.setFixedWidth(target_w);
+            grid->addWidget(&_sample_count, 1, 1, Qt::AlignRight | Qt::AlignVCenter);
 
             // Row 2: 采样率
             QLabel *rateLabel = new QLabel(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_RATE), "采样率"), group);
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_RATE), "采样率"), inner);
             rateLabel->setFont(font);
-            grid->addWidget(rateLabel, 2, 0, Qt::AlignRight | Qt::AlignVCenter);
+            grid->addWidget(rateLabel, 2, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-            _sample_rate.setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-            grid->addWidget(&_sample_rate, 2, 2, Qt::AlignRight | Qt::AlignVCenter);
+            _sample_rate.setFixedWidth(target_w);
+            grid->addWidget(&_sample_rate, 2, 1, Qt::AlignRight | Qt::AlignVCenter);
 
             // Row 3: 捕获模式
             QLabel *modeLabel = new QLabel(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_ROW), "捕获模式"), group);
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_ROW), "捕获模式"), inner);
             modeLabel->setFont(font);
             modeLabel->setObjectName("mode_label");
-            grid->addWidget(modeLabel, 3, 0, Qt::AlignRight | Qt::AlignVCenter);
+            grid->addWidget(modeLabel, 3, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-            _mode_group = new QButtonGroup(group);
+            _mode_group = new QButtonGroup(inner);
             _radio_single = new QRadioButton(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_SINGLE), "单次"), group);
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_SINGLE), "单次"), inner);
             _radio_repeat = new QRadioButton(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_REPEAT), "重复"), group);
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_REPEAT), "重复"), inner);
             _radio_loop = new QRadioButton(
-                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_LOOP), "循环"), group);
+                L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_LOOP), "循环"), inner);
             _radio_single->setFont(font);
             _radio_repeat->setFont(font);
             _radio_loop->setFont(font);
@@ -237,9 +247,11 @@ namespace pv
             modeRow->addWidget(_radio_single);
             modeRow->addWidget(_radio_repeat);
             modeRow->addWidget(_radio_loop);
-            grid->addLayout(modeRow, 3, 1, 1, 2);
+            grid->addLayout(modeRow, 3, 1, Qt::AlignRight | Qt::AlignVCenter);
 
             connect(_mode_group, SIGNAL(buttonClicked(int)), this, SLOT(on_mode_radio_clicked(int)));
+
+            vbox->addWidget(inner);
 
             // 控件从 QToolBar 移出时 QWidgetAction::releaseWidget() 会自动 hide()，
             // 需要显式 show() 恢复可见性
@@ -267,7 +279,36 @@ namespace pv
                     _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, doc->_dock_sample_limit);
                     _session->set_collect_mode((DEVICE_COLLECT_MODE)doc->_dock_collect_mode);
                 }
+                
                 update_sample_rate_selector();
+
+                if (doc && doc->_dock_sample_rate > 0) {
+                    for (int i = _sample_rate.count() - 1; i >= 0; i--) {
+                        if (doc->_dock_sample_rate >= _sample_rate.itemData(i).value<uint64_t>()) {
+                            _sample_rate.setCurrentIndex(i);
+                            break;
+                        }
+                    }
+                }
+
+                if (doc && doc->_dock_sample_limit > 0 && doc->_dock_sample_rate > 0) {
+                    double duration = (double)doc->_dock_sample_limit / doc->_dock_sample_rate * SR_SEC(1);
+                    for (int i = 0; i < _sample_count.count(); i++) {
+                        if (duration >= _sample_count.itemData(i).value<double>()) {
+                            _sample_count.setCurrentIndex(i);
+                            break;
+                        }
+                    }
+                }
+                
+                update_sample_rate_selector_value();
+                update_sample_count_selector_value();
+                reload();
+                if (_device_selector.parentWidget()) {
+                    _device_selector.parentWidget()->adjustSize();
+                    if (_device_selector.parentWidget()->parentWidget())
+                        _device_selector.parentWidget()->parentWidget()->adjustSize();
+                }
             }
         }
 
@@ -275,8 +316,25 @@ namespace pv
         {
             if (_context && _context->document() && _device_agent && _session && _device_agent->have_instance()) {
                 auto doc = _context->document();
-                doc->_dock_sample_rate = _device_agent->get_sample_rate();
-                doc->_dock_sample_limit = _device_agent->get_sample_limit();
+                
+                if (_sample_rate.count() > 0 && _sample_rate.currentIndex() >= 0) {
+                    doc->_dock_sample_rate = _sample_rate.itemData(_sample_rate.currentIndex()).value<uint64_t>();
+                } else {
+                    doc->_dock_sample_rate = _device_agent->get_sample_rate();
+                }
+
+                if (_sample_count.count() > 0 && _sample_count.currentIndex() >= 0) {
+                    double duration = _sample_count.itemData(_sample_count.currentIndex()).value<double>();
+                    uint64_t s_rate = doc->_dock_sample_rate > 0 ? doc->_dock_sample_rate : _device_agent->get_sample_rate();
+                    if (s_rate > 0) {
+                        doc->_dock_sample_limit = ((uint64_t)ceil(duration / SR_SEC(1) * s_rate) + SAMPLES_ALIGN) & ~SAMPLES_ALIGN;
+                    } else {
+                        doc->_dock_sample_limit = _device_agent->get_sample_limit();
+                    }
+                } else {
+                    doc->_dock_sample_limit = _device_agent->get_sample_limit();
+                }
+
                 doc->_dock_collect_mode = (int)_session->get_collect_mode();
             }
             _context = nullptr;
@@ -506,6 +564,10 @@ namespace pv
             (void)index;
             if (_device_agent->get_work_mode() != DSO)
                 update_sample_count_selector();
+            
+            if (_context && _context->document()) {
+                _context->document()->_dock_sample_rate = _device_agent->get_sample_rate();
+            }
         }
 
         void SamplingBar::update_sample_count_selector()
@@ -737,6 +799,10 @@ namespace pv
 
             double hori_res = -1;
             apply_sample_count(hori_res);
+
+            if (_context && _context->document()) {
+                _context->document()->_dock_sample_limit = _device_agent->get_sample_limit();
+            }
         }
 
         double SamplingBar::get_hori_res()
@@ -1112,6 +1178,9 @@ namespace pv
                     _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "protocol");
                     _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
                 }
+                if (_context && _context->document()) {
+                    _context->document()->_dock_collect_mode = (int)_session->get_collect_mode();
+                }
                 break;
             case COLLECT_REPEAT:
                 if (_device_agent->is_stream_mode() || _device_agent->is_demo()) {
@@ -1132,12 +1201,18 @@ namespace pv
                     _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
                     _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
                 }
+                if (_context && _context->document()) {
+                    _context->document()->_dock_collect_mode = (int)_session->get_collect_mode();
+                }
                 break;
             case COLLECT_LOOP:
                 _session->set_collect_mode(COLLECT_LOOP);
                 if (_device_agent->is_demo()) {
                     _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
                     _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+                }
+                if (_context && _context->document()) {
+                    _context->document()->_dock_collect_mode = (int)_session->get_collect_mode();
                 }
                 break;
             }
@@ -1237,9 +1312,6 @@ namespace pv
 
             _last_device_index = select_index;
             int width = _device_selector.sizeHint().width();
-            _device_selector.setFixedWidth(200);
-            _sample_count.setFixedWidth(200);
-            _sample_rate.setFixedWidth(200);
             _device_selector.view()->setMinimumWidth(width + 30);
 
             _updating_device_list = false;

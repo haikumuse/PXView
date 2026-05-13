@@ -59,12 +59,15 @@ public:
 
   void update_view();
   void device_updated();
+  void update_widgets_status();
 
   void bind_context(TabContext *ctx) override;
   void unbind_context() override;
 
   QJsonObject get_session();
   void set_session(QJsonObject &obj);
+
+  void set_sampling_widget(QWidget *widget);
 
 signals:
   void settings_applied();
@@ -138,6 +141,7 @@ private:
   QLabel *_filter_status_label;
   SigSession *_session;
   TabContext *_context;
+  QWidget *_sampling_settings_widget;
 };
 
 } // namespace dock

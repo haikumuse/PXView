@@ -103,7 +103,7 @@ namespace pv
 
             void run_or_stop_instant();
 
-            QGroupBox* createSamplingSettingsWidget(QWidget *parent);
+            QWidget* createSamplingSettingsWidget(QWidget *parent);
 
             inline void update_sample_rate_list()
             {

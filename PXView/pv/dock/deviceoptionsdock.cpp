@@ -72,6 +72,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _cur_analog_tag_index = 0;
   _opt_mode = 0;
   _glitch_filter_group = NULL;
+  _sampling_settings_widget = NULL;
 
   _device_agent = session->get_device();
   _device_options_binding = NULL;
@@ -105,7 +106,16 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
 
     build_glitch_filter_panel();
     if (_glitch_filter_group) {
+      QFrame *sep1 = new QFrame(_container_panel);
+      sep1->setObjectName("dock_section_separator");
+      sep1->setFrameShape(QFrame::HLine);
+      _container_lay->addWidget(sep1);
       _container_lay->addWidget(_glitch_filter_group);
+
+      QFrame *sep2 = new QFrame(_container_panel);
+      sep2->setObjectName("dock_section_separator");
+      sep2->setFrameShape(QFrame::HLine);
+      _container_lay->addWidget(sep2);
     }
 
     QLabel *mode_title = new QLabel(
@@ -924,6 +934,12 @@ void DeviceOptionsDock::update_view() {
     _device_options_binding = NULL;
   }
 
+  // Preserve sampling settings widget from being deleted
+  if (_sampling_settings_widget) {
+    _container_lay->removeWidget(_sampling_settings_widget);
+    _sampling_settings_widget->setParent(nullptr);
+  }
+
   if (_device_agent->have_instance()) {
     _device_options_binding = new pv::prop::binding::DeviceOptions();
   }
@@ -959,7 +975,16 @@ void DeviceOptionsDock::update_view() {
 
   build_glitch_filter_panel();
   if (_glitch_filter_group) {
+    QFrame *sep1 = new QFrame(_container_panel);
+    sep1->setObjectName("dock_section_separator");
+    sep1->setFrameShape(QFrame::HLine);
+    _container_lay->addWidget(sep1);
     _container_lay->addWidget(_glitch_filter_group);
+
+    QFrame *sep2 = new QFrame(_container_panel);
+    sep2->setObjectName("dock_section_separator");
+    sep2->setFrameShape(QFrame::HLine);
+    _container_lay->addWidget(sep2);
   }
 
   QLabel *mode_title = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"),
@@ -980,12 +1005,23 @@ void DeviceOptionsDock::update_view() {
   mode_vbox->setAlignment(Qt::AlignTop);
   _container_lay->addWidget(mode_section);
 
-  _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
-
-  if (_device_agent->is_demo())
-    _demo_operation_mode = _device_agent->get_demo_operation_mode();
+  if (_sampling_settings_widget) {
+    _container_lay->insertWidget(0, _sampling_settings_widget);
+  }
 
   try_resize_scroll();
+}
+
+void DeviceOptionsDock::update_widgets_status() {
+  bool bEnable = !_session->is_working();
+
+  // Update all widgets in the container except the sampling widget (it handles its own state)
+  for (int i = 0; i < _container_lay->count(); ++i) {
+    QLayoutItem *item = _container_lay->itemAt(i);
+    if (item->widget() && item->widget() != _sampling_settings_widget) {
+      item->widget()->setEnabled(bEnable);
+    }
+  }
 }
 
 void DeviceOptionsDock::device_updated() {
@@ -1390,6 +1426,10 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   _filter_status_label = new QLabel("", _glitch_filter_group);
   _filter_status_label->setFont(font);
   inner_layout->addWidget(_filter_status_label);
+}
+
+void DeviceOptionsDock::set_sampling_widget(QWidget *widget) {
+  _sampling_settings_widget = widget;
 }
 
 void DeviceOptionsDock::rebuild_glitch_filter_panel() {

@@ -79,7 +79,7 @@
  * @drawer-edge-hover: rgba(0,0,0,0.12)
  * @dock-gridline: #d0d0d0
  * @dock-section-title-fg: #333333
- * @dock-section-separator-color: #d4d4d8
+ * @dock-section-separator-color: #d5d5d5
  * @dock-status-ok: #008000
  * @dock-status-error: #cc0000
  * @ribbon-menu-text: #000000
@@ -437,10 +437,14 @@ QGroupBox:disabled
 
 #dock_section_separator
 {
-    color: @dock-section-separator-color;
+    background-color: @dock-section-separator-color;
+    border: none;
     max-height: 1px;
-    margin-top: 8px;
-    margin-bottom: 8px;
+    min-height: 1px;
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-top: 20px;
+    margin-bottom: 10px;
 }
 
 QScrollBar:horizontal
