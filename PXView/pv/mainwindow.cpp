@@ -2150,9 +2150,9 @@ void MainWindow::reset_all_view() {
   _dso_trigger_widget->update_view();
   _measure_widget->reload();
   _device_options_widget->update_view();
-  if (_sliding_drawer->isOpen())
-    _sliding_drawer->close();
-  _side_bar->clearAllChecked();
+  // if (_sliding_drawer->isOpen())
+  //   _sliding_drawer->close();
+  // _side_bar->clearAllChecked();
 
   if (_device_agent->get_work_mode() == ANALOG)
     current_view()->get_viewstatus()->setVisible(false);
