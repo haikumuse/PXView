@@ -30,10 +30,11 @@
 #include <QLabel>
 #include <QScrollArea>
 #include <QShowEvent>
-#include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <vector>
+
+#include "../ui/dsspinbox.h"
 
 #include "../deviceagent.h"
 #include "../dialogs/deviceoptions.h"
@@ -135,7 +136,7 @@ private:
   std::vector<bool> _lst_probe_enabled_status;
   QWidget *_glitch_filter_group;
   std::vector<QCheckBox *> _glitch_checkBox_list;
-  std::vector<QSpinBox *> _glitch_spinbox_list;
+  std::vector<pv::ui::DsSpinBox *> _glitch_spinbox_list;
   QPushButton *_apply_filter_btn;
   QPushButton *_restore_data_btn;
   QLabel *_filter_status_label;
