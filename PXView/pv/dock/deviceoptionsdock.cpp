@@ -1511,7 +1511,7 @@ void DeviceOptionsDock::rebuild_glitch_filter_panel() {
 
   build_glitch_filter_panel();
   if (_glitch_filter_group) {
-    int idx = 0;
+    int idx = -1;
     int count = _container_lay->count();
     for (int i = 0; i < count; i++) {
       QWidget *w = _container_lay->itemAt(i)->widget();
@@ -1522,8 +1522,8 @@ void DeviceOptionsDock::rebuild_glitch_filter_panel() {
         }
       }
     }
-    if (idx > 0)
-      _container_lay->insertWidget(idx, _glitch_filter_group);
+    if (idx >= 0)
+      _container_lay->insertWidget(idx + 1, _glitch_filter_group);
     else
       _container_lay->addWidget(_glitch_filter_group);
   }
