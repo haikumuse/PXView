@@ -1383,13 +1383,8 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   inner_layout->setAlignment(Qt::AlignTop);
   layout->addLayout(inner_layout);
 
-  QScrollArea *ch_scroll = new QScrollArea(_glitch_filter_group);
-  ch_scroll->setWidgetResizable(true);
-  ch_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  ch_scroll->setMinimumHeight(120);
-  ch_scroll->setMaximumHeight(250);
-
-  QWidget *ch_container = new QWidget();
+  // 通道列表容器（不使用滚动区域，直接展开显示）
+  QWidget *ch_container = new QWidget(_glitch_filter_group);
   QVBoxLayout *ch_layout_main = new QVBoxLayout(ch_container);
   ch_layout_main->setContentsMargins(2, 2, 2, 2);
   ch_layout_main->setSpacing(2);
@@ -1443,8 +1438,7 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     ch_idx++;
   }
 
-  ch_scroll->setWidget(ch_container);
-  inner_layout->addWidget(ch_scroll);
+  inner_layout->addWidget(ch_container);
 
   QHBoxLayout *btn_layout = new QHBoxLayout();
   btn_layout->setSpacing(5);

@@ -3,7 +3,7 @@
  * PXView is based on DSView.
  * PXView is based on PulseView.
  *
- * Copyright (C) 2021 DreamSourceLab <support@dreamsourcelab.com>
+ * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,39 +20,35 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSCOMBOBOX_H
-#define DSCOMBOBOX_H
+#include "dsspinbox.h"
+#include <QWheelEvent>
 
-#include <QComboBox>
-#include <QKeyEvent>
+namespace pv {
+namespace ui {
 
-class QWheelEvent;
-
-class DsComboBox : public QComboBox
+DsSpinBox::DsSpinBox(QWidget *parent)
+    : QSpinBox(parent)
 {
-public:
-    explicit DsComboBox(QWidget *parent = nullptr);
+}
 
-    ~DsComboBox();
+void DsSpinBox::wheelEvent(QWheelEvent *event)
+{
+    // 忽略滚轮事件，不调整数值
+    // 事件会继续传播给父级控件（如滚动容器）
+    event->ignore();
+}
 
-public:
-    void showPopup() override;
+DsDoubleSpinBox::DsDoubleSpinBox(QWidget *parent)
+    : QDoubleSpinBox(parent)
+{
+}
 
-    void hidePopup() override;
+void DsDoubleSpinBox::wheelEvent(QWheelEvent *event)
+{
+    // 忽略滚轮事件，不调整数值
+    // 事件会继续传播给父级控件（如滚动容器）
+    event->ignore();
+}
 
-    inline bool  IsPopup(){
-        return _bPopup;
-    }
-
-protected:
-    void wheelEvent(QWheelEvent *event) override;
-
-private:
-    void measureSize();
-
-private:
-    bool    _bPopup;
-};
-
-
-#endif // DSCOMBOBOX_H
+} // namespace ui
+} // namespace pv

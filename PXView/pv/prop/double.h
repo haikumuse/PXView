@@ -30,9 +30,11 @@
 
 #include "property.h"
 
-class QDoubleSpinBox;
-
 namespace pv {
+namespace ui {
+class DsDoubleSpinBox;
+}
+
 namespace prop {
 
 class Double : public Property
@@ -61,7 +63,7 @@ private:
 	const boost::optional< std::pair<double, double> > _range;
 	const boost::optional<double> _step;
 
-	QDoubleSpinBox *_spin_box;
+	pv::ui::DsDoubleSpinBox *_spin_box;
 };
 
 } // prop
