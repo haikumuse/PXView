@@ -86,8 +86,8 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _container_lay = new QVBoxLayout();
   _container_lay->setDirection(QBoxLayout::TopToBottom);
   _container_lay->setAlignment(Qt::AlignTop);
-  _container_lay->setContentsMargins(12, 8, 12, 8);
-  _container_lay->setSpacing(5);
+  _container_lay->setContentsMargins(12, 10, 12, 10);
+  _container_lay->setSpacing(10);
   _container_panel->setLayout(_container_lay);
 
   this->setWidget(_container_panel);
@@ -129,11 +129,11 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     mode_section->setMinimumHeight(70);
     QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
     mode_vbox->setContentsMargins(0, 0, 0, 0);
-    mode_vbox->setSpacing(0);
+    mode_vbox->setSpacing(5);
     mode_vbox->addWidget(mode_title);
     QWidget *mode_inner = new QWidget(mode_section);
     QLayout *props_lay = get_property_form(mode_inner);
-    props_lay->setContentsMargins(5, 2, 5, 5);
+    props_lay->setContentsMargins(5, 8, 5, 10);
     mode_vbox->addWidget(mode_inner);
     mode_vbox->setAlignment(Qt::AlignTop);
     _container_lay->addWidget(mode_section);
@@ -227,7 +227,7 @@ void DeviceOptionsDock::commit_channels() {
 
 QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
   QGridLayout *const layout = new QGridLayout(parent);
-  layout->setVerticalSpacing(2);
+  layout->setVerticalSpacing(6);
   const auto &properties = _device_options_binding->properties();
 
   QFont labelFont = dock_font_label();
@@ -265,7 +265,10 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
         maxLabelWidth = labelWidth;
     }
 
-    layout->setRowMinimumHeight(i, 22);
+    layout->setRowMinimumHeight(i, 28);
+
+    dsv_info("  Property Row %d: %s, widget_hint_height=%d", i,
+             lable_text.toLocal8Bit().data(), wid->sizeHint().height());
 
     connect(p, &pv::prop::Property::committed, this,
             &DeviceOptionsDock::on_property_committed);
@@ -292,7 +295,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
 void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   using namespace Qt;
 
-  layout.setSpacing(2);
+  layout.setSpacing(6);
 
   int row1 = 0;
   int row2 = 0;
@@ -855,7 +858,19 @@ void DeviceOptionsDock::build_dynamic_panel() {
 
   if (_dynamic_panel == NULL) {
     _dynamic_panel = new QWidget(_container_panel);
-    _container_lay->insertWidget(0, _dynamic_panel);
+    int insert_idx = 0;
+    if (_sampling_settings_widget) {
+      insert_idx = _container_lay->indexOf(_sampling_settings_widget) + 1;
+      // Skip separator if it exists
+      if (insert_idx < _container_lay->count()) {
+        QLayoutItem *item = _container_lay->itemAt(insert_idx);
+        if (item && item->widget() &&
+            item->widget()->objectName() == "dock_section_separator") {
+          insert_idx++;
+        }
+      }
+    }
+    _container_lay->insertWidget(insert_idx, _dynamic_panel);
 
     QLabel *dyn_title = new QLabel("group", _dynamic_panel);
     dyn_title->setObjectName("dock_section_title");
@@ -869,7 +884,8 @@ void DeviceOptionsDock::build_dynamic_panel() {
 
     QVBoxLayout *dyn_vbox = new QVBoxLayout(_dynamic_panel);
     dyn_vbox->setContentsMargins(0, 0, 0, 0);
-    dyn_vbox->setSpacing(0);
+    dyn_vbox->setSpacing(5);
+    dyn_vbox->setAlignment(Qt::AlignTop);
     dyn_vbox->addWidget(dyn_title);
     dyn_vbox->addLayout(inner);
   }
@@ -917,6 +933,30 @@ void DeviceOptionsDock::try_resize_scroll() {
 
   if (_device_agent->get_work_mode() == LOGIC && _device_agent->is_demo()) {
     _dynamic_panel->setFixedWidth(max_label_width + 250);
+  }
+
+  // Debug layout constraints
+  dsv_info("DeviceOptionsDock layout debug:");
+  dsv_info("  Dock Height: %d", height());
+  if (_container_panel) {
+    dsv_info("  Container Panel: size=%dx%d, hint=%dx%d",
+             _container_panel->width(), _container_panel->height(),
+             _container_panel->sizeHint().width(),
+             _container_panel->sizeHint().height());
+  }
+  if (_dynamic_panel) {
+    dsv_info("  Dynamic Panel: height=%d, hint_height=%d",
+             _dynamic_panel->height(), _dynamic_panel->sizeHint().height());
+  }
+  if (_glitch_filter_group) {
+    dsv_info("  Glitch Filter Group: height=%d, hint_height=%d",
+             _glitch_filter_group->height(),
+             _glitch_filter_group->sizeHint().height());
+  }
+  auto mode_section = findChild<QWidget *>("dock_mode_section");
+  if (mode_section) {
+    dsv_info("  Mode Section: height=%d, hint_height=%d", mode_section->height(),
+             mode_section->sizeHint().height());
   }
 #endif
 }
@@ -1001,11 +1041,11 @@ void DeviceOptionsDock::update_view() {
   mode_section->setMinimumHeight(70);
   QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
   mode_vbox->setContentsMargins(0, 0, 0, 0);
-  mode_vbox->setSpacing(0);
+  mode_vbox->setSpacing(5);
   mode_vbox->addWidget(mode_title);
   QWidget *mode_inner = new QWidget(mode_section);
   QLayout *props_lay = get_property_form(mode_inner);
-  props_lay->setContentsMargins(5, 2, 5, 5);
+  props_lay->setContentsMargins(5, 8, 5, 10);
   mode_vbox->addWidget(mode_inner);
   mode_vbox->setAlignment(Qt::AlignTop);
   _container_lay->addWidget(mode_section);
@@ -1018,6 +1058,8 @@ void DeviceOptionsDock::update_view() {
     sep->setFrameShape(QFrame::HLine);
     _container_lay->insertWidget(1, sep);
   }
+
+  _container_lay->addStretch();
 
   try_resize_scroll();
 }
@@ -1321,12 +1363,14 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
 
   QVBoxLayout *layout = new QVBoxLayout(_glitch_filter_group);
   layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
+  layout->setSpacing(5);
+  layout->setAlignment(Qt::AlignTop);
   layout->addWidget(glitch_title);
 
   QVBoxLayout *inner_layout = new QVBoxLayout();
   inner_layout->setContentsMargins(5, 2, 5, 5);
-  inner_layout->setSpacing(3);
+  inner_layout->setSpacing(8);
+  inner_layout->setAlignment(Qt::AlignTop);
   layout->addLayout(inner_layout);
 
   QScrollArea *ch_scroll = new QScrollArea(_glitch_filter_group);
@@ -1446,6 +1490,8 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   _filter_status_label = new QLabel("", _glitch_filter_group);
   _filter_status_label->setFont(contentFont);
   inner_layout->addWidget(_filter_status_label);
+
+  inner_layout->addStretch();
 }
 
 void DeviceOptionsDock::set_sampling_widget(QWidget *widget) {

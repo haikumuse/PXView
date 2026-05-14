@@ -446,7 +446,7 @@ void MainWindow::setup_ui() {
 
   // VITAL: Ensure the container doesn't shrink, triggering the scrollbar
   // instead.
-  dock_container->setMinimumHeight(1000);
+  dock_container->setMinimumHeight(1600);
   dock_scroll->setWidget(dock_container);
 
   // Note: dock_scroll will be added to SlidingDrawer below
