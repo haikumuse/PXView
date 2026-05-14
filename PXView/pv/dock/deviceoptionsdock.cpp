@@ -106,20 +106,13 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
 
     this->build_dynamic_panel();
 
-    build_glitch_filter_panel();
-    if (_glitch_filter_group) {
-      QFrame *sep1 = new QFrame(_container_panel);
-      sep1->setObjectName("dock_section_separator");
-      sep1->setFrameShape(QFrame::HLine);
-      _container_lay->addWidget(sep1);
-      _container_lay->addWidget(_glitch_filter_group);
+    // 通道和 Mode 之间的分隔线
+    QFrame *sep_mode = new QFrame(_container_panel);
+    sep_mode->setObjectName("dock_section_separator");
+    sep_mode->setFrameShape(QFrame::HLine);
+    _container_lay->addWidget(sep_mode);
 
-      QFrame *sep2 = new QFrame(_container_panel);
-      sep2->setObjectName("dock_section_separator");
-      sep2->setFrameShape(QFrame::HLine);
-      _container_lay->addWidget(sep2);
-    }
-
+    // Mode 部分
     QLabel *mode_title = new QLabel(
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), _container_panel);
     mode_title->setObjectName("dock_section_title");
@@ -137,6 +130,18 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     mode_vbox->addWidget(mode_inner);
     mode_vbox->setAlignment(Qt::AlignTop);
     _container_lay->addWidget(mode_section);
+
+    // Mode 和毛刺过滤之间的分隔线
+    QFrame *sep_mode_glitch = new QFrame(_container_panel);
+    sep_mode_glitch->setObjectName("dock_section_separator");
+    sep_mode_glitch->setFrameShape(QFrame::HLine);
+    _container_lay->addWidget(sep_mode_glitch);
+
+    // 毛刺过滤部分
+    build_glitch_filter_panel();
+    if (_glitch_filter_group) {
+      _container_lay->addWidget(_glitch_filter_group);
+    }
 
     _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
 
@@ -955,8 +960,8 @@ void DeviceOptionsDock::try_resize_scroll() {
   }
   auto mode_section = findChild<QWidget *>("dock_mode_section");
   if (mode_section) {
-    dsv_info("  Mode Section: height=%d, hint_height=%d", mode_section->height(),
-             mode_section->sizeHint().height());
+    dsv_info("  Mode Section: height=%d, hint_height=%d",
+             mode_section->height(), mode_section->sizeHint().height());
   }
 #endif
 }
@@ -1018,20 +1023,13 @@ void DeviceOptionsDock::update_view() {
   minWid->setMinimumWidth(230);
   _container_lay->addWidget(minWid);
 
-  build_glitch_filter_panel();
-  if (_glitch_filter_group) {
-    QFrame *sep1 = new QFrame(_container_panel);
-    sep1->setObjectName("dock_section_separator");
-    sep1->setFrameShape(QFrame::HLine);
-    _container_lay->addWidget(sep1);
-    _container_lay->addWidget(_glitch_filter_group);
+  // 通道和 Mode 之间的分隔线
+  QFrame *sep_mode = new QFrame(_container_panel);
+  sep_mode->setObjectName("dock_section_separator");
+  sep_mode->setFrameShape(QFrame::HLine);
+  _container_lay->addWidget(sep_mode);
 
-    QFrame *sep2 = new QFrame(_container_panel);
-    sep2->setObjectName("dock_section_separator");
-    sep2->setFrameShape(QFrame::HLine);
-    _container_lay->addWidget(sep2);
-  }
-
+  // Mode 部分
   QLabel *mode_title = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"),
                                   _container_panel);
   mode_title->setObjectName("dock_section_title");
@@ -1049,6 +1047,18 @@ void DeviceOptionsDock::update_view() {
   mode_vbox->addWidget(mode_inner);
   mode_vbox->setAlignment(Qt::AlignTop);
   _container_lay->addWidget(mode_section);
+
+  // Mode 和毛刺过滤之间的分隔线
+  QFrame *sep_mode_glitch = new QFrame(_container_panel);
+  sep_mode_glitch->setObjectName("dock_section_separator");
+  sep_mode_glitch->setFrameShape(QFrame::HLine);
+  _container_lay->addWidget(sep_mode_glitch);
+
+  // 毛刺过滤部分
+  build_glitch_filter_panel();
+  if (_glitch_filter_group) {
+    _container_lay->addWidget(_glitch_filter_group);
+  }
 
   if (_sampling_settings_widget) {
     _container_lay->insertWidget(0, _sampling_settings_widget);
