@@ -1717,7 +1717,7 @@ void Viewport::wheelEvent(QWheelEvent *event)
             int vOffset = _view.get_vOffset();
             vOffset -= delta;
             vOffset = max(0, vOffset);
-            _view.verticalScrollBar()->setSliderPosition(vOffset);
+            _view.animateVScrollTo(vOffset, 200);
             return;
         }
 
@@ -1758,7 +1758,7 @@ void Viewport::wheelEvent(QWheelEvent *event)
 
             // Horizontal scrolling is interpreted as moving left/right
             if (!(event->modifiers() & Qt::ShiftModifier))
-                _view.set_scale_offset(_view.scale(), _view.offset() - delta);
+                _view.animateHScrollTo(_view.offset() - delta, 200);
         }
     }
 

@@ -33,6 +33,7 @@
 #include <vector>
 #include <QJsonObject>
 #include "../ui/dscombobox.h"
+#include "../widgets/smoothscrollarea.h"
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
 #include "keywordlineedit.h"
@@ -44,7 +45,7 @@ class SigSession;
 
 namespace dock {
 
-class DsoTriggerDock : public QScrollArea, public IUiWindow, public IContextAware
+class DsoTriggerDock : public pv::widgets::SmoothScrollArea, public IUiWindow, public IContextAware
 {
     Q_OBJECT
 

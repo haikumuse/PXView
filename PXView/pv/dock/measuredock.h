@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "../ui/dscombobox.h"
+#include "../widgets/smoothscrollarea.h"
 #include "../interface/icallbacks.h"
 #include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"
@@ -86,7 +87,7 @@ struct row_list_item
 
 #define MODE_ROWS_LENGTH    3
 
-class MeasureDock : public QScrollArea, public IContextAware, public IUiWindow
+class MeasureDock : public pv::widgets::SmoothScrollArea, public IContextAware, public IUiWindow
 {
     Q_OBJECT
 

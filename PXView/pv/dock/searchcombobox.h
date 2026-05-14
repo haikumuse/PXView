@@ -32,6 +32,7 @@
 #include <vector>
 #include <QEvent>
 #include <QScrollArea>
+#include "../widgets/smoothscrollarea.h"
 
 class ISearchItemClick{
 public:
@@ -95,7 +96,7 @@ private:
     bool    _bShow;
     std::vector<SearchDataItem*> _items;
     ISearchItemClick *_item_click;
-    QScrollArea *_scroll;
+    pv::widgets::SmoothScrollArea *_scroll;
 };
 
 #endif // SEARCHCOMBOBOX_H

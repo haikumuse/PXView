@@ -50,7 +50,7 @@ namespace pv {
 namespace dock {
 
 DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session)
-    : QScrollArea(parent), _session(session), _context(nullptr) {
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _context(nullptr) {
   this->setWidgetResizable(true);
   _widget = new QWidget(this);
 
