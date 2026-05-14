@@ -30,6 +30,7 @@
 #include <iostream>
 #include <vector>  
 #include <glib.h>
+#include <libsigrokdecode/libsigrokdecode.h>
 
 struct srd_decoder;
 struct srd_decoder_inst;

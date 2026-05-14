@@ -64,7 +64,7 @@ namespace dock {
 const int TriggerDock::MinTrigPosition = 1;
 
 TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
-    QScrollArea(parent),
+    pv::widgets::SmoothScrollArea(parent),
     _session(session),
     _context(nullptr)
 {

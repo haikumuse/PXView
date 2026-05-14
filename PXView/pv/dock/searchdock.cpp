@@ -21,6 +21,7 @@
  */
 
 #include "searchdock.h"
+#include <QScroller>
 #include "../data/logicsnapshot.h"
 #include "../data/snapshot.h"
 #include "../sigsession.h"
@@ -134,7 +135,7 @@ void SearchResultModel::clear() {
 // ============================================================================
 
 SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
-    : QScrollArea(parent), _session(session), _view(view), _context(nullptr),
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _view(view), _context(nullptr),
       _widget(nullptr), _pattern_input(nullptr), _result_view(nullptr),
       _result_model(nullptr), _legend_x(nullptr), _legend_r(nullptr),
       _legend_0(nullptr), _legend_f(nullptr), _legend_1(nullptr),
@@ -173,6 +174,19 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
   _result_view->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
   _result_view->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
   _result_view->setShowGrid(false);
+
+  {
+    QScroller *scroller = QScroller::scroller(_result_view);
+    QScrollerProperties props = scroller->scrollerProperties();
+    props.setScrollMetric(QScrollerProperties::DragStartDistance, 0.02);
+    props.setScrollMetric(QScrollerProperties::OvershootDragResistanceFactor, 0.35);
+    props.setScrollMetric(QScrollerProperties::OvershootDragDistanceFactor, 0.0);
+    props.setScrollMetric(QScrollerProperties::OvershootScrollDistanceFactor, 0.0);
+    props.setScrollMetric(QScrollerProperties::DecelerationFactor, 0.5);
+    scroller->setScrollerProperties(props);
+    scroller->grabGesture(_result_view, QScroller::LeftMouseButtonGesture);
+  }
+
   _result_view->horizontalHeader()->setHighlightSections(false);
   _result_view->setFrameShape(QFrame::StyledPanel);
   _result_view->setMinimumWidth(0);

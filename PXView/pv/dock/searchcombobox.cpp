@@ -121,7 +121,7 @@ void SearchComboBox::ShowDlg(QWidget *editline)
         listLay->addWidget(bt);        
     } 
  
-    _scroll = new QScrollArea(panel);
+    _scroll = new pv::widgets::SmoothScrollArea(panel);
     _scroll->setWidget(listPanel);
     _scroll->setObjectName("dock_search_combo_scroll");
     _scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

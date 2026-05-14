@@ -60,7 +60,7 @@ namespace pv {
 namespace dock {
 
 DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
-    : QScrollArea(parent), _session(session), _context(nullptr) {
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _context(nullptr) {
   _scroll_panel = NULL;
   _scroll = this;
   _container_panel = NULL;

@@ -46,6 +46,7 @@
 #include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"
 #include "../interface/icontextaware.h"
+#include "../widgets/smoothscrollarea.h"
 
 struct DecoderInfoItem{
     void  *_data_handle; //srd_decoder* type
@@ -70,7 +71,7 @@ namespace dock {
 
 class RowHoverDelegate;
 
-class ProtocolDock : public QScrollArea, 
+class ProtocolDock : public pv::widgets::SmoothScrollArea, 
 public IProtocolItemLayerCallback, 
 public IKeywordActive,
 public ISearchItemClick,

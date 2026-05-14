@@ -55,7 +55,7 @@ namespace dock {
 using namespace pv::view;
 
 MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
-    QScrollArea(parent),
+    pv::widgets::SmoothScrollArea(parent),
     _session(session),
     _view(view),
     _context(nullptr)

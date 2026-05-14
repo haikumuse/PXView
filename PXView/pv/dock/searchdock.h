@@ -48,6 +48,7 @@
 #include "../ui/dscombobox.h"
 #include "../ui/uimanager.h"
 #include "../widgets/searchpatterninput.h"
+#include "../widgets/smoothscrollarea.h"
 
 namespace pv {
 
@@ -107,7 +108,9 @@ private:
   int _current_count;
 };
 
-class SearchDock : public QScrollArea, public IContextAware, public IUiWindow {
+class SearchDock : public pv::widgets::SmoothScrollArea,
+                   public IContextAware,
+                   public IUiWindow {
   Q_OBJECT
 
 public:

@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "../ui/dsspinbox.h"
+#include "../widgets/smoothscrollarea.h"
 
 #include "../deviceagent.h"
 #include "../dialogs/deviceoptions.h"
@@ -48,7 +49,7 @@ namespace pv {
 
 namespace dock {
 
-class DeviceOptionsDock : public QScrollArea,
+class DeviceOptionsDock : public pv::widgets::SmoothScrollArea,
                           public IUiWindow,
                           public IChannelCheck,
                           public IContextAware {

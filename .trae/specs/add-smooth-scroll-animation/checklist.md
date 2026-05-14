@@ -1,0 +1,21 @@
+- [x] SmoothScrollBar 类实现完成，支持 OutCubic 缓动动画
+- [x] SmoothScrollBar 目标值累加：动画运行时新事件累加到 _anim_target 而非重启
+- [x] SmoothScrollBar 惯性模拟：连续滚轮 count>3 步幅×2+时长600ms，count>6 步幅×4+时长1500ms
+- [x] SmoothScrollBar 拖拽滑块时即时响应，不触发动画
+- [x] SmoothScrollBar 程序化 setValue 时即时响应（通过 immediateSetValue）
+- [x] SmoothScrollArea 类实现完成，Dock 面板滚轮平滑滚动
+- [x] SmoothScrollArea viewportEvent 拦截内容区滚轮事件，动画生效
+- [x] SmoothScrollArea 目标值累加 + 惯性模拟（与 SmoothScrollBar 一致）
+- [x] View 水平滚动通过 QPropertyAnimation(animHOffset) 实现平滑滚动
+- [x] View 垂直滚动通过 QPropertyAnimation(animVOffset) 实现平滑滚动
+- [x] View 目标值累加：动画运行时 _h_anim_target/_v_anim_target 累加而非重启
+- [x] View 惯性模拟：count>3 步幅×2+时长800ms，count>6 步幅×5+时长2000ms
+- [x] View 节流渲染：_render_throttle_timer 33ms 间隔，viewport_update 降频到 ~30fps
+- [x] View 亚像素平滑：set_anim_h_offset 用 qreal，_offset = (int64_t)(val + 0.5) 四舍五入
+- [x] Viewport 水平滚轮调用 animateHScrollTo 实现平滑水平平移
+- [x] Viewport Shift+滚轮调用 animateVScrollTo 实现平滑垂直滚动
+- [x] View update_scroll() 程序化更新不触发动画
+- [x] View 垂直滚动条 margin-top: RulerHeight 样式保留
+- [x] 所有 6 个 Dock + SearchComboBox 基类替换为 SmoothScrollArea
+- [x] SearchDock/ProtocolDock QTableView 配置 QScroller 惯性滚动
+- [x] 项目编译通过，无编译错误

@@ -21,6 +21,7 @@
  */
 
 #include "protocoldock.h"
+#include <QScroller>
 #include "../data/decodermodel.h"
 #include "../data/decoderstack.h"
 #include "../dialogs/protocolexp.h"
@@ -69,7 +70,7 @@ namespace dock {
 
 ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
                            SigSession *session)
-    : QScrollArea(parent), _view(view), _context(nullptr) {
+    : pv::widgets::SmoothScrollArea(parent), _view(view), _context(nullptr) {
   _session = session;
   _cur_search_index = -1;
   _search_edited = false;
@@ -187,6 +188,19 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   _table_view->horizontalHeader()->setHighlightSections(false);
   _table_view->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
   _table_view->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+
+  {
+    QScroller *scroller = QScroller::scroller(_table_view);
+    QScrollerProperties props = scroller->scrollerProperties();
+    props.setScrollMetric(QScrollerProperties::DragStartDistance, 0.02);
+    props.setScrollMetric(QScrollerProperties::OvershootDragResistanceFactor, 0.35);
+    props.setScrollMetric(QScrollerProperties::OvershootDragDistanceFactor, 0.0);
+    props.setScrollMetric(QScrollerProperties::OvershootScrollDistanceFactor, 0.0);
+    props.setScrollMetric(QScrollerProperties::DecelerationFactor, 0.5);
+    scroller->setScrollerProperties(props);
+    scroller->grabGesture(_table_view, QScroller::LeftMouseButtonGesture);
+  }
+
   _table_view->verticalHeader()->setVisible(false);
   _table_view->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   _table_view->verticalHeader()->setDefaultSectionSize(36);
