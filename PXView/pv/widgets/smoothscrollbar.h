@@ -19,7 +19,6 @@
 
 #include <QScrollBar>
 #include <QPropertyAnimation>
-#include <QEasingCurve>
 #include <QTimer>
 
 namespace pv {
@@ -42,18 +41,19 @@ public:
 protected:
     void wheelEvent(QWheelEvent *event) override;
 
-private slots:
+private:
     void onAccelerationTimeout();
 
-private:
     QPropertyAnimation *_anim;
     int _anim_duration;
     bool _slider_dragging;
 
-    int _wheel_direction;
+    int _wheel_dir;
     int _wheel_count;
     qreal _anim_target;
-    QTimer _wheel_accel_timer;
+    QTimer _accel_timer;
+
+    enum { FIXUP_DURATION = 400, BASE_STEP = 72 };
 };
 
 } // namespace widgets

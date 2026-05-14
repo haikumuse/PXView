@@ -336,6 +336,7 @@ set(PXView_SOURCES
     PXView/pv/widgets/slidingdrawer.cpp
     PXView/pv/widgets/smoothscrollbar.cpp
     PXView/pv/widgets/smoothscrollarea.cpp
+    PXView/pv/widgets/smoothtablehelper.cpp
     PXView/pv/widgets/sidebar.cpp
     PXView/pv/dialogs/dsmessagebox.cpp
     PXView/pv/dialogs/shadow.cpp
@@ -473,6 +474,7 @@ set(PXView_HEADERS
     PXView/pv/widgets/slidingdrawer.h
     PXView/pv/widgets/smoothscrollbar.h
     PXView/pv/widgets/smoothscrollarea.h
+    PXView/pv/widgets/smoothtablehelper.h
     PXView/pv/widgets/sidebar.h
     PXView/pv/dialogs/dsmessagebox.h
     PXView/pv/dialogs/shadow.h

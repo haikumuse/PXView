@@ -30,13 +30,10 @@
 
 #include <QDateTime>
 #include <QPaintEvent>
-#include <QPropertyAnimation>
 #include <QScrollArea>
 #include <QSizeF>
 #include <QSplitter>
-#include <QTimer>
 
-#include "../widgets/smoothscrollbar.h"
 #include "../data/datasource.h"
 #include "../data/signaldata.h"
 #include "../dsvdef.h"
@@ -89,8 +86,6 @@ class View : public QScrollArea, public IUiWindow {
   Q_OBJECT
   Q_PROPERTY(QColor groupCardColor READ get_group_card_color WRITE
                  set_group_card_color)
-  Q_PROPERTY(qreal animHOffset READ get_anim_h_offset WRITE set_anim_h_offset)
-  Q_PROPERTY(qreal animVOffset READ get_anim_v_offset WRITE set_anim_v_offset)
 
 private:
   static const int LabelMarginWidth;
@@ -253,11 +248,6 @@ public:
   inline uint64_t get_search_pos() { return _search_pos; }
 
   void scroll_to_logic_last_data_time();
-
-  void stopScrollAnimations();
-
-  void animateHScrollTo(int64_t target, int duration = 300);
-  void animateVScrollTo(int target, int duration = 250);
 
   /*
    * horizental cursors
@@ -471,37 +461,6 @@ private:
   std::vector<SignalGroup> _signal_groups;
   QColor _group_card_color;
   bool _updating_scroll;
-
-  widgets::SmoothScrollBar *_smooth_h_bar;
-  widgets::SmoothScrollBar *_smooth_v_bar;
-
-  QPropertyAnimation *_h_scroll_anim;
-  QPropertyAnimation *_v_scroll_anim;
-  qreal _anim_h_offset;
-  qreal _anim_v_offset;
-  bool _animating_h_scroll;
-  bool _animating_v_scroll;
-  qreal _h_anim_target;
-  qreal _v_anim_target;
-
-  int _h_wheel_count;
-  int _h_wheel_direction;
-  QTimer _h_wheel_accel_timer;
-
-  int _v_wheel_count;
-  int _v_wheel_direction;
-  QTimer _v_wheel_accel_timer;
-
-  QTimer _render_throttle_timer;
-  bool _render_pending;
-
-  qreal get_anim_h_offset() const { return _anim_h_offset; }
-  void set_anim_h_offset(qreal val);
-  qreal get_anim_v_offset() const { return _anim_v_offset; }
-  void set_anim_v_offset(qreal val);
-
-  void restartHAnimation(qreal target, int duration);
-  void restartVAnimation(qreal target, int duration);
 
   // trigger position fix
   double _trig_hoff;

@@ -115,12 +115,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
     : QScrollArea(parent), _sampling_bar(sampling_bar), _scale(10),
       _preScale(1e-6), _maxscale(1e9), _minscale(1e-15), _offset(0),
       _preOffset(0), _vOffset(0), _signalHeightScale(MaxHeightUnit),
-      _updating_scroll(false), _smooth_h_bar(nullptr), _smooth_v_bar(nullptr),
-      _h_scroll_anim(nullptr), _v_scroll_anim(nullptr), _anim_h_offset(0),
-      _anim_v_offset(0), _animating_h_scroll(false), _animating_v_scroll(false),
-      _h_anim_target(0), _v_anim_target(0), _h_wheel_count(0),
-      _h_wheel_direction(0), _v_wheel_count(0), _v_wheel_direction(0),
-      _render_pending(false), _trig_hoff(0), _show_cursors(false),
+      _updating_scroll(false), _trig_hoff(0), _show_cursors(false),
       _search_hit(false), _show_xcursors(false), _hover_point(-1, -1),
       _dso_auto(true), _show_lissajous(false), _back_ready(false) {
   _trig_cursor = NULL;
@@ -135,48 +130,6 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
   setStyleSheet(
       QString("QScrollBar:vertical { margin-top: %1px; }").arg(RulerHeight));
-
-  _smooth_h_bar = new widgets::SmoothScrollBar(Qt::Horizontal, this);
-  _smooth_v_bar = new widgets::SmoothScrollBar(Qt::Vertical, this);
-  setHorizontalScrollBar(_smooth_h_bar);
-  setVerticalScrollBar(_smooth_v_bar);
-
-  _h_scroll_anim = new QPropertyAnimation(this, "animHOffset");
-  _h_scroll_anim->setEasingCurve(QEasingCurve::OutCubic);
-  _h_scroll_anim->setDuration(300);
-  connect(_h_scroll_anim, &QPropertyAnimation::finished, this,
-          [this]() { _animating_h_scroll = false; });
-
-  _v_scroll_anim = new QPropertyAnimation(this, "animVOffset");
-  _v_scroll_anim->setEasingCurve(QEasingCurve::OutCubic);
-  _v_scroll_anim->setDuration(250);
-  connect(_v_scroll_anim, &QPropertyAnimation::finished, this,
-          [this]() { _animating_v_scroll = false; });
-
-  _h_wheel_accel_timer.setInterval(100);
-  _h_wheel_accel_timer.setSingleShot(true);
-  connect(&_h_wheel_accel_timer, &QTimer::timeout, this, [this]() {
-    _h_wheel_count = 0;
-    _h_wheel_direction = 0;
-  });
-
-  _v_wheel_accel_timer.setInterval(100);
-  _v_wheel_accel_timer.setSingleShot(true);
-  connect(&_v_wheel_accel_timer, &QTimer::timeout, this, [this]() {
-    _v_wheel_count = 0;
-    _v_wheel_direction = 0;
-  });
-
-  _render_throttle_timer.setInterval(16);
-  _render_throttle_timer.setSingleShot(true);
-  connect(&_render_throttle_timer, &QTimer::timeout, this, [this]() {
-    if (_render_pending) {
-      _render_pending = false;
-      _header->update();
-      _ruler->update();
-      viewport_update();
-    }
-  });
 
   connect(horizontalScrollBar(), SIGNAL(valueChanged(int)), this,
           SLOT(h_scroll_value_changed(int)));
@@ -701,8 +654,6 @@ void View::timebase_changed() {
 }
 
 void View::set_scale_offset(double scale, int64_t offset) {
-  stopScrollAnimations();
-
   _preScale = _scale;
   _preOffset = _offset;
 
@@ -956,10 +907,11 @@ void View::update_scroll() {
 
   if (length < MaxScrollValue) {
     horizontalScrollBar()->setRange(0, length);
-    _smooth_h_bar->immediateSetValue(offset);
+    horizontalScrollBar()->setSliderPosition(offset);
   } else {
     horizontalScrollBar()->setRange(0, MaxScrollValue);
-    _smooth_h_bar->immediateSetValue(_offset * 1.0 / length * MaxScrollValue);
+    horizontalScrollBar()->setSliderPosition(_offset * 1.0 / length *
+                                             MaxScrollValue);
   }
 
   _updating_scroll = false;
@@ -975,7 +927,7 @@ void View::update_scroll() {
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   verticalScrollBar()->setPageStep(areaSize.height());
   verticalScrollBar()->setRange(0, vRange);
-  _smooth_v_bar->immediateSetValue(_vOffset);
+  verticalScrollBar()->setSliderPosition(_vOffset);
 }
 
 void View::update_scale_offset() {
@@ -1327,41 +1279,30 @@ void View::h_scroll_value_changed(int value) {
   if (_updating_scroll)
     return;
 
-  if (_animating_h_scroll)
-    return;
+  _preOffset = _offset;
 
-  int64_t target_offset;
   const int range = horizontalScrollBar()->maximum();
   if (range < MaxScrollValue)
-    target_offset = value;
+    _offset = value;
   else {
     int64_t length = 0;
     int64_t offset = 0;
     get_scroll_layout(length, offset);
-    target_offset = floor(value * 1.0 / MaxScrollValue * length);
+    _offset = floor(value * 1.0 / MaxScrollValue * length);
   }
 
-  target_offset = max(min(target_offset, get_max_offset()), get_min_offset());
+  _offset = max(min(_offset, get_max_offset()), get_min_offset());
 
-  if (target_offset != _offset) {
-    bool is_slider_down = horizontalScrollBar()->isSliderDown();
-    int duration = is_slider_down ? 150 : 300;
-    animateHScrollTo(target_offset, duration);
+  if (_offset != _preOffset) {
+    _ruler->update();
+    viewport_update();
   }
 }
 
 void View::v_scroll_value_changed(int value) {
-  if (_animating_v_scroll)
-    return;
-
-  if (value != _vOffset) {
-    bool is_slider_down = verticalScrollBar()->isSliderDown();
-    int duration = is_slider_down ? 100 : 250;
-    animateVScrollTo(value, duration);
-  } else {
-    _header->update();
-    viewport_update();
-  }
+  _vOffset = value;
+  _header->update();
+  viewport_update();
 }
 
 void View::data_updated() {
@@ -1646,167 +1587,6 @@ int64_t View::get_logic_lst_data_offset() {
 
 void View::scroll_to_logic_last_data_time() {
   set_scale_offset(scale(), get_logic_lst_data_offset() + 10);
-}
-
-void View::stopScrollAnimations() {
-  if (_h_scroll_anim &&
-      _h_scroll_anim->state() == QAbstractAnimation::Running) {
-    _h_scroll_anim->stop();
-    _animating_h_scroll = false;
-  }
-  if (_v_scroll_anim &&
-      _v_scroll_anim->state() == QAbstractAnimation::Running) {
-    _v_scroll_anim->stop();
-    _animating_v_scroll = false;
-  }
-  _h_wheel_accel_timer.stop();
-  _v_wheel_accel_timer.stop();
-  _h_wheel_count = 0;
-  _v_wheel_count = 0;
-  if (_smooth_h_bar)
-    _smooth_h_bar->immediateSetValue(_smooth_h_bar->value());
-  if (_smooth_v_bar)
-    _smooth_v_bar->immediateSetValue(_smooth_v_bar->value());
-}
-
-void View::set_anim_h_offset(qreal val) {
-  _anim_h_offset = val;
-  _offset = (int64_t)(val + 0.5);
-
-  if (_smooth_h_bar) {
-    int64_t length = 0;
-    int64_t offset = 0;
-    get_scroll_layout(length, offset);
-    length = max(length - get_view_width(), (int64_t)0);
-    int bar_val;
-    if (length < MaxScrollValue)
-      bar_val = (int)_offset;
-    else
-      bar_val = (int)(_offset * 1.0 / length * MaxScrollValue);
-    _updating_scroll = true;
-    _smooth_h_bar->immediateSetValue(bar_val);
-    _updating_scroll = false;
-  }
-
-  if (!_render_throttle_timer.isActive()) {
-    _ruler->update();
-    viewport_update();
-    _render_throttle_timer.start();
-  } else {
-    _render_pending = true;
-  }
-}
-
-void View::set_anim_v_offset(qreal val) {
-  _anim_v_offset = val;
-  _vOffset = (int)(val + 0.5);
-
-  if (_smooth_v_bar) {
-    _updating_scroll = true;
-    _smooth_v_bar->immediateSetValue(_vOffset);
-    _updating_scroll = false;
-  }
-
-  if (!_render_throttle_timer.isActive()) {
-    _header->update();
-    viewport_update();
-    _render_throttle_timer.start();
-  } else {
-    _render_pending = true;
-  }
-}
-
-void View::restartHAnimation(qreal target, int duration) {
-  _h_anim_target = target;
-  _animating_h_scroll = true;
-  _h_scroll_anim->stop();
-  _h_scroll_anim->setDuration(duration);
-  _h_scroll_anim->setStartValue(_anim_h_offset);
-  _h_scroll_anim->setEndValue(target);
-  _h_scroll_anim->start();
-}
-
-void View::restartVAnimation(qreal target, int duration) {
-  _v_anim_target = target;
-  _animating_v_scroll = true;
-  _v_scroll_anim->stop();
-  _v_scroll_anim->setDuration(duration);
-  _v_scroll_anim->setStartValue(_anim_v_offset);
-  _v_scroll_anim->setEndValue(target);
-  _v_scroll_anim->start();
-}
-
-void View::animateHScrollTo(int64_t target, int duration) {
-  target = max(min(target, get_max_offset()), get_min_offset());
-  if (target == _offset && !_animating_h_scroll)
-    return;
-
-  int direction = (target > _offset) ? 1 : -1;
-
-  if (_h_wheel_accel_timer.isActive() && _h_wheel_direction == direction) {
-    _h_wheel_count++;
-  } else {
-    _h_wheel_count = 1;
-    _h_wheel_direction = direction;
-  }
-
-  if (_h_wheel_count > 6) {
-    int64_t extra = (target - _offset) * 5;
-    target = max(min(_offset + extra, get_max_offset()), get_min_offset());
-    duration = 5000;
-  } else if (_h_wheel_count > 3) {
-    int64_t extra = (target - _offset) * 2;
-    target = max(min(_offset + extra, get_max_offset()), get_min_offset());
-    duration = 800;
-  }
-
-  if (_animating_h_scroll) {
-    qreal accumulated = _h_anim_target + (target - _offset);
-    accumulated =
-        max(min(accumulated, (qreal)get_max_offset()), (qreal)get_min_offset());
-    restartHAnimation(accumulated, duration);
-  } else {
-    restartHAnimation((qreal)target, duration);
-  }
-
-  _h_wheel_accel_timer.start();
-}
-
-void View::animateVScrollTo(int target, int duration) {
-  QScrollBar *vbar = verticalScrollBar();
-  target = qBound(vbar->minimum(), target, vbar->maximum());
-  if (target == _vOffset && !_animating_v_scroll)
-    return;
-
-  int direction = (target > _vOffset) ? 1 : -1;
-
-  if (_v_wheel_accel_timer.isActive() && _v_wheel_direction == direction) {
-    _v_wheel_count++;
-  } else {
-    _v_wheel_count = 1;
-    _v_wheel_direction = direction;
-  }
-
-  if (_v_wheel_count > 6) {
-    int extra = (target - _vOffset) * 5;
-    target = qBound(vbar->minimum(), _vOffset + extra, vbar->maximum());
-    duration = 5000;
-  } else if (_v_wheel_count > 3) {
-    int extra = (target - _vOffset) * 2;
-    target = qBound(vbar->minimum(), _vOffset + extra, vbar->maximum());
-    duration = 600;
-  }
-
-  if (_animating_v_scroll) {
-    qreal accumulated = _v_anim_target + (target - _vOffset);
-    accumulated =
-        qBound((qreal)vbar->minimum(), accumulated, (qreal)vbar->maximum());
-    restartVAnimation(accumulated, duration);
-  } else {
-    restartVAnimation((qreal)target, duration);
-  }
-
-  _v_wheel_accel_timer.start();
 }
 
 // -- calibration dialog

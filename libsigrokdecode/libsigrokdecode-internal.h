@@ -89,6 +89,7 @@ SRD_PRIV PyObject *srd_logic_type_new(void);
 
 /* module_sigrokdecode.c */
 PyMODINIT_FUNC PyInit_sigrokdecode(void);
+extern SRD_PRIV PyObject *srd_ChunkDone_exc;
 
 /* util.c */
 SRD_PRIV PyObject *py_import_by_name(const char *name);

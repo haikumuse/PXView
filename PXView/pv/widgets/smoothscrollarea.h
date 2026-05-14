@@ -32,23 +32,27 @@ public:
     explicit SmoothScrollArea(QWidget *parent = nullptr);
     ~SmoothScrollArea();
 
-    void setAnimationDuration(int ms);
-    int animationDuration() const;
-
 protected:
     void wheelEvent(QWheelEvent *event) override;
-    bool viewportEvent(QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
-    void animateScrollTo(int targetValue);
+    void handleVWheel(int delta);
+    void handleHWheel(int delta);
 
     QPropertyAnimation *_v_anim;
     QPropertyAnimation *_h_anim;
-    int _anim_duration;
-    qreal _v_anim_target;
-    int _wheel_count;
-    int _wheel_direction;
-    QTimer _wheel_accel_timer;
+    qreal _v_target;
+    qreal _h_target;
+
+    QTimer _v_accel_timer;
+    QTimer _h_accel_timer;
+    int _v_wheel_count;
+    int _h_wheel_count;
+    int _v_wheel_dir;
+    int _h_wheel_dir;
+
+    enum { FIXUP_DURATION = 400, BASE_STEP = 72 };
 };
 
 } // namespace widgets

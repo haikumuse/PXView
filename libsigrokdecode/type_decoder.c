@@ -396,7 +396,6 @@ static inline struct srd_decoder_inst *srd_inst_find_by_obj(
 	struct srd_session *sess;
 	GSList *l;
 
-	/* Performance shortcut: Handle the most common case first. */
 	sess = sessions->data;
 	di = sess->di_list->data;
 	if (di->py_inst == obj)
@@ -542,8 +541,11 @@ static PyObject *Decoder_put(PyObject *self, PyObject *args)
             if (!(py_res = PyObject_CallMethod(
                 next_di->py_inst, "decode", "KKO", start_sample,
                 end_sample, py_data))) {
-                srd_exception_catch(NULL, "Calling %s decode() failed",
-                            next_di->inst_id);
+                if (PyErr_ExceptionMatches(srd_ChunkDone_exc))
+                    PyErr_Clear();
+                else
+                    srd_exception_catch(NULL, "Calling %s decode() failed",
+                                next_di->inst_id);
             }
 
             Py_XDECREF(py_res);
@@ -1057,13 +1059,6 @@ static PyObject *Decoder_wait(PyObject *self, PyObject *args)
     }
 
     if (ret == 9999) {
-        /*
-         * Empty condition list, automatic match. Arrange for the
-         * execution of regular match handling code paths such that
-         * the next available sample is returned to the caller.
-         * Make sure to skip one sample when "anywhere within the
-         * stream", yet make sure to not skip sample number 0.
-         */
         if (!di->first_pos && di->abs_cur_samplenum)
             skip_count = 1;
         else if (!di->condition_list)
@@ -1078,77 +1073,42 @@ static PyObject *Decoder_wait(PyObject *self, PyObject *args)
         }
     }
 
+    found_match = FALSE;
+    process_samples_until_condition_match(di, &found_match);
 
-    while (1) {
+    if (found_match) {
+        PyObject *py_cur_samplenum = PyLong_FromUnsignedLongLong(di->abs_cur_samplenum);
+        PyObject_SetAttrString(di->py_inst, "samplenum", py_cur_samplenum);
+        Py_DECREF(py_cur_samplenum);
 
-        Py_BEGIN_ALLOW_THREADS
+        PyObject *py_matched = PyLong_FromUnsignedLongLong(di->match_array);
+        PyObject_SetAttrString(di->py_inst, "matched", py_matched);
+        Py_DECREF(py_matched);
 
-        /* Wait for new samples to process, or termination request. */
-        g_mutex_lock(&di->data_mutex);
-        while (!di->got_new_samples && !di->want_wait_terminate)
-            g_cond_wait(&di->got_new_samples_cond, &di->data_mutex);
+        get_current_pinvalues(di);
 
- 
-        /*
-         * Check whether any of the current condition(s) match.
-         * Arrange for termination requests to take a code path which
-         * won't find new samples to process, pretends to have processed
-         * previously stored samples, and returns to the main thread,
-         * while the termination request still gets signalled.
-         */
-        found_match = FALSE;
+        PyGILState_Release(gstate);
 
-        /* Ignore return value for now, should never be negative. */
-        process_samples_until_condition_match(di, &found_match);
+        Py_INCREF(di->py_pinvalues);
+        return (PyObject *)di->py_pinvalues;
+    }
 
-        Py_END_ALLOW_THREADS
+    di->got_new_samples = FALSE;
+    di->handled_all_samples = TRUE;
+    di->abs_start_samplenum = 0;
+    di->abs_end_samplenum = 0;
+    di->inbuf = NULL;
+    di->inbuflen = 0;
 
-        /* If there's a match, set self.samplenum etc. and return. */
-        if (found_match) {
-            /* Set self.samplenum to the (absolute) sample number that matched. */
-            PyObject *py_cur_samplenum = PyLong_FromUnsignedLongLong(di->abs_cur_samplenum);
-            PyObject_SetAttrString(di->py_inst, "samplenum", py_cur_samplenum);
-            Py_DECREF(py_cur_samplenum);
+    if (di->want_wait_terminate) {
+        srd_dbg("%s: %s: Will return from wait().",
+            di->inst_id, __func__);
+        goto err;
+    }
 
-            /* Set self.matched to math_array. */
-            PyObject *py_matched = PyLong_FromUnsignedLongLong(di->match_array);
-            PyObject_SetAttrString(di->py_inst, "matched", py_matched);
-            Py_DECREF(py_matched);
-
-            get_current_pinvalues(di);
-
-            g_mutex_unlock(&di->data_mutex);
-
-            PyGILState_Release(gstate);
-
-            Py_INCREF(di->py_pinvalues);
-            return (PyObject *)di->py_pinvalues;
-        } 
- 
-		/* No match, reset state for the next chunk. */
-		di->got_new_samples = FALSE;
-		di->handled_all_samples = TRUE;
-		di->abs_start_samplenum = 0;
-		di->abs_end_samplenum = 0;
-		di->inbuf = NULL;
-		di->inbuflen = 0;
-
-		/* Signal the main thread that we handled all samples. */
-		g_cond_signal(&di->handled_all_samples_cond);
-
-		/*
-		 * When termination of wait() and decode() was requested,
-		 * then exit the loop after releasing the mutex.
-		 */
-		if (di->want_wait_terminate) {
-			srd_dbg("%s: %s: Will return from wait().",
-				di->inst_id, __func__);
-			g_mutex_unlock(&di->data_mutex);
-			goto err;
-		}
-
-		g_mutex_unlock(&di->data_mutex);
-	}
+    PyErr_SetString(srd_ChunkDone_exc, "current chunk processed");
+    PyGILState_Release(gstate);
+    return NULL;
 
     PyGILState_Release(gstate);
 

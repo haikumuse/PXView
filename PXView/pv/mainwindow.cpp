@@ -23,6 +23,7 @@
 
 #include "widgets/searchpatterninput.h"
 #include "widgets/sidebar.h"
+#include "widgets/smoothscrollarea.h"
 #include <QAbstractButton>
 #include <QAbstractSpinBox>
 #include <QAction>
@@ -437,9 +438,8 @@ void MainWindow::setup_ui() {
   dock_lay->addWidget(_device_options_widget);
 
   // Wrap the entire dock_container (sampling bar + device options) in a
-  // ScrollArea. This is the ONLY page that needs an external scroll wrapper to
-  // prevent "crushing".
-  QScrollArea *dock_scroll = new QScrollArea();
+  // SmoothScrollArea. This provides smooth scrolling animation.
+  pv::widgets::SmoothScrollArea *dock_scroll = new pv::widgets::SmoothScrollArea();
   dock_scroll->setWidgetResizable(true);
   dock_scroll->setFrameShape(QFrame::NoFrame);
   dock_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

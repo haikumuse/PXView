@@ -28,14 +28,12 @@
 #include <QGridLayout>
 #include <QJsonObject>
 #include <QLabel>
-#include <QScrollArea>
 #include <QShowEvent>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <vector>
 
 #include "../ui/dsspinbox.h"
-#include "../widgets/smoothscrollarea.h"
 
 #include "../deviceagent.h"
 #include "../dialogs/deviceoptions.h"
@@ -49,7 +47,7 @@ namespace pv {
 
 namespace dock {
 
-class DeviceOptionsDock : public pv::widgets::SmoothScrollArea,
+class DeviceOptionsDock : public QWidget,
                           public IUiWindow,
                           public IChannelCheck,
                           public IContextAware {
@@ -119,7 +117,6 @@ private:
   QTimer _mode_check_timer;
   int _opt_mode;
   QWidget *_scroll_panel;
-  QScrollArea *_scroll;
   QWidget *_container_panel;
   QVBoxLayout *_container_lay;
   QWidget *_dynamic_panel;
