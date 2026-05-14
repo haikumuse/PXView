@@ -23,8 +23,7 @@
 
 #include <assert.h>
 
-#include <QDoubleSpinBox>
-
+#include "../ui/dsspinbox.h"
 #include "double.h"
 
 using namespace std;
@@ -58,7 +57,7 @@ QWidget* Double::get_widget(QWidget *parent, bool auto_commit)
 	if (_spin_box)
 		return _spin_box;
 
-	_spin_box = new QDoubleSpinBox(parent);
+	_spin_box = new pv::ui::DsDoubleSpinBox(parent);
 	_spin_box->setDecimals(_decimals);
 	_spin_box->setSuffix(_suffix);
 	if (_range)

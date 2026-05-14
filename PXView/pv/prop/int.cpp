@@ -25,8 +25,7 @@
 #include <assert.h>
 #include <math.h>
 
-#include <QSpinBox>
-
+#include "../ui/dsspinbox.h"
 #include "int.h"
 
 using boost::optional;
@@ -83,7 +82,7 @@ QWidget* Int::get_widget(QWidget *parent, bool auto_commit)
     if (!_value)
         return NULL;
 
-    _spin_box = new QSpinBox(parent);
+    _spin_box = new pv::ui::DsSpinBox(parent);
     _spin_box->setSuffix(_suffix);
 
     const GVariantType *const type = g_variant_get_type(_value);

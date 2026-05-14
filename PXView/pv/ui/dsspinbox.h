@@ -3,7 +3,7 @@
  * PXView is based on DSView.
  * PXView is based on PulseView.
  *
- * Copyright (C) 2021 DreamSourceLab <support@dreamsourcelab.com>
+ * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,39 +20,48 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSCOMBOBOX_H
-#define DSCOMBOBOX_H
+#ifndef DSSPINBOX_H
+#define DSSPINBOX_H
 
-#include <QComboBox>
-#include <QKeyEvent>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
 
-class QWheelEvent;
+namespace pv {
+namespace ui {
 
-class DsComboBox : public QComboBox
+/**
+ * @brief 自定义 SpinBox，拦截滚轮事件防止滚动页面时意外改变数值
+ * 
+ * 当鼠标悬停在输入框上并滚动滚轮时：
+ * - 滚轮事件被拦截，不会调整数值
+ * - 事件会向上传播到父级的滚动容器
+ */
+class DsSpinBox : public QSpinBox
 {
-public:
-    explicit DsComboBox(QWidget *parent = nullptr);
-
-    ~DsComboBox();
+    Q_OBJECT
 
 public:
-    void showPopup() override;
-
-    void hidePopup() override;
-
-    inline bool  IsPopup(){
-        return _bPopup;
-    }
+    explicit DsSpinBox(QWidget *parent = nullptr);
 
 protected:
     void wheelEvent(QWheelEvent *event) override;
-
-private:
-    void measureSize();
-
-private:
-    bool    _bPopup;
 };
 
+/**
+ * @brief 自定义 DoubleSpinBox，拦截滚轮事件防止滚动页面时意外改变数值
+ */
+class DsDoubleSpinBox : public QDoubleSpinBox
+{
+    Q_OBJECT
 
-#endif // DSCOMBOBOX_H
+public:
+    explicit DsDoubleSpinBox(QWidget *parent = nullptr);
+
+protected:
+    void wheelEvent(QWheelEvent *event) override;
+};
+
+} // namespace ui
+} // namespace pv
+
+#endif // DSSPINBOX_H

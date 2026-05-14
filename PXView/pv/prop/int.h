@@ -30,9 +30,11 @@
 
 #include "property.h"
 
-class QSpinBox;
-
 namespace pv {
+namespace ui {
+class DsSpinBox;
+}
+
 namespace prop {
 
 class Int : public Property
@@ -58,7 +60,7 @@ private:
 	const boost::optional< std::pair<int64_t, int64_t> > _range;
 
     GVariant *_value;
-	QSpinBox *_spin_box;
+	pv::ui::DsSpinBox *_spin_box;
 };
 
 } // prop

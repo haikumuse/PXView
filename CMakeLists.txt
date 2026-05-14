@@ -368,6 +368,7 @@ set(PXView_SOURCES
     PXView/pv/dock/protocolitemlayer.cpp
     PXView/pv/ui/msgbox.cpp
     PXView/pv/ui/dscombobox.cpp
+    PXView/pv/ui/dsspinbox.cpp
     PXView/pv/dsvdef.cpp
     PXView/pv/dialogs/applicationpardlg.cpp
     PXView/pv/dock/keywordlineedit.cpp
@@ -503,6 +504,7 @@ set(PXView_HEADERS
     PXView/pv/dock/protocolitemlayer.h
     PXView/pv/ui/msgbox.h
     PXView/pv/ui/dscombobox.h
+    PXView/pv/ui/dsspinbox.h
     PXView/pv/dsvdef.h
     PXView/pv/dialogs/applicationpardlg.h
     PXView/pv/dock/keywordlineedit.h
