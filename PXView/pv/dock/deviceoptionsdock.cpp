@@ -35,7 +35,6 @@
 #include <QRadioButton>
 #include <QScreen>
 #include <QScrollArea>
-#include <QSpinBox>
 #include <QTabWidget>
 #include <assert.h>
 
@@ -49,6 +48,7 @@
 #include "../sigsession.h"
 #include "../tabcontext.h"
 #include "../ui/dockfonts.h"
+#include "../ui/dsspinbox.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
@@ -428,7 +428,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   enable_all_probes->setMinimumWidth(bt_width);
   disable_all_probes->setMinimumWidth(bt_width);
 
-  ui::set_dock_form_font(this);
+  ::ui::set_dock_form_font(this);
 
   contentHeight += enable_all_probes->sizeHint().height();
   contentHeight += channel_line_height * row2 + 50;
@@ -776,7 +776,7 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
 
   layout.addWidget(tabWidget, 0, 0, 1, 1);
 
-  ui::set_dock_form_font(this);
+  ::ui::set_dock_form_font(this);
   _groupHeight2 = tabWidget->sizeHint().height() + 50;
 
   connect(tabWidget, SIGNAL(currentChanged(int)), this,
@@ -1411,13 +1411,14 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     le_label->setObjectName("dock_label");
     le_label->setFont(labelFont);
 
-    QSpinBox *spin = new QSpinBox(ch_container);
+    pv::ui::DsSpinBox *spin = new pv::ui::DsSpinBox(ch_container);
     spin->setRange(1, 999);
     spin->setValue(1);
     spin->setObjectName("dock_content");
     spin->setFont(contentFont);
     spin->setEnabled(false);
-    spin->setFixedWidth(65);
+    spin->setMinimumWidth(65);
+    spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     _glitch_spinbox_list.push_back(spin);
 
     QLabel *unit_label = new QLabel("采样周期", ch_container);
@@ -1428,7 +1429,6 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     ch_layout->addWidget(le_label);
     ch_layout->addWidget(spin);
     ch_layout->addWidget(unit_label);
-    ch_layout->addStretch();
 
     ch_layout_main->addLayout(ch_layout);
 
