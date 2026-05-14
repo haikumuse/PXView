@@ -14,19 +14,28 @@
  * GNU General Public License for more details.
  */
 
-#include "smoothscrollarea.h"
+#include "smoothtablehelper.h"
 
+#include <QHeaderView>
 #include <QScrollBar>
+#include <QTableView>
 #include <QWheelEvent>
 
 namespace pv {
 namespace widgets {
 
-SmoothScrollArea::SmoothScrollArea(QWidget *parent)
-    : QScrollArea(parent), _v_target(0), _h_target(0), _v_wheel_count(0),
-      _h_wheel_count(0), _v_wheel_dir(0), _h_wheel_dir(0) {
-  _v_anim = new QPropertyAnimation(verticalScrollBar(), "value", this);
-  _h_anim = new QPropertyAnimation(horizontalScrollBar(), "value", this);
+SmoothTableHelper::SmoothTableHelper(QTableView *tableView, QObject *parent)
+    : QObject(parent), _table(tableView), _v_target(0), _h_target(0),
+      _v_wheel_count(0), _h_wheel_count(0), _v_wheel_dir(0), _h_wheel_dir(0),
+      _v_fixing_up(false) {
+  _v_anim = new QPropertyAnimation(_table->verticalScrollBar(), "value", this);
+  _h_anim =
+      new QPropertyAnimation(_table->horizontalScrollBar(), "value", this);
+
+  connect(_v_anim, &QPropertyAnimation::finished, this,
+          &SmoothTableHelper::onVAnimFinished);
+  connect(_h_anim, &QPropertyAnimation::finished, this,
+          &SmoothTableHelper::onHAnimFinished);
 
   _v_accel_timer.setInterval(100);
   _v_accel_timer.setSingleShot(true);
@@ -42,37 +51,36 @@ SmoothScrollArea::SmoothScrollArea(QWidget *parent)
     _h_wheel_dir = 0;
   });
 
-  connect(verticalScrollBar(), &QAbstractSlider::sliderPressed, this,
+  connect(_table->verticalScrollBar(), &QAbstractSlider::sliderPressed, this,
           [this]() { _v_anim->stop(); });
-  connect(horizontalScrollBar(), &QAbstractSlider::sliderPressed, this,
+  connect(_table->horizontalScrollBar(), &QAbstractSlider::sliderPressed, this,
           [this]() { _h_anim->stop(); });
 
-  viewport()->installEventFilter(this);
+  _table->viewport()->installEventFilter(this);
 }
 
-SmoothScrollArea::~SmoothScrollArea() {}
+SmoothTableHelper::~SmoothTableHelper() {}
 
-bool SmoothScrollArea::eventFilter(QObject *watched, QEvent *event) {
-  if (watched == viewport() && event->type() == QEvent::Wheel) {
-    wheelEvent(static_cast<QWheelEvent *>(event));
+bool SmoothTableHelper::eventFilter(QObject *watched, QEvent *event) {
+  if (event->type() == QEvent::Wheel) {
+    QWheelEvent *wheelEvent = static_cast<QWheelEvent *>(event);
+    int deltaY = wheelEvent->angleDelta().y();
+    int deltaX = wheelEvent->angleDelta().x();
+
+    if (deltaY != 0)
+      handleVWheel(deltaY);
+    if (deltaX != 0)
+      handleHWheel(deltaX);
+
+    wheelEvent->accept();
     return true;
   }
-  return QScrollArea::eventFilter(watched, event);
+  return QObject::eventFilter(watched, event);
 }
 
-void SmoothScrollArea::wheelEvent(QWheelEvent *event) {
-  int deltaY = event->angleDelta().y();
-  int deltaX = event->angleDelta().x();
+void SmoothTableHelper::handleVWheel(int delta) {
+  _v_fixing_up = false;
 
-  if (deltaY != 0)
-    handleVWheel(deltaY);
-  if (deltaX != 0)
-    handleHWheel(deltaX);
-
-  event->accept();
-}
-
-void SmoothScrollArea::handleVWheel(int delta) {
   int direction = (delta > 0) ? -1 : 1;
 
   if (_v_accel_timer.isActive() && _v_wheel_dir == direction) {
@@ -82,21 +90,22 @@ void SmoothScrollArea::handleVWheel(int delta) {
     _v_wheel_dir = direction;
   }
 
-  int step = BASE_STEP;
-  int duration = 3 * FIXUP_DURATION / 4;
+  int rowHeight = _table->verticalHeader()->defaultSectionSize();
+  int step = qMax<int>(BASE_V_STEP, rowHeight * 3);
+  int duration = 300;
   QEasingCurve easing(QEasingCurve::OutExpo);
 
   if (_v_wheel_count > 6) {
-    step = BASE_STEP * 5;
+    step = qMax<int>(BASE_V_STEP * 5, rowHeight * 15);
     duration = 5000;
     easing.setType(QEasingCurve::OutCubic);
   } else if (_v_wheel_count > 3) {
-    step = BASE_STEP * 2;
+    step = qMax<int>(BASE_V_STEP * 2, rowHeight * 6);
     duration = 800;
     easing.setType(QEasingCurve::OutCubic);
   }
 
-  QScrollBar *vbar = verticalScrollBar();
+  QScrollBar *vbar = _table->verticalScrollBar();
   int vmin = vbar->minimum();
   int vmax = vbar->maximum();
 
@@ -109,6 +118,10 @@ void SmoothScrollArea::handleVWheel(int delta) {
     _v_target += direction * step;
   } else {
     _v_target = curVal + direction * step;
+  }
+
+  if (rowHeight > 0) {
+    _v_target = qRound(_v_target / (qreal)rowHeight) * rowHeight;
   }
 
   _v_target = qBound((qreal)vmin, _v_target, (qreal)vmax);
@@ -130,7 +143,7 @@ void SmoothScrollArea::handleVWheel(int delta) {
   _v_accel_timer.start();
 }
 
-void SmoothScrollArea::handleHWheel(int delta) {
+void SmoothTableHelper::handleHWheel(int delta) {
   int direction = (delta > 0) ? -1 : 1;
 
   if (_h_accel_timer.isActive() && _h_wheel_dir == direction) {
@@ -140,21 +153,21 @@ void SmoothScrollArea::handleHWheel(int delta) {
     _h_wheel_dir = direction;
   }
 
-  int step = BASE_STEP;
-  int duration = 3 * FIXUP_DURATION / 4;
+  int step = BASE_H_STEP;
+  int duration = 300;
   QEasingCurve easing(QEasingCurve::OutExpo);
 
   if (_h_wheel_count > 6) {
-    step = BASE_STEP * 5;
+    step = BASE_H_STEP * 5;
     duration = 5000;
     easing.setType(QEasingCurve::OutCubic);
   } else if (_h_wheel_count > 3) {
-    step = BASE_STEP * 2;
+    step = BASE_H_STEP * 2;
     duration = 800;
     easing.setType(QEasingCurve::OutCubic);
   }
 
-  QScrollBar *hbar = horizontalScrollBar();
+  QScrollBar *hbar = _table->horizontalScrollBar();
   int hmin = hbar->minimum();
   int hmax = hbar->maximum();
 
@@ -187,6 +200,36 @@ void SmoothScrollArea::handleHWheel(int delta) {
 
   _h_accel_timer.start();
 }
+
+void SmoothTableHelper::onVAnimFinished() {
+  if (_v_fixing_up) {
+    _v_fixing_up = false;
+    return;
+  }
+
+  QScrollBar *vbar = _table->verticalScrollBar();
+  int rowHeight = _table->verticalHeader()->defaultSectionSize();
+  if (rowHeight <= 0)
+    return;
+
+  int currentValue = vbar->value();
+  int nearestRow = qRound((qreal)currentValue / rowHeight);
+  int snapTarget = nearestRow * rowHeight;
+
+  if (snapTarget != currentValue && snapTarget >= vbar->minimum() &&
+      snapTarget <= vbar->maximum()) {
+    _v_fixing_up = true;
+    int scrollPixel = snapTarget - currentValue;
+    _v_anim->stop();
+    _v_anim->setStartValue(currentValue);
+    _v_anim->setEndValue(currentValue + scrollPixel);
+    _v_anim->setDuration(150);
+    _v_anim->setEasingCurve(QEasingCurve(QEasingCurve::OutExpo));
+    _v_anim->start();
+  }
+}
+
+void SmoothTableHelper::onHAnimFinished() {}
 
 } // namespace widgets
 } // namespace pv

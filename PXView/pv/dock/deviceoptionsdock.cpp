@@ -34,7 +34,6 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScreen>
-#include <QScrollArea>
 #include <QTabWidget>
 #include <assert.h>
 
@@ -60,9 +59,8 @@ namespace pv {
 namespace dock {
 
 DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
-    : pv::widgets::SmoothScrollArea(parent), _session(session), _context(nullptr) {
+    : QWidget(parent), _session(session), _context(nullptr) {
   _scroll_panel = NULL;
-  _scroll = this;
   _container_panel = NULL;
   _container_lay = NULL;
   _dynamic_panel = NULL;
@@ -78,8 +76,6 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _device_agent = session->get_device();
   _device_options_binding = NULL;
 
-  this->setWidgetResizable(true);
-  this->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   this->setObjectName("dock_device_options_scroll");
 
   _container_panel = new QWidget();
@@ -90,7 +86,11 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _container_lay->setSpacing(10);
   _container_panel->setLayout(_container_lay);
 
-  this->setWidget(_container_panel);
+  QVBoxLayout *mainLay = new QVBoxLayout(this);
+  mainLay->setContentsMargins(0, 0, 0, 0);
+  mainLay->setSpacing(0);
+  mainLay->addWidget(_container_panel);
+  mainLay->addStretch();
 
   if (_device_agent->have_instance()) {
     _device_options_binding = new pv::prop::binding::DeviceOptions();
@@ -1134,13 +1134,13 @@ void DeviceOptionsDock::UpdateTheme() { update_view(); }
 void DeviceOptionsDock::UpdateFont() { update_view(); }
 
 void DeviceOptionsDock::showEvent(QShowEvent *event) {
-  QScrollArea::showEvent(event);
+  QWidget::showEvent(event);
   if (_device_agent->have_instance())
     _mode_check_timer.start();
 }
 
 void DeviceOptionsDock::hideEvent(QHideEvent *event) {
-  QScrollArea::hideEvent(event);
+  QWidget::hideEvent(event);
   _mode_check_timer.stop();
 }
 

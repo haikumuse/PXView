@@ -21,7 +21,7 @@
  */
 
 #include "protocoldock.h"
-#include <QScroller>
+#include "../widgets/smoothtablehelper.h"
 #include "../data/decodermodel.h"
 #include "../data/decoderstack.h"
 #include "../dialogs/protocolexp.h"
@@ -189,17 +189,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   _table_view->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
   _table_view->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
 
-  {
-    QScroller *scroller = QScroller::scroller(_table_view);
-    QScrollerProperties props = scroller->scrollerProperties();
-    props.setScrollMetric(QScrollerProperties::DragStartDistance, 0.02);
-    props.setScrollMetric(QScrollerProperties::OvershootDragResistanceFactor, 0.35);
-    props.setScrollMetric(QScrollerProperties::OvershootDragDistanceFactor, 0.0);
-    props.setScrollMetric(QScrollerProperties::OvershootScrollDistanceFactor, 0.0);
-    props.setScrollMetric(QScrollerProperties::DecelerationFactor, 0.5);
-    scroller->setScrollerProperties(props);
-    scroller->grabGesture(_table_view, QScroller::LeftMouseButtonGesture);
-  }
+  new pv::widgets::SmoothTableHelper(_table_view, this);
 
   _table_view->verticalHeader()->setVisible(false);
   _table_view->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
