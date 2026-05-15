@@ -42,9 +42,9 @@
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
 #include "../data/sessiondocument.h"
+#include "../deviceagent.h"
 #include "../dsvdef.h"
 #include "../interface/icallbacks.h"
-#include "../log.h"
 #include "../prop/property.h"
 #include "../sigsession.h"
 #include "../tabcontext.h"
@@ -448,9 +448,11 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
 }
 
 void DeviceOptionsDock::set_all_probes(bool set) {
+  setUpdatesEnabled(false);
   for (auto box : _probes_checkBox_list) {
     box->setCheckState(set ? Qt::Checked : Qt::Unchecked);
   }
+  setUpdatesEnabled(true);
 }
 
 void DeviceOptionsDock::enable_max_probes() {
@@ -544,10 +546,12 @@ void DeviceOptionsDock::mode_check_timeout() {
         return;
 
       QMetaObject::invokeMethod(this, [this]() {
+        setUpdatesEnabled(false);
         for (auto box : _probes_checkBox_list) {
           box->setCheckState(Qt::Checked);
           box->setDisabled(true);
         }
+        setUpdatesEnabled(true);
       });
     });
   } else if (_device_agent->is_demo()) {
@@ -850,8 +854,6 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
 }
 
 void DeviceOptionsDock::build_dynamic_panel() {
-  QElapsedTimer build_timer;
-  build_timer.start();
   _isBuilding = true;
 
   if (_dynamic_panel != NULL) {
@@ -927,21 +929,17 @@ void DeviceOptionsDock::build_dynamic_panel() {
     inner->setContentsMargins(5, 2, 5, 5);
 
   _isBuilding = false;
-
-  dsv_info("DeviceOptionsDock::build_dynamic_panel: %.1fms",
-           build_timer.elapsed() * 1.0);
 }
 
 void DeviceOptionsDock::try_resize_scroll() {
-  QElapsedTimer timer;
-  timer.start();
-
 #ifdef _WIN32
   QFont labelFont = dock_font_label();
   QFontMetrics fm(labelFont);
 
   auto labels = _dynamic_panel->findChildren<QLabel *>();
   int max_label_width = 0;
+
+  setUpdatesEnabled(false);
   for (auto o : labels) {
     QRect rc = fm.boundingRect(o->text());
     QSize size(rc.width() + 15, rc.height());
@@ -955,15 +953,8 @@ void DeviceOptionsDock::try_resize_scroll() {
   if (_device_agent->get_work_mode() == LOGIC && _device_agent->is_demo()) {
     _dynamic_panel->setFixedWidth(max_label_width + 250);
   }
+  setUpdatesEnabled(true);
 #endif
-
-  qint64 elapsed_us = timer.nsecsElapsed() / 1000;
-  if (elapsed_us > 500) {
-    dsv_info("DeviceOptionsDock::try_resize_scroll: %lldus (SLOW! labels=%d)",
-             elapsed_us,
-             _dynamic_panel ? _dynamic_panel->findChildren<QLabel *>().size()
-                            : 0);
-  }
 }
 
 void DeviceOptionsDock::update_view() {

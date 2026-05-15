@@ -83,17 +83,13 @@ void SmoothScrollArea::handleVWheel(int delta) {
   }
 
   int step = BASE_STEP;
-  int duration = 3 * FIXUP_DURATION / 4;
+  int duration = 300;
   QEasingCurve easing(QEasingCurve::OutExpo);
 
   if (_v_wheel_count > 6) {
     step = BASE_STEP * 5;
-    duration = 5000;
-    easing.setType(QEasingCurve::OutCubic);
   } else if (_v_wheel_count > 3) {
     step = BASE_STEP * 2;
-    duration = 800;
-    easing.setType(QEasingCurve::OutCubic);
   }
 
   QScrollBar *vbar = verticalScrollBar();
@@ -121,6 +117,13 @@ void SmoothScrollArea::handleVWheel(int delta) {
 
   _v_anim->stop();
   curVal = vbar->value();
+
+  int distance = qAbs(targetInt - curVal);
+  if (_v_wheel_count > 6) {
+    duration = qBound(300, distance * 3, 1200);
+  } else if (_v_wheel_count > 3) {
+    duration = qBound(300, distance * 2, 600);
+  }
 
   if (widget())
     widget()->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -152,17 +155,13 @@ void SmoothScrollArea::handleHWheel(int delta) {
   }
 
   int step = BASE_STEP;
-  int duration = 3 * FIXUP_DURATION / 4;
+  int duration = 300;
   QEasingCurve easing(QEasingCurve::OutExpo);
 
   if (_h_wheel_count > 6) {
     step = BASE_STEP * 5;
-    duration = 5000;
-    easing.setType(QEasingCurve::OutCubic);
   } else if (_h_wheel_count > 3) {
     step = BASE_STEP * 2;
-    duration = 800;
-    easing.setType(QEasingCurve::OutCubic);
   }
 
   QScrollBar *hbar = horizontalScrollBar();
@@ -190,6 +189,13 @@ void SmoothScrollArea::handleHWheel(int delta) {
 
   _h_anim->stop();
   curVal = hbar->value();
+
+  int distance = qAbs(targetInt - curVal);
+  if (_h_wheel_count > 6) {
+    duration = qBound(300, distance * 3, 1200);
+  } else if (_h_wheel_count > 3) {
+    duration = qBound(300, distance * 2, 600);
+  }
 
   if (widget())
     widget()->setAttribute(Qt::WA_TransparentForMouseEvents, true);
