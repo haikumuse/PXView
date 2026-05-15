@@ -134,6 +134,7 @@ private:
     int _drag_start_drawer_width;
     QPoint _drag_start_pos;
     QWidget *_edge_grip;
+    QWidget *_left_separator;
 
     static constexpr int EDGE_GRIP_WIDTH = 6;
 };

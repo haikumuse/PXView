@@ -94,6 +94,7 @@
  * @tab-status-data: #C8C8C8
  * @tab-status-empty: #787878
  * @group-card-bg: #FAFAFA
+ * @trace-divider-color: #d5d5d5
  * @panel-bg: #1a1a1a
  * @panel-text: #f5f0e5
  * @channel-disabled-bg: #F0F0F0
@@ -669,6 +670,10 @@ QFrame[frameShape="5"]
     margin-left: 8px;
     margin-right: 8px;
     background-color: @border-strong;
+}
+
+QToolBar#sidebar {
+    border-left: 1px solid @border-strong;
 }
 
 QStackedWidget
@@ -1705,6 +1710,10 @@ QWidget#TitleBar {
     background: @bg-base;
 }
 
+QWidget#TitleBarBottomLine {
+    background: @border-strong;
+}
+
 QWidget#TitleRow {
     background: @bg-base;
 }
@@ -1745,12 +1754,20 @@ QTabBar::tab:disabled
     background: transparent;
 }
 
+QWidget#TabBottomLine {
+    background: @border-strong;
+}
+
 QWidget#RibbonPanel {
     background: @bg-overlay;
 }
 
 QWidget#RibbonSeparator {
     background: @ribbon-sep;
+}
+
+QWidget#RibbonBottomLine {
+    background: @border-strong;
 }
 
 /* Sliding Drawer */
@@ -1762,7 +1779,6 @@ QWidget#RibbonSeparator {
 #sliding_drawer_panel_content
 {
     background: @bg-base;
-    border-left: 1px solid @drawer-border;
 }
 
 #sliding_drawer_titlebar
@@ -1793,6 +1809,11 @@ QWidget#RibbonSeparator {
 {
     background: transparent;
     border: none;
+}
+
+#DrawerLeftSeparator
+{
+    background: @border-strong;
 }
 
 /* Dock Page — shared scroll areas */

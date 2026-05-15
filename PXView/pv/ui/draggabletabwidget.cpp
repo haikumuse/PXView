@@ -83,6 +83,12 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
     _add_button->raise();
     _add_button->show();
 
+    _tab_bottom_line = new QWidget(this);
+    _tab_bottom_line->setObjectName("TabBottomLine");
+    _tab_bottom_line->setFixedHeight(1);
+    _tab_bottom_line->raise();
+    _tab_bottom_line->show();
+
     connect(_add_button, &QPushButton::clicked,
             this, &DraggableTabWidget::newTabRequested);
 
@@ -107,15 +113,21 @@ void DraggableTabWidget::update_add_button_position()
 {
     if (count() == 0) {
         _add_button->move(4, 2);
-        return;
+    } else {
+        QRect last_tab_rect = _draggable_tab_bar->tabRect(count() - 1);
+        QPoint tab_bar_pos = _draggable_tab_bar->mapToParent(QPoint(0, 0));
+        int x = tab_bar_pos.x() + last_tab_rect.right() + 4;
+        int y = tab_bar_pos.y() + (_draggable_tab_bar->height() - _add_button->height()) / 2;
+        _add_button->move(x, y);
+        _add_button->raise();
     }
 
-    QRect last_tab_rect = _draggable_tab_bar->tabRect(count() - 1);
-    QPoint tab_bar_pos = _draggable_tab_bar->mapToParent(QPoint(0, 0));
-    int x = tab_bar_pos.x() + last_tab_rect.right() + 4;
-    int y = tab_bar_pos.y() + (_draggable_tab_bar->height() - _add_button->height()) / 2;
-    _add_button->move(x, y);
-    _add_button->raise();
+    if (_tab_bottom_line && _draggable_tab_bar) {
+        QPoint tab_bar_pos = _draggable_tab_bar->mapToParent(QPoint(0, 0));
+        int lineY = tab_bar_pos.y() + _draggable_tab_bar->height();
+        _tab_bottom_line->setGeometry(0, lineY, width(), 1);
+        _tab_bottom_line->raise();
+    }
 }
 
 void DraggableTabWidget::tabInserted(int index)
