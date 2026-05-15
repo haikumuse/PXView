@@ -51,7 +51,7 @@ private:
   int _v_wheel_dir;
   int _h_wheel_dir;
 
-  enum { FIXUP_DURATION = 400, BASE_STEP = 72 };
+  enum { BASE_STEP = 72 };
 };
 
 } // namespace widgets
