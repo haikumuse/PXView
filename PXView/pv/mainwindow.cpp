@@ -45,6 +45,7 @@
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QScreen>
+#include <QScrollBar>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QTextStream>
@@ -439,7 +440,8 @@ void MainWindow::setup_ui() {
 
   // Wrap the entire dock_container (sampling bar + device options) in a
   // SmoothScrollArea. This provides smooth scrolling animation.
-  pv::widgets::SmoothScrollArea *dock_scroll = new pv::widgets::SmoothScrollArea();
+  pv::widgets::SmoothScrollArea *dock_scroll =
+      new pv::widgets::SmoothScrollArea();
   dock_scroll->setWidgetResizable(true);
   dock_scroll->setFrameShape(QFrame::NoFrame);
   dock_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -448,6 +450,14 @@ void MainWindow::setup_ui() {
   // instead.
   dock_container->setMinimumHeight(1600);
   dock_scroll->setWidget(dock_container);
+
+  // Performance: bind scroll event for viewport culling
+  connect(dock_scroll->verticalScrollBar(), &QScrollBar::valueChanged,
+          _device_options_widget,
+          &dock::DeviceOptionsDock::update_visible_items);
+  // Initial call after layout is ready
+  QTimer::singleShot(100, _device_options_widget,
+                     &dock::DeviceOptionsDock::update_visible_items);
 
   // Note: dock_scroll will be added to SlidingDrawer below
   connect(_device_options_widget, &dock::DeviceOptionsDock::settings_applied,
@@ -595,9 +605,9 @@ void MainWindow::setup_ui() {
   connect(&_event, SIGNAL(receive_trigger(quint64)), this,
           SLOT(on_receive_trigger(quint64)));
   connect(&_event, SIGNAL(frame_ended()), this, SLOT(on_frame_ended()),
-          Qt::DirectConnection);
+          Qt::QueuedConnection);
   connect(&_event, SIGNAL(frame_began()), this, SLOT(on_frame_began()),
-          Qt::DirectConnection);
+          Qt::QueuedConnection);
   connect(&_event, SIGNAL(decode_done()), this, SLOT(on_decode_done()));
   connect(&_event, SIGNAL(data_updated()), this, SLOT(on_data_updated()));
   connect(&_event, SIGNAL(cur_snap_samplerate_changed()), this,

@@ -224,6 +224,8 @@ private:
     bool        _is_checked_trig;
     bool        _transfer_started;
     int         _timer_cnt;
+    QTimer      _deferred_update_timer;
+    bool        _deferred_update_pending;
     Signal      *_drag_sig;
     uint64_t    _hover_index;
     bool        _hover_hit;

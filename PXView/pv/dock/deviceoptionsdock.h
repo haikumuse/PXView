@@ -24,10 +24,12 @@
 #define DSVIEW_PV_DEVICEOPTIONSDOCK_H
 
 #include <QCheckBox>
+#include <QElapsedTimer>
 #include <QFrame>
 #include <QGridLayout>
 #include <QJsonObject>
 #include <QLabel>
+#include <QPaintEvent>
 #include <QShowEvent>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -94,6 +96,7 @@ private:
 
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
+  void paintEvent(QPaintEvent *event) override;
 
 private slots:
   void on_property_committed();
@@ -141,6 +144,18 @@ private:
   SigSession *_session;
   TabContext *_context;
   QWidget *_sampling_settings_widget;
+
+  // Performance: placeholder containers for viewport culling
+  QList<QWidget *> _glitch_row_containers;
+
+  QElapsedTimer _paint_perf_timer;
+  int _paint_count;
+  QTimer _cull_timer;
+  bool _cull_pending;
+
+public slots:
+  void update_visible_items();
+  void do_update_visible_items();
 };
 
 } // namespace dock

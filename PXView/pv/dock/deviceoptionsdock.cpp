@@ -24,6 +24,7 @@
 
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QElapsedTimer>
 #include <QFrame>
 #include <QGuiApplication>
 #include <QHBoxLayout>
@@ -72,6 +73,13 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _opt_mode = 0;
   _glitch_filter_group = NULL;
   _sampling_settings_widget = NULL;
+  _paint_count = 0;
+  _cull_pending = false;
+
+  _cull_timer.setSingleShot(true);
+  _cull_timer.setInterval(50);
+  connect(&_cull_timer, &QTimer::timeout, this,
+          &DeviceOptionsDock::do_update_visible_items);
 
   _device_agent = session->get_device();
   _device_options_binding = NULL;
@@ -154,7 +162,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   connect(&_mode_check_timer, SIGNAL(timeout()), this,
           SLOT(mode_check_timeout()));
 
-  _mode_check_timer.setInterval(100);
+  _mode_check_timer.setInterval(500);
 }
 
 DeviceOptionsDock::~DeviceOptionsDock() {
@@ -271,9 +279,6 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
     }
 
     layout->setRowMinimumHeight(i, 28);
-
-    dsv_info("  Property Row %d: %s, widget_hint_height=%d", i,
-             lable_text.toLocal8Bit().data(), wid->sizeHint().height());
 
     connect(p, &pv::prop::Property::committed, this,
             &DeviceOptionsDock::on_property_committed);
@@ -517,29 +522,44 @@ void DeviceOptionsDock::on_calibration() {
 }
 
 void DeviceOptionsDock::mode_check_timeout() {
-  if (_isBuilding)
+  QElapsedTimer timer;
+  timer.start();
+
+  if (_isBuilding) {
     return;
+  }
 
   if (_device_agent->is_hardware()) {
     bool test;
     int mode;
 
-    if (_device_agent->get_config_int16(SR_CONF_OPERATION_MODE, mode)) {
-      if (mode != _opt_mode) {
-        _opt_mode = mode;
-        build_dynamic_panel();
-        try_resize_scroll();
-      }
+    QElapsedTimer hw_timer;
+    hw_timer.start();
+    bool got_mode =
+        _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, mode);
+    qint64 mode_us = hw_timer.nsecsElapsed() / 1000;
+
+    hw_timer.restart();
+    bool got_test = _device_agent->get_config_bool(SR_CONF_TEST, test);
+    qint64 test_us = hw_timer.nsecsElapsed() / 1000;
+
+    if (mode_us > 500 || test_us > 500) {
+      dsv_info("mode_check_timeout HW SLOW: get_mode=%lldus get_test=%lldus",
+               mode_us, test_us);
     }
 
-    if (_device_agent->get_config_bool(SR_CONF_TEST, test)) {
-      if (test) {
-        for (auto box : _probes_checkBox_list) {
-          box->setCheckState(Qt::Checked);
-          box->setDisabled(true);
-          if (box->parentWidget())
-            box->parentWidget()->update();
-        }
+    if (got_mode && mode != _opt_mode) {
+      _opt_mode = mode;
+      build_dynamic_panel();
+      try_resize_scroll();
+    }
+
+    if (got_test && test) {
+      for (auto box : _probes_checkBox_list) {
+        box->setCheckState(Qt::Checked);
+        box->setDisabled(true);
+        if (box->parentWidget())
+          box->parentWidget()->update();
       }
     }
   } else if (_device_agent->is_demo()) {
@@ -549,6 +569,11 @@ void DeviceOptionsDock::mode_check_timeout() {
       build_dynamic_panel();
       try_resize_scroll();
     }
+  }
+
+  qint64 elapsed_us = timer.nsecsElapsed() / 1000;
+  if (elapsed_us > 1000) {
+    dsv_info("mode_check_timeout TOTAL: %lldus", elapsed_us);
   }
 }
 
@@ -842,6 +867,8 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
 }
 
 void DeviceOptionsDock::build_dynamic_panel() {
+  QElapsedTimer build_timer;
+  build_timer.start();
   _isBuilding = true;
 
   if (_dynamic_panel != NULL) {
@@ -917,9 +944,15 @@ void DeviceOptionsDock::build_dynamic_panel() {
     inner->setContentsMargins(5, 2, 5, 5);
 
   _isBuilding = false;
+
+  dsv_info("DeviceOptionsDock::build_dynamic_panel: %.1fms",
+           build_timer.elapsed() * 1.0);
 }
 
 void DeviceOptionsDock::try_resize_scroll() {
+  QElapsedTimer timer;
+  timer.start();
+
 #ifdef _WIN32
   QFont labelFont = dock_font_label();
   QFontMetrics fm(labelFont);
@@ -939,31 +972,15 @@ void DeviceOptionsDock::try_resize_scroll() {
   if (_device_agent->get_work_mode() == LOGIC && _device_agent->is_demo()) {
     _dynamic_panel->setFixedWidth(max_label_width + 250);
   }
-
-  // Debug layout constraints
-  dsv_info("DeviceOptionsDock layout debug:");
-  dsv_info("  Dock Height: %d", height());
-  if (_container_panel) {
-    dsv_info("  Container Panel: size=%dx%d, hint=%dx%d",
-             _container_panel->width(), _container_panel->height(),
-             _container_panel->sizeHint().width(),
-             _container_panel->sizeHint().height());
-  }
-  if (_dynamic_panel) {
-    dsv_info("  Dynamic Panel: height=%d, hint_height=%d",
-             _dynamic_panel->height(), _dynamic_panel->sizeHint().height());
-  }
-  if (_glitch_filter_group) {
-    dsv_info("  Glitch Filter Group: height=%d, hint_height=%d",
-             _glitch_filter_group->height(),
-             _glitch_filter_group->sizeHint().height());
-  }
-  auto mode_section = findChild<QWidget *>("dock_mode_section");
-  if (mode_section) {
-    dsv_info("  Mode Section: height=%d, hint_height=%d",
-             mode_section->height(), mode_section->sizeHint().height());
-  }
 #endif
+
+  qint64 elapsed_us = timer.nsecsElapsed() / 1000;
+  if (elapsed_us > 500) {
+    dsv_info("DeviceOptionsDock::try_resize_scroll: %lldus (SLOW! labels=%d)",
+             elapsed_us,
+             _dynamic_panel ? _dynamic_panel->findChildren<QLabel *>().size()
+                            : 0);
+  }
 }
 
 void DeviceOptionsDock::update_view() {
@@ -1356,6 +1373,7 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
 
   _glitch_checkBox_list.clear();
   _glitch_spinbox_list.clear();
+  _glitch_row_containers.clear();
 
   if (_device_agent->get_work_mode() != LOGIC)
     return;
@@ -1383,7 +1401,7 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   inner_layout->setAlignment(Qt::AlignTop);
   layout->addLayout(inner_layout);
 
-  // 通道列表容器（不使用滚动区域，直接展开显示）
+  // 通道列表容器（使用占位符优化，支持视口剔除）
   QWidget *ch_container = new QWidget(_glitch_filter_group);
   QVBoxLayout *ch_layout_main = new QVBoxLayout(ch_container);
   ch_layout_main->setContentsMargins(2, 2, 2, 2);
@@ -1396,22 +1414,29 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     if (probe->type != SR_CHANNEL_LOGIC)
       continue;
 
-    QHBoxLayout *ch_layout = new QHBoxLayout();
+    // 1. 创建占位容器（固定高度，防止内部隐藏时引发排版重算）
+    QWidget *row_container = new QWidget(ch_container);
+    row_container->setFixedHeight(28); // 固定高度，极其重要！
+
+    // 2. 创建真实内容的容器
+    QWidget *content_widget = new QWidget(row_container);
+    QHBoxLayout *ch_layout = new QHBoxLayout(content_widget);
+    ch_layout->setContentsMargins(0, 0, 0, 0);
     ch_layout->setSpacing(3);
 
     QCheckBox *ch_check =
-        new QCheckBox(QString("Ch%1").arg(probe->index), ch_container);
+        new QCheckBox(QString("Ch%1").arg(probe->index), content_widget);
     ch_check->setObjectName("dock_content");
     ch_check->setFont(contentFont);
     ch_check->setEnabled(probe->enabled);
     ch_check->setFixedWidth(55);
     _glitch_checkBox_list.push_back(ch_check);
 
-    QLabel *le_label = new QLabel("≤", ch_container);
+    QLabel *le_label = new QLabel("≤", content_widget);
     le_label->setObjectName("dock_label");
     le_label->setFont(labelFont);
 
-    pv::ui::DsSpinBox *spin = new pv::ui::DsSpinBox(ch_container);
+    pv::ui::DsSpinBox *spin = new pv::ui::DsSpinBox(content_widget);
     spin->setRange(1, 999);
     spin->setValue(1);
     spin->setObjectName("dock_content");
@@ -1421,7 +1446,7 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     _glitch_spinbox_list.push_back(spin);
 
-    QLabel *unit_label = new QLabel("采样周期", ch_container);
+    QLabel *unit_label = new QLabel("采样周期", content_widget);
     unit_label->setObjectName("dock_label");
     unit_label->setFont(labelFont);
 
@@ -1430,7 +1455,16 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     ch_layout->addWidget(spin);
     ch_layout->addWidget(unit_label);
 
-    ch_layout_main->addLayout(ch_layout);
+    // 将内容容器充满占位容器
+    QVBoxLayout *container_lay = new QVBoxLayout(row_container);
+    container_lay->setContentsMargins(0, 0, 0, 0);
+    container_lay->addWidget(content_widget);
+
+    // 把占位容器加入主布局
+    ch_layout_main->addWidget(row_container);
+
+    // 保存下来，留给滚动时使用
+    _glitch_row_containers.append(row_container);
 
     connect(ch_check, &QCheckBox::toggled,
             [spin](bool checked) { spin->setEnabled(checked); });
@@ -1588,6 +1622,86 @@ void DeviceOptionsDock::update_glitch_filter_state() {
 
   if (_apply_filter_btn) {
     _apply_filter_btn->setEnabled(!is_active);
+  }
+}
+
+void DeviceOptionsDock::update_visible_items() {
+  if (!_cull_pending) {
+    _cull_pending = true;
+    _cull_timer.start();
+  }
+}
+
+void DeviceOptionsDock::do_update_visible_items() {
+  _cull_pending = false;
+
+  if (_glitch_row_containers.isEmpty())
+    return;
+
+  QWidget *scrollArea = nullptr;
+  QWidget *p = this->parentWidget();
+  while (p) {
+    if (p->inherits("QAbstractScrollArea")) {
+      scrollArea = p;
+      break;
+    }
+    p = p->parentWidget();
+  }
+
+  if (!scrollArea)
+    return;
+
+  QWidget *vp = static_cast<QAbstractScrollArea *>(scrollArea)->viewport();
+  QRect vpGlobalRect(vp->mapToGlobal(QPoint(0, 0)), vp->size());
+
+  bool anyChanged = false;
+  for (QWidget *container : _glitch_row_containers) {
+    if (!container)
+      continue;
+
+    QPoint containerGlobalTopLeft = container->mapToGlobal(QPoint(0, 0));
+    QRect containerGlobalRect(containerGlobalTopLeft, container->size());
+
+    QRect expandedRect = vpGlobalRect.adjusted(0, -100, 0, 100);
+    bool isVisible = expandedRect.intersects(containerGlobalRect);
+
+    QObjectList children = container->children();
+    for (QObject *child : children) {
+      if (child->isWidgetType()) {
+        QWidget *contentWidget = qobject_cast<QWidget *>(child);
+        if (contentWidget && contentWidget->isVisible() != isVisible) {
+          if (!anyChanged) {
+            setUpdatesEnabled(false);
+            anyChanged = true;
+          }
+          contentWidget->setVisible(isVisible);
+        }
+        break;
+      }
+    }
+  }
+
+  if (anyChanged)
+    setUpdatesEnabled(true);
+}
+
+void DeviceOptionsDock::paintEvent(QPaintEvent *event) {
+  QWidget::paintEvent(event);
+
+  _paint_count++;
+  if (!_paint_perf_timer.isValid()) {
+    _paint_perf_timer.start();
+  }
+
+  if (_paint_perf_timer.elapsed() > 5000) {
+    dsv_info("DeviceOptionsDock PERF: %d paints in %lldms (%.1f fps), "
+             "rect=%dx%d+%d+%d",
+             _paint_count, _paint_perf_timer.elapsed(),
+             _paint_count * 1000.0 / _paint_perf_timer.elapsed(),
+             event->rect().width(), event->rect().height(), event->rect().x(),
+             event->rect().y());
+    _paint_count = 0;
+    _paint_perf_timer.restart();
   }
 }
 

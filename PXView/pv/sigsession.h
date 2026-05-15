@@ -463,6 +463,7 @@ public:
     void set_active_document(data::SessionDocument *doc);
     data::SessionDocument* get_active_document() { return _active_document; }
     void copy_data_to_document(data::SessionDocument *doc);
+    void attach_data_to_signal(SessionData *data);
 
     void register_document(data::SessionDocument *doc) { _all_documents.push_back(doc); }
     void unregister_document(data::SessionDocument *doc) { auto it = std::find(_all_documents.begin(), _all_documents.end(), doc); if (it != _all_documents.end()) _all_documents.erase(it); }

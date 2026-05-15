@@ -234,6 +234,13 @@ Viewport::Viewport(View &parent, View_type type)
   _edge_hit = false;
   _transfer_started = false;
   _timer_cnt = 0;
+  _deferred_update_pending = false;
+  _deferred_update_timer.setSingleShot(true);
+  _deferred_update_timer.setInterval(16);
+  connect(&_deferred_update_timer, &QTimer::timeout, this, [this]() {
+    _deferred_update_pending = false;
+    QWidget::update();
+  });
 
   _sample_received = 0;
   _is_checked_trig = false;
@@ -303,12 +310,36 @@ bool Viewport::event(QEvent *event) {
 }
 
 static int s_paintCount = 0;
+static QElapsedTimer s_paintLogTimer;
+static int s_paintLogCount = 0;
+static QElapsedTimer s_paintGapTimer;
 
 void Viewport::paintEvent(QPaintEvent *event) {
   (void)event;
   s_paintCount++;
-  dsv_info("Viewport::paintEvent count=%d", s_paintCount);
+  s_paintLogCount++;
+  if (!s_paintLogTimer.isValid())
+    s_paintLogTimer.start();
+  if (s_paintLogTimer.elapsed() > 5000) {
+    dsv_info("Viewport::paintEvent: %d paints in %lldms", s_paintLogCount,
+             s_paintLogTimer.elapsed());
+    s_paintLogCount = 0;
+    s_paintLogTimer.restart();
+  }
+  if (s_paintGapTimer.isValid()) {
+    qint64 gap_ms = s_paintGapTimer.elapsed();
+    if (gap_ms > 500) {
+      dsv_info("Viewport PAINT GAP: %lldms since last paint", gap_ms);
+    }
+  }
+  s_paintGapTimer.start();
+  QElapsedTimer pt;
+  pt.start();
   doPaint();
+  qint64 paint_ms = pt.elapsed();
+  if (paint_ms > 16) {
+    dsv_info("Viewport SLOW PAINT: %lldms", paint_ms);
+  }
 }
 
 void Viewport::doPaint() {
@@ -470,41 +501,45 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
   std::list<int> _index_list;
 
   if (_view.session().get_device()->get_work_mode() == LOGIC) {
-    bool bFirst = true;
-    uint64_t end_align_sample = 0;
+    if (_view.scale() != _curScale || _view.offset() != _curOffset ||
+        _view.get_signalHeight() != _curSignalHeight ||
+        _view.get_vOffset() != _curVOffset || _need_update) {
+      _curScale = _view.scale();
+      _curOffset = _view.offset();
+      _curSignalHeight = _view.get_signalHeight();
+      _curVOffset = _view.get_vOffset();
 
-    p.save();
-    p.translate(0, -_view.get_vOffset());
+      _pixmap = QPixmap(size());
+      _pixmap.fill(Qt::transparent);
 
-    for (auto t : traces) {
-      if (t->enabled()) {
-        int traceTop = t->get_v_offset() - qRound(t->get_totalHeight() * 0.5) -
-                       _view.get_vOffset();
-        int traceBottom =
-            t->get_v_offset() + t->get_totalHeight() / 2 - _view.get_vOffset();
-        if (traceBottom < 0 || traceTop > height())
-          continue;
+      QPainter dbp(&_pixmap);
 
-        _index_list = t->get_index_list();
+      bool bFirst = true;
+      uint64_t end_align_sample = 0;
 
-        QColor color =
-            PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
-        if (t->signal_type() == SR_CHANNEL_LOGIC) {
-          LogicSignal *logic_signal = (LogicSignal *)t;
-
-          if (bFirst && logic_signal->data())
-            end_align_sample = logic_signal->data()->get_ring_sample_count();
-
-          // logic_signal->paint_mid_align_sample(p, 0,
-          // t->get_view_rect().right(), fore, back, end_align_sample);
-          logic_signal->paint_mid_align_sample(p, 0, t->get_view_rect().right(),
-                                               color, back, end_align_sample);
-          bFirst = false;
-        } else {
-          t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
+      for (auto t : traces) {
+        if (t->enabled()) {
+          _index_list = t->get_index_list();
+          QColor color =
+              PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
+          if (t->signal_type() == SR_CHANNEL_LOGIC) {
+            LogicSignal *logic_signal = (LogicSignal *)t;
+            if (bFirst && logic_signal->data())
+              end_align_sample = logic_signal->data()->get_ring_sample_count();
+            logic_signal->paint_mid_align_sample(dbp, 0,
+                                                 t->get_view_rect().right(),
+                                                 color, back, end_align_sample);
+            bFirst = false;
+          } else {
+            t->paint_mid(dbp, 0, t->get_view_rect().right(), fore, back);
+          }
         }
       }
+      _need_update = false;
     }
+    p.save();
+    p.translate(0, -_view.get_vOffset());
+    p.drawPixmap(0, 0, _pixmap);
     p.restore();
   } else {
     if (_view.scale() != _curScale || _view.offset() != _curOffset ||
@@ -1759,8 +1794,7 @@ void Viewport::leaveEvent(QEvent *) {
 }
 
 void Viewport::resizeEvent(QResizeEvent *e) {
-  dsv_info("Viewport::resizeEvent old=%dx%d new=%dx%d", e->oldSize().width(),
-           e->oldSize().height(), e->size().width(), e->size().height());
+  QWidget::resizeEvent(e);
   ViewStatus *vs = _view.get_viewstatus();
   if (vs) {
     int h = vs->height();
@@ -1823,7 +1857,47 @@ void Viewport::set_receive_len(quint64 length) {
   update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
-void Viewport::update(int event) { QWidget::update(); }
+static int s_updateGenericCount = 0;
+static int s_updateMoveCount = 0;
+static int s_updateClickCount = 0;
+static int s_updateUpCount = 0;
+static QElapsedTimer s_updateLogTimer;
+
+void Viewport::update(int event) {
+  if (event == UPDATE_EV_GENERIC)
+    s_updateGenericCount++;
+  else if (event == UPDATE_EV_MS_MOVE)
+    s_updateMoveCount++;
+  else if (event == UPDATE_EV_MS_CLICK)
+    s_updateClickCount++;
+  else if (event == UPDATE_EV_MS_UP)
+    s_updateUpCount++;
+
+  if (!s_updateLogTimer.isValid())
+    s_updateLogTimer.start();
+  if (s_updateLogTimer.elapsed() > 5000) {
+    dsv_info("Viewport::update stats: generic=%d move=%d click=%d up=%d "
+             "(in %lldms)",
+             s_updateGenericCount, s_updateMoveCount, s_updateClickCount,
+             s_updateUpCount, s_updateLogTimer.elapsed());
+    s_updateGenericCount = 0;
+    s_updateMoveCount = 0;
+    s_updateClickCount = 0;
+    s_updateUpCount = 0;
+    s_updateLogTimer.restart();
+  }
+
+  if (event == UPDATE_EV_GENERIC) {
+    if (!_deferred_update_pending) {
+      _deferred_update_pending = true;
+      _deferred_update_timer.start();
+    }
+  } else {
+    _deferred_update_timer.stop();
+    _deferred_update_pending = false;
+    QWidget::update();
+  }
+}
 
 void Viewport::clear_measure() {
   _measure_type = NO_MEASURE;
@@ -2292,8 +2366,9 @@ void Viewport::on_trigger_timer() {
     }
   }
 
-  update(UpdateEventType::UPDATE_EV_GENERIC); // To refresh the trigger status
-                                              // information.
+  if (_view.session().get_device()->get_work_mode() == DSO) {
+    update(UpdateEventType::UPDATE_EV_GENERIC);
+  }
 }
 
 void Viewport::on_drag_timer() {
@@ -2322,12 +2397,14 @@ void Viewport::set_need_update(bool update) { _need_update = update; }
 void Viewport::show_wait_trigger() {
   _waiting_trig %= (WaitLoopTime / SigSession::FeedInterval) * 4;
   _waiting_trig++;
-  update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view.session().get_device()->get_work_mode() == DSO)
+    update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
 void Viewport::unshow_wait_trigger() {
   _waiting_trig = 0;
-  update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_view.session().get_device()->get_work_mode() == DSO)
+    update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
 bool Viewport::get_dso_trig_moved() { return _dso_trig_moved; }

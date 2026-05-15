@@ -21,19 +21,19 @@
 #undef _POSIX_C_SOURCE
 #include "config.h"
 
-/* 
+/*
  * We need the full Python API (not limited API) for PyConfig.
  * libsigrokdecode-internal.h defines Py_LIMITED_API, so we include
  * Python.h first with the full API, then include the internal header.
  */
-#include <Python.h>
-#include "libsigrokdecode.h"
 #include "dll_registry.h"
+#include "libsigrokdecode.h"
 #include "log.h"
+#include <Python.h>
 #include <glib.h>
 
 /* Include internal header but avoid double include of Python.h */
-#define Py_PYTHON_H  /* Prevent Python.h from being included again */
+#define Py_PYTHON_H /* Prevent Python.h from being included again */
 #include "libsigrokdecode-internal.h"
 #undef Py_PYTHON_H
 
@@ -47,6 +47,7 @@ static wchar_t* _srd_python_home = NULL;
 /* session.c */
 extern SRD_PRIV GSList* sessions;
 extern SRD_PRIV int max_session_id;
+extern SRD_PRIV GRWLock sessions_rwlock;
 
 /** @endcond */
 
@@ -216,6 +217,8 @@ SRD_API int srd_init(const char* path)
 
     srd_dbg("Initializing libsigrokdecode.");
 
+    g_rw_lock_init(&sessions_rwlock);
+
     /* Add our own module to the list of built-in modules. */
     PyImport_AppendInittab("sigrokdecode", PyInit_sigrokdecode);
 
@@ -353,6 +356,8 @@ SRD_API int srd_exit(void)
     /* Note: No need to release the GIL since Python is shut down now. */
 
     max_session_id = -1;
+
+    g_rw_lock_clear(&sessions_rwlock);
 
     srd_log_uninit(); // uninit log
 
