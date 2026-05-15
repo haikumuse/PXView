@@ -99,6 +99,7 @@ public:
 private:
     void reStyle();
     void positionPinButton();
+    void updateBottomLine();
 
     bool ParentIsMaxsized();
     bool isOnTabBar(const QPoint &pos) const;
@@ -146,6 +147,7 @@ protected:
 
     QToolButton     *_pinButton;
     bool            _ribbonPinned;
+    QWidget         *_bottomLine;
 
     bool        _moving;
     bool        _is_draging;

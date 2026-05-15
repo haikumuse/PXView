@@ -41,6 +41,7 @@
 #include <QStyleOption>
 #include <QWheelEvent>
 #include <math.h>
+#include <set>
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
@@ -379,6 +380,43 @@ void Viewport::doPaint() {
                           View::GroupCardRadius);
       }
     }
+  }
+
+  QColor dividerColor =
+      AppConfig::Instance().GetThemeColor("@trace-divider-color");
+  if (!dividerColor.isValid()) {
+    double lum =
+        back.red() * 0.299 + back.green() * 0.587 + back.blue() * 0.114;
+    dividerColor =
+        lum < 128 ? QColor(0x37, 0x37, 0x3b) : QColor(0xd5, 0xd5, 0xd5);
+  }
+
+  std::set<Trace *> lastInGroup;
+  if (_type == TIME_VIEW &&
+      _view.session().get_device()->get_work_mode() == LOGIC) {
+    const auto &groups = _view.get_signal_groups();
+    for (const auto &group : groups) {
+      if (group.traces.empty())
+        continue;
+      Trace *last = nullptr;
+      for (auto gt : group.traces) {
+        if (gt->enabled())
+          last = gt;
+      }
+      if (last)
+        lastInGroup.insert(last);
+    }
+  }
+
+  p.setPen(QPen(dividerColor, 1));
+  for (auto t : traces) {
+    if (!t->enabled() && !dynamic_cast<DsoSignal *>(t))
+      continue;
+    if (lastInGroup.count(t))
+      continue;
+    int traceBottom =
+        t->get_v_offset() + t->get_totalHeight() / 2 + View::SignalMargin;
+    p.drawLine(0, traceBottom, _view.get_view_width(), traceBottom);
   }
 
   for (auto t : traces) {

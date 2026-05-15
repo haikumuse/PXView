@@ -95,6 +95,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
   _slideOffset = 65;
   _pinButton = NULL;
   _ribbonPinned = true;
+  _bottomLine = NULL;
 
   assert(parent);
 
@@ -162,6 +163,12 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
 
   setFixedHeight(32);
 
+  _bottomLine = new QWidget(this);
+  _bottomLine->setObjectName("TitleBarBottomLine");
+  _bottomLine->setFixedHeight(1);
+  _bottomLine->move(0, 31);
+  _bottomLine->show();
+
   // --- 平移滑动式 Ribbon ---
   // _ribbonContainer: 裁切容器，固定高度，作为 _parent 的子控件浮在主界面上方
   // 开启 WA_ClipChildren 让超出容器边界的面板部分被裁切，实现真正的平移滑动效果
@@ -188,9 +195,14 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
 
   _categoryStack = new QStackedWidget(_ribbonPanel);
   _categoryStack->setContentsMargins(0, 0, 0, 0);
-  _categoryStack->setFixedHeight(_ribbonExpandedHeight);
+  _categoryStack->setFixedHeight(_ribbonExpandedHeight - 1);
   _categoryStack->setMinimumWidth(800);
   _ribbonLayout->addWidget(_categoryStack, 0, Qt::AlignTop);
+
+  QWidget *_ribbonBottomLine = new QWidget(_ribbonPanel);
+  _ribbonBottomLine->setObjectName("RibbonBottomLine");
+  _ribbonBottomLine->setFixedHeight(1);
+  _ribbonLayout->addWidget(_ribbonBottomLine);
 
   _pinButton = new QToolButton(_ribbonPanel);
   _pinButton->setObjectName("RibbonPinButton");
@@ -237,6 +249,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
       if (tlw)
         tlw->setUpdatesEnabled(true);
     }
+    updateBottomLine();
   });
 
   connect(_tabBar, &QTabBar::tabBarClicked, this, &TitleBar::onTabClicked);
@@ -352,6 +365,7 @@ void TitleBar::expandRibbon() {
   _ribbonExpanded = true;
 
   qApp->installEventFilter(this);
+  updateBottomLine();
 }
 
 void TitleBar::hideRibbon() {
@@ -366,6 +380,7 @@ void TitleBar::hideRibbon() {
   _ribbonExpanded = false;
 
   qApp->removeEventFilter(this);
+  updateBottomLine();
 }
 
 void TitleBar::expandRibbonPinned() {
@@ -392,6 +407,7 @@ void TitleBar::expandRibbonPinned() {
   _ribbonAnimation->start();
 
   _ribbonExpanded = true;
+  updateBottomLine();
 }
 
 void TitleBar::hideRibbonPinned() {
@@ -420,6 +436,7 @@ void TitleBar::hideRibbonPinned() {
   _ribbonAnimation->start();
 
   _ribbonExpanded = false;
+  updateBottomLine();
 }
 
 void TitleBar::positionRibbonContainer() {
@@ -526,6 +543,8 @@ void TitleBar::resizeEvent(QResizeEvent *event) {
     _ribbonPanel->move(0, 32);
     positionPinButton();
   }
+
+  updateBottomLine();
 }
 
 void TitleBar::setTitle(QString title) {
@@ -753,6 +772,7 @@ void TitleBar::onPinToggled(bool checked) {
       setFixedHeight(32);
     }
   }
+  updateBottomLine();
 }
 
 void TitleBar::positionPinButton() {
@@ -761,6 +781,18 @@ void TitleBar::positionPinButton() {
   int pinX = _ribbonPanel->width() - _pinButton->width() - 6;
   int pinY = _ribbonPanel->height() - _pinButton->height() - 4;
   _pinButton->move(pinX, pinY);
+}
+
+void TitleBar::updateBottomLine() {
+  if (!_bottomLine)
+    return;
+  if (_ribbonExpanded) {
+    _bottomLine->hide();
+  } else {
+    _bottomLine->setFixedWidth(width());
+    _bottomLine->move(0, height() - 1);
+    _bottomLine->show();
+  }
 }
 
 void TitleBar::EnableAbleDrag(bool bEnabled) { _is_able_drag = bEnabled; }
