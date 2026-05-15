@@ -451,15 +451,6 @@ void MainWindow::setup_ui() {
   dock_container->setMinimumHeight(1600);
   dock_scroll->setWidget(dock_container);
 
-  // Performance: bind scroll event for viewport culling
-  connect(dock_scroll->verticalScrollBar(), &QScrollBar::valueChanged,
-          _device_options_widget,
-          &dock::DeviceOptionsDock::update_visible_items);
-  // Initial call after layout is ready
-  QTimer::singleShot(100, _device_options_widget,
-                     &dock::DeviceOptionsDock::update_visible_items);
-
-  // Note: dock_scroll will be added to SlidingDrawer below
   connect(_device_options_widget, &dock::DeviceOptionsDock::settings_applied,
           this, [this]() {
             if (_session->have_view_data() == false)

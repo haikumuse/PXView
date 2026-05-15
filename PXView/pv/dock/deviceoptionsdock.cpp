@@ -36,6 +36,7 @@
 #include <QRadioButton>
 #include <QScreen>
 #include <QTabWidget>
+#include <QtConcurrent>
 #include <assert.h>
 
 #include "../appcontrol.h"
@@ -73,13 +74,6 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   _opt_mode = 0;
   _glitch_filter_group = NULL;
   _sampling_settings_widget = NULL;
-  _paint_count = 0;
-  _cull_pending = false;
-
-  _cull_timer.setSingleShot(true);
-  _cull_timer.setInterval(50);
-  connect(&_cull_timer, &QTimer::timeout, this,
-          &DeviceOptionsDock::do_update_visible_items);
 
   _device_agent = session->get_device();
   _device_options_binding = NULL;
@@ -522,46 +516,40 @@ void DeviceOptionsDock::on_calibration() {
 }
 
 void DeviceOptionsDock::mode_check_timeout() {
-  QElapsedTimer timer;
-  timer.start();
-
-  if (_isBuilding) {
+  if (_isBuilding)
     return;
-  }
 
   if (_device_agent->is_hardware()) {
-    bool test;
-    int mode;
+    DeviceAgent *agent = _device_agent;
+    int saved_opt_mode = _opt_mode;
+    QtConcurrent::run([this, agent, saved_opt_mode]() {
+      int mode;
+      bool got_mode = agent->get_config_int16(SR_CONF_OPERATION_MODE, mode);
+      if (!got_mode || mode == saved_opt_mode)
+        return;
 
-    QElapsedTimer hw_timer;
-    hw_timer.start();
-    bool got_mode =
-        _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, mode);
-    qint64 mode_us = hw_timer.nsecsElapsed() / 1000;
+      QMetaObject::invokeMethod(this, [this, mode]() {
+        if (_isBuilding)
+          return;
+        _opt_mode = mode;
+        build_dynamic_panel();
+        try_resize_scroll();
+      });
+    });
 
-    hw_timer.restart();
-    bool got_test = _device_agent->get_config_bool(SR_CONF_TEST, test);
-    qint64 test_us = hw_timer.nsecsElapsed() / 1000;
+    QtConcurrent::run([this, agent]() {
+      bool test;
+      bool got_test = agent->get_config_bool(SR_CONF_TEST, test);
+      if (!got_test || !test)
+        return;
 
-    if (mode_us > 500 || test_us > 500) {
-      dsv_info("mode_check_timeout HW SLOW: get_mode=%lldus get_test=%lldus",
-               mode_us, test_us);
-    }
-
-    if (got_mode && mode != _opt_mode) {
-      _opt_mode = mode;
-      build_dynamic_panel();
-      try_resize_scroll();
-    }
-
-    if (got_test && test) {
-      for (auto box : _probes_checkBox_list) {
-        box->setCheckState(Qt::Checked);
-        box->setDisabled(true);
-        if (box->parentWidget())
-          box->parentWidget()->update();
-      }
-    }
+      QMetaObject::invokeMethod(this, [this]() {
+        for (auto box : _probes_checkBox_list) {
+          box->setCheckState(Qt::Checked);
+          box->setDisabled(true);
+        }
+      });
+    });
   } else if (_device_agent->is_demo()) {
     QString opt_mode = _device_agent->get_demo_operation_mode();
     if (opt_mode != _demo_operation_mode) {
@@ -569,11 +557,6 @@ void DeviceOptionsDock::mode_check_timeout() {
       build_dynamic_panel();
       try_resize_scroll();
     }
-  }
-
-  qint64 elapsed_us = timer.nsecsElapsed() / 1000;
-  if (elapsed_us > 1000) {
-    dsv_info("mode_check_timeout TOTAL: %lldus", elapsed_us);
   }
 }
 
@@ -1373,7 +1356,6 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
 
   _glitch_checkBox_list.clear();
   _glitch_spinbox_list.clear();
-  _glitch_row_containers.clear();
 
   if (_device_agent->get_work_mode() != LOGIC)
     return;
@@ -1462,9 +1444,6 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
 
     // 把占位容器加入主布局
     ch_layout_main->addWidget(row_container);
-
-    // 保存下来，留给滚动时使用
-    _glitch_row_containers.append(row_container);
 
     connect(ch_check, &QCheckBox::toggled,
             [spin](bool checked) { spin->setEnabled(checked); });
@@ -1622,86 +1601,6 @@ void DeviceOptionsDock::update_glitch_filter_state() {
 
   if (_apply_filter_btn) {
     _apply_filter_btn->setEnabled(!is_active);
-  }
-}
-
-void DeviceOptionsDock::update_visible_items() {
-  if (!_cull_pending) {
-    _cull_pending = true;
-    _cull_timer.start();
-  }
-}
-
-void DeviceOptionsDock::do_update_visible_items() {
-  _cull_pending = false;
-
-  if (_glitch_row_containers.isEmpty())
-    return;
-
-  QWidget *scrollArea = nullptr;
-  QWidget *p = this->parentWidget();
-  while (p) {
-    if (p->inherits("QAbstractScrollArea")) {
-      scrollArea = p;
-      break;
-    }
-    p = p->parentWidget();
-  }
-
-  if (!scrollArea)
-    return;
-
-  QWidget *vp = static_cast<QAbstractScrollArea *>(scrollArea)->viewport();
-  QRect vpGlobalRect(vp->mapToGlobal(QPoint(0, 0)), vp->size());
-
-  bool anyChanged = false;
-  for (QWidget *container : _glitch_row_containers) {
-    if (!container)
-      continue;
-
-    QPoint containerGlobalTopLeft = container->mapToGlobal(QPoint(0, 0));
-    QRect containerGlobalRect(containerGlobalTopLeft, container->size());
-
-    QRect expandedRect = vpGlobalRect.adjusted(0, -100, 0, 100);
-    bool isVisible = expandedRect.intersects(containerGlobalRect);
-
-    QObjectList children = container->children();
-    for (QObject *child : children) {
-      if (child->isWidgetType()) {
-        QWidget *contentWidget = qobject_cast<QWidget *>(child);
-        if (contentWidget && contentWidget->isVisible() != isVisible) {
-          if (!anyChanged) {
-            setUpdatesEnabled(false);
-            anyChanged = true;
-          }
-          contentWidget->setVisible(isVisible);
-        }
-        break;
-      }
-    }
-  }
-
-  if (anyChanged)
-    setUpdatesEnabled(true);
-}
-
-void DeviceOptionsDock::paintEvent(QPaintEvent *event) {
-  QWidget::paintEvent(event);
-
-  _paint_count++;
-  if (!_paint_perf_timer.isValid()) {
-    _paint_perf_timer.start();
-  }
-
-  if (_paint_perf_timer.elapsed() > 5000) {
-    dsv_info("DeviceOptionsDock PERF: %d paints in %lldms (%.1f fps), "
-             "rect=%dx%d+%d+%d",
-             _paint_count, _paint_perf_timer.elapsed(),
-             _paint_count * 1000.0 / _paint_perf_timer.elapsed(),
-             event->rect().width(), event->rect().height(), event->rect().x(),
-             event->rect().y());
-    _paint_count = 0;
-    _paint_perf_timer.restart();
   }
 }
 
