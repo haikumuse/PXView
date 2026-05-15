@@ -17,7 +17,6 @@
 #ifndef DSVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
 #define DSVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
 
-#include <QElapsedTimer>
 #include <QPropertyAnimation>
 #include <QScrollArea>
 #include <QTimer>
@@ -35,7 +34,6 @@ public:
 protected:
   void wheelEvent(QWheelEvent *event) override;
   bool eventFilter(QObject *watched, QEvent *event) override;
-  void scrollContentsBy(int dx, int dy) override;
 
 private:
   void handleVWheel(int delta);
@@ -52,11 +50,6 @@ private:
   int _h_wheel_count;
   int _v_wheel_dir;
   int _h_wheel_dir;
-
-  // Performance diagnostics
-  QElapsedTimer _scroll_perf_timer;
-  int _scroll_frame_count;
-  qint64 _scroll_total_us;
 
   enum { FIXUP_DURATION = 400, BASE_STEP = 72 };
 };

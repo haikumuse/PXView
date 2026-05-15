@@ -234,14 +234,6 @@ Viewport::Viewport(View &parent, View_type type)
   _edge_hit = false;
   _transfer_started = false;
   _timer_cnt = 0;
-  _deferred_update_pending = false;
-  _deferred_update_timer.setSingleShot(true);
-  _deferred_update_timer.setInterval(16);
-  connect(&_deferred_update_timer, &QTimer::timeout, this, [this]() {
-    _deferred_update_pending = false;
-    QWidget::update();
-  });
-
   _sample_received = 0;
   _is_checked_trig = false;
 
@@ -309,37 +301,9 @@ bool Viewport::event(QEvent *event) {
   return QWidget::event(event);
 }
 
-static int s_paintCount = 0;
-static QElapsedTimer s_paintLogTimer;
-static int s_paintLogCount = 0;
-static QElapsedTimer s_paintGapTimer;
-
 void Viewport::paintEvent(QPaintEvent *event) {
   (void)event;
-  s_paintCount++;
-  s_paintLogCount++;
-  if (!s_paintLogTimer.isValid())
-    s_paintLogTimer.start();
-  if (s_paintLogTimer.elapsed() > 5000) {
-    dsv_info("Viewport::paintEvent: %d paints in %lldms", s_paintLogCount,
-             s_paintLogTimer.elapsed());
-    s_paintLogCount = 0;
-    s_paintLogTimer.restart();
-  }
-  if (s_paintGapTimer.isValid()) {
-    qint64 gap_ms = s_paintGapTimer.elapsed();
-    if (gap_ms > 500) {
-      dsv_info("Viewport PAINT GAP: %lldms since last paint", gap_ms);
-    }
-  }
-  s_paintGapTimer.start();
-  QElapsedTimer pt;
-  pt.start();
   doPaint();
-  qint64 paint_ms = pt.elapsed();
-  if (paint_ms > 16) {
-    dsv_info("Viewport SLOW PAINT: %lldms", paint_ms);
-  }
 }
 
 void Viewport::doPaint() {
@@ -1857,46 +1821,9 @@ void Viewport::set_receive_len(quint64 length) {
   update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
-static int s_updateGenericCount = 0;
-static int s_updateMoveCount = 0;
-static int s_updateClickCount = 0;
-static int s_updateUpCount = 0;
-static QElapsedTimer s_updateLogTimer;
-
 void Viewport::update(int event) {
-  if (event == UPDATE_EV_GENERIC)
-    s_updateGenericCount++;
-  else if (event == UPDATE_EV_MS_MOVE)
-    s_updateMoveCount++;
-  else if (event == UPDATE_EV_MS_CLICK)
-    s_updateClickCount++;
-  else if (event == UPDATE_EV_MS_UP)
-    s_updateUpCount++;
-
-  if (!s_updateLogTimer.isValid())
-    s_updateLogTimer.start();
-  if (s_updateLogTimer.elapsed() > 5000) {
-    dsv_info("Viewport::update stats: generic=%d move=%d click=%d up=%d "
-             "(in %lldms)",
-             s_updateGenericCount, s_updateMoveCount, s_updateClickCount,
-             s_updateUpCount, s_updateLogTimer.elapsed());
-    s_updateGenericCount = 0;
-    s_updateMoveCount = 0;
-    s_updateClickCount = 0;
-    s_updateUpCount = 0;
-    s_updateLogTimer.restart();
-  }
-
-  if (event == UPDATE_EV_GENERIC) {
-    if (!_deferred_update_pending) {
-      _deferred_update_pending = true;
-      _deferred_update_timer.start();
-    }
-  } else {
-    _deferred_update_timer.stop();
-    _deferred_update_pending = false;
-    QWidget::update();
-  }
+  QWidget::update();
+  (void)event;
 }
 
 void Viewport::clear_measure() {
