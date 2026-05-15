@@ -32,6 +32,7 @@
 /** @cond PRIVATE */
 
 extern SRD_PRIV GSList* sessions;
+extern SRD_PRIV GRWLock sessions_rwlock;
 
 /** @endcond */
 
@@ -1345,6 +1346,63 @@ SRD_PRIV int process_samples_until_condition_match(struct srd_decoder_inst* di, 
  *
  * @return NULL.
  */
+static gpointer di_thread(gpointer data)
+{
+    PyObject* py_res;
+    struct srd_decoder_inst* di;
+    int wanted_term = 0;
+    PyGILState_STATE gstate;
+    int is_task_stop_signal = FALSE;
+
+    assert(data);
+
+    di = data;
+
+    srd_dbg("%s: Starting thread routine for decoder.", di->inst_id);
+
+    gstate = PyGILState_Ensure();
+
+    srd_dbg("%s: Calling decode().", di->inst_id);
+    py_res = PyObject_CallMethod(di->py_inst, "decode", NULL);
+    srd_dbg("%s: decode() terminated.", di->inst_id);
+
+    is_task_stop_signal = di->is_task_stop_signal;
+
+    if (py_res) {
+        di->decoder_state = SRD_ERR;
+
+        if (PyUnicode_Check(py_res)) {
+            PyObject* py_bytes = PyUnicode_AsUTF8String(py_res);
+            char* err_str = PyBytes_AsString(py_bytes);
+            srd_err("python method decode() returns an error:\n %s", err_str);
+            di->python_proc_error = g_strdup(err_str);
+        } else {
+            di->python_proc_error = g_strdup("python method decode() returns an unknown type error!");
+        }
+
+        Py_DecRef(py_res);
+    }
+
+    if (!py_res && !is_task_stop_signal) {
+        srd_exception_catch(&di->python_proc_error, "Protocol decoder instance %s: ", di->inst_id);
+    }
+
+    g_mutex_lock(&di->data_mutex);
+    wanted_term = di->want_wait_terminate;
+    di->want_wait_terminate = TRUE;
+    di->handled_all_samples = TRUE;
+    g_cond_signal(&di->handled_all_samples_cond);
+    g_mutex_unlock(&di->data_mutex);
+
+    if (!is_task_stop_signal)
+        srd_dbg("%s: decode() terminated (req %d).", di->inst_id, wanted_term);
+
+    PyErr_Clear();
+    PyGILState_Release(gstate);
+
+    return NULL;
+}
+
 static gpointer c_di_thread(gpointer data)
 {
     struct srd_decoder_inst* di;
@@ -1498,6 +1556,16 @@ SRD_PRIV int srd_inst_decode(struct srd_decoder_inst* di,
         abs_start_samplenum, abs_end_samplenum,
         abs_end_samplenum - abs_start_samplenum, inbuflen, di->inst_id);
 
+    if (!di->thread_handle) {
+        srd_dbg("No worker thread for this decoder stack "
+                "exists yet, creating one: %s.",
+            di->inst_id);
+
+        di->thread_handle = g_thread_new(di->inst_id,
+            di_thread, di);
+    }
+
+    g_mutex_lock(&di->data_mutex);
     di->abs_start_samplenum = abs_start_samplenum & ~7ULL;
     di->abs_end_samplenum = abs_end_samplenum;
     di->inbuf = inbuf;
@@ -1505,27 +1573,13 @@ SRD_PRIV int srd_inst_decode(struct srd_decoder_inst* di,
     di->inbuflen = inbuflen;
     di->got_new_samples = TRUE;
     di->handled_all_samples = FALSE;
+    g_cond_signal(&di->got_new_samples_cond);
+    g_mutex_unlock(&di->data_mutex);
 
-    {
-        PyGILState_STATE gstate;
-        PyObject* py_res;
-
-        gstate = PyGILState_Ensure();
-
-        py_res = PyObject_CallMethod(di->py_inst, "decode", NULL);
-
-        if (py_res) {
-            Py_DecRef(py_res);
-        } else if (PyErr_ExceptionMatches(srd_ChunkDone_exc)) {
-            PyErr_Clear();
-        } else if (PyErr_Occurred()) {
-            srd_exception_catch(&di->python_proc_error,
-                "Protocol decoder instance %s", di->inst_id);
-        }
-
-        PyErr_Clear();
-        PyGILState_Release(gstate);
-    }
+    g_mutex_lock(&di->data_mutex);
+    while (!di->handled_all_samples && !di->want_wait_terminate)
+        g_cond_wait(&di->handled_all_samples_cond, &di->data_mutex);
+    g_mutex_unlock(&di->data_mutex);
 
     if (di->python_proc_error) {
         *error = di->python_proc_error;
@@ -1600,7 +1654,9 @@ SRD_PRIV void srd_inst_free(struct srd_decoder_inst* di)
 
     srd_dbg("Freeing instance %s.", di->inst_id);
 
-    srd_inst_join_decode_thread(di);
+    if (di->thread_handle) {
+        srd_inst_join_decode_thread(di);
+    }
 
     srd_inst_reset_state(di);
 
@@ -1647,8 +1703,30 @@ SRD_PRIV void srd_inst_free(struct srd_decoder_inst* di)
 /** @private */
 SRD_PRIV void srd_inst_free_all(struct srd_session* sess)
 {
+    GSList* l;
+    struct srd_decoder_inst* di;
+
     if (!sess)
         return;
+
+    for (l = sess->di_list; l; l = l->next) {
+        di = l->data;
+        if (di && di->thread_handle) {
+            g_mutex_lock(&di->data_mutex);
+            di->want_wait_terminate = TRUE;
+            di->is_task_stop_signal = TRUE;
+            g_cond_signal(&di->got_new_samples_cond);
+            g_mutex_unlock(&di->data_mutex);
+        }
+    }
+
+    for (l = sess->di_list; l; l = l->next) {
+        di = l->data;
+        if (di && di->thread_handle) {
+            (void)g_thread_join(di->thread_handle);
+            di->thread_handle = NULL;
+        }
+    }
 
     g_slist_free_full(sess->di_list, (GDestroyNotify)srd_inst_free);
 }

@@ -17,42 +17,48 @@
 #ifndef DSVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
 #define DSVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
 
-#include <QScrollArea>
+#include <QElapsedTimer>
 #include <QPropertyAnimation>
+#include <QScrollArea>
 #include <QTimer>
 
 namespace pv {
 namespace widgets {
 
-class SmoothScrollArea : public QScrollArea
-{
-    Q_OBJECT
+class SmoothScrollArea : public QScrollArea {
+  Q_OBJECT
 
 public:
-    explicit SmoothScrollArea(QWidget *parent = nullptr);
-    ~SmoothScrollArea();
+  explicit SmoothScrollArea(QWidget *parent = nullptr);
+  ~SmoothScrollArea();
 
 protected:
-    void wheelEvent(QWheelEvent *event) override;
-    bool eventFilter(QObject *watched, QEvent *event) override;
+  void wheelEvent(QWheelEvent *event) override;
+  bool eventFilter(QObject *watched, QEvent *event) override;
+  void scrollContentsBy(int dx, int dy) override;
 
 private:
-    void handleVWheel(int delta);
-    void handleHWheel(int delta);
+  void handleVWheel(int delta);
+  void handleHWheel(int delta);
 
-    QPropertyAnimation *_v_anim;
-    QPropertyAnimation *_h_anim;
-    qreal _v_target;
-    qreal _h_target;
+  QPropertyAnimation *_v_anim;
+  QPropertyAnimation *_h_anim;
+  qreal _v_target;
+  qreal _h_target;
 
-    QTimer _v_accel_timer;
-    QTimer _h_accel_timer;
-    int _v_wheel_count;
-    int _h_wheel_count;
-    int _v_wheel_dir;
-    int _h_wheel_dir;
+  QTimer _v_accel_timer;
+  QTimer _h_accel_timer;
+  int _v_wheel_count;
+  int _h_wheel_count;
+  int _v_wheel_dir;
+  int _h_wheel_dir;
 
-    enum { FIXUP_DURATION = 400, BASE_STEP = 72 };
+  // Performance diagnostics
+  QElapsedTimer _scroll_perf_timer;
+  int _scroll_frame_count;
+  qint64 _scroll_total_us;
+
+  enum { FIXUP_DURATION = 400, BASE_STEP = 72 };
 };
 
 } // namespace widgets

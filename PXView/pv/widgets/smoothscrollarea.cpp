@@ -16,6 +16,7 @@
 
 #include "smoothscrollarea.h"
 
+#include "../log.h"
 #include <QScrollBar>
 #include <QWheelEvent>
 
@@ -24,7 +25,8 @@ namespace widgets {
 
 SmoothScrollArea::SmoothScrollArea(QWidget *parent)
     : QScrollArea(parent), _v_target(0), _h_target(0), _v_wheel_count(0),
-      _h_wheel_count(0), _v_wheel_dir(0), _h_wheel_dir(0) {
+      _h_wheel_count(0), _v_wheel_dir(0), _h_wheel_dir(0),
+      _scroll_frame_count(0), _scroll_total_us(0) {
   _v_anim = new QPropertyAnimation(verticalScrollBar(), "value", this);
   _h_anim = new QPropertyAnimation(horizontalScrollBar(), "value", this);
 
@@ -70,6 +72,49 @@ void SmoothScrollArea::wheelEvent(QWheelEvent *event) {
     handleHWheel(deltaX);
 
   event->accept();
+}
+
+void SmoothScrollArea::scrollContentsBy(int dx, int dy) {
+  static QElapsedTimer s_frame_gap_timer;
+  if (s_frame_gap_timer.isValid()) {
+    qint64 gap_ms = s_frame_gap_timer.elapsed();
+    if (gap_ms > 100 && (dx != 0 || dy != 0)) {
+      dsv_info("SmoothScrollArea STALL: %lldms gap between scroll frames",
+               gap_ms);
+    }
+  }
+  s_frame_gap_timer.start();
+
+  QElapsedTimer frame_timer;
+  frame_timer.start();
+
+  QScrollArea::scrollContentsBy(dx, dy);
+
+  qint64 elapsed_ns = frame_timer.nsecsElapsed();
+  _scroll_frame_count++;
+  _scroll_total_us += elapsed_ns / 1000;
+
+  if (!_scroll_perf_timer.isValid()) {
+    _scroll_perf_timer.start();
+  }
+
+  if (_scroll_perf_timer.elapsed() > 5000) {
+    dsv_info("SmoothScrollArea PERF: %d frames in %lldms, avg %.1fus/frame, "
+             "max_single=%.1fus",
+             _scroll_frame_count, _scroll_perf_timer.elapsed(),
+             _scroll_frame_count > 0
+                 ? (double)_scroll_total_us / _scroll_frame_count
+                 : 0.0,
+             (double)elapsed_ns / 1000.0);
+    _scroll_frame_count = 0;
+    _scroll_total_us = 0;
+    _scroll_perf_timer.restart();
+  }
+
+  if (elapsed_ns > 16000000) {
+    dsv_info("SmoothScrollArea SLOW FRAME: %.1fms! dx=%d dy=%d",
+             elapsed_ns / 1000000.0, dx, dy);
+  }
 }
 
 void SmoothScrollArea::handleVWheel(int delta) {
@@ -121,10 +166,21 @@ void SmoothScrollArea::handleVWheel(int delta) {
 
   _v_anim->stop();
   curVal = vbar->value();
+
+  if (widget())
+    widget()->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+
   _v_anim->setStartValue(curVal);
   _v_anim->setEndValue(targetInt);
   _v_anim->setDuration(duration);
   _v_anim->setEasingCurve(easing);
+
+  disconnect(_v_anim, &QPropertyAnimation::finished, nullptr, nullptr);
+  connect(_v_anim, &QPropertyAnimation::finished, this, [this]() {
+    if (widget())
+      widget()->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+  });
+
   _v_anim->start();
 
   _v_accel_timer.start();
@@ -179,10 +235,21 @@ void SmoothScrollArea::handleHWheel(int delta) {
 
   _h_anim->stop();
   curVal = hbar->value();
+
+  if (widget())
+    widget()->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+
   _h_anim->setStartValue(curVal);
   _h_anim->setEndValue(targetInt);
   _h_anim->setDuration(duration);
   _h_anim->setEasingCurve(easing);
+
+  disconnect(_h_anim, &QPropertyAnimation::finished, nullptr, nullptr);
+  connect(_h_anim, &QPropertyAnimation::finished, this, [this]() {
+    if (widget())
+      widget()->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+  });
+
   _h_anim->start();
 
   _h_accel_timer.start();
