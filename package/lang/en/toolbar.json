@@ -188,10 +188,25 @@
     {
         "id": "IDS_TOOLBAR_HELP_LOG",
         "text": "L&og Options"
+    },
+    {
+        "id": "IDS_TOOLBAR_SAMPLING_SETTINGS",
+        "text": "Sampling Settings"
+    },
+    {
+        "id": "IDS_TOOLBAR_DEVICE",
+        "text": "Device"
+    },
+    {
+        "id": "IDS_TOOLBAR_SAMPLE_DEPTH",
+        "text": "Sample Depth"
+    },
+    {
+        "id": "IDS_TOOLBAR_SAMPLE_RATE",
+        "text": "Sample Rate"
+    },
+    {
+        "id": "IDS_TOOLBAR_CAPTURE_MODE_ROW",
+        "text": "Capture Mode"
     }
-
-
-    
-
-    
 ]

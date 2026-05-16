@@ -17,6 +17,7 @@
 #include <QPropertyAnimation>
 #include <QSequentialAnimationGroup>
 #include <QToolBar>
+#include <QTimer>
 #include <QVBoxLayout>
 
 class QFrame;

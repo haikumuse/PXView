@@ -933,16 +933,14 @@ void DeviceOptionsDock::build_dynamic_panel() {
 
 void DeviceOptionsDock::try_resize_scroll() {
 #ifdef _WIN32
-  QFont labelFont = dock_font_label();
-  QFontMetrics fm(labelFont);
-
   auto labels = _dynamic_panel->findChildren<QLabel *>();
   int max_label_width = 0;
 
   setUpdatesEnabled(false);
   _container_lay->setEnabled(false);
   for (auto o : labels) {
-    QRect rc = fm.boundingRect(o->text());
+    QFontMetrics labelFm(o->font());
+    QRect rc = labelFm.boundingRect(o->text());
     QSize size(rc.width() + 15, rc.height());
     o->setFixedSize(size);
 

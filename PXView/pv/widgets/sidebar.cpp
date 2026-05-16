@@ -425,8 +425,17 @@ void SideBar::setItemChecked(int index, bool checked) {
     if (item.index == index) {
       item.button->setChecked(checked);
       if (checked && item.type == DockItem) {
-        _indicator->snapTo(getIndicatorRect(item.button));
         _checked_index = index;
+        QTimer::singleShot(0, this, [this]() {
+          if (_checked_index >= 0) {
+            for (auto &it : _items) {
+              if (it.index == _checked_index && it.type == DockItem) {
+                _indicator->snapTo(getIndicatorRect(it.button));
+                break;
+              }
+            }
+          }
+        });
       }
       break;
     }
