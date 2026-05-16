@@ -73,6 +73,7 @@ typedef struct {
     double bit_width;
     double half_bit_width;
     double bit_samplenum;
+    double sample_point_pct;
 
     double frame_len_samples;
     int has_rx;
@@ -81,6 +82,7 @@ typedef struct {
     int out_ann;
     int out_python;
     int show_data_point;
+    int show_start_stop;
 } uart_state;
 
 static struct srd_channel uart_optional_channels[] = {
@@ -98,6 +100,8 @@ static struct srd_decoder_option uart_options[] = {
     {"invert_rx", NULL, "Invert RX(\xe5\x8f\x8d\xe8\xbd\xacRX)", NULL, NULL},
     {"invert_tx", NULL, "Invert TX(\xe5\x8f\x8d\xe8\xbd\xacTX)", NULL, NULL},
     {"show_data_point", NULL, "Show data point(\xe6\x95\xb0\xe6\x8d\xae\xe7\x82\xb9\xe6\x98\xbe\xe7\xa4\xba)", NULL, NULL},
+    {"sample_point", NULL, "Sample point(\xe9\x87\x87\xe6\xa0\xb7\xe7\x82\xb9%)", NULL, NULL},
+    {"show_start_stop", NULL, "Show start/stop bits(\xe6\x98\xbe\xe7\xa4\xba\xe8\xb5\xb7\xe5\xa7\x8b/\xe5\x81\x9c\xe6\xad\xa2\xe4\xbd\x8d)", NULL, NULL},
 };
 
 static const char *uart_ann_labels[][3] = {
@@ -126,14 +130,14 @@ static const char *uart_ann_labels[][3] = {
 
 static const int uart_row_rx_bits_classes[] = {RX_DATA_BIT, -1};
 static const int uart_row_rx_samples_classes[] = {RX_SAMPLES, -1};
-static const int uart_row_rx_data_classes[] = {RX_DATA, -1};
-static const int uart_row_rx_warn_classes[] = {RX_WARN, RX_PARITY_ERR, -1};
+static const int uart_row_rx_data_classes[] = {RX_DATA, RX_START, RX_PARITY_OK, RX_PARITY_ERR, RX_STOP, -1};
+static const int uart_row_rx_warn_classes[] = {RX_WARN, -1};
 static const int uart_row_rx_break_classes[] = {RX_BREAK, -1};
 static const int uart_row_rx_packet_classes[] = {RX_PACKET, -1};
 static const int uart_row_tx_bits_classes[] = {TX_DATA_BIT, -1};
 static const int uart_row_tx_samples_classes[] = {TX_SAMPLES, -1};
-static const int uart_row_tx_data_classes[] = {TX_DATA, -1};
-static const int uart_row_tx_warn_classes[] = {TX_WARN, TX_PARITY_ERR, -1};
+static const int uart_row_tx_data_classes[] = {TX_DATA, TX_START, TX_PARITY_OK, TX_PARITY_ERR, TX_STOP, -1};
+static const int uart_row_tx_warn_classes[] = {TX_WARN, -1};
 static const int uart_row_tx_break_classes[] = {TX_BREAK, -1};
 static const int uart_row_tx_packet_classes[] = {TX_PACKET, -1};
 static const int uart_row_atk_classes[] = {ATK_POINT, -1};
@@ -141,14 +145,14 @@ static const int uart_row_atk_classes[] = {ATK_POINT, -1};
 static const struct srd_c_ann_row uart_ann_rows[] = {
     {"rx-data-bits", "RX bits", uart_row_rx_bits_classes, 1},
     {"rx-samples", "RX samples", uart_row_rx_samples_classes, 1},
-    {"rx-data-vals", "RX data", uart_row_rx_data_classes, 1},
-    {"rx-warnings", "RX warnings", uart_row_rx_warn_classes, 2},
+    {"rx-data-vals", "RX data", uart_row_rx_data_classes, 5},
+    {"rx-warnings", "RX warnings", uart_row_rx_warn_classes, 1},
     {"rx-breaks", "RX breaks", uart_row_rx_break_classes, 1},
     {"rx-packets", "RX packets", uart_row_rx_packet_classes, 1},
     {"tx-data-bits", "TX bits", uart_row_tx_bits_classes, 1},
     {"tx-samples", "TX samples", uart_row_tx_samples_classes, 1},
-    {"tx-data-vals", "TX data", uart_row_tx_data_classes, 1},
-    {"tx-warnings", "TX warnings", uart_row_tx_warn_classes, 2},
+    {"tx-data-vals", "TX data", uart_row_tx_data_classes, 5},
+    {"tx-warnings", "TX warnings", uart_row_tx_warn_classes, 1},
     {"tx-breaks", "TX breaks", uart_row_tx_break_classes, 1},
     {"tx-packets", "TX packets", uart_row_tx_packet_classes, 1},
     {"atk-signs", "ATK signs", uart_row_atk_classes, 1},
@@ -209,6 +213,8 @@ static void uart_reset(struct srd_decoder_inst *di)
     s->out_ann = 0;
     s->out_python = -1;
     s->show_data_point = 1;
+    s->sample_point_pct = 50.0;
+    s->show_start_stop = 1;
 }
 
 static void uart_start(struct srd_decoder_inst *di)
@@ -239,6 +245,11 @@ static void uart_start(struct srd_decoder_inst *di)
     const char *show_dp_str = c_decoder_get_option_string(di, "show_data_point", "yes");
     s->show_data_point = (strcmp(show_dp_str, "yes") == 0) ? 1 : 0;
 
+    s->sample_point_pct = c_decoder_get_option_double(di, "sample_point", 50.0);
+
+    const char *show_ss_str = c_decoder_get_option_string(di, "show_start_stop", "yes");
+    s->show_start_stop = (strcmp(show_ss_str, "yes") == 0) ? 1 : 0;
+
     const char *bit_order_str = c_decoder_get_option_string(di, "bit_order", "lsb-first");
     s->bit_order_msb = (strcmp(bit_order_str, "msb-first") == 0) ? 1 : 0;
 
@@ -267,7 +278,7 @@ static void uart_start(struct srd_decoder_inst *di)
     if (s->samplerate > 0 && s->baudrate > 0) {
         s->bit_width = (double)s->samplerate / s->baudrate;
         s->half_bit_width = s->bit_width * 0.5;
-        s->bit_samplenum = s->bit_width * 0.5;
+        s->bit_samplenum = s->bit_width * s->sample_point_pct * 0.01;
 
         double frame_samples = 1.0;
         frame_samples += s->data_bits;
@@ -327,23 +338,22 @@ static void handle_data_complete(struct srd_decoder_inst *di, int rxtx)
 
     C_ANN_PUT(di, ss, es, s->out_ann, RX_DATA + rxtx, val_str);
 
-    unsigned char data_byte = (unsigned char)data;
-    c_decoder_put_python(di, ss, es, s->out_python, "DATA", &data_byte, 1);
-
-    if (s->show_data_point) {
-        C_ANN_PUT(di, ss, es, s->out_ann, ATK_POINT, "color:#F32FDC");
-    }
+    unsigned char py_data[2];
+    py_data[0] = (unsigned char)data;
+    py_data[1] = (unsigned char)rxtx;
+    c_decoder_put_python(di, ss, es, s->out_python, "DATA", py_data, 2);
 }
 
 static void handle_frame_complete(struct srd_decoder_inst *di, int rxtx)
 {
     uart_state *s = (uart_state *)c_decoder_get_private(di);
-
-    if (!s->frame_valid[rxtx]) {
-        uint64_t ss = s->frame_start[rxtx];
-        uint64_t es = ss + (uint64_t)round(s->frame_len_samples);
-        C_ANN_PUT(di, ss, es, s->out_ann, RX_WARN + rxtx, "Frame err");
-    }
+    uint64_t frame_ss = s->frame_start[rxtx];
+    uint64_t frame_es = frame_ss + (uint64_t)round(s->frame_len_samples);
+    unsigned char frame_data[3];
+    frame_data[0] = (unsigned char)s->datavalue[rxtx];
+    frame_data[1] = (unsigned char)rxtx;
+    frame_data[2] = (unsigned char)s->frame_valid[rxtx];
+    c_decoder_put_python(di, frame_ss, frame_es, s->out_python, "FRAME", frame_data, 3);
 }
 
 static int get_rxtx_pin(uart_state *s, struct srd_decoder_inst *di, int rxtx, int ch, uint64_t samplenum)
@@ -382,14 +392,17 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
                 uint64_t es = get_bit_end(s, rxtx, 0);
 
                 if (start_bit != 0) {
-                    C_ANN_PUT(di, ss, samplenum, s->out_ann, RX_WARN + rxtx, "Start err");
-                    c_decoder_put_python(di, ss, samplenum, s->out_python, "INVALID STARTBIT", NULL, 0);
+                    C_ANN_PUT(di, ss, samplenum, s->out_ann, RX_WARN + rxtx, "Start bit error", "Start err", "SE");
+                    unsigned char py_val = (unsigned char)start_bit;
+                    c_decoder_put_python(di, ss, samplenum, s->out_python, "INVALID STARTBIT", &py_val, 1);
                     s->frame_valid[rxtx] = 0;
                     handle_frame_complete(di, rxtx);
                     s->state[rxtx] = WAIT_FOR_START_BIT;
                 } else {
-                    C_ANN_PUT(di, ss, es, s->out_ann, RX_START + rxtx, "Start bit");
-                    c_decoder_put_python(di, ss, es, s->out_python, "STARTBIT", NULL, 0);
+                    if (s->show_start_stop)
+                        C_ANN_PUT(di, ss, es, s->out_ann, RX_START + rxtx, "Start bit", "Start", "S");
+                    unsigned char py_val = (unsigned char)start_bit;
+                    c_decoder_put_python(di, ss, es, s->out_python, "STARTBIT", &py_val, 1);
                     s->state[rxtx] = GET_DATA_BITS;
                     s->databit_count[rxtx] = 0;
                 }
@@ -409,6 +422,13 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", bit_val);
                 C_ANN_PUT(di, ss, es, s->out_ann, RX_DATA_BIT + rxtx, bit_str);
+
+                if (s->show_data_point) {
+                    uint64_t center = ss + (uint64_t)(s->bit_width / 2);
+                    char rxtx_str[4];
+                    snprintf(rxtx_str, sizeof(rxtx_str), "%d", rxtx);
+                    C_ANN_PUT(di, center, center, s->out_ann, ATK_POINT, rxtx_str);
+                }
 
                 if (s->bit_order_msb) {
                     s->datavalue[rxtx] |= (bit_val << (s->data_bits - 1 - bit_idx));
@@ -443,14 +463,17 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
                 uint64_t es = get_bit_end(s, rxtx, parity_bit_num);
 
                 if (parity_ok(s->parity_type, parity_val, s->datavalue[rxtx], s->data_bits)) {
-                    C_ANN_PUT(di, ss, es, s->out_ann, RX_PARITY_OK + rxtx, "Parity bit");
+                    C_ANN_PUT(di, ss, es, s->out_ann, RX_PARITY_OK + rxtx, "Parity bit", "Parity", "P");
                     unsigned char pval = (unsigned char)parity_val;
                     c_decoder_put_python(di, ss, es, s->out_python, "PARITYBIT", &pval, 1);
                 } else {
-                    C_ANN_PUT(di, ss, es, s->out_ann, RX_PARITY_ERR + rxtx, "Parity err");
+                    C_ANN_PUT(di, ss, es, s->out_ann, RX_PARITY_ERR + rxtx, "Parity error", "Parity err", "PE");
                     unsigned char pval = (unsigned char)parity_val;
                     c_decoder_put_python(di, ss, es, s->out_python, "PARITYBIT", &pval, 1);
-                    c_decoder_put_python(di, ss, es, s->out_python, "PARITY ERROR", NULL, 0);
+                    unsigned char err_data[2];
+                    err_data[0] = (unsigned char)(!parity_val);
+                    err_data[1] = (unsigned char)parity_val;
+                    c_decoder_put_python(di, ss, es, s->out_python, "PARITY ERROR", err_data, 2);
                     s->frame_valid[rxtx] = 0;
                 }
 
@@ -496,11 +519,13 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
                 }
 
                 if (stop_val != 1) {
-                    C_ANN_PUT(di, ss, es, s->out_ann, RX_WARN + rxtx, "Stop err");
-                    c_decoder_put_python(di, ss, es, s->out_python, "INVALID STOPBIT", NULL, 0);
+                    C_ANN_PUT(di, ss, es, s->out_ann, RX_WARN + rxtx, "Stop bit error", "Stop err", "TE");
+                    unsigned char py_val = (unsigned char)stop_val;
+                    c_decoder_put_python(di, ss, es, s->out_python, "INVALID STOPBIT", &py_val, 1);
                     s->frame_valid[rxtx] = 0;
                 } else {
-                    C_ANN_PUT(di, ss, es, s->out_ann, RX_STOP + rxtx, "Stop bit");
+                    if (s->show_start_stop)
+                        C_ANN_PUT(di, ss, es, s->out_ann, RX_STOP + rxtx, "Stop bit", "Stop", "T");
                     unsigned char sval = (unsigned char)stop_val;
                     c_decoder_put_python(di, ss, es, s->out_python, "STOPBIT", &sval, 1);
                 }
@@ -524,10 +549,6 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
 
                 if (all_stop_bits_done) {
                     handle_frame_complete(di, rxtx);
-                    uint64_t frame_ss = s->frame_start[rxtx];
-                    uint64_t frame_es = frame_ss + (uint64_t)round(s->frame_len_samples);
-                    unsigned char data_byte = (unsigned char)s->datavalue[rxtx];
-                    c_decoder_put_python(di, frame_ss, frame_es, s->out_python, "FRAME", &data_byte, 1);
                     s->state[rxtx] = WAIT_FOR_START_BIT;
                 }
             }
@@ -542,13 +563,27 @@ static void uart_decode(struct srd_decoder_inst *di)
     uint64_t samplenum = 0;
     uint64_t matched;
 
+    s->samplerate = c_decoder_get_samplerate(di);
+    if (s->samplerate > 0 && s->baudrate > 0 && s->bit_width == 0) {
+        s->bit_width = (double)s->samplerate / s->baudrate;
+        s->half_bit_width = s->bit_width * 0.5;
+        s->bit_samplenum = s->bit_width * s->sample_point_pct * 0.01;
+
+        double frame_samples = 1.0;
+        frame_samples += s->data_bits;
+        frame_samples += (s->parity_type != PARITY_NONE) ? 1.0 : 0.0;
+        frame_samples += s->stop_bits;
+        frame_samples *= s->bit_width;
+        s->frame_len_samples = frame_samples;
+    }
+
     if (s->samplerate == 0 || s->baudrate == 0 || s->bit_width == 0)
         return;
 
     if (!s->has_rx && !s->has_tx)
         return;
 
-    C_ANN_PUT(di, 0, 0, s->out_ann, ATK_POINT, "color:#F32FDC");
+    C_ANN_PUT(di, 0, 0, s->out_ann, ATK_POINT, "color:#fbca47");
 
     while (1) {
         srd_cond_builder *b = c_cond_new();
@@ -675,7 +710,7 @@ struct srd_c_decoder uart_c_decoder = {
     .optional_channels = uart_optional_channels,
     .num_optional_channels = 2,
     .options = uart_options,
-    .num_options = 9,
+    .num_options = 11,
     .num_annotations = NUM_ANN,
     .ann_labels = uart_ann_labels,
     .num_annotation_rows = 13,
@@ -696,6 +731,56 @@ struct srd_c_decoder uart_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    uart_options[0].def = g_variant_new_int64(115200);
+    uart_options[1].def = g_variant_new_int64(8);
+    uart_options[2].def = g_variant_new_double(1.0);
+    uart_options[3].def = g_variant_new_string("none");
+    uart_options[4].def = g_variant_new_string("lsb-first");
+    uart_options[5].def = g_variant_new_string("hex");
+    uart_options[6].def = g_variant_new_string("no");
+    uart_options[7].def = g_variant_new_string("no");
+    uart_options[8].def = g_variant_new_string("yes");
+    uart_options[9].def = g_variant_new_double(50.0);
+    uart_options[10].def = g_variant_new_string("yes");
+
+    GSList *parity_vals = NULL;
+    parity_vals = g_slist_append(parity_vals, g_variant_new_string("none"));
+    parity_vals = g_slist_append(parity_vals, g_variant_new_string("odd"));
+    parity_vals = g_slist_append(parity_vals, g_variant_new_string("even"));
+    parity_vals = g_slist_append(parity_vals, g_variant_new_string("zero"));
+    parity_vals = g_slist_append(parity_vals, g_variant_new_string("one"));
+    parity_vals = g_slist_append(parity_vals, g_variant_new_string("ignore"));
+    uart_options[3].values = parity_vals;
+
+    GSList *bitorder_vals = NULL;
+    bitorder_vals = g_slist_append(bitorder_vals, g_variant_new_string("lsb-first"));
+    bitorder_vals = g_slist_append(bitorder_vals, g_variant_new_string("msb-first"));
+    uart_options[4].values = bitorder_vals;
+
+    GSList *format_vals = NULL;
+    format_vals = g_slist_append(format_vals, g_variant_new_string("hex"));
+    format_vals = g_slist_append(format_vals, g_variant_new_string("ascii"));
+    format_vals = g_slist_append(format_vals, g_variant_new_string("dec"));
+    format_vals = g_slist_append(format_vals, g_variant_new_string("oct"));
+    format_vals = g_slist_append(format_vals, g_variant_new_string("bin"));
+    uart_options[5].values = format_vals;
+
+    GSList *yn_vals = NULL;
+    yn_vals = g_slist_append(yn_vals, g_variant_new_string("yes"));
+    yn_vals = g_slist_append(yn_vals, g_variant_new_string("no"));
+    uart_options[6].values = yn_vals;
+    uart_options[7].values = yn_vals;
+
+    GSList *sdp_vals = NULL;
+    sdp_vals = g_slist_append(sdp_vals, g_variant_new_string("yes"));
+    sdp_vals = g_slist_append(sdp_vals, g_variant_new_string("no"));
+    uart_options[8].values = sdp_vals;
+
+    GSList *ss_vals = NULL;
+    ss_vals = g_slist_append(ss_vals, g_variant_new_string("yes"));
+    ss_vals = g_slist_append(ss_vals, g_variant_new_string("no"));
+    uart_options[10].values = ss_vals;
+
     return &uart_c_decoder;
 }
 

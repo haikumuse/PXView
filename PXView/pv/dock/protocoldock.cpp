@@ -182,6 +182,9 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   ann_search_layout->addWidget(_ann_search_edit, 1);
   ann_search_layout->addWidget(_nxt_button);
 
+  _pro_keyword_edit->setFixedHeight(_pro_add_button->sizeHint().height());
+  _ann_search_edit->setFixedHeight(_pre_button->sizeHint().height());
+
   _table_view = new QTableView(bot_panel);
   _table_view->setModel(_session->get_decoder_model());
   _table_view->setObjectName("dock_protocol_table_view");
@@ -1211,9 +1214,11 @@ void ProtocolDock::adjustPannelSize() {
   QRect rc = fm.boundingRect(str);
 
   int lineHeight = rc.height() + 15;
-  _pro_keyword_edit->setFixedHeight(rc.height() + 5);
+  int btnHeight = _pro_add_button->sizeHint().height();
+  _pro_keyword_edit->setFixedHeight(btnHeight);
+  _ann_search_edit->setFixedHeight(_pre_button->sizeHint().height());
   int pannelHeight =
-      lineHeight * _protocol_lay_items.size() + _pro_keyword_edit->height();
+      lineHeight * _protocol_lay_items.size() + btnHeight;
 
   if (pannelHeight < 100) {
     pannelHeight = 100;

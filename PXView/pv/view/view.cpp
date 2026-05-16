@@ -988,6 +988,35 @@ void View::signals_changed(const Trace *eventTrace) {
 
   compute_signal_groups();
 
+  if (_device_agent->get_work_mode() == LOGIC && !_signal_groups.empty()) {
+    std::vector<size_t> group_order(_signal_groups.size());
+    for (size_t i = 0; i < _signal_groups.size(); i++)
+      group_order[i] = i;
+    sort(group_order.begin(), group_order.end(), [this](size_t a, size_t b) {
+      int minA = INT_MAX, minB = INT_MAX;
+      for (auto gt : _signal_groups[a].traces) {
+        if (gt->get_view_index() >= 0)
+          minA = min(minA, gt->get_view_index());
+      }
+      for (auto gt : _signal_groups[b].traces) {
+        if (gt->get_view_index() >= 0)
+          minB = min(minB, gt->get_view_index());
+      }
+      return minA < minB;
+    });
+
+    int new_index = 0;
+    for (size_t gi : group_order) {
+      sort(_signal_groups[gi].traces.begin(),
+           _signal_groups[gi].traces.end(), [](Trace *a, Trace *b) {
+             return a->get_view_index() < b->get_view_index();
+           });
+      for (auto gt : _signal_groups[gi].traces) {
+        gt->set_view_index(new_index++);
+      }
+    }
+  }
+
   get_traces(ALL_VIEW, traces);
 
   for (auto t : traces) {
@@ -1850,7 +1879,11 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     if (signal) {
       signal->set_enabled(ch.enabled);
       signal->set_visible(ch.enabled);
-      signal->set_view_index(view_index++);
+      if (ch.enabled) {
+        signal->set_view_index(view_index++);
+      } else {
+        signal->set_view_index(-1);
+      }
       _own_signals.push_back(signal);
     }
   }

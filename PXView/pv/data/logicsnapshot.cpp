@@ -60,6 +60,12 @@ LogicSnapshot::LogicSnapshot() :
     _loop_offset = 0;
     _able_free = true;
     _glitch_filtered = false;
+    _disk_buffer_mgr = NULL;
+    _disk_write_thread = NULL;
+    _disk_read_cache = NULL;
+    _hot_window_blocks = 0;
+    _total_blocks_written = 0;
+    _disk_cache_active = false;
 }
 
 LogicSnapshot::~LogicSnapshot()
@@ -68,6 +74,24 @@ LogicSnapshot::~LogicSnapshot()
 
 void LogicSnapshot::free_data()
 {
+    if (_disk_write_thread) {
+        _disk_write_thread->stop();
+        delete _disk_write_thread;
+        _disk_write_thread = NULL;
+    }
+    if (_disk_read_cache) {
+        _disk_read_cache->clear();
+        delete _disk_read_cache;
+        _disk_read_cache = NULL;
+    }
+    if (_disk_buffer_mgr) {
+        _disk_buffer_mgr->destroy();
+        delete _disk_buffer_mgr;
+        _disk_buffer_mgr = NULL;
+    }
+    _block_states.clear();
+    _disk_cache_active = false;
+
     Snapshot::free_data();
 
     for(auto& iter : _ch_data) {
@@ -106,6 +130,7 @@ void LogicSnapshot::init_all()
     _last_ended = true;
     _loop_offset = 0;
     _able_free = true;
+    _total_blocks_written = 0;
 }
 
 void LogicSnapshot::clear()
@@ -113,6 +138,69 @@ void LogicSnapshot::clear()
     std::lock_guard<std::mutex> lock(_mutex);
     free_data();
     init_all();
+}
+
+void LogicSnapshot::set_disk_cache_config(const DiskCacheConfig &config)
+{
+    _disk_cache_config = config;
+    if (config.enabled && !config.cache_path.empty()) {
+        _disk_cache_active = true;
+        _hot_window_blocks = config.hot_window_blocks;
+    } else {
+        _disk_cache_active = false;
+    }
+}
+
+bool LogicSnapshot::is_disk_cache_active()
+{
+    return _disk_cache_active;
+}
+
+double LogicSnapshot::get_disk_write_speed_mbps()
+{
+    if (_disk_cache_active && _disk_write_thread)
+        return _disk_write_thread->write_speed_mbps();
+    return 0.0;
+}
+
+size_t LogicSnapshot::get_disk_write_queue_depth()
+{
+    if (_disk_cache_active && _disk_write_thread)
+        return _disk_write_thread->queue_depth();
+    return 0;
+}
+
+uint64_t LogicSnapshot::get_disk_total_blocks_written()
+{
+    return _total_blocks_written;
+}
+
+void LogicSnapshot::ensure_block_hot(unsigned int order, uint64_t index0, uint64_t index1)
+{
+    if (!_disk_cache_active) return;
+
+    if (_ch_data[order][index0].lbp[index1] != NULL) return;
+
+    void *new_lbp = _disk_read_cache->load(order, index0 * RootScale + index1);
+    if (new_lbp != NULL) {
+        _ch_data[order][index0].lbp[index1] = new_lbp;
+        _block_states[new_lbp] = BLOCK_HOT;
+    }
+}
+
+void LogicSnapshot::ensure_all_blocks_hot()
+{
+    if (!_disk_cache_active) return;
+
+    for (unsigned int ch = 0; ch < _ch_data.size(); ch++) {
+        for (uint64_t rn = 0; rn < _ch_data[ch].size(); rn++) {
+            for (uint64_t lb = 0; lb < Scale; lb++) {
+                if (_ch_data[ch][rn].lbp[lb] == NULL) {
+                    ensure_block_hot(ch, rn, lb);
+                }
+            }
+        }
+    }
 }
 
 void LogicSnapshot::first_payload(const sr_datafeed_logic &logic, uint64_t total_sample_count, GSList *channels, bool able_free)
@@ -207,6 +295,25 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic, uint64_t total
         _cur_ref_block_indexs[i].lbp_index = 0;
     }
 
+    if (_disk_cache_active && _ch_data.size() > 0) {
+        if (!_disk_buffer_mgr) {
+            _disk_buffer_mgr = new DiskBufferManager();
+        }
+        _disk_buffer_mgr->open(_disk_cache_config, _channel_num);
+
+        if (!_disk_write_thread) {
+            _disk_write_thread = new DiskWriteThread(_disk_buffer_mgr);
+        }
+        _disk_write_thread->start();
+
+        if (!_disk_read_cache) {
+            _disk_read_cache = new DiskReadCache(_disk_buffer_mgr);
+        }
+        _disk_read_cache->set_max_size(_disk_cache_config.read_cache_bytes);
+
+        _total_blocks_written = 0;
+    }
+
     lock.unlock();
     append_payload(logic);
     _last_ended = false;
@@ -295,6 +402,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic)
                 }
                 _ch_data[_ch_fraction][index0].lbp[index1] = lbp;
                 memset(lbp, 0, LeafBlockSpace);
+                _block_states[lbp] = BLOCK_HOT;
             }
 
             _dest_ptr = (uint8_t*)lbp + offset;
@@ -305,6 +413,26 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic)
 
                 if (_ring_sample_count % LeafBlockSamples == 0){
                     calc_mipmap(_channel_num - 1, index0, index1, LeafBlockSamples, true);
+
+                    if (_disk_cache_active) {
+                        void *blk_ptr = _ch_data[_channel_num - 1][index0].lbp[index1];
+                        if (blk_ptr != NULL) {
+                            auto it = _block_states.find(blk_ptr);
+                            if (it != _block_states.end() && it->second == BLOCK_HOT) {
+                                uint64_t block_seq = index0 * RootScale + index1;
+                                if (block_seq >= _hot_window_blocks || _total_blocks_written > 0) {
+                                    it->second = BLOCK_WARM;
+                                    WriteTask task;
+                                    task.channel = _channel_num - 1;
+                                    task.block_index = block_seq;
+                                    task.data_ptr = blk_ptr;
+                                    task.size = LeafBlockSpace;
+                                    _disk_write_thread->submit(task);
+                                    _total_blocks_written++;
+                                }
+                            }
+                        }
+                    }
                 }                                
                 break;
             }                
@@ -347,6 +475,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic)
         }
         _ch_data[fill_chan][index0].lbp[index1] = lbp;
         memset(lbp, 0, LeafBlockSpace);
+        _block_states[lbp] = BLOCK_HOT;
     }
 
     uint64_t *write_ptr = (uint64_t*)lbp + offset / Scale;
@@ -366,6 +495,26 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic)
         if (filled_sample == LeafBlockSamples)
         {
             calc_mipmap(fill_chan, index0, index1, LeafBlockSamples, true);
+
+            if (_disk_cache_active) {
+                void *blk_ptr = _ch_data[fill_chan][index0].lbp[index1];
+                if (blk_ptr != NULL) {
+                    auto it = _block_states.find(blk_ptr);
+                    if (it != _block_states.end() && it->second == BLOCK_HOT) {
+                        uint64_t block_seq = index0 * RootScale + index1;
+                        if (block_seq >= _hot_window_blocks || _total_blocks_written > 0) {
+                            it->second = BLOCK_WARM;
+                            WriteTask task;
+                            task.channel = fill_chan;
+                            task.block_index = block_seq;
+                            task.data_ptr = blk_ptr;
+                            task.size = LeafBlockSpace;
+                            _disk_write_thread->submit(task);
+                            _total_blocks_written++;
+                        }
+                    }
+                }
+            }
 
             chans_read_addr[fill_chan] = read_ptr;
             fill_chan = (fill_chan + 1) % _channel_num;
@@ -388,11 +537,12 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic)
                 }
                 _ch_data[fill_chan][index0].lbp[index1] = lbp;
                 memset(lbp, 0, LeafBlockSpace);
+                _block_states[lbp] = BLOCK_HOT;
             }
 
             write_ptr = (uint64_t*)lbp + offset / Scale;
             read_ptr = chans_read_addr[fill_chan];
-        } 
+        }
         else if (read_ptr >= end_read_ptr) 
         {  
             calc_mipmap(fill_chan, index0, index1, filled_sample, false);
@@ -417,6 +567,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic)
                 }
                 _ch_data[fill_chan][index0].lbp[index1] = lbp;
                 memset(lbp, 0, LeafBlockSpace);
+                _block_states[lbp] = BLOCK_HOT;
             }
 
             write_ptr = (uint64_t*)lbp + offset / Scale;   
@@ -443,6 +594,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic)
         }
         _ch_data[_ch_fraction][index0].lbp[index1] = lbp;
         memset(lbp, 0, LeafBlockSpace);
+        _block_states[lbp] = BLOCK_HOT;
     }
 
     _dest_ptr = (uint8_t*)lbp + offset / 8;  
@@ -491,11 +643,17 @@ void LogicSnapshot::capture_ended()
             calc_mipmap(chan, index0, index1, offset * 8, true);
         }  
     }
+
+    if (_disk_cache_active && _disk_write_thread) {
+        _disk_write_thread->flush();
+    }
 }
 
 void LogicSnapshot::copy_from(const LogicSnapshot &src)
 {
     std::lock_guard<std::mutex> lock(_mutex);
+
+    const_cast<LogicSnapshot&>(src).ensure_all_blocks_hot();
 
     free_data();
 
@@ -680,17 +838,26 @@ const uint8_t *LogicSnapshot::get_samples(uint64_t start_sample, uint64_t &end_s
 
     _ring_sample_count -= _loop_offset;
 
-    if (index0 >= _ch_data[order].size() || _ch_data[order][index0].lbp[index1] == NULL)
+    if (index0 >= _ch_data[order].size())
         return NULL;
-    else{
-        if (lbp != NULL)
-            *lbp = _ch_data[order][index0].lbp[index1];
 
-        _cur_ref_block_indexs[order].root_index = index0;
-        _cur_ref_block_indexs[order].lbp_index  = index1;
-        
-        return (uint8_t*)_ch_data[order][index0].lbp[index1] + offset;
+    if (_ch_data[order][index0].lbp[index1] == NULL) {
+        if (_disk_cache_active) {
+            ensure_block_hot(order, index0, index1);
+            if (_ch_data[order][index0].lbp[index1] == NULL)
+                return NULL;
+        } else {
+            return NULL;
+        }
     }
+
+    if (lbp != NULL)
+        *lbp = _ch_data[order][index0].lbp[index1];
+
+    _cur_ref_block_indexs[order].root_index = index0;
+    _cur_ref_block_indexs[order].lbp_index  = index1;
+    
+    return (uint8_t*)_ch_data[order][index0].lbp[index1] + offset;
 }
 
 bool LogicSnapshot::get_sample(uint64_t index, int sig_index)
@@ -729,6 +896,9 @@ bool LogicSnapshot::get_sample_self(uint64_t index, int sig_index)
             return (_ch_data[order][index0].first & root_pos_mask) != 0;
         }
         else {
+            if (_ch_data[order][index0].lbp[index1] == NULL && _disk_cache_active) {
+                ensure_block_hot(order, index0, index1);
+            }
             uint64_t *lbp = (uint64_t*)_ch_data[order][index0].lbp[index1];
             return *(lbp + ((index & LeafMask) >> ScalePower)) & index_mask;
         }
@@ -1480,8 +1650,14 @@ uint8_t *LogicSnapshot::get_block_buf(int block_index, int sig_index, bool &samp
     }
     uint8_t *lbp = (uint8_t*)_ch_data[order][index].lbp[pos];
 
-    if (lbp == NULL)
-        sample = (_ch_data[order][index].first & 1ULL << pos) != 0;
+    if (lbp == NULL) {
+        if (_disk_cache_active) {
+            ensure_block_hot(order, index, pos);
+            lbp = (uint8_t*)_ch_data[order][index].lbp[pos];
+        }
+        if (lbp == NULL)
+            sample = (_ch_data[order][index].first & 1ULL << pos) != 0;
+    }
 
     if (lbp != NULL && _loop_offset > 0 && block_index0 == 0)
     {
@@ -1515,7 +1691,11 @@ void LogicSnapshot::move_first_node_to_last()
         for (int x=0; x<(int)Scale; x++)
         {
             if (rn.lbp[x] != NULL){
-                _free_block_list.push_back(rn.lbp[x]);
+                auto it = _block_states.find(rn.lbp[x]);
+                if (it == _block_states.end() || it->second != BLOCK_COLD) {
+                    _free_block_list.push_back(rn.lbp[x]);
+                }
+                _block_states.erase(rn.lbp[x]);
                 rn.lbp[x] = NULL;
             }
         }
@@ -1562,7 +1742,11 @@ void LogicSnapshot::free_head_blocks(int count)
     {
         for (int j=_lst_free_block_index; j<count; j++){
             if (_ch_data[i][0].lbp[j] != NULL){
-                _free_block_list.push_back(_ch_data[i][0].lbp[j]);
+                auto it = _block_states.find(_ch_data[i][0].lbp[j]);
+                if (it == _block_states.end() || it->second != BLOCK_COLD) {
+                    _free_block_list.push_back(_ch_data[i][0].lbp[j]);
+                }
+                _block_states.erase(_ch_data[i][0].lbp[j]);
                 _ch_data[i][0].lbp[j] = NULL;
             }
 
@@ -1687,6 +1871,8 @@ void LogicSnapshot::recalc_mipmap(unsigned int order, uint64_t index0, uint64_t 
 LogicSnapshot* LogicSnapshot::clone_data()
 {
     std::lock_guard<std::mutex> lock(_mutex);
+
+    ensure_all_blocks_hot();
 
     LogicSnapshot *clone = new LogicSnapshot();
 

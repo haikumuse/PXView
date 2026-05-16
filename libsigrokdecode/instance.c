@@ -574,6 +574,14 @@ SRD_PRIV struct srd_decoder_inst* create_c_decoder_inst(struct srd_session* sess
     g_cond_init(&di->handled_all_samples_cond);
     g_mutex_init(&di->data_mutex);
 
+    if (options && srd_inst_option_set(di, options) != SRD_OK) {
+        srd_err("%s,ERROR:failed to set options.", __func__);
+        g_free(di->dec_channelmap);
+        g_free(di->inst_id);
+        g_free(di);
+        return NULL;
+    }
+
     if (di->c_dec_inst->reset)
         di->c_dec_inst->reset(di);
     if (di->c_dec_inst->start)
@@ -1243,8 +1251,19 @@ find_match(struct srd_decoder_inst* di)
         update_old_pins_array_initial_pins(di);
     }
 
-    if (di->abs_cur_matched)
+    if (di->abs_cur_matched) {
         di->abs_cur_samplenum++;
+        for (l = di->condition_list; l; l = l->next) {
+            cond = l->data;
+            if (!cond)
+                continue;
+            for (GSList *tl = cond; tl; tl = tl->next) {
+                struct srd_term *term = tl->data;
+                if (term && term->type == SRD_TERM_SKIP && term->num_samples_to_skip > 0)
+                    term->num_samples_already_skipped = 1;
+            }
+        }
+    }
 
     while (di->abs_cur_samplenum < di->abs_end_samplenum) {
 

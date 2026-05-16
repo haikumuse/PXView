@@ -688,7 +688,7 @@ static struct srd_c_decoder can_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
-    can_options[0].def = g_variant_new_uint64(1000000);
+    can_options[0].def = g_variant_new_int64(1000000);
     can_options[1].def = g_variant_new_double(70.0);
     return &can_c_decoder;
 }

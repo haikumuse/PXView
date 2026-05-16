@@ -27,6 +27,10 @@
 
 #include <libsigrok.h> 
 #include "snapshot.h"
+#include "disk_cache_config.h"
+#include "disk_buffer_manager.h"
+#include "disk_write_thread.h"
+#include "disk_read_cache.h"
 #include <QString>
 #include <utility>
 #include <vector>
@@ -85,6 +89,12 @@ private:
         uint64_t    lbp_index;
     };
 
+    enum BlockState {
+        BLOCK_HOT = 0,
+        BLOCK_WARM = 1,
+        BLOCK_COLD = 2
+    };
+
 public:
     typedef std::pair<uint64_t, bool> EdgePair;
 
@@ -132,6 +142,14 @@ public:
     void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback);
     bool is_glitch_filtered();
     void set_glitch_filtered(bool filtered);
+
+    void set_disk_cache_config(const DiskCacheConfig &config);
+    bool is_disk_cache_active();
+    double get_disk_write_speed_mbps();
+    size_t get_disk_write_queue_depth();
+    uint64_t get_disk_total_blocks_written();
+    void ensure_block_hot(unsigned int order, uint64_t index0, uint64_t index1);
+    void ensure_all_blocks_hot();
 
     bool has_data(int sig_index);
     int get_block_num();
@@ -267,6 +285,15 @@ private:
     struct BlockIndex _cur_ref_block_indexs[CHANNEL_MAX_COUNT];
     int         _lst_free_block_index;
     bool        _glitch_filtered;
+
+    DiskCacheConfig _disk_cache_config;
+    DiskBufferManager *_disk_buffer_mgr;
+    DiskWriteThread *_disk_write_thread;
+    DiskReadCache *_disk_read_cache;
+    std::map<void*, BlockState> _block_states;
+    uint64_t _hot_window_blocks;
+    uint64_t _total_blocks_written;
+    bool _disk_cache_active;
  
 	friend class LogicSnapshotTest::Pow2;
 	friend class LogicSnapshotTest::Basic;

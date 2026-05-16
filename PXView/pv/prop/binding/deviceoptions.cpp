@@ -27,6 +27,7 @@
 #include <QObject>
 #include <stdint.h>
 #include "../bool.h"
+#include "../string.h"
 #include "../double.h"
 #include "../enum.h"
 #include "../int.h"
@@ -122,7 +123,13 @@ DeviceOptions::DeviceOptions()
             bind_double(name, label, key, "%", pair<double, double>(0, 100), 1, 1);
             break;
 		case SR_CONF_STREAM_BUFF:
-            bind_double(name, label, key, "GB", pair<double, double>(1, 128), 0, 1);
+            bind_double(name, label, key, "GB", pair<double, double>(1, 1024), 0, 1);
+            break;
+		case SR_CONF_DISK_CACHE_ENABLE:
+            bind_bool(name, label, key);
+            break;
+		case SR_CONF_DISK_CACHE_PATH:
+            bind_string(name, label, key);
             break;
 
 		case SR_CONF_RLE:
@@ -178,6 +185,14 @@ void DeviceOptions::bind_bool(const QString &name, const QString label, int key)
 	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
 	_properties.push_back(
         new Bool(name, text, bind(config_getter, key),
+			bind(config_setter, key, _1)));
+}
+
+void DeviceOptions::bind_string(const QString &name, const QString label, int key)
+{
+	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
+	_properties.push_back(
+        new String(name, text, bind(config_getter, key),
 			bind(config_setter, key, _1)));
 }
 

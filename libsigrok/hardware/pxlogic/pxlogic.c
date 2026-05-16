@@ -331,6 +331,8 @@ static struct PX_context *DSLogic_dev_new(const struct PX_profile *prof)
     devc->is_loop = 0;
 
     devc->stream_buff_size = 16;
+    devc->disk_cache_enable = FALSE;
+    devc->disk_cache_path = NULL;
 
 
 
@@ -1179,6 +1181,12 @@ static int config_get(int id, GVariant **data, const struct sr_dev_inst *sdi,
         case SR_CONF_STREAM_BUFF:
             *data = g_variant_new_double(devc->stream_buff_size);
         break;
+        case SR_CONF_DISK_CACHE_ENABLE:
+            *data = g_variant_new_boolean(devc->disk_cache_enable);
+        break;
+        case SR_CONF_DISK_CACHE_PATH:
+            *data = g_variant_new_string(devc->disk_cache_path ? devc->disk_cache_path : "");
+        break;
 
         case SR_CONF_STREAM:
             *data = g_variant_new_boolean(devc->stream);
@@ -1516,6 +1524,15 @@ static int config_set(int id, GVariant *data, struct sr_dev_inst *sdi,
     else if (id == SR_CONF_STREAM_BUFF) {
         ret = SR_OK;
         devc->stream_buff_size = g_variant_get_double(data);
+    }
+    else if (id == SR_CONF_DISK_CACHE_ENABLE) {
+        ret = SR_OK;
+        devc->disk_cache_enable = g_variant_get_boolean(data);
+    }
+    else if (id == SR_CONF_DISK_CACHE_PATH) {
+        ret = SR_OK;
+        g_free(devc->disk_cache_path);
+        devc->disk_cache_path = g_variant_dup_string(data, NULL);
     }
     else {
         ret = SR_ERR_NA;

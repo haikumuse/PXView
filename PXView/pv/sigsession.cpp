@@ -32,6 +32,7 @@
 #include "data/decoderstack.h"
 #include "data/dsosnapshot.h"
 #include "data/logicsnapshot.h"
+#include "data/disk_cache_config.h"
 #include "data/mathstack.h"
 #include "data/sessionsnapshot.h"
 #include "data/spectrumstack.h"
@@ -46,11 +47,21 @@
 #include "view/spectrumtrace.h"
 
 #include <QString>
+#include <QDir>
 #include <assert.h>
 #include <functional>
 #include <map>
 #include <stdexcept>
 #include <sys/stat.h>
+#include <chrono>
+
+#include "data/disk_buffer_manager.h"
+#include "data/disk_cache_config.h"
+
+static QString get_default_disk_cache_path()
+{
+    return QDir::tempPath() + "/PXView_cache";
+}
 
 #include "config/appconfig.h"
 #include "data/decode/decoderstatus.h"
@@ -114,6 +125,9 @@ SigSession::SigSession() {
   _dso_status_valid = false;
   _glitch_filter_thread = nullptr;
   _glitch_filter_running = false;
+
+  _disk_write_thread = nullptr;
+  _disk_buffer_mgr = nullptr;
 
   _data_list.push_back(new SessionData());
   _data_list.push_back(new SessionData());
@@ -571,6 +585,87 @@ bool SigSession::action_start_capture(bool instant) {
   }
 
   _callback->trigger_message(DSV_MSG_CAPTURE_STATE_CHANGED);
+
+  bool disk_cache_enabled = false;
+  _device_agent.get_config_bool(SR_CONF_DISK_CACHE_ENABLE, disk_cache_enabled);
+  if (disk_cache_enabled) {
+    QString cache_path;
+    _device_agent.get_config_string(SR_CONF_DISK_CACHE_PATH, cache_path);
+    if (cache_path.isEmpty()) {
+      cache_path = get_default_disk_cache_path();
+      _device_agent.set_config_string(SR_CONF_DISK_CACHE_PATH,
+                                       cache_path.toUtf8().data());
+    }
+
+    DiskCacheConfig temp_config;
+    temp_config.cache_path = cache_path.toStdString();
+    DiskBufferManager temp_mgr;
+    temp_mgr.open(temp_config, 1);
+
+    uint64_t test_size = 64 * 1024 * 1024;
+    void *test_buf = malloc(test_size);
+    if (test_buf) {
+        memset(test_buf, 0, test_size);
+
+        auto start = std::chrono::high_resolution_clock::now();
+        for (uint64_t offset = 0; offset < test_size; offset += 2 * 1024 * 1024) {
+            uint64_t chunk = std::min((uint64_t)(2 * 1024 * 1024), test_size - offset);
+            temp_mgr.write_block(0, offset / (2 * 1024 * 1024), (uint8_t*)test_buf + offset, chunk);
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+
+        double elapsed_sec = std::chrono::duration<double>(end - start).count();
+        double speed_mbps = (test_size / (1024.0 * 1024.0)) / elapsed_sec;
+
+        free(test_buf);
+        temp_mgr.cleanup();
+        temp_mgr.close();
+
+        if (speed_mbps < 200.0) {
+            _callback->delay_prop_msg(
+                QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_WARNING), "Disk write speed is too slow")) + "\n"
+                + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_DETAIL),
+                       "Detected speed: %1 MB/s\nRecommended: NVMe SSD for 250MB/s capture.\nCapture may fail with data loss.")).arg(speed_mbps, 0, 'f', 1));
+        }
+    } else {
+        temp_mgr.close();
+    }
+  }
+
+  if (_is_stream_mode && disk_cache_enabled) {
+    DiskCacheConfig config;
+    config.enabled = true;
+
+    QString cache_path;
+    _device_agent.get_config_string(SR_CONF_DISK_CACHE_PATH, cache_path);
+    if (cache_path.isEmpty()) {
+      cache_path = get_default_disk_cache_path();
+    }
+    config.cache_path = cache_path.toStdString();
+
+    double total_gb = 16;
+    _device_agent.get_config_double(SR_CONF_STREAM_BUFF, total_gb);
+    config.total_cache_depth_gb = (uint64_t)total_gb;
+
+    uint64_t phys_mem_gb = 0;
+#ifdef _WIN32
+    MEMORYSTATUSEX mem_info;
+    mem_info.dwLength = sizeof(mem_info);
+    GlobalMemoryStatusEx(&mem_info);
+    phys_mem_gb = mem_info.ullTotalPhys / (1024*1024*1024);
+#else
+    long pages = sysconf(_SC_PHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    phys_mem_gb = (uint64_t)pages * page_size / (1024*1024*1024);
+#endif
+    config.memory_size_gb = std::min(std::max(phys_mem_gb / 4, (uint64_t)1), (uint64_t)4);
+    config.calculate();
+
+    uint64_t bytes_per_block = 2105376;
+    config.hot_window_blocks = config.memory_size_gb * 1024ULL * 1024 * 1024 / bytes_per_block;
+
+    _capture_data->get_logic()->set_disk_cache_config(config);
+  }
 
   // update setting
   if (_device_agent.is_file())
@@ -1693,6 +1788,10 @@ void SigSession::Close() {
   dsv_info("SigSession::Close(), stop capture");
   stop_capture();
 
+  for (auto p : _data_list) {
+    p->clear();
+  }
+
   // TODO: This should not be necessary
   _session = NULL;
 }
@@ -2452,6 +2551,22 @@ void SigSession::clear_glitch_filter() {
 
 bool SigSession::is_glitch_filter_active() {
   return _view_data->_glitch_filter_active;
+}
+
+size_t SigSession::get_disk_write_queue_depth() {
+  if (_view_data->get_logic()->is_disk_cache_active())
+    return _view_data->get_logic()->get_disk_write_queue_depth();
+  return 0;
+}
+
+double SigSession::get_disk_write_speed_mbps() {
+  if (_view_data->get_logic()->is_disk_cache_active())
+    return _view_data->get_logic()->get_disk_write_speed_mbps();
+  return 0.0;
+}
+
+bool SigSession::is_disk_write_disk_full() {
+  return false;
 }
 
 } // namespace pv
