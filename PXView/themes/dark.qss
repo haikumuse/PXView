@@ -598,6 +598,9 @@ QFrame[frameShape="5"]
 
 QToolBar#sidebar {
     border-left: 1px solid @border-strong;
+    background-color: @bg-global;
+    padding: 0px;
+    spacing: 0px;
 }
 
 QStackedWidget

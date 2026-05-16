@@ -134,7 +134,19 @@
         <file>icons/dark/square-la.svg</file>
         <file>icons/dark/square-osc.svg</file>
         <file>icons/light/search.svg</file>
+        <file>icons/light/zap.svg</file>
+        <file>icons/light/binary.svg</file>
+        <file>icons/light/ruler.svg</file>
+        <file>icons/light/sliders.svg</file>
+        <file>icons/light/play.svg</file>
+        <file>icons/light/step-forward.svg</file>
         <file>icons/dark/search.svg</file>
+        <file>icons/dark/zap.svg</file>
+        <file>icons/dark/binary.svg</file>
+        <file>icons/dark/ruler.svg</file>
+        <file>icons/dark/sliders.svg</file>
+        <file>icons/dark/play.svg</file>
+        <file>icons/dark/step-forward.svg</file>
         <file>icons/dark/function.svg</file>
         <file>icons/light/function.svg</file>
         <file>icons/light/logo_color.svg</file>
