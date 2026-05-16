@@ -1200,12 +1200,13 @@ void MeasureDock::adjust_form_size(QWidget *wid)
     assert(wid);
 
     QFont labelFont = dock_font_label();
-    QFontMetrics fm(labelFont); 
+    QFontMetrics fm(labelFont);
 
     auto labels = wid->findChildren<QLabel*>();
     for(auto o : labels)
     { 
-        QRect rc = fm.boundingRect(o->text());
+        QFontMetrics labelFm(o->font());
+        QRect rc = labelFm.boundingRect(o->text());
         QSize size(rc.width() + 15, rc.height()); 
         o->setFixedSize(size);
     }

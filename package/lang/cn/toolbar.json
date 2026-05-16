@@ -186,5 +186,25 @@
     {
         "id": "IDS_TOOLBAR_HELP_LOG",
         "text": "日志选项(&L)"
+    },
+    {
+        "id": "IDS_TOOLBAR_SAMPLING_SETTINGS",
+        "text": "采样设置"
+    },
+    {
+        "id": "IDS_TOOLBAR_DEVICE",
+        "text": "设备"
+    },
+    {
+        "id": "IDS_TOOLBAR_SAMPLE_DEPTH",
+        "text": "采样深度"
+    },
+    {
+        "id": "IDS_TOOLBAR_SAMPLE_RATE",
+        "text": "采样率"
+    },
+    {
+        "id": "IDS_TOOLBAR_CAPTURE_MODE_ROW",
+        "text": "捕获模式"
     }
 ]
