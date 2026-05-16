@@ -70,7 +70,7 @@ SubMainFrame::SubMainFrame(QWidget *content, const QString &title, QWidget *pare
     icon.addFile(QString::fromUtf8(":/icons/logo.svg"), QSize(), QIcon::Normal, QIcon::Off);
     setWindowIcon(icon);
 
-    _titleBar = new toolbars::TitleBar(true, this, this, true);
+    _titleBar = new toolbars::TitleBar(true, this, this, true, false);
     _titleBar->setTitle(title);
 
     setMenuBar(_titleBar);

@@ -59,6 +59,7 @@
 #include "../dsvdef.h"
 #include "../log.h"
 #include "../sigsession.h"
+#include "../widgets/hoversplitter.h"
 
 using namespace std;
 
@@ -164,7 +165,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   _fft_viewport->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   _fft_viewport->setMinimumHeight(100);
 
-  _vsplitter = new QSplitter(this);
+  _vsplitter = new pv::widgets::HoverSplitter(this);
   _vsplitter->setOrientation(Qt::Vertical);
   _vsplitter->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 

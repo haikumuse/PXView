@@ -71,7 +71,7 @@ static QEasingCurve makeTailwindCurve() {
 }
 
 TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
-                   bool hasClose)
+                   bool hasClose, bool enableRibbon)
     : QMenuBar(parent) {
   _minimizeButton = NULL;
   _maximizeButton = NULL;
@@ -86,6 +86,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
   _titleParent = titleParent;
   _is_done_moved = false;
   _is_able_drag = true;
+  _enableRibbon = enableRibbon;
   _ribbonContainer = NULL;
   _ribbonPanel = NULL;
   _ribbonLayout = NULL;
@@ -112,12 +113,16 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
   titleRowLayout->setContentsMargins(0, 0, 0, 0);
   titleRowLayout->setSpacing(0);
 
-  _tabBar = new QTabBar(titleRow);
-  _tabBar->setDrawBase(false);
-  _tabBar->setFixedHeight(32);
-  _tabBar->setShape(QTabBar::RoundedNorth);
-  _tabBar->setMinimumWidth(100);
-  titleRowLayout->addWidget(_tabBar);
+  if (_enableRibbon) {
+    _tabBar = new QTabBar(titleRow);
+    _tabBar->setDrawBase(false);
+    _tabBar->setFixedHeight(32);
+    _tabBar->setShape(QTabBar::RoundedNorth);
+    _tabBar->setMinimumWidth(100);
+    titleRowLayout->addWidget(_tabBar);
+  } else {
+    _tabBar = NULL;
+  }
 
   titleRowLayout->addStretch(500);
 
@@ -164,97 +169,98 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
 
   setFixedHeight(32);
 
-  _bottomLine = new QWidget(this);
-  _bottomLine->setObjectName("TitleBarBottomLine");
-  _bottomLine->setFixedHeight(1);
-  _bottomLine->move(0, 31);
-  _bottomLine->show();
+  if (_enableRibbon) {
+    _bottomLine = new QWidget(this);
+    _bottomLine->setObjectName("TitleBarBottomLine");
+    _bottomLine->setFixedHeight(1);
+    _bottomLine->move(0, 31);
+    _bottomLine->show();
+  }
 
   // --- 平移滑动式 Ribbon ---
-  // _ribbonContainer: 裁切容器，固定高度，作为 _parent 的子控件浮在主界面上方
-  // 开启 WA_ClipChildren 让超出容器边界的面板部分被裁切，实现真正的平移滑动效果
-  _ribbonContainer = new QWidget(parent);
-  _ribbonContainer->setObjectName("RibbonContainer");
-  _ribbonContainer->setContentsMargins(0, 0, 0, 0);
-  _ribbonContainer->setFixedHeight(_ribbonExpandedHeight);
-  _ribbonContainer->setAutoFillBackground(false);
-  _ribbonContainer->setAttribute(Qt::WA_TranslucentBackground);
-  _ribbonContainer->hide();
+  if (_enableRibbon) {
+    // _ribbonContainer: 裁切容器，固定高度，作为 _parent 的子控件浮在主界面上方
+    // 开启 WA_ClipChildren 让超出容器边界的面板部分被裁切，实现真正的平移滑动效果
+    _ribbonContainer = new QWidget(parent);
+    _ribbonContainer->setObjectName("RibbonContainer");
+    _ribbonContainer->setContentsMargins(0, 0, 0, 0);
+    _ribbonContainer->setFixedHeight(_ribbonExpandedHeight);
+    _ribbonContainer->setAutoFillBackground(false);
+    _ribbonContainer->setAttribute(Qt::WA_TranslucentBackground);
+    _ribbonContainer->hide();
 
-  // _ribbonPanel: 实际内容面板，在容器内做 Y 轴平移
-  // 初始位置在容器上方(y=-65)，完全被裁切不可见
-  _ribbonPanel = new QWidget(this);
-  _ribbonPanel->setObjectName("RibbonPanel");
-  _ribbonPanel->setContentsMargins(0, 0, 0, 0);
-  _ribbonPanel->setFixedSize(1, _ribbonExpandedHeight);
-  _ribbonPanel->move(0, 32);
-  _ribbonPanel->hide();
+    // _ribbonPanel: 实际内容面板，在容器内做 Y 轴平移
+    // 初始位置在容器上方(y=-65)，完全被裁切不可见
+    _ribbonPanel = new QWidget(this);
+    _ribbonPanel->setObjectName("RibbonPanel");
+    _ribbonPanel->setContentsMargins(0, 0, 0, 0);
+    _ribbonPanel->setFixedSize(1, _ribbonExpandedHeight);
+    _ribbonPanel->move(0, 32);
+    _ribbonPanel->hide();
 
-  _ribbonLayout = new QVBoxLayout(_ribbonPanel);
-  _ribbonLayout->setContentsMargins(0, 0, 0, 0);
-  _ribbonLayout->setSpacing(0);
+    _ribbonLayout = new QVBoxLayout(_ribbonPanel);
+    _ribbonLayout->setContentsMargins(0, 0, 0, 0);
+    _ribbonLayout->setSpacing(0);
 
-  _categoryStack = new QStackedWidget(_ribbonPanel);
-  _categoryStack->setContentsMargins(0, 0, 0, 0);
-  _categoryStack->setFixedHeight(_ribbonExpandedHeight - 1);
-  _categoryStack->setMinimumWidth(800);
-  _ribbonLayout->addWidget(_categoryStack, 0, Qt::AlignTop);
+    _categoryStack = new QStackedWidget(_ribbonPanel);
+    _categoryStack->setContentsMargins(0, 0, 0, 0);
+    _categoryStack->setFixedHeight(_ribbonExpandedHeight - 1);
+    _categoryStack->setMinimumWidth(800);
+    _ribbonLayout->addWidget(_categoryStack, 0, Qt::AlignTop);
 
-  QWidget *_ribbonBottomLine = new QWidget(_ribbonPanel);
-  _ribbonBottomLine->setObjectName("RibbonBottomLine");
-  _ribbonBottomLine->setFixedHeight(1);
-  _ribbonLayout->addWidget(_ribbonBottomLine);
+    QWidget *_ribbonBottomLine = new QWidget(_ribbonPanel);
+    _ribbonBottomLine->setObjectName("RibbonBottomLine");
+    _ribbonBottomLine->setFixedHeight(1);
+    _ribbonLayout->addWidget(_ribbonBottomLine);
 
-  _pinButton = new QToolButton(_ribbonPanel);
-  _pinButton->setObjectName("RibbonPinButton");
-  _pinButton->setFixedSize(20, 20);
-  _pinButton->setIconSize(QSize(14, 14));
-  _pinButton->setAutoRaise(true);
-  _pinButton->setCheckable(true);
-  _pinButton->setChecked(true);
-  _pinButton->setToolTip(tr("Unpin Ribbon"));
-  _pinButton->setIcon(QIcon(GetIconPath() + "/unpin.svg"));
-  connect(_pinButton, &QToolButton::toggled, this, &TitleBar::onPinToggled);
+    _pinButton = new QToolButton(_ribbonPanel);
+    _pinButton->setObjectName("RibbonPinButton");
+    _pinButton->setFixedSize(20, 20);
+    _pinButton->setIconSize(QSize(14, 14));
+    _pinButton->setAutoRaise(true);
+    _pinButton->setCheckable(true);
+    _pinButton->setChecked(true);
+    _pinButton->setToolTip(tr("Unpin Ribbon"));
+    _pinButton->setIcon(QIcon(GetIconPath() + "/unpin.svg"));
+    connect(_pinButton, &QToolButton::toggled, this, &TitleBar::onPinToggled);
 
-  // TitleBar 高度固定 32px，不随 Ribbon 变化
-  setFixedHeight(32);
+    // --- 动画引擎：Y轴平移 ---
+    // slideOffset 从 _ribbonExpandedHeight(面板在容器上方,隐藏) 到
+    // 0(面板完全可见)
+    _ribbonAnimation = new QPropertyAnimation(this, "slideOffset");
+    _ribbonAnimation->setDuration(250);
+    _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
 
-  // --- 动画引擎：Y轴平移 ---
-  // slideOffset 从 _ribbonExpandedHeight(面板在容器上方,隐藏) 到
-  // 0(面板完全可见)
-  _ribbonAnimation = new QPropertyAnimation(this, "slideOffset");
-  _ribbonAnimation->setDuration(250);
-  _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
-
-  connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this]() {
-    QWidget *tlw = window();
-    if (_ribbonExpanded && _ribbonPinned) {
-      if (tlw)
-        tlw->setUpdatesEnabled(false);
-      _ribbonPanel->setParent(this);
-      _ribbonPanel->move(0, 32);
-      _ribbonPanel->setFixedWidth(width());
-      _ribbonPanel->show();
-      setFixedHeight(32 + _ribbonExpandedHeight);
-      _ribbonContainer->hide();
-      positionPinButton();
-      if (tlw)
-        tlw->setUpdatesEnabled(true);
-    } else if (!_ribbonExpanded) {
-      if (tlw)
-        tlw->setUpdatesEnabled(false);
-      _ribbonContainer->hide();
-      if (_ribbonPinned) {
-        setFixedHeight(32);
+    connect(_ribbonAnimation, &QPropertyAnimation::finished, this, [this]() {
+      QWidget *tlw = window();
+      if (_ribbonExpanded && _ribbonPinned) {
+        if (tlw)
+          tlw->setUpdatesEnabled(false);
+        _ribbonPanel->setParent(this);
+        _ribbonPanel->move(0, 32);
+        _ribbonPanel->setFixedWidth(width());
+        _ribbonPanel->show();
+        setFixedHeight(32 + _ribbonExpandedHeight);
+        _ribbonContainer->hide();
+        positionPinButton();
+        if (tlw)
+          tlw->setUpdatesEnabled(true);
+      } else if (!_ribbonExpanded) {
+        if (tlw)
+          tlw->setUpdatesEnabled(false);
+        _ribbonContainer->hide();
+        if (_ribbonPinned) {
+          setFixedHeight(32);
+        }
+        if (tlw)
+          tlw->setUpdatesEnabled(true);
       }
-      if (tlw)
-        tlw->setUpdatesEnabled(true);
-    }
-    updateBottomLine();
-  });
+      updateBottomLine();
+    });
 
-  connect(_tabBar, &QTabBar::tabBarClicked, this, &TitleBar::onTabClicked);
-  connect(_tabBar, &QTabBar::currentChanged, this, &TitleBar::onTabChanged);
+    connect(_tabBar, &QTabBar::tabBarClicked, this, &TitleBar::onTabClicked);
+    connect(_tabBar, &QTabBar::currentChanged, this, &TitleBar::onTabChanged);
+  }
 
   ADD_UI(this);
 }
@@ -268,6 +274,9 @@ TitleBar::~TitleBar() {
 }
 
 int TitleBar::addCategory(const QString &title) {
+  if (!_enableRibbon || !_tabBar || !_categoryStack)
+    return -1;
+
   int index = _tabBar->addTab(title);
 
   QWidget *categoryWidget = new QWidget(_categoryStack);
@@ -343,12 +352,18 @@ void TitleBar::addSeparator(int categoryIndex) {
 }
 
 void TitleBar::retranslateUi(int categoryIndex, const QString &title) {
+  if (!_enableRibbon || !_tabBar)
+    return;
+
   if (categoryIndex >= 0 && categoryIndex < _tabBar->count()) {
     _tabBar->setTabText(categoryIndex, title);
   }
 }
 
 void TitleBar::expandRibbon() {
+  if (!_enableRibbon || !_ribbonAnimation)
+    return;
+
   if (_ribbonAnimation->state() == QAbstractAnimation::Running) {
     _ribbonAnimation->stop();
   }
@@ -370,6 +385,9 @@ void TitleBar::expandRibbon() {
 }
 
 void TitleBar::hideRibbon() {
+  if (!_enableRibbon || !_ribbonAnimation)
+    return;
+
   if (_ribbonAnimation->state() == QAbstractAnimation::Running) {
     _ribbonAnimation->stop();
   }
@@ -385,6 +403,9 @@ void TitleBar::hideRibbon() {
 }
 
 void TitleBar::expandRibbonPinned() {
+  if (!_enableRibbon || !_ribbonAnimation)
+    return;
+
   dsv_info("expandRibbonPinned");
 
   if (_ribbonAnimation->state() == QAbstractAnimation::Running)
@@ -412,6 +433,9 @@ void TitleBar::expandRibbonPinned() {
 }
 
 void TitleBar::hideRibbonPinned() {
+  if (!_enableRibbon || !_ribbonAnimation)
+    return;
+
   dsv_info("hideRibbonPinned");
 
   if (_ribbonAnimation->state() == QAbstractAnimation::Running)
@@ -441,6 +465,9 @@ void TitleBar::hideRibbonPinned() {
 }
 
 void TitleBar::positionRibbonContainer() {
+  if (!_enableRibbon || !_ribbonContainer || !_parent)
+    return;
+
   // 容器永远锚定在标题栏那一行（32px）的下方，而不是跟着动态的 height() 跑
   int y = mapTo(_parent, QPoint(0, 32)).y();
   _ribbonContainer->move(0, y);
@@ -448,6 +475,9 @@ void TitleBar::positionRibbonContainer() {
 }
 
 void TitleBar::onTabClicked(int index) {
+  if (!_enableRibbon || !_tabBar)
+    return;
+
   if (_ribbonExpanded && index == _tabBar->currentIndex()) {
     _ribbonPinned ? hideRibbonPinned() : hideRibbon();
   } else if (!_ribbonExpanded) {
@@ -456,6 +486,9 @@ void TitleBar::onTabClicked(int index) {
 }
 
 void TitleBar::onTabChanged(int index) {
+  if (!_enableRibbon || !_categoryStack)
+    return;
+
   if (index >= 0 && index < _categoryStack->count()) {
     _categoryStack->setCurrentIndex(index);
   }
@@ -465,6 +498,9 @@ int TitleBar::slideOffset() const { return _slideOffset; }
 
 void TitleBar::setSlideOffset(int offset) {
   _slideOffset = offset;
+  if (!_enableRibbon || !_ribbonPanel || !_ribbonContainer)
+    return;
+
   _ribbonPanel->move(0, -offset);
   if (_ribbonPanel->width() != _ribbonContainer->width()) {
     _ribbonPanel->setFixedWidth(_ribbonContainer->width());
@@ -473,6 +509,9 @@ void TitleBar::setSlideOffset(int offset) {
 }
 
 bool TitleBar::isOnTabBar(const QPoint &pos) const {
+  if (!_enableRibbon || !_tabBar)
+    return false;
+
   if (_tabBar->rect().contains(_tabBar->mapFrom(this, pos))) {
     return true;
   }
@@ -505,7 +544,7 @@ void TitleBar::reStyle() {
   if (_isTop || _hasClose)
     _closeButton->setIcon(IconCache::Instance().icon(iconPath + "/close.svg"));
 
-  if (_pinButton) {
+  if (_pinButton && _enableRibbon) {
     if (_ribbonPinned)
       _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/unpin.svg"));
     else
@@ -535,10 +574,10 @@ void TitleBar::resizeEvent(QResizeEvent *event) {
     titleRow->setFixedWidth(width());
   }
 
-  if (_ribbonContainer->isVisible()) {
+  if (_enableRibbon && _ribbonContainer && _ribbonContainer->isVisible()) {
     positionRibbonContainer();
   }
-  if (_ribbonPinned && _ribbonPanel->parentWidget() == this &&
+  if (_enableRibbon && _ribbonPinned && _ribbonPanel && _ribbonPanel->parentWidget() == this &&
       _ribbonPanel->isVisible()) {
     _ribbonPanel->setFixedWidth(width());
     _ribbonPanel->move(0, 32);
@@ -591,7 +630,7 @@ bool TitleBar::eventFilter(QObject *watched, QEvent *event) {
     QPoint globalPos = me->globalPos();
 
     bool onTitleBar = rect().contains(mapFromGlobal(globalPos));
-    bool onRibbon = _ribbonContainer->isVisible() &&
+    bool onRibbon = _enableRibbon && _ribbonContainer && _ribbonContainer->isVisible() &&
                     _ribbonContainer->rect().contains(
                         _ribbonContainer->mapFromGlobal(globalPos));
 
@@ -724,6 +763,9 @@ void TitleBar::UpdateFont() {
 }
 
 void TitleBar::onPinToggled(bool checked) {
+  if (!_enableRibbon)
+    return;
+
   dsv_info("onPinToggled: checked=%d", checked);
   _ribbonPinned = checked;
   QString iconPath = GetIconPath();
@@ -777,7 +819,7 @@ void TitleBar::onPinToggled(bool checked) {
 }
 
 void TitleBar::positionPinButton() {
-  if (!_pinButton)
+  if (!_pinButton || !_ribbonPanel || !_enableRibbon)
     return;
   int pinX = _ribbonPanel->width() - _pinButton->width() - 6;
   int pinY = _ribbonPanel->height() - _pinButton->height() - 4;
@@ -787,7 +829,7 @@ void TitleBar::positionPinButton() {
 void TitleBar::updateBottomLine() {
   if (!_bottomLine)
     return;
-  if (_ribbonExpanded) {
+  if (_enableRibbon && _ribbonExpanded) {
     _bottomLine->hide();
   } else {
     _bottomLine->setFixedWidth(width());

@@ -59,7 +59,7 @@ class TitleBar : public QMenuBar, public IUiWindow
     Q_PROPERTY(int slideOffset READ slideOffset WRITE setSlideOffset)
 
 public:
-    TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose);
+    TitleBar(bool top, QWidget *parent, ITitleParent *titleParent, bool hasClose, bool enableRibbon = true);
     ~TitleBar();
 
     void setTitle(QString title);
@@ -160,6 +160,7 @@ protected:
     ITitleParent    *_titleParent;
     bool        _is_done_moved;
     bool        _is_able_drag;
+    bool        _enableRibbon;
 };
 
 } // namespace toolbars

@@ -169,7 +169,7 @@ void DSDialog::build_base(bool hasClose)
     _main_widget->setAutoFillBackground(true); 
     this->setGraphicsEffect(_shadow);
 
-    _titlebar = new toolbars::TitleBar(false, this, NULL,hasClose);
+    _titlebar = new toolbars::TitleBar(false, this, NULL,hasClose, false);
     _main_layout->addWidget(_titlebar);
 
     _titleSpaceLine = new QWidget(this);
