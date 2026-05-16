@@ -118,6 +118,13 @@ void ScaleSlideAnimation::startAnimation(const QRectF &endRect,
 void ScaleSlideAnimation::stopAnimation() {
   _slideAniGroup->stop();
   _crossAniGroup->stop();
+
+  // Reset to default geometry to prevent accumulated state
+  if (isHorizontal()) {
+    _geometry = QRectF(_geometry.x(), _geometry.y(), 16, 3);
+  } else {
+    _geometry = QRectF(_geometry.x(), _geometry.y(), 3, 16);
+  }
 }
 
 void ScaleSlideAnimation::startSlideAnimation(const QRectF &startRect,
@@ -298,7 +305,24 @@ void SideBarIndicator::paintEvent(QPaintEvent *event) {
   QPainter painter(this);
   painter.setRenderHints(QPainter::Antialiasing);
   painter.setPen(Qt::NoPen);
-  painter.setBrush(QColor("#00a8ff"));
+
+  // Soft glow effect using radial gradient
+  QColor accentColor("#5B8DEF");
+  QColor glowColor = accentColor;
+  glowColor.setAlpha(60);
+
+  // Draw outer glow
+  qreal cx = rect().center().x();
+  qreal cy = rect().center().y();
+  qreal radius = qMax(rect().width(), rect().height()) * 1.5;
+  QRadialGradient glowGradient(cx, cy, radius, cx, cy);
+  glowGradient.setColorAt(0, glowColor);
+  glowGradient.setColorAt(1, QColor(0, 0, 0, 0));
+  painter.setBrush(glowGradient);
+  painter.drawRoundedRect(rect().adjusted(-2, -2, 2, 2), 2, 2);
+
+  // Draw main indicator bar
+  painter.setBrush(accentColor);
   painter.drawRoundedRect(rect(), 1.5, 1.5);
 }
 
@@ -383,6 +407,15 @@ void SideBar::onButtonClicked() {
   for (int i = 0; i < _items.size(); i++) {
     if (_items[i].button == btn) {
       if (_items[i].type == DockItem) {
+        // If clicking the already active dock item, uncheck it and close drawer
+        if (_items[i].index == _checked_index) {
+          btn->setChecked(false);
+          _indicator->hideIndicator();
+          _checked_index = -1;
+          emit dockItemClicked(_items[i].index);
+          return;
+        }
+
         SideBarButton *prevBtn = nullptr;
         for (int j = 0; j < _items.size(); j++) {
           if (_items[j].index == _checked_index && _items[j].type == DockItem) {
