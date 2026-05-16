@@ -1,18 +1,18 @@
-- [ ] SideBarButton 自定义控件实现：paintEvent 正确绘制背景、左侧指示条、图标、文字
-- [ ] SideBarButton 交互状态正确：悬停高亮、选中指示条、点击信号
-- [ ] SideBarButton 固定尺寸 64×58
-- [ ] SideBarButton setRunning(bool) 正确切换图标：运行时显示 alternateIcon，停止时恢复原始 icon
-- [ ] 7 个新 SVG 图标文件已创建（dark + light 各一套，共 14 个文件：zap/binary/ruler/search/sliders/play/step-forward/stop）
-- [ ] DockItem 图标（zap/binary/ruler/search/sliders）dark 主题用浅色描边、light 主题用深色描边
-- [ ] ActionItem 图标 play.svg 填充 #00E676、step-forward.svg 填充 #FFC400、stop.svg 实心填充 #e74c3c
-- [ ] PXView.qrc 已注册所有新图标文件
-- [ ] SideBar 类使用 SideBarButton 替代 XToolButton，公共 API 不变
-- [ ] SideBar::addItem() 增加 alternateIconName 参数，正确创建 SideBarButton 并设置 alternateIcon
-- [ ] SideBar::setItemRunning(int index, bool running) 正确切换按钮运行状态
-- [ ] SideBar::onButtonClicked() 正确处理 DockItem 互斥和 ActionItem 触发
-- [ ] SideBar::UpdateTheme()/UpdateLanguage()/UpdateFont() 适配 SideBarButton
-- [ ] MainWindow::setupSideBar() 使用新图标名，开始/立即按钮传入 alternateIconName "stop.svg"
-- [ ] MainWindow::on_side_bar_action_clicked() 判断运行状态，运行中点击执行停止
-- [ ] MainWindow 采集开始时调用 setItemRunning(true)，采集结束时调用 setItemRunning(false)
-- [ ] QSS 样式适配新 SideBarButton 控件
-- [ ] CMake 构建无编译错误
+- [x] SideBarButton 自定义控件实现：paintEvent 正确绘制背景、左侧指示条、图标、文字
+- [x] SideBarButton 交互状态正确：悬停高亮、选中指示条、点击信号
+- [x] SideBarButton 固定尺寸 64×58
+- [x] SideBarButton setRunning(bool) 正确切换图标：运行时显示 alternateIcon，停止时恢复原始 icon
+- [x] 7 个新 SVG 图标文件已创建（dark + light 各一套，共 14 个文件：zap/binary/ruler/search/sliders/play/step-forward/stop）
+- [x] DockItem 图标（zap/binary/ruler/search/sliders）dark 主题用浅色描边、light 主题用深色描边
+- [x] ActionItem 图标 play.svg 填充 #00E676、step-forward.svg 填充 #FFC400、stop.svg 实心填充 #e74c3c
+- [x] PXView.qrc 已注册所有新图标文件
+- [x] SideBar 类使用 SideBarButton 替代 XToolButton，公共 API 不变
+- [x] SideBar::addItem() 增加 alternateIconName 参数，正确创建 SideBarButton 并设置 alternateIcon
+- [x] SideBar::setItemRunning(int index, bool running) 正确切换按钮运行状态
+- [x] SideBar::onButtonClicked() 正确处理 DockItem 互斥和 ActionItem 触发
+- [x] SideBar::UpdateTheme()/UpdateLanguage()/UpdateFont() 适配 SideBarButton
+- [x] MainWindow::setupSideBar() 使用新图标名，开始/立即按钮传入 alternateIconName "stop.svg"
+- [x] MainWindow::on_side_bar_action_clicked() 判断运行状态，运行中点击执行停止
+- [x] MainWindow 采集开始时调用 setItemRunning(true)，采集结束时调用 setItemRunning(false)
+- [x] QSS 样式适配新 SideBarButton 控件
+- [x] CMake 构建无编译错误

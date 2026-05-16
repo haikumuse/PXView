@@ -1,186 +1,501 @@
 /*
  * This file is part of the DSView project.
- *
  * Copyright (C) 2025 DreamSourceLab <support@dreamsourcelab.com>
- *
- * This program is free software: you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
 #include "sidebar.h"
-
+#include "../config/appconfig.h"
+#include "../ui/langresource.h"
 #include <QFrame>
 #include <QIcon>
-#include "../ui/langresource.h"
-#include "../config/appconfig.h"
+#include <QPainter>
 
 namespace pv {
 namespace widgets {
 
-SideBar::SideBar(QWidget *parent) :
-    QToolBar(parent),
-    _next_index(0)
-{
-    setMovable(false);
-    setObjectName("sidebar");
+ScaleSlideAnimation::ScaleSlideAnimation(QObject *parent,
+                                         Qt::Orientation orient)
+    : QObject(parent), _orient(orient), _currentAni(nullptr) {
+  if (isHorizontal()) {
+    _geometry = QRectF(0, 0, 16, 3);
+  } else {
+    _geometry = QRectF(0, 0, 3, 16);
+  }
 
-    _container = new QWidget(this);
-    _layout = new QVBoxLayout(_container);
-    _layout->setContentsMargins(0, 0, 0, 0);
-    _layout->setSpacing(2);
-    _layout->addStretch();
+  _slideAniGroup = new QParallelAnimationGroup(this);
+  _crossAniGroup = new QParallelAnimationGroup(this);
 
-    addWidget(_container);
+  _slidePosAni1 = new QPropertyAnimation(this, "pos", this);
+  _slidePosAni2 = new QPropertyAnimation(this, "pos", this);
+  _slideLengthAni1 = new QPropertyAnimation(this, "length", this);
+  _slideLengthAni2 = new QPropertyAnimation(this, "length", this);
+  _seqSlidePosAniGroup = new QSequentialAnimationGroup(this);
+  _seqLengthAniGroup = new QSequentialAnimationGroup(this);
 
-    ADD_UI(this);
+  _crossLenAni = new QPropertyAnimation(this, "length", this);
+  _crossPosAni = new QPropertyAnimation(this, "pos", this);
+
+  _seqSlidePosAniGroup->addAnimation(_slidePosAni1);
+  _seqSlidePosAniGroup->addAnimation(_slidePosAni2);
+  _seqLengthAniGroup->addAnimation(_slideLengthAni1);
+  _seqLengthAniGroup->addAnimation(_slideLengthAni2);
+
+  _slideAniGroup->addAnimation(_seqSlidePosAniGroup);
+  _slideAniGroup->addAnimation(_seqLengthAniGroup);
+
+  _crossAniGroup->addAnimation(_crossLenAni);
+  _crossAniGroup->addAnimation(_crossPosAni);
+
+  connect(_slideAniGroup, &QParallelAnimationGroup::finished, this,
+          &ScaleSlideAnimation::finished);
+  connect(_crossAniGroup, &QParallelAnimationGroup::finished, this,
+          &ScaleSlideAnimation::finished);
 }
 
-SideBar::~SideBar()
-{
-    REMOVE_UI(this);
+void ScaleSlideAnimation::setPos(const QPointF &pos) {
+  _geometry.moveTopLeft(pos);
+  emit valueChanged(_geometry);
 }
 
-int SideBar::addItem(const QString &iconName, const char *textId, const QString &defaultText,
-                     ItemType type, int drawerPageIndex)
-{
-    XToolButton *btn = new XToolButton(_container);
-    btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    btn->setIconSize(QSize(24, 24));
-
-    if (type == DockItem)
-        btn->setCheckable(true);
-
-    btn->setIcon(QIcon(GetIconPath() + "/" + iconName));
-    btn->setText(L_S(STR_PAGE_TOOLBAR, textId, defaultText.toUtf8().constData()));
-
-    _layout->insertWidget(_layout->count() - 1, btn);
-
-    connect(btn, &XToolButton::clicked, this, &SideBar::onButtonClicked);
-
-    ItemInfo info;
-    info.index = _next_index;
-    info.type = type;
-    info.iconName = iconName;
-    info.textId = textId;
-    info.defaultText = defaultText;
-    info.button = btn;
-    info.drawerPageIndex = drawerPageIndex;
-    _items.append(info);
-
-    return _next_index++;
+float ScaleSlideAnimation::getLength() const {
+  return isHorizontal() ? _geometry.width() : _geometry.height();
 }
 
-void SideBar::addSeparator()
-{
-    QFrame *line = new QFrame(_container);
-    line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
-    line->setFixedHeight(1);
-    _layout->insertWidget(_layout->count() - 1, line);
+void ScaleSlideAnimation::setLength(float length) {
+  if (isHorizontal()) {
+    _geometry.setWidth(length);
+  } else {
+    _geometry.setHeight(length);
+  }
+  emit valueChanged(_geometry);
 }
 
-void SideBar::onButtonClicked()
-{
-    XToolButton *btn = qobject_cast<XToolButton*>(sender());
-    if (!btn)
-        return;
+void ScaleSlideAnimation::setGeometry(const QRectF &rect) {
+  _geometry = rect;
+  emit valueChanged(_geometry);
+}
 
-    for (int i = 0; i < _items.size(); i++) {
-        if (_items[i].button == btn) {
-            if (_items[i].type == DockItem) {
-                for (int j = 0; j < _items.size(); j++) {
-                    if (j != i && _items[j].type == DockItem)
-                        _items[j].button->setChecked(false);
-                }
-                emit dockItemClicked(_items[i].index);
-            } else {
-                emit actionItemClicked(_items[i].index);
-            }
-            break;
+QEasingCurve ScaleSlideAnimation::createBezierCurve(float x1, float y1,
+                                                     float x2, float y2) {
+  QEasingCurve curve(QEasingCurve::BezierSpline);
+  curve.addCubicBezierSegment(QPointF(x1, y1), QPointF(x2, y2),
+                              QPointF(1, 1));
+  return curve;
+}
+
+void ScaleSlideAnimation::startAnimation(const QRectF &endRect,
+                                         bool useCrossFade) {
+  stopAnimation();
+
+  QRectF startRect = _geometry;
+
+  bool sameLevel;
+  qreal dim, from, to;
+
+  if (isHorizontal()) {
+    sameLevel = qAbs(startRect.y() - endRect.y()) < 1;
+    dim = startRect.width();
+    from = startRect.x();
+    to = endRect.x();
+  } else {
+    sameLevel = qAbs(startRect.x() - endRect.x()) < 1;
+    dim = startRect.height();
+    from = startRect.y();
+    to = endRect.y();
+  }
+
+  if (sameLevel && !useCrossFade) {
+    startSlideAnimation(startRect, endRect, from, to, dim);
+  } else {
+    startCrossFadeAnimation(startRect, endRect);
+  }
+}
+
+void ScaleSlideAnimation::stopAnimation() {
+  _slideAniGroup->stop();
+  _crossAniGroup->stop();
+}
+
+void ScaleSlideAnimation::startSlideAnimation(const QRectF &startRect,
+                                              const QRectF &endRect,
+                                              qreal from, qreal to,
+                                              qreal dimension) {
+  _currentAni = _slideAniGroup;
+
+  _slidePosAni1->setDuration(200);
+  _slidePosAni2->setDuration(400);
+  _slidePosAni1->setEasingCurve(
+      createBezierCurve(0.9f, 0.1f, 1.0f, 0.2f));
+  _slidePosAni2->setEasingCurve(
+      createBezierCurve(0.1f, 0.9f, 0.2f, 1.0f));
+
+  _slideLengthAni1->setDuration(200);
+  _slideLengthAni2->setDuration(400);
+  _slideLengthAni1->setEasingCurve(
+      createBezierCurve(0.9f, 0.1f, 1.0f, 0.2f));
+  _slideLengthAni2->setEasingCurve(
+      createBezierCurve(0.1f, 0.9f, 0.2f, 1.0f));
+
+  qreal dist = qAbs(to - from);
+  qreal midLength = dist + dimension;
+  bool isForward = to > from;
+
+  QPointF startPos = startRect.topLeft();
+  QPointF endPos = endRect.topLeft();
+
+  if (isForward) {
+    _slidePosAni1->setStartValue(startPos);
+    _slidePosAni1->setEndValue(startPos);
+    _slideLengthAni1->setStartValue(dimension);
+    _slideLengthAni1->setEndValue(midLength);
+
+    _slidePosAni2->setStartValue(startPos);
+    _slidePosAni2->setEndValue(endPos);
+    _slideLengthAni2->setStartValue(midLength);
+    _slideLengthAni2->setEndValue(dimension);
+  } else {
+    _slidePosAni1->setStartValue(startPos);
+    _slidePosAni1->setEndValue(endPos);
+    _slideLengthAni1->setStartValue(dimension);
+    _slideLengthAni1->setEndValue(midLength);
+
+    _slidePosAni2->setStartValue(endPos);
+    _slidePosAni2->setEndValue(endPos);
+    _slideLengthAni2->setStartValue(midLength);
+    _slideLengthAni2->setEndValue(dimension);
+  }
+
+  _slideAniGroup->start();
+}
+
+void ScaleSlideAnimation::startCrossFadeAnimation(const QRectF &startRect,
+                                                  const QRectF &endRect) {
+  _currentAni = _crossAniGroup;
+  setGeometry(endRect);
+
+  bool isNextBelow =
+      isHorizontal() ? (endRect.x() > startRect.x()) : (endRect.y() > startRect.y());
+
+  QRectF startGeo;
+  qreal dim;
+
+  if (isHorizontal()) {
+    dim = endRect.width();
+    startGeo = QRectF(endRect.x() + (isNextBelow ? 0 : dim), endRect.y(), 0,
+                      endRect.height());
+  } else {
+    dim = endRect.height();
+    startGeo = QRectF(endRect.x(),
+                      endRect.y() + (isNextBelow ? 0 : dim), endRect.width(),
+                      0);
+  }
+
+  setGeometry(startGeo);
+
+  _crossLenAni->setDuration(600);
+  _crossLenAni->setStartValue(0.0);
+  _crossLenAni->setEndValue(dim);
+  _crossLenAni->setEasingCurve(QEasingCurve::OutQuint);
+
+  _crossPosAni->setDuration(600);
+  _crossPosAni->setStartValue(startGeo.topLeft());
+  _crossPosAni->setEndValue(endRect.topLeft());
+  _crossPosAni->setEasingCurve(QEasingCurve::OutQuint);
+
+  _crossAniGroup->start();
+}
+
+SideBarIndicator::SideBarIndicator(QWidget *parent) : QWidget(parent), _opacityAni(nullptr) {
+  resize(3, 16);
+  setAttribute(Qt::WA_TransparentForMouseEvents);
+  setAttribute(Qt::WA_TranslucentBackground);
+  hide();
+
+  _scaleAni = new ScaleSlideAnimation(this, Qt::Vertical);
+
+  connect(_scaleAni, &ScaleSlideAnimation::valueChanged, this,
+          [this](const QRectF &g) {
+            setGeometry(g.toRect());
+            show();
+            raise();
+          });
+
+  connect(_scaleAni, &ScaleSlideAnimation::finished, this,
+          &SideBarIndicator::aniFinished);
+}
+
+void SideBarIndicator::startAnimation(const QRectF &startRect,
+                                      const QRectF &endRect,
+                                      bool useCrossFade) {
+  _scaleAni->stopAnimation();
+  if (_opacityAni) {
+    _opacityAni->stop();
+    delete _opacityAni;
+    _opacityAni = nullptr;
+  }
+  setGeometry(startRect.toRect());
+  show();
+
+  _scaleAni->setGeometry(startRect);
+  _scaleAni->startAnimation(endRect, useCrossFade);
+}
+
+void SideBarIndicator::stopAnimation() {
+  _scaleAni->stopAnimation();
+  if (_opacityAni) {
+    _opacityAni->stop();
+    delete _opacityAni;
+    _opacityAni = nullptr;
+  }
+  hide();
+}
+
+void SideBarIndicator::snapTo(const QRectF &rect) {
+  _scaleAni->stopAnimation();
+  if (_opacityAni) {
+    _opacityAni->stop();
+    delete _opacityAni;
+    _opacityAni = nullptr;
+  }
+  _scaleAni->setGeometry(rect);
+  setGeometry(rect.toRect());
+  show();
+  raise();
+}
+
+void SideBarIndicator::hideIndicator() {
+  _scaleAni->stopAnimation();
+
+  if (_opacityAni) {
+    _opacityAni->stop();
+    delete _opacityAni;
+  }
+
+  _opacityAni = new QPropertyAnimation(this, "windowOpacity", this);
+  _opacityAni->setDuration(250);
+  _opacityAni->setStartValue(1.0);
+  _opacityAni->setEndValue(0.0);
+  _opacityAni->setEasingCurve(QEasingCurve::OutCubic);
+
+  connect(_opacityAni, &QPropertyAnimation::finished, this, [this]() {
+    hide();
+    if (_opacityAni) {
+      delete _opacityAni;
+      _opacityAni = nullptr;
+    }
+  });
+
+  _opacityAni->start();
+}
+
+void SideBarIndicator::paintEvent(QPaintEvent *event) {
+  Q_UNUSED(event);
+
+  QPainter painter(this);
+  painter.setRenderHints(QPainter::Antialiasing);
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(QColor("#00a8ff"));
+  painter.drawRoundedRect(rect(), 1.5, 1.5);
+}
+
+SideBar::SideBar(QWidget *parent)
+    : QToolBar(parent), _next_index(0), _checked_index(-1) {
+  setMovable(false);
+  setObjectName("sidebar");
+  setFixedWidth(60);
+
+  _container = new QWidget(this);
+  _container->setFixedWidth(60);
+  _layout = new QVBoxLayout(_container);
+  _layout->setContentsMargins(0, 10, 0, 10);
+  _layout->setSpacing(10);
+  _layout->addStretch();
+
+  addWidget(_container);
+
+  _indicator = new SideBarIndicator(_container);
+  connect(_indicator, &SideBarIndicator::aniFinished, this,
+          &SideBar::onIndicatorAniFinished);
+
+  ADD_UI(this);
+}
+
+SideBar::~SideBar() { REMOVE_UI(this); }
+
+int SideBar::addItem(const QString &iconName, const char *textId,
+                     const QString &defaultText, ItemType type,
+                     int drawerPageIndex, const QString &alternateIconName) {
+  SideBarButton *btn = new SideBarButton(_container);
+  btn->setIconName(iconName);
+  btn->setText(L_S(STR_PAGE_TOOLBAR, textId, defaultText.toUtf8().constData()));
+  btn->setItemType(static_cast<SideBarButton::ItemType>(type));
+  btn->setDrawerPageIndex(drawerPageIndex);
+
+  if (type == DockItem)
+    btn->setCheckable(true);
+
+  if (!alternateIconName.isEmpty())
+    btn->setAlternateIconName(alternateIconName);
+
+  _layout->insertWidget(_layout->count() - 1, btn, 0, Qt::AlignHCenter);
+
+  connect(btn, &SideBarButton::clicked, this, &SideBar::onButtonClicked);
+
+  ItemInfo info;
+  info.index = _next_index;
+  info.type = type;
+  info.iconName = iconName;
+  info.alternateIconName = alternateIconName;
+  info.textId = textId;
+  info.defaultText = defaultText;
+  info.button = btn;
+  info.drawerPageIndex = drawerPageIndex;
+  _items.append(info);
+
+  return _next_index++;
+}
+
+void SideBar::addSeparator() {
+  QFrame *line = new QFrame(_container);
+  line->setFrameShape(QFrame::HLine);
+  line->setFrameShadow(QFrame::Sunken);
+  line->setFixedHeight(1);
+  _layout->insertWidget(_layout->count() - 1, line);
+}
+
+QRectF SideBar::getIndicatorRect(SideBarButton *btn) const {
+  if (!btn)
+    return QRectF();
+  QRectF btnRect = btn->indicatorRect();
+  QPoint pos = btn->mapTo(_container, QPoint(0, 0));
+  return btnRect.translated(pos);
+}
+
+void SideBar::onButtonClicked() {
+  SideBarButton *btn = qobject_cast<SideBarButton *>(sender());
+  if (!btn)
+    return;
+
+  for (int i = 0; i < _items.size(); i++) {
+    if (_items[i].button == btn) {
+      if (_items[i].type == DockItem) {
+        SideBarButton *prevBtn = nullptr;
+        for (int j = 0; j < _items.size(); j++) {
+          if (_items[j].index == _checked_index && _items[j].type == DockItem) {
+            prevBtn = _items[j].button;
+          }
+          if (j != i && _items[j].type == DockItem)
+            _items[j].button->setChecked(false);
         }
-    }
-}
+        btn->setChecked(true);
 
-void SideBar::setItemVisible(int index, bool visible)
-{
-    for (auto &item : _items) {
-        if (item.index == index) {
-            item.button->setVisible(visible);
-            break;
+        QRectF endRect = getIndicatorRect(btn);
+
+        if (prevBtn && prevBtn != btn) {
+          QRectF startRect = _indicator->currentGeometry();
+          if (!startRect.isValid())
+            startRect = getIndicatorRect(prevBtn);
+          _indicator->startAnimation(startRect, endRect);
+        } else {
+          _indicator->snapTo(endRect);
         }
+
+        _checked_index = _items[i].index;
+        emit dockItemClicked(_items[i].index);
+      } else {
+        emit actionItemClicked(_items[i].index);
+      }
+      break;
     }
+  }
 }
 
-void SideBar::setItemEnabled(int index, bool enabled)
-{
-    for (auto &item : _items) {
-        if (item.index == index) {
-            item.button->setEnabled(enabled);
-            break;
-        }
+void SideBar::onIndicatorAniFinished() {}
+
+void SideBar::setItemVisible(int index, bool visible) {
+  for (auto &item : _items) {
+    if (item.index == index) {
+      item.button->setVisible(visible);
+      break;
     }
+  }
 }
 
-void SideBar::setItemChecked(int index, bool checked)
-{
-    for (auto &item : _items) {
-        if (item.index == index) {
-            item.button->setChecked(checked);
-            break;
-        }
+void SideBar::setItemEnabled(int index, bool enabled) {
+  for (auto &item : _items) {
+    if (item.index == index) {
+      item.button->setEnabled(enabled);
+      break;
     }
+  }
 }
 
-void SideBar::clearAllChecked()
-{
-    for (auto &item : _items) {
-        if (item.type == DockItem)
-            item.button->setChecked(false);
+void SideBar::setItemChecked(int index, bool checked) {
+  for (auto &item : _items) {
+    if (item.index == index) {
+      item.button->setChecked(checked);
+      if (checked && item.type == DockItem) {
+        _indicator->snapTo(getIndicatorRect(item.button));
+        _checked_index = index;
+      }
+      break;
     }
+  }
 }
 
-int SideBar::itemCount() const
-{
-    return _items.size();
+void SideBar::setItemRunning(int index, bool running) {
+  for (auto &item : _items) {
+    if (item.index == index) {
+      item.button->setRunning(running);
+      break;
+    }
+  }
 }
 
-const SideBar::ItemInfo* SideBar::getItem(int index) const
-{
-    for (int i = 0; i < _items.size(); i++) {
-        if (_items[i].index == index)
-            return &_items[i];
-    }
-    return nullptr;
+void SideBar::clearAllChecked() {
+  for (auto &item : _items) {
+    if (item.type == DockItem)
+      item.button->setChecked(false);
+  }
+  _indicator->hideIndicator();
+  _checked_index = -1;
 }
 
-void SideBar::UpdateLanguage()
-{
-    for (auto &item : _items) {
-        item.button->setText(L_S(STR_PAGE_TOOLBAR, item.textId, item.defaultText.toUtf8().constData()));
-    }
+int SideBar::itemCount() const { return _items.size(); }
+
+const SideBar::ItemInfo *SideBar::getItem(int index) const {
+  for (int i = 0; i < _items.size(); i++) {
+    if (_items[i].index == index)
+      return &_items[i];
+  }
+  return nullptr;
 }
 
-void SideBar::UpdateTheme()
-{
-    for (auto &item : _items) {
-        item.button->setIcon(QIcon(GetIconPath() + "/" + item.iconName));
-    }
+void SideBar::UpdateLanguage() {
+  for (auto &item : _items) {
+    item.button->setText(L_S(STR_PAGE_TOOLBAR, item.textId,
+                             item.defaultText.toUtf8().constData()));
+  }
 }
 
-void SideBar::UpdateFont()
-{
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    for (auto &item : _items) {
-        item.button->setFont(font);
-    }
+void SideBar::UpdateTheme() {
+  for (auto &item : _items) {
+    item.button->setIconName(item.iconName);
+    if (!item.alternateIconName.isEmpty())
+      item.button->setAlternateIconName(item.alternateIconName);
+  }
+}
+
+void SideBar::UpdateFont() {
+  QFont font = this->font();
+  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  for (auto &item : _items) {
+    item.button->setFont(font);
+  }
 }
 
 } // namespace widgets

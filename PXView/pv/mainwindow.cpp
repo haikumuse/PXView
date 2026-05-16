@@ -159,23 +159,23 @@ void MainWindow::Ribbon_setupUi() {
 void MainWindow::setupSideBar() {
   _side_bar = new widgets::SideBar(this);
 
-  _side_bar->addItem("trigger.svg", S_ID(IDS_TOOLBAR_TRIGGER), "Trigger",
+  _side_bar->addItem("zap.svg", S_ID(IDS_TOOLBAR_TRIGGER), "Trigger",
                      widgets::SideBar::DockItem, _drawer_page_trigger);
-  _side_bar->addItem("protocol.svg", S_ID(IDS_TOOLBAR_DECODE), "Decode",
+  _side_bar->addItem("binary.svg", S_ID(IDS_TOOLBAR_DECODE), "Decode",
                      widgets::SideBar::DockItem, _drawer_page_protocol);
-  _side_bar->addItem("measure.svg", S_ID(IDS_TOOLBAR_MEASURE), "Measure",
+  _side_bar->addItem("ruler.svg", S_ID(IDS_TOOLBAR_MEASURE), "Measure",
                      widgets::SideBar::DockItem, _drawer_page_measure);
-  _side_bar->addItem("search-bar.svg", S_ID(IDS_TOOLBAR_SEARCH), "Search",
+  _side_bar->addItem("search.svg", S_ID(IDS_TOOLBAR_SEARCH), "Search",
                      widgets::SideBar::DockItem, _drawer_page_search);
   _side_bar->addItem("function.svg", S_ID(IDS_TOOLBAR_FUNCTION), "Function",
                      widgets::SideBar::DockItem);
-  _side_bar->addItem("params.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
+  _side_bar->addItem("sliders.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
                      widgets::SideBar::DockItem, _drawer_page_device_options);
   _side_bar->addSeparator();
-  _side_bar->addItem("start.svg", S_ID(IDS_TOOLBAR_RUN_START), "Start",
-                     widgets::SideBar::ActionItem);
-  _side_bar->addItem("single.svg", S_ID(IDS_TOOLBAR_ONE_INSTANT), "Instant",
-                     widgets::SideBar::ActionItem);
+  _side_bar->addItem("play.svg", S_ID(IDS_TOOLBAR_RUN_START), "Start",
+                     widgets::SideBar::ActionItem, -1, "stop.svg");
+  _side_bar->addItem("step-forward.svg", S_ID(IDS_TOOLBAR_ONE_INSTANT),
+                     "Instant", widgets::SideBar::ActionItem, -1, "stop.svg");
 
   addToolBar(Qt::RightToolBarArea, _side_bar);
 
@@ -1003,10 +1003,18 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
 void MainWindow::on_side_bar_action_clicked(int index) {
   switch (index) {
   case SIDEBAR_RUNSTOP:
-    _sampling_bar->run_or_stop();
+    if (_session->is_working()) {
+      _session->stop_capture();
+    } else {
+      _sampling_bar->run_or_stop();
+    }
     break;
   case SIDEBAR_INSTANT:
-    _sampling_bar->run_or_stop_instant();
+    if (_session->is_working() && _session->is_instant()) {
+      _session->stop_capture();
+    } else {
+      _sampling_bar->run_or_stop_instant();
+    }
     break;
   }
 }
@@ -2053,6 +2061,8 @@ void MainWindow::frame_ended() {
 
 void MainWindow::on_frame_ended() {
   dsv_info("MainWindow::on_frame_ended()");
+  _side_bar->setItemRunning(SIDEBAR_RUNSTOP, false);
+  _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
   pv::TabContext *ctx = current_context();
   if (ctx && ctx->document()) {
     _session->copy_data_to_document(ctx->document());
@@ -2067,6 +2077,11 @@ void MainWindow::frame_began() {
 }
 
 void MainWindow::on_frame_began() {
+  if (_session->is_instant()) {
+    _side_bar->setItemRunning(SIDEBAR_INSTANT, true);
+  } else {
+    _side_bar->setItemRunning(SIDEBAR_RUNSTOP, true);
+  }
   pv::TabContext *ctx = current_context();
   if (ctx) {
     ctx->make_live();
