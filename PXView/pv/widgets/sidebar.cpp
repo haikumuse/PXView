@@ -91,6 +91,14 @@ void ScaleSlideAnimation::startAnimation(const QRectF &endRect,
                                          bool useCrossFade) {
   stopAnimation();
 
+  // Reset geometry to default before starting new animation
+  // to prevent accumulated state from causing indicator stretching
+  if (isHorizontal()) {
+    _geometry = QRectF(_geometry.x(), _geometry.y(), 16, 3);
+  } else {
+    _geometry = QRectF(_geometry.x(), _geometry.y(), 3, 16);
+  }
+
   QRectF startRect = _geometry;
 
   bool sameLevel;
@@ -118,13 +126,6 @@ void ScaleSlideAnimation::startAnimation(const QRectF &endRect,
 void ScaleSlideAnimation::stopAnimation() {
   _slideAniGroup->stop();
   _crossAniGroup->stop();
-
-  // Reset to default geometry to prevent accumulated state
-  if (isHorizontal()) {
-    _geometry = QRectF(_geometry.x(), _geometry.y(), 16, 3);
-  } else {
-    _geometry = QRectF(_geometry.x(), _geometry.y(), 3, 16);
-  }
 }
 
 void ScaleSlideAnimation::startSlideAnimation(const QRectF &startRect,
@@ -216,7 +217,7 @@ void ScaleSlideAnimation::startCrossFadeAnimation(const QRectF &startRect,
   _crossAniGroup->start();
 }
 
-SideBarIndicator::SideBarIndicator(QWidget *parent) : QWidget(parent), _opacityAni(nullptr) {
+SideBarIndicator::SideBarIndicator(QWidget *parent) : QWidget(parent) {
   resize(3, 16);
   setAttribute(Qt::WA_TransparentForMouseEvents);
   setAttribute(Qt::WA_TranslucentBackground);
@@ -239,13 +240,9 @@ void SideBarIndicator::startAnimation(const QRectF &startRect,
                                       const QRectF &endRect,
                                       bool useCrossFade) {
   _scaleAni->stopAnimation();
-  if (_opacityAni) {
-    _opacityAni->stop();
-    delete _opacityAni;
-    _opacityAni = nullptr;
-  }
   setGeometry(startRect.toRect());
   show();
+  raise();
 
   _scaleAni->setGeometry(startRect);
   _scaleAni->startAnimation(endRect, useCrossFade);
@@ -253,21 +250,11 @@ void SideBarIndicator::startAnimation(const QRectF &startRect,
 
 void SideBarIndicator::stopAnimation() {
   _scaleAni->stopAnimation();
-  if (_opacityAni) {
-    _opacityAni->stop();
-    delete _opacityAni;
-    _opacityAni = nullptr;
-  }
   hide();
 }
 
 void SideBarIndicator::snapTo(const QRectF &rect) {
   _scaleAni->stopAnimation();
-  if (_opacityAni) {
-    _opacityAni->stop();
-    delete _opacityAni;
-    _opacityAni = nullptr;
-  }
   _scaleAni->setGeometry(rect);
   setGeometry(rect.toRect());
   show();
@@ -276,27 +263,7 @@ void SideBarIndicator::snapTo(const QRectF &rect) {
 
 void SideBarIndicator::hideIndicator() {
   _scaleAni->stopAnimation();
-
-  if (_opacityAni) {
-    _opacityAni->stop();
-    delete _opacityAni;
-  }
-
-  _opacityAni = new QPropertyAnimation(this, "windowOpacity", this);
-  _opacityAni->setDuration(250);
-  _opacityAni->setStartValue(1.0);
-  _opacityAni->setEndValue(0.0);
-  _opacityAni->setEasingCurve(QEasingCurve::OutCubic);
-
-  connect(_opacityAni, &QPropertyAnimation::finished, this, [this]() {
-    hide();
-    if (_opacityAni) {
-      delete _opacityAni;
-      _opacityAni = nullptr;
-    }
-  });
-
-  _opacityAni->start();
+  hide();
 }
 
 void SideBarIndicator::paintEvent(QPaintEvent *event) {
@@ -306,22 +273,8 @@ void SideBarIndicator::paintEvent(QPaintEvent *event) {
   painter.setRenderHints(QPainter::Antialiasing);
   painter.setPen(Qt::NoPen);
 
-  // Soft glow effect using radial gradient
+  // Draw main indicator bar with soft color
   QColor accentColor("#5B8DEF");
-  QColor glowColor = accentColor;
-  glowColor.setAlpha(60);
-
-  // Draw outer glow
-  qreal cx = rect().center().x();
-  qreal cy = rect().center().y();
-  qreal radius = qMax(rect().width(), rect().height()) * 1.5;
-  QRadialGradient glowGradient(cx, cy, radius, cx, cy);
-  glowGradient.setColorAt(0, glowColor);
-  glowGradient.setColorAt(1, QColor(0, 0, 0, 0));
-  painter.setBrush(glowGradient);
-  painter.drawRoundedRect(rect().adjusted(-2, -2, 2, 2), 2, 2);
-
-  // Draw main indicator bar
   painter.setBrush(accentColor);
   painter.drawRoundedRect(rect(), 1.5, 1.5);
 }

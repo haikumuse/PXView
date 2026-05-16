@@ -100,7 +100,6 @@ protected:
 
 private:
   ScaleSlideAnimation *_scaleAni;
-  QPropertyAnimation *_opacityAni;
 };
 
 class SideBar : public QToolBar, public IUiWindow {
