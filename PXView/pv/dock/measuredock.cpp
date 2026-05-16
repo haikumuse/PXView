@@ -21,6 +21,7 @@
  */
 
 #include <math.h>
+#include <iterator>
 
 #include "measuredock.h"
 #include "../sigsession.h"
@@ -46,6 +47,7 @@
 #include "../tabcontext.h"
 #include "../data/sessiondocument.h"
 #include "../ui/dockfonts.h"
+#include "../ui/iconcache.h"
 
 using namespace boost;
 
@@ -358,24 +360,24 @@ void MeasureDock::reStyle()
 {
     QString iconPath = GetIconPath();
 
-    _dist_add_btn->setIcon(QIcon(iconPath+"/add.svg"));
-    _edge_add_btn->setIcon(QIcon(iconPath+"/add.svg"));
+    _dist_add_btn->setIcon(IconCache::Instance().icon(iconPath+"/add.svg"));
+    _edge_add_btn->setIcon(IconCache::Instance().icon(iconPath+"/add.svg"));
 
     auto mode_rows = get_mode_rows();
 
     for (auto it = mode_rows->_dist_row_list.begin(); it != mode_rows->_dist_row_list.end(); it++)
     {
-        (*it).del_bt->setIcon(QIcon(iconPath+"/del.svg"));
+        (*it).del_bt->setIcon(IconCache::Instance().icon(iconPath+"/del.svg"));
     }
 
     for (auto it = mode_rows->_edge_row_list.begin(); it != mode_rows->_edge_row_list.end(); it++)
     {
-        (*it).del_bt->setIcon(QIcon(iconPath+"/del.svg"));
+        (*it).del_bt->setIcon(IconCache::Instance().icon(iconPath+"/del.svg"));
     }
 
     for (auto it = mode_rows->_opt_row_list.begin(); it != mode_rows->_opt_row_list.end(); it++)
     {
-        (*it).del_bt->setIcon(QIcon(iconPath+"/del.svg"));
+        (*it).del_bt->setIcon(IconCache::Instance().icon(iconPath+"/del.svg"));
     }
 
     update_dist();
@@ -451,7 +453,7 @@ void MeasureDock::build_dist_pannel()
 
         QString iconPath = GetIconPath();
         XToolButton *del_btn = new XToolButton(row_widget);
-        del_btn->setIcon(QIcon(iconPath+"/del.svg"));
+        del_btn->setIcon(IconCache::Instance().icon(iconPath+"/del.svg"));
         del_btn->setCheckable(true);
         //tr
         QPushButton *s_btn = new QPushButton("", row_widget);
@@ -593,7 +595,7 @@ void MeasureDock::build_edge_pannel()
 
         QString iconPath = GetIconPath();
         XToolButton *del_btn = new XToolButton(row_widget);
-        del_btn->setIcon(QIcon(iconPath+"/del.svg"));
+        del_btn->setIcon(IconCache::Instance().icon(iconPath+"/del.svg"));
         del_btn->setCheckable(true);
         //tr
         QPushButton *s_btn = new QPushButton(" ", row_widget);
@@ -1036,23 +1038,72 @@ void MeasureDock::cursor_update()
 void MeasureDock::build_cursor_pannel()
 {  
     auto mode_rows = get_mode_rows();
+    auto &cursor_list = _view->get_cursorList();
+    int newCount = (int)cursor_list.size();
+    int oldCount = (int)mode_rows->_opt_row_list.size();
 
-    for (auto &row : mode_rows->_opt_row_list)
-    {
-        if (row.del_bt != NULL){
-            row.del_bt->deleteLater();
-            row.goto_bt->deleteLater();
-            row.info_label->deleteLater();
+    if (newCount == 0) {
+        for (auto &row : mode_rows->_opt_row_list) {
+            if (row.del_bt != NULL) {
+                row.del_bt->deleteLater();
+                row.goto_bt->deleteLater();
+                row.info_label->deleteLater();
+            }
         }
+        mode_rows->_opt_row_list.clear();
+        adjusLabelSize();
+        return;
     }
-    mode_rows->_opt_row_list.clear();
+
+    if (oldCount == newCount) {
+        int index = 1;
+        int cursor_dex = 0;
+        for (auto it = cursor_list.begin(); it != cursor_list.end(); it++) {
+            auto &row = mode_rows->_opt_row_list[cursor_dex];
+            row.goto_bt->setText(QString::number(index));
+            QString cur_pos = _view->get_cm_time(cursor_dex) + "/" 
+                        + QString::number(_view->get_cursor_samples(cursor_dex));
+            row.info_label->setText(cur_pos);
+            row.cursor = (*it);
+            index++;
+            cursor_dex++;
+        }
+        adjusLabelSize();
+        return;
+    }
+
+    if (newCount < oldCount) {
+        for (int i = newCount; i < oldCount; i++) {
+            auto &row = mode_rows->_opt_row_list[i];
+            if (row.del_bt != NULL) {
+                row.del_bt->deleteLater();
+                row.goto_bt->deleteLater();
+                row.info_label->deleteLater();
+            }
+        }
+        mode_rows->_opt_row_list.resize(newCount);
+
+        int index = 1;
+        int cursor_dex = 0;
+        for (auto it = cursor_list.begin(); it != cursor_list.end(); it++) {
+            auto &row = mode_rows->_opt_row_list[cursor_dex];
+            row.goto_bt->setText(QString::number(index));
+            QString cur_pos = _view->get_cm_time(cursor_dex) + "/" 
+                        + QString::number(_view->get_cursor_samples(cursor_dex));
+            row.info_label->setText(cur_pos);
+            row.cursor = (*it);
+            index++;
+            cursor_dex++;
+        }
+        adjusLabelSize();
+        return;
+    }
 
     QFont labelFont = dock_font_label();
     QFont contentFont = dock_font_content();
 
     QLabel cal_lb;
     cal_lb.setFont(contentFont);
-    //int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
 
     #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
@@ -1060,18 +1111,15 @@ void MeasureDock::build_cursor_pannel()
         int bt_w = cal_lb.fontMetrics().width("22") + 8;
     #endif
 
-    int index = 1;
-    int cursor_dex = 0;
     QString iconPath = GetIconPath();
-    auto &cursor_list = _view->get_cursorList();
 
-    if (cursor_list.size() == 0){
-        return;
-    }
-
-    for(auto it = cursor_list.begin(); it != cursor_list.end(); it++) {
+    int index = oldCount + 1;
+    int cursor_dex = oldCount;
+    auto it = cursor_list.begin();
+    std::advance(it, oldCount);
+    for (; it != cursor_list.end(); it++) {
         XToolButton *del_btn = new XToolButton(_widget);
-        del_btn->setIcon(QIcon(iconPath+"/del.svg"));
+        del_btn->setIcon(IconCache::Instance().icon(iconPath+"/del.svg"));
         del_btn->setCheckable(true);
         QPushButton *cursor_pushButton = new QPushButton(QString::number(index), _widget);
         set_cursor_btn_color(cursor_pushButton);

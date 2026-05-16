@@ -324,7 +324,12 @@ static void _saveFont(FontOptions &o, QSettings &st)
 //------------AppConfig
 
 AppConfig::AppConfig()
-{ 
+    : _saveFrameTimer(nullptr)
+    , _saveAppTimer(nullptr)
+    , _saveHistoryTimer(nullptr)
+{
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     [](){ AppConfig::Instance().flushPendingSaves(); });
 }
 
 AppConfig::AppConfig(AppConfig &o) 
@@ -357,11 +362,31 @@ void AppConfig::LoadAll()
 
 void AppConfig::SaveApp()
 {
+    if (!_saveAppTimer) {
+        _saveAppTimer = new QTimer();
+        _saveAppTimer->setSingleShot(true);
+        QObject::connect(_saveAppTimer, &QTimer::timeout, [this](){ doSaveApp(); });
+    }
+    _saveAppTimer->start(2000);
+}
+
+void AppConfig::doSaveApp()
+{
     QSettings st(QApplication::organizationName(), QApplication::applicationName());
     _saveApp(appOptions, st);
 }
 
 void AppConfig::SaveHistory()
+{
+    if (!_saveHistoryTimer) {
+        _saveHistoryTimer = new QTimer();
+        _saveHistoryTimer->setSingleShot(true);
+        QObject::connect(_saveHistoryTimer, &QTimer::timeout, [this](){ doSaveHistory(); });
+    }
+    _saveHistoryTimer->start(2000);
+}
+
+void AppConfig::doSaveHistory()
 {
     QSettings st(QApplication::organizationName(), QApplication::applicationName());
     _saveHistory(userHistory, st);
@@ -369,8 +394,34 @@ void AppConfig::SaveHistory()
 
 void AppConfig::SaveFrame()
 {
+    if (!_saveFrameTimer) {
+        _saveFrameTimer = new QTimer();
+        _saveFrameTimer->setSingleShot(true);
+        QObject::connect(_saveFrameTimer, &QTimer::timeout, [this](){ doSaveFrame(); });
+    }
+    _saveFrameTimer->start(2000);
+}
+
+void AppConfig::doSaveFrame()
+{
     QSettings st(QApplication::organizationName(), QApplication::applicationName());
     _saveFrame(frameOptions, st);
+}
+
+void AppConfig::flushPendingSaves()
+{
+    if (_saveFrameTimer && _saveFrameTimer->isActive()) {
+        _saveFrameTimer->stop();
+        doSaveFrame();
+    }
+    if (_saveAppTimer && _saveAppTimer->isActive()) {
+        _saveAppTimer->stop();
+        doSaveApp();
+    }
+    if (_saveHistoryTimer && _saveHistoryTimer->isActive()) {
+        _saveHistoryTimer->stop();
+        doSaveHistory();
+    }
 }
 
 void AppConfig::SetProtocolFormat(const std::string &protocolName, const std::string &value)

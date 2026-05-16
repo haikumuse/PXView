@@ -25,6 +25,7 @@
 #include "../dsvdef.h"
 #include "../ui/dockfonts.h"
 #include <assert.h>
+#include "../ui/iconcache.h"
 
 namespace pv {
 namespace dock {
@@ -49,9 +50,9 @@ ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName,
 
   QString iconPath = GetIconPath();
   _del_button->setFlat(true);
-  _del_button->setIcon(QIcon(iconPath + "/del.svg"));
+  _del_button->setIcon(IconCache::Instance().icon(iconPath + "/del.svg"));
   _set_button->setFlat(true);
-  _set_button->setIcon(QIcon(iconPath + "/gear.svg"));
+  _set_button->setIcon(IconCache::Instance().icon(iconPath + "/gear.svg"));
   _protocol_label->setText(protocolName);
 
   m_singleFlag = true;
@@ -123,8 +124,8 @@ void ProtocolItemLayer::SetProgress(int progress, QString text) {
 
 void ProtocolItemLayer::ResetStyle() {
   QString iconPath = GetIconPath();
-  _del_button->setIcon(QIcon(iconPath + "/del.svg"));
-  _set_button->setIcon(QIcon(iconPath + "/gear.svg"));
+  _del_button->setIcon(IconCache::Instance().icon(iconPath + "/del.svg"));
+  _set_button->setIcon(IconCache::Instance().icon(iconPath + "/gear.svg"));
 }
 
 void ProtocolItemLayer::LoadFormatSelect(bool bSingle) {

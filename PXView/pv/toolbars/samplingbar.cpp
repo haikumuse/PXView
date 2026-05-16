@@ -34,6 +34,7 @@
 #include "../ui/dockfonts.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
+#include "../ui/iconcache.h"
 #include "../ui/msgbox.h"
 #include "../view/dsosignal.h"
 #include "../view/view.h"
@@ -429,9 +430,9 @@ void SamplingBar::reStyle() {
   if (true) {
     QString iconPath = GetIconPath();
 
-    _action_single->setIcon(QIcon(iconPath + SINGLE_ACTION_ICON));
-    _action_repeat->setIcon(QIcon(iconPath + REPEAT_ACTION_ICON));
-    _action_loop->setIcon(QIcon(iconPath + LOOP_ACTION_ICON));
+    _action_single->setIcon(IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
+    _action_repeat->setIcon(IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
+    _action_loop->setIcon(IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
 
     update_mode_icon();
   }
@@ -1318,11 +1319,11 @@ void SamplingBar::update_mode_icon() {
   QString iconPath = GetIconPath();
 
   if (_session->is_repeat_mode())
-    _mode_button.setIcon(QIcon(iconPath + REPEAT_ACTION_ICON));
+    _mode_button.setIcon(IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
   else if (_session->is_loop_mode())
-    _mode_button.setIcon(QIcon(iconPath + LOOP_ACTION_ICON));
+    _mode_button.setIcon(IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
   else
-    _mode_button.setIcon(QIcon(iconPath + SINGLE_ACTION_ICON));
+    _mode_button.setIcon(IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
 }
 
 void SamplingBar::run_or_stop() { on_run_stop(); }

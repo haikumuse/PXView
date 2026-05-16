@@ -36,6 +36,7 @@
 #include "../config/appconfig.h"
 
 #include <assert.h>
+#include "../ui/iconcache.h"
 
 namespace pv {
 namespace widgets {
@@ -70,7 +71,7 @@ DecoderGroupBox::DecoderGroupBox(data::DecoderStack *decoder_stack,
             break;
         _index++;
     }
-    _show_button = new QPushButton(QIcon(_dec->shown() ?
+    _show_button = new QPushButton(IconCache::Instance().icon(_dec->shown() ?
                                              iconPath+"/shown.svg" :
                                              iconPath+"/hidden.svg"), QString(), _widget);
     _show_button->setProperty("index", -1);
@@ -89,7 +90,7 @@ DecoderGroupBox::DecoderGroupBox(data::DecoderStack *decoder_stack,
     for (auto i = rows.begin();
         i != rows.end(); i++) {
         if ((*i).first.decoder() == _dec->decoder()) {
-            QPushButton *show_button = new QPushButton(QIcon((*i).second ?
+            QPushButton *show_button = new QPushButton(IconCache::Instance().icon((*i).second ?
                                                                  iconPath+"/shown.svg" :
                                                                  iconPath+"/hidden.svg"), QString(), _widget);
             show_button->setProperty("index", index);
@@ -137,7 +138,7 @@ void DecoderGroupBox::tog_icon()
        for(auto dec : _decoder_stack->stack()) {
             if (i-- == 0) {
                 dec->show(!dec->shown());
-                sc->setIcon(QIcon(dec->shown() ? iconPath+"/shown.svg" :
+                sc->setIcon(IconCache::Instance().icon(dec->shown() ? iconPath+"/shown.svg" :
                                                  iconPath+"/hidden.svg"));
                 break;
             }
@@ -149,7 +150,7 @@ void DecoderGroupBox::tog_icon()
             if (index-- == 0) {
                 _decoder_stack->set_rows_gshow((*i).first, !(*i).second);
                 //rows[(*i).first] = !(*i).second;
-                sc->setIcon(QIcon(rows[(*i).first] ? iconPath+"/hidden.svg" :
+                sc->setIcon(IconCache::Instance().icon(rows[(*i).first] ? iconPath+"/hidden.svg" :
                                                     iconPath+"/shown.svg"));
                 break;
             }

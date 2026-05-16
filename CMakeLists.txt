@@ -389,6 +389,7 @@ set(PXView_SOURCES
     PXView/pv/ui/draggabletabwidget.cpp
     PXView/pv/ui/uimanager.cpp
     PXView/pv/ui/popupdlglist.cpp
+    PXView/pv/ui/iconcache.cpp
     PXView/pv/tabcontext.cpp
 )
 
@@ -526,6 +527,7 @@ set(PXView_HEADERS
     PXView/pv/ui/xtoolbutton.h
     PXView/pv/ui/draggabletabbar.h
     PXView/pv/ui/draggabletabwidget.h
+    PXView/pv/ui/iconcache.h
     PXView/pv/tabcontext.h
     ${UI_HEADERS}
 )

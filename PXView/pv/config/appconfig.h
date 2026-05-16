@@ -28,6 +28,7 @@
 #include <QByteArray>
 #include <QColor>
 #include <QHash>
+#include <QTimer>
 
 #define LAN_CN  25
 #define LAN_EN  31
@@ -152,6 +153,8 @@ public:
   void SaveHistory();
   void SaveFrame();
   
+  void flushPendingSaves();
+  
   void SetProtocolFormat(const std::string &protocolName, const std::string &value);
   std::string GetProtocolFormat(const std::string &protocolName); 
 
@@ -177,4 +180,12 @@ public:
 
 private:
   QHash<QString, QString> _themeTokens;
+
+  QTimer *_saveFrameTimer;
+  QTimer *_saveAppTimer;
+  QTimer *_saveHistoryTimer;
+
+  void doSaveFrame();
+  void doSaveApp();
+  void doSaveHistory();
 };

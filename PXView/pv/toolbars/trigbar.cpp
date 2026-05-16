@@ -35,6 +35,7 @@
 #include "../ui/langresource.h"
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
+#include "../ui/iconcache.h"
 
 namespace pv {
 namespace toolbars {
@@ -115,13 +116,13 @@ void TrigBar::reStyle()
 {
     QString iconPath = GetIconPath();
 
-    _action_fft->setIcon(QIcon(iconPath+"/fft.svg"));
-    _action_math->setIcon(QIcon(iconPath+"/math.svg"));
-    _action_lissajous->setIcon(QIcon(iconPath+"/lissajous.svg"));
-    _dark_style->setIcon(QIcon(iconPath+"/dark.svg"));
-    _light_style->setIcon(QIcon(iconPath+"/light.svg"));
+    _action_fft->setIcon(IconCache::Instance().icon(iconPath+"/fft.svg"));
+    _action_math->setIcon(IconCache::Instance().icon(iconPath+"/math.svg"));
+    _action_lissajous->setIcon(IconCache::Instance().icon(iconPath+"/lissajous.svg"));
+    _dark_style->setIcon(IconCache::Instance().icon(iconPath+"/dark.svg"));
+    _light_style->setIcon(IconCache::Instance().icon(iconPath+"/light.svg"));
 
-    _action_dispalyOptions->setIcon(QIcon(iconPath+"/gear.svg"));
+    _action_dispalyOptions->setIcon(IconCache::Instance().icon(iconPath+"/gear.svg"));
 
     AppConfig &app = AppConfig::Instance();
     QString icon_fname = iconPath +"/"+ app.frameOptions.style +".svg";
