@@ -22,6 +22,7 @@
 
 #include "protocoldock.h"
 #include "../widgets/smoothtablehelper.h"
+#include "../widgets/hoversplitter.h"
 #include "../data/decodermodel.h"
 #include "../data/decoderstack.h"
 #include "../dialogs/protocolexp.h"
@@ -225,7 +226,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   bot_layout->addWidget(_table_view);
   bot_panel->setLayout(bot_layout);
 
-  QSplitter *split_widget = new QSplitter(this);
+  QSplitter *split_widget = new pv::widgets::HoverSplitter(this);
   split_widget->insertWidget(0, top_panel);
   split_widget->insertWidget(1, bot_panel);
   split_widget->setOrientation(Qt::Vertical);

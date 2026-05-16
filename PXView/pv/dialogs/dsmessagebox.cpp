@@ -64,7 +64,7 @@ DSMessageBox::DSMessageBox(QWidget *parent,const QString title) :
 
     _shadow = new Shadow(this);
     _msg = new QMessageBox(this);
-    _titlebar = new toolbars::TitleBar(false, this, NULL, false);
+    _titlebar = new toolbars::TitleBar(false, this, NULL, false, false);
     _layout = new QVBoxLayout(this);
  
     _shadow->setBlurRadius(10.0);
