@@ -2,7 +2,6 @@
 
 #include <QHash>
 #include <QIcon>
-#include <QPixmap>
 #include <QString>
 
 class IconCache
@@ -16,12 +15,11 @@ private:
 public:
     static IconCache &Instance();
 
+    QIcon icon(const QString &svgPath);
     QPixmap pixmap(const QString &svgPath, const QSize &size = QSize(16, 16));
-    QIcon icon(const QString &svgPath, const QSize &size = QSize(16, 16));
 
     void clearCache();
 
 private:
-    QHash<QString, QPixmap> _cache;
-    QSize _defaultSize;
+    QHash<QString, QIcon> _iconCache;
 };
