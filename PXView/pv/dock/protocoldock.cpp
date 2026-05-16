@@ -60,6 +60,7 @@
 #include <assert.h>
 #include <map>
 #include <string>
+#include "../ui/iconcache.h"
 
 using namespace std;
 
@@ -342,15 +343,15 @@ void ProtocolDock::reStyle() {
     return;
   }
 
-  _pro_add_button->setIcon(QIcon(iconPath + "/add.svg"));
-  _del_all_button->setIcon(QIcon(iconPath + "/del.svg"));
-  _bot_set_button->setIcon(QIcon(iconPath + "/gear.svg"));
-  _bot_save_button->setIcon(QIcon(iconPath + "/save.svg"));
-  _dn_nav_button->setIcon(QIcon(iconPath + "/nav.svg"));
-  _pre_button->setIcon(QIcon(iconPath + "/pre.svg"));
-  _nxt_button->setIcon(QIcon(iconPath + "/next.svg"));
-  _ann_search_button->setIcon(QIcon(iconPath + "/search.svg"));
-  _pro_search_button->setIcon(QIcon(iconPath + "/search.svg"));
+  _pro_add_button->setIcon(IconCache::Instance().icon(iconPath + "/add.svg"));
+  _del_all_button->setIcon(IconCache::Instance().icon(iconPath + "/del.svg"));
+  _bot_set_button->setIcon(IconCache::Instance().icon(iconPath + "/gear.svg"));
+  _bot_save_button->setIcon(IconCache::Instance().icon(iconPath + "/save.svg"));
+  _dn_nav_button->setIcon(IconCache::Instance().icon(iconPath + "/nav.svg"));
+  _pre_button->setIcon(IconCache::Instance().icon(iconPath + "/pre.svg"));
+  _nxt_button->setIcon(IconCache::Instance().icon(iconPath + "/next.svg"));
+  _ann_search_button->setIcon(IconCache::Instance().icon(iconPath + "/search.svg"));
+  _pro_search_button->setIcon(IconCache::Instance().icon(iconPath + "/search.svg"));
 
   for (auto item : _protocol_lay_items) {
     item->ResetStyle();

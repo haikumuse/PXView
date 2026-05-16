@@ -48,6 +48,7 @@
 #include "../ui/msgbox.h"
 #include "../ui/fn.h"
 #include "../ui/dscombobox.h"
+#include "../ui/iconcache.h"
 
 namespace pv {
 namespace toolbars {
@@ -156,11 +157,11 @@ void LogoBar::reStyle()
 {
     QString iconPath = GetIconPath();
 
-    _about->setIcon(QIcon(iconPath+"/about.svg"));
-    _manual->setIcon(QIcon(iconPath+"/manual.svg"));
-    _issue->setIcon(QIcon(iconPath+"/bug.svg"));
-    _update->setIcon(QIcon(iconPath+"/update.svg"));
-    _log->setIcon(QIcon(iconPath+"/log.svg"));
+    _about->setIcon(IconCache::Instance().icon(iconPath+"/about.svg"));
+    _manual->setIcon(IconCache::Instance().icon(iconPath+"/manual.svg"));
+    _issue->setIcon(IconCache::Instance().icon(iconPath+"/bug.svg"));
+    _update->setIcon(IconCache::Instance().icon(iconPath+"/update.svg"));
+    _log->setIcon(IconCache::Instance().icon(iconPath+"/log.svg"));
 
     // if (_connected)
     //     _logo_button.setIcon(QIcon(iconPath+"/logo_color.svg"));

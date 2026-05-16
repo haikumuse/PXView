@@ -38,6 +38,7 @@
 #include "../ui/langresource.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../ui/iconcache.h"
 
 
 static const struct dev_mode_name dev_mode_name_list[] =
@@ -139,7 +140,7 @@ void DevMode::set_device()
         QString icon_name = QString::fromLocal8Bit(mode_name->_logo);
 
         QAction *action = new QAction(this);
-        action->setIcon(QIcon(iconPath + "square-" + icon_name));
+        action->setIcon(IconCache::Instance().icon(iconPath + "square-" + icon_name));
 
         int md = mode->mode;
 
@@ -172,7 +173,7 @@ void DevMode::set_device()
 
     if (_device_agent->is_file()){
         _close_button->setDisabled(false);
-        _close_button->setIcon(QIcon(iconPath + "/close.svg"));
+        _close_button->setIcon(IconCache::Instance().icon(iconPath + "/close.svg"));
         _bFile = true;
     }
 
@@ -331,7 +332,7 @@ QIcon DevMode::getCollapseIcon(bool expand)
 {
     QString iconPath = GetIconPath();
     QString name = expand ? "/header-expand.svg" : "/header-collapse.svg";
-    return QIcon(iconPath + name);
+    return IconCache::Instance().icon(iconPath + name);
 }
 
 } // namespace view

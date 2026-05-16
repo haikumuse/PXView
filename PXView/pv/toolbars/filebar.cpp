@@ -33,6 +33,7 @@
 #include "../ui/langresource.h"
 #include "../log.h" 
 #include "../ui/fn.h"
+#include "../ui/iconcache.h"
 
 
 namespace pv {
@@ -119,14 +120,14 @@ void FileBar::reStyle()
 {
     QString iconPath = GetIconPath();
 
-    _action_load->setIcon(QIcon(iconPath+"/open.svg"));
-    _action_store->setIcon(QIcon(iconPath+"/save.svg"));
-    _action_default->setIcon(QIcon(iconPath+"/gear.svg"));
-    _menu_session->setIcon(QIcon(iconPath+"/gear.svg"));
-    _action_open->setIcon(QIcon(iconPath+"/open.svg"));
-    _action_save->setIcon(QIcon(iconPath+"/save.svg"));
-    _action_export->setIcon(QIcon(iconPath+"/export.svg"));
-    _action_capture->setIcon(QIcon(iconPath+"/capture.svg"));
+    _action_load->setIcon(IconCache::Instance().icon(iconPath+"/open.svg"));
+    _action_store->setIcon(IconCache::Instance().icon(iconPath+"/save.svg"));
+    _action_default->setIcon(IconCache::Instance().icon(iconPath+"/gear.svg"));
+    _menu_session->setIcon(IconCache::Instance().icon(iconPath+"/gear.svg"));
+    _action_open->setIcon(IconCache::Instance().icon(iconPath+"/open.svg"));
+    _action_save->setIcon(IconCache::Instance().icon(iconPath+"/save.svg"));
+    _action_export->setIcon(IconCache::Instance().icon(iconPath+"/export.svg"));
+    _action_capture->setIcon(IconCache::Instance().icon(iconPath+"/capture.svg"));
     // _file_button.setIcon(QIcon(iconPath+"/file.svg"));
 }
 

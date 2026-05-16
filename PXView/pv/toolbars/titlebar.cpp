@@ -31,6 +31,7 @@
 #include "../dsvdef.h"
 #include "../log.h"
 #include "../ui/fn.h"
+#include "../ui/iconcache.h"
 
 namespace pv {
 namespace toolbars {
@@ -495,20 +496,20 @@ void TitleBar::reStyle() {
   QString iconPath = GetIconPath();
 
   if (_isTop) {
-    _minimizeButton->setIcon(QIcon(iconPath + "/minimize.svg"));
+    _minimizeButton->setIcon(IconCache::Instance().icon(iconPath + "/minimize.svg"));
     if (ParentIsMaxsized())
-      _maximizeButton->setIcon(QIcon(iconPath + "/restore.svg"));
+      _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
     else
-      _maximizeButton->setIcon(QIcon(iconPath + "/maximize.svg"));
+      _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
   }
   if (_isTop || _hasClose)
-    _closeButton->setIcon(QIcon(iconPath + "/close.svg"));
+    _closeButton->setIcon(IconCache::Instance().icon(iconPath + "/close.svg"));
 
   if (_pinButton) {
     if (_ribbonPinned)
-      _pinButton->setIcon(QIcon(iconPath + "/unpin.svg"));
+      _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/unpin.svg"));
     else
-      _pinButton->setIcon(QIcon(iconPath + "/pin.svg"));
+      _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/pin.svg"));
   }
 }
 
@@ -567,10 +568,10 @@ QString TitleBar::title() {
 void TitleBar::showMaxRestore() {
   QString iconPath = GetIconPath();
   if (ParentIsMaxsized()) {
-    _maximizeButton->setIcon(QIcon(iconPath + "/maximize.svg"));
+    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
     normalShow();
   } else {
-    _maximizeButton->setIcon(QIcon(iconPath + "/restore.svg"));
+    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
     maximizedShow();
   }
 }
@@ -578,9 +579,9 @@ void TitleBar::showMaxRestore() {
 void TitleBar::setRestoreButton(bool max) {
   QString iconPath = GetIconPath();
   if (!max) {
-    _maximizeButton->setIcon(QIcon(iconPath + "/maximize.svg"));
+    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
   } else {
-    _maximizeButton->setIcon(QIcon(iconPath + "/restore.svg"));
+    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
   }
 }
 
@@ -728,7 +729,7 @@ void TitleBar::onPinToggled(bool checked) {
   QString iconPath = GetIconPath();
 
   if (checked) {
-    _pinButton->setIcon(QIcon(iconPath + "/unpin.svg"));
+    _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/unpin.svg"));
     _pinButton->setToolTip(tr("Unpin Ribbon"));
     qApp->removeEventFilter(this);
 
@@ -749,7 +750,7 @@ void TitleBar::onPinToggled(bool checked) {
       _ribbonPanel->hide();
     }
   } else {
-    _pinButton->setIcon(QIcon(iconPath + "/pin.svg"));
+    _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/pin.svg"));
     _pinButton->setToolTip(tr("Pin Ribbon"));
 
     if (_ribbonExpanded) {

@@ -1,11 +1,11 @@
 rm -rf package
 mkdir package
 cd package
-cp ../install.dir/bin/DSView.exe .
-cp -r ../install.dir/share/DSView/* .
-cp -r ../install.dir/share/libsigrokdecode4DSL/* .
+cp ../install.dir/bin/PXView.exe .
+cp -r ../install.dir/share/PXView/* .
+cp -r ../install.dir/share/libsigrokdecode/* .
 cp -r ../python/* .
-../window/copy-deps.sh DSView.exe /mingw64
+../window/copy-deps.sh PXView.exe /mingw64
 #qt
 mkdir plugins
 cp -r /mingw64/share/qt5/plugins/* .

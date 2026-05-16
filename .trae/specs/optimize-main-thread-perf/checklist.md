@@ -1,0 +1,16 @@
+- [x] AppConfig::SaveFrame() 使用 QTimer::singleShot 实现异步延迟保存，2 秒内多次调用只执行一次写盘
+- [x] AppConfig::SaveApp() 和 SaveHistory() 同样支持异步延迟保存
+- [x] 应用退出时（aboutToQuit）立即同步保存所有未完成的配置
+- [x] AppConfig 提供 flushPendingSaves() 公有方法供外部立即保存
+- [x] SlidingDrawer 动画期间设置 WA_OpaquePaintEvent + WA_NoSystemBackground 减少系统背景重绘
+- [x] SlidingDrawer 动画结束后恢复默认绘制属性
+- [x] SlidingDrawer::setSlideOffset() 计算脏区域矩形，对 Viewport 调用局部 update(dirtyRect)
+- [x] MeasureDock::build_cursor_pannel() 光标数量不变时仅更新文本，不 delete/new 组件
+- [x] MeasureDock::build_cursor_pannel() 光标数量增加时追加新组件，减少时移除多余组件
+- [x] MeasureDock::build_dist_pannel() 和 build_edge_pannel() 同样采用组件复用模式
+- [x] IconCache 单例类实现 QHash<QString, QPixmap> 缓存，提供 pixmap() 和 icon() 方法
+- [x] IconCache::clearCache() 在主题切换时被调用，清空缓存
+- [x] 所有工具栏（titlebar/filebar/logobar/trigbar/samplingbar）的 SVG 图标加载替换为 IconCache 调用
+- [x] 所有 Dock（measuredock/protocoldock/protocolitemlayer）的 SVG 图标加载替换为 IconCache 调用
+- [x] decodergroupbox/devmode 的 SVG 图标加载替换为 IconCache 调用
+- [x] 主题切换时调用 IconCache::clearCache() 清空缓存

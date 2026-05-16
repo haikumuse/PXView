@@ -21,6 +21,7 @@
  */
 
 #include "uimanager.h"
+#include "iconcache.h"
 #include <assert.h>
 
 UiManager::UiManager()
@@ -80,6 +81,7 @@ void UiManager::Update(UiUpdateAction action)
             w->UpdateLanguage();
         }
         else if (action == UI_UPDATE_ACTION_THEME){
+            IconCache::Instance().clearCache();
             w->UpdateTheme();
         }
         else if (action == UI_UPDATE_ACTION_FONT){

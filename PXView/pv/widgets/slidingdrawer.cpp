@@ -129,6 +129,8 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
 
   connect(_animation, &QPropertyAnimation::finished, this, [this]() {
     _is_animating = false;
+    setAttribute(Qt::WA_OpaquePaintEvent, false);
+    setAttribute(Qt::WA_NoSystemBackground, false);
 
     if (_is_open) {
       // Opening animation done → apply push margin so tab widget shrinks
@@ -267,6 +269,8 @@ void SlidingDrawer::open(int pageIndex) {
 
   _is_open = true;
   _is_animating = true;
+  setAttribute(Qt::WA_OpaquePaintEvent);
+  setAttribute(Qt::WA_NoSystemBackground);
   _animation->start();
 }
 
@@ -296,6 +300,8 @@ void SlidingDrawer::close() {
 
   _is_open = false;
   _is_animating = true;
+  setAttribute(Qt::WA_OpaquePaintEvent);
+  setAttribute(Qt::WA_NoSystemBackground);
   _animation->start();
 }
 
@@ -382,8 +388,20 @@ void SlidingDrawer::setSlideOffset(int offset) {
   if (_slide_offset == offset)
     return;
 
+  int oldOffset = _slide_offset;
   _slide_offset = offset;
   positionOverlay();
+
+  QWidget *pw = parentWidget();
+  if (pw) {
+    int pw_width = pw->width();
+    int oldX = pw_width - _drawer_width + oldOffset;
+    int newX = pw_width - _drawer_width + offset;
+    int dirtyLeft = qMin(oldX, newX);
+    int dirtyRight = qMax(oldX + _drawer_width, newX + _drawer_width);
+    QRect dirtyRect(dirtyLeft, 0, dirtyRight - dirtyLeft, pw->height());
+    pw->update(dirtyRect);
+  }
 }
 
 // ---- Events ----
