@@ -940,6 +940,7 @@ void DeviceOptionsDock::try_resize_scroll() {
   int max_label_width = 0;
 
   setUpdatesEnabled(false);
+  _container_lay->setEnabled(false);
   for (auto o : labels) {
     QRect rc = fm.boundingRect(o->text());
     QSize size(rc.width() + 15, rc.height());
@@ -953,6 +954,7 @@ void DeviceOptionsDock::try_resize_scroll() {
   if (_device_agent->get_work_mode() == LOGIC && _device_agent->is_demo()) {
     _dynamic_panel->setFixedWidth(max_label_width + 250);
   }
+  _container_lay->setEnabled(true);
   setUpdatesEnabled(true);
 #endif
 }
@@ -1120,9 +1122,57 @@ void DeviceOptionsDock::device_updated() {
 
 void DeviceOptionsDock::UpdateLanguage() { update_view(); }
 
-void DeviceOptionsDock::UpdateTheme() { update_view(); }
+void DeviceOptionsDock::UpdateTheme() { this->update(); }
 
-void DeviceOptionsDock::UpdateFont() { update_view(); }
+void DeviceOptionsDock::UpdateFont() {
+  if (_container_panel == NULL)
+    return;
+
+  QFont sectionTitleFont = dock_font_section_title();
+  QFont labelFont = dock_font_label();
+  QFont contentFont = dock_font_content();
+
+  setUpdatesEnabled(false);
+
+  auto section_titles = _container_panel->findChildren<QLabel *>("dock_section_title");
+  for (auto lb : section_titles) {
+    lb->setFont(sectionTitleFont);
+  }
+
+  auto labels = _container_panel->findChildren<QLabel *>("dock_label");
+  for (auto lb : labels) {
+    lb->setFont(labelFont);
+  }
+
+  auto content_widgets = _container_panel->findChildren<QWidget *>("dock_content");
+  for (auto w : content_widgets) {
+    w->setFont(contentFont);
+  }
+
+  auto check_boxes = _container_panel->findChildren<QCheckBox *>();
+  for (auto cb : check_boxes) {
+    cb->setFont(contentFont);
+  }
+
+  auto radio_buttons = _container_panel->findChildren<QRadioButton *>();
+  for (auto rb : radio_buttons) {
+    rb->setFont(contentFont);
+  }
+
+  auto push_buttons = _container_panel->findChildren<QPushButton *>();
+  for (auto pb : push_buttons) {
+    pb->setFont(contentFont);
+  }
+
+  auto spin_boxes = _container_panel->findChildren<pv::ui::DsSpinBox *>();
+  for (auto sb : spin_boxes) {
+    sb->setFont(contentFont);
+  }
+
+  setUpdatesEnabled(true);
+
+  try_resize_scroll();
+}
 
 void DeviceOptionsDock::showEvent(QShowEvent *event) {
   QWidget::showEvent(event);
@@ -1374,12 +1424,11 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   inner_layout->setAlignment(Qt::AlignTop);
   layout->addLayout(inner_layout);
 
-  // 通道列表容器（使用占位符优化，支持视口剔除）
   QWidget *ch_container = new QWidget(_glitch_filter_group);
-  QVBoxLayout *ch_layout_main = new QVBoxLayout(ch_container);
-  ch_layout_main->setContentsMargins(2, 2, 2, 2);
-  ch_layout_main->setSpacing(2);
-  ch_layout_main->setAlignment(Qt::AlignTop);
+  QGridLayout *ch_grid = new QGridLayout(ch_container);
+  ch_grid->setContentsMargins(2, 2, 2, 2);
+  ch_grid->setSpacing(3);
+  ch_grid->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 
   int ch_idx = 0;
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
@@ -1387,29 +1436,19 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     if (probe->type != SR_CHANNEL_LOGIC)
       continue;
 
-    // 1. 创建占位容器（固定高度，防止内部隐藏时引发排版重算）
-    QWidget *row_container = new QWidget(ch_container);
-    row_container->setFixedHeight(28); // 固定高度，极其重要！
-
-    // 2. 创建真实内容的容器
-    QWidget *content_widget = new QWidget(row_container);
-    QHBoxLayout *ch_layout = new QHBoxLayout(content_widget);
-    ch_layout->setContentsMargins(0, 0, 0, 0);
-    ch_layout->setSpacing(3);
-
     QCheckBox *ch_check =
-        new QCheckBox(QString("Ch%1").arg(probe->index), content_widget);
+        new QCheckBox(QString("Ch%1").arg(probe->index), ch_container);
     ch_check->setObjectName("dock_content");
     ch_check->setFont(contentFont);
     ch_check->setEnabled(probe->enabled);
     ch_check->setFixedWidth(55);
     _glitch_checkBox_list.push_back(ch_check);
 
-    QLabel *le_label = new QLabel("≤", content_widget);
+    QLabel *le_label = new QLabel("≤", ch_container);
     le_label->setObjectName("dock_label");
     le_label->setFont(labelFont);
 
-    pv::ui::DsSpinBox *spin = new pv::ui::DsSpinBox(content_widget);
+    pv::ui::DsSpinBox *spin = new pv::ui::DsSpinBox(ch_container);
     spin->setRange(1, 999);
     spin->setValue(1);
     spin->setObjectName("dock_content");
@@ -1419,27 +1458,23 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
     spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     _glitch_spinbox_list.push_back(spin);
 
-    QLabel *unit_label = new QLabel("采样周期", content_widget);
+    QLabel *unit_label = new QLabel("采样周期", ch_container);
     unit_label->setObjectName("dock_label");
     unit_label->setFont(labelFont);
 
-    ch_layout->addWidget(ch_check);
-    ch_layout->addWidget(le_label);
-    ch_layout->addWidget(spin);
-    ch_layout->addWidget(unit_label);
-
-    // 将内容容器充满占位容器
-    QVBoxLayout *container_lay = new QVBoxLayout(row_container);
-    container_lay->setContentsMargins(0, 0, 0, 0);
-    container_lay->addWidget(content_widget);
-
-    // 把占位容器加入主布局
-    ch_layout_main->addWidget(row_container);
+    ch_grid->addWidget(ch_check, ch_idx, 0);
+    ch_grid->addWidget(le_label, ch_idx, 1);
+    ch_grid->addWidget(spin, ch_idx, 2);
+    ch_grid->addWidget(unit_label, ch_idx, 3);
 
     connect(ch_check, &QCheckBox::toggled,
             [spin](bool checked) { spin->setEnabled(checked); });
 
     ch_idx++;
+  }
+
+  for (int c = 0; c < 4; c++) {
+    ch_grid->setColumnStretch(c, 0);
   }
 
   inner_layout->addWidget(ch_container);

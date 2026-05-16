@@ -1,0 +1,16 @@
+- [x] DeviceOptionsDock 构造函数中 _container_panel 设置了 WA_OpaquePaintEvent + WA_NoSystemBackground
+- [x] DeviceOptionsDock 构造函数中 _dynamic_panel 创建后设置了不透明属性
+- [x] DeviceOptionsDock 构造函数中 mode_section 设置了不透明属性
+- [x] DeviceOptionsDock 构造函数中 _glitch_filter_group 创建后设置了不透明属性
+- [x] update_view() 重建后对新 Widget 重新设置不透明属性
+- [x] UpdateLanguage() 保持调用 update_view()（语言变更为低频操作，全量重建可接受）
+- [x] UpdateFont() 不再调用 update_view()，仅遍历更新字体
+- [x] UpdateTheme() 不再调用 update_view()，仅调用 update() 触发重绘
+- [x] device_updated() 和 bind_context() 等场景仍可调用 update_view() 全量重建
+- [x] build_glitch_filter_panel() 不再创建 row_container 和 content_widget 中间容器
+- [x] rebuild_glitch_filter_panel() 使用扁平化布局
+- [x] 毛刺过滤面板的 checkbox/spinbox/button 信号槽在扁平化后仍正常工作
+- [x] try_resize_scroll() 在批量 setFixedSize 前禁用布局，操作后恢复
+- [x] SmoothScrollArea 动画启动时禁用内容布局
+- [x] SmoothScrollArea 动画结束时恢复内容布局并调用 activate()
+- [x] 构建通过，无编译错误
