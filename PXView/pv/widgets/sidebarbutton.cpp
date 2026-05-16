@@ -19,7 +19,7 @@ SideBarButton::SideBarButton(QWidget *parent)
     : QWidget(parent), _isCheckable(false), _isChecked(false),
       _isRunning(false), _isHovered(false), _isPressed(false), _isEnabled(true),
       _itemType(DockItem), _drawerPageIndex(-1) {
-  setFixedSize(45, 45);
+  setFixedSize(45, 50);
   setCursor(Qt::PointingHandCursor);
 }
 
@@ -62,7 +62,7 @@ void SideBarButton::setEnabled(bool enabled) {
 
 void SideBarButton::setVisible(bool visible) { QWidget::setVisible(visible); }
 
-QSize SideBarButton::sizeHint() const { return QSize(45, 45); }
+QSize SideBarButton::sizeHint() const { return QSize(45, 50); }
 
 QRectF SideBarButton::indicatorRect() const {
   return QRectF(width() - 3, 10, 3, 20);
@@ -90,7 +90,8 @@ void SideBarButton::drawBackground(QPainter *painter) {
   int c = isDark ? 255 : 0;
 
   if (_isChecked) {
-    painter->setBrush(QColor(c, c, c, _isHovered ? 6 : 10));
+    // Selected: very subtle background with soft inner glow feel
+    painter->setBrush(QColor(c, c, c, _isHovered ? 8 : 12));
     painter->drawRoundedRect(rect(), 5, 5);
   } else if (_isHovered && _isEnabled) {
     painter->setBrush(QColor(c, c, c, 10));
@@ -116,17 +117,17 @@ void SideBarButton::drawIcon(QPainter *painter) {
   }
 
   QIcon icon(GetIconPath() + "/" + effectiveIconName);
-  int iconSize = 30;
+  int iconSize = 24;
   int iconX = (width() - iconSize) / 2;
-  QRectF iconRect(iconX, 4, iconSize, iconSize);
+  QRectF iconRect(iconX, 6, iconSize, iconSize);
 
   if (_isChecked) {
-    // Selected: tint icon with accent color (#00a8ff)
+    // Selected: tint icon with soft accent color
     QPixmap pix = icon.pixmap(iconSize, iconSize);
     if (!pix.isNull()) {
       QPainter p(&pix);
       p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-      p.fillRect(pix.rect(), QColor("#00a8ff"));
+      p.fillRect(pix.rect(), QColor("#5B8DEF"));
       p.end();
       painter->drawPixmap(iconRect.topLeft(), pix);
     }
@@ -159,7 +160,7 @@ void SideBarButton::drawText(QPainter *painter) {
   QFont f = font();
   f.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
   painter->setFont(f);
-  painter->drawText(QRect(0, 34, width(), 11), Qt::AlignCenter, _text);
+  painter->drawText(QRect(0, 32, width(), 14), Qt::AlignCenter, _text);
 
   painter->setOpacity(1.0);
 }
