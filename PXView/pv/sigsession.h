@@ -64,6 +64,8 @@ class DsoSnapshot;
 class LogicSnapshot;
 class DecoderModel;
 class MathStack;
+class DiskWriteThread;
+class DiskBufferManager;
 
 namespace decode {
     class Decoder;
@@ -483,6 +485,10 @@ public:
     void clear_glitch_filter();
     bool is_glitch_filter_active();
 
+    size_t get_disk_write_queue_depth();
+    double get_disk_write_speed_mbps();
+    bool is_disk_write_disk_full();
+
 private:
     void set_cur_samplelimits(uint64_t samplelimits);
     void set_cur_snap_samplerate(uint64_t samplerate);
@@ -654,6 +660,9 @@ private:
 
     std::thread     *_glitch_filter_thread;
     bool            _glitch_filter_running;
+
+    data::DiskWriteThread  *_disk_write_thread;
+    data::DiskBufferManager *_disk_buffer_mgr;
    
 private:
 	// TODO: This should not be necessary. Multiple concurrent

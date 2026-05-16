@@ -405,7 +405,7 @@ static struct srd_c_decoder lin_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
-    lin_options[0].def = g_variant_new_uint64(9600);
+    lin_options[0].def = g_variant_new_int64(9600);
     lin_options[1].def = g_variant_new_int64(2);
     return &lin_c_decoder;
 }

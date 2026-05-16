@@ -542,6 +542,29 @@ struct srd_c_decoder i2c_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    i2c_options[0].def = g_variant_new_string("shifted");
+    i2c_options[1].def = g_variant_new_string("hex");
+    i2c_options[2].def = g_variant_new_string("yes");
+
+    GSList *addr_fmt_vals = NULL;
+    addr_fmt_vals = g_slist_append(addr_fmt_vals, g_variant_new_string("shifted"));
+    addr_fmt_vals = g_slist_append(addr_fmt_vals, g_variant_new_string("unshifted"));
+    i2c_options[0].values = addr_fmt_vals;
+
+    GSList *pkt_fmt_vals = NULL;
+    pkt_fmt_vals = g_slist_append(pkt_fmt_vals, g_variant_new_string("none"));
+    pkt_fmt_vals = g_slist_append(pkt_fmt_vals, g_variant_new_string("hex"));
+    pkt_fmt_vals = g_slist_append(pkt_fmt_vals, g_variant_new_string("ascii"));
+    pkt_fmt_vals = g_slist_append(pkt_fmt_vals, g_variant_new_string("dec"));
+    pkt_fmt_vals = g_slist_append(pkt_fmt_vals, g_variant_new_string("bin"));
+    pkt_fmt_vals = g_slist_append(pkt_fmt_vals, g_variant_new_string("oct"));
+    i2c_options[1].values = pkt_fmt_vals;
+
+    GSList *sdp_vals = NULL;
+    sdp_vals = g_slist_append(sdp_vals, g_variant_new_string("yes"));
+    sdp_vals = g_slist_append(sdp_vals, g_variant_new_string("no"));
+    i2c_options[2].values = sdp_vals;
+
     return &i2c_c_decoder;
 }
 

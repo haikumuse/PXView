@@ -191,6 +191,8 @@ struct PX_context {
     uint16_t trig_logic1[NUM_TRIGGER_STAGES];
     uint32_t trig_count[NUM_TRIGGER_STAGES];
     double   stream_buff_size;
+    gboolean disk_cache_enable;
+    char    *disk_cache_path;
 
     gboolean    pwm0_en;
     double      pwm0_freq;
@@ -344,6 +346,8 @@ static const int hwoptions[] = {
 	//SR_CONF_PWM1_DUTY ,
     //SR_CONF_PWM1_EN   ,
     SR_CONF_STREAM_BUFF,
+    SR_CONF_DISK_CACHE_ENABLE,
+    SR_CONF_DISK_CACHE_PATH,
     
     
 };
@@ -371,6 +375,8 @@ static const int32_t sessions[] = {
 	SR_CONF_PWM0_DUTY ,
     SR_CONF_PWM0_EN   ,
     SR_CONF_STREAM_BUFF,
+    SR_CONF_DISK_CACHE_ENABLE,
+    SR_CONF_DISK_CACHE_PATH,
 	
 	//SR_CONF_PWM1_FREQ ,
 	//SR_CONF_PWM1_DUTY ,

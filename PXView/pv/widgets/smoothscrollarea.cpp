@@ -25,7 +25,7 @@ namespace widgets {
 
 SmoothScrollArea::SmoothScrollArea(QWidget *parent)
     : QScrollArea(parent), _v_target(0), _h_target(0), _v_wheel_count(0),
-      _h_wheel_count(0), _v_wheel_dir(0), _h_wheel_dir(0) {
+      _h_wheel_count(0), _v_wheel_dir(0), _h_wheel_dir(0), _long_tail(false) {
   _v_anim = new QPropertyAnimation(verticalScrollBar(), "value", this);
   _h_anim = new QPropertyAnimation(horizontalScrollBar(), "value", this);
 
@@ -52,6 +52,10 @@ SmoothScrollArea::SmoothScrollArea(QWidget *parent)
 }
 
 SmoothScrollArea::~SmoothScrollArea() {}
+
+void SmoothScrollArea::setLongTailAnimation(bool enabled) {
+  _long_tail = enabled;
+}
 
 bool SmoothScrollArea::eventFilter(QObject *watched, QEvent *event) {
   if (watched == viewport() && event->type() == QEvent::Wheel) {
@@ -87,18 +91,30 @@ void SmoothScrollArea::handleVWheel(int delta) {
   int duration = 300;
   QEasingCurve easing(QEasingCurve::OutExpo);
 
-  if (_v_wheel_count > 6) {
-    step = BASE_STEP * 5;
-  } else if (_v_wheel_count > 3) {
-    step = BASE_STEP * 2;
-  }
-
   QScrollBar *vbar = verticalScrollBar();
   int vmin = vbar->minimum();
   int vmax = vbar->maximum();
 
   if (vmin >= vmax)
     return;
+
+  if (_v_wheel_count > 6) {
+    step = BASE_STEP * 5;
+    if (_long_tail) {
+      duration = 5000;
+      easing.setType(QEasingCurve::OutCubic);
+    } else {
+      duration = qBound(300, qAbs(qRound(_v_target) - vbar->value()) * 3, 1200);
+    }
+  } else if (_v_wheel_count > 3) {
+    step = BASE_STEP * 2;
+    if (_long_tail) {
+      duration = 800;
+      easing.setType(QEasingCurve::OutCubic);
+    } else {
+      duration = qBound(300, qAbs(qRound(_v_target) - vbar->value()) * 2, 600);
+    }
+  }
 
   int curVal = vbar->value();
 
@@ -118,13 +134,6 @@ void SmoothScrollArea::handleVWheel(int delta) {
 
   _v_anim->stop();
   curVal = vbar->value();
-
-  int distance = qAbs(targetInt - curVal);
-  if (_v_wheel_count > 6) {
-    duration = qBound(300, distance * 3, 1200);
-  } else if (_v_wheel_count > 3) {
-    duration = qBound(300, distance * 2, 600);
-  }
 
   if (widget())
     widget()->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -166,18 +175,30 @@ void SmoothScrollArea::handleHWheel(int delta) {
   int duration = 300;
   QEasingCurve easing(QEasingCurve::OutExpo);
 
-  if (_h_wheel_count > 6) {
-    step = BASE_STEP * 5;
-  } else if (_h_wheel_count > 3) {
-    step = BASE_STEP * 2;
-  }
-
   QScrollBar *hbar = horizontalScrollBar();
   int hmin = hbar->minimum();
   int hmax = hbar->maximum();
 
   if (hmin >= hmax)
     return;
+
+  if (_h_wheel_count > 6) {
+    step = BASE_STEP * 5;
+    if (_long_tail) {
+      duration = 5000;
+      easing.setType(QEasingCurve::OutCubic);
+    } else {
+      duration = qBound(300, qAbs(qRound(_h_target) - hbar->value()) * 3, 1200);
+    }
+  } else if (_h_wheel_count > 3) {
+    step = BASE_STEP * 2;
+    if (_long_tail) {
+      duration = 800;
+      easing.setType(QEasingCurve::OutCubic);
+    } else {
+      duration = qBound(300, qAbs(qRound(_h_target) - hbar->value()) * 2, 600);
+    }
+  }
 
   int curVal = hbar->value();
 
@@ -197,13 +218,6 @@ void SmoothScrollArea::handleHWheel(int delta) {
 
   _h_anim->stop();
   curVal = hbar->value();
-
-  int distance = qAbs(targetInt - curVal);
-  if (_h_wheel_count > 6) {
-    duration = qBound(300, distance * 3, 1200);
-  } else if (_h_wheel_count > 3) {
-    duration = qBound(300, distance * 2, 600);
-  }
 
   if (widget())
     widget()->setAttribute(Qt::WA_TransparentForMouseEvents, true);

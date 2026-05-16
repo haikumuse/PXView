@@ -91,7 +91,8 @@ void SearchComboBox::ShowDlg(QWidget *editline)
     grid->setSpacing(2);
 
     QLineEdit *edit = new QLineEdit(this);
-    edit->setMaximumWidth(this->width()); 
+    edit->setMaximumWidth(this->width());
+    edit->setFont(dock_font_content());
     grid->addWidget(edit);    
     eh = edit->height();
 
@@ -126,6 +127,7 @@ void SearchComboBox::ShowDlg(QWidget *editline)
     _scroll->setObjectName("dock_search_combo_scroll");
     _scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     _scroll->setFixedSize(w, h - eh);
+    _scroll->setLongTailAnimation(true);
 
     if (editline != NULL)
     {
@@ -134,7 +136,7 @@ void SearchComboBox::ShowDlg(QWidget *editline)
         int x = p2.x() - p1.x();
         int y = p2.y() - p1.y();
         this->move(x, y);       
-    } 
+    }
 
     edit->setFocus();
 

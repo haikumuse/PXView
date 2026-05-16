@@ -31,6 +31,8 @@ public:
   explicit SmoothScrollArea(QWidget *parent = nullptr);
   ~SmoothScrollArea();
 
+  void setLongTailAnimation(bool enabled);
+
 protected:
   void wheelEvent(QWheelEvent *event) override;
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -50,6 +52,8 @@ private:
   int _h_wheel_count;
   int _v_wheel_dir;
   int _h_wheel_dir;
+
+  bool _long_tail;
 
   enum { BASE_STEP = 72 };
 };

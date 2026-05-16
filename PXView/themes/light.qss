@@ -1541,6 +1541,11 @@ QTableCornerButton::section
     border-radius: 0px;
 }
 
+QStatusBar
+{
+    border-top: 1px solid @border-strong;
+}
+
 QStatusBar::item
 {
     border: 0px transparent;

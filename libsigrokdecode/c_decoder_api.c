@@ -82,13 +82,6 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
         _srd_err("C decoder %s: SRD_OUTPUT_PYTHON output is not fully "
                  "compatible with Python decoder stack. Consider using "
                  "SRD_OUTPUT_ANN instead.", di->c_dec_inst->name);
-        if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_ANN))) {
-            pdata.data = &pda;
-            memset(&pda, 0, sizeof(pda));
-            pda.ann_class = ann ? ann->ann_class : 0;
-            pda.ann_text = ann ? ann->ann_text : NULL;
-            cb->cb(&pdata, cb->cb_data);
-        }
         if ((cb = srd_pd_output_callback_find_c(di->sess, pdo->output_type))) {
             pdata.data = ann;
             cb->cb(&pdata, cb->cb_data);
@@ -428,21 +421,6 @@ SRD_API int c_decoder_put_python(struct srd_decoder_inst *di,
                     }
                 }
             }
-        }
-
-        if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_ANN))) {
-            pdata.data = &pda;
-            memset(&pda, 0, sizeof(pda));
-            char ann_text[256];
-            if (data && data_len > 0)
-                snprintf(ann_text, sizeof(ann_text), "%s: 0x%02X", cmd ? cmd : "", data[0]);
-            else
-                snprintf(ann_text, sizeof(ann_text), "%s", cmd ? cmd : "");
-            char *ann_texts[] = {ann_text, NULL};
-            pda.ann_class = 0;
-            pda.ann_type = 0;
-            pda.ann_text = ann_texts;
-            cb->cb(&pdata, cb->cb_data);
         }
     }
 

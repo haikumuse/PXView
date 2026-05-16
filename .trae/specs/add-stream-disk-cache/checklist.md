@@ -1,0 +1,43 @@
+- [x] DiskBufferManager 类实现完整：文件创建、打开、关闭、删除、顺序写入、随机读取接口均可用
+- [x] DiskWriteThread 类实现完整：后台异步写入线程可启动/停止，写入队列正常工作，刷写等待功能正常
+- [x] DiskReadCache 类实现完整：LRU 缓存命中/未命中逻辑正确，淘汰策略有效，容量限制生效
+- [x] DiskCacheConfig 结构体定义完整：包含启用标志、缓存路径、总缓存深度、内存大小、磁盘大小
+- [x] LogicSnapshot 叶块状态枚举 BlockState 定义正确（HOT/WARM/COLD）
+- [x] LogicSnapshot 叶块状态跟踪 _block_states 正确维护：状态转换路径 HOT→WARM→COLD 正确
+- [x] append_cross_payload() 中叶块分配后状态设为 HOT
+- [x] 超出热数据窗口的叶块正确标记为 WARM 并加入异步写入队列
+- [x] calc_mipmap() 完成后 WARM 状态叶块正确加入写入队列
+- [x] get_samples() 对 COLD 状态叶块通过 DiskReadCache 从磁盘加载
+- [x] get_sample_self() 对 COLD 状态叶块通过 DiskReadCache 从磁盘加载
+- [x] get_display_edges() 对 COLD 状态叶块批量预加载
+- [x] move_first_node_to_last() 对 COLD 状态叶块跳过内存释放，改为标记磁盘区域可覆盖
+- [x] free_head_blocks() 对 COLD 状态叶块正确处理
+- [x] free_data() 正确停止写入线程、刷写数据、关闭文件、清理缓存
+- [x] first_payload() 根据磁盘缓存配置正确初始化所有磁盘缓存组件
+- [x] SR_CONF_DISK_CACHE_PATH 和 SR_CONF_DISK_CACHE_ENABLE 常量在 libsigrok.h 中定义
+- [x] hwdriver.c 正确注册新配置项的名称和类型
+- [x] PX_context 新增 disk_cache_enable 和 disk_cache_path 成员
+- [x] pxlogic.c config_get()/config_set() 正确处理新配置项
+- [x] SR_CONF_STREAM_BUFF 语义变更：磁盘缓存启用时表示总缓存深度
+- [x] SigSession::start_capture() 正确初始化磁盘缓存参数
+- [x] SigSession::stop_capture() 等待磁盘写入线程刷写完成
+- [x] SigSession::feed_in_logic() 检查写入队列积压并触发警告
+- [x] deviceoptions.cpp 添加磁盘缓存启用开关控件
+- [x] deviceoptions.cpp 添加磁盘缓存路径选择控件
+- [x] SR_CONF_STREAM_BUFF 范围在磁盘缓存启用时扩展到 1-1024GB
+- [x] 状态栏显示磁盘缓存状态（写入速度、队列深度、磁盘使用量）
+- [x] 索引文件格式定义完整：魔数、版本号、通道数、叶块偏移量和状态
+- [x] DiskBufferManager 索引文件写入和读取功能正常
+- [x] 环形覆盖时索引文件正确更新
+- [x] DiskWriteThread 写入速度统计功能正常
+- [x] 采集启动时磁盘写入速度测试低于 200MB/s 时显示警告
+- [x] 写入队列积压超过 64 个叶块显示警告
+- [x] 写入队列积压超过 256 个叶块暂停采集
+- [x] 磁盘空间低于 10% 时停止写入并通知 UI
+- [x] StoreSession::save_logic() 从磁盘读取 COLD 叶块数据后正确写入 .pxl 文件
+- [x] LogicSnapshot::copy_from() 和 clone_data() 正确处理 COLD 状态叶块
+- [x] 采集结束后缓存文件正确清理，无残余临时文件
+- [x] 磁盘缓存禁用时所有行为与原来完全一致（回归测试）
+- [x] 250MB/s 持续采集时 USB 回调中无磁盘 I/O 操作
+- [x] Mip-map 计算延迟与纯内存模式一致
+- [x] 编译通过，无编译错误和警告

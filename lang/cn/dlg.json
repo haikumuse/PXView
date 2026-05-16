@@ -746,5 +746,45 @@
     {
         "id": "IDS_DLG_SEARCH_COL_LENGTH",
         "text": "长度"
-    }    
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_ENABLE",
+        "text": "磁盘缓存"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_PATH",
+        "text": "缓存路径"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_ON",
+        "text": "磁盘缓存: 开启"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_PATH_LABEL",
+        "text": "路径: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_WRITE",
+        "text": "写入: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_QUEUE",
+        "text": "队列: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_DISK",
+        "text": "磁盘: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_FULL",
+        "text": "磁盘已满"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_SLOW_WARNING",
+        "text": "磁盘写入速度过慢"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_SLOW_DETAIL",
+        "text": "检测速度: %1 MB/s\n建议使用 NVMe SSD 以支持 250MB/s 采集。\n采集可能出现数据丢失。"
+    }
 ]

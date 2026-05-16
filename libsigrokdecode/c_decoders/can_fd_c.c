@@ -76,6 +76,7 @@ typedef struct {
     uint64_t stuff_count_start;
     uint8_t crc_data[256];
     int num_crc_data;
+    int out_ann;
     int out_python;
     int64_t nominal_bitrate;
     int64_t fast_bitrate;
@@ -110,15 +111,14 @@ static int ParityCheck(int value)
 
 static uint32_t gray_to_binary(uint8_t *gray_bits, int count)
 {
-    uint32_t binary = gray_bits[0] & 1;
-    for (int i = 1; i < count; i++) {
-        int g = gray_bits[i] & 1;
-        int prev = (binary >> (i - 1)) & 1;
-        if (g == 0) {
-            binary |= (prev << i);
-        } else {
-            binary |= ((1 - prev) << i);
-        }
+    uint32_t gray = 0;
+    for (int i = 0; i < count && i < 32; i++)
+        gray = (gray << 1) | (gray_bits[i] & 1);
+    uint32_t binary = gray;
+    uint32_t mask = binary >> 1;
+    while (mask) {
+        binary ^= mask;
+        mask >>= 1;
     }
     return binary;
 }
@@ -135,7 +135,7 @@ static void putg(canfd_state *s, struct srd_decoder_inst *di,
     ann.ann_class = ann_class;
     ann.ann_type = 0;
     ann.ann_text = (char **)txts;
-    c_decoder_put(di, new_ss, new_es, s->out_python >= 0 ? 0 : 0, &ann);
+    c_decoder_put(di, new_ss, new_es, s->out_ann, &ann);
 }
 
 static void putx(canfd_state *s, struct srd_decoder_inst *di,
@@ -155,8 +155,10 @@ static void canfd_put_python(canfd_state *s, struct srd_decoder_inst *di)
     if (s->out_python < 0)
         return;
 
+    const char *frame_type_str = (s->frame_type == FRAME_STANDARD) ? "standard" : "extended";
+    const char *rtr_type_str = (s->rtr_type == 1) ? "remote" : "data";
     char text[1024];
-    int pos = snprintf(text, sizeof(text), "%d,%u,%d,%d", s->frame_type, s->fullid, s->rtr_type, s->dlc);
+    int pos = snprintf(text, sizeof(text), "%s,%u,%s,%d", frame_type_str, s->fullid, rtr_type_str, s->dlc);
     if (s->num_frame_bytes > 0) {
         pos += snprintf(text + pos, sizeof(text) - pos, ",");
         for (int i = 0; i < s->num_frame_bytes && pos < (int)(sizeof(text) - 4); i++)
@@ -164,7 +166,7 @@ static void canfd_put_python(canfd_state *s, struct srd_decoder_inst *di)
         if (pos < (int)(sizeof(text) - 2))
             snprintf(text + pos, sizeof(text) - pos, "]");
     }
-    C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_python, 0, text);
+    c_decoder_put_python(di, s->ss_packet, s->es_packet, s->out_python, text, NULL, 0);
 }
 
 static void reset_variables(canfd_state *s)
@@ -289,8 +291,10 @@ static int decode_frame_end(canfd_state *s, struct srd_decoder_inst *di,
         }
         s->stuff_count = 0;
 
-        char sc_str[16];
-        snprintf(sc_str, sizeof(sc_str), "%d", stuff_count_val);
+        char sc_str[4];
+        for (int b = 2; b >= 0; b--)
+            sc_str[2 - b] = ((stuff_count_val >> b) & 1) ? '1' : '0';
+        sc_str[3] = '\0';
         char t1[64], t2[64];
         snprintf(t1, sizeof(t1), "Stuff count: %s", sc_str);
         snprintf(t2, sizeof(t2), "Stuff count: %s", sc_str);
@@ -802,6 +806,7 @@ static void canfd_reset(struct srd_decoder_inst *di)
     s->last_databit = 999;
     s->crc_len = 15;
     s->frame_type = -1;
+    s->out_ann = 0;
     s->out_python = -1;
     s->nominal_bitrate = 1000000;
     s->fast_bitrate = 2000000;
@@ -811,7 +816,7 @@ static void canfd_reset(struct srd_decoder_inst *di)
 static void canfd_start(struct srd_decoder_inst *di)
 {
     canfd_state *s = (canfd_state *)c_decoder_get_private(di);
-    c_decoder_register_output(di, SRD_OUTPUT_ANN, "can");
+    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "can");
     s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "can");
 }
 
@@ -859,12 +864,6 @@ static void canfd_decode(struct srd_decoder_inst *di)
             s->rtr = 0;
             s->stuff_count = 0;
             s->num_crc_data = 0;
-
-            s->rawbits[s->num_rawbits++] = 0;
-            s->bits[s->num_bits++] = 0;
-            const char *sof_txts[] = {"Start of frame", "SOF", "S", NULL};
-            putx(s, di, samplenum, ANN_SOF, sof_txts, 3);
-            s->curbit = 1;
 
             if (s->bit_width_known)
                 s->next_sample_point = get_sample_point(s, s->curbit);
@@ -943,8 +942,8 @@ static struct srd_c_decoder canfd_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
-    canfd_options[0].def = g_variant_new_uint64(1000000);
-    canfd_options[1].def = g_variant_new_uint64(2000000);
+    canfd_options[0].def = g_variant_new_int64(1000000);
+    canfd_options[1].def = g_variant_new_int64(2000000);
     canfd_options[2].def = g_variant_new_double(70.0);
     return &canfd_c_decoder;
 }

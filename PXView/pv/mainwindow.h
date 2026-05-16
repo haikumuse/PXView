@@ -52,6 +52,7 @@ class QStatusBar;
 class QToolBar;
 class QWidget;
 class QDockWidget;
+class QLabel;
 class AppControl;
 class DeviceAgent;
 
@@ -164,6 +165,7 @@ private:
     void update_toolbar_view_status();
     void calc_min_height();    
     void update_title_bar_text();
+    void update_disk_cache_status();
 
     pv::view::View* current_view();
     pv::TabContext* current_context();
@@ -266,6 +268,10 @@ private:
     QString         _strMsg;
     QString         _lst_title_string;
     QString         _title_ext_string;
+
+    QLabel          *_disk_cache_status_label;
+    QLabel          *_trig_time_label;
+    QTimer          _disk_cache_status_timer;
 
     int         _key_value;
     bool        _key_vaild;

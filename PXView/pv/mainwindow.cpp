@@ -130,6 +130,7 @@
 
 #include <QScrollArea>
 #include <QTabBar>
+#include <QLabel>
 
 namespace pv {
 
@@ -257,6 +258,8 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
 
   _is_auto_switch_device = false;
   _is_save_confirm_msg = false;
+  _disk_cache_status_label = nullptr;
+  _trig_time_label = nullptr;
 
   _pattern_mode = "random";
   setup_ui();
@@ -728,6 +731,18 @@ void MainWindow::setup_ui() {
   }
 
   on_load_device_first();
+
+  _disk_cache_status_label = new QLabel(this);
+  statusBar()->addWidget(_disk_cache_status_label);
+  _disk_cache_status_label->hide();
+
+  _trig_time_label = new QLabel(this);
+  statusBar()->addPermanentWidget(_trig_time_label);
+  _trig_time_label->hide();
+
+  connect(&_disk_cache_status_timer, &QTimer::timeout, this,
+          &MainWindow::update_disk_cache_status);
+  _disk_cache_status_timer.start(500);
 
   if (!_tab_contexts.isEmpty()) {
     _tab_contexts[0]->activate();
@@ -3035,6 +3050,66 @@ void MainWindow::on_new_tab_requested() {
   _session->register_document(new_doc);
   new_ctx->set_title(QString::fromUtf8("标签%1").arg(_tab_contexts.size() + 1));
   add_tab(new_ctx);
+}
+
+void MainWindow::update_disk_cache_status() {
+  if (!_device_agent || !_device_agent->have_instance()) {
+    if (_disk_cache_status_label)
+      _disk_cache_status_label->hide();
+    _trig_time_label->hide();
+    return;
+  }
+
+  QDateTime trig_time = _session->get_trig_time();
+  if (_session->is_triged() && trig_time.isValid()) {
+      _trig_time_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_TIME), "Trigger Time: ") + trig_time.toString("yyyy-MM-dd hh:mm:ss"));
+      _trig_time_label->show();
+  } else {
+      _trig_time_label->hide();
+  }
+
+  bool cache_enabled = false;
+  _device_agent->get_config_bool(SR_CONF_DISK_CACHE_ENABLE, cache_enabled);
+
+  if (!cache_enabled) {
+    _disk_cache_status_label->hide();
+    return;
+  }
+
+  QString cache_path;
+  _device_agent->get_config_string(SR_CONF_DISK_CACHE_PATH, cache_path);
+  if (cache_path.isEmpty()) {
+      cache_path = QDir::tempPath() + "/PXView_cache";
+  }
+  QString text = QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_ON), "Disk Cache: ON"))
+      + " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_PATH_LABEL), "Path: ")) + cache_path;
+
+  double wspeed = _session->get_disk_write_speed_mbps();
+  size_t qdepth = _session->get_disk_write_queue_depth();
+
+  text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_WRITE), "Write: ")) + QString("%1 MB/s").arg(wspeed, 0, 'f', 1);
+  text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_QUEUE), "Queue: ")) + QString("%1 blocks").arg(qdepth);
+
+  data::LogicSnapshot *logic = _session->get_logic_snapshot();
+  if (logic && logic->is_disk_cache_active()) {
+    uint64_t total_blocks = logic->get_disk_total_blocks_written();
+    double disk_gb = total_blocks * 2105376 / (1024.0 * 1024.0 * 1024.0);
+    text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_DISK), "Disk: ")) + QString("%1 GB").arg(disk_gb, 0, 'f', 2);
+  }
+
+  if (_session->is_disk_write_disk_full()) {
+      text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_FULL), "DISK FULL"));
+      _disk_cache_status_label->setStyleSheet("color: red; font-weight: bold;");
+  } else if (qdepth > 256) {
+      _disk_cache_status_label->setStyleSheet("color: red; font-weight: bold;");
+  } else if (qdepth > 64) {
+      _disk_cache_status_label->setStyleSheet("color: yellow; font-weight: bold;");
+  } else {
+      _disk_cache_status_label->setStyleSheet("");
+  }
+
+  _disk_cache_status_label->setText(text);
+  _disk_cache_status_label->show();
 }
 
 } // namespace pv
