@@ -1,9 +1,6 @@
 #include "iconcache.h"
-#include <QSvgRenderer>
-#include <QPainter>
 
 IconCache::IconCache()
-    : _defaultSize(16, 16)
 {
 }
 
@@ -19,36 +16,23 @@ IconCache &IconCache::Instance()
     return *ins;
 }
 
-QPixmap IconCache::pixmap(const QString &svgPath, const QSize &size)
+QIcon IconCache::icon(const QString &svgPath)
 {
-    QString key = svgPath + QString("@%1x%2").arg(size.width()).arg(size.height());
-
-    auto it = _cache.find(key);
-    if (it != _cache.end())
+    auto it = _iconCache.find(svgPath);
+    if (it != _iconCache.end())
         return it.value();
 
-    QSvgRenderer renderer(svgPath);
-    if (!renderer.isValid())
-        return QPixmap();
-
-    QSize renderSize = size.isValid() ? size : _defaultSize;
-    QPixmap pm(renderSize);
-    pm.fill(Qt::transparent);
-
-    QPainter painter(&pm);
-    renderer.render(&painter);
-    painter.end();
-
-    _cache.insert(key, pm);
-    return pm;
+    QIcon ic(svgPath);
+    _iconCache.insert(svgPath, ic);
+    return ic;
 }
 
-QIcon IconCache::icon(const QString &svgPath, const QSize &size)
+QPixmap IconCache::pixmap(const QString &svgPath, const QSize &size)
 {
-    return QIcon(pixmap(svgPath, size));
+    return icon(svgPath).pixmap(size);
 }
 
 void IconCache::clearCache()
 {
-    _cache.clear();
+    _iconCache.clear();
 }
