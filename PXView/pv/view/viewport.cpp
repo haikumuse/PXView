@@ -214,7 +214,8 @@ Viewport::Viewport(View &parent, View_type type)
       _dso_ym_valid(false), _waiting_trig(0), _dso_trig_moved(false),
       _resize_trace_upper(NULL), _resize_trace_lower(NULL),
       _resize_mouse_down_y(0), _resize_upper_height(0), _resize_lower_height(0),
-      _curs_moved(false), _xcurs_moved(false), _curVOffset(0) {
+      _curs_moved(false), _xcurs_moved(false), _curVOffset(0),
+      _paint_count(0), _fps(60) {
   _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
   if (!_panelBgColor.isValid())
     _panelBgColor = QColor("#1a1a1a");
@@ -262,6 +263,14 @@ Viewport::Viewport(View &parent, View_type type)
   connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), this,
           SLOT(show_contextmenu(const QPoint &)));
 
+  connect(&_fps_timer, &QTimer::timeout, this, [this]() {
+    if (_paint_count > 0) {
+      _fps = _paint_count;
+      _paint_count = 0;
+    }
+  });
+  _fps_timer.start(1000);
+
   ADD_UI(this);
 }
 
@@ -304,6 +313,7 @@ bool Viewport::event(QEvent *event) {
 
 void Viewport::paintEvent(QPaintEvent *event) {
   (void)event;
+  _paint_count++;
   doPaint();
 }
 
@@ -2356,6 +2366,10 @@ void Viewport::UpdateFont() {
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
   _yAction->setFont(font);
   _xAction->setFont(font);
+}
+
+int Viewport::get_fps() {
+  return _fps;
 }
 
 } // namespace view

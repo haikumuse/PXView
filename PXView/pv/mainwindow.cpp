@@ -740,6 +740,15 @@ void MainWindow::setup_ui() {
   statusBar()->addPermanentWidget(_trig_time_label);
   _trig_time_label->hide();
 
+  _fps_label = new QLabel(this);
+  _fps_label->setText("FPS: -- (UI) | -- (Acq)");
+  statusBar()->addPermanentWidget(_fps_label);
+  _fps_label->show();
+
+  _acq_count = 0;
+  connect(&_fps_timer, &QTimer::timeout, this, &MainWindow::update_fps);
+  _fps_timer.start(1000);
+
   connect(&_disk_cache_status_timer, &QTimer::timeout, this,
           &MainWindow::update_disk_cache_status);
   _disk_cache_status_timer.start(500);
@@ -2076,6 +2085,7 @@ void MainWindow::frame_ended() {
 
 void MainWindow::on_frame_ended() {
   dsv_info("MainWindow::on_frame_ended()");
+  _acq_count++;
   _side_bar->setItemRunning(SIDEBAR_RUNSTOP, false);
   _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
   pv::TabContext *ctx = current_context();
@@ -2756,6 +2766,14 @@ void MainWindow::OnMessage(int msg) {
     current_view()->check_measure();
     break;
   }
+  case DSV_MSG_GLITCH_FILTER_COMPLETED:
+  case DSV_MSG_GLITCH_FILTER_CLEARED: {
+    pv::TabContext *ctx = current_context();
+    if (ctx && ctx->document()) {
+      _session->copy_data_to_document(ctx->document());
+    }
+    break;
+  }
   }
 }
 
@@ -3110,6 +3128,34 @@ void MainWindow::update_disk_cache_status() {
 
   _disk_cache_status_label->setText(text);
   _disk_cache_status_label->show();
+}
+
+void MainWindow::update_fps() {
+  int ui_fps = 0;
+  pv::view::View *cur_view = current_view();
+  if (cur_view && cur_view->get_time_view()) {
+    ui_fps = cur_view->get_time_view()->get_fps();
+  }
+
+  int dock_fps = 0;
+  if (_sliding_drawer) {
+    dock_fps = _sliding_drawer->get_fps();
+  }
+
+  int acq_fps = _acq_count;
+  _acq_count = 0;
+
+  bool acq_running = _session && _session->is_working();
+  if (_fps_label) {
+    QString fps_text;
+    if (acq_running) {
+      fps_text = QString("FPS: %1 (UI) | %2 (Dock) | %3 (Acq)").arg(ui_fps).arg(dock_fps).arg(acq_fps);
+    } else {
+      fps_text = QString("FPS: %1 (UI) | %2 (Dock) | -- (Acq)").arg(ui_fps).arg(dock_fps);
+    }
+    _fps_label->setText(fps_text);
+    _fps_label->show();
+  }
 }
 
 } // namespace pv
