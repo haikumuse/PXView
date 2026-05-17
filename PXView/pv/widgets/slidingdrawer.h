@@ -24,6 +24,7 @@
 #include <QResizeEvent>
 #include <QMouseEvent>
 #include <QTimer>
+#include <QElapsedTimer>
 
 class QLabel;
 class QVBoxLayout;
@@ -142,9 +143,12 @@ private:
 
     static constexpr int EDGE_GRIP_WIDTH = 6;
 
-    int _paint_count;
+    int _max_frame_time;
     int _fps;
     QTimer _fps_timer;
+    QElapsedTimer _frame_interval_timer;
+    int _paint_in_this_second;
+    bool _is_idle;
 };
 
 } // namespace widgets

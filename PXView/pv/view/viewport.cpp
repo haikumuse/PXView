@@ -215,7 +215,8 @@ Viewport::Viewport(View &parent, View_type type)
       _resize_trace_upper(NULL), _resize_trace_lower(NULL),
       _resize_mouse_down_y(0), _resize_upper_height(0), _resize_lower_height(0),
       _curs_moved(false), _xcurs_moved(false), _curVOffset(0),
-      _paint_count(0), _fps(60) {
+      _max_frame_time(0), _fps(0), g_drag_active(false),
+      _paint_in_this_second(0), _is_idle(true) {
   _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
   if (!_panelBgColor.isValid())
     _panelBgColor = QColor("#1a1a1a");
@@ -264,9 +265,12 @@ Viewport::Viewport(View &parent, View_type type)
           SLOT(show_contextmenu(const QPoint &)));
 
   connect(&_fps_timer, &QTimer::timeout, this, [this]() {
-    if (_paint_count > 0) {
-      _fps = _paint_count;
-      _paint_count = 0;
+    if (_paint_in_this_second > 0) {
+      _fps = _max_frame_time;
+      _max_frame_time = 0;
+      _paint_in_this_second = 0;
+    } else {
+      _is_idle = true;
     }
   });
   _fps_timer.start(1000);
@@ -312,8 +316,24 @@ bool Viewport::event(QEvent *event) {
 }
 
 void Viewport::paintEvent(QPaintEvent *event) {
+  if (g_drag_active && !g_drag_snapshot.isNull()) {
+    QPainter p(this);
+    p.drawPixmap(0, 0, g_drag_snapshot);
+    return;
+  }
   (void)event;
-  _paint_count++;
+
+  _paint_in_this_second++;
+  if (_is_idle || !_frame_interval_timer.isValid()) {
+    _frame_interval_timer.restart();
+    _is_idle = false;
+  } else {
+    int elapsed = static_cast<int>(_frame_interval_timer.restart());
+    if (elapsed > _max_frame_time) {
+      _max_frame_time = elapsed;
+    }
+  }
+
   doPaint();
 }
 

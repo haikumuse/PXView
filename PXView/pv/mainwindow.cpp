@@ -741,7 +741,7 @@ void MainWindow::setup_ui() {
   _trig_time_label->hide();
 
   _fps_label = new QLabel(this);
-  _fps_label->setText("FPS: -- (UI) | -- (Acq)");
+  _fps_label->setText("UI: --ms | Dock: --ms | Acq: -- FPS");
   statusBar()->addPermanentWidget(_fps_label);
   _fps_label->show();
 
@@ -3149,9 +3149,9 @@ void MainWindow::update_fps() {
   if (_fps_label) {
     QString fps_text;
     if (acq_running) {
-      fps_text = QString("FPS: %1 (UI) | %2 (Dock) | %3 (Acq)").arg(ui_fps).arg(dock_fps).arg(acq_fps);
+      fps_text = QString("UI: %1ms | Dock: %2ms | Acq: %3 FPS").arg(ui_fps).arg(dock_fps).arg(acq_fps);
     } else {
-      fps_text = QString("FPS: %1 (UI) | %2 (Dock) | -- (Acq)").arg(ui_fps).arg(dock_fps);
+      fps_text = QString("UI: %1ms | Dock: %2ms | Acq: -- FPS").arg(ui_fps).arg(dock_fps);
     }
     _fps_label->setText(fps_text);
     _fps_label->show();
