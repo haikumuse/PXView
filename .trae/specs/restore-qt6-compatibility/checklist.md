@@ -1,0 +1,22 @@
+- [ ] CMakeLists.txt 支持 Qt5/Qt6 双版本自动检测和强制切换
+- [ ] C++ 编译标准升级到 c++17
+- [ ] qtcompat.h 辅助头文件创建完成，定义 NativeEventResult 类型和事件坐标兼容宏
+- [ ] 所有 nativeEvent 签名在 Qt6 下使用 qintptr*，Qt5 下使用 long*
+- [ ] WinTaskbarProgress 类实现 ITaskbarList3 COM 接口，替代 QWinTaskbarButton/QWinTaskbarProgress
+- [ ] mainframe.h/cpp 中所有 QWinTaskbarButton/QWinTaskbarProgress 引用已替换
+- [ ] CMakeLists.txt Qt6 分支不链接 Qt5WinExtras
+- [ ] 所有 QMouseEvent::globalPos() 调用已替换为版本兼容写法（11 处）
+- [ ] 所有 QMouseEvent::pos() 和 event->x()/y() 调用已替换为版本兼容写法（85+ 处）
+- [ ] encoding.cpp 中 QTextCodec 全部替换为 QStringConverter，无 Qt5Compat 依赖
+- [ ] path.cpp 中 QTextCodec::codecForName("System") 替换为 QStringEncoder
+- [ ] storesession.cpp 中残留 QTextCodec include 已移除
+- [ ] decodermenu.h/cpp 中 QSignalMapper 替换为 lambda connect
+- [ ] decodetrace.h 中残留 QSignalMapper include 已移除
+- [ ] main.cpp 中 QFontDatabase 静态方法在 Qt6 下使用实例方法
+- [ ] main.cpp 中 High DPI 属性调用受 QT_VERSION 守卫保护
+- [ ] winnativewidget.cpp 中残留 QDesktopWidget include 已移除
+- [ ] mainwindow.cpp 中 QPixmap::grabWidget 替换为 QWidget::grab()
+- [ ] mainwindow.cpp 中 Qt6 截图分支的 QApplication::desktop->winId() BUG 已修复
+- [ ] 所有 SIGNAL()/SLOT() 旧式字符串语法已替换为新式仿函数语法（602 处）
+- [ ] Qt5 编译通过
+- [ ] Qt6 编译通过

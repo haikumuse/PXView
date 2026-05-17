@@ -169,7 +169,7 @@ bool bHighScale = true;
 #endif 
 
 	//----------------------init app
-    QApplication a(argcFinal, argvFinal);
+    DSApplication a(argcFinal, argvFinal);
     a.setStyle(new MyStyle);
 
     // 载入全局字体

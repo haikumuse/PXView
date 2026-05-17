@@ -79,6 +79,7 @@ class DsoTriggerDock;
 class MeasureDock;
 class SearchDock;
 class DeviceOptionsDock;
+class LogDock;
 }
 
 namespace view {
@@ -245,6 +246,8 @@ private:
     dock::SearchDock        *_search_widget;
     QDockWidget             *_device_options_dock;
     dock::DeviceOptionsDock *_device_options_widget;
+    QDockWidget             *_log_dock;
+    dock::LogDock           *_log_widget;
 
     // Sliding drawer panel
     widgets::SlidingDrawer  *_sliding_drawer;
@@ -254,6 +257,7 @@ private:
     int _drawer_page_measure;
     int _drawer_page_search;
     int _drawer_page_device_options;
+    int _drawer_page_log;
     int _drawer_current_page; // -1 = no page open
 
     QTranslator     _qtTrans;
@@ -303,8 +307,9 @@ private:
         SIDEBAR_SEARCH = 3,
         SIDEBAR_FUNCTION = 4,
         SIDEBAR_OPTIONS = 5,
-        SIDEBAR_RUNSTOP = 6,
-        SIDEBAR_INSTANT = 7
+        SIDEBAR_LOG = 6,
+        SIDEBAR_RUNSTOP = 7,
+        SIDEBAR_INSTANT = 8
     };
 
     ::DockOptions* getDockOptions();

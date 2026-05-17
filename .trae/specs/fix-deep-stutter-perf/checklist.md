@@ -1,0 +1,8 @@
+- [x] LOGIC 模式 paintSignals() 使用 4px 阈值 QPixmap 缓存（P0 修复验证）
+- [x] Signal group 卡片绘制在 signals 未变化时不执行排序和边界计算（P1 修复验证）
+- [x] signals_changed() 调用时 group card 缓存正确失效（P1 修复验证）
+- [x] doPaint() 中 divider 颜色从成员变量读取，不每帧调用 GetThemeColor（P2 修复验证）
+- [x] UpdateTheme() 正确更新缓存的颜色变量（P2 修复验证）
+- [x] 连续 resize 期间有节流机制，paintEvent 中 _resize_pending 为 true 时跳过 doPaint（P4 修复验证）
+- [x] 单次 resize 正常触发重绘（P4 修复验证）
+- [x] 编译无错误无警告
