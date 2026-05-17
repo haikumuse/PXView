@@ -117,13 +117,13 @@ LogoBar::LogoBar(SigSession *session, QWidget *parent) :
     // margin->setMinimumWidth(20);
     // addWidget(margin);
 
-    connect(_action_en, SIGNAL(triggered()), this, SLOT(on_actionEn_triggered()));
-    connect(_action_cn, SIGNAL(triggered()), this, SLOT(on_actionCn_triggered()));
-    connect(_about, SIGNAL(triggered()), this, SLOT(on_actionAbout_triggered()));
-    connect(_manual, SIGNAL(triggered()), this, SIGNAL(sig_open_doc()));
-    connect(_issue, SIGNAL(triggered()), this, SLOT(on_actionIssue_triggered()));
-    connect(_update, SIGNAL(triggered()), this, SLOT(on_action_update()));
-    connect(_log, SIGNAL(triggered()), this, SLOT(on_action_setting_log()));
+    connect(_action_en, &QAction::triggered, this, &LogoBar::on_actionEn_triggered);
+    connect(_action_cn, &QAction::triggered, this, &LogoBar::on_actionCn_triggered);
+    connect(_about, &QAction::triggered, this, &LogoBar::on_actionAbout_triggered);
+    connect(_manual, &QAction::triggered, this, &LogoBar::sig_open_doc);
+    connect(_issue, &QAction::triggered, this, &LogoBar::on_actionIssue_triggered);
+    connect(_update, &QAction::triggered, this, &LogoBar::on_action_update);
+    connect(_log, &QAction::triggered, this, &LogoBar::on_action_setting_log);
 
     ADD_UI(this);
 }
@@ -262,12 +262,12 @@ void LogoBar::on_action_setting_log()
     QPushButton *btOpen = new QPushButton();
     btOpen->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OPEN), "Open"));
     _log_open_bt = btOpen;
-    connect(btOpen, SIGNAL(released()), this, SLOT(on_open_log_file()));   
+    connect(btOpen, &QPushButton::released, this, &LogoBar::on_open_log_file);
 
     QPushButton *btClear = new QPushButton();
     btClear->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLEARE), "Clear"));
     _log_clear_bt = btClear;
-    connect(btClear, SIGNAL(released()), this, SLOT(on_clear_log_file()));
+    connect(btClear, &QPushButton::released, this, &LogoBar::on_clear_log_file);
 
     QWidget *btWid = new QWidget();
     QHBoxLayout *btLay = new QHBoxLayout();

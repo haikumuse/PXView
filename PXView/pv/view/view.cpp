@@ -60,6 +60,7 @@
 #include "../log.h"
 #include "../sigsession.h"
 #include "../widgets/hoversplitter.h"
+#include "../ui/qtcompat.h"
 
 using namespace std;
 
@@ -132,10 +133,10 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   setStyleSheet(
       QString("QScrollBar:vertical { margin-top: %1px; }").arg(RulerHeight));
 
-  connect(horizontalScrollBar(), SIGNAL(valueChanged(int)), this,
-          SLOT(h_scroll_value_changed(int)));
-  connect(verticalScrollBar(), SIGNAL(valueChanged(int)), this,
-          SLOT(v_scroll_value_changed(int)));
+  connect(horizontalScrollBar(), &QScrollBar::valueChanged, this,
+          &View::h_scroll_value_changed);
+  connect(verticalScrollBar(), &QScrollBar::valueChanged, this,
+          &View::v_scroll_value_changed);
 
   // trace viewport map
   _trace_view_map[SR_CHANNEL_LOGIC] = TIME_VIEW;
@@ -222,19 +223,19 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   _search_cursor = new Cursor(*this, -1, _search_pos);
   _search_cursor->set_colour(fore);
 
-  connect(_time_viewport, SIGNAL(measure_updated()), this,
-          SLOT(on_measure_updated()));
-  connect(_time_viewport, SIGNAL(prgRate(int)), this, SIGNAL(prgRate(int)));
-  connect(_fft_viewport, SIGNAL(measure_updated()), this,
-          SLOT(on_measure_updated()));
+  connect(_time_viewport, &Viewport::measure_updated, this,
+          &View::on_measure_updated);
+  connect(_time_viewport, &Viewport::prgRate, this, &View::prgRate);
+  connect(_fft_viewport, &Viewport::measure_updated, this,
+          &View::on_measure_updated);
 
-  connect(_vsplitter, SIGNAL(splitterMoved(int, int)), this,
-          SLOT(splitterMoved(int, int)));
+  connect(_vsplitter, &QSplitter::splitterMoved, this,
+          &View::splitterMoved);
 
-  connect(_header, SIGNAL(traces_moved()), this, SLOT(on_traces_moved()));
-  connect(_header, SIGNAL(header_updated()), this, SLOT(header_updated()));
-  connect(_devmode, SIGNAL(header_collapse_changed(bool)), this,
-          SLOT(on_header_collapse_changed(bool)));
+  connect(_header, &Header::traces_moved, this, &View::on_traces_moved);
+  connect(_header, &Header::header_updated, this, &View::header_updated);
+  connect(_devmode, &DevMode::header_collapse_changed, this,
+          &View::on_header_collapse_changed);
 
   ADD_UI(this);
 }
@@ -1189,17 +1190,17 @@ bool View::eventFilter(QObject *object, QEvent *event) {
     if (object == _ruler || object == _time_viewport ||
         object == _fft_viewport) {
       //_hover_point = QPoint(mouse_event->x(), 0);
-      double cur_periods = (mouse_event->pos().x() + _offset) * _scale /
+      double cur_periods = (QT_COMPAT_POS(mouse_event).x() + _offset) * _scale /
                            _ruler->get_min_period();
       int integer_x =
           round(cur_periods) * _ruler->get_min_period() / _scale - _offset;
-      double cur_deviate_x = qAbs(mouse_event->pos().x() - integer_x);
+      double cur_deviate_x = qAbs(QT_COMPAT_POS(mouse_event).x() - integer_x);
       if (_device_agent->get_work_mode() == LOGIC && cur_deviate_x < 10)
-        _hover_point = QPoint(integer_x, mouse_event->pos().y());
+        _hover_point = QPoint(integer_x, QT_COMPAT_POS(mouse_event).y());
       else
-        _hover_point = mouse_event->pos();
+        _hover_point = QT_COMPAT_POS(mouse_event);
     } else if (object == _header)
-      _hover_point = QPoint(0, mouse_event->y());
+      _hover_point = QPoint(0, QT_COMPAT_Y(mouse_event));
     else
       _hover_point = QPoint(-1, -1);
 
@@ -1627,7 +1628,7 @@ void View::show_calibration() {
   }
 
   _cali = new pv::dialogs::Calibration(this);
-  connect(_cali, SIGNAL(sig_closed()), this, SLOT(on_calibration_closed()));
+  connect(_cali, &pv::dialogs::Calibration::sig_closed, this, &View::on_calibration_closed);
   _cali->update_device_info();
   _cali->show();
 }

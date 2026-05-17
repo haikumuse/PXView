@@ -26,7 +26,6 @@
 
 #include <list>
 #include <map>
-#include <QSignalMapper>
 #include <QFormLayout>
 #include <QWidget>
 #include <QString>

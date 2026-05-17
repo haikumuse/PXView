@@ -24,7 +24,6 @@
 
 #include "winnativewidget.h"
 #include <QApplication>
-#include <QDesktopWidget>
 #include <QScreen>
 #include <QGuiApplication>
 #include <QWindow>
@@ -185,7 +184,7 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
         }
         case WM_KEYDOWN:
         { 
-            QKeyEvent keyEvent(QEvent::KeyPress, (int)wParam, 0);
+            QKeyEvent keyEvent(QEvent::KeyPress, (int)wParam, Qt::NoModifier);
             QWidget *target = self->_bodyViewWidget ? self->_bodyViewWidget : self->_childWidget;
             if (target)
                 QApplication::sendEvent(target, &keyEvent);
@@ -193,7 +192,7 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
         }
         case WM_KEYUP:
         {   
-            QKeyEvent keyEvent(QEvent::KeyRelease, (int)wParam, 0);
+            QKeyEvent keyEvent(QEvent::KeyRelease, (int)wParam, Qt::NoModifier);
             QWidget *target = self->_bodyViewWidget ? self->_bodyViewWidget : self->_childWidget;
             if (target)
                 QApplication::sendEvent(target, &keyEvent);

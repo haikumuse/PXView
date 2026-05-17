@@ -28,6 +28,8 @@
 #include <QtWidgets>
 #include <windows.h>
 
+#include "ui/qtcompat.h"
+
 #define SHADOW_BORDER_WIDTH 11
 
 namespace pv {
@@ -70,7 +72,7 @@ private slots:
     void onCheckForeWindow();
 
 private:
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override; 
+    bool nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result) override; 
     void paintEvent(QPaintEvent *event) override;
  
     QWidget     *m_parent;

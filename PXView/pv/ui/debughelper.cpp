@@ -1,5 +1,6 @@
 #include "debughelper.h"
 #include "../config/appconfig.h"
+#include "qtcompat.h"
 
 #include <QApplication>
 #include <QMouseEvent>
@@ -140,8 +141,8 @@ protected:
                     .arg(typeDesc)
                     .arg(widgetName.isEmpty() ? "unnamed" : widgetName)
                     .arg(mouseEvent->button())
-                    .arg(mouseEvent->pos().x())
-                    .arg(mouseEvent->pos().y());
+                    .arg(QT_COMPAT_X(mouseEvent))
+                    .arg(QT_COMPAT_Y(mouseEvent));
                 _helper->logDebug(logMsg);
             }
         }

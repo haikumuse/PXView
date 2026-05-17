@@ -73,8 +73,8 @@ QWidget* Double::get_widget(QWidget *parent, bool auto_commit)
 	}
 
     if (auto_commit) {
-        connect(_spin_box, SIGNAL(valueChanged(double)),
-            this, SLOT(on_value_changed(double)));
+        connect(_spin_box, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &Double::on_value_changed);
     }
 
 	return _spin_box;

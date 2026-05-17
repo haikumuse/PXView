@@ -61,12 +61,12 @@ DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session)
   //_position_spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
   _position_slider = new QSlider(Qt::Horizontal, _widget);
   _position_slider->setRange(1, 99);
-  connect(_position_slider, SIGNAL(valueChanged(int)), _position_spinBox,
-          SLOT(setValue(int)));
-  connect(_position_spinBox, SIGNAL(valueChanged(int)), _position_slider,
-          SLOT(setValue(int)));
-  connect(_position_slider, SIGNAL(valueChanged(int)), this,
-          SLOT(pos_changed(int)));
+  connect(_position_slider, &QSlider::valueChanged, _position_spinBox,
+          &KeyLineEdit::setValue);
+  connect(_position_spinBox, &KeyLineEdit::valueChanged, _position_slider,
+          &QSlider::setValue);
+  connect(_position_slider, &QSlider::valueChanged, this,
+          &DsoTriggerDock::pos_changed);
 
   _holdoff_label = new QLabel(_widget);
   _holdoff_label->setObjectName("dock_label");
@@ -87,21 +87,21 @@ DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session)
   _holdoff_slider = new QSlider(Qt::Horizontal, _widget);
   _holdoff_slider->setRange(0, 999);
 
-  connect(_holdoff_slider, SIGNAL(valueChanged(int)), _holdoff_spinBox,
-          SLOT(setValue(int)));
-  connect(_holdoff_spinBox, SIGNAL(valueChanged(int)), _holdoff_slider,
-          SLOT(setValue(int)));
-  connect(_holdoff_slider, SIGNAL(valueChanged(int)), this,
-          SLOT(hold_changed(int)));
-  connect(_holdoff_comboBox, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(hold_changed(int)));
+  connect(_holdoff_slider, &QSlider::valueChanged, _holdoff_spinBox,
+          &KeyLineEdit::setValue);
+  connect(_holdoff_spinBox, &KeyLineEdit::valueChanged, _holdoff_slider,
+          &QSlider::setValue);
+  connect(_holdoff_slider, &QSlider::valueChanged, this,
+          &DsoTriggerDock::hold_changed);
+  connect(_holdoff_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &DsoTriggerDock::hold_changed);
 
   _margin_label = new QLabel(_widget);
   _margin_label->setObjectName("dock_label");
   _margin_slider = new QSlider(Qt::Horizontal, _widget);
   _margin_slider->setRange(0, 15);
-  connect(_margin_slider, SIGNAL(valueChanged(int)), this,
-          SLOT(margin_changed(int)));
+  connect(_margin_slider, &QSlider::valueChanged, this,
+          &DsoTriggerDock::margin_changed);
 
   _tSource_label = new QLabel(_widget);
   _tSource_label->setObjectName("dock_label");
@@ -112,11 +112,11 @@ DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session)
   _ch0a1_radioButton = new QRadioButton(_widget);
   _ch0o1_radioButton = new QRadioButton(_widget);
 
-  connect(_auto_radioButton, SIGNAL(clicked()), this, SLOT(source_changed()));
-  connect(_ch0_radioButton, SIGNAL(clicked()), this, SLOT(source_changed()));
-  connect(_ch1_radioButton, SIGNAL(clicked()), this, SLOT(source_changed()));
-  connect(_ch0a1_radioButton, SIGNAL(clicked()), this, SLOT(source_changed()));
-  connect(_ch0o1_radioButton, SIGNAL(clicked()), this, SLOT(source_changed()));
+  connect(_auto_radioButton, &QRadioButton::clicked, this, &DsoTriggerDock::source_changed);
+  connect(_ch0_radioButton, &QRadioButton::clicked, this, &DsoTriggerDock::source_changed);
+  connect(_ch1_radioButton, &QRadioButton::clicked, this, &DsoTriggerDock::source_changed);
+  connect(_ch0a1_radioButton, &QRadioButton::clicked, this, &DsoTriggerDock::source_changed);
+  connect(_ch0o1_radioButton, &QRadioButton::clicked, this, &DsoTriggerDock::source_changed);
 
   _tType_label = new QLabel(_widget);
   _tType_label->setObjectName("dock_label");
@@ -124,8 +124,8 @@ DsoTriggerDock::DsoTriggerDock(QWidget *parent, SigSession *session)
   _rising_radioButton->setChecked(true);
   _falling_radioButton = new QRadioButton(_widget);
 
-  connect(_rising_radioButton, SIGNAL(clicked()), this, SLOT(type_changed()));
-  connect(_falling_radioButton, SIGNAL(clicked()), this, SLOT(type_changed()));
+  connect(_rising_radioButton, &QRadioButton::clicked, this, &DsoTriggerDock::type_changed);
+  connect(_falling_radioButton, &QRadioButton::clicked, this, &DsoTriggerDock::type_changed);
 
   _source_group = new QButtonGroup(_widget);
   _channel_comboBox = new DsComboBox(_widget);
@@ -423,8 +423,8 @@ void DsoTriggerDock::update_view() {
   }
 
   // setup _channel_comboBox
-  disconnect(_channel_comboBox, SIGNAL(currentIndexChanged(int)), this,
-             SLOT(channel_changed(int)));
+  disconnect(_channel_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+             &DsoTriggerDock::channel_changed);
   _channel_comboBox->clear();
 
   for (auto s : _session->get_signals()) {
@@ -443,18 +443,18 @@ void DsoTriggerDock::update_view() {
       }
     }
   }
-  connect(_channel_comboBox, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(channel_changed(int)));
+  connect(_channel_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &DsoTriggerDock::channel_changed);
 
   ret = _session->get_device()->get_config_byte(SR_CONF_TRIGGER_SLOPE, slope);
   if (ret) {
     _type_group->button(slope)->setChecked(true);
   }
 
-  disconnect(_holdoff_slider, SIGNAL(valueChanged(int)), this,
-             SLOT(hold_changed(int)));
-  disconnect(_holdoff_comboBox, SIGNAL(currentIndexChanged(int)), this,
-             SLOT(hold_changed(int)));
+  disconnect(_holdoff_slider, &QSlider::valueChanged, this,
+             &DsoTriggerDock::hold_changed);
+  disconnect(_holdoff_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+             &DsoTriggerDock::hold_changed);
 
   uint64_t holdoff;
   ret = _session->get_device()->get_config_uint64(SR_CONF_TRIGGER_HOLDOFF,
@@ -479,21 +479,21 @@ void DsoTriggerDock::update_view() {
     _holdoff_slider->setValue(v1);
   }
 
-  connect(_holdoff_slider, SIGNAL(valueChanged(int)), this,
-          SLOT(hold_changed(int)));
-  connect(_holdoff_comboBox, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(hold_changed(int)));
+  connect(_holdoff_slider, &QSlider::valueChanged, this,
+          &DsoTriggerDock::hold_changed);
+  connect(_holdoff_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &DsoTriggerDock::hold_changed);
 
-  disconnect(_margin_slider, SIGNAL(valueChanged(int)), this,
-             SLOT(margin_changed(int)));
+  disconnect(_margin_slider, &QSlider::valueChanged, this,
+             &DsoTriggerDock::margin_changed);
 
   int margin;
   ret = _session->get_device()->get_config_byte(SR_CONF_TRIGGER_MARGIN, margin);
   if (ret) {
     _margin_slider->setValue(margin);
   }
-  connect(_margin_slider, SIGNAL(valueChanged(int)), this,
-          SLOT(margin_changed(int)));
+  connect(_margin_slider, &QSlider::valueChanged, this,
+          &DsoTriggerDock::margin_changed);
 }
 
 void DsoTriggerDock::UpdateLanguage() { retranslateUi(); }

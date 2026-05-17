@@ -50,6 +50,7 @@
 #include "../log.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
+#include "../ui/qtcompat.h"
 #include "lissajoustrace.h"
 
 using namespace std;
@@ -258,12 +259,12 @@ Viewport::Viewport(View &parent, View_type type)
 
   setContextMenuPolicy(Qt::CustomContextMenu);
 
-  connect(&_trigger_timer, SIGNAL(timeout()), this, SLOT(on_trigger_timer()));
-  connect(&_drag_timer, SIGNAL(timeout()), this, SLOT(on_drag_timer()));
-  connect(yAction, SIGNAL(triggered(bool)), this, SLOT(add_cursor_y()));
-  connect(xAction, SIGNAL(triggered(bool)), this, SLOT(add_cursor_x()));
-  connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), this,
-          SLOT(show_contextmenu(const QPoint &)));
+  connect(&_trigger_timer, &QTimer::timeout, this, &Viewport::on_trigger_timer);
+  connect(&_drag_timer, &QTimer::timeout, this, &Viewport::on_drag_timer);
+  connect(yAction, &QAction::triggered, this, &Viewport::add_cursor_y);
+  connect(xAction, &QAction::triggered, this, &Viewport::add_cursor_x);
+  connect(this, &QWidget::customContextMenuRequested, this,
+          &Viewport::show_contextmenu);
 
   connect(&_fps_timer, &QTimer::timeout, this, [this]() {
     if (_paint_in_this_second > 0) {
@@ -943,7 +944,7 @@ void Viewport::paintProgress(QPainter &p, QColor fore, QColor back) {
 void Viewport::mousePressEvent(QMouseEvent *event) {
   assert(event);
 
-  _mouse_down_point = event->pos();
+  _mouse_down_point = QT_COMPAT_POS(event);
   _mouse_down_offset = _view.offset();
   _drag_strength = 0;
   _elapsed_time.restart();
@@ -952,7 +953,7 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
       _view.session().get_device()->get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(TIME_VIEW, traces);
-    int mouseY = event->pos().y() + _view.get_vOffset();
+    int mouseY = QT_COMPAT_POS(event).y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
 
     for (int i = 0; i < (int)traces.size() - 1; i++) {
@@ -968,7 +969,7 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
         _action_type = RESIZE_SIGNAL;
         _resize_trace_upper = traces[i];
         _resize_trace_lower = traces[i + 1];
-        _resize_mouse_down_y = event->pos().y();
+        _resize_mouse_down_y = QT_COMPAT_POS(event).y();
         _resize_upper_height = traces[i]->get_totalHeight();
         _resize_lower_height = traces[i + 1]->get_totalHeight();
         return;
@@ -982,7 +983,7 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
       set_action(LOGIC_ZOOM);
     } else if (_view.session().get_device()->get_work_mode() == DSO) {
       if (_hover_hit) {
-        const int64_t index = _view.pixel2index(event->pos().x());
+        const int64_t index = _view.pixel2index(QT_COMPAT_POS(event).x());
         auto &cursor_list = _view.get_cursorList();
         _view.add_cursor(index);
         _view.show_cursors(true);
@@ -1014,7 +1015,7 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
 
       if (_view.get_search_cursor()->grabbed()) {
         _view.get_ruler()->rel_grabbed_cursor();
-      } else if (qAbs(searchX - event->pos().x()) <= HitCursorMargin) {
+      } else if (qAbs(searchX - QT_COMPAT_POS(event).x()) <= HitCursorMargin) {
         _view.get_ruler()->set_grabbed_cursor(_view.get_search_cursor());
         set_action(CURS_MOVE);
       }
@@ -1028,7 +1029,7 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
         const int64_t cursorX = _view.index2pixel((*i)->index());
         if ((*i)->grabbed()) {
           _view.get_ruler()->rel_grabbed_cursor();
-        } else if (qAbs(cursorX - event->pos().x()) <= HitCursorMargin) {
+        } else if (qAbs(cursorX - QT_COMPAT_POS(event).x()) <= HitCursorMargin) {
           _view.get_ruler()->set_grabbed_cursor(*i);
           set_action(CURS_MOVE);
           break;
@@ -1118,7 +1119,7 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
       _view.session().get_device()->get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(TIME_VIEW, traces);
-    int mouseY = event->pos().y() + _view.get_vOffset();
+    int mouseY = QT_COMPAT_POS(event).y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
     bool onBorder = false;
 
@@ -1141,7 +1142,7 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
   }
 
   if (_action_type == RESIZE_SIGNAL) {
-    int deltaY = event->pos().y() - _resize_mouse_down_y;
+    int deltaY = QT_COMPAT_POS(event).y() - _resize_mouse_down_y;
     int newUpperHeight = _resize_upper_height + deltaY;
 
     if (newUpperHeight >= View::MinSignalHeight) {
@@ -1154,14 +1155,14 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
   if (event->buttons() & Qt::LeftButton) {
     if (_type == TIME_VIEW) {
       if (_action_type == NO_ACTION) {
-        int64_t x = _mouse_down_offset + (_mouse_down_point - event->pos()).x();
+        int64_t x = _mouse_down_offset + (_mouse_down_point - QT_COMPAT_POS(event)).x();
         _view.set_scale_offset(_view.scale(), x);
       }
-      _drag_strength = (_mouse_down_point - event->pos()).x();
+      _drag_strength = (_mouse_down_point - QT_COMPAT_POS(event)).x();
     } else if (_type == FFT_VIEW) {
       for (auto t : _view.effective_data_source()->get_spectrum_traces()) {
         if (t->enabled()) {
-          double delta = (_mouse_point - event->pos()).x();
+          double delta = (_mouse_point - QT_COMPAT_POS(event)).x();
           t->set_offset(delta);
           break;
         }
@@ -1175,7 +1176,7 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
       if (_action_type == DSO_TRIG_MOVE) {
         if (_drag_sig && _drag_sig->signal_type() == SR_CHANNEL_DSO) {
           view::DsoSignal *dsoSig = (view::DsoSignal *)_drag_sig;
-          dsoSig->set_trig_vpos(event->pos().y());
+          dsoSig->set_trig_vpos(QT_COMPAT_POS(event).y());
           _dso_trig_moved = true;
         }
       }
@@ -1190,7 +1191,7 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
           for (auto s : _view.get_own_signals()) {
             if (mode == LOGIC && s->signal_type() == SR_CHANNEL_LOGIC) {
               view::LogicSignal *logicSig = (view::LogicSignal *)s;
-              if (logicSig->measure(event->pos(), index0, index1, index2)) {
+              if (logicSig->measure(QT_COMPAT_POS(event), index0, index1, index2)) {
                 logic = true;
                 break;
               }
@@ -1268,7 +1269,7 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
     if (!(event->buttons() | Qt::NoButton)) {
       if (_action_type == DSO_XM_STEP1 || _action_type == DSO_XM_STEP2) {
         for (auto s : _view.get_own_signals()) {
-          if (!s->get_view_rect().contains(event->pos())) {
+          if (!s->get_view_rect().contains(QT_COMPAT_POS(event))) {
             clear_dso_xm();
           }
           break;
@@ -1276,11 +1277,11 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
       }
 
       if (_action_type == DSO_YM)
-        _dso_ym_end = event->pos().y();
+        _dso_ym_end = QT_COMPAT_POS(event).y();
     }
   }
 
-  _mouse_point = event->pos() + QPoint(0, _view.get_vOffset());
+  _mouse_point = QT_COMPAT_POS(event) + QPoint(0, _view.get_vOffset());
 
   measure();
 
@@ -1305,7 +1306,7 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
         _view.session().is_stopped_status()) {
       // priority 1
       // try to quick scroll view...
-      int curX = event->pos().x();
+      int curX = QT_COMPAT_POS(event).x();
       int clickX = _mouse_down_point.x();
       int moveLong = ABS_VAL(curX - clickX);
       int maxWidth = this->geometry().width();
@@ -1338,13 +1339,13 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
 
       // priority 2
       if (_action_type == NO_ACTION) {
-        if (_mouse_down_point.x() == event->pos().x()) {
+        if (_mouse_down_point.x() == QT_COMPAT_POS(event).x()) {
           const auto &sigs = _view.get_own_signals();
 
           for (auto s : sigs) {
             if (s->signal_type() == SR_CHANNEL_LOGIC) {
               view::LogicSignal *logicSig = (view::LogicSignal *)s;
-              if (logicSig->is_by_edge(event->pos(), _edge_start, 10)) {
+              if (logicSig->is_by_edge(QT_COMPAT_POS(event), _edge_start, 10)) {
                 set_action(LOGIC_JUMP);
                 _cur_preX = _view.index2pixel(_edge_start);
                 _cur_preY = logicSig->get_y();
@@ -1367,13 +1368,13 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
 
       // priority 3
       if (_action_type == NO_ACTION) {
-        if (_mouse_down_point.x() == event->pos().x()) {
+        if (_mouse_down_point.x() == QT_COMPAT_POS(event).x()) {
           const auto &sigs = _view.get_own_signals();
 
           for (auto s : sigs) {
-            if (abs(event->pos().y() - s->get_y()) < _view.get_signalHeight()) {
+            if (abs(QT_COMPAT_POS(event).y() - s->get_y()) < _view.get_signalHeight()) {
               set_action(LOGIC_EDGE);
-              _edge_start = _view.pixel2index(event->pos().x());
+              _edge_start = _view.pixel2index(QT_COMPAT_POS(event).x());
               break;
             }
           }
@@ -1396,7 +1397,7 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
     break;
   }
   case LOGIC_MOVE: {
-    if (_mouse_down_point == event->pos()) {
+    if (_mouse_down_point == QT_COMPAT_POS(event)) {
       _drag_strength = 0;
       _drag_timer.stop();
       set_action(NO_ACTION);
@@ -1420,11 +1421,11 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
     break;
   }
   case LOGIC_ZOOM: {
-    if (event->pos().x() != _mouse_down_point.x()) {
+    if (QT_COMPAT_POS(event).x() != _mouse_down_point.x()) {
       int64_t newOffset =
-          _view.offset() + (min(event->pos().x(), _mouse_down_point.x()));
+          _view.offset() + (min(QT_COMPAT_POS(event).x(), _mouse_down_point.x()));
       const double newScale = max(
-          min(_view.scale() * abs(event->pos().x() - _mouse_down_point.x()) /
+          min(_view.scale() * abs(QT_COMPAT_POS(event).x() - _mouse_down_point.x()) /
                   _view.get_view_width(),
               _view.get_maxscale()),
           _view.get_minscale());
@@ -1447,13 +1448,13 @@ void Viewport::onDsoMouseRelease(QMouseEvent *event) {
       _dso_ym_sig_index = _hover_sig_index;
       _dso_ym_sig_value = _hover_sig_value;
       _dso_ym_index = _hover_index;
-      _dso_ym_start = event->pos().y();
+      _dso_ym_start = QT_COMPAT_POS(event).y();
     }
     break;
   }
   case DSO_YM: {
     if (event->button() == Qt::LeftButton) {
-      _dso_ym_end = event->pos().y();
+      _dso_ym_end = QT_COMPAT_POS(event).y();
       set_action(NO_ACTION);
     } else if (event->button() == Qt::RightButton) {
       set_action(NO_ACTION);
@@ -1485,7 +1486,7 @@ void Viewport::onDsoMouseRelease(QMouseEvent *event) {
   }
   case DSO_XM_STEP1: {
     if (event->button() == Qt::LeftButton) {
-      _dso_xm_index[1] = _view.pixel2index(event->pos().x());
+      _dso_xm_index[1] = _view.pixel2index(QT_COMPAT_POS(event).x());
       const uint64_t max_index = max(_dso_xm_index[0], _dso_xm_index[1]);
       _dso_xm_index[0] = min(_dso_xm_index[0], _dso_xm_index[1]);
       _dso_xm_index[1] = max_index;
@@ -1499,7 +1500,7 @@ void Viewport::onDsoMouseRelease(QMouseEvent *event) {
   }
   case DSO_XM_STEP2: {
     if (event->button() == Qt::LeftButton) {
-      _dso_xm_index[2] = _view.pixel2index(event->pos().x());
+      _dso_xm_index[2] = _view.pixel2index(QT_COMPAT_POS(event).x());
       uint64_t max_index = max(_dso_xm_index[1], _dso_xm_index[2]);
       _dso_xm_index[1] = min(_dso_xm_index[1], _dso_xm_index[2]);
       _dso_xm_index[2] = max_index;
@@ -1585,7 +1586,7 @@ void Viewport::mouseReleaseEvent(QMouseEvent *event) {
 void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
   assert(event);
 
-  if (!_view.get_view_rect().contains(event->pos()))
+  if (!_view.get_view_rect().contains(QT_COMPAT_POS(event)))
     return;
 
   int mode = _view.session().get_device()->get_work_mode();
@@ -1594,7 +1595,7 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
       _view.session().get_device()->get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(TIME_VIEW, traces);
-    int mouseY = event->pos().y() + _view.get_vOffset();
+    int mouseY = QT_COMPAT_POS(event).y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
 
     for (int i = 0; i < (int)traces.size() - 1; i++) {
@@ -1630,14 +1631,14 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
         for (auto s : _view.get_own_signals()) {
           if (s->signal_type() == SR_CHANNEL_LOGIC) {
             view::LogicSignal *logicSig = (view::LogicSignal *)s;
-            if (logicSig->measure(event->pos(), index0, index1, index2)) {
+            if (logicSig->measure(QT_COMPAT_POS(event), index0, index1, index2)) {
               logic = true;
               break;
             }
           }
         }
       }
-      const double curX = event->pos().x();
+      const double curX = QT_COMPAT_POS(event).x();
       const double curP = _view.index2pixel(index0);
       const double curN = _view.index2pixel(index1);
 
@@ -1664,9 +1665,9 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
       measure_updated();
     } else if (_action_type == NO_ACTION) {
       for (auto s : _view.get_own_signals()) {
-        if (s->get_view_rect().contains(event->pos())) {
-          _dso_xm_index[0] = _view.pixel2index(event->pos().x());
-          _dso_xm_y = event->pos().y();
+        if (s->get_view_rect().contains(QT_COMPAT_POS(event))) {
+          _dso_xm_index[0] = _view.pixel2index(QT_COMPAT_POS(event).x());
+          _dso_xm_y = QT_COMPAT_POS(event).y();
           set_action(DSO_XM_STEP0);
         }
         break;
@@ -1675,7 +1676,7 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
   } else if (_view.session().get_device()->get_work_mode() == ANALOG) {
     if (event->button() == Qt::LeftButton) {
       uint64_t index;
-      const double curX = event->pos().x();
+      const double curX = QT_COMPAT_POS(event).x();
       index = _view.pixel2index(curX);
       auto &cursor_list = _view.get_cursorList();
       _view.add_cursor(index);
@@ -1691,27 +1692,9 @@ void Viewport::wheelEvent(QWheelEvent *event) {
     return;
   }
 
-  int x = 0; // mouse x pos
-  int delta = 0;
-  bool isVertical = true;
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-  x = (int)event->position().x();
-  int anglex = event->angleDelta().x();
-  int angley = event->angleDelta().y();
-
-  if (anglex == 0 || ABS_VAL(angley) >= ABS_VAL(anglex)) {
-    delta = angley;
-    isVertical = true;
-  } else {
-    delta = anglex;
-    isVertical = false; // hori direction
-  }
-#else
-  x = event->x();
-  delta = event->delta();
-  isVertical = event->orientation() == Qt::Vertical;
-#endif
+  int x = QT_COMPAT_WHEEL_POS(event);
+  int delta = QT_COMPAT_WHEEL_DELTA(event);
+  bool isVertical = QT_COMPAT_WHEEL_IS_VERTICAL(event);
 
   double zoom_scale = delta / 80;
 

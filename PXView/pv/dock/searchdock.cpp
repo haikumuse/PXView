@@ -143,8 +143,8 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
   _widget = new QWidget(this);
 
   _pattern_input = new widgets::SearchPatternInput(_widget);
-  connect(_pattern_input, SIGNAL(pattern_changed()), this,
-          SLOT(on_pattern_changed()));
+  connect(_pattern_input, &widgets::SearchPatternInput::pattern_changed, this,
+          &SearchDock::on_pattern_changed);
 
   QHBoxLayout *input_layout = new QHBoxLayout();
   input_layout->addStretch(1);
@@ -190,10 +190,10 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
 
   _result_view->viewport()->installEventFilter(this);
 
-  connect(_result_view, SIGNAL(clicked(const QModelIndex &)), this,
-          SLOT(on_result_clicked(const QModelIndex &)));
-  connect(_result_view, SIGNAL(entered(const QModelIndex &)), this,
-          SLOT(on_table_hover(const QModelIndex &)));
+  connect(_result_view, &QAbstractItemView::clicked, this,
+          &SearchDock::on_result_clicked);
+  connect(_result_view, &QAbstractItemView::entered, this,
+          &SearchDock::on_table_hover);
 
   _legend_x = new QLabel(_widget);
   _legend_x->setObjectName("dock_label");
@@ -266,15 +266,14 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
   this->setWidget(_widget);
   _widget->setObjectName("searchWidget");
 
-  connect(_session->device_event_object(), SIGNAL(device_updated()), this,
-          SLOT(on_device_updated()));
+  connect(_session->device_event_object(), &DeviceEventObject::device_updated, this,
+          &SearchDock::on_device_updated);
 
-  // 连接信号：搜索线程找到结果时立即刷新UI
-  connect(this, SIGNAL(search_result_found()), this, SLOT(refresh_ui_model()),
+  connect(this, &SearchDock::search_result_found, this, &SearchDock::refresh_ui_model,
           Qt::QueuedConnection);
 
-  connect(&_search_watcher, SIGNAL(finished()), this,
-          SLOT(on_search_finished()));
+  connect(&_search_watcher, &QFutureWatcher<void>::finished, this,
+          &SearchDock::on_search_finished);
 
   retranslateUi();
   rebuild_pattern();
@@ -350,7 +349,7 @@ void SearchDock::on_pattern_changed() {
   _view->set_search_pos(_view->get_search_pos(), false);
 
   // Debounce search to avoid lag during rapid input
-  QTimer::singleShot(150, this, SLOT(do_search()));
+  QTimer::singleShot(150, this, &SearchDock::do_search);
 }
 
 void SearchDock::on_device_updated() { rebuild_pattern(); }
@@ -432,7 +431,11 @@ void SearchDock::start_search_async() {
   _result_model->clear();
 
   _search_state.store(1);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  _search_future = QtConcurrent::run([this]() { search_worker(); });
+#else
   _search_future = QtConcurrent::run(this, &SearchDock::search_worker);
+#endif
   _search_watcher.setFuture(_search_future);
 }
 

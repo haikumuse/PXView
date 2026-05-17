@@ -31,6 +31,7 @@
 #include "../data/decode/row.h"
 #include "../view/decodetrace.h"
 #include "../data/decodermodel.h"
+#include "../eventobject.h"
 
 #include "../ui/langresource.h"
 
@@ -58,7 +59,7 @@ ProtocolList::ProtocolList(QWidget *parent, SigSession *session) :
     else
         _map_zoom_combobox->setCurrentIndex(cur_map_zoom);
 
-    connect(_map_zoom_combobox, SIGNAL(currentIndexChanged(int)), this, SLOT(on_set_map_zoom(int)));
+    connect(_map_zoom_combobox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ProtocolList::on_set_map_zoom);
 
     _protocol_combobox = new DsComboBox(this);
     auto &decode_sigs = _session->get_decode_signals();
@@ -90,10 +91,10 @@ ProtocolList::ProtocolList(QWidget *parent, SigSession *session) :
     layout()->addLayout(_layout);
     setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PROTOCOL_LIST_VIEWER), "Protocol List Viewer"));
 
-    connect(&_button_box, SIGNAL(accepted()), this, SLOT(accept()));
-    connect(_protocol_combobox, SIGNAL(currentIndexChanged(int)), this, SLOT(set_protocol(int)));
+    connect(&_button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(_protocol_combobox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ProtocolList::set_protocol);
     set_protocol(_protocol_combobox->currentIndex());
-    connect(_session->device_event_object(), SIGNAL(device_updated()), this, SLOT(reject()));
+    connect(_session->device_event_object(), &DeviceEventObject::device_updated, this, &QDialog::reject);
 
 }
 
@@ -160,7 +161,7 @@ void ProtocolList::set_protocol(int index)
         _flayout->addRow(row_label, row_checkbox);
 
         row_checkbox->setChecked((*i).second);
-        connect(row_checkbox, SIGNAL(clicked(bool)), this, SLOT(on_row_check(bool)));
+        connect(row_checkbox, &QCheckBox::clicked, this, &ProtocolList::on_row_check);
         row_checkbox->setProperty("index", row_index);
         row_index++;
     }

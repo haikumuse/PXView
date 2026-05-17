@@ -610,63 +610,63 @@ void MainWindow::setup_ui() {
   _sampling_bar->set_view(initial_view);
 
   // event
-  connect(&_event, SIGNAL(session_error()), this, SLOT(on_session_error()));
-  connect(&_event, SIGNAL(signals_changed()), this, SLOT(on_signals_changed()));
-  connect(&_event, SIGNAL(signals_changed()), _search_widget,
-          SLOT(on_device_updated()));
-  connect(&_event, SIGNAL(frame_ended()), _search_widget,
-          SLOT(on_frame_ended()));
-  connect(&_event, SIGNAL(receive_trigger(quint64)), this,
-          SLOT(on_receive_trigger(quint64)));
-  connect(&_event, SIGNAL(frame_ended()), this, SLOT(on_frame_ended()),
+  connect(&_event, &EventObject::session_error, this, &MainWindow::on_session_error);
+  connect(&_event, &EventObject::signals_changed, this, &MainWindow::on_signals_changed);
+  connect(&_event, &EventObject::signals_changed, _search_widget,
+          &dock::SearchDock::on_device_updated);
+  connect(&_event, &EventObject::frame_ended, _search_widget,
+          &dock::SearchDock::on_frame_ended);
+  connect(&_event, &EventObject::receive_trigger, this,
+          &MainWindow::on_receive_trigger);
+  connect(&_event, &EventObject::frame_ended, this, &MainWindow::on_frame_ended,
           Qt::QueuedConnection);
-  connect(&_event, SIGNAL(frame_began()), this, SLOT(on_frame_began()),
+  connect(&_event, &EventObject::frame_began, this, &MainWindow::on_frame_began,
           Qt::QueuedConnection);
-  connect(&_event, SIGNAL(decode_done()), this, SLOT(on_decode_done()));
-  connect(&_event, SIGNAL(data_updated()), this, SLOT(on_data_updated()));
-  connect(&_event, SIGNAL(cur_snap_samplerate_changed()), this,
-          SLOT(on_cur_snap_samplerate_changed()));
-  connect(&_event, SIGNAL(receive_data_len(quint64)), this,
-          SLOT(on_receive_data_len(quint64)));
-  connect(&_event, SIGNAL(trigger_message(int)), this,
-          SLOT(on_trigger_message(int)));
+  connect(&_event, &EventObject::decode_done, this, &MainWindow::on_decode_done);
+  connect(&_event, &EventObject::data_updated, this, &MainWindow::on_data_updated);
+  connect(&_event, &EventObject::cur_snap_samplerate_changed, this,
+          &MainWindow::on_cur_snap_samplerate_changed);
+  connect(&_event, &EventObject::receive_data_len, this,
+          &MainWindow::on_receive_data_len);
+  connect(&_event, &EventObject::trigger_message, this,
+          &MainWindow::on_trigger_message);
 
   // view
-  connect(initial_view, SIGNAL(prgRate(int)), this, SIGNAL(prgRate(int)));
-  connect(initial_view, SIGNAL(auto_trig(int)), _dso_trigger_widget,
-          SLOT(auto_trig(int)));
+  connect(initial_view, &view::View::prgRate, this, &MainWindow::prgRate);
+  connect(initial_view, &view::View::auto_trig, _dso_trigger_widget,
+          &dock::DsoTriggerDock::auto_trig);
 
   // trig_bar
-  connect(_trig_bar, SIGNAL(sig_setTheme(QString)), this,
-          SLOT(switchTheme(QString)));
-  connect(_trig_bar, SIGNAL(sig_show_lissajous(bool)), initial_view,
-          SLOT(show_lissajous(bool)));
+  connect(_trig_bar, &toolbars::TrigBar::sig_setTheme, this,
+          &MainWindow::switchTheme);
+  connect(_trig_bar, &toolbars::TrigBar::sig_show_lissajous, initial_view,
+          &view::View::show_lissajous);
 
   // file toolbar
-  connect(_file_bar, SIGNAL(sig_load_file(QString)), this,
-          SLOT(on_load_file(QString)));
-  connect(_file_bar, SIGNAL(sig_save()), this, SLOT(on_save()));
-  connect(_file_bar, SIGNAL(sig_export()), this, SLOT(on_export()));
-  connect(_file_bar, SIGNAL(sig_screenShot()), this, SLOT(on_screenShot()),
+  connect(_file_bar, &toolbars::FileBar::sig_load_file, this,
+          &MainWindow::on_load_file);
+  connect(_file_bar, &toolbars::FileBar::sig_save, this, &MainWindow::on_save);
+  connect(_file_bar, &toolbars::FileBar::sig_export, this, &MainWindow::on_export);
+  connect(_file_bar, &toolbars::FileBar::sig_screenShot, this, &MainWindow::on_screenShot,
           Qt::QueuedConnection);
-  connect(_file_bar, SIGNAL(sig_load_session(QString)), this,
-          SLOT(on_load_session(QString)));
-  connect(_file_bar, SIGNAL(sig_store_session(QString)), this,
-          SLOT(on_store_session(QString)));
+  connect(_file_bar, &toolbars::FileBar::sig_load_session, this,
+          &MainWindow::on_load_session);
+  connect(_file_bar, &toolbars::FileBar::sig_store_session, this,
+          &MainWindow::on_store_session);
 
   // logobar
-  connect(_logo_bar, SIGNAL(sig_open_doc()), this, SLOT(on_open_doc()));
+  connect(_logo_bar, &toolbars::LogoBar::sig_open_doc, this, &MainWindow::on_open_doc);
 
-  connect(_protocol_widget, SIGNAL(protocol_updated()), this,
-          SLOT(on_signals_changed()));
+  connect(_protocol_widget, &dock::ProtocolDock::protocol_updated, this,
+          &MainWindow::on_signals_changed);
 
   // SamplingBar
-  connect(_sampling_bar, SIGNAL(sig_store_session_data()), this,
-          SLOT(on_save()));
+  connect(_sampling_bar, &toolbars::SamplingBar::sig_store_session_data, this,
+          &MainWindow::on_save);
 
   //
-  connect(_dso_trigger_widget, SIGNAL(set_trig_pos(int)), initial_view,
-          SLOT(set_trig_pos(int)));
+  connect(_dso_trigger_widget, &dock::DsoTriggerDock::set_trig_pos, initial_view,
+          &view::View::set_trig_pos);
 
   _delay_prop_msg_timer.SetCallback(
       std::bind(&MainWindow::on_delay_prop_msg, this));
@@ -912,8 +912,8 @@ void MainWindow::on_session_error() {
   msg.mBox()->setText(details);
   msg.mBox()->setStandardButtons(QMessageBox::Ok);
   msg.mBox()->setIcon(QMessageBox::Warning);
-  connect(_session->device_event_object(), SIGNAL(device_updated()), &msg,
-          SLOT(accept()));
+  connect(_session->device_event_object(), &DeviceEventObject::device_updated, &msg,
+          &QDialog::accept);
   _msg = &msg;
   msg.exec();
   _msg = NULL;
@@ -1087,8 +1087,7 @@ void MainWindow::on_screenShot() {
 
 #ifdef _WIN32
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-  QPixmap pixmap = QGuiApplication::primaryScreen()->grabWindow(
-      QApplication::desktop->winId(), x, y, w, h);
+  QPixmap pixmap = parentWidget()->grab();
 #else
   QPixmap pixmap = QPixmap::grabWidget(parentWidget());
 #endif
@@ -1109,7 +1108,11 @@ void MainWindow::on_screenShot() {
                        ->grabWindow(winId(), x, y, w, h);
 #endif
 #else
-  QPixmap pixmap = QGuiApplication::primaryScreen()->grabWindow(winId());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  QPixmap pixmap = parentWidget()->grab();
+#else
+  QPixmap pixmap = QPixmap::grabWidget(parentWidget());
+#endif
 #endif
 
   QString format = "png";

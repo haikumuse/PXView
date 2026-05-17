@@ -141,8 +141,8 @@ LissajousOptions::LissajousOptions(SigSession *session, QWidget *parent) :
 
     layout()->addLayout(_layout);
 
-    connect(&_button_box, SIGNAL(rejected()), this, SLOT(reject()));
-    connect(&_button_box, SIGNAL(accepted()), this, SLOT(accept()));
+    connect(&_button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(&_button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
 
    ADD_UI(this);
 }

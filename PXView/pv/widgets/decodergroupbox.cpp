@@ -76,7 +76,7 @@ DecoderGroupBox::DecoderGroupBox(data::DecoderStack *decoder_stack,
                                              iconPath+"/hidden.svg"), QString(), _widget);
     _show_button->setProperty("index", -1);
 
-    connect(_show_button, SIGNAL(clicked()), this, SLOT(tog_icon()));
+    connect(_show_button, &QAbstractButton::clicked, this, &DecoderGroupBox::tog_icon);
 
     _layout->addWidget(_show_button, 0, 2);
 
@@ -94,7 +94,7 @@ DecoderGroupBox::DecoderGroupBox(data::DecoderStack *decoder_stack,
                                                                  iconPath+"/shown.svg" :
                                                                  iconPath+"/hidden.svg"), QString(), _widget);
             show_button->setProperty("index", index);
-            connect(show_button, SIGNAL(clicked()), this, SLOT(tog_icon()));
+            connect(show_button, &QAbstractButton::clicked, this, &DecoderGroupBox::tog_icon);
 
             _row_show_button.push_back(show_button);
             QLabel *lb = new QLabel((*i).first.title(), _widget);

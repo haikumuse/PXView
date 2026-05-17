@@ -82,8 +82,8 @@ QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
 	g_variant_unref(value);
 
     if (auto_commit) {
-        connect(_selector, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(on_current_item_changed(int)));
+        connect(_selector, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &Enum::on_current_item_changed);
     }
 
 	return _selector;

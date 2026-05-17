@@ -30,6 +30,7 @@
 #include <QApplication>
 #include "../log.h"
 #include "../config/appconfig.h"
+#include "../ui/qtcompat.h"
 
 namespace pv {
 namespace widgets {
@@ -261,9 +262,9 @@ void SearchPatternInput::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         int cellTop = kPadding + kLabelHeight;
-        int y = event->y();
+        int y = QT_COMPAT_Y(event);
         if (y >= cellTop && y < cellTop + kCellHeight) {
-            _cursor_pos = charIndexAt(event->x());
+            _cursor_pos = charIndexAt(QT_COMPAT_X(event));
         }
         _has_focus = true;
         setFocus(Qt::MouseFocusReason);

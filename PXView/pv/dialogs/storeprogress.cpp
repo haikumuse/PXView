@@ -94,13 +94,13 @@ StoreProgress::StoreProgress(SigSession *session, QWidget *parent) :
 
     layout()->addLayout(grid);
 
-    connect(_button_box, SIGNAL(rejected()), this, SLOT(reject()));
-    connect(_button_box, SIGNAL(accepted()), this, SLOT(accept()));
+    connect(_button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(_button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
 
-    connect(_store_session, SIGNAL(progress_updated()),
-        this, SLOT(on_progress_updated()), Qt::QueuedConnection);
+    connect(_store_session, &StoreSession::progress_updated,
+        this, &StoreProgress::on_progress_updated, Qt::QueuedConnection);
 
-    connect(_openButton, SIGNAL(clicked()),this, SLOT(on_change_file()));
+    connect(_openButton, &QAbstractButton::clicked, this, &StoreProgress::on_change_file);
 
     _progress.setVisible(false);
 
@@ -336,8 +336,8 @@ void StoreProgress::export_run()
         lay->addRow("", _ckCompress);
         _grid->addLayout(lay, 2, 0, 1, 2);
 
-        connect(_ckOrigin, SIGNAL(clicked(bool)), this, SLOT(on_ck_origin(bool)));
-        connect(_ckCompress, SIGNAL(clicked(bool)), this, SLOT(on_ck_compress(bool)));
+        connect(_ckOrigin, &QRadioButton::clicked, this, &StoreProgress::on_ck_origin);
+        connect(_ckCompress, &QRadioButton::clicked, this, &StoreProgress::on_ck_compress);
     }
 
     _isExport = true;

@@ -38,7 +38,7 @@ void DsTimer::on_timeout()
 void DsTimer::TimeOut(int millsec, CALLBACL_FUNC f)
 {
     _call = f;
-    QTimer::singleShot(millsec, this, SLOT(on_timeout()));
+    QTimer::singleShot(millsec, this, &DsTimer::on_timeout);
 }
 
 void DsTimer::TimeOut(int millsec)
@@ -46,7 +46,7 @@ void DsTimer::TimeOut(int millsec)
     if (_call == NULL){
         assert(false);
     }
-    QTimer::singleShot(millsec, this, SLOT(on_timeout()));
+    QTimer::singleShot(millsec, this, &DsTimer::on_timeout);
 }
 
 void DsTimer::Start(int millsec, CALLBACL_FUNC f)
@@ -58,7 +58,7 @@ void DsTimer::Start(int millsec, CALLBACL_FUNC f)
 
      if (!_binded){
         _binded = true;
-        connect(&_timer, SIGNAL(timeout()), this, SLOT(on_timeout())); 
+        connect(&_timer, &QTimer::timeout, this, &DsTimer::on_timeout); 
      }
      
      _timer.start(millsec);
@@ -72,8 +72,8 @@ void DsTimer::SetCallback(CALLBACL_FUNC f)
 
     if(!_binded){
         _binded = true;
-        connect(&_timer, SIGNAL(timeout()), this, SLOT(on_timeout())); 
-    }  
+        connect(&_timer, &QTimer::timeout, this, &DsTimer::on_timeout);
+    }
  }
 
  void DsTimer::Start(int millsec)

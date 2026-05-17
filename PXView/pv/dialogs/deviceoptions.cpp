@@ -73,7 +73,7 @@ ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     setCursor(Qt::PointingHandCursor);
 
-    connect(_box, SIGNAL(stateChanged(int)), this, SLOT(update()));
+    connect(_box, &QCheckBox::stateChanged, this, [this](){ update(); });
 }
 
 void ChannelLabel::paintEvent(QPaintEvent *event)
@@ -223,8 +223,8 @@ DeviceOptions::DeviceOptions(QWidget *parent) :
 
     try_resize_scroll();
   
-    connect(&_mode_check_timer, SIGNAL(timeout()), this, SLOT(mode_check_timeout()));
-    connect(button_box, SIGNAL(accepted()), this, SLOT(accept()));
+    connect(&_mode_check_timer, &QTimer::timeout, this, &DeviceOptions::mode_check_timeout);
+    connect(button_box, &QDialogButtonBox::accepted, this, &DeviceOptions::accept);
 
     _mode_check_timer.setInterval(100);
     _mode_check_timer.start();  
@@ -387,7 +387,7 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout)
                 layout.addWidget(mode_button); 
                 contentHeight += mode_button->sizeHint().height();  //radio button height
                 
-                connect(mode_button, SIGNAL(pressed()), this, SLOT(channel_check()));
+                connect(mode_button, &QRadioButton::pressed, this, &DeviceOptions::channel_check);
  
                 if (plist->id == ch_mode)
                     mode_button->setChecked(true); 
@@ -484,10 +484,10 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout)
     contentHeight += enable_all_probes->sizeHint().height();
     contentHeight += channel_line_height * row2 + 50;
 
-    connect(enable_all_probes, SIGNAL(clicked()),
-            this, SLOT(enable_all_probes()));
-    connect(disable_all_probes, SIGNAL(clicked()),
-            this, SLOT(disable_all_probes()));
+    connect(enable_all_probes, &QPushButton::clicked,
+            this, &DeviceOptions::enable_all_probes);
+    connect(disable_all_probes, &QPushButton::clicked,
+            this, &DeviceOptions::disable_all_probes);
 
     line_lay->addWidget(enable_all_probes);
     line_lay->addWidget(disable_all_probes);
@@ -803,7 +803,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout)
 
             if (p->name().contains("Map Default")) {
                 pow->setProperty("index", probe->index);
-                connect(pow, SIGNAL(clicked()), this, SLOT(analog_channel_check()));
+                connect(qobject_cast<QPushButton*>(pow), &QPushButton::clicked, this, &DeviceOptions::analog_channel_check);
             }
             else {
                 if (probe_checkBox->isChecked() && p->name().contains("Map")) {
@@ -822,7 +822,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout)
         }
         _probe_options_binding_list.push_back(probe_options_binding);
 
-        connect(probe_checkBox, SIGNAL(released()), this, SLOT(on_analog_channel_enable()));
+        connect(probe_checkBox, &QCheckBox::released, this, &DeviceOptions::on_analog_channel_enable);
 
         QString tabName = QString::fromUtf8(probe->name);
         tabName += " ";
@@ -836,7 +836,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout)
     _groupHeight2 = tabWidget->sizeHint().height() + 50;
     _dynamic_panel->setFixedHeight(_groupHeight2); 
 
-    connect(tabWidget, SIGNAL(currentChanged(int)), this, SLOT(on_anlog_tab_changed(int)));
+    connect(tabWidget, &QTabWidget::currentChanged, this, &DeviceOptions::on_anlog_tab_changed);
     tabWidget->setCurrentIndex(_cur_analog_tag_index);
 }
 
@@ -870,12 +870,12 @@ QString DeviceOptions::dynamic_widget(QLayout *lay)
                 auto config_button = new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AUTO_CALIBRATION), "Auto Calibration"), this);
                 config_button->setFont(font); 
                 grid->addWidget(config_button, 0, 0, 1, 1);
-                connect(config_button, SIGNAL(clicked()), this, SLOT(zero_adj()));
+                connect(config_button, &QPushButton::clicked, this, &DeviceOptions::zero_adj);
 
                 auto cali_button = new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MANUAL_CALIBRATION), "Manual Calibration"), this);
                 cali_button->setFont(font);
                 grid->addWidget(cali_button, 1, 0, 1, 1);
-                connect(cali_button, SIGNAL(clicked()), this, SLOT(on_calibration()));
+                connect(cali_button, &QPushButton::clicked, this, &DeviceOptions::on_calibration);
 
                 config_button->setFixedHeight(35);
                 cali_button->setFixedHeight(35);

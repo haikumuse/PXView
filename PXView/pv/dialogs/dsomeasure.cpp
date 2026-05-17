@@ -31,6 +31,7 @@
 #include <QBitmap>
  
 #include "../dsvdef.h"
+#include "../eventobject.h"
 
 #include "../ui/langresource.h"
 #include "../ui/xtoolbutton.h"
@@ -78,9 +79,9 @@ DsoMeasure::DsoMeasure(SigSession *session, View &parent,
     layout()->addLayout(&_layout);
     setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MEASUREMENTS), "Measurements"));
 
-    connect(_button_box.button(QDialogButtonBox::Cancel), SIGNAL(clicked()), this, SLOT(reject()));
-    connect(_button_box.button(QDialogButtonBox::Reset), SIGNAL(clicked()), this, SLOT(reset()));
-    connect(_session->device_event_object(), SIGNAL(device_updated()), this, SLOT(reject()));
+    connect(_button_box.button(QDialogButtonBox::Cancel), &QPushButton::clicked, this, &DsoMeasure::reject);
+    connect(_button_box.button(QDialogButtonBox::Reset), &QPushButton::clicked, this, &DsoMeasure::reset);
+    connect(_session->device_event_object(), &DeviceEventObject::device_updated, this, &QDialog::reject);
 }
 
 DsoMeasure::~DsoMeasure(){
@@ -115,7 +116,7 @@ void DsoMeasure::add_measure(QWidget *widget, const view::DsoSignal *dsoSig)
                           Qt::AlignCenter);
         layout->setColumnMinimumWidth((i-1)%Column, this->width()/Column);
 
-        connect(button, SIGNAL(clicked()), this, SLOT(accept()));
+        connect(button, &XToolButton::clicked, this, &DsoMeasure::accept);
     }
 }
 

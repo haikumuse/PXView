@@ -26,6 +26,7 @@
 #include "dialogs/dsmessagebox.h"
 #include "dialogs/dsdialog.h"
 #include "mainwindow.h"
+#include "ui/qtcompat.h"
 
 #include <QVBoxLayout>
 #include <QEvent>
@@ -98,7 +99,7 @@ MainFrame::MainFrame()
 #ifdef _WIN32
     setWindowFlags(Qt::FramelessWindowHint);
     _is_win32_parent_window = true;
-    _taskBtn = NULL;
+    _taskPrg = nullptr;
     isWin32 = true;
 #else
     setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
@@ -182,11 +183,11 @@ MainFrame::MainFrame()
     setCentralWidget(centralWidget);
 
 #ifdef _WIN32
-    _taskBtn = new QWinTaskbarButton(this);
-	connect(_mainWindow, SIGNAL(prgRate(int)), this, SLOT(setTaskbarProgress(int)));
+    _taskPrg = new WinTaskbarProgress();
+	connect(_mainWindow, &MainWindow::prgRate, this, &MainFrame::setTaskbarProgress);
 #endif
 
-    connect(&_timer, SIGNAL(timeout()), this, SLOT(unfreezing()));
+    connect(&_timer, &QTimer::timeout, this, &MainFrame::unfreezing);
 
     QTimer::singleShot(2000, this, [this](){
                 _is_resize_ready = true;
@@ -194,7 +195,7 @@ MainFrame::MainFrame()
 
     installEventFilter(this);
 
-    connect(this, SIGNAL(sig_ParentNativeEvent(int)), this, SLOT(OnParentNaitveWindowEvent(int)));
+    connect(this, &MainFrame::sig_ParentNativeEvent, this, &MainFrame::OnParentNaitveWindowEvent);
 
   
 }
@@ -471,7 +472,7 @@ bool MainFrame::eventFilter(QObject *object, QEvent *event)
  
         QPoint pt;
         int k = 1;
-        pt = mouse_event->globalPos(); 
+        pt = QT_COMPAT_GLOBAL_POS(mouse_event);
 
         int datX = pt.x() - _clickPos.x();
         int datY = pt.y() - _clickPos.y();
@@ -575,7 +576,7 @@ bool MainFrame::eventFilter(QObject *object, QEvent *event)
             _bDraging = true;
         _timer.start(50); 
 
-        _clickPos = mouse_event->globalPos();
+        _clickPos = QT_COMPAT_GLOBAL_POS(mouse_event);
         _dragStartRegion = GetFormRegion();
     } 
     else if (type == QEvent::MouseButtonRelease) {
@@ -1023,10 +1024,8 @@ void MainFrame::ReadSettings()
 #ifdef _WIN32
 void MainFrame::showEvent(QShowEvent *event)
 {
-    // Taskbar Progress Effert for Win7 and Above
-    if (_taskBtn && _taskBtn->window() == NULL) {
-        _taskBtn->setWindow(windowHandle());
-        _taskPrg = _taskBtn->progress();
+    if (_taskPrg) {
+        _taskPrg->setWindow(windowHandle());
     }
     event->accept();
 }
@@ -1084,7 +1083,7 @@ void MainFrame::show_doc()
         layout.setContentsMargins(0, 0, 0, 0);
 
         dlg.layout()->addLayout(&layout);
-        connect(&msg, SIGNAL(buttonClicked(QAbstractButton*)), &dlg, SLOT(accept()));
+        connect(&msg, &QMessageBox::buttonClicked, &dlg, &QDialog::accept);
 
         dlg.exec();
 
@@ -1108,7 +1107,7 @@ QWidget* MainFrame::GetBodyView()
     return _mainWindow->GetBodyView();
 }
 
-bool MainFrame::nativeEvent(const QByteArray &eventType, void *message, long *result)
+bool MainFrame::nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
 {
 #ifdef _WIN32
 
@@ -1125,7 +1124,7 @@ bool MainFrame::nativeEvent(const QByteArray &eventType, void *message, long *re
             case WM_NCLBUTTONDBLCLK:
             case WM_NCHITTEST:
             {
-                *result = long(SendMessageW(hwnd, 
+                *result = static_cast<NativeEventResult>(SendMessageW(hwnd, 
                         msg->message, msg->wParam, msg->lParam));
                 return true;
             }           
@@ -1134,12 +1133,7 @@ bool MainFrame::nativeEvent(const QByteArray &eventType, void *message, long *re
     
 #endif
 
-#ifdef Q_OS_DARWIN
-    return QWidget::nativeEvent(eventType, message, (long long *)result);
-#else
     return QWidget::nativeEvent(eventType, message, result);
-#endif
-    //return QWidget::nativeEvent(eventType, message, (long long *)result);
 }
 
 } // namespace pv

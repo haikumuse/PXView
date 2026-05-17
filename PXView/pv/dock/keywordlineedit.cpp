@@ -259,7 +259,7 @@ void PopupLineEditInput::Popup(QWidget *editline) {
   move_timer = new QTimer(this);
   move_timer->setInterval(100);
 
-  connect(move_timer, SIGNAL(timeout()), this, SLOT(onCheckPositionTimeout()));
+  connect(move_timer, &QTimer::timeout, this, &PopupLineEditInput::onCheckPositionTimeout);
   move_timer->start();
 
   this->show();
@@ -311,12 +311,12 @@ void PopupLineEdit::showPupopInput() {
   _old_text = this->text();
   _popup_input = input;
 
-  connect(input, SIGNAL(sig_inputEnd(QString)), this,
-          SLOT(onPopupInputEditEnd(QString)));
+  connect(input, &PopupLineEditInput::sig_inputEnd, this,
+          &PopupLineEdit::onPopupInputEditEnd);
 
   if (_is_number_mode) {
-    connect(line, SIGNAL(valueChanged(int)), this,
-            SLOT(onPopupInputValueChanged(int)));
+    connect(line, &KeyLineEdit::valueChanged, this,
+            &PopupLineEdit::onPopupInputValueChanged);
   }
 
   input->Popup(this);

@@ -91,8 +91,8 @@ TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
    // _position_spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
     _position_slider = new QSlider(Qt::Horizontal, _widget);
     _position_slider->setRange(MinTrigPosition, DS_MAX_TRIG_PERCENT);
-    connect(_position_slider, SIGNAL(valueChanged(int)), _position_spinBox, SLOT(setValue(int)));
-    connect(_position_spinBox, SIGNAL(valueChanged(int)), _position_slider, SLOT(setValue(int)));
+    connect(_position_slider, &QSlider::valueChanged, _position_spinBox, &KeyLineEdit::setValue);
+    connect(_position_spinBox, &KeyLineEdit::valueChanged, _position_slider, &QSlider::setValue);
 
     _stages_label = new QLabel(_widget);
     _stages_label->setObjectName("dock_label");
@@ -110,9 +110,9 @@ TriggerDock::TriggerDock(QWidget *parent, SigSession *session) :
     _adv_tabWidget->setDisabled(true);
     setup_adv_tab();
 
-    connect(_simple_radioButton, SIGNAL(clicked()), this, SLOT(simple_trigger()));
-    connect(_adv_radioButton, SIGNAL(clicked()), this, SLOT(adv_trigger()));
-    connect(stages_comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(widget_enable(int)));
+    connect(_simple_radioButton, &QRadioButton::clicked, this, &TriggerDock::simple_trigger);
+    connect(_adv_radioButton, &QRadioButton::clicked, this, &TriggerDock::adv_trigger);
+    connect(stages_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &TriggerDock::widget_enable);
 
 
     QVBoxLayout *layout = new QVBoxLayout(_widget);
@@ -637,8 +637,8 @@ void TriggerDock::setup_adv_tab()
         _inv1_comboBox->addItem("!=");
         _inv1_comboBox_list.push_back(_inv1_comboBox);
 
-        connect(_value0_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
-        connect(_value1_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
+        connect(_value0_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
+        connect(_value1_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
 
         QCheckBox *_contiguous_checkbox = new QCheckBox(_stage_tabWidget);
         _contiguous_checkbox_list.push_back(_contiguous_checkbox);
@@ -708,8 +708,8 @@ void TriggerDock::setup_adv_tab()
             stage_glayout->addWidget(_value1_lineEdit, row, 0);
             stage_glayout->addWidget(_inv1_comboBox, row++, 1);          
 
-            connect(_value0_ext32_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
-            connect(_value1_ext32_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
+            connect(_value0_ext32_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
+            connect(_value1_ext32_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
         }
         else {
             stage_glayout->addWidget(value0_exp_label, row, 0);
@@ -836,7 +836,7 @@ void TriggerDock::setup_adv_tab()
     hex_lay->addWidget(hex_ckbox);
     hex_lay->addWidget(_serial_hex_ck_label);
 
-    connect(hex_ckbox, SIGNAL(clicked(bool)), this, SLOT(on_hex_checkbox_click(bool))); 
+    connect(hex_ckbox, &QCheckBox::clicked, this, &TriggerDock::on_hex_checkbox_click); 
   
     _serial_bits_comboBox = new DsComboBox(_serial_groupBox);
     _serial_bits_comboBox->setObjectName("dock_content");
@@ -875,9 +875,9 @@ void TriggerDock::setup_adv_tab()
         _serial_edge_ext32_lineEdit->setInputMask(mask);
         _serial_edge_ext32_lineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
-        connect(_serial_start_ext32_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
-        connect(_serial_stop_ext32_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
-        connect(_serial_edge_ext32_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
+        connect(_serial_start_ext32_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
+        connect(_serial_stop_ext32_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
+        connect(_serial_edge_ext32_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
 
         QLabel *serial0_value_exp_label = new QLabel("31 --------- 24 23 ---------- 16", _serial_groupBox);
         serial0_value_exp_label->setObjectName("dock_label");
@@ -970,16 +970,16 @@ void TriggerDock::setup_adv_tab()
 
     _serial_groupBox->setLayout(serial_layout); 
 
-    connect(_serial_start_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
-    connect(_serial_stop_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
-    connect(_serial_edge_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
-    connect(_serial_value_lineEdit, SIGNAL(editingFinished()), this, SLOT(value_changed()));
+    connect(_serial_start_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
+    connect(_serial_stop_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
+    connect(_serial_edge_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
+    connect(_serial_value_lineEdit, &QLineEdit::editingFinished, this, &TriggerDock::value_changed);
 
-    connect(_serial_value_lineEdit, SIGNAL(textChanged(const QString&)), 
-                this, SLOT(on_serial_value_changed(const QString&)));
+    connect(_serial_value_lineEdit, &QLineEdit::textChanged,
+                this, &TriggerDock::on_serial_value_changed);
 
-    connect(_serial_hex_lineEdit, SIGNAL(editingFinished()), 
-                this, SLOT(on_serial_hex_changed()));
+    connect(_serial_hex_lineEdit, &QLineEdit::editingFinished,
+                this, &TriggerDock::on_serial_hex_changed);
 
     _adv_tabWidget->addTab((QWidget *)_stage_tabWidget, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STAGE_TRIGGER), "Stage Trigger"));
     _adv_tabWidget->addTab((QWidget *)_serial_groupBox, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SERIAL_TRIGGER), "Serial Trigger"));

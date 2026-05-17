@@ -27,10 +27,6 @@
 #include <QStringConverter>
 #else
 #include <QTextCodec>
-#endif 
-
-#ifdef _WIN32
-#include <QTextCodec>
 #endif
 
 namespace pv{
@@ -39,7 +35,10 @@ namespace encoding{
     void init()
     {
 #ifdef _WIN32
-     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#else
+        QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+#endif
 #endif
     }
 

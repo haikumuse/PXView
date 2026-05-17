@@ -132,8 +132,8 @@ int DSDialog::exec()
         _base_button = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,Qt::Horizontal, this);
          _main_layout->addWidget(_base_button);//, 5, 1, 1, 1, Qt::AlignHCenter | Qt::AlignBottom);
         //_main_layout->addWidget(_base_button,0, Qt::AlignHCenter | Qt::AlignBottom);
-        connect(_base_button, SIGNAL(rejected()), this, SLOT(reject()));
-        connect(_base_button, SIGNAL(accepted()), this, SLOT(accept()));
+        connect(_base_button, &QDialogButtonBox::rejected, this, &QDialog::reject);
+        connect(_base_button, &QDialogButtonBox::accepted, this, &QDialog::accept);
     }
 
     update_font();

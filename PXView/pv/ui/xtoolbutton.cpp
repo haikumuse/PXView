@@ -73,7 +73,7 @@ void XToolButton::mousePressEvent(QMouseEvent *event)
         setCheckable(true);
         setChecked(true);
         QPoint pt = mapToGlobal(rect().bottomLeft());
-        connect(_menu, SIGNAL(aboutToHide()), this, SLOT(onHidePopupMenu()));
+        connect(_menu, &QMenu::aboutToHide, this, &XToolButton::onHidePopupMenu);
         pv::WinNativeWidget::EnalbeNoClientArea(false);
         _menu->popup(pt);
     }
@@ -112,7 +112,7 @@ void XToolButton::onHidePopupMenu()
     }
    
     if (_menu != NULL){
-        disconnect(_menu, SIGNAL(aboutToHide()), this, SLOT(onHidePopupMenu()));
+        disconnect(_menu, &QMenu::aboutToHide, this, &XToolButton::onHidePopupMenu);
     } 
 
     QTimer::singleShot(300, this, [this](){

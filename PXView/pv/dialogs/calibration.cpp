@@ -99,10 +99,10 @@ Calibration::Calibration(QWidget *parent) :
 
     layout()->addLayout(glayout);
 
-    connect(_save_btn, SIGNAL(clicked()), this, SLOT(on_save()));
-    connect(_abort_btn, SIGNAL(clicked()), this, SLOT(on_abort()));
-    connect(_reset_btn, SIGNAL(clicked()), this, SLOT(on_reset()));
-    connect(_exit_btn, SIGNAL(clicked()), this, SLOT(reject()));
+    connect(_save_btn, &QPushButton::clicked, this, &Calibration::on_save);
+    connect(_abort_btn, &QPushButton::clicked, this, &Calibration::on_abort);
+    connect(_reset_btn, &QPushButton::clicked, this, &Calibration::on_reset);
+    connect(_exit_btn, &QPushButton::clicked, this, &Calibration::reject);
 
     ADD_UI(this);
 }
@@ -219,11 +219,11 @@ void Calibration::update_device_info()
             _flayout->addRow(comp_label, comp_slider);
             _slider_list.push_back(comp_slider);
             _label_list.push_back(comp_label);
-            connect(comp_slider, SIGNAL(valueChanged(int)), this, SLOT(set_value(int)));
+            connect(comp_slider, &QSlider::valueChanged, this, &Calibration::set_value);
         }
 
-        connect(gain_slider, SIGNAL(valueChanged(int)), this, SLOT(set_value(int)));
-        connect(off_slider, SIGNAL(valueChanged(int)), this, SLOT(set_value(int)));
+        connect(gain_slider, &QSlider::valueChanged, this, &Calibration::set_value);
+        connect(off_slider, &QSlider::valueChanged, this, &Calibration::set_value);
     }
 
     QWidget *spaceLine = new QWidget();
@@ -295,7 +295,7 @@ void Calibration::on_save()
     dlg.setCancelButton(NULL);
 
     QFutureWatcher<void> watcher;
-    connect(&watcher,SIGNAL(finished()),&dlg,SLOT(cancel()));
+    connect(&watcher, &QFutureWatcher<void>::finished, &dlg, &QProgressDialog::cancel);
     watcher.setFuture(future);
 
     dlg.exec();
@@ -307,13 +307,13 @@ void Calibration::on_abort()
     this->hide();
     QFuture<void> future;
 
-    future = QtConcurrent::run([&]{ 
+    future = QtConcurrent::run([&]{
         _device_agent->set_config_bool(SR_CONF_ZERO_LOAD, true);
         reload_value();
     });
 
     Qt::WindowFlags flags = Qt::CustomizeWindowHint;
-    QProgressDialog dlg(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RELOAD_CALIBRATION_RESULTS), 
+    QProgressDialog dlg(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RELOAD_CALIBRATION_RESULTS),
                         "Reload last calibration results... It can take a while."),
                         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CANCEL), "Cancel"),0,0,this,flags);
     dlg.setWindowModality(Qt::WindowModal);
@@ -322,7 +322,7 @@ void Calibration::on_abort()
     dlg.setCancelButton(NULL);
 
     QFutureWatcher<void> watcher;
-    connect(&watcher,SIGNAL(finished()),&dlg,SLOT(cancel()));
+    connect(&watcher, &QFutureWatcher<void>::finished, &dlg, &QProgressDialog::cancel);
     watcher.setFuture(future);
 
     dlg.exec();

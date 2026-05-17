@@ -70,10 +70,10 @@ ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName,
 
   enable_format(false);
 
-  connect(_del_button, SIGNAL(clicked()), this, SLOT(on_del_protocol()));
-  connect(_set_button, SIGNAL(clicked()), this, SLOT(on_set_protocol()));
-  connect(_format_combox, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_format_select_changed(int)));
+  connect(_del_button, &QAbstractButton::clicked, this, &ProtocolItemLayer::on_del_protocol);
+  connect(_set_button, &QAbstractButton::clicked, this, &ProtocolItemLayer::on_set_protocol);
+  connect(_format_combox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &ProtocolItemLayer::on_format_select_changed);
 
   update_font();
 }

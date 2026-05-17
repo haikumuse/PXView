@@ -59,8 +59,8 @@ QWidget* Bool::get_widget(QWidget *parent, bool auto_commit)
 	}
 
     if (auto_commit) {
-        connect(_check_box, SIGNAL(stateChanged(int)),
-            this, SLOT(on_state_changed(int)));
+        connect(_check_box, &QCheckBox::stateChanged,
+            this, &Bool::on_state_changed);
     }
 
 	return _check_box;
