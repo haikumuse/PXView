@@ -18,6 +18,7 @@
 
 #include <QApplication>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QEasingCurve>
 #include <QLabel>
 #include <QVBoxLayout>
@@ -79,7 +80,8 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
       _drag_margin_removed(false),
       _drag_start_drawer_width(0), _edge_grip(nullptr),
       _left_separator(nullptr),
-      _paint_count(0), _fps(60) {
+      _max_frame_time(0), _fps(0),
+      _paint_in_this_second(0), _is_idle(true) {
   setObjectName("sliding_drawer");
   setMouseTracking(true);
 
@@ -152,9 +154,12 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
   // Start hidden: positioned off-screen right
   hide();
   connect(&_fps_timer, &QTimer::timeout, this, [this]() {
-    if (_paint_count > 0) {
-      _fps = _paint_count;
-      _paint_count = 0;
+    if (_paint_in_this_second > 0) {
+      _fps = _max_frame_time;
+      _max_frame_time = 0;
+      _paint_in_this_second = 0;
+    } else {
+      _is_idle = true;
     }
   });
   _fps_timer.start(1000);
@@ -420,7 +425,19 @@ void SlidingDrawer::setSlideOffset(int offset) {
 
 void SlidingDrawer::paintEvent(QPaintEvent *event) {
   Q_UNUSED(event);
-  _paint_count++;
+
+  _paint_in_this_second++;
+  if (_is_idle || !_frame_interval_timer.isValid()) {
+    _frame_interval_timer.restart();
+    _is_idle = false;
+  } else {
+    int elapsed = static_cast<int>(_frame_interval_timer.restart());
+    if (elapsed > _max_frame_time) {
+      _max_frame_time = elapsed;
+    }
+  }
+
+  QWidget::paintEvent(event);
 }
 
 void SlidingDrawer::resizeEvent(QResizeEvent *event) {

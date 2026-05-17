@@ -255,9 +255,16 @@ private:
 
   QColor _panelBgColor;
   QColor _panelTextColor;
-  int _paint_count;
+  int _max_frame_time;
   int _fps;
   QTimer _fps_timer;
+  QElapsedTimer _frame_interval_timer;
+  int _paint_in_this_second;
+  bool _is_idle;
+
+public:
+  bool g_drag_active;
+  QPixmap g_drag_snapshot;
 };
 
 } // namespace view
