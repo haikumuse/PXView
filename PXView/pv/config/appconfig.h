@@ -87,6 +87,7 @@ struct AppOptions
   bool        measureDock;
   bool        searchDock;
  bool        deviceOptionsDock;
+ bool        logDock;
 };
 
 struct FrameOptions

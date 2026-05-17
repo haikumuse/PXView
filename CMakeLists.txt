@@ -298,6 +298,7 @@ set(PXView_SOURCES
     PXView/pv/dock/triggerdock.cpp
     PXView/pv/dock/measuredock.cpp
     PXView/pv/dock/searchdock.cpp
+    PXView/pv/dock/logdock.cpp
     PXView/pv/dock/deviceoptionsdock.cpp
     PXView/pv/toolbars/logobar.cpp
     PXView/pv/dialogs/about.cpp
@@ -446,6 +447,7 @@ set(PXView_HEADERS
     PXView/pv/dock/triggerdock.h
     PXView/pv/dock/measuredock.h
     PXView/pv/dock/searchdock.h
+    PXView/pv/dock/logdock.h
     PXView/pv/dock/deviceoptionsdock.h
     PXView/pv/toolbars/logobar.h
     PXView/pv/dialogs/about.h

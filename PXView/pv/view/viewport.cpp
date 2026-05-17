@@ -40,6 +40,7 @@
 #include <QScrollBar>
 #include <QStyleOption>
 #include <QWheelEvent>
+#include <QDebug>
 #include <math.h>
 #include <set>
 
@@ -316,9 +317,14 @@ bool Viewport::event(QEvent *event) {
 }
 
 void Viewport::paintEvent(QPaintEvent *event) {
+  QElapsedTimer timer;
+  timer.start();
+
   if (g_drag_active && !g_drag_snapshot.isNull()) {
     QPainter p(this);
     p.drawPixmap(0, 0, g_drag_snapshot);
+    qint64 t_snap = timer.elapsed();
+    dsv_warn("[DIAG] Viewport::paintEvent drew snapshot in %lld ms", t_snap);
     return;
   }
   (void)event;
@@ -335,10 +341,16 @@ void Viewport::paintEvent(QPaintEvent *event) {
   }
 
   doPaint();
+
+  qint64 total = timer.elapsed();
+  dsv_warn("[DIAG] Viewport::paintEvent full repaint took %lld ms, size: %dx%d",
+           total, size().width(), size().height());
 }
 
 void Viewport::doPaint() {
   using pv::view::Signal;
+  QElapsedTimer timer;
+  timer.start();
 
   QStyleOption o;
   o.initFrom(this);
@@ -352,7 +364,13 @@ void Viewport::doPaint() {
   font.setPointSizeF(fSize);
   p.setFont(font);
 
+  qint64 t_init = timer.elapsed();
+
+  QElapsedTimer checkUpdateTimer;
+  checkUpdateTimer.start();
   _view.session().check_update();
+  qint64 t_check_update = checkUpdateTimer.elapsed();
+
   QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
   QColor back(QWidget::palette().color(QWidget::backgroundRole()));
   fore.setAlpha(View::ForeAlpha);
@@ -360,12 +378,16 @@ void Viewport::doPaint() {
 
   std::vector<Trace *> traces;
   _view.get_traces(_type, traces);
+  qint64 t_get_traces = timer.elapsed() - (t_init + t_check_update);
 
   p.save();
   p.translate(0, -_view.get_vOffset());
 
+  qint64 t_group_cards = 0;
   if (_type == TIME_VIEW &&
       _view.session().get_device()->get_work_mode() == LOGIC) {
+    QElapsedTimer groupTimer;
+    groupTimer.start();
     const auto &groups = _view.get_signal_groups();
     if (!groups.empty()) {
       QColor cardColor = _view.get_group_card_color();
@@ -410,8 +432,12 @@ void Viewport::doPaint() {
                           View::GroupCardRadius);
       }
     }
+    t_group_cards = groupTimer.elapsed();
   }
 
+  qint64 t_dividers = 0;
+  QElapsedTimer dividerTimer;
+  dividerTimer.start();
   QColor dividerColor =
       AppConfig::Instance().GetThemeColor("@trace-divider-color");
   if (!dividerColor.isValid()) {
@@ -448,7 +474,11 @@ void Viewport::doPaint() {
         t->get_v_offset() + t->get_totalHeight() / 2 + View::SignalMargin;
     p.drawLine(0, traceBottom, _view.get_view_width(), traceBottom);
   }
+  t_dividers = dividerTimer.elapsed();
 
+  qint64 t_paint_back = 0;
+  QElapsedTimer backTimer;
+  backTimer.start();
   for (auto t : traces) {
     if (!t->enabled() && !dynamic_cast<DsoSignal *>(t))
       continue;
@@ -456,9 +486,13 @@ void Viewport::doPaint() {
     if (_view.back_ready())
       break;
   }
+  t_paint_back = backTimer.elapsed();
 
   p.restore();
 
+  qint64 t_paint_signals = 0;
+  QElapsedTimer signalsTimer;
+  signalsTimer.start();
   int mode = _view.session().get_device()->get_work_mode();
 
   if (mode == LOGIC || _view.session().is_instant()) {
@@ -495,7 +529,11 @@ void Viewport::doPaint() {
   } else {
     paintSignals(p, fore, back);
   }
+  t_paint_signals = signalsTimer.elapsed();
 
+  qint64 t_paint_fore = 0;
+  QElapsedTimer foreTimer;
+  foreTimer.start();
   p.save();
   p.translate(0, -_view.get_vOffset());
   for (auto t : traces) {
@@ -503,11 +541,16 @@ void Viewport::doPaint() {
       t->paint_fore(p, 0, _view.get_view_width(), fore, back);
   }
   p.restore();
+  t_paint_fore = foreTimer.elapsed();
 
   if (_view.get_signalHeight() != _curSignalHeight)
     _curSignalHeight = _view.get_signalHeight();
 
   p.end();
+
+  qint64 total = timer.elapsed();
+  dsv_warn("[DIAG] Viewport::doPaint took %lld ms: init: %lld ms, check_update: %lld ms, get_traces: %lld ms, group_cards: %lld ms, dividers: %lld ms, paint_back: %lld ms, paint_signals: %lld ms, paint_fore: %lld ms",
+           total, t_init, t_check_update, t_get_traces, t_group_cards, t_dividers, t_paint_back, t_paint_signals, t_paint_fore);
 }
 
 void Viewport::paintCursors(QPainter &p) {
@@ -528,14 +571,25 @@ void Viewport::paintCursors(QPainter &p) {
 }
 
 void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
+  QElapsedTimer timer;
+  timer.start();
+
   std::vector<Trace *> traces;
   _view.get_traces(_type, traces);
   std::list<int> _index_list;
+
+  bool rebuilt = false;
+  qint64 t_rebuild = 0;
 
   if (_view.session().get_device()->get_work_mode() == LOGIC) {
     if (_view.scale() != _curScale || _view.offset() != _curOffset ||
         _view.get_signalHeight() != _curSignalHeight ||
         _view.get_vOffset() != _curVOffset || _need_update) {
+      
+      rebuilt = true;
+      QElapsedTimer rebuildTimer;
+      rebuildTimer.start();
+
       _curScale = _view.scale();
       _curOffset = _view.offset();
       _curSignalHeight = _view.get_signalHeight();
@@ -568,6 +622,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
         }
       }
       _need_update = false;
+      t_rebuild = rebuildTimer.elapsed();
     }
     p.save();
     p.translate(0, -_view.get_vOffset());
@@ -577,6 +632,11 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
     if (_view.scale() != _curScale || _view.offset() != _curOffset ||
         _view.get_signalHeight() != _curSignalHeight ||
         _view.get_vOffset() != _curVOffset || _need_update) {
+      
+      rebuilt = true;
+      QElapsedTimer rebuildTimer;
+      rebuildTimer.start();
+
       _curScale = _view.scale();
       _curOffset = _view.offset();
       _curSignalHeight = _view.get_signalHeight();
@@ -607,12 +667,15 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
         }
       }
       _need_update = false;
+      t_rebuild = rebuildTimer.elapsed();
     }
     p.save();
     p.translate(0, -_view.get_vOffset());
     p.drawPixmap(0, 0, _pixmap);
     p.restore();
   }
+
+
 
   // plot cursors
   paintCursors(p);
@@ -768,6 +831,10 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       }
     }
   }
+
+  qint64 total = timer.elapsed();
+  dsv_warn("[DIAG] Viewport::paintSignals took %lld ms, rebuilt: %d, rebuild_time: %lld ms",
+           total, rebuilt ? 1 : 0, t_rebuild);
 }
 
 void Viewport::get_captured_progress(double &progress, int &progress100) {

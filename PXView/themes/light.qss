@@ -1963,3 +1963,59 @@ QLabel[status="error"]
 {
     color: @dock-status-error;
 }
+
+/* Log Dock */
+QPlainTextEdit#log_view
+{
+    background-color: #ffffff;
+    color: #2a2a2a;
+    border: 1px solid @border-subtle;
+    border-radius: 4px;
+    selection-background-color: @accent;
+    selection-color: #ffffff;
+    font-family: "Source Code Pro", "Consolas", monospace;
+}
+
+QPushButton#log_scroll_bottom_btn
+{
+    border: 1px solid @border-subtle;
+    border-radius: 4px;
+    background-color: @bg-overlay;
+    padding: 0px;
+    icon-size: 16px;
+}
+
+QPushButton#log_scroll_bottom_btn:hover
+{
+    border: 1px solid @accent;
+    background-color: @bg-overlay;
+}
+
+QPushButton#log_scroll_bottom_btn:checked
+{
+    border: 1px solid @accent;
+    background-color: @accent-muted;
+}
+
+QPushButton#log_scroll_bottom_btn:checked:hover
+{
+    border: 1px solid @accent-hover;
+    background-color: @accent-muted;
+}
+
+QPushButton#log_refresh_btn,
+QPushButton#log_clear_btn
+{
+    border: 1px solid @border-subtle;
+    border-radius: 4px;
+    background-color: @bg-overlay;
+    padding: 4px 10px;
+    color: @fg-base;
+}
+
+QPushButton#log_refresh_btn:hover,
+QPushButton#log_clear_btn:hover
+{
+    border: 1px solid @accent;
+    color: @fg-bright;
+}

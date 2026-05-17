@@ -83,6 +83,7 @@
 
 #include "dock/deviceoptionsdock.h"
 #include "dock/dsotriggerdock.h"
+#include "dock/logdock.h"
 #include "dock/measuredock.h"
 #include "dock/protocoldock.h"
 #include "dock/searchdock.h"
@@ -172,6 +173,8 @@ void MainWindow::setupSideBar() {
                      widgets::SideBar::DockItem);
   _side_bar->addItem("sliders.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
                      widgets::SideBar::DockItem, _drawer_page_device_options);
+  _side_bar->addItem("scroll-text.svg", S_ID(IDS_TOOLBAR_LOG), "Log",
+                     widgets::SideBar::DockItem, _drawer_page_log);
   _side_bar->addSeparator();
   _side_bar->addItem("play.svg", S_ID(IDS_TOOLBAR_RUN_START), "Start",
                      widgets::SideBar::ActionItem, -1, "stop.svg");
@@ -462,6 +465,16 @@ void MainWindow::setup_ui() {
             _sampling_bar->reload();
           });
 
+  // log dock
+  _log_dock = new QDockWidget(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"), this);
+  _log_dock->setObjectName("log_dock");
+  _log_dock->setFeatures(QDockWidget::DockWidgetMovable);
+  _log_dock->setAllowedAreas(Qt::RightDockWidgetArea);
+  _log_dock->setVisible(false);
+  _log_widget = new dock::LogDock(_log_dock);
+  _log_dock->setWidget(_log_widget);
+
   // Do NOT add dock widgets to the main window layout.
   // They are hidden containers; content is shown via SlidingDrawer instead.
   _protocol_dock->setVisible(false);
@@ -470,6 +483,7 @@ void MainWindow::setup_ui() {
   _measure_dock->setVisible(false);
   _search_dock->setVisible(false);
   _device_options_dock->setVisible(false);
+  _log_dock->setVisible(false);
 
   // --- Create SlidingDrawer (overlay child of _central_widget, push via
   // margin) ---
@@ -514,6 +528,12 @@ void MainWindow::setup_ui() {
   _drawer_page_device_options = _sliding_drawer->addPage(
       dock_scroll,
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
+
+  // Log
+  _log_dock->setWidget(nullptr);
+  _drawer_page_log = _sliding_drawer->addPage(
+      _log_widget,
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
 
   _drawer_current_page = -1;
 
@@ -659,6 +679,7 @@ void MainWindow::setup_ui() {
   _search_widget->bind_context(initial_ctx);
   _protocol_widget->bind_context(initial_ctx);
   _device_options_widget->bind_context(initial_ctx);
+  _log_widget->bind_context(initial_ctx);
   _trigger_widget->bind_context(initial_ctx);
   _dso_trigger_widget->bind_context(initial_ctx);
 
@@ -968,6 +989,7 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
       opt->measureDock = false;
       opt->searchDock = false;
       opt->deviceOptionsDock = false;
+      opt->logDock = false;
       AppConfig::Instance().SaveFrame();
     }
     current_view()->setFocus();
@@ -1002,6 +1024,9 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     _device_options_widget->update_view();
     drawerPage = _drawer_page_device_options;
     break;
+  case SIDEBAR_LOG:
+    drawerPage = _drawer_page_log;
+    break;
   }
 
   if (drawerPage >= 0) {
@@ -1018,6 +1043,7 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     opt->measureDock = (index == SIDEBAR_MEASURE);
     opt->searchDock = (index == SIDEBAR_SEARCH);
     opt->deviceOptionsDock = (index == SIDEBAR_OPTIONS);
+    opt->logDock = (index == SIDEBAR_LOG);
     AppConfig::Instance().SaveFrame();
   }
 
@@ -1724,6 +1750,10 @@ void MainWindow::restore_dock() {
       _device_options_widget->update_view();
       _sliding_drawer->open(_drawer_page_device_options);
       _drawer_current_page = _drawer_page_device_options;
+    } else if (opt->logDock) {
+      _side_bar->setItemChecked(SIDEBAR_LOG, true);
+      _sliding_drawer->open(_drawer_page_log);
+      _drawer_current_page = _drawer_page_log;
     }
   }
 }
@@ -2399,6 +2429,7 @@ void MainWindow::update_toolbar_view_status() {
     _side_bar->setItemVisible(SIDEBAR_SEARCH, true);
     _side_bar->setItemVisible(SIDEBAR_FUNCTION, false);
     _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+    _side_bar->setItemVisible(SIDEBAR_LOG, true);
     _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
     _side_bar->setItemVisible(SIDEBAR_INSTANT, true);
   } else if (mode == ANALOG) {
@@ -2408,6 +2439,7 @@ void MainWindow::update_toolbar_view_status() {
     _side_bar->setItemVisible(SIDEBAR_SEARCH, false);
     _side_bar->setItemVisible(SIDEBAR_FUNCTION, false);
     _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+    _side_bar->setItemVisible(SIDEBAR_LOG, true);
     _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
     _side_bar->setItemVisible(SIDEBAR_INSTANT, false);
   } else if (mode == DSO) {
@@ -2417,6 +2449,7 @@ void MainWindow::update_toolbar_view_status() {
     _side_bar->setItemVisible(SIDEBAR_SEARCH, false);
     _side_bar->setItemVisible(SIDEBAR_FUNCTION, true);
     _side_bar->setItemVisible(SIDEBAR_OPTIONS, true);
+    _side_bar->setItemVisible(SIDEBAR_LOG, true);
     _side_bar->setItemVisible(SIDEBAR_RUNSTOP, true);
     _side_bar->setItemVisible(SIDEBAR_INSTANT, true);
   }
@@ -2911,6 +2944,7 @@ void MainWindow::remove_tab(int index) {
   _search_widget->bind_context(new_ctx);
   _protocol_widget->bind_context(new_ctx);
   _device_options_widget->bind_context(new_ctx);
+  _log_widget->bind_context(new_ctx);
   _trigger_widget->bind_context(new_ctx);
   _dso_trigger_widget->bind_context(new_ctx);
 
@@ -2984,6 +3018,7 @@ void MainWindow::on_tab_changed(int index) {
       _search_widget->unbind_context();
       _protocol_widget->unbind_context();
       _device_options_widget->unbind_context();
+      _log_widget->unbind_context();
       _trigger_widget->unbind_context();
       _dso_trigger_widget->unbind_context();
     }
@@ -2994,6 +3029,7 @@ void MainWindow::on_tab_changed(int index) {
     _search_widget->bind_context(new_ctx);
     _protocol_widget->bind_context(new_ctx);
     _device_options_widget->bind_context(new_ctx);
+    _log_widget->bind_context(new_ctx);
     _trigger_widget->bind_context(new_ctx);
     _dso_trigger_widget->bind_context(new_ctx);
 

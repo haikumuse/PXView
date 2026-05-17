@@ -28,7 +28,6 @@
 #include "../data/logicsnapshot.h"
 #include "view.h"
 #include "../dsvdef.h"
-#include "../log.h"
 
 using namespace std;
 
@@ -166,24 +165,6 @@ void LogicSignal::paint_mid_align(QPainter &p, int left, int right, QColor fore,
                                                           offset,
                                                           samples_per_pixel, _probe->index);
     assert(_cur_pulses.size() >= width);
-
-    // DEBUG: log edges info for glitch filter debugging
-    if (_cur_edges.size() > 1 && _cur_edges.size() < 10) {
-        dsv_info("[LogicSignal] paint ch=%d start=%llu end=%llu edges=%zu first=%d",
-                 _probe->index, (unsigned long long)start_index, (unsigned long long)end_index,
-                 _cur_edges.size(), first_sample);
-        for (size_t ei = 0; ei < _cur_edges.size(); ei++) {
-            dsv_info("[LogicSignal]   edge[%zu] x=%u level=%d", ei, _cur_edges[ei].first, _cur_edges[ei].second);
-        }
-    } else if (_cur_edges.size() >= 10) {
-        dsv_info("[LogicSignal] paint ch=%d start=%llu end=%llu edges=%zu (too many)",
-                 _probe->index, (unsigned long long)start_index, (unsigned long long)end_index,
-                 _cur_edges.size());
-    } else {
-        dsv_info("[LogicSignal] paint ch=%d start=%llu end=%llu edges=%zu NO EDGES",
-                 _probe->index, (unsigned long long)start_index, (unsigned long long)end_index,
-                 _cur_edges.size());
-    }
 
     int preX = 0;
     int preY = first_sample ? high_offset : low_offset;

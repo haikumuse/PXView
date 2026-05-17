@@ -22,6 +22,7 @@
 #include <QEasingCurve>
 #include <QLabel>
 #include <QVBoxLayout>
+#include "../log.h"
 
 namespace pv {
 namespace widgets {
@@ -401,16 +402,26 @@ void SlidingDrawer::finishClose() {
 int SlidingDrawer::slideOffset() const { return _slide_offset; }
 
 void SlidingDrawer::setSlideOffset(int offset) {
+  QElapsedTimer timer;
+  timer.start();
+
   offset = qBound(0, offset, _drawer_width);
   if (_slide_offset == offset)
     return;
 
   int oldOffset = _slide_offset;
   _slide_offset = offset;
+  
+  QElapsedTimer overlayTimer;
+  overlayTimer.start();
   positionOverlay();
+  qint64 t_overlay = overlayTimer.elapsed();
 
   QWidget *pw = parentWidget();
+  qint64 t_update = 0;
   if (pw) {
+    QElapsedTimer updateTimer;
+    updateTimer.start();
     int pw_width = pw->width();
     int oldX = pw_width - _drawer_width + oldOffset;
     int newX = pw_width - _drawer_width + offset;
@@ -418,13 +429,19 @@ void SlidingDrawer::setSlideOffset(int offset) {
     int dirtyRight = qMax(oldX + _drawer_width, newX + _drawer_width);
     QRect dirtyRect(dirtyLeft, 0, dirtyRight - dirtyLeft, pw->height());
     pw->update(dirtyRect);
+    t_update = updateTimer.elapsed();
   }
+
+  qint64 total = timer.elapsed();
+  dsv_warn("[DIAG] SlidingDrawer::setSlideOffset took %lld ms: overlay: %lld ms, parentUpdate: %lld ms, offset: %d",
+           total, t_overlay, t_update, offset);
 }
 
 // ---- Events ----
 
 void SlidingDrawer::paintEvent(QPaintEvent *event) {
-  Q_UNUSED(event);
+  QElapsedTimer timer;
+  timer.start();
 
   _paint_in_this_second++;
   if (_is_idle || !_frame_interval_timer.isValid()) {
@@ -438,6 +455,9 @@ void SlidingDrawer::paintEvent(QPaintEvent *event) {
   }
 
   QWidget::paintEvent(event);
+
+  qint64 total = timer.elapsed();
+  dsv_warn("[DIAG] SlidingDrawer::paintEvent took %lld ms", total);
 }
 
 void SlidingDrawer::resizeEvent(QResizeEvent *event) {
@@ -480,6 +500,9 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event) {
 }
 
 void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
+  QElapsedTimer timer;
+  timer.start();
+
   if (_drag_active) {
     if (QWidget::mouseGrabber() != this) {
       finishDrag();
@@ -507,6 +530,9 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
   }
 
   QWidget::mouseMoveEvent(event);
+
+  qint64 total = timer.elapsed();
+  dsv_warn("[DIAG] SlidingDrawer::mouseMoveEvent took %lld ms, dragging: %d", total, _drag_active);
 }
 
 void SlidingDrawer::mousePressEvent(QMouseEvent *event) {
