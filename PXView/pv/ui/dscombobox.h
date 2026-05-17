@@ -44,9 +44,6 @@ public:
         return _bPopup;
     }
 
-protected:
-    void wheelEvent(QWheelEvent *event) override;
-
 private:
     void measureSize();
 

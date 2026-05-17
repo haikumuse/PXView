@@ -25,7 +25,6 @@
 #include <QString>
 #include <QGuiApplication>
 #include <QScreen>
-#include <QWheelEvent>
 #include "../config/appconfig.h"
 
 DsComboBox::DsComboBox(QWidget *parent) 
@@ -98,11 +97,3 @@ void DsComboBox::hidePopup()
     QComboBox::hidePopup();
     _bPopup = false;
 }
-
-void DsComboBox::wheelEvent(QWheelEvent *event)
-{
-    // 忽略滚轮事件，不切换选项
-    // 事件会继续传播给父级控件（如滚动容器）
-    event->ignore();
-}
- 

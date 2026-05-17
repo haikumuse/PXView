@@ -158,13 +158,14 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
     for (i = 0; i < 5; i++)
         a |= (s->bits_val[3 + i] << (4 - i));
     {
-        char str1[32], str2[16], str3[16], str4[8];
+        char str1[32], str2[32], str3[16], str4[8], str5[4];
         snprintf(str1, sizeof(str1), "Address: %d", a);
         snprintf(str2, sizeof(str2), "Addr: %d", a);
-        snprintf(str3, sizeof(str3), "A: %d", a);
-        snprintf(str4, sizeof(str4), "A");
+        snprintf(str3, sizeof(str3), "Addr: %d", a);
+        snprintf(str4, sizeof(str4), "A: %d", a);
+        snprintf(str5, sizeof(str5), "A");
         C_ANN_PUT(di, s->ss_es_bits_ss[3], s->ss_es_bits_es[7], s->out_ann, ANN_ADDRESS,
-                  str1, str2, str3, str4);
+                  str1, str2, str3, str4, str5);
     }
 
     for (i = 0; i < 6; i++)
@@ -174,13 +175,14 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
         c |= (inverted_bit6 << 6);
     }
     {
-        char str1[32], str2[16], str3[16], str4[8];
+        char str1[32], str2[32], str3[16], str4[8], str5[4];
         snprintf(str1, sizeof(str1), "Command: %d", c);
         snprintf(str2, sizeof(str2), "Cmd: %d", c);
-        snprintf(str3, sizeof(str3), "C: %d", c);
-        snprintf(str4, sizeof(str4), "C");
+        snprintf(str3, sizeof(str3), "Cmd: %d", c);
+        snprintf(str4, sizeof(str4), "C: %d", c);
+        snprintf(str5, sizeof(str5), "C");
         C_ANN_PUT(di, s->ss_es_bits_ss[8], s->ss_es_bits_es[13], s->out_ann, ANN_COMMAND,
-                  str1, str2, str3, str4);
+                  str1, str2, str3, str4, str5);
     }
 }
 

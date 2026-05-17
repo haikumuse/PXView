@@ -77,7 +77,12 @@ void KeyLineEdit::keyPressEvent(QKeyEvent *event) {
 
   QLineEdit::keyPressEvent(event);
 
-  if (_is_number_mode && key >= '0' && key <= '9') {
+  bool is_num_key = (key >= '0' && key <= '9') ||
+                    (key >= Qt::Key_0 && key <= Qt::Key_9) ||
+                    key == Qt::Key_Plus || key == Qt::Key_Minus ||
+                    key == Qt::Key_Period;
+
+  if (_is_number_mode && is_num_key) {
     QString new_text = text();
 
     if (new_text != "") {

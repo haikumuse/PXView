@@ -43,6 +43,8 @@ struct iso7816_priv {
     uint64_t atr_bytes[64];
     int atr_count;
     int out_ann;
+    int out_python;
+    int out_binary;
 };
 
 static const int clock_rate_table[] = {
@@ -60,29 +62,7 @@ static struct srd_channel iso7816_channels[] = {
     {"data", "data", "data", 1, SRD_CHANNEL_SDATA, NULL},
 };
 
-static struct srd_decoder_option iso7816_options[] = {
-    {
-        .id = "clock_option",
-        .idn = NULL,
-        .desc = "Clock option",
-        .def = NULL,
-        .values = NULL,
-    },
-    {
-        .id = "protocol",
-        .idn = NULL,
-        .desc = "Protocol",
-        .def = NULL,
-        .values = NULL,
-    },
-    {
-        .id = "starts_with_atr",
-        .idn = NULL,
-        .desc = "Starts with ATR",
-        .def = NULL,
-        .values = NULL,
-    },
-};
+static struct srd_decoder_option iso7816_options_arr[3];
 
 static const char *iso7816_ann_labels[][3] = {
     {"", "warning", "Human-readable warnings"},
@@ -97,11 +77,11 @@ static const char *iso7816_ann_labels[][3] = {
     {"", "apdu", "APDU"},
 };
 
-static const int row_warnings_classes[] = {ANN_WARN};
-static const int row_bytes_classes[] = {ANN_BYTE};
-static const int row_type_classes[] = {ANN_ATR, ANN_PPS, ANN_T0, ANN_T1};
-static const int row_t1s_classes[] = {ANN_T1_IBLOCK, ANN_T1_RBLOCK, ANN_T1_SBLOCK};
-static const int row_apdus_classes[] = {ANN_APDU};
+static const int row_warnings_classes[] = {ANN_WARN, -1};
+static const int row_bytes_classes[] = {ANN_BYTE, -1};
+static const int row_type_classes[] = {ANN_ATR, ANN_PPS, ANN_T0, ANN_T1, -1};
+static const int row_t1s_classes[] = {ANN_T1_IBLOCK, ANN_T1_RBLOCK, ANN_T1_SBLOCK, -1};
+static const int row_apdus_classes[] = {ANN_APDU, -1};
 
 static const struct srd_c_ann_row iso7816_ann_rows[] = {
     {"warnings", "Warnings", row_warnings_classes, 1},
@@ -111,9 +91,13 @@ static const struct srd_c_ann_row iso7816_ann_rows[] = {
     {"apdus", "apdus", row_apdus_classes, 1},
 };
 
-static const char *iso7816_inputs[] = {"logic"};
-static const char *iso7816_outputs[] = {"iso7816"};
-static const char *iso7816_tags[] = {"Embedded/industrial"};
+static const char *iso7816_inputs[] = {"logic", NULL};
+static const char *iso7816_outputs[] = {"iso7816", NULL};
+static const char *iso7816_tags[] = {"Embedded/industrial", NULL};
+
+static const struct srd_decoder_binary iso7816_binary[] = {
+    {0, "pcap", "PCAP format"},
+};
 
 static int get_clock_rate(int idx)
 {
@@ -152,7 +136,9 @@ static void iso7816_start(struct srd_decoder_inst *di)
 {
     struct iso7816_priv *s = (struct iso7816_priv *)c_decoder_get_private(di);
 
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "iso7816");
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "iso7816");
+    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "iso7816");
 
     const char *clock_opt = c_decoder_get_option_string(di, "clock_option", "native");
     s->sample_as_clock = (clock_opt && strcmp(clock_opt, "sample_as_clock") == 0);
@@ -574,6 +560,14 @@ static int handle_atr(struct srd_decoder_inst *di, struct iso7816_priv *s,
 
     C_ANN_PUT(di, atr_start, *samplenum, s->out_ann, ANN_ATR, "ATR", atr_hex);
 
+    {
+        unsigned char atr_bytes_out[64];
+        int i;
+        for (i = 0; i < s->atr_count && i < 64; i++)
+            atr_bytes_out[i] = (unsigned char)s->atr_bytes[i];
+        c_decoder_put_python(di, atr_start, *samplenum, s->out_python, "ATR", atr_bytes_out, s->atr_count > 64 ? 64 : s->atr_count);
+    }
+
     s->state = STATE_DATA;
 
     const char *protocol = c_decoder_get_option_string(di, "protocol", "auto");
@@ -751,7 +745,7 @@ static int handle_t0_packet(struct srd_decoder_inst *di, struct iso7816_priv *s,
     snprintf(apdu_long, sizeof(apdu_long),
              "APDU cls=0x%02x ins=0x%02x p1=0x%02x p2=0x%02x p3=0x%02x len=%d status=0x%02x%02x",
              bClass, bIns, p1, p2, p3, (int)p3, sw1, sw2);
-    C_ANN_PUT(di, pkt_start, *samplenum, s->out_ann, ANN_APDU, apdu_short, apdu_long);
+    C_ANN_PUT(di, pkt_start, *samplenum, s->out_ann, ANN_APDU, "APDU", apdu_short, apdu_long);
 
     return SRD_OK;
 }
@@ -824,7 +818,7 @@ static int handle_t1_block(struct srd_decoder_inst *di, struct iso7816_priv *s,
         C_ANN_PUT(di, pkt_start, *samplenum, s->out_ann, ANN_T1_SBLOCK, "S-Block", sblock_str);
     }
 
-    C_ANN_PUT(di, pkt_start, *samplenum, s->out_ann, ANN_T1, "T=1");
+    C_ANN_PUT(di, pkt_start, *samplenum, s->out_ann, ANN_T1, "T=1", "T=1 (reassembled)");
 
     return SRD_OK;
 }
@@ -907,7 +901,7 @@ struct srd_c_decoder iso7816_c_decoder = {
     .num_channels = 2,
     .optional_channels = NULL,
     .num_optional_channels = 0,
-    .options = iso7816_options,
+    .options = iso7816_options_arr,
     .num_options = 3,
     .num_annotations = NUM_ANN,
     .ann_labels = iso7816_ann_labels,
@@ -917,8 +911,8 @@ struct srd_c_decoder iso7816_c_decoder = {
     .num_inputs = 1,
     .outputs = iso7816_outputs,
     .num_outputs = 1,
-    .binary = NULL,
-    .num_binary = 0,
+    .binary = iso7816_binary,
+    .num_binary = 1,
     .tags = iso7816_tags,
     .num_tags = 1,
     .reset = iso7816_reset,
@@ -929,6 +923,49 @@ struct srd_c_decoder iso7816_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    GVariant *clock_option_vals[] = {
+        g_variant_new_string("native"),
+        g_variant_new_string("detect"),
+        g_variant_new_string("sample_as_clock"),
+    };
+    GSList *clock_option_list = NULL;
+    clock_option_list = g_slist_append(clock_option_list, clock_option_vals[0]);
+    clock_option_list = g_slist_append(clock_option_list, clock_option_vals[1]);
+    clock_option_list = g_slist_append(clock_option_list, clock_option_vals[2]);
+    iso7816_options_arr[0].id = "clock_option";
+    iso7816_options_arr[0].idn = NULL;
+    iso7816_options_arr[0].desc = "Clock option";
+    iso7816_options_arr[0].def = g_variant_new_string("native");
+    iso7816_options_arr[0].values = clock_option_list;
+
+    GVariant *protocol_vals[] = {
+        g_variant_new_string("auto"),
+        g_variant_new_string("T=0"),
+        g_variant_new_string("T=1"),
+    };
+    GSList *protocol_list = NULL;
+    protocol_list = g_slist_append(protocol_list, protocol_vals[0]);
+    protocol_list = g_slist_append(protocol_list, protocol_vals[1]);
+    protocol_list = g_slist_append(protocol_list, protocol_vals[2]);
+    iso7816_options_arr[1].id = "protocol";
+    iso7816_options_arr[1].idn = NULL;
+    iso7816_options_arr[1].desc = "Protocol";
+    iso7816_options_arr[1].def = g_variant_new_string("auto");
+    iso7816_options_arr[1].values = protocol_list;
+
+    GVariant *starts_with_atr_vals[] = {
+        g_variant_new_string("true"),
+        g_variant_new_string("false"),
+    };
+    GSList *starts_with_atr_list = NULL;
+    starts_with_atr_list = g_slist_append(starts_with_atr_list, starts_with_atr_vals[0]);
+    starts_with_atr_list = g_slist_append(starts_with_atr_list, starts_with_atr_vals[1]);
+    iso7816_options_arr[2].id = "starts_with_atr";
+    iso7816_options_arr[2].idn = NULL;
+    iso7816_options_arr[2].desc = "Starts with ATR";
+    iso7816_options_arr[2].def = g_variant_new_string("true");
+    iso7816_options_arr[2].values = starts_with_atr_list;
+
     return &iso7816_c_decoder;
 }
 

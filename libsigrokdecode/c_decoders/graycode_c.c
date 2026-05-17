@@ -45,8 +45,19 @@ static struct srd_decoder_option gray_code_options[] = {
 };
 
 static const char *gray_code_inputs[] = {"logic", NULL};
-static const char *gray_code_outputs[] = {"graycode", NULL};
+static const char *gray_code_outputs[] = {NULL};
 static const char *gray_code_tags[] = {"Encoding", NULL};
+
+static struct srd_channel gray_code_optional_channels[] = {
+    {"d0", "D0", "Data line 0", 0, SRD_CHANNEL_COMMON, NULL},
+    {"d1", "D1", "Data line 1", 1, SRD_CHANNEL_COMMON, NULL},
+    {"d2", "D2", "Data line 2", 2, SRD_CHANNEL_COMMON, NULL},
+    {"d3", "D3", "Data line 3", 3, SRD_CHANNEL_COMMON, NULL},
+    {"d4", "D4", "Data line 4", 4, SRD_CHANNEL_COMMON, NULL},
+    {"d5", "D5", "Data line 5", 5, SRD_CHANNEL_COMMON, NULL},
+    {"d6", "D6", "Data line 6", 6, SRD_CHANNEL_COMMON, NULL},
+    {"d7", "D7", "Data line 7", 7, SRD_CHANNEL_COMMON, NULL},
+};
 
 static const char *gray_code_ann_labels[][3] = {
     {"", "phase", "Phase"},
@@ -55,7 +66,7 @@ static const char *gray_code_ann_labels[][3] = {
     {"", "turns", "Turns"},
     {"", "interval", "Interval"},
     {"", "average", "Average"},
-    {"", "rpm", "RPM"},
+    {"", "rpm", "Rate"},
 };
 
 static const int gray_code_row_phase_classes[] = {ANN_PHASE, -1};
@@ -72,7 +83,7 @@ static const struct srd_c_ann_row gray_code_ann_rows[] = {
     {"turns", "Turns", gray_code_row_turns_classes, 1},
     {"interval", "Interval", gray_code_row_interval_classes, 1},
     {"average", "Average", gray_code_row_average_classes, 1},
-    {"rpm", "RPM", gray_code_row_rpm_classes, 1},
+    {"rpm", "Rate", gray_code_row_rpm_classes, 1},
 };
 
 static void gray_code_reset(struct srd_decoder_inst *di)
@@ -210,8 +221,8 @@ struct srd_c_decoder gray_code_c_decoder = {
     .license = "gplv2+",
     .channels = NULL,
     .num_channels = 0,
-    .optional_channels = NULL,
-    .num_optional_channels = 0,
+    .optional_channels = gray_code_optional_channels,
+    .num_optional_channels = 8,
     .options = gray_code_options,
     .num_options = 2,
     .num_annotations = NUM_ANN,
@@ -221,7 +232,7 @@ struct srd_c_decoder gray_code_c_decoder = {
     .inputs = gray_code_inputs,
     .num_inputs = 1,
     .outputs = gray_code_outputs,
-    .num_outputs = 1,
+    .num_outputs = 0,
     .binary = NULL,
     .num_binary = 0,
     .tags = gray_code_tags,
@@ -235,7 +246,7 @@ struct srd_c_decoder gray_code_c_decoder = {
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
     gray_code_options[0].def = g_variant_new_int64(0);
-    gray_code_options[1].def = g_variant_new_int64(0);
+    gray_code_options[1].def = g_variant_new_int64(10);
     return &gray_code_c_decoder;
 }
 

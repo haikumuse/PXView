@@ -72,21 +72,21 @@ static struct srd_channel usb_channels[] = {
 };
 
 static const char *usb_ann_labels[][3] = {
-    {"J", "J symbol"},
-    {"K", "K symbol"},
-    {"SE0", "0"},
-    {"SE1", "1"},
-    {"SOP", "S"},
-    {"EOP", "E"},
-    {"", ""},
-    {"", "SB: 0", "0"},
-    {"BS ERR", "B"},
-    {"Keep-alive", "KA", "A"},
-    {"Reset", "Res", "R"},
+    {"", "sym-j", "J symbol"},
+    {"", "sym-k", "K symbol"},
+    {"", "sym-se0", "SE0 symbol"},
+    {"", "sym-se1", "SE1 symbol"},
+    {"", "sop", "Start of packet (SOP)"},
+    {"", "eop", "End of packet (EOP)"},
+    {"", "bit", "Bit"},
+    {"", "stuffbit", "Stuff bit"},
+    {"", "error", "Error"},
+    {"", "keep-alive", "Low-speed keep-alive"},
+    {"", "reset", "Reset"},
 };
 
-static const int usb_row_bits_classes[] = {ANN_SOP, ANN_EOP, ANN_BIT, ANN_STUFFBIT, ANN_ERROR, ANN_KEEP_ALIVE, ANN_RESET, -1};
-static const int usb_row_symbols_classes[] = {ANN_J, ANN_K, ANN_SE0, ANN_SE1, -1};
+static const int usb_row_bits_classes[] = {ANN_SOP, ANN_EOP, ANN_BIT, ANN_STUFFBIT, ANN_ERROR, ANN_KEEP_ALIVE, ANN_RESET};
+static const int usb_row_symbols_classes[] = {ANN_J, ANN_K, ANN_SE0, ANN_SE1};
 static const struct srd_c_ann_row usb_ann_rows[] = {
     {"bits", "Bits", usb_row_bits_classes, 7},
     {"symbols", "Symbols", usb_row_symbols_classes, 4},
@@ -123,23 +123,31 @@ static int sym_is_k(enum usb_sym s, enum usb_signalling_mode mode)
     return s == SYM_K || s == SYM_LS_J;
 }
 
+static const char *get_sym_name(enum usb_sym sym)
+{
+    switch (sym) {
+    case SYM_J: case SYM_FS_J: case SYM_LS_J: return "J";
+    case SYM_K: return "K";
+    case SYM_SE0: return "SE0";
+    case SYM_SE1: return "SE1";
+    default: return "";
+    }
+}
+
 static void put_sym_ann(struct srd_decoder_inst *di, usb_priv *s, enum usb_sym sym)
 {
     int cls = -1;
-    const char *txt = "";
     switch (sym) {
     case SYM_J: case SYM_FS_J: case SYM_LS_J:
-        cls = ANN_J; txt = "J"; break;
+        cls = ANN_J; C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, cls, "J"); break;
     case SYM_K:
-        cls = ANN_K; txt = "K"; break;
+        cls = ANN_K; C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, cls, "K"); break;
     case SYM_SE0:
-        cls = ANN_SE0; txt = "SE0"; break;
+        cls = ANN_SE0; C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, cls, "SE0", "0"); break;
     case SYM_SE1:
-        cls = ANN_SE1; txt = "SE1"; break;
+        cls = ANN_SE1; C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, cls, "SE1", "1"); break;
     default: break;
     }
-    if (cls >= 0)
-        C_ANN_PUT(di, s->samplenum_edge, s->samplenum_edge, s->out_ann, cls, txt);
 }
 
 static void update_bitrate(usb_priv *s)
@@ -249,6 +257,7 @@ static void usb_decode(struct srd_decoder_inst *di)
                     s->samplepos = (double)samplenum - (s->bitwidth / 2.0) + 0.5;
                     set_new_target(s);
                     C_ANN_PUT(di, s->samplenum_edge, s->samplenum_edge, s->out_ann, ANN_SOP, "SOP", "S");
+                    c_decoder_put_python(di, s->samplenum_edge, s->samplenum_edge, s->out_python, "SOP", NULL, 0);
                     s->state = STATE_GET_BIT;
                 }
             }
@@ -289,15 +298,18 @@ static void usb_decode(struct srd_decoder_inst *di)
                     if (s->consecutive_ones == 6) {
                         if (b == 0) {
                             C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_STUFFBIT, "Stuff bit: 0", "SB: 0", "0");
+                            c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "STUFF BIT", NULL, 0);
                             s->consecutive_ones = 0;
                         } else {
                             C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_ERROR, "Bit stuff error", "BS ERR", "B");
+                            c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "ERR", NULL, 0);
                             s->state = STATE_IDLE;
                             continue;
                         }
                     } else {
                         char bstr[2] = {(char)('0' + b), 0};
                         C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_BIT, bstr);
+                        c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "BIT", (const unsigned char *)bstr, 1);
                         if (b == 1)
                             s->consecutive_ones++;
                         else
@@ -311,6 +323,7 @@ static void usb_decode(struct srd_decoder_inst *di)
                     if (s->bits_len == 16 && strcmp(s->bits, "0000000100111100") == 0) {
                         s->signalling = SIG_LOW_SPEED_RP;
                         update_bitrate(s);
+                        c_decoder_put_python(di, s->samplenum_edge, s->samplenum_edge, s->out_python, "EOP", NULL, 0);
                         s->oldsym = SYM_J;
                         s->state = STATE_IDLE;
                         continue;
@@ -331,19 +344,29 @@ static void usb_decode(struct srd_decoder_inst *di)
                 }
 
                 put_sym_ann(di, s, sym);
+                {
+                    const char *sn = get_sym_name(sym);
+                    c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "SYM", (const unsigned char *)sn, strlen(sn));
+                }
 
             } else if (s->state == STATE_GET_EOP) {
                 set_new_target(s);
                 put_sym_ann(di, s, sym);
+                {
+                    const char *sn = get_sym_name(sym);
+                    c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "SYM", (const unsigned char *)sn, strlen(sn));
+                }
                 s->oldsym = sym;
 
                 if (sym == SYM_SE0) {
                     /* continue */
                 } else if (sym_is_j(sym, s->signalling)) {
                     C_ANN_PUT(di, s->ss_block, s->samplenum_edge, s->out_ann, ANN_EOP, "EOP", "E");
+                    c_decoder_put_python(di, s->ss_block, s->samplenum_edge, s->out_python, "EOP", NULL, 0);
                     s->state = STATE_WAIT_IDLE;
                 } else {
                     C_ANN_PUT(di, s->ss_block, s->samplenum_edge, s->out_ann, ANN_ERROR, "EOP Error", "EErr", "E");
+                    c_decoder_put_python(di, s->ss_block, s->samplenum_edge, s->out_python, "ERR", NULL, 0);
                     s->state = STATE_IDLE;
                 }
             }
@@ -371,6 +394,7 @@ static void usb_decode(struct srd_decoder_inst *di)
             double se0_length = (double)(samplenum - s->samplenum_lastedge) / (double)s->samplerate;
             if (se0_length > 2.5e-6) {
                 C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_RESET, "Reset", "Res", "R");
+                c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "RESET", NULL, 0);
                 const char *sig = c_decoder_get_option_string(di, "signalling", "automatic");
                 if (strcmp(sig, "full-speed") == 0)
                     s->signalling = SIG_FULL_SPEED;
@@ -378,8 +402,9 @@ static void usb_decode(struct srd_decoder_inst *di)
                     s->signalling = SIG_LOW_SPEED;
                 else
                     s->signalling = SIG_AUTO;
-            } else if (se0_length > 1.2e-6 && (s->signalling == SIG_LOW_SPEED || s->signalling == SIG_LOW_SPEED_RP)) {
+            } else if (se0_length > 1.2e-6 && s->signalling == SIG_LOW_SPEED) {
                 C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_KEEP_ALIVE, "Keep-alive", "KA", "A");
+                c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "KEEP ALIVE", NULL, 0);
             }
 
             sym = get_symbol(s->signalling, dp, dm);
@@ -418,6 +443,7 @@ static void usb_decode(struct srd_decoder_inst *di)
                     s->samplepos = (double)samplenum - (s->bitwidth / 2.0) + 0.5;
                     set_new_target(s);
                     C_ANN_PUT(di, s->samplenum_edge, s->samplenum_edge, s->out_ann, ANN_SOP, "SOP", "S");
+                    c_decoder_put_python(di, s->samplenum_edge, s->samplenum_edge, s->out_python, "SOP", NULL, 0);
                     s->state = STATE_GET_BIT;
                 } else {
                     s->state = STATE_IDLE;

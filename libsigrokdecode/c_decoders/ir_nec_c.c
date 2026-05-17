@@ -69,32 +69,10 @@ typedef struct {
 } nec_state;
 
 static struct srd_channel nec_channels[] = {
-    {"ir", "IR", "Data line", 0, SRD_CHANNEL_SDATA, NULL},
+    {"ir", "IR", "Data line", 0, SRD_CHANNEL_SDATA, "dec_ir_nec_chan_ir"},
 };
 
-static struct srd_decoder_option nec_options[] = {
-    {
-        .id = "polarity",
-        .idn = "dec_ir_nec_opt_polarity",
-        .desc = "Polarity",
-        .def = NULL,
-        .values = NULL,
-    },
-    {
-        .id = "cd_freq",
-        .idn = "dec_ir_nec_opt_cd_freq",
-        .desc = "Carrier Frequency",
-        .def = NULL,
-        .values = NULL,
-    },
-    {
-        .id = "extended",
-        .idn = "dec_ir_nec_opt_extended",
-        .desc = "Extended NEC Protocol",
-        .def = NULL,
-        .values = NULL,
-    },
-};
+static struct srd_decoder_option nec_options_arr[3];
 
 static const char *nec_ann_labels[][3] = {
     {"", "bit", "Bit"},
@@ -225,20 +203,23 @@ static void putd(struct srd_decoder_inst *di, nec_state *s, uint16_t data_val, i
 {
     char long_str[64];
     char mid_str[32];
-    char short_str[16];
+    char mid2_str[16];
+    char short_str[8];
     int hex_width = bit_count / 4;
 
     if (bit_count <= 8) {
         snprintf(long_str, sizeof(long_str), "%s: 0x%0*X", name, hex_width, (uint8_t)data_val);
         snprintf(mid_str, sizeof(mid_str), "%s: 0x%0*X", short_name, hex_width, (uint8_t)data_val);
+        snprintf(mid2_str, sizeof(mid2_str), "%s: 0x%0*X", shortest, hex_width, (uint8_t)data_val);
         snprintf(short_str, sizeof(short_str), "%s", shortest);
     } else {
         snprintf(long_str, sizeof(long_str), "%s: 0x%0*X", name, hex_width, data_val);
         snprintf(mid_str, sizeof(mid_str), "%s: 0x%0*X", short_name, hex_width, data_val);
+        snprintf(mid2_str, sizeof(mid2_str), "%s: 0x%0*X", shortest, hex_width, data_val);
         snprintf(short_str, sizeof(short_str), "%s", shortest);
     }
 
-    C_ANN_PUT(di, s->ss_start, 0, s->out_ann, ann_class, long_str, mid_str, short_str);
+    C_ANN_PUT(di, s->ss_start, 0, s->out_ann, ann_class, long_str, mid_str, mid2_str, short_str);
 }
 
 static void putremote(struct srd_decoder_inst *di, nec_state *s)
@@ -530,7 +511,7 @@ struct srd_c_decoder ir_nec_c_decoder = {
     .num_channels = 1,
     .optional_channels = NULL,
     .num_optional_channels = 0,
-    .options = nec_options,
+    .options = nec_options_arr,
     .num_options = 3,
     .num_annotations = 13,
     .ann_labels = nec_ann_labels,
@@ -552,6 +533,40 @@ struct srd_c_decoder ir_nec_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    GVariant *polarity_vals[] = {
+        g_variant_new_string("auto"),
+        g_variant_new_string("active-low"),
+        g_variant_new_string("active-high"),
+    };
+    GSList *polarity_list = NULL;
+    polarity_list = g_slist_append(polarity_list, polarity_vals[0]);
+    polarity_list = g_slist_append(polarity_list, polarity_vals[1]);
+    polarity_list = g_slist_append(polarity_list, polarity_vals[2]);
+    nec_options_arr[0].id = "polarity";
+    nec_options_arr[0].idn = "dec_ir_nec_opt_polarity";
+    nec_options_arr[0].desc = "Polarity";
+    nec_options_arr[0].def = g_variant_new_string("active-low");
+    nec_options_arr[0].values = polarity_list;
+
+    nec_options_arr[1].id = "cd_freq";
+    nec_options_arr[1].idn = "dec_ir_nec_opt_cd_freq";
+    nec_options_arr[1].desc = "Carrier Frequency";
+    nec_options_arr[1].def = g_variant_new_int64(0);
+    nec_options_arr[1].values = NULL;
+
+    GVariant *extended_vals[] = {
+        g_variant_new_string("yes"),
+        g_variant_new_string("no"),
+    };
+    GSList *extended_list = NULL;
+    extended_list = g_slist_append(extended_list, extended_vals[0]);
+    extended_list = g_slist_append(extended_list, extended_vals[1]);
+    nec_options_arr[2].id = "extended";
+    nec_options_arr[2].idn = "dec_ir_nec_opt_extended";
+    nec_options_arr[2].desc = "Extended NEC Protocol";
+    nec_options_arr[2].def = g_variant_new_string("no");
+    nec_options_arr[2].values = extended_list;
+
     return &ir_nec_c_decoder;
 }
 

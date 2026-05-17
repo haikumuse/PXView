@@ -169,6 +169,7 @@ QString SideBarButton::stripShortcut(const QString &text) {
   QRegularExpression re(QLatin1String("\\s*\\([^)]*\\)\\s*$"));
   QString result = text;
   result.remove(re);
+  result.remove(QLatin1Char('&'));
   return result.trimmed();
 }
 

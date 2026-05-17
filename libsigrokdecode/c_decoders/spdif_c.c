@@ -59,19 +59,19 @@ struct spdif_priv {
 };
 
 static struct srd_channel spdif_channels[] = {
-    {"data", "Data", "Data line", 0, SRD_CHANNEL_COMMON, NULL},
+    {"data", "Data", "Data line", 0, SRD_CHANNEL_COMMON, "dec_spdif_chan_data"},
 };
 
 static const char *spdif_ann_labels[][3] = {
-    {"", "BITRATE", "Bitrate / baudrate"},
-    {"", "PREAMBLE", "Preamble"},
-    {"", "BITS", "Bits"},
-    {"", "AUX", "Auxillary-audio-databits"},
-    {"", "SAMPLES", "Audio Samples"},
-    {"", "VALIDITY", "Data Valid"},
-    {"", "SUBCODE", "Subcode data"},
-    {"", "CHAN_STAT", "Channel Status"},
-    {"", "PARITY", "Parity Bit"},
+    {"", "bitrate", "Bitrate / baudrate"},
+    {"", "preamble", "Preamble"},
+    {"", "bits", "Bits"},
+    {"", "aux", "Auxillary-audio-databits"},
+    {"", "samples", "Audio Samples"},
+    {"", "validity", "Data Valid"},
+    {"", "subcode", "Subcode data"},
+    {"", "chan_stat", "Channnel Status"},
+    {"", "parity", "Parity Bit"},
 };
 
 static const int spdif_row_info_classes[] = {ANN_BITRATE, ANN_PREAMBLE, ANN_AUX, ANN_VALIDITY, ANN_SUBCODE, ANN_CHAN_STAT, ANN_PARITY};
@@ -137,13 +137,19 @@ static void emit_subframe(struct srd_decoder_inst *di, struct spdif_priv *s)
     uint32_t full_rot = (aux_rot << 20) | sample_rot;
 
     snprintf(str_buf, sizeof(str_buf), "Aux 0x%x", aux_val);
-    C_ANN_PUT(di, sf[0].ss, sf[3].es, s->out_ann, ANN_AUX, str_buf);
+    char aux_short[16];
+    snprintf(aux_short, sizeof(aux_short), "0x%x", aux_val);
+    C_ANN_PUT(di, sf[0].ss, sf[3].es, s->out_ann, ANN_AUX, str_buf, aux_short);
 
     snprintf(str_buf, sizeof(str_buf), "Sample 0x%x", full_val);
-    C_ANN_PUT(di, sf[4].ss, sf[23].es, s->out_ann, ANN_AUX, str_buf);
+    char sample_short[16];
+    snprintf(sample_short, sizeof(sample_short), "0x%x", full_val);
+    C_ANN_PUT(di, sf[4].ss, sf[23].es, s->out_ann, ANN_AUX, str_buf, sample_short);
 
     snprintf(str_buf, sizeof(str_buf), "Audio 0x%x", full_rot);
-    C_ANN_PUT(di, sf[0].ss, sf[23].es, s->out_ann, ANN_SAMPLES, str_buf);
+    char audio_short[16];
+    snprintf(audio_short, sizeof(audio_short), "0x%x", full_rot);
+    C_ANN_PUT(di, sf[0].ss, sf[23].es, s->out_ann, ANN_SAMPLES, str_buf, audio_short);
 
     if (sf[24].pulse_type == 0)
         C_ANN_PUT(di, sf[24].ss, sf[24].es, s->out_ann, ANN_VALIDITY, "V");

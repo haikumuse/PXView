@@ -289,7 +289,7 @@ static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
 
     if ((s->state == WAIT_ACK || s->state == WAIT_EOM) && pulse == PULSE_START) {
         C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
-                  "Expected BIT: START received");
+                  "Expected BIT: START received)");
         s->state = WAIT_START;
     }
 
@@ -297,7 +297,7 @@ static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
         double total_min = (pulse == PULSE_ZERO) ? ZERO_TOTAL_MIN : ONE_TOTAL_MIN;
         if (total_time < total_min) {
             C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
-                      "ACK pulse below minimum time");
+                      "ACK pulse below minimun time");
             s->state = WAIT_START;
             return;
         }

@@ -69,7 +69,7 @@ public:
     bool isOpen() const;
     bool isAnimating() const;
 
-    void setDrawerWidth(int width);
+    void setDrawerWidth(int width, bool apply_push = true);
     int drawerWidth() const;
 
     void setAnimationDuration(int ms);
@@ -103,6 +103,7 @@ private:
     void removePushMargin();
     void positionOverlay();
     void finishClose();
+    void finishDrag();
 
     struct PageInfo {
         QWidget *content;

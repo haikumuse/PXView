@@ -414,7 +414,19 @@ struct srd_c_decoder ir_sirc_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    GVariant *polarity_vals[] = {
+        g_variant_new_string("active-low"),
+        g_variant_new_string("active-high"),
+    };
+    GSList *polarity_list = NULL;
+    polarity_list = g_slist_append(polarity_list, polarity_vals[0]);
+    polarity_list = g_slist_append(polarity_list, polarity_vals[1]);
+    sirc_options[0].id = "polarity";
+    sirc_options[0].idn = NULL;
+    sirc_options[0].desc = "Polarity";
     sirc_options[0].def = g_variant_new_string("active-low");
+    sirc_options[0].values = polarity_list;
+
     return &ir_sirc_c_decoder;
 }
 
