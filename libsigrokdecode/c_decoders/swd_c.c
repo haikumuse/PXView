@@ -53,29 +53,26 @@ struct swd_priv {
 };
 
 static struct srd_channel swd_channels[] = {
-    {"swclk", "SWCLK", "Master clock", 0, SRD_CHANNEL_SCLK, NULL},
-    {"swdio", "SWDIO", "Data input/output", 1, SRD_CHANNEL_SDATA, NULL},
+    {"swclk", "SWCLK", "Master clock", 0, SRD_CHANNEL_SCLK, "dec_swd_chan_swclk"},
+    {"swdio", "SWDIO", "Data input/output", 1, SRD_CHANNEL_SDATA, "dec_swd_chan_swdio"},
 };
 
 static const char *swd_ann_labels[][3] = {
-    {"", "RESET", "LINERESET"},
-    {"", "ENABLE", "JTAG->SWD"},
-    {"", "READ", "Read"},
-    {"", "WRITE", "Write"},
-    {"", "ACK", "ACK"},
-    {"", "DATA", "Data"},
-    {"", "PARITY", "Parity"},
+    {"", "reset", "RESET"},
+    {"", "enable", "ENABLE"},
+    {"", "read", "READ"},
+    {"", "write", "WRITE"},
+    {"", "ack", "ACK"},
+    {"", "data", "DATA"},
+    {"", "parity", "PARITY"},
 };
 
-static const int swd_row_fields_classes[] = {ANN_READ, ANN_WRITE, ANN_ACK, ANN_DATA, ANN_PARITY};
-static const int swd_row_control_classes[] = {ANN_RESET, ANN_ENABLE};
+static const int swd_row_all_classes[] = {ANN_RESET, ANN_ENABLE, ANN_READ, ANN_WRITE, ANN_ACK, ANN_DATA, ANN_PARITY};
 
 static const struct srd_c_ann_row swd_ann_rows[] = {
-    {"fields", "Fields", swd_row_fields_classes, 5},
-    {"control", "Control", swd_row_control_classes, 2},
+    {"swd", "SWD", swd_row_all_classes, 7},
 };
 
-static const char *strict_start_values[] = {"yes", "no", NULL};
 static struct srd_decoder_option swd_options[] = {
     {"strict_start", "dec_swd_opt_strict_start", "Wait for a line reset before starting to decode", NULL, NULL},
 };
@@ -216,7 +213,7 @@ static void swd_decode(struct srd_decoder_inst *di)
             } else {
                 if (s->linereset_count >= 50) {
                     C_ANN_PUT(di, s->ss_linereset, samplenum, s->out_ann, ANN_RESET, "LINERESET");
-                    c_decoder_put_python(di, s->ss_linereset, samplenum, s->out_python, "LINE RESET", NULL, 0);
+                    c_decoder_put_python(di, s->ss_linereset, samplenum, s->out_python, "LINE_RESET", NULL, 0);
                     swd_reset_state(s);
                 }
                 s->linereset_count = 0;
@@ -412,7 +409,7 @@ struct srd_c_decoder swd_c_decoder = {
     .num_options = 1,
     .num_annotations = NUM_ANN,
     .ann_labels = swd_ann_labels,
-    .num_annotation_rows = 2,
+    .num_annotation_rows = 1,
     .annotation_rows = swd_ann_rows,
     .inputs = swd_inputs,
     .num_inputs = 1,
@@ -430,7 +427,15 @@ struct srd_c_decoder swd_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    GVariant *vals[] = {
+        g_variant_new_string("yes"),
+        g_variant_new_string("no"),
+    };
+    GSList *val_list = NULL;
+    val_list = g_slist_append(val_list, vals[0]);
+    val_list = g_slist_append(val_list, vals[1]);
     swd_options[0].def = g_variant_new_string("no");
+    swd_options[0].values = val_list;
     return &swd_c_decoder;
 }
 

@@ -326,11 +326,12 @@ bool SlidingDrawer::isOpen() const { return _is_open; }
 
 bool SlidingDrawer::isAnimating() const { return _is_animating; }
 
-void SlidingDrawer::setDrawerWidth(int width) {
+void SlidingDrawer::setDrawerWidth(int width, bool apply_push) {
   _drawer_width = qMax(MIN_DRAWER_WIDTH, width);
   // If currently open (push mode), update margin and reposition
   if (_is_open && !_is_animating) {
-    applyPushMargin();
+    if (apply_push)
+      applyPushMargin();
     setFixedSize(_drawer_width, parentWidget()->height());
     positionOverlay();
   }
@@ -448,6 +449,11 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event) {
 
 void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
   if (_drag_active) {
+    if (QWidget::mouseGrabber() != this) {
+      finishDrag();
+      QWidget::mouseMoveEvent(event);
+      return;
+    }
     int dx = _drag_start_pos.x() - event->globalPos().x();
     int new_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
     setDrawerWidth(new_width);
@@ -462,13 +468,17 @@ void SlidingDrawer::mousePressEvent(QMouseEvent *event) {
 
 void SlidingDrawer::mouseReleaseEvent(QMouseEvent *event) {
   if (_drag_active) {
-    _drag_active = false;
-    releaseMouse();
-    unsetCursor();
+    finishDrag();
     return;
   }
 
   QWidget::mouseReleaseEvent(event);
+}
+
+void SlidingDrawer::finishDrag() {
+  _drag_active = false;
+  releaseMouse();
+  unsetCursor();
 }
 
 } // namespace widgets

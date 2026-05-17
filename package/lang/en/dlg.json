@@ -746,5 +746,45 @@
     {
         "id": "IDS_DLG_SEARCH_COL_LENGTH",
         "text": "Length"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_ENABLE",
+        "text": "Disk Cache"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_PATH",
+        "text": "Cache Path"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_ON",
+        "text": "Disk Cache: ON"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_PATH_LABEL",
+        "text": "Path: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_WRITE",
+        "text": "Write: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_QUEUE",
+        "text": "Queue: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_DISK",
+        "text": "Disk: "
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_FULL",
+        "text": "DISK FULL"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_SLOW_WARNING",
+        "text": "Disk write speed is too slow"
+    },
+    {
+        "id": "IDS_DLG_DISK_CACHE_SLOW_DETAIL",
+        "text": "Detected speed: %1 MB/s\nRecommended: NVMe SSD for 250MB/s capture.\nCapture may fail with data loss."
     }
 ]

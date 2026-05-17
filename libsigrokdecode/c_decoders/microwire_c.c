@@ -19,8 +19,16 @@ enum {
 #define CH_SI 2
 #define CH_SO 3
 
+struct mw_py_entry {
+    uint64_t ss;
+    uint64_t es;
+    int si;
+    int so;
+};
+
 struct mw_priv {
     int out_ann;
+    int out_python;
 };
 
 static struct srd_channel mw_channels[] = {
@@ -76,6 +84,7 @@ static void mw_start(struct srd_decoder_inst *di)
 {
     struct mw_priv *p = (struct mw_priv *)c_decoder_get_private(di);
     p->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "microwire");
+    p->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "microwire");
 }
 
 static void mw_decode(struct srd_decoder_inst *di)
@@ -172,6 +181,7 @@ static void mw_decode(struct srd_decoder_inst *di)
             int bit_si = 0;
             int bit_so = 0;
             int start_bit = 1;
+            GArray *pydata = g_array_new(FALSE, FALSE, sizeof(struct mw_py_entry));
 
             for (guint i = 0; i < packet->len; i++) {
                 struct mw_packet_entry *e = &g_array_index(packet, struct mw_packet_entry, i);
@@ -189,16 +199,21 @@ static void mw_decode(struct srd_decoder_inst *di)
                                 }
                                 start_bit = 0;
                             } else {
-                                char si_str[8], so_str[8];
-                                snprintf(si_str, sizeof(si_str), "SI: %d", bit_si);
-                                snprintf(so_str, sizeof(so_str), "SO: %d", bit_so);
+                                char si_long[16], so_long[16];
+                                char si_mid[8], so_mid[8];
                                 char si_short[4], so_short[4];
+                                snprintf(si_long, sizeof(si_long), "SI bit: %d", bit_si);
+                                snprintf(so_long, sizeof(so_long), "SO bit: %d", bit_so);
+                                snprintf(si_mid, sizeof(si_mid), "SI: %d", bit_si);
+                                snprintf(so_mid, sizeof(so_mid), "SO: %d", bit_so);
                                 snprintf(si_short, sizeof(si_short), "%d", bit_si);
                                 snprintf(so_short, sizeof(so_short), "%d", bit_so);
                                 C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SI_BIT,
-                                           si_str, si_short);
+                                           si_long, si_mid, si_short);
                                 C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SO_BIT,
-                                           so_str, so_short);
+                                           so_long, so_mid, so_short);
+                                struct mw_py_entry pye = {bit_start, e->samplenum, bit_si, bit_so};
+                                g_array_append_val(pydata, pye);
                             }
                         }
                         bit_start = e->samplenum;
@@ -207,18 +222,33 @@ static void mw_decode(struct srd_decoder_inst *di)
                         bit_so = e->so;
                     }
                 } else if ((e->matched & (1ULL << 0)) && e->cs == 0 && e->sk == 0) {
-                    char si_str[8], so_str[8];
-                    snprintf(si_str, sizeof(si_str), "SI: %d", bit_si);
-                    snprintf(so_str, sizeof(so_str), "SO: %d", bit_so);
+                    char si_long[16], so_long[16];
+                    char si_mid[8], so_mid[8];
                     char si_short[4], so_short[4];
+                    snprintf(si_long, sizeof(si_long), "SI bit: %d", bit_si);
+                    snprintf(so_long, sizeof(so_long), "SO bit: %d", bit_so);
+                    snprintf(si_mid, sizeof(si_mid), "SI: %d", bit_si);
+                    snprintf(so_mid, sizeof(so_mid), "SO: %d", bit_so);
                     snprintf(si_short, sizeof(si_short), "%d", bit_si);
                     snprintf(so_short, sizeof(so_short), "%d", bit_so);
                     C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SI_BIT,
-                               si_str, si_short);
+                               si_long, si_mid, si_short);
                     C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SO_BIT,
-                               so_str, so_short);
+                               so_long, so_mid, so_short);
+                    struct mw_py_entry pye = {bit_start, e->samplenum, bit_si, bit_so};
+                    g_array_append_val(pydata, pye);
                 }
             }
+
+            if (p->out_python >= 0 && pydata->len > 0) {
+                struct mw_packet_entry *first = &g_array_index(packet, struct mw_packet_entry, 0);
+                struct mw_packet_entry *last = &g_array_index(packet, struct mw_packet_entry, packet->len - 1);
+                c_decoder_put_python(di, first->samplenum, last->samplenum,
+                                     p->out_python, "microwire",
+                                     (unsigned char *)pydata->data,
+                                     pydata->len * sizeof(struct mw_py_entry));
+            }
+            g_array_free(pydata, TRUE);
         }
 
         g_array_free(packet, TRUE);

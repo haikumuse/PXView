@@ -34,6 +34,8 @@ struct priv {
     int last_nibble;
     int has_last_nibble;
     int out_ann;
+    int out_python;
+    int bit_offset;
 };
 
 static const int data_sym[32] = {
@@ -73,9 +75,19 @@ static struct srd_channel channels[] = {
     {"data", "Data", "Data line", 0, SRD_CHANNEL_SDATA, NULL},
 };
 
+static struct srd_decoder_option fourb5b_options[] = {
+    {
+        .id = "bit_offset",
+        .idn = NULL,
+        .desc = "Bit offset",
+        .def = NULL,
+        .values = NULL,
+    },
+};
+
 static const char *ann_labels[][3] = {
-    {"", "data_symbol", "Data symbol"},
-    {"", "ctrl_symbol", "Control symbol"},
+    {"", "symbol_data", "Data symbol"},
+    {"", "symbol_ctrl", "Control symbol"},
     {"", "bit", "Decoded bit"},
     {"", "byte", "Decoded byte"},
 };
@@ -109,7 +121,9 @@ static void start(struct srd_decoder_inst *di)
 {
     struct priv *s = (struct priv *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "4b5b");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "4b5b");
     s->samplerate = c_decoder_get_samplerate(di);
+    s->bit_offset = atoi(c_decoder_get_option_string(di, "bit_offset", "0"));
 }
 
 static void decode(struct srd_decoder_inst *di)
@@ -196,6 +210,11 @@ static void decode(struct srd_decoder_inst *di)
             int bit_val = (matched & 1) ? 1 : 0;
             uint64_t bit_end = samplenum;
 
+            if (s->bit_offset > 0) {
+                s->bit_offset--;
+                continue;
+            }
+
             if (s->bit_count == 0) {
                 s->sym_start = start_sample;
                 if (!s->has_last_nibble) {
@@ -211,6 +230,7 @@ static void decode(struct srd_decoder_inst *di)
                     s->jk_seen_j = (s->symbol == 24) || s->jk_seen_j;
                     s->jk_seen_k = (s->symbol == 17) || s->jk_seen_k;
                     C_ANN_PUT(di, s->sym_start, bit_end, s->out_ann, ANN_CTRL_SYMBOL, ctrl_long[s->symbol], ctrl_short[s->symbol]);
+                    c_decoder_put_python(di, s->sym_start, bit_end, s->out_python, ctrl_short[s->symbol], NULL, 0);
                 } else if (data_sym[s->symbol] >= 0 && s->jk_seen_j && s->jk_seen_k) {
                     char sym_str[6];
                     for (int i = 4; i >= 0; i--)
@@ -230,6 +250,8 @@ static void decode(struct srd_decoder_inst *di)
                         char byte_str[8];
                         snprintf(byte_str, sizeof(byte_str), "0x%02X", data_byte);
                         C_ANN_PUT(di, s->data_start, bit_end, s->out_ann, ANN_BYTE, byte_str);
+                        unsigned char py_byte = (unsigned char)data_byte;
+                        c_decoder_put_python(di, s->data_start, bit_end, s->out_python, "DATA", &py_byte, 1);
                         s->data_start = bit_end;
                         s->has_last_nibble = 0;
                     } else {
@@ -264,8 +286,8 @@ struct srd_c_decoder fourb5b_c_decoder = {
     .num_channels = 1,
     .optional_channels = NULL,
     .num_optional_channels = 0,
-    .options = NULL,
-    .num_options = 0,
+    .options = fourb5b_options,
+    .num_options = 1,
     .num_annotations = NUM_ANN,
     .ann_labels = ann_labels,
     .num_annotation_rows = 3,
@@ -286,6 +308,18 @@ struct srd_c_decoder fourb5b_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    GVariant *vals[] = {
+        g_variant_new_string("0"),
+        g_variant_new_string("1"),
+        g_variant_new_string("2"),
+        g_variant_new_string("3"),
+        g_variant_new_string("4"),
+    };
+    GSList *val_list = NULL;
+    for (int i = 0; i < 5; i++)
+        val_list = g_slist_append(val_list, vals[i]);
+    fourb5b_options[0].def = g_variant_new_string("0");
+    fourb5b_options[0].values = val_list;
     return &fourb5b_c_decoder;
 }
 

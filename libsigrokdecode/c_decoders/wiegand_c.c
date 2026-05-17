@@ -46,12 +46,12 @@ static struct srd_channel wiegand_channels[] = {
 static struct srd_decoder_option wiegand_options_arr[2];
 
 static const char *wiegand_ann_labels[][3] = {
-    {"", "bit", "Bit"},
+    {"", "bits", "Bits"},
     {"", "state", "State"},
 };
 
-static const int wiegand_row_bits_classes[] = {ANN_BITS, -1};
-static const int wiegand_row_state_classes[] = {ANN_STATE, -1};
+static const int wiegand_row_bits_classes[] = {ANN_BITS};
+static const int wiegand_row_state_classes[] = {ANN_STATE};
 static const struct srd_c_ann_row wiegand_ann_rows[] = {
     {"bits", "Binary value", wiegand_row_bits_classes, 1},
     {"state", "Stream state", wiegand_row_state_classes, 1},

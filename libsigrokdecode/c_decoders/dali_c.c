@@ -82,28 +82,129 @@ static const char *dali_inputs[] = {"logic", NULL};
 static const char *dali_outputs[] = {NULL};
 static const char *dali_tags[] = {"Embedded/industrial", "Lighting", NULL};
 
-static const char *extended_cmd_lookup(uint8_t addr)
+static const struct { uint8_t code; const char *long_name; const char *short_name; } dali_extended_cmds[] = {
+    {0xA1, "Terminate special processes", "Terminate"},
+    {0xA3, "DTR = DATA", "DTR"},
+    {0xA5, "INITIALISE", "INIT"},
+    {0xA7, "RANDOMISE", "RAND"},
+    {0xA9, "COMPARE", "COMP"},
+    {0xAB, "WITHDRAW", "WDRAW"},
+    {0xB1, "SET SEARCH H", "SAH"},
+    {0xB3, "SET SEARCH M", "SAM"},
+    {0xB5, "SET SEARCH L", "SAL"},
+    {0xB7, "Program Short Address", "ProgSA"},
+    {0xB9, "Verify Short Address", "VfySA"},
+    {0xBB, "Query Short Address", "QryShort"},
+    {0xBD, "Physical Selection", "PysSel"},
+    {0xC1, "Enable Device Type X", "EnTyp"},
+    {0xC3, "DTR1 = DATA", "DTR1"},
+    {0xC5, "DTR2 = DATA", "DTR2"},
+    {0xC7, "Write Memory Location", "WRI"},
+};
+
+static const struct { uint8_t code; const char *long_name; const char *short_name; } dali_cmds[] = {
+    {0x00, "Immediate Off", "IOFF"},
+    {0x01, "Up 200ms", "Up"},
+    {0x02, "Down 200ms", "Down"},
+    {0x03, "Step Up", "Step+"},
+    {0x04, "Step Down", "Step-"},
+    {0x05, "Recall Maximum Level", "Recall Max"},
+    {0x06, "Recall Minimum Level", "Recall Min"},
+    {0x07, "Step down and off", "Down Off"},
+    {0x08, "Step ON and UP", "On Up"},
+    {0x20, "Reset", "Rst"},
+    {0x21, "Store Dim Level in DTR", "Level -> DTR"},
+    {0x2A, "Store DTR as Max Level", "DTR->Max"},
+    {0x2B, "Store DTR as Min Level", "DTR->Min"},
+    {0x2C, "Store DTR as Fail Level", "DTR->Fail"},
+    {0x2D, "Store DTR as Power On Level", "DTR->Poweron"},
+    {0x2E, "Store DTR as Fade Time", "DTR->Fade"},
+    {0x2F, "Store DTR as Fade Rate", "DTR->Rate"},
+    {0x80, "Store DTR as Short Address", "DTR->Add"},
+    {0x81, "Enable Memory Write", "WEn"},
+    {0x90, "Query Status", "Status"},
+    {0x91, "Query Ballast", "Ballast"},
+    {0x92, "Query Lamp Failure", "LmpFail"},
+    {0x93, "Query Power On", "Power On"},
+    {0x94, "Query Limit Error", "Limit Err"},
+    {0x95, "Query Reset", "Reset State"},
+    {0x96, "Query Missing Short Address", "NoSrt"},
+    {0x97, "Query Version", "Ver"},
+    {0x98, "Query DTR", "GetDTR"},
+    {0x99, "Query Device Type", "Type"},
+    {0x9A, "Query Physical Minimum", "PhysMin"},
+    {0x9B, "Query Power Fail", "PowerFailed"},
+    {0x9C, "Query DTR1", "GetDTR1"},
+    {0x9D, "Query DTR2", "GetDTR2"},
+    {0xA0, "Query Level", "GetLevel"},
+    {0xA1, "Query Max Level", "GetMax"},
+    {0xA2, "Query Min Level", "GetMin"},
+    {0xA3, "Query Power On", "GetPwrOn"},
+    {0xA4, "Query Fail Level", "GetFail"},
+    {0xA5, "Query Fade Rate", "GetRate"},
+    {0xA6, "Query Power Fail", "PwrFail"},
+    {0xC0, "Query Groups 0-7", "GetGrpsL"},
+    {0xC1, "Query Groups 7-15", "GetGrpsH"},
+    {0xC2, "Query BRNH", "BRNH"},
+    {0xC3, "Query BRNM", "BRNM"},
+    {0xC4, "Query BRNL", "BRNL"},
+    {0xC5, "Query Memory", "GetMem"},
+};
+
+static const struct { uint8_t code; const char *long_name; const char *short_name; } dali_dev_type8[] = {
+    {0xE0, "Set Temp X-Y Coordinate", "Set X-Y"},
+    {0xE2, "Activate Colour Set point", "Activate SetPoint"},
+    {0xE7, "Set Colour Temperature Tc", "DTRs->ColTemp"},
+    {0xF9, "Query Features", "QryFeats"},
+    {0xFA, "Query Current Setpoint Colour", "GetSetPoint"},
+};
+
+static const char *dali_lookup_extended_long(uint8_t code)
 {
-    switch (addr) {
-    case 0xA1: return "Terminate";
-    case 0xA3: return "DTR";
-    case 0xA5: return "INIT";
-    case 0xA7: return "RAND";
-    case 0xA9: return "COMP";
-    case 0xAB: return "WDRAW";
-    case 0xB1: return "SAH";
-    case 0xB3: return "SAM";
-    case 0xB5: return "SAL";
-    case 0xB7: return "ProgSA";
-    case 0xB9: return "VfySA";
-    case 0xBB: return "QryShort";
-    case 0xBD: return "PysSel";
-    case 0xC1: return "EnTyp";
-    case 0xC3: return "DTR1";
-    case 0xC5: return "DTR2";
-    case 0xC7: return "WRI";
-    default: return "Unknown";
-    }
+    for (int i = 0; i < (int)(sizeof(dali_extended_cmds) / sizeof(dali_extended_cmds[0])); i++)
+        if (dali_extended_cmds[i].code == code)
+            return dali_extended_cmds[i].long_name;
+    return "Unknown";
+}
+
+static const char *dali_lookup_extended_short(uint8_t code)
+{
+    for (int i = 0; i < (int)(sizeof(dali_extended_cmds) / sizeof(dali_extended_cmds[0])); i++)
+        if (dali_extended_cmds[i].code == code)
+            return dali_extended_cmds[i].short_name;
+    return "Unk";
+}
+
+static const char *dali_lookup_cmd_long(uint8_t code)
+{
+    for (int i = 0; i < (int)(sizeof(dali_cmds) / sizeof(dali_cmds[0])); i++)
+        if (dali_cmds[i].code == code)
+            return dali_cmds[i].long_name;
+    return "Unknown";
+}
+
+static const char *dali_lookup_cmd_short(uint8_t code)
+{
+    for (int i = 0; i < (int)(sizeof(dali_cmds) / sizeof(dali_cmds[0])); i++)
+        if (dali_cmds[i].code == code)
+            return dali_cmds[i].short_name;
+    return "Unk";
+}
+
+static const char *dali_lookup_type8_long(uint8_t code)
+{
+    for (int i = 0; i < (int)(sizeof(dali_dev_type8) / sizeof(dali_dev_type8[0])); i++)
+        if (dali_dev_type8[i].code == code)
+            return dali_dev_type8[i].long_name;
+    return "Unknown App";
+}
+
+static const char *dali_lookup_type8_short(uint8_t code)
+{
+    for (int i = 0; i < (int)(sizeof(dali_dev_type8) / sizeof(dali_dev_type8[0])); i++)
+        if (dali_dev_type8[i].code == code)
+            return dali_dev_type8[i].short_name;
+    return "Unk";
 }
 
 static void dali_putb(struct srd_decoder_inst *di, struct dali_priv *s,
@@ -198,24 +299,25 @@ static void dali_handle_bits(struct srd_decoder_inst *di, struct dali_priv *s, i
     }
 
     if (b[8] == 1) {
-        dali_putb(di, s, 8, 8, ANN_SBIT, "Command", "Comd", "COM", "CO", "C");
+        dali_putb(di, s, 8, 8, ANN_STARTBIT, "Command", "Comd", "COM", "CO", "C");
     } else {
-        dali_putb(di, s, 8, 8, ANN_SBIT, "Arc Power Level", "Arc Pwr", "ARC", "AC", "A");
+        dali_putb(di, s, 8, 8, ANN_STARTBIT, "Arc Power Level", "Arc Pwr", "ARC", "AC", "A");
     }
 
     if (f >= 254) {
-        dali_putb(di, s, 1, 7, ANN_ADDRESS, "BROADCAST", "Brdcast", "BC", "B", "B");
+        dali_putb(di, s, 1, 7, ANN_COMMAND, "BROADCAST", "Brdcast", "BC", "B", "B");
     } else if (f >= 160) {
         if (f == 0xC1)
             s->dev_type = -1;
-        const char *xc_name = extended_cmd_lookup(f);
+        const char *xc_long_name = dali_lookup_extended_long(f);
+        const char *xc_short_name = dali_lookup_extended_short(f);
         char xc_long[64], xc_mid[48], xc_short[24], xc_tiny[16], xc_min[4];
-        snprintf(xc_long, sizeof(xc_long), "Extended Command: %02X (%s)", f, xc_name);
-        snprintf(xc_mid, sizeof(xc_mid), "XC: %02X (%s)", f, xc_name);
+        snprintf(xc_long, sizeof(xc_long), "Extended Command: %02X (%s)", f, xc_long_name);
+        snprintf(xc_mid, sizeof(xc_mid), "XC: %02X (%s)", f, xc_short_name);
         snprintf(xc_short, sizeof(xc_short), "XC: %02X", f);
         snprintf(xc_tiny, sizeof(xc_tiny), "X: %02X", f);
         snprintf(xc_min, sizeof(xc_min), "X");
-        dali_putb(di, s, 1, 8, ANN_ADDRESS, xc_long, xc_mid, xc_short, xc_tiny, xc_min);
+        dali_putb(di, s, 1, 8, ANN_COMMAND, xc_long, xc_mid, xc_short, xc_tiny, xc_min);
     } else if (f >= 128) {
         {
             char yb_long[24], yb_mid[16], yb_short[8], yb_tiny[4], yb_min[4];
@@ -279,9 +381,50 @@ static void dali_handle_bits(struct srd_decoder_inst *di, struct dali_priv *s, i
             dali_putb(di, s, 9, 16, ANN_COMMAND, d_long, d_mid, d_short, d_tiny, d_min);
         }
     } else if (b[8] == 1) {
-        char cmd_long[32], cmd_mid[24], cmd_short[16], cmd_tiny[8], cmd_min[4];
-        snprintf(cmd_long, sizeof(cmd_long), "Command: %d", c);
-        snprintf(cmd_mid, sizeof(cmd_mid), "Com: %d", c);
+        int un = c & 0xF0;
+        int ln = c & 0x0F;
+        const char *cmd_lname, *cmd_sname;
+        char scene_long[48], scene_short[32];
+        if (un == 0x10) {
+            snprintf(scene_long, sizeof(scene_long), "Recall Scene %d", ln);
+            snprintf(scene_short, sizeof(scene_short), "SC %d", ln);
+            cmd_lname = scene_long; cmd_sname = scene_short;
+        } else if (un == 0x40) {
+            snprintf(scene_long, sizeof(scene_long), "Store DTR as Scene %d", ln);
+            snprintf(scene_short, sizeof(scene_short), "SC %d = DTR", ln);
+            cmd_lname = scene_long; cmd_sname = scene_short;
+        } else if (un == 0x50) {
+            snprintf(scene_long, sizeof(scene_long), "Delete Scene %d", ln);
+            snprintf(scene_short, sizeof(scene_short), "DEL SC %d", ln);
+            cmd_lname = scene_long; cmd_sname = scene_short;
+        } else if (un == 0x60) {
+            snprintf(scene_long, sizeof(scene_long), "Add to Group %d", ln);
+            snprintf(scene_short, sizeof(scene_short), "Grp %d Add", ln);
+            cmd_lname = scene_long; cmd_sname = scene_short;
+        } else if (un == 0x70) {
+            snprintf(scene_long, sizeof(scene_long), "Remove from Group %d", ln);
+            snprintf(scene_short, sizeof(scene_short), "Grp %d Del", ln);
+            cmd_lname = scene_long; cmd_sname = scene_short;
+        } else if (un == 0xB0) {
+            snprintf(scene_long, sizeof(scene_long), "Query Scene %d Level", ln);
+            snprintf(scene_short, sizeof(scene_short), "Sc %d Level", ln);
+            cmd_lname = scene_long; cmd_sname = scene_short;
+        } else if (c >= 224) {
+            if (s->dev_type == 8) {
+                cmd_lname = dali_lookup_type8_long(c);
+                cmd_sname = dali_lookup_type8_short(c);
+            } else {
+                snprintf(scene_long, sizeof(scene_long), "Application Specific Command %d", c);
+                snprintf(scene_short, sizeof(scene_short), "App Cmd %d", c);
+                cmd_lname = scene_long; cmd_sname = scene_short;
+            }
+        } else {
+            cmd_lname = dali_lookup_cmd_long(c);
+            cmd_sname = dali_lookup_cmd_short(c);
+        }
+        char cmd_long[64], cmd_mid[48], cmd_short[24], cmd_tiny[16], cmd_min[4];
+        snprintf(cmd_long, sizeof(cmd_long), "Command: %d (%s)", c, cmd_lname);
+        snprintf(cmd_mid, sizeof(cmd_mid), "Com: %d (%s)", c, cmd_sname);
         snprintf(cmd_short, sizeof(cmd_short), "Com: %d", c);
         snprintf(cmd_tiny, sizeof(cmd_tiny), "C: %d", c);
         snprintf(cmd_min, sizeof(cmd_min), "C");

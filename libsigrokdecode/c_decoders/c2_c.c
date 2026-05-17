@@ -50,8 +50,8 @@ static struct srd_channel c2_channels[] = {
 };
 
 static const char *c2_ann_labels[][3] = {
-    {"106", "raw-Data", "raw data"},
-    {"106", "c2-data", "c2 data"},
+    {"", "raw-Data", "raw data"},
+    {"", "c2-data", "c2 data"},
     {"", "warnings", "Warnings"},
 };
 

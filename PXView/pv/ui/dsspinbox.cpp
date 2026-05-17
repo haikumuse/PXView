@@ -21,7 +21,6 @@
  */
 
 #include "dsspinbox.h"
-#include <QWheelEvent>
 
 namespace pv {
 namespace ui {
@@ -31,23 +30,9 @@ DsSpinBox::DsSpinBox(QWidget *parent)
 {
 }
 
-void DsSpinBox::wheelEvent(QWheelEvent *event)
-{
-    // 忽略滚轮事件，不调整数值
-    // 事件会继续传播给父级控件（如滚动容器）
-    event->ignore();
-}
-
 DsDoubleSpinBox::DsDoubleSpinBox(QWidget *parent)
     : QDoubleSpinBox(parent)
 {
-}
-
-void DsDoubleSpinBox::wheelEvent(QWheelEvent *event)
-{
-    // 忽略滚轮事件，不调整数值
-    // 事件会继续传播给父级控件（如滚动容器）
-    event->ignore();
 }
 
 } // namespace ui

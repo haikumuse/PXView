@@ -129,15 +129,15 @@ static struct srd_channel lpc_optional_channels[] = {
 };
 
 static const char *lpc_ann_labels[][3] = {
-    {"", "WARN", "Warning"},
-    {"", "START", "Start"},
-    {"", "CT/DR", "Cycle-type/direction"},
-    {"", "ADDR", "Address"},
-    {"", "TAR1", "Turn-around cycle 1"},
-    {"", "SYNC", "Sync"},
-    {"", "TIMEOUT", "Time Out"},
-    {"", "DATA", "Data"},
-    {"", "TAR2", "Turn-around cycle 2"},
+    {"", "warnings", "Warnings"},
+    {"", "start", "Start"},
+    {"", "cycle-type", "Cycle-type/direction"},
+    {"", "addr", "Address"},
+    {"", "tar1", "Turn-around cycle 1"},
+    {"", "sync", "Sync"},
+    {"", "timeout", "Time Out"},
+    {"", "data", "Data"},
+    {"", "tar2", "Turn-around cycle 2"},
 };
 
 static const int lpc_row_data_classes[] = {ANN_START, ANN_CYCLE_TYPE, ANN_ADDR, ANN_TAR1, ANN_SYNC, ANN_TIMEOUT, ANN_DATA, ANN_TAR2, -1};
@@ -178,7 +178,11 @@ static void lpc_handle_get_start(struct srd_decoder_inst *di, lpc_decoder_state 
 {
     s->es_block = s->ss_block;
     if (lad >= 0 && lad <= 15) {
-        lpc_putb(di, s, ANN_START, lpc_start_names[lad]);
+        char short1[8], short2[4];
+        snprintf(short1, sizeof(short1), "START");
+        snprintf(short2, sizeof(short2), "St");
+        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_START,
+                   lpc_start_names[lad], short1, short2, "S");
     }
     s->ss_block = s->es_block + 1;
 
@@ -370,6 +374,12 @@ static void lpc_handle_get_sync(struct srd_decoder_inst *di, lpc_decoder_state *
     lpc_putb(di, s, ANN_SYNC, buf);
     s->ss_block = s->es_block + 1;
 
+    if (strcmp(sync_name, "Reserved") == 0) {
+        char wbuf[80];
+        snprintf(wbuf, sizeof(wbuf), "SYNC, cycle %d: %04b (reserved value)", s->synccount, s->oldlad);
+        lpc_putb(di, s, ANN_WARN, wbuf);
+    }
+
     if (strcmp(sync_name, "Short wait") != 0 && strcmp(sync_name, "Long wait") != 0) {
         s->cycle_count = 0;
         if (lframe == 0) {
@@ -388,7 +398,7 @@ static void lpc_handle_get_sync(struct srd_decoder_inst *di, lpc_decoder_state *
 static void lpc_handle_get_timeout(struct srd_decoder_inst *di, lpc_decoder_state *s)
 {
     if (s->oldlframe != 0) {
-        lpc_putb(di, s, ANN_WARN, "TIMEOUT cycle, LFRAME# must be low for 4 LCLK cycles");
+        lpc_putb(di, s, ANN_WARN, "TIMEOUT cycle, LFRAME# must be low for 4 LCLk cycles");
         s->timeoutcount = 0;
         s->state = LPC_IDLE;
         return;

@@ -31,6 +31,7 @@ struct hdlc_priv {
     int cpol;
     int out_ann;
     int out_python;
+    int out_binary;
     int pending_flag;
     int pending_abort;
     uint64_t ss_pending_start;
@@ -91,6 +92,10 @@ static const char *hdlc_inputs[] = {"logic"};
 static const char *hdlc_outputs[] = {"hdlc"};
 static const char *hdlc_tags[] = {"Embedded/industrial"};
 
+static const struct srd_decoder_binary hdlc_binary[] = {
+    {0, "transfer", "transfer"},
+};
+
 static void hdlc_reset_state(struct hdlc_priv *priv)
 {
     priv->bitcount = 0;
@@ -124,6 +129,7 @@ static void hdlc_start(struct srd_decoder_inst *di)
     struct hdlc_priv *priv = (struct hdlc_priv *)c_decoder_get_private(di);
     priv->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "hdlc");
     priv->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "hdlc");
+    priv->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "hdlc");
     const char *en_pol = c_decoder_get_option_string(di, "en_polarity", "active-high");
     priv->en_active_high = (en_pol && strcmp(en_pol, "active-low") == 0) ? 0 : 1;
     priv->cpol = (int)c_decoder_get_option_int(di, "cpol", 1);
@@ -150,6 +156,13 @@ static void hdlc_putt(struct srd_decoder_inst *di, struct hdlc_priv *priv)
     if (crc != rxcrc) {
         C_ANN_PUT(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
                   priv->out_ann, ANN_WARNING, "BAD CRC!");
+    } else {
+        c_decoder_put_python(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 2],
+            priv->out_python, "TRANSFER", priv->rxbytes, cnt - 2);
+        for (int i = 0; i < cnt - 2; i++) {
+            c_decoder_put_binary(di, priv->rxbytes_ss[i], priv->rxbytes_ss[i],
+                priv->out_binary, 0, 1, &priv->rxbytes[i]);
+        }
     }
 
     char hex_str[3072];
@@ -162,8 +175,6 @@ static void hdlc_putt(struct srd_decoder_inst *di, struct hdlc_priv *priv)
 
     C_ANN_PUT(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
               priv->out_ann, ANN_TRANSFER, hex_str);
-    c_decoder_put_python(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
-        priv->out_python, "TRANSFER", priv->rxbytes, cnt - 2);
 }
 
 static void hdlc_shift_bit(struct hdlc_priv *priv, int data, uint64_t samplenum)
@@ -313,8 +324,8 @@ struct srd_c_decoder hdlc_c_decoder = {
     .num_inputs = 1,
     .outputs = hdlc_outputs,
     .num_outputs = 1,
-    .binary = NULL,
-    .num_binary = 0,
+    .binary = hdlc_binary,
+    .num_binary = 1,
     .tags = hdlc_tags,
     .num_tags = 1,
     .reset = hdlc_reset,

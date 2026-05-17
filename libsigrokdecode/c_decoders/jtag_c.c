@@ -91,60 +91,60 @@ static const int next_state[16][2] = {
 };
 
 static struct srd_channel jtag_channels[] = {
-    {"tdi", "TDI", "Test Data In", 0, SRD_CHANNEL_SDATA, NULL},
-    {"tdo", "TDO", "Test Data Out", 1, SRD_CHANNEL_SDATA, NULL},
-    {"tck", "TCK", "Test Clock", 2, SRD_CHANNEL_SCLK, NULL},
-    {"tms", "TMS", "Test Mode Select", 3, SRD_CHANNEL_COMMON, NULL},
+    {"tdi", "TDI", "Test data input", 0, SRD_CHANNEL_SDATA, "dec_jtag_chan_tdi"},
+    {"tdo", "TDO", "Test data output", 1, SRD_CHANNEL_SDATA, "dec_jtag_chan_tdo"},
+    {"tck", "TCK", "Test clock", 2, SRD_CHANNEL_SCLK, "dec_jtag_chan_tck"},
+    {"tms", "TMS", "Test mode select", 3, SRD_CHANNEL_COMMON, "dec_jtag_chan_tms"},
 };
 
 static struct srd_channel jtag_optional_channels[] = {
-    {"trst", "TRST", "Test Reset", 4, SRD_CHANNEL_COMMON, NULL},
-    {"srst", "SRST", "System Reset", 5, SRD_CHANNEL_COMMON, NULL},
-    {"rtck", "RTCK", "Return Test Clock", 6, SRD_CHANNEL_SCLK, NULL},
+    {"trst", "TRST#", "Test reset", 4, SRD_CHANNEL_COMMON, "dec_jtag_opt_chan_trst"},
+    {"srst", "SRST#", "System reset", 5, SRD_CHANNEL_COMMON, "dec_jtag_opt_chan_srst"},
+    {"rtck", "RTCK", "Return clock signal", 6, SRD_CHANNEL_SCLK, "dec_jtag_opt_chan_rtck"},
 };
 
 static const char *jtag_ann_labels[][3] = {
-    {"", "TLR", "TEST-LOGIC-RESET"},
-    {"", "RTI", "RUN-TEST/IDLE"},
-    {"", "SelDR", "SELECT-DR-SCAN"},
-    {"", "CapDR", "CAPTURE-DR"},
-    {"", "UpdDR", "UPDATE-DR"},
-    {"", "PauDR", "PAUSE-DR"},
-    {"", "ShfDR", "SHIFT-DR"},
-    {"", "Ex1DR", "EXIT1-DR"},
-    {"", "Ex2DR", "EXIT2-DR"},
-    {"", "SelIR", "SELECT-IR-SCAN"},
-    {"", "CapIR", "CAPTURE-IR"},
-    {"", "UpdIR", "UPDATE-IR"},
-    {"", "PauIR", "PAUSE-IR"},
-    {"", "ShfIR", "SHIFT-IR"},
-    {"", "Ex1IR", "EXIT1-IR"},
-    {"", "Ex2IR", "EXIT2-IR"},
-    {"", "TDI", "Bit (TDI)"},
-    {"", "TDO", "Bit (TDO)"},
-    {"", "TDI", "Bitstring (TDI)"},
-    {"", "TDO", "Bitstring (TDO)"},
+    {"", "test-logic-reset", "TEST-LOGIC-RESET"},
+    {"", "run-test/idle", "RUN-TEST/IDLE"},
+    {"", "select-dr-scan", "SELECT-DR-SCAN"},
+    {"", "capture-dr", "CAPTURE-DR"},
+    {"", "update-dr", "UPDATE-DR"},
+    {"", "pause-dr", "PAUSE-DR"},
+    {"", "shift-dr", "SHIFT-DR"},
+    {"", "exit1-dr", "EXIT1-DR"},
+    {"", "exit2-dr", "EXIT2-DR"},
+    {"", "select-ir-scan", "SELECT-IR-SCAN"},
+    {"", "capture-ir", "CAPTURE-IR"},
+    {"", "update-ir", "UPDATE-IR"},
+    {"", "pause-ir", "PAUSE-IR"},
+    {"", "shift-ir", "SHIFT-IR"},
+    {"", "exit1-ir", "EXIT1-IR"},
+    {"", "exit2-ir", "EXIT2-IR"},
+    {"", "bit-tdi", "Bit (TDI)"},
+    {"", "bit-tdo", "Bit (TDO)"},
+    {"", "bitstring-tdi", "Bitstring (TDI)"},
+    {"", "bitstring-tdo", "Bitstring (TDO)"},
 };
 
-static const int jtag_row_bits_tdi_classes[] = {ANN_BIT_TDI};
-static const int jtag_row_bits_tdo_classes[] = {ANN_BIT_TDO};
-static const int jtag_row_bitstrings_tdi_classes[] = {ANN_BITSTRING_TDI};
-static const int jtag_row_bitstrings_tdo_classes[] = {ANN_BITSTRING_TDO};
+static const int jtag_row_bits_tdi_classes[] = {ANN_BIT_TDI, -1};
+static const int jtag_row_bits_tdo_classes[] = {ANN_BIT_TDO, -1};
+static const int jtag_row_bitstrings_tdi_classes[] = {ANN_BITSTRING_TDI, -1};
+static const int jtag_row_bitstrings_tdo_classes[] = {ANN_BITSTRING_TDO, -1};
 static const int jtag_row_states_classes[] = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, -1
 };
 
 static const struct srd_c_ann_row jtag_ann_rows[] = {
     {"bits-tdi", "Bits (TDI)", jtag_row_bits_tdi_classes, 1},
     {"bits-tdo", "Bits (TDO)", jtag_row_bits_tdo_classes, 1},
-    {"bitstrings-tdi", "Bitstrings (TDI)", jtag_row_bitstrings_tdi_classes, 1},
-    {"bitstrings-tdo", "Bitstrings (TDO)", jtag_row_bitstrings_tdo_classes, 1},
+    {"bitstrings-tdi", "Bitstring (TDI)", jtag_row_bitstrings_tdi_classes, 1},
+    {"bitstrings-tdo", "Bitstring (TDO)", jtag_row_bitstrings_tdo_classes, 1},
     {"states", "States", jtag_row_states_classes, 16},
 };
 
-static const char *jtag_inputs[] = {"logic"};
-static const char *jtag_outputs[] = {"jtag"};
-static const char *jtag_tags[] = {"Embedded/industrial"};
+static const char *jtag_inputs[] = {"logic", NULL};
+static const char *jtag_outputs[] = {"jtag", NULL};
+static const char *jtag_tags[] = {"Debug/trace", NULL};
 
 static void jtag_reset(struct srd_decoder_inst *di)
 {
@@ -185,7 +185,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
             if (trst == 0) {
                 if (priv->state != TEST_LOGIC_RESET) {
                     C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, priv->state,
-                              jtag_ann_labels[priv->state][1], jtag_ann_labels[priv->state][2]);
+                              jtag_ann_labels[priv->state][2]);
                     c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
                     ss_state = samplenum;
                 }
@@ -284,7 +284,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
 
         if (newstate != oldstate) {
             C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, oldstate,
-                      jtag_ann_labels[oldstate][1], jtag_ann_labels[oldstate][2]);
+                      jtag_ann_labels[oldstate][2]);
             c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
             ss_state = samplenum;
         }

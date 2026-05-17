@@ -43,17 +43,13 @@ struct dmx_priv {
 };
 
 static struct srd_channel dmx_channels[] = {
-    {"dmx", "DMX data", "Any DMX data line", 0, SRD_CHANNEL_SDATA, NULL},
-};
-
-static GVariant *invert_values[] = {
-    NULL,
+    {"dmx", "DMX data", "Any DMX data line", 0, SRD_CHANNEL_SDATA, "dec_dmx512_chan_dmx"},
 };
 
 static struct srd_decoder_option dmx_options[] = {
     {
         .id = "invert",
-        .idn = NULL,
+        .idn = "dec_dmx512_opt_invert",
         .desc = "Invert Signal?",
         .def = NULL,
         .values = NULL,
@@ -85,9 +81,9 @@ static const struct srd_c_ann_row dmx_ann_rows[] = {
     {"errors", "Errors", dmx_row_errors_classes, 1},
 };
 
-static const char *dmx_inputs[] = {"logic"};
-static const char *dmx_outputs[] = {"dmx512"};
-static const char *dmx_tags[] = {"Embedded/industrial", "Lighting"};
+static const char *dmx_inputs[] = {"logic", NULL};
+static const char *dmx_outputs[] = {NULL};
+static const char *dmx_tags[] = {"Embedded/industrial", "Lighting", NULL};
 
 static void dmx_reset(struct srd_decoder_inst *di)
 {
@@ -320,7 +316,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
 
                 {
                     char data_str[32];
-                    snprintf(data_str, sizeof(data_str), "%d / 0x%02X", s->byte_val, s->byte_val);
+                    snprintf(data_str, sizeof(data_str), "%d / 0x%x", s->byte_val, s->byte_val);
                     uint64_t data_ss = s->run_start + s->skip_per_bit;
                     uint64_t data_es = byte_end - 2 * s->skip_per_bit;
                     C_ANN_PUT(di, data_ss, data_es, s->out_ann, ANN_DATA, data_str);
@@ -403,7 +399,7 @@ struct srd_c_decoder dmx512_c_decoder = {
     .inputs = dmx_inputs,
     .num_inputs = 1,
     .outputs = dmx_outputs,
-    .num_outputs = 1,
+    .num_outputs = 0,
     .binary = NULL,
     .num_binary = 0,
     .tags = dmx_tags,
@@ -416,6 +412,16 @@ struct srd_c_decoder dmx512_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
+    GVariant *vals[] = {
+        g_variant_new_string("yes"),
+        g_variant_new_string("no"),
+    };
+    GSList *val_list = NULL;
+    for (int i = 0; i < 2; i++)
+        val_list = g_slist_append(val_list, vals[i]);
+    dmx_options[0].def = g_variant_new_string("no");
+    dmx_options[0].values = val_list;
+
     return &dmx512_c_decoder;
 }
 

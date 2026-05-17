@@ -67,6 +67,7 @@ typedef struct {
     uint64_t sof_samplenum;
     uint64_t edge_positions[32];
     int num_edge_positions;
+    int out_ann;
     int out_python;
 } can_state;
 
@@ -104,7 +105,7 @@ static void can_put_python(struct srd_decoder_inst *di, uint64_t ss, uint64_t es
         if (num_bytes > 0 && pos < (int)(sizeof(text) - 2))
             snprintf(text + pos, sizeof(text) - pos, "]");
     }
-    C_ANN_PUT(di, ss, es, s->out_python, 0, text);
+    c_decoder_put_python(di, ss, es, s->out_python, text, NULL, 0);
 }
 
 static void reset_variables(can_state *s)
@@ -177,16 +178,16 @@ static int decode_frame_end(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "CRC-15 sequence: 0x%04x", s->crc);
         snprintf(t2, sizeof(t2), "CRC-15: 0x%04x", s->crc);
         snprintf(t3, sizeof(t3), "0x%04x", s->crc);
-        C_ANN_PUT_TYPE(di, s->ss_block, samplenum, 0, ANN_CRC_SEQ, 0, t1, t2, t3);
+        C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_CRC_SEQ, t1, t2, t3);
     }
     if (bitnum == s->last_databit + s->crc_len + 1) {
         char t1[32], t2[32], t3[16];
         snprintf(t1, sizeof(t1), "CRC delimiter: %d", can_rx);
         snprintf(t2, sizeof(t2), "CRC d: %d", can_rx);
         snprintf(t3, sizeof(t3), "%d", can_rx);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_CRC_DEL, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_CRC_DEL, t1, t2, t3);
         if (can_rx != 1)
-            C_ANN_PUT(di, samplenum, samplenum, 0, ANN_WARNING,
+            C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_WARNING,
                        "CRC delimiter must be a recessive bit");
     }
     if (bitnum == s->last_databit + s->crc_len + 2) {
@@ -195,28 +196,28 @@ static int decode_frame_end(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "ACK slot: %s", ack);
         snprintf(t2, sizeof(t2), "ACK s: %s", ack);
         snprintf(t3, sizeof(t3), "%s", ack);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_ACK_SLOT, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_ACK_SLOT, t1, t2, t3);
     }
     if (bitnum == s->last_databit + s->crc_len + 3) {
         char t1[32], t2[32], t3[16];
         snprintf(t1, sizeof(t1), "ACK delimiter: %d", can_rx);
         snprintf(t2, sizeof(t2), "ACK d: %d", can_rx);
         snprintf(t3, sizeof(t3), "%d", can_rx);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_ACK_DEL, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_ACK_DEL, t1, t2, t3);
         if (can_rx != 1)
-            C_ANN_PUT(di, samplenum, samplenum, 0, ANN_WARNING,
+            C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_WARNING,
                        "ACK delimiter must be a recessive bit");
     }
     if (bitnum == s->last_databit + s->crc_len + 4)
         s->ss_block = samplenum;
 
     if (bitnum == s->last_databit + s->crc_len + 10) {
-        C_ANN_PUT_TYPE(di, s->ss_block, samplenum, 0, ANN_EOF, 0, "End of frame", "EOF", "E");
+        C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_EOF, "End of frame", "EOF", "E");
         if (s->num_rawbits >= 7) {
             uint8_t *last7 = &s->rawbits[s->num_rawbits - 7];
             if (!(last7[0]==1 && last7[1]==1 && last7[2]==1 && last7[3]==1 &&
                   last7[4]==1 && last7[5]==1 && last7[6]==1))
-                C_ANN_PUT(di, s->ss_block, samplenum, 0, ANN_WARNING,
+                C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_WARNING,
                            "End of frame (EOF) must be 7 recessive bits");
         }
         s->es_packet = samplenum;
@@ -251,8 +252,8 @@ static void decode_data_field(can_state *s, struct srd_decoder_inst *di,
                 snprintf(t1, sizeof(t1), "Data byte %d: 0x%02x", i, b);
                 snprintf(t2, sizeof(t2), "DB %d: 0x%02x", i, b);
                 snprintf(t3, sizeof(t3), "0x%02x", b);
-                C_ANN_PUT_TYPE(di, s->ss_databytebits[i * 8],
-                           s->ss_databytebits[(i + 1) * 8 - 1], 0, ANN_DATA, 0, t1, t2, t3);
+                C_ANN_PUT(di, s->ss_databytebits[i * 8],
+                           s->ss_databytebits[(i + 1) * 8 - 1], s->out_ann, ANN_DATA, t1, t2, t3);
             }
         }
         s->num_databytebits = 0;
@@ -267,14 +268,14 @@ static int decode_standard_frame(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "Reserved bit 0: %d", can_rx);
         snprintf(t2, sizeof(t2), "RB0: %d", can_rx);
         snprintf(t3, sizeof(t3), "%d", can_rx);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_RESERVED_BIT, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_RESERVED_BIT, t1, t2, t3);
 
         const char *rtr = (s->bits[12] == 1) ? "remote" : "data";
         char rt1[64], rt2[48], rt3[16];
         snprintf(rt1, sizeof(rt1), "Remote transmission request: %s frame", rtr);
         snprintf(rt2, sizeof(rt2), "RTR: %s frame", rtr);
         snprintf(rt3, sizeof(rt3), "%s", rtr);
-        C_ANN_PUT_TYPE(di, s->ss_bit12, s->ss_bit12, 0, ANN_RTR, 0, rt1, rt2, rt3);
+        C_ANN_PUT(di, s->ss_bit12, s->ss_bit12, s->out_ann, ANN_RTR, rt1, rt2, rt3);
         s->rtr_type = (s->bits[12] == 1) ? 1 : 0;
         s->dlc_start = 15;
     }
@@ -288,14 +289,14 @@ static int decode_standard_frame(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "Data length code: %d", s->dlc);
         snprintf(t2, sizeof(t2), "DLC: %d", s->dlc);
         snprintf(t3, sizeof(t3), "%d", s->dlc);
-        C_ANN_PUT_TYPE(di, s->ss_block, samplenum, 0, ANN_DLC, 0, t1, t2, t3);
+        C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_DLC, t1, t2, t3);
 
         if (s->dlc != 0 && s->rtr_type == 1) {
-            C_ANN_PUT(di, s->ss_block, samplenum, 0, ANN_WARNING,
+            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_WARNING,
                        "Data length code (DLC) != 0 is not allowed");
             s->dlc = 0;
         } else if (s->dlc > 8) {
-            C_ANN_PUT(di, s->ss_block, samplenum, 0, ANN_WARNING,
+            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_WARNING,
                        "Data length code (DLC) > 8 is not allowed");
             s->dlc = 8;
         }
@@ -329,19 +330,19 @@ static int decode_extended_frame(can_state *s, struct srd_decoder_inst *di,
         snprintf(et2, sizeof(et2), "Extended ID: %s", s_eid);
         snprintf(et3, sizeof(et3), "Extended ID");
         snprintf(et4, sizeof(et4), "%s", s_eid);
-        C_ANN_PUT_TYPE(di, s->ss_block, samplenum, 0, ANN_EXT_ID, 0, et1, et2, et3, et4);
+        C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_EXT_ID, et1, et2, et3, et4);
 
         char ft1[64], ft2[48], ft3[32];
         snprintf(ft1, sizeof(ft1), "Full Identifier: %s", s_full);
         snprintf(ft2, sizeof(ft2), "Full ID: %s", s_full);
         snprintf(ft3, sizeof(ft3), "%s", s_full);
-        C_ANN_PUT_TYPE(di, s->ss_block, samplenum, 0, ANN_FULL_ID, 0, ft1, ft2, ft3);
+        C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_FULL_ID, ft1, ft2, ft3);
 
         char st1[48], st2[32], st3[16];
         snprintf(st1, sizeof(st1), "Substitute remote request: %d", s->bits[12]);
         snprintf(st2, sizeof(st2), "SRR: %d", s->bits[12]);
         snprintf(st3, sizeof(st3), "%d", s->bits[12]);
-        C_ANN_PUT_TYPE(di, s->ss_bit12, s->ss_bit12, 0, ANN_SRR, 0, st1, st2, st3);
+        C_ANN_PUT(di, s->ss_bit12, s->ss_bit12, s->out_ann, ANN_SRR, st1, st2, st3);
     }
     if (bitnum == 32) {
         s->ss_bit32 = samplenum;
@@ -350,7 +351,7 @@ static int decode_extended_frame(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "Remote transmission request: %s frame", rtr);
         snprintf(t2, sizeof(t2), "RTR: %s frame", rtr);
         snprintf(t3, sizeof(t3), "%s", rtr);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_RTR, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_RTR, t1, t2, t3);
         s->rtr_type = (can_rx == 1) ? 1 : 0;
     }
     if (bitnum == 33) {
@@ -358,14 +359,14 @@ static int decode_extended_frame(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "Reserved bit 1: %d", can_rx);
         snprintf(t2, sizeof(t2), "RB1: %d", can_rx);
         snprintf(t3, sizeof(t3), "%d", can_rx);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_RESERVED_BIT, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_RESERVED_BIT, t1, t2, t3);
     }
     if (bitnum == 34) {
         char t1[32], t2[32], t3[16];
         snprintf(t1, sizeof(t1), "Reserved bit 0: %d", can_rx);
         snprintf(t2, sizeof(t2), "RB0: %d", can_rx);
         snprintf(t3, sizeof(t3), "%d", can_rx);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_RESERVED_BIT, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_RESERVED_BIT, t1, t2, t3);
     }
     if (bitnum == s->dlc_start)
         s->ss_block = samplenum;
@@ -377,7 +378,7 @@ static int decode_extended_frame(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "Data length code: %d", s->dlc);
         snprintf(t2, sizeof(t2), "DLC: %d", s->dlc);
         snprintf(t3, sizeof(t3), "%d", s->dlc);
-        C_ANN_PUT_TYPE(di, s->ss_block, samplenum, 0, ANN_DLC, 0, t1, t2, t3);
+        C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_DLC, t1, t2, t3);
 
         if (s->dlc != 0 && s->rtr_type == 1) {
             s->dlc = 0;
@@ -403,7 +404,7 @@ static void handle_bit(can_state *s, struct srd_decoder_inst *di,
     if (is_stuff_bit(s)) {
         char text[4];
         snprintf(text, sizeof(text), "%d", can_rx);
-        C_ANN_PUT(di, samplenum, samplenum, 0, ANN_STUFF_BIT, text);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_STUFF_BIT, text);
         s->num_bits--;
         s->curbit++;
         return;
@@ -411,15 +412,15 @@ static void handle_bit(can_state *s, struct srd_decoder_inst *di,
 
     char bit_text[4];
     snprintf(bit_text, sizeof(bit_text), "%d", can_rx);
-    C_ANN_PUT(di, samplenum, samplenum, 0, ANN_BIT, bit_text);
+    C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_BIT, bit_text);
 
     int bitnum = s->num_bits - 1;
 
     if (bitnum == 0) {
         s->ss_packet = samplenum;
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_SOF, 0, "Start of frame", "SOF", "S");
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_SOF, "Start of frame", "SOF", "S");
         if (can_rx != 0)
-            C_ANN_PUT(di, samplenum, samplenum, 0, ANN_WARNING,
+            C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_WARNING,
                        "Start of frame (SOF) must be a dominant bit");
     }
     if (bitnum == 1)
@@ -434,9 +435,9 @@ static void handle_bit(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "Identifier: %s", id_str);
         snprintf(t2, sizeof(t2), "ID: %s", id_str);
         snprintf(t3, sizeof(t3), "%s", id_str);
-        C_ANN_PUT_TYPE(di, s->ss_block, samplenum, 0, ANN_ID, 0, t1, t2, t3);
+        C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_ID, t1, t2, t3);
         if ((s->ident & 0x7f0) == 0x7f0)
-            C_ANN_PUT(di, s->ss_block, samplenum, 0, ANN_WARNING,
+            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_WARNING,
                        "Identifier bits 10..4 must not be all recessive");
     }
     if (bitnum == 12)
@@ -449,7 +450,7 @@ static void handle_bit(can_state *s, struct srd_decoder_inst *di,
         snprintf(t1, sizeof(t1), "Identifier extension bit: %s frame", ide);
         snprintf(t2, sizeof(t2), "IDE: %s frame", ide);
         snprintf(t3, sizeof(t3), "%s", ide);
-        C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_IDE, 0, t1, t2, t3);
+        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_IDE, t1, t2, t3);
     }
     if (bitnum >= 14) {
         int done = 0;
@@ -489,11 +490,7 @@ static void try_estimate_bit_width(can_state *s)
 }
 
 static struct srd_channel can_channels[] = {
-    {"can_rx", "CAN", "CAN bus line", 0, SRD_CHANNEL_SDATA, NULL},
-};
-
-static struct srd_channel can_optional_channels[] = {
-    {"can_tx", "CAN TX", "CAN bus TX line", 1, SRD_CHANNEL_SDATA, NULL},
+    {"can_rx", "CAN", "CAN bus line", 0, SRD_CHANNEL_SDATA, "dec_can_chan_can_rx"},
 };
 
 static const char *can_ann_labels[][3] = {
@@ -517,10 +514,7 @@ static const char *can_ann_labels[][3] = {
     {"", "bit", "Bit"},
 };
 
-static struct srd_decoder_option can_options[] = {
-    {"bitrate", NULL, "Bitrate (bit/s)", NULL, NULL},
-    {"sample_point", NULL, "Sample point (%)", NULL, NULL},
-};
+static struct srd_decoder_option can_options_arr[2];
 
 static const char *can_inputs[] = {"logic"};
 static const char *can_outputs[] = {"can"};
@@ -545,13 +539,14 @@ static void can_reset(struct srd_decoder_inst *di)
     s->last_databit = 999;
     s->crc_len = 15;
     s->frame_type = -1;
+    s->out_ann = 0;
     s->out_python = -1;
 }
 
 static void can_start(struct srd_decoder_inst *di)
 {
-    c_decoder_register_output(di, SRD_OUTPUT_ANN, "can");
     can_state *s = (can_state *)c_decoder_get_private(di);
+    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "can");
     s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "can");
 }
 
@@ -599,7 +594,7 @@ static void can_decode(struct srd_decoder_inst *di)
 
                 s->rawbits[s->num_rawbits++] = 0;
                 s->bits[s->num_bits++] = 0;
-                C_ANN_PUT_TYPE(di, samplenum, samplenum, 0, ANN_SOF, 0, "Start of frame", "SOF", "S");
+                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_SOF, "Start of frame", "SOF", "S");
                 s->curbit = 1;
 
                 if (s->bit_width_known)
@@ -664,9 +659,9 @@ static struct srd_c_decoder can_c_decoder = {
     .license = "gplv2+",
     .channels = can_channels,
     .num_channels = 1,
-    .optional_channels = can_optional_channels,
-    .num_optional_channels = 1,
-    .options = can_options,
+    .optional_channels = NULL,
+    .num_optional_channels = 0,
+    .options = can_options_arr,
     .num_options = 2,
     .num_annotations = NUM_ANN,
     .ann_labels = can_ann_labels,
@@ -688,8 +683,18 @@ static struct srd_c_decoder can_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
-    can_options[0].def = g_variant_new_int64(1000000);
-    can_options[1].def = g_variant_new_double(70.0);
+    can_options_arr[0].id = "bitrate";
+    can_options_arr[0].idn = "dec_can_opt_bitrate";
+    can_options_arr[0].desc = "bitrate (bits/s)";
+    can_options_arr[0].def = g_variant_new_int64(1000000);
+    can_options_arr[0].values = NULL;
+
+    can_options_arr[1].id = "sample_point";
+    can_options_arr[1].idn = "dec_can_opt_sample_point";
+    can_options_arr[1].desc = "Sample point (%)";
+    can_options_arr[1].def = g_variant_new_double(70.0);
+    can_options_arr[1].values = NULL;
+
     return &can_c_decoder;
 }
 

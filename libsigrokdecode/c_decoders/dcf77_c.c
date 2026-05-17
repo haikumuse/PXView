@@ -59,7 +59,7 @@ struct dcf77_priv {
 };
 
 static struct srd_channel dcf77_channels[] = {
-    {"data", "DATA", "DATA line", 0, SRD_CHANNEL_SDATA, NULL},
+    {"data", "DATA", "DATA line", 0, SRD_CHANNEL_SDATA, "dec_dcf77_chan_data"},
 };
 
 static const char *dcf77_inputs[] = {"logic", NULL};
@@ -68,7 +68,7 @@ static const char *dcf77_tags[] = {"Clock/timing", NULL};
 
 static const char *dcf77_ann_labels[][3] = {
     {"", "start-of-minute", "Start of minute"},
-    {"", "special-bits", "Special bits"},
+    {"", "special-bits", "Special bits (civil warnings, weather forecast)"},
     {"", "call-bit", "Call bit"},
     {"", "summer-time", "Summer time announcement"},
     {"", "cest", "CEST bit"},
@@ -177,10 +177,12 @@ static void handle_dcf77_bit(struct srd_decoder_inst *di, int bit)
     } else if (c == 16) {
         const char *not_str = (bit == 1) ? "" : "not ";
         const char *yesno = (bit == 1) ? "yes" : "no";
+        char st4[32];
         snprintf(t1, sizeof(t1), "Summer time announcement: %sactive", not_str);
         snprintf(t2, sizeof(t2), "Summer time: %sactive", not_str);
+        snprintf(st4, sizeof(st4), "Summer time: %s", yesno);
         snprintf(t3, sizeof(t3), "ST: %s", yesno);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_SUMMER_TIME, t1, t2, t3);
+        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_SUMMER_TIME, t1, t2, st4, t3);
     } else if (c == 17) {
         const char *not_str = (bit == 1) ? "" : "not ";
         const char *yesno = (bit == 1) ? "yes" : "no";
@@ -196,10 +198,12 @@ static void handle_dcf77_bit(struct srd_decoder_inst *di, int bit)
     } else if (c == 19) {
         const char *not_str = (bit == 1) ? "" : "not ";
         const char *yesno = (bit == 1) ? "yes" : "no";
+        char ls4[32];
         snprintf(t1, sizeof(t1), "Leap second announcement: %sactive", not_str);
         snprintf(t2, sizeof(t2), "Leap second: %sactive", not_str);
+        snprintf(ls4, sizeof(ls4), "Leap second: %s", yesno);
         snprintf(t3, sizeof(t3), "LS: %s", yesno);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_LEAP_SECOND, t1, t2, t3);
+        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_LEAP_SECOND, t1, t2, ls4, t3);
     } else if (c == 20) {
         if (bit == 1) {
             C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_START_OF_TIME,

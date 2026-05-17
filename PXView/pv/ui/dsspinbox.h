@@ -42,9 +42,6 @@ class DsSpinBox : public QSpinBox
 
 public:
     explicit DsSpinBox(QWidget *parent = nullptr);
-
-protected:
-    void wheelEvent(QWheelEvent *event) override;
 };
 
 /**
@@ -56,9 +53,6 @@ class DsDoubleSpinBox : public QDoubleSpinBox
 
 public:
     explicit DsDoubleSpinBox(QWidget *parent = nullptr);
-
-protected:
-    void wheelEvent(QWheelEvent *event) override;
 };
 
 } // namespace ui

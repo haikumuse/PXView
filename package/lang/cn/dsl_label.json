@@ -178,5 +178,13 @@
     {
         "id": "Stream buff Size",
         "text": "流模式buff大小"
+    },
+    {
+        "id": "Disk Cache Enable",
+        "text": "磁盘缓存"
+    },
+    {
+        "id": "Disk Cache Path",
+        "text": "缓存路径"
     }
 ]

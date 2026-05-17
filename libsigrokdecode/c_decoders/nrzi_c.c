@@ -68,7 +68,8 @@ static void nrzi_start(struct srd_decoder_inst *di)
     struct nrzi_priv *s = (struct nrzi_priv *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "nrzi");
     s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "nrzi");
-    s->preamble_len = (int)c_decoder_get_option_int(di, "preamble_len", 16);
+    const char *plen_str = c_decoder_get_option_string(di, "preamble_len", "16");
+    s->preamble_len = plen_str ? atoi(plen_str) : 16;
     s->samplerate = c_decoder_get_samplerate(di);
 }
 
@@ -174,7 +175,9 @@ static void nrzi_decode(struct srd_decoder_inst *di)
             C_ANN_PUT(di, start_sample, samplenum, s->out_ann, ANN_BIT, bit_str);
 
             if (s->out_python >= 0) {
-                C_ANN_PUT(di, start_sample, samplenum, s->out_python, 0, bit_str);
+                int32_t py_bit = (int32_t)bit_val;
+                c_decoder_put_python(di, start_sample, samplenum, s->out_python, "bit",
+                                     (unsigned char *)&py_bit, sizeof(int32_t));
             }
         }
     }
@@ -221,13 +224,13 @@ struct srd_c_decoder nrzi_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
-    nrzi_options[0].def = g_variant_new_int64(16);
+    nrzi_options[0].def = g_variant_new_string("16");
     GSList *vals = NULL;
-    vals = g_slist_append(vals, g_variant_new_int64(4));
-    vals = g_slist_append(vals, g_variant_new_int64(8));
-    vals = g_slist_append(vals, g_variant_new_int64(16));
-    vals = g_slist_append(vals, g_variant_new_int64(32));
-    vals = g_slist_append(vals, g_variant_new_int64(64));
+    vals = g_slist_append(vals, g_variant_new_string("4"));
+    vals = g_slist_append(vals, g_variant_new_string("8"));
+    vals = g_slist_append(vals, g_variant_new_string("16"));
+    vals = g_slist_append(vals, g_variant_new_string("32"));
+    vals = g_slist_append(vals, g_variant_new_string("64"));
     nrzi_options[0].values = vals;
     return &nrzi_c_decoder;
 }

@@ -338,7 +338,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
         layout.addWidget(mode_button);
         contentHeight += mode_button->sizeHint().height();
 
-        connect(mode_button, SIGNAL(pressed()), this, SLOT(channel_check()));
+        connect(mode_button, SIGNAL(clicked()), this, SLOT(channel_check()));
 
         if (plist->id == ch_mode)
           mode_button->setChecked(true);
@@ -922,7 +922,13 @@ void DeviceOptionsDock::build_dynamic_panel() {
   dyn_title->setText(title);
 
   if (title == "") {
-    _dynamic_panel->setVisible(false);
+    _dynamic_panel->setVisible(true);
+    QTimer::singleShot(500, this, [this]() {
+      if (_dynamic_panel && !_dynamic_panel->isVisible())
+        return;
+      build_dynamic_panel();
+      try_resize_scroll();
+    });
   }
 
   if (inner)
@@ -1500,7 +1506,7 @@ void DeviceOptionsDock::build_glitch_filter_panel() {
   btn_layout->addStretch();
   inner_layout->addLayout(btn_layout);
 
-  QLabel *hint_label = new QLabel("*勾选通道后，小于设定宽度的脉冲将被滤除",
+  QLabel *hint_label = new QLabel("*勾选通道并点击应用滤波后，小于设定宽度的脉冲将被滤除",
                                   _glitch_filter_group);
   hint_label->setFont(contentFont);
   inner_layout->addWidget(hint_label);
