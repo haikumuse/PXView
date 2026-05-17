@@ -17,6 +17,7 @@
 #include "slidingdrawer.h"
 
 #include <QApplication>
+#include <QTimer>
 #include <QEasingCurve>
 #include <QLabel>
 #include <QVBoxLayout>
@@ -75,8 +76,10 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
       _drawer_width(DEFAULT_DRAWER_WIDTH),
       _animation_duration(DEFAULT_ANIMATION_DURATION), _current_page(-1),
       _is_open(false), _is_animating(false), _drag_active(false),
+      _drag_margin_removed(false),
       _drag_start_drawer_width(0), _edge_grip(nullptr),
-      _left_separator(nullptr) {
+      _left_separator(nullptr),
+      _paint_count(0), _fps(60) {
   setObjectName("sliding_drawer");
   setMouseTracking(true);
 
@@ -148,6 +151,14 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
 
   // Start hidden: positioned off-screen right
   hide();
+  connect(&_fps_timer, &QTimer::timeout, this, [this]() {
+    if (_paint_count > 0) {
+      _fps = _paint_count;
+      _paint_count = 0;
+    }
+  });
+  _fps_timer.start(1000);
+
   if (parentWidget())
     parentWidget()->installEventFilter(this);
 }
@@ -407,7 +418,10 @@ void SlidingDrawer::setSlideOffset(int offset) {
 
 // ---- Events ----
 
-void SlidingDrawer::paintEvent(QPaintEvent *event) { Q_UNUSED(event); }
+void SlidingDrawer::paintEvent(QPaintEvent *event) {
+  Q_UNUSED(event);
+  _paint_count++;
+}
 
 void SlidingDrawer::resizeEvent(QResizeEvent *event) {
   Q_UNUSED(event);
@@ -437,6 +451,7 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event) {
     QMouseEvent *me = static_cast<QMouseEvent *>(event);
     if (me->button() == Qt::LeftButton && _is_open && !_is_animating) {
       _drag_active = true;
+      _drag_margin_removed = false;
       _drag_start_pos = me->globalPos();
       _drag_start_drawer_width = _drawer_width;
       grabMouse(Qt::SplitHCursor);
@@ -455,8 +470,23 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
       return;
     }
     int dx = _drag_start_pos.x() - event->globalPos().x();
-    int new_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
-    setDrawerWidth(new_width);
+    
+    // Only begin actual drag resizing once movement exceeds the system drag threshold
+    if (qAbs(dx) >= QApplication::startDragDistance()) {
+      if (!_drag_margin_removed) {
+        _drag_margin_removed = true;
+        // Asynchronously remove the push margin in the next event loop tick.
+        // This decouples the heavy layout reflow from the mouse drag event loop,
+        // eliminating any initial frame drop or sluggish start!
+        QTimer::singleShot(0, this, [this]() {
+          if (_drag_active) {
+            removePushMargin();
+          }
+        });
+      }
+      int new_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
+      setDrawerWidth(new_width, false);
+    }
   }
 
   QWidget::mouseMoveEvent(event);
@@ -477,8 +507,14 @@ void SlidingDrawer::mouseReleaseEvent(QMouseEvent *event) {
 
 void SlidingDrawer::finishDrag() {
   _drag_active = false;
+  _drag_margin_removed = false;
   releaseMouse();
   unsetCursor();
+  applyPushMargin();
+}
+
+int SlidingDrawer::get_fps() const {
+  return _fps;
 }
 
 } // namespace widgets

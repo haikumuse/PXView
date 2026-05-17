@@ -26,6 +26,7 @@
 #define DSVIEW_PV_MAINWINDOW_H
 
 #include <list>
+#include <vector>
 #include <QMainWindow>
 #include <QTranslator> 
 #include "dialogs/dsmessagebox.h"
@@ -166,6 +167,7 @@ private:
     void calc_min_height();    
     void update_title_bar_text();
     void update_disk_cache_status();
+    void update_fps();
 
     pv::view::View* current_view();
     pv::TabContext* current_context();
@@ -271,7 +273,10 @@ private:
 
     QLabel          *_disk_cache_status_label;
     QLabel          *_trig_time_label;
+    QLabel          *_fps_label;
     QTimer          _disk_cache_status_timer;
+    QTimer          _fps_timer;
+    int             _acq_count;
 
     int         _key_value;
     bool        _key_vaild;

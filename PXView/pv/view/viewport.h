@@ -117,6 +117,7 @@ public:
   void clear_measure();
   void clear_dso_xm();
   void set_need_update(bool update);
+  int get_fps();
   bool get_dso_trig_moved();
   void set_receive_len(quint64 length);
   void unshow_wait_trigger();
@@ -254,6 +255,9 @@ private:
 
   QColor _panelBgColor;
   QColor _panelTextColor;
+  int _paint_count;
+  int _fps;
+  QTimer _fps_timer;
 };
 
 } // namespace view

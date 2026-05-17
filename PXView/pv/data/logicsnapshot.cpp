@@ -1067,6 +1067,16 @@ bool LogicSnapshot::get_nxt_edge_self(uint64_t &index, bool last_sample, uint64_
         edge_hit = false;
     }
 
+    // DEBUG: verify edge position
+    if (edge_hit && sig_index == 14) {
+        bool sample_at_edge = get_sample_self(index, sig_index);
+        bool sample_before = (index > 0) ? get_sample_self(index - 1, sig_index) : last_sample;
+        if (sample_at_edge == sample_before) {
+            dsv_warn("[GlitchFilter] FAKE EDGE at %llu: before=%d at=%d (same!)",
+                     (unsigned long long)index, sample_before, sample_at_edge);
+        }
+    }
+
     return edge_hit;
 }
 
@@ -1941,53 +1951,63 @@ void LogicSnapshot::apply_glitch_filter(int sig_index, uint32_t threshold, std::
 
     std::lock_guard<std::mutex> lock(_mutex);
 
+    // 转换为绝对偏移坐标系
     _ring_sample_count += _loop_offset;
 
-    uint64_t start_sample = 0;
-    uint64_t last_start_sample = 0;
+    uint64_t end_pos = max_sample + _loop_offset;
+    uint64_t scan_pos = _loop_offset;
+
+    // 状态机记录当前确认的"稳定"电平状态
+    bool accepted_level = get_sample_self(scan_pos, sig_index);
     int last_progress = -1;
 
-    while (start_sample < max_sample)
-    {
-        uint64_t abs_pos = start_sample + _loop_offset;
-        bool current_level = get_sample_self(abs_pos, sig_index);
+    dsv_info("[GlitchFilter] START sig_index=%d threshold=%u max_sample=%llu accepted_level=%d",
+             sig_index, threshold, (unsigned long long)max_sample, accepted_level);
 
-        uint64_t edge_abs = abs_pos;
-        bool found = get_nxt_edge_self(edge_abs, current_level, max_sample + _loop_offset - 1, 0, sig_index);
+    struct FillRange {
+        uint64_t start;
+        uint64_t end;
+        bool level;
+    };
+    std::vector<FillRange> fills;
+    // 预分配批处理空间，防止频繁申请内存
+    fills.reserve(65536);
 
-        if (!found) {
-            break;
-        }
+    uint64_t loop_count = 0;
+    uint64_t glitch_count = 0;
+    uint64_t stable_count = 0;
 
-        uint64_t seg_len = edge_abs - abs_pos;
+    // 批量应用覆盖并重构 Mipmap（保证寻找下一边缘时，搜索树不失效）
+    auto apply_batch = [&]() {
+        if (fills.empty()) return;
 
-        if (seg_len == 0) {
-            start_sample++;
-            continue;
-        }
+        uint64_t batch_start = fills.front().start;
+        uint64_t batch_end = fills.back().end;
 
-        if (seg_len <= threshold) {
-            bool new_level = !current_level;
+        dsv_info("[GlitchFilter] apply_batch fills=%zu batch_start=%llu batch_end=%llu",
+                 fills.size(), (unsigned long long)batch_start, (unsigned long long)batch_end);
 
-            for (uint64_t pos = abs_pos; pos < edge_abs; )
-            {
+        for (const auto& r : fills) {
+            uint64_t start = r.start;
+            uint64_t end = r.end;
+            bool level = r.level;
+
+            for (uint64_t pos = start; pos < end; ) {
                 uint64_t idx0 = pos >> (LeafBlockPower + RootScalePower);
                 uint64_t idx1 = (pos & RootMask) >> LeafBlockPower;
 
-                if (idx0 >= _ch_data[order].size())
-                    break;
+                if (idx0 >= _ch_data[order].size()) break;
 
                 uint64_t block_start = (idx0 << (LeafBlockPower + RootScalePower)) + (idx1 << LeafBlockPower);
                 uint64_t block_end = block_start + LeafBlockSamples;
-                uint64_t seg_end = min(edge_abs, block_end);
+                uint64_t seg_end = min(end, block_end);
 
-                if (_ch_data[order][idx0].lbp[idx1] == NULL)
-                {
+                // 如果该块尚未被实例化，则分配空间
+                if (_ch_data[order][idx0].lbp[idx1] == NULL) {
                     bool const_val = (_ch_data[order][idx0].first & (1ULL << idx1)) != 0;
                     void *lbp = malloc(LeafBlockSpace);
                     if (lbp == NULL) {
                         _memory_failed = true;
-                        _ring_sample_count -= _loop_offset;
                         return;
                     }
                     if (const_val)
@@ -1996,17 +2016,18 @@ void LogicSnapshot::apply_glitch_filter(int sig_index, uint32_t threshold, std::
                         memset(lbp, 0, LeafBlockSamples / 8);
                     memset((uint8_t*)lbp + LeafBlockSamples / 8, 0, LeafBlockSpace - LeafBlockSamples / 8);
                     _ch_data[order][idx0].lbp[idx1] = lbp;
-                    _ch_data[order][idx0].tog &= ~(1ULL << idx1);
                 }
 
                 uint8_t *lbp = (uint8_t*)_ch_data[order][idx0].lbp[idx1];
 
-                for (uint64_t i = pos; i < seg_end; i++)
-                {
+                // 由于马上要改写内容，此处清除该块的跳变标志位
+                _ch_data[order][idx0].tog &= ~(1ULL << idx1);
+
+                for (uint64_t i = pos; i < seg_end; i++) {
                     uint64_t bit_offset = i & LeafMask;
                     uint64_t byte_offset = bit_offset / 8;
                     uint8_t bit_mask = 1ULL << (bit_offset % 8);
-                    if (new_level)
+                    if (level)
                         lbp[byte_offset] |= bit_mask;
                     else
                         lbp[byte_offset] &= ~bit_mask;
@@ -2014,33 +2035,126 @@ void LogicSnapshot::apply_glitch_filter(int sig_index, uint32_t threshold, std::
 
                 pos = seg_end;
             }
-
-            uint64_t edge_logical = edge_abs - _loop_offset;
-            if (edge_logical > last_start_sample && edge_logical - last_start_sample > threshold) {
-                last_start_sample = edge_logical - threshold - 1;
-                start_sample = last_start_sample;
-            } else {
-                last_start_sample = start_sample;
-                start_sample = edge_logical;
-            }
-        } else {
-            last_start_sample = start_sample;
-            start_sample = start_sample + seg_len;
         }
 
-        int progress = (int)(start_sample * 100 / max_sample);
+        // 精准回写：只重新计算被改写过的叶子节点的 Mipmap
+        // 从而完美维护查找树的同步，且大量节省 CPU 耗时
+        uint64_t start_blk = batch_start / LeafBlockSamples;
+        uint64_t end_blk = (batch_end + LeafBlockSamples - 1) / LeafBlockSamples;
+
+        for (uint64_t blk = start_blk; blk < end_blk; ++blk) {
+            uint64_t idx0 = blk / RootScale;
+            uint64_t idx1 = blk % RootScale;
+            if (idx0 < _ch_data[order].size()) {
+                recalc_mipmap(order, idx0, idx1);
+            }
+        }
+
+        fills.clear();
+    };
+
+    while (scan_pos < end_pos) {
+        bool current_scan_level = get_sample_self(scan_pos, sig_index);
+
+        // 寻找下一个边缘（跳出当前电平）
+        uint64_t edge_pos = scan_pos;
+        bool found = get_nxt_edge_self(edge_pos, current_scan_level, end_pos - 1, 0, sig_index);
+
+        if (!found) {
+            dsv_info("[GlitchFilter] no more edges at scan_pos=%llu", (unsigned long long)scan_pos);
+            break;
+        }
+
+        uint64_t pulse_start = edge_pos;
+        uint64_t pulse_end = pulse_start;
+        // 寻找脉冲的结束边缘（电平回归原始位置）
+        bool found_end = get_nxt_edge_self(pulse_end, !current_scan_level, end_pos - 1, 0, sig_index);
+
+        if (!found_end) {
+            pulse_end = end_pos;
+        }
+
+        uint64_t pulse_len = pulse_end - pulse_start;
+        loop_count++;
+
+        if (current_scan_level == accepted_level) {
+            if (pulse_len <= threshold) {
+                // 判断为毛刺：它是一个短暂偏离基准 accepted_level 的窄脉冲
+                // 用 accepted_level 覆盖这段毛刺区间
+                fills.push_back({pulse_start, pulse_end, accepted_level});
+                glitch_count++;
+
+                if (glitch_count <= 5 || glitch_count % 1000 == 0) {
+                    dsv_info("[GlitchFilter] GLITCH #%llu scan=%llu pulse=[%llu,%llu) len=%llu accepted=%d fills=%zu",
+                             (unsigned long long)glitch_count,
+                             (unsigned long long)scan_pos,
+                             (unsigned long long)pulse_start, (unsigned long long)pulse_end,
+                             (unsigned long long)pulse_len,
+                             accepted_level, fills.size());
+                }
+
+                // 跳过毛刺段，由于脉冲结束时恢复到了 accepted_level，直接从脉冲末尾继续扫描
+                scan_pos = pulse_end;
+
+                // 若堆积过多则刷入硬盘缓存及重建 Mipmap，避免占用过多内存
+                if (fills.size() >= 65536) {
+                    apply_batch();
+                    if (_memory_failed) break;
+                }
+            } else {
+                // 判断为稳定的状态迁移：新电平持续了足够长的时间
+                stable_count++;
+                dsv_info("[GlitchFilter] STABLE #%llu scan=%llu pulse=[%llu,%llu) len=%llu old_accepted=%d -> new_accepted=%d",
+                         (unsigned long long)stable_count,
+                         (unsigned long long)scan_pos,
+                         (unsigned long long)pulse_start, (unsigned long long)pulse_end,
+                         (unsigned long long)pulse_len,
+                         accepted_level, !accepted_level);
+                accepted_level = !accepted_level; // 确认新的基准电平状态
+                scan_pos = pulse_start; // 将游标设于稳定脉冲开始处，在下一次循环中作为新基准点搜索
+            }
+        } else {
+            // 防御性设计：依照状态机逻辑不会跑到这
+            dsv_warn("[GlitchFilter] UNEXPECTED current_scan_level(%d) != accepted_level(%d) at scan_pos=%llu",
+                     current_scan_level, accepted_level, (unsigned long long)scan_pos);
+            scan_pos = pulse_start;
+        }
+
+        int progress = (int)((scan_pos - _loop_offset) * 100 / max_sample);
         if (progress != last_progress && progress_callback) {
             progress_callback(progress);
             last_progress = progress;
         }
     }
 
-    for (size_t rn = 0; rn < _ch_data[order].size(); rn++) {
-        for (size_t lb = 0; lb < Scale; lb++) {
-            recalc_mipmap(order, rn, lb);
+    // 处理遗留的一批写操作
+    apply_batch();
+
+    // 验证：采样前100个点，确认数据确实被修改了
+    dsv_info("[GlitchFilter] VERIFY start: sampling first 100 points after filter");
+    for (int v = 0; v < 100; v++) {
+        uint64_t vpos = _loop_offset + v;
+        bool vlevel = get_sample_self(vpos, sig_index);
+        if (vlevel != accepted_level) {
+            dsv_info("[GlitchFilter] VERIFY pos=%llu level=%d (MISMATCH! expected=%d)",
+                     (unsigned long long)vpos, vlevel, accepted_level);
+        }
+    }
+    dsv_info("[GlitchFilter] VERIFY: also sampling fills region boundaries");
+    if (!fills.empty()) {
+        for (size_t fi = 0; fi < fills.size() && fi < 5; fi++) {
+            uint64_t vpos = fills[fi].start;
+            bool vlevel = get_sample_self(vpos, sig_index);
+            dsv_info("[GlitchFilter] VERIFY fill[%zu] start_pos=%llu level=%d expected=%d",
+                     fi, (unsigned long long)vpos, vlevel, fills[fi].level);
         }
     }
 
+    dsv_info("[GlitchFilter] END sig_index=%d loops=%llu glitches=%llu stables=%llu fills_final=%zu",
+             sig_index, (unsigned long long)loop_count, (unsigned long long)glitch_count,
+             (unsigned long long)stable_count, fills.size());
+
+    // 恢复坐标系
     _ring_sample_count -= _loop_offset;
 }
 

@@ -23,6 +23,7 @@
 #include <QPaintEvent>
 #include <QResizeEvent>
 #include <QMouseEvent>
+#include <QTimer>
 
 class QLabel;
 class QVBoxLayout;
@@ -82,6 +83,7 @@ public:
      * Typically the QVBoxLayout that contains the tab widget.
      */
     void setPushLayout(QVBoxLayout *layout);
+    int get_fps() const;
 
 signals:
     void drawerOpened(int pageIndex);
@@ -132,12 +134,17 @@ private:
 
     // Drag state (edge resize)
     bool _drag_active;
+    bool _drag_margin_removed;
     int _drag_start_drawer_width;
     QPoint _drag_start_pos;
     QWidget *_edge_grip;
     QWidget *_left_separator;
 
     static constexpr int EDGE_GRIP_WIDTH = 6;
+
+    int _paint_count;
+    int _fps;
+    QTimer _fps_timer;
 };
 
 } // namespace widgets
