@@ -149,15 +149,15 @@ SamplingBar::SamplingBar(SigSession *session, QWidget *parent)
 
   update_view_status();
 
-  connect(&_device_selector, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_device_selected()));
-  connect(&_sample_count, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_samplecount_sel(int)));
-  connect(_action_single, SIGNAL(triggered()), this, SLOT(on_collect_mode()));
-  connect(_action_repeat, SIGNAL(triggered()), this, SLOT(on_collect_mode()));
-  connect(_action_loop, SIGNAL(triggered()), this, SLOT(on_collect_mode()));
-  connect(&_sample_rate, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_samplerate_sel(int)));
+  connect(&_device_selector, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &SamplingBar::on_device_selected);
+  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &SamplingBar::on_samplecount_sel);
+  connect(_action_single, &QAction::triggered, this, &SamplingBar::on_collect_mode);
+  connect(_action_repeat, &QAction::triggered, this, &SamplingBar::on_collect_mode);
+  connect(_action_loop, &QAction::triggered, this, &SamplingBar::on_collect_mode);
+  connect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &SamplingBar::on_samplerate_sel);
 
   ADD_UI(this);
 }
@@ -273,8 +273,13 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   // 底部单选框，跨两列（第1列和第2列），靠右对齐
   grid->addLayout(modeRow, 3, 1, 1, 2, Qt::AlignRight | Qt::AlignVCenter);
 
-  connect(_mode_group, SIGNAL(buttonClicked(int)), this,
-          SLOT(on_mode_radio_clicked(int)));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  connect(_mode_group, &QButtonGroup::idClicked, this,
+          &SamplingBar::on_mode_radio_clicked);
+#else
+  connect(_mode_group, QOverload<int>::of(&QButtonGroup::buttonClicked), this,
+          &SamplingBar::on_mode_radio_clicked);
+#endif
 
   vbox->addWidget(inner);
 
@@ -500,8 +505,8 @@ void SamplingBar::update_sample_rate_selector() {
     return;
   }
 
-  disconnect(&_sample_rate, SIGNAL(currentIndexChanged(int)), this,
-             SLOT(on_samplerate_sel(int)));
+  disconnect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+             &SamplingBar::on_samplerate_sel);
 
   if (_device_agent->have_instance() == false) {
     dsv_info("SamplingBar::update_sample_rate_selector, have no device.");
@@ -542,8 +547,8 @@ void SamplingBar::update_sample_rate_selector() {
 
   update_sample_rate_selector_value();
 
-  connect(&_sample_rate, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_samplerate_sel(int)));
+  connect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &SamplingBar::on_samplerate_sel);
 
   update_sample_count_selector();
 }
@@ -597,8 +602,8 @@ void SamplingBar::update_sample_count_selector() {
     return;
   }
 
-  disconnect(&_sample_count, SIGNAL(currentIndexChanged(int)), this,
-             SLOT(on_samplecount_sel(int)));
+  disconnect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+             &SamplingBar::on_samplecount_sel);
 
   assert(!_updating_sample_count);
   _updating_sample_count = true;
@@ -716,8 +721,8 @@ void SamplingBar::update_sample_count_selector() {
   update_sample_count_selector_value();
   on_samplecount_sel(_sample_count.currentIndex());
 
-  connect(&_sample_count, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_samplecount_sel(int)));
+  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &SamplingBar::on_samplecount_sel);
 }
 
 void SamplingBar::update_sample_count_selector_value() {
@@ -799,8 +804,8 @@ double SamplingBar::hori_knob(int dir) {
     assert(false);
   }
 
-  disconnect(&_sample_count, SIGNAL(currentIndexChanged(int)), this,
-             SLOT(on_samplecount_sel(int)));
+  disconnect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+             &SamplingBar::on_samplecount_sel);
 
   if (0 == dir) {
     hori_res = commit_hori_res();
@@ -823,8 +828,8 @@ double SamplingBar::hori_knob(int dir) {
     }
   }
 
-  connect(&_sample_count, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_samplecount_sel(int)));
+  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &SamplingBar::on_samplecount_sel);
 
   return hori_res;
 }

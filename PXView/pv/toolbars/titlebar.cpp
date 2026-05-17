@@ -32,6 +32,7 @@
 #include "../log.h"
 #include "../ui/fn.h"
 #include "../ui/iconcache.h"
+#include "../ui/qtcompat.h"
 
 namespace pv {
 namespace toolbars {
@@ -147,10 +148,10 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     titleRowLayout->addWidget(_minimizeButton);
     titleRowLayout->addWidget(_maximizeButton);
 
-    connect(this, SIGNAL(normalShow()), parent, SLOT(showNormal()));
-    connect(this, SIGNAL(maximizedShow()), parent, SLOT(showMaximized()));
-    connect(_minimizeButton, SIGNAL(clicked()), parent, SLOT(showMinimized()));
-    connect(_maximizeButton, SIGNAL(clicked()), this, SLOT(showMaxRestore()));
+    connect(this, &TitleBar::normalShow, parent, &QWidget::showNormal);
+    connect(this, &TitleBar::maximizedShow, parent, &QWidget::showMaximized);
+    connect(_minimizeButton, &QAbstractButton::clicked, parent, &QWidget::showMinimized);
+    connect(_maximizeButton, &QAbstractButton::clicked, this, &TitleBar::showMaxRestore);
   }
 
   if (_isTop || _hasClose) {
@@ -160,7 +161,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     _closeButton->setIconSize(QSize(16, 16));
     _closeButton->setAutoRaise(true);
     titleRowLayout->addWidget(_closeButton);
-    connect(_closeButton, SIGNAL(clicked()), parent, SLOT(close()));
+    connect(_closeButton, &QAbstractButton::clicked, parent, &QWidget::close);
   }
 
   titleRow->setParent(this);
@@ -627,7 +628,7 @@ void TitleBar::setRestoreButton(bool max) {
 bool TitleBar::eventFilter(QObject *watched, QEvent *event) {
   if (event->type() == QEvent::MouseButtonPress) {
     QMouseEvent *me = static_cast<QMouseEvent *>(event);
-    QPoint globalPos = me->globalPos();
+    QPoint globalPos = QT_COMPAT_GLOBAL_POS(me);
 
     bool onTitleBar = rect().contains(mapFromGlobal(globalPos));
     bool onRibbon = _enableRibbon && _ribbonContainer && _ribbonContainer->isVisible() &&
@@ -645,7 +646,7 @@ bool TitleBar::eventFilter(QObject *watched, QEvent *event) {
 }
 
 void TitleBar::mousePressEvent(QMouseEvent *event) {
-  if (isOnTabBar(event->pos())) {
+  if (isOnTabBar(QT_COMPAT_POS(event))) {
     QMenuBar::mousePressEvent(event);
     return;
   }
@@ -653,8 +654,8 @@ void TitleBar::mousePressEvent(QMouseEvent *event) {
   bool ableMove = !ParentIsMaxsized();
 
   if (event->button() == Qt::LeftButton && ableMove && _is_able_drag) {
-    int x = event->pos().x();
-    int y = event->pos().y();
+    int x = QT_COMPAT_X(event);
+    int y = QT_COMPAT_Y(event);
 
     bool bTopWidow = AppControl::Instance()->GetTopWindow() == _parent;
     bool bClick = (x >= 6 && y >= 5 && x <= width() - 6);
@@ -662,7 +663,7 @@ void TitleBar::mousePressEvent(QMouseEvent *event) {
     if (!bTopWidow || bClick) {
       _is_draging = true;
 
-      _clickPos = event->globalPos();
+      _clickPos = QT_COMPAT_GLOBAL_POS(event);
 
       if (_titleParent != NULL) {
         _oldPos = _titleParent->GetParentPos();
@@ -685,8 +686,8 @@ void TitleBar::mouseMoveEvent(QMouseEvent *event) {
     int datX = 0;
     int datY = 0;
 
-    datX = (event->globalPos().x() - _clickPos.x());
-    datY = (event->globalPos().y() - _clickPos.y());
+    datX = (QT_COMPAT_GLOBAL_POS(event).x() - _clickPos.x());
+    datY = (QT_COMPAT_GLOBAL_POS(event).y() - _clickPos.y());
 
     int x = _oldPos.x() + datX;
     int y = _oldPos.y() + datY;

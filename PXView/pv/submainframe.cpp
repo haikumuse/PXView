@@ -2,6 +2,7 @@
 #include "submainframe.h"
 
 #include "toolbars/titlebar.h"
+#include "ui/qtcompat.h"
 
 #include <QVBoxLayout>
 #include <QEvent>
@@ -14,6 +15,7 @@
 #include <QApplication>
 
 #include "dsvdef.h"
+#include "ui/qtcompat.h"
 #include "config/appconfig.h"
 #include "log.h"
 
@@ -487,7 +489,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
     }
 
     if (type == QEvent::MouseMove) {
-        QPoint pt = mouse_event->globalPos();
+        QPoint pt = QT_COMPAT_GLOBAL_POS(mouse_event);
         int datX = pt.x() - _clickPos.x();
         int datY = pt.y() - _clickPos.y();
 
@@ -552,7 +554,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
         if (mouse_event->button() == Qt::LeftButton)
         if (_hit_border != 0)
             _bDraging = true;
-        _clickPos = mouse_event->globalPos();
+        _clickPos = QT_COMPAT_GLOBAL_POS(mouse_event);
         _dragStartRegion = GetFormRegion();
     }
     else if (type == QEvent::MouseButtonRelease) {
@@ -568,7 +570,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
     return QMainWindow::eventFilter(object, event);
 }
 
-bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, long *result)
+bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
 {
 #ifdef _WIN32
     if (_parentNativeWidget != NULL)
@@ -584,7 +586,7 @@ bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, long 
             case WM_NCLBUTTONDBLCLK:
             case WM_NCHITTEST:
             {
-                *result = long(SendMessageW(hwnd,
+                *result = static_cast<NativeEventResult>(SendMessageW(hwnd,
                         msg->message, msg->wParam, msg->lParam));
                 return true;
             }
@@ -592,11 +594,7 @@ bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, long 
     }
 #endif
 
-#ifdef Q_OS_DARWIN
-    return QWidget::nativeEvent(eventType, message, (long long *)result);
-#else
     return QWidget::nativeEvent(eventType, message, result);
-#endif
 }
 
 } // namespace pv

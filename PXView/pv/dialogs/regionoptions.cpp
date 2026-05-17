@@ -25,6 +25,7 @@
 #include "../sigsession.h"
 #include "../view/cursor.h"
 #include "../view/view.h"
+#include "../eventobject.h"
 
 #include "../ui/langresource.h"
 
@@ -77,8 +78,8 @@ RegionOptions::RegionOptions(view::View *view, SigSession *session, QWidget *par
     layout()->addLayout(vlayout);
     setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_REGION), "Region"));
 
-    connect(&_button_box, SIGNAL(accepted()), this, SLOT(set_region()));
-    connect(_session->device_event_object(), SIGNAL(device_updated()), this, SLOT(reject()));
+    connect(&_button_box, &QDialogButtonBox::accepted, this, &RegionOptions::set_region);
+    connect(_session->device_event_object(), &DeviceEventObject::device_updated, this, &QDialog::reject);
 
 }
 

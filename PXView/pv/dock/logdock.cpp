@@ -34,7 +34,6 @@
 #include <QFile>
 #include <QHBoxLayout>
 #include <QScrollBar>
-#include <QTextCodec>
 #include <QTextStream>
 #include <QtGlobal>
 
@@ -70,26 +69,26 @@ LogDock::LogDock(QWidget *parent)
     _level_combo->addItem(QString::number(i));
   }
   _level_combo->setCurrentIndex(AppConfig::Instance().appOptions.logLevel);
-  connect(_level_combo, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(on_level_changed(int)));
+  connect(_level_combo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &LogDock::on_level_changed);
 
   _scroll_bottom_btn = new QPushButton(_widget);
   _scroll_bottom_btn->setCheckable(true);
   _scroll_bottom_btn->setChecked(true);
   _scroll_bottom_btn->setFixedSize(28, 28);
   _scroll_bottom_btn->setObjectName("log_scroll_bottom_btn");
-  connect(_scroll_bottom_btn, SIGNAL(clicked(bool)), this,
-          SLOT(on_scroll_bottom_changed(bool)));
+  connect(_scroll_bottom_btn, &QPushButton::clicked, this,
+          &LogDock::on_scroll_bottom_changed);
 
   _refresh_btn = new QPushButton(_widget);
   _refresh_btn->setFixedHeight(28);
   _refresh_btn->setObjectName("log_refresh_btn");
-  connect(_refresh_btn, SIGNAL(clicked()), this, SLOT(on_refresh()));
+  connect(_refresh_btn, &QPushButton::clicked, this, &LogDock::on_refresh);
 
   _clear_btn = new QPushButton(_widget);
   _clear_btn->setFixedHeight(28);
   _clear_btn->setObjectName("log_clear_btn");
-  connect(_clear_btn, SIGNAL(clicked()), this, SLOT(on_clear()));
+  connect(_clear_btn, &QPushButton::clicked, this, &LogDock::on_clear);
 
   QHBoxLayout *toolbar_layout = new QHBoxLayout();
   toolbar_layout->setContentsMargins(0, 0, 0, 0);
@@ -122,10 +121,10 @@ LogDock::LogDock(QWidget *parent)
   _widget->setObjectName("logWidget");
 
   _refresh_timer.setInterval(2000);
-  connect(&_refresh_timer, SIGNAL(timeout()), this, SLOT(on_refresh()));
+  connect(&_refresh_timer, &QTimer::timeout, this, &LogDock::on_refresh);
 
   _buffer_timer.setInterval(100);
-  connect(&_buffer_timer, SIGNAL(timeout()), this, SLOT(on_flush_buffer()));
+  connect(&_buffer_timer, &QTimer::timeout, this, &LogDock::on_flush_buffer);
   _buffer_timer.start();
 
   xlog_context *ctx = dsv_log_context();

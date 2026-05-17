@@ -145,8 +145,8 @@ QWidget* Int::get_widget(QWidget *parent, bool auto_commit)
     _spin_box->setValue((int)int_val);
 
     if (auto_commit)
-        connect(_spin_box, SIGNAL(valueChanged(int)),
-            this, SLOT(on_value_changed(int)));
+        connect(_spin_box, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &Int::on_value_changed);
 
     return _spin_box;
 }

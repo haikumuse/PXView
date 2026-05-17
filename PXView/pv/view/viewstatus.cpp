@@ -41,6 +41,7 @@
 #include "../config/appconfig.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../ui/qtcompat.h"
 
 using namespace std;
 
@@ -213,7 +214,7 @@ void ViewStatus::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) { 
         for(size_t i = 0; i < _mrects.size(); i++) {
             const QRect rect = std::get<0>(_mrects[i]);
-            if (rect.contains(event->pos())) {
+            if (rect.contains(QT_COMPAT_POS(event))) {
                 _hit_rect = (int)i;
                 pv::dialogs::DsoMeasure dsoMeasureDialog(_session, _view, i, _last_sig_index);
                 dsoMeasureDialog.exec();

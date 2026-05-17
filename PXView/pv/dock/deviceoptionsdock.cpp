@@ -153,8 +153,8 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     try_resize_scroll();
   }
 
-  connect(&_mode_check_timer, SIGNAL(timeout()), this,
-          SLOT(mode_check_timeout()));
+  connect(&_mode_check_timer, &QTimer::timeout, this,
+          &DeviceOptionsDock::mode_check_timeout);
 
   _mode_check_timer.setInterval(500);
 }
@@ -338,7 +338,7 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
         layout.addWidget(mode_button);
         contentHeight += mode_button->sizeHint().height();
 
-        connect(mode_button, SIGNAL(clicked()), this, SLOT(channel_check()));
+        connect(mode_button, &QRadioButton::clicked, this, &DeviceOptionsDock::channel_check);
 
         if (plist->id == ch_mode)
           mode_button->setChecked(true);
@@ -432,10 +432,10 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   contentHeight += enable_all_probes->sizeHint().height();
   contentHeight += channel_line_height * row2 + 50;
 
-  connect(enable_all_probes, SIGNAL(clicked()), this,
-          SLOT(enable_all_probes()));
-  connect(disable_all_probes, SIGNAL(clicked()), this,
-          SLOT(disable_all_probes()));
+  connect(enable_all_probes, &QPushButton::clicked, this,
+          &DeviceOptionsDock::enable_all_probes);
+  connect(disable_all_probes, &QPushButton::clicked, this,
+          &DeviceOptionsDock::disable_all_probes);
 
   line_lay->addWidget(enable_all_probes, 1);
   line_lay->addWidget(disable_all_probes, 1);
@@ -758,7 +758,7 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
 
       if (p->name().contains("Map Default")) {
         pow->setProperty("index", probe->index);
-        connect(pow, SIGNAL(clicked()), this, SLOT(analog_channel_check()));
+        connect(qobject_cast<QPushButton*>(pow), &QPushButton::clicked, this, &DeviceOptionsDock::analog_channel_check);
       } else {
         if (probe_checkBox->isChecked() && p->name().contains("Map")) {
           bool map_default = true;
@@ -777,8 +777,8 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
     }
     _probe_options_binding_list.push_back(probe_options_binding);
 
-    connect(probe_checkBox, SIGNAL(released()), this,
-            SLOT(on_analog_channel_enable()));
+    connect(probe_checkBox, &QCheckBox::released, this,
+            &DeviceOptionsDock::on_analog_channel_enable);
 
     QString tabName = QString::fromUtf8(probe->name);
     tabName += " ";
@@ -791,8 +791,8 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
   ::ui::set_dock_form_font(this);
   _groupHeight2 = tabWidget->sizeHint().height() + 50;
 
-  connect(tabWidget, SIGNAL(currentChanged(int)), this,
-          SLOT(on_anlog_tab_changed(int)));
+  connect(tabWidget, &QTabWidget::currentChanged, this,
+          &DeviceOptionsDock::on_anlog_tab_changed);
   tabWidget->setCurrentIndex(_cur_analog_tag_index);
 }
 
@@ -825,7 +825,7 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
         config_button->setObjectName("dock_content");
         config_button->setFont(contentFont);
         grid->addWidget(config_button, 0, 0, 1, 1);
-        connect(config_button, SIGNAL(clicked()), this, SLOT(zero_adj()));
+        connect(config_button, &QPushButton::clicked, this, &DeviceOptionsDock::zero_adj);
 
         auto cali_button =
             new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MANUAL_CALIBRATION),
@@ -834,7 +834,7 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
         cali_button->setObjectName("dock_content");
         cali_button->setFont(contentFont);
         grid->addWidget(cali_button, 1, 0, 1, 1);
-        connect(cali_button, SIGNAL(clicked()), this, SLOT(on_calibration()));
+        connect(cali_button, &QPushButton::clicked, this, &DeviceOptionsDock::on_calibration);
 
         config_button->setFixedHeight(35);
         cali_button->setFixedHeight(35);

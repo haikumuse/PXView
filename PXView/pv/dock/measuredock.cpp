@@ -206,13 +206,13 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
 
     add_dist_measure();
 
-    connect(_dist_add_btn, SIGNAL(clicked()), this, SLOT(add_dist_measure()));
-    connect(_edge_add_btn, SIGNAL(clicked()), this, SLOT(add_edge_measure()));
-    connect(_fen_checkBox, SIGNAL(stateChanged(int)), _view, SLOT(set_measure_en(int)));
-    connect(_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
-    connect(_view, SIGNAL(cursor_update()), this, SLOT(cursor_update()));
-    connect(_view, SIGNAL(cursor_moving()), this, SLOT(cursor_moving()));
-    connect(_view, SIGNAL(cursor_moved()), this, SLOT(reCalc()));
+    connect(_dist_add_btn, &QAbstractButton::clicked, this, &MeasureDock::add_dist_measure);
+    connect(_edge_add_btn, &QAbstractButton::clicked, this, &MeasureDock::add_edge_measure);
+    connect(_fen_checkBox, &QCheckBox::stateChanged, _view, &view::View::set_measure_en);
+    connect(_view, &view::View::measure_updated, this, &MeasureDock::measure_updated);
+    connect(_view, &view::View::cursor_update, this, &MeasureDock::cursor_update);
+    connect(_view, &view::View::cursor_moving, this, &MeasureDock::cursor_moving);
+    connect(_view, &view::View::cursor_moved, this, &MeasureDock::reCalc);
 
     ADD_UI(this);
 }
@@ -225,21 +225,21 @@ MeasureDock::~MeasureDock()
 void MeasureDock::set_view(view::View *view)
 {
     if (_view) {
-        disconnect(_view, SIGNAL(cursor_update()), this, SLOT(cursor_update()));
-        disconnect(_view, SIGNAL(cursor_moving()), this, SLOT(cursor_moving()));
-        disconnect(_view, SIGNAL(cursor_moved()), this, SLOT(reCalc()));
-        disconnect(_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
-        disconnect(_fen_checkBox, SIGNAL(stateChanged(int)), _view, SLOT(set_measure_en(int)));
+        disconnect(_view, &view::View::cursor_update, this, &MeasureDock::cursor_update);
+        disconnect(_view, &view::View::cursor_moving, this, &MeasureDock::cursor_moving);
+        disconnect(_view, &view::View::cursor_moved, this, &MeasureDock::reCalc);
+        disconnect(_view, &view::View::measure_updated, this, &MeasureDock::measure_updated);
+        disconnect(_fen_checkBox, &QCheckBox::stateChanged, _view, &view::View::set_measure_en);
     }
 
     _view = view;
 
     if (_view) {
-        connect(_view, SIGNAL(cursor_update()), this, SLOT(cursor_update()));
-        connect(_view, SIGNAL(cursor_moving()), this, SLOT(cursor_moving()));
-        connect(_view, SIGNAL(cursor_moved()), this, SLOT(reCalc()));
-        connect(_view, SIGNAL(measure_updated()), this, SLOT(measure_updated()));
-        connect(_fen_checkBox, SIGNAL(stateChanged(int)), _view, SLOT(set_measure_en(int)));
+        connect(_view, &view::View::cursor_update, this, &MeasureDock::cursor_update);
+        connect(_view, &view::View::cursor_moving, this, &MeasureDock::cursor_moving);
+        connect(_view, &view::View::cursor_moved, this, &MeasureDock::reCalc);
+        connect(_view, &view::View::measure_updated, this, &MeasureDock::measure_updated);
+        connect(_fen_checkBox, &QCheckBox::stateChanged, _view, &view::View::set_measure_en);
     }
 }
 
@@ -505,9 +505,9 @@ void MeasureDock::build_dist_pannel()
             set_cursor_btn_color(o.end_bt);
         }
 
-        connect(del_btn, SIGNAL(clicked()), this, SLOT(del_dist_measure()));
-        connect(s_btn, SIGNAL(clicked()), this, SLOT(popup_all_coursors()));
-        connect(e_btn, SIGNAL(clicked()), this, SLOT(popup_all_coursors()));
+        connect(del_btn, &QPushButton::clicked, this, &MeasureDock::del_dist_measure);
+        connect(s_btn, &QPushButton::clicked, this, &MeasureDock::popup_all_coursors);
+        connect(e_btn, &QPushButton::clicked, this, &MeasureDock::popup_all_coursors);
     }
 
     _dist_layout->addWidget(_dist_pannel, 1, 0, 1, 7);
@@ -663,10 +663,10 @@ void MeasureDock::build_edge_pannel()
             set_cursor_btn_color(o.end_bt);
         }
 
-        connect(del_btn, SIGNAL(clicked()), this, SLOT(del_edge_measure()));
-        connect(s_btn, SIGNAL(clicked()), this, SLOT(popup_all_coursors()));
-        connect(e_btn, SIGNAL(clicked()), this, SLOT(popup_all_coursors()));
-        connect(ch_cmb, SIGNAL(currentIndexChanged(int)), this, SLOT(on_edge_channel_selected()));
+        connect(del_btn, &QPushButton::clicked, this, &MeasureDock::del_edge_measure);
+        connect(s_btn, &QPushButton::clicked, this, &MeasureDock::popup_all_coursors);
+        connect(e_btn, &QPushButton::clicked, this, &MeasureDock::popup_all_coursors);
+        connect(ch_cmb, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MeasureDock::on_edge_channel_selected);
     }
 
     _edge_layout->addWidget(_edge_pannel, 1, 0, 1, 7);
@@ -760,8 +760,8 @@ void MeasureDock::popup_all_coursors()
         cursor_btn->setFont(contentFont);
         glayout->addWidget(cursor_btn, index/4, index%4, 1, 1);
 
-        connect(cursor_btn, SIGNAL(clicked()), &cursor_dlg, SLOT(accept()));
-        connect(cursor_btn, SIGNAL(clicked()), this, SLOT(set_sel_cursor()));
+        connect(cursor_btn, &QPushButton::clicked, &cursor_dlg, &QDialog::accept);
+        connect(cursor_btn, &QPushButton::clicked, this, &MeasureDock::set_sel_cursor);
         index++;
     }
 
@@ -1137,8 +1137,8 @@ void MeasureDock::build_cursor_pannel()
         curpos_label->setFont(labelFont);
         cursor_pushButton->setFixedWidth(bt_w);
 
-        connect(del_btn, SIGNAL(clicked()), this, SLOT(del_cursor()));
-        connect(cursor_pushButton, SIGNAL(clicked()), this, SLOT(goto_cursor()));
+        connect(del_btn, &QPushButton::clicked, this, &MeasureDock::del_cursor);
+        connect(cursor_pushButton, &QPushButton::clicked, this, &MeasureDock::goto_cursor);
 
         cursor_opt_info inf = {del_btn, cursor_pushButton, curpos_label, (*it)};
         mode_rows->_opt_row_list.push_back(inf);

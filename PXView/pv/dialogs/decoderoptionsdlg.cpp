@@ -176,7 +176,7 @@ void DecoderOptionsDlg::load_options_view()
         QCheckBox *ck_trans = new QCheckBox();
         ck_trans->setFixedSize(20,20);
         ck_trans->setChecked(bLang);
-        connect(ck_trans, SIGNAL(released()), this, SLOT(on_trans_pramas()));
+        connect(ck_trans, &QCheckBox::released, this, &DecoderOptionsDlg::on_trans_pramas);
         ck_trans->setStyleSheet("margin-top:5px");
         QLabel *trans_lb = new QLabel(trans_lable);
         
@@ -256,10 +256,10 @@ void DecoderOptionsDlg::load_options_view()
         dlg->setFixedSize(w + 20,dlgHeight);
     }
  
-    connect(_start_comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(on_region_set(int)));
-    connect(_end_comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(on_region_set(int))); 
-    connect(button_box, SIGNAL(accepted()), dlg, SLOT(on_accept()));
-    connect(button_box, SIGNAL(rejected()), dlg, SLOT(reject()));
+    connect(_start_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &DecoderOptionsDlg::on_region_set);
+    connect(_end_comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &DecoderOptionsDlg::on_region_set);
+    connect(button_box, &QDialogButtonBox::accepted, this, &DecoderOptionsDlg::on_accept);
+    connect(button_box, &QDialogButtonBox::rejected, dlg, &QDialog::reject);
 }
 
 void DecoderOptionsDlg::load_decoder_forms(QWidget *container)

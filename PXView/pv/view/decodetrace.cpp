@@ -129,9 +129,9 @@ DecodeTrace::DecodeTrace(pv::SigSession *session,
     _decode_cursor1 = 0;
     _decode_cursor2 = 0;
 
-    connect(_decoder_stack, SIGNAL(new_decode_data()), this, SLOT(on_new_decode_data()));
+    connect(_decoder_stack, &data::DecoderStack::new_decode_data, this, &DecodeTrace::on_new_decode_data);
 
-    connect(_decoder_stack, SIGNAL(decode_done()), this, SLOT(on_decode_done()));
+    connect(_decoder_stack, &data::DecoderStack::decode_done, this, &DecodeTrace::on_decode_done);
 }
 
 DecodeTrace::~DecodeTrace()

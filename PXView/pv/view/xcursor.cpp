@@ -57,7 +57,7 @@ XCursor::XCursor(View &view, int order, double value0, double value1) :
     }
 
     if (_dsoSig != NULL){
-        connect(_dsoSig, SIGNAL(sig_released(void*)), this, SLOT(on_signal_deleted(void*)));
+        connect(_dsoSig, &Signal::sig_released, this, &XCursor::on_signal_deleted);
         _sig_index = _dsoSig->get_index();
     }
 }
@@ -75,7 +75,7 @@ XCursor::XCursor(const XCursor &x) :
     _sig_index = -1;
 
     if (_dsoSig != NULL){
-        connect(_dsoSig, SIGNAL(sig_released(void*)), this, SLOT(on_signal_deleted(void*)));
+        connect(_dsoSig, &Signal::sig_released, this, &XCursor::on_signal_deleted);
         _sig_index = _dsoSig->get_index();
     }
 }
@@ -103,7 +103,7 @@ void XCursor::set_channel(DsoSignal *sig)
     _dsoSig = sig;
 
     if (_dsoSig != NULL){
-        connect(_dsoSig, SIGNAL(sig_released(void*)), this, SLOT(on_signal_deleted(void*)));
+        connect(_dsoSig, &Signal::sig_released, this, &XCursor::on_signal_deleted);
         _sig_index = _dsoSig->get_index();
     }
 }
@@ -165,7 +165,7 @@ void XCursor::paint(QPainter &p, const QRect &rect, XCur_type highlight)
             _dsoSig = dynamic_cast<DsoSignal*>(sig);
 
             if (_dsoSig != NULL){
-                connect(_dsoSig, SIGNAL(sig_released(void*)), this, SLOT(on_signal_deleted(void*)));
+                connect(_dsoSig, &Signal::sig_released, this, &XCursor::on_signal_deleted);
             }
         }
     }

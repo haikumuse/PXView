@@ -140,8 +140,8 @@ void SearchComboBox::ShowDlg(QWidget *editline)
 
     edit->setFocus();
 
-    connect(edit, SIGNAL(textEdited(const QString &)), 
-                    this, SLOT(on_keyword_changed(const QString &)));
+    connect(edit, &QLineEdit::textEdited,
+                    this, &SearchComboBox::on_keyword_changed);
 
     this->show();
 }

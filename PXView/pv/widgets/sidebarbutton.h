@@ -12,6 +12,9 @@
 
 #include <QString>
 #include <QWidget>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QEnterEvent>
+#endif
 
 class SideBarButton : public QWidget {
   Q_OBJECT
@@ -63,7 +66,11 @@ protected:
   void paintEvent(QPaintEvent *event) override;
   void mousePressEvent(QMouseEvent *event) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  void enterEvent(QEnterEvent *event) override;
+#else
   void enterEvent(QEvent *event) override;
+#endif
   void leaveEvent(QEvent *event) override;
 
 private:

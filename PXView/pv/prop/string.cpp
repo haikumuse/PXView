@@ -52,8 +52,8 @@ QWidget* String::get_widget(QWidget *parent, bool auto_commit)
 	g_variant_unref(value);
 
 	if (auto_commit)
-		connect(_line_edit, SIGNAL(textEdited(const QString&)),
-			this, SLOT(on_text_edited(const QString&)));
+		connect(_line_edit, &QLineEdit::textEdited,
+			this, &String::on_text_edited);
 
 	return _line_edit;
 }

@@ -28,8 +28,7 @@ namespace pv {
 namespace widgets {
 
 DecoderMenu::DecoderMenu(QWidget *parent, bool first_level_decoder) :
-	QMenu(parent),
-	_mapper(this)
+	QMenu(parent)
 {
 	GSList *l = g_slist_sort(g_slist_copy(
 		(GSList*)srd_decoder_list()), decoder_name_cmp);
@@ -37,24 +36,16 @@ DecoderMenu::DecoderMenu(QWidget *parent, bool first_level_decoder) :
 	{
 		const srd_decoder *const d = (srd_decoder*)l->data;
 		assert(d);
-
 		const bool have_probes = (d->channels || d->opt_channels) != 0;
 		if (first_level_decoder == have_probes) {
-			QAction *const action =
-				addAction(QString::fromUtf8(d->name));
-            action->setData(QVariant::fromValue(l->data));
-			_mapper.setMapping(action, action);
-			connect(action, SIGNAL(triggered()),
-				&_mapper, SLOT(map()));
+			QAction *const action = addAction(QString::fromUtf8(d->name));
+			action->setData(QVariant::fromValue(l->data));
+			connect(action, &QAction::triggered, this, [this, action]() {
+				on_action(action);
+			});
 		}
 	}
 	g_slist_free(l);
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-	connect(&_mapper, SIGNAL(mappedObject(QObject*)), this, SLOT(on_action(QObject*)));
-#else
-	connect(&_mapper, SIGNAL(mapped(QObject*)), this, SLOT(on_action(QObject*)));
-#endif
 }
 
 int DecoderMenu::decoder_name_cmp(const void *a, const void *b)

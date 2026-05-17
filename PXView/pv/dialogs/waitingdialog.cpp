@@ -79,10 +79,10 @@ WaitingDialog::WaitingDialog(QWidget *parent, SigSession *session, int key) :
 
     index = 0;
     timer = new QTimer();
-    connect(timer, SIGNAL(timeout()), this, SLOT(changeText()));
-    connect(&_button_box, SIGNAL(accepted()), this, SLOT(accept()));
-    connect(&_button_box, SIGNAL(rejected()), this, SLOT(reject()));
-    connect(_session->device_event_object(), SIGNAL(device_updated()), this, SLOT(stop()));
+    connect(timer, &QTimer::timeout, this, &WaitingDialog::changeText);
+    connect(&_button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(&_button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(_session->device_event_object(), &DeviceEventObject::device_updated, this, &WaitingDialog::stop);
 
     QVBoxLayout *mlayout = new QVBoxLayout();
     mlayout->addWidget(warning_tips, Qt::AlignHCenter);
@@ -120,7 +120,7 @@ void WaitingDialog::accept()
     dlg.setCancelButton(NULL);
 
     QFutureWatcher<void> watcher;
-    connect(&watcher,SIGNAL(finished()),&dlg,SLOT(cancel()));
+    connect(&watcher, &QFutureWatcher<void>::finished, &dlg, &QProgressDialog::cancel);
     watcher.setFuture(future);
 
     dlg.exec();
@@ -149,7 +149,7 @@ void WaitingDialog::reject()
     dlg.setCancelButton(NULL);
 
     QFutureWatcher<void> watcher;
-    connect(&watcher,SIGNAL(finished()),&dlg,SLOT(cancel()));
+    connect(&watcher, &QFutureWatcher<void>::finished, &dlg, &QProgressDialog::cancel);
     watcher.setFuture(future);
 
     dlg.exec();

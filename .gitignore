@@ -1,9 +1,10 @@
 # Build directories
 build/
+build-qt6/
 build.dir/
 install.dir/
+install-qt6.dir/
 package/
-
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/

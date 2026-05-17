@@ -24,7 +24,6 @@
 #define DSVIEW_PV_WIDGETS_DECODERMENU_H
 
 #include <QMenu>
-#include <QSignalMapper>
 
 struct srd_decoder;
 
@@ -50,7 +49,7 @@ signals:
     void selected();
 
 private:
-	QSignalMapper _mapper;
+
 };
 
 } // widgets

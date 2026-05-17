@@ -49,10 +49,8 @@
 #include <QTextStream>
 #include <list>
 
-#ifdef _WIN32
-#include <QTextCodec>
-#endif
- 
+
+
 #include <libsigrokdecode.h>
 #include "config/appconfig.h"
 #include "dsvdef.h"

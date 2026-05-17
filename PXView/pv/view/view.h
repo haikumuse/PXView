@@ -397,17 +397,18 @@ private slots:
 
   void marker_time_changed();
   void on_traces_moved();
-  void set_trig_pos(int percent);
 
   // calibration for oscilloscope
   void show_calibration();
-  // lissajous figure
-  void show_lissajous(bool show);
   void on_measure_updated();
 
   void splitterMoved(int pos, int index);
   void on_calibration_closed();
   void on_header_collapse_changed(bool collapsed);
+
+public slots:
+  void set_trig_pos(int percent);
+  void show_lissajous(bool show);
 
 private:
   void set_trig_cursor_posistion(uint64_t percent);

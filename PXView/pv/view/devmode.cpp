@@ -38,6 +38,7 @@
 #include "../ui/langresource.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../ui/qtcompat.h"
 #include "../ui/iconcache.h"
 
 
@@ -98,8 +99,8 @@ DevMode::DevMode(QWidget *parent, SigSession *session) :
 
     setLayout(layout);
 
-    connect(_close_button, SIGNAL(clicked()), this, SLOT(on_close()));
-    connect(_collapse_btn, SIGNAL(clicked()), this, SLOT(on_collapse_toggle()));
+    connect(_close_button, &QAbstractButton::clicked, this, &DevMode::on_close);
+    connect(_collapse_btn, &QAbstractButton::clicked, this, &DevMode::on_collapse_toggle);
 
     ADD_UI(this);
 }
@@ -151,7 +152,7 @@ void DevMode::set_device()
         else if (md == DSO)
             action->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_DEVICE_MODE_DSO), "Oscilloscope"));
 
-        connect(action, SIGNAL(triggered()), this, SLOT(on_mode_change()));
+        connect(action, &QAction::triggered, this, &DevMode::on_mode_change);
 
         _mode_list[action] = mode;
         int cur_mode = _device_agent->get_work_mode();
@@ -282,7 +283,7 @@ void DevMode::mouseReleaseEvent(QMouseEvent *event)
 void DevMode::mouseMoveEvent(QMouseEvent *event)
 {
 	assert(event);
-	_mouse_point = event->pos();
+	_mouse_point = QT_COMPAT_POS(event);
 	update();
 }
 

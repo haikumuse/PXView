@@ -157,7 +157,7 @@ void Trace::set_view(pv::view::View *view)
 {
 	assert(view);
 	_view = view;
-    connect(_view, SIGNAL(resize()), this, SLOT(resize()));
+    connect(_view, &View::resize, this, &Trace::resize);
 }
 
 void Trace::set_viewport(pv::view::Viewport *viewport)

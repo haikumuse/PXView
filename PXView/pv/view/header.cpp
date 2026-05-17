@@ -44,6 +44,7 @@
 #include "../sigsession.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
+#include "../ui/qtcompat.h"
 #include "analogsignal.h"
 #include "decodetrace.h"
 #include "dsosignal.h"
@@ -76,8 +77,8 @@ Header::Header(View &parent) : QWidget(&parent), _view(parent) {
 
   setMouseTracking(true);
 
-  connect(nameEdit, SIGNAL(editingFinished()), this,
-          SLOT(on_action_set_name_triggered()));
+  connect(nameEdit, &QLineEdit::editingFinished, this,
+          &Header::on_action_set_name_triggered);
 
   ADD_UI(this);
 }
@@ -232,7 +233,7 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event) {
   _view.get_traces(ALL_VIEW, traces);
 
   if (event->button() & Qt::LeftButton) {
-    _mouse_down_point = event->pos();
+    _mouse_down_point = QT_COMPAT_POS(event);
 
     // Save the offsets of any Traces which will be dragged
     for (auto t : traces) {
@@ -242,7 +243,7 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event) {
 
     // Select the Trace if it has been clicked
     for (auto t : traces) {
-      if (t->mouse_double_click(width(), event->pos()))
+      if (t->mouse_double_click(width(), QT_COMPAT_POS(event)))
         break;
     }
   }
@@ -265,7 +266,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
   if (_view.session().get_device()->get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(ALL_VIEW, traces);
-    int mouseY = event->pos().y() + _view.get_vOffset();
+    int mouseY = QT_COMPAT_POS(event).y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
 
     for (int i = 0; i < (int)traces.size() - 1; i++) {
@@ -280,7 +281,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
       if (abs(mouseY - traceBottom) < HitBorderMargin) {
         _resize_trace_upper = traces[i];
         _resize_trace_lower = traces[i + 1];
-        _resize_mouse_down_y = event->pos().y();
+        _resize_mouse_down_y = QT_COMPAT_POS(event).y();
         _resize_upper_height = traces[i]->get_totalHeight();
         _resize_lower_height = traces[i + 1]->get_totalHeight();
         return;
@@ -289,7 +290,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
   }
 
   if (event->button() & Qt::LeftButton) {
-    _mouse_down_point = event->pos() + QPoint(0, _view.get_vOffset());
+    _mouse_down_point = QT_COMPAT_POS(event) + QPoint(0, _view.get_vOffset());
 
     // Save the offsets of any Traces which will be dragged
     for (auto t : traces) {
@@ -298,7 +299,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
     }
 
     // Select the Trace if it has been clicked
-    const auto mTrace = get_mTrace(action, event->pos());
+    const auto mTrace = get_mTrace(action, QT_COMPAT_POS(event));
     if (action == Trace::COLOR && mTrace) {
       _colorFlag = true;
     } else if (action == Trace::NAME && mTrace) {
@@ -326,7 +327,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
         // Disable set trigger from left pannel when capturing.
         break;
       }
-      if (t->mouse_press(width(), event->pos()))
+      if (t->mouse_press(width(), QT_COMPAT_POS(event)))
         break;
     }
 
@@ -355,7 +356,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
 
   // judge for color / name / trigger / move
   int action;
-  const auto mTrace = get_mTrace(action, event->pos());
+  const auto mTrace = get_mTrace(action, QT_COMPAT_POS(event));
 
   if (mTrace) {
     if (action == Trace::COLOR && _colorFlag) {
@@ -571,10 +572,10 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
     return;
   }
 
-  _mouse_point = event->pos() + QPoint(0, _view.get_vOffset());
+  _mouse_point = QT_COMPAT_POS(event) + QPoint(0, _view.get_vOffset());
 
   if (_resize_trace_upper && _resize_trace_lower) {
-    int deltaY = event->pos().y() - _resize_mouse_down_y;
+    int deltaY = QT_COMPAT_POS(event).y() - _resize_mouse_down_y;
     int newUpperHeight = _resize_upper_height + deltaY;
 
     if (newUpperHeight >= View::MinSignalHeight) {
@@ -586,7 +587,7 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
 
   // Move the Traces if we are dragging
   if (!_drag_traces.empty()) {
-    const int delta = event->pos().y() - _mouse_down_point.y();
+    const int delta = QT_COMPAT_POS(event).y() - _mouse_down_point.y();
 
     for (auto i = _drag_traces.begin(); i != _drag_traces.end(); i++) {
       const auto t = (*i).first;

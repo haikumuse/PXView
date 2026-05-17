@@ -83,12 +83,12 @@ TrigBar::TrigBar(SigSession *session, QWidget *parent) :
     _display_menu->addMenu(_themes);
     _display_menu->addAction(_action_dispalyOptions);
 
-    connect(_action_fft, SIGNAL(triggered()), this, SLOT(on_actionFft_triggered()));
-    connect(_action_math, SIGNAL(triggered()), this, SLOT(on_actionMath_triggered()));
-    connect(_action_lissajous, SIGNAL(triggered()), this, SLOT(on_actionLissajous_triggered()));
-    connect(_dark_style, SIGNAL(triggered()), this, SLOT(on_actionDark_triggered()));
-    connect(_light_style, SIGNAL(triggered()), this, SLOT(on_actionLight_triggered()));
-    connect(_action_dispalyOptions, SIGNAL(triggered()), this, SLOT(on_display_setting()));
+    connect(_action_fft, &QAction::triggered, this, &TrigBar::on_actionFft_triggered);
+    connect(_action_math, &QAction::triggered, this, &TrigBar::on_actionMath_triggered);
+    connect(_action_lissajous, &QAction::triggered, this, &TrigBar::on_actionLissajous_triggered);
+    connect(_dark_style, &QAction::triggered, this, &TrigBar::on_actionDark_triggered);
+    connect(_light_style, &QAction::triggered, this, &TrigBar::on_actionLight_triggered);
+    connect(_action_dispalyOptions, &QAction::triggered, this, &TrigBar::on_display_setting);
 
     ADD_UI(this);
 }

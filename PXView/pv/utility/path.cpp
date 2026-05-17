@@ -22,7 +22,11 @@
 
 #include "path.h"
 #ifdef _WIN32
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QStringEncoder>
+#else
 #include <QTextCodec>
+#endif
 #include "../log.h"
 #include <string.h>
 #endif
@@ -48,21 +52,29 @@ namespace path{
     std::string ToUnicodePath(QString path)
     {
         std::string str;
-         
 #ifdef _WIN32
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        auto encoder = QStringEncoder(QStringEncoder::System);
+        if (encoder.isValid()) {
+            QByteArray encoded = encoder.encode(path);
+            str = encoded.data();
+        } else {
+            dsv_err("Error: can't get System encoder");
+            str = path.toUtf8().data();
+        }
+#else
         QTextCodec *codec = QTextCodec::codecForName("System");
-        if (codec != NULL){
+        if (codec != NULL) {
             QByteArray str_tmp = codec->fromUnicode(path);
             str = str_tmp.data();
-        } 
-        else{
+        } else {
             dsv_err("Error: can't get \"System\" page code");
             str = path.toUtf8().data();
-        }       
-#else
-        str = path.toUtf8().data();        
+        }
 #endif
-
+#else
+        str = path.toUtf8().data();
+#endif
         return str;
     }
 }

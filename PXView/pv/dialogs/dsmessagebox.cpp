@@ -89,7 +89,7 @@ DSMessageBox::DSMessageBox(QWidget *parent,const QString title) :
 
     setLayout(_layout); 
 
-    connect(_msg, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(on_button(QAbstractButton*)));
+    connect(_msg, &QMessageBox::buttonClicked, this, &DSMessageBox::on_button);
 }
 
 

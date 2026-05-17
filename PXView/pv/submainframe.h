@@ -9,6 +9,7 @@
 #include <QRect>
 
 #include "toolbars/titlebar.h"
+#include "ui/qtcompat.h"
 
 namespace pv {
 
@@ -62,9 +63,9 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override;
 
 #ifdef Q_OS_DARWIN
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+    bool nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result);
 #else
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result) override;
 #endif
 
 private:

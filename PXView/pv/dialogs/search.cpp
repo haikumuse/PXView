@@ -84,7 +84,7 @@ Search::Search(QWidget *parent, SigSession *session, std::map<uint16_t, QString>
             search_layout->addWidget(new QLabel(QString::number(logicSig->get_index())), index, 1, Qt::AlignRight);
             search_layout->addWidget(search_lineEdit, index, 2);
 
-            connect(search_lineEdit, SIGNAL(editingFinished()), this, SLOT(format()));
+            connect(search_lineEdit, &QLineEdit::editingFinished, this, &Search::format);
 
             index++;
         }
@@ -100,8 +100,8 @@ Search::Search(QWidget *parent, SigSession *session, std::map<uint16_t, QString>
     layout()->addLayout(search_layout);
     setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_OPTIONS), "Search Options"));
 
-    connect(&search_buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
-    connect(&search_buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
+    connect(&search_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(&search_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 Search::~Search()

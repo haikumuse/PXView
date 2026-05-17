@@ -29,6 +29,7 @@
 #include "../view/dsosignal.h"
 #include "../view/spectrumtrace.h"
 #include "../dsvdef.h"
+#include "../eventobject.h"
 #include "../log.h"
 
 #include "../ui/langresource.h"
@@ -222,11 +223,11 @@ FftOptions::FftOptions(QWidget *parent, SigSession *session) :
     layout()->addLayout(_layout);
     setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FFT_OPTIONS), "FFT Options"));
 
-    connect(&_button_box, SIGNAL(accepted()), this, SLOT(accept()));
-    connect(&_button_box, SIGNAL(rejected()), this, SLOT(reject()));
-    connect(_window_combobox, SIGNAL(currentIndexChanged(int)), this, SLOT(window_changed(int)));
-    connect(_len_combobox, SIGNAL(currentIndexChanged(int)), this, SLOT(len_changed(int)));
-    connect(_session->device_event_object(), SIGNAL(device_updated()), this, SLOT(reject()));
+    connect(&_button_box, &QDialogButtonBox::accepted, this, &FftOptions::accept);
+    connect(&_button_box, &QDialogButtonBox::rejected, this, &FftOptions::reject);
+    connect(_window_combobox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &FftOptions::window_changed);
+    connect(_len_combobox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &FftOptions::len_changed);
+    connect(_session->device_event_object(), &DeviceEventObject::device_updated, this, &QDialog::reject);
 }
 
 FftOptions::~FftOptions(){

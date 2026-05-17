@@ -210,8 +210,8 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
 
   _table_view->viewport()->installEventFilter(this);
 
-  connect(_table_view, SIGNAL(entered(const QModelIndex &)), this,
-          SLOT(on_table_hover(const QModelIndex &)));
+  connect(_table_view, &QAbstractItemView::entered, this,
+          &ProtocolDock::on_table_hover);
 
   _matchs_title_label = new QLabel();
   _matchs_title_label->setObjectName("dock_label");
@@ -249,28 +249,28 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
 
   split_widget->setObjectName("protocolWidget");
 
-  connect(_dn_nav_button, SIGNAL(clicked()), this, SLOT(nav_table_view()));
-  connect(_bot_save_button, SIGNAL(clicked()), this, SLOT(export_table_view()));
-  connect(_bot_set_button, SIGNAL(clicked()), this, SLOT(set_model()));
-  connect(_pre_button, SIGNAL(clicked()), this, SLOT(search_pre()));
-  connect(_nxt_button, SIGNAL(clicked()), this, SLOT(search_nxt()));
-  connect(_pro_add_button, SIGNAL(clicked()), this, SLOT(on_add_protocol()));
-  connect(_del_all_button, SIGNAL(clicked()), this,
-          SLOT(on_del_all_protocol()));
+  connect(_dn_nav_button, &QPushButton::clicked, this, &ProtocolDock::nav_table_view);
+  connect(_bot_save_button, &QPushButton::clicked, this, &ProtocolDock::export_table_view);
+  connect(_bot_set_button, &QPushButton::clicked, this, &ProtocolDock::set_model);
+  connect(_pre_button, &QPushButton::clicked, this, &ProtocolDock::search_pre);
+  connect(_nxt_button, &QPushButton::clicked, this, &ProtocolDock::search_nxt);
+  connect(_pro_add_button, &QPushButton::clicked, this, &ProtocolDock::on_add_protocol);
+  connect(_del_all_button, &QPushButton::clicked, this,
+          &ProtocolDock::on_del_all_protocol);
 
-  connect(this, SIGNAL(protocol_updated()), this, SLOT(update_model()));
-  connect(_table_view, SIGNAL(clicked(QModelIndex)), this,
-          SLOT(item_clicked(QModelIndex)));
+  connect(this, &ProtocolDock::protocol_updated, this, &ProtocolDock::update_model);
+  connect(_table_view, &QAbstractItemView::clicked, this,
+          &ProtocolDock::item_clicked);
 
   connect(_table_view->horizontalHeader(),
-          SIGNAL(sectionResized(int, int, int)), this,
-          SLOT(column_resize(int, int, int)));
+          &QHeaderView::sectionResized, this,
+          &ProtocolDock::column_resize);
 
-  connect(_pro_search_button, SIGNAL(clicked()), this,
-          SLOT(show_protocol_select()));
+  connect(_pro_search_button, &QAbstractButton::clicked, this,
+          &ProtocolDock::show_protocol_select);
 
-  connect(_ann_search_edit, SIGNAL(editingFinished()), this,
-          SLOT(search_changed()));
+  connect(_ann_search_edit, &QLineEdit::editingFinished, this,
+          &ProtocolDock::search_changed);
 
   ADD_UI(this);
 }
@@ -501,8 +501,8 @@ bool ProtocolDock::add_protocol_by_id(
   // progress connection
   const auto &decode_sigs = _session->get_decode_signals();
   protocol_updated();
-  connect(decode_sigs.back(), SIGNAL(decoded_progress(int)), this,
-          SLOT(decoded_progress(int)));
+  connect(decode_sigs.back(), &view::DecodeTrace::decoded_progress, this,
+          &ProtocolDock::decoded_progress);
 
   adjustPannelSize();
 
@@ -513,8 +513,8 @@ void ProtocolDock::rebuild_protocol_layers() {
   for (auto layer : _protocol_lay_items) {
     if (layer->_trace) {
       auto dt = static_cast<view::DecodeTrace *>(layer->_trace);
-      disconnect(dt, SIGNAL(decoded_progress(int)), this,
-                 SLOT(decoded_progress(int)));
+      disconnect(dt, &view::DecodeTrace::decoded_progress, this,
+                 &ProtocolDock::decoded_progress);
     }
     _top_layout->removeItem(layer);
     DESTROY_QT_LATER(layer);
@@ -553,8 +553,8 @@ void ProtocolDock::rebuild_protocol_layers() {
       layer->enable_format(dstatus->m_bNumeric);
     }
 
-    connect(trace, SIGNAL(decoded_progress(int)), this,
-            SLOT(decoded_progress(int)));
+    connect(trace, &view::DecodeTrace::decoded_progress, this,
+            &ProtocolDock::decoded_progress);
   }
 
   protocol_updated();
@@ -985,7 +985,7 @@ void ProtocolDock::search_update() {
     dlg.setCancelButton(NULL);
 
     QFutureWatcher<void> watcher;
-    connect(&watcher, SIGNAL(finished()), &dlg, SLOT(cancel()));
+    connect(&watcher, &QFutureWatcher<void>::finished, &dlg, &QProgressDialog::cancel);
     watcher.setFuture(future);
 
     dlg.exec();

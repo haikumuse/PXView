@@ -23,6 +23,7 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include "../log.h"
+#include "../ui/qtcompat.h"
 
 namespace pv {
 namespace widgets {
@@ -489,7 +490,7 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event) {
     if (me->button() == Qt::LeftButton && _is_open && !_is_animating) {
       _drag_active = true;
       _drag_margin_removed = false;
-      _drag_start_pos = me->globalPos();
+      _drag_start_pos = QT_COMPAT_GLOBAL_POS(me);
       _drag_start_drawer_width = _drawer_width;
       grabMouse(Qt::SplitHCursor);
       return true;
@@ -509,7 +510,7 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
       QWidget::mouseMoveEvent(event);
       return;
     }
-    int dx = _drag_start_pos.x() - event->globalPos().x();
+    int dx = _drag_start_pos.x() - QT_COMPAT_GLOBAL_POS(event).x();
     
     // Only begin actual drag resizing once movement exceeds the system drag threshold
     if (qAbs(dx) >= QApplication::startDragDistance()) {

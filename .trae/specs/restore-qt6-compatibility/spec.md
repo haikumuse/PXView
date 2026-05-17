@@ -55,18 +55,26 @@ PXView 项目原本支持 Qt5/Qt6 双版本编译，但当前代码库中 Qt6 �
 - **THEN** 通过 `globalPosition().toPoint()` 和 `position().toPoint()` 获取正确的整数坐标
 
 ### Requirement: QTextCodec 替换为 QStringConverter
-所有 `QTextCodec` 使用 SHALL 替换为 `QStringConverter`/`QStringEncoder`，不依赖 Qt5Compat 模块。
+所有 `QTextCodec` 使用 SHALL 替换为 `QStringConverter`/`QStringEncoder`，不依赖 Qt5Compat 模块。所有无用的 `#include <QTextCodec>` SHALL 移除。
 
 #### Scenario: Qt6 下编码转换
 - **WHEN** 在 Windows 上使用 Qt6 进行编码转换
 - **THEN** 使用 `QStringEncoder`/`QStringDecoder` 替代 `QTextCodec`，功能等价
 
+#### Scenario: Qt6 下无 QTextCodec 头文件引用
+- **WHEN** 使用 Qt6 编译
+- **THEN** 不引用任何 QTextCodec 头文件，包括无用的 include
+
 ### Requirement: QSignalMapper 替换为 lambda
-所有 `QSignalMapper` 使用 SHALL 替换为 lambda connect 模式。
+所有 `QSignalMapper` 使用 SHALL 替换为 lambda connect 模式。所有无用的 `#include <QSignalMapper>` SHALL 移除。
 
 #### Scenario: DecoderMenu 信号映射
 - **WHEN** 用户在 DecoderMenu 中选择一个解码器
 - **THEN** 通过 lambda 捕获 action 对象，正确传递到 `on_action` 槽函数
+
+#### Scenario: Qt6 下无 QSignalMapper 头文件引用
+- **WHEN** 使用 Qt6 编译
+- **THEN** 不引用任何 QSignalMapper 头文件，包括无用的 include
 
 ### Requirement: QFontDatabase API 迁移
 `QFontDatabase::addApplicationFont()` 和 `QFontDatabase::applicationFontFamilies()` SHALL 在 Qt6 下使用实例方法调用。
@@ -113,3 +121,33 @@ C++ 编译标准从 `c++11` 修改为 `c++17`。Qt6 最低要求 C++17，Qt5 也
 ### Requirement: Qt5WinExtras 依赖
 **Reason**: Qt6 已移除 Qt5WinExtras 模块
 **Migration**: Windows 任务栏进度功能改用 Win32 ITaskbarList3 COM 接口实现，通过条件编译在 Qt5/Qt6 下均可用
+
+## 当前实施状态
+
+### 已完成（前一轮会话）
+- CMakeLists.txt Qt5/Qt6 双版本构建逻辑 ✅
+- qtcompat.h 兼容性辅助头文件 ✅
+- nativeEvent 签名修复（mainframe, submainframe, winshadow）✅
+- WinTaskbarProgress 替代 Qt5WinExtras ✅
+- QMouseEvent::globalPos() 大部分迁移 ✅
+- QMouseEvent::pos() 大部分迁移 ✅
+- QTextCodec → QStringConverter（encoding.cpp, path.cpp）✅
+- QSignalMapper → lambda（decodermenu.cpp 实现）✅
+- QFontDatabase 迁移（main.cpp）✅
+- High DPI 属性守卫（main.cpp）✅
+- QDesktopWidget 清理 ✅
+- QPixmap::grabWidget 替换 ✅
+- SIGNAL/SLOT 全量迁移（514+ 处）✅
+- Qt5 编译验证通过 ✅
+
+### 仍需修复（本轮发现 10 处遗漏）
+1. **logdock.cpp:37** — 无用 `#include <QTextCodec>` 无版本守卫
+2. **decodermenu.h:27** — 无用 `#include <QSignalMapper>` 无版本守卫
+3. **titlebar.cpp:649** — `event->pos()` 未使用 QT_COMPAT_POS 宏
+4. **titlebar.cpp:657-658** — `event->pos().x()/y()` 未使用 QT_COMPAT_X/Y 宏
+5. **titlebar.cpp:666** — `event->globalPos()` 未使用 QT_COMPAT_GLOBAL_POS 宏
+6. **mainframe.cpp:475** — `mouse_event->globalPos()` 未使用 QT_COMPAT_GLOBAL_POS 宏
+7. **submainframe.cpp:557** — `mouse_event->globalPos()` 未使用 QT_COMPAT_GLOBAL_POS 宏
+8. **slidingdrawer.cpp:513** — `event->globalPos()` 未使用 QT_COMPAT_GLOBAL_POS 宏
+9. **Qt6 编译验证** — 尚未在 Qt6 环境下验证编译
+10. **viewport.cpp 滚轮事件** — 使用内联版本检查而非 qtcompat.h 宏（风格不统一，功能正确）

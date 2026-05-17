@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 	}
 
 	//----------------------HightDpiScaling
-#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
+#if QT_VERSION >= QT_VERSION_CHECK(5,6,0) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 bool bHighScale = true;
 
 #ifdef _WIN32
@@ -174,9 +174,18 @@ bool bHighScale = true;
 
     // 载入全局字体
     QFont font = a.font();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QFontDatabase fontDb;
+    int fontId = fontDb.addApplicationFont(":/fonts/SourceHanSansCN-Regular.otf");
+#else
     int fontId = QFontDatabase::addApplicationFont(":/fonts/SourceHanSansCN-Regular.otf");
+#endif
     if (fontId != -1) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QStringList fontFamilies = fontDb.applicationFontFamilies(fontId);
+#else
         QStringList fontFamilies = QFontDatabase::applicationFontFamilies(fontId);
+#endif
         if (!fontFamilies.isEmpty()) {
             font.setFamily(fontFamilies.at(0));
             font.setPointSizeF(9.0);
@@ -185,9 +194,13 @@ bool bHighScale = true;
             a.setFont(font);
         }
     }
-    // 同时加载 OPPOSans 作为备选字体
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    fontDb.addApplicationFont(":/fonts/OPPOSans-M.ttf");
+    fontDb.addApplicationFont(":/fonts/SourceCodePro-Medium.ttf");
+#else
     QFontDatabase::addApplicationFont(":/fonts/OPPOSans-M.ttf");
     QFontDatabase::addApplicationFont(":/fonts/SourceCodePro-Medium.ttf");
+#endif
 
     // Set some application metadata
     QApplication::setApplicationVersion(DS_VERSION_STRING);

@@ -38,6 +38,7 @@
 #include "../data/decode/annotation.h"
 #include "../view/decodetrace.h"
 #include "../data/decodermodel.h"
+#include "../eventobject.h"
 #include "../config/appconfig.h"
 #include "../dsvdef.h"
 #include "../utility/encoding.h"
@@ -103,9 +104,9 @@ ProtocolExp::ProtocolExp(QWidget *parent, SigSession *session) :
     layout()->addLayout(_layout);
     setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PROTOCOL_EXPORT), "Protocol Export"));
 
-    connect(&_button_box, SIGNAL(accepted()), this, SLOT(accept()));
-    connect(&_button_box, SIGNAL(rejected()), this, SLOT(reject()));
-    connect(_session->device_event_object(), SIGNAL(device_updated()), this, SLOT(reject()));
+    connect(&_button_box, &QDialogButtonBox::accepted, this, &ProtocolExp::accept);
+    connect(&_button_box, &QDialogButtonBox::rejected, this, &ProtocolExp::reject);
+    connect(_session->device_event_object(), &DeviceEventObject::device_updated, this, &QDialog::reject);
 
 }
 
@@ -183,9 +184,9 @@ void ProtocolExp::accept()
 
     QFutureWatcher<void> watcher;
 
-    connect(&watcher, SIGNAL(finished()), &dlg, SLOT(cancel()));
-    connect(this, SIGNAL(export_progress(int)), &dlg, SLOT(setValue(int)));
-    connect(&dlg, SIGNAL(canceled()), this, SLOT(cancel_export()));
+    connect(&watcher, &QFutureWatcher<void>::finished, &dlg, &QProgressDialog::cancel);
+    connect(this, &ProtocolExp::export_progress, &dlg, &QProgressDialog::setValue);
+    connect(&dlg, &QProgressDialog::canceled, this, &ProtocolExp::cancel_export);
 
     watcher.setFuture(future);
     dlg.exec();

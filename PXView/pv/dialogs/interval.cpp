@@ -58,9 +58,9 @@ Interval::Interval(QWidget *parent) :
     layout()->addLayout(glayout);
     setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_REPETITIVE_INTERVAL), "Repetitive Interval"));
 
-    connect(&_button_box, SIGNAL(accepted()), this, SLOT(accept()));
-    connect(_interval_slider, SIGNAL(valueChanged(int)), this, SLOT(on_slider_changed(int)));
-    connect(_interval_spinBox, SIGNAL(valueChanged(double)), this, SLOT(on_inputbox_changed(double)));
+    connect(&_button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(_interval_slider, &QSlider::valueChanged, this, &Interval::on_slider_changed);
+    connect(_interval_spinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &Interval::on_inputbox_changed);
 }
 
 void Interval::accept()

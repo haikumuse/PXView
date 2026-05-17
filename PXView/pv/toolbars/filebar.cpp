@@ -87,13 +87,13 @@ FileBar::FileBar(SigSession *session, QWidget *parent) :
     // _file_button.setMenu(_menu);
     // addWidget(&_file_button);
 
-    connect(_action_load, SIGNAL(triggered()), this, SLOT(on_actionLoad_triggered()));
-    connect(_action_store, SIGNAL(triggered()), this, SLOT(on_actionStore_triggered()));
-    connect(_action_default, SIGNAL(triggered()), this, SLOT(on_actionDefault_triggered()));
-    connect(_action_open, SIGNAL(triggered()), this, SLOT(on_actionOpen_triggered()));
-    connect(_action_save, SIGNAL(triggered()), this, SIGNAL(sig_save()));
-    connect(_action_export, SIGNAL(triggered()), this, SIGNAL(sig_export()));
-    connect(_action_capture, SIGNAL(triggered()), this, SLOT(on_actionCapture_triggered()));
+    connect(_action_load, &QAction::triggered, this, &FileBar::on_actionLoad_triggered);
+    connect(_action_store, &QAction::triggered, this, &FileBar::on_actionStore_triggered);
+    connect(_action_default, &QAction::triggered, this, &FileBar::on_actionDefault_triggered);
+    connect(_action_open, &QAction::triggered, this, &FileBar::on_actionOpen_triggered);
+    connect(_action_save, &QAction::triggered, this, &FileBar::sig_save);
+    connect(_action_export, &QAction::triggered, this, &FileBar::sig_export);
+    connect(_action_capture, &QAction::triggered, this, &FileBar::on_actionCapture_triggered);
 
     ADD_UI(this);
 }
@@ -240,7 +240,7 @@ void FileBar::on_actionCapture_triggered()
 {
     // _file_button.close();
     QCoreApplication::sendPostedEvents();
-    QTimer::singleShot(100, this, SIGNAL(sig_screenShot()));
+    QTimer::singleShot(100, this, &FileBar::sig_screenShot);
 }
 
 void FileBar::update_view_status()

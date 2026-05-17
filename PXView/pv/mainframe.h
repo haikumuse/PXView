@@ -32,11 +32,11 @@
 #include <QRect>
 
 #ifdef _WIN32
-#include <QWinTaskbarButton>
-#include <QWinTaskbarProgress>
+#include "wintaskbarprogress.h"
 #endif
 
 #include "toolbars/titlebar.h"
+#include "ui/qtcompat.h"
 
 namespace pv {
  
@@ -116,9 +116,9 @@ protected:
     void changeEvent(QEvent *event) override; 
 
 #ifdef Q_OS_DARWIN
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+    bool nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result);
 #else
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result) override;
 #endif
  
 signals:
@@ -172,8 +172,7 @@ private:
     bool    _freezing; 
     // Taskbar Progress Effert for Win7 and Above
 #ifdef _WIN32
-    QWinTaskbarButton *_taskBtn;
-    QWinTaskbarProgress *_taskPrg;
+    WinTaskbarProgress *_taskPrg;
 #endif
 
     bool    _is_win32_parent_window;
