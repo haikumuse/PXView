@@ -37,13 +37,8 @@
 #include <math.h>
 #include <libsigrok.h>
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    #include <QRegularExpression>
-    #include <QRegularExpressionValidator>
-#else
-    #include <QRegExp>
-    #include <QRegExpValidator>
-#endif
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
 
 #include "../config/appconfig.h"
 #include "../deviceagent.h"

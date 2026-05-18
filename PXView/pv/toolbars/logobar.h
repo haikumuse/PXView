@@ -81,9 +81,6 @@ private slots:
     void on_actionManual_triggered();
     void on_actionIssue_triggered();
     void on_action_update();
-    void on_action_setting_log();
-    void on_open_log_file();
-    void on_clear_log_file();
 
 // private:
 public:
@@ -103,10 +100,6 @@ public:
     QAction *_manual;
     QAction *_issue;
     QAction *_update;
-    QAction *_log;
-
-    QPushButton *_log_open_bt;
-    QPushButton *_log_clear_bt;
 
     IMainForm *_mainForm;
 };

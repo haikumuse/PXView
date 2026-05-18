@@ -431,11 +431,7 @@ void SearchDock::start_search_async() {
   _result_model->clear();
 
   _search_state.store(1);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   _search_future = QtConcurrent::run([this]() { search_worker(); });
-#else
-  _search_future = QtConcurrent::run(this, &SearchDock::search_worker);
-#endif
   _search_watcher.setFuture(_search_future);
 }
 
@@ -459,7 +455,6 @@ void SearchDock::search_worker() {
   const int64_t end = logic_snapshot->get_sample_count() - 1;
   int64_t pos = 0;
 
-  // 局部缓存：批量写入，大幅减少锁竞争
   std::vector<SearchData> local_batch;
   local_batch.reserve(1000);
 
@@ -467,6 +462,24 @@ void SearchDock::search_worker() {
   ui_timer.start();
   bool has_new_results = false;
   bool first_flush = true;
+
+  if (gpu_edge_search_worker(logic_snapshot, end, local_pattern,
+                             local_batch, ui_timer,
+                             has_new_results, first_flush)) {
+    if (!local_batch.empty()) {
+      _results_mutex.lock();
+      if ((int)_search_results.size() < kMaxResults) {
+        _search_results.insert(_search_results.end(), local_batch.begin(),
+                               local_batch.end());
+      }
+      _results_mutex.unlock();
+    }
+    if (has_new_results) {
+      emit search_result_found();
+    }
+    _search_state.store(0);
+    return;
+  }
 
   while (pos <= end) {
     int state = _search_state.load();
@@ -505,7 +518,6 @@ void SearchDock::search_worker() {
     pos = match_end + 1;
   }
 
-  // 收尾：把剩余数据写入
   if (!local_batch.empty()) {
     _results_mutex.lock();
     if ((int)_search_results.size() < kMaxResults) {
@@ -515,12 +527,36 @@ void SearchDock::search_worker() {
     _results_mutex.unlock();
   }
 
-  // 搜索结束，确保最后一次UI刷新
   if (has_new_results) {
     emit search_result_found();
   }
 
   _search_state.store(0);
+}
+
+bool SearchDock::gpu_edge_search_worker(data::LogicSnapshot *logic_snapshot,
+                                        int64_t end,
+                                        const std::map<uint16_t, QString> &local_pattern,
+                                        std::vector<SearchData> &local_batch,
+                                        QElapsedTimer &ui_timer,
+                                        bool &has_new_results,
+                                        bool &first_flush) {
+  if (!_view)
+    return false;
+
+  bool has_edge_pattern = false;
+  for (auto &it : local_pattern) {
+    QChar ch = it.second.at(0).toUpper();
+    if (ch == 'R' || ch == 'F' || ch == 'C') {
+      has_edge_pattern = true;
+      break;
+    }
+  }
+
+  if (!has_edge_pattern)
+    return false;
+
+  return false;
 }
 
 void SearchDock::do_search() { start_search_async(); }

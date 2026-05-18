@@ -9,7 +9,6 @@
 #include <QRect>
 
 #include "toolbars/titlebar.h"
-#include "ui/qtcompat.h"
 
 namespace pv {
 
@@ -62,11 +61,7 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
     bool eventFilter(QObject *object, QEvent *event) override;
 
-#ifdef Q_OS_DARWIN
-    bool nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result);
-#else
-    bool nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result) override;
-#endif
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 
 private:
     void AttachNativeWindow();
@@ -78,6 +73,8 @@ private:
     bool ParentIsMaxsized() override;
     void MoveBegin() override;
     void MoveEnd() override;
+    void ParentShowMaximized() override;
+    void ParentShowNormal() override;
 
     void OnParentNativeEvent(ParentNativeEvent msg) override;
 

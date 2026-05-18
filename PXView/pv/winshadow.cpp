@@ -21,7 +21,6 @@
  */
  
 #include "winshadow.h"
-#include "ui/qtcompat.h" 
  
 #define COLOR1 QColor(0, 0, 0, 75)
 #define COLOR2 QColor(0, 0, 0, 30)
@@ -110,7 +109,7 @@ void WinShadow::hideShadow()
     QWidget::hide();
 }
 
-bool WinShadow::nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
+bool WinShadow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 {  
     MSG *msg = static_cast<MSG*>(message);
 
@@ -141,7 +140,7 @@ bool WinShadow::nativeEvent(const QByteArray &eventType, void *message, NativeEv
         case WM_NCLBUTTONDBLCLK:
         case WM_NCHITTEST:
         { 
-            *result = static_cast<NativeEventResult>(SendMessageW(m_hwnd, msg->message, msg->wParam, msg->lParam));
+            *result = static_cast<qintptr>(SendMessageW(m_hwnd, msg->message, msg->wParam, msg->lParam));
             return true;
         }
     }

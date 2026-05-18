@@ -1,42 +1,125 @@
-/*
- * This file is part of the PXView project.
- * PXView is based on DSView.
- * PXView is based on PulseView.
- * 
- * Copyright (C) 2021 DreamSourceLab <support@dreamsourcelab.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
- */
-
 #include "dscombobox.h"
 #include <QFontMetrics>
-#include <QString>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QVBoxLayout>
+#include <QScrollBar>
 #include "../config/appconfig.h"
+#include "../ui/dockfonts.h"
+#include "../widgets/smoothscrollarea.h"
 
-DsComboBox::DsComboBox(QWidget *parent) 
-    :QComboBox(parent)
+DsComboPopup::DsComboPopup(QComboBox *combo, QWidget *parent)
+    : QDialog(parent)
+{
+    setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
+    _combo = combo;
+
+    int w = combo->width();
+    int maxH = 400;
+
+    QVBoxLayout *mainLay = new QVBoxLayout(this);
+    mainLay->setContentsMargins(0, 0, 0, 0);
+    mainLay->setSpacing(0);
+
+    QWidget *listPanel = new QWidget(this);
+    QVBoxLayout *listLay = new QVBoxLayout(listPanel);
+    listLay->setContentsMargins(2, 2, 2, 2);
+    listLay->setSpacing(0);
+    listLay->setAlignment(Qt::AlignTop);
+
+    QFont font = dock_font_content();
+    int curIndex = combo->currentIndex();
+    int itemH = 0;
+
+    for (int i = 0; i < combo->count(); i++) {
+        QPushButton *bt = new QPushButton(combo->itemText(i), listPanel);
+        bt->setObjectName("flat");
+        bt->setFont(font);
+        bt->setMinimumWidth(w - 8);
+        bt->setMaximumWidth(w - 8);
+
+        if (i == curIndex) {
+            bt->setProperty("current", true);
+        }
+
+        connect(bt, &QPushButton::clicked, this, &DsComboPopup::on_item_clicked);
+        _itemButtons.push_back(bt);
+        listLay->addWidget(bt);
+
+        if (itemH == 0) {
+            itemH = bt->sizeHint().height();
+        }
+    }
+
+    int totalH = combo->count() * itemH + 8;
+    if (totalH > maxH)
+        totalH = maxH;
+    if (totalH < itemH + 8)
+        totalH = itemH + 8;
+
+    pv::widgets::SmoothScrollArea *scroll = new pv::widgets::SmoothScrollArea(this);
+    scroll->setWidget(listPanel);
+    scroll->setObjectName("dock_search_combo_scroll");
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setFixedSize(w, totalH);
+    scroll->setLongTailAnimation(true);
+
+    mainLay->addWidget(scroll);
+
+    this->setFixedSize(w, totalH);
+
+    QPoint gp = combo->mapToGlobal(QPoint(0, combo->height()));
+    QScreen *screen = QGuiApplication::screenAt(gp);
+    if (screen) {
+        QRect screenGeom = screen->availableGeometry();
+        if (gp.y() + totalH > screenGeom.bottom()) {
+            gp.setY(combo->mapToGlobal(QPoint(0, 0)).y() - totalH);
+        }
+    }
+    this->move(gp);
+
+    if (curIndex >= 0 && curIndex < _itemButtons.size()) {
+        QPushButton *curBt = _itemButtons[curIndex];
+        scroll->ensureWidgetVisible(curBt);
+    }
+}
+
+void DsComboPopup::changeEvent(QEvent *event)
+{
+    if (event->type() == QEvent::ActivationChange) {
+        if (!this->isActiveWindow()) {
+            this->hide();
+            this->deleteLater();
+            return;
+        }
+    }
+    QDialog::changeEvent(event);
+}
+
+void DsComboPopup::on_item_clicked()
+{
+    QPushButton *bt = qobject_cast<QPushButton *>(sender());
+    if (!bt || !_combo)
+        return;
+
+    int index = _itemButtons.indexOf(bt);
+    if (index >= 0) {
+        _combo->setCurrentIndex(index);
+    }
+
+    this->hide();
+    this->deleteLater();
+}
+
+DsComboBox::DsComboBox(QWidget *parent)
+    : QComboBox(parent)
 {
     _bPopup = false;
-    QComboBox::setSizeAdjustPolicy(QComboBox::AdjustToContents);   
+    QComboBox::setSizeAdjustPolicy(QComboBox::AdjustToContents);
 }
 
 DsComboBox::~DsComboBox()
 {
-
 }
 
 void DsComboBox::measureSize()
@@ -46,50 +129,27 @@ void DsComboBox::measureSize()
     int height = 30;
     QFontMetrics fm = this->fontMetrics();
 
-    for (int i=0; i<num; i++){
+    for (int i = 0; i < num; i++) {
         QString text = this->itemText(i);
         QRect rc = fm.boundingRect(text);
- 
-        if (rc.width() > maxWidth){
+
+        if (rc.width() > maxWidth) {
             maxWidth = rc.width();
         }
         height = rc.height();
     }
-
-    QString style = QString("QAbstractItemView{min-width:%1px; min-height:%2px;}")
-                .arg(maxWidth + 30)
-                .arg(height + 5);
-    this->setStyleSheet(style);
 }
 
 void DsComboBox::showPopup()
 {
     _bPopup = true;
 
-#ifdef Q_OS_DARWIN
-
-    measureSize();
-    QComboBox::showPopup();
-
-    QWidget *popup = this->findChild<QFrame*>();
-    auto rc = popup->geometry();
-    int x = rc.left() + 6;
-    int y = rc.top();
-    int w = rc.right() - rc.left();
-    int h = rc.bottom() - rc.top() + 20;
-    popup->setGeometry(x, y, w, h);
-
-    int sy = QGuiApplication::primaryScreen()->size().height(); 
-    if (sy <= 1080){
-        popup->setMaximumHeight(750); 
+    if (count() == 0) {
+        return;
     }
 
-    popup->setStyleSheet("background-color:" + AppConfig::Instance().GetStyleColor().name());
-
-#else
-    QComboBox::showPopup();
-#endif
-
+    DsComboPopup *popup = new DsComboPopup(this, this);
+    popup->show();
 }
 
 void DsComboBox::hidePopup()

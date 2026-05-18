@@ -390,12 +390,13 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
                     }
 
                     const double mark_end = a.end_sample() / samples_per_pixel - pixels_offset;
+                    int mark_end_int = (mark_end > 20000.0 || mark_end < -20000.0) ? start : (int)mark_end;
 
                     for(auto s : _session->get_signals()) {
                         int binded_index = dec->binded_probe_index(probe);
                         if((s->get_index() == binded_index) && s->signal_type() == SR_CHANNEL_LOGIC) {
                             view::LogicSignal *logicSig = (view::LogicSignal*)s;
-                            logicSig->paint_mark(p, start, mark_end, type/100);
+                            logicSig->paint_mark(p, start, mark_end_int, type/100);
                             break;
                         }
                     }

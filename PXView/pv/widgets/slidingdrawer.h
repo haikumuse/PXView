@@ -107,6 +107,7 @@ private:
     void positionOverlay();
     void finishClose();
     void finishDrag();
+    void applyDragUpdate();
 
     struct PageInfo {
         QWidget *content;
@@ -137,11 +138,14 @@ private:
     bool _drag_active;
     bool _drag_margin_removed;
     int _drag_start_drawer_width;
+    int _drag_target_width;
     QPoint _drag_start_pos;
     QWidget *_edge_grip;
     QWidget *_left_separator;
+    QTimer _drag_update_timer;
 
     static constexpr int EDGE_GRIP_WIDTH = 6;
+    static constexpr int DRAG_FRAME_INTERVAL = 16;
 
     int _max_frame_time;
     int _fps;

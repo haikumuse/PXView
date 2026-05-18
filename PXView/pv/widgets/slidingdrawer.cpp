@@ -18,12 +18,15 @@
 
 #include <QApplication>
 #include <QTimer>
+#ifndef NDEBUG
 #include <QElapsedTimer>
+#endif
 #include <QEasingCurve>
 #include <QLabel>
 #include <QVBoxLayout>
+#ifndef NDEBUG
 #include "../log.h"
-#include "../ui/qtcompat.h"
+#endif
 
 namespace pv {
 namespace widgets {
@@ -33,7 +36,6 @@ static constexpr int DEFAULT_ANIMATION_DURATION = 500;
 static constexpr int TITLE_BAR_HEIGHT = 40;
 static constexpr int MIN_DRAWER_WIDTH = 200;
 
-// CSS cubic-bezier(0.4, 0, 0.2, 1)
 static qreal cssBezierEasing(qreal t) {
   static const double x1 = 0.4, y1 = 0.0;
   static const double x2 = 0.2, y2 = 1.0;
@@ -80,7 +82,8 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
       _animation_duration(DEFAULT_ANIMATION_DURATION), _current_page(-1),
       _is_open(false), _is_animating(false), _drag_active(false),
       _drag_margin_removed(false),
-      _drag_start_drawer_width(0), _edge_grip(nullptr),
+      _drag_start_drawer_width(0), _drag_target_width(0),
+      _edge_grip(nullptr),
       _left_separator(nullptr),
       _max_frame_time(0), _fps(0),
       _paint_in_this_second(0), _is_idle(true) {
@@ -165,6 +168,9 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
     }
   });
   _fps_timer.start(1000);
+
+  _drag_update_timer.setSingleShot(true);
+  connect(&_drag_update_timer, &QTimer::timeout, this, &SlidingDrawer::applyDragUpdate);
 
   if (parentWidget())
     parentWidget()->installEventFilter(this);
@@ -403,8 +409,10 @@ void SlidingDrawer::finishClose() {
 int SlidingDrawer::slideOffset() const { return _slide_offset; }
 
 void SlidingDrawer::setSlideOffset(int offset) {
+#ifndef NDEBUG
   QElapsedTimer timer;
   timer.start();
+#endif
 
   offset = qBound(0, offset, _drawer_width);
   if (_slide_offset == offset)
@@ -413,16 +421,24 @@ void SlidingDrawer::setSlideOffset(int offset) {
   int oldOffset = _slide_offset;
   _slide_offset = offset;
   
+#ifndef NDEBUG
   QElapsedTimer overlayTimer;
   overlayTimer.start();
+#endif
   positionOverlay();
+#ifndef NDEBUG
   qint64 t_overlay = overlayTimer.elapsed();
+#endif
 
   QWidget *pw = parentWidget();
+#ifndef NDEBUG
   qint64 t_update = 0;
+#endif
   if (pw) {
+#ifndef NDEBUG
     QElapsedTimer updateTimer;
     updateTimer.start();
+#endif
     int pw_width = pw->width();
     int oldX = pw_width - _drawer_width + oldOffset;
     int newX = pw_width - _drawer_width + offset;
@@ -430,19 +446,25 @@ void SlidingDrawer::setSlideOffset(int offset) {
     int dirtyRight = qMax(oldX + _drawer_width, newX + _drawer_width);
     QRect dirtyRect(dirtyLeft, 0, dirtyRight - dirtyLeft, pw->height());
     pw->update(dirtyRect);
+#ifndef NDEBUG
     t_update = updateTimer.elapsed();
+#endif
   }
 
+#ifndef NDEBUG
   qint64 total = timer.elapsed();
   dsv_warn("[DIAG] SlidingDrawer::setSlideOffset took %lld ms: overlay: %lld ms, parentUpdate: %lld ms, offset: %d",
            total, t_overlay, t_update, offset);
+#endif
 }
 
 // ---- Events ----
 
 void SlidingDrawer::paintEvent(QPaintEvent *event) {
+#ifndef NDEBUG
   QElapsedTimer timer;
   timer.start();
+#endif
 
   _paint_in_this_second++;
   if (_is_idle || !_frame_interval_timer.isValid()) {
@@ -457,8 +479,10 @@ void SlidingDrawer::paintEvent(QPaintEvent *event) {
 
   QWidget::paintEvent(event);
 
+#ifndef NDEBUG
   qint64 total = timer.elapsed();
   dsv_warn("[DIAG] SlidingDrawer::paintEvent took %lld ms", total);
+#endif
 }
 
 void SlidingDrawer::resizeEvent(QResizeEvent *event) {
@@ -490,7 +514,7 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event) {
     if (me->button() == Qt::LeftButton && _is_open && !_is_animating) {
       _drag_active = true;
       _drag_margin_removed = false;
-      _drag_start_pos = QT_COMPAT_GLOBAL_POS(me);
+      _drag_start_pos = me->globalPosition().toPoint();
       _drag_start_drawer_width = _drawer_width;
       grabMouse(Qt::SplitHCursor);
       return true;
@@ -501,39 +525,32 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event) {
 }
 
 void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
-  QElapsedTimer timer;
-  timer.start();
-
   if (_drag_active) {
     if (QWidget::mouseGrabber() != this) {
       finishDrag();
       QWidget::mouseMoveEvent(event);
       return;
     }
-    int dx = _drag_start_pos.x() - QT_COMPAT_GLOBAL_POS(event).x();
+    int dx = _drag_start_pos.x() - event->globalPosition().toPoint().x();
     
-    // Only begin actual drag resizing once movement exceeds the system drag threshold
     if (qAbs(dx) >= QApplication::startDragDistance()) {
       if (!_drag_margin_removed) {
         _drag_margin_removed = true;
-        // Asynchronously remove the push margin in the next event loop tick.
-        // This decouples the heavy layout reflow from the mouse drag event loop,
-        // eliminating any initial frame drop or sluggish start!
         QTimer::singleShot(0, this, [this]() {
           if (_drag_active) {
             removePushMargin();
           }
         });
       }
-      int new_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
-      setDrawerWidth(new_width, false);
+      _drag_target_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
+      if (!_drag_update_timer.isActive()) {
+        applyDragUpdate();
+        _drag_update_timer.start(DRAG_FRAME_INTERVAL);
+      }
     }
   }
 
   QWidget::mouseMoveEvent(event);
-
-  qint64 total = timer.elapsed();
-  dsv_warn("[DIAG] SlidingDrawer::mouseMoveEvent took %lld ms, dragging: %d", total, _drag_active);
 }
 
 void SlidingDrawer::mousePressEvent(QMouseEvent *event) {
@@ -550,11 +567,22 @@ void SlidingDrawer::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 void SlidingDrawer::finishDrag() {
+  _drag_update_timer.stop();
+  if (_drag_active && _drag_target_width > 0) {
+    setDrawerWidth(_drag_target_width, false);
+  }
   _drag_active = false;
   _drag_margin_removed = false;
+  _drag_target_width = 0;
   releaseMouse();
   unsetCursor();
   applyPushMargin();
+}
+
+void SlidingDrawer::applyDragUpdate() {
+  if (!_drag_active)
+    return;
+  setDrawerWidth(_drag_target_width, false);
 }
 
 int SlidingDrawer::get_fps() const {

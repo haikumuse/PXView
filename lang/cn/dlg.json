@@ -806,5 +806,157 @@
     {
         "id": "IDS_DLG_DISK_CACHE_SLOW_DETAIL",
         "text": "检测速度: %1 MB/s\n建议使用 NVMe SSD 以支持 250MB/s 采集。\n采集可能出现数据丢失。"
+    },
+    {
+        "id": "IDS_DLG_SETTINGS",
+        "text": "设置"
+    },
+    {
+        "id": "IDS_DLG_NAV_DISPLAY",
+        "text": "显示"
+    },
+    {
+        "id": "IDS_DLG_NAV_SHORTCUTS",
+        "text": "快捷键"
+    },
+    {
+        "id": "IDS_DLG_NAV_STYLE",
+        "text": "样式"
+    },
+    {
+        "id": "IDS_DLG_SC_ACTION",
+        "text": "操作"
+    },
+    {
+        "id": "IDS_DLG_SC_SHORTCUT",
+        "text": "快捷键"
+    },
+    {
+        "id": "IDS_DLG_SC_EDIT",
+        "text": "编辑"
+    },
+    {
+        "id": "IDS_DLG_SC_APPLY",
+        "text": "应用"
+    },
+    {
+        "id": "IDS_DLG_SC_RESET_ALL",
+        "text": "全部重置"
+    },
+    {
+        "id": "IDS_DLG_SC_OK",
+        "text": "确定"
+    },
+    {
+        "id": "IDS_DLG_SC_ACCEPT",
+        "text": "接受"
+    },
+    {
+        "id": "IDS_DLG_SC_RESTORE",
+        "text": "还原"
+    },
+    {
+        "id": "IDS_DLG_SC_RESET_DEFAULT",
+        "text": "恢复初始化"
+    },
+    {
+        "id": "IDS_DLG_SC_DELETE_KEY",
+        "text": "删除快捷键"
+    },
+    {
+        "id": "IDS_DLG_SC_CLASH_WARNING",
+        "text": "冲突快捷键都将被忽略。"
+    },
+    {
+        "id": "IDS_DLG_STYLE_TOKEN",
+        "text": "令牌"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PREVIEW",
+        "text": "预览"
+    },
+    {
+        "id": "IDS_DLG_STYLE_VALUE",
+        "text": "值"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SELECT_COLOR",
+        "text": "选择颜色"
+    },
+    {
+        "id": "IDS_DLG_STYLE_IMPORT",
+        "text": "导入"
+    },
+    {
+        "id": "IDS_DLG_STYLE_EXPORT",
+        "text": "导出"
+    },
+    {
+        "id": "IDS_DLG_STYLE_FILE_FILTER",
+        "text": "样式文件 (*.pxstyle)"
+    },
+    {
+        "id": "IDS_DLG_SC_RUN_STOP",
+        "text": "运行/停止"
+    },
+    {
+        "id": "IDS_DLG_SC_INSTANT",
+        "text": "立即采样"
+    },
+    {
+        "id": "IDS_DLG_SC_TRIGGER",
+        "text": "触发面板"
+    },
+    {
+        "id": "IDS_DLG_SC_DECODE",
+        "text": "解码面板"
+    },
+    {
+        "id": "IDS_DLG_SC_MEASURE",
+        "text": "测量面板"
+    },
+    {
+        "id": "IDS_DLG_SC_SEARCH",
+        "text": "搜索面板"
+    },
+    {
+        "id": "IDS_DLG_SC_OPTIONS",
+        "text": "设备选项"
+    },
+    {
+        "id": "IDS_DLG_SC_DEVICE_SELECT",
+        "text": "选择设备"
+    },
+    {
+        "id": "IDS_DLG_SC_PAGE_UP",
+        "text": "向左翻页"
+    },
+    {
+        "id": "IDS_DLG_SC_PAGE_DOWN",
+        "text": "向右翻页"
+    },
+    {
+        "id": "IDS_DLG_SC_ZOOM_IN",
+        "text": "放大"
+    },
+    {
+        "id": "IDS_DLG_SC_ZOOM_OUT",
+        "text": "缩小"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_CH0",
+        "text": "DSO通道0"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_CH1",
+        "text": "DSO通道1"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_VUP",
+        "text": "DSO垂直增大"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_VDOWN",
+        "text": "DSO垂直减小"
     }
 ]

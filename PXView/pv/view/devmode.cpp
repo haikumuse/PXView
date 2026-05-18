@@ -38,7 +38,6 @@
 #include "../ui/langresource.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
-#include "../ui/qtcompat.h"
 #include "../ui/iconcache.h"
 
 
@@ -283,7 +282,7 @@ void DevMode::mouseReleaseEvent(QMouseEvent *event)
 void DevMode::mouseMoveEvent(QMouseEvent *event)
 {
 	assert(event);
-	_mouse_point = QT_COMPAT_POS(event);
+	_mouse_point = event->position().toPoint();
 	update();
 }
 

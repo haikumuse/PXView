@@ -23,33 +23,18 @@
 
 #include <QTextStream>
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QStringConverter>
-#else
-#include <QTextCodec>
-#endif
 
 namespace pv{
 namespace encoding{
 
     void init()
     {
-#ifdef _WIN32
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-#else
-        QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
-#endif
-#endif
     }
 
     void set_utf8(QTextStream &stream)
     {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         stream.setEncoding(QStringConverter::Utf8);
-#else
-        QTextCodec *code = QTextCodec::codecForName("UTF-8");
-        stream.setCodec(code);
-#endif
     }
 }
 }

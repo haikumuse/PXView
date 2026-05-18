@@ -430,13 +430,8 @@ void MeasureDock::build_dist_pannel()
     int dex = 0;
     QLabel cal_lb;
     cal_lb.setFont(contentFont);
-    //int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
 
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
-    #else
-        int bt_w = cal_lb.fontMetrics().width("22") + 8;
-    #endif
+    int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
 
 
     auto mode_rows = get_mode_rows();
@@ -575,12 +570,7 @@ void MeasureDock::build_edge_pannel()
     int dex = 0;
     QLabel cal_lb;
     cal_lb.setFont(contentFont);
-    //int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
-    #else
-        int bt_w = cal_lb.fontMetrics().width("22") + 8;
-    #endif
+    int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
     auto mode_rows = get_mode_rows();
 
     for (auto &o : mode_rows->_edge_row_list)
@@ -1105,11 +1095,7 @@ void MeasureDock::build_cursor_pannel()
     QLabel cal_lb;
     cal_lb.setFont(contentFont);
 
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
-    #else
-        int bt_w = cal_lb.fontMetrics().width("22") + 8;
-    #endif
+    int bt_w = cal_lb.fontMetrics().horizontalAdvance("22") + 8;
 
     QString iconPath = GetIconPath();
 
@@ -1211,11 +1197,7 @@ void MeasureDock::adjust_form_size(QWidget *wid)
         o->setFixedSize(size);
     }
 
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        int mouse_info_label_width = fm.horizontalAdvance("############");
-    #else
-        int mouse_info_label_width = fm.width("############");
-    #endif
+    int mouse_info_label_width = fm.horizontalAdvance("############");
 
     _width_label->setFixedWidth(mouse_info_label_width);
     _period_label->setFixedWidth(mouse_info_label_width);

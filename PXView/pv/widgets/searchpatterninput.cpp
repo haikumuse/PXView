@@ -30,7 +30,6 @@
 #include <QApplication>
 #include "../log.h"
 #include "../config/appconfig.h"
-#include "../ui/qtcompat.h"
 
 namespace pv {
 namespace widgets {
@@ -118,7 +117,6 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, false);
 
-    // 从主题获取颜色，如果不存在则使用默认值
     QColor bgColor = AppConfig::Instance().GetThemeColor("@search-input-bg");
     if (!bgColor.isValid()) bgColor = QColor(0x1a, 0x1a, 0x1a);
 
@@ -234,7 +232,6 @@ void SearchPatternInput::keyPressEvent(QKeyEvent *event)
             return;
         }
     } else {
-        // Fallback to key code if text is empty
         switch (key) {
         case Qt::Key_0: ch = '0'; break;
         case Qt::Key_1: ch = '1'; break;
@@ -262,9 +259,9 @@ void SearchPatternInput::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         int cellTop = kPadding + kLabelHeight;
-        int y = QT_COMPAT_Y(event);
+        int y = (int)event->position().y();
         if (y >= cellTop && y < cellTop + kCellHeight) {
-            _cursor_pos = charIndexAt(QT_COMPAT_X(event));
+            _cursor_pos = charIndexAt((int)event->position().x());
         }
         _has_focus = true;
         setFocus(Qt::MouseFocusReason);

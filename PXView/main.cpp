@@ -61,8 +61,7 @@ void usage()
 }
 
 int main(int argc, char *argv[])
-{   
-	//return main2();
+{
 	int ret = 0; 
 	const char *open_file = NULL;
 	int logLevel = -1;
@@ -144,48 +143,15 @@ int main(int argc, char *argv[])
         open_file = argvFinal[argcFinal - 1];		
 	}
 
-	//----------------------HightDpiScaling
-#if QT_VERSION >= QT_VERSION_CHECK(5,6,0) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-bool bHighScale = true;
-
-#ifdef _WIN32
-	int argc1 = 0;
- 	QApplication *a1 = new QApplication(argc1, NULL);
-	float sk = QGuiApplication::primaryScreen()->logicalDotsPerInch() / 96;
-	int sy = QGuiApplication::primaryScreen()->size().height(); //screen rect height
-    delete a1;
-	a1 = NULL;
-
-	if (sk >= 1.5 && sy <= 1080){
-		QApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
-        QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-		bHighScale = false;
-	} 
-#endif
-	if (bHighScale){
-		QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-      	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-	}
-#endif 
-
 	//----------------------init app
     DSApplication a(argcFinal, argvFinal);
     a.setStyle(new MyStyle);
 
-    // 载入全局字体
     QFont font = a.font();
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     QFontDatabase fontDb;
     int fontId = fontDb.addApplicationFont(":/fonts/SourceHanSansCN-Regular.otf");
-#else
-    int fontId = QFontDatabase::addApplicationFont(":/fonts/SourceHanSansCN-Regular.otf");
-#endif
     if (fontId != -1) {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         QStringList fontFamilies = fontDb.applicationFontFamilies(fontId);
-#else
-        QStringList fontFamilies = QFontDatabase::applicationFontFamilies(fontId);
-#endif
         if (!fontFamilies.isEmpty()) {
             font.setFamily(fontFamilies.at(0));
             font.setPointSizeF(9.0);
@@ -194,13 +160,8 @@ bool bHighScale = true;
             a.setFont(font);
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     fontDb.addApplicationFont(":/fonts/OPPOSans-M.ttf");
     fontDb.addApplicationFont(":/fonts/SourceCodePro-Medium.ttf");
-#else
-    QFontDatabase::addApplicationFont(":/fonts/OPPOSans-M.ttf");
-    QFontDatabase::addApplicationFont(":/fonts/SourceCodePro-Medium.ttf");
-#endif
 
     // Set some application metadata
     QApplication::setApplicationVersion(DS_VERSION_STRING);
@@ -233,6 +194,7 @@ bool bHighScale = true;
 	AppControl *control = AppControl::Instance();	
 	AppConfig &app = AppConfig::Instance(); 
 	app.LoadAll(); //load app config
+
 	LangResource::Instance()->Load(app.frameOptions.language);
 
 	if (app.appOptions.ableSaveLog){

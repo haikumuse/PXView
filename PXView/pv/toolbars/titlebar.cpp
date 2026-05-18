@@ -32,7 +32,6 @@
 #include "../log.h"
 #include "../ui/fn.h"
 #include "../ui/iconcache.h"
-#include "../ui/qtcompat.h"
 
 namespace pv {
 namespace toolbars {
@@ -148,8 +147,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     titleRowLayout->addWidget(_minimizeButton);
     titleRowLayout->addWidget(_maximizeButton);
 
-    connect(this, &TitleBar::normalShow, parent, &QWidget::showNormal);
-    connect(this, &TitleBar::maximizedShow, parent, &QWidget::showMaximized);
     connect(_minimizeButton, &QAbstractButton::clicked, parent, &QWidget::showMinimized);
     connect(_maximizeButton, &QAbstractButton::clicked, this, &TitleBar::showMaxRestore);
   }
@@ -178,10 +175,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     _bottomLine->show();
   }
 
-  // --- 平移滑动式 Ribbon ---
   if (_enableRibbon) {
-    // _ribbonContainer: 裁切容器，固定高度，作为 _parent 的子控件浮在主界面上方
-    // 开启 WA_ClipChildren 让超出容器边界的面板部分被裁切，实现真正的平移滑动效果
     _ribbonContainer = new QWidget(parent);
     _ribbonContainer->setObjectName("RibbonContainer");
     _ribbonContainer->setContentsMargins(0, 0, 0, 0);
@@ -190,8 +184,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     _ribbonContainer->setAttribute(Qt::WA_TranslucentBackground);
     _ribbonContainer->hide();
 
-    // _ribbonPanel: 实际内容面板，在容器内做 Y 轴平移
-    // 初始位置在容器上方(y=-65)，完全被裁切不可见
     _ribbonPanel = new QWidget(this);
     _ribbonPanel->setObjectName("RibbonPanel");
     _ribbonPanel->setContentsMargins(0, 0, 0, 0);
@@ -225,9 +217,6 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     _pinButton->setIcon(QIcon(GetIconPath() + "/unpin.svg"));
     connect(_pinButton, &QToolButton::toggled, this, &TitleBar::onPinToggled);
 
-    // --- 动画引擎：Y轴平移 ---
-    // slideOffset 从 _ribbonExpandedHeight(面板在容器上方,隐藏) 到
-    // 0(面板完全可见)
     _ribbonAnimation = new QPropertyAnimation(this, "slideOffset");
     _ribbonAnimation->setDuration(250);
     _ribbonAnimation->setEasingCurve(QEasingCurve::OutCubic);
@@ -469,7 +458,6 @@ void TitleBar::positionRibbonContainer() {
   if (!_enableRibbon || !_ribbonContainer || !_parent)
     return;
 
-  // 容器永远锚定在标题栏那一行（32px）的下方，而不是跟着动态的 height() 跑
   int y = mapTo(_parent, QPoint(0, 32)).y();
   _ribbonContainer->move(0, y);
   _ribbonContainer->setFixedWidth(_parent->width());
@@ -606,14 +594,20 @@ QString TitleBar::title() {
 }
 
 void TitleBar::showMaxRestore() {
-  QString iconPath = GetIconPath();
-  if (ParentIsMaxsized()) {
-    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
-    normalShow();
-  } else {
-    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
-    maximizedShow();
-  }
+    QString iconPath = GetIconPath();
+    if (ParentIsMaxsized()) {
+        _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
+        if (_titleParent)
+            _titleParent->ParentShowNormal();
+        else
+            parentWidget()->showNormal();
+    } else {
+        _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
+        if (_titleParent)
+            _titleParent->ParentShowMaximized();
+        else
+            parentWidget()->showMaximized();
+    }
 }
 
 void TitleBar::setRestoreButton(bool max) {
@@ -628,7 +622,7 @@ void TitleBar::setRestoreButton(bool max) {
 bool TitleBar::eventFilter(QObject *watched, QEvent *event) {
   if (event->type() == QEvent::MouseButtonPress) {
     QMouseEvent *me = static_cast<QMouseEvent *>(event);
-    QPoint globalPos = QT_COMPAT_GLOBAL_POS(me);
+    QPoint globalPos = me->globalPosition().toPoint();
 
     bool onTitleBar = rect().contains(mapFromGlobal(globalPos));
     bool onRibbon = _enableRibbon && _ribbonContainer && _ribbonContainer->isVisible() &&
@@ -646,7 +640,7 @@ bool TitleBar::eventFilter(QObject *watched, QEvent *event) {
 }
 
 void TitleBar::mousePressEvent(QMouseEvent *event) {
-  if (isOnTabBar(QT_COMPAT_POS(event))) {
+  if (isOnTabBar(event->position().toPoint())) {
     QMenuBar::mousePressEvent(event);
     return;
   }
@@ -654,8 +648,8 @@ void TitleBar::mousePressEvent(QMouseEvent *event) {
   bool ableMove = !ParentIsMaxsized();
 
   if (event->button() == Qt::LeftButton && ableMove && _is_able_drag) {
-    int x = QT_COMPAT_X(event);
-    int y = QT_COMPAT_Y(event);
+    int x = (int)event->position().x();
+    int y = (int)event->position().y();
 
     bool bTopWidow = AppControl::Instance()->GetTopWindow() == _parent;
     bool bClick = (x >= 6 && y >= 5 && x <= width() - 6);
@@ -663,7 +657,7 @@ void TitleBar::mousePressEvent(QMouseEvent *event) {
     if (!bTopWidow || bClick) {
       _is_draging = true;
 
-      _clickPos = QT_COMPAT_GLOBAL_POS(event);
+      _clickPos = event->globalPosition().toPoint();
 
       if (_titleParent != NULL) {
         _oldPos = _titleParent->GetParentPos();
@@ -686,8 +680,8 @@ void TitleBar::mouseMoveEvent(QMouseEvent *event) {
     int datX = 0;
     int datY = 0;
 
-    datX = (QT_COMPAT_GLOBAL_POS(event).x() - _clickPos.x());
-    datY = (QT_COMPAT_GLOBAL_POS(event).y() - _clickPos.y());
+    datX = (event->globalPosition().toPoint().x() - _clickPos.x());
+    datY = (event->globalPosition().toPoint().y() - _clickPos.y());
 
     int x = _oldPos.x() + datX;
     int y = _oldPos.y() + datY;

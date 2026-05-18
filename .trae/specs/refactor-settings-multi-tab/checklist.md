@@ -1,0 +1,19 @@
+- [x] AppConfig 中 ShortcutOptions 和 StyleOptions 数据结构定义完整，包含所有必要字段
+- [x] AppConfig 的 Save/Load 方法正确序列化和反序列化快捷键与样式配置
+- [x] DSV_MSG_SHORTCUT_CHANGED 和 DSV_MSG_STYLE_CHANGED 消息码已添加到 icallbacks.h
+- [x] 设置对话框左侧导航列表正确显示三个标签项（显示选项、快捷键设置、样式）
+- [x] 点击左侧导航项时右侧内容面板正确切换，当前选中项高亮
+- [x] 显示选项标签页保留原有 Logic/Scope/UI 全部分组设置项，保存逻辑与原版一致
+- [x] 快捷键设置标签页以表格形式列出所有 16 个可配置快捷键
+- [x] 按键捕获模式工作正常，按下新按键组合后快捷键绑定更新
+- [x] 快捷键冲突检测功能正常，冲突时给出提示
+- [x] "恢复默认"按钮可将所有快捷键恢复为默认值
+- [x] 快捷键修改后保存到 AppConfig 并广播 DSV_MSG_SHORTCUT_CHANGED
+- [x] MainWindow::eventFilter 从硬编码改为查表方式读取快捷键配置
+- [x] MainWindow 响应 DSV_MSG_SHORTCUT_CHANGED 消息重新加载快捷键配置
+- [x] 样式标签页正确解析 dark.qss 中的颜色令牌并分类显示
+- [x] 颜色选择器可修改颜色令牌值并实时预览效果
+- [x] 样式应用逻辑正确：将自定义颜色替换到 QSS 模板并重新应用
+- [x] 样式"恢复默认"按钮恢复 dark.qss 原始颜色值
+- [x] 样式配置保存到 AppConfig 并广播 DSV_MSG_STYLE_CHANGED
+- [x] 所有配置（显示选项、快捷键、样式）重启应用后持久化正确

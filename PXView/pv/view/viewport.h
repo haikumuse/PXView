@@ -119,6 +119,7 @@ public:
   void set_need_update(bool update);
   int get_fps();
   bool get_dso_trig_moved();
+
   void set_receive_len(quint64 length);
   void unshow_wait_trigger();
   void show_wait_trigger();
@@ -162,6 +163,7 @@ private:
 private slots:
   void on_trigger_timer();
   void on_drag_timer();
+  void applyDragFrame();
 
   void show_contextmenu(const QPoint &pos);
   void add_cursor_x();
@@ -261,6 +263,13 @@ private:
   QElapsedTimer _frame_interval_timer;
   int _paint_in_this_second;
   bool _is_idle;
+
+  QTimer _drag_frame_timer;
+  QPoint _drag_last_pos;
+  bool _drag_frame_pending;
+  Qt::MouseButtons _drag_buttons;
+
+  static constexpr int DragFrameInterval = 16;
 
 public:
   bool g_drag_active;

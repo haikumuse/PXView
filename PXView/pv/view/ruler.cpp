@@ -38,7 +38,6 @@
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
-#include "../ui/qtcompat.h"
 
 
 using namespace std;
@@ -298,7 +297,7 @@ void Ruler::mousePressEvent(QMouseEvent *event)
 
             while (i != cursor_list.end()) {
                 const QRect cursor_rect((*i)->get_label_rect(rect(), visible));
-                if ((*i)->get_close_rect(cursor_rect).contains(QT_COMPAT_POS(event))) {
+                if ((*i)->get_close_rect(cursor_rect).contains(event->position().toPoint())) {
                     _view.del_cursor(*i);
 
                     if (cursor_list.empty()) {
@@ -309,7 +308,7 @@ void Ruler::mousePressEvent(QMouseEvent *event)
                     break;
                 }
 
-                if (cursor_rect.contains(QT_COMPAT_POS(event))) {
+                if (cursor_rect.contains(event->position().toPoint())) {
                     set_grabbed_cursor(*i);
                     _cursor_sel_visible = false;
                     _cursor_go_visible = false;
@@ -330,7 +329,7 @@ void Ruler::mouseReleaseEvent(QMouseEvent *event)
         if (!_hitCursor && !_grabbed_marker) {
             if (!_cursor_go_visible) {
                 if (!_cursor_sel_visible) {
-                    _cursor_sel_x = QT_COMPAT_POS(event).x();
+                    _cursor_sel_x = event->position().toPoint().x();
                     _cursor_sel_visible = true;                                    
                 } 
                 else {
@@ -345,7 +344,7 @@ void Ruler::mouseReleaseEvent(QMouseEvent *event)
 
                     auto &cursor_list = _view.get_cursorList();
                     uint64_t index = _view.pixel2index(_cursor_sel_x);
-                    overCursor = in_cursor_sel_rect(QT_COMPAT_POS(event));
+                    overCursor = in_cursor_sel_rect(event->position().toPoint());
 
                     if (overCursor == 0) {
                         _view.add_cursor(index);
@@ -368,7 +367,7 @@ void Ruler::mouseReleaseEvent(QMouseEvent *event)
             } 
             else {
                 int overCursor;
-                overCursor = in_cursor_sel_rect(QT_COMPAT_POS(event));
+                overCursor = in_cursor_sel_rect(event->position().toPoint());
                 if (overCursor > 0) {
                     _view.set_cursor_middle(overCursor - 1);
                 }
@@ -392,12 +391,12 @@ void Ruler::mouseReleaseEvent(QMouseEvent *event)
     if (event->button() & Qt::RightButton) {
         if (!_cursor_sel_visible) {
             if (!_cursor_go_visible) {
-                _cursor_sel_x = QT_COMPAT_POS(event).x();
+                _cursor_sel_x = event->position().toPoint().x();
                 _cursor_go_visible = true;
             }
         } else {
             int overCursor;
-            overCursor = in_cursor_sel_rect(QT_COMPAT_POS(event));
+            overCursor = in_cursor_sel_rect(event->position().toPoint());
             auto &cursor_list = _view.get_cursorList();
 
             if (overCursor > 0) {

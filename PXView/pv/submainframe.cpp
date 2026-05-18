@@ -2,7 +2,6 @@
 #include "submainframe.h"
 
 #include "toolbars/titlebar.h"
-#include "ui/qtcompat.h"
 
 #include <QVBoxLayout>
 #include <QEvent>
@@ -15,7 +14,6 @@
 #include <QApplication>
 
 #include "dsvdef.h"
-#include "ui/qtcompat.h"
 #include "config/appconfig.h"
 #include "log.h"
 
@@ -245,6 +243,9 @@ void SubMainFrame::MoveBegin()
 void SubMainFrame::MoveEnd()
 {
 }
+
+void SubMainFrame::ParentShowMaximized() { showMaximized(); }
+void SubMainFrame::ParentShowNormal() { showNormal(); }
 
 void SubMainFrame::OnParentNativeEvent(ParentNativeEvent msg)
 {
@@ -489,7 +490,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
     }
 
     if (type == QEvent::MouseMove) {
-        QPoint pt = QT_COMPAT_GLOBAL_POS(mouse_event);
+        QPoint pt = mouse_event->globalPosition().toPoint();
         int datX = pt.x() - _clickPos.x();
         int datY = pt.y() - _clickPos.y();
 
@@ -554,7 +555,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
         if (mouse_event->button() == Qt::LeftButton)
         if (_hit_border != 0)
             _bDraging = true;
-        _clickPos = QT_COMPAT_GLOBAL_POS(mouse_event);
+        _clickPos = mouse_event->globalPosition().toPoint();
         _dragStartRegion = GetFormRegion();
     }
     else if (type == QEvent::MouseButtonRelease) {
@@ -570,7 +571,7 @@ bool SubMainFrame::eventFilter(QObject *object, QEvent *event)
     return QMainWindow::eventFilter(object, event);
 }
 
-bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
+bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 {
 #ifdef _WIN32
     if (_parentNativeWidget != NULL)
@@ -586,7 +587,7 @@ bool SubMainFrame::nativeEvent(const QByteArray &eventType, void *message, Nativ
             case WM_NCLBUTTONDBLCLK:
             case WM_NCHITTEST:
             {
-                *result = static_cast<NativeEventResult>(SendMessageW(hwnd,
+                *result = static_cast<qintptr>(SendMessageW(hwnd,
                         msg->message, msg->wParam, msg->lParam));
                 return true;
             }

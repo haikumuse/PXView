@@ -54,6 +54,7 @@ private:
 private:
     void retranslateUi();
 	void paintEvent(QPaintEvent *event);
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
 	void mousePressEvent(QMouseEvent * event);

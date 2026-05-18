@@ -325,10 +325,70 @@ static void _saveFont(FontOptions &o, QSettings &st)
 
 //------------AppConfig
 
+static void _loadShortcuts(ShortcutOptions &o, QSettings &st)
+{
+    st.beginGroup("Shortcuts");
+    int count = st.beginReadArray("item");
+    o.items.clear();
+    for (int i = 0; i < count; i++) {
+        st.setArrayIndex(i);
+        ShortcutItem item;
+        item.actionId = st.value("actionId", 0).toInt();
+        item.keySequence = st.value("keySequence", "").toString();
+        o.items.append(item);
+    }
+    st.endArray();
+    st.endGroup();
+}
+
+static void _saveShortcuts(ShortcutOptions &o, QSettings &st)
+{
+    st.beginGroup("Shortcuts");
+    st.beginWriteArray("item", o.items.size());
+    for (int i = 0; i < o.items.size(); i++) {
+        st.setArrayIndex(i);
+        st.setValue("actionId", o.items[i].actionId);
+        st.setValue("keySequence", o.items[i].keySequence);
+    }
+    st.endArray();
+    st.endGroup();
+}
+
+static void _loadStyle(StyleOptions &o, QSettings &st)
+{
+    st.beginGroup("CustomStyle");
+    int count = st.beginReadArray("token");
+    o.items.clear();
+    for (int i = 0; i < count; i++) {
+        st.setArrayIndex(i);
+        StyleTokenItem item;
+        item.tokenName = st.value("name", "").toString();
+        item.value = st.value("value", "").toString();
+        o.items.append(item);
+    }
+    st.endArray();
+    st.endGroup();
+}
+
+static void _saveStyle(StyleOptions &o, QSettings &st)
+{
+    st.beginGroup("CustomStyle");
+    st.beginWriteArray("token", o.items.size());
+    for (int i = 0; i < o.items.size(); i++) {
+        st.setArrayIndex(i);
+        st.setValue("name", o.items[i].tokenName);
+        st.setValue("value", o.items[i].value);
+    }
+    st.endArray();
+    st.endGroup();
+}
+
 AppConfig::AppConfig()
     : _saveFrameTimer(nullptr)
     , _saveAppTimer(nullptr)
     , _saveHistoryTimer(nullptr)
+    , _saveShortcutsTimer(nullptr)
+    , _saveStyleTimer(nullptr)
 {
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                      [](){ AppConfig::Instance().flushPendingSaves(); });
@@ -358,6 +418,8 @@ void AppConfig::LoadAll()
     _loadApp(appOptions, st);
     _loadHistory(userHistory, st);
     _loadFrame(frameOptions, st);
+    _loadShortcuts(shortcutOptions, st);
+    _loadStyle(styleOptions, st);
 
     //dsv_dbg("Config file path:\"%s\"", st.fileName().toUtf8().data());
 }
@@ -410,6 +472,38 @@ void AppConfig::doSaveFrame()
     _saveFrame(frameOptions, st);
 }
 
+void AppConfig::SaveShortcuts()
+{
+    if (!_saveShortcutsTimer) {
+        _saveShortcutsTimer = new QTimer();
+        _saveShortcutsTimer->setSingleShot(true);
+        QObject::connect(_saveShortcutsTimer, &QTimer::timeout, [this](){ doSaveShortcuts(); });
+    }
+    _saveShortcutsTimer->start(2000);
+}
+
+void AppConfig::doSaveShortcuts()
+{
+    QSettings st(QApplication::organizationName(), QApplication::applicationName());
+    _saveShortcuts(shortcutOptions, st);
+}
+
+void AppConfig::SaveStyle()
+{
+    if (!_saveStyleTimer) {
+        _saveStyleTimer = new QTimer();
+        _saveStyleTimer->setSingleShot(true);
+        QObject::connect(_saveStyleTimer, &QTimer::timeout, [this](){ doSaveStyle(); });
+    }
+    _saveStyleTimer->start(2000);
+}
+
+void AppConfig::doSaveStyle()
+{
+    QSettings st(QApplication::organizationName(), QApplication::applicationName());
+    _saveStyle(styleOptions, st);
+}
+
 void AppConfig::flushPendingSaves()
 {
     if (_saveFrameTimer && _saveFrameTimer->isActive()) {
@@ -423,6 +517,14 @@ void AppConfig::flushPendingSaves()
     if (_saveHistoryTimer && _saveHistoryTimer->isActive()) {
         _saveHistoryTimer->stop();
         doSaveHistory();
+    }
+    if (_saveShortcutsTimer && _saveShortcutsTimer->isActive()) {
+        _saveShortcutsTimer->stop();
+        doSaveShortcuts();
+    }
+    if (_saveStyleTimer && _saveStyleTimer->isActive()) {
+        _saveStyleTimer->stop();
+        doSaveStyle();
     }
 }
 
@@ -646,11 +748,7 @@ QString GetFirmwareDir()
 
 QString GetUserDataDir()
 {
-    #if QT_VERSION >= 0x050400
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    #else
-    return QStandardPaths::writableLocation(QStandardPaths::DataLocation);
-    #endif
 }
 
 QString GetDecodeScriptDir()
@@ -701,9 +799,5 @@ QString GetDecodeScriptDir()
 
 QString GetProfileDir()
 {
- #if QT_VERSION >= 0x050400
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    #else
-    return QStandardPaths::writableLocation(QStandardPaths::DataLocation);
-    #endif
 }

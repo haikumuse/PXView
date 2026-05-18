@@ -70,6 +70,7 @@ QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
     }
 
 	_selector = new DsComboBox(parent);
+	_selector->setObjectName("dock_content");
 
 	for (unsigned int i = 0; i < _values.size(); i++) {
 		const pair<GVariant*, QString> &v = _values[i];
