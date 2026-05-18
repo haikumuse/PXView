@@ -958,5 +958,69 @@
     {
         "id": "IDS_DLG_SC_DSO_VDOWN",
         "text": "DSO V-Dial Down"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_OPEN",
+        "text": "Open File"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_SAVE",
+        "text": "Save File"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_EXPORT",
+        "text": "Export Data"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_LOAD",
+        "text": "Load Config"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_STORE",
+        "text": "Store Config"
+    },
+    {
+        "id": "IDS_DLG_SC_SCREENSHOT",
+        "text": "Screenshot"
+    },
+    {
+        "id": "IDS_DLG_SC_FFT",
+        "text": "FFT"
+    },
+    {
+        "id": "IDS_DLG_SC_MATH",
+        "text": "Math"
+    },
+    {
+        "id": "IDS_DLG_SC_LISSAJOUS",
+        "text": "Lissajous"
+    },
+    {
+        "id": "IDS_DLG_SC_SETTINGS",
+        "text": "Settings"
+    },
+    {
+        "id": "IDS_DLG_SC_LOG",
+        "text": "Log"
+    },
+    {
+        "id": "IDS_DLG_SC_FUNCTION",
+        "text": "Function"
+    },
+    {
+        "id": "IDS_DLG_SC_THEME_TOGGLE",
+        "text": "Toggle Theme"
+    },
+    {
+        "id": "IDS_DLG_SC_NEW_TAB",
+        "text": "New Tab"
+    },
+    {
+        "id": "IDS_DLG_SC_CLOSE_TAB",
+        "text": "Close Tab"
+    },
+    {
+        "id": "IDS_DLG_SC_ZOOM_FIT",
+        "text": "Zoom Fit"
     }
 ]

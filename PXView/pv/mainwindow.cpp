@@ -1987,6 +1987,63 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
             }
         }
         break;
+    case SHORTCUT_FILE_OPEN:
+        _file_bar->_action_open->trigger();
+        break;
+    case SHORTCUT_FILE_SAVE:
+        _file_bar->_action_save->trigger();
+        break;
+    case SHORTCUT_FILE_EXPORT:
+        _file_bar->_action_export->trigger();
+        break;
+    case SHORTCUT_FILE_LOAD:
+        _file_bar->_action_load->trigger();
+        break;
+    case SHORTCUT_FILE_STORE:
+        _file_bar->_action_store->trigger();
+        break;
+    case SHORTCUT_SCREENSHOT:
+        _file_bar->_action_capture->trigger();
+        break;
+    case SHORTCUT_FFT:
+        _trig_bar->_action_fft->trigger();
+        break;
+    case SHORTCUT_MATH:
+        _trig_bar->_action_math->trigger();
+        break;
+    case SHORTCUT_LISSAJOUS:
+        _trig_bar->_action_lissajous->trigger();
+        break;
+    case SHORTCUT_SETTINGS:
+        _trig_bar->_action_dispalyOptions->trigger();
+        break;
+    case SHORTCUT_LOG:
+        _side_bar->getItem(SIDEBAR_LOG)->button->click();
+        break;
+    case SHORTCUT_FUNCTION:
+        _side_bar->getItem(SIDEBAR_FUNCTION)->button->click();
+        break;
+    case SHORTCUT_THEME_TOGGLE: {
+        AppConfig &app = AppConfig::Instance();
+        if (app.frameOptions.style == THEME_STYLE_DARK)
+            switchTheme(THEME_STYLE_LIGHT);
+        else
+            switchTheme(THEME_STYLE_DARK);
+        break;
+    }
+    case SHORTCUT_NEW_TAB:
+        on_new_tab_requested();
+        break;
+    case SHORTCUT_CLOSE_TAB:
+        if (_tab_widget && _tab_widget->count() > 0)
+            remove_tab(_tab_widget->currentIndex());
+        break;
+    case SHORTCUT_ZOOM_FIT:
+        if (current_view()) {
+            current_view()->auto_set_max_scale();
+            current_view()->set_scale_offset(current_view()->scale(), 0);
+        }
+        break;
     default:
         return false;
     }
