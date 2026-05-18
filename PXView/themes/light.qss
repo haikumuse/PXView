@@ -423,7 +423,7 @@ QLineEdit
     padding: 2px;
     border-style: solid;
     border: 1px solid @border;
-    border-radius: 2px;
+    border-radius: 0px;
     color: @fg-base;
 }
 
@@ -738,7 +738,7 @@ QComboBox
     background-color: @bg-base;
     border-style: solid;
     border: 1px solid @border;
-    border-radius: 2px;
+    border-radius: 0px;
     padding: 2px;
     min-width: 30px;
 }
@@ -746,7 +746,7 @@ QComboBox
 QComboBox QAbstractItemView
 {
     background-color: @bg-base;
-    border-radius: 2px;
+    border-radius: 0px;
     border: 1px solid @border;
     selection-background-color: @combo-selection;
 }
@@ -759,8 +759,8 @@ QComboBox::drop-down
 
     border-left-width: 0px;
     border-left-style: solid;
-    border-top-right-radius: 3px;
-    border-bottom-right-radius: 3px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
 }
 
 QComboBox::down-arrow
@@ -1345,25 +1345,6 @@ QTreeView::item:hover
 {
     border: 1px solid @accent;
 }
-
-QListWidget#settingsNavList::item:!selected:hover
-{
-    background: @item-hover;
-    border: none;
-}
-
-QListWidget#settingsNavList::item:pressed
-{
-    background: @item-hover;
-    border: none;
-}
-
-QListWidget#settingsNavList::item:selected
-{
-    background: @item-hover;
-    border: none;
-}
-
 
 QHeaderView
 {

@@ -83,7 +83,8 @@ public:
     }
 
 protected: 
-    void changeEvent(QEvent *event);
+    void changeEvent(QEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void on_keyword_changed(const QString &value);

@@ -30,6 +30,7 @@
 #include <QFontDatabase>
 #include <QGroupBox>
 #include <QLabel>
+#include <QStyledItemDelegate>
 #include <QListWidget>
 #include <QStackedWidget>
 #include <QTableWidget>
@@ -1167,6 +1168,18 @@ bool ApplicationParamDlg::ShowDlg(QWidget *parent)
     _nav_list->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_NAV_STYLE), "Style"));
     _nav_list->setCurrentRow(0);
     _nav_list->setFocusPolicy(Qt::NoFocus);
+
+    class NavListDelegate : public QStyledItemDelegate {
+    public:
+        void paint(QPainter *painter, const QStyleOptionViewItem &option,
+                   const QModelIndex &index) const override
+        {
+            QStyleOptionViewItem opt = option;
+            opt.state &= ~(QStyle::State_MouseOver | QStyle::State_Sunken);
+            QStyledItemDelegate::paint(painter, opt, index);
+        }
+    };
+    _nav_list->setItemDelegate(new NavListDelegate());
 
     _page_stack = new QStackedWidget();
     _page_stack->addWidget(createDisplayPage());

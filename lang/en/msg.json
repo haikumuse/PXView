@@ -364,10 +364,6 @@
         "text": "File does not exist!"
     },
     {
-        "id": "IDS_MSG_TO_CLEAR_LOG",
-        "text": "Are you sure to clear log file?"
-    },
-    {
         "id": "IDS_MSG_DEVICE_SPEED_TOO_LOW",
         "text": "Error: USB port speed is too low (<480Mbps)!"
     },
