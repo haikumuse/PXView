@@ -958,5 +958,69 @@
     {
         "id": "IDS_DLG_SC_DSO_VDOWN",
         "text": "DSO垂直减小"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_OPEN",
+        "text": "打开文件"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_SAVE",
+        "text": "保存文件"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_EXPORT",
+        "text": "导出数据"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_LOAD",
+        "text": "加载配置"
+    },
+    {
+        "id": "IDS_DLG_SC_FILE_STORE",
+        "text": "保存配置"
+    },
+    {
+        "id": "IDS_DLG_SC_SCREENSHOT",
+        "text": "截图"
+    },
+    {
+        "id": "IDS_DLG_SC_FFT",
+        "text": "FFT"
+    },
+    {
+        "id": "IDS_DLG_SC_MATH",
+        "text": "数学运算"
+    },
+    {
+        "id": "IDS_DLG_SC_LISSAJOUS",
+        "text": "李萨如图形"
+    },
+    {
+        "id": "IDS_DLG_SC_SETTINGS",
+        "text": "设置"
+    },
+    {
+        "id": "IDS_DLG_SC_LOG",
+        "text": "日志"
+    },
+    {
+        "id": "IDS_DLG_SC_FUNCTION",
+        "text": "功能"
+    },
+    {
+        "id": "IDS_DLG_SC_THEME_TOGGLE",
+        "text": "切换主题"
+    },
+    {
+        "id": "IDS_DLG_SC_NEW_TAB",
+        "text": "新建标签页"
+    },
+    {
+        "id": "IDS_DLG_SC_CLOSE_TAB",
+        "text": "关闭标签页"
+    },
+    {
+        "id": "IDS_DLG_SC_ZOOM_FIT",
+        "text": "适应窗口"
     }
 ]

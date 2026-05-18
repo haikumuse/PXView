@@ -63,7 +63,6 @@
  * @toolbtn-hover: #353535
  * @flat-hover-bg: #177cb0
  * @flat-hover-fg: #ffffff
- * @drawer-border: #3f3f46
  * @ribbon-sep: #555555
  * @btn-border: #3a3a3a
  * @header-h-bg: #5f5f5f
@@ -74,13 +73,7 @@
  * @input-bg: #232629
  * @frame-border: #444444
  * @slider-v-border: #626568
- * @splitter-mid-h: #404040
- * @splitter-edge-h: #333333
- * @splitter-mid-v: #606060
- * @splitter-edge-v: #505050
- * @drawer-title-bg: #2d2d2d
  * @drawer-title-fg: #eff0f1
- * @drawer-title-border: #3f3f46
  * @drawer-edge-hover: rgba(255,255,255,0.12)
  * @dock-gridline: #3f3f46
  * @item-hover: rgba(255,255,255,0.06)
@@ -88,7 +81,6 @@
  * @dock-section-separator-color: #37373b
  * @dock-status-ok: #4ec9b0
  * @dock-status-error: #f44747
- * @ribbon-menu-text: #eff0f1
  * @tab-add-color: #8a8a8a
  * @tab-add-hover-color: #ffffff
  * @debug-tooltip-bg: #2d2d2d
@@ -105,7 +97,6 @@
  * @panel-text: #f5f0e5
  * @channel-disabled-bg: #2d2d2d
  * @channel-disabled-fg: #7a7a7a
- * @row-hover: rgba(128,128,128,30)
  * @signal-red: #D50F25
  * @signal-orange: #EEB211
  * @signal-blue: #1185D1
@@ -154,6 +145,12 @@ QPushButton#flat:hover
 {
     background-color: @flat-hover-bg;
     color: @flat-hover-fg;
+}
+
+#dsComboPopup
+{
+    background-color: @bg-base;
+    border: 1px solid @border;
 }
 
 QCheckBox
@@ -1322,10 +1319,21 @@ QTreeView::item:hover
     border: 1px solid @accent;
 }
 
-QListWidget#settingsNavList::item:hover
+QListWidget#settingsNavList::item:!selected:hover
 {
-    background: @accent;
-    color: @fg-base;
+    background: @item-hover;
+    border: none;
+}
+
+QListWidget#settingsNavList::item:pressed
+{
+    background: @item-hover;
+    border: none;
+}
+
+QListWidget#settingsNavList::item:selected
+{
+    background: @item-hover;
     border: none;
 }
 

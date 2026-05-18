@@ -4,14 +4,21 @@
 #include <QScreen>
 #include <QVBoxLayout>
 #include <QScrollBar>
+#include <QLibrary>
 #include "../config/appconfig.h"
 #include "../ui/dockfonts.h"
 #include "../widgets/smoothscrollarea.h"
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 DsComboPopup::DsComboPopup(QComboBox *combo, QWidget *parent)
     : QDialog(parent)
 {
-    setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
+    setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_DeleteOnClose);
+    setObjectName("dsComboPopup");
     _combo = combo;
 
     int w = combo->width();
@@ -88,12 +95,29 @@ void DsComboPopup::changeEvent(QEvent *event)
 {
     if (event->type() == QEvent::ActivationChange) {
         if (!this->isActiveWindow()) {
-            this->hide();
-            this->deleteLater();
+            this->close();
             return;
         }
     }
     QDialog::changeEvent(event);
+}
+
+void DsComboPopup::showEvent(QShowEvent *event)
+{
+    QDialog::showEvent(event);
+
+#ifdef WIN32
+    const DWORD DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    const DWORD DWMWCP_DONOTROUND = 1;
+    typedef HRESULT(WINAPI *tDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
+    tDwmSetWindowAttribute pDwmSetWindowAttribute =
+        tDwmSetWindowAttribute(QLibrary::resolve("dwmapi", "DwmSetWindowAttribute"));
+    if (pDwmSetWindowAttribute) {
+        HWND hwnd = (HWND)this->winId();
+        DWORD preference = DWMWCP_DONOTROUND;
+        pDwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
+    }
+#endif
 }
 
 void DsComboPopup::on_item_clicked()
@@ -107,8 +131,7 @@ void DsComboPopup::on_item_clicked()
         _combo->setCurrentIndex(index);
     }
 
-    this->hide();
-    this->deleteLater();
+    this->close();
 }
 
 DsComboBox::DsComboBox(QWidget *parent)
