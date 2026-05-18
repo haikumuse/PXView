@@ -49,6 +49,8 @@ public:
     virtual bool ParentIsMaxsized()=0;
     virtual void MoveBegin()=0;
     virtual void MoveEnd()=0;
+    virtual void ParentShowMaximized()=0;
+    virtual void ParentShowNormal()=0;
 };
 
 namespace toolbars {
@@ -104,10 +106,6 @@ private:
     bool ParentIsMaxsized();
     bool isOnTabBar(const QPoint &pos) const;
     void positionRibbonContainer();
-
-signals:
-    void normalShow();
-    void maximizedShow();
 
 public slots:
     void showMaxRestore();

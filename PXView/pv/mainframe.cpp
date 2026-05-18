@@ -26,7 +26,6 @@
 #include "dialogs/dsmessagebox.h"
 #include "dialogs/dsdialog.h"
 #include "mainwindow.h"
-#include "ui/qtcompat.h"
 
 #include <QVBoxLayout>
 #include <QEvent>
@@ -49,9 +48,7 @@
 #include <algorithm>
 #include <QWindow>
 
- #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
- #include <QDesktopWidget>
- #endif
+
 
 #include "dsvdef.h"
 #include "config/appconfig.h"
@@ -247,6 +244,9 @@ void MainFrame::MoveEnd()
     saveNormalRegion();
 #endif
 }
+
+void MainFrame::ParentShowMaximized() { showMaximized(); }
+void MainFrame::ParentShowNormal() { showNormal(); }
 
 void MainFrame::OnParentNativeEvent(ParentNativeEvent msg)
 {
@@ -472,7 +472,7 @@ bool MainFrame::eventFilter(QObject *object, QEvent *event)
  
         QPoint pt;
         int k = 1;
-        pt = QT_COMPAT_GLOBAL_POS(mouse_event);
+        pt = mouse_event->globalPosition().toPoint();
 
         int datX = pt.x() - _clickPos.x();
         int datY = pt.y() - _clickPos.y();
@@ -576,7 +576,7 @@ bool MainFrame::eventFilter(QObject *object, QEvent *event)
             _bDraging = true;
         _timer.start(50); 
 
-        _clickPos = QT_COMPAT_GLOBAL_POS(mouse_event);
+        _clickPos = mouse_event->globalPosition().toPoint();
         _dragStartRegion = GetFormRegion();
     } 
     else if (type == QEvent::MouseButtonRelease) {
@@ -1107,7 +1107,7 @@ QWidget* MainFrame::GetBodyView()
     return _mainWindow->GetBodyView();
 }
 
-bool MainFrame::nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
+bool MainFrame::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 {
 #ifdef _WIN32
 
@@ -1124,7 +1124,7 @@ bool MainFrame::nativeEvent(const QByteArray &eventType, void *message, NativeEv
             case WM_NCLBUTTONDBLCLK:
             case WM_NCHITTEST:
             {
-                *result = static_cast<NativeEventResult>(SendMessageW(hwnd, 
+                *result = static_cast<qintptr>(SendMessageW(hwnd, 
                         msg->message, msg->wParam, msg->lParam));
                 return true;
             }           

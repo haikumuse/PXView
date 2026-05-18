@@ -44,7 +44,6 @@
 #include "../sigsession.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
-#include "../ui/qtcompat.h"
 #include "analogsignal.h"
 #include "decodetrace.h"
 #include "dsosignal.h"
@@ -233,7 +232,7 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event) {
   _view.get_traces(ALL_VIEW, traces);
 
   if (event->button() & Qt::LeftButton) {
-    _mouse_down_point = QT_COMPAT_POS(event);
+    _mouse_down_point = event->position().toPoint();
 
     // Save the offsets of any Traces which will be dragged
     for (auto t : traces) {
@@ -243,7 +242,7 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event) {
 
     // Select the Trace if it has been clicked
     for (auto t : traces) {
-      if (t->mouse_double_click(width(), QT_COMPAT_POS(event)))
+      if (t->mouse_double_click(width(), event->position().toPoint()))
         break;
     }
   }
@@ -266,7 +265,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
   if (_view.session().get_device()->get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(ALL_VIEW, traces);
-    int mouseY = QT_COMPAT_POS(event).y() + _view.get_vOffset();
+    int mouseY = event->position().toPoint().y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
 
     for (int i = 0; i < (int)traces.size() - 1; i++) {
@@ -281,7 +280,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
       if (abs(mouseY - traceBottom) < HitBorderMargin) {
         _resize_trace_upper = traces[i];
         _resize_trace_lower = traces[i + 1];
-        _resize_mouse_down_y = QT_COMPAT_POS(event).y();
+        _resize_mouse_down_y = event->position().toPoint().y();
         _resize_upper_height = traces[i]->get_totalHeight();
         _resize_lower_height = traces[i + 1]->get_totalHeight();
         return;
@@ -290,7 +289,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
   }
 
   if (event->button() & Qt::LeftButton) {
-    _mouse_down_point = QT_COMPAT_POS(event) + QPoint(0, _view.get_vOffset());
+    _mouse_down_point = event->position().toPoint() + QPoint(0, _view.get_vOffset());
 
     // Save the offsets of any Traces which will be dragged
     for (auto t : traces) {
@@ -299,7 +298,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
     }
 
     // Select the Trace if it has been clicked
-    const auto mTrace = get_mTrace(action, QT_COMPAT_POS(event));
+    const auto mTrace = get_mTrace(action, event->position().toPoint());
     if (action == Trace::COLOR && mTrace) {
       _colorFlag = true;
     } else if (action == Trace::NAME && mTrace) {
@@ -327,7 +326,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
         // Disable set trigger from left pannel when capturing.
         break;
       }
-      if (t->mouse_press(width(), QT_COMPAT_POS(event)))
+      if (t->mouse_press(width(), event->position().toPoint()))
         break;
     }
 
@@ -356,7 +355,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
 
   // judge for color / name / trigger / move
   int action;
-  const auto mTrace = get_mTrace(action, QT_COMPAT_POS(event));
+  const auto mTrace = get_mTrace(action, event->position().toPoint());
 
   if (mTrace) {
     if (action == Trace::COLOR && _colorFlag) {
@@ -463,7 +462,6 @@ void Header::wheelEvent(QWheelEvent *event) {
   (void)x;
   (void)y;
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   x = (int)event->position().x();
   y = (int)event->position().y();
   int anglex = event->angleDelta().x();
@@ -477,14 +475,8 @@ void Header::wheelEvent(QWheelEvent *event) {
     isVertical = true;
   } else {
     delta = anglex;
-    isVertical = false; // hori direction
+    isVertical = false;
   }
-#else
-  x = event->x();
-  delta = event->delta();
-  isVertical = event->orientation() == Qt::Vertical;
-  pos = event->pos();
-#endif
 
   if (isVertical) {
     if (event->modifiers() & Qt::ShiftModifier) {
@@ -572,10 +564,10 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
     return;
   }
 
-  _mouse_point = QT_COMPAT_POS(event) + QPoint(0, _view.get_vOffset());
+  _mouse_point = event->position().toPoint() + QPoint(0, _view.get_vOffset());
 
   if (_resize_trace_upper && _resize_trace_lower) {
-    int deltaY = QT_COMPAT_POS(event).y() - _resize_mouse_down_y;
+    int deltaY = event->position().toPoint().y() - _resize_mouse_down_y;
     int newUpperHeight = _resize_upper_height + deltaY;
 
     if (newUpperHeight >= View::MinSignalHeight) {
@@ -587,7 +579,7 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
 
   // Move the Traces if we are dragging
   if (!_drag_traces.empty()) {
-    const int delta = QT_COMPAT_POS(event).y() - _mouse_down_point.y();
+    const int delta = event->position().toPoint().y() - _mouse_down_point.y();
 
     for (auto i = _drag_traces.begin(); i != _drag_traces.end(); i++) {
       const auto t = (*i).first;
@@ -678,6 +670,10 @@ void Header::UpdateLanguage() { retranslateUi(); }
 void Header::UpdateTheme() { retranslateUi(); }
 
 void Header::UpdateFont() {}
+
+void Header::resizeEvent(QResizeEvent *event) {
+  QWidget::resizeEvent(event);
+}
 
 } // namespace view
 } // namespace pv

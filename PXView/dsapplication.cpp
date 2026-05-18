@@ -23,10 +23,15 @@
 #include "dsapplication.h"
 
 #include <QMessageBox>
+#ifndef NDEBUG
 #include <QElapsedTimer>
+#endif
 #include <QEvent>
 #include <QMetaObject>
+#include <QPointer>
+#ifndef NDEBUG
 #include "pv/log.h"
+#endif
 
 DSApplication::DSApplication(int &argc, char **argv):
     QApplication(argc, argv)
@@ -39,8 +44,8 @@ bool DSApplication::notify(QObject *receiver_, QEvent *event_)
         return QApplication::notify(receiver_, event_);
     }
 
+#ifndef NDEBUG
     int type = event_->type();
-    // Profile: Paint (12), Resize (14), LayoutRequest (76), MouseMove (5), MouseButtonPress (2), MouseButtonRelease (3)
     bool is_profile_event = (type == QEvent::Paint || type == QEvent::Resize || 
                              type == QEvent::LayoutRequest || type == QEvent::MouseMove || 
                              type == QEvent::MouseButtonPress || type == QEvent::MouseButtonRelease);
@@ -49,13 +54,16 @@ bool DSApplication::notify(QObject *receiver_, QEvent *event_)
     if (is_profile_event) {
         timer.start();
     }
+#endif
 
     try {
+        QPointer<QObject> receiverGuard(receiver_);
         bool result = QApplication::notify(receiver_, event_);
         
+#ifndef NDEBUG
         if (is_profile_event) {
             qint64 elapsed = timer.elapsed();
-            if (elapsed > 0) {
+            if (elapsed > 0 && receiverGuard) {
                 dsv_warn("[PROFILER] Receiver: %s (%s), EventType: %d, took %lld ms",
                          receiver_->objectName().isEmpty() ? "unnamed" : receiver_->objectName().toUtf8().constData(),
                          receiver_->metaObject()->className(),
@@ -63,6 +71,7 @@ bool DSApplication::notify(QObject *receiver_, QEvent *event_)
                          elapsed);
             }
         }
+#endif
         return result;
     } catch ( std::exception& e ) {
         QMessageBox msg(NULL);

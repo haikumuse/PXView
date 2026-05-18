@@ -23,6 +23,7 @@
 #ifndef DSVIEW_PV_LOGDOCK_H
 #define DSVIEW_PV_LOGDOCK_H
 
+#include <QCheckBox>
 #include <QDockWidget>
 #include <QFrame>
 #include <QLabel>
@@ -73,14 +74,20 @@ private slots:
   void on_level_changed(int index);
   void on_scroll_bottom_changed(bool checked);
   void on_flush_buffer();
+  void on_save_to_file_changed(int state);
+  void on_append_mode_changed(int state);
+  void on_open_log_file();
 
 private:
   QWidget *_widget;
   QPlainTextEdit *_log_view;
   QPushButton *_refresh_btn;
   QPushButton *_clear_btn;
+  QPushButton *_open_btn;
   QComboBox *_level_combo;
   QPushButton *_scroll_bottom_btn;
+  QCheckBox *_save_file_check;
+  QCheckBox *_append_mode_check;
   bool _auto_scroll;
 
   QTimer _refresh_timer;

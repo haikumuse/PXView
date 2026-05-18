@@ -468,13 +468,7 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout)
     enable_all_probes->setFont(font);
     disable_all_probes->setFont(font);
 
-    //int bt_width = enable_all_probes->fontMetrics().horizontalAdvance(enable_all_probes->text()) + 20;
-
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        int bt_width = enable_all_probes->fontMetrics().horizontalAdvance(enable_all_probes->text()) + 20;
-    #else
-        int bt_width = enable_all_probes->fontMetrics().width(enable_all_probes->text()) + 20;
-    #endif
+    int bt_width = enable_all_probes->fontMetrics().horizontalAdvance(enable_all_probes->text()) + 20;
 
     enable_all_probes->setMaximumWidth(bt_width);
     disable_all_probes->setMaximumWidth(bt_width);

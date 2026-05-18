@@ -57,11 +57,6 @@
 #include <functional>
 #include <libusb-1.0/libusb.h>
 
-// include with qt5
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#include <QDesktopWidget>
-#endif
-
 #include "log.h"
 #include "mainwindow.h"
 
@@ -105,6 +100,7 @@
 #include "ZipMaker.h"
 #include "appcontrol.h"
 #include "config/appconfig.h"
+#include "config/shortcutdefs.h"
 #include "deviceagent.h"
 #include "dsvdef.h"
 #include "log.h"
@@ -223,7 +219,6 @@ void MainWindow::setupHelpCategory() {
   _title_bar->addAction(_category_help_index, _logo_bar->_manual);
   _title_bar->addAction(_category_help_index, _logo_bar->_issue);
   _title_bar->addAction(_category_help_index, _logo_bar->_update);
-  _title_bar->addAction(_category_help_index, _logo_bar->_log);
 }
 
 void MainWindow::Ribbon_retranslateUi() {
@@ -1086,33 +1081,17 @@ void MainWindow::on_screenShot() {
   (void)y;
 
 #ifdef _WIN32
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   QPixmap pixmap = parentWidget()->grab();
-#else
-  QPixmap pixmap = QPixmap::grabWidget(parentWidget());
-#endif
 #elif __APPLE__
   x += MainFrame::Margin;
   y += MainFrame::Margin;
   w -= MainFrame::Margin * 2;
   h -= MainFrame::Margin * 2;
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   QPixmap pixmap =
       QGuiApplication::primaryScreen()->grabWindow(winId(), x, y, w, h);
 #else
-  QDesktopWidget *desktop = QApplication::desktop();
-  int curMonitor = desktop->screenNumber(this);
-  QPixmap pixmap = QGuiApplication::screens()
-                       .at(curMonitor)
-                       ->grabWindow(winId(), x, y, w, h);
-#endif
-#else
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   QPixmap pixmap = parentWidget()->grab();
-#else
-  QPixmap pixmap = QPixmap::grabWidget(parentWidget());
-#endif
 #endif
 
   QString format = "png";
@@ -1761,6 +1740,53 @@ void MainWindow::restore_dock() {
   }
 }
 
+int MainWindow::resolveShortcutAction(int key, int modifiers)
+{
+    AppConfig &app = AppConfig::Instance();
+    int count = 0;
+    const ShortcutActionInfo *infos = GetShortcutActionInfos(&count);
+
+    for (int i = 0; i < count; i++) {
+        QString keySeqStr;
+
+        bool found = false;
+        for (int j = 0; j < app.shortcutOptions.items.size(); j++) {
+            if (app.shortcutOptions.items[j].actionId == infos[i].actionId) {
+                keySeqStr = app.shortcutOptions.items[j].keySequence;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found || keySeqStr.isEmpty()) {
+            keySeqStr = infos[i].keySequence;
+        }
+
+        QKeySequence seq(keySeqStr);
+        if (seq.count() > 0) {
+            int combined = seq[0];
+            int seqKey = combined & ~Qt::KeyboardModifierMask;
+            int seqMods = combined & Qt::KeyboardModifierMask;
+
+            if (seqMods == 0 && modifiers == 0 && seqKey == key) {
+                return infos[i].actionId;
+            }
+
+            if (seqMods != 0) {
+                bool modsMatch = true;
+                if ((seqMods & Qt::ShiftModifier) && !(modifiers & Qt::ShiftModifier)) modsMatch = false;
+                if ((seqMods & Qt::ControlModifier) && !(modifiers & Qt::ControlModifier)) modsMatch = false;
+                if ((seqMods & Qt::AltModifier) && !(modifiers & Qt::AltModifier)) modsMatch = false;
+                if (modsMatch && seqKey == key) {
+                    return infos[i].actionId;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
 bool MainWindow::eventFilter(QObject *object, QEvent *event) {
   (void)object;
 
@@ -1862,132 +1888,107 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
 
     int modifier = ke->modifiers();
 
-    if (modifier & Qt::ControlModifier || modifier & Qt::ShiftModifier ||
-        modifier & Qt::AltModifier) {
-      return true;
+    int action = resolveShortcutAction(ke->key(), (int)modifier);
+    if (action == 0) {
+        if (modifier & Qt::ControlModifier || modifier & Qt::AltModifier) {
+            return true;
+        }
+        return false;
     }
 
-    high_resolution_clock::time_point key_press_time =
-        high_resolution_clock::now();
-    milliseconds timeInterval = std::chrono::duration_cast<milliseconds>(
-        key_press_time - _last_key_press_time);
-    int64_t time_keep = timeInterval.count();
-    if (time_keep < 200) {
-      return true;
-    }
-    _last_key_press_time = key_press_time;
-
-    switch (ke->key()) {
-
-    // case Qt::Key_F:
-    //     _category_file->popup();
-    //     break;
-    case Qt::Key_S:
-      _sampling_bar->run_or_stop();
-      break;
-
-    case Qt::Key_I:
-      _sampling_bar->run_or_stop_instant();
-      break;
-
-    case Qt::Key_T:
-      _side_bar->getItem(SIDEBAR_TRIGGER)->button->click();
-      break;
-
-    case Qt::Key_D:
-      _side_bar->getItem(SIDEBAR_DECODE)->button->click();
-      break;
-
-    case Qt::Key_M:
-      _side_bar->getItem(SIDEBAR_MEASURE)->button->click();
-      break;
-
-    case Qt::Key_R:
-      _side_bar->getItem(SIDEBAR_SEARCH)->button->click();
-      break;
-
-    case Qt::Key_O:
-      _side_bar->getItem(SIDEBAR_OPTIONS)->button->click();
-      break;
-
-    case Qt::Key_PageUp:
-      current_view()->set_scale_offset(current_view()->scale(),
-                                       current_view()->offset() -
-                                           current_view()->get_view_width());
-      break;
-    case Qt::Key_PageDown:
-      current_view()->set_scale_offset(current_view()->scale(),
-                                       current_view()->offset() +
-                                           current_view()->get_view_width());
-
-      break;
-
-    case Qt::Key_Left:
-      current_view()->zoom(1);
-      break;
-
-    case Qt::Key_Right:
-      current_view()->zoom(-1);
-      break;
-
-    case Qt::Key_0:
-      for (auto s : sigs) {
-        if (s->signal_type() == SR_CHANNEL_DSO) {
-          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-          if (dsoSig->get_index() == 0)
-            dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
-          else
-            dsoSig->set_vDialActive(false);
+    switch (action) {
+    case SHORTCUT_RUN_STOP:
+        _sampling_bar->run_or_stop();
+        break;
+    case SHORTCUT_INSTANT:
+        _sampling_bar->run_or_stop_instant();
+        break;
+    case SHORTCUT_TRIGGER:
+        _side_bar->getItem(SIDEBAR_TRIGGER)->button->click();
+        break;
+    case SHORTCUT_DECODE:
+        _side_bar->getItem(SIDEBAR_DECODE)->button->click();
+        break;
+    case SHORTCUT_MEASURE:
+        _side_bar->getItem(SIDEBAR_MEASURE)->button->click();
+        break;
+    case SHORTCUT_SEARCH:
+        _side_bar->getItem(SIDEBAR_SEARCH)->button->click();
+        break;
+    case SHORTCUT_OPTIONS:
+        _side_bar->getItem(SIDEBAR_OPTIONS)->button->click();
+        break;
+    case SHORTCUT_DEVICE_SELECT:
+        _sampling_bar->device_selected();
+        break;
+    case SHORTCUT_PAGE_UP:
+        current_view()->set_scale_offset(current_view()->scale(),
+                                         current_view()->offset() -
+                                             current_view()->get_view_width());
+        break;
+    case SHORTCUT_PAGE_DOWN:
+        current_view()->set_scale_offset(current_view()->scale(),
+                                         current_view()->offset() +
+                                             current_view()->get_view_width());
+        break;
+    case SHORTCUT_ZOOM_IN:
+        current_view()->zoom(1);
+        break;
+    case SHORTCUT_ZOOM_OUT:
+        current_view()->zoom(-1);
+        break;
+    case SHORTCUT_DSO_CH0:
+        for (auto s : sigs) {
+            if (s->signal_type() == SR_CHANNEL_DSO) {
+                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+                if (dsoSig->get_index() == 0)
+                    dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
+                else
+                    dsoSig->set_vDialActive(false);
+            }
         }
-      }
-      current_view()->setFocus();
-      update();
-      break;
-
-    case Qt::Key_1:
-      for (auto s : sigs) {
-        if (s->signal_type() == SR_CHANNEL_DSO) {
-          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-          if (dsoSig->get_index() == 1)
-            dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
-          else
-            dsoSig->set_vDialActive(false);
+        current_view()->setFocus();
+        update();
+        break;
+    case SHORTCUT_DSO_CH1:
+        for (auto s : sigs) {
+            if (s->signal_type() == SR_CHANNEL_DSO) {
+                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+                if (dsoSig->get_index() == 1)
+                    dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
+                else
+                    dsoSig->set_vDialActive(false);
+            }
         }
-      }
-      current_view()->setFocus();
-      update();
-      break;
-
-    case Qt::Key_Up:
-      for (auto s : sigs) {
-        if (s->signal_type() == SR_CHANNEL_DSO) {
-          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-          if (dsoSig->get_vDialActive()) {
-            dsoSig->go_vDialNext(true);
-            update();
-            break;
-          }
+        current_view()->setFocus();
+        update();
+        break;
+    case SHORTCUT_DSO_VUP:
+        for (auto s : sigs) {
+            if (s->signal_type() == SR_CHANNEL_DSO) {
+                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+                if (dsoSig->get_vDialActive()) {
+                    dsoSig->go_vDialNext(true);
+                    update();
+                    break;
+                }
+            }
         }
-      }
-      break;
-
-    case Qt::Key_Down:
-      for (auto s : sigs) {
-        if (s->signal_type() == SR_CHANNEL_DSO) {
-          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-          if (dsoSig->get_vDialActive()) {
-            dsoSig->go_vDialPre(true);
-            update();
-            break;
-          }
+        break;
+    case SHORTCUT_DSO_VDOWN:
+        for (auto s : sigs) {
+            if (s->signal_type() == SR_CHANNEL_DSO) {
+                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+                if (dsoSig->get_vDialActive()) {
+                    dsoSig->go_vDialPre(true);
+                    update();
+                    break;
+                }
+            }
         }
-      }
-      break;
-    case Qt::Key_E:
-      _sampling_bar->device_selected();
-      break;
+        break;
     default:
-      return false;
+        return false;
     }
     return true;
   }
@@ -2047,6 +2048,10 @@ void MainWindow::switchTheme(QString style) {
     QString tokenName = "@" + match.captured(1);
     QString tokenValue = match.captured(2).trimmed();
     tokens[tokenName] = tokenValue;
+  }
+
+  for (int i = 0; i < app.styleOptions.items.size(); i++) {
+    tokens[app.styleOptions.items[i].tokenName] = app.styleOptions.items[i].value;
   }
 
   QList<QString> keys = tokens.keys();
@@ -2796,6 +2801,12 @@ void MainWindow::OnMessage(int msg) {
   }
   case DSV_MSG_FONT_OPTIONS_CHANGED: {
     UiManager::Instance()->Update(UI_UPDATE_ACTION_FONT);
+    break;
+  }
+  case DSV_MSG_SHORTCUT_CHANGED: {
+    break;
+  }
+  case DSV_MSG_STYLE_CHANGED: {
     break;
   }
   case DSV_MSG_DATA_POOL_CHANGED: {

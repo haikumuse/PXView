@@ -102,6 +102,8 @@ public:
 
 #define DSV_MSG_APP_OPTIONS_CHANGED     9001
 #define DSV_MSG_FONT_OPTIONS_CHANGED    9002
+#define DSV_MSG_SHORTCUT_CHANGED        9003
+#define DSV_MSG_STYLE_CHANGED           9004
 
 class IMessageListener
 {

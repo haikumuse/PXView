@@ -273,13 +273,8 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   // 底部单选框，跨两列（第1列和第2列），靠右对齐
   grid->addLayout(modeRow, 3, 1, 1, 2, Qt::AlignRight | Qt::AlignVCenter);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   connect(_mode_group, &QButtonGroup::idClicked, this,
           &SamplingBar::on_mode_radio_clicked);
-#else
-  connect(_mode_group, QOverload<int>::of(&QButtonGroup::buttonClicked), this,
-          &SamplingBar::on_mode_radio_clicked);
-#endif
 
   vbox->addWidget(inner);
 

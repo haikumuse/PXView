@@ -741,6 +741,13 @@ QComboBox
     min-width: 30px;
 }
 
+QComboBox QAbstractItemView
+{
+    background-color: @bg-base;
+    border-radius: 2px;
+    border: 1px solid @border;
+    selection-background-color: @combo-selection;
+}
 
 QComboBox::drop-down
 {
@@ -1313,6 +1320,13 @@ QListView::item:hover,
 QTreeView::item:hover
 {
     border: 1px solid @accent;
+}
+
+QListWidget#settingsNavList::item:hover
+{
+    background: @accent;
+    color: @fg-base;
+    border: none;
 }
 
 QHeaderView

@@ -174,55 +174,19 @@ message(STATUS "	 libraries:" ${ZLIB_LIBRARIES})
 include_directories(${ZLIB_INCLUDE_DIRS})
 
 #===============================================================================
-#= Qt5 or Qt6
+#= Qt6
 #-------------------------------------------------------------------------------
 
-set(QT_VERSION_FORCE "" CACHE STRING "Force Qt version: set to '5' or '6'")
-
-if(NOT QT_VERSION_FORCE OR "${QT_VERSION_FORCE}" STREQUAL "5")
-	find_package(Qt5Core QUIET)
-	if(Qt5Core_FOUND)
-		message("----- Qt5:")
-		message(STATUS "	 includes:" ${Qt5Core_INCLUDE_DIRS})
-		find_package(Qt5Widgets REQUIRED)
-		find_package(Qt5Gui REQUIRED)
-		find_package(Qt5Svg REQUIRED)
-		find_package(Qt5Concurrent REQUIRED)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
-		if(WIN32)
-			find_package(Qt5WinExtras REQUIRED)
-			message(STATUS "	 libraries:" ${Qt5WinExtras_LIBRARIES})
-			set(QT_INCLUDE_DIRS ${Qt5Gui_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS} ${Qt5WinExtras_INCLUDE_DIRS} ${Qt5Svg_INCLUDE_DIRS} ${Qt5Concurrent_INCLUDE_DIRS})
-			set(QT_LIBRARIES Qt5::Gui Qt5::Widgets Qt5::WinExtras Qt5::Svg Qt5::Concurrent)
-			add_definitions(${Qt5Gui_DEFINITIONS} ${Qt5Widgets_DEFINITIONS} ${Qt5WinExtras_DEFINITIONS} ${Qt5Svg_DEFINITIONS})
-		else()
-			set(QT_INCLUDE_DIRS ${Qt5Gui_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS} ${Qt5Svg_INCLUDE_DIRS} ${Qt5Concurrent_INCLUDE_DIRS})
-			set(QT_LIBRARIES Qt5::Gui Qt5::Widgets Qt5::Svg Qt5::Concurrent)
-			add_definitions(${Qt5Gui_DEFINITIONS} ${Qt5Widgets_DEFINITIONS} ${Qt5Svg_DEFINITIONS})
-		endif()
-	endif()
-endif()
-
-if(NOT Qt5Core_FOUND OR "${QT_VERSION_FORCE}" STREQUAL "6")
-	find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Svg Concurrent)
-	message("----- Qt6:")
-	message(STATUS "	 includes:" ${Qt6Core_INCLUDE_DIRS})
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt6Widgets_EXECUTABLE_COMPILE_FLAGS}")
-	set(QT_INCLUDE_DIRS ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS} ${Qt6Svg_INCLUDE_DIRS} ${Qt6Concurrent_INCLUDE_DIRS})
-	set(QT_LIBRARIES Qt6::Gui Qt6::Widgets Qt6::Svg Qt6::Concurrent)
-	add_definitions(${Qt6Gui_DEFINITIONS} ${Qt6Widgets_DEFINITIONS})
-	if(APPLE)
-		find_package(Qt6DBus REQUIRED)
-		set(QT_LIBRARIES ${QT_LIBRARIES} Qt6::DBus)
-	endif()
-endif()
-
-if(NOT Qt5Core_FOUND AND NOT Qt6Core_FOUND)
-	message("Error! Neither Qt5 nor Qt6 could be found.")
-	message("If Qt is installed, please append the install path to CMAKE_PREFIX_PATH, e.g.:")
-	message("  cmake -DCMAKE_PREFIX_PATH=/path/to/Qt/lib/cmake ..")
-	message("Or force a specific version with -DQT_VERSION_FORCE=5 or -DQT_VERSION_FORCE=6")
-	message(FATAL_ERROR "Can't find Qt5 or Qt6!")
+find_package(Qt6 6.6 REQUIRED COMPONENTS Core Widgets Gui GuiPrivate Svg Concurrent)
+message("----- Qt6:")
+message(STATUS "	 includes:" ${Qt6Core_INCLUDE_DIRS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt6Widgets_EXECUTABLE_COMPILE_FLAGS}")
+set(QT_INCLUDE_DIRS ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS} ${Qt6Svg_INCLUDE_DIRS} ${Qt6Concurrent_INCLUDE_DIRS})
+set(QT_LIBRARIES Qt6::Gui Qt6::GuiPrivate Qt6::Widgets Qt6::Svg Qt6::Concurrent)
+add_definitions(${Qt6Gui_DEFINITIONS} ${Qt6Widgets_DEFINITIONS})
+if(APPLE)
+	find_package(Qt6DBus REQUIRED)
+	set(QT_LIBRARIES ${QT_LIBRARIES} Qt6::DBus)
 endif()
 
 
@@ -358,6 +322,7 @@ set(PXView_SOURCES
     PXView/pv/widgets/decodergroupbox.cpp
     PXView/pv/widgets/decodermenu.cpp
     PXView/pv/config/appconfig.cpp
+    PXView/pv/config/shortcutdefs.cpp
     PXView/pv/appcontrol.cpp
     PXView/pv/dstimer.cpp
     PXView/pv/eventobject.cpp
@@ -659,14 +624,8 @@ if(WIN32)
 	add_definitions(-DUNICODE -D_UNICODE)
 endif()
 
-if(Qt5Core_FOUND)
-	qt5_wrap_cpp(PXView_HEADERS_MOC ${PXView_HEADERS})
-	qt5_wrap_ui(PXView_FORMS_HEADERS ${PXView_FORMS})
-	qt5_add_resources(PXView_RESOURCES_RCC ${PXView_RESOURCES})
-elseif(Qt6Core_FOUND)
-	qt6_wrap_cpp(PXView_HEADERS_MOC ${PXView_HEADERS})
-	qt6_add_resources(PXView_RESOURCES_RCC ${PXView_RESOURCES})
-endif()
+qt6_wrap_cpp(PXView_HEADERS_MOC ${PXView_HEADERS})
+qt6_add_resources(PXView_RESOURCES_RCC ${PXView_RESOURCES})
 
 
 

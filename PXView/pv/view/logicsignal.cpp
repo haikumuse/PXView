@@ -554,6 +554,10 @@ void LogicSignal::paint_mark(QPainter &p, int xstart, int xend, int type)
 {
     const int ypos = get_y();
     const int msize = 3;
+    if (ypos < -10000 || ypos > 10000)
+        return;
+    if (xstart < -10000 || xstart > 10000)
+        return;
     p.setPen(p.brush().color());
     if (type == SRD_CHANNEL_SDATA) {
         p.drawEllipse(QPoint(xstart, ypos), msize, msize);
@@ -578,7 +582,10 @@ void LogicSignal::paint_mark(QPainter &p, int xstart, int xend, int type)
         };
         p.drawPoints(triangle, 16);
     } else if (type == SRD_CHANNEL_ADATA) {
-        p.drawEllipse(QPoint((xstart+xend)/2, ypos), msize, msize);
+        int mid = (xstart + xend) / 2;
+        if (mid < -10000 || mid > 10000)
+            return;
+        p.drawEllipse(QPoint(mid, ypos), msize, msize);
     }
 }
 

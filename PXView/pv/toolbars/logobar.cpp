@@ -21,33 +21,20 @@
  */
 
 #include <boost/bind.hpp>
- 
+
 
 #include <QMetaObject>
-#include <QFileDialog> 
 #include <QDesktopServices>
+#include <QDir>
 #include <QUrl>
 #include <QApplication>
 #include <assert.h>
-#include <QComboBox>
-#include <QFormLayout>
-#include <QWidget>
-#include <QCheckBox> 
-#include <QHBoxLayout>
-#include <QFile> 
-#include <QLabel>
 
 #include "logobar.h"
 #include "../dialogs/about.h"
-#include "../dialogs/dsmessagebox.h"
 #include "../config/appconfig.h"
-#include "../dialogs/dsdialog.h"
-#include "../appcontrol.h"
-#include "../log.h"
 #include "../ui/langresource.h"
-#include "../ui/msgbox.h"
 #include "../ui/fn.h"
-#include "../ui/dscombobox.h"
 #include "../ui/iconcache.h"
 
 namespace pv {
@@ -62,8 +49,6 @@ LogoBar::LogoBar(SigSession *session, QWidget *parent) :
     
 {
     _mainForm  = NULL;
-    _log_open_bt = NULL;
-    _log_clear_bt = NULL;
 
     setMovable(false);
     setContentsMargins(0,0,0,0);
@@ -95,7 +80,6 @@ LogoBar::LogoBar(SigSession *session, QWidget *parent) :
     // _logo_button.addAction(_issue);   
 
     _update = new QAction(this);
-    _log = new QAction(this);
 
     _menu = new QMenu(this);
     _menu->addMenu(_language);
@@ -103,7 +87,6 @@ LogoBar::LogoBar(SigSession *session, QWidget *parent) :
     _menu->addAction(_manual);
     _menu->addAction(_issue);
     _menu->addAction(_update);
-    _menu->addAction(_log);
     // _logo_button.setMenu(_menu);
 
     // _logo_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
@@ -123,7 +106,6 @@ LogoBar::LogoBar(SigSession *session, QWidget *parent) :
     connect(_manual, &QAction::triggered, this, &LogoBar::sig_open_doc);
     connect(_issue, &QAction::triggered, this, &LogoBar::on_actionIssue_triggered);
     connect(_update, &QAction::triggered, this, &LogoBar::on_action_update);
-    connect(_log, &QAction::triggered, this, &LogoBar::on_action_setting_log);
 
     ADD_UI(this);
 }
@@ -144,7 +126,6 @@ void LogoBar::retranslateUi()
     _manual->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_MANUAL), "&Manual..."));
     _issue->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_BUG), "&Bug Report"));
     _update->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_UPDATE), "&Update"));
-    _log->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LOG), "L&og Options"));
 
     AppConfig &app = AppConfig::Instance(); 
     if (app.frameOptions.language == LAN_CN)
@@ -161,7 +142,6 @@ void LogoBar::reStyle()
     _manual->setIcon(IconCache::Instance().icon(iconPath+"/manual.svg"));
     _issue->setIcon(IconCache::Instance().icon(iconPath+"/bug.svg"));
     _update->setIcon(IconCache::Instance().icon(iconPath+"/update.svg"));
-    _log->setIcon(IconCache::Instance().icon(iconPath+"/log.svg"));
 
     // if (_connected)
     //     _logo_button.setIcon(QIcon(iconPath+"/logo_color.svg"));
@@ -226,123 +206,6 @@ void LogoBar::on_actionIssue_triggered()
 void LogoBar::enable_toggle(bool enable)
 {
     // _logo_button.setDisabled(!enable);
-}
-
-void LogoBar::on_action_setting_log()
-{   
-    AppConfig &app = AppConfig::Instance(); 
-    auto *topWind = AppControl::Instance()->GetTopWindow();
-    dialogs::DSDialog dlg(topWind, false, true);
-    dlg.setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_OPTIONS), "Log Options"));
-    dlg.setMinimumSize(460, 300);
-    QWidget *panel = new QWidget(&dlg);
-    dlg.layout()->addWidget(panel);
-    panel->setMinimumSize(250, 110);
-    QFormLayout *lay = new QFormLayout();
-    panel->setLayout(lay);
-    lay->setVerticalSpacing(15);
- 
-    QComboBox *cbBox = new DsComboBox();
-    cbBox->setMinimumWidth(40);
-    lay->addRow(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_LEVEL), "Log Level"), cbBox);
-
-    for (int i=0; i<=5; i++){
-        cbBox->addItem(QString::number(i));
-    }
-    cbBox->setCurrentIndex(app.appOptions.logLevel);
-
-    QCheckBox *ckSave = new QCheckBox();
-    ckSave->setChecked(app.appOptions.ableSaveLog);
-    lay->addRow(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SAVE_FILE), "Save To File"), ckSave);
-
-    QCheckBox *ckRebuild = new QCheckBox();
-    ckRebuild->setChecked(app.appOptions.appendLogMode);
-    lay->addRow(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_APPEND_MODE), "Append mode"), ckRebuild);
-
-    QPushButton *btOpen = new QPushButton();
-    btOpen->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OPEN), "Open"));
-    _log_open_bt = btOpen;
-    connect(btOpen, &QPushButton::released, this, &LogoBar::on_open_log_file);
-
-    QPushButton *btClear = new QPushButton();
-    btClear->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLEARE), "Clear"));
-    _log_clear_bt = btClear;
-    connect(btClear, &QPushButton::released, this, &LogoBar::on_clear_log_file);
-
-    QWidget *btWid = new QWidget();
-    QHBoxLayout *btLay = new QHBoxLayout();
-    btWid->setLayout(btLay);
-    btLay->setSpacing(10);
-    btLay->addWidget(btOpen);
-    btLay->addWidget(btClear);
-
-    lay->addRow("", btWid);
-
-    QFile qf(get_dsv_log_path());
-    if (qf.exists() == false){
-        btOpen->setEnabled(false);
-        btClear->setEnabled(false);
-    }
-
-    dlg.exec();
-
-    if (dlg.IsClickYes()){
-        bool ableSave = ckSave->isChecked();
-        int level = cbBox->currentIndex();
-        bool appendLogMode = ckRebuild->isChecked();
-
-        if (ableSave != app.appOptions.ableSaveLog 
-            || level != app.appOptions.logLevel
-            || appendLogMode != app.appOptions.appendLogMode){
-            app.appOptions.ableSaveLog = ableSave;
-            app.appOptions.logLevel = level;
-            app.appOptions.appendLogMode = appendLogMode;            
-            app.SaveApp();
-
-            dsv_log_level(level);
-            
-            if (ableSave){
-                dsv_log_enalbe_logfile(false);
-            }
-
-            dsv_set_log_file_enable(ableSave);
-        }
-    }  
-}
-
-void LogoBar::on_open_log_file()
-{
-    QFile qf(get_dsv_log_path());
-    if (qf.exists()){
-        QDesktopServices::openUrl( QUrl("file:///" + get_dsv_log_path()));
-    }
-    else{
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FILE_NOT_EXIST), "Not exist!"));
-        MsgBox::Show(strMsg);
-    }        
-}
-
-void LogoBar::on_clear_log_file()
-{
-    QFile qf(get_dsv_log_path());
-    if (qf.exists()){
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_CLEAR_LOG), "Confirm!"));
-        if (MsgBox::Confirm(strMsg)){
-            dsv_clear_log_file();
-
-            if (_log_open_bt != NULL && _log_clear_bt != NULL){
-                QFile qf(get_dsv_log_path());
-                if (qf.exists() == false){
-                    _log_open_bt->setEnabled(false);
-                    _log_clear_bt->setEnabled(false);
-                }
-            }
-        }
-    }
-    else{
-        QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FILE_NOT_EXIST), "Not exist!"));
-        MsgBox::Show(strMsg);
-    }  
 }
 
 void LogoBar::UpdateLanguage()

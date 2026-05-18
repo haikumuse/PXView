@@ -31,10 +31,12 @@
 #include "../ui/msgbox.h"
 
 #include <QCheckBox>
+#include <QDesktopServices>
 #include <QFile>
 #include <QHBoxLayout>
 #include <QScrollBar>
 #include <QTextStream>
+#include <QUrl>
 #include <QtGlobal>
 
 namespace pv {
@@ -90,6 +92,28 @@ LogDock::LogDock(QWidget *parent)
   _clear_btn->setObjectName("log_clear_btn");
   connect(_clear_btn, &QPushButton::clicked, this, &LogDock::on_clear);
 
+  _save_file_check = new QCheckBox(_widget);
+  _save_file_check->setObjectName("dock_label");
+  _save_file_check->setChecked(AppConfig::Instance().appOptions.ableSaveLog);
+  connect(_save_file_check, &QCheckBox::stateChanged, this,
+          &LogDock::on_save_to_file_changed);
+
+  _append_mode_check = new QCheckBox(_widget);
+  _append_mode_check->setObjectName("dock_label");
+  _append_mode_check->setChecked(AppConfig::Instance().appOptions.appendLogMode);
+  connect(_append_mode_check, &QCheckBox::stateChanged, this,
+          &LogDock::on_append_mode_changed);
+
+  _open_btn = new QPushButton(_widget);
+  _open_btn->setFixedHeight(28);
+  _open_btn->setObjectName("log_open_btn");
+  connect(_open_btn, &QPushButton::clicked, this, &LogDock::on_open_log_file);
+
+  QFile qf(get_dsv_log_path());
+  if (!qf.exists()) {
+    _open_btn->setEnabled(false);
+  }
+
   QHBoxLayout *toolbar_layout = new QHBoxLayout();
   toolbar_layout->setContentsMargins(0, 0, 0, 0);
   toolbar_layout->setSpacing(6);
@@ -100,8 +124,11 @@ LogDock::LogDock(QWidget *parent)
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_LEVEL), "Log Level"));
   toolbar_layout->addWidget(level_label);
   toolbar_layout->addWidget(_level_combo);
+  toolbar_layout->addWidget(_save_file_check);
+  toolbar_layout->addWidget(_append_mode_check);
   toolbar_layout->addStretch(1);
   toolbar_layout->addWidget(_scroll_bottom_btn);
+  toolbar_layout->addWidget(_open_btn);
   toolbar_layout->addWidget(_refresh_btn);
   toolbar_layout->addWidget(_clear_btn);
 
@@ -206,6 +233,8 @@ void LogDock::on_clear() {
   if (MsgBox::Confirm(strMsg)) {
     dsv_clear_log_file();
     _log_view->clear();
+    QFile qf(get_dsv_log_path());
+    _open_btn->setEnabled(qf.exists());
   }
 }
 
@@ -223,6 +252,39 @@ void LogDock::on_scroll_bottom_changed(bool checked) {
   }
 }
 
+void LogDock::on_save_to_file_changed(int state) {
+  bool checked = (state == Qt::Checked);
+  AppConfig &app = AppConfig::Instance();
+  app.appOptions.ableSaveLog = checked;
+  app.SaveApp();
+
+  if (checked) {
+    dsv_log_enalbe_logfile(false);
+  }
+  dsv_set_log_file_enable(checked);
+
+  QFile qf(get_dsv_log_path());
+  _open_btn->setEnabled(qf.exists());
+}
+
+void LogDock::on_append_mode_changed(int state) {
+  bool checked = (state == Qt::Checked);
+  AppConfig &app = AppConfig::Instance();
+  app.appOptions.appendLogMode = checked;
+  app.SaveApp();
+}
+
+void LogDock::on_open_log_file() {
+  QFile qf(get_dsv_log_path());
+  if (qf.exists()) {
+    QDesktopServices::openUrl(QUrl("file:///" + get_dsv_log_path()));
+  } else {
+    QString strMsg(
+        L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FILE_NOT_EXIST), "Not exist!"));
+    MsgBox::Show(strMsg);
+  }
+}
+
 void LogDock::on_flush_buffer() {
   QString text;
   {
@@ -236,11 +298,7 @@ void LogDock::on_flush_buffer() {
     QScrollBar *sb = _log_view->verticalScrollBar();
     int saved_pos = sb->value();
     bool was_at_bottom = (saved_pos >= sb->maximum() - 4);
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     QStringList lines = text.split('\n', Qt::SkipEmptyParts);
-#else
-    QStringList lines = text.split('\n', QString::SkipEmptyParts);
-#endif
     for (const QString &line : lines) {
       _log_view->appendPlainText(line);
     }
@@ -257,14 +315,22 @@ void LogDock::retranslateUi() {
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_REFRESH), "Refresh"));
   _clear_btn->setText(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLEARE), "Clear"));
+  _open_btn->setText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OPEN), "Open"));
   _scroll_bottom_btn->setToolTip(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_AUTO_SCROLL), "Auto Scroll"));
+  _save_file_check->setText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SAVE_FILE), "Save To File"));
+  _append_mode_check->setText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_APPEND_MODE), "Append mode"));
 }
 
 void LogDock::reStyle() {
   QString iconPath = GetIconPath();
   _scroll_bottom_btn->setIcon(
       QIcon(iconPath + "/scroll-bottom.svg"));
+  _open_btn->setIcon(
+      QIcon(iconPath + "/open.svg"));
 }
 
 void LogDock::UpdateLanguage() { retranslateUi(); }

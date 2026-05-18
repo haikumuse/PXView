@@ -56,7 +56,6 @@ DSMessageBox::DSMessageBox(QWidget *parent,const QString title) :
     _bClickYes = false;
 
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
-    setAttribute(Qt::WA_TranslucentBackground);
 
     _main_widget = new QWidget(this);
     _main_layout = new QVBoxLayout(_main_widget);

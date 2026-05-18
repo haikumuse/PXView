@@ -74,7 +74,6 @@ DSDialog::DSDialog(QWidget *parent, bool hasClose, bool bBaseButton) :
     _clickYes = false;
     
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
-    setAttribute(Qt::WA_TranslucentBackground);
 
     build_base(hasClose); 
 }

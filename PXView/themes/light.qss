@@ -1473,6 +1473,13 @@ QTreeView::item:hover
     border: 1px solid @accent;
 }
 
+QListWidget#settingsNavList::item:hover
+{
+    background: @accent;
+    color: @fg-base;
+    border: none;
+}
+
 
 QHeaderView
 {

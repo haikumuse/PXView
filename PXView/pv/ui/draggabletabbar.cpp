@@ -30,7 +30,6 @@
 #include <QPaintEvent>
 #include <QStyleOption>
 #include <QStylePainter>
-#include "qtcompat.h"
 
 namespace pv {
 namespace ui {
@@ -67,13 +66,13 @@ void DraggableTabBar::paintEvent(QPaintEvent *event)
 void DraggableTabBar::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
-        _drag_index = tabAt(QT_COMPAT_POS(event));
-        _drag_start_pos = QT_COMPAT_POS(event);
+        _drag_index = tabAt(event->position().toPoint());
+        _drag_start_pos = event->position().toPoint();
         _drag_started = false;
 
         if (_drag_index >= 0) {
             QRect tr = tabRect(_drag_index);
-            _drag_offset = QT_COMPAT_POS(event) - tr.topLeft();
+            _drag_offset = event->position().toPoint() - tr.topLeft();
         }
     }
     QTabBar::mousePressEvent(event);
@@ -82,7 +81,7 @@ void DraggableTabBar::mousePressEvent(QMouseEvent *event)
 void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
 {
     if (event->buttons() & Qt::LeftButton && _drag_index >= 0) {
-        QPoint delta = QT_COMPAT_POS(event) - _drag_start_pos;
+        QPoint delta = event->position().toPoint() - _drag_start_pos;
         int distance = delta.manhattanLength();
 
         if (!_drag_started && distance > _drag_threshold) {
@@ -90,14 +89,14 @@ void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
         }
 
         if (_drag_started) {
-            QPoint global_pos = mapToGlobal(QT_COMPAT_POS(event));
+            QPoint global_pos = mapToGlobal(event->position().toPoint());
             QRect bar_rect = rect();
 
             if (count() > 0) {
                 bar_rect.adjust(0, 0, 0, tabRect(count() - 1).bottom() - bar_rect.bottom());
             }
 
-            if (!bar_rect.contains(QT_COMPAT_POS(event))) {
+            if (!bar_rect.contains(event->position().toPoint())) {
                 if (!_drag_outside) {
                     _drag_outside = true;
                     create_drag_preview(_drag_index);
@@ -116,7 +115,7 @@ void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
 void DraggableTabBar::mouseReleaseEvent(QMouseEvent *event)
 {
     if (_drag_outside && _drag_index >= 0) {
-        QPoint global_pos = mapToGlobal(QT_COMPAT_POS(event));
+        QPoint global_pos = mapToGlobal(event->position().toPoint());
         destroy_drag_preview();
         emit detachTab(_drag_index, global_pos);
     } else {
@@ -157,7 +156,7 @@ void DraggableTabBar::contextMenuEvent(QContextMenuEvent *event)
 
 void DraggableTabBar::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    int index = tabAt(QT_COMPAT_POS(event));
+    int index = tabAt(event->position().toPoint());
     if (index >= 0) {
         emit tabRenameRequested(index);
     }

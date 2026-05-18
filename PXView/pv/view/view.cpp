@@ -60,7 +60,6 @@
 #include "../log.h"
 #include "../sigsession.h"
 #include "../widgets/hoversplitter.h"
-#include "../ui/qtcompat.h"
 
 using namespace std;
 
@@ -241,6 +240,8 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
 }
 
 View::~View() {
+  _destroying = true;
+
   for (auto sig : _own_signals)
     delete sig;
   _own_signals.clear();
@@ -1190,17 +1191,17 @@ bool View::eventFilter(QObject *object, QEvent *event) {
     if (object == _ruler || object == _time_viewport ||
         object == _fft_viewport) {
       //_hover_point = QPoint(mouse_event->x(), 0);
-      double cur_periods = (QT_COMPAT_POS(mouse_event).x() + _offset) * _scale /
+      double cur_periods = (mouse_event->position().toPoint().x() + _offset) * _scale /
                            _ruler->get_min_period();
       int integer_x =
           round(cur_periods) * _ruler->get_min_period() / _scale - _offset;
-      double cur_deviate_x = qAbs(QT_COMPAT_POS(mouse_event).x() - integer_x);
+      double cur_deviate_x = qAbs(mouse_event->position().toPoint().x() - integer_x);
       if (_device_agent->get_work_mode() == LOGIC && cur_deviate_x < 10)
-        _hover_point = QPoint(integer_x, QT_COMPAT_POS(mouse_event).y());
+        _hover_point = QPoint(integer_x, mouse_event->position().toPoint().y());
       else
-        _hover_point = QT_COMPAT_POS(mouse_event);
+        _hover_point = mouse_event->position().toPoint();
     } else if (object == _header)
-      _hover_point = QPoint(0, QT_COMPAT_Y(mouse_event));
+      _hover_point = QPoint(0, (int)mouse_event->position().y());
     else
       _hover_point = QPoint(-1, -1);
 

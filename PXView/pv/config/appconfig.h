@@ -139,6 +139,24 @@ struct FontOptions
   FontParam other;
 };
 
+struct ShortcutItem {
+    int     actionId;
+    QString keySequence;
+};
+
+struct ShortcutOptions {
+    QList<ShortcutItem> items;
+};
+
+struct StyleTokenItem {
+    QString tokenName;
+    QString value;
+};
+
+struct StyleOptions {
+    QList<StyleTokenItem> items;
+};
+
 class AppConfig
 {
 private:
@@ -153,6 +171,8 @@ public:
   void SaveApp();  
   void SaveHistory();
   void SaveFrame();
+  void SaveShortcuts();
+  void SaveStyle();
   
   void flushPendingSaves();
   
@@ -178,6 +198,8 @@ public:
   AppOptions    appOptions;
   UserHistory   userHistory;
   FrameOptions  frameOptions;
+  ShortcutOptions  shortcutOptions;
+  StyleOptions     styleOptions;
 
 private:
   QHash<QString, QString> _themeTokens;
@@ -185,8 +207,12 @@ private:
   QTimer *_saveFrameTimer;
   QTimer *_saveAppTimer;
   QTimer *_saveHistoryTimer;
+  QTimer *_saveShortcutsTimer;
+  QTimer *_saveStyleTimer;
 
   void doSaveFrame();
   void doSaveApp();
   void doSaveHistory();
+  void doSaveShortcuts();
+  void doSaveStyle();
 };

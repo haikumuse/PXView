@@ -24,6 +24,8 @@
 #define MYSTYLE_H
 
 #include <QProxyStyle>
+#include <QStyleOptionComplex>
+#include <QPainter>
 
 class MyStyle : public QProxyStyle
 {
@@ -35,6 +37,16 @@ class MyStyle : public QProxyStyle
             s = 24;
         }
         return s;
+    }
+
+    void drawComplexControl(ComplexControl control, const QStyleOptionComplex *option,
+                            QPainter *painter, const QWidget *widget = 0) const override
+    {
+        if (control == CC_ComboBox) {
+            QCommonStyle::drawComplexControl(control, option, painter, widget);
+            return;
+        }
+        QProxyStyle::drawComplexControl(control, option, painter, widget);
     }
 };
 

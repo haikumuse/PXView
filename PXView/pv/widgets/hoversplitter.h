@@ -4,9 +4,7 @@
 #include <QEvent>
 #include <QMouseEvent>
 #include <QSplitter>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QEnterEvent>
-#endif
 
 namespace pv {
 namespace widgets {
@@ -26,11 +24,7 @@ protected:
       }
 
     protected:
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
       void enterEvent(QEnterEvent *e) override {
-#else
-      void enterEvent(QEvent *e) override {
-#endif
         QSplitterHandle::enterEvent(e);
         update();
       }

@@ -485,6 +485,7 @@ private:
   bool _dso_auto;
   bool _show_lissajous;
   bool _back_ready;
+  bool _destroying = false;
   DeviceAgent *_device_agent;
 };
 

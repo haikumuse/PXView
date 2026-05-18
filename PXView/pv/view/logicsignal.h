@@ -49,6 +49,7 @@ private:
     static const int StateHeight;
     static const int StateRound;
 
+public:
     static const int TogMaxScale = 10;
 
 public:

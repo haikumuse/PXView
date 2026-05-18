@@ -190,9 +190,8 @@ void DeviceOptions::bind_bool(const QString &name, const QString label, int key)
 
 void DeviceOptions::bind_string(const QString &name, const QString label, int key)
 {
-	QString text = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, label.toLocal8Bit().data(), label.toLocal8Bit().data());
 	_properties.push_back(
-        new String(name, text, bind(config_getter, key),
+        new String(name, label, bind(config_getter, key),
 			bind(config_setter, key, _1)));
 }
 

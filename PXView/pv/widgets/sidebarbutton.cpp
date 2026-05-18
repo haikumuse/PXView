@@ -14,7 +14,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QRegularExpression>
-#include "../ui/qtcompat.h"
+
 
 SideBarButton::SideBarButton(QWidget *parent)
     : QWidget(parent), _isCheckable(false), _isChecked(false),
@@ -185,7 +185,7 @@ void SideBarButton::mousePressEvent(QMouseEvent *event) {
 void SideBarButton::mouseReleaseEvent(QMouseEvent *event) {
   if (event->button() == Qt::LeftButton) {
     _isPressed = false;
-    if (_isEnabled && rect().contains(QT_COMPAT_POS(event))) {
+    if (_isEnabled && rect().contains(event->position().toPoint())) {
       emit clicked();
     }
     update();
@@ -195,11 +195,7 @@ void SideBarButton::mouseReleaseEvent(QMouseEvent *event) {
 
 void SideBarButton::click() { emit clicked(); }
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 void SideBarButton::enterEvent(QEnterEvent *event) {
-#else
-void SideBarButton::enterEvent(QEvent *event) {
-#endif
   _isHovered = true;
   update();
   QWidget::enterEvent(event);

@@ -806,5 +806,157 @@
     {
         "id": "IDS_DLG_DISK_CACHE_SLOW_DETAIL",
         "text": "Detected speed: %1 MB/s\nRecommended: NVMe SSD for 250MB/s capture.\nCapture may fail with data loss."
+    },
+    {
+        "id": "IDS_DLG_SETTINGS",
+        "text": "Settings"
+    },
+    {
+        "id": "IDS_DLG_NAV_DISPLAY",
+        "text": "Display"
+    },
+    {
+        "id": "IDS_DLG_NAV_SHORTCUTS",
+        "text": "Shortcuts"
+    },
+    {
+        "id": "IDS_DLG_NAV_STYLE",
+        "text": "Style"
+    },
+    {
+        "id": "IDS_DLG_SC_ACTION",
+        "text": "Action"
+    },
+    {
+        "id": "IDS_DLG_SC_SHORTCUT",
+        "text": "Shortcut"
+    },
+    {
+        "id": "IDS_DLG_SC_EDIT",
+        "text": "Edit"
+    },
+    {
+        "id": "IDS_DLG_SC_APPLY",
+        "text": "Apply"
+    },
+    {
+        "id": "IDS_DLG_SC_RESET_ALL",
+        "text": "Reset All"
+    },
+    {
+        "id": "IDS_DLG_SC_OK",
+        "text": "OK"
+    },
+    {
+        "id": "IDS_DLG_SC_ACCEPT",
+        "text": "Accept"
+    },
+    {
+        "id": "IDS_DLG_SC_RESTORE",
+        "text": "Restore"
+    },
+    {
+        "id": "IDS_DLG_SC_RESET_DEFAULT",
+        "text": "Reset Default"
+    },
+    {
+        "id": "IDS_DLG_SC_DELETE_KEY",
+        "text": "Delete Key"
+    },
+    {
+        "id": "IDS_DLG_SC_CLASH_WARNING",
+        "text": "Clashing shortcuts will be ignored."
+    },
+    {
+        "id": "IDS_DLG_STYLE_TOKEN",
+        "text": "Token"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PREVIEW",
+        "text": "Preview"
+    },
+    {
+        "id": "IDS_DLG_STYLE_VALUE",
+        "text": "Value"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SELECT_COLOR",
+        "text": "Select Color"
+    },
+    {
+        "id": "IDS_DLG_STYLE_IMPORT",
+        "text": "Import"
+    },
+    {
+        "id": "IDS_DLG_STYLE_EXPORT",
+        "text": "Export"
+    },
+    {
+        "id": "IDS_DLG_STYLE_FILE_FILTER",
+        "text": "Style Files (*.pxstyle)"
+    },
+    {
+        "id": "IDS_DLG_SC_RUN_STOP",
+        "text": "Run/Stop"
+    },
+    {
+        "id": "IDS_DLG_SC_INSTANT",
+        "text": "Instant Sampling"
+    },
+    {
+        "id": "IDS_DLG_SC_TRIGGER",
+        "text": "Trigger Panel"
+    },
+    {
+        "id": "IDS_DLG_SC_DECODE",
+        "text": "Decode Panel"
+    },
+    {
+        "id": "IDS_DLG_SC_MEASURE",
+        "text": "Measure Panel"
+    },
+    {
+        "id": "IDS_DLG_SC_SEARCH",
+        "text": "Search Panel"
+    },
+    {
+        "id": "IDS_DLG_SC_OPTIONS",
+        "text": "Device Options"
+    },
+    {
+        "id": "IDS_DLG_SC_DEVICE_SELECT",
+        "text": "Select Device"
+    },
+    {
+        "id": "IDS_DLG_SC_PAGE_UP",
+        "text": "Page Left"
+    },
+    {
+        "id": "IDS_DLG_SC_PAGE_DOWN",
+        "text": "Page Right"
+    },
+    {
+        "id": "IDS_DLG_SC_ZOOM_IN",
+        "text": "Zoom In"
+    },
+    {
+        "id": "IDS_DLG_SC_ZOOM_OUT",
+        "text": "Zoom Out"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_CH0",
+        "text": "DSO Channel 0"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_CH1",
+        "text": "DSO Channel 1"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_VUP",
+        "text": "DSO V-Dial Up"
+    },
+    {
+        "id": "IDS_DLG_SC_DSO_VDOWN",
+        "text": "DSO V-Dial Down"
     }
 ]

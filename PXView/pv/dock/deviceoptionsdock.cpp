@@ -415,14 +415,9 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
   enable_all_probes->setFont(contentFont);
   disable_all_probes->setFont(contentFont);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   int bt_width = enable_all_probes->fontMetrics().horizontalAdvance(
                      enable_all_probes->text()) +
                  20;
-#else
-  int bt_width =
-      enable_all_probes->fontMetrics().width(enable_all_probes->text()) + 20;
-#endif
 
   enable_all_probes->setMinimumWidth(bt_width);
   disable_all_probes->setMinimumWidth(bt_width);
@@ -1171,6 +1166,11 @@ void DeviceOptionsDock::UpdateFont() {
   auto spin_boxes = _container_panel->findChildren<pv::ui::DsSpinBox *>();
   for (auto sb : spin_boxes) {
     sb->setFont(contentFont);
+  }
+
+  auto comboboxes = _container_panel->findChildren<QComboBox *>();
+  for (auto cb : comboboxes) {
+    cb->setFont(contentFont);
   }
 
   setUpdatesEnabled(true);

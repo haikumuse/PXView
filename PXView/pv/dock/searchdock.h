@@ -25,6 +25,7 @@
 
 #include <QAbstractTableModel>
 #include <QDockWidget>
+#include <QElapsedTimer>
 #include <QFrame>
 #include <QFuture>
 #include <QFutureWatcher>
@@ -137,6 +138,13 @@ private:
   void stop_search();
   void start_search_async();
   void search_worker();
+  bool gpu_edge_search_worker(data::LogicSnapshot *logic_snapshot,
+                              int64_t end,
+                              const std::map<uint16_t, QString> &local_pattern,
+                              std::vector<SearchData> &local_batch,
+                              QElapsedTimer &ui_timer,
+                              bool &has_new_results,
+                              bool &first_flush);
 
 public slots:
   void on_pattern_changed();
