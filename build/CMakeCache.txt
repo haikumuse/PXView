@@ -28,7 +28,7 @@ CMAKE_AR:FILEPATH=D:/msys64/mingw64/bin/ar.exe
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Debug
+CMAKE_BUILD_TYPE:STRING=Release
 
 //CXX compiler
 CMAKE_CXX_COMPILER:FILEPATH=D:/msys64/mingw64/bin/c++.exe
@@ -155,7 +155,7 @@ CMAKE_INSTALL_MANDIR:PATH=
 CMAKE_INSTALL_OLDINCLUDEDIR:PATH=/usr/include
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install.dir
+CMAKE_INSTALL_PREFIX:PATH=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install-qt6.dir
 
 //Run-time variable data (LOCALSTATEDIR/run)
 CMAKE_INSTALL_RUNSTATEDIR:PATH=
@@ -401,12 +401,6 @@ Qt6GuiTools_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6GuiTools
 
 //The directory containing a CMake configuration file for Qt6Gui.
 Qt6Gui_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6Gui
-
-//The directory containing a CMake configuration file for Qt6ShaderToolsTools.
-Qt6ShaderToolsTools_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6ShaderToolsTools
-
-//The directory containing a CMake configuration file for Qt6ShaderTools.
-Qt6ShaderTools_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6ShaderTools
 
 //The directory containing a CMake configuration file for Qt6Svg.
 Qt6Svg_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6Svg
@@ -1686,7 +1680,7 @@ ZLIB_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: ZLIB_LIBRARY_RELEASE
 ZLIB_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 //CMAKE_INSTALL_PREFIX during last run
-_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install.dir
+_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install-qt6.dir
 __pkg_config_checked_GLIB:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_GLIB_glib-2.0
 pkgcfg_lib_GLIB_glib-2.0-ADVANCED:INTERNAL=1

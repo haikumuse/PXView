@@ -26,10 +26,16 @@
 #include <QPoint>
 #include <QLineEdit>
 #include <QScrollBar>
+#include <QLibrary>
+#include <QShowEvent>
 #include "../config/appconfig.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
 #include "../ui/dockfonts.h"
+
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 //----------------------ComboButtonItem
 
@@ -166,6 +172,24 @@ void SearchComboBox::AddDataItem(QString id, QString name, void *data_handle)
     }
     
     QWidget::changeEvent(event);
+ }
+
+ void SearchComboBox::showEvent(QShowEvent *event)
+ {
+     QDialog::showEvent(event);
+
+ #ifdef WIN32
+     const DWORD DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+     const DWORD DWMWCP_DONOTROUND = 1;
+     typedef HRESULT(WINAPI *tDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
+     tDwmSetWindowAttribute pDwmSetWindowAttribute =
+         tDwmSetWindowAttribute(QLibrary::resolve("dwmapi", "DwmSetWindowAttribute"));
+     if (pDwmSetWindowAttribute) {
+         HWND hwnd = (HWND)this->winId();
+         DWORD preference = DWMWCP_DONOTROUND;
+         pDwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
+     }
+ #endif
  }
 
  void SearchComboBox::OnItemClick(void *sender, void *data_handle)

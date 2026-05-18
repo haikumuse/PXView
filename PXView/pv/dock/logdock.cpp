@@ -82,11 +82,6 @@ LogDock::LogDock(QWidget *parent)
   connect(_scroll_bottom_btn, &QPushButton::clicked, this,
           &LogDock::on_scroll_bottom_changed);
 
-  _refresh_btn = new QPushButton(_widget);
-  _refresh_btn->setFixedHeight(28);
-  _refresh_btn->setObjectName("log_refresh_btn");
-  connect(_refresh_btn, &QPushButton::clicked, this, &LogDock::on_refresh);
-
   _clear_btn = new QPushButton(_widget);
   _clear_btn->setFixedHeight(28);
   _clear_btn->setObjectName("log_clear_btn");
@@ -95,13 +90,13 @@ LogDock::LogDock(QWidget *parent)
   _save_file_check = new QCheckBox(_widget);
   _save_file_check->setObjectName("dock_label");
   _save_file_check->setChecked(AppConfig::Instance().appOptions.ableSaveLog);
-  connect(_save_file_check, &QCheckBox::stateChanged, this,
+  connect(_save_file_check, &QCheckBox::checkStateChanged, this,
           &LogDock::on_save_to_file_changed);
 
   _append_mode_check = new QCheckBox(_widget);
   _append_mode_check->setObjectName("dock_label");
   _append_mode_check->setChecked(AppConfig::Instance().appOptions.appendLogMode);
-  connect(_append_mode_check, &QCheckBox::stateChanged, this,
+  connect(_append_mode_check, &QCheckBox::checkStateChanged, this,
           &LogDock::on_append_mode_changed);
 
   _open_btn = new QPushButton(_widget);
@@ -129,7 +124,6 @@ LogDock::LogDock(QWidget *parent)
   toolbar_layout->addStretch(1);
   toolbar_layout->addWidget(_scroll_bottom_btn);
   toolbar_layout->addWidget(_open_btn);
-  toolbar_layout->addWidget(_refresh_btn);
   toolbar_layout->addWidget(_clear_btn);
 
   QVBoxLayout *main_layout = new QVBoxLayout(_widget);
@@ -146,9 +140,6 @@ LogDock::LogDock(QWidget *parent)
   this->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   this->setWidget(_widget);
   _widget->setObjectName("logWidget");
-
-  _refresh_timer.setInterval(2000);
-  connect(&_refresh_timer, &QTimer::timeout, this, &LogDock::on_refresh);
 
   _buffer_timer.setInterval(100);
   connect(&_buffer_timer, &QTimer::timeout, this, &LogDock::on_flush_buffer);
@@ -168,7 +159,6 @@ LogDock::LogDock(QWidget *parent)
 
 LogDock::~LogDock() {
   _buffer_timer.stop();
-  _refresh_timer.stop();
 
   xlog_context *ctx = dsv_log_context();
   if (ctx && _callback_index >= 0) {
@@ -225,17 +215,11 @@ void LogDock::append_log_text(const QString &text) {
   }
 }
 
-void LogDock::on_refresh() { load_log_file(); }
-
 void LogDock::on_clear() {
-  QString strMsg(
-      L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_CLEAR_LOG), "Confirm!"));
-  if (MsgBox::Confirm(strMsg)) {
-    dsv_clear_log_file();
-    _log_view->clear();
-    QFile qf(get_dsv_log_path());
-    _open_btn->setEnabled(qf.exists());
-  }
+  dsv_clear_log_file();
+  _log_view->clear();
+  QFile qf(get_dsv_log_path());
+  _open_btn->setEnabled(qf.exists());
 }
 
 void LogDock::on_level_changed(int index) {
@@ -311,8 +295,6 @@ void LogDock::on_flush_buffer() {
 }
 
 void LogDock::retranslateUi() {
-  _refresh_btn->setText(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_REFRESH), "Refresh"));
   _clear_btn->setText(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLEARE), "Clear"));
   _open_btn->setText(

@@ -69,7 +69,6 @@ private:
   void append_log_text(const QString &text);
 
 private slots:
-  void on_refresh();
   void on_clear();
   void on_level_changed(int index);
   void on_scroll_bottom_changed(bool checked);
@@ -81,7 +80,6 @@ private slots:
 private:
   QWidget *_widget;
   QPlainTextEdit *_log_view;
-  QPushButton *_refresh_btn;
   QPushButton *_clear_btn;
   QPushButton *_open_btn;
   QComboBox *_level_combo;
@@ -90,7 +88,6 @@ private:
   QCheckBox *_append_mode_check;
   bool _auto_scroll;
 
-  QTimer _refresh_timer;
   QTimer _buffer_timer;
 
   static QMutex _log_mutex;

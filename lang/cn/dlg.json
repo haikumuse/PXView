@@ -688,10 +688,6 @@
         "text": "清除"
     },
     {
-        "id": "IDS_DLG_REFRESH",
-        "text": "刷新"
-    },
-    {
         "id": "IDS_DLG_APPEND_MODE",
         "text": "追加模式"
     },
