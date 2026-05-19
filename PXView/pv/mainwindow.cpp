@@ -435,6 +435,7 @@ void MainWindow::setup_ui() {
   QVBoxLayout *dock_lay = new QVBoxLayout(dock_container);
   dock_lay->setContentsMargins(0, 0, 0, 0);
   dock_lay->setSpacing(0);
+  dock_lay->setSizeConstraint(QLayout::SetMinimumSize);
   QWidget *sampling_widget =
       _sampling_bar->createSamplingSettingsWidget(dock_container);
   dock_lay->addWidget(sampling_widget);
@@ -450,9 +451,6 @@ void MainWindow::setup_ui() {
   dock_scroll->setFrameShape(QFrame::NoFrame);
   dock_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-  // VITAL: Ensure the container doesn't shrink, triggering the scrollbar
-  // instead.
-  dock_container->setMinimumHeight(1000);
   dock_scroll->setWidget(dock_container);
 
   connect(_device_options_widget, &dock::DeviceOptionsDock::settings_applied,
@@ -483,6 +481,7 @@ void MainWindow::setup_ui() {
   QVBoxLayout *sp_lay = new QVBoxLayout(sp_container);
   sp_lay->setContentsMargins(0, 0, 0, 0);
   sp_lay->setSpacing(0);
+  sp_lay->setSizeConstraint(QLayout::SetMinimumSize);
   sp_lay->addWidget(_signal_processing_widget);
 
   pv::widgets::SmoothScrollArea *sp_scroll =
@@ -490,7 +489,6 @@ void MainWindow::setup_ui() {
   sp_scroll->setWidgetResizable(true);
   sp_scroll->setFrameShape(QFrame::NoFrame);
   sp_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  sp_container->setMinimumHeight(1000);
   sp_scroll->setWidget(sp_container);
   _signal_processing_dock->setFeatures(QDockWidget::NoDockWidgetFeatures);
   _signal_processing_dock->setTitleBarWidget(new QWidget());
