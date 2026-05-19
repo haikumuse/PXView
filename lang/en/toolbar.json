@@ -24,6 +24,10 @@
         "text": "&Options"
     },
     {
+        "id": "IDS_TOOLBAR_SIGNAL_PROCESSING",
+        "text": "&Filter"
+    },
+    {
         "id": "IDS_TOOLBAR_CAPTURE_MODE",
         "text": "Mod&e"
     },

@@ -392,7 +392,7 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
 LRESULT WinNativeWidget::hitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     (void)wParam;
-    int k = GetDevicePixelRatio();
+    double k = GetDevicePixelRatio();
     const LONG borderWidth = 4 * k;
     RECT rc;
     GetWindowRect(hWnd, &rc);
@@ -824,7 +824,7 @@ bool WinNativeWidget::IsWin7()
     return false;
 }
 
-int WinNativeWidget::GetDevicePixelRatio()
+double WinNativeWidget::GetDevicePixelRatio()
 {
     auto screen = GetPointScreen();
     if (screen != NULL){

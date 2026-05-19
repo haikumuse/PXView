@@ -136,7 +136,6 @@ private:
 
     // Drag state (edge resize)
     bool _drag_active;
-    bool _drag_margin_removed;
     int _drag_start_drawer_width;
     int _drag_target_width;
     QPoint _drag_start_pos;

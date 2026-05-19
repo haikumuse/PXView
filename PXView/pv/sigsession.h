@@ -121,6 +121,8 @@ public:
     data::LogicSnapshot *_logic_backup;
     bool           _glitch_filter_active;
     std::vector<uint32_t> _glitch_filter_thresholds;
+    bool           _signal_invert_active;
+    std::vector<bool> _signal_invert_channels;
 
 private:
     data::LogicSnapshot   logic;
@@ -485,6 +487,10 @@ public:
     void clear_glitch_filter();
     bool is_glitch_filter_active();
 
+    void set_signal_invert(const std::vector<bool> &channels);
+    void clear_signal_invert();
+    bool is_signal_invert_active();
+
     size_t get_disk_write_queue_depth();
     double get_disk_write_speed_mbps();
     bool is_disk_write_disk_full();
@@ -574,6 +580,7 @@ private:
     void clear_signals(); 
 
     void glitch_filter_task(const std::vector<uint32_t> thresholds);
+    void signal_invert_task(const std::vector<bool> channels);
 
     inline void data_lock(){
         _data_lock = true;
@@ -660,6 +667,8 @@ private:
 
     std::thread     *_glitch_filter_thread;
     bool            _glitch_filter_running;
+    std::thread     *_signal_invert_thread;
+    bool            _signal_invert_running;
 
     data::DiskWriteThread  *_disk_write_thread;
     data::DiskBufferManager *_disk_buffer_mgr;

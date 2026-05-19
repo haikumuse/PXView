@@ -137,6 +137,7 @@ public:
                       double min_length, int sig_index);
 
     void set_sample_range(uint64_t start, uint64_t end, bool level, int sig_index);
+    void invert_channel(int sig_index);
     LogicSnapshot* clone_data();
     void apply_glitch_filter(int sig_index, uint32_t threshold, std::function<void(int)> progress_callback);
     void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback);

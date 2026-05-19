@@ -55,9 +55,9 @@
  * @gridline: #6c6c6c
  * @tab-text: #ffffff
  * @tab-indicator: #ffffff
- * @tab-hover: rgba(255,255,255,0.08)
- * @winbtn-hover: rgba(255,255,255,0.12)
- * @winbtn-pressed: rgba(255,255,255,0.06)
+ * @tab-hover: #14ffffff
+ * @winbtn-hover: #1fffffff
+ * @winbtn-pressed: #0fffffff
  * @tooltip-bg: #202020
  * @tooltip-fg: #eff0f1
  * @toolbtn-hover: #353535
@@ -74,9 +74,9 @@
  * @frame-border: #444444
  * @slider-v-border: #626568
  * @drawer-title-fg: #eff0f1
- * @drawer-edge-hover: rgba(255,255,255,0.12)
+ * @drawer-edge-hover: #1fffffff
  * @dock-gridline: #3f3f46
- * @item-hover: rgba(255,255,255,0.06)
+ * @item-hover: #0fffffff
  * @dock-section-title-fg: #cccccc
  * @dock-section-separator-color: #37373b
  * @dock-status-ok: #4ec9b0
@@ -102,9 +102,9 @@
  * @signal-blue: #1185D1
  * @signal-green: #009925
  * @signal-purple: #6D329C
- * @signal-light-blue: rgba(17,133,209,200)
- * @signal-light-red: rgba(213,15,37,200)
- * @warn-red: rgba(255,0,0,200)
+ * @signal-light-blue: #c81185d1
+ * @signal-light-red: #c8d50f25
+ * @warn-red: #c8ff0000
  * @search-input-bg: #1a1a1a
  * @search-input-text: #ffffff
  * @search-input-label: #aaaaaa

@@ -248,6 +248,7 @@ set(PXView_SOURCES
     PXView/pv/dock/searchdock.cpp
     PXView/pv/dock/logdock.cpp
     PXView/pv/dock/deviceoptionsdock.cpp
+    PXView/pv/dock/signalprocessingdock.cpp
     PXView/pv/toolbars/logobar.cpp
     PXView/pv/dialogs/about.cpp
     PXView/pv/dialogs/search.cpp
@@ -399,6 +400,7 @@ set(PXView_HEADERS
     PXView/pv/dock/searchdock.h
     PXView/pv/dock/logdock.h
     PXView/pv/dock/deviceoptionsdock.h
+    PXView/pv/dock/signalprocessingdock.h
     PXView/pv/toolbars/logobar.h
     PXView/pv/dialogs/about.h
     PXView/pv/dialogs/search.h
@@ -687,7 +689,7 @@ endif()
 #-------------------------------------------------------------------------------
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
     set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
     add_compile_options(-O3)
 endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g")

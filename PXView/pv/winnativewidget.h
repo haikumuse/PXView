@@ -99,7 +99,7 @@ public:
         _is_closing = closing;
     }
 
-    int GetDevicePixelRatio();
+    double GetDevicePixelRatio();
     bool IsVisible();
 
     void ReShowWindow();

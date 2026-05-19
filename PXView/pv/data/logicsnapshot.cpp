@@ -1845,6 +1845,55 @@ void LogicSnapshot::set_sample_range(uint64_t start, uint64_t end, bool level, i
     }
 }
 
+void LogicSnapshot::invert_channel(int sig_index)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    int order = get_ch_order(sig_index);
+    if (order == -1 || (unsigned int)order >= _ch_data.size())
+        return;
+
+    if (_ring_sample_count == 0)
+        return;
+
+    // Ensure all blocks are loaded from disk cache if active
+    if (_disk_cache_active) {
+        for (uint64_t i = 0; i < _ch_data[order].size(); i++) {
+            for (uint64_t j = 0; j < Scale; j++) {
+                if (_ch_data[order][i].lbp[j] == NULL) {
+                    ensure_block_hot(order, i, j);
+                }
+            }
+        }
+    }
+
+    for (uint64_t i = 0; i < _ch_data[order].size(); i++) {
+        RootNode &rn = _ch_data[order][i];
+
+        for (uint64_t j = 0; j < Scale; j++) {
+            uint64_t pos_mask = 1ULL << j;
+
+            if (rn.lbp[j] != NULL) {
+                // Block has actual data — XOR all sample bytes with 0xFF
+                uint8_t *lbp = (uint8_t*)rn.lbp[j];
+                uint64_t sample_bytes = LeafBlockSamples / 8;
+
+                for (uint64_t k = 0; k < sample_bytes; k++) {
+                    lbp[k] ^= 0xFF;
+                }
+
+                // Rebuild mipmap for this block
+                recalc_mipmap(order, i, j);
+            }
+            else {
+                // Compressed block (constant value) — flip first and last bits
+                rn.first ^= pos_mask;
+                rn.last ^= pos_mask;
+            }
+        }
+    }
+}
+
 void LogicSnapshot::recalc_mipmap(unsigned int order, uint64_t index0, uint64_t index1)
 {
     void *lbp = _ch_data[order][index0].lbp[index1];
