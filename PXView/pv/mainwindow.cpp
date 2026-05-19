@@ -1764,9 +1764,10 @@ int MainWindow::resolveShortcutAction(int key, int modifiers)
 
         QKeySequence seq(keySeqStr);
         if (seq.count() > 0) {
-            int combined = seq[0];
-            int seqKey = combined & ~Qt::KeyboardModifierMask;
-            int seqMods = combined & Qt::KeyboardModifierMask;
+            QKeyCombination combined = seq[0];
+            int combinedInt = combined.toCombined();
+            int seqKey = combinedInt & ~Qt::KeyboardModifierMask;
+            int seqMods = combinedInt & Qt::KeyboardModifierMask;
 
             if (seqMods == 0 && modifiers == 0 && seqKey == key) {
                 return infos[i].actionId;
@@ -2065,9 +2066,9 @@ void MainWindow::switchLanguage(int language) {
   }
 
   if (language == LAN_CN) {
-    _qtTrans.load(":/qt_" + QString::number(language));
+    (void)_qtTrans.load(":/qt_" + QString::number(language));
     qApp->installTranslator(&_qtTrans);
-    _myTrans.load(":/my_" + QString::number(language));
+    (void)_myTrans.load(":/my_" + QString::number(language));
     qApp->installTranslator(&_myTrans);
   } else if (language == LAN_EN) {
     qApp->removeTranslator(&_qtTrans);

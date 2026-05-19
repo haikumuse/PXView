@@ -155,7 +155,7 @@ CMAKE_INSTALL_MANDIR:PATH=
 CMAKE_INSTALL_OLDINCLUDEDIR:PATH=/usr/include
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install-qt6.dir
+CMAKE_INSTALL_PREFIX:PATH=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install.dir
 
 //Run-time variable data (LOCALSTATEDIR/run)
 CMAKE_INSTALL_RUNSTATEDIR:PATH=
@@ -775,6 +775,8 @@ CPACK_BINARY_WIX-ADVANCED:INTERNAL=1
 CPACK_BINARY_ZIP-ADVANCED:INTERNAL=1
 //Details about finding PkgConfig
 FIND_PACKAGE_MESSAGE_DETAILS_PkgConfig:INTERNAL=[D:/msys64/mingw64/bin/pkg-config.exe][v2.5.1()]
+//Details about finding Python3
+FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[D:/msys64/mingw64/bin/python3.14.exe][D:/msys64/mingw64/lib/libpython3.14.dll.a][D:/msys64/mingw64/include/python3.14][found components: Interpreter Development Development.Module Development.Embed ][v3.14.4()]
 //Details about finding Threads
 FIND_PACKAGE_MESSAGE_DETAILS_Threads:INTERNAL=[TRUE][v()]
 //Details about finding WrapAtomic
@@ -1680,7 +1682,30 @@ ZLIB_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: ZLIB_LIBRARY_RELEASE
 ZLIB_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 //CMAKE_INSTALL_PREFIX during last run
-_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install-qt6.dir
+_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install.dir
+//Compiler reason failure
+_Python3_Compiler_REASON_FAILURE:INTERNAL=
+_Python3_DEVELOPMENT_EMBED_SIGNATURE:INTERNAL=55d2b6fbb3ce8fc275e0f77fc18f7cb5
+_Python3_DEVELOPMENT_MODULE_SIGNATURE:INTERNAL=55d2b6fbb3ce8fc275e0f77fc18f7cb5
+//Development reason failure
+_Python3_Development_REASON_FAILURE:INTERNAL=
+//Path to a program.
+_Python3_EXECUTABLE:INTERNAL=D:/msys64/mingw64/bin/python3.14.exe
+//Path to a program.
+_Python3_EXECUTABLE_DEBUG:INTERNAL=_Python3_EXECUTABLE_DEBUG-NOTFOUND
+//Path to a file.
+_Python3_INCLUDE_DIR:INTERNAL=D:/msys64/mingw64/include/python3.14
+//Python3 Properties
+_Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;14;4;64;<none>;cp314-mingw_x86_64_msvcrt_gnu;;D:/msys64/mingw64/lib/python3.14;D:/msys64/mingw64/lib/python3.14;D:/msys64/mingw64/lib/python3.14/site-packages;D:/msys64/mingw64/lib/python3.14/site-packages
+_Python3_INTERPRETER_SIGNATURE:INTERNAL=5867db697b8668ccf7a0e288193d9208
+//Path to a library.
+_Python3_LIBRARY_DEBUG:INTERNAL=_Python3_LIBRARY_DEBUG-NOTFOUND
+//Path to a library.
+_Python3_LIBRARY_RELEASE:INTERNAL=D:/msys64/mingw64/lib/libpython3.14.dll.a
+//NumPy reason failure
+_Python3_NumPy_REASON_FAILURE:INTERNAL=
+//Path to a library.
+_Python3_RUNTIME_LIBRARY_RELEASE:INTERNAL=D:/msys64/mingw64/bin/libpython3.14.dll
 __pkg_config_checked_GLIB:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_GLIB_glib-2.0
 pkgcfg_lib_GLIB_glib-2.0-ADVANCED:INTERNAL=1

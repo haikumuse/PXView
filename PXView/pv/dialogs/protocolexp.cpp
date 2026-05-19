@@ -199,7 +199,9 @@ void ProtocolExp::save_proc()
     _export_cancel = false;
 
     QFile file(_fileName);
-    file.open(QIODevice::WriteOnly | QIODevice::Text);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return;
+    }
     QTextStream out(&file);
     encoding::set_utf8(out);
     // out.setGenerateByteOrderMark(true); // UTF-8 without BOM

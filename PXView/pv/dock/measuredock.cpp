@@ -208,7 +208,7 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
 
     connect(_dist_add_btn, &QAbstractButton::clicked, this, &MeasureDock::add_dist_measure);
     connect(_edge_add_btn, &QAbstractButton::clicked, this, &MeasureDock::add_edge_measure);
-    connect(_fen_checkBox, &QCheckBox::stateChanged, _view, &view::View::set_measure_en);
+    connect(_fen_checkBox, &QCheckBox::checkStateChanged, _view, &view::View::set_measure_en);
     connect(_view, &view::View::measure_updated, this, &MeasureDock::measure_updated);
     connect(_view, &view::View::cursor_update, this, &MeasureDock::cursor_update);
     connect(_view, &view::View::cursor_moving, this, &MeasureDock::cursor_moving);
@@ -229,7 +229,7 @@ void MeasureDock::set_view(view::View *view)
         disconnect(_view, &view::View::cursor_moving, this, &MeasureDock::cursor_moving);
         disconnect(_view, &view::View::cursor_moved, this, &MeasureDock::reCalc);
         disconnect(_view, &view::View::measure_updated, this, &MeasureDock::measure_updated);
-        disconnect(_fen_checkBox, &QCheckBox::stateChanged, _view, &view::View::set_measure_en);
+        disconnect(_fen_checkBox, &QCheckBox::checkStateChanged, _view, &view::View::set_measure_en);
     }
 
     _view = view;
@@ -239,7 +239,7 @@ void MeasureDock::set_view(view::View *view)
         connect(_view, &view::View::cursor_moving, this, &MeasureDock::cursor_moving);
         connect(_view, &view::View::cursor_moved, this, &MeasureDock::reCalc);
         connect(_view, &view::View::measure_updated, this, &MeasureDock::measure_updated);
-        connect(_fen_checkBox, &QCheckBox::stateChanged, _view, &view::View::set_measure_en);
+        connect(_fen_checkBox, &QCheckBox::checkStateChanged, _view, &view::View::set_measure_en);
     }
 }
 
@@ -815,8 +815,6 @@ void MeasureDock::set_sel_cursor()
 void MeasureDock::update_dist()
 {
     auto &cursor_list = _view->get_cursorList();
-
-    QColor bkColor = AppConfig::Instance().GetStyleColor(); 
 
     auto mode_rows = get_mode_rows();
 

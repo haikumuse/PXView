@@ -979,7 +979,6 @@ void View::signals_changed(const Trace *eventTrace) {
   double actualMargin = SignalMargin;
   int total_rows = 0;
   int label_size = 0;
-  uint8_t max_height = MaxHeightUnit;
   std::vector<Trace *> time_traces;
   std::vector<Trace *> fft_traces;
   std::vector<Trace *> traces;
@@ -1262,6 +1261,7 @@ void View::scrollContentsBy(int dx, int dy) {
 }
 
 void View::resizeEvent(QResizeEvent *event) {
+  (void)event;
   int width = get_view_width();
 
   if (width == 0) {
@@ -1413,6 +1413,7 @@ void View::make_cursors_order() {
 }
 
 void View::add_cursor(QColor color, uint64_t sampleIndex) {
+  (void)color;
   Cursor *newCursor = new Cursor(*this, -1, sampleIndex);
   get_cursorList().push_back(newCursor);
   make_cursors_order();
@@ -1927,7 +1928,7 @@ void View::rebuild_signals() {
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
       device_ch_count++;
     }
-    if (config.channels.size() == device_ch_count) {
+    if (config.channels.size() == (size_t)device_ch_count) {
       rebuild_signals_from_config(config);
       return;
     }

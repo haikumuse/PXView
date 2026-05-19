@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/bind.hpp>
 
 
@@ -205,7 +206,7 @@ void LogoBar::on_actionIssue_triggered()
 
 void LogoBar::enable_toggle(bool enable)
 {
-    // _logo_button.setDisabled(!enable);
+    (void)enable;
 }
 
 void LogoBar::UpdateLanguage()

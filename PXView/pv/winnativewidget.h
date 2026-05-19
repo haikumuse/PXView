@@ -52,7 +52,7 @@ class WinNativeWidget: public IShadowCallback
 {
 public:
     WinNativeWidget(const int x, const int y, const int width, const int heigh, QColor backColor);
-    ~WinNativeWidget();
+    virtual ~WinNativeWidget();
  
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 

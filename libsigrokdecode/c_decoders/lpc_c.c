@@ -98,7 +98,7 @@ static const int lpc_ct_dr_wr[] = {
     0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0,
 };
 
-static const char *lpc_size_names[] = {
+static const char * __attribute__((unused)) lpc_size_names[] = {
     "8 bits", "16 bits", "Reserved", "32 bits",
 };
 

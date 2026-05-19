@@ -293,7 +293,7 @@ const char* AnnotationResTable::format_numberic(const char *hex_str, int fmt)
 				return hex_str;
 			  }
 
-			  strncpy(all_wr, sub_str, sublen);
+			  memcpy(all_wr, sub_str, sublen);
 			  all_wr += sublen;
 			  sub_wr = sub_buf; //reset write buffer
 		  }
@@ -321,7 +321,8 @@ const char* AnnotationResTable::format_numberic(const char *hex_str, int fmt)
 			return hex_str;
 		 }
 
-		 strncpy(all_wr, sub_str, sublen);
+		 memcpy(all_wr, sub_str, sublen);
+		 all_wr[sublen] = '\0';
 		 all_wr += sublen;		
 	 }
 

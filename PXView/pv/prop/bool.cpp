@@ -59,7 +59,7 @@ QWidget* Bool::get_widget(QWidget *parent, bool auto_commit)
 	}
 
     if (auto_commit) {
-        connect(_check_box, &QCheckBox::stateChanged,
+        connect(_check_box, &QCheckBox::checkStateChanged,
             this, &Bool::on_state_changed);
     }
 

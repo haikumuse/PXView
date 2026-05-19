@@ -22,7 +22,8 @@
 #include <libsigrokdecode.h>
 
 #include "decoderoptions.h"
-#include <boost/bind.hpp> 
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
+#include <boost/bind.hpp>
 #include <boost/none_t.hpp>
 
 #include "../../data/decoderstack.h"

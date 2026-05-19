@@ -541,6 +541,13 @@ bool SearchDock::gpu_edge_search_worker(data::LogicSnapshot *logic_snapshot,
                                         QElapsedTimer &ui_timer,
                                         bool &has_new_results,
                                         bool &first_flush) {
+  (void)logic_snapshot;
+  (void)end;
+  (void)local_batch;
+  (void)ui_timer;
+  (void)has_new_results;
+  (void)first_flush;
+
   if (!_view)
     return false;
 

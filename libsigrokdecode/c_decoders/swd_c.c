@@ -265,7 +265,6 @@ static void swd_decode(struct srd_decoder_inst *di)
                 int rw_bit = s->bits[s->bits_len - 6] - '0';
                 int addr_bit0 = s->bits[s->bits_len - 5] - '0';
                 int addr_bit1 = s->bits[s->bits_len - 4] - '0';
-                int parity_bit = s->bits[s->bits_len - 3] - '0';
                 int stop_bit = s->bits[s->bits_len - 2] - '0';
                 int park_bit = s->bits[s->bits_len - 1] - '0';
 
@@ -362,7 +361,7 @@ static void swd_decode(struct srd_decoder_inst *di)
             uint64_t ss = s->samplenums[s->bits_len - 1];
 
             if (s->dparity != parity_received) {
-                char ptext[4];
+                char ptext[16];
                 snprintf(ptext, sizeof(ptext), "%d%d", s->dparity, parity_received);
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_PARITY, ptext);
             } else {

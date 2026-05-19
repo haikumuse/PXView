@@ -329,6 +329,7 @@ static int nas_interp_value(nas_state *s, uint64_t pattern, double *out_value)
 
 static int nas_format_value(nas_state *s, double value, uint64_t pattern, char *buf, int bufsize)
 {
+    (void)pattern;
     int64_t ival = (int64_t)value;
     uint64_t uval = (uint64_t)value;
 

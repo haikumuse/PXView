@@ -214,20 +214,13 @@ static void dmx_decode(struct srd_decoder_inst *di)
         }
 
         case READ_BYTE: {
-            int bit_pos[11];
             int bit_val[11];
             int i;
 
             for (i = 0; i < 11; i++) {
-                uint64_t bit_start;
                 uint64_t bit_end;
                 int bval;
 
-                if (i == 0) {
-                    bit_start = samplenum;
-                } else {
-                    bit_start = s->run_start + (uint64_t)i * s->skip_per_bit;
-                }
                 bit_end = s->run_start + (uint64_t)(i + 1) * s->skip_per_bit;
 
                 {
@@ -248,7 +241,6 @@ static void dmx_decode(struct srd_decoder_inst *di)
                     }
                 }
 
-                bit_pos[i] = i;
                 bit_val[i] = bval;
 
                 if (i == 0) {

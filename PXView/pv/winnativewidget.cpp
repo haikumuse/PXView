@@ -391,6 +391,7 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
 
 LRESULT WinNativeWidget::hitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
+    (void)wParam;
     int k = GetDevicePixelRatio();
     const LONG borderWidth = 4 * k;
     RECT rc;

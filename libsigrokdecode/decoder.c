@@ -1380,8 +1380,8 @@ static int srd_c_decoder_load_single(const char *full_path)
         return SRD_ERR;
     }
 
-    srd_c_decoder_api_version_func version_func = (srd_c_decoder_api_version_func)GetProcAddress(handle, "srd_c_decoder_api_version");
-    srd_c_decoder_entry_func entry_func = (srd_c_decoder_entry_func)GetProcAddress(handle, "srd_c_decoder_entry");
+    srd_c_decoder_api_version_func version_func = (srd_c_decoder_api_version_func)(void*)GetProcAddress(handle, "srd_c_decoder_api_version");
+    srd_c_decoder_entry_func entry_func = (srd_c_decoder_entry_func)(void*)GetProcAddress(handle, "srd_c_decoder_entry");
 
     if (!entry_func) {
         srd_warn("C decoder DLL '%s' has no srd_c_decoder_entry symbol.", full_path);

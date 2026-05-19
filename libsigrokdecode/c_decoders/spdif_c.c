@@ -99,7 +99,7 @@ static int get_pulse_type(struct spdif_priv *s)
         return 1;
 }
 
-static int get_pulse_type_for_width(struct spdif_priv *s, uint64_t width)
+static int __attribute__((unused)) get_pulse_type_for_width(struct spdif_priv *s, uint64_t width)
 {
     if (s->range1 == 0 || s->range2 == 0)
         return -1;

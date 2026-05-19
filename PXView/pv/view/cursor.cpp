@@ -50,6 +50,7 @@ const int Cursor::CloseSize = 10;
 Cursor::Cursor(View &view, int order, uint64_t sampleIndex) :
     TimeMarker(view, sampleIndex)
 {
+   (void)order;
    _order = _order;
 }
 

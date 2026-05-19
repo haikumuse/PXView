@@ -205,17 +205,16 @@ static void putd(struct srd_decoder_inst *di, nec_state *s, uint16_t data_val, i
     char mid_str[32];
     char mid2_str[16];
     char short_str[8];
-    int hex_width = bit_count / 4;
 
     if (bit_count <= 8) {
-        snprintf(long_str, sizeof(long_str), "%s: 0x%0*X", name, hex_width, (uint8_t)data_val);
-        snprintf(mid_str, sizeof(mid_str), "%s: 0x%0*X", short_name, hex_width, (uint8_t)data_val);
-        snprintf(mid2_str, sizeof(mid2_str), "%s: 0x%0*X", shortest, hex_width, (uint8_t)data_val);
+        snprintf(long_str, sizeof(long_str), "%s: 0x%02X", name, (uint8_t)data_val);
+        snprintf(mid_str, sizeof(mid_str), "%s: 0x%02X", short_name, (uint8_t)data_val);
+        snprintf(mid2_str, sizeof(mid2_str), "%s: 0x%02X", shortest, (uint8_t)data_val);
         snprintf(short_str, sizeof(short_str), "%s", shortest);
     } else {
-        snprintf(long_str, sizeof(long_str), "%s: 0x%0*X", name, hex_width, data_val);
-        snprintf(mid_str, sizeof(mid_str), "%s: 0x%0*X", short_name, hex_width, data_val);
-        snprintf(mid2_str, sizeof(mid2_str), "%s: 0x%0*X", shortest, hex_width, data_val);
+        snprintf(long_str, sizeof(long_str), "%s: 0x%04X", name, data_val);
+        snprintf(mid_str, sizeof(mid_str), "%s: 0x%04X", short_name, data_val);
+        snprintf(mid2_str, sizeof(mid2_str), "%s: 0x%04X", shortest, data_val);
         snprintf(short_str, sizeof(short_str), "%s", shortest);
     }
 
