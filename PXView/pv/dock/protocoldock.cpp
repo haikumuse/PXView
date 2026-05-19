@@ -666,11 +666,35 @@ void ProtocolDock::update_model() {
 
 void ProtocolDock::resize_table_view(data::DecoderModel *decoder_model) {
   if (decoder_model->getDecoderStack()) {
-    for (int i = 0; i < decoder_model->columnCount(QModelIndex()) - 1; i++) {
-      _table_view->resizeColumnToContents(i);
-      if (_table_view->columnWidth(i) > 200)
-        _table_view->setColumnWidth(i, 200);
+    int column_count = decoder_model->columnCount(QModelIndex()) - 1;
+    int row_count = decoder_model->rowCount(QModelIndex());
+
+    if (row_count < 500) {
+      for (int i = 0; i < column_count; i++) {
+        _table_view->resizeColumnToContents(i);
+        if (_table_view->columnWidth(i) > 200)
+          _table_view->setColumnWidth(i, 200);
+      }
+    } else {
+      // Scan only the first 200 rows to estimate column width for large models, preventing UI freeze
+      QFontMetrics fm(_table_view->font());
+      int max_scan = row_count < 200 ? row_count : 200;
+      for (int col = 0; col < column_count; col++) {
+        int max_width = 50;
+        for (int row = 0; row < max_scan; row++) {
+          QModelIndex idx = decoder_model->index(row, col);
+          QString text = decoder_model->data(idx, Qt::DisplayRole).toString();
+          int width = fm.boundingRect(text).width() + 20;
+          if (width > max_width) {
+            max_width = width;
+          }
+        }
+        if (max_width > 200)
+          max_width = 200;
+        _table_view->setColumnWidth(col, max_width);
+      }
     }
+
     int top_row = _table_view->rowAt(0);
     int bom_row = _table_view->rowAt(_table_view->height());
     if (bom_row >= top_row && top_row >= 0) {

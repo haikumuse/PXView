@@ -346,6 +346,7 @@ public:
   view::Signal *get_signal_by_index(int index);
 
   inline bool have_view_data() { return get_signal_snapshot()->have_data(); }
+  inline bool is_copy_in_progress() const { return _copy_in_progress; }
 
   void on_load_config_end();
   void init_signals();

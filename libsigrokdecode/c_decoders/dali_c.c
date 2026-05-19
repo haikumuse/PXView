@@ -459,6 +459,16 @@ static void dali_reset(struct srd_decoder_inst *di)
     s->dev_type = 0;
 }
 
+static void dali_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
+{
+    struct dali_priv *s = (struct dali_priv *)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE) {
+        s->samplerate = value;
+        if (s->samplerate > 0)
+            s->halfbit = (uint64_t)((s->samplerate * 0.0008333) / 2.0);
+    }
+}
+
 static void dali_start(struct srd_decoder_inst *di)
 {
     struct dali_priv *s = (struct dali_priv *)c_decoder_get_private(di);
@@ -485,6 +495,11 @@ static void dali_decode(struct srd_decoder_inst *di)
     uint64_t samplenum = 0;
     uint64_t matched;
 
+    if (s->samplerate == 0) {
+        s->samplerate = c_decoder_get_samplerate(di);
+        if (s->samplerate > 0)
+            s->halfbit = (uint64_t)((s->samplerate * 0.0008333) / 2.0);
+    }
     if (s->samplerate == 0)
         return;
 
@@ -579,6 +594,7 @@ struct srd_c_decoder dali_c_decoder = {
     .num_binary = 0,
     .tags = dali_tags,
     .num_tags = 2,
+    .metadata = dali_metadata,
     .reset = dali_reset,
     .start = dali_start,
     .decode = dali_decode,

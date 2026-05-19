@@ -1,8 +1,9 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
+
 
 enum sirc_ann {
     ANN_BIT = 0,
@@ -19,11 +20,11 @@ enum sirc_ann {
 
 #define IR_CH 0
 
-#define AGC_USEC    2400.0
-#define ONE_USEC    1200.0
-#define ZERO_USEC   600.0
-#define PAUSE_USEC  600.0
-#define TOLERANCE   0.30
+#define AGC_USEC 2400.0
+#define ONE_USEC 1200.0
+#define ZERO_USEC 600.0
+#define PAUSE_USEC 600.0
+#define TOLERANCE 0.30
 
 typedef struct {
     uint64_t samplerate;
@@ -33,48 +34,48 @@ typedef struct {
 } sirc_state;
 
 static struct srd_channel sirc_channels[] = {
-    {"ir", "IR", "IR data line", 0, SRD_CHANNEL_SDATA, NULL},
+    { "ir", "IR", "IR data line", 0, SRD_CHANNEL_SDATA, NULL },
 };
 
 static struct srd_decoder_option sirc_options[] = {
-    {"polarity", NULL, "Polarity", NULL, NULL},
+    { "polarity", NULL, "Polarity", NULL, NULL },
 };
 
-static const char *sirc_ann_labels[][3] = {
-    {"", "bit", "Bit"},
-    {"", "agc", "AGC"},
-    {"", "pause", "Pause"},
-    {"", "start", "Start"},
-    {"", "command", "Command"},
-    {"", "address", "Address"},
-    {"", "extended", "Extended"},
-    {"", "remote", "Remote"},
-    {"", "warning", "Warning"},
+static const char* sirc_ann_labels[][3] = {
+    { "", "bit", "Bit" },
+    { "", "agc", "AGC" },
+    { "", "pause", "Pause" },
+    { "", "start", "Start" },
+    { "", "command", "Command" },
+    { "", "address", "Address" },
+    { "", "extended", "Extended" },
+    { "", "remote", "Remote" },
+    { "", "warning", "Warning" },
 };
 
-static const int sirc_row_bits_classes[] = {ANN_BIT, ANN_AGC, ANN_PAUSE, -1};
-static const int sirc_row_fields_classes[] = {ANN_START, ANN_CMD, ANN_ADDR, ANN_EXT, -1};
-static const int sirc_row_remotes_classes[] = {ANN_REMOTE, -1};
-static const int sirc_row_warnings_classes[] = {ANN_WARN, -1};
+static const int sirc_row_bits_classes[] = { ANN_BIT, ANN_AGC, ANN_PAUSE, -1 };
+static const int sirc_row_fields_classes[] = { ANN_START, ANN_CMD, ANN_ADDR, ANN_EXT, -1 };
+static const int sirc_row_remotes_classes[] = { ANN_REMOTE, -1 };
+static const int sirc_row_warnings_classes[] = { ANN_WARN, -1 };
 static const struct srd_c_ann_row sirc_ann_rows[] = {
-    {"bits", "Bits", sirc_row_bits_classes, 3},
-    {"fields", "Fields", sirc_row_fields_classes, 4},
-    {"remotes", "Remotes", sirc_row_remotes_classes, 1},
-    {"warnings", "Warnings", sirc_row_warnings_classes, 1},
+    { "bits", "Bits", sirc_row_bits_classes, 3 },
+    { "fields", "Fields", sirc_row_fields_classes, 4 },
+    { "remotes", "Remotes", sirc_row_remotes_classes, 1 },
+    { "warnings", "Warnings", sirc_row_warnings_classes, 1 },
 };
 
-static const char *sirc_inputs[] = {"logic", NULL};
-static const char *sirc_outputs[] = {NULL};
-static const char *sirc_tags[] = {"IR", NULL};
+static const char* sirc_inputs[] = { "logic", NULL };
+static const char* sirc_outputs[] = { NULL };
+static const char* sirc_tags[] = { "IR", NULL };
 
-static int tolerance_check(sirc_state *s, uint64_t ss, uint64_t es, double expected)
+static int tolerance_check(sirc_state* s, uint64_t ss, uint64_t es, double expected)
 {
     double microseconds = (double)(es - ss) / s->snum_per_us;
     double tol = expected * TOLERANCE;
     return (microseconds > (expected - tol)) && (microseconds < (expected + tol));
 }
 
-static uint16_t bitpack_lsb(uint8_t *bits, int count)
+static uint16_t bitpack_lsb(uint8_t* bits, int count)
 {
     uint16_t val = 0;
     int i;
@@ -83,15 +84,15 @@ static uint16_t bitpack_lsb(uint8_t *bits, int count)
     return val;
 }
 
-static int read_pulse(struct srd_decoder_inst *di, sirc_state *s,
+static int read_pulse(struct srd_decoder_inst* di, sirc_state* s,
     int high, double time_us, uint64_t pulse_ss,
-    uint64_t *pulse_es)
+    uint64_t* pulse_es)
 {
     uint64_t samplenum;
     uint64_t matched;
     uint64_t max_samples = (uint64_t)(time_us * 1.30 * s->snum_per_us);
 
-    srd_cond_builder *cb = c_cond_new();
+    srd_cond_builder* cb = c_cond_new();
     if (high)
         c_cond_fall(cb, IR_CH);
     else
@@ -114,15 +115,15 @@ static int read_pulse(struct srd_decoder_inst *di, sirc_state *s,
     return 0;
 }
 
-static int read_bit(struct srd_decoder_inst *di, sirc_state *s,
+static int read_bit(struct srd_decoder_inst* di, sirc_state* s,
     uint64_t high_ss,
-    int *bit_val, uint64_t *bit_ss, uint64_t *bit_es, int *good)
+    int* bit_val, uint64_t* bit_ss, uint64_t* bit_es, int* good)
 {
     uint64_t samplenum;
     uint64_t matched;
     uint64_t max_high_samples = (uint64_t)(2000.0 * s->snum_per_us);
 
-    srd_cond_builder *cb = c_cond_new();
+    srd_cond_builder* cb = c_cond_new();
     if (s->active)
         c_cond_fall(cb, IR_CH);
     else
@@ -170,22 +171,31 @@ static int read_bit(struct srd_decoder_inst *di, sirc_state *s,
     return 0;
 }
 
-static void sirc_reset(struct srd_decoder_inst *di)
+static void sirc_metadata(struct srd_decoder_inst* di, int key, uint64_t value)
+{
+    sirc_state* s = (sirc_state*)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE) {
+        s->samplerate = value;
+        s->snum_per_us = (double)value / 1e6;
+    }
+}
+
+static void sirc_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(sirc_state)));
     }
-    sirc_state *s = (sirc_state *)c_decoder_get_private(di);
+    sirc_state* s = (sirc_state*)c_decoder_get_private(di);
     memset(s, 0, sizeof(sirc_state));
 }
 
-static void sirc_start(struct srd_decoder_inst *di)
+static void sirc_start(struct srd_decoder_inst* di)
 {
-    sirc_state *s = (sirc_state *)c_decoder_get_private(di);
+    sirc_state* s = (sirc_state*)c_decoder_get_private(di);
 
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_sirc");
 
-    const char *polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char* polarity = c_decoder_get_option_string(di, "polarity", "active-low");
     if (polarity && strcmp(polarity, "active-high") == 0)
         s->active = 1;
     else
@@ -196,17 +206,22 @@ static void sirc_start(struct srd_decoder_inst *di)
         s->snum_per_us = (double)s->samplerate / 1e6;
 }
 
-static void sirc_decode(struct srd_decoder_inst *di)
+static void sirc_decode(struct srd_decoder_inst* di)
 {
-    sirc_state *s = (sirc_state *)c_decoder_get_private(di);
+    sirc_state* s = (sirc_state*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
+    if (!s->samplerate) {
+        s->samplerate = c_decoder_get_samplerate(di);
+        if (s->samplerate > 0)
+            s->snum_per_us = (double)s->samplerate / 1e6;
+    }
     if (s->samplerate == 0)
         return;
 
     while (1) {
-        srd_cond_builder *cb;
+        srd_cond_builder* cb;
         int ret;
 
         cb = c_cond_new();
@@ -274,13 +289,13 @@ static void sirc_decode(struct srd_decoder_inst *di)
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             C_ANN_PUT(di, frame_ss, samplenum, s->out_ann, ANN_WARN,
-                      "Error: too many bits", "Error", "E");
+                "Error: too many bits", "Error", "E");
             continue;
         }
 
-        uint8_t *command_bits;
-        uint8_t *address_bits;
-        uint8_t *extended_bits;
+        uint8_t* command_bits;
+        uint8_t* address_bits;
+        uint8_t* extended_bits;
         int command_count;
         int address_count;
         int extended_count;
@@ -325,7 +340,7 @@ static void sirc_decode(struct srd_decoder_inst *di)
             snprintf(cmd_long, sizeof(cmd_long), "Command: 0x%02X", command_num);
             snprintf(cmd_mid, sizeof(cmd_mid), "C:0x%02X", command_num);
             C_ANN_PUT(di, bit_ss_arr[0], bit_es_arr[command_count - 1],
-                      s->out_ann, ANN_CMD, cmd_long, cmd_mid);
+                s->out_ann, ANN_CMD, cmd_long, cmd_mid);
         }
 
         {
@@ -334,7 +349,7 @@ static void sirc_decode(struct srd_decoder_inst *di)
             snprintf(addr_long, sizeof(addr_long), "Address: 0x%0*X", addr_hex_width, address_num);
             snprintf(addr_mid, sizeof(addr_mid), "A:0x%0*X", addr_hex_width, address_num);
             C_ANN_PUT(di, bit_ss_arr[command_count], bit_es_arr[command_count + address_count - 1],
-                      s->out_ann, ANN_ADDR, addr_long, addr_mid);
+                s->out_ann, ANN_ADDR, addr_long, addr_mid);
         }
 
         if (extended_count > 0 && extended_bits) {
@@ -344,8 +359,8 @@ static void sirc_decode(struct srd_decoder_inst *di)
             snprintf(ext_long, sizeof(ext_long), "Extended: 0x%0*X", ext_hex_width, extended_num);
             snprintf(ext_mid, sizeof(ext_mid), "E:0x%0*X", ext_hex_width, extended_num);
             C_ANN_PUT(di, bit_ss_arr[command_count + address_count],
-                      bit_es_arr[command_count + address_count + extended_count - 1],
-                      s->out_ann, ANN_EXT, ext_long, ext_mid);
+                bit_es_arr[command_count + address_count + extended_count - 1],
+                s->out_ann, ANN_EXT, ext_long, ext_mid);
         }
 
         {
@@ -353,29 +368,29 @@ static void sirc_decode(struct srd_decoder_inst *di)
             if (extended_count > 0) {
                 uint16_t extended_num = bitpack_lsb(extended_bits, extended_count);
                 snprintf(remote_long, sizeof(remote_long),
-                         "Unknown Device: 0x%02X:0x%02X:0x%02X",
-                         (uint8_t)address_num, command_num, (uint8_t)extended_num);
+                    "Unknown Device: 0x%02X:0x%02X:0x%02X",
+                    (uint8_t)address_num, command_num, (uint8_t)extended_num);
                 snprintf(remote_mid, sizeof(remote_mid),
-                         "UNK: 0x%02X:0x%02X:0x%02X",
-                         (uint8_t)address_num, command_num, (uint8_t)extended_num);
+                    "UNK: 0x%02X:0x%02X:0x%02X",
+                    (uint8_t)address_num, command_num, (uint8_t)extended_num);
             } else {
                 int addr_hex_width = (address_count + 3) / 4;
                 snprintf(remote_long, sizeof(remote_long),
-                         "Unknown Device: 0x%0*X:0x%02X",
-                         addr_hex_width, address_num, command_num);
+                    "Unknown Device: 0x%0*X:0x%02X",
+                    addr_hex_width, address_num, command_num);
                 snprintf(remote_mid, sizeof(remote_mid),
-                         "UNK: 0x%0*X:0x%02X",
-                         addr_hex_width, address_num, command_num);
+                    "UNK: 0x%0*X:0x%02X",
+                    addr_hex_width, address_num, command_num);
             }
             C_ANN_PUT(di, frame_ss, bit_es_arr[bit_count - 1],
-                      s->out_ann, ANN_REMOTE, remote_long, remote_mid);
+                s->out_ann, ANN_REMOTE, remote_long, remote_mid);
         }
     }
 }
 
-static void sirc_destroy(struct srd_decoder_inst *di)
+static void sirc_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -406,19 +421,20 @@ struct srd_c_decoder ir_sirc_c_decoder = {
     .num_binary = 0,
     .tags = sirc_tags,
     .num_tags = 1,
+    .metadata = sirc_metadata,
     .reset = sirc_reset,
     .start = sirc_start,
     .decode = sirc_decode,
     .destroy = sirc_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
-    GVariant *polarity_vals[] = {
+    GVariant* polarity_vals[] = {
         g_variant_new_string("active-low"),
         g_variant_new_string("active-high"),
     };
-    GSList *polarity_list = NULL;
+    GSList* polarity_list = NULL;
     polarity_list = g_slist_append(polarity_list, polarity_vals[0]);
     polarity_list = g_slist_append(polarity_list, polarity_vals[1]);
     sirc_options[0].id = "polarity";

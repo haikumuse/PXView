@@ -2189,14 +2189,9 @@ void SigSession::OnMessage(int msg) {
           _copy_in_progress = false;
           _callback->trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
         }).detach();
-      }
-
-      for (auto de : decode_traces()) {
-        de->decoder()->set_capture_end_flag(true);
-
-        if (bAddDecoder) {
-          de->frame_ended();
-          add_decode_task(de);
+      } else {
+        for (auto de : decode_traces()) {
+          de->decoder()->set_capture_end_flag(true);
         }
       }
 
@@ -2209,8 +2204,13 @@ void SigSession::OnMessage(int msg) {
 
   case DSV_MSG_COPY_TO_DOC_DONE: {
     // Background copy_data_to_document has completed.
-    // Decoders were already started before the copy, nothing else needed.
-    dsv_info("Background copy_data_to_document completed.");
+    // NOW we can safely start the decoders!
+    for (auto de : decode_traces()) {
+      de->decoder()->set_capture_end_flag(true);
+      de->frame_ended();
+      add_decode_task(de);
+    }
+    dsv_info("Background copy_data_to_document completed. Decoders started.");
   } break;
 
   case DS_EV_DEVICE_SPEED_NOT_MATCH: {
