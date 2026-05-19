@@ -1,0 +1,17 @@
+- [x] LOGIC 模式下 on_frame_ended 不再对同一 document 重复调用 copy_data_to_document
+- [x] 非 LOGIC 模式下 on_frame_ended 仍正常调用 copy_data_to_document
+- [x] LeafBlockPool 单例类实现 acquire/release/drain/idle_count 接口
+- [x] logicsnapshot.cpp 中所有 malloc(LeafBlockSpace) 替换为 LeafBlockPool::instance().acquire()
+- [x] logicsnapshot.cpp 中所有 free(lbp) 替换为 LeafBlockPool::instance().release()
+- [x] sessiondocument.cpp 中 malloc(LogicSnapshot::LeafBlockSpace) 替换为 LeafBlockPool::instance().acquire()
+- [x] sessionsnapshot.cpp 中 malloc(LogicSnapshot::LeafBlockSpace) 替换为 LeafBlockPool::instance().acquire()
+- [x] appcontrol.cpp 退出时调用 LeafBlockPool::instance().drain()
+- [x] DSV_MSG_REV_END_PACKET 中 copy_data_to_document 在后台线程执行
+- [x] 后台拷贝期间 frame_ended 信号立即发出，UI 可交互
+- [x] 后台拷贝完成后解码器在 UI 线程正确启动
+- [x] _copy_in_progress 重入保护生效：新采集等待后台拷贝完成
+- [x] 编译通过无警告
+- [ ] Single 模式高频率大深度信号采集完成后 UI 无明显卡顿
+- [ ] Repeat 模式连续采集第二次启动无卡顿（free_data 走内存池）
+- [ ] Glitch Filter 功能正常
+- [ ] Signal Invert 功能正常

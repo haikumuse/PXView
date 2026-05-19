@@ -129,6 +129,7 @@ SigSession::SigSession() {
   _glitch_filter_running = false;
   _signal_invert_thread = nullptr;
   _signal_invert_running = false;
+  _copy_in_progress = false;
 
   _disk_write_thread = nullptr;
   _disk_buffer_mgr = nullptr;
@@ -700,6 +701,15 @@ bool SigSession::exec_capture() {
   if (_device_agent.is_collecting()) {
     dsv_err("Error!Device is running.");
     return false;
+  }
+
+  // Wait for background copy_data_to_document to complete before
+  // starting a new capture, to prevent source data from being cleared.
+  if (_copy_in_progress) {
+    dsv_info("Waiting for background copy_data_to_document to complete...");
+    while (_copy_in_progress) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
 
   if (_device_agent.have_enabled_channel() == false) {
@@ -2169,7 +2179,16 @@ void SigSession::OnMessage(int msg) {
       }
 
       if (bAddDecoder && _active_document) {
-        copy_data_to_document(_active_document);
+        // Move copy_data_to_document to a background thread
+        // so the UI thread is not blocked by the deep copy.
+        _copy_in_progress = true;
+        auto doc = _active_document;
+
+        std::thread([this, doc]() {
+          copy_data_to_document(doc);
+          _copy_in_progress = false;
+          _callback->trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
+        }).detach();
       }
 
       for (auto de : decode_traces()) {
@@ -2187,6 +2206,12 @@ void SigSession::OnMessage(int msg) {
 
   case DSV_MSG_COLLECT_END:
     break;
+
+  case DSV_MSG_COPY_TO_DOC_DONE: {
+    // Background copy_data_to_document has completed.
+    // Decoders were already started before the copy, nothing else needed.
+    dsv_info("Background copy_data_to_document completed.");
+  } break;
 
   case DS_EV_DEVICE_SPEED_NOT_MATCH: {
     QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_SPEED_TOO_LOW),
