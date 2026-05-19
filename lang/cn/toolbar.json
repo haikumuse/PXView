@@ -24,6 +24,10 @@
         "text": "选项(&O)"
     },
     {
+        "id": "IDS_TOOLBAR_SIGNAL_PROCESSING",
+        "text": "滤波(&S)"
+    },
+    {
         "id": "IDS_TOOLBAR_CAPTURE_MODE",
         "text": "模式(&E)"
     },

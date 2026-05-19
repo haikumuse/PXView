@@ -1298,8 +1298,6 @@ void View::resizeEvent(QResizeEvent *event) {
   else
     _maxscale = 1e9;
 
-  _scale = min(_scale, _maxscale);
-
   _ruler->update();
   _header->header_resize();
   set_update(_time_viewport, true);

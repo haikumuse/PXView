@@ -78,6 +78,7 @@ SessionData::SessionData() {
   _trig_pos = 0;
   _logic_backup = nullptr;
   _glitch_filter_active = false;
+  _signal_invert_active = false;
 }
 
 void SessionData::clear() {
@@ -91,6 +92,8 @@ void SessionData::clear() {
   }
   _glitch_filter_active = false;
   _glitch_filter_thresholds.clear();
+  _signal_invert_active = false;
+  _signal_invert_channels.clear();
 }
 
 // TODO: This should not be necessary
@@ -125,6 +128,8 @@ SigSession::SigSession() {
   _dso_status_valid = false;
   _glitch_filter_thread = nullptr;
   _glitch_filter_running = false;
+  _signal_invert_thread = nullptr;
+  _signal_invert_running = false;
 
   _disk_write_thread = nullptr;
   _disk_buffer_mgr = nullptr;
@@ -539,6 +544,8 @@ bool SigSession::action_start_capture(bool instant) {
   }
   _view_data->_glitch_filter_active = false;
   _view_data->_glitch_filter_thresholds.clear();
+  _view_data->_signal_invert_active = false;
+  _view_data->_signal_invert_channels.clear();
 
   _capture_data = _view_data;
   set_cur_snap_samplerate(_device_agent.get_sample_rate());
@@ -2515,6 +2522,21 @@ void SigSession::glitch_filter_task(const std::vector<uint32_t> thresholds) {
     _view_data->get_logic()->copy_from(*_view_data->_logic_backup);
   }
 
+  // If signal invert is active, apply invert before glitch filter
+  if (_view_data->_signal_invert_active) {
+    int ch_idx = 0;
+    for (const GSList *l = _device_agent.get_channels(); l; l = l->next) {
+      sr_channel *const probe = (sr_channel *)l->data;
+      if (probe->type != SR_CHANNEL_LOGIC)
+        continue;
+      if (ch_idx < (int)_view_data->_signal_invert_channels.size() &&
+          _view_data->_signal_invert_channels[ch_idx]) {
+        _view_data->get_logic()->invert_channel(probe->index);
+      }
+      ch_idx++;
+    }
+  }
+
   _view_data->get_logic()->apply_glitch_filter_all(
       thresholds, [this](int progress) {
         (void)progress;
@@ -2551,6 +2573,106 @@ void SigSession::clear_glitch_filter() {
 
 bool SigSession::is_glitch_filter_active() {
   return _view_data->_glitch_filter_active;
+}
+
+void SigSession::set_signal_invert(const std::vector<bool> &channels) {
+  if (_signal_invert_running)
+    return;
+
+  if (_view_data->get_logic()->empty())
+    return;
+
+  bool has_invert = false;
+  for (auto ch : channels) {
+    if (ch) {
+      has_invert = true;
+      break;
+    }
+  }
+  if (!has_invert)
+    return;
+
+  _signal_invert_running = true;
+  _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_STARTED);
+
+  if (_signal_invert_thread) {
+    _signal_invert_thread->join();
+    delete _signal_invert_thread;
+  }
+
+  _signal_invert_thread =
+      new std::thread(&SigSession::signal_invert_task, this, channels);
+}
+
+void SigSession::signal_invert_task(const std::vector<bool> channels) {
+  if (!_view_data->_logic_backup) {
+    _view_data->_logic_backup = new data::LogicSnapshot();
+    _view_data->_logic_backup->copy_from(*(_view_data->get_logic()));
+    if (_view_data->_logic_backup->memory_failed()) {
+      delete _view_data->_logic_backup;
+      _view_data->_logic_backup = nullptr;
+      _signal_invert_running = false;
+      _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
+      return;
+    }
+  } else {
+    _view_data->get_logic()->copy_from(*_view_data->_logic_backup);
+  }
+
+  // Apply invert on each enabled channel
+  int ch_idx = 0;
+  for (const GSList *l = _device_agent.get_channels(); l; l = l->next) {
+    sr_channel *const probe = (sr_channel *)l->data;
+    if (probe->type != SR_CHANNEL_LOGIC)
+      continue;
+    if (ch_idx < (int)channels.size() && channels[ch_idx]) {
+      _view_data->get_logic()->invert_channel(probe->index);
+    }
+    ch_idx++;
+  }
+
+  // If glitch filter is active, re-apply on the inverted data
+  if (_view_data->_glitch_filter_active) {
+    _view_data->get_logic()->apply_glitch_filter_all(
+        _view_data->_glitch_filter_thresholds, nullptr);
+  }
+
+  _view_data->_signal_invert_active = true;
+  _view_data->_signal_invert_channels = channels;
+  _signal_invert_running = false;
+
+  _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
+  _callback->data_updated();
+}
+
+void SigSession::clear_signal_invert() {
+  if (_signal_invert_running)
+    return;
+
+  if (!_view_data->_signal_invert_active)
+    return;
+
+  if (_view_data->_logic_backup) {
+    _view_data->get_logic()->copy_from(*_view_data->_logic_backup);
+    delete _view_data->_logic_backup;
+    _view_data->_logic_backup = nullptr;
+  }
+
+  // If glitch filter is active, re-apply on the restored (non-inverted) data
+  if (_view_data->_glitch_filter_active) {
+    _view_data->get_logic()->apply_glitch_filter_all(
+        _view_data->_glitch_filter_thresholds, nullptr);
+  }
+
+  _view_data->_signal_invert_active = false;
+  _view_data->_signal_invert_channels.clear();
+
+  _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_CLEARED);
+  _callback->data_updated();
+}
+
+bool SigSession::is_signal_invert_active() {
+  return _view_data->_signal_invert_active;
 }
 
 size_t SigSession::get_disk_write_queue_depth() {

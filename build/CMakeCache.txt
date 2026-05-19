@@ -1698,6 +1698,8 @@ _Python3_INCLUDE_DIR:INTERNAL=D:/msys64/mingw64/include/python3.14
 //Python3 Properties
 _Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;14;4;64;<none>;cp314-mingw_x86_64_msvcrt_gnu;;D:/msys64/mingw64/lib/python3.14;D:/msys64/mingw64/lib/python3.14;D:/msys64/mingw64/lib/python3.14/site-packages;D:/msys64/mingw64/lib/python3.14/site-packages
 _Python3_INTERPRETER_SIGNATURE:INTERNAL=5867db697b8668ccf7a0e288193d9208
+//Interpreter reason failure
+_Python3_Interpreter_REASON_FAILURE:INTERNAL=
 //Path to a library.
 _Python3_LIBRARY_DEBUG:INTERNAL=_Python3_LIBRARY_DEBUG-NOTFOUND
 //Path to a library.

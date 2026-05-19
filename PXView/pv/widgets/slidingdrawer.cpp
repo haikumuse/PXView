@@ -81,7 +81,6 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
       _drawer_width(DEFAULT_DRAWER_WIDTH),
       _animation_duration(DEFAULT_ANIMATION_DURATION), _current_page(-1),
       _is_open(false), _is_animating(false), _drag_active(false),
-      _drag_margin_removed(false),
       _drag_start_drawer_width(0), _drag_target_width(0),
       _edge_grip(nullptr),
       _left_separator(nullptr),
@@ -513,7 +512,6 @@ bool SlidingDrawer::eventFilter(QObject *obj, QEvent *event) {
     QMouseEvent *me = static_cast<QMouseEvent *>(event);
     if (me->button() == Qt::LeftButton && _is_open && !_is_animating) {
       _drag_active = true;
-      _drag_margin_removed = false;
       _drag_start_pos = me->globalPosition().toPoint();
       _drag_start_drawer_width = _drawer_width;
       grabMouse(Qt::SplitHCursor);
@@ -534,14 +532,6 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
     int dx = _drag_start_pos.x() - event->globalPosition().toPoint().x();
     
     if (qAbs(dx) >= QApplication::startDragDistance()) {
-      if (!_drag_margin_removed) {
-        _drag_margin_removed = true;
-        QTimer::singleShot(0, this, [this]() {
-          if (_drag_active) {
-            removePushMargin();
-          }
-        });
-      }
       _drag_target_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
       if (!_drag_update_timer.isActive()) {
         applyDragUpdate();
@@ -572,7 +562,6 @@ void SlidingDrawer::finishDrag() {
     setDrawerWidth(_drag_target_width, false);
   }
   _drag_active = false;
-  _drag_margin_removed = false;
   _drag_target_width = 0;
   releaseMouse();
   unsetCursor();

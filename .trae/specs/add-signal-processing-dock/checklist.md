@@ -1,0 +1,20 @@
+- [x] audio-waveform.svg 图标文件已创建（dark/light 两套）并注册到 PXView.qrc
+- [x] LogicSnapshot::invert_channel() 方法声明和实现正确，取反后 mipmap 正确重建
+- [x] SigSession 信号取反流程实现：set_signal_invert/clear_signal_invert/is_signal_invert_active
+- [x] SigSession 毛刺滤波流程适配取反：滤波前先从原始备份恢复，再应用取反，再滤波
+- [x] icallbacks.h 新增 DSV_MSG_SIGNAL_INVERT_* 消息常量
+- [x] SessionData 新增 _signal_invert_active 和 _signal_invert_channels 字段
+- [x] SignalProcessingDock 类创建，包含信号取反和毛刺过滤两个区域
+- [x] SignalProcessingDock 在 Logic 模式下显示功能区域，非 Logic 模式显示提示
+- [x] SignalProcessingDock 实现 IUiWindow 接口（UpdateLanguage/UpdateTheme/UpdateFont）
+- [x] SignalProcessingDock 实现 IContextAware 接口（bind_context/unbind_context）
+- [x] SignalProcessingDock 会话保存/恢复功能正常
+- [x] DeviceOptionsDock 中毛刺过滤相关代码已完全移除
+- [x] DeviceOptionsDock 编译无错误，功能不受影响（除毛刺过滤已迁移）
+- [x] MainWindow 侧边栏新增 SIDEBAR_SIGNAL_PROCESSING 枚举和 Dock 注册
+- [x] 侧边栏信号处理按钮使用 audio-waveform 图标，位于 Options 和 Log 之间
+- [x] SlidingDrawer 新增信号处理页面
+- [x] DockOptions 新增 signalProcessingDock 字段
+- [x] SessionDocument 新增 _dock_signal_processing_session 字段
+- [x] CMakeLists.txt 新增 signalprocessingdock.cpp
+- [x] 增量构建成功，无编译错误

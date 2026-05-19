@@ -125,6 +125,7 @@ public:
     QJsonObject _dock_trigger_session;
     QJsonObject _dock_dso_trigger_session;
     QJsonObject _dock_device_options_session;
+    QJsonObject _dock_signal_processing_session;
     QString _dock_protocol_search_text;
     QJsonArray _dock_protocol_expanded_states;
 
