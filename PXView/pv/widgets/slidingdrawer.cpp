@@ -559,19 +559,18 @@ void SlidingDrawer::mouseReleaseEvent(QMouseEvent *event) {
 void SlidingDrawer::finishDrag() {
   _drag_update_timer.stop();
   if (_drag_active && _drag_target_width > 0) {
-    setDrawerWidth(_drag_target_width, false);
+    setDrawerWidth(_drag_target_width, true);
   }
   _drag_active = false;
   _drag_target_width = 0;
   releaseMouse();
   unsetCursor();
-  applyPushMargin();
 }
 
 void SlidingDrawer::applyDragUpdate() {
   if (!_drag_active)
     return;
-  setDrawerWidth(_drag_target_width, false);
+  setDrawerWidth(_drag_target_width, true);
 }
 
 int SlidingDrawer::get_fps() const {

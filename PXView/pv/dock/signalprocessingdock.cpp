@@ -167,7 +167,7 @@ void SignalProcessingDock::build_invert_panel() {
   QFont contentFont = dock_font_content();
 
   _invert_group = new QWidget(_container_panel);
-  _invert_group->setMinimumWidth(230);
+  _invert_group->setMinimumWidth(0);
 
   QLabel *invert_title = new QLabel("信号取反", _invert_group);
   invert_title->setObjectName("dock_section_title");
@@ -188,9 +188,9 @@ void SignalProcessingDock::build_invert_panel() {
   // Channel checkboxes grid
   QWidget *ch_container = new QWidget(_invert_group);
   QGridLayout *ch_grid = new QGridLayout(ch_container);
-  ch_grid->setContentsMargins(2, 2, 2, 2);
-  ch_grid->setSpacing(3);
-  ch_grid->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+  ch_grid->setContentsMargins(0, 2, 0, 2);
+  ch_grid->setSpacing(0);
+  ch_grid->setAlignment(Qt::AlignTop);
 
   int ch_idx = 0;
   int ch_row = 0;
@@ -207,10 +207,9 @@ void SignalProcessingDock::build_invert_panel() {
     ch_check->setObjectName("dock_content");
     ch_check->setFont(contentFont);
     ch_check->setEnabled(probe->enabled);
-    ch_check->setFixedWidth(55);
     _invert_checkBox_list.push_back(ch_check);
 
-    ch_grid->addWidget(ch_check, ch_row, ch_col, Qt::AlignLeft | Qt::AlignTop);
+    ch_grid->addWidget(ch_check, ch_row, ch_col);
 
     ch_col++;
     if (ch_col == ch_columns) {
@@ -221,7 +220,7 @@ void SignalProcessingDock::build_invert_panel() {
   }
 
   for (int c = 0; c < ch_columns; c++) {
-    ch_grid->setColumnStretch(c, 0);
+    ch_grid->setColumnStretch(c, 1);
   }
 
   inner_layout->addWidget(ch_container);
