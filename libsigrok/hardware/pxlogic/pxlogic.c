@@ -1105,9 +1105,11 @@ static int config_get(int id, GVariant **data, const struct sr_dev_inst *sdi,
             *data = g_variant_new_uint64(devc->profile->dev_caps.hw_depth / channel_modes[devc->ch_mode].unit_bits/devc-> ch_num); 
         }
         else if(devc->op_mode == OP_STREAM){
-            //*data = g_variant_new_uint64(devc->profile->dev_caps.hw_depth *4*8/ channel_modes[devc->ch_mode].unit_bits/devc-> ch_num); 
-            *data = g_variant_new_uint64(devc->stream_buff_size*1024*1024*1024*8/ channel_modes[devc->ch_mode].unit_bits/devc-> ch_num); 
-            
+            if(devc->disk_cache_enable){
+                *data = g_variant_new_uint64(devc->stream_buff_size*1024*1024*1024*8/ channel_modes[devc->ch_mode].unit_bits/devc-> ch_num);
+            } else {
+                *data = g_variant_new_uint64(devc->profile->dev_caps.hw_depth / channel_modes[devc->ch_mode].unit_bits/devc-> ch_num);
+            }
         }
         else{
             *data = g_variant_new_uint64(devc->profile->dev_caps.hw_depth / channel_modes[devc->ch_mode].unit_bits/devc-> ch_num); 

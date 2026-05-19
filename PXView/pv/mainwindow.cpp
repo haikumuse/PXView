@@ -2262,7 +2262,11 @@ void MainWindow::on_frame_ended() {
   _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
   pv::TabContext *ctx = current_context();
   if (ctx && ctx->document()) {
-    _session->copy_data_to_document(ctx->document());
+    // Only copy if this document is not the active document
+    // (LOGIC mode already copies in DSV_MSG_REV_END_PACKET handler)
+    if (_session->get_active_document() != ctx->document()) {
+      _session->copy_data_to_document(ctx->document());
+    }
     ctx->document()->save_signal_config(_session->get_device());
     ctx->activate();
   }
@@ -3379,9 +3383,8 @@ void MainWindow::update_fps() {
   _acq_count = 0;
 
   if (_fps_label) {
-    QString fps_text = QString("UI: %1ms | Dock: %2ms")
-                           .arg(ui_fps)
-                           .arg(dock_fps);
+    QString fps_text =
+        QString("UI: %1ms | Dock: %2ms").arg(ui_fps).arg(dock_fps);
     _fps_label->setText(fps_text);
     _fps_label->show();
   }
@@ -3394,14 +3397,18 @@ void MainWindow::update_sample_period() {
   pv::TabContext *ctx = current_context();
   if (!ctx || !ctx->document()) {
     _sample_period_label->setText(
-        (AppConfig::Instance().frameOptions.language == LAN_CN) ? "采样周期: --" : "Sample Period: --");
+        (AppConfig::Instance().frameOptions.language == LAN_CN)
+            ? "采样周期: --"
+            : "Sample Period: --");
     return;
   }
 
   uint64_t samplerate = ctx->document()->get_samplerate();
   if (samplerate == 0) {
     _sample_period_label->setText(
-        (AppConfig::Instance().frameOptions.language == LAN_CN) ? "采样周期: --" : "Sample Period: --");
+        (AppConfig::Instance().frameOptions.language == LAN_CN)
+            ? "采样周期: --"
+            : "Sample Period: --");
     return;
   }
 
@@ -3437,7 +3444,9 @@ void MainWindow::update_sample_period() {
     }
   }
 
-  QString prefix = (AppConfig::Instance().frameOptions.language == LAN_CN) ? "采样周期: " : "Sample Period: ";
+  QString prefix = (AppConfig::Instance().frameOptions.language == LAN_CN)
+                       ? "采样周期: "
+                       : "Sample Period: ";
   _sample_period_label->setText(prefix + val_str + " " + unit);
 }
 

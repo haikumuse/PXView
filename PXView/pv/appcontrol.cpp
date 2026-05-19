@@ -35,6 +35,7 @@
 #include "log.h"
 #include "utility/path.h"
 #include "utility/encoding.h"
+#include "data/leaf_block_pool.h"
 
 AppControl::AppControl()
 {
@@ -62,7 +63,7 @@ AppControl* AppControl::Instance()
 }
 
 void AppControl::Destroy(){
-     
+    pv::data::LeafBlockPool::instance().drain();
 } 
 
 bool AppControl::Init()

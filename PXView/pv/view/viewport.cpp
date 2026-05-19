@@ -492,11 +492,22 @@ void Viewport::doPaint() {
     }
   }
 
+  // Find the last enabled trace (no divider below it)
+  Trace *lastEnabledTrace = nullptr;
+  for (auto it = traces.rbegin(); it != traces.rend(); ++it) {
+    if ((*it)->enabled() || dynamic_cast<DsoSignal *>(*it)) {
+      lastEnabledTrace = *it;
+      break;
+    }
+  }
+
   p.setPen(QPen(dividerColor, 1));
   for (auto t : traces) {
     if (!t->enabled() && !dynamic_cast<DsoSignal *>(t))
       continue;
     if (lastInGroup.count(t))
+      continue;
+    if (t == lastEnabledTrace)
       continue;
     int traceBottom =
         t->get_v_offset() + t->get_totalHeight() / 2 + View::SignalMargin;
