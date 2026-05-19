@@ -671,6 +671,23 @@ void View::set_scale_offset(double scale, int64_t offset) {
   }
 }
 
+void View::limit_scale_offset() {
+  if (_device_agent->get_work_mode() != DSO) {
+    int width = get_view_width();
+    double sampletime = effective_data_source()->cur_sampletime();
+    uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
+    if (sampletime > 0 && samplerate > 0 && width > 0) {
+      _maxscale = sampletime / (width * MaxViewRate);
+      _minscale = (1.0 / samplerate) / MaxPixelsPerSample;
+    }
+    _scale = max(min(_scale, _maxscale), _minscale);
+    _offset = max(min(_offset, get_max_offset()), get_min_offset());
+    update_scroll();
+    _ruler->update();
+    viewport_update();
+  }
+}
+
 void View::set_preScale_preOffset() { set_scale_offset(_preScale, _preOffset); }
 
 void View::get_traces(int type, std::vector<Trace *> &traces) {
@@ -804,6 +821,8 @@ void View::receive_end() {
     }
   }
   _time_viewport->unshow_wait_trigger();
+
+  limit_scale_offset();
 }
 
 void View::receive_trigger(quint64 trig_pos1) {

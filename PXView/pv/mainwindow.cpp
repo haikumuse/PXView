@@ -82,8 +82,8 @@
 #include "dock/measuredock.h"
 #include "dock/protocoldock.h"
 #include "dock/searchdock.h"
-#include "dock/triggerdock.h"
 #include "dock/signalprocessingdock.h"
+#include "dock/triggerdock.h"
 
 #include "data/sessiondocument.h"
 #include "interface/icontextaware.h"
@@ -126,9 +126,9 @@
 #include <QShortcut>
 #include <QWidgetAction>
 
+#include <QLabel>
 #include <QScrollArea>
 #include <QTabBar>
-#include <QLabel>
 
 namespace pv {
 
@@ -170,8 +170,9 @@ void MainWindow::setupSideBar() {
                      widgets::SideBar::DockItem);
   _side_bar->addItem("sliders.svg", S_ID(IDS_TOOLBAR_DEVICE_OPTION), "Options",
                      widgets::SideBar::DockItem, _drawer_page_device_options);
-  _side_bar->addItem("audio-waveform.svg", S_ID(IDS_TOOLBAR_SIGNAL_PROCESSING), "Filter",
-                     widgets::SideBar::DockItem, _drawer_page_signal_processing);
+  _side_bar->addItem("audio-waveform.svg", S_ID(IDS_TOOLBAR_SIGNAL_PROCESSING),
+                     "Filter", widgets::SideBar::DockItem,
+                     _drawer_page_signal_processing);
   _side_bar->addItem("scroll-text.svg", S_ID(IDS_TOOLBAR_LOG), "Log",
                      widgets::SideBar::DockItem, _drawer_page_log);
   _side_bar->addSeparator();
@@ -261,6 +262,7 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   _is_save_confirm_msg = false;
   _disk_cache_status_label = nullptr;
   _trig_time_label = nullptr;
+  _sample_period_label = nullptr;
 
   _pattern_mode = "random";
   setup_ui();
@@ -476,7 +478,8 @@ void MainWindow::setup_ui() {
   _signal_processing_dock = new QDockWidget(this);
   _signal_processing_dock->setWidget(_signal_processing_widget);
 
-  // Wrap SignalProcessingDock in a SmoothScrollArea (same pattern as DeviceOptionsDock)
+  // Wrap SignalProcessingDock in a SmoothScrollArea (same pattern as
+  // DeviceOptionsDock)
   QWidget *sp_container = new QWidget();
   QVBoxLayout *sp_lay = new QVBoxLayout(sp_container);
   sp_lay->setContentsMargins(0, 0, 0, 0);
@@ -558,8 +561,7 @@ void MainWindow::setup_ui() {
   // Log
   _log_dock->setWidget(nullptr);
   _drawer_page_log = _sliding_drawer->addPage(
-      _log_widget,
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
+      _log_widget, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
 
   _drawer_current_page = -1;
 
@@ -615,6 +617,13 @@ void MainWindow::setup_ui() {
             }
           });
 
+  connect(_sliding_drawer, &widgets::SlidingDrawer::drawerDragFinished, this,
+          [this]() {
+            if (current_view()) {
+              current_view()->limit_scale_offset();
+            }
+          });
+
   // event filter
   initial_view->installEventFilter(this);
   _sampling_bar->installEventFilter(this);
@@ -638,8 +647,10 @@ void MainWindow::setup_ui() {
   _sampling_bar->set_view(initial_view);
 
   // event
-  connect(&_event, &EventObject::session_error, this, &MainWindow::on_session_error);
-  connect(&_event, &EventObject::signals_changed, this, &MainWindow::on_signals_changed);
+  connect(&_event, &EventObject::session_error, this,
+          &MainWindow::on_session_error);
+  connect(&_event, &EventObject::signals_changed, this,
+          &MainWindow::on_signals_changed);
   connect(&_event, &EventObject::signals_changed, _search_widget,
           &dock::SearchDock::on_device_updated);
   connect(&_event, &EventObject::frame_ended, _search_widget,
@@ -650,8 +661,10 @@ void MainWindow::setup_ui() {
           Qt::QueuedConnection);
   connect(&_event, &EventObject::frame_began, this, &MainWindow::on_frame_began,
           Qt::QueuedConnection);
-  connect(&_event, &EventObject::decode_done, this, &MainWindow::on_decode_done);
-  connect(&_event, &EventObject::data_updated, this, &MainWindow::on_data_updated);
+  connect(&_event, &EventObject::decode_done, this,
+          &MainWindow::on_decode_done);
+  connect(&_event, &EventObject::data_updated, this,
+          &MainWindow::on_data_updated);
   connect(&_event, &EventObject::cur_snap_samplerate_changed, this,
           &MainWindow::on_cur_snap_samplerate_changed);
   connect(&_event, &EventObject::receive_data_len, this,
@@ -674,16 +687,18 @@ void MainWindow::setup_ui() {
   connect(_file_bar, &toolbars::FileBar::sig_load_file, this,
           &MainWindow::on_load_file);
   connect(_file_bar, &toolbars::FileBar::sig_save, this, &MainWindow::on_save);
-  connect(_file_bar, &toolbars::FileBar::sig_export, this, &MainWindow::on_export);
-  connect(_file_bar, &toolbars::FileBar::sig_screenShot, this, &MainWindow::on_screenShot,
-          Qt::QueuedConnection);
+  connect(_file_bar, &toolbars::FileBar::sig_export, this,
+          &MainWindow::on_export);
+  connect(_file_bar, &toolbars::FileBar::sig_screenShot, this,
+          &MainWindow::on_screenShot, Qt::QueuedConnection);
   connect(_file_bar, &toolbars::FileBar::sig_load_session, this,
           &MainWindow::on_load_session);
   connect(_file_bar, &toolbars::FileBar::sig_store_session, this,
           &MainWindow::on_store_session);
 
   // logobar
-  connect(_logo_bar, &toolbars::LogoBar::sig_open_doc, this, &MainWindow::on_open_doc);
+  connect(_logo_bar, &toolbars::LogoBar::sig_open_doc, this,
+          &MainWindow::on_open_doc);
 
   connect(_protocol_widget, &dock::ProtocolDock::protocol_updated, this,
           &MainWindow::on_signals_changed);
@@ -693,8 +708,8 @@ void MainWindow::setup_ui() {
           &MainWindow::on_save);
 
   //
-  connect(_dso_trigger_widget, &dock::DsoTriggerDock::set_trig_pos, initial_view,
-          &view::View::set_trig_pos);
+  connect(_dso_trigger_widget, &dock::DsoTriggerDock::set_trig_pos,
+          initial_view, &view::View::set_trig_pos);
 
   _delay_prop_msg_timer.SetCallback(
       std::bind(&MainWindow::on_delay_prop_msg, this));
@@ -786,12 +801,17 @@ void MainWindow::setup_ui() {
   statusBar()->addWidget(_disk_cache_status_label);
   _disk_cache_status_label->hide();
 
+  _sample_period_label = new QLabel(this);
+  _sample_period_label->setText("采样周期: --");
+  statusBar()->addPermanentWidget(_sample_period_label);
+  _sample_period_label->show();
+
   _trig_time_label = new QLabel(this);
   statusBar()->addPermanentWidget(_trig_time_label);
   _trig_time_label->hide();
 
   _fps_label = new QLabel(this);
-  _fps_label->setText("UI: --ms | Dock: --ms | Acq: -- FPS");
+  _fps_label->setText("UI: --ms | Dock: --ms");
   statusBar()->addPermanentWidget(_fps_label);
   _fps_label->show();
 
@@ -854,9 +874,10 @@ void MainWindow::retranslateUi() {
     _sliding_drawer->setPageTitle(
         _drawer_page_device_options,
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
-    _sliding_drawer->setPageTitle(
-        _drawer_page_signal_processing,
-        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SIGNAL_PROCESSING), "Signal Processing"));
+    _sliding_drawer->setPageTitle(_drawer_page_signal_processing,
+                                  L_S(STR_PAGE_DLG,
+                                      S_ID(IDS_DLG_SIGNAL_PROCESSING),
+                                      "Signal Processing"));
   }
 
   Ribbon_retranslateUi();
@@ -944,8 +965,8 @@ void MainWindow::on_session_error() {
   msg.mBox()->setText(details);
   msg.mBox()->setStandardButtons(QMessageBox::Ok);
   msg.mBox()->setIcon(QMessageBox::Warning);
-  connect(_session->device_event_object(), &DeviceEventObject::device_updated, &msg,
-          &QDialog::accept);
+  connect(_session->device_event_object(), &DeviceEventObject::device_updated,
+          &msg, &QDialog::accept);
   _msg = &msg;
   msg.exec();
   _msg = NULL;
@@ -1788,52 +1809,55 @@ void MainWindow::restore_dock() {
   }
 }
 
-int MainWindow::resolveShortcutAction(int key, int modifiers)
-{
-    AppConfig &app = AppConfig::Instance();
-    int count = 0;
-    const ShortcutActionInfo *infos = GetShortcutActionInfos(&count);
+int MainWindow::resolveShortcutAction(int key, int modifiers) {
+  AppConfig &app = AppConfig::Instance();
+  int count = 0;
+  const ShortcutActionInfo *infos = GetShortcutActionInfos(&count);
 
-    for (int i = 0; i < count; i++) {
-        QString keySeqStr;
+  for (int i = 0; i < count; i++) {
+    QString keySeqStr;
 
-        bool found = false;
-        for (int j = 0; j < app.shortcutOptions.items.size(); j++) {
-            if (app.shortcutOptions.items[j].actionId == infos[i].actionId) {
-                keySeqStr = app.shortcutOptions.items[j].keySequence;
-                found = true;
-                break;
-            }
-        }
-
-        if (!found || keySeqStr.isEmpty()) {
-            keySeqStr = infos[i].keySequence;
-        }
-
-        QKeySequence seq(keySeqStr);
-        if (seq.count() > 0) {
-            QKeyCombination combined = seq[0];
-            int combinedInt = combined.toCombined();
-            int seqKey = combinedInt & ~Qt::KeyboardModifierMask;
-            int seqMods = combinedInt & Qt::KeyboardModifierMask;
-
-            if (seqMods == 0 && modifiers == 0 && seqKey == key) {
-                return infos[i].actionId;
-            }
-
-            if (seqMods != 0) {
-                bool modsMatch = true;
-                if ((seqMods & Qt::ShiftModifier) && !(modifiers & Qt::ShiftModifier)) modsMatch = false;
-                if ((seqMods & Qt::ControlModifier) && !(modifiers & Qt::ControlModifier)) modsMatch = false;
-                if ((seqMods & Qt::AltModifier) && !(modifiers & Qt::AltModifier)) modsMatch = false;
-                if (modsMatch && seqKey == key) {
-                    return infos[i].actionId;
-                }
-            }
-        }
+    bool found = false;
+    for (int j = 0; j < app.shortcutOptions.items.size(); j++) {
+      if (app.shortcutOptions.items[j].actionId == infos[i].actionId) {
+        keySeqStr = app.shortcutOptions.items[j].keySequence;
+        found = true;
+        break;
+      }
     }
 
-    return 0;
+    if (!found || keySeqStr.isEmpty()) {
+      keySeqStr = infos[i].keySequence;
+    }
+
+    QKeySequence seq(keySeqStr);
+    if (seq.count() > 0) {
+      QKeyCombination combined = seq[0];
+      int combinedInt = combined.toCombined();
+      int seqKey = combinedInt & ~Qt::KeyboardModifierMask;
+      int seqMods = combinedInt & Qt::KeyboardModifierMask;
+
+      if (seqMods == 0 && modifiers == 0 && seqKey == key) {
+        return infos[i].actionId;
+      }
+
+      if (seqMods != 0) {
+        bool modsMatch = true;
+        if ((seqMods & Qt::ShiftModifier) && !(modifiers & Qt::ShiftModifier))
+          modsMatch = false;
+        if ((seqMods & Qt::ControlModifier) &&
+            !(modifiers & Qt::ControlModifier))
+          modsMatch = false;
+        if ((seqMods & Qt::AltModifier) && !(modifiers & Qt::AltModifier))
+          modsMatch = false;
+        if (modsMatch && seqKey == key) {
+          return infos[i].actionId;
+        }
+      }
+    }
+  }
+
+  return 0;
 }
 
 bool MainWindow::eventFilter(QObject *object, QEvent *event) {
@@ -1939,162 +1963,162 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
 
     int action = resolveShortcutAction(ke->key(), (int)modifier);
     if (action == 0) {
-        if (modifier & Qt::ControlModifier || modifier & Qt::AltModifier) {
-            return true;
-        }
-        return false;
+      if (modifier & Qt::ControlModifier || modifier & Qt::AltModifier) {
+        return true;
+      }
+      return false;
     }
 
     switch (action) {
     case SHORTCUT_RUN_STOP:
-        _sampling_bar->run_or_stop();
-        break;
+      _sampling_bar->run_or_stop();
+      break;
     case SHORTCUT_INSTANT:
-        _sampling_bar->run_or_stop_instant();
-        break;
+      _sampling_bar->run_or_stop_instant();
+      break;
     case SHORTCUT_TRIGGER:
-        _side_bar->getItem(SIDEBAR_TRIGGER)->button->click();
-        break;
+      _side_bar->getItem(SIDEBAR_TRIGGER)->button->click();
+      break;
     case SHORTCUT_DECODE:
-        _side_bar->getItem(SIDEBAR_DECODE)->button->click();
-        break;
+      _side_bar->getItem(SIDEBAR_DECODE)->button->click();
+      break;
     case SHORTCUT_MEASURE:
-        _side_bar->getItem(SIDEBAR_MEASURE)->button->click();
-        break;
+      _side_bar->getItem(SIDEBAR_MEASURE)->button->click();
+      break;
     case SHORTCUT_SEARCH:
-        _side_bar->getItem(SIDEBAR_SEARCH)->button->click();
-        break;
+      _side_bar->getItem(SIDEBAR_SEARCH)->button->click();
+      break;
     case SHORTCUT_OPTIONS:
-        _side_bar->getItem(SIDEBAR_OPTIONS)->button->click();
-        break;
+      _side_bar->getItem(SIDEBAR_OPTIONS)->button->click();
+      break;
     case SHORTCUT_DEVICE_SELECT:
-        _sampling_bar->device_selected();
-        break;
+      _sampling_bar->device_selected();
+      break;
     case SHORTCUT_PAGE_UP:
-        current_view()->set_scale_offset(current_view()->scale(),
-                                         current_view()->offset() -
-                                             current_view()->get_view_width());
-        break;
+      current_view()->set_scale_offset(current_view()->scale(),
+                                       current_view()->offset() -
+                                           current_view()->get_view_width());
+      break;
     case SHORTCUT_PAGE_DOWN:
-        current_view()->set_scale_offset(current_view()->scale(),
-                                         current_view()->offset() +
-                                             current_view()->get_view_width());
-        break;
+      current_view()->set_scale_offset(current_view()->scale(),
+                                       current_view()->offset() +
+                                           current_view()->get_view_width());
+      break;
     case SHORTCUT_ZOOM_IN:
-        current_view()->zoom(1);
-        break;
+      current_view()->zoom(1);
+      break;
     case SHORTCUT_ZOOM_OUT:
-        current_view()->zoom(-1);
-        break;
+      current_view()->zoom(-1);
+      break;
     case SHORTCUT_DSO_CH0:
-        for (auto s : sigs) {
-            if (s->signal_type() == SR_CHANNEL_DSO) {
-                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-                if (dsoSig->get_index() == 0)
-                    dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
-                else
-                    dsoSig->set_vDialActive(false);
-            }
+      for (auto s : sigs) {
+        if (s->signal_type() == SR_CHANNEL_DSO) {
+          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+          if (dsoSig->get_index() == 0)
+            dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
+          else
+            dsoSig->set_vDialActive(false);
         }
-        current_view()->setFocus();
-        update();
-        break;
+      }
+      current_view()->setFocus();
+      update();
+      break;
     case SHORTCUT_DSO_CH1:
-        for (auto s : sigs) {
-            if (s->signal_type() == SR_CHANNEL_DSO) {
-                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-                if (dsoSig->get_index() == 1)
-                    dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
-                else
-                    dsoSig->set_vDialActive(false);
-            }
+      for (auto s : sigs) {
+        if (s->signal_type() == SR_CHANNEL_DSO) {
+          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+          if (dsoSig->get_index() == 1)
+            dsoSig->set_vDialActive(!dsoSig->get_vDialActive());
+          else
+            dsoSig->set_vDialActive(false);
         }
-        current_view()->setFocus();
-        update();
-        break;
+      }
+      current_view()->setFocus();
+      update();
+      break;
     case SHORTCUT_DSO_VUP:
-        for (auto s : sigs) {
-            if (s->signal_type() == SR_CHANNEL_DSO) {
-                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-                if (dsoSig->get_vDialActive()) {
-                    dsoSig->go_vDialNext(true);
-                    update();
-                    break;
-                }
-            }
+      for (auto s : sigs) {
+        if (s->signal_type() == SR_CHANNEL_DSO) {
+          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+          if (dsoSig->get_vDialActive()) {
+            dsoSig->go_vDialNext(true);
+            update();
+            break;
+          }
         }
-        break;
+      }
+      break;
     case SHORTCUT_DSO_VDOWN:
-        for (auto s : sigs) {
-            if (s->signal_type() == SR_CHANNEL_DSO) {
-                view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-                if (dsoSig->get_vDialActive()) {
-                    dsoSig->go_vDialPre(true);
-                    update();
-                    break;
-                }
-            }
+      for (auto s : sigs) {
+        if (s->signal_type() == SR_CHANNEL_DSO) {
+          view::DsoSignal *dsoSig = (view::DsoSignal *)s;
+          if (dsoSig->get_vDialActive()) {
+            dsoSig->go_vDialPre(true);
+            update();
+            break;
+          }
         }
-        break;
+      }
+      break;
     case SHORTCUT_FILE_OPEN:
-        _file_bar->_action_open->trigger();
-        break;
+      _file_bar->_action_open->trigger();
+      break;
     case SHORTCUT_FILE_SAVE:
-        _file_bar->_action_save->trigger();
-        break;
+      _file_bar->_action_save->trigger();
+      break;
     case SHORTCUT_FILE_EXPORT:
-        _file_bar->_action_export->trigger();
-        break;
+      _file_bar->_action_export->trigger();
+      break;
     case SHORTCUT_FILE_LOAD:
-        _file_bar->_action_load->trigger();
-        break;
+      _file_bar->_action_load->trigger();
+      break;
     case SHORTCUT_FILE_STORE:
-        _file_bar->_action_store->trigger();
-        break;
+      _file_bar->_action_store->trigger();
+      break;
     case SHORTCUT_SCREENSHOT:
-        _file_bar->_action_capture->trigger();
-        break;
+      _file_bar->_action_capture->trigger();
+      break;
     case SHORTCUT_FFT:
-        _trig_bar->_action_fft->trigger();
-        break;
+      _trig_bar->_action_fft->trigger();
+      break;
     case SHORTCUT_MATH:
-        _trig_bar->_action_math->trigger();
-        break;
+      _trig_bar->_action_math->trigger();
+      break;
     case SHORTCUT_LISSAJOUS:
-        _trig_bar->_action_lissajous->trigger();
-        break;
+      _trig_bar->_action_lissajous->trigger();
+      break;
     case SHORTCUT_SETTINGS:
-        _trig_bar->_action_dispalyOptions->trigger();
-        break;
+      _trig_bar->_action_dispalyOptions->trigger();
+      break;
     case SHORTCUT_LOG:
-        _side_bar->getItem(SIDEBAR_LOG)->button->click();
-        break;
+      _side_bar->getItem(SIDEBAR_LOG)->button->click();
+      break;
     case SHORTCUT_FUNCTION:
-        _side_bar->getItem(SIDEBAR_FUNCTION)->button->click();
-        break;
+      _side_bar->getItem(SIDEBAR_FUNCTION)->button->click();
+      break;
     case SHORTCUT_THEME_TOGGLE: {
-        AppConfig &app = AppConfig::Instance();
-        if (app.frameOptions.style == THEME_STYLE_DARK)
-            switchTheme(THEME_STYLE_LIGHT);
-        else
-            switchTheme(THEME_STYLE_DARK);
-        break;
+      AppConfig &app = AppConfig::Instance();
+      if (app.frameOptions.style == THEME_STYLE_DARK)
+        switchTheme(THEME_STYLE_LIGHT);
+      else
+        switchTheme(THEME_STYLE_DARK);
+      break;
     }
     case SHORTCUT_NEW_TAB:
-        on_new_tab_requested();
-        break;
+      on_new_tab_requested();
+      break;
     case SHORTCUT_CLOSE_TAB:
-        if (_tab_widget && _tab_widget->count() > 0)
-            remove_tab(_tab_widget->currentIndex());
-        break;
+      if (_tab_widget && _tab_widget->count() > 0)
+        remove_tab(_tab_widget->currentIndex());
+      break;
     case SHORTCUT_ZOOM_FIT:
-        if (current_view()) {
-            current_view()->auto_set_max_scale();
-            current_view()->set_scale_offset(current_view()->scale(), 0);
-        }
-        break;
+      if (current_view()) {
+        current_view()->auto_set_max_scale();
+        current_view()->set_scale_offset(current_view()->scale(), 0);
+      }
+      break;
     default:
-        return false;
+      return false;
     }
     return true;
   }
@@ -2157,7 +2181,8 @@ void MainWindow::switchTheme(QString style) {
   }
 
   for (int i = 0; i < app.styleOptions.items.size(); i++) {
-    tokens[app.styleOptions.items[i].tokenName] = app.styleOptions.items[i].value;
+    tokens[app.styleOptions.items[i].tokenName] =
+        app.styleOptions.items[i].value;
   }
 
   QList<QString> keys = tokens.keys();
@@ -2205,7 +2230,10 @@ void MainWindow::cur_snap_samplerate_changed() {
   _event.cur_snap_samplerate_changed(); // safe call
 }
 
-void MainWindow::on_cur_snap_samplerate_changed() { _measure_widget->reCalc(); }
+void MainWindow::on_cur_snap_samplerate_changed() {
+  _measure_widget->reCalc();
+  update_sample_period();
+}
 
 /*------------------on event end-------*/
 
@@ -2923,6 +2951,10 @@ void MainWindow::OnMessage(int msg) {
   }
   case DSV_MSG_DATA_POOL_CHANGED: {
     current_view()->check_measure();
+    // Auto-apply signal processing settings on new data
+    if (_signal_processing_widget) {
+      _signal_processing_widget->auto_apply_settings();
+    }
     break;
   }
   case DSV_MSG_GLITCH_FILTER_COMPLETED:
@@ -2934,6 +2966,8 @@ void MainWindow::OnMessage(int msg) {
     if (_signal_processing_widget) {
       _signal_processing_widget->update_glitch_filter_state();
     }
+    // Restart decoders after data change
+    _session->restart_decoders();
     break;
   }
   case DSV_MSG_SIGNAL_INVERT_COMPLETED:
@@ -2945,6 +2979,8 @@ void MainWindow::OnMessage(int msg) {
     if (_signal_processing_widget) {
       _signal_processing_widget->update_invert_state();
     }
+    // Restart decoders after data change
+    _session->restart_decoders();
     break;
   }
   }
@@ -3151,6 +3187,7 @@ void MainWindow::on_tab_changed(int index) {
   update_tab_style(index);
 
   pv::view::View *view = current_view();
+  update_sample_period();
   if (view) {
     if (old_index >= 0 && old_index < _tab_contexts.size() &&
         old_index != index) {
@@ -3250,6 +3287,7 @@ void MainWindow::on_new_tab_requested() {
 }
 
 void MainWindow::update_disk_cache_status() {
+  update_sample_period();
   if (!_device_agent || !_device_agent->have_instance()) {
     if (_disk_cache_status_label)
       _disk_cache_status_label->hide();
@@ -3259,10 +3297,12 @@ void MainWindow::update_disk_cache_status() {
 
   QDateTime trig_time = _session->get_trig_time();
   if (_session->is_triged() && trig_time.isValid()) {
-      _trig_time_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_TIME), "Trigger Time: ") + trig_time.toString("yyyy-MM-dd hh:mm:ss"));
-      _trig_time_label->show();
+    _trig_time_label->setText(
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_TRIGGER_TIME), "Trigger Time: ") +
+        trig_time.toString("yyyy-MM-dd hh:mm:ss"));
+    _trig_time_label->show();
   } else {
-      _trig_time_label->hide();
+    _trig_time_label->hide();
   }
 
   bool cache_enabled = false;
@@ -3276,33 +3316,48 @@ void MainWindow::update_disk_cache_status() {
   QString cache_path;
   _device_agent->get_config_string(SR_CONF_DISK_CACHE_PATH, cache_path);
   if (cache_path.isEmpty()) {
-      cache_path = QDir::tempPath() + "/PXView_cache";
+    cache_path = QDir::tempPath() + "/PXView_cache";
   }
-  QString text = QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_ON), "Disk Cache: ON"))
-      + " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_PATH_LABEL), "Path: ")) + cache_path;
+  QString text = QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_ON),
+                             "Disk Cache: ON")) +
+                 " | " +
+                 QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_PATH_LABEL),
+                             "Path: ")) +
+                 cache_path;
 
   double wspeed = _session->get_disk_write_speed_mbps();
   size_t qdepth = _session->get_disk_write_queue_depth();
 
-  text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_WRITE), "Write: ")) + QString("%1 MB/s").arg(wspeed, 0, 'f', 1);
-  text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_QUEUE), "Queue: ")) + QString("%1 blocks").arg(qdepth);
+  text +=
+      " | " +
+      QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_WRITE), "Write: ")) +
+      QString("%1 MB/s").arg(wspeed, 0, 'f', 1);
+  text +=
+      " | " +
+      QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_QUEUE), "Queue: ")) +
+      QString("%1 blocks").arg(qdepth);
 
   data::LogicSnapshot *logic = _session->get_logic_snapshot();
   if (logic && logic->is_disk_cache_active()) {
     uint64_t total_blocks = logic->get_disk_total_blocks_written();
     double disk_gb = total_blocks * 2105376 / (1024.0 * 1024.0 * 1024.0);
-    text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_DISK), "Disk: ")) + QString("%1 GB").arg(disk_gb, 0, 'f', 2);
+    text +=
+        " | " +
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_DISK), "Disk: ")) +
+        QString("%1 GB").arg(disk_gb, 0, 'f', 2);
   }
 
   if (_session->is_disk_write_disk_full()) {
-      text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_FULL), "DISK FULL"));
-      _disk_cache_status_label->setStyleSheet("color: red; font-weight: bold;");
+    text += " | " + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_FULL),
+                                "DISK FULL"));
+    _disk_cache_status_label->setStyleSheet("color: red; font-weight: bold;");
   } else if (qdepth > 256) {
-      _disk_cache_status_label->setStyleSheet("color: red; font-weight: bold;");
+    _disk_cache_status_label->setStyleSheet("color: red; font-weight: bold;");
   } else if (qdepth > 64) {
-      _disk_cache_status_label->setStyleSheet("color: yellow; font-weight: bold;");
+    _disk_cache_status_label->setStyleSheet(
+        "color: yellow; font-weight: bold;");
   } else {
-      _disk_cache_status_label->setStyleSheet("");
+    _disk_cache_status_label->setStyleSheet("");
   }
 
   _disk_cache_status_label->setText(text);
@@ -3321,20 +3376,69 @@ void MainWindow::update_fps() {
     dock_fps = _sliding_drawer->get_fps();
   }
 
-  int acq_fps = _acq_count;
   _acq_count = 0;
 
-  bool acq_running = _session && _session->is_working();
   if (_fps_label) {
-    QString fps_text;
-    if (acq_running) {
-      fps_text = QString("UI: %1ms | Dock: %2ms | Acq: %3 FPS").arg(ui_fps).arg(dock_fps).arg(acq_fps);
-    } else {
-      fps_text = QString("UI: %1ms | Dock: %2ms | Acq: -- FPS").arg(ui_fps).arg(dock_fps);
-    }
+    QString fps_text = QString("UI: %1ms | Dock: %2ms")
+                           .arg(ui_fps)
+                           .arg(dock_fps);
     _fps_label->setText(fps_text);
     _fps_label->show();
   }
+}
+
+void MainWindow::update_sample_period() {
+  if (!_sample_period_label)
+    return;
+
+  pv::TabContext *ctx = current_context();
+  if (!ctx || !ctx->document()) {
+    _sample_period_label->setText(
+        (AppConfig::Instance().frameOptions.language == LAN_CN) ? "采样周期: --" : "Sample Period: --");
+    return;
+  }
+
+  uint64_t samplerate = ctx->document()->get_samplerate();
+  if (samplerate == 0) {
+    _sample_period_label->setText(
+        (AppConfig::Instance().frameOptions.language == LAN_CN) ? "采样周期: --" : "Sample Period: --");
+    return;
+  }
+
+  double period = 1.0 / samplerate;
+  QString unit = "s";
+  double val = period;
+  if (period < 1.0) {
+    if (period >= 1e-3) {
+      val = period * 1e3;
+      unit = "ms";
+    } else if (period >= 1e-6) {
+      val = period * 1e6;
+      unit = "us";
+    } else if (period >= 1e-9) {
+      val = period * 1e9;
+      unit = "ns";
+    } else if (period >= 1e-12) {
+      val = period * 1e12;
+      unit = "ps";
+    } else {
+      val = period * 1e15;
+      unit = "fs";
+    }
+  }
+
+  QString val_str = QString::number(val, 'f', 4);
+  if (val_str.contains('.')) {
+    while (val_str.endsWith('0')) {
+      val_str.chop(1);
+    }
+    if (val_str.endsWith('.')) {
+      val_str.chop(1);
+    }
+  }
+
+  QString prefix = (AppConfig::Instance().frameOptions.language == LAN_CN) ? "采样周期: " : "Sample Period: ";
+  _sample_period_label->setText(prefix + val_str + " " + unit);
 }
 
 } // namespace pv

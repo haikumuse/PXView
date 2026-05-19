@@ -30,9 +30,9 @@
 #include "data/decode/decoder.h"
 #include "data/decodermodel.h"
 #include "data/decoderstack.h"
+#include "data/disk_cache_config.h"
 #include "data/dsosnapshot.h"
 #include "data/logicsnapshot.h"
-#include "data/disk_cache_config.h"
 #include "data/mathstack.h"
 #include "data/sessionsnapshot.h"
 #include "data/spectrumstack.h"
@@ -46,21 +46,20 @@
 #include "view/mathtrace.h"
 #include "view/spectrumtrace.h"
 
-#include <QString>
 #include <QDir>
+#include <QString>
 #include <assert.h>
+#include <chrono>
 #include <functional>
 #include <map>
 #include <stdexcept>
 #include <sys/stat.h>
-#include <chrono>
 
 #include "data/disk_buffer_manager.h"
 #include "data/disk_cache_config.h"
 
-static QString get_default_disk_cache_path()
-{
-    return QDir::tempPath() + "/PXView_cache";
+static QString get_default_disk_cache_path() {
+  return QDir::tempPath() + "/PXView_cache";
 }
 
 #include "config/appconfig.h"
@@ -538,15 +537,6 @@ bool SigSession::action_start_capture(bool instant) {
   _dso_packet_count = 0;
   _dso_status_valid = false;
 
-  if (_view_data->_logic_backup) {
-    delete _view_data->_logic_backup;
-    _view_data->_logic_backup = nullptr;
-  }
-  _view_data->_glitch_filter_active = false;
-  _view_data->_glitch_filter_thresholds.clear();
-  _view_data->_signal_invert_active = false;
-  _view_data->_signal_invert_channels.clear();
-
   _capture_data = _view_data;
   set_cur_snap_samplerate(_device_agent.get_sample_rate());
   set_cur_samplelimits(_device_agent.get_sample_limit());
@@ -601,7 +591,7 @@ bool SigSession::action_start_capture(bool instant) {
     if (cache_path.isEmpty()) {
       cache_path = get_default_disk_cache_path();
       _device_agent.set_config_string(SR_CONF_DISK_CACHE_PATH,
-                                       cache_path.toUtf8().data());
+                                      cache_path.toUtf8().data());
     }
 
     DiskCacheConfig temp_config;
@@ -612,30 +602,36 @@ bool SigSession::action_start_capture(bool instant) {
     uint64_t test_size = 64 * 1024 * 1024;
     void *test_buf = malloc(test_size);
     if (test_buf) {
-        memset(test_buf, 0, test_size);
+      memset(test_buf, 0, test_size);
 
-        auto start = std::chrono::high_resolution_clock::now();
-        for (uint64_t offset = 0; offset < test_size; offset += 2 * 1024 * 1024) {
-            uint64_t chunk = std::min((uint64_t)(2 * 1024 * 1024), test_size - offset);
-            temp_mgr.write_block(0, offset / (2 * 1024 * 1024), (uint8_t*)test_buf + offset, chunk);
-        }
-        auto end = std::chrono::high_resolution_clock::now();
+      auto start = std::chrono::high_resolution_clock::now();
+      for (uint64_t offset = 0; offset < test_size; offset += 2 * 1024 * 1024) {
+        uint64_t chunk =
+            std::min((uint64_t)(2 * 1024 * 1024), test_size - offset);
+        temp_mgr.write_block(0, offset / (2 * 1024 * 1024),
+                             (uint8_t *)test_buf + offset, chunk);
+      }
+      auto end = std::chrono::high_resolution_clock::now();
 
-        double elapsed_sec = std::chrono::duration<double>(end - start).count();
-        double speed_mbps = (test_size / (1024.0 * 1024.0)) / elapsed_sec;
+      double elapsed_sec = std::chrono::duration<double>(end - start).count();
+      double speed_mbps = (test_size / (1024.0 * 1024.0)) / elapsed_sec;
 
-        free(test_buf);
-        temp_mgr.cleanup();
-        temp_mgr.close();
+      free(test_buf);
+      temp_mgr.cleanup();
+      temp_mgr.close();
 
-        if (speed_mbps < 200.0) {
-            _callback->delay_prop_msg(
-                QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_WARNING), "Disk write speed is too slow")) + "\n"
-                + QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_DETAIL),
-                       "Detected speed: %1 MB/s\nRecommended: NVMe SSD for 250MB/s capture.\nCapture may fail with data loss.")).arg(speed_mbps, 0, 'f', 1));
-        }
+      if (speed_mbps < 200.0) {
+        _callback->delay_prop_msg(
+            QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_WARNING),
+                        "Disk write speed is too slow")) +
+            "\n" +
+            QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_DETAIL),
+                        "Detected speed: %1 MB/s\nRecommended: NVMe SSD for "
+                        "250MB/s capture.\nCapture may fail with data loss."))
+                .arg(speed_mbps, 0, 'f', 1));
+      }
     } else {
-        temp_mgr.close();
+      temp_mgr.close();
     }
   }
 
@@ -659,17 +655,19 @@ bool SigSession::action_start_capture(bool instant) {
     MEMORYSTATUSEX mem_info;
     mem_info.dwLength = sizeof(mem_info);
     GlobalMemoryStatusEx(&mem_info);
-    phys_mem_gb = mem_info.ullTotalPhys / (1024*1024*1024);
+    phys_mem_gb = mem_info.ullTotalPhys / (1024 * 1024 * 1024);
 #else
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
-    phys_mem_gb = (uint64_t)pages * page_size / (1024*1024*1024);
+    phys_mem_gb = (uint64_t)pages * page_size / (1024 * 1024 * 1024);
 #endif
-    config.memory_size_gb = std::min(std::max(phys_mem_gb / 4, (uint64_t)1), (uint64_t)4);
+    config.memory_size_gb =
+        std::min(std::max(phys_mem_gb / 4, (uint64_t)1), (uint64_t)4);
     config.calculate();
 
     uint64_t bytes_per_block = 2105376;
-    config.hot_window_blocks = config.memory_size_gb * 1024ULL * 1024 * 1024 / bytes_per_block;
+    config.hot_window_blocks =
+        config.memory_size_gb * 1024ULL * 1024 * 1024 / bytes_per_block;
 
     _capture_data->get_logic()->set_disk_cache_config(config);
   }
@@ -2675,6 +2673,27 @@ bool SigSession::is_signal_invert_active() {
   return _view_data->_signal_invert_active;
 }
 
+void SigSession::restart_decoders() {
+  if (decode_traces().empty())
+    return;
+
+  // Stop running decoders
+  clear_all_decode_task2();
+  clear_decode_result();
+
+  // Copy current data to document for decoders
+  if (_active_document) {
+    copy_data_to_document(_active_document);
+  }
+
+  // Restart all decoders
+  for (auto de : decode_traces()) {
+    de->decoder()->set_capture_end_flag(true);
+    de->frame_ended();
+    add_decode_task(de);
+  }
+}
+
 size_t SigSession::get_disk_write_queue_depth() {
   if (_view_data->get_logic()->is_disk_cache_active())
     return _view_data->get_logic()->get_disk_write_queue_depth();
@@ -2687,8 +2706,6 @@ double SigSession::get_disk_write_speed_mbps() {
   return 0.0;
 }
 
-bool SigSession::is_disk_write_disk_full() {
-  return false;
-}
+bool SigSession::is_disk_write_disk_full() { return false; }
 
 } // namespace pv

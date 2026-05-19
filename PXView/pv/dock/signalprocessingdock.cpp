@@ -348,7 +348,7 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     le_label->setFont(labelFont);
 
     pv::ui::DsSpinBox *spin = new pv::ui::DsSpinBox(ch_container);
-    spin->setRange(1, 999);
+    spin->setRange(1, 99999);
     spin->setValue(1);
     spin->setObjectName("dock_content");
     spin->setFont(contentFont);
@@ -544,8 +544,6 @@ void SignalProcessingDock::update_invert_state() {
   if (_restore_invert_btn) {
     _restore_invert_btn->setEnabled(is_active);
   }
-
-  // Apply button always enabled (user may change selection and re-apply)
 }
 
 void SignalProcessingDock::update_glitch_filter_state() {
@@ -558,13 +556,60 @@ void SignalProcessingDock::update_glitch_filter_state() {
   if (_restore_data_btn) {
     _restore_data_btn->setEnabled(is_active);
   }
-
-  // Apply button always enabled (user may change selection and re-apply)
 }
 
 void SignalProcessingDock::rebuild_panels() { build_ui(); }
 
 void SignalProcessingDock::update_view() { build_ui(); }
+
+void SignalProcessingDock::auto_apply_settings() {
+  // Called when new capture data arrives - re-apply current checkbox settings
+  // Only apply if there are checked channels (same logic as on_apply_invert/on_apply_glitch_filter)
+  if (!_session || !_device_agent || !_device_agent->have_instance())
+    return;
+
+  bool has_invert = false;
+  std::vector<bool> invert_channels;
+  int ch_idx = 0;
+  for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+    sr_channel *const probe = (sr_channel *)l->data;
+    if (probe->type != SR_CHANNEL_LOGIC)
+      continue;
+    bool inverted = false;
+    if (ch_idx < (int)_invert_checkBox_list.size() &&
+        _invert_checkBox_list[ch_idx]->isChecked()) {
+      inverted = true;
+      has_invert = true;
+    }
+    invert_channels.push_back(inverted);
+    ch_idx++;
+  }
+
+  bool has_filter = false;
+  std::vector<uint32_t> thresholds;
+  ch_idx = 0;
+  for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
+    sr_channel *const probe = (sr_channel *)l->data;
+    if (probe->type != SR_CHANNEL_LOGIC)
+      continue;
+    uint32_t threshold = 0;
+    if (ch_idx < (int)_glitch_checkBox_list.size() &&
+        _glitch_checkBox_list[ch_idx]->isChecked()) {
+      threshold = _glitch_spinbox_list[ch_idx]->value();
+      if (threshold > 0)
+        has_filter = true;
+    }
+    thresholds.push_back(threshold);
+    ch_idx++;
+  }
+
+  if (has_invert) {
+    _session->set_signal_invert(invert_channels);
+  }
+  if (has_filter) {
+    _session->set_glitch_filter(thresholds);
+  }
+}
 
 void SignalProcessingDock::device_updated() {
   if (_device_agent->have_instance() == false) {

@@ -81,10 +81,8 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
       _drawer_width(DEFAULT_DRAWER_WIDTH),
       _animation_duration(DEFAULT_ANIMATION_DURATION), _current_page(-1),
       _is_open(false), _is_animating(false), _drag_active(false),
-      _drag_start_drawer_width(0), _drag_target_width(0),
-      _edge_grip(nullptr),
-      _left_separator(nullptr),
-      _max_frame_time(0), _fps(0),
+      _drag_start_drawer_width(0), _drag_target_width(0), _edge_grip(nullptr),
+      _left_separator(nullptr), _max_frame_time(0), _fps(0),
       _paint_in_this_second(0), _is_idle(true) {
   setObjectName("sliding_drawer");
   setMouseTracking(true);
@@ -169,7 +167,8 @@ SlidingDrawer::SlidingDrawer(QWidget *parent)
   _fps_timer.start(1000);
 
   _drag_update_timer.setSingleShot(true);
-  connect(&_drag_update_timer, &QTimer::timeout, this, &SlidingDrawer::applyDragUpdate);
+  connect(&_drag_update_timer, &QTimer::timeout, this,
+          &SlidingDrawer::applyDragUpdate);
 
   if (parentWidget())
     parentWidget()->installEventFilter(this);
@@ -419,7 +418,7 @@ void SlidingDrawer::setSlideOffset(int offset) {
 
   int oldOffset = _slide_offset;
   _slide_offset = offset;
-  
+
 #ifndef NDEBUG
   QElapsedTimer overlayTimer;
   overlayTimer.start();
@@ -452,7 +451,8 @@ void SlidingDrawer::setSlideOffset(int offset) {
 
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
-  dsv_warn("[DIAG] SlidingDrawer::setSlideOffset took %lld ms: overlay: %lld ms, parentUpdate: %lld ms, offset: %d",
+  dsv_warn("[DIAG] SlidingDrawer::setSlideOffset took %lld ms: overlay: %lld "
+           "ms, parentUpdate: %lld ms, offset: %d",
            total, t_overlay, t_update, offset);
 #endif
 }
@@ -530,9 +530,10 @@ void SlidingDrawer::mouseMoveEvent(QMouseEvent *event) {
       return;
     }
     int dx = _drag_start_pos.x() - event->globalPosition().toPoint().x();
-    
+
     if (qAbs(dx) >= QApplication::startDragDistance()) {
-      _drag_target_width = qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
+      _drag_target_width =
+          qMax(MIN_DRAWER_WIDTH, _drag_start_drawer_width + dx);
       if (!_drag_update_timer.isActive()) {
         applyDragUpdate();
         _drag_update_timer.start(DRAG_FRAME_INTERVAL);
@@ -561,10 +562,15 @@ void SlidingDrawer::finishDrag() {
   if (_drag_active && _drag_target_width > 0) {
     setDrawerWidth(_drag_target_width, true);
   }
+  bool was_drag = _drag_active;
   _drag_active = false;
   _drag_target_width = 0;
   releaseMouse();
   unsetCursor();
+
+  if (was_drag) {
+    Q_EMIT drawerDragFinished();
+  }
 }
 
 void SlidingDrawer::applyDragUpdate() {
@@ -573,9 +579,7 @@ void SlidingDrawer::applyDragUpdate() {
   setDrawerWidth(_drag_target_width, true);
 }
 
-int SlidingDrawer::get_fps() const {
-  return _fps;
-}
+int SlidingDrawer::get_fps() const { return _fps; }
 
 } // namespace widgets
 } // namespace pv

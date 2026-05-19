@@ -89,6 +89,7 @@ public:
 signals:
     void drawerOpened(int pageIndex);
     void drawerClosed();
+    void drawerDragFinished();
 
 protected:
     void paintEvent(QPaintEvent *event) override;

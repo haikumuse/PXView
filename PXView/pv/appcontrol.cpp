@@ -132,7 +132,7 @@ bool AppControl::Init()
     {
         QString cDecDir = GetAppDataDir();
         QDir cDecPath(cDecDir);
-        if (cDecPath.cd("../libsigrokdecode/c_decoders") || cDecPath.cd("c_decoders")) {
+        if (cDecPath.cd("c_decoders") || cDecPath.cd("../libsigrokdecode/c_decoders")) {
             std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
             srd_c_decoder_path_add(cs.c_str());
             dsv_info("C decoder path: \"%s\"", cs.c_str());
