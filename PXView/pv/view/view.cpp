@@ -660,8 +660,8 @@ void View::set_scale_offset(double scale, int64_t offset) {
   _preScale = _scale;
   _preOffset = _offset;
 
-  _scale = max(min(scale, _maxscale), _minscale);
-  _offset = floor(max(min(offset, get_max_offset()), get_min_offset()));
+  _scale = max(scale, _minscale);
+  _offset = floor(max(offset, get_min_offset()));
 
   if (_scale != _preScale || _offset != _preOffset) {
     update_scroll();
@@ -949,15 +949,15 @@ void View::update_scale_offset() {
       _maxscale = 1e9;
       _minscale = 1e-15;
     }
-    _scale = max(min(_scale, _maxscale), _minscale);
+    _scale = max(_scale, _minscale);
   } else {
     _scale = _session->cur_view_time() / width;
     _maxscale = 1e9;
     _minscale = 1e-15;
-    _scale = max(min(_scale, _maxscale), _minscale);
+    _scale = max(_scale, _minscale);
   }
 
-  _offset = max(min(_offset, get_max_offset()), get_min_offset());
+  _offset = max(_offset, get_min_offset());
 
   _preScale = _scale;
   _preOffset = _offset;

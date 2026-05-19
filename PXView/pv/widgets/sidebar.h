@@ -142,6 +142,9 @@ signals:
   void dockItemClicked(int index);
   void actionItemClicked(int index);
 
+protected:
+  void resizeEvent(QResizeEvent *event) override;
+
 private:
   void onButtonClicked();
   void onIndicatorAniFinished();

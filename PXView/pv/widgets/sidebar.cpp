@@ -13,6 +13,7 @@
 #include <QFrame>
 #include <QIcon>
 #include <QPainter>
+#include <QResizeEvent>
 
 namespace pv {
 namespace widgets {
@@ -490,6 +491,28 @@ void SideBar::UpdateFont() {
   font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
   for (auto &item : _items) {
     item.button->setFont(font);
+  }
+}
+
+void SideBar::resizeEvent(QResizeEvent *event) {
+  QToolBar::resizeEvent(event);
+  if (_checked_index >= 0) {
+    for (const auto &item : _items) {
+      if (item.index == _checked_index && item.type == DockItem) {
+        _indicator->snapTo(getIndicatorRect(item.button));
+        QTimer::singleShot(0, this, [this]() {
+          if (_checked_index >= 0) {
+            for (const auto &it : _items) {
+              if (it.index == _checked_index && it.type == DockItem) {
+                _indicator->snapTo(getIndicatorRect(it.button));
+                break;
+              }
+            }
+          }
+        });
+        break;
+      }
+    }
   }
 }
 
