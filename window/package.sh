@@ -8,7 +8,7 @@ cp -r ../python/* .
 ../window/copy-deps.sh PXView.exe /mingw64
 #qt
 mkdir plugins
-cp -r /mingw64/share/qt5/plugins/* .
+cp -r /mingw64/share/qt6/plugins/* .
 ../window/copy-deps.sh imageformats/qsvg.dll /mingw64
 ../window/copy-deps.sh imageformats/qjpeg.dll /mingw64
 #python: extract stdlib from zip to lib/python3.14/ so Python can load .pyc without zlib

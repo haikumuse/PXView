@@ -119,7 +119,6 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     mode_title->setFont(dock_font_section_title());
     QWidget *mode_section = new QWidget(_container_panel);
     mode_section->setObjectName("dock_mode_section");
-    mode_section->setMinimumHeight(70);
     QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
     mode_vbox->setContentsMargins(0, 0, 0, 0);
     mode_vbox->setSpacing(5);
@@ -1011,7 +1010,6 @@ void DeviceOptionsDock::update_view() {
   mode_title->setFont(sectionTitleFont);
   QWidget *mode_section = new QWidget(_container_panel);
   mode_section->setObjectName("dock_mode_section");
-  mode_section->setMinimumHeight(70);
   QVBoxLayout *mode_vbox = new QVBoxLayout(mode_section);
   mode_vbox->setContentsMargins(0, 0, 0, 0);
   mode_vbox->setSpacing(5);

@@ -34,10 +34,10 @@
 #include <QVBoxLayout>
 #include <vector>
 
-#include "../ui/dsspinbox.h"
 #include "../deviceagent.h"
 #include "../interface/icontextaware.h"
 #include "../sigsession.h"
+#include "../ui/dsspinbox.h"
 #include "../ui/uimanager.h"
 
 namespace pv {
@@ -57,6 +57,7 @@ public:
   void update_widgets_status();
   void update_invert_state();
   void update_glitch_filter_state();
+  void auto_apply_settings();
 
   void bind_context(TabContext *ctx) override;
   void unbind_context() override;

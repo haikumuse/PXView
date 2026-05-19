@@ -177,6 +177,7 @@ public:
    * @param offset The view time offset in seconds.
    */
   void set_scale_offset(double scale, int64_t offset);
+  void limit_scale_offset();
   void set_preScale_preOffset();
 
   void get_traces(int type, std::vector<Trace *> &traces);

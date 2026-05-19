@@ -283,6 +283,8 @@ private:
     QLabel          *_disk_cache_status_label;
     QLabel          *_trig_time_label;
     QLabel          *_fps_label;
+    QLabel          *_sample_period_label;
+    void update_sample_period();
     QTimer          _disk_cache_status_timer;
     QTimer          _fps_timer;
     int             _acq_count;

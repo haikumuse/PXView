@@ -24,6 +24,10 @@
         "text": "&Options"
     },
     {
+        "id": "IDS_TOOLBAR_SIGNAL_PROCESSING",
+        "text": "&Filter"
+    },
+    {
         "id": "IDS_TOOLBAR_CAPTURE_MODE",
         "text": "Mod&e"
     },
@@ -84,6 +88,10 @@
     {
         "id": "IDS_TOOLBAR_FUNCTION",
         "text": "Fu&nction"
+    },
+    {
+        "id": "IDS_TOOLBAR_LOG",
+        "text": "&Log"
     },
     {
         "id": "IDS_TOOLBAR_FUNCTION_FFT",

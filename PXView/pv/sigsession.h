@@ -491,6 +491,8 @@ public:
     void clear_signal_invert();
     bool is_signal_invert_active();
 
+    void restart_decoders();
+
     size_t get_disk_write_queue_depth();
     double get_disk_write_speed_mbps();
     bool is_disk_write_disk_full();

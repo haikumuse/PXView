@@ -11,7 +11,7 @@ Or download from <https://www.msys2.org/>
 # Install dependencies
 
 ```
-pacman -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-libusb mingw-w64-x86_64-toolchain mingw-w64-x86_64-boost mingw-w64-x86_64-python mingw-w64-x86_64-cmake mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-winextras mingw-w64-x86_64-qt5-svg mingw-w64-x86_64-glib2 mingw-w64-x86_64-fftw mingw-w64-x86_64-zlib liblzma liblzma-devel mingw-w64-x86_64-lcms2 curl unzip
+pacman -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-libusb mingw-w64-x86_64-toolchain mingw-w64-x86_64-boost mingw-w64-x86_64-python mingw-w64-x86_64-cmake mingw-w64-x86_64-qt6-base mingw-w64-x86_64-qt6-svg mingw-w64-x86_64-glib2 mingw-w64-x86_64-fftw mingw-w64-x86_64-zlib liblzma liblzma-devel mingw-w64-x86_64-lcms2 curl unzip
 ```
 
 # Download python embed with your python version
