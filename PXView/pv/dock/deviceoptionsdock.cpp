@@ -534,7 +534,7 @@ void DeviceOptionsDock::mode_check_timeout() {
       });
     });
 
-    QtConcurrent::run([this, agent]() {
+    (void)QtConcurrent::run([this, agent]() {
       bool test;
       bool got_test = agent->get_config_bool(SR_CONF_TEST, test);
       if (!got_test || !test)
@@ -714,7 +714,7 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
     probe_widget->setLayout(probe_layout);
 
     bool ch_enabled = probe->enabled;
-    if (ch_dex < _lst_probe_enabled_status.size()) {
+    if (ch_dex < (int)_lst_probe_enabled_status.size()) {
       ch_enabled = _lst_probe_enabled_status[ch_dex];
     }
 

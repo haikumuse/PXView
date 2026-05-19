@@ -587,7 +587,6 @@ static int handle_pps(struct srd_decoder_inst *di, struct iso7816_priv *s,
 {
     uint64_t pps_start = s->peeked_samplenum;
     uint8_t pps, pps0, pps1 = 0, pps2 = 0, pps3 = 0, pck;
-    uint8_t byte_val;
     uint64_t byte_ss, byte_es;
     int ret;
     uint8_t lrc = 0;

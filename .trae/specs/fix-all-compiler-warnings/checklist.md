@@ -1,0 +1,19 @@
+- [x] CMake 配置无警告：cmake 配置阶段不产生 Deprecation/Policy/未使用变量警告
+- [x] MOC 处理23个头文件无 "No relevant classes found" 输出
+- [x] c_decoder_api.c 编译无 unused-variable/unused-but-set-variable 警告
+- [x] 所有37个 C decoder DLL 编译无警告
+- [x] PXView C++ 代码中 QCheckBox::stateChanged 全部替换为 checkStateChanged
+- [x] PXView C++ 代码中 QKeyCombination::operator int() 替换为正确 API
+- [x] PXView C++ 代码中所有 -Wreorder 警告已修复
+- [x] PXView C++ 代码中所有未使用变量已移除
+- [x] PXView C++ 代码中所有未使用参数已用 (void)param 消除
+- [x] PXView C++ 代码中所有 sign-compare 已修复
+- [x] PXView C++ 代码中所有 -Wswitch 警告已修复
+- [x] PXView C++ 代码中所有 unused-result 警告已处理
+- [x] WinNativeWidget 具有虚析构函数，消除 delete-non-virtual-dtor 警告
+- [x] annotationrestable.cpp 的 strncpy 截断警告已修复（替换为 memcpy）
+- [x] boost/bind.hpp 弃用 pragma 消息已消除
+- [x] libsigrokdecode _POSIX_C_SOURCE 重定义警告已消除
+- [x] libsigrokdecode srd.c PyEval_InitThreads 弃用调用已移除
+- [x] libsigrokdecode decoder.c cast-function-type 警告已修复
+- [x] 完整构建（ninja install）中 PXView/libsigrokdecode/c_decoders 部分零警告零错误（common/minizip 和 libsigrok C 代码的警告不在范围内）

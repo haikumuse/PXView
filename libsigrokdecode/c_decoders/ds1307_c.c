@@ -365,6 +365,7 @@ static void ds1307_start(struct srd_decoder_inst *di)
 
 static void ds1307_decode(struct srd_decoder_inst *di)
 {
+    (void)di;
 }
 
 static void ds1307_destroy(struct srd_decoder_inst *di)

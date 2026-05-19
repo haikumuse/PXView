@@ -19,7 +19,7 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 
 project(PXView)
 
@@ -109,26 +109,17 @@ link_directories(${GLIB_LIBDIR})
 #= python3
 #-------------------------------------------------------------------------------
 
-#find_package(Python3 COMPONENTS Development QUIET)
+cmake_policy(SET CMP0148 NEW)
+find_package(Python3 COMPONENTS Interpreter Development)
 
 if (Python3_FOUND)
-	message("----- 1python3:")
+	message("----- python3:")
 	message(STATUS "	 includes:" ${Python3_INCLUDE_DIRS})
 	message(STATUS "	 libraries:" ${Python3_LIBRARIES})
 	include_directories(${Python3_INCLUDE_DIRS})
 	set(PY_LIB ${Python3_LIBRARIES})
 else()
-     find_package(PythonLibs 3 QUIET)
-
-     if(PYTHONLIBS_FOUND)
-     	message("----- 2python(${PYTHONLIBS_VERSION_STRING}):")
-	message(STATUS "	 includes:" ${PYTHON_INCLUDE_DIRS})
-	message(STATUS "	 libraries:" ${PYTHON_LIBRARIES})
-	include_directories(${PYTHON_INCLUDE_DIRS})
-	set(PY_LIB ${PYTHON_LIBRARIES})
-     else()
-     	message(FATAL_ERROR  "Please install lib python3!")
-     endif()
+	message(FATAL_ERROR  "Please install lib python3!")
 endif()
   
 #===============================================================================
@@ -177,6 +168,7 @@ include_directories(${ZLIB_INCLUDE_DIRS})
 #= Qt6
 #-------------------------------------------------------------------------------
 
+set(QT_NO_PRIVATE_MODULE_WARNING ON)
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core Widgets Gui GuiPrivate Svg Concurrent)
 message("----- Qt6:")
 message(STATUS "	 includes:" ${Qt6Core_INCLUDE_DIRS})
@@ -193,6 +185,7 @@ endif()
 #===============================================================================
 #= boost
 #-------------------------------------------------------------------------------
+cmake_policy(SET CMP0167 NEW)
 find_package(Boost 1.42 QUIET)
 
 if(NOT Boost_FOUND)
@@ -502,6 +495,36 @@ if(WIN32)
 	)
 endif ()
 
+set(PXView_HEADERS_NO_MOC
+    PXView/pv/log.h
+    PXView/pv/sigsession.h
+    PXView/pv/sessionmanager.h
+    PXView/pv/interface/icontextaware.h
+    PXView/pv/data/datasource.h
+    PXView/pv/data/sessionsnapshot.h
+    PXView/pv/data/sessiondocument.h
+    PXView/pv/config/appconfig.h
+    PXView/pv/appcontrol.h
+    PXView/pv/ZipMaker.h
+    PXView/pv/data/decode/annotationrestable.h
+    PXView/pv/data/decode/decoderstatus.h
+    PXView/pv/ui/msgbox.h
+    PXView/pv/dsvdef.h
+    PXView/pv/utility/encoding.h
+    PXView/pv/utility/path.h
+    PXView/pv/utility/array.h
+    PXView/pv/deviceagent.h
+    PXView/pv/ui/fn.h
+    PXView/pv/ui/iconcache.h
+    PXView/pv/tabcontext.h
+)
+
+if(WIN32)
+    list(APPEND PXView_HEADERS_NO_MOC PXView/pv/winnativewidget.h)
+endif()
+
+list(REMOVE_ITEM PXView_HEADERS ${PXView_HEADERS_NO_MOC})
+
 #===============================================================================
 #= Debug Helper option
 #-------------------------------------------------------------------------------
@@ -700,6 +723,7 @@ add_executable(${PROJECT_NAME}
 	${common_SOURCES}
 	${PXView_SOURCES}
 	${PXView_HEADERS_MOC}
+	${PXView_HEADERS_NO_MOC}
 	${PXView_FORMS_HEADERS}
 	${PXView_RESOURCES_RCC}
 	${libsigrok_SOURCES}
@@ -756,7 +780,7 @@ foreach(dec ${C_DECODERS})
 		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode
 		${CMAKE_CURRENT_SOURCE_DIR}/common
 		${GLIB_INCLUDE_DIRS}
-		${PYTHON_INCLUDE_DIRS}
+		${Python3_INCLUDE_DIRS}
 	)
 
 	target_compile_definitions(decoder_${dec} PRIVATE

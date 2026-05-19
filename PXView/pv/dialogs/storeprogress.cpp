@@ -177,8 +177,6 @@ void StoreProgress::accept()
         uint64_t start_index = 0;
         uint64_t end_index = 0;
 
-        auto &cursor_list = _view->get_cursorList();
-
         int dex1 = _start_cursor->currentIndex();
         int dex2 = _end_cursor->currentIndex();
 
@@ -205,7 +203,7 @@ void StoreProgress::accept()
 
             int total_count = _view->session().get_ring_sample_count();
 
-            if (start_index > total_count && end_index > total_count)
+            if (start_index > (uint64_t)total_count && end_index > (uint64_t)total_count)
             {
                 QString mStr = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DATA_RANGE_HAVE_NO_DATA), "No data in the data range");
                 MsgBox::Show(mStr);
@@ -277,7 +275,7 @@ void StoreProgress::save_run(ISessionDataGetter *getter)
         
         auto &cursor_list = _view->get_cursorList();
 
-        for (int i=0; i<cursor_list.size(); i++){
+        for (int i=0; i<(int)cursor_list.size(); i++){
             //tr
             QString cursor_name = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CURSOR), "Cursor") + 
                                 QString::number(i+1);

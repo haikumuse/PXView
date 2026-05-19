@@ -149,7 +149,6 @@ void DsComboBox::measureSize()
 {
     int num = this->count();
     int maxWidth = 0;
-    int height = 30;
     QFontMetrics fm = this->fontMetrics();
 
     for (int i = 0; i < num; i++) {
@@ -159,7 +158,6 @@ void DsComboBox::measureSize()
         if (rc.width() > maxWidth) {
             maxWidth = rc.width();
         }
-        height = rc.height();
     }
 }
 

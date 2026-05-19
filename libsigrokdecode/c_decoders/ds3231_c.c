@@ -594,6 +594,7 @@ static void ds3231_start(struct srd_decoder_inst *di)
 
 static void ds3231_decode(struct srd_decoder_inst *di)
 {
+    (void)di;
 }
 
 static void ds3231_destroy(struct srd_decoder_inst *di)

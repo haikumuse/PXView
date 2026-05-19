@@ -73,7 +73,7 @@ ChannelLabel::ChannelLabel(IChannelCheck *check, QWidget *parent, int chanIndex)
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     setCursor(Qt::PointingHandCursor);
 
-    connect(_box, &QCheckBox::stateChanged, this, [this](){ update(); });
+    connect(_box, &QCheckBox::checkStateChanged, this, [this](){ update(); });
 }
 
 void ChannelLabel::paintEvent(QPaintEvent *event)
@@ -760,7 +760,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout)
         probe_widget->setLayout(probe_layout); 
 
         bool ch_enabled = probe->enabled;
-        if (ch_dex < _lst_probe_enabled_status.size()){
+        if (ch_dex < (int)_lst_probe_enabled_status.size()){
             ch_enabled = _lst_probe_enabled_status[ch_dex];
         }
 

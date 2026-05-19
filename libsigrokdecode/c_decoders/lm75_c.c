@@ -240,6 +240,7 @@ static void lm75_start(struct srd_decoder_inst *di)
 
 static void lm75_decode(struct srd_decoder_inst *di)
 {
+    (void)di;
 }
 
 static void lm75_destroy(struct srd_decoder_inst *di)

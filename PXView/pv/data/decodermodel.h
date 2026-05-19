@@ -40,6 +40,7 @@ class Row;
 
 class DecoderModel : public QAbstractTableModel
 {
+    Q_OBJECT
 public:
     DecoderModel(QObject *parent = 0);
 

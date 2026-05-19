@@ -126,6 +126,7 @@ static uint32_t gray_to_binary(uint8_t *gray_bits, int count)
 static void putg(canfd_state *s, struct srd_decoder_inst *di,
                  uint64_t ss, uint64_t es, int ann_class, const char **txts, int num_txts)
 {
+    (void)num_txts;
     int left = (int)s->sample_point;
     int right = (int)(s->bit_width - s->sample_point);
     uint64_t new_ss = (ss > (uint64_t)left) ? (ss - left) : 0;

@@ -32,8 +32,8 @@ typedef struct {
     uint64_t packet_part_ss;
     uint8_t address;
     GArray *packet_data;
-    char packet_str[256];
-    char packet_str_short[256];
+    char packet_str[2048];
+    char packet_str_short[2048];
     i2c_bit_entry bits[8];
     int out_ann;
     int out_binary;
@@ -196,6 +196,8 @@ static void i2c_data_array_to_str(struct srd_decoder_inst *di, i2c_decoder_state
     out[pos] = '\0';
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 static void i2c_format_packet(struct srd_decoder_inst *di, i2c_decoder_state *s, char *pkt_str, int pkt_str_size,
                               char *pkt_short, int pkt_short_size)
 {
@@ -210,17 +212,18 @@ static void i2c_format_packet(struct srd_decoder_inst *di, i2c_decoder_state *s,
     snprintf(pkt_short, pkt_short_size, "%s", pkt_str + 2);
 
     if (s->packet_str[0]) {
-        char full[512];
-        char full_short[512];
+        char full[4096];
+        char full_short[4096];
         snprintf(full, sizeof(full), "%s [SR] %s", s->packet_str, pkt_str);
         snprintf(full_short, sizeof(full_short), "%s [SR] %s", s->packet_str_short, pkt_short);
-        strncpy(pkt_str, full, pkt_str_size - 1);
-        strncpy(pkt_short, full_short, pkt_short_size - 1);
-        pkt_str[pkt_str_size - 1] = '\0';
-        pkt_short[pkt_short_size - 1] = '\0';
+        snprintf(pkt_str, pkt_str_size, "%s", full);
+        snprintf(pkt_short, pkt_short_size, "%s", full_short);
     }
 }
+#pragma GCC diagnostic pop
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 static void i2c_handle_packet(struct srd_decoder_inst *di, i2c_decoder_state *s, int is_start_repeat)
 {
     const char *pkt_fmt = c_decoder_get_option_string(di, "packets_format", "hex");
@@ -233,19 +236,20 @@ static void i2c_handle_packet(struct srd_decoder_inst *di, i2c_decoder_state *s,
         return;
     }
 
-    char pkt_str[256];
-    char pkt_short[256];
+    char pkt_str[4096];
+    char pkt_short[4096];
     i2c_format_packet(di, s, pkt_str, sizeof(pkt_str), pkt_short, sizeof(pkt_short));
 
     if (is_start_repeat) {
         g_array_set_size(s->packet_data, 0);
-        strncpy(s->packet_str, pkt_str, sizeof(s->packet_str) - 1);
-        strncpy(s->packet_str_short, pkt_short, sizeof(s->packet_str_short) - 1);
+        snprintf(s->packet_str, sizeof(s->packet_str), "%s", pkt_str);
+        snprintf(s->packet_str_short, sizeof(s->packet_str_short), "%s", pkt_short);
     } else {
         C_ANN_PUT(di, s->packet_ss, s->packet_es, s->out_ann, ANN_PACKET, pkt_str, pkt_short);
         i2c_reset_packet(s);
     }
 }
+#pragma GCC diagnostic pop
 
 static void i2c_handle_start(struct srd_decoder_inst *di, i2c_decoder_state *s, uint64_t samplenum)
 {

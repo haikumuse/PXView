@@ -88,8 +88,8 @@ int main(int argc, char *argv[])
 		}
 
         // Don't use the arguments passed to main(), because they're in the local ANSI code page.
-        (void*)(argc);
-        (void*)(argv);
+        (void)argc;
+        (void)argv;
 
         int argcFinal = argcUTF16;
         char** argvFinal = argvUTF8.data();

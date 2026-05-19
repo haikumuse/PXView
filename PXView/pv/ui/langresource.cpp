@@ -162,7 +162,9 @@ void LangResource::load_page(Lang_resource_page &p, QString file)
             dsv_warn("Warning:Language source file is not exists: %s", file.toLocal8Bit().data());
         return;
     }
-    f.open(QFile::ReadOnly | QFile::Text);
+    if (!f.open(QFile::ReadOnly | QFile::Text)) {
+        return;
+    }
     QByteArray raw_bytes = f.readAll();
     f.close();
 

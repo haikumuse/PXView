@@ -393,9 +393,6 @@ SRD_API int c_decoder_put_python(struct srd_decoder_inst *di,
     int output_id, const char *cmd, const unsigned char *data, uint64_t data_len)
 {
     struct srd_pd_output *pdo;
-    struct srd_pd_callback *cb;
-    struct srd_proto_data pdata;
-    struct srd_proto_data_annotation pda;
 
     if (!di)
         return SRD_ERR_ARG;
@@ -404,11 +401,6 @@ SRD_API int c_decoder_put_python(struct srd_decoder_inst *di,
     if (!out_list)
         return SRD_ERR_ARG;
     pdo = out_list->data;
-
-    pdata.start_sample = start_sample;
-    pdata.end_sample = end_sample;
-    pdata.pdo = pdo;
-    pdata.data = NULL;
 
     if (pdo->output_type == SRD_OUTPUT_PYTHON) {
         if (di->next_di) {

@@ -334,6 +334,8 @@ static void mdio_state_PRE(struct srd_decoder_inst *di, struct mdio_priv *s, int
 
 static void mdio_state_ST(struct srd_decoder_inst *di, struct mdio_priv *s, int mdio, uint64_t samplenum)
 {
+    (void)di;
+    (void)samplenum;
     if (mdio == 0) {
         s->clause45 = 1;
     }

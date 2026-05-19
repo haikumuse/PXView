@@ -172,7 +172,7 @@ void WinShadow::moveShadow()
         h += bw * 2;
 
         const HWND active_window = GetActiveWindow();
-        bool isActiveWindow = ((active_window == m_hwnd) 
+        (void)((active_window == m_hwnd) 
                         || IsChild(m_hwnd, active_window)); 
 
         MoveWindow((HWND)winId(), x, y, w , h , 1); 
@@ -180,8 +180,8 @@ void WinShadow::moveShadow()
 }
 
 void WinShadow::paintEvent(QPaintEvent *event)
-{  
-    // The shandow is hiden.
+{
+    (void)event;
     if (!m_bActived){
         return;
     }

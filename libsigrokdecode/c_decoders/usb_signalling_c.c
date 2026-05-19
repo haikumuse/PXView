@@ -494,6 +494,7 @@ static struct srd_c_decoder usb_c_decoder = {
     NULL,
     usb_metadata,
     usb_destroy,
+    NULL,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

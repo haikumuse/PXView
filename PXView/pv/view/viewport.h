@@ -187,7 +187,6 @@ private:
   double _curScale;
   int64_t _curOffset;
   int _curSignalHeight;
-  int _curVOffset;
 
   bool _measure_en;
   ActionType _action_type;
@@ -249,6 +248,7 @@ private:
   int _resize_lower_height;
   bool _curs_moved;
   bool _xcurs_moved;
+  int _curVOffset;
 
   high_resolution_clock::time_point _lst_wait_tigger_time;
   int _tigger_wait_times;
@@ -261,7 +261,6 @@ private:
   int _fps;
   QTimer _fps_timer;
   QElapsedTimer _frame_interval_timer;
-  int _paint_in_this_second;
   bool _is_idle;
 
   QTimer _drag_frame_timer;
@@ -273,6 +272,7 @@ private:
 
 public:
   bool g_drag_active;
+  int _paint_in_this_second;
   QPixmap g_drag_snapshot;
 };
 

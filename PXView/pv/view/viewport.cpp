@@ -1037,7 +1037,6 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
     } else if (_view.session().get_device()->get_work_mode() == DSO) {
       if (_hover_hit) {
         const int64_t index = _view.pixel2index(event->position().toPoint().x());
-        auto &cursor_list = _view.get_cursorList();
         _view.add_cursor(index);
         _view.show_cursors(true);
       }
@@ -1166,7 +1165,6 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
 void Viewport::mouseMoveEvent(QMouseEvent *event) {
   assert(event);
   _hover_hit = false;
-  int mode = _view.session().get_device()->get_work_mode();
 
   if (_action_type == NO_ACTION && _type == TIME_VIEW &&
       _view.session().get_device()->get_work_mode() == LOGIC) {
@@ -1381,6 +1379,7 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
     set_action(NO_ACTION);
     break;
   }
+  default: break;
   }
 }
 
@@ -1461,10 +1460,12 @@ void Viewport::onDsoMouseRelease(QMouseEvent *event) {
     }
     break;
   }
+  default:
+    break;
   }
 }
 
-void Viewport::onAnalogMouseRelease(QMouseEvent *event) {}
+void Viewport::onAnalogMouseRelease(QMouseEvent *event) { (void)event; }
 
 void Viewport::mouseReleaseEvent(QMouseEvent *event) {
   assert(event);
@@ -1604,7 +1605,6 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
         index = _view.pixel2index(curX);
       }
 
-      auto &cursor_list = _view.get_cursorList();
       _view.add_cursor(index);
       _view.show_cursors(true);
     }
@@ -1631,7 +1631,6 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
       uint64_t index;
       const double curX = event->position().toPoint().x();
       index = _view.pixel2index(curX);
-      auto &cursor_list = _view.get_cursorList();
       _view.add_cursor(index);
       _view.show_cursors(true);
     }
