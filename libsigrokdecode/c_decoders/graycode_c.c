@@ -1,9 +1,10 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
+
 
 enum {
     ANN_PHASE = 0,
@@ -40,58 +41,69 @@ static uint32_t gray_to_binary(uint32_t gray, int bits)
 }
 
 static struct srd_decoder_option gray_code_options[] = {
-    {"edges", NULL, "Edges per rotation", NULL, NULL},
-    {"avg_period", NULL, "Averaging period (ms)", NULL, NULL},
+    { "edges", NULL, "Edges per rotation", NULL, NULL },
+    { "avg_period", NULL, "Averaging period (ms)", NULL, NULL },
 };
 
-static const char *gray_code_inputs[] = {"logic", NULL};
-static const char *gray_code_outputs[] = {NULL};
-static const char *gray_code_tags[] = {"Encoding", NULL};
+static const char* gray_code_inputs[] = { "logic", NULL };
+static const char* gray_code_outputs[] = { NULL };
+static const char* gray_code_tags[] = { "Encoding", NULL };
 
 static struct srd_channel gray_code_optional_channels[] = {
-    {"d0", "D0", "Data line 0", 0, SRD_CHANNEL_COMMON, NULL},
-    {"d1", "D1", "Data line 1", 1, SRD_CHANNEL_COMMON, NULL},
-    {"d2", "D2", "Data line 2", 2, SRD_CHANNEL_COMMON, NULL},
-    {"d3", "D3", "Data line 3", 3, SRD_CHANNEL_COMMON, NULL},
-    {"d4", "D4", "Data line 4", 4, SRD_CHANNEL_COMMON, NULL},
-    {"d5", "D5", "Data line 5", 5, SRD_CHANNEL_COMMON, NULL},
-    {"d6", "D6", "Data line 6", 6, SRD_CHANNEL_COMMON, NULL},
-    {"d7", "D7", "Data line 7", 7, SRD_CHANNEL_COMMON, NULL},
+    { "d0", "D0", "Data line 0", 0, SRD_CHANNEL_COMMON, NULL },
+    { "d1", "D1", "Data line 1", 1, SRD_CHANNEL_COMMON, NULL },
+    { "d2", "D2", "Data line 2", 2, SRD_CHANNEL_COMMON, NULL },
+    { "d3", "D3", "Data line 3", 3, SRD_CHANNEL_COMMON, NULL },
+    { "d4", "D4", "Data line 4", 4, SRD_CHANNEL_COMMON, NULL },
+    { "d5", "D5", "Data line 5", 5, SRD_CHANNEL_COMMON, NULL },
+    { "d6", "D6", "Data line 6", 6, SRD_CHANNEL_COMMON, NULL },
+    { "d7", "D7", "Data line 7", 7, SRD_CHANNEL_COMMON, NULL },
 };
 
-static const char *gray_code_ann_labels[][3] = {
-    {"", "phase", "Phase"},
-    {"", "increment", "Increment"},
-    {"", "count", "Count"},
-    {"", "turns", "Turns"},
-    {"", "interval", "Interval"},
-    {"", "average", "Average"},
-    {"", "rpm", "Rate"},
+static const char* gray_code_ann_labels[][3] = {
+    { "", "phase", "Phase" },
+    { "", "increment", "Increment" },
+    { "", "count", "Count" },
+    { "", "turns", "Turns" },
+    { "", "interval", "Interval" },
+    { "", "average", "Average" },
+    { "", "rpm", "Rate" },
 };
 
-static const int gray_code_row_phase_classes[] = {ANN_PHASE, -1};
-static const int gray_code_row_increment_classes[] = {ANN_INCREMENT, -1};
-static const int gray_code_row_count_classes[] = {ANN_COUNT, -1};
-static const int gray_code_row_turns_classes[] = {ANN_TURNS, -1};
-static const int gray_code_row_interval_classes[] = {ANN_INTERVAL, -1};
-static const int gray_code_row_average_classes[] = {ANN_AVERAGE, -1};
-static const int gray_code_row_rpm_classes[] = {ANN_RPM, -1};
+static const int gray_code_row_phase_classes[] = { ANN_PHASE, -1 };
+static const int gray_code_row_increment_classes[] = { ANN_INCREMENT, -1 };
+static const int gray_code_row_count_classes[] = { ANN_COUNT, -1 };
+static const int gray_code_row_turns_classes[] = { ANN_TURNS, -1 };
+static const int gray_code_row_interval_classes[] = { ANN_INTERVAL, -1 };
+static const int gray_code_row_average_classes[] = { ANN_AVERAGE, -1 };
+static const int gray_code_row_rpm_classes[] = { ANN_RPM, -1 };
 static const struct srd_c_ann_row gray_code_ann_rows[] = {
-    {"phase", "Phase", gray_code_row_phase_classes, 1},
-    {"increment", "Increment", gray_code_row_increment_classes, 1},
-    {"count", "Count", gray_code_row_count_classes, 1},
-    {"turns", "Turns", gray_code_row_turns_classes, 1},
-    {"interval", "Interval", gray_code_row_interval_classes, 1},
-    {"average", "Average", gray_code_row_average_classes, 1},
-    {"rpm", "Rate", gray_code_row_rpm_classes, 1},
+    { "phase", "Phase", gray_code_row_phase_classes, 1 },
+    { "increment", "Increment", gray_code_row_increment_classes, 1 },
+    { "count", "Count", gray_code_row_count_classes, 1 },
+    { "turns", "Turns", gray_code_row_turns_classes, 1 },
+    { "interval", "Interval", gray_code_row_interval_classes, 1 },
+    { "average", "Average", gray_code_row_average_classes, 1 },
+    { "rpm", "Rate", gray_code_row_rpm_classes, 1 },
 };
 
-static void gray_code_reset(struct srd_decoder_inst *di)
+static void graycode_metadata(struct srd_decoder_inst* di, int key, uint64_t value)
+{
+    gray_code_state* s = (gray_code_state*)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE) {
+        s->samplerate = value;
+        int avg_ms = (int)c_decoder_get_option_int(di, "avg_period", 0);
+        if (avg_ms > 0)
+            s->avg_period_samples = (int)(value * avg_ms / 1000);
+    }
+}
+
+static void gray_code_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(gray_code_state)));
     }
-    gray_code_state *s = (gray_code_state *)c_decoder_get_private(di);
+    gray_code_state* s = (gray_code_state*)c_decoder_get_private(di);
     memset(s, 0, sizeof(gray_code_state));
     s->edges_per_rotation = 0;
     s->avg_period_samples = 0;
@@ -99,9 +111,9 @@ static void gray_code_reset(struct srd_decoder_inst *di)
     s->prev_bin = -1;
 }
 
-static void gray_code_start(struct srd_decoder_inst *di)
+static void gray_code_start(struct srd_decoder_inst* di)
 {
-    gray_code_state *s = (gray_code_state *)c_decoder_get_private(di);
+    gray_code_state* s = (gray_code_state*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "graycode");
     s->samplerate = c_decoder_get_samplerate(di);
     s->edges_per_rotation = (int)c_decoder_get_option_int(di, "edges", 0);
@@ -110,14 +122,23 @@ static void gray_code_start(struct srd_decoder_inst *di)
         s->avg_period_samples = (int)(s->samplerate * avg_ms / 1000);
 }
 
-static void gray_code_decode(struct srd_decoder_inst *di)
+static void gray_code_decode(struct srd_decoder_inst* di)
 {
-    gray_code_state *s = (gray_code_state *)c_decoder_get_private(di);
+    gray_code_state* s = (gray_code_state*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
+    if (!s->samplerate) {
+        s->samplerate = c_decoder_get_samplerate(di);
+        if (s->samplerate > 0) {
+            int avg_ms = (int)c_decoder_get_option_int(di, "avg_period", 0);
+            if (avg_ms > 0)
+                s->avg_period_samples = (int)(s->samplerate * avg_ms / 1000);
+        }
+    }
+
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         c_cond_edge(cb, 0);
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
@@ -194,7 +215,8 @@ static void gray_code_decode(struct srd_decoder_inst *di)
 
         if (s->avg_period_samples > 0 && s->interval_count > 0) {
             uint64_t window_start = (samplenum > (uint64_t)s->avg_period_samples)
-                ? samplenum - s->avg_period_samples : 0;
+                ? samplenum - s->avg_period_samples
+                : 0;
             (void)window_start;
         }
 
@@ -204,9 +226,9 @@ static void gray_code_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void gray_code_destroy(struct srd_decoder_inst *di)
+static void gray_code_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -237,13 +259,14 @@ struct srd_c_decoder gray_code_c_decoder = {
     .num_binary = 0,
     .tags = gray_code_tags,
     .num_tags = 1,
+    .metadata = graycode_metadata,
     .reset = gray_code_reset,
     .start = gray_code_start,
     .decode = gray_code_decode,
     .destroy = gray_code_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     gray_code_options[0].def = g_variant_new_int64(0);
     gray_code_options[1].def = g_variant_new_int64(10);

@@ -325,9 +325,13 @@ static struct PX_context *DSLogic_dev_new(const struct PX_profile *prof)
     devc->pwm0_en   = 0;
     devc->pwm0_freq = 1000;
     devc->pwm0_duty = 50;
+    devc->pwm0_freq_set = (uint32_t)((double)PWM_CLK/devc->pwm0_freq);
+    devc->pwm0_duty_set = (uint32_t)((double)devc->pwm0_freq_set*devc->pwm0_duty/100);
     devc->pwm1_en   = 0;
     devc->pwm1_freq = 1000;
     devc->pwm1_duty = 50;
+    devc->pwm1_freq_set = (uint32_t)((double)PWM_CLK/devc->pwm1_freq);
+    devc->pwm1_duty_set = (uint32_t)((double)devc->pwm1_freq_set*devc->pwm1_duty/100);
     devc->is_loop = 0;
 
     devc->stream_buff_size = 16;
@@ -1470,6 +1474,7 @@ static int config_set(int id, GVariant *data, struct sr_dev_inst *sdi,
     }
     else if (id == SR_CONF_PWM0_EN) {
         devc->pwm0_en = g_variant_get_boolean(data);
+        usb_wr_reg(usb->devhdl,16<<2,(uint32_t)devc->pwm0_en);
     } 
     else if (id == SR_CONF_PWM0_FREQ) {
         ret = SR_OK;
@@ -1478,6 +1483,13 @@ static int config_set(int id, GVariant *data, struct sr_dev_inst *sdi,
         sr_dbg("pwm0_freq_set =  %d", devc->pwm0_freq_set);
         devc->pwm0_freq = (double)PWM_CLK/(double)devc->pwm0_freq_set;
 
+        devc->pwm0_duty_set = (uint32_t)((double)devc->pwm0_freq_set*devc->pwm0_duty/100);
+        devc->pwm0_duty = (double)devc->pwm0_duty_set*100/(double)devc->pwm0_freq_set;
+
+        usb_wr_reg(usb->devhdl,16<<2,0);
+        usb_wr_reg(usb->devhdl,17<<2,devc->pwm0_freq_set-1);
+        usb_wr_reg(usb->devhdl,18<<2,devc->pwm0_duty_set-1);
+        usb_wr_reg(usb->devhdl,16<<2,(uint32_t)devc->pwm0_en);
     }
     else if (id == SR_CONF_PWM0_DUTY) {
         ret = SR_OK;
@@ -1495,10 +1507,7 @@ static int config_set(int id, GVariant *data, struct sr_dev_inst *sdi,
     }
     else if (id == SR_CONF_PWM1_EN) {
         devc->pwm1_en = g_variant_get_boolean(data);
-        usb_wr_reg(usb->devhdl,16<<2,(uint32_t)devc->pwm0_en);
-
-
-
+        usb_wr_reg(usb->devhdl,19<<2,(uint32_t)devc->pwm1_en);
     } 
     else if (id == SR_CONF_PWM1_FREQ) {
         ret = SR_OK;
@@ -1506,6 +1515,14 @@ static int config_set(int id, GVariant *data, struct sr_dev_inst *sdi,
         devc->pwm1_freq_set = (uint32_t)((double)PWM_CLK/devc->pwm1_freq);
         sr_dbg("pwm1_freq_set =  %d", devc->pwm1_freq_set);
         devc->pwm1_freq = (double)PWM_CLK/(double)devc->pwm1_freq_set;
+
+        devc->pwm1_duty_set = (uint32_t)((double)devc->pwm1_freq_set*devc->pwm1_duty/100);
+        devc->pwm1_duty = (double)devc->pwm1_duty_set*100/(double)devc->pwm1_freq_set;
+
+        usb_wr_reg(usb->devhdl,19<<2,0);
+        usb_wr_reg(usb->devhdl,20<<2,devc->pwm1_freq_set-1);
+        usb_wr_reg(usb->devhdl,21<<2,devc->pwm1_duty_set-1);
+        usb_wr_reg(usb->devhdl,19<<2,(uint32_t)devc->pwm1_en);
     }
     else if (id == SR_CONF_PWM1_DUTY) {
         ret = SR_OK;

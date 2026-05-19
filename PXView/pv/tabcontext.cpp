@@ -97,6 +97,11 @@ void TabContext::activate()
                 const_cast<sr_channel*>(s->probe())->enabled = s->enabled();
             }
         }
+    } else if (_session->have_view_data()) {
+        // Document has no data yet, but session has data.
+        // Bind signals to session data instead of clearing them,
+        // so waveforms remain visible after capture ends.
+        _view->set_signal_data_from_source(_session);
     } else {
         dsv_info("TabContext::activate() no data, clearing signal data bindings");
         _view->clear_signal_data();

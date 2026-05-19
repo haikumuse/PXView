@@ -1,8 +1,9 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
+
 
 enum cec_state {
     WAIT_START,
@@ -35,18 +36,18 @@ enum cec_pulse {
 #define CEC_CH 0
 #define MAX_CMD_BYTES 32
 
-#define START_LOW_MIN   3.5
-#define START_LOW_MAX   3.9
+#define START_LOW_MIN 3.5
+#define START_LOW_MAX 3.9
 #define START_TOTAL_MIN 4.3
 #define START_TOTAL_MAX 4.7
-#define ZERO_LOW_MIN    1.3
-#define ZERO_LOW_MAX    1.7
-#define ZERO_TOTAL_MIN  2.05
-#define ZERO_TOTAL_MAX  2.75
-#define ONE_LOW_MIN     0.4
-#define ONE_LOW_MAX     0.8
-#define ONE_TOTAL_MIN   2.05
-#define ONE_TOTAL_MAX   2.75
+#define ZERO_LOW_MIN 1.3
+#define ZERO_LOW_MAX 1.7
+#define ZERO_TOTAL_MIN 2.05
+#define ZERO_TOTAL_MAX 2.75
+#define ONE_LOW_MIN 0.4
+#define ONE_LOW_MAX 0.8
+#define ONE_TOTAL_MIN 2.05
+#define ONE_TOTAL_MAX 2.75
 
 typedef struct {
     enum cec_state state;
@@ -73,113 +74,127 @@ typedef struct {
 } cec_priv;
 
 static struct srd_channel cec_channels[] = {
-    {"cec", "CEC", "CEC bus data", 0, SRD_CHANNEL_SDATA, "dec_cec_chan_cec"},
+    { "cec", "CEC", "CEC bus data", 0, SRD_CHANNEL_SDATA, "dec_cec_chan_cec" },
 };
 
-static const char *cec_ann_labels[][3] = {
-    {"", "st", "Start"},
-    {"", "eom-0", "End of message"},
-    {"", "eom-1", "Message continued"},
-    {"", "nack", "ACK not set"},
-    {"", "ack", "ACK set"},
-    {"", "bits", "Bits"},
-    {"", "bytes", "Bytes"},
-    {"", "frames", "Frames"},
-    {"", "sections", "Sections"},
-    {"", "warnings", "Warnings"},
+static const char* cec_ann_labels[][3] = {
+    { "", "st", "Start" },
+    { "", "eom-0", "End of message" },
+    { "", "eom-1", "Message continued" },
+    { "", "nack", "ACK not set" },
+    { "", "ack", "ACK set" },
+    { "", "bits", "Bits" },
+    { "", "bytes", "Bytes" },
+    { "", "frames", "Frames" },
+    { "", "sections", "Sections" },
+    { "", "warnings", "Warnings" },
 };
 
-static const int cec_row_bits_classes[] = {ANN_START, ANN_EOM_0, ANN_EOM_1, ANN_NACK, ANN_ACK, ANN_BITS};
-static const int cec_row_bytes_classes[] = {ANN_BYTES};
-static const int cec_row_frames_classes[] = {ANN_FRAMES};
-static const int cec_row_sections_classes[] = {ANN_SECTIONS};
-static const int cec_row_warnings_classes[] = {ANN_WARN};
+static const int cec_row_bits_classes[] = { ANN_START, ANN_EOM_0, ANN_EOM_1, ANN_NACK, ANN_ACK, ANN_BITS };
+static const int cec_row_bytes_classes[] = { ANN_BYTES };
+static const int cec_row_frames_classes[] = { ANN_FRAMES };
+static const int cec_row_sections_classes[] = { ANN_SECTIONS };
+static const int cec_row_warnings_classes[] = { ANN_WARN };
 
 static const struct srd_c_ann_row cec_ann_rows[] = {
-    {"bits", "Bits", cec_row_bits_classes, 6},
-    {"bytes", "Bytes", cec_row_bytes_classes, 1},
-    {"frames", "Frames", cec_row_frames_classes, 1},
-    {"sections", "Sections", cec_row_sections_classes, 1},
-    {"warnings", "Warnings", cec_row_warnings_classes, 1},
+    { "bits", "Bits", cec_row_bits_classes, 6 },
+    { "bytes", "Bytes", cec_row_bytes_classes, 1 },
+    { "frames", "Frames", cec_row_frames_classes, 1 },
+    { "sections", "Sections", cec_row_sections_classes, 1 },
+    { "warnings", "Warnings", cec_row_warnings_classes, 1 },
 };
 
-static const char *cec_inputs[] = {"logic", NULL};
-static const char *cec_outputs[] = {NULL};
-static const char *cec_tags[] = {"Display", "PC", NULL};
+static const char* cec_inputs[] = { "logic", NULL };
+static const char* cec_outputs[] = { NULL };
+static const char* cec_tags[] = { "Display", "PC", NULL };
 
-static const char *logical_addresses[] = {
-    "TV", "Recording_1", "Recording_2", "Tuner_1",
-    "Playback_1", "AudioSystem", "Tuner2", "Tuner3",
-    "Playback_2", "Recording_3", "Tuner_4", "Playback_3",
-    "Backup_1", "Backup_2", "FreeUse",
+static const char* logical_addresses[] = {
+    "TV",
+    "Recording_1",
+    "Recording_2",
+    "Tuner_1",
+    "Playback_1",
+    "AudioSystem",
+    "Tuner2",
+    "Tuner3",
+    "Playback_2",
+    "Recording_3",
+    "Tuner_4",
+    "Playback_3",
+    "Backup_1",
+    "Backup_2",
+    "FreeUse",
 };
 
-static const struct { uint8_t code; const char *name; } cec_opcodes[] = {
-    {0x82, "ACTIVE_SOURCE"},
-    {0x04, "IMAGE_VIEW_ON"},
-    {0x0D, "TEXT_VIEW_ON"},
-    {0x9D, "INACTIVE_SOURCE"},
-    {0x85, "REQUEST_ACTIVE_SOURCE"},
-    {0x80, "ROUTING_CHANGE"},
-    {0x81, "ROUTING_INFORMATION"},
-    {0x86, "SET_STREAM_PATH"},
-    {0x36, "STANDBY"},
-    {0x0B, "RECORD_OFF"},
-    {0x09, "RECORD_ON"},
-    {0x0A, "RECORD_STATUS"},
-    {0x0F, "RECORD_TV_SCREEN"},
-    {0x33, "CLEAR_ANALOGUE_TIMER"},
-    {0x99, "CLEAR_DIGITAL_TIMER"},
-    {0xA1, "CLEAR_EXTERNAL_TIMER"},
-    {0x34, "SET_ANALOGUE_TIMER"},
-    {0x97, "SET_DIGITAL_TIMER"},
-    {0xA2, "SET_EXTERNAL_TIMER"},
-    {0x67, "SET_TIMER_PROGRAM_TITLE"},
-    {0x43, "TIMER_CLEARED_STATUS"},
-    {0x35, "TIMER_STATUS"},
-    {0x9E, "CEC_VERSION"},
-    {0x9F, "GET_CEC_VERSION"},
-    {0x83, "GIVE_PHYSICAL_ADDRESS"},
-    {0x91, "GET_MENU_LANGUAGE"},
-    {0x84, "REPORT_PHYSICAL_ADDRESS"},
-    {0x32, "SET_MENU_LANGUAGE"},
-    {0x42, "DECK_CONTROL"},
-    {0x1B, "DECK_STATUS"},
-    {0x1A, "GIVE_DECK_STATUS"},
-    {0x41, "PLAY"},
-    {0x08, "GIVE_TUNER_DEVICE_STATUS"},
-    {0x92, "SELECT_ANALOGUE_SERVICE"},
-    {0x93, "SELECT_DIGITAL_SERVICE"},
-    {0x07, "TUNER_DEVICE_STATUS"},
-    {0x06, "TUNER_STEP_DECREMENT"},
-    {0x05, "TUNER_STEP_INCREMENT"},
-    {0x87, "DEVICE_VENDOR_ID"},
-    {0x8C, "GIVE_DEVICE_VENDOR_ID"},
-    {0x89, "VENDOR_COMMAND"},
-    {0xA0, "VENDOR_COMMAND_WITH_ID"},
-    {0x8A, "VENDOR_REMOTE_BUTTON_DOWN"},
-    {0x8B, "VENDOR_REMOTE_BUTTON_UP"},
-    {0x64, "SET_OSD_STRING"},
-    {0x46, "GIVE_OSD_NAME"},
-    {0x47, "SET_OSD_NAME"},
-    {0x8D, "MENU_REQUEST"},
-    {0x8E, "MENU_STATUS"},
-    {0x44, "USER_CONTROL_PRESSED"},
-    {0x45, "USER_CONTROL_RELEASE"},
-    {0x8F, "GIVE_DEVICE_POWER_STATUS"},
-    {0x90, "REPORT_POWER_STATUS"},
-    {0x00, "FEATURE_ABORT"},
-    {0xFF, "ABORT"},
-    {0x71, "GIVE_AUDIO_STATUS"},
-    {0x7D, "GIVE_SYSTEM_AUDIO_MODE_STATUS"},
-    {0x7A, "REPORT_AUDIO_STATUS"},
-    {0x72, "SET_SYSTEM_AUDIO_MODE"},
-    {0x70, "SYSTEM_AUDIO_MODE_REQUEST"},
-    {0x7E, "SYSTEM_AUDIO_MODE_STATUS"},
-    {0x9A, "SET_AUDIO_RATE"},
+static const struct {
+    uint8_t code;
+    const char* name;
+} cec_opcodes[] = {
+    { 0x82, "ACTIVE_SOURCE" },
+    { 0x04, "IMAGE_VIEW_ON" },
+    { 0x0D, "TEXT_VIEW_ON" },
+    { 0x9D, "INACTIVE_SOURCE" },
+    { 0x85, "REQUEST_ACTIVE_SOURCE" },
+    { 0x80, "ROUTING_CHANGE" },
+    { 0x81, "ROUTING_INFORMATION" },
+    { 0x86, "SET_STREAM_PATH" },
+    { 0x36, "STANDBY" },
+    { 0x0B, "RECORD_OFF" },
+    { 0x09, "RECORD_ON" },
+    { 0x0A, "RECORD_STATUS" },
+    { 0x0F, "RECORD_TV_SCREEN" },
+    { 0x33, "CLEAR_ANALOGUE_TIMER" },
+    { 0x99, "CLEAR_DIGITAL_TIMER" },
+    { 0xA1, "CLEAR_EXTERNAL_TIMER" },
+    { 0x34, "SET_ANALOGUE_TIMER" },
+    { 0x97, "SET_DIGITAL_TIMER" },
+    { 0xA2, "SET_EXTERNAL_TIMER" },
+    { 0x67, "SET_TIMER_PROGRAM_TITLE" },
+    { 0x43, "TIMER_CLEARED_STATUS" },
+    { 0x35, "TIMER_STATUS" },
+    { 0x9E, "CEC_VERSION" },
+    { 0x9F, "GET_CEC_VERSION" },
+    { 0x83, "GIVE_PHYSICAL_ADDRESS" },
+    { 0x91, "GET_MENU_LANGUAGE" },
+    { 0x84, "REPORT_PHYSICAL_ADDRESS" },
+    { 0x32, "SET_MENU_LANGUAGE" },
+    { 0x42, "DECK_CONTROL" },
+    { 0x1B, "DECK_STATUS" },
+    { 0x1A, "GIVE_DECK_STATUS" },
+    { 0x41, "PLAY" },
+    { 0x08, "GIVE_TUNER_DEVICE_STATUS" },
+    { 0x92, "SELECT_ANALOGUE_SERVICE" },
+    { 0x93, "SELECT_DIGITAL_SERVICE" },
+    { 0x07, "TUNER_DEVICE_STATUS" },
+    { 0x06, "TUNER_STEP_DECREMENT" },
+    { 0x05, "TUNER_STEP_INCREMENT" },
+    { 0x87, "DEVICE_VENDOR_ID" },
+    { 0x8C, "GIVE_DEVICE_VENDOR_ID" },
+    { 0x89, "VENDOR_COMMAND" },
+    { 0xA0, "VENDOR_COMMAND_WITH_ID" },
+    { 0x8A, "VENDOR_REMOTE_BUTTON_DOWN" },
+    { 0x8B, "VENDOR_REMOTE_BUTTON_UP" },
+    { 0x64, "SET_OSD_STRING" },
+    { 0x46, "GIVE_OSD_NAME" },
+    { 0x47, "SET_OSD_NAME" },
+    { 0x8D, "MENU_REQUEST" },
+    { 0x8E, "MENU_STATUS" },
+    { 0x44, "USER_CONTROL_PRESSED" },
+    { 0x45, "USER_CONTROL_RELEASE" },
+    { 0x8F, "GIVE_DEVICE_POWER_STATUS" },
+    { 0x90, "REPORT_POWER_STATUS" },
+    { 0x00, "FEATURE_ABORT" },
+    { 0xFF, "ABORT" },
+    { 0x71, "GIVE_AUDIO_STATUS" },
+    { 0x7D, "GIVE_SYSTEM_AUDIO_MODE_STATUS" },
+    { 0x7A, "REPORT_AUDIO_STATUS" },
+    { 0x72, "SET_SYSTEM_AUDIO_MODE" },
+    { 0x70, "SYSTEM_AUDIO_MODE_REQUEST" },
+    { 0x7E, "SYSTEM_AUDIO_MODE_STATUS" },
+    { 0x9A, "SET_AUDIO_RATE" },
 };
 
-static const char *resolve_logical_address(int id, int is_initiator)
+static const char* resolve_logical_address(int id, int is_initiator)
 {
     if (id < 0 || id > 0x0F)
         return "Invalid";
@@ -188,7 +203,7 @@ static const char *resolve_logical_address(int id, int is_initiator)
     return logical_addresses[id];
 }
 
-static const char *lookup_opcode(uint8_t code)
+static const char* lookup_opcode(uint8_t code)
 {
     int i;
     for (i = 0; i < (int)(sizeof(cec_opcodes) / sizeof(cec_opcodes[0])); i++) {
@@ -198,7 +213,7 @@ static const char *lookup_opcode(uint8_t code)
     return "Invalid";
 }
 
-static void reset_frame_vars(cec_priv *s)
+static void reset_frame_vars(cec_priv* s)
 {
     s->eom = 0;
     s->bit_count = 0;
@@ -211,7 +226,7 @@ static void reset_frame_vars(cec_priv *s)
     s->cmd_bytes_count = 0;
 }
 
-static void handle_frame(struct srd_decoder_inst *di, cec_priv *s, int is_nack)
+static void handle_frame(struct srd_decoder_inst* di, cec_priv* s, int is_nack)
 {
     char hex_str[256];
     char sec_str[1024];
@@ -260,7 +275,7 @@ static void handle_frame(struct srd_decoder_inst *di, cec_priv *s, int is_nack)
     C_ANN_PUT(di, s->frame_start, s->frame_end, s->out_ann, ANN_SECTIONS, sec_str);
 }
 
-static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
+static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
 {
     double zero_time = ((double)(s->rise - s->fall_start) / (double)s->samplerate) * 1000.0;
     double total_time = ((double)(s->fall_end - s->fall_start) / (double)s->samplerate) * 1000.0;
@@ -277,19 +292,19 @@ static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
     if (pulse == PULSE_INVALID) {
         s->state = WAIT_START;
         C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
-                  "Invalid pulse: Wrong timing");
+            "Invalid pulse: Wrong timing");
         return;
     }
 
     if (s->state == WAIT_START && pulse != PULSE_START) {
         C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
-                  "Expected START: BIT found");
+            "Expected START: BIT found");
         return;
     }
 
     if ((s->state == WAIT_ACK || s->state == WAIT_EOM) && pulse == PULSE_START) {
         C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
-                  "Expected BIT: START received)");
+            "Expected BIT: START received)");
         s->state = WAIT_START;
     }
 
@@ -297,7 +312,7 @@ static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
         double total_min = (pulse == PULSE_ZERO) ? ZERO_TOTAL_MIN : ONE_TOTAL_MIN;
         if (total_time < total_min) {
             C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
-                      "ACK pulse below minimun time");
+                "ACK pulse below minimun time");
             s->state = WAIT_START;
             return;
         }
@@ -308,7 +323,7 @@ static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
             handle_frame(di, s, s->is_nack);
         } else {
             C_ANN_PUT(di, s->frame_start, s->fall_end, s->out_ann, ANN_WARN,
-                      "ERROR: Incomplete byte received");
+                "ERROR: Incomplete byte received");
         }
         s->state = WAIT_START;
     }
@@ -318,7 +333,7 @@ static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
         double total_max = (pulse == PULSE_ZERO) ? ZERO_TOTAL_MAX : ONE_TOTAL_MAX;
         if (total_time < total_min || total_time > total_max) {
             C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
-                      "Bit pulse exceeds total pulse timespan");
+                "Bit pulse exceeds total pulse timespan");
             pulse = PULSE_INVALID;
             s->state = WAIT_START;
             return;
@@ -403,41 +418,54 @@ static void cec_process(struct srd_decoder_inst *di, cec_priv *s)
         }
         break;
     }
-
     }
 }
 
-static void cec_reset(struct srd_decoder_inst *di)
+static void cec_metadata(struct srd_decoder_inst* di, int key, uint64_t value)
+{
+    cec_priv* s = (cec_priv*)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE) {
+        s->samplerate = value;
+        s->max_ack_len_samples = (uint64_t)((4.1 / 1000.0) * (double)value + 0.5);
+    }
+}
+
+static void cec_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(cec_priv)));
     }
-    cec_priv *s = (cec_priv *)c_decoder_get_private(di);
+    cec_priv* s = (cec_priv*)c_decoder_get_private(di);
     memset(s, 0, sizeof(cec_priv));
     s->state = WAIT_START;
 }
 
-static void cec_start(struct srd_decoder_inst *di)
+static void cec_start(struct srd_decoder_inst* di)
 {
-    cec_priv *s = (cec_priv *)c_decoder_get_private(di);
+    cec_priv* s = (cec_priv*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "cec");
     s->samplerate = c_decoder_get_samplerate(di);
     if (s->samplerate > 0)
         s->max_ack_len_samples = (uint64_t)((4.1 / 1000.0) * (double)s->samplerate + 0.5);
 }
 
-static void cec_decode(struct srd_decoder_inst *di)
+static void cec_decode(struct srd_decoder_inst* di)
 {
-    cec_priv *s = (cec_priv *)c_decoder_get_private(di);
+    cec_priv* s = (cec_priv*)c_decoder_get_private(di);
     uint64_t samplenum = 0;
     uint64_t matched;
     int ret;
 
+    if (!s->samplerate) {
+        s->samplerate = c_decoder_get_samplerate(di);
+        if (s->samplerate > 0)
+            s->max_ack_len_samples = (uint64_t)((4.1 / 1000.0) * (double)s->samplerate + 0.5);
+    }
     if (s->samplerate == 0)
         return;
 
     {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         c_cond_fall(cb, CEC_CH);
         ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
@@ -447,7 +475,7 @@ static void cec_decode(struct srd_decoder_inst *di)
     }
 
     while (1) {
-        srd_cond_builder *cb;
+        srd_cond_builder* cb;
         uint64_t wait_matched;
 
         {
@@ -491,9 +519,9 @@ static void cec_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void cec_destroy(struct srd_decoder_inst *di)
+static void cec_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -524,13 +552,14 @@ struct srd_c_decoder cec_c_decoder = {
     .num_binary = 0,
     .tags = cec_tags,
     .num_tags = 2,
+    .metadata = cec_metadata,
     .reset = cec_reset,
     .start = cec_start,
     .decode = cec_decode,
     .destroy = cec_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     return &cec_c_decoder;
 }

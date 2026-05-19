@@ -1,9 +1,10 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
+
 
 enum dmx_ann {
     ANN_BIT = 0,
@@ -43,7 +44,7 @@ struct dmx_priv {
 };
 
 static struct srd_channel dmx_channels[] = {
-    {"dmx", "DMX data", "Any DMX data line", 0, SRD_CHANNEL_SDATA, "dec_dmx512_chan_dmx"},
+    { "dmx", "DMX data", "Any DMX data line", 0, SRD_CHANNEL_SDATA, "dec_dmx512_chan_dmx" },
 };
 
 static struct srd_decoder_option dmx_options[] = {
@@ -56,41 +57,53 @@ static struct srd_decoder_option dmx_options[] = {
     },
 };
 
-static const char *dmx_ann_labels[][3] = {
-    {"", "bit", "Bit"},
-    {"", "break", "Break"},
-    {"", "mab", "Mark after break"},
-    {"", "startbit", "Start bit"},
-    {"", "stopbits", "Stop bit"},
-    {"", "startcode", "Start code"},
-    {"", "channel", "Channel"},
-    {"", "interframe", "Interframe"},
-    {"", "interpacket", "Interpacket"},
-    {"", "data", "Data"},
-    {"", "error", "Error"},
+static const char* dmx_ann_labels[][3] = {
+    { "", "bit", "Bit" },
+    { "", "break", "Break" },
+    { "", "mab", "Mark after break" },
+    { "", "startbit", "Start bit" },
+    { "", "stopbits", "Stop bit" },
+    { "", "startcode", "Start code" },
+    { "", "channel", "Channel" },
+    { "", "interframe", "Interframe" },
+    { "", "interpacket", "Interpacket" },
+    { "", "data", "Data" },
+    { "", "error", "Error" },
 };
 
-static const int dmx_row_name_classes[] = {ANN_BREAK, ANN_MAB, ANN_STARTCODE, ANN_CHANNEL, ANN_INTERFRAME, ANN_INTERPACKET};
-static const int dmx_row_data_classes[] = {ANN_DATA};
-static const int dmx_row_bits_classes[] = {ANN_BIT, ANN_STARTBIT, ANN_STOPBIT};
-static const int dmx_row_errors_classes[] = {ANN_ERROR};
+static const int dmx_row_name_classes[] = { ANN_BREAK, ANN_MAB, ANN_STARTCODE, ANN_CHANNEL, ANN_INTERFRAME, ANN_INTERPACKET };
+static const int dmx_row_data_classes[] = { ANN_DATA };
+static const int dmx_row_bits_classes[] = { ANN_BIT, ANN_STARTBIT, ANN_STOPBIT };
+static const int dmx_row_errors_classes[] = { ANN_ERROR };
 static const struct srd_c_ann_row dmx_ann_rows[] = {
-    {"name", "Logical", dmx_row_name_classes, 6},
-    {"data", "Data", dmx_row_data_classes, 1},
-    {"bits", "Bits", dmx_row_bits_classes, 3},
-    {"errors", "Errors", dmx_row_errors_classes, 1},
+    { "name", "Logical", dmx_row_name_classes, 6 },
+    { "data", "Data", dmx_row_data_classes, 1 },
+    { "bits", "Bits", dmx_row_bits_classes, 3 },
+    { "errors", "Errors", dmx_row_errors_classes, 1 },
 };
 
-static const char *dmx_inputs[] = {"logic", NULL};
-static const char *dmx_outputs[] = {NULL};
-static const char *dmx_tags[] = {"Embedded/industrial", "Lighting", NULL};
+static const char* dmx_inputs[] = { "logic", NULL };
+static const char* dmx_outputs[] = { NULL };
+static const char* dmx_tags[] = { "Embedded/industrial", "Lighting", NULL };
 
-static void dmx_reset(struct srd_decoder_inst *di)
+static void dmx_metadata(struct srd_decoder_inst* di, int key, uint64_t value)
+{
+    struct dmx_priv* s = (struct dmx_priv*)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE) {
+        s->samplerate = value;
+        s->sample_usec = 1000000.0 / (double)value;
+        s->skip_per_bit = (int)(4.0 / s->sample_usec);
+        if (s->skip_per_bit < 1)
+            s->skip_per_bit = 1;
+    }
+}
+
+static void dmx_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(struct dmx_priv)));
     }
-    struct dmx_priv *s = (struct dmx_priv *)c_decoder_get_private(di);
+    struct dmx_priv* s = (struct dmx_priv*)c_decoder_get_private(di);
     memset(s, 0, sizeof(struct dmx_priv));
     s->state = FIND_BREAK;
     s->samplerate = 0;
@@ -102,13 +115,13 @@ static void dmx_reset(struct srd_decoder_inst *di)
     s->byte_val = 0;
 }
 
-static void dmx_start(struct srd_decoder_inst *di)
+static void dmx_start(struct srd_decoder_inst* di)
 {
-    struct dmx_priv *s = (struct dmx_priv *)c_decoder_get_private(di);
+    struct dmx_priv* s = (struct dmx_priv*)c_decoder_get_private(di);
 
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "dmx512");
 
-    const char *invert_str = c_decoder_get_option_string(di, "invert", "no");
+    const char* invert_str = c_decoder_get_option_string(di, "invert", "no");
     s->invert = (strcmp(invert_str, "yes") == 0) ? 1 : 0;
 
     s->samplerate = c_decoder_get_samplerate(di);
@@ -120,18 +133,27 @@ static void dmx_start(struct srd_decoder_inst *di)
     }
 }
 
-static void dmx_decode(struct srd_decoder_inst *di)
+static void dmx_decode(struct srd_decoder_inst* di)
 {
-    struct dmx_priv *s = (struct dmx_priv *)c_decoder_get_private(di);
+    struct dmx_priv* s = (struct dmx_priv*)c_decoder_get_private(di);
     uint64_t samplenum = 0;
     uint64_t matched;
     int ret;
 
+    if (!s->samplerate) {
+        s->samplerate = c_decoder_get_samplerate(di);
+        if (s->samplerate > 0) {
+            s->sample_usec = 1000000.0 / (double)s->samplerate;
+            s->skip_per_bit = (int)(4.0 / s->sample_usec);
+            if (s->skip_per_bit < 1)
+                s->skip_per_bit = 1;
+        }
+    }
     if (s->samplerate == 0 || s->skip_per_bit == 0)
         return;
 
     {
-        srd_cond_builder *b = c_cond_new();
+        srd_cond_builder* b = c_cond_new();
         if (s->invert)
             c_cond_high(b, DMX_CH);
         else
@@ -147,7 +169,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
         switch (s->state) {
 
         case FIND_BREAK: {
-            srd_cond_builder *b = c_cond_new();
+            srd_cond_builder* b = c_cond_new();
             if (s->invert)
                 c_cond_fall(b, DMX_CH);
             else
@@ -165,7 +187,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
                     s->channel = 0;
                 } else if (runlen >= 1000000.0) {
                     C_ANN_PUT(di, s->run_start, samplenum, s->out_ann, ANN_ERROR, "Invalid break length");
-                    srd_cond_builder *b2 = c_cond_new();
+                    srd_cond_builder* b2 = c_cond_new();
                     if (s->invert)
                         c_cond_high(b2, DMX_CH);
                     else
@@ -176,7 +198,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
                         return;
                     s->run_start = samplenum;
                 } else {
-                    srd_cond_builder *b2 = c_cond_new();
+                    srd_cond_builder* b2 = c_cond_new();
                     if (s->invert)
                         c_cond_high(b2, DMX_CH);
                     else
@@ -194,7 +216,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
         case MARK_MAB: {
             s->run_start = samplenum;
             {
-                srd_cond_builder *b = c_cond_new();
+                srd_cond_builder* b = c_cond_new();
                 if (s->invert)
                     c_cond_rise(b, DMX_CH);
                 else
@@ -225,7 +247,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
 
                 {
                     uint64_t sample_point = s->run_start + (uint64_t)i * s->skip_per_bit + s->skip_per_bit / 2;
-                    srd_cond_builder *b = c_cond_new();
+                    srd_cond_builder* b = c_cond_new();
                     uint64_t skip_count = 0;
                     if (sample_point > samplenum)
                         skip_count = sample_point - samplenum;
@@ -261,7 +283,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
                 if (i < 10) {
                     uint64_t remaining = bit_end - samplenum;
                     if (remaining > 0) {
-                        srd_cond_builder *b2 = c_cond_new();
+                        srd_cond_builder* b2 = c_cond_new();
                         c_cond_skip(b2, remaining);
                         ret = c_cond_wait(b2, di, &samplenum, &matched);
                         c_cond_free(b2);
@@ -324,7 +346,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
         case MARK_IFT: {
             s->run_start = samplenum;
             if (s->channel > 65535) {
-                srd_cond_builder *b = c_cond_new();
+                srd_cond_builder* b = c_cond_new();
                 if (s->invert)
                     c_cond_high(b, DMX_CH);
                 else
@@ -340,7 +362,7 @@ static void dmx_decode(struct srd_decoder_inst *di)
                 int dmx_val = c_decoder_get_pin(di, DMX_CH, samplenum);
                 int line_val = s->invert ? (!dmx_val) : dmx_val;
                 if (line_val) {
-                    srd_cond_builder *b = c_cond_new();
+                    srd_cond_builder* b = c_cond_new();
                     if (s->invert)
                         c_cond_high(b, DMX_CH);
                     else
@@ -358,14 +380,13 @@ static void dmx_decode(struct srd_decoder_inst *di)
             }
             break;
         }
-
         }
     }
 }
 
-static void dmx_destroy(struct srd_decoder_inst *di)
+static void dmx_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -396,19 +417,20 @@ struct srd_c_decoder dmx512_c_decoder = {
     .num_binary = 0,
     .tags = dmx_tags,
     .num_tags = 2,
+    .metadata = dmx_metadata,
     .reset = dmx_reset,
     .start = dmx_start,
     .decode = dmx_decode,
     .destroy = dmx_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
-    GVariant *vals[] = {
+    GVariant* vals[] = {
         g_variant_new_string("yes"),
         g_variant_new_string("no"),
     };
-    GSList *val_list = NULL;
+    GSList* val_list = NULL;
     for (int i = 0; i < 2; i++)
         val_list = g_slist_append(val_list, vals[i]);
     dmx_options[0].def = g_variant_new_string("no");

@@ -150,6 +150,16 @@ static void lin_reset(struct srd_decoder_inst *di)
     priv->out_ann = 0;
 }
 
+static void lin_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
+{
+    struct lin_priv *priv = (struct lin_priv *)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE) {
+        priv->samplerate = value;
+        if (priv->samplerate > 0 && priv->baudrate > 0)
+            priv->bit_time = (int)(priv->samplerate / (uint64_t)priv->baudrate);
+    }
+}
+
 static void lin_start(struct srd_decoder_inst *di)
 {
     struct lin_priv *priv = (struct lin_priv *)c_decoder_get_private(di);
@@ -169,6 +179,11 @@ static void lin_decode(struct srd_decoder_inst *di)
     srd_cond_builder *cb;
     int ret;
 
+    if (!priv->samplerate) {
+        priv->samplerate = c_decoder_get_samplerate(di);
+        if (priv->samplerate > 0 && priv->baudrate > 0)
+            priv->bit_time = (int)(priv->samplerate / (uint64_t)priv->baudrate);
+    }
     if (priv->samplerate == 0 || priv->baudrate == 0 || priv->bit_time == 0)
         return;
 
@@ -371,6 +386,7 @@ static struct srd_c_decoder lin_c_decoder = {
     .num_binary = 0,
     .tags = lin_tags,
     .num_tags = 1,
+    .metadata = lin_metadata,
     .reset = lin_reset,
     .start = lin_start,
     .decode = lin_decode,

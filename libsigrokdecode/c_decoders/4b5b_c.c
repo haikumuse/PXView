@@ -105,6 +105,14 @@ static const char *inputs[] = {"logic", NULL};
 static const char *outputs[] = {"4b5b", NULL};
 static const char *tags[] = {"Encoding", NULL};
 
+static void _4b5b_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
+{
+    struct priv *s = (struct priv *)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE) {
+        s->samplerate = value;
+    }
+}
+
 static void reset(struct srd_decoder_inst *di)
 {
     if (!c_decoder_get_private(di))
@@ -303,6 +311,7 @@ struct srd_c_decoder fourb5b_c_decoder = {
     .reset = reset,
     .start = start,
     .decode = decode,
+    .metadata = _4b5b_metadata,
     .destroy = destroy,
 };
 

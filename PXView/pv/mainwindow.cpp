@@ -2262,9 +2262,15 @@ void MainWindow::on_frame_ended() {
   _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
   pv::TabContext *ctx = current_context();
   if (ctx && ctx->document()) {
-    // Only copy if this document is not the active document
-    // (LOGIC mode already copies in DSV_MSG_REV_END_PACKET handler)
+    // Copy data to document so activate() can bind signal data from it.
+    // - If document is not the active document, always copy.
+    // - If document is the active document and no background copy is in
+    //   progress (LOGIC+decoders case), also copy here synchronously.
+    // - If a background copy is already running, skip to avoid double copy;
+    //   DSV_MSG_COPY_TO_DOC_DONE will handle reactivation later.
     if (_session->get_active_document() != ctx->document()) {
+      _session->copy_data_to_document(ctx->document());
+    } else if (!_session->is_copy_in_progress()) {
       _session->copy_data_to_document(ctx->document());
     }
     ctx->document()->save_signal_config(_session->get_device());
@@ -2354,7 +2360,18 @@ void MainWindow::check_usb_device_speed() {
 
 void MainWindow::trigger_message(int msg) { _event.trigger_message(msg); }
 
-void MainWindow::on_trigger_message(int msg) { _session->broadcast_msg(msg); }
+void MainWindow::on_trigger_message(int msg) {
+  _session->broadcast_msg(msg);
+
+  // After background copy_data_to_document completes, rebind signal data
+  // from session to document so waveforms use the document's own data copy.
+  if (msg == DSV_MSG_COPY_TO_DOC_DONE) {
+    pv::TabContext *ctx = current_context();
+    if (ctx && ctx->document() && ctx->document()->has_data()) {
+      current_view()->set_data_document(ctx->document());
+    }
+  }
+}
 
 void MainWindow::reset_all_view() {
   _sampling_bar->reload();
