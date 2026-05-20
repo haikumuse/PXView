@@ -350,12 +350,12 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
     // 2. 针对极高密度的微小标注（它们最终只会画成一根竖线）
     // 如果这根竖线落在我们刚刚画过的区域内（在同一个物理像素列），直接跳过！
     // 这样不仅能把百万次 drawLine 削减到屏幕像素宽度（~1920次），还绝对不会产生视觉断层和缝隙！
-    if (start + 2.0 > end && start <= last_x) {
+    if (start + 2.0 > end && (int)start <= (int)last_x) {
         return;
     }
 
     if (start + 2.0 > end) {
-        last_x = max((double)end, start + 1.0);
+        last_x = start;
     } else {
         last_x = end;
     }
