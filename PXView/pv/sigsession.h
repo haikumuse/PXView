@@ -347,6 +347,7 @@ public:
 
   inline bool have_view_data() { return get_signal_snapshot()->have_data(); }
   inline bool is_copy_in_progress() const { return _copy_in_progress; }
+  inline data::SessionDocument *get_capture_owner_document() const { return _capture_owner_document; }
 
   void on_load_config_end();
   void init_signals();
@@ -580,6 +581,7 @@ private:
   std::thread *_signal_invert_thread;
   bool _signal_invert_running;
   volatile bool _copy_in_progress;
+  data::SessionDocument *_capture_owner_document;
 
   data::DiskWriteThread *_disk_write_thread;
   data::DiskBufferManager *_disk_buffer_mgr;

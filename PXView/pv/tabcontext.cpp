@@ -97,10 +97,12 @@ void TabContext::activate()
                 const_cast<sr_channel*>(s->probe())->enabled = s->enabled();
             }
         }
-    } else if (_session->have_view_data()) {
+    } else if (_session->have_view_data() &&
+               (_session->is_working() || _session->is_copy_in_progress()) &&
+               _session->get_capture_owner_document() == _document) {
         // Document has no data yet, but session has data.
         // Bind signals to session data instead of clearing them,
-        // so waveforms remain visible after capture ends.
+        // so waveforms remain visible during active capture or background copy.
         _view->set_signal_data_from_source(_session);
     } else {
         dsv_info("TabContext::activate() no data, clearing signal data bindings");

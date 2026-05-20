@@ -130,6 +130,7 @@ SigSession::SigSession() {
   _signal_invert_thread = nullptr;
   _signal_invert_running = false;
   _copy_in_progress = false;
+  _capture_owner_document = nullptr;
 
   _disk_write_thread = nullptr;
   _disk_buffer_mgr = nullptr;
@@ -684,6 +685,7 @@ bool SigSession::action_start_capture(bool instant) {
   if (exec_capture()) {
     _work_time_id++;
     _is_working = true;
+    _capture_owner_document = _active_document;
     _callback->trigger_message(DSV_MSG_START_COLLECT_WORK);
 
     // Start a timer, for able to refresh the view per (1000 / 30)ms.
@@ -832,6 +834,9 @@ bool SigSession::action_stop_capture() {
 
   if (!wait_upload) {
     _is_working = false;
+    if (!_copy_in_progress) {
+      _capture_owner_document = nullptr;
+    }
     _repeat_timer.Stop();
     _repeat_wait_prog_timer.Stop();
     _refresh_rt_timer.Stop();
@@ -2190,6 +2195,7 @@ void SigSession::OnMessage(int msg) {
           _callback->trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
         }).detach();
       } else {
+        _capture_owner_document = nullptr;
         for (auto de : decode_traces()) {
           de->decoder()->set_capture_end_flag(true);
         }
@@ -2205,6 +2211,7 @@ void SigSession::OnMessage(int msg) {
   case DSV_MSG_COPY_TO_DOC_DONE: {
     // Background copy_data_to_document has completed.
     // NOW we can safely start the decoders!
+    _capture_owner_document = nullptr;
     for (auto de : decode_traces()) {
       de->decoder()->set_capture_end_flag(true);
       de->frame_ended();
