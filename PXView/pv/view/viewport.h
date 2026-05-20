@@ -137,7 +137,7 @@ protected:
   void UpdateFont() override;
 
 private:
-  void doPaint();
+  void doPaint(const QRect &dirtyRect = QRect());
   void mousePressEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *event) override;
   void mouseReleaseEvent(QMouseEvent *event) override;

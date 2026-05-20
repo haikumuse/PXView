@@ -349,7 +349,7 @@ void Viewport::paintEvent(QPaintEvent *event) {
     }
   }
 
-  doPaint();
+  doPaint(event->rect());
 
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
@@ -358,7 +358,7 @@ void Viewport::paintEvent(QPaintEvent *event) {
 #endif
 }
 
-void Viewport::doPaint() {
+void Viewport::doPaint(const QRect &dirtyRect) {
   using pv::view::Signal;
 #ifndef NDEBUG
   QElapsedTimer timer;
@@ -368,6 +368,10 @@ void Viewport::doPaint() {
   QStyleOption o;
   o.initFrom(this);
   QPainter p(this);
+  // Ensure the dirty rect is enforced for optimization
+  if (dirtyRect.isValid()) {
+      p.setClipRect(dirtyRect);
+  }
   style()->drawPrimitive(QStyle::PE_Widget, &o, &p, this);
 
   QFont font = p.font();
@@ -632,6 +636,8 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 #ifndef NDEBUG
   QElapsedTimer timer;
   timer.start();
+  qint64 t_rebuild = 0, t_blit = 0, t_decode = 0, t_cursor = 0, t_xcursor = 0,
+         t_marker = 0, t_measure = 0;
 #endif
 
   std::vector<Trace *> traces;
@@ -639,16 +645,13 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
   std::list<int> _index_list;
 
   bool rebuilt = false;
-#ifndef NDEBUG
-  qint64 t_rebuild = 0;
-#endif
 
   if (_view.session().get_device()->get_work_mode() == LOGIC) {
     // Determine if view parameters changed (requires full logic signal rebuild)
-    bool view_params_changed = (_view.scale() != _curScale || 
-        _view.offset() != _curOffset ||
-        _view.get_signalHeight() != _curSignalHeight ||
-        _view.get_vOffset() != _curVOffset);
+    bool view_params_changed =
+        (_view.scale() != _curScale || _view.offset() != _curOffset ||
+         _view.get_signalHeight() != _curSignalHeight ||
+         _view.get_vOffset() != _curVOffset);
 
     if (view_params_changed || _need_update) {
       rebuilt = true;
@@ -697,18 +700,41 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
     }
 
     // 1. Blit the cached logic signal pixmap (cheap: just a memcpy)
+#ifndef NDEBUG
+    QElapsedTimer blitTimer;
+    blitTimer.start();
+#endif
     p.drawPixmap(0, 0, _pixmap);
+#ifndef NDEBUG
+    t_blit = blitTimer.elapsed();
+#endif
 
     // 2. Always paint decode traces directly on top (they change frequently
     //    but are very cheap to draw after LOD optimization)
+#ifndef NDEBUG
+    QElapsedTimer decodeTimer;
+    decodeTimer.start();
+#endif
     p.save();
     p.translate(0, -_view.get_vOffset());
-    for (auto t : traces) {
-      if (t->enabled() && t->signal_type() == SR_CHANNEL_DECODER) {
-        t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
+    
+    // Safely get the drawing bounds: use clip bounding rect if clipping is active,
+    // otherwise default to the full viewport width.
+    QRect clipRect = p.hasClipping() ? p.clipBoundingRect().toRect() : rect();
+    int draw_left = max(0, clipRect.left());
+    int draw_right = min(_view.get_view_width(), clipRect.right());
+    
+    if (draw_right >= draw_left) {
+      for (auto t : traces) {
+        if (t->enabled() && t->signal_type() == SR_CHANNEL_DECODER) {
+          t->paint_mid(p, draw_left, draw_right, fore, back);
+        }
       }
     }
     p.restore();
+#ifndef NDEBUG
+    t_decode = decodeTimer.elapsed();
+#endif
   } else {
     if (_view.scale() != _curScale || _view.offset() != _curOffset ||
         _view.get_signalHeight() != _curSignalHeight ||
@@ -755,15 +781,33 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       t_rebuild = rebuildTimer.elapsed();
 #endif
     }
+#ifndef NDEBUG
+    QElapsedTimer blitTimer;
+    blitTimer.start();
+#endif
     p.drawPixmap(0, 0, _pixmap);
+#ifndef NDEBUG
+    t_blit = blitTimer.elapsed();
+#endif
   }
 
   // plot cursors
+#ifndef NDEBUG
+  QElapsedTimer cursorTimer;
+  cursorTimer.start();
+#endif
   paintCursors(p);
+#ifndef NDEBUG
+  t_cursor = cursorTimer.elapsed();
+#endif
 
   const QRect xrect = _view.get_view_rect();
 
   if (_view.xcursors_shown() && _type == TIME_VIEW) {
+#ifndef NDEBUG
+    QElapsedTimer xcursorTimer;
+    xcursorTimer.start();
+#endif
     auto &xcursor_list = _view.get_xcursorList();
     auto i = xcursor_list.begin();
     int index = 0;
@@ -806,9 +850,16 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       i++;
       index++;
     }
+#ifndef NDEBUG
+    t_xcursor = xcursorTimer.elapsed();
+#endif
   }
 
   if (_type == TIME_VIEW) {
+#ifndef NDEBUG
+    QElapsedTimer markerTimer;
+    markerTimer.start();
+#endif
     if (_view.trig_cursor_shown()) {
       _view.get_trig_cursor()->paint(p, xrect, 0, false);
     }
@@ -821,6 +872,9 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       else
         _view.get_search_cursor()->paint(p, xrect, 0, -1);
     }
+#ifndef NDEBUG
+    t_marker = markerTimer.elapsed();
+#endif
 
     // plot zoom rect
     if (_action_type == LOGIC_ZOOM) {
@@ -830,7 +884,14 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
     }
 
     // plot measure arrow
+#ifndef NDEBUG
+    QElapsedTimer measureTimer;
+    measureTimer.start();
+#endif
     paintMeasure(p, fore, back);
+#ifndef NDEBUG
+    t_measure = measureTimer.elapsed();
+#endif
 
     // plot trigger information
     if (_view.session().get_device()->get_work_mode() == DSO &&
@@ -916,8 +977,10 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
   dsv_warn("[DIAG] Viewport::paintSignals took %lld ms, rebuilt: %d, "
-           "rebuild_time: %lld ms",
-           total, rebuilt ? 1 : 0, t_rebuild);
+           "rebuild_time: %lld ms, blit: %lld ms, decode: %lld ms, cursor: "
+           "%lld ms, xcursor: %lld ms, marker: %lld ms, measure: %lld ms",
+           total, rebuilt ? 1 : 0, t_rebuild, t_blit, t_decode, t_cursor,
+           t_xcursor, t_marker, t_measure);
 #endif
 }
 
