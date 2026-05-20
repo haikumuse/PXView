@@ -35,6 +35,7 @@
 #include <QFile>
 #include <QHBoxLayout>
 #include <QScrollBar>
+#include <QTextCursor>
 #include <QTextStream>
 #include <QUrl>
 #include <QtGlobal>
@@ -282,10 +283,32 @@ void LogDock::on_flush_buffer() {
     QScrollBar *sb = _log_view->verticalScrollBar();
     int saved_pos = sb->value();
     bool was_at_bottom = (saved_pos >= sb->maximum() - 4);
+
     QStringList lines = text.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-      _log_view->appendPlainText(line);
+
+    // Cap the number of lines per flush to keep UI responsive.
+    // Any overflow is pushed back to the buffer for next timer tick.
+    const int kMaxLinesPerFlush = 200;
+    if (lines.size() > kMaxLinesPerFlush) {
+      QStringList overflow = lines.mid(kMaxLinesPerFlush);
+      lines = lines.mid(0, kMaxLinesPerFlush);
+      // Put overflow back into buffer for next flush
+      QMutexLocker locker(&_log_mutex);
+      _log_buffer.prepend(overflow.join('\n') + '\n');
     }
+
+    // Batch insert using QTextCursor to avoid per-line document relayout.
+    // A single insertText call triggers ONE relayout instead of N.
+    if (!lines.isEmpty()) {
+      QTextCursor cursor = _log_view->textCursor();
+      cursor.movePosition(QTextCursor::End);
+      QString batch = lines.join('\n');
+      if (!_log_view->document()->isEmpty()) {
+        batch.prepend('\n');
+      }
+      cursor.insertText(batch);
+    }
+
     if (_auto_scroll || was_at_bottom) {
       sb->setValue(sb->maximum());
     } else {

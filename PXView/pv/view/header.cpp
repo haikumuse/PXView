@@ -335,7 +335,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
       if (t->signal_type() == SR_CHANNEL_LOGIC &&
           _view.session().is_working()) {
         // Disable set trigger from left pannel when capturing.
-        break;
+        continue;
       }
       if (t->mouse_press(width(), event->position().toPoint()))
         break;

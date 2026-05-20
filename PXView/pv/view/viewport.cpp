@@ -644,10 +644,13 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 #endif
 
   if (_view.session().get_device()->get_work_mode() == LOGIC) {
-    if (_view.scale() != _curScale || _view.offset() != _curOffset ||
+    // Determine if view parameters changed (requires full logic signal rebuild)
+    bool view_params_changed = (_view.scale() != _curScale || 
+        _view.offset() != _curOffset ||
         _view.get_signalHeight() != _curSignalHeight ||
-        _view.get_vOffset() != _curVOffset || _need_update) {
+        _view.get_vOffset() != _curVOffset);
 
+    if (view_params_changed || _need_update) {
       rebuilt = true;
 #ifndef NDEBUG
       QElapsedTimer rebuildTimer;
@@ -681,7 +684,8 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
                                                  t->get_view_rect().right(),
                                                  color, back, end_align_sample);
             bFirst = false;
-          } else {
+          } else if (t->signal_type() != SR_CHANNEL_DECODER) {
+            // Non-logic, non-decoder traces go into the cached pixmap
             t->paint_mid(dbp, 0, t->get_view_rect().right(), fore, back);
           }
         }
@@ -691,7 +695,20 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       t_rebuild = rebuildTimer.elapsed();
 #endif
     }
+
+    // 1. Blit the cached logic signal pixmap (cheap: just a memcpy)
     p.drawPixmap(0, 0, _pixmap);
+
+    // 2. Always paint decode traces directly on top (they change frequently
+    //    but are very cheap to draw after LOD optimization)
+    p.save();
+    p.translate(0, -_view.get_vOffset());
+    for (auto t : traces) {
+      if (t->enabled() && t->signal_type() == SR_CHANNEL_DECODER) {
+        t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
+      }
+    }
+    p.restore();
   } else {
     if (_view.scale() != _curScale || _view.offset() != _curOffset ||
         _view.get_signalHeight() != _curSignalHeight ||

@@ -29,6 +29,7 @@
 #include <vector>
 
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QPaintEvent>
 #include <QScrollArea>
 #include <QSizeF>
@@ -488,6 +489,7 @@ private:
   bool _back_ready;
   bool _destroying = false;
   DeviceAgent *_device_agent;
+  QElapsedTimer _data_updated_timer;
 };
 
 } // namespace view

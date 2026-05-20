@@ -101,6 +101,7 @@ Annotation::Annotation(const srd_proto_data *const pdata, DecoderStatus *status)
 
 		_status->m_bNumeric |= resItem->is_numeric;
 	}
+	_cached_rect_width = -1.0;
 }
 
 Annotation::Annotation()
@@ -108,10 +109,11 @@ Annotation::Annotation()
     _start_sample = 0;
     _end_sample = 0;
 	_resIndex = -1;
+	_cached_rect_width = -1.0;
 }
  
 Annotation::~Annotation()
-{     
+{
 }
   
 const std::vector<QString>& Annotation::annotations() const
@@ -183,7 +185,52 @@ bool Annotation::is_numberic()
 {
     AnnotationSourceItem *resItem = _status->m_resTable.GetItem(_resIndex);
 	return resItem->is_numeric;
-} 
+}
+
+QStaticText* Annotation::get_cached_text(const QString &text, const QFont &font) const
+{
+    if (_cached_text.text() != text || _cached_font != font) {
+        _cached_text.setText(text);
+        _cached_text.prepare(QTransform(), font);
+        _cached_font = font;
+    }
+    return &_cached_text;
+}
+
+QString Annotation::get_cached_best_annotation(double rect_width, const QFont &font, const QFontMetrics &fm) const
+{
+    if (_cached_rect_width == rect_width && _cached_width_font == font) {
+        return _cached_best_annotation;
+    }
+
+    _cached_rect_width = rect_width;
+    _cached_width_font = font;
+
+    const std::vector<QString> &ann_list = annotations();
+    if (ann_list.empty()) {
+        _cached_best_annotation = "";
+        return _cached_best_annotation;
+    }
+
+    // Try to find an annotation that will fit
+    QString best_annotation;
+    int best_width = 0;
+
+    for (auto &a : ann_list) {
+        const int w = fm.boundingRect(QRect(), 0, a).width();
+        if (w <= rect_width && w > best_width) {
+            best_annotation = a;
+            best_width = w;
+        }
+    }
+
+    if (best_annotation.isEmpty()) {
+        best_annotation = ann_list.back();
+    }
+
+    _cached_best_annotation = best_annotation;
+    return _cached_best_annotation;
+}
 
 } // namespace decode
 } // namespace data

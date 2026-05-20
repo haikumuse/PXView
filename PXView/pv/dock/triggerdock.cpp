@@ -313,6 +313,14 @@ void TriggerDock::device_updated()
     this->setEnabled(_session->is_loop_mode() == false);
 }
 
+void TriggerDock::select_simple_trigger()
+{
+    if (_simple_radioButton && !_simple_radioButton->isChecked()) {
+        _simple_radioButton->setChecked(true);
+        simple_trigger();
+    }
+}
+
 bool TriggerDock::commit_trigger()
 {
     // trigger position update
@@ -1014,7 +1022,13 @@ void TriggerDock::try_commit_trigger()
     if (commit_trigger() == false) 
     {
         /* simple trigger check trigger_enable */
-        for(auto s : _session->get_signals()){ 
+        std::vector<view::Signal *> sigs;
+        if (_context && _context->view()) {
+            sigs = _context->view()->get_own_signals();
+        } else {
+            sigs = _session->get_signals();
+        }
+        for(auto s : sigs){ 
             if (s->signal_type() == SR_CHANNEL_LOGIC) {
                 view::LogicSignal *logicSig = (view::LogicSignal*)s;
                 if (logicSig->commit_trig())
@@ -1037,7 +1051,7 @@ void TriggerDock::try_commit_trigger()
             msg.exec();
 
             if (msg.mBox()->clickedButton() == cancelButton) {
-                for(auto s : _session->get_signals()){
+                for(auto s : sigs){
                     if (s->signal_type() == SR_CHANNEL_LOGIC) {
                         view::LogicSignal *logicSig = (view::LogicSignal*)s;
                         logicSig->set_trig(view::LogicSignal::NONTRIG);

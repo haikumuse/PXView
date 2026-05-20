@@ -78,6 +78,17 @@ void LogicSignal::set_trig(int trig)
         _trig = (LogicSetRegions)trig;
     else
         _trig = NONTRIG;
+
+    if (_view) {
+        auto original_sig = _view->session().get_signal_by_index(get_index());
+        if (original_sig && original_sig != this && original_sig->signal_type() == SR_CHANNEL_LOGIC) {
+            auto original_logic_sig = static_cast<view::LogicSignal*>(original_sig);
+            if (original_logic_sig->get_trig() != trig) {
+                original_logic_sig->set_trig(trig);
+            }
+        }
+        _view->session().broadcast_msg(DSV_MSG_SIMPLE_TRIGGER_CHANGED);
+    }
 }
 
 bool LogicSignal::commit_trig()

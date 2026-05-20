@@ -21,6 +21,7 @@
  */
 
 #include "protocoldock.h"
+#include <QElapsedTimer>
 #include "../widgets/smoothtablehelper.h"
 #include "../widgets/hoversplitter.h"
 #include "../data/decodermodel.h"
@@ -618,8 +619,12 @@ void ProtocolDock::decoded_progress(int progress) {
     index++;
   }
 
-  if (progress == 0 || progress % 10 == 1) {
+  static QElapsedTimer update_timer;
+  if (!update_timer.isValid()) update_timer.start();
+
+  if (progress == 0 || progress == 100 || (progress % 10 == 1 && update_timer.elapsed() > 500)) {
     update_model();
+    update_timer.start();
   }
 }
 

@@ -23,8 +23,8 @@
 #ifndef DSVIEW_PV_DATA_DECODE_ROWDATA_H
 #define DSVIEW_PV_DATA_DECODE_ROWDATA_H
 
-#include <vector> 
-#include <mutex>
+#include <vector>
+#include <shared_mutex>
 
 #include "annotation.h"
 
@@ -67,7 +67,7 @@ private:
     uint64_t        _min_annotation;
     uint64_t        _item_count;
 	std::vector<Annotation*> _annotations;
-    static std::mutex _global_visitor_mutex;
+    std::shared_mutex _visitor_mutex;
 };
 
 }

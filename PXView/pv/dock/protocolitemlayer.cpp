@@ -106,20 +106,22 @@ void ProtocolItemLayer::on_format_select_changed(int index) {
 void ProtocolItemLayer::SetProgress(int progress, QString text) {
   QString str = QString::number(progress) + "%" + text;
 
-  if (progress == 100) {
-    _progress_label->setProperty("status", "ok");
-    _progress_label->style()->unpolish(_progress_label);
-    _progress_label->style()->polish(_progress_label);
-  } else {
-    _progress_label->setProperty("status", "error");
+  QString targetStatus = (progress == 100) ? "ok" : "error";
+  if (_progress_label->property("status").toString() != targetStatus) {
+    _progress_label->setProperty("status", targetStatus);
     _progress_label->style()->unpolish(_progress_label);
     _progress_label->style()->polish(_progress_label);
   }
 
-  if (progress >= 0)
-    _progress_label->setText(str);
-  else
-    _progress_label->setText("");
+  if (progress >= 0) {
+    if (_progress_label->text() != str) {
+      _progress_label->setText(str);
+    }
+  } else {
+    if (!_progress_label->text().isEmpty()) {
+      _progress_label->setText("");
+    }
+  }
 }
 
 void ProtocolItemLayer::ResetStyle() {
