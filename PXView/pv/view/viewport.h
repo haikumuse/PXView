@@ -117,6 +117,7 @@ public:
   void clear_measure();
   void clear_dso_xm();
   void set_need_update(bool update);
+  void set_decode_dirty();
   int get_fps();
   bool get_dso_trig_moved();
 
@@ -178,6 +179,8 @@ private:
   View_type _type;
   bool _need_update;
   QPixmap _pixmap;
+  QPixmap _decode_pixmap;
+  bool _decode_needs_rebuild;
   QMenu *_cmenu;
 
   uint64_t _sample_received;

@@ -209,6 +209,7 @@ const QColor Viewport::PROBE_COLORS[8] = {
 
 Viewport::Viewport(View &parent, View_type type)
     : QWidget(&parent), _view(parent), _type(type), _need_update(false),
+      _decode_needs_rebuild(true),
       _sample_received(0), _action_type(NO_ACTION), _measure_type(NO_MEASURE),
       _cur_sample(0), _nxt_sample(1), _cur_preX(0), _cur_aftX(1), _cur_midY(0),
       _hover_index(0), _hover_hit(false), _dso_xm_valid(false),
@@ -358,7 +359,7 @@ void Viewport::paintEvent(QPaintEvent *event) {
 #endif
 }
 
-void Viewport::doPaint(const QRect &dirtyRect) {
+void Viewport::doPaint(const QRect & /* dirtyRect */) {
   using pv::view::Signal;
 #ifndef NDEBUG
   QElapsedTimer timer;
@@ -368,10 +369,6 @@ void Viewport::doPaint(const QRect &dirtyRect) {
   QStyleOption o;
   o.initFrom(this);
   QPainter p(this);
-  // Ensure the dirty rect is enforced for optimization
-  if (dirtyRect.isValid()) {
-      p.setClipRect(dirtyRect);
-  }
   style()->drawPrimitive(QStyle::PE_Widget, &o, &p, this);
 
   QFont font = p.font();
@@ -709,29 +706,40 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
     t_blit = blitTimer.elapsed();
 #endif
 
-    // 2. Always paint decode traces directly on top (they change frequently
-    //    but are very cheap to draw after LOD optimization)
+    // 2. Paint decode traces into a cached pixmap (same double-buffering
+    //    pattern as logic signals). This eliminates:
+    //    - Dock animation stutter (no decode rebuild during animation)
+    //    - Thin line artifacts (pixmap content is always complete)
 #ifndef NDEBUG
     QElapsedTimer decodeTimer;
     decodeTimer.start();
 #endif
-    p.save();
-    p.translate(0, -_view.get_vOffset());
-    
-    // Safely get the drawing bounds: use clip bounding rect if clipping is active,
-    // otherwise default to the full viewport width.
-    QRect clipRect = p.hasClipping() ? p.clipBoundingRect().toRect() : rect();
-    int draw_left = max(0, clipRect.left());
-    int draw_right = min(_view.get_view_width(), clipRect.right());
-    
-    if (draw_right >= draw_left) {
+    // Rebuild decode pixmap when view parameters changed, data was
+    // explicitly updated, or new decode data arrived
+    bool decode_rebuild = rebuilt || _decode_needs_rebuild;
+    if (decode_rebuild) {
+      _decode_needs_rebuild = false;
+      _decode_pixmap = QPixmap(size());
+      _decode_pixmap.fill(Qt::transparent);
+
+      QPainter dp(&_decode_pixmap);
+      dp.translate(0, -_view.get_vOffset());
+
+      QFont dfont = dp.font();
+      float dfSize = AppConfig::Instance().appOptions.fontSize;
+      if (dfSize > 10)
+        dfSize = 10;
+      dfont.setPointSizeF(dfSize);
+      dp.setFont(dfont);
+
       for (auto t : traces) {
         if (t->enabled() && t->signal_type() == SR_CHANNEL_DECODER) {
-          t->paint_mid(p, draw_left, draw_right, fore, back);
+          t->paint_mid(dp, 0, t->get_view_rect().right(), fore, back);
         }
       }
     }
-    p.restore();
+    // Blit the cached decode pixmap (cheap operation, even during animation)
+    p.drawPixmap(0, 0, _decode_pixmap);
 #ifndef NDEBUG
     t_decode = decodeTimer.elapsed();
 #endif
@@ -2593,6 +2601,8 @@ void Viewport::on_drag_timer() {
 }
 
 void Viewport::set_need_update(bool update) { _need_update = update; }
+
+void Viewport::set_decode_dirty() { _decode_needs_rebuild = true; }
 
 void Viewport::show_wait_trigger() {
   _waiting_trig %= (WaitLoopTime / SigSession::FeedInterval) * 4;
