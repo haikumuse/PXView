@@ -152,8 +152,6 @@ LogDock::LogDock(QWidget *parent)
     xlog_add_receiver(ctx, on_log_callback, &_callback_index);
   }
 
-  load_log_file();
-
   retranslateUi();
 
   ADD_UI(this);
@@ -195,10 +193,35 @@ void LogDock::load_log_file() {
                                 "Failed to open log file."));
     return;
   }
-  QTextStream in(&file);
-  QString content = in.readAll();
+
+  // Read only the last ~10000 lines to avoid freezing when the log file
+  // is huge (common in debug builds with DIAG/PROFILER messages).
+  // setPlainText with a giant string creates hundreds of thousands of
+  // QTextBlock objects then trims via setMaximumBlockCount — the cost is
+  // paid in layout/paint when the widget first becomes visible.
+  static const int kMaxInitLines = 10000;
+  qint64 fileSize = file.size();
+  if (fileSize <= 1024 * 1024) {
+    // Small file: read everything
+    QTextStream in(&file);
+    _log_view->setPlainText(in.readAll());
+  } else {
+    // Large file: seek to the last ~256KB and read from there,
+    // then take only the last kMaxInitLines.
+    qint64 seekPos = qMax<qint64>(0, fileSize - 256 * 1024);
+    file.seek(seekPos);
+    // Skip partial first line if we didn't start at beginning
+    if (seekPos > 0)
+      file.readLine();
+    QString content = QString::fromUtf8(file.readAll());
+    QStringList lines = content.split('\n');
+    if (lines.size() > kMaxInitLines) {
+      lines = lines.mid(lines.size() - kMaxInitLines);
+    }
+    _log_view->setPlainText(lines.join('\n'));
+  }
   file.close();
-  _log_view->setPlainText(content);
+
   QScrollBar *sb = _log_view->verticalScrollBar();
   sb->setValue(sb->maximum());
 }
