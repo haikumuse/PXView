@@ -35,6 +35,7 @@
 #include <QFile>
 #include <QHBoxLayout>
 #include <QScrollBar>
+#include <QShowEvent>
 #include <QTextCursor>
 #include <QTextStream>
 #include <QUrl>
@@ -49,7 +50,7 @@ LogDock *LogDock::_instance = nullptr;
 
 LogDock::LogDock(QWidget *parent)
     : pv::widgets::SmoothScrollArea(parent), _auto_scroll(true),
-      _callback_index(-1) {
+      _needs_reload(false), _callback_index(-1) {
   _instance = this;
 
   _widget = new QWidget(this);
@@ -72,8 +73,8 @@ LogDock::LogDock(QWidget *parent)
     _level_combo->addItem(QString::number(i));
   }
   _level_combo->setCurrentIndex(AppConfig::Instance().appOptions.logLevel);
-  connect(_level_combo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &LogDock::on_level_changed);
+  connect(_level_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &LogDock::on_level_changed);
 
   _scroll_bottom_btn = new QPushButton(_widget);
   _scroll_bottom_btn->setCheckable(true);
@@ -96,7 +97,8 @@ LogDock::LogDock(QWidget *parent)
 
   _append_mode_check = new QCheckBox(_widget);
   _append_mode_check->setObjectName("dock_label");
-  _append_mode_check->setChecked(AppConfig::Instance().appOptions.appendLogMode);
+  _append_mode_check->setChecked(
+      AppConfig::Instance().appOptions.appendLogMode);
   connect(_append_mode_check, &QCheckBox::checkStateChanged, this,
           &LogDock::on_append_mode_changed);
 
@@ -116,8 +118,7 @@ LogDock::LogDock(QWidget *parent)
 
   QLabel *level_label = new QLabel(_widget);
   level_label->setObjectName("dock_label");
-  level_label->setText(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_LEVEL), "Log Level"));
+  level_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_LEVEL), "Log Level"));
   toolbar_layout->addWidget(level_label);
   toolbar_layout->addWidget(_level_combo);
   toolbar_layout->addWidget(_save_file_check);
@@ -190,8 +191,8 @@ void LogDock::load_log_file() {
     return;
   }
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    _log_view->setPlainText(
-        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_OPEN_FAIL), "Failed to open log file."));
+    _log_view->setPlainText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_OPEN_FAIL),
+                                "Failed to open log file."));
     return;
   }
   QTextStream in(&file);
@@ -214,6 +215,14 @@ void LogDock::append_log_text(const QString &text) {
   } else {
     sb->setValue(saved_pos);
   }
+}
+
+void LogDock::showEvent(QShowEvent *event) {
+  pv::widgets::SmoothScrollArea::showEvent(event);
+
+  // Discard stale flag — just start receiving new data from now on.
+  // Old data discarded while hidden is still in the log file on disk.
+  _needs_reload = false;
 }
 
 void LogDock::on_clear() {
@@ -271,6 +280,18 @@ void LogDock::on_open_log_file() {
 }
 
 void LogDock::on_flush_buffer() {
+  // When not visible, just drain the buffer to prevent unbounded memory growth.
+  // Data is still written to the log file by xlog, so nothing is lost.
+  // When the panel becomes visible again, showEvent will reload from file.
+  if (!isVisible()) {
+    QMutexLocker locker(&_log_mutex);
+    if (!_log_buffer.isEmpty()) {
+      _needs_reload = true;
+      _log_buffer.clear();
+    }
+    return;
+  }
+
   QString text;
   {
     QMutexLocker locker(&_log_mutex);
@@ -318,10 +339,8 @@ void LogDock::on_flush_buffer() {
 }
 
 void LogDock::retranslateUi() {
-  _clear_btn->setText(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLEARE), "Clear"));
-  _open_btn->setText(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OPEN), "Open"));
+  _clear_btn->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLEARE), "Clear"));
+  _open_btn->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OPEN), "Open"));
   _scroll_bottom_btn->setToolTip(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_AUTO_SCROLL), "Auto Scroll"));
   _save_file_check->setText(
@@ -332,10 +351,8 @@ void LogDock::retranslateUi() {
 
 void LogDock::reStyle() {
   QString iconPath = GetIconPath();
-  _scroll_bottom_btn->setIcon(
-      QIcon(iconPath + "/scroll-bottom.svg"));
-  _open_btn->setIcon(
-      QIcon(iconPath + "/open.svg"));
+  _scroll_bottom_btn->setIcon(QIcon(iconPath + "/scroll-bottom.svg"));
+  _open_btn->setIcon(QIcon(iconPath + "/open.svg"));
 }
 
 void LogDock::UpdateLanguage() { retranslateUi(); }

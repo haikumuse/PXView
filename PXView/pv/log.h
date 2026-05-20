@@ -2,7 +2,7 @@
  * This file is part of the PXView project.
  * PXView is based on DSView.
  * PXView is based on PulseView.
- * 
+ *
  * Copyright (C) 2022 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,16 +23,16 @@
 #ifndef _DSV_LOG_H_
 #define _DSV_LOG_H_
 
-#include <log/xlog.h>
 #include <QString>
 #include <assert.h>
+#include <log/xlog.h>
 
 extern xlog_writer *dsv_log;
 
 void dsv_log_init();
 void dsv_log_uninit();
 
-xlog_context* dsv_log_context();
+xlog_context *dsv_log_context();
 void dsv_log_level(int l);
 
 void dsv_log_enalbe_logfile(bool append);
@@ -42,7 +42,7 @@ void dsv_set_log_file_enable(bool flag);
 
 QString get_dsv_log_path();
 
-#define LOG_PREFIX "" 
+#define LOG_PREFIX ""
 #define dsv_err(fmt, args...) xlog_err(dsv_log, LOG_PREFIX fmt, ## args)
 #define dsv_warn(fmt, args...) xlog_warn(dsv_log, LOG_PREFIX fmt, ## args)
 #define dsv_info(fmt, args...) xlog_info(dsv_log, LOG_PREFIX fmt, ## args)

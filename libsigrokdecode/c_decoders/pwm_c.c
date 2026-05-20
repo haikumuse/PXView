@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 enum {
     ANN_DUTY = 0,
     ANN_PERIOD,
@@ -174,7 +173,7 @@ static void pwm_destroy(struct srd_decoder_inst* di)
 
 struct srd_c_decoder pwm_c_decoder = {
     .id = "pwm_c",
-    .name = "Pwm(C)",
+    .name = "PWM(C)",
     .longname = "Pulse-width modulation (C)",
     .desc = "Analog level encoded in duty cycle percentage. (C implementation)",
     .license = "gplv2+",

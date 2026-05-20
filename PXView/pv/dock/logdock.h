@@ -68,6 +68,9 @@ private:
   void load_log_file();
   void append_log_text(const QString &text);
 
+protected:
+  void showEvent(QShowEvent *event) override;
+
 private slots:
   void on_clear();
   void on_level_changed(int index);
@@ -87,6 +90,7 @@ private:
   QCheckBox *_save_file_check;
   QCheckBox *_append_mode_check;
   bool _auto_scroll;
+  bool _needs_reload;
 
   QTimer _buffer_timer;
 
