@@ -1727,6 +1727,12 @@ void View::show_region(uint64_t start, uint64_t end, bool keep) {
 }
 
 void View::viewport_update() {
+  // Mark decode pixmap dirty so it will be rebuilt on next paint.
+  // This is needed because decode data can change independently of
+  // view parameters (e.g. new decode data arriving).
+  if (_time_viewport)
+    _time_viewport->set_decode_dirty();
+
   _viewcenter->update();
   for (QWidget *viewport : _viewport_list)
     viewport->update();

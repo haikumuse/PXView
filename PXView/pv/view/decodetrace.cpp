@@ -454,8 +454,11 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
   p.setPen(outline);
   p.setBrush(fill);
 
-  // If the two ends are within 2 pixel, draw a vertical line
+  // If the two ends are within 2 pixel, draw a vertical line.
+  // Use fill color (not outline) so the visual color stays consistent
+  // with zoomed-in annotations — outline is ~50% darker by design.
   if (start + 2.0 > end) {
+    p.setPen(fill);
     p.drawLine(QPointF(start, top), QPointF(start, bottom));
     return;
   }
