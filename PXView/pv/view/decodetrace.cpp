@@ -596,8 +596,22 @@ int DecodeTrace::get_progress()
 }
 
 void DecodeTrace::on_decode_done()
-{ 
-    on_new_decode_data();
+{
+    // Always emit the final progress (100%) and update the viewport,
+    // bypassing the throttle in on_new_decode_data() which can swallow
+    // the final progress update when is_running is still true and
+    // elapsed < 20ms, leaving the progress bar stuck at 99%.
+    decoded_progress(_decoder_stack->get_progress());
+
+    const int expectedHeight = rows_size() * _view->get_signalHeight();
+    if (_totalHeight != expectedHeight) {
+        _view->signals_changed(NULL);
+    }
+
+    if (_view && _view->session().is_stopped_status()) {
+        _view->viewport_update();
+    }
+
     _session->decode_done();
 }
   

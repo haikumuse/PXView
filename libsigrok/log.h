@@ -23,8 +23,8 @@
 #ifndef _SR_LOG_H_
 #define _SR_LOG_H_
 
-#include <log/xlog.h>
 #include "libsigrok.h"
+#include <log/xlog.h>
 
 extern xlog_writer *sr_log;
 
@@ -48,7 +48,7 @@ SR_API void ds_log_set_context(xlog_context *ctx);
  */
 SR_API void ds_log_level(int level);
 
-#define LOG_PREFIX "" 
+#define LOG_PREFIX ""
 #define sr_err(fmt, args...) xlog_err(sr_log, LOG_PREFIX fmt, ## args)
 #define sr_warn(fmt, args...) xlog_warn(sr_log, LOG_PREFIX fmt, ## args)
 #define sr_info(fmt, args...) xlog_info(sr_log, LOG_PREFIX fmt, ## args)
