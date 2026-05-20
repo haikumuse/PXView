@@ -147,7 +147,9 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     titleRowLayout->addWidget(_minimizeButton);
     titleRowLayout->addWidget(_maximizeButton);
 
-    connect(_minimizeButton, &QAbstractButton::clicked, parent, &QWidget::showMinimized);
+    connect(_minimizeButton, &QAbstractButton::clicked, parent, [parent]() {
+        QMetaObject::invokeMethod(parent, "showMinimized");
+    });
     connect(_maximizeButton, &QAbstractButton::clicked, this, &TitleBar::showMaxRestore);
   }
 

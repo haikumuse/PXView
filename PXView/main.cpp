@@ -27,6 +27,7 @@
 #include <QDir>
 #include <QStyle> 
 #include <QGuiApplication>
+#include <QAccessible>
 #include <QScreen>
 #include "dsapplication.h"
 #include "mystyle.h" 
@@ -62,6 +63,11 @@ void usage()
 
 int main(int argc, char *argv[])
 {
+#ifdef _WIN32
+    // Disable Qt Accessibility to prevent UIAutomation from stalling the main thread during high-frequency data updates
+    qputenv("QT_ACCESSIBILITY", "0");
+#endif
+
 	int ret = 0; 
 	const char *open_file = NULL;
 	int logLevel = -1;
@@ -145,6 +151,9 @@ int main(int argc, char *argv[])
 
 	//----------------------init app
     DSApplication a(argcFinal, argvFinal);
+#ifdef _WIN32
+    QAccessible::setActive(false);
+#endif
     a.setStyle(new MyStyle);
 
     QFont font = a.font();

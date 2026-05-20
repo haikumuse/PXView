@@ -2625,6 +2625,12 @@ void MainWindow::OnMessage(int msg) {
     _sampling_bar->update_device_list();
     break;
   }
+  case DSV_MSG_SIMPLE_TRIGGER_CHANGED: {
+    if (_trigger_widget) {
+      _trigger_widget->select_simple_trigger();
+    }
+    break;
+  }
   case DSV_MSG_START_COLLECT_WORK_PREV: {
     if (_device_agent->get_work_mode() == LOGIC)
       _trigger_widget->try_commit_trigger();

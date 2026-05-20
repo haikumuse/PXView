@@ -341,13 +341,24 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
 		return;
     }
 
-    // 放宽密集标注的跳过条件：只有当标注完全重叠时才跳过
-    // 这样即使缩放到最小，也能看到竖线标记
-    if (end <= last_x && end - start < 0.5){
+    // 完美无缝隙 LOD 防御：
+    // 1. 若当前标注完全被之前绘制的区域覆盖，则不可见，跳过
+    if (end <= last_x) {
         return;
     }
     
-    last_x = end;
+    // 2. 针对极高密度的微小标注（它们最终只会画成一根竖线）
+    // 如果这根竖线落在我们刚刚画过的区域内（在同一个物理像素列），直接跳过！
+    // 这样不仅能把百万次 drawLine 削减到屏幕像素宽度（~1920次），还绝对不会产生视觉断层和缝隙！
+    if (start + 2.0 > end && start <= last_x) {
+        return;
+    }
+
+    if (start + 2.0 > end) {
+        last_x = max((double)end, start + 1.0);
+    } else {
+        last_x = end;
+    }
 
     if (_decoder_stack->get_mark_index() == (int64_t)(a.start_sample()+ a.end_sample())/2) {
         p.setPen(View::Blue);
@@ -448,8 +459,11 @@ void DecodeTrace::draw_instant(const pv::data::decode::Annotation &a, QPainter &
 	p.setBrush(fill);
 	p.drawRoundedRect(rect, h * 0.5, h * 0.5);
 
-	p.setPen(text_color);
-	p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter, text);
+    // Skip extremely expensive DirectWrite text rendering if it's too small to read anyway
+    if (w > 4.0) {
+	    p.setPen(text_color);
+	    p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter, text);
+    }
 }
 
 void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
@@ -460,7 +474,6 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
 
 	const double top = y + .5 - h * 0.5;
 	const double bottom = y + .5 + h * 0.5;
-	const std::vector<QString> annotations = a.annotations();
 
     p.setPen(outline);
     p.setBrush(fill);
@@ -471,6 +484,8 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
 		p.drawLine(QPointF(start, top), QPointF(start, bottom));
 		return;
 	}
+
+	const std::vector<QString> &annotations = a.annotations();
 
     double cap_width = min((end - start) / 4, EndCapWidth);
 
@@ -496,21 +511,14 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
 
 	p.setPen(text_color);
 
-	// Try to find an annotation that will fit
-	QString best_annotation;
-	int best_width = 0;
+	// Get best annotation representation using the new high-performance cache
+	const QString best_annotation = a.get_cached_best_annotation(rect.width(), p.font(), p.fontMetrics());
 
-	for(auto &a : annotations) {
-		const int w = p.boundingRect(QRectF(), 0, a).width();
-		if (w <= rect.width() && w > best_width)
-			best_annotation = a, best_width = w;
-	}
-
-	if (best_annotation.isEmpty())
-		best_annotation = annotations.back();
-
-    p.drawText(rect, Qt::AlignCenter, p.fontMetrics().elidedText(
-        best_annotation, Qt::ElideRight, rect.width()));
+	const QString elided = p.fontMetrics().elidedText(
+        best_annotation, Qt::ElideRight, rect.width());
+	QStaticText *st = a.get_cached_text(elided, p.font());
+	p.drawStaticText(QPointF(rect.x() + (rect.width() - st->size().width()) / 2,
+	                         rect.y() + (rect.height() - st->size().height()) / 2), *st);
 }
 
 void DecodeTrace::draw_error(QPainter &p, const QString &message,
@@ -555,16 +563,31 @@ void DecodeTrace::draw_unshown_row(QPainter &p, int y, int h, int left,
 
 void DecodeTrace::on_new_decode_data()
 {
+    bool is_running = _decoder_stack->IsRunning();
+    qint64 elapsed = _update_timer.isValid() ? _update_timer.elapsed() : 999999;
+
+    // Completely throttle the ENTIRE function to max 50 FPS during active decode
+    if (is_running && elapsed < 20) {
+        return;
+    }
+    _update_timer.start();
+
+    // 1. Update progress
     decoded_progress(_decoder_stack->get_progress());
 
-    if (_view && _view->session().is_stopped_status())
-        _view->data_updated();
-    
-    // 计算期望的高度（基于当前行数）
+    // 2. Trigger geometry layout updates if height changed
     const int expectedHeight = rows_size() * _view->get_signalHeight();
-    // 如果当前高度与期望高度不一致，触发重新布局
-    if (_totalHeight != expectedHeight)
+    if (_totalHeight != expectedHeight) {
         _view->signals_changed(NULL);
+    }
+
+    // 3. Request lightweight viewport repaint only
+    // Do NOT call data_updated() which rebuilds headers, margins, scrollbars,
+    // and marks the entire pixmap cache dirty. Decode data changes only affect
+    // the decode trace rendering, not view layout or logic signal cache.
+    if (_view && _view->session().is_stopped_status()) {
+        _view->viewport_update();
+    }
 }
 
 int DecodeTrace::get_progress()

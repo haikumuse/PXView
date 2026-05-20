@@ -29,6 +29,7 @@
 #include <QFormLayout>
 #include <QWidget>
 #include <QString>
+#include <QElapsedTimer>
 
 #include "trace.h"
 #include "../prop/binding/decoderoptions.h"
@@ -191,6 +192,7 @@ private:
 
 	std::vector<QString> 	_cur_row_headings; 
  
+	QElapsedTimer           _update_timer;
 };
 
 } // namespace view

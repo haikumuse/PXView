@@ -1,0 +1,14 @@
+- [x] RowData 每实例 std::shared_mutex 替代全局 std::mutex
+- [x] push_annotation 使用 unique_lock（独占锁）
+- [x] get_annotation_subset 使用 shared_lock（共享锁）
+- [x] get_max_sample / get_annotation / get_annotation_index 使用 shared_lock
+- [x] clear 使用 unique_lock
+- [x] get_annotation_subset 使用二分查找定位可见区间
+- [x] Annotation 类包含 QStaticText 缓存成员
+- [x] get_cached_text() 实现懒创建 + prepare(font)
+- [x] invalidate_text_cache() 实现缓存清除
+- [x] draw_range 中 drawText 替换为 drawStaticText
+- [x] draw_instant 中 drawText 替换为 drawStaticText
+- [x] View::data_updated() 16ms 去重机制
+- [x] 增量编译通过无警告
+- [ ] 高频信号解码过程中无明显 UI 卡顿

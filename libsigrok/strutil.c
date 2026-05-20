@@ -183,7 +183,7 @@ SR_API char *sr_period_string(uint64_t frequency)
 	int r;
 
 	/* Allocate enough for a uint64_t as string + " ms". */
-	if (!(o = malloc(30 + 1))) {
+	if (!(o = g_malloc(30 + 1))) {
 		sr_err("%s: o malloc failed", __func__);
 		return NULL;
 	}
@@ -224,7 +224,7 @@ SR_API char *sr_time_string(uint64_t time)
     int r;
 
     /* Allocate enough for a uint64_t as string + " ms". */
-    if (!(o = malloc(30 + 1))) {
+    if (!(o = g_malloc(30 + 1))) {
         sr_err("%s: o malloc failed", __func__);
         return NULL;
     }
@@ -272,7 +272,7 @@ SR_API char *sr_voltage_string(uint64_t v_p, uint64_t v_q)
 	int r;
 	char *o;
 
-	if (!(o = malloc(30 + 1))) {
+	if (!(o = g_malloc(30 + 1))) {
 		sr_err("%s: o malloc failed", __func__);
 		return NULL;
 	}

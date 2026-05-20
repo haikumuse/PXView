@@ -469,7 +469,8 @@ void DecoderStack::decode_data(const uint64_t decode_start,
 
   // uint8_t *chunk = NULL;
   uint64_t last_cnt = 0;
-  uint64_t notify_cnt = (decode_end - decode_start + 1) / 100;
+  uint64_t notify_cnt = (decode_end - decode_start + 1) / 1000;
+  if (notify_cnt == 0) notify_cnt = 1;
   srd_decoder_inst *logic_di = NULL;
 
   // find the first level decoder instant

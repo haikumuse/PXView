@@ -73,6 +73,8 @@ public:
 
     void try_commit_trigger();
 
+    void select_simple_trigger();
+
     void bind_context(TabContext *ctx) override;
     void unbind_context() override;
 

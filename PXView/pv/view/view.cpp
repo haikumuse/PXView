@@ -1355,6 +1355,14 @@ void View::v_scroll_value_changed(int value) {
 }
 
 void View::data_updated() {
+  // Deduplicate rapid calls: if called within 16ms of the last execution,
+  // only mark viewports dirty without doing full update cycle
+  if (_data_updated_timer.isValid() && _data_updated_timer.elapsed() < 16) {
+    set_update(_time_viewport, true);
+    set_update(_fft_viewport, true);
+    return;
+  }
+
   setViewportMargins(headerWidth(), RulerHeight, 0, 0);
   update_margins();
 
@@ -1370,6 +1378,8 @@ void View::data_updated() {
   set_update(_fft_viewport, true);
   viewport_update();
   _ruler->update();
+
+  _data_updated_timer.start();
 }
 
 void View::update_margins() {
@@ -1841,8 +1851,7 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
            "is_valid=%d",
            config.work_mode, (int)config.channels.size(), config.is_valid);
 
-  for (auto sig : _own_signals)
-    delete sig;
+  std::vector<Signal *> old_signals = _own_signals;
   _own_signals.clear();
 
   for (auto p : _config_probes) {
@@ -1864,6 +1873,8 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     channel_type = SR_CHANNEL_ANALOG;
     break;
   default:
+    for (auto sig : old_signals)
+      delete sig;
     signals_changed(NULL);
     return;
   }
@@ -1883,16 +1894,36 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 
     _config_probes.push_back(probe);
 
+    Signal *old_signal = nullptr;
+    for (auto os : old_signals) {
+      if (os->get_index() == ch.index && os->signal_type() == channel_type) {
+        old_signal = os;
+        break;
+      }
+    }
+
     Signal *signal = nullptr;
     switch (config.work_mode) {
     case LOGIC:
-      signal = new LogicSignal(nullptr, probe);
+      if (old_signal) {
+        signal = new LogicSignal(static_cast<LogicSignal*>(old_signal), nullptr, probe);
+      } else {
+        signal = new LogicSignal(nullptr, probe);
+      }
       break;
     case DSO:
-      signal = new DsoSignal(nullptr, probe);
+      if (old_signal) {
+        signal = new DsoSignal(static_cast<DsoSignal*>(old_signal), nullptr, probe);
+      } else {
+        signal = new DsoSignal(nullptr, probe);
+      }
       break;
     case ANALOG:
-      signal = new AnalogSignal(nullptr, probe);
+      if (old_signal) {
+        signal = new AnalogSignal(static_cast<AnalogSignal*>(old_signal), nullptr, probe);
+      } else {
+        signal = new AnalogSignal(nullptr, probe);
+      }
       break;
     }
 
@@ -1907,6 +1938,9 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
       _own_signals.push_back(signal);
     }
   }
+
+  for (auto sig : old_signals)
+    delete sig;
 
   if (_document && _document->has_data()) {
     for (auto sig : _own_signals) {

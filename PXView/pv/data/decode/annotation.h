@@ -27,6 +27,10 @@
 
 #include <QString>
 #include <vector>
+#include <QStaticText>
+#include <QFont>
+
+#include <QFontMetrics>
 
 class AnnotationResTable;
 class DecoderStatus;
@@ -66,6 +70,9 @@ public:
 
 	const std::vector<QString>& annotations() const;
 
+	QStaticText* get_cached_text(const QString &text, const QFont &font) const;
+	QString get_cached_best_annotation(double rect_width, const QFont &font, const QFontMetrics &fm) const;
+
 private:
 	uint64_t 		_start_sample;
 	uint64_t 		_end_sample;
@@ -73,6 +80,13 @@ private:
 	short 			_type;
 	int 			_resIndex;
 	DecoderStatus 	*_status; /*a global variable*/
+
+	mutable QStaticText _cached_text;
+	mutable QFont       _cached_font;
+
+	mutable QString     _cached_best_annotation;
+	mutable double      _cached_rect_width;
+	mutable QFont       _cached_width_font;
 };
 
 } // namespace decode
