@@ -1969,6 +1969,12 @@ void Viewport::set_receive_len(quint64 length) {
   }
 
   // Received new data, and refresh the view.
+  // For LOGIC mode in realtime refresh, we must set _need_update so that
+  // paintSignals() rebuilds the pixmap even when scale/offset are unchanged
+  // (e.g. full-scale view where auto-scroll doesn't change the offset).
+  if (mode == LOGIC && _view.session().is_realtime_refresh()) {
+    _need_update = true;
+  }
   update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
