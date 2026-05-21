@@ -258,20 +258,44 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
 
             RowData *row_data = _decoder_stack->get_row_data(row);
             if (row_data) {
-              auto range =
-                  row_data->get_visible_range(start_sample, end_sample);
-              const size_t start_idx = range.first;
-              const size_t end_idx = range.second;
-
-              if (start_idx < end_idx) {
-                double last_x = -1;
-                for (size_t idx = start_idx; idx < end_idx; idx++) {
-                  const Annotation *a = row_data->annotation_at(idx);
-                  if (!a)
+              if (min_annWidth < 2.0) {
+                uint64_t current_sample = start_sample;
+                const size_t base_colour = 0;
+                
+                while (current_sample <= end_sample) {
+                  const Annotation *ann = row_data->get_first_annotation_ending_after(current_sample);
+                  if (!ann || ann->start_sample() > end_sample)
                     break;
-                  draw_annotation(*a, p, get_text_colour(), annotation_height,
-                                  left, right, samples_per_pixel, pixels_offset,
-                                  y, 0, min_annWidth, fore, back, last_x);
+                  
+                  uint64_t block_start = std::max(current_sample, ann->start_sample());
+                  uint64_t block_end = std::max(ann->end_sample(), block_start + (uint64_t)std::max(1.0, samples_per_pixel));
+                  
+                  double x = (block_start / samples_per_pixel) - pixels_offset;
+                  double width = (block_end - block_start) / samples_per_pixel;
+                  
+                  const size_t colour = ((base_colour + ann->type()) % MaxAnnType) % countof(Colours);
+                  const QColor &fill = Colours[colour];
+                  
+                  p.fillRect(QRectF(x, y - annotation_height * 0.5, std::max(1.0, width), annotation_height), fill);
+                  
+                  current_sample = block_end;
+                }
+              } else {
+                auto range =
+                    row_data->get_visible_range(start_sample, end_sample);
+                const size_t start_idx = range.first;
+                const size_t end_idx = range.second;
+
+                if (start_idx < end_idx) {
+                  double last_x = -1;
+                  for (size_t idx = start_idx; idx < end_idx; idx++) {
+                    const Annotation *a = row_data->annotation_at(idx);
+                    if (!a)
+                      break;
+                    draw_annotation(*a, p, get_text_colour(), annotation_height,
+                                    left, right, samples_per_pixel, pixels_offset,
+                                    y, 0, min_annWidth, fore, back, last_x);
+                  }
                 }
               }
             }
