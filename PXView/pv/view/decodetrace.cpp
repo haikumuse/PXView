@@ -25,6 +25,7 @@
 #include "../config/appconfig.h"
 #include "../data/decode/annotation.h"
 #include "../data/decode/decoder.h"
+#include "../data/decode/rowdata.h"
 #include "../data/decoderstack.h"
 #include "../data/logicsnapshot.h"
 #include "../data/sessiondocument.h"
@@ -255,15 +256,19 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
                 _decoder_stack->get_min_annotation(row);
             const double min_annWidth = min_annotation / samples_per_pixel;
 
-            {
-              std::vector<Annotation *> annotations;
-              _decoder_stack->get_annotation_subset(annotations, row,
-                                                    start_sample, end_sample);
+            RowData *row_data = _decoder_stack->get_row_data(row);
+            if (row_data) {
+              auto range =
+                  row_data->get_visible_range(start_sample, end_sample);
+              const size_t start_idx = range.first;
+              const size_t end_idx = range.second;
 
-              if (!annotations.empty()) {
+              if (start_idx < end_idx) {
                 double last_x = -1;
-
-                for (Annotation *a : annotations) {
+                for (size_t idx = start_idx; idx < end_idx; idx++) {
+                  const Annotation *a = row_data->annotation_at(idx);
+                  if (!a)
+                    break;
                   draw_annotation(*a, p, get_text_colour(), annotation_height,
                                   left, right, samples_per_pixel, pixels_offset,
                                   y, 0, min_annWidth, fore, back, last_x);
@@ -551,10 +556,27 @@ void DecodeTrace::draw_unshown_row(QPainter &p, int y, int h, int left,
 
 void DecodeTrace::on_new_decode_data() {
   bool is_running = _decoder_stack->IsRunning();
-  qint64 elapsed = _update_timer.isValid() ? _update_timer.elapsed() : 999999;
 
-  // Completely throttle the ENTIRE function to max 50 FPS during active decode
-  if (is_running && elapsed < 20) {
+  // Start tracking decode duration on first call
+  if (!_decode_elapsed_timer.isValid())
+    _decode_elapsed_timer.start();
+
+  // Adaptive throttle: longer decode sessions get lower refresh rates.
+  // Short decodes (< 2s) stay responsive at 30 FPS.
+  // Long decodes progressively reduce to avoid O(N) repaint overhead.
+  const qint64 decode_duration_ms = _decode_elapsed_timer.elapsed();
+  qint64 throttle_ms;
+  if (decode_duration_ms < 2000)
+    throttle_ms = 33; // ~30 FPS for short decodes
+  else if (decode_duration_ms < 10000)
+    throttle_ms = 1000; // 1 FPS
+  else if (decode_duration_ms < 60000)
+    throttle_ms = 5000; // 0.2 FPS
+  else
+    throttle_ms = 10000; // 0.1 FPS
+
+  qint64 elapsed = _update_timer.isValid() ? _update_timer.elapsed() : 999999;
+  if (is_running && elapsed < throttle_ms) {
     return;
   }
   _update_timer.start();
@@ -580,6 +602,9 @@ void DecodeTrace::on_new_decode_data() {
 int DecodeTrace::get_progress() { return _decoder_stack->get_progress(); }
 
 void DecodeTrace::on_decode_done() {
+  // Reset decode duration timer so next decode session starts fresh at 30 FPS
+  _decode_elapsed_timer.invalidate();
+
   // Always emit the final progress (100%) and update the viewport,
   // bypassing the throttle in on_new_decode_data() which can swallow
   // the final progress update when is_running is still true and

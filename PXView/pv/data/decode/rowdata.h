@@ -23,8 +23,9 @@
 #ifndef DSVIEW_PV_DATA_DECODE_ROWDATA_H
 #define DSVIEW_PV_DATA_DECODE_ROWDATA_H
 
-#include <vector>
 #include <shared_mutex>
+#include <utility>
+#include <vector>
 
 #include "annotation.h"
 
@@ -32,46 +33,48 @@ namespace pv {
 namespace data {
 namespace decode {
 
-class RowData
-{
+class RowData {
 public:
-	RowData();
-    ~RowData();
+  RowData();
+  ~RowData();
 
 public:
-	uint64_t get_max_sample();
+  uint64_t get_max_sample();
 
-    uint64_t get_max_annotation();
-    uint64_t get_min_annotation();	
+  uint64_t get_max_annotation();
+  uint64_t get_min_annotation();
 
-    uint64_t get_annotation_index(uint64_t start_sample);
+  uint64_t get_annotation_index(uint64_t start_sample);
 
-    bool push_annotation(Annotation *a);
+  bool push_annotation(Annotation *a);
 
-    inline uint64_t get_annotation_size(){
-        return _item_count;
-    }
+  inline uint64_t get_annotation_size() { return _item_count; }
 
-    bool get_annotation(pv::data::decode::Annotation *ann, uint64_t index);
+  bool get_annotation(pv::data::decode::Annotation *ann, uint64_t index);
 
-     /**
-	 * Extracts sorted annotations between two period into a vector.
-	 */
-	void get_annotation_subset(std::vector<pv::data::decode::Annotation*> &dest,
-		                        uint64_t start_sample, uint64_t end_sample);
+  /**
+   * Extracts sorted annotations between two period into a vector.
+   */
+  void get_annotation_subset(std::vector<pv::data::decode::Annotation *> &dest,
+                             uint64_t start_sample, uint64_t end_sample);
 
-    void clear();
+  void clear();
+
+  std::pair<size_t, size_t> get_visible_range(uint64_t start_sample,
+                                              uint64_t end_sample);
+  size_t find_index_after_sample(uint64_t sample);
+  const Annotation *annotation_at(size_t index);
 
 private:
-    uint64_t        _max_annotation;
-    uint64_t        _min_annotation;
-    uint64_t        _item_count;
-	std::vector<Annotation*> _annotations;
-    std::shared_mutex _visitor_mutex;
+  uint64_t _max_annotation;
+  uint64_t _min_annotation;
+  uint64_t _item_count;
+  std::vector<Annotation *> _annotations;
+  std::shared_mutex _visitor_mutex;
 };
 
-}
-} // data
-} // pv
+} // namespace decode
+} // namespace data
+} // namespace pv
 
 #endif // DSVIEW_PV_DATA_DECODE_ROWDATA_H

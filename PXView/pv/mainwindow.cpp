@@ -2782,6 +2782,10 @@ void MainWindow::OnMessage(int msg) {
     current_view()->timebase_changed();
     break;
   }
+  case DSV_MSG_SAMPLE_COUNT_UPDATED: {
+    _sampling_bar->update_sample_count_selector();
+    break;
+  }
   case DSV_MSG_DEVICE_MODE_CHANGED: {
     current_view()->mode_changed();
     reset_all_view();
