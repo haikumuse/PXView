@@ -64,6 +64,7 @@ public:
                                               uint64_t end_sample);
   size_t find_index_after_sample(uint64_t sample);
   const Annotation *annotation_at(size_t index);
+  const Annotation *get_first_annotation_ending_after(uint64_t sample);
 
 private:
   uint64_t _max_annotation;

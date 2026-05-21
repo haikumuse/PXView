@@ -184,6 +184,21 @@ const Annotation *RowData::annotation_at(size_t index) {
   return nullptr;
 }
 
+const Annotation *RowData::get_first_annotation_ending_after(uint64_t sample) {
+  std::shared_lock<std::shared_mutex> lock(_visitor_mutex);
+
+  if (_annotations.empty())
+    return nullptr;
+
+  auto it = std::lower_bound(
+      _annotations.begin(), _annotations.end(), sample,
+      [](Annotation *a, uint64_t val) { return a->end_sample() <= val; });
+
+  if (it != _annotations.end())
+    return *it;
+  return nullptr;
+}
+
 } // namespace decode
 } // namespace data
 } // namespace pv
