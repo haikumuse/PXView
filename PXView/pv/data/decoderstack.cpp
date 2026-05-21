@@ -216,6 +216,14 @@ void DecoderStack::get_annotation_subset(
     (*iter).second->get_annotation_subset(dest, start_sample, end_sample);
 }
 
+decode::RowData* DecoderStack::get_row_data(const decode::Row &row)
+{
+    auto iter = _rows.find(row);
+    if (iter != _rows.end())
+        return (*iter).second;
+    return nullptr;
+}
+
 uint64_t DecoderStack::get_annotation_index(const Row &row,
                                             uint64_t start_sample) {
   uint64_t index = 0;

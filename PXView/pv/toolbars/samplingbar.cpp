@@ -33,8 +33,8 @@
 #include "../tabcontext.h"
 #include "../ui/dockfonts.h"
 #include "../ui/fn.h"
-#include "../ui/langresource.h"
 #include "../ui/iconcache.h"
+#include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include "../view/dsosignal.h"
 #include "../view/view.h"
@@ -149,15 +149,19 @@ SamplingBar::SamplingBar(SigSession *session, QWidget *parent)
 
   update_view_status();
 
-  connect(&_device_selector, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+  connect(&_device_selector,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
           &SamplingBar::on_device_selected);
-  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SamplingBar::on_samplecount_sel);
-  connect(_action_single, &QAction::triggered, this, &SamplingBar::on_collect_mode);
-  connect(_action_repeat, &QAction::triggered, this, &SamplingBar::on_collect_mode);
-  connect(_action_loop, &QAction::triggered, this, &SamplingBar::on_collect_mode);
-  connect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SamplingBar::on_samplerate_sel);
+  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SamplingBar::on_samplecount_sel);
+  connect(_action_single, &QAction::triggered, this,
+          &SamplingBar::on_collect_mode);
+  connect(_action_repeat, &QAction::triggered, this,
+          &SamplingBar::on_collect_mode);
+  connect(_action_loop, &QAction::triggered, this,
+          &SamplingBar::on_collect_mode);
+  connect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SamplingBar::on_samplerate_sel);
 
   ADD_UI(this);
 }
@@ -430,9 +434,12 @@ void SamplingBar::reStyle() {
   if (true) {
     QString iconPath = GetIconPath();
 
-    _action_single->setIcon(IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
-    _action_repeat->setIcon(IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
-    _action_loop->setIcon(IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
+    _action_single->setIcon(
+        IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
+    _action_repeat->setIcon(
+        IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
+    _action_loop->setIcon(
+        IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
 
     update_mode_icon();
   }
@@ -500,8 +507,8 @@ void SamplingBar::update_sample_rate_selector() {
     return;
   }
 
-  disconnect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-             &SamplingBar::on_samplerate_sel);
+  disconnect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged),
+             this, &SamplingBar::on_samplerate_sel);
 
   if (_device_agent->have_instance() == false) {
     dsv_info("SamplingBar::update_sample_rate_selector, have no device.");
@@ -542,8 +549,8 @@ void SamplingBar::update_sample_rate_selector() {
 
   update_sample_rate_selector_value();
 
-  connect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SamplingBar::on_samplerate_sel);
+  connect(&_sample_rate, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SamplingBar::on_samplerate_sel);
 
   update_sample_count_selector();
 }
@@ -597,7 +604,8 @@ void SamplingBar::update_sample_count_selector() {
     return;
   }
 
-  disconnect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+  disconnect(&_sample_count,
+             QOverload<int>::of(&QComboBox::currentIndexChanged), this,
              &SamplingBar::on_samplecount_sel);
 
   assert(!_updating_sample_count);
@@ -640,9 +648,31 @@ void SamplingBar::update_sample_count_selector() {
 
   if (mode == DSO)
     duration = max_timebase;
-  // else if (stream_mode) //取消流模式软件buff大小限制
-  //     duration = sw_depth / (samplerate * (1.0 / SR_SEC(1)));
-  else if (rle_support)
+  else if (stream_mode) {
+    // Stream mode: data flows continuously to memory/disk, not limited by
+    // hardware FIFO. Total buffer = memory + disk cache.
+    // SR_CONF_STREAM_MEM_BUFF = memory buffer size (GB)
+    // SR_CONF_STREAM_BUFF = disk cache size (GB)
+    // Without disk cache, use sw_depth (memory buffer in bytes).
+    int ch_num = _session->get_ch_num(SR_CHANNEL_LOGIC);
+    if (ch_num <= 0)
+      ch_num = 1;
+    bool disk_cache_enabled = false;
+    _device_agent->get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
+                                   disk_cache_enabled);
+    if (disk_cache_enabled) {
+      double mem_gb = 16.0;
+      double disk_gb = 16.0;
+      _device_agent->get_config_double(SR_CONF_STREAM_MEM_BUFF, mem_gb);
+      _device_agent->get_config_double(SR_CONF_STREAM_BUFF, disk_gb);
+      double total_gb = mem_gb + disk_gb;
+      uint64_t total_samples = (uint64_t)(total_gb * SR_GB(1)) * 8 / ch_num;
+      duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
+    } else {
+      // Memory buffer only (sw_depth is in bytes)
+      duration = (sw_depth * 8 / ch_num) / (samplerate * (1.0 / SR_SEC(1)));
+    }
+  } else if (rle_support)
     duration = rle_depth / (samplerate * (1.0 / SR_SEC(1)));
   else
     duration = hw_duration;
@@ -716,8 +746,8 @@ void SamplingBar::update_sample_count_selector() {
   update_sample_count_selector_value();
   on_samplecount_sel(_sample_count.currentIndex());
 
-  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SamplingBar::on_samplecount_sel);
+  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SamplingBar::on_samplecount_sel);
 }
 
 void SamplingBar::update_sample_count_selector_value() {
@@ -799,7 +829,8 @@ double SamplingBar::hori_knob(int dir) {
     assert(false);
   }
 
-  disconnect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+  disconnect(&_sample_count,
+             QOverload<int>::of(&QComboBox::currentIndexChanged), this,
              &SamplingBar::on_samplecount_sel);
 
   if (0 == dir) {
@@ -823,8 +854,8 @@ double SamplingBar::hori_knob(int dir) {
     }
   }
 
-  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &SamplingBar::on_samplecount_sel);
+  connect(&_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &SamplingBar::on_samplecount_sel);
 
   return hori_res;
 }
@@ -1319,11 +1350,14 @@ void SamplingBar::update_mode_icon() {
   QString iconPath = GetIconPath();
 
   if (_session->is_repeat_mode())
-    _mode_button.setIcon(IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
+    _mode_button.setIcon(
+        IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
   else if (_session->is_loop_mode())
-    _mode_button.setIcon(IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
+    _mode_button.setIcon(
+        IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
   else
-    _mode_button.setIcon(IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
+    _mode_button.setIcon(
+        IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
 }
 
 void SamplingBar::run_or_stop() { on_run_stop(); }

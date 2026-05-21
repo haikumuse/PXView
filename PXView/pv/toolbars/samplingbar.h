@@ -110,6 +110,8 @@ namespace pv
                 update_sample_rate_selector();
             }
 
+            void update_sample_count_selector();
+
             void commit_settings();
 
             void bind_context(TabContext *ctx) override;
@@ -130,7 +132,6 @@ namespace pv
             void update_sample_rate_selector();
            
             void update_sample_rate_selector_value();
-            void update_sample_count_selector();
             void update_sample_count_selector_value();         
             void setting_adj();
             void enable_toggle(bool enable);

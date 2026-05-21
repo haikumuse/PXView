@@ -648,23 +648,12 @@ bool SigSession::action_start_capture(bool instant) {
     }
     config.cache_path = cache_path.toStdString();
 
-    double total_gb = 16;
-    _device_agent.get_config_double(SR_CONF_STREAM_BUFF, total_gb);
-    config.total_cache_depth_gb = (uint64_t)total_gb;
-
-    uint64_t phys_mem_gb = 0;
-#ifdef _WIN32
-    MEMORYSTATUSEX mem_info;
-    mem_info.dwLength = sizeof(mem_info);
-    GlobalMemoryStatusEx(&mem_info);
-    phys_mem_gb = mem_info.ullTotalPhys / (1024 * 1024 * 1024);
-#else
-    long pages = sysconf(_SC_PHYS_PAGES);
-    long page_size = sysconf(_SC_PAGE_SIZE);
-    phys_mem_gb = (uint64_t)pages * page_size / (1024 * 1024 * 1024);
-#endif
-    config.memory_size_gb =
-        std::min(std::max(phys_mem_gb / 4, (uint64_t)1), (uint64_t)4);
+    double mem_gb = 16;
+    double disk_gb = 16;
+    _device_agent.get_config_double(SR_CONF_STREAM_MEM_BUFF, mem_gb);
+    _device_agent.get_config_double(SR_CONF_STREAM_BUFF, disk_gb);
+    config.total_cache_depth_gb = (uint64_t)(mem_gb + disk_gb);
+    config.memory_size_gb = (uint64_t)mem_gb;
     config.calculate();
 
     uint64_t bytes_per_block = 2105376;
@@ -2229,7 +2218,9 @@ void SigSession::OnMessage(int msg) {
 }
 
 void SigSession::DeviceConfigChanged() {
-  // Nonthing.
+  // Notify UI that device config changed (e.g. disk cache toggle),
+  // so sampling duration can be recalculated from SR_CONF_HW_DEPTH
+  broadcast_msg(DSV_MSG_SAMPLE_COUNT_UPDATED);
 }
 
 bool SigSession::switch_work_mode(int mode) {

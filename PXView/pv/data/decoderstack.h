@@ -114,6 +114,8 @@ public:
 		const decode::Row &row, uint64_t start_sample,
 		uint64_t end_sample);
 
+    decode::RowData* get_row_data(const decode::Row &row);
+
     uint64_t get_annotation_index(
         const decode::Row &row, uint64_t start_sample);
     uint64_t get_max_annotation(const decode::Row &row);

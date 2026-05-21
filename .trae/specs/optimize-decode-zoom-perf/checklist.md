@@ -1,0 +1,14 @@
+- [x] RowData::get_visible_range() 使用二分查找返回可见范围索引对
+- [x] RowData::find_index_after_sample() 使用二分查找返回跳跃目标索引
+- [x] RowData::annotation_at() 带共享锁返回指定索引注解指针
+- [x] DecodeTrace::draw_merge_block() 绘制实心矩形+斜线纹理合并色块
+- [x] paint_mid() 不再调用 get_annotation_subset() 构建临时 vector
+- [x] paint_mid() 在 min_annWidth < 4px 时将过小注解合并为色块
+- [x] paint_mid() 合并块结束后使用 find_index_after_sample() 跳跃遍历（已移除因存在跳过大标注的bug，改为逐一遍历，核心优化仍保留）
+- [x] paint_mid() 在 min_annWidth >= 4px 时保持原有逐条绘制逻辑
+- [x] 混合场景：合并过程中遇到大注解时先绘制合并块再正常绘制
+- [x] 边界情况：合并块超出屏幕右边界时立即绘制并终止
+- [x] 增量编译通过无警告
+- [ ] 缩放到最小时解码通道无明显卡顿
+- [ ] 正常缩放级别下解码通道显示正常（六边形+文本）
+- [ ] 合并色块与正常注解视觉上有区分

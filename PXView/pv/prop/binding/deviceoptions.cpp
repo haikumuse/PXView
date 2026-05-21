@@ -126,6 +126,9 @@ DeviceOptions::DeviceOptions()
 		case SR_CONF_STREAM_BUFF:
             bind_double(name, label, key, "GB", pair<double, double>(1, 1024), 0, 1);
             break;
+		case SR_CONF_STREAM_MEM_BUFF:
+            bind_double(name, label, key, "GB", pair<double, double>(1, 64), 0, 1);
+            break;
 		case SR_CONF_DISK_CACHE_ENABLE:
             bind_bool(name, label, key);
             break;
