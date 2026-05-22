@@ -55,8 +55,6 @@
 #include <stdexcept>
 #include <sys/stat.h>
 
-
-
 static QString get_default_disk_cache_path() {
   return QDir::tempPath() + "/PXView_cache";
 }
@@ -595,9 +593,10 @@ bool SigSession::action_start_capture(bool instant) {
   }
 
   _disk_cache_config.enabled = false;
-  
-  dsv_info("SigSession::start_capture: _is_stream_mode=%d, disk_cache_enabled=%d", 
-           _is_stream_mode, disk_cache_enabled);
+
+  dsv_info(
+      "SigSession::start_capture: _is_stream_mode=%d, disk_cache_enabled=%d",
+      _is_stream_mode, disk_cache_enabled);
 
   if (_is_stream_mode && disk_cache_enabled) {
     _disk_cache_config.enabled = true;
@@ -609,24 +608,24 @@ bool SigSession::action_start_capture(bool instant) {
     }
     _disk_cache_config.cache_path = cache_path.toStdString();
 
-    double mem_gb = 16;
     double disk_gb = 16;
-    _device_agent.get_config_double(SR_CONF_STREAM_MEM_BUFF, mem_gb);
     _device_agent.get_config_double(SR_CONF_STREAM_BUFF, disk_gb);
-    _disk_cache_config.total_cache_depth_gb = (uint64_t)(mem_gb + disk_gb);
-    _disk_cache_config.memory_size_gb = (uint64_t)mem_gb;
+    _disk_cache_config.total_cache_depth_gb = (uint64_t)disk_gb;
+    _disk_cache_config.memory_size_gb =
+        0; // mmap mode: all data goes to disk file
     _disk_cache_config.calculate();
 
     uint64_t bytes_per_block = 2105376;
-    _disk_cache_config.hot_window_blocks =
-        _disk_cache_config.memory_size_gb * 1024ULL * 1024 * 1024 / bytes_per_block;
-        
-    dsv_info("SigSession::start_capture: Configured disk cache: mem_gb=%f, disk_gb=%f, path=%s", 
-             mem_gb, disk_gb, _disk_cache_config.cache_path.c_str());
+    _disk_cache_config.hot_window_blocks = _disk_cache_config.memory_size_gb *
+                                           1024ULL * 1024 * 1024 /
+                                           bytes_per_block;
+
+    dsv_info("SigSession::start_capture: Configured disk cache: "
+             "disk_gb=%f, path=%s",
+             disk_gb, _disk_cache_config.cache_path.c_str());
   } else {
     dsv_info("SigSession::start_capture: Disk cache NOT configured.");
   }
-
 
   // update setting
   if (_device_agent.is_file())
@@ -715,7 +714,7 @@ bool SigSession::exec_capture() {
   if (bAddDecoder) {
     clear_all_decode_task2();
     clear_decode_result();
-    
+
     // CRITICAL: Release the active document's copy of the old mmap data.
     // copy_data_to_document() shares the mmap via shared_ptr. If we don't
     // clear the document's LogicSnapshot here, its shared_ptr reference

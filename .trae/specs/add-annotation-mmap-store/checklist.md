@@ -1,0 +1,24 @@
+- [ ] Annotation 类已移除所有 mutable 缓存字段（_cached_text, _cached_font, _cached_best_annotation, _cached_rect_width, _cached_width_font）
+- [ ] sizeof(Annotation) 从 ~140B 降至 ~32B
+- [ ] AnnotationRecord 结构体定义完成，sizeof(AnnotationRecord) == 32
+- [ ] Store 文件 Header(64B) 和 Row Index Entry(16B) 结构体定义完成
+- [ ] AnnotationStore 能创建 .dann 文件并完成 mmap 映射
+- [ ] AnnotationStore 支持增量写入 AnnotationRecord 和 String Pool
+- [ ] AnnotationStore 支持按时间范围二分查找查询
+- [ ] AnnotationStore 支持 String Pool 读取（offset → QString）
+- [ ] AnnotationStore 支持 advise_dontneed() 释放物理页面
+- [ ] AnnotationStore 支持 mmap 动态扩展
+- [ ] RowData::push_annotation() 写入 AnnotationStore 而非内存 vector
+- [ ] RowData::get_visible_range() 委托给 Store 的二分查找
+- [ ] RowData::annotation_at() 从 Store 读取数据
+- [ ] RowData 并发读写安全（写入追加不影响读取，ann_count 原子更新）
+- [ ] DecoderStack::annotation_callback 将注解序列化写入 Store
+- [ ] DecoderStack 解码开始时创建 Store，解码结束时 finalize
+- [ ] DecodeTrace paint_mid Path 2 批量读取可见范围注解，无逐条加锁
+- [ ] DecodeTrace paint_mid Path 1 使用单次二分查找 + 顺序扫描
+- [ ] DecodeTrace 渲染级 LRU 缓存正常工作（替代原 per-annotation 缓存）
+- [ ] AnnotationResTable 适配 String Pool 模式
+- [ ] 增量编译通过，无编译错误
+- [ ] 解码注解在 UI 上正常显示（文本、颜色、位置正确）
+- [ ] 缩放/滚动场景下渲染正确且流畅
+- [ ] 大文件场景内存占用显著降低（对比优化前后）
