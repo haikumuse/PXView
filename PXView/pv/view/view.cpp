@@ -228,8 +228,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   connect(_fft_viewport, &Viewport::measure_updated, this,
           &View::on_measure_updated);
 
-  connect(_vsplitter, &QSplitter::splitterMoved, this,
-          &View::splitterMoved);
+  connect(_vsplitter, &QSplitter::splitterMoved, this, &View::splitterMoved);
 
   connect(_header, &Header::traces_moved, this, &View::on_traces_moved);
   connect(_header, &Header::header_updated, this, &View::header_updated);
@@ -559,14 +558,20 @@ void View::compute_signal_groups() {
   std::set<int> assigned_signals;
   int group_id = 0;
 
+  // 第一阶段：收集每个解码通道绑定的逻辑通道索引集合
+  struct DecodeBinding {
+    DecodeTrace *trace;
+    std::set<int> bound_logic_indices;
+  };
+  std::vector<DecodeBinding> decode_bindings;
+
   for (auto dt : decode_traces) {
     DecodeTrace *dtrace = dynamic_cast<DecodeTrace *>(dt);
     if (!dtrace)
       continue;
 
-    SignalGroup group;
-    group.group_id = group_id++;
-    group.traces.push_back(dt);
+    DecodeBinding binding;
+    binding.trace = dtrace;
 
     pv::data::DecoderStack *decoder_stack = dtrace->decoder();
     if (decoder_stack) {
@@ -574,14 +579,60 @@ void View::compute_signal_groups() {
         auto probe_list = decoder->binded_probe_list();
         for (auto probe : probe_list) {
           int binded_index = decoder->binded_probe_index(probe);
-          for (auto lt : logic_traces) {
-            if (lt->get_index() == binded_index &&
-                assigned_signals.find(binded_index) == assigned_signals.end()) {
-              group.traces.push_back(lt);
-              assigned_signals.insert(binded_index);
-            }
-          }
+          binding.bound_logic_indices.insert(binded_index);
         }
+      }
+    }
+
+    decode_bindings.push_back(binding);
+  }
+
+  // 第二阶段：将绑定到相同逻辑通道的解码通道合并到同一组
+  std::vector<bool> grouped(decode_bindings.size(), false);
+
+  for (size_t i = 0; i < decode_bindings.size(); i++) {
+    if (grouped[i])
+      continue;
+
+    SignalGroup group;
+    group.group_id = group_id++;
+    group.traces.push_back(decode_bindings[i].trace);
+    grouped[i] = true;
+
+    // 收集该组的所有逻辑通道
+    std::set<int> group_logic_indices = decode_bindings[i].bound_logic_indices;
+
+    // 查找其他绑定到相同逻辑通道的解码通道并合并
+    for (size_t j = i + 1; j < decode_bindings.size(); j++) {
+      if (grouped[j])
+        continue;
+
+      // 检查是否有共同的逻辑通道绑定
+      bool shares_logic = false;
+      for (int logic_idx : decode_bindings[j].bound_logic_indices) {
+        if (group_logic_indices.find(logic_idx) != group_logic_indices.end()) {
+          shares_logic = true;
+          break;
+        }
+      }
+
+      if (shares_logic) {
+        group.traces.push_back(decode_bindings[j].trace);
+        grouped[j] = true;
+        // 合并逻辑通道集合
+        group_logic_indices.insert(
+            decode_bindings[j].bound_logic_indices.begin(),
+            decode_bindings[j].bound_logic_indices.end());
+      }
+    }
+
+    // 将逻辑通道加入组（按原始顺序）
+    for (auto lt : logic_traces) {
+      int logic_index = lt->get_index();
+      if (group_logic_indices.find(logic_index) != group_logic_indices.end() &&
+          assigned_signals.find(logic_index) == assigned_signals.end()) {
+        group.traces.push_back(lt);
+        assigned_signals.insert(logic_index);
       }
     }
 
@@ -1027,8 +1078,8 @@ void View::signals_changed(const Trace *eventTrace) {
 
     int new_index = 0;
     for (size_t gi : group_order) {
-      sort(_signal_groups[gi].traces.begin(),
-           _signal_groups[gi].traces.end(), [](Trace *a, Trace *b) {
+      sort(_signal_groups[gi].traces.begin(), _signal_groups[gi].traces.end(),
+           [](Trace *a, Trace *b) {
              return a->get_view_index() < b->get_view_index();
            });
       for (auto gt : _signal_groups[gi].traces) {
@@ -1209,11 +1260,12 @@ bool View::eventFilter(QObject *object, QEvent *event) {
     if (object == _ruler || object == _time_viewport ||
         object == _fft_viewport) {
       //_hover_point = QPoint(mouse_event->x(), 0);
-      double cur_periods = (mouse_event->position().toPoint().x() + _offset) * _scale /
-                           _ruler->get_min_period();
+      double cur_periods = (mouse_event->position().toPoint().x() + _offset) *
+                           _scale / _ruler->get_min_period();
       int integer_x =
           round(cur_periods) * _ruler->get_min_period() / _scale - _offset;
-      double cur_deviate_x = qAbs(mouse_event->position().toPoint().x() - integer_x);
+      double cur_deviate_x =
+          qAbs(mouse_event->position().toPoint().x() - integer_x);
       if (_device_agent->get_work_mode() == LOGIC && cur_deviate_x < 10)
         _hover_point = QPoint(integer_x, mouse_event->position().toPoint().y());
       else
@@ -1661,7 +1713,8 @@ void View::show_calibration() {
   }
 
   _cali = new pv::dialogs::Calibration(this);
-  connect(_cali, &pv::dialogs::Calibration::sig_closed, this, &View::on_calibration_closed);
+  connect(_cali, &pv::dialogs::Calibration::sig_closed, this,
+          &View::on_calibration_closed);
   _cali->update_device_info();
   _cali->show();
 }
@@ -1916,21 +1969,24 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     switch (config.work_mode) {
     case LOGIC:
       if (old_signal) {
-        signal = new LogicSignal(static_cast<LogicSignal*>(old_signal), nullptr, probe);
+        signal = new LogicSignal(static_cast<LogicSignal *>(old_signal),
+                                 nullptr, probe);
       } else {
         signal = new LogicSignal(nullptr, probe);
       }
       break;
     case DSO:
       if (old_signal) {
-        signal = new DsoSignal(static_cast<DsoSignal*>(old_signal), nullptr, probe);
+        signal =
+            new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr, probe);
       } else {
         signal = new DsoSignal(nullptr, probe);
       }
       break;
     case ANALOG:
       if (old_signal) {
-        signal = new AnalogSignal(static_cast<AnalogSignal*>(old_signal), nullptr, probe);
+        signal = new AnalogSignal(static_cast<AnalogSignal *>(old_signal),
+                                  nullptr, probe);
       } else {
         signal = new AnalogSignal(nullptr, probe);
       }

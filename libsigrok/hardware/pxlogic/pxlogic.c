@@ -1055,10 +1055,11 @@ static int config_get(int id, GVariant** data, const struct sr_dev_inst* sdi,
             *data = g_variant_new_uint64(devc->profile->dev_caps.hw_depth / channel_modes[devc->ch_mode].unit_bits / devc->ch_num);
         } else if (devc->op_mode == OP_STREAM) {
             if (devc->disk_cache_enable) {
-                double total_gb = devc->stream_mem_buff_size + devc->stream_buff_size;
-                *data = g_variant_new_uint64((uint64_t)(total_gb * 1024 * 1024 * 1024) * 8 / channel_modes[devc->ch_mode].unit_bits / devc->ch_num);
+                // Disk cache mode: mmap backed by disk file
+                *data = g_variant_new_uint64((uint64_t)(devc->stream_buff_size * 1024 * 1024 * 1024) * 8 / channel_modes[devc->ch_mode].unit_bits / devc->ch_num);
             } else {
-                *data = g_variant_new_uint64(devc->profile->dev_caps.hw_depth / channel_modes[devc->ch_mode].unit_bits / devc->ch_num);
+                // Memory mode: mmap backed by pagefile
+                *data = g_variant_new_uint64((uint64_t)(devc->stream_mem_buff_size * 1024 * 1024 * 1024) * 8 / channel_modes[devc->ch_mode].unit_bits / devc->ch_num);
             }
         } else {
             *data = g_variant_new_uint64(devc->profile->dev_caps.hw_depth / channel_modes[devc->ch_mode].unit_bits / devc->ch_num);

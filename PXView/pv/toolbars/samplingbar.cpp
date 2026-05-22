@@ -649,31 +649,26 @@ void SamplingBar::update_sample_count_selector() {
   if (mode == DSO)
     duration = max_timebase;
   else if (stream_mode) {
-    // Stream mode: data flows continuously to memory/disk, not limited by
-    // hardware FIFO. Total buffer = memory + disk cache.
-    // SR_CONF_STREAM_MEM_BUFF = memory buffer size (GB)
-    // SR_CONF_STREAM_BUFF = disk cache size (GB)
-    // Without disk cache, use sw_depth (memory buffer in bytes).
+    // Stream mode: data flows continuously via mmap, not limited by hardware FIFO.
+    // mmap is backed by either memory (no disk cache) or disk file (with cache).
+    // The two modes are mutually exclusive — not additive.
+    // - No disk cache: use SR_CONF_STREAM_MEM_BUFF (memory mmap size)
+    // - Disk cache:    use SR_CONF_STREAM_BUFF (disk mmap size)
     int ch_num = _session->get_ch_num(SR_CHANNEL_LOGIC);
     if (ch_num <= 0)
       ch_num = 1;
     bool disk_cache_enabled = false;
     _device_agent->get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
                                    disk_cache_enabled);
-    double mem_gb = 16.0;
-    _device_agent->get_config_double(SR_CONF_STREAM_MEM_BUFF, mem_gb);
 
+    double buff_gb = 16.0;
     if (disk_cache_enabled) {
-      double disk_gb = 16.0;
-      _device_agent->get_config_double(SR_CONF_STREAM_BUFF, disk_gb);
-      double total_gb = mem_gb + disk_gb;
-      uint64_t total_samples = (uint64_t)(total_gb * SR_GB(1)) * 8 / ch_num;
-      duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
+      _device_agent->get_config_double(SR_CONF_STREAM_BUFF, buff_gb);
     } else {
-      // Memory buffer only
-      uint64_t total_samples = (uint64_t)(mem_gb * SR_GB(1)) * 8 / ch_num;
-      duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
+      _device_agent->get_config_double(SR_CONF_STREAM_MEM_BUFF, buff_gb);
     }
+    uint64_t total_samples = (uint64_t)(buff_gb * SR_GB(1)) * 8 / ch_num;
+    duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
   } else if (rle_support)
     duration = rle_depth / (samplerate * (1.0 / SR_SEC(1)));
   else
