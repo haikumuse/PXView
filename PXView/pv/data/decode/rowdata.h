@@ -49,6 +49,7 @@ public:
   bool push_annotation(Annotation *a);
 
   inline uint64_t get_annotation_size() { return _item_count; }
+  inline uint64_t get_annotation_capacity() { return _annotations.capacity(); }
 
   bool get_annotation(pv::data::decode::Annotation *ann, uint64_t index);
 

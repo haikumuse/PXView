@@ -26,7 +26,6 @@
 #include "analogsnapshot.h"
 #include "decodermodel.h"
 #include "dsosnapshot.h"
-#include "leaf_block_pool.h"
 #include "logicsnapshot.h"
 #include "snapshot.h"
 
@@ -132,58 +131,7 @@ void SessionSnapshot::copy_from_logic(LogicSnapshot *src) {
   if (!src || src->empty())
     return;
 
-  _logic.free_data();
-
-  _logic._capacity = src->_capacity;
-  _logic._channel_num = src->_channel_num;
-  _logic._sample_count = src->_sample_count;
-  _logic._total_sample_count = src->_total_sample_count;
-  _logic._ring_sample_count = src->_ring_sample_count;
-  _logic._unit_size = src->_unit_size;
-  _logic._unit_bytes = src->_unit_bytes;
-  _logic._unit_pitch = src->_unit_pitch;
-  _logic._memory_failed = src->_memory_failed;
-  _logic._last_ended = src->_last_ended;
-  _logic._samplerate = src->_samplerate;
-  _logic._ch_index = src->_ch_index;
-
-  _logic._byte_fraction = src->_byte_fraction;
-  _logic._ch_fraction = src->_ch_fraction;
-  _logic._dest_ptr = NULL;
-  memcpy(_logic._last_sample, src->_last_sample, sizeof(src->_last_sample));
-  memcpy(_logic._last_calc_count, src->_last_calc_count,
-         sizeof(src->_last_calc_count));
-  _logic._is_loop = src->_is_loop;
-  _logic._loop_offset = src->_loop_offset;
-  _logic._able_free = src->_able_free;
-  memcpy(_logic._cur_ref_block_indexs, src->_cur_ref_block_indexs,
-         sizeof(src->_cur_ref_block_indexs));
-  _logic._lst_free_block_index = src->_lst_free_block_index;
-
-  for (size_t i = 0; i < src->_ch_data.size(); i++) {
-    std::vector<LogicSnapshot::RootNode> new_channel;
-    for (size_t j = 0; j < src->_ch_data[i].size(); j++) {
-      const LogicSnapshot::RootNode &rn = src->_ch_data[i][j];
-      LogicSnapshot::RootNode new_rn;
-      new_rn.tog = rn.tog;
-      new_rn.first = rn.first;
-      new_rn.last = rn.last;
-      for (unsigned int k = 0; k < LogicSnapshot::Scale; k++) {
-        if (rn.lbp[k] != NULL) {
-          new_rn.lbp[k] =
-              LeafBlockPool::instance().acquire(LogicSnapshot::LeafBlockSpace);
-          if (new_rn.lbp[k])
-            memcpy(new_rn.lbp[k], rn.lbp[k], LogicSnapshot::LeafBlockSpace);
-          else
-            _logic._memory_failed = true;
-        } else {
-          new_rn.lbp[k] = NULL;
-        }
-      }
-      new_channel.push_back(new_rn);
-    }
-    _logic._ch_data.push_back(std::move(new_channel));
-  }
+  _logic.copy_from(*src);
 }
 
 void SessionSnapshot::copy_from_analog(AnalogSnapshot *src) {

@@ -219,6 +219,7 @@ set(PXView_SOURCES
     PXView/pv/data/disk_buffer_manager.cpp
     PXView/pv/data/disk_write_thread.cpp
     PXView/pv/data/disk_read_cache.cpp
+    PXView/pv/data/mmap_allocator.cpp
     PXView/pv/data/analogsnapshot.cpp
     PXView/pv/data/sessionsnapshot.cpp
     PXView/pv/data/sessiondocument.cpp

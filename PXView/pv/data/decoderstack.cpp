@@ -30,12 +30,19 @@
 #include "../ui/langresource.h"
 #include "../view/logicsignal.h"
 #include "decode/annotation.h"
+#include "decode/annotation_pool.h"
 #include "decode/decoder.h"
 #include "decode/rowdata.h"
 #include "decoderstack.h"
 #include "logicsnapshot.h"
+#include "leaf_block_pool.h"
 #include "sessiondocument.h"
 #include <ds_types.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <psapi.h>
+#endif
 
 using namespace pv::data::decode;
 using namespace std;
@@ -640,6 +647,60 @@ void DecoderStack::decode_data(const uint64_t decode_start,
   }
 
   dsv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
+
+  uint64_t total_annotations = 0;
+  uint64_t total_capacity = 0;
+  for (auto &kv : _rows) {
+      if (kv.second) {
+          total_annotations += kv.second->get_annotation_size();
+          total_capacity += kv.second->get_annotation_capacity();
+      }
+  }
+  
+  dsv_info("DEBUG PROBE: Decode End.");
+  dsv_info("DEBUG PROBE: Total Annotations: %llu", (unsigned long long)total_annotations);
+  dsv_info("DEBUG PROBE: Total Vector Capacity: %llu", (unsigned long long)total_capacity);
+
+  // === Comprehensive Memory Breakdown ===
+  auto &pool = decode::AnnotationPool::instance();
+  dsv_info("DEBUG MEM [1/5] Annotation Pool: alloc=%zu free=%zu chunks=%zu pool_memory=%zu MB",
+           pool.alloc_count(), pool.free_count(), pool.chunk_count(),
+           pool.total_memory_bytes() / (1024*1024));
+
+  // ResTable: count unique entries and estimate their memory
+  uint64_t restable_items = 0;
+  uint64_t restable_str_bytes = 0;
+  if (_decoder_status) {
+      restable_items = _decoder_status->m_resTable.GetCount();
+      // Estimate memory: each AnnotationSourceItem is ~128 bytes + QString data + hex string
+      // Plus the std::map<std::string, int> index overhead (~80 bytes/entry for RB tree nodes + key)
+      restable_str_bytes = restable_items * (128 + 80); // conservative base estimate
+  }
+  dsv_info("DEBUG MEM [2/5] ResTable: unique_items=%llu, estimated_base=%llu MB",
+           (unsigned long long)restable_items,
+           (unsigned long long)(restable_str_bytes / (1024*1024)));
+
+  // Vector<Annotation*> pointer storage
+  uint64_t vec_pointer_bytes = total_capacity * sizeof(Annotation*);
+  dsv_info("DEBUG MEM [3/5] Vector<Annotation*> pointers: %llu MB",
+           (unsigned long long)(vec_pointer_bytes / (1024*1024)));
+
+  // LeafBlockPool (wave data blocks held in memory, not mmap)
+  size_t leaf_idle = pv::data::LeafBlockPool::instance().idle_count();
+  dsv_info("DEBUG MEM [4/5] LeafBlockPool idle_blocks=%zu (each ~2MB = ~%zu MB)",
+           leaf_idle, leaf_idle * 2);
+
+  // Process working set
+  uint64_t ws = 0;
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS pmc;
+  if (K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+      ws = pmc.WorkingSetSize;
+  }
+#endif
+  dsv_info("DEBUG MEM [5/5] Process WorkingSet: %llu MB",
+           (unsigned long long)(ws / (1024*1024)));
+  dsv_info("=== END MEMORY BREAKDOWN ===");
 
   if (error != NULL)
     g_free(error);

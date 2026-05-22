@@ -29,6 +29,7 @@
 #include <vector>
 #include <QStaticText>
 #include <QFont>
+#include "annotation_pool.h"
 
 #include <QFontMetrics>
 
@@ -48,6 +49,17 @@ public:
 	Annotation(const srd_proto_data *const pdata, DecoderStatus *status);
     Annotation();
 	~Annotation();
+
+	// Pool-based allocation to prevent heap fragmentation
+	static void* operator new(size_t size) {
+		return AnnotationPool::instance().allocate(size);
+	}
+	static void operator delete(void* p, size_t) {
+		AnnotationPool::instance().deallocate(p);
+	}
+	static void operator delete(void* p) {
+		AnnotationPool::instance().deallocate(p);
+	}
 
 public:
 	inline uint64_t start_sample() const{

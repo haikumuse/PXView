@@ -55,8 +55,7 @@
 #include <stdexcept>
 #include <sys/stat.h>
 
-#include "data/disk_buffer_manager.h"
-#include "data/disk_cache_config.h"
+
 
 static QString get_default_disk_cache_path() {
   return QDir::tempPath() + "/PXView_cache";
@@ -131,9 +130,6 @@ SigSession::SigSession() {
   _signal_invert_running = false;
   _copy_in_progress = false;
   _capture_owner_document = nullptr;
-
-  _disk_write_thread = nullptr;
-  _disk_buffer_mgr = nullptr;
 
   _data_list.push_back(new SessionData());
   _data_list.push_back(new SessionData());
@@ -596,46 +592,6 @@ bool SigSession::action_start_capture(bool instant) {
       _device_agent.set_config_string(SR_CONF_DISK_CACHE_PATH,
                                       cache_path.toUtf8().data());
     }
-
-    DiskCacheConfig temp_config;
-    temp_config.cache_path = cache_path.toStdString();
-    DiskBufferManager temp_mgr;
-    temp_mgr.open(temp_config, 1);
-
-    uint64_t test_size = 64 * 1024 * 1024;
-    void *test_buf = malloc(test_size);
-    if (test_buf) {
-      memset(test_buf, 0, test_size);
-
-      auto start = std::chrono::high_resolution_clock::now();
-      for (uint64_t offset = 0; offset < test_size; offset += 2 * 1024 * 1024) {
-        uint64_t chunk =
-            std::min((uint64_t)(2 * 1024 * 1024), test_size - offset);
-        temp_mgr.write_block(0, offset / (2 * 1024 * 1024),
-                             (uint8_t *)test_buf + offset, chunk);
-      }
-      auto end = std::chrono::high_resolution_clock::now();
-
-      double elapsed_sec = std::chrono::duration<double>(end - start).count();
-      double speed_mbps = (test_size / (1024.0 * 1024.0)) / elapsed_sec;
-
-      free(test_buf);
-      temp_mgr.cleanup();
-      temp_mgr.close();
-
-      if (speed_mbps < 200.0) {
-        _callback->delay_prop_msg(
-            QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_WARNING),
-                        "Disk write speed is too slow")) +
-            "\n" +
-            QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_SLOW_DETAIL),
-                        "Detected speed: %1 MB/s\nRecommended: NVMe SSD for "
-                        "250MB/s capture.\nCapture may fail with data loss."))
-                .arg(speed_mbps, 0, 'f', 1));
-      }
-    } else {
-      temp_mgr.close();
-    }
   }
 
   _disk_cache_config.enabled = false;
@@ -759,6 +715,15 @@ bool SigSession::exec_capture() {
   if (bAddDecoder) {
     clear_all_decode_task2();
     clear_decode_result();
+    
+    // CRITICAL: Release the active document's copy of the old mmap data.
+    // copy_data_to_document() shares the mmap via shared_ptr. If we don't
+    // clear the document's LogicSnapshot here, its shared_ptr reference
+    // keeps the old multi-GB mmap alive while a new one is created,
+    // causing memory to double on every capture.
+    if (_active_document) {
+      _active_document->get_active_logic()->clear();
+    }
   }
 
   // Set the buffer to store the captured data

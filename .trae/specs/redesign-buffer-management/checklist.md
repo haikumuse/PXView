@@ -1,0 +1,45 @@
+- [x] BlockRegistry 类实现完整：BlockId、BlockLocation 枚举、状态转换规则定义正确
+- [x] BlockRegistry 所有状态转换路径（MEMORY_HOT→MEMORY_WARM→IN_TRANSIT→DISK, DISK→READ_CACHE, READ_CACHE→DISK）合法且原子执行
+- [x] BlockRegistry 引用计数正确：acquire_ref +1、release_ref -1，降为 0 时触发回调
+- [x] BlockRegistry 线程安全：std::shared_mutex 保护，读操作共享锁、写操作独占锁
+- [x] DiskStorage 覆盖写入功能正常：free_list 追踪可复用空间，write_block 优先使用可复用空间
+- [x] DiskStorage 磁盘文件大小不超过配置的 disk_size_gb
+- [x] DiskStorage 磁盘满恢复机制正常：reset_disk_full() 可恢复写入
+- [x] DiskBlockReader O(1) 查找：使用 std::unordered_map + 双向链表实现
+- [x] DiskBlockReader 淘汰不再直接操作 _ch_data，改为通过 BlockRegistry 状态转换
+- [x] DiskBlockReader 批量预加载 load_batch() 接口可用
+- [x] DiskBlockReader load() 双重检查竞态已修复
+- [x] AsyncDiskWriter 使用 DiskCacheConfig 中的 write_queue_threshold_warn/stop 替代硬编码值
+- [x] AsyncDiskWriter 写入完成后通过 BlockRegistry 状态转换（IN_TRANSIT → DISK）
+- [x] AsyncDiskWriter 引用计数为 0 时自动释放内存，引用计数 > 0 时保留内存
+- [x] AsyncDiskWriter start() 不再错误调用 on_complete
+- [x] AsyncDiskWriter 磁盘满恢复机制正常
+- [x] SlidingWindow 窗口容量计算正确：per_channel_blocks = memory_size_gb * 1024^3 / (bytes_per_block * channel_count)
+- [x] SlidingWindow 逐出旧块时通过 BlockRegistry 正确转换状态
+- [x] SlidingWindow 磁盘缓存禁用时退化为无限制窗口
+- [x] BlockStore acquire_block() 正确处理内存命中、磁盘加载、传输中三种场景
+- [x] BlockStore release_block() 引用计数正确递减，降为 0 时检查是否释放内存
+- [x] BlockStore 块迭代器接口可用：按序遍历所有块（通过 get_block_data + get_block_count）
+- [x] BlockStore submit_new_block() 正确注册到 BlockRegistry 并加入 SlidingWindow
+- [x] BlockStore configure()、start()、stop()、flush() 生命周期方法正确
+- [x] LogicSnapshot 移除了 _disk_cache_active、_block_states、_hot_window_blocks 等散落状态变量
+- [x] LogicSnapshot first_payload() 通过 _block_store 初始化
+- [x] LogicSnapshot append_cross_payload() 使用 _block_store->submit_new_block() 替代手动调度
+- [x] LogicSnapshot get_sample_self() 使用 BlockStore get_block_data() 安全访问，磁盘块自动加载
+- [x] LogicSnapshot get_samples() 通过 BlockStore 加载磁盘块，返回有效数据指针
+- [x] LogicSnapshot get_display_edges() 通过 BlockStore 加载所需块
+- [x] LogicSnapshot get_nxt_edge_self() / get_pre_edge_self() 使用 BlockStore 安全访问
+- [x] LogicSnapshot free_data() 调用 _block_store->flush() 和 stop()
+- [x] LogicSnapshot move_first_node_to_last() 通过 SlidingWindow 感知环形回绕
+- [x] SigSession capture_init() 自动将 _disk_cache_config 注入 LogicSnapshot
+- [x] SigSession 通过 capture_init() 注入配置，不再依赖 start_capture() 到 first_payload() 的时序
+- [x] DecoderStack decode_data() 通过 LogicSnapshot 公共 API 访问数据（内部已集成 BlockStore）
+- [x] StoreSession store_logic_data() 通过 LogicSnapshot 公共 API 访问数据（内部已集成 BlockStore）
+- [x] SessionDocument copy_from_logic() 使用 LogicSnapshot::copy_from()，不再 friend 直接访问 _ch_data
+- [x] SessionSnapshot copy_from_logic() 使用 LogicSnapshot::copy_from()，不再 friend 直接访问 _ch_data
+- [x] 编译通过，无编译错误和警告
+- [ ] 磁盘缓存禁用时回归测试：所有行为与重构前一致
+- [ ] 磁盘缓存启用时功能测试：数据正确写入磁盘、内存占用不超过配置值、UI 正常渲染
+- [ ] 16 通道 250MB/s 持续采集 10 分钟，无崩溃、无内存泄漏
+- [ ] 采集期间运行协议解码器，无崩溃
+- [ ] 磁盘空间不足时优雅降级，不崩溃
