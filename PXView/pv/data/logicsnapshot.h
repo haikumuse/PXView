@@ -295,7 +295,16 @@ private:
     uint64_t _hot_window_blocks;
     uint64_t _total_blocks_written;
     bool _disk_cache_active;
- 
+    
+    struct PendingRelease {
+        int chan;
+        uint64_t index0;
+        uint64_t index1;
+        void* ptr;
+    };
+    std::vector<PendingRelease> _pending_releases;
+    std::mutex _release_mutex;
+
 	friend class LogicSnapshotTest::Pow2;
 	friend class LogicSnapshotTest::Basic;
 	friend class LogicSnapshotTest::LargeData;

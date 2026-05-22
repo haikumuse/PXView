@@ -29,6 +29,7 @@
 #include <list>
 #include <mutex>
 #include <cstdint>
+#include <functional>
 
 namespace pv {
 namespace data {
@@ -54,6 +55,8 @@ public:
 
     void clear();
 
+    void set_evict_callback(std::function<void(int channel, uint64_t block_index, void *ptr)> cb);
+
 private:
     void evict();
 
@@ -63,6 +66,7 @@ private:
     uint64_t _current_bytes;
     uint64_t _max_bytes;
     std::mutex _mutex;
+    std::function<void(int channel, uint64_t block_index, void *ptr)> _evict_callback;
 };
 
 } // namespace data

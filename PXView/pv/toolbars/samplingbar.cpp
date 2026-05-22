@@ -660,17 +660,19 @@ void SamplingBar::update_sample_count_selector() {
     bool disk_cache_enabled = false;
     _device_agent->get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
                                    disk_cache_enabled);
+    double mem_gb = 16.0;
+    _device_agent->get_config_double(SR_CONF_STREAM_MEM_BUFF, mem_gb);
+
     if (disk_cache_enabled) {
-      double mem_gb = 16.0;
       double disk_gb = 16.0;
-      _device_agent->get_config_double(SR_CONF_STREAM_MEM_BUFF, mem_gb);
       _device_agent->get_config_double(SR_CONF_STREAM_BUFF, disk_gb);
       double total_gb = mem_gb + disk_gb;
       uint64_t total_samples = (uint64_t)(total_gb * SR_GB(1)) * 8 / ch_num;
       duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
     } else {
-      // Memory buffer only (sw_depth is in bytes)
-      duration = (sw_depth * 8 / ch_num) / (samplerate * (1.0 / SR_SEC(1)));
+      // Memory buffer only
+      uint64_t total_samples = (uint64_t)(mem_gb * SR_GB(1)) * 8 / ch_num;
+      duration = total_samples / (samplerate * (1.0 / SR_SEC(1)));
     }
   } else if (rle_support)
     duration = rle_depth / (samplerate * (1.0 / SR_SEC(1)));

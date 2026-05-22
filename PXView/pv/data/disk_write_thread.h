@@ -45,6 +45,7 @@ struct WriteTask
     uint64_t block_index;
     void *data_ptr;
     uint64_t size;
+    std::function<void()> on_complete;
 };
 
 class DiskWriteThread
@@ -74,6 +75,7 @@ private:
     std::thread _thread;
     std::mutex _mutex;
     std::condition_variable _cv;
+    std::condition_variable _cv_full;
     std::queue<WriteTask> _queue;
     bool _running;
     bool _stopping;

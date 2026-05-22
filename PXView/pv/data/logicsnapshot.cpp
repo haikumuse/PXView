@@ -86,7 +86,7 @@ void LogicSnapshot::free_data() {
     _disk_buffer_mgr = NULL;
   }
   _block_states.clear();
-  _disk_cache_active = false;
+  // Do NOT reset _disk_cache_active here, as it preserves the config state!
 
   Snapshot::free_data();
 
@@ -134,6 +134,8 @@ void LogicSnapshot::clear() {
 }
 
 void LogicSnapshot::set_disk_cache_config(const DiskCacheConfig &config) {
+  dsv_info("LogicSnapshot::set_disk_cache_config: enabled=%d, path=%s", 
+           config.enabled, config.cache_path.c_str());
   _disk_cache_config = config;
   if (config.enabled && !config.cache_path.empty()) {
     _disk_cache_active = true;
@@ -282,7 +284,17 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     _cur_ref_block_indexs[i].lbp_index = 0;
   }
 
+  dsv_info("LogicSnapshot::first_payload: _disk_cache_active=%d, ch_data.size()=%zu", 
+           _disk_cache_active, _ch_data.size());
+
+  if (_channel_num > 0 && _disk_cache_config.hot_window_blocks > 0) {
+    _hot_window_blocks = _disk_cache_config.hot_window_blocks / _channel_num;
+    if (_hot_window_blocks == 0) _hot_window_blocks = 1;
+    dsv_info("LogicSnapshot::first_payload: adjusted _hot_window_blocks to %llu per channel", _hot_window_blocks);
+  }
+
   if (_disk_cache_active && _ch_data.size() > 0) {
+    dsv_info("LogicSnapshot::first_payload: initializing disk buffer mgr and write thread");
     if (!_disk_buffer_mgr) {
       _disk_buffer_mgr = new DiskBufferManager();
     }
@@ -291,10 +303,21 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     if (!_disk_write_thread) {
       _disk_write_thread = new DiskWriteThread(_disk_buffer_mgr);
     }
+    _disk_write_thread->set_cache_size(_disk_cache_config.total_cache_depth_gb * 1024ULL * 1024 * 1024);
     _disk_write_thread->start();
 
     if (!_disk_read_cache) {
       _disk_read_cache = new DiskReadCache(_disk_buffer_mgr);
+      _disk_read_cache->set_evict_callback([this](int channel, uint64_t block_index, void *ptr) {
+          uint64_t idx0 = block_index / RootScale;
+          uint64_t idx1 = block_index % RootScale;
+          if (channel < (int)_ch_data.size() && idx0 < _ch_data[channel].size()) {
+              if (_ch_data[channel][idx0].lbp[idx1] == ptr) {
+                  _ch_data[channel][idx0].lbp[idx1] = NULL;
+                  _block_states.erase(ptr);
+              }
+          }
+      });
     }
     _disk_read_cache->set_max_size(_disk_cache_config.read_cache_bytes);
 
@@ -306,8 +329,21 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
   _last_ended = false;
 }
 
-void LogicSnapshot::append_payload(const sr_datafeed_logic &logic) {
+void LogicSnapshot::append_payload(
+    const sr_datafeed_logic &logic) {
   std::lock_guard<std::mutex> lock(_mutex);
+  
+  if (_disk_cache_active) {
+      std::lock_guard<std::mutex> r_lock(_release_mutex);
+      for (auto &r : _pending_releases) {
+          LeafBlockPool::instance().release(r.ptr);
+          if (r.index0 < _ch_data[r.chan].size()) {
+              _ch_data[r.chan][r.index0].lbp[r.index1] = NULL;
+          }
+          _block_states.erase(r.ptr);
+      }
+      _pending_releases.clear();
+  }
 
   append_cross_payload(logic);
 }
@@ -396,21 +432,33 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
           calc_mipmap(_channel_num - 1, index0, index1, LeafBlockSamples, true);
 
           if (_disk_cache_active) {
-            void *blk_ptr = _ch_data[_channel_num - 1][index0].lbp[index1];
-            if (blk_ptr != NULL) {
-              auto it = _block_states.find(blk_ptr);
-              if (it != _block_states.end() && it->second == BLOCK_HOT) {
-                uint64_t block_seq = index0 * RootScale + index1;
-                if (block_seq >= _hot_window_blocks ||
-                    _total_blocks_written > 0) {
-                  it->second = BLOCK_WARM;
-                  WriteTask task;
-                  task.channel = _channel_num - 1;
-                  task.block_index = block_seq;
-                  task.data_ptr = blk_ptr;
-                  task.size = LeafBlockSpace;
-                  _disk_write_thread->submit(task);
-                  _total_blocks_written++;
+            uint64_t block_seq = index0 * RootScale + index1;
+            if (block_seq >= _hot_window_blocks) {
+              uint64_t old_seq = block_seq - _hot_window_blocks;
+              uint64_t old_index0 = old_seq / RootScale;
+              uint64_t old_index1 = old_seq % RootScale;
+              
+              if (old_index0 < _ch_data[_channel_num - 1].size()) {
+                void *old_blk_ptr = _ch_data[_channel_num - 1][old_index0].lbp[old_index1];
+                if (old_blk_ptr != NULL) {
+                  auto it = _block_states.find(old_blk_ptr);
+                  if (it != _block_states.end() && it->second == BLOCK_HOT) {
+                    it->second = BLOCK_WARM;
+                    WriteTask task;
+                    task.channel = _channel_num - 1;
+                    task.block_index = old_seq;
+                    task.data_ptr = old_blk_ptr;
+                    task.size = LeafBlockSpace;
+                    
+                    int chan = _channel_num - 1;
+                    task.on_complete = [this, chan, old_index0, old_index1, old_blk_ptr]() {
+                        std::lock_guard<std::mutex> lock(_release_mutex);
+                        _pending_releases.push_back({chan, old_index0, old_index1, old_blk_ptr});
+                    };
+
+                    _disk_write_thread->submit(task);
+                    _total_blocks_written++;
+                  }
                 }
               }
             }
@@ -477,20 +525,32 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
       calc_mipmap(fill_chan, index0, index1, LeafBlockSamples, true);
 
       if (_disk_cache_active) {
-        void *blk_ptr = _ch_data[fill_chan][index0].lbp[index1];
-        if (blk_ptr != NULL) {
-          auto it = _block_states.find(blk_ptr);
-          if (it != _block_states.end() && it->second == BLOCK_HOT) {
-            uint64_t block_seq = index0 * RootScale + index1;
-            if (block_seq >= _hot_window_blocks || _total_blocks_written > 0) {
-              it->second = BLOCK_WARM;
-              WriteTask task;
-              task.channel = fill_chan;
-              task.block_index = block_seq;
-              task.data_ptr = blk_ptr;
-              task.size = LeafBlockSpace;
-              _disk_write_thread->submit(task);
-              _total_blocks_written++;
+        uint64_t block_seq = index0 * RootScale + index1;
+        if (block_seq >= _hot_window_blocks) {
+          uint64_t old_seq = block_seq - _hot_window_blocks;
+          uint64_t old_index0 = old_seq / RootScale;
+          uint64_t old_index1 = old_seq % RootScale;
+          
+          if (old_index0 < _ch_data[fill_chan].size()) {
+            void *old_blk_ptr = _ch_data[fill_chan][old_index0].lbp[old_index1];
+            if (old_blk_ptr != NULL) {
+              auto it = _block_states.find(old_blk_ptr);
+              if (it != _block_states.end() && it->second == BLOCK_HOT) {
+                it->second = BLOCK_WARM;
+                WriteTask task;
+                task.channel = fill_chan;
+                task.block_index = old_seq;
+                task.data_ptr = old_blk_ptr;
+                task.size = LeafBlockSpace;
+
+                task.on_complete = [this, fill_chan, old_index0, old_index1, old_blk_ptr]() {
+                    std::lock_guard<std::mutex> lock(_release_mutex);
+                    _pending_releases.push_back({fill_chan, old_index0, old_index1, old_blk_ptr});
+                };
+
+                _disk_write_thread->submit(task);
+                _total_blocks_written++;
+              }
             }
           }
         }
@@ -870,6 +930,8 @@ bool LogicSnapshot::get_sample_self(uint64_t index, int sig_index) {
         ensure_block_hot(order, index0, index1);
       }
       uint64_t *lbp = (uint64_t *)_ch_data[order][index0].lbp[index1];
+      if (lbp == NULL)
+        return (_ch_data[order][index0].first & root_pos_mask) != 0;
       return *(lbp + ((index & LeafMask) >> ScalePower)) & index_mask;
     }
   }
@@ -1006,16 +1068,22 @@ bool LogicSnapshot::get_nxt_edge_self(uint64_t &index, bool last_sample,
 
         if (!edge_hit) {
           uint64_t *lbp = (uint64_t *)_ch_data[order][i].lbp[inner_tog_pos];
+          if (lbp == NULL && _disk_cache_active) {
+            ensure_block_hot(order, i, inner_tog_pos);
+            lbp = (uint64_t *)_ch_data[order][i].lbp[inner_tog_pos];
+          }
           uint64_t blk_start = (i << (LeafBlockPower + RootScalePower)) +
                                (inner_tog_pos << LeafBlockPower);
           index = max(blk_start, index);
 
-          if (min_level < ScaleLevel) {
+          if (lbp != NULL && min_level < ScaleLevel) {
             uint64_t block_end = min(index | LeafMask, end);
             edge_hit =
                 block_nxt_edge(lbp, index, block_end, last_sample, min_level);
-          } else {
+          } else if (lbp != NULL) {
             edge_hit = true;
+          } else {
+            edge_hit = true; // block unavailable, treat as edge
           }
 
           if (inner_tog_pos == RootScale - 1)
@@ -1115,11 +1183,15 @@ bool LogicSnapshot::get_pre_edge_self(uint64_t &index, bool last_sample,
 
         if (!edge_hit) {
           uint64_t *lbp = (uint64_t *)_ch_data[order][i].lbp[inner_tog_pos];
+          if (lbp == NULL && _disk_cache_active) {
+            ensure_block_hot(order, i, inner_tog_pos);
+            lbp = (uint64_t *)_ch_data[order][i].lbp[inner_tog_pos];
+          }
           uint64_t blk_end = ((i << (LeafBlockPower + RootScalePower)) +
                               (inner_tog_pos << LeafBlockPower)) |
                              LeafMask;
           index = min(blk_end, index);
-          if (min_level < ScaleLevel) {
+          if (lbp != NULL && min_level < ScaleLevel) {
             edge_hit =
                 block_pre_edge(lbp, index, last_sample, min_level, sig_index);
           } else {

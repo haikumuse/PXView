@@ -1311,11 +1311,15 @@ void View::resizeEvent(QResizeEvent *event) {
     _scale = _session->cur_view_time() / width;
   }
 
-  if (_device_agent->get_work_mode() != DSO)
+  if (_device_agent->get_work_mode() != DSO) {
     _maxscale =
         effective_data_source()->cur_sampletime() / (width * MaxViewRate);
-  else
+    if (_scale > _maxscale) {
+      _scale = _maxscale;
+    }
+  } else {
     _maxscale = 1e9;
+  }
 
   _ruler->update();
   _header->header_resize();
