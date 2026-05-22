@@ -64,8 +64,6 @@ class DsoSnapshot;
 class LogicSnapshot;
 class DecoderModel;
 class MathStack;
-class DiskWriteThread;
-class DiskBufferManager;
 
 namespace decode {
 class Decoder;
@@ -584,9 +582,6 @@ private:
   bool _signal_invert_running;
   volatile bool _copy_in_progress;
   data::SessionDocument *_capture_owner_document;
-
-  data::DiskWriteThread *_disk_write_thread;
-  data::DiskBufferManager *_disk_buffer_mgr;
 
 private:
   // TODO: This should not be necessary. Multiple concurrent

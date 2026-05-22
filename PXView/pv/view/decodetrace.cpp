@@ -261,23 +261,32 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
               if (min_annWidth < 2.0) {
                 uint64_t current_sample = start_sample;
                 const size_t base_colour = 0;
-                
+
                 while (current_sample <= end_sample) {
-                  const Annotation *ann = row_data->get_first_annotation_ending_after(current_sample);
+                  const Annotation *ann =
+                      row_data->get_first_annotation_ending_after(
+                          current_sample);
                   if (!ann || ann->start_sample() > end_sample)
                     break;
-                  
-                  uint64_t block_start = std::max(current_sample, ann->start_sample());
-                  uint64_t block_end = std::max(ann->end_sample(), block_start + (uint64_t)std::max(1.0, samples_per_pixel));
-                  
+
+                  uint64_t block_start =
+                      std::max(current_sample, ann->start_sample());
+                  uint64_t block_end = std::max(
+                      ann->end_sample(),
+                      block_start + (uint64_t)std::max(1.0, samples_per_pixel));
+
                   double x = (block_start / samples_per_pixel) - pixels_offset;
                   double width = (block_end - block_start) / samples_per_pixel;
-                  
-                  const size_t colour = ((base_colour + ann->type()) % MaxAnnType) % countof(Colours);
+
+                  const size_t colour =
+                      ((base_colour + ann->type()) % MaxAnnType) %
+                      countof(Colours);
                   const QColor &fill = Colours[colour];
-                  
-                  p.fillRect(QRectF(x, y - annotation_height * 0.5, std::max(1.0, width), annotation_height), fill);
-                  
+
+                  p.fillRect(QRectF(x, y - annotation_height * 0.5,
+                                    std::max(1.0, width), annotation_height),
+                             fill);
+
                   current_sample = block_end;
                 }
               } else {
@@ -293,8 +302,9 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
                     if (!a)
                       break;
                     draw_annotation(*a, p, get_text_colour(), annotation_height,
-                                    left, right, samples_per_pixel, pixels_offset,
-                                    y, 0, min_annWidth, fore, back, last_x);
+                                    left, right, samples_per_pixel,
+                                    pixels_offset, y, 0, min_annWidth, fore,
+                                    back, last_x);
                   }
                 }
               }
@@ -592,12 +602,8 @@ void DecodeTrace::on_new_decode_data() {
   qint64 throttle_ms;
   if (decode_duration_ms < 2000)
     throttle_ms = 33; // ~30 FPS for short decodes
-  else if (decode_duration_ms < 10000)
-    throttle_ms = 1000; // 1 FPS
-  else if (decode_duration_ms < 60000)
-    throttle_ms = 5000; // 0.2 FPS
   else
-    throttle_ms = 10000; // 0.1 FPS
+    throttle_ms = 1000; // 1 FPS for all longer decodes
 
   qint64 elapsed = _update_timer.isValid() ? _update_timer.elapsed() : 999999;
   if (is_running && elapsed < throttle_ms) {

@@ -25,18 +25,21 @@
 #ifndef DSVIEW_PV_DATA_LOGICSNAPSHOT_H
 #define DSVIEW_PV_DATA_LOGICSNAPSHOT_H
 
-#include <libsigrok.h> 
+#include <libsigrok.h>
 #include "snapshot.h"
+#include "mmap_allocator.h"
 #include "disk_cache_config.h"
-#include "disk_buffer_manager.h"
-#include "disk_write_thread.h"
-#include "disk_read_cache.h"
 #include <QString>
 #include <utility>
 #include <vector>
 #include <map>
 #include <functional>
-
+#include <memory>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <atomic>
 #define CHANNEL_MAX_COUNT 64
 
 namespace LogicSnapshotTest {
@@ -87,12 +90,6 @@ private:
     {
         uint64_t    root_index;
         uint64_t    lbp_index;
-    };
-
-    enum BlockState {
-        BLOCK_HOT = 0,
-        BLOCK_WARM = 1,
-        BLOCK_COLD = 2
     };
 
 public:
@@ -149,8 +146,11 @@ public:
     double get_disk_write_speed_mbps();
     size_t get_disk_write_queue_depth();
     uint64_t get_disk_total_blocks_written();
-    void ensure_block_hot(unsigned int order, uint64_t index0, uint64_t index1);
     void ensure_all_blocks_hot();
+
+    uint64_t get_page_fault_count();
+    uint64_t get_working_set_bytes();
+    uint64_t get_async_queue_bytes();
 
     bool has_data(int sig_index);
     int get_block_num();
@@ -271,6 +271,9 @@ private:
 
     void free_head_blocks(int count);
 
+    void push_to_free_list(void* ptr);
+    void* allocate_block(uint16_t channel, uint64_t index0, uint64_t index1);
+
 private:
     std::vector<std::vector<struct RootNode>> _ch_data;
     uint8_t     _byte_fraction;
@@ -288,30 +291,30 @@ private:
     bool        _glitch_filtered;
 
     DiskCacheConfig _disk_cache_config;
-    DiskBufferManager *_disk_buffer_mgr;
-    DiskWriteThread *_disk_write_thread;
-    DiskReadCache *_disk_read_cache;
-    std::map<void*, BlockState> _block_states;
-    uint64_t _hot_window_blocks;
-    uint64_t _total_blocks_written;
-    bool _disk_cache_active;
-    
-    struct PendingRelease {
-        int chan;
-        uint64_t index0;
-        uint64_t index1;
-        void* ptr;
-    };
-    std::vector<PendingRelease> _pending_releases;
-    std::mutex _release_mutex;
+    std::shared_ptr<MmapAllocator> _mmap_alloc;
+    uint64_t _max_blocks_per_channel;
 
+
+    std::queue<std::vector<uint8_t>> _async_queue;
+    std::mutex _async_mutex;
+    std::condition_variable _async_cv;
+    std::thread _async_thread;
+    std::atomic<bool> _async_running;
+    void async_write_worker();
+
+    std::atomic<uint64_t> _async_bytes_written;
+    std::atomic<double> _async_write_speed_mbps;
+    std::atomic<size_t> _async_queue_depth;
+    std::atomic<uint64_t> _async_queue_bytes_size;
+    
+    std::atomic<uint64_t> _last_pf_count{0};
+    std::atomic<int64_t> _last_pf_time{0};
+    std::atomic<uint64_t> _pf_per_sec{0};
 	friend class LogicSnapshotTest::Pow2;
 	friend class LogicSnapshotTest::Basic;
 	friend class LogicSnapshotTest::LargeData;
 	friend class LogicSnapshotTest::Pulses;
 	friend class LogicSnapshotTest::LongPulses;
-    friend class SessionSnapshot;
-    friend class SessionDocument;
 };
 
 } // namespace data
