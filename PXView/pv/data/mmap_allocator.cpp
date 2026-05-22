@@ -131,15 +131,10 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
 void* MmapAllocator::get_block_data(int channel, uint64_t block_index, uint64_t max_blocks_per_channel, uint64_t block_size) {
     if (!_base_ptr) return nullptr;
     
-    if (block_index >= max_blocks_per_channel) {
-        // Technically should not happen if _total_sample_count is correct, but just in case we hit the ceiling.
-        // Returning nullptr forces the application to drop data or handle OOM safely.
-        dsv_err("MmapAllocator: block_index %llu exceeds max_blocks_per_channel %llu", 
-                (unsigned long long)block_index, (unsigned long long)max_blocks_per_channel);
-        return nullptr;
-    }
+    if (max_blocks_per_channel == 0) return nullptr;
+    uint64_t wrapped_block_index = block_index % max_blocks_per_channel;
     
-    uint64_t global_offset = ((uint64_t)channel * max_blocks_per_channel + block_index) * block_size;
+    uint64_t global_offset = ((uint64_t)channel * max_blocks_per_channel + wrapped_block_index) * block_size;
     if (global_offset + block_size > _total_bytes) {
         dsv_err("MmapAllocator: Out of bounds access! offset %llu > total %llu", 
                 (unsigned long long)(global_offset + block_size), (unsigned long long)_total_bytes);
@@ -148,17 +143,6 @@ void* MmapAllocator::get_block_data(int channel, uint64_t block_index, uint64_t 
     
     return (uint8_t*)_base_ptr + global_offset;
 }
-
-void MmapAllocator::advise_dontneed(void* ptr, uint64_t size) {
-    if (!ptr || !is_mmap_address(ptr)) return;
-#ifdef _WIN32
-    // On Windows, VirtualUnlock hints the memory manager to page out the data to disk if memory is tight.
-    VirtualUnlock(ptr, size);
-#else
-    madvise(ptr, size, MADV_DONTNEED);
-#endif
-}
-
 
 void MmapAllocator::clear() {
 #ifdef _WIN32

@@ -3371,7 +3371,7 @@ void MainWindow::update_disk_cache_status() {
   }
 
   if (!_session->is_working()) {
-      wspeed = 0.0;
+    wspeed = 0.0;
   }
 
   text +=
@@ -3380,10 +3380,19 @@ void MainWindow::update_disk_cache_status() {
       QString("%1 MB/s").arg(wspeed, 0, 'f', 1);
 
   if (logic) {
-    text += QString(" | Queue: %1 MB (%2 blks)").arg(qb / (1024.0 * 1024.0), 0, 'f', 1).arg(qdepth);
-    text += QString(" | RAM: %1 MB").arg(ws / (1024.0 * 1024.0), 0, 'f', 1);
-    text += QString(" | PF/s: %1").arg(pf);
-    
+    text +=
+        " | " +
+        QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_QUEUE), "Queue: ")) +
+        QString("%1 MB (%2 blks)")
+            .arg(qb / (1024.0 * 1024.0), 0, 'f', 1)
+            .arg(qdepth);
+    text += " | " +
+            QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_RAM), "RAM: ")) +
+            QString("%1 MB").arg(ws / (1024.0 * 1024.0), 0, 'f', 1);
+    text += " | " +
+            QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISK_CACHE_PF), "PF/s: ")) +
+            QString("%1").arg(pf);
+
     if (logic->is_disk_cache_active()) {
       uint64_t total_blocks = logic->get_disk_total_blocks_written();
       double disk_gb = total_blocks * 2105376 / (1024.0 * 1024.0 * 1024.0);

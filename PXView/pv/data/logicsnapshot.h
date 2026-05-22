@@ -295,7 +295,11 @@ private:
     uint64_t _max_blocks_per_channel;
 
 
-    std::queue<std::vector<uint8_t>> _async_queue;
+    struct AsyncPayload {
+        int format;
+        std::vector<uint8_t> data;
+    };
+    std::queue<AsyncPayload> _async_queue;
     std::mutex _async_mutex;
     std::condition_variable _async_cv;
     std::thread _async_thread;

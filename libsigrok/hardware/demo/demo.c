@@ -72,13 +72,13 @@ static int b_load_directory = 0;
 static char* demo_mode_names[3] = {"logic", "dso", "analog"};
 
 static const struct DEMO_channels logic_channel_modes[] = {
-    {DEMO_LOGIC125x16,  LOGIC,  SR_CHANNEL_LOGIC,  16, 1, SR_MHZ(1), SR_Mn(1),
+    {(enum DEMO_CHANNEL_ID)DEMO_LOGIC125x16,  LOGIC,  SR_CHANNEL_LOGIC,  16, 1, SR_MHZ(1), SR_Mn(1),
      SR_KHZ(50), SR_MHZ(125), "Use 16 Channels (Max 125MHz)"},
-    {DEMO_LOGIC250x12,  LOGIC,  SR_CHANNEL_LOGIC,  12, 1, SR_MHZ(1), SR_Mn(1),
+    {(enum DEMO_CHANNEL_ID)DEMO_LOGIC250x12,  LOGIC,  SR_CHANNEL_LOGIC,  12, 1, SR_MHZ(1), SR_Mn(1),
      SR_KHZ(50), SR_MHZ(250), "Use 12 Channels (Max 250MHz)"},
-    {DEMO_LOGIC500x6,  LOGIC,  SR_CHANNEL_LOGIC,  6, 1, SR_MHZ(1), SR_Mn(1),
+    {(enum DEMO_CHANNEL_ID)DEMO_LOGIC500x6,  LOGIC,  SR_CHANNEL_LOGIC,  6, 1, SR_MHZ(1), SR_Mn(1),
      SR_KHZ(50), SR_MHZ(500), "Use 6 Channels (Max 500MHz)"},
-    {DEMO_LOGIC1000x3,  LOGIC,  SR_CHANNEL_LOGIC,  3, 1, SR_MHZ(1), SR_Mn(1),
+    {(enum DEMO_CHANNEL_ID)DEMO_LOGIC1000x3,  LOGIC,  SR_CHANNEL_LOGIC,  3, 1, SR_MHZ(1), SR_Mn(1),
      SR_KHZ(50), SR_GHZ(1), "Use 3 Channels (Max 1GHz)"},
 };
 
@@ -499,7 +499,7 @@ static int reset_dsl_path(struct sr_dev_inst *sdi, uint8_t pattern_mode)
     struct demo_mode_pattern *info = NULL;
     char file_path[500];
 
-    safe_free(sdi->path);
+    if (sdi->path) { g_free(sdi->path); sdi->path = NULL; }
 
     strcpy(file_path, DS_USR_PATH);
     strcat(file_path,"/demo/");
@@ -749,9 +749,9 @@ static int hw_dev_close(struct sr_dev_inst *sdi)
         safe_free(vdev->packet_buffer);
         safe_free(vdev->data_buf);
         safe_free(vdev->data_buf);
-        safe_free(sdi->path);
-        safe_free(packet_interval);
-        safe_free(run_time);
+        if (sdi->path) { g_free(sdi->path); sdi->path = NULL; }
+        if (packet_interval) { g_timer_destroy(packet_interval); packet_interval = NULL; }
+        if (run_time) { g_timer_destroy(run_time); run_time = NULL; }
         safe_free(vdev->analog_post_buf);
 
         sdi->status = SR_ST_INACTIVE;

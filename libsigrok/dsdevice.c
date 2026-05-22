@@ -96,7 +96,7 @@ SR_PRIV int sr_dev_probe_name_set(const struct sr_dev_inst *sdi,
 	for (l = sdi->channels; l; l = l->next) {
 		probe = l->data;
 		if (probe->index == probenum) {
-			g_free(probe->name);
+			if (probe->name) g_free(probe->name);
 			probe->name = g_strdup(name);
 			ret = SR_OK;
 			break;
@@ -169,7 +169,7 @@ SR_PRIV int sr_dev_trigger_set(const struct sr_dev_inst *sdi, uint16_t probenum,
 		probe = l->data;
 		if (probe->index == probenum) {
 			/* If the probe already has a trigger, kill it first. */
-            safe_free(probe->trigger);
+            if (probe->trigger) g_free(probe->trigger);
             probe->trigger = g_strdup(trigger);
 			ret = SR_OK;
 			break;
@@ -184,11 +184,10 @@ SR_PRIV struct sr_dev_inst *sr_dev_inst_new(int mode, int status,
 		const char *vendor, const char *model, const char *version)
 {
 	struct sr_dev_inst *sdi;
-	if (!(sdi = malloc(sizeof(struct sr_dev_inst)))) {
+	if (!(sdi = g_malloc0(sizeof(struct sr_dev_inst)))) {
 		sr_err("%s,ERROR:failed to alloc memory.", __func__);
 		return NULL;
 	}
-	memset(sdi, 0, sizeof(struct sr_dev_inst));
  
     sdi->mode = mode;
 	sdi->status = status;
@@ -216,10 +215,10 @@ SR_PRIV void sr_dev_probes_free(struct sr_dev_inst *sdi)
 
     for (l = sdi->channels; l; l = l->next) {
         probe = l->data;
-        safe_free(probe->name);
-        safe_free(probe->trigger);
+        if (probe->name) g_free(probe->name);
+        if (probe->trigger) g_free(probe->trigger);
 		safe_free(probe->vga_ptr);
-        g_free(probe);
+        safe_free(probe); // probe was allocated with malloc
     }
 	g_safe_free_list(sdi->channels);
 }
@@ -233,10 +232,10 @@ SR_PRIV void sr_dev_inst_free(struct sr_dev_inst *sdi)
 	
 	safe_free(sdi->conn);
 	safe_free(sdi->priv);
-	safe_free(sdi->vendor);
-	safe_free(sdi->version);
-	safe_free(sdi->path);
-	safe_free(sdi->name);
+	if (sdi->vendor) { g_free(sdi->vendor); sdi->vendor = NULL; }
+	if (sdi->version) { g_free(sdi->version); sdi->version = NULL; }
+	if (sdi->path) { g_free(sdi->path); sdi->path = NULL; }
+	if (sdi->name) { g_free(sdi->name); sdi->name = NULL; }
 
 	g_free(sdi);
 }

@@ -343,12 +343,14 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 void LogicSnapshot::append_payload(const sr_datafeed_logic &logic) {
   if (logic.length == 0 || logic.data == nullptr) return;
   
-  auto data_vec = std::vector<uint8_t>((uint8_t*)logic.data, (uint8_t*)logic.data + logic.length);
-  size_t v_size = data_vec.size();
+  AsyncPayload payload;
+  payload.format = logic.format;
+  payload.data = std::vector<uint8_t>((uint8_t*)logic.data, (uint8_t*)logic.data + logic.length);
+  size_t v_size = payload.data.size();
   
   {
     std::lock_guard<std::mutex> lock(_async_mutex);
-    _async_queue.push(std::move(data_vec));
+    _async_queue.push(std::move(payload));
     _async_queue_depth = _async_queue.size();
     _async_queue_bytes_size += v_size;
   }
@@ -357,7 +359,7 @@ void LogicSnapshot::append_payload(const sr_datafeed_logic &logic) {
 
 void LogicSnapshot::async_write_worker() {
   while (_async_running) {
-    std::vector<uint8_t> data;
+    AsyncPayload payload;
     {
       std::unique_lock<std::mutex> lock(_async_mutex);
       _async_cv.wait_for(lock, std::chrono::milliseconds(10), [this] {
@@ -367,17 +369,34 @@ void LogicSnapshot::async_write_worker() {
       if (!_async_running && _async_queue.empty()) break;
       if (_async_queue.empty()) continue;
       
-      data = std::move(_async_queue.front());
+      payload = std::move(_async_queue.front());
       _async_queue.pop();
       _async_queue_depth = _async_queue.size();
-      _async_queue_bytes_size -= data.size();
+      _async_queue_bytes_size -= payload.data.size();
     }
     
     sr_datafeed_logic logic;
-    logic.length = data.size();
+    logic.length = payload.data.size();
     logic.unitsize = 1; // Assuming unitsize 1
-    logic.data = data.data();
-    logic.format = LA_CROSS_DATA;
+    logic.data = payload.data.data();
+    logic.format = payload.format;
+    
+    // Truncate incomplete chunks to prevent channel desynchronization
+    if (logic.format == LA_CROSS_DATA) {
+        uint64_t chunk_size = _channel_num * 8; // Each channel gets 8 bytes (64 samples) per chunk
+        logic.length -= logic.length % chunk_size; // Truncate to exact multiple
+    }
+    
+    static int packet_count = 0;
+    if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
+        dsv_info("async_write_worker: pkt %d, len=%llu, first_bytes: %02x %02x %02x %02x", 
+                 packet_count, (unsigned long long)logic.length,
+                 logic.length > 0 ? ((uint8_t*)logic.data)[0] : 0,
+                 logic.length > 1 ? ((uint8_t*)logic.data)[1] : 0,
+                 logic.length > 2 ? ((uint8_t*)logic.data)[2] : 0,
+                 logic.length > 3 ? ((uint8_t*)logic.data)[3] : 0);
+    }
+    packet_count++;
     
     auto start = std::chrono::steady_clock::now();
     
@@ -387,11 +406,11 @@ void LogicSnapshot::async_write_worker() {
     }
     
     auto end = std::chrono::steady_clock::now();
-    _async_bytes_written += data.size();
+    _async_bytes_written += payload.data.size();
     
     double elapsed_s = std::chrono::duration<double>(end - start).count();
     if (elapsed_s > 0) {
-       double mbps = (data.size() / (1024.0 * 1024.0)) / elapsed_s;
+       double mbps = (payload.data.size() / (1024.0 * 1024.0)) / elapsed_s;
        // Exponential moving average for smoothing UI
        double old = _async_write_speed_mbps.load();
        if (old == 0.0) _async_write_speed_mbps = mbps;
@@ -424,6 +443,10 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   assert(logic.format == LA_CROSS_DATA);
   assert(logic.length >= ScaleSize * _channel_num);
   assert(logic.data);
+
+  if (logic.length % 128 != 0) {
+      dsv_warn("append_cross_payload: length %llu is NOT a multiple of 128!", (unsigned long long)logic.length);
+  }
 
   uint8_t *data_src_ptr = (uint8_t *)logic.data;
   uint64_t len = logic.length;
@@ -493,9 +516,6 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
 
         if (_ring_sample_count % LeafBlockSamples == 0) {
           calc_mipmap(_channel_num - 1, index0, index1, LeafBlockSamples, true);
-          if (_mmap_alloc && _mmap_alloc->is_mmap_address(lbp)) {
-              _mmap_alloc->advise_dontneed(lbp, LeafBlockSpace);
-          }
         }
         break;
       }
@@ -547,9 +567,6 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
 
     if (filled_sample == LeafBlockSamples) {
       calc_mipmap(fill_chan, index0, index1, LeafBlockSamples, true);
-      if (_mmap_alloc && _mmap_alloc->is_mmap_address(lbp)) {
-          _mmap_alloc->advise_dontneed(lbp, LeafBlockSpace);
-      }
 
       chans_read_addr[fill_chan] = read_ptr;
       fill_chan = (fill_chan + 1) % _channel_num;
@@ -663,7 +680,10 @@ void LogicSnapshot::capture_ended() {
         dsv_err("ERROR:LogicSnapshot::capture_ended(),buffer is null.");
         assert(false);
       } else {
-        memset(lbp + offset, 0, LeafBlockSpace - offset);
+        // ONLY clear the signal data part, NOT the mipmaps! Mipmaps start at LeafBlockSamples / 8.
+        if (offset < LeafBlockSamples / 8) {
+            memset(lbp + offset, 0, (LeafBlockSamples / 8) - offset);
+        }
         calc_mipmap(chan, index0, index1, offset * 8, true);
       }
     }
@@ -703,7 +723,14 @@ void LogicSnapshot::copy_from(const LogicSnapshot &src) {
          sizeof(_cur_ref_block_indexs));
   _lst_free_block_index = src._lst_free_block_index;
 
-  _mmap_alloc = src._mmap_alloc;
+  _max_blocks_per_channel = src._max_blocks_per_channel;
+
+  if (src._mmap_alloc) {
+      _mmap_alloc = std::make_shared<MmapAllocator>();
+      _mmap_alloc->configure(false, "", src._mmap_alloc->get_total_bytes());
+  } else {
+      _mmap_alloc = nullptr;
+  }
 
   for (size_t i = 0; i < src._ch_data.size(); i++) {
     std::vector<struct RootNode> new_channel;
@@ -715,8 +742,15 @@ void LogicSnapshot::copy_from(const LogicSnapshot &src) {
       new_rn.last = rn.last;
       for (unsigned int k = 0; k < Scale; k++) {
         if (rn.lbp[k] != NULL) {
-          if (_mmap_alloc && _mmap_alloc->is_mmap_address(rn.lbp[k])) {
-            new_rn.lbp[k] = rn.lbp[k];
+          if (_mmap_alloc && src._mmap_alloc && src._mmap_alloc->is_mmap_address(rn.lbp[k])) {
+            uint64_t global_block_seq = j * RootScale + k;
+            void* new_lbp = _mmap_alloc->get_block_data(i, global_block_seq, _max_blocks_per_channel, LeafBlockSpace);
+            if (new_lbp) {
+                memcpy(new_lbp, rn.lbp[k], LeafBlockSpace);
+            } else {
+                _memory_failed = true;
+            }
+            new_rn.lbp[k] = new_lbp;
           } else {
             new_rn.lbp[k] = LeafBlockPool::instance().acquire(LeafBlockSpace);
             if (new_rn.lbp[k])
