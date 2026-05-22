@@ -749,6 +749,12 @@ bool SigSession::exec_capture() {
 
   capture_init();
 
+  // IMPORTANT: Ensure the session's logic signals point to the current capture buffer.
+  // This is required because DecoderStack searches _session->get_signals() to find
+  // the data source. Without this, decoders in stream mode would bind to the old,
+  // cleared document snapshot and fail to show results.
+  attach_data_to_signal(_capture_data);
+
   if (_device_agent.start() == false) {
     dsv_err("Start collect error!");
     return false;

@@ -600,8 +600,10 @@ void DecodeTrace::on_new_decode_data() {
   // Long decodes progressively reduce to avoid O(N) repaint overhead.
   const qint64 decode_duration_ms = _decode_elapsed_timer.elapsed();
   qint64 throttle_ms;
-  if (decode_duration_ms < 2000)
-    throttle_ms = 33; // ~30 FPS for short decodes
+  if (decode_duration_ms < 500)
+    throttle_ms = 33; // ~30 FPS for first 500ms
+  else if (decode_duration_ms < 2000)
+    throttle_ms = 200; // 5 FPS for 500ms-2s
   else
     throttle_ms = 1000; // 1 FPS for all longer decodes
 
