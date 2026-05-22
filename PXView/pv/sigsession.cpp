@@ -466,6 +466,7 @@ void SigSession::capture_init() {
 
   // Init data container
   _capture_data->clear();
+  _capture_data->get_logic()->set_disk_cache_config(_disk_cache_config);
 
   int mode = _device_agent.get_work_mode();
   if (mode == DSO) {
@@ -637,31 +638,39 @@ bool SigSession::action_start_capture(bool instant) {
     }
   }
 
+  _disk_cache_config.enabled = false;
+  
+  dsv_info("SigSession::start_capture: _is_stream_mode=%d, disk_cache_enabled=%d", 
+           _is_stream_mode, disk_cache_enabled);
+
   if (_is_stream_mode && disk_cache_enabled) {
-    DiskCacheConfig config;
-    config.enabled = true;
+    _disk_cache_config.enabled = true;
 
     QString cache_path;
     _device_agent.get_config_string(SR_CONF_DISK_CACHE_PATH, cache_path);
     if (cache_path.isEmpty()) {
       cache_path = get_default_disk_cache_path();
     }
-    config.cache_path = cache_path.toStdString();
+    _disk_cache_config.cache_path = cache_path.toStdString();
 
     double mem_gb = 16;
     double disk_gb = 16;
     _device_agent.get_config_double(SR_CONF_STREAM_MEM_BUFF, mem_gb);
     _device_agent.get_config_double(SR_CONF_STREAM_BUFF, disk_gb);
-    config.total_cache_depth_gb = (uint64_t)(mem_gb + disk_gb);
-    config.memory_size_gb = (uint64_t)mem_gb;
-    config.calculate();
+    _disk_cache_config.total_cache_depth_gb = (uint64_t)(mem_gb + disk_gb);
+    _disk_cache_config.memory_size_gb = (uint64_t)mem_gb;
+    _disk_cache_config.calculate();
 
     uint64_t bytes_per_block = 2105376;
-    config.hot_window_blocks =
-        config.memory_size_gb * 1024ULL * 1024 * 1024 / bytes_per_block;
-
-    _capture_data->get_logic()->set_disk_cache_config(config);
+    _disk_cache_config.hot_window_blocks =
+        _disk_cache_config.memory_size_gb * 1024ULL * 1024 * 1024 / bytes_per_block;
+        
+    dsv_info("SigSession::start_capture: Configured disk cache: mem_gb=%f, disk_gb=%f, path=%s", 
+             mem_gb, disk_gb, _disk_cache_config.cache_path.c_str());
+  } else {
+    dsv_info("SigSession::start_capture: Disk cache NOT configured.");
   }
+
 
   // update setting
   if (_device_agent.is_file())

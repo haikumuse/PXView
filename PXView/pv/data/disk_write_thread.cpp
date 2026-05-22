@@ -44,6 +44,7 @@ DiskWriteThread::DiskWriteThread(DiskBufferManager *manager) :
     _disk_full(false),
     _cache_size_bytes(0)
 {
+    dsv_info("DiskWriteThread: Created new write thread, manager=%p", manager);
 }
 
 DiskWriteThread::~DiskWriteThread()
@@ -68,8 +69,8 @@ bool DiskWriteThread::start()
 
     while (!_queue.empty()) {
         WriteTask &t = _queue.front();
-        if (t.data_ptr)
-            free(t.data_ptr);
+        if (t.on_complete)
+            t.on_complete();
         _queue.pop();
     }
 
@@ -95,8 +96,8 @@ void DiskWriteThread::stop()
         lock_guard<mutex> lock(_mutex);
         while (!_queue.empty()) {
             WriteTask &t = _queue.front();
-            if (t.data_ptr)
-                free(t.data_ptr);
+            if (t.on_complete)
+                t.on_complete();
             _queue.pop();
         }
         _running = false;
@@ -114,22 +115,22 @@ void DiskWriteThread::flush()
 void DiskWriteThread::submit(WriteTask task)
 {
     {
-        lock_guard<mutex> lock(_mutex);
+        unique_lock<mutex> lock(_mutex);
         if (!_running)
             return;
 
-        if (task.data_ptr) {
-            void *copied = malloc((size_t)task.size);
-            if (copied) {
-                memcpy(copied, task.data_ptr, (size_t)task.size);
-                task.data_ptr = copied;
-            } else {
-                dsv_err("DiskWriteThread: failed to allocate copy buffer");
-                return;
-            }
-        }
+        _cv_full.wait(lock, [this]() { return _queue.size() < 50 || !_running; });
 
+        if (!_running)
+            return;
+
+        // No malloc/memcpy here. We take ownership of the task and will call on_complete.
         _queue.push(task);
+        static int _last_log_depth = -1;
+        if ((_queue.size() % 10 == 0 || task.block_index < 5) && _queue.size() != _last_log_depth) {
+            dsv_info("DiskWriteThread: submit task ch=%d blk=%llu (queue depth %zu)", task.channel, (unsigned long long)task.block_index, _queue.size());
+            _last_log_depth = _queue.size();
+        }
     }
     _cv.notify_one();
 }
@@ -164,6 +165,7 @@ void DiskWriteThread::thread_func()
 
             task = _queue.front();
             _queue.pop();
+            _cv_full.notify_one();
         }
 
         if (_manager && task.data_ptr) {
@@ -182,17 +184,23 @@ void DiskWriteThread::thread_func()
                 _disk_full = true;
                 do_write = false;
                 warn_disk_full = true;
+                dsv_err("DiskWriteThread: disk space low, stopping writes");
             }
 
             if (warn_disk_full && on_warning)
                 on_warning("Disk space is low, stopping disk cache writes");
 
             if (do_write) {
-            bool ok = _manager->write_block(task.channel, task.block_index,
-                task.data_ptr, task.size);
+                bool ok = _manager->write_block(task.channel, task.block_index,
+                    task.data_ptr, task.size);
 
-            if (ok) {
-                auto now = steady_clock::now();
+                if (ok) {
+                    static int _last_written = -1;
+                    if ((task.block_index % 10 == 0 || task.block_index < 5) && task.block_index != _last_written) {
+                        dsv_info("DiskWriteThread: successfully wrote ch=%d blk=%llu", task.channel, (unsigned long long)task.block_index);
+                        _last_written = task.block_index;
+                    }
+                    auto now = steady_clock::now();
                 lock_guard<mutex> lock(_mutex);
                 _speed_bytes += task.size;
                 _speed_samples.push_back({now, task.size});
@@ -228,7 +236,8 @@ void DiskWriteThread::thread_func()
             }
             }
 
-            free(task.data_ptr);
+            if (task.on_complete)
+                task.on_complete();
         }
 
         {

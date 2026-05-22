@@ -519,6 +519,8 @@ private:
   view::LissajousTrace *_lissajous_trace;
   view::MathTrace *_math_trace;
 
+  DiskCacheConfig _disk_cache_config;
+
   DsTimer _feed_timer;
   DsTimer _out_timer;
   DsTimer _repeat_timer;

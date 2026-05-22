@@ -126,13 +126,22 @@ void DiskReadCache::set_max_size(uint64_t bytes)
         evict();
 }
 
+void DiskReadCache::set_evict_callback(std::function<void(int, uint64_t, void*)> cb)
+{
+    lock_guard<mutex> lock(_mutex);
+    _evict_callback = cb;
+}
+
 void DiskReadCache::clear()
 {
     lock_guard<mutex> lock(_mutex);
 
     for (auto &entry : _lru_list) {
-        if (entry.data_ptr)
+        if (entry.data_ptr) {
+            if (_evict_callback)
+                _evict_callback(entry.channel, entry.block_index, entry.data_ptr);
             free(entry.data_ptr);
+        }
     }
     _lru_list.clear();
     _current_bytes = 0;
@@ -144,8 +153,11 @@ void DiskReadCache::evict()
         return;
 
     CacheEntry &entry = _lru_list.back();
-    if (entry.data_ptr)
+    if (entry.data_ptr) {
+        if (_evict_callback)
+            _evict_callback(entry.channel, entry.block_index, entry.data_ptr);
         free(entry.data_ptr);
+    }
 
     _current_bytes -= LeafBlockSpace;
     _lru_list.pop_back();
