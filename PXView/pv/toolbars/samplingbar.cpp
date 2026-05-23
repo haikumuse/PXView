@@ -174,11 +174,11 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   vbox->setContentsMargins(0, 0, 0, 0);
   vbox->setSpacing(0);
 
-  QLabel *titleLabel = new QLabel(
+  _settings_title_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLING_SETTINGS), "采样设置"),
       group);
-  titleLabel->setObjectName("dock_section_title");
-  vbox->addWidget(titleLabel);
+  _settings_title_label->setObjectName("dock_section_title");
+  vbox->addWidget(_settings_title_label);
 
   QWidget *inner = new QWidget(group);
   QGridLayout *grid = new QGridLayout(inner);
@@ -193,14 +193,14 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   QFont sectionFont = dock_font_section_title();
   QFont labelFont = dock_font_label();
   QFont contentFont = dock_font_content();
-  titleLabel->setFont(sectionFont);
+  _settings_title_label->setFont(sectionFont);
 
   // Row 0: 设备
-  QLabel *devLabel = new QLabel(
+  _dev_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE), "设备"), inner);
-  devLabel->setFont(labelFont);
-  devLabel->setObjectName("dock_label");
-  grid->addWidget(devLabel, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
+  _dev_label->setFont(labelFont);
+  _dev_label->setObjectName("dock_label");
+  grid->addWidget(_dev_label, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
   // 拆除原来的 QHBoxLayout，图标放第1列，下拉框放第2列
   grid->addWidget(&_device_type, 0, 1, Qt::AlignCenter);
@@ -213,11 +213,11 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   grid->addWidget(&_device_selector, 0, 2);
 
   // Row 1: 采样深度
-  QLabel *depthLabel = new QLabel(
+  _depth_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_DEPTH), "采样深度"), inner);
-  depthLabel->setFont(labelFont);
-  depthLabel->setObjectName("dock_label");
-  grid->addWidget(depthLabel, 1, 0, Qt::AlignLeft | Qt::AlignVCenter);
+  _depth_label->setFont(labelFont);
+  _depth_label->setObjectName("dock_label");
+  grid->addWidget(_depth_label, 1, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
   _sample_count.setMinimumWidth(target_w);
   _sample_count.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -226,11 +226,11 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   grid->addWidget(&_sample_count, 1, 2); // 注意这里放在第2列
 
   // Row 2: 采样率
-  QLabel *rateLabel = new QLabel(
+  _rate_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_RATE), "采样率"), inner);
-  rateLabel->setFont(labelFont);
-  rateLabel->setObjectName("dock_label");
-  grid->addWidget(rateLabel, 2, 0, Qt::AlignLeft | Qt::AlignVCenter);
+  _rate_label->setFont(labelFont);
+  _rate_label->setObjectName("dock_label");
+  grid->addWidget(_rate_label, 2, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
   _sample_rate.setMinimumWidth(target_w);
   _sample_rate.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -239,12 +239,12 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   grid->addWidget(&_sample_rate, 2, 2); // 注意这里放在第2列
 
   // Row 3: 捕获模式
-  QLabel *modeLabel = new QLabel(
+  _mode_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_ROW), "捕获模式"),
       inner);
-  modeLabel->setFont(labelFont);
-  modeLabel->setObjectName("mode_label");
-  grid->addWidget(modeLabel, 3, 0, Qt::AlignLeft | Qt::AlignVCenter);
+  _mode_label->setFont(labelFont);
+  _mode_label->setObjectName("mode_label");
+  grid->addWidget(_mode_label, 3, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
   _mode_group = new QButtonGroup(inner);
   _radio_single = new QRadioButton(
@@ -410,6 +410,17 @@ void SamplingBar::retranslateUi() {
       STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_REPEAT), "&Repetitive"));
   _action_loop->setText(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_LOOP), "&Loop"));
+
+  if (_settings_title_label) {
+      _settings_title_label->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLING_SETTINGS), "采样设置"));
+      _dev_label->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE), "设备"));
+      _depth_label->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_DEPTH), "采样深度"));
+      _rate_label->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_RATE), "采样率"));
+      _mode_label->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_ROW), "捕获模式"));
+      _radio_single->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_SINGLE), "单次"));
+      _radio_repeat->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_REPEAT), "重复"));
+      _radio_loop->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_LOOP), "循环"));
+  }
 }
 
 void SamplingBar::reStyle() {

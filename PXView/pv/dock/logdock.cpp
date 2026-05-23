@@ -116,10 +116,10 @@ LogDock::LogDock(QWidget *parent)
   toolbar_layout->setContentsMargins(0, 0, 0, 0);
   toolbar_layout->setSpacing(6);
 
-  QLabel *level_label = new QLabel(_widget);
-  level_label->setObjectName("dock_label");
-  level_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_LEVEL), "Log Level"));
-  toolbar_layout->addWidget(level_label);
+  _level_label = new QLabel(_widget);
+  _level_label->setObjectName("dock_label");
+  _level_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_LEVEL), "Log Level"));
+  toolbar_layout->addWidget(_level_label);
   toolbar_layout->addWidget(_level_combo);
   toolbar_layout->addWidget(_save_file_check);
   toolbar_layout->addWidget(_append_mode_check);
@@ -362,6 +362,9 @@ void LogDock::on_flush_buffer() {
 }
 
 void LogDock::retranslateUi() {
+  if (_level_label) {
+      _level_label->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_LEVEL), "Log Level"));
+  }
   _clear_btn->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CLEARE), "Clear"));
   _open_btn->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OPEN), "Open"));
   _scroll_bottom_btn->setToolTip(

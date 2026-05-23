@@ -83,6 +83,7 @@ private slots:
 private:
   QWidget *_widget;
   QPlainTextEdit *_log_view;
+  QLabel *_level_label;
   QPushButton *_clear_btn;
   QPushButton *_open_btn;
   QComboBox *_level_combo;

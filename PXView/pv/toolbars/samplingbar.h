@@ -194,6 +194,11 @@ namespace pv
             bool                _updating_sample_rate;
             bool                _updating_sample_count;
             bool                _updating_device_list;
+            QLabel              *_settings_title_label = nullptr;
+            QLabel              *_dev_label = nullptr;
+            QLabel              *_depth_label = nullptr;
+            QLabel              *_rate_label = nullptr;
+            QLabel              *_mode_label = nullptr;
         };
 
     } // namespace toolbars

@@ -1930,10 +1930,22 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
         key = Qt::Key_Home;
       else if (key == 0x23)
         key = Qt::Key_End;
+      else if (key >= 0x60 && key <= 0x69) // VK_NUMPAD0 to VK_NUMPAD9
+        key = Qt::Key_0 + (key - 0x60);
+      else if (key == 0x6A) // VK_MULTIPLY
+        key = Qt::Key_Asterisk;
+      else if (key == 0x6B) // VK_ADD
+        key = Qt::Key_Plus;
+      else if (key == 0x6D) // VK_SUBTRACT
+        key = Qt::Key_Minus;
+      else if (key == 0x6E) // VK_DECIMAL
+        key = Qt::Key_Period;
+      else if (key == 0x6F) // VK_DIVIDE
+        key = Qt::Key_Slash;
 
       if (text.isEmpty() && target->inherits("QLineEdit")) {
-        if (ke->key() >= Qt::Key_Space && ke->key() <= Qt::Key_AsciiTilde) {
-          char c = (char)ke->key();
+        if (key >= Qt::Key_Space && key <= Qt::Key_AsciiTilde) {
+          char c = (char)key;
           bool shift = (ke->modifiers() & Qt::ShiftModifier);
           if (c >= 'A' && c <= 'Z' && !shift) {
             c += 32;
