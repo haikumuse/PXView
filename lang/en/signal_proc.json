@@ -1,0 +1,26 @@
+[
+    {
+        "id": "IDS_GLITCH_FILTER_BOTH",
+        "text": "Both(Filter high and low pulses)"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_HIGH",
+        "text": "High(Filter low glitches on high level)"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_LOW",
+        "text": "Low(Filter high glitches on low level)"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_TYPE",
+        "text": "Filter Type"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_PERIOD",
+        "text": "Filter Period"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_UNIT",
+        "text": "cycles"
+    }
+]

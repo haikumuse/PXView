@@ -24,6 +24,9 @@
 #include "log.h"
 #include <string.h>
 #include <assert.h>
+#ifdef HAVE_LIBSERIALPORT
+#include <libserialport.h>
+#endif
 
 #undef LOG_PREFIX
 #define LOG_PREFIX "device: "
@@ -229,13 +232,17 @@ SR_PRIV void sr_dev_inst_free(struct sr_dev_inst *sdi)
 		return;
 
 	sr_dev_probes_free(sdi);
-	
+
 	safe_free(sdi->conn);
 	safe_free(sdi->priv);
 	if (sdi->vendor) { g_free(sdi->vendor); sdi->vendor = NULL; }
 	if (sdi->version) { g_free(sdi->version); sdi->version = NULL; }
 	if (sdi->path) { g_free(sdi->path); sdi->path = NULL; }
 	if (sdi->name) { g_free(sdi->name); sdi->name = NULL; }
+	if (sdi->model) { g_free(sdi->model); sdi->model = NULL; }
+	if (sdi->serial_num) { g_free(sdi->serial_num); sdi->serial_num = NULL; }
+	if (sdi->connection_id) { g_free(sdi->connection_id); sdi->connection_id = NULL; }
+	if (sdi->channel_groups) { g_slist_free(sdi->channel_groups); sdi->channel_groups = NULL; }
 
 	g_free(sdi);
 }
@@ -307,6 +314,14 @@ SR_PRIV struct sr_serial_dev_inst *sr_serial_dev_inst_new(const char *port,
 /** @private */
 SR_PRIV void sr_serial_dev_inst_free(struct sr_serial_dev_inst *serial)
 {
+#ifdef HAVE_LIBSERIALPORT
+	if (serial->sp_data) {
+		struct sp_port *port = (struct sp_port *)serial->sp_data;
+		sp_close(port);
+		sp_free_port(port);
+		serial->sp_data = NULL;
+	}
+#endif
 	g_free(serial->port);
 	g_free(serial->serialcomm);
 	g_free(serial);

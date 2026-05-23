@@ -21,9 +21,6 @@
  */
 
 #include "protocoldock.h"
-#include <QElapsedTimer>
-#include "../widgets/smoothtablehelper.h"
-#include "../widgets/hoversplitter.h"
 #include "../data/decodermodel.h"
 #include "../data/decoderstack.h"
 #include "../dialogs/protocolexp.h"
@@ -31,7 +28,10 @@
 #include "../sigsession.h"
 #include "../view/decodetrace.h"
 #include "../view/view.h"
+#include "../widgets/hoversplitter.h"
+#include "../widgets/smoothtablehelper.h"
 #include "searchdock.h"
+#include <QElapsedTimer>
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
@@ -42,6 +42,7 @@
 #include "../tabcontext.h"
 #include "../ui/dockfonts.h"
 #include "../ui/fn.h"
+#include "../ui/iconcache.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include <QFormLayout>
@@ -62,7 +63,6 @@
 #include <assert.h>
 #include <map>
 #include <string>
-#include "../ui/iconcache.h"
 
 using namespace std;
 
@@ -131,13 +131,21 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   _pro_keyword_edit = new KeywordLineEdit(top_panel, this);
   _pro_keyword_edit->setReadOnly(true);
 
-  _pro_search_button = new XToolButton(top_panel);
+  _pro_type_combo = new DsComboBox(top_panel);
+  _pro_type_combo->setObjectName("dock_content");
+  _pro_type_combo->addItem("All");
+  _pro_type_combo->addItem("C");
+  _pro_type_combo->addItem("Python");
+  _pro_type_combo->setCurrentIndex(0);
+  _pro_type_combo->setFixedWidth(70);
+  _pro_type_combo->setFixedHeight(28);
   QHBoxLayout *pro_search_lay = new QHBoxLayout();
   pro_search_lay->setSpacing(2);
-  pro_search_lay->addWidget(_pro_add_button);
-  pro_search_lay->addWidget(_del_all_button);
-  pro_search_lay->addWidget(_pro_keyword_edit, 1);
-  pro_search_lay->addWidget(_pro_search_button);
+  pro_search_lay->setAlignment(Qt::AlignVCenter);
+  pro_search_lay->addWidget(_pro_add_button, 0, Qt::AlignVCenter);
+  pro_search_lay->addWidget(_del_all_button, 0, Qt::AlignVCenter);
+  pro_search_lay->addWidget(_pro_keyword_edit, 1, Qt::AlignVCenter);
+  pro_search_lay->addWidget(_pro_type_combo, 0, Qt::AlignVCenter);
 
   _top_layout = new QVBoxLayout();
   _top_layout->addLayout(pro_search_lay);
@@ -250,24 +258,28 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
 
   split_widget->setObjectName("protocolWidget");
 
-  connect(_dn_nav_button, &QPushButton::clicked, this, &ProtocolDock::nav_table_view);
-  connect(_bot_save_button, &QPushButton::clicked, this, &ProtocolDock::export_table_view);
-  connect(_bot_set_button, &QPushButton::clicked, this, &ProtocolDock::set_model);
+  connect(_dn_nav_button, &QPushButton::clicked, this,
+          &ProtocolDock::nav_table_view);
+  connect(_bot_save_button, &QPushButton::clicked, this,
+          &ProtocolDock::export_table_view);
+  connect(_bot_set_button, &QPushButton::clicked, this,
+          &ProtocolDock::set_model);
   connect(_pre_button, &QPushButton::clicked, this, &ProtocolDock::search_pre);
   connect(_nxt_button, &QPushButton::clicked, this, &ProtocolDock::search_nxt);
-  connect(_pro_add_button, &QPushButton::clicked, this, &ProtocolDock::on_add_protocol);
+  connect(_pro_add_button, &QPushButton::clicked, this,
+          &ProtocolDock::on_add_protocol);
   connect(_del_all_button, &QPushButton::clicked, this,
           &ProtocolDock::on_del_all_protocol);
 
-  connect(this, &ProtocolDock::protocol_updated, this, &ProtocolDock::update_model);
+  connect(this, &ProtocolDock::protocol_updated, this,
+          &ProtocolDock::update_model);
   connect(_table_view, &QAbstractItemView::clicked, this,
           &ProtocolDock::item_clicked);
 
-  connect(_table_view->horizontalHeader(),
-          &QHeaderView::sectionResized, this,
+  connect(_table_view->horizontalHeader(), &QHeaderView::sectionResized, this,
           &ProtocolDock::column_resize);
 
-  connect(_pro_search_button, &QAbstractButton::clicked, this,
+  connect(_pro_type_combo, QOverload<int>::of(&QComboBox::activated), this,
           &ProtocolDock::show_protocol_select);
 
   connect(_ann_search_edit, &QLineEdit::editingFinished, this,
@@ -355,8 +367,8 @@ void ProtocolDock::reStyle() {
   _dn_nav_button->setIcon(IconCache::Instance().icon(iconPath + "/nav.svg"));
   _pre_button->setIcon(IconCache::Instance().icon(iconPath + "/pre.svg"));
   _nxt_button->setIcon(IconCache::Instance().icon(iconPath + "/next.svg"));
-  _ann_search_button->setIcon(IconCache::Instance().icon(iconPath + "/search.svg"));
-  _pro_search_button->setIcon(IconCache::Instance().icon(iconPath + "/search.svg"));
+  _ann_search_button->setIcon(
+      IconCache::Instance().icon(iconPath + "/search.svg"));
 
   for (auto item : _protocol_lay_items) {
     item->ResetStyle();
@@ -620,9 +632,11 @@ void ProtocolDock::decoded_progress(int progress) {
   }
 
   static QElapsedTimer update_timer;
-  if (!update_timer.isValid()) update_timer.start();
+  if (!update_timer.isValid())
+    update_timer.start();
 
-  if (progress == 0 || progress == 100 || (progress % 10 == 1 && update_timer.elapsed() > 500)) {
+  if (progress == 0 || progress == 100 ||
+      (progress % 10 == 1 && update_timer.elapsed() > 500)) {
     update_model();
     update_timer.start();
   }
@@ -681,7 +695,8 @@ void ProtocolDock::resize_table_view(data::DecoderModel *decoder_model) {
           _table_view->setColumnWidth(i, 200);
       }
     } else {
-      // Scan only the first 200 rows to estimate column width for large models, preventing UI freeze
+      // Scan only the first 200 rows to estimate column width for large models,
+      // preventing UI freeze
       QFontMetrics fm(_table_view->font());
       int max_scan = row_count < 200 ? row_count : 200;
       for (int col = 0; col < column_count; col++) {
@@ -1014,7 +1029,8 @@ void ProtocolDock::search_update() {
     dlg.setCancelButton(NULL);
 
     QFutureWatcher<void> watcher;
-    connect(&watcher, &QFutureWatcher<void>::finished, &dlg, &QProgressDialog::cancel);
+    connect(&watcher, &QFutureWatcher<void>::finished, &dlg,
+            &QProgressDialog::cancel);
     watcher.setFuture(future);
 
     dlg.exec();
@@ -1171,8 +1187,12 @@ void ProtocolDock::show_protocol_select() {
 
   for (auto info : _decoderInfoList) {
     srd_decoder *dec = (srd_decoder *)(info->_data_handle);
-    panel->AddDataItem(QString(dec->id), QString(dec->name), info);
+    panel->AddDataItem(QString(dec->id), QString(dec->name), info,
+                       dec->is_c_decoder);
   }
+
+  // Set the filter to match the current combo selection
+  panel->SetFilterIndex(_pro_type_combo->currentIndex());
 
   QFont font = dock_font_content();
   ui::set_dock_form_font(panel);
@@ -1202,7 +1222,7 @@ void ProtocolDock::update_view_status() {
   bool bEnable = _session->is_working() == false;
   _pro_keyword_edit->setEnabled(bEnable);
   _pro_add_button->setEnabled(bEnable);
-  _pro_search_button->setEnabled(bEnable);
+  _pro_type_combo->setEnabled(bEnable);
 }
 
 void ProtocolDock::update_deocder_item_name(void *trace_handel,
@@ -1246,8 +1266,7 @@ void ProtocolDock::adjustPannelSize() {
   int btnHeight = _pro_add_button->sizeHint().height();
   _pro_keyword_edit->setFixedHeight(btnHeight);
   _ann_search_edit->setFixedHeight(_pre_button->sizeHint().height());
-  int pannelHeight =
-      lineHeight * _protocol_lay_items.size() + btnHeight;
+  int pannelHeight = lineHeight * _protocol_lay_items.size() + btnHeight;
 
   if (pannelHeight < 100) {
     pannelHeight = 100;

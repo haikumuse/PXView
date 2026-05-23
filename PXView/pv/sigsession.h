@@ -110,6 +110,7 @@ public:
   data::LogicSnapshot *_logic_backup;
   bool _glitch_filter_active;
   std::vector<uint32_t> _glitch_filter_thresholds;
+  std::vector<GlitchFilterMode> _glitch_filter_modes;
   bool _signal_invert_active;
   std::vector<bool> _signal_invert_channels;
 
@@ -400,7 +401,8 @@ public:
 
   void apply_samplerate();
 
-  void set_glitch_filter(const std::vector<uint32_t> &thresholds);
+  void set_glitch_filter(const std::vector<uint32_t> &thresholds,
+                         const std::vector<GlitchFilterMode> &filter_modes = {});
   void clear_glitch_filter();
   bool is_glitch_filter_active();
 
@@ -493,7 +495,8 @@ private:
 
   void clear_signals();
 
-  void glitch_filter_task(const std::vector<uint32_t> thresholds);
+  void glitch_filter_task(const std::vector<uint32_t> thresholds,
+                          const std::vector<GlitchFilterMode> filter_modes);
   void signal_invert_task(const std::vector<bool> channels);
 
   inline void data_lock() { _data_lock = true; }

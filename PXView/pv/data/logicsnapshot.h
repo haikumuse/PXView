@@ -50,6 +50,12 @@ class Pulses;
 class LongPulses;
 }
 
+enum GlitchFilterMode {
+    GLITCH_FILTER_BOTH = 0,
+    GLITCH_FILTER_HIGH = 1,
+    GLITCH_FILTER_LOW = 2
+};
+
 namespace pv {
 namespace data {
 
@@ -136,8 +142,10 @@ public:
     void set_sample_range(uint64_t start, uint64_t end, bool level, int sig_index);
     void invert_channel(int sig_index);
     LogicSnapshot* clone_data();
-    void apply_glitch_filter(int sig_index, uint32_t threshold, std::function<void(int)> progress_callback);
-    void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback);
+    void apply_glitch_filter(int sig_index, uint32_t threshold, std::function<void(int)> progress_callback,
+        GlitchFilterMode filter_mode = GLITCH_FILTER_BOTH);
+    void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback,
+        const std::vector<GlitchFilterMode> &filter_modes = {});
     bool is_glitch_filtered();
     void set_glitch_filtered(bool filtered);
 

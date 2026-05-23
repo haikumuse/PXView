@@ -206,6 +206,7 @@ void MainWindow::setupFileCategory() {
 
 void MainWindow::setupDisplayCategory() {
   _title_bar->addAction(_category_display_index, _logo_bar->_action_cn);
+  _title_bar->addAction(_category_display_index, _logo_bar->_action_traditional);
   _title_bar->addAction(_category_display_index, _logo_bar->_action_en);
 
   _title_bar->addSeparator(_category_display_index);

@@ -1,0 +1,26 @@
+[
+    {
+        "id": "IDS_GLITCH_FILTER_BOTH",
+        "text": "双向(高脉冲低脉冲都滤)"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_HIGH",
+        "text": "高电平(仅滤除高电平上的低脉冲杂波)"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_LOW",
+        "text": "低电平(仅滤除低电平上的高脉冲杂波)"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_TYPE",
+        "text": "滤波类型"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_PERIOD",
+        "text": "滤波周期"
+    },
+    {
+        "id": "IDS_GLITCH_FILTER_UNIT",
+        "text": "周期"
+    }
+]
