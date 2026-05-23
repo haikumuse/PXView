@@ -23,207 +23,209 @@
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/bind.hpp>
 
-
-#include <QMetaObject>
+#include <QApplication>
 #include <QDesktopServices>
 #include <QDir>
+#include <QMetaObject>
 #include <QUrl>
-#include <QApplication>
 #include <assert.h>
 
-#include "logobar.h"
-#include "../dialogs/about.h"
 #include "../config/appconfig.h"
-#include "../ui/langresource.h"
+#include "../dialogs/about.h"
 #include "../ui/fn.h"
 #include "../ui/iconcache.h"
+#include "../ui/langresource.h"
+#include "logobar.h"
 
 namespace pv {
 namespace toolbars {
 
-LogoBar::LogoBar(SigSession *session, QWidget *parent) :
-    QToolBar("File Bar", parent),
-    _enable(true),
-    _connected(false),
-    _session(session)
-    // _logo_button(this)
-    
+LogoBar::LogoBar(SigSession *session, QWidget *parent)
+    : QToolBar("File Bar", parent), _enable(true), _connected(false),
+      _session(session)
+// _logo_button(this)
+
 {
-    _mainForm  = NULL;
+  _mainForm = NULL;
 
-    setMovable(false);
-    setContentsMargins(0,0,0,0);
+  setMovable(false);
+  setContentsMargins(0, 0, 0, 0);
 
-    _action_en = new QAction(this);
-    _action_en->setObjectName(QString::fromUtf8("actionEn"));
-   
-    _action_cn = new QAction(this);
-    _action_cn->setObjectName(QString::fromUtf8("actionCn"));
-    
-    _language = new QMenu(this);
-    _language->setObjectName(QString::fromUtf8("menuLanguage"));
-    _language->addAction(_action_cn);
-    _language->addAction(_action_en);
+  _action_en = new QAction(this);
+  _action_en->setObjectName(QString::fromUtf8("actionEn"));
 
-    _action_en->setIcon(QIcon(":/icons/English.svg"));
-    _action_cn->setIcon(QIcon(":/icons/Chinese.svg"));
+  _action_cn = new QAction(this);
+  _action_cn->setObjectName(QString::fromUtf8("actionCn"));
 
-    _about = new QAction(this);
-    _about->setObjectName(QString::fromUtf8("actionAbout"));
-    // _logo_button.addAction(_about);
-     
-    _manual = new QAction(this);
-    _manual->setObjectName(QString::fromUtf8("actionManual"));
-    // _logo_button.addAction(_manual);
-   
-    _issue = new QAction(this);
-    _issue->setObjectName(QString::fromUtf8("actionIssue"));
-    // _logo_button.addAction(_issue);   
+  _action_traditional = new QAction(this);
+  _action_traditional->setObjectName(QString::fromUtf8("actionTraditional"));
 
-    _update = new QAction(this);
+  _language = new QMenu(this);
+  _language->setObjectName(QString::fromUtf8("menuLanguage"));
+  _language->addAction(_action_cn);
+  _language->addAction(_action_traditional);
+  _language->addAction(_action_en);
 
-    _menu = new QMenu(this);
-    _menu->addMenu(_language);
-    _menu->addAction(_about);
-    _menu->addAction(_manual);
-    _menu->addAction(_issue);
-    _menu->addAction(_update);
-    // _logo_button.setMenu(_menu);
+  _action_en->setIcon(QIcon(":/icons/English.svg"));
+  _action_cn->setIcon(QIcon(":/icons/Chinese.svg"));
+  _action_traditional->setIcon(QIcon(":/icons/Chinese.svg"));
 
-    // _logo_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    // _logo_button.setPopupMode(QToolButton::InstantPopup);
+  _about = new QAction(this);
+  _about->setObjectName(QString::fromUtf8("actionAbout"));
+  // _logo_button.addAction(_about);
 
-    // QWidget *spacer = new QWidget(this);
-    // spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // addWidget(spacer);
-    // addWidget(&_logo_button);
-    // QWidget *margin = new QWidget(this);
-    // margin->setMinimumWidth(20);
-    // addWidget(margin);
+  _manual = new QAction(this);
+  _manual->setObjectName(QString::fromUtf8("actionManual"));
+  // _logo_button.addAction(_manual);
 
-    connect(_action_en, &QAction::triggered, this, &LogoBar::on_actionEn_triggered);
-    connect(_action_cn, &QAction::triggered, this, &LogoBar::on_actionCn_triggered);
-    connect(_about, &QAction::triggered, this, &LogoBar::on_actionAbout_triggered);
-    connect(_manual, &QAction::triggered, this, &LogoBar::sig_open_doc);
-    connect(_issue, &QAction::triggered, this, &LogoBar::on_actionIssue_triggered);
-    connect(_update, &QAction::triggered, this, &LogoBar::on_action_update);
+  _issue = new QAction(this);
+  _issue->setObjectName(QString::fromUtf8("actionIssue"));
+  // _logo_button.addAction(_issue);
 
-    ADD_UI(this);
+  _update = new QAction(this);
+
+  _menu = new QMenu(this);
+  _menu->addMenu(_language);
+  _menu->addAction(_about);
+  _menu->addAction(_manual);
+  _menu->addAction(_issue);
+  _menu->addAction(_update);
+  // _logo_button.setMenu(_menu);
+
+  // _logo_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+  // _logo_button.setPopupMode(QToolButton::InstantPopup);
+
+  // QWidget *spacer = new QWidget(this);
+  // spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  // addWidget(spacer);
+  // addWidget(&_logo_button);
+  // QWidget *margin = new QWidget(this);
+  // margin->setMinimumWidth(20);
+  // addWidget(margin);
+
+  connect(_action_en, &QAction::triggered, this,
+          &LogoBar::on_actionEn_triggered);
+  connect(_action_cn, &QAction::triggered, this,
+          &LogoBar::on_actionCn_triggered);
+  connect(_action_traditional, &QAction::triggered, this,
+          &LogoBar::on_actionTraditional_triggered);
+  connect(_about, &QAction::triggered, this,
+          &LogoBar::on_actionAbout_triggered);
+  connect(_manual, &QAction::triggered, this, &LogoBar::sig_open_doc);
+  connect(_issue, &QAction::triggered, this,
+          &LogoBar::on_actionIssue_triggered);
+  connect(_update, &QAction::triggered, this, &LogoBar::on_action_update);
+
+  ADD_UI(this);
 }
 
-LogoBar::~LogoBar()
-{
-    REMOVE_UI(this);
+LogoBar::~LogoBar() { REMOVE_UI(this); }
+
+void LogoBar::retranslateUi() {
+
+  // _logo_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP),
+  // "Help"));
+  _language->setTitle(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LANG), "&Language"));
+  _action_en->setText(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LANG_EN), "English"));
+  _action_cn->setText(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LANG_CN), "中文(简体)"));
+  _action_traditional->setText(L_S(
+      STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LANG_TRADITIONAL), "中文(繁體)"));
+  _about->setText(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_ABOUT), "&About..."));
+  _manual->setText(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_MANUAL), "&Manual..."));
+  _issue->setText(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_BUG), "&Bug Report"));
+  _update->setText(
+      L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_UPDATE), "&Update"));
+
+  AppConfig &app = AppConfig::Instance();
+  if (app.frameOptions.language == LAN_EN)
+    _language->setIcon(QIcon(":/icons/English.svg"));
+  else
+    _language->setIcon(QIcon(":/icons/Chinese.svg"));
 }
 
-void LogoBar::retranslateUi()
-{
+void LogoBar::reStyle() {
+  QString iconPath = GetIconPath();
 
-    // _logo_button.setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP), "Help"));
-     _language->setTitle(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LANG), "&Language"));
-    _action_en->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LANG_EN), "English"));
-    _action_cn->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_LANG_CN), "中文"));   
-    _about->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_ABOUT), "&About..."));
-    _manual->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_MANUAL), "&Manual..."));
-    _issue->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_BUG), "&Bug Report"));
-    _update->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_UPDATE), "&Update"));
+  _about->setIcon(IconCache::Instance().icon(iconPath + "/about.svg"));
+  _manual->setIcon(IconCache::Instance().icon(iconPath + "/manual.svg"));
+  _issue->setIcon(IconCache::Instance().icon(iconPath + "/bug.svg"));
+  _update->setIcon(IconCache::Instance().icon(iconPath + "/update.svg"));
 
-    AppConfig &app = AppConfig::Instance(); 
-    if (app.frameOptions.language == LAN_CN)
-        _language->setIcon(QIcon(":/icons/Chinese.svg"));
-    else
-        _language->setIcon(QIcon(":/icons/English.svg"));
+  // if (_connected)
+  //     _logo_button.setIcon(QIcon(iconPath+"/logo_color.svg"));
+  // else
+  //     _logo_button.setIcon(QIcon(iconPath+"/logo_noColor.svg"));
 }
 
-void LogoBar::reStyle()
-{
-    QString iconPath = GetIconPath();
-
-    _about->setIcon(IconCache::Instance().icon(iconPath+"/about.svg"));
-    _manual->setIcon(IconCache::Instance().icon(iconPath+"/manual.svg"));
-    _issue->setIcon(IconCache::Instance().icon(iconPath+"/bug.svg"));
-    _update->setIcon(IconCache::Instance().icon(iconPath+"/update.svg"));
-
-    // if (_connected)
-    //     _logo_button.setIcon(QIcon(iconPath+"/logo_color.svg"));
-    // else
-    //     _logo_button.setIcon(QIcon(iconPath+"/logo_noColor.svg"));
+void LogoBar::dsl_connected(bool conn) {
+  _connected = conn;
+  QString iconPath = GetIconPath();
+  // if (_connected)
+  //     _logo_button.setIcon(QIcon(iconPath+"/logo_color.svg"));
+  // else
+  //     _logo_button.setIcon(QIcon(iconPath+"/logo_noColor.svg"));
 }
 
-void LogoBar::dsl_connected(bool conn)
-{
-    _connected = conn;
-    QString iconPath =  GetIconPath();
-    // if (_connected)
-    //     _logo_button.setIcon(QIcon(iconPath+"/logo_color.svg"));
-    // else
-    //     _logo_button.setIcon(QIcon(iconPath+"/logo_noColor.svg"));
+void LogoBar::on_actionEn_triggered() {
+  _language->setIcon(QIcon::fromTheme("file", QIcon(":/icons/English.svg")));
+
+  assert(_mainForm);
+  _mainForm->switchLanguage(LAN_EN);
 }
 
-void LogoBar::on_actionEn_triggered()
-{
-    _language->setIcon(QIcon::fromTheme("file",
-        QIcon(":/icons/English.svg")));
-
-    assert(_mainForm);
-    _mainForm->switchLanguage(LAN_EN);
+void LogoBar::on_actionCn_triggered() {
+  _language->setIcon(QIcon::fromTheme("file", QIcon(":/icons/Chinese.svg")));
+  assert(_mainForm);
+  _mainForm->switchLanguage(LAN_CN);
 }
 
-void LogoBar::on_actionCn_triggered()
-{
-    _language->setIcon(QIcon::fromTheme("file",
-        QIcon(":/icons/Chinese.svg")));
-    assert(_mainForm);
-    _mainForm->switchLanguage(LAN_CN);  
+void LogoBar::on_actionTraditional_triggered() {
+  _language->setIcon(QIcon::fromTheme("file", QIcon(":/icons/Chinese.svg")));
+  assert(_mainForm);
+  _mainForm->switchLanguage(LAN_TRADITIONAL);
 }
 
-void LogoBar::on_actionAbout_triggered()
-{
-    dialogs::About dlg(this);
-    dlg.exec();
+void LogoBar::on_actionAbout_triggered() {
+  dialogs::About dlg(this);
+  dlg.exec();
 }
 
-void LogoBar::on_actionManual_triggered()
-{ 
-    QDir dir(GetAppDataDir());
-    QDesktopServices::openUrl( QUrl("file:///"+dir.absolutePath() + "/ug.pdf"));
+void LogoBar::on_actionManual_triggered() {
+  QDir dir(GetAppDataDir());
+  QDesktopServices::openUrl(QUrl("file:///" + dir.absolutePath() + "/ug.pdf"));
 }
 
-void LogoBar::on_actionIssue_triggered()
-{
-    QDesktopServices::openUrl(QUrl(QLatin1String("https://github.com/PXLogic/PXView/issues")));
+void LogoBar::on_actionIssue_triggered() {
+  QDesktopServices::openUrl(
+      QUrl(QLatin1String("https://github.com/PXLogic/PXView/issues")));
 }
 
- void LogoBar::on_action_update()
- {
-     if (AppConfig::Instance().frameOptions.language == LAN_CN){
-         QDesktopServices::openUrl(QUrl(QLatin1String("https://github.com/PXLogic/PXView")));
-     }
-     else{
-         QDesktopServices::openUrl(QUrl(QLatin1String("https://github.com/PXLogic/PXView")));
-     }
- }
-
-void LogoBar::enable_toggle(bool enable)
-{
-    (void)enable;
+void LogoBar::on_action_update() {
+  if (AppConfig::Instance().frameOptions.language == LAN_CN) {
+    QDesktopServices::openUrl(
+        QUrl(QLatin1String("https://github.com/PXLogic/PXView")));
+  } else {
+    QDesktopServices::openUrl(
+        QUrl(QLatin1String("https://github.com/PXLogic/PXView")));
+  }
 }
 
-void LogoBar::UpdateLanguage()
-{
-    retranslateUi();
-}
+void LogoBar::enable_toggle(bool enable) { (void)enable; }
 
-void LogoBar::UpdateTheme()
-{
-    reStyle();
-}
+void LogoBar::UpdateLanguage() { retranslateUi(); }
 
-void LogoBar::UpdateFont()
-{ 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
-    ui::set_toolbar_font(this, font);
+void LogoBar::UpdateTheme() { reStyle(); }
+
+void LogoBar::UpdateFont() {
+  QFont font = this->font();
+  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  ui::set_toolbar_font(this, font);
 }
 
 } // namespace toolbars

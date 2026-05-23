@@ -289,21 +289,32 @@ GSList *DeviceAgent::get_channels()
  {
     assert(_dev_handle);
 
+    if (is_compat_device()) {
+        return -1;
+    }
+
     int mode_val = 0;
-    if (get_config_int16(SR_CONF_OPERATION_MODE, mode_val)){                  
+    if (get_config_int16(SR_CONF_OPERATION_MODE, mode_val)){
         return mode_val;
     }
     return -1;
  }
 
  bool DeviceAgent::is_stream_mode()
- { 
+ {
+    if (is_compat_device()) {
+        return false;
+    }
     return get_hardware_operation_mode() == LO_OP_STREAM;
  }
 
  bool DeviceAgent::check_firmware_version()
  {
     assert(_dev_handle);
+
+    if (is_compat_device()) {
+        return true;
+    }
 
     int st = -1;
     if (ds_get_actived_device_init_status(&st) == SR_OK){

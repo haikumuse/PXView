@@ -24,6 +24,7 @@
 #define DSVIEW_PV_SIGNALPROCESSINGDOCK_H
 
 #include <QCheckBox>
+#include "../ui/dscombobox.h"
 #include <QFrame>
 #include <QGridLayout>
 #include <QJsonObject>
@@ -113,6 +114,7 @@ private:
   QPushButton *_apply_filter_btn;
   QPushButton *_restore_data_btn;
   QLabel *_filter_status_label;
+  std::vector<DsComboBox *> _glitch_mode_combo_list;
 };
 
 } // namespace dock

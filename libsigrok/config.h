@@ -13,6 +13,15 @@
 /* DreamSourceLab hardware driver support */
 #define HAVE_DSL_DEVICE 1
 
+/* Standard sigrok compatible drivers support */
+/* #undef HAVE_COMPAT_DRIVERS */
+
+/* fx2lafw driver support */
+/* #undef HAVE_DRIVER_FX2LAFW */
+
+/* saleae-logic16 driver support */
+/* #undef HAVE_DRIVER_SALEAE_LOGIC16 */
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 

@@ -28,6 +28,7 @@
 #define     STR_PAGE_DLG        3
 #define     STR_PAGE_DSL        100
 #define     STR_PAGE_DECODER    101
+#define     STR_PAGE_SIGNAL_PROC  102
 
 #define IDS_MSG_LOG_LEVEL
 #endif

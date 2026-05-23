@@ -1,0 +1,19 @@
+- [x] 兼容层目录 `libsigrok/hardware/compat/` 已创建，包含 compat.h、compat_driver.h、compat_config.h、compat_helpers.c/h、compat_serial.c/h
+- [x] 驱动适配模式（compat_driver.h）能正确将标准 sigrok 驱动回调签名转换为 PXView 签名
+- [x] 配置键映射覆盖所有标准 sigrok 与 PXView 共有的 SR_CONF_* 键
+- [x] `sr_config_get/set/list_compat()` 函数能正确转换 uint32_t key → int id 并透传调用
+- [x] `compat_sr_channel_new()` 和 `compat_sr_dev_inst_new()` 能创建 PXView 兼容的结构体实例
+- [x] `std_init`/`std_cleanup`/`std_dev_list`/`std_dev_clear` 辅助函数实现正确
+- [x] 串口通信后端（compat_serial.c/h）基于 libserialport 实现完成，能通过 CMake 编译
+- [x] `hwdriver.c` 的 `drivers_list[]` 支持 `HAVE_COMPAT_DRIVERS` 条件编译
+- [x] CMakeLists.txt 包含 `HAVE_COMPAT_DRIVERS`、`HAVE_DRIVER_FX2LAFW`、`HAVE_DRIVER_SALEAE_LOGIC16`、`HAVE_DRIVER_RASPBERRYPI_PICO` 选项
+- [x] fx2lafw 驱动源码已拷贝到 `libsigrok/hardware/fx2lafw/` 并编译通过
+- [x] saleae-logic16 驱动源码已拷贝到 `libsigrok/hardware/saleae-logic16/` 并编译通过
+- [x] raspberrypi-pico 驱动源码已拷贝到 `libsigrok/hardware/raspberrypi-pico/` 并编译通过
+- [x] `ds_get_actived_device_mode_list()` 对无 `dev_mode_list` 回调的设备返回合理默认值
+- [x] `ds_get_actived_device_status()` 对无 `dev_status_get` 回调的设备返回空状态
+- [x] DeviceAgent 能区分 DSL 设备和兼容设备，对兼容设备跳过 DSL 专有操作
+- [x] PXView 原有 DSL 驱动功能不受兼容层引入的影响
+- [x] soft_trigger_logic 和 sr_session_trigger_get 共享实现，无链接冲突
+- [x] 触发器代码在 raspberrypi-pico 驱动中已正确禁用（#if 0），因 PXView 无 struct sr_trigger 定义
+- [ ] 兼容驱动设备能出现在 PXView 设备列表中（需实际硬件验证）

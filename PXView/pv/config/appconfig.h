@@ -31,6 +31,7 @@
 #include <QTimer>
 
 #define LAN_CN  25
+#define LAN_TRADITIONAL  26
 #define LAN_EN  31
 
 #define THEME_STYLE_DARK   "dark"
@@ -182,7 +183,7 @@ public:
 
   inline bool IsLangCn()
   {
-    return frameOptions.language == LAN_CN;
+    return frameOptions.language == LAN_CN || frameOptions.language == LAN_TRADITIONAL;
   }
 
   static void GetFontSizeRange(float *minSize, float *maxSize);

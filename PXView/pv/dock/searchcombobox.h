@@ -23,81 +23,84 @@
 #ifndef SEARCHCOMBOBOX_H
 #define SEARCHCOMBOBOX_H
 
-#include <QObject>
-#include <QDialog>
-#include <QWidget> 
-#include <QMouseEvent>
-#include <QPushButton>
-#include <QString>
-#include <vector>
-#include <QEvent>
-#include <QScrollArea>
 #include "../widgets/smoothscrollarea.h"
+#include <QDialog>
+#include <QEvent>
+#include <QMouseEvent>
+#include <QObject>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QString>
+#include <QWidget>
+#include <vector>
 
-class ISearchItemClick{
+class ISearchItemClick {
 public:
-    virtual void OnItemClick(void *sender, void *data_handle)=0;
+  virtual void OnItemClick(void *sender, void *data_handle) = 0;
 };
- 
+
 //----------------------ComboButtonItem
-class ComboButtonItem : public QPushButton
- {
-    Q_OBJECT
+class ComboButtonItem : public QPushButton {
+  Q_OBJECT
 public:
-    ComboButtonItem(QWidget *parent, ISearchItemClick *click, void *data_handle);
+  ComboButtonItem(QWidget *parent, ISearchItemClick *click, void *data_handle);
 
 protected:
-    void mousePressEvent(QMouseEvent *e);
+  void mousePressEvent(QMouseEvent *e);
 
 private:
-    void *_data_handle;
-    ISearchItemClick *_click;
- };
+  void *_data_handle;
+  ISearchItemClick *_click;
+};
 
 //----------------------SearchDataItem
 
-class SearchDataItem{
+class SearchDataItem {
 public:
-    QString     _id;
-    QString     _name;
-    void        *_data_handle;
-    QWidget     *_control;
+  QString _id;
+  QString _name;
+  void *_data_handle;
+  bool _is_c_decoder;
+  QWidget *_control;
 };
 
 //----------------------SearchComboBox
 
-class SearchComboBox : public QDialog, ISearchItemClick
-{
-    Q_OBJECT
+class SearchComboBox : public QDialog, ISearchItemClick {
+  Q_OBJECT
 public:
-    explicit SearchComboBox(QWidget *parent = nullptr);
+  explicit SearchComboBox(QWidget *parent = nullptr);
 
-    ~SearchComboBox();
+  ~SearchComboBox();
 
-    void ShowDlg(QWidget *editline);
+  void ShowDlg(QWidget *editline);
 
-    void AddDataItem(QString id, QString name, void *data_handle);
+  void AddDataItem(QString id, QString name, void *data_handle,
+                   bool is_c_decoder = false);
 
-    inline void SetItemClickHandle(ISearchItemClick *click){
-        _item_click = click;        
-    }
+  inline void SetItemClickHandle(ISearchItemClick *click) {
+    _item_click = click;
+  }
 
-protected: 
-    void changeEvent(QEvent *event) override;
-    void showEvent(QShowEvent *event) override;
+  void SetFilterIndex(int index);
+
+protected:
+  void changeEvent(QEvent *event) override;
+  void showEvent(QShowEvent *event) override;
 
 private slots:
-    void on_keyword_changed(const QString &value);
- 
-private:
-    //ISearchItemClick
-    void OnItemClick(void *sender, void *data_handle);
+  void on_keyword_changed(const QString &value);
 
-private: 
-    bool    _bShow;
-    std::vector<SearchDataItem*> _items;
-    ISearchItemClick *_item_click;
-    pv::widgets::SmoothScrollArea *_scroll;
+private:
+  // ISearchItemClick
+  void OnItemClick(void *sender, void *data_handle);
+
+private:
+  bool _bShow;
+  std::vector<SearchDataItem *> _items;
+  ISearchItemClick *_item_click;
+  pv::widgets::SmoothScrollArea *_scroll;
+  int _filter_index = 0;
 };
 
 #endif // SEARCHCOMBOBOX_H

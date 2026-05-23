@@ -88,6 +88,14 @@ public:
         return is_hardware() && _driver_name == "DSCope";
     }
 
+    inline bool is_dsl_device(){
+        return is_hardware() && (_driver_name == "DSLogic" || _driver_name == "DSCope" || _driver_name.startsWith("px", Qt::CaseInsensitive));
+    }
+
+    inline bool is_compat_device(){
+        return is_hardware() && !is_dsl_device();
+    }
+
     inline void set_callback(IDeviceAgentCallback *callback){
         _callback = callback;
     }

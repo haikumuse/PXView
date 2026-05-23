@@ -539,6 +539,38 @@ if(ENABLE_DEBUG_HELPER)
 endif()
 
 #===============================================================================
+#= Compat drivers option
+#-------------------------------------------------------------------------------
+option(ENABLE_COMPAT_DRIVERS "Enable standard sigrok compatible drivers" OFF)
+option(ENABLE_DRIVER_FX2LAFW "Enable fx2lafw driver" OFF)
+option(ENABLE_DRIVER_SALEAE_LOGIC16 "Enable saleae-logic16 driver" OFF)
+option(ENABLE_DRIVER_RASPBERRYPI_PICO "Enable raspberrypi-pico driver" OFF)
+
+if(ENABLE_COMPAT_DRIVERS)
+    add_definitions(-DHAVE_COMPAT_DRIVERS)
+
+    # Find libserialport for serial compat layer
+    find_package(PkgConfig)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(LIBSERIALPORT QUIET libserialport)
+    endif()
+    if(LIBSERIALPORT_FOUND)
+        add_definitions(-DHAVE_LIBSERIALPORT)
+        include_directories(${LIBSERIALPORT_INCLUDE_DIRS})
+    endif()
+
+    if(ENABLE_DRIVER_FX2LAFW)
+        add_definitions(-DHAVE_DRIVER_FX2LAFW)
+    endif()
+    if(ENABLE_DRIVER_SALEAE_LOGIC16)
+        add_definitions(-DHAVE_DRIVER_SALEAE_LOGIC16)
+    endif()
+    if(ENABLE_DRIVER_RASPBERRYPI_PICO)
+        add_definitions(-DHAVE_DRIVER_RASPBERRYPI_PICO)
+    endif()
+endif()
+
+#===============================================================================
 #= libsigrok source
 #-------------------------------------------------------------------------------
 set(libsigrok_SOURCES
@@ -573,6 +605,31 @@ set(libsigrok_SOURCES
     libsigrok/hardware/pxlogic/usb_ctrl.c
     libsigrok/lib_main.c
 )
+
+if(ENABLE_COMPAT_DRIVERS)
+    list(APPEND libsigrok_SOURCES
+        libsigrok/hardware/compat/compat_helpers.c
+        libsigrok/hardware/compat/compat_serial.c
+    )
+    if(ENABLE_DRIVER_FX2LAFW)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/fx2lafw/api.c
+            libsigrok/hardware/fx2lafw/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SALEAE_LOGIC16)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/saleae-logic16/api.c
+            libsigrok/hardware/saleae-logic16/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_RASPBERRYPI_PICO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/raspberrypi-pico/api.c
+            libsigrok/hardware/raspberrypi-pico/protocol.c
+        )
+    endif()
+endif()
 
 set(libsigrok_HEADERS
     libsigrok/version.h
@@ -720,6 +777,12 @@ endif()
 else()
 	link_directories(${PKGDEPS_LIBRARY_DIRS})
 	list(APPEND DSVIEW_LINK_LIBS ${PKGDEPS_LIBRARIES})
+endif()
+
+# Add libserialport if found (for serial compat layer)
+if(LIBSERIALPORT_FOUND)
+	list(APPEND DSVIEW_LINK_LIBS ${LIBSERIALPORT_LIBRARIES})
+	link_directories(${LIBSERIALPORT_LIBRARY_DIRS})
 endif()
 
 add_executable(${PROJECT_NAME}

@@ -74,6 +74,7 @@ SessionData::SessionData() {
   _trig_pos = 0;
   _logic_backup = nullptr;
   _glitch_filter_active = false;
+  _glitch_filter_modes.clear();
   _signal_invert_active = false;
 }
 
@@ -88,6 +89,7 @@ void SessionData::clear() {
   }
   _glitch_filter_active = false;
   _glitch_filter_thresholds.clear();
+  _glitch_filter_modes.clear();
   _signal_invert_active = false;
   _signal_invert_channels.clear();
 }
@@ -749,10 +751,11 @@ bool SigSession::exec_capture() {
 
   capture_init();
 
-  // IMPORTANT: Ensure the session's logic signals point to the current capture buffer.
-  // This is required because DecoderStack searches _session->get_signals() to find
-  // the data source. Without this, decoders in stream mode would bind to the old,
-  // cleared document snapshot and fail to show results.
+  // IMPORTANT: Ensure the session's logic signals point to the current capture
+  // buffer. This is required because DecoderStack searches
+  // _session->get_signals() to find the data source. Without this, decoders in
+  // stream mode would bind to the old, cleared document snapshot and fail to
+  // show results.
   attach_data_to_signal(_capture_data);
 
   if (_device_agent.start() == false) {
@@ -2478,7 +2481,9 @@ void SigSession::attach_data_to_signal(SessionData *data) {
   }
 }
 
-void SigSession::set_glitch_filter(const std::vector<uint32_t> &thresholds) {
+void SigSession::set_glitch_filter(
+    const std::vector<uint32_t> &thresholds,
+    const std::vector<GlitchFilterMode> &filter_modes) {
   if (_glitch_filter_running)
     return;
 
@@ -2503,11 +2508,13 @@ void SigSession::set_glitch_filter(const std::vector<uint32_t> &thresholds) {
     delete _glitch_filter_thread;
   }
 
-  _glitch_filter_thread =
-      new std::thread(&SigSession::glitch_filter_task, this, thresholds);
+  _glitch_filter_thread = new std::thread(&SigSession::glitch_filter_task, this,
+                                          thresholds, filter_modes);
 }
 
-void SigSession::glitch_filter_task(const std::vector<uint32_t> thresholds) {
+void SigSession::glitch_filter_task(
+    const std::vector<uint32_t> thresholds,
+    const std::vector<GlitchFilterMode> filter_modes) {
   if (!_view_data->_logic_backup) {
     _view_data->_logic_backup = new data::LogicSnapshot();
     _view_data->_logic_backup->copy_from(*(_view_data->get_logic()));
@@ -2538,13 +2545,16 @@ void SigSession::glitch_filter_task(const std::vector<uint32_t> thresholds) {
   }
 
   _view_data->get_logic()->apply_glitch_filter_all(
-      thresholds, [this](int progress) {
+      thresholds,
+      [this](int progress) {
         (void)progress;
         _callback->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS);
-      });
+      },
+      filter_modes);
 
   _view_data->_glitch_filter_active = true;
   _view_data->_glitch_filter_thresholds = thresholds;
+  _view_data->_glitch_filter_modes = filter_modes;
   _glitch_filter_running = false;
 
   _callback->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
@@ -2566,6 +2576,7 @@ void SigSession::clear_glitch_filter() {
 
   _view_data->_glitch_filter_active = false;
   _view_data->_glitch_filter_thresholds.clear();
+  _view_data->_glitch_filter_modes.clear();
 
   _callback->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
   _callback->data_updated();
@@ -2634,7 +2645,8 @@ void SigSession::signal_invert_task(const std::vector<bool> channels) {
   // If glitch filter is active, re-apply on the inverted data
   if (_view_data->_glitch_filter_active) {
     _view_data->get_logic()->apply_glitch_filter_all(
-        _view_data->_glitch_filter_thresholds, nullptr);
+        _view_data->_glitch_filter_thresholds, nullptr,
+        _view_data->_glitch_filter_modes);
   }
 
   _view_data->_signal_invert_active = true;
@@ -2661,7 +2673,8 @@ void SigSession::clear_signal_invert() {
   // If glitch filter is active, re-apply on the restored (non-inverted) data
   if (_view_data->_glitch_filter_active) {
     _view_data->get_logic()->apply_glitch_filter_all(
-        _view_data->_glitch_filter_thresholds, nullptr);
+        _view_data->_glitch_filter_thresholds, nullptr,
+        _view_data->_glitch_filter_modes);
   }
 
   _view_data->_signal_invert_active = false;

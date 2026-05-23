@@ -32,6 +32,7 @@
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
+#include "../data/logicsnapshot.h"
 #include "../data/sessiondocument.h"
 #include "../deviceagent.h"
 #include "../dsvdef.h"
@@ -101,6 +102,7 @@ void SignalProcessingDock::build_ui() {
   _invert_checkBox_list.clear();
   _glitch_checkBox_list.clear();
   _glitch_spinbox_list.clear();
+  _glitch_mode_combo_list.clear();
   _apply_invert_btn = nullptr;
   _restore_invert_btn = nullptr;
   _invert_status_label = nullptr;
@@ -296,6 +298,7 @@ void SignalProcessingDock::build_glitch_filter_panel() {
 
   _glitch_checkBox_list.clear();
   _glitch_spinbox_list.clear();
+  _glitch_mode_combo_list.clear();
 
   if (_device_agent->get_work_mode() != LOGIC)
     return;
@@ -326,8 +329,11 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   QWidget *ch_container = new QWidget(_glitch_filter_group);
   QGridLayout *ch_grid = new QGridLayout(ch_container);
   ch_grid->setContentsMargins(2, 2, 2, 2);
-  ch_grid->setSpacing(3);
+  ch_grid->setHorizontalSpacing(5);
+  ch_grid->setVerticalSpacing(8);
   ch_grid->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+  ch_grid->setColumnMinimumWidth(0, 55);
+  ch_grid->setColumnMinimumWidth(1, 55);
 
   int ch_idx = 0;
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
@@ -343,9 +349,12 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     ch_check->setFixedWidth(55);
     _glitch_checkBox_list.push_back(ch_check);
 
-    QLabel *le_label = new QLabel("≤", ch_container);
-    le_label->setObjectName("dock_label");
-    le_label->setFont(labelFont);
+    QLabel *period_label = new QLabel(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_PERIOD", "滤波周期"),
+        ch_container);
+    period_label->setObjectName("dock_label");
+    period_label->setFont(labelFont);
+    period_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     pv::ui::DsSpinBox *spin = new pv::ui::DsSpinBox(ch_container);
     spin->setRange(1, 99999);
@@ -357,19 +366,51 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     _glitch_spinbox_list.push_back(spin);
 
-    QLabel *unit_label = new QLabel("采样周期", ch_container);
+    QLabel *unit_label =
+        new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_UNIT", "周期"),
+                   ch_container);
     unit_label->setObjectName("dock_label");
     unit_label->setFont(labelFont);
+    unit_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
+    QLabel *mode_label = new QLabel(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_TYPE", "滤波类型"),
+        ch_container);
+    mode_label->setObjectName("dock_label");
+    mode_label->setFont(labelFont);
+    mode_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    DsComboBox *mode_combo = new DsComboBox(ch_container);
+    mode_combo->setObjectName("dock_content");
+    mode_combo->setFont(contentFont);
+    mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_BOTH",
+                            "双向(高脉冲低脉冲都滤)"));
+    mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_HIGH",
+                            "高电平(仅滤除高电平上的低脉冲杂波)"));
+    mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_LOW",
+                            "低电平(仅滤除低电平上的高脉冲杂波)"));
+    mode_combo->setCurrentIndex(0);
+    mode_combo->setFixedWidth(80);
+    mode_combo->setFixedHeight(28);
+    mode_combo->setEnabled(false);
+    _glitch_mode_combo_list.push_back(mode_combo);
+
+    // Row 1: CheckBox | 滤波类型 | ComboBox
     ch_grid->addWidget(ch_check, ch_idx, 0);
-    ch_grid->addWidget(le_label, ch_idx, 1);
-    ch_grid->addWidget(spin, ch_idx, 2);
-    ch_grid->addWidget(unit_label, ch_idx, 3);
+    ch_grid->addWidget(mode_label, ch_idx, 1);
+    ch_grid->addWidget(mode_combo, ch_idx, 2);
 
-    connect(ch_check, &QCheckBox::toggled,
-            [spin](bool checked) { spin->setEnabled(checked); });
+    // Row 2: (empty) | 滤波周期 | SpinBox | 周期
+    ch_grid->addWidget(period_label, ch_idx + 1, 1);
+    ch_grid->addWidget(spin, ch_idx + 1, 2);
+    ch_grid->addWidget(unit_label, ch_idx + 1, 3);
 
-    ch_idx++;
+    connect(ch_check, &QCheckBox::toggled, [spin, mode_combo](bool checked) {
+      spin->setEnabled(checked);
+      mode_combo->setEnabled(checked);
+    });
+
+    ch_idx += 2;
   }
 
   for (int c = 0; c < 4; c++) {
@@ -403,8 +444,9 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   inner_layout->addLayout(btn_layout);
 
   // Hint text
-  QLabel *hint_label = new QLabel("*勾选通道并点击应用滤波后，小于设定宽度的脉冲将被滤除",
-                                  _glitch_filter_group);
+  QLabel *hint_label =
+      new QLabel("*勾选通道并点击应用滤波后，小于设定宽度的脉冲将被滤除",
+                 _glitch_filter_group);
   hint_label->setFont(contentFont);
   inner_layout->addWidget(hint_label);
 
@@ -490,6 +532,7 @@ void SignalProcessingDock::on_invert_deselect_all() {
 
 void SignalProcessingDock::on_apply_glitch_filter() {
   std::vector<uint32_t> thresholds;
+  std::vector<GlitchFilterMode> filter_modes;
   int ch_idx = 0;
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
     sr_channel *const probe = (sr_channel *)l->data;
@@ -497,15 +540,30 @@ void SignalProcessingDock::on_apply_glitch_filter() {
       continue;
 
     uint32_t threshold = 0;
+    GlitchFilterMode mode = GLITCH_FILTER_BOTH;
     if (ch_idx < (int)_glitch_checkBox_list.size() &&
         _glitch_checkBox_list[ch_idx]->isChecked()) {
       threshold = _glitch_spinbox_list[ch_idx]->value();
+      if (ch_idx < (int)_glitch_mode_combo_list.size()) {
+        switch (_glitch_mode_combo_list[ch_idx]->currentIndex()) {
+        case 1:
+          mode = GLITCH_FILTER_HIGH;
+          break;
+        case 2:
+          mode = GLITCH_FILTER_LOW;
+          break;
+        default:
+          mode = GLITCH_FILTER_BOTH;
+          break;
+        }
+      }
     }
     thresholds.push_back(threshold);
+    filter_modes.push_back(mode);
     ch_idx++;
   }
 
-  _session->set_glitch_filter(thresholds);
+  _session->set_glitch_filter(thresholds, filter_modes);
 }
 
 void SignalProcessingDock::on_restore_glitch_data() {
@@ -564,7 +622,8 @@ void SignalProcessingDock::update_view() { build_ui(); }
 
 void SignalProcessingDock::auto_apply_settings() {
   // Called when new capture data arrives - re-apply current checkbox settings
-  // Only apply if there are checked channels (same logic as on_apply_invert/on_apply_glitch_filter)
+  // Only apply if there are checked channels (same logic as
+  // on_apply_invert/on_apply_glitch_filter)
   if (!_session || !_device_agent || !_device_agent->have_instance())
     return;
 
@@ -587,19 +646,35 @@ void SignalProcessingDock::auto_apply_settings() {
 
   bool has_filter = false;
   std::vector<uint32_t> thresholds;
+  std::vector<GlitchFilterMode> filter_modes;
   ch_idx = 0;
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
     sr_channel *const probe = (sr_channel *)l->data;
     if (probe->type != SR_CHANNEL_LOGIC)
       continue;
     uint32_t threshold = 0;
+    GlitchFilterMode mode = GLITCH_FILTER_BOTH;
     if (ch_idx < (int)_glitch_checkBox_list.size() &&
         _glitch_checkBox_list[ch_idx]->isChecked()) {
       threshold = _glitch_spinbox_list[ch_idx]->value();
+      if (ch_idx < (int)_glitch_mode_combo_list.size()) {
+        switch (_glitch_mode_combo_list[ch_idx]->currentIndex()) {
+        case 1:
+          mode = GLITCH_FILTER_HIGH;
+          break;
+        case 2:
+          mode = GLITCH_FILTER_LOW;
+          break;
+        default:
+          mode = GLITCH_FILTER_BOTH;
+          break;
+        }
+      }
       if (threshold > 0)
         has_filter = true;
     }
     thresholds.push_back(threshold);
+    filter_modes.push_back(mode);
     ch_idx++;
   }
 
@@ -607,7 +682,7 @@ void SignalProcessingDock::auto_apply_settings() {
     _session->set_signal_invert(invert_channels);
   }
   if (has_filter) {
-    _session->set_glitch_filter(thresholds);
+    _session->set_glitch_filter(thresholds, filter_modes);
   }
 }
 
@@ -742,6 +817,12 @@ QJsonObject SignalProcessingDock::get_session() {
     QJsonObject ch_obj;
     ch_obj["enable"] = _glitch_checkBox_list[i]->isChecked();
     ch_obj["num"] = _glitch_spinbox_list[i]->value();
+    int mode_index = 0;
+    if (i < _glitch_mode_combo_list.size()) {
+      mode_index = _glitch_mode_combo_list[i]->currentIndex();
+    }
+    const char *mode_names[] = {"both", "high", "low"};
+    ch_obj["mode"] = QString(mode_names[mode_index]);
     glitch_array.append(ch_obj);
   }
   obj["glitch_filter"] = glitch_array;
@@ -770,6 +851,15 @@ void SignalProcessingDock::set_session(QJsonObject &obj) {
       QJsonObject ch_obj = glitch_array[i].toObject();
       _glitch_checkBox_list[i]->setChecked(ch_obj["enable"].toBool());
       _glitch_spinbox_list[i]->setValue(ch_obj["num"].toInt());
+      if (i < (int)_glitch_mode_combo_list.size()) {
+        QString mode = ch_obj["mode"].toString("both");
+        if (mode == "high")
+          _glitch_mode_combo_list[i]->setCurrentIndex(1);
+        else if (mode == "low")
+          _glitch_mode_combo_list[i]->setCurrentIndex(2);
+        else
+          _glitch_mode_combo_list[i]->setCurrentIndex(0);
+      }
     }
   }
 }

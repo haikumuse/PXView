@@ -2029,7 +2029,8 @@ LogicSnapshot *LogicSnapshot::clone_data() {
 
 void LogicSnapshot::apply_glitch_filter(
     int sig_index, uint32_t threshold,
-    std::function<void(int)> progress_callback) {
+    std::function<void(int)> progress_callback,
+    GlitchFilterMode filter_mode) {
   if (threshold == 0)
     return;
 
@@ -2054,9 +2055,9 @@ void LogicSnapshot::apply_glitch_filter(
   int last_progress = -1;
 
   dsv_info("[GlitchFilter] START sig_index=%d threshold=%u max_sample=%llu "
-           "accepted_level=%d",
+           "accepted_level=%d filter_mode=%d",
            sig_index, threshold, (unsigned long long)max_sample,
-           accepted_level);
+           accepted_level, (int)filter_mode);
 
   struct FillRange {
     uint64_t start;
@@ -2182,29 +2183,57 @@ void LogicSnapshot::apply_glitch_filter(
 
     if (current_scan_level == accepted_level) {
       if (pulse_len <= threshold) {
-        // 判断为毛刺：它是一个短暂偏离基准 accepted_level 的窄脉冲
-        // 用 accepted_level 覆盖这段毛刺区间
-        fills.push_back({pulse_start, pulse_end, accepted_level});
-        glitch_count++;
-
-        if (glitch_count <= 5 || glitch_count % 1000 == 0) {
-          dsv_info(
-              "[GlitchFilter] GLITCH #%llu scan=%llu pulse=[%llu,%llu) "
-              "len=%llu accepted=%d fills=%zu",
-              (unsigned long long)glitch_count, (unsigned long long)scan_pos,
-              (unsigned long long)pulse_start, (unsigned long long)pulse_end,
-              (unsigned long long)pulse_len, accepted_level, fills.size());
+        bool should_filter = false;
+        switch (filter_mode) {
+        case GLITCH_FILTER_BOTH:
+          should_filter = true;
+          break;
+        case GLITCH_FILTER_HIGH:
+          // Only filter when accepted_level is HIGH (remove low pulses on high level)
+          should_filter = accepted_level == true;
+          break;
+        case GLITCH_FILTER_LOW:
+          // Only filter when accepted_level is LOW (remove high pulses on low level)
+          should_filter = accepted_level == false;
+          break;
         }
 
-        // 跳过毛刺段，由于脉冲结束时恢复到了
-        // accepted_level，直接从脉冲末尾继续扫描
-        scan_pos = pulse_end;
+        if (should_filter) {
+          // 判断为毛刺：它是一个短暂偏离基准 accepted_level 的窄脉冲
+          // 用 accepted_level 覆盖这段毛刺区间
+          fills.push_back({pulse_start, pulse_end, accepted_level});
+          glitch_count++;
 
-        // 若堆积过多则刷入硬盘缓存及重建 Mipmap，避免占用过多内存
-        if (fills.size() >= 65536) {
-          apply_batch();
-          if (_memory_failed)
-            break;
+          if (glitch_count <= 5 || glitch_count % 1000 == 0) {
+            dsv_info(
+                "[GlitchFilter] GLITCH #%llu scan=%llu pulse=[%llu,%llu) "
+                "len=%llu accepted=%d fills=%zu",
+                (unsigned long long)glitch_count, (unsigned long long)scan_pos,
+                (unsigned long long)pulse_start, (unsigned long long)pulse_end,
+                (unsigned long long)pulse_len, accepted_level, fills.size());
+          }
+
+          // 跳过毛刺段，由于脉冲结束时恢复到了
+          // accepted_level，直接从脉冲末尾继续扫描
+          scan_pos = pulse_end;
+
+          // 若堆积过多则刷入硬盘缓存及重建 Mipmap，避免占用过多内存
+          if (fills.size() >= 65536) {
+            apply_batch();
+            if (_memory_failed)
+              break;
+          }
+        } else {
+          // Not filtering this pulse, treat as stable transition
+          stable_count++;
+          dsv_info("[GlitchFilter] SKIP-FILTER #%llu scan=%llu pulse=[%llu,%llu) "
+                   "len=%llu old_accepted=%d -> new_accepted=%d (mode=%d)",
+                   (unsigned long long)stable_count, (unsigned long long)scan_pos,
+                   (unsigned long long)pulse_start, (unsigned long long)pulse_end,
+                   (unsigned long long)pulse_len, accepted_level,
+                   !accepted_level, (int)filter_mode);
+          accepted_level = !accepted_level;
+          scan_pos = pulse_start;
         }
       } else {
         // 判断为稳定的状态迁移：新电平持续了足够长的时间
@@ -2273,10 +2302,15 @@ void LogicSnapshot::apply_glitch_filter(
 
 void LogicSnapshot::apply_glitch_filter_all(
     const std::vector<uint32_t> &thresholds,
-    std::function<void(int)> progress_callback) {
+    std::function<void(int)> progress_callback,
+    const std::vector<GlitchFilterMode> &filter_modes) {
   for (int i = 0; i < (int)_ch_index.size(); i++) {
     if (i < (int)thresholds.size() && thresholds[i] > 0) {
-      apply_glitch_filter(_ch_index[i], thresholds[i], nullptr);
+      GlitchFilterMode mode = GLITCH_FILTER_BOTH;
+      if (i < (int)filter_modes.size()) {
+        mode = filter_modes[i];
+      }
+      apply_glitch_filter(_ch_index[i], thresholds[i], nullptr, mode);
     }
     if (progress_callback) {
       int progress = (i + 1) * 100 / _ch_index.size();

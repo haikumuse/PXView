@@ -178,6 +178,19 @@ struct sr_dev_inst {
     void *priv;
 
 	int actived_times;
+
+    /** Device model name (compat). */
+    char *model;
+    /** Serial number (compat). */
+    char *serial_num;
+    /** Connection ID (compat). */
+    char *connection_id;
+    /** List of channel groups (compat). */
+    GSList *channel_groups;
+    /** Instance type: SR_INST_USB/SERIAL/SCPI etc (compat). */
+    int inst_type;
+    /** Session this device belongs to (compat). */
+    struct sr_session *session;
 };
 
 struct sr_session 
@@ -219,6 +232,9 @@ struct sr_serial_dev_inst {
 	char *port;
 	char *serialcomm;
 	int fd;
+#ifdef HAVE_LIBSERIALPORT
+	void *sp_data; /**< struct sp_port * from libserialport */
+#endif
 };
 
 /* Private driver context. */

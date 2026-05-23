@@ -175,7 +175,11 @@
     },
     {
         "id": "IDS_TOOLBAR_HELP_LANG_CN",
-        "text": "中文(&C)"
+        "text": "Chinese(Simplified)(&C)"
+    },
+    {
+        "id": "IDS_TOOLBAR_HELP_LANG_TRADITIONAL",
+        "text": "Chinese(Traditional)(&T)"
     },  
     {
         "id": "IDS_TOOLBAR_HELP_ABOUT",

@@ -733,7 +733,7 @@ QComboBox
     background-color: @bg-base;
     border-style: solid;
     border: 1px solid @border;
-    border-radius: 0px;
+    border-radius: 0px !important;
     padding: 2px;
     min-width: 30px;
 }

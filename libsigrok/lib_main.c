@@ -21,6 +21,7 @@
  */
 
 #include "libsigrok-internal.h"
+#include "hardware/compat/compat.h"
 #include "log.h"
 #include <pthread.h>
 #include <stdlib.h>
@@ -573,20 +574,46 @@ SR_API int ds_device_from_file(const char *file_path)
 SR_API const GSList *ds_get_actived_device_mode_list()
 {
 	struct sr_dev_inst *dev;
+	GVariant *gvar;
+	GSList *l;
 
 	dev = lib_ctx.actived_device_instance;
 
 	if (dev == NULL)
 	{
 		sr_err("Have no actived device.");
+		return NULL;
 	}
-	if (dev->driver == NULL || dev->driver->dev_mode_list == NULL)
+	if (dev->driver == NULL)
 	{
 		sr_err("Module not implemented.");
 		return NULL;
 	}
 
-	return dev->driver->dev_mode_list(dev);
+	if (dev->driver->dev_mode_list != NULL)
+		return dev->driver->dev_mode_list(dev);
+
+	/* Compat driver - no dev_mode_list callback.
+	 * Build a default mode list based on the device config. */
+	l = NULL;
+
+	if (sr_config_get(dev->driver, dev, NULL, NULL,
+			SR_CONF_LOGIC_ANALYZER, &gvar) == SR_OK) {
+		g_variant_unref(gvar);
+		l = g_slist_append(l, (gpointer)&sr_mode_list[0]); /* LOGIC */
+		return l;
+	}
+
+	if (sr_config_get(dev->driver, dev, NULL, NULL,
+			SR_CONF_OSCILLOSCOPE, &gvar) == SR_OK) {
+		g_variant_unref(gvar);
+		l = g_slist_append(l, (gpointer)&sr_mode_list[2]); /* DSO */
+		return l;
+	}
+
+	/* Fallback: assume LOGIC mode */
+	l = g_slist_append(l, (gpointer)&sr_mode_list[0]);
+	return l;
 }
 
 /**
@@ -678,7 +705,12 @@ SR_API int ds_get_actived_device_info(struct ds_device_full_info *fill_info)
 		p->dev_type = dev->dev_type;
 		p->di = dev;
 		p->actived_times = dev->actived_times;
-		strncpy(p->name, (const char*)dev->name, sizeof(p->name) - 1);
+
+		/* Compat: if sdi->name is NULL but sdi->model is set, use model as name */
+		if (dev->name != NULL)
+			strncpy(p->name, (const char*)dev->name, sizeof(p->name) - 1);
+		else if (dev->model != NULL)
+			strncpy(p->name, (const char*)dev->model, sizeof(p->name) - 1);
 
 		if (dev->driver && dev->driver->name)
 		{
@@ -688,6 +720,11 @@ SR_API int ds_get_actived_device_info(struct ds_device_full_info *fill_info)
 		if ((dev->dev_type == DEV_TYPE_FILELOG || dev->dev_type == DEV_TYPE_DEMO) && dev->path != NULL){
 			strncpy(p->path, dev->path, sizeof(p->path) - 1);
 		}
+
+		/* Compat: infer dev_type from inst_type if still unknown */
+		if (p->dev_type == DEV_TYPE_UNKOWN && dev->inst_type == SR_INST_USB)
+			p->dev_type = DEV_TYPE_USB;
+
 		ret = SR_OK;
 	}
 
@@ -1003,7 +1040,14 @@ SR_API int ds_get_actived_device_status(struct sr_status *status, gboolean prg)
 		return SR_ERR_CALL_STATUS;
 	}
 
-	return sr_status_get(lib_ctx.actived_device_instance, status, prg);
+	if (lib_ctx.actived_device_instance->driver != NULL
+		&& lib_ctx.actived_device_instance->driver->dev_status_get != NULL)
+		return sr_status_get(lib_ctx.actived_device_instance, status, prg);
+
+	/* Compat driver - no dev_status_get callback.
+	 * Return zeroed status with SR_OK. */
+	memset(status, 0, sizeof(struct sr_status));
+	return SR_OK;
 }
 
 SR_API struct sr_config *ds_new_config(int key, GVariant *data)
