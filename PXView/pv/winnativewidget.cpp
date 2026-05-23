@@ -88,7 +88,7 @@ WinNativeWidget::WinNativeWidget(const int x, const int y, const int width,
     wcx.lpfnWndProc = WndProc;
     wcx.cbClsExtra = 0;
     wcx.cbWndExtra = 0;
-    wcx.lpszClassName = L"DSViewWindowClass";
+    wcx.lpszClassName = L"PXViewWindowClass";
     wcx.hCursor = LoadCursor(hInstance, IDC_ARROW);
     wcx.hbrBackground = CreateSolidBrush(RGB(r, g, b));
  
@@ -99,7 +99,7 @@ WinNativeWidget::WinNativeWidget(const int x, const int y, const int width,
         assert(false);
     }
  
-    _hWnd = CreateWindow(L"DSViewWindowClass", L"DSView",
+    _hWnd = CreateWindow(L"PXViewWindowClass", L"PXView",
             //WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CLIPCHILDREN,
             WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 
             x, y, width, height,
@@ -745,8 +745,8 @@ void WinNativeWidget::SetBorderColor(QColor color)
 void WinNativeWidget::showBorder()
 {
     if (_childWidget != NULL && !_is_native_border){
-        _childWidget->setObjectName("DSViewFrame");
-        QString borderCss = "#DSViewFrame {border-radius:0px; border:1px solid %1;}";
+        _childWidget->setObjectName("PXViewFrame");
+        QString borderCss = "#PXViewFrame {border-radius:0px; border:1px solid %1;}";
         QString borderStyle = borderCss.arg(_border_color.name());
         _childWidget->setStyleSheet(borderStyle);
     }
@@ -755,8 +755,8 @@ void WinNativeWidget::showBorder()
 void WinNativeWidget::hideBorder()
 {
      if (_childWidget != NULL && !_is_native_border){
-        _childWidget->setObjectName("DSViewFrame");
-        QString borderCss = "#DSViewFrame {border-radius:0px; border:0px solid %1;}";
+        _childWidget->setObjectName("PXViewFrame");
+        QString borderCss = "#PXViewFrame {border-radius:0px; border:0px solid %1;}";
         QString borderStyle = borderCss.arg(_border_color.name());
         _childWidget->setStyleSheet(borderStyle);
     }

@@ -373,5 +373,9 @@
     {
         "id": "IDS_MSG_DEVICE_USB_IO_ERROR",
         "text": "Error: USB讀寫錯誤!"
+    },
+    {
+        "id": "IDS_TAB_TITLE",
+        "text": "標籤%1"
     }
 ]

@@ -3314,7 +3314,7 @@ void MainWindow::on_new_tab_requested() {
   pv::TabContext *new_ctx =
       SessionManager::instance()->create_context(new_view, _session, new_doc);
   _session->register_document(new_doc);
-  new_ctx->set_title(QString::fromUtf8("标签%1").arg(_tab_contexts.size() + 1));
+  new_ctx->set_title(QString::fromUtf8(L_S(STR_PAGE_MSG, S_ID(IDS_TAB_TITLE), "Tab %1")).arg(_tab_contexts.size() + 1));
   add_tab(new_ctx);
 }
 
