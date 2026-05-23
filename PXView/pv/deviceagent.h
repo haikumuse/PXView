@@ -81,7 +81,7 @@ public:
     }
 
     inline bool is_hardware_logic(){
-        return is_hardware() && _driver_name == "DSLogic";
+        return is_hardware() && (_driver_name == "DSLogic" || _driver_name.startsWith("px", Qt::CaseInsensitive));
     }
 
     inline bool is_hardware_dso(){
