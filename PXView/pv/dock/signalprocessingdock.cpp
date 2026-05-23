@@ -123,7 +123,7 @@ void SignalProcessingDock::build_ui() {
     hint_lay->setAlignment(Qt::AlignTop);
 
     QLabel *hint_label =
-        new QLabel("此功能仅在 Logic 模式下可用", _no_logic_hint);
+        new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_LOGIC_ONLY", "此功能仅在 Logic 模式下可用"), _no_logic_hint);
     hint_label->setFont(contentFont);
     hint_lay->addWidget(hint_label);
 
@@ -171,7 +171,7 @@ void SignalProcessingDock::build_invert_panel() {
   _invert_group = new QWidget(_container_panel);
   _invert_group->setMinimumWidth(0);
 
-  QLabel *invert_title = new QLabel("信号取反", _invert_group);
+  QLabel *invert_title = new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_INVERT", "信号取反"), _invert_group);
   invert_title->setObjectName("dock_section_title");
   invert_title->setFont(sectionTitleFont);
 
@@ -231,8 +231,8 @@ void SignalProcessingDock::build_invert_panel() {
   QHBoxLayout *btn_layout = new QHBoxLayout();
   btn_layout->setSpacing(5);
 
-  QPushButton *select_all_btn = new QPushButton("全选", _invert_group);
-  QPushButton *deselect_all_btn = new QPushButton("取消全选", _invert_group);
+  QPushButton *select_all_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_SELECT_ALL", "全选"), _invert_group);
+  QPushButton *deselect_all_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_DESELECT_ALL", "取消全选"), _invert_group);
   select_all_btn->setObjectName("dock_content");
   deselect_all_btn->setObjectName("dock_content");
   select_all_btn->setFont(contentFont);
@@ -252,7 +252,7 @@ void SignalProcessingDock::build_invert_panel() {
 
   // Hint text
   QLabel *hint_label = new QLabel(
-      "*勾选通道并点击应用后，信号电平将被翻转（0→1, 1→0）", _invert_group);
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_INVERT_HINT", "*勾选通道并点击应用后，信号电平将被翻转（0→1, 1→0）"), _invert_group);
   hint_label->setFont(contentFont);
   inner_layout->addWidget(hint_label);
 
@@ -260,8 +260,8 @@ void SignalProcessingDock::build_invert_panel() {
   QHBoxLayout *action_layout = new QHBoxLayout();
   action_layout->setSpacing(5);
 
-  _apply_invert_btn = new QPushButton("应用取反", _invert_group);
-  _restore_invert_btn = new QPushButton("恢复原始数据", _invert_group);
+  _apply_invert_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_APPLY_INVERT", "应用取反"), _invert_group);
+  _restore_invert_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_RESTORE_DATA", "恢复原始数据"), _invert_group);
   _apply_invert_btn->setObjectName("dock_content");
   _restore_invert_btn->setObjectName("dock_content");
   _apply_invert_btn->setFont(contentFont);
@@ -308,9 +308,9 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   QFont contentFont = dock_font_content();
 
   _glitch_filter_group = new QWidget(_container_panel);
-  _glitch_filter_group->setMinimumWidth(230);
+  _glitch_filter_group->setMinimumWidth(0);
 
-  QLabel *glitch_title = new QLabel("毛刺过滤", _glitch_filter_group);
+  QLabel *glitch_title = new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_GLITCH_FILTER", "毛刺过滤"), _glitch_filter_group);
   glitch_title->setObjectName("dock_section_title");
   glitch_title->setFont(sectionTitleFont);
 
@@ -363,7 +363,7 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     spin->setFont(contentFont);
     spin->setEnabled(false);
     spin->setMinimumWidth(65);
-    spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    spin->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     _glitch_spinbox_list.push_back(spin);
 
     QLabel *unit_label =
@@ -384,36 +384,35 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     mode_combo->setObjectName("dock_content");
     mode_combo->setFont(contentFont);
     mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_BOTH",
-                            "双向(高脉冲低脉冲都滤)"));
+                            "双向"));
     mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_HIGH",
-                            "高电平(仅滤除高电平上的低脉冲杂波)"));
+                            "高电平"));
     mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_LOW",
-                            "低电平(仅滤除低电平上的高脉冲杂波)"));
+                            "低电平"));
     mode_combo->setCurrentIndex(0);
-    mode_combo->setFixedWidth(80);
+    mode_combo->setMinimumWidth(150);
+    mode_combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     mode_combo->setFixedHeight(28);
     mode_combo->setEnabled(false);
     _glitch_mode_combo_list.push_back(mode_combo);
 
-    // Row 1: CheckBox | 滤波类型 | ComboBox
+    // Row 1: CheckBox | 滤波类型 | ComboBox | 滤波周期 | SpinBox | 周期
     ch_grid->addWidget(ch_check, ch_idx, 0);
     ch_grid->addWidget(mode_label, ch_idx, 1);
     ch_grid->addWidget(mode_combo, ch_idx, 2);
-
-    // Row 2: (empty) | 滤波周期 | SpinBox | 周期
-    ch_grid->addWidget(period_label, ch_idx + 1, 1);
-    ch_grid->addWidget(spin, ch_idx + 1, 2);
-    ch_grid->addWidget(unit_label, ch_idx + 1, 3);
+    ch_grid->addWidget(period_label, ch_idx, 3);
+    ch_grid->addWidget(spin, ch_idx, 4);
+    ch_grid->addWidget(unit_label, ch_idx, 5);
 
     connect(ch_check, &QCheckBox::toggled, [spin, mode_combo](bool checked) {
       spin->setEnabled(checked);
       mode_combo->setEnabled(checked);
     });
 
-    ch_idx += 2;
+    ch_idx += 1;
   }
 
-  for (int c = 0; c < 4; c++) {
+  for (int c = 0; c < 6; c++) {
     ch_grid->setColumnStretch(c, 0);
   }
 
@@ -423,9 +422,9 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   QHBoxLayout *btn_layout = new QHBoxLayout();
   btn_layout->setSpacing(5);
 
-  QPushButton *select_all_btn = new QPushButton("全选", _glitch_filter_group);
+  QPushButton *select_all_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_SELECT_ALL", "全选"), _glitch_filter_group);
   QPushButton *deselect_all_btn =
-      new QPushButton("取消全选", _glitch_filter_group);
+      new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_DESELECT_ALL", "取消全选"), _glitch_filter_group);
   select_all_btn->setObjectName("dock_content");
   deselect_all_btn->setObjectName("dock_content");
   select_all_btn->setFont(contentFont);
@@ -445,7 +444,11 @@ void SignalProcessingDock::build_glitch_filter_panel() {
 
   // Hint text
   QLabel *hint_label =
-      new QLabel("*勾选通道并点击应用滤波后，小于设定宽度的脉冲将被滤除",
+      new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_GLITCH_HINT",
+                 "*勾选通道并点击应用滤波后，小于设定宽度的脉冲将被滤除\n"
+                 "双向: 高脉冲低脉冲都滤\n"
+                 "高电平: 仅滤除高电平上的低脉冲杂波\n"
+                 "低电平: 仅滤除低电平上的高脉冲杂波"),
                  _glitch_filter_group);
   hint_label->setFont(contentFont);
   inner_layout->addWidget(hint_label);
@@ -454,8 +457,8 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   QHBoxLayout *action_layout = new QHBoxLayout();
   action_layout->setSpacing(5);
 
-  _apply_filter_btn = new QPushButton("应用滤波", _glitch_filter_group);
-  _restore_data_btn = new QPushButton("恢复原始数据", _glitch_filter_group);
+  _apply_filter_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_APPLY_FILTER", "应用滤波"), _glitch_filter_group);
+  _restore_data_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_RESTORE_DATA", "恢复原始数据"), _glitch_filter_group);
   _apply_filter_btn->setObjectName("dock_content");
   _restore_data_btn->setObjectName("dock_content");
   _apply_filter_btn->setFont(contentFont);
@@ -596,7 +599,7 @@ void SignalProcessingDock::update_invert_state() {
   bool is_active = _session->is_signal_invert_active();
 
   if (_invert_status_label) {
-    _invert_status_label->setText(is_active ? "已取反" : "");
+    _invert_status_label->setText(is_active ? L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_INVERTED", "已取反") : "");
   }
 
   if (_restore_invert_btn) {
@@ -608,7 +611,7 @@ void SignalProcessingDock::update_glitch_filter_state() {
   bool is_active = _session->is_glitch_filter_active();
 
   if (_filter_status_label) {
-    _filter_status_label->setText(is_active ? "已滤波" : "");
+    _filter_status_label->setText(is_active ? L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_PROC_FILTERED", "已滤波") : "");
   }
 
   if (_restore_data_btn) {
