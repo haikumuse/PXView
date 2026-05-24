@@ -1394,5 +1394,125 @@
     {
         "id": "IDS_STYLE_FONT_CURSOR",
         "text": "游標數值字號"
+    },
+    {
+        "id": "IDS_STYLE_INPUT_BG",
+        "text": "輸入框背景"
+    },
+    {
+        "id": "IDS_STYLE_ALTERNATE_ROW",
+        "text": "交替行背景"
+    },
+    {
+        "id": "IDS_STYLE_HEADER_H_BG",
+        "text": "表頭背景"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_LIGHT",
+        "text": "強調色（亮）"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_MUTED",
+        "text": "強調色（暗）"
+    },
+    {
+        "id": "IDS_STYLE_DANGER_HOVER",
+        "text": "危險色懸停"
+    },
+    {
+        "id": "IDS_STYLE_DANGER_PRESSED",
+        "text": "危險色按下"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_LIGHT_BLUE",
+        "text": "信號淺藍"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_LIGHT_RED",
+        "text": "信號淺紅"
+    },
+    {
+        "id": "IDS_STYLE_WARN_RED",
+        "text": "警告紅"
+    },
+    {
+        "id": "IDS_STYLE_CAT_INTERACTION",
+        "text": "交互"
+    },
+    {
+        "id": "IDS_STYLE_SCROLLBAR",
+        "text": "滾動條"
+    },
+    {
+        "id": "IDS_STYLE_TAB_HOVER",
+        "text": "標籤頁懸停"
+    },
+    {
+        "id": "IDS_STYLE_TOOLBTN_HOVER",
+        "text": "工具按鈕懸停"
+    },
+    {
+        "id": "IDS_STYLE_WINBTN_HOVER",
+        "text": "視窗按鈕懸停"
+    },
+    {
+        "id": "IDS_STYLE_WINBTN_PRESSED",
+        "text": "視窗按鈕按下"
+    },
+    {
+        "id": "IDS_STYLE_FLAT_HOVER_BG",
+        "text": "扁平按鈕懸停"
+    },
+    {
+        "id": "IDS_STYLE_BTN_CHECKED_MID",
+        "text": "按鈕選中"
+    },
+    {
+        "id": "IDS_STYLE_CAT_SLIDER",
+        "text": "滑塊與進度"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_GROOVE",
+        "text": "滑塊軌道"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_INACTIVE",
+        "text": "滑塊未激活"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_DISABLED",
+        "text": "滑塊禁用"
+    },
+    {
+        "id": "IDS_STYLE_PROGRESS_TRACK",
+        "text": "進度條軌道"
+    },
+    {
+        "id": "IDS_STYLE_CAT_COMPONENT",
+        "text": "組件"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_ACTIVE",
+        "text": "下拉框激活"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_SELECTION",
+        "text": "下拉框選中"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_HIGHLIGHT",
+        "text": "下拉框高亮"
+    },
+    {
+        "id": "IDS_STYLE_DOCK_GRIDLINE",
+        "text": "Dock 網格線"
+    },
+    {
+        "id": "IDS_STYLE_DOCK_SECTION_TITLE_FG",
+        "text": "Dock 標題文字"
+    },
+    {
+        "id": "IDS_STYLE_SEARCH_INPUT_LABEL",
+        "text": "搜尋框標籤"
     }
 ]

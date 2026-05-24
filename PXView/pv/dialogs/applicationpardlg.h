@@ -35,6 +35,7 @@
 #include <QLineEdit>
 
 class QComboBox;
+class DsComboBox;
 class QLabel;
 class QPushButton;
 class QTableWidget;
@@ -77,9 +78,6 @@ namespace dialogs
         bool ShowDlg(QWidget *parent);
 
     private:
-        void bind_font_name_list(QComboBox *box, QString v);
-        void bind_font_size_list(QComboBox *box, float size);
-
         QWidget* createDisplayPage();
         QWidget *createShortcutPage();
         QWidget *createStylePage();
@@ -117,8 +115,6 @@ namespace dialogs
         void refreshStyleWidgets();
 
     private:
-        QStringList _font_name_list;
-
         QListWidget *_nav_list;
         QStackedWidget *_page_stack;
 
@@ -127,8 +123,6 @@ namespace dialogs
         QCheckBox *_ck_profileBar;
         QCheckBox *_ck_abortData;
         QCheckBox *_ck_autoScrollLatestData;
-        QComboBox *_ftCbSize;
-
         QListWidget *_shortcut_list;
         int _shortcut_selected_row;
         QPushButton *_btn_accept;
@@ -145,7 +139,7 @@ namespace dialogs
         QMap<QString, QWidget*> _style_preview_widgets;
         QMap<QString, QPushButton*> _style_button_widgets;
         QMap<QString, class QLineEdit*> _style_line_edit_widgets;
-        QComboBox *_preset_combo;
+        DsComboBox *_preset_combo;
         
         class QTimer *_live_preview_timer;
         ::QFileSystemWatcher *_file_watcher;

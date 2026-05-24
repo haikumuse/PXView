@@ -144,6 +144,9 @@ void SearchComboBox::ShowDlg(QWidget *editline) {
   connect(edit, &QLineEdit::textEdited, this,
           &SearchComboBox::on_keyword_changed);
 
+  // Apply initial type filter so items are filtered on first open
+  on_keyword_changed("");
+
   this->show();
 }
 

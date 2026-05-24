@@ -64,8 +64,8 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
     _add_button->setFixedSize(QSize(24, 24));
     _add_button->setToolTip(tr("New Tab"));
     _add_button->setCursor(Qt::PointingHandCursor);
-    QString addBtnColor = AppConfig::Instance().GetThemeTokenValue("@tab-add-color");
-    QString addBtnHoverColor = AppConfig::Instance().GetThemeTokenValue("@tab-add-hover-color");
+    QString addBtnColor = AppConfig::Instance().GetThemeTokenValue("@fg-muted");
+    QString addBtnHoverColor = AppConfig::Instance().GetThemeTokenValue("@fg-bright");
     if (addBtnColor.isEmpty()) addBtnColor = "#aaa";
     if (addBtnHoverColor.isEmpty()) addBtnHoverColor = "#fff";
     _add_button->setStyleSheet(

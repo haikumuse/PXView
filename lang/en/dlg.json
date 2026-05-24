@@ -1394,5 +1394,125 @@
     {
         "id": "IDS_STYLE_FONT_CURSOR",
         "text": "Cursor Size"
+    },
+    {
+        "id": "IDS_STYLE_INPUT_BG",
+        "text": "Input Background"
+    },
+    {
+        "id": "IDS_STYLE_ALTERNATE_ROW",
+        "text": "Alternate Row"
+    },
+    {
+        "id": "IDS_STYLE_HEADER_H_BG",
+        "text": "Header Background"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_LIGHT",
+        "text": "Accent (Light)"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_MUTED",
+        "text": "Accent (Muted)"
+    },
+    {
+        "id": "IDS_STYLE_DANGER_HOVER",
+        "text": "Danger Hover"
+    },
+    {
+        "id": "IDS_STYLE_DANGER_PRESSED",
+        "text": "Danger Pressed"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_LIGHT_BLUE",
+        "text": "Signal Light Blue"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_LIGHT_RED",
+        "text": "Signal Light Red"
+    },
+    {
+        "id": "IDS_STYLE_WARN_RED",
+        "text": "Warning Red"
+    },
+    {
+        "id": "IDS_STYLE_CAT_INTERACTION",
+        "text": "Interaction"
+    },
+    {
+        "id": "IDS_STYLE_SCROLLBAR",
+        "text": "Scrollbar"
+    },
+    {
+        "id": "IDS_STYLE_TAB_HOVER",
+        "text": "Tab Hover"
+    },
+    {
+        "id": "IDS_STYLE_TOOLBTN_HOVER",
+        "text": "Tool Button Hover"
+    },
+    {
+        "id": "IDS_STYLE_WINBTN_HOVER",
+        "text": "Window Button Hover"
+    },
+    {
+        "id": "IDS_STYLE_WINBTN_PRESSED",
+        "text": "Window Button Pressed"
+    },
+    {
+        "id": "IDS_STYLE_FLAT_HOVER_BG",
+        "text": "Flat Button Hover"
+    },
+    {
+        "id": "IDS_STYLE_BTN_CHECKED_MID",
+        "text": "Button Checked"
+    },
+    {
+        "id": "IDS_STYLE_CAT_SLIDER",
+        "text": "Slider & Progress"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_GROOVE",
+        "text": "Slider Groove"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_INACTIVE",
+        "text": "Slider Inactive"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_DISABLED",
+        "text": "Slider Disabled"
+    },
+    {
+        "id": "IDS_STYLE_PROGRESS_TRACK",
+        "text": "Progress Track"
+    },
+    {
+        "id": "IDS_STYLE_CAT_COMPONENT",
+        "text": "Components"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_ACTIVE",
+        "text": "Combo Active"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_SELECTION",
+        "text": "Combo Selection"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_HIGHLIGHT",
+        "text": "Combo Highlight"
+    },
+    {
+        "id": "IDS_STYLE_DOCK_GRIDLINE",
+        "text": "Dock Gridline"
+    },
+    {
+        "id": "IDS_STYLE_DOCK_SECTION_TITLE_FG",
+        "text": "Dock Section Title"
+    },
+    {
+        "id": "IDS_STYLE_SEARCH_INPUT_LABEL",
+        "text": "Search Label"
     }
 ]

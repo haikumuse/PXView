@@ -42,9 +42,9 @@
 #include "../dsvdef.h"
 #include "../log.h"
 #include "../sigsession.h"
+#include "../ui/dockfonts.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
-#include "../ui/dockfonts.h"
 #include "analogsignal.h"
 #include "decodetrace.h"
 #include "dsosignal.h"
@@ -176,8 +176,7 @@ void Header::paintEvent(QPaintEvent *) {
     }
   }
 
-  QColor dividerColor =
-      AppConfig::Instance().GetThemeColor("@trace-divider-color");
+  QColor dividerColor = AppConfig::Instance().GetThemeColor("@border-strong");
   if (!dividerColor.isValid()) {
     QColor back(QWidget::palette().color(QWidget::backgroundRole()));
     double lum =
@@ -297,7 +296,8 @@ void Header::mousePressEvent(QMouseEvent *event) {
   }
 
   if (event->button() & Qt::LeftButton) {
-    _mouse_down_point = event->position().toPoint() + QPoint(0, _view.get_vOffset());
+    _mouse_down_point =
+        event->position().toPoint() + QPoint(0, _view.get_vOffset());
 
     // Save the offsets of any Traces which will be dragged
     for (auto t : traces) {
@@ -677,9 +677,7 @@ void Header::UpdateTheme() { retranslateUi(); }
 
 void Header::UpdateFont() {}
 
-void Header::resizeEvent(QResizeEvent *event) {
-  QWidget::resizeEvent(event);
-}
+void Header::resizeEvent(QResizeEvent *event) { QWidget::resizeEvent(event); }
 
 } // namespace view
 } // namespace pv

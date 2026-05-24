@@ -8,6 +8,9 @@
         { "id": "@bg-overlay", "type": "color", "label": "IDS_STYLE_BG_OVERLAY" },
         { "id": "@panel-bg", "type": "color", "label": "IDS_STYLE_PANEL_BG" },
         { "id": "@group-card-bg", "type": "color", "label": "IDS_STYLE_GROUP_CARD_BG" },
+        { "id": "@input-bg", "type": "color", "label": "IDS_STYLE_INPUT_BG" },
+        { "id": "@alternate-row", "type": "color", "label": "IDS_STYLE_ALTERNATE_ROW" },
+        { "id": "@header-h-bg", "type": "color", "label": "IDS_STYLE_HEADER_H_BG" },
         { "id": "@fg-base", "type": "color", "label": "IDS_STYLE_FG_BASE" },
         { "id": "@fg-bright", "type": "color", "label": "IDS_STYLE_FG_BRIGHT" },
         { "id": "@fg-muted", "type": "color", "label": "IDS_STYLE_FG_MUTED" },
@@ -22,13 +25,52 @@
       "tokens": [
         { "id": "@accent", "type": "color", "label": "IDS_STYLE_ACCENT", "desc": "IDS_STYLE_ACCENT_DESC" },
         { "id": "@accent-hover", "type": "color", "label": "IDS_STYLE_ACCENT_HOVER" },
+        { "id": "@accent-light", "type": "color", "label": "IDS_STYLE_ACCENT_LIGHT" },
+        { "id": "@accent-muted", "type": "color", "label": "IDS_STYLE_ACCENT_MUTED" },
         { "id": "@sidebar-accent", "type": "color", "label": "IDS_STYLE_SIDEBAR_ACCENT", "desc": "IDS_STYLE_SIDEBAR_ACCENT_DESC" },
         { "id": "@titlebar-icon-accent", "type": "color", "label": "IDS_STYLE_TITLEBAR_ICON", "desc": "IDS_STYLE_TITLEBAR_ICON_DESC" },
         { "id": "@sidebar-icon-color", "type": "color", "label": "IDS_STYLE_SIDEBAR_ICON", "desc": "IDS_STYLE_SIDEBAR_ICON_DESC" },
         { "id": "@sidebar-text-color", "type": "color", "label": "IDS_STYLE_SIDEBAR_TEXT", "desc": "IDS_STYLE_SIDEBAR_TEXT_DESC" },
         { "id": "@danger", "type": "color", "label": "IDS_STYLE_DANGER" },
+        { "id": "@danger-hover", "type": "color", "label": "IDS_STYLE_DANGER_HOVER" },
+        { "id": "@danger-pressed", "type": "color", "label": "IDS_STYLE_DANGER_PRESSED" },
         { "id": "@dock-status-ok", "type": "color", "label": "IDS_STYLE_STATUS_OK" },
         { "id": "@dock-status-error", "type": "color", "label": "IDS_STYLE_STATUS_ERROR" }
+      ]
+    },
+    {
+      "id": "interaction.colors",
+      "name": "IDS_STYLE_CAT_INTERACTION",
+      "tokens": [
+        { "id": "@scrollbar", "type": "color", "label": "IDS_STYLE_SCROLLBAR" },
+        { "id": "@tab-hover", "type": "color", "label": "IDS_STYLE_TAB_HOVER" },
+        { "id": "@toolbtn-hover", "type": "color", "label": "IDS_STYLE_TOOLBTN_HOVER" },
+        { "id": "@winbtn-hover", "type": "color", "label": "IDS_STYLE_WINBTN_HOVER" },
+        { "id": "@winbtn-pressed", "type": "color", "label": "IDS_STYLE_WINBTN_PRESSED" },
+        { "id": "@flat-hover-bg", "type": "color", "label": "IDS_STYLE_FLAT_HOVER_BG" },
+        { "id": "@btn-checked-mid", "type": "color", "label": "IDS_STYLE_BTN_CHECKED_MID" }
+      ]
+    },
+    {
+      "id": "slider.colors",
+      "name": "IDS_STYLE_CAT_SLIDER",
+      "tokens": [
+        { "id": "@slider-groove", "type": "color", "label": "IDS_STYLE_SLIDER_GROOVE" },
+        { "id": "@slider-inactive", "type": "color", "label": "IDS_STYLE_SLIDER_INACTIVE" },
+        { "id": "@slider-disabled", "type": "color", "label": "IDS_STYLE_SLIDER_DISABLED" },
+        { "id": "@progress-track", "type": "color", "label": "IDS_STYLE_PROGRESS_TRACK" }
+      ]
+    },
+    {
+      "id": "component.colors",
+      "name": "IDS_STYLE_CAT_COMPONENT",
+      "tokens": [
+        { "id": "@combo-active", "type": "color", "label": "IDS_STYLE_COMBO_ACTIVE" },
+        { "id": "@combo-selection", "type": "color", "label": "IDS_STYLE_COMBO_SELECTION" },
+        { "id": "@combo-highlight", "type": "color", "label": "IDS_STYLE_COMBO_HIGHLIGHT" },
+        { "id": "@dock-gridline", "type": "color", "label": "IDS_STYLE_DOCK_GRIDLINE" },
+        { "id": "@dock-section-title-fg", "type": "color", "label": "IDS_STYLE_DOCK_SECTION_TITLE_FG" },
+        { "id": "@search-input-label", "type": "color", "label": "IDS_STYLE_SEARCH_INPUT_LABEL" }
       ]
     },
     {
@@ -39,7 +81,10 @@
         { "id": "@signal-orange", "type": "color", "label": "IDS_STYLE_SIGNAL_CH2" },
         { "id": "@signal-blue", "type": "color", "label": "IDS_STYLE_SIGNAL_CH3" },
         { "id": "@signal-green", "type": "color", "label": "IDS_STYLE_SIGNAL_CH4" },
-        { "id": "@signal-purple", "type": "color", "label": "IDS_STYLE_SIGNAL_CH5" }
+        { "id": "@signal-purple", "type": "color", "label": "IDS_STYLE_SIGNAL_CH5" },
+        { "id": "@signal-light-blue", "type": "color", "label": "IDS_STYLE_SIGNAL_LIGHT_BLUE" },
+        { "id": "@signal-light-red", "type": "color", "label": "IDS_STYLE_SIGNAL_LIGHT_RED" },
+        { "id": "@warn-red", "type": "color", "label": "IDS_STYLE_WARN_RED" }
       ]
     },
     {
@@ -99,10 +144,5 @@
         { "id": "@cursor-font-size", "type": "size", "label": "IDS_STYLE_FONT_CURSOR" }
       ]
     }
-  ],
-  "hidden": [
-    "@debug-tooltip-bg",
-    "@debug-tooltip-fg",
-    "@debug-tooltip-border"
   ]
 }
