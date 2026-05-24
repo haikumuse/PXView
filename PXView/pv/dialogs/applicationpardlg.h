@@ -24,9 +24,12 @@
 
 #include <QObject>
 #include <QWidget>
+#include <QDialog>
+#include <QTreeWidget>
+#include <QStackedWidget>
+#include <QFileSystemWatcher>
 #include <QStringList>
 #include <QListWidget>
-#include <QStackedWidget>
 #include <QMap>
 #include <QSet>
 #include <QLineEdit>
@@ -36,6 +39,8 @@ class QLabel;
 class QPushButton;
 class QTableWidget;
 class QCheckBox;
+class QTreeWidget;
+class QTreeWidgetItem;
 
 class ShortcutKeyCapture : public QLineEdit
 {
@@ -76,8 +81,8 @@ namespace dialogs
         void bind_font_size_list(QComboBox *box, float size);
 
         QWidget* createDisplayPage();
-        QWidget* createShortcutPage();
-        QWidget* createStylePage();
+        QWidget *createShortcutPage();
+        QWidget *createStylePage();
 
         void saveDisplayOptions();
         void saveShortcutOptions();
@@ -93,14 +98,23 @@ namespace dialogs
         void checkShortcutClash();
         void updateShortcutButtons();
         void refreshShortcutList();
-        void onStyleTokenChanged(int row);
+        void onStyleCategoryChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
+        void onStyleTokenColorChanged(const QString &tokenName);
+        void onStyleTokenTextChanged(const QString &tokenName, const QString &value);
         void onResetStyle();
         void onExportStyle();
         void onImportStyle();
+        void onWidgetPicked(QWidget *w);
+        void scheduleLivePreview();
+        void applyLivePreview();
+        
+        void applyPresetTheme(const QString &path);
+        void openExternalJsonEditor();
+        void onExternalJsonChanged(const QString &path);
 
         QString getShortcutKey(int actionId);
         void setShortcutKey(int actionId, const QString &keySeq);
-        void refreshStyleTable();
+        void refreshStyleWidgets();
 
     private:
         QStringList _font_name_list;
@@ -123,9 +137,19 @@ namespace dialogs
         QPushButton *_btn_delete;
         QLabel *_clash_warning_label;
 
-        QTableWidget *_style_table;
+        QTreeWidget *_style_category_tree;
+        QStackedWidget *_style_page_stack;
         QMap<QString, QString> _style_tokens;
         QMap<QString, QString> _default_style_tokens;
+        QMap<QString, QString> _original_style_tokens;
+        QMap<QString, QWidget*> _style_preview_widgets;
+        QMap<QString, QPushButton*> _style_button_widgets;
+        QMap<QString, class QLineEdit*> _style_line_edit_widgets;
+        QComboBox *_preset_combo;
+        
+        class QTimer *_live_preview_timer;
+        ::QFileSystemWatcher *_file_watcher;
+        QString _external_json_path;
 
         QMap<int, QString> _shortcut_keys;
         QMap<int, QString> _shortcut_original_keys;

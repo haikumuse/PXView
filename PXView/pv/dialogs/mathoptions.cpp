@@ -33,6 +33,7 @@
 #include "../data/mathstack.h"
 #include "../ui/langresource.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 #include "../config/appconfig.h"
 
 using namespace boost;
@@ -245,8 +246,7 @@ void MathOptions::UpdateTheme()
 
 void MathOptions::UpdateFont()
 { 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     ui::set_form_font(this, font);
 }
 

@@ -52,6 +52,7 @@
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
+#include "../ui/toast.h"
 
 using namespace boost;
 using namespace std;
@@ -213,7 +214,7 @@ void DeviceOptionsDock::commit_channels() {
     QString strMsg(
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_ALL_CHANNEL_DISABLE),
             "All channel disabled! Please enable at least one channel."));
-    MsgBox::Show(strMsg);
+    pv::ui::Toast::show(this, strMsg, pv::ui::Toast::Warning);
   }
 }
 
@@ -447,9 +448,10 @@ void DeviceOptionsDock::enable_max_probes() {
   if (_device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num) == false)
     return;
 
-  while (cur_ch_num < vld_ch_num &&
-         cur_ch_num < (int)_probes_checkBox_list.size()) {
-    auto box = _probes_checkBox_list[cur_ch_num];
+  for (auto box : _probes_checkBox_list) {
+    if (cur_ch_num >= vld_ch_num) {
+      break;
+    }
     if (box->isChecked() == false) {
       box->setChecked(true);
       cur_ch_num++;

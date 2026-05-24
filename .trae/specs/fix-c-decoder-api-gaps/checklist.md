@@ -1,0 +1,20 @@
+- [x] SRD_OUTPUT_LOGIC输出类型及c_decoder_put_logic() API已实现
+- [x] BITS消息格式已扩展包含bit级时间戳（ss/es）— spi_c.c和i2c_c.c已实现BITS v2格式
+- [REMOVED] Python→C proto桥接 — 已从需求中移除，C解码器自成体系，不依赖Python解码器
+- [x] c_decoder_register_output()在recv_proto()中可安全调用已验证（当前架构下安全，下游解码器无独立线程）
+- [x] uart_c.c已补充IDLE/BREAK输出
+- [x] Batch-26/27/28的SPI DATA格式已修正为17字节（data[0]=flags合并字节）
+- [x] Batch-34的4b5b_c输出格式已修正为实际控制符号短名称（J/K/T/R等）
+- [x] Batch-31的UART输出格式描述已修正（标注IDLE/BREAK为C版本不支持→已添加输出）
+- [x] Batch-32的JTAG IR TDO描述已修正（实际同时发送IR TDI和IR TDO）
+- [x] Batch-13的arm_etmv3 recv_proto数据读取已修正（data[0]=rxtx, data[1]=byte）
+- [x] Batch-37的pjon strcmp逻辑bug已修正（添加== 0）
+- [x] Batch-20的mpu6050 annotation枚举命名已修正为MPU6050相关命名
+- [x] Batch-25的%b格式已替换为自定义二进制格式化函数
+- [x] Batch-17的xy2-100 idn连字符已改为下划线
+- [x] Batch-03的c_cond_or错误描述已删除
+- [x] 全部37批子Spec已添加标准范本引用（spi_c/can_fd_c/uart_c/i2c_c + lm75_c/ds1307_c）
+- [x] 所有底层解码器spec引用了spi_c.c或can_fd_c.c
+- [x] 所有I2C上层解码器spec引用了lm75_c.c/ds1307_c.c + i2c_c.c
+- [x] 所有SPI上层解码器spec引用了lm75_c.c/ds1307_c.c + spi_c.c
+- [x] 所有UART上层解码器spec引用了lm75_c.c/ds1307_c.c + uart_c.c

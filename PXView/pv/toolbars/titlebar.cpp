@@ -28,6 +28,8 @@
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
+#include "../ui/langresource.h"
+#include "../ui/dockfonts.h"
 #include "../dsvdef.h"
 #include "../log.h"
 #include "../ui/fn.h"
@@ -524,7 +526,8 @@ bool TitleBar::isOnTabBar(const QPoint &pos) const {
 
 void TitleBar::reStyle() {
   QString iconPath = GetIconPath();
-
+  QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
+  
   if (_isTop) {
     _minimizeButton->setIcon(IconCache::Instance().icon(iconPath + "/minimize.svg"));
     if (ParentIsMaxsized())
@@ -537,9 +540,9 @@ void TitleBar::reStyle() {
 
   if (_pinButton && _enableRibbon) {
     if (_ribbonPinned)
-      _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/unpin.svg"));
+      _pinButton->setIcon(iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + "/unpin.svg", iconColor) : IconCache::Instance().icon(iconPath + "/unpin.svg"));
     else
-      _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/pin.svg"));
+      _pinButton->setIcon(iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + "/pin.svg", iconColor) : IconCache::Instance().icon(iconPath + "/pin.svg"));
   }
 }
 
@@ -753,9 +756,7 @@ void TitleBar::UpdateLanguage() {}
 void TitleBar::UpdateTheme() { reStyle(); }
 
 void TitleBar::UpdateFont() {
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize + 1);
-  _title->setFont(font);
+  _title->setFont(theme_font_titlebar());
 }
 
 void TitleBar::onPinToggled(bool checked) {

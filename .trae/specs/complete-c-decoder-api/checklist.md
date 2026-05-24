@@ -1,0 +1,9 @@
+- [x] c_cond_wait_current() API已实现，spi_c.c已使用
+- [x] c_decoder_get_initial_pin() API已实现
+- [x] BITS消息格式已扩展包含bit级时间戳（value+ss+es）
+- [x] spi_c.c BITS输出已包含bit级时间戳
+- [x] i2c_c.c BITS输出已包含bit级时间戳（新增BITS输出）
+- [x] ps2_c.c已添加Python输出（BYTE命令）
+- [x] usb_signalling_c.c Python输出已确认完整
+- [x] fix-c-decoder-api-gaps spec已删除Python→C桥接需求
+- [x] C解码器依赖规则已文档化（C解码器只能依赖C实现的底层解码器）

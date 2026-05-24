@@ -35,6 +35,7 @@
 #include "../config/appconfig.h"
 #include "../ui/langresource.h"
 #include "../appcontrol.h"
+#include "../ui/dockfonts.h"
 
 using namespace boost;
 using namespace std;
@@ -57,8 +58,7 @@ WaitingDialog::WaitingDialog(QWidget *parent, SigSession *session, int key) :
     this->setFixedSize((GIF_WIDTH+2*TIP_WIDTH)*1.2, (GIF_HEIGHT+2*TIP_HEIGHT)*4);
     this->setWindowOpacity(0.7);
 
-    QFont font;
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     font.setBold(true);
 
     QLabel *warning_tips = new QLabel(this);

@@ -152,7 +152,7 @@ static int py_parse_ann_data(PyObject* list_obj, char*** out_strv, int list_size
             } else if (nstr > 0) {
                 // Remove the first letter.
                 str_tmp = g_strdup(str + 1);
-                free(str);
+                g_free(str);
                 str = str_tmp;
             }
         }
@@ -563,6 +563,14 @@ static PyObject* Decoder_put(PyObject* self, PyObject* args)
                 start_sample,
                 end_sample, output_type_name(pdo->output_type),
                 output_id, pdo->proto_id, next_di->inst_id);
+
+            /* Skip C decoder instances - Python→C bridge not supported */
+            if (next_di->is_c_inst) {
+                srd_warn("Python→C decoder stacking is not supported: "
+                         "cannot feed data from %s to C decoder %s.",
+                    di->inst_id, next_di->inst_id);
+                continue;
+            }
 
             if (!(py_res = PyObject_CallMethod(
                       next_di->py_inst, "decode", "KKO", start_sample,

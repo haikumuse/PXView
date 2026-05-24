@@ -29,6 +29,7 @@
 
 #include "filebar.h"
 #include "../ui/msgbox.h"
+#include "../ui/dockfonts.h"
 #include "../config/appconfig.h"
 #include "../utility/path.h"
 #include "../ui/langresource.h"
@@ -120,15 +121,21 @@ void FileBar::retranslateUi()
 void FileBar::reStyle()
 {
     QString iconPath = GetIconPath();
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
 
-    _action_load->setIcon(IconCache::Instance().icon(iconPath+"/open.svg"));
-    _action_store->setIcon(IconCache::Instance().icon(iconPath+"/save.svg"));
-    _action_default->setIcon(IconCache::Instance().icon(iconPath+"/gear.svg"));
-    _menu_session->setIcon(IconCache::Instance().icon(iconPath+"/gear.svg"));
-    _action_open->setIcon(IconCache::Instance().icon(iconPath+"/open.svg"));
-    _action_save->setIcon(IconCache::Instance().icon(iconPath+"/save.svg"));
-    _action_export->setIcon(IconCache::Instance().icon(iconPath+"/export.svg"));
-    _action_capture->setIcon(IconCache::Instance().icon(iconPath+"/capture.svg"));
+    auto getIcon = [&](const QString &name) {
+        return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
+                                   : IconCache::Instance().icon(iconPath + name);
+    };
+
+    _action_load->setIcon(getIcon("/open.svg"));
+    _action_store->setIcon(getIcon("/save.svg"));
+    _action_default->setIcon(getIcon("/gear.svg"));
+    _menu_session->setIcon(getIcon("/gear.svg"));
+    _action_open->setIcon(getIcon("/open.svg"));
+    _action_save->setIcon(getIcon("/save.svg"));
+    _action_export->setIcon(getIcon("/export.svg"));
+    _action_capture->setIcon(getIcon("/capture.svg"));
     // _file_button.setIcon(QIcon(iconPath+"/file.svg"));
 }
 
@@ -260,12 +267,17 @@ void FileBar::UpdateLanguage()
 void FileBar::UpdateTheme()
 {
     reStyle();
+
+    QList<QAction*> actionList = _menu->actions();
+    for (int i = 0; i < actionList.size(); i++) {
+        QFont font = theme_font_toolbar();
+        actionList.at(i)->setFont(font);
+    }
 }
 
 void FileBar::UpdateFont()
 { 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_toolbar();
     ui::set_toolbar_font(this, font);
 }
 

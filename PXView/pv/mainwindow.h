@@ -87,11 +87,7 @@ namespace view {
 class View;
 }
 
-#ifdef ENABLE_DEBUG_HELPER
-namespace ui {
-class DebugHelper;
-}
-#endif
+// removed WidgetInspector fwd decl
 
 //The mainwindow,referenced by MainFrame
 //TODO: create graph view,toolbar,and show device list
@@ -291,9 +287,7 @@ private:
 
     int         _key_value;
     bool        _key_vaild;
-#ifdef ENABLE_DEBUG_HELPER
-    pv::ui::DebugHelper *_debug_helper;
-#endif
+    // removed _debug_helper
 
 
     void MainWindowRibbonHelper();

@@ -519,6 +519,9 @@ void View::zoom_vertical(double steps) {
       if (t->get_own_height() > 0) {
         t->set_own_height(
             max(MinSignalHeight, (int)(t->get_own_height() * scale)));
+      } else if (_device_agent->get_work_mode() == DSO || _device_agent->get_work_mode() == ANALOG) {
+        int current_height = _signalHeight * t->rows_size();
+        t->set_own_height(max(MinSignalHeight, (int)(current_height * scale)));
       }
     }
     signals_changed(NULL);
@@ -2176,7 +2179,7 @@ Cursor *View::get_cursor_by_index(int index) {
 
 void View::UpdateLanguage() {}
 
-void View::UpdateTheme() {}
+void View::UpdateTheme() { viewport_update(); }
 
 void View::UpdateFont() { update_font(); }
 

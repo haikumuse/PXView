@@ -41,6 +41,7 @@
 #include "../config/appconfig.h"
 #include "../appcontrol.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 
 using namespace std;
 
@@ -63,11 +64,7 @@ void ViewStatus::paintEvent(QPaintEvent *)
     QPainter p(this);
     QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
 
-    QFont font = p.font();
-    float fSize = AppConfig::Instance().appOptions.fontSize;
-    if (fSize > 10)
-        fSize = 10;
-    font.setPointSizeF(fSize);
+    QFont font = theme_font_cursor();
     p.setFont(font);
 
     int mode = _session->get_device()->get_work_mode();

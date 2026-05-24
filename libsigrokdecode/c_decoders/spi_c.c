@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 #define MAX_TRANSFER_BYTES 256
 
@@ -62,68 +62,68 @@ typedef struct {
 } spi_state;
 
 static struct srd_channel spi_channels[] = {
-    {"clk", "CLK", "Clock(串行时钟)", 0, SRD_CHANNEL_SCLK, NULL},
+    { "clk", "CLK", "Clock(串行时钟)", 0, SRD_CHANNEL_SCLK, NULL },
 };
 
 static struct srd_channel spi_optional_channels[] = {
-    {"miso", "MISO", "Master in, slave out(主入从出)", 1, SRD_CHANNEL_SDATA, NULL},
-    {"mosi", "MOSI", "Master out, slave in(主出从入)", 2, SRD_CHANNEL_SDATA, NULL},
-    {"cs", "CS#", "Chip-select(片选信号)", 3, SRD_CHANNEL_COMMON, NULL},
+    { "miso", "MISO", "Master in, slave out(主入从出)", 1, SRD_CHANNEL_SDATA, NULL },
+    { "mosi", "MOSI", "Master out, slave in(主出从入)", 2, SRD_CHANNEL_SDATA, NULL },
+    { "cs", "CS#", "Chip-select(片选信号)", 3, SRD_CHANNEL_COMMON, NULL },
 };
 
 static struct srd_decoder_option spi_options[] = {
-    {"cs_polarity", NULL, "CS# polarity(片选极性)", NULL, NULL},
-    {"cpol", NULL, "Clock polarity(时钟极性)", NULL, NULL},
-    {"cpha", NULL, "Clock phase(时钟相位)", NULL, NULL},
-    {"bitorder", NULL, "Bit order(位序)", NULL, NULL},
-    {"wordsize", NULL, "Word size(字长)", NULL, NULL},
-    {"format", NULL, "Data format(数据格式)", NULL, NULL},
-    {"show_data_point", NULL, "Show data point(数据点显示)", NULL, NULL},
+    { "cs_polarity", NULL, "CS# polarity(片选极性)", NULL, NULL },
+    { "cpol", NULL, "Clock polarity(时钟极性)", NULL, NULL },
+    { "cpha", NULL, "Clock phase(时钟相位)", NULL, NULL },
+    { "bitorder", NULL, "Bit order(位序)", NULL, NULL },
+    { "wordsize", NULL, "Word size(字长)", NULL, NULL },
+    { "format", NULL, "Data format(数据格式)", NULL, NULL },
+    { "show_data_point", NULL, "Show data point(数据点显示)", NULL, NULL },
 };
 
-static const char *spi_ann_labels[][3] = {
-    {"", "MISO", "MISO data"},
-    {"", "MOSI", "MOSI data"},
-    {"", "MISO bit", "MISO bit"},
-    {"", "MOSI bit", "MOSI bit"},
-    {"", "Warning", "Warning"},
-    {"", "MISO transfer", "MISO transfer"},
-    {"", "MOSI transfer", "MOSI transfer"},
-    {"", "ATK Data point", "ATK Data point"},
-    {"", "ATK Rising edge", "ATK Rising edge"},
-    {"", "ATK Falling edge", "ATK Falling edge"},
+static const char* spi_ann_labels[][3] = {
+    { "", "MISO", "MISO data" },
+    { "", "MOSI", "MOSI data" },
+    { "", "MISO bit", "MISO bit" },
+    { "", "MOSI bit", "MOSI bit" },
+    { "", "Warning", "Warning" },
+    { "", "MISO transfer", "MISO transfer" },
+    { "", "MOSI transfer", "MOSI transfer" },
+    { "", "ATK Data point", "ATK Data point" },
+    { "", "ATK Rising edge", "ATK Rising edge" },
+    { "", "ATK Falling edge", "ATK Falling edge" },
 };
 
-static const int spi_row_miso_bits_classes[] = {ANN_MISO_BIT, -1};
-static const int spi_row_miso_data_classes[] = {ANN_MISO_DATA, -1};
-static const int spi_row_miso_transfer_classes[] = {ANN_MISO_TRANSFER, -1};
-static const int spi_row_mosi_bits_classes[] = {ANN_MOSI_BIT, -1};
-static const int spi_row_mosi_data_classes[] = {ANN_MOSI_DATA, -1};
-static const int spi_row_mosi_transfer_classes[] = {ANN_MOSI_TRANSFER, -1};
-static const int spi_row_other_classes[] = {ANN_WARNING, -1};
-static const int spi_row_atk_classes[] = {ANN_ATK_DATA_POINT, ANN_ATK_RISING_EDGE, ANN_ATK_FALLING_EDGE, -1};
+static const int spi_row_miso_bits_classes[] = { ANN_MISO_BIT, -1 };
+static const int spi_row_miso_data_classes[] = { ANN_MISO_DATA, -1 };
+static const int spi_row_miso_transfer_classes[] = { ANN_MISO_TRANSFER, -1 };
+static const int spi_row_mosi_bits_classes[] = { ANN_MOSI_BIT, -1 };
+static const int spi_row_mosi_data_classes[] = { ANN_MOSI_DATA, -1 };
+static const int spi_row_mosi_transfer_classes[] = { ANN_MOSI_TRANSFER, -1 };
+static const int spi_row_other_classes[] = { ANN_WARNING, -1 };
+static const int spi_row_atk_classes[] = { ANN_ATK_DATA_POINT, ANN_ATK_RISING_EDGE, ANN_ATK_FALLING_EDGE, -1 };
 
 static const struct srd_c_ann_row spi_ann_rows[] = {
-    {"miso-bits", "MISO bits", spi_row_miso_bits_classes, 1},
-    {"miso-data-vals", "MISO data", spi_row_miso_data_classes, 1},
-    {"miso-transfers", "MISO transfers", spi_row_miso_transfer_classes, 1},
-    {"mosi-bits", "MOSI bits", spi_row_mosi_bits_classes, 1},
-    {"mosi-data-vals", "MOSI data", spi_row_mosi_data_classes, 1},
-    {"mosi-transfers", "MOSI transfers", spi_row_mosi_transfer_classes, 1},
-    {"other", "Other", spi_row_other_classes, 1},
-    {"atk-signs", "ATK signs", spi_row_atk_classes, 3},
+    { "miso-bits", "MISO bits", spi_row_miso_bits_classes, 1 },
+    { "miso-data-vals", "MISO data", spi_row_miso_data_classes, 1 },
+    { "miso-transfers", "MISO transfers", spi_row_miso_transfer_classes, 1 },
+    { "mosi-bits", "MOSI bits", spi_row_mosi_bits_classes, 1 },
+    { "mosi-data-vals", "MOSI data", spi_row_mosi_data_classes, 1 },
+    { "mosi-transfers", "MOSI transfers", spi_row_mosi_transfer_classes, 1 },
+    { "other", "Other", spi_row_other_classes, 1 },
+    { "atk-signs", "ATK signs", spi_row_atk_classes, 3 },
 };
 
 static const struct srd_decoder_binary spi_binary[] = {
-    {0, "miso", "MISO"},
-    {1, "mosi", "MOSI"},
+    { 0, "miso", "MISO" },
+    { 1, "mosi", "MOSI" },
 };
 
-static const char *spi_inputs[] = {"logic"};
-static const char *spi_outputs[] = {"spi"};
-static const char *spi_tags[] = {"Embedded/industrial"};
+static const char* spi_inputs[] = { "logic" };
+static const char* spi_outputs[] = { "spi" };
+static const char* spi_tags[] = { "Embedded/industrial" };
 
-static void spi_format_value(uint64_t val, int wordsize, int format, char *out, int out_size)
+static void spi_format_value(uint64_t val, int wordsize, int format, char* out, int out_size)
 {
     if (format == 0) {
         snprintf(out, out_size, "%02llx", (unsigned long long)val);
@@ -149,7 +149,7 @@ static void spi_format_value(uint64_t val, int wordsize, int format, char *out, 
     }
 }
 
-static void spi_format_transfer(uint64_t *vals, int cnt, int format, int wordsize, char *out, int out_size)
+static void spi_format_transfer(uint64_t* vals, int cnt, int format, int wordsize, char* out, int out_size)
 {
     int pos = 0;
     out[0] = '\0';
@@ -181,12 +181,12 @@ static void spi_format_transfer(uint64_t *vals, int cnt, int format, int wordsiz
     }
 }
 
-static void spi_reset(struct srd_decoder_inst *di)
+static void spi_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(spi_state)));
     }
-    spi_state *s = (spi_state *)c_decoder_get_private(di);
+    spi_state* s = (spi_state*)c_decoder_get_private(di);
     memset(s, 0, sizeof(spi_state));
     s->cpol = 0;
     s->cpha = 0;
@@ -202,21 +202,21 @@ static void spi_reset(struct srd_decoder_inst *di)
     s->out_bitrate = -1;
 }
 
-static void spi_start(struct srd_decoder_inst *di)
+static void spi_start(struct srd_decoder_inst* di)
 {
-    spi_state *s = (spi_state *)c_decoder_get_private(di);
+    spi_state* s = (spi_state*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spi");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "spi");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "spi");
     s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "spi");
     s->out_bitrate = c_decoder_register_output(di, SRD_OUTPUT_META, "spi");
 
-    const char *cs_pol_str = c_decoder_get_option_string(di, "cs_polarity", "active-low");
+    const char* cs_pol_str = c_decoder_get_option_string(di, "cs_polarity", "active-low");
     s->cs_polarity = (strcmp(cs_pol_str, "active-low") == 0) ? 0 : 1;
 
     s->cpol = (int)c_decoder_get_option_int(di, "cpol", 0);
     s->cpha = (int)c_decoder_get_option_int(di, "cpha", 0);
 
-    const char *bitorder_str = c_decoder_get_option_string(di, "bitorder", "msb-first");
+    const char* bitorder_str = c_decoder_get_option_string(di, "bitorder", "msb-first");
     s->bit_order = (strcmp(bitorder_str, "msb-first") == 0) ? 0 : 1;
 
     s->wordsize = (int)c_decoder_get_option_int(di, "wordsize", 8);
@@ -225,10 +225,10 @@ static void spi_start(struct srd_decoder_inst *di)
 
     s->bw = (s->wordsize + 7) / 8;
 
-    const char *show_dp_str = c_decoder_get_option_string(di, "show_data_point", "yes");
+    const char* show_dp_str = c_decoder_get_option_string(di, "show_data_point", "yes");
     s->show_data_point = (strcmp(show_dp_str, "yes") == 0) ? 1 : 0;
 
-    const char *format_str = c_decoder_get_option_string(di, "format", "hex");
+    const char* format_str = c_decoder_get_option_string(di, "format", "hex");
     if (strcmp(format_str, "hex") == 0)
         s->format = 0;
     else if (strcmp(format_str, "dec") == 0)
@@ -247,35 +247,39 @@ static void spi_start(struct srd_decoder_inst *di)
     s->have_cs = c_decoder_has_channel(di, 3);
 
     int mode;
-    if (s->cpol == 0 && s->cpha == 0) mode = 0;
-    else if (s->cpol == 0 && s->cpha == 1) mode = 1;
-    else if (s->cpol == 1 && s->cpha == 0) mode = 2;
-    else mode = 3;
+    if (s->cpol == 0 && s->cpha == 0)
+        mode = 0;
+    else if (s->cpol == 0 && s->cpha == 1)
+        mode = 1;
+    else if (s->cpol == 1 && s->cpha == 0)
+        mode = 2;
+    else
+        mode = 3;
 
     s->sample_edge_rise = (mode == 0 || mode == 3) ? 1 : 0;
 }
 
-static void spi_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
+static void spi_metadata(struct srd_decoder_inst* di, int key, uint64_t value)
 {
-    spi_state *s = (spi_state *)c_decoder_get_private(di);
+    spi_state* s = (spi_state*)c_decoder_get_private(di);
     if (key == SRD_CONF_SAMPLERATE) {
         s->samplerate = value;
     }
 }
 
-static int spi_cs_asserted(spi_state *s, int cs_val)
+static int spi_cs_asserted(spi_state* s, int cs_val)
 {
     return (s->cs_polarity == 0) ? (cs_val == 0) : (cs_val == 1);
 }
 
-static void spi_reset_word(spi_state *s)
+static void spi_reset_word(spi_state* s)
 {
     s->bit_count = 0;
     s->mosi_byte = 0;
     s->miso_byte = 0;
 }
 
-static void spi_put_data(struct srd_decoder_inst *di, spi_state *s)
+static void spi_put_data(struct srd_decoder_inst* di, spi_state* s)
 {
     uint64_t ss = s->start_sample;
     uint64_t es = s->last_bit_sample;
@@ -302,18 +306,45 @@ static void spi_put_data(struct srd_decoder_inst *di, spi_state *s)
     }
 
     {
-        unsigned char bits_data[130];
+        /* BITS format with per-bit timestamps:
+         * data[0] = have_mosi (bit0) | have_miso (bit1)
+         * data[1] = mosi_bit_count (uint8_t)
+         * data[2..2+count*17-1] = per bit: [value(1B)][ss(8B LE)][es(8B LE)]
+         * data[2+count*17] = 0x00 (reserved/alignment)
+         * data[2+count*17+1] = miso_bit_count (uint8_t)
+         * data[2+count*17+2..] = per bit: [value(1B)][ss(8B LE)][es(8B LE)]
+         */
+        int mosi_cnt = s->have_mosi ? s->wordsize : 0;
+        int miso_cnt = s->have_miso ? s->wordsize : 0;
+        unsigned char bits_data[2200];
         int bpos = 0;
-        bits_data[bpos++] = s->have_mosi ? 1 : 0;
-        if (s->have_mosi) {
-            for (int i = 0; i < s->wordsize && bpos < (int)sizeof(bits_data); i++)
-                bits_data[bpos++] = (unsigned char)s->mosi_bits_val[i];
+
+        bits_data[bpos++] = (s->have_mosi ? 1 : 0) | (s->have_miso ? 2 : 0);
+        bits_data[bpos++] = (unsigned char)mosi_cnt;
+
+        for (int i = 0; i < mosi_cnt && bpos + 17 <= (int)sizeof(bits_data); i++) {
+            bits_data[bpos++] = (unsigned char)s->mosi_bits_val[i];
+            uint64_t ss_val = s->mosi_bits_ss[i];
+            for (int b = 0; b < 8; b++)
+                bits_data[bpos++] = (unsigned char)(ss_val >> (8 * b));
+            uint64_t es_val = s->mosi_bits_es[i];
+            for (int b = 0; b < 8; b++)
+                bits_data[bpos++] = (unsigned char)(es_val >> (8 * b));
         }
-        bits_data[bpos++] = s->have_miso ? 1 : 0;
-        if (s->have_miso) {
-            for (int i = 0; i < s->wordsize && bpos < (int)sizeof(bits_data); i++)
-                bits_data[bpos++] = (unsigned char)s->miso_bits_val[i];
+
+        bits_data[bpos++] = 0x00;
+        bits_data[bpos++] = (unsigned char)miso_cnt;
+
+        for (int i = 0; i < miso_cnt && bpos + 17 <= (int)sizeof(bits_data); i++) {
+            bits_data[bpos++] = (unsigned char)s->miso_bits_val[i];
+            uint64_t ss_val = s->miso_bits_ss[i];
+            for (int b = 0; b < 8; b++)
+                bits_data[bpos++] = (unsigned char)(ss_val >> (8 * b));
+            uint64_t es_val = s->miso_bits_es[i];
+            for (int b = 0; b < 8; b++)
+                bits_data[bpos++] = (unsigned char)(es_val >> (8 * b));
         }
+
         c_decoder_put_python(di, ss, es, s->out_python, "BITS", bits_data, bpos);
     }
 
@@ -366,9 +397,9 @@ static void spi_put_data(struct srd_decoder_inst *di, spi_state *s)
     }
 }
 
-static void spi_decode(struct srd_decoder_inst *di)
+static void spi_decode(struct srd_decoder_inst* di)
 {
-    spi_state *s = (spi_state *)c_decoder_get_private(di);
+    spi_state* s = (spi_state*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
@@ -385,13 +416,30 @@ static void spi_decode(struct srd_decoder_inst *di)
         c_decoder_put_python(di, 0, 0, s->out_python, "CS-CHANGE", NULL, 0);
     }
 
-    int first_sample = 1;
+    /* Get initial pin states at current position */
+    uint64_t cur_sample;
+    if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
+        return;
+
+    if (s->have_cs) {
+        int cs = c_decoder_get_pin(di, CS, cur_sample);
+        s->cs_active = spi_cs_asserted(s, cs);
+
+        unsigned char cs_data[2];
+        cs_data[0] = 0xFF;
+        cs_data[1] = (unsigned char)cs;
+        c_decoder_put_python(di, cur_sample, cur_sample, s->out_python, "CS-CHANGE", cs_data, 2);
+
+        if (s->cs_active) {
+            s->transfer_start = cur_sample;
+            s->misobytes_cnt = 0;
+            s->mosibytes_cnt = 0;
+        }
+    }
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        if (first_sample)
-            c_cond_edge(cb, CLK);
-        else if (s->sample_edge_rise)
+        srd_cond_builder* cb = c_cond_new();
+        if (s->sample_edge_rise)
             c_cond_rise(cb, CLK);
         else
             c_cond_fall(cb, CLK);
@@ -414,14 +462,14 @@ static void spi_decode(struct srd_decoder_inst *di)
         int mosi = s->have_mosi ? c_decoder_get_pin(di, MOSI, samplenum) : 0;
         int cs = s->have_cs ? c_decoder_get_pin(di, CS, samplenum) : 1;
 
-        int clk_matched = !first_sample && (matched & (1ULL << 0));
-        int cs_matched = s->have_cs && (first_sample || (matched & (1ULL << cs_cond_idx)));
+        int clk_matched = (matched & (1ULL << 0));
+        int cs_matched = s->have_cs && (matched & (1ULL << cs_cond_idx));
 
         s->cs_active = s->have_cs ? spi_cs_asserted(s, cs) : 1;
 
         if (cs_matched) {
             unsigned char cs_data[2];
-            cs_data[0] = first_sample ? 0xFF : (unsigned char)(1 - cs);
+            cs_data[0] = (unsigned char)(1 - cs);
             cs_data[1] = (unsigned char)cs;
             c_decoder_put_python(di, samplenum, samplenum, s->out_python, "CS-CHANGE", cs_data, 2);
 
@@ -446,8 +494,6 @@ static void spi_decode(struct srd_decoder_inst *di)
             spi_reset_word(s);
         }
 
-        first_sample = 0;
-
         if (s->have_cs && !s->cs_active)
             continue;
 
@@ -455,10 +501,14 @@ static void spi_decode(struct srd_decoder_inst *di)
             continue;
 
         int mode;
-        if (s->cpol == 0 && s->cpha == 0) mode = 0;
-        else if (s->cpol == 0 && s->cpha == 1) mode = 1;
-        else if (s->cpol == 1 && s->cpha == 0) mode = 2;
-        else mode = 3;
+        if (s->cpol == 0 && s->cpha == 0)
+            mode = 0;
+        else if (s->cpol == 0 && s->cpha == 1)
+            mode = 1;
+        else if (s->cpol == 1 && s->cpha == 0)
+            mode = 2;
+        else
+            mode = 3;
 
         int correct_edge = 0;
         if ((mode == 0 && clk == 1) || (mode == 3 && clk == 1))
@@ -539,16 +589,16 @@ static void spi_decode(struct srd_decoder_inst *di)
 
         if (s->have_cs && s->cs_was_deasserted) {
             C_ANN_PUT(di, s->start_sample, samplenum, s->out_ann, ANN_WARNING,
-                      "CS# was deasserted during this data word!");
+                "CS# was deasserted during this data word!");
         }
 
         spi_reset_word(s);
     }
 }
 
-static void spi_destroy(struct srd_decoder_inst *di)
+static void spi_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -586,7 +636,7 @@ struct srd_c_decoder spi_c_decoder = {
     .metadata = spi_metadata,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     return &spi_c_decoder;
 }

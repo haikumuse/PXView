@@ -50,6 +50,7 @@
 
 #include "../ui/langresource.h"
 #include "../config/appconfig.h"
+#include "../ui/dockfonts.h"
 
 namespace pv {
 namespace dialogs {
@@ -395,8 +396,7 @@ void DecoderOptionsDlg::create_decoder_form(
 	const srd_decoder *const decoder = dec->decoder();
 	assert(decoder);
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
 
     QFormLayout *const decoder_form = new QFormLayout();
     decoder_form->setContentsMargins(0,0,0,0);
@@ -468,7 +468,7 @@ void DecoderOptionsDlg::create_decoder_form(
 
 	// Add the options
     auto binding = new prop::binding::DecoderOptions(_trace->decoder(), dec);
-    binding->add_properties_to_form(decoder_form, true, font);
+    binding->add_properties_to_form(decoder_form, false, font);
 	_bindings.push_back(binding);
   
     auto group = new pv::widgets::DecoderGroupBox(_trace->decoder(), 
@@ -546,6 +546,9 @@ void DecoderOptionsDlg::on_trans_pramas()
 void DecoderOptionsDlg::apply_setting()
 {
     commit_probes();
+    for (auto b : _bindings) {
+        b->commit();
+    }
 }
 
 }//dialogs

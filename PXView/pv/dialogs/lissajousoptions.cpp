@@ -33,6 +33,7 @@
 #include "../view/lissajoustrace.h"
 #include "../ui/langresource.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 #include "../config/appconfig.h"
 
 using namespace boost;
@@ -214,8 +215,7 @@ void LissajousOptions::UpdateTheme()
 
 void LissajousOptions::UpdateFont()
 { 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     ui::set_form_font(this, font);
 }
 

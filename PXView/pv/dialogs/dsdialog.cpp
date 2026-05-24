@@ -32,6 +32,7 @@
 #include "../dsvdef.h"
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 #include "../ui/popupdlglist.h"
 
 namespace pv {
@@ -185,8 +186,7 @@ void DSDialog::build_base(bool hasClose)
 
 void DSDialog::update_font()
 {
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     ui::set_form_font(this, font);
 
     if (_titlebar != NULL){

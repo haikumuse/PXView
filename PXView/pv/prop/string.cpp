@@ -24,6 +24,10 @@
 #include <QLineEdit>
 #include <QSpinBox>
 
+#include <QHBoxLayout>
+#include <QToolButton>
+#include <QFileDialog>
+
 #include "string.h"
 
 namespace pv {
@@ -33,29 +37,50 @@ String::String(QString name, QString label,
 	Getter getter,
 	Setter setter) :
     Property(name, label, getter, setter),
-	_line_edit(NULL)
+	_line_edit(NULL),
+	_container(NULL)
 {
 }
 
 QWidget* String::get_widget(QWidget *parent, bool auto_commit)
 {
-	if (_line_edit)
-		return _line_edit;
+	if (_container)
+		return _container;
 
 	GVariant *const value = _getter ? _getter() : NULL;
 	if (!value)
 		return NULL;
 
-	_line_edit = new QLineEdit(parent);
+	_container = new QWidget(parent);
+	QHBoxLayout *layout = new QHBoxLayout(_container);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(4);
+
+	if (name().contains("path", Qt::CaseInsensitive) || name().contains("dir", Qt::CaseInsensitive)) {
+		QToolButton *btn = new QToolButton(_container);
+		btn->setText("...");
+		layout->addWidget(btn);
+		connect(btn, &QToolButton::clicked, this, [this, parent]() {
+			QString dir = QFileDialog::getExistingDirectory(parent, tr("Select Directory"),
+				_line_edit->text(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+			if (!dir.isEmpty()) {
+				_line_edit->setText(dir);
+				commit();
+			}
+		});
+	}
+
+	_line_edit = new QLineEdit(_container);
 	_line_edit->setText(QString::fromUtf8(
         g_variant_get_string(value, NULL)));
 	g_variant_unref(value);
+	layout->addWidget(_line_edit);
 
 	if (auto_commit)
 		connect(_line_edit, &QLineEdit::textEdited,
 			this, &String::on_text_edited);
 
-	return _line_edit;
+	return _container;
 }
 
 void String::commit()

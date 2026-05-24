@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 enum dmx_ann {
     ANN_BIT = 0,
     ANN_BREAK,

@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum jtag_state {
     TEST_LOGIC_RESET = 0,
@@ -72,108 +72,108 @@ struct jtag_priv {
 };
 
 static const int next_state[16][2] = {
-    {1, 0},
-    {1, 2},
-    {3, 9},
-    {6, 7},
-    {1, 2},
-    {5, 8},
-    {6, 7},
-    {5, 4},
-    {6, 4},
-    {10, 0},
-    {13, 14},
-    {1, 2},
-    {12, 15},
-    {13, 14},
-    {12, 11},
-    {13, 11},
+    { 1, 0 },
+    { 1, 2 },
+    { 3, 9 },
+    { 6, 7 },
+    { 1, 2 },
+    { 5, 8 },
+    { 6, 7 },
+    { 5, 4 },
+    { 6, 4 },
+    { 10, 0 },
+    { 13, 14 },
+    { 1, 2 },
+    { 12, 15 },
+    { 13, 14 },
+    { 12, 11 },
+    { 13, 11 },
 };
 
 static struct srd_channel jtag_channels[] = {
-    {"tdi", "TDI", "Test data input", 0, SRD_CHANNEL_SDATA, "dec_jtag_chan_tdi"},
-    {"tdo", "TDO", "Test data output", 1, SRD_CHANNEL_SDATA, "dec_jtag_chan_tdo"},
-    {"tck", "TCK", "Test clock", 2, SRD_CHANNEL_SCLK, "dec_jtag_chan_tck"},
-    {"tms", "TMS", "Test mode select", 3, SRD_CHANNEL_COMMON, "dec_jtag_chan_tms"},
+    { "tdi", "TDI", "Test data input", 0, SRD_CHANNEL_SDATA, "dec_jtag_chan_tdi" },
+    { "tdo", "TDO", "Test data output", 1, SRD_CHANNEL_SDATA, "dec_jtag_chan_tdo" },
+    { "tck", "TCK", "Test clock", 2, SRD_CHANNEL_SCLK, "dec_jtag_chan_tck" },
+    { "tms", "TMS", "Test mode select", 3, SRD_CHANNEL_COMMON, "dec_jtag_chan_tms" },
 };
 
 static struct srd_channel jtag_optional_channels[] = {
-    {"trst", "TRST#", "Test reset", 4, SRD_CHANNEL_COMMON, "dec_jtag_opt_chan_trst"},
-    {"srst", "SRST#", "System reset", 5, SRD_CHANNEL_COMMON, "dec_jtag_opt_chan_srst"},
-    {"rtck", "RTCK", "Return clock signal", 6, SRD_CHANNEL_SCLK, "dec_jtag_opt_chan_rtck"},
+    { "trst", "TRST#", "Test reset", 4, SRD_CHANNEL_COMMON, "dec_jtag_opt_chan_trst" },
+    { "srst", "SRST#", "System reset", 5, SRD_CHANNEL_COMMON, "dec_jtag_opt_chan_srst" },
+    { "rtck", "RTCK", "Return clock signal", 6, SRD_CHANNEL_SCLK, "dec_jtag_opt_chan_rtck" },
 };
 
-static const char *jtag_ann_labels[][3] = {
-    {"", "test-logic-reset", "TEST-LOGIC-RESET"},
-    {"", "run-test/idle", "RUN-TEST/IDLE"},
-    {"", "select-dr-scan", "SELECT-DR-SCAN"},
-    {"", "capture-dr", "CAPTURE-DR"},
-    {"", "update-dr", "UPDATE-DR"},
-    {"", "pause-dr", "PAUSE-DR"},
-    {"", "shift-dr", "SHIFT-DR"},
-    {"", "exit1-dr", "EXIT1-DR"},
-    {"", "exit2-dr", "EXIT2-DR"},
-    {"", "select-ir-scan", "SELECT-IR-SCAN"},
-    {"", "capture-ir", "CAPTURE-IR"},
-    {"", "update-ir", "UPDATE-IR"},
-    {"", "pause-ir", "PAUSE-IR"},
-    {"", "shift-ir", "SHIFT-IR"},
-    {"", "exit1-ir", "EXIT1-IR"},
-    {"", "exit2-ir", "EXIT2-IR"},
-    {"", "bit-tdi", "Bit (TDI)"},
-    {"", "bit-tdo", "Bit (TDO)"},
-    {"", "bitstring-tdi", "Bitstring (TDI)"},
-    {"", "bitstring-tdo", "Bitstring (TDO)"},
+static const char* jtag_ann_labels[][3] = {
+    { "", "test-logic-reset", "TEST-LOGIC-RESET" },
+    { "", "run-test/idle", "RUN-TEST/IDLE" },
+    { "", "select-dr-scan", "SELECT-DR-SCAN" },
+    { "", "capture-dr", "CAPTURE-DR" },
+    { "", "update-dr", "UPDATE-DR" },
+    { "", "pause-dr", "PAUSE-DR" },
+    { "", "shift-dr", "SHIFT-DR" },
+    { "", "exit1-dr", "EXIT1-DR" },
+    { "", "exit2-dr", "EXIT2-DR" },
+    { "", "select-ir-scan", "SELECT-IR-SCAN" },
+    { "", "capture-ir", "CAPTURE-IR" },
+    { "", "update-ir", "UPDATE-IR" },
+    { "", "pause-ir", "PAUSE-IR" },
+    { "", "shift-ir", "SHIFT-IR" },
+    { "", "exit1-ir", "EXIT1-IR" },
+    { "", "exit2-ir", "EXIT2-IR" },
+    { "", "bit-tdi", "Bit (TDI)" },
+    { "", "bit-tdo", "Bit (TDO)" },
+    { "", "bitstring-tdi", "Bitstring (TDI)" },
+    { "", "bitstring-tdo", "Bitstring (TDO)" },
 };
 
-static const int jtag_row_bits_tdi_classes[] = {ANN_BIT_TDI, -1};
-static const int jtag_row_bits_tdo_classes[] = {ANN_BIT_TDO, -1};
-static const int jtag_row_bitstrings_tdi_classes[] = {ANN_BITSTRING_TDI, -1};
-static const int jtag_row_bitstrings_tdo_classes[] = {ANN_BITSTRING_TDO, -1};
+static const int jtag_row_bits_tdi_classes[] = { ANN_BIT_TDI, -1 };
+static const int jtag_row_bits_tdo_classes[] = { ANN_BIT_TDO, -1 };
+static const int jtag_row_bitstrings_tdi_classes[] = { ANN_BITSTRING_TDI, -1 };
+static const int jtag_row_bitstrings_tdo_classes[] = { ANN_BITSTRING_TDO, -1 };
 static const int jtag_row_states_classes[] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, -1
 };
 
 static const struct srd_c_ann_row jtag_ann_rows[] = {
-    {"bits-tdi", "Bits (TDI)", jtag_row_bits_tdi_classes, 1},
-    {"bits-tdo", "Bits (TDO)", jtag_row_bits_tdo_classes, 1},
-    {"bitstrings-tdi", "Bitstring (TDI)", jtag_row_bitstrings_tdi_classes, 1},
-    {"bitstrings-tdo", "Bitstring (TDO)", jtag_row_bitstrings_tdo_classes, 1},
-    {"states", "States", jtag_row_states_classes, 16},
+    { "bits-tdi", "Bits (TDI)", jtag_row_bits_tdi_classes, 1 },
+    { "bits-tdo", "Bits (TDO)", jtag_row_bits_tdo_classes, 1 },
+    { "bitstrings-tdi", "Bitstring (TDI)", jtag_row_bitstrings_tdi_classes, 1 },
+    { "bitstrings-tdo", "Bitstring (TDO)", jtag_row_bitstrings_tdo_classes, 1 },
+    { "states", "States", jtag_row_states_classes, 16 },
 };
 
-static const char *jtag_inputs[] = {"logic", NULL};
-static const char *jtag_outputs[] = {"jtag", NULL};
-static const char *jtag_tags[] = {"Debug/trace", NULL};
+static const char* jtag_inputs[] = { "logic", NULL };
+static const char* jtag_outputs[] = { "jtag", NULL };
+static const char* jtag_tags[] = { "Debug/trace", NULL };
 
-static void jtag_reset(struct srd_decoder_inst *di)
+static void jtag_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(struct jtag_priv)));
     }
-    struct jtag_priv *priv = (struct jtag_priv *)c_decoder_get_private(di);
+    struct jtag_priv* priv = (struct jtag_priv*)c_decoder_get_private(di);
     memset(priv, 0, sizeof(struct jtag_priv));
     priv->state = RUN_TEST_IDLE;
     priv->oldstate = RUN_TEST_IDLE;
     priv->first = TRUE;
 }
 
-static void jtag_start(struct srd_decoder_inst *di)
+static void jtag_start(struct srd_decoder_inst* di)
 {
-    struct jtag_priv *priv = (struct jtag_priv *)c_decoder_get_private(di);
+    struct jtag_priv* priv = (struct jtag_priv*)c_decoder_get_private(di);
     priv->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "jtag");
-    priv->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "jtag");
+    priv->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "jtag");
 }
 
-static void jtag_decode(struct srd_decoder_inst *di)
+static void jtag_decode(struct srd_decoder_inst* di)
 {
-    struct jtag_priv *priv = (struct jtag_priv *)c_decoder_get_private(di);
+    struct jtag_priv* priv = (struct jtag_priv*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
     uint64_t ss_state = 0;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         c_cond_rise(cb, TCK);
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
@@ -185,7 +185,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
             if (trst == 0) {
                 if (priv->state != TEST_LOGIC_RESET) {
                     C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, priv->state,
-                              jtag_ann_labels[priv->state][2]);
+                        jtag_ann_labels[priv->state][2]);
                     c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
                     ss_state = samplenum;
                 }
@@ -202,8 +202,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
         int oldstate = priv->state;
         int newstate = next_state[oldstate][tms];
 
-        if ((newstate == SHIFT_DR && oldstate != SHIFT_DR) ||
-            (newstate == SHIFT_IR && oldstate != SHIFT_IR)) {
+        if ((newstate == SHIFT_DR && oldstate != SHIFT_DR) || (newstate == SHIFT_IR && oldstate != SHIFT_IR)) {
             priv->first_shift_bit = TRUE;
         }
 
@@ -239,8 +238,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
             }
         }
 
-        if ((oldstate == SHIFT_DR && newstate == EXIT1_DR) ||
-            (oldstate == SHIFT_IR && newstate == EXIT1_IR)) {
+        if ((oldstate == SHIFT_DR && newstate == EXIT1_DR) || (oldstate == SHIFT_IR && newstate == EXIT1_IR)) {
             if (priv->data_ready && priv->bits_cnt > 0) {
                 char tdi_str[128];
                 char tdo_str[128];
@@ -251,7 +249,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
                     tdi_val |= ((uint64_t)priv->bits_tdi[i] << i);
                     tdo_val |= ((uint64_t)priv->bits_tdo[i] << i);
                 }
-                const char *dr_ir = (oldstate == SHIFT_DR) ? "DR" : "IR";
+                const char* dr_ir = (oldstate == SHIFT_DR) ? "DR" : "IR";
                 snprintf(tdi_str, sizeof(tdi_str), "%s TDI: (0x%llX), %d bits", dr_ir, (unsigned long long)tdi_val, cnt);
                 snprintf(tdo_str, sizeof(tdo_str), "%s TDO: (0x%llX), %d bits", dr_ir, (unsigned long long)tdo_val, cnt);
 
@@ -284,7 +282,7 @@ static void jtag_decode(struct srd_decoder_inst *di)
 
         if (newstate != oldstate) {
             C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, oldstate,
-                      jtag_ann_labels[oldstate][2]);
+                jtag_ann_labels[oldstate][2]);
             c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
             ss_state = samplenum;
         }
@@ -294,9 +292,9 @@ static void jtag_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void jtag_destroy(struct srd_decoder_inst *di)
+static void jtag_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -333,7 +331,7 @@ struct srd_c_decoder jtag_c_decoder = {
     .destroy = jtag_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     return &jtag_c_decoder;
 }

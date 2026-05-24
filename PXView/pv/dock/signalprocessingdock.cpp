@@ -87,6 +87,25 @@ SignalProcessingDock::SignalProcessingDock(QWidget *parent, SigSession *session)
 SignalProcessingDock::~SignalProcessingDock() {}
 
 void SignalProcessingDock::build_ui() {
+  QJsonObject saved_state;
+  bool has_saved_state = false;
+
+  // 1. First, try to get the current UI state if the widgets exist
+  if (_invert_group != nullptr || _glitch_filter_group != nullptr) {
+    saved_state = get_session();
+    has_saved_state = true;
+    
+    // Also save it to document right away to keep it updated
+    if (_context && _context->document()) {
+      _context->document()->_dock_signal_processing_session = saved_state;
+    }
+  } 
+  // 2. If widgets don't exist yet, try to load from the document
+  else if (_context && _context->document() && !_context->document()->_dock_signal_processing_session.isEmpty()) {
+    saved_state = _context->document()->_dock_signal_processing_session;
+    has_saved_state = true;
+  }
+
   // Clear existing widgets
   QLayoutItem *item;
   while ((item = _container_lay->takeAt(0)) != nullptr) {
@@ -154,6 +173,39 @@ void SignalProcessingDock::build_ui() {
 
   update_invert_state();
   update_glitch_filter_state();
+
+  // Restore state
+  if (has_saved_state) {
+    if (saved_state.contains("signal_invert")) {
+      QJsonArray invert_array = saved_state["signal_invert"].toArray();
+      for (int i = 0;
+           i < invert_array.size() && i < (int)_invert_checkBox_list.size();
+           i++) {
+        QJsonObject ch_obj = invert_array[i].toObject();
+        _invert_checkBox_list[i]->setChecked(ch_obj["enable"].toBool());
+      }
+    }
+
+    if (saved_state.contains("glitch_filter")) {
+      QJsonArray glitch_array = saved_state["glitch_filter"].toArray();
+      for (int i = 0;
+           i < glitch_array.size() && i < (int)_glitch_checkBox_list.size();
+           i++) {
+        QJsonObject ch_obj = glitch_array[i].toObject();
+        _glitch_checkBox_list[i]->setChecked(ch_obj["enable"].toBool());
+        _glitch_spinbox_list[i]->setValue(ch_obj["num"].toInt());
+        if (i < (int)_glitch_mode_combo_list.size()) {
+          QString mode = ch_obj["mode"].toString("both");
+          if (mode == "high")
+            _glitch_mode_combo_list[i]->setCurrentIndex(1);
+          else if (mode == "low")
+            _glitch_mode_combo_list[i]->setCurrentIndex(2);
+          else
+            _glitch_mode_combo_list[i]->setCurrentIndex(0);
+        }
+      }
+    }
+  }
 }
 
 void SignalProcessingDock::build_invert_panel() {
@@ -800,6 +852,28 @@ void SignalProcessingDock::unbind_context() {
     _context->document()->_dock_signal_processing_session = get_session();
   }
   _context = nullptr;
+
+  QLayoutItem *item;
+  while ((item = _container_lay->takeAt(0)) != nullptr) {
+    if (item->widget()) {
+      delete item->widget();
+    }
+    delete item;
+  }
+
+  _invert_group = nullptr;
+  _glitch_filter_group = nullptr;
+  _no_logic_hint = nullptr;
+  _invert_checkBox_list.clear();
+  _glitch_checkBox_list.clear();
+  _glitch_spinbox_list.clear();
+  _glitch_mode_combo_list.clear();
+  _apply_invert_btn = nullptr;
+  _restore_invert_btn = nullptr;
+  _invert_status_label = nullptr;
+  _apply_filter_btn = nullptr;
+  _restore_data_btn = nullptr;
+  _filter_status_label = nullptr;
 }
 
 QJsonObject SignalProcessingDock::get_session() {
@@ -834,37 +908,10 @@ QJsonObject SignalProcessingDock::get_session() {
 }
 
 void SignalProcessingDock::set_session(QJsonObject &obj) {
-  update_view();
-
-  if (obj.contains("signal_invert")) {
-    QJsonArray invert_array = obj["signal_invert"].toArray();
-    for (int i = 0;
-         i < invert_array.size() && i < (int)_invert_checkBox_list.size();
-         i++) {
-      QJsonObject ch_obj = invert_array[i].toObject();
-      _invert_checkBox_list[i]->setChecked(ch_obj["enable"].toBool());
-    }
+  if (_context && _context->document()) {
+    _context->document()->_dock_signal_processing_session = obj;
   }
-
-  if (obj.contains("glitch_filter")) {
-    QJsonArray glitch_array = obj["glitch_filter"].toArray();
-    for (int i = 0;
-         i < glitch_array.size() && i < (int)_glitch_checkBox_list.size();
-         i++) {
-      QJsonObject ch_obj = glitch_array[i].toObject();
-      _glitch_checkBox_list[i]->setChecked(ch_obj["enable"].toBool());
-      _glitch_spinbox_list[i]->setValue(ch_obj["num"].toInt());
-      if (i < (int)_glitch_mode_combo_list.size()) {
-        QString mode = ch_obj["mode"].toString("both");
-        if (mode == "high")
-          _glitch_mode_combo_list[i]->setCurrentIndex(1);
-        else if (mode == "low")
-          _glitch_mode_combo_list[i]->setCurrentIndex(2);
-        else
-          _glitch_mode_combo_list[i]->setCurrentIndex(0);
-      }
-    }
-  }
+  update_view(); // build_ui() will now read the state from the document or use get_session()
 }
 
 } // namespace dock

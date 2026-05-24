@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 enum {
     ANN_PHASE = 0,
     ANN_INCREMENT,

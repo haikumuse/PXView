@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 enum nrzi_state {
     STATE_SYNC,
     STATE_DECODE,
@@ -76,7 +75,7 @@ static void nrzi_start(struct srd_decoder_inst* di)
 {
     struct nrzi_priv* s = (struct nrzi_priv*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "nrzi");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "nrzi");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "nrzi");
     const char* plen_str = c_decoder_get_option_string(di, "preamble_len", "16");
     s->preamble_len = plen_str ? atoi(plen_str) : 16;
     s->samplerate = c_decoder_get_samplerate(di);

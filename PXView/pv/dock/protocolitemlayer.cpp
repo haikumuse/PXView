@@ -45,12 +45,16 @@ ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName,
   _protocol_label = new QLabel(parent);
   _progress_label = new QLabel(parent);
   _set_button = new QPushButton(parent);
+  _vis_button = new QPushButton(parent);
   _del_button = new QPushButton(parent);
   _format_combox = new DsComboBox(parent);
 
   QString iconPath = GetIconPath();
   _del_button->setFlat(true);
   _del_button->setIcon(IconCache::Instance().icon(iconPath + "/del.svg"));
+  _vis_button->setFlat(true);
+  // Default to shown
+  _vis_button->setIcon(IconCache::Instance().icon(iconPath + "/shown.svg"));
   _set_button->setFlat(true);
   _set_button->setIcon(IconCache::Instance().icon(iconPath + "/gear.svg"));
   _protocol_label->setText(protocolName);
@@ -61,6 +65,7 @@ ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName,
 
   QHBoxLayout *hori_layout = this;
   hori_layout->addWidget(_set_button);
+  hori_layout->addWidget(_vis_button);
   hori_layout->addWidget(_del_button);
   hori_layout->addWidget(_format_combox);
   hori_layout->addWidget(_protocol_label);
@@ -72,6 +77,7 @@ ProtocolItemLayer::ProtocolItemLayer(QWidget *parent, QString protocolName,
 
   connect(_del_button, &QAbstractButton::clicked, this, &ProtocolItemLayer::on_del_protocol);
   connect(_set_button, &QAbstractButton::clicked, this, &ProtocolItemLayer::on_set_protocol);
+  connect(_vis_button, &QAbstractButton::clicked, this, &ProtocolItemLayer::on_vis_protocol);
   connect(_format_combox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
           &ProtocolItemLayer::on_format_select_changed);
 
@@ -82,6 +88,7 @@ ProtocolItemLayer::~ProtocolItemLayer() {
   DESTROY_QT_OBJECT(_progress_label);
   DESTROY_QT_OBJECT(_protocol_label);
   DESTROY_QT_OBJECT(_set_button);
+  DESTROY_QT_OBJECT(_vis_button);
   DESTROY_QT_OBJECT(_del_button);
   DESTROY_QT_OBJECT(_format_combox);
 }
@@ -93,6 +100,10 @@ void ProtocolItemLayer::on_set_protocol() {
 
 void ProtocolItemLayer::on_del_protocol() {
   m_callback->OnProtocolDelete(this);
+}
+
+void ProtocolItemLayer::on_vis_protocol() {
+  m_callback->OnProtocolVisibilityChanged(this);
 }
 
 void ProtocolItemLayer::on_format_select_changed(int index) {
@@ -128,6 +139,17 @@ void ProtocolItemLayer::ResetStyle() {
   QString iconPath = GetIconPath();
   _del_button->setIcon(IconCache::Instance().icon(iconPath + "/del.svg"));
   _set_button->setIcon(IconCache::Instance().icon(iconPath + "/gear.svg"));
+  // Visibility icon is handled via state, we can assume it's set properly 
+  // via SetVisibilityState elsewhere, but let's refresh it just in case
+}
+
+void ProtocolItemLayer::SetVisibilityState(bool is_shown) {
+  QString iconPath = GetIconPath();
+  if (is_shown) {
+      _vis_button->setIcon(IconCache::Instance().icon(iconPath + "/shown.svg"));
+  } else {
+      _vis_button->setIcon(IconCache::Instance().icon(iconPath + "/hidden.svg"));
+  }
 }
 
 void ProtocolItemLayer::LoadFormatSelect(bool bSingle) {

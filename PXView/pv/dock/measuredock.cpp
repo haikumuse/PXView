@@ -328,6 +328,22 @@ void MeasureDock::unbind_context()
     }
     set_view(nullptr);
     _context = nullptr;
+
+    for (int i = 0; i < MODE_ROWS_LENGTH; i++) {
+        _mode_rows[i]._dist_row_list.clear();
+        _mode_rows[i]._edge_row_list.clear();
+        for (auto &row : _mode_rows[i]._opt_row_list) {
+            if (row.del_bt != NULL) {
+                row.del_bt->deleteLater();
+                row.goto_bt->deleteLater();
+                row.info_label->deleteLater();
+                row.del_bt = NULL;
+                row.goto_bt = NULL;
+                row.info_label = NULL;
+            }
+        }
+        _mode_rows[i]._opt_row_list.clear();
+    }
 }
 
 void MeasureDock::retranslateUi()

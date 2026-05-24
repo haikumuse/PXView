@@ -38,6 +38,7 @@
 #include "../ui/msgbox.h"
 #include "../ui/fn.h"
 #include "../config/appconfig.h"
+#include "../ui/dockfonts.h"
 
 using namespace std;
 
@@ -396,8 +397,7 @@ void Calibration::UpdateTheme()
 
 void Calibration::UpdateFont()
 {
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     ui::set_form_font(this, font);
 }
 

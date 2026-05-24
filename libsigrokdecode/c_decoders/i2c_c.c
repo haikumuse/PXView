@@ -146,7 +146,7 @@ static void i2c_start(struct srd_decoder_inst *di)
 
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "i2c");
     s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "i2c");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "i2c");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "i2c");
 
     const char *addr_fmt = c_decoder_get_option_string(di, "address_format", "shifted");
     s->address_shifted = (strcmp(addr_fmt, "shifted") == 0) ? 1 : 0;
@@ -346,6 +346,39 @@ static void i2c_handle_address_or_data(struct srd_decoder_inst *di, i2c_decoder_
     } else if (s->state == STATE_FIND_DATA) {
         c_decoder_put_python(di, s->ss_byte, byte_end, s->out_python,
             s->wr ? "DATA WRITE" : "DATA READ", &d, 1);
+    }
+
+    {
+        /* BITS format with per-bit timestamps:
+         * data[0] = have_mosi (bit0) | have_miso (bit1)
+         * data[1] = mosi_bit_count (uint8_t)
+         * data[2..2+count*17-1] = per bit: [value(1B)][ss(8B LE)][es(8B LE)]
+         * data[2+count*17] = 0x00 (reserved/alignment)
+         * data[2+count*17+1] = miso_bit_count (uint8_t)
+         * data[2+count*17+2..] = per bit: [value(1B)][ss(8B LE)][es(8B LE)]
+         * I2C has only SDA (no MOSI/MISO split), so mosi_count=0,
+         * all 8 bits go in the miso section in wire order (MSB first).
+         */
+        unsigned char bits_data[144];
+        int bpos = 0;
+
+        bits_data[bpos++] = 0x02; /* have_miso=1, have_mosi=0 */
+        bits_data[bpos++] = 0;    /* mosi_bit_count = 0 */
+        bits_data[bpos++] = 0x00; /* reserved */
+        bits_data[bpos++] = 8;    /* miso_bit_count = 8 */
+
+        /* Output bits in wire order: bits[7] (MSB, first received) to bits[0] (LSB) */
+        for (int i = 7; i >= 0 && bpos + 17 <= (int)sizeof(bits_data); i--) {
+            bits_data[bpos++] = (unsigned char)s->bits[i].sda;
+            uint64_t ss_val = s->bits[i].ss;
+            for (int b = 0; b < 8; b++)
+                bits_data[bpos++] = (unsigned char)(ss_val >> (8 * b));
+            uint64_t es_val = s->bits[i].es;
+            for (int b = 0; b < 8; b++)
+                bits_data[bpos++] = (unsigned char)(es_val >> (8 * b));
+        }
+
+        c_decoder_put_python(di, s->ss_byte, byte_end, s->out_python, "BITS", bits_data, bpos);
     }
 
     for (int i = 0; i < 8; i++) {

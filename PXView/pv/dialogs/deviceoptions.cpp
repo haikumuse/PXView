@@ -38,11 +38,13 @@
 #include "../prop/property.h"
 #include "../dsvdef.h"
 #include "../config/appconfig.h"
+#include "../ui/dockfonts.h"
 #include "../appcontrol.h"
 #include "../sigsession.h"
 #include "../ui/langresource.h"
 #include "../log.h"
 #include "../ui/msgbox.h"
+#include "../ui/toast.h"
 
 using namespace boost;
 using namespace std;
@@ -97,8 +99,7 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
         p.setPen(Qt::NoPen);
         p.drawRoundedRect(r, 4, 4);
         p.setPen(disabledFg);
-        QFont font = this->font();
-        font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+        QFont font = theme_font_dialog();
         font.setBold(false);
         p.setFont(font);
         p.drawText(rect(), Qt::AlignCenter, QString::number(_index));
@@ -116,8 +117,7 @@ void ChannelLabel::paintEvent(QPaintEvent *event)
     p.drawRoundedRect(r, 4, 4);
 
     p.setPen(checked ? Qt::white : color);
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     font.setBold(checked);
     p.setFont(font);
     p.drawText(rect(), Qt::AlignCenter, QString::number(_index));
@@ -186,8 +186,7 @@ DeviceOptions::DeviceOptions(QWidget *parent) :
     _container_panel->setLayout(_container_lay);
     scroll_lay->addWidget(_container_panel);
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
    
     // mode group box
     QGroupBox *props_box = new QGroupBox(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MODE), "Mode"), this);
@@ -286,7 +285,7 @@ void DeviceOptions::accept()
     }
     else { 
         QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_ALL_CHANNEL_DISABLE), "All channel disabled! Please enable at least one channel."));
-        MsgBox::Show(strMsg);        
+        pv::ui::Toast::show(this, strMsg, pv::ui::Toast::Warning);
     }
 }
 
@@ -303,8 +302,7 @@ QLayout * DeviceOptions::get_property_form(QWidget * parent)
     layout->setVerticalSpacing(2);
     const auto &properties =_device_options_binding.properties();
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
 
     int i = 0;
     for(auto p : properties)
@@ -357,8 +355,7 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout)
  
     _probes_checkBox_list.clear();
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
   
     //channel count checked
     if (_device_agent->get_work_mode()== LOGIC) {
@@ -744,8 +741,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout)
     tabWidget->setTabPosition(QTabWidget::North);
     tabWidget->setUsesScrollButtons(false);
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
 
     int ch_dex = 0;
     
@@ -857,8 +853,7 @@ QString DeviceOptions::dynamic_widget(QLayout *lay)
             QGridLayout *grid = dynamic_cast<QGridLayout*>(lay);
             assert(grid);
 
-            QFont font = this->font();
-            font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+            QFont font = theme_font_dialog();
 
             if (have_zero) {
                 auto config_button = new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AUTO_CALIBRATION), "Auto Calibration"), this);
@@ -901,8 +896,7 @@ void DeviceOptions::build_dynamic_panel()
         _dynamic_panel = NULL;
     }
 
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
 
     if (_dynamic_panel == NULL)
     {  
@@ -950,8 +944,7 @@ void DeviceOptions::try_resize_scroll()
 
 
 #ifdef _WIN32
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     QFontMetrics fm(font); 
 
     auto labels = this->findChildren<QLabel*>();

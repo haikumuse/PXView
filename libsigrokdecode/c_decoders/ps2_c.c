@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum ps2_ann {
     ANN_BIT = 0,
@@ -26,7 +26,7 @@ enum ps2_state {
     STATE_DtoH_NEXT,
 };
 
-#define CLK  0
+#define CLK 0
 #define DATA 1
 
 struct ps2_priv {
@@ -39,11 +39,12 @@ struct ps2_priv {
     int htd_clock;
     int dth_clock;
     int out_ann;
+    int out_python;
 };
 
 static struct srd_channel ps2_channels[] = {
-    {"clk", "CLK", "Clock line", 0, SRD_CHANNEL_SCLK, NULL},
-    {"data", "DATA", "Data line", 1, SRD_CHANNEL_SDATA, NULL},
+    { "clk", "CLK", "Clock line", 0, SRD_CHANNEL_SCLK, NULL },
+    { "data", "DATA", "Data line", 1, SRD_CHANNEL_SDATA, NULL },
 };
 
 static struct srd_decoder_option ps2_options[] = {
@@ -63,35 +64,35 @@ static struct srd_decoder_option ps2_options[] = {
     },
 };
 
-static const char *ps2_ann_labels[][3] = {
-    {"", "bit", "Bit"},
-    {"", "HSTART", "HSTART"},
-    {"", "DSTART", "DSTART"},
-    {"", "stop-bit", "Stop bit"},
-    {"", "parity-ok", "Parity OK bit"},
-    {"", "parity-err", "Parity error bit"},
-    {"", "data-bit", "Data bit"},
-    {"", "word", "Word"},
-    {"", "ACK", "ACK"},
+static const char* ps2_ann_labels[][3] = {
+    { "", "bit", "Bit" },
+    { "", "HSTART", "HSTART" },
+    { "", "DSTART", "DSTART" },
+    { "", "stop-bit", "Stop bit" },
+    { "", "parity-ok", "Parity OK bit" },
+    { "", "parity-err", "Parity error bit" },
+    { "", "data-bit", "Data bit" },
+    { "", "word", "Word" },
+    { "", "ACK", "ACK" },
 };
 
-static const int ps2_row_bits_classes[] = {ANN_BIT};
-static const int ps2_row_fields_classes[] = {ANN_HSTART, ANN_DSTART, ANN_STOP, ANN_PARITY_OK, ANN_PARITY_ERR, ANN_DATA_BIT, ANN_WORD, ANN_ACK};
+static const int ps2_row_bits_classes[] = { ANN_BIT };
+static const int ps2_row_fields_classes[] = { ANN_HSTART, ANN_DSTART, ANN_STOP, ANN_PARITY_OK, ANN_PARITY_ERR, ANN_DATA_BIT, ANN_WORD, ANN_ACK };
 static const struct srd_c_ann_row ps2_ann_rows[] = {
-    {"bits", "Bits", ps2_row_bits_classes, 1},
-    {"fields", "Fields", ps2_row_fields_classes, 8},
+    { "bits", "Bits", ps2_row_bits_classes, 1 },
+    { "fields", "Fields", ps2_row_fields_classes, 8 },
 };
 
-static const char *ps2_inputs[] = {"logic", NULL};
-static const char *ps2_outputs[] = {NULL};
-static const char *ps2_tags[] = {"PC", NULL};
+static const char* ps2_inputs[] = { "logic", NULL };
+static const char* ps2_outputs[] = { "ps2", NULL };
+static const char* ps2_tags[] = { "PC", NULL };
 
-static void ps2_reset(struct srd_decoder_inst *di)
+static void ps2_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(struct ps2_priv)));
     }
-    struct ps2_priv *s = (struct ps2_priv *)c_decoder_get_private(di);
+    struct ps2_priv* s = (struct ps2_priv*)c_decoder_get_private(di);
     memset(s, 0, sizeof(struct ps2_priv));
     s->state = STATE_IDLE;
     s->htd = 0;
@@ -99,22 +100,23 @@ static void ps2_reset(struct srd_decoder_inst *di)
     s->dth_clock = 1;
 }
 
-static void ps2_start(struct srd_decoder_inst *di)
+static void ps2_start(struct srd_decoder_inst* di)
 {
-    struct ps2_priv *s = (struct ps2_priv *)c_decoder_get_private(di);
+    struct ps2_priv* s = (struct ps2_priv*)c_decoder_get_private(di);
 
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ps2");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "ps2");
 
-    const char *htod_str = c_decoder_get_option_string(di, "HtoD_Clock", "rise");
-    const char *dtoh_str = c_decoder_get_option_string(di, "DtoH_Clock", "fall");
+    const char* htod_str = c_decoder_get_option_string(di, "HtoD_Clock", "rise");
+    const char* dtoh_str = c_decoder_get_option_string(di, "DtoH_Clock", "fall");
 
     s->htd_clock = (strcmp(htod_str, "rise") == 0) ? 0 : 1;
     s->dth_clock = (strcmp(dtoh_str, "fall") == 0) ? 1 : 0;
 }
 
-static void ps2_handle_byte(struct srd_decoder_inst *di, uint64_t samplenum)
+static void ps2_handle_byte(struct srd_decoder_inst* di, uint64_t samplenum)
 {
-    struct ps2_priv *s = (struct ps2_priv *)c_decoder_get_private(di);
+    struct ps2_priv* s = (struct ps2_priv*)c_decoder_get_private(di);
     int i;
 
     for (i = 0; i < 11; i++) {
@@ -126,10 +128,10 @@ static void ps2_handle_byte(struct srd_decoder_inst *di, uint64_t samplenum)
 
     if (s->htd) {
         C_ANN_PUT(di, s->bit_ss[0], s->bit_ss[1], s->out_ann, ANN_HSTART,
-                  "Host Start", "HStart", "HS");
+            "Host Start", "HStart", "HS");
     } else {
         C_ANN_PUT(di, s->bit_ss[0], s->bit_ss[1], s->out_ann, ANN_DSTART,
-                  "Device Start", "Device", "DS");
+            "Device Start", "Device", "DS");
     }
 
     s->byte_val = 0;
@@ -143,7 +145,7 @@ static void ps2_handle_byte(struct srd_decoder_inst *di, uint64_t samplenum)
         snprintf(word_mid, sizeof(word_mid), "D: %02x", s->byte_val);
         snprintf(word_short, sizeof(word_short), "%02x", s->byte_val);
         C_ANN_PUT(di, s->bit_ss[1], s->bit_ss[9], s->out_ann, ANN_WORD,
-                  word_long, word_mid, word_short);
+            word_long, word_mid, word_short);
     }
 
     {
@@ -157,23 +159,42 @@ static void ps2_handle_byte(struct srd_decoder_inst *di, uint64_t samplenum)
 
         if (parity_ok) {
             C_ANN_PUT(di, s->bit_ss[9], s->bit_ss[10], s->out_ann, ANN_PARITY_OK,
-                      "Parity OK", "Par OK", "P");
+                "Parity OK", "Par OK", "P");
         } else {
             C_ANN_PUT(di, s->bit_ss[9], s->bit_ss[10], s->out_ann, ANN_PARITY_ERR,
-                      "Parity error", "Par err", "PE");
+                "Parity error", "Par err", "PE");
         }
     }
 
     {
         uint64_t bitwidth = s->bit_ss[2] - s->bit_ss[1];
         C_ANN_PUT(di, s->bit_ss[10], s->bit_ss[10] + bitwidth, s->out_ann, ANN_STOP,
-                  "Stop bit", "Stop", "St", "T");
+            "Stop bit", "Stop", "St", "T");
+    }
+
+    /* Output Python data for stacked decoders (ps2_keyboard_c, ps2_mouse_c) */
+    {
+        int ones = 0;
+        for (i = 0; i < 8; i++) {
+            if (s->byte_val & (1 << i))
+                ones++;
+        }
+        ones += s->bits[9];
+        int parity_ok = (ones % 2 == 1);
+        int has_ack = s->htd ? 1 : 0;
+
+        uint8_t py_data[4];
+        py_data[0] = s->byte_val;
+        py_data[1] = s->htd ? 1 : 0;
+        py_data[2] = parity_ok ? 1 : 0;
+        py_data[3] = has_ack ? 1 : 0;
+        c_decoder_put_python(di, s->bit_ss[0], samplenum, s->out_python, "BYTE", py_data, 4);
     }
 }
 
-static void ps2_decode(struct srd_decoder_inst *di)
+static void ps2_decode(struct srd_decoder_inst* di)
 {
-    struct ps2_priv *s = (struct ps2_priv *)c_decoder_get_private(di);
+    struct ps2_priv* s = (struct ps2_priv*)c_decoder_get_private(di);
     uint64_t samplenum = 0;
     uint64_t matched;
     int ret;
@@ -182,7 +203,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
         switch (s->state) {
 
         case STATE_IDLE: {
-            srd_cond_builder *b = c_cond_new();
+            srd_cond_builder* b = c_cond_new();
             c_cond_fall(b, CLK);
             c_cond_low(b, DATA);
             c_cond_or(b);
@@ -237,7 +258,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
         }
 
         case STATE_HtoD_DATA: {
-            srd_cond_builder *b = c_cond_new();
+            srd_cond_builder* b = c_cond_new();
             if (s->htd_clock == 0)
                 c_cond_rise(b, CLK);
             else
@@ -263,7 +284,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
         }
 
         case STATE_HtoD_ACK_WAIT: {
-            srd_cond_builder *b = c_cond_new();
+            srd_cond_builder* b = c_cond_new();
             c_cond_rise(b, CLK);
             ret = c_cond_wait(b, di, &samplenum, &matched);
             c_cond_free(b);
@@ -288,7 +309,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
 
         case STATE_HtoD_ACK: {
             uint64_t ack_ss = samplenum;
-            srd_cond_builder *b = c_cond_new();
+            srd_cond_builder* b = c_cond_new();
             c_cond_fall(b, CLK);
             ret = c_cond_wait(b, di, &samplenum, &matched);
             c_cond_free(b);
@@ -305,7 +326,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
             }
 
             {
-                srd_cond_builder *b2 = c_cond_new();
+                srd_cond_builder* b2 = c_cond_new();
                 c_cond_rise(b2, CLK);
                 ret = c_cond_wait(b2, di, &samplenum, &matched);
                 c_cond_free(b2);
@@ -313,7 +334,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
                     return;
 
                 C_ANN_PUT(di, ack_ss, samplenum, s->out_ann, ANN_ACK,
-                          "ACK", "ACK", "A");
+                    "ACK", "ACK", "A");
             }
 
             s->state = STATE_IDLE;
@@ -322,7 +343,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
         }
 
         case STATE_DtoH_DATA: {
-            srd_cond_builder *b = c_cond_new();
+            srd_cond_builder* b = c_cond_new();
             if (s->dth_clock == 1)
                 c_cond_fall(b, CLK);
             else
@@ -349,7 +370,7 @@ static void ps2_decode(struct srd_decoder_inst *di)
         }
 
         case STATE_DtoH_NEXT: {
-            srd_cond_builder *b = c_cond_new();
+            srd_cond_builder* b = c_cond_new();
             c_cond_fall(b, DATA);
             c_cond_or(b);
             c_cond_rise(b, CLK);
@@ -367,14 +388,13 @@ static void ps2_decode(struct srd_decoder_inst *di)
             }
             break;
         }
-
         }
     }
 }
 
-static void ps2_destroy(struct srd_decoder_inst *di)
+static void ps2_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -400,7 +420,7 @@ struct srd_c_decoder ps2_c_decoder = {
     .inputs = ps2_inputs,
     .num_inputs = 1,
     .outputs = ps2_outputs,
-    .num_outputs = 0,
+    .num_outputs = 1,
     .binary = NULL,
     .num_binary = 0,
     .tags = ps2_tags,
@@ -411,16 +431,16 @@ struct srd_c_decoder ps2_c_decoder = {
     .destroy = ps2_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     ps2_options[0].def = g_variant_new_string("rise");
-    GSList *htod_vals = NULL;
+    GSList* htod_vals = NULL;
     htod_vals = g_slist_append(htod_vals, g_variant_new_string("rise"));
     htod_vals = g_slist_append(htod_vals, g_variant_new_string("fall"));
     ps2_options[0].values = htod_vals;
 
     ps2_options[1].def = g_variant_new_string("fall");
-    GSList *dtoh_vals = NULL;
+    GSList* dtoh_vals = NULL;
     dtoh_vals = g_slist_append(dtoh_vals, g_variant_new_string("fall"));
     dtoh_vals = g_slist_append(dtoh_vals, g_variant_new_string("rise"));
     ps2_options[1].values = dtoh_vals;

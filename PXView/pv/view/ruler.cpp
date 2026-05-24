@@ -37,7 +37,9 @@
 #include "../dsvdef.h"
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
+#include "../config/appconfig.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 
 
 using namespace std;
@@ -229,11 +231,7 @@ void Ruler::paintEvent(QPaintEvent*)
     QPainter p(this);
     style()->drawPrimitive(QStyle::PE_Widget, &o, &p, this);
 
-    QFont font = p.font();
-    float fSize = AppConfig::Instance().appOptions.fontSize;
-    if (fSize > 10)
-        fSize = 10;
-    font.setPointSizeF(fSize);
+    QFont font = theme_font_ruler();
     p.setFont(font);
 
     SigSession *session = AppControl::Instance()->GetSession();

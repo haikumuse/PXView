@@ -185,7 +185,7 @@ static void usb_start(struct srd_decoder_inst *di)
 {
     usb_priv *s = (usb_priv *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "usb_signalling");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "usb_signalling");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "usb_signalling");
     const char *sig = c_decoder_get_option_string(di, "signalling", "automatic");
     if (strcmp(sig, "full-speed") == 0)
         s->signalling = SIG_FULL_SPEED;

@@ -115,6 +115,7 @@ private:
   // IProtocolItemLayerCallback
   void OnProtocolSetting(void *handle) override;
   void OnProtocolDelete(void *handle) override;
+  void OnProtocolVisibilityChanged(void *handle) override;
   void OnProtocolFormatChanged(QString format, void *handle) override;
 
   // IKeywordActive

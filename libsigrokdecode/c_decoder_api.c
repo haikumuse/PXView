@@ -1,26 +1,26 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 #ifdef SRD_C_DECODER_DLL
-  #define _srd_err(fmt, ...) fprintf(stderr, "libsigrokdecode: " fmt "\n", ##__VA_ARGS__)
+#define _srd_err(fmt, ...) fprintf(stderr, "libsigrokdecode: " fmt "\n", ##__VA_ARGS__)
 #else
-  #include <Python.h>
-  #include "libsigrokdecode-internal.h"
-  #include "log.h"
-  #define _srd_err srd_err
+#include "libsigrokdecode-internal.h"
+#include "log.h"
+#include <Python.h>
+#define _srd_err srd_err
 #endif
 
 #ifndef SRD_C_DECODER_DLL
-extern GSList *pd_list;
+extern GSList* pd_list;
 #endif
 
-static struct srd_pd_callback *srd_pd_output_callback_find_c(struct srd_session *sess, int output_type)
+static struct srd_pd_callback* srd_pd_output_callback_find_c(struct srd_session* sess, int output_type)
 {
-    GSList *l;
-    struct srd_pd_callback *cb;
+    GSList* l;
+    struct srd_pd_callback* cb;
 
     if (!sess)
         return NULL;
@@ -34,19 +34,19 @@ static struct srd_pd_callback *srd_pd_output_callback_find_c(struct srd_session 
     return NULL;
 }
 
-SRD_API int c_decoder_put(struct srd_decoder_inst *di,
+SRD_API int c_decoder_put(struct srd_decoder_inst* di,
     uint64_t start_sample, uint64_t end_sample,
-    int output_id, struct srd_c_annotation *ann)
+    int output_id, struct srd_c_annotation* ann)
 {
-    struct srd_pd_output *pdo;
-    struct srd_pd_callback *cb;
+    struct srd_pd_output* pdo;
+    struct srd_pd_callback* cb;
     struct srd_proto_data pdata;
     struct srd_proto_data_annotation pda;
 
     if (!di)
         return SRD_ERR_ARG;
 
-    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    GSList* out_list = g_slist_nth(di->pd_output, output_id);
     if (!out_list) {
         _srd_err("C decoder %s submitted invalid output ID %d.",
             di->c_dec_inst->name, output_id);
@@ -78,19 +78,21 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
         }
         break;
 
-    case SRD_OUTPUT_PYTHON:
-        _srd_err("C decoder %s: SRD_OUTPUT_PYTHON output is not fully "
-                 "compatible with Python decoder stack. Consider using "
-                 "SRD_OUTPUT_ANN instead.", di->c_dec_inst->name);
-        if ((cb = srd_pd_output_callback_find_c(di->sess, pdo->output_type))) {
-            pdata.data = ann;
-            cb->cb(&pdata, cb->cb_data);
-        }
-        break;
+    case SRD_OUTPUT_PROTO:
+        _srd_err("C decoder %s: Use c_decoder_put_proto() for PROTO output "
+                 "instead of c_decoder_put().",
+            di->c_dec_inst->name);
+        return SRD_ERR_ARG;
 
     case SRD_OUTPUT_BINARY:
         _srd_err("C decoder %s: Use c_decoder_put_binary() for BINARY output "
-                 "instead of c_decoder_put().", di->c_dec_inst->name);
+                 "instead of c_decoder_put().",
+            di->c_dec_inst->name);
+        return SRD_ERR_ARG;
+    case SRD_OUTPUT_LOGIC:
+        _srd_err("C decoder %s: Use c_decoder_put_logic() for LOGIC output "
+                 "instead of c_decoder_put().",
+            di->c_dec_inst->name);
         return SRD_ERR_ARG;
     case SRD_OUTPUT_META:
         if ((cb = srd_pd_output_callback_find_c(di->sess, pdo->output_type))) {
@@ -108,19 +110,19 @@ SRD_API int c_decoder_put(struct srd_decoder_inst *di,
     return SRD_OK;
 }
 
-SRD_API int c_decoder_put_binary(struct srd_decoder_inst *di,
+SRD_API int c_decoder_put_binary(struct srd_decoder_inst* di,
     uint64_t start_sample, uint64_t end_sample,
-    int output_id, int bin_class, uint64_t size, const unsigned char *data)
+    int output_id, int bin_class, uint64_t size, const unsigned char* data)
 {
-    struct srd_pd_output *pdo;
-    struct srd_pd_callback *cb;
+    struct srd_pd_output* pdo;
+    struct srd_pd_callback* cb;
     struct srd_proto_data pdata;
     struct srd_proto_data_binary pdb;
 
     if (!di)
         return SRD_ERR_ARG;
 
-    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    GSList* out_list = g_slist_nth(di->pd_output, output_id);
     if (!out_list) {
         _srd_err("C decoder %s submitted invalid output ID %d.",
             di->c_dec_inst->name, output_id);
@@ -149,8 +151,49 @@ SRD_API int c_decoder_put_binary(struct srd_decoder_inst *di,
     return SRD_OK;
 }
 
-SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
-    GSList *condition_list, uint64_t *samplenum, uint64_t *matched)
+SRD_API int c_decoder_put_logic(struct srd_decoder_inst* di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, uint32_t channel_mask, const uint8_t* values, int num_channels)
+{
+    struct srd_pd_output* pdo;
+    struct srd_pd_callback* cb;
+    struct srd_proto_data pdata;
+    struct srd_proto_data_logic pdl;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    GSList* out_list = g_slist_nth(di->pd_output, output_id);
+    if (!out_list) {
+        _srd_err("C decoder %s submitted invalid output ID %d.",
+            di->c_dec_inst->name, output_id);
+        return SRD_ERR_ARG;
+    }
+    pdo = out_list->data;
+
+    if (pdo->output_type != SRD_OUTPUT_LOGIC) {
+        _srd_err("C decoder %s: c_decoder_put_logic() called for non-LOGIC output type %d.",
+            di->c_dec_inst->name, pdo->output_type);
+        return SRD_ERR_ARG;
+    }
+
+    pdata.start_sample = start_sample;
+    pdata.end_sample = end_sample;
+    pdata.pdo = pdo;
+
+    if ((cb = srd_pd_output_callback_find_c(di->sess, SRD_OUTPUT_LOGIC))) {
+        pdl.channel_mask = channel_mask;
+        pdl.num_channels = num_channels;
+        pdl.values = values;
+        pdata.data = &pdl;
+        cb->cb(&pdata, cb->cb_data);
+    }
+
+    return SRD_OK;
+}
+
+SRD_API int c_decoder_wait(struct srd_decoder_inst* di,
+    GSList* condition_list, uint64_t* samplenum, uint64_t* matched)
 {
     if (!di)
         return SRD_ERR_ARG;
@@ -161,7 +204,7 @@ SRD_API int c_decoder_wait(struct srd_decoder_inst *di,
     return SRD_ERR_ARG;
 }
 
-SRD_API uint8_t c_decoder_get_pin(struct srd_decoder_inst *di, int ch, uint64_t samplenum)
+SRD_API uint8_t c_decoder_get_pin(struct srd_decoder_inst* di, int ch, uint64_t samplenum)
 {
     if (!di)
         return 0;
@@ -172,7 +215,21 @@ SRD_API uint8_t c_decoder_get_pin(struct srd_decoder_inst *di, int ch, uint64_t 
     return 0;
 }
 
-SRD_API void *c_decoder_get_private(struct srd_decoder_inst *di)
+SRD_API uint8_t c_decoder_get_initial_pin(struct srd_decoder_inst* di, int ch)
+{
+    if (!di || ch < 0)
+        return 0xFF;
+
+    if (!di->old_pins_array)
+        return 0xFF;
+
+    if (ch >= di->dec_num_channels)
+        return 0xFF;
+
+    return di->old_pins_array->data[ch];
+}
+
+SRD_API void* c_decoder_get_private(struct srd_decoder_inst* di)
 {
     if (!di)
         return NULL;
@@ -183,7 +240,7 @@ SRD_API void *c_decoder_get_private(struct srd_decoder_inst *di)
     return di->user_data;
 }
 
-SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data)
+SRD_API void c_decoder_set_private(struct srd_decoder_inst* di, void* data)
 {
     if (!di)
         return;
@@ -196,17 +253,17 @@ SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data)
     di->user_data = data;
 }
 
-SRD_API int c_decoder_has_channel(struct srd_decoder_inst *di, int ch)
+SRD_API int c_decoder_has_channel(struct srd_decoder_inst* di, int ch)
 {
     if (!di || ch < 0 || ch >= di->dec_num_channels)
         return 0;
     return (di->dec_channelmap[ch] >= 0) ? 1 : 0;
 }
 
-SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
-    int output_type, const char *proto_id)
+SRD_API int c_decoder_register_output(struct srd_decoder_inst* di,
+    int output_type, const char* proto_id)
 {
-    struct srd_pd_output *pdo;
+    struct srd_pd_output* pdo;
 
     if (!di)
         return SRD_ERR_ARG;
@@ -217,10 +274,11 @@ SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
     pdo->di = di;
     pdo->proto_id = g_strdup(proto_id ? proto_id : "");
 
-    if (output_type == SRD_OUTPUT_PYTHON) {
-        _srd_err("C decoder %s: Registering SRD_OUTPUT_PYTHON output. "
-                 "This output type cannot be properly consumed by "
-                 "upper-layer Python decoders.", di->c_dec_inst->name);
+    if (output_type == SRD_OUTPUT_PROTO) {
+        _srd_err("C decoder %s: Registering SRD_OUTPUT_PROTO output. "
+                 "This output type is for C-to-C decoder stacking only; "
+                 "upper-layer Python decoders cannot consume this output.",
+            di->c_dec_inst->name);
     }
 
     di->pd_output = g_slist_append(di->pd_output, pdo);
@@ -228,19 +286,19 @@ SRD_API int c_decoder_register_output(struct srd_decoder_inst *di,
     return pdo->pdo_id;
 }
 
-SRD_API uint64_t c_decoder_get_samplerate(struct srd_decoder_inst *di)
+SRD_API uint64_t c_decoder_get_samplerate(struct srd_decoder_inst* di)
 {
     if (!di)
         return 0;
     return di->samplerate;
 }
 
-SRD_API int64_t c_decoder_get_option_int(struct srd_decoder_inst *di,
-    const char *key, int64_t defval)
+SRD_API int64_t c_decoder_get_option_int(struct srd_decoder_inst* di,
+    const char* key, int64_t defval)
 {
     if (!di || !di->c_options || !key)
         return defval;
-    GVariant *val = g_hash_table_lookup(di->c_options, key);
+    GVariant* val = g_hash_table_lookup(di->c_options, key);
     if (!val)
         return defval;
     if (g_variant_is_of_type(val, G_VARIANT_TYPE_INT64))
@@ -256,12 +314,12 @@ SRD_API int64_t c_decoder_get_option_int(struct srd_decoder_inst *di,
     return defval;
 }
 
-SRD_API double c_decoder_get_option_double(struct srd_decoder_inst *di,
-    const char *key, double defval)
+SRD_API double c_decoder_get_option_double(struct srd_decoder_inst* di,
+    const char* key, double defval)
 {
     if (!di || !di->c_options || !key)
         return defval;
-    GVariant *val = g_hash_table_lookup(di->c_options, key);
+    GVariant* val = g_hash_table_lookup(di->c_options, key);
     if (!val)
         return defval;
     if (g_variant_is_of_type(val, G_VARIANT_TYPE_DOUBLE))
@@ -273,12 +331,12 @@ SRD_API double c_decoder_get_option_double(struct srd_decoder_inst *di,
     return defval;
 }
 
-SRD_API const char *c_decoder_get_option_string(struct srd_decoder_inst *di,
-    const char *key, const char *defval)
+SRD_API const char* c_decoder_get_option_string(struct srd_decoder_inst* di,
+    const char* key, const char* defval)
 {
     if (!di || !di->c_options || !key)
         return defval;
-    GVariant *val = g_hash_table_lookup(di->c_options, key);
+    GVariant* val = g_hash_table_lookup(di->c_options, key);
     if (!val)
         return defval;
     if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING))
@@ -286,11 +344,11 @@ SRD_API const char *c_decoder_get_option_string(struct srd_decoder_inst *di,
     return defval;
 }
 
-SRD_API int c_decoder_register_output_meta(struct srd_decoder_inst *di,
-    int output_type, const char *proto_id,
-    const char *meta_type_str, const char *meta_name, const char *meta_descr)
+SRD_API int c_decoder_register_output_meta(struct srd_decoder_inst* di,
+    int output_type, const char* proto_id,
+    const char* meta_type_str, const char* meta_name, const char* meta_descr)
 {
-    struct srd_pd_output *pdo;
+    struct srd_pd_output* pdo;
     int pdo_id;
 
     if (!di)
@@ -300,7 +358,7 @@ SRD_API int c_decoder_register_output_meta(struct srd_decoder_inst *di,
     if (pdo_id < 0)
         return pdo_id;
 
-    GSList *out_list = g_slist_nth(di->pd_output, pdo_id);
+    GSList* out_list = g_slist_nth(di->pd_output, pdo_id);
     if (!out_list)
         return SRD_ERR_ARG;
 
@@ -317,19 +375,19 @@ SRD_API int c_decoder_register_output_meta(struct srd_decoder_inst *di,
     return pdo_id;
 }
 
-SRD_API int c_decoder_put_meta_int(struct srd_decoder_inst *di,
+SRD_API int c_decoder_put_meta_int(struct srd_decoder_inst* di,
     uint64_t start_sample, uint64_t end_sample,
     int output_id, int64_t value)
 {
-    struct srd_pd_output *pdo;
-    struct srd_pd_callback *cb;
+    struct srd_pd_output* pdo;
+    struct srd_pd_callback* cb;
     struct srd_proto_data pdata;
     struct srd_proto_data_meta pdm;
 
     if (!di)
         return SRD_ERR_ARG;
 
-    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    GSList* out_list = g_slist_nth(di->pd_output, output_id);
     if (!out_list)
         return SRD_ERR_ARG;
     pdo = out_list->data;
@@ -349,19 +407,19 @@ SRD_API int c_decoder_put_meta_int(struct srd_decoder_inst *di,
     return SRD_OK;
 }
 
-SRD_API int c_decoder_put_meta_double(struct srd_decoder_inst *di,
+SRD_API int c_decoder_put_meta_double(struct srd_decoder_inst* di,
     uint64_t start_sample, uint64_t end_sample,
     int output_id, double value)
 {
-    struct srd_pd_output *pdo;
-    struct srd_pd_callback *cb;
+    struct srd_pd_output* pdo;
+    struct srd_pd_callback* cb;
     struct srd_proto_data pdata;
     struct srd_proto_data_meta pdm;
 
     if (!di)
         return SRD_ERR_ARG;
 
-    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    GSList* out_list = g_slist_nth(di->pd_output, output_id);
     if (!out_list)
         return SRD_ERR_ARG;
     pdo = out_list->data;
@@ -381,32 +439,32 @@ SRD_API int c_decoder_put_meta_double(struct srd_decoder_inst *di,
     return SRD_OK;
 }
 
-SRD_API uint64_t c_decoder_get_last_samplenum(struct srd_decoder_inst *di)
+SRD_API uint64_t c_decoder_get_last_samplenum(struct srd_decoder_inst* di)
 {
     if (!di)
         return 0;
     return di->last_samplenum;
 }
 
-SRD_API int c_decoder_put_python(struct srd_decoder_inst *di,
+SRD_API int c_decoder_put_proto(struct srd_decoder_inst* di,
     uint64_t start_sample, uint64_t end_sample,
-    int output_id, const char *cmd, const unsigned char *data, uint64_t data_len)
+    int output_id, const char* cmd, const unsigned char* data, uint64_t data_len)
 {
-    struct srd_pd_output *pdo;
+    struct srd_pd_output* pdo;
 
     if (!di)
         return SRD_ERR_ARG;
 
-    GSList *out_list = g_slist_nth(di->pd_output, output_id);
+    GSList* out_list = g_slist_nth(di->pd_output, output_id);
     if (!out_list)
         return SRD_ERR_ARG;
     pdo = out_list->data;
 
-    if (pdo->output_type == SRD_OUTPUT_PYTHON) {
+    if (pdo->output_type == SRD_OUTPUT_PROTO) {
         if (di->next_di) {
-            GSList *l;
+            GSList* l;
             for (l = di->next_di; l; l = l->next) {
-                struct srd_decoder_inst *next_di = l->data;
+                struct srd_decoder_inst* next_di = l->data;
                 if (next_di->is_c_inst && next_di->c_dec_inst) {
                     if (next_di->c_dec_inst->recv_proto) {
                         next_di->c_dec_inst->recv_proto(next_di, start_sample, end_sample, cmd, data, data_len);
@@ -420,20 +478,20 @@ SRD_API int c_decoder_put_python(struct srd_decoder_inst *di,
 }
 
 struct srd_cond_builder {
-    GSList *or_groups;
-    GSList *current_and;
+    GSList* or_groups;
+    GSList* current_and;
     gboolean waited;
 };
 
-SRD_API srd_cond_builder *c_cond_new(void)
+SRD_API srd_cond_builder* c_cond_new(void)
 {
-    srd_cond_builder *b = g_malloc0(sizeof(srd_cond_builder));
+    srd_cond_builder* b = g_malloc0(sizeof(srd_cond_builder));
     return b;
 }
 
-static srd_cond_builder *c_cond_add_term(srd_cond_builder *b, int type, int ch)
+static srd_cond_builder* c_cond_add_term(srd_cond_builder* b, int type, int ch)
 {
-    struct srd_term *t;
+    struct srd_term* t;
     if (!b)
         return NULL;
     t = g_malloc0(sizeof(struct srd_term));
@@ -443,39 +501,39 @@ static srd_cond_builder *c_cond_add_term(srd_cond_builder *b, int type, int ch)
     return b;
 }
 
-SRD_API srd_cond_builder *c_cond_rise(srd_cond_builder *b, int ch)
+SRD_API srd_cond_builder* c_cond_rise(srd_cond_builder* b, int ch)
 {
     return c_cond_add_term(b, SRD_TERM_RISING_EDGE, ch);
 }
 
-SRD_API srd_cond_builder *c_cond_fall(srd_cond_builder *b, int ch)
+SRD_API srd_cond_builder* c_cond_fall(srd_cond_builder* b, int ch)
 {
     return c_cond_add_term(b, SRD_TERM_FALLING_EDGE, ch);
 }
 
-SRD_API srd_cond_builder *c_cond_high(srd_cond_builder *b, int ch)
+SRD_API srd_cond_builder* c_cond_high(srd_cond_builder* b, int ch)
 {
     return c_cond_add_term(b, SRD_TERM_HIGH, ch);
 }
 
-SRD_API srd_cond_builder *c_cond_low(srd_cond_builder *b, int ch)
+SRD_API srd_cond_builder* c_cond_low(srd_cond_builder* b, int ch)
 {
     return c_cond_add_term(b, SRD_TERM_LOW, ch);
 }
 
-SRD_API srd_cond_builder *c_cond_edge(srd_cond_builder *b, int ch)
+SRD_API srd_cond_builder* c_cond_edge(srd_cond_builder* b, int ch)
 {
     return c_cond_add_term(b, SRD_TERM_EITHER_EDGE, ch);
 }
 
-SRD_API srd_cond_builder *c_cond_noedge(srd_cond_builder *b, int ch)
+SRD_API srd_cond_builder* c_cond_noedge(srd_cond_builder* b, int ch)
 {
     return c_cond_add_term(b, SRD_TERM_NO_EDGE, ch);
 }
 
-SRD_API srd_cond_builder *c_cond_skip(srd_cond_builder *b, uint64_t count)
+SRD_API srd_cond_builder* c_cond_skip(srd_cond_builder* b, uint64_t count)
 {
-    struct srd_term *t;
+    struct srd_term* t;
     if (!b)
         return NULL;
     t = g_malloc0(sizeof(struct srd_term));
@@ -487,7 +545,7 @@ SRD_API srd_cond_builder *c_cond_skip(srd_cond_builder *b, uint64_t count)
     return b;
 }
 
-SRD_API srd_cond_builder *c_cond_or(srd_cond_builder *b)
+SRD_API srd_cond_builder* c_cond_or(srd_cond_builder* b)
 {
     if (!b)
         return NULL;
@@ -498,8 +556,8 @@ SRD_API srd_cond_builder *c_cond_or(srd_cond_builder *b)
     return b;
 }
 
-SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
-    uint64_t *samplenum, uint64_t *matched)
+SRD_API int c_cond_wait(srd_cond_builder* b, struct srd_decoder_inst* di,
+    uint64_t* samplenum, uint64_t* matched)
 {
     int ret;
 
@@ -525,12 +583,30 @@ SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
     return ret;
 }
 
-static void c_cond_free_term_list(gpointer data)
+SRD_API int c_cond_wait_current(struct srd_decoder_inst* di,
+    uint64_t* samplenum)
 {
-    g_slist_free_full((GSList *)data, g_free);
+    srd_cond_builder* b;
+    int ret;
+    uint64_t matched;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    b = c_cond_new();
+    c_cond_skip(b, 0);
+    ret = c_cond_wait(b, di, samplenum, &matched);
+    c_cond_free(b);
+
+    return ret;
 }
 
-SRD_API void c_cond_free(srd_cond_builder *b)
+static void c_cond_free_term_list(gpointer data)
+{
+    g_slist_free_full((GSList*)data, g_free);
+}
+
+SRD_API void c_cond_free(srd_cond_builder* b)
 {
     if (!b)
         return;

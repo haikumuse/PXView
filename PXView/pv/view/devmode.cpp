@@ -39,6 +39,7 @@
 #include "../appcontrol.h"
 #include "../ui/fn.h"
 #include "../ui/iconcache.h"
+#include "../ui/dockfonts.h"
 
 
 static const struct dev_mode_name dev_mode_name_list[] =
@@ -313,8 +314,7 @@ void DevMode::UpdateTheme()
 
 void DevMode::UpdateFont()
 {
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_toolbar();
     
     auto buttons = this->findChildren<QToolButton*>();
     for(auto o : buttons)

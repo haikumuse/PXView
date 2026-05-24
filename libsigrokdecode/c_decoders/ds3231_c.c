@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum {
     ANN_REG_DATE_TIME = 0,
@@ -28,12 +28,17 @@ enum {
     NUM_ANN,
 };
 
-static const char *days_of_week[] = {
-    "Sunday", "Monday", "Tuesday", "Wednesday",
-    "Thursday", "Friday", "Saturday",
+static const char* days_of_week[] = {
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
 };
 
-static const char *rates[] = {"1Hz", "1.024kHz", "4.096kHz", "8.192kHz"};
+static const char* rates[] = { "1Hz", "1.024kHz", "4.096kHz", "8.192kHz" };
 
 static int bcd2int(unsigned char b)
 {
@@ -75,34 +80,34 @@ enum {
 #define DS3231_I2C_ADDRESS 0x68
 
 static struct srd_decoder_option ds3231_options[] = {
-    {"day0", NULL, "First day of week", NULL, NULL},
+    { "day0", NULL, "First day of week", NULL, NULL },
 };
 
-static const char *ds3231_inputs[] = {"i2c", NULL};
-static const char *ds3231_outputs[] = {NULL};
-static const char *ds3231_tags[] = {"Clock/timing", "IC", NULL};
+static const char* ds3231_inputs[] = { "i2c", NULL };
+static const char* ds3231_outputs[] = { NULL };
+static const char* ds3231_tags[] = { "Clock/timing", "IC", NULL };
 
-static const char *ds3231_ann_labels[][3] = {
-    {"", "reg_date_time", "Date/Time register"},
-    {"", "reg_alarm1", "Alarm1 register"},
-    {"", "reg_alarm2", "Alarm2 register"},
-    {"", "reg_control_status", "Control/Status register"},
-    {"", "reg_ageing", "Ageing register"},
-    {"", "reg_temperature", "Temperature register"},
-    {"", "bit_date_time", "Date/Time bit"},
-    {"", "bit_alarm1", "Alarm1 bit"},
-    {"", "bit_alarm2", "Alarm2 bit"},
-    {"", "bit_control_status", "Control/Status bit"},
-    {"", "bit_ageing", "Ageing bit"},
-    {"", "bit_temperature", "Temperature bit"},
-    {"", "bit_reserved", "Reserved bit"},
-    {"", "reg_set", "Set register"},
-    {"", "read-datetime", "Read date/time"},
-    {"", "write-datetime", "Write date/time"},
-    {"", "read-alarm", "Read alarm"},
-    {"", "write-alarm", "Write alarm"},
-    {"", "read-temperature", "Read temperature"},
-    {"", "warning", "Warning"},
+static const char* ds3231_ann_labels[][3] = {
+    { "", "reg_date_time", "Date/Time register" },
+    { "", "reg_alarm1", "Alarm1 register" },
+    { "", "reg_alarm2", "Alarm2 register" },
+    { "", "reg_control_status", "Control/Status register" },
+    { "", "reg_ageing", "Ageing register" },
+    { "", "reg_temperature", "Temperature register" },
+    { "", "bit_date_time", "Date/Time bit" },
+    { "", "bit_alarm1", "Alarm1 bit" },
+    { "", "bit_alarm2", "Alarm2 bit" },
+    { "", "bit_control_status", "Control/Status bit" },
+    { "", "bit_ageing", "Ageing bit" },
+    { "", "bit_temperature", "Temperature bit" },
+    { "", "bit_reserved", "Reserved bit" },
+    { "", "reg_set", "Set register" },
+    { "", "read-datetime", "Read date/time" },
+    { "", "write-datetime", "Write date/time" },
+    { "", "read-alarm", "Read alarm" },
+    { "", "write-alarm", "Write alarm" },
+    { "", "read-temperature", "Read temperature" },
+    { "", "warning", "Warning" },
 };
 
 static const int ds3231_row_regs_classes[] = {
@@ -117,61 +122,68 @@ static const int ds3231_row_datetime_classes[] = {
     ANN_READ_DATETIME, ANN_WRITE_DATETIME, ANN_READ_ALARM,
     ANN_WRITE_ALARM, ANN_READ_TEMP, -1
 };
-static const int ds3231_row_warnings_classes[] = {ANN_WARNING, -1};
+static const int ds3231_row_warnings_classes[] = { ANN_WARNING, -1 };
 
 static const struct srd_c_ann_row ds3231_ann_rows[] = {
-    {"regs", "Registers", ds3231_row_regs_classes, 7},
-    {"bits", "Bits", ds3231_row_bits_classes, 7},
-    {"date-time", "Date/time/temperature", ds3231_row_datetime_classes, 5},
-    {"warnings", "Warnings", ds3231_row_warnings_classes, 1},
+    { "regs", "Registers", ds3231_row_regs_classes, 7 },
+    { "bits", "Bits", ds3231_row_bits_classes, 7 },
+    { "date-time", "Date/time/temperature", ds3231_row_datetime_classes, 5 },
+    { "warnings", "Warnings", ds3231_row_warnings_classes, 1 },
 };
 
-static const char *ds3231_ordinal(int n)
+static const char* ds3231_ordinal(int n)
 {
     n = n % 10;
-    if (n == 1) return "st";
-    if (n == 2) return "nd";
-    if (n == 3) return "rd";
+    if (n == 1)
+        return "st";
+    if (n == 2)
+        return "nd";
+    if (n == 3)
+        return "rd";
     return "th";
 }
 
-static void ds3231_output_datetime(struct srd_decoder_inst *di, ds3231_state *s,
-                                    int cls, const char *rw)
+static void ds3231_output_datetime(struct srd_decoder_inst* di, ds3231_state* s,
+    int cls, const char* rw)
 {
     if (s->ss_block == (uint64_t)-1 || s->days < 1)
         return;
-    const char *ws = days_of_week[(s->days + s->dayoffset) % 7];
+    const char* ws = days_of_week[(s->days + s->dayoffset) % 7];
     char t[128], t2[128];
     snprintf(t, sizeof(t), "%s, %02d.%02d.%4d %02d:%02d:%02d",
-             ws, s->date, s->months, s->years, s->hours, s->minutes, s->seconds);
+        ws, s->date, s->months, s->years, s->hours, s->minutes, s->seconds);
     snprintf(t2, sizeof(t2), "%s date/time: %s", rw, t);
     C_ANN_PUT(di, s->ss_block, s->ss, s->out_ann, cls, t2, t);
 }
 
-static void ds3231_output_temperature(struct srd_decoder_inst *di, ds3231_state *s,
-                                       int cls, int integer)
+static void ds3231_output_temperature(struct srd_decoder_inst* di, ds3231_state* s,
+    int cls, int integer)
 {
     if (s->ss_block == (uint64_t)-1)
         return;
     char t[64];
     if (integer) {
-        snprintf(t, sizeof(t), "Read temperature: %d \xc2\xb0""C", s->temperature1);
+        snprintf(t, sizeof(t), "Read temperature: %d \xc2\xb0"
+                               "C",
+            s->temperature1);
     } else {
         double temp = s->temperature1 + s->temperature2 / 256.0;
-        snprintf(t, sizeof(t), "Read temperature: %.2f \xc2\xb0""C", temp);
+        snprintf(t, sizeof(t), "Read temperature: %.2f \xc2\xb0"
+                               "C",
+            temp);
     }
     C_ANN_PUT(di, s->ss_block, s->ss, s->out_ann, cls, t);
 }
 
-static void ds3231_output_alarm(struct srd_decoder_inst *di, ds3231_state *s,
-                                 int cls, const char *rw, int alm)
+static void ds3231_output_alarm(struct srd_decoder_inst* di, ds3231_state* s,
+    int cls, const char* rw, int alm)
 {
     if (s->ss_block == (uint64_t)-1)
         return;
     char s_buf[64];
-    const char *sec_part = (alm == 2) ? "00" : s->asecond;
+    const char* sec_part = (alm == 2) ? "00" : s->asecond;
     snprintf(s_buf, sizeof(s_buf), "%s %s:%s:%s%s",
-             s->adaydate, s->ahour, s->aminute, sec_part, s->aampm);
+        s->adaydate, s->ahour, s->aminute, sec_part, s->aampm);
     if (strcmp(s_buf, "* **:**:**") == 0)
         strcat(s_buf, " (every second)");
     char t[128], t2[64];
@@ -180,11 +192,11 @@ static void ds3231_output_alarm(struct srd_decoder_inst *di, ds3231_state *s,
     C_ANN_PUT(di, s->ss_block, s->ss, s->out_ann, cls, t, t2);
 }
 
-static void ds3231_handle_alarm_seconds(struct srd_decoder_inst *di, ds3231_state *s,
-                                          int cls, uint8_t b, uint64_t ss, uint64_t es)
+static void ds3231_handle_alarm_seconds(struct srd_decoder_inst* di, ds3231_state* s,
+    int cls, uint8_t b, uint64_t ss, uint64_t es)
 {
     int sec = bcd2int(b & 0x7f);
-    const char *mm;
+    const char* mm;
     if (b & (1 << 7)) {
         mm = "Ignore second";
         strcpy(s->asecond, "**");
@@ -198,11 +210,11 @@ static void ds3231_handle_alarm_seconds(struct srd_decoder_inst *di, ds3231_stat
     C_ANN_PUT(di, ss, es, s->out_ann, cls, t);
 }
 
-static void ds3231_handle_alarm_minutes(struct srd_decoder_inst *di, ds3231_state *s,
-                                          int cls, uint8_t b, uint64_t ss, uint64_t es)
+static void ds3231_handle_alarm_minutes(struct srd_decoder_inst* di, ds3231_state* s,
+    int cls, uint8_t b, uint64_t ss, uint64_t es)
 {
     int ignore = b & (1 << 7);
-    const char *mm = ignore ? "Ignore minute" : "Alarm on minute match";
+    const char* mm = ignore ? "Ignore minute" : "Alarm on minute match";
     C_ANN_PUT(di, ss, es, s->out_ann, cls, mm);
     int m = bcd2int(b & 0x7f);
     char t[32];
@@ -211,15 +223,15 @@ static void ds3231_handle_alarm_minutes(struct srd_decoder_inst *di, ds3231_stat
     snprintf(s->aminute, sizeof(s->aminute), ignore ? "*" : "%02d", m);
 }
 
-static void ds3231_handle_alarm_hour(struct srd_decoder_inst *di, ds3231_state *s,
-                                       int cls, uint8_t b, uint64_t ss, uint64_t es)
+static void ds3231_handle_alarm_hour(struct srd_decoder_inst* di, ds3231_state* s,
+    int cls, uint8_t b, uint64_t ss, uint64_t es)
 {
     int ignore = b & (1 << 7);
-    const char *mm = ignore ? "Ignore hour" : "Alarm on hour match";
+    const char* mm = ignore ? "Ignore hour" : "Alarm on hour match";
     C_ANN_PUT(di, ss, es, s->out_ann, cls, mm);
     int ampm_mode = (b & (1 << 6)) ? 1 : 0;
     if (ampm_mode) {
-        const char *ampm = (b & (1 << 5)) ? "pm" : "am";
+        const char* ampm = (b & (1 << 5)) ? "pm" : "am";
         C_ANN_PUT(di, ss, es, s->out_ann, cls, ampm, ampm);
         int h = bcd2int(b & 0x1f);
         char t[32];
@@ -240,36 +252,36 @@ static void ds3231_handle_alarm_hour(struct srd_decoder_inst *di, ds3231_state *
     }
 }
 
-static void ds3231_handle_alarm_daydate(struct srd_decoder_inst *di, ds3231_state *s,
-                                          int cls, uint8_t b, uint64_t ss, uint64_t es)
+static void ds3231_handle_alarm_daydate(struct srd_decoder_inst* di, ds3231_state* s,
+    int cls, uint8_t b, uint64_t ss, uint64_t es)
 {
     int ignore = b & (1 << 7);
     int dydt = b & (1 << 6);
     C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_ALARM2,
-              dydt ? "Day Mode" : "Date Mode",
-              dydt ? "Day" : "Date");
+        dydt ? "Day Mode" : "Date Mode",
+        dydt ? "Day" : "Date");
     if (dydt) {
-        const char *mm = ignore ? "Ignore day" : "Alarm on day match";
+        const char* mm = ignore ? "Ignore day" : "Alarm on day match";
         C_ANN_PUT(di, ss, es, s->out_ann, cls, mm);
-        const char *ws = days_of_week[((b & 0x3f) + s->dayoffset) % 7];
+        const char* ws = days_of_week[((b & 0x3f) + s->dayoffset) % 7];
         char t[32];
         snprintf(t, sizeof(t), "Day=%s", ws);
         C_ANN_PUT(di, ss, es, s->out_ann, cls, t);
         snprintf(s->adaydate, sizeof(s->adaydate), ignore ? "*" : "%s", ws);
     } else {
-        const char *mm = ignore ? "Ignore date" : "Alarm on date match";
+        const char* mm = ignore ? "Ignore date" : "Alarm on date match";
         C_ANN_PUT(di, ss, es, s->out_ann, cls, mm);
         int d = bcd2int(b & 0x3f);
         char t[32];
         snprintf(t, sizeof(t), "Date=%d%s of month", d, ds3231_ordinal(d));
         C_ANN_PUT(di, ss, es, s->out_ann, cls, t);
         snprintf(s->adaydate, sizeof(s->adaydate),
-                 ignore ? "*" : "%d%s of month", d, ds3231_ordinal(d));
+            ignore ? "*" : "%d%s of month", d, ds3231_ordinal(d));
     }
 }
 
-static void ds3231_handle_reg(struct srd_decoder_inst *di, ds3231_state *s,
-                               uint8_t b, uint64_t ss, uint64_t es)
+static void ds3231_handle_reg(struct srd_decoder_inst* di, ds3231_state* s,
+    uint8_t b, uint64_t ss, uint64_t es)
 {
     if (s->reg < 0x13) {
         switch (s->reg) {
@@ -297,7 +309,7 @@ static void ds3231_handle_reg(struct srd_decoder_inst *di, ds3231_state *s,
             int ampm_mode = (b & (1 << 6)) ? 1 : 0;
             if (ampm_mode) {
                 C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_DATE_TIME, "12-hour mode", "12h mode", "12h");
-                const char *a = (b & (1 << 5)) ? "PM" : "AM";
+                const char* a = (b & (1 << 5)) ? "PM" : "AM";
                 C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_DATE_TIME, a);
                 s->hours = bcd2int(b & 0x1f);
                 char t[32];
@@ -317,7 +329,7 @@ static void ds3231_handle_reg(struct srd_decoder_inst *di, ds3231_state *s,
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
             s->days = bcd2int(b & 0x07);
             if (s->days >= 1 && s->days <= 7) {
-                const char *ws = days_of_week[(s->days + s->dayoffset) % 7];
+                const char* ws = days_of_week[(s->days + s->dayoffset) % 7];
                 char t[64];
                 snprintf(t, sizeof(t), "Weekday: %s", ws);
                 C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_DATE_TIME, t);
@@ -388,47 +400,47 @@ static void ds3231_handle_reg(struct srd_decoder_inst *di, ds3231_state *s,
         }
         case 0x0e: {
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_CONTROL_STATUS, "Control Register", "Ctrl", "C");
-            const char *eosc = (b & (1 << 7)) ? "OFF" : "ON";
+            const char* eosc = (b & (1 << 7)) ? "OFF" : "ON";
             char t[64];
             snprintf(t, sizeof(t), "Oscillator %s", eosc);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *bbsqw = (b & (1 << 6)) ? "ON" : "OFF";
+            const char* bbsqw = (b & (1 << 6)) ? "ON" : "OFF";
             snprintf(t, sizeof(t), "Battery Backed Square Wave %s", bbsqw);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *conv = (b & (1 << 5)) ? "ON" : "OFF";
+            const char* conv = (b & (1 << 5)) ? "ON" : "OFF";
             snprintf(t, sizeof(t), "Convert Temperature %s", conv);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *rs = rates[(b >> 3) & 3];
+            const char* rs = rates[(b >> 3) & 3];
             snprintf(t, sizeof(t), "Rate Select: %s", rs);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *intcn = (b & (1 << 2)) ? "ON" : "OFF";
+            const char* intcn = (b & (1 << 2)) ? "ON" : "OFF";
             snprintf(t, sizeof(t), "Interrupt Control %s", intcn);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *a2ie = (b & (1 << 1)) ? "ENABLED" : "DISABLED";
+            const char* a2ie = (b & (1 << 1)) ? "ENABLED" : "DISABLED";
             snprintf(t, sizeof(t), "Alarm 2 Interrupt %s", a2ie);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *a1ie = (b & (1 << 0)) ? "ENABLED" : "DISABLED";
+            const char* a1ie = (b & (1 << 0)) ? "ENABLED" : "DISABLED";
             snprintf(t, sizeof(t), "Alarm 1 Interrupt %s", a1ie);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
             break;
         }
         case 0x0f: {
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_CONTROL_STATUS, "Control/Status Register", "Stat", "S");
-            const char *osf = (b & (1 << 7)) ? "STOPPED" : "RUNNING";
+            const char* osf = (b & (1 << 7)) ? "STOPPED" : "RUNNING";
             char t[64];
             snprintf(t, sizeof(t), "Oscillator %s", osf);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
-            const char *en32khz = (b & (1 << 3)) ? "ENABLED" : "DISABLED";
+            const char* en32khz = (b & (1 << 3)) ? "ENABLED" : "DISABLED";
             snprintf(t, sizeof(t), "32kHz Output %s", en32khz);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *bsy = (b & (1 << 2)) ? "ON" : "OFF";
+            const char* bsy = (b & (1 << 2)) ? "ON" : "OFF";
             snprintf(t, sizeof(t), "Busy %s", bsy);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *a2f = (b & (1 << 1)) ? "ELAPSED" : "CLEAR";
+            const char* a2f = (b & (1 << 1)) ? "ELAPSED" : "CLEAR";
             snprintf(t, sizeof(t), "Alarm 2 %s", a2f);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
-            const char *a1f = (b & (1 << 0)) ? "ELAPSED" : "CLEAR";
+            const char* a1f = (b & (1 << 0)) ? "ELAPSED" : "CLEAR";
             snprintf(t, sizeof(t), "Alarm 1 %s", a1f);
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CONTROL_STATUS, t);
             break;
@@ -443,7 +455,7 @@ static void ds3231_handle_reg(struct srd_decoder_inst *di, ds3231_state *s,
         }
         case 0x11: {
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_TEMPERATURE, "Temperature Register 1", "Temp1", "T");
-            const char *sign;
+            const char* sign;
             if (b & (1 << 7)) {
                 sign = "-";
                 s->temperature1 = -((b ^ 0xff) + 1);
@@ -475,11 +487,11 @@ static void ds3231_handle_reg(struct srd_decoder_inst *di, ds3231_state *s,
         s->reg = 0;
 }
 
-static void ds3231_recv_proto(struct srd_decoder_inst *di,
+static void ds3231_recv_proto(struct srd_decoder_inst* di,
     uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+    const char* cmd, const unsigned char* data, uint64_t data_len)
 {
-    ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
+    ds3231_state* s = (ds3231_state*)c_decoder_get_private(di);
     if (!s)
         return;
 
@@ -556,12 +568,12 @@ static void ds3231_recv_proto(struct srd_decoder_inst *di,
     }
 }
 
-static void ds3231_reset(struct srd_decoder_inst *di)
+static void ds3231_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(ds3231_state)));
     }
-    ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
+    ds3231_state* s = (ds3231_state*)c_decoder_get_private(di);
     memset(s, 0, sizeof(ds3231_state));
     s->hours = -1;
     s->minutes = -1;
@@ -578,11 +590,11 @@ static void ds3231_reset(struct srd_decoder_inst *di)
     s->aampm[0] = '\0';
 }
 
-static void ds3231_start(struct srd_decoder_inst *di)
+static void ds3231_start(struct srd_decoder_inst* di)
 {
-    ds3231_state *s = (ds3231_state *)c_decoder_get_private(di);
+    ds3231_state* s = (ds3231_state*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds3231");
-    const char *day0 = c_decoder_get_option_string(di, "day0", "Sunday");
+    const char* day0 = c_decoder_get_option_string(di, "day0", "Sunday");
     s->dayoffset = 0;
     for (int i = 0; i < 7; i++) {
         if (strcmp(day0, days_of_week[i]) == 0) {
@@ -592,14 +604,14 @@ static void ds3231_start(struct srd_decoder_inst *di)
     }
 }
 
-static void ds3231_decode(struct srd_decoder_inst *di)
+static void ds3231_decode(struct srd_decoder_inst* di)
 {
     (void)di;
 }
 
-static void ds3231_destroy(struct srd_decoder_inst *di)
+static void ds3231_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -637,7 +649,7 @@ struct srd_c_decoder ds3231_c_decoder = {
     .recv_proto = ds3231_recv_proto,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     ds3231_options[0].def = g_variant_new_string("Sunday");
     return &ds3231_c_decoder;

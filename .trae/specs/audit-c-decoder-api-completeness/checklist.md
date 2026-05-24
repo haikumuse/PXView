@@ -1,0 +1,10 @@
+- [x] Python→C桥接崩溃已修复（type_decoder.c中添加is_c_inst检查，防止NULL py_inst调用）
+- [x] SRD_OUTPUT_PYTHON已重命名为SRD_OUTPUT_PROTO（保留旧名作为#define别名）
+- [x] c_decoder_put_python已重命名为c_decoder_put_proto（保留旧名作为#define别名）
+- [x] c_decoder_put()的SRD_OUTPUT_PROTO分支已修复（返回错误而非传递错误数据）
+- [x] 混合堆叠保护已添加（srd_inst_stack()拒绝C/Python混合堆叠）
+- [x] can_c已迁移到c_cond_*构建器模式
+- [x] c_decoder_utils.h中未使用API的文档已补充
+- [x] 18个现有C解码器已更新使用SRD_OUTPUT_PROTO
+- [x] 增量编译通过（146/146目标，无新errors）
+- [x] 现有C解码器行为不受影响（向后兼容）
