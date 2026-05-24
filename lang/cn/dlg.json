@@ -1514,5 +1514,33 @@
     {
         "id": "IDS_STYLE_SEARCH_INPUT_LABEL",
         "text": "搜索框标签"
+    },
+    {
+        "id": "IDS_DLG_RESET_ROW_HEIGHT",
+        "text": "重置行高"
+    },
+    {
+        "id": "IDS_DLG_RESET_ALL_ROW_HEIGHT",
+        "text": "重置所有行高"
+    },
+    {
+        "id": "IDS_DLG_SET_CHANNEL_HEIGHT",
+        "text": "设置通道高度"
+    },
+    {
+        "id": "IDS_DLG_BATCH_SET_HEIGHT",
+        "text": "批量设置"
+    },
+    {
+        "id": "IDS_DLG_CUSTOM_HEIGHT",
+        "text": "自定义..."
+    },
+    {
+        "id": "IDS_DLG_STYLE_DELETE_PRESET",
+        "text": "删除预设"
+    },
+    {
+        "id": "IDS_DLG_STYLE_DELETE_CONFIRM",
+        "text": "确定要删除此预设吗？"
     }
 ]

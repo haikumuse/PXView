@@ -564,10 +564,17 @@ QWidget *ApplicationParamDlg::createStylePage() {
 
   QPushButton *savePresetBtn = new QPushButton(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_SAVE_AS_PRESET), "Save as Preset"));
+  QPushButton *deletePresetBtn = new QPushButton(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_DELETE_PRESET), "Delete Preset"));
+
+  // System presets start with ":/", disable delete for them
+  bool isSystemPreset = _preset_combo->currentData().toString().startsWith(":/");
+  deletePresetBtn->setEnabled(!isSystemPreset);
 
   presetLay->addWidget(presetLbl);
   presetLay->addWidget(_preset_combo);
   presetLay->addWidget(savePresetBtn);
+  presetLay->addWidget(deletePresetBtn);
   presetLay->addStretch();
   lay->addLayout(presetLay);
 
@@ -575,13 +582,15 @@ QWidget *ApplicationParamDlg::createStylePage() {
 
   QObject::connect(_preset_combo,
                    QOverload<int>::of(&QComboBox::currentIndexChanged),
-                   splitter, [this](int index) {
+                   splitter, [this, deletePresetBtn](int index) {
                      if (index > 0) {
                        QString path = _preset_combo->currentData().toString();
                        if (!path.isEmpty()) {
                          applyPresetTheme(path);
                        }
                      }
+                     bool isSystem = _preset_combo->currentData().toString().startsWith(":/");
+                     deletePresetBtn->setEnabled(!isSystem);
                    });
 
   QObject::connect(
@@ -616,6 +625,28 @@ QWidget *ApplicationParamDlg::createStylePage() {
                 L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_SAVE_SUCCESS_MSG),
                     "Preset saved successfully."));
           }
+        }
+      });
+
+  QObject::connect(
+      deletePresetBtn, &QPushButton::clicked, splitter, [this, deletePresetBtn]() {
+        int index = _preset_combo->currentIndex();
+        if (index <= 0)
+          return;
+        QString path = _preset_combo->currentData().toString();
+        if (path.startsWith(":/"))
+          return;
+        QWidget *dlgWindow =
+            _style_page_stack ? _style_page_stack->window() : nullptr;
+        auto ret = QMessageBox::question(
+            dlgWindow,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_DELETE_PRESET), "Delete Preset"),
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_DELETE_CONFIRM),
+                "Are you sure you want to delete this preset?"),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (ret == QMessageBox::Yes) {
+          QFile::remove(path);
+          _preset_combo->removeItem(index);
         }
       });
 
@@ -999,7 +1030,7 @@ void ApplicationParamDlg::applyPresetTheme(const QString &presetPath) {
 void ApplicationParamDlg::applyLivePreview() {
   AppConfig &app = AppConfig::Instance();
   QString style = app.frameOptions.style;
-  QString qssRes = ":/" + style + ".qss";
+  QString qssRes = ":/theme.qss";
   QFile qss(qssRes);
   if (qss.open(QFile::ReadOnly | QFile::Text)) {
     QString qssContent = qss.readAll();
@@ -1528,7 +1559,7 @@ void ApplicationParamDlg::saveStyleOptions() {
     app.styleOptions.items = newItems;
 
     QString style = app.frameOptions.style;
-    QString qssRes = ":/" + style + ".qss";
+    QString qssRes = ":/theme.qss";
     QFile qss(qssRes);
     if (qss.open(QFile::ReadOnly | QFile::Text)) {
       QString qssContent = qss.readAll();

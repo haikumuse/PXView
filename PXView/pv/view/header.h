@@ -30,6 +30,7 @@
 #include <QWidget>
 #include "../ui/uimanager.h"
 #include "../dock/keywordlineedit.h"
+#include <QMenu>
 
 namespace pv {
 namespace view {
@@ -68,6 +69,8 @@ private:
     void changeName(QMouseEvent *event);
     void changeColor(QMouseEvent *event);
 
+    QMenu* create_height_submenu(bool is_batch);
+
     //IUiWindow
     void UpdateLanguage() override;
     void UpdateTheme() override;
@@ -83,6 +86,10 @@ public:
 
 private slots:
 	void on_action_set_name_triggered();
+    void on_reset_row_height();
+    void on_reset_all_row_height();
+    void on_set_channel_height();
+    void on_batch_set_height();
 
 signals:
     void traces_moved();

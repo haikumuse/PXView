@@ -2165,7 +2165,7 @@ void MainWindow::switchTheme(QString style) {
     app.SaveFrame();
   }
 
-  QString qssRes = ":/" + style + ".qss";
+  QString qssRes = ":/theme.qss";
   QFile qss(qssRes);
   if (!qss.open(QFile::ReadOnly | QFile::Text)) {
     return;

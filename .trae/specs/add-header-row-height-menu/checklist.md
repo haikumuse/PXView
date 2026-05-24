@@ -1,0 +1,10 @@
+- [x] 三个语言 dlg.json 中已添加 IDS_DLG_RESET_ROW_HEIGHT、IDS_DLG_RESET_ALL_ROW_HEIGHT、IDS_DLG_SET_CHANNEL_HEIGHT、IDS_DLG_BATCH_SET_HEIGHT、IDS_DLG_CUSTOM_HEIGHT 翻译条目
+- [x] header.h 中已声明 create_height_submenu 方法、on_reset_row_height / on_reset_all_row_height / on_set_channel_height / on_batch_set_height slots
+- [x] Header::contextMenuEvent 在 LOGIC 模式下右键点击信号标签时显示包含"重置行高"、"重置所有行高"、"设置通道高度"子菜单、"批量设置"子菜单的上下文菜单
+- [x] 点击"重置行高"后当前信号 _ownHeight 设为 -1，布局刷新
+- [x] 点击"重置所有行高"后所有信号 _ownHeight 设为 -1，布局刷新
+- [x] "设置通道高度"子菜单包含 20/30/40/50/60/80/100px 预设和"自定义..."选项
+- [x] "批量设置"子菜单包含同样的预设和"自定义..."选项
+- [x] 预设高度点击后对应信号高度正确设置，受 MinSignalHeight/MaxSignalHeight 约束
+- [x] "自定义..."选项弹出 QInputDialog，输入值受 MinSignalHeight/MaxSignalHeight 约束
+- [x] 非 LOGIC 模式下右键不显示行高管理菜单

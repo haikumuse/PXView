@@ -228,6 +228,7 @@ void SearchComboBox::on_keyword_changed(const QString &value) {
     }
   }
 
+  _scroll->widget()->adjustSize();
   _scroll->verticalScrollBar()->setValue(0);
 }
 

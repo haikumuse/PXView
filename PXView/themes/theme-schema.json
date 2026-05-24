@@ -144,5 +144,6 @@
         { "id": "@cursor-font-size", "type": "size", "label": "IDS_STYLE_FONT_CURSOR" }
       ]
     }
-  ]
+  ],
+  "hidden": ["@icon-dir"]
 }

@@ -2,6 +2,7 @@
   "name": "PXView Dark",
   "type": "dark",
   "tokens": {
+    "@icon-dir": "dark",
     "@bg-base": "#202020",
     "@bg-overlay": "#2d2d2d",
     "@fg-base": "#eff0f1",
