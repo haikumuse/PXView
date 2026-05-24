@@ -349,7 +349,7 @@ static void handle_bits(struct srd_decoder_inst *di, avr_pdi_priv *s,
     if (valid_frame) {
         uint64_t byte_ss = s->bits[0].ss;
         uint64_t byte_es = s->bits[frame_bitcount - 1].es;
-        c_decoder_put_binary(di, byte_ss, byte_es, s->out_binary, BIN_BYTES, &data_val, 1);
+        c_decoder_put_binary(di, byte_ss, byte_es, s->out_binary, BIN_BYTES, 1, &data_val);
         handle_byte(di, s, byte_ss, byte_es, 0, data_val);
     }
 

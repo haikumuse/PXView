@@ -414,9 +414,9 @@ static void oregon_put_checksum(struct srd_decoder_inst *di, oregon_state *s,
             result = "OK";
     }
     char rx_check[4];
-    snprintf(rx_check, sizeof(rx_check), "%s%s",
-             s->nib_hex[nibbles + 1] ? s->nib_hex[nibbles + 1] : "?",
-             s->nib_hex[nibbles] ? s->nib_hex[nibbles] : "?");
+    snprintf(rx_check, sizeof(rx_check), "%c%c",
+             s->nib_hex[nibbles + 1] ? s->nib_hex[nibbles + 1] : '?',
+             s->nib_hex[nibbles] ? s->nib_hex[nibbles] : '?');
     char buf[128];
     snprintf(buf, sizeof(buf), "Checksum %s Calc %X Rx %s", result, checksum, rx_check);
     C_ANN_PUT(di, s->nib_ss[nibbles], s->nib_es[nibbles + 1], s->out_ann, ANN_L2, buf);

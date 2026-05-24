@@ -510,7 +510,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 else
                     snprintf(buf, sizeof(buf), "UNRECOGNIZED VALUE");
                 C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
-                          s->values[current_byte + 1] < 33 ? ANN_DATA_VAL_POS : ANN_ERROR, buf);
+                          s->out_ann, s->values[current_byte + 1] < 33 ? ANN_DATA_VAL_POS : ANN_ERROR, buf);
             }
             current_bit += 16;
             current_byte += 2;

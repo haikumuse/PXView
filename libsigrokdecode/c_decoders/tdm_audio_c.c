@@ -39,7 +39,7 @@ typedef struct {
 
 static struct srd_channel tdm_audio_channels[] = {
     {"clock", "Bitclk", "Data bit clock", 0, SRD_CHANNEL_SCLK, NULL},
-    {"frame", "Framesync", "Frame sync", 1, SRD_CHANNEL_SFS, NULL},
+    {"frame", "Framesync", "Frame sync", 1, SRD_CHANNEL_COMMON, NULL},
     {"data", "Data", "Serial data", 2, SRD_CHANNEL_SDATA, NULL},
 };
 
