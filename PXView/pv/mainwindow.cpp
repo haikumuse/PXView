@@ -37,6 +37,8 @@
 #include <QGuiApplication>
 #include <QHash>
 #include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QJsonValue>
 #include <QKeyEvent>
 #include <QLineEdit>
@@ -120,7 +122,7 @@
 #include <stdlib.h>
 #include <thread>
 #ifdef ENABLE_DEBUG_HELPER
-#include "ui/debughelper.h"
+#include "ui/widgetinspector.h"
 #endif
 
 #include <QShortcut>
@@ -274,21 +276,10 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   _key_vaild = false;
   _last_key_press_time = high_resolution_clock::now();
 
-  update_title_bar_text();
-#ifdef ENABLE_DEBUG_HELPER
-  _debug_helper = pv::ui::DebugHelper::Instance();
-  _debug_helper->setEnabled(true);
-  DEBUG_INSTALL_TREE(this);
-#endif
+    update_title_bar_text();
 }
 
 MainWindow::~MainWindow() {
-#ifdef ENABLE_DEBUG_HELPER
-  if (_debug_helper) {
-    _debug_helper->setEnabled(false);
-    _debug_helper = nullptr;
-  }
-#endif
 }
 
 void MainWindow::setup_ui() {
@@ -2183,14 +2174,28 @@ void MainWindow::switchTheme(QString style) {
   qss.close();
 
   QHash<QString, QString> tokens;
-  QRegularExpression tokenRe(
-      "@([\\w-]+):\\s*([^\\r\\n]+?)\\s*(?:\\*/|\\r|\\n)");
-  QRegularExpressionMatchIterator it = tokenRe.globalMatch(qssContent);
-  while (it.hasNext()) {
-    QRegularExpressionMatch match = it.next();
-    QString tokenName = "@" + match.captured(1);
-    QString tokenValue = match.captured(2).trimmed();
-    tokens[tokenName] = tokenValue;
+
+  // Load base tokens from JSON schema instance
+  QString jsonRes = ":/" + style + ".json";
+  QFile jsonFile(jsonRes);
+  if (jsonFile.open(QFile::ReadOnly | QFile::Text)) {
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonFile.readAll());
+    QJsonObject rootObj = jsonDoc.object();
+    QJsonObject tokensObj = rootObj.value("tokens").toObject();
+    for (const QString &key : tokensObj.keys()) {
+      tokens[key] = tokensObj.value(key).toString();
+    }
+    jsonFile.close();
+  } else {
+    // Fallback: parse from QSS if JSON is missing
+    QRegularExpression tokenRe("@([\\w-]+):\\s*([^\\r\\n]+?)\\s*(?:\\*/|\\r|\\n)");
+    QRegularExpressionMatchIterator it = tokenRe.globalMatch(qssContent);
+    while (it.hasNext()) {
+      QRegularExpressionMatch match = it.next();
+      QString tokenName = "@" + match.captured(1);
+      QString tokenValue = match.captured(2).trimmed();
+      tokens[tokenName] = tokenValue;
+    }
   }
 
   for (int i = 0; i < app.styleOptions.items.size(); i++) {
@@ -2991,6 +2996,10 @@ void MainWindow::OnMessage(int msg) {
     break;
   }
   case DSV_MSG_STYLE_CHANGED: {
+    UiManager::Instance()->Update(UI_UPDATE_ACTION_THEME);
+    for(QWidget *w : qApp->topLevelWidgets()) {
+      w->update();
+    }
     break;
   }
   case DSV_MSG_DATA_POOL_CHANGED: {

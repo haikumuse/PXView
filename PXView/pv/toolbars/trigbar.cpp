@@ -35,6 +35,7 @@
 #include "../ui/langresource.h"
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 #include "../ui/iconcache.h"
 
 namespace pv {
@@ -115,18 +116,24 @@ void TrigBar::retranslateUi()
 void TrigBar::reStyle()
 {
     QString iconPath = GetIconPath();
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
 
-    _action_fft->setIcon(IconCache::Instance().icon(iconPath+"/fft.svg"));
-    _action_math->setIcon(IconCache::Instance().icon(iconPath+"/math.svg"));
-    _action_lissajous->setIcon(IconCache::Instance().icon(iconPath+"/lissajous.svg"));
-    _dark_style->setIcon(IconCache::Instance().icon(iconPath+"/dark.svg"));
-    _light_style->setIcon(IconCache::Instance().icon(iconPath+"/light.svg"));
+    auto getIcon = [&](const QString &name) {
+        return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
+                                   : IconCache::Instance().icon(iconPath + name);
+    };
 
-    _action_dispalyOptions->setIcon(IconCache::Instance().icon(iconPath+"/gear.svg"));
+    _action_fft->setIcon(getIcon("/fft.svg"));
+    _action_math->setIcon(getIcon("/math.svg"));
+    _action_lissajous->setIcon(getIcon("/lissajous.svg"));
+    _dark_style->setIcon(getIcon("/dark.svg"));
+    _light_style->setIcon(getIcon("/light.svg"));
+
+    _action_dispalyOptions->setIcon(getIcon("/gear.svg"));
 
     AppConfig &app = AppConfig::Instance();
-    QString icon_fname = iconPath +"/"+ app.frameOptions.style +".svg";
-    _themes->setIcon(QIcon(icon_fname));
+    QString icon_fname = "/" + app.frameOptions.style + ".svg";
+    _themes->setIcon(getIcon(icon_fname));
 }
 
 void TrigBar::reload()
@@ -192,8 +199,7 @@ void TrigBar::UpdateTheme()
 
 void TrigBar::UpdateFont()
 {
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_toolbar();
     ui::set_toolbar_font(this, font);
 }
 

@@ -433,11 +433,10 @@ QGroupBox
     margin-top: 0px;
 }
 
-#dock_section_title
-{
+#dock_section_title {
     color: @dock-section-title-fg;
     font-weight: bold;
-    font-size: 16px;
+    font-size: @dock-font-section-title;
 }
 
 #dock_section_separator
@@ -452,14 +451,12 @@ QGroupBox
     margin-bottom: 10px;
 }
 
-#dock_label
-{
-    font-size: 14px;
+#dock_label {
+    font-size: @dock-font-label;
 }
 
-#dock_content
-{
-    font-size: 12px;
+#dock_content {
+    font-size: @dock-font-content;
 }
 
 QScrollBar:horizontal
@@ -1637,7 +1634,7 @@ QTabBar::tab {
     height: 28px;
     padding: 2px 12px;
     margin: 0px;
-    font-size: 12px;
+    font-size: @dock-font-labelpx;
     color: @tab-text;
     background: transparent;
     border: none;
@@ -1696,11 +1693,10 @@ QWidget#RibbonBottomLine {
     border: none;
 }
 
-#sliding_drawer_title
-{
+#sliding_drawer_title {
     color: @drawer-title-fg;
     background: transparent;
-    font-size: 18px;
+    font-size: @dock-font-main-title;
     font-weight: bold;
 }
 
@@ -1852,13 +1848,12 @@ QLabel[status="error"]
 /* Log Dock */
 QPlainTextEdit#log_view
 {
-    background-color: #ffffff;
-    color: #2a2a2a;
+    background-color: @input-bg;
+    color: @fg-base;
     border: 1px solid @border;
     border-radius: 4px;
     selection-background-color: @accent;
-    selection-color: #ffffff;
-    font-family: "Source Code Pro", "Consolas", monospace;
+    selection-color: @fg-bright;
 }
 
 QPushButton#log_scroll_bottom_btn
@@ -1903,4 +1898,10 @@ QPushButton#log_clear_btn:hover
 {
     border: 1px solid @accent;
     color: @fg-bright;
+}
+
+pv--view--Viewport,
+pv--view--Header
+{
+    background-color: @bg-base;
 }

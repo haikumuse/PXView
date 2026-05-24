@@ -45,6 +45,7 @@ private slots:
 
 private:
 	QLineEdit *_line_edit;
+	QWidget *_container;
 };
 
 } // prop

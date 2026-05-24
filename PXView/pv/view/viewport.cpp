@@ -48,6 +48,7 @@
 #include "../config/appconfig.h"
 #include "../dsvdef.h"
 #include "../log.h"
+#include "../ui/dockfonts.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
 #include "lissajoustrace.h"
@@ -83,13 +84,13 @@ static void drawFloatingPanel(QPainter &p, const QPointF &cursorPos,
   BrutalStyle style = getBrutalStyle(back, panelBg, panelText);
 
   QFont labelFont = p.font();
-  labelFont.setPointSizeF(7.5);
+  labelFont.setPixelSize(floating_panel_font_label_size());
   labelFont.setWeight(QFont::Black);
   labelFont.setCapitalization(QFont::AllUppercase);
   labelFont.setLetterSpacing(QFont::AbsoluteSpacing, 0.5);
 
   QFont valueFont = p.font();
-  valueFont.setPointSizeF(12.0);
+  valueFont.setPixelSize(floating_panel_font_value_size());
   valueFont.setWeight(QFont::Black);
   valueFont.setFamily("Space Mono, Courier New, monospace");
 
@@ -209,16 +210,16 @@ const QColor Viewport::PROBE_COLORS[8] = {
 
 Viewport::Viewport(View &parent, View_type type)
     : QWidget(&parent), _view(parent), _type(type), _need_update(false),
-      _decode_needs_rebuild(true),
-      _sample_received(0), _action_type(NO_ACTION), _measure_type(NO_MEASURE),
-      _cur_sample(0), _nxt_sample(1), _cur_preX(0), _cur_aftX(1), _cur_midY(0),
-      _hover_index(0), _hover_hit(false), _dso_xm_valid(false),
-      _dso_ym_valid(false), _waiting_trig(0), _dso_trig_moved(false),
-      _resize_trace_upper(NULL), _resize_trace_lower(NULL),
-      _resize_mouse_down_y(0), _resize_upper_height(0), _resize_lower_height(0),
-      _curs_moved(false), _xcurs_moved(false), _curVOffset(0),
-      _max_frame_time(0), _fps(0), g_drag_active(false),
-      _paint_in_this_second(0), _is_idle(true), _drag_frame_pending(false) {
+      _decode_needs_rebuild(true), _sample_received(0), _action_type(NO_ACTION),
+      _measure_type(NO_MEASURE), _cur_sample(0), _nxt_sample(1), _cur_preX(0),
+      _cur_aftX(1), _cur_midY(0), _hover_index(0), _hover_hit(false),
+      _dso_xm_valid(false), _dso_ym_valid(false), _waiting_trig(0),
+      _dso_trig_moved(false), _resize_trace_upper(NULL),
+      _resize_trace_lower(NULL), _resize_mouse_down_y(0),
+      _resize_upper_height(0), _resize_lower_height(0), _curs_moved(false),
+      _xcurs_moved(false), _curVOffset(0), _max_frame_time(0), _fps(0),
+      g_drag_active(false), _paint_in_this_second(0), _is_idle(true),
+      _drag_frame_pending(false) {
   _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
   if (!_panelBgColor.isValid())
     _panelBgColor = QColor("#1a1a1a");
@@ -371,11 +372,7 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
   QPainter p(this);
   style()->drawPrimitive(QStyle::PE_Widget, &o, &p, this);
 
-  QFont font = p.font();
-  float fSize = AppConfig::Instance().appOptions.fontSize;
-  if (fSize > 10)
-    fSize = 10;
-  font.setPointSizeF(fSize);
+  QFont font = theme_font_cursor();
   p.setFont(font);
 
 #ifndef NDEBUG
@@ -674,8 +671,12 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       for (auto t : traces) {
         if (t->enabled()) {
           _index_list = t->get_index_list();
-          QColor color =
-              PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
+          int idx = *_index_list.begin() % 8;
+          QString token = QString("@logic-channel-%1").arg(idx);
+          QColor color = AppConfig::Instance().GetThemeColor(token);
+          if (!color.isValid()) {
+            color = PROBE_COLORS[idx];
+          }
           if (t->signal_type() == SR_CHANNEL_LOGIC) {
             LogicSignal *logic_signal = (LogicSignal *)t;
             if (bFirst && logic_signal->data())
@@ -725,11 +726,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       QPainter dp(&_decode_pixmap);
       dp.translate(0, -_view.get_vOffset());
 
-      QFont dfont = dp.font();
-      float dfSize = AppConfig::Instance().appOptions.fontSize;
-      if (dfSize > 10)
-        dfSize = 10;
-      dfont.setPointSizeF(dfSize);
+      QFont dfont = theme_font_trace_label();
       dp.setFont(dfont);
 
       for (auto t : traces) {
@@ -1045,11 +1042,7 @@ void Viewport::paintProgress(QPainter &p, QColor fore, QColor back) {
     if (_view.session().get_capture_status(triggered, captured_progress)) {
       p.setPen(View::Blue);
 
-      QFont font = p.font();
-      float fSize = AppConfig::Instance().appOptions.fontSize;
-      if (fSize > 10)
-        fSize = 10;
-      font.setPointSizeF(fSize);
+      QFont font = theme_font_cursor();
       p.setFont(font);
 
       QRect status_rect = QRect(cenPos.x() - radius, cenPos.y() + radius * 0.4,
@@ -1915,6 +1908,7 @@ void Viewport::resizeEvent(QResizeEvent *e) {
     int h = vs->height();
     vs->setGeometry(0, height() - h, width(), h);
   }
+  clear_measure();
 }
 
 void Viewport::set_receive_len(quint64 length) {
@@ -2140,9 +2134,9 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back) {
 
     if (_measure_en) {
       vector<pair<QString, QString>> rows = {
-          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WIDTH), "Width: "), _mm_width},
-          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PERIOD), "Period: "), _mm_period},
           {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FREQUENCY), "Frequency: "), _mm_freq},
+          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PERIOD), "Period: "), _mm_period},
+          {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WIDTH), "Width: "), _mm_width},
           {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DUTY_CYCLE), "Duty Cycle: "),
            _mm_duty}};
 
@@ -2654,11 +2648,18 @@ void Viewport::UpdateLanguage() {
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_ADD_X_CURSOR), "Add X-cursor"));
 }
 
-void Viewport::UpdateTheme() {}
+void Viewport::UpdateTheme() {
+  _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
+  if (!_panelBgColor.isValid())
+    _panelBgColor = QColor("#1a1a1a");
+  _panelTextColor = AppConfig::Instance().GetThemeColor("@panel-text");
+  if (!_panelTextColor.isValid())
+    _panelTextColor = QColor("#f5f0e5");
+  update(UpdateEventType::UPDATE_EV_GENERIC);
+}
 
 void Viewport::UpdateFont() {
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont font = theme_font_cursor();
   _yAction->setFont(font);
   _xAction->setFont(font);
 }

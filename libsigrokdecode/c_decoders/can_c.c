@@ -547,7 +547,7 @@ static void can_start(struct srd_decoder_inst *di)
 {
     can_state *s = (can_state *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "can");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "can");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "can");
 }
 
 static void can_decode(struct srd_decoder_inst *di)
@@ -568,7 +568,10 @@ static void can_decode(struct srd_decoder_inst *di)
     }
 
     while (1) {
-        int ret = c_decoder_wait(di, NULL, &samplenum, &matched);
+        srd_cond_builder *cb = c_cond_new();
+        c_cond_edge(cb, CAN_RX);
+        int ret = c_cond_wait(cb, di, &samplenum, &matched);
+        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
 

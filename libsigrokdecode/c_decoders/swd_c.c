@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum swd_state {
     UNKNOWN = 0,
@@ -53,51 +53,59 @@ struct swd_priv {
 };
 
 static struct srd_channel swd_channels[] = {
-    {"swclk", "SWCLK", "Master clock", 0, SRD_CHANNEL_SCLK, "dec_swd_chan_swclk"},
-    {"swdio", "SWDIO", "Data input/output", 1, SRD_CHANNEL_SDATA, "dec_swd_chan_swdio"},
+    { "swclk", "SWCLK", "Master clock", 0, SRD_CHANNEL_SCLK, "dec_swd_chan_swclk" },
+    { "swdio", "SWDIO", "Data input/output", 1, SRD_CHANNEL_SDATA, "dec_swd_chan_swdio" },
 };
 
-static const char *swd_ann_labels[][3] = {
-    {"", "reset", "RESET"},
-    {"", "enable", "ENABLE"},
-    {"", "read", "READ"},
-    {"", "write", "WRITE"},
-    {"", "ack", "ACK"},
-    {"", "data", "DATA"},
-    {"", "parity", "PARITY"},
+static const char* swd_ann_labels[][3] = {
+    { "", "reset", "RESET" },
+    { "", "enable", "ENABLE" },
+    { "", "read", "READ" },
+    { "", "write", "WRITE" },
+    { "", "ack", "ACK" },
+    { "", "data", "DATA" },
+    { "", "parity", "PARITY" },
 };
 
-static const int swd_row_all_classes[] = {ANN_RESET, ANN_ENABLE, ANN_READ, ANN_WRITE, ANN_ACK, ANN_DATA, ANN_PARITY};
+static const int swd_row_all_classes[] = { ANN_RESET, ANN_ENABLE, ANN_READ, ANN_WRITE, ANN_ACK, ANN_DATA, ANN_PARITY };
 
 static const struct srd_c_ann_row swd_ann_rows[] = {
-    {"swd", "SWD", swd_row_all_classes, 7},
+    { "swd", "SWD", swd_row_all_classes, 7 },
 };
 
 static struct srd_decoder_option swd_options[] = {
-    {"strict_start", "dec_swd_opt_strict_start", "Wait for a line reset before starting to decode", NULL, NULL},
+    { "strict_start", "dec_swd_opt_strict_start", "Wait for a line reset before starting to decode", NULL, NULL },
 };
 
-static const char *swd_inputs[] = {"logic", NULL};
-static const char *swd_outputs[] = {"swd", NULL};
-static const char *swd_tags[] = {"Debug/trace", NULL};
+static const char* swd_inputs[] = { "logic", NULL };
+static const char* swd_outputs[] = { "swd", NULL };
+static const char* swd_tags[] = { "Debug/trace", NULL };
 
-static const char *get_address_description(struct swd_priv *s)
+static const char* get_address_description(struct swd_priv* s)
 {
     static char buf[32];
     if (s->apdp == 0) {
         if (s->rw == 1) {
             switch (s->addr) {
-            case 0x0: return "IDCODE";
-            case 0x4: return s->ctrlsel == 0 ? "R CTRL/STAT" : "R DLCR";
-            case 0x8: return "RESEND";
-            case 0xC: return "RDBUFF";
+            case 0x0:
+                return "IDCODE";
+            case 0x4:
+                return s->ctrlsel == 0 ? "R CTRL/STAT" : "R DLCR";
+            case 0x8:
+                return "RESEND";
+            case 0xC:
+                return "RDBUFF";
             }
         } else {
             switch (s->addr) {
-            case 0x0: return "W ABORT";
-            case 0x4: return s->ctrlsel == 0 ? "W CTRL/STAT" : "W DLCR";
-            case 0x8: return "W SELECT";
-            case 0xC: return "W RESERVED";
+            case 0x0:
+                return "W ABORT";
+            case 0x4:
+                return s->ctrlsel == 0 ? "W CTRL/STAT" : "W DLCR";
+            case 0x8:
+                return "W SELECT";
+            case 0xC:
+                return "W RESERVED";
             }
         }
     } else {
@@ -112,7 +120,7 @@ static const char *get_address_description(struct swd_priv *s)
     return buf;
 }
 
-static void swd_reset_state(struct swd_priv *s)
+static void swd_reset_state(struct swd_priv* s)
 {
     s->bits_len = 0;
     s->linereset_count = 0;
@@ -121,7 +129,7 @@ static void swd_reset_state(struct swd_priv *s)
     s->state = REQ;
 }
 
-static void swd_next_state(struct swd_priv *s)
+static void swd_next_state(struct swd_priv* s)
 {
     s->bits_len = 0;
     s->linereset_count = 0;
@@ -157,7 +165,7 @@ static void swd_next_state(struct swd_priv *s)
     }
 }
 
-static void handle_completed_write(struct swd_priv *s)
+static void handle_completed_write(struct swd_priv* s)
 {
     if (s->apdp != 0)
         return;
@@ -167,35 +175,35 @@ static void handle_completed_write(struct swd_priv *s)
         s->orundetect = s->data & 1;
 }
 
-static void swd_reset(struct srd_decoder_inst *di)
+static void swd_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(struct swd_priv)));
     }
-    struct swd_priv *s = (struct swd_priv *)c_decoder_get_private(di);
+    struct swd_priv* s = (struct swd_priv*)c_decoder_get_private(di);
     memset(s, 0, sizeof(struct swd_priv));
     s->state = UNKNOWN;
     s->sample_edge = RISING;
 }
 
-static void swd_start(struct srd_decoder_inst *di)
+static void swd_start(struct srd_decoder_inst* di)
 {
-    struct swd_priv *s = (struct swd_priv *)c_decoder_get_private(di);
+    struct swd_priv* s = (struct swd_priv*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "swd");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "swd");
-    const char *strict = c_decoder_get_option_string(di, "strict_start", "no");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "swd");
+    const char* strict = c_decoder_get_option_string(di, "strict_start", "no");
     if (strcmp(strict, "no") == 0)
         s->state = REQ;
 }
 
-static void swd_decode(struct srd_decoder_inst *di)
+static void swd_decode(struct srd_decoder_inst* di)
 {
-    struct swd_priv *s = (struct swd_priv *)c_decoder_get_private(di);
+    struct swd_priv* s = (struct swd_priv*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         c_cond_edge(cb, SWCLK);
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
@@ -238,8 +246,7 @@ static void swd_decode(struct srd_decoder_inst *di)
         case UNKNOWN:
             break;
 
-        case REQ:
-        {
+        case REQ: {
             if (s->bits_len >= 16) {
                 static const char jtag_swd_pat[] = "0111100111100111";
                 int match = 1;
@@ -275,7 +282,7 @@ static void swd_decode(struct srd_decoder_inst *di)
 
                     uint64_t ss = s->samplenums[s->bits_len - 8];
                     s->ss_req = ss;
-                    const char *desc = get_address_description(s);
+                    const char* desc = get_address_description(s);
                     int ann = (s->rw == 1) ? ANN_READ : ANN_WRITE;
                     C_ANN_PUT(di, ss, samplenum, s->out_ann, ann, desc);
                     swd_next_state(s);
@@ -284,22 +291,17 @@ static void swd_decode(struct srd_decoder_inst *di)
             break;
         }
 
-        case ACK:
-        {
+        case ACK: {
             if (s->bits_len < 3)
                 break;
 
             uint64_t ss = s->samplenums[s->bits_len - 3];
 
-            if (s->bits[s->bits_len - 3] == '1' &&
-                s->bits[s->bits_len - 2] == '0' &&
-                s->bits[s->bits_len - 1] == '0') {
+            if (s->bits[s->bits_len - 3] == '1' && s->bits[s->bits_len - 2] == '0' && s->bits[s->bits_len - 1] == '0') {
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_ACK, "OK");
                 s->ack = 0;
                 swd_next_state(s);
-            } else if (s->bits[s->bits_len - 3] == '0' &&
-                       s->bits[s->bits_len - 2] == '0' &&
-                       s->bits[s->bits_len - 1] == '1') {
+            } else if (s->bits[s->bits_len - 3] == '0' && s->bits[s->bits_len - 2] == '0' && s->bits[s->bits_len - 1] == '1') {
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_ACK, "FAULT");
                 s->ack = 1;
                 if (s->orundetect == 1)
@@ -307,9 +309,7 @@ static void swd_decode(struct srd_decoder_inst *di)
                 else
                     swd_reset_state(s);
                 s->turnaround = 1;
-            } else if (s->bits[s->bits_len - 3] == '0' &&
-                       s->bits[s->bits_len - 2] == '1' &&
-                       s->bits[s->bits_len - 1] == '0') {
+            } else if (s->bits[s->bits_len - 3] == '0' && s->bits[s->bits_len - 2] == '1' && s->bits[s->bits_len - 1] == '0') {
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_ACK, "WAIT");
                 s->ack = 2;
                 if (s->orundetect == 1)
@@ -317,9 +317,7 @@ static void swd_decode(struct srd_decoder_inst *di)
                 else
                     swd_reset_state(s);
                 s->turnaround = 1;
-            } else if (s->bits[s->bits_len - 3] == '1' &&
-                       s->bits[s->bits_len - 2] == '1' &&
-                       s->bits[s->bits_len - 1] == '1') {
+            } else if (s->bits[s->bits_len - 3] == '1' && s->bits[s->bits_len - 2] == '1' && s->bits[s->bits_len - 1] == '1') {
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_ACK, "NOREPLY");
                 s->ack = 3;
                 swd_reset_state(s);
@@ -331,8 +329,7 @@ static void swd_decode(struct srd_decoder_inst *di)
             break;
         }
 
-        case DATA:
-        {
+        case DATA: {
             if (s->bits_len < 32)
                 break;
 
@@ -355,8 +352,7 @@ static void swd_decode(struct srd_decoder_inst *di)
             break;
         }
 
-        case DPARITY:
-        {
+        case DPARITY: {
             int parity_received = s->bits[s->bits_len - 1] - '0';
             uint64_t ss = s->samplenums[s->bits_len - 1];
 
@@ -385,9 +381,9 @@ static void swd_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void swd_destroy(struct srd_decoder_inst *di)
+static void swd_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -424,13 +420,13 @@ struct srd_c_decoder swd_c_decoder = {
     .destroy = swd_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
-    GVariant *vals[] = {
+    GVariant* vals[] = {
         g_variant_new_string("yes"),
         g_variant_new_string("no"),
     };
-    GSList *val_list = NULL;
+    GSList* val_list = NULL;
     val_list = g_slist_append(val_list, vals[0]);
     val_list = g_slist_append(val_list, vals[1]);
     swd_options[0].def = g_variant_new_string("no");

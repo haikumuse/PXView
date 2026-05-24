@@ -65,10 +65,6 @@ private:
     CHNLREG,
   };
 
-  static const QColor DecodeColours[4];
-  static const QColor ErrorBgColour;
-  static const QColor NoDecodeColour;
-
   static const int ArrowSize;
   static const double EndCapWidth;
   static const int DrawPadding;
@@ -79,8 +75,12 @@ private:
   static const QString RegionEnd;
 
 public:
-  static const QColor Colours[16];
+  static QColor getChannelColor(int channelIndex);
+  static QColor getErrorBgColor();
+  static QColor getNoDecodeColor();
+
   static const QColor OutlineColours[16];
+
   static const int MaxAnnType = 100;
 
   DecodeTrace(pv::SigSession *session, pv::data::DecoderStack *decoder_stack,

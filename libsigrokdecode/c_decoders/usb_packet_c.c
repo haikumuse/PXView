@@ -1,0 +1,505 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <glib.h>
+#include "libsigrokdecode.h"
+
+enum {
+    ANN_SYNC_OK = 0,
+    ANN_SYNC_ERR,
+    ANN_PID,
+    ANN_FRAMENUM,
+    ANN_ADDR,
+    ANN_EP,
+    ANN_CRC5_OK,
+    ANN_CRC5_ERR,
+    ANN_DATA,
+    ANN_CRC16_OK,
+    ANN_CRC16_ERR,
+    ANN_PKT_OUT,
+    ANN_PKT_IN,
+    ANN_PKT_SOF,
+    ANN_PKT_SETUP,
+    ANN_PKT_DATA0,
+    ANN_PKT_DATA1,
+    ANN_PKT_DATA2,
+    ANN_PKT_MDATA,
+    ANN_PKT_ACK,
+    ANN_PKT_NAK,
+    ANN_PKT_STALL,
+    ANN_PKT_NYET,
+    ANN_PKT_PRE,
+    ANN_PKT_ERR,
+    ANN_PKT_SPLIT,
+    ANN_PKT_PING,
+    ANN_PKT_RESERVED,
+    ANN_PKT_INVALID,
+    NUM_ANN,
+};
+
+#define USB_PKT_MAX_BITS 4096
+
+enum usb_pkt_state {
+    PKT_WAIT_SOP = 0,
+    PKT_GET_BIT = 1,
+};
+
+enum pid_category {
+    PID_CAT_TOKEN = 0,
+    PID_CAT_DATA,
+    PID_CAT_HANDSHAKE,
+    PID_CAT_SPECIAL,
+};
+
+typedef struct {
+    int state;
+    char bits[USB_PKT_MAX_BITS];
+    int bits_len;
+    uint64_t bit_ss[USB_PKT_MAX_BITS];
+    uint64_t bit_es[USB_PKT_MAX_BITS];
+    uint64_t ss_packet;
+    uint64_t es_packet;
+    int out_ann;
+    int out_python;
+} usb_pkt_state;
+
+static const char *usb_pkt_inputs[] = {"usb_signalling", NULL};
+static const char *usb_pkt_outputs[] = {"usb_packet", NULL};
+static const char *usb_pkt_tags[] = {"PC", NULL};
+
+static struct srd_decoder_option usb_pkt_options[] = {
+    {"signalling", "dec_usb_packet_opt_signalling", "Signalling", NULL, NULL},
+};
+
+static const char *usb_pkt_ann_labels[][3] = {
+    {"", "sync-ok", "SYNC"},
+    {"", "sync-err", "SYNC (error)"},
+    {"", "pid", "PID"},
+    {"", "framenum", "FRAMENUM"},
+    {"", "addr", "ADDR"},
+    {"", "ep", "EP"},
+    {"", "crc5-ok", "CRC5"},
+    {"", "crc5-err", "CRC5 (error)"},
+    {"", "data", "DATA"},
+    {"", "crc16-ok", "CRC16"},
+    {"", "crc16-err", "CRC16 (error)"},
+    {"", "packet-out", "Packet: OUT"},
+    {"", "packet-in", "Packet: IN"},
+    {"", "packet-sof", "Packet: SOF"},
+    {"", "packet-setup", "Packet: SETUP"},
+    {"", "packet-data0", "Packet: DATA0"},
+    {"", "packet-data1", "Packet: DATA1"},
+    {"", "packet-data2", "Packet: DATA2"},
+    {"", "packet-mdata", "Packet: MDATA"},
+    {"", "packet-ack", "Packet: ACK"},
+    {"", "packet-nak", "Packet: NAK"},
+    {"", "packet-stall", "Packet: STALL"},
+    {"", "packet-nyet", "Packet: NYET"},
+    {"", "packet-pre", "Packet: PRE"},
+    {"", "packet-err", "Packet: ERR"},
+    {"", "packet-split", "Packet: SPLIT"},
+    {"", "packet-ping", "Packet: PING"},
+    {"", "packet-reserved", "Packet: Reserved"},
+    {"", "packet-invalid", "Packet: Invalid"},
+};
+
+static const int usb_pkt_row_fields_classes[] = {
+    ANN_SYNC_OK, ANN_SYNC_ERR, ANN_PID, ANN_FRAMENUM, ANN_ADDR, ANN_EP,
+    ANN_CRC5_OK, ANN_CRC5_ERR, ANN_DATA, ANN_CRC16_OK, ANN_CRC16_ERR, -1
+};
+static const int usb_pkt_row_packet_classes[] = {
+    ANN_PKT_OUT, ANN_PKT_IN, ANN_PKT_SOF, ANN_PKT_SETUP,
+    ANN_PKT_DATA0, ANN_PKT_DATA1, ANN_PKT_DATA2, ANN_PKT_MDATA,
+    ANN_PKT_ACK, ANN_PKT_NAK, ANN_PKT_STALL, ANN_PKT_NYET,
+    ANN_PKT_PRE, ANN_PKT_ERR, ANN_PKT_SPLIT, ANN_PKT_PING,
+    ANN_PKT_RESERVED, ANN_PKT_INVALID, -1
+};
+static const struct srd_c_ann_row usb_pkt_ann_rows[] = {
+    {"fields", "Packet fields", usb_pkt_row_fields_classes, 11},
+    {"packet", "Packets", usb_pkt_row_packet_classes, 18},
+};
+
+/* PID lookup table */
+static const struct { const char *bitstr; const char *name; int category; int pkt_ann; } pid_table[] = {
+    /* Token */
+    {"10000111", "OUT",    PID_CAT_TOKEN,     ANN_PKT_OUT},
+    {"10010110", "IN",     PID_CAT_TOKEN,     ANN_PKT_IN},
+    {"10100101", "SOF",    PID_CAT_TOKEN,     ANN_PKT_SOF},
+    {"10110100", "SETUP",  PID_CAT_TOKEN,     ANN_PKT_SETUP},
+    /* Data */
+    {"11000011", "DATA0",  PID_CAT_DATA,      ANN_PKT_DATA0},
+    {"11010010", "DATA1",  PID_CAT_DATA,      ANN_PKT_DATA1},
+    {"11100001", "DATA2",  PID_CAT_DATA,      ANN_PKT_DATA2},
+    {"11110000", "MDATA",  PID_CAT_DATA,      ANN_PKT_MDATA},
+    /* Handshake */
+    {"01001011", "ACK",    PID_CAT_HANDSHAKE, ANN_PKT_ACK},
+    {"01011010", "NAK",    PID_CAT_HANDSHAKE, ANN_PKT_NAK},
+    {"01111000", "STALL",  PID_CAT_HANDSHAKE, ANN_PKT_STALL},
+    {"01101001", "NYET",   PID_CAT_HANDSHAKE, ANN_PKT_NYET},
+    /* Special */
+    {"00111100", "PRE",    PID_CAT_SPECIAL,   ANN_PKT_PRE},
+    {"00011110", "SPLIT",  PID_CAT_SPECIAL,   ANN_PKT_SPLIT},
+    {"00101101", "PING",   PID_CAT_SPECIAL,   ANN_PKT_PING},
+    {"00001111", "Reserved", PID_CAT_SPECIAL, ANN_PKT_RESERVED},
+};
+#define NUM_PIDS (sizeof(pid_table) / sizeof(pid_table[0]))
+
+/* CRC5 calculation for token packets */
+static uint8_t usb_pkt_calc_crc5(const char *bitstr, int len)
+{
+    uint8_t poly5 = 0x25;
+    uint8_t crc5 = 0x1f;
+    for (int i = 0; i < len; i++) {
+        crc5 <<= 1;
+        if ((bitstr[i] - '0') != (crc5 >> 5))
+            crc5 ^= poly5;
+        crc5 &= 0x1f;
+    }
+    crc5 ^= 0x1f;
+    /* Reverse bit order */
+    uint8_t out = 0;
+    for (int i = 0; i < 5; i++) {
+        if (crc5 >> i & 1)
+            out |= (1 << (4 - i));
+    }
+    return out;
+}
+
+/* CRC16 calculation for data packets */
+static uint16_t usb_pkt_calc_crc16(const char *bitstr, int len)
+{
+    uint32_t poly16 = 0x18005;
+    uint32_t crc16 = 0xffff;
+    for (int i = 0; i < len; i++) {
+        crc16 <<= 1;
+        if ((bitstr[i] - '0') != (crc16 >> 16))
+            crc16 ^= poly16;
+        crc16 &= 0xffff;
+    }
+    crc16 ^= 0xffff;
+    /* Reverse bit order */
+    uint16_t out = 0;
+    for (int i = 0; i < 16; i++) {
+        if (crc16 >> i & 1)
+            out |= (1 << (15 - i));
+    }
+    return out;
+}
+
+/* Convert bits to byte (LSB first) */
+static uint8_t usb_pkt_bits_to_byte(const char *bits, int start, int len)
+{
+    uint8_t val = 0;
+    for (int i = 0; i < len && i < 8; i++) {
+        if (bits[start + i] == '1')
+            val |= (1 << i);
+    }
+    return val;
+}
+
+/* Convert bits to integer (LSB first) */
+static uint32_t usb_pkt_bits_to_int(const char *bits, int start, int len)
+{
+    uint32_t val = 0;
+    for (int i = 0; i < len && i < 32; i++) {
+        if (bits[start + i] == '1')
+            val |= (1 << i);
+    }
+    return val;
+}
+
+/* Find PID entry by bit string */
+static int usb_pkt_find_pid(const char *bitstr8)
+{
+    for (int i = 0; i < (int)NUM_PIDS; i++) {
+        if (strncmp(pid_table[i].bitstr, bitstr8, 8) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_state *s)
+{
+    if (s->bits_len < 8) return;
+
+    /* Check SYNC field (first 8 bits should be 00000001) */
+    int sync_ok = 1;
+    for (int i = 0; i < 7; i++) {
+        if (s->bits[i] != '0') { sync_ok = 0; break; }
+    }
+    if (s->bits[7] != '1') sync_ok = 0;
+
+    if (sync_ok) {
+        C_ANN_PUT(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_OK, "SYNC");
+    } else {
+        C_ANN_PUT(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_ERR, "SYNC (error)");
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+        return;
+    }
+
+    if (s->bits_len < 16) {
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+        return;
+    }
+
+    /* Parse PID (bits 8-15) */
+    int pid_idx = usb_pkt_find_pid(&s->bits[8]);
+    if (pid_idx < 0) {
+        char pid_str[16];
+        for (int i = 0; i < 8; i++) pid_str[i] = s->bits[8 + i];
+        pid_str[8] = '\0';
+        char buf[32];
+        snprintf(buf, sizeof(buf), "PID: %s (invalid)", pid_str);
+        C_ANN_PUT(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, buf);
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+        return;
+    }
+
+    const char *pid_name = pid_table[pid_idx].name;
+    int pid_cat = pid_table[pid_idx].category;
+    int pkt_ann = pid_table[pid_idx].pkt_ann;
+
+    char pid_buf[32];
+    snprintf(pid_buf, sizeof(pid_buf), "PID: %s", pid_name);
+    C_ANN_PUT(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, pid_buf);
+
+    /* Prepare python output data */
+    /* Format: pcategory(1 byte) + pid_name string (null-terminated) + packet-specific data */
+    unsigned char py_data[512];
+    int py_len = 0;
+    py_data[py_len++] = (unsigned char)pid_cat;
+    int name_len = (int)strlen(pid_name);
+    memcpy(py_data + py_len, pid_name, name_len + 1); /* include null terminator */
+    py_len += name_len + 1;
+
+    if (pid_cat == PID_CAT_TOKEN) {
+        /* Token packet: SYNC + PID + ADDR(7) + ENDP(4) + CRC5(5) */
+        if (s->bits_len < 40) {
+            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+            return;
+        }
+
+        uint32_t addr = usb_pkt_bits_to_int(s->bits, 16, 7);
+        uint32_t ep = usb_pkt_bits_to_int(s->bits, 23, 4);
+        uint32_t crc5_rx = usb_pkt_bits_to_int(s->bits, 27, 5);
+
+        /* CRC5 covers PID + ADDR + ENDP (bits 8-26, 19 bits) */
+        uint8_t crc5_calc = usb_pkt_calc_crc5(&s->bits[8], 19);
+
+        char addr_buf[32];
+        snprintf(addr_buf, sizeof(addr_buf), "ADDR: %d", addr);
+        C_ANN_PUT(di, s->bit_ss[16], s->bit_es[22], s->out_ann, ANN_ADDR, addr_buf);
+
+        char ep_buf[32];
+        snprintf(ep_buf, sizeof(ep_buf), "EP: %d", ep);
+        C_ANN_PUT(di, s->bit_ss[23], s->bit_es[26], s->out_ann, ANN_EP, ep_buf);
+
+        if (crc5_rx == crc5_calc) {
+            char crc5_buf[32];
+            snprintf(crc5_buf, sizeof(crc5_buf), "CRC5: 0x%02X", crc5_rx);
+            C_ANN_PUT(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_OK, crc5_buf);
+        } else {
+            char crc5_buf[64];
+            snprintf(crc5_buf, sizeof(crc5_buf), "CRC5: 0x%02X (expected 0x%02X)", crc5_rx, crc5_calc);
+            C_ANN_PUT(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_ERR, crc5_buf);
+        }
+
+        /* Packet summary */
+        if (strcmp(pid_name, "SOF") == 0) {
+            uint32_t framenum = usb_pkt_bits_to_int(s->bits, 16, 11);
+            char fn_buf[32];
+            snprintf(fn_buf, sizeof(fn_buf), "FRAMENUM: %d", framenum);
+            C_ANN_PUT(di, s->bit_ss[16], s->bit_es[26], s->out_ann, ANN_FRAMENUM, fn_buf);
+            char pkt_buf[64];
+            snprintf(pkt_buf, sizeof(pkt_buf), "SOF: Frame %d", framenum);
+            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+
+            /* Python output: pcategory + name + framenum(2 bytes) */
+            py_data[py_len++] = (framenum >> 8) & 0xFF;
+            py_data[py_len++] = framenum & 0xFF;
+        } else {
+            char pkt_buf[64];
+            snprintf(pkt_buf, sizeof(pkt_buf), "%s: ADDR %d EP %d", pid_name, addr, ep);
+            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+
+            /* Python output: pcategory + name + addr(1 byte) + ep(1 byte) */
+            py_data[py_len++] = (unsigned char)addr;
+            py_data[py_len++] = (unsigned char)ep;
+        }
+
+    } else if (pid_cat == PID_CAT_DATA) {
+        /* Data packet: SYNC + PID + DATA(N*8) + CRC16(16) */
+        int data_bits = s->bits_len - 16 - 16; /* subtract PID and CRC16 */
+        if (data_bits < 0 || (data_bits % 8) != 0) {
+            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+            return;
+        }
+
+        int data_bytes = data_bits / 8;
+
+        /* CRC16 covers PID + DATA (bits 8 to bits_len-17) */
+        int crc_bits = s->bits_len - 16 - 8; /* bits for CRC calculation */
+        uint16_t crc16_rx = (uint16_t)usb_pkt_bits_to_int(s->bits, s->bits_len - 16, 16);
+        uint16_t crc16_calc = usb_pkt_calc_crc16(&s->bits[8], crc_bits);
+
+        /* Format data bytes */
+        char data_buf[256];
+        int dpos = 0;
+        dpos += snprintf(data_buf + dpos, sizeof(data_buf) - dpos, "DATA:");
+        for (int i = 0; i < data_bytes && dpos < 240; i++) {
+            uint8_t b = usb_pkt_bits_to_byte(s->bits, 16 + i * 8, 8);
+            dpos += snprintf(data_buf + dpos, sizeof(data_buf) - dpos, " %02X", b);
+        }
+        if (data_bytes > 0) {
+            C_ANN_PUT(di, s->bit_ss[16], s->bit_es[16 + data_bits - 1], s->out_ann, ANN_DATA, data_buf);
+        }
+
+        if (crc16_rx == crc16_calc) {
+            char crc16_buf[32];
+            snprintf(crc16_buf, sizeof(crc16_buf), "CRC16: 0x%04X", crc16_rx);
+            C_ANN_PUT(di, s->bit_ss[s->bits_len - 16], s->bit_es[s->bits_len - 1],
+                      s->out_ann, ANN_CRC16_OK, crc16_buf);
+        } else {
+            char crc16_buf[64];
+            snprintf(crc16_buf, sizeof(crc16_buf), "CRC16: 0x%04X (expected 0x%04X)", crc16_rx, crc16_calc);
+            C_ANN_PUT(di, s->bit_ss[s->bits_len - 16], s->bit_es[s->bits_len - 1],
+                      s->out_ann, ANN_CRC16_ERR, crc16_buf);
+        }
+
+        /* Packet summary */
+        char pkt_buf[64];
+        snprintf(pkt_buf, sizeof(pkt_buf), "%s: %d bytes", pid_name, data_bytes);
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+
+        /* Python output: pcategory + name + data_len(2 bytes) + data bytes */
+        py_data[py_len++] = (data_bytes >> 8) & 0xFF;
+        py_data[py_len++] = data_bytes & 0xFF;
+        for (int i = 0; i < data_bytes && py_len < 500; i++) {
+            py_data[py_len++] = usb_pkt_bits_to_byte(s->bits, 16 + i * 8, 8);
+        }
+
+    } else if (pid_cat == PID_CAT_HANDSHAKE) {
+        /* Handshake packet: SYNC + PID only */
+        char pkt_buf[32];
+        snprintf(pkt_buf, sizeof(pkt_buf), "%s", pid_name);
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+
+    } else if (pid_cat == PID_CAT_SPECIAL) {
+        /* Special packet */
+        char pkt_buf[32];
+        snprintf(pkt_buf, sizeof(pkt_buf), "%s", pid_name);
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+    }
+
+    /* Send python output */
+    c_decoder_put_python(di, s->ss_packet, s->es_packet, s->out_python,
+                         "PACKET", py_data, py_len);
+}
+
+static void usb_pkt_recv_proto(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    const char *cmd, const unsigned char *data, uint64_t data_len)
+{
+    usb_pkt_state *s = (usb_pkt_state *)c_decoder_get_private(di);
+    if (!s) return;
+
+    if (strcmp(cmd, "SOP") == 0) {
+        if (s->state != PKT_WAIT_SOP) return;
+        s->ss_packet = start_sample;
+        s->bits_len = 0;
+        s->state = PKT_GET_BIT;
+    } else if (strcmp(cmd, "BIT") == 0) {
+        if (s->state != PKT_GET_BIT) return;
+        if (s->bits_len < USB_PKT_MAX_BITS && data && data_len > 0) {
+            s->bits[s->bits_len] = (char)data[0]; /* '0' or '1' */
+            s->bit_ss[s->bits_len] = start_sample;
+            s->bit_es[s->bits_len] = end_sample;
+            s->bits_len++;
+        }
+    } else if (strcmp(cmd, "EOP") == 0 || strcmp(cmd, "ERR") == 0) {
+        if (s->state != PKT_GET_BIT) return;
+        s->es_packet = end_sample;
+        usb_pkt_handle_packet(di, s);
+        s->bits_len = 0;
+        s->state = PKT_WAIT_SOP;
+    }
+    /* Ignore STUFF BIT, SYM, RESET, KEEP ALIVE */
+}
+
+static void usb_pkt_reset(struct srd_decoder_inst *di)
+{
+    if (!c_decoder_get_private(di)) {
+        c_decoder_set_private(di, g_malloc0(sizeof(usb_pkt_state)));
+    }
+    usb_pkt_state *s = (usb_pkt_state *)c_decoder_get_private(di);
+    memset(s, 0, sizeof(usb_pkt_state));
+    s->state = PKT_WAIT_SOP;
+}
+
+static void usb_pkt_start(struct srd_decoder_inst *di)
+{
+    usb_pkt_state *s = (usb_pkt_state *)c_decoder_get_private(di);
+    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "usb_packet");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "usb_packet");
+}
+
+static void usb_pkt_decode(struct srd_decoder_inst *di)
+{
+    (void)di;
+}
+
+static void usb_pkt_destroy(struct srd_decoder_inst *di)
+{
+    void *priv = c_decoder_get_private(di);
+    if (priv) {
+        g_free(priv);
+        c_decoder_set_private(di, NULL);
+    }
+}
+
+struct srd_c_decoder usb_packet_c_decoder = {
+    .id = "usb_packet_c",
+    .name = "USB packet(C)",
+    .longname = "Universal Serial Bus (LS/FS) packet (C)",
+    .desc = "USB (low-speed and full-speed) packet protocol. (C implementation)",
+    .license = "gplv2+",
+    .channels = NULL,
+    .num_channels = 0,
+    .optional_channels = NULL,
+    .num_optional_channels = 0,
+    .options = usb_pkt_options,
+    .num_options = 1,
+    .num_annotations = NUM_ANN,
+    .ann_labels = usb_pkt_ann_labels,
+    .num_annotation_rows = 2,
+    .annotation_rows = usb_pkt_ann_rows,
+    .inputs = usb_pkt_inputs,
+    .num_inputs = 1,
+    .outputs = usb_pkt_outputs,
+    .num_outputs = 1,
+    .binary = NULL,
+    .num_binary = 0,
+    .tags = usb_pkt_tags,
+    .num_tags = 1,
+    .reset = usb_pkt_reset,
+    .start = usb_pkt_start,
+    .decode = usb_pkt_decode,
+    .destroy = usb_pkt_destroy,
+    .recv_proto = usb_pkt_recv_proto,
+};
+
+SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+{
+    usb_pkt_options[0].def = g_variant_new_string("full-speed");
+    GSList *sig_vals = NULL;
+    sig_vals = g_slist_append(sig_vals, g_variant_new_string("full-speed"));
+    sig_vals = g_slist_append(sig_vals, g_variant_new_string("low-speed"));
+    usb_pkt_options[0].values = sig_vals;
+
+    return &usb_packet_c_decoder;
+}
+
+SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)
+{
+    return SRD_C_DECODER_API_VERSION;
+}

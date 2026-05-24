@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 enum sirc_ann {
     ANN_BIT = 0,
     ANN_AGC,

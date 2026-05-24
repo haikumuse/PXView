@@ -46,10 +46,26 @@
 #include <QFileDialog>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QComboBox>
+#include <QStandardPaths>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QDir>
+#include <QFileSystemWatcher>
+#include <QPlainTextEdit>
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+#include <QSplitter>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMessageBox>
+#include <QInputDialog>
 #include <vector>
 #include <QGridLayout>
 #include <algorithm>
+#include <QTimer>
+#include "../ui/widgetinspector.h"
 
 #include "../config/appconfig.h"
 #include "../config/shortcutdefs.h"
@@ -185,12 +201,19 @@ ApplicationParamDlg::ApplicationParamDlg()
     , _btn_reset_default(nullptr)
     , _btn_delete(nullptr)
     , _clash_warning_label(nullptr)
-    , _style_table(nullptr)
+    , _style_category_tree(nullptr)
+    , _style_page_stack(nullptr)
+    , _live_preview_timer(nullptr)
+    , _file_watcher(nullptr)
+    , _preset_combo(nullptr)
 {
 }
 
 ApplicationParamDlg::~ApplicationParamDlg()
 {
+    if (_file_watcher) {
+        delete _file_watcher;
+    }
 }
 
 void ApplicationParamDlg::bind_font_name_list(QComboBox *box, QString v)
@@ -464,23 +487,24 @@ QWidget* ApplicationParamDlg::createStylePage()
 
     _default_style_tokens.clear();
     _style_tokens.clear();
+    _style_preview_widgets.clear();
+    _style_button_widgets.clear();
+    _style_line_edit_widgets.clear();
 
     AppConfig &app = AppConfig::Instance();
     QString style = app.frameOptions.style;
-    QString qssRes = ":/" + style + ".qss";
-    QFile qss(qssRes);
-    if (qss.open(QFile::ReadOnly | QFile::Text)) {
-        QString qssContent = qss.readAll();
-        qss.close();
 
-        QRegularExpression tokenRe("@([\\w-]+):\\s*([^\\r\\n]+?)\\s*(?:\\*/|\\r|\\n)");
-        QRegularExpressionMatchIterator it = tokenRe.globalMatch(qssContent);
-        while (it.hasNext()) {
-            QRegularExpressionMatch match = it.next();
-            QString tokenName = "@" + match.captured(1);
-            QString tokenValue = match.captured(2).trimmed();
-            _default_style_tokens[tokenName] = tokenValue;
+    // Load defaults from current JSON theme
+    QString jsonRes = ":/" + style + ".json";
+    QFile jsonFile(jsonRes);
+    if (jsonFile.open(QFile::ReadOnly | QFile::Text)) {
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonFile.readAll());
+        QJsonObject rootObj = jsonDoc.object();
+        QJsonObject tokensObj = rootObj.value("tokens").toObject();
+        for (const QString &key : tokensObj.keys()) {
+            _default_style_tokens[key] = tokensObj.value(key).toString();
         }
+        jsonFile.close();
     }
 
     _style_tokens = _default_style_tokens;
@@ -489,55 +513,224 @@ QWidget* ApplicationParamDlg::createStylePage()
         _style_tokens[app.styleOptions.items[i].tokenName] = app.styleOptions.items[i].value;
     }
 
-    QStringList tokenNames = _style_tokens.keys();
-    std::sort(tokenNames.begin(), tokenNames.end());
+    _original_style_tokens = _style_tokens;
 
-    _style_table = new QTableWidget(tokenNames.size(), 3);
-    _style_table->setHorizontalHeaderLabels(QStringList()
-        << L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_TOKEN), "Token")
-        << L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_PREVIEW), "Preview")
-        << L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_VALUE), "Value"));
-    _style_table->horizontalHeader()->setStretchLastSection(false);
-    _style_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    _style_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
-    _style_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
-    _style_table->setColumnWidth(1, 60);
-    _style_table->setColumnWidth(2, 110);
-    _style_table->verticalHeader()->setVisible(false);
-    _style_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    _style_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-
-    for (int i = 0; i < tokenNames.size(); i++) {
-        QString name = tokenNames[i];
-        QString value = _style_tokens[name];
-
-        QTableWidgetItem *nameItem = new QTableWidgetItem(name);
-        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
-        _style_table->setItem(i, 0, nameItem);
-
-        QWidget *previewWidget = new QWidget();
-        QColor c(value);
-        if (c.isValid()) {
-            previewWidget->setStyleSheet(QString("background-color: %1; border: 1px solid #555;").arg(value));
-        } else {
-            previewWidget->setStyleSheet("background-color: transparent; border: 1px solid #555;");
+    QFile schemaFile(":/theme-schema.json");
+    QJsonArray categoriesArr;
+    QSet<QString> hiddenSet;
+    if (schemaFile.open(QFile::ReadOnly | QFile::Text)) {
+        QJsonDocument doc = QJsonDocument::fromJson(schemaFile.readAll());
+        QJsonObject schemaRoot = doc.object();
+        categoriesArr = schemaRoot.value("categories").toArray();
+        
+        QJsonArray hiddenTokensArr = schemaRoot.value("hidden").toArray();
+        for (int i = 0; i < hiddenTokensArr.size(); ++i) {
+            hiddenSet.insert(hiddenTokensArr[i].toString());
         }
-        previewWidget->setFixedSize(40, 20);
-        QWidget *previewContainer = new QWidget();
-        QHBoxLayout *previewLay = new QHBoxLayout(previewContainer);
-        previewLay->setContentsMargins(2, 2, 2, 2);
-        previewLay->setAlignment(Qt::AlignCenter);
-        previewLay->addWidget(previewWidget);
-        _style_table->setCellWidget(i, 1, previewContainer);
-
-        QPushButton *colorBtn = new QPushButton(value);
-        colorBtn->setFixedWidth(100);
-        _style_table->setCellWidget(i, 2, colorBtn);
-
-        QObject::connect(colorBtn, &QPushButton::clicked, colorBtn, [this, i](){ onStyleTokenChanged(i); });
+        schemaFile.close();
     }
 
-    lay->addWidget(_style_table);
+    QHBoxLayout *presetLay = new QHBoxLayout();
+    QLabel *presetLbl = new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_PRESET), "Preset Theme:"));
+    _preset_combo = new QComboBox();
+    _preset_combo->addItem("Custom", "");
+    _preset_combo->addItem("Dark", ":/dark.json");
+    _preset_combo->addItem("Light", ":/light.json");
+    _preset_combo->addItem("Atom One Dark", ":/atom.json");
+    _preset_combo->addItem("Monokai", ":/monokai.json");
+
+    QString userThemePath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/themes";
+    QDir dir(userThemePath);
+    if (!dir.exists()) dir.mkpath(".");
+    QStringList userThemes = dir.entryList(QStringList() << "*.json", QDir::Files);
+    for (const QString &themeFile : userThemes) {
+        QString absPath = dir.absoluteFilePath(themeFile);
+        if (QFileInfo(absPath).isFile()) {
+            _preset_combo->addItem(QFileInfo(absPath).baseName(), absPath);
+        }
+    }
+
+    QPushButton *savePresetBtn = new QPushButton("Save as Preset");
+
+    presetLay->addWidget(presetLbl);
+    presetLay->addWidget(_preset_combo);
+    presetLay->addWidget(savePresetBtn);
+    presetLay->addStretch();
+    lay->addLayout(presetLay);
+
+    QSplitter *splitter = new QSplitter(Qt::Horizontal);
+
+    QObject::connect(_preset_combo, QOverload<int>::of(&QComboBox::currentIndexChanged), splitter, [this](int index){
+        if (index > 0) {
+            QString path = _preset_combo->currentData().toString();
+            if (!path.isEmpty()) {
+                applyPresetTheme(path);
+            }
+        }
+    });
+
+    QObject::connect(savePresetBtn, &QPushButton::clicked, splitter, [this, userThemePath](){
+        bool ok;
+        QWidget *dlgWindow = _style_page_stack ? _style_page_stack->window() : nullptr;
+        QString name = QInputDialog::getText(dlgWindow, "Save Preset", "Preset Name:", QLineEdit::Normal, "", &ok);
+        if (ok && !name.isEmpty()) {
+            QJsonObject tokensObj;
+            for (auto it = _style_tokens.begin(); it != _style_tokens.end(); ++it) {
+                tokensObj[it.key()] = it.value();
+            }
+            QJsonObject rootObj;
+            rootObj["tokens"] = tokensObj;
+            QJsonDocument doc(rootObj);
+            QFile file(userThemePath + "/" + name + ".json");
+            if (file.open(QFile::WriteOnly)) {
+                file.write(doc.toJson(QJsonDocument::Indented));
+                file.close();
+                _preset_combo->addItem(name, file.fileName());
+                QWidget *dlgWindow = _style_page_stack ? _style_page_stack->window() : nullptr;
+                QMessageBox::information(dlgWindow, "Success", "Preset saved successfully.");
+            }
+        }
+    });
+
+    _style_category_tree = new QTreeWidget();
+    _style_category_tree->setHeaderHidden(true);
+    _style_category_tree->setFixedWidth(200);
+
+    _style_page_stack = new QStackedWidget();
+
+    for (int i = 0; i < categoriesArr.size(); ++i) {
+        QJsonObject catObj = categoriesArr[i].toObject();
+        QString catId = catObj.value("id").toString();
+        QString catName = catObj.value("name").toString();
+
+        QTreeWidgetItem *item = new QTreeWidgetItem(_style_category_tree);
+        item->setText(0, catName);
+        item->setData(0, Qt::UserRole, catId);
+
+        QScrollArea *scrollArea = new QScrollArea();
+        scrollArea->setWidgetResizable(true);
+        scrollArea->setFrameShape(QFrame::NoFrame);
+        
+        QWidget *catWidget = new QWidget();
+        QVBoxLayout *catLay = new QVBoxLayout(catWidget);
+        catLay->setContentsMargins(10, 10, 10, 10);
+        catLay->setSpacing(10);
+
+        QJsonArray tokensArr = catObj.value("tokens").toArray();
+        for (int j = 0; j < tokensArr.size(); ++j) {
+            QJsonObject tokenObj = tokensArr[j].toObject();
+            QString tId = tokenObj.value("id").toString();
+            QString tType = tokenObj.value("type").toString();
+            QString tLabel = tokenObj.value("label").toString();
+
+            if (hiddenSet.contains(tId)) continue;
+
+            QWidget *rowWidget = new QWidget();
+            QHBoxLayout *rowLay = new QHBoxLayout(rowWidget);
+            rowLay->setContentsMargins(0, 0, 0, 0);
+            
+            QLabel *lbl = new QLabel(tLabel.isEmpty() ? tId : tLabel);
+            lbl->setToolTip(tId);
+            lbl->setMinimumWidth(150);
+            rowLay->addWidget(lbl);
+
+            QString currentValue = _style_tokens.value(tId, "");
+
+            if (tType == "color") {
+                QWidget *previewWidget = new QWidget();
+                QColor c(currentValue);
+                if (c.isValid()) {
+                    previewWidget->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 4px;").arg(currentValue));
+                } else {
+                    previewWidget->setStyleSheet("background-color: transparent; border: 1px solid #555; border-radius: 4px;");
+                }
+                previewWidget->setFixedSize(30, 20);
+                
+                QWidget *previewContainer = new QWidget();
+                QHBoxLayout *previewLay = new QHBoxLayout(previewContainer);
+                previewLay->setContentsMargins(0, 0, 0, 0);
+                previewLay->setAlignment(Qt::AlignCenter);
+                previewLay->addWidget(previewWidget);
+                rowLay->addWidget(previewContainer);
+
+                QPushButton *colorBtn = new QPushButton(currentValue);
+                colorBtn->setFixedWidth(100);
+                rowLay->addWidget(colorBtn);
+
+                _style_preview_widgets[tId] = previewWidget;
+                _style_button_widgets[tId] = colorBtn;
+
+                QObject::connect(colorBtn, &QPushButton::clicked, colorBtn, [this, tId](){ onStyleTokenColorChanged(tId); });
+            } else {
+                QLineEdit *lineEdit = new QLineEdit(currentValue);
+                lineEdit->setFixedWidth(130);
+                rowLay->addStretch();
+                rowLay->addWidget(lineEdit);
+                
+                _style_line_edit_widgets[tId] = lineEdit;
+
+                QObject::connect(lineEdit, &QLineEdit::textEdited, lineEdit, [this, tId](const QString &text){
+                    onStyleTokenTextChanged(tId, text);
+                });
+            }
+
+            catLay->addWidget(rowWidget);
+        }
+        
+        catLay->addStretch();
+        scrollArea->setWidget(catWidget);
+        _style_page_stack->addWidget(scrollArea);
+        item->setData(0, Qt::UserRole + 1, _style_page_stack->count() - 1);
+    }
+
+    splitter->addWidget(_style_category_tree);
+    splitter->addWidget(_style_page_stack);
+    lay->addWidget(splitter, 1);
+
+    if (!_live_preview_timer) {
+        _live_preview_timer = new QTimer(_style_page_stack);
+        QObject::connect(_live_preview_timer, &QTimer::timeout, _style_page_stack, [this](){
+            _live_preview_timer->stop();
+            applyLivePreview();
+        });
+    }
+
+    QObject::connect(_style_category_tree, &QTreeWidget::currentItemChanged, _style_category_tree, [this](QTreeWidgetItem *current, QTreeWidgetItem *previous){
+        onStyleCategoryChanged(current, previous);
+    });
+    if (_style_category_tree->topLevelItemCount() > 0) {
+        _style_category_tree->setCurrentItem(_style_category_tree->topLevelItem(0));
+    }
+
+    QPushButton *pickerBtn = new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_PICKER), "Picker Tool"));
+    pickerBtn->setFixedWidth(100);
+    pickerBtn->setCheckable(true);
+
+    QPushButton *editJsonBtn = new QPushButton("Edit JSON Source");
+    editJsonBtn->setFixedWidth(120);
+    QObject::connect(editJsonBtn, &QPushButton::clicked, _style_page_stack, [this](){ openExternalJsonEditor(); });
+
+    QObject::connect(pickerBtn, &QPushButton::clicked, _style_page_stack, [this, pickerBtn](){
+        if (pickerBtn->isChecked()) {
+            QWidget *dlg = _style_page_stack->window();
+            if (dlg) dlg->hide();
+            pv::ui::WidgetInspector::Instance()->setPickerModeEnabled(true);
+        }
+    });
+
+    QObject::connect(pv::ui::WidgetInspector::Instance(), &pv::ui::WidgetInspector::widgetPicked, _style_page_stack, [this, pickerBtn](QWidget *w){
+        if (pv::ui::WidgetInspector::Instance()->isPickerModeEnabled()) {
+            pv::ui::WidgetInspector::Instance()->setPickerModeEnabled(false);
+            pickerBtn->setChecked(false);
+            QWidget *dlg = _style_page_stack->window();
+            if (dlg) {
+                dlg->show();
+                dlg->raise();
+                dlg->activateWindow();
+            }
+            onWidgetPicked(w);
+        }
+    });
 
     QPushButton *importBtn = new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_IMPORT), "Import"));
     importBtn->setFixedWidth(80);
@@ -552,6 +745,8 @@ QWidget* ApplicationParamDlg::createStylePage()
     QObject::connect(resetBtn, &QPushButton::clicked, resetBtn, [this](){ onResetStyle(); });
 
     QHBoxLayout *btnLay = new QHBoxLayout();
+    btnLay->addWidget(pickerBtn);
+    btnLay->addWidget(editJsonBtn);
     btnLay->addStretch();
     btnLay->addWidget(importBtn);
     btnLay->addWidget(exportBtn);
@@ -561,6 +756,212 @@ QWidget* ApplicationParamDlg::createStylePage()
     page->setLayout(lay);
     return page;
 }
+
+void ApplicationParamDlg::onWidgetPicked(QWidget *w)
+{
+    if (!w) return;
+    QString className = w->metaObject()->className();
+    QString objName = w->objectName();
+    
+    QString targetCategory = "global.colors";
+    
+    if (className.contains("LogicSignal") || objName.contains("logic", Qt::CaseInsensitive)) {
+        targetCategory = "logic.colors";
+    } else if (className.contains("AnalogSignal") || className.contains("DsoSignal") || objName.contains("analog", Qt::CaseInsensitive)) {
+        targetCategory = "signal.colors";
+    } else if (className.contains("Dock") || className.contains("Panel")) {
+        targetCategory = "typography";
+    }
+
+    for (int i = 0; i < _style_category_tree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *item = _style_category_tree->topLevelItem(i);
+        if (item->data(0, Qt::UserRole).toString() == targetCategory) {
+            _style_category_tree->setCurrentItem(item);
+            break;
+        }
+    }
+}
+
+void ApplicationParamDlg::onStyleCategoryChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous)
+{
+    (void)previous;
+    if (!current) return;
+    int index = current->data(0, Qt::UserRole + 1).toInt();
+    if (index >= 0 && index < _style_page_stack->count()) {
+        _style_page_stack->setCurrentIndex(index);
+    }
+}
+
+void ApplicationParamDlg::onStyleTokenColorChanged(const QString &tokenName)
+{
+    QString currentValue = _style_tokens.value(tokenName, "");
+    QColor c(currentValue);
+    if (!c.isValid()) {
+        c = Qt::white;
+    }
+
+    QColor newColor = QColorDialog::getColor(c, nullptr, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SELECT_COLOR), "Select Color"), QColorDialog::ShowAlphaChannel);
+    if (newColor.isValid()) {
+        QString value;
+        if (newColor.alpha() < 255) {
+            value = newColor.name(QColor::HexArgb).toUpper(); // #AARRGGBB
+        } else {
+            value = newColor.name(QColor::HexRgb).toUpper(); // #RRGGBB
+        }
+        
+        _style_tokens[tokenName] = value;
+
+        if (_preset_combo) {
+            // Block signals temporarily to avoid double applying theme
+            bool oldState = _preset_combo->blockSignals(true);
+            _preset_combo->setCurrentIndex(0);
+            _preset_combo->blockSignals(oldState);
+        }
+
+        if (_style_button_widgets.contains(tokenName)) {
+            _style_button_widgets[tokenName]->setText(value);
+        }
+        if (_style_preview_widgets.contains(tokenName)) {
+            _style_preview_widgets[tokenName]->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 4px;").arg(value));
+        }
+
+        // scheduleLivePreview();
+    }
+}
+
+void ApplicationParamDlg::onStyleTokenTextChanged(const QString &tokenName, const QString &value)
+{
+    _style_tokens[tokenName] = value;
+    
+    if (_preset_combo) {
+        bool oldState = _preset_combo->blockSignals(true);
+        _preset_combo->setCurrentIndex(0);
+        _preset_combo->blockSignals(oldState);
+    }
+    // scheduleLivePreview();
+}
+
+void ApplicationParamDlg::scheduleLivePreview()
+{
+    if (_live_preview_timer) {
+        _live_preview_timer->start(50);
+    }
+}
+
+void ApplicationParamDlg::openExternalJsonEditor()
+{
+    _external_json_path = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + QDir::separator() + "pxview_theme_edit.json";
+    
+    QJsonObject tokensObj;
+    QStringList tokenNames = _style_tokens.keys();
+    std::sort(tokenNames.begin(), tokenNames.end());
+    for (const QString &name : tokenNames) {
+        tokensObj[name] = _style_tokens[name];
+    }
+    QJsonDocument doc(tokensObj);
+    QFile file(_external_json_path);
+    if (file.open(QFile::WriteOnly | QFile::Text)) {
+        file.write(doc.toJson(QJsonDocument::Indented));
+        file.close();
+    }
+    
+    if (!_file_watcher) {
+        _file_watcher = new QFileSystemWatcher();
+        QObject::connect(_file_watcher, &QFileSystemWatcher::fileChanged, [this](const QString &path){
+            onExternalJsonChanged(path);
+        });
+    }
+    
+    if (!_file_watcher->files().contains(_external_json_path)) {
+        _file_watcher->addPath(_external_json_path);
+    }
+    
+    QDesktopServices::openUrl(QUrl::fromLocalFile(_external_json_path));
+}
+
+void ApplicationParamDlg::onExternalJsonChanged(const QString &path)
+{
+    if (path != _external_json_path) return;
+    
+    QFile file(path);
+    if (!file.open(QFile::ReadOnly | QFile::Text)) return;
+    QByteArray data = file.readAll();
+    file.close();
+    
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error == QJsonParseError::NoError) {
+        QJsonObject tokensObj = doc.object();
+        for (auto it = tokensObj.begin(); it != tokensObj.end(); ++it) {
+            if (it.value().isString()) {
+                _style_tokens[it.key()] = it.value().toString();
+            }
+        }
+        refreshStyleWidgets();
+        scheduleLivePreview();
+    }
+}
+
+void ApplicationParamDlg::applyPresetTheme(const QString &presetPath)
+{
+    QFile file(presetPath);
+    if (file.open(QFile::ReadOnly | QFile::Text)) {
+        QByteArray data = file.readAll();
+        file.close();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        QJsonObject root = doc.object();
+        QJsonObject tokens = root.value("tokens").toObject();
+        for (auto it = tokens.begin(); it != tokens.end(); ++it) {
+            if (it.value().isString()) {
+                _style_tokens[it.key()] = it.value().toString();
+            }
+        }
+        refreshStyleWidgets();
+        // scheduleLivePreview();
+    }
+}
+
+void ApplicationParamDlg::applyLivePreview()
+{
+    AppConfig &app = AppConfig::Instance();
+    QString style = app.frameOptions.style;
+    QString qssRes = ":/" + style + ".qss";
+    QFile qss(qssRes);
+    if (qss.open(QFile::ReadOnly | QFile::Text)) {
+        QString qssContent = qss.readAll();
+        qss.close();
+
+        QHash<QString, QString> tokens;
+        QRegularExpression tokenRe("@([\\w-]+):\\s*([^\\r\\n]+?)\\s*(?:\\*/|\\r|\\n)");
+        QRegularExpressionMatchIterator it = tokenRe.globalMatch(qssContent);
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            QString tokenName = "@" + match.captured(1);
+            QString tokenValue = match.captured(2).trimmed();
+            tokens[tokenName] = tokenValue;
+        }
+
+        QMap<QString, QString>::const_iterator styleIt;
+        for (styleIt = _style_tokens.constBegin(); styleIt != _style_tokens.constEnd(); ++styleIt) {
+            tokens[styleIt.key()] = styleIt.value();
+        }
+
+        QList<QString> keys = tokens.keys();
+        std::sort(keys.begin(), keys.end(), [](const QString &a, const QString &b) {
+            return a.length() > b.length();
+        });
+
+        for (const QString &key : keys) {
+            qssContent.replace(key, tokens[key]);
+        }
+
+        app.SetThemeTokens(tokens);
+        qApp->setStyleSheet(qssContent);
+        AppControl::Instance()->GetSession()->broadcast_msg(DSV_MSG_STYLE_CHANGED);
+        AppControl::Instance()->GetSession()->broadcast_msg(DSV_MSG_FONT_OPTIONS_CHANGED);
+    }
+}
+
 
 void ApplicationParamDlg::onShortcutRowSelected(int row)
 {
@@ -828,44 +1229,13 @@ void ApplicationParamDlg::refreshShortcutList()
     checkShortcutClash();
 }
 
-void ApplicationParamDlg::onStyleTokenChanged(int row)
-{
-    QStringList tokenNames = _style_tokens.keys();
-    std::sort(tokenNames.begin(), tokenNames.end());
 
-    if (row < 0 || row >= tokenNames.size())
-        return;
-
-    QString name = tokenNames[row];
-    QString currentValue = _style_tokens[name];
-
-    QColor initialColor(currentValue);
-    if (!initialColor.isValid()) {
-        initialColor = QColor(128, 128, 128);
-    }
-
-    QColor newColor = QColorDialog::getColor(initialColor, nullptr,
-        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_SELECT_COLOR), "Select Color"));
-    if (newColor.isValid()) {
-        QString colorStr;
-        if (newColor.alpha() < 255) {
-            colorStr = QString("rgba(%1,%2,%3,%4)")
-                .arg(newColor.red())
-                .arg(newColor.green())
-                .arg(newColor.blue())
-                .arg(newColor.alpha());
-        } else {
-            colorStr = newColor.name();
-        }
-        _style_tokens[name] = colorStr;
-        refreshStyleTable();
-    }
-}
 
 void ApplicationParamDlg::onResetStyle()
 {
     _style_tokens = _default_style_tokens;
-    refreshStyleTable();
+    refreshStyleWidgets();
+    scheduleLivePreview();
 }
 
 void ApplicationParamDlg::onExportStyle()
@@ -937,7 +1307,8 @@ void ApplicationParamDlg::onImportStyle()
         }
     }
 
-    refreshStyleTable();
+    refreshStyleWidgets();
+    scheduleLivePreview();
 }
 
 QString ApplicationParamDlg::getShortcutKey(int actionId)
@@ -952,48 +1323,27 @@ void ApplicationParamDlg::setShortcutKey(int actionId, const QString &keySeq)
     _shortcut_keys[actionId] = keySeq;
 }
 
-void ApplicationParamDlg::refreshStyleTable()
+void ApplicationParamDlg::refreshStyleWidgets()
 {
-    if (!_style_table)
-        return;
+    for (auto it = _style_tokens.begin(); it != _style_tokens.end(); ++it) {
+        QString tokenName = it.key();
+        QString value = it.value();
 
-    QStringList tokenNames = _style_tokens.keys();
-    std::sort(tokenNames.begin(), tokenNames.end());
-
-    _style_table->setRowCount(tokenNames.size());
-
-    for (int i = 0; i < tokenNames.size(); i++) {
-        QString name = tokenNames[i];
-        QString value = _style_tokens[name];
-
-        QTableWidgetItem *nameItem = new QTableWidgetItem(name);
-        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
-        _style_table->setItem(i, 0, nameItem);
-
-        QWidget *previewWidget = new QWidget();
-        QColor c(value);
-        if (c.isValid()) {
-            previewWidget->setStyleSheet(QString("background-color: %1; border: 1px solid #555;").arg(value));
-        } else {
-            previewWidget->setStyleSheet("background-color: transparent; border: 1px solid #555;");
+        if (_style_button_widgets.contains(tokenName)) {
+            _style_button_widgets[tokenName]->setText(value);
         }
-        previewWidget->setFixedSize(40, 20);
-        QWidget *previewContainer = new QWidget();
-        QHBoxLayout *previewLay = new QHBoxLayout(previewContainer);
-        previewLay->setContentsMargins(2, 2, 2, 2);
-        previewLay->setAlignment(Qt::AlignCenter);
-        previewLay->addWidget(previewWidget);
-        _style_table->setCellWidget(i, 1, previewContainer);
-
-        QPushButton *colorBtn = new QPushButton(value);
-        colorBtn->setFixedWidth(100);
-        _style_table->setCellWidget(i, 2, colorBtn);
-
-        QObject::connect(colorBtn, &QPushButton::clicked, colorBtn, [this, i](){ onStyleTokenChanged(i); });
+        if (_style_preview_widgets.contains(tokenName)) {
+            QColor c(value);
+            if (c.isValid()) {
+                _style_preview_widgets[tokenName]->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 4px;").arg(value));
+            } else {
+                _style_preview_widgets[tokenName]->setStyleSheet("background-color: transparent; border: 1px solid #555; border-radius: 4px;");
+            }
+        }
+        if (_style_line_edit_widgets.contains(tokenName)) {
+            _style_line_edit_widgets[tokenName]->setText(value);
+        }
     }
-
-    _style_table->resizeColumnsToContents();
-    _style_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
 }
 
 void ApplicationParamDlg::saveDisplayOptions()
@@ -1152,7 +1502,7 @@ void ApplicationParamDlg::saveStyleOptions()
 
 bool ApplicationParamDlg::ShowDlg(QWidget *parent)
 {
-    DSDialog dlg(parent, true, true);
+    DSDialog dlg(parent, true, false);
     dlg.setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SETTINGS), "Settings"));
     dlg.setMinimumSize(520, 420);
 
@@ -1191,7 +1541,23 @@ bool ApplicationParamDlg::ShowDlg(QWidget *parent)
     mainLay->addWidget(_nav_list);
     mainLay->addWidget(_page_stack, 1);
 
-    dlg.layout()->addLayout(mainLay);
+    QVBoxLayout *rootLay = new QVBoxLayout();
+    rootLay->addLayout(mainLay);
+
+    QDialogButtonBox *btnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply);
+    rootLay->addWidget(btnBox);
+    dlg.layout()->addLayout(rootLay);
+
+    QObject::connect(btnBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    QObject::connect(btnBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    QObject::connect(btnBox->button(QDialogButtonBox::Apply), &QPushButton::clicked, [this](){
+        this->saveDisplayOptions();
+        this->saveShortcutOptions();
+        this->saveStyleOptions();
+        this->applyLivePreview();
+        this->_original_style_tokens = this->_style_tokens;
+    });
+
     dlg.exec();
     bool ret = dlg.IsClickYes();
 
@@ -1199,6 +1565,14 @@ bool ApplicationParamDlg::ShowDlg(QWidget *parent)
         saveDisplayOptions();
         saveShortcutOptions();
         saveStyleOptions();
+        applyLivePreview();
+    } else {
+        _style_tokens = _original_style_tokens;
+        // If they cancelled, we only need to revert UI if it was changed
+        // but since we removed live preview on typing, the UI hasn't changed.
+        // Calling applyLivePreview here is still safe and handles the case
+        // where we might add live preview back later or for other tabs.
+        applyLivePreview();
     }
 
     return ret;

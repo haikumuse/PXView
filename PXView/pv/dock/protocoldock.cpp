@@ -502,6 +502,7 @@ bool ProtocolDock::add_protocol_by_id(
   layer->m_decoderStatus = dstatus;
   layer->m_protocolId = protocolId;
   layer->_trace = trace;
+  layer->SetVisibilityState(true);
 
   // set current protocol format
   string fmt =
@@ -550,6 +551,7 @@ void ProtocolDock::rebuild_protocol_layers() {
     layer->m_decoderStatus = dstatus;
     layer->m_protocolId = protocolId;
     layer->_trace = trace;
+    layer->SetVisibilityState(decoders.front()->shown());
 
     static const char *formatNames[] = {"hex", "dec", "oct", "bin", "ascii"};
     int fmt = dstatus->m_format;
@@ -1076,6 +1078,29 @@ void ProtocolDock::OnProtocolDelete(void *handle) {
   }
 
   adjustPannelSize();
+}
+
+void ProtocolDock::OnProtocolVisibilityChanged(void *handle) {
+  for (auto it = _protocol_lay_items.begin(); it != _protocol_lay_items.end(); it++) {
+    if ((*it) == handle) {
+      auto lay = (*it);
+      auto trace = static_cast<pv::view::DecodeTrace*>(lay->_trace);
+      if (trace && trace->decoder()) {
+        auto dec_stack = trace->decoder();
+        if (!dec_stack->stack().empty()) {
+          auto root_dec = dec_stack->stack().front();
+          bool current_shown = root_dec->shown();
+          root_dec->show(!current_shown);
+          lay->SetVisibilityState(!current_shown);
+          
+          if (_view) {
+            _view->signals_changed(NULL);
+          }
+        }
+      }
+      break;
+    }
+  }
 }
 
 void ProtocolDock::OnProtocolFormatChanged(QString format, void *handle) {

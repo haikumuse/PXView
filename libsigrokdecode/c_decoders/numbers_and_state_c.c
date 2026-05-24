@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 #define MAX_CHANNELS 16
 #define MAX_ENUM_SLOTS 32
@@ -55,142 +55,172 @@ typedef struct {
 } nas_state;
 
 static struct srd_channel nas_optional_channels[] = {
-    {"clk", "Clock", "Clock", 0, SRD_CHANNEL_SCLK, NULL},
-    {"bit0", "Bit0", "Bit position 0", 0, SRD_CHANNEL_SDATA, NULL},
-    {"bit1", "Bit1", "Bit position 1", 1, SRD_CHANNEL_SDATA, NULL},
-    {"bit2", "Bit2", "Bit position 2", 2, SRD_CHANNEL_SDATA, NULL},
-    {"bit3", "Bit3", "Bit position 3", 3, SRD_CHANNEL_SDATA, NULL},
-    {"bit4", "Bit4", "Bit position 4", 4, SRD_CHANNEL_SDATA, NULL},
-    {"bit5", "Bit5", "Bit position 5", 5, SRD_CHANNEL_SDATA, NULL},
-    {"bit6", "Bit6", "Bit position 6", 6, SRD_CHANNEL_SDATA, NULL},
-    {"bit7", "Bit7", "Bit position 7", 7, SRD_CHANNEL_SDATA, NULL},
-    {"bit8", "Bit8", "Bit position 8", 8, SRD_CHANNEL_SDATA, NULL},
-    {"bit9", "Bit9", "Bit position 9", 9, SRD_CHANNEL_SDATA, NULL},
-    {"bit10", "Bit10", "Bit position 10", 10, SRD_CHANNEL_SDATA, NULL},
-    {"bit11", "Bit11", "Bit position 11", 11, SRD_CHANNEL_SDATA, NULL},
-    {"bit12", "Bit12", "Bit position 12", 12, SRD_CHANNEL_SDATA, NULL},
-    {"bit13", "Bit13", "Bit position 13", 13, SRD_CHANNEL_SDATA, NULL},
-    {"bit14", "Bit14", "Bit position 14", 14, SRD_CHANNEL_SDATA, NULL},
-    {"bit15", "Bit15", "Bit position 15", 15, SRD_CHANNEL_SDATA, NULL},
+    { "clk", "Clock", "Clock", 0, SRD_CHANNEL_SCLK, NULL },
+    { "bit0", "Bit0", "Bit position 0", 0, SRD_CHANNEL_SDATA, NULL },
+    { "bit1", "Bit1", "Bit position 1", 1, SRD_CHANNEL_SDATA, NULL },
+    { "bit2", "Bit2", "Bit position 2", 2, SRD_CHANNEL_SDATA, NULL },
+    { "bit3", "Bit3", "Bit position 3", 3, SRD_CHANNEL_SDATA, NULL },
+    { "bit4", "Bit4", "Bit position 4", 4, SRD_CHANNEL_SDATA, NULL },
+    { "bit5", "Bit5", "Bit position 5", 5, SRD_CHANNEL_SDATA, NULL },
+    { "bit6", "Bit6", "Bit position 6", 6, SRD_CHANNEL_SDATA, NULL },
+    { "bit7", "Bit7", "Bit position 7", 7, SRD_CHANNEL_SDATA, NULL },
+    { "bit8", "Bit8", "Bit position 8", 8, SRD_CHANNEL_SDATA, NULL },
+    { "bit9", "Bit9", "Bit position 9", 9, SRD_CHANNEL_SDATA, NULL },
+    { "bit10", "Bit10", "Bit position 10", 10, SRD_CHANNEL_SDATA, NULL },
+    { "bit11", "Bit11", "Bit position 11", 11, SRD_CHANNEL_SDATA, NULL },
+    { "bit12", "Bit12", "Bit position 12", 12, SRD_CHANNEL_SDATA, NULL },
+    { "bit13", "Bit13", "Bit position 13", 13, SRD_CHANNEL_SDATA, NULL },
+    { "bit14", "Bit14", "Bit position 14", 14, SRD_CHANNEL_SDATA, NULL },
+    { "bit15", "Bit15", "Bit position 15", 15, SRD_CHANNEL_SDATA, NULL },
 };
 
 static struct srd_decoder_option nas_options[] = {
-    {"clkedge", NULL, "Clock edge", NULL, NULL},
-    {"count", NULL, "Total bits count", NULL, NULL},
-    {"interp", NULL, "Interpretation", NULL, NULL},
-    {"fracbits", NULL, "Fraction bits count", NULL, NULL},
-    {"mapping", NULL, "Enum to text map file", NULL, NULL},
-    {"format", NULL, "Number format", NULL, NULL},
+    { "clkedge", NULL, "Clock edge", NULL, NULL },
+    { "count", NULL, "Total bits count", NULL, NULL },
+    { "interp", NULL, "Interpretation", NULL, NULL },
+    { "fracbits", NULL, "Fraction bits count", NULL, NULL },
+    { "mapping", NULL, "Enum to text map file", NULL, NULL },
+    { "format", NULL, "Number format", NULL, NULL },
 };
 
-static const char *nas_ann_labels[NUM_ANN][3] = {
-    {"", "raw", "Raw pattern"},
-    {"", "number", "Number"},
-    {"", "enum0", "Enumeration slot 0"},
-    {"", "enum1", "Enumeration slot 1"},
-    {"", "enum2", "Enumeration slot 2"},
-    {"", "enum3", "Enumeration slot 3"},
-    {"", "enum4", "Enumeration slot 4"},
-    {"", "enum5", "Enumeration slot 5"},
-    {"", "enum6", "Enumeration slot 6"},
-    {"", "enum7", "Enumeration slot 7"},
-    {"", "enum8", "Enumeration slot 8"},
-    {"", "enum9", "Enumeration slot 9"},
-    {"", "enum10", "Enumeration slot 10"},
-    {"", "enum11", "Enumeration slot 11"},
-    {"", "enum12", "Enumeration slot 12"},
-    {"", "enum13", "Enumeration slot 13"},
-    {"", "enum14", "Enumeration slot 14"},
-    {"", "enum15", "Enumeration slot 15"},
-    {"", "enum16", "Enumeration slot 16"},
-    {"", "enum17", "Enumeration slot 17"},
-    {"", "enum18", "Enumeration slot 18"},
-    {"", "enum19", "Enumeration slot 19"},
-    {"", "enum20", "Enumeration slot 20"},
-    {"", "enum21", "Enumeration slot 21"},
-    {"", "enum22", "Enumeration slot 22"},
-    {"", "enum23", "Enumeration slot 23"},
-    {"", "enum24", "Enumeration slot 24"},
-    {"", "enum25", "Enumeration slot 25"},
-    {"", "enum26", "Enumeration slot 26"},
-    {"", "enum27", "Enumeration slot 27"},
-    {"", "enum28", "Enumeration slot 28"},
-    {"", "enum29", "Enumeration slot 29"},
-    {"", "enum30", "Enumeration slot 30"},
-    {"", "enum31", "Enumeration slot 31"},
-    {"", "enumovr", "Enumeration overflow"},
-    {"", "warning", "Warning"},
+static const char* nas_ann_labels[NUM_ANN][3] = {
+    { "", "raw", "Raw pattern" },
+    { "", "number", "Number" },
+    { "", "enum0", "Enumeration slot 0" },
+    { "", "enum1", "Enumeration slot 1" },
+    { "", "enum2", "Enumeration slot 2" },
+    { "", "enum3", "Enumeration slot 3" },
+    { "", "enum4", "Enumeration slot 4" },
+    { "", "enum5", "Enumeration slot 5" },
+    { "", "enum6", "Enumeration slot 6" },
+    { "", "enum7", "Enumeration slot 7" },
+    { "", "enum8", "Enumeration slot 8" },
+    { "", "enum9", "Enumeration slot 9" },
+    { "", "enum10", "Enumeration slot 10" },
+    { "", "enum11", "Enumeration slot 11" },
+    { "", "enum12", "Enumeration slot 12" },
+    { "", "enum13", "Enumeration slot 13" },
+    { "", "enum14", "Enumeration slot 14" },
+    { "", "enum15", "Enumeration slot 15" },
+    { "", "enum16", "Enumeration slot 16" },
+    { "", "enum17", "Enumeration slot 17" },
+    { "", "enum18", "Enumeration slot 18" },
+    { "", "enum19", "Enumeration slot 19" },
+    { "", "enum20", "Enumeration slot 20" },
+    { "", "enum21", "Enumeration slot 21" },
+    { "", "enum22", "Enumeration slot 22" },
+    { "", "enum23", "Enumeration slot 23" },
+    { "", "enum24", "Enumeration slot 24" },
+    { "", "enum25", "Enumeration slot 25" },
+    { "", "enum26", "Enumeration slot 26" },
+    { "", "enum27", "Enumeration slot 27" },
+    { "", "enum28", "Enumeration slot 28" },
+    { "", "enum29", "Enumeration slot 29" },
+    { "", "enum30", "Enumeration slot 30" },
+    { "", "enum31", "Enumeration slot 31" },
+    { "", "enumovr", "Enumeration overflow" },
+    { "", "warning", "Warning" },
 };
 
 static const int nas_row_cls[NUM_ANN][2] = {
-    {0, -1}, {1, -1}, {2, -1}, {3, -1}, {4, -1}, {5, -1},
-    {6, -1}, {7, -1}, {8, -1}, {9, -1}, {10, -1}, {11, -1},
-    {12, -1}, {13, -1}, {14, -1}, {15, -1}, {16, -1}, {17, -1},
-    {18, -1}, {19, -1}, {20, -1}, {21, -1}, {22, -1}, {23, -1},
-    {24, -1}, {25, -1}, {26, -1}, {27, -1}, {28, -1}, {29, -1},
-    {30, -1}, {31, -1}, {32, -1}, {33, -1}, {34, -1}, {35, -1},
+    { 0, -1 },
+    { 1, -1 },
+    { 2, -1 },
+    { 3, -1 },
+    { 4, -1 },
+    { 5, -1 },
+    { 6, -1 },
+    { 7, -1 },
+    { 8, -1 },
+    { 9, -1 },
+    { 10, -1 },
+    { 11, -1 },
+    { 12, -1 },
+    { 13, -1 },
+    { 14, -1 },
+    { 15, -1 },
+    { 16, -1 },
+    { 17, -1 },
+    { 18, -1 },
+    { 19, -1 },
+    { 20, -1 },
+    { 21, -1 },
+    { 22, -1 },
+    { 23, -1 },
+    { 24, -1 },
+    { 25, -1 },
+    { 26, -1 },
+    { 27, -1 },
+    { 28, -1 },
+    { 29, -1 },
+    { 30, -1 },
+    { 31, -1 },
+    { 32, -1 },
+    { 33, -1 },
+    { 34, -1 },
+    { 35, -1 },
 };
 
 static const struct srd_c_ann_row nas_ann_rows[NUM_ANN] = {
-    {"raws", "Raw bits", nas_row_cls[0], 1},
-    {"numbers", "Numbers", nas_row_cls[1], 1},
-    {"enums0", "Enumeration slots 0", nas_row_cls[2], 1},
-    {"enums1", "Enumeration slots 1", nas_row_cls[3], 1},
-    {"enums2", "Enumeration slots 2", nas_row_cls[4], 1},
-    {"enums3", "Enumeration slots 3", nas_row_cls[5], 1},
-    {"enums4", "Enumeration slots 4", nas_row_cls[6], 1},
-    {"enums5", "Enumeration slots 5", nas_row_cls[7], 1},
-    {"enums6", "Enumeration slots 6", nas_row_cls[8], 1},
-    {"enums7", "Enumeration slots 7", nas_row_cls[9], 1},
-    {"enums8", "Enumeration slots 8", nas_row_cls[10], 1},
-    {"enums9", "Enumeration slots 9", nas_row_cls[11], 1},
-    {"enums10", "Enumeration slots 10", nas_row_cls[12], 1},
-    {"enums11", "Enumeration slots 11", nas_row_cls[13], 1},
-    {"enums12", "Enumeration slots 12", nas_row_cls[14], 1},
-    {"enums13", "Enumeration slots 13", nas_row_cls[15], 1},
-    {"enums14", "Enumeration slots 14", nas_row_cls[16], 1},
-    {"enums15", "Enumeration slots 15", nas_row_cls[17], 1},
-    {"enums16", "Enumeration slots 16", nas_row_cls[18], 1},
-    {"enums17", "Enumeration slots 17", nas_row_cls[19], 1},
-    {"enums18", "Enumeration slots 18", nas_row_cls[20], 1},
-    {"enums19", "Enumeration slots 19", nas_row_cls[21], 1},
-    {"enums20", "Enumeration slots 20", nas_row_cls[22], 1},
-    {"enums21", "Enumeration slots 21", nas_row_cls[23], 1},
-    {"enums22", "Enumeration slots 22", nas_row_cls[24], 1},
-    {"enums23", "Enumeration slots 23", nas_row_cls[25], 1},
-    {"enums24", "Enumeration slots 24", nas_row_cls[26], 1},
-    {"enums25", "Enumeration slots 25", nas_row_cls[27], 1},
-    {"enums26", "Enumeration slots 26", nas_row_cls[28], 1},
-    {"enums27", "Enumeration slots 27", nas_row_cls[29], 1},
-    {"enums28", "Enumeration slots 28", nas_row_cls[30], 1},
-    {"enums29", "Enumeration slots 29", nas_row_cls[31], 1},
-    {"enums30", "Enumeration slots 30", nas_row_cls[32], 1},
-    {"enums31", "Enumeration slots 31", nas_row_cls[33], 1},
-    {"enumsovr", "Enumeration overflows", nas_row_cls[34], 1},
-    {"warnings", "Warnings", nas_row_cls[35], 1},
+    { "raws", "Raw bits", nas_row_cls[0], 1 },
+    { "numbers", "Numbers", nas_row_cls[1], 1 },
+    { "enums0", "Enumeration slots 0", nas_row_cls[2], 1 },
+    { "enums1", "Enumeration slots 1", nas_row_cls[3], 1 },
+    { "enums2", "Enumeration slots 2", nas_row_cls[4], 1 },
+    { "enums3", "Enumeration slots 3", nas_row_cls[5], 1 },
+    { "enums4", "Enumeration slots 4", nas_row_cls[6], 1 },
+    { "enums5", "Enumeration slots 5", nas_row_cls[7], 1 },
+    { "enums6", "Enumeration slots 6", nas_row_cls[8], 1 },
+    { "enums7", "Enumeration slots 7", nas_row_cls[9], 1 },
+    { "enums8", "Enumeration slots 8", nas_row_cls[10], 1 },
+    { "enums9", "Enumeration slots 9", nas_row_cls[11], 1 },
+    { "enums10", "Enumeration slots 10", nas_row_cls[12], 1 },
+    { "enums11", "Enumeration slots 11", nas_row_cls[13], 1 },
+    { "enums12", "Enumeration slots 12", nas_row_cls[14], 1 },
+    { "enums13", "Enumeration slots 13", nas_row_cls[15], 1 },
+    { "enums14", "Enumeration slots 14", nas_row_cls[16], 1 },
+    { "enums15", "Enumeration slots 15", nas_row_cls[17], 1 },
+    { "enums16", "Enumeration slots 16", nas_row_cls[18], 1 },
+    { "enums17", "Enumeration slots 17", nas_row_cls[19], 1 },
+    { "enums18", "Enumeration slots 18", nas_row_cls[20], 1 },
+    { "enums19", "Enumeration slots 19", nas_row_cls[21], 1 },
+    { "enums20", "Enumeration slots 20", nas_row_cls[22], 1 },
+    { "enums21", "Enumeration slots 21", nas_row_cls[23], 1 },
+    { "enums22", "Enumeration slots 22", nas_row_cls[24], 1 },
+    { "enums23", "Enumeration slots 23", nas_row_cls[25], 1 },
+    { "enums24", "Enumeration slots 24", nas_row_cls[26], 1 },
+    { "enums25", "Enumeration slots 25", nas_row_cls[27], 1 },
+    { "enums26", "Enumeration slots 26", nas_row_cls[28], 1 },
+    { "enums27", "Enumeration slots 27", nas_row_cls[29], 1 },
+    { "enums28", "Enumeration slots 28", nas_row_cls[30], 1 },
+    { "enums29", "Enumeration slots 29", nas_row_cls[31], 1 },
+    { "enums30", "Enumeration slots 30", nas_row_cls[32], 1 },
+    { "enums31", "Enumeration slots 31", nas_row_cls[33], 1 },
+    { "enumsovr", "Enumeration overflows", nas_row_cls[34], 1 },
+    { "warnings", "Warnings", nas_row_cls[35], 1 },
 };
 
-static const char *nas_inputs[] = {"logic", NULL};
-static const char *nas_outputs[] = {"numbers_and_state", NULL};
-static const char *nas_tags[] = {"Encoding", "Util", NULL};
+static const char* nas_inputs[] = { "logic", NULL };
+static const char* nas_outputs[] = { "numbers_and_state", NULL };
+static const char* nas_tags[] = { "Encoding", "Util", NULL };
 
-static void nas_reset(struct srd_decoder_inst *di)
+static void nas_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(nas_state)));
     }
-    nas_state *s = (nas_state *)c_decoder_get_private(di);
+    nas_state* s = (nas_state*)c_decoder_get_private(di);
     memset(s, 0, sizeof(nas_state));
     s->bFirst = 1;
 }
 
-static void nas_start(struct srd_decoder_inst *di)
+static void nas_start(struct srd_decoder_inst* di)
 {
-    nas_state *s = (nas_state *)c_decoder_get_private(di);
+    nas_state* s = (nas_state*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "numbers_and_state");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "numbers_and_state");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "numbers_and_state");
 
-    const char *ce = c_decoder_get_option_string(di, "clkedge", "rising");
+    const char* ce = c_decoder_get_option_string(di, "clkedge", "rising");
     if (strcmp(ce, "falling") == 0)
         s->clk_edge = 2;
     else if (strcmp(ce, "either") == 0)
@@ -200,7 +230,7 @@ static void nas_start(struct srd_decoder_inst *di)
 
     s->bitcount = (int)c_decoder_get_option_int(di, "count", 0);
 
-    const char *interp = c_decoder_get_option_string(di, "interp", "unsigned");
+    const char* interp = c_decoder_get_option_string(di, "interp", "unsigned");
     if (strcmp(interp, "signed") == 0)
         s->interp = INTERP_SIGNED;
     else if (strcmp(interp, "fixpoint") == 0)
@@ -216,7 +246,7 @@ static void nas_start(struct srd_decoder_inst *di)
 
     s->fracbits = (int)c_decoder_get_option_int(di, "fracbits", 0);
 
-    const char *fmt = c_decoder_get_option_string(di, "format", "-");
+    const char* fmt = c_decoder_get_option_string(di, "format", "-");
     if (strcmp(fmt, "bin") == 0)
         s->format = FMT_BIN;
     else if (strcmp(fmt, "oct") == 0)
@@ -242,7 +272,7 @@ static void nas_start(struct srd_decoder_inst *di)
     }
 }
 
-static uint64_t nas_grab_pattern(struct srd_decoder_inst *di, nas_state *s, uint64_t samplenum)
+static uint64_t nas_grab_pattern(struct srd_decoder_inst* di, nas_state* s, uint64_t samplenum)
 {
     uint64_t pattern = 0;
     for (int i = 0; i < s->bitcount && i < MAX_CHANNELS; i++) {
@@ -256,14 +286,13 @@ static uint64_t nas_grab_pattern(struct srd_decoder_inst *di, nas_state *s, uint
     return pattern;
 }
 
-static int nas_interp_init(nas_state *s)
+static int nas_interp_init(nas_state* s)
 {
     if (s->interp_inited)
         return 0;
     s->interp_inited = 1;
 
-    if (s->interp == INTERP_SIGNED || s->interp == INTERP_FIXPOINT ||
-        s->interp == INTERP_FIXSIGNED) {
+    if (s->interp == INTERP_SIGNED || s->interp == INTERP_FIXPOINT || s->interp == INTERP_FIXSIGNED) {
         s->signmask = 1ULL << (s->bitcount - 1);
         s->signfull = 1ULL << s->bitcount;
     }
@@ -276,7 +305,7 @@ static int nas_interp_init(nas_state *s)
     return 0;
 }
 
-static int nas_interp_value(nas_state *s, uint64_t pattern, double *out_value)
+static int nas_interp_value(nas_state* s, uint64_t pattern, double* out_value)
 {
     nas_interp_init(s);
 
@@ -308,12 +337,18 @@ static int nas_interp_value(nas_state *s, uint64_t pattern, double *out_value)
         return 0;
     case INTERP_IEEE754:
         if (s->bitcount == 32) {
-            union { uint32_t i; float f; } u;
+            union {
+                uint32_t i;
+                float f;
+            } u;
             u.i = (uint32_t)pattern;
             *out_value = (double)u.f;
             return 0;
         } else if (s->bitcount == 64) {
-            union { uint64_t i; double d; } u;
+            union {
+                uint64_t i;
+                double d;
+            } u;
             u.i = pattern;
             *out_value = u.d;
             return 0;
@@ -327,7 +362,7 @@ static int nas_interp_value(nas_state *s, uint64_t pattern, double *out_value)
     return -1;
 }
 
-static int nas_format_value(nas_state *s, double value, uint64_t pattern, char *buf, int bufsize)
+static int nas_format_value(nas_state* s, double value, uint64_t pattern, char* buf, int bufsize)
 {
     (void)pattern;
     int64_t ival = (int64_t)value;
@@ -335,8 +370,7 @@ static int nas_format_value(nas_state *s, double value, uint64_t pattern, char *
 
     switch (s->format) {
     case FMT_NATIVE:
-        if (s->interp == INTERP_FIXPOINT || s->interp == INTERP_FIXSIGNED ||
-            s->interp == INTERP_IEEE754)
+        if (s->interp == INTERP_FIXPOINT || s->interp == INTERP_FIXSIGNED || s->interp == INTERP_IEEE754)
             snprintf(buf, bufsize, "%g", value);
         else if (s->interp == INTERP_SIGNED || s->interp == INTERP_FIXSIGNED)
             snprintf(buf, bufsize, "%lld", (long long)ival);
@@ -369,8 +403,8 @@ static int nas_format_value(nas_state *s, double value, uint64_t pattern, char *
     return -1;
 }
 
-static void nas_handle_pattern(struct srd_decoder_inst *di, nas_state *s,
-                               uint64_t ss, uint64_t es, uint64_t pattern)
+static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
+    uint64_t ss, uint64_t es, uint64_t pattern)
 {
     char raw_str[65];
     for (int i = 0; i < s->bitcount && i < 64; i++) {
@@ -395,7 +429,10 @@ static void nas_handle_pattern(struct srd_decoder_inst *di, nas_state *s,
 
     {
         unsigned char py_num[8];
-        union { double d; unsigned char b[8]; } u;
+        union {
+            double d;
+            unsigned char b[8];
+        } u;
         u.d = value;
         memcpy(py_num, u.b, 8);
         c_decoder_put_python(di, ss, es, s->out_python, "NUMBER", py_num, 8);
@@ -417,7 +454,10 @@ static void nas_handle_pattern(struct srd_decoder_inst *di, nas_state *s,
 
         {
             unsigned char py_enum[9];
-            union { double d; unsigned char b[8]; } u;
+            union {
+                double d;
+                unsigned char b[8];
+            } u;
             u.d = value;
             memcpy(py_enum, u.b, 8);
             py_enum[8] = (unsigned char)strlen(fmt_buf);
@@ -426,9 +466,9 @@ static void nas_handle_pattern(struct srd_decoder_inst *di, nas_state *s,
     }
 }
 
-static void nas_decode(struct srd_decoder_inst *di)
+static void nas_decode(struct srd_decoder_inst* di)
 {
-    nas_state *s = (nas_state *)c_decoder_get_private(di);
+    nas_state* s = (nas_state*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
@@ -436,7 +476,7 @@ static void nas_decode(struct srd_decoder_inst *di)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
 
         if (s->have_clk) {
             if (s->clk_edge == 1)
@@ -477,9 +517,9 @@ static void nas_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void nas_destroy(struct srd_decoder_inst *di)
+static void nas_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -516,10 +556,10 @@ struct srd_c_decoder numbers_and_state_c_decoder = {
     .destroy = nas_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     nas_options[0].def = g_variant_new_string("rising");
-    GSList *clkedge_vals = NULL;
+    GSList* clkedge_vals = NULL;
     clkedge_vals = g_slist_append(clkedge_vals, g_variant_new_string("rising"));
     clkedge_vals = g_slist_append(clkedge_vals, g_variant_new_string("falling"));
     clkedge_vals = g_slist_append(clkedge_vals, g_variant_new_string("either"));
@@ -528,7 +568,7 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
     nas_options[1].def = g_variant_new_int64(0);
 
     nas_options[2].def = g_variant_new_string("unsigned");
-    GSList *interp_vals = NULL;
+    GSList* interp_vals = NULL;
     interp_vals = g_slist_append(interp_vals, g_variant_new_string("unsigned"));
     interp_vals = g_slist_append(interp_vals, g_variant_new_string("signed"));
     interp_vals = g_slist_append(interp_vals, g_variant_new_string("fixpoint"));
@@ -542,7 +582,7 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
     nas_options[4].def = g_variant_new_string("enumtext.json");
 
     nas_options[5].def = g_variant_new_string("-");
-    GSList *format_vals = NULL;
+    GSList* format_vals = NULL;
     format_vals = g_slist_append(format_vals, g_variant_new_string("-"));
     format_vals = g_slist_append(format_vals, g_variant_new_string("bin"));
     format_vals = g_slist_append(format_vals, g_variant_new_string("oct"));

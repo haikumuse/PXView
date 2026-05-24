@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum {
     ANN_RX_BIT = 0,
@@ -37,7 +37,7 @@ struct hdlc_priv {
     uint64_t ss_pending_start;
 };
 
-static uint16_t hdlc_crc16(uint8_t *data, int len)
+static uint16_t hdlc_crc16(uint8_t* data, int len)
 {
     uint16_t crc = 0xFFFF;
     for (int i = 0; i < len; i++) {
@@ -53,50 +53,50 @@ static uint16_t hdlc_crc16(uint8_t *data, int len)
 }
 
 static struct srd_channel hdlc_channels[] = {
-    {"clk", "CLK", "Clock", 0, SRD_CHANNEL_SCLK, NULL},
-    {"data", "DATA", "Data in", 1, SRD_CHANNEL_SDATA, NULL},
+    { "clk", "CLK", "Clock", 0, SRD_CHANNEL_SCLK, NULL },
+    { "data", "DATA", "Data in", 1, SRD_CHANNEL_SDATA, NULL },
 };
 
 static struct srd_channel hdlc_optional_channels[] = {
-    {"en", "ENABLE", "RX enabled", 2, SRD_CHANNEL_COMMON, NULL},
+    { "en", "ENABLE", "RX enabled", 2, SRD_CHANNEL_COMMON, NULL },
 };
 
 static struct srd_decoder_option hdlc_options[] = {
-    {"en_polarity", NULL, "ENABLE polarity", NULL, NULL},
-    {"cpol", NULL, "Clock polarity", NULL, NULL},
+    { "en_polarity", NULL, "ENABLE polarity", NULL, NULL },
+    { "cpol", NULL, "Clock polarity", NULL, NULL },
 };
 
-static const char *hdlc_ann_labels[][3] = {
-    {"", "rx-bit", "RX bit"},
-    {"", "data", "data"},
-    {"", "data-type", "data-type"},
-    {"", "warning", "Warning"},
-    {"", "transfer", "transfer"},
+static const char* hdlc_ann_labels[][3] = {
+    { "", "rx-bit", "RX bit" },
+    { "", "data", "data" },
+    { "", "data-type", "data-type" },
+    { "", "warning", "Warning" },
+    { "", "transfer", "transfer" },
 };
 
-static const int hdlc_row_rxbits_classes[] = {ANN_RX_BIT};
-static const int hdlc_row_datavals_classes[] = {ANN_DATA};
-static const int hdlc_row_datatypes_classes[] = {ANN_DATA_TYPE};
-static const int hdlc_row_transfers_classes[] = {ANN_TRANSFER};
-static const int hdlc_row_other_classes[] = {ANN_WARNING};
+static const int hdlc_row_rxbits_classes[] = { ANN_RX_BIT };
+static const int hdlc_row_datavals_classes[] = { ANN_DATA };
+static const int hdlc_row_datatypes_classes[] = { ANN_DATA_TYPE };
+static const int hdlc_row_transfers_classes[] = { ANN_TRANSFER };
+static const int hdlc_row_other_classes[] = { ANN_WARNING };
 
 static const struct srd_c_ann_row hdlc_ann_rows[] = {
-    {"rx-bits", "RX bits", hdlc_row_rxbits_classes, 1},
-    {"data-vals", "data", hdlc_row_datavals_classes, 1},
-    {"data-types", "type", hdlc_row_datatypes_classes, 1},
-    {"transfers", "transfers", hdlc_row_transfers_classes, 1},
-    {"other", "Other", hdlc_row_other_classes, 1},
+    { "rx-bits", "RX bits", hdlc_row_rxbits_classes, 1 },
+    { "data-vals", "data", hdlc_row_datavals_classes, 1 },
+    { "data-types", "type", hdlc_row_datatypes_classes, 1 },
+    { "transfers", "transfers", hdlc_row_transfers_classes, 1 },
+    { "other", "Other", hdlc_row_other_classes, 1 },
 };
 
-static const char *hdlc_inputs[] = {"logic"};
-static const char *hdlc_outputs[] = {"hdlc"};
-static const char *hdlc_tags[] = {"Embedded/industrial"};
+static const char* hdlc_inputs[] = { "logic" };
+static const char* hdlc_outputs[] = { "hdlc" };
+static const char* hdlc_tags[] = { "Embedded/industrial" };
 
 static const struct srd_decoder_binary hdlc_binary[] = {
-    {0, "transfer", "transfer"},
+    { 0, "transfer", "transfer" },
 };
 
-static void hdlc_reset_state(struct hdlc_priv *priv)
+static void hdlc_reset_state(struct hdlc_priv* priv)
 {
     priv->bitcount = 0;
     priv->rxdata = 0;
@@ -111,11 +111,11 @@ static void hdlc_reset_state(struct hdlc_priv *priv)
     priv->ss_pending_start = 0;
 }
 
-static void hdlc_reset(struct srd_decoder_inst *di)
+static void hdlc_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di))
         c_decoder_set_private(di, g_malloc0(sizeof(struct hdlc_priv)));
-    struct hdlc_priv *priv = (struct hdlc_priv *)c_decoder_get_private(di);
+    struct hdlc_priv* priv = (struct hdlc_priv*)c_decoder_get_private(di);
     memset(priv, 0, sizeof(struct hdlc_priv));
     hdlc_reset_state(priv);
     priv->have_en = 0;
@@ -124,19 +124,19 @@ static void hdlc_reset(struct srd_decoder_inst *di)
     priv->out_ann = 0;
 }
 
-static void hdlc_start(struct srd_decoder_inst *di)
+static void hdlc_start(struct srd_decoder_inst* di)
 {
-    struct hdlc_priv *priv = (struct hdlc_priv *)c_decoder_get_private(di);
+    struct hdlc_priv* priv = (struct hdlc_priv*)c_decoder_get_private(di);
     priv->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "hdlc");
-    priv->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "hdlc");
+    priv->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "hdlc");
     priv->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "hdlc");
-    const char *en_pol = c_decoder_get_option_string(di, "en_polarity", "active-high");
+    const char* en_pol = c_decoder_get_option_string(di, "en_polarity", "active-high");
     priv->en_active_high = (en_pol && strcmp(en_pol, "active-low") == 0) ? 0 : 1;
     priv->cpol = (int)c_decoder_get_option_int(di, "cpol", 1);
     priv->have_en = c_decoder_has_channel(di, 2);
 }
 
-static void hdlc_putt(struct srd_decoder_inst *di, struct hdlc_priv *priv)
+static void hdlc_putt(struct srd_decoder_inst* di, struct hdlc_priv* priv)
 {
     if (priv->rxbytes_cnt <= 4)
         return;
@@ -144,18 +144,17 @@ static void hdlc_putt(struct srd_decoder_inst *di, struct hdlc_priv *priv)
     int cnt = priv->rxbytes_cnt;
 
     C_ANN_PUT(di, priv->rxbytes_ss[0], priv->rxbytes_ss[cnt - 2],
-              priv->out_ann, ANN_DATA_TYPE, "TRANSFER");
+        priv->out_ann, ANN_DATA_TYPE, "TRANSFER");
 
     C_ANN_PUT(di, priv->rxbytes_ss[cnt - 2], priv->rxbytes_es[cnt - 1],
-              priv->out_ann, ANN_DATA_TYPE, "CRC");
+        priv->out_ann, ANN_DATA_TYPE, "CRC");
 
     uint16_t crc = hdlc_crc16(priv->rxbytes, cnt - 2);
-    uint16_t rxcrc = ((uint16_t)priv->rxbytes[cnt - 1] << 8) |
-                     (uint16_t)priv->rxbytes[cnt - 2];
+    uint16_t rxcrc = ((uint16_t)priv->rxbytes[cnt - 1] << 8) | (uint16_t)priv->rxbytes[cnt - 2];
 
     if (crc != rxcrc) {
         C_ANN_PUT(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
-                  priv->out_ann, ANN_WARNING, "BAD CRC!");
+            priv->out_ann, ANN_WARNING, "BAD CRC!");
     } else {
         c_decoder_put_python(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 2],
             priv->out_python, "TRANSFER", priv->rxbytes, cnt - 2);
@@ -174,10 +173,10 @@ static void hdlc_putt(struct srd_decoder_inst *di, struct hdlc_priv *priv)
     }
 
     C_ANN_PUT(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
-              priv->out_ann, ANN_TRANSFER, hex_str);
+        priv->out_ann, ANN_TRANSFER, hex_str);
 }
 
-static void hdlc_shift_bit(struct hdlc_priv *priv, int data, uint64_t samplenum)
+static void hdlc_shift_bit(struct hdlc_priv* priv, int data, uint64_t samplenum)
 {
     if (priv->flag_found) {
         if (priv->bitcount < 8)
@@ -187,8 +186,8 @@ static void hdlc_shift_bit(struct hdlc_priv *priv, int data, uint64_t samplenum)
     }
 }
 
-static void hdlc_handle_bit(struct srd_decoder_inst *di, struct hdlc_priv *priv,
-                            int data, uint64_t samplenum)
+static void hdlc_handle_bit(struct srd_decoder_inst* di, struct hdlc_priv* priv,
+    int data, uint64_t samplenum)
 {
     if (priv->ss_prev_clock != (uint64_t)-1) {
         char bit_str[4];
@@ -214,13 +213,13 @@ static void hdlc_handle_bit(struct srd_decoder_inst *di, struct hdlc_priv *priv,
 
     if (priv->pending_abort) {
         C_ANN_PUT(di, priv->ss_pending_start, samplenum,
-                  priv->out_ann, ANN_DATA_TYPE, "ABORT");
+            priv->out_ann, ANN_DATA_TYPE, "ABORT");
         priv->pending_abort = 0;
     }
 
     if (priv->pending_flag) {
         C_ANN_PUT(di, priv->ss_pending_start, samplenum,
-                  priv->out_ann, ANN_DATA_TYPE, "FLAG");
+            priv->out_ann, ANN_DATA_TYPE, "FLAG");
         priv->pending_flag = 0;
         hdlc_putt(di, priv);
         priv->rxbytes_cnt = 0;
@@ -253,9 +252,9 @@ static void hdlc_handle_bit(struct srd_decoder_inst *di, struct hdlc_priv *priv,
     }
 }
 
-static void hdlc_decode(struct srd_decoder_inst *di)
+static void hdlc_decode(struct srd_decoder_inst* di)
 {
-    struct hdlc_priv *priv = (struct hdlc_priv *)c_decoder_get_private(di);
+    struct hdlc_priv* priv = (struct hdlc_priv*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
@@ -264,7 +263,7 @@ static void hdlc_decode(struct srd_decoder_inst *di)
     int ENABLE = 2;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         if (priv->cpol == 1)
             c_cond_rise(cb, CLK);
         else
@@ -295,9 +294,9 @@ static void hdlc_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void hdlc_destroy(struct srd_decoder_inst *di)
+static void hdlc_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -334,7 +333,7 @@ struct srd_c_decoder hdlc_c_decoder = {
     .destroy = hdlc_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     hdlc_options[0].def = g_variant_new_string("active-high");
     hdlc_options[1].def = g_variant_new_int64(1);

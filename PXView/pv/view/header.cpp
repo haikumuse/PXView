@@ -44,6 +44,7 @@
 #include "../sigsession.h"
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
+#include "../ui/dockfonts.h"
 #include "analogsignal.h"
 #include "decodetrace.h"
 #include "dsosignal.h"
@@ -123,11 +124,7 @@ void Header::paintEvent(QPaintEvent *) {
   QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
   fore.setAlpha(View::ForeAlpha);
 
-  QFont font(painter.font());
-  float fSize = AppConfig::Instance().appOptions.fontSize;
-  if (fSize > 10)
-    fSize = 10;
-  font.setPointSizeF(fSize);
+  QFont font = theme_font_trace_label();
   painter.setFont(font);
 
   painter.save();
@@ -536,9 +533,7 @@ void Header::changeName(QMouseEvent *event) {
   if (_context_trace != NULL && _context_trace->get_type() != SR_CHANNEL_DSO &&
       event->button() == Qt::LeftButton) {
     header_resize();
-    QFont font = this->font();
-    float fsize = AppConfig::Instance().appOptions.fontSize;
-    font.setPointSizeF(fsize <= 10 ? fsize : 10);
+    QFont font = theme_font_trace_label();
     nameEdit->setFont(font);
 
     nameEdit->setText(_context_trace->get_name());

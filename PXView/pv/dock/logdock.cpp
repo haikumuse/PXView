@@ -60,10 +60,10 @@ LogDock::LogDock(QWidget *parent)
   _log_view->setLineWrapMode(QPlainTextEdit::NoWrap);
   _log_view->setMaximumBlockCount(10000);
   _log_view->setObjectName("log_view");
-  QFont font("Source Code Pro");
+  QFont font = dock_font_content();
+  font.setFamily("Source Code Pro");
   font.setStyleHint(QFont::Monospace);
   font.setFixedPitch(true);
-  font.setPixelSize(DockFontSizes::Content);
   _log_view->setFont(font);
 
   _level_combo = new QComboBox(_widget);
@@ -386,10 +386,10 @@ void LogDock::UpdateLanguage() { retranslateUi(); }
 void LogDock::UpdateTheme() { reStyle(); }
 
 void LogDock::UpdateFont() {
-  QFont font("Source Code Pro");
+  QFont font = dock_font_content();
+  font.setFamily("Source Code Pro");
   font.setStyleHint(QFont::Monospace);
   font.setFixedPitch(true);
-  font.setPixelSize(DockFontSizes::Content);
   _log_view->setFont(font);
 }
 

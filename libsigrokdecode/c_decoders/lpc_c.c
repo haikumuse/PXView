@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum lpc_state {
     LPC_IDLE,
@@ -42,30 +42,30 @@ typedef struct {
 } lpc_decoder_state;
 
 #define CH_LFRAME 0
-#define CH_LCLK   1
-#define CH_LAD0   2
-#define CH_LAD1   3
-#define CH_LAD2   4
-#define CH_LAD3   5
+#define CH_LCLK 1
+#define CH_LAD0 2
+#define CH_LAD1 3
+#define CH_LAD2 4
+#define CH_LAD3 5
 #define CH_LRESET 6
-#define CH_LDRQ   7
+#define CH_LDRQ 7
 #define CH_SERIRQ 8
 #define CH_CLKRUN 9
-#define CH_LPME   10
-#define CH_LPCPD  11
-#define CH_LSMI   12
+#define CH_LPME 10
+#define CH_LPCPD 11
+#define CH_LSMI 12
 
-#define ANN_WARN       0
-#define ANN_START      1
+#define ANN_WARN 0
+#define ANN_START 1
 #define ANN_CYCLE_TYPE 2
-#define ANN_ADDR       3
-#define ANN_TAR1       4
-#define ANN_SYNC       5
-#define ANN_TIMEOUT    6
-#define ANN_DATA       7
-#define ANN_TAR2       8
+#define ANN_ADDR 3
+#define ANN_TAR1 4
+#define ANN_SYNC 5
+#define ANN_TIMEOUT 6
+#define ANN_DATA 7
+#define ANN_TAR2 8
 
-static const char *lpc_start_names[] = {
+static const char* lpc_start_names[] = {
     "Start of cycle for a target",
     "Reserved",
     "Grant for bus master 0",
@@ -84,83 +84,122 @@ static const char *lpc_start_names[] = {
     "Stop/abort",
 };
 
-static const char *lpc_ct_dr_names[] = {
-    "I/O read", "I/O read",
-    "I/O write", "I/O write",
-    "Memory read", "Memory read",
-    "Memory write", "Memory write",
-    "DMA read", "DMA read",
-    "DMA write", "DMA write",
-    "Reserved", "Reserved", "Reserved", "Reserved",
+static const char* lpc_ct_dr_names[] = {
+    "I/O read",
+    "I/O read",
+    "I/O write",
+    "I/O write",
+    "Memory read",
+    "Memory read",
+    "Memory write",
+    "Memory write",
+    "DMA read",
+    "DMA read",
+    "DMA write",
+    "DMA write",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
 };
 
 static const int lpc_ct_dr_wr[] = {
-    0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
 };
 
-static const char * __attribute__((unused)) lpc_size_names[] = {
-    "8 bits", "16 bits", "Reserved", "32 bits",
+static const char* __attribute__((unused)) lpc_size_names[] = {
+    "8 bits",
+    "16 bits",
+    "Reserved",
+    "32 bits",
 };
 
-static const char *lpc_sync_names[] = {
-    "Ready", "Reserved", "Reserved", "Reserved",
-    "Reserved", "Short wait", "Long wait", "Reserved",
-    "Reserved", "Ready more (DMA only)", "Error", "Reserved",
-    "Reserved", "Reserved", "Reserved", "Reserved",
+static const char* lpc_sync_names[] = {
+    "Ready",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Short wait",
+    "Long wait",
+    "Reserved",
+    "Reserved",
+    "Ready more (DMA only)",
+    "Error",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
 };
 
 static struct srd_channel lpc_channels[] = {
-    {"lframe", "LFRAME#", "Frame", 0, SRD_CHANNEL_COMMON, NULL},
-    {"lclk", "LCLK", "Clock", 1, SRD_CHANNEL_SCLK, NULL},
-    {"lad0", "LAD[0]", "Addr/control/data 0", 2, SRD_CHANNEL_SDATA, NULL},
-    {"lad1", "LAD[1]", "Addr/control/data 1", 3, SRD_CHANNEL_SDATA, NULL},
-    {"lad2", "LAD[2]", "Addr/control/data 2", 4, SRD_CHANNEL_SDATA, NULL},
-    {"lad3", "LAD[3]", "Addr/control/data 3", 5, SRD_CHANNEL_SDATA, NULL},
+    { "lframe", "LFRAME#", "Frame", 0, SRD_CHANNEL_COMMON, NULL },
+    { "lclk", "LCLK", "Clock", 1, SRD_CHANNEL_SCLK, NULL },
+    { "lad0", "LAD[0]", "Addr/control/data 0", 2, SRD_CHANNEL_SDATA, NULL },
+    { "lad1", "LAD[1]", "Addr/control/data 1", 3, SRD_CHANNEL_SDATA, NULL },
+    { "lad2", "LAD[2]", "Addr/control/data 2", 4, SRD_CHANNEL_SDATA, NULL },
+    { "lad3", "LAD[3]", "Addr/control/data 3", 5, SRD_CHANNEL_SDATA, NULL },
 };
 
 static struct srd_channel lpc_optional_channels[] = {
-    {"lreset", "LRESET#", "Reset", 6, SRD_CHANNEL_COMMON, NULL},
-    {"ldrq", "LDRQ#", "Encoded DMA / bus master request", 7, SRD_CHANNEL_COMMON, NULL},
-    {"serirq", "SERIRQ", "Serialized IRQ", 8, SRD_CHANNEL_COMMON, NULL},
-    {"clkrun", "CLKRUN#", "Clock run", 9, SRD_CHANNEL_COMMON, NULL},
-    {"lpme", "LPME#", "LPC power management event", 10, SRD_CHANNEL_COMMON, NULL},
-    {"lpcpd", "LPCPD#", "Power down", 11, SRD_CHANNEL_COMMON, NULL},
-    {"lsmi", "LSMI#", "System Management Interrupt", 12, SRD_CHANNEL_COMMON, NULL},
+    { "lreset", "LRESET#", "Reset", 6, SRD_CHANNEL_COMMON, NULL },
+    { "ldrq", "LDRQ#", "Encoded DMA / bus master request", 7, SRD_CHANNEL_COMMON, NULL },
+    { "serirq", "SERIRQ", "Serialized IRQ", 8, SRD_CHANNEL_COMMON, NULL },
+    { "clkrun", "CLKRUN#", "Clock run", 9, SRD_CHANNEL_COMMON, NULL },
+    { "lpme", "LPME#", "LPC power management event", 10, SRD_CHANNEL_COMMON, NULL },
+    { "lpcpd", "LPCPD#", "Power down", 11, SRD_CHANNEL_COMMON, NULL },
+    { "lsmi", "LSMI#", "System Management Interrupt", 12, SRD_CHANNEL_COMMON, NULL },
 };
 
-static const char *lpc_ann_labels[][3] = {
-    {"", "warnings", "Warnings"},
-    {"", "start", "Start"},
-    {"", "cycle-type", "Cycle-type/direction"},
-    {"", "addr", "Address"},
-    {"", "tar1", "Turn-around cycle 1"},
-    {"", "sync", "Sync"},
-    {"", "timeout", "Time Out"},
-    {"", "data", "Data"},
-    {"", "tar2", "Turn-around cycle 2"},
+static const char* lpc_ann_labels[][3] = {
+    { "", "warnings", "Warnings" },
+    { "", "start", "Start" },
+    { "", "cycle-type", "Cycle-type/direction" },
+    { "", "addr", "Address" },
+    { "", "tar1", "Turn-around cycle 1" },
+    { "", "sync", "Sync" },
+    { "", "timeout", "Time Out" },
+    { "", "data", "Data" },
+    { "", "tar2", "Turn-around cycle 2" },
 };
 
-static const int lpc_row_data_classes[] = {ANN_START, ANN_CYCLE_TYPE, ANN_ADDR, ANN_TAR1, ANN_SYNC, ANN_TIMEOUT, ANN_DATA, ANN_TAR2, -1};
-static const int lpc_row_warnings_classes[] = {ANN_WARN, -1};
+static const int lpc_row_data_classes[] = { ANN_START, ANN_CYCLE_TYPE, ANN_ADDR, ANN_TAR1, ANN_SYNC, ANN_TIMEOUT, ANN_DATA, ANN_TAR2, -1 };
+static const int lpc_row_warnings_classes[] = { ANN_WARN, -1 };
 static const struct srd_c_ann_row lpc_ann_rows[] = {
-    {"data", "Data", lpc_row_data_classes, 8},
-    {"warnings", "Warnings", lpc_row_warnings_classes, 1},
+    { "data", "Data", lpc_row_data_classes, 8 },
+    { "warnings", "Warnings", lpc_row_warnings_classes, 1 },
 };
 
-static const char *lpc_inputs[] = {"logic", NULL};
-static const char *lpc_tags[] = {"PC", NULL};
+static const char* lpc_inputs[] = { "logic", NULL };
+static const char* lpc_tags[] = { "PC", NULL };
 
-static void lpc_putb(struct srd_decoder_inst *di, lpc_decoder_state *s, int cls, const char *text)
+static void lpc_putb(struct srd_decoder_inst* di, lpc_decoder_state* s, int cls, const char* text)
 {
     C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, cls, text);
 }
 
-static void lpc_reset(struct srd_decoder_inst *di)
+static void lpc_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(lpc_decoder_state)));
     }
-    lpc_decoder_state *s = (lpc_decoder_state *)c_decoder_get_private(di);
+    lpc_decoder_state* s = (lpc_decoder_state*)c_decoder_get_private(di);
     memset(s, 0, sizeof(lpc_decoder_state));
     s->state = LPC_IDLE;
     s->oldlframe = -1;
@@ -168,13 +207,13 @@ static void lpc_reset(struct srd_decoder_inst *di)
     s->out_ann = 0;
 }
 
-static void lpc_start(struct srd_decoder_inst *di)
+static void lpc_start(struct srd_decoder_inst* di)
 {
-    lpc_decoder_state *s = (lpc_decoder_state *)c_decoder_get_private(di);
+    lpc_decoder_state* s = (lpc_decoder_state*)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "lpc");
 }
 
-static void lpc_handle_get_start(struct srd_decoder_inst *di, lpc_decoder_state *s, int lframe, int lad)
+static void lpc_handle_get_start(struct srd_decoder_inst* di, lpc_decoder_state* s, int lframe, int lad)
 {
     s->es_block = s->ss_block;
     if (lad >= 0 && lad <= 15) {
@@ -182,7 +221,7 @@ static void lpc_handle_get_start(struct srd_decoder_inst *di, lpc_decoder_state 
         snprintf(short1, sizeof(short1), "START");
         snprintf(short2, sizeof(short2), "St");
         C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_START,
-                   lpc_start_names[lad], short1, short2, "S");
+            lpc_start_names[lad], short1, short2, "S");
     }
     s->ss_block = s->es_block + 1;
 
@@ -204,7 +243,7 @@ static void lpc_handle_get_start(struct srd_decoder_inst *di, lpc_decoder_state 
     }
 }
 
-static void lpc_handle_get_ct_dr(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_ct_dr(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     if (s->oldlad >= 0 && s->oldlad <= 15) {
         s->cycle_type = s->oldlad;
@@ -224,7 +263,7 @@ static void lpc_handle_get_ct_dr(struct srd_decoder_inst *di, lpc_decoder_state 
     s->cur_nibble = 0;
 }
 
-static void lpc_handle_get_fw_idsel(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_fw_idsel(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     s->es_block = s->ss_block;
     char buf[64];
@@ -237,7 +276,7 @@ static void lpc_handle_get_fw_idsel(struct srd_decoder_inst *di, lpc_decoder_sta
     s->cur_nibble = 0;
 }
 
-static void lpc_handle_get_fw_addr(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_fw_addr(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     int addr_nibbles = 7;
     int offset = ((addr_nibbles - 1) - s->cur_nibble) * 4;
@@ -265,7 +304,7 @@ static void lpc_handle_get_fw_addr(struct srd_decoder_inst *di, lpc_decoder_stat
     s->state = LPC_GET_FW_MSIZE;
 }
 
-static void lpc_handle_get_fw_msize(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_fw_msize(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     s->es_block = s->ss_block;
     char buf[64];
@@ -286,7 +325,7 @@ static void lpc_handle_get_fw_msize(struct srd_decoder_inst *di, lpc_decoder_sta
     }
 }
 
-static void lpc_handle_get_addr(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_addr(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     int addr_nibbles;
 
@@ -341,7 +380,7 @@ static void lpc_handle_get_addr(struct srd_decoder_inst *di, lpc_decoder_state *
     }
 }
 
-static void lpc_handle_get_tar(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_tar(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     s->es_block = s->ss_block;
     char buf[64];
@@ -364,9 +403,9 @@ static void lpc_handle_get_tar(struct srd_decoder_inst *di, lpc_decoder_state *s
     s->state = LPC_GET_SYNC;
 }
 
-static void lpc_handle_get_sync(struct srd_decoder_inst *di, lpc_decoder_state *s, int lframe)
+static void lpc_handle_get_sync(struct srd_decoder_inst* di, lpc_decoder_state* s, int lframe)
 {
-    const char *sync_name = (s->oldlad >= 0 && s->oldlad <= 15) ? lpc_sync_names[s->oldlad] : "Unknown";
+    const char* sync_name = (s->oldlad >= 0 && s->oldlad <= 15) ? lpc_sync_names[s->oldlad] : "Unknown";
 
     s->es_block = s->ss_block;
     char buf[64];
@@ -395,7 +434,7 @@ static void lpc_handle_get_sync(struct srd_decoder_inst *di, lpc_decoder_state *
     }
 }
 
-static void lpc_handle_get_timeout(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_timeout(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     if (s->oldlframe != 0) {
         lpc_putb(di, s, ANN_WARN, "TIMEOUT cycle, LFRAME# must be low for 4 LCLk cycles");
@@ -419,7 +458,7 @@ static void lpc_handle_get_timeout(struct srd_decoder_inst *di, lpc_decoder_stat
     s->state = LPC_IDLE;
 }
 
-static void lpc_handle_get_fw_data(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_fw_data(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     int data_nibbles;
 
@@ -475,7 +514,7 @@ static void lpc_handle_get_fw_data(struct srd_decoder_inst *di, lpc_decoder_stat
     s->state = LPC_GET_TAR2;
 }
 
-static void lpc_handle_get_data(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_data(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     if (s->cycle_count == 0) {
         s->databyte = (uint8_t)s->oldlad;
@@ -504,7 +543,7 @@ static void lpc_handle_get_data(struct srd_decoder_inst *di, lpc_decoder_state *
     s->state = LPC_GET_TAR2;
 }
 
-static void lpc_handle_get_tar2(struct srd_decoder_inst *di, lpc_decoder_state *s)
+static void lpc_handle_get_tar2(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
     s->es_block = s->ss_block;
     char buf[64];
@@ -527,14 +566,14 @@ static void lpc_handle_get_tar2(struct srd_decoder_inst *di, lpc_decoder_state *
     s->state = LPC_IDLE;
 }
 
-static void lpc_decode(struct srd_decoder_inst *di)
+static void lpc_decode(struct srd_decoder_inst* di)
 {
-    lpc_decoder_state *s = (lpc_decoder_state *)c_decoder_get_private(di);
+    lpc_decoder_state* s = (lpc_decoder_state*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         c_cond_rise(cb, CH_LCLK);
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
@@ -625,9 +664,9 @@ static void lpc_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void lpc_destroy(struct srd_decoder_inst *di)
+static void lpc_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -664,7 +703,7 @@ struct srd_c_decoder lpc_c_decoder = {
     .destroy = lpc_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     return &lpc_c_decoder;
 }

@@ -59,30 +59,40 @@ using namespace std;
 
 namespace pv {
 namespace view {
-
-const QColor DecodeTrace::DecodeColours[4] = {
-    QColor(0xEF, 0x29, 0x29), // Red
-    QColor(0xFC, 0xE9, 0x4F), // Yellow
-    QColor(0x8A, 0xE2, 0x34), // Green
-    QColor(0x72, 0x9F, 0xCF)  // Blue
-};
-
-const QColor DecodeTrace::ErrorBgColour = QColor(0xEF, 0x29, 0x29);
-const QColor DecodeTrace::NoDecodeColour = QColor(0x88, 0x8A, 0x85);
+#include "../config/appconfig.h"
 
 const int DecodeTrace::ArrowSize = 4;
 const double DecodeTrace::EndCapWidth = 5;
 const int DecodeTrace::DrawPadding = 100;
+const int DecodeTrace::ControlRectWidth;
 
-const QColor DecodeTrace::Colours[16] = {
-    QColor(0xEF, 0x29, 0x29), QColor(0xF6, 0x6A, 0x32),
-    QColor(0xFC, 0xAE, 0x3E), QColor(0xFB, 0xCA, 0x47),
-    QColor(0xFC, 0xE9, 0x4F), QColor(0xCD, 0xF0, 0x40),
-    QColor(0x8A, 0xE2, 0x34), QColor(0x4E, 0xDC, 0x44),
-    QColor(0x55, 0xD7, 0x95), QColor(0x64, 0xD1, 0xD2),
-    QColor(0x72, 0x9F, 0xCF), QColor(0xD4, 0x76, 0xC4),
-    QColor(0x9D, 0x79, 0xB9), QColor(0xAD, 0x7F, 0xA8),
-    QColor(0xC2, 0x62, 0x9B), QColor(0xD7, 0x47, 0x6F)};
+QColor DecodeTrace::getChannelColor(int channelIndex) {
+    QColor c = AppConfig::Instance().GetThemeColor(QString("@decoder-channel-%1").arg(channelIndex));
+    if (c.isValid()) return c;
+    
+    // Fallback original Colours array
+    static const QColor defaultColours[16] = {
+        QColor(0xEF, 0x29, 0x29), QColor(0xF6, 0x6A, 0x32),
+        QColor(0xFC, 0xAE, 0x3E), QColor(0xFB, 0xCA, 0x47),
+        QColor(0xFC, 0xE9, 0x4F), QColor(0xCD, 0xF0, 0x40),
+        QColor(0x8A, 0xE2, 0x34), QColor(0x4E, 0xDC, 0x44),
+        QColor(0x55, 0xD7, 0x95), QColor(0x64, 0xD1, 0xD2),
+        QColor(0x72, 0x9F, 0xCF), QColor(0xD4, 0x76, 0xC4),
+        QColor(0x9D, 0x79, 0xB9), QColor(0xAD, 0x7F, 0xA8),
+        QColor(0xC2, 0x62, 0x9B), QColor(0xD7, 0x47, 0x6F)
+    };
+    return defaultColours[channelIndex % 16];
+}
+
+QColor DecodeTrace::getErrorBgColor() {
+    QColor c = AppConfig::Instance().GetThemeColor("@decoder-error-bg");
+    return c.isValid() ? c : QColor(0xEF, 0x29, 0x29);
+}
+
+QColor DecodeTrace::getNoDecodeColor() {
+    QColor c = AppConfig::Instance().GetThemeColor("@decoder-no-decode");
+    return c.isValid() ? c : QColor(0x88, 0x8A, 0x85);
+}
 
 const QColor DecodeTrace::OutlineColours[16] = {
     QColor(0x77, 0x14, 0x14), QColor(0x7B, 0x35, 0x19),
@@ -100,7 +110,7 @@ DecodeTrace::DecodeTrace(pv::SigSession *session,
             index, SR_CHANNEL_DECODER) {
   assert(decoder_stack);
 
-  _colour = DecodeColours[index % countof(DecodeColours)];
+  _colour = getChannelColor(index % 16);
 
   _decode_start = 0;
   _decode_end = INT64_MAX;
@@ -279,9 +289,8 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
                   double width = (block_end - block_start) / samples_per_pixel;
 
                   const size_t colour =
-                      ((base_colour + ann->type()) % MaxAnnType) %
-                      countof(Colours);
-                  const QColor &fill = Colours[colour];
+                      ((base_colour + ann->type()) % MaxAnnType) % 16;
+                  const QColor fill = getChannelColor(colour);
 
                   p.fillRect(QRectF(x, y - annotation_height * 0.5,
                                     std::max(1.0, width), annotation_height),
@@ -348,8 +357,8 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
       min(a.end_sample() / samples_per_pixel - pixels_offset, (double)right);
 
   const size_t colour =
-      ((base_colour + a.type()) % MaxAnnType) % countof(Colours);
-  const QColor &fill = Colours[colour];
+      ((base_colour + a.type()) % MaxAnnType) % 16;
+  const QColor fill = getChannelColor(colour);
   const QColor &outline = OutlineColours[colour];
 
   if (start > right + DrawPadding || end < left - DrawPadding) {

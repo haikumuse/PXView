@@ -43,6 +43,7 @@ class IProtocolItemLayerCallback
     public:
         virtual void OnProtocolSetting(void *handle)=0;
         virtual void OnProtocolDelete(void *handle)=0;
+        virtual void OnProtocolVisibilityChanged(void *handle)=0;
         virtual void OnProtocolFormatChanged(QString format, void *handle)=0;
 };
 
@@ -59,6 +60,7 @@ public:
     void LoadFormatSelect(bool bSingle);
     inline QString &GetProtocolName(){return _protocolName;}
     void SetProtocolFormat(const char *format);
+    void SetVisibilityState(bool is_shown);
 
     inline void* get_protocol_key_handel(){
         return m_decoderStatus;
@@ -73,6 +75,7 @@ public:
 private slots: 
     void on_set_protocol(); 
     void on_del_protocol();
+    void on_vis_protocol();
     void on_format_select_changed(int index);
 
 public:
@@ -85,6 +88,7 @@ private:
     QLabel *_protocol_label;
     QLabel *_progress_label;
     QPushButton *_set_button;
+    QPushButton *_vis_button;
     QPushButton *_del_button;
     DsComboBox  *_format_combox;
     IProtocolItemLayerCallback *m_callback;

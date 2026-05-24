@@ -33,6 +33,7 @@
 #include "../config/appconfig.h"
 #include "../dialogs/about.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 #include "../ui/iconcache.h"
 #include "../ui/langresource.h"
 #include "logobar.h"
@@ -142,20 +143,37 @@ void LogoBar::retranslateUi() {
   _update->setText(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_HELP_UPDATE), "&Update"));
 
-  AppConfig &app = AppConfig::Instance();
-  if (app.frameOptions.language == LAN_EN)
-    _language->setIcon(QIcon(":/icons/English.svg"));
-  else
-    _language->setIcon(QIcon(":/icons/Chinese.svg"));
+  reStyle();
 }
 
 void LogoBar::reStyle() {
   QString iconPath = GetIconPath();
+  QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
 
-  _about->setIcon(IconCache::Instance().icon(iconPath + "/about.svg"));
-  _manual->setIcon(IconCache::Instance().icon(iconPath + "/manual.svg"));
-  _issue->setIcon(IconCache::Instance().icon(iconPath + "/bug.svg"));
-  _update->setIcon(IconCache::Instance().icon(iconPath + "/update.svg"));
+  auto getIcon = [&](const QString &name) {
+      return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
+                                 : IconCache::Instance().icon(iconPath + name);
+  };
+
+  auto getQrcIcon = [&](const QString &path) {
+      return iconColor.isValid() ? IconCache::Instance().tintedIcon(path, iconColor)
+                                 : IconCache::Instance().icon(path);
+  };
+
+  _action_en->setIcon(getQrcIcon(":/icons/English.svg"));
+  _action_cn->setIcon(getQrcIcon(":/icons/Chinese.svg"));
+  _action_traditional->setIcon(getQrcIcon(":/icons/Chinese.svg"));
+
+  AppConfig &app = AppConfig::Instance();
+  if (app.frameOptions.language == LAN_EN)
+    _language->setIcon(getQrcIcon(":/icons/English.svg"));
+  else
+    _language->setIcon(getQrcIcon(":/icons/Chinese.svg"));
+
+  _about->setIcon(getIcon("/about.svg"));
+  _manual->setIcon(getIcon("/manual.svg"));
+  _issue->setIcon(getIcon("/bug.svg"));
+  _update->setIcon(getIcon("/update.svg"));
 
   // if (_connected)
   //     _logo_button.setIcon(QIcon(iconPath+"/logo_color.svg"));
@@ -173,22 +191,21 @@ void LogoBar::dsl_connected(bool conn) {
 }
 
 void LogoBar::on_actionEn_triggered() {
-  _language->setIcon(QIcon::fromTheme("file", QIcon(":/icons/English.svg")));
-
   assert(_mainForm);
   _mainForm->switchLanguage(LAN_EN);
+  reStyle();
 }
 
 void LogoBar::on_actionCn_triggered() {
-  _language->setIcon(QIcon::fromTheme("file", QIcon(":/icons/Chinese.svg")));
   assert(_mainForm);
   _mainForm->switchLanguage(LAN_CN);
+  reStyle();
 }
 
 void LogoBar::on_actionTraditional_triggered() {
-  _language->setIcon(QIcon::fromTheme("file", QIcon(":/icons/Chinese.svg")));
   assert(_mainForm);
   _mainForm->switchLanguage(LAN_TRADITIONAL);
+  reStyle();
 }
 
 void LogoBar::on_actionAbout_triggered() {
@@ -223,8 +240,7 @@ void LogoBar::UpdateLanguage() { retranslateUi(); }
 void LogoBar::UpdateTheme() { reStyle(); }
 
 void LogoBar::UpdateFont() {
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont font = theme_font_toolbar();
   ui::set_toolbar_font(this, font);
 }
 

@@ -33,6 +33,7 @@
 #include "../ui/langresource.h"
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
+#include "../ui/dockfonts.h"
 #include "../ui/popupdlglist.h"
 
 namespace pv {
@@ -137,8 +138,7 @@ void DSMessageBox::on_button(QAbstractButton *btn)
 
 int DSMessageBox::exec()
 {
-    QFont font = this->font();
-    font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+    QFont font = theme_font_dialog();
     ui::set_form_font(this, font);
 
     if (_titlebar != NULL){

@@ -32,7 +32,9 @@
 #include "../sigsession.h"
 #include "../dsvdef.h"
 #include "../config/appconfig.h"
+#include "../config/appconfig.h"
 #include "../appcontrol.h"
+#include "../ui/dockfonts.h"
 
 
 namespace pv {
@@ -102,7 +104,7 @@ Trace::Trace(const Trace &t) :
     _sec_index(t._sec_index),
     _old_v_offset(t._old_v_offset),
     _totalHeight(t._totalHeight),
-    _ownHeight(-1),
+    _ownHeight(t._ownHeight),
     _typeWidth(t._typeWidth),
     _visible(t._visible),
     _text_size(t._text_size)
@@ -113,9 +115,7 @@ Trace::Trace(const Trace &t) :
 
 int Trace::get_name_width()
 {
-    QFont font;
-    float fSize = AppConfig::Instance().appOptions.fontSize;
-    font.setPointSizeF(fSize <= 10 ? fSize : 10);
+    QFont font = theme_font_trace_label();
     QFontMetrics fm(font);
 
     return fm.boundingRect(get_name()).width();

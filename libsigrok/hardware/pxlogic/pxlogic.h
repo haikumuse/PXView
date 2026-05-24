@@ -311,7 +311,7 @@ static const char *probeMapUnits[] = {
 
 static const int hwoptions[] = {
     SR_CONF_OPERATION_MODE,
-    SR_CONF_MAX_HEIGHT,
+    // SR_CONF_MAX_HEIGHT,
     SR_CONF_VTH,
     SR_CONF_EX_TRIGGER_MATCH,
     // SR_CONF_RLE_SUPPORT,

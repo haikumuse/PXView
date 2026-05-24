@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum rc5_state {
     STATE_IDLE,
@@ -45,33 +45,33 @@ struct rc5_priv {
 };
 
 static struct srd_channel rc5_channels[] = {
-    {"ir", "IR", "IR data line", 0, SRD_CHANNEL_SDATA, "dec_ir_rc5_chan_ir"},
+    { "ir", "IR", "IR data line", 0, SRD_CHANNEL_SDATA, "dec_ir_rc5_chan_ir" },
 };
 
 static struct srd_decoder_option rc5_options_arr[2];
 
-static const char *rc5_ann_labels[][3] = {
-    {"", "bit", "Bit"},
-    {"", "startbit1", "Startbit 1"},
-    {"", "startbit2", "Startbit 2"},
-    {"", "togglebit-0", "Toggle bit 0"},
-    {"", "togglebit-1", "Toggle bit 1"},
-    {"", "address", "Address"},
-    {"", "command", "Command"},
+static const char* rc5_ann_labels[][3] = {
+    { "", "bit", "Bit" },
+    { "", "startbit1", "Startbit 1" },
+    { "", "startbit2", "Startbit 2" },
+    { "", "togglebit-0", "Toggle bit 0" },
+    { "", "togglebit-1", "Toggle bit 1" },
+    { "", "address", "Address" },
+    { "", "command", "Command" },
 };
 
-static const int rc5_row_bits_classes[] = {ANN_BIT, -1};
-static const int rc5_row_fields_classes[] = {ANN_STARTBIT1, ANN_STARTBIT2, ANN_TOGGLEBIT0, ANN_TOGGLEBIT1, ANN_ADDRESS, ANN_COMMAND, -1};
+static const int rc5_row_bits_classes[] = { ANN_BIT, -1 };
+static const int rc5_row_fields_classes[] = { ANN_STARTBIT1, ANN_STARTBIT2, ANN_TOGGLEBIT0, ANN_TOGGLEBIT1, ANN_ADDRESS, ANN_COMMAND, -1 };
 static const struct srd_c_ann_row rc5_ann_rows[] = {
-    {"bits", "Bits", rc5_row_bits_classes, 1},
-    {"fields", "Fields", rc5_row_fields_classes, 6},
+    { "bits", "Bits", rc5_row_bits_classes, 1 },
+    { "fields", "Fields", rc5_row_fields_classes, 6 },
 };
 
-static const char *rc5_inputs[] = {"logic", NULL};
-static const char *rc5_outputs[] = {NULL};
-static const char *rc5_tags[] = {"IR", NULL};
+static const char* rc5_inputs[] = { "logic", NULL };
+static const char* rc5_outputs[] = { NULL };
+static const char* rc5_tags[] = { "IR", NULL };
 
-static char rc5_edge_type(struct rc5_priv *s, uint64_t samplenum)
+static char rc5_edge_type(struct rc5_priv* s, uint64_t samplenum)
 {
     uint64_t distance = samplenum - s->edges[s->num_edges - 1];
     uint64_t half = s->halfbit;
@@ -85,7 +85,7 @@ static char rc5_edge_type(struct rc5_priv *s, uint64_t samplenum)
     return 'e';
 }
 
-static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
+static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
 {
     int i;
     int a = 0, c = 0;
@@ -116,7 +116,7 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
         snprintf(str4, sizeof(str4), "S1");
         snprintf(str5, sizeof(str5), "S");
         C_ANN_PUT(di, s->ss_es_bits_ss[0], s->ss_es_bits_es[0], s->out_ann, ANN_STARTBIT1,
-                  str1, str2, str3, str4, str5);
+            str1, str2, str3, str4, str5);
     }
 
     {
@@ -130,7 +130,7 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
             snprintf(str5, sizeof(str5), "C");
             ann_idx = ANN_COMMAND;
             C_ANN_PUT(di, s->ss_es_bits_ss[1], s->ss_es_bits_es[1], s->out_ann, ann_idx,
-                      str1, str2, str3, str4, str5);
+                str1, str2, str3, str4, str5);
         } else {
             char str1[32], str2[16], str3[8], str4[8], str5[4];
             snprintf(str1, sizeof(str1), "Startbit2: %d", s->bits_val[1]);
@@ -139,7 +139,7 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
             snprintf(str4, sizeof(str4), "S2");
             snprintf(str5, sizeof(str5), "S");
             C_ANN_PUT(di, s->ss_es_bits_ss[1], s->ss_es_bits_es[1], s->out_ann, ann_idx,
-                      str1, str2, str3, str4, str5);
+                str1, str2, str3, str4, str5);
         }
     }
 
@@ -152,7 +152,7 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
         snprintf(str4, sizeof(str4), "TB");
         snprintf(str5, sizeof(str5), "T");
         C_ANN_PUT(di, s->ss_es_bits_ss[2], s->ss_es_bits_es[2], s->out_ann, ann_idx,
-                  str1, str2, str3, str4, str5);
+            str1, str2, str3, str4, str5);
     }
 
     for (i = 0; i < 5; i++)
@@ -165,7 +165,7 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
         snprintf(str4, sizeof(str4), "A: %d", a);
         snprintf(str5, sizeof(str5), "A");
         C_ANN_PUT(di, s->ss_es_bits_ss[3], s->ss_es_bits_es[7], s->out_ann, ANN_ADDRESS,
-                  str1, str2, str3, str4, str5);
+            str1, str2, str3, str4, str5);
     }
 
     for (i = 0; i < 6; i++)
@@ -182,30 +182,30 @@ static void rc5_handle_bits(struct srd_decoder_inst *di, struct rc5_priv *s)
         snprintf(str4, sizeof(str4), "C: %d", c);
         snprintf(str5, sizeof(str5), "C");
         C_ANN_PUT(di, s->ss_es_bits_ss[8], s->ss_es_bits_es[13], s->out_ann, ANN_COMMAND,
-                  str1, str2, str3, str4, str5);
+            str1, str2, str3, str4, str5);
     }
 }
 
-static void rc5_reset(struct srd_decoder_inst *di)
+static void rc5_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(struct rc5_priv)));
     }
-    struct rc5_priv *s = (struct rc5_priv *)c_decoder_get_private(di);
+    struct rc5_priv* s = (struct rc5_priv*)c_decoder_get_private(di);
     memset(s, 0, sizeof(struct rc5_priv));
     s->state = STATE_IDLE;
 }
 
-static void rc5_start(struct srd_decoder_inst *di)
+static void rc5_start(struct srd_decoder_inst* di)
 {
-    struct rc5_priv *s = (struct rc5_priv *)c_decoder_get_private(di);
+    struct rc5_priv* s = (struct rc5_priv*)c_decoder_get_private(di);
 
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_rc5");
 
-    const char *polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char* polarity = c_decoder_get_option_string(di, "polarity", "active-low");
     s->next_edge_is_low = (strcmp(polarity, "active-low") == 0) ? 1 : 0;
 
-    const char *protocol = c_decoder_get_option_string(di, "protocol", "standard");
+    const char* protocol = c_decoder_get_option_string(di, "protocol", "standard");
     s->is_extended = (strcmp(protocol, "extended") == 0) ? 1 : 0;
 
     s->samplerate = c_decoder_get_samplerate(di);
@@ -213,18 +213,18 @@ static void rc5_start(struct srd_decoder_inst *di)
         s->halfbit = (uint64_t)((double)s->samplerate * 0.00178 / 2.0);
 }
 
-static void rc5_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
+static void rc5_metadata(struct srd_decoder_inst* di, int key, uint64_t value)
 {
-    struct rc5_priv *s = (struct rc5_priv *)c_decoder_get_private(di);
+    struct rc5_priv* s = (struct rc5_priv*)c_decoder_get_private(di);
     if (key == SRD_CONF_SAMPLERATE) {
         s->samplerate = value;
         s->halfbit = (uint64_t)((double)value * 0.00178 / 2.0);
     }
 }
 
-static void rc5_decode(struct srd_decoder_inst *di)
+static void rc5_decode(struct srd_decoder_inst* di)
 {
-    struct rc5_priv *s = (struct rc5_priv *)c_decoder_get_private(di);
+    struct rc5_priv* s = (struct rc5_priv*)c_decoder_get_private(di);
     uint64_t samplenum = 0;
     uint64_t matched;
 
@@ -232,7 +232,7 @@ static void rc5_decode(struct srd_decoder_inst *di)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         if (s->next_edge_is_low)
             c_cond_fall(cb, IR_CH);
         else
@@ -321,9 +321,9 @@ static void rc5_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void rc5_destroy(struct srd_decoder_inst *di)
+static void rc5_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -362,13 +362,13 @@ struct srd_c_decoder ir_rc5_c_decoder = {
     .destroy = rc5_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
-    GVariant *polarity_vals[] = {
+    GVariant* polarity_vals[] = {
         g_variant_new_string("active-low"),
         g_variant_new_string("active-high"),
     };
-    GSList *polarity_list = NULL;
+    GSList* polarity_list = NULL;
     polarity_list = g_slist_append(polarity_list, polarity_vals[0]);
     polarity_list = g_slist_append(polarity_list, polarity_vals[1]);
     rc5_options_arr[0].id = "polarity";
@@ -377,11 +377,11 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
     rc5_options_arr[0].def = g_variant_new_string("active-low");
     rc5_options_arr[0].values = polarity_list;
 
-    GVariant *protocol_vals[] = {
+    GVariant* protocol_vals[] = {
         g_variant_new_string("standard"),
         g_variant_new_string("extended"),
     };
-    GSList *protocol_list = NULL;
+    GSList* protocol_list = NULL;
     protocol_list = g_slist_append(protocol_list, protocol_vals[0]);
     protocol_list = g_slist_append(protocol_list, protocol_vals[1]);
     rc5_options_arr[1].id = "protocol";

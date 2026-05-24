@@ -16,6 +16,7 @@ public:
     static IconCache &Instance();
 
     QIcon icon(const QString &svgPath);
+    QIcon tintedIcon(const QString &svgPath, const QColor &color, const QSize &size = QSize(24, 24));
     QPixmap pixmap(const QString &svgPath, const QSize &size = QSize(16, 16));
 
     void clearCache();

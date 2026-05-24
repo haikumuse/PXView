@@ -444,13 +444,16 @@ void SamplingBar::reStyle() {
 
   if (true) {
     QString iconPath = GetIconPath();
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
 
-    _action_single->setIcon(
-        IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
-    _action_repeat->setIcon(
-        IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
-    _action_loop->setIcon(
-        IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
+    auto getIcon = [&](const QString &name) {
+        return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
+                                   : IconCache::Instance().icon(iconPath + name);
+    };
+
+    _action_single->setIcon(getIcon(SINGLE_ACTION_ICON));
+    _action_repeat->setIcon(getIcon(REPEAT_ACTION_ICON));
+    _action_loop->setIcon(getIcon(LOOP_ACTION_ICON));
 
     update_mode_icon();
   }
@@ -1356,16 +1359,19 @@ ds_device_handle SamplingBar::get_next_device_handle() {
 
 void SamplingBar::update_mode_icon() {
   QString iconPath = GetIconPath();
+  QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
+
+  auto getIcon = [&](const QString &name) {
+      return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
+                                 : IconCache::Instance().icon(iconPath + name);
+  };
 
   if (_session->is_repeat_mode())
-    _mode_button.setIcon(
-        IconCache::Instance().icon(iconPath + REPEAT_ACTION_ICON));
+    _mode_button.setIcon(getIcon(REPEAT_ACTION_ICON));
   else if (_session->is_loop_mode())
-    _mode_button.setIcon(
-        IconCache::Instance().icon(iconPath + LOOP_ACTION_ICON));
+    _mode_button.setIcon(getIcon(LOOP_ACTION_ICON));
   else
-    _mode_button.setIcon(
-        IconCache::Instance().icon(iconPath + SINGLE_ACTION_ICON));
+    _mode_button.setIcon(getIcon(SINGLE_ACTION_ICON));
 }
 
 void SamplingBar::run_or_stop() { on_run_stop(); }

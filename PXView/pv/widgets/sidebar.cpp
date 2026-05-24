@@ -10,6 +10,7 @@
 #include "sidebar.h"
 #include "../config/appconfig.h"
 #include "../ui/langresource.h"
+#include "../ui/dockfonts.h"
 #include <QFrame>
 #include <QIcon>
 #include <QPainter>
@@ -275,7 +276,8 @@ void SideBarIndicator::paintEvent(QPaintEvent *event) {
   painter.setPen(Qt::NoPen);
 
   // Draw main indicator bar with soft color
-  QColor accentColor("#5B8DEF");
+  QColor accentColor = AppConfig::Instance().GetThemeColor("@sidebar-accent");
+  if (!accentColor.isValid()) accentColor = QColor("#5B8DEF"); // fallback
   painter.setBrush(accentColor);
   painter.drawRoundedRect(rect(), 1.5, 1.5);
 }
@@ -447,6 +449,13 @@ void SideBar::setItemRunning(int index, bool running) {
   for (auto &item : _items) {
     if (item.index == index) {
       item.button->setRunning(running);
+      if (item.defaultText == "Start") {
+        item.button->setText(running ? L_S(STR_PAGE_TOOLBAR, "IDS_TOOLBAR_RUN_STOP", "Stop") 
+                                     : L_S(STR_PAGE_TOOLBAR, item.textId, "Start"));
+      } else if (item.defaultText == "Instant") {
+        item.button->setText(running ? L_S(STR_PAGE_TOOLBAR, "IDS_TOOLBAR_ONE_STOP", "Stop") 
+                                     : L_S(STR_PAGE_TOOLBAR, item.textId, "Instant"));
+      }
       break;
     }
   }
@@ -487,8 +496,7 @@ void SideBar::UpdateTheme() {
 }
 
 void SideBar::UpdateFont() {
-  QFont font = this->font();
-  font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont font = theme_font_sidebar();
   for (auto &item : _items) {
     item.button->setFont(font);
   }

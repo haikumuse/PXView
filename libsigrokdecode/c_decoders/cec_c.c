@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 enum cec_state {
     WAIT_START,
     GET_BITS,

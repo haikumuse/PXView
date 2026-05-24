@@ -129,7 +129,7 @@ static void start(struct srd_decoder_inst *di)
 {
     struct priv *s = (struct priv *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "4b5b");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "4b5b");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "4b5b");
     s->samplerate = c_decoder_get_samplerate(di);
     s->bit_offset = atoi(c_decoder_get_option_string(di, "bit_offset", "0"));
 }

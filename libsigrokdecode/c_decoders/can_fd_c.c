@@ -818,7 +818,7 @@ static void canfd_start(struct srd_decoder_inst *di)
 {
     canfd_state *s = (canfd_state *)c_decoder_get_private(di);
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "can");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "can");
+    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "can");
 }
 
 static void canfd_decode(struct srd_decoder_inst *di)

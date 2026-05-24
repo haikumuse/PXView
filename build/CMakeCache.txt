@@ -28,7 +28,7 @@ CMAKE_AR:FILEPATH=D:/msys64/mingw64/bin/ar.exe
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=RELEASE
+CMAKE_BUILD_TYPE:STRING=Debug
 
 //CXX compiler
 CMAKE_CXX_COMPILER:FILEPATH=D:/msys64/mingw64/bin/c++.exe
@@ -341,6 +341,9 @@ ENABLE_DRIVER_RASPBERRYPI_PICO:BOOL=ON
 //Enable saleae-logic16 driver
 ENABLE_DRIVER_SALEAE_LOGIC16:BOOL=ON
 
+//Enable UI debug hover helper
+ENABLE_THEME_INSPECTOR:BOOL=ON
+
 //Path to a file.
 FFTW_INCLUDE_DIR:PATH=D:/msys64/mingw64/include
 
@@ -457,7 +460,94 @@ boost_headers_DIR:PATH=D:/msys64/mingw64/lib/cmake/boost_headers-1.91.0
 decoder_4b5b_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_a7105_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ac97_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ad5593r_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ad5626_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ad79x0_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_adat_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_adb_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ade77xx_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_adf435x_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_adns5020_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_adxl345_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_afsk_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_am230x_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_amulet_ascii_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_arm_etmv3_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_arm_itm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_arm_tpiu_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_arp_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_as5047_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_atsha204a_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_aud_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_avclan_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_avr_isp_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_avr_pdi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_bean_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_bh1750_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_bluetooth_h4_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_boost_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_c2_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_caliper_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_can_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -466,16 +556,46 @@ decoder_can_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_can_fd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_carrera_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_cc1101_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ccd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_cec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_cfp_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_cjtag_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_cjtag_oscan0_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_counter_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_crsf_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_cyrf6936_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_dali_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_dcc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_dcf77_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_delta_sigma_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_dmx512_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -484,19 +604,106 @@ decoder_dmx512_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_ds1307_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_ds2408_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ds243x_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ds28ea00_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_ds3231_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_dsi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_edid_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_eeprom24xx_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_eeprom93xx_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_em4100_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_em4305_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_emmc_sd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_enc28j60_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_eth_an_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ethernet_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_flexray_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_fsi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_gpib_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_graycode_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_guess_bitrate_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_hdcp_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_hdlc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_hdmi_scdc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_i2c_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_i2c_packet_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_i2cdemux_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_i2cfilter_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_i2s_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_iebus_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_iec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ieee488_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ipv4_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ir_irmp_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ir_ltto_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ir_ltto_decode_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_ir_nec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -505,13 +712,37 @@ decoder_ir_nec_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_ir_rc5_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_ir_rc6_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ir_recoil_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_ir_sirc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_iso7816_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_j1708_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_jitter_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_jtag_avr_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_jtag_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_jtag_ejtag_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_jtag_stm32_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_lfast_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_lin_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -523,10 +754,76 @@ decoder_lm75_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_lpc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_ltar_smartdevice_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ltar_smartdevice_decode_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ltc242x_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ltc26x7_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_maple_bus_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_max6954_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_max7219_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mcs48_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_mdio_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_microwire_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_midi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_miller_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mipi_dsi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mipi_rffe_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mlx90614_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_modbus_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_morse_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mpu6050_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mrf24j40_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mvb_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_mxc6225xu_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_nes_gamepad_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_nrf24l01_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_nrf905_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_nrzi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -535,16 +832,145 @@ decoder_nrzi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_numbers_and_state_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_nunchuk_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_one_single_wire_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_onewire_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_onewire_link_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_onewire_network_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ook_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ook_oregon_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ook_vis_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_opentherm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_pan1321_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_parallel_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_pca9571_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_pcfx_ctrlr_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_pjdl_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_pjon_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_pn532_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_ps2_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_ps2_keyboard_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ps2_mouse_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_pwm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_pxx1_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_qi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_qspi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rc_encode_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rfm12_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rgb_led_spi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rgb_led_ws281x_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rinnai_control_panel_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rpm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rtc8564_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_rvswd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sae_j1850_vpw_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sbus_futaba_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_scs_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sda2506_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sdcard_sd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sdcard_spi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sdio_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sdq_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sent_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_seven_segment_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_signature_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sipi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sle44xx_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sony_md_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_sony_md_decode_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_spacewire_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_spdif_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
@@ -553,16 +979,127 @@ decoder_spdif_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 decoder_spi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_spi_dual_quad_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_spi_fast_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_spi_tpm_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_spiflash_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ssd1306_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ssi32_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_st25dv_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_st25r39xx_spi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_st7735_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_st7789_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_stepper_motor_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_streletz_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_swd_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
+decoder_swi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_swim_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_t55xx_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tca6408a_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tcs3472x_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tdm_audio_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_timing_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tlc5620_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tm1637_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tm1638_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tmc_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tmp102_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tpm_fifo_tis_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tpm_tis_i2c_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_tpm_tis_spi_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
 decoder_uart_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_uart_fast_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_udp_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_ufcs_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_usb_packet_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_usb_power_delivery_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_usb_request_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_usb_signalling_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Dependencies for the target
 decoder_wiegand_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_x2444m_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_xfp_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_xy2_100_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
+
+//Dependencies for the target
+decoder_z80_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 
 //Path to a library.
 pkgcfg_lib_GLIB_glib-2.0:FILEPATH=D:/msys64/mingw64/lib/libglib-2.0.dll.a

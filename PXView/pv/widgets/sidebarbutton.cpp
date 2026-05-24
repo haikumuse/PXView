@@ -14,6 +14,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QRegularExpression>
+#include "../ui/dockfonts.h"
 
 
 SideBarButton::SideBarButton(QWidget *parent)
@@ -128,7 +129,9 @@ void SideBarButton::drawIcon(QPainter *painter) {
     if (!pix.isNull()) {
       QPainter p(&pix);
       p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-      p.fillRect(pix.rect(), QColor("#5B8DEF"));
+      QColor accentColor = AppConfig::Instance().GetThemeColor("@sidebar-accent");
+      if (!accentColor.isValid()) accentColor = QColor("#5B8DEF");
+      p.fillRect(pix.rect(), accentColor);
       p.end();
       painter->drawPixmap(iconRect.topLeft(), pix);
     }
@@ -158,8 +161,7 @@ void SideBarButton::drawText(QPainter *painter) {
     painter->setOpacity(0.4);
   }
 
-  QFont f = font();
-  f.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
+  QFont f = theme_font_sidebar();
   painter->setFont(f);
   painter->drawText(QRect(0, 32, width(), 14), Qt::AlignCenter, _text);
 

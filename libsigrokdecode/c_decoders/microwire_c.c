@@ -1,8 +1,8 @@
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum {
     ANN_START_BIT = 0,
@@ -32,35 +32,35 @@ struct mw_priv {
 };
 
 static struct srd_channel mw_channels[] = {
-    {"cs", "CS", "Chip select", 0, SRD_CHANNEL_COMMON, NULL},
-    {"sk", "SK", "Clock", 1, SRD_CHANNEL_SCLK, NULL},
-    {"si", "SI", "Slave in", 2, SRD_CHANNEL_SDATA, NULL},
-    {"so", "SO", "Slave out", 3, SRD_CHANNEL_SDATA, NULL},
+    { "cs", "CS", "Chip select", 0, SRD_CHANNEL_COMMON, NULL },
+    { "sk", "SK", "Clock", 1, SRD_CHANNEL_SCLK, NULL },
+    { "si", "SI", "Slave in", 2, SRD_CHANNEL_SDATA, NULL },
+    { "so", "SO", "Slave out", 3, SRD_CHANNEL_SDATA, NULL },
 };
 
-static const char *mw_ann_labels[][3] = {
-    {"", "start-bit", "Start bit"},
-    {"", "si-bit", "SI bit"},
-    {"", "so-bit", "SO bit"},
-    {"", "status-check-ready", "Status check ready"},
-    {"", "status-check-busy", "Status check busy"},
-    {"", "warning", "Warning"},
+static const char* mw_ann_labels[][3] = {
+    { "", "start-bit", "Start bit" },
+    { "", "si-bit", "SI bit" },
+    { "", "so-bit", "SO bit" },
+    { "", "status-check-ready", "Status check ready" },
+    { "", "status-check-busy", "Status check busy" },
+    { "", "warning", "Warning" },
 };
 
-static const int mw_row_si_classes[] = {ANN_START_BIT, ANN_SI_BIT};
-static const int mw_row_so_classes[] = {ANN_SO_BIT};
-static const int mw_row_status_classes[] = {ANN_STATUS_READY, ANN_STATUS_BUSY};
-static const int mw_row_warnings_classes[] = {ANN_WARNING};
+static const int mw_row_si_classes[] = { ANN_START_BIT, ANN_SI_BIT };
+static const int mw_row_so_classes[] = { ANN_SO_BIT };
+static const int mw_row_status_classes[] = { ANN_STATUS_READY, ANN_STATUS_BUSY };
+static const int mw_row_warnings_classes[] = { ANN_WARNING };
 static const struct srd_c_ann_row mw_ann_rows[] = {
-    {"si-bits", "SI bits", mw_row_si_classes, 2},
-    {"so-bits", "SO bits", mw_row_so_classes, 1},
-    {"status", "Status", mw_row_status_classes, 2},
-    {"warnings", "Warnings", mw_row_warnings_classes, 1},
+    { "si-bits", "SI bits", mw_row_si_classes, 2 },
+    { "so-bits", "SO bits", mw_row_so_classes, 1 },
+    { "status", "Status", mw_row_status_classes, 2 },
+    { "warnings", "Warnings", mw_row_warnings_classes, 1 },
 };
 
-static const char *mw_inputs[] = {"logic"};
-static const char *mw_outputs[] = {"microwire"};
-static const char *mw_tags[] = {"Embedded/industrial"};
+static const char* mw_inputs[] = { "logic" };
+static const char* mw_outputs[] = { "microwire" };
+static const char* mw_tags[] = { "Embedded/industrial" };
 
 struct mw_packet_entry {
     uint64_t samplenum;
@@ -71,30 +71,30 @@ struct mw_packet_entry {
     int so;
 };
 
-static void mw_reset(struct srd_decoder_inst *di)
+static void mw_reset(struct srd_decoder_inst* di)
 {
     if (!c_decoder_get_private(di)) {
         c_decoder_set_private(di, g_malloc0(sizeof(struct mw_priv)));
     }
-    struct mw_priv *p = (struct mw_priv *)c_decoder_get_private(di);
+    struct mw_priv* p = (struct mw_priv*)c_decoder_get_private(di);
     memset(p, 0, sizeof(struct mw_priv));
 }
 
-static void mw_start(struct srd_decoder_inst *di)
+static void mw_start(struct srd_decoder_inst* di)
 {
-    struct mw_priv *p = (struct mw_priv *)c_decoder_get_private(di);
+    struct mw_priv* p = (struct mw_priv*)c_decoder_get_private(di);
     p->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "microwire");
-    p->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "microwire");
+    p->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "microwire");
 }
 
-static void mw_decode(struct srd_decoder_inst *di)
+static void mw_decode(struct srd_decoder_inst* di)
 {
-    struct mw_priv *p = (struct mw_priv *)c_decoder_get_private(di);
+    struct mw_priv* p = (struct mw_priv*)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        srd_cond_builder* cb = c_cond_new();
         c_cond_rise(cb, CH_CS);
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
@@ -104,10 +104,10 @@ static void mw_decode(struct srd_decoder_inst *di)
         int sk = c_decoder_get_pin(di, CH_SK, samplenum);
         if (sk) {
             C_ANN_PUT(di, samplenum, samplenum, p->out_ann, ANN_WARNING,
-                       "Clock should be low on start", "Clock high on start", "Clock high", "SK high");
+                "Clock should be low on start", "Clock high on start", "Clock high", "SK high");
         }
 
-        GArray *packet = g_array_new(FALSE, FALSE, sizeof(struct mw_packet_entry));
+        GArray* packet = g_array_new(FALSE, FALSE, sizeof(struct mw_packet_entry));
 
         int cs = 1;
         while (cs) {
@@ -145,7 +145,7 @@ static void mw_decode(struct srd_decoder_inst *di)
 
         int status_check = 1;
         for (guint i = 0; i < packet->len; i++) {
-            struct mw_packet_entry *e = &g_array_index(packet, struct mw_packet_entry, i);
+            struct mw_packet_entry* e = &g_array_index(packet, struct mw_packet_entry, i);
             if (e->matched & (1ULL << 1)) {
                 if (e->sk) {
                     if (e->si)
@@ -160,7 +160,7 @@ static void mw_decode(struct srd_decoder_inst *di)
             int bit_so = g_array_index(packet, struct mw_packet_entry, 0).so;
 
             for (guint i = 0; i < packet->len; i++) {
-                struct mw_packet_entry *e = &g_array_index(packet, struct mw_packet_entry, i);
+                struct mw_packet_entry* e = &g_array_index(packet, struct mw_packet_entry, i);
                 if (e->matched & (1ULL << 2)) {
                     if (bit_so == 0 && e->so) {
                         C_ANN_PUT(di, start_sn, e->samplenum, p->out_ann, ANN_STATUS_BUSY, "Busy", "B");
@@ -170,7 +170,7 @@ static void mw_decode(struct srd_decoder_inst *di)
                 }
             }
 
-            struct mw_packet_entry *last = &g_array_index(packet, struct mw_packet_entry, packet->len - 1);
+            struct mw_packet_entry* last = &g_array_index(packet, struct mw_packet_entry, packet->len - 1);
             if (bit_so == 0) {
                 C_ANN_PUT(di, start_sn, last->samplenum, p->out_ann, ANN_STATUS_BUSY, "Busy", "B");
             } else {
@@ -181,10 +181,10 @@ static void mw_decode(struct srd_decoder_inst *di)
             int bit_si = 0;
             int bit_so = 0;
             int start_bit = 1;
-            GArray *pydata = g_array_new(FALSE, FALSE, sizeof(struct mw_py_entry));
+            GArray* pydata = g_array_new(FALSE, FALSE, sizeof(struct mw_py_entry));
 
             for (guint i = 0; i < packet->len; i++) {
-                struct mw_packet_entry *e = &g_array_index(packet, struct mw_packet_entry, i);
+                struct mw_packet_entry* e = &g_array_index(packet, struct mw_packet_entry, i);
 
                 if (e->matched & (1ULL << 1)) {
                     if (e->sk) {
@@ -192,10 +192,10 @@ static void mw_decode(struct srd_decoder_inst *di)
                             if (start_bit) {
                                 if (bit_si == 0) {
                                     C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_WARNING,
-                                               "Start bit not high", "Start bit low");
+                                        "Start bit not high", "Start bit low");
                                 } else {
                                     C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_START_BIT,
-                                               "Start bit", "S");
+                                        "Start bit", "S");
                                 }
                                 start_bit = 0;
                             } else {
@@ -209,10 +209,10 @@ static void mw_decode(struct srd_decoder_inst *di)
                                 snprintf(si_short, sizeof(si_short), "%d", bit_si);
                                 snprintf(so_short, sizeof(so_short), "%d", bit_so);
                                 C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SI_BIT,
-                                           si_long, si_mid, si_short);
+                                    si_long, si_mid, si_short);
                                 C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SO_BIT,
-                                           so_long, so_mid, so_short);
-                                struct mw_py_entry pye = {bit_start, e->samplenum, bit_si, bit_so};
+                                    so_long, so_mid, so_short);
+                                struct mw_py_entry pye = { bit_start, e->samplenum, bit_si, bit_so };
                                 g_array_append_val(pydata, pye);
                             }
                         }
@@ -232,21 +232,21 @@ static void mw_decode(struct srd_decoder_inst *di)
                     snprintf(si_short, sizeof(si_short), "%d", bit_si);
                     snprintf(so_short, sizeof(so_short), "%d", bit_so);
                     C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SI_BIT,
-                               si_long, si_mid, si_short);
+                        si_long, si_mid, si_short);
                     C_ANN_PUT(di, bit_start, e->samplenum, p->out_ann, ANN_SO_BIT,
-                               so_long, so_mid, so_short);
-                    struct mw_py_entry pye = {bit_start, e->samplenum, bit_si, bit_so};
+                        so_long, so_mid, so_short);
+                    struct mw_py_entry pye = { bit_start, e->samplenum, bit_si, bit_so };
                     g_array_append_val(pydata, pye);
                 }
             }
 
             if (p->out_python >= 0 && pydata->len > 0) {
-                struct mw_packet_entry *first = &g_array_index(packet, struct mw_packet_entry, 0);
-                struct mw_packet_entry *last = &g_array_index(packet, struct mw_packet_entry, packet->len - 1);
+                struct mw_packet_entry* first = &g_array_index(packet, struct mw_packet_entry, 0);
+                struct mw_packet_entry* last = &g_array_index(packet, struct mw_packet_entry, packet->len - 1);
                 c_decoder_put_python(di, first->samplenum, last->samplenum,
-                                     p->out_python, "microwire",
-                                     (unsigned char *)pydata->data,
-                                     pydata->len * sizeof(struct mw_py_entry));
+                    p->out_python, "microwire",
+                    (unsigned char*)pydata->data,
+                    pydata->len * sizeof(struct mw_py_entry));
             }
             g_array_free(pydata, TRUE);
         }
@@ -255,9 +255,9 @@ static void mw_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void mw_destroy(struct srd_decoder_inst *di)
+static void mw_destroy(struct srd_decoder_inst* di)
 {
-    void *priv = c_decoder_get_private(di);
+    void* priv = c_decoder_get_private(di);
     if (priv) {
         g_free(priv);
         c_decoder_set_private(di, NULL);
@@ -294,7 +294,7 @@ struct srd_c_decoder microwire_c_decoder = {
     .destroy = mw_destroy,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
     return &microwire_c_decoder;
 }
