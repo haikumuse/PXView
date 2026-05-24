@@ -2,6 +2,7 @@
     "name": "Atom One Dark",
     "type": "dark",
     "tokens": {
+        "@icon-dir": "dark",
         "@bg-base": "#282c34",
         "@bg-overlay": "#3b4048",
         "@fg-base": "#abb2bf",

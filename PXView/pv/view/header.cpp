@@ -635,15 +635,136 @@ void Header::leaveEvent(QEvent *) {
   update();
 }
 
+QMenu *Header::create_height_submenu(bool is_batch) {
+  QMenu *menu = new QMenu(this);
+
+  static const int preset_heights[] = {24, 48, 72, 96, 120};
+  for (int h : preset_heights) {
+    QAction *act = menu->addAction(QString::number(h) + "px");
+    act->setData(h);
+    if (is_batch)
+      connect(act, &QAction::triggered, this, &Header::on_batch_set_height);
+    else
+      connect(act, &QAction::triggered, this, &Header::on_set_channel_height);
+  }
+
+  menu->addSeparator();
+
+  QAction *customAct = menu->addAction(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CUSTOM_HEIGHT), "Custom..."));
+  customAct->setData(-1);
+  if (is_batch)
+    connect(customAct, &QAction::triggered, this, &Header::on_batch_set_height);
+  else
+    connect(customAct, &QAction::triggered, this,
+            &Header::on_set_channel_height);
+
+  return menu;
+}
+
 void Header::contextMenuEvent(QContextMenuEvent *event) {
   (void)event;
 
-  int action;
+  if (_view.session().get_device()->get_work_mode() != LOGIC)
+    return;
 
+  int action;
   const auto t = get_mTrace(action, _mouse_point);
 
-  if (!t || !t->selected() || action != Trace::LABEL)
+  if (!t || action != Trace::LABEL)
     return;
+
+  _context_trace = t;
+
+  QMenu menu(this);
+
+  menu.addAction(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RESET_ROW_HEIGHT), "Reset Row Height"),
+      this, &Header::on_reset_row_height);
+
+  menu.addAction(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RESET_ALL_ROW_HEIGHT),
+          "Reset All Row Heights"),
+      this, &Header::on_reset_all_row_height);
+
+  menu.addSeparator();
+
+  QMenu *channelMenu = create_height_submenu(false);
+  channelMenu->setTitle(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SET_CHANNEL_HEIGHT),
+          "Set Channel Height"));
+  menu.addMenu(channelMenu);
+
+  QMenu *batchMenu = create_height_submenu(true);
+  batchMenu->setTitle(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_BATCH_SET_HEIGHT), "Batch Set"));
+  menu.addMenu(batchMenu);
+
+  menu.exec(event->globalPos());
+}
+
+void Header::on_reset_row_height() {
+  if (!_context_trace)
+    return;
+  _context_trace->set_own_height(-1);
+  _view.signals_changed(NULL);
+}
+
+void Header::on_reset_all_row_height() {
+  std::vector<Trace *> traces;
+  _view.get_traces(ALL_VIEW, traces);
+  for (auto t : traces) {
+    t->set_own_height(-1);
+  }
+  _view.signals_changed(NULL);
+}
+
+void Header::on_set_channel_height() {
+  QAction *act = qobject_cast<QAction *>(sender());
+  if (!act || !_context_trace)
+    return;
+
+  int h = act->data().toInt();
+  if (h == -1) {
+    bool ok = false;
+    h = QInputDialog::getInt(this,
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SET_CHANNEL_HEIGHT),
+            "Set Channel Height"),
+        QString(), _context_trace->get_totalHeight(),
+        View::MinSignalHeight, View::MaxSignalHeight, 1, &ok);
+    if (!ok)
+      return;
+  }
+
+  h = max(View::MinSignalHeight, min(h, View::MaxSignalHeight));
+  _context_trace->set_own_height(h);
+  _view.signals_changed(NULL);
+}
+
+void Header::on_batch_set_height() {
+  QAction *act = qobject_cast<QAction *>(sender());
+  if (!act)
+    return;
+
+  int h = act->data().toInt();
+  if (h == -1) {
+    bool ok = false;
+    h = QInputDialog::getInt(this,
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_BATCH_SET_HEIGHT), "Batch Set"),
+        QString(), 24,
+        View::MinSignalHeight, View::MaxSignalHeight, 1, &ok);
+    if (!ok)
+      return;
+  }
+
+  h = max(View::MinSignalHeight, min(h, View::MaxSignalHeight));
+
+  std::vector<Trace *> traces;
+  _view.get_traces(ALL_VIEW, traces);
+  for (auto t : traces) {
+    t->set_own_height(h);
+  }
+  _view.signals_changed(NULL);
 }
 
 void Header::on_action_set_name_triggered() {
