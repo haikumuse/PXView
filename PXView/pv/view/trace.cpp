@@ -218,7 +218,10 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
     // Paint the ColorButton
     QColor foreBack = fore;
     p.setPen(Qt::transparent);
-    QColor color_set_rect = PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
+    QColor color_set_rect = AppConfig::Instance().GetThemeColor(
+        QString("@logic-channel-%1").arg(*_index_list.begin() % 8));
+    if (!color_set_rect.isValid())
+        color_set_rect = PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
     p.setBrush(enabled() ? (_colour.isValid() ? _colour : color_set_rect) : foreBack);
 
     int radius = 3; 
@@ -277,7 +280,10 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
             p.setBrush(_colour);
             p.drawPolygon(points, countof(points));
         } else {
-            QColor color = PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
+            QColor color = AppConfig::Instance().GetThemeColor(
+                QString("@logic-channel-%1").arg(*_index_list.begin() % 8));
+            if (!color.isValid())
+                color = PROBE_COLORS[*_index_list.begin() % countof(PROBE_COLORS)];
             p.setBrush(enabled() ? (_colour.isValid() ? _colour : color) : foreBack);
             p.drawPolygon(points, countof(points));
         }

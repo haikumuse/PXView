@@ -600,6 +600,10 @@
         "text": "自動(Roll)"
     },
     {
+        "id": "IDS_DLG_AUTO_SCROLL_LATEAST_DATA",
+        "text": "自動滾動到最新資料"
+    },
+    {
         "id": "IDS_DLG_WAITING_TRIG",
         "text": "等待觸發"
     },
@@ -766,6 +770,22 @@
     {
         "id": "IDS_DLG_SEARCH_COL_LENGTH",
         "text": "長度"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_INDEX",
+        "text": "序號"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_TIME",
+        "text": "起始時間"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_DURATION",
+        "text": "持續時間"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_TIME_HINT",
+        "text": "輸入時間(如 1.5us, 100ns, 2ms)或序號並按Enter鍵進行搜尋"
     },
     {
         "id": "IDS_DLG_DISK_CACHE_ENABLE",
@@ -1022,5 +1042,357 @@
     {
         "id": "IDS_DLG_SC_ZOOM_FIT",
         "text": "適應視窗"
+    },
+    {
+        "id": "IDS_DLG_STYLE_CUSTOM",
+        "text": "自訂"
+    },
+    {
+        "id": "IDS_DLG_STYLE_DARK",
+        "text": "深色"
+    },
+    {
+        "id": "IDS_DLG_STYLE_LIGHT",
+        "text": "淺色"
+    },
+    {
+        "id": "IDS_DLG_STYLE_ATOM",
+        "text": "Atom One Dark"
+    },
+    {
+        "id": "IDS_DLG_STYLE_MONOKAI",
+        "text": "Monokai"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PRESET",
+        "text": "預設主題："
+    },
+    {
+        "id": "IDS_DLG_STYLE_PICKER",
+        "text": "取色器"
+    },
+    {
+        "id": "IDS_DLG_STYLE_EDIT_JSON",
+        "text": "編輯 JSON 原始碼"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_AS_PRESET",
+        "text": "儲存為預設"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_PRESET",
+        "text": "儲存預設"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PRESET_NAME",
+        "text": "預設名稱："
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_SUCCESS",
+        "text": "成功"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_SUCCESS_MSG",
+        "text": "預設儲存成功。"
+    },
+    {
+        "id": "IDS_STYLE_CAT_GLOBAL",
+        "text": "全域顏色"
+    },
+    {
+        "id": "IDS_STYLE_CAT_ACCENT",
+        "text": "強調與狀態"
+    },
+    {
+        "id": "IDS_STYLE_CAT_SIGNAL",
+        "text": "類比與通用通道"
+    },
+    {
+        "id": "IDS_STYLE_CAT_LOGIC",
+        "text": "邏輯通道"
+    },
+    {
+        "id": "IDS_STYLE_CAT_DECODER",
+        "text": "解碼器顏色"
+    },
+    {
+        "id": "IDS_STYLE_CAT_TYPOGRAPHY",
+        "text": "排版與字體"
+    },
+    {
+        "id": "IDS_STYLE_BG_BASE",
+        "text": "基礎背景"
+    },
+    {
+        "id": "IDS_STYLE_BG_BASE_DESC",
+        "text": "應用程式主視窗背景色"
+    },
+    {
+        "id": "IDS_STYLE_BG_OVERLAY",
+        "text": "遮罩背景"
+    },
+    {
+        "id": "IDS_STYLE_PANEL_BG",
+        "text": "懸浮面板背景"
+    },
+    {
+        "id": "IDS_STYLE_GROUP_CARD_BG",
+        "text": "波形繪圖區背景"
+    },
+    {
+        "id": "IDS_STYLE_FG_BASE",
+        "text": "主要文本"
+    },
+    {
+        "id": "IDS_STYLE_FG_BRIGHT",
+        "text": "高亮文本"
+    },
+    {
+        "id": "IDS_STYLE_FG_MUTED",
+        "text": "弱化文本"
+    },
+    {
+        "id": "IDS_STYLE_PANEL_TEXT",
+        "text": "面板文本"
+    },
+    {
+        "id": "IDS_STYLE_BORDER",
+        "text": "邊框顏色"
+    },
+    {
+        "id": "IDS_STYLE_BORDER_STRONG",
+        "text": "強邊框顏色"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT",
+        "text": "主強調色"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_DESC",
+        "text": "軟體的主題色，用於高亮、選中狀態"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_HOVER",
+        "text": "強調色（懸停）"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ACCENT",
+        "text": "側邊欄提示條顏色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ACCENT_DESC",
+        "text": "側邊欄選中狀態發光條顏色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON",
+        "text": "標題欄圖示顏色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
+        "text": "標題欄圖示啟用顏色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ICON",
+        "text": "側邊欄圖示顏色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ICON_DESC",
+        "text": "側邊欄未選中圖示顏色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_TEXT",
+        "text": "側邊欄字體顏色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_TEXT_DESC",
+        "text": "側邊欄未選中文字顏色"
+    },
+    {
+        "id": "IDS_STYLE_DANGER",
+        "text": "危險/警告色"
+    },
+    {
+        "id": "IDS_STYLE_STATUS_OK",
+        "text": "狀態：正常"
+    },
+    {
+        "id": "IDS_STYLE_STATUS_ERROR",
+        "text": "狀態：錯誤"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH1",
+        "text": "類比通道 1"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH2",
+        "text": "類比通道 2"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH3",
+        "text": "類比通道 3"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH4",
+        "text": "類比通道 4"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH5",
+        "text": "類比通道 5 (紫)"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH0",
+        "text": "邏輯通道 0 (紫)"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH1",
+        "text": "邏輯通道 1"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH2",
+        "text": "邏輯通道 2"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH3",
+        "text": "邏輯通道 3 (黃)"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH4",
+        "text": "邏輯通道 4"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH5",
+        "text": "邏輯通道 5"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH6",
+        "text": "邏輯通道 6"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH7",
+        "text": "邏輯通道 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH0",
+        "text": "通道 0"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH1",
+        "text": "通道 1"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH2",
+        "text": "通道 2"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH3",
+        "text": "通道 3"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH4",
+        "text": "通道 4"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH5",
+        "text": "通道 5"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH6",
+        "text": "通道 6"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH7",
+        "text": "通道 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH8",
+        "text": "通道 8"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH9",
+        "text": "通道 9"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH10",
+        "text": "通道 10"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH11",
+        "text": "通道 11"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH12",
+        "text": "通道 12"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH13",
+        "text": "通道 13"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH14",
+        "text": "通道 14"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH15",
+        "text": "通道 15"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ERROR",
+        "text": "解碼錯誤背景色"
+    },
+    {
+        "id": "IDS_STYLE_DEC_NO_DECODE",
+        "text": "未解碼背景色"
+    },
+    {
+        "id": "IDS_STYLE_FONT_MAIN_TITLE",
+        "text": "主標題字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_SECTION_TITLE",
+        "text": "子標題字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_LABEL",
+        "text": "標籤字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_CONTENT",
+        "text": "正文字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_FP_LABEL",
+        "text": "浮動面板標籤字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_FP_VALUE",
+        "text": "浮動面板數值字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TITLEBAR",
+        "text": "標題欄字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TOOLBAR",
+        "text": "工具欄字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_SIDEBAR",
+        "text": "側邊欄字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_DIALOG",
+        "text": "彈窗基礎字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TRACE_LABEL",
+        "text": "波形標籤字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_RULER",
+        "text": "尺規時間字號"
+    },
+    {
+        "id": "IDS_STYLE_FONT_CURSOR",
+        "text": "游標數值字號"
     }
 ]

@@ -82,34 +82,58 @@ const QColor View::CursorAreaColour(220, 231, 243);
 const QSizeF View::LabelPadding(4, 4);
 const QString View::Unknown_Str = "########";
 
-const QColor View::Red =
+QColor View::Red =
     AppConfig::Instance().GetThemeColor("@signal-red").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-red")
         : QColor(213, 15, 37, 255);
-const QColor View::Orange =
+QColor View::Orange =
     AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-orange")
         : QColor(238, 178, 17, 255);
-const QColor View::Blue =
+QColor View::Blue =
     AppConfig::Instance().GetThemeColor("@signal-blue").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-blue")
         : QColor(17, 133, 209, 255);
-const QColor View::Green =
+QColor View::Green =
     AppConfig::Instance().GetThemeColor("@signal-green").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-green")
         : QColor(0, 153, 37, 255);
-const QColor View::Purple =
+QColor View::Purple =
     AppConfig::Instance().GetThemeColor("@signal-purple").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-purple")
         : QColor(109, 50, 156, 255);
-const QColor View::LightBlue =
+QColor View::LightBlue =
     AppConfig::Instance().GetThemeColor("@signal-light-blue").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-light-blue")
         : QColor(17, 133, 209, 200);
-const QColor View::LightRed =
+QColor View::LightRed =
     AppConfig::Instance().GetThemeColor("@signal-light-red").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-light-red")
         : QColor(213, 15, 37, 200);
+
+void View::refreshSignalColors() {
+    Red = AppConfig::Instance().GetThemeColor("@signal-red").isValid()
+              ? AppConfig::Instance().GetThemeColor("@signal-red")
+              : QColor(213, 15, 37, 255);
+    Orange = AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
+                 ? AppConfig::Instance().GetThemeColor("@signal-orange")
+                 : QColor(238, 178, 17, 255);
+    Blue = AppConfig::Instance().GetThemeColor("@signal-blue").isValid()
+               ? AppConfig::Instance().GetThemeColor("@signal-blue")
+               : QColor(17, 133, 209, 255);
+    Green = AppConfig::Instance().GetThemeColor("@signal-green").isValid()
+                ? AppConfig::Instance().GetThemeColor("@signal-green")
+                : QColor(0, 153, 37, 255);
+    Purple = AppConfig::Instance().GetThemeColor("@signal-purple").isValid()
+                 ? AppConfig::Instance().GetThemeColor("@signal-purple")
+                 : QColor(109, 50, 156, 255);
+    LightBlue = AppConfig::Instance().GetThemeColor("@signal-light-blue").isValid()
+                    ? AppConfig::Instance().GetThemeColor("@signal-light-blue")
+                    : QColor(17, 133, 209, 200);
+    LightRed = AppConfig::Instance().GetThemeColor("@signal-light-red").isValid()
+                   ? AppConfig::Instance().GetThemeColor("@signal-light-red")
+                   : QColor(213, 15, 37, 200);
+}
 
 View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
            QWidget *parent)
@@ -684,7 +708,7 @@ QColor View::get_group_card_color() {
   if (c.isValid())
     return c;
   AppConfig &app = AppConfig::Instance();
-  if (app.frameOptions.style == THEME_STYLE_DARK)
+  if (app.IsDarkStyle())
     return QColor(0x1a, 0x1a, 0x1a);
   else
     return QColor(0xfa, 0xfa, 0xfa);
@@ -2179,7 +2203,7 @@ Cursor *View::get_cursor_by_index(int index) {
 
 void View::UpdateLanguage() {}
 
-void View::UpdateTheme() { viewport_update(); }
+void View::UpdateTheme() { refreshSignalColors(); viewport_update(); }
 
 void View::UpdateFont() { update_font(); }
 

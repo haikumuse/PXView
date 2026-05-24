@@ -31,13 +31,11 @@
  * === Color Tokens ===
  *
  * @bg-base: #f8f8f8
- * @bg-elevated: #fcfcfc
  * @bg-overlay: #e8e8e8
  * @fg-base: #2a2a2a
  * @fg-bright: #000000
  * @fg-muted: #8a8a8a
  * @border: #2a2a2a
- * @border-subtle: #b4b4b4
  * @border-strong: #d5d5d5 
  * @accent: #1185d1
  * @accent-hover: #44cef6
@@ -83,9 +81,6 @@
  * @dock-status-error: #cc0000
  * @tab-add-color: #8a8a8a
  * @tab-add-hover-color: #2a2a2a
- * @debug-tooltip-bg: #2d2d2d
- * @debug-tooltip-fg: #00ff00
- * @debug-tooltip-border: #00ff00
  * @about-link-color: #C0C0C0
  * @legend-color: #8e8e8e
  * @tab-status-live: #4CAF50
@@ -597,7 +592,7 @@ QFrame[frameShape="5"]
 
 QToolBar#sidebar {
     border-left: 1px solid @border-strong;
-    background-color: @bg-global;
+    background-color: @bg-base;
     padding: 0px;
     spacing: 0px;
 }
@@ -1848,7 +1843,7 @@ QLabel[status="error"]
 /* Log Dock */
 QPlainTextEdit#log_view
 {
-    background-color: @input-bg;
+    background-color: @panel-bg;
     color: @fg-base;
     border: 1px solid @border;
     border-radius: 4px;

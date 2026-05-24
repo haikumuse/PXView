@@ -600,6 +600,10 @@
         "text": "自动(Roll)"
     },
     {
+        "id": "IDS_DLG_AUTO_SCROLL_LATEAST_DATA",
+        "text": "自动滚动到最新数据"
+    },
+    {
         "id": "IDS_DLG_WAITING_TRIG",
         "text": "等待触发"
     },
@@ -766,6 +770,22 @@
     {
         "id": "IDS_DLG_SEARCH_COL_LENGTH",
         "text": "长度"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_INDEX",
+        "text": "序号"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_TIME",
+        "text": "起始时间"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_DURATION",
+        "text": "持续时间"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_TIME_HINT",
+        "text": "输入时间(如 1.5us, 100ns, 2ms)或序号并按回车键进行搜索"
     },
     {
         "id": "IDS_DLG_DISK_CACHE_ENABLE",
@@ -1022,5 +1042,357 @@
     {
         "id": "IDS_DLG_SC_ZOOM_FIT",
         "text": "适应窗口"
+    },
+    {
+        "id": "IDS_DLG_STYLE_CUSTOM",
+        "text": "自定义"
+    },
+    {
+        "id": "IDS_DLG_STYLE_DARK",
+        "text": "深色"
+    },
+    {
+        "id": "IDS_DLG_STYLE_LIGHT",
+        "text": "浅色"
+    },
+    {
+        "id": "IDS_DLG_STYLE_ATOM",
+        "text": "Atom One Dark"
+    },
+    {
+        "id": "IDS_DLG_STYLE_MONOKAI",
+        "text": "Monokai"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PRESET",
+        "text": "预设主题："
+    },
+    {
+        "id": "IDS_DLG_STYLE_PICKER",
+        "text": "取色器"
+    },
+    {
+        "id": "IDS_DLG_STYLE_EDIT_JSON",
+        "text": "编辑 JSON 源"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_AS_PRESET",
+        "text": "保存为预设"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_PRESET",
+        "text": "保存预设"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PRESET_NAME",
+        "text": "预设名称："
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_SUCCESS",
+        "text": "成功"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_SUCCESS_MSG",
+        "text": "预设保存成功。"
+    },
+    {
+        "id": "IDS_STYLE_CAT_GLOBAL",
+        "text": "全局颜色"
+    },
+    {
+        "id": "IDS_STYLE_CAT_ACCENT",
+        "text": "强调与状态"
+    },
+    {
+        "id": "IDS_STYLE_CAT_SIGNAL",
+        "text": "模拟与通用通道"
+    },
+    {
+        "id": "IDS_STYLE_CAT_LOGIC",
+        "text": "逻辑通道"
+    },
+    {
+        "id": "IDS_STYLE_CAT_DECODER",
+        "text": "解码器颜色"
+    },
+    {
+        "id": "IDS_STYLE_CAT_TYPOGRAPHY",
+        "text": "排版与字体"
+    },
+    {
+        "id": "IDS_STYLE_BG_BASE",
+        "text": "基础背景"
+    },
+    {
+        "id": "IDS_STYLE_BG_BASE_DESC",
+        "text": "应用程序主窗口背景色"
+    },
+    {
+        "id": "IDS_STYLE_BG_OVERLAY",
+        "text": "遮罩背景"
+    },
+    {
+        "id": "IDS_STYLE_PANEL_BG",
+        "text": "悬浮面板背景"
+    },
+    {
+        "id": "IDS_STYLE_GROUP_CARD_BG",
+        "text": "波形绘图区背景"
+    },
+    {
+        "id": "IDS_STYLE_FG_BASE",
+        "text": "主要文本"
+    },
+    {
+        "id": "IDS_STYLE_FG_BRIGHT",
+        "text": "高亮文本"
+    },
+    {
+        "id": "IDS_STYLE_FG_MUTED",
+        "text": "弱化文本"
+    },
+    {
+        "id": "IDS_STYLE_PANEL_TEXT",
+        "text": "面板文本"
+    },
+    {
+        "id": "IDS_STYLE_BORDER",
+        "text": "边框颜色"
+    },
+    {
+        "id": "IDS_STYLE_BORDER_STRONG",
+        "text": "强边框颜色"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT",
+        "text": "主强调色"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_DESC",
+        "text": "软件的主题色，用于高亮、选中状态"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_HOVER",
+        "text": "强调色（悬停）"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ACCENT",
+        "text": "侧边栏提示条颜色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ACCENT_DESC",
+        "text": "侧边栏选中状态发光条颜色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON",
+        "text": "标题栏图标颜色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
+        "text": "标题栏图标激活颜色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ICON",
+        "text": "侧边栏图标颜色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ICON_DESC",
+        "text": "侧边栏未选中图标颜色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_TEXT",
+        "text": "侧边栏字体颜色"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_TEXT_DESC",
+        "text": "侧边栏未选中文字颜色"
+    },
+    {
+        "id": "IDS_STYLE_DANGER",
+        "text": "危险/警告色"
+    },
+    {
+        "id": "IDS_STYLE_STATUS_OK",
+        "text": "状态：正常"
+    },
+    {
+        "id": "IDS_STYLE_STATUS_ERROR",
+        "text": "状态：错误"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH1",
+        "text": "模拟通道 1"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH2",
+        "text": "模拟通道 2"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH3",
+        "text": "模拟通道 3"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH4",
+        "text": "模拟通道 4"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH5",
+        "text": "模拟通道 5"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH0",
+        "text": "逻辑通道 0"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH1",
+        "text": "逻辑通道 1 (蓝)"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH2",
+        "text": "逻辑通道 2 (绿)"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH3",
+        "text": "逻辑通道 3"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH4",
+        "text": "逻辑通道 4"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH5",
+        "text": "逻辑通道 5"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH6",
+        "text": "逻辑通道 6"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH7",
+        "text": "逻辑通道 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH0",
+        "text": "通道 0"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH1",
+        "text": "通道 1"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH2",
+        "text": "通道 2"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH3",
+        "text": "通道 3"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH4",
+        "text": "通道 4"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH5",
+        "text": "通道 5"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH6",
+        "text": "通道 6"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH7",
+        "text": "通道 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH8",
+        "text": "通道 8"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH9",
+        "text": "通道 9"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH10",
+        "text": "通道 10"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH11",
+        "text": "通道 11"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH12",
+        "text": "通道 12"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH13",
+        "text": "通道 13"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH14",
+        "text": "通道 14"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH15",
+        "text": "通道 15"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ERROR",
+        "text": "解码错误背景色"
+    },
+    {
+        "id": "IDS_STYLE_DEC_NO_DECODE",
+        "text": "未解码背景色"
+    },
+    {
+        "id": "IDS_STYLE_FONT_MAIN_TITLE",
+        "text": "主标题字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_SECTION_TITLE",
+        "text": "子标题字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_LABEL",
+        "text": "标签字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_CONTENT",
+        "text": "正文字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_FP_LABEL",
+        "text": "浮动面板标签字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_FP_VALUE",
+        "text": "浮动面板数值字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TITLEBAR",
+        "text": "标题栏字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TOOLBAR",
+        "text": "工具栏字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_SIDEBAR",
+        "text": "侧边栏字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_DIALOG",
+        "text": "弹窗基础字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TRACE_LABEL",
+        "text": "波形标签字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_RULER",
+        "text": "标尺时间字号"
+    },
+    {
+        "id": "IDS_STYLE_FONT_CURSOR",
+        "text": "游标数值字号"
     }
 ]

@@ -21,12 +21,12 @@
  */
 
 #include "searchdock.h"
-#include "../widgets/smoothtablehelper.h"
 #include "../data/logicsnapshot.h"
 #include "../data/snapshot.h"
 #include "../sigsession.h"
 #include "../view/logicsignal.h"
 #include "../view/view.h"
+#include "../widgets/smoothtablehelper.h"
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
@@ -34,12 +34,14 @@
 #include "../tabcontext.h"
 #include "../ui/dockfonts.h"
 #include "../ui/fn.h"
+#include "../ui/iconcache.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QObject>
 #include <QPainter>
+#include <QRegularExpression>
 #include <QtConcurrent/QtConcurrent>
 #include <stdint.h>
 
@@ -57,7 +59,7 @@ static const int kMaxResults = 100000;
 SearchResultModel::SearchResultModel(std::vector<SearchData> &results,
                                      QMutex &mutex, QObject *parent)
     : QAbstractTableModel(parent), _results(results), _mutex(mutex),
-      _current_count(0) {}
+      _current_count(0), _samplerate(0) {}
 
 int SearchResultModel::rowCount(const QModelIndex & /*parent*/) const {
   return _current_count;
@@ -83,9 +85,9 @@ QVariant SearchResultModel::data(const QModelIndex &index, int role) const {
   if (col == 0)
     return QString::number(row + 1);
   if (col == 1)
-    return QString::number(sd.start);
+    return format_time(sd.start);
   if (col == 2)
-    return QString::number(sd.end - sd.start + 1);
+    return format_time(sd.end - sd.start + 1);
 
   return QVariant();
 }
@@ -96,12 +98,13 @@ QVariant SearchResultModel::headerData(int section, Qt::Orientation orientation,
     return QVariant();
 
   if (section == 0)
-    return "#";
+    return QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_INDEX), "序号"));
   if (section == 1)
-    return QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_START), "Start"));
+    return QString(
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_TIME), "起始时间"));
   if (section == 2)
     return QString(
-        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_LENGTH), "Length"));
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_COL_DURATION), "持续时间"));
 
   return QVariant();
 }
@@ -130,16 +133,41 @@ void SearchResultModel::clear() {
   }
 }
 
+void SearchResultModel::set_samplerate(uint64_t samplerate) {
+  _samplerate = samplerate;
+  if (_current_count > 0) {
+    emit dataChanged(index(0, 1), index(_current_count - 1, 2));
+    headerDataChanged(Qt::Horizontal, 0, 2);
+  }
+}
+
+QString SearchResultModel::format_time(int64_t sample) const {
+  if (_samplerate == 0)
+    return QString::number(sample);
+
+  double seconds = (double)sample / (double)_samplerate;
+
+  if (seconds >= 1.0)
+    return QString::number(seconds, 'f', 6) + "s";
+  if (seconds >= 1e-3)
+    return QString::number(seconds * 1e3, 'f', 5) + "ms";
+  if (seconds >= 1e-6)
+    return QString::number(seconds * 1e6, 'f', 3) + "us";
+  return QString::number(seconds * 1e9, 'f', 2) + "ns";
+}
+
 // ============================================================================
 // SearchDock 实现
 // ============================================================================
 
 SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
-    : pv::widgets::SmoothScrollArea(parent), _session(session), _view(view), _context(nullptr),
-      _widget(nullptr), _pattern_input(nullptr), _result_view(nullptr),
-      _result_model(nullptr), _legend_x(nullptr), _legend_r(nullptr),
-      _legend_0(nullptr), _legend_f(nullptr), _legend_1(nullptr),
-      _legend_c(nullptr), _logic_channel_count(0), _search_state(0) {
+    : pv::widgets::SmoothScrollArea(parent), _session(session), _view(view),
+      _context(nullptr), _widget(nullptr), _pattern_input(nullptr),
+      _result_view(nullptr), _result_model(nullptr), _legend_x(nullptr),
+      _legend_r(nullptr), _legend_0(nullptr), _legend_f(nullptr),
+      _legend_1(nullptr), _legend_c(nullptr), _logic_channel_count(0),
+      _time_search_pre_button(nullptr), _time_search_nxt_button(nullptr),
+      _time_search_edit(nullptr), _time_search_cur_index(-1), _search_state(0) {
   _widget = new QWidget(this);
 
   _pattern_input = new widgets::SearchPatternInput(_widget);
@@ -251,10 +279,36 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
   legend_layout->addStretch(1);
   legend_layout->addLayout(col3);
 
+  // Time search bar: [←] [time input] [→]
+  _time_search_pre_button = new QPushButton(_widget);
+  _time_search_pre_button->setObjectName("dock_content");
+  _time_search_pre_button->setFlat(true);
+
+  _time_search_nxt_button = new QPushButton(_widget);
+  _time_search_nxt_button->setObjectName("dock_content");
+  _time_search_nxt_button->setFlat(true);
+
+  _time_search_edit = new QLineEdit(_widget);
+  _time_search_edit->setObjectName("dock_content");
+
+  QHBoxLayout *time_search_layout = new QHBoxLayout();
+  time_search_layout->setSpacing(2);
+  time_search_layout->addWidget(_time_search_pre_button);
+  time_search_layout->addWidget(_time_search_edit, 1);
+  time_search_layout->addWidget(_time_search_nxt_button);
+
+  connect(_time_search_pre_button, &QPushButton::clicked, this,
+          &SearchDock::on_time_search_pre);
+  connect(_time_search_nxt_button, &QPushButton::clicked, this,
+          &SearchDock::on_time_search_nxt);
+  connect(_time_search_edit, &QLineEdit::returnPressed, this,
+          &SearchDock::on_time_search_return);
+
   QVBoxLayout *main_layout = new QVBoxLayout(_widget);
   main_layout->setContentsMargins(12, 8, 12, 8);
   main_layout->addLayout(input_layout);
   main_layout->addLayout(legend_layout);
+  main_layout->addLayout(time_search_layout);
   main_layout->addWidget(_result_view, 1);
 
   _widget->setLayout(main_layout);
@@ -266,11 +320,11 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
   this->setWidget(_widget);
   _widget->setObjectName("searchWidget");
 
-  connect(_session->device_event_object(), &DeviceEventObject::device_updated, this,
-          &SearchDock::on_device_updated);
+  connect(_session->device_event_object(), &DeviceEventObject::device_updated,
+          this, &SearchDock::on_device_updated);
 
-  connect(this, &SearchDock::search_result_found, this, &SearchDock::refresh_ui_model,
-          Qt::QueuedConnection);
+  connect(this, &SearchDock::search_result_found, this,
+          &SearchDock::refresh_ui_model, Qt::QueuedConnection);
 
   connect(&_search_watcher, &QFutureWatcher<void>::finished, this,
           &SearchDock::on_search_finished);
@@ -298,6 +352,8 @@ void SearchDock::bind_context(TabContext *ctx) {
   _search_results.clear();
   _results_mutex.unlock();
   _result_model->clear();
+  _result_model->set_samplerate(_session->cur_snap_samplerate());
+  _time_search_cur_index = -1;
   if (ctx && ctx->document()) {
     auto &saved = ctx->document()->_dock_search_pattern;
     if (!saved.empty()) {
@@ -317,6 +373,7 @@ void SearchDock::unbind_context() {
   _search_results.clear();
   _results_mutex.unlock();
   _result_model->clear();
+  _time_search_cur_index = -1;
 }
 
 void SearchDock::rebuild_pattern() {
@@ -352,7 +409,10 @@ void SearchDock::on_pattern_changed() {
   QTimer::singleShot(150, this, &SearchDock::do_search);
 }
 
-void SearchDock::on_device_updated() { rebuild_pattern(); }
+void SearchDock::on_device_updated() {
+  rebuild_pattern();
+  _result_model->set_samplerate(_session->cur_snap_samplerate());
+}
 
 void SearchDock::on_frame_ended() {
   if (!_pattern.empty()) {
@@ -429,6 +489,7 @@ void SearchDock::start_search_async() {
 
   // 清空 UI
   _result_model->clear();
+  _time_search_cur_index = -1;
 
   _search_state.store(1);
   _search_future = QtConcurrent::run([this]() { search_worker(); });
@@ -463,9 +524,8 @@ void SearchDock::search_worker() {
   bool has_new_results = false;
   bool first_flush = true;
 
-  if (gpu_edge_search_worker(logic_snapshot, end, local_pattern,
-                             local_batch, ui_timer,
-                             has_new_results, first_flush)) {
+  if (gpu_edge_search_worker(logic_snapshot, end, local_pattern, local_batch,
+                             ui_timer, has_new_results, first_flush)) {
     if (!local_batch.empty()) {
       _results_mutex.lock();
       if ((int)_search_results.size() < kMaxResults) {
@@ -534,13 +594,11 @@ void SearchDock::search_worker() {
   _search_state.store(0);
 }
 
-bool SearchDock::gpu_edge_search_worker(data::LogicSnapshot *logic_snapshot,
-                                        int64_t end,
-                                        const std::map<uint16_t, QString> &local_pattern,
-                                        std::vector<SearchData> &local_batch,
-                                        QElapsedTimer &ui_timer,
-                                        bool &has_new_results,
-                                        bool &first_flush) {
+bool SearchDock::gpu_edge_search_worker(
+    data::LogicSnapshot *logic_snapshot, int64_t end,
+    const std::map<uint16_t, QString> &local_pattern,
+    std::vector<SearchData> &local_batch, QElapsedTimer &ui_timer,
+    bool &has_new_results, bool &first_flush) {
   (void)logic_snapshot;
   (void)end;
   (void)local_batch;
@@ -566,7 +624,10 @@ bool SearchDock::gpu_edge_search_worker(data::LogicSnapshot *logic_snapshot,
   return false;
 }
 
-void SearchDock::do_search() { start_search_async(); }
+void SearchDock::do_search() {
+  _result_model->set_samplerate(_session->cur_snap_samplerate());
+  start_search_async();
+}
 
 void SearchDock::on_search_finished() {
   // 确保最后一次数据更新到 UI
@@ -591,6 +652,7 @@ void SearchDock::on_result_clicked(const QModelIndex &index) {
   if (row >= 0 && row < (int)_search_results.size()) {
     int64_t start_pos = _search_results[row].start;
     _results_mutex.unlock();
+    _time_search_cur_index = row;
     _view->set_search_pos(start_pos, true);
   } else {
     _results_mutex.unlock();
@@ -632,11 +694,21 @@ void SearchDock::retranslateUi() {
   _legend_c->setText(QString(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_LABEL_C),
                                  "C: Rising/Falling edge")));
 
+  _time_search_edit->setPlaceholderText(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_TIME_HINT),
+          "输入时间(如 1.5us, 100ns, 2ms)或序号并按回车键进行搜索"));
+
   // 更新表头
   _result_model->headerDataChanged(Qt::Horizontal, 0, 2);
 }
 
-void SearchDock::reStyle() {}
+void SearchDock::reStyle() {
+  QString iconPath = GetIconPath();
+  _time_search_pre_button->setIcon(
+      IconCache::Instance().icon(iconPath + "/pre.svg"));
+  _time_search_nxt_button->setIcon(
+      IconCache::Instance().icon(iconPath + "/next.svg"));
+}
 
 void SearchDock::UpdateLanguage() { retranslateUi(); }
 
@@ -649,6 +721,198 @@ void SearchDock::UpdateFont() {
   font.setPixelSize(DockFontSizes::Content);
   _pattern_input->setFont(font);
   _pattern_input->update();
+}
+
+int64_t SearchDock::parse_time_text(const QString &text, bool &is_row_index) {
+  // Supports formats:
+  //   "123"         -> row index (1-based, matching # column)
+  //   "1.5us"       -> 1.5 microseconds
+  //   "100ns"       -> 100 nanoseconds
+  //   "2ms"         -> 2 milliseconds
+  //   "1s"          -> 1 second
+  //   "1.5u"        -> 1.5 microseconds (short form)
+  is_row_index = false;
+  QString s = text.trimmed();
+  if (s.isEmpty())
+    return -1;
+
+  // Try to parse as time string (has a unit suffix)
+  QRegularExpression re(R"(^([\d.]+)\s*(s|ms|us|ns|u|n)?$)",
+                        QRegularExpression::CaseInsensitiveOption);
+  QRegularExpressionMatch match = re.match(s);
+  if (!match.hasMatch())
+    return -1;
+
+  double value = match.captured(1).toDouble();
+  QString unit = match.captured(2).toLower();
+
+  if (unit.isEmpty()) {
+    // No unit: treat as row index (1-based)
+    is_row_index = true;
+    return (int64_t)value;
+  }
+
+  uint64_t samplerate = 0;
+  if (_session)
+    samplerate = _session->cur_snap_samplerate();
+
+  if (samplerate == 0)
+    return -1;
+
+  double seconds = 0;
+  if (unit == "s") {
+    seconds = value;
+  } else if (unit == "ms") {
+    seconds = value * 1e-3;
+  } else if (unit == "us" || unit == "u") {
+    seconds = value * 1e-6;
+  } else if (unit == "ns" || unit == "n") {
+    seconds = value * 1e-9;
+  } else {
+    return -1;
+  }
+
+  int64_t sample = (int64_t)(seconds * samplerate + 0.5);
+  return sample;
+}
+
+int SearchDock::binary_search_time_index(int64_t sample_pos, bool find_next) {
+  // Binary search in sorted _search_results by start sample position.
+  // If find_next is true, returns the index of the first result with start >=
+  // sample_pos. If find_next is false, returns the index of the last result
+  // with start <= sample_pos.
+  QMutexLocker locker(&_results_mutex);
+  int n = (int)_search_results.size();
+  if (n == 0)
+    return -1;
+
+  int lo = 0, hi = n - 1;
+  int result = -1;
+
+  if (find_next) {
+    // Find first index where start >= sample_pos (lower_bound)
+    while (lo <= hi) {
+      int mid = lo + (hi - lo) / 2;
+      if (_search_results[mid].start >= sample_pos) {
+        result = mid;
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
+    }
+  } else {
+    // Find last index where start <= sample_pos (upper_bound - 1)
+    while (lo <= hi) {
+      int mid = lo + (hi - lo) / 2;
+      if (_search_results[mid].start <= sample_pos) {
+        result = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+  }
+
+  return result;
+}
+
+void SearchDock::on_time_search_return() {
+  bool is_row_index = false;
+  int64_t value = parse_time_text(_time_search_edit->text(), is_row_index);
+  if (value < 0)
+    return;
+
+  int idx = -1;
+
+  if (is_row_index) {
+    // Pure number: treat as 1-based row index
+    idx = (int)value - 1; // convert to 0-based
+    _results_mutex.lock();
+    int n = (int)_search_results.size();
+    _results_mutex.unlock();
+    if (idx < 0 || idx >= n)
+      return;
+  } else {
+    // Time value: use binary search to find closest result
+    idx = binary_search_time_index(value, true);
+    if (idx < 0) {
+      // No result at or after this time; try the last result
+      QMutexLocker locker(&_results_mutex);
+      if (!_search_results.empty())
+        idx = (int)_search_results.size() - 1;
+      else
+        return;
+    }
+  }
+
+  _time_search_cur_index = idx;
+
+  _results_mutex.lock();
+  if (idx >= 0 && idx < (int)_search_results.size()) {
+    int64_t start_pos = _search_results[idx].start;
+    _results_mutex.unlock();
+    _result_view->selectRow(idx);
+    _result_view->scrollTo(_result_model->index(idx, 0));
+    _view->set_search_pos(start_pos, true);
+  } else {
+    _results_mutex.unlock();
+  }
+}
+
+void SearchDock::on_time_search_nxt() {
+  QMutexLocker locker(&_results_mutex);
+  int n = (int)_search_results.size();
+  if (n == 0)
+    return;
+
+  // If user typed a time, start from binary search result
+  bool is_row_index = false;
+  int64_t sample_pos = parse_time_text(_time_search_edit->text(), is_row_index);
+  if (sample_pos >= 0 && _time_search_cur_index < 0) {
+    locker.unlock();
+    on_time_search_return();
+    return;
+  }
+
+  int idx = _time_search_cur_index + 1;
+  if (idx >= n)
+    idx = 0; // wrap around
+
+  _time_search_cur_index = idx;
+  int64_t start_pos = _search_results[idx].start;
+  locker.unlock();
+
+  _result_view->selectRow(idx);
+  _result_view->scrollTo(_result_model->index(idx, 0));
+  _view->set_search_pos(start_pos, true);
+}
+
+void SearchDock::on_time_search_pre() {
+  QMutexLocker locker(&_results_mutex);
+  int n = (int)_search_results.size();
+  if (n == 0)
+    return;
+
+  // If user typed a time, start from binary search result
+  bool is_row_index = false;
+  int64_t sample_pos = parse_time_text(_time_search_edit->text(), is_row_index);
+  if (sample_pos >= 0 && _time_search_cur_index < 0) {
+    locker.unlock();
+    on_time_search_return();
+    return;
+  }
+
+  int idx = _time_search_cur_index - 1;
+  if (idx < 0)
+    idx = n - 1; // wrap around
+
+  _time_search_cur_index = idx;
+  int64_t start_pos = _search_results[idx].start;
+  locker.unlock();
+
+  _result_view->selectRow(idx);
+  _result_view->scrollTo(_result_model->index(idx, 0));
+  _view->set_search_pos(start_pos, true);
 }
 
 } // namespace dock

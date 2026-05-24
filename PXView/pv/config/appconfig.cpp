@@ -595,7 +595,15 @@ bool AppConfig::IsDarkStyle()
     if (frameOptions.style == THEME_STYLE_DARK){
         return true;
     }
-    return false;
+    if (frameOptions.style == THEME_STYLE_LIGHT){
+        return false;
+    }
+    // For custom themes, determine by bg-base luminance
+    QColor bg = GetThemeColor("@bg-base");
+    if (bg.isValid()){
+        return bg.lightnessF() < 0.5;
+    }
+    return true; // default to dark
 }
 
 QColor AppConfig::GetStyleColor()
@@ -672,10 +680,15 @@ QColor AppConfig::GetThemeColor(const QString &tokenName) const
 
 //-------------api
 QString GetIconPath()
-{   
+{
     QString style = AppConfig::Instance().frameOptions.style;
     if (style == ""){
         style = THEME_STYLE_DARK;
+    }
+    // Custom themes (atom, monokai, etc.) don't have their own icon directories;
+    // fall back to dark or light based on theme type
+    if (style != THEME_STYLE_DARK && style != THEME_STYLE_LIGHT){
+        style = AppConfig::Instance().IsDarkStyle() ? THEME_STYLE_DARK : THEME_STYLE_LIGHT;
     }
     return ":/icons/" + style;
 }

@@ -32,8 +32,10 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMutex>
 #include <QPainter>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QStyledItemDelegate>
 #include <QTableView>
@@ -102,11 +104,15 @@ public:
 
   void updateRowCount(int newCount);
   void clear();
+  void set_samplerate(uint64_t samplerate);
 
 private:
+  QString format_time(int64_t sample) const;
+
   std::vector<SearchData> &_results;
   QMutex &_mutex;
   int _current_count;
+  uint64_t _samplerate;
 };
 
 class SearchDock : public pv::widgets::SmoothScrollArea,
@@ -138,13 +144,13 @@ private:
   void stop_search();
   void start_search_async();
   void search_worker();
-  bool gpu_edge_search_worker(data::LogicSnapshot *logic_snapshot,
-                              int64_t end,
+  bool gpu_edge_search_worker(data::LogicSnapshot *logic_snapshot, int64_t end,
                               const std::map<uint16_t, QString> &local_pattern,
                               std::vector<SearchData> &local_batch,
-                              QElapsedTimer &ui_timer,
-                              bool &has_new_results,
+                              QElapsedTimer &ui_timer, bool &has_new_results,
                               bool &first_flush);
+  int binary_search_time_index(int64_t sample_pos, bool find_next);
+  int64_t parse_time_text(const QString &text, bool &is_row_index);
 
 public slots:
   void on_pattern_changed();
@@ -155,6 +161,9 @@ public slots:
   void do_search();
   void on_search_finished();
   void refresh_ui_model(); // 用于接收搜索线程的信号更新UI
+  void on_time_search_nxt();
+  void on_time_search_pre();
+  void on_time_search_return();
 
 signals:
   void search_result_found(); // 搜索线程发射此信号通知UI更新
@@ -181,6 +190,12 @@ private:
   QLabel *_legend_1;
   QLabel *_legend_c;
   int _logic_channel_count;
+
+  // Time search bar
+  QPushButton *_time_search_pre_button;
+  QPushButton *_time_search_nxt_button;
+  QLineEdit *_time_search_edit;
+  int _time_search_cur_index;
 
   // Search result storage
   std::vector<SearchData> _search_results;

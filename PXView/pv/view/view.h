@@ -118,13 +118,15 @@ public:
 
   static const int ForeAlpha = 200;
   static const int BackAlpha = 100;
-  static const QColor Red;
-  static const QColor Orange;
-  static const QColor Blue;
-  static const QColor Green;
-  static const QColor Purple;
-  static const QColor LightBlue;
-  static const QColor LightRed;
+  static QColor Red;
+  static QColor Orange;
+  static QColor Blue;
+  static QColor Green;
+  static QColor Purple;
+  static QColor LightBlue;
+  static QColor LightRed;
+
+  static void refreshSignalColors();
 
 public:
   explicit View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
