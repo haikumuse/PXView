@@ -31,11 +31,14 @@
 #include <QHideEvent>
 #include <QLabel>
 #include <QLayoutItem>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScreen>
 #include <QTabWidget>
+#include <QThreadPool>
+#include <QToolButton>
 #include <QtConcurrent>
 #include <assert.h>
 
@@ -46,6 +49,7 @@
 #include "../dsvdef.h"
 #include "../interface/icallbacks.h"
 #include "../prop/property.h"
+#include "../prop/string.h"
 #include "../sigsession.h"
 #include "../tabcontext.h"
 #include "../ui/dockfonts.h"
@@ -241,17 +245,48 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
     }
 
     QWidget *wid = p->get_widget(parent, true);
-    wid->setFont(contentFont);
-    wid->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     if (p->labeled_widget()) {
-      layout->addWidget(wid, i, 0, 1, 2);
+      wid->setFont(contentFont);
+      wid->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+      layout->addWidget(wid, i, 0, 1, 3);
     } else {
       QLabel *lb = new QLabel(lable_text, parent);
       lb->setObjectName("dock_label");
       lb->setFont(labelFont);
       layout->addWidget(lb, i, 0, Qt::AlignRight | Qt::AlignVCenter);
-      layout->addWidget(wid, i, 1);
+
+      // For path/dir properties, split the browse button and line edit
+      // into separate grid columns so all line edits stay equal width.
+      prop::String *sp = dynamic_cast<prop::String *>(p);
+      if (sp && sp->is_path_or_dir()) {
+        QToolButton *btn = sp->get_browse_btn();
+        QLineEdit *lineEdit = sp->get_line_edit();
+
+        QLayout *cl = wid->layout();
+        if (cl) {
+          while (cl->count() > 0)
+            cl->takeAt(0);
+        }
+
+        if (btn) {
+          btn->setParent(parent);
+          btn->setFont(contentFont);
+          btn->setFixedWidth(28);
+          layout->addWidget(btn, i, 1, Qt::AlignVCenter);
+        }
+        if (lineEdit) {
+          lineEdit->setParent(parent);
+          lineEdit->setFont(contentFont);
+          lineEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+          layout->addWidget(lineEdit, i, 2);
+        }
+        wid->hide();
+      } else {
+        wid->setFont(contentFont);
+        wid->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        layout->addWidget(wid, i, 2);
+      }
 
       int labelWidth = fm.boundingRect(lable_text).width() + 15;
       if (labelWidth > maxLabelWidth)
@@ -278,6 +313,7 @@ QLayout *DeviceOptionsDock::get_property_form(QWidget *parent) {
   layout->setColumnMinimumWidth(0, maxLabelWidth);
   layout->setColumnStretch(0, 0);
   layout->setColumnStretch(1, 0);
+  layout->setColumnStretch(2, 1);
   layout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
   return layout;
 }
@@ -324,7 +360,8 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
         layout.addWidget(mode_button);
         contentHeight += mode_button->sizeHint().height();
 
-        connect(mode_button, &QRadioButton::clicked, this, &DeviceOptionsDock::channel_check);
+        connect(mode_button, &QRadioButton::clicked, this,
+                &DeviceOptionsDock::channel_check);
 
         if (plist->id == ch_mode)
           mode_button->setChecked(true);
@@ -506,7 +543,7 @@ void DeviceOptionsDock::mode_check_timeout() {
   if (_device_agent->is_hardware()) {
     DeviceAgent *agent = _device_agent;
     int saved_opt_mode = _opt_mode;
-    QtConcurrent::run([this, agent, saved_opt_mode]() {
+    QThreadPool::globalInstance()->start([this, agent, saved_opt_mode]() {
       int mode;
       bool got_mode = agent->get_config_int16(SR_CONF_OPERATION_MODE, mode);
       if (!got_mode || mode == saved_opt_mode)
@@ -740,7 +777,8 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
 
       if (p->name().contains("Map Default")) {
         pow->setProperty("index", probe->index);
-        connect(qobject_cast<QPushButton*>(pow), &QPushButton::clicked, this, &DeviceOptionsDock::analog_channel_check);
+        connect(qobject_cast<QPushButton *>(pow), &QPushButton::clicked, this,
+                &DeviceOptionsDock::analog_channel_check);
       } else {
         if (probe_checkBox->isChecked() && p->name().contains("Map")) {
           bool map_default = true;
@@ -807,7 +845,8 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
         config_button->setObjectName("dock_content");
         config_button->setFont(contentFont);
         grid->addWidget(config_button, 0, 0, 1, 1);
-        connect(config_button, &QPushButton::clicked, this, &DeviceOptionsDock::zero_adj);
+        connect(config_button, &QPushButton::clicked, this,
+                &DeviceOptionsDock::zero_adj);
 
         auto cali_button =
             new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MANUAL_CALIBRATION),
@@ -816,7 +855,8 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
         cali_button->setObjectName("dock_content");
         cali_button->setFont(contentFont);
         grid->addWidget(cali_button, 1, 0, 1, 1);
-        connect(cali_button, &QPushButton::clicked, this, &DeviceOptionsDock::on_calibration);
+        connect(cali_button, &QPushButton::clicked, this,
+                &DeviceOptionsDock::on_calibration);
 
         config_button->setFixedHeight(35);
         cali_button->setFixedHeight(35);
@@ -1102,7 +1142,8 @@ void DeviceOptionsDock::UpdateFont() {
 
   setUpdatesEnabled(false);
 
-  auto section_titles = _container_panel->findChildren<QLabel *>("dock_section_title");
+  auto section_titles =
+      _container_panel->findChildren<QLabel *>("dock_section_title");
   for (auto lb : section_titles) {
     lb->setFont(sectionTitleFont);
   }
@@ -1112,7 +1153,8 @@ void DeviceOptionsDock::UpdateFont() {
     lb->setFont(labelFont);
   }
 
-  auto content_widgets = _container_panel->findChildren<QWidget *>("dock_content");
+  auto content_widgets =
+      _container_panel->findChildren<QWidget *>("dock_content");
   for (auto w : content_widgets) {
     w->setFont(contentFont);
   }

@@ -25,6 +25,7 @@
 #include "property.h"
 
 class QLineEdit;
+class QToolButton;
 
 namespace pv {
 namespace prop {
@@ -40,11 +41,16 @@ public:
 
 	void commit();
 
+	bool is_path_or_dir();
+	QLineEdit* get_line_edit() const { return _line_edit; }
+	QToolButton* get_browse_btn() const { return _browse_btn; }
+
 private slots:
 	void on_text_edited(const QString&);
 
 private:
 	QLineEdit *_line_edit;
+	QToolButton *_browse_btn;
 	QWidget *_container;
 };
 

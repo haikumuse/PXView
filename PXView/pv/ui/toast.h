@@ -16,6 +16,7 @@
 #include <QString>
 
 class QTimer;
+class QLabel;
 
 namespace pv {
 namespace ui {
@@ -26,6 +27,7 @@ class Toast : public QWidget
 public:
     enum Level { Info, Warning, Error };
     static void show(QWidget *parent, const QString &text, Level level = Info);
+    void updateContent(const QString &text, Level level);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -36,6 +38,8 @@ private:
     void closeAnimation();
 
 private:
+    QLabel *_iconLabel;
+    QLabel *_textLabel;
     QTimer *_timer;
 };
 
