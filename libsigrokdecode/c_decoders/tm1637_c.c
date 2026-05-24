@@ -224,16 +224,19 @@ static void tm1637_handle_command(struct srd_decoder_inst *di, tm1637_state *s, 
         /* Mode bit */
         int mode = (rest >> DATA_MODE) & 1;
         tm1637_putd(di, s, DATA_MODE, DATA_MODE,
+                    mode ? ANN_TEST : ANN_NORMAL,
                     mode ? "Test" : "Normal");
         /* Addressing bit */
         int addr_mode = (rest >> DATA_ADDR) & 1;
         s->is_auto = !addr_mode;
         tm1637_putd(di, s, DATA_ADDR, DATA_ADDR,
+                    addr_mode ? ANN_FIXED : ANN_AUTO,
                     addr_mode ? "FixedAddr" : "AutoAddr");
         /* Read/Write bit */
         int rw = (rest >> DATA_RW) & 1;
         s->is_write = !rw;
         tm1637_putd(di, s, DATA_RW, DATA_RW,
+                    rw ? ANN_READ : ANN_WRITE,
                     rw ? "Read" : "Write");
         /* Prohibited bit 0 */
         tm1637_putr(di, s, 0, DATA_RW - 1);
@@ -245,6 +248,7 @@ static void tm1637_handle_command(struct srd_decoder_inst *di, tm1637_state *s, 
         /* Switch bit */
         int sw = (rest >> DISP_SWITCH) & 1;
         tm1637_putd(di, s, DISP_SWITCH, DISP_SWITCH,
+                    sw ? ANN_ON : ANN_OFF,
                     sw ? "ON" : "OFF");
         /* PWM bits */
         int pwm = rest & 0x07;

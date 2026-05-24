@@ -249,8 +249,8 @@ static void udp_recv_proto(struct srd_decoder_inst *di,
     /* Push payload to binary output */
     if (s->out_binary >= 0 && payload_end_idx > payload_start_idx) {
         c_decoder_put_binary(di, 0, 0, s->out_binary, 0,
-                             payload + payload_start_idx,
-                             payload_end_idx - payload_start_idx);
+                             payload_end_idx - payload_start_idx,
+                             payload + payload_start_idx);
     }
 }
 

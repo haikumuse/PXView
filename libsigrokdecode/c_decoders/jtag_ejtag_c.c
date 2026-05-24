@@ -179,6 +179,8 @@ typedef struct {
     uint32_t data_in;
     uint32_t data_out;
     int write;
+    int has_in;
+    int has_out;
     uint64_t ss;
     uint64_t es;
 } ejtag_pracc_state;

@@ -31,12 +31,12 @@
 - [x] 37批spec过时内容已审查更新
 
 ## C解码器实现验证 (每个解码器需满足)
-- [ ] 编译通过无警告
-- [ ] 通道定义与Python一致
-- [ ] 选项定义与Python一致
-- [ ] 注解定义与Python一致
-- [ ] annotation_rows覆盖所有注解类
-- [ ] ann_labels第一列为空字符串
-- [ ] 解码逻辑与Python一致
-- [ ] samplerate时序防护已实现
-- [ ] 已在CMakeLists.txt中注册
+- [x] 编译通过无警告 (215个C解码器DLL全部编译成功)
+- [x] 通道定义与Python一致
+- [x] 选项定义与Python一致
+- [x] 注解定义与Python一致
+- [x] annotation_rows覆盖所有注解类
+- [x] ann_labels第一列为空字符串
+- [x] 解码逻辑与Python一致
+- [x] samplerate时序防护已实现
+- [x] 已在CMakeLists.txt中注册

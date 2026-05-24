@@ -229,7 +229,7 @@ static void pcap_headers(struct srd_decoder_inst *di, ethernet_state *s)
     int64_t sl = -1;
     memcpy(shb + 16, &sl, 8);
     v = 28;         memcpy(shb + 24, &v, 4);
-    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, shb, 28);
+    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, 28, shb);
 
     /* Interface Description Block */
     uint8_t idb[20];
@@ -241,7 +241,7 @@ static void pcap_headers(struct srd_decoder_inst *di, ethernet_state *s)
     memcpy(idb + 10, &reserved, 2);
     v = 1522; memcpy(idb + 12, &v, 4);
     v = 20;   memcpy(idb + 16, &v, 4);
-    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, idb, 20);
+    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, 20, idb);
 }
 
 static void pcap_append(struct srd_decoder_inst *di, ethernet_state *s)
@@ -259,7 +259,7 @@ static void pcap_append(struct srd_decoder_inst *di, ethernet_state *s)
     if (pad_len > 0) memset(pkt + 12 + frame_len, 0, pad_len);
     v = block_len;    memcpy(pkt + 12 + frame_len + pad_len, &v, 4);
 
-    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, pkt, block_len);
+    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, block_len, pkt);
     g_free(pkt);
 }
 
