@@ -18,6 +18,7 @@
 #include <QPainter>
 #include <QScreen>
 #include <QIcon>
+#include <QGraphicsOpacityEffect>
 #include "../config/appconfig.h"
 
 namespace pv {
@@ -26,41 +27,32 @@ namespace ui {
 Toast::Toast(QWidget *parent, const QString &text, Level level)
     : QWidget(parent)
 {
-    // Qt::ToolTip allows it to be a top-level window that doesn't steal focus
-    // Qt::FramelessWindowHint removes OS window decorations
-    setWindowFlags(Qt::FramelessWindowHint | Qt::ToolTip | Qt::WindowDoesNotAcceptFocus);
-    setAttribute(Qt::WA_TranslucentBackground);
+    // Make it a plain child widget so it doesn't get any OS-level shadows
+    // and doesn't exceed the application borders.
+    // We raise() it to ensure it stays on top of other child widgets.
     setAttribute(Qt::WA_DeleteOnClose);
-    setAttribute(Qt::WA_ShowWithoutActivating);
+
+    // Make sure labels don't inherit the opaque background-color from global QWidget stylesheet
+    setStyleSheet("QLabel { background-color: transparent; }");
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(20, 15, 20, 15);
     layout->setSpacing(10);
 
     // Icon
-    QLabel *iconLabel = new QLabel(this);
-    if (level == Warning) {
-        QIcon warnIcon(":/icons/status-warning.svg");
-        if (!warnIcon.isNull()) {
-            iconLabel->setPixmap(warnIcon.pixmap(24, 24));
-        } else {
-            iconLabel->setText("⚠️");
-        }
-    } else if (level == Error) {
-        iconLabel->setText("❌");
-    } else {
-        iconLabel->setText("ℹ️");
-    }
+    _iconLabel = new QLabel(this);
     
-    QLabel *textLabel = new QLabel(text, this);
-    textLabel->setStyleSheet("color: white; font-size: 14px;");
+    _textLabel = new QLabel(text, this);
+    _textLabel->setStyleSheet("color: white; font-size: 14px;");
 
-    layout->addWidget(iconLabel);
-    layout->addWidget(textLabel);
-
+    layout->addWidget(_iconLabel);
+    layout->addWidget(_textLabel);
+    
     _timer = new QTimer(this);
     _timer->setSingleShot(true);
     connect(_timer, &QTimer::timeout, this, &Toast::closeAnimation);
+
+    updateContent(text, level);
 }
 
 void Toast::show(QWidget *parent, const QString &text, Level level)
@@ -70,34 +62,79 @@ void Toast::show(QWidget *parent, const QString &text, Level level)
         w = QApplication::activeWindow();
     }
     
-    Toast *toast = new Toast(w, text, level);
-    toast->adjustSize();
+    // Find top-level window to attach to as a child
+    QWidget *topLevel = w ? w->window() : nullptr;
+    if (!topLevel && w) topLevel = w;
     
-    // Position at bottom-right of the active window or screen
-    if (w) {
-        // Find top-level window
-        QWidget *topLevel = w->window();
-        if (!topLevel) topLevel = w;
-        
-        QPoint p = topLevel->mapToGlobal(QPoint(topLevel->width() - toast->width() - 30, 
-                                                topLevel->height() - toast->height() - 30));
-        toast->move(p);
-    } else {
-        QScreen *screen = QApplication::primaryScreen();
-        if (screen) {
-            QRect r = screen->geometry();
-            toast->move(r.width() - toast->width() - 30, r.height() - toast->height() - 60);
+    // Check if there is already a Toast showing
+    if (topLevel) {
+        QList<Toast*> existingToasts = topLevel->findChildren<Toast*>();
+        if (!existingToasts.isEmpty()) {
+            Toast *existing = existingToasts.first();
+            existing->updateContent(text, level);
+            existing->raise();
+            return;
         }
     }
+    
+    Toast *toast = new Toast(topLevel, text, level);
+    toast->adjustSize();
+    
+    // Position at bottom-right of the parent window
+    if (topLevel) {
+        QPoint p(topLevel->width() - toast->width() - 30, 
+                 topLevel->height() - toast->height() - 30);
+        toast->move(p);
+    }
 
+    toast->raise(); // Ensure it is drawn above other child widgets
     toast->showAnimation();
+}
+
+void Toast::updateContent(const QString &text, Level level)
+{
+    _textLabel->setText(text);
+    
+    if (level == Warning) {
+        QIcon warnIcon(":/icons/status-warning.svg");
+        if (!warnIcon.isNull()) {
+            _iconLabel->setPixmap(warnIcon.pixmap(24, 24));
+        } else {
+            _iconLabel->setText("⚠️");
+        }
+    } else if (level == Error) {
+        _iconLabel->clear();
+        _iconLabel->setText("❌");
+    } else {
+        _iconLabel->clear();
+        _iconLabel->setText("ℹ️");
+    }
+    
+    adjustSize();
+    
+    // Check if close animation is running and stop it
+    QGraphicsOpacityEffect *eff = qobject_cast<QGraphicsOpacityEffect*>(graphicsEffect());
+    if (eff) {
+        // If it's already fading out, stop the animation and set opacity back to 1.0
+        QList<QPropertyAnimation*> anims = eff->findChildren<QPropertyAnimation*>();
+        for (QPropertyAnimation *anim : anims) {
+            anim->stop();
+        }
+        eff->setOpacity(1.0);
+    }
+    
+    // Restart the timer to refresh its existence time
+    _timer->start(3500);
 }
 
 void Toast::showAnimation()
 {
+    QGraphicsOpacityEffect *eff = new QGraphicsOpacityEffect(this);
+    this->setGraphicsEffect(eff);
+    
     QWidget::show();
-    setWindowOpacity(0.0);
-    QPropertyAnimation *anim = new QPropertyAnimation(this, "windowOpacity");
+    
+    QPropertyAnimation *anim = new QPropertyAnimation(eff, "opacity");
     anim->setDuration(300);
     anim->setStartValue(0.0);
     anim->setEndValue(1.0);
@@ -108,7 +145,13 @@ void Toast::showAnimation()
 
 void Toast::closeAnimation()
 {
-    QPropertyAnimation *anim = new QPropertyAnimation(this, "windowOpacity");
+    QGraphicsOpacityEffect *eff = qobject_cast<QGraphicsOpacityEffect*>(graphicsEffect());
+    if (!eff) {
+        close();
+        return;
+    }
+    
+    QPropertyAnimation *anim = new QPropertyAnimation(eff, "opacity");
     anim->setDuration(300);
     anim->setStartValue(1.0);
     anim->setEndValue(0.0);
