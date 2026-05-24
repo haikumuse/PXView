@@ -239,7 +239,7 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
   QFont legendFont;
   legendFont.setPixelSize(14);
 
-  QColor legendColor = AppConfig::Instance().GetThemeColor("@legend-color");
+  QColor legendColor = AppConfig::Instance().GetThemeColor("@fg-muted");
   if (!legendColor.isValid())
     legendColor = QColor("#8e8e8e");
 

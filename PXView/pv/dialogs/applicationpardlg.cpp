@@ -233,7 +233,7 @@ namespace dialogs {
 ApplicationParamDlg::ApplicationParamDlg()
     : _nav_list(nullptr), _page_stack(nullptr), _ck_quickScroll(nullptr),
       _ck_trigInMid(nullptr), _ck_profileBar(nullptr), _ck_abortData(nullptr),
-      _ck_autoScrollLatestData(nullptr), _ftCbSize(nullptr),
+      _ck_autoScrollLatestData(nullptr),
       _shortcut_list(nullptr), _shortcut_selected_row(-1), _btn_accept(nullptr),
       _btn_restore(nullptr), _btn_reset_default(nullptr), _btn_delete(nullptr),
       _clash_warning_label(nullptr), _style_category_tree(nullptr),
@@ -244,52 +244,6 @@ ApplicationParamDlg::~ApplicationParamDlg() {
   if (_file_watcher) {
     delete _file_watcher;
   }
-}
-
-void ApplicationParamDlg::bind_font_name_list(QComboBox *box, QString v) {
-  int selDex = -1;
-
-  QString defName(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEFAULT_FONT), "Default"));
-  box->addItem(defName);
-
-  if (_font_name_list.size() == 0) {
-    QFontDatabase fDataBase;
-    _font_name_list = fDataBase.families();
-  }
-
-  for (QString family : _font_name_list) {
-    if (family.indexOf("[") == -1) {
-      box->addItem(family);
-
-      if (selDex == -1 && family == v) {
-        selDex = box->count() - 1;
-      }
-    }
-  }
-
-  if (selDex == -1)
-    selDex = 0;
-
-  box->setCurrentIndex(selDex);
-}
-
-void ApplicationParamDlg::bind_font_size_list(QComboBox *box, float size) {
-  int selDex = -1;
-
-  float minSize = 0;
-  float maxSize = 0;
-
-  AppConfig::GetFontSizeRange(&minSize, &maxSize);
-
-  for (int i = minSize; i <= maxSize; i++) {
-    box->addItem(QString::number(i));
-    if (i == size) {
-      selDex = box->count() - 1;
-    }
-  }
-  if (selDex == -1)
-    selDex = 2;
-  box->setCurrentIndex(selDex);
 }
 
 QWidget *ApplicationParamDlg::createDisplayPage() {
@@ -315,10 +269,6 @@ QWidget *ApplicationParamDlg::createDisplayPage() {
 
   _ck_autoScrollLatestData = new QCheckBox();
   _ck_autoScrollLatestData->setChecked(app.appOptions.autoScrollLatestData);
-
-  _ftCbSize = new DsComboBox();
-  _ftCbSize->setFixedWidth(50);
-  bind_font_size_list(_ftCbSize, app.appOptions.fontSize);
 
   QGroupBox *logicGroup =
       new QGroupBox(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_GROUP_LOGIC), "Logic"));
@@ -366,10 +316,6 @@ QWidget *ApplicationParamDlg::createDisplayPage() {
                      "Profile in bar")),
       0, 0, Qt::AlignLeft);
   uiLay->addWidget(_ck_profileBar, 0, 1, Qt::AlignRight);
-  uiLay->addWidget(
-      new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FONT_SIZE), "Font size")), 1, 0,
-      Qt::AlignLeft);
-  uiLay->addWidget(_ftCbSize, 1, 1, Qt::AlignRight);
   lay->addWidget(uiGroup);
 
   lay->addStretch();
@@ -587,7 +533,7 @@ QWidget *ApplicationParamDlg::createStylePage() {
   QHBoxLayout *presetLay = new QHBoxLayout();
   QLabel *presetLbl = new QLabel(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_PRESET), "Preset Theme:"));
-  _preset_combo = new QComboBox();
+  _preset_combo = new DsComboBox();
   _preset_combo->addItem(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_CUSTOM), "Custom"), "");
   _preset_combo->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_DARK), "Dark"),
@@ -1483,8 +1429,6 @@ void ApplicationParamDlg::refreshStyleWidgets() {
 void ApplicationParamDlg::saveDisplayOptions() {
   AppConfig &app = AppConfig::Instance();
   bool bAppChanged = false;
-  bool bFontChanged = false;
-  float fSize = _ftCbSize->currentText().toFloat();
 
   if (app.appOptions.quickScroll != _ck_quickScroll->isChecked()) {
     app.appOptions.quickScroll = _ck_quickScroll->isChecked();
@@ -1502,10 +1446,6 @@ void ApplicationParamDlg::saveDisplayOptions() {
     app.appOptions.swapBackBufferAlways = _ck_abortData->isChecked();
     bAppChanged = true;
   }
-  if (app.appOptions.fontSize != fSize) {
-    app.appOptions.fontSize = fSize;
-    bFontChanged = true;
-  }
   if (app.appOptions.autoScrollLatestData !=
       _ck_autoScrollLatestData->isChecked()) {
     app.appOptions.autoScrollLatestData = _ck_autoScrollLatestData->isChecked();
@@ -1516,14 +1456,6 @@ void ApplicationParamDlg::saveDisplayOptions() {
     app.SaveApp();
     AppControl::Instance()->GetSession()->broadcast_msg(
         DSV_MSG_APP_OPTIONS_CHANGED);
-  }
-
-  if (bFontChanged) {
-    if (!bAppChanged) {
-      app.SaveApp();
-    }
-    AppControl::Instance()->GetSession()->broadcast_msg(
-        DSV_MSG_FONT_OPTIONS_CHANGED);
   }
 }
 

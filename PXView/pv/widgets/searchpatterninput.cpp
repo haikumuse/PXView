@@ -117,10 +117,10 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, false);
 
-    QColor bgColor = AppConfig::Instance().GetThemeColor("@search-input-bg");
+    QColor bgColor = AppConfig::Instance().GetThemeColor("@input-bg");
     if (!bgColor.isValid()) bgColor = QColor(0x1a, 0x1a, 0x1a);
 
-    QColor textColor = AppConfig::Instance().GetThemeColor("@search-input-text");
+    QColor textColor = AppConfig::Instance().GetThemeColor("@fg-bright");
     if (!textColor.isValid()) textColor = QColor(Qt::white);
 
     QColor selBgColor = AppConfig::Instance().GetThemeColor("@accent");

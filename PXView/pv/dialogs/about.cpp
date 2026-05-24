@@ -69,7 +69,7 @@ About::About(QWidget *parent) :
         site_url = "https://" + site_url;
     }
 
-    QString linkColor = AppConfig::Instance().GetThemeTokenValue("@about-link-color");
+    QString linkColor = AppConfig::Instance().GetThemeTokenValue("@dock-section-title-fg");
     if (linkColor.isEmpty()) linkColor = "#C0C0C0";
     QString linkStyle = "color:" + linkColor;
     QString url = tr("Website: <a href=\"%1\" style=\"%2\">%1</a><br />"

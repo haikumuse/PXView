@@ -464,8 +464,7 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
   QElapsedTimer dividerTimer;
   dividerTimer.start();
 #endif
-  QColor dividerColor =
-      AppConfig::Instance().GetThemeColor("@trace-divider-color");
+  QColor dividerColor = AppConfig::Instance().GetThemeColor("@border-strong");
   if (!dividerColor.isValid()) {
     double lum =
         back.red() * 0.299 + back.green() * 0.587 + back.blue() * 0.114;

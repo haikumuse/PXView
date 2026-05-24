@@ -1245,11 +1245,11 @@
     },
     {
         "id": "IDS_STYLE_LOGIC_CH1",
-        "text": "逻辑通道 1 (蓝)"
+        "text": "逻辑通道 1"
     },
     {
         "id": "IDS_STYLE_LOGIC_CH2",
-        "text": "逻辑通道 2 (绿)"
+        "text": "逻辑通道 2"
     },
     {
         "id": "IDS_STYLE_LOGIC_CH3",
@@ -1394,5 +1394,125 @@
     {
         "id": "IDS_STYLE_FONT_CURSOR",
         "text": "游标数值字号"
+    },
+    {
+        "id": "IDS_STYLE_INPUT_BG",
+        "text": "输入框背景"
+    },
+    {
+        "id": "IDS_STYLE_ALTERNATE_ROW",
+        "text": "交替行背景"
+    },
+    {
+        "id": "IDS_STYLE_HEADER_H_BG",
+        "text": "表头背景"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_LIGHT",
+        "text": "强调色（亮）"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_MUTED",
+        "text": "强调色（暗）"
+    },
+    {
+        "id": "IDS_STYLE_DANGER_HOVER",
+        "text": "危险色悬停"
+    },
+    {
+        "id": "IDS_STYLE_DANGER_PRESSED",
+        "text": "危险色按下"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_LIGHT_BLUE",
+        "text": "信号浅蓝"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_LIGHT_RED",
+        "text": "信号浅红"
+    },
+    {
+        "id": "IDS_STYLE_WARN_RED",
+        "text": "警告红"
+    },
+    {
+        "id": "IDS_STYLE_CAT_INTERACTION",
+        "text": "交互"
+    },
+    {
+        "id": "IDS_STYLE_SCROLLBAR",
+        "text": "滚动条"
+    },
+    {
+        "id": "IDS_STYLE_TAB_HOVER",
+        "text": "标签页悬停"
+    },
+    {
+        "id": "IDS_STYLE_TOOLBTN_HOVER",
+        "text": "工具按钮悬停"
+    },
+    {
+        "id": "IDS_STYLE_WINBTN_HOVER",
+        "text": "窗口按钮悬停"
+    },
+    {
+        "id": "IDS_STYLE_WINBTN_PRESSED",
+        "text": "窗口按钮按下"
+    },
+    {
+        "id": "IDS_STYLE_FLAT_HOVER_BG",
+        "text": "扁平按钮悬停"
+    },
+    {
+        "id": "IDS_STYLE_BTN_CHECKED_MID",
+        "text": "按钮选中"
+    },
+    {
+        "id": "IDS_STYLE_CAT_SLIDER",
+        "text": "滑块与进度"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_GROOVE",
+        "text": "滑块轨道"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_INACTIVE",
+        "text": "滑块未激活"
+    },
+    {
+        "id": "IDS_STYLE_SLIDER_DISABLED",
+        "text": "滑块禁用"
+    },
+    {
+        "id": "IDS_STYLE_PROGRESS_TRACK",
+        "text": "进度条轨道"
+    },
+    {
+        "id": "IDS_STYLE_CAT_COMPONENT",
+        "text": "组件"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_ACTIVE",
+        "text": "下拉框激活"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_SELECTION",
+        "text": "下拉框选中"
+    },
+    {
+        "id": "IDS_STYLE_COMBO_HIGHLIGHT",
+        "text": "下拉框高亮"
+    },
+    {
+        "id": "IDS_STYLE_DOCK_GRIDLINE",
+        "text": "Dock 网格线"
+    },
+    {
+        "id": "IDS_STYLE_DOCK_SECTION_TITLE_FG",
+        "text": "Dock 标题文字"
+    },
+    {
+        "id": "IDS_STYLE_SEARCH_INPUT_LABEL",
+        "text": "搜索框标签"
     }
 ]

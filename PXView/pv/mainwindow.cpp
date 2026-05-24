@@ -3198,28 +3198,7 @@ void MainWindow::update_tab_style(int index) {
     return;
 
   pv::TabContext *ctx = _tab_contexts[index];
-  QString title = ctx->title();
-
-  QColor liveColor = AppConfig::Instance().GetThemeColor("@tab-status-live");
-  QColor dataColor = AppConfig::Instance().GetThemeColor("@tab-status-data");
-  QColor emptyColor = AppConfig::Instance().GetThemeColor("@tab-status-empty");
-  if (!liveColor.isValid())
-    liveColor = QColor(76, 175, 80);
-  if (!dataColor.isValid())
-    dataColor = QColor(200, 200, 200);
-  if (!emptyColor.isValid())
-    emptyColor = QColor(120, 120, 120);
-
-  if (ctx->is_live()) {
-    _tab_widget->setTabText(index, title);
-    _tab_widget->tabBar()->setTabTextColor(index, liveColor);
-  } else if (ctx->has_data()) {
-    _tab_widget->setTabText(index, title);
-    _tab_widget->tabBar()->setTabTextColor(index, dataColor);
-  } else {
-    _tab_widget->setTabText(index, title);
-    _tab_widget->tabBar()->setTabTextColor(index, emptyColor);
-  }
+  _tab_widget->setTabText(index, ctx->title());
 }
 
 void MainWindow::on_tab_changed(int index) {

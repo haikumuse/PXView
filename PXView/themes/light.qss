@@ -36,7 +36,7 @@
  * @fg-bright: #000000
  * @fg-muted: #8a8a8a
  * @border: #2a2a2a
- * @border-strong: #d5d5d5 
+ * @border-strong: #d5d5d5
  * @accent: #1185d1
  * @accent-hover: #44cef6
  * @accent-light: #47b8f3
@@ -51,47 +51,24 @@
  * @progress-track: #babec2
  * @btn-checked-mid: #a3a3a3
  * @gridline: #2a2a2a
- * @tab-text: #2a2a2a
- * @tab-indicator: #2a2a2a
  * @tab-hover: #14000000
  * @winbtn-hover: #0d000000
  * @winbtn-pressed: #08000000
- * @tooltip-bg: #000000
- * @tooltip-fg: #ffffff
  * @toolbtn-hover: #e0e0e0
  * @flat-hover-bg: #44cef6
- * @flat-hover-fg: #1a1a1a
- * @ribbon-sep: #b4b4b4
- * @btn-border: #2a2a2a
- * @frame-border: #b4b4b4
  * @header-h-bg: #f8f8f8
  * @alternate-row: #f8f8f8
  * @combo-active: #e0e0e0
  * @combo-selection: #3d8ec9
  * @combo-highlight: #4a4a4a
- * @input-bg: #d9d8d7
- * @slider-v-border: #808080
- * @item-hover: #1a3dade8
- * @drawer-title-fg: #333333
- * @drawer-edge-hover: #1f000000
+ * @input-bg: #e8e8e8
  * @dock-gridline: #d0d0d0
  * @dock-section-title-fg: #333333
- * @dock-section-separator-color: #d5d5d5
  * @dock-status-ok: #008000
  * @dock-status-error: #cc0000
- * @tab-add-color: #8a8a8a
- * @tab-add-hover-color: #2a2a2a
- * @about-link-color: #C0C0C0
- * @legend-color: #8e8e8e
- * @tab-status-live: #4CAF50
- * @tab-status-data: #C8C8C8
- * @tab-status-empty: #787878
  * @group-card-bg: #FAFAFA
- * @trace-divider-color: #d5d5d5
  * @panel-bg: #1a1a1a
  * @panel-text: #f5f0e5
- * @channel-disabled-bg: #F0F0F0
- * @channel-disabled-fg: #C8C8C8
  * @signal-red: #D50F25
  * @signal-orange: #EEB211
  * @signal-blue: #1185D1
@@ -100,8 +77,6 @@
  * @signal-light-blue: #c81185d1
  * @signal-light-red: #c8d50f25
  * @warn-red: #c8ff0000
- * @search-input-bg: #e8e8e8
- * @search-input-text: #2a2a2a
  * @search-input-label: #8a8a8a
  * @dock-font-main-title: 18px
  * @dock-font-section-title: 16px
@@ -112,9 +87,9 @@
 
 QToolTip
 {
-    border: 1px solid @tooltip-fg;
-    background-color: @tooltip-bg;
-    color: @tooltip-fg;
+    border: 1px solid @fg-base;
+    background-color: @bg-base;
+    color: @fg-base;
     padding: 1px;
 }
 
@@ -139,7 +114,7 @@ QPushButton#flat{
 QPushButton#flat:hover
 {
     background-color: @flat-hover-bg;
-    color: @flat-hover-fg;
+    color: @fg-bright;
 }
 
 #dsComboPopup
@@ -436,7 +411,7 @@ QGroupBox
 
 #dock_section_separator
 {
-    background-color: @dock-section-separator-color;
+    background-color: @border-strong;
     border: none;
     max-height: 1px;
     min-height: 1px;
@@ -472,7 +447,7 @@ QScrollBar::handle:horizontal
 
 QScrollBar::handle:horizontal:hover
 {
-    background-color: @slider-v-border;
+    background-color: @progress-track;
 }
 
 QScrollBar::add-line:horizontal,
@@ -514,7 +489,7 @@ QScrollBar::handle:vertical
 
 QScrollBar::handle:vertical:hover
 {
-    background-color: @slider-v-border;
+    background-color: @progress-track;
 }
 
 QScrollBar::add-line:vertical,
@@ -565,7 +540,7 @@ QMenu::separator
 QFrame
 {
     border-radius: 2px;
-    border: 1px solid @frame-border;
+    border: 1px solid @border;
 }
 
 QFrame[frameShape="0"]
@@ -642,7 +617,7 @@ QPushButton
     color: @fg-base;
     background-color: @bg-base;
     border-width: 1px;
-    border-color: @btn-border;
+    border-color: @border;
     border-style: solid;
     padding: 5px;
     border-radius: 5px;
@@ -767,15 +742,6 @@ QComboBox::down-arrow:focus
     image: url(:/light/down_arrow.svg);
 }
 
-QAbstractSpinBox
-{
-    padding: 2px;
-    border: 1px solid @border-strong;
-    background-color: @input-bg;
-    color: @fg-base;
-    border-radius: 2px;
-    min-width: 60px;
-}
 
 QAbstractSpinBox:up-button
 {
@@ -1039,7 +1005,7 @@ QTableView::item:!selected:hover,
 QListView::item:!selected:hover,
 QTreeView::item:!selected:hover
 {
-    background-color: @item-hover;
+    background-color: @winbtn-hover;
     outline: 0;
     color: @fg-base;
     padding: 3px;
@@ -1076,7 +1042,7 @@ QSlider::groove:vertical
 QSlider::handle:vertical
 {
     background: @bg-base;
-    border: 1px solid @slider-v-border;
+    border: 1px solid @progress-track;
     width: 16px;
     height: 16px;
     margin: 0 -8px;
@@ -1518,12 +1484,13 @@ QProgressBar::chunk:horizontal
 QSpinBox,
 QDoubleSpinBox
 {
+    padding: 2px;
     padding-right: 0px;
     background-color: @bg-base;
-    border-style: solid;
     border: 1px solid @border;
     border-radius: 2px;
     color: @fg-base;
+    min-width: 60px;
 }
 
 QSpinBox::up-button,
@@ -1629,15 +1596,15 @@ QTabBar::tab {
     height: 28px;
     padding: 2px 12px;
     margin: 0px;
-    font-size: @dock-font-labelpx;
-    color: @tab-text;
+    font-size: @dock-font-label;
+    color: @fg-bright;
     background: transparent;
     border: none;
 }
 
 QTabBar::tab:selected {
     background: transparent;
-    border-bottom: 2px solid @tab-indicator;
+    border-bottom: 2px solid @fg-bright;
 }
 
 QTabBar::tab:hover:!selected {
@@ -1646,7 +1613,7 @@ QTabBar::tab:hover:!selected {
 
 QTabBar::tab:selected:hover {
     background: transparent;
-    border-bottom: 2px solid @tab-indicator;
+    border-bottom: 2px solid @fg-bright;
 }
 
 QTabBar::tab:disabled
@@ -1664,7 +1631,7 @@ QWidget#RibbonPanel {
 }
 
 QWidget#RibbonSeparator {
-    background: @ribbon-sep;
+    background: @border-strong;
 }
 
 QWidget#RibbonBottomLine {
@@ -1689,7 +1656,7 @@ QWidget#RibbonBottomLine {
 }
 
 #sliding_drawer_title {
-    color: @drawer-title-fg;
+    color: @dock-section-title-fg;
     background: transparent;
     font-size: @dock-font-main-title;
     font-weight: bold;
@@ -1702,7 +1669,7 @@ QWidget#RibbonBottomLine {
 
 #sliding_drawer_edge_grip:hover
 {
-    background: @drawer-edge-hover;
+    background: @winbtn-hover;
 }
 
 #sliding_drawer_stack
@@ -1748,7 +1715,7 @@ QWidget#RibbonBottomLine {
 
 #dock_search_result_view::item:hover
 {
-    background-color: @item-hover;
+    background-color: @winbtn-hover;
     border: none;
     border-bottom: 1px solid @dock-gridline;
 }
@@ -1798,7 +1765,7 @@ QWidget#RibbonBottomLine {
 
 #dock_protocol_table_view::item:hover
 {
-    background-color: @item-hover;
+    background-color: @winbtn-hover;
     border: none;
     border-bottom: 1px solid @dock-gridline;
 }
@@ -1843,7 +1810,7 @@ QLabel[status="error"]
 /* Log Dock */
 QPlainTextEdit#log_view
 {
-    background-color: @panel-bg;
+    background-color: @input-bg;
     color: @fg-base;
     border: 1px solid @border;
     border-radius: 4px;

@@ -32,9 +32,9 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QTimer>
-#include <QVBoxLayout>
 
 #include "../interface/icontextaware.h"
+#include "../ui/dscombobox.h"
 #include "../ui/uimanager.h"
 #include "../widgets/smoothscrollarea.h"
 #include <log/xlog.h>
@@ -86,7 +86,7 @@ private:
   QLabel *_level_label;
   QPushButton *_clear_btn;
   QPushButton *_open_btn;
-  QComboBox *_level_combo;
+  DsComboBox *_level_combo;
   QPushButton *_scroll_bottom_btn;
   QCheckBox *_save_file_check;
   QCheckBox *_append_mode_check;
