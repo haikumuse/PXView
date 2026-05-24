@@ -29,10 +29,11 @@
 #include "view.h"
 #include "../dsvdef.h"
 #include "../data/dsosnapshot.h"
-#include "../sigsession.h" 
+#include "../sigsession.h"
 #include "../log.h"
 #include "../appcontrol.h"
 #include "../ui/langresource.h"
+#include "../config/appconfig.h"
  
 using namespace std;
 
@@ -51,6 +52,18 @@ const QColor DsoSignal::SignalColours[4] = {
     QColor(17, 133, 209, 255)  // dsBlue
 
 };
+
+static const char *DsoSignalColorTokens[4] = {
+    "@signal-orange",
+    "@signal-green",
+    "@signal-red",
+    "@signal-blue"
+};
+
+QColor DsoSignal::getSignalColor(int index) {
+    QColor c = AppConfig::Instance().GetThemeColor(DsoSignalColorTokens[index % 4]);
+    return c.isValid() ? c : SignalColours[index % 4];
+}
 
 const float DsoSignal::EnvelopeThreshold = 256.0f;
 
@@ -107,7 +120,7 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
         }
     }
     _vDial = new dslDial(vValue.count(), vDialValueStep, vValue, vUnit, false);
-    _colour = SignalColours[probe->index % countof(SignalColours)];
+    _colour = getSignalColor(probe->index);
 
     load_settings();
 }
@@ -847,6 +860,9 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore, QColor 
 {
     (void)fore;
     (void)back;
+
+    // Refresh colour from theme on every paint
+    _colour = getSignalColor(_probe->index);
 
     if (!_show || right <= left){
         return;

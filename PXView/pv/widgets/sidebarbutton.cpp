@@ -9,13 +9,12 @@
 
 #include "sidebarbutton.h"
 #include "../config/appconfig.h"
+#include "../ui/dockfonts.h"
 #include <QIcon>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPixmap>
 #include <QRegularExpression>
-#include "../ui/dockfonts.h"
-
 
 SideBarButton::SideBarButton(QWidget *parent)
     : QWidget(parent), _isCheckable(false), _isChecked(false),
@@ -87,8 +86,7 @@ void SideBarButton::drawBackground(QPainter *painter) {
   if (!painter)
     return;
 
-  bool isDark = AppConfig::Instance().frameOptions.style == "dark" ||
-                AppConfig::Instance().frameOptions.style == "";
+  bool isDark = AppConfig::Instance().IsDarkStyle();
   int c = isDark ? 255 : 0;
 
   if (_isChecked) {
@@ -129,14 +127,28 @@ void SideBarButton::drawIcon(QPainter *painter) {
     if (!pix.isNull()) {
       QPainter p(&pix);
       p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-      QColor accentColor = AppConfig::Instance().GetThemeColor("@sidebar-accent");
-      if (!accentColor.isValid()) accentColor = QColor("#5B8DEF");
+      QColor accentColor =
+          AppConfig::Instance().GetThemeColor("@sidebar-accent");
+      if (!accentColor.isValid())
+        accentColor = QColor("#5B8DEF");
       p.fillRect(pix.rect(), accentColor);
       p.end();
       painter->drawPixmap(iconRect.topLeft(), pix);
     }
   } else {
-    icon.paint(painter, iconRect.toRect());
+    // Unselected: tint icon with sidebar-icon-color token
+    QPixmap pix = icon.pixmap(iconSize, iconSize);
+    if (!pix.isNull()) {
+      QColor iconColor =
+          AppConfig::Instance().GetThemeColor("@sidebar-icon-color");
+      if (iconColor.isValid()) {
+        QPainter p(&pix);
+        p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        p.fillRect(pix.rect(), iconColor);
+        p.end();
+      }
+      painter->drawPixmap(iconRect.topLeft(), pix);
+    }
   }
 
   painter->setOpacity(1.0);
@@ -148,13 +160,13 @@ void SideBarButton::drawText(QPainter *painter) {
   if (_text.isEmpty())
     return;
 
-  bool isDark = AppConfig::Instance().frameOptions.style == "dark" ||
-                AppConfig::Instance().frameOptions.style == "";
-
   if (_isChecked) {
+    bool isDark = AppConfig::Instance().IsDarkStyle();
     painter->setPen(isDark ? QColor("#E0E0E0") : QColor("#1A1A1A"));
   } else {
-    painter->setPen(QColor("#A0A0B0"));
+    QColor textColor =
+        AppConfig::Instance().GetThemeColor("@sidebar-text-color");
+    painter->setPen(textColor.isValid() ? textColor : QColor("#A0A0B0"));
   }
 
   if (!_isEnabled) {

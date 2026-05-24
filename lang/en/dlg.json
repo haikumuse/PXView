@@ -600,6 +600,10 @@
         "text": "Auto(Roll)"
     },
     {
+        "id": "IDS_DLG_AUTO_SCROLL_LATEAST_DATA",
+        "text": "Auto scroll latest"
+    },
+    {
         "id": "IDS_DLG_WAITING_TRIG",
         "text": "Waiting Trig"
     },
@@ -766,6 +770,22 @@
     {
         "id": "IDS_DLG_SEARCH_COL_LENGTH",
         "text": "Length"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_INDEX",
+        "text": "#"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_TIME",
+        "text": "Start Time"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_COL_DURATION",
+        "text": "Duration"
+    },
+    {
+        "id": "IDS_DLG_SEARCH_TIME_HINT",
+        "text": "Enter time (e.g. 1.5us, 100ns, 2ms) or index, press Enter to search"
     },
     {
         "id": "IDS_DLG_DISK_CACHE_ENABLE",
@@ -1022,5 +1042,357 @@
     {
         "id": "IDS_DLG_SC_ZOOM_FIT",
         "text": "Zoom Fit"
+    },
+    {
+        "id": "IDS_DLG_STYLE_CUSTOM",
+        "text": "Custom"
+    },
+    {
+        "id": "IDS_DLG_STYLE_DARK",
+        "text": "Dark"
+    },
+    {
+        "id": "IDS_DLG_STYLE_LIGHT",
+        "text": "Light"
+    },
+    {
+        "id": "IDS_DLG_STYLE_ATOM",
+        "text": "Atom One Dark"
+    },
+    {
+        "id": "IDS_DLG_STYLE_MONOKAI",
+        "text": "Monokai"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PRESET",
+        "text": "Preset Theme:"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PICKER",
+        "text": "Picker Tool"
+    },
+    {
+        "id": "IDS_DLG_STYLE_EDIT_JSON",
+        "text": "Edit JSON Source"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_AS_PRESET",
+        "text": "Save as Preset"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_PRESET",
+        "text": "Save Preset"
+    },
+    {
+        "id": "IDS_DLG_STYLE_PRESET_NAME",
+        "text": "Preset Name:"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_SUCCESS",
+        "text": "Success"
+    },
+    {
+        "id": "IDS_DLG_STYLE_SAVE_SUCCESS_MSG",
+        "text": "Preset saved successfully."
+    },
+    {
+        "id": "IDS_STYLE_CAT_GLOBAL",
+        "text": "Global Colors"
+    },
+    {
+        "id": "IDS_STYLE_CAT_ACCENT",
+        "text": "Accents & Status"
+    },
+    {
+        "id": "IDS_STYLE_CAT_SIGNAL",
+        "text": "Analog & Generic"
+    },
+    {
+        "id": "IDS_STYLE_CAT_LOGIC",
+        "text": "Logic Channels"
+    },
+    {
+        "id": "IDS_STYLE_CAT_DECODER",
+        "text": "Decoder Colors"
+    },
+    {
+        "id": "IDS_STYLE_CAT_TYPOGRAPHY",
+        "text": "Typography"
+    },
+    {
+        "id": "IDS_STYLE_BG_BASE",
+        "text": "Base Background"
+    },
+    {
+        "id": "IDS_STYLE_BG_BASE_DESC",
+        "text": "Main window background"
+    },
+    {
+        "id": "IDS_STYLE_BG_OVERLAY",
+        "text": "Overlay Background"
+    },
+    {
+        "id": "IDS_STYLE_PANEL_BG",
+        "text": "Panel Background"
+    },
+    {
+        "id": "IDS_STYLE_GROUP_CARD_BG",
+        "text": "Waveform Background"
+    },
+    {
+        "id": "IDS_STYLE_FG_BASE",
+        "text": "Primary Text"
+    },
+    {
+        "id": "IDS_STYLE_FG_BRIGHT",
+        "text": "Bright Text"
+    },
+    {
+        "id": "IDS_STYLE_FG_MUTED",
+        "text": "Muted Text"
+    },
+    {
+        "id": "IDS_STYLE_PANEL_TEXT",
+        "text": "Panel Text"
+    },
+    {
+        "id": "IDS_STYLE_BORDER",
+        "text": "Border"
+    },
+    {
+        "id": "IDS_STYLE_BORDER_STRONG",
+        "text": "Strong Border"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT",
+        "text": "Accent"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_DESC",
+        "text": "Theme color for highlights and selections"
+    },
+    {
+        "id": "IDS_STYLE_ACCENT_HOVER",
+        "text": "Accent (Hover)"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ACCENT",
+        "text": "Sidebar Indicator"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ACCENT_DESC",
+        "text": "Sidebar selected indicator bar color"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON",
+        "text": "Titlebar Icon Color"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
+        "text": "Titlebar icon active color"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ICON",
+        "text": "Sidebar Icon Color"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_ICON_DESC",
+        "text": "Sidebar unselected icon color"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_TEXT",
+        "text": "Sidebar Text Color"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_TEXT_DESC",
+        "text": "Sidebar unselected text color"
+    },
+    {
+        "id": "IDS_STYLE_DANGER",
+        "text": "Danger/Warning"
+    },
+    {
+        "id": "IDS_STYLE_STATUS_OK",
+        "text": "Status: OK"
+    },
+    {
+        "id": "IDS_STYLE_STATUS_ERROR",
+        "text": "Status: Error"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH1",
+        "text": "Analog Ch1"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH2",
+        "text": "Analog Ch2"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH3",
+        "text": "Analog Ch3"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH4",
+        "text": "Analog Ch4"
+    },
+    {
+        "id": "IDS_STYLE_SIGNAL_CH5",
+        "text": "Analog Ch5"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH0",
+        "text": "Logic Ch0"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH1",
+        "text": "Logic Ch1"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH2",
+        "text": "Logic Ch2"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH3",
+        "text": "Logic Ch3"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH4",
+        "text": "Logic Ch4"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH5",
+        "text": "Logic Ch5"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH6",
+        "text": "Logic Ch6"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH7",
+        "text": "Logic Ch7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH0",
+        "text": "Ch 0"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH1",
+        "text": "Ch 1"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH2",
+        "text": "Ch 2"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH3",
+        "text": "Ch 3"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH4",
+        "text": "Ch 4"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH5",
+        "text": "Ch 5"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH6",
+        "text": "Ch 6"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH7",
+        "text": "Ch 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH8",
+        "text": "Ch 8"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH9",
+        "text": "Ch 9"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH10",
+        "text": "Ch 10"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH11",
+        "text": "Ch 11"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH12",
+        "text": "Ch 12"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH13",
+        "text": "Ch 13"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH14",
+        "text": "Ch 14"
+    },
+    {
+        "id": "IDS_STYLE_DEC_CH15",
+        "text": "Ch 15"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ERROR",
+        "text": "Decode Error BG"
+    },
+    {
+        "id": "IDS_STYLE_DEC_NO_DECODE",
+        "text": "No Decode BG"
+    },
+    {
+        "id": "IDS_STYLE_FONT_MAIN_TITLE",
+        "text": "Main Title Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_SECTION_TITLE",
+        "text": "Section Title Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_LABEL",
+        "text": "Label Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_CONTENT",
+        "text": "Content Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_FP_LABEL",
+        "text": "Floating Panel Label Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_FP_VALUE",
+        "text": "Floating Panel Value Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TITLEBAR",
+        "text": "Titlebar Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TOOLBAR",
+        "text": "Toolbar Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_SIDEBAR",
+        "text": "Sidebar Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_DIALOG",
+        "text": "Dialog Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_TRACE_LABEL",
+        "text": "Trace Label Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_RULER",
+        "text": "Ruler Size"
+    },
+    {
+        "id": "IDS_STYLE_FONT_CURSOR",
+        "text": "Cursor Size"
     }
 ]

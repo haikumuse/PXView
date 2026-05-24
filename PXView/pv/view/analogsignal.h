@@ -57,6 +57,8 @@ public:
 
 	virtual ~AnalogSignal();
 
+    static QColor getSignalColor(int index);
+
     AnalogSignal* clone() const override;
 
     inline void set_scale(int height){

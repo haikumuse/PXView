@@ -90,6 +90,8 @@ public:
 
     virtual ~DsoSignal();
 
+    static QColor getSignalColor(int index);
+
     DsoSignal* clone() const override;
 
     inline data::DsoSnapshot* data(){

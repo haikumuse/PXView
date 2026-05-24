@@ -27,6 +27,7 @@
 #include "../view/view.h"
 #include "../dsvdef.h"
 #include "../log.h"
+#include "../config/appconfig.h"
 
 using namespace std;
 
@@ -42,6 +43,18 @@ const QColor AnalogSignal::SignalColours[4] = {
     QColor(17, 133, 209, 255)  // dsBlue
 };
 
+static const char *SignalColorTokens[4] = {
+    "@signal-orange",
+    "@signal-green",
+    "@signal-red",
+    "@signal-blue"
+};
+
+QColor AnalogSignal::getSignalColor(int index) {
+    QColor c = AppConfig::Instance().GetThemeColor(SignalColorTokens[index % 4]);
+    return c.isValid() ? c : SignalColours[index % 4];
+}
+
 const float AnalogSignal::EnvelopeThreshold = 16.0f;
 
 AnalogSignal::AnalogSignal(data::AnalogSnapshot *data, sr_channel *probe) :
@@ -54,7 +67,7 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data, sr_channel *probe) :
     _hover_value(0)
 {
     _typeWidth = 5;
-    _colour = SignalColours[probe->index % countof(SignalColours)];
+    _colour = getSignalColor(probe->index);
 
     uint32_t ui32;
      
@@ -407,6 +420,9 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore, QCol
 {
     (void)fore;
     (void)back;
+
+    // Refresh colour from theme on every paint
+    _colour = getSignalColor(_probe->index);
 
     if (!_data)
         return;

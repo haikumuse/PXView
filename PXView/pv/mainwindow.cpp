@@ -2102,7 +2102,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
       break;
     case SHORTCUT_THEME_TOGGLE: {
       AppConfig &app = AppConfig::Instance();
-      if (app.frameOptions.style == THEME_STYLE_DARK)
+      if (app.IsDarkStyle())
         switchTheme(THEME_STYLE_LIGHT);
       else
         switchTheme(THEME_STYLE_DARK);

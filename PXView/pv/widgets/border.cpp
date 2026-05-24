@@ -58,9 +58,8 @@ void Border::paintEvent(QPaintEvent *)
     painter.setRenderHint(QPainter::Antialiasing, true);
     QLinearGradient linearGrad(QPointF(width(), height()), QPointF(0, 0));
     AppConfig &app = AppConfig::Instance(); 
-    QString style = app.frameOptions.style;
 
-    if (style == THEME_STYLE_DARK) {
+    if (app.IsDarkStyle()) {
         linearGrad.setColorAt(0, dark_border0);
         linearGrad.setColorAt(0.25, dark_border1);
         linearGrad.setColorAt(0.5, dark_border2);
@@ -75,7 +74,7 @@ void Border::paintEvent(QPaintEvent *)
     }
 
     QRadialGradient radialGrad(QPointF(0, 0), width());
-    if (style == THEME_STYLE_DARK) {
+    if (app.IsDarkStyle()) {
         radialGrad.setColorAt(0, dark_border0);
         radialGrad.setColorAt(0.25, dark_border1);
         radialGrad.setColorAt(0.5, dark_border2);
