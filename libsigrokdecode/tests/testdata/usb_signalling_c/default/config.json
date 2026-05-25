@@ -1,0 +1,11 @@
+{
+  "decoder": "usb_signalling_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 10000,
+  "channels": {
+    "dp": 0,
+    "dm": 1
+  },
+  "options": {}
+}

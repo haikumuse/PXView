@@ -40,7 +40,8 @@ struct mdio_priv {
     int data;
     int data_bits;
     int ta_invalid;
-    int op_invalid;
+    int ta_first_bit;
+    char op_invalid[32];
     int is_read;
     int preamble_len;
     uint64_t ss_frame;
@@ -116,8 +117,9 @@ static void mdio_reset_state(struct mdio_priv* s)
     s->ss_frame = (uint64_t)-1;
     s->ss_frame_field = (uint64_t)-1;
     s->preamble_len = 0;
-    s->ta_invalid = -1;
-    s->op_invalid = 0;
+    s->ta_invalid = 0;
+    s->ta_first_bit = 1;
+    s->op_invalid[0] = '\0';
     s->portad = -1;
     s->portad_bits = 5;
     s->devad = -1;
@@ -241,7 +243,7 @@ static void mdio_putdata(struct srd_decoder_inst* di, struct mdio_priv* s)
         epos += snprintf(decoded_ext + epos, sizeof(decoded_ext) - epos,
             " %s: %02d",
             s->clause45 ? "DEVAD" : "REGAD", s->devad);
-        if (s->ta_invalid || s->op_invalid) {
+        if (s->ta_invalid || s->op_invalid[0]) {
             epos += snprintf(decoded_ext + epos, sizeof(decoded_ext) - epos, " ERROR");
         }
 
@@ -251,16 +253,16 @@ static void mdio_putdata(struct srd_decoder_inst* di, struct mdio_priv* s)
             full, decoded_min);
 
         if (s->out_python >= 0) {
-            unsigned char py_data[8];
+            unsigned char py_data[12];
             py_data[0] = (unsigned char)s->clause45;
-            py_data[1] = (unsigned char)((s->clause45_addr >= 0 ? s->clause45_addr : 0) >> 8);
-            py_data[2] = (unsigned char)((s->clause45_addr >= 0 ? s->clause45_addr : 0) & 0xFF);
-            py_data[3] = (unsigned char)is_read;
-            py_data[4] = (unsigned char)s->portad;
-            py_data[5] = (unsigned char)s->devad;
-            py_data[6] = (unsigned char)(s->data >> 8);
-            py_data[7] = (unsigned char)(s->data & 0xFF);
-            c_decoder_put_python(di, s->ss_frame, s->mdiobits_head_es, s->out_python, "DATA", py_data, 8);
+            int32_t addr = (int32_t)(s->clause45_addr >= 0 ? s->clause45_addr : 0);
+            memcpy(py_data + 1, &addr, 4);
+            py_data[5] = (unsigned char)is_read;
+            py_data[6] = (unsigned char)s->portad;
+            py_data[7] = (unsigned char)s->devad;
+            int32_t data_val = (int32_t)s->data;
+            memcpy(py_data + 8, &data_val, 4);
+            c_decoder_put_python(di, s->ss_frame, s->mdiobits_head_es, s->out_python, "DATA", py_data, 12);
         }
     }
 
@@ -363,7 +365,8 @@ static void mdio_state_OP(struct srd_decoder_inst* di, struct mdio_priv* s, int 
             s->state = STATE_PRTAD;
         } else {
             if (mdio == s->opcode) {
-                s->op_invalid = 1;
+                strncpy(s->op_invalid, "invalid for Clause 22", sizeof(s->op_invalid) - 1);
+                s->op_invalid[sizeof(s->op_invalid) - 1] = '\0';
             }
             s->state = STATE_PRTAD;
         }
@@ -405,8 +408,10 @@ static void mdio_state_PRTAD(struct srd_decoder_inst* di, struct mdio_priv* s, i
             }
         }
         C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, op_long, op_short, "OP", "O");
-        if (s->op_invalid) {
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, "OP invalid for Clause 22", "OP", "O");
+        if (s->op_invalid[0]) {
+            char op_err[64];
+            snprintf(op_err, sizeof(op_err), "OP %s", s->op_invalid);
+            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, op_err, "OP", "O");
         }
         s->ss_frame_field = samplenum;
     }
@@ -441,8 +446,8 @@ static void mdio_state_DEVAD(struct srd_decoder_inst* di, struct mdio_priv* s, i
 
 static void mdio_state_TA(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
 {
-    if (s->ta_invalid == -1) {
-        s->ta_invalid = 0;
+    if (s->ta_first_bit) {
+        s->ta_first_bit = 0;
         char regad_str[32];
         if (s->clause45) {
             snprintf(regad_str, sizeof(regad_str), "DEVAD: %02d", s->devad);
@@ -472,13 +477,15 @@ static void mdio_state_DATA(struct srd_decoder_inst* di, struct mdio_priv* s, in
         s->data = 0;
         C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "TA", "T");
         if (s->ta_invalid) {
+            const char* ta_str = "";
             if (s->ta_invalid == 3) {
-                C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, "TA invalid (bit1 and bit2)", "TA", "T");
+                ta_str = "TA invalid (bit1 and bit2)";
             } else if (s->ta_invalid == 2) {
-                C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, "TA invalid (bit2)", "TA", "T");
+                ta_str = "TA invalid (bit2)";
             } else {
-                C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, "TA invalid (bit1)", "TA", "T");
+                ta_str = "TA invalid (bit1)";
             }
+            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, ta_str, "TA", "T");
         }
         s->ss_frame_field = samplenum;
     }

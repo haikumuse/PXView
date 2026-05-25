@@ -214,22 +214,56 @@ static void usb_decode(struct srd_decoder_inst *di)
     uint8_t dp, dm;
     enum usb_sym sym;
 
+    /* Read the first sample to seed internal state, matching Python's
+       "self.wait()" before the main loop, followed by handle_idle(). */
     cb = c_cond_new();
-    c_cond_wait(cb, di, &samplenum, &matched);
+    c_cond_skip(cb, 0);
+    if (c_cond_wait(cb, di, &samplenum, &matched) != SRD_OK) {
+        c_cond_free(cb);
+        return;
+    }
     c_cond_free(cb);
-    s->samplenum = samplenum;
     dp = c_decoder_get_pin(di, CH_DP, samplenum);
     dm = c_decoder_get_pin(di, CH_DM, samplenum);
     sym = get_symbol(s->signalling, dp, dm);
 
-    if (sym == SYM_FS_J) {
-        s->signalling = SIG_FULL_SPEED;
-    } else if (sym == SYM_LS_J) {
-        s->signalling = SIG_LOW_SPEED;
+    /* handle_idle(sym) equivalent:
+       - samplenum_edge = samplenum
+       - se0_length check (0 since samplenum_lastedge == samplenum == 0)
+       - auto-detect signalling mode
+       - ALWAYS set oldsym = SYM_J (matching Python's handle_idle)
+       - state = IDLE (already set) */
+    s->samplenum_edge = samplenum;
+    /* se0_length = 0, no Reset/Keep-alive emitted */
+
+    /* Auto-detect signalling mode, matching Python's handle_idle() logic:
+       if options['signalling'] == 'automatic' and sym == 'FS_J': full-speed
+       elif options['signalling'] == 'automatic' and sym == 'LS_J': low-speed
+       else: signalling = options['signalling'] */
+    {
+        const char *sig = c_decoder_get_option_string(di, "signalling", "automatic");
+        if (strcmp(sig, "automatic") == 0) {
+            if (sym == SYM_FS_J) {
+                s->signalling = SIG_FULL_SPEED;
+                update_bitrate(s);
+            } else if (sym == SYM_LS_J) {
+                s->signalling = SIG_LOW_SPEED;
+                update_bitrate(s);
+            } else {
+                s->signalling = SIG_AUTO;
+            }
+        } else if (strcmp(sig, "full-speed") == 0) {
+            s->signalling = SIG_FULL_SPEED;
+            update_bitrate(s);
+        } else if (strcmp(sig, "low-speed") == 0) {
+            s->signalling = SIG_LOW_SPEED;
+            update_bitrate(s);
+        }
     }
-    update_bitrate(s);
+    /* Always set oldsym = SYM_J, matching Python's handle_idle() */
     s->oldsym = SYM_J;
-    s->state = STATE_IDLE;
+    s->edgepins_dp = dp;
+    s->edgepins_dm = dm;
 
     while (1) {
         if (s->state == STATE_IDLE) {
@@ -237,7 +271,10 @@ static void usb_decode(struct srd_decoder_inst *di)
             c_cond_edge(cb, CH_DP);
             c_cond_or(cb);
             c_cond_edge(cb, CH_DM);
-            c_cond_wait(cb, di, &samplenum, &matched);
+            if (c_cond_wait(cb, di, &samplenum, &matched) != SRD_OK) {
+                c_cond_free(cb);
+                return;
+            }
             c_cond_free(cb);
             s->samplenum = samplenum;
             dp = c_decoder_get_pin(di, CH_DP, samplenum);
@@ -249,7 +286,9 @@ static void usb_decode(struct srd_decoder_inst *di)
             if (sym == SYM_SE0) {
                 s->samplenum_lastedge = samplenum;
                 s->state = STATE_WAIT_IDLE;
+                /* Python does NOT update oldsym or samplenum_edge here */
             } else {
+                int sop_detected = 0;
                 if (sym_is_k(sym, s->signalling) && sym_is_j(s->oldsym, s->signalling)) {
                     s->consecutive_ones = 0;
                     s->bits_len = 0;
@@ -259,14 +298,20 @@ static void usb_decode(struct srd_decoder_inst *di)
                     C_ANN_PUT(di, s->samplenum_edge, s->samplenum_edge, s->out_ann, ANN_SOP, "SOP", "S");
                     c_decoder_put_python(di, s->samplenum_edge, s->samplenum_edge, s->out_python, "SOP", NULL, 0);
                     s->state = STATE_GET_BIT;
+                    sop_detected = 1;
                 }
+                /* Python does NOT update oldsym or samplenum_edge when
+                   SOP is not detected in IDLE state. Only edgepins is set. */
             }
 
         } else if (s->state == STATE_GET_BIT || s->state == STATE_GET_EOP) {
             if (s->samplenum_edge > s->samplenum) {
                 cb = c_cond_new();
                 c_cond_skip(cb, s->samplenum_edge - s->samplenum);
-                c_cond_wait(cb, di, &samplenum, &matched);
+                if (c_cond_wait(cb, di, &samplenum, &matched) != SRD_OK) {
+                    c_cond_free(cb);
+                    return;
+                }
                 c_cond_free(cb);
                 s->samplenum = samplenum;
                 dp = c_decoder_get_pin(di, CH_DP, samplenum);
@@ -277,7 +322,10 @@ static void usb_decode(struct srd_decoder_inst *di)
             if (s->samplenum_target > s->samplenum) {
                 cb = c_cond_new();
                 c_cond_skip(cb, s->samplenum_target - s->samplenum);
-                c_cond_wait(cb, di, &samplenum, &matched);
+                if (c_cond_wait(cb, di, &samplenum, &matched) != SRD_OK) {
+                    c_cond_free(cb);
+                    return;
+                }
                 c_cond_free(cb);
                 s->samplenum = samplenum;
                 dp = c_decoder_get_pin(di, CH_DP, samplenum);
@@ -304,7 +352,6 @@ static void usb_decode(struct srd_decoder_inst *di)
                             C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_ERROR, "Bit stuff error", "BS ERR", "B");
                             c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "ERR", NULL, 0);
                             s->state = STATE_IDLE;
-                            continue;
                         }
                     } else {
                         char bstr[2] = {(char)('0' + b), 0};
@@ -315,6 +362,16 @@ static void usb_decode(struct srd_decoder_inst *di)
                         else
                             s->consecutive_ones = 0;
                     }
+
+                    /* Output SYM after BIT/STUFF BIT/ERR, matching Python order */
+                    put_sym_ann(di, s, sym);
+                    {
+                        const char *sn = get_sym_name(sym);
+                        c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "SYM", (const unsigned char *)sn, strlen(sn));
+                    }
+
+                    if (s->state == STATE_IDLE)
+                        continue;
 
                     if (s->bits_len < 16) {
                         s->bits[s->bits_len++] = '0' + b;
@@ -343,10 +400,12 @@ static void usb_decode(struct srd_decoder_inst *di)
                     }
                 }
 
-                put_sym_ann(di, s, sym);
-                {
-                    const char *sn = get_sym_name(sym);
-                    c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "SYM", (const unsigned char *)sn, strlen(sn));
+                if (sym == SYM_SE0) {
+                    put_sym_ann(di, s, sym);
+                    {
+                        const char *sn = get_sym_name(sym);
+                        c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "SYM", (const unsigned char *)sn, strlen(sn));
+                    }
                 }
 
             } else if (s->state == STATE_GET_EOP) {
@@ -372,8 +431,14 @@ static void usb_decode(struct srd_decoder_inst *di)
             }
 
         } else if (s->state == STATE_WAIT_IDLE) {
+            /* Skip "all-low" input. Wait for high level on either DP or DM.
+               Matching Python: self.wait() then while not dp and not dm: self.wait([{0:'h'},{1:'h'}]) */
             cb = c_cond_new();
-            c_cond_wait(cb, di, &samplenum, &matched);
+            c_cond_skip(cb, 1);
+            if (c_cond_wait(cb, di, &samplenum, &matched) != SRD_OK) {
+                c_cond_free(cb);
+                return;
+            }
             c_cond_free(cb);
             s->samplenum = samplenum;
             dp = c_decoder_get_pin(di, CH_DP, samplenum);
@@ -384,59 +449,68 @@ static void usb_decode(struct srd_decoder_inst *di)
                 c_cond_high(cb, CH_DP);
                 c_cond_or(cb);
                 c_cond_high(cb, CH_DM);
-                c_cond_wait(cb, di, &samplenum, &matched);
+                int ret = c_cond_wait(cb, di, &samplenum, &matched);
                 c_cond_free(cb);
+                if (ret != SRD_OK)
+                    return;
                 s->samplenum = samplenum;
                 dp = c_decoder_get_pin(di, CH_DP, samplenum);
                 dm = c_decoder_get_pin(di, CH_DM, samplenum);
             }
 
-            double se0_length = (double)(samplenum - s->samplenum_lastedge) / (double)s->samplerate;
-            if (se0_length > 2.5e-6) {
-                C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_RESET, "Reset", "Res", "R");
-                c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "RESET", NULL, 0);
-                const char *sig = c_decoder_get_option_string(di, "signalling", "automatic");
-                if (strcmp(sig, "full-speed") == 0)
-                    s->signalling = SIG_FULL_SPEED;
-                else if (strcmp(sig, "low-speed") == 0)
-                    s->signalling = SIG_LOW_SPEED;
-                else
-                    s->signalling = SIG_AUTO;
-            } else if (se0_length > 1.2e-6 && s->signalling == SIG_LOW_SPEED) {
-                C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_KEEP_ALIVE, "Keep-alive", "KA", "A");
-                c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "KEEP ALIVE", NULL, 0);
-            }
+            s->edgepins_dp = dp;
+            s->edgepins_dm = dm;
 
-            sym = get_symbol(s->signalling, dp, dm);
-            const char *sig = c_decoder_get_option_string(di, "signalling", "automatic");
-            if (strcmp(sig, "automatic") == 0) {
-                if (sym == SYM_FS_J)
-                    s->signalling = SIG_FULL_SPEED;
-                else if (sym == SYM_LS_J)
-                    s->signalling = SIG_LOW_SPEED;
-                else {
+            if (samplenum - s->samplenum_lastedge > 1) {
+                /* handle_idle(sym) equivalent */
+                s->samplenum_edge = samplenum;
+                double se0_length = (double)(samplenum - s->samplenum_lastedge) / (double)s->samplerate;
+                if (se0_length > 2.5e-6) {
+                    C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_RESET, "Reset", "Res", "R");
+                    c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "RESET", NULL, 0);
+                    /* Reset signalling to option value, matching Python */
+                    const char *sig = c_decoder_get_option_string(di, "signalling", "automatic");
                     if (strcmp(sig, "full-speed") == 0)
                         s->signalling = SIG_FULL_SPEED;
                     else if (strcmp(sig, "low-speed") == 0)
                         s->signalling = SIG_LOW_SPEED;
                     else
                         s->signalling = SIG_AUTO;
+                } else if (se0_length > 1.2e-6 && s->signalling == SIG_LOW_SPEED) {
+                    C_ANN_PUT(di, s->samplenum_lastedge, s->samplenum_edge, s->out_ann, ANN_KEEP_ALIVE, "Keep-alive", "KA", "A");
+                    c_decoder_put_python(di, s->samplenum_lastedge, s->samplenum_edge, s->out_python, "KEEP ALIVE", NULL, 0);
                 }
-            } else {
-                if (strcmp(sig, "full-speed") == 0)
-                    s->signalling = SIG_FULL_SPEED;
-                else if (strcmp(sig, "low-speed") == 0)
-                    s->signalling = SIG_LOW_SPEED;
-                else
-                    s->signalling = SIG_AUTO;
-            }
-            update_bitrate(s);
-            s->oldsym = SYM_J;
 
-            if (samplenum - s->samplenum_lastedge > 1) {
+                /* Auto-detect signalling mode, matching Python's handle_idle():
+                   Uses options['signalling'] for symbol lookup */
+                sym = get_symbol(s->signalling, dp, dm);
+                {
+                    const char *sig = c_decoder_get_option_string(di, "signalling", "automatic");
+                    if (strcmp(sig, "automatic") == 0) {
+                        if (sym == SYM_FS_J) {
+                            s->signalling = SIG_FULL_SPEED;
+                        } else if (sym == SYM_LS_J) {
+                            s->signalling = SIG_LOW_SPEED;
+                        } else {
+                            s->signalling = SIG_AUTO;
+                        }
+                    } else if (strcmp(sig, "full-speed") == 0) {
+                        s->signalling = SIG_FULL_SPEED;
+                    } else if (strcmp(sig, "low-speed") == 0) {
+                        s->signalling = SIG_LOW_SPEED;
+                    }
+                }
+                update_bitrate(s);
+                /* Always set oldsym = SYM_J, matching Python's handle_idle() */
+                s->oldsym = SYM_J;
                 s->state = STATE_IDLE;
             } else {
-                if (sym_is_k(sym, s->signalling) && sym_is_j(SYM_J, s->signalling)) {
+                /* samplenum - samplenum_lastedge <= 1: check for SOP.
+                   Python stays in WAIT IDLE if no SOP detected - does NOT go
+                   back to IDLE. This allows accumulating SE0 duration across
+                   multiple short SE0+J cycles until a Reset is detected. */
+                sym = get_symbol(s->signalling, dp, dm);
+                if (sym_is_k(sym, s->signalling) && sym_is_j(s->oldsym, s->signalling)) {
                     s->consecutive_ones = 0;
                     s->bits_len = 0;
                     update_bitrate(s);
@@ -445,12 +519,9 @@ static void usb_decode(struct srd_decoder_inst *di)
                     C_ANN_PUT(di, s->samplenum_edge, s->samplenum_edge, s->out_ann, ANN_SOP, "SOP", "S");
                     c_decoder_put_python(di, s->samplenum_edge, s->samplenum_edge, s->out_python, "SOP", NULL, 0);
                     s->state = STATE_GET_BIT;
-                } else {
-                    s->state = STATE_IDLE;
                 }
+                /* If no SOP: state remains STATE_WAIT_IDLE, matching Python */
             }
-            s->edgepins_dp = dp;
-            s->edgepins_dm = dm;
         }
     }
 }

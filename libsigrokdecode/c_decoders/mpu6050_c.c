@@ -355,10 +355,12 @@ static void mpu6050_recv_proto(struct srd_decoder_inst *di,
     } else if (s->state == MPU6050_GET_SLAVE_ADDR) {
         if (strcmp(cmd, "ADDRESS WRITE") == 0 || strcmp(cmd, "ADDRESS READ") == 0) {
             if (databyte != MPU6050_I2C_ADDRESS) {
-                char buf[64];
-                snprintf(buf, sizeof(buf),
-                    "Ignoring non-MPU6050 data (slave 0x%02X)", databyte);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
+                if (databyte != 0x7F) {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf),
+                        "Ignoring non-MPU6050 data (slave 0x%02X)", databyte);
+                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
+                }
                 s->state = MPU6050_IDLE;
                 return;
             }

@@ -1,0 +1,25 @@
+{
+	"decoder": "i2c_c",
+	"samplerate": 1000000,
+	"num_annotations": 2,
+	"annotations": [
+		{
+			"start_sample": 1.8446744073709552e+19,
+			"end_sample": 1.8446744073709552e+19,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"color:#4edc44"
+			]
+		}, 
+		{
+			"start_sample": 1.8446744073709552e+19,
+			"end_sample": 1.8446744073709552e+19,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"color:#4edc44"
+			]
+		}
+	]
+}

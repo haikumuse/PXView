@@ -385,9 +385,11 @@ static void tmp102_recv_proto(struct srd_decoder_inst *di,
                 }
                 s->bytes_len = 0;
             } else {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "Unknown slave address 0x%02X", addr);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_INFO_BADADD, buf);
+                if (addr != 0x7F) {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "Unknown slave address: 0x%02X", addr);
+                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_INFO_BADADD, buf, "Unknown", "Unk", "U");
+                }
                 s->state = TMP102_IDLE;
             }
         }

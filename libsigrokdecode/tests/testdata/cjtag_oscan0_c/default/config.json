@@ -1,0 +1,13 @@
+{
+  "decoder": "cjtag_oscan0_c",
+  "samplerate": 10000000,
+  "num_channels": 4,
+  "sample_count": 20000,
+  "channels": {
+    "tdi": 0,
+    "tdo": 1,
+    "tck": 2,
+    "tms": 3
+  },
+  "stack": []
+}

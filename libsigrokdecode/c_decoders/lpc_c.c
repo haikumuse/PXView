@@ -149,22 +149,22 @@ static const char* lpc_sync_names[] = {
 };
 
 static struct srd_channel lpc_channels[] = {
-    { "lframe", "LFRAME#", "Frame", 0, SRD_CHANNEL_COMMON, NULL },
-    { "lclk", "LCLK", "Clock", 1, SRD_CHANNEL_SCLK, NULL },
-    { "lad0", "LAD[0]", "Addr/control/data 0", 2, SRD_CHANNEL_SDATA, NULL },
-    { "lad1", "LAD[1]", "Addr/control/data 1", 3, SRD_CHANNEL_SDATA, NULL },
-    { "lad2", "LAD[2]", "Addr/control/data 2", 4, SRD_CHANNEL_SDATA, NULL },
-    { "lad3", "LAD[3]", "Addr/control/data 3", 5, SRD_CHANNEL_SDATA, NULL },
+    { "lframe", "LFRAME#", "Frame", 0, SRD_CHANNEL_COMMON, "dec_lpc_chan_lframe" },
+    { "lclk", "LCLK", "Clock", 1, SRD_CHANNEL_SCLK, "dec_lpc_chan_lclk" },
+    { "lad0", "LAD[0]", "Addr/control/data 0", 2, SRD_CHANNEL_SDATA, "dec_lpc_chan_lad0" },
+    { "lad1", "LAD[1]", "Addr/control/data 1", 3, SRD_CHANNEL_SDATA, "dec_lpc_chan_lad1" },
+    { "lad2", "LAD[2]", "Addr/control/data 2", 4, SRD_CHANNEL_SDATA, "dec_lpc_chan_lad2" },
+    { "lad3", "LAD[3]", "Addr/control/data 3", 5, SRD_CHANNEL_SDATA, "dec_lpc_chan_lad3" },
 };
 
 static struct srd_channel lpc_optional_channels[] = {
-    { "lreset", "LRESET#", "Reset", 6, SRD_CHANNEL_COMMON, NULL },
-    { "ldrq", "LDRQ#", "Encoded DMA / bus master request", 7, SRD_CHANNEL_COMMON, NULL },
-    { "serirq", "SERIRQ", "Serialized IRQ", 8, SRD_CHANNEL_COMMON, NULL },
-    { "clkrun", "CLKRUN#", "Clock run", 9, SRD_CHANNEL_COMMON, NULL },
-    { "lpme", "LPME#", "LPC power management event", 10, SRD_CHANNEL_COMMON, NULL },
-    { "lpcpd", "LPCPD#", "Power down", 11, SRD_CHANNEL_COMMON, NULL },
-    { "lsmi", "LSMI#", "System Management Interrupt", 12, SRD_CHANNEL_COMMON, NULL },
+    { "lreset", "LRESET#", "Reset", 6, SRD_CHANNEL_COMMON, "dec_lpc_chan_lreset" },
+    { "ldrq", "LDRQ#", "Encoded DMA / bus master request", 7, SRD_CHANNEL_COMMON, "dec_lpc_chan_ldrq" },
+    { "serirq", "SERIRQ", "Serialized IRQ", 8, SRD_CHANNEL_COMMON, "dec_lpc_chan_serirq" },
+    { "clkrun", "CLKRUN#", "Clock run", 9, SRD_CHANNEL_COMMON, "dec_lpc_chan_clkrun" },
+    { "lpme", "LPME#", "LPC power management event", 10, SRD_CHANNEL_COMMON, "dec_lpc_chan_lpme" },
+    { "lpcpd", "LPCPD#", "Power down", 11, SRD_CHANNEL_COMMON, "dec_lpc_chan_lpcpd" },
+    { "lsmi", "LSMI#", "System Management Interrupt", 12, SRD_CHANNEL_COMMON, "dec_lpc_chan_lsmi" },
 };
 
 static const char* lpc_ann_labels[][3] = {

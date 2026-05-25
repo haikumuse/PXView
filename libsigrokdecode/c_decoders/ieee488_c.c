@@ -677,8 +677,8 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
                 s->serial_state = STATE_WAIT_READY_TO_SEND;
             }
             if (matched & (1ULL << 1)) {
-                int data = invert_pin(c_decoder_get_pin(di, PIN_DATA, samplenum));
-                int clk = invert_pin(c_decoder_get_pin(di, PIN_CLK, samplenum));
+                int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
+                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
                 if (data == 0 && clk == 1) {
                     s->serial_state = STATE_WAIT_READY_FOR_DATA;
                 }
@@ -692,7 +692,7 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
             c_cond_high(cb, PIN_DATA);
             c_cond_high(cb, PIN_CLK);
             c_cond_or(cb);
-            c_cond_fall(cb, PIN_CLK);
+            c_cond_low(cb, PIN_CLK);  /* Python: {PIN_CLK: 'l'} - low level, not falling edge */
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             if (ret != SRD_OK) return;
@@ -702,8 +702,8 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
                 break;
             }
             if (matched & (1ULL << 1)) {
-                int data = invert_pin(c_decoder_get_pin(di, PIN_DATA, samplenum));
-                int clk = invert_pin(c_decoder_get_pin(di, PIN_CLK, samplenum));
+                int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
+                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
                 if (data == 1 && clk == 1) {
                     s->ss_byte = samplenum;
                     int atn = invert_pin(c_decoder_get_pin(di, PIN_ATN, samplenum));
@@ -725,9 +725,9 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
             cb = c_cond_new();
             c_cond_fall(cb, PIN_ATN);
             c_cond_or(cb);
-            c_cond_low(cb, PIN_DATA);
+            c_cond_fall(cb, PIN_DATA);  /* Python: {PIN_DATA: 'f'} - falling edge, not low level */
             c_cond_or(cb);
-            c_cond_fall(cb, PIN_CLK);
+            c_cond_low(cb, PIN_CLK);    /* Python: {PIN_CLK: 'l'} - low level, not falling edge */
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             if (ret != SRD_OK) return;
@@ -737,8 +737,8 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
                 break;
             }
             if (matched & (1ULL << 1)) {
-                int data = invert_pin(c_decoder_get_pin(di, PIN_DATA, samplenum));
-                int clk = invert_pin(c_decoder_get_pin(di, PIN_CLK, samplenum));
+                int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
+                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
                 if (data == 0 && clk == 1) {
                     handle_eoi_change(di, s, 1, samplenum);
                 }
@@ -763,10 +763,10 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
                 break;
             }
             if (matched & (1ULL << 1)) {
-                int clk = invert_pin(c_decoder_get_pin(di, PIN_CLK, samplenum));
-                if (clk == 1) {
-                    /* Rising edge: latch DATA */
-                    int data = invert_pin(c_decoder_get_pin(di, PIN_DATA, samplenum));
+                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
+                    if (clk == 1) {
+                        /* Rising edge: latch DATA */
+                        int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
                     if (s->serial_bit_count < 8)
                         s->serial_bits[s->serial_bit_count] = data;
                 } else {
@@ -821,7 +821,7 @@ static void decode_parallel(struct srd_decoder_inst *di, ieee488_priv *s)
             c_cond_edge(cb, PIN_DAV);
 
         c_cond_or(cb);
-        s->idx_atn = 2;
+        s->idx_atn = 1;
         if (s->parallel_first_pass)
             c_cond_low(cb, PIN_ATN);
         else
@@ -829,7 +829,7 @@ static void decode_parallel(struct srd_decoder_inst *di, ieee488_priv *s)
 
         if (s->has_eoi) {
             c_cond_or(cb);
-            s->idx_eoi = 4;
+            s->idx_eoi = 2;
             if (s->parallel_first_pass)
                 c_cond_low(cb, PIN_EOI);
             else
@@ -838,7 +838,7 @@ static void decode_parallel(struct srd_decoder_inst *di, ieee488_priv *s)
 
         if (s->has_ifc) {
             c_cond_or(cb);
-            s->idx_ifc = (s->has_eoi) ? 6 : 4;
+            s->idx_ifc = (s->has_eoi) ? 3 : 2;
             if (s->parallel_first_pass)
                 c_cond_low(cb, PIN_IFC);
             else
@@ -919,14 +919,85 @@ static void ieee488_start(struct srd_decoder_inst *di)
     s->is_serial = s->has_clk;
 }
 
+static void decode_data_only(struct srd_decoder_inst *di, ieee488_priv *s)
+{
+    /* Simplified decode path when neither CLK nor DAV is available.
+     * Wait for any change on the DIO channels and output raw byte annotations. */
+    uint64_t samplenum = 0;
+    uint64_t matched;
+    int prev_data[8];
+    int first = 1;
+    uint64_t ss_byte = 0;
+
+    memset(prev_data, -1, sizeof(prev_data));
+
+    while (1) {
+        srd_cond_builder *cb = c_cond_new();
+        /* Wait for edge on any DIO channel */
+        for (int i = 0; i < 8; i++) {
+            if (c_decoder_has_channel(di, i)) {
+                if (i > 0) c_cond_or(cb);
+                c_cond_edge(cb, i);
+            }
+        }
+        int ret = c_cond_wait(cb, di, &samplenum, &matched);
+        c_cond_free(cb);
+        if (ret != SRD_OK)
+            return;
+
+        /* Read all DIO pins */
+        int pins[8];
+        uint8_t raw = 0;
+        for (int i = 0; i < 8; i++) {
+            if (c_decoder_has_channel(di, i)) {
+                pins[i] = c_decoder_get_pin(di, i, samplenum);
+                if (pins[i])
+                    raw |= (1 << i);
+            } else {
+                pins[i] = 0;
+            }
+        }
+
+        if (first) {
+            first = 0;
+            memcpy(prev_data, pins, sizeof(prev_data));
+            ss_byte = samplenum;
+            continue;
+        }
+
+        /* Check if any DIO pin changed */
+        int changed = 0;
+        for (int i = 0; i < 8; i++) {
+            if (pins[i] != prev_data[i]) {
+                changed = 1;
+                break;
+            }
+        }
+
+        if (changed) {
+            /* Output raw byte annotation */
+            char raw_text[16];
+            snprintf(raw_text, sizeof(raw_text), "%02x", raw);
+            C_ANN_PUT(di, ss_byte, samplenum, s->out_ann, ANN_RAW_BYTE, raw_text);
+
+            c_decoder_put_binary(di, ss_byte, samplenum, s->out_bin, BIN_RAW, 1, &raw);
+
+            memcpy(prev_data, pins, sizeof(prev_data));
+            ss_byte = samplenum;
+        }
+    }
+}
+
 static void ieee488_decode(struct srd_decoder_inst *di)
 {
     ieee488_priv *s = (ieee488_priv *)c_decoder_get_private(di);
 
     if (s->is_serial) {
         decode_serial(di, s);
-    } else {
+    } else if (s->has_dav) {
         decode_parallel(di, s);
+    } else {
+        decode_data_only(di, s);
     }
 }
 

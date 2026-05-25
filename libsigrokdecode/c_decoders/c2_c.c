@@ -50,8 +50,8 @@ static struct srd_channel c2_channels[] = {
 };
 
 static const char *c2_ann_labels[][3] = {
-    {"", "raw-Data", "raw data"},
-    {"", "c2-data", "c2 data"},
+    {"106", "raw-Data", "raw data"},
+    {"106", "c2-data", "c2 data"},
     {"", "warnings", "Warnings"},
 };
 
@@ -91,6 +91,9 @@ static void c2_decode(struct srd_decoder_inst *di)
     uint64_t samplenum;
     uint64_t matched;
     int ret;
+
+    if (!c_decoder_get_samplerate(di))
+        return;
 
     while (1) {
         srd_cond_builder *cb = c_cond_new();

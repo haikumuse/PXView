@@ -201,9 +201,9 @@ static void caliper_decode(struct srd_decoder_inst *di)
 
         if (should_output) {
             char tmp[64];
-            snprintf(tmp, sizeof(tmp), "%g%s", value, unit_str);
+            snprintf(tmp, sizeof(tmp), "%.1f%s", value, unit_str);
             char tmp2[32];
-            snprintf(tmp2, sizeof(tmp2), "%g", value);
+            snprintf(tmp2, sizeof(tmp2), "%.1f", value);
             C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MEASUREMENT, tmp, tmp2);
             s->last_number = value;
             s->last_is_inch = is_inch;

@@ -1,0 +1,11 @@
+{
+  "decoder": "caliper_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "clk": 0,
+    "data": 1
+  },
+  "stack": []
+}

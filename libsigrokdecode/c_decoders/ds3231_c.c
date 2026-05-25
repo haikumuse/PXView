@@ -88,20 +88,20 @@ static const char* ds3231_outputs[] = { NULL };
 static const char* ds3231_tags[] = { "Clock/timing", "IC", NULL };
 
 static const char* ds3231_ann_labels[][3] = {
-    { "", "reg_date_time", "Date/Time register" },
-    { "", "reg_alarm1", "Alarm1 register" },
-    { "", "reg_alarm2", "Alarm2 register" },
-    { "", "reg_control_status", "Control/Status register" },
-    { "", "reg_ageing", "Ageing register" },
-    { "", "reg_temperature", "Temperature register" },
-    { "", "bit_date_time", "Date/Time bit" },
-    { "", "bit_alarm1", "Alarm1 bit" },
-    { "", "bit_alarm2", "Alarm2 bit" },
-    { "", "bit_control_status", "Control/Status bit" },
-    { "", "bit_ageing", "Ageing bit" },
-    { "", "bit_temperature", "Temperature bit" },
-    { "", "bit_reserved", "Reserved bit" },
-    { "", "reg_set", "Set register" },
+    { "", "reg-date-time", "Date/Time register" },
+    { "", "reg-alarm1", "Alarm1 register" },
+    { "", "reg-alarm2", "Alarm2 register" },
+    { "", "reg-control-status", "Control/Status register" },
+    { "", "reg-ageing", "Ageing register" },
+    { "", "reg-temperature", "Temperature register" },
+    { "", "bit-date-time", "Date/Time bit" },
+    { "", "bit-alarm1", "Alarm1 bit" },
+    { "", "bit-alarm2", "Alarm2 bit" },
+    { "", "bit-control-status", "Control/Status bit" },
+    { "", "bit-ageing", "Ageing bit" },
+    { "", "bit-temperature", "Temperature bit" },
+    { "", "bit-reserved", "Reserved bit" },
+    { "", "reg-set", "Set register" },
     { "", "read-datetime", "Read date/time" },
     { "", "write-datetime", "Write date/time" },
     { "", "read-alarm", "Read alarm" },
@@ -513,6 +513,11 @@ static void ds3231_recv_proto(struct srd_decoder_inst* di,
 
     if (s->state == STATE_GET_SLAVE_ADDR) {
         if (databyte != DS3231_I2C_ADDRESS) {
+            if (databyte != 0x7F) {
+                char t[64];
+                snprintf(t, sizeof(t), "Ignoring non-DS3231 data (slave 0x%02X)", databyte);
+                C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_WARNING, t);
+            }
             s->state = STATE_IDLE;
             return;
         }

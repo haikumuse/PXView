@@ -79,10 +79,50 @@
  * @signal-light-red: #c8d50f25
  * @warn-red: #c8ff0000
  * @search-input-label: #aaaaaa
+ * @sidebar-accent: #5b8def
+ * @titlebar-icon-accent: #1E90FF
+ * @sidebar-icon-color: #E0E0E0
+ * @sidebar-text-color: #A0A0B0
+ * @flat-hover-fg: #ffffff
+ * @logic-channel-0: #75507B
+ * @logic-channel-1: #3465A4
+ * @logic-channel-2: #73D216
+ * @logic-channel-3: #EDD400
+ * @logic-channel-4: #F57900
+ * @logic-channel-5: #CC0000
+ * @logic-channel-6: #8F5202
+ * @logic-channel-7: #505050
+ * @decoder-channel-0: #ef2929
+ * @decoder-channel-1: #f66a32
+ * @decoder-channel-2: #fcae3e
+ * @decoder-channel-3: #fbca47
+ * @decoder-channel-4: #fce94f
+ * @decoder-channel-5: #cdf040
+ * @decoder-channel-6: #8ae234
+ * @decoder-channel-7: #4edc44
+ * @decoder-channel-8: #55d795
+ * @decoder-channel-9: #64d1d2
+ * @decoder-channel-10: #729fcf
+ * @decoder-channel-11: #d476c4
+ * @decoder-channel-12: #9d79b9
+ * @decoder-channel-13: #ad7fa8
+ * @decoder-channel-14: #c2a3cb
+ * @decoder-channel-15: #d6c4df
+ * @decoder-error-bg: #b22222
+ * @decoder-no-decode: #888a85
  * @dock-font-main-title: 18px
  * @dock-font-section-title: 16px
  * @dock-font-label: 14px
  * @dock-font-content: 12px
+ * @floating-panel-font-label: 10px
+ * @floating-panel-font-value: 16px
+ * @titlebar-font-size: 13px
+ * @toolbar-font-size: 12px
+ * @sidebar-font-size: 12px
+ * @dialog-font-size: 12px
+ * @trace-label-font-size: 10px
+ * @ruler-font-size: 10px
+ * @cursor-font-size: 10px
  * @icon-dir: dark
  */
 
@@ -1580,7 +1620,7 @@ QTabBar::tab {
     height: 28px;
     padding: 2px 12px;
     margin: 0px;
-    font-size: @dock-font-label;
+    font-size: 12px;
     color: @fg-bright;
     background: transparent;
     border: none;

@@ -676,6 +676,7 @@ typedef struct {
     int has_mreq;
     int has_iorq;
 
+    uint64_t cur_samplenum;
     int out_ann;
 } z80_priv;
 
@@ -781,7 +782,7 @@ static void format_hex(char *buf, size_t sz, int value, int width)
 static void put_text(struct srd_decoder_inst *di, z80_priv *s,
                      uint64_t ss, int ann_idx, const char *text)
 {
-    C_ANN_PUT(di, ss, 0, s->out_ann, ann_idx, text);
+    C_ANN_PUT(di, ss, s->cur_samplenum, s->out_ann, ann_idx, text);
 }
 
 static void put_disasm(struct srd_decoder_inst *di, z80_priv *s, uint64_t samplenum)
@@ -855,8 +856,8 @@ static void put_disasm(struct srd_decoder_inst *di, z80_priv *s, uint64_t sample
 
 static int z80_detect_cycle(const uint8_t *pins, int has_mreq, int has_iorq)
 {
-    int mreq = has_mreq ? pins[11] : 1;  /* default asserted (active low) */
-    int iorq = has_iorq ? pins[12] : 1;  /* default not asserted */
+    int mreq = has_mreq ? pins[11] : 0;  /* default asserted (active low) when unassigned */
+    int iorq = has_iorq ? pins[12] : 0;  /* default asserted (active low) when unassigned */
     int m1 = pins[8];
     int rd = pins[9];
     int wr = pins[10];
@@ -927,6 +928,7 @@ static void z80_decode(struct srd_decoder_inst *di)
         c_cond_free(cb);
         if (ret != SRD_OK)
             return;
+        s->cur_samplenum = samplenum;
 
         /* Read all pins */
         uint8_t pins[29];

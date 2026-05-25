@@ -1,0 +1,12 @@
+{
+  "decoder": "usb_request_c",
+  "samplerate": 12000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {},
+  "stack": [
+    {
+      "id": "usb_packet_c"
+    }
+  ]
+}

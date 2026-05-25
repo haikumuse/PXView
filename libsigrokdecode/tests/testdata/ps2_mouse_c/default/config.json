@@ -1,0 +1,12 @@
+{
+  "decoder": "ps2_mouse_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {},
+  "stack": [
+    {
+      "id": "ps2_c"
+    }
+  ]
+}

@@ -6,7 +6,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 **PXView** (binary name: `PXView.exe`) is a Qt6 C++17 GUI application for signal analysis with logic analyzers, oscilloscopes, and similar instruments. It is forked from the [sigrok](https://sigrok.org) PulseView project and supports DreamSourceLab/PXLogic hardware devices. Licensed GPLv3+. Current version: 1.5.0.
 
-The project compiles four components into a single executable, plus 37 separate C decoder DLLs:
+The project compiles four components into a single executable, plus 215 separate C decoder DLLs:
 
 1. **`libsigrok/`** — Hardware driver layer (C11): USB/DSL device enumeration, data capture, session control
 2. **`libsigrokdecode/`** — Protocol decoder engine (C11 + Python): loads and runs both Python and C protocol decoders
@@ -61,7 +61,7 @@ cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../install.d
 │   ├── output/                 # File output formats (CSV, gnuplot, srzip, VCD)
 │   └── tests/                  # libsigrok unit tests
 ├── libsigrokdecode/            # Protocol decoder engine (C11 + Python)
-│   ├── c_decoders/             # 37 native C decoders (compiled as DLLs)
+│   ├── c_decoders/             # 215 native C decoders (compiled as DLLs)
 │   ├── decoders/               # 220+ Python protocol decoders
 │   └── contrib/                # sigrok logo asset
 ├── common/                     # Shared utilities (C)
@@ -215,7 +215,7 @@ C decoders are native shared libraries compiled separately. The CMake builds eac
 
 C decoder API version: `SRD_C_DECODER_API_VERSION = 3`. Each C decoder exports a `srd_c_decoder` struct with channels, options, annotations, and callback functions (reset/start/decode/end/metadata/destroy/recv_proto). Helper macros `C_ANN_PUT`, `C_ANN_PUT_TYPE`, `C_ANN_PUT_VAL` simplify annotation output. Condition builders (`c_cond_rise/fall/high/low/edge/skip`, `c_cond_wait`) simplify protocol state machines.
 
-Available C decoders (37): spi_c, i2c_c, uart_c, can_c, can_fd_c, jtag_c, swd_c, onewire_c, i2s_c, lin_c, hdlc_c, microwire_c, mdio_c, ps2_c, dmx512_c, nrzi_c, ir_nec_c, ir_rc5_c, ir_sirc_c, dcf77_c, cec_c, spdif_c, usb_signalling_c, 4b5b_c, iso7816_c, lpc_c, dali_c, c2_c, graycode_c, counter_c, lm75_c, ds1307_c, ds3231_c, numbers_and_state_c, seven_segment_c, pwm_c, wiegand_c
+Available C decoders (215): spi_c, i2c_c, uart_c, can_c, can_fd_c, jtag_c, swd_c, onewire_c, i2s_c, lin_c, hdlc_c, microwire_c, mdio_c, ps2_c, dmx512_c, nrzi_c, ir_nec_c, ir_rc5_c, ir_sirc_c, dcf77_c, cec_c, spdif_c, usb_signalling_c, 4b5b_c, iso7816_c, lpc_c, dali_c, c2_c, graycode_c, counter_c, lm75_c, ds1307_c, ds3231_c, numbers_and_state_c, seven_segment_c, pwm_c, wiegand_c
 
 ## Language Standards
 

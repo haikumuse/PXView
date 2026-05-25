@@ -31,11 +31,11 @@ typedef struct {
 } counter_state;
 
 static struct srd_channel counter_channels[] = {
-    {"data", "Data", "Data line", 0, SRD_CHANNEL_SDATA, NULL},
+    {"data", "Data", "Data line", 0, SRD_CHANNEL_SDATA, "dec_counter_chan_data"},
 };
 
 static struct srd_channel counter_optional_channels[] = {
-    {"reset", "Reset", "Reset line", 0, SRD_CHANNEL_SDATA, NULL},
+    {"reset", "Reset", "Reset line", 0, SRD_CHANNEL_SDATA, "dec_counter_opt_chan_reset"},
 };
 
 static struct srd_decoder_option counter_options[] = {

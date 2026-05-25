@@ -1,5 +1,6 @@
 #include "libsigrokdecode.h"
 #include <glib.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,26 +53,30 @@ typedef struct {
     uint64_t signfull;
     double fixdiv;
     int fixsign;
+    char* enum_names[MAX_ENUM_SLOTS];
+    uint64_t enum_values[MAX_ENUM_SLOTS];
+    int enum_count;
+    int enum_have;
 } nas_state;
 
 static struct srd_channel nas_optional_channels[] = {
     { "clk", "Clock", "Clock", 0, SRD_CHANNEL_SCLK, NULL },
-    { "bit0", "Bit0", "Bit position 0", 0, SRD_CHANNEL_SDATA, NULL },
-    { "bit1", "Bit1", "Bit position 1", 1, SRD_CHANNEL_SDATA, NULL },
-    { "bit2", "Bit2", "Bit position 2", 2, SRD_CHANNEL_SDATA, NULL },
-    { "bit3", "Bit3", "Bit position 3", 3, SRD_CHANNEL_SDATA, NULL },
-    { "bit4", "Bit4", "Bit position 4", 4, SRD_CHANNEL_SDATA, NULL },
-    { "bit5", "Bit5", "Bit position 5", 5, SRD_CHANNEL_SDATA, NULL },
-    { "bit6", "Bit6", "Bit position 6", 6, SRD_CHANNEL_SDATA, NULL },
-    { "bit7", "Bit7", "Bit position 7", 7, SRD_CHANNEL_SDATA, NULL },
-    { "bit8", "Bit8", "Bit position 8", 8, SRD_CHANNEL_SDATA, NULL },
-    { "bit9", "Bit9", "Bit position 9", 9, SRD_CHANNEL_SDATA, NULL },
-    { "bit10", "Bit10", "Bit position 10", 10, SRD_CHANNEL_SDATA, NULL },
-    { "bit11", "Bit11", "Bit position 11", 11, SRD_CHANNEL_SDATA, NULL },
-    { "bit12", "Bit12", "Bit position 12", 12, SRD_CHANNEL_SDATA, NULL },
-    { "bit13", "Bit13", "Bit position 13", 13, SRD_CHANNEL_SDATA, NULL },
-    { "bit14", "Bit14", "Bit position 14", 14, SRD_CHANNEL_SDATA, NULL },
-    { "bit15", "Bit15", "Bit position 15", 15, SRD_CHANNEL_SDATA, NULL },
+    { "bit0", "Bit0", "Bit position 0", 1, SRD_CHANNEL_SDATA, NULL },
+    { "bit1", "Bit1", "Bit position 1", 2, SRD_CHANNEL_SDATA, NULL },
+    { "bit2", "Bit2", "Bit position 2", 3, SRD_CHANNEL_SDATA, NULL },
+    { "bit3", "Bit3", "Bit position 3", 4, SRD_CHANNEL_SDATA, NULL },
+    { "bit4", "Bit4", "Bit position 4", 5, SRD_CHANNEL_SDATA, NULL },
+    { "bit5", "Bit5", "Bit position 5", 6, SRD_CHANNEL_SDATA, NULL },
+    { "bit6", "Bit6", "Bit position 6", 7, SRD_CHANNEL_SDATA, NULL },
+    { "bit7", "Bit7", "Bit position 7", 8, SRD_CHANNEL_SDATA, NULL },
+    { "bit8", "Bit8", "Bit position 8", 9, SRD_CHANNEL_SDATA, NULL },
+    { "bit9", "Bit9", "Bit position 9", 10, SRD_CHANNEL_SDATA, NULL },
+    { "bit10", "Bit10", "Bit position 10", 11, SRD_CHANNEL_SDATA, NULL },
+    { "bit11", "Bit11", "Bit position 11", 12, SRD_CHANNEL_SDATA, NULL },
+    { "bit12", "Bit12", "Bit position 12", 13, SRD_CHANNEL_SDATA, NULL },
+    { "bit13", "Bit13", "Bit position 13", 14, SRD_CHANNEL_SDATA, NULL },
+    { "bit14", "Bit14", "Bit position 14", 15, SRD_CHANNEL_SDATA, NULL },
+    { "bit15", "Bit15", "Bit position 15", 16, SRD_CHANNEL_SDATA, NULL },
 };
 
 static struct srd_decoder_option nas_options[] = {
@@ -81,6 +86,7 @@ static struct srd_decoder_option nas_options[] = {
     { "fracbits", NULL, "Fraction bits count", NULL, NULL },
     { "mapping", NULL, "Enum to text map file", NULL, NULL },
     { "format", NULL, "Number format", NULL, NULL },
+    { "enum", NULL, "Enum name=value pairs (e.g. IDLE=0;RUN=1;STOP=2)", NULL, NULL },
 };
 
 static const char* nas_ann_labels[NUM_ANN][3] = {
@@ -210,6 +216,9 @@ static void nas_reset(struct srd_decoder_inst* di)
         c_decoder_set_private(di, g_malloc0(sizeof(nas_state)));
     }
     nas_state* s = (nas_state*)c_decoder_get_private(di);
+    for (int i = 0; i < s->enum_count; i++) {
+        g_free(s->enum_names[i]);
+    }
     memset(s, 0, sizeof(nas_state));
     s->bFirst = 1;
 }
@@ -270,6 +279,32 @@ static void nas_start(struct srd_decoder_inst* di)
     if (s->bitcount == 0 && s->num_data_channels > 0) {
         s->bitcount = s->data_channels[s->num_data_channels - 1] - 1 + 1;
     }
+
+    s->enum_count = 0;
+    s->enum_have = 0;
+    const char* enum_str = c_decoder_get_option_string(di, "enum", "");
+    if (enum_str && enum_str[0] != '\0') {
+        gchar** pairs = g_strsplit(enum_str, ";", -1);
+        for (int i = 0; pairs[i] && s->enum_count < MAX_ENUM_SLOTS; i++) {
+            gchar* pair = g_strstrip(pairs[i]);
+            if (!*pair)
+                continue;
+            gchar** kv = g_strsplit(pair, "=", 2);
+            if (kv[0] && kv[1]) {
+                gchar* name = g_strstrip(kv[0]);
+                gchar* val_str = g_strstrip(kv[1]);
+                if (*name && *val_str) {
+                    uint64_t val = strtoull(val_str, NULL, 0);
+                    s->enum_names[s->enum_count] = g_strdup(name);
+                    s->enum_values[s->enum_count] = val;
+                    s->enum_count++;
+                }
+            }
+            g_strfreev(kv);
+        }
+        g_strfreev(pairs);
+        s->enum_have = (s->enum_count > 0);
+    }
 }
 
 static uint64_t nas_grab_pattern(struct srd_decoder_inst* di, nas_state* s, uint64_t samplenum)
@@ -305,6 +340,40 @@ static int nas_interp_init(nas_state* s)
     return 0;
 }
 
+static double half_to_double(uint16_t h)
+{
+    uint32_t sign = (h >> 15) & 1;
+    uint32_t exp = (h >> 10) & 0x1F;
+    uint32_t mant = h & 0x3FF;
+    double result;
+
+    if (exp == 0) {
+        if (mant == 0) {
+            /* Zero */
+            result = 0.0;
+        } else {
+            /* Subnormal: normalize */
+            exp = 1;
+            while (!(mant & 0x400)) {
+                mant <<= 1;
+                exp--;
+            }
+            mant &= 0x3FF; /* Remove implicit bit */
+            result = ldexp((double)mant / 1024.0, exp - 15);
+        }
+    } else if (exp == 31) {
+        if (mant == 0)
+            result = INFINITY;
+        else
+            result = NAN;
+    } else {
+        /* Normal */
+        result = ldexp(1.0 + (double)mant / 1024.0, (int)exp - 15);
+    }
+
+    return sign ? -result : result;
+}
+
 static int nas_interp_value(nas_state* s, uint64_t pattern, double* out_value)
 {
     nas_interp_init(s);
@@ -336,7 +405,10 @@ static int nas_interp_value(nas_state* s, uint64_t pattern, double* out_value)
             *out_value = (double)pattern / s->fixdiv;
         return 0;
     case INTERP_IEEE754:
-        if (s->bitcount == 32) {
+        if (s->bitcount == 16) {
+            *out_value = half_to_double((uint16_t)pattern);
+            return 0;
+        } else if (s->bitcount == 32) {
             union {
                 uint32_t i;
                 float f;
@@ -380,7 +452,16 @@ static int nas_format_value(nas_state* s, double value, uint64_t pattern, char* 
     case FMT_BIN:
         if (value < 0)
             return -1;
-        snprintf(buf, bufsize, "%0*llb", s->bitcount, (unsigned long long)uval);
+        /* Manual binary conversion since %llb is not C11 standard */
+        {
+            int bc = s->bitcount;
+            if (bc > 64) bc = 64;
+            if (bc > (int)bufsize - 1) bc = (int)bufsize - 1;
+            for (int i = 0; i < bc; i++) {
+                buf[i] = (uval >> (bc - 1 - i)) & 1 ? '1' : '0';
+            }
+            buf[bc] = '\0';
+        }
         return 0;
     case FMT_OCT:
         if (value < 0)
@@ -401,6 +482,15 @@ static int nas_format_value(nas_state* s, double value, uint64_t pattern, char* 
     }
 
     return -1;
+}
+
+static const char* nas_lookup_enum(nas_state* s, uint64_t pattern)
+{
+    for (int i = 0; i < s->enum_count; i++) {
+        if (s->enum_values[i] == pattern)
+            return s->enum_names[i];
+    }
+    return NULL;
 }
 
 static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
@@ -442,7 +532,10 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
     if (nas_format_value(s, value, pattern, fmt_buf, sizeof(fmt_buf)) != 0)
         return;
 
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_NUM, fmt_buf);
+    const char* enum_name = nas_lookup_enum(s, pattern);
+    const char* display_text = enum_name ? enum_name : fmt_buf;
+
+    C_ANN_PUT(di, ss, es, s->out_ann, ANN_NUM, display_text);
 
     if (s->interp == INTERP_ENUM) {
         int cls;
@@ -450,19 +543,22 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
             cls = ANN_ENUM_0 + (int)pattern;
         else
             cls = ANN_ENUM_OVR;
-        C_ANN_PUT(di, ss, es, s->out_ann, cls, fmt_buf);
+        C_ANN_PUT(di, ss, es, s->out_ann, cls, display_text);
+    }
 
-        {
-            unsigned char py_enum[9];
-            union {
-                double d;
-                unsigned char b[8];
-            } u;
-            u.d = value;
-            memcpy(py_enum, u.b, 8);
-            py_enum[8] = (unsigned char)strlen(fmt_buf);
-            c_decoder_put_python(di, ss, es, s->out_python, "ENUM", py_enum, 9);
-        }
+    if (enum_name || s->interp == INTERP_ENUM) {
+        unsigned char py_enum[8 + 64];
+        union {
+            double d;
+            unsigned char b[8];
+        } u;
+        u.d = value;
+        memcpy(py_enum, u.b, 8);
+        const char* name_to_send = enum_name ? enum_name : fmt_buf;
+        int namelen = (int)strlen(name_to_send);
+        if (namelen > 64) namelen = 64;
+        memcpy(py_enum + 8, name_to_send, namelen);
+        c_decoder_put_python(di, ss, es, s->out_python, "ENUM", py_enum, 8 + namelen);
     }
 }
 
@@ -474,6 +570,16 @@ static void nas_decode(struct srd_decoder_inst* di)
 
     if (s->num_data_channels == 0)
         return;
+
+    /* Read initial sample at current position, like Python's self.wait(cur_cond=None) */
+    {
+        uint64_t cur_sample;
+        if (c_cond_wait_current(di, &cur_sample) == SRD_OK) {
+            s->ss = cur_sample;
+            s->prev_pattern = nas_grab_pattern(di, s, cur_sample);
+            s->bFirst = 0;
+        }
+    }
 
     while (1) {
         srd_cond_builder* cb = c_cond_new();
@@ -500,13 +606,6 @@ static void nas_decode(struct srd_decoder_inst* di)
 
         uint64_t pattern = nas_grab_pattern(di, s, samplenum);
 
-        if (s->bFirst) {
-            s->bFirst = 0;
-            s->ss = samplenum;
-            s->prev_pattern = pattern;
-            continue;
-        }
-
         uint64_t es = samplenum;
         if (pattern == s->prev_pattern)
             continue;
@@ -519,9 +618,12 @@ static void nas_decode(struct srd_decoder_inst* di)
 
 static void nas_destroy(struct srd_decoder_inst* di)
 {
-    void* priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
+    nas_state* s = (nas_state*)c_decoder_get_private(di);
+    if (s) {
+        for (int i = 0; i < s->enum_count; i++) {
+            g_free(s->enum_names[i]);
+        }
+        g_free(s);
         c_decoder_set_private(di, NULL);
     }
 }
@@ -537,7 +639,7 @@ struct srd_c_decoder numbers_and_state_c_decoder = {
     .optional_channels = nas_optional_channels,
     .num_optional_channels = 17,
     .options = nas_options,
-    .num_options = 6,
+    .num_options = 7,
     .num_annotations = NUM_ANN,
     .ann_labels = nas_ann_labels,
     .num_annotation_rows = NUM_ANN,
@@ -589,6 +691,8 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
     format_vals = g_slist_append(format_vals, g_variant_new_string("dec"));
     format_vals = g_slist_append(format_vals, g_variant_new_string("hex"));
     nas_options[5].values = format_vals;
+
+    nas_options[6].def = g_variant_new_string("");
 
     return &numbers_and_state_c_decoder;
 }

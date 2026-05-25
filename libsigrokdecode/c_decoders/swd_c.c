@@ -120,6 +120,18 @@ static const char* get_address_description(struct swd_priv* s)
     return buf;
 }
 
+static const char* get_ack_string(int ack)
+{
+    switch (ack) {
+    case 0: return "OK";
+    case 1: return "FAULT";
+    case 2: return "WAIT";
+    case 3: return "NOREPLY";
+    case 4: return "ERROR";
+    default: return "UNKNOWN";
+    }
+}
+
 static void swd_reset_state(struct swd_priv* s)
 {
     s->bits_len = 0;
@@ -276,6 +288,13 @@ static void swd_decode(struct srd_decoder_inst* di)
                 int park_bit = s->bits[s->bits_len - 1] - '0';
 
                 if (start_bit == 1 && stop_bit == 0 && park_bit == 1) {
+                    int parity_bit = s->bits[s->bits_len - 3] - '0';
+                    int calc_parity = (apdp_bit + rw_bit + addr_bit0 + addr_bit1) % 2;
+                    if (calc_parity != parity_bit) {
+                        uint64_t ss_parity = s->samplenums[s->bits_len - 3];
+                        C_ANN_PUT(di, ss_parity, samplenum, s->out_ann, ANN_PARITY, "Parity error in request");
+                    }
+
                     s->rw = rw_bit;
                     s->apdp = apdp_bit;
                     s->addr = (addr_bit1 * 2 + addr_bit0) << 2;
@@ -361,16 +380,19 @@ static void swd_decode(struct srd_decoder_inst* di)
                 snprintf(ptext, sizeof(ptext), "%d%d", s->dparity, parity_received);
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_PARITY, ptext);
             } else {
-                unsigned char py_data[8];
                 uint32_t addr32 = (uint32_t)s->addr;
+                const char* ack_str = get_ack_string(s->ack);
+                int ack_len = (int)strlen(ack_str) + 1;
+                unsigned char py_data[8 + 32];
                 memcpy(py_data, &addr32, 4);
                 memcpy(py_data + 4, &s->data, 4);
+                memcpy(py_data + 8, ack_str, ack_len);
                 if (s->rw == 1) {
                     c_decoder_put_python(di, s->ss_req, samplenum, s->out_python,
-                        s->apdp ? "AP READ" : "DP READ", py_data, 8);
+                        s->apdp ? "AP_READ" : "DP_READ", py_data, 8 + ack_len);
                 } else {
                     c_decoder_put_python(di, s->ss_req, samplenum, s->out_python,
-                        s->apdp ? "AP WRITE" : "DP WRITE", py_data, 8);
+                        s->apdp ? "AP_WRITE" : "DP_WRITE", py_data, 8 + ack_len);
                     handle_completed_write(s);
                 }
             }

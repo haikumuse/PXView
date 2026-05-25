@@ -545,6 +545,7 @@ static void ook_decode(struct srd_decoder_inst *di)
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
         if (ret != SRD_OK) return;
+        if (samplenum >= c_decoder_get_last_samplenum(di)) return;
 
         /* Check for timeout */
         if (s->edge_count > 0 && (matched & (1ULL << 1)) && !(matched & (1ULL << 0))) {

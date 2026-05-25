@@ -1,0 +1,17 @@
+{
+  "decoder": "graycode_c",
+  "samplerate": 1000000,
+  "num_channels": 8,
+  "sample_count": 100000,
+  "channels": {
+    "d0": 0,
+    "d1": 1,
+    "d2": 2,
+    "d3": 3,
+    "d4": 4,
+    "d5": 5,
+    "d6": 6,
+    "d7": 7
+  },
+  "stack": []
+}

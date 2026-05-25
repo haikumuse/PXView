@@ -300,8 +300,15 @@ static void swi_decode(struct srd_decoder_inst *di)
         int bauds = swi_calculate_bauds(samplenum, prevN, s->samplerate, &s->halfRate);
 
         /* Check for valid data baud interval (1 or 3) */
-        if (bauds != 1 && bauds != 3)
+        if (bauds != 1 && bauds != 3) {
+            if (pin_val != 1) {
+                if (bauds < 3) {
+                    C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_ERR, "Error");
+                }
+                C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BYTES, "[ACK]");
+            }
             continue;
+        }
 
         /* Check if previous gap >= 5 bauds (word separator) */
         int have_word_gap = 0;
@@ -314,8 +321,12 @@ static void swi_decode(struct srd_decoder_inst *di)
             have_word_gap = 1; /* First edge, treat as word start */
         }
 
-        if (!have_word_gap)
+        if (!have_word_gap) {
+            if (pin_val != 1) {
+                C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BYTES, "[ACK]");
+            }
             continue;
+        }
 
         /* Collect 13 baud intervals for a word */
         uint64_t data_ns[13];
@@ -351,8 +362,18 @@ static void swi_decode(struct srd_decoder_inst *di)
             } else if (b == 3) {
                 C_ANN_PUT(di, s->pastNs[s->log_count - 2], samplenum,
                           s->out_ann, ANN_BAUD_RATE, "B3");
+            } else if (b == 2) {
+                /* Round 2 bauds to nearest valid: treat as B3 */
+                b = 3;
+                C_ANN_PUT(di, s->pastNs[s->log_count - 2], samplenum,
+                          s->out_ann, ANN_BAUD_RATE, "B3");
+            } else if (b >= 4) {
+                /* Round >=4 bauds to B3 */
+                b = 3;
+                C_ANN_PUT(di, s->pastNs[s->log_count - 2], samplenum,
+                          s->out_ann, ANN_BAUD_RATE, "B3");
             } else {
-                /* Invalid baud, abort word collection */
+                /* b == 0 or negative, abort word collection */
                 break;
             }
 

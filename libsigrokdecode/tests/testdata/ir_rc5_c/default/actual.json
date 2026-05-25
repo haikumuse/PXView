@@ -1,0 +1,198 @@
+{
+	"decoder": "ir_rc5_c",
+	"samplerate": 1000000,
+	"num_annotations": 19,
+	"annotations": [
+		{
+			"start_sample": 0,
+			"end_sample": 1429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 1429,
+			"end_sample": 2429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2429,
+			"end_sample": 3429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3429,
+			"end_sample": 4429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4429,
+			"end_sample": 5429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5429,
+			"end_sample": 6429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6429,
+			"end_sample": 7429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7429,
+			"end_sample": 8429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8429,
+			"end_sample": 9429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9429,
+			"end_sample": 10429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10429,
+			"end_sample": 11429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11429,
+			"end_sample": 12429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12429,
+			"end_sample": 13429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13429,
+			"end_sample": 14429,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 0,
+			"end_sample": 1429,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Startbit1: 1", 
+				"SB1: 1", 
+				"SB1", 
+				"S1", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 1429,
+			"end_sample": 2429,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Startbit2: 1", 
+				"SB2: 1", 
+				"SB2", 
+				"S2", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2429,
+			"end_sample": 3429,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Togglebit: 1", 
+				"Toggle: 1", 
+				"TB: 1", 
+				"TB", 
+				"T"
+			]
+		}, 
+		{
+			"start_sample": 3429,
+			"end_sample": 8429,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 31 (Telephone)", 
+				"Addr: 31 (Phone)", 
+				"Addr: 31", 
+				"A: 31", 
+				"A"
+			]
+		}, 
+		{
+			"start_sample": 8429,
+			"end_sample": 14429,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: 63 (Unknown)", 
+				"Cmd: 63 (Unk)", 
+				"Cmd: 63", 
+				"C: 63", 
+				"C"
+			]
+		}
+	]
+}

@@ -1,0 +1,11 @@
+{
+  "decoder": "one_single_wire_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "osw": 0,
+    "strt": 1
+  },
+  "stack": []
+}

@@ -1,0 +1,10887 @@
+{
+	"decoder": "can",
+	"samplerate": 10000000,
+	"num_annotations": 1160,
+	"annotations": [
+		{
+			"start_sample": 559,
+			"end_sample": 569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 559,
+			"end_sample": 569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 569,
+			"end_sample": 579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 579,
+			"end_sample": 589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 589,
+			"end_sample": 599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 599,
+			"end_sample": 609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 609,
+			"end_sample": 619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 619,
+			"end_sample": 629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 629,
+			"end_sample": 639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 639,
+			"end_sample": 649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 649,
+			"end_sample": 659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 659,
+			"end_sample": 669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 669,
+			"end_sample": 679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 569,
+			"end_sample": 679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 679,
+			"end_sample": 689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 689,
+			"end_sample": 699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 689,
+			"end_sample": 699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 699,
+			"end_sample": 709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 699,
+			"end_sample": 709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 679,
+			"end_sample": 689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 709,
+			"end_sample": 719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 719,
+			"end_sample": 729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 729,
+			"end_sample": 739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 739,
+			"end_sample": 749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 709,
+			"end_sample": 749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 749,
+			"end_sample": 759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 759,
+			"end_sample": 769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 769,
+			"end_sample": 779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 779,
+			"end_sample": 789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 789,
+			"end_sample": 799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 799,
+			"end_sample": 809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 809,
+			"end_sample": 819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 819,
+			"end_sample": 829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 829,
+			"end_sample": 839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 839,
+			"end_sample": 849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 849,
+			"end_sample": 859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 859,
+			"end_sample": 869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 869,
+			"end_sample": 879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 879,
+			"end_sample": 889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 889,
+			"end_sample": 899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 749,
+			"end_sample": 899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 899,
+			"end_sample": 909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 899,
+			"end_sample": 909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 899,
+			"end_sample": 909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 909,
+			"end_sample": 919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 909,
+			"end_sample": 919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 919,
+			"end_sample": 929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 919,
+			"end_sample": 929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 919,
+			"end_sample": 929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 929,
+			"end_sample": 939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 939,
+			"end_sample": 949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 949,
+			"end_sample": 959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 959,
+			"end_sample": 969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 969,
+			"end_sample": 979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 979,
+			"end_sample": 989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 989,
+			"end_sample": 999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 929,
+			"end_sample": 999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 929,
+			"end_sample": 999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 1559,
+			"end_sample": 1569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1559,
+			"end_sample": 1569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 1569,
+			"end_sample": 1579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1579,
+			"end_sample": 1589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1589,
+			"end_sample": 1599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1599,
+			"end_sample": 1609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1609,
+			"end_sample": 1619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1619,
+			"end_sample": 1629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1629,
+			"end_sample": 1639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1639,
+			"end_sample": 1649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1649,
+			"end_sample": 1659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1659,
+			"end_sample": 1669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1669,
+			"end_sample": 1679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1569,
+			"end_sample": 1679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 1679,
+			"end_sample": 1689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1689,
+			"end_sample": 1699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1689,
+			"end_sample": 1699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 1699,
+			"end_sample": 1709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1699,
+			"end_sample": 1709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1679,
+			"end_sample": 1689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 1709,
+			"end_sample": 1719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1719,
+			"end_sample": 1729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1729,
+			"end_sample": 1739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1739,
+			"end_sample": 1749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1709,
+			"end_sample": 1749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1749,
+			"end_sample": 1759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1759,
+			"end_sample": 1769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1769,
+			"end_sample": 1779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1779,
+			"end_sample": 1789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1789,
+			"end_sample": 1799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1799,
+			"end_sample": 1809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1809,
+			"end_sample": 1819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1819,
+			"end_sample": 1829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1829,
+			"end_sample": 1839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1839,
+			"end_sample": 1849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1849,
+			"end_sample": 1859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1859,
+			"end_sample": 1869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1869,
+			"end_sample": 1879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1879,
+			"end_sample": 1889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1889,
+			"end_sample": 1899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1749,
+			"end_sample": 1899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 1899,
+			"end_sample": 1909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1899,
+			"end_sample": 1909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1899,
+			"end_sample": 1909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 1909,
+			"end_sample": 1919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1909,
+			"end_sample": 1919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 1919,
+			"end_sample": 1929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1919,
+			"end_sample": 1929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1919,
+			"end_sample": 1929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 1929,
+			"end_sample": 1939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1939,
+			"end_sample": 1949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1949,
+			"end_sample": 1959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1959,
+			"end_sample": 1969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1969,
+			"end_sample": 1979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1979,
+			"end_sample": 1989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1989,
+			"end_sample": 1999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1929,
+			"end_sample": 1999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 1929,
+			"end_sample": 1999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 2559,
+			"end_sample": 2569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2559,
+			"end_sample": 2569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2569,
+			"end_sample": 2579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2579,
+			"end_sample": 2589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2589,
+			"end_sample": 2599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2599,
+			"end_sample": 2609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2609,
+			"end_sample": 2619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2619,
+			"end_sample": 2629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2629,
+			"end_sample": 2639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2639,
+			"end_sample": 2649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2649,
+			"end_sample": 2659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2659,
+			"end_sample": 2669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2669,
+			"end_sample": 2679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2569,
+			"end_sample": 2679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 2679,
+			"end_sample": 2689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2689,
+			"end_sample": 2699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2689,
+			"end_sample": 2699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 2699,
+			"end_sample": 2709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2699,
+			"end_sample": 2709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2679,
+			"end_sample": 2689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 2709,
+			"end_sample": 2719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2719,
+			"end_sample": 2729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2729,
+			"end_sample": 2739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2739,
+			"end_sample": 2749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2709,
+			"end_sample": 2749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2749,
+			"end_sample": 2759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2759,
+			"end_sample": 2769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2769,
+			"end_sample": 2779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2779,
+			"end_sample": 2789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2789,
+			"end_sample": 2799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2799,
+			"end_sample": 2809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2809,
+			"end_sample": 2819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2819,
+			"end_sample": 2829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2829,
+			"end_sample": 2839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2839,
+			"end_sample": 2849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2849,
+			"end_sample": 2859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2859,
+			"end_sample": 2869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2869,
+			"end_sample": 2879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2879,
+			"end_sample": 2889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2889,
+			"end_sample": 2899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2749,
+			"end_sample": 2899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 2899,
+			"end_sample": 2909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2899,
+			"end_sample": 2909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2899,
+			"end_sample": 2909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 2909,
+			"end_sample": 2919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2909,
+			"end_sample": 2919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 2919,
+			"end_sample": 2929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2919,
+			"end_sample": 2929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2919,
+			"end_sample": 2929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 2929,
+			"end_sample": 2939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2939,
+			"end_sample": 2949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2949,
+			"end_sample": 2959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2959,
+			"end_sample": 2969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2969,
+			"end_sample": 2979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2979,
+			"end_sample": 2989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2989,
+			"end_sample": 2999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2929,
+			"end_sample": 2999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 2929,
+			"end_sample": 2999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 3559,
+			"end_sample": 3569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3559,
+			"end_sample": 3569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 3569,
+			"end_sample": 3579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3579,
+			"end_sample": 3589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3589,
+			"end_sample": 3599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3599,
+			"end_sample": 3609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3609,
+			"end_sample": 3619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3619,
+			"end_sample": 3629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3629,
+			"end_sample": 3639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3639,
+			"end_sample": 3649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3649,
+			"end_sample": 3659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3659,
+			"end_sample": 3669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3669,
+			"end_sample": 3679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3569,
+			"end_sample": 3679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 3679,
+			"end_sample": 3689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3689,
+			"end_sample": 3699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3689,
+			"end_sample": 3699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 3699,
+			"end_sample": 3709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3699,
+			"end_sample": 3709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3679,
+			"end_sample": 3689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 3709,
+			"end_sample": 3719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3719,
+			"end_sample": 3729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3729,
+			"end_sample": 3739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3739,
+			"end_sample": 3749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3709,
+			"end_sample": 3749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3749,
+			"end_sample": 3759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3759,
+			"end_sample": 3769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3769,
+			"end_sample": 3779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3779,
+			"end_sample": 3789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3789,
+			"end_sample": 3799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3799,
+			"end_sample": 3809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3809,
+			"end_sample": 3819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3819,
+			"end_sample": 3829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3829,
+			"end_sample": 3839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3839,
+			"end_sample": 3849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3849,
+			"end_sample": 3859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3859,
+			"end_sample": 3869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3869,
+			"end_sample": 3879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3879,
+			"end_sample": 3889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3889,
+			"end_sample": 3899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3749,
+			"end_sample": 3899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 3899,
+			"end_sample": 3909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3899,
+			"end_sample": 3909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3899,
+			"end_sample": 3909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 3909,
+			"end_sample": 3919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3909,
+			"end_sample": 3919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 3919,
+			"end_sample": 3929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3919,
+			"end_sample": 3929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3919,
+			"end_sample": 3929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 3929,
+			"end_sample": 3939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3939,
+			"end_sample": 3949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3949,
+			"end_sample": 3959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3959,
+			"end_sample": 3969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3969,
+			"end_sample": 3979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3979,
+			"end_sample": 3989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3989,
+			"end_sample": 3999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3929,
+			"end_sample": 3999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3929,
+			"end_sample": 3999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 4559,
+			"end_sample": 4569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4559,
+			"end_sample": 4569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 4569,
+			"end_sample": 4579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4579,
+			"end_sample": 4589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4589,
+			"end_sample": 4599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4599,
+			"end_sample": 4609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4609,
+			"end_sample": 4619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4619,
+			"end_sample": 4629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4629,
+			"end_sample": 4639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4639,
+			"end_sample": 4649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4649,
+			"end_sample": 4659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4659,
+			"end_sample": 4669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4669,
+			"end_sample": 4679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4569,
+			"end_sample": 4679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 4679,
+			"end_sample": 4689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4689,
+			"end_sample": 4699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4689,
+			"end_sample": 4699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 4699,
+			"end_sample": 4709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4699,
+			"end_sample": 4709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4679,
+			"end_sample": 4689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 4709,
+			"end_sample": 4719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4719,
+			"end_sample": 4729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4729,
+			"end_sample": 4739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4739,
+			"end_sample": 4749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4709,
+			"end_sample": 4749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4749,
+			"end_sample": 4759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4759,
+			"end_sample": 4769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4769,
+			"end_sample": 4779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4779,
+			"end_sample": 4789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4789,
+			"end_sample": 4799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4799,
+			"end_sample": 4809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4809,
+			"end_sample": 4819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4819,
+			"end_sample": 4829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4829,
+			"end_sample": 4839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4839,
+			"end_sample": 4849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4849,
+			"end_sample": 4859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4859,
+			"end_sample": 4869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4869,
+			"end_sample": 4879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4879,
+			"end_sample": 4889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4889,
+			"end_sample": 4899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4749,
+			"end_sample": 4899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 4899,
+			"end_sample": 4909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4899,
+			"end_sample": 4909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4899,
+			"end_sample": 4909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 4909,
+			"end_sample": 4919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4909,
+			"end_sample": 4919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 4919,
+			"end_sample": 4929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4919,
+			"end_sample": 4929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4919,
+			"end_sample": 4929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 4929,
+			"end_sample": 4939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4939,
+			"end_sample": 4949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4949,
+			"end_sample": 4959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4959,
+			"end_sample": 4969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4969,
+			"end_sample": 4979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4979,
+			"end_sample": 4989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4989,
+			"end_sample": 4999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4929,
+			"end_sample": 4999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 4929,
+			"end_sample": 4999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 5559,
+			"end_sample": 5569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5559,
+			"end_sample": 5569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 5569,
+			"end_sample": 5579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5579,
+			"end_sample": 5589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5589,
+			"end_sample": 5599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5599,
+			"end_sample": 5609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5609,
+			"end_sample": 5619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5619,
+			"end_sample": 5629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5629,
+			"end_sample": 5639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5639,
+			"end_sample": 5649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5649,
+			"end_sample": 5659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5659,
+			"end_sample": 5669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5669,
+			"end_sample": 5679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5569,
+			"end_sample": 5679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 5679,
+			"end_sample": 5689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5689,
+			"end_sample": 5699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5689,
+			"end_sample": 5699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 5699,
+			"end_sample": 5709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5699,
+			"end_sample": 5709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5679,
+			"end_sample": 5689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 5709,
+			"end_sample": 5719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5719,
+			"end_sample": 5729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5729,
+			"end_sample": 5739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5739,
+			"end_sample": 5749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5709,
+			"end_sample": 5749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5749,
+			"end_sample": 5759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5759,
+			"end_sample": 5769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5769,
+			"end_sample": 5779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5779,
+			"end_sample": 5789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5789,
+			"end_sample": 5799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5799,
+			"end_sample": 5809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5809,
+			"end_sample": 5819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5819,
+			"end_sample": 5829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5829,
+			"end_sample": 5839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5839,
+			"end_sample": 5849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5849,
+			"end_sample": 5859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5859,
+			"end_sample": 5869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5869,
+			"end_sample": 5879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5879,
+			"end_sample": 5889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5889,
+			"end_sample": 5899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5749,
+			"end_sample": 5899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 5899,
+			"end_sample": 5909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5899,
+			"end_sample": 5909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5899,
+			"end_sample": 5909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 5909,
+			"end_sample": 5919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5909,
+			"end_sample": 5919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 5919,
+			"end_sample": 5929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5919,
+			"end_sample": 5929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5919,
+			"end_sample": 5929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 5929,
+			"end_sample": 5939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5939,
+			"end_sample": 5949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5949,
+			"end_sample": 5959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5959,
+			"end_sample": 5969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5969,
+			"end_sample": 5979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5979,
+			"end_sample": 5989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5989,
+			"end_sample": 5999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5929,
+			"end_sample": 5999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 5929,
+			"end_sample": 5999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 6559,
+			"end_sample": 6569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6559,
+			"end_sample": 6569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 6569,
+			"end_sample": 6579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6579,
+			"end_sample": 6589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6589,
+			"end_sample": 6599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6599,
+			"end_sample": 6609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6609,
+			"end_sample": 6619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6619,
+			"end_sample": 6629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6629,
+			"end_sample": 6639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6639,
+			"end_sample": 6649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6649,
+			"end_sample": 6659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6659,
+			"end_sample": 6669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6669,
+			"end_sample": 6679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6569,
+			"end_sample": 6679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 6679,
+			"end_sample": 6689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6689,
+			"end_sample": 6699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6689,
+			"end_sample": 6699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 6699,
+			"end_sample": 6709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6699,
+			"end_sample": 6709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6679,
+			"end_sample": 6689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 6709,
+			"end_sample": 6719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6719,
+			"end_sample": 6729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6729,
+			"end_sample": 6739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6739,
+			"end_sample": 6749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6709,
+			"end_sample": 6749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6749,
+			"end_sample": 6759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6759,
+			"end_sample": 6769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6769,
+			"end_sample": 6779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6779,
+			"end_sample": 6789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6789,
+			"end_sample": 6799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6799,
+			"end_sample": 6809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6809,
+			"end_sample": 6819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6819,
+			"end_sample": 6829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6829,
+			"end_sample": 6839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6839,
+			"end_sample": 6849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6849,
+			"end_sample": 6859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6859,
+			"end_sample": 6869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6869,
+			"end_sample": 6879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6879,
+			"end_sample": 6889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6889,
+			"end_sample": 6899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6749,
+			"end_sample": 6899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 6899,
+			"end_sample": 6909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6899,
+			"end_sample": 6909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6899,
+			"end_sample": 6909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 6909,
+			"end_sample": 6919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6909,
+			"end_sample": 6919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 6919,
+			"end_sample": 6929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6919,
+			"end_sample": 6929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6919,
+			"end_sample": 6929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 6929,
+			"end_sample": 6939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6939,
+			"end_sample": 6949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6949,
+			"end_sample": 6959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6959,
+			"end_sample": 6969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6969,
+			"end_sample": 6979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6979,
+			"end_sample": 6989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6989,
+			"end_sample": 6999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6929,
+			"end_sample": 6999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 6929,
+			"end_sample": 6999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 7559,
+			"end_sample": 7569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7559,
+			"end_sample": 7569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 7569,
+			"end_sample": 7579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7579,
+			"end_sample": 7589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7589,
+			"end_sample": 7599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7599,
+			"end_sample": 7609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7609,
+			"end_sample": 7619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7619,
+			"end_sample": 7629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7629,
+			"end_sample": 7639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7639,
+			"end_sample": 7649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7649,
+			"end_sample": 7659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7659,
+			"end_sample": 7669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7669,
+			"end_sample": 7679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7569,
+			"end_sample": 7679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 7679,
+			"end_sample": 7689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7689,
+			"end_sample": 7699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7689,
+			"end_sample": 7699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 7699,
+			"end_sample": 7709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7699,
+			"end_sample": 7709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7679,
+			"end_sample": 7689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 7709,
+			"end_sample": 7719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7719,
+			"end_sample": 7729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7729,
+			"end_sample": 7739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7739,
+			"end_sample": 7749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7709,
+			"end_sample": 7749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7749,
+			"end_sample": 7759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7759,
+			"end_sample": 7769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7769,
+			"end_sample": 7779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7779,
+			"end_sample": 7789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7789,
+			"end_sample": 7799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7799,
+			"end_sample": 7809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7809,
+			"end_sample": 7819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7819,
+			"end_sample": 7829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7829,
+			"end_sample": 7839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7839,
+			"end_sample": 7849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7849,
+			"end_sample": 7859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7859,
+			"end_sample": 7869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7869,
+			"end_sample": 7879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7879,
+			"end_sample": 7889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7889,
+			"end_sample": 7899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7749,
+			"end_sample": 7899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 7899,
+			"end_sample": 7909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7899,
+			"end_sample": 7909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7899,
+			"end_sample": 7909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 7909,
+			"end_sample": 7919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7909,
+			"end_sample": 7919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 7919,
+			"end_sample": 7929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7919,
+			"end_sample": 7929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7919,
+			"end_sample": 7929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 7929,
+			"end_sample": 7939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7939,
+			"end_sample": 7949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7949,
+			"end_sample": 7959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7959,
+			"end_sample": 7969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7969,
+			"end_sample": 7979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7979,
+			"end_sample": 7989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7989,
+			"end_sample": 7999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7929,
+			"end_sample": 7999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 7929,
+			"end_sample": 7999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 8559,
+			"end_sample": 8569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8559,
+			"end_sample": 8569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 8569,
+			"end_sample": 8579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8579,
+			"end_sample": 8589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8589,
+			"end_sample": 8599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8599,
+			"end_sample": 8609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8609,
+			"end_sample": 8619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8619,
+			"end_sample": 8629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8629,
+			"end_sample": 8639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8639,
+			"end_sample": 8649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8649,
+			"end_sample": 8659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8659,
+			"end_sample": 8669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8669,
+			"end_sample": 8679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8569,
+			"end_sample": 8679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 8679,
+			"end_sample": 8689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8689,
+			"end_sample": 8699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8689,
+			"end_sample": 8699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 8699,
+			"end_sample": 8709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8699,
+			"end_sample": 8709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8679,
+			"end_sample": 8689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 8709,
+			"end_sample": 8719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8719,
+			"end_sample": 8729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8729,
+			"end_sample": 8739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8739,
+			"end_sample": 8749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8709,
+			"end_sample": 8749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8749,
+			"end_sample": 8759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8759,
+			"end_sample": 8769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8769,
+			"end_sample": 8779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8779,
+			"end_sample": 8789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8789,
+			"end_sample": 8799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8799,
+			"end_sample": 8809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8809,
+			"end_sample": 8819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8819,
+			"end_sample": 8829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8829,
+			"end_sample": 8839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8839,
+			"end_sample": 8849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8849,
+			"end_sample": 8859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8859,
+			"end_sample": 8869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8869,
+			"end_sample": 8879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8879,
+			"end_sample": 8889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8889,
+			"end_sample": 8899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8749,
+			"end_sample": 8899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 8899,
+			"end_sample": 8909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8899,
+			"end_sample": 8909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8899,
+			"end_sample": 8909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 8909,
+			"end_sample": 8919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8909,
+			"end_sample": 8919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 8919,
+			"end_sample": 8929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8919,
+			"end_sample": 8929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8919,
+			"end_sample": 8929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 8929,
+			"end_sample": 8939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8939,
+			"end_sample": 8949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8949,
+			"end_sample": 8959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8959,
+			"end_sample": 8969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8969,
+			"end_sample": 8979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8979,
+			"end_sample": 8989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8989,
+			"end_sample": 8999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8929,
+			"end_sample": 8999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 8929,
+			"end_sample": 8999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 9559,
+			"end_sample": 9569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9559,
+			"end_sample": 9569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 9569,
+			"end_sample": 9579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9579,
+			"end_sample": 9589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9589,
+			"end_sample": 9599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9599,
+			"end_sample": 9609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9609,
+			"end_sample": 9619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9619,
+			"end_sample": 9629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9629,
+			"end_sample": 9639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9639,
+			"end_sample": 9649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9649,
+			"end_sample": 9659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9659,
+			"end_sample": 9669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9669,
+			"end_sample": 9679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9569,
+			"end_sample": 9679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 9679,
+			"end_sample": 9689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9689,
+			"end_sample": 9699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9689,
+			"end_sample": 9699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 9699,
+			"end_sample": 9709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9699,
+			"end_sample": 9709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9679,
+			"end_sample": 9689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 9709,
+			"end_sample": 9719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9719,
+			"end_sample": 9729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9729,
+			"end_sample": 9739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9739,
+			"end_sample": 9749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9709,
+			"end_sample": 9749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9749,
+			"end_sample": 9759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9759,
+			"end_sample": 9769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9769,
+			"end_sample": 9779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9779,
+			"end_sample": 9789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9789,
+			"end_sample": 9799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9799,
+			"end_sample": 9809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9809,
+			"end_sample": 9819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9819,
+			"end_sample": 9829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9829,
+			"end_sample": 9839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9839,
+			"end_sample": 9849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9849,
+			"end_sample": 9859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9859,
+			"end_sample": 9869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9869,
+			"end_sample": 9879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9879,
+			"end_sample": 9889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9889,
+			"end_sample": 9899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9749,
+			"end_sample": 9899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 9899,
+			"end_sample": 9909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9899,
+			"end_sample": 9909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9899,
+			"end_sample": 9909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 9909,
+			"end_sample": 9919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9909,
+			"end_sample": 9919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 9919,
+			"end_sample": 9929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9919,
+			"end_sample": 9929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9919,
+			"end_sample": 9929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 9929,
+			"end_sample": 9939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9939,
+			"end_sample": 9949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9949,
+			"end_sample": 9959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9959,
+			"end_sample": 9969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9969,
+			"end_sample": 9979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9979,
+			"end_sample": 9989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9989,
+			"end_sample": 9999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9929,
+			"end_sample": 9999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 9929,
+			"end_sample": 9999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 10559,
+			"end_sample": 10569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10559,
+			"end_sample": 10569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 10569,
+			"end_sample": 10579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10579,
+			"end_sample": 10589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10589,
+			"end_sample": 10599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10599,
+			"end_sample": 10609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10609,
+			"end_sample": 10619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10619,
+			"end_sample": 10629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10629,
+			"end_sample": 10639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10639,
+			"end_sample": 10649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10649,
+			"end_sample": 10659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10659,
+			"end_sample": 10669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10669,
+			"end_sample": 10679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10569,
+			"end_sample": 10679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 10679,
+			"end_sample": 10689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10689,
+			"end_sample": 10699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10689,
+			"end_sample": 10699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 10699,
+			"end_sample": 10709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10699,
+			"end_sample": 10709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10679,
+			"end_sample": 10689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 10709,
+			"end_sample": 10719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10719,
+			"end_sample": 10729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10729,
+			"end_sample": 10739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10739,
+			"end_sample": 10749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10709,
+			"end_sample": 10749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10749,
+			"end_sample": 10759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10759,
+			"end_sample": 10769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10769,
+			"end_sample": 10779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10779,
+			"end_sample": 10789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10789,
+			"end_sample": 10799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10799,
+			"end_sample": 10809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10809,
+			"end_sample": 10819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10819,
+			"end_sample": 10829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10829,
+			"end_sample": 10839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10839,
+			"end_sample": 10849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10849,
+			"end_sample": 10859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10859,
+			"end_sample": 10869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10869,
+			"end_sample": 10879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10879,
+			"end_sample": 10889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10889,
+			"end_sample": 10899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10749,
+			"end_sample": 10899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 10899,
+			"end_sample": 10909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10899,
+			"end_sample": 10909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10899,
+			"end_sample": 10909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 10909,
+			"end_sample": 10919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10909,
+			"end_sample": 10919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 10919,
+			"end_sample": 10929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10919,
+			"end_sample": 10929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10919,
+			"end_sample": 10929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 10929,
+			"end_sample": 10939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10939,
+			"end_sample": 10949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10949,
+			"end_sample": 10959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10959,
+			"end_sample": 10969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10969,
+			"end_sample": 10979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10979,
+			"end_sample": 10989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10989,
+			"end_sample": 10999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10929,
+			"end_sample": 10999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 10929,
+			"end_sample": 10999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 11559,
+			"end_sample": 11569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11559,
+			"end_sample": 11569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 11569,
+			"end_sample": 11579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11579,
+			"end_sample": 11589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11589,
+			"end_sample": 11599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11599,
+			"end_sample": 11609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11609,
+			"end_sample": 11619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11619,
+			"end_sample": 11629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11629,
+			"end_sample": 11639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11639,
+			"end_sample": 11649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11649,
+			"end_sample": 11659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11659,
+			"end_sample": 11669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11669,
+			"end_sample": 11679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11569,
+			"end_sample": 11679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 11679,
+			"end_sample": 11689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11689,
+			"end_sample": 11699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11689,
+			"end_sample": 11699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 11699,
+			"end_sample": 11709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11699,
+			"end_sample": 11709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11679,
+			"end_sample": 11689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 11709,
+			"end_sample": 11719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11719,
+			"end_sample": 11729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11729,
+			"end_sample": 11739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11739,
+			"end_sample": 11749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11709,
+			"end_sample": 11749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11749,
+			"end_sample": 11759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11759,
+			"end_sample": 11769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11769,
+			"end_sample": 11779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11779,
+			"end_sample": 11789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11789,
+			"end_sample": 11799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11799,
+			"end_sample": 11809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11809,
+			"end_sample": 11819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11819,
+			"end_sample": 11829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11829,
+			"end_sample": 11839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11839,
+			"end_sample": 11849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11849,
+			"end_sample": 11859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11859,
+			"end_sample": 11869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11869,
+			"end_sample": 11879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11879,
+			"end_sample": 11889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11889,
+			"end_sample": 11899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11749,
+			"end_sample": 11899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 11899,
+			"end_sample": 11909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11899,
+			"end_sample": 11909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11899,
+			"end_sample": 11909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 11909,
+			"end_sample": 11919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11909,
+			"end_sample": 11919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 11919,
+			"end_sample": 11929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11919,
+			"end_sample": 11929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11919,
+			"end_sample": 11929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 11929,
+			"end_sample": 11939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11939,
+			"end_sample": 11949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11949,
+			"end_sample": 11959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11959,
+			"end_sample": 11969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11969,
+			"end_sample": 11979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11979,
+			"end_sample": 11989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11989,
+			"end_sample": 11999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11929,
+			"end_sample": 11999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 11929,
+			"end_sample": 11999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 12559,
+			"end_sample": 12569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12559,
+			"end_sample": 12569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 12569,
+			"end_sample": 12579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12579,
+			"end_sample": 12589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12589,
+			"end_sample": 12599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12599,
+			"end_sample": 12609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12609,
+			"end_sample": 12619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12619,
+			"end_sample": 12629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12629,
+			"end_sample": 12639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12639,
+			"end_sample": 12649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12649,
+			"end_sample": 12659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12659,
+			"end_sample": 12669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12669,
+			"end_sample": 12679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12569,
+			"end_sample": 12679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 12679,
+			"end_sample": 12689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12689,
+			"end_sample": 12699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12689,
+			"end_sample": 12699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 12699,
+			"end_sample": 12709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12699,
+			"end_sample": 12709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12679,
+			"end_sample": 12689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 12709,
+			"end_sample": 12719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12719,
+			"end_sample": 12729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12729,
+			"end_sample": 12739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12739,
+			"end_sample": 12749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12709,
+			"end_sample": 12749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12749,
+			"end_sample": 12759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12759,
+			"end_sample": 12769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12769,
+			"end_sample": 12779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12779,
+			"end_sample": 12789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12789,
+			"end_sample": 12799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12799,
+			"end_sample": 12809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12809,
+			"end_sample": 12819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12819,
+			"end_sample": 12829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12829,
+			"end_sample": 12839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12839,
+			"end_sample": 12849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12849,
+			"end_sample": 12859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12859,
+			"end_sample": 12869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12869,
+			"end_sample": 12879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12879,
+			"end_sample": 12889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12889,
+			"end_sample": 12899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12749,
+			"end_sample": 12899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 12899,
+			"end_sample": 12909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12899,
+			"end_sample": 12909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12899,
+			"end_sample": 12909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 12909,
+			"end_sample": 12919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12909,
+			"end_sample": 12919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 12919,
+			"end_sample": 12929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12919,
+			"end_sample": 12929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12919,
+			"end_sample": 12929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 12929,
+			"end_sample": 12939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12939,
+			"end_sample": 12949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12949,
+			"end_sample": 12959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12959,
+			"end_sample": 12969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12969,
+			"end_sample": 12979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12979,
+			"end_sample": 12989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12989,
+			"end_sample": 12999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12929,
+			"end_sample": 12999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 12929,
+			"end_sample": 12999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 13559,
+			"end_sample": 13569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13559,
+			"end_sample": 13569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 13569,
+			"end_sample": 13579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13579,
+			"end_sample": 13589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13589,
+			"end_sample": 13599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13599,
+			"end_sample": 13609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13609,
+			"end_sample": 13619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13619,
+			"end_sample": 13629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13629,
+			"end_sample": 13639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13639,
+			"end_sample": 13649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13649,
+			"end_sample": 13659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13659,
+			"end_sample": 13669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13669,
+			"end_sample": 13679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13569,
+			"end_sample": 13679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 13679,
+			"end_sample": 13689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13689,
+			"end_sample": 13699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13689,
+			"end_sample": 13699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 13699,
+			"end_sample": 13709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13699,
+			"end_sample": 13709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13679,
+			"end_sample": 13689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 13709,
+			"end_sample": 13719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13719,
+			"end_sample": 13729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13729,
+			"end_sample": 13739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13739,
+			"end_sample": 13749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13709,
+			"end_sample": 13749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13749,
+			"end_sample": 13759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13759,
+			"end_sample": 13769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13769,
+			"end_sample": 13779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13779,
+			"end_sample": 13789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13789,
+			"end_sample": 13799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13799,
+			"end_sample": 13809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13809,
+			"end_sample": 13819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13819,
+			"end_sample": 13829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13829,
+			"end_sample": 13839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13839,
+			"end_sample": 13849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13849,
+			"end_sample": 13859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13859,
+			"end_sample": 13869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13869,
+			"end_sample": 13879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13879,
+			"end_sample": 13889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13889,
+			"end_sample": 13899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13749,
+			"end_sample": 13899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 13899,
+			"end_sample": 13909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13899,
+			"end_sample": 13909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13899,
+			"end_sample": 13909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 13909,
+			"end_sample": 13919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13909,
+			"end_sample": 13919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 13919,
+			"end_sample": 13929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13919,
+			"end_sample": 13929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13919,
+			"end_sample": 13929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 13929,
+			"end_sample": 13939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13939,
+			"end_sample": 13949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13949,
+			"end_sample": 13959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13959,
+			"end_sample": 13969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13969,
+			"end_sample": 13979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13979,
+			"end_sample": 13989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13989,
+			"end_sample": 13999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13929,
+			"end_sample": 13999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 13929,
+			"end_sample": 13999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 14559,
+			"end_sample": 14569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14559,
+			"end_sample": 14569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 14569,
+			"end_sample": 14579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14579,
+			"end_sample": 14589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14589,
+			"end_sample": 14599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14599,
+			"end_sample": 14609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14609,
+			"end_sample": 14619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14619,
+			"end_sample": 14629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14629,
+			"end_sample": 14639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14639,
+			"end_sample": 14649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14649,
+			"end_sample": 14659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14659,
+			"end_sample": 14669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14669,
+			"end_sample": 14679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14569,
+			"end_sample": 14679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 14679,
+			"end_sample": 14689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14689,
+			"end_sample": 14699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14689,
+			"end_sample": 14699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 14699,
+			"end_sample": 14709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14699,
+			"end_sample": 14709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14679,
+			"end_sample": 14689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 14709,
+			"end_sample": 14719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14719,
+			"end_sample": 14729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14729,
+			"end_sample": 14739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14739,
+			"end_sample": 14749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14709,
+			"end_sample": 14749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14749,
+			"end_sample": 14759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14759,
+			"end_sample": 14769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14769,
+			"end_sample": 14779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14779,
+			"end_sample": 14789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14789,
+			"end_sample": 14799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14799,
+			"end_sample": 14809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14809,
+			"end_sample": 14819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14819,
+			"end_sample": 14829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14829,
+			"end_sample": 14839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14839,
+			"end_sample": 14849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14849,
+			"end_sample": 14859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14859,
+			"end_sample": 14869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14869,
+			"end_sample": 14879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14879,
+			"end_sample": 14889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14889,
+			"end_sample": 14899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14749,
+			"end_sample": 14899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 14899,
+			"end_sample": 14909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14899,
+			"end_sample": 14909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14899,
+			"end_sample": 14909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 14909,
+			"end_sample": 14919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14909,
+			"end_sample": 14919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 14919,
+			"end_sample": 14929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14919,
+			"end_sample": 14929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14919,
+			"end_sample": 14929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 14929,
+			"end_sample": 14939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14939,
+			"end_sample": 14949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14949,
+			"end_sample": 14959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14959,
+			"end_sample": 14969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14969,
+			"end_sample": 14979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14979,
+			"end_sample": 14989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14989,
+			"end_sample": 14999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14929,
+			"end_sample": 14999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 14929,
+			"end_sample": 14999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 15559,
+			"end_sample": 15569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15559,
+			"end_sample": 15569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 15569,
+			"end_sample": 15579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15579,
+			"end_sample": 15589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15589,
+			"end_sample": 15599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15599,
+			"end_sample": 15609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15609,
+			"end_sample": 15619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15619,
+			"end_sample": 15629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15629,
+			"end_sample": 15639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15639,
+			"end_sample": 15649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15649,
+			"end_sample": 15659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15659,
+			"end_sample": 15669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15669,
+			"end_sample": 15679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15569,
+			"end_sample": 15679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 15679,
+			"end_sample": 15689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15689,
+			"end_sample": 15699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15689,
+			"end_sample": 15699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 15699,
+			"end_sample": 15709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15699,
+			"end_sample": 15709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15679,
+			"end_sample": 15689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 15709,
+			"end_sample": 15719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15719,
+			"end_sample": 15729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15729,
+			"end_sample": 15739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15739,
+			"end_sample": 15749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15709,
+			"end_sample": 15749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15749,
+			"end_sample": 15759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15759,
+			"end_sample": 15769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15769,
+			"end_sample": 15779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15779,
+			"end_sample": 15789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15789,
+			"end_sample": 15799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15799,
+			"end_sample": 15809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15809,
+			"end_sample": 15819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15819,
+			"end_sample": 15829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15829,
+			"end_sample": 15839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15839,
+			"end_sample": 15849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15849,
+			"end_sample": 15859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15859,
+			"end_sample": 15869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15869,
+			"end_sample": 15879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15879,
+			"end_sample": 15889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15889,
+			"end_sample": 15899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15749,
+			"end_sample": 15899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 15899,
+			"end_sample": 15909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15899,
+			"end_sample": 15909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15899,
+			"end_sample": 15909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 15909,
+			"end_sample": 15919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15909,
+			"end_sample": 15919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 15919,
+			"end_sample": 15929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15919,
+			"end_sample": 15929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15919,
+			"end_sample": 15929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 15929,
+			"end_sample": 15939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15939,
+			"end_sample": 15949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15949,
+			"end_sample": 15959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15959,
+			"end_sample": 15969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15969,
+			"end_sample": 15979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15979,
+			"end_sample": 15989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15989,
+			"end_sample": 15999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15929,
+			"end_sample": 15999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 15929,
+			"end_sample": 15999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 16559,
+			"end_sample": 16569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16559,
+			"end_sample": 16569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 16569,
+			"end_sample": 16579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16579,
+			"end_sample": 16589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16589,
+			"end_sample": 16599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16599,
+			"end_sample": 16609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16609,
+			"end_sample": 16619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16619,
+			"end_sample": 16629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16629,
+			"end_sample": 16639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16639,
+			"end_sample": 16649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16649,
+			"end_sample": 16659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16659,
+			"end_sample": 16669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16669,
+			"end_sample": 16679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16569,
+			"end_sample": 16679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 16679,
+			"end_sample": 16689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16689,
+			"end_sample": 16699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16689,
+			"end_sample": 16699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 16699,
+			"end_sample": 16709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16699,
+			"end_sample": 16709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16679,
+			"end_sample": 16689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 16709,
+			"end_sample": 16719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16719,
+			"end_sample": 16729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16729,
+			"end_sample": 16739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16739,
+			"end_sample": 16749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16709,
+			"end_sample": 16749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16749,
+			"end_sample": 16759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16759,
+			"end_sample": 16769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16769,
+			"end_sample": 16779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16779,
+			"end_sample": 16789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16789,
+			"end_sample": 16799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16799,
+			"end_sample": 16809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16809,
+			"end_sample": 16819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16819,
+			"end_sample": 16829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16829,
+			"end_sample": 16839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16839,
+			"end_sample": 16849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16849,
+			"end_sample": 16859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16859,
+			"end_sample": 16869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16869,
+			"end_sample": 16879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16879,
+			"end_sample": 16889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16889,
+			"end_sample": 16899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16749,
+			"end_sample": 16899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 16899,
+			"end_sample": 16909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16899,
+			"end_sample": 16909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16899,
+			"end_sample": 16909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 16909,
+			"end_sample": 16919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16909,
+			"end_sample": 16919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 16919,
+			"end_sample": 16929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16919,
+			"end_sample": 16929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16919,
+			"end_sample": 16929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 16929,
+			"end_sample": 16939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16939,
+			"end_sample": 16949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16949,
+			"end_sample": 16959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16959,
+			"end_sample": 16969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16969,
+			"end_sample": 16979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16979,
+			"end_sample": 16989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16989,
+			"end_sample": 16999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16929,
+			"end_sample": 16999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 16929,
+			"end_sample": 16999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 17559,
+			"end_sample": 17569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17559,
+			"end_sample": 17569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 17569,
+			"end_sample": 17579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17579,
+			"end_sample": 17589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17589,
+			"end_sample": 17599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17599,
+			"end_sample": 17609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17609,
+			"end_sample": 17619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17619,
+			"end_sample": 17629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17629,
+			"end_sample": 17639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17639,
+			"end_sample": 17649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17649,
+			"end_sample": 17659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17659,
+			"end_sample": 17669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17669,
+			"end_sample": 17679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17569,
+			"end_sample": 17679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 17679,
+			"end_sample": 17689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17689,
+			"end_sample": 17699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17689,
+			"end_sample": 17699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 17699,
+			"end_sample": 17709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17699,
+			"end_sample": 17709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17679,
+			"end_sample": 17689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 17709,
+			"end_sample": 17719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17719,
+			"end_sample": 17729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17729,
+			"end_sample": 17739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17739,
+			"end_sample": 17749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17709,
+			"end_sample": 17749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17749,
+			"end_sample": 17759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17759,
+			"end_sample": 17769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17769,
+			"end_sample": 17779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17779,
+			"end_sample": 17789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17789,
+			"end_sample": 17799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17799,
+			"end_sample": 17809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17809,
+			"end_sample": 17819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17819,
+			"end_sample": 17829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17829,
+			"end_sample": 17839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17839,
+			"end_sample": 17849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17849,
+			"end_sample": 17859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17859,
+			"end_sample": 17869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17869,
+			"end_sample": 17879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17879,
+			"end_sample": 17889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17889,
+			"end_sample": 17899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17749,
+			"end_sample": 17899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 17899,
+			"end_sample": 17909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17899,
+			"end_sample": 17909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17899,
+			"end_sample": 17909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 17909,
+			"end_sample": 17919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17909,
+			"end_sample": 17919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 17919,
+			"end_sample": 17929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17919,
+			"end_sample": 17929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17919,
+			"end_sample": 17929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 17929,
+			"end_sample": 17939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17939,
+			"end_sample": 17949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17949,
+			"end_sample": 17959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17959,
+			"end_sample": 17969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17969,
+			"end_sample": 17979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17979,
+			"end_sample": 17989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17989,
+			"end_sample": 17999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17929,
+			"end_sample": 17999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 17929,
+			"end_sample": 17999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 18559,
+			"end_sample": 18569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18559,
+			"end_sample": 18569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 18569,
+			"end_sample": 18579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18579,
+			"end_sample": 18589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18589,
+			"end_sample": 18599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18599,
+			"end_sample": 18609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18609,
+			"end_sample": 18619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18619,
+			"end_sample": 18629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18629,
+			"end_sample": 18639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18639,
+			"end_sample": 18649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18649,
+			"end_sample": 18659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18659,
+			"end_sample": 18669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18669,
+			"end_sample": 18679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18569,
+			"end_sample": 18679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 18679,
+			"end_sample": 18689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18689,
+			"end_sample": 18699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18689,
+			"end_sample": 18699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 18699,
+			"end_sample": 18709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18699,
+			"end_sample": 18709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18679,
+			"end_sample": 18689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 18709,
+			"end_sample": 18719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18719,
+			"end_sample": 18729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18729,
+			"end_sample": 18739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18739,
+			"end_sample": 18749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18709,
+			"end_sample": 18749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18749,
+			"end_sample": 18759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18759,
+			"end_sample": 18769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18769,
+			"end_sample": 18779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18779,
+			"end_sample": 18789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18789,
+			"end_sample": 18799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18799,
+			"end_sample": 18809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18809,
+			"end_sample": 18819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18819,
+			"end_sample": 18829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18829,
+			"end_sample": 18839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18839,
+			"end_sample": 18849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18849,
+			"end_sample": 18859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18859,
+			"end_sample": 18869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18869,
+			"end_sample": 18879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18879,
+			"end_sample": 18889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18889,
+			"end_sample": 18899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18749,
+			"end_sample": 18899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 18899,
+			"end_sample": 18909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18899,
+			"end_sample": 18909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18899,
+			"end_sample": 18909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 18909,
+			"end_sample": 18919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18909,
+			"end_sample": 18919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 18919,
+			"end_sample": 18929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18919,
+			"end_sample": 18929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18919,
+			"end_sample": 18929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 18929,
+			"end_sample": 18939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18939,
+			"end_sample": 18949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18949,
+			"end_sample": 18959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18959,
+			"end_sample": 18969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18969,
+			"end_sample": 18979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18979,
+			"end_sample": 18989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18989,
+			"end_sample": 18999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18929,
+			"end_sample": 18999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 18929,
+			"end_sample": 18999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}, 
+		{
+			"start_sample": 19559,
+			"end_sample": 19569,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19559,
+			"end_sample": 19569,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 19569,
+			"end_sample": 19579,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19579,
+			"end_sample": 19589,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19589,
+			"end_sample": 19599,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19599,
+			"end_sample": 19609,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19609,
+			"end_sample": 19619,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19619,
+			"end_sample": 19629,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19629,
+			"end_sample": 19639,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19639,
+			"end_sample": 19649,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19649,
+			"end_sample": 19659,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19659,
+			"end_sample": 19669,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19669,
+			"end_sample": 19679,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19569,
+			"end_sample": 19679,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 19679,
+			"end_sample": 19689,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19689,
+			"end_sample": 19699,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19689,
+			"end_sample": 19699,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 19699,
+			"end_sample": 19709,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19699,
+			"end_sample": 19709,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19679,
+			"end_sample": 19689,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 19709,
+			"end_sample": 19719,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19719,
+			"end_sample": 19729,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19729,
+			"end_sample": 19739,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19739,
+			"end_sample": 19749,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19709,
+			"end_sample": 19749,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data length code: 0", 
+				"DLC: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19749,
+			"end_sample": 19759,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19759,
+			"end_sample": 19769,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19769,
+			"end_sample": 19779,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19779,
+			"end_sample": 19789,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19789,
+			"end_sample": 19799,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19799,
+			"end_sample": 19809,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19809,
+			"end_sample": 19819,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19819,
+			"end_sample": 19829,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19829,
+			"end_sample": 19839,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19839,
+			"end_sample": 19849,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19849,
+			"end_sample": 19859,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19859,
+			"end_sample": 19869,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19869,
+			"end_sample": 19879,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19879,
+			"end_sample": 19889,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19889,
+			"end_sample": 19899,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19749,
+			"end_sample": 19899,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"CRC-15 sequence: 0x0000", 
+				"CRC-15: 0x0000", 
+				"0x0000"
+			]
+		}, 
+		{
+			"start_sample": 19899,
+			"end_sample": 19909,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19899,
+			"end_sample": 19909,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"CRC delimiter: 0", 
+				"CRC d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19899,
+			"end_sample": 19909,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"CRC delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 19909,
+			"end_sample": 19919,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19909,
+			"end_sample": 19919,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"ACK slot: ACK", 
+				"ACK s: ACK", 
+				"ACK"
+			]
+		}, 
+		{
+			"start_sample": 19919,
+			"end_sample": 19929,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19919,
+			"end_sample": 19929,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"ACK delimiter: 0", 
+				"ACK d: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19919,
+			"end_sample": 19929,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"ACK delimiter must be a recessive bit"
+			]
+		}, 
+		{
+			"start_sample": 19929,
+			"end_sample": 19939,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19939,
+			"end_sample": 19949,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19949,
+			"end_sample": 19959,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19959,
+			"end_sample": 19969,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19969,
+			"end_sample": 19979,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19979,
+			"end_sample": 19989,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19989,
+			"end_sample": 19999,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19929,
+			"end_sample": 19999,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"End of frame", 
+				"EOF", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 19929,
+			"end_sample": 19999,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"End of frame (EOF) must be 7 recessive bits"
+			]
+		}
+	]
+}

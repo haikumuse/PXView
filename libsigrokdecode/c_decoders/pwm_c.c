@@ -24,7 +24,7 @@ typedef struct {
 } pwm_state;
 
 static struct srd_channel pwm_channels[] = {
-    { "data", "Data", "Data line", 0, SRD_CHANNEL_SDATA, NULL },
+    { "data", "Data", "Data line", 0, SRD_CHANNEL_SDATA, "dec_pwm_chan_data" },
 };
 
 static struct srd_decoder_option pwm_options[] = {
@@ -149,7 +149,7 @@ static void pwm_decode(struct srd_decoder_inst* di)
         } else if (period_t <= 1e-6) {
             snprintf(period_s, sizeof(period_s), "%.1f ns", period_t * 1e9);
         } else if (period_t <= 1e-3) {
-            snprintf(period_s, sizeof(period_s), "%.1f \xce\xbc s", period_t * 1e6);
+            snprintf(period_s, sizeof(period_s), "%.1f \xce\xbcs", period_t * 1e6);
         } else {
             snprintf(period_s, sizeof(period_s), "%.1f ms", period_t * 1e3);
         }

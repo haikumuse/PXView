@@ -35,12 +35,12 @@
 - [ ] microwire_c.c: 协议输出格式与Python兼容
 - [ ] mdio_c.c: 协议输出格式与Python兼容（元组格式）
 - [ ] mdio_c.c: ta_invalid/op_invalid使用字符串表示
-- [ ] ps2_c.c: ATK颜色/点注解已添加（与Python一致的颜色值）
-- [ ] ps2_c.c: Word注解范围仅包含8个数据位（不含奇偶校验位）
-- [ ] ir_nec_c.c: 设备名/按键名查找表已硬编码
-- [ ] ir_nec_c.c: REMOTE annotation包含设备名和按键名
-- [ ] ir_rc5_c.c: 系统名/命令名查找表已硬编码
-- [ ] ir_rc5_c.c: Address/Command annotation包含系统名和命令名
+- [x] ps2_c.c: ATK颜色/点注解已添加（与Python一致的颜色值）
+- [x] ps2_c.c: Word注解范围仅包含8个数据位（不含奇偶校验位）
+- [x] ir_nec_c.c: 设备名/按键名查找表已硬编码
+- [x] ir_nec_c.c: REMOTE annotation包含设备名和按键名
+- [x] ir_rc5_c.c: 系统名/命令名查找表已硬编码
+- [x] ir_rc5_c.c: Address/Command annotation包含系统名和命令名
 - [ ] ir_sirc_c.c: 设备名查找表已硬编码
 - [ ] ir_sirc_c.c: REMOTE annotation包含设备名
 - [ ] spdif_c.c: 重检逻辑已实现（避免丢失初始数据）
@@ -55,3 +55,13 @@
 
 - [ ] 所有修改的C解码器编译通过
 - [ ] 无编译错误和警告
+
+## 审查回归Bug验证
+
+- [x] lin_c.c: calc_parity()返回值位位置正确（p0在bit0, p1在bit1）
+- [x] ir_nec_c.c: putpause()/putd()/handle_bit()使用实际samplenum作为end sample
+- [x] swd_c.c: 协议输出字符串使用下划线（AP_READ/DP_READ/AP_WRITE/DP_WRITE）
+- [x] i2s_c.c: channels和options的idn字段已填充
+- [x] jtag_c.c: 使用c_decoder_has_channel() API替代直接结构体访问
+- [x] iso7816_c.c: PCAP输出包含GSMTAP over UDP/IP/Ethernet封装
+- [x] onewire_c.c: 过驱动模式short_thresh为2us

@@ -71,6 +71,124 @@ static const char* rc5_inputs[] = { "logic", NULL };
 static const char* rc5_outputs[] = { NULL };
 static const char* rc5_tags[] = { "IR", NULL };
 
+/* System name lookup table (from ir_rc5/lists.py) */
+typedef struct {
+    int addr;
+    const char* name_long;
+    const char* name_short;
+} rc5_system_entry;
+
+static const rc5_system_entry rc5_system_table[] = {
+    { 0, "TV receiver 1", "TV1" },
+    { 1, "TV receiver 2", "TV2" },
+    { 2, "Teletext", "Txt" },
+    { 3, "Extension to TV1 and TV2", "Ext TV1/TV2" },
+    { 4, "LaserVision player", "LV" },
+    { 5, "Video cassette recorder 1", "VCR1" },
+    { 6, "Video cassette recorder 2", "VCR2" },
+    { 7, "Experimental", "Exp" },
+    { 8, "Satellite TV receiver 1", "Sat1" },
+    { 9, "Extension to VCR1 and VCR2", "Ext VCR1/VCR2" },
+    { 10, "Satellite TV receiver 2", "Sat2" },
+    { 12, "Compact disc video player", "CD-Video" },
+    { 13, "Camcorder", "Cam" },
+    { 14, "Photo on compact disc player", "CD-Photo" },
+    { 16, "Audio preamplifier 1", "Preamp1" },
+    { 17, "Radio tuner", "Tuner" },
+    { 18, "Analog cassette recoder 1", "Rec1" },
+    { 19, "Audio preamplifier 2", "Preamp2" },
+    { 20, "Compact disc player", "CD" },
+    { 21, "Audio stack or record player", "Combi" },
+    { 22, "Audio satellite", "Sat" },
+    { 23, "Analog cassette recoder 2", "Rec2" },
+    { 26, "Compact disc recorder", "CD-R" },
+    { 29, "Lighting 1", "Light1" },
+    { 30, "Lighting 2", "Light2" },
+    { 31, "Telephone", "Phone" },
+};
+
+#define RC5_SYSTEM_TABLE_SIZE (sizeof(rc5_system_table) / sizeof(rc5_system_table[0]))
+
+/* Command name lookup tables (from ir_rc5/lists.py) */
+typedef struct {
+    int cmd;
+    const char* name_long;
+    const char* name_short;
+} rc5_command_entry;
+
+static const rc5_command_entry rc5_tv_commands[] = {
+    { 0, "0", "0" },
+    { 1, "1", "1" },
+    { 2, "2", "2" },
+    { 3, "3", "3" },
+    { 4, "4", "4" },
+    { 5, "5", "5" },
+    { 6, "6", "6" },
+    { 7, "7", "7" },
+    { 8, "8", "8" },
+    { 9, "9", "9" },
+    { 10, "-/--", "-/--" },
+    { 11, "Channel/program", "Ch/P" },
+    { 12, "Standby", "StBy" },
+    { 13, "Mute", "M" },
+    { 14, "Personal preferences", "PP" },
+    { 15, "Display", "Disp" },
+    { 16, "Volume up", "Vol+" },
+    { 17, "Volume down", "Vol-" },
+    { 18, "Brightness up", "Br+" },
+    { 19, "Brightness down", "Br-" },
+    { 20, "Saturation up", "S+" },
+    { 21, "Saturation down", "S-" },
+    { 32, "Program up", "P+" },
+    { 33, "Program down", "P-" },
+};
+
+#define RC5_TV_COMMANDS_SIZE (sizeof(rc5_tv_commands) / sizeof(rc5_tv_commands[0]))
+
+static const rc5_command_entry rc5_vcr_commands[] = {
+    { 0, "0", "0" },
+    { 1, "1", "1" },
+    { 2, "2", "2" },
+    { 3, "3", "3" },
+    { 4, "4", "4" },
+    { 5, "5", "5" },
+    { 6, "6", "6" },
+    { 7, "7", "7" },
+    { 8, "8", "8" },
+    { 9, "9", "9" },
+    { 10, "-/--", "-/--" },
+    { 12, "Standby", "StBy" },
+    { 32, "Program up", "P+" },
+    { 33, "Program down", "P-" },
+    { 50, "Fast rewind", "FRW" },
+    { 52, "Fast forward", "FFW" },
+    { 53, "Play", "Pl" },
+    { 54, "Stop", "St" },
+    { 55, "Recording", "Rec" },
+};
+
+#define RC5_VCR_COMMANDS_SIZE (sizeof(rc5_vcr_commands) / sizeof(rc5_vcr_commands[0]))
+
+static const rc5_system_entry* rc5_lookup_system(int addr)
+{
+    int i;
+    for (i = 0; i < (int)RC5_SYSTEM_TABLE_SIZE; i++) {
+        if (rc5_system_table[i].addr == addr)
+            return &rc5_system_table[i];
+    }
+    return NULL;
+}
+
+static const rc5_command_entry* rc5_lookup_command(const rc5_command_entry* table, int table_size, int cmd)
+{
+    int i;
+    for (i = 0; i < table_size; i++) {
+        if (table[i].cmd == cmd)
+            return &table[i];
+    }
+    return NULL;
+}
+
 static char rc5_edge_type(struct rc5_priv* s, uint64_t samplenum)
 {
     uint64_t distance = samplenum - s->edges[s->num_edges - 1];
@@ -158,9 +276,12 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
     for (i = 0; i < 5; i++)
         a |= (s->bits_val[3 + i] << (4 - i));
     {
-        char str1[32], str2[32], str3[16], str4[8], str5[4];
-        snprintf(str1, sizeof(str1), "Address: %d", a);
-        snprintf(str2, sizeof(str2), "Addr: %d", a);
+        const rc5_system_entry* sys = rc5_lookup_system(a);
+        const char* sys_long = sys ? sys->name_long : "Unknown";
+        const char* sys_short = sys ? sys->name_short : "Unk";
+        char str1[64], str2[64], str3[32], str4[16], str5[4];
+        snprintf(str1, sizeof(str1), "Address: %d (%s)", a, sys_long);
+        snprintf(str2, sizeof(str2), "Addr: %d (%s)", a, sys_short);
         snprintf(str3, sizeof(str3), "Addr: %d", a);
         snprintf(str4, sizeof(str4), "A: %d", a);
         snprintf(str5, sizeof(str5), "A");
@@ -175,9 +296,19 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
         c |= (inverted_bit6 << 6);
     }
     {
-        char str1[32], str2[32], str3[16], str4[8], str5[4];
-        snprintf(str1, sizeof(str1), "Command: %d", c);
-        snprintf(str2, sizeof(str2), "Cmd: %d", c);
+        const rc5_system_entry* sys = rc5_lookup_system(a);
+        const char* sys_short = sys ? sys->name_short : "Unk";
+        int is_vcr = (sys_short && (strcmp(sys_short, "VCR1") == 0 || strcmp(sys_short, "VCR2") == 0));
+        const rc5_command_entry* cmd_entry;
+        if (is_vcr)
+            cmd_entry = rc5_lookup_command(rc5_vcr_commands, RC5_VCR_COMMANDS_SIZE, c);
+        else
+            cmd_entry = rc5_lookup_command(rc5_tv_commands, RC5_TV_COMMANDS_SIZE, c);
+        const char* cmd_long = cmd_entry ? cmd_entry->name_long : "Unknown";
+        const char* cmd_short = cmd_entry ? cmd_entry->name_short : "Unk";
+        char str1[64], str2[64], str3[32], str4[16], str5[4];
+        snprintf(str1, sizeof(str1), "Command: %d (%s)", c, cmd_long);
+        snprintf(str2, sizeof(str2), "Cmd: %d (%s)", c, cmd_short);
         snprintf(str3, sizeof(str3), "Cmd: %d", c);
         snprintf(str4, sizeof(str4), "C: %d", c);
         snprintf(str5, sizeof(str5), "C");
@@ -233,10 +364,13 @@ static void rc5_decode(struct srd_decoder_inst* di)
 
     while (1) {
         srd_cond_builder* cb = c_cond_new();
+        /* Python uses {0: self.next_edge} where next_edge is 'l' or 'h'
+         * (LEVEL conditions), not edge conditions. Use c_cond_low/high
+         * to match Python's behavior. */
         if (s->next_edge_is_low)
-            c_cond_fall(cb, IR_CH);
+            c_cond_low(cb, IR_CH);
         else
-            c_cond_rise(cb, IR_CH);
+            c_cond_high(cb, IR_CH);
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
         if (ret != SRD_OK)

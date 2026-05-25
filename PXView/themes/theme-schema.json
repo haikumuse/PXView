@@ -48,6 +48,7 @@
         { "id": "@winbtn-hover", "type": "color", "label": "IDS_STYLE_WINBTN_HOVER" },
         { "id": "@winbtn-pressed", "type": "color", "label": "IDS_STYLE_WINBTN_PRESSED" },
         { "id": "@flat-hover-bg", "type": "color", "label": "IDS_STYLE_FLAT_HOVER_BG" },
+        { "id": "@flat-hover-fg", "type": "color", "label": "IDS_STYLE_FLAT_HOVER_FG" },
         { "id": "@btn-checked-mid", "type": "color", "label": "IDS_STYLE_BTN_CHECKED_MID" }
       ]
     },
@@ -70,6 +71,7 @@
         { "id": "@combo-highlight", "type": "color", "label": "IDS_STYLE_COMBO_HIGHLIGHT" },
         { "id": "@dock-gridline", "type": "color", "label": "IDS_STYLE_DOCK_GRIDLINE" },
         { "id": "@dock-section-title-fg", "type": "color", "label": "IDS_STYLE_DOCK_SECTION_TITLE_FG" },
+        { "id": "@gridline", "type": "color", "label": "IDS_STYLE_GRIDLINE" },
         { "id": "@search-input-label", "type": "color", "label": "IDS_STYLE_SEARCH_INPUT_LABEL" }
       ]
     },

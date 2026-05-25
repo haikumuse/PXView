@@ -1,0 +1,12 @@
+{
+  "decoder": "i2s_c",
+  "samplerate": 1000000,
+  "num_channels": 3,
+  "sample_count": 20000,
+  "channels": {
+    "sck": 0,
+    "ws": 1,
+    "sd": 2
+  },
+  "stack": []
+}

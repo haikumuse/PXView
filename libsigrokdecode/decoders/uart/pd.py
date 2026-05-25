@@ -264,9 +264,6 @@ class Decoder(srd.Decoder):
         self.init_format()
         self.init_packet_idle()
         self.init_state_machine()
-        for rxtx in (RX, TX):
-            channel_rxtx = Ann.RX_DATA + rxtx
-            self.putgse(0, 0, [channel_rxtx, ['%d'.format(channel_rxtx)]])
 
 
     def metadata(self, key, value):

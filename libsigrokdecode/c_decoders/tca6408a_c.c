@@ -120,8 +120,13 @@ static void tca6408a_recv_proto(struct srd_decoder_inst *di,
         if (strcmp(cmd, "START") == 0)
             s->state = TCA6408A_GET_SLAVE_ADDR;
     } else if (s->state == TCA6408A_GET_SLAVE_ADDR) {
-        s->chip = (data_len > 0) ? data[0] : 0;
-        s->state = TCA6408A_GET_REG_ADDR;
+        /* Only process ADDRESS WRITE/READ commands, ignore BITS etc. */
+        if (strcmp(cmd, "ADDRESS WRITE") == 0 || strcmp(cmd, "ADDRESS READ") == 0) {
+            s->chip = (data_len > 0) ? data[0] : 0;
+            tca6408a_check_correct_chip(di, s, s->chip);
+            if (s->state != TCA6408A_IDLE)
+                s->state = TCA6408A_GET_REG_ADDR;
+        }
     } else if (s->state == TCA6408A_GET_REG_ADDR) {
         if (strcmp(cmd, "ADDRESS READ") == 0 || strcmp(cmd, "ADDRESS WRITE") == 0) {
             tca6408a_check_correct_chip(di, s, (data_len > 0) ? data[0] : 0);

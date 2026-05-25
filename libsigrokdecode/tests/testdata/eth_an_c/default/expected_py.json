@@ -1,0 +1,7 @@
+{
+	"decoder": "eth_auto_negotiation",
+	"samplerate": 50000000,
+	"num_annotations": 0,
+	"annotations": [
+	]
+}

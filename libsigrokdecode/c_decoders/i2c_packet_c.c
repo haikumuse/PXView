@@ -113,8 +113,8 @@ static void i2c_packet_format_current(i2c_packet_state *s,
 
     pos += snprintf(cur_str + pos, cur_len - pos, "0x%02X %s: ",
                     s->address, s->read_sign ? "RD" : "WR");
-    spos += snprintf(cur_short + spos, short_len - spos, "%s: ",
-                     s->read_sign ? "RD" : "WR");
+    spos += snprintf(cur_short + spos, short_len - spos, "%02X %s: ",
+                     s->address, s->read_sign ? "RD" : "WR");
 
     for (int i = 0; i < s->packet_data_len; i++) {
         char vbuf[16];
@@ -177,14 +177,19 @@ static void i2c_packet_handle_packet(struct srd_decoder_inst *di,
     } else {
         /* Final output annotation */
         char final_str[MAX_STR_LEN * 2];
+        char final_short[MAX_STR_LEN];
         if (s->packet_str[0]) {
             snprintf(final_str, sizeof(final_str), "%s [SR] %s",
                      s->packet_str, cur_str);
+            snprintf(final_short, sizeof(final_short), "%s [SR] %s",
+                     s->packet_str_short, cur_short);
         } else {
             strncpy(final_str, cur_str, sizeof(final_str) - 1);
             final_str[sizeof(final_str) - 1] = '\0';
+            strncpy(final_short, cur_short, sizeof(final_short) - 1);
+            final_short[sizeof(final_short) - 1] = '\0';
         }
-        C_ANN_PUT(di, s->packet_ss, s->packet_es, s->out_ann, ANN_DATA, final_str);
+        C_ANN_PUT(di, s->packet_ss, s->packet_es, s->out_ann, ANN_DATA, final_str, final_short);
         i2c_packet_reset_state(s);
     }
 }

@@ -1,0 +1,11 @@
+{
+  "decoder": "spacewire_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "data": 0,
+    "strobe": 1
+  },
+  "stack": []
+}

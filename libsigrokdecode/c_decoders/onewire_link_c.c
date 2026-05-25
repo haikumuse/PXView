@@ -202,9 +202,11 @@ static void owlink_decode(struct srd_decoder_inst *di)
             if (s->ss_rise > 0) {
                 double time_us = (double)(s->ss_fall - s->ss_rise) / (double)s->samplerate * 1000000.0;
                 if (time_us < ow_timing.REC_min[od]) {
-                    char txt[64];
-                    snprintf(txt, sizeof(txt), "Recovery too short, REC < %.0f", ow_timing.REC_min[od]);
-                    C_ANN_PUT(di, s->ss_rise, s->ss_fall, s->out_ann, ANN_WARN, txt);
+                    char txt[64], txt2[64], txt3[64];
+                    snprintf(txt, sizeof(txt), "Recovery time not long enough");
+                    snprintf(txt2, sizeof(txt2), "Recovery too short");
+                    snprintf(txt3, sizeof(txt3), "REC < %.0f", ow_timing.REC_min[od]);
+                    C_ANN_PUT(di, s->ss_rise, s->ss_fall, s->out_ann, ANN_WARN, txt, txt2, txt3);
                 }
             }
             s->state = STATE_LOW;
@@ -226,9 +228,11 @@ static void owlink_decode(struct srd_decoder_inst *di)
             if (time_us >= ow_timing.RSTL_min[0]) {
                 /* Normal reset pulse */
                 if (time_us > ow_timing.RSTL_max[0]) {
-                    char txt[128];
-                    snprintf(txt, sizeof(txt), "Reset pulse too long, RST > %.0f", ow_timing.RSTL_max[0]);
-                    C_ANN_PUT(di, s->ss_fall, s->ss_rise, s->out_ann, ANN_WARN, txt);
+                    char txt[128], txt2[64], txt3[64];
+                    snprintf(txt, sizeof(txt), "Too long reset pulse might mask interrupt signalling by other devices");
+                    snprintf(txt2, sizeof(txt2), "Reset pulse too long");
+                    snprintf(txt3, sizeof(txt3), "RST > %.0f", ow_timing.RSTL_max[0]);
+                    C_ANN_PUT(di, s->ss_fall, s->ss_rise, s->out_ann, ANN_WARN, txt, txt2, txt3);
                 }
                 if (s->overdrive) {
                     C_ANN_PUT(di, s->ss_fall, s->ss_rise, s->out_ann, ANN_OVERDRIVE,
@@ -244,9 +248,11 @@ static void owlink_decode(struct srd_decoder_inst *di)
             } else if (time_us < ow_timing.SLOT_max[od]) {
                 /* Read/write time slot */
                 if (time_us < ow_timing.LOWR_min[od]) {
-                    char txt[64];
-                    snprintf(txt, sizeof(txt), "Low too short, LOW < %.0f", ow_timing.LOWR_min[od]);
-                    C_ANN_PUT(di, s->ss_fall, s->ss_rise, s->out_ann, ANN_WARN, txt);
+                    char txt[64], txt2[64], txt3[64];
+                    snprintf(txt, sizeof(txt), "Low signal not long enough");
+                    snprintf(txt2, sizeof(txt2), "Low too short");
+                    snprintf(txt3, sizeof(txt3), "LOW < %.0f", ow_timing.LOWR_min[od]);
+                    C_ANN_PUT(di, s->ss_fall, s->ss_rise, s->out_ann, ANN_WARN, txt, txt2, txt3);
                 }
                 if (time_us < ow_timing.LOWR_max[od])
                     s->bit_val = 1; /* Short pulse = 1 bit */
@@ -283,9 +289,11 @@ static void owlink_decode(struct srd_decoder_inst *di)
             if ((matched & 0b1) && !(matched & 0b10)) {
                 /* Presence detected (falling edge, not timeout) */
                 if (time_us < ow_timing.PDH_min[od]) {
-                    char txt[64];
-                    snprintf(txt, sizeof(txt), "Presence detect too early, PDH < %.0f", ow_timing.PDH_min[od]);
-                    C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_WARN, txt);
+                    char txt[64], txt2[64], txt3[64];
+                    snprintf(txt, sizeof(txt), "Presence detect signal is too early");
+                    snprintf(txt2, sizeof(txt2), "Presence detect too early");
+                    snprintf(txt3, sizeof(txt3), "PDH < %.0f", ow_timing.PDH_min[od]);
+                    C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_WARN, txt, txt2, txt3);
                 }
                 s->ss_fall = samplenum;
                 s->state = STATE_PRESENCE_DETECT_LOW;
@@ -313,13 +321,17 @@ static void owlink_decode(struct srd_decoder_inst *di)
             od = s->overdrive ? 1 : 0;
 
             if (time_us < ow_timing.PDL_min[od]) {
-                char txt[64];
-                snprintf(txt, sizeof(txt), "Presence detect too short, PDL < %.0f", ow_timing.PDL_min[od]);
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                char txt[64], txt2[64], txt3[64];
+                snprintf(txt, sizeof(txt), "Presence detect signal is too short");
+                snprintf(txt2, sizeof(txt2), "Presence detect too short");
+                snprintf(txt3, sizeof(txt3), "PDL < %.0f", ow_timing.PDL_min[od]);
+                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt, txt2, txt3);
             } else if (time_us > ow_timing.PDL_max[od]) {
-                char txt[64];
-                snprintf(txt, sizeof(txt), "Presence detect too long, PDL > %.0f", ow_timing.PDL_max[od]);
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                char txt[64], txt2[64], txt3[64];
+                snprintf(txt, sizeof(txt), "Presence detect signal is too long");
+                snprintf(txt2, sizeof(txt2), "Presence detect too long");
+                snprintf(txt3, sizeof(txt3), "PDL > %.0f", ow_timing.PDL_max[od]);
+                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt, txt2, txt3);
             }
 
             if (time_us > ow_timing.RSTH_min[od])
@@ -347,9 +359,11 @@ static void owlink_decode(struct srd_decoder_inst *di)
 
             if ((matched & 0b1) && !(matched & 0b10)) {
                 /* Low detected before end of slot */
-                char txt[64];
-                snprintf(txt, sizeof(txt), "Slot too short, SLOT < %.0f", ow_timing.SLOT_min[od]);
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                char txt[64], txt2[64], txt3[64];
+                snprintf(txt, sizeof(txt), "Time slot not long enough");
+                snprintf(txt2, sizeof(txt2), "Slot too short");
+                snprintf(txt3, sizeof(txt3), "SLOT < %.1f", ow_timing.SLOT_min[od]);
+                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt, txt2, txt3);
                 s->ss_fall = samplenum;
                 s->state = STATE_LOW;
             } else {
@@ -402,9 +416,11 @@ static void owlink_decode(struct srd_decoder_inst *di)
 
             if ((matched & 0b1) && !(matched & 0b10)) {
                 /* Low detected before end of presence detect */
-                char txt[64];
-                snprintf(txt, sizeof(txt), "Presence detect too short, RTSH < %.0f", ow_timing.RSTH_min[od]);
-                C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_WARN, txt);
+                char txt[64], txt2[64], txt3[64];
+                snprintf(txt, sizeof(txt), "Presence detect not long enough");
+                snprintf(txt2, sizeof(txt2), "Presence detect too short");
+                snprintf(txt3, sizeof(txt3), "RTSH < %.0f", ow_timing.RSTH_min[od]);
+                C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_WARN, txt, txt2, txt3);
 
                 C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_PRESENCE,
                     "Slave presence detected", "Slave present", "Present", "P");

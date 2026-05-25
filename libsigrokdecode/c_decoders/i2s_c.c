@@ -29,33 +29,24 @@ struct i2s_priv {
 #define NUM_ANN 3
 
 static struct srd_channel i2s_channels[] = {
-    { "sck", "SCK", "Bit clock line", 0, SRD_CHANNEL_SCLK, NULL },
-    { "ws", "WS", "Word select line", 1, SRD_CHANNEL_COMMON, NULL },
-    { "sd", "SD", "Serial data line", 2, SRD_CHANNEL_SDATA, NULL },
+    { "sck", "SCK", "Bit clock line", 0, SRD_CHANNEL_SCLK, "dec_i2s_chan_sck" },
+    { "ws", "WS", "Word select line", 1, SRD_CHANNEL_COMMON, "dec_i2s_chan_ws" },
+    { "sd", "SD", "Serial data line", 2, SRD_CHANNEL_SDATA, "dec_i2s_chan_sd" },
 };
 
 static struct srd_decoder_option i2s_options[] = {
-    { "ws_polarity", NULL, "WS polarity", NULL, NULL },
-    { "clk_edge", NULL, "SCK active edge", NULL, NULL },
-    { "bit_shift", NULL, "Bit shift", NULL, NULL },
-    { "bit_align", NULL, "Bit align", NULL, NULL },
-    { "bitorder", NULL, "Bit order", NULL, NULL },
-    { "wordsize", NULL, "Word size", NULL, NULL },
+    { "ws_polarity", "dec_i2s_opt_ws_polarity", "WS polarity", NULL, NULL },
+    { "clk_edge", "dec_i2s_opt_clk_edge", "SCK active edge", NULL, NULL },
+    { "bit_shift", "dec_i2s_opt_bit_shift", "Bit shift", NULL, NULL },
+    { "bit_align", "dec_i2s_opt_bit_align", "Bit align", NULL, NULL },
+    { "bitorder", "dec_i2s_opt_bitorder", "Bit order", NULL, NULL },
+    { "wordsize", "dec_i2s_opt_wordsize", "Word size", NULL, NULL },
 };
 
 static const char* i2s_ann_labels[][3] = {
     { "", "left", "Left channel" },
     { "", "right", "Right channel" },
     { "", "warnings", "Warnings" },
-};
-
-static const int i2s_row_left_classes[] = { ANN_LEFT, -1 };
-static const int i2s_row_right_classes[] = { ANN_RIGHT, -1 };
-static const int i2s_row_warnings_classes[] = { ANN_WARN, -1 };
-static const struct srd_c_ann_row i2s_ann_rows[] = {
-    { "left", "Left channel", i2s_row_left_classes, 1 },
-    { "right", "Right channel", i2s_row_right_classes, 1 },
-    { "warnings", "Warnings", i2s_row_warnings_classes, 1 },
 };
 
 static const char* i2s_inputs[] = { "logic", NULL };
@@ -85,6 +76,63 @@ static void i2s_reset(struct srd_decoder_inst* di)
     s->samplesreceived = 0;
     s->ss_block = 0;
     s->wrote_wav_header = 0;
+}
+
+static void i2s_wav_header(struct srd_decoder_inst* di, struct i2s_priv* s)
+{
+    unsigned char h[44];
+    int wordlength = s->bit_depth;
+    int num_channels = 2;
+    int bytes_per_sample = (wordlength + 7) / 8;
+    uint32_t sample_rate = 16000;
+    uint32_t byte_rate = sample_rate * num_channels * bytes_per_sample;
+    uint16_t block_align = num_channels * bytes_per_sample;
+    uint16_t bits_per_sample = wordlength;
+    uint32_t data_size = 0xFFFFFFFF;
+
+    /* RIFF chunk descriptor */
+    memcpy(h, "RIFF", 4);
+    uint32_t chunk_size = 36 + data_size;
+    h[4] = chunk_size & 0xFF;
+    h[5] = (chunk_size >> 8) & 0xFF;
+    h[6] = (chunk_size >> 16) & 0xFF;
+    h[7] = (chunk_size >> 24) & 0xFF;
+    memcpy(h + 8, "WAVE", 4);
+
+    /* fmt subchunk */
+    memcpy(h + 12, "fmt ", 4);
+    uint32_t fmt_size = 16;
+    h[16] = fmt_size & 0xFF;
+    h[17] = (fmt_size >> 8) & 0xFF;
+    h[18] = (fmt_size >> 16) & 0xFF;
+    h[19] = (fmt_size >> 24) & 0xFF;
+    uint16_t audio_format = 1; /* PCM */
+    h[20] = audio_format & 0xFF;
+    h[21] = (audio_format >> 8) & 0xFF;
+    h[22] = num_channels & 0xFF;
+    h[23] = (num_channels >> 8) & 0xFF;
+    h[24] = sample_rate & 0xFF;
+    h[25] = (sample_rate >> 8) & 0xFF;
+    h[26] = (sample_rate >> 16) & 0xFF;
+    h[27] = (sample_rate >> 24) & 0xFF;
+    h[28] = byte_rate & 0xFF;
+    h[29] = (byte_rate >> 8) & 0xFF;
+    h[30] = (byte_rate >> 16) & 0xFF;
+    h[31] = (byte_rate >> 24) & 0xFF;
+    h[32] = block_align & 0xFF;
+    h[33] = (block_align >> 8) & 0xFF;
+    h[34] = bits_per_sample & 0xFF;
+    h[35] = (bits_per_sample >> 8) & 0xFF;
+
+    /* data subchunk */
+    memcpy(h + 36, "data", 4);
+    h[40] = data_size & 0xFF;
+    h[41] = (data_size >> 8) & 0xFF;
+    h[42] = (data_size >> 16) & 0xFF;
+    h[43] = (data_size >> 24) & 0xFF;
+
+    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, sizeof(h), h);
+    s->wrote_wav_header = 1;
 }
 
 static void i2s_start(struct srd_decoder_inst* di)
@@ -172,6 +220,10 @@ static void i2s_decode(struct srd_decoder_inst* di)
         if (ws == s->oldws)
             continue;
 
+        if (!s->wrote_wav_header) {
+            i2s_wav_header(di, s);
+        }
+
         s->samplesreceived++;
 
         if (right_shifted) {
@@ -214,13 +266,14 @@ static void i2s_decode(struct srd_decoder_inst* di)
             snprintf(ann3, sizeof(ann3), "%s: %s", c3, v_str);
             C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, idx, ann1, ann2, ann3, c3);
 
-            unsigned char py_data[5];
-            py_data[0] = c3[0];
-            py_data[1] = val & 0xFF;
-            py_data[2] = (val >> 8) & 0xFF;
-            py_data[3] = (val >> 16) & 0xFF;
-            py_data[4] = (val >> 24) & 0xFF;
-            c_decoder_put_python(di, s->ss_block, samplenum, s->out_python, "DATA", py_data, sizeof(py_data));
+            unsigned char py_data[4];
+            py_data[0] = val & 0xFF;
+            py_data[1] = (val >> 8) & 0xFF;
+            py_data[2] = (val >> 16) & 0xFF;
+            py_data[3] = (val >> 24) & 0xFF;
+            char py_cmd[8];
+            snprintf(py_cmd, sizeof(py_cmd), "DATA_%c", c3[0]);
+            c_decoder_put_python(di, s->ss_block, samplenum, s->out_python, py_cmd, py_data, sizeof(py_data));
 
             unsigned char bin_data[4];
             bin_data[0] = val & 0xFF;
@@ -260,8 +313,8 @@ struct srd_c_decoder i2s_c_decoder = {
     .num_options = 6,
     .num_annotations = NUM_ANN,
     .ann_labels = i2s_ann_labels,
-    .num_annotation_rows = 3,
-    .annotation_rows = i2s_ann_rows,
+    .num_annotation_rows = 0,
+    .annotation_rows = NULL,
     .inputs = i2s_inputs,
     .num_inputs = 1,
     .outputs = i2s_outputs,

@@ -1,0 +1,26 @@
+{
+  "decoder": "numbers_and_state_c",
+  "samplerate": 1000000,
+  "num_channels": 17,
+  "sample_count": 20000,
+  "channels": {
+    "clk": 0,
+    "bit0": 1,
+    "bit1": 2,
+    "bit2": 3,
+    "bit3": 4,
+    "bit4": 5,
+    "bit5": 6,
+    "bit6": 7,
+    "bit7": 8,
+    "bit8": 9,
+    "bit9": 10,
+    "bit10": 11,
+    "bit11": 12,
+    "bit12": 13,
+    "bit13": 14,
+    "bit14": 15,
+    "bit15": 16
+  },
+  "stack": []
+}

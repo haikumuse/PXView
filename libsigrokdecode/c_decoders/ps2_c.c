@@ -14,6 +14,7 @@ enum ps2_ann {
     ANN_DATA_BIT,
     ANN_WORD,
     ANN_ACK,
+    ANN_ATK_DATA_POINT,
     NUM_ANN,
 };
 
@@ -38,6 +39,7 @@ struct ps2_priv {
     int htd;
     int htd_clock;
     int dth_clock;
+    int htd_next;  /* HtoDss flag: after DtoH with data-fall, next word is HtoD */
     int out_ann;
     int out_python;
 };
@@ -65,22 +67,25 @@ static struct srd_decoder_option ps2_options[] = {
 };
 
 static const char* ps2_ann_labels[][3] = {
-    { "", "bit", "Bit" },
-    { "", "HSTART", "HSTART" },
-    { "", "DSTART", "DSTART" },
-    { "", "stop-bit", "Stop bit" },
-    { "", "parity-ok", "Parity OK bit" },
-    { "", "parity-err", "Parity error bit" },
-    { "", "data-bit", "Data bit" },
-    { "", "word", "Word" },
-    { "", "ACK", "ACK" },
+    { "207", "bit", "Bit" },
+    { "109", "HSTART", "HSTART" },
+    { "50", "DSTART", "DSTART" },
+    { "1000", "stop-bit", "Stop bit" },
+    { "7", "parity-ok", "Parity OK bit" },
+    { "1000", "parity-err", "Parity error bit" },
+    { "40", "data-bit", "Data bit" },
+    { "65", "word", "Word" },
+    { "75", "ACK", "ACK" },
+    { "90", "atk-data-point", "ATK Data point" },
 };
 
 static const int ps2_row_bits_classes[] = { ANN_BIT };
 static const int ps2_row_fields_classes[] = { ANN_HSTART, ANN_DSTART, ANN_STOP, ANN_PARITY_OK, ANN_PARITY_ERR, ANN_DATA_BIT, ANN_WORD, ANN_ACK };
+static const int ps2_row_atk_classes[] = { ANN_ATK_DATA_POINT };
 static const struct srd_c_ann_row ps2_ann_rows[] = {
     { "bits", "Bits", ps2_row_bits_classes, 1 },
     { "fields", "Fields", ps2_row_fields_classes, 8 },
+    { "atk-signs", "ATK signs", ps2_row_atk_classes, 1 },
 };
 
 static const char* ps2_inputs[] = { "logic", NULL };
@@ -144,7 +149,7 @@ static void ps2_handle_byte(struct srd_decoder_inst* di, uint64_t samplenum)
         snprintf(word_long, sizeof(word_long), "Data: %02x", s->byte_val);
         snprintf(word_mid, sizeof(word_mid), "D: %02x", s->byte_val);
         snprintf(word_short, sizeof(word_short), "%02x", s->byte_val);
-        C_ANN_PUT(di, s->bit_ss[1], s->bit_ss[9], s->out_ann, ANN_WORD,
+        C_ANN_PUT(di, s->bit_ss[1], s->bit_ss[8], s->out_ann, ANN_WORD,
             word_long, word_mid, word_short);
     }
 
@@ -204,21 +209,38 @@ static void ps2_decode(struct srd_decoder_inst* di)
 
         case STATE_IDLE: {
             srd_cond_builder* b = c_cond_new();
-            c_cond_fall(b, CLK);
-            c_cond_low(b, DATA);
-            c_cond_or(b);
-            c_cond_fall(b, CLK);
-            c_cond_high(b, DATA);
-            c_cond_or(b);
-            c_cond_rise(b, CLK);
-            c_cond_low(b, DATA);
+            if (s->htd_next) {
+                /* After DtoH with data-fall, next word is HtoD */
+                c_cond_rise(b, CLK);
+                c_cond_low(b, DATA);
+            } else {
+                /* Match Python's 4 conditions:
+                 * {0: 'f', 1: 'r'} - fall CLK + rise DATA -> skip (condition 0)
+                 * {0: 'f', 1: 'f'} - fall CLK + fall DATA -> HtoD (condition 1)
+                 * {0: 'f', 1: 'h'} - fall CLK + high DATA -> HtoD (condition 2)
+                 * {0: 'f', 1: 'l'} - fall CLK + low DATA -> DtoH (condition 3)
+                 */
+                c_cond_fall(b, CLK);
+                c_cond_rise(b, DATA);   /* condition 0: skip */
+                c_cond_or(b);
+                c_cond_fall(b, CLK);
+                c_cond_fall(b, DATA);   /* condition 1: HtoD */
+                c_cond_or(b);
+                c_cond_fall(b, CLK);
+                c_cond_high(b, DATA);   /* condition 2: HtoD */
+                c_cond_or(b);
+                c_cond_fall(b, CLK);
+                c_cond_low(b, DATA);    /* condition 3: DtoH */
+            }
             ret = c_cond_wait(b, di, &samplenum, &matched);
             c_cond_free(b);
             if (ret != SRD_OK)
                 return;
 
-            if (matched & (1ULL << 0)) {
+            if (s->htd_next) {
+                /* HtoDss case: direct HtoD */
                 s->htd = 1;
+                s->htd_next = 0;
                 s->state = STATE_HtoD_DATA;
                 s->bitcount = 0;
                 memset(s->bits, 0, sizeof(s->bits));
@@ -229,29 +251,48 @@ static void ps2_decode(struct srd_decoder_inst* di)
                     s->bit_ss[0] = samplenum;
                     s->bitcount = 1;
                 }
-            } else if (matched & (1ULL << 1)) {
-                s->htd = 1;
-                s->state = STATE_HtoD_DATA;
-                s->bitcount = 0;
-                memset(s->bits, 0, sizeof(s->bits));
-                memset(s->bit_ss, 0, sizeof(s->bit_ss));
-                {
-                    int data_val = c_decoder_get_pin(di, DATA, samplenum);
-                    s->bits[0] = data_val;
-                    s->bit_ss[0] = samplenum;
-                    s->bitcount = 1;
-                }
-            } else if (matched & (1ULL << 2)) {
-                s->htd = 0;
-                s->state = STATE_DtoH_DATA;
-                s->bitcount = 0;
-                memset(s->bits, 0, sizeof(s->bits));
-                memset(s->bit_ss, 0, sizeof(s->bit_ss));
-                {
-                    int data_val = c_decoder_get_pin(di, DATA, samplenum);
-                    s->bits[0] = data_val;
-                    s->bit_ss[0] = samplenum;
-                    s->bitcount = 1;
+            } else {
+                if (matched & (1ULL << 0)) {
+                    /* fall CLK + rise DATA -> skip */
+                } else if (matched & (1ULL << 1)) {
+                    /* fall CLK + fall DATA -> HtoD */
+                    s->htd = 1;
+                    s->state = STATE_HtoD_DATA;
+                    s->bitcount = 0;
+                    memset(s->bits, 0, sizeof(s->bits));
+                    memset(s->bit_ss, 0, sizeof(s->bit_ss));
+                    {
+                        int data_val = c_decoder_get_pin(di, DATA, samplenum);
+                        s->bits[0] = data_val;
+                        s->bit_ss[0] = samplenum;
+                        s->bitcount = 1;
+                    }
+                } else if (matched & (1ULL << 2)) {
+                    /* fall CLK + high DATA -> HtoD */
+                    s->htd = 1;
+                    s->state = STATE_HtoD_DATA;
+                    s->bitcount = 0;
+                    memset(s->bits, 0, sizeof(s->bits));
+                    memset(s->bit_ss, 0, sizeof(s->bit_ss));
+                    {
+                        int data_val = c_decoder_get_pin(di, DATA, samplenum);
+                        s->bits[0] = data_val;
+                        s->bit_ss[0] = samplenum;
+                        s->bitcount = 1;
+                    }
+                } else if (matched & (1ULL << 3)) {
+                    /* fall CLK + low DATA -> DtoH */
+                    s->htd = 0;
+                    s->state = STATE_DtoH_DATA;
+                    s->bitcount = 0;
+                    memset(s->bits, 0, sizeof(s->bits));
+                    memset(s->bit_ss, 0, sizeof(s->bit_ss));
+                    {
+                        int data_val = c_decoder_get_pin(di, DATA, samplenum);
+                        s->bits[0] = data_val;
+                        s->bit_ss[0] = samplenum;
+                        s->bitcount = 1;
+                    }
                 }
             }
             break;
@@ -380,9 +421,13 @@ static void ps2_decode(struct srd_decoder_inst* di)
                 return;
 
             if (matched & (1ULL << 0)) {
+                /* Data fell after DtoH word - next word will be HtoD (HtoDss) */
+                s->htd_next = 1;
                 s->htd = 1;
                 s->state = STATE_IDLE;
             } else if (matched & (1ULL << 1)) {
+                /* CLK rose after DtoH word - next word normal detection */
+                s->htd_next = 0;
                 s->htd = 0;
                 s->state = STATE_IDLE;
             }
@@ -415,7 +460,7 @@ struct srd_c_decoder ps2_c_decoder = {
     .num_options = 2,
     .num_annotations = NUM_ANN,
     .ann_labels = ps2_ann_labels,
-    .num_annotation_rows = 2,
+    .num_annotation_rows = 3,
     .annotation_rows = ps2_ann_rows,
     .inputs = ps2_inputs,
     .num_inputs = 1,

@@ -1,0 +1,7 @@
+{
+	"decoder": "can-fd",
+	"samplerate": 10000000,
+	"num_annotations": 0,
+	"annotations": [
+	]
+}

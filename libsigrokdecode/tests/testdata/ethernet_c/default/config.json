@@ -1,0 +1,8 @@
+{
+  "decoder": "ethernet_c",
+  "samplerate": 50000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {},
+  "stack": []
+}

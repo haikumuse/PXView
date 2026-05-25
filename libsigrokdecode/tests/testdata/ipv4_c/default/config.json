@@ -1,0 +1,12 @@
+{
+  "decoder": "ipv4_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {},
+  "stack": [
+    {
+      "id": "ethernet_c"
+    }
+  ]
+}

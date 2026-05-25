@@ -99,41 +99,46 @@ static void nunchuk_handle_reg_0x00(struct srd_decoder_inst *di, nunchuk_priv *s
 {
     s->ss_block = s->ss;
     s->sx = b;
-    char buf[64];
+    char buf[64], buf2[32];
     snprintf(buf, sizeof(buf), "Analog stick X position: 0x%02X", s->sx);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X00, buf);
+    snprintf(buf2, sizeof(buf2), "SX: 0x%02X", s->sx);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X00, buf, buf2);
 }
 
 static void nunchuk_handle_reg_0x01(struct srd_decoder_inst *di, nunchuk_priv *s, uint8_t b)
 {
     s->sy = b;
-    char buf[64];
+    char buf[64], buf2[32];
     snprintf(buf, sizeof(buf), "Analog stick Y position: 0x%02X", s->sy);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X01, buf);
+    snprintf(buf2, sizeof(buf2), "SY: 0x%02X", s->sy);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X01, buf, buf2);
 }
 
 static void nunchuk_handle_reg_0x02(struct srd_decoder_inst *di, nunchuk_priv *s, uint8_t b)
 {
     s->ax = b << 2;
-    char buf[64];
+    char buf[64], buf2[32];
     snprintf(buf, sizeof(buf), "Accelerometer X value bits[9:2]: 0x%03X", s->ax);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X02, buf);
+    snprintf(buf2, sizeof(buf2), "AX[9:2]: 0x%03X", s->ax);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X02, buf, buf2);
 }
 
 static void nunchuk_handle_reg_0x03(struct srd_decoder_inst *di, nunchuk_priv *s, uint8_t b)
 {
     s->ay = b << 2;
-    char buf[64];
+    char buf[64], buf2[32];
     snprintf(buf, sizeof(buf), "Accelerometer Y value bits[9:2]: 0x%03X", s->ay);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X03, buf);
+    snprintf(buf2, sizeof(buf2), "AY[9:2]: 0x%03X", s->ay);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X03, buf, buf2);
 }
 
 static void nunchuk_handle_reg_0x04(struct srd_decoder_inst *di, nunchuk_priv *s, uint8_t b)
 {
     s->az = b << 2;
-    char buf[64];
+    char buf[64], buf2[32];
     snprintf(buf, sizeof(buf), "Accelerometer Z value bits[9:2]: 0x%03X", s->az);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X04, buf);
+    snprintf(buf2, sizeof(buf2), "AZ[9:2]: 0x%03X", s->az);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0X04, buf, buf2);
 }
 
 static void nunchuk_handle_reg_0x05(struct srd_decoder_inst *di, nunchuk_priv *s, uint8_t b)
@@ -148,23 +153,28 @@ static void nunchuk_handle_reg_0x05(struct srd_decoder_inst *di, nunchuk_priv *s
     s->ay |= ay_rest;
     s->az |= az_rest;
 
-    char buf[64];
+    char buf[64], buf2[32];
     const char *bz_s = (s->bz == 0) ? "" : "not ";
     snprintf(buf, sizeof(buf), "Z: %spressed", bz_s);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_BZ, buf);
+    snprintf(buf2, sizeof(buf2), "BZ: %d", s->bz);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_BZ, buf, buf2);
 
     const char *bc_s = (s->bc == 0) ? "" : "not ";
     snprintf(buf, sizeof(buf), "C: %spressed", bc_s);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_BC, buf);
+    snprintf(buf2, sizeof(buf2), "BC: %d", s->bc);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_BC, buf, buf2);
 
     snprintf(buf, sizeof(buf), "Accelerometer X value bits[1:0]: 0x%X", ax_rest);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_AX, buf);
+    snprintf(buf2, sizeof(buf2), "AX[1:0]: 0x%X", ax_rest);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_AX, buf, buf2);
 
     snprintf(buf, sizeof(buf), "Accelerometer Y value bits[1:0]: 0x%X", ay_rest);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_AY, buf);
+    snprintf(buf2, sizeof(buf2), "AY[1:0]: 0x%X", ay_rest);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_AY, buf, buf2);
 
     snprintf(buf, sizeof(buf), "Accelerometer Z value bits[1:0]: 0x%X", az_rest);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_AZ, buf);
+    snprintf(buf2, sizeof(buf2), "AZ[1:0]: 0x%X", az_rest);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_AZ, buf, buf2);
 
     s->reg = 0x00;
 }

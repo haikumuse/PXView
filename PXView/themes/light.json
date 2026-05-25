@@ -93,6 +93,18 @@
     "@decoder-channel-14": "#c2a3cb",
     "@decoder-channel-15": "#d6c4df",
     "@decoder-error-bg": "#b22222",
-    "@decoder-no-decode": "#888a85"
+    "@decoder-no-decode": "#888a85",
+    "@flat-hover-fg": "#ffffff",
+    "global.colors.base": "#f8f8f8",
+    "global.colors.alternate-base": "#e8e8e8",
+    "global.colors.window": "#f8f8f8",
+    "global.colors.text": "#2a2a2a",
+    "global.colors.window-text": "#2a2a2a",
+    "global.colors.highlight": "#1185d1",
+    "global.colors.highlighted-text": "#ffffff",
+    "global.colors.tooltip-bg": "#e8e8e8",
+    "global.colors.tooltip-text": "#2a2a2a",
+    "signal.colors.background": "#f8f8f8",
+    "signal.colors.grid": "#2a2a2a"
   }
 }

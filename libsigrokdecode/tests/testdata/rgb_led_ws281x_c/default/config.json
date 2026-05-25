@@ -1,0 +1,10 @@
+{
+  "decoder": "rgb_led_ws281x_c",
+  "samplerate": 1000000,
+  "num_channels": 1,
+  "sample_count": 100000,
+  "channels": {
+    "din": 0
+  },
+  "stack": []
+}

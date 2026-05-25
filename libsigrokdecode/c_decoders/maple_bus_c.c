@@ -114,28 +114,23 @@ static void byte_annotation(struct srd_decoder_inst *di, struct maple_priv *s,
 }
 
 /* handle_start: wait for start pattern
-   Returns: 1=Start detected, 2=Start with CRC, 0=failed/reset/occupancy */
+   Returns: 1=Start detected, 2=Start with CRC, 0=failed/reset/occupancy, -1=end of data */
 static int handle_start(struct srd_decoder_inst *di, struct maple_priv *s)
 {
     uint64_t samplenum = 0;
     uint64_t matched = 0;
 
-    /* Wait for SDCKA=low, SDCKB=high */
-    while (1) {
+    /* Wait for SDCKA=low, SDCKB=high (level condition, matching Python's self.wait({0: 'l', 1: 'h'})) */
+    {
         srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        c_cond_or(cb);
-        c_cond_edge(cb, 1);
+        c_cond_low(cb, 0);
+        c_cond_high(cb, 1);
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
         if (ret != SRD_OK)
-            return 0;
-
-        int sdcka = c_decoder_get_pin(di, 0, samplenum);
-        int sdckb = c_decoder_get_pin(di, 1, samplenum);
-
-        if (sdcka == 0 && sdckb == 1)
-            break;
+            return -1;
+        if (samplenum >= c_decoder_get_last_samplenum(di))
+            return -1;
     }
 
     s->ss = samplenum;
@@ -149,7 +144,9 @@ static int handle_start(struct srd_decoder_inst *di, struct maple_priv *s)
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
         if (ret != SRD_OK)
-            return 0;
+            return -1;
+        if (samplenum >= c_decoder_get_last_samplenum(di))
+            return -1;
 
         int sdcka = c_decoder_get_pin(di, 0, samplenum);
         int sdckb = c_decoder_get_pin(di, 1, samplenum);
@@ -184,7 +181,7 @@ static int handle_start(struct srd_decoder_inst *di, struct maple_priv *s)
 }
 
 /* handle_byte_or_stop: decode 4 bit-pairs into a byte or detect end pattern
-   Returns: 1=byte decoded, 0=end pattern or error */
+   Returns: 1=byte decoded, 0=end pattern or error, -1=end of data */
 static int handle_byte_or_stop(struct srd_decoder_inst *di, struct maple_priv *s)
 {
     uint64_t samplenum = 0;
@@ -204,7 +201,9 @@ static int handle_byte_or_stop(struct srd_decoder_inst *di, struct maple_priv *s
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
         if (ret != SRD_OK)
-            return 0;
+            return -1;
+        if (samplenum >= c_decoder_get_last_samplenum(di))
+            return -1;
 
         int sdcka = c_decoder_get_pin(di, 0, samplenum);
         int sdckb = c_decoder_get_pin(di, 1, samplenum);
@@ -232,7 +231,9 @@ static int handle_byte_or_stop(struct srd_decoder_inst *di, struct maple_priv *s
                 ret = c_cond_wait(cb, di, &samplenum, &matched);
                 c_cond_free(cb);
                 if (ret != SRD_OK)
-                    return 0;
+                    return -1;
+                if (samplenum >= c_decoder_get_last_samplenum(di))
+                    return -1;
 
                 sdcka = c_decoder_get_pin(di, 0, samplenum);
                 sdckb = c_decoder_get_pin(di, 1, samplenum);
@@ -252,7 +253,9 @@ static int handle_byte_or_stop(struct srd_decoder_inst *di, struct maple_priv *s
                     ret = c_cond_wait(cb, di, &samplenum, &matched);
                     c_cond_free(cb);
                     if (ret != SRD_OK)
-                        return 0;
+                        return -1;
+                    if (samplenum >= c_decoder_get_last_samplenum(di))
+                        return -1;
 
                     C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_END, "End pattern", "End", "E");
                     return 0;
@@ -264,7 +267,9 @@ static int handle_byte_or_stop(struct srd_decoder_inst *di, struct maple_priv *s
                 ret = c_cond_wait(cb, di, &samplenum, &matched);
                 c_cond_free(cb);
                 if (ret != SRD_OK)
-                    return 0;
+                    return -1;
+                if (samplenum >= c_decoder_get_last_samplenum(di))
+                    return -1;
 
                 sdcka = c_decoder_get_pin(di, 0, samplenum);
                 sdckb = c_decoder_get_pin(di, 1, samplenum);
@@ -290,6 +295,8 @@ static void maple_decode(struct srd_decoder_inst *di)
     while (1) {
         /* Wait for start pattern */
         int start_type = handle_start(di, s);
+        if (start_type < 0)
+            return;  /* End of data */
         if (start_type == 0)
             continue;
 
@@ -301,6 +308,8 @@ static void maple_decode(struct srd_decoder_inst *di)
 
         while (1) {
             int ret = handle_byte_or_stop(di, s);
+            if (ret < 0)
+                return;  /* End of data */
             if (ret == 0)
                 break;
 

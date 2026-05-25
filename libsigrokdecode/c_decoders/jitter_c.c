@@ -175,8 +175,10 @@ static void jitter_decode(struct srd_decoder_inst *di)
                         && is_edge(s->oldsig, sig, s->sig_edge_type)) {
                         s->sig_missed++;
                         char miss_str[64];
-                        snprintf(miss_str, sizeof(miss_str), "Signal missed: %d", s->sig_missed);
-                        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_SIG_MISSED, miss_str);
+                        snprintf(miss_str, sizeof(miss_str), "Missed signal");
+                        char miss_short[16];
+                        snprintf(miss_short, sizeof(miss_short), "MS");
+                        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_SIG_MISSED, miss_str, miss_short);
                     }
                     break;
                 }
@@ -205,8 +207,10 @@ static void jitter_decode(struct srd_decoder_inst *di)
                         && is_edge(s->oldclk, clk, s->clk_edge_type)) {
                         s->clk_missed++;
                         char miss_str[64];
-                        snprintf(miss_str, sizeof(miss_str), "Clock missed: %d", s->clk_missed);
-                        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_CLK_MISSED, miss_str);
+                        snprintf(miss_str, sizeof(miss_str), "Missed clock");
+                        char miss_short[16];
+                        snprintf(miss_short, sizeof(miss_short), "MC");
+                        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_CLK_MISSED, miss_str, miss_short);
                     }
                     break;
                 }

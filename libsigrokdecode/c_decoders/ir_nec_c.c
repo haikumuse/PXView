@@ -105,6 +105,89 @@ static const char* nec_inputs[] = { "logic", NULL };
 static const char* nec_outputs[] = { NULL };
 static const char* nec_tags[] = { "IR", NULL };
 
+/* Device name lookup table (from ir_nec/lists.py) */
+typedef struct {
+    uint16_t addr;
+    const char* name;
+} nec_address_entry;
+
+static const nec_address_entry nec_address_table[] = {
+    { 0x40, "Matsui TV" },
+};
+
+#define NEC_ADDRESS_TABLE_SIZE (sizeof(nec_address_table) / sizeof(nec_address_table[0]))
+
+/* Command name lookup table (from ir_nec/lists.py) */
+typedef struct {
+    uint8_t cmd;
+    const char* name_long;
+    const char* name_short;
+} nec_command_entry;
+
+static const nec_command_entry nec_command_table_0x40[] = {
+    { 0, "0", "0" },
+    { 1, "1", "1" },
+    { 2, "2", "2" },
+    { 3, "3", "3" },
+    { 4, "4", "4" },
+    { 5, "5", "5" },
+    { 6, "6", "6" },
+    { 7, "7", "7" },
+    { 8, "8", "8" },
+    { 9, "9", "9" },
+    { 11, "-/--", "-/--" },
+    { 16, "Mute", "M" },
+    { 18, "Standby", "StBy" },
+    { 26, "Volume up", "Vol+" },
+    { 27, "Program up", "P+" },
+    { 30, "Volume down", "Vol-" },
+    { 31, "Program down", "P-" },
+    { 68, "AV", "AV" },
+};
+
+#define NEC_COMMAND_TABLE_0X40_SIZE (sizeof(nec_command_table_0x40) / sizeof(nec_command_table_0x40[0]))
+
+typedef struct {
+    uint16_t addr;
+    const nec_command_entry* commands;
+    int num_commands;
+} nec_command_map;
+
+static const nec_command_map nec_command_maps[] = {
+    { 0x40, nec_command_table_0x40, NEC_COMMAND_TABLE_0X40_SIZE },
+};
+
+#define NEC_COMMAND_MAPS_SIZE (sizeof(nec_command_maps) / sizeof(nec_command_maps[0]))
+
+static const char* nec_lookup_address(uint16_t addr)
+{
+    int i;
+    for (i = 0; i < (int)NEC_ADDRESS_TABLE_SIZE; i++) {
+        if (nec_address_table[i].addr == addr)
+            return nec_address_table[i].name;
+    }
+    return "Unknown device";
+}
+
+static int nec_lookup_command(uint16_t addr, uint8_t cmd, const char** name_long, const char** name_short)
+{
+    int i, j;
+    for (i = 0; i < (int)NEC_COMMAND_MAPS_SIZE; i++) {
+        if (nec_command_maps[i].addr == addr) {
+            for (j = 0; j < nec_command_maps[i].num_commands; j++) {
+                if (nec_command_maps[i].commands[j].cmd == cmd) {
+                    *name_long = nec_command_maps[i].commands[j].name_long;
+                    *name_short = nec_command_maps[i].commands[j].name_short;
+                    return 1;
+                }
+            }
+        }
+    }
+    *name_long = "Unknown";
+    *name_short = "Unk";
+    return 0;
+}
+
 static int compare_with_tolerance(nec_state* s, uint64_t measured, uint64_t base)
 {
     return (measured >= (uint64_t)(base * (1.0 - s->tolerance))
@@ -196,21 +279,21 @@ static void calc_rate(nec_state* s)
     }
 }
 
-static void putpause(struct srd_decoder_inst* di, nec_state* s, int is_long)
+static void putpause(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, int is_long)
 {
     C_ANN_PUT(di, s->ss_start, s->ss_other_edge, s->out_ann, ANN_AGC,
         "AGC pulse", "AGC", "A");
 
     if (is_long) {
-        C_ANN_PUT(di, s->ss_other_edge, 0, s->out_ann, ANN_LONG_PAUSE,
+        C_ANN_PUT(di, s->ss_other_edge, samplenum, s->out_ann, ANN_LONG_PAUSE,
             "Long pause", "L-pause", "LP", "P");
     } else {
-        C_ANN_PUT(di, s->ss_other_edge, 0, s->out_ann, ANN_SHORT_PAUSE,
+        C_ANN_PUT(di, s->ss_other_edge, samplenum, s->out_ann, ANN_SHORT_PAUSE,
             "Short pause", "S-pause", "SP", "P");
     }
 }
 
-static void putd(struct srd_decoder_inst* di, nec_state* s, uint16_t data_val, int ann_class, const char* name, const char* short_name, const char* shortest, int bit_count)
+static void putd(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, uint16_t data_val, int ann_class, const char* name, const char* short_name, const char* shortest, int bit_count)
 {
     char long_str[64];
     char mid_str[32];
@@ -229,23 +312,27 @@ static void putd(struct srd_decoder_inst* di, nec_state* s, uint16_t data_val, i
         snprintf(short_str, sizeof(short_str), "%s", shortest);
     }
 
-    C_ANN_PUT(di, s->ss_start, 0, s->out_ann, ann_class, long_str, mid_str, mid2_str, short_str);
+    C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ann_class, long_str, mid_str, mid2_str, short_str);
 }
 
 static void putremote(struct srd_decoder_inst* di, nec_state* s)
 {
-    char str1[64];
-    char str2[64];
-    char str3[32];
+    const char* dev = nec_lookup_address(s->addr);
+    const char* btn_long;
+    const char* btn_short;
+    nec_lookup_command(s->addr, s->cmd, &btn_long, &btn_short);
 
-    snprintf(str1, sizeof(str1), "0x%04X: 0x%02X", s->addr, s->cmd);
-    snprintf(str2, sizeof(str2), "0x%04X: 0x%02X", s->addr, s->cmd);
-    snprintf(str3, sizeof(str3), "0x%02X", s->cmd);
+    char str1[128];
+    char str2[128];
+    char str3[64];
+    snprintf(str1, sizeof(str1), "%s: %s", dev, btn_long);
+    snprintf(str2, sizeof(str2), "%s: %s", dev, btn_short);
+    snprintf(str3, sizeof(str3), "%s", btn_short);
 
     C_ANN_PUT(di, s->ss_remote, s->ss_bit + s->stop, s->out_ann, ANN_REMOTE, str1, str2, str3);
 }
 
-static void handle_bit(struct srd_decoder_inst* di, nec_state* s, uint64_t width)
+static void handle_bit(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, uint64_t width)
 {
     int ret = -1;
     if (compare_with_tolerance(s, width, s->dazero))
@@ -256,13 +343,13 @@ static void handle_bit(struct srd_decoder_inst* di, nec_state* s, uint64_t width
     if (ret == 0 || ret == 1) {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", ret);
-        C_ANN_PUT(di, s->ss_bit, 0, s->out_ann, ANN_BIT, bit_str);
+        C_ANN_PUT(di, s->ss_bit, samplenum, s->out_ann, ANN_BIT, bit_str);
         if (s->data_len < 32)
             s->data[s->data_len++] = ret;
     }
 }
 
-static int data_ok(struct srd_decoder_inst* di, nec_state* s, int check, int want_len)
+static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, int check, int want_len)
 {
     uint8_t normal = bitpack(s->data, 8);
     uint8_t inverted = bitpack(s->data + 8, 8);
@@ -270,10 +357,10 @@ static int data_ok(struct srd_decoder_inst* di, nec_state* s, int check, int wan
 
     if (s->is_extended && s->state == STATE_ADDRESS) {
         uint16_t ext_addr = bitpack16(s->data, s->data_len);
-        putd(di, s, ext_addr, ANN_ADDR, "Address", "ADDR", "A", s->data_len);
+        putd(di, s, samplenum, ext_addr, ANN_ADDR, "Address", "ADDR", "A", s->data_len);
         s->addr = ext_addr;
         s->data_len = 0;
-        s->ss_bit = s->ss_start;
+        s->ss_bit = s->ss_start = samplenum;
         return 1;
     }
 
@@ -324,21 +411,21 @@ static int data_ok(struct srd_decoder_inst* di, nec_state* s, int check, int wan
     }
 
     if (s->data_len == want_len) {
-        putd(di, s, show, ann_class, name, short_name, shortest, want_len);
-        s->ss_start = 0;
+        putd(di, s, samplenum, show, ann_class, name, short_name, shortest, want_len);
+        s->ss_start = samplenum;
         s->data_len = 0;
         s->ss_bit = s->ss_start;
         return 1;
     }
 
-    putd(di, s, show, ann_class, name, short_name, shortest, want_len);
+    putd(di, s, samplenum, show, ann_class, name, short_name, shortest, want_len);
 
     if (check && !valid) {
         char warn_str[64];
         uint16_t warn_show = bitpack(s->data, 8);
         warn_show |= (uint16_t)bitpack(s->data + 8, 8) << 8;
         snprintf(warn_str, sizeof(warn_str), "%s error: 0x%04X", name, warn_show);
-        C_ANN_PUT(di, s->ss_start, 0, s->out_ann, ANN_WARN, warn_str);
+        C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ANN_WARN, warn_str);
     }
 
     s->data_len = 0;
@@ -428,14 +515,14 @@ static void nec_decode(struct srd_decoder_inst* di)
 
         case STATE_IDLE: {
             if (compare_with_tolerance(s, width, s->lc)) {
-                putpause(di, s, 1);
+                putpause(di, s, samplenum, 1);
                 C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ANN_LEADER_CODE,
                     "Leader code", "Leader", "LC", "L");
                 s->ss_remote = s->ss_start;
                 s->data_len = 0;
                 s->state = STATE_ADDRESS;
             } else if (compare_with_tolerance(s, width, s->rc)) {
-                putpause(di, s, 0);
+                putpause(di, s, samplenum, 0);
                 C_ANN_PUT(di, s->ss_bit, s->ss_bit + s->stop, s->out_ann, ANN_STOP_BIT,
                     "Stop bit", "Stop", "St", "S");
                 C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ANN_REPEAT_CODE,
@@ -448,13 +535,13 @@ static void nec_decode(struct srd_decoder_inst* di)
         }
 
         case STATE_ADDRESS: {
-            handle_bit(di, s, width);
+            handle_bit(di, s, samplenum, width);
             if (s->data_len == s->want_addr_len) {
                 if (s->is_extended) {
-                    data_ok(di, s, 0, s->want_addr_len);
+                    data_ok(di, s, samplenum, 0, s->want_addr_len);
                     s->state = STATE_COMMAND;
                 } else {
-                    data_ok(di, s, 0, s->want_addr_len);
+                    data_ok(di, s, samplenum, 0, s->want_addr_len);
                     s->state = STATE_ADDRESS_INV;
                 }
             }
@@ -463,9 +550,9 @@ static void nec_decode(struct srd_decoder_inst* di)
         }
 
         case STATE_ADDRESS_INV: {
-            handle_bit(di, s, width);
+            handle_bit(di, s, samplenum, width);
             if (s->data_len == 16) {
-                data_ok(di, s, 1, 8);
+                data_ok(di, s, samplenum, 1, 8);
                 s->state = STATE_COMMAND;
             }
             s->ss_bit = samplenum;
@@ -473,9 +560,9 @@ static void nec_decode(struct srd_decoder_inst* di)
         }
 
         case STATE_COMMAND: {
-            handle_bit(di, s, width);
+            handle_bit(di, s, samplenum, width);
             if (s->data_len == 8) {
-                data_ok(di, s, 0, 8);
+                data_ok(di, s, samplenum, 0, 8);
                 s->state = STATE_COMMAND_INV;
             }
             s->ss_bit = samplenum;
@@ -483,9 +570,9 @@ static void nec_decode(struct srd_decoder_inst* di)
         }
 
         case STATE_COMMAND_INV: {
-            handle_bit(di, s, width);
+            handle_bit(di, s, samplenum, width);
             if (s->data_len == 16) {
-                data_ok(di, s, 1, 8);
+                data_ok(di, s, samplenum, 1, 8);
                 s->state = STATE_STOP;
             }
             s->ss_bit = samplenum;

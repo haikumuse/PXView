@@ -409,16 +409,22 @@ static void i2c_handle_address_or_data(struct srd_decoder_inst *di, i2c_decoder_
             }
 
             char long_str[64];
+            char short_str[16];
             snprintf(long_str, sizeof(long_str), "%s: %s",
                      (ann_class == ANN_ADDRESS_WRITE) ? "Address write" : "Address read", val_str);
-            C_ANN_PUT(di, s->ss_byte, samplenum, s->out_ann, ann_class, long_str, val_str, val_str);
+            snprintf(short_str, sizeof(short_str), "%s: %s",
+                     (ann_class == ANN_ADDRESS_WRITE) ? "AW" : "AR", val_str);
+            C_ANN_PUT(di, s->ss_byte, samplenum, s->out_ann, ann_class, long_str, short_str, val_str);
 
             s->address = d;
         } else {
             char long_str[64];
+            char short_str[16];
             snprintf(long_str, sizeof(long_str), "%s: %s",
                      (ann_class == ANN_DATA_WRITE) ? "Data write" : "Data read", val_str);
-            C_ANN_PUT(di, s->ss_byte, byte_end, s->out_ann, ann_class, long_str, val_str, val_str);
+            snprintf(short_str, sizeof(short_str), "%s: %s",
+                     (ann_class == ANN_DATA_WRITE) ? "DW" : "DR", val_str);
+            C_ANN_PUT(di, s->ss_byte, byte_end, s->out_ann, ann_class, long_str, short_str, val_str);
         }
     }
 
@@ -461,6 +467,10 @@ static void i2c_decode(struct srd_decoder_inst *di)
     i2c_decoder_state *s = (i2c_decoder_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
+
+    /* Emit ATK color styling annotations at start, matching Python decoder's self.ss=-1 */
+    C_ANN_PUT(di, UINT64_MAX, UINT64_MAX, s->out_ann, ANN_ATK_DATA, "color:#4edc44");
+    C_ANN_PUT(di, UINT64_MAX, UINT64_MAX, s->out_ann, ANN_ATK_RISE, "color:#4edc44");
 
     while (1) {
         srd_cond_builder *cb;

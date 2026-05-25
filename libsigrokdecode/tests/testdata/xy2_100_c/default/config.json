@@ -1,0 +1,12 @@
+{
+  "decoder": "xy2_100_c",
+  "samplerate": 1000000,
+  "num_channels": 3,
+  "sample_count": 20000,
+  "channels": {
+    "clk": 0,
+    "sync": 1,
+    "data": 2
+  },
+  "stack": []
+}

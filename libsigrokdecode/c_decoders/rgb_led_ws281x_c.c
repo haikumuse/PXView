@@ -383,6 +383,26 @@ static void ws281x_decode(struct srd_decoder_inst *di)
     }
 }
 
+static void ws281x_end(struct srd_decoder_inst *di)
+{
+    ws281x_state *s = (ws281x_state *)c_decoder_get_private(di);
+    if (!s || s->state != STATE_BIT_FALLING)
+        return;
+
+    /* Flush the last bit when data ends in BIT_FALLING state,
+     * matching Python's end() method behavior */
+    ws281x_check_bit(s, s->es);
+    char bit_str[4];
+    snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
+    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
+
+    if (s->bit_count < 32) {
+        s->bits[s->bit_count] = s->bit_val;
+        s->bit_count++;
+    }
+    ws281x_output_color(di, s, s->es);
+}
+
 static void ws281x_destroy(struct srd_decoder_inst *di)
 {
     void *priv = c_decoder_get_private(di);
@@ -419,6 +439,7 @@ struct srd_c_decoder rgb_led_ws281x_c_decoder = {
     .reset = ws281x_reset,
     .start = ws281x_start,
     .decode = ws281x_decode,
+    .end = ws281x_end,
     .destroy = ws281x_destroy,
     .metadata = ws281x_metadata,
 };
