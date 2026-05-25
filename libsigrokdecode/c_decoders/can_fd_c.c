@@ -91,10 +91,10 @@ static int dlc2len(int dlc)
     return table[dlc];
 }
 
-static uint32_t bitpack_msb(uint8_t *bits, int count)
+static uint64_t bitpack_msb(uint8_t *bits, int count)
 {
-    uint32_t val = 0;
-    for (int i = 0; i < count && i < 32; i++)
+    uint64_t val = 0;
+    for (int i = 0; i < count && i < 64; i++)
         val = (val << 1) | (bits[i] & 1);
     return val;
 }
@@ -109,13 +109,13 @@ static int ParityCheck(int value)
     return 0;
 }
 
-static uint32_t gray_to_binary(uint8_t *gray_bits, int count)
+static uint64_t gray_to_binary(uint8_t *gray_bits, int count)
 {
-    uint32_t gray = 0;
-    for (int i = 0; i < count && i < 32; i++)
+    uint64_t gray = 0;
+    for (int i = 0; i < count && i < 64; i++)
         gray = (gray << 1) | (gray_bits[i] & 1);
-    uint32_t binary = gray;
-    uint32_t mask = binary >> 1;
+    uint64_t binary = gray;
+    uint64_t mask = binary >> 1;
     while (mask) {
         binary ^= mask;
         mask >>= 1;
@@ -283,8 +283,8 @@ static int decode_frame_end(canfd_state *s, struct srd_decoder_inst *di,
         uint8_t stuff_bits_arr[3];
         for (int i = 0; i < 3 && (stuff_bits_start + i) < s->num_bits; i++)
             stuff_bits_arr[i] = s->bits[stuff_bits_start + i];
-        uint32_t stuff_count_val = bitpack_msb(stuff_bits_arr, 3);
-        uint32_t stuff_count_bin = gray_to_binary(stuff_bits_arr, 3);
+        uint64_t stuff_count_val = bitpack_msb(stuff_bits_arr, 3);
+        uint64_t stuff_count_bin = gray_to_binary(stuff_bits_arr, 3);
 
         if (s->stuff_count % 8 != (int)stuff_count_bin) {
             const char *gce[] = {"Gray Code Error", "GCE", "GCE", NULL};
@@ -307,7 +307,7 @@ static int decode_frame_end(canfd_state *s, struct srd_decoder_inst *di,
         uint8_t sp_bits[4];
         for (int i = 0; i < 4 && (sp_start + i) < s->num_bits; i++)
             sp_bits[i] = s->bits[sp_start + i];
-        uint32_t stuff_and_parity = bitpack_msb(sp_bits, 4);
+        uint64_t stuff_and_parity = bitpack_msb(sp_bits, 4);
         if (!ParityCheck((int)stuff_and_parity)) {
             const char *pce[] = {"Parity Check Error", "PCE", "PCE", NULL};
             putg(s, di, s->stuff_count_start, samplenum, ANN_WARNING, pce, 3);
@@ -351,10 +351,10 @@ static int decode_frame_end(canfd_state *s, struct srd_decoder_inst *di,
         if (s->fd) {
             if (s->num_crc_data < 256)
                 s->crc_data[s->num_crc_data++] = can_rx;
-            s->crc = bitpack_msb(s->crc_data, s->num_crc_data > 32 ? 32 : s->num_crc_data);
+            s->crc = (uint32_t)bitpack_msb(s->crc_data, s->num_crc_data);
         } else {
             if (x + s->crc_len + 1 <= s->num_bits)
-                s->crc = bitpack_msb(&s->bits[x], s->crc_len + 1);
+                s->crc = (uint32_t)bitpack_msb(&s->bits[x], s->crc_len + 1);
         }
 
         char t1[64], t2[48], t3[16];
@@ -552,7 +552,7 @@ static int decode_extended_frame(canfd_state *s, struct srd_decoder_inst *di,
 
     if (bitnum == 31) {
         if (14 < s->num_bits)
-            s->eid = bitpack_msb(&s->bits[14], s->num_bits - 14);
+            s->eid = (uint32_t)bitpack_msb(&s->bits[14], s->num_bits - 14);
         s->fullid = s->ident << 18 | s->eid;
 
         char s_eid[32], s_full[32];
@@ -716,7 +716,7 @@ static void handle_bit(canfd_state *s, struct srd_decoder_inst *di,
     } else if (bitnum == 1) {
         s->ss_block = samplenum;
     } else if (bitnum == 11) {
-        s->ident = bitpack_msb(&s->bits[1], 11);
+        s->ident = (uint32_t)bitpack_msb(&s->bits[1], 11);
         s->fullid = s->ident;
         char id_str[32];
         snprintf(id_str, sizeof(id_str), "%d (0x%x)", s->ident, s->ident);
@@ -754,7 +754,7 @@ static void handle_bit(canfd_state *s, struct srd_decoder_inst *di,
 }
 
 static struct srd_channel canfd_channels[] = {
-    {"can_rx", "CAN FD", "CAN FD bus line", 0, SRD_CHANNEL_SDATA, NULL},
+    {"can_rx", "CAN FD", "CAN FD bus line", 0, SRD_CHANNEL_SDATA, "dec_can_chan_can_rx"},
 };
 
 static const char *canfd_ann_labels[][3] = {
@@ -779,9 +779,9 @@ static const char *canfd_ann_labels[][3] = {
 };
 
 static struct srd_decoder_option canfd_options[] = {
-    {"nominal_bitrate", NULL, "Nominal bitrate (bits/s)", NULL, NULL},
-    {"fast_bitrate", NULL, "Fast bitrate (bits/s)", NULL, NULL},
-    {"sample_point", NULL, "Sample point (%)", NULL, NULL},
+    {"nominal_bitrate", "dec_can_opt_nominal_bitrate", "Nominal bitrate (bits/s)", NULL, NULL},
+    {"fast_bitrate", "dec_can_opt_fast_bitrate", "Fast bitrate (bits/s)", NULL, NULL},
+    {"sample_point", "dec_can_opt_sample_point", "Sample point (%)", NULL, NULL},
 };
 
 static const char *canfd_inputs[] = {"logic"};
@@ -829,6 +829,9 @@ static void canfd_decode(struct srd_decoder_inst *di)
     int CAN_RX = 0;
 
     s->samplerate = c_decoder_get_samplerate(di);
+    if (s->samplerate == 0)
+        return;
+
     s->nominal_bitrate = c_decoder_get_option_int(di, "nominal_bitrate", 1000000);
     s->fast_bitrate = c_decoder_get_option_int(di, "fast_bitrate", 2000000);
     s->sample_point_pct = c_decoder_get_option_double(di, "sample_point", 70.0);

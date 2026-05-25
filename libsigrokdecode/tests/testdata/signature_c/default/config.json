@@ -1,0 +1,13 @@
+{
+  "decoder": "signature_c",
+  "samplerate": 1000000,
+  "num_channels": 4,
+  "sample_count": 20000,
+  "channels": {
+    "start": 0,
+    "stop": 1,
+    "clk": 2,
+    "data": 3
+  },
+  "stack": []
+}

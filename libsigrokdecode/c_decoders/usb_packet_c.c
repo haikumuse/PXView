@@ -232,13 +232,31 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_state *s)
     if (sync_ok) {
         C_ANN_PUT(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_OK, "SYNC");
     } else {
-        C_ANN_PUT(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_ERR, "SYNC (error)");
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
-        return;
+        /* Build sync bit pattern string for error message */
+        char sync_bits[9];
+        for (int i = 0; i < 8; i++) sync_bits[i] = s->bits[i];
+        sync_bits[8] = '\0';
+        char sync_err_long[48], sync_err_mid[48], sync_err_short[16], sync_err_tiny[8], sync_err_tiny2[4];
+        snprintf(sync_err_long, sizeof(sync_err_long), "SYNC ERROR: %s", sync_bits);
+        snprintf(sync_err_mid, sizeof(sync_err_mid), "SYNC ERR: %s", sync_bits);
+        snprintf(sync_err_short, sizeof(sync_err_short), "SYNC ERR");
+        snprintf(sync_err_tiny, sizeof(sync_err_tiny), "SE");
+        snprintf(sync_err_tiny2, sizeof(sync_err_tiny2), "S");
+        C_ANN_PUT(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_ERR,
+                  sync_err_long, sync_err_mid, sync_err_short, sync_err_tiny, sync_err_tiny2);
+        /* Don't return here - Python continues to check packet length */
     }
 
     if (s->bits_len < 16) {
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID,
+                  "Invalid packet (shorter than 16 bits)");
+        return;
+    }
+
+    /* If SYNC was bad, we still reported it but now return since we can't parse further */
+    if (!sync_ok) {
+        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID,
+                  "Invalid packet (SYNC error)", "Invalid (SYNC)", "Invalid", "Inv", "I");
         return;
     }
 

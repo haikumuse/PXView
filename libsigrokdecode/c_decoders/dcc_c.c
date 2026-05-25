@@ -1268,18 +1268,21 @@ static void dcc_decode(struct srd_decoder_inst *di)
         if (s->syncSignal) {
             if (value && (strcmp(value, "0") == 0 || strcmp(value, "1") == 0)) {
                 if (strechedZero) {
-                    char sync_buf[160];
+                    char sync_buf[160], sync_short[128];
                     snprintf(sync_buf, sizeof(sync_buf), "%s (sync in progress)", value_buf);
-                    DCC_PUT_SIGNAL(di, s, ANN_BITS_OTHER, sync_buf);
+                    snprintf(sync_short, sizeof(sync_short), "%s (sync)", value_buf);
+                    DCC_PUT_SIGNAL(di, s, ANN_BITS_OTHER, sync_buf, sync_short, value_buf);
                 } else {
-                    char sync_buf[64];
+                    char sync_buf[64], sync_short[32];
                     snprintf(sync_buf, sizeof(sync_buf), "%s (sync in progress)", value);
-                    DCC_PUT_SIGNAL(di, s, ANN_BITS, sync_buf);
+                    snprintf(sync_short, sizeof(sync_short), "%s (sync)", value);
+                    DCC_PUT_SIGNAL(di, s, ANN_BITS, sync_buf, sync_short, value);
                 }
             } else {
-                char sync_buf[160];
+                char sync_buf[160], sync_long[128];
                 snprintf(sync_buf, sizeof(sync_buf), "%s (sync in progress)", value_buf);
-                DCC_PUT_SIGNAL(di, s, ANN_BITS_OTHER, sync_buf, value_long, value_short);
+                snprintf(sync_long, sizeof(sync_long), "%s (sync)", value_long);
+                DCC_PUT_SIGNAL(di, s, ANN_BITS_OTHER, sync_buf, sync_long, value_short);
             }
         } else {
             if (value && (strcmp(value, "0") == 0 || strcmp(value, "1") == 0)) {

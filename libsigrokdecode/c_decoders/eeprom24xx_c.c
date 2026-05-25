@@ -52,6 +52,13 @@ enum eeprom24xx_state {
 };
 
 #define EEPROM24XX_MAX_PACKETS 1024
+#define EEPROM24XX_MAX_BITS 8
+
+typedef struct {
+    uint8_t value;
+    uint64_t ss;
+    uint64_t es;
+} eeprom24xx_bit;
 
 typedef struct {
     uint64_t ss;
@@ -88,6 +95,9 @@ typedef struct {
     uint64_t ss_block, es_block;
     int out_ann;
     int out_binary;
+    eeprom24xx_bit bits[EEPROM24XX_MAX_BITS];
+    int num_bits;
+    int pending_control_word; /* 1 if control word annotation is pending BITS data */
 } eeprom24xx_state;
 
 static const eeprom24xx_chip chip_table[] = {
@@ -175,6 +185,8 @@ static void eeprom24xx_reset_variables(eeprom24xx_state *s)
     s->is_seq_random_read = 0;
     s->is_byte_write = 0;
     s->is_page_write = 0;
+    s->num_bits = 0;
+    s->pending_control_word = 0;
 }
 
 static void eeprom24xx_packet_append(eeprom24xx_state *s, uint8_t databyte)
@@ -198,6 +210,55 @@ static void eeprom24xx_put_warning(struct srd_decoder_inst *di, eeprom24xx_state
     char buf[256];
     snprintf(buf, sizeof(buf), "Warning: %s", msg);
     eeprom24xx_putb(di, s, ANN_WARNINGS, buf);
+}
+
+static void eeprom24xx_put_control_word(struct srd_decoder_inst *di, eeprom24xx_state *s)
+{
+    const eeprom24xx_chip *chip = eeprom24xx_get_chip(s);
+    /* bits[0]=LSB(R/W), bits[7]=MSB — same indexing as Python decoder */
+    eeprom24xx_bit *bits = s->bits;
+
+    if (s->num_bits < 8)
+        return;
+
+    /* Control code bits: bits[7..4] (MSB portion) */
+    char code_str[16];
+    snprintf(code_str, sizeof(code_str), "%u%u%u%u",
+        (unsigned)bits[7].value, (unsigned)bits[6].value,
+        (unsigned)bits[5].value, (unsigned)bits[4].value);
+    char buf[128];
+    snprintf(buf, sizeof(buf), "Control code bits: %s", code_str);
+    char buf2[128];
+    snprintf(buf2, sizeof(buf2), "Control code: %s", code_str);
+    char buf3[128];
+    snprintf(buf3, sizeof(buf3), "Ctrl code: %s", code_str);
+    C_ANN_PUT(di, bits[7].ss, bits[4].es, s->out_ann, ANN_CONTROL_CODE,
+              buf, buf2, buf3, "Ctrl code", "Ctrl", "C");
+
+    /* Address pins: bits[addr_pin] for each pin (A2=bits[3], A1=bits[2], A0=bits[1]) */
+    for (int i = chip->addr_pins - 1; i >= 0; i--) {
+        int bit_idx = i + 1; /* A2=bits[3], A1=bits[2], A0=bits[1] */
+        char addr_buf[128];
+        snprintf(addr_buf, sizeof(addr_buf), "Address bit %d: %u", i, (unsigned)bits[bit_idx].value);
+        char a_short[16];
+        snprintf(a_short, sizeof(a_short), "A%d", i);
+        char addr_short[32];
+        snprintf(addr_short, sizeof(addr_short), "Addr bit %d", i);
+        C_ANN_PUT(di, bits[bit_idx].ss, bits[bit_idx].es, s->out_ann, ANN_ADDRESS_PIN,
+                  addr_buf, addr_short, a_short, "A");
+    }
+
+    /* R/W bit: bits[0] */
+    const char *rw_text = (bits[0].value == 1) ? "read" : "write";
+    const char *rw_short = (bits[0].value == 1) ? "R" : "W";
+    char rw_buf[64];
+    snprintf(rw_buf, sizeof(rw_buf), "R/W bit: %s", rw_text);
+    C_ANN_PUT(di, bits[0].ss, bits[0].es, s->out_ann, ANN_RW_BIT,
+              rw_buf, "R/W", "RW", rw_short);
+
+    /* Control word: entire byte bits[7..0] */
+    C_ANN_PUT(di, bits[7].ss, bits[0].es, s->out_ann, ANN_CONTROL_WORD,
+              "Control word", "Control", "CW", "C");
 }
 
 static void eeprom24xx_put_word_addr(struct srd_decoder_inst *di, eeprom24xx_state *s)
@@ -354,8 +415,45 @@ static void eeprom24xx_recv_proto(struct srd_decoder_inst *di,
     s->ss = start_sample;
     s->es = end_sample;
 
-    if (strcmp(cmd, "BITS") == 0)
+    if (strcmp(cmd, "BITS") == 0) {
+        /* Parse BITS data from I2C decoder.
+         * Format: data[0]=have_mosi|have_miso, data[1]=mosi_count,
+         * data[2]=reserved, data[3]=miso_count,
+         * then per-bit: [value(1B)][ss(8B LE)][es(8B LE)]
+         * Bits are in wire order (MSB first). We store them in
+         * Python-indexed order: bits[0]=LSB(R/W), bits[7]=MSB.
+         *
+         * Note: I2C C decoder sends ADDRESS READ/WRITE before BITS,
+         * so we process the pending control word annotation here. */
+        s->num_bits = 0;
+        if (data && data_len >= 4) {
+            int miso_count = data[3];
+            int offset = 4;
+            for (int i = 0; i < miso_count && offset + 17 <= (int)data_len && i < EEPROM24XX_MAX_BITS; i++) {
+                uint8_t val = data[offset];
+                uint64_t bit_ss = 0, bit_es = 0;
+                for (int b = 0; b < 8; b++)
+                    bit_ss |= (uint64_t)data[offset + 1 + b] << (8 * b);
+                for (int b = 0; b < 8; b++)
+                    bit_es |= (uint64_t)data[offset + 9 + b] << (8 * b);
+                /* Wire order: first bit is MSB (Python bits[7]), last is LSB (Python bits[0]) */
+                int idx = miso_count - 1 - i;
+                if (idx >= 0 && idx < EEPROM24XX_MAX_BITS) {
+                    s->bits[idx].value = val;
+                    s->bits[idx].ss = bit_ss;
+                    s->bits[idx].es = bit_es;
+                }
+                offset += 17;
+            }
+            s->num_bits = miso_count;
+        }
+        /* Output pending control word sub-field annotations now that BITS data is available */
+        if (s->pending_control_word) {
+            eeprom24xx_put_control_word(di, s);
+            s->pending_control_word = 0;
+        }
         return;
+    }
 
     uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
 
@@ -370,8 +468,8 @@ static void eeprom24xx_recv_proto(struct srd_decoder_inst *di,
     case EEPROM24XX_GET_CONTROL_WORD:
         if (strcmp(cmd, "ADDRESS READ") == 0 || strcmp(cmd, "ADDRESS WRITE") == 0) {
             eeprom24xx_packet_append(s, databyte);
-            /* Output control word annotation */
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CONTROL_WORD, "Control word", "Control", "CW", "C");
+            /* Mark that control word sub-field annotations are pending BITS data */
+            s->pending_control_word = 1;
             if (strcmp(cmd, "ADDRESS READ") == 0)
                 s->state = EEPROM24XX_R_GET_ACK_NACK_AFTER_CW;
             else
@@ -522,6 +620,8 @@ static void eeprom24xx_recv_proto(struct srd_decoder_inst *di,
     case EEPROM24XX_R2_GET_CONTROL_WORD:
         if (strcmp(cmd, "ADDRESS READ") == 0) {
             eeprom24xx_packet_append(s, databyte);
+            /* Mark that control word sub-field annotations are pending BITS data */
+            s->pending_control_word = 1;
             s->state = EEPROM24XX_R2_GET_ACK_AFTER_ADDR_READ;
         } else {
             eeprom24xx_reset_variables(s);

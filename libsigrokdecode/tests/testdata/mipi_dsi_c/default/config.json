@@ -1,0 +1,11 @@
+{
+  "decoder": "mipi_dsi_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "D0N": 0,
+    "D0P": 1
+  },
+  "stack": []
+}

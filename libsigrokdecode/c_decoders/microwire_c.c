@@ -109,6 +109,21 @@ static void mw_decode(struct srd_decoder_inst* di)
 
         GArray* packet = g_array_new(FALSE, FALSE, sizeof(struct mw_packet_entry));
 
+        /* Save CS rising edge entry as packet[0], matching Python decoder behavior.
+         * The Python decoder saves state before waiting, so packet[0] is the CS rising edge.
+         * Without this entry, the status check logic starts from the wrong sample
+         * and uses the wrong initial SO value, causing missing BUSY annotations. */
+        {
+            struct mw_packet_entry cs_entry;
+            cs_entry.samplenum = samplenum;
+            cs_entry.matched = 0;
+            cs_entry.cs = 1;
+            cs_entry.sk = sk;
+            cs_entry.si = c_decoder_get_pin(di, CH_SI, samplenum);
+            cs_entry.so = c_decoder_get_pin(di, CH_SO, samplenum);
+            g_array_append_val(packet, cs_entry);
+        }
+
         int cs = 1;
         while (cs) {
             cb = c_cond_new();
@@ -141,6 +156,12 @@ static void mw_decode(struct srd_decoder_inst* di)
             entry.si = si;
             entry.so = so;
             g_array_append_val(packet, entry);
+
+            /* Also save the CS falling edge entry for end-of-packet processing */
+            if (cs == 0) {
+                /* CS just went low - this is the end-of-packet entry */
+                break;
+            }
         }
 
         int status_check = 1;
@@ -243,10 +264,21 @@ static void mw_decode(struct srd_decoder_inst* di)
             if (p->out_python >= 0 && pydata->len > 0) {
                 struct mw_packet_entry* first = &g_array_index(packet, struct mw_packet_entry, 0);
                 struct mw_packet_entry* last = &g_array_index(packet, struct mw_packet_entry, packet->len - 1);
+                int bit_count = (int)pydata->len;
+                int buf_size = bit_count * 18;
+                unsigned char* py_buf = (unsigned char*)g_malloc(buf_size);
+                for (int i = 0; i < bit_count; i++) {
+                    struct mw_py_entry* e = &g_array_index(pydata, struct mw_py_entry, i);
+                    uint64_t ss = e->ss;
+                    uint64_t es = e->es;
+                    memcpy(py_buf + i * 18, &ss, 8);
+                    memcpy(py_buf + i * 18 + 8, &es, 8);
+                    py_buf[i * 18 + 16] = (unsigned char)e->si;
+                    py_buf[i * 18 + 17] = (unsigned char)e->so;
+                }
                 c_decoder_put_python(di, first->samplenum, last->samplenum,
-                    p->out_python, "microwire",
-                    (unsigned char*)pydata->data,
-                    pydata->len * sizeof(struct mw_py_entry));
+                    p->out_python, "microwire", py_buf, buf_size);
+                g_free(py_buf);
             }
             g_array_free(pydata, TRUE);
         }

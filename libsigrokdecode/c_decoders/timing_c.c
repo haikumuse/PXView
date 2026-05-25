@@ -71,19 +71,19 @@ static void timing_normalize_time(double t, char *buf, int bufsize)
     if (fabs(t) >= 1.0) {
         snprintf(buf, bufsize, "%.3f s  (%.3f Hz)", t, 1.0 / t);
     } else if (fabs(t) >= 1e-3) {
-        double khz = (1.0 / t) / 1000.0;
-        if (khz < 1.0)
+        if (1.0 / t / 1000.0 < 1.0)
             snprintf(buf, bufsize, "%.3f ms (%.3f Hz)", t * 1000.0, 1.0 / t);
         else
-            snprintf(buf, bufsize, "%.3f ms (%.3f kHz)", t * 1000.0, khz);
+            snprintf(buf, bufsize, "%.3f ms (%.3f kHz)", t * 1000.0, 1.0 / t / 1000.0);
     } else if (fabs(t) >= 1e-6) {
-        double mhz = (1.0 / t) / 1e6;
-        if (mhz < 1.0)
-            snprintf(buf, bufsize, "%.3f us (%.3f kHz)", t * 1e6, (1.0 / t) / 1000.0);
+        if (1.0 / t / 1000.0 / 1000.0 < 1.0)
+            snprintf(buf, bufsize, "%.3f \xCE\xBCs (%.3f kHz)", t * 1000.0 * 1000.0, 1.0 / t / 1000.0);
         else
-            snprintf(buf, bufsize, "%.3f us (%.3f MHz)", t * 1e6, mhz);
+            snprintf(buf, bufsize, "%.3f \xCE\xBCs (%.3f MHz)", t * 1000.0 * 1000.0, 1.0 / t / 1000.0 / 1000.0);
     } else if (fabs(t) >= 1e-9) {
-        snprintf(buf, bufsize, "%.3f ns (%.3f MHz)", t * 1e9, (1.0 / t) / 1e6);
+        /* Python uses "if 1/t/1000/1000/1000:" which is a truthiness check (always True),
+           so the GHz branch is dead code. Always show MHz for ns range. */
+        snprintf(buf, bufsize, "%.3f ns (%.3f MHz)", t * 1000.0 * 1000.0 * 1000.0, 1.0 / t / 1000.0 / 1000.0);
     } else {
         snprintf(buf, bufsize, "%f", t);
     }
@@ -98,13 +98,13 @@ static void timing_terse_time(double t, int fmt, char *out1, int out1_size,
     case 1: /* terse-auto */
         if (fabs(t) >= 1e0) { scale = 1e0; unit = "s"; }
         else if (fabs(t) >= 1e-3) { scale = 1e3; unit = "ms"; }
-        else if (fabs(t) >= 1e-6) { scale = 1e6; unit = "us"; }
+        else if (fabs(t) >= 1e-6) { scale = 1e6; unit = "\xCE\xBCs"; }
         else if (fabs(t) >= 1e-9) { scale = 1e9; unit = "ns"; }
         else if (fabs(t) >= 1e-12) { scale = 1e12; unit = "ps"; }
         break;
     case 2: scale = 1e0; unit = "s"; break;
     case 3: scale = 1e3; unit = "ms"; break;
-    case 4: scale = 1e6; unit = "us"; break;
+    case 4: scale = 1e6; unit = "\xCE\xBCs"; break;
     case 5: scale = 1e9; unit = "ns"; break;
     case 6: scale = 1e12; unit = "ps"; break;
     default:
@@ -228,10 +228,10 @@ static void timing_decode(struct srd_decoder_inst *di)
             C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_TIME, terse1, terse2);
         }
 
-        /* Terse annotation (always output) */
-        if (s->format == 0) {
+        /* Terse annotation (only for non-full formats) */
+        if (s->format != 0) {
             char terse1[64], terse2[64];
-            timing_terse_time(t, 1, terse1, sizeof(terse1), terse2, sizeof(terse2));
+            timing_terse_time(t, s->format, terse1, sizeof(terse1), terse2, sizeof(terse2));
             C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_TERSE, terse1, terse2);
         }
 
@@ -258,7 +258,7 @@ static void timing_decode(struct srd_decoder_inst *di)
             if (fabs(dt) >= 1e-3)
                 snprintf(delta_buf, sizeof(delta_buf), "%+.3f ms", dt * 1e3);
             else if (fabs(dt) >= 1e-6)
-                snprintf(delta_buf, sizeof(delta_buf), "%+.3f us", dt * 1e6);
+                snprintf(delta_buf, sizeof(delta_buf), "%+.3f \xCE\xBCs", dt * 1e6);
             else
                 snprintf(delta_buf, sizeof(delta_buf), "%+.3f ns", dt * 1e9);
             C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_DELTA, delta_buf);

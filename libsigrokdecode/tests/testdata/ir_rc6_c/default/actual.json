@@ -1,0 +1,178 @@
+{
+	"decoder": "ir_rc6_c",
+	"samplerate": 1000000,
+	"num_annotations": 19,
+	"annotations": [
+		{
+			"start_sample": 536,
+			"end_sample": 1536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1536,
+			"end_sample": 2536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2536,
+			"end_sample": 3536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3536,
+			"end_sample": 4536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4536,
+			"end_sample": 5536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5536,
+			"end_sample": 6536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6536,
+			"end_sample": 7536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7536,
+			"end_sample": 8536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8536,
+			"end_sample": 9536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9536,
+			"end_sample": 10536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10536,
+			"end_sample": 11536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11536,
+			"end_sample": 12536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12536,
+			"end_sample": 13536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13536,
+			"end_sample": 14536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14536,
+			"end_sample": 15536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15536,
+			"end_sample": 16536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16536,
+			"end_sample": 17536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17536,
+			"end_sample": 18536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18536,
+			"end_sample": 19536,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}
+	]
+}

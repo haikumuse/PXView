@@ -289,6 +289,8 @@ static void ccd_reset(struct srd_decoder_inst *di)
     s->out_python = -1;
     s->uart_state = UART_WAIT_START;
     s->idle = IDLE_IDLE;
+    s->idlestart = (uint64_t)-1;  /* -1 = no idle period started yet, matches Python's idlestart = -1 */
+    s->busystart = (uint64_t)-1;
     s->oldbus = 1;
     s->bit_width = 0;
     strcpy(s->vin, "_________________");
@@ -325,7 +327,7 @@ static void ccd_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void ccd_decode(struct srd_decoder_inst *di)
 {
     ccd_state *s = (ccd_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
+    uint64_t samplenum = 0;
     uint64_t matched;
 
     if (!s->samplerate) {
@@ -385,7 +387,9 @@ static void ccd_decode(struct srd_decoder_inst *di)
             if (s->idle == IDLE_BUSY) {
                 s->idlestart = samplenum;
             } else {
-                C_ANN_PUT(di, s->idlestart, samplenum - 1, s->out_ann, ANN_IDLE, "Idle", "Id", "I");
+                /* Only emit Idle annotation if idlestart was set (not initial state) */
+                if (s->idlestart != (uint64_t)-1)
+                    C_ANN_PUT(di, s->idlestart, samplenum - 1, s->out_ann, ANN_IDLE, "Idle", "Id", "I");
                 s->idle = IDLE_BUSY;
                 s->idlestart = samplenum;
                 s->busystart = samplenum;

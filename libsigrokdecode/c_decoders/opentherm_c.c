@@ -118,6 +118,7 @@ typedef struct {
     uint64_t samplerate;
     int out_ann;
     int timing_set;
+    int prev_samplenum_valid;
 } ot_priv;
 
 static struct srd_channel ot_channels[] = {
@@ -225,6 +226,7 @@ static void handle_timing_error(struct srd_decoder_inst *di, ot_priv *s)
 {
     C_ANN_PUT(di, s->c_samplenum, s->c_samplenum, s->out_ann, ANN_TIMING,
               "Timing error", "T-err", "T");
+    s->last_frame_edge = s->c_samplenum;
 }
 
 static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
@@ -422,6 +424,7 @@ static void ot_reset(struct srd_decoder_inst *di)
     s->m2m_act_max = 1150000;
     s->ignore_glitches = 0;
     s->state = STATE_IDLE;
+    s->prev_samplenum_valid = 0;
 }
 
 static void ot_start(struct srd_decoder_inst *di)
@@ -484,9 +487,10 @@ static void ot_decode(struct srd_decoder_inst *di)
 
         int lvl = c_decoder_get_pin(di, 0, samplenum);
 
-        if (s->prev_samplenum == 0) {
+        if (!s->prev_samplenum_valid) {
             s->prev_samplenum = samplenum;
             s->prev_lvl = lvl;
+            s->prev_samplenum_valid = 1;
             continue;
         }
 
@@ -540,6 +544,10 @@ static void ot_decode(struct srd_decoder_inst *di)
                 bit = 1;
                 bitpos = s->edges[s->edge_count - 2];
             } else {
+                handle_bits(di, s);
+                C_ANN_PUT(di, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1],
+                          s->out_ann, ANN_WARNING,
+                          "Sync error: start bit len error", "Sync err", "S");
                 handle_timing_error(di, s);
                 bit = -1;
                 reset_decoder_state(s);

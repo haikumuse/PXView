@@ -1,0 +1,215 @@
+{
+	"decoder": "can_c",
+	"samplerate": 1000000,
+	"num_annotations": 22,
+	"annotations": [
+		{
+			"start_sample": 99,
+			"end_sample": 100,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of frame", 
+				"SOF", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 102,
+			"end_sample": 103,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 108,
+			"end_sample": 109,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 114,
+			"end_sample": 115,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 124,
+			"end_sample": 125,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 138,
+			"end_sample": 139,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 144,
+			"end_sample": 145,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 154,
+			"end_sample": 155,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 158,
+			"end_sample": 159,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 162,
+			"end_sample": 163,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 168,
+			"end_sample": 169,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 174,
+			"end_sample": 175,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 102,
+			"end_sample": 175,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Identifier: 0 (0x0)", 
+				"ID: 0 (0x0)", 
+				"0 (0x0)"
+			]
+		}, 
+		{
+			"start_sample": 178,
+			"end_sample": 179,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 184,
+			"end_sample": 185,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 184,
+			"end_sample": 185,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Identifier extension bit: standard frame", 
+				"IDE: standard frame", 
+				"standard"
+			]
+		}, 
+		{
+			"start_sample": 190,
+			"end_sample": 191,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 190,
+			"end_sample": 191,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Reserved bit 0: 0", 
+				"RB0: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 178,
+			"end_sample": 179,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Remote transmission request: data frame", 
+				"RTR: data frame", 
+				"data"
+			]
+		}, 
+		{
+			"start_sample": 194,
+			"end_sample": 195,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 200,
+			"end_sample": 201,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 204,
+			"end_sample": 205,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}
+	]
+}

@@ -278,7 +278,11 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
                 C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WRITE, "Write", "Wr", "W");
                 s->state = BH1750_REGISTER_ADDRESS;
             } else {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD, "Unknown slave address", "Unknown", "Unk", "U");
+                if (addr != 0x7F) {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "Unknown slave address: 0x%02X", addr);
+                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD, buf, "Unknown", "Unk", "U");
+                }
                 s->state = BH1750_IDLE;
             }
         } else if (strcmp(cmd, "ADDRESS READ") == 0) {
@@ -292,7 +296,11 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
                 C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_READ, "Read", "Rd", "R");
                 s->state = BH1750_REGISTER_ADDRESS;
             } else {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD, "Unknown slave address", "Unknown", "Unk", "U");
+                if (addr != 0x7F) {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "Unknown slave address: 0x%02X", addr);
+                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD, buf, "Unknown", "Unk", "U");
+                }
                 s->state = BH1750_IDLE;
             }
         }

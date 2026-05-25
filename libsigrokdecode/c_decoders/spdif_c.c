@@ -99,7 +99,7 @@ static int get_pulse_type(struct spdif_priv* s)
         return 1;
 }
 
-static int __attribute__((unused)) get_pulse_type_for_width(struct spdif_priv* s, uint64_t width)
+static int get_pulse_type_for_width(struct spdif_priv* s, uint64_t width)
 {
     if (s->range1 == 0 || s->range2 == 0)
         return -1;
@@ -186,6 +186,163 @@ static void spdif_start(struct srd_decoder_inst* di)
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spdif");
 }
 
+/* Re-check buffered preamble data after clock range is determined.
+   Returns 0 if no more buffered data to process, 1 if more data remains. */
+static int decode_recheck_preamble(struct srd_decoder_inst* di, struct spdif_priv* s)
+{
+    int temp_preamble[4];
+    int preamble_count = 0;
+    int preamble_state = -1;
+    int preamble_is_ok = 0;
+    int i = 0;
+
+    while (i < s->temp_count) {
+        int pul_type = get_pulse_type_for_width(s, s->temp_pulse_width[i]);
+        uint64_t temp_samnum = s->temp_samplenum[i];
+        uint64_t temp_pul_width = s->temp_pulse_width[i];
+
+        if (preamble_state == -1 && pul_type == 2) {
+            temp_preamble[preamble_count++] = pul_type;
+            preamble_state = 0;
+            s->ss_edge = temp_samnum - temp_pul_width - 1;
+        } else if (preamble_state == 0) {
+            temp_preamble[preamble_count++] = pul_type;
+            preamble_state = 1;
+        } else if (preamble_state == 1) {
+            temp_preamble[preamble_count++] = pul_type;
+            preamble_state = 2;
+        } else if (preamble_state == 2) {
+            temp_preamble[preamble_count++] = pul_type;
+            if (temp_preamble[0] == 2 && temp_preamble[1] == 0 && temp_preamble[2] == 1 && temp_preamble[3] == 0) {
+                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                    "Preamble W", "W");
+                s->seen_preamble = 1;
+            } else if (temp_preamble[0] == 2 && temp_preamble[1] == 2 && temp_preamble[2] == 1 && temp_preamble[3] == 1) {
+                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                    "Preamble M", "M");
+                s->seen_preamble = 1;
+            } else if (temp_preamble[0] == 2 && temp_preamble[1] == 1 && temp_preamble[2] == 1 && temp_preamble[3] == 2) {
+                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                    "Preamble B", "B");
+                s->seen_preamble = 1;
+            } else {
+                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                    "Unknown Preamble", "Unknown Prea.", "U");
+            }
+            preamble_state = -1;
+            preamble_is_ok = 1;
+            preamble_count = 0;
+
+            s->bitcount = 0;
+            s->first_one = 1;
+            s->last_preamble = temp_samnum;
+            i++;
+            break;
+        }
+        i++;
+    }
+
+    /* Remove processed entries by shifting the buffer */
+    int remaining = s->temp_count - i;
+    if (i > 0 && remaining > 0) {
+        memmove(s->temp_pulse_width, &s->temp_pulse_width[i], remaining * sizeof(uint64_t));
+        memmove(s->temp_samplenum, &s->temp_samplenum[i], remaining * sizeof(uint64_t));
+    }
+    s->temp_count = remaining;
+
+    if (preamble_is_ok == 1) {
+        if (s->temp_count == 0) {
+            s->state = STATE_DECODE_STREAM;
+            return 0;
+        } else {
+            return 1;
+        }
+    } else {
+        s->state = STATE_DECODE_PREAMBLE;
+        memcpy(s->preamble, temp_preamble, preamble_count * sizeof(int));
+        s->preamble_count = preamble_count;
+        if (preamble_state == -1)
+            s->preamble_state = 0;
+        else
+            s->preamble_state = preamble_state;
+        return 0;
+    }
+}
+
+/* Re-check buffered stream data after clock range is determined.
+   Returns 0 if no more buffered data to process, 1 if more data remains. */
+static int decode_recheck_stream(struct srd_decoder_inst* di, struct spdif_priv* s)
+{
+    struct subframe_entry temp_subframe[MAX_SUBFRAME];
+    int temp_first_one = 1;
+    int temp_bitcount = 0;
+    int subframe_is_ok = 0;
+    int i = 0;
+
+    while (i < s->temp_count) {
+        int pul_type = get_pulse_type_for_width(s, s->temp_pulse_width[i]);
+        uint64_t samnum = s->temp_samplenum[i];
+        uint64_t pul_width = s->temp_pulse_width[i];
+
+        if (pul_type == 1 && temp_first_one) {
+            temp_first_one = 0;
+            temp_subframe[temp_bitcount].pulse_type = pul_type;
+            temp_subframe[temp_bitcount].ss = samnum - pul_width - 1;
+            temp_subframe[temp_bitcount].es = samnum;
+        } else if (pul_type == 1 && !temp_first_one) {
+            temp_subframe[temp_bitcount].es = samnum;
+            C_ANN_PUT(di, temp_subframe[temp_bitcount].ss, samnum,
+                s->out_ann, ANN_BITS, "1");
+            temp_bitcount++;
+            temp_first_one = 1;
+        } else {
+            temp_subframe[temp_bitcount].pulse_type = pul_type;
+            temp_subframe[temp_bitcount].ss = samnum - pul_width - 1;
+            temp_subframe[temp_bitcount].es = samnum;
+            C_ANN_PUT(di, samnum - pul_width - 1, samnum,
+                s->out_ann, ANN_BITS, "0");
+            temp_bitcount++;
+        }
+
+        if (temp_bitcount == 28) {
+            /* Copy temp subframe to s->subframe and emit */
+            memcpy(s->subframe, temp_subframe, sizeof(s->subframe));
+            s->bitcount = 28;
+            emit_subframe(di, s);
+
+            s->seen_preamble = 0;
+            temp_bitcount = 0;
+            subframe_is_ok = 1;
+            i++;
+            break;
+        }
+        i++;
+    }
+
+    /* Remove processed entries by shifting the buffer */
+    int remaining = s->temp_count - i;
+    if (i > 0 && remaining > 0) {
+        memmove(s->temp_pulse_width, &s->temp_pulse_width[i], remaining * sizeof(uint64_t));
+        memmove(s->temp_samplenum, &s->temp_samplenum[i], remaining * sizeof(uint64_t));
+    }
+    s->temp_count = remaining;
+
+    if (subframe_is_ok == 1) {
+        if (s->temp_count == 0) {
+            s->state = STATE_DECODE_STREAM;
+            return 0;
+        } else {
+            return 1;
+        }
+    } else {
+        s->state = STATE_DECODE_STREAM;
+        memcpy(s->subframe, temp_subframe, temp_bitcount * sizeof(struct subframe_entry));
+        s->bitcount = temp_bitcount;
+        s->first_one = temp_first_one;
+        return 0;
+    }
+}
+
 static void spdif_decode(struct srd_decoder_inst* di)
 {
     struct spdif_priv* s = (struct spdif_priv*)c_decoder_get_private(di);
@@ -213,18 +370,36 @@ static void spdif_decode(struct srd_decoder_inst* di)
         s->samplenum_prev_edge = samplenum;
 
         if (s->state == STATE_GET_FIRST_PULSE) {
+            /* Buffer pulse for later re-check */
+            if (s->temp_count < MAX_PULSE_BUF) {
+                s->temp_pulse_width[s->temp_count] = s->pulse_width;
+                s->temp_samplenum[s->temp_count] = samplenum;
+                s->temp_count++;
+            }
             if (s->pulse_width != 0) {
                 s->clocks[0] = s->pulse_width;
                 s->num_clocks = 1;
                 s->state = STATE_GET_SECOND_PULSE;
             }
         } else if (s->state == STATE_GET_SECOND_PULSE) {
+            /* Buffer pulse for later re-check */
+            if (s->temp_count < MAX_PULSE_BUF) {
+                s->temp_pulse_width[s->temp_count] = s->pulse_width;
+                s->temp_samplenum[s->temp_count] = samplenum;
+                s->temp_count++;
+            }
             if (s->pulse_width > (s->clocks[0] * 13 / 10) || s->pulse_width < (s->clocks[0] * 7 / 10)) {
                 s->clocks[1] = s->pulse_width;
                 s->num_clocks = 2;
                 s->state = STATE_GET_THIRD_PULSE;
             }
         } else if (s->state == STATE_GET_THIRD_PULSE) {
+            /* Buffer pulse for later re-check */
+            if (s->temp_count < MAX_PULSE_BUF) {
+                s->temp_pulse_width[s->temp_count] = s->pulse_width;
+                s->temp_samplenum[s->temp_count] = samplenum;
+                s->temp_count++;
+            }
             if ((s->pulse_width <= (s->clocks[0] * 13 / 10) && s->pulse_width >= (s->clocks[0] * 7 / 10)) || (s->pulse_width <= (s->clocks[1] * 13 / 10) && s->pulse_width >= (s->clocks[1] * 7 / 10))) {
                 continue;
             }
@@ -258,10 +433,30 @@ static void spdif_decode(struct srd_decoder_inst* di)
             snprintf(bitrate_str, sizeof(bitrate_str),
                 "Signal Bitrate: %d Mbit/s (=> %d kHz)",
                 spdif_bitrate, spdif_bitrate / (2 * 32));
-            C_ANN_PUT(di, 0, samplenum - 24, s->out_ann, ANN_BITRATE, bitrate_str);
+            C_ANN_PUT(di, 0, s->temp_samplenum[0] - 24, s->out_ann, ANN_BITRATE, bitrate_str);
 
             s->last_preamble = samplenum;
             s->ss_edge = 0;
+
+            /* Re-process buffered pulse data now that clock range is known */
+            {
+                int is_preamble_status = 1;
+                while (s->temp_count > 0) {
+                    if (is_preamble_status) {
+                        int ret = decode_recheck_preamble(di, s);
+                        if (ret == 0)
+                            break;
+                        else
+                            is_preamble_status = 0;
+                    } else {
+                        int ret = decode_recheck_stream(di, s);
+                        if (ret == 0)
+                            break;
+                        else
+                            is_preamble_status = 1;
+                    }
+                }
+            }
             s->state = STATE_DECODE_STREAM;
         } else if (s->state == STATE_DECODE_STREAM) {
             int pulse = get_pulse_type(s);

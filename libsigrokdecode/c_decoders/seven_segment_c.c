@@ -19,21 +19,21 @@ typedef struct {
 } seg7_state;
 
 static struct srd_channel seg7_channels[] = {
-    { "a", "A", "Segment A", 0, SRD_CHANNEL_SDATA, NULL },
-    { "b", "B", "Segment B", 1, SRD_CHANNEL_SDATA, NULL },
-    { "c", "C", "Segment C", 2, SRD_CHANNEL_SDATA, NULL },
-    { "d", "D", "Segment D", 3, SRD_CHANNEL_SDATA, NULL },
-    { "e", "E", "Segment E", 4, SRD_CHANNEL_SDATA, NULL },
-    { "f", "F", "Segment F", 5, SRD_CHANNEL_SDATA, NULL },
-    { "g", "G", "Segment G", 6, SRD_CHANNEL_SDATA, NULL },
+    { "a", "A", "Segment A", 0, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_A" },
+    { "b", "B", "Segment B", 1, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_B" },
+    { "c", "C", "Segment C", 2, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_C" },
+    { "d", "D", "Segment D", 3, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_D" },
+    { "e", "E", "Segment E", 4, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_E" },
+    { "f", "F", "Segment F", 5, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_F" },
+    { "g", "G", "Segment G", 6, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_G" },
 };
 
 static struct srd_channel seg7_optional_channels[] = {
-    { "dp", "DP", "Decimal point", 0, SRD_CHANNEL_SDATA, NULL },
+    { "dp", "DP", "Decimal point", 7, SRD_CHANNEL_SDATA, "dec_seven_segment_chan_dp" },
 };
 
 static struct srd_decoder_option seg7_options[] = {
-    { "polarity", NULL, "Expected polarity", NULL, NULL },
+    { "polarity", "dec_seven_segment_opt_polarity", "Expected polarity", NULL, NULL },
 };
 
 static const char* seg7_inputs[] = { "logic", NULL };

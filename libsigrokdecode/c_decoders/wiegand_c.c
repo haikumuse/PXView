@@ -155,12 +155,22 @@ static void wiegand_decode(struct srd_decoder_inst *di)
     struct wiegand_priv *s = (struct wiegand_priv *)c_decoder_get_private(di);
     uint64_t samplenum = 0;
     uint64_t matched;
+    int first_call = 1;
 
     if (!s->samplerate)
         return;
 
     while (1) {
+        /* Match Python's self.wait() with no conditions:
+         * - First call: SKIP(0) to process sample 0
+         * - Subsequent calls: SKIP(1) to advance one sample */
         srd_cond_builder *cb = c_cond_new();
+        if (first_call) {
+            c_cond_skip(cb, 0);
+            first_call = 0;
+        } else {
+            c_cond_skip(cb, 1);
+        }
         int ret = c_cond_wait(cb, di, &samplenum, &matched);
         c_cond_free(cb);
         if (ret != SRD_OK)
@@ -169,6 +179,7 @@ static void wiegand_decode(struct srd_decoder_inst *di)
         int d0 = c_decoder_get_pin(di, CH_D0, samplenum);
         int d1 = c_decoder_get_pin(di, CH_D1, samplenum);
 
+        /* Check for no change (same as Python: d0 == _d0_prev and d1 == _d1_prev) */
         if (d0 == s->d0_prev && d1 == s->d1_prev) {
             if (s->es_bit && samplenum >= s->es_bit) {
                 if (d0 == s->inactive && d1 == s->inactive) {

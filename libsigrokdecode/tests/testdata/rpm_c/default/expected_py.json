@@ -1,0 +1,88 @@
+{
+	"decoder": "rpm",
+	"samplerate": 1000000,
+	"num_annotations": 9,
+	"annotations": [
+		{
+			"start_sample": 596,
+			"end_sample": 2596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 2596,
+			"end_sample": 4596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 4596,
+			"end_sample": 6596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 6596,
+			"end_sample": 8596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 8596,
+			"end_sample": 10596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 10596,
+			"end_sample": 12596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 12596,
+			"end_sample": 14596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 14596,
+			"end_sample": 16596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}, 
+		{
+			"start_sample": 16596,
+			"end_sample": 18596,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"30000"
+			]
+		}
+	]
+}

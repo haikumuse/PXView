@@ -1,0 +1,11 @@
+{
+  "decoder": "fsi_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "data": 0,
+    "clock": 1
+  },
+  "stack": []
+}

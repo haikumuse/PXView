@@ -1,0 +1,1327 @@
+{
+	"decoder": "ccd_c",
+	"samplerate": 1000000,
+	"num_annotations": 120,
+	"annotations": [
+		{
+			"start_sample": 540,
+			"end_sample": 667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 668,
+			"end_sample": 795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 796,
+			"end_sample": 923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 924,
+			"end_sample": 1051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1052,
+			"end_sample": 1179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 1180,
+			"end_sample": 1307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 1308,
+			"end_sample": 1435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 1436,
+			"end_sample": 1563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 1564,
+			"end_sample": 1691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 668,
+			"end_sample": 1692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 540,
+			"end_sample": 1820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 1692,
+			"end_sample": 1819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 2540,
+			"end_sample": 2667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2668,
+			"end_sample": 2795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2796,
+			"end_sample": 2923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2924,
+			"end_sample": 3051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3052,
+			"end_sample": 3179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3180,
+			"end_sample": 3307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3308,
+			"end_sample": 3435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3436,
+			"end_sample": 3563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3564,
+			"end_sample": 3691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2668,
+			"end_sample": 3692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 2540,
+			"end_sample": 3820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 3692,
+			"end_sample": 3819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 4540,
+			"end_sample": 4667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 4668,
+			"end_sample": 4795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4796,
+			"end_sample": 4923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4924,
+			"end_sample": 5051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5052,
+			"end_sample": 5179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5180,
+			"end_sample": 5307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5308,
+			"end_sample": 5435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5436,
+			"end_sample": 5563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5564,
+			"end_sample": 5691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4668,
+			"end_sample": 5692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 4540,
+			"end_sample": 5820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5692,
+			"end_sample": 5819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 6540,
+			"end_sample": 6667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 6668,
+			"end_sample": 6795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6796,
+			"end_sample": 6923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6924,
+			"end_sample": 7051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7052,
+			"end_sample": 7179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7180,
+			"end_sample": 7307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7308,
+			"end_sample": 7435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7436,
+			"end_sample": 7563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7564,
+			"end_sample": 7691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6668,
+			"end_sample": 7692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 6540,
+			"end_sample": 7820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 7692,
+			"end_sample": 7819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 8540,
+			"end_sample": 8667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 8668,
+			"end_sample": 8795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8796,
+			"end_sample": 8923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8924,
+			"end_sample": 9051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9052,
+			"end_sample": 9179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9180,
+			"end_sample": 9307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9308,
+			"end_sample": 9435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9436,
+			"end_sample": 9563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9564,
+			"end_sample": 9691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8668,
+			"end_sample": 9692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 8540,
+			"end_sample": 9820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 9692,
+			"end_sample": 9819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 10540,
+			"end_sample": 10667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 10668,
+			"end_sample": 10795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10796,
+			"end_sample": 10923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10924,
+			"end_sample": 11051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11052,
+			"end_sample": 11179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11180,
+			"end_sample": 11307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11308,
+			"end_sample": 11435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11436,
+			"end_sample": 11563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11564,
+			"end_sample": 11691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10668,
+			"end_sample": 11692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 10540,
+			"end_sample": 11820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 11692,
+			"end_sample": 11819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 12540,
+			"end_sample": 12667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 12668,
+			"end_sample": 12795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12796,
+			"end_sample": 12923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12924,
+			"end_sample": 13051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13052,
+			"end_sample": 13179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13180,
+			"end_sample": 13307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13308,
+			"end_sample": 13435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13436,
+			"end_sample": 13563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13564,
+			"end_sample": 13691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12668,
+			"end_sample": 13692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 12540,
+			"end_sample": 13820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13692,
+			"end_sample": 13819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 14540,
+			"end_sample": 14667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 14668,
+			"end_sample": 14795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14796,
+			"end_sample": 14923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14924,
+			"end_sample": 15051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15052,
+			"end_sample": 15179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15180,
+			"end_sample": 15307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15308,
+			"end_sample": 15435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15436,
+			"end_sample": 15563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15564,
+			"end_sample": 15691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14668,
+			"end_sample": 15692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 14540,
+			"end_sample": 15820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 15692,
+			"end_sample": 15819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 16540,
+			"end_sample": 16667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 16668,
+			"end_sample": 16795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16796,
+			"end_sample": 16923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16924,
+			"end_sample": 17051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17052,
+			"end_sample": 17179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 17180,
+			"end_sample": 17307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 17308,
+			"end_sample": 17435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 17436,
+			"end_sample": 17563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 17564,
+			"end_sample": 17691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16668,
+			"end_sample": 17692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 16540,
+			"end_sample": 17820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17692,
+			"end_sample": 17819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 18540,
+			"end_sample": 18667,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 18668,
+			"end_sample": 18795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18796,
+			"end_sample": 18923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18924,
+			"end_sample": 19051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19052,
+			"end_sample": 19179,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 19180,
+			"end_sample": 19307,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 19308,
+			"end_sample": 19435,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 19436,
+			"end_sample": 19563,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 19564,
+			"end_sample": 19691,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18668,
+			"end_sample": 19692,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x78", 
+				"78", 
+				"78"
+			]
+		}, 
+		{
+			"start_sample": 18540,
+			"end_sample": 19820,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 19692,
+			"end_sample": 19819,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}
+	]
+}

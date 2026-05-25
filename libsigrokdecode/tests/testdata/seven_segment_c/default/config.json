@@ -1,0 +1,16 @@
+{
+  "decoder": "seven_segment_c",
+  "samplerate": 1000000,
+  "num_channels": 7,
+  "sample_count": 20000,
+  "channels": {
+    "a": 0,
+    "b": 1,
+    "c": 2,
+    "d": 3,
+    "e": 4,
+    "f": 5,
+    "g": 6
+  },
+  "stack": []
+}

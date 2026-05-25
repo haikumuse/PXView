@@ -1,0 +1,1114 @@
+{
+	"decoder": "uart_c",
+	"samplerate": 1000000,
+	"num_annotations": 119,
+	"annotations": [
+		{
+			"start_sample": 0,
+			"end_sample": 0,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"color:#fbca47"
+			]
+		}, 
+		{
+			"start_sample": 100,
+			"end_sample": 109,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 109,
+			"end_sample": 117,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 113,
+			"end_sample": 113,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 117,
+			"end_sample": 126,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 121,
+			"end_sample": 121,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 126,
+			"end_sample": 135,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 130,
+			"end_sample": 130,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 135,
+			"end_sample": 143,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 139,
+			"end_sample": 139,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 143,
+			"end_sample": 152,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 147,
+			"end_sample": 147,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 152,
+			"end_sample": 161,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 156,
+			"end_sample": 156,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 161,
+			"end_sample": 169,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 165,
+			"end_sample": 165,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 169,
+			"end_sample": 178,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 173,
+			"end_sample": 173,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 109,
+			"end_sample": 178,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 178,
+			"end_sample": 187,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Stop bit error", 
+				"Stop err", 
+				"TE"
+			]
+		}, 
+		{
+			"start_sample": 187,
+			"end_sample": 196,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 196,
+			"end_sample": 204,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 200,
+			"end_sample": 200,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 204,
+			"end_sample": 213,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 208,
+			"end_sample": 208,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 213,
+			"end_sample": 222,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 217,
+			"end_sample": 217,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 222,
+			"end_sample": 230,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 226,
+			"end_sample": 226,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 230,
+			"end_sample": 239,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 234,
+			"end_sample": 234,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 239,
+			"end_sample": 248,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 243,
+			"end_sample": 243,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 248,
+			"end_sample": 256,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 252,
+			"end_sample": 252,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 256,
+			"end_sample": 265,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 260,
+			"end_sample": 260,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 196,
+			"end_sample": 265,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 265,
+			"end_sample": 274,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"T"
+			]
+		}, 
+		{
+			"start_sample": 308,
+			"end_sample": 317,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 317,
+			"end_sample": 325,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 321,
+			"end_sample": 321,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 325,
+			"end_sample": 334,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 329,
+			"end_sample": 329,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 334,
+			"end_sample": 343,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 338,
+			"end_sample": 338,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 343,
+			"end_sample": 351,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 347,
+			"end_sample": 347,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 351,
+			"end_sample": 360,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 355,
+			"end_sample": 355,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 360,
+			"end_sample": 369,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 364,
+			"end_sample": 364,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 369,
+			"end_sample": 377,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 373,
+			"end_sample": 373,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 377,
+			"end_sample": 386,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 381,
+			"end_sample": 381,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 317,
+			"end_sample": 386,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 386,
+			"end_sample": 395,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Stop bit error", 
+				"Stop err", 
+				"TE"
+			]
+		}, 
+		{
+			"start_sample": 308,
+			"end_sample": 412,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"Break condition", 
+				"Break", 
+				"Brk", 
+				"B"
+			]
+		}, 
+		{
+			"start_sample": 516,
+			"end_sample": 525,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 525,
+			"end_sample": 533,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 529,
+			"end_sample": 529,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 533,
+			"end_sample": 542,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 537,
+			"end_sample": 537,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 542,
+			"end_sample": 551,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 546,
+			"end_sample": 546,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 551,
+			"end_sample": 559,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 555,
+			"end_sample": 555,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 559,
+			"end_sample": 568,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 563,
+			"end_sample": 563,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 568,
+			"end_sample": 577,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 572,
+			"end_sample": 572,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 577,
+			"end_sample": 585,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 581,
+			"end_sample": 581,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 585,
+			"end_sample": 594,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 589,
+			"end_sample": 589,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 525,
+			"end_sample": 594,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 594,
+			"end_sample": 603,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Stop bit error", 
+				"Stop err", 
+				"TE"
+			]
+		}, 
+		{
+			"start_sample": 516,
+			"end_sample": 620,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"Break condition", 
+				"Break", 
+				"Brk", 
+				"B"
+			]
+		}, 
+		{
+			"start_sample": 724,
+			"end_sample": 733,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 733,
+			"end_sample": 741,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 737,
+			"end_sample": 737,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 741,
+			"end_sample": 750,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 745,
+			"end_sample": 745,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 750,
+			"end_sample": 759,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 754,
+			"end_sample": 754,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 759,
+			"end_sample": 767,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 763,
+			"end_sample": 763,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 767,
+			"end_sample": 776,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 771,
+			"end_sample": 771,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 776,
+			"end_sample": 785,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 780,
+			"end_sample": 780,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 785,
+			"end_sample": 793,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 789,
+			"end_sample": 789,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 793,
+			"end_sample": 802,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 797,
+			"end_sample": 797,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 733,
+			"end_sample": 802,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 802,
+			"end_sample": 811,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Stop bit error", 
+				"Stop err", 
+				"TE"
+			]
+		}, 
+		{
+			"start_sample": 724,
+			"end_sample": 828,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"Break condition", 
+				"Break", 
+				"Brk", 
+				"B"
+			]
+		}, 
+		{
+			"start_sample": 932,
+			"end_sample": 941,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 941,
+			"end_sample": 949,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 945,
+			"end_sample": 945,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 949,
+			"end_sample": 958,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 953,
+			"end_sample": 953,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 958,
+			"end_sample": 967,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 962,
+			"end_sample": 962,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 967,
+			"end_sample": 975,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 971,
+			"end_sample": 971,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 975,
+			"end_sample": 984,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 979,
+			"end_sample": 979,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 984,
+			"end_sample": 993,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 988,
+			"end_sample": 988,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 993,
+			"end_sample": 1001,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 997,
+			"end_sample": 997,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1001,
+			"end_sample": 1010,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1005,
+			"end_sample": 1005,
+			"ann_class": 20,
+			"ann_type": 27,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 941,
+			"end_sample": 1010,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 1010,
+			"end_sample": 1019,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Stop bit error", 
+				"Stop err", 
+				"TE"
+			]
+		}, 
+		{
+			"start_sample": 932,
+			"end_sample": 1036,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"Break condition", 
+				"Break", 
+				"Brk", 
+				"B"
+			]
+		}
+	]
+}

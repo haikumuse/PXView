@@ -288,13 +288,26 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
     } else if (s->state == STATE_GET_SLAVE_ADDR) {
         if (strcmp(cmd, "ADDRESS WRITE") == 0) {
             if (databyte != DS1307_I2C_ADDRESS) {
-                char t[64];
-                snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
-                C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                if (databyte != 0x7F) {
+                    char t[64];
+                    snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
+                    C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                }
                 s->state = STATE_IDLE;
                 return;
             }
             s->state = STATE_GET_REG_ADDR;
+        } else if (strcmp(cmd, "ADDRESS READ") == 0) {
+            if (databyte != DS1307_I2C_ADDRESS) {
+                if (databyte != 0x7F) {
+                    char t[64];
+                    snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
+                    C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                }
+                s->state = STATE_IDLE;
+                return;
+            }
+            s->state = STATE_READ_RTC_REGS;
         }
     } else if (s->state == STATE_GET_REG_ADDR) {
         if (strcmp(cmd, "DATA WRITE") == 0) {
@@ -317,9 +330,11 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
     } else if (s->state == STATE_READ_RTC_REGS) {
         if (strcmp(cmd, "ADDRESS READ") == 0) {
             if (databyte != DS1307_I2C_ADDRESS) {
-                char t[64];
-                snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
-                C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                if (databyte != 0x7F) {
+                    char t[64];
+                    snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
+                    C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                }
                 s->state = STATE_IDLE;
                 return;
             }

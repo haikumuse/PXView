@@ -60,6 +60,7 @@ struct jtag_priv {
     int oldstate;
     int bits_tdi[256];
     int bits_tdo[256];
+    uint64_t bits_ss[256];
     int bits_cnt;
     uint64_t ss_bitstring;
     uint64_t ss_item;
@@ -69,6 +70,9 @@ struct jtag_priv {
     gboolean data_ready;
     int out_ann;
     int out_python;
+    int last_bit_tdi;
+    int last_bit_tdo;
+    uint64_t last_bit_ss;
 };
 
 static const int next_state[16][2] = {
@@ -88,6 +92,25 @@ static const int next_state[16][2] = {
     { 13, 14 },
     { 12, 11 },
     { 13, 11 },
+};
+
+static const char* jtag_state_names[] = {
+    "TEST-LOGIC-RESET",
+    "RUN-TEST/IDLE",
+    "SELECT-DR-SCAN",
+    "CAPTURE-DR",
+    "UPDATE-DR",
+    "PAUSE-DR",
+    "SHIFT-DR",
+    "EXIT1-DR",
+    "EXIT2-DR",
+    "SELECT-IR-SCAN",
+    "CAPTURE-IR",
+    "UPDATE-IR",
+    "PAUSE-IR",
+    "SHIFT-IR",
+    "EXIT1-IR",
+    "EXIT2-IR",
 };
 
 static struct srd_channel jtag_channels[] = {
@@ -180,13 +203,15 @@ static void jtag_decode(struct srd_decoder_inst* di)
         if (ret != SRD_OK)
             return;
 
-        if (di->dec_num_channels > TRST && di->dec_channelmap[TRST] >= 0) {
+        if (c_decoder_has_channel(di, TRST)) {
             int trst = c_decoder_get_pin(di, TRST, samplenum);
             if (trst == 0) {
                 if (priv->state != TEST_LOGIC_RESET) {
                     C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, priv->state,
                         jtag_ann_labels[priv->state][2]);
-                    c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
+                    const char* trst_state_name = jtag_state_names[TEST_LOGIC_RESET];
+                    c_decoder_put_python(di, ss_state, samplenum, priv->out_python,
+                        "NEW STATE", (const unsigned char*)trst_state_name, strlen(trst_state_name));
                     ss_state = samplenum;
                 }
                 priv->oldstate = priv->state;
@@ -201,6 +226,8 @@ static void jtag_decode(struct srd_decoder_inst* di)
         int tms = c_decoder_get_pin(di, TMS, samplenum);
         int oldstate = priv->state;
         int newstate = next_state[oldstate][tms];
+        gboolean shifting_to_exit1 = (oldstate == SHIFT_DR && newstate == EXIT1_DR) ||
+                                     (oldstate == SHIFT_IR && newstate == EXIT1_IR);
 
         if ((newstate == SHIFT_DR && oldstate != SHIFT_DR) || (newstate == SHIFT_IR && oldstate != SHIFT_IR)) {
             priv->first_shift_bit = TRUE;
@@ -222,14 +249,22 @@ static void jtag_decode(struct srd_decoder_inst* di)
                 if (priv->bits_cnt < 256) {
                     priv->bits_tdi[priv->bits_cnt] = tdi_val;
                     priv->bits_tdo[priv->bits_cnt] = tdo_val;
+                    priv->bits_ss[priv->bits_cnt] = samplenum;
                 }
 
-                char tdi_str[4];
-                char tdo_str[4];
-                snprintf(tdi_str, sizeof(tdi_str), "%d", tdi_val);
-                snprintf(tdo_str, sizeof(tdo_str), "%d", tdo_val);
-                C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDI, tdi_str);
-                C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDO, tdo_str);
+                /* Fix #3: Defer last bit annotation when transitioning to EXIT1 */
+                if (!shifting_to_exit1) {
+                    char tdi_str[4];
+                    char tdo_str[4];
+                    snprintf(tdi_str, sizeof(tdi_str), "%d", tdi_val);
+                    snprintf(tdo_str, sizeof(tdo_str), "%d", tdo_val);
+                    C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDI, tdi_str);
+                    C_ANN_PUT(di, priv->ss_item, samplenum, priv->out_ann, ANN_BIT_TDO, tdo_str);
+                } else {
+                    priv->last_bit_tdi = tdi_val;
+                    priv->last_bit_tdo = tdo_val;
+                    priv->last_bit_ss = samplenum;
+                }
 
                 priv->es_item = samplenum;
                 priv->ss_item = samplenum;
@@ -238,52 +273,115 @@ static void jtag_decode(struct srd_decoder_inst* di)
             }
         }
 
-        if ((oldstate == SHIFT_DR && newstate == EXIT1_DR) || (oldstate == SHIFT_IR && newstate == EXIT1_IR)) {
+        /* SHIFT->EXIT1 transition: defer bitstring/protocol output to EXIT1->next */
+        if (shifting_to_exit1) {
+            /* data_ready is already set in the SHIFT block above */
+        }
+
+        /* EXIT1/EXIT2 -> next transition: output deferred bitstring, protocol, and last bit */
+        if ((oldstate == EXIT1_DR || oldstate == EXIT2_DR ||
+             oldstate == EXIT1_IR || oldstate == EXIT2_IR) && newstate != oldstate) {
             if (priv->data_ready && priv->bits_cnt > 0) {
-                char tdi_str[128];
-                char tdo_str[128];
-                int i;
+                int is_ir = (oldstate == EXIT1_IR || oldstate == EXIT2_IR);
                 int cnt = priv->bits_cnt > 256 ? 256 : priv->bits_cnt;
+                int i;
                 uint64_t tdi_val = 0, tdo_val = 0;
                 for (i = 0; i < cnt; i++) {
                     tdi_val |= ((uint64_t)priv->bits_tdi[i] << i);
                     tdo_val |= ((uint64_t)priv->bits_tdo[i] << i);
                 }
-                const char* dr_ir = (oldstate == SHIFT_DR) ? "DR" : "IR";
+                const char* dr_ir = is_ir ? "IR" : "DR";
+
+                /* Bitstring annotations */
+                char tdi_str[128];
+                char tdo_str[128];
                 snprintf(tdi_str, sizeof(tdi_str), "%s TDI: (0x%llX), %d bits", dr_ir, (unsigned long long)tdi_val, cnt);
                 snprintf(tdo_str, sizeof(tdo_str), "%s TDO: (0x%llX), %d bits", dr_ir, (unsigned long long)tdo_val, cnt);
-
                 C_ANN_PUT(di, priv->ss_bitstring, samplenum, priv->out_ann, ANN_BITSTRING_TDI, tdi_str);
                 C_ANN_PUT(di, priv->ss_bitstring, samplenum, priv->out_ann, ANN_BITSTRING_TDO, tdo_str);
 
+                /* Fix #2: Protocol output with bitstring and per-bit ss/es data.
+                 * Binary data format:
+                 *   [0..cnt]       = bitstring as null-terminated string (reversed: last-bit-first)
+                 *   [cnt+1..]      = per-bit ss/es pairs, each 16 bytes (8B ss LE + 8B es LE),
+                 *                    in same order as bitstring */
                 {
-                    int is_ir = (oldstate == SHIFT_IR);
-                    int byte_count = (cnt + 7) / 8;
-                    unsigned char tdi_bytes[32];
-                    unsigned char tdo_bytes[32];
-                    memset(tdi_bytes, 0, sizeof(tdi_bytes));
-                    memset(tdo_bytes, 0, sizeof(tdo_bytes));
+                    char bitstring_tdi[257];
+                    char bitstring_tdo[257];
                     for (i = 0; i < cnt; i++) {
-                        if (priv->bits_tdi[i])
-                            tdi_bytes[i / 8] |= (1 << (i % 8));
-                        if (priv->bits_tdo[i])
-                            tdo_bytes[i / 8] |= (1 << (i % 8));
+                        bitstring_tdi[i] = '0' + priv->bits_tdi[cnt - 1 - i];
+                        bitstring_tdo[i] = '0' + priv->bits_tdo[cnt - 1 - i];
+                    }
+                    bitstring_tdi[cnt] = '\0';
+                    bitstring_tdo[cnt] = '\0';
+
+                    int bitstring_len = cnt + 1;
+                    int per_bit_size = 16;
+                    int data_size = bitstring_len + cnt * per_bit_size;
+                    unsigned char* proto_data = (unsigned char*)g_malloc(data_size);
+
+                    /* TDI protocol output */
+                    memcpy(proto_data, bitstring_tdi, bitstring_len);
+                    int pos = bitstring_len;
+                    for (i = 0; i < cnt; i++) {
+                        int bit_idx = cnt - 1 - i;
+                        uint64_t ss = priv->bits_ss[bit_idx];
+                        uint64_t es;
+                        if (bit_idx == cnt - 1)
+                            es = samplenum;
+                        else
+                            es = priv->bits_ss[bit_idx + 1];
+                        memcpy(proto_data + pos, &ss, 8);
+                        memcpy(proto_data + pos + 8, &es, 8);
+                        pos += per_bit_size;
                     }
                     c_decoder_put_python(di, priv->ss_bitstring, samplenum, priv->out_python,
-                        is_ir ? "IR TDI" : "DR TDI", tdi_bytes, byte_count);
+                        is_ir ? "IR TDI" : "DR TDI", proto_data, data_size);
+
+                    /* TDO protocol output */
+                    memcpy(proto_data, bitstring_tdo, bitstring_len);
+                    pos = bitstring_len;
+                    for (i = 0; i < cnt; i++) {
+                        int bit_idx = cnt - 1 - i;
+                        uint64_t ss = priv->bits_ss[bit_idx];
+                        uint64_t es;
+                        if (bit_idx == cnt - 1)
+                            es = samplenum;
+                        else
+                            es = priv->bits_ss[bit_idx + 1];
+                        memcpy(proto_data + pos, &ss, 8);
+                        memcpy(proto_data + pos + 8, &es, 8);
+                        pos += per_bit_size;
+                    }
                     c_decoder_put_python(di, priv->ss_bitstring, samplenum, priv->out_python,
-                        is_ir ? "IR TDO" : "DR TDO", tdo_bytes, byte_count);
+                        is_ir ? "IR TDO" : "DR TDO", proto_data, data_size);
+
+                    g_free(proto_data);
                 }
+
+                /* Fix #3: Output deferred last bit annotation */
+                {
+                    char tdi_str[4];
+                    char tdo_str[4];
+                    snprintf(tdi_str, sizeof(tdi_str), "%d", priv->last_bit_tdi);
+                    snprintf(tdo_str, sizeof(tdo_str), "%d", priv->last_bit_tdo);
+                    C_ANN_PUT(di, priv->last_bit_ss, samplenum, priv->out_ann, ANN_BIT_TDI, tdi_str);
+                    C_ANN_PUT(di, priv->last_bit_ss, samplenum, priv->out_ann, ANN_BIT_TDO, tdo_str);
+                }
+
+                priv->bits_cnt = 0;
+                priv->first = TRUE;
+                priv->data_ready = FALSE;
             }
-            priv->bits_cnt = 0;
-            priv->first = TRUE;
-            priv->data_ready = FALSE;
         }
 
         if (newstate != oldstate) {
             C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, oldstate,
                 jtag_ann_labels[oldstate][2]);
-            c_decoder_put_python(di, ss_state, samplenum, priv->out_python, "NEW STATE", NULL, 0);
+            /* Fix #1: Include state name in NEW STATE protocol output */
+            const char* state_name = jtag_state_names[newstate];
+            c_decoder_put_python(di, ss_state, samplenum, priv->out_python,
+                "NEW STATE", (const unsigned char*)state_name, strlen(state_name));
             ss_state = samplenum;
         }
 

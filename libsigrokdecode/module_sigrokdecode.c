@@ -66,6 +66,24 @@ PyMODINIT_FUNC PyInit_sigrokdecode(void)
         goto err_out;
     if (PyModule_AddIntConstant(mod, "OUTPUT_META", SRD_OUTPUT_META) < 0)
         goto err_out;
+    if (PyModule_AddIntConstant(mod, "OUTPUT_LOGIC", SRD_OUTPUT_LOGIC) < 0)
+        goto err_out;
+
+    /* Expose search terms */
+    if (PyModule_AddIntConstant(mod, "TERM_HIGH", SRD_TERM_HIGH) < 0)
+        goto err_out;
+    if (PyModule_AddIntConstant(mod, "TERM_LOW", SRD_TERM_LOW) < 0)
+        goto err_out;
+    if (PyModule_AddIntConstant(mod, "TERM_RISING_EDGE", SRD_TERM_RISING_EDGE) < 0)
+        goto err_out;
+    if (PyModule_AddIntConstant(mod, "TERM_FALLING_EDGE", SRD_TERM_FALLING_EDGE) < 0)
+        goto err_out;
+    if (PyModule_AddIntConstant(mod, "TERM_EITHER_EDGE", SRD_TERM_EITHER_EDGE) < 0)
+        goto err_out;
+    if (PyModule_AddIntConstant(mod, "TERM_NO_EDGE", SRD_TERM_NO_EDGE) < 0)
+        goto err_out;
+    if (PyModule_AddIntConstant(mod, "TERM_SKIP", SRD_TERM_SKIP) < 0)
+        goto err_out;
     /* Expose meta input symbols. */
     if (PyModule_AddIntConstant(mod, "SRD_CONF_SAMPLERATE", SRD_CONF_SAMPLERATE) < 0)
         goto err_out;

@@ -8,6 +8,7 @@
 enum miller_ann {
     ANN_BIT = 0,
     ANN_BITSTRING,
+    ANN_ERROR,
     NUM_ANN,
 };
 
@@ -40,14 +41,17 @@ static struct srd_decoder_option miller_options[] = {
 static const char *miller_ann_labels[][3] = {
     {"", "bit", "Bit"},
     {"", "bitstring", "Bitstring"},
+    {"", "error", "Error"},
 };
 
 static const int miller_row_bit_classes[] = {ANN_BIT, -1};
 static const int miller_row_bitstring_classes[] = {ANN_BITSTRING, -1};
+static const int miller_row_error_classes[] = {ANN_ERROR, -1};
 
 static const struct srd_c_ann_row miller_ann_rows[] = {
     {"bit", "Bit", miller_row_bit_classes, 1},
     {"bitstring", "Bitstring", miller_row_bitstring_classes, 1},
+    {"error", "Error", miller_row_error_classes, 1},
 };
 
 static const struct srd_decoder_binary miller_binary[] = {
@@ -142,22 +146,6 @@ static void flush_bitstring(struct srd_decoder_inst *di, struct miller_priv *s)
     s->bitvalue = 0;
 }
 
-static int wait_edge_or_timeout(struct srd_decoder_inst *di, struct miller_priv *s,
-                                uint64_t *samplenum, uint64_t *matched)
-{
-    srd_cond_builder *cb = c_cond_new();
-    switch (s->edge_type) {
-    case 0: c_cond_rise(cb, 0); break;
-    case 1: c_cond_fall(cb, 0); break;
-    case 2: c_cond_edge(cb, 0); break;
-    }
-    c_cond_or(cb);
-    c_cond_skip(cb, 3 * s->timeunit);
-    int ret = c_cond_wait(cb, di, samplenum, matched);
-    c_cond_free(cb);
-    return ret;
-}
-
 static void miller_decode(struct srd_decoder_inst *di)
 {
     struct miller_priv *s = (struct miller_priv *)c_decoder_get_private(di);
@@ -167,131 +155,116 @@ static void miller_decode(struct srd_decoder_inst *di)
     if (!s->samplerate)
         s->samplerate = c_decoder_get_samplerate(di);
     if (!s->samplerate)
-        return;
+        s->samplerate = 1;
 
     int64_t baudrate = c_decoder_get_option_int(di, "baudrate", 106000);
     if (baudrate <= 0)
         baudrate = 106000;
-    s->timeunit = s->samplerate / (uint64_t)baudrate;
+    s->timeunit = (uint64_t)((double)s->samplerate / (double)baudrate + 0.5);
     if (s->timeunit == 0)
         return;
 
-    /* Wait for first edge */
-    srd_cond_builder *cb = c_cond_new();
-    switch (s->edge_type) {
-    case 0: c_cond_rise(cb, 0); break;
-    case 1: c_cond_fall(cb, 0); break;
-    case 2: c_cond_edge(cb, 0); break;
-    }
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK)
-        return;
-
-    s->prevedge = samplenum;
-    s->expectedstart = samplenum + s->timeunit / 2;
-    s->prevbit = 0;  /* initial bit = 0 */
-
+    /* Main loop: like Python's while True: decode_run() */
     while (1) {
-        ret = wait_edge_or_timeout(di, s, &samplenum, &matched);
+        /* Wait for first edge - like Python's self.wait({0: edgetype}) */
+        srd_cond_builder *cb = c_cond_new();
+        switch (s->edge_type) {
+        case 0: c_cond_rise(cb, 0); break;
+        case 1: c_cond_fall(cb, 0); break;
+        case 2: c_cond_edge(cb, 0); break;
+        }
+        int ret = c_cond_wait(cb, di, &samplenum, &matched);
+        c_cond_free(cb);
         if (ret != SRD_OK) {
             flush_bitstring(di, s);
             return;
         }
 
-        /* Check for timeout (skip matched, no edge) */
-        int is_timeout = (matched & (1ULL << 1)) && !(matched & (1ULL << 0));
-
-        if (is_timeout) {
-            flush_bitstring(di, s);
-            return;
-        }
-
-        uint64_t sampledelta = samplenum - s->prevedge;
-
-        /* Round timedelta to nearest 0.5 */
-        double td_exact = (double)sampledelta / (double)s->timeunit;
-        double timedelta = round(td_exact * 2.0) / 2.0;
-
-        if (timedelta <= 0.5) {
-            /* Error: edges too close */
-            s->prevedge = samplenum;
-            continue;
-        }
-
-        if (s->prevbit == 0) {
-            /* After space */
-            if (timedelta == 1.0) {
-                /* space (0) */
-                output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
-                s->prevbit = 0;
-                s->expectedstart = s->expectedstart + s->timeunit;
-            } else if (timedelta == 1.5) {
-                /* mark (1) */
-                output_bit(di, s, 1, s->expectedstart, samplenum + s->timeunit / 2);
-                s->prevbit = 1;
-                s->expectedstart = samplenum + s->timeunit / 2;
-            } else if (timedelta >= 2.0) {
-                /* idle - end of message */
-                flush_bitstring(di, s);
-                /* Start looking for next message */
-                cb = c_cond_new();
-                switch (s->edge_type) {
-                case 0: c_cond_rise(cb, 0); break;
-                case 1: c_cond_fall(cb, 0); break;
-                case 2: c_cond_edge(cb, 0); break;
-                }
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
-                if (ret != SRD_OK)
-                    return;
-                s->prevedge = samplenum;
-                s->expectedstart = samplenum + s->timeunit / 2;
-                s->prevbit = 0;
-                continue;
-            }
-        } else {
-            /* After mark */
-            if (timedelta == 1.0) {
-                /* mark (1) */
-                output_bit(di, s, 1, s->expectedstart, samplenum + s->timeunit / 2);
-                s->prevbit = 1;
-                s->expectedstart = samplenum + s->timeunit / 2;
-            } else if (timedelta == 1.5) {
-                /* space (0) + space (0) */
-                output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
-                output_bit(di, s, 0, s->expectedstart + s->timeunit, s->expectedstart + 2 * s->timeunit);
-                s->prevbit = 0;
-                s->expectedstart = s->expectedstart + 2 * s->timeunit;
-            } else if (timedelta == 2.0) {
-                /* space (0) + mark (1) */
-                output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
-                output_bit(di, s, 1, s->expectedstart + s->timeunit, samplenum + s->timeunit / 2);
-                s->prevbit = 1;
-                s->expectedstart = samplenum + s->timeunit / 2;
-            } else {
-                /* space + idle - end */
-                output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
-                flush_bitstring(di, s);
-                /* Start looking for next message */
-                cb = c_cond_new();
-                switch (s->edge_type) {
-                case 0: c_cond_rise(cb, 0); break;
-                case 1: c_cond_fall(cb, 0); break;
-                case 2: c_cond_edge(cb, 0); break;
-                }
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
-                if (ret != SRD_OK)
-                    return;
-                s->prevedge = samplenum;
-                s->expectedstart = samplenum + s->timeunit / 2;
-                s->prevbit = 0;
-                continue;
-            }
-        }
-
         s->prevedge = samplenum;
+        s->prevbit = 0;
+        s->expectedstart = samplenum + s->timeunit;
+
+        /* Output initial "0" bit, like Python's yield (0, prevedge, prevedge + timeunit) */
+        output_bit(di, s, 0, samplenum, samplenum + s->timeunit);
+
+        /* Inner loop: process bits within one message */
+        while (1) {
+            cb = c_cond_new();
+            switch (s->edge_type) {
+            case 0: c_cond_rise(cb, 0); break;
+            case 1: c_cond_fall(cb, 0); break;
+            case 2: c_cond_edge(cb, 0); break;
+            }
+            c_cond_or(cb);
+            c_cond_skip(cb, 3 * s->timeunit);
+            ret = c_cond_wait(cb, di, &samplenum, &matched);
+            c_cond_free(cb);
+            if (ret != SRD_OK) {
+                flush_bitstring(di, s);
+                return;
+            }
+
+            uint64_t sampledelta = samplenum - s->prevedge;
+            s->prevedge = samplenum;
+
+            /* Round timedelta to nearest 0.5 */
+            double td_exact = (double)sampledelta / (double)s->timeunit;
+            double timedelta = round(td_exact * 2.0) / 2.0;
+
+            if (s->prevbit == 0) {
+                /* After space */
+                if (timedelta == 1.0) {
+                    /* space (0) */
+                    output_bit(di, s, 0, samplenum, samplenum + s->timeunit);
+                    s->prevbit = 0;
+                    s->expectedstart = samplenum + s->timeunit;
+                } else if (timedelta == 1.5) {
+                    /* mark (1) */
+                    output_bit(di, s, 1, s->expectedstart, samplenum + s->timeunit / 2);
+                    s->prevbit = 1;
+                    s->expectedstart = samplenum + s->timeunit / 2;
+                } else if (timedelta >= 2.0) {
+                    /* idle - end of message */
+                    flush_bitstring(di, s);
+                    break; /* Break inner loop, start new run */
+                } else {
+                    /* timedelta < 1.0: error */
+                    C_ANN_PUT(di, samplenum - sampledelta, samplenum, s->out_ann, ANN_ERROR, "ERROR", "Err", "E");
+                    flush_bitstring(di, s);
+                    break;
+                }
+            } else {
+                /* After mark */
+                if (timedelta <= 0.5) {
+                    /* Error: edges too close after mark */
+                    C_ANN_PUT(di, samplenum - sampledelta, samplenum, s->out_ann, ANN_ERROR, "ERROR", "Err", "E");
+                    flush_bitstring(di, s);
+                    break;
+                } else if (timedelta == 1.0) {
+                    /* mark (1) */
+                    output_bit(di, s, 1, s->expectedstart, samplenum + s->timeunit / 2);
+                    s->prevbit = 1;
+                    s->expectedstart = samplenum + s->timeunit / 2;
+                } else if (timedelta == 1.5) {
+                    /* space (0) + space (0) */
+                    output_bit(di, s, 0, s->expectedstart, samplenum);
+                    output_bit(di, s, 0, samplenum, samplenum + s->timeunit);
+                    s->prevbit = 0;
+                    s->expectedstart = samplenum + s->timeunit;
+                } else if (timedelta == 2.0) {
+                    /* space (0) + mark (1) */
+                    output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
+                    output_bit(di, s, 1, samplenum - s->timeunit / 2, samplenum + s->timeunit / 2);
+                    s->prevbit = 1;
+                    s->expectedstart = samplenum + s->timeunit / 2;
+                } else {
+                    /* timedelta > 2.0: space (0) + idle - end */
+                    output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
+                    flush_bitstring(di, s);
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -318,7 +291,7 @@ static struct srd_c_decoder miller_c_decoder = {
     .num_options = 2,
     .num_annotations = NUM_ANN,
     .ann_labels = miller_ann_labels,
-    .num_annotation_rows = 2,
+    .num_annotation_rows = 3,
     .annotation_rows = miller_ann_rows,
     .inputs = miller_inputs,
     .num_inputs = 1,

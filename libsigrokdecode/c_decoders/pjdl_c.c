@@ -560,12 +560,8 @@ static void pjdl_decode(struct srd_decoder_inst *di)
         if (took_low && !is_data)
             continue;
 
-        /* If no data, sync loss */
+        /* If no data, sync loss - but don't output annotation (Python has _with_ann_sync_loss = False) */
         if (!is_data) {
-            uint64_t ss = last_snum;
-            uint64_t es = samplenum;
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SYNC_LOSS,
-                "failed pulse length check", "pulse length", "length");
             pjdl_frame_flush(di, s);
             pjdl_reset_state(s);
             if (edge_seen && curr_level)

@@ -1464,6 +1464,10 @@
         "text": "扁平按鈕懸停"
     },
     {
+        "id": "IDS_STYLE_FLAT_HOVER_FG",
+        "text": "扁平按鈕懸停文字"
+    },
+    {
         "id": "IDS_STYLE_BTN_CHECKED_MID",
         "text": "按鈕選中"
     },
@@ -1506,6 +1510,10 @@
     {
         "id": "IDS_STYLE_DOCK_GRIDLINE",
         "text": "Dock 網格線"
+    },
+    {
+        "id": "IDS_STYLE_GRIDLINE",
+        "text": "表格網格線"
     },
     {
         "id": "IDS_STYLE_DOCK_SECTION_TITLE_FG",

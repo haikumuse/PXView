@@ -134,6 +134,10 @@ static void hdlc_start(struct srd_decoder_inst* di)
     priv->en_active_high = (en_pol && strcmp(en_pol, "active-low") == 0) ? 0 : 1;
     priv->cpol = (int)c_decoder_get_option_int(di, "cpol", 1);
     priv->have_en = c_decoder_has_channel(di, 2);
+    if (!priv->have_en) {
+        unsigned char cs_data[2] = {0xFF, 0xFF};
+        c_decoder_put_python(di, 0, 0, priv->out_python, "CS-CHANGE", cs_data, 2);
+    }
 }
 
 static void hdlc_putt(struct srd_decoder_inst* di, struct hdlc_priv* priv)
@@ -156,8 +160,20 @@ static void hdlc_putt(struct srd_decoder_inst* di, struct hdlc_priv* priv)
         C_ANN_PUT(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 1],
             priv->out_ann, ANN_WARNING, "BAD CRC!");
     } else {
+        int data_cnt = cnt - 2;
+        int buf_size = data_cnt * 17;
+        unsigned char* py_buf = (unsigned char*)g_malloc(buf_size);
+        for (int i = 0; i < data_cnt; i++) {
+            uint64_t ss = priv->rxbytes_ss[i];
+            uint64_t es = priv->rxbytes_es[i];
+            uint8_t val = priv->rxbytes[i];
+            memcpy(py_buf + i * 17, &ss, 8);
+            memcpy(py_buf + i * 17 + 8, &es, 8);
+            py_buf[i * 17 + 16] = val;
+        }
         c_decoder_put_python(di, priv->rxbytes_ss[0], priv->rxbytes_es[cnt - 2],
-            priv->out_python, "TRANSFER", priv->rxbytes, cnt - 2);
+            priv->out_python, "TRANSFER", py_buf, buf_size);
+        g_free(py_buf);
         for (int i = 0; i < cnt - 2; i++) {
             c_decoder_put_binary(di, priv->rxbytes_ss[i], priv->rxbytes_ss[i],
                 priv->out_binary, 0, 1, &priv->rxbytes[i]);

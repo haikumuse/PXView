@@ -842,6 +842,8 @@ void MainWindow::retranslateUi() {
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SEARCH_DOCK_TITLE), "Search..."));
   _device_options_dock->setWindowTitle(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DEVICE_OPTIONS), "Device Options"));
+  _log_dock->setWindowTitle(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
 
   // Update drawer page titles
   if (_sliding_drawer) {
@@ -870,6 +872,9 @@ void MainWindow::retranslateUi() {
                                   L_S(STR_PAGE_DLG,
                                       S_ID(IDS_DLG_SIGNAL_PROCESSING),
                                       "Signal Processing"));
+    _sliding_drawer->setPageTitle(
+        _drawer_page_log,
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
   }
 
   Ribbon_retranslateUi();

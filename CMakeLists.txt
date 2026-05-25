@@ -981,4 +981,60 @@ if(ENABLE_TESTS)
 	add_test(test ${CMAKE_CURRENT_BINARY_DIR}/PXView/test/PXView-test)
 endif(ENABLE_TESTS)
 
+#===============================================================================
+#= decoder_test - C decoder test harness
+#-------------------------------------------------------------------------------
+
+option(BUILD_DECODER_TEST "Build the C decoder test program" OFF)
+
+if(BUILD_DECODER_TEST)
+	# Static library for libsigrokdecode so decoder_test can link against it.
+	# The main PXView executable compiles these sources directly; this static
+	# library exists solely to provide a linkable target for decoder_test.
+	add_library(sigrokdecode_static STATIC
+		${libsigrokdecode_SOURCES}
+		${CMAKE_CURRENT_SOURCE_DIR}/common/log/xlog.c
+	)
+
+	target_include_directories(sigrokdecode_static PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode
+		${CMAKE_CURRENT_SOURCE_DIR}/common
+		${GLIB_INCLUDE_DIRS}
+		${Python3_INCLUDE_DIRS}
+	)
+
+	target_link_libraries(sigrokdecode_static
+		-lglib-2.0
+		${PY_LIB}
+	)
+
+	# decoder_test executable
+	add_executable(decoder_test
+		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/tests/decoder_test.c
+	)
+
+	target_include_directories(decoder_test PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}                        # for <libsigrokdecode/libsigrokdecode.h>
+		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode        # for internal headers via sigrokdecode_static
+		${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/tests  # for "cJSON.h"
+		${GLIB_INCLUDE_DIRS}
+	)
+
+	# CJSON_IMPLEMENTATION is needed by the cJSON single-header library.
+	# It is also defined in decoder_test.c itself; the CMake definition
+	# ensures it is set regardless of source-level changes.
+	target_compile_definitions(decoder_test PRIVATE
+		CJSON_IMPLEMENTATION
+	)
+
+	target_link_libraries(decoder_test
+		sigrokdecode_static
+		-lglib-2.0
+	)
+
+	set_target_properties(decoder_test PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+	)
+endif()
+
 

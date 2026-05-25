@@ -242,10 +242,8 @@ static void swim_decode_bit(struct srd_decoder_inst *di, struct swim_priv *s,
 {
     int bit;
     if (mid - start >= end - mid) {
-        C_ANN_PUT(di, start, end, s->out_ann, ANN_BIT, "0");
         bit = 0;
     } else {
-        C_ANN_PUT(di, start, end, s->out_ann, ANN_BIT, "1");
         bit = 1;
     }
     swim_bitseq(di, s, start, end, bit);
@@ -271,7 +269,7 @@ static void detect_synchronize_frame(struct srd_decoder_inst *di, struct swim_pr
     }
 }
 
-static void detect_enter_sequence(struct swim_priv *s, uint64_t start, uint64_t end)
+static void detect_enter_sequence(struct srd_decoder_inst *di, struct swim_priv *s, uint64_t start, uint64_t end)
 {
     if (s->eseq_pairnum == 0 || llabs((int64_t)s->eseq_reflen - (int64_t)(end - start)) > 2) {
         s->eseq_pairstart = start;
@@ -283,8 +281,12 @@ static void detect_enter_sequence(struct swim_priv *s, uint64_t start, uint64_t 
             s->eseq_reflen /= 2;
     } else {
         s->eseq_pairnum++;
-        if (s->eseq_pairnum == 8)
+        if (s->eseq_pairnum == 8) {
+            /* Emit enter sequence annotation, matching Python */
+            C_ANN_PUT(di, s->eseq_pairstart, end, s->out_ann, ANN_ENTERSEQ,
+                      "enter sequence", "enter seq", "enter", "ent", "e");
             s->eseq_pairnum = 0;
+        }
     }
 }
 
@@ -378,7 +380,7 @@ static void swim_decode(struct srd_decoder_inst *di)
             if (swim_val == 1 && s->eseq_edge_ss[1] != 0) {
                 detect_synchronize_frame(di, s, s->eseq_edge_ss[1], samplenum);
                 if (s->eseq_edge_ss[0] != 0)
-                    detect_enter_sequence(s, s->eseq_edge_ss[0], samplenum);
+                    detect_enter_sequence(di, s, s->eseq_edge_ss[0], samplenum);
             }
             s->eseq_edge_val[0] = s->eseq_edge_val[1];
             s->eseq_edge_ss[0] = s->eseq_edge_ss[1];

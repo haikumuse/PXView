@@ -25,6 +25,310 @@ enum sirc_ann {
 #define PAUSE_USEC 600.0
 #define TOLERANCE 0.30
 
+/* Device name lookup table from lists.py */
+typedef struct {
+    uint8_t address;
+    int8_t has_extended;
+    uint16_t extended;
+    const char* name_long;
+    const char* name_short;
+} sirc_device_entry;
+
+typedef struct {
+    uint8_t cmd;
+    const char* key_name;
+} sirc_cmd_entry;
+
+typedef struct {
+    const sirc_device_entry* device;
+    const sirc_cmd_entry* cmds;
+    int num_cmds;
+} sirc_address_table;
+
+/* Numbers (shared across all devices) */
+static const sirc_cmd_entry sirc_numbers[] = {
+    { 0x00, "1" },
+    { 0x01, "2" },
+    { 0x02, "3" },
+    { 0x03, "4" },
+    { 0x04, "5" },
+    { 0x05, "6" },
+    { 0x06, "7" },
+    { 0x07, "8" },
+    { 0x08, "9" },
+    { 0x09, "0/10" },
+};
+
+/* TV (0x01, no extended) */
+static const sirc_cmd_entry sirc_tv_cmds[] = {
+    { 0x15, "Power" },
+    { 0x25, "Input" },
+    { 0x33, "Right" },
+    { 0x34, "Left" },
+    { 0x3A, "Display" },
+    { 0x60, "Home" },
+    { 0x65, "Enter" },
+    { 0x74, "Up" },
+    { 0x75, "Down" },
+};
+
+/* Video (0x0B, no extended) */
+static const sirc_cmd_entry sirc_video_cmds[] = {
+    { 0x18, "Stop" },
+    { 0x19, "Pause" },
+    { 0x1A, "Play" },
+    { 0x1B, "Rewind" },
+    { 0x1C, "Fast Forward" },
+    { 0x42, "Up" },
+    { 0x43, "Down" },
+    { 0x4D, "Home" },
+    { 0x51, "Enter" },
+    { 0x5A, "Display" },
+    { 0x61, "Right" },
+    { 0x62, "Left" },
+};
+
+/* BlueRay Input (0x10, ext 0x28) */
+static const sirc_cmd_entry sirc_br_input_cmds[] = {
+    { 0x16, "BlueRay" },
+};
+
+/* Playback (0x10, ext 0x08) */
+static const sirc_cmd_entry sirc_playback_cmds[] = {
+    { 0x2A, "Shuffle" },
+    { 0x2C, "Repeat" },
+    { 0x2E, "Folder Down" },
+    { 0x2F, "Folder Up" },
+    { 0x30, "Previous" },
+    { 0x31, "Next" },
+    { 0x32, "Play" },
+    { 0x33, "Rewind" },
+    { 0x34, "Fast Forward" },
+    { 0x38, "Stop" },
+    { 0x39, "Pause" },
+    { 0x73, "Options" },
+    { 0x7D, "Return" },
+};
+
+/* CD (0x11, no extended) */
+static const sirc_cmd_entry sirc_cd_cmds[] = {
+    { 0x28, "Display" },
+    { 0x30, "Previous" },
+    { 0x31, "Next" },
+    { 0x32, "Play" },
+    { 0x33, "Rewind" },
+    { 0x34, "Fast Forward" },
+    { 0x38, "Stop" },
+    { 0x39, "Pause" },
+};
+
+/* BD (0x1A, ext 0xE2) */
+static const sirc_cmd_entry sirc_bd_cmds[] = {
+    { 0x18, "Stop" },
+    { 0x19, "Pause" },
+    { 0x1A, "Play" },
+    { 0x1B, "Rewind" },
+    { 0x1C, "Fast Forward" },
+    { 0x29, "Menu" },
+    { 0x2C, "Top Menu" },
+    { 0x39, "Up" },
+    { 0x3A, "Down" },
+    { 0x3B, "Left" },
+    { 0x3C, "Right" },
+    { 0x3D, "Enter" },
+    { 0x3F, "Options" },
+    { 0x41, "Display" },
+    { 0x42, "Home" },
+    { 0x43, "Return" },
+    { 0x56, "Next" },
+    { 0x57, "Previous" },
+};
+
+/* DVD (0x1A, ext 0x49) */
+static const sirc_cmd_entry sirc_dvd_cmds[] = {
+    { 0x0B, "Enter" },
+    { 0x0E, "Return" },
+    { 0x0F, "Clear" },
+    { 0x17, "Options" },
+    { 0x1A, "Top Menu" },
+    { 0x1B, "Menu" },
+    { 0x1F, "Program" },
+    { 0x28, "Time" },
+    { 0x2A, "A-B" },
+    { 0x2C, "Repeat" },
+    { 0x30, "Previous" },
+    { 0x31, "Next" },
+    { 0x32, "Play" },
+    { 0x33, "Rewind" },
+    { 0x34, "Fast Forward" },
+    { 0x35, "Shuffle" },
+    { 0x38, "Stop" },
+    { 0x39, "Pause" },
+    { 0x54, "Display" },
+    { 0x60, "Slow Reverse" },
+    { 0x61, "Slow Forward" },
+    { 0x63, "Subtitle" },
+    { 0x64, "Audio" },
+    { 0x65, "Angle" },
+    { 0x79, "Up" },
+    { 0x7A, "Down" },
+    { 0x7B, "Left" },
+    { 0x7C, "Right" },
+};
+
+/* PS2 (0x1A, ext 0xDA) */
+static const sirc_cmd_entry sirc_ps2_cmds[] = {
+    { 0x15, "Reset" },
+    { 0x16, "Eject" },
+    { 0x50, "Select" },
+    { 0x51, "L3" },
+    { 0x52, "R3" },
+    { 0x53, "Start" },
+    { 0x54, "Up" },
+    { 0x55, "Right" },
+    { 0x56, "Down" },
+    { 0x57, "Left" },
+    { 0x58, "L2" },
+    { 0x59, "R2" },
+    { 0x5A, "L1" },
+    { 0x5B, "R1" },
+    { 0x5C, "Triangle" },
+    { 0x5D, "Circle" },
+    { 0x5E, "Cross" },
+    { 0x5F, "Square" },
+};
+
+/* Keypad (0x30, no extended) */
+static const sirc_cmd_entry sirc_keypad_cmds[] = {
+    { 0x0C, "Enter" },
+    { 0x12, "Volume Up" },
+    { 0x13, "Volume Down" },
+    { 0x14, "Mute" },
+    { 0x15, "Power" },
+    { 0x21, "Tuner" },
+    { 0x22, "Video" },
+    { 0x25, "CD" },
+    { 0x4D, "Home" },
+    { 0x4B, "Display" },
+    { 0x60, "Sleep" },
+    { 0x6A, "TV" },
+    { 0x53, "Home" },
+    { 0x7C, "Game" },
+    { 0x7D, "DVD" },
+};
+
+/* Arrows (0xB0, no extended) */
+static const sirc_cmd_entry sirc_arrows_cmds[] = {
+    { 0x7A, "Left" },
+    { 0x7B, "Right" },
+    { 0x78, "Up" },
+    { 0x79, "Down" },
+    { 0x77, "Amp Menu" },
+};
+
+/* TV Extra (0x97, no extended) */
+static const sirc_cmd_entry sirc_tv_extra_cmds[] = {
+    { 0x23, "Return" },
+    { 0x36, "Options" },
+};
+
+/* Device entries */
+static const sirc_device_entry sirc_devices[] = {
+    /* TV */
+    { 0x01, 0, 0,    "TV: ",      "TV:" },
+    /* Video */
+    { 0x0B, 0, 0,    "Video: ",   "V:" },
+    /* BlueRay Input */
+    { 0x10, 1, 0x28, "BlueRay: ", "BR:" },
+    /* Playback */
+    { 0x10, 1, 0x08, "Playback: ","PB:" },
+    /* CD */
+    { 0x11, 0, 0,    "CD: ",      "CD:" },
+    /* BD */
+    { 0x1A, 1, 0xE2, "BlueRay: ", "BD:" },
+    /* DVD */
+    { 0x1A, 1, 0x49, "DVD: ",     "DVD:" },
+    /* PS2 */
+    { 0x1A, 1, 0xDA, "PS2: ",     "PS2:" },
+    /* Keypad */
+    { 0x30, 0, 0,    "Keypad: ",  "KP:" },
+    /* Arrows */
+    { 0xB0, 0, 0,    "Arrows: ",  "Ar:" },
+    /* TV Extra */
+    { 0x97, 0, 0,    "TV Extra",  "TV:" },
+};
+
+/* Command tables corresponding to each device entry */
+static const sirc_cmd_entry* sirc_device_cmds[] = {
+    sirc_tv_cmds,
+    sirc_video_cmds,
+    sirc_br_input_cmds,
+    sirc_playback_cmds,
+    sirc_cd_cmds,
+    sirc_bd_cmds,
+    sirc_dvd_cmds,
+    sirc_ps2_cmds,
+    sirc_keypad_cmds,
+    sirc_arrows_cmds,
+    sirc_tv_extra_cmds,
+};
+
+static const int sirc_device_cmd_counts[] = {
+    sizeof(sirc_tv_cmds) / sizeof(sirc_tv_cmds[0]),
+    sizeof(sirc_video_cmds) / sizeof(sirc_video_cmds[0]),
+    sizeof(sirc_br_input_cmds) / sizeof(sirc_br_input_cmds[0]),
+    sizeof(sirc_playback_cmds) / sizeof(sirc_playback_cmds[0]),
+    sizeof(sirc_cd_cmds) / sizeof(sirc_cd_cmds[0]),
+    sizeof(sirc_bd_cmds) / sizeof(sirc_bd_cmds[0]),
+    sizeof(sirc_dvd_cmds) / sizeof(sirc_dvd_cmds[0]),
+    sizeof(sirc_ps2_cmds) / sizeof(sirc_ps2_cmds[0]),
+    sizeof(sirc_keypad_cmds) / sizeof(sirc_keypad_cmds[0]),
+    sizeof(sirc_arrows_cmds) / sizeof(sirc_arrows_cmds[0]),
+    sizeof(sirc_tv_extra_cmds) / sizeof(sirc_tv_extra_cmds[0]),
+};
+
+#define NUM_SIRC_DEVICES (sizeof(sirc_devices) / sizeof(sirc_devices[0]))
+#define NUM_SIRC_NUMBERS (sizeof(sirc_numbers) / sizeof(sirc_numbers[0]))
+
+static const sirc_device_entry* find_device(uint16_t address, int has_extended, uint16_t extended)
+{
+    int i;
+    for (i = 0; i < (int)NUM_SIRC_DEVICES; i++) {
+        if (sirc_devices[i].address == (uint8_t)address) {
+            if (sirc_devices[i].has_extended) {
+                if (has_extended && sirc_devices[i].extended == (uint8_t)extended)
+                    return &sirc_devices[i];
+            } else {
+                if (!has_extended)
+                    return &sirc_devices[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+static const char* find_key_name(const sirc_device_entry* device, uint8_t cmd)
+{
+    int i;
+    int dev_idx = (int)(device - sirc_devices);
+
+    /* Search device-specific commands */
+    const sirc_cmd_entry* cmds = sirc_device_cmds[dev_idx];
+    int num_cmds = sirc_device_cmd_counts[dev_idx];
+    for (i = 0; i < num_cmds; i++) {
+        if (cmds[i].cmd == cmd)
+            return cmds[i].key_name;
+    }
+
+    /* Search shared number commands */
+    for (i = 0; i < (int)NUM_SIRC_NUMBERS; i++) {
+        if (sirc_numbers[i].cmd == cmd)
+            return sirc_numbers[i].key_name;
+    }
+
+    return NULL;
+}
+
 typedef struct {
     uint64_t samplerate;
     double snum_per_us;
@@ -363,23 +667,31 @@ static void sirc_decode(struct srd_decoder_inst* di)
         }
 
         {
-            char remote_long[64], remote_mid[32];
-            if (extended_count > 0) {
-                uint16_t extended_num = bitpack_lsb(extended_bits, extended_count);
-                snprintf(remote_long, sizeof(remote_long),
-                    "Unknown Device: 0x%02X:0x%02X:0x%02X",
-                    (uint8_t)address_num, command_num, (uint8_t)extended_num);
-                snprintf(remote_mid, sizeof(remote_mid),
-                    "UNK: 0x%02X:0x%02X:0x%02X",
-                    (uint8_t)address_num, command_num, (uint8_t)extended_num);
+            char remote_long[128], remote_mid[64];
+            const sirc_device_entry* dev = find_device(address_num, extended_count > 0, extended_count > 0 ? bitpack_lsb(extended_bits, extended_count) : 0);
+            if (dev) {
+                const char* key = find_key_name(dev, command_num);
+                const char* key_text = key ? key : "Unknown";
+                snprintf(remote_long, sizeof(remote_long), "%s%s", dev->name_long, key_text);
+                snprintf(remote_mid, sizeof(remote_mid), "%s%s", dev->name_short, key_text);
             } else {
-                int addr_hex_width = (address_count + 3) / 4;
-                snprintf(remote_long, sizeof(remote_long),
-                    "Unknown Device: 0x%0*X:0x%02X",
-                    addr_hex_width, address_num, command_num);
-                snprintf(remote_mid, sizeof(remote_mid),
-                    "UNK: 0x%0*X:0x%02X",
-                    addr_hex_width, address_num, command_num);
+                if (extended_count > 0) {
+                    uint16_t extended_num = bitpack_lsb(extended_bits, extended_count);
+                    snprintf(remote_long, sizeof(remote_long),
+                        "Unknown Device: 0x%02X:0x%02X:0x%02X",
+                        (uint8_t)address_num, command_num, (uint8_t)extended_num);
+                    snprintf(remote_mid, sizeof(remote_mid),
+                        "UNK: 0x%02X:0x%02X:0x%02X",
+                        (uint8_t)address_num, command_num, (uint8_t)extended_num);
+                } else {
+                    int addr_hex_width = (address_count + 3) / 4;
+                    snprintf(remote_long, sizeof(remote_long),
+                        "Unknown Device: 0x%0*X:0x%02X",
+                        addr_hex_width, address_num, command_num);
+                    snprintf(remote_mid, sizeof(remote_mid),
+                        "UNK: 0x%0*X:0x%02X",
+                        addr_hex_width, address_num, command_num);
+                }
             }
             C_ANN_PUT(di, frame_ss, bit_es_arr[bit_count - 1],
                 s->out_ann, ANN_REMOTE, remote_long, remote_mid);

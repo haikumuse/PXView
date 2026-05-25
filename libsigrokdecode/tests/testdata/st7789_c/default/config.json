@@ -1,0 +1,13 @@
+{
+  "decoder": "st7789_c",
+  "samplerate": 1000000,
+  "num_channels": 4,
+  "sample_count": 20000,
+  "channels": {
+    "csx": 0,
+    "dcx": 1,
+    "sdo": 2,
+    "wrx": 3
+  },
+  "stack": []
+}

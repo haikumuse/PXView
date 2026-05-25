@@ -134,7 +134,7 @@ static void st25dv_annotate_device_address(struct srd_decoder_inst *di,
     } else if (addr == ST25DV_SYSTEM_ADDR) {
         C_ANN_PUT(di, ss, es, s->out_ann, ANN_SYS, "ST25DV SYSTEM", "SYS");
     } else {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_ERROR, "ST25DV ERROR: Unknown Address");
+        C_ANN_PUT(di, ss, es, s->out_ann, ANN_ERROR, "ST25DV ERROR: Unknown Address", "ERROR");
     }
 }
 

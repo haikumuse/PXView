@@ -1,0 +1,11 @@
+{
+  "decoder": "uart_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "rx": 0,
+    "tx": 1
+  },
+  "stack": []
+}

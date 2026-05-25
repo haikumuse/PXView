@@ -1,0 +1,10 @@
+{
+  "decoder": "ieee488_c",
+  "samplerate": 1000000,
+  "num_channels": 1,
+  "sample_count": 100000,
+  "channels": {
+    "dio1": 0
+  },
+  "stack": []
+}

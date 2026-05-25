@@ -1,0 +1,7 @@
+{
+	"decoder": "cjtag_oscan1",
+	"samplerate": 10000000,
+	"num_annotations": 0,
+	"annotations": [
+	]
+}

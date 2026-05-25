@@ -1,0 +1,11 @@
+{
+  "decoder": "mdio_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "mdc": 0,
+    "mdio": 1
+  },
+  "stack": []
+}

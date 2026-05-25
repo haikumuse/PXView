@@ -83,24 +83,26 @@ static int c_decoder_wait_impl(struct srd_decoder_inst* di,
             if (matched)
                 *matched = di->match_array;
 
-            if (!di->c_pin_cache) {
+            if (!di->c_pin_cache && di->dec_num_channels > 0) {
                 di->c_pin_cache = g_malloc0(di->dec_num_channels);
             }
-            di->c_pin_cache_samplenum = di->abs_cur_samplenum;
-            di->c_pin_cache_inbuf_serial++;
-            for (int i = 0; i < di->dec_num_channels; i++) {
-                if (di->dec_channelmap[i] < 0) {
-                    di->c_pin_cache[i] = 0xFF;
-                } else if (!di->inbuf || !di->inbuf[i]) {
-                    di->c_pin_cache[i] = (di->inbuf_const && di->inbuf_const[i]) ? 1 : 0;
-                } else {
-                    uint64_t off = di->abs_cur_samplenum - di->abs_start_samplenum;
-                    uint64_t bo = off / 8;
-                    uint8_t bi = off % 8;
-                    if (bo < (di->inbuflen + 7) / 8)
-                        di->c_pin_cache[i] = (di->inbuf[i][bo] >> bi) & 1;
-                    else
-                        di->c_pin_cache[i] = 0;
+            if (di->c_pin_cache) {
+                di->c_pin_cache_samplenum = di->abs_cur_samplenum;
+                di->c_pin_cache_inbuf_serial++;
+                for (int i = 0; i < di->dec_num_channels; i++) {
+                    if (di->dec_channelmap[i] < 0) {
+                        di->c_pin_cache[i] = 0xFF;
+                    } else if (!di->inbuf || !di->inbuf[i]) {
+                        di->c_pin_cache[i] = (di->inbuf_const && di->inbuf_const[i]) ? 1 : 0;
+                    } else {
+                        uint64_t off = di->abs_cur_samplenum - di->abs_start_samplenum;
+                        uint64_t bo = off / 8;
+                        uint8_t bi = off % 8;
+                        if (bo < (di->inbuflen + 7) / 8)
+                            di->c_pin_cache[i] = (di->inbuf[i][bo] >> bi) & 1;
+                        else
+                            di->c_pin_cache[i] = 0;
+                    }
                 }
             }
 
@@ -249,11 +251,6 @@ SRD_API int srd_inst_option_set(struct srd_decoder_inst* di,
         return SRD_ERR_ARG;
     }
 
-    if (!options) {
-        srd_err("Invalid options GHashTable.");
-        return SRD_ERR_ARG;
-    }
-
     if (di->is_c_inst) {
         if (!di->c_options) {
             di->c_options = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -302,7 +299,12 @@ SRD_API int srd_inst_option_set(struct srd_decoder_inst* di,
 
     for (l = di->decoder->options; l; l = l->next) {
         sdo = l->data;
-        if ((value = g_hash_table_lookup(options, sdo->id))) {
+        value = NULL;
+        if (options) {
+            value = g_hash_table_lookup(options, sdo->id);
+        }
+        
+        if (value) {
             /* A value was supplied for this option. */
             if (!g_variant_type_equal(g_variant_get_type(value),
                     g_variant_get_type(sdo->def))) {
@@ -325,7 +327,7 @@ SRD_API int srd_inst_option_set(struct srd_decoder_inst* di,
             }
         } else if (g_variant_is_of_type(value, G_VARIANT_TYPE_INT64)) {
             val_int = g_variant_get_int64(value);
-            if (!(py_optval = PyLong_FromLong(val_int))) {
+            if (!(py_optval = PyLong_FromLongLong((long long)val_int))) {
                 /* ValueError Exception */
                 PyErr_Clear();
                 srd_err("Option '%s' has invalid integer value.", sdo->id);
@@ -344,9 +346,11 @@ SRD_API int srd_inst_option_set(struct srd_decoder_inst* di,
         if (PyDict_SetItemString(py_di_options, sdo->id, py_optval) == -1)
             goto err_out;
         /* Not harmful even if we used the default. */
-        g_hash_table_remove(options, sdo->id);
+        if (options) {
+            g_hash_table_remove(options, sdo->id);
+        }
     }
-    if (g_hash_table_size(options) != 0)
+    if (options && g_hash_table_size(options) != 0)
         srd_warn("Unknown options specified for '%s'", di->inst_id);
 
     ret = SRD_OK;
@@ -662,7 +666,7 @@ SRD_API struct srd_decoder_inst* srd_inst_new(struct srd_session* sess,
      * Prepare a default channel map, where samples come in the
      * order in which the decoder class defined them.
      */
-    di->py_pinvalues = NULL;
+    di->py_pinvalues = PyTuple_New(0); /* Default to empty tuple */
     di->dec_num_channels = g_slist_length(di->decoder->channels) + g_slist_length(di->decoder->opt_channels);
 
     if (di->dec_num_channels > 0) {
@@ -677,6 +681,7 @@ SRD_API struct srd_decoder_inst* srd_inst_new(struct srd_session* sess,
         for (i = 0; i < di->dec_num_channels; i++)
             di->dec_channelmap[i] = i;
 
+        Py_DECREF(di->py_pinvalues);
         di->py_pinvalues = PyTuple_New(di->dec_num_channels);
     }
 
@@ -691,7 +696,7 @@ SRD_API struct srd_decoder_inst* srd_inst_new(struct srd_session* sess,
         goto err;
     }
 
-    if (options && srd_inst_option_set(di, options) != SRD_OK) {
+    if (srd_inst_option_set(di, options) != SRD_OK) {
         goto err;
     }
 
@@ -1025,10 +1030,14 @@ SRD_PRIV int srd_inst_start(struct srd_decoder_inst* di, char** error)
     di->skip_zero = FALSE;
 
     /* Set self.samplenum to 0. */
-    PyObject_SetAttrString(di->py_inst, "samplenum", PyLong_FromLong(0));
+    py_res = PyLong_FromLong(0);
+    PyObject_SetAttrString(di->py_inst, "samplenum", py_res);
+    Py_DECREF(py_res);
 
     /* Set self.matched to 0. */
-    PyObject_SetAttrString(di->py_inst, "matched", PyLong_FromLong(0));
+    py_res = PyLong_FromLong(0);
+    PyObject_SetAttrString(di->py_inst, "matched", py_res);
+    Py_DECREF(py_res);
 
     PyGILState_Release(gstate);
 
@@ -1145,8 +1154,8 @@ static void update_old_pins_array(struct srd_decoder_inst* di)
 
     oldpins_array_seed(di);
     for (i = 0; i < di->dec_num_channels; i++) {
-        if (*(di->inbuf + i) == NULL) {
-            sample = *(di->inbuf_const + i) ? 1 : 0;
+        if (!di->inbuf || *(di->inbuf + i) == NULL) {
+            sample = (di->inbuf_const && *(di->inbuf_const + i)) ? 1 : 0;
             di->old_pins_array->data[i] = sample;
         } else {
             sample_pos = *(di->inbuf + i) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);
@@ -1171,8 +1180,8 @@ static void update_old_pins_array_initial_pins(struct srd_decoder_inst* di)
         if (di->old_pins_array->data[i] != SRD_INITIAL_PIN_SAME_AS_SAMPLE0)
             continue;
 
-        if (*(di->inbuf + i) == NULL) {
-            sample = *(di->inbuf_const + i) ? 1 : 0;
+        if (!di->inbuf || *(di->inbuf + i) == NULL) {
+            sample = (di->inbuf_const && *(di->inbuf_const + i)) ? 1 : 0;
             di->old_pins_array->data[i] = sample;
         } else {
             sample_pos = *(di->inbuf + i) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);
@@ -1200,8 +1209,8 @@ static gboolean term_matches(struct srd_decoder_inst* di,
     }
 
     ch = term->channel;
-    if (*(di->inbuf + ch) == NULL) {
-        sample = *(di->inbuf_const + ch) ? 1 : 0;
+    if (!di->inbuf || *(di->inbuf + ch) == NULL) {
+        sample = (di->inbuf_const && *(di->inbuf_const + ch)) ? 1 : 0;
         *skip_allow = TRUE;
     } else {
         sample_pos = *(di->inbuf + ch) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);

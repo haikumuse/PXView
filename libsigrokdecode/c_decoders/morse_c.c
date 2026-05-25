@@ -151,8 +151,6 @@ static void process_symbol(struct srd_decoder_inst *di, struct morse_priv *s,
     if (sval == 1) {
         /* Mark: dit (1 unit) or dah (3 units) */
         int sym = (sunits <= 2) ? 1 : 3;
-        const char *sym_name = (sym == 1) ? "dit" : "dah";
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SYMBOL, sym_name);
 
         if (s->seq_len == 0)
             s->letter_ss = ss;
@@ -164,15 +162,10 @@ static void process_symbol(struct srd_decoder_inst *di, struct morse_priv *s,
         /* Space: intra-char gap (1 unit), letter gap (3 units), word gap (7 units) */
         if (sunits >= 7) {
             /* Word gap */
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SYMBOL, "word gap");
             flush_word(di, s);
         } else if (sunits >= 3) {
             /* Letter gap */
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SYMBOL, "letter gap");
             flush_letter(di, s);
-        } else {
-            /* Intra-character gap */
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SYMBOL, "intra-char gap");
         }
     }
 }
@@ -268,7 +261,7 @@ static void morse_decode(struct srd_decoder_inst *di)
 
         /* Output time annotation */
         char time_str[32];
-        snprintf(time_str, sizeof(time_str), "%.3g s", dt);
+        snprintf(time_str, sizeof(time_str), "%.3g", dt);
         C_ANN_PUT(di, s->prev_time, curtime, s->out_ann, ANN_TIME, time_str);
 
         /* Check symbol validity */
@@ -279,14 +272,14 @@ static void morse_decode(struct srd_decoder_inst *di)
             (sval == 0 && (sunits == 1 || sunits == 3 || sunits == 7))) {
             /* Valid symbol */
             char units_str[64];
-            snprintf(units_str, sizeof(units_str), "%.1f * %.3g s", units, s->timeunit);
+            snprintf(units_str, sizeof(units_str), "%.1f*%.3g", units, s->timeunit);
             C_ANN_PUT(di, s->prev_time, curtime, s->out_ann, ANN_UNITS, units_str);
 
             process_symbol(di, s, sval, sunits, s->prev_time, curtime);
         } else {
             /* Unknown symbol */
             char err_str[64];
-            snprintf(err_str, sizeof(err_str), "!! %.1f * %.3g s !!", units, s->timeunit);
+            snprintf(err_str, sizeof(err_str), "!! %.1f*%.3g !!", units, s->timeunit);
             C_ANN_PUT(di, s->prev_time, curtime, s->out_ann, ANN_UNITS, err_str);
         }
 

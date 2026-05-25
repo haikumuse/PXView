@@ -797,14 +797,14 @@ static int get_current_pinvalues(const struct srd_decoder_inst* di)
 
     for (i = 0; i < di->dec_num_channels; i++) {
         /* A channelmap value of -1 means "unused optional channel". */
-        if (di->dec_channelmap[i] == -1) {
+        if (di->dec_channelmap[i] == -1 || !di->inbuf) {
             /* Value of unused channel is 0xff, instead of 0 or 1.
                Done set -1 by srd_inst_channel_set_all()
             */
             PyTuple_SetItem(di->py_pinvalues, i, PyLong_FromLong(0xff));
         } else {
-            if (*(di->inbuf + i) == NULL) {
-                sample = *(di->inbuf_const + i) ? 1 : 0;
+            if (!di->inbuf || *(di->inbuf + i) == NULL) {
+                sample = (di->inbuf_const && *(di->inbuf_const + i)) ? 1 : 0;
                 PyTuple_SetItem(di->py_pinvalues, i, PyLong_FromLong(sample));
             } else {
                 sample_pos = *(di->inbuf + i) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);

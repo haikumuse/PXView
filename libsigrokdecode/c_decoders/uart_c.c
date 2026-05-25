@@ -94,6 +94,20 @@ typedef struct {
     int out_python;
     int show_data_point;
     int show_start_stop;
+
+    /* PACKET detection */
+    int packet_data[2][4096];      /* data values in current packet */
+    int packet_valid[2][4096];     /* per-frame validity in current packet */
+    int packet_count[2];           /* number of frames in current packet */
+    uint64_t ss_packet[2];         /* start sample of current packet */
+    uint64_t es_packet[2];         /* end sample of current packet */
+    int packet_all_valid[2];       /* whether all frames in packet are valid */
+
+    double packet_idle_us;         /* idle time threshold for packet detection (us) */
+    uint64_t packet_idle_samples;  /* idle time threshold in samples */
+    int delim[2];                  /* delimiter byte value, -1 = disabled */
+    int plen[2];                   /* packet length, -1 = disabled */
+    int packet_enabled;            /* whether any packet detection is enabled */
 } uart_state;
 
 static struct srd_channel uart_optional_channels[] = {
@@ -113,6 +127,11 @@ static struct srd_decoder_option uart_options[] = {
     { "show_data_point", NULL, "Show data point(\xe6\x95\xb0\xe6\x8d\xae\xe7\x82\xb9\xe6\x98\xbe\xe7\xa4\xba)", NULL, NULL },
     { "sample_point", NULL, "Sample point(\xe9\x87\x87\xe6\xa0\xb7\xe7\x82\xb9%)", NULL, NULL },
     { "show_start_stop", NULL, "Show start/stop bits(\xe6\x98\xbe\xe7\xa4\xba\xe8\xb5\xb7\xe5\xa7\x8b/\xe5\x81\x9c\xe6\xad\xa2\xe4\xbd\x8d)", NULL, NULL },
+    { "packet_idle_us", NULL, "Packet idle time (us)", NULL, NULL },
+    { "rx_packet_delim", NULL, "RX packet delimiter (decimal)", NULL, NULL },
+    { "tx_packet_delim", NULL, "TX packet delimiter (decimal)", NULL, NULL },
+    { "rx_packet_len", NULL, "RX packet length", NULL, NULL },
+    { "tx_packet_len", NULL, "TX packet length", NULL, NULL },
 };
 
 static const char* uart_ann_labels[][3] = {
@@ -240,6 +259,17 @@ static void uart_reset(struct srd_decoder_inst* di)
     s->idle_num_max[TX] = 0;
     s->break_min_samples = 0;
     s->frame_len_samples_int = 0;
+
+    /* PACKET detection init */
+    s->packet_count[RX] = 0;
+    s->packet_count[TX] = 0;
+    s->packet_idle_us = -1;
+    s->packet_idle_samples = 0;
+    s->delim[RX] = -1;
+    s->delim[TX] = -1;
+    s->plen[RX] = -1;
+    s->plen[TX] = -1;
+    s->packet_enabled = 0;
 }
 
 static void uart_start(struct srd_decoder_inst* di)
@@ -322,6 +352,20 @@ static void uart_start(struct srd_decoder_inst* di)
         s->idle_num_max[RX] = maxn;
         s->idle_num_max[TX] = maxn;
     }
+
+    /* PACKET detection options */
+    s->packet_idle_us = c_decoder_get_option_double(di, "packet_idle_us", -1);
+    if (s->packet_idle_us > 0 && s->samplerate > 0) {
+        s->packet_idle_samples = (uint64_t)round(s->packet_idle_us * 1e-6 * s->samplerate);
+        if (s->packet_idle_samples < 1) s->packet_idle_samples = 1;
+    } else {
+        s->packet_idle_samples = 0;
+    }
+    s->delim[RX] = (int)c_decoder_get_option_int(di, "rx_packet_delim", -1);
+    s->delim[TX] = (int)c_decoder_get_option_int(di, "tx_packet_delim", -1);
+    s->plen[RX] = (int)c_decoder_get_option_int(di, "rx_packet_len", -1);
+    s->plen[TX] = (int)c_decoder_get_option_int(di, "tx_packet_len", -1);
+    s->packet_enabled = (s->packet_idle_samples > 0 || s->delim[RX] >= 0 || s->delim[TX] >= 0 || s->plen[RX] > 0 || s->plen[TX] > 0);
 }
 
 static uint64_t get_bit_sample_point_for_rxtx(uart_state* s, int rxtx, int bit_num)
@@ -337,6 +381,99 @@ static uint64_t get_bit_start(uart_state* s, int rxtx, int bit_num)
 static uint64_t get_bit_end(uart_state* s, int rxtx, int bit_num)
 {
     return (uint64_t)(s->frame_start[rxtx] + (uint64_t)round((bit_num + 1) * s->bit_width));
+}
+
+static void handle_packet(struct srd_decoder_inst* di, int rxtx)
+{
+    uart_state* s = (uart_state*)c_decoder_get_private(di);
+    if (s->packet_count[rxtx] == 0)
+        return;
+
+    /* Format packet data for annotation */
+    char pkt_str[8192];
+    int pos = 0;
+    for (int i = 0; i < s->packet_count[rxtx] && pos < (int)sizeof(pkt_str) - 16; i++) {
+        if (i > 0 && s->format != 1) /* not ascii */
+            pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, " ");
+
+        int data = s->packet_data[rxtx][i];
+        if (s->format == 1) { /* ascii */
+            if (data >= 0x20 && data <= 0x7E)
+                pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "%c", data);
+            else
+                pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "\\x%02X", data);
+        } else if (s->format == 2) { /* dec */
+            pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "%d", data);
+        } else if (s->format == 3) { /* oct */
+            pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "%o", data);
+        } else if (s->format == 4) { /* bin */
+            for (int b = s->data_bits - 1; b >= 0 && pos < (int)sizeof(pkt_str) - 2; b--)
+                pkt_str[pos++] = (data & (1 << b)) ? '1' : '0';
+        } else { /* hex */
+            if (s->data_bits <= 8)
+                pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "%02X", data);
+            else
+                pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "%03X", data);
+        }
+    }
+    pkt_str[pos] = '\0';
+
+    C_ANN_PUT(di, s->ss_packet[rxtx], s->es_packet[rxtx], s->out_ann, RX_PACKET + rxtx, pkt_str);
+
+    /* Protocol output: PACKET, rxtx, (data_list, valid) */
+    /* Binary format: rxtx(1B) + valid(1B) + count(2B LE) + data[count](each 1B) */
+    unsigned char py_data[4 + 4096];
+    int dpos = 0;
+    py_data[dpos++] = (unsigned char)rxtx;
+    py_data[dpos++] = (unsigned char)(s->packet_all_valid[rxtx] ? 1 : 0);
+    py_data[dpos++] = (unsigned char)(s->packet_count[rxtx] & 0xFF);
+    py_data[dpos++] = (unsigned char)((s->packet_count[rxtx] >> 8) & 0xFF);
+    for (int i = 0; i < s->packet_count[rxtx] && dpos < (int)sizeof(py_data); i++)
+        py_data[dpos++] = (unsigned char)s->packet_data[rxtx][i];
+    c_decoder_put_python(di, s->ss_packet[rxtx], s->es_packet[rxtx], s->out_python, "PACKET", py_data, dpos);
+
+    s->packet_count[rxtx] = 0;
+}
+
+static void get_packet_data(struct srd_decoder_inst* di, int rxtx, uint64_t frame_end_sample)
+{
+    uart_state* s = (uart_state*)c_decoder_get_private(di);
+    if (!s->packet_enabled)
+        return;
+    if (s->delim[rxtx] < 0 && s->plen[rxtx] < 0 && s->packet_idle_samples == 0)
+        return;
+
+    if (s->packet_count[rxtx] == 0) {
+        s->ss_packet[rxtx] = s->frame_start[rxtx];
+        s->packet_all_valid[rxtx] = s->frame_valid[rxtx];
+    } else {
+        if (!s->frame_valid[rxtx])
+            s->packet_all_valid[rxtx] = 0;
+    }
+
+    if (s->packet_count[rxtx] < 4096) {
+        s->packet_data[rxtx][s->packet_count[rxtx]] = s->datavalue[rxtx];
+        s->packet_valid[rxtx][s->packet_count[rxtx]] = s->frame_valid[rxtx];
+        s->packet_count[rxtx]++;
+    }
+    s->es_packet[rxtx] = frame_end_sample;
+
+    /* Check delimiter or packet length */
+    if (s->delim[rxtx] >= 0 && s->datavalue[rxtx] == s->delim[rxtx]) {
+        handle_packet(di, rxtx);
+    } else if (s->plen[rxtx] > 0 && s->packet_count[rxtx] >= s->plen[rxtx]) {
+        handle_packet(di, rxtx);
+    }
+}
+
+static void handle_packet_idle(struct srd_decoder_inst* di, int rxtx, uint64_t idle_end_sample)
+{
+    uart_state* s = (uart_state*)c_decoder_get_private(di);
+    if (s->packet_count[rxtx] == 0 || s->packet_idle_samples == 0)
+        return;
+    if (idle_end_sample >= s->es_packet[rxtx] + s->packet_idle_samples) {
+        handle_packet(di, rxtx);
+    }
 }
 
 static void handle_data_complete(struct srd_decoder_inst* di, int rxtx)
@@ -389,6 +526,7 @@ static void handle_frame_complete(struct srd_decoder_inst* di, int rxtx)
     frame_data[1] = (unsigned char)rxtx;
     frame_data[2] = (unsigned char)s->frame_valid[rxtx];
     c_decoder_put_python(di, frame_ss, frame_es, s->out_python, "FRAME", frame_data, 3);
+    get_packet_data(di, rxtx, frame_es);
 }
 
 static int get_rxtx_pin(uart_state* s, struct srd_decoder_inst* di, int rxtx, int ch, uint64_t samplenum)
@@ -405,6 +543,7 @@ static void handle_idle(struct srd_decoder_inst* di, int rxtx, uint64_t ss, uint
     unsigned char rxtx_byte = (unsigned char)rxtx;
     c_decoder_put_python(di, ss, es, s->out_python, "IDLE", &rxtx_byte, 1);
     s->idle_num[rxtx]++;
+    handle_packet_idle(di, rxtx, es);
 }
 
 static void handle_break(struct srd_decoder_inst* di, int rxtx, uint64_t ss, uint64_t es)
@@ -909,7 +1048,7 @@ struct srd_c_decoder uart_c_decoder = {
     .optional_channels = uart_optional_channels,
     .num_optional_channels = 2,
     .options = uart_options,
-    .num_options = 11,
+    .num_options = 16,
     .num_annotations = NUM_ANN,
     .ann_labels = uart_ann_labels,
     .num_annotation_rows = 13,
@@ -941,6 +1080,11 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
     uart_options[8].def = g_variant_new_string("yes");
     uart_options[9].def = g_variant_new_double(50.0);
     uart_options[10].def = g_variant_new_string("yes");
+    uart_options[11].def = g_variant_new_double(-1);
+    uart_options[12].def = g_variant_new_int64(-1);
+    uart_options[13].def = g_variant_new_int64(-1);
+    uart_options[14].def = g_variant_new_int64(-1);
+    uart_options[15].def = g_variant_new_int64(-1);
 
     GSList* parity_vals = NULL;
     parity_vals = g_slist_append(parity_vals, g_variant_new_string("none"));

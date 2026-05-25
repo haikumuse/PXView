@@ -1464,6 +1464,10 @@
         "text": "Flat Button Hover"
     },
     {
+        "id": "IDS_STYLE_FLAT_HOVER_FG",
+        "text": "Flat Button Hover Text"
+    },
+    {
         "id": "IDS_STYLE_BTN_CHECKED_MID",
         "text": "Button Checked"
     },
@@ -1506,6 +1510,10 @@
     {
         "id": "IDS_STYLE_DOCK_GRIDLINE",
         "text": "Dock Gridline"
+    },
+    {
+        "id": "IDS_STYLE_GRIDLINE",
+        "text": "Table Gridline"
     },
     {
         "id": "IDS_STYLE_DOCK_SECTION_TITLE_FG",

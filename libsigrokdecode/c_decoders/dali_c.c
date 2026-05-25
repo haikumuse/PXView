@@ -509,6 +509,8 @@ static void dali_decode(struct srd_decoder_inst *di)
         c_cond_free(cb);
         if (ret != SRD_OK)
             return;
+        if (samplenum >= c_decoder_get_last_samplenum(di))
+            return;
 
         int dali = c_decoder_get_pin(di, DALI_CH, samplenum);
 

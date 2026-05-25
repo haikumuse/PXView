@@ -1,0 +1,11 @@
+{
+  "decoder": "avr_pdi_c",
+  "samplerate": 1000000,
+  "num_channels": 2,
+  "sample_count": 20000,
+  "channels": {
+    "reset": 0,
+    "data": 1
+  },
+  "stack": []
+}

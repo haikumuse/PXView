@@ -45,6 +45,7 @@ typedef struct {
     int cs_was_deasserted;
     uint64_t samplerate;
     int bw;
+    int first_edge;  /* Skip first CLK edge (phantom edge at sample 0) */
 
     uint64_t miso_bits_ss[64];
     uint64_t miso_bits_es[64];
@@ -200,6 +201,7 @@ static void spi_reset(struct srd_decoder_inst* di)
     s->out_python = -1;
     s->out_binary = -1;
     s->out_bitrate = -1;
+    s->first_edge = 1;
 }
 
 static void spi_start(struct srd_decoder_inst* di)
@@ -408,18 +410,18 @@ static void spi_decode(struct srd_decoder_inst* di)
     int MOSI = 2;
     int CS = 3;
 
-    C_ANN_PUT(di, 0, 0, s->out_ann, ANN_ATK_DATA_POINT, "color:#F32FDC");
-    C_ANN_PUT(di, 0, 0, s->out_ann, ANN_ATK_RISING_EDGE, "color:#F32FDC");
-    C_ANN_PUT(di, 0, 0, s->out_ann, ANN_ATK_FALLING_EDGE, "color:#F32FDC");
-
-    if (!s->have_cs) {
-        c_decoder_put_python(di, 0, 0, s->out_python, "CS-CHANGE", NULL, 0);
-    }
-
-    /* Get initial pin states at current position */
+    /* Get initial pin states at current position, like Python's self.wait({}) */
     uint64_t cur_sample;
     if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
         return;
+
+    C_ANN_PUT(di, cur_sample, cur_sample, s->out_ann, ANN_ATK_DATA_POINT, "color:#F32FDC");
+    C_ANN_PUT(di, cur_sample, cur_sample, s->out_ann, ANN_ATK_RISING_EDGE, "color:#F32FDC");
+    C_ANN_PUT(di, cur_sample, cur_sample, s->out_ann, ANN_ATK_FALLING_EDGE, "color:#F32FDC");
+
+    if (!s->have_cs) {
+        c_decoder_put_python(di, cur_sample, cur_sample, s->out_python, "CS-CHANGE", NULL, 0);
+    }
 
     if (s->have_cs) {
         int cs = c_decoder_get_pin(di, CS, cur_sample);
@@ -439,10 +441,8 @@ static void spi_decode(struct srd_decoder_inst* di)
 
     while (1) {
         srd_cond_builder* cb = c_cond_new();
-        if (s->sample_edge_rise)
-            c_cond_rise(cb, CLK);
-        else
-            c_cond_fall(cb, CLK);
+        /* Wait for ANY CLK edge, like Python's {0: 'e'}, then check edge type below */
+        c_cond_edge(cb, CLK);
 
         int cs_cond_idx = -1;
         if (s->have_cs) {
@@ -488,7 +488,25 @@ static void spi_decode(struct srd_decoder_inst* di)
                     spi_format_transfer(s->mosibytes_val, s->mosibytes_cnt, s->format, s->wordsize, transfer_str, sizeof(transfer_str));
                     C_ANN_PUT(di, s->transfer_start, samplenum, s->out_ann, ANN_MOSI_TRANSFER, transfer_str);
                 }
-                c_decoder_put_python(di, s->transfer_start, samplenum, s->out_python, "TRANSFER", NULL, 0);
+                /* TRANSFER output with byte data */
+                {
+                    int mosi_cnt = s->have_mosi ? s->mosibytes_cnt : 0;
+                    int miso_cnt = s->have_miso ? s->misobytes_cnt : 0;
+                    int data_len = 5 + mosi_cnt + miso_cnt;
+                    unsigned char* xfer_data = (unsigned char*)g_malloc(data_len);
+                    int xpos = 0;
+                    xfer_data[xpos++] = (unsigned char)((s->have_mosi ? 1 : 0) | (s->have_miso ? 2 : 0));
+                    xfer_data[xpos++] = (unsigned char)(mosi_cnt & 0xFF);
+                    xfer_data[xpos++] = (unsigned char)((mosi_cnt >> 8) & 0xFF);
+                    xfer_data[xpos++] = (unsigned char)(miso_cnt & 0xFF);
+                    xfer_data[xpos++] = (unsigned char)((miso_cnt >> 8) & 0xFF);
+                    for (int i = 0; i < mosi_cnt; i++)
+                        xfer_data[xpos++] = (unsigned char)s->mosibytes_val[i];
+                    for (int i = 0; i < miso_cnt; i++)
+                        xfer_data[xpos++] = (unsigned char)s->misobytes_val[i];
+                    c_decoder_put_python(di, s->transfer_start, samplenum, s->out_python, "TRANSFER", xfer_data, xpos);
+                    g_free(xfer_data);
+                }
             }
 
             spi_reset_word(s);
@@ -499,6 +517,13 @@ static void spi_decode(struct srd_decoder_inst* di)
 
         if (!clk_matched)
             continue;
+
+        /* Skip first CLK edge (phantom edge at sample 0), matching Python's
+         * find_clk_edge(first=True) which returns early on the first sample */
+        if (s->first_edge) {
+            s->first_edge = 0;
+            continue;
+        }
 
         int mode;
         if (s->cpol == 0 && s->cpha == 0)

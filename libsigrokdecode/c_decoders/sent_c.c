@@ -247,15 +247,6 @@ static void sent_decode(struct srd_decoder_inst *di)
         if (ret != SRD_OK)
             return;
 
-        last_samplenum = samplenum;
-        /* Wait for next falling edge */
-        cb = c_cond_new();
-        c_cond_fall(cb, CH_DATA);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK)
-            return;
-
         int storeCal = 0;
         int nibble = -1;
         uint64_t period = samplenum - last_samplenum;
@@ -359,8 +350,8 @@ static void sent_decode(struct srd_decoder_inst *di)
         {
             double perMicroSec = (double)period * 1000000.0 / (double)s->samplerate;
             char tick_long[32], tick_short[8];
-            snprintf(tick_long, sizeof(tick_long), "%.1fus", perMicroSec);
-            snprintf(tick_short, sizeof(tick_short), "%.0f", perMicroSec);
+            snprintf(tick_long, sizeof(tick_long), "%4.1f\xC2\xB5s", perMicroSec);
+            snprintf(tick_short, sizeof(tick_short), "%3.0f", perMicroSec);
             C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_TICK, tick_long, tick_short);
         }
 

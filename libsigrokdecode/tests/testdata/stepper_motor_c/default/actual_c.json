@@ -1,0 +1,387 @@
+{
+	"decoder": "stepper_motor_c",
+	"samplerate": 1000000,
+	"num_annotations": 38,
+	"annotations": [
+		{
+			"start_sample": 58,
+			"end_sample": 1058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 58,
+			"end_sample": 1058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-1 steps", 
+				"-1"
+			]
+		}, 
+		{
+			"start_sample": 1058,
+			"end_sample": 2058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 1058,
+			"end_sample": 2058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-2 steps", 
+				"-2"
+			]
+		}, 
+		{
+			"start_sample": 2058,
+			"end_sample": 3058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 2058,
+			"end_sample": 3058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-3 steps", 
+				"-3"
+			]
+		}, 
+		{
+			"start_sample": 3058,
+			"end_sample": 4058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 3058,
+			"end_sample": 4058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-4 steps", 
+				"-4"
+			]
+		}, 
+		{
+			"start_sample": 4058,
+			"end_sample": 5058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 4058,
+			"end_sample": 5058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-5 steps", 
+				"-5"
+			]
+		}, 
+		{
+			"start_sample": 5058,
+			"end_sample": 6058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 5058,
+			"end_sample": 6058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-6 steps", 
+				"-6"
+			]
+		}, 
+		{
+			"start_sample": 6058,
+			"end_sample": 7058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 6058,
+			"end_sample": 7058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-7 steps", 
+				"-7"
+			]
+		}, 
+		{
+			"start_sample": 7058,
+			"end_sample": 8058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 7058,
+			"end_sample": 8058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-8 steps", 
+				"-8"
+			]
+		}, 
+		{
+			"start_sample": 8058,
+			"end_sample": 9058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 8058,
+			"end_sample": 9058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-9 steps", 
+				"-9"
+			]
+		}, 
+		{
+			"start_sample": 9058,
+			"end_sample": 10058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 9058,
+			"end_sample": 10058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-10 steps", 
+				"-10"
+			]
+		}, 
+		{
+			"start_sample": 10058,
+			"end_sample": 11058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 10058,
+			"end_sample": 11058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-11 steps", 
+				"-11"
+			]
+		}, 
+		{
+			"start_sample": 11058,
+			"end_sample": 12058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 11058,
+			"end_sample": 12058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-12 steps", 
+				"-12"
+			]
+		}, 
+		{
+			"start_sample": 12058,
+			"end_sample": 13058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 12058,
+			"end_sample": 13058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-13 steps", 
+				"-13"
+			]
+		}, 
+		{
+			"start_sample": 13058,
+			"end_sample": 14058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 13058,
+			"end_sample": 14058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-14 steps", 
+				"-14"
+			]
+		}, 
+		{
+			"start_sample": 14058,
+			"end_sample": 15058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 14058,
+			"end_sample": 15058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-15 steps", 
+				"-15"
+			]
+		}, 
+		{
+			"start_sample": 15058,
+			"end_sample": 16058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 15058,
+			"end_sample": 16058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-16 steps", 
+				"-16"
+			]
+		}, 
+		{
+			"start_sample": 16058,
+			"end_sample": 17058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 16058,
+			"end_sample": 17058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-17 steps", 
+				"-17"
+			]
+		}, 
+		{
+			"start_sample": 17058,
+			"end_sample": 18058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 17058,
+			"end_sample": 18058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-18 steps", 
+				"-18"
+			]
+		}, 
+		{
+			"start_sample": 18058,
+			"end_sample": 19058,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1000 steps/s", 
+				"1000"
+			]
+		}, 
+		{
+			"start_sample": 18058,
+			"end_sample": 19058,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"-19 steps", 
+				"-19"
+			]
+		}
+	]
+}

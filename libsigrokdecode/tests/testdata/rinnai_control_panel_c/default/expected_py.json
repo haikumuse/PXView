@@ -1,0 +1,187 @@
+{
+	"decoder": "rinnai-control-panel",
+	"samplerate": 1000000,
+	"num_annotations": 20,
+	"annotations": [
+		{
+			"start_sample": 30,
+			"end_sample": 530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 1030,
+			"end_sample": 1530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 2030,
+			"end_sample": 2530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 3030,
+			"end_sample": 3530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 4030,
+			"end_sample": 4530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 5030,
+			"end_sample": 5530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 6030,
+			"end_sample": 6530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 7030,
+			"end_sample": 7530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 8030,
+			"end_sample": 8530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 9030,
+			"end_sample": 9530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 10030,
+			"end_sample": 10530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 11030,
+			"end_sample": 11530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 12030,
+			"end_sample": 12530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 13030,
+			"end_sample": 13530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 14030,
+			"end_sample": 14530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 15030,
+			"end_sample": 15530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 16030,
+			"end_sample": 16530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 17030,
+			"end_sample": 17530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 18030,
+			"end_sample": 18530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 19030,
+			"end_sample": 19530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}
+	]
+}
