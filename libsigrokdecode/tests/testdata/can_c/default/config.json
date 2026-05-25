@@ -2,7 +2,7 @@
   "decoder": "can_c",
   "samplerate": 10000000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 20000,
   "channels": {
     "can_rx": 0
   },

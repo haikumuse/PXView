@@ -348,7 +348,7 @@ static void modbus_sc_parse(struct srd_decoder_inst *di, modbus_state *s, modbus
     if (server_id >= 1 && server_id <= 247) {
         snprintf(buf, sizeof(buf), "Slave ID: %d", server_id);
     } else {
-        snprintf(buf, sizeof(buf), "Slave ID %d is invalid", server_id);
+        snprintf(buf, sizeof(buf), "Slave ID {} is invalid");
     }
     modbus_adu_puti(di, s, adu, 0, ANN_SC_SERVER_ID, buf);
 
@@ -368,6 +368,12 @@ static void modbus_sc_parse(struct srd_decoder_inst *di, modbus_state *s, modbus
         modbus_sc_parse_write_multiple(di, s, adu);
     else if (function > 0x80)
         modbus_sc_parse_error(di, s, adu);
+    else {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Unknown function: %d", function);
+        modbus_adu_puti(di, s, adu, 1, ANN_SC_ERROR, buf);
+        modbus_adu_puti(di, s, adu, adu->data_len - 1, ANN_SC_ERROR, "Unknown function");
+    }
 }
 
 /* --- CS (Client -> Server) parsing --- */
@@ -574,6 +580,12 @@ static void modbus_cs_parse(struct srd_decoder_inst *di, modbus_state *s, modbus
         modbus_cs_parse_mask_write_register(di, s, adu);
     else if (function == 23)
         modbus_cs_parse_read_write_registers(di, s, adu);
+    else {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Unknown function: %d", function);
+        modbus_adu_puti(di, s, adu, 1, ANN_CS_ERROR, buf);
+        modbus_adu_puti(di, s, adu, adu->data_len - 1, ANN_CS_ERROR, "Unknown function");
+    }
 }
 
 static void modbus_decode_adu(struct srd_decoder_inst *di, modbus_state *s,

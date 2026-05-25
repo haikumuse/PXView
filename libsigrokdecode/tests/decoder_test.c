@@ -663,6 +663,29 @@ int main(int argc, char **argv)
                 }
                 srd_inst_channel_set_all(s_di, sh);
                 g_hash_table_destroy(sh);
+            } else {
+                /* Auto-map: map the stack decoder's channels (required + optional)
+                 * to input channels in order */
+                GHashTable *sh = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_variant_unref);
+                int ch_idx = 0;
+                /* Map required channels first */
+                GSList *ch_list = s_di->decoder->channels;
+                while (ch_list && ch_idx < num_channels) {
+                    struct srd_channel *ch = (struct srd_channel *)ch_list->data;
+                    g_hash_table_insert(sh, g_strdup(ch->id), g_variant_ref_sink(g_variant_new_int32(ch_idx)));
+                    ch_list = ch_list->next;
+                    ch_idx++;
+                }
+                /* Then map optional channels */
+                ch_list = s_di->decoder->opt_channels;
+                while (ch_list && ch_idx < num_channels) {
+                    struct srd_channel *ch = (struct srd_channel *)ch_list->data;
+                    g_hash_table_insert(sh, g_strdup(ch->id), g_variant_ref_sink(g_variant_new_int32(ch_idx)));
+                    ch_list = ch_list->next;
+                    ch_idx++;
+                }
+                srd_inst_channel_set_all(s_di, sh);
+                g_hash_table_destroy(sh);
             }
             if (prev_di) srd_inst_stack(sess, prev_di, s_di);
             prev_di = s_di;

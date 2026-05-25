@@ -40,20 +40,18 @@ def parse_decoder_metadata(c_file):
     with open(c_file, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
     
-    # Extract ID (specifically look for the one in srd_c_decoder struct)
-    id_match = re.search(r'struct\s+srd_c_decoder\s+\w+\s*=\s*\{.*?\b\.id\s*=\s*"([^"]+)"', content, re.DOTALL)
-    if not id_match:
-        id_match = re.search(r'static\s+struct\s+srd_c_decoder\s+\w+\s*=\s*\{.*?\b\.id\s*=\s*"([^"]+)"', content, re.DOTALL)
-    
-    if not id_match:
-        all_ids = re.findall(r'\.id\s*=\s*"([^"]+)"', content)
-        if all_ids:
-            candidates = [i for i in all_ids if not i.startswith("dec_") and not i.startswith("opt_")]
-            decoder_id = candidates[-1] if candidates else all_ids[-1]
-        else:
-            decoder_id = os.path.basename(c_file).replace(".c", "")
-    else:
-        decoder_id = id_match.group(1)
+    # Extract ID: first try the .id field inside srd_c_decoder struct, fall back to filename
+    decoder_id = None
+    # Find the srd_c_decoder struct and extract its .id (first .id after struct opening brace)
+    struct_match = re.search(r'struct\s+srd_c_decoder\s+\w+\s*=\s*\{', content)
+    if struct_match:
+        # Search for .id only within the first few lines after the struct opening
+        after_struct = content[struct_match.end():struct_match.end() + 500]
+        id_in_struct = re.search(r'\.id\s*=\s*"([^"]+)"', after_struct)
+        if id_in_struct:
+            decoder_id = id_in_struct.group(1)
+    if not decoder_id:
+        decoder_id = os.path.basename(c_file).replace(".c", "")
     
     # Extract Inputs
     inputs = []
@@ -94,7 +92,22 @@ def generate_test_for_decoder(c_file):
     while current_input in INPUT_GENERATORS:
         base_id, _ = INPUT_GENERATORS[current_input]
         if base_id == "base": break
-        stack.insert(0, {"id": base_id})
+        # Parse the stack decoder's C file to get its channel names
+        stack_c_file = os.path.join(DECODERS_DIR, base_id + ".c")
+        stack_entry = {"id": base_id}
+        if os.path.exists(stack_c_file):
+            try:
+                _, _, stack_channels = parse_decoder_metadata(stack_c_file)
+                if stack_channels:
+                    # Only map channels that will have actual data.
+                    # For UART, only map RX (channel 0) since TX has no data.
+                    if "uart" in base_id:
+                        stack_entry["channels"] = {"rx": 0}
+                    else:
+                        stack_entry["channels"] = stack_channels
+            except Exception:
+                pass
+        stack.insert(0, stack_entry)
         # For simplicity, we only handle 1 level of stacking in this mass generator
         # though decoder_test.c supports more.
         break

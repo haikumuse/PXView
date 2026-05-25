@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Gerhard Sittig <gerhard.sittig@gmx.net>
+ * Copyright (C) 2020 Michael Stapelberg
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,24 +23,8 @@ enum {
     NUM_ANN,
 };
 
-enum scs_state {
-    SCS_IDLE,
-    SCS_HEADER1,
-    SCS_ID,
-    SCS_LENGTH,
-    SCS_INSTRUCTION,
-    SCS_PARAMS,
-    SCS_CHECKSUM,
-};
-
 typedef struct {
-    enum scs_state state;
     int telegram_idx;
-    uint8_t id;
-    uint8_t length;
-    uint8_t instruction;
-    uint8_t params[256];
-    int param_count;
     uint8_t crc;
     int out_ann;
 } scs_state;
@@ -57,32 +41,6 @@ static const struct srd_c_ann_row scs_ann_rows[] = {
     {"scs", "SCS", scs_row_scs_classes, 1},
 };
 
-static const char *scs_instruction_name(uint8_t instr)
-{
-    switch (instr) {
-    case 0x01: return "PING";
-    case 0x02: return "READ";
-    case 0x03: return "WRITE";
-    case 0x04: return "REG WRITE";
-    case 0x05: return "ACTION";
-    case 0x06: return "RESET";
-    case 0x07: return "SYNC WRITE";
-    case 0x08: return "BULK READ";
-    default: return "UNKNOWN";
-    }
-}
-
-static void scs_reset_state(scs_state *s)
-{
-    s->state = SCS_IDLE;
-    s->telegram_idx = 0;
-    s->id = 0;
-    s->length = 0;
-    s->instruction = 0;
-    s->param_count = 0;
-    s->crc = 0;
-}
-
 static void scs_recv_proto(struct srd_decoder_inst *di,
     uint64_t start_sample, uint64_t end_sample,
     const char *cmd, const unsigned char *data, uint64_t data_len)
@@ -98,93 +56,29 @@ static void scs_recv_proto(struct srd_decoder_inst *di,
 
     uint8_t val = data[0];
 
-    switch (s->state) {
-    case SCS_IDLE:
-        if (val == 0xFF) {
-            s->state = SCS_HEADER1;
-            s->crc = val;
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "Header: 0xFF");
-        }
-        break;
-
-    case SCS_HEADER1:
-        if (val == 0xFF) {
-            s->state = SCS_ID;
-            s->crc ^= val;
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "Header: 0xFF");
-        } else {
-            scs_reset_state(s);
-        }
-        break;
-
-    case SCS_ID:
-        s->id = val;
+    if (s->telegram_idx == 0 && val == 0xa8) {
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "init");
+    } else if (s->telegram_idx == 1) {
+        s->crc = val;
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "addr");
+    } else if (s->telegram_idx == 2) {
         s->crc ^= val;
-        s->state = SCS_LENGTH;
-        {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "ID: %d", val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, buf);
-        }
-        break;
-
-    case SCS_LENGTH:
-        s->length = val;
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "??");
+    } else if (s->telegram_idx == 3) {
         s->crc ^= val;
-        s->state = SCS_INSTRUCTION;
-        {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "Length: %d", val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, buf);
-        }
-        break;
-
-    case SCS_INSTRUCTION:
-        s->instruction = val;
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "request");
+    } else if (s->telegram_idx == 4) {
         s->crc ^= val;
-        s->param_count = 0;
-        if (s->length > 2)
-            s->state = SCS_PARAMS;
-        else
-            s->state = SCS_CHECKSUM;
-        {
-            char buf[64];
-            snprintf(buf, sizeof(buf), "Instruction: %s (0x%02X)", scs_instruction_name(val), val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, buf);
-        }
-        break;
-
-    case SCS_PARAMS:
-        s->crc ^= val;
-        if (s->param_count < (int)sizeof(s->params))
-            s->params[s->param_count] = val;
-        s->param_count++;
-        {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "Param[%d]: 0x%02X", s->param_count - 1, val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, buf);
-        }
-        /* length includes instruction + params + checksum */
-        if (s->param_count >= s->length - 2)
-            s->state = SCS_CHECKSUM;
-        break;
-
-    case SCS_CHECKSUM:
-        {
-            uint8_t expected = ~s->crc;
-            if (val == expected) {
-                char buf[32];
-                snprintf(buf, sizeof(buf), "Checksum OK: 0x%02X", val);
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, buf);
-            } else {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "Checksum ERROR: got 0x%02X, expected 0x%02X", val, expected);
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, buf);
-            }
-        }
-        scs_reset_state(s);
-        break;
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "??");
+    } else if (s->telegram_idx == 5) {
+        const char *crc_str = (s->crc == val) ? "good crc" : "bad crc";
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, crc_str);
+    } else if (s->telegram_idx == 6) {
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "term");
+        s->telegram_idx = -1;
     }
+
+    s->telegram_idx++;
 }
 
 static void scs_reset(struct srd_decoder_inst *di)
@@ -194,7 +88,6 @@ static void scs_reset(struct srd_decoder_inst *di)
     }
     scs_state *s = (scs_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(scs_state));
-    scs_reset_state(s);
 }
 
 static void scs_start(struct srd_decoder_inst *di)

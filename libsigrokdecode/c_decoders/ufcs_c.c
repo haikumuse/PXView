@@ -415,7 +415,8 @@ static void ufcs_recv_proto(struct srd_decoder_inst *di,
     /* Packet complete */
     if (s->dataidx == s->plen && s->plen > 0) {
         ufcs_decode_pkt(di, s);
-        ufcs_reset_state(s);
+        /* Do not reset state after decode - match Python behavior.
+         * State is only reset on SOP (0xAA) byte. */
     }
 }
 

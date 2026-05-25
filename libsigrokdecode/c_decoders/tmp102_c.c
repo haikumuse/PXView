@@ -385,11 +385,16 @@ static void tmp102_recv_proto(struct srd_decoder_inst *di,
                 }
                 s->bytes_len = 0;
             } else {
-                if (addr != 0x7F) {
-                    char buf[64];
-                    snprintf(buf, sizeof(buf), "Unknown slave address: 0x%02X", addr);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_INFO_BADADD, buf, "Unknown", "Unk", "U");
-                }
+                /* Use s->addr (default address) for BADADD text, matching Python's
+                 * check_addr() which uses self.addr and compose_annot for variants */
+                char buf1[64], buf2[64], buf3[48], buf4[32], buf5[16];
+                snprintf(buf1, sizeof(buf1), "Unknown slave address: 0x%02X", s->addr);
+                snprintf(buf2, sizeof(buf2), "Unknown address: 0x%02X", s->addr);
+                snprintf(buf3, sizeof(buf3), "Unknown: 0x%02X", s->addr);
+                snprintf(buf4, sizeof(buf4), "Unk: 0x%02X", s->addr);
+                snprintf(buf5, sizeof(buf5), "U: 0x%02X", s->addr);
+                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_INFO_BADADD,
+                          buf1, buf2, buf3, buf4, buf5, "Unk", "U");
                 s->state = TMP102_IDLE;
             }
         }

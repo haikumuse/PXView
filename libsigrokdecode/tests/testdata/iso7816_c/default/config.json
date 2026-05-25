@@ -2,7 +2,7 @@
   "decoder": "iso7816_c",
   "samplerate": 1000000,
   "num_channels": 2,
-  "sample_count": 100000,
+  "sample_count": 20000,
   "channels": {
     "clk": 0,
     "data": 1

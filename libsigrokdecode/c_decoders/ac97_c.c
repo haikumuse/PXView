@@ -536,11 +536,6 @@ static void ac97_start(struct srd_decoder_inst *di)
     s->have_sdo = c_decoder_has_channel(di, CH_SDATA_OUT);
     s->have_sdi = c_decoder_has_channel(di, CH_SDATA_IN);
     s->have_reset = c_decoder_has_channel(di, CH_RESET);
-
-    if (!s->have_sdo && !s->have_sdi) {
-        C_ANN_PUT(di, 0, 0, s->out_ann, ANN_ERROR,
-                  "Either SDATA_OUT or SDATA_IN (or both) are required.");
-    }
 }
 
 static void ac97_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -553,6 +548,10 @@ static void ac97_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void ac97_decode(struct srd_decoder_inst *di)
 {
     struct ac97_priv *s = (struct ac97_priv *)c_decoder_get_private(di);
+
+    if (!s->have_sdo && !s->have_sdi)
+        return;
+
     uint64_t samplenum;
     uint64_t matched;
 

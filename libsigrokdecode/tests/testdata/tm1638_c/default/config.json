@@ -6,7 +6,11 @@
   "channels": {},
   "stack": [
     {
-      "id": "tmc_c"
+      "id": "tmc_c",
+      "channels": {
+        "clk": 0,
+        "dio": 1
+      }
     }
   ]
 }

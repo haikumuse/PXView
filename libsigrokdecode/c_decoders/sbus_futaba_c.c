@@ -29,6 +29,14 @@ enum {
     NUM_ANN,
 };
 
+enum {
+    FAIL_NONE = 0,
+    FAIL_INVALID_DATA,
+    FAIL_UNPROCESSED,
+    FAIL_BREAK,
+    FAIL_EXCESS,
+};
+
 typedef struct {
     uint8_t bit_vals[256];
     uint64_t bit_ss[256];
@@ -38,7 +46,7 @@ typedef struct {
     int sent_fields;
     int msg_complete;
     int failed;
-    char fail_text[64];
+    int fail_type;
 
     int prop_val_min;
     int prop_val_max;
@@ -89,7 +97,7 @@ static void sbus_reset_state(sbus_state *s)
     s->sent_fields = 0;
     s->msg_complete = 0;
     s->failed = 0;
-    s->fail_text[0] = '\0';
+    s->fail_type = FAIL_NONE;
 }
 
 static void sbus_get_ss_es_bits(sbus_state *s, int bitcount,
@@ -216,7 +224,7 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
 
     if (s->msg_complete && s->num_bits > 0) {
         s->failed = 1;
-        snprintf(s->fail_text, sizeof(s->fail_text), "Excess data bits");
+        s->fail_type = FAIL_EXCESS;
     }
 }
 
@@ -224,12 +232,27 @@ static void sbus_handle_idle(struct srd_decoder_inst *di, sbus_state *s, uint64_
 {
     if (s->num_bits > 0 && !s->failed) {
         s->failed = 1;
-        snprintf(s->fail_text, sizeof(s->fail_text), "Unprocessed data bits");
+        s->fail_type = FAIL_UNPROCESSED;
     }
     if (s->num_bits > 0 && s->failed) {
         uint64_t warn_ss = s->bit_ss[0];
         uint64_t warn_es = s->bit_es[s->num_bits - 1];
-        C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, s->fail_text);
+        switch (s->fail_type) {
+        case FAIL_INVALID_DATA:
+            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Invalid data", "Invalid");
+            break;
+        case FAIL_UNPROCESSED:
+            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Unprocessed data bits", "Unprocessed");
+            break;
+        case FAIL_BREAK:
+            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "BREAK condition", "Break");
+            break;
+        case FAIL_EXCESS:
+            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Excess data bits", "Excess");
+            break;
+        default:
+            break;
+        }
     }
     sbus_reset_state(s);
 }
@@ -238,7 +261,7 @@ static void sbus_handle_break(struct srd_decoder_inst *di, sbus_state *s, uint64
 {
     if (!s->failed) {
         s->failed = 1;
-        snprintf(s->fail_text, sizeof(s->fail_text), "BREAK condition");
+        s->fail_type = FAIL_BREAK;
     }
     /* Re-use idle logic for annotated bits warning */
     sbus_handle_idle(di, s, 0, 0);
@@ -268,9 +291,9 @@ static void sbus_recv_proto(struct srd_decoder_inst *di,
             }
         }
     } else if (strcmp(cmd, "FRAME") == 0) {
-        if (data_len >= 3 && data[2] == 0) {
+        if (data_len >= 3 && (data[1] == 0 || data[2] == 0)) {
             s->failed = 1;
-            snprintf(s->fail_text, sizeof(s->fail_text), "Invalid data");
+            s->fail_type = FAIL_INVALID_DATA;
         }
         sbus_flush_accum_bits(di, s);
     } else if (strcmp(cmd, "IDLE") == 0) {

@@ -23,7 +23,9 @@ enum uart_parity {
 };
 
 enum uart_ann {
-    RX_DATA = 0,
+    RX_WARN = 0,
+    TX_WARN,
+    RX_DATA,
     TX_DATA,
     RX_START,
     TX_START,
@@ -33,8 +35,6 @@ enum uart_ann {
     TX_PARITY_ERR,
     RX_STOP,
     TX_STOP,
-    RX_WARN,
-    TX_WARN,
     RX_DATA_BIT,
     TX_DATA_BIT,
     RX_BREAK,
@@ -135,6 +135,8 @@ static struct srd_decoder_option uart_options[] = {
 };
 
 static const char* uart_ann_labels[][3] = {
+    { "", "rx-warning", "RX warning" },
+    { "", "tx-warning", "TX warning" },
     { "", "rx-data", "RX data" },
     { "", "tx-data", "TX data" },
     { "", "rx-start", "RX start bit" },
@@ -145,8 +147,6 @@ static const char* uart_ann_labels[][3] = {
     { "", "tx-parity-err", "TX parity error bit" },
     { "", "rx-stop", "RX stop bit" },
     { "", "tx-stop", "TX stop bit" },
-    { "", "rx-warning", "RX warning" },
-    { "", "tx-warning", "TX warning" },
     { "", "rx-data-bit", "RX data bit" },
     { "", "tx-data-bit", "TX data bit" },
     { "", "rx-break", "RX break" },
@@ -650,7 +650,10 @@ static void process_rxtx(struct srd_decoder_inst* di, int rxtx, uint64_t samplen
             if (start_bit != 0) {
                 C_ANN_PUT(di, ss, samplenum, s->out_ann, RX_WARN + rxtx, "Start bit error", "Start err", "SE");
                 unsigned char py_val = (unsigned char)start_bit;
-                c_decoder_put_python(di, ss, samplenum, s->out_python, "INVALID STARTBIT", &py_val, 1);
+                unsigned char py_data[2];
+                py_data[0] = py_val;
+                py_data[1] = (unsigned char)rxtx;
+                c_decoder_put_python(di, ss, samplenum, s->out_python, "INVALID STARTBIT", py_data, 2);
                 s->frame_valid[rxtx] = 0;
                 handle_frame_complete(di, rxtx);
                 s->state[rxtx] = WAIT_FOR_START_BIT;
@@ -663,7 +666,10 @@ static void process_rxtx(struct srd_decoder_inst* di, int rxtx, uint64_t samplen
                 if (s->show_start_stop)
                     C_ANN_PUT(di, ss, es, s->out_ann, RX_START + rxtx, "Start bit", "Start", "S");
                 unsigned char py_val = (unsigned char)start_bit;
-                c_decoder_put_python(di, ss, es, s->out_python, "STARTBIT", &py_val, 1);
+                unsigned char py_data[2];
+                py_data[0] = py_val;
+                py_data[1] = (unsigned char)rxtx;
+                c_decoder_put_python(di, ss, es, s->out_python, "STARTBIT", py_data, 2);
                 s->state[rxtx] = GET_DATA_BITS;
                 s->databit_count[rxtx] = 0;
             }
@@ -722,15 +728,22 @@ static void process_rxtx(struct srd_decoder_inst* di, int rxtx, uint64_t samplen
             if (parity_ok(s->parity_type, parity_val, s->datavalue[rxtx], s->data_bits)) {
                 C_ANN_PUT(di, ss, es, s->out_ann, RX_PARITY_OK + rxtx, "Parity bit", "Parity", "P");
                 unsigned char pval = (unsigned char)parity_val;
-                c_decoder_put_python(di, ss, es, s->out_python, "PARITYBIT", &pval, 1);
+                unsigned char py_data[2];
+                py_data[0] = pval;
+                py_data[1] = (unsigned char)rxtx;
+                c_decoder_put_python(di, ss, es, s->out_python, "PARITYBIT", py_data, 2);
             } else {
                 C_ANN_PUT(di, ss, es, s->out_ann, RX_PARITY_ERR + rxtx, "Parity error", "Parity err", "PE");
                 unsigned char pval = (unsigned char)parity_val;
-                c_decoder_put_python(di, ss, es, s->out_python, "PARITYBIT", &pval, 1);
-                unsigned char err_data[2];
+                unsigned char py_data[2];
+                py_data[0] = pval;
+                py_data[1] = (unsigned char)rxtx;
+                c_decoder_put_python(di, ss, es, s->out_python, "PARITYBIT", py_data, 2);
+                unsigned char err_data[3];
                 err_data[0] = (unsigned char)(!parity_val);
                 err_data[1] = (unsigned char)parity_val;
-                c_decoder_put_python(di, ss, es, s->out_python, "PARITY ERROR", err_data, 2);
+                err_data[2] = (unsigned char)rxtx;
+                c_decoder_put_python(di, ss, es, s->out_python, "PARITY ERROR", err_data, 3);
                 s->frame_valid[rxtx] = 0;
             }
 
@@ -773,15 +786,23 @@ static void process_rxtx(struct srd_decoder_inst* di, int rxtx, uint64_t samplen
             }
 
             if (stop_val != 1) {
-                C_ANN_PUT(di, ss, es, s->out_ann, RX_WARN + rxtx, "Stop bit error", "Stop err", "TE");
+                /* Python uses es = samplenum (sample point) for stop bit error,
+                 * not the theoretical end of the stop bit period */
+                C_ANN_PUT(di, ss, sample_point, s->out_ann, RX_WARN + rxtx, "Stop bit error", "Stop err", "TE");
                 unsigned char py_val = (unsigned char)stop_val;
-                c_decoder_put_python(di, ss, es, s->out_python, "INVALID STOPBIT", &py_val, 1);
+                unsigned char py_data[2];
+                py_data[0] = py_val;
+                py_data[1] = (unsigned char)rxtx;
+                c_decoder_put_python(di, ss, sample_point, s->out_python, "INVALID STOPBIT", py_data, 2);
                 s->frame_valid[rxtx] = 0;
             } else {
                 if (s->show_start_stop)
                     C_ANN_PUT(di, ss, es, s->out_ann, RX_STOP + rxtx, "Stop bit", "Stop", "T");
                 unsigned char sval = (unsigned char)stop_val;
-                c_decoder_put_python(di, ss, es, s->out_python, "STOPBIT", &sval, 1);
+                unsigned char py_data[2];
+                py_data[0] = sval;
+                py_data[1] = (unsigned char)rxtx;
+                c_decoder_put_python(di, ss, es, s->out_python, "STOPBIT", py_data, 2);
             }
 
             s->stopbit_count[rxtx]++;

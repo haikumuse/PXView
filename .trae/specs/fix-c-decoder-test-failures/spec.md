@@ -1,126 +1,91 @@
-# 修复C解码器自动化测试发现的所有问题 Spec
+# 修复测试框架decoder_test.c的stack通道映射 Spec
 
 ## Why
-自动化测试发现112个逻辑输入C解码器中，20个FAIL（C与Python输出不一致）、31个ERROR（Python DLL加载失败、C解码器超时/崩溃）。需要修复这些问题，使C解码器与Python参考实现对齐。
+
+测试框架decoder_test.c在创建stack中的上游解码器（如uart_c）时，未调用`srd_inst_channel_set_all()`设置通道映射，导致上游解码器的所有通道（包括未连接的可选通道）被默认channelmap激活，输出大量无意义注解。这是16个UART堆叠解码器测试FAIL的根因。
 
 ## What Changes
-- 修复 Python DLL 加载环境问题（影响18个解码器无法测试）
-- 修复5个C解码器超时问题（dali_c, maple_bus_c, ook_c, usb_signalling_c, wiegand_c）
-- 修复1个C解码器崩溃问题（hdlc_c）
-- 修复20个C解码器逻辑问题（FAIL解码器）
-- 重新运行全部测试验证修复效果
+
+- **decoder_test.c**: 修改stack解码器创建逻辑，当stack条目没有`channels`字段时，自动将输入数据的前N个通道映射到stack解码器的前N个必需通道
+- **decoder_test.c**: 为stack解码器也调用`srd_inst_channel_set_all()`，确保通道映射正确
+- **test_factory.py**: 修改测试数据生成逻辑，为stack中的解码器自动生成正确的`channels`字段
 
 ## Impact
-- Affected code: `libsigrokdecode/c_decoders/` 中约26个C解码器源文件
-- Affected code: `libsigrokdecode/tests/run_all_tests.py`（Python DLL路径修复）
-- Affected specs: `align-all-c-decoders-with-python`（补充自动化测试发现的遗漏问题）
+
+- Affected code: `libsigrokdecode/tests/decoder_test.c`, `libsigrokdecode/tests/test_factory.py`
+- Affected tests: 16个UART堆叠解码器（modbus_c, lin_c, midi_c, bluetooth_h4_c, j1708_c, sbus_futaba_c, amulet_ascii_c, ufcs_c, arm_etmv3_c, arm_itm_c, arm_tpiu_c, boost_c, crsf_c, pan1321_c, pn532_c, scs_c, streletz_c）
+- 预期效果: 16个UART堆叠解码器从FAIL变为PASS
 
 ## ADDED Requirements
 
-### Requirement: 修复Python DLL加载环境问题
-系统 SHALL 在测试脚本中正确设置Python DLL搜索路径，使`srd_decoder_load_all()`能成功加载所有Python解码器。
+### Requirement: stack解码器自动通道映射
 
-#### Scenario: Python DLL加载成功
-- **WHEN** 运行 `run_all_tests.py --all`
-- **THEN** 18个之前因binascii DLL加载失败而ERROR的解码器能成功运行Python参考输出
+当config.json的stack条目没有`channels`字段时，decoder_test SHALL 自动将输入数据的前N个通道映射到stack解码器的前N个通道（按解码器定义顺序），并调用`srd_inst_channel_set_all()`。
 
-### Requirement: 修复C解码器超时问题
-5个C解码器（dali_c, maple_bus_c, ook_c, usb_signalling_c, wiegand_c）在处理不匹配的输入数据时进入无限等待。系统 SHALL 为这些解码器添加基于数据总长度的退出条件。
+#### Scenario: UART堆叠解码器自动映射
+- **GIVEN** config.json包含 `"stack": [{"id": "uart_c"}]` 且无 `channels` 字段
+- **AND** 输入数据有2个通道
+- **WHEN** decoder_test创建uart_c实例
+- **THEN** uart_c的通道0(RX)映射到输入通道0，通道1(TX)映射到输入通道1
+- **AND** uart_c的可选通道（如果有）映射为-1（未连接）
+- **AND** `c_decoder_has_channel(di, CH_RX)` 返回 TRUE
+- **AND** `c_decoder_has_channel(di, CH_TX)` 返回 TRUE
 
-#### Scenario: 输入数据不匹配时正常退出
-- **WHEN** C解码器处理完所有输入数据但未找到目标信号模式
-- **THEN** 解码器正常返回而非无限等待
+#### Scenario: stack条目有显式channels字段时优先使用
+- **GIVEN** config.json包含 `"stack": [{"id": "uart_c", "channels": {"rx": 0}}]`
+- **WHEN** decoder_test创建uart_c实例
+- **THEN** 使用显式指定的channels映射，不自动映射
 
-### Requirement: 修复C解码器崩溃问题
-hdlc_c解码器在start()中调用`c_decoder_put_python()`时传入NULL数据指针导致崩溃。系统 SHALL 修复此空指针问题。
+### Requirement: test_factory.py为stack解码器生成channels字段
 
-#### Scenario: hdlc_c正常启动
-- **WHEN** 运行hdlc_c解码器
-- **THEN** 不崩溃，正常输出注解
+test_factory.py在生成测试数据时，SHALL 为stack中的解码器自动生成正确的`channels`字段，将输入数据通道映射到stack解码器的必需通道。
 
-### Requirement: 修复C解码器输出0注解的严重Bug
-3个C解码器（ieee488_c, miller_c, swi_c）在Python产生注解时C产生0注解。系统 SHALL 修复这些解码器的核心逻辑。
-
-#### Scenario: ieee488_c仅DATA通道时输出位注解
-- **WHEN** ieee488_c仅提供DATA通道（无CLK/DAV）
-- **THEN** 输出位级注解（与Python一致）
-
-#### Scenario: miller_c超时后继续解码
-- **WHEN** miller_c检测到idle符号超时
-- **THEN** flush当前bitstring后继续寻找下一条消息，而非退出
-
-#### Scenario: swi_c无效数据时输出错误注解
-- **WHEN** swi_c检测到无效波特间隔或不完整字
-- **THEN** 输出错误注解而非静默跳过
-
-### Requirement: 修复约2倍注解计数差异
-3个C解码器（nrzi_c, opentherm_c, sent_c）的注解数量约为Python的一半。系统 SHALL 修复位范围计算和注解输出逻辑。
-
-#### Scenario: nrzi_c位注解范围正确
-- **WHEN** nrzi_c输出位注解
-- **THEN** 每个位注解覆盖1个symbol_len（而非2个）
-
-#### Scenario: opentherm_c输出sync error注解
-- **WHEN** opentherm_c在IDLE状态检测到静默间隔不足
-- **THEN** 输出"Sync error: silence too short"注解
-
-#### Scenario: sent_c每次迭代消耗1个下降沿
-- **WHEN** sent_c处理下降沿
-- **THEN** 每1个下降沿输出1个tick注解（而非每2个）
-
-### Requirement: 修复重大注解计数差异
-7个C解码器（can_c, microwire_c, morse_c, swim_c, timing_c, ps2_c, z80_c）存在显著注解计数差异。系统 SHALL 修复注解输出逻辑。
-
-#### Scenario: can_c为每个位输出ANN_BIT注解
-- **WHEN** can_c解码CAN帧
-- **THEN** 为帧中每个位输出位注解
-
-#### Scenario: morse_c不在process_symbol中输出SYMBOL注解
-- **WHEN** morse_c处理符号
-- **THEN** process_symbol只输出TIME和UNITS，SYMBOL由更高层处理
-
-#### Scenario: timing_c在format=full时不输出TERSE注解
-- **WHEN** timing_c的format选项为full
-- **THEN** 只输出TIME注解，不额外输出TERSE注解
-
-### Requirement: 修复文本格式差异
-4个C解码器（caliper_c, dcc_c, pwm_c, seven_segment_c）的注解文本格式与Python不一致。系统 SHALL 对齐文本格式。
-
-#### Scenario: caliper_c始终包含小数点
-- **WHEN** caliper_c输出测量值
-- **THEN** 使用"0.0mm"格式（非"0mm"）
-
-#### Scenario: pwm_c数值和单位之间有空格
-- **WHEN** pwm_c输出时间值
-- **THEN** 使用"2.0 μs"格式（非"2.0μs"）
-
-#### Scenario: seven_segment_c包含小数点标记
-- **WHEN** seven_segment_c的DP通道激活
-- **THEN** 在数字字符后追加"."（如"B."而非"B"）
-
-#### Scenario: dcc_c包含时序类型后缀
-- **WHEN** dcc_c输出时序注解
-- **THEN** 包含类型后缀如"(sync)"
-
-### Requirement: 修复其他差异
-6个C解码器（graycode_c, i2c_c, numbers_and_state_c, spi_c, jitter_c, onewire_link_c, pjdl_c）存在起始偏移、缺少文本变体、过多错误注解等问题。
-
-#### Scenario: spi_c位采样起始位置对齐
-- **WHEN** spi_c解码SPI数据
-- **THEN** 位采样起始位置与Python一致
-
-#### Scenario: jitter_c/onewire_link_c输出多个文本变体
-- **WHEN** jitter_c/onewire_link_c输出注解
-- **THEN** 包含与Python一致的多个文本变体
-
-#### Scenario: pjdl_c不在每个无效边沿输出错误
-- **WHEN** pjdl_c检测到无效脉冲
-- **THEN** 不在每个无效边沿都输出错误注解
+#### Scenario: 生成UART堆叠测试数据
+- **WHEN** test_factory为modbus_c生成测试数据
+- **THEN** 生成的config.json中stack条目包含 `"channels": {"rx": 0, "tx": 1}`
 
 ## MODIFIED Requirements
 
-无修改的需求。
+（无修改的已有需求）
 
 ## REMOVED Requirements
 
-无移除的需求。
+（无移除的需求）
+
+## 技术细节
+
+### decoder_test.c 当前stack处理逻辑（需修改）
+
+当前代码（约第640-671行）：
+```c
+// 读取stack数组
+cJSON *j_stack = cJSON_GetObjectItem(config, "stack");
+if (j_stack && cJSON_IsArray(j_stack)) {
+    for (int si = 0; si < cJSON_GetArraySize(j_stack); si++) {
+        cJSON *stack_entry = cJSON_GetArrayItem(j_stack, si);
+        char *stack_id = cJSON_GetObjectItem(stack_entry, "id")->valuestring;
+        // 创建解码器实例
+        // 只有当stack_entry有"channels"字段时才调用srd_inst_channel_set_all()
+        cJSON *j_channels = cJSON_GetObjectItem(stack_entry, "channels");
+        if (j_channels && cJSON_IsObject(j_channels)) {
+            // 设置通道映射
+        }
+        // 否则不设置！← 这是BUG
+    }
+}
+```
+
+### 修复方案
+
+当stack条目没有`channels`字段时，自动生成默认映射：
+1. 获取stack解码器的通道列表（从`srd_decoder->channels`）
+2. 按顺序将前N个通道映射到输入数据的通道0, 1, 2, ...
+3. 调用`srd_inst_channel_set_all()`设置映射
+
+### Python uart通道定义
+
+Python uart有2个可选通道：RX(索引0)和TX(索引1)。C uart_c也有相同的2个可选通道。当输入数据有2个通道时，自动映射为 rx→0, tx→1。
+
+### parallel_c问题
+
+parallel_c的测试数据只有1个通道（CLK），没有数据通道。这不是框架问题，而是测试数据不充分。parallel_c需要至少CLK+1个数据通道才能工作。需要为parallel_c生成包含更多通道的测试数据。

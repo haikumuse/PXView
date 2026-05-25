@@ -1,7 +1,7 @@
 {
 	"decoder": "bh1750_c",
 	"samplerate": 1000000,
-	"num_annotations": 60,
+	"num_annotations": 61,
 	"annotations": [
 		{
 			"start_sample": 1.8446744073709552e+19,
@@ -29,6 +29,21 @@
 			"texts": [
 				"Start", 
 				"S"
+			]
+		}, 
+		{
+			"start_sample": 9,
+			"end_sample": 89,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"Unknown slave address: 0x23", 
+				"Unknown address: 0x23", 
+				"Unknown: 0x23", 
+				"Unk: 0x23", 
+				"U: 0x23", 
+				"Unk", 
+				"U"
 			]
 		}, 
 		{

@@ -6,7 +6,10 @@
   "channels": {},
   "stack": [
     {
-      "id": "onewire_link_c"
+      "id": "onewire_link_c",
+      "channels": {
+        "owr": 0
+      }
     }
   ]
 }
