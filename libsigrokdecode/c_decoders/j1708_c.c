@@ -42,13 +42,14 @@ enum {
     NUM_BIN,
 };
 
-enum j1708_state {
-    J1708_IDLE,
-    J1708_IN_MESSAGE,
+enum j1708_fsm_state {
+    J1708_FSM_WAIT_STARTBIT,
+    J1708_FSM_WAIT_DATA,
+    J1708_FSM_WAIT_STOPBIT,
 };
 
 typedef struct {
-    enum j1708_state state;
+    enum j1708_fsm_state fsm_state;
     uint8_t data[MAX_MSG_LEN];
     int data_len;
     uint64_t first_startbit_ss;
@@ -107,6 +108,7 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
     if (s->data_len == 0)
         return;
 
+    /* Arm message delay measurement */
     s->last_valid_msg_stopbit_es = s->prev_stopbit_es;
 
     if (s->data_len < 2) {
@@ -144,34 +146,73 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x", s->data[i]);
         C_ANN_PUT(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_DATUM, buf);
 
-        /* MID field */
-        char mid_buf[32];
-        snprintf(mid_buf, sizeof(mid_buf), "MID: 0x%02x", s->data[0]);
+        /* MID field - match Python: 'MID: ' + hex(data[0]), hex(data[0]), 'MID' */
+        char mid_long[32], mid_mid[16];
+        snprintf(mid_long, sizeof(mid_long), "MID: 0x%x", s->data[0]);
+        snprintf(mid_mid, sizeof(mid_mid), "0x%x", s->data[0]);
         uint64_t mid_es = (uint64_t)(s->first_startbit_ss + s->bit_width * 10);
-        C_ANN_PUT(di, s->first_startbit_ss, mid_es, s->out_ann, ANN_INFO, mid_buf, "MID");
+        C_ANN_PUT(di, s->first_startbit_ss, mid_es, s->out_ann, ANN_INFO, mid_long, mid_mid, "MID");
         c_decoder_put_binary(di, s->first_startbit_ss, mid_es, s->out_bin, BIN_MID, 1, &s->data[0]);
 
-        /* Payload field */
+        /* Payload field - match Python: 'Payload: ' + hex, hex, 'Payload' */
         if (s->data_len > 2) {
             char payload_buf[256];
             int ppos = 0;
             for (int i = 1; i < s->data_len - 1 && ppos < 200; i++)
                 ppos += snprintf(payload_buf + ppos, sizeof(payload_buf) - ppos, "%02x", s->data[i]);
+            char payload_long[280];
+            snprintf(payload_long, sizeof(payload_long), "Payload: %s", payload_buf);
             uint64_t payload_es = (uint64_t)(s->prev_stopbit_es - s->bit_width * 10);
-            C_ANN_PUT(di, mid_es, payload_es, s->out_ann, ANN_INFO, "Payload", payload_buf);
+            C_ANN_PUT(di, mid_es, payload_es, s->out_ann, ANN_INFO, payload_long, payload_buf, "Payload");
             c_decoder_put_binary(di, mid_es, payload_es, s->out_bin, BIN_PAYLOAD,
                                  s->data_len - 2, &s->data[1]);
         }
 
-        /* CRC field */
-        char crc_buf[32];
+        /* CRC field - match Python: 'CRC: ' + hex, hex, 'CRC' */
+        char crc_buf[32], crc_mid[16];
         snprintf(crc_buf, sizeof(crc_buf), "CRC: %02x", recv_crc);
+        snprintf(crc_mid, sizeof(crc_mid), "%02x", recv_crc);
         uint64_t crc_ss = (uint64_t)(s->prev_stopbit_es - s->bit_width * 10);
-        C_ANN_PUT(di, crc_ss, s->prev_stopbit_es, s->out_ann, ANN_INFO, crc_buf, "CRC");
+        C_ANN_PUT(di, crc_ss, s->prev_stopbit_es, s->out_ann, ANN_INFO, crc_buf, crc_mid, "CRC");
         c_decoder_put_binary(di, crc_ss, s->prev_stopbit_es, s->out_bin, BIN_CRC, 1, &recv_crc);
     }
 
     s->data_len = 0;
+}
+
+static void j1708_message_ready(j1708_state *s)
+{
+    s->fsm_state = J1708_FSM_WAIT_STARTBIT;
+    s->prev_stopbit_es = 0;
+    s->first_startbit_ss = 0;
+    s->data_len = 0;
+}
+
+static void j1708_flush_message_break_measurement(struct srd_decoder_inst *di, j1708_state *s,
+                                                   uint64_t startbit_ss)
+{
+    if (s->last_valid_msg_stopbit_es == 0)
+        return;
+
+    double inter_delay = (double)(startbit_ss - s->last_valid_msg_stopbit_es) / s->bit_width;
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%05.1f", inter_delay);
+    C_ANN_PUT(di, s->last_valid_msg_stopbit_es, startbit_ss, s->out_ann, ANN_DELAY, buf);
+    if (inter_delay < MIN_BUS_ACCESS_BIT_TIMES) {
+        C_ANN_PUT(di, s->last_valid_msg_stopbit_es, startbit_ss, s->out_ann, ANN_BUS_ACCESS, buf);
+    }
+}
+
+static void j1708_maybe_flush_message(struct srd_decoder_inst *di, j1708_state *s,
+                                       uint64_t startbit_ss)
+{
+    if (s->prev_stopbit_es > 0 && s->bit_width > 0) {
+        double delay_bits = (double)(startbit_ss - s->prev_stopbit_es) / s->bit_width;
+        if ((int)delay_bits > s->message_break) {
+            j1708_flush_message(di, s);
+            j1708_message_ready(s);
+        }
+    }
 }
 
 static void j1708_recv_proto(struct srd_decoder_inst *di,
@@ -182,54 +223,85 @@ static void j1708_recv_proto(struct srd_decoder_inst *di,
     if (!s)
         return;
 
-    /* Get bit_width from STARTBIT/STOPBIT */
+    /* Get bit_width from samplerate, like Python decoder does */
     if (s->bit_width == 0) {
-        if (strcmp(cmd, "STARTBIT") == 0 || strcmp(cmd, "STOPBIT") == 0) {
-            s->bit_width = (double)(end_sample - start_sample);
-            return;
-        } else if (strcmp(cmd, "DATA") != 0) {
-            return;
-        }
-    }
-
-    /* Only process DATA, only RX */
-    if (strcmp(cmd, "DATA") != 0)
-        return;
-    if (data_len < 2)
-        return;
-
-    uint8_t byte_val = data[0];
-    uint8_t rxtx = data[1];
-    if (rxtx != 0)
-        return; /* J1708 is RX only */
-
-    /* Check message break interval */
-    if (s->prev_stopbit_es > 0 && s->bit_width > 0) {
-        double delay_bits = (double)(start_sample - s->prev_stopbit_es) / s->bit_width;
-        if ((int)delay_bits > s->message_break) {
-            j1708_flush_message(di, s);
-        }
-        /* Output delay info */
-        if (s->last_valid_msg_stopbit_es > 0) {
-            double inter_delay = (double)(start_sample - s->last_valid_msg_stopbit_es) / s->bit_width;
-            char buf[32];
-            snprintf(buf, sizeof(buf), "%05.1f", inter_delay);
-            C_ANN_PUT(di, s->last_valid_msg_stopbit_es, start_sample, s->out_ann, ANN_DELAY, buf);
-            if (inter_delay < MIN_BUS_ACCESS_BIT_TIMES) {
-                C_ANN_PUT(di, s->last_valid_msg_stopbit_es, start_sample, s->out_ann, ANN_BUS_ACCESS, buf);
+        uint64_t samplerate = c_decoder_get_samplerate(di);
+        if (samplerate > 0) {
+            s->bit_width = (double)samplerate / (double)J1708_BAUD;
+        } else {
+            /* Fallback: estimate from STARTBIT/STOPBIT duration */
+            if (strcmp(cmd, "STARTBIT") == 0 || strcmp(cmd, "STOPBIT") == 0) {
+                s->bit_width = (double)(end_sample - start_sample);
+                return;
+            } else if (strcmp(cmd, "DATA") != 0) {
+                return;
             }
         }
     }
 
-    /* Record first byte position */
-    if (s->data_len == 0) {
-        s->first_startbit_ss = start_sample;
+    /* Only process RX */
+    if (strcmp(cmd, "DATA") == 0) {
+        if (data_len < 2)
+            return;
+        uint8_t rxtx = data[1];
+        if (rxtx != 0)
+            return;
     }
 
-    if (s->data_len < MAX_MSG_LEN) {
-        s->data[s->data_len++] = byte_val;
+    /* Ignore FRAME, BREAK */
+    if (strcmp(cmd, "FRAME") == 0 || strcmp(cmd, "BREAK") == 0)
+        return;
+
+    /* FSM: WaitForStartBit */
+    if (s->fsm_state == J1708_FSM_WAIT_STARTBIT) {
+        if (strcmp(cmd, "STARTBIT") == 0) {
+            if (s->first_startbit_ss == 0) {
+                s->first_startbit_ss = start_sample;
+            } else {
+                j1708_maybe_flush_message(di, s, start_sample);
+            }
+            s->fsm_state = J1708_FSM_WAIT_DATA;
+
+            /* Check message break measurement after state transition */
+            if (s->last_valid_msg_stopbit_es > 0 && s->bit_width > 0) {
+                double inter_delay = (double)(start_sample - s->last_valid_msg_stopbit_es) / s->bit_width;
+                if ((int)inter_delay > s->message_break) {
+                    j1708_flush_message_break_measurement(di, s, start_sample);
+                    s->last_valid_msg_stopbit_es = 0;
+                    s->first_startbit_ss = start_sample;
+                }
+            }
+        } else if (strcmp(cmd, "IDLE") == 0) {
+            j1708_maybe_flush_message(di, s, start_sample);
+        }
+        return;
     }
-    s->prev_stopbit_es = end_sample;
+
+    /* FSM: WaitForData */
+    if (s->fsm_state == J1708_FSM_WAIT_DATA) {
+        if (strcmp(cmd, "DATA") == 0) {
+            if (data_len < 2)
+                return;
+            uint8_t byte_val = data[0];
+            if (s->data_len < MAX_MSG_LEN)
+                s->data[s->data_len++] = byte_val;
+            s->fsm_state = J1708_FSM_WAIT_STOPBIT;
+        }
+        return;
+    }
+
+    /* FSM: WaitForStopBit */
+    if (s->fsm_state == J1708_FSM_WAIT_STOPBIT) {
+        /* The C UART decoder sends "INVALID STOPBIT" instead of "STOPBIT"
+         * when the stop bit is invalid. The Python UART decoder sends
+         * "STOPBIT" even for invalid stop bits. Handle both here to
+         * keep the FSM moving. */
+        if (strcmp(cmd, "STOPBIT") == 0 || strcmp(cmd, "INVALID STOPBIT") == 0) {
+            s->prev_stopbit_es = end_sample;
+            s->fsm_state = J1708_FSM_WAIT_STARTBIT;
+        }
+        return;
+    }
 }
 
 static void j1708_reset(struct srd_decoder_inst *di)
@@ -239,7 +311,7 @@ static void j1708_reset(struct srd_decoder_inst *di)
     }
     j1708_state *s = (j1708_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(j1708_state));
-    s->state = J1708_IDLE;
+    s->fsm_state = J1708_FSM_WAIT_STARTBIT;
     s->message_break = 2;
 }
 
@@ -249,6 +321,20 @@ static void j1708_start(struct srd_decoder_inst *di)
     s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "j1708");
     s->out_bin = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "j1708");
     s->message_break = (int)c_decoder_get_option_int(di, "message_break", 2);
+}
+
+static void j1708_end(struct srd_decoder_inst *di)
+{
+    j1708_state *s = (j1708_state *)c_decoder_get_private(di);
+    if (!s)
+        return;
+    /* Flush any pending message when the session ends.
+     * This matches the Python decoder's behavior where IDLE events
+     * at the end of the stream trigger maybe_flush_message(). */
+    if (s->data_len > 0) {
+        j1708_flush_message(di, s);
+        j1708_message_ready(s);
+    }
 }
 
 static void j1708_decode(struct srd_decoder_inst *di)
@@ -292,6 +378,7 @@ struct srd_c_decoder j1708_c_decoder = {
     .reset = j1708_reset,
     .start = j1708_start,
     .decode = j1708_decode,
+    .end = j1708_end,
     .destroy = j1708_destroy,
     .recv_proto = j1708_recv_proto,
 };

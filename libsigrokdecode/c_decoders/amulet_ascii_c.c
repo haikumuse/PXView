@@ -842,6 +842,10 @@ static void amulet_recv_proto(struct srd_decoder_inst *di,
             s->state = pdata;
             amulet_emit_cmd_byte(di, s);
             s->cmdstate = 1;
+        } else {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "Unknown command: 0x%02X", pdata);
+            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, buf);
         }
         return;
     }

@@ -6,7 +6,11 @@
   "channels": {},
   "stack": [
     {
-      "id": "usb_signalling_c"
+      "id": "usb_signalling_c",
+      "channels": {
+        "dp": 0,
+        "dm": 1
+      }
     }
   ]
 }

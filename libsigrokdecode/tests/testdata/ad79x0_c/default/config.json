@@ -6,7 +6,10 @@
   "channels": {},
   "stack": [
     {
-      "id": "spi_c"
+      "id": "spi_c",
+      "channels": {
+        "clk": 0
+      }
     }
   ]
 }

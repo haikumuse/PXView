@@ -268,8 +268,7 @@ static void crsf_process_frame(struct srd_decoder_inst *di, crsf_state *s)
         C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
     } else {
         char t[64];
-        snprintf(t, sizeof(t), "Unknown frame type 0x%02X (%d bytes payload)",
-                 s->frame_type, s->payload_len - 1);
+        snprintf(t, sizeof(t), "Unknown packet type%d", s->frame_type);
         C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
     }
 
@@ -309,8 +308,8 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
             }
         }
         /* Unknown byte, ignore */
-        snprintf(t, sizeof(t), "Unknown byte: 0x%02X", byte_val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ERROR, t);
+        snprintf(t, sizeof(t), "Unknown packet type%d", byte_val);
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
         break;
 
     case CRSF_WAIT_LEN:
@@ -320,8 +319,8 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
             C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
             s->state = CRSF_WAIT_TYPE;
         } else {
-            snprintf(t, sizeof(t), "Invalid length: %d", byte_val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ERROR, t);
+            snprintf(t, sizeof(t), "Unknown packet type%d", byte_val);
+            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
             s->state = CRSF_WAIT_SYNC;
         }
         break;
@@ -334,8 +333,8 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
             if (name) {
                 C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, name);
             } else {
-                snprintf(t, sizeof(t), "Unknown frame type: 0x%02X", byte_val);
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ERROR, t);
+                snprintf(t, sizeof(t), "Unknown packet type%d", byte_val);
+                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
                 s->state = CRSF_WAIT_SYNC;
                 break;
             }

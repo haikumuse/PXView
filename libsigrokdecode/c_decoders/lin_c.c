@@ -258,9 +258,13 @@ static void lin_recv_proto(struct srd_decoder_inst *di,
         /* Reset state machine for new frame */
         lin_reset_state(priv);
 
-        /* Output break annotation */
-        C_ANN_PUT(di, start_sample, end_sample, priv->out_ann, ANN_CONTROL,
-                  "Break condition", "Break", "Brk", "B");
+        /* Output break annotation only for mid-frame breaks or the very first break.
+           Subsequent breaks while already waiting (FIND_BREAK state) are expected
+           and don't need a separate LIN-level annotation. */
+        if (priv->state != FIND_BREAK || !priv->done_break) {
+            C_ANN_PUT(di, start_sample, end_sample, priv->out_ann, ANN_CONTROL,
+                      "Break condition", "Break", "Brk", "B");
+        }
 
         priv->state = SYNC;
         priv->done_break = 1;

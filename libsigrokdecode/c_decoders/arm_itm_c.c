@@ -167,7 +167,11 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
     if (strcmp(ptype, "overflow") == 0) {
         C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, "Overflow");
     } else if (strcmp(ptype, "sync") == 0) {
-        C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, "Sync");
+        snprintf(t, sizeof(t), "Unhandled %s:", ptype);
+        int pos = (int)strlen(t);
+        for (int i = 0; i < s->buf_len && pos < (int)sizeof(t) - 5; i++)
+            pos += snprintf(t + pos, sizeof(t) - pos, " %02x", s->buf[i]);
+        C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, t);
     } else if (strcmp(ptype, "timestamp") == 0) {
         if (s->buf[s->buf_len - 1] & 0x80)
             return; /* Not complete yet */

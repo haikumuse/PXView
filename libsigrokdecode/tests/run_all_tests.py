@@ -119,6 +119,7 @@ HARDCODED_ID_MAP = {
     'one_single_wire': 'OneSingleWire',
     'pcfx_ctrlr': 'pcfx_cntrlr',
     'onewire': 'onewire_link',
+    'delta-sigma': 'delta_sigma',
 }
 
 def c_decoder_to_py(name):

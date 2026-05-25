@@ -588,8 +588,6 @@ SRD_PRIV struct srd_decoder_inst* create_c_decoder_inst(struct srd_session* sess
 
     if (di->c_dec_inst->reset)
         di->c_dec_inst->reset(di);
-    if (di->c_dec_inst->start)
-        di->c_dec_inst->start(di);
 
     /* Instance takes input from a frontend by default. */
     sess->di_list = g_slist_append(sess->di_list, di);
@@ -999,6 +997,9 @@ SRD_PRIV int srd_inst_start(struct srd_decoder_inst* di, char** error)
         di->first_pos = TRUE;
         di->abs_cur_matched = FALSE;
         di->skip_zero = FALSE;
+
+        if (di->c_dec_inst && di->c_dec_inst->start)
+            di->c_dec_inst->start(di);
 
         for (l = di->next_di; l; l = l->next) {
             next_di = l->data;

@@ -780,13 +780,15 @@ static int get_term_type(const char* v)
  * @return A newly allocated PyTuple containing the pin values at the
  *         current sample number.
  */
-static int get_current_pinvalues(const struct srd_decoder_inst* di)
+static int get_current_pinvalues(struct srd_decoder_inst* di)
 {
     int i;
     uint8_t sample;
     const uint8_t* sample_pos;
     int bit_offset;
     PyGILState_STATE gstate;
+    PyObject* new_val;
+    PyObject* new_tuple;
 
     if (!di) {
         srd_err("Invalid decoder instance.");
@@ -795,25 +797,38 @@ static int get_current_pinvalues(const struct srd_decoder_inst* di)
 
     gstate = PyGILState_Ensure();
 
+    /* Build a new tuple to avoid PyTuple_SetItem rejecting non-NULL
+     * existing slots in Python 3.14+. The old tuple is decrefed after
+     * the new one is in place. */
+    new_tuple = PyTuple_New(di->dec_num_channels);
+    if (!new_tuple) {
+        PyGILState_Release(gstate);
+        return SRD_ERR;
+    }
+
     for (i = 0; i < di->dec_num_channels; i++) {
         /* A channelmap value of -1 means "unused optional channel". */
         if (di->dec_channelmap[i] == -1 || !di->inbuf) {
             /* Value of unused channel is 0xff, instead of 0 or 1.
                Done set -1 by srd_inst_channel_set_all()
             */
-            PyTuple_SetItem(di->py_pinvalues, i, PyLong_FromLong(0xff));
+            new_val = PyLong_FromLong(0xff);
         } else {
             if (!di->inbuf || *(di->inbuf + i) == NULL) {
                 sample = (di->inbuf_const && *(di->inbuf_const + i)) ? 1 : 0;
-                PyTuple_SetItem(di->py_pinvalues, i, PyLong_FromLong(sample));
+                new_val = PyLong_FromLong(sample);
             } else {
                 sample_pos = *(di->inbuf + i) + ((di->abs_cur_samplenum - di->abs_start_samplenum) / 8);
                 bit_offset = (di->abs_cur_samplenum - di->abs_start_samplenum) % 8;
                 sample = *sample_pos & (1 << bit_offset) ? 1 : 0;
-                PyTuple_SetItem(di->py_pinvalues, i, PyLong_FromLong(sample));
+                new_val = PyLong_FromLong(sample);
             }
         }
+        PyTuple_SetItem(new_tuple, i, new_val);
     }
+
+    Py_DECREF(di->py_pinvalues);
+    di->py_pinvalues = new_tuple;
 
     PyGILState_Release(gstate);
 

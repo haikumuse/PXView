@@ -125,6 +125,7 @@ typedef struct {
     int has_eoi;
     int has_ifc;
     int has_srq;
+    int has_all_dio;
 
     int idx_dav;
     int idx_atn;
@@ -916,6 +917,15 @@ static void ieee488_start(struct srd_decoder_inst *di)
     s->has_ifc = c_decoder_has_channel(di, PIN_IFC);
     s->has_srq = c_decoder_has_channel(di, PIN_SRQ);
 
+    /* Check all 8 DIO lines are connected */
+    s->has_all_dio = 1;
+    for (int i = 0; i < 8; i++) {
+        if (!c_decoder_has_channel(di, i)) {
+            s->has_all_dio = 0;
+            break;
+        }
+    }
+
     s->is_serial = s->has_clk;
 }
 
@@ -993,11 +1003,11 @@ static void ieee488_decode(struct srd_decoder_inst *di)
     ieee488_priv *s = (ieee488_priv *)c_decoder_get_private(di);
 
     if (s->is_serial) {
+        if (!s->has_atn)
+            return;
         decode_serial(di, s);
-    } else if (s->has_dav) {
+    } else if (s->has_dav && s->has_atn && s->has_all_dio) {
         decode_parallel(di, s);
-    } else {
-        decode_data_only(di, s);
     }
 }
 

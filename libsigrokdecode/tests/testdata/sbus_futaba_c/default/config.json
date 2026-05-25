@@ -6,7 +6,10 @@
   "channels": {},
   "stack": [
     {
-      "id": "uart_c"
+      "id": "uart_c",
+      "channels": {
+        "rx": 0
+      }
     }
   ]
 }

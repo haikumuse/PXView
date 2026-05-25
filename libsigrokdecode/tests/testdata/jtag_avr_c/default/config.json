@@ -6,7 +6,13 @@
   "channels": {},
   "stack": [
     {
-      "id": "jtag_c"
+      "id": "jtag_c",
+      "channels": {
+        "tdi": 0,
+        "tdo": 1,
+        "tck": 2,
+        "tms": 3
+      }
     }
   ]
 }

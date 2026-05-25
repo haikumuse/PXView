@@ -278,11 +278,17 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
                 C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WRITE, "Write", "Wr", "W");
                 s->state = BH1750_REGISTER_ADDRESS;
             } else {
-                if (addr != 0x7F) {
-                    char buf[64];
-                    snprintf(buf, sizeof(buf), "Unknown slave address: 0x%02X", addr);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD, buf, "Unknown", "Unk", "U");
-                }
+                /* Use s->addr (default address) for BADADD text, matching Python's
+                 * check_addr() which uses self.addr rather than the received databyte.
+                 * Python's compose_annot generates multiple text variants with address. */
+                char buf1[64], buf2[64], buf3[48], buf4[32], buf5[16];
+                snprintf(buf1, sizeof(buf1), "Unknown slave address: 0x%02X", s->addr);
+                snprintf(buf2, sizeof(buf2), "Unknown address: 0x%02X", s->addr);
+                snprintf(buf3, sizeof(buf3), "Unknown: 0x%02X", s->addr);
+                snprintf(buf4, sizeof(buf4), "Unk: 0x%02X", s->addr);
+                snprintf(buf5, sizeof(buf5), "U: 0x%02X", s->addr);
+                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD,
+                          buf1, buf2, buf3, buf4, buf5, "Unk", "U");
                 s->state = BH1750_IDLE;
             }
         } else if (strcmp(cmd, "ADDRESS READ") == 0) {
@@ -296,11 +302,14 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
                 C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_READ, "Read", "Rd", "R");
                 s->state = BH1750_REGISTER_ADDRESS;
             } else {
-                if (addr != 0x7F) {
-                    char buf[64];
-                    snprintf(buf, sizeof(buf), "Unknown slave address: 0x%02X", addr);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD, buf, "Unknown", "Unk", "U");
-                }
+                char buf1[64], buf2[64], buf3[48], buf4[32], buf5[16];
+                snprintf(buf1, sizeof(buf1), "Unknown slave address: 0x%02X", s->addr);
+                snprintf(buf2, sizeof(buf2), "Unknown address: 0x%02X", s->addr);
+                snprintf(buf3, sizeof(buf3), "Unknown: 0x%02X", s->addr);
+                snprintf(buf4, sizeof(buf4), "Unk: 0x%02X", s->addr);
+                snprintf(buf5, sizeof(buf5), "U: 0x%02X", s->addr);
+                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD,
+                          buf1, buf2, buf3, buf4, buf5, "Unk", "U");
                 s->state = BH1750_IDLE;
             }
         }

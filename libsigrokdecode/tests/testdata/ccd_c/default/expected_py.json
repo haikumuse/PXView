@@ -1,11 +1,11 @@
 {
 	"decoder": "ccd",
 	"samplerate": 1000000,
-	"num_annotations": 2,
+	"num_annotations": 96,
 	"annotations": [
 		{
 			"start_sample": 1.8446744073709552e+19,
-			"end_sample": 0,
+			"end_sample": 2559,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -15,14 +15,1043 @@
 			]
 		}, 
 		{
-			"start_sample": 1,
-			"end_sample": 128,
+			"start_sample": 2560,
+			"end_sample": 2687,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
 				"Start bit", 
 				"Start", 
 				"S"
+			]
+		}, 
+		{
+			"start_sample": 2688,
+			"end_sample": 2815,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2816,
+			"end_sample": 2943,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2944,
+			"end_sample": 3071,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3072,
+			"end_sample": 3199,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3200,
+			"end_sample": 3327,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3328,
+			"end_sample": 3455,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3456,
+			"end_sample": 3583,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3584,
+			"end_sample": 3711,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2688,
+			"end_sample": 3712,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x24", 
+				"24", 
+				"24"
+			]
+		}, 
+		{
+			"start_sample": 3712,
+			"end_sample": 3839,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3840,
+			"end_sample": 3967,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 3968,
+			"end_sample": 4095,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4096,
+			"end_sample": 4223,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4224,
+			"end_sample": 4351,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4352,
+			"end_sample": 4479,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4480,
+			"end_sample": 4607,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4608,
+			"end_sample": 4735,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4736,
+			"end_sample": 4863,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4864,
+			"end_sample": 4991,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3968,
+			"end_sample": 4992,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x3c", 
+				"3c", 
+				"3c"
+			]
+		}, 
+		{
+			"start_sample": 4992,
+			"end_sample": 5119,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 5120,
+			"end_sample": 5247,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 5248,
+			"end_sample": 5375,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5376,
+			"end_sample": 5503,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5504,
+			"end_sample": 5631,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5632,
+			"end_sample": 5759,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5760,
+			"end_sample": 5887,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5888,
+			"end_sample": 6015,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6016,
+			"end_sample": 6143,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6144,
+			"end_sample": 6271,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5248,
+			"end_sample": 6272,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x26", 
+				"26", 
+				"26"
+			]
+		}, 
+		{
+			"start_sample": 6272,
+			"end_sample": 6399,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 6400,
+			"end_sample": 6527,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 6528,
+			"end_sample": 6655,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6656,
+			"end_sample": 6783,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6784,
+			"end_sample": 6911,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6912,
+			"end_sample": 7039,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7040,
+			"end_sample": 7167,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7168,
+			"end_sample": 7295,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7296,
+			"end_sample": 7423,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7424,
+			"end_sample": 7551,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6528,
+			"end_sample": 7552,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x86", 
+				"86", 
+				"86"
+			]
+		}, 
+		{
+			"start_sample": 7552,
+			"end_sample": 7679,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 2560,
+			"end_sample": 8896,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Busy", 
+				"Bsy", 
+				"B"
+			]
+		}, 
+		{
+			"start_sample": 2560,
+			"end_sample": 8896,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Speed: 38 km/h, 60 mph", 
+				"38km/h"
+			]
+		}, 
+		{
+			"start_sample": 2560,
+			"end_sample": 8896,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"24 3c 26 86 "
+			]
+		}, 
+		{
+			"start_sample": 8897,
+			"end_sample": 9599,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Idle", 
+				"Id", 
+				"I"
+			]
+		}, 
+		{
+			"start_sample": 9600,
+			"end_sample": 9727,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 9728,
+			"end_sample": 9855,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9856,
+			"end_sample": 9983,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9984,
+			"end_sample": 10111,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10112,
+			"end_sample": 10239,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10240,
+			"end_sample": 10367,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10368,
+			"end_sample": 10495,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10496,
+			"end_sample": 10623,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10624,
+			"end_sample": 10751,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9728,
+			"end_sample": 10752,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0xe4", 
+				"e4", 
+				"e4"
+			]
+		}, 
+		{
+			"start_sample": 10752,
+			"end_sample": 10879,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 10880,
+			"end_sample": 11007,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 11008,
+			"end_sample": 11135,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11136,
+			"end_sample": 11263,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11264,
+			"end_sample": 11391,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11392,
+			"end_sample": 11519,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11520,
+			"end_sample": 11647,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11648,
+			"end_sample": 11775,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11776,
+			"end_sample": 11903,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11904,
+			"end_sample": 12031,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11008,
+			"end_sample": 12032,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0xa", 
+				"a", 
+				"a"
+			]
+		}, 
+		{
+			"start_sample": 12032,
+			"end_sample": 12159,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 12160,
+			"end_sample": 12287,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 12288,
+			"end_sample": 12415,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12416,
+			"end_sample": 12543,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12544,
+			"end_sample": 12671,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12672,
+			"end_sample": 12799,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12800,
+			"end_sample": 12927,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12928,
+			"end_sample": 13055,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13056,
+			"end_sample": 13183,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13184,
+			"end_sample": 13311,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12288,
+			"end_sample": 13312,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x3c", 
+				"3c", 
+				"3c"
+			]
+		}, 
+		{
+			"start_sample": 13312,
+			"end_sample": 13439,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 13440,
+			"end_sample": 13567,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 13568,
+			"end_sample": 13695,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13696,
+			"end_sample": 13823,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13824,
+			"end_sample": 13951,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13952,
+			"end_sample": 14079,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 14080,
+			"end_sample": 14207,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14208,
+			"end_sample": 14335,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1", 
+				"1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 14336,
+			"end_sample": 14463,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14464,
+			"end_sample": 14591,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13568,
+			"end_sample": 14592,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x2a", 
+				"2a", 
+				"2a"
+			]
+		}, 
+		{
+			"start_sample": 14592,
+			"end_sample": 14719,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 9600,
+			"end_sample": 15936,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Busy", 
+				"Bsy", 
+				"B"
+			]
+		}, 
+		{
+			"start_sample": 9600,
+			"end_sample": 15936,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"RPM: 320 rpm, MAP: 25 kPa", 
+				"RPM=320,MAP=25", 
+				"R320,M25"
+			]
+		}, 
+		{
+			"start_sample": 9600,
+			"end_sample": 15936,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"e4 a 3c 2a "
 			]
 		}
 	]

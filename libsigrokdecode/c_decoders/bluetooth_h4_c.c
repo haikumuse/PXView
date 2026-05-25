@@ -218,7 +218,7 @@ static void bluetooth_h4_recv_proto(struct srd_decoder_inst *di,
         if (byte_val < 0x01 || byte_val > 0x04) {
             /* Invalid packet type - junk */
             char t[32];
-            snprintf(t, sizeof(t), "%s: 0x%02X", (rxtx == RX) ? "RX" : "TX", byte_val);
+            snprintf(t, sizeof(t), "%02X ", byte_val);
             C_ANN_PUT(di, start_sample, end_sample, s->out_ann, 6 + rxtx * 9, t);
             return;
         }
