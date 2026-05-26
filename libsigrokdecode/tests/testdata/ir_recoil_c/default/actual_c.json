@@ -1,7 +1,121 @@
 {
 	"decoder": "ir_recoil_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 12,
 	"annotations": [
+		{
+			"start_sample": 1000,
+			"end_sample": 4300,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"SYNC Pulse", 
+				"SYNC", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 4300,
+			"end_sample": 5800,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"SYNC Pause", 
+				"SYNC P", 
+				"SP"
+			]
+		}, 
+		{
+			"start_sample": 5800,
+			"end_sample": 6200,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6200,
+			"end_sample": 6400,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6400,
+			"end_sample": 6800,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6800,
+			"end_sample": 7000,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7000,
+			"end_sample": 7800,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7800,
+			"end_sample": 8000,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8000,
+			"end_sample": 8400,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8400,
+			"end_sample": 8600,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8600,
+			"end_sample": 9400,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 1000,
+			"end_sample": 9401,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Packet, 9 bits: 0b000010001", 
+				"Pack, 9: 0b000010001", 
+				"P 9: 0b000010001"
+			]
+		}
 	]
 }

@@ -1,7 +1,7 @@
 {
 	"decoder": "lfast",
 	"samplerate": 1000000,
-	"num_annotations": 65,
+	"num_annotations": 68,
 	"annotations": [
 		{
 			"start_sample": 40,
@@ -180,7 +180,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -189,7 +189,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -198,7 +198,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -207,7 +207,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -234,7 +234,7 @@
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
-				"32 bit / 4 byte"
+				"8 bit"
 			]
 		}, 
 		{
@@ -243,7 +243,7 @@
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [
-				"Data Channel A"
+				"Data Channel G"
 			]
 		}, 
 		{
@@ -261,7 +261,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -270,7 +270,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -333,7 +333,7 @@
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
-				"AA"
+				"6A"
 			]
 		}, 
 		{
@@ -342,16 +342,18 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
-			"start_sample": 370,
-			"end_sample": 380,
-			"ann_class": 0,
-			"ann_type": 7,
+			"start_sample": 360,
+			"end_sample": 370,
+			"ann_class": 7,
+			"ann_type": 14,
 			"texts": [
-				"1"
+				"LVDS sleep mode request", 
+				"Sleep", 
+				"Y"
 			]
 		}, 
 		{
@@ -360,7 +362,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -369,7 +371,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -378,7 +380,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -387,7 +389,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -396,7 +398,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -405,16 +407,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 360,
-			"end_sample": 440,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"55"
+				"0"
 			]
 		}, 
 		{
@@ -490,21 +483,12 @@
 			]
 		}, 
 		{
-			"start_sample": 440,
-			"end_sample": 520,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"AA"
-			]
-		}, 
-		{
 			"start_sample": 520,
 			"end_sample": 530,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -513,16 +497,16 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 540,
-			"end_sample": 550,
-			"ann_class": 0,
-			"ann_type": 7,
+			"start_sample": 380,
+			"end_sample": 540,
+			"ann_class": 8,
+			"ann_type": 15,
 			"texts": [
-				"0"
+				"Wrong Sync Value: AAAA"
 			]
 		}, 
 		{
@@ -531,7 +515,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -540,7 +524,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -549,7 +533,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -558,7 +542,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -567,27 +551,70 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 520,
-			"end_sample": 600,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"55"
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 600,
 			"end_sample": 610,
-			"ann_class": 7,
-			"ann_type": 14,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"No LVDS sleep mode request", 
-				"No sleep", 
-				"N"
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 610,
+			"end_sample": 620,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 620,
+			"end_sample": 630,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 630,
+			"end_sample": 640,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 640,
+			"end_sample": 650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 650,
+			"end_sample": 660,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 660,
+			"end_sample": 670,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
 			]
 		}
 	]

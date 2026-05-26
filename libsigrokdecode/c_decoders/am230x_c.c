@@ -321,9 +321,10 @@ static void am230x_decode(struct srd_decoder_inst *di)
             if (s->bit_count % 8 == 0) {
                 int byte_idx = s->bit_count / 8 - 1;
                 uint8_t byte_val = bits2num(&s->bits[byte_idx * 8], 8);
-                char tmp2[32];
+                char tmp2[32], tmp3[32];
                 snprintf(tmp2, sizeof(tmp2), "Byte: 0x%02x", byte_val);
-                C_ANN_PUT(di, s->bytepos[s->bytepos_count - 1], samplenum, s->out_ann, ANN_BYTE, tmp2, tmp2);
+                snprintf(tmp3, sizeof(tmp3), "0x%02x", byte_val);
+                C_ANN_PUT(di, s->bytepos[s->bytepos_count - 1], samplenum, s->out_ann, ANN_BYTE, tmp2, tmp3);
 
                 if (s->bit_count == 16) {
                     /* Humidity */

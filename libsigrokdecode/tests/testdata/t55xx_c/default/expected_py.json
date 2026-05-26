@@ -1,7 +1,709 @@
 {
 	"decoder": "t55xx",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 78,
 	"annotations": [
+		{
+			"start_sample": 0,
+			"end_sample": 800,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start gap"
+			]
+		}, 
+		{
+			"start_sample": 800,
+			"end_sample": 1040,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 1040,
+			"end_sample": 1480,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 1480,
+			"end_sample": 1680,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 1680,
+			"end_sample": 1856,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 1856,
+			"end_sample": 2056,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 2056,
+			"end_sample": 2232,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 2232,
+			"end_sample": 2432,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 2432,
+			"end_sample": 2608,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 2608,
+			"end_sample": 2808,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 2808,
+			"end_sample": 2984,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 2984,
+			"end_sample": 3184,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 3184,
+			"end_sample": 3360,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 3360,
+			"end_sample": 3560,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 3560,
+			"end_sample": 4000,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 4000,
+			"end_sample": 4200,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 4200,
+			"end_sample": 4376,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 4376,
+			"end_sample": 4576,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 4576,
+			"end_sample": 4752,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 4752,
+			"end_sample": 4952,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 4952,
+			"end_sample": 5392,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 5392,
+			"end_sample": 5592,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 5592,
+			"end_sample": 5768,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 5768,
+			"end_sample": 5968,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 5968,
+			"end_sample": 6144,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 6144,
+			"end_sample": 6344,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 6344,
+			"end_sample": 6520,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 6520,
+			"end_sample": 6720,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 6720,
+			"end_sample": 7160,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 7160,
+			"end_sample": 7360,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 7360,
+			"end_sample": 7800,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 7800,
+			"end_sample": 8000,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 8000,
+			"end_sample": 8176,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 8176,
+			"end_sample": 8376,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 8376,
+			"end_sample": 8816,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 8816,
+			"end_sample": 9016,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 9016,
+			"end_sample": 9192,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 9192,
+			"end_sample": 9392,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 9392,
+			"end_sample": 9568,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 9568,
+			"end_sample": 9768,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 9768,
+			"end_sample": 9944,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 9944,
+			"end_sample": 10144,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 10144,
+			"end_sample": 10584,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 10584,
+			"end_sample": 10784,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 10784,
+			"end_sample": 10960,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 10960,
+			"end_sample": 11160,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 11160,
+			"end_sample": 11600,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 11600,
+			"end_sample": 11800,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 11800,
+			"end_sample": 11976,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 11976,
+			"end_sample": 12176,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 12176,
+			"end_sample": 12616,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 12616,
+			"end_sample": 12816,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 12816,
+			"end_sample": 13256,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 13256,
+			"end_sample": 13456,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 13456,
+			"end_sample": 13632,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 13632,
+			"end_sample": 13832,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 13832,
+			"end_sample": 14008,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 14008,
+			"end_sample": 14208,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 14208,
+			"end_sample": 14648,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 14648,
+			"end_sample": 14848,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 14848,
+			"end_sample": 15288,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 15288,
+			"end_sample": 15488,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 15488,
+			"end_sample": 15928,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 15928,
+			"end_sample": 16128,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 16128,
+			"end_sample": 16568,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 16568,
+			"end_sample": 16768,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 16768,
+			"end_sample": 16944,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 16944,
+			"end_sample": 17144,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 17144,
+			"end_sample": 17320,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 17320,
+			"end_sample": 17520,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 17520,
+			"end_sample": 17696,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 17696,
+			"end_sample": 17896,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 17896,
+			"end_sample": 18072,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 18072,
+			"end_sample": 18272,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 18272,
+			"end_sample": 18712,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 18712,
+			"end_sample": 18912,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 18912,
+			"end_sample": 19088,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}, 
+		{
+			"start_sample": 19088,
+			"end_sample": 19288,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Write gap"
+			]
+		}
 	]
 }

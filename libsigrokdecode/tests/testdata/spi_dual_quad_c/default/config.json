@@ -2,7 +2,7 @@
   "decoder": "spi_dual_quad_c",
   "samplerate": 1000000,
   "num_channels": 3,
-  "sample_count": 20000,
+  "sample_count": 100000,
   "channels": {
     "clk": 0,
     "sio0": 1,

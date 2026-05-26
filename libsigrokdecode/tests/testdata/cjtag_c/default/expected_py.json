@@ -1,7 +1,25 @@
 {
 	"decoder": "cjtag",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 2,
 	"annotations": [
+		{
+			"start_sample": 80,
+			"end_sample": 100,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 80,
+			"end_sample": 100,
+			"ann_class": 27,
+			"ann_type": 34,
+			"texts": [
+				"FOUR_WIRE"
+			]
+		}
 	]
 }

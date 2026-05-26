@@ -2,7 +2,7 @@
   "decoder": "seven_segment_c",
   "samplerate": 1000000,
   "num_channels": 7,
-  "sample_count": 20000,
+  "sample_count": 100000,
   "channels": {
     "a": 0,
     "b": 1,

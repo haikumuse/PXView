@@ -413,8 +413,10 @@ static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum
     if (s->data_len == want_len) {
         putd(di, s, samplenum, show, ann_class, name, short_name, shortest, want_len);
         s->ss_start = samplenum;
-        s->data_len = 0;
-        s->ss_bit = s->ss_start;
+        if (s->is_extended && s->state == STATE_ADDRESS) {
+            s->data_len = 0;
+            s->ss_bit = s->ss_start;
+        }
         return 1;
     }
 
@@ -429,7 +431,7 @@ static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum
     }
 
     s->data_len = 0;
-    s->ss_bit = s->ss_start;
+    s->ss_bit = s->ss_start = samplenum;
     return valid;
 }
 

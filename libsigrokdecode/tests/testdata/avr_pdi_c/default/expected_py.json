@@ -1,7 +1,18 @@
 {
 	"decoder": "avr_pdi",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 1,
 	"annotations": [
+		{
+			"start_sample": 45,
+			"end_sample": 235,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Break condition", 
+				"BREAK", 
+				"BRK"
+			]
+		}
 	]
 }

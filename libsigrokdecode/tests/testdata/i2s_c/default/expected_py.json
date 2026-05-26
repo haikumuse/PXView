@@ -1,7 +1,16 @@
 {
 	"decoder": "i2s",
-	"samplerate": 1000000,
-	"num_annotations": 0,
+	"samplerate": 4000000,
+	"num_annotations": 1,
 	"annotations": [
+		{
+			"start_sample": 60,
+			"end_sample": 540,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Received 15-bit word, expected 16-bit word"
+			]
+		}
 	]
 }

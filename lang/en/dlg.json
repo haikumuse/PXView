@@ -1157,11 +1157,11 @@
     },
     {
         "id": "IDS_STYLE_BORDER",
-        "text": "Border"
+        "text": "Input Border"
     },
     {
         "id": "IDS_STYLE_BORDER_STRONG",
-        "text": "Strong Border"
+        "text": "Panel Border"
     },
     {
         "id": "IDS_STYLE_ACCENT",
@@ -1218,6 +1218,22 @@
     {
         "id": "IDS_STYLE_STATUS_ERROR",
         "text": "Status: Error"
+    },
+    {
+        "id": "IDS_STYLE_ICON_ACCENT",
+        "text": "Icon Accent"
+    },
+    {
+        "id": "IDS_STYLE_ICON_ACCENT_DESC",
+        "text": "Color for blue functional icons"
+    },
+    {
+        "id": "IDS_STYLE_ICON_FOREGROUND",
+        "text": "Icon Foreground"
+    },
+    {
+        "id": "IDS_STYLE_ICON_FOREGROUND_DESC",
+        "text": "Color for window control and search icons"
     },
     {
         "id": "IDS_STYLE_SIGNAL_CH1",

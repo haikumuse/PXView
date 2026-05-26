@@ -502,6 +502,7 @@
 			"ann_type": 7,
 			"texts": [
 				"CMD0 (GO_IDLE_STATE): GO_IDLE_STATE", 
+				"CMD0 (GO_IDLE_STATE)", 
 				"CMD0"
 			]
 		}, 

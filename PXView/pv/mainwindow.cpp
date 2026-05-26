@@ -2217,6 +2217,55 @@ void MainWindow::switchTheme(QString style) {
     qssContent.replace(key, tokens[key]);
   }
 
+  // Process SVG files that contain token placeholders (e.g. @accent-light)
+  QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) +
+                    "/pxview_themed_svgs";
+  QDir().mkpath(tempDir);
+
+  QRegularExpression svgRe("image:\\s*url\\((:[^)]+\\.svg)\\)");
+  QRegularExpressionMatchIterator svgIt = svgRe.globalMatch(qssContent);
+  QSet<QString> processedSvgs;
+  while (svgIt.hasNext()) {
+    QRegularExpressionMatch match = svgIt.next();
+    QString svgResPath = match.captured(1);
+
+    if (processedSvgs.contains(svgResPath))
+      continue;
+    processedSvgs.insert(svgResPath);
+
+    QFile svgFile(svgResPath);
+    if (!svgFile.open(QFile::ReadOnly | QFile::Text))
+      continue;
+    QString svgContent = svgFile.readAll();
+    svgFile.close();
+
+    bool hasPlaceholders = false;
+    for (const QString &key : keys) {
+      if (svgContent.contains(key)) {
+        hasPlaceholders = true;
+        break;
+      }
+    }
+    if (!hasPlaceholders)
+      continue;
+
+    for (const QString &key : keys) {
+      svgContent.replace(key, tokens[key]);
+    }
+
+    QString fileName = svgResPath;
+    fileName.replace(":/", "");
+    fileName.replace("/", "_");
+    QString tempPath = tempDir + "/" + fileName;
+    QFile tempFile(tempPath);
+    if (tempFile.open(QFile::WriteOnly | QFile::Text)) {
+      tempFile.write(svgContent.toUtf8());
+      tempFile.close();
+    }
+
+    qssContent.replace(svgResPath, tempPath);
+  }
+
   app.SetThemeTokens(tokens);
 
   qApp->setStyleSheet(qssContent);
@@ -2818,6 +2867,17 @@ void MainWindow::OnMessage(int msg) {
 
     update_toolbar_view_status();
     _sampling_bar->update_sample_rate_list();
+
+    // Save signal config for current tab and rebuild signals
+    {
+      pv::TabContext *ctx = current_context();
+      if (ctx && ctx->document()) {
+        ctx->document()->save_signal_config(_session->get_device());
+        current_view()->rebuild_signals();
+        dsv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
+                 "signals for current tab");
+      }
+    }
 
     if (_device_agent->is_hardware())
       _session->on_load_config_end();

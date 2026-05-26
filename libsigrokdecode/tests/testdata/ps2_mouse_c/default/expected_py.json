@@ -1,7 +1,7 @@
 {
 	"decoder": "ps2_mouse",
 	"samplerate": 1000000,
-	"num_annotations": 45,
+	"num_annotations": 46,
 	"annotations": [
 		{
 			"start_sample": 40,
@@ -433,6 +433,15 @@
 				"Stop", 
 				"St", 
 				"T"
+			]
+		}, 
+		{
+			"start_sample": 40,
+			"end_sample": 4280,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"R X-16 Y+28"
 			]
 		}
 	]

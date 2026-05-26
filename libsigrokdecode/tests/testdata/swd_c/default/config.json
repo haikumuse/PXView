@@ -2,7 +2,7 @@
   "decoder": "swd_c",
   "samplerate": 1000000,
   "num_channels": 2,
-  "sample_count": 20000,
+  "sample_count": 100000,
   "channels": {
     "swclk": 0,
     "swdio": 1

@@ -475,17 +475,9 @@ void SigSession::capture_init() {
     }
   }
 
-  // update current hw offset
-  for (auto s : _signals) {
-    if (s->signal_type() == SR_CHANNEL_DSO) {
-      auto sig = (view::DsoSignal *)s;
-      sig->set_zero_ratio(sig->get_zero_ratio());
-      sig->set_stop_scale(1);
-    } else if (s->signal_type() == SR_CHANNEL_ANALOG) {
-      auto sig = (view::AnalogSignal *)s;
-      sig->set_zero_ratio(sig->get_zero_ratio());
-    }
-  }
+  // In multi-tab architecture, SigSession::_signals do not have viewports.
+  // We cannot call UI-dependent methods (like set_zero_ratio) on them here.
+  // Hardware offset is already updated via View's own signal events when user changes it.
 
   // Start timer
   if (mode == DSO || mode == ANALOG)
@@ -1259,28 +1251,18 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
   }
 
   if (_capture_data->get_dso()->last_ended()) {
-    // reset scale of dso signal
-    for (auto s : _signals) {
-      if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-        dsoSig->set_scale(dsoSig->get_view_rect().height());
-      }
-    }
+    // In multi-tab architecture, SigSession::_signals do not have a viewport,
+    // so we cannot and should not call get_view_rect() on them. 
+    // The View's own cloned signals will handle their own rendering scales.
 
     // first payload
     _capture_data->get_dso()->first_payload(
         o, _device_agent.get_sample_limit(), _device_agent.get_channels(),
         _is_instant, _device_agent.is_file());
+    _callback->frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_dso()->append_payload(o);
-  }
-
-  for (auto s : _signals) {
-    if (s->signal_type() == SR_CHANNEL_DSO && (s->enabled())) {
-      view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-      dsoSig->paint_prepare();
-    }
   }
 
   if (o.num_samples != 0 && (!_is_instant || _dso_packet_count == 1)) {
@@ -1325,17 +1307,13 @@ void SigSession::feed_in_analog(const sr_datafeed_analog &o) {
   }
 
   if (_capture_data->get_analog()->last_ended()) {
-    // reset scale of analog signal
-    for (auto s : _signals) {
-      if (s->signal_type() == SR_CHANNEL_ANALOG) {
-        view::AnalogSignal *analogSig = (view::AnalogSignal *)s;
-        analogSig->set_scale(analogSig->get_totalHeight());
-      }
-    }
+    // In multi-tab architecture, SigSession::_signals do not have a viewport,
+    // so we cannot and should not call UI rendering methods on them.
 
     // first payload
     _capture_data->get_analog()->first_payload(
         o, _device_agent.get_sample_limit(), _device_agent.get_channels());
+    _callback->frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_analog()->append_payload(o);

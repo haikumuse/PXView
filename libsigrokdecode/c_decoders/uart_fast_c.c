@@ -14,7 +14,9 @@
 #define TX 1
 
 enum uart_fast_ann {
-    ANN_RX_DATA = 0,
+    ANN_RX_WARN = 0,
+    ANN_TX_WARN,
+    ANN_RX_DATA,
     ANN_TX_DATA,
     ANN_RX_START,
     ANN_TX_START,
@@ -24,8 +26,6 @@ enum uart_fast_ann {
     ANN_TX_PARITY_ERR,
     ANN_RX_STOP,
     ANN_TX_STOP,
-    ANN_RX_WARN,
-    ANN_TX_WARN,
     ANN_ATK_POINT,
     NUM_ANN,
 };
@@ -126,6 +126,8 @@ static struct srd_decoder_option uart_fast_options[] = {
 };
 
 static const char *uart_fast_ann_labels[][3] = {
+    { "", "rx-warning", "RX warning" },
+    { "", "tx-warning", "TX warning" },
     { "", "rx-data", "RX data" },
     { "", "tx-data", "TX data" },
     { "", "rx-start", "RX start bit" },
@@ -136,8 +138,6 @@ static const char *uart_fast_ann_labels[][3] = {
     { "", "tx-parity-err", "TX parity error bit" },
     { "", "rx-stop", "RX stop bit" },
     { "", "tx-stop", "TX stop bit" },
-    { "", "rx-warning", "RX warning" },
-    { "", "tx-warning", "TX warning" },
     { "", "atk-data-point", "ATK Data point" },
 };
 
@@ -433,7 +433,6 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
         if (samplenum >= sample_point) {
             int bit_val = get_rxtx_pin(s, di, rxtx, ch, sample_point);
             uint64_t ss = get_bit_start(s, rxtx, bit_idx + 1);
-            uint64_t es = get_bit_end(s, rxtx, bit_idx + 1);
 
             if (s->show_data_point) {
                 uint64_t center = ss + (uint64_t)(s->bit_width / 2);
@@ -527,10 +526,15 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
             }
 
             if (stop_val != 1) {
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_RX_WARN + rxtx, "Stop bit error", "Stop err", "TE");
+                /* Python uart-fast uses es = samplenum (sample_point) for stop bit error */
+                C_ANN_PUT(di, ss, sample_point, s->out_ann, ANN_RX_WARN + rxtx, "Stop bit error", "Stop err", "TE");
                 unsigned char py_val = (unsigned char)stop_val;
-                c_decoder_put_python(di, ss, es, s->out_python, "INVALID STOPBIT", &py_val, 1);
+                c_decoder_put_python(di, ss, sample_point, s->out_python, "INVALID STOPBIT", &py_val, 1);
                 s->frame_valid[rxtx] = 0;
+                /* Python uart-fast always outputs RX_STOP annotation, even on error */
+                C_ANN_PUT(di, ss, sample_point, s->out_ann, ANN_RX_STOP + rxtx, "Stop bit", "Stop", "T");
+                unsigned char sval = (unsigned char)stop_val;
+                c_decoder_put_python(di, ss, sample_point, s->out_python, "STOPBIT", &sval, 1);
             } else {
                 C_ANN_PUT(di, ss, es, s->out_ann, ANN_RX_STOP + rxtx, "Stop bit", "Stop", "T");
                 unsigned char sval = (unsigned char)stop_val;

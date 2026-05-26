@@ -52,15 +52,22 @@ static const char *payload_sizes[] = {
 static const int payload_byte_sizes[] = {1, 4, 8, 12, 16, 32, 64, 36};
 
 static const char *channel_types[] = {
-    "Control", "Reserved", "Reserved", "Reserved",
-    "Data 0", "Data 1", "Data 2", "Data 3",
-    "Data 4", "Data 5", "Data 6", "Data 7",
+    "Interface Control / PING", "Unsolicited Status (32 bit)",
+    "Slave Interface Control / Read", "CTS Transfer",
+    "Data Channel A", "Data Channel B", "Data Channel C", "Data Channel D",
+    "Data Channel E", "Data Channel F", "Data Channel G", "Data Channel H",
     "Reserved", "Reserved", "Reserved", "Reserved"
 };
 
 static const char *control_payloads[] = {
-    "Idle", "NACK", "Busy", "Sync",
-    "Sleep", "Wake-up", "Reserved", "Reserved"
+    "PING", "Reserved",
+    "Slave interface clock multiplier start", "Reserved",
+    "Slave interface clock multiplier stop", "Reserved",
+    "Use 5 MBaud for M->S", "Reserved",
+    "Use 320 MBaud for M->S", "Reserved",
+    "Use 5 MBaud for S->M", "Reserved",
+    "Use 20 MBaud for S->M (needs 20 MHz SysClk)", "Reserved",
+    "Use 320 MBaud for S->M", "Reserved",
 };
 
 static struct srd_channel lfast_channels[] = {
@@ -159,8 +166,9 @@ static void lfast_decode(struct srd_decoder_inst *di)
 
         if (is_timeout) {
             if (s->state == STATE_SLEEPBIT) {
-                /* Sleep bit is 1 (no edge = LVDS sleep) */
-                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_SLEEP, "Sleep: 1");
+                /* Timeout = no edge = sleep bit is 0 (no sleep request) */
+                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_SLEEP,
+                          "No LVDS sleep mode request", "No sleep", "N");
                 reset_state(s);
                 continue;
             }
@@ -223,7 +231,7 @@ static void lfast_decode(struct srd_decoder_inst *di)
             if (s->bit_count >= 16) {
                 uint32_t sync_val = bitpack(s->bits, 16);
                 if (sync_val == 0xA84B) {
-                    C_ANN_PUT(di, s->ss_sync, s->ss, s->out_ann, ANN_SYNC, "Sync: 0xA84B");
+                    C_ANN_PUT(di, s->ss_sync, s->ss, s->out_ann, ANN_SYNC, "Sync OK");
                     s->state = STATE_HEADER;
                     s->bit_count = 0;
                     s->ss_header = s->ss;
@@ -238,25 +246,36 @@ static void lfast_decode(struct srd_decoder_inst *di)
         } else if (s->state == STATE_HEADER) {
             if (s->bit_count >= 8) {
                 /* Parse header: 3 bits payload_size, 4 bits channel_type, 1 bit CTS */
-                int pl_size_id = (int)bitpack(s->bits, 3);
-                s->ch_type_id = (int)bitpack(s->bits + 3, 4);
-                int cts = s->bits[7];
+                uint32_t header_val = bitpack(s->bits, 8);
+                int pl_size_id = (header_val >> 5) & 0x07;
+                s->ch_type_id = (header_val >> 1) & 0x0F;
+                int cts = header_val & 0x01;
 
                 if (pl_size_id < 0 || pl_size_id > 7)
                     pl_size_id = 0;
                 s->payload_size = payload_byte_sizes[pl_size_id];
 
-                char pl_str[64];
-                snprintf(pl_str, sizeof(pl_str), "Payload size: %s", payload_sizes[pl_size_id]);
-                C_ANN_PUT(di, s->ss_header, s->ss, s->out_ann, ANN_HEADER_PL_SIZE, pl_str);
+                /* Match Python's annotation layout: separate annotations per field
+                   with bit_len-based start/end offsets from ss_header */
+                uint64_t bit_len_hdr = (s->ss - s->ss_header) / 8;
+                uint64_t ss_f, es_f;
 
-                char ch_str[64];
-                snprintf(ch_str, sizeof(ch_str), "Channel type: %s (0x%X)", channel_types[s->ch_type_id], s->ch_type_id);
-                C_ANN_PUT(di, s->ss_header, s->ss, s->out_ann, ANN_HEADER_CH_TYPE, ch_str);
+                /* Payload size: bits 7-5 (3 bits) */
+                ss_f = s->ss_header;
+                es_f = ss_f + 3 * bit_len_hdr;
+                C_ANN_PUT(di, ss_f, es_f, s->out_ann, ANN_HEADER_PL_SIZE, payload_sizes[pl_size_id]);
 
-                char cts_str[32];
-                snprintf(cts_str, sizeof(cts_str), "CTS: %d", cts);
-                C_ANN_PUT(di, s->ss_header, s->ss, s->out_ann, ANN_HEADER_CTS, cts_str);
+                /* Channel type: bits 4-1 (4 bits) */
+                ss_f = es_f;
+                es_f = ss_f + 4 * bit_len_hdr;
+                C_ANN_PUT(di, ss_f, es_f, s->out_ann, ANN_HEADER_CH_TYPE, channel_types[s->ch_type_id]);
+
+                /* CTS: bit 0 (1 bit) */
+                ss_f = es_f;
+                es_f = ss_f + bit_len_hdr;
+                char cts_str[8];
+                snprintf(cts_str, sizeof(cts_str), "%d", cts);
+                C_ANN_PUT(di, ss_f, es_f, s->out_ann, ANN_HEADER_CTS, cts_str);
 
                 s->state = STATE_PAYLOAD;
                 s->bit_count = 0;
@@ -273,24 +292,52 @@ static void lfast_decode(struct srd_decoder_inst *di)
                 }
 
                 int is_data_channel = (s->ch_type_id >= 4 && s->ch_type_id <= 11);
-                if (is_data_channel) {
-                    /* Data channel */
-                    char pl_str[256];
-                    int pos = 0;
-                    for (int i = 0; i < s->payload_byte_count && pos < 240; i++)
-                        pos += snprintf(pl_str + pos, sizeof(pl_str) - pos, "%s%02X", (i > 0) ? " " : "", s->payload_bytes[i]);
-                    C_ANN_PUT(di, s->ss_payload, s->ss, s->out_ann, ANN_PAYLOAD, pl_str);
 
-                    /* Output protocol data for data channels */
+                /* Match Python: output per-byte annotations */
+                uint64_t byte_bit_len = (s->ss - s->ss_payload) / needed_bits;
+                for (int i = 0; i < s->payload_byte_count; i++) {
+                    uint64_t byte_ss = s->ss_payload + i * 8 * byte_bit_len;
+                    uint64_t byte_es = byte_ss + 8 * byte_bit_len;
+                    char hex_str[8];
+                    snprintf(hex_str, sizeof(hex_str), "%02X", s->payload_bytes[i]);
+
+                    if (is_data_channel) {
+                        C_ANN_PUT(di, byte_ss, byte_es, s->out_ann, ANN_PAYLOAD, hex_str);
+                    } else {
+                        /* Control transfers: first byte is control data, rest are hex */
+                        if (i == 0) {
+                            /* Look up control payload name by byte value */
+                            const char *ctrl_name = NULL;
+                            switch (s->payload_bytes[0]) {
+                                case 0x00: ctrl_name = "PING"; break;
+                                case 0x02: ctrl_name = "Slave interface clock multiplier start"; break;
+                                case 0x04: ctrl_name = "Slave interface clock multiplier stop"; break;
+                                case 0x08: ctrl_name = "Use 5 MBaud for M->S"; break;
+                                case 0x10: ctrl_name = "Use 320 MBaud for M->S"; break;
+                                case 0x20: ctrl_name = "Use 5 MBaud for S->M"; break;
+                                case 0x40: ctrl_name = "Use 20 MBaud for S->M (needs 20 MHz SysClk)"; break;
+                                case 0x80: ctrl_name = "Use 320 MBaud for S->M"; break;
+                                case 0x31: ctrl_name = "Enable slave interface transmitter"; break;
+                                case 0x32: ctrl_name = "Disable slave interface transmitter"; break;
+                                case 0x34: ctrl_name = "Enable clock test mode"; break;
+                                case 0x38: ctrl_name = "Disable clock test mode and payload loopback"; break;
+                                case 0xFF: ctrl_name = "Enable payload loopback"; break;
+                                default: break;
+                            }
+                            if (ctrl_name)
+                                C_ANN_PUT(di, byte_ss, byte_es, s->out_ann, ANN_CTRL_DATA, ctrl_name);
+                            else
+                                C_ANN_PUT(di, byte_ss, byte_es, s->out_ann, ANN_CTRL_DATA, hex_str);
+                        } else {
+                            C_ANN_PUT(di, byte_ss, byte_es, s->out_ann, ANN_CTRL_DATA, hex_str);
+                        }
+                    }
+                }
+
+                /* Output protocol data for data channels */
+                if (is_data_channel) {
                     c_decoder_put_proto(di, s->ss_payload, s->ss, s->out_proto,
                                         "DATA", s->payload_bytes, s->payload_byte_count);
-                } else {
-                    /* Control channel */
-                    int ctrl_id = (s->payload_byte_count > 0) ? s->payload_bytes[0] & 0x07 : 0;
-                    const char *ctrl_name = (ctrl_id < 8) ? control_payloads[ctrl_id] : "Unknown";
-                    char ctrl_str[64];
-                    snprintf(ctrl_str, sizeof(ctrl_str), "Control: %s", ctrl_name);
-                    C_ANN_PUT(di, s->ss_payload, s->ss, s->out_ann, ANN_CTRL_DATA, ctrl_str);
                 }
 
                 s->state = STATE_SLEEPBIT;
@@ -298,11 +345,26 @@ static void lfast_decode(struct srd_decoder_inst *di)
                 s->timeout = (uint64_t)(1.4 * s->bit_len);
             }
         } else if (s->state == STATE_SLEEPBIT) {
-            /* Sleep bit: 0 = active, 1 = LVDS sleep */
-            int sleep_bit = val;
-            char sleep_str[16];
-            snprintf(sleep_str, sizeof(sleep_str), "Sleep: %d", sleep_bit);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SLEEP, sleep_str);
+            /* Sleep bit: match Python's annotation texts */
+            if (s->bit_count == 0) {
+                /* Timeout with no edge = sleep bit is 0 (no sleep) */
+                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_SLEEP,
+                          "No LVDS sleep mode request", "No sleep", "N");
+            } else if (s->bit_count > 1) {
+                char warn_str[64];
+                snprintf(warn_str, sizeof(warn_str),
+                         "Expected only the sleep bit, got %d bits instead", s->bit_count);
+                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_WARNING, warn_str);
+            } else {
+                /* bit_count == 1 */
+                if (s->bits[0] == 1) {
+                    C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_SLEEP,
+                              "LVDS sleep mode request", "Sleep", "Y");
+                } else {
+                    C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_SLEEP,
+                              "No LVDS sleep mode request", "No sleep", "N");
+                }
+            }
             reset_state(s);
         }
     }

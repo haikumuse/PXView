@@ -78,6 +78,8 @@ public:
   static QColor getChannelColor(int channelIndex);
   static QColor getErrorBgColor();
   static QColor getNoDecodeColor();
+  static QColor getAnnColor(int channelIndex);
+  static QColor getAnnOutlineColor(int channelIndex);
 
   static const QColor OutlineColours[16];
 

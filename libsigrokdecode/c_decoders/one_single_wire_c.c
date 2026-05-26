@@ -154,7 +154,10 @@ static void osw_decode(struct srd_decoder_inst *di)
             } else if (s->bit_index == 8) {
                 const char *pstr = (s->parity_bit == 0) ? "OK" : "ERR";
                 char pb_str[32];
-                snprintf(pb_str, sizeof(pb_str), "Parity check: %s", pstr);
+                if (s->parity_bit == 0)
+                    snprintf(pb_str, sizeof(pb_str), "Parity check: %s", pstr);
+                else
+                    snprintf(pb_str, sizeof(pb_str), "%s", pstr);
                 C_ANN_PUT(di, s->bt_block_ss, samplenum, s->out_ann, ANN_PB, pb_str, pstr);
             }
 

@@ -1157,11 +1157,11 @@
     },
     {
         "id": "IDS_STYLE_BORDER",
-        "text": "邊框顏色"
+        "text": "輸入框邊框顏色"
     },
     {
         "id": "IDS_STYLE_BORDER_STRONG",
-        "text": "強邊框顏色"
+        "text": "面板邊框顏色"
     },
     {
         "id": "IDS_STYLE_ACCENT",
@@ -1218,6 +1218,22 @@
     {
         "id": "IDS_STYLE_STATUS_ERROR",
         "text": "狀態：錯誤"
+    },
+    {
+        "id": "IDS_STYLE_ICON_ACCENT",
+        "text": "圖示強調色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_ACCENT_DESC",
+        "text": "藍色功能圖示的著色顏色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_FOREGROUND",
+        "text": "圖示前景色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_FOREGROUND_DESC",
+        "text": "視窗控件及搜尋等圖示的著色顏色"
     },
     {
         "id": "IDS_STYLE_SIGNAL_CH1",

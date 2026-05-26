@@ -2116,6 +2116,8 @@ void View::rebuild_signals() {
   if (_document && _document->has_data()) {
     set_data_document(_document);
   }
+
+  signals_changed(NULL);
 }
 
 void View::check_calibration() {

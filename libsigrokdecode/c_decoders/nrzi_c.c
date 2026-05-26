@@ -131,11 +131,11 @@ static void nrzi_decode(struct srd_decoder_inst* di)
 
                 char freq_str[64];
                 if (clock_rate >= 1e6)
-                    snprintf(freq_str, sizeof(freq_str), "%.1f MHz", clock_rate / 1e6);
+                    snprintf(freq_str, sizeof(freq_str), "%g MHz", clock_rate / 1e6);
                 else if (clock_rate >= 1e3)
-                    snprintf(freq_str, sizeof(freq_str), "%.1f kHz", clock_rate / 1e3);
+                    snprintf(freq_str, sizeof(freq_str), "%g kHz", clock_rate / 1e3);
                 else
-                    snprintf(freq_str, sizeof(freq_str), "%.1f Hz", clock_rate);
+                    snprintf(freq_str, sizeof(freq_str), "%g Hz", clock_rate);
 
                 char preamble_str[128];
                 snprintf(preamble_str, sizeof(preamble_str), "Preamble (%s)", freq_str);
@@ -166,27 +166,14 @@ static void nrzi_decode(struct srd_decoder_inst* di)
             if (ret != SRD_OK)
                 return;
 
-            if (matched & 1) {
-                uint64_t edge_samp = samplenum - start_sample;
-                int64_t remaining = (int64_t)s->symbol_len - (int64_t)edge_samp;
-                if (remaining > 0) {
-                    srd_cond_builder* cb2 = c_cond_new();
-                    c_cond_skip(cb2, (uint64_t)remaining);
-                    int ret2 = c_cond_wait(cb2, di, &samplenum, &matched);
-                    c_cond_free(cb2);
-                    if (ret2 != SRD_OK)
-                        return;
-                }
-            }
-
             int bit_val = (matched & 1) ? 1 : 0;
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", bit_val);
-            C_ANN_PUT(di, start_sample, start_sample + s->symbol_len, s->out_ann, ANN_BIT, bit_str);
+            C_ANN_PUT(di, start_sample, samplenum, s->out_ann, ANN_BIT, bit_str);
 
             if (s->out_python >= 0) {
                 unsigned char bit_byte = (unsigned char)bit_val;
-                c_decoder_put_python(di, start_sample, start_sample + s->symbol_len, s->out_python, "BIT",
+                c_decoder_put_python(di, start_sample, samplenum, s->out_python, "BIT",
                     &bit_byte, 1);
             }
         }

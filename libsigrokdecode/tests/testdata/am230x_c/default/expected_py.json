@@ -1,7 +1,517 @@
 {
 	"decoder": "am230x",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 51,
 	"annotations": [
+		{
+			"start_sample": 500,
+			"end_sample": 1530,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 1530,
+			"end_sample": 1690,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Response", 
+				"R"
+			]
+		}, 
+		{
+			"start_sample": 1690,
+			"end_sample": 1766,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1766,
+			"end_sample": 1842,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1842,
+			"end_sample": 1918,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1918,
+			"end_sample": 1994,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1994,
+			"end_sample": 2070,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2070,
+			"end_sample": 2146,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2146,
+			"end_sample": 2222,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2222,
+			"end_sample": 2342,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 1690,
+			"end_sample": 2342,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Byte: 0x01", 
+				"0x01"
+			]
+		}, 
+		{
+			"start_sample": 2342,
+			"end_sample": 2462,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2462,
+			"end_sample": 2582,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2582,
+			"end_sample": 2702,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2702,
+			"end_sample": 2822,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2822,
+			"end_sample": 2898,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2898,
+			"end_sample": 3018,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3018,
+			"end_sample": 3094,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3094,
+			"end_sample": 3170,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2342,
+			"end_sample": 3170,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Byte: 0xf4", 
+				"0xf4"
+			]
+		}, 
+		{
+			"start_sample": 1690,
+			"end_sample": 3170,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Humidity: 50.0 %", 
+				"RH = 50.0 %"
+			]
+		}, 
+		{
+			"start_sample": 3170,
+			"end_sample": 3246,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3246,
+			"end_sample": 3322,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3322,
+			"end_sample": 3398,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3398,
+			"end_sample": 3474,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3474,
+			"end_sample": 3550,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3550,
+			"end_sample": 3626,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3626,
+			"end_sample": 3702,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3702,
+			"end_sample": 3778,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3170,
+			"end_sample": 3778,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Byte: 0x00", 
+				"0x00"
+			]
+		}, 
+		{
+			"start_sample": 3778,
+			"end_sample": 3898,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3898,
+			"end_sample": 4018,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4018,
+			"end_sample": 4138,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4138,
+			"end_sample": 4258,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4258,
+			"end_sample": 4378,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4378,
+			"end_sample": 4454,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4454,
+			"end_sample": 4574,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4574,
+			"end_sample": 4650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3778,
+			"end_sample": 4650,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Byte: 0xfa", 
+				"0xfa"
+			]
+		}, 
+		{
+			"start_sample": 3170,
+			"end_sample": 4650,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Temperature: 25.0 °C", 
+				"T = 25.0 °C"
+			]
+		}, 
+		{
+			"start_sample": 4650,
+			"end_sample": 4770,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4770,
+			"end_sample": 4890,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4890,
+			"end_sample": 5010,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5010,
+			"end_sample": 5086,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5086,
+			"end_sample": 5206,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5206,
+			"end_sample": 5326,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5326,
+			"end_sample": 5446,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5446,
+			"end_sample": 5566,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4650,
+			"end_sample": 5566,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Byte: 0xef", 
+				"0xef"
+			]
+		}, 
+		{
+			"start_sample": 4650,
+			"end_sample": 5566,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"Checksum: OK", 
+				"OK"
+			]
+		}, 
+		{
+			"start_sample": 5566,
+			"end_sample": 5576,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"End", 
+				"E"
+			]
+		}
 	]
 }

@@ -1,7 +1,88 @@
 {
 	"decoder": "seven_segment",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 9,
 	"annotations": [
+		{
+			"start_sample": 5000,
+			"end_sample": 10000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 15000,
+			"end_sample": 20000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 25000,
+			"end_sample": 30000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 35000,
+			"end_sample": 40000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 45000,
+			"end_sample": 50000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 55000,
+			"end_sample": 60000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 65000,
+			"end_sample": 70000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 75000,
+			"end_sample": 80000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}, 
+		{
+			"start_sample": 85000,
+			"end_sample": 90000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				" "
+			]
+		}
 	]
 }

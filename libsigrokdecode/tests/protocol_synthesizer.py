@@ -569,11 +569,21 @@ class I2SGenerator:
             self.builder.set_level(self.sclk, 0, self.half_period)
 
     def send_frame(self, left_data=0x1234, right_data=0x5678):
-        """Send one complete frame: left channel + right channel."""
-        # Left channel: LRCK low
-        self._send_channel_data(left_data, self.bits_per_sample, 0)
-        # Right channel: LRCK high
-        self._send_channel_data(right_data, self.bits_per_sample, 1)
+        """Send one complete frame: left channel + right channel.
+        I2S standard: WS=1 for left channel, WS=0 for right channel.
+        Add idle period with WS=0 so decoder can detect first WS edge."""
+        # Idle period: SCLK low, WS=0, SD=0 for a few bit periods
+        # This ensures the decoder sees the WS 0→1 transition at frame start
+        idle_samples = self.half_period * 4
+        self.builder.set_level(self.sclk, 0, idle_samples)
+        self.builder.pos -= idle_samples
+        self.builder.set_level(self.lrck, 0, idle_samples)
+        self.builder.pos -= idle_samples
+        self.builder.set_level(self.sd, 0, idle_samples)
+        # Left channel: LRCK high (WS=1 for left in standard I2S)
+        self._send_channel_data(left_data, self.bits_per_sample, 1)
+        # Right channel: LRCK low (WS=0 for right)
+        self._send_channel_data(right_data, self.bits_per_sample, 0)
 
 class ISO7816Generator:
     """2 channels: CLK(ch0), IO(ch1)"""
@@ -789,7 +799,7 @@ class OneWireGenerator:
 
 class NRZIGenerator:
     """NRZI encoding: bit 0 = toggle level, bit 1 = no change."""
-    def __init__(self, builder, channel, bitrate=1000000):
+    def __init__(self, builder, channel, bitrate=100000):
         self.builder = builder
         self.channel = channel
         self.bit_width = int(builder.samplerate / bitrate)
@@ -803,6 +813,11 @@ class NRZIGenerator:
             self.builder.set_level(self.channel, self.current_level, self.bit_width)
 
     def send_bytes(self, data):
+        # Send preamble: 32 zero bits (creates 16 rising edges for sync,
+        # since each zero bit toggles level and only half the toggles are rising)
+        for _ in range(32):
+            self.send_bits([0])
+        # Send data bytes MSB first
         for byte in data:
             for i in range(7, -1, -1):
                 bit = (byte >> i) & 1
@@ -811,49 +826,53 @@ class NRZIGenerator:
                 self.builder.set_level(self.channel, self.current_level, self.bit_width)
 
 class IRNECGenerator:
-    """NEC IR protocol generator (baseband)."""
+    """NEC IR protocol generator (baseband).
+    Default polarity is active-low (idle HIGH, burst LOW) to match decoder defaults."""
     def __init__(self, builder, channel, samplerate=1000000):
         self.builder = builder
         self.channel = channel
         self.sr = samplerate
-        self.builder.set_idle(channel, 0)
+        self.builder.set_idle(channel, 1)  # Idle HIGH (active-low)
 
     def _us(self, us):
         return int(us * self.sr / 1e6)
 
     def _send_bit(self, bit):
-        # 562.5us burst (high) then space (low)
-        self.builder.set_level(self.channel, 1, self._us(562.5))
+        # 562.5us burst (LOW for active-low) then space (HIGH)
+        self.builder.set_level(self.channel, 0, self._us(562.5))
         if bit:
-            self.builder.set_level(self.channel, 0, self._us(1687.5))
+            self.builder.set_level(self.channel, 1, self._us(1687.5))
         else:
-            self.builder.set_level(self.channel, 0, self._us(562.5))
+            self.builder.set_level(self.channel, 1, self._us(562.5))
 
     def send_nec(self, address=0x04, command=0x08):
-        # Leader: 9ms burst + 4.5ms space
-        self.builder.set_level(self.channel, 1, self._us(9000))
-        self.builder.set_level(self.channel, 0, self._us(4500))
+        # Leader: 9ms burst (LOW) + 4.5ms space (HIGH)
+        self.builder.set_level(self.channel, 0, self._us(9000))
+        self.builder.set_level(self.channel, 1, self._us(4500))
         # 32 bits: address + ~address + command + ~command
         for byte_val in [address, (~address) & 0xFF, command, (~command) & 0xFF]:
             for i in range(7, -1, -1):
                 self._send_bit((byte_val >> i) & 1)
 
 class IRRC5Generator:
-    """RC5 IR protocol generator (baseband Manchester)."""
+    """RC5 IR protocol generator (baseband Manchester).
+    Default polarity is active-low (idle HIGH, burst LOW) to match decoder defaults."""
     def __init__(self, builder, channel, samplerate=1000000):
         self.builder = builder
         self.channel = channel
         self.half_period = int(889 * samplerate / 1e6)  # 889us half-bit
-        self.builder.set_idle(channel, 0)
+        self.builder.set_idle(channel, 1)  # Idle HIGH (active-low)
 
     def _write_manchester(self, bit):
-        # RC5 Manchester: 1 = low-then-high, 0 = high-then-low
+        # RC5 Manchester (active-low): 1 = high-then-low, 0 = low-then-high
+        # In active-low: HIGH = idle/no-signal, LOW = signal
+        # So for active-low: 1 = HIGH→LOW (signal present), 0 = LOW→HIGH (no signal)
         if bit:
-            self.builder.set_level(self.channel, 0, self.half_period)
             self.builder.set_level(self.channel, 1, self.half_period)
+            self.builder.set_level(self.channel, 0, self.half_period)
         else:
-            self.builder.set_level(self.channel, 1, self.half_period)
             self.builder.set_level(self.channel, 0, self.half_period)
+            self.builder.set_level(self.channel, 1, self.half_period)
 
     def send_rc5(self, address=0x00, command=0x01, toggle=0):
         # 2 start bits (1,1), toggle bit, 5 address bits, 6 command bits
@@ -866,19 +885,20 @@ class IRRC5Generator:
             self._write_manchester(bit)
 
 class IRRC6Generator:
-    """RC6 IR protocol generator (baseband Manchester)."""
+    """RC6 IR protocol generator (baseband Manchester).
+    Default polarity is active-low (idle HIGH, burst LOW) to match decoder defaults."""
     def __init__(self, builder, channel, samplerate=1000000):
         self.builder = builder
         self.channel = channel
         self.sr = samplerate
         self.half_period = int(222 * samplerate / 1e6)  # 222us half-bit (444us bit period)
-        self.builder.set_idle(channel, 0)
+        self.builder.set_idle(channel, 1)  # Idle HIGH (active-low)
 
     def _us(self, us):
         return int(us * self.sr / 1e6)
 
     def _write_manchester(self, bit):
-        # RC6 Manchester: 1 = high-then-low, 0 = low-then-high
+        # RC6 Manchester (active-low): 1 = HIGH→LOW, 0 = LOW→HIGH
         if bit:
             self.builder.set_level(self.channel, 1, self.half_period)
             self.builder.set_level(self.channel, 0, self.half_period)
@@ -897,9 +917,9 @@ class IRRC6Generator:
             self.builder.set_level(self.channel, 1, double_half)
 
     def send_rc6(self, address=0x00, command=0x01, toggle=0):
-        # Leader: 2.667ms low + 889us high
-        self.builder.set_level(self.channel, 0, self._us(2667))
-        self.builder.set_level(self.channel, 1, self._us(889))
+        # Leader: 2.667ms HIGH + 889us LOW (active-low: leader starts with idle HIGH)
+        self.builder.set_level(self.channel, 1, self._us(2667))
+        self.builder.set_level(self.channel, 0, self._us(889))
         # Start bit: 1
         self._write_manchester(1)
         # 3 mode bits: 000
@@ -915,27 +935,29 @@ class IRRC6Generator:
             self._write_manchester((command >> i) & 1)
 
 class IRSIRCGenerator:
-    """SIRC IR protocol generator (baseband)."""
+    """SIRC IR protocol generator (baseband).
+    Default polarity is active-low (idle HIGH, burst LOW) to match decoder defaults."""
     def __init__(self, builder, channel, samplerate=1000000):
         self.builder = builder
         self.channel = channel
         self.sr = samplerate
-        self.builder.set_idle(channel, 0)
+        self.builder.set_idle(channel, 1)  # Idle HIGH (active-low)
 
     def _us(self, us):
         return int(us * self.sr / 1e6)
 
     def _send_bit(self, bit):
+        # Burst is LOW (active-low), space is HIGH
         if bit:
-            self.builder.set_level(self.channel, 1, self._us(1200))
+            self.builder.set_level(self.channel, 0, self._us(1200))
         else:
-            self.builder.set_level(self.channel, 1, self._us(600))
-        self.builder.set_level(self.channel, 0, self._us(600))
+            self.builder.set_level(self.channel, 0, self._us(600))
+        self.builder.set_level(self.channel, 1, self._us(600))
 
     def send_sirc(self, command=0x15, address=0x01):
-        # Start: 2400us burst + 600us space
-        self.builder.set_level(self.channel, 1, self._us(2400))
-        self.builder.set_level(self.channel, 0, self._us(600))
+        # Start: 2400us burst (LOW) + 600us space (HIGH)
+        self.builder.set_level(self.channel, 0, self._us(2400))
+        self.builder.set_level(self.channel, 1, self._us(600))
         # 12 bits: 7 command + 5 address, LSB first
         bits = []
         for i in range(7):
@@ -944,6 +966,81 @@ class IRSIRCGenerator:
             bits.append((address >> i) & 1)
         for bit in bits:
             self._send_bit(bit)
+
+class IRLTTOGenerator:
+    """LTTO laser tag IR protocol generator (baseband).
+    Default polarity is active-low (idle HIGH, burst LOW).
+    Protocol: PRE-SYNC pulse (3ms) + PRE-SYNC PAUSE (6ms) + SYNC pulse (3ms)
+    Then bits: BIT PAUSE (2ms) + DATA (1ms=0, 2ms=1)"""
+    def __init__(self, builder, channel, samplerate=1000000):
+        self.builder = builder
+        self.channel = channel
+        self.sr = samplerate
+        self.builder.set_idle(channel, 1)  # Idle HIGH (active-low)
+
+    def _us(self, us):
+        return max(1, int(us * self.sr / 1e6))
+
+    def send_signature(self, data=0x05, num_bits=5):
+        """Send an LTTO signature: pre-sync + pause + sync + data bits.
+        Default: 5-bit signature 0x05."""
+        # Initial idle high so the falling edge of PRE-SYNC is detected
+        self.builder.set_level(self.channel, 1, self._us(1000))
+        # PRE-SYNC: 3ms active (LOW for active-low)
+        self.builder.set_level(self.channel, 0, self._us(3000))
+        # PRE-SYNC PAUSE: 6ms idle (HIGH)
+        self.builder.set_level(self.channel, 1, self._us(6000))
+        # SYNC: 3ms active (LOW)
+        self.builder.set_level(self.channel, 0, self._us(3000))
+        # Data bits: each bit = BIT PAUSE (2ms HIGH) + DATA pulse
+        for i in range(num_bits - 1, -1, -1):
+            bit = (data >> i) & 1
+            # BIT PAUSE: 2ms idle (HIGH)
+            self.builder.set_level(self.channel, 1, self._us(2000))
+            if bit:
+                # Bit 1: 2ms active (LOW)
+                self.builder.set_level(self.channel, 0, self._us(2000))
+            else:
+                # Bit 0: 1ms active (LOW)
+                self.builder.set_level(self.channel, 0, self._us(1000))
+        # End: long idle
+        self.builder.set_level(self.channel, 1, self._us(10000))
+
+class IRRecoilGenerator:
+    """Recoil laser tag IR protocol generator (baseband).
+    Default polarity is active-low (idle HIGH, burst LOW).
+    Protocol: SYNC pulse (3.3ms) + SYNC PAUSE (1.5ms)
+    Then data bits: DATA (0.4ms=0, 0.8ms=1) with threshold at 0.6ms"""
+    def __init__(self, builder, channel, samplerate=1000000):
+        self.builder = builder
+        self.channel = channel
+        self.sr = samplerate
+        self.builder.set_idle(channel, 1)  # Idle HIGH (active-low)
+
+    def _us(self, us):
+        return max(1, int(us * self.sr / 1e6))
+
+    def send_packet(self, data=0x05, num_bits=5):
+        """Send a Recoil packet: sync + sync pause + data bits."""
+        # Initial idle high so the falling edge of SYNC is detected
+        self.builder.set_level(self.channel, 1, self._us(1000))
+        # SYNC: 3.3ms active (LOW for active-low)
+        self.builder.set_level(self.channel, 0, self._us(3300))
+        # SYNC PAUSE: 1.5ms idle (HIGH)
+        self.builder.set_level(self.channel, 1, self._us(1500))
+        # Data bits: each bit = DATA pulse
+        for i in range(num_bits - 1, -1, -1):
+            bit = (data >> i) & 1
+            if bit:
+                # Bit 1: 0.8ms active (LOW)
+                self.builder.set_level(self.channel, 0, self._us(800))
+            else:
+                # Bit 0: 0.4ms active (LOW)
+                self.builder.set_level(self.channel, 0, self._us(400))
+            # Small gap between bits
+            self.builder.set_level(self.channel, 1, self._us(200))
+        # End: long idle
+        self.builder.set_level(self.channel, 1, self._us(10000))
 
 class PWMGenerator:
     """PWM waveform generator."""
@@ -1003,12 +1100,14 @@ class DCCGenerator:
         self._send_bit(0)
 
 class DMX512Generator:
-    """DMX512 protocol generator."""
-    def __init__(self, builder, channel, samplerate=1000000):
+    """DMX512 protocol generator.
+    At 4MHz samplerate: bit_samples = 16 (4us per bit at 250kbaud).
+    BREAK must be >88us low, MAB must be 8us-1s high."""
+    def __init__(self, builder, channel, samplerate=4000000):
         self.builder = builder
         self.channel = channel
         self.sr = samplerate
-        self.bit_samples = int(4 * samplerate / 1e6)  # 4us per bit at 250kbaud
+        self.bit_samples = max(4, int(4 * samplerate / 1e6))  # 4us per bit at 250kbaud
         self.builder.set_idle(channel, 1)
 
     def _send_byte(self, val):
@@ -1023,11 +1122,13 @@ class DMX512Generator:
     def send_frame(self, slots=None):
         if slots is None:
             slots = [0x00, 0xFF, 0x80, 0x40, 0x20]
-        # Break: 88us low (22 bit times)
-        break_samples = self.bit_samples * 22
+        # Idle high before BREAK
+        self.builder.set_level(self.channel, 1, self.bit_samples * 10)
+        # Break: 176us low (44 bit times at 250kbaud) - must be >88us
+        break_samples = self.bit_samples * 44
         self.builder.set_level(self.channel, 0, break_samples)
-        # Mark After Break: 8us high (2 bit times)
-        mab_samples = self.bit_samples * 2
+        # Mark After Break: 8us-12us high (2-3 bit times)
+        mab_samples = self.bit_samples * 3
         self.builder.set_level(self.channel, 1, mab_samples)
         # Start code: 0x00
         self._send_byte(0x00)
@@ -1036,16 +1137,23 @@ class DMX512Generator:
             self._send_byte(slot)
 
 class DALIGenerator:
-    """DALI protocol generator (Manchester encoded)."""
+    """DALI protocol generator (Manchester encoded).
+    DALI bit period = 833.3us (1200 bps), halfbit = 416.65us.
+    Default polarity is active-low (idle HIGH) to match decoder defaults.
+    The decoder waits for any edge from IDLE, then processes Manchester
+    phases. A forward frame is 16 data bits + stop (two consecutive 1s).
+    A backward frame is 8 data bits + stop."""
     def __init__(self, builder, channel, samplerate=1000000):
         self.builder = builder
         self.channel = channel
-        self.bit_samples = int(416.7 * samplerate / 1e6)  # ~417 samples per bit
-        self.half_bit = self.bit_samples // 2
-        self.builder.set_idle(channel, 0)
+        self.bit_samples = max(4, int(samplerate * 0.0008333))  # ~833 samples per bit at 1MHz
+        self.half_bit = self.bit_samples // 2  # ~416 samples per half-bit
+        self.builder.set_idle(channel, 1)  # Idle HIGH (active-low)
 
     def _write_manchester(self, bit):
-        # DALI Manchester: 1 = high-to-low at mid-bit, 0 = low-to-high at mid-bit
+        # DALI Manchester (active-low): 1 = HIGH→LOW at mid-bit, 0 = LOW→HIGH at mid-bit
+        # In active-low: HIGH = idle/no-signal, LOW = signal present
+        # The decoder samples on edges: PHASE0 captures first half, PHASE1 captures second half
         if bit:
             self.builder.set_level(self.channel, 1, self.half_bit)
             self.builder.set_level(self.channel, 0, self.half_bit)
@@ -1054,13 +1162,30 @@ class DALIGenerator:
             self.builder.set_level(self.channel, 1, self.half_bit)
 
     def send_forward(self, address=0xFF, command=0x20):
-        # Start: high for 2 bit periods (no transition)
-        self.builder.set_level(self.channel, 1, self.bit_samples * 2)
-        # 16 bits Manchester: address byte + command byte
+        # Idle HIGH before start (decoder needs to see edge from idle)
+        self.builder.set_level(self.channel, 1, self.half_bit * 4)
+        # 16 bits Manchester: address byte + command byte (MSB first)
         for i in range(7, -1, -1):
             self._write_manchester((address >> i) & 1)
         for i in range(7, -1, -1):
             self._write_manchester((command >> i) & 1)
+        # Stop: two consecutive 1s (both phases high in active-low)
+        self.builder.set_level(self.channel, 1, self.half_bit)
+        self.builder.set_level(self.channel, 1, self.half_bit)
+        # Idle after frame
+        self.builder.set_level(self.channel, 1, self.half_bit * 4)
+
+    def send_backward(self, data=0xFF):
+        # Idle HIGH before start
+        self.builder.set_level(self.channel, 1, self.half_bit * 4)
+        # 8 bits Manchester (MSB first)
+        for i in range(7, -1, -1):
+            self._write_manchester((data >> i) & 1)
+        # Stop: two consecutive 1s
+        self.builder.set_level(self.channel, 1, self.half_bit)
+        self.builder.set_level(self.channel, 1, self.half_bit)
+        # Idle after frame
+        self.builder.set_level(self.channel, 1, self.half_bit * 4)
 
 class CECGenerator:
     """HDMI CEC protocol generator."""
@@ -1101,11 +1226,23 @@ class CECGenerator:
         self._send_bit(1)
 
 class SPDIFGenerator:
-    """S/PDIF biphase mark code generator."""
-    def __init__(self, builder, channel, bit_samples=100):
+    """S/PDIF biphase mark code generator.
+    The decoder needs 3 distinct pulse widths to establish clock recovery:
+    - Short pulses (1 UI) for '1' bits
+    - Medium pulses (2 UI) for '0' bits
+    - Long pulses (3 UI) for preamble start
+    At 6MHz samplerate with ~100kHz bitrate: bit_samples = 60 samples per bit.
+    Preambles: W=[2,0,1,0], M=[2,2,1,1], B=[2,1,1,2] (in pulse_type units)"""
+    def __init__(self, builder, channel, bit_samples=0):
         self.builder = builder
         self.channel = channel
+        # Use larger bit_samples for reliable decoding
+        # At 6MHz, S/PDIF at 48kHz stereo = ~3.072MHz bitrate, each bit ~2 samples
+        # That's too few. Use a much lower effective bitrate for test data.
+        if bit_samples == 0:
+            bit_samples = max(30, int(builder.samplerate / 100000))
         self.bit_samples = bit_samples
+        self.half_bit = bit_samples // 2
         self.builder.set_idle(channel, 0)
 
     def _send_bmc_bit(self, bit, current_level):
@@ -1113,32 +1250,52 @@ class SPDIFGenerator:
         level = 1 - current_level
         if bit:
             # '1': additional transition at mid-period
-            half = self.bit_samples // 2
-            self.builder.set_level(self.channel, level, half)
+            self.builder.set_level(self.channel, level, self.half_bit)
             level = 1 - level
-            self.builder.set_level(self.channel, level, self.bit_samples - half)
+            self.builder.set_level(self.channel, level, self.half_bit)
         else:
             # '0': no mid-period transition
             self.builder.set_level(self.channel, level, self.bit_samples)
         return level
 
     def _send_preamble_b(self, current_level):
-        half = self.bit_samples // 2
-        # Preamble B: 3 high, 3 low, 2 high (in half-bit units)
-        # Starting from opposite of current_level
-        start_level = 1 - current_level
-        if start_level == 1:
-            self.builder.set_level(self.channel, 1, half * 3)
-            self.builder.set_level(self.channel, 0, half * 3)
-            self.builder.set_level(self.channel, 1, half * 2)
-            return 1
-        else:
-            self.builder.set_level(self.channel, 0, half * 3)
-            self.builder.set_level(self.channel, 1, half * 3)
-            self.builder.set_level(self.channel, 0, half * 2)
-            return 0
+        """Preamble B (block start): violates BMC rules to create 3 distinct pulse widths.
+        Pattern: 3UI high, 3UI low, 2UI high (or inverted).
+        This creates pulse widths of 3UI, 3UI, 2UI which are all different from
+        normal BMC pulses (1UI or 2UI)."""
+        # Force a transition to create the preamble pattern
+        # Preamble B: 11100010 in BMC violation coding
+        # We need 3 distinct pulse widths: long(3UI), medium(2UI), short(1UI)
+        # Start with transition
+        level = 1 - current_level
+        # 3UI pulse
+        self.builder.set_level(self.channel, level, self.bit_samples * 3)
+        level = 1 - level
+        # 3UI pulse
+        self.builder.set_level(self.channel, level, self.bit_samples * 3)
+        level = 1 - level
+        # 2UI pulse
+        self.builder.set_level(self.channel, level, self.bit_samples * 2)
+        return level
+
+    def _send_preamble_m(self, current_level):
+        """Preamble M (channel 1): 3UI, 2UI, 1UI, 1UI pattern."""
+        level = 1 - current_level
+        self.builder.set_level(self.channel, level, self.bit_samples * 3)
+        level = 1 - level
+        self.builder.set_level(self.channel, level, self.bit_samples * 3)
+        level = 1 - level
+        self.builder.set_level(self.channel, level, self.bit_samples)
+        level = 1 - level
+        self.builder.set_level(self.channel, level, self.bit_samples)
+        return level
+
+    def _send_preamble_w(self, current_level):
+        """Preamble W (channel 2): 3UI, 2UI, 1UI, 1UI pattern (same as M for simplicity)."""
+        return self._send_preamble_m(current_level)
 
     def send_frame(self, subframe_data=0x00000000):
+        """Send a complete S/PDIF frame: preamble B + 32 BMC-encoded bits."""
         current_level = 0
         # Preamble B (block start)
         current_level = self._send_preamble_b(current_level)
@@ -1146,6 +1303,22 @@ class SPDIFGenerator:
         # Bits: 4 auxiliary + 20 audio + V U C P
         for i in range(31, -1, -1):
             bit = (subframe_data >> i) & 1
+            current_level = self._send_bmc_bit(bit, current_level)
+
+    def send_two_subframes(self, ch1_data=0x00000000, ch2_data=0x00000000):
+        """Send two subframes (one sample per channel) with proper preambles."""
+        current_level = 0
+        # Preamble B for channel 1 (block start)
+        current_level = self._send_preamble_b(current_level)
+        # Channel 1 data: 32 bits
+        for i in range(31, -1, -1):
+            bit = (ch1_data >> i) & 1
+            current_level = self._send_bmc_bit(bit, current_level)
+        # Preamble W for channel 2
+        current_level = self._send_preamble_w(current_level)
+        # Channel 2 data: 32 bits
+        for i in range(31, -1, -1):
+            bit = (ch2_data >> i) & 1
             current_level = self._send_bmc_bit(bit, current_level)
 
 class WiegandGenerator:
@@ -1349,6 +1522,11 @@ class Z80Generator:
     def m1_cycle(self, addr, opcode):
         """Generate an M1 (opcode fetch) cycle."""
         bw = self.bw
+        # Initial idle: all control signals inactive (high), data low
+        for ch in range(7):
+            self.builder.set_level(ch, 1, bw * 2)
+        for ch in range(7, 11):
+            self.builder.set_level(ch, 0, bw * 2)
         self.builder.set_level(4, 0, 0)
         self._set_addr_data(addr, opcode & 0xF)
         self.builder.set_level(4, 0, bw)
@@ -1499,7 +1677,15 @@ class LPCGenerator:
 
 class AM230xGenerator:
     """AM2302/DHT22 temperature sensor protocol generator.
-    1 channel: DATA(ch0). At 1MHz samplerate."""
+    1 channel: DATA(ch0). At 1MHz samplerate.
+    Timing requirements (in us):
+    - START LOW: 750-25000us (master pulls low)
+    - START HIGH: 10-10000us (master releases, sensor pulls low after 20-40us)
+    - RESPONSE LOW: 50-90us (sensor response low)
+    - RESPONSE HIGH: 50-90us (sensor response high)
+    - BIT LOW: 45-90us (before each bit)
+    - BIT 0 HIGH: 20-35us (short high = 0)
+    - BIT 1 HIGH: 65-80us (long high = 1)"""
     def __init__(self, builder, channel=0, samplerate=1000000):
         self.builder = builder
         self.ch = channel
@@ -1507,15 +1693,23 @@ class AM230xGenerator:
         builder.set_idle(channel, 1)
 
     def _us(self, us):
-        return int(us * self.sr / 1000000)
+        return max(1, int(us * self.sr / 1000000))
 
     def send_reading(self, humidity, temp):
-        """Send a 40-bit AM230x reading."""
+        """Send a 40-bit AM230x reading with precise timing."""
         ch = self.ch
+        # Initial idle high so the falling edge of START LOW is detected
+        self.builder.set_level(ch, 1, self._us(500))
+        # START: Master pulls low for 1000us (must be 750-25000us)
         self.builder.set_level(ch, 0, self._us(1000))
+        # START HIGH: Master releases, sensor responds after ~30us
+        # Must be 10-10000us
         self.builder.set_level(ch, 1, self._us(30))
+        # RESPONSE LOW: Sensor pulls low for ~80us (must be 50-90us)
         self.builder.set_level(ch, 0, self._us(80))
+        # RESPONSE HIGH: Sensor releases for ~80us (must be 50-90us)
         self.builder.set_level(ch, 1, self._us(80))
+        # 40 bits: 16 humidity + 16 temperature + 8 checksum
         hum_int = int(humidity * 10)
         temp_int = int(temp * 10)
         checksum = ((hum_int >> 8) + (hum_int & 0xFF) + (temp_int >> 8) + (temp_int & 0xFF)) & 0xFF
@@ -1527,11 +1721,16 @@ class AM230xGenerator:
         for i in range(7, -1, -1):
             bits.append((checksum >> i) & 1)
         for b in bits:
+            # BIT LOW: 50us low before each bit (must be 45-90us)
             self.builder.set_level(ch, 0, self._us(50))
             if b:
+                # BIT 1 HIGH: 70us high (must be 65-80us)
                 self.builder.set_level(ch, 1, self._us(70))
             else:
+                # BIT 0 HIGH: 26us high (must be 20-35us)
                 self.builder.set_level(ch, 1, self._us(26))
+        # End: pull low briefly then high so 'WAIT FOR END' sees a rising edge
+        self.builder.set_level(ch, 0, self._us(10))
         self.builder.set_level(ch, 1, self._us(50))
 
 class DCF77Generator:
@@ -1580,73 +1779,151 @@ class CaliperGenerator:
             self.builder.set_level(self.clk, 0, self.bit_width)
 
 class C2Generator:
-    """C2 interface (Intel) protocol generator.
-    2 channels: SDIO(ch0), SCLK(ch1)."""
-    def __init__(self, builder, sdio_ch=0, sclk_ch=1, samplerate=1000000):
+    """C2 interface (Silabs) protocol generator.
+    2 channels: C2CK(ch0), C2D(ch1).
+    Reset is detected when C2CK is high for >20us.
+    After reset: Start (1 C2CK rising), INS (2 bits on C2CK rising),
+    then address/data depending on instruction."""
+    def __init__(self, builder, c2ck_ch=0, c2d_ch=1, samplerate=1000000):
         self.builder = builder
-        self.sdio = sdio_ch
-        self.sclk = sclk_ch
-        self.half_period = int(samplerate / 200000)
-        builder.set_idle(sdio_ch, 1)
-        builder.set_idle(sclk_ch, 1)
+        self.c2ck = c2ck_ch
+        self.c2d = c2d_ch
+        self.half_period = max(2, int(samplerate / 200000))  # 5us per half-period
+        builder.set_idle(c2ck_ch, 0)
+        builder.set_idle(c2d_ch, 1)
+
+    def _clock_pulse(self, c2d_val):
+        """One C2CK cycle: set C2D, then C2CK high, C2CK low.
+        Decoder samples C2D on C2CK rising edge."""
+        period = self.half_period * 2
+        # Set C2CK low for full period, overlay C2D
+        self.builder.set_level(self.c2ck, 0, period)
+        self.builder.pos -= period
+        self.builder.set_level(self.c2d, c2d_val, period)
+        self.builder.pos -= period
+        # C2CK rising edge (decoder samples C2D here)
+        self.builder.set_level(self.c2ck, 1, self.half_period)
+        # C2CK falling edge
+        self.builder.set_level(self.c2ck, 0, self.half_period)
 
     def send_reset(self):
-        """Send a C2 reset command."""
-        self.builder.set_level(self.sclk, 1, self.half_period)
-        self.builder.set_level(self.sdio, 0, 0)
-        self.builder.set_level(self.sdio, 0, self.half_period)
+        """Send a C2 reset: C2CK high for >20us, then low.
+        The decoder detects reset when C2CK high interval > 20us.
+        Must start with C2CK low so the rising edge of the reset pulse is detected."""
+        # Ensure C2CK starts low (idle state) so the first rising edge is detected
+        self.builder.set_level(self.c2ck, 0, self.half_period)
+        # C2CK high for 25us (must be >20us for reset detection)
+        reset_samples = max(1, int(25 * self.builder.samplerate / 1e6))
+        self.builder.set_level(self.c2ck, 1, reset_samples)
+        # C2CK goes low - falling edge
+        self.builder.set_level(self.c2ck, 0, self.half_period)
+        # After reset, next C2CK rising edge = Start
+        # Start: 1 C2CK cycle with C2D=1
+        self._clock_pulse(1)
+        # INS: 2 bits - instruction 0b00 = Data Read
+        self._clock_pulse(0)  # INS bit 0
+        self._clock_pulse(0)  # INS bit 1
+        # Data Read Length: 2 bits (0b00 = 1 byte)
+        self._clock_pulse(0)  # Length bit 0
+        self._clock_pulse(0)  # Length bit 1
+        # Wait: C2D goes high
+        self._clock_pulse(1)
+        # Data Read: 8 bits LSB first
         for i in range(8):
-            bit = (0xFF >> i) & 1
-            self.builder.set_level(self.sdio, bit, 0)
-            self.builder.set_level(self.sclk, 0, self.half_period)
-            self.builder.set_level(self.sclk, 1, self.half_period)
+            self._clock_pulse(0x55 >> i & 1)
+        # End: 1 C2CK cycle
+        self._clock_pulse(1)
 
 class AVRPDIGenerator:
     """AVR PDI (Program and Debug Interface) generator.
-    2 channels: PDI_DATA(ch0), PDI_CLK(ch1)."""
-    def __init__(self, builder, data_ch=0, clk_ch=1, samplerate=1000000):
-        self.builder = builder
-        self.data = data_ch
-        self.clk = clk_ch
-        self.half_period = int(samplerate / 200000)
-        builder.set_idle(data_ch, 0)
-        builder.set_idle(clk_ch, 0)
-
-    def send_byte(self, val):
-        """Send a PDI byte with start and stop bits, LSB first."""
-        self.builder.set_level(self.data, 0, 0)
-        self.builder.set_level(self.clk, 1, self.half_period)
-        self.builder.set_level(self.clk, 0, self.half_period)
-        for i in range(8):
-            bit = (val >> i) & 1
-            self.builder.set_level(self.data, bit, 0)
-            self.builder.set_level(self.clk, 1, self.half_period)
-            self.builder.set_level(self.clk, 0, self.half_period)
-        self.builder.set_level(self.data, 1, 0)
-        self.builder.set_level(self.clk, 1, self.half_period)
-        self.builder.set_level(self.clk, 0, self.half_period)
-
-    def send_break(self):
-        """Send BREAK instruction (0x0B)."""
-        self.send_byte(0x0B)
-
-class DeltaSigmaGenerator:
-    """Delta-sigma modulator generator.
-    2 channels: CLK(ch0), DATA(ch1)."""
+    2 channels: RESET/PDI_CLK(ch0), PDI_DATA(ch1).
+    The decoder samples DATA on CLK rising edge, processes on CLK falling edge.
+    It looks for BREAK condition (11+ zero bits) then UART frames.
+    UART frame: start(0) + 8 data(LSB first) + parity(even) + stop(1)"""
     def __init__(self, builder, clk_ch=0, data_ch=1, samplerate=1000000):
         self.builder = builder
         self.clk = clk_ch
         self.data = data_ch
-        self.half_period = int(samplerate / 200000)
+        self.half_period = max(2, int(samplerate / 200000))  # 5us per half-period
+        builder.set_idle(clk_ch, 0)
+        builder.set_idle(data_ch, 1)
+
+    def _clock_bit(self, data_val):
+        """One CLK cycle: set DATA while CLK low, CLK rises (sample), CLK falls (process)."""
+        period = self.half_period * 2
+        # Set CLK low for full period, overlay DATA
+        self.builder.set_level(self.clk, 0, period)
+        self.builder.pos -= period
+        self.builder.set_level(self.data, data_val, period)
+        self.builder.pos -= period
+        # CLK rising edge (decoder samples DATA here)
+        self.builder.set_level(self.clk, 1, self.half_period)
+        # CLK falling edge (decoder processes bit here)
+        self.builder.set_level(self.clk, 0, self.half_period)
+
+    def _send_uart_byte(self, val):
+        """Send a byte as UART frame: start(0) + 8 data(LSB first) + parity(even) + stop(1)."""
+        # Start bit
+        self._clock_bit(0)
+        # 8 data bits LSB first
+        p = 0
+        for i in range(8):
+            bit = (val >> i) & 1
+            self._clock_bit(bit)
+            p ^= bit
+        # Parity bit (even)
+        self._clock_bit(p)
+        # Stop bit
+        self._clock_bit(1)
+
+    def send_break(self):
+        """Send BREAK condition (12 zero bits) followed by LDCS instruction.
+        The decoder detects BREAK when 11+ consecutive zero bits are seen."""
+        # Initial idle: CLK low, DATA high (idle state)
+        self.builder.set_level(self.clk, 0, self.half_period * 4)
+        self.builder.set_level(self.data, 1, self.half_period * 4)
+        # Send 12 zero bits (BREAK condition)
+        for _ in range(12):
+            self._clock_bit(0)
+        # After BREAK, send a valid instruction: LDCS (opcode 0b100 = 4)
+        # LDCS format: 1 0 0 reg[3:0] = 0x80 + reg
+        # LDCS status register (reg=0): byte = 0b10000000 = 0x80
+        self._send_uart_byte(0x80)
+
+class DeltaSigmaGenerator:
+    """Delta-sigma modulator generator.
+    2 channels: CLK(ch0), DATA(ch1).
+    The decoder triggers on rising CLK edges and runs sinc filters.
+    Need enough clock cycles for the sinc filter to produce output.
+    A simple pattern of alternating 1s and 0s creates a mid-range signal."""
+    def __init__(self, builder, clk_ch=0, data_ch=1, samplerate=1000000):
+        self.builder = builder
+        self.clk = clk_ch
+        self.data = data_ch
+        self.half_period = max(2, int(samplerate / 200000))
         builder.set_idle(clk_ch, 0)
         builder.set_idle(data_ch, 0)
 
     def send_pattern(self, pattern):
-        """Send a bit pattern. CLK toggles, DATA changes on falling edge."""
-        for bit in pattern:
-            self.builder.set_level(self.data, bit, 0)
-            self.builder.set_level(self.clk, 1, self.half_period)
-            self.builder.set_level(self.clk, 0, self.half_period)
+        """Send a bit pattern with many repetitions for sinc filter convergence.
+        CLK toggles, DATA changes on falling CLK edge (setup for rising edge).
+        The sinc filter needs many samples to converge, so we repeat the pattern."""
+        # Initial idle: CLK low, DATA low
+        self.builder.set_level(self.clk, 0, self.half_period * 4)
+        self.builder.set_level(self.data, 0, self.half_period * 4)
+        # Repeat the pattern many times for sinc filter convergence
+        for _ in range(64):
+            for bit in pattern:
+                # Set DATA while CLK is low
+                period = self.half_period * 2
+                self.builder.set_level(self.clk, 0, period)
+                self.builder.pos -= period
+                self.builder.set_level(self.data, bit, period)
+                self.builder.pos -= period
+                # CLK rising edge (decoder samples DATA here)
+                self.builder.set_level(self.clk, 1, self.half_period)
+                # CLK falling edge
+                self.builder.set_level(self.clk, 0, self.half_period)
 
 class EM4100Generator:
     """EM4100 RFID protocol generator.
@@ -1685,62 +1962,170 @@ class EM4100Generator:
         self._manchester_bit(0)
 
 class OneSingleWireGenerator:
-    """Single wire UART-like protocol generator.
-    2 channels: DATA(ch0), VCC(ch1)."""
-    def __init__(self, builder, data_ch=0, vcc_ch=1, baud=9600, samplerate=1000000):
+    """OneSingleWire custom bus protocol generator.
+    2 channels: OSW(ch0), Start Pulse(ch1).
+    The decoder:
+    1. Waits for Start Pulse (ch1) rising edge
+    2. Waits for OSW (ch0) falling edge
+    3. Then measures period between OSW edges
+    4. Period < threshold = bit 1, period >= threshold = bit 0
+    5. 9 bits per byte (8 data + 1 parity)
+    Default threshold: 8us at 1MHz = 8 samples."""
+    def __init__(self, builder, data_ch=0, start_ch=1, samplerate=1000000):
         self.builder = builder
-        self.data = data_ch
-        self.vcc = vcc_ch
-        self.bit_width = int(samplerate / baud)
+        self.osw = data_ch
+        self.start = start_ch
+        self.sr = samplerate
+        self.threshold_us = 8  # default threshold in us
         builder.set_idle(data_ch, 1)
-        builder.set_idle(vcc_ch, 1)
+        builder.set_idle(start_ch, 0)
 
-    def write_byte(self, val):
-        """Send a byte on single wire (8N1 UART)."""
-        self.builder.set_level(self.vcc, 1, 0)
-        self.builder.set_level(self.data, 0, self.bit_width)
+    def _us(self, us):
+        return max(1, int(us * self.sr / 1e6))
+
+    def send_byte(self, val):
+        """Send a byte: Start Pulse rising edge, then OSW falling edge,
+        then 9 bits (8 data LSB first + 1 parity) via period encoding.
+        Short period (< threshold) = 1, long period (>= threshold) = 0."""
+        # Initial idle on both channels so edges are detected
+        self.builder.set_level(self.start, 0, self._us(50))
+        self.builder.set_level(self.osw, 1, self._us(50))
+        # Start Pulse: rising edge on ch1
+        self.builder.set_level(self.start, 1, self._us(10))
+        self.builder.set_level(self.start, 0, self._us(5))
+        # OSW: falling edge to start bit detection
+        self.builder.set_level(self.osw, 1, self._us(5))
+        self.builder.set_level(self.osw, 0, self._us(2))
+        # Send 9 bits: 8 data LSB first + 1 parity (even)
+        parity = 0
+        bits = []
         for i in range(8):
             bit = (val >> i) & 1
-            self.builder.set_level(self.data, bit, self.bit_width)
-        self.builder.set_level(self.data, 1, self.bit_width)
+            bits.append(bit)
+            parity ^= bit
+        bits.append(0 if parity == 0 else 1)  # parity bit (even parity means parity bit makes total even)
+        # Actually: parity_bit = parity of data bits, decoder checks parity_bit ^ sum == 0
+        # So parity bit should make total XOR = 0
+        bits[8] = parity  # parity bit = XOR of data bits for even parity
+        for b in bits:
+            if b:
+                # Bit 1: short period (< threshold = 8us)
+                # OSW goes high briefly then low
+                self.builder.set_level(self.osw, 1, self._us(3))
+                self.builder.set_level(self.osw, 0, self._us(3))
+            else:
+                # Bit 0: long period (>= threshold = 8us)
+                self.builder.set_level(self.osw, 1, self._us(10))
+                self.builder.set_level(self.osw, 0, self._us(10))
 
 class OOKGenerator:
-    """On-Off Keying generator.
-    1 channel: DATA(ch0)."""
+    """On-Off Keying generator with Manchester encoding.
+    1 channel: DATA(ch0).
+    The OOK decoder needs:
+    1. A preamble of 7+ Manchester pulses to lock onto the signal
+    2. Manchester-encoded data bits
+    3. A timeout (5x pulse period of low) to trigger DECODE_TIMEOUT and emit annotations
+    Default: Manchester encoding with 1111 preamble (all-high pattern)"""
     def __init__(self, builder, channel=0, bitrate=1000, samplerate=1000000):
         self.builder = builder
         self.ch = channel
-        self.bit_width = int(samplerate / bitrate)
+        self.bit_width = max(2, int(samplerate / bitrate))
+        self.half_width = self.bit_width // 2
         builder.set_idle(channel, 0)
+
+    def _manchester_bit_1111(self, bit):
+        """Manchester encoding for 1111 preamble mode.
+        Each bit is 2 half-periods. 1=high-then-low, 0=low-then-high."""
+        if bit:
+            self.builder.set_level(self.ch, 1, self.half_width)
+            self.builder.set_level(self.ch, 0, self.half_width)
+        else:
+            self.builder.set_level(self.ch, 0, self.half_width)
+            self.builder.set_level(self.ch, 1, self.half_width)
+
+    def _manchester_bit_1010(self, bit):
+        """Manchester encoding for 1010 preamble mode (clock-rate transitions).
+        Same encoding, but the preamble pattern differs."""
+        if bit:
+            self.builder.set_level(self.ch, 1, self.half_width)
+            self.builder.set_level(self.ch, 0, self.half_width)
+        else:
+            self.builder.set_level(self.ch, 0, self.half_width)
+            self.builder.set_level(self.ch, 1, self.half_width)
 
     def send_bits(self, bits):
-        """Send a sequence of OOK bits."""
+        """Send a sequence of Manchester-encoded bits with preamble and timeout.
+        Generates: 8-bit 1111 preamble + data bits + long low for timeout."""
+        # Initial idle low so the first rising edge is detected
+        self.builder.set_level(self.ch, 0, self.bit_width * 4)
+        # Preamble: 8 bits of alternating 1-0-1-0 (creates 16 edges for sync)
+        # The decoder needs 7+ valid pulses to lock on
+        for _ in range(4):
+            self._manchester_bit_1111(1)
+            self._manchester_bit_1111(0)
+        # Data bits
         for b in bits:
-            self.builder.set_level(self.ch, b, self.bit_width)
+            self._manchester_bit_1111(b)
+        # Timeout: long low period (5x bit_width) to trigger DECODE_TIMEOUT
+        self.builder.set_level(self.ch, 0, self.bit_width * 6)
 
 class SonyMDGenerator:
-    """Sony Minidisc protocol generator (Manchester encoded).
-    1 channel: DATA(ch0)."""
-    def __init__(self, builder, channel=0, bitrate=230400, samplerate=1000000):
+    """Sony Minidisc LCD Remote protocol generator.
+    1 channel: DATA(ch0).
+    The decoder expects:
+    - Reset pulse: ~40ms low (optional, or presync pulse directly)
+    - Presync pulse: ~1100us high
+    - Presync delay: ~950us low
+    - Sync pulse: ~220us high
+    - Data bits: short low (~17us) = 1, long low (~220us) = 0
+    Default expectedBitCount = 16 (2 bytes)."""
+    def __init__(self, builder, channel=0, samplerate=1000000):
         self.builder = builder
         self.ch = channel
-        self.half_width = int(samplerate / (bitrate * 2))
+        self.sr = samplerate
         builder.set_idle(channel, 0)
 
-    def send_byte_manchester(self, val):
-        """Send a byte with Manchester encoding."""
-        for i in range(8):
-            bit = (val >> i) & 1
-            if bit:
-                self.builder.set_level(self.ch, 0, self.half_width)
-                self.builder.set_level(self.ch, 1, self.half_width)
+    def _us(self, us):
+        return max(1, int(us * self.sr / 1e6))
+
+    def send_message(self, data_bytes=None):
+        """Send a Sony MD message: presync + presync delay + sync + data bits.
+        Default: 2 bytes (16 bits) = short message."""
+        if data_bytes is None:
+            data_bytes = [0x00, 0x01]
+        # Initial idle low so the rising edge of presync is detected
+        self.builder.set_level(self.ch, 0, self._us(500))
+        # Presync pulse: ~1100us high (within 20% margin)
+        self.builder.set_level(self.ch, 1, self._us(1100))
+        # Presync delay: ~950us low (within 800-1500us range)
+        self.builder.set_level(self.ch, 0, self._us(950))
+        # Sync pulse: ~220us high (within 20-280us range)
+        self.builder.set_level(self.ch, 1, self._us(220))
+        # Data bits: each bit is high-then-low
+        # Short low (~17us) = bit 1, Long low (~220us) = bit 0
+        # The high portion before each low is ~32.5us (bitDelayHigh)
+        bits = []
+        for byte_val in data_bytes:
+            for i in range(7, -1, -1):
+                bits.append((byte_val >> i) & 1)
+        for b in bits:
+            # High portion: ~32.5us
+            self.builder.set_level(self.ch, 1, self._us(32))
+            if b:
+                # Bit 1: short low (~17us)
+                self.builder.set_level(self.ch, 0, self._us(17))
             else:
-                self.builder.set_level(self.ch, 1, self.half_width)
-                self.builder.set_level(self.ch, 0, self.half_width)
+                # Bit 0: long low (~220us)
+                self.builder.set_level(self.ch, 0, self._us(220))
+        # End: hold low for a while (idle)
+        self.builder.set_level(self.ch, 0, self._us(5000))
 
 class TDMAudioGenerator:
     """TDM (Time Division Multiplexed) audio generator.
-    3 channels: CLK(ch0), SYNC(ch1), DATA(ch2)."""
+    3 channels: CLK(ch0), SYNC(ch1), DATA(ch2).
+    The decoder waits for a CLK edge (rising by default), then samples DATA.
+    Frame sync (SYNC) marks the start of a frame. When SYNC is high, a new frame starts.
+    The decoder needs: proper CLK toggling, SYNC pulse at frame start, and data bits."""
     def __init__(self, builder, clk_ch=0, sync_ch=1, data_ch=2, samplerate=1000000):
         self.builder = builder
         self.clk = clk_ch
@@ -1751,18 +2136,40 @@ class TDMAudioGenerator:
         builder.set_idle(sync_ch, 0)
         builder.set_idle(data_ch, 0)
 
-    def send_frame(self, num_channels=8, bits_per_channel=32):
-        """Send one TDM frame with multiple channels."""
+    def send_frame(self, num_channels=8, bits_per_channel=16):
+        """Send one TDM frame with multiple channels.
+        CLK toggles continuously. SYNC goes high for 1 CLK period at frame start.
+        DATA changes on falling CLK edge (setup for rising edge sampling)."""
         hp = self.half_period
-        self.builder.set_level(self.sync, 1, 0)
-        for ch_idx in range(num_channels):
-            for bit_idx in range(bits_per_channel):
-                data_bit = 1 if (ch_idx == 0 and bit_idx == 31) else 0
-                self.builder.set_level(self.data, data_bit, 0)
-                self.builder.set_level(self.clk, 1, hp)
-                self.builder.set_level(self.clk, 0, hp)
-                if ch_idx == 0 and bit_idx == 0:
-                    self.builder.set_level(self.sync, 0, 0)
+        total_bits = num_channels * bits_per_channel
+        # Initial idle period
+        self.builder.set_level(self.clk, 0, hp * 4)
+        self.builder.set_level(self.sync, 0, hp * 4)
+        self.builder.set_level(self.data, 0, hp * 4)
+        # Send frame
+        for bit_idx in range(total_bits):
+            # Data changes on falling CLK edge (before rising edge)
+            # Channel 0 has some data, others are 0
+            ch_idx = bit_idx // bits_per_channel
+            bit_in_ch = bit_idx % bits_per_channel
+            data_bit = 1 if (ch_idx == 0 and bit_in_ch == bits_per_channel - 1) else 0
+            # Set data while CLK is low
+            period = hp * 2
+            self.builder.set_level(self.clk, 0, period)
+            self.builder.pos -= period
+            self.builder.set_level(self.data, data_bit, period)
+            self.builder.pos -= period
+            # SYNC high for first bit of frame (must be high at CLK rising edge)
+            if bit_idx == 0:
+                self.builder.set_level(self.sync, 1, period + hp)
+                self.builder.pos -= period
+            elif bit_idx == 1:
+                self.builder.set_level(self.sync, 0, period + hp)
+                self.builder.pos -= period
+            # CLK rising edge (decoder samples DATA here)
+            self.builder.set_level(self.clk, 1, hp)
+            # CLK falling edge
+            self.builder.set_level(self.clk, 0, hp)
 
 class TLC5620Generator:
     """TLC5620 DAC protocol generator.
@@ -2157,36 +2564,51 @@ class RCEncodeGenerator:
 
 class RGBLEDWS281xGenerator:
     """WS2812B LED protocol generator.
-    1 channel: DATA(ch0)."""
-    def __init__(self, builder, channel=0, samplerate=1000000):
+    1 channel: DATA(ch0).
+    At 8MHz samplerate: T0H=350ns=2.8samples, T1H=700ns=5.6samples.
+    The decoder checks: tH >= 625ns for bit=1, else duty > 50% for bit=1.
+    RESET: low > 50us = 400000ns = 400 samples at 8MHz.
+    We use sample counts directly for reliable timing."""
+    def __init__(self, builder, channel=0, samplerate=8000000):
         self.builder = builder
         self.ch = channel
         self.sr = samplerate
+        # Calculate sample counts for timing at the given samplerate
+        # T0H: 350ns (bit 0 high time), T1H: 700ns (bit 1 high time)
+        # T0L: 800ns (bit 0 low time), T1L: 600ns (bit 1 low time)
+        # Total bit period: ~1250ns
+        self.t0h = max(2, int(350 * samplerate / 1e9))   # 350ns high for 0
+        self.t1h = max(3, int(700 * samplerate / 1e9))   # 700ns high for 1
+        self.t0l = max(3, int(800 * samplerate / 1e9))   # 800ns low for 0
+        self.t1l = max(2, int(600 * samplerate / 1e9))   # 600ns low for 1
+        self.reset_samples = max(50, int(55000 * samplerate / 1e9))  # >50us low for RESET
         builder.set_idle(channel, 0)
-
-    def _us(self, us):
-        return int(us * self.sr / 1000000)
 
     def _send_bit(self, bit):
         if bit:
-            self.builder.set_level(self.ch, 1, self._us(0.7))
-            self.builder.set_level(self.ch, 0, self._us(0.6))
+            self.builder.set_level(self.ch, 1, self.t1h)
+            self.builder.set_level(self.ch, 0, self.t1l)
         else:
-            self.builder.set_level(self.ch, 1, self._us(0.35))
-            self.builder.set_level(self.ch, 0, self._us(0.8))
+            self.builder.set_level(self.ch, 1, self.t0h)
+            self.builder.set_level(self.ch, 0, self.t0l)
 
     def send_rgb(self, green, red, blue):
-        """Send GRB data for one LED (24 bits)."""
+        """Send GRB data for one LED (24 bits) with RESET before."""
+        # RESET: low > 50us
+        self.builder.set_level(self.ch, 0, self.reset_samples)
+        # Green byte MSB first
         for i in range(7, -1, -1):
             self._send_bit((green >> i) & 1)
+        # Red byte MSB first
         for i in range(7, -1, -1):
             self._send_bit((red >> i) & 1)
+        # Blue byte MSB first
         for i in range(7, -1, -1):
             self._send_bit((blue >> i) & 1)
 
     def send_reset(self):
         """Send reset signal (low >50us)."""
-        self.builder.set_level(self.ch, 0, self._us(55))
+        self.builder.set_level(self.ch, 0, self.reset_samples)
 
 class RinnaiControlPanelGenerator:
     """Rinnai control panel Manchester encoded generator.
@@ -2214,7 +2636,12 @@ class RinnaiControlPanelGenerator:
 
 class CarreraGenerator:
     """Carrera slot car protocol generator.
-    1 channel: DATA(ch0)."""
+    1 channel: DATA(ch0).
+    The decoder detects edges and measures intervals:
+    - 75-125us between edges = valid bit
+    - >6000us gap = word boundary (processes accumulated data word)
+    Bits are shifted into dataWord MSB first. Pin level at edge determines bit value.
+    Default invert='nein' (not inverted): pin=1 means bit=1, pin=0 means bit=0."""
     def __init__(self, builder, channel=0, samplerate=1000000):
         self.builder = builder
         self.ch = channel
@@ -2222,23 +2649,38 @@ class CarreraGenerator:
         builder.set_idle(channel, 0)
 
     def _us(self, us):
-        return int(us * self.sr / 1000000)
+        return max(1, int(us * self.sr / 1e6))
 
-    def send_id(self, car_id):
-        """Send car ID pulses."""
-        self.builder.set_level(self.ch, 1, self._us(500))
-        self.builder.set_level(self.ch, 0, self._us(200))
-        for i in range(3, -1, -1):
-            bit = (car_id >> i) & 1
-            if bit:
-                self.builder.set_level(self.ch, 1, self._us(300))
-            else:
-                self.builder.set_level(self.ch, 1, self._us(150))
-            self.builder.set_level(self.ch, 0, self._us(200))
+    def send_word(self, data_word, num_bits=8):
+        """Send a data word as a series of 100us-wide pulses.
+        Each bit is represented by a pulse of ~100us duration.
+        Pin high = bit 1, pin low = bit 0.
+        After the word, add a >6000us gap to trigger word processing."""
+        for i in range(num_bits - 1, -1, -1):
+            bit = (data_word >> i) & 1
+            # Each bit: 100us pulse (within 75-125us range)
+            self.builder.set_level(self.ch, bit, self._us(100))
+        # Word gap: >6000us low to trigger word boundary detection
+        self.builder.set_level(self.ch, 0, self._us(7000))
+
+    def send_controller_word(self, controller_id=0, gas=5, tank=0):
+        """Send a Carrera controller word.
+        Format: 6 bits data (gas/tank/etc) + 3 bits controller ID + 1 bit TA.
+        Total ~10 bits. Controller IDs 0-5 are valid."""
+        # Build a simple controller word
+        # dataWord format: bits shifted in MSB first
+        # For controller 0: word = gas(4bits) + ID(3bits) + TA(1bit) + padding
+        word = (gas & 0xF) << 6 | (controller_id & 0x7) << 3 | 0
+        self.send_word(word, 10)
 
 class SDQGenerator:
     """SDQ (Smart Data Quality) 1-wire protocol generator.
-    1 channel: DATA(ch0)."""
+    1 channel: DATA(ch0).
+    Idle high. Falling edge starts a bit. Low duration determines value:
+    - Short low (~5us) + long high (~60us) = bit 1
+    - Long low (~60us) + short high (~5us) = bit 0
+    - Very long low (~480us) = reset/break
+    Bits are sent LSB first."""
     def __init__(self, builder, channel=0, samplerate=1000000):
         self.builder = builder
         self.ch = channel
@@ -2246,22 +2688,41 @@ class SDQGenerator:
         builder.set_idle(channel, 1)
 
     def _us(self, us):
-        return int(us * self.sr / 1000000)
+        return max(1, int(us * self.sr / 1000000))
 
     def send_reset(self):
-        """Send reset pulse."""
+        """Send reset pulse + presence detect."""
+        # Reset: pull low 480us
         self.builder.set_level(self.ch, 0, self._us(480))
-        self.builder.set_level(self.ch, 1, self._us(60))
+        # Presence: release high, slave pulls low after ~60us
+        self.builder.set_level(self.ch, 1, self._us(10))
+        self.builder.set_level(self.ch, 0, self._us(60))
+        # Release
+        self.builder.set_level(self.ch, 1, self._us(100))
+
+    def _send_bit(self, bit):
+        """Send one bit: falling edge starts, low duration determines value."""
+        if bit:
+            # Bit 1: short low (~5us) + long high (~60us)
+            self.builder.set_level(self.ch, 0, self._us(5))
+            self.builder.set_level(self.ch, 1, self._us(60))
+        else:
+            # Bit 0: long low (~60us) + short high (~5us)
+            self.builder.set_level(self.ch, 0, self._us(60))
+            self.builder.set_level(self.ch, 1, self._us(5))
 
     def send_byte(self, val):
         """Send a byte (LSB first, 1-wire timing)."""
         for i in range(8):
             bit = (val >> i) & 1
-            self.builder.set_level(self.ch, 0, self._us(5))
-            if bit:
-                self.builder.set_level(self.ch, 1, self._us(60))
-            else:
-                self.builder.set_level(self.ch, 1, self._us(10))
+            self._send_bit(bit)
+
+    def send_transaction(self):
+        """Send a complete SDQ transaction: reset + command byte."""
+        # Initial idle high so the falling edge of reset is detected
+        self.builder.set_level(self.ch, 1, self._us(100))
+        self.send_reset()
+        self.send_byte(0x33)  # Read ROM command
 
 class SwimGenerator:
     """SWIM (Single Wire Interface Module) generator.
@@ -2277,6 +2738,8 @@ class SwimGenerator:
 
     def send_command(self, cmd):
         """Send a SWIM command: start + 8 bits."""
+        # Initial idle high so the falling edge of start is detected
+        self.builder.set_level(self.ch, 1, self._us(50))
         self.builder.set_level(self.ch, 0, self._us(2))
         self.builder.set_level(self.ch, 1, self._us(1))
         for i in range(7, -1, -1):
@@ -2307,33 +2770,99 @@ class SWIGenerator:
 
     def write_byte(self, val):
         """Send a byte with Manchester encoding (MSB first)."""
+        # Initial idle low so the first Manchester transition is detected
+        self.builder.set_level(self.ch, 0, self.half_width * 4)
         for i in range(7, -1, -1):
             self._manchester_bit((val >> i) & 1)
 
-class MVBusGenerator:
-    """MVBus Manchester encoded bus protocol generator.
-    1 channel: DATA(ch0)."""
-    def __init__(self, builder, channel=0, bitrate=9600, samplerate=1000000):
+class MVBGenerator:
+    """MVB (Multifunction Vehicle Bus) Manchester II generator.
+    1 channel: DATA(ch0).
+    MVB uses Manchester II encoding at 1.5Mbit/s (3MHz clock rate).
+    The decoder:
+    1. Waits for falling edge to start
+    2. Measures notch lengths in MVB clock ticks
+    3. Looks for 18-bit preamble: MASTER=0b101100011100010101, SLAVE=0b101010100011100011
+    4. After preamble, decodes Manchester data
+    5. Master frame: 4-bit F-code + 12-bit address + 8-bit CRC
+    6. Slave frame: 16/32/64-bit data + 8-bit CRC
+    NOTE: samplerate must be >= 6MHz for reliable MVB decoding (2 samples per tick)."""
+    def __init__(self, builder, channel=0, samplerate=1000000):
         self.builder = builder
         self.ch = channel
-        self.half_width = int(samplerate / (bitrate * 2))
-        builder.set_idle(channel, 0)
+        self.sr = samplerate
+        # MVB clock rate = 3MHz, each tick = sr/3e6 samples
+        self.tick_samples = max(1, int(samplerate / 3e6))
+        builder.set_idle(channel, 1)  # Idle high
 
     def _manchester_bit(self, bit):
+        """Manchester II encoding: 1 = high-then-low, 0 = low-then-high.
+        Each half-bit is 1 MVB tick."""
+        ts = self.tick_samples
         if bit:
-            self.builder.set_level(self.ch, 0, self.half_width)
-            self.builder.set_level(self.ch, 1, self.half_width)
+            self.builder.set_level(self.ch, 1, ts)
+            self.builder.set_level(self.ch, 0, ts)
         else:
-            self.builder.set_level(self.ch, 1, self.half_width)
-            self.builder.set_level(self.ch, 0, self.half_width)
+            self.builder.set_level(self.ch, 0, ts)
+            self.builder.set_level(self.ch, 1, ts)
 
-    def send_frame(self, sync_bits, data_bytes):
-        """Send a frame: sync + data."""
-        for b in sync_bits:
-            self._manchester_bit(b)
-        for byte in data_bytes:
-            for i in range(7, -1, -1):
-                self._manchester_bit((byte >> i) & 1)
+    def _send_preamble(self, preamble_bits):
+        """Send an 18-bit preamble using Manchester II encoding."""
+        for bit in preamble_bits:
+            self._manchester_bit(bit)
+
+    def _crc8_mvb(self, data_bits_str):
+        """Compute MVB CRC-8 over data bits string."""
+        # CRC polynomial: x^8 + x^7 + x^6 + x^4 + x^2 + 1 = 0xE5
+        data_int = int(data_bits_str, 2)
+        data_len = len(data_bits_str)
+        crc = 0
+        for i in range(data_len):
+            if (data_int >> (data_len - 1 - i)) & 1:
+                crc ^= (1 << 7)
+            if crc & 0x80:
+                crc = (crc << 1) ^ 0xE5
+            else:
+                crc = crc << 1
+            crc &= 0xFF
+        # Invert and add parity
+        crc ^= 0xFF
+        parity = 0
+        for i in range(8):
+            parity ^= (crc >> i) & 1
+        crc = (crc << 1) | parity
+        return crc & 0x1FF  # 9 bits
+
+    def send_master_frame(self, f_code=0, address=0):
+        """Send a master frame: 18-bit master preamble + 4-bit F-code + 12-bit address + 8-bit CRC + parity.
+        F-code 0 = PD 2B (Process Data 2 bytes)."""
+        # Initial idle high so the falling edge of the first Manchester bit is detected
+        self.builder.set_level(self.ch, 1, self.tick_samples * 10)
+        # Master preamble: 0b101100011100010101
+        preamble = [1,0,1,1,0,0,0,1,1,1,0,0,0,1,0,1,0,1]
+        self._send_preamble(preamble)
+
+        # Data: F-code (4 bits) + Address (12 bits) = 16 bits
+        data_bits = []
+        for i in range(3, -1, -1):
+            data_bits.append((f_code >> i) & 1)
+        for i in range(11, -1, -1):
+            data_bits.append((address >> i) & 1)
+
+        # Compute CRC
+        data_str = ''.join(str(b) for b in data_bits)
+        check = self._crc8_mvb(data_str)
+
+        # Send data bits Manchester encoded
+        for bit in data_bits:
+            self._manchester_bit(bit)
+
+        # Send check sequence (9 bits)
+        for i in range(8, -1, -1):
+            self._manchester_bit((check >> i) & 1)
+
+        # Idle gap after frame (long high = end of frame marker)
+        self.builder.set_level(self.ch, 1, self.tick_samples * 20)
 
 class MorseGenerator:
     """Morse code generator.
@@ -2370,8 +2899,10 @@ class MorseGenerator:
 class LFASTGenerator:
     """LFAST (Low Frequency Addressable Serial Transceiver) generator.
     1 channel: DATA(ch0).
-    NRZ encoding: bit value = signal level (HIGH=1, LOW=0).
-    Decoders detect edges and measure bit_len from intervals between edges.
+    Edge-based NRZ encoding: both Python and C decoders detect edges and measure
+    bit_len from intervals between edges. Rising edge = bit 0, falling edge = bit 1.
+    The signal level during an interval = bit value. Edges separate groups of
+    same-value bits. The decoder counts bits by dividing interval duration by bit_len.
     Sync pattern: 0xA84B transmitted MSB first.
     Protocol: sync + 8-bit header (3 payload_size + 4 channel_type + 1 CTS) +
     variable payload + sleep bit via timeout."""
@@ -2383,17 +2914,48 @@ class LFASTGenerator:
         self.current_level = 0  # Start low
         builder.set_idle(channel, 0)
 
-    def _send_bit(self, bit_val):
-        """Send one bit using NRZ encoding: bit value = signal level.
-        HIGH = 1, LOW = 0. Hold level for one bit_width."""
-        level = bit_val
-        self.builder.set_level(self.ch, level, self.bit_width)
-        self.current_level = level
+    def _send_bits_edge_encoded(self, bits):
+        """Send a sequence of bits using edge-based NRZ encoding.
+        Groups consecutive same-value bits. The signal level during each group
+        equals the bit value. Transitions between groups create edges that the
+        decoder uses to determine bit values and count bits per interval.
+        Rising edge (0→1) = bit 0, Falling edge (1→0) = bit 1."""
+        if not bits:
+            return
+
+        # Group consecutive same bits
+        groups = []
+        current_bit = bits[0]
+        count = 1
+        for b in bits[1:]:
+            if b == current_bit:
+                count += 1
+            else:
+                groups.append((current_bit, count))
+                current_bit = b
+                count = 1
+        groups.append((current_bit, count))
+
+        # For each group, set signal to bit value level for the group duration,
+        # then transition to opposite level to create an edge for the decoder.
+        for bit_value, count in groups:
+            target_level = bit_value  # 0=low, 1=high
+            duration = count * self.bit_width
+            self.builder.set_level(self.ch, target_level, duration)
+            self.current_level = target_level
+
+        # After all groups, add a terminating edge so the decoder processes
+        # the last interval. Transition to the opposite level.
+        if groups:
+            last_bit = groups[-1][0]
+            next_level = 1 - last_bit
+            self.builder.set_level(self.ch, next_level, self.bit_width)
+            self.current_level = next_level
 
     def _send_bits_msb_first(self, value, num_bits):
-        """Send bits MSB first using NRZ encoding."""
-        for i in range(num_bits - 1, -1, -1):
-            self._send_bit((value >> i) & 1)
+        """Send bits MSB first using edge-based NRZ encoding."""
+        bits = [(value >> i) & 1 for i in range(num_bits - 1, -1, -1)]
+        self._send_bits_edge_encoded(bits)
 
     def send_frame(self, payload_size_id=0b001, channel_type=0b0100, cts=0,
                    payload_bytes=None, sleep_bit=0):
@@ -2430,17 +2992,17 @@ class LFASTGenerator:
             self._send_bits_msb_first(byte, 8)
 
         # Sleep bit: hold current level for 1.4*bit_width (no edge = timeout = sleep)
-        # For sleep_bit=0 (active): make a transition (bit 0 = LOW) to indicate no sleep
+        # For sleep_bit=0 (active): make a transition to create an edge (no sleep)
         # For sleep_bit=1 (sleep): hold level for longer (timeout triggers sleep)
         if sleep_bit:
             # Hold level for 1.5 * bit_width (no transition = timeout = sleep)
             self.builder.set_level(self.ch, self.current_level, int(1.5 * self.bit_width))
         else:
             # Send a bit with opposite value to create an edge (no sleep)
-            self._send_bit(0 if self.current_level == 1 else 1)
+            self._send_bits_edge_encoded([0 if self.current_level == 1 else 1])
 
-        # Idle gap after frame - hold current level, then return to low (idle)
-        self.builder.set_level(self.ch, self.current_level, self.bit_width * 4)
+        # Idle gap after frame
+        self.builder.set_level(self.ch, 0, self.bit_width * 4)
         self.current_level = 0
 
 class CCDGenerator:
@@ -2481,7 +3043,11 @@ class MapleBusGenerator:
     """Maple Bus (SEGA Dreamcast) generator.
     2 channels: SDCKA(ch0), SDCKB(ch1).
     Start: SDCKA low + SDCKB high, then 4 SDCKB falls before SDCKA rise = Start.
-    Byte: 4 bit-pairs via SDCKA fall->read SDCKB, SDCKB fall->read SDCKA."""
+    Byte: 4 bit-pairs via SDCKA fall->read SDCKB, SDCKB fall->read SDCKA.
+    Both lines idle high (open-drain with pull-ups).
+    The Python decoder waits for SDCKA falling OR SDCKB falling, and uses
+    if/elif (SDCKA fell checked first). When both fall simultaneously,
+    only SDCKA fell is processed. The generator must ensure proper edge ordering."""
     def __init__(self, builder, sdcka_ch=0, sdckb_ch=1, samplerate=1000000):
         self.builder = builder
         self.sdcka = sdcka_ch
@@ -2511,46 +3077,68 @@ class MapleBusGenerator:
         # SDCKA rises (end of start pattern), SDCKB stays high
         self._set_both(1, 1, self.bit_width)
 
-    def _send_byte(self, val):
-        """Send one byte: 4 bit-pairs.
-        Each bit-pair: SDCKA falls -> read SDCKB (bit_a), SDCKB falls -> read SDCKA (bit_b).
-        Both lines must be high before each falling edge.
-        Bits are collected MSB first (bit0 first, bit1 second per pair)."""
-        for bitpair in range(4):
-            # Get two bits for this pair
-            bit_a = (val >> (7 - bitpair * 2)) & 1
-            bit_b = (val >> (6 - bitpair * 2)) & 1
+    def _send_bit_pair(self, bit_a, bit_b):
+        """Send one bit-pair: SDCKA falls -> read SDCKB (bit_a), SDCKB falls -> read SDCKA (bit_b).
+        Both lines start high and end high.
 
-            # Ensure both lines are high before SDCKA falls
-            self._set_both(1, 1, self.bit_width)
-            # SDCKA falls -> decoder reads SDCKB = bit_a
-            # If bit_a=0, drive SDCKB low BEFORE SDCKA falls so decoder reads 0
-            # If bit_a=1, keep SDCKB high so decoder reads 1
-            if bit_a == 0:
-                # Drive SDCKB low first (while SDCKA is still high)
-                self._set_both(1, 0, self.bit_width)
-            # Now drive SDCKA low (falling edge on SDCKA)
-            self._set_both(0, bit_a, self.bit_width)
+        The decoder waits for SDCKA falling OR SDCKB falling (if/elif order).
+        When both fall simultaneously, only SDCKA fell is processed.
 
-            # Ensure SDCKB is high before it falls
-            # If bit_a was 0, SDCKB is low, need to release it
-            if bit_a == 0:
-                self._set_both(0, 1, self.bit_width)
-            # If bit_b=1, drive SDCKA high before SDCKB falls
+        Sequence:
+        1. SDCKA falls. SDCKB is at bit_a level (simultaneous transition if bit_a=0).
+           Decoder reads SDCKB = bit_a. counta++.
+        2. Set SDCKA to bit_b level (rising edge if bit_b=1, decoder ignores rising).
+        3. If SDCKB is low (bit_a=0), release SDCKB high (rising edge, decoder ignores).
+        4. Drive SDCKB low (falling edge). Decoder reads SDCKA = bit_b. countb++.
+        5. Both lines go high (release).
+        """
+        # Step 1: SDCKA falls, SDCKB set to bit_a
+        # If bit_a=1: SDCKB stays high (no SDCKB edge)
+        # If bit_a=0: SDCKB goes low simultaneously (SDCKB fell is ignored by if/elif)
+        self._set_both(0, bit_a, self.bit_width)
+
+        # Step 2: Set SDCKA to bit_b level
+        if bit_b == 1:
+            # SDCKA goes high (rising edge, decoder ignores)
+            self._set_both(1, bit_a, self.bit_width)
+        # If bit_b=0, SDCKA stays low (no change needed)
+
+        # Step 3: If SDCKB is low (bit_a=0), release it high
+        if bit_a == 0:
+            # SDCKB goes high (rising edge, decoder ignores)
             if bit_b == 1:
                 self._set_both(1, 1, self.bit_width)
-            # SDCKB falls -> decoder reads SDCKA = bit_b
-            self._set_both(bit_b, 0, self.bit_width)
-        # Both lines go high to complete byte
+            else:
+                self._set_both(0, 1, self.bit_width)
+
+        # Step 4: Drive SDCKB low (falling edge). Decoder reads SDCKA = bit_b.
+        self._set_both(bit_b, 0, self.bit_width)
+
+        # Step 5: Both lines go high (release)
         self._set_both(1, 1, self.bit_width)
 
+    def _send_byte(self, val):
+        """Send one byte: 4 bit-pairs.
+        Bits are collected MSB first (bit0 first, bit1 second per pair)."""
+        for bitpair in range(4):
+            bit_a = (val >> (7 - bitpair * 2)) & 1
+            bit_b = (val >> (6 - bitpair * 2)) & 1
+            self._send_bit_pair(bit_a, bit_b)
+
     def _send_end(self):
-        """Send end pattern: SDCKA=1, SDCKB=0, then SDCKA falls while SDCKB=0."""
+        """Send end pattern: both high, then SDCKA falls with SDCKB=0,
+        then both high again. The Python decoder detects end when:
+        counta==1, countb==0, data==0, sdckb==0 on SDCKA fell, then
+        SDCKA rises while SDCKB is high."""
         # Both high briefly
         self._set_both(1, 1, self.bit_width)
-        # SDCKA falls with SDCKB=0 (end condition)
+        # SDCKA falls with SDCKB=0 (decoder sees: counta=1,countb=0,data=0,sdckb=0)
         self._set_both(0, 0, self.bit_width)
-        # SDCKA rises
+        # Wait for both high (decoder waits for SDCKA=high, SDCKB=high)
+        self._set_both(1, 1, self.bit_width)
+        # SDCKA falls again (decoder checks: matched & 0b1 -> got_end)
+        self._set_both(0, 1, self.bit_width)
+        # Both high
         self._set_both(1, 1, self.bit_width)
 
     def send_frame(self, size_byte, src_ap, dst_ap, command, data_bytes=None):
@@ -2573,7 +3161,8 @@ class RVSWDGenerator:
     """RVSWD (RISC-V Serial Wire Debug) generator.
     2 channels: CLK(ch0), DIO(ch1).
     START: CLK high + DIO falling.
-    STOP: CLK high + DIO rising.
+    STOP: CLK high + DIO rising (Python requires matched==(False,False,True),
+    meaning ONLY the STOP condition matches, not CLK rising/falling simultaneously).
     Bits sampled on CLK rising, terminated on CLK falling.
     Short packet: 52 bits. Long packet: 84 bits."""
     def __init__(self, builder, clk_ch=0, dio_ch=1, samplerate=1000000):
@@ -2604,12 +3193,28 @@ class RVSWDGenerator:
 
     def _stop_condition(self):
         """STOP: CLK high, DIO rising edge.
-        CLK goes high, then DIO rises while CLK stays high."""
-        # CLK is currently low. Bring CLK high first, DIO stays at current value
+        The Python decoder requires matched==(False,False,True), meaning ONLY
+        the STOP condition (CLK high + DIO rising) matches, with no simultaneous
+        CLK rising edge. So CLK must already be stable high when DIO rises.
+
+        Strategy: the last bit's CLK rising edge is used, but CLK stays high
+        (doesn't fall). Then DIO can rise while CLK is already stable high.
+        The Python decoder will see the CLK rising edge as a bit sample, but
+        since CLK never falls, the bit is never terminated and not added to
+        self.bits. Then when DIO rises (STOP), process_packet() is called with
+        the correct number of terminated bits."""
+        # CLK is currently low after the last bit's falling edge.
+        # Set DIO low while CLK is still low (safe to change)
+        self.builder.set_level(self.dio, 0, self.half_period)
+        self.builder.pos -= self.half_period
+        self.builder.set_level(self.clk, 0, self.half_period)
+        # Now raise CLK - decoder sees CLK rising edge and pushes DIO value,
+        # but this bit won't be terminated (CLK stays high), so it won't be
+        # added to self.bits
         self.builder.set_level(self.clk, 1, self.half_period)
         self.builder.pos -= self.half_period
-        self.builder.set_level(self.dio, self._last_dio, self.half_period)
-        # DIO rises while CLK stays high (STOP condition)
+        self.builder.set_level(self.dio, 0, self.half_period)
+        # CLK is now stable high. DIO rises while CLK is high = STOP condition
         self.builder.set_level(self.clk, 1, self.half_period)
         self.builder.pos -= self.half_period
         self.builder.set_level(self.dio, 1, self.half_period)
@@ -2729,57 +3334,319 @@ class SDIOGenerator:
         self.builder.set_level(self.cmd, 1, self.half_period * 4)
 
 class DSIGenerator:
-    """DSI (Display Serial Interface) generator.
-    1 channel: DATA(ch0). SPI-like."""
+    """DSI (Digital Serial Interface) lighting protocol generator.
+    1 channel: DATA(ch0).
+    DSI uses biphase encoding: one bit = 1666.7us (1TE).
+    Each bit has two halves: first half = one level, second half = opposite level.
+    Start bit: 0→1 (low then high) with active-high polarity.
+    Data bits: 0 = same phase as start, 1 = opposite phase.
+    Backward frame: start bit + 8 data bits = 9 bits.
+    The decoder waits for an edge from IDLE, then processes PHASE0/PHASE1 pairs."""
     def __init__(self, builder, channel=0, samplerate=1000000):
         self.builder = builder
         self.ch = channel
-        self.bit_width = int(samplerate / 100000)
-        builder.set_idle(channel, 0)
+        self.sr = samplerate
+        # One bit = 1666.7us, halfbit = 833.35us
+        self.halfbit = max(2, int((samplerate * 0.0016667) / 2.0))
+        builder.set_idle(channel, 0)  # Idle low (active-high polarity)
 
-    def send_packet(self, data_type, data_val):
-        """Send a short DSI command packet."""
+    def _send_biphase_bit(self, bit, is_start=False):
+        """Send a biphase-encoded bit.
+        Start bit: low then high (0→1).
+        Data 0: same phase as previous (no transition at bit boundary).
+        Data 1: opposite phase (transition at bit boundary)."""
+        if is_start:
+            # Start bit: first half low, second half high
+            self.builder.set_level(self.ch, 0, self.halfbit)
+            self.builder.set_level(self.ch, 1, self.halfbit)
+            self.last_phase = 1  # ended high
+        else:
+            if bit:
+                # Bit 1: transition at bit boundary
+                if self.last_phase == 1:
+                    # Was high, go low then high
+                    self.builder.set_level(self.ch, 0, self.halfbit)
+                    self.builder.set_level(self.ch, 1, self.halfbit)
+                    self.last_phase = 1
+                else:
+                    # Was low, go high then low
+                    self.builder.set_level(self.ch, 1, self.halfbit)
+                    self.builder.set_level(self.ch, 0, self.halfbit)
+                    self.last_phase = 0
+            else:
+                # Bit 0: no transition at bit boundary
+                if self.last_phase == 1:
+                    # Was high, stay high then low
+                    self.builder.set_level(self.ch, 1, self.halfbit)
+                    self.builder.set_level(self.ch, 0, self.halfbit)
+                    self.last_phase = 0
+                else:
+                    # Was low, stay low then high
+                    self.builder.set_level(self.ch, 0, self.halfbit)
+                    self.builder.set_level(self.ch, 1, self.halfbit)
+                    self.last_phase = 1
+
+    def send_backward_frame(self, level=0x80):
+        """Send a DSI backward frame: start bit + 8 data bits.
+        Level is 0-255 dimmer value.
+        With active-high polarity (default):
+        - Raw idle = LOW (dsi=1 after inversion)
+        - Start bit: raw LOW→HIGH (dsi 1→0, start bit value=0)
+        - Stop bit: raw LOW-LOW (dsi 1-1, both phases = 1 = stop)"""
+        # Idle high before frame so the falling edge of the start bit is detected
+        # Wait - for active-high, idle raw=0 (dsi=1). We need an edge from dsi=1 to dsi=0,
+        # which means raw going from 0 to 1. So start with raw=0 (idle), then go to raw=1.
+        # But set_idle already sets everything to 0, so we need a period of 0 first,
+        # then the start bit begins with 0→1 transition.
+        # Actually, the decoder waits for ANY edge from old_dsi. For active-high, old_dsi=0.
+        # So we need dsi to change from 0 to 1, meaning raw goes from 1 to 0.
+        # So: start with raw=1 for a while (dsi=0=idle), then raw=0 (dsi=1=edge detected).
+        self.builder.set_level(self.ch, 1, self.halfbit * 4)
+        # Start bit: first half low, second half high
+        self._send_biphase_bit(0, is_start=True)
+        # 8 data bits MSB first
         for i in range(7, -1, -1):
-            bit = (data_type >> i) & 1
-            self.builder.set_level(self.ch, bit, self.bit_width)
-        for i in range(7, -1, -1):
-            bit = (data_val >> i) & 1
-            self.builder.set_level(self.ch, bit, self.bit_width)
+            self._send_biphase_bit((level >> i) & 1)
+        # Stop bit: both phases LOW in raw (dsi=1,1 = stop condition for active-high)
+        self.builder.set_level(self.ch, 0, self.halfbit)
+        self.builder.set_level(self.ch, 0, self.halfbit)
+        # Idle after frame (raw LOW = dsi HIGH = idle for active-high)
+        self.builder.set_level(self.ch, 0, self.halfbit * 4)
 
 class EM4305Generator:
-    """EM4305 RFID Manchester encoded generator.
-    1 channel: DATA(ch0). 64 bits like EM4100."""
+    """EM4305 RFID protocol generator.
+    1 channel: DATA(ch0).
+    The decoder looks for:
+    1. First Field Stop (FFS): a gap > 40*field_clock samples
+    2. Write gaps: gaps > 12*field_clock samples
+    3. Between gaps: short on-time = bit 0, long on-time = bit 1
+    field_clock = samplerate / coilfreq (default 125kHz)
+    At 1MHz samplerate: field_clock = 8 samples, FFS > 320 samples, write_gap > 96 samples"""
+    def __init__(self, builder, channel=0, samplerate=1000000, coilfreq=125000):
+        self.builder = builder
+        self.ch = channel
+        self.sr = samplerate
+        self.field_clock = max(1, int(samplerate / coilfreq))
+        builder.set_idle(channel, 1)  # Idle high (field present)
+
+    def _send_gap(self, duration_field_clocks):
+        """Send a gap (low) for the specified number of field clocks."""
+        self.builder.set_level(self.ch, 0, duration_field_clocks * self.field_clock)
+
+    def _send_field(self, duration_field_clocks):
+        """Send field (high) for the specified number of field clocks."""
+        self.builder.set_level(self.ch, 1, duration_field_clocks * self.field_clock)
+
+    def send_write_word(self, address=2, data=0x00000000):
+        """Send an EM4305 write word command.
+        First Field Stop + Write gaps encoding bits.
+        Write word format: 0 + cmd(3) + addr(4+2) + data(32) + col_parity(8) + stop = 50 bits
+        Simplified: send FFS then a sequence of gap-encoded bits."""
+        fc = self.field_clock
+        # First Field Stop: gap > 40 field clocks
+        self._send_field(100)  # Field before FFS
+        self._send_gap(50)     # FFS: > 40 field clocks
+        self._send_field(20)   # Field after FFS
+
+        # Now send write-gap encoded bits
+        # Each bit: field on for some time, then a gap
+        # Bit 0: short on (15-27 fc) + gap
+        # Bit 1: long on (> 27 fc, < 300 fc) + gap
+        # Write gap: > 12 field clocks
+
+        # Send a simple sequence: logic 0 + cmd 010 (Write) + address + data
+        # For simplicity, send alternating 0s and 1s
+        bits = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+                0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+                0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0]
+        for b in bits:
+            if b:
+                # Bit 1: long on time (30 field clocks) then gap
+                self._send_field(30)
+            else:
+                # Bit 0: short on time (20 field clocks) then gap
+                self._send_field(20)
+            # Write gap: 15 field clocks
+            self._send_gap(15)
+
+        # End: long field (no gap = write mode exit)
+        self._send_field(400)
+
+class T55xxGenerator:
+    """T55xx RFID protocol generator.
+    1 channel: DATA(ch0).
+    The decoder uses field clock gap encoding:
+    1. START_GAP: gap (low) > 20*field_clock triggers transition to WRITE_GAP
+    2. WRITE_GAP: between gaps, on-time determines bit value
+       - w_zero: 16-31 field_clocks = bit 0
+       - w_one: 48-63 field_clocks = bit 1
+    3. Write mode exit: no gap for > 64*field_clock samples
+    field_clock = samplerate / coilfreq (default 125kHz)
+    At 1MHz samplerate: field_clock = 8 samples"""
+    def __init__(self, builder, channel=0, samplerate=1000000, coilfreq=125000):
+        self.builder = builder
+        self.ch = channel
+        self.sr = samplerate
+        self.field_clock = max(1, int(samplerate / coilfreq))
+        builder.set_idle(channel, 1)  # Idle high (field present)
+
+    def _send_gap(self, duration_field_clocks):
+        """Send a gap (low) for the specified number of field clocks."""
+        self.builder.set_level(self.ch, 0, duration_field_clocks * self.field_clock)
+
+    def _send_field(self, duration_field_clocks):
+        """Send field (high) for the specified number of field clocks."""
+        self.builder.set_level(self.ch, 1, duration_field_clocks * self.field_clock)
+
+    def send_write_command(self, opcode=0b10, lock=0, data=0x00000000, address=0):
+        """Send a T55xx write command with 70 bits (standard write).
+        Format: opcode(2) + lock(1) + data(32) + address(3) = 38 bits
+        Or: opcode(2) + password(32) + lock(1) + data(32) + address(3) = 70 bits
+        Uses the 38-bit format (no password)."""
+        fc = self.field_clock
+        # Initial field before start gap
+        self._send_field(100)
+        # Start gap: > 20 field clocks
+        self._send_gap(30)
+        # Now in WRITE_GAP state - send bits via on-time between gaps
+        # Bit 0: on-time 16-31 fc, Bit 1: on-time 48-63 fc
+        # Write gap: > 20 field clocks between bits
+        bits = []
+        # Opcode: 2 bits
+        for i in range(1, -1, -1):
+            bits.append((opcode >> i) & 1)
+        # Lock: 1 bit
+        bits.append(lock)
+        # Data: 32 bits
+        for i in range(31, -1, -1):
+            bits.append((data >> i) & 1)
+        # Address: 3 bits
+        for i in range(2, -1, -1):
+            bits.append((address >> i) & 1)
+
+        for b in bits:
+            if b:
+                # Bit 1: long on-time (55 field clocks)
+                self._send_field(55)
+            else:
+                # Bit 0: short on-time (22 field clocks)
+                self._send_field(22)
+            # Write gap: 25 field clocks (> 20)
+            self._send_gap(25)
+
+        # Write mode exit: long field (> 64 field clocks with no gap)
+        self._send_field(400)
+
+class BEANGenerator:
+    """BEAN (Body Electronics Area Network) protocol generator.
+    1 channel: DATA(ch0).
+    The decoder is edge-based and measures pulse widths (time between edges).
+    - Pulses 150-650us: data pulses, count = puls//100, each count unit = 1 bit
+    - Pulses <=150us: single bit
+    - Pulses >=650us: frame separator (resets SOF)
+    - After 4 same-level bits, a stuff bit is inserted
+    - EOM when count==6
+    - Bit value = pin level at the start of the pulse
+    Frame format: SOF + PRI(4) + ML(4) + DST-ID(8) + MES-ID(8) + DATA(0-88) + CRC(8) + EOM(6) + RSP(2) + EOF(6)"""
     def __init__(self, builder, channel=0, samplerate=1000000):
         self.builder = builder
         self.ch = channel
-        self.bit_period = int(samplerate * 64 / 1000000)
-        self.half_bit = self.bit_period // 2
-        builder.set_idle(channel, 0)
+        self.sr = samplerate
+        builder.set_idle(channel, 0)  # Idle low
 
-    def _manchester_bit(self, bit):
-        if bit:
-            self.builder.set_level(self.ch, 0, self.half_bit)
-            self.builder.set_level(self.ch, 1, self.half_bit)
-        else:
-            self.builder.set_level(self.ch, 1, self.half_bit)
-            self.builder.set_level(self.ch, 0, self.half_bit)
+    def _us(self, us):
+        return max(1, int(us * self.sr / 1e6))
 
-    def send_card_data(self, card_id):
-        """Send EM4305 card data (simplified 64-bit pattern)."""
-        for _ in range(9):
-            self._manchester_bit(1)
-        data_bits = []
-        for i in range(39, -1, -1):
-            data_bits.append((card_id >> i) & 1)
-        for row in range(10):
-            row_bits = data_bits[row*4:(row+1)*4]
-            for b in row_bits:
-                self._manchester_bit(b)
-            self._manchester_bit(sum(row_bits) % 2)
-        for col in range(4):
-            col_p = sum(data_bits[col + row*4] for row in range(10)) % 2
-            self._manchester_bit(col_p)
-        self._manchester_bit(0)
+    def _send_pulse(self, level, duration_us):
+        """Send a pulse of the given level for the given duration in us."""
+        self.builder.set_level(self.ch, level, self._us(duration_us))
+
+    def _send_bits_with_stuffing(self, bits):
+        """Send a sequence of bits with bit stuffing.
+        After 4 consecutive same-level bits, insert a stuff bit (opposite level).
+        Each bit is a ~100us pulse. The decoder counts puls//100 for multi-bit pulses."""
+        consecutive = 0
+        last_level = None
+        stuffed_bits = []
+        for bit in bits:
+            level = 1 if bit else 0
+            if level == last_level:
+                consecutive += 1
+            else:
+                consecutive = 1
+                last_level = level
+            stuffed_bits.append(bit)
+            if consecutive == 4:
+                # Insert stuff bit (opposite level)
+                stuff_bit = 0 if bit else 1
+                stuffed_bits.append(stuff_bit)
+                consecutive = 1
+                last_level = 1 if stuff_bit else 0
+        return stuffed_bits
+
+    def send_frame(self, pri=0x04, dst_id=0xFE, mes_id=0xAB, data_bytes=None):
+        """Send a BEAN frame: SOF + PRI + ML + DST-ID + MES-ID + DATA + CRC + EOM + RSP + EOF."""
+        if data_bytes is None:
+            data_bytes = [0xA1, 0x80]
+
+        # Build bit sequence (excluding SOF/EOM/EOF)
+        # PRI: 4 bits
+        # ML: 4 bits (message length = number of data bytes + CRC byte)
+        # DST-ID: 8 bits
+        # MES-ID: 8 bits
+        # DATA: 8*len bits
+        # CRC: 8 bits
+        ml = len(data_bytes) + 1  # data + CRC
+        all_bits = []
+        # PRI (4 bits MSB first)
+        for i in range(3, -1, -1):
+            all_bits.append((pri >> i) & 1)
+        # ML (4 bits MSB first)
+        for i in range(3, -1, -1):
+            all_bits.append((ml >> i) & 1)
+        # DST-ID (8 bits MSB first)
+        for i in range(7, -1, -1):
+            all_bits.append((dst_id >> i) & 1)
+        # MES-ID (8 bits MSB first)
+        for i in range(7, -1, -1):
+            all_bits.append((mes_id >> i) & 1)
+        # DATA bytes
+        for byte_val in data_bytes:
+            for i in range(7, -1, -1):
+                all_bits.append((byte_val >> i) & 1)
+        # CRC (8 bits) - simple XOR of all bytes
+        crc = pri ^ ml ^ dst_id ^ mes_id
+        for b in data_bytes:
+            crc ^= b
+        for i in range(7, -1, -1):
+            all_bits.append((crc >> i) & 1)
+
+        # Apply bit stuffing
+        stuffed = self._send_bits_with_stuffing(all_bits)
+
+        # Frame separator: long pulse >= 650us (high)
+        self._send_pulse(1, 700)
+
+        # SOF: first pulse after separator (short pulse <= 150us)
+        # The decoder marks the first pulse as SOF
+        self._send_pulse(1, 100)
+
+        # Data bits: each bit is a ~100us pulse
+        # Group consecutive same-level bits into multi-bit pulses (150-550us)
+        # For simplicity, send each bit as a separate ~100us pulse
+        for bit in stuffed:
+            level = 1 if bit else 0
+            self._send_pulse(level, 100)
+
+        # EOM: 6-bit pulse (600us) - count=6 triggers EOM
+        self._send_pulse(1, 600)
+
+        # RSP: 2 bits
+        self._send_pulse(0, 100)
+        self._send_pulse(0, 100)
+
+        # EOF: long pulse >= 650us
+        self._send_pulse(0, 700)
 
 class TL5620Generator:
     """TL5620 DAC protocol generator (alias for TLC5620).

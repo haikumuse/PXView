@@ -50,6 +50,7 @@ typedef struct {
     uint64_t ss_packet;
     uint64_t ss;
     uint64_t es;
+    uint64_t last_samplenum;
     int bits[32];
     int bit_count;
     int colorsize;     /* 24 or 32 */
@@ -288,6 +289,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             if (ret != SRD_OK) return;
+            s->last_samplenum = samplenum;
 
             s->ss = samplenum;
 
@@ -297,6 +299,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             if (ret != SRD_OK) return;
+            s->last_samplenum = samplenum;
 
             s->es = samplenum;
 
@@ -312,6 +315,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
                 ret = c_cond_wait(cb, di, &samplenum, &matched);
                 c_cond_free(cb);
                 if (ret != SRD_OK) return;
+                s->last_samplenum = samplenum;
                 s->state = STATE_BIT_FALLING;
             }
             break;
@@ -326,6 +330,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             if (ret != SRD_OK) return;
+            s->last_samplenum = samplenum;
             s->state = STATE_BIT_FALLING;
             break;
 
@@ -336,6 +341,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             if (ret != SRD_OK) return;
+            s->last_samplenum = samplenum;
 
             if ((samplenum - s->es) > s->reset_threshold) {
                 /* Check bit value before RESET */
@@ -377,6 +383,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
             ret = c_cond_wait(cb, di, &samplenum, &matched);
             c_cond_free(cb);
             if (ret != SRD_OK) return;
+            s->last_samplenum = samplenum;
             s->state = STATE_BIT_FALLING;
             break;
         }
@@ -391,7 +398,7 @@ static void ws281x_end(struct srd_decoder_inst *di)
 
     /* Flush the last bit when data ends in BIT_FALLING state,
      * matching Python's end() method behavior */
-    ws281x_check_bit(s, s->es);
+    ws281x_check_bit(s, s->last_samplenum);
     char bit_str[4];
     snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
     C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
