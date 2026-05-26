@@ -353,8 +353,8 @@ static int decode_frame_end(canfd_state *s, struct srd_decoder_inst *di,
                 s->crc_data[s->num_crc_data++] = can_rx;
             s->crc = (uint32_t)bitpack_msb(s->crc_data, s->num_crc_data);
         } else {
-            if (x + s->crc_len + 1 <= s->num_bits)
-                s->crc = (uint32_t)bitpack_msb(&s->bits[x], s->crc_len + 1);
+            if (x + s->crc_len <= s->num_bits)
+                s->crc = (uint32_t)bitpack_msb(&s->bits[x], s->crc_len);
         }
 
         char t1[64], t2[48], t3[16];

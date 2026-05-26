@@ -181,9 +181,12 @@ static void lfast_decode(struct srd_decoder_inst *di)
                 }
                 /* First valid bit_len detected, mark sync start */
                 s->ss_sync = s->ss;
+                /* Fall through to process bits in this first gap,
+                   just like the Python decoder does */
+            } else {
+                s->ss = s->es;
+                continue;
             }
-            s->ss = s->es;
-            continue;
         }
 
         /* Calculate bit count between edges */
@@ -198,11 +201,13 @@ static void lfast_decode(struct srd_decoder_inst *di)
             continue;
         }
 
-        /* Fill bits: the value before the edge is (1 - val) for bit_count-1 bits,
-           then val for the last bit */
+        /* Fill bits: the value before the edge is (1 - val) for all bits.
+           Rising edge (val=1) means level was 0 before → bit 0.
+           Falling edge (val=0) means level was 1 before → bit 1.
+           This matches the Python decoder: rising=0, falling=1. */
         int prev_val = 1 - val;
         for (int i = 0; i < bit_count && s->bit_count < 64; i++) {
-            int bval = (i < bit_count - 1) ? prev_val : val;
+            int bval = prev_val;
             s->bits[s->bit_count++] = bval;
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", bval);

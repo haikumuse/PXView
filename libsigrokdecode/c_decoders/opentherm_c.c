@@ -222,11 +222,15 @@ static void reset_decoder_state(ot_priv *s)
     s->bit_count = 0;
 }
 
-static void handle_timing_error(struct srd_decoder_inst *di, ot_priv *s)
+static void handle_timing_error(struct srd_decoder_inst *di, ot_priv *s,
+    uint64_t tss, uint64_t tes)
 {
-    C_ANN_PUT(di, s->c_samplenum, s->c_samplenum, s->out_ann, ANN_TIMING,
-              "Timing error", "T-err", "T");
-    s->last_frame_edge = s->c_samplenum;
+    int64_t us = s2t(s, tes - tss);
+    char text[64];
+    snprintf(text, sizeof(text), "Timing error (%lld us)", (long long)us);
+    C_ANN_PUT(di, tss, tes, s->out_ann, ANN_TIMING,
+              text, "Timing", "T");
+    s->last_frame_edge = tes;
 }
 
 static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
@@ -548,7 +552,7 @@ static void ot_decode(struct srd_decoder_inst *di)
                 C_ANN_PUT(di, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1],
                           s->out_ann, ANN_WARNING,
                           "Sync error: start bit len error", "Sync err", "S");
-                handle_timing_error(di, s);
+                handle_timing_error(di, s, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1]);
                 bit = -1;
                 reset_decoder_state(s);
             }
@@ -563,7 +567,7 @@ static void ot_decode(struct srd_decoder_inst *di)
                 bitpos = s->c_samplenum - s->halfbit;
             } else {
                 handle_bits(di, s);
-                handle_timing_error(di, s);
+                handle_timing_error(di, s, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1]);
                 bit = -1;
                 reset_decoder_state(s);
             }
@@ -578,7 +582,7 @@ static void ot_decode(struct srd_decoder_inst *di)
                 bitpos = s->c_samplenum - s->halfbit;
             } else {
                 handle_bits(di, s);
-                handle_timing_error(di, s);
+                handle_timing_error(di, s, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1]);
                 bit = -1;
                 reset_decoder_state(s);
             }
@@ -590,7 +594,7 @@ static void ot_decode(struct srd_decoder_inst *di)
                 bitpos = s->edges[s->edge_count - 2];
             } else {
                 handle_bits(di, s);
-                handle_timing_error(di, s);
+                handle_timing_error(di, s, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1]);
                 bit = -1;
                 reset_decoder_state(s);
             }
@@ -602,7 +606,7 @@ static void ot_decode(struct srd_decoder_inst *di)
                 bitpos = s->edges[s->edge_count - 2];
             } else {
                 handle_bits(di, s);
-                handle_timing_error(di, s);
+                handle_timing_error(di, s, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1]);
                 bit = -1;
                 reset_decoder_state(s);
             }

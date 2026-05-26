@@ -1,7 +1,106 @@
 {
 	"decoder": "rinnai_control_panel_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 11,
 	"annotations": [
+		{
+			"start_sample": 500,
+			"end_sample": 1000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 1500,
+			"end_sample": 2000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 2500,
+			"end_sample": 3000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 3500,
+			"end_sample": 4500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Reset: 1000"
+			]
+		}, 
+		{
+			"start_sample": 4500,
+			"end_sample": 5500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad Bit: 500,500"
+			]
+		}, 
+		{
+			"start_sample": 6000,
+			"end_sample": 6500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 7000,
+			"end_sample": 7500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 8000,
+			"end_sample": 8500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 9000,
+			"end_sample": 9500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 10000,
+			"end_sample": 10500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}, 
+		{
+			"start_sample": 11500,
+			"end_sample": 12000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Bad pre: 500"
+			]
+		}
 	]
 }

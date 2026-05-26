@@ -1,6 +1,6 @@
 {
   "decoder": "usb_power_delivery_c",
-  "samplerate": 12000000,
+  "samplerate": 10000000,
   "num_channels": 1,
   "sample_count": 20000,
   "channels": {

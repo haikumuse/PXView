@@ -1,7 +1,7 @@
 {
   "decoder": "sda2506_c",
   "samplerate": 1000000,
-  "num_channels": 3,
+  "num_channels": 2,
   "sample_count": 20000,
   "channels": {
     "clk": 0,

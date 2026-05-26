@@ -375,15 +375,20 @@ static void jtag_decode(struct srd_decoder_inst* di)
             }
         }
 
-        if (newstate != oldstate) {
+        /* Emit state annotation on every rising TCK edge (except the first),
+         * matching Python decoder behavior. Python emits the OLD state
+         * annotation from the previous edge to the current edge. */
+        if (priv->first) {
+            priv->first = FALSE;
+        } else {
             C_ANN_PUT(di, ss_state, samplenum, priv->out_ann, oldstate,
                 jtag_ann_labels[oldstate][2]);
-            /* Fix #1: Include state name in NEW STATE protocol output */
+            /* Include state name in NEW STATE protocol output */
             const char* state_name = jtag_state_names[newstate];
             c_decoder_put_python(di, ss_state, samplenum, priv->out_python,
                 "NEW STATE", (const unsigned char*)state_name, strlen(state_name));
-            ss_state = samplenum;
         }
+        ss_state = samplenum;
 
         priv->oldstate = oldstate;
         priv->state = newstate;

@@ -288,13 +288,6 @@ static void swd_decode(struct srd_decoder_inst* di)
                 int park_bit = s->bits[s->bits_len - 1] - '0';
 
                 if (start_bit == 1 && stop_bit == 0 && park_bit == 1) {
-                    int parity_bit = s->bits[s->bits_len - 3] - '0';
-                    int calc_parity = (apdp_bit + rw_bit + addr_bit0 + addr_bit1) % 2;
-                    if (calc_parity != parity_bit) {
-                        uint64_t ss_parity = s->samplenums[s->bits_len - 3];
-                        C_ANN_PUT(di, ss_parity, samplenum, s->out_ann, ANN_PARITY, "Parity error in request");
-                    }
-
                     s->rw = rw_bit;
                     s->apdp = apdp_bit;
                     s->addr = (addr_bit1 * 2 + addr_bit0) << 2;

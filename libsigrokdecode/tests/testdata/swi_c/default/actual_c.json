@@ -1,7 +1,43 @@
 {
 	"decoder": "swi_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 4,
 	"annotations": [
+		{
+			"start_sample": 52,
+			"end_sample": 260,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"[START]"
+			]
+		}, 
+		{
+			"start_sample": 260,
+			"end_sample": 468,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"[START]"
+			]
+		}, 
+		{
+			"start_sample": 468,
+			"end_sample": 676,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"[START]"
+			]
+		}, 
+		{
+			"start_sample": 676,
+			"end_sample": 832,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"[START]"
+			]
+		}
 	]
 }

@@ -1,6 +1,6 @@
 {
 	"decoder": "ethernet",
-	"samplerate": 50000000,
+	"samplerate": 1000000,
 	"num_annotations": 0,
 	"annotations": [
 	]

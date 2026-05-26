@@ -4,5 +4,13 @@
   "num_channels": 2,
   "sample_count": 20000,
   "channels": {},
-  "stack": []
+  "stack": [
+    {
+      "id": "mdio_c",
+      "channels": {
+        "mdc": 0,
+        "mdio": 1
+      }
+    }
+  ]
 }

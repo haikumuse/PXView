@@ -67,6 +67,11 @@ def compare_text_semantic(py_text, c_text):
     def normalize(t): return t.replace(' ', '').replace('μ', 'µ').replace('u', 'µ')
     return normalize(py_text) == normalize(c_text)
 
+def _parse_matches_count(detail):
+    """Extract the match count from a detail string like 'All 5 annotations match'."""
+    m = re.match(r'All (\d+) annotations', detail)
+    return int(m.group(1)) if m else -1
+
 def compare_annotations(py_data, c_data):
     if not isinstance(py_data, dict) or not isinstance(c_data, dict):
         return False, "Output is not a JSON object"
@@ -102,7 +107,10 @@ def compare_annotations(py_data, c_data):
                     mismatches.append(msg)
             elif pa: mismatches.append(f"MISSED at sample {s}: Py has class {cls} ({pa.get('texts', [''])[0]}) but C doesn't")
             elif ca: mismatches.append(f"EXTRA at sample {s}: C has class {cls} ({ca.get('texts', [''])[0]}) but Py doesn't")
-    if not mismatches: return True, f"All {matches_count} annotations match"
+    if not mismatches:
+        if matches_count == 0:
+            return True, f"All 0 annotations match (vacuous - no output from either decoder)"
+        return True, f"All {matches_count} annotations match"
     report = f"{matches_count} matches, {len(mismatches)} deviations found.\n" + "\n".join(mismatches[:10])
     if len(mismatches) > 10: report += f"\n... and {len(mismatches) - 10} more"
     return False, report
@@ -202,6 +210,8 @@ def run_test(c_decoder, testdata_dir):
         if c_err: return 'ERROR', f"C error: {c_err}", time.time() - t0
         
         passed, detail = compare_annotations(py_data, c_data)
+        if passed and _parse_matches_count(detail) == 0:
+            return 'WARN', detail, time.time() - t0
         return ('PASS' if passed else 'FAIL'), detail, time.time() - t0
     except Exception as e: return 'ERROR', str(e), 0
 
@@ -232,7 +242,7 @@ def main():
         print("No test cases found."); return
 
     print(f"Running {len(test_cases)} tests in parallel ({args.jobs} jobs)...")
-    results = []; counts = {'PASS': 0, 'FAIL': 0, 'ERROR': 0, 'SKIP': 0}
+    results = []; counts = {'PASS': 0, 'WARN': 0, 'FAIL': 0, 'ERROR': 0, 'SKIP': 0}
     
     with ThreadPoolExecutor(max_workers=args.jobs) as executor:
         f_to_test = {executor.submit(run_test, d, p): (d, p) for d, p in test_cases}
@@ -242,7 +252,7 @@ def main():
             results.append((d, p, status, detail, elapsed))
             counts[status] += 1
             print(f"[{i:3}/{len(test_cases):3}] {d:25} | {status:5} | {elapsed:4.1f}s")
-            if status in ('FAIL', 'ERROR'): print(f"      -> {detail.splitlines()[0]}")
+            if status in ('FAIL', 'ERROR', 'WARN'): print(f"      -> {detail.splitlines()[0]}")
 
     with open(CSV_OUTPUT, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
@@ -250,7 +260,7 @@ def main():
         for r in results: writer.writerow(r)
 
     print("\n" + "="*70 + f"\nSUMMARY\n" + "="*70)
-    print(f"  Total: {len(results)}  PASS: {counts['PASS']}  FAIL: {counts['FAIL']}  ERROR: {counts['ERROR']}  SKIP: {counts['SKIP']}")
+    print(f"  Total: {len(results)}  PASS: {counts['PASS']}  WARN: {counts['WARN']}  FAIL: {counts['FAIL']}  ERROR: {counts['ERROR']}  SKIP: {counts['SKIP']}")
     if counts['FAIL'] > 0 or counts['ERROR'] > 0: sys.exit(1)
 
 if __name__ == '__main__':

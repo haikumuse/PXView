@@ -215,8 +215,8 @@ static int decode_frame_end(can_state *s, struct srd_decoder_inst *di,
     }
     if (bitnum == s->last_databit + s->crc_len) {
         int x = s->last_databit + 1;
-        if (x + s->crc_len + 1 <= s->num_bits)
-            s->crc = bitpack_msb(&s->bits[x], s->crc_len + 1);
+        if (x + s->crc_len <= s->num_bits)
+            s->crc = bitpack_msb(&s->bits[x], s->crc_len);
         char t1[64], t2[48], t3[16];
         snprintf(t1, sizeof(t1), "CRC-15 sequence: 0x%04x", s->crc);
         snprintf(t2, sizeof(t2), "CRC-15: 0x%04x", s->crc);

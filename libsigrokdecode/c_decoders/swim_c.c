@@ -254,7 +254,8 @@ static void detect_synchronize_frame(struct srd_decoder_inst *di, struct swim_pr
 {
     uint64_t low_duration = end - s->eseq_edge_ss[1];
     if (low_duration >= s->sync_reflen_min && low_duration <= s->sync_reflen_max) {
-        C_ANN_PUT(di, s->eseq_edge_ss[1], end, s->out_ann, ANN_ENTERSEQ, "synchronization frame");
+        C_ANN_PUT(di, s->eseq_edge_ss[1], end, s->out_ann, ANN_ENTERSEQ,
+                  "synchronization frame", "synchronization", "sync", "s");
 
         s->bit_edge_val[0] = -1; s->bit_edge_ss[0] = 0;
         s->bit_edge_val[1] = -1; s->bit_edge_ss[1] = 0;

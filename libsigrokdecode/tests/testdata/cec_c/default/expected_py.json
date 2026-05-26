@@ -1,7 +1,79 @@
 {
 	"decoder": "cec",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 8,
 	"annotations": [
+		{
+			"start_sample": 3700,
+			"end_sample": 6000,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}, 
+		{
+			"start_sample": 6000,
+			"end_sample": 8100,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}, 
+		{
+			"start_sample": 8100,
+			"end_sample": 10200,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}, 
+		{
+			"start_sample": 10200,
+			"end_sample": 12300,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}, 
+		{
+			"start_sample": 12300,
+			"end_sample": 14400,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}, 
+		{
+			"start_sample": 14400,
+			"end_sample": 15600,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}, 
+		{
+			"start_sample": 15600,
+			"end_sample": 17700,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}, 
+		{
+			"start_sample": 17700,
+			"end_sample": 19800,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Expected START: BIT found"
+			]
+		}
 	]
 }

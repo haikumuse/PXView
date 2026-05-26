@@ -1,6 +1,6 @@
 {
   "decoder": "cjtag_oscan0_c",
-  "samplerate": 10000000,
+  "samplerate": 1000000,
   "num_channels": 4,
   "sample_count": 20000,
   "channels": {

@@ -106,10 +106,32 @@ static void collect_callback(struct srd_proto_data *pdata, void *cb_data)
     }
     item->texts = (char **)calloc(n_texts + 1, sizeof(char *));
     for (int i = 0; i < n_texts; i++) {
-        if (ann->ann_text[i])
-            item->texts[i] = strdup(ann->ann_text[i]);
-        else
+        if (ann->ann_text[i]) {
+            /* Apply same @-prefix handling as py_parse_ann_data does for Python decoders:
+               If text starts with '@' and the rest is a valid hex string (1-15 chars),
+               replace the text with "\n" (ignore flag) and store the hex in str_number_hex. */
+            const char *src = ann->ann_text[i];
+            if (src[0] == '@') {
+                int hlen = (int)strlen(src + 1);
+                int valid_hex = (hlen > 0 && hlen < 16);
+                if (valid_hex) {
+                    for (int h = 1; src[h]; h++) {
+                        char c = src[h];
+                        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+                            valid_hex = 0;
+                            break;
+                        }
+                    }
+                }
+                if (valid_hex) {
+                    item->texts[i] = strdup("\n");
+                    continue;
+                }
+            }
+            item->texts[i] = strdup(src);
+        } else {
             item->texts[i] = strdup("");
+        }
     }
     item->texts[n_texts] = NULL;
 

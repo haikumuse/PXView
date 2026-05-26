@@ -1,7 +1,25 @@
 {
 	"decoder": "iso7816",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 2,
 	"annotations": [
+		{
+			"start_sample": 1488,
+			"end_sample": 17110,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"CHKSUM ERROR bits=[0, 1, 1, 1, 1, 1, 1, 1, 1, 1]"
+			]
+		}, 
+		{
+			"start_sample": 1488,
+			"end_sample": 17110,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0xff"
+			]
+		}
 	]
 }

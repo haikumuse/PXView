@@ -1,7 +1,19 @@
 {
 	"decoder": "swim",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 1,
 	"annotations": [
+		{
+			"start_sample": 3,
+			"end_sample": 10,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"synchronization frame", 
+				"synchronization", 
+				"sync", 
+				"s"
+			]
+		}
 	]
 }

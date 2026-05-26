@@ -46,6 +46,7 @@ struct sle44xx_priv {
     /* Bit collection */
     struct { int val; uint64_t ss; uint64_t es; } bits[8];
     int bit_count;
+    int cur_bit_started;
 
     /* ATR byte collection */
     struct { uint8_t data; uint64_t ss; uint64_t es; } atr_bytes[4];
@@ -358,6 +359,7 @@ static void sle44xx_handle_data_bit(struct srd_decoder_inst *di, struct sle44xx_
             s->bits[s->bit_count].val = bit_val;
             s->bits[s->bit_count].ss = ss;
             s->bits[s->bit_count].es = ss;
+            s->cur_bit_started = 1;
         }
         return;
     }
@@ -365,13 +367,16 @@ static void sle44xx_handle_data_bit(struct srd_decoder_inst *di, struct sle44xx_
     /* End edge: update bit es */
     if (s->bit_count >= 8)
         return;
+    if (!s->cur_bit_started)
+        return;
     if (s->bit_count < 8) {
         s->bits[s->bit_count].es = es;
         /* Emit bit annotation */
         char bit_str[4];
-        snprintf(bit_str, sizeof(bit_str), "%d", bit_val);
+        snprintf(bit_str, sizeof(bit_str), "%d", s->bits[s->bit_count].val);
         C_ANN_PUT(di, s->bits[s->bit_count].ss, es, s->out_ann, ANN_BIT_SYM, bit_str);
         s->bit_count++;
+        s->cur_bit_started = 0;
     }
 
     if (s->bit_count < 8)
@@ -406,6 +411,7 @@ static void sle44xx_handle_data_bit(struct srd_decoder_inst *di, struct sle44xx_
     sle44xx_handle_data_byte(di, s, bss, bes, data);
 
     s->bit_count = 0;
+    s->cur_bit_started = 0;
 }
 
 static void sle44xx_reset(struct srd_decoder_inst *di)
@@ -513,11 +519,13 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
                     /* RESET with CLK pulse */
                     C_ANN_PUT(di, ss_reset, es_reset, s->out_ann, ANN_RESET_SYM, "Reset", "R");
                     s->bit_count = 0;
+                    s->cur_bit_started = 0;
                     s->state = STATE_ATR;
                 } else {
                     /* INTERRUPT (no CLK pulse) */
                     C_ANN_PUT(di, ss_reset, es_reset, s->out_ann, ANN_INTR_SYM, "Interrupt", "Intr", "I");
                     s->bit_count = 0;
+                    s->cur_bit_started = 0;
                     s->state = STATE_NONE;
                 }
                 has_reset_start = 0;
@@ -557,6 +565,7 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
                 sle44xx_flush_queued(di, s);
                 C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_START_SYM, "Start", "ST", "S");
                 s->bit_count = 0;
+                s->cur_bit_started = 0;
                 s->state = STATE_CMD;
                 continue;
             }
@@ -564,6 +573,7 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
                 /* STOP condition */
                 C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_STOP_SYM, "Stop", "SP", "P");
                 s->bit_count = 0;
+                s->cur_bit_started = 0;
                 s->state = STATE_DATA;
                 continue;
             }

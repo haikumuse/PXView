@@ -261,14 +261,15 @@ static void onewire_decode(struct srd_decoder_inst* di)
                     bit_val = 0; /* Long pulse = bit 0 */
                 }
 
+                uint64_t bit_end = s->ss_fall + us_to_samples(samplerate, ow_timing.SLOT_min[od]);
                 char bit_long[16], bit_short[4];
                 snprintf(bit_long, sizeof(bit_long), "Bit: %d", bit_val);
                 snprintf(bit_short, sizeof(bit_short), "%d", bit_val);
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_BIT,
+                C_ANN_PUT(di, s->ss_fall, bit_end, s->out_ann, ANN_BIT,
                     bit_long, bit_short);
 
                 unsigned char bit_byte = (unsigned char)bit_val;
-                c_decoder_put_python(di, s->ss_fall, samplenum, s->out_python, "BIT", &bit_byte, 1);
+                c_decoder_put_python(di, s->ss_fall, bit_end, s->out_python, "BIT", &bit_byte, 1);
 
                 /* Handle byte assembly */
                 if (s->bit_cnt >= 0) {

@@ -1,7 +1,295 @@
 {
 	"decoder": "cjtag_oscan1",
-	"samplerate": 10000000,
-	"num_annotations": 0,
+	"samplerate": 1000000,
+	"num_annotations": 32,
 	"annotations": [
+		{
+			"start_sample": 10,
+			"end_sample": 20,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"TEST-LOGIC-RESET"
+			]
+		}, 
+		{
+			"start_sample": 10,
+			"end_sample": 20,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 20,
+			"end_sample": 30,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"TEST-LOGIC-RESET"
+			]
+		}, 
+		{
+			"start_sample": 20,
+			"end_sample": 30,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 30,
+			"end_sample": 40,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"TEST-LOGIC-RESET"
+			]
+		}, 
+		{
+			"start_sample": 30,
+			"end_sample": 40,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 40,
+			"end_sample": 50,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"TEST-LOGIC-RESET"
+			]
+		}, 
+		{
+			"start_sample": 40,
+			"end_sample": 50,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 50,
+			"end_sample": 60,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"TEST-LOGIC-RESET"
+			]
+		}, 
+		{
+			"start_sample": 50,
+			"end_sample": 60,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 60,
+			"end_sample": 70,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 60,
+			"end_sample": 70,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 70,
+			"end_sample": 80,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 70,
+			"end_sample": 80,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 80,
+			"end_sample": 90,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 80,
+			"end_sample": 90,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 90,
+			"end_sample": 100,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 90,
+			"end_sample": 100,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 100,
+			"end_sample": 110,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 100,
+			"end_sample": 110,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 110,
+			"end_sample": 120,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 110,
+			"end_sample": 120,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 120,
+			"end_sample": 130,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 120,
+			"end_sample": 130,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 130,
+			"end_sample": 140,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 130,
+			"end_sample": 140,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 140,
+			"end_sample": 150,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 140,
+			"end_sample": 150,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 150,
+			"end_sample": 160,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"SELECT-DR-SCAN"
+			]
+		}, 
+		{
+			"start_sample": 150,
+			"end_sample": 160,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 160,
+			"end_sample": 170,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"SELECT-IR-SCAN"
+			]
+		}, 
+		{
+			"start_sample": 160,
+			"end_sample": 170,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}
 	]
 }

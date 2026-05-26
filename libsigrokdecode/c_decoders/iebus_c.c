@@ -194,11 +194,14 @@ static int read_broadcast_bit(iebus_state *s, struct srd_decoder_inst *di)
     if (broadcast_bit < 0)
         return -1;
 
+    static const char *unicast_txts[] = {"Unicast", "Uni", "U", NULL};
+    static const char *broadcast_txts[] = {"Broadcast", "Bro", "B", NULL};
+
     const char **anno;
     if (broadcast_bit == 1)
-        anno = (const char *[]){"Unicast", "Uni", "U", NULL};
+        anno = unicast_txts;
     else
-        anno = (const char *[]){"Broadcast", "Bro", "B", NULL};
+        anno = broadcast_txts;
 
     iebus_put(s, di, s->bits_begin, s->bits_end, ANN_BROADCAST, anno);
     return broadcast_bit;

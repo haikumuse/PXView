@@ -163,7 +163,7 @@ static void pxx1_add_byte(struct srd_decoder_inst *di, uint8_t byte_val)
     struct pxx1_priv *s = (struct pxx1_priv *)c_decoder_get_private(di);
 
     char h[8];
-    snprintf(h, sizeof(h), "0x%02X", byte_val);
+    snprintf(h, sizeof(h), "%02X", byte_val);
     C_ANN_PUT(di, s->byte_start, s->es_block, s->out_ann, ANN_BYTE, h);
 
     if (s->out_binary >= 0)
@@ -226,7 +226,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
             if (s->state_word == PXX_HEADER) {
                 C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Start Header", "SH");
             } else {
-                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error", "ERR");
+                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error");
                 pxx1_break_rx(di);
                 return;
             }
@@ -445,7 +445,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
             if (s->state_word == PXX_HEADER) {
                 C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Stop Header", "SH");
             } else {
-                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error", "ERR");
+                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error");
             }
             s->state_bit = 0;
             s->state_word = 0;
