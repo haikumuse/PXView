@@ -2,10 +2,13 @@
   "decoder": "stepper_motor_c",
   "samplerate": 1000000,
   "num_channels": 2,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "step": 0,
     "dir": 1
   },
-  "stack": []
+  "options": {
+    "unit": "steps",
+    "steps_per_mm": 100.0
+  }
 }

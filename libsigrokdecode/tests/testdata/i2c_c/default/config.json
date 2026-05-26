@@ -2,10 +2,14 @@
   "decoder": "i2c_c",
   "samplerate": 1000000,
   "num_channels": 2,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "scl": 0,
     "sda": 1
   },
-  "stack": []
+  "options": {
+    "address_format": "shifted",
+    "packets_format": "hex",
+    "show_data_point": "yes"
+  }
 }

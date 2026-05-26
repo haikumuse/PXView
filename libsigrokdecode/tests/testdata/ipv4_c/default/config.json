@@ -1,21 +1,10 @@
 {
   "decoder": "ipv4_c",
   "samplerate": 1000000,
-  "num_channels": 1,
-  "sample_count": 100000,
+  "needs_upstream": true,
+  "inputs": [
+    "ethernet"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "ethernet_c"
-    },
-    {
-      "id": "4b5b_c"
-    },
-    {
-      "id": "nrzi_c",
-      "channels": {
-        "data": 0
-      }
-    }
-  ]
+  "options": {}
 }

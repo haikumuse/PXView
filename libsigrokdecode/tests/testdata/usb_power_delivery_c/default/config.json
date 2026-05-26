@@ -1,10 +1,13 @@
 {
   "decoder": "usb_power_delivery_c",
-  "samplerate": 10000000,
-  "num_channels": 1,
-  "sample_count": 200000,
+  "samplerate": 12000000,
+  "num_channels": 2,
+  "sample_count": 20000,
   "channels": {
-    "cc1": 0
+    "cc1": 0,
+    "cc2": 1
   },
-  "stack": []
+  "options": {
+    "fulltext": "no"
+  }
 }

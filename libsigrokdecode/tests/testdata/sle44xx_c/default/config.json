@@ -2,11 +2,11 @@
   "decoder": "sle44xx_c",
   "samplerate": 1000000,
   "num_channels": 3,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "rst": 0,
     "clk": 1,
     "io": 2
   },
-  "stack": []
+  "options": {}
 }

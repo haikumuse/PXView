@@ -1,10 +1,10 @@
 {
   "decoder": "ir_rc6_c",
-  "samplerate": 1000000,
+  "samplerate": 100000,
   "num_channels": 1,
-  "sample_count": 200000,
+  "sample_count": 100000,
   "channels": {
     "ir": 0
   },
-  "stack": []
+  "options": {}
 }

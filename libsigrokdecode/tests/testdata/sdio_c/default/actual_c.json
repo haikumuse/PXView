@@ -1,8 +1,19 @@
 {
 	"decoder": "sdio_c",
 	"samplerate": 1000000,
-	"num_annotations": 56,
+	"num_annotations": 57,
 	"annotations": [
+		{
+			"start_sample": 8,
+			"end_sample": 12,
+			"ann_class": 138,
+			"ann_type": 145,
+			"texts": [
+				"Start of Data", 
+				"Start", 
+				"S"
+			]
+		}, 
 		{
 			"start_sample": 8,
 			"end_sample": 12,
@@ -442,7 +453,8 @@
 			"ann_type": 136,
 			"texts": [
 				"Start bit", 
-				"Start"
+				"Start", 
+				"S"
 			]
 		}, 
 		{
@@ -452,7 +464,8 @@
 			"ann_type": 137,
 			"texts": [
 				"Transmission: host", 
-				"host"
+				"T: host", 
+				"T"
 			]
 		}, 
 		{
@@ -462,7 +475,10 @@
 			"ann_type": 138,
 			"texts": [
 				"Command: GO_IDLE_STATE (0)", 
-				"Cmd: GO_IDLE_STATE (0)"
+				"Cmd: GO_IDLE_STATE (0)", 
+				"CMD0", 
+				"Cmd", 
+				"C"
 			]
 		}, 
 		{
@@ -472,7 +488,8 @@
 			"ann_type": 139,
 			"texts": [
 				"Argument", 
-				"Arg"
+				"Arg", 
+				"A"
 			]
 		}, 
 		{
@@ -482,7 +499,8 @@
 			"ann_type": 140,
 			"texts": [
 				"CRC: 0x4a", 
-				"CRC"
+				"CRC", 
+				"C"
 			]
 		}, 
 		{
@@ -492,7 +510,8 @@
 			"ann_type": 141,
 			"texts": [
 				"End bit", 
-				"End"
+				"End", 
+				"E"
 			]
 		}, 
 		{
@@ -501,7 +520,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"CMD0 (GO_IDLE_STATE): GO_IDLE_STATE", 
+				"CMD0 (GO_IDLE_STATE): Reset all SD cards", 
 				"CMD0 (GO_IDLE_STATE)", 
 				"CMD0"
 			]
@@ -513,7 +532,9 @@
 			"ann_type": 143,
 			"texts": [
 				"Stuff bits", 
-				"Stuff"
+				"Stuff", 
+				"SB", 
+				"S"
 			]
 		}
 	]

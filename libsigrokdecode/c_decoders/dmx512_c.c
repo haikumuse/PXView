@@ -296,6 +296,19 @@ static void dmx_decode(struct srd_decoder_inst* di)
                 uint64_t byte_start = s->run_start;
                 uint64_t byte_end = s->run_start + (uint64_t)11 * s->skip_per_bit;
 
+                /* Skip to byte_end (matching Python's last wait in READ BYTE) */
+                {
+                    uint64_t remaining = byte_end - samplenum;
+                    if (remaining > 0) {
+                        srd_cond_builder* b_skip = c_cond_new();
+                        c_cond_skip(b_skip, remaining);
+                        ret = c_cond_wait(b_skip, di, &samplenum, &matched);
+                        c_cond_free(b_skip);
+                        if (ret != SRD_OK)
+                            return;
+                    }
+                }
+
                 for (i = 0; i < 11; i++) {
                     uint64_t bs = s->run_start + (uint64_t)i * s->skip_per_bit;
                     uint64_t be = s->run_start + (uint64_t)(i + 1) * s->skip_per_bit;

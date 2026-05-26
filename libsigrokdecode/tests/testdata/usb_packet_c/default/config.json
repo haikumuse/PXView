@@ -1,16 +1,12 @@
 {
   "decoder": "usb_packet_c",
-  "samplerate": 12000000,
-  "num_channels": 2,
-  "sample_count": 20000,
+  "samplerate": 1000000,
+  "needs_upstream": true,
+  "inputs": [
+    "usb_signalling"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "usb_signalling_c",
-      "channels": {
-        "dp": 0,
-        "dm": 1
-      }
-    }
-  ]
+  "options": {
+    "signalling": "full-speed"
+  }
 }

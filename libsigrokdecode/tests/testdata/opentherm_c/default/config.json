@@ -2,9 +2,20 @@
   "decoder": "opentherm_c",
   "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "ot": 0
   },
-  "stack": []
+  "options": {
+    "polarity": "active-low",
+    "bitlen": 1000,
+    "jitter_m": 100,
+    "jitter_p": 150,
+    "m2s_silence_min": 20000,
+    "m2s_silence_max": 800000,
+    "s2m_silence_min": 100000,
+    "m2m_act_max": 1150000,
+    "ignore_glitches": 0,
+    "format": "dec"
+  }
 }

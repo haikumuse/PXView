@@ -2,9 +2,12 @@
   "decoder": "rinnai_control_panel_c",
   "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "data": 0
   },
-  "stack": []
+  "options": {
+    "invert": "no",
+    "bit_numbering": "lsb"
+  }
 }

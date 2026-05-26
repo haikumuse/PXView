@@ -84,17 +84,17 @@ static const struct srd_c_ann_row delta_sigma_ann_rows[] = {
 static const char* delta_sigma_inputs[] = { "logic" };
 static const char* delta_sigma_tags[] = { "Util" };
 
-static void delta_sigma_put_result(struct srd_decoder_inst *di, delta_sigma_state *s, int64_t code)
+static void delta_sigma_put_result(struct srd_decoder_inst *di, delta_sigma_state *s, int64_t code, uint64_t samplenum)
 {
     code = code >> s->shift;
     char buf1[64], buf2[64];
     snprintf(buf1, sizeof(buf1), "%lld", (long long)code);
     snprintf(buf2, sizeof(buf2), "%lld", (long long)(code * s->scale));
-    C_ANN_PUT(di, s->last_filternum, s->last_samplenum, s->out_ann, ANN_FILTERED, buf1);
-    C_ANN_PUT(di, s->last_filternum, s->last_samplenum, s->out_ann, ANN_CONVERTED, buf2);
+    C_ANN_PUT(di, s->last_filternum, samplenum, s->out_ann, ANN_FILTERED, buf1);
+    C_ANN_PUT(di, s->last_filternum, samplenum, s->out_ann, ANN_CONVERTED, buf2);
 }
 
-static void delta_sigma_run_sinc1(struct srd_decoder_inst *di, delta_sigma_state *s, int dat)
+static void delta_sigma_run_sinc1(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
 {
     int64_t sinc_DELTA1;
     if (dat > 0)
@@ -107,18 +107,18 @@ static void delta_sigma_run_sinc1(struct srd_decoder_inst *di, delta_sigma_state
         s->sinc_CNTR = 0;
         int64_t sinc_DN0 = sinc_DELTA1;
         int64_t sinc_DN1 = s->sinc_DN0;
-        int64_t sinc_CN3 = sinc_DN0 - sinc_DN1;
+        int64_t sinc_CN3 = s->sinc_DN0 - s->sinc_DN1;
 
         s->sinc_DN0 = sinc_DN0;
         s->sinc_DN1 = sinc_DN1;
 
-        delta_sigma_put_result(di, s, sinc_CN3);
-        s->last_filternum = s->last_samplenum;
+        delta_sigma_put_result(di, s, sinc_CN3, samplenum);
+        s->last_filternum = samplenum;
     }
     s->sinc_DELTA1 = sinc_DELTA1;
 }
 
-static void delta_sigma_run_sinc2(struct srd_decoder_inst *di, delta_sigma_state *s, int dat)
+static void delta_sigma_run_sinc2(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
 {
     int64_t sinc_DELTA1;
     if (dat > 0)
@@ -126,28 +126,28 @@ static void delta_sigma_run_sinc2(struct srd_decoder_inst *di, delta_sigma_state
     else
         sinc_DELTA1 = s->sinc_DELTA1 - 1;
 
-    int64_t sinc_CN1 = s->sinc_CN1 + sinc_DELTA1;
+    int64_t sinc_CN1 = s->sinc_CN1 + s->sinc_DELTA1;
 
     s->sinc_CNTR = s->sinc_CNTR + 1;
     if (s->sinc_CNTR == s->osr) {
         s->sinc_CNTR = 0;
         int64_t sinc_DN0 = sinc_CN1;
         int64_t sinc_DN1 = s->sinc_DN0;
-        int64_t sinc_CN3 = sinc_DN0 - sinc_DN1;
+        int64_t sinc_CN3 = s->sinc_DN0 - s->sinc_DN1;
         int64_t sinc_CN4 = sinc_CN3 - s->sinc_DN3;
 
         s->sinc_DN0 = sinc_DN0;
         s->sinc_DN1 = sinc_DN1;
         s->sinc_DN3 = sinc_CN3;
 
-        delta_sigma_put_result(di, s, sinc_CN4);
-        s->last_filternum = s->last_samplenum;
+        delta_sigma_put_result(di, s, sinc_CN4, samplenum);
+        s->last_filternum = samplenum;
     }
     s->sinc_DELTA1 = sinc_DELTA1;
     s->sinc_CN1 = sinc_CN1;
 }
 
-static void delta_sigma_run_sinc3(struct srd_decoder_inst *di, delta_sigma_state *s, int dat)
+static void delta_sigma_run_sinc3(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
 {
     int64_t sinc_DELTA1;
     if (dat > 0)
@@ -155,15 +155,15 @@ static void delta_sigma_run_sinc3(struct srd_decoder_inst *di, delta_sigma_state
     else
         sinc_DELTA1 = s->sinc_DELTA1 - 1;
 
-    int64_t sinc_CN1 = s->sinc_CN1 + sinc_DELTA1;
-    int64_t sinc_CN2 = sinc_CN1 + s->sinc_CN2;
+    int64_t sinc_CN1 = s->sinc_CN1 + s->sinc_DELTA1;
+    int64_t sinc_CN2 = s->sinc_CN1 + s->sinc_CN2;
 
     s->sinc_CNTR = s->sinc_CNTR + 1;
     if (s->sinc_CNTR == s->osr) {
         s->sinc_CNTR = 0;
         int64_t sinc_DN0 = sinc_CN2;
         int64_t sinc_DN1 = s->sinc_DN0;
-        int64_t sinc_CN3 = sinc_DN0 - sinc_DN1;
+        int64_t sinc_CN3 = s->sinc_DN0 - s->sinc_DN1;
         int64_t sinc_CN4 = sinc_CN3 - s->sinc_DN3;
         int64_t sinc_CN5 = sinc_CN4 - s->sinc_DN5;
 
@@ -172,8 +172,8 @@ static void delta_sigma_run_sinc3(struct srd_decoder_inst *di, delta_sigma_state
         s->sinc_DN3 = sinc_CN3;
         s->sinc_DN5 = sinc_CN4;
 
-        delta_sigma_put_result(di, s, sinc_CN5);
-        s->last_filternum = s->last_samplenum;
+        delta_sigma_put_result(di, s, sinc_CN5, samplenum);
+        s->last_filternum = samplenum;
     }
     s->sinc_DELTA1 = sinc_DELTA1;
     s->sinc_CN1 = sinc_CN1;
@@ -193,11 +193,11 @@ static void delta_sigma_find_clk_edge(struct srd_decoder_inst *di, delta_sigma_s
     }
 
     if (s->filter_type == 1)
-        delta_sigma_run_sinc1(di, s, dat);
+        delta_sigma_run_sinc1(di, s, dat, samplenum);
     else if (s->filter_type == 2)
-        delta_sigma_run_sinc2(di, s, dat);
+        delta_sigma_run_sinc2(di, s, dat, samplenum);
     else /* sinc3 or sinc_fast (fallback to sinc3) */
-        delta_sigma_run_sinc3(di, s, dat);
+        delta_sigma_run_sinc3(di, s, dat, samplenum);
 
     s->last_samplenum = samplenum;
     s->current_dat = dat;

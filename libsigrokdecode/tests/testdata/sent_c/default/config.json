@@ -2,9 +2,16 @@
   "decoder": "sent_c",
   "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "data": 0
   },
-  "stack": []
+  "options": {
+    "dataSize": 6,
+    "tickPer": 3,
+    "tickTol": 5,
+    "pausePulse": "on",
+    "crcMode": "recommended",
+    "serialMode": "off"
+  }
 }

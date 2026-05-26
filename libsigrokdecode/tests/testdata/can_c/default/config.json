@@ -1,10 +1,10 @@
 {
   "decoder": "can_c",
-  "samplerate": 10000000,
+  "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 200000,
+  "sample_count": 10000,
   "channels": {
     "can_rx": 0
   },
-  "stack": []
+  "options": {}
 }

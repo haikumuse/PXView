@@ -219,7 +219,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--all', action='store_true')
     parser.add_argument('--decoder')
-    parser.add_argument('--jobs', type=int, default=1)
+    parser.add_argument('--jobs', type=int, default=16)
     # parser.add_argument('--jobs', type=int, default=os.cpu_count())
 
     args = parser.parse_args()

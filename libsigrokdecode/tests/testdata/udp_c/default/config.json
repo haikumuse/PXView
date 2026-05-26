@@ -1,24 +1,12 @@
 {
   "decoder": "udp_c",
   "samplerate": 1000000,
-  "num_channels": 1,
-  "sample_count": 100000,
+  "needs_upstream": true,
+  "inputs": [
+    "ipv4"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "ipv4_c"
-    },
-    {
-      "id": "ethernet_c"
-    },
-    {
-      "id": "4b5b_c"
-    },
-    {
-      "id": "nrzi_c",
-      "channels": {
-        "data": 0
-      }
-    }
-  ]
+  "options": {
+    "format": "hex"
+  }
 }

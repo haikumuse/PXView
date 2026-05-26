@@ -1,12 +1,19 @@
 {
   "decoder": "i2s_c",
-  "samplerate": 4000000,
+  "samplerate": 1000000,
   "num_channels": 3,
-  "sample_count": 200000,
+  "sample_count": 10000,
   "channels": {
     "sck": 0,
     "ws": 1,
     "sd": 2
   },
-  "stack": []
+  "options": {
+    "ws_polarity": "left-high",
+    "clk_edge": "rising-edge",
+    "bit_shift": "none",
+    "bit_align": "left-aligned",
+    "bitorder": "msb-first",
+    "wordsize": 16
+  }
 }

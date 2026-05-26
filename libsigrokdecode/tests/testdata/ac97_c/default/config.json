@@ -1,11 +1,14 @@
 {
   "decoder": "ac97_c",
   "samplerate": 1000000,
-  "num_channels": 2,
-  "sample_count": 100000,
+  "num_channels": 5,
+  "sample_count": 10000,
   "channels": {
     "sync": 0,
-    "clk": 1
+    "clk": 1,
+    "out": 2,
+    "in": 3,
+    "rst": 4
   },
-  "stack": []
+  "options": {}
 }

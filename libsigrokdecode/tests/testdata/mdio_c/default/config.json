@@ -2,10 +2,13 @@
   "decoder": "mdio_c",
   "samplerate": 1000000,
   "num_channels": 2,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "mdc": 0,
     "mdio": 1
   },
-  "stack": []
+  "options": {
+    "show_debug_bits": "no",
+    "read_edge": "falling"
+  }
 }

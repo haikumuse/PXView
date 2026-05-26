@@ -2206,11 +2206,11 @@ class USBPowerDeliveryGenerator:
     - Bit '1': transition at start and at mid-bit, each half is UI long
     - Edge interval for '0' = 2*UI, for '1' = UI
     """
-    def __init__(self, builder, channel=0, samplerate=10000000):
+    def __init__(self, builder, channel=0, samplerate=None):
         self.builder = builder
         self.ch = channel
-        self.sr = samplerate
-        self.ui = int(samplerate / 600000)  # UI = 1/600kHz
+        self.sr = samplerate if samplerate is not None else builder.samplerate
+        self.ui = int(self.sr / 600000)  # UI = 1/600kHz
         builder.set_idle(channel, 0)
 
     def _bmc_bit(self, bit):

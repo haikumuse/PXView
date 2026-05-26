@@ -2,9 +2,12 @@
   "decoder": "spi_c",
   "samplerate": 1000000,
   "num_channels": 4,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
-    "clk": 0
+    "clk": 0,
+    "miso": 1,
+    "mosi": 2,
+    "cs": 3
   },
-  "stack": []
+  "options": {}
 }

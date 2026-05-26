@@ -1,10 +1,14 @@
 {
   "decoder": "adat_c",
-  "samplerate": 100000000,
+  "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 200000,
+  "sample_count": 10000,
   "channels": {
     "adat": 0
   },
-  "stack": []
+  "options": {
+    "samplerate": 48000,
+    "sample_display": "decimal",
+    "annotations": "both"
+  }
 }

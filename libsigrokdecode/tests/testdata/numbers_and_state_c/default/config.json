@@ -1,8 +1,8 @@
 {
   "decoder": "numbers_and_state_c",
   "samplerate": 1000000,
-  "num_channels": 9,
-  "sample_count": 100000,
+  "num_channels": 17,
+  "sample_count": 10000,
   "channels": {
     "clk": 0,
     "bit0": 1,
@@ -22,5 +22,13 @@
     "bit14": 15,
     "bit15": 16
   },
-  "stack": []
+  "options": {
+    "clkedge": "rising",
+    "count": 0,
+    "interp": "unsigned",
+    "fracbits": 0,
+    "mapping": "enumtext.json",
+    "format": "-",
+    "enum": ""
+  }
 }

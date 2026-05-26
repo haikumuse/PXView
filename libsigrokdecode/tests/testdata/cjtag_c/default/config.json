@@ -1,11 +1,11 @@
 {
   "decoder": "cjtag_c",
   "samplerate": 1000000,
-  "num_channels": 4,
-  "sample_count": 100000,
+  "num_channels": 2,
+  "sample_count": 10000,
   "channels": {
     "tckc": 0,
     "tmsc": 1
   },
-  "stack": []
+  "options": {}
 }

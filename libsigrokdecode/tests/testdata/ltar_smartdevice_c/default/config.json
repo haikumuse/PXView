@@ -1,15 +1,10 @@
 {
   "decoder": "ltar_smartdevice_c",
   "samplerate": 1000000,
-  "num_channels": 1,
-  "sample_count": 100000,
+  "needs_upstream": true,
+  "inputs": [
+    "afsk_bits"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "afsk_c",
-      "channels": {
-        "afsk": 0
-      }
-    }
-  ]
+  "options": {}
 }

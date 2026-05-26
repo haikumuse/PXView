@@ -1,11 +1,18 @@
 {
   "decoder": "tlc5620_c",
   "samplerate": 1000000,
-  "num_channels": 2,
-  "sample_count": 100000,
+  "num_channels": 4,
+  "sample_count": 10000,
   "channels": {
     "clk": 0,
-    "data": 1
+    "data": 1,
+    "load": 2,
+    "ldac": 3
   },
-  "stack": []
+  "options": {
+    "vref_a": 3.3,
+    "vref_b": 3.3,
+    "vref_c": 3.3,
+    "vref_d": 3.3
+  }
 }

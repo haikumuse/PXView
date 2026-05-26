@@ -1,11 +1,15 @@
 {
   "decoder": "sdcard_sd_c",
   "samplerate": 1000000,
-  "num_channels": 2,
-  "sample_count": 100000,
+  "num_channels": 6,
+  "sample_count": 10000,
   "channels": {
     "cmd": 0,
-    "clk": 1
+    "clk": 1,
+    "dat0": 2,
+    "dat1": 3,
+    "dat2": 4,
+    "dat3": 5
   },
-  "stack": []
+  "options": {}
 }

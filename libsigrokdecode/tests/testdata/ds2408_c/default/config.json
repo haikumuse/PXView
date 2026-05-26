@@ -1,18 +1,10 @@
 {
   "decoder": "ds2408_c",
   "samplerate": 1000000,
-  "num_channels": 1,
-  "sample_count": 100000,
+  "needs_upstream": true,
+  "inputs": [
+    "onewire_network"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "onewire_network_c"
-    },
-    {
-      "id": "onewire_link_c",
-      "channels": {
-        "owr": 0
-      }
-    }
-  ]
+  "options": {}
 }

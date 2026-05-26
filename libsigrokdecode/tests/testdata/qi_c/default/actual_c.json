@@ -105,7 +105,16 @@
 			]
 		}, 
 		{
-			"start_sample": 7000,
+			"start_sample": 2500,
+			"end_sample": 6500,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"02"
+			]
+		}, 
+		{
+			"start_sample": 6500,
 			"end_sample": 7000,
 			"ann_class": 3,
 			"ann_type": 10,
@@ -116,7 +125,7 @@
 			]
 		}, 
 		{
-			"start_sample": 7500,
+			"start_sample": 7000,
 			"end_sample": 7500,
 			"ann_class": 1,
 			"ann_type": 8,
@@ -124,15 +133,6 @@
 				"Stop error", 
 				"Stop err", 
 				"SE"
-			]
-		}, 
-		{
-			"start_sample": 2000,
-			"end_sample": 7500,
-			"ann_class": 4,
-			"ann_type": 11,
-			"texts": [
-				"02"
 			]
 		}, 
 		{
@@ -246,7 +246,16 @@
 			]
 		}, 
 		{
-			"start_sample": 12500,
+			"start_sample": 8000,
+			"end_sample": 12000,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"04"
+			]
+		}, 
+		{
+			"start_sample": 12000,
 			"end_sample": 12500,
 			"ann_class": 3,
 			"ann_type": 10,
@@ -257,7 +266,7 @@
 			]
 		}, 
 		{
-			"start_sample": 13000,
+			"start_sample": 12500,
 			"end_sample": 13000,
 			"ann_class": 1,
 			"ann_type": 8,
@@ -265,15 +274,6 @@
 				"Stop error", 
 				"Stop err", 
 				"SE"
-			]
-		}, 
-		{
-			"start_sample": 7500,
-			"end_sample": 13000,
-			"ann_class": 4,
-			"ann_type": 11,
-			"texts": [
-				"04"
 			]
 		}, 
 		{
@@ -387,7 +387,16 @@
 			]
 		}, 
 		{
-			"start_sample": 18000,
+			"start_sample": 13500,
+			"end_sample": 17500,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"06"
+			]
+		}, 
+		{
+			"start_sample": 17500,
 			"end_sample": 18000,
 			"ann_class": 1,
 			"ann_type": 8,
@@ -398,7 +407,7 @@
 			]
 		}, 
 		{
-			"start_sample": 18500,
+			"start_sample": 18000,
 			"end_sample": 18500,
 			"ann_class": 3,
 			"ann_type": 10,
@@ -406,15 +415,6 @@
 				"Stop bit", 
 				"Stop", 
 				"S"
-			]
-		}, 
-		{
-			"start_sample": 13000,
-			"end_sample": 18500,
-			"ann_class": 4,
-			"ann_type": 11,
-			"texts": [
-				"06"
 			]
 		}, 
 		{
@@ -430,7 +430,7 @@
 		}, 
 		{
 			"start_sample": 13000,
-			"end_sample": 13000,
+			"end_sample": 18500,
 			"ann_class": 6,
 			"ann_type": 13,
 			"texts": [

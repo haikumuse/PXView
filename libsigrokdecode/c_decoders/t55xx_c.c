@@ -220,91 +220,96 @@ static void t55xx_em4100_decode1(struct srd_decoder_inst *di, t55xx_state *s, in
               s->out_ann, ANN_BITRATE, "Partial nibble");
 }
 
-static void t55xx_decode_write_command(struct srd_decoder_inst *di, t55xx_state *s)
+static void t55xx_put_fields(struct srd_decoder_inst *di, t55xx_state *s)
 {
-    if (s->bit_nr < 3)
-        return;
+    if (s->bit_nr == 70) {
+        /* Opcode: bits 0-1 (2 bits) */
+        char op_buf[16];
+        snprintf(op_buf, sizeof(op_buf), "Opcode: %d%d", s->bits_pos[0].bit_val, s->bits_pos[1].bit_val);
+        C_ANN_PUT(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
 
-    /* Opcode: first 3 bits */
-    int opcode = (s->bits_pos[0].bit_val << 2) |
-                 (s->bits_pos[1].bit_val << 1) |
-                 s->bits_pos[2].bit_val;
+        /* Password: bits 2-33 (32 bits) */
+        uint64_t password = 0;
+        for (int i = 2; i < 34; i++)
+            password = (password << 1) | s->bits_pos[i].bit_val;
+        char pw_buf[64];
+        snprintf(pw_buf, sizeof(pw_buf), "Password: %X", (unsigned)password);
+        C_ANN_PUT(di, s->bits_pos[2].ss, s->bits_pos[33].es, s->out_ann, ANN_PASSWORD, pw_buf);
 
-    const char *opcode_str;
-    switch (opcode) {
-    case 0: opcode_str = "Standard write"; break;
-    case 1: opcode_str = "Page 0 write"; break;
-    case 2: opcode_str = "Standard read"; break;
-    case 3: opcode_str = "Page 1 write"; break;
-    case 4: opcode_str = "Reset"; break;
-    case 5: opcode_str = "Wake-up"; break;
-    case 6: opcode_str = "Password read"; break;
-    case 7: opcode_str = "Direct write"; break;
-    default: opcode_str = "Unknown"; break;
-    }
-
-    C_ANN_PUT(di, s->bits_pos[0].ss, s->bits_pos[2].es,
-              s->out_ann, ANN_OPCODE, opcode_str);
-
-    /* Lock bit (bit 3) */
-    if (s->bit_nr > 3) {
+        /* Lock: bit 34 */
         char lock_buf[16];
-        snprintf(lock_buf, sizeof(lock_buf), "Lock: %d", s->bits_pos[3].bit_val);
-        C_ANN_PUT(di, s->bits_pos[3].ss, s->bits_pos[3].es,
-                  s->out_ann, ANN_LOCK, lock_buf);
-    }
+        snprintf(lock_buf, sizeof(lock_buf), "Lock: %X", s->bits_pos[34].bit_val);
+        C_ANN_PUT(di, s->bits_pos[34].ss, s->bits_pos[34].es, s->out_ann, ANN_LOCK, lock_buf);
 
-    /* Data bits (bits 4..35) */
-    if (s->bit_nr > 4) {
-        int data_end = s->bit_nr > 36 ? 36 : s->bit_nr;
-        if (data_end > 4) {
-            uint64_t data_val = 0;
-            for (int i = 4; i < data_end; i++)
-                data_val = (data_val << 1) | s->bits_pos[i].bit_val;
-            char data_buf[64];
-            snprintf(data_buf, sizeof(data_buf), "Data: 0x%08llX", (unsigned long long)data_val);
-            C_ANN_PUT(di, s->bits_pos[4].ss, s->bits_pos[data_end - 1].es,
-                      s->out_ann, ANN_DATA, data_buf);
+        /* Data: bits 35-66 (32 bits) */
+        uint64_t data = 0;
+        for (int i = 35; i < 67; i++)
+            data = (data << 1) | s->bits_pos[i].bit_val;
+        char data_buf[64];
+        snprintf(data_buf, sizeof(data_buf), "Data: %X", (unsigned)data);
+        C_ANN_PUT(di, s->bits_pos[35].ss, s->bits_pos[66].es, s->out_ann, ANN_DATA, data_buf);
+
+        /* Addr: bits 67-69 (3 bits) */
+        int addr = (s->bits_pos[67].bit_val << 2) | (s->bits_pos[68].bit_val << 1) | s->bits_pos[69].bit_val;
+        char addr_buf[32];
+        snprintf(addr_buf, sizeof(addr_buf), "Addr: %X", addr);
+        C_ANN_PUT(di, s->bits_pos[67].ss, s->bits_pos[69].es, s->out_ann, ANN_ADDRESS, addr_buf);
+
+        if (addr == 0)
+            t55xx_decode_config(di, s, 35);
+        if (addr == 7) {
+            char pw2_buf[64];
+            snprintf(pw2_buf, sizeof(pw2_buf), "Password: %X", (unsigned)data);
+            C_ANN_PUT(di, s->bits_pos[35].ss, s->bits_pos[66].es, s->out_ann, ANN_BITRATE, pw2_buf);
         }
+        if (addr == 1 && s->em4100_decode)
+            t55xx_em4100_decode1(di, s, 35);
     }
 
-    /* Address bits (bits 36..39) */
-    if (s->bit_nr > 36) {
-        int addr_end = s->bit_nr > 40 ? 40 : s->bit_nr;
-        if (addr_end > 36) {
-            int addr = 0;
-            for (int i = 36; i < addr_end; i++)
-                addr = (addr << 1) | s->bits_pos[i].bit_val;
-            char addr_buf[32];
-            snprintf(addr_buf, sizeof(addr_buf), "Address: %d", addr);
-            C_ANN_PUT(di, s->bits_pos[36].ss, s->bits_pos[addr_end - 1].es,
-                      s->out_ann, ANN_ADDRESS, addr_buf);
-        }
-    }
+    if (s->bit_nr == 38) {
+        /* Opcode: bits 0-1 (2 bits) */
+        char op_buf[16];
+        snprintf(op_buf, sizeof(op_buf), "Opcode: %d%d", s->bits_pos[0].bit_val, s->bits_pos[1].bit_val);
+        C_ANN_PUT(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
 
-    /* Password bits (bits 36..71) for password commands */
-    if ((opcode == 0 || opcode == 6) && s->bit_nr > 36) {
-        int pw_end = s->bit_nr > 72 ? 72 : s->bit_nr;
-        if (pw_end > 36) {
-            uint64_t pw_val = 0;
-            for (int i = 36; i < pw_end; i++)
-                pw_val = (pw_val << 1) | s->bits_pos[i].bit_val;
+        /* Lock: bit 2 */
+        char lock_buf[16];
+        snprintf(lock_buf, sizeof(lock_buf), "Lock: %X", s->bits_pos[2].bit_val);
+        C_ANN_PUT(di, s->bits_pos[2].ss, s->bits_pos[2].es, s->out_ann, ANN_LOCK, lock_buf);
+
+        /* Data: bits 3-34 (32 bits) */
+        uint64_t data = 0;
+        for (int i = 3; i < 35; i++)
+            data = (data << 1) | s->bits_pos[i].bit_val;
+        char data_buf[64];
+        snprintf(data_buf, sizeof(data_buf), "Data: %X", (unsigned)data);
+        C_ANN_PUT(di, s->bits_pos[3].ss, s->bits_pos[34].es, s->out_ann, ANN_DATA, data_buf);
+
+        /* Addr: bits 35-37 (3 bits) */
+        int addr = (s->bits_pos[35].bit_val << 2) | (s->bits_pos[36].bit_val << 1) | s->bits_pos[37].bit_val;
+        char addr_buf[32];
+        snprintf(addr_buf, sizeof(addr_buf), "Addr: %X", addr);
+        C_ANN_PUT(di, s->bits_pos[35].ss, s->bits_pos[37].es, s->out_ann, ANN_ADDRESS, addr_buf);
+
+        if (addr == 0)
+            t55xx_decode_config(di, s, 3);
+        if (addr == 7) {
             char pw_buf[64];
-            snprintf(pw_buf, sizeof(pw_buf), "Password: 0x%08llX", (unsigned long long)pw_val);
-            C_ANN_PUT(di, s->bits_pos[36].ss, s->bits_pos[pw_end - 1].es,
-                      s->out_ann, ANN_PASSWORD, pw_buf);
+            snprintf(pw_buf, sizeof(pw_buf), "Password: %X", (unsigned)data);
+            C_ANN_PUT(di, s->bits_pos[3].ss, s->bits_pos[34].es, s->out_ann, ANN_BITRATE, pw_buf);
         }
+        if (addr == 1 && s->em4100_decode)
+            t55xx_em4100_decode1(di, s, 3);
     }
 
-    /* If page 0 write, decode config register */
-    if ((opcode == 0 || opcode == 1) && s->bit_nr >= 33) {
-        t55xx_decode_config(di, s, 4);
+    if (s->bit_nr == 2) {
+        /* Opcode: bits 0-1 (2 bits) */
+        char op_buf[16];
+        snprintf(op_buf, sizeof(op_buf), "Opcode: %d%d", s->bits_pos[0].bit_val, s->bits_pos[1].bit_val);
+        C_ANN_PUT(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
     }
 
-    /* EM4100 decode for page 0 read */
-    if (s->em4100_decode && (opcode == 2) && s->bit_nr >= 40) {
-        t55xx_em4100_decode1(di, s, 8);
-    }
+    s->bit_nr = 0;
 }
 
 static void t55xx_reset(struct srd_decoder_inst *di)
@@ -365,9 +370,17 @@ static void t55xx_decode(struct srd_decoder_inst *di)
     t55xx_state *s = (t55xx_state *)c_decoder_get_private(di);
     uint64_t samplenum;
     uint64_t matched;
+    uint64_t last_samplenum = 0;
 
     if (!s->samplerate || !s->field_clock)
         return;
+
+    s->lastlast_samplenum = 0;
+    s->oldsamplenum = 0;
+    s->old_gap_start = 0;
+    s->old_gap_end = 0;
+    s->gap_detected = 0;
+    s->bit_nr = 0;
 
     while (1) {
         srd_cond_builder *cb = c_cond_new();
@@ -377,79 +390,65 @@ static void t55xx_decode(struct srd_decoder_inst *di)
         if (ret != SRD_OK)
             return;
 
-        if (s->oldsamplenum == 0) {
-            s->oldsamplenum = samplenum;
-            continue;
-        }
-
         uint64_t pl = samplenum - s->oldsamplenum;
-        s->gap_detected = 0;
 
         if (s->state == STATE_WRITE_GAP) {
             if (pl > s->writegap) {
                 s->gap_detected = 1;
-                s->old_gap_start = s->oldsamplenum;
-                s->old_gap_end = samplenum;
-                C_ANN_PUT(di, s->oldsamplenum, samplenum, s->out_ann, ANN_WRITE_GAP, "Write gap");
+                C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_WRITE_GAP, "Write gap");
             }
-        } else if (s->state == STATE_START_GAP) {
+            if ((last_samplenum - s->old_gap_end) > s->nogap) {
+                s->gap_detected = 0;
+                s->state = STATE_START_GAP;
+                C_ANN_PUT(di, s->old_gap_end, last_samplenum, s->out_ann, ANN_WRITE_MODE_EXIT,
+                          "Write mode exit", "Exit", "X");
+                t55xx_put_fields(di, s);
+            }
+        }
+
+        if (s->state == STATE_START_GAP) {
             if (pl > s->startgap) {
                 s->gap_detected = 1;
-                s->old_gap_start = s->oldsamplenum;
-                s->old_gap_end = samplenum;
+                C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_START_GAP, "Start gap");
                 s->state = STATE_WRITE_GAP;
-                C_ANN_PUT(di, s->oldsamplenum, samplenum, s->out_ann, ANN_START_GAP, "Start gap");
             }
         }
 
-        /* Check for write mode exit (no gap for too long) */
-        if (s->state == STATE_WRITE_GAP && pl > s->nogap) {
-            C_ANN_PUT(di, s->oldsamplenum, samplenum, s->out_ann, ANN_WRITE_MODE_EXIT,
-                      "Write mode exit", "Exit", "X");
-            s->state = STATE_START_GAP;
-            s->bit_nr = 0;
-            s->oldsamplenum = samplenum;
-            continue;
-        }
-
-        if (s->gap_detected && s->state == STATE_WRITE_GAP) {
-            /* Check previous interval for write zero or write one */
-            uint64_t prev_pl = s->old_gap_start - s->lastlast_samplenum;
-
-            int bit_val = -1;
-            if (prev_pl >= s->wzmin && prev_pl <= s->wzmax) {
-                bit_val = 0;
-            } else if (prev_pl >= s->womin && prev_pl <= s->womax) {
-                bit_val = 1;
+        if (s->gap_detected == 1) {
+            s->gap_detected = 0;
+            if ((last_samplenum - s->old_gap_end) > s->wzmin \
+                    && (last_samplenum - s->old_gap_end) < s->wzmax) {
+                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                          s->out_ann, ANN_BIT_VALUE, "0");
+                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                          s->out_ann, ANN_BIT, "0");
+                if (s->bit_nr < T55XX_MAX_BITS) {
+                    s->bits_pos[s->bit_nr].bit_val = 0;
+                    s->bits_pos[s->bit_nr].ss = s->old_gap_end;
+                    s->bits_pos[s->bit_nr].es = last_samplenum;
+                    s->bit_nr++;
+                }
+            }
+            if ((last_samplenum - s->old_gap_end) > s->womin \
+                    && (last_samplenum - s->old_gap_end) < s->womax) {
+                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                          s->out_ann, ANN_BIT_VALUE, "1");
+                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                          s->out_ann, ANN_BIT, "1");
+                if (s->bit_nr < T55XX_MAX_BITS) {
+                    s->bits_pos[s->bit_nr].bit_val = 1;
+                    s->bits_pos[s->bit_nr].ss = s->old_gap_end;
+                    s->bits_pos[s->bit_nr].es = last_samplenum;
+                    s->bit_nr++;
+                }
             }
 
-            if (bit_val >= 0 && s->bit_nr < T55XX_MAX_BITS) {
-                s->bits_pos[s->bit_nr].bit_val = bit_val;
-                s->bits_pos[s->bit_nr].ss = s->lastlast_samplenum;
-                s->bits_pos[s->bit_nr].es = s->old_gap_start;
-
-                char bit_str[4];
-                snprintf(bit_str, sizeof(bit_str), "%d", bit_val);
-                C_ANN_PUT(di, s->lastlast_samplenum, s->old_gap_start,
-                          s->out_ann, ANN_BIT_VALUE, bit_str);
-                C_ANN_PUT(di, s->lastlast_samplenum, s->old_gap_start,
-                          s->out_ann, ANN_BIT, bit_str);
-
-                s->bit_nr++;
-            }
-
-            s->lastlast_samplenum = s->old_gap_start;
-        } else if (!s->gap_detected) {
-            /* No gap, just track edge */
+            s->old_gap_start = last_samplenum;
+            s->old_gap_end = samplenum;
         }
 
         s->oldsamplenum = samplenum;
-
-        /* Try to decode accumulated bits */
-        if (s->bit_nr >= 3 && s->gap_detected) {
-            t55xx_decode_write_command(di, s);
-            s->bit_nr = 0;
-        }
+        last_samplenum = samplenum;
     }
 }
 
