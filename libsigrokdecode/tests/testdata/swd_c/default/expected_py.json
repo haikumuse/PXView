@@ -1,7 +1,43 @@
 {
 	"decoder": "swd",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 4,
 	"annotations": [
+		{
+			"start_sample": 50,
+			"end_sample": 120,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"RDBUFF"
+			]
+		}, 
+		{
+			"start_sample": 135,
+			"end_sample": 155,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"ERROR"
+			]
+		}, 
+		{
+			"start_sample": 170,
+			"end_sample": 240,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"W AP0"
+			]
+		}, 
+		{
+			"start_sample": 255,
+			"end_sample": 275,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"ERROR"
+			]
+		}
 	]
 }

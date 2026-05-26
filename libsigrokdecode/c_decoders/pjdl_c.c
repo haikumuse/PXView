@@ -291,30 +291,27 @@ static void pjdl_frame_flush(struct srd_decoder_inst *di, struct pjdl_priv *s)
         }
     }
 
-    if (pos > 0) {
-        uint64_t ss = 0, es = 0;
-        /* Find first non-IDLE symbol */
-        for (int i = 0; i < s->symbol_count; i++) {
-            if (s->symbols[i].type != SYM_IDLE) {
-                ss = s->symbols[i].ss;
-                break;
-            }
+    /* Find first and last non-IDLE symbol for annotation range */
+    uint64_t ss = 0, es = 0;
+    int has_non_idle = 0;
+    for (int i = 0; i < s->symbol_count; i++) {
+        if (s->symbols[i].type != SYM_IDLE) {
+            if (!has_non_idle) { ss = s->symbols[i].ss; has_non_idle = 1; }
+            es = s->symbols[i].es;
         }
-        /* Find last non-IDLE symbol */
-        for (int i = s->symbol_count - 1; i >= 0; i--) {
-            if (s->symbols[i].type != SYM_IDLE) {
-                es = s->symbols[i].es;
-                break;
-            }
-        }
-        if (ss < es)
+    }
+
+    if (has_non_idle && ss < es) {
+        if (pos > 0)
             C_ANN_PUT(di, ss, es, s->out_ann, ANN_FRAME_BYTES, text);
+        else
+            C_ANN_PUT(di, ss, es, s->out_ann, ANN_FRAME_BYTES, "");
     }
 
     pjdl_symbols_clear(s);
 }
 
-static void pjdl_carrier_check(struct pjdl_priv *s, int level, uint64_t snum)
+static void pjdl_carrier_check(struct srd_decoder_inst *di, struct pjdl_priv *s, int level, uint64_t snum)
 {
     if (level) {
         /* HIGH: end IDLE, start BUSY */
@@ -335,6 +332,8 @@ static void pjdl_carrier_check(struct pjdl_priv *s, int level, uint64_t snum)
     if (span >= (uint64_t)s->byte_width)
         s->carrier_is_busy = 0;
     if (span >= (uint64_t)s->idle_width) {
+        if (!s->carrier_is_idle)
+            pjdl_frame_flush(di, s);
         s->carrier_is_idle = 1;
         s->carrier_want_idle = 0;
     }
@@ -407,7 +406,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
     if (ret != SRD_OK)
         return;
 
-    pjdl_carrier_check(s, 0, samplenum);
+    pjdl_carrier_check(di, s, 0, samplenum);
     s->edges[0] = samplenum;
     s->edge_count = 1;
 
@@ -425,7 +424,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
             return;
 
         int curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-        pjdl_carrier_check(s, curr_level, samplenum);
+        pjdl_carrier_check(di, s, curr_level, samplenum);
 
         int bit_level = curr_level;
         int edge_seen = (matched & 0b1) != 0;
@@ -456,8 +455,8 @@ static void pjdl_decode(struct srd_decoder_inst *di)
             uint64_t ss = s->edges[s->edge_count - 2];
             uint64_t es = samplenum;
             char txt[16];
-            snprintf(txt, sizeof(txt), "PAD %d", bit_level);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_PAD_BIT, txt, "PAD");
+            snprintf(txt, sizeof(txt), "%d", bit_level);
+            C_ANN_PUT(di, ss, es, s->out_ann, ANN_PAD_BIT, "PAD", txt);
             pjdl_symbols_append(s, ss, es, SYM_PAD_BIT, bit_level);
             unsigned char pd = (unsigned char)bit_level;
             c_decoder_put_python(di, ss, es, s->out_python, "PAD_BIT", &pd, 1);
@@ -468,8 +467,8 @@ static void pjdl_decode(struct srd_decoder_inst *di)
             uint64_t ss = last_snum;
             uint64_t es = samplenum;
             char txt[16];
-            snprintf(txt, sizeof(txt), "SHORT %d", bit_level);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SHORT_DATA, txt, "SHORT");
+            snprintf(txt, sizeof(txt), "%d", bit_level);
+            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SHORT_DATA, "SHORT", txt);
             pjdl_symbols_append(s, ss, es, SYM_SHORT_BIT, bit_level);
             unsigned char pd = (unsigned char)bit_level;
             c_decoder_put_python(di, ss, es, s->out_python, "SHORT_BIT", &pd, 1);
@@ -501,8 +500,8 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                 uint64_t ss = last_snum;
                 uint64_t es = next_snum;
                 char txt[16];
-                snprintf(txt, sizeof(txt), "ZERO %d", bit_level);
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_LOW_BIT, txt, "ZERO");
+                snprintf(txt, sizeof(txt), "%d", bit_level);
+                C_ANN_PUT(di, ss, es, s->out_ann, ANN_LOW_BIT, "ZERO", txt);
                 pjdl_symbols_append(s, ss, es, SYM_ZERO_BIT, bit_level);
                 unsigned char pd = (unsigned char)bit_level;
                 c_decoder_put_python(di, ss, es, s->out_python, "DATA_BIT", &pd, 1);
@@ -603,7 +602,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                     if (ret != SRD_OK)
                         return;
                     curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-                    pjdl_carrier_check(s, curr_level, samplenum);
+                    pjdl_carrier_check(di, s, curr_level, samplenum);
                 }
             }
 
@@ -639,7 +638,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                 if (ret != SRD_OK)
                     return;
                 curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-                pjdl_carrier_check(s, curr_level, samplenum);
+                pjdl_carrier_check(di, s, curr_level, samplenum);
             }
         }
 
@@ -654,7 +653,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
             if (ret != SRD_OK)
                 return;
             curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-            pjdl_carrier_check(s, curr_level, samplenum);
+            pjdl_carrier_check(di, s, curr_level, samplenum);
         }
 
         /* Compose byte value */

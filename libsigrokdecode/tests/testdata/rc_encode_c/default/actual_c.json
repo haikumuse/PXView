@@ -1,7 +1,61 @@
 {
 	"decoder": "rc_encode_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 6,
 	"annotations": [
+		{
+			"start_sample": 500,
+			"end_sample": 3500,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"U"
+			]
+		}, 
+		{
+			"start_sample": 500,
+			"end_sample": 3500,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"A0"
+			]
+		}, 
+		{
+			"start_sample": 3500,
+			"end_sample": 6500,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"U"
+			]
+		}, 
+		{
+			"start_sample": 3500,
+			"end_sample": 6500,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"A1"
+			]
+		}, 
+		{
+			"start_sample": 6500,
+			"end_sample": 10500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6500,
+			"end_sample": 10500,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"A2"
+			]
+		}
 	]
 }

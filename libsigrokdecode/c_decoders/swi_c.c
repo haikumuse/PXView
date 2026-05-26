@@ -296,33 +296,40 @@ static void swi_decode(struct srd_decoder_inst *di)
         if (s->log_count < 2)
             continue;
 
+        if (s->strt) {
+            C_ANN_PUT(di, s->pastNs[s->log_count - 3], samplenum, s->out_ann, ANN_BYTES, "[START]");
+            s->strt = 0;
+        }
+
         uint64_t prevN = s->pastNs[s->log_count - 2];
         int bauds = swi_calculate_bauds(samplenum, prevN, s->samplerate, &s->halfRate);
 
         /* Check for valid data baud interval (1 or 3) */
         if (bauds != 1 && bauds != 3) {
-            if (pin_val != 1) {
+            if (s->pastVs[s->log_count - 2] != 1) {
                 if (bauds < 3) {
                     C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_ERR, "Error");
+                    C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BYTES, "[ACK]");
+                } else {
+                    s->strt = 1;
                 }
-                C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BYTES, "[ACK]");
             }
             continue;
         }
 
-        /* Check if previous gap >= 5 bauds (word separator) */
+        /* Check if previous gap >= 5 bauds and measuring low pulse (word separator) */
         int have_word_gap = 0;
         if (s->log_count >= 3) {
             uint64_t prev2N = s->pastNs[s->log_count - 3];
             int gap_bauds = swi_calculate_bauds(prevN, prev2N, s->samplerate, &s->halfRate);
-            if (gap_bauds >= 5)
+            if (gap_bauds >= 5 && s->pastVs[s->log_count - 2] != 1)
                 have_word_gap = 1;
         } else {
             have_word_gap = 1; /* First edge, treat as word start */
         }
 
         if (!have_word_gap) {
-            if (pin_val != 1) {
+            if (s->pastVs[s->log_count - 2] != 1) {
                 C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BYTES, "[ACK]");
             }
             continue;

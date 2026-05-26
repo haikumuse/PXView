@@ -238,6 +238,41 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event) {
 
   _view.get_traces(ALL_VIEW, traces);
 
+  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+    int mouseY = event->position().toPoint().y() + _view.get_vOffset();
+    const int HitBorderMargin = 5;
+
+    std::vector<Trace *> enabled_traces;
+    for (auto t : traces)
+      if (t->enabled())
+        enabled_traces.push_back(t);
+
+    for (int i = 0; i < (int)enabled_traces.size() - 1; i++) {
+      int traceBottom =
+          enabled_traces[i]->get_v_offset() +
+          enabled_traces[i]->get_totalHeight() / 2 + View::SignalMargin;
+
+      if (abs(mouseY - traceBottom) < HitBorderMargin) {
+        enabled_traces[i]->set_own_height(-1);
+        enabled_traces[i + 1]->set_own_height(-1);
+        _view.signals_changed(NULL);
+        return;
+      }
+    }
+
+    // Check bottom border of the last enabled trace
+    if (!enabled_traces.empty()) {
+      Trace *lastTrace = enabled_traces.back();
+      int traceBottom = lastTrace->get_v_offset() +
+                        lastTrace->get_totalHeight() / 2 + View::SignalMargin;
+      if (abs(mouseY - traceBottom) < HitBorderMargin) {
+        lastTrace->set_own_height(-1);
+        _view.signals_changed(NULL);
+        return;
+      }
+    }
+  }
+
   if (event->button() & Qt::LeftButton) {
     _mouse_down_point = event->position().toPoint();
 
@@ -275,21 +310,37 @@ void Header::mousePressEvent(QMouseEvent *event) {
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
 
-    for (int i = 0; i < (int)traces.size() - 1; i++) {
-      if (!traces[i]->enabled())
-        continue;
-      if (i + 1 < (int)traces.size() && !traces[i + 1]->enabled())
-        continue;
+    std::vector<Trace *> enabled_traces;
+    for (auto t : traces)
+      if (t->enabled())
+        enabled_traces.push_back(t);
 
-      int traceBottom = traces[i]->get_v_offset() +
-                        traces[i]->get_totalHeight() / 2 + View::SignalMargin;
+    for (int i = 0; i < (int)enabled_traces.size() - 1; i++) {
+      int traceBottom =
+          enabled_traces[i]->get_v_offset() +
+          enabled_traces[i]->get_totalHeight() / 2 + View::SignalMargin;
 
       if (abs(mouseY - traceBottom) < HitBorderMargin) {
-        _resize_trace_upper = traces[i];
-        _resize_trace_lower = traces[i + 1];
+        _resize_trace_upper = enabled_traces[i];
+        _resize_trace_lower = enabled_traces[i + 1];
         _resize_mouse_down_y = event->position().toPoint().y();
-        _resize_upper_height = traces[i]->get_totalHeight();
-        _resize_lower_height = traces[i + 1]->get_totalHeight();
+        _resize_upper_height = enabled_traces[i]->get_totalHeight();
+        _resize_lower_height = enabled_traces[i + 1]->get_totalHeight();
+        return;
+      }
+    }
+
+    // Check bottom border of the last enabled trace
+    if (!enabled_traces.empty()) {
+      Trace *lastTrace = enabled_traces.back();
+      int traceBottom = lastTrace->get_v_offset() +
+                        lastTrace->get_totalHeight() / 2 + View::SignalMargin;
+      if (abs(mouseY - traceBottom) < HitBorderMargin) {
+        _resize_trace_upper = lastTrace;
+        _resize_trace_lower = NULL;
+        _resize_mouse_down_y = event->position().toPoint().y();
+        _resize_upper_height = lastTrace->get_totalHeight();
+        _resize_lower_height = 0;
         return;
       }
     }
@@ -572,7 +623,7 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
 
   _mouse_point = event->position().toPoint() + QPoint(0, _view.get_vOffset());
 
-  if (_resize_trace_upper && _resize_trace_lower) {
+  if (_resize_trace_upper) {
     int deltaY = event->position().toPoint().y() - _resize_mouse_down_y;
     int newUpperHeight = _resize_upper_height + deltaY;
 
@@ -581,6 +632,41 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
       _view.signals_changed(NULL);
     }
     return;
+  }
+
+  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+    std::vector<Trace *> traces;
+    _view.get_traces(ALL_VIEW, traces);
+    int mouseY = event->position().toPoint().y() + _view.get_vOffset();
+    const int HitBorderMargin = 5;
+    bool onBorder = false;
+
+    std::vector<Trace *> enabled_traces;
+    for (auto t : traces)
+      if (t->enabled())
+        enabled_traces.push_back(t);
+
+    for (int i = 0; i < (int)enabled_traces.size() - 1; i++) {
+      int traceBottom =
+          enabled_traces[i]->get_v_offset() +
+          enabled_traces[i]->get_totalHeight() / 2 + View::SignalMargin;
+
+      if (abs(mouseY - traceBottom) < HitBorderMargin) {
+        onBorder = true;
+        break;
+      }
+    }
+
+    // Check bottom border of the last enabled trace
+    if (!onBorder && !enabled_traces.empty()) {
+      Trace *lastTrace = enabled_traces.back();
+      int traceBottom = lastTrace->get_v_offset() +
+                        lastTrace->get_totalHeight() / 2 + View::SignalMargin;
+      if (abs(mouseY - traceBottom) < HitBorderMargin) {
+        onBorder = true;
+      }
+    }
+    setCursor(onBorder ? Qt::SplitVCursor : Qt::ArrowCursor);
   }
 
   // Move the Traces if we are dragging

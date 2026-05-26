@@ -403,7 +403,7 @@ static int read_byte_no_wait(struct srd_decoder_inst* di, struct iso7816_priv* s
     if (ones % 2 != 0) {
         char warn_str[128];
         snprintf(warn_str, sizeof(warn_str),
-            "CHKSUM ERROR bits=[%d%d%d%d%d%d%d%d%d%d]",
+            "CHKSUM ERROR bits=[%d, %d, %d, %d, %d, %d, %d, %d, %d, %d]",
             bits[0], bits[1], bits[2], bits[3], bits[4],
             bits[5], bits[6], bits[7], bits[8], bits[9]);
         C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, warn_str);
@@ -519,7 +519,7 @@ static int read_first_byte(struct srd_decoder_inst* di, struct iso7816_priv* s,
     if (ones % 2 != 0) {
         char warn_str[128];
         snprintf(warn_str, sizeof(warn_str),
-            "CHKSUM ERROR bits=[%d%d%d%d%d%d%d%d%d%d]",
+            "CHKSUM ERROR bits=[%d, %d, %d, %d, %d, %d, %d, %d, %d, %d]",
             bits[0], bits[1], bits[2], bits[3], bits[4],
             bits[5], bits[6], bits[7], bits[8], bits[9]);
         C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, warn_str);

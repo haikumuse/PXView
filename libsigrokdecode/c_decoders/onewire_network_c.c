@@ -7,11 +7,7 @@
 /* 1-Wire network layer decoder */
 
 enum {
-    ANN_RESET_PRESENCE = 0,
-    ANN_ROM_CMD,
-    ANN_ROM,
-    ANN_DATA,
-    ANN_WARN,
+    ANN_TEXT = 0,
     NUM_ANN,
 };
 
@@ -60,21 +56,13 @@ static const char *ownet_outputs[] = {"onewire_network", NULL};
 static const char *ownet_tags[] = {"Embedded/industrial", NULL};
 
 static const char *ownet_ann_labels[][3] = {
-    {"", "reset-presence", "Reset/presence"},
-    {"", "rom-command", "ROM command"},
-    {"", "rom", "ROM address"},
-    {"", "data", "Transport data"},
-    {"", "warnings", "Warnings"},
+    {"text", "text", "Human-readable text"},
 };
 
-static const int ownet_row_cmds_classes[] = {ANN_ROM_CMD, ANN_ROM, ANN_DATA, -1};
-static const int ownet_row_reset_classes[] = {ANN_RESET_PRESENCE, -1};
-static const int ownet_row_warnings_classes[] = {ANN_WARN, -1};
+static const int ownet_row_text_classes[] = {ANN_TEXT, -1};
 
 static const struct srd_c_ann_row ownet_ann_rows[] = {
-    {"commands", "Commands", ownet_row_cmds_classes, 3},
-    {"reset", "Reset/Presence", ownet_row_reset_classes, 1},
-    {"warnings", "Warnings", ownet_row_warnings_classes, 1},
+    {"text", "Human-readable text", ownet_row_text_classes, 1},
 };
 
 static const struct rom_cmd *find_rom_command(uint8_t code)
@@ -106,7 +94,7 @@ static void ownet_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "RESET/PRESENCE") == 0) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Reset/presence: %s", val ? "true" : "false");
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_RESET_PRESENCE, buf);
+        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, buf);
         ownet_put_proto(di, s, start_sample, end_sample, "RESET/PRESENCE", data, data_len);
         s->state = STATE_COMMAND;
         s->bit_cnt = 0;
@@ -133,12 +121,12 @@ static void ownet_recv_proto(struct srd_decoder_inst *di,
         if (c) {
             char buf[128];
             snprintf(buf, sizeof(buf), "ROM command: 0x%02x '%s'", s->data, c->name);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ROM_CMD, buf);
+            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
             s->state = c->next_state;
         } else {
             char buf[128];
             snprintf(buf, sizeof(buf), "ROM command: 0x%02x '%s'", s->data, "unrecognized");
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ROM_CMD, buf);
+            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
             s->state = STATE_COMMAND_ERROR;
         }
         s->bit_cnt = 0;
@@ -153,7 +141,7 @@ static void ownet_recv_proto(struct srd_decoder_inst *di,
         }
         char buf[64];
         snprintf(buf, sizeof(buf), "ROM: 0x%016llx", (unsigned long long)rom);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ROM, buf);
+        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
         unsigned char rom_data[8];
         for (int i = 0; i < 8; i++)
             rom_data[i] = (rom >> (i * 8)) & 0xff;
@@ -173,7 +161,7 @@ static void ownet_recv_proto(struct srd_decoder_inst *di,
         }
         char buf[64];
         snprintf(buf, sizeof(buf), "ROM: 0x%016llx", (unsigned long long)rom);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ROM, buf);
+        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
         unsigned char rom_data[8];
         for (int i = 0; i < 8; i++)
             rom_data[i] = (rom >> (i * 8)) & 0xff;
@@ -188,7 +176,7 @@ static void ownet_recv_proto(struct srd_decoder_inst *di,
         s->data &= 0xff;
         char buf[32];
         snprintf(buf, sizeof(buf), "Data: 0x%02x", s->data);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, buf);
+        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
         ownet_put_proto(di, s, s->ss_block, s->es_block, "DATA", &s->data, 1);
         s->bit_cnt = 0;
         s->data = 0;
@@ -199,7 +187,7 @@ static void ownet_recv_proto(struct srd_decoder_inst *di,
         s->data &= 0xff;
         char buf[64];
         snprintf(buf, sizeof(buf), "ROM error data: 0x%02x", s->data);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_WARN, buf);
+        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
         s->bit_cnt = 0;
         s->data = 0;
     }
@@ -249,7 +237,7 @@ struct srd_c_decoder onewire_network_c_decoder = {
     .num_options = 0,
     .num_annotations = NUM_ANN,
     .ann_labels = ownet_ann_labels,
-    .num_annotation_rows = 3,
+    .num_annotation_rows = 1,
     .annotation_rows = ownet_ann_rows,
     .inputs = ownet_inputs,
     .num_inputs = 1,

@@ -124,10 +124,20 @@ static void ps2_handle_byte(struct srd_decoder_inst* di, uint64_t samplenum)
     struct ps2_priv* s = (struct ps2_priv*)c_decoder_get_private(di);
     int i;
 
+    /* Calculate bitwidth for annotation boundaries */
+    uint64_t bitwidth = s->bit_ss[2] - s->bit_ss[1];
+    uint64_t half_bitwidth = bitwidth / 2;
+
     for (i = 0; i < 11; i++) {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[i]);
-        uint64_t es = (i < 10) ? s->bit_ss[i + 1] : samplenum;
+        /* Match Python: bits[i].es = bits[i+1].ss for i<10,
+         * and bits[10].es = bits[10].ss + half_bitwidth */
+        uint64_t es;
+        if (i < 10)
+            es = s->bit_ss[i + 1];
+        else
+            es = s->bit_ss[i] + half_bitwidth;
         C_ANN_PUT(di, s->bit_ss[i], es, s->out_ann, ANN_BIT, bit_str);
     }
 
@@ -149,7 +159,8 @@ static void ps2_handle_byte(struct srd_decoder_inst* di, uint64_t samplenum)
         snprintf(word_long, sizeof(word_long), "Data: %02x", s->byte_val);
         snprintf(word_mid, sizeof(word_mid), "D: %02x", s->byte_val);
         snprintf(word_short, sizeof(word_short), "%02x", s->byte_val);
-        C_ANN_PUT(di, s->bit_ss[1], s->bit_ss[8], s->out_ann, ANN_WORD,
+        /* Match Python: Word goes from bits[1].ss to bits[8].es = bits[9].ss */
+        C_ANN_PUT(di, s->bit_ss[1], s->bit_ss[9], s->out_ann, ANN_WORD,
             word_long, word_mid, word_short);
     }
 
@@ -172,8 +183,8 @@ static void ps2_handle_byte(struct srd_decoder_inst* di, uint64_t samplenum)
     }
 
     {
-        uint64_t bitwidth = s->bit_ss[2] - s->bit_ss[1];
-        C_ANN_PUT(di, s->bit_ss[10], s->bit_ss[10] + bitwidth, s->out_ann, ANN_STOP,
+        /* Match Python: Stop bit goes from bits[10].ss to bits[10].ss + half_bitwidth */
+        C_ANN_PUT(di, s->bit_ss[10], s->bit_ss[10] + half_bitwidth, s->out_ann, ANN_STOP,
             "Stop bit", "Stop", "St", "T");
     }
 

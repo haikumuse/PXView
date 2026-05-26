@@ -1,7 +1,18 @@
 {
 	"decoder": "caliper",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 1,
 	"annotations": [
+		{
+			"start_sample": 250,
+			"end_sample": 15750,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"timeout with 23 bits in buffer", 
+				"timeout (23 bits)", 
+				"timeout"
+			]
+		}
 	]
 }

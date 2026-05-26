@@ -253,11 +253,30 @@ static void parallel_decode(struct srd_decoder_inst *di)
 
         /* Output saved item */
         if (s->has_saved_item) {
-            int num_digits = (s->num_item_bits + 3) / 4;
-            char fmt[32];
-            snprintf(fmt, sizeof(fmt), "@%%0%dX", num_digits);
             char item_str[64];
-            snprintf(item_str, sizeof(item_str), fmt, s->saved_item);
+            if (s->num_item_bits <= 8 && s->saved_item <= 0xFF) {
+                unsigned char ch = (unsigned char)s->saved_item;
+                if (ch >= 0x20 && ch <= 0x7E) {
+                    snprintf(item_str, sizeof(item_str), "%c", ch);
+                } else {
+                    switch (ch) {
+                    case '\0': snprintf(item_str, sizeof(item_str), "\\0"); break;
+                    case '\a': snprintf(item_str, sizeof(item_str), "\\a"); break;
+                    case '\b': snprintf(item_str, sizeof(item_str), "\\b"); break;
+                    case '\t': snprintf(item_str, sizeof(item_str), "\\t"); break;
+                    case '\n': snprintf(item_str, sizeof(item_str), "\\n"); break;
+                    case '\v': snprintf(item_str, sizeof(item_str), "\\v"); break;
+                    case '\f': snprintf(item_str, sizeof(item_str), "\\f"); break;
+                    case '\r': snprintf(item_str, sizeof(item_str), "\\r"); break;
+                    default:   snprintf(item_str, sizeof(item_str), "\\x%02x", ch); break;
+                    }
+                }
+            } else {
+                int num_digits = (s->num_item_bits + 3) / 4;
+                char fmt[32];
+                snprintf(fmt, sizeof(fmt), "@%%0%dX", num_digits);
+                snprintf(item_str, sizeof(item_str), fmt, s->saved_item);
+            }
             C_ANN_PUT(di, s->prv_dex, samplenum, s->out_ann, ANN_ITEMS, item_str);
             /* Python output */
             unsigned char py_data[10];
@@ -277,6 +296,48 @@ static void parallel_decode(struct srd_decoder_inst *di)
         /* Handle word assembly */
         parallel_handle_word(di, s, item, samplenum);
     }
+}
+
+static void parallel_end(struct srd_decoder_inst *di)
+{
+    parallel_state *s = (parallel_state *)c_decoder_get_private(di);
+    if (!s || !s->has_saved_item) return;
+
+    uint64_t last_sample = c_decoder_get_last_samplenum(di);
+    char item_str[64];
+    if (s->num_item_bits <= 8 && s->saved_item <= 0xFF) {
+        unsigned char ch = (unsigned char)s->saved_item;
+        if (ch >= 0x20 && ch <= 0x7E) {
+            snprintf(item_str, sizeof(item_str), "%c", ch);
+        } else {
+            switch (ch) {
+            case '\0': snprintf(item_str, sizeof(item_str), "\\0"); break;
+            case '\a': snprintf(item_str, sizeof(item_str), "\\a"); break;
+            case '\b': snprintf(item_str, sizeof(item_str), "\\b"); break;
+            case '\t': snprintf(item_str, sizeof(item_str), "\\t"); break;
+            case '\n': snprintf(item_str, sizeof(item_str), "\\n"); break;
+            case '\v': snprintf(item_str, sizeof(item_str), "\\v"); break;
+            case '\f': snprintf(item_str, sizeof(item_str), "\\f"); break;
+            case '\r': snprintf(item_str, sizeof(item_str), "\\r"); break;
+            default:   snprintf(item_str, sizeof(item_str), "\\x%02x", ch); break;
+            }
+        }
+    } else {
+        int num_digits = (s->num_item_bits + 3) / 4;
+        char fmt[32];
+        snprintf(fmt, sizeof(fmt), "@%%0%dX", num_digits);
+        snprintf(item_str, sizeof(item_str), fmt, s->saved_item);
+    }
+    C_ANN_PUT(di, s->prv_dex, last_sample, s->out_ann, ANN_ITEMS, item_str);
+    unsigned char py_data[10];
+    int pos = 0;
+    for (int b = 0; b < 8; b++)
+        py_data[pos++] = (unsigned char)(s->saved_item >> (8 * b));
+    for (int b = 0; b < 2; b++)
+        py_data[pos++] = (unsigned char)(s->num_item_bits >> (8 * b));
+    c_decoder_put_proto(di, s->prv_dex, last_sample, s->out_python,
+                        "ITEM", py_data, pos);
+    s->has_saved_item = 0;
 }
 
 static void parallel_destroy(struct srd_decoder_inst *di)
@@ -316,6 +377,7 @@ struct srd_c_decoder parallel_c_decoder = {
     .start = parallel_start,
     .metadata = parallel_metadata,
     .decode = parallel_decode,
+    .end = parallel_end,
     .destroy = parallel_destroy,
 };
 

@@ -1,7 +1,317 @@
 {
 	"decoder": "usb_power_delivery",
-	"samplerate": 12000000,
-	"num_annotations": 0,
+	"samplerate": 10000000,
+	"num_annotations": 31,
 	"annotations": [
+		{
+			"start_sample": 64,
+			"end_sample": 2176,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble", 
+				"..."
+			]
+		}, 
+		{
+			"start_sample": 2176,
+			"end_sample": 2336,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"SYNC-1", 
+				"S1"
+			]
+		}, 
+		{
+			"start_sample": 2336,
+			"end_sample": 2496,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"SYNC-1", 
+				"S1"
+			]
+		}, 
+		{
+			"start_sample": 2496,
+			"end_sample": 2656,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"SYNC-1", 
+				"S1"
+			]
+		}, 
+		{
+			"start_sample": 2656,
+			"end_sample": 2816,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x2", 
+				"2"
+			]
+		}, 
+		{
+			"start_sample": 2176,
+			"end_sample": 2816,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"SOP", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2816,
+			"end_sample": 2976,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x2", 
+				"2"
+			]
+		}, 
+		{
+			"start_sample": 2976,
+			"end_sample": 3136,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x2", 
+				"2"
+			]
+		}, 
+		{
+			"start_sample": 3136,
+			"end_sample": 3296,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x9", 
+				"9"
+			]
+		}, 
+		{
+			"start_sample": 3296,
+			"end_sample": 3456,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x2", 
+				"2"
+			]
+		}, 
+		{
+			"start_sample": 2816,
+			"end_sample": 3456,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"H:2922", 
+				"HD"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 4832,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"(r1) SRC[4]: REQUEST", 
+				"REQUEST"
+			]
+		}, 
+		{
+			"start_sample": 3456,
+			"end_sample": 3616,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0xA", 
+				"A"
+			]
+		}, 
+		{
+			"start_sample": 3616,
+			"end_sample": 3776,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x7", 
+				"7"
+			]
+		}, 
+		{
+			"start_sample": 3776,
+			"end_sample": 3936,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0xC", 
+				"C"
+			]
+		}, 
+		{
+			"start_sample": 3936,
+			"end_sample": 4096,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x3", 
+				"3"
+			]
+		}, 
+		{
+			"start_sample": 4096,
+			"end_sample": 4256,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x5", 
+				"5"
+			]
+		}, 
+		{
+			"start_sample": 4256,
+			"end_sample": 4416,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0xC", 
+				"C"
+			]
+		}, 
+		{
+			"start_sample": 4416,
+			"end_sample": 4576,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4576,
+			"end_sample": 4736,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0xB", 
+				"B"
+			]
+		}, 
+		{
+			"start_sample": 3456,
+			"end_sample": 4736,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"[0]b1c53c7a", 
+				"D0"
+			]
+		}, 
+		{
+			"start_sample": 3456,
+			"end_sample": 4736,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"[1] (PDO #11) 3.35A (operating) / 1.22A (max) [no_suspend] [unchunked]", 
+				"[1] (PDO #11) 3.35A (operating) / 1.22A (max) [no_suspend] [unchunked]"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 4832,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Truncated", 
+				"!"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 4832,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Truncated", 
+				"!"
+			]
+		}, 
+		{
+			"start_sample": 3456,
+			"end_sample": 4736,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"[1]0bad0bad", 
+				"D1"
+			]
+		}, 
+		{
+			"start_sample": 3456,
+			"end_sample": 4736,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"[2] (PDO #0) 8.34A (operating) / 9.41A (max) [give_back] [comm_cap] [no_suspend] [unchunked]", 
+				"[2] (PDO #0) 8.34A (operating) / 9.41A (max) [give_back] [comm_cap] [no_suspend] [unchunked]"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 4832,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Truncated", 
+				"!"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 4832,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Truncated", 
+				"!"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 4832,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Bad CRC 0bad0bad != 878e56ab", 
+				"CRC!"
+			]
+		}, 
+		{
+			"start_sample": 3456,
+			"end_sample": 4736,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"CRC:0bad0bad", 
+				"CRC"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 4832,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"No EOP", 
+				"EOP!"
+			]
+		}
 	]
 }

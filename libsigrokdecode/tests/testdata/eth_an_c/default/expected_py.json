@@ -1,7 +1,151 @@
 {
 	"decoder": "eth_auto_negotiation",
-	"samplerate": 50000000,
-	"num_annotations": 0,
+	"samplerate": 1000000,
+	"num_annotations": 16,
 	"annotations": [
+		{
+			"start_sample": 13,
+			"end_sample": 14,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 26,
+			"end_sample": 27,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 39,
+			"end_sample": 40,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 52,
+			"end_sample": 53,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 65,
+			"end_sample": 66,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 78,
+			"end_sample": 79,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 91,
+			"end_sample": 92,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 104,
+			"end_sample": 105,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 117,
+			"end_sample": 118,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 124,
+			"end_sample": 125,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 137,
+			"end_sample": 138,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 150,
+			"end_sample": 151,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 163,
+			"end_sample": 164,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 176,
+			"end_sample": 177,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 189,
+			"end_sample": 190,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}, 
+		{
+			"start_sample": 202,
+			"end_sample": 203,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NLP"
+			]
+		}
 	]
 }

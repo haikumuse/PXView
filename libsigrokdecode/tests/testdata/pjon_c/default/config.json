@@ -1,8 +1,15 @@
 {
   "decoder": "pjon_c",
   "samplerate": 1000000,
-  "num_channels": 2,
+  "num_channels": 1,
   "sample_count": 20000,
   "channels": {},
-  "stack": []
+  "stack": [
+    {
+      "id": "pjdl_c",
+      "channels": {
+        "data": 0
+      }
+    }
+  ]
 }

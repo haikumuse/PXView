@@ -2,7 +2,7 @@
   "decoder": "dcf77_c",
   "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 20000,
+  "sample_count": 2000000,
   "channels": {
     "data": 0
   },
