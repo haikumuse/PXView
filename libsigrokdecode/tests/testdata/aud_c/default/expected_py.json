@@ -1,6 +1,6 @@
 {
 	"decoder": "aud",
-	"samplerate": 1000000,
+	"samplerate": 4000000,
 	"num_annotations": 0,
 	"annotations": [
 	]

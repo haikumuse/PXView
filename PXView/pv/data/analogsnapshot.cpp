@@ -130,6 +130,7 @@ void AnalogSnapshot::first_payload(const sr_datafeed_analog &analog, uint64_t to
 
     if (size != _capacity) {
         free_data();
+        _total_sample_count = total_sample_count;
         _data = malloc(size);
 
         if (_data) {

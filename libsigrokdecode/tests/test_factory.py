@@ -13,7 +13,8 @@ from protocol_synthesizer import (
     PS2Generator, JTAGGenerator, MDIOGenerator, MicrowireGenerator,
     HDLCGenerator, I2SGenerator, ISO7816Generator, SWDGenerator,
     OneWireGenerator, NRZIGenerator, IRNECGenerator, IRRC5Generator,
-    IRRC6Generator, IRSIRCGenerator, PWMGenerator, DCCGenerator,
+    IRRC6Generator, IRSIRCGenerator, IRLTTOGenerator, IRRecoilGenerator,
+    PWMGenerator, DCCGenerator,
     DMX512Generator, DALIGenerator, CECGenerator, SPDIFGenerator,
     WiegandGenerator, OpenthermGenerator, SENTGenerator,
     MIPIRFFEGenerator,
@@ -26,8 +27,8 @@ from protocol_synthesizer import (
     EthANGenerator, QiGenerator, PXX1Generator, PJDLGenerator,
     RCEncodeGenerator, RGBLEDWS281xGenerator, RinnaiControlPanelGenerator,
     CarreraGenerator, SDQGenerator, SwimGenerator, SWIGenerator,
-    MVBusGenerator, MorseGenerator, LFASTGenerator, DSIGenerator,
-    EM4305Generator, TL5620Generator,
+    MVBGenerator, MorseGenerator, LFASTGenerator, DSIGenerator,
+    EM4305Generator, TL5620Generator, T55xxGenerator, BEANGenerator,
     CCDGenerator, MapleBusGenerator, RVSWDGenerator, SDIOGenerator
 )
 
@@ -160,7 +161,7 @@ def _gen_cec(bb):
 
 def _gen_spdif(bb):
     gen = SPDIFGenerator(bb, channel=0)
-    gen.send_frame()
+    gen.send_two_subframes(ch1_data=0x00000002, ch2_data=0x00000002)
 
 def _gen_wiegand(bb):
     gen = WiegandGenerator(bb, 0, 1)
@@ -179,19 +180,32 @@ def _gen_mipi_rffe(bb):
     gen.send_ext_write(command=0x11, address=0x0, data=0x55)
 
 def _gen_j1850vpw(bb):
-    # J1850 VPW: generate pulse-width modulated signal
-    # Bit 1: low 64us + high 64us, Bit 0: low 128us + high 64us (at 1MHz)
-    # SOF: high 200us + low 200us
-    bb.set_level(0, 1, 200)  # SOF high
-    bb.set_level(0, 0, 200)  # SOF low
-    # Send byte 0x61: 01100001
-    for bit in [0,1,1,0,0,0,0,1]:
-        if bit:
-            bb.set_level(0, 0, 64); bb.set_level(0, 1, 64)
+    # J1850 VPW: edge-based, measures time between edges.
+    # Default active=0 (active-low). SOF: active-low pulse 164-245us.
+    # In DATA state: short (24-97us) active=1, short inactive=0,
+    #   long (97-170us) active=0, long inactive=1.
+    # IFS: >=240us between edges ends the frame.
+    sr = bb.samplerate
+    def us(v): return max(1, int(v * sr / 1e6))
+    # Idle high before SOF (so falling edge triggers)
+    bb.set_level(0, 1, us(300))
+    # SOF: active-low pulse of 200us (within 164-245us range)
+    bb.set_level(0, 0, us(200))
+    # Now in DATA state. Send byte 0x61: 01100001 (MSB first)
+    # Each bit is a pair: active-then-inactive or inactive-then-active
+    # short=64us (24-97), long=128us (97-170)
+    bits = [0,1,1,0,0,0,0,1]
+    for bit in bits:
+        if bit == 1:
+            # Bit 1: short active (64us low) + long inactive (128us high)
+            bb.set_level(0, 0, us(64))
+            bb.set_level(0, 1, us(128))
         else:
-            bb.set_level(0, 0, 128); bb.set_level(0, 1, 64)
-    # EOF
-    bb.set_level(0, 1, 200)
+            # Bit 0: long active (128us low) + short inactive (64us high)
+            bb.set_level(0, 0, us(128))
+            bb.set_level(0, 1, us(64))
+    # EOF/IFS: >=240us high
+    bb.set_level(0, 1, us(280))
 
 def _gen_sdcard(bb):
     # SD card: CMD line (ch0) with CLK (ch1)
@@ -351,11 +365,11 @@ def _gen_em4100(bb):
 
 def _gen_em4305(bb):
     gen = EM4305Generator(bb, channel=0)
-    gen.send_card_data(0x123456789A)
+    gen.send_write_word()
 
 def _gen_one_single_wire(bb):
     gen = OneSingleWireGenerator(bb, 0, 1)
-    gen.write_byte(0x55)
+    gen.send_byte(0x55)
 
 def _gen_ook(bb):
     gen = OOKGenerator(bb, channel=0)
@@ -363,7 +377,7 @@ def _gen_ook(bb):
 
 def _gen_sony_md(bb):
     gen = SonyMDGenerator(bb, channel=0)
-    gen.send_byte_manchester(0x55)
+    gen.send_message([0x00, 0x01])
 
 def _gen_tdm_audio(bb):
     gen = TDMAudioGenerator(bb, 0, 1, 2)
@@ -375,7 +389,9 @@ def _gen_tlc5620(bb):
 
 def _gen_usb_pd(bb):
     gen = USBPowerDeliveryGenerator(bb, channel=0)
-    gen.send_packet(header=0x1161)  # SRC, rev2, GoodCRC control message
+    # Header 0x0161: GoodCRC control message (count=0, SRC, rev2, DFP)
+    # 0x0161 = ext:0, count:0, id:0, pwr_role:1(SRC), rev:1(rev2), data_role:1(DFP), type:1(GOOD_CRC)
+    gen.send_packet(header=0x0161)
 
 def _gen_miller(bb):
     gen = MillerGenerator(bb, channel=0)
@@ -414,6 +430,10 @@ def _gen_rc_encode(bb):
     gen = RCEncodeGenerator(bb, channel=0)
     gen.send_pattern([1,0,1,0,1,1,0,0])
 
+def _gen_bean(bb):
+    gen = BEANGenerator(bb, channel=0)
+    gen.send_frame(pri=0x04, dst_id=0xFE, mes_id=0xAB, data_bytes=[0xA1, 0x80])
+
 def _gen_ws281x(bb):
     gen = RGBLEDWS281xGenerator(bb, channel=0)
     gen.send_rgb(0xFF, 0x00, 0x00)
@@ -424,11 +444,11 @@ def _gen_rinnai(bb):
 
 def _gen_carrera(bb):
     gen = CarreraGenerator(bb, channel=0)
-    gen.send_id(0x01)
+    gen.send_controller_word(controller_id=0, gas=5)
 
 def _gen_sdq(bb):
     gen = SDQGenerator(bb, channel=0)
-    gen.send_reset()
+    gen.send_transaction()
 
 def _gen_swim(bb):
     gen = SwimGenerator(bb, channel=0)
@@ -439,8 +459,8 @@ def _gen_swi(bb):
     gen.write_byte(0x55)
 
 def _gen_mvbus(bb):
-    gen = MVBusGenerator(bb, channel=0)
-    gen.send_frame([1,1,1,0], [0x01, 0x02])
+    gen = MVBGenerator(bb, channel=0)
+    gen.send_master_frame(f_code=0, address=0x001)
 
 def _gen_morse(bb):
     gen = MorseGenerator(bb, channel=0)
@@ -455,7 +475,7 @@ def _gen_lfast(bb):
 
 def _gen_dsi(bb):
     gen = DSIGenerator(bb, channel=0)
-    gen.send_packet(0x05, 0x11)
+    gen.send_backward_frame(0x80)
 
 def _gen_ir_irmp(bb):
     # IRMP can decode many IR protocols - use NEC as it's the most common
@@ -463,13 +483,14 @@ def _gen_ir_irmp(bb):
     gen.send_nec(address=0x04, command=0x08)
 
 def _gen_ir_ltto(bb):
-    # LTTO uses a specific IR protocol - generate a simple IR pulse pattern
-    gen = IRSIRCGenerator(bb, channel=0)
-    gen.send_sirc(command=0x15, address=0x01)
+    # LTTO uses specific IR protocol: pre-sync + pause + sync + data bits
+    gen = IRLTTOGenerator(bb, channel=0)
+    gen.send_signature(data=0x05, num_bits=5)
 
 def _gen_ir_recoil(bb):
-    gen = IRSIRCGenerator(bb, channel=0)
-    gen.send_sirc(command=0x15, address=0x01)
+    # Recoil uses specific IR protocol: sync + sync pause + data bits
+    gen = IRRecoilGenerator(bb, channel=0)
+    gen.send_packet(data=0x05, num_bits=5)
 
 def _gen_counter(bb):
     gen = PWMGenerator(bb, channel=0, freq=100, duty=0.5)
@@ -533,9 +554,94 @@ def _gen_spi(bb):
     gen.deselect()
 
 def _gen_adat(bb):
-    for _ in range(10):
-        bb.set_level(0, 0, 10)
-        bb.set_level(0, 1, 10)
+    # ADAT: NRZ-like with sync pattern. 1 channel.
+    # Send a sync pattern followed by data
+    # ADAT uses a specific sync pattern at the start of each frame
+    # Simplified: generate alternating data with periodic sync
+    bit_width = max(2, int(bb.samplerate / 100000))
+    # Sync: long low pulse
+    bb.set_level(0, 0, bit_width * 10)
+    # Data: alternating bits
+    for _ in range(64):
+        bb.set_level(0, 1, bit_width)
+        bb.set_level(0, 0, bit_width)
+        bb.set_level(0, 1, bit_width)
+        bb.set_level(0, 1, bit_width)
+        bb.set_level(0, 0, bit_width)
+        bb.set_level(0, 0, bit_width)
+        bb.set_level(0, 1, bit_width)
+        bb.set_level(0, 0, bit_width)
+
+def _gen_adb(bb):
+    # ADB: attention signal + bit cells. 1 channel.
+    # Attention: 560-1040us low, then 65-130us high
+    # Bit cells: 65us per bit, 1=65us low+65us high, 0=35us low+95us high (approx)
+    sr = bb.samplerate
+    def us(v): return max(1, int(v * sr / 1e6))
+    # Attention signal
+    bb.set_level(0, 0, us(800))
+    bb.set_level(0, 1, us(100))
+    # Sync bit
+    bb.set_level(0, 0, us(65))
+    bb.set_level(0, 1, us(65))
+    # Command: 0x84 (talk, addr 4, reg 0)
+    for i in range(7, -1, -1):
+        bit = (0x84 >> i) & 1
+        if bit:
+            bb.set_level(0, 0, us(65))
+            bb.set_level(0, 1, us(65))
+        else:
+            bb.set_level(0, 0, us(35))
+            bb.set_level(0, 1, us(95))
+    # Stop bit
+    bb.set_level(0, 1, us(200))
+
+def _gen_afsk(bb):
+    # AFSK: two frequencies (mark=1, space=0). 1 channel.
+    # Bell 202: mark=1200Hz, space=2200Hz
+    # Generate alternating mark and space tones
+    sr = bb.samplerate
+    # Mark tone (1200Hz) for 8 bits
+    mark_period = max(2, int(sr / 1200))
+    for _ in range(8):
+        bb.set_level(0, 1, mark_period // 2)
+        bb.set_level(0, 0, mark_period - mark_period // 2)
+    # Space tone (2200Hz) for 8 bits
+    space_period = max(2, int(sr / 2200))
+    for _ in range(8):
+        bb.set_level(0, 1, space_period // 2)
+        bb.set_level(0, 0, space_period - space_period // 2)
+    # More mark tone
+    for _ in range(16):
+        bb.set_level(0, 1, mark_period // 2)
+        bb.set_level(0, 0, mark_period - mark_period // 2)
+
+def _gen_ac97(bb):
+    # AC97: SYNC(ch0) + CLK(ch1) - only required channels
+    hp = max(2, int(bb.samplerate / 200000))
+    # SYNC pulse (marks start of frame): high for 1 bit, low for 15 bits
+    bb.set_level(0, 1, hp)
+    bb.set_level(0, 0, hp * 15)
+    # Clock and data: 16 CLK cycles with SYNC pattern
+    for _ in range(16):
+        bb.set_level(1, 1, hp)
+        bb.set_level(1, 0, hp)
+
+def _gen_t55xx(bb):
+    # T55xx: field clock gap encoding. 1 channel.
+    # Uses start_gap + write_gaps with on-time between gaps determining bit value
+    gen = T55xxGenerator(bb, channel=0)
+    gen.send_write_command(opcode=0b10, lock=0, data=0x12345678, address=2)
+
+def _gen_jitter(bb):
+    # Jitter: PWM signal with slight timing variations
+    gen = PWMGenerator(bb, channel=0, freq=1000, duty=0.5)
+    gen.send_cycles(50)
+
+def _gen_seven_segment(bb):
+    # Seven segment: just generate transitions on 1 channel
+    gen = PWMGenerator(bb, channel=0, freq=100, duty=0.5)
+    gen.send_cycles(20)
 
 def _gen_parallel(bb):
     # Parallel: CLK on ch0, D0-D7 on ch1-8
@@ -555,9 +661,17 @@ def _gen_graycode(bb):
         bb.set_level(0, v & 1, 100)
 
 def _gen_numbers_and_state(bb):
-    # Numbers and state decoder - just generate some transitions
-    for v in [0, 1, 0, 1, 1, 0, 0, 1]:
-        bb.set_level(0, v, 100)
+    # Numbers and state decoder: CLK(ch0) + bit0(ch1) + bit1(ch2) + ...
+    # With CLK, decoder samples data on rising CLK edge
+    # Send some values with clock
+    hp = max(2, int(bb.samplerate / 200000))
+    for val in [0x55, 0xAA, 0xFF, 0x00, 0x12, 0x34]:
+        # Set data lines (bit0=ch1, bit1=ch2, ..., bit7=ch8)
+        for bit in range(8):
+            bb.set_level(1 + bit, (val >> bit) & 1, 0)
+        # Clock pulse
+        bb.set_level(0, 1, hp)
+        bb.set_level(0, 0, hp)
 
 def _gen_ccd(bb):
     gen = CCDGenerator(bb, channel=0)
@@ -600,8 +714,8 @@ DECODER_CONFIG = {
     "rpm_c":             {"gen": _gen_rpm, "num_channels": 1, "sample_count": 200000},
     "timing_c":          {"gen": _gen_timing, "num_channels": 1, "sample_count": 100000},
     "dcc_c":             {"gen": _gen_dcc, "num_channels": 1, "sample_count": 100000},
-    "dmx512_c":          {"gen": _gen_dmx512, "num_channels": 1, "samplerate": 4000000, "sample_count": 200000},
-    "dali_c":            {"gen": _gen_dali, "num_channels": 1, "sample_count": 100000},
+    "dmx512_c":          {"gen": _gen_dmx512, "num_channels": 1, "samplerate": 4000000, "sample_count": 500000},
+    "dali_c":            {"gen": _gen_dali, "num_channels": 1, "samplerate": 1000000, "sample_count": 200000},
     "cec_c":             {"gen": _gen_cec, "num_channels": 1, "sample_count": 100000},
     "spdif_c":           {"gen": _gen_spdif, "num_channels": 1, "samplerate": 6000000, "sample_count": 300000},
     "wiegand_c":         {"gen": _gen_wiegand, "num_channels": 2, "sample_count": 100000},
@@ -636,7 +750,7 @@ DECODER_CONFIG = {
     "caliper_c":         {"gen": _gen_caliper, "num_channels": 2, "sample_count": 100000},
     "c2_c":              {"gen": _gen_c2, "num_channels": 2, "sample_count": 100000},
     "avr_pdi_c":         {"gen": _gen_avr_pdi, "num_channels": 2, "sample_count": 100000},
-    "delta-sigma_c":     {"gen": _gen_delta_sigma, "num_channels": 2, "sample_count": 100000},
+    "delta-sigma_c":     {"gen": _gen_delta_sigma, "num_channels": 2, "sample_count": 500000},
     "em4100_c":          {"gen": _gen_em4100, "num_channels": 1, "sample_count": 200000},
     "em4305_c":          {"gen": _gen_em4305, "num_channels": 1, "sample_count": 200000},
     "one_single_wire_c": {"gen": _gen_one_single_wire, "num_channels": 2, "sample_count": 100000},
@@ -660,26 +774,40 @@ DECODER_CONFIG = {
     "sdq_c":             {"gen": _gen_sdq, "num_channels": 1, "sample_count": 100000},
     "swim_c":            {"gen": _gen_swim, "num_channels": 1, "sample_count": 100000},
     "swi_c":             {"gen": _gen_swi, "num_channels": 1, "sample_count": 100000},
-    "mvb_c":             {"gen": _gen_mvbus, "num_channels": 1, "sample_count": 100000},
+    "mvb_c":             {"gen": _gen_mvbus, "num_channels": 1, "samplerate": 6000000, "sample_count": 100000},
     "morse_c":           {"gen": _gen_morse, "num_channels": 1, "sample_count": 500000},
     "lfast_c":           {"gen": _gen_lfast, "num_channels": 1, "sample_count": 100000},
     "dsi_c":             {"gen": _gen_dsi, "num_channels": 1, "sample_count": 100000},
     "signature_c":       {"gen": _gen_signature, "num_channels": 4, "sample_count": 100000},
     "sle44xx_c":         {"gen": _gen_sle44xx, "num_channels": 3, "sample_count": 100000},
-    "tmc_c":             {"gen": _gen_tmc, "num_channels": 2, "sample_count": 100000},
+    "tmc_c":             {"gen": _gen_tmc, "num_channels": 4, "sample_count": 100000},
     "parallel_c":        {"gen": _gen_parallel, "num_channels": 9, "sample_count": 100000},
     "graycode_c":        {"gen": _gen_graycode, "num_channels": 1, "sample_count": 100000},
-    "numbers_and_state_c": {"gen": _gen_numbers_and_state, "num_channels": 1, "sample_count": 100000},
+    "numbers_and_state_c": {"gen": _gen_numbers_and_state, "num_channels": 9, "sample_count": 100000},
     "ccd_c":             {"gen": _gen_ccd, "num_channels": 1, "sample_count": 100000},
     "sda2506_c":         {"gen": _gen_i2c, "num_channels": 2, "sample_count": 100000},
     "tl5620_c":          {"gen": _gen_tlc5620, "num_channels": 2, "sample_count": 100000},
     "mipi_dsi_c":        {"gen": _gen_dsi, "num_channels": 2, "sample_count": 100000},
     "emmc_sd_c":         {"gen": _gen_sdcard, "num_channels": 2, "sample_count": 100000},
     "aud_c":             {"gen": _gen_i2s, "num_channels": 6, "samplerate": 4000000, "sample_count": 200000},
-    "pcfx_ctrlr_c":      {"gen": _gen_spi, "num_channels": 3, "sample_count": 100000},
-    "cjtag_c":           {"gen": _gen_jtag, "num_channels": 2, "sample_count": 100000},
+    "pcfx_ctrlr_c":      {"gen": _gen_spi, "num_channels": 4, "sample_count": 100000},
+    "cjtag_c":           {"gen": _gen_jtag, "num_channels": 4, "sample_count": 100000},
     "cjtag_oscan0_c":    {"gen": _gen_jtag, "num_channels": 4, "sample_count": 100000},
-    "bean_c":            {"gen": _gen_uart, "num_channels": 1, "sample_count": 100000},
+    "bean_c":            {"gen": _gen_bean, "num_channels": 1, "sample_count": 100000},
+    "ac97_c":            {"gen": _gen_ac97, "num_channels": 2, "sample_count": 100000},
+    "adat_c":            {"gen": _gen_adat, "num_channels": 1, "samplerate": 100000000, "sample_count": 200000},
+    "adb_c":             {"gen": _gen_adb, "num_channels": 1, "sample_count": 100000},
+    "afsk_c":            {"gen": _gen_afsk, "num_channels": 1, "sample_count": 100000},
+    "t55xx_c":           {"gen": _gen_t55xx, "num_channels": 1, "sample_count": 200000},
+    "jitter_c":          {"gen": _gen_jitter, "num_channels": 2, "sample_count": 100000},
+    "seven_segment_c":   {"gen": _gen_seven_segment, "num_channels": 7, "sample_count": 100000},
+
+    # === Base decoders (needed for stack chains) ===
+    "i2c_c":             {"gen": _gen_i2c, "num_channels": 2, "sample_count": 100000},
+    "spi_c":             {"gen": _gen_spi, "num_channels": 4, "sample_count": 100000},
+    "spi_fast_c":        {"gen": _gen_spi, "num_channels": 4, "sample_count": 100000},
+    "uart_c":            {"gen": _gen_uart, "num_channels": 1, "sample_count": 100000},
+    "uart_fast_c":       {"gen": _gen_uart, "num_channels": 1, "sample_count": 100000},
 }
 
 # Stack decoder configurations: decoder_id -> list of upstream decoder IDs
@@ -758,6 +886,9 @@ STACK_ROOT_GEN = {
     "ltar_smartdevice_c": _gen_pwm,  # AFSK root
     "ltar_smartdevice_decode_c": _gen_pwm,
     "sony_md_decode_c": _gen_sony_md,
+    "jtag_avr_c": _gen_jtag,
+    "jtag_ejtag_c": _gen_jtag,
+    "jtag_stm32_c": _gen_jtag,
     "pjon_c":        _gen_pjdl,
     "usb_request_c": _gen_usb_signalling,
     "tpm_fifo_tis_c": _gen_spi,
@@ -778,8 +909,8 @@ STACK_NUM_CHANNELS = {
     "ps2_mouse_c": 2,
     "ook_oregon_c": 1,
     "ook_vis_c": 1,
-    "tm1637_c": 2,
-    "tm1638_c": 2,
+    "tm1637_c": 4,
+    "tm1638_c": 4,
     "cfp_c": 2,
     "eeprom93xx_c": 4,
     "avclan_c": 1,
@@ -788,6 +919,9 @@ STACK_NUM_CHANNELS = {
     "ltar_smartdevice_c": 1,
     "ltar_smartdevice_decode_c": 1,
     "sony_md_decode_c": 1,
+    "jtag_avr_c": 4,
+    "jtag_ejtag_c": 4,
+    "jtag_stm32_c": 4,
     "pjon_c": 1,
     "usb_request_c": 2,
     "tpm_fifo_tis_c": 4,
@@ -796,6 +930,39 @@ STACK_NUM_CHANNELS = {
 # For stack decoders, override samplerate
 STACK_SAMPLERATE = {
     "usb_request_c": 12000000,
+}
+
+# For stack decoders, override sample_count
+STACK_SAMPLE_COUNT = {
+    "4b5b_c": 100000,
+    "ethernet_c": 100000,
+    "arp_c": 100000,
+    "ipv4_c": 100000,
+    "udp_c": 100000,
+    "onewire_network_c": 100000,
+    "ds2408_c": 100000,
+    "ds243x_c": 100000,
+    "ds28ea00_c": 100000,
+    "ps2_keyboard_c": 100000,
+    "ps2_mouse_c": 100000,
+    "ook_oregon_c": 100000,
+    "ook_vis_c": 100000,
+    "tm1637_c": 100000,
+    "tm1638_c": 100000,
+    "cfp_c": 100000,
+    "eeprom93xx_c": 100000,
+    "avclan_c": 100000,
+    "ir_ltto_decode_c": 200000,
+    "sipi_c": 100000,
+    "ltar_smartdevice_c": 100000,
+    "ltar_smartdevice_decode_c": 100000,
+    "sony_md_decode_c": 100000,
+    "pjon_c": 100000,
+    "usb_request_c": 200000,
+    "tpm_fifo_tis_c": 100000,
+    "jtag_avr_c": 100000,
+    "jtag_ejtag_c": 100000,
+    "jtag_stm32_c": 100000,
 }
 
 
@@ -858,7 +1025,7 @@ def generate_test_for_decoder(c_file):
     if is_stack_decoder:
         num_channels = STACK_NUM_CHANNELS.get(d_id, 2)
         samplerate = STACK_SAMPLERATE.get(d_id, 1000000)
-        sample_count = 20000
+        sample_count = STACK_SAMPLE_COUNT.get(d_id, 100000)
     elif d_id in DECODER_CONFIG:
         cfg = DECODER_CONFIG[d_id]
         num_channels = cfg.get("num_channels", 2)

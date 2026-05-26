@@ -94,23 +94,25 @@
 			]
 		}, 
 		{
-			"start_sample": 2500,
+			"start_sample": 2000,
 			"end_sample": 2500,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
 				"Start bit", 
+				"Start", 
 				"S"
 			]
 		}, 
 		{
 			"start_sample": 7000,
 			"end_sample": 7000,
-			"ann_class": 1,
-			"ann_type": 8,
+			"ann_class": 3,
+			"ann_type": 10,
 			"texts": [
-				"Parity error", 
-				"PE"
+				"Parity bit", 
+				"Parity", 
+				"P"
 			]
 		}, 
 		{
@@ -120,7 +122,8 @@
 			"ann_type": 8,
 			"texts": [
 				"Stop error", 
-				"StE"
+				"Stop err", 
+				"SE"
 			]
 		}, 
 		{
@@ -129,7 +132,7 @@
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"0x02"
+				"02"
 			]
 		}, 
 		{
@@ -232,23 +235,25 @@
 			]
 		}, 
 		{
-			"start_sample": 8000,
+			"start_sample": 7500,
 			"end_sample": 8000,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
 				"Start error", 
+				"Start err", 
 				"SE"
 			]
 		}, 
 		{
 			"start_sample": 12500,
 			"end_sample": 12500,
-			"ann_class": 1,
-			"ann_type": 8,
+			"ann_class": 3,
+			"ann_type": 10,
 			"texts": [
-				"Parity error", 
-				"PE"
+				"Parity bit", 
+				"Parity", 
+				"P"
 			]
 		}, 
 		{
@@ -258,7 +263,8 @@
 			"ann_type": 8,
 			"texts": [
 				"Stop error", 
-				"StE"
+				"Stop err", 
+				"SE"
 			]
 		}, 
 		{
@@ -267,7 +273,7 @@
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"0x04"
+				"04"
 			]
 		}, 
 		{
@@ -370,33 +376,36 @@
 			]
 		}, 
 		{
-			"start_sample": 13500,
+			"start_sample": 13000,
 			"end_sample": 13500,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
 				"Start error", 
+				"Start err", 
 				"SE"
 			]
 		}, 
 		{
 			"start_sample": 18000,
 			"end_sample": 18000,
-			"ann_class": 3,
-			"ann_type": 10,
+			"ann_class": 1,
+			"ann_type": 8,
 			"texts": [
-				"Parity OK", 
-				"P"
+				"Parity error", 
+				"Parity err", 
+				"PE"
 			]
 		}, 
 		{
 			"start_sample": 18500,
 			"end_sample": 18500,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 3,
+			"ann_type": 10,
 			"texts": [
 				"Stop bit", 
-				"St"
+				"Stop", 
+				"S"
 			]
 		}, 
 		{
@@ -405,7 +414,7 @@
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"0x06"
+				"06"
 			]
 		}, 
 		{
@@ -414,7 +423,9 @@
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
-				"End Power Transfer: Over current"
+				"End Power Transfer: Over Voltage", 
+				"EPT: Over Voltage", 
+				"EPT"
 			]
 		}, 
 		{

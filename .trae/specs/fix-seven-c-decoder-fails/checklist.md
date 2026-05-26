@@ -1,0 +1,9 @@
+- [ ] sdio_c test PASS — all 9 text format deviations fixed (short-form annotation texts added, class 138 annotation added, CMD0 description corrected)
+- [ ] usb_power_delivery_c test PASS — all 4 deviations fixed (class 8/9/11 annotations added, extra class 12 fixed)
+- [ ] qi_c test PASS — all 23 deviations fixed (start bit, data byte, parity, stop bit, checksum annotation ranges corrected)
+- [ ] lfast_c test PASS — all 12 deviations fixed (header field end_samples, sleep bit logic, warning text, bitpack LSB-first order)
+- [ ] sipi_c test PASS — all 14 deviations fixed (inherited lfast_c fixes + own header/CRC range fixes)
+- [ ] maple_bus_c test PASS — all 48 deviations fixed (state machine aligned with Python's start detection, pending_bit, count tracking)
+- [ ] rvswd_c test PASS — all 59 deviations fixed (START 'S' text added, STOP exclusive matching, state machine aligned)
+- [ ] ninja -C build compiles with no errors
+- [ ] All 7 decoders verified with `python run_all_tests.py --decoder DECODER_NAME` showing PASS

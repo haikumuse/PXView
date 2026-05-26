@@ -95,7 +95,7 @@
 		}, 
 		{
 			"start_sample": 840,
-			"end_sample": 840,
+			"end_sample": 880,
 			"ann_class": 0,
 			"ann_type": 207,
 			"texts": [
@@ -115,7 +115,7 @@
 		}, 
 		{
 			"start_sample": 120,
-			"end_sample": 680,
+			"end_sample": 760,
 			"ann_class": 7,
 			"ann_type": 65,
 			"texts": [
@@ -137,7 +137,7 @@
 		}, 
 		{
 			"start_sample": 840,
-			"end_sample": 920,
+			"end_sample": 880,
 			"ann_class": 3,
 			"ann_type": 1000,
 			"texts": [
@@ -239,7 +239,7 @@
 		}, 
 		{
 			"start_sample": 3040,
-			"end_sample": 3040,
+			"end_sample": 3080,
 			"ann_class": 0,
 			"ann_type": 207,
 			"texts": [
@@ -259,7 +259,7 @@
 		}, 
 		{
 			"start_sample": 2320,
-			"end_sample": 2880,
+			"end_sample": 2960,
 			"ann_class": 7,
 			"ann_type": 65,
 			"texts": [
@@ -281,7 +281,7 @@
 		}, 
 		{
 			"start_sample": 3040,
-			"end_sample": 3120,
+			"end_sample": 3080,
 			"ann_class": 3,
 			"ann_type": 1000,
 			"texts": [
@@ -383,7 +383,7 @@
 		}, 
 		{
 			"start_sample": 4240,
-			"end_sample": 4240,
+			"end_sample": 4280,
 			"ann_class": 0,
 			"ann_type": 207,
 			"texts": [
@@ -403,7 +403,7 @@
 		}, 
 		{
 			"start_sample": 3520,
-			"end_sample": 4080,
+			"end_sample": 4160,
 			"ann_class": 7,
 			"ann_type": 65,
 			"texts": [
@@ -425,7 +425,7 @@
 		}, 
 		{
 			"start_sample": 4240,
-			"end_sample": 4320,
+			"end_sample": 4280,
 			"ann_class": 3,
 			"ann_type": 1000,
 			"texts": [
@@ -437,7 +437,7 @@
 		}, 
 		{
 			"start_sample": 40,
-			"end_sample": 4240,
+			"end_sample": 4280,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [

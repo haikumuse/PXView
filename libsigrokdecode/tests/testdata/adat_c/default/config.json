@@ -2,7 +2,7 @@
   "decoder": "adat_c",
   "samplerate": 100000000,
   "num_channels": 1,
-  "sample_count": 20000,
+  "sample_count": 200000,
   "channels": {
     "adat": 0
   },

@@ -1,0 +1,6 @@
+- [x] iebus_c test PASS — read_bits() saves first bit start position, Master address annotation range correct
+- [x] avclan_c test PASS — inherits iebus_c fix, 0 deviations
+- [x] ir_nec_c test PASS — data_ok() only resets state for extended address mode, correct Address# value and Command annotation present
+- [x] ir_sirc_c test PASS — Python decoder handles self.matched as integer bitmask, expected_py.json regenerated with 18 annotations
+- [x] ninja -C build compiles with no errors
+- [x] All 4 decoders verified with python run_all_tests.py --decoder DECODER_NAME showing PASS

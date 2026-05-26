@@ -1,0 +1,8 @@
+- [x] theme-schema.json 中 accent.colors 分类包含 @icon-accent 和 @icon-foreground 两个 color 类型 token，且均有 label 和 desc
+- [x] dark.json、light.json、atom.json、monokai.json 均包含 @icon-accent 和 @icon-foreground 的默认值，且 dark/light 的 @icon-foreground 值不同
+- [x] cn/dlg.json、en/dlg.json、traditional/dlg.json 均包含 IDS_STYLE_ICON_ACCENT、IDS_STYLE_ICON_ACCENT_DESC、IDS_STYLE_ICON_FOREGROUND、IDS_STYLE_ICON_FOREGROUND_DESC 四个字符串
+- [x] IconCache::icon() 中存在静态映射表，覆盖 Category A（47个文件名→@icon-accent）和 Category B（14个文件名→@icon-foreground）
+- [x] IconCache::icon() 对映射表中的图标自动调用 tintedIcon() 着色，对不在映射表中的图标保持原逻辑
+- [x] 着色后的缓存 key 包含颜色值，确保不同主题下同路径图标不会混淆
+- [x] token 值无效时回退到 SVG 原色，不崩溃
+- [x] 主题切换时 clearCache() 后重新加载图标能正确使用新 token 值着色

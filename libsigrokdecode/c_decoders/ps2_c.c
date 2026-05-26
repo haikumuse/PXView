@@ -204,7 +204,7 @@ static void ps2_handle_byte(struct srd_decoder_inst* di, uint64_t samplenum)
         py_data[1] = s->htd ? 1 : 0;
         py_data[2] = parity_ok ? 1 : 0;
         py_data[3] = has_ack ? 1 : 0;
-        c_decoder_put_python(di, s->bit_ss[0], samplenum, s->out_python, "BYTE", py_data, 4);
+        c_decoder_put_python(di, s->bit_ss[0], s->bit_ss[10] + half_bitwidth, s->out_python, "BYTE", py_data, 4);
     }
 }
 

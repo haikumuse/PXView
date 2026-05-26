@@ -1,7 +1,7 @@
 {
 	"decoder": "ps2_keyboard",
 	"samplerate": 1000000,
-	"num_annotations": 45,
+	"num_annotations": 47,
 	"annotations": [
 		{
 			"start_sample": 40,
@@ -145,6 +145,15 @@
 				"Stop", 
 				"St", 
 				"T"
+			]
+		}, 
+		{
+			"start_sample": 40,
+			"end_sample": 880,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"A"
 			]
 		}, 
 		{
@@ -433,6 +442,15 @@
 				"Stop", 
 				"St", 
 				"T"
+			]
+		}, 
+		{
+			"start_sample": 2240,
+			"end_sample": 4280,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"A"
 			]
 		}
 	]

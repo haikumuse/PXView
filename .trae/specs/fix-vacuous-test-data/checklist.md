@@ -1,43 +1,6 @@
-- [ ] protocol_synthesizer.py 包含 JTAGGenerator，能生成有效JTAG TAP序列
-- [ ] protocol_synthesizer.py 包含 MDIOGenerator，能生成有效MDIO帧
-- [ ] protocol_synthesizer.py 包含 MicrowireGenerator，能生成有效Microwire帧
-- [ ] protocol_synthesizer.py 包含 HDLCGenerator，能生成有效HDLC帧
-- [ ] protocol_synthesizer.py 包含 I2SGenerator，能生成有效I2S帧
-- [ ] protocol_synthesizer.py 包含 ISO7816Generator，能生成有效智能卡帧
-- [ ] protocol_synthesizer.py 包含 SWDGenerator，能生成有效SWD帧
-- [ ] protocol_synthesizer.py 包含 OneWireGenerator，能生成有效OneWire时序
-- [ ] CANGenerator修复后能生成有效CAN帧（can_c/can_fd_c产生annotations）
-- [ ] PS2Generator被test_factory正确调用（ps2_c产生annotations）
-- [ ] protocol_synthesizer.py 包含 NRZIGenerator
-- [ ] protocol_synthesizer.py 包含 IR协议生成器（NEC/RC5/RC6/SIRC等）
-- [ ] protocol_synthesizer.py 包含 PWMGenerator
-- [ ] protocol_synthesizer.py 包含 DCCGenerator
-- [ ] protocol_synthesizer.py 包含 DMX512Generator
-- [ ] protocol_synthesizer.py 包含 DALIGenerator
-- [ ] protocol_synthesizer.py 包含 CECGenerator
-- [ ] protocol_synthesizer.py 包含 SPDIFGenerator
-- [ ] protocol_synthesizer.py 包含 WiegandGenerator
-- [ ] protocol_synthesizer.py 包含 OpenthermGenerator
-- [ ] protocol_synthesizer.py 包含 SENTGenerator
-- [ ] protocol_synthesizer.py 包含 MIPIRFFEGenerator
-- [ ] protocol_synthesizer.py 包含 J1850VPWGenerator
-- [ ] protocol_synthesizer.py 包含 SDCardGenerator
-- [ ] protocol_synthesizer.py 包含 SDIOGenerator
-- [ ] protocol_synthesizer.py 包含 QSPIGenerator
-- [ ] protocol_synthesizer.py 包含 SPIDualQuadGenerator
-- [ ] protocol_synthesizer.py 包含 ST7735Generator
-- [ ] protocol_synthesizer.py 包含 SpaceWireGenerator
-- [ ] protocol_synthesizer.py 包含 FlexRayGenerator
-- [ ] protocol_synthesizer.py 包含 MapleBusGenerator
-- [ ] protocol_synthesizer.py 包含 IECGenerator
-- [ ] protocol_synthesizer.py 包含 StepperMotorGenerator
-- [ ] protocol_synthesizer.py 包含 XY2_100Generator
-- [ ] protocol_synthesizer.py 包含 Z80Generator
-- [ ] protocol_synthesizer.py 包含 MCS48Generator
-- [ ] protocol_synthesizer.py 包含 GPIBGenerator
-- [ ] protocol_synthesizer.py 包含 LPCGenerator
-- [ ] test_factory.py 为所有89个logic输入解码器生成有效协议数据
-- [ ] test_factory.py 为19个stack解码器正确配置依赖链
-- [ ] 运行 python test_factory.py 无报错
-- [ ] 运行 python run_all_tests.py --all --jobs 4，WARN数量从134降到接近0
-- [ ] 所有之前PASS的解码器仍然PASS（无回退）
+- [ ] All 70 WARN decoder generators fixed in protocol_synthesizer.py and test_factory.py
+- [ ] python test_factory.py runs without errors
+- [ ] python run_all_tests.py --all shows WARN ≤ 20 (50+ converted to PASS)
+- [ ] All previously PASS decoders still PASS (no regressions)
+- [ ] No changes to C decoder source code
+- [ ] No changes to Python decoder source code

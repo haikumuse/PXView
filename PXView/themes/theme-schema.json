@@ -35,7 +35,9 @@
         { "id": "@danger-hover", "type": "color", "label": "IDS_STYLE_DANGER_HOVER" },
         { "id": "@danger-pressed", "type": "color", "label": "IDS_STYLE_DANGER_PRESSED" },
         { "id": "@dock-status-ok", "type": "color", "label": "IDS_STYLE_STATUS_OK" },
-        { "id": "@dock-status-error", "type": "color", "label": "IDS_STYLE_STATUS_ERROR" }
+        { "id": "@dock-status-error", "type": "color", "label": "IDS_STYLE_STATUS_ERROR" },
+        { "id": "@icon-accent", "type": "color", "label": "IDS_STYLE_ICON_ACCENT", "desc": "IDS_STYLE_ICON_ACCENT_DESC" },
+        { "id": "@icon-foreground", "type": "color", "label": "IDS_STYLE_ICON_FOREGROUND", "desc": "IDS_STYLE_ICON_FOREGROUND_DESC" }
       ]
     },
     {
@@ -125,6 +127,44 @@
         { "id": "@decoder-channel-15", "type": "color", "label": "IDS_STYLE_DEC_CH15" },
         { "id": "@decoder-error-bg", "type": "color", "label": "IDS_STYLE_DEC_ERROR" },
         { "id": "@decoder-no-decode", "type": "color", "label": "IDS_STYLE_DEC_NO_DECODE" }
+      ]
+    },
+    {
+      "id": "decoder.ann.colors",
+      "name": "IDS_STYLE_CAT_DECODER_ANN",
+      "tokens": [
+        { "id": "@decoder-ann-0", "type": "color", "label": "IDS_STYLE_DEC_ANN_0" },
+        { "id": "@decoder-ann-1", "type": "color", "label": "IDS_STYLE_DEC_ANN_1" },
+        { "id": "@decoder-ann-2", "type": "color", "label": "IDS_STYLE_DEC_ANN_2" },
+        { "id": "@decoder-ann-3", "type": "color", "label": "IDS_STYLE_DEC_ANN_3" },
+        { "id": "@decoder-ann-4", "type": "color", "label": "IDS_STYLE_DEC_ANN_4" },
+        { "id": "@decoder-ann-5", "type": "color", "label": "IDS_STYLE_DEC_ANN_5" },
+        { "id": "@decoder-ann-6", "type": "color", "label": "IDS_STYLE_DEC_ANN_6" },
+        { "id": "@decoder-ann-7", "type": "color", "label": "IDS_STYLE_DEC_ANN_7" },
+        { "id": "@decoder-ann-8", "type": "color", "label": "IDS_STYLE_DEC_ANN_8" },
+        { "id": "@decoder-ann-9", "type": "color", "label": "IDS_STYLE_DEC_ANN_9" },
+        { "id": "@decoder-ann-10", "type": "color", "label": "IDS_STYLE_DEC_ANN_10" },
+        { "id": "@decoder-ann-11", "type": "color", "label": "IDS_STYLE_DEC_ANN_11" },
+        { "id": "@decoder-ann-12", "type": "color", "label": "IDS_STYLE_DEC_ANN_12" },
+        { "id": "@decoder-ann-13", "type": "color", "label": "IDS_STYLE_DEC_ANN_13" },
+        { "id": "@decoder-ann-14", "type": "color", "label": "IDS_STYLE_DEC_ANN_14" },
+        { "id": "@decoder-ann-15", "type": "color", "label": "IDS_STYLE_DEC_ANN_15" },
+        { "id": "@decoder-ann-outline-0", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT0" },
+        { "id": "@decoder-ann-outline-1", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT1" },
+        { "id": "@decoder-ann-outline-2", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT2" },
+        { "id": "@decoder-ann-outline-3", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT3" },
+        { "id": "@decoder-ann-outline-4", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT4" },
+        { "id": "@decoder-ann-outline-5", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT5" },
+        { "id": "@decoder-ann-outline-6", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT6" },
+        { "id": "@decoder-ann-outline-7", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT7" },
+        { "id": "@decoder-ann-outline-8", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT8" },
+        { "id": "@decoder-ann-outline-9", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT9" },
+        { "id": "@decoder-ann-outline-10", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT10" },
+        { "id": "@decoder-ann-outline-11", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT11" },
+        { "id": "@decoder-ann-outline-12", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT12" },
+        { "id": "@decoder-ann-outline-13", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT13" },
+        { "id": "@decoder-ann-outline-14", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT14" },
+        { "id": "@decoder-ann-outline-15", "type": "color", "label": "IDS_STYLE_DEC_ANN_OUT15" }
       ]
     },
     {

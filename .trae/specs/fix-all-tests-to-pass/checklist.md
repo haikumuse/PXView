@@ -1,15 +1,20 @@
-- [ ] lfast_c 测试PASS（C解码器位赋值和sleep bit修复）
-- [ ] ccd_c 测试PASS（CCD/UART生成器改进）
-- [ ] jtag_c 测试PASS（JTAG TAP生成器改进）
-- [ ] ps2_c/ps2_keyboard_c/ps2_mouse_c 测试PASS（PS/2生成器改进）
-- [ ] maple_bus_c 测试PASS（Maple Bus生成器改进）
-- [ ] qi_c 测试PASS（Qi生成器改进）
-- [ ] rvswd_c 测试PASS（RVSWD生成器改进）
-- [ ] sdio_c 测试PASS（SDIO生成器改进）
-- [ ] usb_power_delivery_c 测试PASS（USB PD生成器改进）
+- [ ] 4b5b_c 测试PASS（C解码器4b5b解码逻辑修复）
+- [ ] nrzi_c 测试PASS（C解码器NRZI编码逻辑修复）
+- [x] uart_c 测试PASS（C解码器UART帧边界修复）
+- [x] uart_fast_c 测试PASS（C解码器快速UART逻辑修复）
+- [ ] avclan_c 测试PASS（C解码器注解文本修复）
+- [ ] iebus_c 测试PASS（C解码器注解文本修复）
+- [ ] ir_nec_c 测试PASS（C解码器NEC协议逻辑修复）
+- [ ] ir_sirc_c 测试PASS（C解码器SIRC协议逻辑修复）
+- [ ] lfast_c 测试PASS（C解码器sleep bit和payload格式修复）
 - [ ] sipi_c 测试PASS（随lfast_c修复）
-- [ ] 所有11个FAIL解码器修复后0 FAIL
-- [ ] 79个WARN解码器中至少60个转为PASS
+- [ ] maple_bus_c 测试PASS（C解码器Maple Bus帧解析修复）
+- [ ] qi_c 测试PASS（C解码器Qi解码注解修复）
+- [ ] rvswd_c 测试PASS（C解码器RVSWD START/STOP检测修复）
+- [ ] sdio_c 测试PASS（C解码器SDIO命令解析修复）
+- [ ] usb_power_delivery_c 测试PASS（C解码器USB PD注解修复）
+- [ ] 所有15个FAIL解码器修复后0 FAIL
+- [ ] 70个WARN解码器中至少50个转为PASS
 - [ ] ninja -C build 编译无错误
 - [ ] python test_factory.py 运行无报错
 - [ ] python run_all_tests.py --all --jobs 4 结果为 215 PASS, 0 FAIL, 0 WARN

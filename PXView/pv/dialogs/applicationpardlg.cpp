@@ -1062,6 +1062,60 @@ void ApplicationParamDlg::applyLivePreview() {
       qssContent.replace(key, tokens[key]);
     }
 
+    // Process SVG files that contain token placeholders (e.g. @accent-light)
+    // Read each referenced SVG, replace token placeholders, write to temp dir
+    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) +
+                      "/pxview_themed_svgs";
+    QDir().mkpath(tempDir);
+
+    QRegularExpression svgRe("image:\\s*url\\((:[^)]+\\.svg)\\)");
+    QRegularExpressionMatchIterator svgIt = svgRe.globalMatch(qssContent);
+    QSet<QString> processedSvgs;
+    while (svgIt.hasNext()) {
+      QRegularExpressionMatch match = svgIt.next();
+      QString svgResPath = match.captured(1);
+
+      if (processedSvgs.contains(svgResPath))
+        continue;
+      processedSvgs.insert(svgResPath);
+
+      QFile svgFile(svgResPath);
+      if (!svgFile.open(QFile::ReadOnly | QFile::Text))
+        continue;
+      QString svgContent = svgFile.readAll();
+      svgFile.close();
+
+      // Check if SVG contains any token placeholders
+      bool hasPlaceholders = false;
+      for (const QString &key : keys) {
+        if (svgContent.contains(key)) {
+          hasPlaceholders = true;
+          break;
+        }
+      }
+      if (!hasPlaceholders)
+        continue;
+
+      // Replace token placeholders in SVG content
+      for (const QString &key : keys) {
+        svgContent.replace(key, tokens[key]);
+      }
+
+      // Write modified SVG to temp directory
+      QString fileName = svgResPath;
+      fileName.replace(":/", "");
+      fileName.replace("/", "_");
+      QString tempPath = tempDir + "/" + fileName;
+      QFile tempFile(tempPath);
+      if (tempFile.open(QFile::WriteOnly | QFile::Text)) {
+        tempFile.write(svgContent.toUtf8());
+        tempFile.close();
+      }
+
+      // Update QSS to reference temp file
+      qssContent.replace(svgResPath, tempPath);
+    }
+
     app.SetThemeTokens(tokens);
     qApp->setStyleSheet(qssContent);
     UiManager::Instance()->Update(UI_UPDATE_ACTION_THEME);
@@ -1590,6 +1644,55 @@ void ApplicationParamDlg::saveStyleOptions() {
 
       for (const QString &key : keys) {
         qssContent.replace(key, tokens[key]);
+      }
+
+      // Process SVG files that contain token placeholders (e.g. @accent-light)
+      QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) +
+                        "/pxview_themed_svgs";
+      QDir().mkpath(tempDir);
+
+      QRegularExpression svgRe2("image:\\s*url\\((:[^)]+\\.svg)\\)");
+      QRegularExpressionMatchIterator svgIt2 = svgRe2.globalMatch(qssContent);
+      QSet<QString> processedSvgs2;
+      while (svgIt2.hasNext()) {
+        QRegularExpressionMatch match = svgIt2.next();
+        QString svgResPath = match.captured(1);
+
+        if (processedSvgs2.contains(svgResPath))
+          continue;
+        processedSvgs2.insert(svgResPath);
+
+        QFile svgFile(svgResPath);
+        if (!svgFile.open(QFile::ReadOnly | QFile::Text))
+          continue;
+        QString svgContent = svgFile.readAll();
+        svgFile.close();
+
+        bool hasPlaceholders = false;
+        for (const QString &key : keys) {
+          if (svgContent.contains(key)) {
+            hasPlaceholders = true;
+            break;
+          }
+        }
+        if (!hasPlaceholders)
+          continue;
+
+        for (const QString &key : keys) {
+          svgContent.replace(key, tokens[key]);
+        }
+
+        QString fileName = svgResPath;
+        fileName.replace(":/", "");
+        fileName.replace("/", "_");
+        QString tempPath = tempDir + "/" + fileName;
+        QFile tempFile(tempPath);
+        if (tempFile.open(QFile::WriteOnly | QFile::Text)) {
+          tempFile.write(svgContent.toUtf8());
+          tempFile.close();
+        }
+
+        qssContent.replace(svgResPath, tempPath);
       }
 
       app.SetThemeTokens(tokens);

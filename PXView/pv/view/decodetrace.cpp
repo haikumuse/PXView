@@ -94,6 +94,18 @@ QColor DecodeTrace::getNoDecodeColor() {
     return c.isValid() ? c : QColor(0x88, 0x8A, 0x85);
 }
 
+QColor DecodeTrace::getAnnColor(int channelIndex) {
+    QColor c = AppConfig::Instance().GetThemeColor(QString("@decoder-ann-%1").arg(channelIndex));
+    if (c.isValid()) return c;
+    return getChannelColor(channelIndex);
+}
+
+QColor DecodeTrace::getAnnOutlineColor(int channelIndex) {
+    QColor c = AppConfig::Instance().GetThemeColor(QString("@decoder-ann-outline-%1").arg(channelIndex));
+    if (c.isValid()) return c;
+    return OutlineColours[channelIndex % 16];
+}
+
 const QColor DecodeTrace::OutlineColours[16] = {
     QColor(0x77, 0x14, 0x14), QColor(0x7B, 0x35, 0x19),
     QColor(0x7E, 0x57, 0x1F), QColor(0x7D, 0x65, 0x23),
@@ -290,7 +302,7 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore,
 
                   const size_t colour =
                       ((base_colour + ann->type()) % MaxAnnType) % 16;
-                  const QColor fill = getChannelColor(colour);
+                  const QColor fill = getAnnColor(colour);
 
                   p.fillRect(QRectF(x, y - annotation_height * 0.5,
                                     std::max(1.0, width), annotation_height),
@@ -358,8 +370,8 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
 
   const size_t colour =
       ((base_colour + a.type()) % MaxAnnType) % 16;
-  const QColor fill = getChannelColor(colour);
-  const QColor &outline = OutlineColours[colour];
+  const QColor fill = getAnnColor(colour);
+  const QColor outline = getAnnOutlineColor(colour);
 
   if (start > right + DrawPadding || end < left - DrawPadding) {
     return;

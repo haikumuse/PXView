@@ -49,8 +49,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0x2", 
-				"2"
+				"0xE", 
+				"E"
 			]
 		}, 
 		{
@@ -69,8 +69,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0x2", 
-				"2"
+				"0x9", 
+				"9"
 			]
 		}, 
 		{
@@ -109,18 +109,18 @@
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [
-				"H:2922", 
+				"H:2929", 
 				"HD"
 			]
 		}, 
 		{
 			"start_sample": 64,
-			"end_sample": 4832,
+			"end_sample": 4816,
 			"ann_class": 9,
 			"ann_type": 16,
 			"texts": [
-				"(r1) SRC[4]: REQUEST", 
-				"REQUEST"
+				"(r1) SRC[4]: EPR_Request", 
+				"EPR_Request"
 			]
 		}, 
 		{
@@ -129,8 +129,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0xA", 
-				"A"
+				"0x4", 
+				"4"
 			]
 		}, 
 		{
@@ -139,8 +139,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0x7", 
-				"7"
+				"0x5", 
+				"5"
 			]
 		}, 
 		{
@@ -149,8 +149,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0xC", 
-				"C"
+				"EOP", 
+				"#"
 			]
 		}, 
 		{
@@ -159,8 +159,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0x3", 
-				"3"
+				"0x8", 
+				"8"
 			]
 		}, 
 		{
@@ -169,8 +169,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0x5", 
-				"5"
+				"0x7", 
+				"7"
 			]
 		}, 
 		{
@@ -179,8 +179,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0xC", 
-				"C"
+				"0x4", 
+				"4"
 			]
 		}, 
 		{
@@ -189,8 +189,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0x1", 
-				"1"
+				"0xC", 
+				"C"
 			]
 		}, 
 		{
@@ -199,8 +199,8 @@
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0xB", 
-				"B"
+				"0x3", 
+				"3"
 			]
 		}, 
 		{
@@ -209,7 +209,7 @@
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"[0]b1c53c7a", 
+				"[0]3c479654", 
 				"D0"
 			]
 		}, 
@@ -219,13 +219,13 @@
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
-				"[1] (PDO #11) 3.35A (operating) / 1.22A (max) [no_suspend] [unchunked]", 
-				"[1] (PDO #11) 3.35A (operating) / 1.22A (max) [no_suspend] [unchunked]"
+				"[1] (PDO #3) 4.85A (operating) / 5.96A (max) [give_back] [cap_mismatch]", 
+				"[1] (PDO #3) 4.85A (operating) / 5.96A (max) [give_back] [cap_mismatch]"
 			]
 		}, 
 		{
 			"start_sample": 64,
-			"end_sample": 4832,
+			"end_sample": 4816,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -235,7 +235,7 @@
 		}, 
 		{
 			"start_sample": 64,
-			"end_sample": 4832,
+			"end_sample": 4816,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -259,13 +259,13 @@
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
-				"[2] (PDO #0) 8.34A (operating) / 9.41A (max) [give_back] [comm_cap] [no_suspend] [unchunked]", 
-				"[2] (PDO #0) 8.34A (operating) / 9.41A (max) [give_back] [comm_cap] [no_suspend] [unchunked]"
+				"[2] [Fixed] 41.7V 9.41A (392.397W) [unconstrained] [dual_role_data] [unchunked]", 
+				"[2] [Fixed] 41.7V 9.41A (392.397W) [unconstrained] [dual_role_data] [unchunked]"
 			]
 		}, 
 		{
 			"start_sample": 64,
-			"end_sample": 4832,
+			"end_sample": 4816,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -275,7 +275,7 @@
 		}, 
 		{
 			"start_sample": 64,
-			"end_sample": 4832,
+			"end_sample": 4816,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -285,11 +285,11 @@
 		}, 
 		{
 			"start_sample": 64,
-			"end_sample": 4832,
+			"end_sample": 4816,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
-				"Bad CRC 0bad0bad != 878e56ab", 
+				"Bad CRC 0bad0bad != 6a4790e8", 
 				"CRC!"
 			]
 		}, 
@@ -305,7 +305,7 @@
 		}, 
 		{
 			"start_sample": 64,
-			"end_sample": 4832,
+			"end_sample": 4816,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [

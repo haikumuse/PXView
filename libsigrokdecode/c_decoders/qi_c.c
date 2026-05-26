@@ -22,9 +22,9 @@ enum qi_ann {
 };
 
 static const char *end_codes[] = {
-    "Unknown", "Internal error", "Over temperature",
-    "Over voltage", "Over current", "Battery failure",
-    "Recharge timeout", "Charge complete", "Battery temperature"
+    "Unknown", "Charge Complete", "Internal Fault",
+    "Over Temperature", "Over Voltage", "Over Current",
+    "Battery Failure", "Reconfigure", "No Response"
 };
 
 struct qi_priv {
@@ -121,21 +121,40 @@ static void qi_process_packet(struct srd_decoder_inst *di)
     uint8_t *p = s->packet;
     int plen = s->packet_len_count;
     char text[256];
+    char short_text[64];
 
     if (p[0] == 0x01) {
         snprintf(text, sizeof(text), "Signal Strength: %d", p[1]);
+        snprintf(short_text, sizeof(short_text), "SS: %d", p[1]);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text, short_text, "SS");
     } else if (p[0] == 0x02) {
         const char *reason = (p[1] < 9) ? end_codes[p[1]] : "Reserved";
         snprintf(text, sizeof(text), "End Power Transfer: %s", reason);
+        snprintf(short_text, sizeof(short_text), "EPT: %s", reason);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text, short_text, "EPT");
     } else if (p[0] == 0x03) {
         int val = (p[1] < 128) ? (int)p[1] : (int)(p[1] & 0x7f) - 128;
         snprintf(text, sizeof(text), "Control Error: %d", val);
+        snprintf(short_text, sizeof(short_text), "CE: %d", val);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text, short_text, "CE");
     } else if (p[0] == 0x04) {
         snprintf(text, sizeof(text), "Received Power: %d", p[1]);
+        snprintf(short_text, sizeof(short_text), "RP: %d", p[1]);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text, short_text, "RP");
     } else if (p[0] == 0x05) {
         snprintf(text, sizeof(text), "Charge Status: %d", p[1]);
+        snprintf(short_text, sizeof(short_text), "CS: %d", p[1]);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text, short_text, "CS");
     } else if (p[0] == 0x06) {
         snprintf(text, sizeof(text), "Power Control Hold-off: %dms", p[1]);
+        snprintf(short_text, sizeof(short_text), "PCH: %d", p[1]);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text, short_text, "PCH");
     } else if (p[0] == 0x51 && plen >= 6) {
         int pc = (p[1] & 0xc0) >> 7;
         int mp = p[1] & 0x3f;
@@ -147,25 +166,34 @@ static void qi_process_packet(struct srd_decoder_inst *di)
                  "Configuration: Power Class = %d, Maximum Power = %d, "
                  "Prop = %d, Count = %d, Window Size = %d, Window Offset = %d",
                  pc, mp, prop, count, ws, wo);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text);
     } else if (p[0] == 0x71 && plen >= 8) {
         snprintf(text, sizeof(text), "Identification: Version = %d.%d, "
                  "Manufacturer = %02x%02x, Device = %02x%02x%02x%02x",
                  (p[1] & 0xf0) >> 4, p[1] & 0x0f,
                  p[2], p[3], p[4] & ~0x80, p[5], p[6], p[7]);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text);
     } else if (p[0] == 0x81 && plen >= 8) {
         snprintf(text, sizeof(text), "Extended Identification: %02x%02x%02x%02x%02x%02x%02x%02x",
                  p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+        C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                  s->out_ann, ANN_PACKET_DATA, text);
     } else {
         static const uint8_t prop_ids[] = {0x18,0x19,0x28,0x29,0x38,0x48,0x58,0x68,0x78,0x85,0xa4,0xc4,0xe2};
         int is_prop = 0;
         for (int i = 0; i < 13; i++) {
             if (p[0] == prop_ids[i]) { is_prop = 1; break; }
         }
-        snprintf(text, sizeof(text), "%s", is_prop ? "Proprietary" : "Unknown");
+        if (is_prop) {
+            C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                      s->out_ann, ANN_PACKET_DATA, "Proprietary", "P");
+        } else {
+            C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
+                      s->out_ann, ANN_PACKET_DATA, "Unknown", "?");
+        }
     }
-
-    C_ANN_PUT(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
-              s->out_ann, ANN_PACKET_DATA, text);
 
     /* Checksum verification */
     uint8_t cs = 0;
@@ -189,36 +217,36 @@ static void qi_process_byte(struct srd_decoder_inst *di)
 
     /* Check start bit */
     if (b[0] == 0) {
-        C_ANN_PUT(di, s->bitsi[0], s->bitsi[0], s->out_ann, ANN_START_BITS, "Start bit", "S");
+        C_ANN_PUT(di, s->bytestart, s->bitsi[0], s->out_ann, ANN_START_BITS, "Start bit", "Start", "S");
     } else {
-        C_ANN_PUT(di, s->bitsi[0], s->bitsi[0], s->out_ann, ANN_BIT_ERRORS, "Start error", "SE");
+        C_ANN_PUT(di, s->bytestart, s->bitsi[0], s->out_ann, ANN_BIT_ERRORS, "Start error", "Start err", "SE");
     }
 
     /* Extract data bits [1:9], LSB first */
     uint32_t data_val = qi_bits_to_uint(&b[1], 8);
 
-    /* Parity check */
-    int parity = 0;
+    /* Parity check: odd parity (start with 1, XOR all data bits) */
+    int parity = 1;
     for (int i = 1; i <= 8; i++)
         parity ^= b[i];
 
     /* Check parity bit */
     if (b[9] == parity) {
-        C_ANN_PUT(di, s->bitsi[9], s->bitsi[9], s->out_ann, ANN_INFO_BITS, "Parity OK", "P");
+        C_ANN_PUT(di, s->bitsi[9], s->bitsi[9], s->out_ann, ANN_INFO_BITS, "Parity bit", "Parity", "P");
     } else {
-        C_ANN_PUT(di, s->bitsi[9], s->bitsi[9], s->out_ann, ANN_BIT_ERRORS, "Parity error", "PE");
+        C_ANN_PUT(di, s->bitsi[9], s->bitsi[9], s->out_ann, ANN_BIT_ERRORS, "Parity error", "Parity err", "PE");
     }
 
     /* Check stop bit */
     if (b[10] == 1) {
-        C_ANN_PUT(di, s->bitsi[10], s->bitsi[10], s->out_ann, ANN_START_BITS, "Stop bit", "St");
+        C_ANN_PUT(di, s->bitsi[10], s->bitsi[10], s->out_ann, ANN_INFO_BITS, "Stop bit", "Stop", "S");
     } else {
-        C_ANN_PUT(di, s->bitsi[10], s->bitsi[10], s->out_ann, ANN_BIT_ERRORS, "Stop error", "StE");
+        C_ANN_PUT(di, s->bitsi[10], s->bitsi[10], s->out_ann, ANN_BIT_ERRORS, "Stop error", "Stop err", "SE");
     }
 
     /* Output data byte */
     char byte_text[16];
-    snprintf(byte_text, sizeof(byte_text), "0x%02X", data_val);
+    snprintf(byte_text, sizeof(byte_text), "%02x", data_val);
     C_ANN_PUT(di, s->bytestart, s->bitsi[10], s->out_ann, ANN_DATA_BYTES, byte_text);
 
     /* Add to packet */

@@ -1,7 +1,7 @@
 {
 	"decoder": "maple_bus",
 	"samplerate": 1000000,
-	"num_annotations": 22,
+	"num_annotations": 48,
 	"annotations": [
 		{
 			"start_sample": 0,
@@ -15,6 +15,16 @@
 			]
 		}, 
 		{
+			"start_sample": 20,
+			"end_sample": 20,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
 			"start_sample": 24,
 			"end_sample": 24,
 			"ann_class": 5,
@@ -25,151 +35,442 @@
 			]
 		}, 
 		{
-			"start_sample": 22,
-			"end_sample": 32,
-			"ann_class": 7,
-			"ann_type": 14,
+			"start_sample": 28,
+			"end_sample": 28,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 32,
+			"end_sample": 32,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 36,
+			"end_sample": 36,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 40,
 			"end_sample": 40,
-			"ann_class": 7,
-			"ann_type": 14,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 46,
+			"start_sample": 44,
+			"end_sample": 44,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 50,
 			"end_sample": 50,
-			"ann_class": 7,
-			"ann_type": 14,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 1", 
+				"1"
 			]
 		}, 
 		{
-			"start_sample": 56,
+			"start_sample": 18,
+			"end_sample": 51,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Size: 01", 
+				"L: 01", 
+				"01"
+			]
+		}, 
+		{
+			"start_sample": 54,
+			"end_sample": 54,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 58,
 			"end_sample": 58,
-			"ann_class": 7,
-			"ann_type": 14,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 70,
-			"end_sample": 74,
-			"ann_class": 7,
-			"ann_type": 14,
+			"start_sample": 62,
+			"end_sample": 62,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 64,
+			"end_sample": 64,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 68,
+			"end_sample": 68,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 72,
+			"end_sample": 72,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 76,
-			"end_sample": 80,
-			"ann_class": 7,
-			"ann_type": 14,
+			"end_sample": 76,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 86,
-			"end_sample": 90,
+			"start_sample": 80,
+			"end_sample": 80,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 51,
+			"end_sample": 82,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"SrcAP: 20", 
+				"S: 20", 
+				"20"
+			]
+		}, 
+		{
+			"start_sample": 84,
+			"end_sample": 84,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 88,
+			"end_sample": 88,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 92,
+			"end_sample": 92,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 96,
-			"end_sample": 100,
-			"ann_class": 7,
-			"ann_type": 14,
+			"end_sample": 96,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 100,
+			"end_sample": 100,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 104,
+			"end_sample": 104,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 108,
-			"end_sample": 112,
-			"ann_class": 7,
-			"ann_type": 14,
+			"end_sample": 108,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 114,
+			"end_sample": 114,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 82,
+			"end_sample": 115,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"DstAP: 01", 
+				"D: 01", 
+				"01"
 			]
 		}, 
 		{
 			"start_sample": 118,
-			"end_sample": 122,
-			"ann_class": 7,
-			"ann_type": 14,
+			"end_sample": 118,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 128,
-			"end_sample": 132,
-			"ann_class": 7,
-			"ann_type": 14,
+			"start_sample": 122,
+			"end_sample": 122,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 126,
+			"end_sample": 126,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 130,
+			"end_sample": 130,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 134,
+			"end_sample": 134,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 138,
-			"end_sample": 140,
-			"ann_class": 7,
-			"ann_type": 14,
+			"end_sample": 138,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 142,
+			"end_sample": 142,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 148,
+			"end_sample": 148,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 115,
+			"end_sample": 149,
+			"ann_class": 9,
+			"ann_type": 16,
+			"texts": [
+				"Cmd: 01", 
+				"C: 01", 
+				"01"
 			]
 		}, 
 		{
 			"start_sample": 152,
-			"end_sample": 156,
-			"ann_class": 7,
-			"ann_type": 14,
+			"end_sample": 152,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 156,
+			"end_sample": 156,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 160,
+			"end_sample": 160,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 1", 
+				"1"
 			]
 		}, 
 		{
 			"start_sample": 162,
+			"end_sample": 162,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 166,
 			"end_sample": 166,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 170,
+			"end_sample": 170,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 174,
+			"end_sample": 174,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 180,
+			"end_sample": 180,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 149,
+			"end_sample": 181,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"Data: 21", 
+				"21"
+			]
+		}, 
+		{
+			"start_sample": 181,
+			"end_sample": 190,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -179,63 +480,8 @@
 			]
 		}, 
 		{
-			"start_sample": 172,
-			"end_sample": 176,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
-			]
-		}, 
-		{
-			"start_sample": 182,
-			"end_sample": 184,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
-			]
-		}, 
-		{
-			"start_sample": 196,
-			"end_sample": 200,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
-			]
-		}, 
-		{
-			"start_sample": 202,
-			"end_sample": 206,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
-			]
-		}, 
-		{
-			"start_sample": 212,
-			"end_sample": 216,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"Frame error", 
-				"F error", 
-				"FE"
-			]
-		}, 
-		{
-			"start_sample": 222,
-			"end_sample": 224,
+			"start_sample": 191,
+			"end_sample": 192,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [

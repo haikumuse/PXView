@@ -55,6 +55,7 @@ void Snapshot::free_data()
 {
     _capacity = 0;
     _sample_count = 0;
+    _total_sample_count = 0;
     _ch_index.clear();
 }
 

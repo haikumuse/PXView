@@ -2,7 +2,7 @@
   "decoder": "lpc_c",
   "samplerate": 1000000,
   "num_channels": 6,
-  "sample_count": 20000,
+  "sample_count": 100000,
   "channels": {
     "lframe": 0,
     "lclk": 1,

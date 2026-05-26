@@ -1,7 +1,91 @@
 #include "iconcache.h"
+#include "pv/config/appconfig.h"
 #include <QPainter>
 #include <QColor>
 #include <QIconEngine>
+#include <QFileInfo>
+
+// Icon auto-tinting mapping: filename (without path) -> theme token
+// Category A: accent color icons (originally #1E90FF blue)
+// Category B: foreground color icons (window controls, search, etc.)
+static const struct { const char *name; const char *token; } kIconTokenMap[] = {
+    // Category A — accent color icons
+    {"next.svg",           "@icon-accent"},
+    {"add.svg",            "@icon-accent"},
+    {"gear.svg",           "@icon-accent"},
+    {"del.svg",            "@icon-accent"},
+    {"open.svg",           "@icon-accent"},
+    {"shown.svg",          "@icon-accent"},
+    {"hidden.svg",         "@icon-accent"},
+    {"save.svg",           "@icon-accent"},
+    {"nav.svg",            "@icon-accent"},
+    {"pre.svg",            "@icon-accent"},
+    {"trigger.svg",        "@icon-accent"},
+    {"capture.svg",        "@icon-accent"},
+    {"dark.svg",           "@icon-accent"},
+    {"light.svg",          "@icon-accent"},
+    {"measure.svg",        "@icon-accent"},
+    {"about.svg",          "@icon-accent"},
+    {"bug.svg",            "@icon-accent"},
+    {"display.svg",        "@icon-accent"},
+    {"export.svg",         "@icon-accent"},
+    {"fft.svg",            "@icon-accent"},
+    {"file.svg",           "@icon-accent"},
+    {"function.svg",       "@icon-accent"},
+    {"log.svg",            "@icon-accent"},
+    {"manual.svg",         "@icon-accent"},
+    {"math.svg",           "@icon-accent"},
+    {"once.svg",           "@icon-accent"},
+    {"params.svg",         "@icon-accent"},
+    {"protocol.svg",       "@icon-accent"},
+    {"repeat.svg",         "@icon-accent"},
+    {"search-bar.svg",     "@icon-accent"},
+    {"settings.svg",       "@icon-accent"},
+    {"sliders.svg",        "@icon-accent"},
+    {"ruler.svg",          "@icon-accent"},
+    {"binary.svg",         "@icon-accent"},
+    {"step-forward.svg",   "@icon-accent"},
+    {"scroll-bottom.svg",  "@icon-accent"},
+    {"logo_noColor.svg",   "@icon-accent"},
+    {"loop.svg",           "@icon-accent"},
+    {"update.svg",         "@icon-accent"},
+    {"modes.svg",          "@icon-accent"},
+    {"moder.svg",          "@icon-accent"},
+    {"single.svg",         "@icon-accent"},
+    {"osc.svg",            "@icon-accent"},
+    {"daq.svg",            "@icon-accent"},
+    {"la.svg",             "@icon-accent"},
+    {"pwm.svg",            "@icon-accent"},
+    {"lissajous.svg",      "@icon-accent"},
+    {"logo_color.svg",     "@icon-accent"},
+
+    // Category B — foreground color icons
+    {"close.svg",          "@icon-foreground"},
+    {"minimize.svg",       "@icon-foreground"},
+    {"maximize.svg",       "@icon-foreground"},
+    {"restore.svg",        "@icon-foreground"},
+    {"pin.svg",            "@icon-foreground"},
+    {"unpin.svg",          "@icon-foreground"},
+    {"search.svg",         "@icon-accent"},
+    {"stop.svg",           "@icon-foreground"},
+    {"play.svg",           "@icon-foreground"},
+    {"zap.svg",            "@icon-foreground"},
+    {"audio-waveform.svg", "@icon-foreground"},
+    {"header-expand.svg",  "@icon-foreground"},
+    {"header-collapse.svg","@icon-foreground"},
+    {"scroll-text.svg",    "@icon-foreground"},
+
+    {nullptr, nullptr} // sentinel
+};
+
+static QString lookupIconToken(const QString &fileName)
+{
+    for (int i = 0; kIconTokenMap[i].name; ++i) {
+        if (fileName == QLatin1String(kIconTokenMap[i].name))
+            return QLatin1String(kIconTokenMap[i].token);
+    }
+    return QString();
+}
 
 class TintedIconEngine : public QIconEngine {
 public:
@@ -27,7 +111,7 @@ public:
     QIconEngine *clone() const override {
         return new TintedIconEngine(_svgPath, _color);
     }
-    
+
     QSize actualSize(const QSize &size, QIcon::Mode mode, QIcon::State state) override {
         return _baseIcon.actualSize(size, mode, state);
     }
@@ -56,6 +140,17 @@ IconCache &IconCache::Instance()
 
 QIcon IconCache::icon(const QString &svgPath)
 {
+    // Extract filename from path for token lookup
+    QString fileName = QFileInfo(svgPath).fileName();
+    QString token = lookupIconToken(fileName);
+
+    if (!token.isEmpty()) {
+        QColor color = AppConfig::Instance().GetThemeColor(token);
+        if (color.isValid())
+            return tintedIcon(svgPath, color);
+    }
+
+    // No mapping or invalid token — use original icon
     auto it = _iconCache.find(svgPath);
     if (it != _iconCache.end())
         return it.value();

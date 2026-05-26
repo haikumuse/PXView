@@ -1,64 +1,88 @@
 # Tasks
 
-- [ ] Task 1: 添加高优先级协议生成器到 protocol_synthesizer.py
-  - [ ] SubTask 1.1: JTAGGenerator — 4通道(TCK/TMS/TDI/TDO)，生成TAP状态机序列
-  - [ ] SubTask 1.2: MDIOGenerator — 2通道(MDC/MDIO)，生成Clause 22读帧
-  - [ ] SubTask 1.3: MicrowireGenerator — 4通道(SK/SI/CS)，生成读帧
-  - [ ] SubTask 1.4: HDLCGenerator — 生成HDLC帧(flag 0x7E + 数据 + CRC + flag)
-  - [ ] SubTask 1.5: I2SGenerator — 3通道(SCLK/LRCK/SD)，生成I2S音频帧
-  - [ ] SubTask 1.6: ISO7816Generator — 2通道(CLK/IO)，生成ATR
-  - [ ] SubTask 1.7: SWDGenerator — 2通道(SWCLK/SWDIO)，生成读请求
-  - [ ] SubTask 1.8: OneWireGenerator — 1通道，生成reset+presence+读写时序
-  - [ ] SubTask 1.9: 修复CANGenerator — can_c/can_fd_c当前0 annotations
-  - [ ] SubTask 1.10: 修复PS2Generator — 已存在但test_factory未调用
+- [ ] Task 1: Fix 1-channel simple protocol generators (batch 1 - high confidence fixes)
+  - [ ] dmx512_c: Fix BREAK timing (must be >88us low), ensure MAB is correct, verify UART byte timing at 250kbaud
+  - [ ] dali_c: Fix Manchester encoding to match decoder's edge/half-bit detection, ensure idle before start
+  - [ ] spdif_c: Fix BMC timing to produce 3 distinct pulse widths for clock recovery, add proper preambles
+  - [ ] am230x_c: Fix start signal timing (750-25000us low, 20-200us high), fix bit timing (26-28us=0, 70us=1)
+  - [ ] c2_c: Fix reset detection (long clock high >20us), fix start/ins/data state machine
+  - [ ] avr_pdi_c: Fix BREAK condition (12+ low bits on data line), fix UART-like clocking
+  - [ ] delta-sigma_c: Fix to produce enough data for sinc filter to output, ensure proper CLK edges
+  - [ ] ook_c: Fix to send Manchester-encoded preamble (7+ pulses) + data + timeout for frame end
+  - [ ] rgb_led_ws281x_c: Fix T0H/T1H timing thresholds, add >50us low RESET before data
+  - [ ] sdq_c: Fix idle high, falling edge starts bit, low duration determines 0/1/break
+  - [ ] sony_md_c: Fix presync pulse (~1100us), presync delay (~950us), sync pulse (~220us), then data bits
+  - [ ] bean_c: Replace UART generator with pulse-width based (150-650us pulses, bit-stuffing after 4 same bits)
+  - [ ] one_single_wire_c: Fix to wait for start pulse rising then OSW falling, period-based bit detection
+  - [ ] mvb_c: Fix Manchester II encoding with specific 18-bit preambles for master/slave
+  - [ ] sae_j1850_vpw_c: Fix SOF/data/EOF timing to match decoder expectations
+  - [ ] carrera_c: Fix pulse timing to match decoder
+  - [ ] dsi_c: Fix DSI LP/HS signaling
+  - [ ] em4305_c: Fix Manchester encoding timing
+  - [ ] tdm_audio_c: Fix CLK/SYNC/DATA timing
+  - [ ] adat_c: Add proper ADAT generator (NRZ-like with sync pattern)
+  - [ ] adb_c: Add proper ADB generator (attention signal + bit cells)
+  - [ ] afsk_c: Add proper AFSK generator (two frequencies for mark/space)
+  - [ ] aud_c: Fix to match AUD 6-channel protocol (AUDCK, NAUDSYNC, AUDATA3-0)
+  - [ ] ir_ltto_c: Fix to use proper LTTO IR protocol
+  - [ ] ir_irmp_c: Fix to use proper IRMP protocol (NEC with idle)
+  - [ ] ir_recoil_c: Fix to use proper RECOIL IR protocol
+  - [ ] t55xx_c: Add proper T55xx Manchester generator
 
-- [ ] Task 2: 添加中优先级协议生成器到 protocol_synthesizer.py
-  - [ ] SubTask 2.1: NRZIGenerator — 1通道NRZI编码
-  - [ ] SubTask 2.2: IRGenerator系列 — ir_nec_c, ir_rc5_c, ir_rc6_c, ir_sirc_c, ir_irmp_c, ir_ltto_c, ir_recoil_c
-  - [ ] SubTask 2.3: PWMGenerator — 1通道PWM波形
-  - [ ] SubTask 2.4: DCCGenerator — 1通道DCC轨道信号
-  - [ ] SubTask 2.5: DMX512Generator — 1通道DMX512帧
-  - [ ] SubTask 2.6: DALIGenerator — 1通道DALI帧
-  - [ ] SubTask 2.7: CECGenerator — 1通道HDMI CEC帧
-  - [ ] SubTask 2.8: SPDIFGenerator — 1通道双相标记编码
-  - [ ] SubTask 2.9: WiegandGenerator — 2通道(DATA0/DATA1)
-  - [ ] SubTask 2.10: OpenthermGenerator — 1通道
-  - [ ] SubTask 2.11: SENTGenerator — 1通道
-  - [ ] SubTask 2.12: MIPIRFFEGenerator — 2通道(SCLK/SDATA)
+- [ ] Task 2: Fix multi-channel bus protocol generators
+  - [ ] lpc_c: Fix LFRAME#/LCLK/LAD timing, ensure LFRAME# low starts cycle properly
+  - [ ] mipi_rffe_c: Fix SSC (SCLK low + SDATA rising), command/data/parity frames
+  - [ ] z80_c: Fix M1 cycle timing, ensure all control signals properly sequenced
+  - [ ] mcs48_c: Fix opcode fetch timing, ensure ALE/RD/WR/PSEN properly sequenced
+  - [ ] gpib_c: Fix DAV/NRFD/NDAC/ATN handshake timing
+  - [ ] iec_c: Fix IEC bus CLK/DATA timing
+  - [ ] fsi_c: Fix CLK/DATA frame structure
+  - [ ] tlc5620_c: Fix CLK/DATA write command timing
+  - [ ] spacewire_c: Fix Data-Strobe encoding
+  - [ ] ac97_c: Add AC97 generator (SYNC + CLK + DATA)
+  - [ ] sdcard_sd_c: Fix SD card CMD/CLK timing
+  - [ ] emmc_sd_c: Fix eMMC CMD/CLK timing
+  - [ ] spi_dual_quad_c: Fix SPI dual/quad mode
+  - [ ] qspi_c: Fix QSPI CLK/DQ timing
+  - [ ] pcfx_ctrlr_c: Fix to use proper PC-FX controller protocol
+  - [ ] mipi_dsi_c: Fix DSI LP/HS signaling
+  - [ ] ethernet_c: Fix NRZI→4b5b→ethernet chain
+  - [ ] tm1637_c: Fix channel count and generator
+  - [ ] tm1638_c: Fix channel count and generator
+  - [ ] tmc_c: Fix channel count and generator
 
-- [ ] Task 3: 添加低优先级协议生成器到 protocol_synthesizer.py
-  - [ ] SubTask 3.1: J1850VPWGenerator — 1通道
-  - [ ] SubTask 3.2: SDCardGenerator — 2通道(CMD/DAT)
-  - [ ] SubTask 3.3: SDIOGenerator — 2通道
-  - [ ] SubTask 3.4: QSPIGenerator — 2通道
-  - [ ] SubTask 3.5: SPIDualQuadGenerator — 3通道
-  - [ ] SubTask 3.6: ST7735Generator — 4通道(SPI+DC)
-  - [ ] SubTask 3.7: SpaceWireGenerator — 2通道
-  - [ ] SubTask 3.8: FlexRayGenerator — 1通道
-  - [ ] SubTask 3.9: MapleBusGenerator — 2通道
-  - [ ] SubTask 3.10: IECGenerator — 3通道
-  - [ ] SubTask 3.11: StepperMotorGenerator — 2通道
-  - [ ] SubTask 3.12: XY2_100Generator — 3通道
+- [ ] Task 3: Fix stack decoder generators
+  - [ ] jtag_avr_c: Ensure jtag_c upstream produces annotations, fix stack config
+  - [ ] jtag_ejtag_c: Ensure jtag_c upstream produces annotations, fix stack config
+  - [ ] jtag_stm32_c: Ensure jtag_c upstream produces annotations, fix stack config
+  - [ ] ds2408_c: Ensure onewire upstream produces annotations, fix stack config
+  - [ ] ds243x_c: Ensure onewire upstream produces annotations, fix stack config
+  - [ ] ds28ea00_c: Ensure onewire upstream produces annotations, fix stack config
+  - [ ] ook_oregon_c: Ensure ook_c upstream produces annotations, fix stack config
+  - [ ] ook_vis_c: Ensure ook_c upstream produces annotations, fix stack config
+  - [ ] sony_md_decode_c: Ensure sony_md_c upstream produces annotations, fix stack config
+  - [ ] arp_c: Fix NRZI→4b5b→ethernet→arp chain
+  - [ ] ipv4_c: Fix NRZI→4b5b→ethernet→ipv4 chain
+  - [ ] udp_c: Fix NRZI→4b5b→ethernet→ipv4→udp chain
+  - [ ] ieee488_c: Fix IEEE488 generator
+  - [ ] numbers_and_state_c: Fix generator to produce proper transitions
+  - [ ] seven_segment_c: Fix generator
+  - [ ] signature_c: Fix SPI-based signature decoder
+  - [ ] st7735_c: Fix SPI display decoder chain
+  - [ ] st7789_c: Fix SPI display decoder chain
+  - [ ] tpm_fifo_tis_c: Fix TPM TIS decoder
+  - [ ] usb_request_c: Fix USB signalling→packet→request chain
+  - [ ] ir_ltto_decode_c: Fix IR LTTO decode chain
+  - [ ] ltar_smartdevice_decode_c: Fix AFSK chain
+  - [ ] jitter_c: Fix jitter generator
 
-- [ ] Task 4: 添加特殊协议生成器
-  - [ ] SubTask 4.1: Z80Generator — 11通道(地址+数据+控制)
-  - [ ] SubTask 4.2: MCS48Generator — 14通道
-  - [ ] SubTask 4.3: GPIBGenerator — 16通道
-  - [ ] SubTask 4.4: LPCGenerator — 6通道
-  - [ ] SubTask 4.5: 其余1通道简单解码器(am230x, bean, dcf77, dsi, lfast, morse, mvb, swi, swim, t55xx, sdq, qi, pxx1, pjdl, rc_encode, rgb_led_ws281x, rinnai_control_panel, carrera, delta_sigma, em4100, em4305, eth_an, fsi, iebus, ieee488, miller, one_single_wire, ook, sony_md, tdm_audio, tlc5620, usb_power_delivery, caliper, c2, avr_pdi, opentherm)
-
-- [ ] Task 5: 修改 test_factory.py 使用新生成器
-  - [ ] SubTask 5.1: 扩展INPUT_GENERATORS映射，添加所有新协议类型
-  - [ ] SubTask 5.2: 为每个解码器在generate_test_for_decoder中添加协议数据生成逻辑
-  - [ ] SubTask 5.3: 完善stack解码器的依赖链配置（jtag→jtag_avr等19个）
-  - [ ] SubTask 5.4: 处理0通道解码器（graycode_c, numbers_and_state_c, parallel_c）
-
-- [ ] Task 6: 重新生成测试数据并验证
-  - [ ] SubTask 6.1: 运行python test_factory.py重新生成所有input.bin和config.json
-  - [ ] SubTask 6.2: 运行python run_all_tests.py --all --jobs 4验证
-  - [ ] SubTask 6.3: 确认WARN数量从134降到0（或接近0）
+- [ ] Task 4: Regenerate test data and verify
+  - [ ] Run python test_factory.py to regenerate all test data
+  - [ ] Run python run_all_tests.py --all to verify
+  - [ ] Confirm WARN count drops from 70 to ≤20 (50+ converted to PASS)
+  - [ ] Confirm no regressions in previously PASS decoders
 
 # Task Dependencies
-- Task 5 depends on Task 1, 2, 3, 4
-- Task 6 depends on Task 5
-- Task 1, 2, 3, 4 可以并行执行
+- Task 1 and Task 2 can be done in parallel (independent protocol fixes)
+- Task 3 depends on Task 1 and Task 2 (stack decoders depend on upstream fixes)
+- Task 4 depends on all previous tasks

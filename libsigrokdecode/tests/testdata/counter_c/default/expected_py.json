@@ -1,7 +1,7 @@
 {
 	"decoder": "counter",
 	"samplerate": 1000000,
-	"num_annotations": 3,
+	"num_annotations": 19,
 	"annotations": [
 		{
 			"start_sample": 0,
@@ -28,6 +28,150 @@
 			"ann_type": 7,
 			"texts": [
 				"3"
+			]
+		}, 
+		{
+			"start_sample": 15000,
+			"end_sample": 20000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"4"
+			]
+		}, 
+		{
+			"start_sample": 20000,
+			"end_sample": 25000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"5"
+			]
+		}, 
+		{
+			"start_sample": 25000,
+			"end_sample": 30000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"6"
+			]
+		}, 
+		{
+			"start_sample": 30000,
+			"end_sample": 35000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"7"
+			]
+		}, 
+		{
+			"start_sample": 35000,
+			"end_sample": 40000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"8"
+			]
+		}, 
+		{
+			"start_sample": 40000,
+			"end_sample": 45000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"9"
+			]
+		}, 
+		{
+			"start_sample": 45000,
+			"end_sample": 50000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"10"
+			]
+		}, 
+		{
+			"start_sample": 50000,
+			"end_sample": 55000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"11"
+			]
+		}, 
+		{
+			"start_sample": 55000,
+			"end_sample": 60000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"12"
+			]
+		}, 
+		{
+			"start_sample": 60000,
+			"end_sample": 65000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"13"
+			]
+		}, 
+		{
+			"start_sample": 65000,
+			"end_sample": 70000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"14"
+			]
+		}, 
+		{
+			"start_sample": 70000,
+			"end_sample": 75000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"15"
+			]
+		}, 
+		{
+			"start_sample": 75000,
+			"end_sample": 80000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"16"
+			]
+		}, 
+		{
+			"start_sample": 80000,
+			"end_sample": 85000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"17"
+			]
+		}, 
+		{
+			"start_sample": 85000,
+			"end_sample": 90000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"18"
+			]
+		}, 
+		{
+			"start_sample": 90000,
+			"end_sample": 95000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"19"
 			]
 		}
 	]

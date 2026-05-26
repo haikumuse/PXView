@@ -1,0 +1,12 @@
+- [x] getAnnColor() 方法正确实现三级回退：@decoder-ann-N → @decoder-channel-N → defaultColours[N]
+- [x] getAnnOutlineColor() 方法正确实现二级回退：@decoder-ann-outline-N → OutlineColours[N]
+- [x] draw_annotation() 使用 getAnnColor() 替代 getChannelColor() 获取注释填充色
+- [x] draw_annotation() 使用 getAnnOutlineColor() 替代 OutlineColours[] 获取注释边框色
+- [x] paint_mid() 高密度标注路径也使用 getAnnColor() 替代 getChannelColor()
+- [x] theme-schema.json 包含 decoder.ann.colors 分类，含32个 token（16个 ann + 16个 ann-outline）
+- [x] theme.qss 顶部注释区声明了32个新 token
+- [x] dark.json 的 @decoder-ann-N 与 @decoder-channel-N 值一致，@decoder-ann-outline-N 与 OutlineColours 一致
+- [x] light.json 的 @decoder-ann-N 与 @decoder-channel-N 值一致，@decoder-ann-outline-N 与 OutlineColours 一致
+- [x] monokai.json 的 @decoder-ann-N 和 @decoder-ann-outline-N 为自定义值，注释色比标签色更柔和
+- [x] atom.json 的 @decoder-ann-N 和 @decoder-ann-outline-N 为自定义值，注释色比标签色更柔和
+- [x] 解码器通道标签（圆角矩形 + 五边形箭头）仍使用 @decoder-channel-N，行为不变

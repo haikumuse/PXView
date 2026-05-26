@@ -2,7 +2,7 @@
   "decoder": "tpm_fifo_tis_c",
   "samplerate": 1000000,
   "num_channels": 4,
-  "sample_count": 20000,
+  "sample_count": 100000,
   "channels": {},
   "stack": []
 }

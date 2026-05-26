@@ -1,7 +1,162 @@
 {
 	"decoder": "sony_md_decode",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 17,
 	"annotations": [
+		{
+			"start_sample": 1600,
+			"end_sample": 2550,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Presync pulse", 
+				"Presync", 
+				"PS"
+			]
+		}, 
+		{
+			"start_sample": 2550,
+			"end_sample": 2802,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Error"
+			]
+		}, 
+		{
+			"start_sample": 2802,
+			"end_sample": 3022,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 3054,
+			"end_sample": 3274,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 3306,
+			"end_sample": 3526,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 3558,
+			"end_sample": 3778,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 3810,
+			"end_sample": 4030,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 4062,
+			"end_sample": 4282,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 4314,
+			"end_sample": 4534,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 4566,
+			"end_sample": 4786,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 4818,
+			"end_sample": 5038,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 5070,
+			"end_sample": 5290,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 5322,
+			"end_sample": 5542,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 5574,
+			"end_sample": 5794,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 5826,
+			"end_sample": 6046,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 6078,
+			"end_sample": 6298,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}, 
+		{
+			"start_sample": 6330,
+			"end_sample": 6550,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Unexpected data bit"
+			]
+		}
 	]
 }

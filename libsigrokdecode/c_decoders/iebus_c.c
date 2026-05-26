@@ -161,6 +161,7 @@ static int read_bit(iebus_state *s, struct srd_decoder_inst *di)
 static int read_bits(iebus_state *s, struct srd_decoder_inst *di, int n, uint16_t *value)
 {
     uint16_t v = 0;
+    uint64_t first_begin = 0;
     s->bits_begin = 0;
     s->bits_end = 0;
 
@@ -169,10 +170,13 @@ static int read_bits(iebus_state *s, struct srd_decoder_inst *di, int n, uint16_
         if (bit < 0)
             return -1;
         v = (v << 1) | bit;
+        if (i == 0)
+            first_begin = s->bits_begin;
     }
 
     if (value)
         *value = v;
+    s->bits_begin = first_begin;
     return 0;
 }
 

@@ -526,8 +526,8 @@
 			]
 		}, 
 		{
-			"start_sample": 800,
-			"end_sample": 800,
+			"start_sample": 805,
+			"end_sample": 805,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [

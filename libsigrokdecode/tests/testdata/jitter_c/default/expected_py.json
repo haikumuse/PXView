@@ -1,7 +1,487 @@
 {
 	"decoder": "jitter",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 48,
 	"annotations": [
+		{
+			"start_sample": 2000,
+			"end_sample": 2000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 3000,
+			"end_sample": 3000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 4000,
+			"end_sample": 4000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 5000,
+			"end_sample": 5000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 6000,
+			"end_sample": 6000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 7000,
+			"end_sample": 7000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 8000,
+			"end_sample": 8000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 9000,
+			"end_sample": 9000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 10000,
+			"end_sample": 10000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 11000,
+			"end_sample": 11000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 12000,
+			"end_sample": 12000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 13000,
+			"end_sample": 13000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 14000,
+			"end_sample": 14000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 15000,
+			"end_sample": 15000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 16000,
+			"end_sample": 16000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 17000,
+			"end_sample": 17000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 18000,
+			"end_sample": 18000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 19000,
+			"end_sample": 19000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 20000,
+			"end_sample": 20000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 21000,
+			"end_sample": 21000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 22000,
+			"end_sample": 22000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 23000,
+			"end_sample": 23000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 24000,
+			"end_sample": 24000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 25000,
+			"end_sample": 25000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 26000,
+			"end_sample": 26000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 27000,
+			"end_sample": 27000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 28000,
+			"end_sample": 28000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 29000,
+			"end_sample": 29000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 30000,
+			"end_sample": 30000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 31000,
+			"end_sample": 31000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 32000,
+			"end_sample": 32000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 33000,
+			"end_sample": 33000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 34000,
+			"end_sample": 34000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 35000,
+			"end_sample": 35000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 36000,
+			"end_sample": 36000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 37000,
+			"end_sample": 37000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 38000,
+			"end_sample": 38000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 39000,
+			"end_sample": 39000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 40000,
+			"end_sample": 40000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 41000,
+			"end_sample": 41000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 42000,
+			"end_sample": 42000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 43000,
+			"end_sample": 43000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 44000,
+			"end_sample": 44000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 45000,
+			"end_sample": 45000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 46000,
+			"end_sample": 46000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 47000,
+			"end_sample": 47000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 48000,
+			"end_sample": 48000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}, 
+		{
+			"start_sample": 49000,
+			"end_sample": 49000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Missed clock", 
+				"MC"
+			]
+		}
 	]
 }

@@ -1157,11 +1157,11 @@
     },
     {
         "id": "IDS_STYLE_BORDER",
-        "text": "边框颜色"
+        "text": "输入框边框颜色"
     },
     {
         "id": "IDS_STYLE_BORDER_STRONG",
-        "text": "强边框颜色"
+        "text": "面板边框颜色"
     },
     {
         "id": "IDS_STYLE_ACCENT",
@@ -1218,6 +1218,22 @@
     {
         "id": "IDS_STYLE_STATUS_ERROR",
         "text": "状态：错误"
+    },
+    {
+        "id": "IDS_STYLE_ICON_ACCENT",
+        "text": "图标强调色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_ACCENT_DESC",
+        "text": "蓝色功能图标的着色颜色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_FOREGROUND",
+        "text": "图标前景色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_FOREGROUND_DESC",
+        "text": "窗口控件及搜索等图标的着色颜色"
     },
     {
         "id": "IDS_STYLE_SIGNAL_CH1",

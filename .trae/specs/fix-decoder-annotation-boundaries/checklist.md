@@ -1,0 +1,12 @@
+- [x] JTAG C decoder emits state annotation on every rising TCK edge (except first), matching Python
+- [x] PS/2 C decoder BIT annotations have correct boundaries (stop bit uses half_bitwidth)
+- [x] PS/2 C decoder Word annotation ends at bit_ss[9] instead of bit_ss[8]
+- [x] PS/2 C decoder Stop bit annotation uses half_bitwidth instead of full bitwidth
+- [x] PS/2 C decoder proto output end_sample uses bit_ss[10] + half_bitwidth (matching Python)
+- [x] PS/2 Python decoder has outputs = ['ps2'] for stacked decoder matching
+- [x] PS/2 Python decoder registers OUTPUT_PYTHON and emits Ps2Packet objects
+- [x] jtag_c test passes (PASS)
+- [x] ps2_c test passes (PASS)
+- [x] ps2_keyboard_c test passes (PASS)
+- [x] ps2_mouse_c test passes (PASS)
+- [x] ccd_c test passes (PASS)

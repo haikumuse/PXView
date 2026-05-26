@@ -1,7 +1,7 @@
 {
 	"decoder": "sipi_c",
 	"samplerate": 1000000,
-	"num_annotations": 63,
+	"num_annotations": 71,
 	"annotations": [
 		{
 			"start_sample": 40,
@@ -153,7 +153,7 @@
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
-				"Sync: 0xA84B"
+				"Sync OK"
 			]
 		}, 
 		{
@@ -180,7 +180,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -189,7 +189,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -198,7 +198,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -207,7 +207,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -229,39 +229,39 @@
 			]
 		}, 
 		{
-			"start_sample": 200,
-			"end_sample": 280,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"Payload size: 32 bit / 4 byte"
-			]
-		}, 
-		{
-			"start_sample": 200,
-			"end_sample": 280,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"Channel type: Data 0 (0x4)"
-			]
-		}, 
-		{
-			"start_sample": 200,
-			"end_sample": 280,
-			"ann_class": 4,
-			"ann_type": 11,
-			"texts": [
-				"CTS: 0"
-			]
-		}, 
-		{
 			"start_sample": 280,
 			"end_sample": 290,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 200,
+			"end_sample": 233,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"8 bit"
+			]
+		}, 
+		{
+			"start_sample": 233,
+			"end_sample": 277,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Data Channel G"
+			]
+		}, 
+		{
+			"start_sample": 277,
+			"end_sample": 288,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"0"
 			]
 		}, 
 		{
@@ -270,7 +270,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -333,7 +333,25 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 290,
+			"end_sample": 370,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"D5"
+			]
+		}, 
+		{
+			"start_sample": 290,
+			"end_sample": 370,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Header too short"
 			]
 		}, 
 		{
@@ -342,7 +360,18 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 380,
+			"end_sample": 380,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"No LVDS sleep mode request", 
+				"No sleep", 
+				"N"
 			]
 		}, 
 		{
@@ -351,7 +380,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -360,7 +389,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -369,7 +398,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -378,7 +407,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -387,7 +416,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -396,7 +425,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -477,7 +506,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -486,7 +515,16 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 380,
+			"end_sample": 540,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Invalid sync pattern"
 			]
 		}, 
 		{
@@ -495,7 +533,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -504,7 +542,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -513,7 +551,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -522,7 +560,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
@@ -531,7 +569,7 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"0"
+				"1"
 			]
 		}, 
 		{
@@ -540,34 +578,70 @@
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 280,
-			"end_sample": 600,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"AA 55 AA 55"
-			]
-		}, 
-		{
-			"start_sample": 280,
-			"end_sample": 600,
-			"ann_class": 6,
-			"ann_type": 13,
-			"texts": [
-				"Header too short"
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 600,
-			"end_sample": 614,
-			"ann_class": 7,
-			"ann_type": 14,
+			"end_sample": 610,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"Sleep: 1"
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 610,
+			"end_sample": 620,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 620,
+			"end_sample": 630,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 630,
+			"end_sample": 640,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 640,
+			"end_sample": 650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 650,
+			"end_sample": 660,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 660,
+			"end_sample": 670,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
 			]
 		}
 	]
