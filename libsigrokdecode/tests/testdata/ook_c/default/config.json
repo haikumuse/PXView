@@ -2,9 +2,15 @@
   "decoder": "ook_c",
   "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "data": 0
   },
-  "stack": []
+  "options": {
+    "invert": "no",
+    "decodeas": "Manchester",
+    "preamble": "auto",
+    "preamlen": "7",
+    "diffmanvar": "1"
+  }
 }

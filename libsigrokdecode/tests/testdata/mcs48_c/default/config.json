@@ -1,8 +1,8 @@
 {
   "decoder": "mcs48_c",
   "samplerate": 1000000,
-  "num_channels": 14,
-  "sample_count": 100000,
+  "num_channels": 15,
+  "sample_count": 10000,
   "channels": {
     "ale": 0,
     "psen": 1,
@@ -17,7 +17,8 @@
     "a8": 10,
     "a9": 11,
     "a10": 12,
-    "a11": 13
+    "a11": 13,
+    "a12": 14
   },
-  "stack": []
+  "options": {}
 }

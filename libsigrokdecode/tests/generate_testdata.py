@@ -16,6 +16,382 @@ import random
 import re
 import sys
 
+# Import protocol synthesizer for real data generation
+try:
+    import protocol_synthesizer as ps
+except ImportError:
+    ps = None
+
+def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
+    """Synthesize real protocol data using protocol_synthesizer.
+    Returns (bytes data, int samplerate, int sample_count) or None.
+    """
+    if ps is None:
+        return None
+
+    # Defaults
+    synth_sr = 1000000 # 1MHz
+    sample_count = 10000 # 10ms - keep it small to avoid timeouts
+
+    if decoder_id in ["ac97_c", "qspi_c", "spi_fast_c", "usb_signalling_c", "usb_packet_c"]:
+        synth_sr = 24000000 # 24MHz for high speed
+        sample_count = 50000
+    elif decoder_id == "usb_power_delivery_c":
+        synth_sr = 12000000 # 12MHz for USB PD BMC (600kHz datarate)
+        sample_count = 20000
+    elif decoder_id.startswith("ir_") or decoder_id in ["dcf77_c", "morse_c"]:
+        synth_sr = 100000 # 100kHz for very slow
+        sample_count = 100000 # 1 second
+    elif decoder_id == "qi_c":
+        synth_sr = 1000000 # 1MHz
+        sample_count = 25000 # 25ms - enough for full Qi packet at 2kHz
+
+    builder = ps.BitstreamBuilder(num_channels, sample_count, synth_sr)
+    
+    # Start at a small offset to ensure idle state is detected
+    builder.pos = 2000
+
+    try:
+        if decoder_id == "uart_c":
+            ch = channels_map.get("rx", 0)
+            gen = ps.UARTGenerator(builder, ch)
+            gen.write_byte(0x55)
+            gen.write_byte(0xAA)
+            gen.write_byte(0x12)
+        elif decoder_id == "i2c_c":
+            scl = channels_map.get("scl", 0)
+            sda = channels_map.get("sda", 1)
+            gen = ps.I2CGenerator(builder, scl, sda)
+            gen.start()
+            gen.write_byte(0x50 << 1) # Addr
+            gen.write_byte(0x00)      # Offset
+            gen.write_byte(0xBE)      # Data
+            gen.stop()
+        elif decoder_id == "spi_c":
+            clk = channels_map.get("clk", 0)
+            mosi = channels_map.get("mosi", 1)
+            miso = channels_map.get("miso", 2)
+            cs = channels_map.get("cs", 3)
+            gen = ps.SPIGenerator(builder, clk, mosi, miso, cs)
+            gen.select()
+            gen.write_byte(0xDE)
+            gen.write_byte(0xAD)
+            gen.deselect()
+        elif decoder_id == "ac97_c":
+            sync = channels_map.get("sync", 0)
+            clk = channels_map.get("clk", 1)
+            out = channels_map.get("out", 2)
+            s_in = channels_map.get("in", 3)
+            gen = ps.AC97Generator(builder, sync, clk, out, s_in)
+            gen.send_frame(0x9800, [0x1234] * 12)
+        elif decoder_id == "gpib_c":
+            gen = ps.GPIBGenerator(builder)
+            gen.command_sequence()
+        elif decoder_id == "lpc_c":
+            gen = ps.LPCGenerator(builder)
+            gen.io_write(0x80, 0x55)
+        elif decoder_id == "z80_c":
+            gen = ps.Z80Generator(builder)
+            gen.m1_cycle(0x1234, 0x3E) # LD A, n
+            gen.mem_read_cycle(0x1235, 0x55)
+        elif decoder_id == "tm1637_c":
+            clk = channels_map.get("clk", 0)
+            dio = channels_map.get("dio", 1)
+            gen = ps.TM1637Generator(builder, clk, dio)
+            gen.start()
+            gen.write_byte(0x40) # Data command
+            gen.stop()
+        elif decoder_id == "qspi_c":
+            clk = channels_map.get("clk", 0)
+            cs = channels_map.get("cs", 1)
+            d0 = channels_map.get("io0", 2)
+            d1 = channels_map.get("io1", 3)
+            d2 = channels_map.get("io2", 4)
+            d3 = channels_map.get("io3", 5)
+            gen = ps.QSPIGenerator(builder, clk, cs, d0, d1, d2, d3)
+            gen.select()
+            gen.write_byte_quad(0xAB)
+            gen.deselect()
+        elif decoder_id == "can_c":
+            ch = channels_map.get("can_rx", 0)
+            gen = ps.CANGenerator(builder, ch)
+            gen.send_frame(0x123, [0x11, 0x22, 0x33])
+        elif decoder_id == "usb_power_delivery_c":
+            ch = channels_map.get("cc1", 0)
+            gen = ps.USBPowerDeliveryGenerator(builder, ch)
+            gen.send_packet()
+        elif decoder_id == "am230x_c":
+            ch = channels_map.get("sda", 0)
+            gen = ps.AM230xGenerator(builder, ch)
+            gen.send_reading(50.5, 25.1)
+        elif decoder_id == "avr_pdi_c":
+            clk = channels_map.get("reset", 0)
+            data = channels_map.get("data", 1)
+            gen = ps.AVRPDIGenerator(builder, clk, data)
+            gen.send_break()
+        elif decoder_id == "bean_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.BEANGenerator(builder, ch)
+            gen.send_frame()
+        elif decoder_id == "c2_c":
+            clk = channels_map.get("c2ck", 0)
+            data = channels_map.get("c2d", 1)
+            gen = ps.C2Generator(builder, clk, data)
+            gen.send_reset()
+        elif decoder_id == "cec_c":
+            ch = channels_map.get("cec", 0)
+            gen = ps.CECGenerator(builder, ch)
+            gen.send_frame()
+        elif decoder_id == "dcf77_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.DCF77Generator(builder, ch)
+            gen.send_bit(1); gen.send_bit(0)
+        elif decoder_id == "dmx512_c":
+            ch = channels_map.get("dmx", 0)
+            gen = ps.DMX512Generator(builder, ch)
+            gen.send_frame()
+        elif decoder_id == "dsi_c":
+            ch = channels_map.get("dsi", 0)
+            gen = ps.DSIGenerator(builder, ch)
+            gen.send_backward_frame()
+        elif decoder_id == "fsi_c":
+            clk = channels_map.get("clock", 1)
+            data = channels_map.get("data", 0)
+            gen = ps.FSiGenerator(builder, clk, data)
+            gen.send_frame(0xAA, 0x55)
+        elif decoder_id == "ieee488_c":
+            gen = ps.GPIBGenerator(builder) # GPIB covers ieee488
+            gen.command_sequence()
+        elif decoder_id == "mcs48_c":
+            gen = ps.MCS48Generator(builder)
+            gen.opcode_fetch(0x123, 0x55)
+        elif decoder_id == "mvb_c":
+            ch = channels_map.get("mvb", 0)
+            gen = ps.MVBGenerator(builder, ch)
+            gen.send_master_frame()
+        elif decoder_id == "ps2_c":
+            clk = channels_map.get("clk", 0)
+            data = channels_map.get("data", 1)
+            gen = ps.PS2Generator(builder, clk, data)
+            gen.write_byte(0x55)
+        elif decoder_id == "qi_c":
+            ch = channels_map.get("qi", 0)
+            gen = ps.QiGenerator(builder, ch, bitrate=2000, samplerate=synth_sr)
+            gen.send_packet(0x02, [0x04])
+        elif decoder_id == "pwm_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.PWMGenerator(builder, ch)
+            gen.send_cycles(10)
+        elif decoder_id in ["onewire_c", "onewire_link_c", "onewire_network_c", "ds243x_c", "ds2408_c", "ds28ea00_c"]:
+            ch = channels_map.get("owr", 0)
+            gen = ps.OneWireGenerator(builder, ch)
+            gen.read_rom()
+        elif decoder_id in ["ethernet_c", "arp_c", "ipv4_c", "udp_c"]:
+            ch = channels_map.get("data", 0)
+            if ch is None: ch = 0
+            gen = ps.UARTGenerator(builder, ch) # Fallback to UART for framing
+            gen.write_byte(0x55)
+        elif decoder_id in ["st7735_c", "st7789_c", "spiflash_c", "ssd1306_c", "spi_dual_quad_c"]:
+            clk = channels_map.get("clk", 0)
+            mosi = channels_map.get("mosi", 1)
+            cs = channels_map.get("cs", 3)
+            gen = ps.SPIGenerator(builder, clk, mosi, -1, cs)
+            gen.select()
+            gen.write_byte(0x0)
+            gen.deselect()
+        elif decoder_id in ["tm1638_c", "tmc_c"]:
+            clk = channels_map.get("clk", 0)
+            dio = channels_map.get("dio", 1)
+            gen = ps.TM1637Generator(builder, clk, dio)
+            gen.start()
+            gen.write_byte(0x40)
+            gen.stop()
+        elif decoder_id == "one_single_wire_c":
+            data = channels_map.get("osw", 0)
+            start = channels_map.get("strt", 1)
+            gen = ps.OneSingleWireGenerator(builder, data, start)
+            gen.send_byte(0x55)
+        elif decoder_id == "caliper_c":
+            clk = channels_map.get("clk", 0)
+            data = channels_map.get("data", 1)
+            gen = ps.CaliperGenerator(builder, clk, data)
+            gen.send_value(0x123456, 24)
+        elif decoder_id == "carrera_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.CarreraGenerator(builder, ch)
+            gen.send_controller_word()
+        elif decoder_id == "dali_c":
+            ch = channels_map.get("dali", 0)
+            gen = ps.DALIGenerator(builder, ch)
+            gen.send_forward()
+        elif decoder_id == "dcc_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.DCCGenerator(builder, ch)
+            gen.send_packet(0x03, 0x7F)
+        elif decoder_id == "em4100_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.EM4100Generator(builder, ch)
+            gen.send_card(0x123456789A)
+        elif decoder_id == "em4305_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.EM4305Generator(builder, ch)
+            gen.send_write_word()
+        elif decoder_id == "eth_an_c":
+            ch = channels_map.get("dp", 0)
+            gen = ps.EthANGenerator(builder, ch)
+            gen.send_negotiation()
+        elif decoder_id == "hdlc_c":
+            ch = channels_map.get("data", 1)
+            gen = ps.HDLCGenerator(builder, ch)
+            gen.send_frame(0x01, 0x03, b"HELLO")
+        elif decoder_id == "i2s_c":
+            sck = channels_map.get("sck", 0)
+            ws = channels_map.get("ws", 1)
+            sd = channels_map.get("sd", 2)
+            gen = ps.I2SGenerator(builder, sck, ws, sd)
+            gen.send_frame(0x1234, 0x5678)
+        elif decoder_id == "iebus_c":
+            ch = channels_map.get("bus", 0)
+            gen = ps.IEBUSGenerator(builder, ch)
+            gen.send_frame([1,0,1,0], 0x11, 0x22)
+        elif decoder_id == "ir_nec_c":
+            ch = channels_map.get("ir", 0)
+            gen = ps.IRNECGenerator(builder, ch)
+            gen.send_nec(0x04, 0x08)
+        elif decoder_id == "ir_rc5_c":
+            ch = channels_map.get("ir", 0)
+            gen = ps.IRRC5Generator(builder, ch)
+            gen.send_rc5(0x00, 0x01)
+        elif decoder_id == "ir_rc6_c":
+            ch = channels_map.get("ir", 0)
+            gen = ps.IRRC6Generator(builder, ch)
+            gen.send_rc6(0x00, 0x01)
+        elif decoder_id == "ir_sirc_c":
+            ch = channels_map.get("ir", 0)
+            gen = ps.IRSIRCGenerator(builder, ch)
+            gen.send_sirc(0x15, 0x01)
+        elif decoder_id == "iso7816_c":
+            clk = channels_map.get("clk", 0)
+            data = channels_map.get("data", 1)
+            gen = ps.ISO7816Generator(builder, clk, data)
+            gen.send_atr()
+        elif decoder_id == "jtag_c":
+            tdi = channels_map.get("tdi", 0)
+            tdo = channels_map.get("tdo", 1)
+            tck = channels_map.get("tck", 2)
+            tms = channels_map.get("tms", 3)
+            gen = ps.JTAGGenerator(builder, tdi, tdo, tck, tms)
+            gen.reset_tap()
+            gen.shift_dr(0x5, 4)
+        elif decoder_id == "mdio_c":
+            mdc = channels_map.get("mdc", 0)
+            mdio = channels_map.get("mdio", 1)
+            gen = ps.MDIOGenerator(builder, mdc, mdio)
+            gen.read_clause22(0x01, 0x00, 0x1234)
+        elif decoder_id == "mipi_rffe_c":
+            sclk = channels_map.get("sclk", 0)
+            sdata = channels_map.get("sdata", 1)
+            gen = ps.MIPIRFFEGenerator(builder, sclk, sdata)
+            gen.send_ext_write(0x11, 0x0, 0x34)
+        elif decoder_id == "microwire_c":
+            sk = channels_map.get("sk", 1)
+            si = channels_map.get("si", 2)
+            so = channels_map.get("so", 3)
+            cs = channels_map.get("cs", 0)
+            gen = ps.MicrowireGenerator(builder, sk, si, so, cs)
+            gen.read(0b10, 0x00, 0xABCD)
+        elif decoder_id == "morse_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.MorseGenerator(builder, ch)
+            gen.send_sos()
+        elif decoder_id == "nrzi_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.NRZIGenerator(builder, ch)
+            gen.send_bytes(b"HELLO")
+        elif decoder_id == "ook_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.OOKGenerator(builder, ch)
+            gen.send_bits([1,0,1,1,0,1,0,1])
+        elif decoder_id == "opentherm_c":
+            ch = channels_map.get("ot", 0)
+            gen = ps.OpenthermGenerator(builder, ch)
+            gen.send_read_request()
+        elif decoder_id == "pjdl_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.PJDLGenerator(builder, ch)
+            gen.write_byte(0x55)
+        elif decoder_id == "pxx1_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.PXX1Generator(builder, ch)
+            gen.send_bind_frame(0x1234)
+        elif decoder_id == "rc_encode_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.RCEncodeGenerator(builder, ch)
+            gen.send_pattern([1,0,1,1])
+        elif decoder_id == "sent_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.SENTGenerator(builder, ch)
+            gen.send_message()
+        elif decoder_id == "sdio_c":
+            clk = channels_map.get("clk", 1)
+            cmd = channels_map.get("cmd", 0)
+            gen = ps.SDIOGenerator(builder, cmd, clk)
+            gen.send_command(52, 0x0)
+        elif decoder_id == "swd_c":
+            clk = channels_map.get("swclk", 0)
+            data = channels_map.get("swdio", 1)
+            gen = ps.SWDGenerator(builder, clk, data)
+            gen.line_reset()
+            gen.read_dp()
+        elif decoder_id == "swi_c":
+            ch = channels_map.get("swi", 0)
+            gen = ps.SWIGenerator(builder, ch)
+            gen.write_byte(0x55)
+        elif decoder_id == "swim_c":
+            ch = channels_map.get("swim", 0)
+            gen = ps.SwimGenerator(builder, ch)
+            gen.send_command(0x00)
+        elif decoder_id == "tdm_audio_c":
+            sck = channels_map.get("clock", 0)
+            ws = channels_map.get("frame", 1)
+            sd = channels_map.get("data", 2)
+            gen = ps.TDMAudioGenerator(builder, sck, ws, sd)
+            gen.send_frame(8, 16)
+        elif decoder_id == "wiegand_c":
+            d0 = channels_map.get("d0", 0)
+            d1 = channels_map.get("d1", 1)
+            gen = ps.WiegandGenerator(builder, d0, d1)
+            gen.send_wiegand26()
+        elif decoder_id == "sony_md_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.SonyMDGenerator(builder, ch)
+            gen.send_message()
+        else:
+            return None
+    except Exception as e:
+        print(f"  WARN: {decoder_id} synthesis failed: {e}")
+        return None
+
+    # Pack and concatenate
+    result = bytearray()
+    for ch_idx in range(num_channels):
+        result.extend(samples_to_bitpacked(builder.channels[ch_idx]))
+    return (bytes(result), synth_sr, sample_count)
+
+def samples_to_bitpacked(channel_data):
+    """Convert a list of 0/1 sample values to bit-packed bytes.
+
+    bit 0 of byte 0 = sample 0, bit 1 of byte 0 = sample 1, etc.
+    """
+    num_bytes = math.ceil(len(channel_data) / 8)
+    result = bytearray(num_bytes)
+    for i, val in enumerate(channel_data):
+        if val:
+            byte_idx = i // 8
+            bit_idx = i % 8
+            result[byte_idx] |= (1 << bit_idx)
+    return bytes(result)
+
 
 def parse_c_decoder_file(filepath):
     """Parse a C decoder source file and extract metadata.
@@ -38,12 +414,6 @@ def parse_c_decoder_file(filepath):
         "inputs": [],
     }
 
-    # Extract decoder ID from the srd_c_decoder struct
-    # Two patterns:
-    #   1. Designated initializer: .id = "spi_c",
-    #   2. Positional initializer: struct srd_c_decoder foo = { "usb_signalling_c", ...
-    # We must search within the srd_c_decoder struct to avoid matching option .id fields.
-
     # Find the srd_c_decoder struct definition
     struct_pattern = re.compile(
         r'(?:static\s+)?struct\s+srd_c_decoder\s+\w+\s*=\s*\{',
@@ -51,7 +421,6 @@ def parse_c_decoder_file(filepath):
     )
     struct_match = struct_pattern.search(content)
     if struct_match:
-        # Extract the struct body (from opening { to the matching closing })
         start = struct_match.end()
         depth = 1
         pos = start
@@ -63,39 +432,20 @@ def parse_c_decoder_file(filepath):
             pos += 1
         struct_body = content[start:pos]
 
-        # Try designated initializer: .id = "spi_c",
         id_match = re.search(r'\.id\s*=\s*"([^"]+)"', struct_body)
         if id_match:
             result["id"] = id_match.group(1)
         else:
-            # Try positional initializer: first string literal in the struct
-            # e.g., "usb_signalling_c",
             first_str = re.search(r'^\s*"([^"]+)"', struct_body, re.MULTILINE)
             if first_str:
                 result["id"] = first_str.group(1)
 
-    # Extract channels
-    # Pattern: static struct srd_channel <name>[] = { ... };
-    # Each entry: { "id", "name", "desc", order, SRD_CHANNEL_*, ... },
-    # or: { "id", "name", "desc", order, SRD_CHANNEL_*, "idn" },
     result["channels"] = _parse_channel_array(content, "channels")
-
-    # Extract optional_channels
     result["optional_channels"] = _parse_channel_array(content, "optional_channels")
-
-    # Extract options
-    # Pattern: static struct srd_decoder_option <name>[] = { ... };
-    # Each entry: { "id", "idn", "desc", NULL, NULL },
-    # Default values are set in srd_c_decoder_entry() via g_variant_new_*
     result["options"] = _parse_options(content)
-
-    # Extract inputs
-    # Pattern: static const char* <name>_inputs[] = { "logic", NULL };
-    # or: static const char *<name>_inputs[] = {"logic"};
     result["inputs"] = _parse_inputs(content)
 
     if result["id"] is None:
-        # Try to derive ID from filename
         basename = os.path.basename(filepath)
         result["id"] = basename.replace(".c", "")
 
@@ -103,291 +453,132 @@ def parse_c_decoder_file(filepath):
 
 
 def _parse_channel_array(content, field_name):
-    """Parse a channels[] or optional_channels[] array from C source.
-
-    Looks for both the static array definition and the struct assignment
-    to determine which variable name is used.
-    """
     channels = []
-
-    # Strategy 1: Find static array definitions with field_name in the variable name
-    # e.g., static struct srd_channel spi_channels[] = { ... };
-    # e.g., static struct srd_channel spi_optional_channels[] = { ... };
-    # Also handle: static struct srd_channel uart_optional_channels[] = { ... };
-
-    # First, find variable names that contain the field_name
-    # Pattern: static struct srd_channel <varname>[] =
     var_pattern = re.compile(
         r'static\s+struct\s+srd_channel\s+(\w+)\s*\[\]\s*=\s*\{',
         re.MULTILINE
     )
-
     target_vars = []
     for m in var_pattern.finditer(content):
         varname = m.group(1)
-        # Check if this variable name contains the field_name
-        # e.g., "spi_channels" contains "channels"
-        # e.g., "spi_optional_channels" contains "optional_channels"
-        # But "spi_channels" should NOT match "optional_channels"
         if field_name == "channels":
-            # Must contain "channels" but NOT "optional_channels"
             if "channels" in varname and "optional_channels" not in varname:
                 target_vars.append(varname)
         elif field_name == "optional_channels":
             if "optional_channels" in varname:
                 target_vars.append(varname)
 
-    # Also check if the decoder struct references a variable for this field
-    # Pattern: .channels = <varname>,
-    # Pattern: .optional_channels = <varname>,
-    struct_ref_pattern = re.compile(
-        r'\.' + field_name + r'\s*=\s*(\w+)\s*,'
-    )
+    struct_ref_pattern = re.compile(r'\.' + field_name + r'\s*=\s*(\w+)\s*,')
     for m in struct_ref_pattern.finditer(content):
         varname = m.group(1)
         if varname != "NULL" and varname not in target_vars:
             target_vars.append(varname)
 
     for varname in target_vars:
-        # Find the array definition for this variable
         array_pattern = re.compile(
             r'static\s+struct\s+srd_channel\s+' + re.escape(varname) +
             r'\s*\[\]\s*=\s*\{(.*?)\}\s*;',
             re.DOTALL
         )
         m = array_pattern.search(content)
-        if not m:
-            continue
-
+        if not m: continue
         array_body = m.group(1)
-
-        # Parse individual channel entries
-        # Pattern: { "id", "name", "desc", order, TYPE, ... },
-        # The 6-field variant: { "id", "name", "desc", order, TYPE, "idn" },
-        entry_pattern = re.compile(
-            r'\{\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*(\d+)\s*,'
-        )
+        entry_pattern = re.compile(r'\{\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*(\d+)\s*,')
         for em in entry_pattern.finditer(array_body):
             ch_id = em.group(1)
             ch_order = int(em.group(2))
             channels.append({"id": ch_id, "order": ch_order})
 
-    # Sort by order
     channels.sort(key=lambda c: c["order"])
     return channels
 
 
 def _parse_options(content):
-    """Parse decoder options from C source.
-
-    Extracts option IDs from the static array definition and default values
-    from the srd_c_decoder_entry() function.
-    """
     options = []
-
-    # Find option array variable names
-    # Pattern: static struct srd_decoder_option <varname>[] = { ... };
-    var_pattern = re.compile(
-        r'static\s+struct\s+srd_decoder_option\s+(\w+)\s*\[\]\s*=\s*\{',
-        re.MULTILINE
-    )
-
-    # Also check struct reference
-    struct_ref_pattern = re.compile(
-        r'\.options\s*=\s*(\w+)\s*,'
-    )
-
+    var_pattern = re.compile(r'static\s+struct\s+srd_decoder_option\s+(\w+)\s*\[\]\s*=\s*\{', re.MULTILINE)
+    struct_ref_pattern = re.compile(r'\.options\s*=\s*(\w+)\s*,')
     target_vars = []
     for m in struct_ref_pattern.finditer(content):
         varname = m.group(1)
-        if varname != "NULL":
-            target_vars.append(varname)
-
+        if varname != "NULL": target_vars.append(varname)
     for m in var_pattern.finditer(content):
         varname = m.group(1)
-        if varname not in target_vars:
-            target_vars.append(varname)
+        if varname not in target_vars: target_vars.append(varname)
 
-    # Collect option IDs from all matching arrays
-    # (validation pass - just check that at least one array definition exists)
     found_any = False
     for varname in target_vars:
-        array_pattern = re.compile(
-            r'static\s+struct\s+srd_decoder_option\s+' + re.escape(varname) +
-            r'\s*\[\]\s*=\s*\{(.*?)\}\s*;',
-            re.DOTALL
-        )
+        array_pattern = re.compile(r'static\s+struct\s+srd_decoder_option\s+' + re.escape(varname) + r'\s*\[\]\s*=\s*\{(.*?)\}\s*;', re.DOTALL)
         if array_pattern.search(content):
             found_any = True
             break
+    if not found_any: return []
 
-    if not found_any:
-        return []
-
-    # Now extract default values from srd_c_decoder_entry()
-    # Pattern: <varname>[<index>].def = g_variant_new_<type>(<value>);
     defaults = {}
-
-    # Find the entry function
-    entry_pattern = re.compile(
-        r'SRD_C_DECODER_EXPORT\s+struct\s+srd_c_decoder\s*\*?\s*srd_c_decoder_entry\s*\(\s*void\s*\)\s*\{(.*?)\n\}',
-        re.DOTALL
-    )
+    entry_pattern = re.compile(r'SRD_C_DECODER_EXPORT\s+struct\s+srd_c_decoder\s*\*?\s*srd_c_decoder_entry\s*\(\s*void\s*\)\s*\{(.*?)\n\}', re.DOTALL)
     entry_match = entry_pattern.search(content)
     if entry_match:
         entry_body = entry_match.group(1)
-
-        # Match: <varname>[<index>].def = g_variant_new_int64(<value>);
-        # Match: <varname>[<index>].def = g_variant_new_double(<value>);
-        # Match: <varname>[<index>].def = g_variant_new_string("<value>");
-        def_pattern = re.compile(
-            r'(\w+)\[(\d+)\]\.def\s*=\s*g_variant_new_(\w+)\(([^)]+)\)'
-        )
+        def_pattern = re.compile(r'(\w+)\[(\d+)\]\.def\s*=\s*g_variant_new_(\w+)\(([^)]+)\)')
         for dm in def_pattern.finditer(entry_body):
-            var = dm.group(1)
-            idx = int(dm.group(2))
-            vtype = dm.group(3)
-            vval = dm.group(4).strip()
-
+            var, idx, vtype, vval = dm.groups()
+            idx = int(idx)
+            vval = vval.strip()
             if var in target_vars:
-                # Parse the value
                 if vtype == "string":
-                    # Extract string value
-                    str_match = re.search(r'"([^"]*)"', vval)
-                    if str_match:
-                        defaults[(var, idx)] = str_match.group(1)
-                elif vtype == "int64" or vtype == "int32" or vtype == "uint64":
-                    try:
-                        defaults[(var, idx)] = int(vval)
-                    except ValueError:
-                        defaults[(var, idx)] = 0
+                    sm = re.search(r'"([^"]*)"', vval)
+                    if sm: defaults[(var, idx)] = sm.group(1)
+                elif vtype in ["int64", "int32", "uint64"]:
+                    try: defaults[(var, idx)] = int(vval)
+                    except: defaults[(var, idx)] = 0
                 elif vtype == "double":
-                    try:
-                        defaults[(var, idx)] = float(vval)
-                    except ValueError:
-                        defaults[(var, idx)] = 0.0
+                    try: defaults[(var, idx)] = float(vval)
+                    except: defaults[(var, idx)] = 0.0
                 elif vtype == "boolean":
                     defaults[(var, idx)] = vval == "TRUE"
 
-    # Build options list with defaults
     for varname in target_vars:
-        # Count options in this variable's array
-        array_pattern = re.compile(
-            r'static\s+struct\s+srd_decoder_option\s+' + re.escape(varname) +
-            r'\s*\[\]\s*=\s*\{(.*?)\}\s*;',
-            re.DOTALL
-        )
+        array_pattern = re.compile(r'static\s+struct\s+srd_decoder_option\s+' + re.escape(varname) + r'\s*\[\]\s*=\s*\{(.*?)\}\s*;', re.DOTALL)
         m = array_pattern.search(content)
-        if not m:
-            continue
-
+        if not m: continue
         array_body = m.group(1)
-
-        # Re-count entries for this specific array
         local_ids = []
         local_entry_pattern = re.compile(r'\{\s*"([^"]+)"\s*,')
-        for em in local_entry_pattern.finditer(array_body):
-            local_ids.append(em.group(1))
-
+        for em in local_entry_pattern.finditer(array_body): local_ids.append(em.group(1))
         for local_idx, opt_id in enumerate(local_ids):
-            default_val = defaults.get((varname, local_idx), None)
-            options.append({
-                "id": opt_id,
-                "default": default_val,
-            })
-
+            options.append({"id": opt_id, "default": defaults.get((varname, local_idx), None)})
     return options
 
 
 def _parse_inputs(content):
-    """Parse the inputs array from C source.
-
-    Pattern: static const char* <name>_inputs[] = { "logic", NULL };
-    Pattern: static const char *<name>_inputs[] = {"logic"};
-    """
     inputs = []
-
-    # Find all inputs array definitions
-    # Pattern: static const char* <varname>[] = { ... };
-    input_pattern = re.compile(
-        r'static\s+const\s+char\s*\*\s*(\w+)\s*\[\]\s*=\s*\{([^}]+)\}',
-        re.DOTALL
-    )
-
-    # Also find the variable name from the struct
-    struct_ref_pattern = re.compile(
-        r'\.inputs\s*=\s*(\w+)\s*,'
-    )
+    input_pattern = re.compile(r'static\s+const\s+char\s*\*\s*(\w+)\s*\[\]\s*=\s*\{([^}]+)\}', re.DOTALL)
+    struct_ref_pattern = re.compile(r'\.inputs\s*=\s*(\w+)\s*,')
     target_var = None
     for m in struct_ref_pattern.finditer(content):
         v = m.group(1)
-        if v != "NULL":
-            target_var = v
-
-    # Search for the inputs array
+        if v != "NULL": target_var = v
     for m in input_pattern.finditer(content):
-        varname = m.group(1)
-        if target_var and varname != target_var:
-            continue
-        if not target_var and "inputs" not in varname:
-            continue
-
-        array_body = m.group(2)
-        # Extract string values
-        str_pattern = re.compile(r'"([^"]*)"')
-        for sm in str_pattern.finditer(array_body):
+        varname, array_body = m.groups()
+        if target_var and varname != target_var: continue
+        token_pattern = re.compile(r'"([^"]*)"|SRD_FMT_LOGIC')
+        for sm in token_pattern.finditer(array_body):
             val = sm.group(1)
-            if val:  # Skip empty strings
-                inputs.append(val)
-        break  # Use the first matching variable
-
+            if sm.group(0) == "SRD_FMT_LOGIC":
+                val = "logic"
+            if val: inputs.append(val)
+        break
     return inputs
 
 
-def samples_to_bitpacked(channel_data):
-    """Convert a list of 0/1 sample values to bit-packed bytes.
-
-    bit 0 of byte 0 = sample 0, bit 1 of byte 0 = sample 1, etc.
-    """
-    num_bytes = math.ceil(len(channel_data) / 8)
-    result = bytearray(num_bytes)
-    for i, val in enumerate(channel_data):
-        if val:
-            byte_idx = i // 8
-            bit_idx = i % 8
-            result[byte_idx] |= (1 << bit_idx)
-    return bytes(result)
-
-
 def generate_input_bin(num_channels, sample_count):
-    """Generate basic signal patterns for input.bin.
-
-    Channel 0: alternating 0/1 pattern (10101010...)
-    Channel 1: all zeros
-    Channel 2: all ones
-    Channel 3+: random pattern
-
-    Returns bytes for the input.bin file.
-    """
-    random.seed(42)  # Deterministic output
-
+    random.seed(42)
     all_channels = []
     for ch_idx in range(num_channels):
-        if ch_idx == 0:
-            # Alternating pattern
-            data = [i % 2 for i in range(sample_count)]
-        elif ch_idx == 1:
-            # All zeros
-            data = [0] * sample_count
-        elif ch_idx == 2:
-            # All ones
-            data = [1] * sample_count
-        else:
-            # Random pattern
-            data = [random.randint(0, 1) for _ in range(sample_count)]
+        if ch_idx == 0: data = [i % 2 for i in range(sample_count)]
+        elif ch_idx == 1: data = [0] * sample_count
+        elif ch_idx == 2: data = [1] * sample_count
+        else: data = [random.randint(0, 1) for _ in range(sample_count)]
         all_channels.append(data)
-
-    # Pack and concatenate
     result = bytearray()
     for ch_idx in range(num_channels):
         result.extend(samples_to_bitpacked(all_channels[ch_idx]))
@@ -395,55 +586,24 @@ def generate_input_bin(num_channels, sample_count):
 
 
 def generate_config(decoder_info):
-    """Generate config.json content for a decoder.
-
-    Returns a dict representing the config, or None if the decoder
-    has no channels (cannot accept direct logic input).
-    """
     all_channels = decoder_info["channels"] + decoder_info["optional_channels"]
-    if not all_channels:
-        return None
-
-    num_channels = len(all_channels)
-
-    # Build channels map: id -> index
-    channels_map = {}
-    for i, ch in enumerate(all_channels):
-        channels_map[ch["id"]] = i
-
-    # Build options map: id -> default value
-    options_map = {}
-    for opt in decoder_info["options"]:
-        if opt["default"] is not None:
-            options_map[opt["id"]] = opt["default"]
-
-    config = {
+    if not all_channels: return None
+    channels_map = {ch["id"]: i for i, ch in enumerate(all_channels)}
+    options_map = {opt["id"]: opt["default"] for opt in decoder_info["options"] if opt["default"] is not None}
+    return {
         "decoder": decoder_info["id"],
         "samplerate": 1000000,
-        "num_channels": num_channels,
+        "num_channels": len(all_channels),
         "sample_count": 10000,
         "channels": channels_map,
         "options": options_map,
     }
 
-    return config
-
 
 def generate_non_logic_config(decoder_info):
-    """Generate config.json for a non-logic-input decoder.
-
-    These decoders need upstream decoder output and cannot accept
-    direct logic signal input.
-    """
     all_channels = decoder_info["channels"] + decoder_info["optional_channels"]
-
-    # Build options map
-    options_map = {}
-    for opt in decoder_info["options"]:
-        if opt["default"] is not None:
-            options_map[opt["id"]] = opt["default"]
-
-    config = {
+    options_map = {opt["id"]: opt["default"] for opt in decoder_info["options"] if opt["default"] is not None}
+    return {
         "decoder": decoder_info["id"],
         "samplerate": 1000000,
         "needs_upstream": True,
@@ -452,167 +612,65 @@ def generate_non_logic_config(decoder_info):
         "options": options_map,
     }
 
-    return config
-
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate test data for C decoders by parsing source files"
-    )
-    parser.add_argument(
-        "--c-decoders-dir",
-        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "c_decoders"),
-        help="Path to c_decoders directory (default: ../c_decoders/)",
-    )
-    parser.add_argument(
-        "--output-dir",
-        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata"),
-        help="Path to testdata output directory (default: ./testdata/)",
-    )
-    parser.add_argument(
-        "--skip-existing",
-        action="store_true",
-        default=True,
-        help="Skip decoders that already have test data (default: True)",
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite existing test data (disables --skip-existing)",
-    )
+    parser = argparse.ArgumentParser(description="Generate test data for C decoders")
+    parser.add_argument("--c-decoders-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "c_decoders"))
+    parser.add_argument("--output-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata"))
+    parser.add_argument("--skip-existing", action="store_true", default=True)
+    parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
-
-    if args.overwrite:
-        args.skip_existing = False
+    if args.overwrite: args.skip_existing = False
 
     c_decoders_dir = os.path.normpath(args.c_decoders_dir)
     output_dir = os.path.normpath(args.output_dir)
+    if not os.path.isdir(c_decoders_dir): sys.exit(1)
 
-    if not os.path.isdir(c_decoders_dir):
-        print(f"ERROR: C decoders directory not found: {c_decoders_dir}")
-        sys.exit(1)
+    c_files = sorted([f for f in os.listdir(c_decoders_dir) if f.endswith("_c.c")])
+    if not c_files: sys.exit(1)
 
-    # Find all C decoder source files
-    c_files = sorted([
-        f for f in os.listdir(c_decoders_dir)
-        if f.endswith("_c.c")
-    ])
-
-    if not c_files:
-        print(f"No C decoder files found in {c_decoders_dir}")
-        sys.exit(1)
-
-    print(f"Found {len(c_files)} C decoder source files in {c_decoders_dir}")
-    print(f"Output directory: {output_dir}")
-    print()
-
-    processed = 0
-    generated = 0
-    skipped = 0
-    errors = 0
-    non_logic = 0
-    no_channels = 0
-
+    processed = generated = skipped = errors = non_logic = no_channels = 0
     for c_file in c_files:
         filepath = os.path.join(c_decoders_dir, c_file)
-        decoder_name = c_file.replace(".c", "")
-
-        # Parse the C source file
         decoder_info = parse_c_decoder_file(filepath)
-        if decoder_info is None:
-            print(f"  SKIP {decoder_name}: failed to parse")
-            errors += 1
-            processed += 1
-            continue
-
-        if decoder_info["id"] is None:
-            print(f"  SKIP {decoder_name}: no decoder ID found")
-            errors += 1
-            processed += 1
-            continue
-
-        decoder_id = decoder_info["id"]
-        processed += 1
-
-        # Determine output directory
+        if not decoder_info or not decoder_info["id"]:
+            errors += 1; processed += 1; continue
+        decoder_id = decoder_info["id"]; processed += 1
         decoder_output_dir = os.path.join(output_dir, decoder_id, "default")
-
-        # Check if test data already exists
         config_path = os.path.join(decoder_output_dir, "config.json")
         if args.skip_existing and os.path.exists(config_path):
-            print(f"  SKIP {decoder_id}: test data already exists")
-            skipped += 1
-            continue
+            skipped += 1; continue
 
-        # Determine if this is a logic-input decoder
-        is_logic_input = "logic" in decoder_info["inputs"]
-
-        if not is_logic_input:
-            # Non-logic decoder: generate config with needs_upstream=true
+        if "logic" not in decoder_info["inputs"]:
             config = generate_non_logic_config(decoder_info)
-            if config is None:
-                print(f"  SKIP {decoder_id}: cannot generate config (no inputs, no channels)")
-                no_channels += 1
-                continue
-
+            if not config: no_channels += 1; continue
             os.makedirs(decoder_output_dir, exist_ok=True)
             with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
-                f.write("\n")
+                json.dump(config, f, indent=2, ensure_ascii=False); f.write("\n")
+            non_logic += 1; generated += 1; continue
 
-            print(f"  GEN  {decoder_id}: config.json (needs_upstream=true, inputs={decoder_info['inputs']})")
-            non_logic += 1
-            generated += 1
-            continue
-
-        # Logic-input decoder
         all_channels = decoder_info["channels"] + decoder_info["optional_channels"]
-        if not all_channels:
-            print(f"  SKIP {decoder_id}: logic input but no channels defined")
-            no_channels += 1
-            continue
-
-        num_channels = len(all_channels)
-        sample_count = 10000
-
-        # Generate config.json
+        if not all_channels: no_channels += 1; continue
         config = generate_config(decoder_info)
-        if config is None:
-            print(f"  SKIP {decoder_id}: cannot generate config")
-            no_channels += 1
-            continue
+        if not config: no_channels += 1; continue
+        input_data = synthesize_input_bin(decoder_id, config["num_channels"], config["sample_count"], config["channels"])
+        if input_data is None:
+            input_data = generate_input_bin(config["num_channels"], config["sample_count"])
+        else:
+            data_bytes, synth_sr, synth_sc = input_data
+            input_data = data_bytes
+            config["samplerate"] = synth_sr
+            config["sample_count"] = synth_sc
+            print(f"  SYN  {decoder_id}: Using synthesized protocol data")
 
-        # Generate input.bin
-        input_data = generate_input_bin(num_channels, sample_count)
-
-        # Write files
         os.makedirs(decoder_output_dir, exist_ok=True)
-
         with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-
-        input_path = os.path.join(decoder_output_dir, "input.bin")
-        with open(input_path, "wb") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False); f.write("\n")
+        with open(os.path.join(decoder_output_dir, "input.bin"), "wb") as f:
             f.write(input_data)
-
-        ch_names = ", ".join(ch["id"] for ch in all_channels)
-        opt_count = len(decoder_info["options"])
-        print(f"  GEN  {decoder_id}: config.json + input.bin "
-              f"({num_channels}ch [{ch_names}], {opt_count} opts)")
         generated += 1
 
-    # Summary
-    print()
-    print("=" * 60)
-    print(f"Summary:")
-    print(f"  Processed:  {processed}")
-    print(f"  Generated:  {generated} ({generated - non_logic} logic, {non_logic} upstream)")
-    print(f"  Skipped:    {skipped} (existing)")
-    print(f"  No channels: {no_channels}")
-    print(f"  Errors:     {errors}")
-    print("=" * 60)
-
+    print(f"\nSummary:\n  Processed: {processed}\n  Generated: {generated}\n  Skipped: {skipped}\n  Errors: {errors}")
 
 if __name__ == "__main__":
     main()

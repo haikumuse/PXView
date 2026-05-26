@@ -1,18 +1,10 @@
 {
   "decoder": "ethernet_c",
   "samplerate": 1000000,
-  "num_channels": 1,
-  "sample_count": 100000,
+  "needs_upstream": true,
+  "inputs": [
+    "4b5b"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "4b5b_c"
-    },
-    {
-      "id": "nrzi_c",
-      "channels": {
-        "data": 0
-      }
-    }
-  ]
+  "options": {}
 }

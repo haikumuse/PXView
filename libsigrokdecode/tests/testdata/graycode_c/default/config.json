@@ -1,8 +1,8 @@
 {
   "decoder": "graycode_c",
   "samplerate": 1000000,
-  "num_channels": 1,
-  "sample_count": 100000,
+  "num_channels": 8,
+  "sample_count": 10000,
   "channels": {
     "d0": 0,
     "d1": 1,
@@ -13,5 +13,10 @@
     "d6": 6,
     "d7": 7
   },
-  "stack": []
+  "options": {
+    "edges": 0,
+    "avg_period": 10,
+    "bits": 0,
+    "si_prefix": ""
+  }
 }

@@ -1,15 +1,10 @@
 {
   "decoder": "ade77xx_c",
   "samplerate": 1000000,
-  "num_channels": 4,
-  "sample_count": 20000,
+  "needs_upstream": true,
+  "inputs": [
+    "spi"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "spi_c",
-      "channels": {
-        "clk": 0
-      }
-    }
-  ]
+  "options": {}
 }

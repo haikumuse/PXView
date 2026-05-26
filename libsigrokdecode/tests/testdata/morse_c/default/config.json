@@ -1,10 +1,12 @@
 {
   "decoder": "morse_c",
-  "samplerate": 1000000,
+  "samplerate": 100000,
   "num_channels": 1,
-  "sample_count": 500000,
+  "sample_count": 100000,
   "channels": {
     "data": 0
   },
-  "stack": []
+  "options": {
+    "timeunit": 0.1
+  }
 }

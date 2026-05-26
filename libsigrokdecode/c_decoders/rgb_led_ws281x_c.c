@@ -397,8 +397,13 @@ static void ws281x_end(struct srd_decoder_inst *di)
         return;
 
     /* Flush the last bit when data ends in BIT_FALLING state,
-     * matching Python's end() method behavior */
-    ws281x_check_bit(s, s->last_samplenum);
+     * matching Python's end() method behavior.
+     * Use the actual last sample of the data stream (like Python's
+     * self.last_samplenum) so the duty cycle check works correctly. */
+    uint64_t last_sample = c_decoder_get_last_samplenum(di);
+    if (last_sample == 0)
+        last_sample = s->last_samplenum;
+    ws281x_check_bit(s, last_sample);
     char bit_str[4];
     snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
     C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);

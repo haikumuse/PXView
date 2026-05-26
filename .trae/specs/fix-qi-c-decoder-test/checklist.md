@@ -1,0 +1,7 @@
+- [ ] qi_c decoder produces annotations (not 0) from synthesized test data
+- [ ] qi_c annotations match Python qi decoder annotations (0 deviations in show_diff.py)
+- [ ] qi_c test passes in run_all_tests.py
+- [ ] No debug fprintf statements remain in qi_c.c
+- [ ] Test data sample_count is sufficient for at least one complete Qi packet
+- [ ] Checksum annotation uses correct end-sample (not stale bitsi[10])
+- [ ] bits_to_uint produces same results as Python's reduce-based implementation

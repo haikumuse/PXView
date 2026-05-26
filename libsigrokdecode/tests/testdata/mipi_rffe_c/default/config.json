@@ -2,10 +2,12 @@
   "decoder": "mipi_rffe_c",
   "samplerate": 1000000,
   "num_channels": 2,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "sclk": 0,
     "sdata": 1
   },
-  "stack": []
+  "options": {
+    "error_display": "display"
+  }
 }

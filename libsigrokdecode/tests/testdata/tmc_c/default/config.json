@@ -1,11 +1,14 @@
 {
   "decoder": "tmc_c",
   "samplerate": 1000000,
-  "num_channels": 4,
-  "sample_count": 100000,
+  "num_channels": 3,
+  "sample_count": 10000,
   "channels": {
     "clk": 0,
-    "dio": 1
+    "dio": 1,
+    "stb": 2
   },
-  "stack": []
+  "options": {
+    "radix": "Hex"
+  }
 }

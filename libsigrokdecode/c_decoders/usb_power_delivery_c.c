@@ -151,6 +151,7 @@ typedef struct {
 
     /* Text tracking */
     char text[2048];
+    int fulltext;
 
     int out_ann;
     int out_python;
@@ -186,8 +187,14 @@ static void pd_put(usb_pd_state *s, struct srd_decoder_inst *di,
 static void pd_putx(usb_pd_state *s, struct srd_decoder_inst *di,
                     int s0, int s1, int ann_class, const char **txts)
 {
-    if (s0 >= 0 && s0 < s->num_edges && s1 >= 0) {
-        int e1 = (s1 < s->num_edges) ? s1 : s->num_edges - 1;
+    if (s0 >= 0 && s0 < s->num_edges) {
+        int e1;
+        if (s1 < 0)
+            e1 = s->num_edges - 1;
+        else if (s1 < s->num_edges)
+            e1 = s1;
+        else
+            e1 = s->num_edges - 1;
         pd_put(s, di, s->edges[s0], s->edges[e1], ann_class, txts);
     }
 }
@@ -349,6 +356,181 @@ static void puthead(usb_pd_state *s, struct srd_decoder_inst *di)
         strcat(s->text, longm);
 }
 
+static void get_request(usb_pd_state *s, uint32_t rdo, char *buf, int bufsize)
+{
+    int pos = (rdo >> 28) & 0x0F;
+    int mark = s->cap_mark[pos];
+    char t_settings[64] = {0};
+
+    if (mark == 3) {
+        double op_v = ((rdo >> 9) & 0x7ff) * 0.02;
+        double op_a = (rdo & 0xff) * 0.05;
+        snprintf(t_settings, sizeof(t_settings), "%gV %gA", op_v, op_a);
+    } else if (mark == 2) {
+        double op_w = ((rdo >> 10) & 0x3ff) * 0.25;
+        snprintf(t_settings, sizeof(t_settings), "%gW (operating)", op_w);
+    } else {
+        double op_a = ((rdo >> 10) & 0x3ff) * 0.01;
+        double max_a = (rdo & 0x3ff) * 0.01;
+        snprintf(t_settings, sizeof(t_settings), "%gA (operating) / %gA (max)", op_a, max_a);
+    }
+
+    /* RDO flags in reverse order of bit position */
+    static const struct { uint32_t bit; const char *name; } rdo_flags[] = {
+        {1 << 27, "give_back"},
+        {1 << 26, "cap_mismatch"},
+        {1 << 25, "comm_cap"},
+        {1 << 24, "no_suspend"},
+        {1 << 23, "unchunked"},
+    };
+
+    char t_flags[128] = {0};
+    for (int i = 0; i < (int)(sizeof(rdo_flags) / sizeof(rdo_flags[0])); i++) {
+        if (rdo & rdo_flags[i].bit) {
+            strcat(t_flags, " [");
+            strcat(t_flags, rdo_flags[i].name);
+            strcat(t_flags, "]");
+        }
+    }
+
+    snprintf(buf, bufsize, "(PDO #%d) %s%s", pos, t_settings, t_flags);
+}
+
+static void get_source_sink_cap(usb_pd_state *s, uint32_t pdo, int idx, int source, char *buf, int bufsize)
+{
+    int t1 = (pdo >> 30) & 3;
+    s->cap_mark[idx] = t1;
+
+    char t_name[32] = {0};
+    char p[128] = {0};
+    char t_flags[256] = {0};
+
+    if (t1 == 0) {
+        strcpy(t_name, "Fixed");
+        if (source) {
+            static const struct { uint32_t bit; const char *name; } src_flags[] = {
+                {1 << 29, "dual_role_power"},
+                {1 << 28, "suspend"},
+                {1 << 27, "unconstrained"},
+                {1 << 26, "comm_cap"},
+                {1 << 25, "dual_role_data"},
+                {1 << 24, "unchunked"},
+            };
+            for (int i = 0; i < (int)(sizeof(src_flags) / sizeof(src_flags[0])); i++) {
+                if (pdo & src_flags[i].bit) {
+                    strcat(t_flags, " [");
+                    strcat(t_flags, src_flags[i].name);
+                    strcat(t_flags, "]");
+                }
+            }
+        }
+        double mv = ((pdo >> 10) & 0x3ff) * 0.05;
+        double ma = (pdo & 0x3ff) * 0.01;
+        snprintf(p, sizeof(p), "%gV %gA (%gW)", mv, ma, mv * ma);
+    } else if (t1 == 1) {
+        strcpy(t_name, "Battery");
+        double minv = ((pdo >> 10) & 0x3ff) * 0.05;
+        double maxv = ((pdo >> 20) & 0x3ff) * 0.05;
+        double mw = (pdo & 0x3ff) * 0.25;
+        snprintf(p, sizeof(p), "%g/%gV %gW", minv, maxv, mw);
+    } else if (t1 == 2) {
+        strcpy(t_name, "Variable");
+        double minv = ((pdo >> 10) & 0x3ff) * 0.05;
+        double maxv = ((pdo >> 20) & 0x3ff) * 0.05;
+        double ma = (pdo & 0x3ff) * 0.01;
+        snprintf(p, sizeof(p), "%g/%gV %gA (%gW)", minv, maxv, ma, maxv * ma);
+    } else if (t1 == 3) {
+        int t2 = (pdo >> 28) & 3;
+        if (t2 == 0) {
+            strcpy(t_name, "PPS");
+            double minv = ((pdo >> 8) & 0xff) * 0.1;
+            double maxv = ((pdo >> 17) & 0xff) * 0.1;
+            double ma = (pdo & 0xff) * 0.05;
+            snprintf(p, sizeof(p), "%g/%gV %gA (%gW)", minv, maxv, ma, maxv * ma);
+            if ((pdo >> 27) & 1)
+                strcat(p, " [limited]");
+            if (pdo & (1 << 29)) {
+                strcat(t_flags, " [power_limited]");
+            }
+        } else {
+            snprintf(t_name, sizeof(t_name), "Reserved APDO: %s", "???");
+            snprintf(p, sizeof(p), "[raw: %s]", "???");
+        }
+    }
+
+    snprintf(buf, bufsize, "[%s] %s%s", t_name, p, t_flags);
+}
+
+static void putpayload(usb_pd_state *s, struct srd_decoder_inst *di,
+                       int s0, int s1, int idx)
+{
+    int t;
+    if (head_ext(s) == 0)
+        t = head_type(s);
+    else
+        t = 255;
+
+    char txt[256];
+    snprintf(txt, sizeof(txt), "[%d] ", idx + 1);
+
+    if (t == 255) {
+        /* Extended Message - simplified */
+        char hex[32];
+        snprintf(hex, sizeof(hex), "%08x", s->data[idx]);
+        strcat(txt, hex);
+    } else if (t == 2) {
+        char req[128];
+        get_request(s, s->data[idx], req, sizeof(req));
+        strcat(txt, req);
+    } else if (t == 1 || t == 4) {
+        char cap[128];
+        get_source_sink_cap(s, s->data[idx], idx + 1, t == 1, cap, sizeof(cap));
+        strcat(txt, cap);
+    } else if (t == 15) {
+        /* VDM - simplified */
+        char vdm[32];
+        snprintf(vdm, sizeof(vdm), "VDM:%08x", s->data[idx]);
+        strcat(txt, vdm);
+    } else if (t == 3) {
+        /* BIST - simplified */
+        int mode = s->data[idx] >> 28;
+        static const char *bist_modes[] = {
+            "Receiver", "Transmit", "Counters", "Carrier 0",
+            "Carrier 1", "Carrier 2", "Carrier 3", "Eye"
+        };
+        if (mode >= 0 && mode < 8)
+            snprintf(txt + strlen(txt), sizeof(txt) - strlen(txt), "mode %s", bist_modes[mode]);
+    } else if (t == 10) {
+        /* EPR Mode - simplified */
+        int action = s->data[idx] >> 24;
+        static const char *epr_actions[] = {
+            "", "Enter", "Enter Acknowledged", "Enter Succeeded",
+            "Enter Failed", "Exit"
+        };
+        if (action >= 1 && action <= 5)
+            strcat(txt, epr_actions[action]);
+    } else if (t == 9) {
+        if (idx == 0) {
+            char req[128];
+            get_request(s, s->data[idx], req, sizeof(req));
+            strcat(txt, req);
+        } else {
+            char cap[128];
+            get_source_sink_cap(s, s->data[idx], idx + 1, 1, cap, sizeof(cap));
+            strcat(txt, cap);
+        }
+    }
+
+    const char *txts[] = {txt, txt, NULL};
+    pd_putx(s, di, s0, s1, ANN_PAYLOAD, txts);
+
+    int tlen = strlen(s->text);
+    if (tlen + 3 + strlen(txt) < (int)sizeof(s->text) - 1) {
+        strcat(s->text, " - ");
+        strcat(s->text, txt);
+    }
+}
+
 static void decode_packet(usb_pd_state *s, struct srd_decoder_inst *di)
 {
     s->num_data = 0;
@@ -418,6 +600,7 @@ static void decode_packet(usb_pd_state *s, struct srd_decoder_inst *di)
             snprintf(d_short, sizeof(d_short), "D%d", i);
             const char *d_txts[] = {d_str, d_short, NULL};
             pd_putx(s, di, s->idx - 40, s->idx, ANN_DATA, d_txts);
+            putpayload(s, di, s->idx - 40, s->idx, i);
         }
     }
 
@@ -460,8 +643,10 @@ static void decode_packet(usb_pd_state *s, struct srd_decoder_inst *di)
     }
 
     /* Full text */
-    const char *fulltext_txts[] = {s->text, "...", NULL};
-    pd_putx(s, di, 0, s->idx, ANN_TEXT, fulltext_txts);
+    if (s->fulltext) {
+        const char *fulltext_txts[] = {s->text, "...", NULL};
+        pd_putx(s, di, 0, s->idx, ANN_TEXT, fulltext_txts);
+    }
 
     /* Meta data for bitrate */
     if (s->num_edges >= 2) {
@@ -548,6 +733,9 @@ static void usb_pd_start(struct srd_decoder_inst *di)
     s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "usb_pd");
     s->out_bitrate = c_decoder_register_output_meta(di, SRD_OUTPUT_META,
         "usb_pd", "i", "Bitrate", "Bitrate during the packet");
+
+    const char *ft = c_decoder_get_option_string(di, "fulltext", "no");
+    s->fulltext = (ft && strcmp(ft, "yes") == 0);
 
     s->samplerate = c_decoder_get_samplerate(di);
     if (s->samplerate > 0) {

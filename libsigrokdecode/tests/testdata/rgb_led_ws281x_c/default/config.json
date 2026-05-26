@@ -1,10 +1,13 @@
 {
   "decoder": "rgb_led_ws281x_c",
-  "samplerate": 8000000,
+  "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 200000,
+  "sample_count": 10000,
   "channels": {
     "din": 0
   },
-  "stack": []
+  "options": {
+    "colors": "GRB",
+    "polarity": "normal"
+  }
 }

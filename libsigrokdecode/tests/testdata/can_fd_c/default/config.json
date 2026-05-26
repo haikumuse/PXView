@@ -1,10 +1,14 @@
 {
   "decoder": "can_fd_c",
-  "samplerate": 10000000,
+  "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 200000,
+  "sample_count": 10000,
   "channels": {
     "can_rx": 0
   },
-  "stack": []
+  "options": {
+    "nominal_bitrate": 1000000,
+    "fast_bitrate": 2000000,
+    "sample_point": 70.0
+  }
 }

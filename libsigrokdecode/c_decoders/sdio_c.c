@@ -98,7 +98,7 @@ static const char *cmd_names[] = {
     "ERASE_WR_BLK_END", "Reserved for CMD6", "Reserved for CMD6",
     "Reserved for CMD6", "Reserved for CMD6", "ERASE", NULL,
     "Reserved for security specification", NULL, "LOCK_UNLOCK",
-    NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL,
     "Reserved for CMD6", NULL, "IO_RW_DIRECT", "IO_RW_EXTENDED",
     "Unknown", "APP_CMD", "GEN_CMD", "Reserved for CMD6",
     NULL, NULL, "Reserved for manufacturer", "Reserved for manufacturer",
@@ -136,6 +136,52 @@ static const char *get_cmd_name(int cmd, int is_acmd)
     if (cmd < 0 || cmd > 63) return "Unknown";
     const char **names = is_acmd ? acmd_names : cmd_names;
     return names[cmd] ? names[cmd] : "Unknown";
+}
+
+static const char *cmd_descs[] = {
+    "Reset all SD cards", NULL, "Ask card for CID number", "Ask card for new relative card address (RCA)",
+    "Set drive stage register", "SDIO send operation conditions", "Switch/check card function", "Select / deselect card",
+    "Send interface condition to card", "Send card-specific data (CSD)", "Send card identification data (CID)", "Voltage switch command",
+    "Stop transmission", "Send card status register", NULL, "Go inactive state",
+    "Set the block length", "Read single block", "Read multiple blocks",
+    "Send tuning pattern", "Speed class control", NULL, NULL,
+    "Set block count", "Write block", "Write multiple blocks",
+    "Program CSD", "Set write protection", "Clear write protection",
+    "Send write protection", NULL, "Erase write block start",
+    "Erase write block end", NULL, NULL, NULL,
+    NULL, NULL, "Erase", NULL,
+    NULL, NULL, "Lock/unlock",
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, "SDIO Read/Write Direct", "SDIO Read/Write Extended",
+    "Unknown", "Next command is an application-specific command", "General command", NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+};
+
+static const char *acmd_descs[] = {
+    NULL, NULL, NULL, NULL, NULL, NULL, "Read SD config register (SCR)",
+    NULL, NULL, NULL, NULL, NULL, NULL, "Set SD status",
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    "Send number of written blocks", "Set write block erase count", NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    "Send HCS info and activate the card init process", "Set/clear card detection",
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    "Unknown", "Read SD config register (SCR)",
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    "Unknown", "Unknown", "Unknown", "Unknown",
+};
+
+static const char *get_cmd_desc(int cmd, int is_acmd)
+{
+    if (cmd < 0 || cmd > 63) return "Unknown";
+    const char **descs = is_acmd ? acmd_descs : cmd_descs;
+    return descs[cmd] ? descs[cmd] : "Unknown";
 }
 
 static const int cmd_list[] = {0, 2, 3, 5, 6, 7, 8, 9, 10, 13, 16, 52, 53, 55, -1};
@@ -357,30 +403,31 @@ static void handle_common_token_fields(sdio_state *s, struct srd_decoder_inst *d
     }
 
     /* Start bit */
-    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start");
+    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start", "S");
 
     /* Transmission bit */
     if (s->token_count > 1) {
         const char *t = (s->token_val[1] == 1) ? "host" : "card";
-        char t_str[64];
+        char t_str[64], t_short[64];
         snprintf(t_str, sizeof(t_str), "Transmission: %s", t);
-        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t);
+        snprintf(t_short, sizeof(t_short), "T: %s", t);
+        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t_short, "T");
     }
 
     /* Command index */
     if (s->token_count > 7) {
         s->cmd = (int)get_token_data(s, 2, 7);
         const char *name = get_cmd_name(s->cmd, s->is_acmd);
-        char c_str[128];
+        char c_str[128], c_short[64], cmd_id[16];
         snprintf(c_str, sizeof(c_str), "Command: %s (%d)", name, s->cmd);
-        char c_short[64];
         snprintf(c_short, sizeof(c_short), "Cmd: %s (%d)", name, s->cmd);
-        SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, c_str, c_short);
+        snprintf(cmd_id, sizeof(cmd_id), "CMD%d", s->cmd);
+        SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, c_str, c_short, cmd_id, "Cmd", "C");
     }
 
     /* Argument */
     if (s->token_count > 39)
-        SDIO_PUTF(s, di, 8, 39, ANN_FIELD_ARG, "Argument", "Arg");
+        SDIO_PUTF(s, di, 8, 39, ANN_FIELD_ARG, "Argument", "Arg", "A");
 
     /* CRC */
     if (s->token_count > 46) {
@@ -389,17 +436,17 @@ static void handle_common_token_fields(sdio_state *s, struct srd_decoder_inst *d
         if (crc_cal != crc_recv) {
             char crc_str[64];
             snprintf(crc_str, sizeof(crc_str), "CRC Error: 0x%x(should be 0x%x)", crc_recv, crc_cal);
-            SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, crc_str, "CRC Error");
+            SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, crc_str, "CRC Error", "Error", "E");
         } else {
             char crc_str[32];
             snprintf(crc_str, sizeof(crc_str), "CRC: 0x%x", crc_recv);
-            SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, crc_str, "CRC");
+            SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, crc_str, "CRC", "C");
         }
     }
 
     /* End bit */
     if (s->token_count > 47)
-        SDIO_PUTF(s, di, 47, 47, ANN_FIELD_END, "End bit", "End");
+        SDIO_PUTF(s, di, 47, 47, ANN_FIELD_END, "End bit", "End", "E");
 }
 
 static void cal_arg(sdio_state *s)
@@ -427,7 +474,7 @@ static void handle_response_r1(sdio_state *s, struct srd_decoder_inst *di, int c
     if (!get_token_bits(s, 0, cmd_val, 48)) return;
     handle_common_token_fields(s, di);
     SDIO_PUTT(s, di, ANN_DECODED_FIELD, "Reply: R1", NULL);
-    SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Card status", "Status");
+    SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Card status", "Status", "S");
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -436,7 +483,7 @@ static void handle_response_r1b(sdio_state *s, struct srd_decoder_inst *di, int 
 {
     if (!get_token_bits(s, 0, cmd_val, 48)) return;
     handle_common_token_fields(s, di);
-    SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Card status", "Status");
+    SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Card status", "Status", "S");
     SDIO_PUTT(s, di, ANN_DECODED_FIELD, "Reply: R1b", NULL);
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
@@ -450,17 +497,18 @@ static void handle_response_r2(sdio_state *s, struct srd_decoder_inst *di, int c
         snprintf(bit_str, sizeof(bit_str), "%d", s->token_val[bit]);
         SDIO_PUTF(s, di, bit, bit, ANN_BITS, bit_str, NULL);
     }
-    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start");
+    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start", "S");
     if (s->token_count > 1) {
         const char *t = (s->token_val[1] == 1) ? "host" : "card";
-        char t_str[64];
+        char t_str[64], t_short[64];
         snprintf(t_str, sizeof(t_str), "Transmission: %s", t);
-        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t);
+        snprintf(t_short, sizeof(t_short), "T: %s", t);
+        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t_short, "T");
     }
-    SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, "Reserved", "Res");
-    SDIO_PUTF(s, di, 8, 134, ANN_FIELD_ARG, "Argument", "Arg");
-    SDIO_PUTF(s, di, 135, 135, ANN_FIELD_END, "End bit", "End");
-    SDIO_PUTF(s, di, 8, 134, ANN_DECODED_FIELD, "CID/CSD register", "CID/CSD");
+    SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, "Reserved", "Res", "R");
+    SDIO_PUTF(s, di, 8, 134, ANN_FIELD_ARG, "Argument", "Arg", "A");
+    SDIO_PUTF(s, di, 135, 135, ANN_FIELD_END, "End bit", "End", "E");
+    SDIO_PUTF(s, di, 8, 134, ANN_DECODED_FIELD, "CID/CSD register", "CID/CSD", "C");
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -474,18 +522,19 @@ static void handle_response_r3(sdio_state *s, struct srd_decoder_inst *di, int c
         snprintf(bit_str, sizeof(bit_str), "%d", s->token_val[bit]);
         SDIO_PUTF(s, di, bit, bit, ANN_BITS, bit_str, NULL);
     }
-    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start");
+    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start", "S");
     if (s->token_count > 1) {
         const char *t = (s->token_val[1] == 1) ? "host" : "card";
-        char t_str[64];
+        char t_str[64], t_short[64];
         snprintf(t_str, sizeof(t_str), "Transmission: %s", t);
-        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t);
+        snprintf(t_short, sizeof(t_short), "T: %s", t);
+        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t_short, "T");
     }
-    SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, "Reserved", "Res");
-    SDIO_PUTF(s, di, 8, 39, ANN_FIELD_ARG, "Argument", "Arg");
-    SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, "Reserved", "Res");
-    SDIO_PUTF(s, di, 47, 47, ANN_FIELD_END, "End bit", "End");
-    SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "OCR register", "OCR reg");
+    SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, "Reserved", "Res", "R");
+    SDIO_PUTF(s, di, 8, 39, ANN_FIELD_ARG, "Argument", "Arg", "A");
+    SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, "Reserved", "Res", "R");
+    SDIO_PUTF(s, di, 47, 47, ANN_FIELD_END, "End bit", "End", "E");
+    SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "OCR register", "OCR reg", "OCR", "O");
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -499,23 +548,24 @@ static void handle_response_r4(sdio_state *s, struct srd_decoder_inst *di, int c
         snprintf(bit_str, sizeof(bit_str), "%d", s->token_val[bit]);
         SDIO_PUTF(s, di, bit, bit, ANN_BITS, bit_str, NULL);
     }
-    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start");
+    SDIO_PUTF(s, di, 0, 0, ANN_FIELD_START, "Start bit", "Start", "S");
     if (s->token_count > 1) {
         const char *t = (s->token_val[1] == 1) ? "host" : "card";
-        char t_str[64];
+        char t_str[64], t_short[64];
         snprintf(t_str, sizeof(t_str), "Transmission: %s", t);
-        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t);
+        snprintf(t_short, sizeof(t_short), "T: %s", t);
+        SDIO_PUTF(s, di, 1, 1, ANN_FIELD_TRANSMISSION, t_str, t_short, "T");
     }
-    SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, "Reserved", "Res");
-    SDIO_PUTF(s, di, 8, 39, ANN_FIELD_ARG, "Argument", "Arg");
-    SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, "Reserved", "Res");
-    SDIO_PUTF(s, di, 47, 47, ANN_FIELD_END, "End bit", "End");
-    SDIO_PUTA(s, di, 31, 31, ANN_DECODED_FIELD, "Card ready", "ready");
-    SDIO_PUTA(s, di, 28, 30, ANN_DECODED_FIELD, "Number of I/O functions", "n.o. I/O functions");
-    SDIO_PUTA(s, di, 27, 27, ANN_DECODED_FIELD, "Memory present", "MP");
-    SDIO_PUTA(s, di, 25, 26, ANN_DECODED_FIELD, "Stuff bits", "SB");
-    SDIO_PUTA(s, di, 24, 24, ANN_DECODED_FIELD, "Switching to 1.8V accepted", "Switch to 1.8V");
-    SDIO_PUTA(s, di, 0, 23, ANN_DECODED_FIELD, "I/O operating conditions register", "I/O OCR");
+    SDIO_PUTF(s, di, 2, 7, ANN_FIELD_CMD, "Reserved", "Res", "R");
+    SDIO_PUTF(s, di, 8, 39, ANN_FIELD_ARG, "Argument", "Arg", "A");
+    SDIO_PUTF(s, di, 40, 46, ANN_FIELD_CRC, "Reserved", "Res", "R");
+    SDIO_PUTF(s, di, 47, 47, ANN_FIELD_END, "End bit", "End", "E");
+    SDIO_PUTA(s, di, 31, 31, ANN_DECODED_FIELD, "Card ready", "ready", "C");
+    SDIO_PUTA(s, di, 28, 30, ANN_DECODED_FIELD, "Number of I/O functions", "n.o. I/O functions", "NIF");
+    SDIO_PUTA(s, di, 27, 27, ANN_DECODED_FIELD, "Memory present", "MP", "M");
+    SDIO_PUTA(s, di, 25, 26, ANN_DECODED_FIELD, "Stuff bits", "SB", "S");
+    SDIO_PUTA(s, di, 24, 24, ANN_DECODED_FIELD, "Switching to 1.8V accepted", "Switch to 1.8V", "S18A");
+    SDIO_PUTA(s, di, 0, 23, ANN_DECODED_FIELD, "I/O operating conditions register", "I/O OCR", "OCR");
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -525,10 +575,15 @@ static void handle_response_r5(sdio_state *s, struct srd_decoder_inst *di, int c
     if (!get_token_bits(s, 0, cmd_val, 48)) return;
     cal_arg(s);
     handle_common_token_fields(s, di);
-    SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Read or write data", "Data");
-    SDIO_PUTA(s, di, 8, 15, ANN_DECODED_FIELD, "Response flags", "Response");
-    SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, "Stuff bits", "SB");
+    SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Read or write data", "Data", "D");
+    SDIO_PUTA(s, di, 8, 15, ANN_DECODED_FIELD, "Response flags", "Response", "R");
+    SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, "Stuff bits", "SB", "S");
     SDIO_PUTT(s, di, ANN_DECODED_FIELD, "Reply: R5", NULL);
+    {
+        char data_str[16];
+        snprintf(data_str, sizeof(data_str), "0x%x", (int)(s->arg & 0xff));
+        SDIO_PUTA(s, di, 0, 7, ANN_DECODED_BIT, data_str);
+    }
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -537,11 +592,11 @@ static void handle_response_r6(sdio_state *s, struct srd_decoder_inst *di, int c
 {
     if (!get_token_bits(s, 0, cmd_val, 48)) return;
     handle_common_token_fields(s, di);
-    SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Card status bits", "Status");
+    SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Card status bits", "Status", "S");
     uint32_t rca = get_token_data(s, 8, 23);
     char rca_str[64];
     snprintf(rca_str, sizeof(rca_str), "Relative card address 0x%X", rca);
-    SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, rca_str, "Relative card address");
+    SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, rca_str, "Relative card address", "RCA", "R");
     SDIO_PUTT(s, di, ANN_DECODED_FIELD, "Reply: R6", NULL);
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
@@ -552,9 +607,9 @@ static void handle_response_r7(sdio_state *s, struct srd_decoder_inst *di, int c
     if (!get_token_bits(s, 0, cmd_val, 48)) return;
     handle_common_token_fields(s, di);
     SDIO_PUTT(s, di, ANN_DECODED_FIELD, "Reply: R7", NULL);
-    SDIO_PUTA(s, di, 12, 31, ANN_DECODED_FIELD, "Reserved", "Res");
-    SDIO_PUTA(s, di, 8, 11, ANN_DECODED_FIELD, "Voltage accepted", "Voltage");
-    SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Echo-back of check pattern", "Echo");
+    SDIO_PUTA(s, di, 12, 31, ANN_DECODED_FIELD, "Reserved", "Res", "R");
+    SDIO_PUTA(s, di, 8, 11, ANN_DECODED_FIELD, "Voltage accepted", "Voltage", "Volt", "V");
+    SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Echo-back of check pattern", "Echo", "E");
     s->token_count = 0;
     s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -604,6 +659,8 @@ static void sdio_decode(struct srd_decoder_inst *di)
                     s->data_recv_count = 1;
                 }
             } else {
+                /* Output "Start of Data" annotation for the data start bit */
+                C_ANN_PUT(di, s->data_recv_ss[0], samplenum, s->out_ann, ANN_DATA_FIELD, "Start of Data", "Start", "S");
                 if (s->data_recv_count > 0 && s->data_recv_count < MAX_DATA_RECV) {
                     s->data_recv_ss[s->data_recv_count] = samplenum;
                     s->data_recv_pins[s->data_recv_count][0] = dat0;
@@ -723,7 +780,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
 
             if (!s->is_acmd) {
                 if (is_in_list(cmd_list, s->cmd)) {
-                    putc_cmd(s, di, s->cmd, get_cmd_name(s->cmd, 0));
+                    putc_cmd(s, di, s->cmd, get_cmd_desc(s->cmd, 0));
                 } else {
                     char desc[32];
                     snprintf(desc, sizeof(desc), "CMD%d", s->cmd);
@@ -731,7 +788,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
                 }
             } else {
                 if (is_in_list(acmd_list, s->cmd)) {
-                    putc_cmd(s, di, 64 + s->cmd, get_cmd_name(s->cmd, 1));
+                    putc_cmd(s, di, 64 + s->cmd, get_cmd_desc(s->cmd, 1));
                 } else {
                     char desc[32];
                     snprintf(desc, sizeof(desc), "ACMD%d", s->cmd);
@@ -748,24 +805,24 @@ static void sdio_decode(struct srd_decoder_inst *di)
             /* Handle specific commands */
             switch (s->cmd) {
             case 0:
-                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->token_count = 0;
                 s->state = STATE_GET_COMMAND_TOKEN;
                 break;
             case 2:
-                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R2;
                 break;
             case 3:
-                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R6;
                 break;
             case 5:
-                SDIO_PUTA(s, di, 25, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
-                SDIO_PUTA(s, di, 24, 24, ANN_DECODED_FIELD, "Switching to 1.8V Request", "Switch to 1.8V");
-                SDIO_PUTA(s, di, 0, 23, ANN_DECODED_FIELD, "Operation Conditions Register", "I/O OCR");
+                SDIO_PUTA(s, di, 25, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
+                SDIO_PUTA(s, di, 24, 24, ANN_DECODED_FIELD, "Switching to 1.8V Request", "Switch to 1.8V", "S18R");
+                SDIO_PUTA(s, di, 0, 23, ANN_DECODED_FIELD, "Operation Conditions Register", "I/O OCR", "OCR");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R4;
                 break;
@@ -777,58 +834,84 @@ static void sdio_decode(struct srd_decoder_inst *di)
                 uint32_t rca = get_token_data(s, 8, 23);
                 char rca_str[64];
                 snprintf(rca_str, sizeof(rca_str), "Relative card address 0x%X", rca);
-                SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, rca_str, "Relative card address");
-                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, rca_str, "Relative card address", "RCA", "R");
+                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R1b;
                 break;
             }
             case 8:
-                SDIO_PUTA(s, di, 12, 31, ANN_DECODED_FIELD, "Reserved", "Res");
-                SDIO_PUTA(s, di, 8, 11, ANN_DECODED_FIELD, "Supply voltage", "Voltage");
-                SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Check pattern", "Check pat");
+                SDIO_PUTA(s, di, 12, 31, ANN_DECODED_FIELD, "Reserved", "Res", "R");
+                SDIO_PUTA(s, di, 8, 11, ANN_DECODED_FIELD, "Supply voltage", "Voltage", "VHS", "V");
+                SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Check pattern", "Check pat", "Check", "C");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R7;
                 break;
             case 9:
                 SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, "RCA", "R");
-                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R2;
                 break;
             case 10:
                 SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, "RCA", "R");
-                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R2;
                 break;
             case 13:
                 SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, "RCA", "R");
-                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R1;
                 break;
             case 16:
-                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Block length", "Blocklen");
+                SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Block length", "Blocklen", "BL", "B");
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R1;
                 break;
             case 52:
-                SDIO_PUTA(s, di, 31, 31, ANN_DECODED_FIELD, "R/W flag", "Write");
-                SDIO_PUTA(s, di, 28, 30, ANN_DECODED_FIELD, "Function number", "Function");
-                SDIO_PUTA(s, di, 27, 27, ANN_DECODED_FIELD, "RAW flag", "RAW");
-                SDIO_PUTA(s, di, 9, 25, ANN_DECODED_FIELD, "Register address", "Address");
-                SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Write data or stuff bits", "Write data");
+                SDIO_PUTA(s, di, 31, 31, ANN_DECODED_FIELD, "R/W flag", "Write", "R/W", "W");
+                SDIO_PUTA(s, di, 28, 30, ANN_DECODED_FIELD, "Funtion number", "Function", "FN", "F");
+                SDIO_PUTA(s, di, 27, 27, ANN_DECODED_FIELD, "RAW flag", "RAW", "R");
+                SDIO_PUTA(s, di, 26, 26, ANN_DECODED_FIELD, "Stuff bit", "Stuff", "SB");
+                SDIO_PUTA(s, di, 9, 25, ANN_DECODED_FIELD, "Register address", "Address", "Addr", "A");
+                SDIO_PUTA(s, di, 8, 8, ANN_DECODED_FIELD, "Stuff bit", "Stuff", "SB");
+                SDIO_PUTA(s, di, 0, 7, ANN_DECODED_FIELD, "Write data or stuff bits", "Write data", "Data", "D");
+                /* Decoded bits */
+                {
+                    const char *rw = (s->arg & 0x80000000) ? "W" : "R";
+                    char fn_str[8], addr_str[16], data_str[16];
+                    snprintf(fn_str, sizeof(fn_str), "%d", (int)((s->arg >> 28) & 7));
+                    snprintf(addr_str, sizeof(addr_str), "0x%x", (int)((s->arg >> 9) & 0x1ffff));
+                    snprintf(data_str, sizeof(data_str), "0x%x", (int)(s->arg & 0xff));
+                    SDIO_PUTA(s, di, 31, 31, ANN_DECODED_BIT, rw);
+                    SDIO_PUTA(s, di, 28, 30, ANN_DECODED_BIT, fn_str);
+                    SDIO_PUTA(s, di, 9, 25, ANN_DECODED_BIT, addr_str);
+                    SDIO_PUTA(s, di, 0, 7, ANN_DECODED_BIT, data_str);
+                }
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R5;
                 break;
             case 53:
-                SDIO_PUTA(s, di, 31, 31, ANN_DECODED_FIELD, "R/W flag", "Write");
-                SDIO_PUTA(s, di, 28, 30, ANN_DECODED_FIELD, "Function number", "Function");
-                SDIO_PUTA(s, di, 27, 27, ANN_DECODED_FIELD, "Block mode", "Block");
-                SDIO_PUTA(s, di, 26, 26, ANN_DECODED_FIELD, "OP code (increasing addr)", "OP code");
-                SDIO_PUTA(s, di, 9, 25, ANN_DECODED_FIELD, "Register address", "Address");
-                SDIO_PUTA(s, di, 0, 8, ANN_DECODED_FIELD, "Byte/Block count", "Count");
+                SDIO_PUTA(s, di, 31, 31, ANN_DECODED_FIELD, "R/W flag", "Write", "R/W", "W");
+                SDIO_PUTA(s, di, 28, 30, ANN_DECODED_FIELD, "Funtion number", "Function", "FN", "F");
+                SDIO_PUTA(s, di, 27, 27, ANN_DECODED_FIELD, "Block mode", "Block", "BM");
+                SDIO_PUTA(s, di, 26, 26, ANN_DECODED_FIELD, "OP code (increasing addr)", "OP code", "OP");
+                SDIO_PUTA(s, di, 9, 25, ANN_DECODED_FIELD, "Register address", "Address", "Addr", "A");
+                SDIO_PUTA(s, di, 0, 8, ANN_DECODED_FIELD, "Byte/Block count", "Count", "C");
+                /* Decoded bits */
+                {
+                    const char *rw = (s->arg & 0x80000000) ? "W" : "R";
+                    char fn_str[8], addr_str[16], count_str[16];
+                    snprintf(fn_str, sizeof(fn_str), "%d", (int)((s->arg >> 28) & 7));
+                    snprintf(addr_str, sizeof(addr_str), "0x%x", (int)((s->arg >> 9) & 0x1ffff));
+                    snprintf(count_str, sizeof(count_str), "0x%x", (int)(s->arg & 0x1ff));
+                    SDIO_PUTA(s, di, 31, 31, ANN_DECODED_BIT, rw);
+                    SDIO_PUTA(s, di, 28, 30, ANN_DECODED_BIT, fn_str);
+                    SDIO_PUTA(s, di, 9, 25, ANN_DECODED_BIT, addr_str);
+                    SDIO_PUTA(s, di, 0, 8, ANN_DECODED_BIT, count_str);
+                }
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R5;
                 if (!(s->arg & 0x08000000))
@@ -839,7 +922,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
                 break;
             case 55:
                 SDIO_PUTA(s, di, 16, 31, ANN_DECODED_FIELD, "RCA", "R");
-                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                SDIO_PUTA(s, di, 0, 15, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                 s->is_acmd = 1;
                 s->token_count = 0;
                 s->state = STATE_GET_RESPONSE_R1;
@@ -853,13 +936,18 @@ static void sdio_decode(struct srd_decoder_inst *di)
                         s->state = STATE_GET_RESPONSE_R1;
                         break;
                     case 13:
-                        SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff");
+                        SDIO_PUTA(s, di, 0, 31, ANN_DECODED_FIELD, "Stuff bits", "Stuff", "SB", "S");
                         s->token_count = 0;
                         s->state = STATE_GET_RESPONSE_R1;
                         break;
                     case 41:
-                        SDIO_PUTA(s, di, 0, 23, ANN_DECODED_FIELD, "VDD voltage window", "VDD volt");
-                        SDIO_PUTA(s, di, 30, 30, ANN_DECODED_FIELD, "Host capacity support info", "Host capacity");
+                        SDIO_PUTA(s, di, 0, 23, ANN_DECODED_FIELD, "VDD voltage window", "VDD volt", "VDD", "V");
+                        SDIO_PUTA(s, di, 24, 24, ANN_DECODED_FIELD, "S18R");
+                        SDIO_PUTA(s, di, 25, 27, ANN_DECODED_FIELD, "Reserved", "Res", "R");
+                        SDIO_PUTA(s, di, 28, 28, ANN_DECODED_FIELD, "XPC");
+                        SDIO_PUTA(s, di, 29, 29, ANN_DECODED_FIELD, "Reserved for eSD", "Reserved", "Res", "R");
+                        SDIO_PUTA(s, di, 30, 30, ANN_DECODED_FIELD, "Host capacity support info", "Host capacity", "HCS", "H");
+                        SDIO_PUTA(s, di, 31, 31, ANN_DECODED_FIELD, "Reserved", "Res", "R");
                         s->token_count = 0;
                         s->state = STATE_GET_RESPONSE_R3;
                         break;

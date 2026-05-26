@@ -2,9 +2,12 @@
   "decoder": "rpm_c",
   "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 200000,
+  "sample_count": 10000,
   "channels": {
     "data": 0
   },
-  "stack": []
+  "options": {
+    "num_pulses": 2,
+    "edge": "falling"
+  }
 }

@@ -2,10 +2,13 @@
   "decoder": "jitter_c",
   "samplerate": 1000000,
   "num_channels": 2,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "clk": 0,
     "sig": 1
   },
-  "stack": []
+  "options": {
+    "clk_polarity": "rising",
+    "sig_polarity": "rising"
+  }
 }

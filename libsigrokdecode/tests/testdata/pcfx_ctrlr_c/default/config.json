@@ -2,11 +2,14 @@
   "decoder": "pcfx_ctrlr_c",
   "samplerate": 1000000,
   "num_channels": 4,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "trigger": 0,
     "clk": 1,
-    "data": 2
+    "data": 2,
+    "dir": 3
   },
-  "stack": []
+  "options": {
+    "bitvals": "electrical"
+  }
 }

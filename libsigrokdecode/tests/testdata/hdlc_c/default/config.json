@@ -1,11 +1,15 @@
 {
   "decoder": "hdlc_c",
   "samplerate": 1000000,
-  "num_channels": 1,
-  "sample_count": 100000,
+  "num_channels": 3,
+  "sample_count": 10000,
   "channels": {
     "clk": 0,
-    "data": 1
+    "data": 1,
+    "en": 2
   },
-  "stack": []
+  "options": {
+    "en_polarity": "active-high",
+    "cpol": 1
+  }
 }

@@ -2,9 +2,9 @@
   "decoder": "dsi_c",
   "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "dsi": 0
   },
-  "stack": []
+  "options": {}
 }

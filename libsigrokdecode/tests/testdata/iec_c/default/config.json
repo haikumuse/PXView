@@ -1,12 +1,13 @@
 {
   "decoder": "iec_c",
   "samplerate": 1000000,
-  "num_channels": 3,
-  "sample_count": 100000,
+  "num_channels": 4,
+  "sample_count": 10000,
   "channels": {
     "data": 0,
     "clk": 1,
-    "atn": 2
+    "atn": 2,
+    "srq": 3
   },
-  "stack": []
+  "options": {}
 }

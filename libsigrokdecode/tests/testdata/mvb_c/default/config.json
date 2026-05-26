@@ -1,10 +1,10 @@
 {
   "decoder": "mvb_c",
-  "samplerate": 6000000,
+  "samplerate": 1000000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 10000,
   "channels": {
     "mvb": 0
   },
-  "stack": []
+  "options": {}
 }

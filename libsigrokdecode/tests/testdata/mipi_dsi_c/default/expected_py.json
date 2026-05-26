@@ -1,5 +1,5 @@
 {
-	"decoder": "MIPI_DSI",
+	"decoder": "mipi_dsi",
 	"samplerate": 1000000,
 	"num_annotations": 0,
 	"annotations": [

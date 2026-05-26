@@ -259,6 +259,18 @@ static cJSON *ann_list_to_json(const char *decoder_id, uint64_t samplerate,
     return root;
 }
 
+static const char *get_real_decoder_id(const char *requested_id)
+{
+    struct srd_decoder *d = srd_decoder_get_by_id(requested_id);
+    if (d) return d->id;
+    const GSList *l;
+    for (l = srd_decoder_list(); l; l = l->next) {
+        d = (struct srd_decoder *)l->data;
+        if (d->id && g_ascii_strcasecmp(d->id, requested_id) == 0) return d->id;
+    }
+    return requested_id;
+}
+
 static int json_to_ann_list(cJSON *root, annotation_list *list)
 {
     ann_list_init(list);
@@ -580,7 +592,7 @@ int main(int argc, char **argv)
             free(inbuf); free(inbuf_const); free(input_data); cJSON_Delete(config);
             return 2;
         }
-        srd_decoder_load_all();
+        /* Load only required python decoders instead of srd_decoder_load_all() */
     } else {
         ret = srd_init(NULL);
         if (ret != SRD_OK) {
@@ -604,9 +616,60 @@ int main(int argc, char **argv)
         if (slen > 2 && strcmp(mapped_decoder_name + slen - 2, "_c") == 0) {
             mapped_decoder_name[slen - 2] = '\0';
         }
+        /* Load main decoder */
+        srd_decoder_load(mapped_decoder_name);
+        
+        /* Load stacked decoders if present */
+        cJSON *j_stack = cJSON_GetObjectItem(config, "stack");
+        if (j_stack && cJSON_IsArray(j_stack)) {
+            for (int i = 0; i < cJSON_GetArraySize(j_stack); i++) {
+                cJSON *item = cJSON_GetArrayItem(j_stack, i);
+                cJSON *sid_obj = cJSON_GetObjectItem(item, "id");
+                if (sid_obj) {
+                    const char *sid = sid_obj->valuestring;
+                    char *mapped_sid = NULL;
+                    if (strlen(sid) > 2 && strcmp(sid + strlen(sid) - 2, "_c") == 0) {
+                        mapped_sid = strdup(sid);
+                        mapped_sid[strlen(sid) - 2] = '\0';
+                    } else {
+                        mapped_sid = strdup(sid);
+                    }
+                    srd_decoder_load(mapped_sid);
+                    free(mapped_sid);
+                }
+            }
+        }
     }
 
     struct srd_decoder *dec = srd_decoder_get_by_id(mapped_decoder_name);
+    if (!dec) {
+        const GSList *l;
+        for (l = srd_decoder_list(); l; l = l->next) {
+            struct srd_decoder *d = (struct srd_decoder *)l->data;
+            if (d->id && g_ascii_strcasecmp(d->id, mapped_decoder_name) == 0) {
+                dec = d;
+                break;
+            }
+        }
+    }
+    
+    if (!dec && args.python_mode) {
+        /* Fallback: if we couldn't load it or find it (maybe the folder name is completely different from the ID, e.g. folder 'qspi' but id 'smart_qspi'), 
+           we have no choice but to load all decoders. This is slow but only happens for a few decoders. */
+        srd_decoder_load_all();
+        dec = srd_decoder_get_by_id(mapped_decoder_name);
+        if (!dec) {
+            const GSList *l;
+            for (l = srd_decoder_list(); l; l = l->next) {
+                struct srd_decoder *d = (struct srd_decoder *)l->data;
+                if (d->id && g_ascii_strcasecmp(d->id, mapped_decoder_name) == 0) {
+                    dec = d;
+                    break;
+                }
+            }
+        }
+    }
+    
     if (!dec) {
         fprintf(stderr, "Error: decoder '%s' not found\n", mapped_decoder_name);
         free(mapped_decoder_name);
@@ -639,7 +702,7 @@ int main(int argc, char **argv)
         }
     }
 
-    struct srd_decoder_inst *di = srd_inst_new(sess, args.decoder_name, opt_hash);
+    struct srd_decoder_inst *di = srd_inst_new(sess, get_real_decoder_id(args.decoder_name), opt_hash);
     g_hash_table_destroy(opt_hash);
     if (!di) {
         fprintf(stderr, "Error: srd_inst_new() failed\n");
@@ -672,7 +735,7 @@ int main(int argc, char **argv)
             } else {
                 mapped_sid = strdup(sid);
             }
-            struct srd_decoder_inst *s_di = srd_inst_new(sess, mapped_sid, NULL);
+            struct srd_decoder_inst *s_di = srd_inst_new(sess, get_real_decoder_id(mapped_sid), NULL);
             free(mapped_sid);
             if (!s_di) continue;
             cJSON *sch = cJSON_GetObjectItem(item, "channels");

@@ -1,16 +1,12 @@
 {
   "decoder": "tm1637_c",
   "samplerate": 1000000,
-  "num_channels": 4,
-  "sample_count": 100000,
+  "needs_upstream": true,
+  "inputs": [
+    "tmc"
+  ],
   "channels": {},
-  "stack": [
-    {
-      "id": "tmc_c",
-      "channels": {
-        "clk": 0,
-        "dio": 1
-      }
-    }
-  ]
+  "options": {
+    "dpoint": "Dot"
+  }
 }
