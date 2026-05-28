@@ -1,7 +1,7 @@
 {
 	"decoder": "usb_request_c",
 	"samplerate": 24000000,
-	"num_annotations": 244,
+	"num_annotations": 251,
 	"annotations": [
 		{
 			"start_sample": 2118,
@@ -1799,16 +1799,103 @@
 			"texts": [
 				"PID: DATA0", 
 				"DATA0", 
-				"DATA0"
+				"D"
 			]
 		}, 
 		{
 			"start_sample": 2150,
+			"end_sample": 2165,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Databyte: 80", 
+				"Data: 80", 
+				"DB: 80", 
+				"80"
+			]
+		}, 
+		{
+			"start_sample": 2165,
+			"end_sample": 2181,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Databyte: 06", 
+				"Data: 06", 
+				"DB: 06", 
+				"06"
+			]
+		}, 
+		{
+			"start_sample": 2181,
+			"end_sample": 2198,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Databyte: 00", 
+				"Data: 00", 
+				"DB: 00", 
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 2198,
+			"end_sample": 2214,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Databyte: 01", 
+				"Data: 01", 
+				"DB: 01", 
+				"01"
+			]
+		}, 
+		{
+			"start_sample": 2214,
+			"end_sample": 2230,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Databyte: 00", 
+				"Data: 00", 
+				"DB: 00", 
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 2230,
+			"end_sample": 2246,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Databyte: 00", 
+				"Data: 00", 
+				"DB: 00", 
+				"00"
+			]
+		}, 
+		{
+			"start_sample": 2246,
+			"end_sample": 2262,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Databyte: 40", 
+				"Data: 40", 
+				"DB: 40", 
+				"40"
+			]
+		}, 
+		{
+			"start_sample": 2262,
 			"end_sample": 2278,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
-				"DATA: 80 06 00 01 00 00 40 00"
+				"Databyte: 00", 
+				"Data: 00", 
+				"DB: 00", 
+				"00"
 			]
 		}, 
 		{
@@ -1829,7 +1916,7 @@
 			"ann_class": 15,
 			"ann_type": 22,
 			"texts": [
-				"DATA0: 8 bytes"
+				"DATA0 [ 80 06 00 01 00 00 40 00 ]"
 			]
 		}, 
 		{
@@ -2197,7 +2284,7 @@
 			"texts": [
 				"PID: ACK", 
 				"ACK", 
-				"ACK"
+				"A"
 			]
 		}, 
 		{

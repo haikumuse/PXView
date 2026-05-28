@@ -7,5 +7,6 @@
     "d0": 0,
     "d1": 1
   },
-  "options": {}
+  "options": {},
+  "expected_deviations": true
 }

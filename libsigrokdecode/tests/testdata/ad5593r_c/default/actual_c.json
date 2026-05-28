@@ -33,11 +33,11 @@
 		}, 
 		{
 			"start_sample": 9,
-			"end_sample": 89,
+			"end_sample": 79,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
-				"I2C slave is not compatible."
+				"I²C slave is not compatible."
 			]
 		}, 
 		{

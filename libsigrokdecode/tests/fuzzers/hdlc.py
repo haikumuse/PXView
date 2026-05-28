@@ -2,12 +2,17 @@ import math
 from .base import *
 
 class HDLCGenerator:
-    """1 channel (RX)"""
-    def __init__(self, builder, channel, bitrate=9600):
+    """Synchronous HDLC generator with clock and data"""
+    def __init__(self, builder, clk_ch, data_ch, en_ch=None, bitrate=1000000):
         self.builder = builder
-        self.channel = channel
+        self.clk = clk_ch
+        self.data = data_ch
+        self.en = en_ch
         self.bit_width = int(builder.samplerate / bitrate)
-        self.builder.set_idle(channel, 1)  # Idle high
+        self.builder.set_idle(self.clk, 1)  # CPOL=1
+        self.builder.set_idle(self.data, 1)
+        if self.en is not None:
+            self.builder.set_idle(self.en, 1)  # Active high
 
     def _crc16_ccitt(self, data):
         """CRC-16-CCITT (polynomial 0x8408, init 0xFFFF)."""
@@ -22,8 +27,20 @@ class HDLCGenerator:
         return crc ^ 0xFFFF
 
     def _send_bit_nrz(self, bit):
-        """NRZ encoding: directly set channel level for bit_width samples."""
-        self.builder.set_level(self.channel, bit, self.bit_width)
+        """Generate clock edge and data bit."""
+        half_bit = self.bit_width // 2
+        
+        # Setup data
+        self.builder.set_level(self.data, bit, half_bit)
+        self.builder.pos -= half_bit
+        
+        # Clock transition (CPOL=1, CPHA=0 -> active low, sample on rising edge)
+        self.builder.set_level(self.clk, 0, half_bit)
+        
+        # Hold data, clock returns high
+        self.builder.set_level(self.data, bit, half_bit)
+        self.builder.pos -= half_bit
+        self.builder.set_level(self.clk, 1, half_bit)
 
     def send_frame(self, address, control, data):
         """

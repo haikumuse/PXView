@@ -1,7 +1,1996 @@
 {
 	"decoder": "ook_c",
 	"samplerate": 100000,
-	"num_annotations": 0,
+	"num_annotations": 221,
 	"annotations": [
+		{
+			"start_sample": 2400,
+			"end_sample": 3150,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 3150,
+			"end_sample": 3250,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3250,
+			"end_sample": 3350,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3450,
+			"end_sample": 3550,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3550,
+			"end_sample": 3650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3650,
+			"end_sample": 3750,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3750,
+			"end_sample": 3850,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3850,
+			"end_sample": 3950,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3950,
+			"end_sample": 4050,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3150,
+			"end_sample": 4050,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"011EEEE0"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 8950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 8950,
+			"end_sample": 9450,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8950,
+			"end_sample": 9450,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 11950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 11950,
+			"end_sample": 12650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11950,
+			"end_sample": 12650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 17950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 17950,
+			"end_sample": 18650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 17950,
+			"end_sample": 18650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 24950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 24950,
+			"end_sample": 25650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 24950,
+			"end_sample": 25650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 31950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 31950,
+			"end_sample": 32650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 31950,
+			"end_sample": 32650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 38950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 38950,
+			"end_sample": 39650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 38950,
+			"end_sample": 39650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 45950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 45950,
+			"end_sample": 46650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 45950,
+			"end_sample": 46650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 52950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 52950,
+			"end_sample": 53650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 52950,
+			"end_sample": 53650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 59950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 59950,
+			"end_sample": 60650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 59950,
+			"end_sample": 60650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 66950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 66950,
+			"end_sample": 67650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 66950,
+			"end_sample": 67650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 73950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 73950,
+			"end_sample": 74650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 73950,
+			"end_sample": 74650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 80950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 80950,
+			"end_sample": 81650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 80950,
+			"end_sample": 81650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 87950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 87950,
+			"end_sample": 88650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 87950,
+			"end_sample": 88650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 94950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 94950,
+			"end_sample": 95650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 94950,
+			"end_sample": 95650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 101950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 101950,
+			"end_sample": 102650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 101950,
+			"end_sample": 102650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 108950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 108950,
+			"end_sample": 109650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 108950,
+			"end_sample": 109650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 115950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 115950,
+			"end_sample": 116650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 115950,
+			"end_sample": 116650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 122950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 122950,
+			"end_sample": 123650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 122950,
+			"end_sample": 123650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 129950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 129950,
+			"end_sample": 130650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 129950,
+			"end_sample": 130650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 136950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 136950,
+			"end_sample": 137650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 136950,
+			"end_sample": 137650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 143950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 143950,
+			"end_sample": 144650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 143950,
+			"end_sample": 144650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 150950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 150950,
+			"end_sample": 151650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 150950,
+			"end_sample": 151650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 157950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 157950,
+			"end_sample": 158650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 157950,
+			"end_sample": 158650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 164950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 164950,
+			"end_sample": 165650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 164950,
+			"end_sample": 165650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 171950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 171950,
+			"end_sample": 172650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 171950,
+			"end_sample": 172650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 178950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 178950,
+			"end_sample": 179650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 178950,
+			"end_sample": 179650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 185950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 185950,
+			"end_sample": 186650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 185950,
+			"end_sample": 186650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 192950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 192950,
+			"end_sample": 193650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 192950,
+			"end_sample": 193650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 199950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 199950,
+			"end_sample": 200650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 199950,
+			"end_sample": 200650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 206950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 206950,
+			"end_sample": 207650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 206950,
+			"end_sample": 207650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 213950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 213950,
+			"end_sample": 214650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 213950,
+			"end_sample": 214650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 220950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 220950,
+			"end_sample": 221650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 220950,
+			"end_sample": 221650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 227950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 227950,
+			"end_sample": 228650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 227950,
+			"end_sample": 228650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 234950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 234950,
+			"end_sample": 235650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 234950,
+			"end_sample": 235650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 241950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 241950,
+			"end_sample": 242650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 241950,
+			"end_sample": 242650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 248950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 248950,
+			"end_sample": 249650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 248950,
+			"end_sample": 249650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 255950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 255950,
+			"end_sample": 256650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 255950,
+			"end_sample": 256650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 262950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 262950,
+			"end_sample": 263650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 262950,
+			"end_sample": 263650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 269950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 269950,
+			"end_sample": 270650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 269950,
+			"end_sample": 270650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 276950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 276950,
+			"end_sample": 277650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 276950,
+			"end_sample": 277650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 283950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 283950,
+			"end_sample": 284650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 283950,
+			"end_sample": 284650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 290950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 290950,
+			"end_sample": 291650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 290950,
+			"end_sample": 291650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 297950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 297950,
+			"end_sample": 298650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 297950,
+			"end_sample": 298650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 304950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 304950,
+			"end_sample": 305650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 304950,
+			"end_sample": 305650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 311950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 311950,
+			"end_sample": 312650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 311950,
+			"end_sample": 312650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 318950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 318950,
+			"end_sample": 319650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 318950,
+			"end_sample": 319650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 325950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 325950,
+			"end_sample": 326650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 325950,
+			"end_sample": 326650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 332950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 332950,
+			"end_sample": 333650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 332950,
+			"end_sample": 333650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 339950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 339950,
+			"end_sample": 340650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 339950,
+			"end_sample": 340650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 346950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 346950,
+			"end_sample": 347650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 346950,
+			"end_sample": 347650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 353950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 353950,
+			"end_sample": 354650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 353950,
+			"end_sample": 354650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 360950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 360950,
+			"end_sample": 361650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 360950,
+			"end_sample": 361650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 367950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 367950,
+			"end_sample": 368650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 367950,
+			"end_sample": 368650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 374950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 374950,
+			"end_sample": 375650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 374950,
+			"end_sample": 375650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 381950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 381950,
+			"end_sample": 382650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 381950,
+			"end_sample": 382650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 388950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 388950,
+			"end_sample": 389650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 388950,
+			"end_sample": 389650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 395950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 395950,
+			"end_sample": 396650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 395950,
+			"end_sample": 396650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 402950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 402950,
+			"end_sample": 403650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 402950,
+			"end_sample": 403650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 409950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 409950,
+			"end_sample": 410650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 409950,
+			"end_sample": 410650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 416950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 416950,
+			"end_sample": 417650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 416950,
+			"end_sample": 417650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 423950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 423950,
+			"end_sample": 424650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 423950,
+			"end_sample": 424650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 430950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 430950,
+			"end_sample": 431650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 430950,
+			"end_sample": 431650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 437950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 437950,
+			"end_sample": 438650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 437950,
+			"end_sample": 438650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 444950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 444950,
+			"end_sample": 445650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 444950,
+			"end_sample": 445650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 451950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 451950,
+			"end_sample": 452650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 451950,
+			"end_sample": 452650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 458950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 458950,
+			"end_sample": 459650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 458950,
+			"end_sample": 459650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 465950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 465950,
+			"end_sample": 466650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 465950,
+			"end_sample": 466650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 472950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 472950,
+			"end_sample": 473650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 472950,
+			"end_sample": 473650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 479950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 479950,
+			"end_sample": 480650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 479950,
+			"end_sample": 480650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 486950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 486950,
+			"end_sample": 487650,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 486950,
+			"end_sample": 487650,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4950,
+			"end_sample": 493950,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}
 	]
 }
