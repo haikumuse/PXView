@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Analog Devices Inc.
@@ -46,36 +46,34 @@ static const struct srd_c_ann_row ad5626_ann_rows[] = {
     {"voltage", "Voltage", ad5626_row_voltage_classes, 1},
 };
 
-static void ad5626_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ad5626_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ad5626_state *s = (ad5626_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        uint8_t cs_old = (data_len > 0) ? data[0] : 0xFF;
-        uint8_t cs_new = (data_len > 1) ? data[1] : 0;
+        uint8_t cs_old = (n_fields > 0) ? fields[0].u8 : 0xFF;
+        uint8_t cs_new = (n_fields > 1) ? fields[1].u8 : 0;
 
         if (cs_old == 0 && cs_new == 1) {
             s->data >>= 1;
             double voltage = (double)s->data / 1000.0;
             char buf[32];
             snprintf(buf, sizeof(buf), "%.3fV", voltage);
-            C_ANN_PUT(di, s->ss, end_sample, s->out_ann, ANN_VOLTAGE, buf);
+            c_put(di, s->ss, end_sample, s->out_ann, ANN_VOLTAGE, buf);
             s->data = 0;
         } else if (cs_old == 1 && cs_new == 0) {
             s->ss = start_sample;
         }
     } else if (strcmp(cmd, "BITS") == 0) {
-        if (data_len < 2) return;
+        if (n_fields < 2) return;
         int pos = 0;
-        uint8_t flags = data[pos++];
+        uint8_t flags = fields[pos++].u8;
         int have_mosi = flags & 1;
         if (have_mosi) {
-            int mosi_count = (int)data[pos++];
-            for (int i = 0; i < mosi_count && pos + 17 <= (int)data_len; i++) {
-                uint8_t bit_val = data[pos];
+            int mosi_count = (int)fields[pos++].u8;
+            for (int i = 0; i < mosi_count && pos + 17 <= (int)n_fields; i++) {
+                uint8_t bit_val = fields[pos].u8;
                 pos += 17;
                 s->data = s->data | bit_val;
                 s->data <<= 1;
@@ -96,7 +94,7 @@ static void ad5626_reset(struct srd_decoder_inst *di)
 static void ad5626_start(struct srd_decoder_inst *di)
 {
     ad5626_state *s = (ad5626_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ad5626");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ad5626");
 }
 
 static void ad5626_decode(struct srd_decoder_inst *di)
@@ -141,7 +139,8 @@ struct srd_c_decoder ad5626_c_decoder = {
     .start = ad5626_start,
     .decode = ad5626_decode,
     .destroy = ad5626_destroy,
-    .recv_proto = ad5626_recv_proto,
+    .decode_upper = ad5626_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

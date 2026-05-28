@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -74,12 +74,12 @@ static void ps2mouse_mouse_movement(struct srd_decoder_inst *di, ps2mouse_state 
 
     if (pos == 0) snprintf(msg, sizeof(msg), "No Movement");
 
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MOVEMENT, msg);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_MOVEMENT, msg);
 
     /* Binary movement output */
     char bin_msg[256];
     int bpos = snprintf(bin_msg, sizeof(bin_msg), "\n%s", msg);
-    c_decoder_put_binary(di, s->ss, s->es, s->out_binary,
+    c_put_bin(di, s->ss, s->es, s->out_binary,
                          BINARY_MOVEMENT, bpos, (const uint8_t *)bin_msg);
 }
 
@@ -97,25 +97,23 @@ static void ps2mouse_print_packets(struct srd_decoder_inst *di, ps2mouse_state *
     }
     char bin_out[256];
     int bpos = snprintf(bin_out, sizeof(bin_out), "\n%s %s", tag, octets);
-    c_decoder_put_binary(di, s->ss, s->es, s->out_binary,
+    c_put_bin(di, s->ss, s->es, s->out_binary,
                          BINARY_BYTES, bpos, (const uint8_t *)bin_out);
 
     /* Reset */
     s->num_packets = 0;
 }
 
-static void ps2mouse_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ps2mouse_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ps2mouse_state *s = (ps2mouse_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "BYTE") != 0) return;
-    if (!data || data_len < 4) return;
+    if (!fields || n_fields < 4) return;
 
-    uint8_t val = data[0];
-    int is_host = data[1];
+    uint8_t val = fields[0].u8;
+    int is_host = fields[1].u8;
 
     if (s->num_packets == 0) {
         s->ss = start_sample;
@@ -125,7 +123,7 @@ static void ps2mouse_recv_proto(struct srd_decoder_inst *di,
         /* Special handling for ACK byte */
         if (val == 0xFA && !is_host) {
             char ack_bin[] = "\n ACK";
-            c_decoder_put_binary(di, start_sample, end_sample, s->out_binary,
+            c_put_bin(di, start_sample, end_sample, s->out_binary,
                                  BINARY_BYTES, sizeof(ack_bin) - 1, (const uint8_t *)ack_bin);
             s->num_packets = 0;
             return;
@@ -156,8 +154,8 @@ static void ps2mouse_reset(struct srd_decoder_inst *di)
 static void ps2mouse_start(struct srd_decoder_inst *di)
 {
     ps2mouse_state *s = (ps2mouse_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ps2_mouse");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "bytes");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ps2_mouse");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "bytes");
 }
 
 static void ps2mouse_decode(struct srd_decoder_inst *di)
@@ -202,7 +200,8 @@ struct srd_c_decoder ps2_mouse_c_decoder = {
     .start = ps2mouse_start,
     .decode = ps2mouse_decode,
     .destroy = ps2mouse_destroy,
-    .recv_proto = ps2mouse_recv_proto,
+    .decode_upper = ps2mouse_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

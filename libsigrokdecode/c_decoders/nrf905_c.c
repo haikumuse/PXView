@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -170,14 +170,14 @@ static void nrf905_extract_vars(struct srd_decoder_inst *di, nrf905_state *s,
             pos += snprintf(buf + pos, sizeof(buf) - pos, " | ");
         }
     }
-    C_ANN_PUT(di, ss, es, s->out_ann, ann, buf);
+    c_put(di, ss, es, s->out_ann, ann, buf);
 }
 
 static void nrf905_parse_config_register(struct srd_decoder_inst *di, nrf905_state *s,
     int addr, uint8_t value, uint64_t ss, uint64_t es, int is_write)
 {
     if (addr < 0 || addr > 9) {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Invalid reg. addr");
+        c_put(di, ss, es, s->out_ann, ANN_WARN, "Invalid reg. addr");
         return;
     }
     char prefix[32];
@@ -198,7 +198,7 @@ static void nrf905_parse_config_register(struct srd_decoder_inst *di, nrf905_sta
     }
 
     int ann = is_write ? ANN_REG_WR : ANN_REG_RD;
-    C_ANN_PUT(di, ss, es, s->out_ann, ann, buf);
+    c_put(di, ss, es, s->out_ann, ann, buf);
 }
 
 static void nrf905_dump_cmd_bytes(struct srd_decoder_inst *di, nrf905_state *s,
@@ -225,7 +225,7 @@ static void nrf905_dump_cmd_bytes(struct srd_decoder_inst *di, nrf905_state *s,
     char long_str[512], short_str[256];
     snprintf(long_str, sizeof(long_str), "%s{$}", prefix);
     snprintf(short_str, sizeof(short_str), "@%s", data_str);
-    C_ANN_PUT(di, ss, es, s->out_ann, ann, long_str, short_str);
+    c_put(di, ss, es, s->out_ann, ann, long_str, short_str);
 }
 
 static void nrf905_handle_stat(struct srd_decoder_inst *di, nrf905_state *s)
@@ -311,7 +311,7 @@ static void nrf905_handle_CC(struct srd_decoder_inst *di, nrf905_state *s)
         }
     }
     pos += snprintf(buf + pos, sizeof(buf) - pos, "| CHN = %d", channel);
-    C_ANN_PUT(di, s->mosi_ss[0], s->mosi_es[1], s->out_ann, ANN_REG_WR, buf);
+    c_put(di, s->mosi_ss[0], s->mosi_es[1], s->out_ann, ANN_REG_WR, buf);
 }
 
 static void nrf905_process_cmd(struct srd_decoder_inst *di, nrf905_state *s)
@@ -342,7 +342,7 @@ static void nrf905_process_cmd(struct srd_decoder_inst *di, nrf905_state *s)
 
     /* Report command name */
     if (cmd_name) {
-        C_ANN_PUT(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, cmd_name);
+        c_put(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, cmd_name);
     }
 
     /* Handle status byte */
@@ -368,18 +368,16 @@ static void nrf905_process_cmd(struct srd_decoder_inst *di, nrf905_state *s)
     }
 }
 
-static void nrf905_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void nrf905_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     nrf905_state *s = (nrf905_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        if (data_len >= 2) {
-            int old_val = data[0];
-            int new_val = data[1];
+        if (n_fields >= 2) {
+            int old_val = fields[0].u8;
+            int new_val = fields[1].u8;
             if (old_val == 0xFF && new_val == 0) {
                 /* First CS assert */
                 s->cs_asserted = 1;
@@ -403,14 +401,14 @@ static void nrf905_recv_proto(struct srd_decoder_inst *di,
                 s->cs_asserted = 0;
             }
         }
-    } else if (strcmp(cmd, "DATA") == 0 && s->cs_asserted && data_len >= 17) {
-        int have_mosi = data[0] & 1;
-        int have_miso = (data[0] >> 1) & 1;
+    } else if (strcmp(cmd, "DATA") == 0 && s->cs_asserted && n_fields >= 17) {
+        int have_mosi = fields[0].u8 & 1;
+        int have_miso = (fields[0].u8 >> 1) & 1;
         uint64_t mosi_val = 0, miso_val = 0;
         for (int i = 0; i < 8; i++)
-            mosi_val |= ((uint64_t)data[1 + i] << (8 * i));
+            mosi_val |= ((uint64_t)fields[1 + i].u8 << (8 * i));
         for (int i = 0; i < 8; i++)
-            miso_val |= ((uint64_t)data[9 + i] << (8 * i));
+            miso_val |= ((uint64_t)fields[9 + i].u8 << (8 * i));
 
         if (s->num_bytes < NRF905_MAX_BYTES) {
             s->mosi_bytes[s->num_bytes] = (uint8_t)mosi_val;
@@ -436,7 +434,7 @@ static void nrf905_reset(struct srd_decoder_inst *di)
 static void nrf905_start(struct srd_decoder_inst *di)
 {
     nrf905_state *s = (nrf905_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "nrf905");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "nrf905");
 }
 
 static void nrf905_decode(struct srd_decoder_inst *di)
@@ -481,7 +479,8 @@ struct srd_c_decoder nrf905_c_decoder = {
     .start = nrf905_start,
     .decode = nrf905_decode,
     .destroy = nrf905_destroy,
-    .recv_proto = nrf905_recv_proto,
+    .decode_upper = nrf905_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

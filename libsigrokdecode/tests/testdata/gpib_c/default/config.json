@@ -2,7 +2,7 @@
   "decoder": "gpib_c",
   "samplerate": 1000000,
   "num_channels": 16,
-  "sample_count": 10000,
+  "sample_count": 50000,
   "channels": {
     "dio1": 0,
     "dio2": 1,

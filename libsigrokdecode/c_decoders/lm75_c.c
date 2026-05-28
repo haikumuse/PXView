@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -68,12 +68,12 @@ static const struct srd_c_ann_row lm75_ann_rows[] = {
 
 static void lm75_putx(struct srd_decoder_inst *di, lm75_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, cls, text);
+    c_put(di, s->ss, s->es, s->out_ann, cls, text);
 }
 
 static void lm75_putb(struct srd_decoder_inst *di, lm75_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, cls, text);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, cls, text);
 }
 
 static void lm75_warn_upon_invalid_slave(struct srd_decoder_inst *di, lm75_state *s, int addr)
@@ -176,9 +176,7 @@ static const lm75_handle_reg_fn lm75_reg_handlers[4] = {
     lm75_handle_reg_0x03,
 };
 
-static void lm75_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void lm75_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     lm75_state *s = (lm75_state *)c_decoder_get_private(di);
     if (!s)
@@ -193,7 +191,7 @@ static void lm75_recv_proto(struct srd_decoder_inst *di,
         s->state = LM75_GET_SLAVE_ADDR;
     } else if (s->state == LM75_GET_SLAVE_ADDR) {
         if (strcmp(cmd, "ADDRESS READ") == 0 || strcmp(cmd, "ADDRESS WRITE") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             lm75_warn_upon_invalid_slave(di, s, addr);
             if (strcmp(cmd, "ADDRESS READ") == 0)
                 s->state = LM75_READ_REGS;
@@ -205,7 +203,7 @@ static void lm75_recv_proto(struct srd_decoder_inst *di,
         const char *rw = (s->state == LM75_READ_REGS) ? "READ" : "WRITE";
 
         if (strcmp(cmd, "DATA READ") == 0 || strcmp(cmd, "DATA WRITE") == 0) {
-            uint8_t databyte = (data_len > 0) ? data[0] : 0;
+            uint8_t databyte = (n_fields > 0) ? fields[0].u8 : 0;
             if (s->reg >= 0 && s->reg < 4) {
                 lm75_reg_handlers[s->reg](di, s, databyte, rw);
             }
@@ -231,11 +229,11 @@ static void lm75_reset(struct srd_decoder_inst *di)
 static void lm75_start(struct srd_decoder_inst *di)
 {
     lm75_state *s = (lm75_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "lm75");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "lm75");
 
-    const char *sensor = c_decoder_get_option_string(di, "sensor", "lm75");
+    const char *sensor = c_opt_str(di, "sensor", "lm75");
     s->sensor_is_lm75 = (sensor && strcmp(sensor, "lm75") == 0) ? 1 : 0;
-    s->resolution = (int)c_decoder_get_option_int(di, "resolution", 9);
+    s->resolution = (int)c_opt_int(di, "resolution", 9);
 }
 
 static void lm75_decode(struct srd_decoder_inst *di)
@@ -280,7 +278,8 @@ struct srd_c_decoder lm75_c_decoder = {
     .start = lm75_start,
     .decode = lm75_decode,
     .destroy = lm75_destroy,
-    .recv_proto = lm75_recv_proto,
+    .decode_upper = lm75_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

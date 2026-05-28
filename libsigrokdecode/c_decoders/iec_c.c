@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Marcus Comstedt <marcus@mc.pp.se>
@@ -82,7 +82,7 @@ static void iec_handle_bits(struct srd_decoder_inst *di, uint64_t samplenum)
 
     char buf[32];
     snprintf(buf, sizeof(buf), "%02X", dbyte);
-    C_ANN_PUT(di, s->ss_item, s->es_item, s->out_ann, ANN_ITEMS, buf);
+    c_put(di, s->ss_item, s->es_item, s->out_ann, ANN_ITEMS, buf);
 
     const char *strgpib = " ";
     char gpib_buf[8];
@@ -130,12 +130,12 @@ static void iec_handle_bits(struct srd_decoder_inst *di, uint64_t samplenum)
             strgpib = "CR";
     }
 
-    C_ANN_PUT(di, s->ss_item, s->es_item, s->out_ann, ANN_GPIB, strgpib);
+    c_put(di, s->ss_item, s->es_item, s->out_ann, ANN_GPIB, strgpib);
 
     const char *strEOI = " ";
     if (dEOI)
         strEOI = "EOI";
-    C_ANN_PUT(di, s->ss_item, s->es_item, s->out_ann, ANN_EOI, strEOI);
+    c_put(di, s->ss_item, s->es_item, s->out_ann, ANN_EOI, strEOI);
 }
 
 static void iec_reset(struct srd_decoder_inst *di)
@@ -151,65 +151,43 @@ static void iec_reset(struct srd_decoder_inst *di)
 static void iec_start(struct srd_decoder_inst *di)
 {
     struct iec_priv *s = (struct iec_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "iec");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "iec");
 }
 
 static void iec_decode(struct srd_decoder_inst *di)
 {
     struct iec_priv *s = (struct iec_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-
+        int ret;
         switch (s->step) {
         case 0:
             /* [{2: 'f'}, {0: 'l', 1: 'h'}] */
-            c_cond_fall(cb, 2);      /* cond 0: ATN fall */
-            c_cond_or(cb);
-            c_cond_low(cb, 0);       /* cond 1: DATA low AND CLK high */
-            c_cond_high(cb, 1);
+            ret = c_wait(di, CW_F(2), CW_OR, CW_L(0), CW_H(1), CW_END);
             break;
         case 1:
             /* [{2: 'f'}, {0: 'h', 1: 'h'}, {1: 'l'}] */
-            c_cond_fall(cb, 2);      /* cond 0: ATN fall */
-            c_cond_or(cb);
-            c_cond_high(cb, 0);      /* cond 1: DATA high AND CLK high */
-            c_cond_high(cb, 1);
-            c_cond_or(cb);
-            c_cond_low(cb, 1);       /* cond 2: CLK low */
+            ret = c_wait(di, CW_F(2), CW_OR, CW_H(0), CW_H(1), CW_OR, CW_L(1), CW_END);
             break;
         case 2:
             /* [{2: 'f'}, {0: 'f'}, {1: 'l'}] */
-            c_cond_fall(cb, 2);      /* cond 0: ATN fall */
-            c_cond_or(cb);
-            c_cond_fall(cb, 0);      /* cond 1: DATA fall */
-            c_cond_or(cb);
-            c_cond_low(cb, 1);       /* cond 2: CLK low */
+            ret = c_wait(di, CW_F(2), CW_OR, CW_F(0), CW_OR, CW_L(1), CW_END);
             break;
         case 3:
             /* [{2: 'f'}, {1: 'e'}] */
-            c_cond_fall(cb, 2);      /* cond 0: ATN fall */
-            c_cond_or(cb);
-            c_cond_edge(cb, 1);      /* cond 1: CLK edge */
+            ret = c_wait(di, CW_F(2), CW_OR, CW_E(1), CW_END);
             break;
         default:
-            c_cond_free(cb);
             return;
         }
-
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
 
-        int data = c_decoder_get_pin(di, 0, samplenum);
-        int clk = c_decoder_get_pin(di, 1, samplenum);
-        int atn = c_decoder_get_pin(di, 2, samplenum);
+        int data = c_pin(di, 0);
+        int clk = c_pin(di, 1);
+        int atn = c_pin(di, 2);
 
         /* ATN falling edge always resets step */
-        if (matched & 1) {
+        if (di_matched(di) & 1) {
             s->step = 0;
         }
 
@@ -219,7 +197,7 @@ static void iec_decode(struct srd_decoder_inst *di)
             }
         } else if (s->step == 1) {
             if (data == 1 && clk == 1) {
-                s->ss_item = samplenum;
+                s->ss_item = di_samplenum(di);
                 s->saved_ATN = !atn;
                 s->saved_EOI = 0;
                 s->bits = 0;
@@ -235,7 +213,7 @@ static void iec_decode(struct srd_decoder_inst *di)
                 s->step = 3;
             }
         } else if (s->step == 3) {
-            if (matched & 2) {
+            if (di_matched(di) & 2) {
                 if (clk == 1) {
                     /* Rising edge on CLK: latch DATA */
                     s->bits |= (uint8_t)(data << s->numbits);
@@ -243,7 +221,7 @@ static void iec_decode(struct srd_decoder_inst *di)
                     /* Falling edge on CLK: end of bit */
                     s->numbits++;
                     if (s->numbits == 8) {
-                        iec_handle_bits(di, samplenum);
+                        iec_handle_bits(di, di_samplenum(di));
                         s->step = 0;
                     }
                 }
@@ -289,6 +267,7 @@ struct srd_c_decoder iec_c_decoder = {
     .start = iec_start,
     .decode = iec_decode,
     .destroy = iec_destroy,
+    .state_size = 0,
     .metadata = NULL,
 };
 

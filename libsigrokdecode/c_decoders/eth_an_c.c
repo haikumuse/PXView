@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 Quard <2014500726@smail.xtu.edu.cn>
@@ -124,27 +124,27 @@ static void eth_an_decode_base_page(struct srd_decoder_inst *di, struct eth_an_p
     for (int i = 0; i < 16; i++) {
         char buf[8];
         snprintf(buf, sizeof(buf), "0x%x", (s->hex >> i) & 0x1);
-        C_ANN_PUT(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BIT, buf);
+        c_put(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BIT, buf);
 
         if (i >= 5 && base_page_ta_dict[i]) {
-            C_ANN_PUT(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BITD, base_page_ta_dict[i]);
+            c_put(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BITD, base_page_ta_dict[i]);
         }
     }
 
     char buf[64];
     snprintf(buf, sizeof(buf), "base page:0x%x", s->hex);
-    C_ANN_PUT(di, s->dl_pre_start[0], s->dl_end[15], s->out_ann, ANN_DATA, buf);
+    c_put(di, s->dl_pre_start[0], s->dl_end[15], s->out_ann, ANN_DATA, buf);
 
     snprintf(buf, sizeof(buf), "Selector field:0x%x", s->hex & 0x1f);
-    C_ANN_PUT(di, s->dl_pre_start[0], s->dl_end[4], s->out_ann, ANN_FORMAT, buf);
+    c_put(di, s->dl_pre_start[0], s->dl_end[4], s->out_ann, ANN_FORMAT, buf);
 
-    C_ANN_PUT(di, s->dl_pre_start[0], s->dl_end[4], s->out_ann, ANN_BITD, type_desc);
+    c_put(di, s->dl_pre_start[0], s->dl_end[4], s->out_ann, ANN_BITD, type_desc);
 
     snprintf(buf, sizeof(buf), "Technology ability field:0x%x", (s->hex >> 5) & 0xff);
-    C_ANN_PUT(di, s->dl_pre_start[5], s->dl_end[12], s->out_ann, ANN_FORMAT, buf);
+    c_put(di, s->dl_pre_start[5], s->dl_end[12], s->out_ann, ANN_FORMAT, buf);
 
     snprintf(buf, sizeof(buf), "Other fields:0x%x", (s->hex >> 13) & 0x7);
-    C_ANN_PUT(di, s->dl_pre_start[13], s->dl_end[15], s->out_ann, ANN_FORMAT, buf);
+    c_put(di, s->dl_pre_start[13], s->dl_end[15], s->out_ann, ANN_FORMAT, buf);
 }
 
 static void eth_an_decode_next_page(struct srd_decoder_inst *di, struct eth_an_priv *s)
@@ -166,29 +166,29 @@ static void eth_an_decode_next_page(struct srd_decoder_inst *di, struct eth_an_p
     for (int i = 0; i < 16; i++) {
         char buf[8];
         snprintf(buf, sizeof(buf), "0x%x", (s->hex >> i) & 0x1);
-        C_ANN_PUT(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BIT, buf);
+        c_put(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BIT, buf);
 
         if (i >= 11 && (i - 11) < 5) {
-            C_ANN_PUT(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BITD, next_page_ot_dict[i - 11]);
+            c_put(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BITD, next_page_ot_dict[i - 11]);
         }
         if (mp_flag && i <= 10) {
-            C_ANN_PUT(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BITD, next_page_ta_dict[i]);
+            c_put(di, s->dl_pre_start[i], s->dl_end[i], s->out_ann, ANN_BITD, next_page_ta_dict[i]);
         }
     }
 
     char buf[64];
     snprintf(buf, sizeof(buf), "next page:0x%x", s->hex);
-    C_ANN_PUT(di, s->dl_pre_start[0], s->dl_end[15], s->out_ann, ANN_DATA, buf);
+    c_put(di, s->dl_pre_start[0], s->dl_end[15], s->out_ann, ANN_DATA, buf);
 
     snprintf(buf, sizeof(buf), "%s0x%x", mp, s->hex & 0x7ff);
-    C_ANN_PUT(di, s->dl_pre_start[0], s->dl_end[10], s->out_ann, ANN_FORMAT, buf);
+    c_put(di, s->dl_pre_start[0], s->dl_end[10], s->out_ann, ANN_FORMAT, buf);
 
     if (!mp_flag) {
-        C_ANN_PUT(di, s->dl_pre_start[0], s->dl_end[10], s->out_ann, ANN_BITD, "Master-Slave seed value (MSB)");
+        c_put(di, s->dl_pre_start[0], s->dl_end[10], s->out_ann, ANN_BITD, "Master-Slave seed value (MSB)");
     }
 
     snprintf(buf, sizeof(buf), "Other fields:0x%x", (s->hex >> 11) & 0x1f);
-    C_ANN_PUT(di, s->dl_pre_start[11], s->dl_end[15], s->out_ann, ANN_FORMAT, buf);
+    c_put(di, s->dl_pre_start[11], s->dl_end[15], s->out_ann, ANN_FORMAT, buf);
 }
 
 static void eth_an_reset(struct srd_decoder_inst *di)
@@ -204,8 +204,8 @@ static void eth_an_reset(struct srd_decoder_inst *di)
 static void eth_an_start(struct srd_decoder_inst *di)
 {
     struct eth_an_priv *s = (struct eth_an_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "eth_an");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "eth_an");
+    s->samplerate = c_samplerate(di);
 }
 
 static void eth_an_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -219,37 +219,28 @@ static void eth_an_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void eth_an_decode(struct srd_decoder_inst *di)
 {
     struct eth_an_priv *s = (struct eth_an_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (s->samplerate == 0)
         return;
 
     while (1) {
         /* Wait for rising edge on channel 0 */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        s->ss = samplenum;
+        s->ss = di_samplenum(di);
 
         /* Wait for any edge on channel 0 */
-        cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        s->es = samplenum;
+        s->es = di_samplenum(di);
 
         double length = (double)(s->es - s->ss) / (double)s->samplerate;
         if (length <= 1.0e-5 && length >= 1.0e-6) {
             /* NLP pulse detected */
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_NLP, "NLP");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_NLP, "NLP");
 
             uint64_t temp_length = s->ss - s->last_valid_ss;
             double len2 = (double)temp_length / (double)s->samplerate;
@@ -333,6 +324,7 @@ struct srd_c_decoder eth_an_c_decoder = {
     .start = eth_an_start,
     .decode = eth_an_decode,
     .destroy = eth_an_destroy,
+    .state_size = 0,
     .metadata = eth_an_metadata,
 };
 

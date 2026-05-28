@@ -174,35 +174,55 @@ static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
         es = s->sio0bits_es[ws - 1];
     }
 
+    /* Guesstimate: extend the last bit's end_sample by one bit period */
+    {
+        int total_bit_count = (s->current_mode == CUR_MODE_QUAD) ? ws / 4 :
+                              (s->current_mode == CUR_MODE_DUAL) ? ws / 2 : ws;
+        if (total_bit_count > 1) {
+            uint64_t last_ss = s->sio0bits_ss[total_bit_count - 1];
+            uint64_t prev_ss = s->sio0bits_ss[total_bit_count - 2];
+            uint64_t guesstimate = last_ss + (last_ss - prev_ss);
+            s->sio0bits_es[total_bit_count - 1] = guesstimate;
+            s->sio1bits_es[total_bit_count - 1] = guesstimate;
+            if (s->is_quad) {
+                s->sio2bits_es[total_bit_count - 1] = guesstimate;
+                s->sio3bits_es[total_bit_count - 1] = guesstimate;
+            }
+            es = guesstimate;
+        }
+    }
+
     /* Binary output */
     {
         unsigned char bdata[8];
         int bw = (ws + 7) / 8;
         for (int i = 0; i < bw; i++)
             bdata[i] = (unsigned char)(s->spidata >> (8 * (bw - 1 - i)));
-        c_decoder_put_binary(di, ss, es, s->out_binary, 0, bw, bdata);
+        c_put_bin(di, ss, es, s->out_binary, 0, bw, bdata);
     }
 
     /* BITS v2 format */
     {
-        int sio0_cnt = ws;
-        int sio1_cnt = ws;
-        int sio2_cnt = s->is_quad ? ws : 0;
-        int sio3_cnt = s->is_quad ? ws : 0;
+        int bit_count = (s->current_mode == CUR_MODE_QUAD) ? ws / 4 :
+                        (s->current_mode == CUR_MODE_DUAL) ? ws / 2 : ws;
+        int sio0_cnt = bit_count;
+        int sio1_cnt = bit_count;
+        int sio2_cnt = s->is_quad ? bit_count : 0;
+        int sio3_cnt = s->is_quad ? bit_count : 0;
         int total_bits = sio0_cnt + sio1_cnt + sio2_cnt + sio3_cnt;
         unsigned char bits_buf[8800];
         int bpos = 0;
 
-        bits_buf[bpos++] = 0x0F; /* all 4 SIO lines present */
+        bits_buf[bpos++] = (unsigned char)(s->is_quad ? 0x0F : 0x03); /* SIO lines present */
         bits_buf[bpos++] = (unsigned char)sio0_cnt;
-        for (int i = 0; i < sio0_cnt && bpos + 17 <= (int)sizeof(bits_buf); i++) {
+        for (int i = sio0_cnt - 1; i >= 0 && bpos + 17 <= (int)sizeof(bits_buf); i--) {
             bits_buf[bpos++] = (unsigned char)s->sio0bits_val[i];
             for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio0bits_ss[i] >> (8 * b));
             for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio0bits_es[i] >> (8 * b));
         }
         bits_buf[bpos++] = 0x00;
         bits_buf[bpos++] = (unsigned char)sio1_cnt;
-        for (int i = 0; i < sio1_cnt && bpos + 17 <= (int)sizeof(bits_buf); i++) {
+        for (int i = sio1_cnt - 1; i >= 0 && bpos + 17 <= (int)sizeof(bits_buf); i--) {
             bits_buf[bpos++] = (unsigned char)s->sio1bits_val[i];
             for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio1bits_ss[i] >> (8 * b));
             for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio1bits_es[i] >> (8 * b));
@@ -210,20 +230,20 @@ static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
         if (s->is_quad) {
             bits_buf[bpos++] = 0x00;
             bits_buf[bpos++] = (unsigned char)sio2_cnt;
-            for (int i = 0; i < sio2_cnt && bpos + 17 <= (int)sizeof(bits_buf); i++) {
+            for (int i = sio2_cnt - 1; i >= 0 && bpos + 17 <= (int)sizeof(bits_buf); i--) {
                 bits_buf[bpos++] = (unsigned char)s->sio2bits_val[i];
                 for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio2bits_ss[i] >> (8 * b));
                 for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio2bits_es[i] >> (8 * b));
             }
             bits_buf[bpos++] = 0x00;
             bits_buf[bpos++] = (unsigned char)sio3_cnt;
-            for (int i = 0; i < sio3_cnt && bpos + 17 <= (int)sizeof(bits_buf); i++) {
+            for (int i = sio3_cnt - 1; i >= 0 && bpos + 17 <= (int)sizeof(bits_buf); i--) {
                 bits_buf[bpos++] = (unsigned char)s->sio3bits_val[i];
                 for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio3bits_ss[i] >> (8 * b));
                 for (int b = 0; b < 8; b++) bits_buf[bpos++] = (unsigned char)(s->sio3bits_es[i] >> (8 * b));
             }
         }
-        c_decoder_put_python(di, ss, es, s->out_python, "BITS", bits_buf, bpos);
+        c_proto(di, ss, es, s->out_python, "BITS", C_BYTES(bits_buf, bpos), C_END);
     }
 
     /* DATA 17-byte format */
@@ -235,7 +255,7 @@ static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
         uint64_t sv = s->spidata; /* same data for both */
         for (int i = 0; i < 8; i++) data_data[dpos++] = (unsigned char)(mv >> (8 * i));
         for (int i = 0; i < 8; i++) data_data[dpos++] = (unsigned char)(sv >> (8 * i));
-        c_decoder_put_python(di, ss, es, s->out_python, "DATA", data_data, dpos);
+        c_proto(di, ss, es, s->out_python, "DATA", C_BYTES(data_data, dpos), C_END);
     }
 
     /* Store byte for transfer display */
@@ -249,26 +269,26 @@ static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
     /* Bit annotations */
     int total_bit_count = (s->current_mode == CUR_MODE_QUAD) ? ws / 4 :
                           (s->current_mode == CUR_MODE_DUAL) ? ws / 2 : ws;
-    for (int i = 0; i < total_bit_count && i < MAX_BITS; i++) {
+    for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->sio0bits_val[i]);
-        C_ANN_PUT(di, s->sio0bits_ss[i], s->sio0bits_es[i], s->out_ann, ANN_SIO0_BIT, bit_str);
+        c_put(di, s->sio0bits_ss[i], s->sio0bits_es[i], s->out_ann, ANN_SIO0_BIT, bit_str);
     }
-    for (int i = 0; i < total_bit_count && i < MAX_BITS; i++) {
+    for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->sio1bits_val[i]);
-        C_ANN_PUT(di, s->sio1bits_ss[i], s->sio1bits_es[i], s->out_ann, ANN_SIO1_BIT, bit_str);
+        c_put(di, s->sio1bits_ss[i], s->sio1bits_es[i], s->out_ann, ANN_SIO1_BIT, bit_str);
     }
     if (s->is_quad) {
-        for (int i = 0; i < total_bit_count && i < MAX_BITS; i++) {
+        for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", s->sio2bits_val[i]);
-            C_ANN_PUT(di, s->sio2bits_ss[i], s->sio2bits_es[i], s->out_ann, ANN_SIO2_BIT, bit_str);
+            c_put(di, s->sio2bits_ss[i], s->sio2bits_es[i], s->out_ann, ANN_SIO2_BIT, bit_str);
         }
-        for (int i = 0; i < total_bit_count && i < MAX_BITS; i++) {
+        for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", s->sio3bits_val[i]);
-            C_ANN_PUT(di, s->sio3bits_ss[i], s->sio3bits_es[i], s->out_ann, ANN_SIO3_BIT, bit_str);
+            c_put(di, s->sio3bits_ss[i], s->sio3bits_es[i], s->out_ann, ANN_SIO3_BIT, bit_str);
         }
     }
 
@@ -276,7 +296,7 @@ static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
     {
         char data_str[16];
         snprintf(data_str, sizeof(data_str), "%02llX", (unsigned long long)s->spidata);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SPI_DATA, data_str);
+        c_put(di, ss, es, s->out_ann, ANN_SPI_DATA, data_str);
     }
 }
 
@@ -307,25 +327,25 @@ static void spi_dq_reset(struct srd_decoder_inst *di)
 static void spi_dq_start(struct srd_decoder_inst *di)
 {
     spi_dq_state *s = (spi_dq_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spi");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "spi");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "spi");
-    s->out_bitrate = c_decoder_register_output(di, SRD_OUTPUT_META, "spi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "spi");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "spi");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "spi");
+    s->out_bitrate = c_reg_out(di, SRD_OUTPUT_META, "spi");
 
-    const char *cs_pol_str = c_decoder_get_option_string(di, "cs_polarity", "active-low");
+    const char *cs_pol_str = c_opt_str(di, "cs_polarity", "active-low");
     s->cs_polarity = (strcmp(cs_pol_str, "active-low") == 0) ? 0 : 1;
 
-    s->cpol = (int)c_decoder_get_option_int(di, "cpol", 0);
-    s->cpha = (int)c_decoder_get_option_int(di, "cpha", 0);
+    s->cpol = (int)c_opt_int(di, "cpol", 0);
+    s->cpha = (int)c_opt_int(di, "cpha", 0);
 
-    const char *bitorder_str = c_decoder_get_option_string(di, "bitorder", "msb-first");
+    const char *bitorder_str = c_opt_str(di, "bitorder", "msb-first");
     s->bit_order = (strcmp(bitorder_str, "msb-first") == 0) ? 0 : 1;
 
-    s->wordsize = (int)c_decoder_get_option_int(di, "wordsize", 8);
+    s->wordsize = (int)c_opt_int(di, "wordsize", 8);
     if (s->wordsize < 1 || s->wordsize > 64) s->wordsize = 8;
     s->bw = (s->wordsize + 7) / 8;
 
-    const char *twoln_str = c_decoder_get_option_string(di, "twolnmd", "qspi");
+    const char *twoln_str = c_opt_str(di, "twolnmd", "qspi");
     if (strcmp(twoln_str, "qspi") == 0)
         s->twolnmd = 1;
     else if (strcmp(twoln_str, "dspi") == 0)
@@ -333,7 +353,7 @@ static void spi_dq_start(struct srd_decoder_inst *di)
     else
         s->twolnmd = 0;
 
-    const char *proto_str = c_decoder_get_option_string(di, "protocol", "spi");
+    const char *proto_str = c_opt_str(di, "protocol", "spi");
     if (strcmp(proto_str, "dual") == 0) {
         s->protocol = PROTO_DUAL;
         s->current_mode = CUR_MODE_DUAL;
@@ -353,9 +373,9 @@ static void spi_dq_start(struct srd_decoder_inst *di)
         s->is_quad = 0;
     }
 
-    s->have_sio2 = c_decoder_has_channel(di, 3);
-    s->have_sio3 = c_decoder_has_channel(di, 4);
-    s->have_cs = c_decoder_has_channel(di, 5);
+    s->have_sio2 = c_has_ch(di, 3);
+    s->have_sio3 = c_has_ch(di, 4);
+    s->have_cs = c_has_ch(di, 5);
 
     if (s->twolnmd == 1)
         s->is_quad = 1;
@@ -379,72 +399,61 @@ static void spi_dq_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void spi_dq_decode(struct srd_decoder_inst *di)
 {
     spi_dq_state *s = (spi_dq_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     int CLK = 0, SIO0 = 1, SIO1 = 2, SIO2 = 3, SIO3 = 4, CS = 5;
 
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     }
 
     if (!s->have_cs) {
-        c_decoder_put_python(di, 0, 0, s->out_python, "CS-CHANGE", NULL, 0);
+        c_proto(di, 0, 0, s->out_python, "CS-CHANGE",
+                C_I8(-1), C_I8(-1), C_END);
     }
 
-    /* Get initial pin states */
-    uint64_t cur_sample;
-    if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
+    /* Get initial pin states — match Python: self.wait({}) */
+    if (c_wait(di, CW_END) != SRD_OK)
         return;
 
     if (s->have_cs) {
-        int cs = c_decoder_get_pin(di, CS, cur_sample);
+        uint64_t sn = di_samplenum(di);
+        int cs = c_pin(di, CS);
         int cs_active = spi_dq_cs_asserted(s, cs);
-        unsigned char cs_data[2];
-        cs_data[0] = 0xFF;
-        cs_data[1] = (unsigned char)cs;
-        c_decoder_put_python(di, cur_sample, cur_sample, s->out_python, "CS-CHANGE", cs_data, 2);
+        c_proto(di, sn, sn, s->out_python, "CS-CHANGE",
+                C_I8(-1), C_I8(cs), C_END);
         if (cs_active) {
-            s->ss_transfer = cur_sample;
+            s->ss_transfer = sn;
             s->spibytes_cnt = 0;
         }
     }
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, CLK);
+            int ret;
+            if (s->have_cs)
+                ret = c_wait(di, CW_E(CLK), CW_OR, CW_E(CS), CW_END);
+            else
+                ret = c_wait(di, CW_E(CLK), CW_END);
+        if (ret != SRD_OK)
+                return;
 
-        int cs_cond_idx = -1;
-        if (s->have_cs) {
-            cs_cond_idx = 1;
-            c_cond_or(cb);
-            c_cond_edge(cb, CS);
-        }
+        int clk = c_pin(di, CLK);
+        int sio0 = c_pin(di, SIO0);
+        int sio1 = c_pin(di, SIO1);
+        int sio2 = s->have_sio2 ? c_pin(di, SIO2) : 0;
+        int sio3 = s->have_sio3 ? c_pin(di, SIO3) : 0;
+        int cs = s->have_cs ? c_pin(di, CS) : 1;
 
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
-
-        int clk = c_decoder_get_pin(di, CLK, samplenum);
-        int sio0 = c_decoder_get_pin(di, SIO0, samplenum);
-        int sio1 = c_decoder_get_pin(di, SIO1, samplenum);
-        int sio2 = s->have_sio2 ? c_decoder_get_pin(di, SIO2, samplenum) : 0;
-        int sio3 = s->have_sio3 ? c_decoder_get_pin(di, SIO3, samplenum) : 0;
-        int cs = s->have_cs ? c_decoder_get_pin(di, CS, samplenum) : 1;
-
-        int clk_matched = (matched & (1ULL << 0));
-        int cs_matched = s->have_cs && (matched & (1ULL << cs_cond_idx));
+        int clk_matched = (di_matched(di) & (1ULL << 0));
+        int cs_matched = s->have_cs && (di_matched(di) & (1ULL << 1));
 
         int cs_active = s->have_cs ? spi_dq_cs_asserted(s, cs) : 1;
 
         if (cs_matched) {
-            unsigned char cs_data[2];
-            cs_data[0] = (unsigned char)(1 - cs);
-            cs_data[1] = (unsigned char)cs;
-            c_decoder_put_python(di, samplenum, samplenum, s->out_python, "CS-CHANGE", cs_data, 2);
+            int oldcs = 1 - cs;
+            c_proto(di, di_samplenum(di), di_samplenum(di), s->out_python, "CS-CHANGE",
+                    C_I8(oldcs), C_I8(cs), C_END);
 
             if (cs_active) {
-                s->ss_transfer = samplenum;
+                s->ss_transfer = di_samplenum(di);
                 s->spibytes_cnt = 0;
             } else if (s->ss_transfer != (uint64_t)-1) {
                 /* Output transfer */
@@ -461,9 +470,9 @@ static void spi_dq_decode(struct srd_decoder_inst *di)
                         if (i > 0) pos += snprintf(transfer_str + pos, sizeof(transfer_str) - pos, " ");
                         pos += snprintf(transfer_str + pos, sizeof(transfer_str) - pos, "%02llX", (unsigned long long)s->spibytes_val[i]);
                     }
-                    C_ANN_PUT(di, s->ss_transfer, samplenum, s->out_ann, ANN_SPI_TRANSFER, transfer_str);
+                    c_put(di, s->ss_transfer, di_samplenum(di), s->out_ann, ANN_SPI_TRANSFER, transfer_str);
                 }
-                c_decoder_put_python(di, s->ss_transfer, samplenum, s->out_python, "TRANSFER", NULL, 0);
+                c_proto(di, s->ss_transfer, di_samplenum(di), s->out_python, "TRANSFER", C_END);
                 s->ss_transfer = (uint64_t)-1;
             }
             spi_dq_reset_decoder_state(s);
@@ -502,6 +511,13 @@ static void spi_dq_decode(struct srd_decoder_inst *di)
 
         int ws = s->wordsize;
 
+        /* If this is the first bit of a dataword, save its sample number.
+         * Python: if self.bitcount == 0: self.ss_block = self.samplenum */
+        if (s->bitcount == 0) {
+            s->ss_block = di_samplenum(di);
+            s->cs_was_deasserted = s->have_cs ? !spi_dq_cs_asserted(s, cs) : 0;
+        }
+
         /* Accumulate bits based on current mode */
         if (s->current_mode == CUR_MODE_QUAD) {
             if (s->bit_order == 0) { /* msb-first */
@@ -524,22 +540,22 @@ static void spi_dq_decode(struct srd_decoder_inst *di)
                 int idx = s->bitcount / 4;
                 if (idx < MAX_BITS) {
                     s->sio0bits_val[idx] = sio0;
-                    s->sio0bits_ss[idx] = samplenum;
-                    s->sio0bits_es[idx] = samplenum;
+                    s->sio0bits_ss[idx] = di_samplenum(di);
+                    s->sio0bits_es[idx] = di_samplenum(di);
                     s->sio1bits_val[idx] = sio1;
-                    s->sio1bits_ss[idx] = samplenum;
-                    s->sio1bits_es[idx] = samplenum;
+                    s->sio1bits_ss[idx] = di_samplenum(di);
+                    s->sio1bits_es[idx] = di_samplenum(di);
                     s->sio2bits_val[idx] = sio2;
-                    s->sio2bits_ss[idx] = samplenum;
-                    s->sio2bits_es[idx] = samplenum;
+                    s->sio2bits_ss[idx] = di_samplenum(di);
+                    s->sio2bits_es[idx] = di_samplenum(di);
                     s->sio3bits_val[idx] = sio3;
-                    s->sio3bits_ss[idx] = samplenum;
-                    s->sio3bits_es[idx] = samplenum;
+                    s->sio3bits_ss[idx] = di_samplenum(di);
+                    s->sio3bits_es[idx] = di_samplenum(di);
                     if (idx > 0) {
-                        s->sio0bits_es[idx - 1] = samplenum;
-                        s->sio1bits_es[idx - 1] = samplenum;
-                        s->sio2bits_es[idx - 1] = samplenum;
-                        s->sio3bits_es[idx - 1] = samplenum;
+                        s->sio0bits_es[idx - 1] = di_samplenum(di);
+                        s->sio1bits_es[idx - 1] = di_samplenum(di);
+                        s->sio2bits_es[idx - 1] = di_samplenum(di);
+                        s->sio3bits_es[idx - 1] = di_samplenum(di);
                     }
                 }
             }
@@ -556,14 +572,14 @@ static void spi_dq_decode(struct srd_decoder_inst *di)
                 int idx = s->bitcount / 2;
                 if (idx < MAX_BITS) {
                     s->sio0bits_val[idx] = sio0;
-                    s->sio0bits_ss[idx] = samplenum;
-                    s->sio0bits_es[idx] = samplenum;
+                    s->sio0bits_ss[idx] = di_samplenum(di);
+                    s->sio0bits_es[idx] = di_samplenum(di);
                     s->sio1bits_val[idx] = sio1;
-                    s->sio1bits_ss[idx] = samplenum;
-                    s->sio1bits_es[idx] = samplenum;
+                    s->sio1bits_ss[idx] = di_samplenum(di);
+                    s->sio1bits_es[idx] = di_samplenum(di);
                     if (idx > 0) {
-                        s->sio0bits_es[idx - 1] = samplenum;
-                        s->sio1bits_es[idx - 1] = samplenum;
+                        s->sio0bits_es[idx - 1] = di_samplenum(di);
+                        s->sio1bits_es[idx - 1] = di_samplenum(di);
                     }
                 }
             }
@@ -577,14 +593,26 @@ static void spi_dq_decode(struct srd_decoder_inst *di)
 
             if (s->bitcount < MAX_BITS) {
                 s->sio0bits_val[s->bitcount] = sio0;
-                s->sio0bits_ss[s->bitcount] = samplenum;
-                s->sio0bits_es[s->bitcount] = samplenum;
+                s->sio0bits_ss[s->bitcount] = di_samplenum(di);
+                s->sio0bits_es[s->bitcount] = di_samplenum(di);
                 s->sio1bits_val[s->bitcount] = sio1;
-                s->sio1bits_ss[s->bitcount] = samplenum;
-                s->sio1bits_es[s->bitcount] = samplenum;
+                s->sio1bits_ss[s->bitcount] = di_samplenum(di);
+                s->sio1bits_es[s->bitcount] = di_samplenum(di);
+                if (s->is_quad) {
+                    s->sio2bits_val[s->bitcount] = sio2;
+                    s->sio2bits_ss[s->bitcount] = di_samplenum(di);
+                    s->sio2bits_es[s->bitcount] = di_samplenum(di);
+                    s->sio3bits_val[s->bitcount] = sio3;
+                    s->sio3bits_ss[s->bitcount] = di_samplenum(di);
+                    s->sio3bits_es[s->bitcount] = di_samplenum(di);
+                }
                 if (s->bitcount > 0) {
-                    s->sio0bits_es[s->bitcount - 1] = samplenum;
-                    s->sio1bits_es[s->bitcount - 1] = samplenum;
+                    s->sio0bits_es[s->bitcount - 1] = di_samplenum(di);
+                    s->sio1bits_es[s->bitcount - 1] = di_samplenum(di);
+                    if (s->is_quad) {
+                        s->sio2bits_es[s->bitcount - 1] = di_samplenum(di);
+                        s->sio3bits_es[s->bitcount - 1] = di_samplenum(di);
+                    }
                 }
             }
             s->bitcount += 1;
@@ -596,13 +624,13 @@ static void spi_dq_decode(struct srd_decoder_inst *di)
 
         if (s->samplerate > 0) {
             double elapsed = 1.0 / (double)s->samplerate;
-            elapsed *= (double)(samplenum - s->ss_block + 1);
+            elapsed *= (double)(di_samplenum(di) - s->ss_block + 1);
             int bitrate = (int)(1.0 / elapsed * ws);
-            c_decoder_put_meta_int(di, s->ss_block, samplenum, s->out_bitrate, bitrate);
+            c_put_meta_int(di, s->ss_block, di_samplenum(di), s->out_bitrate, bitrate);
         }
 
         if (s->have_cs && s->cs_was_deasserted) {
-            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_WARNING,
+            c_put(di, s->ss_block, di_samplenum(di), s->out_ann, ANN_WARNING,
                 "CS# was deasserted during this data word!");
         }
 
@@ -647,6 +675,7 @@ struct srd_c_decoder spi_dual_quad_c_decoder = {
     .start = spi_dq_start,
     .decode = spi_dq_decode,
     .destroy = spi_dq_destroy,
+    .state_size = 0,
     .metadata = spi_dq_metadata,
 };
 

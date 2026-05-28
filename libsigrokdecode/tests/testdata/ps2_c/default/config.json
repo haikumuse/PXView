@@ -7,5 +7,8 @@
     "clk": 0,
     "data": 1
   },
-  "options": {}
+  "options": {
+    "HtoD_Clock": "rise",
+    "DtoH_Clock": "fall"
+  }
 }

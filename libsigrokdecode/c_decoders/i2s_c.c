@@ -1,10 +1,43 @@
+﻿/*
+ * This file is part of the libsigrokdecode project.
+ *
+ * Copyright (C) 2012 Joel Holdsworth <joel@airwebreathe.org.uk>
+ * Copyright (C) 2019 DreamSourceLab <support@dreamsourcelab.com>
+ * Copyright (C) 2025 C port (v4 API)
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct i2s_priv {
+/* Channel indices — match Python channels tuple */
+#define CH_SCK 0
+#define CH_WS  1
+#define CH_SD  2
+
+#define ANN_LEFT  0
+#define ANN_RIGHT 1
+#define ANN_WARN  2
+#define NUM_ANN   3
+
+/* Decoder state struct — C_DECODER_STATE auto-generates i2s_s typedef,
+ * i2s_reset (calloc), and i2s_destroy (free). */
+C_DECODER_STATE(i2s, {
     int bit_depth;
     int msb_first;
     int ws_polarity_left_high;
@@ -18,67 +51,48 @@ struct i2s_priv {
     int samplesreceived;
     uint64_t ss_block;
     int wrote_wav_header;
+    uint64_t samplerate;
+
+    /* Output IDs */
     int out_ann;
     int out_python;
     int out_binary;
-};
+});
 
-#define ANN_LEFT 0
-#define ANN_RIGHT 1
-#define ANN_WARN 2
-#define NUM_ANN 3
-
+/* Channel definitions — match Python channels tuple */
 static struct srd_channel i2s_channels[] = {
-    { "sck", "SCK", "Bit clock line", 0, SRD_CHANNEL_SCLK, "dec_i2s_chan_sck" },
-    { "ws", "WS", "Word select line", 1, SRD_CHANNEL_COMMON, "dec_i2s_chan_ws" },
-    { "sd", "SD", "Serial data line", 2, SRD_CHANNEL_SDATA, "dec_i2s_chan_sd" },
+    {"sck", "SCK", "Bit clock line", 0, SRD_CHANNEL_SCLK, "dec_i2s_chan_sck"},
+    {"ws", "WS", "Word select line", 1, SRD_CHANNEL_COMMON, "dec_i2s_chan_ws"},
+    {"sd", "SD", "Serial data line", 2, SRD_CHANNEL_SDATA, "dec_i2s_chan_sd"},
 };
 
+/* Options — match Python options tuple */
 static struct srd_decoder_option i2s_options[] = {
-    { "ws_polarity", "dec_i2s_opt_ws_polarity", "WS polarity", NULL, NULL },
-    { "clk_edge", "dec_i2s_opt_clk_edge", "SCK active edge", NULL, NULL },
-    { "bit_shift", "dec_i2s_opt_bit_shift", "Bit shift", NULL, NULL },
-    { "bit_align", "dec_i2s_opt_bit_align", "Bit align", NULL, NULL },
-    { "bitorder", "dec_i2s_opt_bitorder", "Bit order", NULL, NULL },
-    { "wordsize", "dec_i2s_opt_wordsize", "Word size", NULL, NULL },
+    {"ws_polarity", "dec_i2s_opt_ws_polarity", "WS polarity", NULL, NULL},
+    {"clk_edge", "dec_i2s_opt_clk_edge", "SCK active edge", NULL, NULL},
+    {"bit_shift", "dec_i2s_opt_bit_shift", "Bit shift", NULL, NULL},
+    {"bit_align", "dec_i2s_opt_bit_align", "Bit align", NULL, NULL},
+    {"bitorder", "dec_i2s_opt_bitorder", "Bit order", NULL, NULL},
+    {"wordsize", "dec_i2s_opt_wordsize", "Word size", NULL, NULL},
 };
 
-static const char* i2s_ann_labels[][3] = {
-    { "", "left", "Left channel" },
-    { "", "right", "Right channel" },
-    { "", "warnings", "Warnings" },
+/* Annotation labels — match Python annotations tuple */
+static const char *i2s_ann_labels[][3] = {
+    {"", "left", "Left channel"},
+    {"", "right", "Right channel"},
+    {"", "warnings", "Warnings"},
 };
 
-static const char* i2s_inputs[] = { "logic", NULL };
-static const char* i2s_outputs[] = { "i2s", NULL };
-static const char* i2s_tags[] = { "Audio", "PC", NULL };
+static const char *i2s_inputs[] = {"logic", NULL};
+static const char *i2s_outputs[] = {"i2s", NULL};
+static const char *i2s_tags[] = {"Audio", "PC", NULL};
 
 static const struct srd_decoder_binary i2s_binary[] = {
-    { 0, "wav", "WAV file" },
+    {0, "wav", "WAV file"},
 };
 
-static void i2s_reset(struct srd_decoder_inst* di)
-{
-    if (!c_decoder_get_private(di)) {
-        c_decoder_set_private(di, g_malloc0(sizeof(struct i2s_priv)));
-    }
-    struct i2s_priv* s = (struct i2s_priv*)c_decoder_get_private(di);
-    memset(s, 0, sizeof(struct i2s_priv));
-    s->bit_depth = 16;
-    s->msb_first = 1;
-    s->ws_polarity_left_high = 1;
-    s->clk_rising_edge = 1;
-    s->bit_shift = 0;
-    s->bit_align_left = 1;
-    s->oldws = 1;
-    s->bitcount = 0;
-    s->data = 0;
-    s->samplesreceived = 0;
-    s->ss_block = 0;
-    s->wrote_wav_header = 0;
-}
-
-static void i2s_wav_header(struct srd_decoder_inst* di, struct i2s_priv* s)
+/* ---- Helper: write WAV header — match Python wav_header() ---- */
+static void i2s_wav_header(struct srd_decoder_inst *di, i2s_s *s)
 {
     unsigned char h[44];
     int wordlength = s->bit_depth;
@@ -131,39 +145,54 @@ static void i2s_wav_header(struct srd_decoder_inst* di, struct i2s_priv* s)
     h[42] = (data_size >> 16) & 0xFF;
     h[43] = (data_size >> 24) & 0xFF;
 
-    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, sizeof(h), h);
+    c_put_bin(di, 0, 0, s->out_binary, 0, sizeof(h), h);
     s->wrote_wav_header = 1;
 }
 
-static void i2s_start(struct srd_decoder_inst* di)
+/* ---- start callback — match Python start() ---- */
+static void i2s_start(struct srd_decoder_inst *di)
 {
-    struct i2s_priv* s = (struct i2s_priv*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "i2s");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "i2s");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "i2s");
+    i2s_s *s = (i2s_s *)c_decoder_get_private(di);
 
-    const char* ws_pol = c_decoder_get_option_string(di, "ws_polarity", "left-high");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "i2s");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "i2s");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "i2s");
+
+    const char *ws_pol = c_opt_str(di, "ws_polarity", "left-high");
     s->ws_polarity_left_high = (strcmp(ws_pol, "left-high") == 0) ? 1 : 0;
 
-    const char* clk_edge = c_decoder_get_option_string(di, "clk_edge", "rising-edge");
+    const char *clk_edge = c_opt_str(di, "clk_edge", "rising-edge");
     s->clk_rising_edge = (strcmp(clk_edge, "rising-edge") == 0) ? 1 : 0;
 
-    const char* bit_shift = c_decoder_get_option_string(di, "bit_shift", "none");
+    const char *bit_shift = c_opt_str(di, "bit_shift", "none");
     s->bit_shift = (strcmp(bit_shift, "right-shifted by one") == 0) ? 1 : 0;
 
-    const char* bit_align = c_decoder_get_option_string(di, "bit_align", "left-aligned");
+    const char *bit_align = c_opt_str(di, "bit_align", "left-aligned");
     s->bit_align_left = (strcmp(bit_align, "left-aligned") == 0) ? 1 : 0;
 
-    s->bit_depth = (int)c_decoder_get_option_int(di, "wordsize", 16);
-    const char* msb = c_decoder_get_option_string(di, "bitorder", "msb-first");
+    s->bit_depth = (int)c_opt_int(di, "wordsize", 16);
+    const char *msb = c_opt_str(di, "bitorder", "msb-first");
     s->msb_first = (strcmp(msb, "msb-first") == 0) ? 1 : 0;
+
+    /* Non-zero defaults that calloc didn't set */
+    s->oldws = 1;
+    s->samplerate = c_samplerate(di);
 }
 
-static void i2s_decode(struct srd_decoder_inst* di)
+/* ---- metadata callback — match Python metadata() ---- */
+static void i2s_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 {
-    struct i2s_priv* s = (struct i2s_priv*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
+    i2s_s *s = (i2s_s *)c_decoder_get_private(di);
+    if (key == SRD_CONF_SAMPLERATE)
+        s->samplerate = value;
+}
+
+/* ---- decode callback — match Python decode() ---- */
+static void i2s_decode(struct srd_decoder_inst *di)
+{
+    i2s_s *s = (i2s_s *)c_decoder_get_private(di);
+    int ret;
+
     int left_high = s->ws_polarity_left_high;
     int active_rising = s->clk_rising_edge;
     int right_shifted = s->bit_shift;
@@ -171,42 +200,49 @@ static void i2s_decode(struct srd_decoder_inst* di)
     int msb = s->msb_first;
     int wordlength = s->bit_depth;
 
-    {
-        srd_cond_builder* cb = c_cond_new();
-        c_cond_edge(cb, 1);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+    /* Wait for first WS edge — match Python:
+     *   (sck, ws, sd) = self.wait({1: 'e'})
+     *   self.ss_block = self.samplenum
+     *   self.oldws = ws */
+    ret = c_wait(di, CW_E(CH_WS), CW_END);
+    if (ret != SRD_OK)
+        return;
+    s->ss_block = di_samplenum(di);
+    s->oldws = c_pin(di, CH_WS);
+
+    /* If right-shifted, wait for first SCK edge — match Python:
+     *   if right_shifted:
+     *       self.wait({0: 'r' if active_rising else 'f'}) */
+    if (right_shifted) {
+        if (active_rising)
+            ret = c_wait(di, CW_R(CH_SCK), CW_END);
+        else
+            ret = c_wait(di, CW_F(CH_SCK), CW_END);
         if (ret != SRD_OK)
             return;
-        s->ss_block = samplenum;
-        s->oldws = c_decoder_get_pin(di, 1, samplenum);
-        if (right_shifted) {
-            srd_cond_builder* cb2 = c_cond_new();
-            if (active_rising)
-                c_cond_rise(cb2, 0);
-            else
-                c_cond_fall(cb2, 0);
-            ret = c_cond_wait(cb2, di, &samplenum, &matched);
-            c_cond_free(cb2);
-            if (ret != SRD_OK)
-                return;
-        }
     }
 
+    /* Main decode loop — match Python:
+     *   while True:
+     *       (sck, ws, sd) = self.wait({0: 'r' if active_rising else 'f'}) */
     while (1) {
-        srd_cond_builder* cb = c_cond_new();
         if (active_rising)
-            c_cond_rise(cb, 0);
+            ret = c_wait(di, CW_R(CH_SCK), CW_END);
         else
-            c_cond_fall(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            ret = c_wait(di, CW_F(CH_SCK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int ws = c_decoder_get_pin(di, 1, samplenum);
-        int sd = c_decoder_get_pin(di, 2, samplenum);
+        int ws = c_pin(di, CH_WS);
+        int sd = c_pin(di, CH_SD);
 
+        /* Shift bit into data register — match Python:
+         *   if not right_shifted and ws != self.oldws:
+         *       self.last = sd
+         *   else:
+         *       if msb: self.data = (self.data << 1) | sd
+         *       else: self.data = self.data | (sd << self.bitcount)
+         *       self.bitcount += 1 */
         if (!right_shifted && ws != s->oldws) {
             s->last = sd;
         } else {
@@ -217,45 +253,66 @@ static void i2s_decode(struct srd_decoder_inst* di)
             s->bitcount++;
         }
 
+        /* Continue if WS hasn't flipped — match Python:
+         *   if ws == self.oldws:
+         *       continue */
         if (ws == s->oldws)
             continue;
 
-        if (!s->wrote_wav_header) {
+        /* Write WAV header on first word — match Python:
+         *   if not self.wrote_wav_header:
+         *       self.put(0, 0, self.out_binary, [0, self.wav_header()])
+         *       self.wrote_wav_header = True */
+        if (!s->wrote_wav_header)
             i2s_wav_header(di, s);
-        }
 
         s->samplesreceived++;
 
+        /* If right-shifted, wait for opposite SCK edge — match Python:
+         *   if right_shifted:
+         *       self.wait({0: 'f' if active_rising else 'r'}) */
         if (right_shifted) {
-            srd_cond_builder* cb2 = c_cond_new();
             if (active_rising)
-                c_cond_fall(cb2, 0);
+                ret = c_wait(di, CW_F(CH_SCK), CW_END);
             else
-                c_cond_rise(cb2, 0);
-            ret = c_cond_wait(cb2, di, &samplenum, &matched);
-            c_cond_free(cb2);
+                ret = c_wait(di, CW_R(CH_SCK), CW_END);
             if (ret != SRD_OK)
                 return;
         }
 
+        uint64_t samplenum = di_samplenum(di);
+
+        /* Check word length — match Python:
+         *   if self.wordlength > self.bitcount: */
         if (wordlength > s->bitcount) {
             char warn_str[128];
             snprintf(warn_str, sizeof(warn_str),
                 "Received %d-bit word, expected %d-bit word",
                 s->bitcount, wordlength);
-            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_WARN, warn_str);
+            c_put(di, s->ss_block, samplenum, s->out_ann, ANN_WARN, warn_str);
         } else {
+            /* Align data — match Python:
+             *   if (left_algined and msb) or (not left_algined and not msb):
+             *       self.data >>= self.bitcount - self.wordlength
+             *   else:
+             *       self.data &= int("1"*self.wordlength, 2) */
             uint32_t val = s->data;
             if ((left_aligned && msb) || (!left_aligned && !msb))
                 val = val >> (s->bitcount - wordlength);
             else
                 val = val & ((1u << wordlength) - 1);
 
+            /* Determine channel — match Python:
+             *   self.oldws = self.oldws if left_high else not self.oldws
+             *   idx = 0 if self.oldws else 1
+             *   c1 = 'Left channel' if self.oldws else 'Right channel'
+             *   c2 = 'Left' if self.oldws else 'Right'
+             *   c3 = 'L' if self.oldws else 'R' */
             int oldws_for_channel = left_high ? s->oldws : !s->oldws;
             int idx = oldws_for_channel ? 0 : 1;
-            const char* c1 = oldws_for_channel ? "Left channel" : "Right channel";
-            const char* c2 = oldws_for_channel ? "Left" : "Right";
-            const char* c3 = oldws_for_channel ? "L" : "R";
+            const char *c1 = oldws_for_channel ? "Left channel" : "Right channel";
+            const char *c2 = oldws_for_channel ? "Left" : "Right";
+            const char *c3 = oldws_for_channel ? "L" : "R";
 
             char v_str[16];
             snprintf(v_str, sizeof(v_str), "%08x", val);
@@ -264,25 +321,34 @@ static void i2s_decode(struct srd_decoder_inst* di)
             snprintf(ann1, sizeof(ann1), "%s: %s", c1, v_str);
             snprintf(ann2, sizeof(ann2), "%s: %s", c2, v_str);
             snprintf(ann3, sizeof(ann3), "%s: %s", c3, v_str);
-            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, idx, ann1, ann2, ann3, c3);
 
-            unsigned char py_data[4];
-            py_data[0] = val & 0xFF;
-            py_data[1] = (val >> 8) & 0xFF;
-            py_data[2] = (val >> 16) & 0xFF;
-            py_data[3] = (val >> 24) & 0xFF;
-            char py_cmd[8];
-            snprintf(py_cmd, sizeof(py_cmd), "DATA_%c", c3[0]);
-            c_decoder_put_python(di, s->ss_block, samplenum, s->out_python, py_cmd, py_data, sizeof(py_data));
+            /* Annotation — match Python:
+             *   self.putb([idx, ['%s: %s' % (c1, v), '%s: %s' % (c2, v),
+             *                '%s: %s' % (c3, v), c3]]) */
+            c_put(di, s->ss_block, samplenum, s->out_ann, idx,
+                  ann1, ann2, ann3, c3);
 
+            /* Protocol output — match Python:
+             *   self.putpb(['DATA', [c3, self.data]]) */
+            c_proto(di, s->ss_block, samplenum, s->out_python,
+                    "DATA", C_I8(c3[0]), C_U32(val), C_END);
+
+            /* Binary output — match Python:
+             *   self.putbin([0, self.wav_sample(self.data)]) */
             unsigned char bin_data[4];
             bin_data[0] = val & 0xFF;
             bin_data[1] = (val >> 8) & 0xFF;
             bin_data[2] = (val >> 16) & 0xFF;
             bin_data[3] = (val >> 24) & 0xFF;
-            c_decoder_put_binary(di, s->ss_block, samplenum, s->out_binary, 0, sizeof(bin_data), bin_data);
+            c_put_bin(di, s->ss_block, samplenum, s->out_binary, 0,
+                      sizeof(bin_data), bin_data);
         }
 
+        /* Reset decoder state — match Python:
+         *   self.data = 0 if right_shifted else self.last
+         *   self.bitcount = 0 if right_shifted else 1
+         *   self.ss_block = self.samplenum
+         *   self.oldws = ws */
         s->data = right_shifted ? 0 : s->last;
         s->bitcount = right_shifted ? 0 : 1;
         s->ss_block = samplenum;
@@ -290,16 +356,8 @@ static void i2s_decode(struct srd_decoder_inst* di)
     }
 }
 
-static void i2s_destroy(struct srd_decoder_inst* di)
-{
-    void* priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
-        c_decoder_set_private(di, NULL);
-    }
-}
-
-struct srd_c_decoder i2s_c_decoder = {
+/* ---- Decoder definition (v4 API) ---- */
+static struct srd_c_decoder i2s_c_def = {
     .id = "i2s_c",
     .name = "I²S(C)",
     .longname = "Inter-IC Sound (C)",
@@ -323,13 +381,17 @@ struct srd_c_decoder i2s_c_decoder = {
     .num_binary = 1,
     .tags = i2s_tags,
     .num_tags = 2,
+    .state_size = sizeof(i2s_s),
     .reset = i2s_reset,
     .start = i2s_start,
     .decode = i2s_decode,
+    .end = NULL,
+    .metadata = i2s_metadata,
     .destroy = i2s_destroy,
+    .decode_upper = NULL,
 };
 
-SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
+SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
     i2s_options[0].def = g_variant_new_string("left-high");
     i2s_options[1].def = g_variant_new_string("rising-edge");
@@ -337,7 +399,7 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
     i2s_options[3].def = g_variant_new_string("left-aligned");
     i2s_options[4].def = g_variant_new_string("msb-first");
     i2s_options[5].def = g_variant_new_int64(16);
-    return &i2s_c_decoder;
+    return &i2s_c_def;
 }
 
 SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)

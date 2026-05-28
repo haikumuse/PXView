@@ -98,9 +98,9 @@ static void mipi_dsi_reset(struct srd_decoder_inst *di)
 static void mipi_dsi_start(struct srd_decoder_inst *di)
 {
     struct mipi_dsi_priv *s = (struct mipi_dsi_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mipi_dsi");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "mipi_dsi");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "mipi_dsi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mipi_dsi");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "mipi_dsi");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "mipi_dsi");
 }
 
 static void mipi_dsi_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -113,8 +113,6 @@ static void mipi_dsi_metadata(struct srd_decoder_inst *di, int key, uint64_t val
 static void mipi_dsi_decode(struct srd_decoder_inst *di)
 {
     struct mipi_dsi_priv *s = (struct mipi_dsi_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
     int ret;
 
     if (s->samplerate == 0)
@@ -123,14 +121,11 @@ static void mipi_dsi_decode(struct srd_decoder_inst *di)
     while (1) {
         switch (s->state) {
         case STATE_FIND_START: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, 0);  /* D0N falling edge */
-            c_cond_high(cb, 1);  /* D0P high */
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(0), CW_H(1), CW_END);
+            if (ret != SRD_OK)
+                return;
             /* handle_start */
-            s->ss = s->es = samplenum;
+            s->ss = s->es = di_samplenum(di);
             s->bitcount = 0;
             s->databyte = 0;
             s->state = STATE_FIND_MODE_S0;
@@ -138,102 +133,82 @@ static void mipi_dsi_decode(struct srd_decoder_inst *di)
         }
 
         case STATE_FIND_MODE_S0: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_low(cb, 0);   /* D0N low */
-            c_cond_low(cb, 1);   /* D0P low */
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_L(0), CW_L(1), CW_END);
+            if (ret != SRD_OK)
+                return;
             s->state = STATE_FIND_MODE_S1;
             break;
         }
 
         case STATE_FIND_MODE_S1: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_high(cb, 0);  /* D0N high AND D0P low */
-            c_cond_low(cb, 1);
-            c_cond_or(cb);
-            c_cond_low(cb, 0);   /* D0N low AND D0P high */
-            c_cond_high(cb, 1);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->saved_d0n = c_decoder_get_pin(di, 0, samplenum);
-            s->saved_d0p = c_decoder_get_pin(di, 1, samplenum);
+            ret = c_wait(di, CW_H(0), CW_L(1), CW_OR, CW_L(0), CW_H(1), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->saved_d0n = c_pin(di, 0);
+            s->saved_d0p = c_pin(di, 1);
             s->state = STATE_FIND_MODE_S2;
             break;
         }
 
         case STATE_FIND_MODE_S2: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_low(cb, 0);   /* D0N low */
-            c_cond_low(cb, 1);   /* D0P low */
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_L(0), CW_L(1), CW_END);
+            if (ret != SRD_OK)
+                return;
             /* handle_esc_bta */
             if (s->saved_d0n) {
-                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_ESCAPE_MODE, "Escape mode", "ESC");
-                c_decoder_put_python(di, s->ss, samplenum, s->out_python, "ESC", NULL, 0);
+                c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_ESCAPE_MODE, "Escape mode entry", "ESC");
+                c_proto(di, s->ss, di_samplenum(di), s->out_python, "ESC", C_END);
             } else {
-                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_BTA, "BTA", "BTA");
-                c_decoder_put_python(di, s->ss, samplenum, s->out_python, "BTA", NULL, 0);
+                c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_BTA, "Bi-directional Data Lane Turnaround", "BTA");
+                c_proto(di, s->ss, di_samplenum(di), s->out_python, "BTA", C_END);
             }
-            s->ss = samplenum;
+            s->ss = di_samplenum(di);
             s->state = STATE_FIND_DATA_EDGE;
             break;
         }
 
         case STATE_FIND_DATA_EDGE: {
-            /* Wait for [{0:'h',1:'l'}, {0:'l',1:'h'}] */
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_high(cb, 0); c_cond_low(cb, 1);
-            c_cond_or(cb);
-            c_cond_low(cb, 0); c_cond_high(cb, 1);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->data_d0n = c_decoder_get_pin(di, 0, samplenum);
-            s->data_d0p = c_decoder_get_pin(di, 1, samplenum);
+            /* Wait for [{0:'h',1:'l'}, {0:'l',1:'h'}] — AND conditions within each group */
+            ret = c_wait(di, CW_H(0), CW_L(1), CW_OR, CW_L(0), CW_H(1), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->data_d0n = c_pin(di, 0);
+            s->data_d0p = c_pin(di, 1);
             s->state = STATE_FIND_DATA_VALID;
             break;
         }
 
         case STATE_FIND_DATA_VALID: {
-            /* Wait for [{0:'l',1:'l'}, {0:'h',1:'h'}] */
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_low(cb, 0); c_cond_low(cb, 1);
-            c_cond_or(cb);
-            c_cond_high(cb, 0); c_cond_high(cb, 1);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            /* Wait for [{0:'l',1:'l'}, {0:'h',1:'h'}] — AND conditions within each group */
+            ret = c_wait(di, CW_L(0), CW_L(1), CW_OR, CW_H(0), CW_H(1), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & (1ULL << 0)) {
-                /* handle_data: matched D0N low, D0P low → data bit */
+            if (di_matched(di) & (1ULL << 0)) {
+                /* handle_data: di_matched(di) D0N low, D0P low → data bit */
                 s->databyte >>= 1;
                 if (s->data_d0p)
                     s->databyte |= 0x80;
                 if (s->bitcount == 0)
-                    s->ss_byte = samplenum;
+                    s->ss_byte = di_samplenum(di);
                 if (s->bitcount < 7) {
                     s->bitcount++;
                     s->state = STATE_FIND_DATA_EDGE;
                 } else {
                     char h[8];
                     snprintf(h, sizeof(h), "0x%02X", s->databyte);
-                    C_ANN_PUT(di, s->ss_byte, samplenum, s->out_ann, ANN_DI, h);
-                    c_decoder_put_python(di, s->ss_byte, samplenum, s->out_python, "DATA", NULL, 0);
-                    c_decoder_put_binary(di, s->ss_byte, samplenum, s->out_binary, 0, 1, &s->databyte);
+                    c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_DI, h);
+                    c_proto(di, s->ss, di_samplenum(di), s->out_python, "DATA", C_END);
+                    c_put_bin(di, s->ss, di_samplenum(di), s->out_binary, 0, 1, &s->databyte);
                     s->bitcount = 0;
                     s->databyte = 0;
-                    s->ss = samplenum;
+                    s->ss = di_samplenum(di);
                     s->state = STATE_FIND_DATA_EDGE;
                 }
             } else {
-                /* handle_stop: matched D0N high, D0P high → stop */
-                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_STOP, "Stop", "S");
-                c_decoder_put_python(di, s->ss, samplenum, s->out_python, "STOP", NULL, 0);
+                /* handle_stop: di_matched(di) D0N high, D0P high → stop */
+                c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_STOP, "Stop", "S");
+                c_proto(di, s->ss, di_samplenum(di), s->out_python, "STOP", C_END);
                 s->state = STATE_FIND_START;
             }
             break;
@@ -282,6 +257,7 @@ static struct srd_c_decoder mipi_dsi_c_decoder = {
     .start = mipi_dsi_start,
     .decode = mipi_dsi_decode,
     .destroy = mipi_dsi_destroy,
+    .state_size = 0,
     .metadata = mipi_dsi_metadata,
 };
 

@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -196,8 +196,8 @@ static void xfp_annotate(struct srd_decoder_inst *di, xfp_state *s,
         return;
     char buf[256];
     snprintf(buf, sizeof(buf), "%s: %s", key, value);
-    C_ANN_PUT(di, s->sn[start_cnt][0], s->sn[end_cnt][1], s->out_ann, ANN_FIELD_NAME_VAL, buf);
-    C_ANN_PUT(di, s->sn[start_cnt][0], s->sn[end_cnt][1], s->out_ann, ANN_FIELD_VAL, value);
+    c_put(di, s->sn[start_cnt][0], s->sn[end_cnt][1], s->out_ann, ANN_FIELD_NAME_VAL, buf);
+    c_put(di, s->sn[start_cnt][0], s->sn[end_cnt][1], s->out_ann, ANN_FIELD_VAL, value);
 }
 
 /* Convert 16-bit two's complement to temperature string */
@@ -845,9 +845,7 @@ static void xfp_dispatch_high_table_1(struct srd_decoder_inst *di, xfp_state *s)
     }
 }
 
-static void xfp_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void xfp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     xfp_state *s = (xfp_state *)c_decoder_get_private(di);
     if (!s)
@@ -869,7 +867,7 @@ static void xfp_recv_proto(struct srd_decoder_inst *di,
         }
     } else if (s->state == XFP_READ_REGS) {
         if (strcmp(cmd, "DATA READ") == 0) {
-            uint8_t databyte = (data_len > 0) ? data[0] : 0;
+            uint8_t databyte = (n_fields > 0) ? fields[0].u8 : 0;
             s->cnt++;
             if (s->cnt < 256) {
                 s->sn[s->cnt][0] = start_sample;
@@ -907,7 +905,7 @@ static void xfp_reset(struct srd_decoder_inst *di)
 static void xfp_start(struct srd_decoder_inst *di)
 {
     xfp_state *s = (xfp_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "xfp");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "xfp");
 }
 
 static void xfp_decode(struct srd_decoder_inst *di)
@@ -952,7 +950,8 @@ struct srd_c_decoder xfp_c_decoder = {
     .start = xfp_start,
     .decode = xfp_decode,
     .destroy = xfp_destroy,
-    .recv_proto = xfp_recv_proto,
+    .decode_upper = xfp_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

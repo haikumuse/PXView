@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2018 Max Weller
@@ -100,7 +100,7 @@ static void sda2506_reset(struct srd_decoder_inst *di)
 static void sda2506_start(struct srd_decoder_inst *di)
 {
     sda2506_state *s = (sda2506_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sda2506");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sda2506");
 }
 
 static void sda2506_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -118,7 +118,7 @@ static void sda2506_putdata(struct srd_decoder_inst *di, sda2506_state *s,
         value = (value << 1) | s->databits_val[i];
     char buf[8];
     snprintf(buf, sizeof(buf), "%02X", value);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA, buf);
+    c_put(di, ss, es, s->out_ann, ANN_DATA, buf);
 }
 
 static int sda2506_decode_bits(sda2506_state *s, int offset, int width,
@@ -139,7 +139,7 @@ static void sda2506_decode_field(struct srd_decoder_inst *di, sda2506_state *s,
     int val = sda2506_decode_bits(s, offset, width, &ss, &es);
     char buf[64];
     snprintf(buf, sizeof(buf), "%s: %02X", name, val);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA, buf);
+    c_put(di, ss, es, s->out_ann, ANN_DATA, buf);
 }
 
 static void sda2506_insert_cmdbit(sda2506_state *s, int val,
@@ -162,78 +162,55 @@ static void sda2506_decode(struct srd_decoder_inst *di)
 {
     sda2506_state *s = (sda2506_state *)c_decoder_get_private(di);
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     while (1) {
         /* Wait for CLK edge or CE edge */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, CH_CLK);
-        c_cond_or(cb);
-        c_cond_edge(cb, CH_CE);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(CH_CLK), CW_OR, CW_E(CH_CE), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int clk = c_decoder_get_pin(di, CH_CLK, samplenum);
-        int d   = c_decoder_get_pin(di, CH_D, samplenum);
-        int ce  = c_decoder_get_pin(di, CH_CE, samplenum);
+        int clk = c_pin(di, CH_CLK);
+        int d   = c_pin(di, CH_D);
+        int ce  = c_pin(di, CH_CE);
 
-        int clk_matched = (matched & (1ULL << 0)) != 0;
-        int ce_matched  = (matched & (1ULL << 1)) != 0;
+        int clk_matched = (di_matched(di) & (1ULL << 0)) != 0;
+        int ce_matched  = (di_matched(di) & (1ULL << 1)) != 0;
 
         if (clk_matched && ce == 1 && clk == 1) {
             /* Rising CLK edge and command mode: sample DATA */
-            uint64_t bitstart = samplenum;
+            uint64_t bitstart = di_samplenum(di);
 
             /* Wait for CLK falling edge */
-            cb = c_cond_new();
-            c_cond_fall(cb, CH_CLK);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_F(CH_CLK), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            sda2506_insert_cmdbit(s, d, bitstart, samplenum);
+            sda2506_insert_cmdbit(s, d, bitstart, di_samplenum(di));
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", d);
-            C_ANN_PUT(di, bitstart, samplenum, s->out_ann, ANN_CMDBIT, bit_str);
+            c_put(di, bitstart, di_samplenum(di), s->out_ann, ANN_CMDBIT, bit_str);
 
         } else if (clk_matched && ce == 0 && clk == 0) {
             /* Falling CLK edge and data mode */
-            uint64_t bitstart = samplenum;
+            uint64_t bitstart = di_samplenum(di);
 
             /* Wait ~25us for data ready, or CLK rising edge, or CE edge */
             uint64_t skip_count = (uint64_t)(2.5 * (1e6 / (double)s->samplerate));
-            cb = c_cond_new();
-            c_cond_skip(cb, skip_count);
-            c_cond_or(cb);
-            c_cond_rise(cb, CH_CLK);
-            c_cond_or(cb);
-            c_cond_edge(cb, CH_CE);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_SKIP(skip_count), CW_OR, CW_R(CH_CLK), CW_OR, CW_E(CH_CE), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            /* If CE edge matched (and not skip/clk), wait for CLK rise or CE edge */
-            if ((matched & (1ULL << 2)) && !(matched & 0b011)) {
-                cb = c_cond_new();
-                c_cond_rise(cb, CH_CLK);
-                c_cond_or(cb);
-                c_cond_edge(cb, CH_CE);
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
+            /* If CE edge di_matched(di) (and not skip/clk), wait for CLK rise or CE edge */
+            if ((di_matched(di) & (1ULL << 2)) && !(di_matched(di) & 0b011)) {
+                ret = c_wait(di, CW_R(CH_CLK), CW_OR, CW_E(CH_CE), CW_END);
                 if (ret != SRD_OK)
                     return;
             }
 
-            d = c_decoder_get_pin(di, CH_D, samplenum);
+            d = c_pin(di, CH_D);
 
             if (s->num_databits == 0)
                 s->datastart = bitstart;
@@ -246,10 +223,10 @@ static void sda2506_decode(struct srd_decoder_inst *di)
 
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", d);
-            C_ANN_PUT(di, bitstart, samplenum, s->out_ann, ANN_DATABIT, bit_str);
+            c_put(di, bitstart, di_samplenum(di), s->out_ann, ANN_DATABIT, bit_str);
 
             if (s->num_databits == 8) {
-                sda2506_putdata(di, s, s->datastart, samplenum);
+                sda2506_putdata(di, s, s->datastart, di_samplenum(di));
                 s->num_databits = 0;
             }
 
@@ -269,7 +246,7 @@ static void sda2506_decode(struct srd_decoder_inst *di)
                     sda2506_decode_field(di, s, "read", 1, 7);
                     uint64_t ss, es;
                     sda2506_decode_bits(s, 7, 1, &ss, NULL);
-                    C_ANN_PUT(di, ss, samplenum, s->out_ann, ANN_CMD, "read");
+                    c_put(di, ss, di_samplenum(di), s->out_ann, ANN_CMD, "read");
                 }
             } else if (d == 0) {
                 /* Write command */
@@ -280,18 +257,15 @@ static void sda2506_decode(struct srd_decoder_inst *di)
                     int data = sda2506_decode_bits(s, 8, 8, &ss2, &es2);
                     (void)ss2; (void)es2;
 
-                    uint64_t cmdstart = samplenum;
+                    uint64_t cmdstart = di_samplenum(di);
                     /* Wait for CE rising edge */
-                    cb = c_cond_new();
-                    c_cond_rise(cb, CH_CE);
-                    ret = c_cond_wait(cb, di, &samplenum, &matched);
-                    c_cond_free(cb);
+                    ret = c_wait(di, CW_R(CH_CE), CW_END);
                     if (ret != SRD_OK)
                         return;
 
                     char buf[64];
                     snprintf(buf, sizeof(buf), "Write to %02X: %02X", addr, data);
-                    C_ANN_PUT(di, cmdstart, samplenum, s->out_ann, ANN_CMD, buf);
+                    c_put(di, cmdstart, di_samplenum(di), s->out_ann, ANN_CMD, buf);
                 }
             } else {
                 /* Erase command */
@@ -300,18 +274,15 @@ static void sda2506_decode(struct srd_decoder_inst *di)
                     int val = sda2506_decode_bits(s, 1, 7, &ss, &es);
                     (void)ss; (void)es;
 
-                    uint64_t cmdstart = samplenum;
+                    uint64_t cmdstart = di_samplenum(di);
                     /* Wait for CE rising edge */
-                    cb = c_cond_new();
-                    c_cond_rise(cb, CH_CE);
-                    ret = c_cond_wait(cb, di, &samplenum, &matched);
-                    c_cond_free(cb);
+                    ret = c_wait(di, CW_R(CH_CE), CW_END);
                     if (ret != SRD_OK)
                         return;
 
                     char buf[64];
                     snprintf(buf, sizeof(buf), "Erase: %02X", val);
-                    C_ANN_PUT(di, cmdstart, samplenum, s->out_ann, ANN_CMD, buf);
+                    c_put(di, cmdstart, di_samplenum(di), s->out_ann, ANN_CMD, buf);
                 }
             }
             s->num_databits = 0;
@@ -356,6 +327,7 @@ struct srd_c_decoder sda2506_c_decoder = {
     .start = sda2506_start,
     .decode = sda2506_decode,
     .destroy = sda2506_destroy,
+    .state_size = 0,
     .metadata = sda2506_metadata,
 };
 

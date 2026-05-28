@@ -41,6 +41,13 @@ typedef struct {
     int bFirst;
     int prev_increment;  /* Previous increment value for Value class change-detection */
     int increment_initialized; /* Whether increment has been set before */
+    int64_t prev_count;  /* Previous count value for Value class change-detection */
+    int count_initialized; /* Whether count has been set before */
+    int64_t prev_turns;  /* Previous turns value for Value class change-detection */
+    int turns_initialized; /* Whether turns has been set before */
+    uint64_t count_timestamp;     /* Sample at which current count value was first set */
+    uint64_t increment_timestamp; /* Sample at which current increment value was first set */
+    uint64_t turns_timestamp;     /* Sample at which current turns value was first set */
     /* SI prefix */
     int si_prefix_exp; /* 0='', 3='k', 6='M', 9='G', 12='T' */
     /* Sliding window for averaging */
@@ -64,7 +71,7 @@ static int bitpack_pins(struct srd_decoder_inst* di, int num_channels, uint64_t 
 {
     int val = 0;
     for (int i = 0; i < num_channels; i++) {
-        if (c_decoder_get_pin(di, i, samplenum))
+        if (c_pin(di, i))
             val |= (1 << i);
     }
     return val;
@@ -90,17 +97,18 @@ static void format_si_value(char* buf, int bufsize, double value, int forced_exp
     int sgn = (value > 0) - (value < 0);
     value = fabs(value);
     double p = value > 0 ? log10(value) : 0;
+    /* Match Python: round value first, then compute SI exponent */
+    value = sgn * floor(value * pow(10.0, 3 - p)) * pow(10.0, -(3 - p));
     int e = ((int)floor(p / 3.0)) * 3;
     if (forced_exp >= 0 && e < forced_exp)
         e = forced_exp;
     if (e < -9) e = -9;
-    if (e > 12) e = 12;
+    if (e > 9) e = 9;
     value *= pow(10.0, -e);
     p -= e;
     int decimals = 2 - (int)p;
     if (decimals < 0) decimals = 0;
     if (decimals > 3) decimals = 3;
-    value = sgn * floor(value * pow(10.0, 3 - p)) * pow(10.0, -(3 - p));
     snprintf(buf, bufsize, "%.*f %s", decimals, value, si_prefix_for_exp(e));
 }
 
@@ -187,19 +195,19 @@ static int get_si_prefix_exp(const char* prefix)
 static void gray_code_start(struct srd_decoder_inst* di)
 {
     gray_code_state* s = (gray_code_state*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "graycode");
-    s->samplerate = c_decoder_get_samplerate(di);
-    s->edges_per_rotation = (int)c_decoder_get_option_int(di, "edges", 0);
-    s->avg_period = (int)c_decoder_get_option_int(di, "avg_period", 10);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "graycode");
+    s->samplerate = c_samplerate(di);
+    s->edges_per_rotation = (int)c_opt_int(di, "edges", 0);
+    s->avg_period = (int)c_opt_int(di, "avg_period", 10);
     if (s->avg_period > MAX_AVG_WINDOW)
         s->avg_period = MAX_AVG_WINDOW;
 
-    int bits_opt = (int)c_decoder_get_option_int(di, "bits", 0);
+    int bits_opt = (int)c_opt_int(di, "bits", 0);
 
     /* Determine number of active channels */
     int num_ch = 0;
     for (int i = 0; i < MAX_CHANNELS; i++) {
-        if (c_decoder_has_channel(di, i))
+        if (c_has_ch(di, i))
             num_ch++;
         else
             break;
@@ -217,51 +225,62 @@ static void gray_code_start(struct srd_decoder_inst* di)
     s->encoder_steps = 1 << s->num_channels;
 
     /* SI prefix */
-    const char* si_str = c_decoder_get_option_string(di, "si_prefix", "");
+    const char* si_str = c_opt_str(di, "si_prefix", "");
     s->si_prefix_exp = get_si_prefix_exp(si_str);
 }
 
 static void gray_code_decode(struct srd_decoder_inst* di)
 {
     gray_code_state* s = (gray_code_state*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     }
 
     /* Read initial sample at current position, like Python's self.wait() */
     {
-        uint64_t cur_sample;
-        if (c_cond_wait_current(di, &cur_sample) == SRD_OK) {
+        if (c_wait(di, CW_END) == SRD_OK) {
+            uint64_t cur_sample = di_samplenum(di);
             int cur_gray = bitpack_pins(di, s->num_channels, cur_sample);
             s->prev_gray = cur_gray;
             s->prev_bin = (int)gray_to_binary((uint32_t)cur_gray, s->num_channels);
             s->last_edge_sample = cur_sample;
             s->bFirst = 0;
+            /* Initialize Value class timestamps, matching Python's Value.set(timestamp, 0) */
+            s->count_timestamp = cur_sample;
+            s->count_initialized = 1;  /* count has been "set" to 0 */
+            s->increment_timestamp = cur_sample;
+            /* increment_initialized remains 0 (increment not set yet, like Python's None) */
+            if (s->edges_per_rotation > 0) {
+                s->turns_timestamp = cur_sample;
+                s->turns_initialized = 1;  /* turns has been "set" to 0 */
+            }
         }
     }
 
     while (1) {
         /* Wait for edge on any of the active channels */
-        srd_cond_builder* cb = c_cond_new();
-        for (int i = 0; i < s->num_channels; i++) {
-            if (i > 0) c_cond_or(cb);
-            c_cond_edge(cb, i);
+        int ret;
+        switch (s->num_channels) {
+        case 1:  ret = c_wait(di, CW_E(0), CW_END); break;
+        case 2:  ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_END); break;
+        case 3:  ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_END); break;
+        case 4:  ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_OR, CW_E(3), CW_END); break;
+        case 5:  ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_OR, CW_E(3), CW_OR, CW_E(4), CW_END); break;
+        case 6:  ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_OR, CW_E(3), CW_OR, CW_E(4), CW_OR, CW_E(5), CW_END); break;
+        case 7:  ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_OR, CW_E(3), CW_OR, CW_E(4), CW_OR, CW_E(5), CW_OR, CW_E(6), CW_END); break;
+        case 8:  ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_OR, CW_E(3), CW_OR, CW_E(4), CW_OR, CW_E(5), CW_OR, CW_E(6), CW_OR, CW_E(7), CW_END); break;
+        default: ret = c_wait(di, CW_END); break;
         }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
 
-        int cur_gray = bitpack_pins(di, s->num_channels, samplenum);
+        int cur_gray = bitpack_pins(di, s->num_channels, di_samplenum(di));
 
         if (s->bFirst) {
             s->bFirst = 0;
             s->prev_gray = cur_gray;
             s->prev_bin = (int)gray_to_binary((uint32_t)cur_gray, s->num_channels);
-            s->last_edge_sample = samplenum;
+            s->last_edge_sample = di_samplenum(di);
             continue;
         }
 
@@ -285,10 +304,13 @@ static void gray_code_decode(struct srd_decoder_inst* di)
         if (abs(phasedelta) == s->encoder_steps / 2)
             phasedelta = 0;
 
+        /* Compute new count BEFORE annotations (matching Python's Value.set order) */
+        int64_t new_count = s->count + phasedelta;
+
         /* Phase annotation - show old value (valid during this period) */
         char t1[128];
         snprintf(t1, sizeof(t1), "%d", old_bin);
-        C_ANN_PUT(di, s->last_edge_sample, samplenum, s->out_ann, ANN_PHASE, t1);
+        c_put(di, s->last_edge_sample, di_samplenum(di), s->out_ann, ANN_PHASE, t1);
 
         /* Increment annotation - match Python's Value class behavior:
          * Value.set() only fires onchange when newval != self.value AND self.value is not None.
@@ -302,27 +324,41 @@ static void gray_code_decode(struct srd_decoder_inst* di)
                 snprintf(t1, sizeof(t1), "±π");
             else
                 snprintf(t1, sizeof(t1), "%+d", s->prev_increment);
-            C_ANN_PUT(di, s->last_edge_sample, samplenum, s->out_ann, ANN_INCREMENT, t1);
+            c_put(di, s->increment_timestamp, di_samplenum(di), s->out_ann, ANN_INCREMENT, t1);
+        }
+        if (!s->increment_initialized || phasedelta_raw != s->prev_increment) {
+            s->increment_timestamp = di_samplenum(di);
         }
         s->prev_increment = phasedelta_raw;
         s->increment_initialized = 1;
 
-        /* Count - show old value */
-        snprintf(t1, sizeof(t1), "%lld", (long long)old_count);
-        C_ANN_PUT(di, s->last_edge_sample, samplenum, s->out_ann, ANN_COUNT, t1);
+        /* Count - match Python's Value class: only output when value changes */
+        if (s->count_initialized && new_count != s->count) {
+            snprintf(t1, sizeof(t1), "%lld", (long long)s->count);
+            c_put(di, s->count_timestamp, di_samplenum(di), s->out_ann, ANN_COUNT, t1);
+        }
+        if (new_count != s->count) {
+            s->count_timestamp = di_samplenum(di);
+        }
+        s->count = new_count;
 
-        /* Turns - show old value */
+        /* Turns - match Python's Value class: only output when value changes */
         if (s->edges_per_rotation > 0) {
-            snprintf(t1, sizeof(t1), "%+lld", (long long)old_turns);
-            C_ANN_PUT(di, s->last_edge_sample, samplenum, s->out_ann, ANN_TURNS, t1);
+            int64_t new_turns = new_count / s->edges_per_rotation;
+            if (s->turns_initialized && new_turns != s->prev_turns) {
+                snprintf(t1, sizeof(t1), "%+lld", (long long)s->prev_turns);
+                c_put(di, s->turns_timestamp, di_samplenum(di), s->out_ann, ANN_TURNS, t1);
+            }
+            if (!s->turns_initialized || new_turns != s->prev_turns) {
+                s->turns_timestamp = di_samplenum(di);
+            }
+            s->prev_turns = new_turns;
+            s->turns_initialized = 1;
         }
 
-        /* Update count after annotations */
-        s->count += phasedelta;
-
         /* Interval and rate */
-        if (s->samplerate > 0 && samplenum > s->last_edge_sample) {
-            double period = (double)(samplenum - s->last_edge_sample) / s->samplerate;
+        if (s->samplerate > 0 && di_samplenum(di) > s->last_edge_sample) {
+            double period = (double)(di_samplenum(di) - s->last_edge_sample) / s->samplerate;
             double freq = abs(phasedelta_raw) / period;
 
             /* Interval annotation: "Xs, XHz" */
@@ -330,7 +366,7 @@ static void gray_code_decode(struct srd_decoder_inst* di)
             format_si_value(period_str, sizeof(period_str), period, s->si_prefix_exp);
             format_si_value(freq_str, sizeof(freq_str), freq, s->si_prefix_exp);
             snprintf(t1, sizeof(t1), "%ss, %sHz", period_str, freq_str);
-            C_ANN_PUT(di, s->last_edge_sample, samplenum, s->out_ann, ANN_INTERVAL, t1);
+            c_put(di, s->last_edge_sample, di_samplenum(di), s->out_ann, ANN_INTERVAL, t1);
 
             /* Sliding window averaging */
             if (s->avg_period > 0) {
@@ -363,7 +399,7 @@ static void gray_code_decode(struct srd_decoder_inst* di)
                 format_si_value(avg_p_str, sizeof(avg_p_str), avg_period, s->si_prefix_exp);
                 format_si_value(avg_f_str, sizeof(avg_f_str), 1.0 / avg_period, s->si_prefix_exp);
                 snprintf(t1, sizeof(t1), "%ss, %sHz", avg_p_str, avg_f_str);
-                C_ANN_PUT(di, s->last_edge_sample, samplenum, s->out_ann, ANN_AVERAGE, t1);
+                c_put(di, s->last_edge_sample, di_samplenum(di), s->out_ann, ANN_AVERAGE, t1);
 
                 /* RPM */
                 if (s->edges_per_rotation > 0) {
@@ -371,14 +407,14 @@ static void gray_code_decode(struct srd_decoder_inst* di)
                     char rpm_str[64];
                     format_si_value(rpm_str, sizeof(rpm_str), rpm_freq, 0);
                     snprintf(t1, sizeof(t1), "%srpm", rpm_str);
-                    C_ANN_PUT(di, s->last_edge_sample, samplenum, s->out_ann, ANN_RPM, t1);
+                    c_put(di, s->last_edge_sample, di_samplenum(di), s->out_ann, ANN_RPM, t1);
                 }
             }
         }
 
         s->prev_gray = cur_gray;
         s->prev_bin = cur_bin;
-        s->last_edge_sample = samplenum;
+        s->last_edge_sample = di_samplenum(di);
     }
 }
 
@@ -420,6 +456,7 @@ struct srd_c_decoder gray_code_c_decoder = {
     .start = gray_code_start,
     .decode = gray_code_decode,
     .destroy = gray_code_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

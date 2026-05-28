@@ -1,11 +1,11 @@
 {
 	"decoder": "cjtag_oscan0_c",
 	"samplerate": 1000000,
-	"num_annotations": 32,
+	"num_annotations": 84,
 	"annotations": [
 		{
-			"start_sample": 10,
-			"end_sample": 20,
+			"start_sample": 2050,
+			"end_sample": 2060,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -13,8 +13,8 @@
 			]
 		}, 
 		{
-			"start_sample": 10,
-			"end_sample": 20,
+			"start_sample": 2050,
+			"end_sample": 2060,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [
@@ -22,8 +22,8 @@
 			]
 		}, 
 		{
-			"start_sample": 20,
-			"end_sample": 30,
+			"start_sample": 2060,
+			"end_sample": 2070,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -31,8 +31,8 @@
 			]
 		}, 
 		{
-			"start_sample": 20,
-			"end_sample": 30,
+			"start_sample": 2060,
+			"end_sample": 2070,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [
@@ -40,8 +40,8 @@
 			]
 		}, 
 		{
-			"start_sample": 30,
-			"end_sample": 40,
+			"start_sample": 2070,
+			"end_sample": 2080,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -49,8 +49,8 @@
 			]
 		}, 
 		{
-			"start_sample": 30,
-			"end_sample": 40,
+			"start_sample": 2070,
+			"end_sample": 2080,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [
@@ -58,8 +58,8 @@
 			]
 		}, 
 		{
-			"start_sample": 40,
-			"end_sample": 50,
+			"start_sample": 2080,
+			"end_sample": 2090,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -67,8 +67,8 @@
 			]
 		}, 
 		{
-			"start_sample": 40,
-			"end_sample": 50,
+			"start_sample": 2080,
+			"end_sample": 2090,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [
@@ -76,8 +76,8 @@
 			]
 		}, 
 		{
-			"start_sample": 50,
-			"end_sample": 60,
+			"start_sample": 2090,
+			"end_sample": 2100,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -85,8 +85,8 @@
 			]
 		}, 
 		{
-			"start_sample": 50,
-			"end_sample": 60,
+			"start_sample": 2090,
+			"end_sample": 2100,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [
@@ -94,8 +94,8 @@
 			]
 		}, 
 		{
-			"start_sample": 60,
-			"end_sample": 70,
+			"start_sample": 2100,
+			"end_sample": 2110,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -103,8 +103,8 @@
 			]
 		}, 
 		{
-			"start_sample": 60,
-			"end_sample": 70,
+			"start_sample": 2100,
+			"end_sample": 2110,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [
@@ -112,152 +112,8 @@
 			]
 		}, 
 		{
-			"start_sample": 70,
-			"end_sample": 80,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 70,
-			"end_sample": 80,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 80,
-			"end_sample": 90,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 80,
-			"end_sample": 90,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 90,
-			"end_sample": 100,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 90,
-			"end_sample": 100,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 100,
-			"end_sample": 110,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 100,
-			"end_sample": 110,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 110,
-			"end_sample": 120,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 110,
-			"end_sample": 120,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 120,
-			"end_sample": 130,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 120,
-			"end_sample": 130,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 130,
-			"end_sample": 140,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 130,
-			"end_sample": 140,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 140,
-			"end_sample": 150,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"RUN-TEST/IDLE"
-			]
-		}, 
-		{
-			"start_sample": 140,
-			"end_sample": 150,
-			"ann_class": 21,
-			"ann_type": 28,
-			"texts": [
-				"4-WIRE"
-			]
-		}, 
-		{
-			"start_sample": 150,
-			"end_sample": 160,
+			"start_sample": 2110,
+			"end_sample": 2120,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -265,8 +121,8 @@
 			]
 		}, 
 		{
-			"start_sample": 150,
-			"end_sample": 160,
+			"start_sample": 2110,
+			"end_sample": 2120,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [
@@ -274,8 +130,404 @@
 			]
 		}, 
 		{
-			"start_sample": 160,
-			"end_sample": 170,
+			"start_sample": 2120,
+			"end_sample": 2130,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"CAPTURE-DR"
+			]
+		}, 
+		{
+			"start_sample": 2120,
+			"end_sample": 2130,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2130,
+			"end_sample": 2140,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2130,
+			"end_sample": 2140,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2140,
+			"end_sample": 2150,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2140,
+			"end_sample": 2150,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2140,
+			"end_sample": 2150,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2140,
+			"end_sample": 2150,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2150,
+			"end_sample": 2160,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2150,
+			"end_sample": 2160,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2150,
+			"end_sample": 2160,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2150,
+			"end_sample": 2160,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2160,
+			"end_sample": 2170,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2160,
+			"end_sample": 2170,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2160,
+			"end_sample": 2170,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2160,
+			"end_sample": 2170,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2170,
+			"end_sample": 2180,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2170,
+			"end_sample": 2180,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2170,
+			"end_sample": 2180,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2170,
+			"end_sample": 2180,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2180,
+			"end_sample": 2190,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2180,
+			"end_sample": 2190,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2180,
+			"end_sample": 2190,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2180,
+			"end_sample": 2190,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2190,
+			"end_sample": 2200,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2190,
+			"end_sample": 2200,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2190,
+			"end_sample": 2200,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2190,
+			"end_sample": 2200,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2200,
+			"end_sample": 2210,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"SHIFT-DR"
+			]
+		}, 
+		{
+			"start_sample": 2200,
+			"end_sample": 2210,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2200,
+			"end_sample": 2210,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2200,
+			"end_sample": 2210,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2210,
+			"end_sample": 2220,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"EXIT1-DR"
+			]
+		}, 
+		{
+			"start_sample": 2210,
+			"end_sample": 2220,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2140,
+			"end_sample": 2220,
+			"ann_class": 18,
+			"ann_type": 25,
+			"texts": [
+				"DR TDI:  (0xA5), 8 bits"
+			]
+		}, 
+		{
+			"start_sample": 2210,
+			"end_sample": 2220,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2140,
+			"end_sample": 2220,
+			"ann_class": 19,
+			"ann_type": 26,
+			"texts": [
+				"DR TDO:  (0xA5), 8 bits"
+			]
+		}, 
+		{
+			"start_sample": 2210,
+			"end_sample": 2220,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2220,
+			"end_sample": 2230,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"UPDATE-DR"
+			]
+		}, 
+		{
+			"start_sample": 2220,
+			"end_sample": 2230,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2230,
+			"end_sample": 2240,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"RUN-TEST/IDLE"
+			]
+		}, 
+		{
+			"start_sample": 2230,
+			"end_sample": 2240,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2240,
+			"end_sample": 2250,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"SELECT-DR-SCAN"
+			]
+		}, 
+		{
+			"start_sample": 2240,
+			"end_sample": 2250,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2250,
+			"end_sample": 2260,
 			"ann_class": 9,
 			"ann_type": 16,
 			"texts": [
@@ -283,8 +535,224 @@
 			]
 		}, 
 		{
-			"start_sample": 160,
-			"end_sample": 170,
+			"start_sample": 2250,
+			"end_sample": 2260,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2260,
+			"end_sample": 2270,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"CAPTURE-IR"
+			]
+		}, 
+		{
+			"start_sample": 2260,
+			"end_sample": 2270,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2270,
+			"end_sample": 2280,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"SHIFT-IR"
+			]
+		}, 
+		{
+			"start_sample": 2270,
+			"end_sample": 2280,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2280,
+			"end_sample": 2290,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"SHIFT-IR"
+			]
+		}, 
+		{
+			"start_sample": 2280,
+			"end_sample": 2290,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2280,
+			"end_sample": 2290,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2280,
+			"end_sample": 2290,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2290,
+			"end_sample": 2300,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"SHIFT-IR"
+			]
+		}, 
+		{
+			"start_sample": 2290,
+			"end_sample": 2300,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2290,
+			"end_sample": 2300,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2290,
+			"end_sample": 2300,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2300,
+			"end_sample": 2310,
+			"ann_class": 13,
+			"ann_type": 20,
+			"texts": [
+				"SHIFT-IR"
+			]
+		}, 
+		{
+			"start_sample": 2300,
+			"end_sample": 2310,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2300,
+			"end_sample": 2310,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2300,
+			"end_sample": 2310,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2310,
+			"end_sample": 2320,
+			"ann_class": 14,
+			"ann_type": 21,
+			"texts": [
+				"EXIT1-IR"
+			]
+		}, 
+		{
+			"start_sample": 2310,
+			"end_sample": 2320,
+			"ann_class": 21,
+			"ann_type": 28,
+			"texts": [
+				"4-WIRE"
+			]
+		}, 
+		{
+			"start_sample": 2280,
+			"end_sample": 2320,
+			"ann_class": 18,
+			"ann_type": 25,
+			"texts": [
+				"IR TDI:  (0x2), 4 bits"
+			]
+		}, 
+		{
+			"start_sample": 2310,
+			"end_sample": 2320,
+			"ann_class": 16,
+			"ann_type": 23,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2280,
+			"end_sample": 2320,
+			"ann_class": 19,
+			"ann_type": 26,
+			"texts": [
+				"IR TDO:  (0x2), 4 bits"
+			]
+		}, 
+		{
+			"start_sample": 2310,
+			"end_sample": 2320,
+			"ann_class": 17,
+			"ann_type": 24,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2320,
+			"end_sample": 2330,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"UPDATE-IR"
+			]
+		}, 
+		{
+			"start_sample": 2320,
+			"end_sample": 2330,
 			"ann_class": 21,
 			"ann_type": 28,
 			"texts": [

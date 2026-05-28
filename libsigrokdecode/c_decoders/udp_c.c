@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 original Python version
@@ -86,38 +86,35 @@ static const struct srd_decoder_binary udp_binary[] = {
 
 /* --- Core recv_proto --- */
 
-static void udp_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void udp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     udp_state *s = (udp_state *)c_decoder_get_private(di);
     if (!s) return;
 
-    if (strcmp(cmd, "IP_PAYLOAD") != 0 || !data || data_len < 4)
+    if (strcmp(cmd, "IP_PAYLOAD") != 0 || !fields || n_fields < 4)
         return;
 
-    /* Parse IP_PAYLOAD data layout:
-     *   uint16_t payload_len;
-     *   uint8_t  payload[payload_len];
-     *   uint16_t block_count;
-     *   struct { uint64_t ss; uint64_t es; } blocks[block_count];
-     *   uint8_t  src_ip[4];
-     *   uint8_t  dst_ip[4];
+    /* Parse IP_PAYLOAD from c_field array:
+     *   fields[0] = C_U16(payload_len)
+     *   fields[1] = C_BYTES(payload, payload_len)
+     *   fields[2] = C_U16(block_count)
+     *   fields[3] = C_BYTES(blocks, blocks_size)
+     *   fields[4] = C_BYTES(src_ip, 4)
+     *   fields[5] = C_BYTES(dst_ip, 4)
      */
-    uint16_t payload_len;
-    memcpy(&payload_len, data, 2);
-    const uint8_t *payload = data + 2;
+    uint16_t payload_len = fields[0].u16;
+    const uint8_t *payload = fields[1].bytes.data;
+    /* payload_len field may differ from actual bytes length */
+    if (fields[1].bytes.len < payload_len)
+        payload_len = (uint16_t)fields[1].bytes.len;
 
-    uint16_t block_count;
-    memcpy(&block_count, data + 2 + payload_len, 2);
-    const uint8_t *blocks_data = data + 4 + payload_len;
+    uint16_t block_count = fields[2].u16;
+    const uint8_t *blocks_data = fields[3].bytes.data;
 
-    /* src_ip and dst_ip are after blocks */
-    int blocks_size = block_count * 16;
     uint8_t src_ip[4], dst_ip[4];
-    if (data_len >= (uint64_t)(4 + payload_len + 2 + blocks_size + 4 + 4)) {
-        memcpy(src_ip, data + 4 + payload_len + 2 + blocks_size, 4);
-        memcpy(dst_ip, data + 4 + payload_len + 2 + blocks_size + 4, 4);
+    if (n_fields >= 6 && fields[4].bytes.len >= 4 && fields[5].bytes.len >= 4) {
+        memcpy(src_ip, fields[4].bytes.data, 4);
+        memcpy(dst_ip, fields[5].bytes.data, 4);
     } else {
         memset(src_ip, 0, 4);
         memset(dst_ip, 0, 4);
@@ -140,21 +137,21 @@ static void udp_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 1);
     snprintf(t, sizeof(t), "Source Port: %d", src_port);
     snprintf(t2, sizeof(t2), "Src Port: %d", src_port);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Destination port */
     s->ss_block = blk_ss(blocks_data, 2);
     s->es_block = blk_es(blocks_data, 3);
     snprintf(t, sizeof(t), "Destination Port: %d", dst_port);
     snprintf(t2, sizeof(t2), "Dst Port: %d", dst_port);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Length */
     s->ss_block = blk_ss(blocks_data, 4);
     s->es_block = blk_es(blocks_data, 5);
     snprintf(t, sizeof(t), "Length: %d bytes", udp_length);
     snprintf(t2, sizeof(t2), "Len: %d", udp_length);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Verify checksum using IPv4 pseudo header */
     /* Pseudo header: src_ip(4) + dst_ip(4) + 0x00 + 0x11(UDP) + udp_length(2) */
@@ -181,7 +178,7 @@ static void udp_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 7);
     snprintf(t, sizeof(t), "Checksum: %s", cs_str);
     snprintf(t2, sizeof(t2), "Cksum: %s", cs_str);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* UDP Payload annotations */
     int payload_start_idx = 8;
@@ -221,7 +218,7 @@ static void udp_recv_proto(struct srd_decoder_inst *di,
             snprintf(data_str, sizeof(data_str), "0x%02X", b);
             break;
         }
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, data_str);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, data_str);
     }
 
     /* Push payload to stacked decoders */
@@ -240,15 +237,15 @@ static void udp_recv_proto(struct srd_decoder_inst *di,
             memcpy(buf + pos, &ss_v, 8); pos += 8;
             memcpy(buf + pos, &es_v, 8); pos += 8;
         }
-        c_decoder_put_python(di, blk_ss(blocks_data, payload_start_idx),
+        c_proto(di, blk_ss(blocks_data, payload_start_idx),
                              blk_es(blocks_data, payload_end_idx - 1),
-                             s->out_python, "UDP_PAYLOAD", buf, pos);
+                             s->out_python, "UDP_PAYLOAD", C_BYTES(buf, pos), C_END);
         g_free(buf);
     }
 
     /* Push payload to binary output */
     if (s->out_binary >= 0 && payload_end_idx > payload_start_idx) {
-        c_decoder_put_binary(di, 0, 0, s->out_binary, 0,
+        c_put_bin(di, 0, 0, s->out_binary, 0,
                              payload_end_idx - payload_start_idx,
                              payload + payload_start_idx);
     }
@@ -268,11 +265,11 @@ static void udp_reset(struct srd_decoder_inst *di)
 static void udp_start(struct srd_decoder_inst *di)
 {
     udp_state *s = (udp_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "udp");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "udp");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "udp");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "udp");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "udp");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "udp");
 
-    const char *fmt = c_decoder_get_option_string(di, "format", "hex");
+    const char *fmt = c_opt_str(di, "format", "hex");
     if (fmt) {
         if (strcmp(fmt, "ascii") == 0) s->format = 1;
         else if (strcmp(fmt, "dec") == 0) s->format = 2;
@@ -324,7 +321,8 @@ struct srd_c_decoder udp_c_decoder = {
     .start = udp_start,
     .decode = udp_decode,
     .destroy = udp_destroy,
-    .recv_proto = udp_recv_proto,
+    .decode_upper = udp_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,10 +1,15 @@
 {
   "decoder": "avclan_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "iebus"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "iebus_c",
+      "channels": {
+        "bus": 0
+      }
+    }
+  ]
 }

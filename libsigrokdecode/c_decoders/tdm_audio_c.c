@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -100,22 +100,22 @@ static void tdm_audio_reset(struct srd_decoder_inst *di)
 static void tdm_audio_start(struct srd_decoder_inst *di)
 {
     tdm_audio_state *s = (tdm_audio_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tdm_audio");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tdm_audio");
 
-    s->bitdepth = (int)c_decoder_get_option_int(di, "bps", 16);
+    s->bitdepth = (int)c_opt_int(di, "bps", 16);
     if (s->bitdepth < 1)
         s->bitdepth = 16;
 
-    s->channels = (int)c_decoder_get_option_int(di, "channels", 8);
+    s->channels = (int)c_opt_int(di, "channels", 8);
     if (s->channels < 1)
         s->channels = 1;
     if (s->channels > TDM_AUDIO_MAX_CHANNELS)
         s->channels = TDM_AUDIO_MAX_CHANNELS;
 
-    const char *edge_str = c_decoder_get_option_string(di, "edge", "rising");
+    const char *edge_str = c_opt_str(di, "edge", "rising");
     s->edge = (strcmp(edge_str, "falling") == 0) ? 1 : 0;
 
-    const char *se_str = c_decoder_get_option_string(di, "sampling_edge", "first edge");
+    const char *se_str = c_opt_str(di, "sampling_edge", "first edge");
     s->sampling_edge = (strcmp(se_str, "second edge") == 0) ? 1 : 0;
 }
 
@@ -129,58 +129,25 @@ static void tdm_audio_metadata(struct srd_decoder_inst *di, int key, uint64_t va
 static void tdm_audio_decode(struct srd_decoder_inst *di)
 {
     tdm_audio_state *s = (tdm_audio_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     int CLK = 0;
     int FRAME = 1;
     int DATA = 2;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        int ret;
         if (s->edge == 0)
-            c_cond_rise(cb, CLK);
+            ret = c_wait(di, CW_R(CLK), CW_END);
         else
-            c_cond_fall(cb, CLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            ret = c_wait(di, CW_F(CLK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int data_val = c_decoder_get_pin(di, DATA, samplenum);
-        int frame = c_decoder_get_pin(di, FRAME, samplenum);
+        int data_val = c_pin(di, DATA);
+        int frame = c_pin(di, FRAME);
 
-        /* Frame sync detection */
-        if (frame != s->lastframe && frame == 1) {
-            s->channel = 0;
-            if (s->sampling_edge == 0) {
-                /* First edge: include current sample */
-                s->bitcount = 1;
-                s->data = data_val;
-            } else {
-                /* Second edge: start from next */
-                s->bitcount = 0;
-                s->data = 0;
-            }
-            if (!s->have_ss_block) {
-                s->ss_block = samplenum;
-                s->have_ss_block = 1;
-            }
-        }
-        s->lastframe = frame;
-
-        /* Shift in data bit */
-        if (s->sampling_edge == 0 || (frame == s->lastframe && s->bitcount > 0)) {
-            if (s->bitcount > 0 || frame != s->lastframe) {
-                /* Already handled in frame sync */
-            } else {
-                s->data = (s->data << 1) | data_val;
-                s->bitcount++;
-            }
-        } else {
-            s->data = (s->data << 1) | data_val;
-            s->bitcount++;
-        }
+        /* Shift in data bit (same order as Python: shift before frame sync check) */
+        s->data = (s->data << 1) | data_val;
+        s->bitcount++;
 
         /* Check if we have enough bits for a channel sample */
         if (s->have_ss_block && s->bitcount >= s->bitdepth) {
@@ -203,14 +170,33 @@ static void tdm_audio_decode(struct srd_decoder_inst *di)
             snprintf(ann_long, sizeof(ann_long), "%s: %s", c1, v);
             snprintf(ann_mid, sizeof(ann_mid), "%s: %s", c2, v);
             snprintf(ann_short, sizeof(ann_short), "%s: %s", c3, v);
-            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ch,
+            c_put(di, s->ss_block, di_samplenum(di), s->out_ann, ch,
                       ann_long, ann_mid, ann_short);
 
             s->data = 0;
-            s->ss_block = samplenum;
+            s->ss_block = di_samplenum(di);
             s->samplecount++;
             s->channel++;
         }
+
+        /* Frame sync detection (after data shift, matching Python order) */
+        if (frame != s->lastframe && frame == 1) {
+            s->channel = 0;
+            if (s->sampling_edge == 0) {
+                /* First edge: include current sample */
+                s->bitcount = 1;
+                s->data = data_val;
+            } else {
+                /* Second edge: start from next */
+                s->bitcount = 0;
+                s->data = 0;
+            }
+            if (!s->have_ss_block) {
+                s->ss_block = di_samplenum(di);
+                s->have_ss_block = 1;
+            }
+        }
+        s->lastframe = frame;
     }
 }
 
@@ -251,6 +237,7 @@ struct srd_c_decoder tdm_audio_c_decoder = {
     .start = tdm_audio_start,
     .decode = tdm_audio_decode,
     .destroy = tdm_audio_destroy,
+    .state_size = 0,
     .metadata = tdm_audio_metadata,
 };
 

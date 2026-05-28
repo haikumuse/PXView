@@ -1,0 +1,59 @@
+- [ ] `generate_testdata.py` 动态分发机制正常工作，Fuzzer 的 `generate_testdata()` 被正确调用
+- [ ] can_fd_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ethernet_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ir_nec_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] mipi_rffe_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] usb_signalling_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] cjtag_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ds2408_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ds243x_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ds28ea00_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] flexray_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] fsi_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ieee488_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] maple_bus_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] mvb_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] sae_j1850_vpw_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] sdcard_sd_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] emmc_sd_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] spacewire_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] qspi_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] spi_dual_quad_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ir_rc5_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ir_sirc_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ir_irmp_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ir_ltto_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ir_recoil_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] dsi_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] mipi_dsi_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] pcfx_ctrlr_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] rinnai_control_panel_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] xy2_100_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] arp_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] ipv4_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] udp_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] usb_request_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] tpm_fifo_tis_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] cjtag_oscan0_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] guess_bitrate_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] iec_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] jitter_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] numbers_and_state_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] rpm_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] sda2506_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] seven_segment_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] signature_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] sle44xx_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] st7735_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] st7789_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] stepper_motor_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] tm1637_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] tmc_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] aud_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] carrera_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] tm1638_c 从 WARN 变为 PASS 或 DEVIATION
+- [ ] 全量测试 WARN 数量为 0
+- [ ] 之前 PASS 的解码器无回归
+- [ ] 未修改 C 解码器源代码
+- [ ] 未修改 Python 解码器源代码
+- [ ] 每个 Fuzzer 的波形数据覆盖了 Python 状态机的主要路径（初始状态→完整帧解析→帧结束重置）

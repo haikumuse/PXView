@@ -1,10 +1,15 @@
 {
   "decoder": "sipi_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "lfast"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "lfast_c",
+      "channels": {
+        "data": 0
+      }
+    }
+  ]
 }

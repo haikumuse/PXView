@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -164,10 +164,10 @@ static void pxx1_add_byte(struct srd_decoder_inst *di, uint8_t byte_val)
 
     char h[8];
     snprintf(h, sizeof(h), "%02X", byte_val);
-    C_ANN_PUT(di, s->byte_start, s->es_block, s->out_ann, ANN_BYTE, h);
+    c_put(di, s->byte_start, s->es_block, s->out_ann, ANN_BYTE, h);
 
     if (s->out_binary >= 0)
-        c_decoder_put_binary(di, s->byte_start, s->es_block, s->out_binary, 0, 1, &byte_val);
+        c_put_bin(di, s->byte_start, s->es_block, s->out_binary, 0, 1, &byte_val);
 
     s->byte_cnt++;
     if (s->byte_cnt > 18)
@@ -195,13 +195,13 @@ static void pxx1_add_bit(struct srd_decoder_inst *di, int value)
         s->cur_bit += 1;
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%X", value);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_BIT, bit_str);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_BIT, bit_str);
         s->state_word <<= 1;
         s->state_word |= value;
         s->state_bit += 1;
     } else {
         bstuff = 1;
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_BIT_STUFF, "S");
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_BIT_STUFF, "S");
     }
 
     if (value == 0)
@@ -224,9 +224,9 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
     case STATE_WAIT_HEADER:
         if (s->state_bit == 8) {
             if (s->state_word == PXX_HEADER) {
-                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Start Header", "SH");
+                c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Start Header", "SH");
             } else {
-                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error");
+                c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error");
                 pxx1_break_rx(di);
                 return;
             }
@@ -240,7 +240,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
         if (s->state_bit == 8) {
             char text[32];
             snprintf(text, sizeof(text), "Model ID: %u", s->state_word);
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_MODEL_ID, text);
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_MODEL_ID, text);
             s->state_bit = 0;
             s->state_word = 0;
             s->state = STATE_RX_TYPE;
@@ -252,7 +252,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
             int idx = (s->state_word > 3) ? 3 : (int)s->state_word;
             char text[32];
             snprintf(text, sizeof(text), "Type: %s", transmit_type[idx]);
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_TYPE, text);
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_TYPE, text);
             s->state_bit = 0;
             s->state_word = 0;
             s->state = STATE_RX_RANGE_CHECK;
@@ -261,7 +261,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_RANGE_CHECK:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_RANGE_CHECK,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_RANGE_CHECK,
                       s->state_word ? "Range Check: On" : "Range Check: Off",
                       s->state_word ? "RC: On" : "RC: Off");
             s->state_bit = 0;
@@ -272,7 +272,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_FAIL_SAFE:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_FAIL_SAFE,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_FAIL_SAFE,
                       s->state_word ? "FailSafe: On" : "FailSafe: Off",
                       s->state_word ? "FS: On" : "FS: Off");
             s->state_bit = 0;
@@ -285,7 +285,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
         if (s->state_bit == 3) {
             char text[32];
             snprintf(text, sizeof(text), "CountryCode: %u", s->state_word);
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_COUNTRY_CODE, text);
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_COUNTRY_CODE, text);
             s->state_bit = 0;
             s->state_word = 0;
             s->state = STATE_RX_BIND;
@@ -294,7 +294,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_BIND:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_BIND,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_BIND,
                       s->state_word ? "Bind: On" : "Bind: Off",
                       s->state_word ? "B: On" : "B: Off");
             s->state_bit = 0;
@@ -307,7 +307,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
         if (s->state_bit == 8) {
             char text[32];
             snprintf(text, sizeof(text), "Flag2: %u", s->state_word);
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_FLAGS2, text);
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_FLAGS2, text);
             s->state_bit = 0;
             s->state_word = 0;
             s->state = STATE_RX_CHANNELS;
@@ -344,7 +344,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
             char ann_text[300];
             snprintf(ann_text, sizeof(ann_text), "Channels %s: [%s]",
                      is_upper ? "(9-16)" : "(1-8)", out_buf);
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_CHANNELS, ann_text);
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_CHANNELS, ann_text);
             s->state_bit = 0;
             s->state_word = 0;
             s->nibble_cnt = 0;
@@ -356,7 +356,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_RSRV2:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_RESERVED, "Reserved");
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_RESERVED, "Reserved");
             s->state_bit = 0;
             s->state_word = 0;
             s->state = STATE_RX_EUPLUS;
@@ -365,7 +365,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_EUPLUS:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_IS_EUPLUS,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_IS_EUPLUS,
                       s->state_word ? "EUPlus: Yes" : "EUPlus: No",
                       s->state_word ? "EU+: Y" : "EU+: N");
             s->state_bit = 0;
@@ -376,7 +376,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_DISABLE_SPORT:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_DISABLE_SPORT,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_DISABLE_SPORT,
                       s->state_word ? "SPort: Disabled" : "SPort: Enable",
                       s->state_word ? "SP: Dis" : "SP: En");
             s->state_bit = 0;
@@ -389,7 +389,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
         if (s->state_bit == 2) {
             char text[32];
             snprintf(text, sizeof(text), "PowerLevel: %u", s->state_word);
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_POWER_LEVEL, text);
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_POWER_LEVEL, text);
             s->state_bit = 0;
             s->state_word = 0;
             s->state = STATE_RX_HIGHCHAN;
@@ -398,7 +398,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_HIGHCHAN:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_RX_HIGHCHAN,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_RX_HIGHCHAN,
                       s->state_word ? "RX HighChannel: Yes" : "RX HighChannel: No",
                       s->state_word ? "HC: Y" : "HC: N");
             s->state_bit = 0;
@@ -409,7 +409,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_TELEMETRY_OFF:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_TELEMETRY_OFF,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_TELEMETRY_OFF,
                       s->state_word ? "Telemetry: Off" : "Telemetry: On",
                       s->state_word ? "Tel: Off" : "Tel: On");
             s->state_bit = 0;
@@ -420,7 +420,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
 
     case STATE_RX_EXTERNAL_ANTENA:
         if (s->state_bit == 1) {
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_EXTERNAL_ANTENA,
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_EXTERNAL_ANTENA,
                       s->state_word ? "ExternalAntena: Yes" : "ExternalAntena: No",
                       s->state_word ? "EA: Y" : "EA: N");
             s->state_bit = 0;
@@ -433,7 +433,7 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
         if (s->state_bit == 16) {
             char text[32];
             snprintf(text, sizeof(text), "CRC: 0x%04X", s->state_word);
-            C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_CRC, text);
+            c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_CRC, text);
             s->state_bit = 0;
             s->state_word = 0;
             s->state = STATE_RX_STOP;
@@ -443,9 +443,9 @@ static void pxx1_process_state(struct srd_decoder_inst *di, int bstuff)
     case STATE_RX_STOP:
         if (s->state_bit == 8) {
             if (s->state_word == PXX_HEADER) {
-                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Stop Header", "SH");
+                c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Stop Header", "SH");
             } else {
-                C_ANN_PUT(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error");
+                c_put(di, s->state_word_start, s->es_block, s->out_ann, ANN_START_HEADER, "Header error");
             }
             s->state_bit = 0;
             s->state_word = 0;
@@ -474,8 +474,8 @@ static void pxx1_reset(struct srd_decoder_inst *di)
 static void pxx1_start(struct srd_decoder_inst *di)
 {
     struct pxx1_priv *s = (struct pxx1_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pxx1");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "pxx1");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pxx1");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "pxx1");
 }
 
 static void pxx1_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -488,8 +488,6 @@ static void pxx1_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void pxx1_decode(struct srd_decoder_inst *di)
 {
     struct pxx1_priv *s = (struct pxx1_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
     int ret;
 
     if (s->samplerate == 0)
@@ -497,39 +495,33 @@ static void pxx1_decode(struct srd_decoder_inst *di)
 
     /* Wait for first falling edge */
     {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_fall(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        ret = c_wait(di, CW_F(0), CW_END);
+        if (ret != SRD_OK)
+            return;
     }
 
     while (1) {
-        uint64_t start_samplenum = samplenum;
+        uint64_t start_samplenum = di_samplenum(di);
 
         /* Wait for rising edge */
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
         }
-        uint64_t end_samplenum = samplenum;
+        uint64_t end_samplenum = di_samplenum(di);
 
         /* Wait for falling edge */
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
         }
 
         s->ss_block = start_samplenum;
-        s->es_block = samplenum;
+        s->es_block = di_samplenum(di);
 
-        uint64_t period = samplenum - start_samplenum;
+        uint64_t period = di_samplenum(di) - start_samplenum;
         double period_t = (double)period / (double)s->samplerate;
 
         if (period_t >= 0.000023 && period_t <= 0.000025) {
@@ -582,6 +574,7 @@ static struct srd_c_decoder pxx1_c_decoder = {
     .start = pxx1_start,
     .decode = pxx1_decode,
     .destroy = pxx1_destroy,
+    .state_size = 0,
     .metadata = pxx1_metadata,
 };
 

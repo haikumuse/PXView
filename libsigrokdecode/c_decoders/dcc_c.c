@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2013-2020 Sven Bursch-Osewold
@@ -137,18 +137,18 @@ static const struct srd_c_ann_row dcc_ann_rows[] = {
 static const char* dcc_inputs[] = { "logic" };
 static const char* dcc_tags[] = { "Encoding" };
 
-#define DCC_PUTX(di, s, start, end, cls, ...) C_ANN_PUT(di, start, end, (s)->out_ann, cls, __VA_ARGS__)
+#define DCC_PUTX(di, s, start, end, cls, ...) c_put(di, start, end, (s)->out_ann, cls, __VA_ARGS__)
 
-#define DCC_PUT_SIGNAL(di, s, cls, ...) C_ANN_PUT(di, (s)->edge_1, (s)->edge_3, (s)->out_ann, cls, __VA_ARGS__)
+#define DCC_PUT_SIGNAL(di, s, cls, ...) c_put(di, (s)->edge_1, (s)->edge_3, (s)->out_ann, cls, __VA_ARGS__)
 
 #define DCC_PUT_PACKETBYTE(di, s, pos, cls, ...) do { \
     if ((pos) >= 0 && (pos) < (s)->decodedBytesCount) \
-        C_ANN_PUT(di, (s)->decodedBytesStart[pos], (s)->decodedBytesEnd[pos], (s)->out_ann, cls, __VA_ARGS__); \
+        c_put(di, (s)->decodedBytesStart[pos], (s)->decodedBytesEnd[pos], (s)->out_ann, cls, __VA_ARGS__); \
 } while(0)
 
 #define DCC_PUT_PACKETBYTES(di, s, start, end, cls, ...) do { \
     if ((start) >= 0 && (start) < (s)->decodedBytesCount && (end) >= 0 && (end) < (s)->decodedBytesCount) \
-        C_ANN_PUT(di, (s)->decodedBytesStart[start], (s)->decodedBytesEnd[end], (s)->out_ann, cls, __VA_ARGS__); \
+        c_put(di, (s)->decodedBytesStart[start], (s)->decodedBytesEnd[end], (s)->out_ann, cls, __VA_ARGS__); \
 } while(0)
 
 static int dcc_incPos(struct srd_decoder_inst *di, dcc_state *s, int pos)
@@ -1047,40 +1047,40 @@ static void dcc_reset(struct srd_decoder_inst *di)
 static void dcc_start(struct srd_decoder_inst *di)
 {
     dcc_state *s = (dcc_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "dcc");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "dcc");
 
-    s->AddrOffset = c_decoder_get_option_int(di, "Addr_offset", 0);
-    const char *ignore_str = c_decoder_get_option_string(di, "Ignore_short_pulse", "no");
+    s->AddrOffset = c_opt_int(di, "Addr_offset", 0);
+    const char *ignore_str = c_opt_str(di, "Ignore_short_pulse", "no");
     s->ignoreInterferingPulse = (strcmp(ignore_str, "yes") == 0) ? 1 : 0;
 
-    const char *cv29_str = c_decoder_get_option_string(di, "CV_29_1", "1: 28/128 speed mode");
+    const char *cv29_str = c_opt_str(di, "CV_29_1", "1: 28/128 speed mode");
     s->speed14 = (strcmp(cv29_str, "0: 14 speed mode") == 0) ? 1 : 0;
 
-    const char *mode_str = c_decoder_get_option_string(di, "Mode_112_127", "operation mode");
+    const char *mode_str = c_opt_str(di, "Mode_112_127", "operation mode");
     s->serviceMode = (strcmp(mode_str, "service mode") == 0) ? 1 : 0;
 
-    const char *acc_str = c_decoder_get_option_string(di, "Search_acc_addr", "");
+    const char *acc_str = c_opt_str(di, "Search_acc_addr", "");
     if (acc_str[0] != '\0') {
         char *endp;
         long long v = strtoll(acc_str, &endp, 10);
         if (*endp == '\0' && v >= 1 && v <= 2047) s->acc_addr_search = v;
     }
 
-    const char *dec_str = c_decoder_get_option_string(di, "Search_dec_addr", "");
+    const char *dec_str = c_opt_str(di, "Search_dec_addr", "");
     if (dec_str[0] != '\0') {
         char *endp;
         long long v = strtoll(dec_str, &endp, 10);
         if (*endp == '\0' && v >= 0 && v <= 10239) s->dec_addr_search = v;
     }
 
-    const char *cv_str = c_decoder_get_option_string(di, "Search_cv", "");
+    const char *cv_str = c_opt_str(di, "Search_cv", "");
     if (cv_str[0] != '\0') {
         char *endp;
         long long v = strtoll(cv_str, &endp, 10);
         if (*endp == '\0' && v >= 1 && v <= 16777216) s->cv_addr_search = v;
     }
 
-    const char *byte_str = c_decoder_get_option_string(di, "Search_byte", "");
+    const char *byte_str = c_opt_str(di, "Search_byte", "");
     if (byte_str[0] != '\0') {
         char *endp;
         long long v = strtoll(byte_str, &endp, 10);
@@ -1108,22 +1108,16 @@ static void dcc_decode(struct srd_decoder_inst *di)
 
     /* Wait for first edge */
     {
-        srd_cond_builder *b = c_cond_new();
-        if (s->cond1 == 0) c_cond_rise(b, 0); else c_cond_fall(b, 0);
-        uint64_t samplenum, matched;
-        int ret = c_cond_wait(b, di, &samplenum, &matched);
-        c_cond_free(b);
+        int ret;
+        if (s->cond1 == 0) ret = c_wait(di, CW_R(0), CW_END); else ret = c_wait(di, CW_F(0), CW_END);
         if (ret != SRD_OK) return;
-        s->edge_1 = samplenum;
+        s->edge_1 = di_samplenum(di);
     }
     {
-        srd_cond_builder *b = c_cond_new();
-        if (s->cond2 == 0) c_cond_rise(b, 0); else c_cond_fall(b, 0);
-        uint64_t samplenum, matched;
-        int ret = c_cond_wait(b, di, &samplenum, &matched);
-        c_cond_free(b);
+        int ret;
+        if (s->cond2 == 0) ret = c_wait(di, CW_R(0), CW_END); else ret = c_wait(di, CW_F(0), CW_END);
         if (ret != SRD_OK) return;
-        s->edge_2 = samplenum;
+        s->edge_2 = di_samplenum(di);
     }
 
     /* Info at the start */
@@ -1151,22 +1145,16 @@ static void dcc_decode(struct srd_decoder_inst *di)
         char value_short[64] = "";
 
         {
-            srd_cond_builder *b = c_cond_new();
-            if (s->cond1 == 0) c_cond_rise(b, 0); else c_cond_fall(b, 0);
-            uint64_t samplenum, matched;
-            int ret = c_cond_wait(b, di, &samplenum, &matched);
-            c_cond_free(b);
+            int ret;
+            if (s->cond1 == 0) ret = c_wait(di, CW_R(0), CW_END); else ret = c_wait(di, CW_F(0), CW_END);
             if (ret != SRD_OK) return;
-            s->edge_3 = samplenum;
+            s->edge_3 = di_samplenum(di);
         }
         {
-            srd_cond_builder *b = c_cond_new();
-            if (s->cond2 == 0) c_cond_rise(b, 0); else c_cond_fall(b, 0);
-            uint64_t samplenum, matched;
-            int ret = c_cond_wait(b, di, &samplenum, &matched);
-            c_cond_free(b);
+            int ret;
+            if (s->cond2 == 0) ret = c_wait(di, CW_R(0), CW_END); else ret = c_wait(di, CW_F(0), CW_END);
             if (ret != SRD_OK) return;
-            s->edge_4 = samplenum;
+            s->edge_4 = di_samplenum(di);
         }
 
         double total = (double)(s->edge_3 - s->edge_1) / (double)s->samplerate * 1000000.0;
@@ -1200,13 +1188,9 @@ static void dcc_decode(struct srd_decoder_inst *di)
             dcc_setNextStatus(s, DCC_WAITINGFORPREAMBLE);
             /* Skip one edge */
             {
-                srd_cond_builder *b = c_cond_new();
-                c_cond_edge(b, 0);
-                uint64_t samplenum, matched;
-                c_cond_wait(b, di, &samplenum, &matched);
-                c_cond_free(b);
+                c_wait(di, CW_E(0), CW_END);
                 s->edge_1 = s->edge_4;
-                s->edge_2 = samplenum;
+                s->edge_2 = di_samplenum(di);
             }
             continue;
         } else {
@@ -1339,6 +1323,7 @@ struct srd_c_decoder dcc_c_decoder = {
     .start = dcc_start,
     .decode = dcc_decode,
     .destroy = dcc_destroy,
+    .state_size = 0,
     .metadata = dcc_metadata,
 };
 

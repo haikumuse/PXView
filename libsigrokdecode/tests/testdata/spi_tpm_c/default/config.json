@@ -1,12 +1,15 @@
 {
   "decoder": "spi_tpm_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "spi"
-  ],
+  "num_channels": 4,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "tpm_version": "2.0"
-  }
+  "stack": [
+    {
+      "id": "spi_c",
+      "channels": {
+        "clk": 0
+      }
+    }
+  ]
 }

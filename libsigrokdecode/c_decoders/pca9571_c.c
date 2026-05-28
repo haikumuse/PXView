@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Mickael Bosch <mickael.bosch@linux.com>
@@ -69,27 +69,25 @@ static void pca9571_handle_io(struct srd_decoder_inst *di, pca9571_priv *s, uint
     char buf[64];
     if (s->state == PCA9571_READ_DATA) {
         snprintf(buf, sizeof(buf), "Outputs read: %02X", b);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
         if (b != s->last_write) {
             snprintf(buf, sizeof(buf),
                 "Warning: read value and last write value (%02X) are different",
                 s->last_write);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
         }
     } else {
         snprintf(buf, sizeof(buf), "Outputs set: %02X", b);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
         s->last_write = b;
         s->last_write_es = s->es;
         /* Output logic signal */
         uint8_t logic_val = b;
-        c_decoder_put_logic(di, s->last_write_es, s->es, s->out_logic, 0xFF, &logic_val, 8);
+        c_put_logic(di, s->last_write_es, s->es, s->out_logic, 0xFF, &logic_val, 8);
     }
 }
 
-static void pca9571_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void pca9571_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     pca9571_priv *s = (pca9571_priv *)c_decoder_get_private(di);
     if (!s)
@@ -98,7 +96,7 @@ static void pca9571_recv_proto(struct srd_decoder_inst *di,
     s->ss = start_sample;
     s->es = end_sample;
 
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "ACK") == 0 || strcmp(cmd, "BITS") == 0) {
         /* Discard ACK and BITS */
@@ -113,7 +111,7 @@ static void pca9571_recv_proto(struct srd_decoder_inst *di,
                 snprintf(buf, sizeof(buf),
                     "Warning: I²C slave 0x%02X not a PCA9571 compatible chip.",
                     databyte);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
                 s->state = PCA9571_IDLE;
                 return;
             }
@@ -147,8 +145,8 @@ static void pca9571_reset(struct srd_decoder_inst *di)
 static void pca9571_start(struct srd_decoder_inst *di)
 {
     pca9571_priv *s = (pca9571_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pca9571");
-    s->out_logic = c_decoder_register_output(di, SRD_OUTPUT_LOGIC, "pca9571");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pca9571");
+    s->out_logic = c_reg_out(di, SRD_OUTPUT_LOGIC, "pca9571");
 }
 
 static void pca9571_decode(struct srd_decoder_inst *di)
@@ -193,7 +191,8 @@ struct srd_c_decoder pca9571_c_decoder = {
     .start = pca9571_start,
     .decode = pca9571_decode,
     .destroy = pca9571_destroy,
-    .recv_proto = pca9571_recv_proto,
+    .decode_upper = pca9571_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2018 Mike Jagdis <mjagdis@eris-associates.co.uk>
@@ -146,22 +146,22 @@ static void swim_protocol(struct srd_decoder_inst *di, struct swim_priv *s)
 {
     if (s->proto_state == PROTO_CMD) {
         if (s->bitseq_value == 0x00) {
-            C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD, "system reset");
+            c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD, "system reset");
         } else if (s->bitseq_value == 0x01) {
             s->proto_state = PROTO_N;
-            C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD, "read on-the-fly");
+            c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD, "read on-the-fly");
         } else if (s->bitseq_value == 0x02) {
             s->proto_state = PROTO_N;
-            C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD, "write on-the-fly");
+            c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD, "write on-the-fly");
         } else {
-            C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD_UNKNOWN, "unknown");
+            c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_CMD_UNKNOWN, "unknown");
         }
     } else if (s->proto_state == PROTO_N) {
         s->proto_byte_count = s->bitseq_value;
         s->proto_state = PROTO_ADDR_E;
         char text[32];
         snprintf(text, sizeof(text), "byte count 0x%02x", s->bitseq_value);
-        C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_BYTES, text);
+        c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_BYTES, text);
     } else if (s->proto_state == PROTO_ADDR_E) {
         s->proto_addr = s->bitseq_value;
         s->proto_addr_start = s->bitseq_start;
@@ -174,7 +174,7 @@ static void swim_protocol(struct srd_decoder_inst *di, struct swim_priv *s)
         s->proto_state = PROTO_DATA;
         char text[32];
         snprintf(text, sizeof(text), "address 0x%06x", s->proto_addr);
-        C_ANN_PUT(di, s->proto_addr_start, s->bitseq_end, s->out_ann, ANN_ADDRESS, text);
+        c_put(di, s->proto_addr_start, s->bitseq_end, s->out_ann, ANN_ADDRESS, text);
     } else {
         if (s->proto_byte_count > 0) {
             s->proto_byte_count--;
@@ -184,16 +184,16 @@ static void swim_protocol(struct srd_decoder_inst *di, struct swim_priv *s)
         char text[16];
         snprintf(text, sizeof(text), "0x%02x", s->bitseq_value);
         int ann = (s->bitseq_dir == 0) ? ANN_DATA_WRITE : ANN_DATA_READ;
-        C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ann, text);
+        c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ann, text);
 
         uint8_t buf = s->bitseq_value;
         int bincls = (s->bitseq_dir == 0) ? BIN_TX : BIN_RX;
-        c_decoder_put_binary(di, s->bitseq_start, s->bitseq_end, s->out_binary, bincls, 1, &buf);
+        c_put_bin(di, s->bitseq_start, s->bitseq_end, s->out_binary, bincls, 1, &buf);
 
         if (s->debug) {
             char dbuf[16];
             snprintf(dbuf, sizeof(dbuf), "%d more", s->proto_byte_count);
-            C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_DEBUG, dbuf);
+            c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ANN_DEBUG, dbuf);
         }
     }
 }
@@ -207,23 +207,23 @@ static void swim_bitseq(struct srd_decoder_inst *di, struct swim_priv *s,
         s->bitseq_dir = bit;
         s->bitseq_len = 1;
         int ann = (bit == 0) ? ANN_START_HOST : ANN_START_TARGET;
-        C_ANN_PUT(di, bitstart, bitend, s->out_ann, ann, "start");
+        c_put(di, bitstart, bitend, s->out_ann, ann, "start", "s");
     } else if ((s->proto_state == PROTO_CMD && s->bitseq_len == 4) ||
                (s->proto_state != PROTO_CMD && s->bitseq_len == 9)) {
         s->bitseq_end = bitstart;
         s->bitseq_len++;
-        C_ANN_PUT(di, bitstart, bitend, s->out_ann, ANN_PARITY, "parity");
+        c_put(di, bitstart, bitend, s->out_ann, ANN_PARITY, "parity");
         s->bitseq_value &= 0xff;
         char text[16];
         snprintf(text, sizeof(text), "0x%02x", s->bitseq_value);
         int ann = (s->bitseq_dir == 0) ? ANN_BYTE_WRITE : ANN_BYTE_READ;
-        C_ANN_PUT(di, s->bitseq_start, s->bitseq_end, s->out_ann, ann, text);
+        c_put(di, s->bitseq_start, s->bitseq_end, s->out_ann, ann, text);
     } else if ((s->proto_state == PROTO_CMD && s->bitseq_len == 5) ||
                (s->proto_state != PROTO_CMD && s->bitseq_len == 10)) {
         if (bit)
-            C_ANN_PUT(di, bitstart, bitend, s->out_ann, ANN_ACK, "ack");
+            c_put(di, bitstart, bitend, s->out_ann, ANN_ACK, "ack");
         else
-            C_ANN_PUT(di, bitstart, bitend, s->out_ann, ANN_NACK, "nack");
+            c_put(di, bitstart, bitend, s->out_ann, ANN_NACK, "nack");
 
         if (bit)
             swim_protocol(di, s);
@@ -243,8 +243,10 @@ static void swim_decode_bit(struct srd_decoder_inst *di, struct swim_priv *s,
     int bit;
     if (mid - start >= end - mid) {
         bit = 0;
+        c_put(di, start, end, s->out_ann, ANN_BIT, "0");
     } else {
         bit = 1;
+        c_put(di, start, end, s->out_ann, ANN_BIT, "1");
     }
     swim_bitseq(di, s, start, end, bit);
 }
@@ -254,7 +256,7 @@ static void detect_synchronize_frame(struct srd_decoder_inst *di, struct swim_pr
 {
     uint64_t low_duration = end - s->eseq_edge_ss[1];
     if (low_duration >= s->sync_reflen_min && low_duration <= s->sync_reflen_max) {
-        C_ANN_PUT(di, s->eseq_edge_ss[1], end, s->out_ann, ANN_ENTERSEQ,
+        c_put(di, s->eseq_edge_ss[1], end, s->out_ann, ANN_ENTERSEQ,
                   "synchronization frame", "synchronization", "sync", "s");
 
         s->bit_edge_val[0] = -1; s->bit_edge_ss[0] = 0;
@@ -284,7 +286,7 @@ static void detect_enter_sequence(struct srd_decoder_inst *di, struct swim_priv 
         s->eseq_pairnum++;
         if (s->eseq_pairnum == 8) {
             /* Emit enter sequence annotation, matching Python */
-            C_ANN_PUT(di, s->eseq_pairstart, end, s->out_ann, ANN_ENTERSEQ,
+            c_put(di, s->eseq_pairstart, end, s->out_ann, ANN_ENTERSEQ,
                       "enter sequence", "enter seq", "enter", "ent", "e");
             s->eseq_pairnum = 0;
         }
@@ -321,16 +323,16 @@ static void swim_reset(struct srd_decoder_inst *di)
 static void swim_start(struct srd_decoder_inst *di)
 {
     struct swim_priv *s = (struct swim_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "swim");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "swim");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "swim");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "swim");
 
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
 
     s->sync_reflen_min = (uint64_t)floor((double)s->samplerate * 64.0 / s->HSI_max);
     s->sync_reflen_max = (uint64_t)ceil((double)s->samplerate * 128.0 / (s->HSI_min / 2.0));
 
-    const char *debug_str = c_decoder_get_option_string(di, "debug", "no");
+    const char *debug_str = c_opt_str(di, "debug", "no");
     s->debug = (strcmp(debug_str, "yes") == 0) ? 1 : 0;
 
     s->eseq_reflen = (uint64_t)ceil((double)s->samplerate / 2048.0);
@@ -347,11 +349,8 @@ static void swim_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void swim_decode(struct srd_decoder_inst *di)
 {
     struct swim_priv *s = (struct swim_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (!s->samplerate) return;
         s->sync_reflen_min = (uint64_t)floor((double)s->samplerate * 64.0 / s->HSI_max);
         s->sync_reflen_max = (uint64_t)ceil((double)s->samplerate * 128.0 / (s->HSI_min / 2.0));
@@ -362,31 +361,28 @@ static void swim_decode(struct srd_decoder_inst *di)
     while (1) {
         int swim_val;
         if (s->bit_maxlen >= 0) {
-            int ret = c_cond_wait_current(di, &samplenum);
+            int ret = c_wait(di, CW_END);
             if (ret != SRD_OK)
                 return;
-            swim_val = c_decoder_get_pin(di, CH_SWIM, samplenum);
+            swim_val = c_pin(di, CH_SWIM);
             s->bit_maxlen--;
         } else {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_edge(cb, CH_SWIM);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_E(CH_SWIM), CW_END);
             if (ret != SRD_OK)
                 return;
-            swim_val = c_decoder_get_pin(di, CH_SWIM, samplenum);
+            swim_val = c_pin(di, CH_SWIM);
         }
 
         if (swim_val != s->eseq_edge_val[1]) {
             if (swim_val == 1 && s->eseq_edge_ss[1] != 0) {
-                detect_synchronize_frame(di, s, s->eseq_edge_ss[1], samplenum);
+                detect_synchronize_frame(di, s, s->eseq_edge_ss[1], di_samplenum(di));
                 if (s->eseq_edge_ss[0] != 0)
-                    detect_enter_sequence(di, s, s->eseq_edge_ss[0], samplenum);
+                    detect_enter_sequence(di, s, s->eseq_edge_ss[0], di_samplenum(di));
             }
             s->eseq_edge_val[0] = s->eseq_edge_val[1];
             s->eseq_edge_ss[0] = s->eseq_edge_ss[1];
             s->eseq_edge_val[1] = swim_val;
-            s->eseq_edge_ss[1] = samplenum;
+            s->eseq_edge_ss[1] = di_samplenum(di);
         }
 
         int cur_swim = swim_val;
@@ -399,14 +395,14 @@ static void swim_decode(struct srd_decoder_inst *di)
                 s->bit_maxlen = (int)s->bit_reflen;
 
             if (s->bit_edge_val[0] == 0 && s->bit_edge_val[1] == 1 &&
-                samplenum - s->bit_edge_ss[0] <= s->bit_reflen + 10) {
-                swim_decode_bit(di, s, s->bit_edge_ss[0], s->bit_edge_ss[1], samplenum);
+                di_samplenum(di) - s->bit_edge_ss[0] <= s->bit_reflen + 10) {
+                swim_decode_bit(di, s, s->bit_edge_ss[0], s->bit_edge_ss[1], di_samplenum(di));
             }
 
             s->bit_edge_val[0] = s->bit_edge_val[1];
             s->bit_edge_ss[0] = s->bit_edge_ss[1];
             s->bit_edge_val[1] = cur_swim;
-            s->bit_edge_ss[1] = samplenum;
+            s->bit_edge_ss[1] = di_samplenum(di);
         }
     }
 }
@@ -448,6 +444,7 @@ struct srd_c_decoder swim_c_decoder = {
     .start = swim_start,
     .decode = swim_decode,
     .destroy = swim_destroy,
+    .state_size = 0,
     .metadata = swim_metadata,
 };
 

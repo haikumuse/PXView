@@ -1,11 +1,11 @@
 {
 	"decoder": "ir_rc6_c",
-	"samplerate": 1000000,
-	"num_annotations": 21,
+	"samplerate": 100000,
+	"num_annotations": 26,
 	"annotations": [
 		{
-			"start_sample": 3556,
-			"end_sample": 4222,
+			"start_sample": 2000,
+			"end_sample": 2354,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -13,8 +13,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4222,
-			"end_sample": 4666,
+			"start_sample": 2354,
+			"end_sample": 2420,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -22,8 +22,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4666,
-			"end_sample": 5110,
+			"start_sample": 2420,
+			"end_sample": 2464,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -31,8 +31,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5110,
-			"end_sample": 5776,
+			"start_sample": 2464,
+			"end_sample": 2508,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -40,8 +40,17 @@
 			]
 		}, 
 		{
-			"start_sample": 5776,
-			"end_sample": 6665,
+			"start_sample": 2508,
+			"end_sample": 2574,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2574,
+			"end_sample": 2662,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -49,8 +58,46 @@
 			]
 		}, 
 		{
-			"start_sample": 6665,
-			"end_sample": 7332,
+			"start_sample": 2000,
+			"end_sample": 2354,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Synchronisation", 
+				"Sync"
+			]
+		}, 
+		{
+			"start_sample": 2354,
+			"end_sample": 2420,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Startbit", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 2420,
+			"end_sample": 2574,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Field: 7"
+			]
+		}, 
+		{
+			"start_sample": 2574,
+			"end_sample": 2662,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Toggle: 0"
+			]
+		}, 
+		{
+			"start_sample": 2662,
+			"end_sample": 2728,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -58,8 +105,8 @@
 			]
 		}, 
 		{
-			"start_sample": 7332,
-			"end_sample": 7776,
+			"start_sample": 2728,
+			"end_sample": 2772,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -67,8 +114,8 @@
 			]
 		}, 
 		{
-			"start_sample": 7776,
-			"end_sample": 8220,
+			"start_sample": 2772,
+			"end_sample": 2816,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -76,8 +123,8 @@
 			]
 		}, 
 		{
-			"start_sample": 8220,
-			"end_sample": 8664,
+			"start_sample": 2816,
+			"end_sample": 2860,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -85,8 +132,8 @@
 			]
 		}, 
 		{
-			"start_sample": 8664,
-			"end_sample": 9108,
+			"start_sample": 2860,
+			"end_sample": 2904,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -94,8 +141,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9108,
-			"end_sample": 9552,
+			"start_sample": 2904,
+			"end_sample": 2948,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -103,8 +150,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9552,
-			"end_sample": 9996,
+			"start_sample": 2948,
+			"end_sample": 2992,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -112,8 +159,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9996,
-			"end_sample": 10440,
+			"start_sample": 2992,
+			"end_sample": 3036,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -121,8 +168,8 @@
 			]
 		}, 
 		{
-			"start_sample": 10440,
-			"end_sample": 10884,
+			"start_sample": 3036,
+			"end_sample": 3080,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -130,8 +177,8 @@
 			]
 		}, 
 		{
-			"start_sample": 10884,
-			"end_sample": 11328,
+			"start_sample": 3080,
+			"end_sample": 3124,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -139,8 +186,8 @@
 			]
 		}, 
 		{
-			"start_sample": 11328,
-			"end_sample": 11772,
+			"start_sample": 3124,
+			"end_sample": 3168,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -148,8 +195,8 @@
 			]
 		}, 
 		{
-			"start_sample": 11772,
-			"end_sample": 12216,
+			"start_sample": 3168,
+			"end_sample": 3212,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -157,8 +204,8 @@
 			]
 		}, 
 		{
-			"start_sample": 12216,
-			"end_sample": 12660,
+			"start_sample": 3212,
+			"end_sample": 3256,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -166,8 +213,8 @@
 			]
 		}, 
 		{
-			"start_sample": 12660,
-			"end_sample": 13104,
+			"start_sample": 3256,
+			"end_sample": 3300,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -175,8 +222,8 @@
 			]
 		}, 
 		{
-			"start_sample": 13104,
-			"end_sample": 13548,
+			"start_sample": 3300,
+			"end_sample": 3344,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -184,8 +231,8 @@
 			]
 		}, 
 		{
-			"start_sample": 13548,
-			"end_sample": 14214,
+			"start_sample": 3344,
+			"end_sample": 3410,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [

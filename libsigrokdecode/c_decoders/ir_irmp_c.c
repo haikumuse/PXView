@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2014 Gump Yang <gump.yang@gmail.com>
@@ -193,7 +193,7 @@ static void irmp_putframe(struct srd_decoder_inst *di, irmp_priv *s,
     snprintf(txt4, sizeof(txt4), "C:%x A:%x %s", cmd, addr, flg2);
     snprintf(txt5, sizeof(txt5), "C:%x", cmd);
 
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_PACKET, txt1, txt2, txt3, txt4, txt5);
+    c_put(di, ss, es, s->out_ann, ANN_PACKET, txt1, txt2, txt3, txt4, txt5);
 }
 
 static void irmp_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -218,22 +218,19 @@ static void irmp_reset(struct srd_decoder_inst *di)
 static void irmp_start(struct srd_decoder_inst *di)
 {
     irmp_priv *s = (irmp_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_irmp");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_irmp");
 
-    const char *polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char *polarity = c_opt_str(di, "polarity", "active-low");
     s->active = (polarity && strcmp(polarity, "active-high") == 0) ? 1 : 0;
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
 }
 
 static void irmp_decode(struct srd_decoder_inst *di)
 {
     irmp_priv *s = (irmp_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     }
     if (s->samplerate == 0)
         return;
@@ -245,10 +242,7 @@ static void irmp_decode(struct srd_decoder_inst *di)
                 s->lib_error_reported = 1;
             }
             /* Library not available, just consume data silently */
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_skip(cb, 0);
-            c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            c_wait(di, CW_SKIP(0), CW_END);
             return;
         }
     }
@@ -269,13 +263,12 @@ static void irmp_decode(struct srd_decoder_inst *di)
 
     /* Get initial IR value */
     uint64_t cur_sample;
-    if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
+    if (c_wait(di, CW_END) != SRD_OK)
         return;
 
-    int ir = c_decoder_get_pin(di, IR_CH, cur_sample);
+    int ir = c_pin(di, IR_CH);
 
     while (1) {
-        srd_cond_builder *cb;
         int ret;
 
         /* Apply polarity inversion */
@@ -293,14 +286,11 @@ static void irmp_decode(struct srd_decoder_inst *di)
         }
 
         /* Wait for next sample (skip rate_factor samples) */
-        cb = c_cond_new();
-        c_cond_skip(cb, s->rate_factor);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_SKIP(s->rate_factor), CW_END);
         if (ret != SRD_OK)
             return;
 
-        ir = c_decoder_get_pin(di, IR_CH, samplenum);
+        ir = c_pin(di, IR_CH);
     }
 }
 
@@ -349,6 +339,7 @@ struct srd_c_decoder ir_irmp_c_decoder = {
     .start = irmp_start,
     .decode = irmp_decode,
     .destroy = irmp_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

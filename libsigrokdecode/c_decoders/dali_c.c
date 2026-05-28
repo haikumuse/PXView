@@ -214,7 +214,7 @@ static void dali_putb(struct srd_decoder_inst *di, struct dali_priv *s,
 {
     uint64_t ss = s->ss_es_bits[bit1][0];
     uint64_t es = s->ss_es_bits[bit2][1];
-    C_ANN_PUT(di, ss, es, s->out_ann, ann_class, txt1, txt2, txt3, txt4, txt5);
+    c_put(di, ss, es, s->out_ann, ann_class, txt1, txt2, txt3, txt4, txt5);
 }
 
 static void dali_handle_bits(struct srd_decoder_inst *di, struct dali_priv *s, int length)
@@ -238,7 +238,7 @@ static void dali_handle_bits(struct srd_decoder_inst *di, struct dali_priv *s, i
 
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", b[i]);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT, bit_str);
+        c_put(di, ss, es, s->out_ann, ANN_BIT, bit_str);
     }
     s->num_ss_es_bits = length;
 
@@ -473,9 +473,9 @@ static void dali_start(struct srd_decoder_inst *di)
 {
     struct dali_priv *s = (struct dali_priv *)c_decoder_get_private(di);
 
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "dali");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "dali");
 
-    const char *polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char *polarity = c_opt_str(di, "polarity", "active-low");
     if (polarity && strcmp(polarity, "active-high") == 0) {
         s->old_dali = 0;
         s->polarity_invert = 1;
@@ -484,7 +484,7 @@ static void dali_start(struct srd_decoder_inst *di)
         s->polarity_invert = 0;
     }
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0)
         s->halfbit = (uint64_t)((s->samplerate * 0.0008333) / 2.0);
 }
@@ -492,11 +492,8 @@ static void dali_start(struct srd_decoder_inst *di)
 static void dali_decode(struct srd_decoder_inst *di)
 {
     struct dali_priv *s = (struct dali_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             s->halfbit = (uint64_t)((s->samplerate * 0.0008333) / 2.0);
     }
@@ -504,15 +501,22 @@ static void dali_decode(struct srd_decoder_inst *di)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        /* Wait for edge OR midpoint timeout.
+         * Python processes every sample to detect virtual edges at midpoints.
+         * We use CW_E + CW_SKIP to reach midpoints efficiently. */
+        int ret;
+        if (s->num_edges > 0) {
+            uint64_t midpoint = s->edges[s->num_edges - 1] + (uint64_t)(s->halfbit * 1.5);
+            uint64_t cur = di_samplenum(di);
+            uint64_t skip = (midpoint > cur) ? (midpoint - cur) : 1;
+            ret = c_wait(di, CW_E(DALI_CH), CW_OR, CW_SKIP(skip), CW_END);
+        } else {
+            ret = c_wait(di, CW_E(DALI_CH), CW_END);
+        }
         if (ret != SRD_OK)
             return;
-        if (samplenum >= c_decoder_get_last_samplenum(di))
-            return;
 
-        int dali = c_decoder_get_pin(di, DALI_CH, samplenum);
+        int dali = c_pin(di, DALI_CH);
 
         if (s->polarity_invert)
             dali ^= 1;
@@ -521,7 +525,7 @@ static void dali_decode(struct srd_decoder_inst *di)
             if (s->old_dali == dali)
                 continue;
             if (s->num_edges < MAX_EDGES)
-                s->edges[s->num_edges++] = samplenum;
+                s->edges[s->num_edges++] = di_samplenum(di);
             s->state = STATE_PHASE0;
             s->old_dali = dali;
             continue;
@@ -529,10 +533,10 @@ static void dali_decode(struct srd_decoder_inst *di)
 
         if (s->old_dali != dali) {
             if (s->num_edges < MAX_EDGES)
-                s->edges[s->num_edges++] = samplenum;
-        } else if (samplenum == (s->edges[s->num_edges - 1] + (uint64_t)(s->halfbit * 1.5))) {
+                s->edges[s->num_edges++] = di_samplenum(di);
+        } else if (di_samplenum(di) == (s->edges[s->num_edges - 1] + (uint64_t)(s->halfbit * 1.5))) {
             if (s->num_edges < MAX_EDGES)
-                s->edges[s->num_edges++] = samplenum - (uint64_t)(s->halfbit * 0.5);
+                s->edges[s->num_edges++] = di_samplenum(di) - (uint64_t)(s->halfbit * 0.5);
         } else {
             continue;
         }
@@ -601,6 +605,7 @@ struct srd_c_decoder dali_c_decoder = {
     .start = dali_start,
     .decode = dali_decode,
     .destroy = dali_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

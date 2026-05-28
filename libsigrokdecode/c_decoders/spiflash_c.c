@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -148,23 +148,23 @@ typedef struct {
 } spiflash_state;
 
 /* ===== SPI DATA packet helpers ===== */
-static inline int spi_proto_get_mosi(const unsigned char *data, uint64_t data_len, uint8_t *mosi_val)
+static inline int spi_proto_get_mosi(const c_field *fields, int n_fields, uint8_t *mosi_val)
 {
-    if (data_len < 17 || !(data[0] & 1)) { *mosi_val = 0; return 0; }
-    *mosi_val = (uint8_t)data[1]; return 1;
+    if (n_fields < 17 || !(fields[0].u8 & 1)) { *mosi_val = 0; return 0; }
+    *mosi_val = (uint8_t)fields[1].u8; return 1;
 }
 
-static inline int spi_proto_get_miso(const unsigned char *data, uint64_t data_len, uint8_t *miso_val)
+static inline int spi_proto_get_miso(const c_field *fields, int n_fields, uint8_t *miso_val)
 {
-    if (data_len < 17 || !((data[0] >> 1) & 1)) { *miso_val = 0; return 0; }
-    *miso_val = (uint8_t)data[9]; return 1;
+    if (n_fields < 17 || !((fields[0].u8 >> 1) & 1)) { *miso_val = 0; return 0; }
+    *miso_val = (uint8_t)fields[9].u8; return 1;
 }
 
-static inline int spi_proto_cs_change_get_values(const unsigned char *data, uint64_t data_len,
+static inline int spi_proto_cs_change_get_values(const c_field *fields, int n_fields,
                                                   uint8_t *prev, uint8_t *cur)
 {
-    if (data_len < 2) { *prev = 0xFF; *cur = 0xFF; return -1; }
-    *prev = data[0]; *cur = data[1]; return 0;
+    if (n_fields < 2) { *prev = 0xFF; *cur = 0xFF; return -1; }
+    *prev = fields[0].u8; *cur = fields[1].u8; return 0;
 }
 
 /* ===== Static data ===== */
@@ -281,7 +281,7 @@ static void spiflash_emit_cmd_byte(struct srd_decoder_inst *di, spiflash_state *
     if (c) {
         char buf[128];
         snprintf(buf, sizeof(buf), "Command: %s (%s)", c->longname, c->shortname);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     }
     s->addr = 0;
 }
@@ -293,13 +293,13 @@ static void spiflash_emit_addr_bytes(struct srd_decoder_inst *di, spiflash_state
     int b = ((3 - (s->cmdstate - 2)) * 8) - 1;
     char buf[64];
     snprintf(buf, sizeof(buf), "Addr bits %d..%d", b, b - 7);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     if (s->cmdstate == 2) s->ss_field = s->ss;
     if (s->cmdstate == 4) {
         s->es_field = s->es;
         char addr_str[16];
         snprintf(addr_str, sizeof(addr_str), "@%06x", s->addr);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, addr_str);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, addr_str);
     }
 }
 
@@ -326,12 +326,12 @@ static void spiflash_output_data_block(struct srd_decoder_inst *di, spiflash_sta
 
     char field_buf[128];
     snprintf(field_buf, sizeof(field_buf), "Data (%d bytes)", s->data_count);
-    C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, field_buf);
+    c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, field_buf);
 
     char cmd_buf[256];
     snprintf(cmd_buf, sizeof(cmd_buf), "%s (addr @%06x, %d bytes): %s",
              cmd_name, s->addr, s->data_count, data_str);
-    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, s->delayed_ann, cmd_buf);
+    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, s->delayed_ann, cmd_buf);
 }
 
 /* ===== Helper: end current transaction ===== */
@@ -351,7 +351,7 @@ static void spiflash_end_current_transaction(struct srd_decoder_inst *di, spifla
 static void spiflash_handle_wren(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
     (void)mosi; (void)miso;
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WREN, "Write enable");
+    c_put(di, s->ss, s->es, s->out_ann, ANN_WREN, "Write enable");
     s->writestate = 1;
     s->state = 0;
 }
@@ -359,7 +359,7 @@ static void spiflash_handle_wren(struct srd_decoder_inst *di, spiflash_state *s,
 static void spiflash_handle_wrdi(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
     (void)mosi; (void)miso;
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WRDI, "Write disable");
+    c_put(di, s->ss, s->es, s->out_ann, ANN_WRDI, "Write disable");
     s->writestate = 0;
     s->state = 0;
 }
@@ -372,21 +372,21 @@ static void spiflash_handle_rdid(struct srd_decoder_inst *di, spiflash_state *s,
     } else if (s->cmdstate == 2) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Manufacturer ID: 0x%02x", miso);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     } else if (s->cmdstate == 3) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Memory type: 0x%02x", miso);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     } else if (s->cmdstate == 4) {
         s->device_id = miso;
         char buf[64];
         snprintf(buf, sizeof(buf), "Device ID: 0x%02x", miso);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
         const char *vendor = spiflash_chips[s->chip_index].vendor;
         const char *dev_name = spiflash_find_device_name(vendor, miso);
         char vbuf[128];
         snprintf(vbuf, sizeof(vbuf), "Device = %s %s", vendor, dev_name);
-        C_ANN_PUT(di, s->ss_cmd, s->es, s->out_ann, ANN_RDID, vbuf);
+        c_put(di, s->ss_cmd, s->es, s->out_ann, ANN_RDID, vbuf);
         s->state = 0;
         return;
     }
@@ -401,9 +401,9 @@ static void spiflash_handle_rdsr(struct srd_decoder_inst *di, spiflash_state *s,
         s->es_cmd = s->es;
         char buf[256];
         spiflash_decode_status_reg(miso, buf, sizeof(buf));
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register");
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_RDSR, "Read status register");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_RDSR, "Read status register");
         s->writestate = (miso & 2) ? 1 : 0;
     }
     s->cmdstate++;
@@ -417,9 +417,9 @@ static void spiflash_handle_rdsr2(struct srd_decoder_inst *di, spiflash_state *s
         s->es_cmd = s->es;
         char buf[256];
         spiflash_decode_status_reg(miso, buf, sizeof(buf));
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 2");
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_RDSR2, "Read status register 2");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 2");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_RDSR2, "Read status register 2");
     }
     s->cmdstate++;
 }
@@ -432,16 +432,16 @@ static void spiflash_handle_wrsr(struct srd_decoder_inst *di, spiflash_state *s,
     } else if (s->cmdstate == 2) {
         char buf[256];
         spiflash_decode_status_reg(mosi, buf, sizeof(buf));
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 1");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 1");
         s->writestate = (mosi & 2) ? 1 : 0;
     } else if (s->cmdstate == 3) {
         char buf[256];
         spiflash_decode_status_reg(mosi, buf, sizeof(buf));
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 2");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 2");
         s->es_cmd = s->es;
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WRSR, "Write status register");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WRSR, "Write status register");
     }
     s->cmdstate++;
 }
@@ -474,7 +474,7 @@ static void spiflash_handle_fast_read(struct srd_decoder_inst *di, spiflash_stat
     } else if (s->cmdstate == 5) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Dummy byte: 0x%02x", mosi);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     } else if (s->cmdstate >= 6) {
         s->es_field = s->es;
         if (s->cmdstate == 6) {
@@ -495,7 +495,7 @@ static void spiflash_handle_write_common(struct srd_decoder_inst *di, spiflash_s
     if (s->cmdstate == 1) {
         spiflash_emit_cmd_byte(di, s);
         if (s->writestate == 0) {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
         }
     } else if (s->cmdstate >= 2 && s->cmdstate <= 4) {
         spiflash_emit_addr_bytes(di, s, mosi);
@@ -533,7 +533,7 @@ static void spiflash_handle_se(struct srd_decoder_inst *di, spiflash_state *s, u
     if (s->cmdstate == 1) {
         spiflash_emit_cmd_byte(di, s);
         if (s->writestate == 0) {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
         }
     } else if (s->cmdstate >= 2 && s->cmdstate <= 4) {
         spiflash_emit_addr_bytes(di, s, mosi);
@@ -542,9 +542,9 @@ static void spiflash_handle_se(struct srd_decoder_inst *di, spiflash_state *s, u
         s->es_cmd = s->es;
         char buf[128];
         snprintf(buf, sizeof(buf), "Erase sector @%06x", s->addr);
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SE, buf);
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SE, buf);
         if (s->addr % 4096 != 0) {
-            C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Warning: Invalid sector address!");
+            c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Warning: Invalid sector address!");
         }
         s->state = 0;
     } else {
@@ -561,9 +561,9 @@ static void spiflash_handle_be(struct srd_decoder_inst *di, spiflash_state *s, u
 static void spiflash_handle_ce(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
     (void)mosi; (void)miso;
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CE, "Chip erase");
+    c_put(di, s->ss, s->es, s->out_ann, ANN_CE, "Chip erase");
     if (s->writestate == 0) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
     }
     s->state = 0;
 }
@@ -571,9 +571,9 @@ static void spiflash_handle_ce(struct srd_decoder_inst *di, spiflash_state *s, u
 static void spiflash_handle_ce2(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
     (void)mosi; (void)miso;
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CE2, "Chip erase");
+    c_put(di, s->ss, s->es, s->out_ann, ANN_CE2, "Chip erase");
     if (s->writestate == 0) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Warning: WREN might be missing");
     }
     s->state = 0;
 }
@@ -585,16 +585,16 @@ static void spiflash_handle_rdp_res(struct srd_decoder_inst *di, spiflash_state 
     } else if (s->cmdstate >= 2 && s->cmdstate <= 4) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Dummy byte: 0x%02x", mosi);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     } else if (s->cmdstate == 5) {
         s->device_id = miso;
         const char *vendor = spiflash_chips[s->chip_index].vendor;
         const char *dev_name = spiflash_find_device_name(vendor, miso);
         char buf[128];
         snprintf(buf, sizeof(buf), "Device ID: %s %s", vendor, dev_name);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
         s->es_cmd = s->es;
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_RDP_RES, "Release from deep powerdown / Read electronic ID");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_RDP_RES, "Release from deep powerdown / Read electronic ID");
         s->state = 0;
         return;
     }
@@ -608,25 +608,25 @@ static void spiflash_handle_rems(struct srd_decoder_inst *di, spiflash_state *s,
     } else if (s->cmdstate == 2 || s->cmdstate == 3) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Dummy byte: 0x%02X", mosi);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     } else if (s->cmdstate == 4) {
         s->manufacturer_id_first = (mosi == 0x00) ? 1 : 0;
         const char *d = (mosi == 0x00) ? "manufacturer" : "device";
         char buf[64];
         snprintf(buf, sizeof(buf), "Master wants %s ID first", d);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     } else if (s->cmdstate == 5) {
         s->ids[0] = miso;
         const char *d = s->manufacturer_id_first ? "Manufacturer" : "Device";
         char buf[64];
         snprintf(buf, sizeof(buf), "%s ID: 0x%02X", d, miso);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     } else if (s->cmdstate == 6) {
         s->ids[1] = miso;
         const char *d = s->manufacturer_id_first ? "Device" : "Manufacturer";
         char buf[64];
         snprintf(buf, sizeof(buf), "%s ID: 0x%02X", d, miso);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
         int id_ = s->manufacturer_id_first ? s->ids[1] : s->ids[0];
         s->device_id = id_;
@@ -635,7 +635,7 @@ static void spiflash_handle_rems(struct srd_decoder_inst *di, spiflash_state *s,
         const char *dev_name = spiflash_find_device_name(vendor, (uint8_t)id_);
         char vbuf[128];
         snprintf(vbuf, sizeof(vbuf), "Device = %s %s", vendor, dev_name);
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_REMS, vbuf);
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_REMS, vbuf);
         s->state = 0;
         return;
     }
@@ -661,7 +661,7 @@ static void spiflash_handle_status(struct srd_decoder_inst *di, spiflash_state *
         if (s->cmdstate == 2) s->ss_field = s->ss;
         char buf[64];
         snprintf(buf, sizeof(buf), "Status register byte %d: 0x%02x", ((s->cmdstate % 2) + 1), miso);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     }
     s->cmdstate++;
 }
@@ -711,9 +711,7 @@ static spiflash_cmd_handler spiflash_find_handler(uint8_t cmd_byte)
 }
 
 /* ===== recv_proto ===== */
-static void spiflash_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void spiflash_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     spiflash_state *s = (spiflash_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -730,8 +728,8 @@ static void spiflash_recv_proto(struct srd_decoder_inst *di,
         return;
 
     uint8_t mosi, miso;
-    spi_proto_get_mosi(data, data_len, &mosi);
-    spi_proto_get_miso(data, data_len, &miso);
+    spi_proto_get_mosi(fields, n_fields, &mosi);
+    spi_proto_get_miso(fields, n_fields, &miso);
 
     /* If no current command, first MOSI byte is command */
     if (s->state == 0) {
@@ -746,7 +744,7 @@ static void spiflash_recv_proto(struct srd_decoder_inst *di,
     } else {
         char buf[64];
         snprintf(buf, sizeof(buf), "Unknown command: 0x%02x", mosi);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         s->state = 0;
     }
 }
@@ -767,12 +765,12 @@ static void spiflash_reset(struct srd_decoder_inst *di)
 static void spiflash_start(struct srd_decoder_inst *di)
 {
     spiflash_state *s = (spiflash_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spiflash");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "spiflash");
 
-    const char *chip = c_decoder_get_option_string(di, "chip", "macronix_mx25l1605d");
+    const char *chip = c_opt_str(di, "chip", "macronix_mx25l1605d");
     s->chip_index = spiflash_find_chip_index(chip);
 
-    const char *fmt = c_decoder_get_option_string(di, "format", "hex");
+    const char *fmt = c_opt_str(di, "format", "hex");
     s->format = (strcmp(fmt, "ascii") == 0) ? 1 : 0;
 }
 
@@ -819,7 +817,8 @@ struct srd_c_decoder spiflash_c_decoder = {
     .start = spiflash_start,
     .decode = spiflash_decode,
     .destroy = spiflash_destroy,
-    .recv_proto = spiflash_recv_proto,
+    .decode_upper = spiflash_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== Export functions ===== */

@@ -820,17 +820,11 @@ SRD_API int srd_inst_stack(struct srd_session* sess,
         return SRD_ERR_ARG;
     }
 
-    /* Prevent mixed C/Python decoder stacking */
-    if (di_bottom->is_c_inst != di_top->is_c_inst) {
-        if (di_bottom->is_c_inst) {
-            srd_err("C→Python decoder stacking is not supported: "
-                    "cannot stack Python decoder %s on top of C decoder %s.",
-                di_top->inst_id, di_bottom->inst_id);
-        } else {
-            srd_err("Python→C decoder stacking is not supported: "
-                    "cannot stack C decoder %s on top of Python decoder %s.",
-                di_top->inst_id, di_bottom->inst_id);
-        }
+    /* Prevent C→Python decoder stacking (Python→C is supported via decode_upper bridge) */
+    if (di_bottom->is_c_inst && !di_top->is_c_inst) {
+        srd_err("C→Python decoder stacking is not supported: "
+                "cannot stack Python decoder %s on top of C decoder %s.",
+            di_top->inst_id, di_bottom->inst_id);
         return SRD_ERR_ARG;
     }
 

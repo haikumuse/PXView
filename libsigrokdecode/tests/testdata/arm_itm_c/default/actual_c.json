@@ -170,19 +170,19 @@
 		{
 			"start_sample": 217,
 			"end_sample": 286,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 217,
 			"end_sample": 286,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{
@@ -366,19 +366,19 @@
 		{
 			"start_sample": 425,
 			"end_sample": 494,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 425,
 			"end_sample": 494,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{
@@ -562,19 +562,19 @@
 		{
 			"start_sample": 633,
 			"end_sample": 702,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 633,
 			"end_sample": 702,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{
@@ -758,19 +758,19 @@
 		{
 			"start_sample": 841,
 			"end_sample": 910,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 841,
 			"end_sample": 910,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{
@@ -954,19 +954,19 @@
 		{
 			"start_sample": 1049,
 			"end_sample": 1118,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 1049,
 			"end_sample": 1118,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{
@@ -1150,19 +1150,19 @@
 		{
 			"start_sample": 1361,
 			"end_sample": 1430,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 1361,
 			"end_sample": 1430,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{
@@ -1346,19 +1346,19 @@
 		{
 			"start_sample": 1569,
 			"end_sample": 1638,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 1569,
 			"end_sample": 1638,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{
@@ -1542,19 +1542,19 @@
 		{
 			"start_sample": 1777,
 			"end_sample": 1846,
-			"ann_class": 2,
-			"ann_type": 9,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"00"
+				"Unhandled sync: 00"
 			]
 		}, 
 		{
 			"start_sample": 1777,
 			"end_sample": 1846,
-			"ann_class": 0,
-			"ann_type": 7,
+			"ann_class": 2,
+			"ann_type": 9,
 			"texts": [
-				"Unhandled sync: 00"
+				"00"
 			]
 		}, 
 		{

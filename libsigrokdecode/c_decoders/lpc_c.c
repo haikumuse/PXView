@@ -189,9 +189,21 @@ static const struct srd_c_ann_row lpc_ann_rows[] = {
 static const char* lpc_inputs[] = { "logic", NULL };
 static const char* lpc_tags[] = { "PC", NULL };
 
+/* Helper: convert 4-bit value to binary string (replaces %04b which MSVC doesn't support) */
+static const char* to_bin4(int val)
+{
+    static char buf[5];
+    buf[0] = '0' + ((val >> 3) & 1);
+    buf[1] = '0' + ((val >> 2) & 1);
+    buf[2] = '0' + ((val >> 1) & 1);
+    buf[3] = '0' + (val & 1);
+    buf[4] = '\0';
+    return buf;
+}
+
 static void lpc_putb(struct srd_decoder_inst* di, lpc_decoder_state* s, int cls, const char* text)
 {
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, cls, text);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, cls, text);
 }
 
 static void lpc_reset(struct srd_decoder_inst* di)
@@ -210,20 +222,21 @@ static void lpc_reset(struct srd_decoder_inst* di)
 static void lpc_start(struct srd_decoder_inst* di)
 {
     lpc_decoder_state* s = (lpc_decoder_state*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "lpc");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "lpc");
 }
 
 static void lpc_handle_get_start(struct srd_decoder_inst* di, lpc_decoder_state* s, int lframe, int lad)
 {
-    s->es_block = s->ss_block;
-    if (lad >= 0 && lad <= 15) {
+    s->es_block = di_samplenum(di);
+    /* Match Python: use oldlad (previous iteration's LAD) for START annotation */
+    if (s->oldlad >= 0 && s->oldlad <= 15) {
         char short1[8], short2[4];
         snprintf(short1, sizeof(short1), "START");
         snprintf(short2, sizeof(short2), "St");
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_START,
-            lpc_start_names[lad], short1, short2, "S");
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_START,
+            lpc_start_names[s->oldlad], short1, short2, "S");
     }
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     if (lframe != 1)
         return;
@@ -250,13 +263,13 @@ static void lpc_handle_get_ct_dr(struct srd_decoder_inst* di, lpc_decoder_state*
         s->direction = lpc_ct_dr_wr[s->oldlad];
     }
 
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     if (s->oldlad >= 0 && s->oldlad <= 15) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Cycle type: %s", lpc_ct_dr_names[s->oldlad]);
         lpc_putb(di, s, ANN_CYCLE_TYPE, buf);
     }
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     s->state = LPC_GET_ADDR;
     s->addr = 0;
@@ -265,11 +278,11 @@ static void lpc_handle_get_ct_dr(struct srd_decoder_inst* di, lpc_decoder_state*
 
 static void lpc_handle_get_fw_idsel(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[64];
     snprintf(buf, sizeof(buf), "IDSEL: 0x%x", s->oldlad);
     lpc_putb(di, s, ANN_ADDR, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     s->state = LPC_GET_FW_ADDR;
     s->addr = 0;
@@ -295,22 +308,22 @@ static void lpc_handle_get_fw_addr(struct srd_decoder_inst* di, lpc_decoder_stat
         return;
     }
 
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[64];
     snprintf(buf, sizeof(buf), "Address: 0x%07x", (unsigned int)s->addr);
     lpc_putb(di, s, ANN_ADDR, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     s->state = LPC_GET_FW_MSIZE;
 }
 
 static void lpc_handle_get_fw_msize(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[64];
     snprintf(buf, sizeof(buf), "MSIZE: 0x%x", s->oldlad);
     lpc_putb(di, s, ANN_ADDR, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     s->msize = s->oldlad;
 
@@ -329,10 +342,10 @@ static void lpc_handle_get_addr(struct srd_decoder_inst* di, lpc_decoder_state* 
 {
     int addr_nibbles;
 
-    if (s->cycle_type == 0x0 || s->cycle_type == 0x1) {
-        addr_nibbles = 4;
-    } else if (s->cycle_type == 0x4 || s->cycle_type == 0x5) {
-        addr_nibbles = 8;
+    if (s->cycle_type >= 0x0 && s->cycle_type <= 0x3) {
+        addr_nibbles = 4;   /* I/O read (0,1) and I/O write (2,3) */
+    } else if (s->cycle_type >= 0x4 && s->cycle_type <= 0x7) {
+        addr_nibbles = 8;   /* Memory read (4,5) and Memory write (6,7) */
     } else {
         addr_nibbles = 0;
     }
@@ -362,14 +375,14 @@ static void lpc_handle_get_addr(struct srd_decoder_inst* di, lpc_decoder_state* 
         return;
     }
 
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[64];
     if (addr_nibbles <= 4)
         snprintf(buf, sizeof(buf), "Address: 0x%04x", (unsigned int)s->addr);
     else
         snprintf(buf, sizeof(buf), "Address: 0x%08x", (unsigned int)s->addr);
     lpc_putb(di, s, ANN_ADDR, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     if (s->direction == 1) {
         s->state = LPC_GET_DATA;
@@ -382,15 +395,15 @@ static void lpc_handle_get_addr(struct srd_decoder_inst* di, lpc_decoder_state* 
 
 static void lpc_handle_get_tar(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[64];
-    snprintf(buf, sizeof(buf), "TAR, cycle %d: %04b", s->tarcount, s->oldlad);
+    snprintf(buf, sizeof(buf), "TAR, cycle %d: %s", s->tarcount, to_bin4(s->oldlad));
     lpc_putb(di, s, ANN_TAR1, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     if (s->oldlad != 0xF) {
         char wbuf[80];
-        snprintf(wbuf, sizeof(wbuf), "TAR, cycle %d: %04b (expected 1111)", s->tarcount, s->oldlad);
+        snprintf(wbuf, sizeof(wbuf), "TAR, cycle %d: %s (expected 1111)", s->tarcount, to_bin4(s->oldlad));
         lpc_putb(di, s, ANN_WARN, wbuf);
     }
 
@@ -407,15 +420,15 @@ static void lpc_handle_get_sync(struct srd_decoder_inst* di, lpc_decoder_state* 
 {
     const char* sync_name = (s->oldlad >= 0 && s->oldlad <= 15) ? lpc_sync_names[s->oldlad] : "Unknown";
 
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[64];
-    snprintf(buf, sizeof(buf), "SYNC, cycle %d: %04b", s->synccount, s->oldlad);
+    snprintf(buf, sizeof(buf), "SYNC, cycle %d: %s", s->synccount, to_bin4(s->oldlad));
     lpc_putb(di, s, ANN_SYNC, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     if (strcmp(sync_name, "Reserved") == 0) {
         char wbuf[80];
-        snprintf(wbuf, sizeof(wbuf), "SYNC, cycle %d: %04b (reserved value)", s->synccount, s->oldlad);
+        snprintf(wbuf, sizeof(wbuf), "SYNC, cycle %d: %s (reserved value)", s->synccount, to_bin4(s->oldlad));
         lpc_putb(di, s, ANN_WARN, wbuf);
     }
 
@@ -443,11 +456,11 @@ static void lpc_handle_get_timeout(struct srd_decoder_inst* di, lpc_decoder_stat
         return;
     }
 
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[32];
     snprintf(buf, sizeof(buf), "Timeout %d", s->timeoutcount);
     lpc_putb(di, s, ANN_TIMEOUT, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     if (s->timeoutcount != 3) {
         s->timeoutcount++;
@@ -501,14 +514,14 @@ static void lpc_handle_get_fw_data(struct srd_decoder_inst* di, lpc_decoder_stat
         return;
     }
 
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[80];
     if (data_nibbles <= 8)
         snprintf(buf, sizeof(buf), "DATA: 0x%0*llx", data_nibbles, (unsigned long long)s->dataword);
     else
         snprintf(buf, sizeof(buf), "DATA: 0x%0*llx...", 8, (unsigned long long)s->dataword);
     lpc_putb(di, s, ANN_DATA, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     s->cycle_count = 0;
     s->state = LPC_GET_TAR2;
@@ -533,11 +546,11 @@ static void lpc_handle_get_data(struct srd_decoder_inst* di, lpc_decoder_state* 
         return;
     }
 
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[32];
     snprintf(buf, sizeof(buf), "DATA: 0x%02x", s->databyte);
     lpc_putb(di, s, ANN_DATA, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     s->cycle_count = 0;
     s->state = LPC_GET_TAR2;
@@ -545,15 +558,15 @@ static void lpc_handle_get_data(struct srd_decoder_inst* di, lpc_decoder_state* 
 
 static void lpc_handle_get_tar2(struct srd_decoder_inst* di, lpc_decoder_state* s)
 {
-    s->es_block = s->ss_block;
+    s->es_block = di_samplenum(di);
     char buf[64];
-    snprintf(buf, sizeof(buf), "TAR, cycle %d: %04b", s->tarcount, s->oldlad);
+    snprintf(buf, sizeof(buf), "TAR, cycle %d: %s", s->tarcount, to_bin4(s->oldlad));
     lpc_putb(di, s, ANN_TAR2, buf);
-    s->ss_block = s->es_block + 1;
+    s->ss_block = di_samplenum(di);
 
     if (s->oldlad != 0xF) {
         char wbuf[80];
-        snprintf(wbuf, sizeof(wbuf), "Warning: TAR, cycle %d: %04b (expected 1111)", s->tarcount, s->oldlad);
+        snprintf(wbuf, sizeof(wbuf), "Warning: TAR, cycle %d: %s (expected 1111)", s->tarcount, to_bin4(s->oldlad));
         lpc_putb(di, s, ANN_WARN, wbuf);
     }
 
@@ -569,22 +582,33 @@ static void lpc_handle_get_tar2(struct srd_decoder_inst* di, lpc_decoder_state* 
 static void lpc_decode(struct srd_decoder_inst* di)
 {
     lpc_decoder_state* s = (lpc_decoder_state*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     while (1) {
-        srd_cond_builder* cb = c_cond_new();
-        c_cond_rise(cb, CH_LCLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        /* Wait for LCLK rising edge; in IDLE state also wait for LFRAME falling */
+        int ret;
+        if (s->state == LPC_IDLE && s->oldlframe != 0)
+            ret = c_wait(di, CW_R(CH_LCLK), CW_OR, CW_F(CH_LFRAME), CW_END);
+        else
+            ret = c_wait(di, CW_R(CH_LCLK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int lframe = c_decoder_get_pin(di, CH_LFRAME, samplenum);
-        int lad0 = c_decoder_get_pin(di, CH_LAD0, samplenum);
-        int lad1 = c_decoder_get_pin(di, CH_LAD1, samplenum);
-        int lad2 = c_decoder_get_pin(di, CH_LAD2, samplenum);
-        int lad3 = c_decoder_get_pin(di, CH_LAD3, samplenum);
+        /* If only LFRAME fell (not LCLK rising), skip processing — LAD data
+         * is only valid at LCLK rising edge. Match Python which goes back to
+         * loop top and waits for LCLK rising after LFRAME falls. */
+        if (s->state == LPC_IDLE && s->oldlframe != 0) {
+            uint64_t matched = di_matched(di);
+            if (!(matched & 0b01)) {
+                /* LCLK didn't rise, only LFRAME fell — skip this iteration */
+                s->oldlframe = c_pin(di, CH_LFRAME);
+                continue;
+            }
+        }
+
+        int lframe = c_pin(di, CH_LFRAME);
+        int lad0 = c_pin(di, CH_LAD0);
+        int lad1 = c_pin(di, CH_LAD1);
+        int lad2 = c_pin(di, CH_LAD2);
+        int lad3 = c_pin(di, CH_LAD3);
         int lad = (lad3 << 3) | (lad2 << 2) | (lad1 << 1) | lad0;
 
         if (lframe == 0 && s->oldlframe == 0) {
@@ -594,20 +618,13 @@ static void lpc_decode(struct srd_decoder_inst* di)
         switch (s->state) {
         case LPC_IDLE:
             if (lframe == 0) {
-                s->ss_block = samplenum;
-                s->state = LPC_GET_START;
-                s->oldlad = -1;
-            } else {
-                cb = c_cond_new();
-                c_cond_fall(cb, CH_LFRAME);
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
-                if (ret != SRD_OK)
-                    return;
-                s->ss_block = samplenum;
+                s->ss_block = di_samplenum(di);
                 s->state = LPC_GET_START;
                 s->oldlad = -1;
             }
+            /* If lframe != 0, we already waited for LFRAME falling via the
+             * combined c_wait above. On the next iteration, if LFRAME fell,
+             * lframe will be 0 and we'll enter LPC_GET_START. */
             break;
 
         case LPC_GET_START:
@@ -701,6 +718,7 @@ struct srd_c_decoder lpc_c_decoder = {
     .start = lpc_start,
     .decode = lpc_decode,
     .destroy = lpc_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

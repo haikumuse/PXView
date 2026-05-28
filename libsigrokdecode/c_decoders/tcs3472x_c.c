@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -119,7 +119,7 @@ static void tcs3472x_interpret_byte_values(struct srd_decoder_inst *di,
             else
                 snprintf(buf, sizeof(buf), "Select register 0x%02X", s->register_id);
         }
-        C_ANN_PUT(di, s->sequence_start, s->sequence_end, s->out_ann, ANN_REGISTER, buf);
+        c_put(di, s->sequence_start, s->sequence_end, s->out_ann, ANN_REGISTER, buf);
         return;
     }
 
@@ -215,17 +215,15 @@ static void tcs3472x_interpret_byte_values(struct srd_decoder_inst *di,
     }
     }
 
-    C_ANN_PUT(di, s->sequence_start, s->sequence_end, s->out_ann, ANN_REGISTER, buf);
+    c_put(di, s->sequence_start, s->sequence_end, s->out_ann, ANN_REGISTER, buf);
 }
 
 /* ===== recv_proto ===== */
-static void tcs3472x_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void tcs3472x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     tcs3472x_state *s = (tcs3472x_state *)c_decoder_get_private(di);
     if (!s) return;
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "BITS") == 0) return;
 
@@ -364,9 +362,9 @@ static void tcs3472x_reset(struct srd_decoder_inst *di)
 static void tcs3472x_start(struct srd_decoder_inst *di)
 {
     tcs3472x_state *s = (tcs3472x_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tcs3472x");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tcs3472x");
 
-    const char *addr_str = c_decoder_get_option_string(di, "device_address", "0x29");
+    const char *addr_str = c_opt_str(di, "device_address", "0x29");
     s->device_address = (int)strtol(addr_str, NULL, 0);
 }
 
@@ -413,7 +411,8 @@ struct srd_c_decoder tcs3472x_c_decoder = {
     .start = tcs3472x_start,
     .decode = tcs3472x_decode,
     .destroy = tcs3472x_destroy,
-    .recv_proto = tcs3472x_recv_proto,
+    .decode_upper = tcs3472x_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== 导出函数 ===== */

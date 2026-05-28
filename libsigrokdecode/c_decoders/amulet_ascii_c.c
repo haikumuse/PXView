@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2019 Vesa-Pekka Palmu <vpalmu@depili.fi>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -242,7 +242,7 @@ static void amulet_emit_cmd_byte(struct srd_decoder_inst *di, amulet_state *s)
     const char *name = amulet_cmd_name(s->state);
     char buf[128];
     snprintf(buf, sizeof(buf), "Command: %s", name);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf, name);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf, name);
 }
 
 static void amulet_emit_cmd_end(struct srd_decoder_inst *di, amulet_state *s, int ann_class)
@@ -251,7 +251,7 @@ static void amulet_emit_cmd_end(struct srd_decoder_inst *di, amulet_state *s, in
     const char *name = amulet_cmd_name(s->state);
     char buf[128];
     snprintf(buf, sizeof(buf), "Command: %s", name);
-    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ann_class, buf, name);
+    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ann_class, buf, name);
     s->state = 0;
 }
 
@@ -264,7 +264,7 @@ static void amulet_emit_addr_bytes(struct srd_decoder_inst *di, amulet_state *s,
                   (pdata >= 'a' && pdata <= 'f') ? (pdata - 'a' + 10) << 4 : 0;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr high 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     } else if (s->cmdstate == 3) {
         int lo = (pdata >= '0' && pdata <= '9') ? pdata - '0' :
                  (pdata >= 'A' && pdata <= 'F') ? pdata - 'A' + 10 :
@@ -273,9 +273,9 @@ static void amulet_emit_addr_bytes(struct srd_decoder_inst *di, amulet_state *s,
         s->es_field = s->es;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr low 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         snprintf(buf, sizeof(buf), "Addr: 0x%02X", s->addr);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
     }
 }
 
@@ -307,10 +307,10 @@ static void amulet_handle_string(struct srd_decoder_inst *di, amulet_state *s, u
     }
     if (pdata == 0x00) {
         s->es_field = s->es;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, "NULL");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, "NULL");
         char buf[256];
         snprintf(buf, sizeof(buf), "Value: %s", s->str_val);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         amulet_emit_cmd_end(di, s, ann_class);
         return;
     }
@@ -322,7 +322,7 @@ static void amulet_handle_string(struct srd_decoder_inst *di, amulet_state *s, u
         }
         char buf[8];
         snprintf(buf, sizeof(buf), "%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     }
     s->cmdstate++;
 }
@@ -334,10 +334,10 @@ static void amulet_handle_page(struct srd_decoder_inst *di, amulet_state *s, uin
             s->ss_field = s->ss_cmd;
             s->es_field = s->es;
             const char *name = "PAGE";
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, name);
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, name);
             s->checksum = 0xA0 + 0x02;
         } else {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Illegal second byte for page change", "Illegal byte");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Illegal second byte for page change", "Illegal byte");
             s->state = 0;
             return;
         }
@@ -350,18 +350,18 @@ static void amulet_handle_page(struct srd_decoder_inst *di, amulet_state *s, uin
         s->page[1] = pdata;
         s->es_field = s->es;
         if (s->page[0] == 0xFF && s->page[1] == 0xFF) {
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_WARN, "Soft reset", "Reset");
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_WARN, "Soft reset", "Reset");
         } else {
             char buf[32];
             snprintf(buf, sizeof(buf), "Page: 0x%c%c", s->page[0], s->page[1]);
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         }
     } else if (s->cmdstate == 5) {
         s->checksum += pdata;
         if ((s->checksum & 0xFF) != 0) {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Checksum error", "ERR");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Checksum error", "ERR");
         } else {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Checksum OK", "OK");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Checksum OK", "OK");
         }
         amulet_emit_cmd_end(di, s, ANN_PAGE);
         return;
@@ -383,7 +383,7 @@ static void amulet_handle_grpc(struct srd_decoder_inst *di, amulet_state *s, uin
         s->es_field = s->es;
         char buf[32];
         snprintf(buf, sizeof(buf), "RPC flag: 0x%02X", s->flags);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         amulet_emit_cmd_end(di, s, ANN_GRPC);
         return;
     }
@@ -400,7 +400,7 @@ static void amulet_handle_sbv(struct srd_decoder_inst *di, amulet_state *s, uint
         char buf[32];
         snprintf(buf, sizeof(buf), "Value: 0x%c%c", (char)s->value, (char)pdata);
         s->es_field = s->es;
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         amulet_emit_cmd_end(di, s, ANN_SBV);
         return;
     }
@@ -424,7 +424,7 @@ static void amulet_handle_swv(struct srd_decoder_inst *di, amulet_state *s, uint
             s->es_field = s->es;
             char buf[32];
             snprintf(buf, sizeof(buf), "Value: 0x%04x", s->value);
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
             amulet_emit_cmd_end(di, s, ANN_SWV);
             return;
         }
@@ -442,7 +442,7 @@ static void amulet_handle_sbva(struct srd_decoder_inst *di, amulet_state *s, uin
         s->ss_field = s->ss;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr high 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     } else if (s->cmdstate == 3) {
         s->addr += ((pdata >= '0' && pdata <= '9') ? pdata - '0' :
                     (pdata >= 'A' && pdata <= 'F') ? pdata - 'A' + 10 :
@@ -450,9 +450,9 @@ static void amulet_handle_sbva(struct srd_decoder_inst *di, amulet_state *s, uin
         s->es_field = s->ss;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr low 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         snprintf(buf, sizeof(buf), "Addr: 0x%02X", s->addr);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
     } else if (nibble == 0) {
         if (pdata == 0x00) {
             amulet_emit_cmd_end(di, s, ANN_SBVA);
@@ -469,7 +469,7 @@ static void amulet_handle_sbva(struct srd_decoder_inst *di, amulet_state *s, uin
         s->es_field = s->es;
         char buf[32];
         snprintf(buf, sizeof(buf), "Value 0x%02X", s->value);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
     }
     s->cmdstate++;
 }
@@ -484,7 +484,7 @@ static void amulet_handle_swva(struct srd_decoder_inst *di, amulet_state *s, uin
         s->ss_field = s->ss;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr high 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     } else if (s->cmdstate == 3) {
         s->addr += ((pdata >= '0' && pdata <= '9') ? pdata - '0' :
                     (pdata >= 'A' && pdata <= 'F') ? pdata - 'A' + 10 :
@@ -492,9 +492,9 @@ static void amulet_handle_swva(struct srd_decoder_inst *di, amulet_state *s, uin
         s->es_field = s->ss;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr low 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         snprintf(buf, sizeof(buf), "Addr: 0x%02X", s->addr);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         s->value = 0;
     } else {
         int d = (pdata >= '0' && pdata <= '9') ? pdata - '0' :
@@ -512,7 +512,7 @@ static void amulet_handle_swva(struct srd_decoder_inst *di, amulet_state *s, uin
             s->es_field = s->es;
             char buf[32];
             snprintf(buf, sizeof(buf), "Value 0x%04X", s->value);
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         }
     }
     s->cmdstate++;
@@ -541,7 +541,7 @@ static void amulet_handle_drawing(struct srd_decoder_inst *di, amulet_state *s, 
             if (i < 4) {
                 char buf[32];
                 snprintf(buf, sizeof(buf), "Coordinate 0x%04X", s->coords[i]);
-                C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+                c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
             }
         }
     }
@@ -550,8 +550,8 @@ static void amulet_handle_drawing(struct srd_decoder_inst *di, amulet_state *s, 
         const char *name = amulet_cmd_name(s->state);
         char buf[64];
         snprintf(buf, sizeof(buf), "Command: %s", name);
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ann_class, buf, name);
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Pattern/Color not implemented");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ann_class, buf, name);
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Pattern/Color not implemented");
         s->state = 0;
         return;
     }
@@ -561,7 +561,7 @@ static void amulet_handle_drawing(struct srd_decoder_inst *di, amulet_state *s, 
 static void amulet_handle_not_implemented(struct srd_decoder_inst *di, amulet_state *s, int ann_class)
 {
     s->es_cmd = s->es;
-    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Command not decoded", "Not decoded");
+    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Command not decoded", "Not decoded");
     amulet_emit_cmd_end(di, s, ann_class);
 }
 
@@ -575,7 +575,7 @@ static void amulet_handle_gbvr(struct srd_decoder_inst *di, amulet_state *s, uin
                     (pdata >= 'a' && pdata <= 'f') ? pdata - 'a' + 10 : 0) << 4;
         char buf[32];
         snprintf(buf, sizeof(buf), "High nibble 0x%02X", s->value >> 4);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     } else if (s->cmdstate == 5) {
         s->value += ((pdata >= '0' && pdata <= '9') ? pdata - '0' :
                      (pdata >= 'A' && pdata <= 'F') ? pdata - 'A' + 10 :
@@ -583,7 +583,7 @@ static void amulet_handle_gbvr(struct srd_decoder_inst *di, amulet_state *s, uin
         s->es_field = s->es;
         char buf[32];
         snprintf(buf, sizeof(buf), "Value: 0x%02X", s->value);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         amulet_emit_cmd_end(di, s, ANN_GBVR);
         return;
     }
@@ -607,7 +607,7 @@ static void amulet_handle_gwvr(struct srd_decoder_inst *di, amulet_state *s, uin
             s->es_field = s->es;
             char buf[32];
             snprintf(buf, sizeof(buf), "Value: 0x%04x", s->value);
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
             amulet_emit_cmd_end(di, s, ANN_GWVR);
             return;
         }
@@ -637,7 +637,7 @@ static void amulet_handle_grpcr(struct srd_decoder_inst *di, amulet_state *s, ui
             s->es_field = s->es;
             char buf[32];
             snprintf(buf, sizeof(buf), "0x%02X", s->value);
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         }
     }
     s->cmdstate++;
@@ -653,7 +653,7 @@ static void amulet_handle_sbvr(struct srd_decoder_inst *di, amulet_state *s, uin
         s->es_field = s->es;
         char buf[32];
         snprintf(buf, sizeof(buf), "Value: 0x%c%c", (char)s->value, (char)pdata);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         amulet_emit_cmd_end(di, s, ANN_SBVR);
         return;
     }
@@ -676,7 +676,7 @@ static void amulet_handle_swvr(struct srd_decoder_inst *di, amulet_state *s, uin
         s->es_field = s->es;
         char buf[32];
         snprintf(buf, sizeof(buf), "Value: 0x%04x", s->value);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         amulet_emit_cmd_end(di, s, ANN_SWVR);
         return;
     }
@@ -698,7 +698,7 @@ static void amulet_handle_array_reply(struct srd_decoder_inst *di, amulet_state 
         s->ss_field = s->ss;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr high 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
     } else if (s->cmdstate == 3) {
         s->addr += ((pdata >= '0' && pdata <= '9') ? pdata - '0' :
                     (pdata >= 'A' && pdata <= 'F') ? pdata - 'A' + 10 :
@@ -706,9 +706,9 @@ static void amulet_handle_array_reply(struct srd_decoder_inst *di, amulet_state 
         s->es_field = s->ss;
         char buf[32];
         snprintf(buf, sizeof(buf), "Addr low 0x%c", pdata);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         snprintf(buf, sizeof(buf), "Addr: 0x%02X", s->addr);
-        C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         s->value = 0;
     } else {
         int d = (pdata >= '0' && pdata <= '9') ? pdata - '0' :
@@ -730,7 +730,7 @@ static void amulet_handle_array_reply(struct srd_decoder_inst *di, amulet_state 
                 snprintf(buf, sizeof(buf), "Value 0x%02X", s->value);
             else
                 snprintf(buf, sizeof(buf), "Value 0x%04X", s->value);
-            C_ANN_PUT(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
+            c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         }
     }
     s->cmdstate++;
@@ -754,7 +754,7 @@ static void amulet_handle_command(struct srd_decoder_inst *di, amulet_state *s, 
     case 0xDB: amulet_handle_drawing(di, s, pdata, ANN_FRECT); break;
     case 0xDC: /* PIXEL - undocumented */
         s->es_cmd = s->es;
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Draw pixel documentation is missing", "Undocumented");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Draw pixel documentation is missing", "Undocumented");
         s->state = 0;
         break;
     case 0xDD: amulet_handle_read(di, s, pdata); amulet_emit_cmd_end(di, s, ANN_GBVA); break;
@@ -774,18 +774,18 @@ static void amulet_handle_command(struct srd_decoder_inst *di, amulet_state *s, 
     case 0xEB: amulet_handle_drawing(di, s, pdata, ANN_FRECTR); break;
     case 0xEC: /* PIXELR - undocumented */
         s->es_cmd = s->es;
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Draw pixel documentation is missing", "Undocumented");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WARN, "Draw pixel documentation is missing", "Undocumented");
         s->state = 0;
         break;
     case 0xED: amulet_handle_array_reply(di, s, pdata, ANN_GBVAR, 2); break;
     case 0xEE: amulet_handle_array_reply(di, s, pdata, ANN_GWVAR, 4); break;
     case 0xEF: amulet_handle_array_reply(di, s, pdata, ANN_SBVAR, 2); break;
     case 0xF0: /* ACK */
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ACK, "ACK");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_ACK, "ACK");
         s->state = 0;
         break;
     case 0xF1: /* NACK */
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_NACK, "NACK");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_NACK, "NACK");
         s->state = 0;
         break;
     case 0xF2: amulet_handle_swva(di, s, pdata); break;
@@ -800,15 +800,13 @@ static void amulet_handle_command(struct srd_decoder_inst *di, amulet_state *s, 
         s->cmdstate++;
         break;
     default:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Unknown command");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Unknown command");
         s->state = 0;
         break;
     }
 }
 
-static void amulet_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void amulet_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     amulet_state *s = (amulet_state *)c_decoder_get_private(di);
     if (!s)
@@ -816,13 +814,13 @@ static void amulet_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 1)
+    if (n_fields < 1)
         return;
 
     s->ss = start_sample;
     s->es = end_sample;
 
-    uint8_t pdata = data[0];
+    uint8_t pdata = fields[0].u8;
 
     /* Check for command abort by high byte */
     int abort_current = (pdata >= 0xD0 && pdata <= 0xF7) &&
@@ -830,7 +828,7 @@ static void amulet_recv_proto(struct srd_decoder_inst *di,
                         s->state != 0;
 
     if (abort_current) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "Command aborted by invalid byte", "Abort");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "Command aborted by invalid byte", "Abort");
         s->state = pdata;
         amulet_emit_cmd_byte(di, s);
         s->cmdstate = 1;
@@ -845,7 +843,7 @@ static void amulet_recv_proto(struct srd_decoder_inst *di,
         } else {
             char buf[64];
             snprintf(buf, sizeof(buf), "Unknown command: 0x%02X", pdata);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, buf);
         }
         return;
     }
@@ -867,11 +865,11 @@ static void amulet_reset(struct srd_decoder_inst *di)
 static void amulet_start(struct srd_decoder_inst *di)
 {
     amulet_state *s = (amulet_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "amulet_ascii");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "amulet_ascii");
 
-    const char *ms = c_decoder_get_option_string(di, "ms_chan", "RX");
+    const char *ms = c_opt_str(di, "ms_chan", "RX");
     s->ms_chan = (ms && strcmp(ms, "TX") == 0) ? 1 : 0;
-    const char *sm = c_decoder_get_option_string(di, "sm_chan", "TX");
+    const char *sm = c_opt_str(di, "sm_chan", "TX");
     s->sm_chan = (sm && strcmp(sm, "TX") == 0) ? 1 : 0;
 }
 
@@ -928,7 +926,8 @@ struct srd_c_decoder amulet_ascii_c_decoder = {
     .start = amulet_start,
     .decode = amulet_decode,
     .destroy = amulet_destroy,
-    .recv_proto = amulet_recv_proto,
+    .decode_upper = amulet_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

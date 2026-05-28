@@ -18,9 +18,122 @@ import sys
 
 # Import protocol synthesizer for real data generation
 try:
-    import protocol_synthesizer as ps
+    import fuzzers as ps
 except ImportError:
     ps = None
+
+# Stack decoders that need generated input data.
+# These are non-logic decoders (input is another decoder, not raw logic)
+# but they still need an input.bin because their stack root is a logic-input
+# decoder. Maps decoder_id -> config dict with stack info and generator.
+_STACK_INPUT_OVERRIDES = {
+    'ethernet_c': {
+        'samplerate': 1000000,
+        'sample_count': 100000,
+        'num_channels': 1,
+        'channels_map': {'data': 0},
+        'channels': {},
+        'stack': [
+            {'id': 'nrzi_c', 'channels': {'data': 0}},
+            {'id': '4b5b_c'}
+        ],
+        'generator': 'EthernetGenerator',
+    },
+    'tm1637_c': {
+        'samplerate': 1000000,
+        'sample_count': 100000,
+        'num_channels': 3,
+        'channels_map': {'clk': 0, 'dio': 1, 'stb': 2},
+        'channels': {},
+        'stack': [
+            {'id': 'tmc_c', 'channels': {'clk': 0, 'dio': 1, 'stb': 2}}
+        ],
+        'generator': 'Tm1637Generator',
+    },
+    'tm1638_c': {
+        'samplerate': 1000000,
+        'sample_count': 100000,
+        'num_channels': 3,
+        'channels_map': {'clk': 0, 'dio': 1, 'stb': 2},
+        'channels': {},
+        'stack': [
+            {'id': 'tmc_c', 'channels': {'clk': 0, 'dio': 1, 'stb': 2}}
+        ],
+        'generator': 'Tm1638Generator',
+    },
+    'ds2408_c': {
+        'samplerate': 1000000,
+        'sample_count': 100000,
+        'num_channels': 1,
+        'channels_map': {'owr': 0},
+        'channels': {},
+        'stack': [
+            {'id': 'onewire_link_c', 'channels': {'owr': 0}},
+            {'id': 'onewire_network_c'}
+        ],
+        'generator': 'Ds2408Generator',
+    },
+    'ds243x_c': {
+        'samplerate': 1000000,
+        'sample_count': 100000,
+        'num_channels': 1,
+        'channels_map': {'owr': 0},
+        'channels': {},
+        'stack': [
+            {'id': 'onewire_link_c', 'channels': {'owr': 0}},
+            {'id': 'onewire_network_c'}
+        ],
+        'generator': 'Ds243xGenerator',
+    },
+    'ds28ea00_c': {
+        'samplerate': 1000000,
+        'sample_count': 100000,
+        'num_channels': 1,
+        'channels_map': {'owr': 0},
+        'channels': {},
+        'stack': [
+            {'id': 'onewire_link_c', 'channels': {'owr': 0}},
+            {'id': 'onewire_network_c'}
+        ],
+        'generator': 'Ds28ea00Generator',
+    },
+    'ltar_smartdevice_decode_c': {
+        'samplerate': 100000,
+        'sample_count': 500000,
+        'num_channels': 1,
+        'channels_map': {'afsk': 0},
+        'channels': {},
+        'stack': [
+            {'id': 'afsk_c', 'channels': {'afsk': 0}},
+            {'id': 'ltar_smartdevice_c'}
+        ],
+        'generator': 'LtarSmartdeviceDecodeGenerator',
+    },
+    'tpm_fifo_tis_c': {
+        'samplerate': 1000000,
+        'sample_count': 100000,
+        'num_channels': 4,
+        'channels_map': {'clk': 0, 'mosi': 1, 'miso': 2, 'cs': 3},
+        'channels': {},
+        'stack': [
+            {'id': 'spi_c', 'channels': {'clk': 0, 'mosi': 1, 'miso': 2, 'cs': 3}},
+            {'id': 'tpm_tis_spi_c'}
+        ],
+        'generator': 'TpmFifoTisGenerator',
+    },
+    'usb_request_c': {
+        'samplerate': 24000000,
+        'sample_count': 50000,
+        'num_channels': 2,
+        'channels_map': {'dp': 0, 'dm': 1},
+        'channels': {},
+        'stack': [
+            {'id': 'usb_signalling_c', 'channels': {'dp': 0, 'dm': 1}},
+            {'id': 'usb_packet_c'}
+        ],
+        'generator': 'UsbRequestGenerator',
+    },
+}
 
 def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
     """Synthesize real protocol data using protocol_synthesizer.
@@ -33,18 +146,67 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
     synth_sr = 1000000 # 1MHz
     sample_count = 10000 # 10ms - keep it small to avoid timeouts
 
-    if decoder_id in ["ac97_c", "qspi_c", "spi_fast_c", "usb_signalling_c", "usb_packet_c"]:
-        synth_sr = 24000000 # 24MHz for high speed
-        sample_count = 50000
-    elif decoder_id == "usb_power_delivery_c":
-        synth_sr = 12000000 # 12MHz for USB PD BMC (600kHz datarate)
-        sample_count = 20000
-    elif decoder_id.startswith("ir_") or decoder_id in ["dcf77_c", "morse_c"]:
-        synth_sr = 100000 # 100kHz for very slow
-        sample_count = 100000 # 1 second
-    elif decoder_id == "qi_c":
-        synth_sr = 1000000 # 1MHz
-        sample_count = 25000 # 25ms - enough for full Qi packet at 2kHz
+    overrides = {
+        'dcf77_c': (10000, 600000), # 60 seconds at 10kHz
+        'dali_c': (1000000, 50000), # 50ms at 1MHz
+        'ir_ltto_c': (100000, 500000),
+        'ir_rc5_c': (100000, 500000),
+        'ir_irmp_c': (100000, 500000),
+        'ir_rc6_c': (100000, 500000),
+        'ir_recoil_c': (100000, 500000),
+        'adat_c': (50000000, 100000),
+        'ir_sirc_c': (100000, 500000),
+        'sae_j1850_vpw_c': (1000000, 100000),
+        't55xx_c': (1000000, 200000),  # Needs enough samples for write command
+        'ook_c': (100000, 500000),
+        'z80_c': (1000000, 50000),
+        'mvb_c': (6000000, 50000),  # 6MHz needed for 3MHz MVB clock (2 samples/tick)
+        'mcs48_c': (1000000, 50000),
+        'maple_bus_c': (1000000, 50000),
+        'lpc_c': (1000000, 50000),
+        'iso7816_c': (1000000, 50000),
+        'delta-sigma_c': (1000000, 50000),
+        'ieee488_c': (1000000, 50000),
+        'gpib_c': (1000000, 50000),
+        'cjtag_oscan0_c': (1000000, 50000),
+        'dsi_c': (1000000, 50000),
+        'aud_c': (1000000, 50000),
+        'emmc_sd_c': (1000000, 50000),
+        'iec_c': (1000000, 50000),
+        'mipi_dsi_c': (1000000, 50000),
+        'mipi_rffe_c': (1000000, 50000),
+        'rgb_led_ws281x_c': (8000000, 50000),  # 8MHz needed for WS281x timing
+        'rvswd_c': (1000000, 50000),
+        'sdcard_sd_c': (1000000, 50000),
+        'signature_c': (1000000, 50000),
+        'qspi_c': (24000000, 50000),
+        'spacewire_c': (1000000, 50000),
+        'spdif_c': (6000000, 300000),  # 6MHz needed for S/PDIF BMC encoding
+        'st7735_c': (1000000, 50000),
+        'st7789_c': (1000000, 50000),
+        'tmc_c': (1000000, 50000),
+        'usb_power_delivery_c': (12000000, 50000),
+        'spi_dual_quad_c': (1000000, 50000),
+        'ac97_c': (24000000, 50000),
+        'spi_fast_c': (24000000, 50000),
+        'usb_signalling_c': (24000000, 50000),
+        'usb_packet_c': (24000000, 50000),
+        'qi_c': (1000000, 25000),
+        'morse_c': (100000, 500000),
+        'ir_nec_c': (100000, 500000),
+        'can_fd_c': (4000000, 50000),  # 4MHz for 4 samples/bit at 1Mbps nominal
+        'carrera_c': (1000000, 50000),  # Needs >6000us gaps between words
+        'rpm_c': (1000000, 100000),  # 6 pulses at 10ms = ~70ms at 1MHz
+        'stepper_motor_c': (1000000, 150000),  # 10 steps at 10ms = ~100ms at 1MHz
+        'sle44xx_c': (1000000, 50000),  # ATR + command data
+        'sda2506_c': (1000000, 50000),  # Command + data bits
+        'seven_segment_c': (1000000, 50000),  # Segment patterns
+        'tm1637_c': (1000000, 50000),  # TMC Wire3 transactions
+        'tm1638_c': (1000000, 50000),  # TMC Wire3 transactions
+    }
+
+    if decoder_id in overrides:
+        synth_sr, sample_count = overrides[decoder_id]
 
     builder = ps.BitstreamBuilder(num_channels, sample_count, synth_sr)
     
@@ -52,7 +214,15 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
     builder.pos = 2000
 
     try:
-        if decoder_id == "uart_c":
+        # P1: Dynamic Dispatch for modernized fuzzers
+        base_id = decoder_id[:-2] if decoder_id.endswith('_c') else decoder_id
+        class_name = "".join(x.capitalize() or '_' for x in base_id.split('_')) + "Generator"
+        fuzzer_class = getattr(ps, class_name, None)
+        if fuzzer_class and hasattr(fuzzer_class, 'generate_testdata'):
+            gen = fuzzer_class(builder, channels_map, synth_sr)
+            gen.generate_testdata()
+            # Let it fall through to the packing logic at the end of the function
+        elif decoder_id == "uart_c":
             ch = channels_map.get("rx", 0)
             gen = ps.UARTGenerator(builder, ch)
             gen.write_byte(0x55)
@@ -101,74 +271,56 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
             gen.start()
             gen.write_byte(0x40) # Data command
             gen.stop()
-        elif decoder_id == "qspi_c":
-            clk = channels_map.get("clk", 0)
-            cs = channels_map.get("cs", 1)
-            d0 = channels_map.get("io0", 2)
-            d1 = channels_map.get("io1", 3)
-            d2 = channels_map.get("io2", 4)
-            d3 = channels_map.get("io3", 5)
-            gen = ps.QSPIGenerator(builder, clk, cs, d0, d1, d2, d3)
-            gen.select()
-            gen.write_byte_quad(0xAB)
-            gen.deselect()
         elif decoder_id == "can_c":
             ch = channels_map.get("can_rx", 0)
             gen = ps.CANGenerator(builder, ch)
             gen.send_frame(0x123, [0x11, 0x22, 0x33])
         elif decoder_id == "usb_power_delivery_c":
             ch = channels_map.get("cc1", 0)
-            gen = ps.USBPowerDeliveryGenerator(builder, ch)
+            gen = ps.USBPowerDeliveryGenerator(builder, ch, samplerate=synth_sr)
             gen.send_packet()
         elif decoder_id == "am230x_c":
             ch = channels_map.get("sda", 0)
-            gen = ps.AM230xGenerator(builder, ch)
+            gen = ps.AM230xGenerator(builder, ch, samplerate=synth_sr)
             gen.send_reading(50.5, 25.1)
         elif decoder_id == "avr_pdi_c":
             clk = channels_map.get("reset", 0)
             data = channels_map.get("data", 1)
-            gen = ps.AVRPDIGenerator(builder, clk, data)
+            gen = ps.AVRPDIGenerator(builder, clk, data, samplerate=synth_sr)
             gen.send_break()
         elif decoder_id == "bean_c":
             ch = channels_map.get("data", 0)
-            gen = ps.BEANGenerator(builder, ch)
+            gen = ps.BEANGenerator(builder, ch, samplerate=synth_sr)
             gen.send_frame()
         elif decoder_id == "c2_c":
             clk = channels_map.get("c2ck", 0)
             data = channels_map.get("c2d", 1)
-            gen = ps.C2Generator(builder, clk, data)
+            gen = ps.C2Generator(builder, clk, data, samplerate=synth_sr)
             gen.send_reset()
         elif decoder_id == "cec_c":
             ch = channels_map.get("cec", 0)
-            gen = ps.CECGenerator(builder, ch)
+            gen = ps.CECGenerator(builder, ch, samplerate=synth_sr)
             gen.send_frame()
         elif decoder_id == "dcf77_c":
             ch = channels_map.get("data", 0)
-            gen = ps.DCF77Generator(builder, ch)
+            gen = ps.DCF77Generator(builder, ch, samplerate=synth_sr)
             gen.send_bit(1); gen.send_bit(0)
         elif decoder_id == "dmx512_c":
             ch = channels_map.get("dmx", 0)
-            gen = ps.DMX512Generator(builder, ch)
+            gen = ps.DMX512Generator(builder, ch, samplerate=synth_sr)
             gen.send_frame()
         elif decoder_id == "dsi_c":
             ch = channels_map.get("dsi", 0)
-            gen = ps.DSIGenerator(builder, ch)
+            gen = ps.DSIGenerator(builder, ch, samplerate=synth_sr)
             gen.send_backward_frame()
         elif decoder_id == "fsi_c":
-            clk = channels_map.get("clock", 1)
             data = channels_map.get("data", 0)
-            gen = ps.FSiGenerator(builder, clk, data)
+            clk = channels_map.get("clock", 1)
+            gen = ps.FSiGenerator(builder, data, clk, samplerate=synth_sr)
             gen.send_frame(0xAA, 0x55)
-        elif decoder_id == "ieee488_c":
-            gen = ps.GPIBGenerator(builder) # GPIB covers ieee488
-            gen.command_sequence()
         elif decoder_id == "mcs48_c":
             gen = ps.MCS48Generator(builder)
             gen.opcode_fetch(0x123, 0x55)
-        elif decoder_id == "mvb_c":
-            ch = channels_map.get("mvb", 0)
-            gen = ps.MVBGenerator(builder, ch)
-            gen.send_master_frame()
         elif decoder_id == "ps2_c":
             clk = channels_map.get("clk", 0)
             data = channels_map.get("data", 1)
@@ -182,63 +334,111 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
             ch = channels_map.get("data", 0)
             gen = ps.PWMGenerator(builder, ch)
             gen.send_cycles(10)
-        elif decoder_id in ["onewire_c", "onewire_link_c", "onewire_network_c", "ds243x_c", "ds2408_c", "ds28ea00_c"]:
+        elif decoder_id in ["onewire_c", "onewire_link_c", "onewire_network_c"]:
             ch = channels_map.get("owr", 0)
-            gen = ps.OneWireGenerator(builder, ch)
+            gen = ps.OneWireGenerator(builder, ch, samplerate=synth_sr)
             gen.read_rom()
+        elif decoder_id in ["ds243x_c", "ds2408_c", "ds28ea00_c"]:
+            # These are stack decoders (onewire_link_c -> onewire_network_c -> device_c).
+            # Use device-specific fuzzers that generate proper 1-Wire waveform data
+            # including the correct ROM commands and device-specific function commands.
+            gen_class_name = "".join(x.capitalize() or '_' for x in decoder_id.replace('_c', '').split('_')) + "Generator"
+            fuzzer_class = getattr(ps, gen_class_name, None)
+            if fuzzer_class and hasattr(fuzzer_class, 'generate_testdata'):
+                gen = fuzzer_class(builder, channels_map, synth_sr)
+                gen.generate_testdata()
+            else:
+                # Fallback to generic OneWire generator
+                ch = channels_map.get("owr", 0)
+                gen = ps.OneWireGenerator(builder, ch, samplerate=synth_sr)
+                gen.read_rom()
         elif decoder_id in ["ethernet_c", "arp_c", "ipv4_c", "udp_c"]:
+            # These are stack decoders (nrzi_c -> 4b5b_c -> ethernet_c -> ...).
+            # Generate NRZI-encoded 4B5B data that decodes into ethernet frames.
             ch = channels_map.get("data", 0)
             if ch is None: ch = 0
-            gen = ps.UARTGenerator(builder, ch) # Fallback to UART for framing
-            gen.write_byte(0x55)
-        elif decoder_id in ["st7735_c", "st7789_c", "spiflash_c", "ssd1306_c", "spi_dual_quad_c"]:
+            gen = ps.EthernetGenerator(builder, channels_map, synth_sr)
+            gen.generate_testdata()
+        elif decoder_id in ["st7735_c", "st7789_c", "spiflash_c", "ssd1306_c"]:
             clk = channels_map.get("clk", 0)
             mosi = channels_map.get("mosi", 1)
             cs = channels_map.get("cs", 3)
+            dc = channels_map.get("dc", 2)
             gen = ps.SPIGenerator(builder, clk, mosi, -1, cs)
+            if dc is not None: builder.set_idle(dc, 0)
             gen.select()
-            gen.write_byte(0x0)
+            gen.write_byte(0x29) # DISPON Command
             gen.deselect()
-        elif decoder_id in ["tm1638_c", "tmc_c"]:
+            if dc is not None: builder.set_idle(dc, 1)
+            gen.select()
+            gen.write_byte(0xFF) # DATA
+            gen.deselect()
+        elif decoder_id == "tm1638_c":
+            # tm1638_c is a non-logic decoder (input: tmc), so this branch
+            # is typically unreachable. Kept for completeness.
             clk = channels_map.get("clk", 0)
             dio = channels_map.get("dio", 1)
-            gen = ps.TM1637Generator(builder, clk, dio)
-            gen.start()
-            gen.write_byte(0x40)
-            gen.stop()
+            stb = channels_map.get("stb", 2)
+            gen = ps.SPIGenerator(builder, clk, dio, -1, stb if stb is not None else -1)
+            gen.select()
+            gen.write_byte(0x40)  # Data command
+            gen.deselect()
+        elif decoder_id == "tmc_c":
+            # TMC uses a CLK+DIO+STB protocol similar to SPI.
+            # Wire3 mode: START=STB falling, data on CLK rising, STOP=STB rising.
+            # Wire2 mode: START=CLK high + DIO falling, data on CLK rising, STOP=CLK high + DIO rising.
+            clk = channels_map.get("clk", 0)
+            dio = channels_map.get("dio", 1)
+            stb = channels_map.get("stb", -1)
+            if stb >= 0:
+                # Wire3 mode: use SPIGenerator with STB as CS
+                gen = ps.SPIGenerator(builder, clk, dio, -1, stb)
+                gen.select()
+                gen.write_byte(0x40)  # Command byte
+                gen.write_byte(0xC0)  # Address command
+                gen.write_byte(0x55)  # Data byte
+                gen.deselect()
+            else:
+                # Wire2 mode: use SPIGenerator without CS (I2C-like start/stop)
+                # For wire2, we need CLK high + DIO falling as START,
+                # and CLK high + DIO rising as STOP. I2CGenerator produces this.
+                gen = ps.I2CGenerator(builder, clk, dio)
+                gen.start()
+                gen.write_byte(0x40)  # Command byte
+                gen.stop()
         elif decoder_id == "one_single_wire_c":
             data = channels_map.get("osw", 0)
             start = channels_map.get("strt", 1)
-            gen = ps.OneSingleWireGenerator(builder, data, start)
+            gen = ps.OneSingleWireGenerator(builder, data, start, samplerate=synth_sr)
             gen.send_byte(0x55)
         elif decoder_id == "caliper_c":
             clk = channels_map.get("clk", 0)
             data = channels_map.get("data", 1)
-            gen = ps.CaliperGenerator(builder, clk, data)
+            gen = ps.CaliperGenerator(builder, clk, data, samplerate=synth_sr)
             gen.send_value(0x123456, 24)
         elif decoder_id == "carrera_c":
             ch = channels_map.get("data", 0)
-            gen = ps.CarreraGenerator(builder, ch)
+            gen = ps.CarreraGenerator(builder, ch, samplerate=synth_sr)
             gen.send_controller_word()
         elif decoder_id == "dali_c":
             ch = channels_map.get("dali", 0)
-            gen = ps.DALIGenerator(builder, ch)
+            gen = ps.DALIGenerator(builder, ch, samplerate=synth_sr)
             gen.send_forward()
         elif decoder_id == "dcc_c":
             ch = channels_map.get("data", 0)
-            gen = ps.DCCGenerator(builder, ch)
+            gen = ps.DCCGenerator(builder, ch, samplerate=synth_sr)
             gen.send_packet(0x03, 0x7F)
         elif decoder_id == "em4100_c":
             ch = channels_map.get("data", 0)
-            gen = ps.EM4100Generator(builder, ch)
+            gen = ps.EM4100Generator(builder, ch, samplerate=synth_sr)
             gen.send_card(0x123456789A)
         elif decoder_id == "em4305_c":
             ch = channels_map.get("data", 0)
-            gen = ps.EM4305Generator(builder, ch)
+            gen = ps.EM4305Generator(builder, ch, samplerate=synth_sr)
             gen.send_write_word()
         elif decoder_id == "eth_an_c":
             ch = channels_map.get("dp", 0)
-            gen = ps.EthANGenerator(builder, ch)
+            gen = ps.EthANGenerator(builder, ch, samplerate=synth_sr)
             gen.send_negotiation()
         elif decoder_id == "hdlc_c":
             ch = channels_map.get("data", 1)
@@ -252,28 +452,28 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
             gen.send_frame(0x1234, 0x5678)
         elif decoder_id == "iebus_c":
             ch = channels_map.get("bus", 0)
-            gen = ps.IEBUSGenerator(builder, ch)
+            gen = ps.IEBUSGenerator(builder, ch, samplerate=synth_sr)
             gen.send_frame([1,0,1,0], 0x11, 0x22)
         elif decoder_id == "ir_nec_c":
             ch = channels_map.get("ir", 0)
-            gen = ps.IRNECGenerator(builder, ch)
+            gen = ps.IRNECGenerator(builder, ch, samplerate=synth_sr)
             gen.send_nec(0x04, 0x08)
         elif decoder_id == "ir_rc5_c":
             ch = channels_map.get("ir", 0)
-            gen = ps.IRRC5Generator(builder, ch)
+            gen = ps.IRRC5Generator(builder, ch, samplerate=synth_sr)
             gen.send_rc5(0x00, 0x01)
         elif decoder_id == "ir_rc6_c":
             ch = channels_map.get("ir", 0)
-            gen = ps.IRRC6Generator(builder, ch)
+            gen = ps.IRRC6Generator(builder, ch, samplerate=synth_sr)
             gen.send_rc6(0x00, 0x01)
         elif decoder_id == "ir_sirc_c":
             ch = channels_map.get("ir", 0)
-            gen = ps.IRSIRCGenerator(builder, ch)
+            gen = ps.IRSIRCGenerator(builder, ch, samplerate=synth_sr)
             gen.send_sirc(0x15, 0x01)
         elif decoder_id == "iso7816_c":
             clk = channels_map.get("clk", 0)
             data = channels_map.get("data", 1)
-            gen = ps.ISO7816Generator(builder, clk, data)
+            gen = ps.ISO7816Generator(builder, clk, data, samplerate=synth_sr)
             gen.send_atr()
         elif decoder_id == "jtag_c":
             tdi = channels_map.get("tdi", 0)
@@ -291,7 +491,7 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
         elif decoder_id == "mipi_rffe_c":
             sclk = channels_map.get("sclk", 0)
             sdata = channels_map.get("sdata", 1)
-            gen = ps.MIPIRFFEGenerator(builder, sclk, sdata)
+            gen = ps.MIPIRFFEGenerator(builder, sclk, sdata, samplerate=synth_sr)
             gen.send_ext_write(0x11, 0x0, 0x34)
         elif decoder_id == "microwire_c":
             sk = channels_map.get("sk", 1)
@@ -302,7 +502,7 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
             gen.read(0b10, 0x00, 0xABCD)
         elif decoder_id == "morse_c":
             ch = channels_map.get("data", 0)
-            gen = ps.MorseGenerator(builder, ch)
+            gen = ps.MorseGenerator(builder, ch, samplerate=synth_sr)
             gen.send_sos()
         elif decoder_id == "nrzi_c":
             ch = channels_map.get("data", 0)
@@ -310,32 +510,32 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
             gen.send_bytes(b"HELLO")
         elif decoder_id == "ook_c":
             ch = channels_map.get("data", 0)
-            gen = ps.OOKGenerator(builder, ch)
+            gen = ps.OOKGenerator(builder, ch, samplerate=synth_sr)
             gen.send_bits([1,0,1,1,0,1,0,1])
         elif decoder_id == "opentherm_c":
             ch = channels_map.get("ot", 0)
-            gen = ps.OpenthermGenerator(builder, ch)
+            gen = ps.OpenthermGenerator(builder, ch, samplerate=synth_sr)
             gen.send_read_request()
         elif decoder_id == "pjdl_c":
             ch = channels_map.get("data", 0)
-            gen = ps.PJDLGenerator(builder, ch)
+            gen = ps.PJDLGenerator(builder, ch, samplerate=synth_sr)
             gen.write_byte(0x55)
         elif decoder_id == "pxx1_c":
             ch = channels_map.get("data", 0)
-            gen = ps.PXX1Generator(builder, ch)
+            gen = ps.PXX1Generator(builder, ch, samplerate=synth_sr)
             gen.send_bind_frame(0x1234)
         elif decoder_id == "rc_encode_c":
             ch = channels_map.get("data", 0)
-            gen = ps.RCEncodeGenerator(builder, ch)
+            gen = ps.RCEncodeGenerator(builder, ch, samplerate=synth_sr)
             gen.send_pattern([1,0,1,1])
         elif decoder_id == "sent_c":
             ch = channels_map.get("data", 0)
-            gen = ps.SENTGenerator(builder, ch)
+            gen = ps.SENTGenerator(builder, ch, samplerate=synth_sr)
             gen.send_message()
         elif decoder_id == "sdio_c":
             clk = channels_map.get("clk", 1)
             cmd = channels_map.get("cmd", 0)
-            gen = ps.SDIOGenerator(builder, cmd, clk)
+            gen = ps.SDIOGenerator(builder, cmd, clk, samplerate=synth_sr)
             gen.send_command(52, 0x0)
         elif decoder_id == "swd_c":
             clk = channels_map.get("swclk", 0)
@@ -345,26 +545,66 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
             gen.read_dp()
         elif decoder_id == "swi_c":
             ch = channels_map.get("swi", 0)
-            gen = ps.SWIGenerator(builder, ch)
+            gen = ps.SWIGenerator(builder, ch, samplerate=synth_sr)
             gen.write_byte(0x55)
         elif decoder_id == "swim_c":
             ch = channels_map.get("swim", 0)
-            gen = ps.SwimGenerator(builder, ch)
+            gen = ps.SwimGenerator(builder, ch, samplerate=synth_sr)
             gen.send_command(0x00)
         elif decoder_id == "tdm_audio_c":
             sck = channels_map.get("clock", 0)
             ws = channels_map.get("frame", 1)
             sd = channels_map.get("data", 2)
-            gen = ps.TDMAudioGenerator(builder, sck, ws, sd)
+            gen = ps.TDMAudioGenerator(builder, sck, ws, sd, samplerate=synth_sr)
             gen.send_frame(8, 16)
         elif decoder_id == "wiegand_c":
             d0 = channels_map.get("d0", 0)
             d1 = channels_map.get("d1", 1)
-            gen = ps.WiegandGenerator(builder, d0, d1)
+            gen = ps.WiegandGenerator(builder, d0, d1, samplerate=synth_sr)
             gen.send_wiegand26()
+        elif decoder_id == "spdif_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.SPDIFGenerator(builder, ch)
+            gen.send_frame(0x12345678)
+            gen.send_two_subframes(0x12345678, 0x87654321)
+        elif decoder_id == "t55xx_c":
+            ch = channels_map.get("data", 0)
+            gen = ps.T55xxGenerator(builder, ch, samplerate=synth_sr)
+            gen.send_write_command()
+        elif decoder_id == "tlc5620_c":
+            clk = channels_map.get("clk", 0)
+            data = channels_map.get("data", 1)
+            ldac = channels_map.get("ldac", -1)
+            gen = ps.TLC5620Generator(builder, clk, data, samplerate=synth_sr)
+            gen.write(0, 0, 0x55)
+            # Pulse LDAC if available
+            if ldac >= 0:
+                builder.set_level(ldac, 0, int(synth_sr / 200000))
+                builder.set_level(ldac, 1, int(synth_sr / 200000))
+        elif decoder_id == "usb_signalling_c":
+            dp = channels_map.get("dp", 0)
+            dm = channels_map.get("dm", 1)
+            # Use low-speed USB (1.5Mbps) for more samples per bit at 24MHz
+            gen = ps.USBGenerator(builder, dp, dm, speed='low')
+            gen.send_packet([0x55])
+        elif decoder_id == "rvswd_c":
+            clk = channels_map.get("clk", 0)
+            dio = channels_map.get("dio", 1)
+            gen = ps.RVSWDGenerator(builder, clk, dio, samplerate=synth_sr)
+            gen.send_short_packet()
+        elif decoder_id == "rgb_led_ws281x_c":
+            ch = channels_map.get("din", 0)
+            gen = ps.RGBLEDWS281xGenerator(builder, ch, samplerate=synth_sr)
+            gen.send_rgb(0xFF, 0x00, 0x00)
+            gen.send_reset()
+        elif decoder_id == "delta-sigma_c":
+            clk = channels_map.get("clk", 1)
+            data = channels_map.get("dat", 0)
+            gen = ps.DeltaSigmaGenerator(builder, clk, data, samplerate=synth_sr)
+            gen.send_pattern([1, 0, 1, 0, 1, 0, 1, 0])
         elif decoder_id == "sony_md_c":
             ch = channels_map.get("data", 0)
-            gen = ps.SonyMDGenerator(builder, ch)
+            gen = ps.SonyMDGenerator(builder, ch, samplerate=synth_sr)
             gen.send_message()
         else:
             return None
@@ -570,6 +810,20 @@ def _parse_inputs(content):
     return inputs
 
 
+def _preserve_existing_flags(config, config_path):
+    """Preserve manual flags like expected_deviations from existing config.json."""
+    if not os.path.exists(config_path):
+        return config
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+        if existing.get("expected_deviations"):
+            config["expected_deviations"] = True
+    except Exception:
+        pass
+    return config
+
+
 def generate_input_bin(num_channels, sample_count):
     random.seed(42)
     all_channels = []
@@ -641,10 +895,67 @@ def main():
         if args.skip_existing and os.path.exists(config_path):
             skipped += 1; continue
 
-        if "logic" not in decoder_info["inputs"]:
+        # Special handling for stack decoders that need generated input data
+        # (non-logic decoders whose stack root is a logic-input decoder)
+        stack_override = _STACK_INPUT_OVERRIDES.get(decoder_id)
+        if stack_override:
+            synth_sr = stack_override['samplerate']
+            sample_count = stack_override['sample_count']
+            num_channels = stack_override['num_channels']
+            channels_map = stack_override['channels_map']
+
+            builder = ps.BitstreamBuilder(num_channels, sample_count, synth_sr)
+            builder.pos = 2000
+
+            gen_class_name = stack_override.get('generator',
+                "".join(x.capitalize() or '_' for x in decoder_id.replace('_c', '').split('_')) + "Generator")
+            fuzzer_class = getattr(ps, gen_class_name, None)
+            if fuzzer_class and hasattr(fuzzer_class, 'generate_testdata'):
+                try:
+                    gen = fuzzer_class(builder, channels_map, synth_sr)
+                    gen.generate_testdata()
+                except Exception as e:
+                    print(f"  WARN: {decoder_id} stack synthesis failed: {e}")
+                    errors += 1
+                    continue
+            else:
+                print(f"  WARN: {decoder_id} no generator found ({gen_class_name})")
+                errors += 1
+                continue
+
+            result = bytearray()
+            for ch_idx in range(num_channels):
+                result.extend(samples_to_bitpacked(builder.channels[ch_idx]))
+
+            config = {
+                'decoder': decoder_id,
+                'samplerate': synth_sr,
+                'num_channels': num_channels,
+                'sample_count': sample_count,
+                'channels': stack_override['channels'],
+                'stack': stack_override['stack']
+            }
+
+            os.makedirs(decoder_output_dir, exist_ok=True)
+            config = _preserve_existing_flags(config, config_path)
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2, ensure_ascii=False); f.write("\n")
+            with open(os.path.join(decoder_output_dir, "input.bin"), "wb") as f:
+                f.write(bytes(result))
+            generated += 1
+            print(f"  SYN  {decoder_id}: Using synthesized stack protocol data")
+            continue
+
+        is_logic_input = "logic" in decoder_info["inputs"]
+        if not is_logic_input:
+            if os.path.exists(config_path):
+                print(f"  SKIP {decoder_id}: non-logic decoder config already exists")
+                skipped += 1
+                continue
             config = generate_non_logic_config(decoder_info)
             if not config: no_channels += 1; continue
             os.makedirs(decoder_output_dir, exist_ok=True)
+            config = _preserve_existing_flags(config, config_path)
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False); f.write("\n")
             non_logic += 1; generated += 1; continue
@@ -664,6 +975,7 @@ def main():
             print(f"  SYN  {decoder_id}: Using synthesized protocol data")
 
         os.makedirs(decoder_output_dir, exist_ok=True)
+        config = _preserve_existing_flags(config, config_path)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False); f.write("\n")
         with open(os.path.join(decoder_output_dir, "input.bin"), "wb") as f:

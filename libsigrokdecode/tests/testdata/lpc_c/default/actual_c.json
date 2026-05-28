@@ -1,7 +1,64 @@
 {
 	"decoder": "lpc_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 6,
 	"annotations": [
+		{
+			"start_sample": 2050,
+			"end_sample": 2150,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Start of cycle for a target", 
+				"START", 
+				"St", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2150,
+			"end_sample": 2250,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Cycle type: I/O write"
+			]
+		}, 
+		{
+			"start_sample": 2250,
+			"end_sample": 2650,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Address: 0x0080"
+			]
+		}, 
+		{
+			"start_sample": 2650,
+			"end_sample": 2850,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"DATA: 0x55"
+			]
+		}, 
+		{
+			"start_sample": 2850,
+			"end_sample": 2950,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR, cycle 0: 1111"
+			]
+		}, 
+		{
+			"start_sample": 2950,
+			"end_sample": 3050,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR, cycle 1: 1111"
+			]
+		}
 	]
 }

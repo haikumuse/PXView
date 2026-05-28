@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Petteri Aimonen <jpa@sigrok.mail.kapsi.fi>
@@ -577,20 +577,18 @@ static void process_buffer(struct srd_decoder_inst *di, etmv3_priv *s,
     }
 }
 
-static void arm_etmv3_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void arm_etmv3_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     etmv3_priv *s = (etmv3_priv *)c_decoder_get_private(di);
     if (!s)
         return;
 
     /* Only process DATA type from uart */
-    if (strcmp(cmd, "DATA") != 0 || data_len < 2)
+    if (strcmp(cmd, "DATA") != 0 || n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];  /* byte value */
-    /* data[1] = rxtx (0=RX, 1=TX), not used here */
+    uint8_t byte_val = fields[0].u8;  /* byte value */
+    /* fields[1].u8 = rxtx (0=RX, 1=TX), not used here */
 
     /* Reset packet if there is a long pause between bytes */
     s->byte_len = end_sample - start_sample;
@@ -646,10 +644,10 @@ static void arm_etmv3_reset(struct srd_decoder_inst *di)
 static void arm_etmv3_start(struct srd_decoder_inst *di)
 {
     etmv3_priv *s = (etmv3_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "arm_etmv3");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "arm_etmv3");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "arm_etmv3");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "arm_etmv3");
 
-    const char *branch_enc = c_decoder_get_option_string(di, "branch_enc", "alternative");
+    const char *branch_enc = c_opt_str(di, "branch_enc", "alternative");
     s->branch_enc_alt = (strcmp(branch_enc, "alternative") == 0) ? 1 : 0;
 }
 
@@ -695,7 +693,8 @@ struct srd_c_decoder arm_etmv3_c_decoder = {
     .start = arm_etmv3_start,
     .decode = arm_etmv3_decode,
     .destroy = arm_etmv3_destroy,
-    .recv_proto = arm_etmv3_recv_proto,
+    .decode_upper = arm_etmv3_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

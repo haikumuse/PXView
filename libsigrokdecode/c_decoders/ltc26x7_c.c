@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Analog Devices Inc.
@@ -118,7 +118,7 @@ static void ltc26x7_handle_slave_addr(struct srd_decoder_inst *di,
     ltc26x7_state *s, uint8_t data)
 {
     if (data == 0x73) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
                   "Global address", "Global addr", "Glob addr", "GA");
         return;
     }
@@ -154,7 +154,7 @@ static void ltc26x7_handle_slave_addr(struct srd_decoder_inst *di,
              slave_address_str[ternary[0]][3],
              slave_address_str[ternary[1]][3],
              slave_address_str[ternary[2]][3]);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR, buf, buf2, buf3);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR, buf, buf2, buf3);
 }
 
 static void ltc26x7_handle_cmd_addr(struct srd_decoder_inst *di,
@@ -173,7 +173,7 @@ static void ltc26x7_handle_cmd_addr(struct srd_decoder_inst *di,
             break;
         }
     }
-    C_ANN_PUT(di, s->ss, sm, s->out_ann, ANN_COMMAND,
+    c_put(di, s->ss, sm, s->out_ann, ANN_COMMAND,
               cmd_str[0], cmd_str[1], cmd_str[2], cmd_str[3]);
 
     /* Find address string */
@@ -185,7 +185,7 @@ static void ltc26x7_handle_cmd_addr(struct srd_decoder_inst *di,
             break;
         }
     }
-    C_ANN_PUT(di, sm, s->es, s->out_ann, ANN_ADDRESS,
+    c_put(di, sm, s->es, s->out_ann, ANN_ADDRESS,
               addr_str[0], addr_str[1]);
 }
 
@@ -219,23 +219,21 @@ static void ltc26x7_handle_data(struct srd_decoder_inst *di,
     s->data = 0;
     if (s->dac_val == 0x0F) {
         /* All DACs */
-        C_ANN_PUT(di, s->data_ss, s->es, s->out_ann, ANN_DAC_A_VOLTAGE, buf, buf2);
-        C_ANN_PUT(di, s->data_ss, s->es, s->out_ann, ANN_DAC_B_VOLTAGE, buf, buf2);
+        c_put(di, s->data_ss, s->es, s->out_ann, ANN_DAC_A_VOLTAGE, buf, buf2);
+        c_put(di, s->data_ss, s->es, s->out_ann, ANN_DAC_B_VOLTAGE, buf, buf2);
     } else {
-        C_ANN_PUT(di, s->data_ss, s->es, s->out_ann, ANN_DAC_A_VOLTAGE + s->dac_val, buf, buf2);
+        c_put(di, s->data_ss, s->es, s->out_ann, ANN_DAC_A_VOLTAGE + s->dac_val, buf, buf2);
     }
 }
 
-static void ltc26x7_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ltc26x7_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ltc26x7_state *s = (ltc26x7_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
     s->es = end_sample;
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     /* State machine */
     if (s->state == LTC_IDLE) {
@@ -289,9 +287,9 @@ static void ltc26x7_reset(struct srd_decoder_inst *di)
 static void ltc26x7_start(struct srd_decoder_inst *di)
 {
     ltc26x7_state *s = (ltc26x7_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ltc26x7");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ltc26x7");
 
-    const char *chip = c_decoder_get_option_string(di, "chip", "ltc2607");
+    const char *chip = c_opt_str(di, "chip", "ltc2607");
     if (chip && strcmp(chip, "ltc2617") == 0)
         s->chip = 1;
     else if (chip && strcmp(chip, "ltc2627") == 0)
@@ -299,7 +297,7 @@ static void ltc26x7_start(struct srd_decoder_inst *di)
     else
         s->chip = 0;
 
-    s->vref = c_decoder_get_option_double(di, "vref", 1.5);
+    s->vref = c_opt_dbl(di, "vref", 1.5);
 }
 
 static void ltc26x7_decode(struct srd_decoder_inst *di)
@@ -344,7 +342,8 @@ struct srd_c_decoder ltc26x7_c_decoder = {
     .start = ltc26x7_start,
     .decode = ltc26x7_decode,
     .destroy = ltc26x7_destroy,
-    .recv_proto = ltc26x7_recv_proto,
+    .decode_upper = ltc26x7_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

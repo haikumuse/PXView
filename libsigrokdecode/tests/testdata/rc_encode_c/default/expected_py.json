@@ -1,11 +1,11 @@
 {
 	"decoder": "rc_encode",
 	"samplerate": 1000000,
-	"num_annotations": 6,
+	"num_annotations": 2,
 	"annotations": [
 		{
-			"start_sample": 500,
-			"end_sample": 3500,
+			"start_sample": 2000,
+			"end_sample": 5000,
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [
@@ -13,48 +13,12 @@
 			]
 		}, 
 		{
-			"start_sample": 500,
-			"end_sample": 3500,
+			"start_sample": 2000,
+			"end_sample": 5000,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
 				"A0"
-			]
-		}, 
-		{
-			"start_sample": 3500,
-			"end_sample": 6500,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"U"
-			]
-		}, 
-		{
-			"start_sample": 3500,
-			"end_sample": 6500,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"A1"
-			]
-		}, 
-		{
-			"start_sample": 6500,
-			"end_sample": 10500,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 6500,
-			"end_sample": 10500,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"A2"
 			]
 		}
 	]

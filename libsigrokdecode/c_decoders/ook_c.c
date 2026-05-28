@@ -1,27 +1,28 @@
 /*
  * This file is part of the PXView project.
  *
+ * Copyright (C) 2018 Steve R <steversig@virginmedia.com>
  * Copyright (C) 2024 DreamSourceLab <info@dreamsourcelab.com>
+ * Copyright (C) 2025 C port (v4 API)
  *
- * This program is free software: you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
+
+#define CH_DATA 0
 
 enum ook_ann {
     ANN_FRAME = 0,
@@ -58,7 +59,7 @@ typedef struct {
     char state;
 } ook_bit_t;
 
-typedef struct {
+typedef struct ook_s {
     int state;
     uint64_t ss, es;
     uint64_t ss_1111, ss_1010;
@@ -112,7 +113,19 @@ typedef struct {
     int out_ann;
     int out_python;
     int out_binary;
-} ook_priv;
+} ook_s;
+
+/* Manually expand C_DECODER_STATE(ook, ...) because the struct body
+   contains commas that confuse the C preprocessor. */
+static void ook_reset(struct srd_decoder_inst *di) {
+    ook_s *s = (ook_s *)calloc(1, sizeof(ook_s));
+    c_decoder_set_private(di, s);
+}
+static void ook_destroy(struct srd_decoder_inst *di) {
+    void *p = c_decoder_get_private(di);
+    free(p);
+    c_decoder_set_private(di, NULL);
+}
 
 static struct srd_channel ook_channels[] = {
     { "data", "DATA", "Data line", 0, SRD_CHANNEL_SDATA, NULL },
@@ -159,7 +172,7 @@ static const char *ook_inputs[] = { "logic" };
 static const char *ook_outputs[] = { "ook" };
 static const char *ook_tags[] = { "Encoding" };
 
-static void decode_manchester_sim(struct srd_decoder_inst *di, ook_priv *s,
+static void decode_manchester_sim(struct srd_decoder_inst *di, ook_s *s,
     uint64_t start, uint64_t samples, char state, uint64_t dsamples,
     int *half_time, int *lstate, uint64_t *ss, int pream,
     ook_bit_t *decoded, int *decoded_count, int *errors)
@@ -230,19 +243,18 @@ static void decode_manchester_sim(struct srd_decoder_inst *di, ook_priv *s,
     }
 }
 
-static void output_decoded_manchester(struct srd_decoder_inst *di, ook_priv *s,
+static void output_decoded_manchester(struct srd_decoder_inst *di, ook_s *s,
     ook_bit_t *decoded, int decoded_count, int ann_class)
 {
     for (int i = 0; i < decoded_count; i++) {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%c", decoded[i].state);
-        C_ANN_PUT(di, decoded[i].ss, decoded[i].es, s->out_ann, ann_class, bit_str);
+        c_put(di, decoded[i].ss, decoded[i].es, s->out_ann, ann_class, bit_str);
     }
 }
 
-static void output_frame_manchester(struct srd_decoder_inst *di, ook_priv *s)
+static void output_frame_manchester(struct srd_decoder_inst *di, ook_s *s)
 {
-    /* Choose the better Manchester decoding (fewer errors) */
     ook_bit_t *best = s->decoded;
     int best_count = s->decoded_count;
     int best_ann = ANN_1111;
@@ -272,7 +284,7 @@ static void output_frame_manchester(struct srd_decoder_inst *di, ook_priv *s)
         int pos = 0;
         for (int i = 0; i < best_count && pos < (int)sizeof(frame_str) - 2; i++)
             pos += snprintf(frame_str + pos, sizeof(frame_str) - pos, "%c", best[i].state);
-        C_ANN_PUT(di, best[0].ss, best[best_count - 1].es, s->out_ann, ANN_FRAME, frame_str);
+        c_put(di, best[0].ss, best[best_count - 1].es, s->out_ann, ANN_FRAME, frame_str);
     }
 
     /* Binary output: pulse lengths */
@@ -284,11 +296,11 @@ static void output_frame_manchester(struct srd_decoder_inst *di, ook_priv *s)
             for (int b = 0; b < 8; b++)
                 bin_data[bin_pos++] = (uint8_t)(pl >> (8 * b));
         }
-        c_decoder_put_binary(di, s->ss, s->es, s->out_binary, 0, bin_pos, bin_data);
+        c_put_bin(di, s->ss, s->es, s->out_binary, 0, bin_pos, bin_data);
     }
 }
 
-static void decode_manchester(struct srd_decoder_inst *di, ook_priv *s,
+static void decode_manchester(struct srd_decoder_inst *di, ook_s *s,
     uint64_t start, uint64_t samples, char state)
 {
     uint64_t dsamples = s->sample_high;
@@ -304,7 +316,7 @@ static void decode_manchester(struct srd_decoder_inst *di, ook_priv *s,
         s->decoded_1010, &s->decoded_1010_count, &s->man_errors_1010);
 }
 
-static void decode_diff_manchester(struct srd_decoder_inst *di, ook_priv *s,
+static void decode_diff_manchester(struct srd_decoder_inst *di, ook_s *s,
     uint64_t start, uint64_t samples, char state)
 {
     uint64_t dsamples = s->sample_high;
@@ -330,11 +342,11 @@ static void decode_diff_manchester(struct srd_decoder_inst *di, ook_priv *s,
 
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%c", transition);
-        C_ANN_PUT(di, start, start + dsamples, s->out_ann, ANN_DIFFMAN, bit_str);
+        c_put(di, start, start + dsamples, s->out_ann, ANN_DIFFMAN, bit_str);
     }
 }
 
-static void decode_nrz(struct srd_decoder_inst *di, ook_priv *s,
+static void decode_nrz(struct srd_decoder_inst *di, ook_s *s,
     uint64_t start, uint64_t samples, char state)
 {
     int num_bits = 0;
@@ -348,7 +360,7 @@ static void decode_nrz(struct srd_decoder_inst *di, ook_priv *s,
         snprintf(bit_str, sizeof(bit_str), "%c", state);
         uint64_t bit_ss = start + i * s->sample_high;
         uint64_t bit_es = bit_ss + s->sample_high;
-        C_ANN_PUT(di, bit_ss, bit_es, s->out_ann, ANN_NRZ, bit_str);
+        c_put(di, bit_ss, bit_es, s->out_ann, ANN_NRZ, bit_str);
 
         if (s->decoded_count < 1024) {
             s->decoded[s->decoded_count].ss = bit_ss;
@@ -359,18 +371,17 @@ static void decode_nrz(struct srd_decoder_inst *di, ook_priv *s,
     }
 }
 
-static void decode_timeout(struct srd_decoder_inst *di, ook_priv *s)
+static void decode_timeout(struct srd_decoder_inst *di, ook_s *s)
 {
     if (s->decodeas == DECODE_MANCHESTER) {
         output_frame_manchester(di, s);
     } else if (s->decodeas == DECODE_NRZ) {
-        /* Output NRZ frame */
         if (s->decoded_count > 0) {
             char frame_str[256];
             int pos = 0;
             for (int i = 0; i < s->decoded_count && pos < (int)sizeof(frame_str) - 2; i++)
                 pos += snprintf(frame_str + pos, sizeof(frame_str) - pos, "%c", s->decoded[i].state);
-            C_ANN_PUT(di, s->decoded[0].ss, s->decoded[s->decoded_count - 1].es,
+            c_put(di, s->decoded[0].ss, s->decoded[s->decoded_count - 1].es,
                       s->out_ann, ANN_FRAME, frame_str);
         }
     } else if (s->decodeas == DECODE_DIFF_MANCHESTER) {
@@ -379,7 +390,7 @@ static void decode_timeout(struct srd_decoder_inst *di, ook_priv *s)
             int pos = 0;
             for (int i = 0; i < s->decoded_count && pos < (int)sizeof(frame_str) - 2; i++)
                 pos += snprintf(frame_str + pos, sizeof(frame_str) - pos, "%c", s->decoded[i].state);
-            C_ANN_PUT(di, s->decoded[0].ss, s->decoded[s->decoded_count - 1].es,
+            c_put(di, s->decoded[0].ss, s->decoded[s->decoded_count - 1].es,
                       s->out_ann, ANN_FRAME, frame_str);
         }
     }
@@ -396,7 +407,7 @@ static void decode_timeout(struct srd_decoder_inst *di, ook_priv *s)
     s->state = STATE_IDLE;
 }
 
-static void lock_onto_preamble(struct srd_decoder_inst *di, ook_priv *s,
+static void lock_onto_preamble(struct srd_decoder_inst *di, ook_s *s,
     uint64_t samples, char state)
 {
     if (s->preamble_count < 10) {
@@ -457,34 +468,21 @@ static void lock_onto_preamble(struct srd_decoder_inst *di, ook_priv *s,
     s->lstate_1010 = state;
     s->diff_man_trans = state;
 
-    C_ANN_PUT(di, s->preamble[0].start, s->samplenumber_last,
+    c_put(di, s->preamble[0].start, s->samplenumber_last,
               s->out_ann, ANN_INFO, "Preamble detected");
-}
-
-static void ook_reset(struct srd_decoder_inst *di)
-{
-    if (!c_decoder_get_private(di))
-        c_decoder_set_private(di, g_malloc0(sizeof(ook_priv)));
-    ook_priv *s = (ook_priv *)c_decoder_get_private(di);
-    memset(s, 0, sizeof(ook_priv));
-    s->out_ann = -1;
-    s->out_python = -1;
-    s->out_binary = -1;
-    s->preamble_len = 7;
-    s->diffmanvar = 1;
 }
 
 static void ook_start(struct srd_decoder_inst *di)
 {
-    ook_priv *s = (ook_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ook");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "ook");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "ook");
+    ook_s *s = (ook_s *)c_decoder_get_private(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ook");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "ook");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "ook");
 
-    const char *invert_str = c_decoder_get_option_string(di, "invert", "no");
+    const char *invert_str = c_opt_str(di, "invert", "no");
     s->invert = (strcmp(invert_str, "yes") == 0) ? 1 : 0;
 
-    const char *decodeas_str = c_decoder_get_option_string(di, "decodeas", "Manchester");
+    const char *decodeas_str = c_opt_str(di, "decodeas", "Manchester");
     if (strcmp(decodeas_str, "NRZ") == 0)
         s->decodeas = DECODE_NRZ;
     else if (strcmp(decodeas_str, "Diff Manchester") == 0)
@@ -492,7 +490,7 @@ static void ook_start(struct srd_decoder_inst *di)
     else
         s->decodeas = DECODE_MANCHESTER;
 
-    const char *preamble_str = c_decoder_get_option_string(di, "preamble", "auto");
+    const char *preamble_str = c_opt_str(di, "preamble", "auto");
     if (strcmp(preamble_str, "1010") == 0)
         s->preamble_val = PREAMBLE_1010;
     else if (strcmp(preamble_str, "1111") == 0)
@@ -500,62 +498,68 @@ static void ook_start(struct srd_decoder_inst *di)
     else
         s->preamble_val = PREAMBLE_AUTO;
 
-    const char *preamlen_str = c_decoder_get_option_string(di, "preamlen", "7");
+    const char *preamlen_str = c_opt_str(di, "preamlen", "7");
     s->preamble_len = atoi(preamlen_str);
     if (s->preamble_len < 0) s->preamble_len = 0;
     if (s->preamble_len > 10) s->preamble_len = 10;
 
-    const char *diffmanvar_str = c_decoder_get_option_string(di, "diffmanvar", "1");
+    const char *diffmanvar_str = c_opt_str(di, "diffmanvar", "1");
     s->diffmanvar = atoi(diffmanvar_str);
+
+    /* Non-zero defaults that calloc didn't set */
+    s->preamble_len = (s->preamble_len > 0) ? s->preamble_len : 7;
+    s->diffmanvar = s->diffmanvar ? s->diffmanvar : 1;
 }
 
 static void ook_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 {
-    ook_priv *s = (ook_priv *)c_decoder_get_private(di);
+    ook_s *s = (ook_s *)c_decoder_get_private(di);
     if (key == SRD_CONF_SAMPLERATE)
         s->samplerate = value;
 }
 
 static void ook_decode(struct srd_decoder_inst *di)
 {
-    ook_priv *s = (ook_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
+    ook_s *s = (ook_s *)c_decoder_get_private(di);
 
+    if (s->samplerate == 0)
+        s->samplerate = c_samplerate(di);
     if (s->samplerate == 0)
         return;
 
-    /* Get initial position */
-    uint64_t cur_sample;
-    if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
-        return;
-    s->samplenumber_last = cur_sample;
-
     while (1) {
-        srd_cond_builder *cb;
+        int ret;
         if (s->edge_count == 0) {
-            cb = c_cond_new();
-            c_cond_edge(cb, 0);
+            ret = c_wait(di, CW_E(CH_DATA), CW_END);
+            s->state = STATE_DECODING;
         } else {
-            cb = c_cond_new();
-            c_cond_edge(cb, 0);
-            c_cond_or(cb);
-            c_cond_skip(cb, 5 * s->sample_first);
-        }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
-        if (samplenum >= c_decoder_get_last_samplenum(di)) return;
+            ret = c_wait(di, CW_E(CH_DATA), CW_OR, CW_SKIP(5 * s->sample_first), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-        /* Check for timeout */
-        if (s->edge_count > 0 && (matched & (1ULL << 1)) && !(matched & (1ULL << 0))) {
-            s->state = STATE_DECODE_TIMEOUT;
+            /* Check for timeout */
+            uint64_t matched = di_matched(di);
+            if ((matched & (1ULL << 1)) && !(matched & (1ULL << 0))) {
+                s->state = STATE_DECODE_TIMEOUT;
+            }
+        }
+        if (ret != SRD_OK)
+            return;
+
+        uint64_t samplenum = di_samplenum(di);
+
+        if (!s->samplenumber_last) {
+            s->samplenumber_last = samplenum;
+            s->word_first = samplenum;
+            continue;
         }
 
         uint64_t samples = samplenum - s->samplenumber_last;
+        if (!s->sample_first)
+            s->sample_first = samples;
 
         /* Determine pin state */
-        int pinstate = c_decoder_get_pin(di, 0, samplenum);
+        int pinstate = c_pin(di, CH_DATA);
         if (s->state == STATE_DECODE_TIMEOUT)
             pinstate = !pinstate;
         if (s->invert)
@@ -565,6 +569,13 @@ static void ook_decode(struct srd_decoder_inst *di)
         /* Store pulse length */
         if (s->pulse_count < 1024)
             s->pulse_lengths[s->pulse_count++] = samples;
+
+        /* No preamble filtering when preamlen=0 */
+        if (s->preamble_len == 0) {
+            s->sample_high = s->sample_first;
+            s->sample_low = s->sample_first;
+            s->insync = 0;
+        }
 
         if (!s->insync) {
             lock_onto_preamble(di, s, samples, state);
@@ -592,16 +603,7 @@ static void ook_decode(struct srd_decoder_inst *di)
     }
 }
 
-static void ook_destroy(struct srd_decoder_inst *di)
-{
-    void *priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
-        c_decoder_set_private(di, NULL);
-    }
-}
-
-static struct srd_c_decoder ook_c_decoder = {
+static struct srd_c_decoder ook_c_def = {
     .id = "ook_c",
     .name = "OOK(C)",
     .longname = "On-off keying (C)",
@@ -625,6 +627,7 @@ static struct srd_c_decoder ook_c_decoder = {
     .num_tags = 1,
     .binary = ook_binary,
     .num_binary = 1,
+    .state_size = sizeof(ook_s),
     .reset = ook_reset,
     .start = ook_start,
     .decode = ook_decode,
@@ -641,11 +644,11 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
     ook_options[4].def = g_variant_new_string("1");
 
     /* Set enum value lists */
-    static GSList *invert_vals = NULL;
-    static GSList *decodeas_vals = NULL;
-    static GSList *preamble_vals = NULL;
-    static GSList *preamlen_vals = NULL;
-    static GSList *diffmanvar_vals = NULL;
+    GSList *invert_vals = NULL;
+    GSList *decodeas_vals = NULL;
+    GSList *preamble_vals = NULL;
+    GSList *preamlen_vals = NULL;
+    GSList *diffmanvar_vals = NULL;
 
     invert_vals = g_slist_append(invert_vals, g_variant_new_string("no"));
     invert_vals = g_slist_append(invert_vals, g_variant_new_string("yes"));
@@ -670,7 +673,7 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
     diffmanvar_vals = g_slist_append(diffmanvar_vals, g_variant_new_string("0"));
     ook_options[4].values = diffmanvar_vals;
 
-    return &ook_c_decoder;
+    return &ook_c_def;
 }
 
 SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)

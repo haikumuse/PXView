@@ -1,5 +1,6 @@
 #include "libsigrokdecode.h"
 #include <glib.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,7 +80,7 @@ SRD_API int c_decoder_put(struct srd_decoder_inst* di,
         break;
 
     case SRD_OUTPUT_PROTO:
-        _srd_err("C decoder %s: Use c_decoder_put_proto() for PROTO output "
+        _srd_err("C decoder %s: Use c_proto() for PROTO output "
                  "instead of c_decoder_put().",
             di->c_dec_inst->name);
         return SRD_ERR_ARG;
@@ -202,17 +203,6 @@ SRD_API int c_decoder_wait(struct srd_decoder_inst* di,
         return di->runtime->wait(di, condition_list, samplenum, matched);
 
     return SRD_ERR_ARG;
-}
-
-SRD_API uint8_t c_decoder_get_pin(struct srd_decoder_inst* di, int ch, uint64_t samplenum)
-{
-    if (!di)
-        return 0;
-
-    if (di->runtime && di->runtime->get_pin)
-        return di->runtime->get_pin(di, ch, samplenum);
-
-    return 0;
 }
 
 SRD_API uint8_t c_decoder_get_initial_pin(struct srd_decoder_inst* di, int ch)
@@ -446,30 +436,120 @@ SRD_API uint64_t c_decoder_get_last_samplenum(struct srd_decoder_inst* di)
     return di->last_samplenum;
 }
 
-SRD_API int c_decoder_put_proto(struct srd_decoder_inst* di,
-    uint64_t start_sample, uint64_t end_sample,
-    int output_id, const char* cmd, const unsigned char* data, uint64_t data_len)
+SRD_API int c_wait(struct srd_decoder_inst *di, ...)
 {
-    struct srd_pd_output* pdo;
+    va_list ap;
+    int arg;
+    GSList *or_groups = NULL;
+    GSList *current_and = NULL;
+    uint64_t samplenum = 0, matched = 0;
+    int ret;
 
     if (!di)
         return SRD_ERR_ARG;
 
-    GSList* out_list = g_slist_nth(di->pd_output, output_id);
+    va_start(ap, di);
+
+    while ((arg = va_arg(ap, int)) != END) {
+        if (arg == OR) {
+            /* Flush current AND group into OR groups */
+            if (current_and) {
+                or_groups = g_slist_append(or_groups, current_and);
+                current_and = NULL;
+            }
+        } else {
+            /* arg encodes (type << 16 | channel) */
+            int type = (arg >> 16) & 0xFFFF;
+            int ch = arg & 0xFFFF;
+            struct srd_term *t = g_malloc0(sizeof(struct srd_term));
+            t->type = type;
+            if (type == SRD_TERM_SKIP) {
+                t->channel = -1;
+                t->num_samples_to_skip = va_arg(ap, uint64_t);
+                t->num_samples_already_skipped = 0;
+            } else {
+                t->channel = ch;
+            }
+            current_and = g_slist_append(current_and, t);
+        }
+    }
+
+    /* Flush final AND group */
+    if (current_and) {
+        or_groups = g_slist_append(or_groups, current_and);
+    }
+
+    va_end(ap);
+
+    /* Call the underlying wait — ownership of or_groups transfers to
+     * c_decoder_wait_impl which stores it in di->condition_list.
+     * Do NOT free it here; it will be freed by condition_list_free()
+     * on the next c_wait() call or during instance cleanup. */
+    ret = c_decoder_wait(di, or_groups, &samplenum, &matched);
+
+    return ret;
+}
+
+SRD_API uint8_t c_pin(struct srd_decoder_inst *di, int ch)
+{
+    if (!di || ch < 0)
+        return 0xFF;
+
+    /* Check channel connectivity */
+    if (ch >= di->dec_num_channels || di->dec_channelmap[ch] < 0)
+        return 0xFF;
+
+    /* Read from pin cache populated by c_decoder_wait */
+    if (di->c_pin_cache)
+        return di->c_pin_cache[ch];
+
+    return 0xFF;
+}
+
+SRD_API int c_proto(struct srd_decoder_inst *di,
+    uint64_t start_sample, uint64_t end_sample,
+    int output_id, const char *cmd, ...)
+{
+    va_list ap;
+    c_field f;
+    c_field fields[64]; /* Stack buffer, 64 fields max */
+    int n_fields = 0;
+
+    if (!di)
+        return SRD_ERR_ARG;
+
+    /* Collect variadic c_field arguments.
+     * Sentinel: C_END macro ((c_field){.type=C_FIELD_SENTINEL}).
+     * Each argument is a c_field struct value (e.g. C_U8(val), C_STR("text")).
+     * C_END terminates the list — avoids UB from va_arg(ap, c_field) with NULL. */
+    va_start(ap, cmd);
+    while (n_fields < 64) {
+        f = va_arg(ap, c_field);
+        if (f.type == C_FIELD_SENTINEL)
+            break; /* C_END sentinel */
+        fields[n_fields++] = f;
+    }
+    va_end(ap);
+
+    /* Dispatch to stacked decoders */
+    GSList *out_list = g_slist_nth(di->pd_output, output_id);
     if (!out_list)
         return SRD_ERR_ARG;
-    pdo = out_list->data;
 
+    struct srd_pd_output *pdo = out_list->data;
     if (pdo->output_type == SRD_OUTPUT_PROTO) {
         if (di->next_di) {
-            GSList* l;
+            GSList *l;
             for (l = di->next_di; l; l = l->next) {
-                struct srd_decoder_inst* next_di = l->data;
+                struct srd_decoder_inst *next_di = l->data;
                 if (next_di->is_c_inst && next_di->c_dec_inst) {
-                    if (next_di->c_dec_inst->recv_proto) {
-                        next_di->c_dec_inst->recv_proto(next_di, start_sample, end_sample, cmd, data, data_len);
+                    if (next_di->c_dec_inst->decode_upper) {
+                        next_di->c_dec_inst->decode_upper(next_di,
+                            start_sample, end_sample,
+                            cmd, fields, n_fields);
                     }
                 }
+                /* Python decoders receive data via the Python bridge in type_decoder.c */
             }
         }
     }
@@ -477,142 +557,14 @@ SRD_API int c_decoder_put_proto(struct srd_decoder_inst* di,
     return SRD_OK;
 }
 
-struct srd_cond_builder {
-    GSList* or_groups;
-    GSList* current_and;
-    gboolean waited;
-};
-
-SRD_API srd_cond_builder* c_cond_new(void)
+SRD_API int c_opt_bool(struct srd_decoder_inst *di, const char *key, int defval)
 {
-    srd_cond_builder* b = g_malloc0(sizeof(srd_cond_builder));
-    return b;
-}
-
-static srd_cond_builder* c_cond_add_term(srd_cond_builder* b, int type, int ch)
-{
-    struct srd_term* t;
-    if (!b)
-        return NULL;
-    t = g_malloc0(sizeof(struct srd_term));
-    t->type = type;
-    t->channel = ch;
-    b->current_and = g_slist_append(b->current_and, t);
-    return b;
-}
-
-SRD_API srd_cond_builder* c_cond_rise(srd_cond_builder* b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_RISING_EDGE, ch);
-}
-
-SRD_API srd_cond_builder* c_cond_fall(srd_cond_builder* b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_FALLING_EDGE, ch);
-}
-
-SRD_API srd_cond_builder* c_cond_high(srd_cond_builder* b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_HIGH, ch);
-}
-
-SRD_API srd_cond_builder* c_cond_low(srd_cond_builder* b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_LOW, ch);
-}
-
-SRD_API srd_cond_builder* c_cond_edge(srd_cond_builder* b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_EITHER_EDGE, ch);
-}
-
-SRD_API srd_cond_builder* c_cond_noedge(srd_cond_builder* b, int ch)
-{
-    return c_cond_add_term(b, SRD_TERM_NO_EDGE, ch);
-}
-
-SRD_API srd_cond_builder* c_cond_skip(srd_cond_builder* b, uint64_t count)
-{
-    struct srd_term* t;
-    if (!b)
-        return NULL;
-    t = g_malloc0(sizeof(struct srd_term));
-    t->type = SRD_TERM_SKIP;
-    t->channel = -1;
-    t->num_samples_to_skip = count;
-    t->num_samples_already_skipped = 0;
-    b->current_and = g_slist_append(b->current_and, t);
-    return b;
-}
-
-SRD_API srd_cond_builder* c_cond_or(srd_cond_builder* b)
-{
-    if (!b)
-        return NULL;
-    if (b->current_and) {
-        b->or_groups = g_slist_append(b->or_groups, b->current_and);
-        b->current_and = NULL;
-    }
-    return b;
-}
-
-SRD_API int c_cond_wait(srd_cond_builder* b, struct srd_decoder_inst* di,
-    uint64_t* samplenum, uint64_t* matched)
-{
-    int ret;
-
-    if (!b || !di)
-        return SRD_ERR_ARG;
-
-    if (b->waited) {
-        _srd_err("c_cond_wait() called on a builder that was already used. "
-                 "Create a new builder for each wait call.");
-        return SRD_ERR_ARG;
-    }
-
-    if (b->current_and) {
-        b->or_groups = g_slist_append(b->or_groups, b->current_and);
-        b->current_and = NULL;
-    }
-
-    ret = c_decoder_wait(di, b->or_groups, samplenum, matched);
-
-    b->or_groups = NULL;
-    b->waited = TRUE;
-
-    return ret;
-}
-
-SRD_API int c_cond_wait_current(struct srd_decoder_inst* di,
-    uint64_t* samplenum)
-{
-    srd_cond_builder* b;
-    int ret;
-    uint64_t matched;
-
-    if (!di)
-        return SRD_ERR_ARG;
-
-    b = c_cond_new();
-    c_cond_skip(b, 0);
-    ret = c_cond_wait(b, di, samplenum, &matched);
-    c_cond_free(b);
-
-    return ret;
-}
-
-static void c_cond_free_term_list(gpointer data)
-{
-    g_slist_free_full((GSList*)data, g_free);
-}
-
-SRD_API void c_cond_free(srd_cond_builder* b)
-{
-    if (!b)
-        return;
-    if (b->current_and)
-        g_slist_free_full(b->current_and, g_free);
-    if (b->or_groups)
-        g_slist_free_full(b->or_groups, c_cond_free_term_list);
-    g_free(b);
+    const char *val = c_decoder_get_option_string(di, key, NULL);
+    if (!val)
+        return defval;
+    if (strcmp(val, "yes") == 0 || strcmp(val, "true") == 0 || strcmp(val, "1") == 0)
+        return 1;
+    if (strcmp(val, "no") == 0 || strcmp(val, "false") == 0 || strcmp(val, "0") == 0)
+        return 0;
+    return defval;
 }

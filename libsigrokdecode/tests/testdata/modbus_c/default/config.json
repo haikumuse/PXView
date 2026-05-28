@@ -1,14 +1,15 @@
 {
   "decoder": "modbus_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "uart"
-  ],
+  "num_channels": 2,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "scchannel": "RX",
-    "cschannel": "TX",
-    "framegap": 28
-  }
+  "stack": [
+    {
+      "id": "uart_c",
+      "channels": {
+        "rx": 0
+      }
+    }
+  ]
 }

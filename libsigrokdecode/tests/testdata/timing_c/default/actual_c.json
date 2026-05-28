@@ -1,330 +1,168 @@
 {
 	"decoder": "timing_c",
 	"samplerate": 1000000,
-	"num_annotations": 36,
+	"num_annotations": 18,
 	"annotations": [
 		{
-			"start_sample": 300,
-			"end_sample": 1000,
+			"start_sample": 2100,
+			"end_sample": 2200,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"700.000 μs (1.429 kHz)"
+				"100.000 μs (10.000 kHz)"
 			]
 		}, 
 		{
-			"start_sample": 300,
-			"end_sample": 1000,
+			"start_sample": 2100,
+			"end_sample": 2200,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
-				"700.000 μs (1.429 kHz)"
+				"100.000 μs (10.000 kHz)"
 			]
 		}, 
 		{
-			"start_sample": 1000,
-			"end_sample": 1300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 1000,
-			"end_sample": 1300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 1300,
-			"end_sample": 2000,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"700.000 μs (1.429 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 1300,
-			"end_sample": 2000,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"566.667 μs (1.765 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 2000,
+			"start_sample": 2200,
 			"end_sample": 2300,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"300.000 μs (3.333 kHz)"
+				"100.000 μs (10.000 kHz)"
 			]
 		}, 
 		{
-			"start_sample": 2000,
+			"start_sample": 2200,
 			"end_sample": 2300,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
-				"500.000 μs (2.000 kHz)"
+				"100.000 μs (10.000 kHz)"
 			]
 		}, 
 		{
 			"start_sample": 2300,
-			"end_sample": 3000,
+			"end_sample": 2400,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"700.000 μs (1.429 kHz)"
+				"100.000 μs (10.000 kHz)"
 			]
 		}, 
 		{
 			"start_sample": 2300,
+			"end_sample": 2400,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2400,
+			"end_sample": 2500,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2400,
+			"end_sample": 2500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2500,
+			"end_sample": 2600,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2500,
+			"end_sample": 2600,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2600,
+			"end_sample": 2700,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2600,
+			"end_sample": 2700,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2700,
+			"end_sample": 2800,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2700,
+			"end_sample": 2800,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2800,
+			"end_sample": 2900,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2800,
+			"end_sample": 2900,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2900,
+			"end_sample": 3000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"100.000 μs (10.000 kHz)"
+			]
+		}, 
+		{
+			"start_sample": 2900,
 			"end_sample": 3000,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
-				"540.000 μs (1.852 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 3000,
-			"end_sample": 3300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 3000,
-			"end_sample": 3300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 3300,
-			"end_sample": 4000,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"700.000 μs (1.429 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 3300,
-			"end_sample": 4000,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"528.571 μs (1.892 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 4000,
-			"end_sample": 4300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 4000,
-			"end_sample": 4300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 4300,
-			"end_sample": 5000,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"700.000 μs (1.429 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 4300,
-			"end_sample": 5000,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"522.222 μs (1.915 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 5000,
-			"end_sample": 5300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 5000,
-			"end_sample": 5300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 5300,
-			"end_sample": 6000,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"700.000 μs (1.429 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 5300,
-			"end_sample": 6000,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"518.182 μs (1.930 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 6000,
-			"end_sample": 6300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 6000,
-			"end_sample": 6300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 6300,
-			"end_sample": 7000,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"700.000 μs (1.429 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 6300,
-			"end_sample": 7000,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"515.385 μs (1.940 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 7000,
-			"end_sample": 7300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 7000,
-			"end_sample": 7300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 7300,
-			"end_sample": 8000,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"700.000 μs (1.429 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 7300,
-			"end_sample": 8000,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"513.333 μs (1.948 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 8000,
-			"end_sample": 8300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 8000,
-			"end_sample": 8300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 8300,
-			"end_sample": 9000,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"700.000 μs (1.429 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 8300,
-			"end_sample": 9000,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"511.765 μs (1.954 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 9000,
-			"end_sample": 9300,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"300.000 μs (3.333 kHz)"
-			]
-		}, 
-		{
-			"start_sample": 9000,
-			"end_sample": 9300,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"500.000 μs (2.000 kHz)"
+				"100.000 μs (10.000 kHz)"
 			]
 		}
 	]

@@ -1,0 +1,32 @@
+- [x] c_wait() 变参声明式条件等待实现正确，H/L/R/F/E/N/SKIP/OR/END 宏工作正常
+- [x] c_wait() 等价于 Python self.wait() 的所有条件模式（简单/AND/OR/skip/空条件）
+- [x] 旧 c_cond_* 系列 API 已从 libsigrokdecode.h 和 c_decoder_api.c 中完全删除
+- [x] di_samplenum(di) / di_matched(di) 宏正确读取 di->abs_cur_samplenum / di->match_array
+- [x] c_pin(di, ch) 从缓存正确读取引脚值，未连接通道返回 0xFF
+- [x] c_put / c_put_v 宏正确展开为 C_ANN_PUT / C_ANN_PUT_VAL
+- [x] c_field 结构体和 C_U8/C_STR 等字段宏正确构造 tagged union
+- [x] c_proto() 正确发送结构化协议数据到上层 C 解码器的 decode_upper
+- [x] c_proto() 正确桥接到上层 Python 解码器的 decode() 方法
+- [x] srd_c_decoder 结构体中 recv_proto 已删除，decode_upper 已添加
+- [x] decode_upper 回调签名正确：(di, ss, es, cmd, fields, n_fields)
+- [x] c_decoder_put_proto / c_decoder_put_python 已删除
+- [x] c_decoder_get_pin 已删除，被 c_pin() 替代
+- [x] c_cond_wait_current 已删除，被 c_wait(di, END) 替代
+- [x] c_opt_bool() 正确解析 "yes"/"true"/"1" 为 1，"no"/"false"/"0" 为 0
+- [x] 所有快捷 API 别名（c_opt_int/c_opt_str/c_has_ch/c_samplerate 等）正确映射
+- [x] C_DECODER_STATE 宏自动生成状态结构体、reset、destroy 函数
+- [x] C_DECODER_DEFINE 宏自动生成 srd_c_decoder 结构体和 DLL 入口函数（注：实际解码器因需要选项初始化逻辑，使用手动定义方式）
+- [x] SRD_C_DECODER_API_VERSION 升至 4
+/* Free the condition lists */
+GSList *l;
+for- [x] decoder_test.c 已适配 v4 API（decode_upper 调用路径）
+- [x] run_all_tests.py 与 v4 兼容
+- [x] Phase 1: 10 个核心底层解码器从 Python 重新迁移完成
+- [x] Phase 2: 15 个二级底层解码器从 Python 重新迁移完成
+- [x] Phase 3: 88 个剩余底层解码器批量机械迁移完成
+- [x] Phase 4: 102 个上层解码器批量机械迁移完成
+- [x] Phase 5: 6 个特殊前缀版本迁移完成
+- [x] 全部 215 个 C 解码器 + 核心库编译通过，0 错误
+- [x] 旧 v3 API 模式（c_cond_new/c_cond_wait/recv_proto/c_decoder_get_pin/c_decoder_put_proto）已从所有 215 个解码器文件中彻底移除
+- [x] 215 个 DLL 构建输出与源文件 1:1 对应
+- [ ] 全量对比测试通过：python run_all_tests.py --all 无 FAIL/ERROR

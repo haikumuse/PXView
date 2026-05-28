@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -55,7 +55,7 @@ static const struct srd_c_ann_row pan1321_ann_rows[] = {
 
 static void pan1321_putx(struct srd_decoder_inst *di, pan1321_state *s, int rxtx, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss_block[rxtx], s->es_block[rxtx], s->out_ann, cls, text);
+    c_put(di, s->ss_block[rxtx], s->es_block[rxtx], s->out_ann, cls, text);
 }
 
 static void pan1321_handle_host_command(struct srd_decoder_inst *di, pan1321_state *s, const char *cmd)
@@ -198,9 +198,7 @@ static void pan1321_handle_device_reply(struct srd_decoder_inst *di, pan1321_sta
     }
 }
 
-static void pan1321_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void pan1321_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     pan1321_state *s = (pan1321_state *)c_decoder_get_private(di);
     if (!s)
@@ -208,11 +206,11 @@ static void pan1321_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 2)
+    if (n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];
-    uint8_t rxtx = data[1];
+    uint8_t byte_val = fields[0].u8;
+    uint8_t rxtx = fields[1].u8;
     if (rxtx > 1)
         return;
 
@@ -254,7 +252,7 @@ static void pan1321_reset(struct srd_decoder_inst *di)
 static void pan1321_start(struct srd_decoder_inst *di)
 {
     pan1321_state *s = (pan1321_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pan1321");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pan1321");
 }
 
 static void pan1321_decode(struct srd_decoder_inst *di)
@@ -299,7 +297,8 @@ struct srd_c_decoder pan1321_c_decoder = {
     .start = pan1321_start,
     .decode = pan1321_decode,
     .destroy = pan1321_destroy,
-    .recv_proto = pan1321_recv_proto,
+    .decode_upper = pan1321_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

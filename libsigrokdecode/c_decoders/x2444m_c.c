@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2018 Stefan Petersen <spe@ciellt.se>
@@ -116,29 +116,27 @@ static int x2444m_is_data_cmd(uint8_t cmd)
     return (c == 0x83 || c == 0x86 || c == 0x87);
 }
 
-static uint64_t x2444m_read_le64(const unsigned char *data)
+static uint64_t x2444m_read_le64(const c_field *fields)
 {
     uint64_t val = 0;
     for (int i = 0; i < 8; i++)
-        val |= ((uint64_t)data[i]) << (8 * i);
+        val |= ((uint64_t)fields[i].u8) << (8 * i);
     return val;
 }
 
-static void x2444m_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void x2444m_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     x2444m_state *s = (x2444m_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "DATA") == 0) {
         if (!s->cs_asserted) return;
-        if (data_len < 17) return;
+        if (n_fields < 17) return;
 
-        int have_mosi = data[0] & 1;
-        int have_miso = data[0] & 2;
-        uint64_t mosi = have_mosi ? x2444m_read_le64(data + 1) : 0;
-        uint64_t miso = have_miso ? x2444m_read_le64(data + 9) : 0;
+        int have_mosi = fields[0].u8 & 1;
+        int have_miso = fields[0].u8 & 2;
+        uint64_t mosi = have_mosi ? x2444m_read_le64(fields + 1) : 0;
+        uint64_t miso = have_miso ? x2444m_read_le64(fields + 9) : 0;
 
         if (s->byte_count == 0) {
             s->cmd_byte = (uint8_t)(mosi & 0xFF);
@@ -151,7 +149,7 @@ static void x2444m_recv_proto(struct srd_decoder_inst *di,
         }
         s->byte_count++;
     } else if (strcmp(cmd, "CS-CHANGE") == 0) {
-        int new_cs = (data && data_len >= 2) ? data[1] : 0;
+        int new_cs = (fields && n_fields >= 2) ? fields[1].u8 : 0;
         /* CS active low for SPI */
         s->cs_asserted = (new_cs == 0);
 
@@ -164,7 +162,7 @@ static void x2444m_recv_proto(struct srd_decoder_inst *di,
                 /* Simple command only (no data) */
                 const char *name = x2444m_cmd_name(s->cmd_byte);
                 int idx = x2444m_cmd_index(s->cmd_byte);
-                C_ANN_PUT(di, s->cmd_start, end_sample, s->out_ann, idx, name);
+                c_put(di, s->cmd_start, end_sample, s->out_ann, idx, name);
             } else if (s->byte_count > 1) {
                 /* Command with data (READ or WRITE) */
                 const char *name = x2444m_cmd_name(s->cmd_byte);
@@ -180,7 +178,7 @@ static void x2444m_recv_proto(struct srd_decoder_inst *di,
                 char buf[128];
                 snprintf(buf, sizeof(buf), "%s: 0x%x => 0x%llx", name, addr,
                          (unsigned long long)value);
-                C_ANN_PUT_VAL(di, s->cmd_start, end_sample, s->out_ann, idx,
+                c_put_v(di, s->cmd_start, end_sample, s->out_ann, idx,
                               value, buf);
             }
             s->byte_count = 0;
@@ -200,7 +198,7 @@ static void x2444m_reset(struct srd_decoder_inst *di)
 static void x2444m_start(struct srd_decoder_inst *di)
 {
     x2444m_state *s = (x2444m_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "x2444m");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "x2444m");
 }
 
 static void x2444m_decode(struct srd_decoder_inst *di)
@@ -245,7 +243,8 @@ struct srd_c_decoder x2444m_c_decoder = {
     .start = x2444m_start,
     .decode = x2444m_decode,
     .destroy = x2444m_destroy,
-    .recv_proto = x2444m_recv_proto,
+    .decode_upper = x2444m_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -286,22 +286,22 @@ static void get_data_text(uint8_t b, char *buf, int buf_len)
 
 static void emit_eoi_ann(struct srd_decoder_inst *di, ieee488_priv *s, uint64_t ss, uint64_t es)
 {
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_EOI, "EOI");
+    c_put(di, ss, es, s->out_ann, ANN_EOI, "EOI");
 }
 
 static void flush_bytes_text_accu(struct srd_decoder_inst *di, ieee488_priv *s)
 {
     if (s->accu_bytes_len > 0 && s->ss_text != 0 && s->es_text != 0) {
-        c_decoder_put_binary(di, s->ss_text, s->es_text, s->out_bin,
+        c_put_bin(di, s->ss_text, s->es_text, s->out_bin,
             BIN_DATA, s->accu_bytes_len, s->accu_bytes);
-        c_decoder_put_proto(di, s->ss_text, s->es_text, s->out_python,
-            "TALKER_BYTES", s->accu_bytes, s->accu_bytes_len);
+        c_proto(di, s->ss_text, s->es_text, s->out_python,
+            "TALKER_BYTES", C_BYTES(s->accu_bytes, s->accu_bytes_len), C_END);
         s->accu_bytes_len = 0;
     }
     if (s->accu_text_len > 0 && s->ss_text != 0 && s->es_text != 0) {
-        C_ANN_PUT(di, s->ss_text, s->es_text, s->out_ann, ANN_TEXT, s->accu_text);
-        c_decoder_put_proto(di, s->ss_text, s->es_text, s->out_python,
-            "TALKER_TEXT", (const unsigned char *)s->accu_text, s->accu_text_len);
+        c_put(di, s->ss_text, s->es_text, s->out_ann, ANN_TEXT, s->accu_text);
+        c_proto(di, s->ss_text, s->es_text, s->out_python,
+            "TALKER_TEXT", C_STR(s->accu_text), C_END);
         s->accu_text_len = 0;
         s->accu_text[0] = '\0';
     }
@@ -359,9 +359,9 @@ static void handle_iec_periph(struct srd_decoder_inst *di, ieee488_priv *s,
     if (addr >= 0) {
         s->last_iec_addr = addr;
         if (addr == 8) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_IEC_PERIPH, "Disk 0");
+            c_put(di, ss, es, s->out_ann, ANN_IEC_PERIPH, "Disk 0");
         } else if (addr == 9) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_IEC_PERIPH, "Disk 1");
+            c_put(di, ss, es, s->out_ann, ANN_IEC_PERIPH, "Disk 1");
         }
     }
 
@@ -376,17 +376,17 @@ static void handle_iec_periph(struct srd_decoder_inst *di, ieee488_priv *s,
                 snprintf(str1, sizeof(str1), "Reopen %d", channel);
                 snprintf(str2, sizeof(str2), "Re %d", channel);
                 snprintf(str3, sizeof(str3), "R%c", '0' + channel);
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_IEC_PERIPH, str1, str2, str3);
+                c_put(di, ss, es, s->out_ann, ANN_IEC_PERIPH, str1, str2, str3);
             } else if (subcmd == 0xe0) {
                 snprintf(str1, sizeof(str1), "Close %d", channel);
                 snprintf(str2, sizeof(str2), "Cl %d", channel);
                 snprintf(str3, sizeof(str3), "C%c", '0' + channel);
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_IEC_PERIPH, str1, str2, str3);
+                c_put(di, ss, es, s->out_ann, ANN_IEC_PERIPH, str1, str2, str3);
             } else if (subcmd == 0xf0) {
                 snprintf(str1, sizeof(str1), "Open %d", channel);
                 snprintf(str2, sizeof(str2), "Op %d", channel);
                 snprintf(str3, sizeof(str3), "O%c", '0' + channel);
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_IEC_PERIPH, str1, str2, str3);
+                c_put(di, ss, es, s->out_ann, ANN_IEC_PERIPH, str1, str2, str3);
             }
         }
     }
@@ -402,16 +402,16 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
         snprintf(raw_text, sizeof(raw_text), "/%02x", b);
     else
         snprintf(raw_text, sizeof(raw_text), "%02x", b);
-    C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_RAW_BYTE, raw_text);
+    c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_RAW_BYTE, raw_text);
 
     /* Binary raw output */
-    c_decoder_put_binary(di, s->ss_raw, s->es_raw, s->out_bin, BIN_RAW, 1, &b);
+    c_put_bin(di, s->ss_raw, s->es_raw, s->out_bin, BIN_RAW, 1, &b);
 
     /* PROTO: GPIB_RAW */
     uint16_t raw_val = s->curr_atn ? (b | 0x100) : b;
     unsigned char proto_raw[2];
     memcpy(proto_raw, &raw_val, 2);
-    c_decoder_put_proto(di, s->ss_raw, s->es_raw, s->out_python, "GPIB_RAW", proto_raw, 2);
+    c_proto(di, s->ss_raw, s->es_raw, s->out_python, "GPIB_RAW", C_U16(raw_val), C_END);
 
     if (s->curr_atn) {
         /* ATN active: command/address */
@@ -440,15 +440,15 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
                 }
             }
             if (entry) {
-                C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_CMD,
+                c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_CMD,
                     entry->name, entry->short_name);
             } else {
                 char unk_str[64], unk_short[32];
                 snprintf(unk_str, sizeof(unk_str), "Unknown command 0x%02x", b);
                 snprintf(unk_short, sizeof(unk_short), "cmd %02x", b);
-                C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_CMD,
+                c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_CMD,
                     unk_str, unk_short);
-                C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_WARN,
+                c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_WARN,
                     "Unknown GPIB command", "unknown", "UNK");
             }
             ann_cls = ANN_CMD;
@@ -474,7 +474,7 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str1, sizeof(str1), "Listen %d", laddr);
             snprintf(str2, sizeof(str2), "L %d", laddr);
             snprintf(str3, sizeof(str3), "L%c", '0' + laddr);
-            C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_LADDR, str1, str2, str3);
+            c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_LADDR, str1, str2, str3);
             ann_cls = ANN_LADDR;
             py_type = "LISTEN";
             py_addr = laddr;
@@ -491,7 +491,7 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str1, sizeof(str1), "Talk %d", taddr);
             snprintf(str2, sizeof(str2), "T %d", taddr);
             snprintf(str3, sizeof(str3), "T%c", '0' + taddr);
-            C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_TADDR, str1, str2, str3);
+            c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_TADDR, str1, str2, str3);
             ann_cls = ANN_TADDR;
             py_type = "TALK";
             py_addr = taddr;
@@ -515,7 +515,7 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str1, sizeof(str1), "Secondary %d", saddr);
             snprintf(str2, sizeof(str2), "S %d", saddr);
             snprintf(str3, sizeof(str3), "S%c", '0' + saddr);
-            C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_SADDR, str1, str2, str3);
+            c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_SADDR, str1, str2, str3);
             ann_cls = ANN_SADDR;
             upd_iec = 1;
             iec_sec = b;
@@ -526,7 +526,7 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str1, sizeof(str1), "Secondary %d", msb);
             snprintf(str2, sizeof(str2), "S %d", msb);
             snprintf(str3, sizeof(str3), "S%c", '0' + (msb & 0x1f));
-            C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_SADDR, str1, str2, str3);
+            c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_SADDR, str1, str2, str3);
             ann_cls = ANN_SADDR;
             upd_iec = 1;
             iec_sec = b;
@@ -542,8 +542,8 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             unsigned char proto_data[5];
             memcpy(proto_data, &py_addr, 4);
             proto_data[4] = b;
-            c_decoder_put_proto(di, s->ss_raw, s->es_raw, s->out_python,
-                py_type, proto_data, 5);
+            c_proto(di, s->ss_raw, s->es_raw, s->out_python,
+                py_type, C_U32(py_addr), C_U8(b), C_END);
         }
 
         if (py_peers) {
@@ -566,8 +566,8 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
                 memcpy(tl_data + tl_len, &s->last_listener[i], 4);
                 tl_len += 4;
             }
-            c_decoder_put_proto(di, s->ss_raw, s->es_raw, s->out_python,
-                "TALK_LISTEN", tl_data, tl_len);
+            c_proto(di, s->ss_raw, s->es_raw, s->out_python,
+                "TALK_LISTEN", C_U32(talker_val), C_BYTES(tl_data + 4, tl_len - 4), C_END);
         }
     } else {
         /* ATN inactive: data byte */
@@ -599,7 +599,7 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
         }
         s->es_text = s->es_raw;
 
-        C_ANN_PUT(di, s->ss_raw, s->es_raw, s->out_ann, ANN_DATA, text_buf);
+        c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_DATA, text_buf);
 
         handle_iec_periph(di, s, s->ss_raw, s->es_raw, -1, -1, b);
 
@@ -608,8 +608,8 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
         int talker = (s->last_talker >= 0) ? s->last_talker : 0;
         memcpy(db_data, &talker, 4);
         db_data[4] = b;
-        c_decoder_put_proto(di, s->ss_raw, s->es_raw, s->out_python,
-            "DATA_BYTE", db_data, 5);
+        c_proto(di, s->ss_raw, s->es_raw, s->out_python,
+            "DATA_BYTE", C_U32(talker), C_U8(b), C_END);
     }
 }
 
@@ -657,29 +657,20 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
     s->serial_bit_count = 0;
 
     while (1) {
-        srd_cond_builder *cb;
         int ret;
-        uint64_t samplenum = 0;
-        uint64_t matched;
-
         switch (s->serial_state) {
         case STATE_WAIT_READY_TO_SEND:
-            cb = c_cond_new();
-            c_cond_fall(cb, PIN_ATN);
-            c_cond_or(cb);
-            c_cond_low(cb, PIN_DATA);
-            c_cond_high(cb, PIN_CLK);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(PIN_ATN), CW_OR, CW_L(PIN_DATA), CW_H(PIN_CLK), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & (1ULL << 0)) {
+            if (di_matched(di) & (1ULL << 0)) {
                 /* ATN falling edge, reset */
                 s->serial_state = STATE_WAIT_READY_TO_SEND;
             }
-            if (matched & (1ULL << 1)) {
-                int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
-                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
+            if (di_matched(di) & (1ULL << 1)) {
+                int data = c_pin(di, PIN_DATA);
+                int clk = c_pin(di, PIN_CLK);
                 if (data == 0 && clk == 1) {
                     s->serial_state = STATE_WAIT_READY_FOR_DATA;
                 }
@@ -687,110 +678,93 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
             break;
 
         case STATE_WAIT_READY_FOR_DATA:
-            cb = c_cond_new();
-            c_cond_fall(cb, PIN_ATN);
-            c_cond_or(cb);
-            c_cond_high(cb, PIN_DATA);
-            c_cond_high(cb, PIN_CLK);
-            c_cond_or(cb);
-            c_cond_low(cb, PIN_CLK);  /* Python: {PIN_CLK: 'l'} - low level, not falling edge */
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(PIN_ATN), CW_OR, CW_H(PIN_DATA), CW_H(PIN_CLK), CW_OR, CW_L(PIN_CLK), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & (1ULL << 0)) {
+            if (di_matched(di) & (1ULL << 0)) {
                 s->serial_state = STATE_WAIT_READY_TO_SEND;
                 break;
             }
-            if (matched & (1ULL << 1)) {
-                int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
-                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
+            if (di_matched(di) & (1ULL << 1)) {
+                int data = c_pin(di, PIN_DATA);
+                int clk = c_pin(di, PIN_CLK);
                 if (data == 1 && clk == 1) {
-                    s->ss_byte = samplenum;
-                    int atn = invert_pin(c_decoder_get_pin(di, PIN_ATN, samplenum));
+                    s->ss_byte = di_samplenum(di);
+                    int atn = invert_pin(c_pin(di, PIN_ATN));
                     handle_atn_change(di, s, atn);
                     if (s->curr_eoi)
-                        handle_eoi_change(di, s, 0, samplenum);
+                        handle_eoi_change(di, s, 0, di_samplenum(di));
                     s->serial_bit_count = 0;
                     s->serial_state = STATE_PREP_DATA_TEST_EOI;
                 } else if (clk == 0) {
                     s->serial_state = STATE_WAIT_READY_TO_SEND;
                 }
             }
-            if (matched & (1ULL << 2)) {
+            if (di_matched(di) & (1ULL << 2)) {
                 s->serial_state = STATE_WAIT_READY_TO_SEND;
             }
             break;
 
         case STATE_PREP_DATA_TEST_EOI:
-            cb = c_cond_new();
-            c_cond_fall(cb, PIN_ATN);
-            c_cond_or(cb);
-            c_cond_fall(cb, PIN_DATA);  /* Python: {PIN_DATA: 'f'} - falling edge, not low level */
-            c_cond_or(cb);
-            c_cond_low(cb, PIN_CLK);    /* Python: {PIN_CLK: 'l'} - low level, not falling edge */
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(PIN_ATN), CW_OR, CW_F(PIN_DATA), CW_OR, CW_L(PIN_CLK), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & (1ULL << 0)) {
+            if (di_matched(di) & (1ULL << 0)) {
                 s->serial_state = STATE_WAIT_READY_TO_SEND;
                 break;
             }
-            if (matched & (1ULL << 1)) {
-                int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
-                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
+            if (di_matched(di) & (1ULL << 1)) {
+                int data = c_pin(di, PIN_DATA);
+                int clk = c_pin(di, PIN_CLK);
                 if (data == 0 && clk == 1) {
-                    handle_eoi_change(di, s, 1, samplenum);
+                    handle_eoi_change(di, s, 1, di_samplenum(di));
                 }
             }
-            if (matched & (1ULL << 2)) {
+            if (di_matched(di) & (1ULL << 2)) {
                 s->serial_state = STATE_CLOCK_DATA_BITS;
-                s->ss_bit = samplenum;
+                s->ss_bit = di_samplenum(di);
             }
             break;
 
         case STATE_CLOCK_DATA_BITS: {
-            cb = c_cond_new();
-            c_cond_fall(cb, PIN_ATN);
-            c_cond_or(cb);
-            c_cond_edge(cb, PIN_CLK);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(PIN_ATN), CW_OR, CW_E(PIN_CLK), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & (1ULL << 0)) {
+            if (di_matched(di) & (1ULL << 0)) {
                 s->serial_state = STATE_WAIT_READY_TO_SEND;
                 break;
             }
-            if (matched & (1ULL << 1)) {
-                int clk = c_decoder_get_pin(di, PIN_CLK, samplenum);
+            if (di_matched(di) & (1ULL << 1)) {
+                int clk = c_pin(di, PIN_CLK);
                     if (clk == 1) {
                         /* Rising edge: latch DATA */
-                        int data = c_decoder_get_pin(di, PIN_DATA, samplenum);
+                        int data = c_pin(di, PIN_DATA);
                     if (s->serial_bit_count < 8)
                         s->serial_bits[s->serial_bit_count] = data;
                 } else {
                     /* Falling edge: end of bit */
-                    uint64_t es_bit = samplenum;
+                    uint64_t es_bit = di_samplenum(di);
                     char bit_str[4];
                     snprintf(bit_str, sizeof(bit_str), "%d", s->serial_bits[s->serial_bit_count]);
-                    C_ANN_PUT(di, s->ss_bit, es_bit, s->out_ann, ANN_BIT, bit_str);
+                    c_put(di, s->ss_bit, es_bit, s->out_ann, ANN_BIT, bit_str);
 
                     /* PROTO: IEC_BIT */
                     unsigned char bit_data[1];
                     bit_data[0] = s->serial_bits[s->serial_bit_count];
-                    c_decoder_put_proto(di, s->ss_bit, es_bit, s->out_python,
-                        "IEC_BIT", bit_data, 1);
+                    c_proto(di, s->ss_bit, es_bit, s->out_python,
+                        "IEC_BIT", C_U8(s->serial_bits[s->serial_bit_count]), C_END);
 
-                    s->ss_bit = samplenum;
+                    s->ss_bit = di_samplenum(di);
                     s->serial_bit_count++;
 
                     if (s->serial_bit_count == 8) {
-                        uint64_t es_byte = samplenum;
+                        uint64_t es_byte = di_samplenum(di);
                         inject_dav_phase(di, s, s->ss_byte, es_byte, s->serial_bits);
                         if (s->curr_eoi)
-                            handle_eoi_change(di, s, 0, samplenum);
+                            handle_eoi_change(di, s, 0, di_samplenum(di));
                         s->serial_state = STATE_WAIT_READY_TO_SEND;
                     }
                 }
@@ -803,74 +777,56 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
 
 static void decode_parallel(struct srd_decoder_inst *di, ieee488_priv *s)
 {
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     s->parallel_first_pass = 1;
 
     while (1) {
-        srd_cond_builder *cb;
         int ret;
         int i;
 
-        cb = c_cond_new();
-
-        s->idx_dav = 0;
         if (s->parallel_first_pass)
-            c_cond_low(cb, PIN_DAV);
+            ret = c_wait(di, CW_L(PIN_DAV), CW_END);
         else
-            c_cond_edge(cb, PIN_DAV);
-
-        c_cond_or(cb);
-        s->idx_atn = 1;
+            ret = c_wait(di, CW_E(PIN_DAV), CW_OR, CW_END);
         if (s->parallel_first_pass)
-            c_cond_low(cb, PIN_ATN);
+            ret = c_wait(di, CW_L(PIN_ATN), CW_END);
         else
-            c_cond_edge(cb, PIN_ATN);
-
-        if (s->has_eoi) {
-            c_cond_or(cb);
-            s->idx_eoi = 2;
-            if (s->parallel_first_pass)
-                c_cond_low(cb, PIN_EOI);
-            else
-                c_cond_edge(cb, PIN_EOI);
-        }
-
-        if (s->has_ifc) {
-            c_cond_or(cb);
-            s->idx_ifc = (s->has_eoi) ? 3 : 2;
-            if (s->parallel_first_pass)
-                c_cond_low(cb, PIN_IFC);
-            else
-                c_cond_edge(cb, PIN_IFC);
-        }
-
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_E(PIN_ATN), CW_END);
+        if (s->has_eoi)
+            ret = c_wait(di, CW_OR, CW_END);
+        if (s->parallel_first_pass)
+            ret = c_wait(di, CW_L(PIN_EOI), CW_END);
+        else
+            ret = c_wait(di, CW_E(PIN_EOI), CW_END);
+        if (s->has_ifc)
+            ret = c_wait(di, CW_OR, CW_END);
+        if (s->parallel_first_pass)
+            ret = c_wait(di, CW_L(PIN_IFC), CW_END);
+        else
+            ret = c_wait(di, CW_E(PIN_IFC), CW_END);
+        if (ret != SRD_OK)
+            return;
 
         /* Read all pins and invert */
         int pins[17];
         for (i = 0; i < 17; i++) {
-            int p = c_decoder_get_pin(di, i, samplenum);
+            int p = c_pin(di, i);
             pins[i] = invert_pin(p);
         }
 
         /* Process in order (important for same-sample edges) */
-        if (s->has_ifc && (matched & (1ULL << s->idx_ifc)) && pins[PIN_IFC] == 1)
+        if (s->has_ifc && (di_matched(di) & (1ULL << s->idx_ifc)) && pins[PIN_IFC] == 1)
             handle_ifc_change(di, s, pins[PIN_IFC]);
-        if (s->has_eoi && (matched & (1ULL << s->idx_eoi)) && pins[PIN_EOI] == 1)
-            handle_eoi_change(di, s, pins[PIN_EOI], samplenum);
-        if ((matched & (1ULL << s->idx_atn)) && pins[PIN_ATN] == 1)
+        if (s->has_eoi && (di_matched(di) & (1ULL << s->idx_eoi)) && pins[PIN_EOI] == 1)
+            handle_eoi_change(di, s, pins[PIN_EOI], di_samplenum(di));
+        if ((di_matched(di) & (1ULL << s->idx_atn)) && pins[PIN_ATN] == 1)
             handle_atn_change(di, s, pins[PIN_ATN]);
-        if (matched & (1ULL << s->idx_dav))
-            handle_dav_change(di, s, pins[PIN_DAV], (uint8_t *)&pins[PIN_DIO1], samplenum);
-        if ((matched & (1ULL << s->idx_atn)) && pins[PIN_ATN] == 0)
+        if (di_matched(di) & (1ULL << s->idx_dav))
+            handle_dav_change(di, s, pins[PIN_DAV], (uint8_t *)&pins[PIN_DIO1], di_samplenum(di));
+        if ((di_matched(di) & (1ULL << s->idx_atn)) && pins[PIN_ATN] == 0)
             handle_atn_change(di, s, pins[PIN_ATN]);
-        if (s->has_eoi && (matched & (1ULL << s->idx_eoi)) && pins[PIN_EOI] == 0)
-            handle_eoi_change(di, s, pins[PIN_EOI], samplenum);
-        if (s->has_ifc && (matched & (1ULL << s->idx_ifc)) && pins[PIN_IFC] == 0)
+        if (s->has_eoi && (di_matched(di) & (1ULL << s->idx_eoi)) && pins[PIN_EOI] == 0)
+            handle_eoi_change(di, s, pins[PIN_EOI], di_samplenum(di));
+        if (s->has_ifc && (di_matched(di) & (1ULL << s->idx_ifc)) && pins[PIN_IFC] == 0)
             handle_ifc_change(di, s, pins[PIN_IFC]);
 
         s->parallel_first_pass = 0;
@@ -898,29 +854,29 @@ static void ieee488_reset(struct srd_decoder_inst *di)
 static void ieee488_start(struct srd_decoder_inst *di)
 {
     ieee488_priv *s = (ieee488_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ieee488");
-    s->out_bin = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "ieee488");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "ieee488");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ieee488");
+    s->out_bin = c_reg_out(di, SRD_OUTPUT_BINARY, "ieee488");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "ieee488");
 
-    const char *iec_periph = c_decoder_get_option_string(di, "iec_periph", "no");
+    const char *iec_periph = c_opt_str(di, "iec_periph", "no");
     s->iec_periph = (iec_periph && strcmp(iec_periph, "yes") == 0) ? 1 : 0;
 
-    const char *delim = c_decoder_get_option_string(di, "delim", "eol");
+    const char *delim = c_opt_str(di, "delim", "eol");
     s->delim_eol = (delim && strcmp(delim, "eol") == 0) ? 1 : 0;
 
     /* Check channel availability */
-    s->has_clk = c_decoder_has_channel(di, PIN_CLK);
-    s->has_dio8 = c_decoder_has_channel(di, PIN_DIO8);
-    s->has_dav = c_decoder_has_channel(di, PIN_DAV);
-    s->has_atn = c_decoder_has_channel(di, PIN_ATN);
-    s->has_eoi = c_decoder_has_channel(di, PIN_EOI);
-    s->has_ifc = c_decoder_has_channel(di, PIN_IFC);
-    s->has_srq = c_decoder_has_channel(di, PIN_SRQ);
+    s->has_clk = c_has_ch(di, PIN_CLK);
+    s->has_dio8 = c_has_ch(di, PIN_DIO8);
+    s->has_dav = c_has_ch(di, PIN_DAV);
+    s->has_atn = c_has_ch(di, PIN_ATN);
+    s->has_eoi = c_has_ch(di, PIN_EOI);
+    s->has_ifc = c_has_ch(di, PIN_IFC);
+    s->has_srq = c_has_ch(di, PIN_SRQ);
 
     /* Check all 8 DIO lines are connected */
     s->has_all_dio = 1;
     for (int i = 0; i < 8; i++) {
-        if (!c_decoder_has_channel(di, i)) {
+        if (!c_has_ch(di, i)) {
             s->has_all_dio = 0;
             break;
         }
@@ -933,8 +889,6 @@ static void decode_data_only(struct srd_decoder_inst *di, ieee488_priv *s)
 {
     /* Simplified decode path when neither CLK nor DAV is available.
      * Wait for any change on the DIO channels and output raw byte annotations. */
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int prev_data[8];
     int first = 1;
     uint64_t ss_byte = 0;
@@ -942,16 +896,22 @@ static void decode_data_only(struct srd_decoder_inst *di, ieee488_priv *s)
     memset(prev_data, -1, sizeof(prev_data));
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
         /* Wait for edge on any DIO channel */
+        int ret;
+        GSList *or_groups = NULL;
         for (int i = 0; i < 8; i++) {
-            if (c_decoder_has_channel(di, i)) {
-                if (i > 0) c_cond_or(cb);
-                c_cond_edge(cb, i);
+            if (c_has_ch(di, i)) {
+                GSList *and_group = NULL;
+                struct srd_term *t = g_malloc0(sizeof(struct srd_term));
+                t->type = SRD_TERM_EITHER_EDGE;
+                t->channel = i;
+                and_group = g_slist_append(and_group, t);
+                or_groups = g_slist_append(or_groups, and_group);
             }
         }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_decoder_wait(di, or_groups, NULL, NULL);
+        /* NOTE: c_decoder_wait_impl takes ownership of or_groups;
+         * do NOT free it here to avoid double-free. */
         if (ret != SRD_OK)
             return;
 
@@ -959,8 +919,8 @@ static void decode_data_only(struct srd_decoder_inst *di, ieee488_priv *s)
         int pins[8];
         uint8_t raw = 0;
         for (int i = 0; i < 8; i++) {
-            if (c_decoder_has_channel(di, i)) {
-                pins[i] = c_decoder_get_pin(di, i, samplenum);
+            if (c_has_ch(di, i)) {
+                pins[i] = c_pin(di, i);
                 if (pins[i])
                     raw |= (1 << i);
             } else {
@@ -971,7 +931,7 @@ static void decode_data_only(struct srd_decoder_inst *di, ieee488_priv *s)
         if (first) {
             first = 0;
             memcpy(prev_data, pins, sizeof(prev_data));
-            ss_byte = samplenum;
+            ss_byte = di_samplenum(di);
             continue;
         }
 
@@ -988,12 +948,12 @@ static void decode_data_only(struct srd_decoder_inst *di, ieee488_priv *s)
             /* Output raw byte annotation */
             char raw_text[16];
             snprintf(raw_text, sizeof(raw_text), "%02x", raw);
-            C_ANN_PUT(di, ss_byte, samplenum, s->out_ann, ANN_RAW_BYTE, raw_text);
+            c_put(di, ss_byte, di_samplenum(di), s->out_ann, ANN_RAW_BYTE, raw_text);
 
-            c_decoder_put_binary(di, ss_byte, samplenum, s->out_bin, BIN_RAW, 1, &raw);
+            c_put_bin(di, ss_byte, di_samplenum(di), s->out_bin, BIN_RAW, 1, &raw);
 
             memcpy(prev_data, pins, sizeof(prev_data));
-            ss_byte = samplenum;
+            ss_byte = di_samplenum(di);
         }
     }
 }
@@ -1049,6 +1009,7 @@ struct srd_c_decoder ieee488_c_decoder = {
     .start = ieee488_start,
     .decode = ieee488_decode,
     .destroy = ieee488_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

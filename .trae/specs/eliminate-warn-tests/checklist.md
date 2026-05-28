@@ -1,0 +1,14 @@
+- [ ] LPCGenerator 正确实现 I/O 写周期（LFRAME#→START→CT/DR→ADDR→TAR→SYNC→DATA→TAR2）
+- [ ] MCS48Generator 通道映射正确（ALE=ch0, PSEN=ch1, D0-D7=ch2-9, A8-A11=ch10-13）
+- [ ] MIPIRFFEGenerator SSC 起始条件正确（SCLK低→SDATA上升→SCLK上升→SDATA下降）
+- [ ] MVBGenerator CRC 计算与 Python 解码器 encode_data() 一致
+- [ ] FSiGenerator 实现 BREAK 检测和完整 ABS_ADR 写命令
+- [ ] Z80Generator 通道映射正确（D0-D7=ch0-7, M1=ch8, RD=ch9, WR=ch10）
+- [ ] ST7735 生成器手动生成 CS+CLK+MOSI+DC 信号，发送两条命令
+- [ ] ST7789 生成器实现 CSX+DCX+SDO+WRX 时序
+- [ ] TMC 生成器实现 I2C-like 的 CLK+DIO 协议
+- [ ] IEEE488 生成器使用串行 IEC 模式或并行 GPIB 模式
+- [ ] 所有 10 个解码器测试从 WARN 变为 PASS
+- [ ] 之前已修复的 5 个解码器无回归
+- [ ] 未修改 C 解码器源代码
+- [ ] 未修改 Python 解码器源代码

@@ -1,12 +1,15 @@
 {
   "decoder": "ook_oregon_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "ook"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {
-    "unknown": "Unknown"
-  }
+  "stack": [
+    {
+      "id": "ook_c",
+      "channels": {
+        "data": 0
+      }
+    }
+  ]
 }

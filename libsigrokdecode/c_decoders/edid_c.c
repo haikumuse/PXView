@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012 Bert Vermeulen <bert@biot.com>
@@ -130,7 +130,7 @@ static void edid_ann_field(struct srd_decoder_inst *di, edid_state *s,
                            int start, int end, const char *text)
 {
     uint64_t (*sn_ptr)[2] = edid_get_sn(s);
-    C_ANN_PUT(di, sn_ptr[start][0], sn_ptr[end][1], s->out_ann, ANN_FIELDS, text);
+    c_put(di, sn_ptr[start][0], sn_ptr[end][1], s->out_ann, ANN_FIELDS, text);
 }
 
 static double edid_convert_color(int value)
@@ -368,7 +368,7 @@ static void edid_decode_detailed_timing(struct srd_decoder_inst *di, edid_state 
         snprintf(section, sizeof(section), "Preferred timing descriptor");
     else
         snprintf(section, sizeof(section), "Detailed timing descriptor");
-    C_ANN_PUT(di, sn_ptr[0][0], sn_ptr[17][1], s->out_ann, ANN_SECTIONS, section);
+    c_put(di, sn_ptr[0][0], sn_ptr[17][1], s->out_ann, ANN_SECTIONS, section);
 
     char buf[256];
 
@@ -452,7 +452,7 @@ static void edid_decode_descriptor(struct srd_decoder_inst *di, edid_state *s,
     edid_ann_field(di, s, offset + 4, offset + 4, "Flag");
 
     if (tag == 0xff) {
-        C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
+        c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Serial number");
         char text[14] = {0};
         for (int i = 0; i < 13; i++)
@@ -462,7 +462,7 @@ static void edid_decode_descriptor(struct srd_decoder_inst *di, edid_state *s,
             text[i] = '\0';
         edid_ann_field(di, s, offset + 5, offset + 17, text);
     } else if (tag == 0xfe) {
-        C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
+        c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Text");
         char text[14] = {0};
         for (int i = 0; i < 13; i++)
@@ -471,7 +471,7 @@ static void edid_decode_descriptor(struct srd_decoder_inst *di, edid_state *s,
             text[i] = '\0';
         edid_ann_field(di, s, offset + 5, offset + 17, text);
     } else if (tag == 0xfc) {
-        C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
+        c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Monitor name");
         char text[14] = {0};
         for (int i = 0; i < 13; i++)
@@ -480,7 +480,7 @@ static void edid_decode_descriptor(struct srd_decoder_inst *di, edid_state *s,
             text[i] = '\0';
         edid_ann_field(di, s, offset + 5, offset + 17, text);
     } else if (tag == 0xfd) {
-        C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
+        c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Monitor range limits");
         char buf[128];
         snprintf(buf, sizeof(buf), "Minimum vertical rate: %dHz", cache[5]);
@@ -501,13 +501,13 @@ static void edid_decode_descriptor(struct srd_decoder_inst *di, edid_state *s,
             edid_ann_field(di, s, offset + 11, offset + 17, "Padding");
         }
     } else if (tag == 0xfb) {
-        C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
+        c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Additional color point data");
     } else if (tag == 0xfa) {
-        C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
+        c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Additional standard timing definitions");
     } else {
-        C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
+        c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Unknown descriptor");
     }
 }
@@ -547,7 +547,7 @@ static void edid_decode_data_block_collection(struct srd_decoder_inst *di, edid_
                 "5: VESA DTC Data Block",
                 "6: Reserved",
             };
-            C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset][1],
+            c_put(di, sn_ptr[offset][0], sn_ptr[offset][1],
                       s->out_ann, ANN_FIELDS, code_names[tag]);
 
             if (tag == 1 && length >= 4) {
@@ -587,7 +587,7 @@ static void edid_decode_data_block_collection(struct srd_decoder_inst *di, edid_
                 snprintf(buf, sizeof(buf), "%s", hex_str);
             }
             if (length > 1)
-                C_ANN_PUT(di, sn_ptr[offset + 1][0], sn_ptr[offset + length - 1][1],
+                c_put(di, sn_ptr[offset + 1][0], sn_ptr[offset + length - 1][1],
                           s->out_ann, ANN_FIELDS, buf);
         } else {
             /* Extended tags */
@@ -601,7 +601,7 @@ static void edid_decode_data_block_collection(struct srd_decoder_inst *di, edid_
 
             char code_buf[256];
             snprintf(code_buf, sizeof(code_buf), "7: Extended, %s", ext_name);
-            C_ANN_PUT(di, sn_ptr[offset][0], sn_ptr[offset + 1][1],
+            c_put(di, sn_ptr[offset][0], sn_ptr[offset + 1][1],
                       s->out_ann, ANN_FIELDS, code_buf);
 
             char hex_str[256] = "";
@@ -611,7 +611,7 @@ static void edid_decode_data_block_collection(struct srd_decoder_inst *di, edid_
                 strcat(hex_str, tmp);
             }
             if (length > 2)
-                C_ANN_PUT(di, sn_ptr[offset + 2][0], sn_ptr[offset + length - 1][1],
+                c_put(di, sn_ptr[offset + 2][0], sn_ptr[offset + length - 1][1],
                           s->out_ann, ANN_FIELDS, hex_str);
         }
 
@@ -619,9 +619,7 @@ static void edid_decode_data_block_collection(struct srd_decoder_inst *di, edid_
     }
 }
 
-static void edid_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void edid_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     edid_state *s = (edid_state *)c_decoder_get_private(di);
     if (!s)
@@ -629,7 +627,7 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
 
     s->ss = start_sample;
     s->es = end_sample;
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     /* ADDRESS WRITE + 0x50 → offset state */
     if (strcmp(cmd, "ADDRESS WRITE") == 0 && databyte == 0x50) {
@@ -644,11 +642,11 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
             s->state = EDID_STATE_EXTENSIONS;
             char ext_str[64];
             snprintf(ext_str, sizeof(ext_str), "Extension: %d", s->extension);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS,
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS,
                       ext_str, ext_str);
         } else {
             s->state = EDID_STATE_HEADER;
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "EDID");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "EDID");
         }
         return;
     }
@@ -680,7 +678,7 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
 
         char buf[32];
         snprintf(buf, sizeof(buf), "Offset: %d", databyte);
-        C_ANN_PUT(di, s->ss ? s->ss : start_sample, end_sample,
+        c_put(di, s->ss ? s->ss : start_sample, end_sample,
                   s->out_ann, ANN_SECTIONS, buf, buf);
         return;
     }
@@ -725,8 +723,8 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
                 memmove(s->sn, &s->sn[s->cnt - 8], 8 * sizeof(uint64_t[2]));
                 s->cnt = 8;
                 s->state = EDID_STATE_EDID;
-                C_ANN_PUT(di, header_ss, end_sample, s->out_ann, ANN_SECTIONS, "Header");
-                C_ANN_PUT(di, header_ss, end_sample, s->out_ann, ANN_FIELDS, "Header pattern");
+                c_put(di, header_ss, end_sample, s->out_ann, ANN_SECTIONS, "Header");
+                c_put(di, header_ss, end_sample, s->out_ann, ANN_FIELDS, "Header pattern");
             }
         }
     } else if (s->state == EDID_STATE_EDID) {
@@ -736,38 +734,38 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
             edid_decode_serial(di, s, -6);
             edid_decode_mfrdate(di, s, -2);
             uint64_t (*sn_ptr)[2] = edid_get_sn(s);
-            C_ANN_PUT(di, sn_ptr[OFF_VENDOR][0], end_sample,
+            c_put(di, sn_ptr[OFF_VENDOR][0], end_sample,
                       s->out_ann, ANN_SECTIONS, "Vendor/product");
         } else if (s->cnt == OFF_BASIC) {
             uint64_t (*sn_ptr)[2] = edid_get_sn(s);
-            C_ANN_PUT(di, sn_ptr[OFF_VERSION][0], end_sample,
+            c_put(di, sn_ptr[OFF_VERSION][0], end_sample,
                       s->out_ann, ANN_SECTIONS, "EDID Version");
             uint8_t *c = edid_get_cache(s);
             char buf[64];
             snprintf(buf, sizeof(buf), "Version %d", c[OFF_VERSION]);
-            C_ANN_PUT(di, sn_ptr[OFF_VERSION][0], sn_ptr[OFF_VERSION][1],
+            c_put(di, sn_ptr[OFF_VERSION][0], sn_ptr[OFF_VERSION][1],
                       s->out_ann, ANN_FIELDS, buf);
             snprintf(buf, sizeof(buf), "Revision %d", c[OFF_VERSION + 1]);
-            C_ANN_PUT(di, sn_ptr[OFF_VERSION + 1][0], sn_ptr[OFF_VERSION + 1][1],
+            c_put(di, sn_ptr[OFF_VERSION + 1][0], sn_ptr[OFF_VERSION + 1][1],
                       s->out_ann, ANN_FIELDS, buf);
         } else if (s->cnt == OFF_CHROM) {
             uint64_t (*sn_ptr)[2] = edid_get_sn(s);
-            C_ANN_PUT(di, sn_ptr[OFF_BASIC][0], end_sample,
+            c_put(di, sn_ptr[OFF_BASIC][0], end_sample,
                       s->out_ann, ANN_SECTIONS, "Basic display");
             edid_decode_basicdisplay(di, s, -5);
         } else if (s->cnt == OFF_EST_TIMING) {
             uint64_t (*sn_ptr)[2] = edid_get_sn(s);
-            C_ANN_PUT(di, sn_ptr[OFF_CHROM][0], end_sample,
+            c_put(di, sn_ptr[OFF_CHROM][0], end_sample,
                       s->out_ann, ANN_SECTIONS, "Color characteristics");
             edid_decode_chromaticity(di, s, -10);
         } else if (s->cnt == OFF_STD_TIMING) {
             uint64_t (*sn_ptr)[2] = edid_get_sn(s);
-            C_ANN_PUT(di, sn_ptr[OFF_EST_TIMING][0], end_sample,
+            c_put(di, sn_ptr[OFF_EST_TIMING][0], end_sample,
                       s->out_ann, ANN_SECTIONS, "Established timings");
             edid_decode_est_timing(di, s, -3);
         } else if (s->cnt == OFF_DET_TIMING) {
             uint64_t (*sn_ptr)[2] = edid_get_sn(s);
-            C_ANN_PUT(di, sn_ptr[OFF_STD_TIMING][0], end_sample,
+            c_put(di, sn_ptr[OFF_STD_TIMING][0], end_sample,
                       s->out_ann, ANN_SECTIONS, "Standard timings");
             edid_decode_std_timing(di, s, s->cnt - 16);
         } else if (s->cnt == OFF_NUM_EXT) {
@@ -776,7 +774,7 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
             char buf[64];
             uint8_t *c = edid_get_cache(s);
             snprintf(buf, sizeof(buf), "Extensions present: %d", c[s->cnt - 1]);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
         } else if (s->cnt == OFF_CHECKSUM + 1) {
             uint8_t *c = edid_get_cache(s);
             int checksum = 0;
@@ -785,7 +783,7 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
             const char *csstr = (checksum % 256 == 0) ? "OK" : "WRONG!";
             char buf[64];
             snprintf(buf, sizeof(buf), "Checksum: %d (%s)", c[s->cnt - 1], csstr);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
             s->state = EDID_STATE_EXTENSIONS;
         }
     } else if (s->state == EDID_STATE_EXTENSIONS) {
@@ -802,21 +800,21 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
         int v = cache[s->cnt - 1];
         if (s->cnt == 1) {
             if (v == 2)
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "Extensions Tag", "Tag");
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "Extensions Tag", "Tag");
             else
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "Bad Tag");
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "Bad Tag");
         } else if (s->cnt == 2) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "Version");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "Version");
             char buf[16];
             snprintf(buf, sizeof(buf), "%d", v);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
         } else if (s->cnt == 3) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "DTD offset");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS, "DTD offset");
             char buf[16];
             snprintf(buf, sizeof(buf), "%d", v);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
         } else if (s->cnt == 4) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS,
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_SECTIONS,
                       "Format support | DTD count");
             const char *underscan = (v & 0x80) ? "yes" : "no";
             const char *audio = (v & 0x40) ? "Basic" : "No";
@@ -826,19 +824,19 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
             snprintf(buf, sizeof(buf),
                      "Underscan: %s, %s Audio, YCbCr: %s, DTDs: %d",
                      underscan, audio, ycbcr, v & 0xf);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
         } else if (s->cnt <= cache[2]) {
             if (s->cnt == cache[2]) {
-                C_ANN_PUT(di, sn_ptr[4][0], end_sample,
+                c_put(di, sn_ptr[4][0], end_sample,
                           s->out_ann, ANN_SECTIONS, "Data block collection");
-                int data_len = cache[2] - 4;
-                if (data_len > 0)
-                    edid_decode_data_block_collection(di, s, &cache[4], &sn_ptr[4], data_len);
+                int n_fields = cache[2] - 4;
+                if (n_fields > 0)
+                    edid_decode_data_block_collection(di, s, &cache[4], &sn_ptr[4], n_fields);
             }
         } else if ((s->cnt - cache[2]) % 18 == 0) {
             int n = (s->cnt - cache[2]) / 18;
             if (n <= (cache[3] & 0xf)) {
-                C_ANN_PUT(di, sn_ptr[s->cnt - 18][0], end_sample,
+                c_put(di, sn_ptr[s->cnt - 18][0], end_sample,
                           s->out_ann, ANN_SECTIONS, "DTD");
                 /* Parse as detailed timing or descriptor */
                 int desc_offset = s->cnt - 18;
@@ -853,7 +851,7 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
         } else if (s->cnt == 127) {
             int dtd_last = cache[2] + (cache[3] & 0xf) * 18;
             if (dtd_last < 128)
-                C_ANN_PUT(di, sn_ptr[dtd_last][0], end_sample,
+                c_put(di, sn_ptr[dtd_last][0], end_sample,
                           s->out_ann, ANN_SECTIONS, "Padding");
         } else if (s->cnt == 128) {
             int checksum = 0;
@@ -862,7 +860,7 @@ static void edid_recv_proto(struct srd_decoder_inst *di,
             char buf[64];
             snprintf(buf, sizeof(buf), "Checksum: %d (%s)",
                      cache[s->cnt - 1], (checksum % 256) ? "Wrong" : "OK");
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_FIELDS, buf);
         }
     }
 }
@@ -880,7 +878,7 @@ static void edid_reset(struct srd_decoder_inst *di)
 static void edid_start(struct srd_decoder_inst *di)
 {
     edid_state *s = (edid_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "edid");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "edid");
 }
 
 static void edid_decode(struct srd_decoder_inst *di)
@@ -925,7 +923,8 @@ struct srd_c_decoder edid_c_decoder = {
     .start = edid_start,
     .decode = edid_decode,
     .destroy = edid_destroy,
-    .recv_proto = edid_recv_proto,
+    .decode_upper = edid_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

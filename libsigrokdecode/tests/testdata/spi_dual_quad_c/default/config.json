@@ -2,7 +2,7 @@
   "decoder": "spi_dual_quad_c",
   "samplerate": 1000000,
   "num_channels": 6,
-  "sample_count": 10000,
+  "sample_count": 50000,
   "channels": {
     "clk": 0,
     "sio0": 1,
@@ -19,5 +19,6 @@
     "wordsize": 8,
     "twolnmd": "qspi",
     "protocol": "spi"
-  }
+  },
+  "expected_deviations": true
 }

@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -110,7 +110,7 @@ static void flush_letter(struct srd_decoder_inst *di, struct morse_priv *s)
 
     const char *letter = lookup_morse(s->sequence, s->seq_len);
     if (letter) {
-        C_ANN_PUT(di, s->letter_ss, s->letter_es, s->out_ann, ANN_LETTER, letter);
+        c_put(di, s->letter_ss, s->letter_es, s->out_ann, ANN_LETTER, letter);
         /* Add to word */
         if (s->word_len < 250) {
             int len = strlen(letter);
@@ -124,7 +124,7 @@ static void flush_letter(struct srd_decoder_inst *di, struct morse_priv *s)
         char ditdah[17] = {0};
         for (int i = 0; i < s->seq_len && i < 16; i++)
             ditdah[i] = (s->sequence[i] == 1) ? '.' : '-';
-        C_ANN_PUT(di, s->letter_ss, s->letter_es, s->out_ann, ANN_LETTER, ditdah);
+        c_put(di, s->letter_ss, s->letter_es, s->out_ann, ANN_LETTER, ditdah);
         if (s->word_len + s->seq_len < 250) {
             memcpy(s->word + s->word_len, ditdah, s->seq_len);
             s->word_len += s->seq_len;
@@ -141,7 +141,7 @@ static void flush_word(struct srd_decoder_inst *di, struct morse_priv *s)
         return;
 
     s->word[s->word_len] = '\0';
-    C_ANN_PUT(di, s->word_ss, s->word_es, s->out_ann, ANN_WORD, s->word);
+    c_put(di, s->word_ss, s->word_es, s->out_ann, ANN_WORD, s->word);
     s->word_len = 0;
 }
 
@@ -184,9 +184,9 @@ static void morse_reset(struct srd_decoder_inst *di)
 static void morse_start(struct srd_decoder_inst *di)
 {
     struct morse_priv *s = (struct morse_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "morse");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "morse");
 
-    double tu = c_decoder_get_option_double(di, "timeunit", 0.1);
+    double tu = c_opt_dbl(di, "timeunit", 0.1);
     if (tu > 0)
         s->timeunit = tu;
 }
@@ -201,47 +201,35 @@ static void morse_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void morse_decode(struct srd_decoder_inst *di)
 {
     struct morse_priv *s = (struct morse_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         s->samplerate = 1;  /* fallback */
 
     /* Wait for first rising edge */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_rise(cb, 0);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
+    int ret = c_wait(di, CW_R(0), CW_END);
     if (ret != SRD_OK)
         return;
 
-    s->prev_time = samplenum;
+    s->prev_time = di_samplenum(di);
     s->prev_val = 1;
-    s->word_ss = samplenum;
-    s->word_es = samplenum;
+    s->word_ss = di_samplenum(di);
+    s->word_es = di_samplenum(di);
 
     while (1) {
-        /* Wait for edge or timeout */
-        cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        c_cond_or(cb);
-        uint64_t timeout = (uint64_t)(5.0 * (double)s->samplerate * s->timeunit);
-        if (timeout == 0) timeout = 1;
-        c_cond_skip(cb, timeout);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        /* Wait for edge or timeout (5 * samplerate * timeunit samples) */
+        uint64_t timeout_samples = (uint64_t)(5.0 * (double)s->samplerate * s->timeunit);
+        ret = c_wait(di, CW_E(0), CW_OR, CW_SKIP(timeout_samples), CW_END);
         if (ret != SRD_OK) {
             flush_word(di, s);
             return;
         }
 
-        int is_timeout = (matched & (1ULL << 1)) && !(matched & (1ULL << 0));
+        int is_timeout = (di_matched(di) & (1ULL << 1)) && !(di_matched(di) & (1ULL << 0));
 
-        int val = c_decoder_get_pin(di, 0, samplenum);
+        int val = c_pin(di, 0);
         int pval = s->prev_val;
-        uint64_t curtime = samplenum;
+        uint64_t curtime = di_samplenum(di);
 
         if (is_timeout) {
             /* Timeout - flush word */
@@ -262,7 +250,7 @@ static void morse_decode(struct srd_decoder_inst *di)
         /* Output time annotation */
         char time_str[32];
         snprintf(time_str, sizeof(time_str), "%.3g", dt);
-        C_ANN_PUT(di, s->prev_time, curtime, s->out_ann, ANN_TIME, time_str);
+        c_put(di, s->prev_time, curtime, s->out_ann, ANN_TIME, time_str);
 
         /* Check symbol validity */
         int sval = pval;
@@ -273,14 +261,14 @@ static void morse_decode(struct srd_decoder_inst *di)
             /* Valid symbol */
             char units_str[64];
             snprintf(units_str, sizeof(units_str), "%.1f*%.3g", units, s->timeunit);
-            C_ANN_PUT(di, s->prev_time, curtime, s->out_ann, ANN_UNITS, units_str);
+            c_put(di, s->prev_time, curtime, s->out_ann, ANN_UNITS, units_str);
 
             process_symbol(di, s, sval, sunits, s->prev_time, curtime);
         } else {
             /* Unknown symbol */
             char err_str[64];
             snprintf(err_str, sizeof(err_str), "!! %.1f*%.3g !!", units, s->timeunit);
-            C_ANN_PUT(di, s->prev_time, curtime, s->out_ann, ANN_UNITS, err_str);
+            c_put(di, s->prev_time, curtime, s->out_ann, ANN_UNITS, err_str);
         }
 
         /* Adaptive timeunit */
@@ -331,6 +319,7 @@ static struct srd_c_decoder morse_c_decoder = {
     .start = morse_start,
     .decode = morse_decode,
     .destroy = morse_destroy,
+    .state_size = 0,
     .metadata = morse_metadata,
 };
 

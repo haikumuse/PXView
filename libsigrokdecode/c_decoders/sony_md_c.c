@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 Ryan "Izzy" Bales <izzy84075@gmail.com>
@@ -184,8 +184,8 @@ static void sony_md_put_packet_proto(struct srd_decoder_inst *di, sony_md_state 
      *         clean_end(1B) */
     int num_sync = s->syncDataCount;
     int num_bits = s->bitDataCount;
-    int data_len = 1 + num_sync * 16 + 8 + 8 + 1 + num_bits * 25 + 1;
-    unsigned char *proto_data = (unsigned char *)g_malloc(data_len);
+    int n_fields = 1 + num_sync * 16 + 8 + 8 + 1 + num_bits * 25 + 1;
+    unsigned char *proto_data = (unsigned char *)g_malloc(n_fields);
     int pos = 0;
 
     proto_data[pos++] = (unsigned char)num_sync;
@@ -214,8 +214,8 @@ static void sony_md_put_packet_proto(struct srd_decoder_inst *di, sony_md_state 
 
     proto_data[pos++] = (unsigned char)(clean_end ? 1 : 0);
 
-    c_decoder_put_proto(di, s->packetstartsample, s->packetendsample,
-                        s->out_proto, "PACKET", proto_data, pos);
+    c_proto(di, s->packetstartsample, s->packetendsample,
+                        s->out_proto, "PACKET", C_BYTES(proto_data, pos), C_END);
     g_free(proto_data);
 }
 
@@ -225,7 +225,7 @@ static void sony_md_put_packet_bit_count(struct srd_decoder_inst *di, sony_md_st
 
     char buf[64];
     snprintf(buf, sizeof(buf), "Message, %d bits", s->dataBitCount);
-    C_ANN_PUT(di, s->packetstartsample, s->packetendsample, s->out_ann, ANN_BIT_COUNT, buf);
+    c_put(di, s->packetstartsample, s->packetendsample, s->out_ann, ANN_BIT_COUNT, buf);
 }
 
 static void sony_md_reset(struct srd_decoder_inst *di)
@@ -242,11 +242,11 @@ static void sony_md_reset(struct srd_decoder_inst *di)
 static void sony_md_start(struct srd_decoder_inst *di)
 {
     sony_md_state *s = (sony_md_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sony_md");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "sony_md");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sony_md");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "sony_md");
 
-    s->marginpct = (int)c_decoder_get_option_int(di, "marginpct", 20);
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->marginpct = (int)c_opt_int(di, "marginpct", 20);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0)
         sony_md_calc_timing(s);
 }
@@ -265,28 +265,22 @@ static void sony_md_decode(struct srd_decoder_inst *di)
 {
     sony_md_state *s = (sony_md_state *)c_decoder_get_private(di);
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
     sony_md_calc_timing(s);
 
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     while (1) {
         s->lastedgesample = s->newedgesample;
         s->lastedgestate = s->newedgestate;
 
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, CH_DATA);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(CH_DATA), CW_END);
         if (ret != SRD_OK)
             return;
 
-        s->newedgestate = c_decoder_get_pin(di, CH_DATA, samplenum);
-        s->newedgesample = samplenum;
+        s->newedgestate = c_pin(di, CH_DATA);
+        s->newedgesample = di_samplenum(di);
         s->pulselength = s->newedgesample - s->lastedgesample;
 
         if (s->state == STATE_IDLE) {
@@ -295,7 +289,7 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                 /* Now high, was low */
                 if (in_range(s->pulselength, s->resetMin, s->resetMax)) {
                     s->packetstartsample = s->lastedgesample;
-                    C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
                               "Reset+Presync pulse", "Reset", "R");
                     s->syncDataCount = 0;
                     s->state = STATE_PRESYNC;
@@ -306,14 +300,14 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                         s->syncData[s->syncDataCount][1] = s->newedgesample;
                         s->syncDataCount++;
                     }
-                    C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
                               "Presync pulse", "Presync", "PS");
                     s->state = STATE_PRESYNC;
                 } else if (in_range(s->pulselength, s->dataShortMin, s->dataShortMax)) {
-                    C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
+                    c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
                               "Unexpected data bit");
                 } else if (in_range(s->pulselength, s->dataLongMin, s->dataLongMax)) {
-                    C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
+                    c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
                               "Unexpected data bit");
                 }
             }
@@ -325,11 +319,11 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                     s->syncData[s->syncDataCount][1] = s->newedgesample;
                     s->syncDataCount++;
                 }
-                C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
+                c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
                           "Presync delay", "PSD");
                 s->state = STATE_SYNC;
             } else {
-                C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
+                c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
                           "Error");
                 sony_md_return_to_idle(s);
             }
@@ -341,7 +335,7 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                     s->syncData[s->syncDataCount][1] = s->newedgesample;
                     s->syncDataCount++;
                 }
-                C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
+                c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
                           "Sync pulse", "S");
                 s->bytevalue = 0;
                 s->bytestartsample = s->newedgesample;
@@ -350,7 +344,7 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                 s->dataBitCount = 0;
                 s->state = STATE_DATA_BIT_HIGH;
             } else {
-                C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
+                c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
                           "Error");
                 sony_md_return_to_idle(s);
             }
@@ -373,24 +367,24 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                     s->bitDataCount++;
                 }
 
-                C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_ONE, "1");
+                c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_ONE, "1");
 
                 if (s->dataBitCount == 5) {
-                    C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
                               "Remote HAS data to send", "RY");
                     s->remoteHasData = 1;
                 }
                 if (s->dataBitCount == 9) {
-                    C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
                               "Player has NO data to send", "PN");
                 }
                 if (s->dataBitCount == 13) {
-                    C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
                               "Player CEDES bus to Remote", "RDB");
                     s->playerCedesBus = 1;
                     if (s->playerCedesBus) {
                         if (!s->remoteHasData) {
-                            C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_COUNT_ERROR,
+                            c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_COUNT_ERROR,
                                       "Player ceded bus to Remote without Remote asking!");
                         }
                         s->expectedBitCount = 115;
@@ -403,7 +397,7 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                     s->packetendsample = s->newedgesample;
                     s->bitDataEnd = s->newedgesample;
                     sony_md_put_packet_bit_count(di, s);
-                    C_ANN_PUT(di, s->newedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->newedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
                               "Message End", "St");
                     sony_md_return_to_idle(s);
                 } else {
@@ -422,23 +416,23 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                     s->bitDataCount++;
                 }
 
-                C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_ZERO, "0");
+                c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_ZERO, "0");
 
                 if (s->dataBitCount == 5) {
-                    C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
                               "Remote has NO data to send", "RN");
                 }
                 if (s->dataBitCount == 9) {
-                    C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
                               "Player HAS data to send", "PY");
                     s->playerHasData = 1;
                 }
                 if (s->dataBitCount == 13) {
-                    C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_SIGNALS,
                               "Player does NOT cede bus to Remote", "PDB");
                     if (s->playerCedesBus) {
                         if (!s->remoteHasData) {
-                            C_ANN_PUT(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_COUNT_ERROR,
+                            c_put(di, s->databitstart, s->databitend, s->out_ann, ANN_BIT_COUNT_ERROR,
                                       "Player ceded bus to Remote without Remote asking!");
                         }
                         s->expectedBitCount = 115;
@@ -451,21 +445,21 @@ static void sony_md_decode(struct srd_decoder_inst *di)
                     s->packetendsample = s->newedgesample;
                     s->bitDataEnd = s->newedgesample;
                     sony_md_put_packet_bit_count(di, s);
-                    C_ANN_PUT(di, s->newedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
+                    c_put(di, s->newedgesample, s->newedgesample, s->out_ann, ANN_SIGNALS,
                               "Message End", "St");
                     sony_md_return_to_idle(s);
                 } else {
                     s->state = STATE_DATA_BIT_HIGH;
                 }
             } else {
-                C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
+                c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_BIT_ERROR,
                           "Error");
                 sony_md_return_to_idle(s);
             }
         } else {
             char buf[64];
             snprintf(buf, sizeof(buf), "State error: %d", s->state);
-            C_ANN_PUT(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_STATE_ERROR, buf);
+            c_put(di, s->lastedgesample, s->newedgesample, s->out_ann, ANN_STATE_ERROR, buf);
             sony_md_return_to_idle(s);
         }
     }
@@ -508,6 +502,7 @@ struct srd_c_decoder sony_md_c_decoder = {
     .start = sony_md_start,
     .decode = sony_md_decode,
     .destroy = sony_md_destroy,
+    .state_size = 0,
     .metadata = sony_md_metadata,
 };
 

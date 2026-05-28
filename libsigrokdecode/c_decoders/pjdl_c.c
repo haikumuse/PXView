@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <math.h>
 #include <stdio.h>
@@ -303,9 +303,9 @@ static void pjdl_frame_flush(struct srd_decoder_inst *di, struct pjdl_priv *s)
 
     if (has_non_idle && ss < es) {
         if (pos > 0)
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_FRAME_BYTES, text);
+            c_put(di, ss, es, s->out_ann, ANN_FRAME_BYTES, text);
         else
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_FRAME_BYTES, "");
+            c_put(di, ss, es, s->out_ann, ANN_FRAME_BYTES, "");
     }
 
     pjdl_symbols_clear(s);
@@ -366,8 +366,8 @@ static void pjdl_reset(struct srd_decoder_inst *di)
 static void pjdl_start(struct srd_decoder_inst *di)
 {
     struct pjdl_priv *s = (struct pjdl_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pjon_link");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "pjon_link");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pjon_link");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "pjon_link");
 }
 
 static void pjdl_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -382,68 +382,57 @@ static void pjdl_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void pjdl_decode(struct srd_decoder_inst *di)
 {
     struct pjdl_priv *s = (struct pjdl_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate || s->samplerate < 1000000)
         return;
 
     /* Read options */
-    s->mode = (int)c_decoder_get_option_int(di, "mode", 1);
+    s->mode = (int)c_opt_int(di, "mode", 1);
     if (s->mode < 1 || s->mode > 4)
         s->mode = 1;
-    s->idle_add_width = (double)c_decoder_get_option_int(di, "idle_add_us", 4);
+    s->idle_add_width = (double)c_opt_int(di, "idle_add_us", 4);
 
     pjdl_span_prepare(s);
 
     /* Wait for first low */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_low(cb, PIN_DATA);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
+    int ret = c_wait(di, CW_L(PIN_DATA), CW_END);
     if (ret != SRD_OK)
         return;
 
-    pjdl_carrier_check(di, s, 0, samplenum);
-    s->edges[0] = samplenum;
+    pjdl_carrier_check(di, s, 0, di_samplenum(di));
+    s->edges[0] = di_samplenum(di);
     s->edge_count = 1;
 
     while (1) {
-        uint64_t last_snum = samplenum;
+        uint64_t last_snum = di_samplenum(di);
 
         /* Wait for edge or timeout */
-        cb = c_cond_new();
-        c_cond_edge(cb, PIN_DATA);
-        c_cond_or(cb);
-        c_cond_skip(cb, s->lookahead_width);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_E(PIN_DATA), CW_OR, CW_SKIP(s->lookahead_width), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-        pjdl_carrier_check(di, s, curr_level, samplenum);
+        int curr_level = c_pin(di, PIN_DATA);
+        pjdl_carrier_check(di, s, curr_level, di_samplenum(di));
 
         int bit_level = curr_level;
-        int edge_seen = (matched & 0b1) != 0;
+        int edge_seen = (di_matched(di) & 0b1) != 0;
         if (edge_seen)
             bit_level = 1 - bit_level;
 
         if (s->edge_count == 0) {
-            s->edges[0] = samplenum;
+            s->edges[0] = di_samplenum(di);
             s->edge_count = 1;
             continue;
         }
 
         /* Track edges */
         if (s->edge_count < 4) {
-            s->edges[s->edge_count] = samplenum;
+            s->edges[s->edge_count] = di_samplenum(di);
             s->edge_count++;
         } else {
             memmove(&s->edges[0], &s->edges[1], sizeof(uint64_t) * 3);
-            s->edges[3] = samplenum;
+            s->edges[3] = di_samplenum(di);
         }
 
         uint64_t span = s->edges[s->edge_count - 1] - s->edges[s->edge_count - 2];
@@ -453,25 +442,25 @@ static void pjdl_decode(struct srd_decoder_inst *di)
 
         if (is_pad) {
             uint64_t ss = s->edges[s->edge_count - 2];
-            uint64_t es = samplenum;
+            uint64_t es = di_samplenum(di);
             char txt[16];
             snprintf(txt, sizeof(txt), "%d", bit_level);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_PAD_BIT, "PAD", txt);
+            c_put(di, ss, es, s->out_ann, ANN_PAD_BIT, "PAD", txt);
             pjdl_symbols_append(s, ss, es, SYM_PAD_BIT, bit_level);
             unsigned char pd = (unsigned char)bit_level;
-            c_decoder_put_python(di, ss, es, s->out_python, "PAD_BIT", &pd, 1);
+            c_proto(di, ss, es, s->out_python, "PAD_BIT", C_U8(pd), C_END);
             continue;
         }
 
         if (is_short) {
             uint64_t ss = last_snum;
-            uint64_t es = samplenum;
+            uint64_t es = di_samplenum(di);
             char txt[16];
             snprintf(txt, sizeof(txt), "%d", bit_level);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SHORT_DATA, "SHORT", txt);
+            c_put(di, ss, es, s->out_ann, ANN_SHORT_DATA, "SHORT", txt);
             pjdl_symbols_append(s, ss, es, SYM_SHORT_BIT, bit_level);
             unsigned char pd = (unsigned char)bit_level;
-            c_decoder_put_python(di, ss, es, s->out_python, "SHORT_BIT", &pd, 1);
+            c_proto(di, ss, es, s->out_python, "SHORT_BIT", C_U8(pd), C_END);
             continue;
         }
 
@@ -501,10 +490,10 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                 uint64_t es = next_snum;
                 char txt[16];
                 snprintf(txt, sizeof(txt), "%d", bit_level);
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_LOW_BIT, "ZERO", txt);
+                c_put(di, ss, es, s->out_ann, ANN_LOW_BIT, "ZERO", txt);
                 pjdl_symbols_append(s, ss, es, SYM_ZERO_BIT, bit_level);
                 unsigned char pd = (unsigned char)bit_level;
-                c_decoder_put_python(di, ss, es, s->out_python, "DATA_BIT", &pd, 1);
+                c_proto(di, ss, es, s->out_python, "DATA_BIT", C_U8(pd), C_END);
                 s->data_fall_time = last_snum;
             }
         }
@@ -515,8 +504,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
             if (pjdl_symbols_has_prev(s, sync_seq, 2)) {
                 pjdl_symbols_collapse(s, 2, SYM_SYNC_PAD, 0);
                 unsigned char pd = 1;
-                c_decoder_put_python(di, s->symbols[s->symbol_count - 1].ss,
-                    s->symbols[s->symbol_count - 1].es, s->out_python, "SYNC_PAD", &pd, 1);
+                c_proto(di, s->symbols[s->symbol_count - 1].ss, s->symbols[s->symbol_count - 1].es, s->out_python, "SYNC_PAD", C_U8(pd), C_END);
                 s->data_bit_count = 0;
             }
         }
@@ -535,9 +523,9 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                 }
                 uint64_t fss = s->symbols[s->symbol_count - 1].ss;
                 uint64_t fes = s->symbols[s->symbol_count - 1].es;
-                C_ANN_PUT(di, fss, fes, s->out_ann, ANN_FRAME_INIT, "FRAME INIT", "INIT", "I");
+                c_put(di, fss, fes, s->out_ann, ANN_FRAME_INIT, "FRAME INIT", "INIT", "I");
                 unsigned char pd = 1;
-                c_decoder_put_python(di, fss, fes, s->out_python, "FRAME_INIT", &pd, 1);
+                c_proto(di, fss, fes, s->out_python, "FRAME_INIT", C_U8(pd), C_END);
                 s->frame_byte_count = 0;
             }
         }
@@ -549,10 +537,10 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                 pjdl_symbols_collapse(s, 2, SYM_WAIT_ACK, SYM_SHORT_BIT);
                 uint64_t wss = s->symbols[s->symbol_count - 1].ss;
                 uint64_t wes = s->symbols[s->symbol_count - 1].es;
-                C_ANN_PUT(di, wss, wes, s->out_ann, ANN_FRAME_WAIT,
+                c_put(di, wss, wes, s->out_ann, ANN_FRAME_WAIT,
                     "WAIT for sync response", "WAIT response", "WAIT", "W");
                 unsigned char pd = 1;
-                c_decoder_put_python(di, wss, wes, s->out_python, "SYNC_RESP_WAIT", &pd, 1);
+                c_proto(di, wss, wes, s->out_python, "SYNC_RESP_WAIT", C_U8(pd), C_END);
             }
         }
 
@@ -564,7 +552,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
             pjdl_frame_flush(di, s);
             pjdl_reset_state(s);
             if (edge_seen && curr_level)
-                s->edges[0] = samplenum;
+                s->edges[0] = di_samplenum(di);
             s->edge_count = (edge_seen && curr_level) ? 1 : 0;
             continue;
         }
@@ -576,7 +564,7 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                 pjdl_frame_flush(di, s);
                 pjdl_reset_state(s);
                 if (edge_seen && curr_level)
-                    s->edges[0] = samplenum;
+                    s->edges[0] = di_samplenum(di);
                 s->edge_count = (edge_seen && curr_level) ? 1 : 0;
                 continue;
             }
@@ -590,33 +578,28 @@ static void pjdl_decode(struct srd_decoder_inst *di)
             double bit_snum = (bit_es + bit_ss) / 2.0;
 
             /* Wait until sample point */
-            if ((uint64_t)bit_snum > samplenum) {
-                uint64_t diff = (uint64_t)bit_snum - samplenum;
+            if ((uint64_t)bit_snum > di_samplenum(di)) {
+                uint64_t diff = (uint64_t)bit_snum - di_samplenum(di);
                 if (diff > 0) {
-                    cb = c_cond_new();
-                    c_cond_edge(cb, PIN_DATA);
-                    c_cond_or(cb);
-                    c_cond_skip(cb, diff);
-                    ret = c_cond_wait(cb, di, &samplenum, &matched);
-                    c_cond_free(cb);
+                    ret = c_wait(di, CW_E(PIN_DATA), CW_OR, CW_SKIP(diff), CW_END);
                     if (ret != SRD_OK)
                         return;
-                    curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-                    pjdl_carrier_check(di, s, curr_level, samplenum);
+                    curr_level = c_pin(di, PIN_DATA);
+                    pjdl_carrier_check(di, s, curr_level, di_samplenum(di));
                 }
             }
 
-            int bl = c_decoder_get_pin(di, PIN_DATA, (uint64_t)bit_snum);
+            int bl = c_pin(di, PIN_DATA);
             bit_field[bit_idx] = bl;
 
             uint64_t bss = (uint64_t)ceil(bit_ss);
             uint64_t bes = (uint64_t)floor(bit_es);
             char txt[4];
             snprintf(txt, sizeof(txt), "%d", bl);
-            C_ANN_PUT(di, bss, bes, s->out_ann, ANN_DATA_BIT, txt);
+            c_put(di, bss, bes, s->out_ann, ANN_DATA_BIT, txt);
             pjdl_symbols_append(s, bss, bes, SYM_DATA_BIT, bl);
             unsigned char pd = (unsigned char)bl;
-            c_decoder_put_python(di, bss, bes, s->out_python, "DATA_BIT", &pd, 1);
+            c_proto(di, bss, bes, s->out_python, "DATA_BIT", C_U8(pd), C_END);
 
             if (s->data_bit_count < 8)
                 s->data_bits[s->data_bit_count++] = bl;
@@ -627,33 +610,23 @@ static void pjdl_decode(struct srd_decoder_inst *di)
         /* Wait for end of last bit */
         {
             uint64_t end_snum = (uint64_t)bit_ss;
-            if (end_snum > samplenum) {
-                uint64_t diff = end_snum - samplenum;
-                cb = c_cond_new();
-                c_cond_edge(cb, PIN_DATA);
-                c_cond_or(cb);
-                c_cond_skip(cb, diff);
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
+            if (end_snum > di_samplenum(di)) {
+                uint64_t diff = end_snum - di_samplenum(di);
+                ret = c_wait(di, CW_E(PIN_DATA), CW_OR, CW_SKIP(diff), CW_END);
                 if (ret != SRD_OK)
                     return;
-                curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-                pjdl_carrier_check(di, s, curr_level, samplenum);
+                curr_level = c_pin(di, PIN_DATA);
+                pjdl_carrier_check(di, s, curr_level, di_samplenum(di));
             }
         }
 
         /* Check if last data bit is held high */
         if (curr_level) {
-            cb = c_cond_new();
-            c_cond_fall(cb, PIN_DATA);
-            c_cond_or(cb);
-            c_cond_skip(cb, s->hold_high_width);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_F(PIN_DATA), CW_OR, CW_SKIP(s->hold_high_width), CW_END);
             if (ret != SRD_OK)
                 return;
-            curr_level = c_decoder_get_pin(di, PIN_DATA, samplenum);
-            pjdl_carrier_check(di, s, curr_level, samplenum);
+            curr_level = c_pin(di, PIN_DATA);
+            pjdl_carrier_check(di, s, curr_level, di_samplenum(di));
         }
 
         /* Compose byte value */
@@ -679,12 +652,10 @@ static void pjdl_decode(struct srd_decoder_inst *di)
                 s->symbols[s->symbol_count - 1].data = data_byte;
                 char txt[8];
                 snprintf(txt, sizeof(txt), "%02x", data_byte);
-                C_ANN_PUT_VAL(di, s->symbols[s->symbol_count - 1].ss,
+                c_put_v(di, s->symbols[s->symbol_count - 1].ss,
                     s->symbols[s->symbol_count - 1].es, s->out_ann, ANN_DATA_BYTE,
                     data_byte, txt);
-                c_decoder_put_python(di, s->symbols[s->symbol_count - 1].ss,
-                    s->symbols[s->symbol_count - 1].es, s->out_python, "DATA_BYTE",
-                    &data_byte, 1);
+                c_proto(di, s->symbols[s->symbol_count - 1].ss, s->symbols[s->symbol_count - 1].es, s->out_python, "DATA_BYTE", C_U8(data_byte), C_END);
             }
         }
 
@@ -698,11 +669,11 @@ static void pjdl_decode(struct srd_decoder_inst *di)
 next_iter:
         /* Update edge tracking for next iteration */
         if (s->edge_count < 4) {
-            s->edges[s->edge_count] = samplenum;
+            s->edges[s->edge_count] = di_samplenum(di);
             s->edge_count++;
         } else {
             memmove(&s->edges[0], &s->edges[1], sizeof(uint64_t) * 3);
-            s->edges[3] = samplenum;
+            s->edges[3] = di_samplenum(di);
         }
     }
 }
@@ -744,6 +715,7 @@ struct srd_c_decoder pjdl_c_decoder = {
     .start = pjdl_start,
     .decode = pjdl_decode,
     .destroy = pjdl_destroy,
+    .state_size = 0,
     .metadata = pjdl_metadata,
 };
 

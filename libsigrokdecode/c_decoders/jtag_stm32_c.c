@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -107,11 +107,11 @@ static const struct srd_c_ann_row jtag_stm32_ann_rows[] = {
     {"warnings", "Warnings", jtag_stm32_row_warnings_classes, 1},
 };
 
-static uint64_t bytes_to_uint64(const unsigned char *data, uint64_t data_len)
+static uint64_t bytes_to_uint64(const c_field *fields, int n_fields)
 {
     uint64_t val = 0;
-    for (uint64_t i = 0; i < data_len && i < 8; i++)
-        val |= ((uint64_t)data[i]) << (i * 8);
+    for (uint64_t i = 0; i < n_fields && i < 8; i++)
+        val |= ((uint64_t)fields[i].u8) << (i * 8);
     return val;
 }
 
@@ -125,12 +125,12 @@ static const char *stm32f1_find_idcode(uint32_t idcode)
 }
 
 static void stm32_handle_idcode(struct srd_decoder_inst *di, jtag_stm32_state *s,
-                                 const unsigned char *data, uint64_t data_len)
+                                 const c_field *fields, int n_fields)
 {
-    if (data_len < 4)
+    if (n_fields < 4)
         return;
 
-    uint32_t idcode = (uint32_t)bytes_to_uint64(data, data_len);
+    uint32_t idcode = (uint32_t)bytes_to_uint64(fields, n_fields);
     int version = (idcode >> 28) & 0x0F;
     uint16_t part = (idcode >> 12) & 0xFFFF;
     int cont_code = (idcode >> 8) & 0x0F;
@@ -145,47 +145,47 @@ static void stm32_handle_idcode(struct srd_decoder_inst *di, jtag_stm32_state *s
 
     char buf[128];
     snprintf(buf, sizeof(buf), "Continuation code: 0x%x", cont_code);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     snprintf(buf, sizeof(buf), "Identity code: 0x%x", identity);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     snprintf(buf, sizeof(buf), "Manufacturer: %s", manuf_str);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     snprintf(buf, sizeof(buf), "Part: %s", part_str);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     snprintf(buf, sizeof(buf), "Version: %s", ver_str);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     /* Check if it's a known STM32F1 device */
     const char *dev_name = stm32f1_find_idcode(idcode);
     if (dev_name) {
         snprintf(buf, sizeof(buf), "IDCODE: 0x%08X (%s: %s/%s)", idcode, manuf_str, part_str, ver_str);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
         snprintf(buf, sizeof(buf), "STM32F1: %s", dev_name);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ITEM, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_ITEM, buf);
     } else {
         snprintf(buf, sizeof(buf), "IDCODE: 0x%08X (%s: %s/%s)", idcode, manuf_str, part_str, ver_str);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
     }
 }
 
 static void stm32_handle_bypass(struct srd_decoder_inst *di, jtag_stm32_state *s,
-                                 const unsigned char *data, uint64_t data_len)
+                                 const c_field *fields, int n_fields)
 {
-    uint64_t val = bytes_to_uint64(data, data_len);
+    uint64_t val = bytes_to_uint64(fields, n_fields);
     char buf[32];
     snprintf(buf, sizeof(buf), "BYPASS: %llu", (unsigned long long)val);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ITEM, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_ITEM, buf);
 }
 
 static void stm32_handle_dpacc_apacc(struct srd_decoder_inst *di, jtag_stm32_state *s,
-                                      const char *cmd, const unsigned char *data,
-                                      uint64_t data_len, int is_apacc)
+                                      const char *cmd, const c_field *fields,
+                                      int n_fields, int is_apacc)
 {
-    if (data_len < 5)
+    if (n_fields < 5)
         return;
 
     /* 35 bits: DATA[34:3] + A[2:1] + RnW[0] for TDI,
@@ -194,7 +194,7 @@ static void stm32_handle_dpacc_apacc(struct srd_decoder_inst *di, jtag_stm32_sta
 
     if (strcmp(cmd, "DR TDI") == 0) {
         /* TDI: DATA[31:0] in bits[34:3], A[3:2] in bits[2:1], RnW in bit[0] */
-        uint64_t val = bytes_to_uint64(data, data_len);
+        uint64_t val = bytes_to_uint64(fields, n_fields);
         /* Extract from the 35-bit value */
         uint64_t data_val = (val >> 3) & 0xFFFFFFFF;
         int a = (val >> 1) & 0x03;
@@ -214,10 +214,10 @@ static void stm32_handle_dpacc_apacc(struct srd_decoder_inst *di, jtag_stm32_sta
             snprintf(buf, sizeof(buf), "New transaction: DATA: 0x%08X, A: %s, RnW: %s",
                      (uint32_t)data_val, dp_reg_names[a], rw_str);
         }
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
     } else if (strcmp(cmd, "DR TDO") == 0) {
         /* TDO: DATA[31:0] in bits[34:3], ACK[2:0] in bits[2:0] */
-        uint64_t val = bytes_to_uint64(data, data_len);
+        uint64_t val = bytes_to_uint64(fields, n_fields);
         uint64_t data_val = (val >> 3) & 0xFFFFFFFF;
         int ack = val & 0x07;
 
@@ -231,34 +231,32 @@ static void stm32_handle_dpacc_apacc(struct srd_decoder_inst *di, jtag_stm32_sta
         char buf[128];
         snprintf(buf, sizeof(buf), "Previous transaction result: DATA: 0x%08X, ACK: %s",
                  (uint32_t)data_val, ack_str);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
     }
 }
 
 static void stm32_handle_abort(struct srd_decoder_inst *di, jtag_stm32_state *s,
-                                const unsigned char *data, uint64_t data_len)
+                                const c_field *fields, int n_fields)
 {
-    if (data_len < 5)
+    if (n_fields < 5)
         return;
 
-    uint64_t val = bytes_to_uint64(data, data_len);
+    uint64_t val = bytes_to_uint64(fields, n_fields);
     int dapabort = val & 0x01;
 
     char buf[128];
     const char *a = dapabort ? "" : "No ";
     snprintf(buf, sizeof(buf), "DAPABORT = %d: %sDAP abort generated", dapabort, a);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
 
     /* Warn if reserved bits are non-zero */
     if ((val & ~0x01ULL) != 0) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING,
+        c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING,
                   "WARNING: DAPABORT[31:1] reserved!");
     }
 }
 
-static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void jtag_stm32_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     jtag_stm32_state *s = (jtag_stm32_state *)c_decoder_get_private(di);
     if (!s)
@@ -269,10 +267,10 @@ static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "IR TDI") == 0) {
         /* STM32 has 9-bit IR: 5 bits for BS TAP + 4 bits for M3 TAP */
-        if (data_len < 2)
+        if (n_fields < 2)
             return;
 
-        uint16_t ir_full = (uint16_t)bytes_to_uint64(data, data_len);
+        uint16_t ir_full = (uint16_t)bytes_to_uint64(fields, n_fields);
         int m3_ir = ir_full & 0x0F;        /* IR[3:0] - Cortex-M3 TAP */
         int bs_ir = (ir_full >> 4) & 0x1F;  /* IR[8:4] - BS TAP */
 
@@ -280,7 +278,7 @@ static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
         const char *bs_ir_name = (bs_ir == STM32_BS_IR_BYPASS) ? "BYPASS" : "UNKNOWN";
         char buf[64];
         snprintf(buf, sizeof(buf), "IR (BS TAP): %s", bs_ir_name);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
         /* Decode M3 TAP instruction */
         const char *m3_ir_name;
@@ -294,10 +292,10 @@ static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
         }
 
         snprintf(buf, sizeof(buf), "IR (M3 TAP): %s", m3_ir_name);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
         snprintf(buf, sizeof(buf), "IR: %s", m3_ir_name);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
         return;
     }
 
@@ -310,21 +308,21 @@ static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
     switch (s->state) {
     case STM32_STATE_BYPASS:
         if (strcmp(cmd, "DR TDI") == 0) {
-            stm32_handle_bypass(di, s, data, data_len);
+            stm32_handle_bypass(di, s, fields, n_fields);
             s->state = STM32_STATE_IDLE;
         }
         break;
 
     case STM32_STATE_IDCODE:
         if (strcmp(cmd, "DR TDO") == 0) {
-            stm32_handle_idcode(di, s, data, data_len);
+            stm32_handle_idcode(di, s, fields, n_fields);
             s->state = STM32_STATE_IDLE;
         }
         break;
 
     case STM32_STATE_DPACC:
         if (strcmp(cmd, "DR TDI") == 0 || strcmp(cmd, "DR TDO") == 0) {
-            stm32_handle_dpacc_apacc(di, s, cmd, data, data_len, 0);
+            stm32_handle_dpacc_apacc(di, s, cmd, fields, n_fields, 0);
             if (strcmp(cmd, "DR TDO") == 0)
                 s->state = STM32_STATE_IDLE;
         }
@@ -332,7 +330,7 @@ static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
 
     case STM32_STATE_APACC:
         if (strcmp(cmd, "DR TDI") == 0 || strcmp(cmd, "DR TDO") == 0) {
-            stm32_handle_dpacc_apacc(di, s, cmd, data, data_len, 1);
+            stm32_handle_dpacc_apacc(di, s, cmd, fields, n_fields, 1);
             if (strcmp(cmd, "DR TDO") == 0)
                 s->state = STM32_STATE_IDLE;
         }
@@ -340,7 +338,7 @@ static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
 
     case STM32_STATE_ABORT:
         if (strcmp(cmd, "DR TDO") == 0) {
-            stm32_handle_abort(di, s, data, data_len);
+            stm32_handle_abort(di, s, fields, n_fields);
             s->state = STM32_STATE_IDLE;
         }
         break;
@@ -348,9 +346,9 @@ static void jtag_stm32_recv_proto(struct srd_decoder_inst *di,
     case STM32_STATE_UNKNOWN:
         if (strcmp(cmd, "DR TDO") == 0) {
             char buf[64];
-            uint64_t val = bytes_to_uint64(data, data_len);
+            uint64_t val = bytes_to_uint64(fields, n_fields);
             snprintf(buf, sizeof(buf), "Unknown instruction: 0x%llX", (unsigned long long)val);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
             s->state = STM32_STATE_IDLE;
         }
         break;
@@ -373,7 +371,7 @@ static void jtag_stm32_reset(struct srd_decoder_inst *di)
 static void jtag_stm32_start(struct srd_decoder_inst *di)
 {
     jtag_stm32_state *s = (jtag_stm32_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "jtag_stm32");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "jtag_stm32");
 }
 
 static void jtag_stm32_decode(struct srd_decoder_inst *di)
@@ -418,7 +416,8 @@ struct srd_c_decoder jtag_stm32_c_decoder = {
     .start = jtag_stm32_start,
     .decode = jtag_stm32_decode,
     .destroy = jtag_stm32_destroy,
-    .recv_proto = jtag_stm32_recv_proto,
+    .decode_upper = jtag_stm32_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

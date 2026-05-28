@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -65,7 +65,7 @@ static void sdq_handle_bit(struct srd_decoder_inst *di, int bit)
     char bit_long[16], bit_short[4];
     snprintf(bit_long, sizeof(bit_long), "Bit: %d", bit);
     snprintf(bit_short, sizeof(bit_short), "%d", bit);
-    C_ANN_PUT(di, s->startsample, bit_end, s->out_ann, ANN_BIT, bit_long, bit_short);
+    c_put(di, s->startsample, bit_end, s->out_ann, ANN_BIT, bit_long, bit_short);
 
     if (s->bits_len == 8) {
         /* bitpack: LSB first */
@@ -76,7 +76,7 @@ static void sdq_handle_bit(struct srd_decoder_inst *di, int bit)
         char byte_long[16], byte_short[8];
         snprintf(byte_long, sizeof(byte_long), "Byte: 0x%02x", byte_val);
         snprintf(byte_short, sizeof(byte_short), "0x%02x", byte_val);
-        C_ANN_PUT(di, s->bytepos, bit_end, s->out_ann, ANN_BYTE, byte_long, byte_short);
+        c_put(di, s->bytepos, bit_end, s->out_ann, ANN_BYTE, byte_long, byte_short);
 
         s->bits_len = 0;
         s->bytepos = 0;
@@ -95,7 +95,7 @@ static void sdq_reset(struct srd_decoder_inst *di)
 static void sdq_start(struct srd_decoder_inst *di)
 {
     struct sdq_priv *s = (struct sdq_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sdq");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sdq");
 }
 
 static void sdq_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -108,56 +108,48 @@ static void sdq_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void sdq_decode(struct srd_decoder_inst *di)
 {
     struct sdq_priv *s = (struct sdq_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
     int ret;
 
     if (s->samplerate == 0)
         return;
 
-    int64_t bitrate = c_decoder_get_option_int(di, "bitrate", 98425);
+    int64_t bitrate = c_opt_int(di, "bitrate", 98425);
     s->bit_width = (double)s->samplerate / (double)bitrate;
     s->half_bit_width = s->bit_width / 2.0;
     s->break_threshold = s->bit_width * 1.2;
 
     /* Wait for line to go high */
     {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_high(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        ret = c_wait(di, CW_H(0), CW_END);
+        if (ret != SRD_OK)
+            return;
     }
 
     while (1) {
         /* Wait for falling edge */
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
         }
-        s->startsample = samplenum;
+        s->startsample = di_samplenum(di);
         if (s->bytepos == 0)
-            s->bytepos = samplenum;
+            s->bytepos = di_samplenum(di);
 
         /* Wait for rising edge */
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
         }
 
-        uint64_t delta = samplenum - s->startsample;
+        uint64_t delta = di_samplenum(di) - s->startsample;
 
         if ((double)delta > s->break_threshold) {
             /* BREAK */
-            C_ANN_PUT(di, s->startsample, samplenum, s->out_ann, ANN_BREAK, "Break", "BR");
+            c_put(di, s->startsample, di_samplenum(di), s->out_ann, ANN_BREAK, "Break", "BR");
             s->bits_len = 0;
-            s->startsample = samplenum;
+            s->startsample = di_samplenum(di);
             s->bytepos = 0;
         } else if ((double)delta > s->half_bit_width) {
             /* Bit 0 */
@@ -206,6 +198,7 @@ static struct srd_c_decoder sdq_c_decoder = {
     .start = sdq_start,
     .decode = sdq_decode,
     .destroy = sdq_destroy,
+    .state_size = 0,
     .metadata = sdq_metadata,
 };
 

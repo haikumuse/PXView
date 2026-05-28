@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2023 Rikka0w0 <929513338@qq.com>
@@ -90,8 +90,8 @@ static void delta_sigma_put_result(struct srd_decoder_inst *di, delta_sigma_stat
     char buf1[64], buf2[64];
     snprintf(buf1, sizeof(buf1), "%lld", (long long)code);
     snprintf(buf2, sizeof(buf2), "%lld", (long long)(code * s->scale));
-    C_ANN_PUT(di, s->last_filternum, samplenum, s->out_ann, ANN_FILTERED, buf1);
-    C_ANN_PUT(di, s->last_filternum, samplenum, s->out_ann, ANN_CONVERTED, buf2);
+    c_put(di, s->last_filternum, samplenum, s->out_ann, ANN_FILTERED, buf1);
+    c_put(di, s->last_filternum, samplenum, s->out_ann, ANN_CONVERTED, buf2);
 }
 
 static void delta_sigma_run_sinc1(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
@@ -105,7 +105,7 @@ static void delta_sigma_run_sinc1(struct srd_decoder_inst *di, delta_sigma_state
     s->sinc_CNTR = s->sinc_CNTR + 1;
     if (s->sinc_CNTR == s->osr) {
         s->sinc_CNTR = 0;
-        int64_t sinc_DN0 = sinc_DELTA1;
+        int64_t sinc_DN0 = s->sinc_DELTA1;
         int64_t sinc_DN1 = s->sinc_DN0;
         int64_t sinc_CN3 = s->sinc_DN0 - s->sinc_DN1;
 
@@ -131,7 +131,7 @@ static void delta_sigma_run_sinc2(struct srd_decoder_inst *di, delta_sigma_state
     s->sinc_CNTR = s->sinc_CNTR + 1;
     if (s->sinc_CNTR == s->osr) {
         s->sinc_CNTR = 0;
-        int64_t sinc_DN0 = sinc_CN1;
+        int64_t sinc_DN0 = s->sinc_CN1;
         int64_t sinc_DN1 = s->sinc_DN0;
         int64_t sinc_CN3 = s->sinc_DN0 - s->sinc_DN1;
         int64_t sinc_CN4 = sinc_CN3 - s->sinc_DN3;
@@ -161,7 +161,7 @@ static void delta_sigma_run_sinc3(struct srd_decoder_inst *di, delta_sigma_state
     s->sinc_CNTR = s->sinc_CNTR + 1;
     if (s->sinc_CNTR == s->osr) {
         s->sinc_CNTR = 0;
-        int64_t sinc_DN0 = sinc_CN2;
+        int64_t sinc_DN0 = s->sinc_CN2;
         int64_t sinc_DN1 = s->sinc_DN0;
         int64_t sinc_CN3 = s->sinc_DN0 - s->sinc_DN1;
         int64_t sinc_CN4 = sinc_CN3 - s->sinc_DN3;
@@ -185,11 +185,11 @@ static void delta_sigma_find_clk_edge(struct srd_decoder_inst *di, delta_sigma_s
     if (!s->first_sample) {
         s->first_sample = 1;
         s->last_samplenum = 0;
-        C_ANN_PUT(di, 0, samplenum, s->out_ann, ANN_BIT_STREAM, "X");
+        c_put(di, 0, samplenum, s->out_ann, ANN_BIT_STREAM, "X");
     } else {
         char buf[16];
         snprintf(buf, sizeof(buf), "%d", s->current_dat);
-        C_ANN_PUT(di, s->last_samplenum, samplenum, s->out_ann, ANN_BIT_STREAM, buf);
+        c_put(di, s->last_samplenum, samplenum, s->out_ann, ANN_BIT_STREAM, buf);
     }
 
     if (s->filter_type == 1)
@@ -218,12 +218,12 @@ static void delta_sigma_reset(struct srd_decoder_inst *di)
 static void delta_sigma_start(struct srd_decoder_inst *di)
 {
     delta_sigma_state *s = (delta_sigma_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "delta-sigma");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "delta-sigma");
 
-    const char *clock_mode_str = c_decoder_get_option_string(di, "clock_mode", "normal");
+    const char *clock_mode_str = c_opt_str(di, "clock_mode", "normal");
     s->clock_mode = (strcmp(clock_mode_str, "manchester") == 0) ? 1 : 0;
 
-    const char *filter_type_str = c_decoder_get_option_string(di, "filter_type", "sinc3");
+    const char *filter_type_str = c_opt_str(di, "filter_type", "sinc3");
     if (strcmp(filter_type_str, "sinc_fast") == 0)
         s->filter_type = 0;
     else if (strcmp(filter_type_str, "sinc1") == 0)
@@ -233,9 +233,9 @@ static void delta_sigma_start(struct srd_decoder_inst *di)
     else
         s->filter_type = 3;
 
-    s->osr = (int)c_decoder_get_option_int(di, "osr", 4);
-    s->shift = (int)c_decoder_get_option_int(di, "shift", 0);
-    s->scale = c_decoder_get_option_double(di, "scale", 1.0);
+    s->osr = (int)c_opt_int(di, "osr", 4);
+    s->shift = (int)c_opt_int(di, "shift", 0);
+    s->scale = c_opt_dbl(di, "scale", 1.0);
 }
 
 static void delta_sigma_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -252,19 +252,16 @@ static void delta_sigma_decode(struct srd_decoder_inst *di)
 
     if (s->samplerate == 0) return;
 
-    if (!c_decoder_has_channel(di, 0)) return;
-    if (!c_decoder_has_channel(di, 1)) return;
+    if (!c_has_ch(di, 0)) return;
+    if (!c_has_ch(di, 1)) return;
 
     while (1) {
-        srd_cond_builder *b = c_cond_new();
-        c_cond_rise(b, 1);
-        uint64_t samplenum, matched;
-        int ret = c_cond_wait(b, di, &samplenum, &matched);
-        c_cond_free(b);
-        if (ret != SRD_OK) return;
+        int ret = c_wait(di, CW_R(1), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        int dat = c_decoder_get_pin(di, 0, samplenum);
-        delta_sigma_find_clk_edge(di, s, dat, samplenum);
+        int dat = c_pin(di, 0);
+        delta_sigma_find_clk_edge(di, s, dat, di_samplenum(di));
     }
 }
 
@@ -305,6 +302,7 @@ struct srd_c_decoder delta_sigma_c_decoder = {
     .start = delta_sigma_start,
     .decode = delta_sigma_decode,
     .destroy = delta_sigma_destroy,
+    .state_size = 0,
     .metadata = delta_sigma_metadata,
 };
 

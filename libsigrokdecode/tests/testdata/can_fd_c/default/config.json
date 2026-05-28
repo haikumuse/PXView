@@ -1,8 +1,8 @@
 {
   "decoder": "can_fd_c",
-  "samplerate": 1000000,
+  "samplerate": 4000000,
   "num_channels": 1,
-  "sample_count": 10000,
+  "sample_count": 50000,
   "channels": {
     "can_rx": 0
   },

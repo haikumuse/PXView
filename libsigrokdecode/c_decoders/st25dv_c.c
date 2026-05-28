@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: mit
  *
@@ -130,11 +130,11 @@ static void st25dv_annotate_device_address(struct srd_decoder_inst *di,
     st25dv_state *s, uint64_t ss, uint64_t es, uint8_t addr)
 {
     if (addr == ST25DV_DATA_ADDR) {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA, "ST25DV DATA", "DATA");
+        c_put(di, ss, es, s->out_ann, ANN_DATA, "ST25DV DATA", "DATA");
     } else if (addr == ST25DV_SYSTEM_ADDR) {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SYS, "ST25DV SYSTEM", "SYS");
+        c_put(di, ss, es, s->out_ann, ANN_SYS, "ST25DV SYSTEM", "SYS");
     } else {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_ERROR, "ST25DV ERROR: Unknown Address", "ERROR");
+        c_put(di, ss, es, s->out_ann, ANN_ERROR, "ST25DV ERROR: Unknown Address", "ERROR");
     }
 }
 
@@ -148,10 +148,10 @@ static void st25dv_annotate_register_address(struct srd_decoder_inst *di,
     char buf[128];
     if (reg) {
         snprintf(buf, sizeof(buf), "%s: %04X: %s", op_str, s->reg_address, reg->short_name);
-        C_ANN_PUT(di, s->reg_start_sample, s->reg_end_sample, s->out_ann, ann_code, buf);
+        c_put(di, s->reg_start_sample, s->reg_end_sample, s->out_ann, ann_code, buf);
     } else {
         snprintf(buf, sizeof(buf), "%s: %04X", op_str, s->reg_address);
-        C_ANN_PUT(di, s->reg_start_sample, s->reg_end_sample, s->out_ann, ann_code, buf);
+        c_put(di, s->reg_start_sample, s->reg_end_sample, s->out_ann, ann_code, buf);
     }
 }
 
@@ -166,18 +166,18 @@ static void st25dv_annotate_register_value(struct srd_decoder_inst *di,
     if (!reg) {
         char buf[32];
         snprintf(buf, sizeof(buf), "%02X", byte);
-        C_ANN_PUT(di, ss, es, s->out_ann, ann_code, buf);
+        c_put(di, ss, es, s->out_ann, ann_code, buf);
     } else if (reg->length == 1 && s->data_len == 1) {
         char buf[128];
         snprintf(buf, sizeof(buf), "%s: %02X", reg->long_name, byte);
-        C_ANN_PUT(di, ss, es, s->out_ann, ann_code, buf);
+        c_put(di, ss, es, s->out_ann, ann_code, buf);
         s->data_len = 0;
     } else if (reg->length > 1 && s->data_len == reg->length) {
         char buf[256];
         int pos = snprintf(buf, sizeof(buf), "%s: ", reg->long_name);
         for (int i = 0; i < reg->length && pos < (int)sizeof(buf) - 4; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02X ", s->data[i]);
-        C_ANN_PUT(di, s->data_start_sample, es, s->out_ann, ann_code, buf);
+        c_put(di, s->data_start_sample, es, s->out_ann, ann_code, buf);
         s->data_len = 0;
         s->data_start_sample = (uint64_t)-1;
     } else if (s->data_start_sample == (uint64_t)-1) {
@@ -186,15 +186,13 @@ static void st25dv_annotate_register_value(struct srd_decoder_inst *di,
 }
 
 /* ===== recv_proto ===== */
-static void st25dv_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void st25dv_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     st25dv_state *s = (st25dv_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;
     s->es = end_sample;
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "BITS") == 0) return;
 
@@ -298,8 +296,8 @@ static void st25dv_reset(struct srd_decoder_inst *di)
 static void st25dv_start(struct srd_decoder_inst *di)
 {
     st25dv_state *s = (st25dv_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "st25dv");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "st25dv");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "st25dv");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "st25dv");
 }
 
 static void st25dv_decode(struct srd_decoder_inst *di)
@@ -345,7 +343,8 @@ struct srd_c_decoder st25dv_c_decoder = {
     .start = st25dv_start,
     .decode = st25dv_decode,
     .destroy = st25dv_destroy,
-    .recv_proto = st25dv_recv_proto,
+    .decode_upper = st25dv_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== 导出函数 ===== */

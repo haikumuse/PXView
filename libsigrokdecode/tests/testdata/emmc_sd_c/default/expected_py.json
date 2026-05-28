@@ -1,7 +1,530 @@
 {
 	"decoder": "emmc_sd",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 56,
 	"annotations": [
+		{
+			"start_sample": 2008,
+			"end_sample": 2012,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2012,
+			"end_sample": 2016,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2016,
+			"end_sample": 2020,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2020,
+			"end_sample": 2024,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2024,
+			"end_sample": 2028,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2028,
+			"end_sample": 2032,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2032,
+			"end_sample": 2036,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2036,
+			"end_sample": 2040,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2040,
+			"end_sample": 2044,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2044,
+			"end_sample": 2048,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2048,
+			"end_sample": 2052,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2052,
+			"end_sample": 2056,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2056,
+			"end_sample": 2060,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2060,
+			"end_sample": 2064,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2064,
+			"end_sample": 2068,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2068,
+			"end_sample": 2072,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2072,
+			"end_sample": 2076,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2076,
+			"end_sample": 2080,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2080,
+			"end_sample": 2084,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2084,
+			"end_sample": 2088,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2088,
+			"end_sample": 2092,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2092,
+			"end_sample": 2096,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2096,
+			"end_sample": 2100,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2100,
+			"end_sample": 2104,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2104,
+			"end_sample": 2108,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2108,
+			"end_sample": 2112,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2112,
+			"end_sample": 2116,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2116,
+			"end_sample": 2120,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2120,
+			"end_sample": 2124,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2124,
+			"end_sample": 2128,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2128,
+			"end_sample": 2132,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2132,
+			"end_sample": 2136,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2136,
+			"end_sample": 2140,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2140,
+			"end_sample": 2144,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2144,
+			"end_sample": 2148,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2148,
+			"end_sample": 2152,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2152,
+			"end_sample": 2156,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2156,
+			"end_sample": 2160,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2160,
+			"end_sample": 2164,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2164,
+			"end_sample": 2168,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2168,
+			"end_sample": 2172,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2172,
+			"end_sample": 2176,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2176,
+			"end_sample": 2180,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2180,
+			"end_sample": 2184,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2184,
+			"end_sample": 2188,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2188,
+			"end_sample": 2192,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2192,
+			"end_sample": 2196,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2196,
+			"end_sample": 2200,
+			"ann_class": 71,
+			"ann_type": 78,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2008,
+			"end_sample": 2012,
+			"ann_class": 65,
+			"ann_type": 72,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2012,
+			"end_sample": 2016,
+			"ann_class": 66,
+			"ann_type": 73,
+			"texts": [
+				"Transmission: host", 
+				"T: host", 
+				"T"
+			]
+		}, 
+		{
+			"start_sample": 2016,
+			"end_sample": 2040,
+			"ann_class": 67,
+			"ann_type": 74,
+			"texts": [
+				"Command: GO_IDLE_STATE (0)", 
+				"Cmd: GO_IDLE_STATE (0)", 
+				"CMD0", 
+				"Cmd", 
+				"C"
+			]
+		}, 
+		{
+			"start_sample": 2040,
+			"end_sample": 2168,
+			"ann_class": 68,
+			"ann_type": 75,
+			"texts": [
+				"Argument: 0x00000000", 
+				"Arg", 
+				"A"
+			]
+		}, 
+		{
+			"start_sample": 2168,
+			"end_sample": 2196,
+			"ann_class": 69,
+			"ann_type": 76,
+			"texts": [
+				"CRC: 0x4a", 
+				"CRC", 
+				"C"
+			]
+		}, 
+		{
+			"start_sample": 2196,
+			"end_sample": 2200,
+			"ann_class": 70,
+			"ann_type": 77,
+			"texts": [
+				"End bit", 
+				"End", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 2040,
+			"end_sample": 2168,
+			"ann_class": 72,
+			"ann_type": 79,
+			"texts": [
+				"IDLE_STATE", 
+				"IDLE", 
+				"ID", 
+				"I"
+			]
+		}, 
+		{
+			"start_sample": 2008,
+			"end_sample": 2200,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"CMD0 (GO_IDLE_STATE): Reset Device to IDLE_STATE", 
+				"CMD0 (GO_IDLE_STATE)", 
+				"CMD0"
+			]
+		}
 	]
 }

@@ -159,6 +159,66 @@ struct srd_term {
   uint64_t num_samples_already_skipped;
 };
 
+enum c_field_type {
+    C_FIELD_U8 = 0, C_FIELD_U16, C_FIELD_U32, C_FIELD_U64,
+    C_FIELD_I8, C_FIELD_I16, C_FIELD_I32, C_FIELD_I64,
+    C_FIELD_F64, C_FIELD_STR, C_FIELD_BYTES,
+    C_FIELD_SENTINEL = 0xFF  /* internal: c_proto() end-of-args marker */
+};
+
+typedef struct {
+    uint8_t type;
+    union {
+        uint8_t  u8;  uint16_t u16; uint32_t u32; uint64_t u64;
+        int8_t   i8;  int16_t  i16; int32_t  i32; int64_t  i64;
+        double   f64;
+        const char *str;
+        struct { const uint8_t *data; uint32_t len; } bytes;
+    };
+} c_field;
+
+/* c_field constructor macros — 1:1 with Python data types */
+#define C_U8(v)    ((c_field){.type=C_FIELD_U8, .u8=(uint8_t)(v)})
+#define C_U16(v)   ((c_field){.type=C_FIELD_U16, .u16=(uint16_t)(v)})
+#define C_U32(v)   ((c_field){.type=C_FIELD_U32, .u32=(uint32_t)(v)})
+#define C_U64(v)   ((c_field){.type=C_FIELD_U64, .u64=(uint64_t)(v)})
+#define C_I8(v)    ((c_field){.type=C_FIELD_I8, .i8=(int8_t)(v)})
+#define C_I16(v)   ((c_field){.type=C_FIELD_I16, .i16=(int16_t)(v)})
+#define C_I32(v)   ((c_field){.type=C_FIELD_I32, .i32=(int32_t)(v)})
+#define C_I64(v)   ((c_field){.type=C_FIELD_I64, .i64=(int64_t)(v)})
+#define C_F64(v)   ((c_field){.type=C_FIELD_F64, .f64=(double)(v)})
+#define C_STR(v)   ((c_field){.type=C_FIELD_STR, .str=(const char*)(v)})
+#define C_BYTES(d,n) ((c_field){.type=C_FIELD_BYTES, .bytes={.data=(d),.len=(n)}})
+#define C_END        ((c_field){.type=C_FIELD_SENTINEL})  /* c_proto() sentinel */
+
+/* c_wait() condition macros — 1:1 with Python self.wait() conditions */
+#define _CW_ENC(_cw_t, _cw_c)  ((int)((_cw_t) << 16 | ((_cw_c) & 0xFFFF)))
+#define CW_H(ch)   _CW_ENC(SRD_TERM_HIGH, ch)
+#define CW_L(ch)   _CW_ENC(SRD_TERM_LOW, ch)
+#define CW_R(ch)   _CW_ENC(SRD_TERM_RISING_EDGE, ch)
+#define CW_F(ch)   _CW_ENC(SRD_TERM_FALLING_EDGE, ch)
+#define CW_E(ch)   _CW_ENC(SRD_TERM_EITHER_EDGE, ch)
+#define CW_N(ch)   _CW_ENC(SRD_TERM_NO_EDGE, ch)
+#define CW_SKIP(n) _CW_ENC(SRD_TERM_SKIP, -1), (uint64_t)(n)
+#define CW_OR  (-1)
+#define CW_END (-2)
+/* Short aliases for convenience in decoder code (C only) */
+#ifndef __cplusplus
+#define H(ch)   CW_H(ch)
+#define L(ch)   CW_L(ch)
+#define R(ch)   CW_R(ch)
+#define F(ch)   CW_F(ch)
+#define E(ch)   CW_E(ch)
+#define N(ch)   CW_N(ch)
+#define SKIP(n) CW_SKIP(n)
+#define OR      CW_OR
+#define END     CW_END
+#endif
+
+/* Quick access macros — 1:1 with Python self.samplenum / self.matched */
+#define di_samplenum(di)   ((di)->abs_cur_samplenum)
+#define di_matched(di)     ((di)->match_array)
+
 enum srd_configkey {
   SRD_CONF_SAMPLERATE = 10000,
 };
@@ -381,8 +441,8 @@ struct srd_decoder_inst {
   const struct srd_decoder_runtime *runtime;
 };
 
-#define SRD_C_DECODER_API_VERSION 3
-#define SRD_C_DECODER_API_MIN_VERSION 3
+#define SRD_C_DECODER_API_VERSION 4
+#define SRD_C_DECODER_API_MIN_VERSION 4
 
 #ifdef _WIN32
 #define SRD_C_DECODER_EXPORT __declspec(dllexport)
@@ -428,15 +488,17 @@ struct srd_c_decoder {
   const char **tags;
   int num_tags;
 
+  size_t state_size;  /* C_DECODER_STATE auto-sets this */
+
   void (*reset)(struct srd_decoder_inst *di);
   void (*start)(struct srd_decoder_inst *di);
   void (*decode)(struct srd_decoder_inst *di);
   void (*end)(struct srd_decoder_inst *di);
   void (*metadata)(struct srd_decoder_inst *di, int key, uint64_t value);
   void (*destroy)(struct srd_decoder_inst *di);
-  void (*recv_proto)(struct srd_decoder_inst *di, uint64_t start_sample,
-                     uint64_t end_sample, const char *cmd,
-                     const unsigned char *data, uint64_t data_len);
+  void (*decode_upper)(struct srd_decoder_inst *di,
+                       uint64_t start_sample, uint64_t end_sample,
+                       const char *cmd, const c_field *fields, int n_fields);
 };
 
 struct srd_pd_output {
@@ -608,12 +670,6 @@ SRD_API int c_decoder_put_meta_double(struct srd_decoder_inst *di,
                                       uint64_t start_sample,
                                       uint64_t end_sample, int output_id,
                                       double value);
-SRD_API int c_decoder_put_proto(struct srd_decoder_inst *di,
-                                uint64_t start_sample, uint64_t end_sample,
-                                int output_id, const char *cmd,
-                                const unsigned char *data, uint64_t data_len);
-/* Backward compatibility alias */
-#define c_decoder_put_python c_decoder_put_proto
 SRD_API uint64_t c_decoder_get_samplerate(struct srd_decoder_inst *di);
 SRD_API uint64_t c_decoder_get_last_samplenum(struct srd_decoder_inst *di);
 SRD_API int64_t c_decoder_get_option_int(struct srd_decoder_inst *di,
@@ -650,25 +706,65 @@ SRD_API void c_decoder_set_private(struct srd_decoder_inst *di, void *data);
     c_decoder_put(di, ss, es, out_id, &_ann);                                  \
   } while (0)
 
-typedef struct srd_cond_builder srd_cond_builder;
+/* v4 convenience aliases for annotation output */
+#define c_put(di, ss, es, out_id, cls, ...)    C_ANN_PUT(di, ss, es, out_id, cls, __VA_ARGS__)
+#define c_put_v(di, ss, es, out_id, cls, val, ...) C_ANN_PUT_VAL(di, ss, es, out_id, cls, val, __VA_ARGS__)
+#define c_put_t(di, ss, es, out_id, cls, tp, ...)  C_ANN_PUT_TYPE(di, ss, es, out_id, cls, tp, __VA_ARGS__)
 
-SRD_API srd_cond_builder *c_cond_new(void);
-SRD_API srd_cond_builder *c_cond_or(srd_cond_builder *b);
-SRD_API srd_cond_builder *c_cond_rise(srd_cond_builder *b, int ch);
-SRD_API srd_cond_builder *c_cond_fall(srd_cond_builder *b, int ch);
-SRD_API srd_cond_builder *c_cond_high(srd_cond_builder *b, int ch);
-SRD_API srd_cond_builder *c_cond_low(srd_cond_builder *b, int ch);
-SRD_API srd_cond_builder *c_cond_edge(srd_cond_builder *b, int ch);
-SRD_API srd_cond_builder *c_cond_noedge(srd_cond_builder *b, int ch);
-SRD_API srd_cond_builder *c_cond_skip(srd_cond_builder *b, uint64_t count);
-SRD_API int c_cond_wait(srd_cond_builder *b, struct srd_decoder_inst *di,
-                        uint64_t *samplenum, uint64_t *matched);
-SRD_API int c_cond_wait_current(struct srd_decoder_inst *di,
-                                uint64_t *samplenum);
-SRD_API void c_cond_free(srd_cond_builder *b);
+/* v4 variadic declarative condition wait — replaces c_cond_* builder pattern */
+SRD_API int c_wait(struct srd_decoder_inst *di, ...);
 
-SRD_API uint8_t c_decoder_get_pin(struct srd_decoder_inst *di, int ch,
-                                  uint64_t samplenum);
+/* v4 pin access — replaces c_decoder_get_pin */
+SRD_API uint8_t c_pin(struct srd_decoder_inst *di, int ch);
+
+/* v4 structured protocol output — replaces c_decoder_put_proto */
+SRD_API int c_proto(struct srd_decoder_inst *di, uint64_t start_sample,
+                    uint64_t end_sample, int output_id,
+                    const char *cmd, ...);  /* C_END-terminated c_field args */
+
+/* v4 boolean option — replaces string comparison pattern */
+SRD_API int c_opt_bool(struct srd_decoder_inst *di, const char *key, int defval);
+
+/* v4 shortcut API aliases — shorter names for common operations */
+#define c_opt_int    c_decoder_get_option_int
+#define c_opt_str    c_decoder_get_option_string
+#define c_opt_dbl    c_decoder_get_option_double
+#define c_has_ch     c_decoder_has_channel
+#define c_samplerate c_decoder_get_samplerate
+#define c_last_samplenum c_decoder_get_last_samplenum
+#define c_init_pin   c_decoder_get_initial_pin
+#define c_reg_out    c_decoder_register_output
+#define c_reg_meta   c_decoder_register_output_meta
+#define c_put_bin    c_decoder_put_binary
+#define c_put_logic  c_decoder_put_logic
+#define c_put_meta_int c_decoder_put_meta_int
+#define c_put_meta_dbl c_decoder_put_meta_double
+
+/* C_DECODER_STATE — auto-generates state struct, reset, and destroy */
+#define C_DECODER_STATE(name, fields) \
+    typedef struct name##_s fields name##_s; \
+    static void name##_reset(struct srd_decoder_inst *di) { \
+        name##_s *s = (name##_s *)calloc(1, sizeof(name##_s)); \
+        c_decoder_set_private(di, s); \
+    } \
+    static void name##_destroy(struct srd_decoder_inst *di) { \
+        void *p = c_decoder_get_private(di); \
+        free(p); \
+        c_decoder_set_private(di, NULL); \
+    }
+
+/* C_DECODER_DEFINE — auto-generates decoder struct and DLL entry */
+#define C_DECODER_DEFINE(dec_name, ...) \
+    static struct srd_c_decoder dec_name##_def = { \
+        __VA_ARGS__ \
+    }; \
+    SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void) { \
+        return &dec_name##_def; \
+    } \
+    SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void) { \
+        return SRD_C_DECODER_API_VERSION; \
+    }
+
 SRD_API uint8_t c_decoder_get_initial_pin(struct srd_decoder_inst *di, int ch);
 
 #include "version.h"

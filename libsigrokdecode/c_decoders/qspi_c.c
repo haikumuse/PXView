@@ -277,27 +277,27 @@ static void qspi_reset(struct srd_decoder_inst *di)
 static void qspi_start(struct srd_decoder_inst *di)
 {
     qspi_state *s = (qspi_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spi");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "spi");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "spi");
-    s->out_bitrate = c_decoder_register_output(di, SRD_OUTPUT_META, "spi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "spi");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "spi");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "spi");
+    s->out_bitrate = c_reg_out(di, SRD_OUTPUT_META, "spi");
 
-    const char *cs_pol_str = c_decoder_get_option_string(di, "cs_polarity", "active-low");
+    const char *cs_pol_str = c_opt_str(di, "cs_polarity", "active-low");
     s->cs_polarity = (strcmp(cs_pol_str, "active-low") == 0) ? 0 : 1;
 
-    s->cpol = (int)c_decoder_get_option_int(di, "cpol", 0);
-    s->cpha = (int)c_decoder_get_option_int(di, "cpha", 0);
+    s->cpol = (int)c_opt_int(di, "cpol", 0);
+    s->cpha = (int)c_opt_int(di, "cpha", 0);
 
-    const char *bitorder_str = c_decoder_get_option_string(di, "bitorder", "msb-first");
+    const char *bitorder_str = c_opt_str(di, "bitorder", "msb-first");
     s->bit_order = (strcmp(bitorder_str, "msb-first") == 0) ? 0 : 1;
 
-    const char *ads_str = c_decoder_get_option_string(di, "ads", "24-Bit Address");
+    const char *ads_str = c_opt_str(di, "ads", "24-Bit Address");
     s->ads = (strcmp(ads_str, "32-Bit Address") == 0) ? 1 : 0;
 
-    const char *frame_str = c_decoder_get_option_string(di, "frame", "no");
+    const char *frame_str = c_opt_str(di, "frame", "no");
     s->frame = (strcmp(frame_str, "yes") == 0) ? 1 : 0;
 
-    const char *twoln_str = c_decoder_get_option_string(di, "twolinesmode", "spi");
+    const char *twoln_str = c_opt_str(di, "twolinesmode", "spi");
     if (strcmp(twoln_str, "dspi") == 0)
         s->spi_mode_set = 1;
     else if (strcmp(twoln_str, "qspi") == 0)
@@ -305,7 +305,7 @@ static void qspi_start(struct srd_decoder_inst *di)
     else
         s->spi_mode_set = 0;
 
-    const char *inv_str = c_decoder_get_option_string(di, "invalidlevel", "both");
+    const char *inv_str = c_opt_str(di, "invalidlevel", "both");
     if (strcmp(inv_str, "low") == 0)
         s->invalid_level = 1;
     else if (strcmp(inv_str, "high") == 0)
@@ -313,9 +313,9 @@ static void qspi_start(struct srd_decoder_inst *di)
     else
         s->invalid_level = 0;
 
-    s->have_io1 = c_decoder_has_channel(di, 2);
-    s->have_io3 = c_decoder_has_channel(di, 3) && c_decoder_has_channel(di, 4);
-    s->have_cs = c_decoder_has_channel(di, 5);
+    s->have_io1 = c_has_ch(di, 2);
+    s->have_io3 = c_has_ch(di, 3) && c_has_ch(di, 4);
+    s->have_cs = c_has_ch(di, 5);
 
     int mode;
     if (s->cpol == 0 && s->cpha == 0) mode = 0;
@@ -394,22 +394,22 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
     {
         char str[16];
         snprintf(str, sizeof(str), "@%02llX", (unsigned long long)s->io0data);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_D0, str);
+        c_put(di, ss, es, s->out_ann, ANN_D0, str);
     }
     if (s->have_io1) {
         char str[16];
         snprintf(str, sizeof(str), "@%02llX", (unsigned long long)s->io1data);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_D1, str);
+        c_put(di, ss, es, s->out_ann, ANN_D1, str);
     }
     if (io2_valid) {
         char str[16];
         snprintf(str, sizeof(str), "@%02llX", (unsigned long long)s->io2data);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_D2, str);
+        c_put(di, ss, es, s->out_ann, ANN_D2, str);
     }
     if (io3_valid) {
         char str[16];
         snprintf(str, sizeof(str), "@%02llX", (unsigned long long)s->io3data);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_D3, str);
+        c_put(di, ss, es, s->out_ann, ANN_D3, str);
     }
 
     /* Output combined data */
@@ -418,11 +418,11 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
         /* For simplicity, output IO0 data as the main byte */
         char str[16];
         snprintf(str, sizeof(str), "@%02llX", (unsigned long long)s->io0data);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_QUAD_DATA, str);
+        c_put(di, ss, es, s->out_ann, ANN_QUAD_DATA, str);
     } else if (current_mode == MODE_DUAL) {
         char str[16];
         snprintf(str, sizeof(str), "@%02llX", (unsigned long long)s->io0data);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_DUAL_DATA, str);
+        c_put(di, ss, es, s->out_ann, ANN_DUAL_DATA, str);
     }
 
     /* Command parsing state machine */
@@ -434,7 +434,7 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
             snprintf(cmd_str, sizeof(cmd_str), "Command : %s", entry->name);
             snprintf(cmd_short, sizeof(cmd_short), "CMD : %s", entry->abbrev);
             snprintf(cmd_abbr, sizeof(cmd_abbr), "%s", entry->abbrev);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, cmd_str, cmd_short, cmd_abbr);
+            c_put(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, cmd_str, cmd_short, cmd_abbr);
 
             /* Update address mode */
             if (entry->cmd_byte == 0xB7) s->ads = 1;
@@ -450,7 +450,7 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
         } else {
             char str[16];
             snprintf(str, sizeof(str), "@%02llX", (unsigned long long)s->io0data);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, str);
+            c_put(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, str);
         }
     } else {
         /* Processing command data */
@@ -470,7 +470,7 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
                     snprintf(addr_str, sizeof(addr_str), "%d-Bit Address : 0x%llX", addr_bytes * 8, (unsigned long long)s->bits_data);
                     snprintf(addr_short, sizeof(addr_short), "AD : 0x%llX", (unsigned long long)s->bits_data);
                     snprintf(addr_abbr, sizeof(addr_abbr), "0x%llX", (unsigned long long)s->bits_data);
-                    C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_DATA_TRANSFER, addr_str, addr_short, addr_abbr);
+                    c_put(di, s->ss, es, s->out_ann, ANN_DATA_TRANSFER, addr_str, addr_short, addr_abbr);
                     s->state_count++;
                     s->count = 0;
                     s->bits_data = 0;
@@ -488,7 +488,7 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
                 else if (pi->proc_enum == PROCESS_DUMMY_40BIT) dummy_total = 5;
                 else dummy_total = 1; /* PROCESS_DUMMY_BY_MODE */
                 if (s->count >= dummy_total) {
-                    C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, "Dummy Cycles", "Dummy", "D");
+                    c_put(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, "Dummy Cycles", "Dummy", "D");
                     s->state_count++;
                     s->count = 0;
                 }
@@ -501,7 +501,7 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
                 snprintf(data_str, sizeof(data_str), "%s : 0x%02llX", rw, (unsigned long long)s->io0data);
                 snprintf(data_short, sizeof(data_short), "%s : 0x%02llX", (pi->proc_enum == PROCESS_WRITE_BYTE) ? "WR" : "RD", (unsigned long long)s->io0data);
                 snprintf(data_abbr, sizeof(data_abbr), "0x%02llX", (unsigned long long)s->io0data);
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, data_str, data_short, data_abbr);
+                c_put(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, data_str, data_short, data_abbr);
                 s->state_count++;
                 break;
             }
@@ -510,12 +510,12 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
                 snprintf(data_str, sizeof(data_str), "Read Data : 0x%02llX", (unsigned long long)s->io0data);
                 snprintf(data_short, sizeof(data_short), "RD : 0x%02llX", (unsigned long long)s->io0data);
                 snprintf(data_abbr, sizeof(data_abbr), "0x%02llX", (unsigned long long)s->io0data);
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, data_str, data_short, data_abbr);
+                c_put(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, data_str, data_short, data_abbr);
                 /* Don't increment state_count for continuous read */
                 break;
             }
             case PROCESS_CONTINUOUS_READ_MODE_BITS: {
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, "Mode Bits", "M", "M");
+                c_put(di, ss, es, s->out_ann, ANN_DATA_TRANSFER, "Mode Bits", "M", "M");
                 s->state_count++;
                 break;
             }
@@ -565,7 +565,7 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
             }
         }
 
-        c_decoder_put_python(di, ss, es, s->out_python, "BITS", bits_data, bpos);
+        c_proto(di, ss, es, s->out_python, "BITS", C_BYTES(bits_data, bpos), C_END);
     }
 
     /* SPI DATA 17-byte format */
@@ -577,41 +577,38 @@ static void qspi_putdata(struct srd_decoder_inst *di, qspi_state *s)
         uint64_t sv = s->have_io1 ? s->io1data : 0;
         for (int i = 0; i < 8; i++) data_data[dpos++] = (unsigned char)(mv >> (8 * i));
         for (int i = 0; i < 8; i++) data_data[dpos++] = (unsigned char)(sv >> (8 * i));
-        c_decoder_put_python(di, ss, es, s->out_python, "DATA", data_data, dpos);
+        c_proto(di, ss, es, s->out_python, "DATA", C_BYTES(data_data, dpos), C_END);
     }
 }
 
 static void qspi_decode(struct srd_decoder_inst *di)
 {
     qspi_state *s = (qspi_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     int CLK = 0, IO0 = 1, IO1 = 2, IO2 = 3, IO3 = 4, CS = 5;
 
     /* Samplerate fallback */
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             s->bit_width = 1.0 / (double)s->samplerate;
     }
 
     if (!s->have_cs) {
-        c_decoder_put_python(di, 0, 0, s->out_python, "CS-CHANGE", NULL, 0);
+        c_proto(di, 0, 0, s->out_python, "CS-CHANGE", C_END);
     }
 
     /* Get initial pin states */
     uint64_t cur_sample;
-    if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
+    if (c_wait(di, CW_END) != SRD_OK)
         return;
 
     if (s->have_cs) {
-        int cs = c_decoder_get_pin(di, CS, cur_sample);
+        int cs = c_pin(di, CS);
         int cs_active = qspi_cs_asserted(s, cs);
         unsigned char cs_data[2];
         cs_data[0] = 0xFF;
         cs_data[1] = (unsigned char)cs;
-        c_decoder_put_python(di, cur_sample, cur_sample, s->out_python, "CS-CHANGE", cs_data, 2);
+        c_proto(di, cur_sample, cur_sample, s->out_python, "CS-CHANGE", C_U8(cs_data[0]), C_U8(cs_data[1]), C_END);
         if (cs_active) {
             s->ss_transfer = cur_sample;
             s->io0bytes_cnt = 0;
@@ -619,32 +616,30 @@ static void qspi_decode(struct srd_decoder_inst *di)
     }
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        if (s->sample_edge_rise)
-            c_cond_rise(cb, CLK);
-        else
-            c_cond_fall(cb, CLK);
-
-        int cs_cond_idx = -1;
+        int ret;
         if (s->have_cs) {
-            cs_cond_idx = 1;
-            c_cond_or(cb);
-            c_cond_edge(cb, CS);
+            if (s->sample_edge_rise)
+                ret = c_wait(di, CW_R(CLK), CW_OR, CW_E(CS), CW_END);
+            else
+                ret = c_wait(di, CW_F(CLK), CW_OR, CW_E(CS), CW_END);
+        } else {
+            if (s->sample_edge_rise)
+                ret = c_wait(di, CW_R(CLK), CW_END);
+            else
+                ret = c_wait(di, CW_F(CLK), CW_END);
         }
+        if (ret != SRD_OK)
+            return;
 
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        int clk = c_pin(di, CLK);
+        int io0 = c_pin(di, IO0);
+        int io1 = s->have_io1 ? c_pin(di, IO1) : 0;
+        int io2 = s->have_io3 ? c_pin(di, IO2) : 0;
+        int io3 = s->have_io3 ? c_pin(di, IO3) : 0;
+        int cs = s->have_cs ? c_pin(di, CS) : 1;
 
-        int clk = c_decoder_get_pin(di, CLK, samplenum);
-        int io0 = c_decoder_get_pin(di, IO0, samplenum);
-        int io1 = s->have_io1 ? c_decoder_get_pin(di, IO1, samplenum) : 0;
-        int io2 = s->have_io3 ? c_decoder_get_pin(di, IO2, samplenum) : 0;
-        int io3 = s->have_io3 ? c_decoder_get_pin(di, IO3, samplenum) : 0;
-        int cs = s->have_cs ? c_decoder_get_pin(di, CS, samplenum) : 1;
-
-        int clk_matched = (matched & (1ULL << 0));
-        int cs_matched = s->have_cs && (matched & (1ULL << cs_cond_idx));
+        int clk_matched = (di_matched(di) & (1ULL << 0));
+        int cs_matched = s->have_cs && (di_matched(di) & (1ULL << 1));
 
         int cs_active = s->have_cs ? qspi_cs_asserted(s, cs) : 1;
 
@@ -652,10 +647,10 @@ static void qspi_decode(struct srd_decoder_inst *di)
             unsigned char cs_data[2];
             cs_data[0] = (unsigned char)(1 - cs);
             cs_data[1] = (unsigned char)cs;
-            c_decoder_put_python(di, samplenum, samplenum, s->out_python, "CS-CHANGE", cs_data, 2);
+            c_proto(di, di_samplenum(di), di_samplenum(di), s->out_python, "CS-CHANGE", C_U8(cs_data[0]), C_U8(cs_data[1]), C_END);
 
             if (cs_active) {
-                s->ss_transfer = samplenum;
+                s->ss_transfer = di_samplenum(di);
                 s->io0bytes_cnt = 0;
             } else if (s->ss_transfer != (uint64_t)-1) {
                 if (s->frame && s->io0bytes_cnt > 0) {
@@ -665,9 +660,9 @@ static void qspi_decode(struct srd_decoder_inst *di)
                         if (i > 0) pos += snprintf(transfer_str + pos, sizeof(transfer_str) - pos, " ");
                         pos += snprintf(transfer_str + pos, sizeof(transfer_str) - pos, "%02llX", (unsigned long long)s->io0bytes_val[i]);
                     }
-                    C_ANN_PUT(di, s->ss_transfer, samplenum, s->out_ann, ANN_DATA_TRANSFER, transfer_str);
+                    c_put(di, s->ss_transfer, di_samplenum(di), s->out_ann, ANN_DATA_TRANSFER, transfer_str);
                 }
-                c_decoder_put_python(di, s->ss_transfer, samplenum, s->out_python, "TRANSFER", NULL, 0);
+                c_proto(di, s->ss_transfer, di_samplenum(di), s->out_python, "TRANSFER", C_END);
                 s->ss_transfer = (uint64_t)-1;
             }
             /* Reset decoder state on CS change */
@@ -700,16 +695,16 @@ static void qspi_decode(struct srd_decoder_inst *di)
 
         /* Accumulate bits */
         if (s->bitcount == 0) {
-            s->ss_block = samplenum;
+            s->ss_block = di_samplenum(di);
             s->cs_was_deasserted = s->have_cs ? !qspi_cs_asserted(s, cs) : 0;
         }
 
         if (s->bitcount > 0 && s->bitcount < 8) {
-            s->io0bits_es[s->bitcount - 1] = samplenum;
-            if (s->have_io1) s->io1bits_es[s->bitcount - 1] = samplenum;
+            s->io0bits_es[s->bitcount - 1] = di_samplenum(di);
+            if (s->have_io1) s->io1bits_es[s->bitcount - 1] = di_samplenum(di);
             if (s->have_io3) {
-                s->io2bits_es[s->bitcount - 1] = samplenum;
-                s->io3bits_es[s->bitcount - 1] = samplenum;
+                s->io2bits_es[s->bitcount - 1] = di_samplenum(di);
+                s->io3bits_es[s->bitcount - 1] = di_samplenum(di);
             }
         }
 
@@ -730,20 +725,20 @@ static void qspi_decode(struct srd_decoder_inst *di)
         }
 
         if (s->bitcount < 8) {
-            s->io0bits_ss[s->bitcount] = samplenum;
-            s->io0bits_es[s->bitcount] = samplenum;
+            s->io0bits_ss[s->bitcount] = di_samplenum(di);
+            s->io0bits_es[s->bitcount] = di_samplenum(di);
             s->io0bits_val[s->bitcount] = io0;
             if (s->have_io1) {
-                s->io1bits_ss[s->bitcount] = samplenum;
-                s->io1bits_es[s->bitcount] = samplenum;
+                s->io1bits_ss[s->bitcount] = di_samplenum(di);
+                s->io1bits_es[s->bitcount] = di_samplenum(di);
                 s->io1bits_val[s->bitcount] = io1;
             }
             if (s->have_io3) {
-                s->io2bits_ss[s->bitcount] = samplenum;
-                s->io2bits_es[s->bitcount] = samplenum;
+                s->io2bits_ss[s->bitcount] = di_samplenum(di);
+                s->io2bits_es[s->bitcount] = di_samplenum(di);
                 s->io2bits_val[s->bitcount] = io2;
-                s->io3bits_ss[s->bitcount] = samplenum;
-                s->io3bits_es[s->bitcount] = samplenum;
+                s->io3bits_ss[s->bitcount] = di_samplenum(di);
+                s->io3bits_es[s->bitcount] = di_samplenum(di);
                 s->io3bits_val[s->bitcount] = io3;
             }
         }
@@ -755,13 +750,13 @@ static void qspi_decode(struct srd_decoder_inst *di)
 
         if (s->samplerate > 0) {
             double elapsed = 1.0 / (double)s->samplerate;
-            elapsed *= (double)(samplenum - s->ss_block + 1);
+            elapsed *= (double)(di_samplenum(di) - s->ss_block + 1);
             int bitrate = (int)(1.0 / elapsed * 8);
-            c_decoder_put_meta_int(di, s->ss_block, samplenum, s->out_bitrate, bitrate);
+            c_put_meta_int(di, s->ss_block, di_samplenum(di), s->out_bitrate, bitrate);
         }
 
         if (s->have_cs && s->cs_was_deasserted) {
-            C_ANN_PUT(di, s->ss_block, samplenum, s->out_ann, ANN_OTHER,
+            c_put(di, s->ss_block, di_samplenum(di), s->out_ann, ANN_OTHER,
                 "CS# was deasserted during this data word!");
         }
 
@@ -806,6 +801,7 @@ struct srd_c_decoder qspi_c_decoder = {
     .start = qspi_start,
     .decode = qspi_decode,
     .destroy = qspi_destroy,
+    .state_size = 0,
     .metadata = qspi_metadata,
 };
 

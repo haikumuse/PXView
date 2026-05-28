@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012-2014 Uwe Hermann <uwe@hermann-uwe.de>
@@ -138,21 +138,21 @@ static const struct srd_c_ann_row mpu6050_ann_rows[] = {
 
 static void mpu6050_handle_reg_0x1b(struct srd_decoder_inst *di, mpu6050_priv *s, uint8_t b)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_GYRO_CONFIG,
+    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_GYRO_CONFIG,
               "GYRO_CONFIG", "GYR", "G");
 
     char buf[64];
     const char *xg = (b & (1 << 7)) ? "self test on" : "self test off";
     snprintf(buf, sizeof(buf), "XG_ST: %s", xg);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_XG_ST, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_XG_ST, buf);
 
     const char *yg = (b & (1 << 6)) ? "self test on" : "self test off";
     snprintf(buf, sizeof(buf), "YG_ST: %s", yg);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_YG_ST, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_YG_ST, buf);
 
     const char *zg = (b & (1 << 5)) ? "self test on" : "self test off";
     snprintf(buf, sizeof(buf), "ZG_ST: %s", zg);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_ZG_ST, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_ZG_ST, buf);
 
     const char *fs_sel;
     switch (b & (0b11 << 3)) {
@@ -163,22 +163,22 @@ static void mpu6050_handle_reg_0x1b(struct srd_decoder_inst *di, mpu6050_priv *s
     default: fs_sel = "unknown"; break;
     }
     snprintf(buf, sizeof(buf), "FS_SEL: %s", fs_sel);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_FS_SEL, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_FS_SEL, buf);
 }
 
 static void mpu6050_handle_reg_0x1c(struct srd_decoder_inst *di, mpu6050_priv *s, uint8_t b)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_ACCEL_CONFIG,
+    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_ACCEL_CONFIG,
               "ACCEL_CONFIG", "ACC", "A");
 
     char buf[64];
     const char *xa = (b & (1 << 7)) ? "self test on" : "self test off";
     snprintf(buf, sizeof(buf), "XA_ST: %s", xa);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_XA_ST, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_XA_ST, buf);
 
     const char *ya = (b & (1 << 6)) ? "self test on" : "self test off";
     snprintf(buf, sizeof(buf), "YA_ST: %s", ya);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_YA_ST, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_YA_ST, buf);
 
     const char *afs_sel;
     switch (b & (0b11 << 3)) {
@@ -189,48 +189,48 @@ static void mpu6050_handle_reg_0x1c(struct srd_decoder_inst *di, mpu6050_priv *s
     default: afs_sel = "unknown"; break;
     }
     snprintf(buf, sizeof(buf), "AFS_SEL: %s", afs_sel);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_AFS_SEL, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_AFS_SEL, buf);
 }
 
 static void mpu6050_handle_reg_0x38(struct srd_decoder_inst *di, mpu6050_priv *s, uint8_t b)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_INT_ENABLE,
+    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_INT_ENABLE,
               "INT_ENABLE", "INT", "I");
 
     char buf[64];
     snprintf(buf, sizeof(buf), "FIFO_OFLOW_EN: %d", (b >> 4) & 1);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_INT_EN, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_INT_EN, buf);
     snprintf(buf, sizeof(buf), "I2C_MST_INT: %d", (b >> 3) & 1);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_INT_EN, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_INT_EN, buf);
     snprintf(buf, sizeof(buf), "DATA_RDY_INT: %d", b & 1);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_INT_EN, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_INT_EN, buf);
 }
 
 static void mpu6050_handle_reg_0x6b(struct srd_decoder_inst *di, mpu6050_priv *s, uint8_t b)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_PWR_MGMT_1,
+    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_PWR_MGMT_1,
               "PWR_MGMT_1", "PWR", "P");
 
     char buf[64];
     snprintf(buf, sizeof(buf), "DEVICE_RESET: %d", (b >> 7) & 1);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_RESET, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_RESET, buf);
     snprintf(buf, sizeof(buf), "SLEEP: %d", (b >> 6) & 1);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_SLEEP, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_SLEEP, buf);
     snprintf(buf, sizeof(buf), "CYCLE: %d", (b >> 5) & 1);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_CYCLE, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_CYCLE, buf);
     snprintf(buf, sizeof(buf), "TEMP_DIS: %d", (b >> 3) & 1);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_TEMP_DIS, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_TEMP_DIS, buf);
     snprintf(buf, sizeof(buf), "CLKSEL: %d", b & 0x07);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_CLK_SEL, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_CLK_SEL, buf);
 }
 
 static void mpu6050_handle_reg_0x75(struct srd_decoder_inst *di, mpu6050_priv *s, uint8_t b)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_WHO_AM_I,
+    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_WHO_AM_I,
               "WHO_AM_I", "WHO", "W");
     char buf[64];
     snprintf(buf, sizeof(buf), "WHO_AM_I: 0x%02X", b);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_XG_ST, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_XG_ST, buf);
 }
 
 static void mpu6050_handle_reg_data(struct srd_decoder_inst *di, mpu6050_priv *s, uint8_t b)
@@ -241,74 +241,74 @@ static void mpu6050_handle_reg_data(struct srd_decoder_inst *di, mpu6050_priv *s
     case 0x3b:
         s->acc_x = (int8_t)b;
         s->ss_block = s->ss;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "ACCEL_XOUT[15:8]");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "ACCEL_XOUT[15:8]");
         break;
     case 0x3c:
         s->acc_x = (s->acc_x << 8) | b;
         snprintf(buf, sizeof(buf), "ACCEL_XOUT: %d", s->acc_x);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_ACCEL_DATA, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_ACCEL_DATA, buf);
         break;
     case 0x3d:
         s->acc_y = (int8_t)b;
         s->ss_block = s->ss;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "ACCEL_YOUT[15:8]");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "ACCEL_YOUT[15:8]");
         break;
     case 0x3e:
         s->acc_y = (s->acc_y << 8) | b;
         snprintf(buf, sizeof(buf), "ACCEL_YOUT: %d", s->acc_y);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_ACCEL_DATA, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_ACCEL_DATA, buf);
         break;
     case 0x3f:
         s->acc_z = (int8_t)b;
         s->ss_block = s->ss;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "ACCEL_ZOUT[15:8]");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "ACCEL_ZOUT[15:8]");
         break;
     case 0x40:
         s->acc_z = (s->acc_z << 8) | b;
         snprintf(buf, sizeof(buf), "ACCEL_ZOUT: %d", s->acc_z);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_ACCEL_DATA, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_ACCEL_DATA, buf);
         break;
     case 0x41:
         s->temp = (int16_t)(b << 8);
         s->ss_block = s->ss;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "TEMP_OUT[15:8]");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "TEMP_OUT[15:8]");
         break;
     case 0x42: {
         s->temp = (int16_t)(s->temp | b);
         double temp_c = (double)s->temp / 340.0 + 36.53;
         snprintf(buf, sizeof(buf), "TEMP: %.1f°C", temp_c);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEMP_DATA, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEMP_DATA, buf);
         break;
     }
     case 0x43:
         s->gyro_x = (int8_t)b;
         s->ss_block = s->ss;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "GYRO_XOUT[15:8]");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "GYRO_XOUT[15:8]");
         break;
     case 0x44:
         s->gyro_x = (s->gyro_x << 8) | b;
         snprintf(buf, sizeof(buf), "GYRO_XOUT: %d", s->gyro_x);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_GYRO_DATA, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_GYRO_DATA, buf);
         break;
     case 0x45:
         s->gyro_y = (int8_t)b;
         s->ss_block = s->ss;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "GYRO_YOUT[15:8]");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "GYRO_YOUT[15:8]");
         break;
     case 0x46:
         s->gyro_y = (s->gyro_y << 8) | b;
         snprintf(buf, sizeof(buf), "GYRO_YOUT: %d", s->gyro_y);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_GYRO_DATA, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_GYRO_DATA, buf);
         break;
     case 0x47:
         s->gyro_z = (int8_t)b;
         s->ss_block = s->ss;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "GYRO_ZOUT[15:8]");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, "GYRO_ZOUT[15:8]");
         break;
     case 0x48:
         s->gyro_z = (s->gyro_z << 8) | b;
         snprintf(buf, sizeof(buf), "GYRO_ZOUT: %d", s->gyro_z);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_GYRO_DATA, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_GYRO_DATA, buf);
         break;
     default:
         break;
@@ -330,15 +330,13 @@ static void mpu6050_handle_reg(struct srd_decoder_inst *di, mpu6050_priv *s, uin
         if (s->reg >= 0x3b && s->reg <= 0x48) {
             mpu6050_handle_reg_data(di, s, b);
         } else {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_RESERVED, "Reserved register");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_REG_RESERVED, "Reserved register");
         }
         break;
     }
 }
 
-static void mpu6050_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void mpu6050_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     mpu6050_priv *s = (mpu6050_priv *)c_decoder_get_private(di);
     if (!s)
@@ -347,7 +345,7 @@ static void mpu6050_recv_proto(struct srd_decoder_inst *di,
     s->ss = start_sample;
     s->es = end_sample;
 
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (s->state == MPU6050_IDLE) {
         if (strcmp(cmd, "START") == 0)
@@ -359,7 +357,7 @@ static void mpu6050_recv_proto(struct srd_decoder_inst *di,
                     char buf[64];
                     snprintf(buf, sizeof(buf),
                         "Ignoring non-MPU6050 data (slave 0x%02X)", databyte);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
+                    c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
                 }
                 s->state = MPU6050_IDLE;
                 return;
@@ -384,7 +382,7 @@ static void mpu6050_recv_proto(struct srd_decoder_inst *di,
             s->state = MPU6050_GET_SLAVE_ADDR;
         } else if (strcmp(cmd, "DATA WRITE") == 0) {
             mpu6050_handle_reg(di, s, databyte);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_WRITE, "Register write");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_REG_WRITE, "Register write");
         }
     }
 }
@@ -402,7 +400,7 @@ static void mpu6050_reset(struct srd_decoder_inst *di)
 static void mpu6050_start(struct srd_decoder_inst *di)
 {
     mpu6050_priv *s = (mpu6050_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mpu6050");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mpu6050");
 }
 
 static void mpu6050_decode(struct srd_decoder_inst *di)
@@ -447,7 +445,8 @@ struct srd_c_decoder mpu6050_c_decoder = {
     .start = mpu6050_start,
     .decode = mpu6050_decode,
     .destroy = mpu6050_destroy,
-    .recv_proto = mpu6050_recv_proto,
+    .decode_upper = mpu6050_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

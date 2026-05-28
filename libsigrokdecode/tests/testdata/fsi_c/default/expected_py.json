@@ -1,7 +1,1501 @@
 {
 	"decoder": "fsi",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 166,
 	"annotations": [
+		{
+			"start_sample": 2000,
+			"end_sample": 2010,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2010,
+			"end_sample": 2030,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2030,
+			"end_sample": 2050,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 2050,
+			"end_sample": 2060,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 2060,
+			"end_sample": 2080,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 2060,
+			"end_sample": 2080,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 2080,
+			"end_sample": 2090,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 2090,
+			"end_sample": 2130,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 2090,
+			"end_sample": 2130,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2130,
+			"end_sample": 2155,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 2155,
+			"end_sample": 2165,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2165,
+			"end_sample": 2185,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2185,
+			"end_sample": 2205,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 2205,
+			"end_sample": 2245,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 2205,
+			"end_sample": 2245,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2245,
+			"end_sample": 2275,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 2275,
+			"end_sample": 2285,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2285,
+			"end_sample": 2300,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2300,
+			"end_sample": 2320,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 2320,
+			"end_sample": 2330,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 2330,
+			"end_sample": 2350,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 2330,
+			"end_sample": 2350,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 2350,
+			"end_sample": 2360,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 2360,
+			"end_sample": 2395,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 2360,
+			"end_sample": 2395,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2395,
+			"end_sample": 2425,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 2425,
+			"end_sample": 2435,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2435,
+			"end_sample": 2455,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2455,
+			"end_sample": 2475,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 2475,
+			"end_sample": 2515,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 2475,
+			"end_sample": 2515,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2515,
+			"end_sample": 2545,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 2545,
+			"end_sample": 2555,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2555,
+			"end_sample": 2570,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2570,
+			"end_sample": 2590,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 2590,
+			"end_sample": 2600,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 2600,
+			"end_sample": 2620,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 2600,
+			"end_sample": 2620,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 2620,
+			"end_sample": 2630,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 2630,
+			"end_sample": 2665,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 2630,
+			"end_sample": 2665,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2665,
+			"end_sample": 2695,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 2695,
+			"end_sample": 2705,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2705,
+			"end_sample": 2725,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2725,
+			"end_sample": 2745,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 2745,
+			"end_sample": 2785,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 2745,
+			"end_sample": 2785,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2785,
+			"end_sample": 2815,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 2815,
+			"end_sample": 2825,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2825,
+			"end_sample": 2840,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2840,
+			"end_sample": 2860,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 2860,
+			"end_sample": 2870,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 2870,
+			"end_sample": 2890,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 2870,
+			"end_sample": 2890,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 2890,
+			"end_sample": 2900,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 2900,
+			"end_sample": 2935,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 2900,
+			"end_sample": 2935,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2935,
+			"end_sample": 2965,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 2965,
+			"end_sample": 2975,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 2975,
+			"end_sample": 2995,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 2995,
+			"end_sample": 3015,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3015,
+			"end_sample": 3055,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3015,
+			"end_sample": 3055,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 3055,
+			"end_sample": 3085,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 3085,
+			"end_sample": 3095,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 3095,
+			"end_sample": 3110,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 3110,
+			"end_sample": 3130,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3130,
+			"end_sample": 3140,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 3140,
+			"end_sample": 3160,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 3140,
+			"end_sample": 3160,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 3160,
+			"end_sample": 3170,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 3170,
+			"end_sample": 3205,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3170,
+			"end_sample": 3205,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 3205,
+			"end_sample": 3235,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 3235,
+			"end_sample": 3245,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 3245,
+			"end_sample": 3265,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 3265,
+			"end_sample": 3285,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3285,
+			"end_sample": 3325,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3285,
+			"end_sample": 3325,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 3325,
+			"end_sample": 3355,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 3355,
+			"end_sample": 3365,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 3365,
+			"end_sample": 3380,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 3380,
+			"end_sample": 3400,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3400,
+			"end_sample": 3410,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 3410,
+			"end_sample": 3430,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 3410,
+			"end_sample": 3430,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 3430,
+			"end_sample": 3440,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 3440,
+			"end_sample": 3475,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3440,
+			"end_sample": 3475,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 3475,
+			"end_sample": 3505,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 3505,
+			"end_sample": 3515,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 3515,
+			"end_sample": 3535,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 3535,
+			"end_sample": 3555,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3555,
+			"end_sample": 3595,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3555,
+			"end_sample": 3595,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 3595,
+			"end_sample": 3625,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 3625,
+			"end_sample": 3635,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 3635,
+			"end_sample": 3650,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 3650,
+			"end_sample": 3670,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3670,
+			"end_sample": 3680,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 3680,
+			"end_sample": 3700,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 3680,
+			"end_sample": 3700,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 3700,
+			"end_sample": 3710,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 3710,
+			"end_sample": 3745,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3710,
+			"end_sample": 3745,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 3745,
+			"end_sample": 3775,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 3775,
+			"end_sample": 3785,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 3785,
+			"end_sample": 3805,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 3805,
+			"end_sample": 3825,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3825,
+			"end_sample": 3865,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3825,
+			"end_sample": 3865,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 3865,
+			"end_sample": 3895,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 3895,
+			"end_sample": 3905,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 3905,
+			"end_sample": 3920,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 3920,
+			"end_sample": 3940,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 3940,
+			"end_sample": 3950,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 3950,
+			"end_sample": 3970,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 3950,
+			"end_sample": 3970,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 3970,
+			"end_sample": 3980,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 3980,
+			"end_sample": 4015,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 3980,
+			"end_sample": 4015,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 4015,
+			"end_sample": 4045,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 4045,
+			"end_sample": 4055,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 4055,
+			"end_sample": 4075,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 4075,
+			"end_sample": 4095,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 4095,
+			"end_sample": 4135,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 4095,
+			"end_sample": 4135,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 4135,
+			"end_sample": 4165,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 4165,
+			"end_sample": 4175,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 4175,
+			"end_sample": 4190,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 4190,
+			"end_sample": 4210,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 4210,
+			"end_sample": 4220,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 4220,
+			"end_sample": 4240,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 4220,
+			"end_sample": 4240,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 4240,
+			"end_sample": 4250,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 4250,
+			"end_sample": 4285,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 4250,
+			"end_sample": 4285,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 4285,
+			"end_sample": 4315,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 4315,
+			"end_sample": 4325,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 4325,
+			"end_sample": 4345,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 4345,
+			"end_sample": 4365,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Response: ERR_C (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 4365,
+			"end_sample": 4405,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 4365,
+			"end_sample": 4405,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 4405,
+			"end_sample": 4435,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 4435,
+			"end_sample": 4445,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 4445,
+			"end_sample": 4460,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x3"
+			]
+		}, 
+		{
+			"start_sample": 4460,
+			"end_sample": 4480,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: SAME_ADR (0x03/2)"
+			]
+		}, 
+		{
+			"start_sample": 4480,
+			"end_sample": 4490,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Read"
+			]
+		}, 
+		{
+			"start_sample": 4490,
+			"end_sample": 4510,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000003 (0x003)"
+			]
+		}, 
+		{
+			"start_sample": 4490,
+			"end_sample": 4510,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Base address for relative address not captured"
+			]
+		}, 
+		{
+			"start_sample": 4510,
+			"end_sample": 4520,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: TERM (0x3f/6)"
+			]
+		}, 
+		{
+			"start_sample": 4520,
+			"end_sample": 4555,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0xf (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 4520,
+			"end_sample": 4555,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 2000,
+			"end_sample": 4560,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"BREAK"
+			]
+		}, 
+		{
+			"start_sample": 4560,
+			"end_sample": 4600,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}, 
+		{
+			"start_sample": 4600,
+			"end_sample": 4610,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"BREAK asserted in excess of specification cycles"
+			]
+		}, 
+		{
+			"start_sample": 4650,
+			"end_sample": 4660,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"START"
+			]
+		}, 
+		{
+			"start_sample": 4660,
+			"end_sample": 4680,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Slave ID: 0x0"
+			]
+		}, 
+		{
+			"start_sample": 4680,
+			"end_sample": 4710,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Command: ABS_ADR (0x04/3)"
+			]
+		}, 
+		{
+			"start_sample": 4710,
+			"end_sample": 4720,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Direction: Write"
+			]
+		}, 
+		{
+			"start_sample": 4720,
+			"end_sample": 4930,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Address: 0x000000"
+			]
+		}, 
+		{
+			"start_sample": 4930,
+			"end_sample": 4940,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Data Size: BYTE"
+			]
+		}, 
+		{
+			"start_sample": 4940,
+			"end_sample": 5020,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"Data: 0x55"
+			]
+		}, 
+		{
+			"start_sample": 5020,
+			"end_sample": 5060,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"CRC: 0x0 (BAD)"
+			]
+		}, 
+		{
+			"start_sample": 5020,
+			"end_sample": 5060,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bad CRC"
+			]
+		}, 
+		{
+			"start_sample": 5060,
+			"end_sample": 5085,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"TAR"
+			]
+		}
 	]
 }

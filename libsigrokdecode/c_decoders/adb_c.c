@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,23 +90,23 @@ static void adb_put_command(struct srd_decoder_inst *di, adb_state *s,
 
     if (cmd == 0) {
         snprintf(tmp, sizeof(tmp), "Reset:%02X", C);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_RESET, tmp, "RST", "R");
+        c_put(di, ss, es, s->out_ann, ANN_RESET, tmp, "RST", "R");
     } else if (cmd == 1) {
         snprintf(tmp, sizeof(tmp), "Flush:%02X", C);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_FLUSH, tmp, "FLS", "F");
+        c_put(di, ss, es, s->out_ann, ANN_FLUSH, tmp, "FLS", "F");
     } else if ((cmd & 0x0c) == 0x08) {
         snprintf(tmp, sizeof(tmp), "Listen($%X,r%d) %02X", addr, reg, C);
         char short_tmp[32];
         snprintf(short_tmp, sizeof(short_tmp), "L:%X:%d", addr, reg);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_LISTEN, tmp, short_tmp, "L");
+        c_put(di, ss, es, s->out_ann, ANN_LISTEN, tmp, short_tmp, "L");
     } else if ((cmd & 0x0c) == 0x0c) {
         snprintf(tmp, sizeof(tmp), "Talk($%X,r%d) %02X", addr, reg, C);
         char short_tmp[32];
         snprintf(short_tmp, sizeof(short_tmp), "T:%X:%d", addr, reg);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_TALK, tmp, short_tmp, "T");
+        c_put(di, ss, es, s->out_ann, ANN_TALK, tmp, short_tmp, "T");
     } else {
         snprintf(tmp, sizeof(tmp), "Unknown:%02X", C);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_UNKNOWN, tmp, "Unk", "U");
+        c_put(di, ss, es, s->out_ann, ANN_UNKNOWN, tmp, "Unk", "U");
     }
 }
 
@@ -121,7 +121,7 @@ static void adb_put_data(struct srd_decoder_inst *di, adb_state *s,
     case 3: format_bin(tmp, sizeof(tmp), D, 8); break;
     default: snprintf(tmp, sizeof(tmp), "%02X", D); break;
     }
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA, tmp);
+    c_put(di, ss, es, s->out_ann, ANN_DATA, tmp);
 }
 
 static void adb_reset(struct srd_decoder_inst *di)
@@ -137,9 +137,9 @@ static void adb_reset(struct srd_decoder_inst *di)
 static void adb_start(struct srd_decoder_inst *di)
 {
     adb_state *s = (adb_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "adb");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "adb");
 
-    const char *fmt_str = c_decoder_get_option_string(di, "format", "hex");
+    const char *fmt_str = c_opt_str(di, "format", "hex");
     if (strcmp(fmt_str, "hex") == 0)
         s->format = 0;
     else if (strcmp(fmt_str, "dec") == 0)
@@ -163,63 +163,55 @@ static void adb_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void adb_decode(struct srd_decoder_inst *di)
 {
     adb_state *s = (adb_state *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
     /* Wait for first falling edge */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_fall(cb, 0);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK) return;
-    s->cell_s = samplenum;
+    int ret = c_wait(di, CW_F(0), CW_END);
+    if (ret != SRD_OK)
+        return;
+    s->cell_s = di_samplenum(di);
 
     while (1) {
         /* Wait for rising edge (end of low) */
-        cb = c_cond_new();
-        c_cond_rise(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
-        uint64_t low_e = samplenum;
+        ret = c_wait(di, CW_R(0), CW_END);
+        if (ret != SRD_OK)
+            return;
+        uint64_t low_e = di_samplenum(di);
         double low_us = (double)(low_e - s->cell_s) * 1000000.0 / (double)s->samplerate;
 
         if (low_us < 100.0) {
             /* Normal cell low */
             char tmp[32];
             snprintf(tmp, sizeof(tmp), "%d", (int)((low_e - s->cell_s) * 1000000 / s->samplerate));
-            C_ANN_PUT(di, s->cell_s, low_e, s->out_ann, ANN_LO, tmp);
+            c_put(di, s->cell_s, low_e, s->out_ann, ANN_LO, tmp);
             if (s->bit_count % 8 == 0)
                 s->byte_s = s->cell_s;
         } else if (low_us > 1500.0) {
             /* Global reset */
             char tmp[64];
             snprintf(tmp, sizeof(tmp), "Reset:%d", (int)((low_e - s->cell_s) * 1000000 / s->samplerate));
-            C_ANN_PUT(di, s->cell_s, low_e, s->out_ann, ANN_GRESET, tmp, "Rst", "R");
+            c_put(di, s->cell_s, low_e, s->out_ann, ANN_GRESET, tmp, "Rst", "R");
         } else if (low_us > 500.0) {
             /* Attention (560-1040us) */
             char tmp[64];
             snprintf(tmp, sizeof(tmp), "Attn:%d", (int)((low_e - s->cell_s) * 1000000 / s->samplerate));
-            C_ANN_PUT(di, s->cell_s, low_e, s->out_ann, ANN_ATTN, tmp, "Attn", "A");
+            c_put(di, s->cell_s, low_e, s->out_ann, ANN_ATTN, tmp, "Attn", "A");
             s->attention = 1;
         } else {
             /* SRQ (100-500us) */
             char tmp[64];
             snprintf(tmp, sizeof(tmp), "SRQ:%d", (int)((low_e - s->cell_s) * 1000000 / s->samplerate));
-            C_ANN_PUT(di, s->cell_s, low_e, s->out_ann, ANN_SRQ, tmp, "SRQ", "Q");
+            c_put(di, s->cell_s, low_e, s->out_ann, ANN_SRQ, tmp, "SRQ", "Q");
         }
 
         /* Wait for falling edge (end of high / next cell start) */
-        cb = c_cond_new();
-        c_cond_fall(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
-        uint64_t cell_e = samplenum;
+        ret = c_wait(di, CW_F(0), CW_END);
+        if (ret != SRD_OK)
+            return;
+        uint64_t cell_e = di_samplenum(di);
         double high_us = (double)(cell_e - low_e) * 1000000.0 / (double)s->samplerate;
         double cell_us = (double)(cell_e - s->cell_s) * 1000000.0 / (double)s->samplerate;
 
@@ -227,22 +219,22 @@ static void adb_decode(struct srd_decoder_inst *di)
             /* Normal cell high */
             char tmp[32];
             snprintf(tmp, sizeof(tmp), "%d", (int)((cell_e - low_e) * 1000000 / s->samplerate));
-            C_ANN_PUT(di, low_e, cell_e, s->out_ann, ANN_HI, tmp);
+            c_put(di, low_e, cell_e, s->out_ann, ANN_HI, tmp);
 
             if (cell_us <= 130.0) {
                 /* Bit cell */
                 s->bit_count++;
                 if (s->bit_count == 0) {
                     /* Start bit (1) */
-                    C_ANN_PUT(di, s->cell_s, cell_e, s->out_ann, ANN_START, "Start(1)", "S1", "S");
+                    c_put(di, s->cell_s, cell_e, s->out_ann, ANN_START, "Start(1)", "S1", "S");
                 } else {
                     if (low_us > high_us) {
                         /* bit 0 */
-                        C_ANN_PUT(di, s->cell_s, cell_e, s->out_ann, ANN_BIT, "0");
+                        c_put(di, s->cell_s, cell_e, s->out_ann, ANN_BIT, "0");
                         s->byte_val = ((s->byte_val << 1) & 0xff) | 0;
                     } else {
                         /* bit 1 */
-                        C_ANN_PUT(di, s->cell_s, cell_e, s->out_ann, ANN_BIT, "1");
+                        c_put(di, s->cell_s, cell_e, s->out_ann, ANN_BIT, "1");
                         s->byte_val = ((s->byte_val << 1) & 0xff) | 1;
                     }
                 }
@@ -260,10 +252,10 @@ static void adb_decode(struct srd_decoder_inst *di)
                 /* cell > 130us */
                 if (low_us < 100.0) {
                     /* Stop bit (0) */
-                    C_ANN_PUT(di, s->cell_s, cell_e, s->out_ann, ANN_STOP, "Stop(0)", "T0", "T");
+                    c_put(di, s->cell_s, cell_e, s->out_ann, ANN_STOP, "Stop(0)", "T0", "T");
                 } else {
                     /* Start bit (1) after attention */
-                    C_ANN_PUT(di, low_e, cell_e, s->out_ann, ANN_START, "Start(1)", "S1", "S");
+                    c_put(di, low_e, cell_e, s->out_ann, ANN_START, "Start(1)", "S1", "S");
                     s->bit_count = 0;
                 }
             }
@@ -271,7 +263,7 @@ static void adb_decode(struct srd_decoder_inst *di)
             /* high >= 100us */
             if (low_us < 100.0) {
                 /* Stop bit (0) */
-                C_ANN_PUT(di, s->cell_s, low_e, s->out_ann, ANN_STOP, "Stop(0)", "T0", "T");
+                c_put(di, s->cell_s, low_e, s->out_ann, ANN_STOP, "Stop(0)", "T0", "T");
             }
         }
 
@@ -316,6 +308,7 @@ struct srd_c_decoder adb_c_decoder = {
     .start = adb_start,
     .decode = adb_decode,
     .destroy = adb_destroy,
+    .state_size = 0,
     .metadata = adb_metadata,
 };
 

@@ -564,11 +564,56 @@ static PyObject* Decoder_put(PyObject* self, PyObject* args)
                 end_sample, output_type_name(pdo->output_type),
                 output_id, pdo->proto_id, next_di->inst_id);
 
-            /* Skip C decoder instances - Python→C bridge not supported */
+            /* Bridge Python PROTO output to C decode_upper */
             if (next_di->is_c_inst) {
-                srd_warn("Python→C decoder stacking is not supported: "
-                         "cannot feed data from %s to C decoder %s.",
-                    di->inst_id, next_di->inst_id);
+                if (next_di->c_dec_inst && next_di->c_dec_inst->decode_upper) {
+                    Py_ssize_t py_list_len = PyList_Size(py_data);
+                    const char *cmd = "";
+                    c_field fields[64];
+                    int n_fields = 0;
+
+                    /* data[0] is the command string */
+                    if (py_list_len > 0) {
+                        PyObject *py_cmd = PyList_GetItem(py_data, 0);
+                        if (PyUnicode_Check(py_cmd)) {
+                            PyObject *py_bytes = PyUnicode_AsUTF8String(py_cmd);
+                            if (py_bytes) {
+                                cmd = PyBytes_AsString(py_bytes);
+                                Py_DECREF(py_bytes);
+                            }
+                        }
+                    }
+
+                    /* data[1..N] are field values */
+                    for (Py_ssize_t i = 1; i < py_list_len && n_fields < 64; i++) {
+                        PyObject *item = PyList_GetItem(py_data, i);
+                        if (item == Py_None) {
+                            /* Skip None values - they represent no data */
+                            continue;
+                        } else if (PyUnicode_Check(item)) {
+                            PyObject *ub = PyUnicode_AsUTF8String(item);
+                            if (ub) {
+                                fields[n_fields++] = C_STR(PyBytes_AsString(ub));
+                                Py_DECREF(ub);
+                            }
+                        } else if (PyLong_Check(item)) {
+                            fields[n_fields++] = C_I64(PyLong_AsLongLong(item));
+                        } else if (PyFloat_Check(item)) {
+                            fields[n_fields++] = C_F64(PyFloat_AsDouble(item));
+                        } else if (PyBytes_Check(item)) {
+                            fields[n_fields++] = C_BYTES(
+                                (const uint8_t *)PyBytes_AsString(item),
+                                PyBytes_Size(item));
+                        } else if (PyList_Check(item)) {
+                            /* Nested list (e.g., BITS data) - skip for now */
+                            continue;
+                        }
+                    }
+
+                    next_di->c_dec_inst->decode_upper(next_di,
+                        start_sample, end_sample,
+                        cmd, fields, n_fields);
+                }
                 continue;
             }
 

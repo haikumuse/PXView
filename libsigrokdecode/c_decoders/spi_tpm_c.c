@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -241,16 +241,16 @@ typedef struct {
 } spi_tpm_state;
 
 /* ===== SPI DATA packet helpers ===== */
-static inline int spi_proto_get_mosi(const unsigned char *data, uint64_t data_len, uint8_t *mosi_val)
+static inline int spi_proto_get_mosi(const c_field *fields, int n_fields, uint8_t *mosi_val)
 {
-    if (data_len < 17 || !(data[0] & 1)) { *mosi_val = 0; return 0; }
-    *mosi_val = (uint8_t)data[1]; return 1;
+    if (n_fields < 17 || !(fields[0].u8 & 1)) { *mosi_val = 0; return 0; }
+    *mosi_val = (uint8_t)fields[1].u8; return 1;
 }
 
-static inline int spi_proto_get_miso(const unsigned char *data, uint64_t data_len, uint8_t *miso_val)
+static inline int spi_proto_get_miso(const c_field *fields, int n_fields, uint8_t *miso_val)
 {
-    if (data_len < 17 || !((data[0] >> 1) & 1)) { *miso_val = 0; return 0; }
-    *miso_val = (uint8_t)data[9]; return 1;
+    if (n_fields < 17 || !((fields[0].u8 >> 1) & 1)) { *miso_val = 0; return 0; }
+    *miso_val = (uint8_t)fields[9].u8; return 1;
 }
 
 /* ===== Static data ===== */
@@ -344,7 +344,7 @@ static void spi_tpm_recover_vmk(struct srd_decoder_inst *di, spi_tpm_state *s, u
                         pos += snprintf(hex + pos, sizeof(hex) - pos, "%02x", s->vmk_queue[i]);
                     char buf[128];
                     snprintf(buf, sizeof(buf), "VMK header: %s", hex);
-                    C_ANN_PUT(di, s->vmk_queue_ss[0], s->es, s->out_ann, ANN_VMK, buf);
+                    c_put(di, s->vmk_queue_ss[0], s->es, s->out_ann, ANN_VMK, buf);
                     s->saving_vmk = 1;
                     s->vmk_count = 0;
                 }
@@ -369,7 +369,7 @@ static void spi_tpm_recover_vmk(struct srd_decoder_inst *di, spi_tpm_state *s, u
                     pos += snprintf(hex + pos, sizeof(hex) - pos, "%02x", s->vmk[i]);
                 char buf[128];
                 snprintf(buf, sizeof(buf), "VMK: %s", hex);
-                C_ANN_PUT(di, s->vmk_ss, s->vmk_es, s->out_ann, ANN_VMK, buf);
+                c_put(di, s->vmk_ss, s->vmk_es, s->out_ann, ANN_VMK, buf);
                 s->saving_vmk = 0;
             }
         }
@@ -402,28 +402,26 @@ static void spi_tpm_output_transaction(struct srd_decoder_inst *di, spi_tpm_stat
     /* Operation annotation */
     int op_ann = (s->operation == 0x80) ? ANN_READ : ANN_WRITE;
     const char *op_str = (s->operation == 0x80) ? "Read" : "Write";
-    C_ANN_PUT(di, s->ss_op, s->es_op, s->out_ann, op_ann, op_str);
+    c_put(di, s->ss_op, s->es_op, s->out_ann, op_ann, op_str);
 
     /* Address annotation */
     char addr_buf[128];
     snprintf(addr_buf, sizeof(addr_buf), "Register: %s", reg_name);
-    C_ANN_PUT(di, s->es_op, s->es_addr, s->out_ann, ANN_ADDRESS, addr_buf);
+    c_put(di, s->es_op, s->es_addr, s->out_ann, ANN_ADDRESS, addr_buf);
 
     /* Wait annotation */
     if (s->wait_count > 0) {
-        C_ANN_PUT(di, s->es_addr, s->es_wait, s->out_ann, ANN_WAIT, "Wait");
-        C_ANN_PUT(di, s->es_wait, s->es_data, s->out_ann, ANN_DATA, data_str);
+        c_put(di, s->es_addr, s->es_wait, s->out_ann, ANN_WAIT, "Wait");
+        c_put(di, s->es_wait, s->es_data, s->out_ann, ANN_DATA, data_str);
     } else {
-        C_ANN_PUT(di, s->es_addr, s->es_data, s->out_ann, ANN_DATA, data_str);
+        c_put(di, s->es_addr, s->es_data, s->out_ann, ANN_DATA, data_str);
     }
 
     spi_tpm_end_current_transaction(di, s);
 }
 
 /* ===== recv_proto ===== */
-static void spi_tpm_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void spi_tpm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     spi_tpm_state *s = (spi_tpm_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -440,8 +438,8 @@ static void spi_tpm_recv_proto(struct srd_decoder_inst *di,
         return;
 
     uint8_t mosi, miso;
-    spi_proto_get_mosi(data, data_len, &mosi);
-    spi_proto_get_miso(data, data_len, &miso);
+    spi_proto_get_mosi(fields, n_fields, &mosi);
+    spi_proto_get_miso(fields, n_fields, &miso);
 
     switch (s->state) {
     case TPM_TS_NONE: {
@@ -524,9 +522,9 @@ static void spi_tpm_reset(struct srd_decoder_inst *di)
 static void spi_tpm_start(struct srd_decoder_inst *di)
 {
     spi_tpm_state *s = (spi_tpm_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spi_tpm");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "spi_tpm");
 
-    const char *ver = c_decoder_get_option_string(di, "tpm_version", "2.0");
+    const char *ver = c_opt_str(di, "tpm_version", "2.0");
     if (strcmp(ver, "1.2") == 0) {
         s->tpm_version = 1;
         s->wait_mask = 0xFE;
@@ -579,7 +577,8 @@ struct srd_c_decoder spi_tpm_c_decoder = {
     .start = spi_tpm_start,
     .decode = spi_tpm_decode,
     .destroy = spi_tpm_destroy,
-    .recv_proto = spi_tpm_recv_proto,
+    .decode_upper = spi_tpm_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== Export functions ===== */

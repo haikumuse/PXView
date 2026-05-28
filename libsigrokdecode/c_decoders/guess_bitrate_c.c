@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 Quard <2014500726@smail.xtu.edu.cn>
@@ -65,8 +65,8 @@ static void guess_bitrate_reset(struct srd_decoder_inst *di)
 static void guess_bitrate_start(struct srd_decoder_inst *di)
 {
     struct guess_bitrate_priv *s = (struct guess_bitrate_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "guess_bitrate");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "guess_bitrate");
+    s->samplerate = c_samplerate(di);
 }
 
 static void guess_bitrate_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -80,39 +80,30 @@ static void guess_bitrate_metadata(struct srd_decoder_inst *di, int key, uint64_
 static void guess_bitrate_decode(struct srd_decoder_inst *di)
 {
     struct guess_bitrate_priv *s = (struct guess_bitrate_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (s->samplerate == 0)
         return;
 
     /* Get first edge on the data line */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_edge(cb, 0);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
+    int ret = c_wait(di, CW_E(0), CW_END);
     if (ret != SRD_OK)
         return;
 
-    s->ss_edge = samplenum;
+    s->ss_edge = di_samplenum(di);
 
     while (1) {
-        cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        uint64_t b = samplenum - s->ss_edge;
+        uint64_t b = di_samplenum(di) - s->ss_edge;
         if (s->bitwidth == 0 || b < s->bitwidth) {
             s->bitwidth = b;
             uint64_t bitrate = s->samplerate / b;
             char buf[32];
             snprintf(buf, sizeof(buf), "%llu", (unsigned long long)bitrate);
-            C_ANN_PUT(di, s->ss_edge, samplenum, s->out_ann, ANN_BITRATE, buf);
+            c_put(di, s->ss_edge, di_samplenum(di), s->out_ann, ANN_BITRATE, buf);
         }
-        s->ss_edge = samplenum;
+        s->ss_edge = di_samplenum(di);
     }
 }
 
@@ -153,6 +144,7 @@ struct srd_c_decoder guess_bitrate_c_decoder = {
     .start = guess_bitrate_start,
     .decode = guess_bitrate_decode,
     .destroy = guess_bitrate_destroy,
+    .state_size = 0,
     .metadata = guess_bitrate_metadata,
 };
 

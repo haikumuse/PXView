@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Karl Palsson <karlp@tweak.net.au>
@@ -224,19 +224,19 @@ static void mrf24j40_handle_short(struct srd_decoder_inst *di, mrf24j40_state *s
 
         char ann_buf[MRF24J40_MAX_FRAME * 4 + 32];
         snprintf(ann_buf, sizeof(ann_buf), "%s frame: %s", xmitdir, frame_str);
-        C_ANN_PUT(di, s->ss_frame[rxtx], s->es_frame[rxtx], s->out_ann, idx, ann_buf);
+        c_put(di, s->ss_frame[rxtx], s->es_frame[rxtx], s->out_ann, idx, ann_buf);
         s->framecache_len[rxtx] = 0;
     }
 
     if (write) {
         char buf[128];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->mosi_bytes[1]);
-        C_ANN_PUT_VAL(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SWRITE,
+        c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SWRITE,
             s->mosi_bytes[1], buf);
     } else {
         char buf[128];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->miso_bytes[1]);
-        C_ANN_PUT_VAL(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SREAD,
+        c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SREAD,
             s->miso_bytes[1], buf);
 
         /* Check TXSTAT for retries and CCAFAIL */
@@ -247,16 +247,16 @@ static void mrf24j40_handle_short(struct srd_decoder_inst *di, mrf24j40_state *s
                 int idx = 6 + numretries + txfail;
                 if (idx >= NUM_ANN) idx = NUM_ANN - 1;
                 if (txfail) {
-                    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_TX_FAIL,
+                    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_TX_FAIL,
                         "TX fail (>= 4 retries)", "TX fail");
                 } else {
                     char retry_buf[32];
                     snprintf(retry_buf, sizeof(retry_buf), "TX retries: %d", numretries);
-                    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, idx, retry_buf);
+                    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, idx, retry_buf);
                 }
             }
             if (s->miso_bytes[1] & (1 << 5)) {
-                C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_CCAFAIL,
+                c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_CCAFAIL,
                     "CCAFAIL (channel busy)", "CCAFAIL");
             }
         }
@@ -274,12 +274,12 @@ static void mrf24j40_handle_long(struct srd_decoder_inst *di, mrf24j40_state *s)
     if (write) {
         char buf[128];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->mosi_bytes[2]);
-        C_ANN_PUT_VAL(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_LWRITE,
+        c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_LWRITE,
             s->mosi_bytes[2], buf);
     } else {
         char buf[128];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->miso_bytes[2]);
-        C_ANN_PUT_VAL(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_LREAD,
+        c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_LREAD,
             s->miso_bytes[2], buf);
     }
 
@@ -303,18 +303,16 @@ static void mrf24j40_handle_long(struct srd_decoder_inst *di, mrf24j40_state *s)
     }
 }
 
-static void mrf24j40_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void mrf24j40_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     mrf24j40_state *s = (mrf24j40_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        if (data && data_len >= 2 && data[0] == 0 && data[1] == 1) {
+        if (fields && n_fields >= 2 && fields[0].u8 == 0 && fields[1].u8 == 1) {
             /* CS deasserted mid-stream */
             if (s->byte_count != 0 && s->byte_count != 2 && s->byte_count != 3) {
-                C_ANN_PUT(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARNING, "Misplaced CS!");
+                c_put(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARNING, "Misplaced CS!");
                 mrf24j40_reset_data(s);
             }
         }
@@ -322,12 +320,12 @@ static void mrf24j40_recv_proto(struct srd_decoder_inst *di,
     }
 
     if (strcmp(cmd, "DATA") != 0) return;
-    if (data_len < 17) return;
+    if (n_fields < 17) return;
 
-    int have_mosi = data[0] & 1;
-    int have_miso = (data[0] >> 1) & 1;
-    uint8_t mosi = have_mosi ? data[1] : 0;
-    uint8_t miso = have_miso ? data[9] : 0;
+    int have_mosi = fields[0].u8 & 1;
+    int have_miso = (fields[0].u8 >> 1) & 1;
+    uint8_t mosi = have_mosi ? fields[1].u8 : 0;
+    uint8_t miso = have_miso ? fields[9].u8 : 0;
 
     if (s->byte_count == 0)
         s->ss_cmd = start_sample;
@@ -367,7 +365,7 @@ static void mrf24j40_reset(struct srd_decoder_inst *di)
 static void mrf24j40_start(struct srd_decoder_inst *di)
 {
     mrf24j40_state *s = (mrf24j40_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mrf24j40");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mrf24j40");
 }
 
 static void mrf24j40_decode(struct srd_decoder_inst *di)
@@ -412,7 +410,8 @@ struct srd_c_decoder mrf24j40_c_decoder = {
     .start = mrf24j40_start,
     .decode = mrf24j40_decode,
     .destroy = mrf24j40_destroy,
-    .recv_proto = mrf24j40_recv_proto,
+    .decode_upper = mrf24j40_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

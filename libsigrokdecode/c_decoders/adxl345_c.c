@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -101,7 +101,7 @@ static const struct srd_c_ann_row adxl345_ann_rows[] = {
 
 static void adxl345_putx(struct srd_decoder_inst *di, adxl345_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, cls, text);
+    c_put(di, s->ss, s->es, s->out_ann, cls, text);
 }
 
 static void adxl345_handle_reg_with_scaling(struct srd_decoder_inst *di, adxl345_state *s,
@@ -126,11 +126,11 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
 
     /* Output register name for address */
     if (addr >= 0x1D && register_names[addr]) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, register_names[addr]);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, register_names[addr]);
     } else if (addr < 0x1D) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%d", addr);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, buf);
         char buf2[16];
         snprintf(buf2, sizeof(buf2), "%d", data);
         adxl345_putx(di, s, ANN_REG_DATA, buf2);
@@ -320,7 +320,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
             int val = (data << 8) | s->data_lo;
             char buf[64];
             snprintf(buf, sizeof(buf), "%s: 0x%04X", axis, val);
-            C_ANN_PUT(di, s->ss_data_lo, s->es, s->out_ann, ANN_REG_DATA, buf);
+            c_put(di, s->ss_data_lo, s->es, s->out_ann, ANN_REG_DATA, buf);
             s->has_data_lo = 0;
         } else {
             char buf[16];
@@ -360,9 +360,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     }
 }
 
-static void adxl345_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void adxl345_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     adxl345_state *s = (adxl345_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -371,7 +369,7 @@ static void adxl345_recv_proto(struct srd_decoder_inst *di,
     s->es = end_sample;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        uint8_t new_cs = (data_len > 1) ? data[1] : 0;
+        uint8_t new_cs = (n_fields > 1) ? fields[1].u8 : 0;
         if (new_cs == 0) {
             /* CS asserted (active low) - start new transfer */
             s->state = ADXL345_GET_FIRST_BYTE;
@@ -386,15 +384,15 @@ static void adxl345_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "BITS") == 0)
         return;
 
-    if (strcmp(cmd, "DATA") == 0 && data_len >= 17) {
-        /* SPI DATA format: data[0]=flags, data[1..8]=mosi_val(LE), data[9..16]=miso_val(LE) */
-        uint8_t flags = data[0];
+    if (strcmp(cmd, "DATA") == 0 && n_fields >= 17) {
+        /* SPI DATA format: fields[0].u8=flags, data[1..8]=mosi_val(LE), data[9..16]=miso_val(LE) */
+        uint8_t flags = fields[0].u8;
         int have_mosi = flags & 1;
         int have_miso = (flags >> 1) & 1;
         uint64_t mosi_val = 0, miso_val = 0;
         for (int i = 0; i < 8; i++) {
-            mosi_val |= (uint64_t)data[1 + i] << (8 * i);
-            miso_val |= (uint64_t)data[9 + i] << (8 * i);
+            mosi_val |= (uint64_t)fields[1 + i].u8 << (8 * i);
+            miso_val |= (uint64_t)fields[9 + i].u8 << (8 * i);
         }
 
         switch (s->state) {
@@ -407,10 +405,10 @@ static void adxl345_recv_proto(struct srd_decoder_inst *di,
                 s->is_multi = (reg_byte >> 6) & 1;
                 s->address = reg_byte & 0x3F;
                 /* Output R/W and MB annotations */
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann,
+                c_put(di, s->ss, s->es, s->out_ann,
                     s->is_read_op ? ANN_READ : ANN_WRITE,
                     s->is_read_op ? "READ REG" : "WRITE REG");
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MB,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_MB,
                     s->is_multi ? "MULTIPLE BYTES" : "SINGLE BYTE");
                 s->state = ADXL345_GET_DATA;
             }
@@ -444,7 +442,7 @@ static void adxl345_reset(struct srd_decoder_inst *di)
 static void adxl345_start(struct srd_decoder_inst *di)
 {
     adxl345_state *s = (adxl345_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "adxl345");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "adxl345");
 }
 
 static void adxl345_decode(struct srd_decoder_inst *di)
@@ -489,7 +487,8 @@ struct srd_c_decoder adxl345_c_decoder = {
     .start = adxl345_start,
     .decode = adxl345_decode,
     .destroy = adxl345_destroy,
-    .recv_proto = adxl345_recv_proto,
+    .decode_upper = adxl345_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

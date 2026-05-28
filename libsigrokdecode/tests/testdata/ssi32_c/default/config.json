@@ -1,12 +1,15 @@
 {
   "decoder": "ssi32_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "spi"
-  ],
+  "num_channels": 4,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "msgsize": 64
-  }
+  "stack": [
+    {
+      "id": "spi_c",
+      "channels": {
+        "clk": 0
+      }
+    }
+  ]
 }

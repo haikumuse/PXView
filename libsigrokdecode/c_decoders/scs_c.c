@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2020 Michael Stapelberg
  *
  * This program is free software; you can redistribute it and/or modify
@@ -41,9 +41,7 @@ static const struct srd_c_ann_row scs_ann_rows[] = {
     {"scs", "SCS", scs_row_scs_classes, 1},
 };
 
-static void scs_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void scs_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     scs_state *s = (scs_state *)c_decoder_get_private(di);
     if (!s)
@@ -51,30 +49,30 @@ static void scs_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 1)
+    if (n_fields < 1)
         return;
 
-    uint8_t val = data[0];
+    uint8_t val = fields[0].u8;
 
     if (s->telegram_idx == 0 && val == 0xa8) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "init");
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCS, "init");
     } else if (s->telegram_idx == 1) {
         s->crc = val;
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "addr");
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCS, "addr");
     } else if (s->telegram_idx == 2) {
         s->crc ^= val;
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "??");
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCS, "??");
     } else if (s->telegram_idx == 3) {
         s->crc ^= val;
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "request");
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCS, "request");
     } else if (s->telegram_idx == 4) {
         s->crc ^= val;
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "??");
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCS, "??");
     } else if (s->telegram_idx == 5) {
         const char *crc_str = (s->crc == val) ? "good crc" : "bad crc";
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, crc_str);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCS, crc_str);
     } else if (s->telegram_idx == 6) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCS, "term");
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCS, "term");
         s->telegram_idx = -1;
     }
 
@@ -93,7 +91,7 @@ static void scs_reset(struct srd_decoder_inst *di)
 static void scs_start(struct srd_decoder_inst *di)
 {
     scs_state *s = (scs_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "scs");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "scs");
 }
 
 static void scs_decode(struct srd_decoder_inst *di)
@@ -138,7 +136,8 @@ struct srd_c_decoder scs_c_decoder = {
     .start = scs_start,
     .decode = scs_decode,
     .destroy = scs_destroy,
-    .recv_proto = scs_recv_proto,
+    .decode_upper = scs_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

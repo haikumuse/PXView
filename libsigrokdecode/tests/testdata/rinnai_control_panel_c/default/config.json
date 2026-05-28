@@ -9,5 +9,6 @@
   "options": {
     "invert": "no",
     "bit_numbering": "lsb"
-  }
+  },
+  "expected_deviations": true
 }

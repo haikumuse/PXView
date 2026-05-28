@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Analog Devices Inc.
@@ -69,20 +69,18 @@ static void ltc242x_handle_voltage(struct srd_decoder_inst *di, ltc242x_state *s
     char v1[32], v2[32];
     snprintf(v1, sizeof(v1), "%.6fV", input_voltage);
     snprintf(v2, sizeof(v2), "%.2fV", input_voltage);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, channel, v1, v2);
+    c_put(di, s->ss, s->es, s->out_ann, channel, v1, v2);
 }
 
-static void ltc242x_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ltc242x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ltc242x_state *s = (ltc242x_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        if (!data || data_len < 2) return;
-        int cs_old = data[0];
-        int cs_new = data[1];
+        if (!fields || n_fields < 2) return;
+        int cs_old = fields[0].u8;
+        int cs_new = fields[1].u8;
         if (cs_old == 0 && cs_new == 1) {
             s->es = end_sample;
             s->data >>= 1;
@@ -92,26 +90,26 @@ static void ltc242x_recv_proto(struct srd_decoder_inst *di,
             s->ss = start_sample;
         }
     } else if (strcmp(cmd, "BITS") == 0) {
-        if (!data || data_len < 2) return;
+        if (!fields || n_fields < 2) return;
 
-        uint8_t flags = data[0];
+        uint8_t flags = fields[0].u8;
         int have_miso = (flags >> 1) & 1;
-        int mosi_cnt = data[1];
+        int mosi_cnt = fields[1].u8;
         int pos = 2;
 
         /* Skip MOSI bits */
         pos += mosi_cnt * 17;
 
         /* Skip reserved byte */
-        if (pos >= (int)data_len) return;
+        if (pos >= (int)n_fields) return;
         pos++;
 
-        if (pos >= (int)data_len) return;
-        int miso_cnt = data[pos++];
+        if (pos >= (int)n_fields) return;
+        int miso_cnt = fields[pos++].u8;
 
         if (have_miso && miso_cnt > 0) {
-            for (int i = 0; i < miso_cnt && pos + 17 <= (int)data_len; i++) {
-                int bit_val = data[pos];
+            for (int i = 0; i < miso_cnt && pos + 17 <= (int)n_fields; i++) {
+                int bit_val = fields[pos].u8;
                 pos += 17;
                 s->data = (s->data | bit_val) << 1;
             }
@@ -132,8 +130,8 @@ static void ltc242x_reset(struct srd_decoder_inst *di)
 static void ltc242x_start(struct srd_decoder_inst *di)
 {
     ltc242x_state *s = (ltc242x_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ltc242x");
-    s->vref = c_decoder_get_option_double(di, "vref", 1.5);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ltc242x");
+    s->vref = c_opt_dbl(di, "vref", 1.5);
 }
 
 static void ltc242x_decode(struct srd_decoder_inst *di)
@@ -178,7 +176,8 @@ struct srd_c_decoder ltc242x_c_decoder = {
     .start = ltc242x_start,
     .decode = ltc242x_decode,
     .destroy = ltc242x_destroy,
-    .recv_proto = ltc242x_recv_proto,
+    .decode_upper = ltc242x_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -40,6 +40,10 @@ typedef struct {
     int block_frame_count;
     uint64_t block_start_ss;
     uint64_t block_end_es;
+    /* Per-frame data for block output */
+    uint8_t block_frame_bytes[LTAR_SD_MAX_FRAMES];
+    uint64_t block_frame_ss[LTAR_SD_MAX_FRAMES];
+    uint64_t block_frame_es[LTAR_SD_MAX_FRAMES];
     /* Spacer count */
     int spacer_count;
 } ltar_sd_state;
@@ -85,28 +89,52 @@ static void ltar_sd_reset_block(ltar_sd_state *s)
 
 static void ltar_sd_put_frame(struct srd_decoder_inst *di, ltar_sd_state *s, int data)
 {
-    char buf[64];
+    char buf[64], buf2[64], buf3[64];
     snprintf(buf, sizeof(buf), "Data frame: 0x%02X", data);
-    C_ANN_PUT(di, s->frame_bits_ss[0], s->frame_bits_es[s->frame_bit_count - 1],
-              s->out_ann, ANN_FRAME, buf);
+    snprintf(buf2, sizeof(buf2), "Data: 0x%02X", data);
+    snprintf(buf3, sizeof(buf3), "D 0x%02X", data);
+    c_put(di, s->frame_bits_ss[0], s->frame_bits_es[s->frame_bit_count - 1],
+              s->out_ann, ANN_FRAME, buf, buf2, buf3);
+
+    /* Store frame data for block output */
+    if (s->block_frame_count < LTAR_SD_MAX_FRAMES) {
+        s->block_frame_bytes[s->block_frame_count] = (uint8_t)data;
+        s->block_frame_ss[s->block_frame_count] = s->frame_bits_ss[0];
+        s->block_frame_es[s->block_frame_count] = s->frame_bits_es[s->frame_bit_count - 1];
+    }
+
+    /* Output per-frame protocol data for upper-layer decoders */
+    if (s->out_python >= 0) {
+        c_proto(di, s->frame_bits_ss[0], s->frame_bits_es[s->frame_bit_count - 1],
+                s->out_python, "FRAME",
+                C_U8(data), C_U64(s->frame_bits_ss[0]), C_U64(s->frame_bits_es[s->frame_bit_count - 1]),
+                C_END);
+    }
 }
 
 static void ltar_sd_put_frame_error(struct srd_decoder_inst *di, ltar_sd_state *s)
 {
-    C_ANN_PUT(di, s->frame_bits_ss[0], s->frame_bits_es[s->frame_bit_count - 1],
-              s->out_ann, ANN_FRAME_ERROR, "Data framing error");
+    c_put(di, s->frame_bits_ss[0], s->frame_bits_es[s->frame_bit_count - 1],
+              s->out_ann, ANN_FRAME_ERROR, "Data framing error", "Framing error", "Frame Error", "FE");
 }
 
 static void ltar_sd_put_block(struct srd_decoder_inst *di, ltar_sd_state *s)
 {
-    char buf[64];
+    char buf[64], buf2[64];
     snprintf(buf, sizeof(buf), "Block, %d frames", s->block_frame_count);
-    C_ANN_PUT(di, s->block_start_ss, s->block_end_es, s->out_ann, ANN_BLOCK, buf);
+    snprintf(buf2, sizeof(buf2), "B %d", s->block_frame_count);
+    c_put(di, s->block_start_ss, s->block_end_es, s->out_ann, ANN_BLOCK, buf, buf2);
+
+    /* Output block-end protocol signal for upper-layer decoders */
+    if (s->out_python >= 0) {
+        c_proto(di, s->block_start_ss, s->block_end_es, s->out_python, "BLOCK_END",
+                C_U8(s->block_frame_count), C_END);
+    }
 }
 
 static void ltar_sd_put_block_error(struct srd_decoder_inst *di, ltar_sd_state *s)
 {
-    C_ANN_PUT(di, s->block_start_ss, s->block_end_es, s->out_ann, ANN_BLOCK_ERROR, "Block Error");
+    c_put(di, s->block_start_ss, s->block_end_es, s->out_ann, ANN_BLOCK_ERROR, "Block Error", "Block E", "BE");
 }
 
 static void ltar_sd_abort_current(struct srd_decoder_inst *di, ltar_sd_state *s)
@@ -120,23 +148,21 @@ static void ltar_sd_abort_current(struct srd_decoder_inst *di, ltar_sd_state *s)
     s->state = LTAR_SD_IDLE;
 }
 
-static void ltar_sd_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ltar_sd_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ltar_sd_state *s = (ltar_sd_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
     if (strcmp(cmd, "BIT") == 0) {
-        int bit_val = (data_len > 0) ? data[0] : 0;
+        int bit_val = (n_fields > 0) ? fields[0].u8 : 0;
 
         switch (s->state) {
         case LTAR_SD_IDLE:
             if (bit_val == 0) {
                 /* Start bit */
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_BIT_START,
-                          "Start Bit");
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_BIT_START,
+                          "Start Bit", "Start B", "Start");
                 if (s->block_frame_count == 0)
                     s->block_start_ss = start_sample;
                 s->frame_bits_ss[0] = start_sample;
@@ -149,7 +175,7 @@ static void ltar_sd_recv_proto(struct srd_decoder_inst *di,
 
         case LTAR_SD_DATA:
             /* Collect 8 data bits */
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_BIT_DATA,
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_BIT_DATA,
                       bit_val ? "1" : "0");
             if (s->frame_bit_count < LTAR_SD_FRAME_BITS) {
                 s->frame_bits_ss[s->frame_bit_count] = start_sample;
@@ -164,8 +190,8 @@ static void ltar_sd_recv_proto(struct srd_decoder_inst *di,
         case LTAR_SD_FRAMESTOP:
             if (bit_val == 1) {
                 /* End of a data frame */
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_BIT_STOP,
-                          "Stop Bit");
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_BIT_STOP,
+                          "Stop Bit", "Stop B", "Stop");
                 if (s->frame_bit_count < LTAR_SD_FRAME_BITS) {
                     s->frame_bits_ss[s->frame_bit_count] = start_sample;
                     s->frame_bits_es[s->frame_bit_count] = end_sample;
@@ -204,13 +230,13 @@ static void ltar_sd_recv_proto(struct srd_decoder_inst *di,
             if (bit_val == 1) {
                 /* Spacer bits between frames/blocks */
                 if (s->spacer_count < 14) {
-                    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_BIT_SPACER,
-                              "Spacer Bit");
+                    c_put(di, start_sample, end_sample, s->out_ann, ANN_BIT_SPACER,
+                              "Spacer Bit", "Spacer");
                     s->spacer_count++;
                 } else {
                     /* End of a block */
-                    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_BIT_BLOCKEND,
-                              "Block Stop");
+                    c_put(di, start_sample, end_sample, s->out_ann, ANN_BIT_BLOCKEND,
+                              "Block Stop", "Block");
                     ltar_sd_put_block(di, s);
                     ltar_sd_reset_block(s);
                     s->state = LTAR_SD_IDLE;
@@ -218,8 +244,8 @@ static void ltar_sd_recv_proto(struct srd_decoder_inst *di,
             } else {
                 /* Start bit of another frame */
                 if (s->spacer_count < 10) {
-                    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_BIT_START,
-                              "Start Bit");
+                    c_put(di, start_sample, end_sample, s->out_ann, ANN_BIT_START,
+                              "Start Bit", "Start B", "Start");
                     s->frame_bits_ss[0] = start_sample;
                     s->frame_bits_es[0] = end_sample;
                     s->frame_bits_val[0] = bit_val;
@@ -261,7 +287,8 @@ static void ltar_sd_reset(struct srd_decoder_inst *di)
 static void ltar_sd_start(struct srd_decoder_inst *di)
 {
     ltar_sd_state *s = (ltar_sd_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ltar_smartdevice");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ltar_smartdevice");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "ltar_smartdevice");
 }
 
 static void ltar_sd_decode(struct srd_decoder_inst *di)
@@ -306,7 +333,8 @@ struct srd_c_decoder ltar_smartdevice_c_decoder = {
     .start = ltar_sd_start,
     .decode = ltar_sd_decode,
     .destroy = ltar_sd_destroy,
-    .recv_proto = ltar_sd_recv_proto,
+    .decode_upper = ltar_sd_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

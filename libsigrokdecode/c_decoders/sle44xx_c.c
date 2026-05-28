@@ -144,7 +144,7 @@ static void sle44xx_flush_queued(struct srd_decoder_inst *di, struct sle44xx_pri
         }
         char ann_txt[256];
         snprintf(ann_txt, sizeof(ann_txt), "Answer To Reset: %s", text);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_ATR_DATA, ann_txt, text);
+        c_put(di, ss, es, s->out_ann, ANN_ATR_DATA, ann_txt, text);
     }
 
     /* CMD data */
@@ -159,7 +159,7 @@ static void sle44xx_flush_queued(struct srd_decoder_inst *di, struct sle44xx_pri
         }
         char ann_txt[256];
         snprintf(ann_txt, sizeof(ann_txt), "Command: %s", text);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_CMD_DATA, ann_txt, text);
+        c_put(di, ss, es, s->out_ann, ANN_CMD_DATA, ann_txt, text);
     }
 
     /* OUT data */
@@ -174,7 +174,7 @@ static void sle44xx_flush_queued(struct srd_decoder_inst *di, struct sle44xx_pri
         }
         char ann_txt[1024];
         snprintf(ann_txt, sizeof(ann_txt), "Outgoing: %s", text);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_OUT_DATA, ann_txt, text);
+        c_put(di, ss, es, s->out_ann, ANN_OUT_DATA, ann_txt, text);
     }
 
     /* PROC data */
@@ -189,7 +189,7 @@ static void sle44xx_flush_queued(struct srd_decoder_inst *di, struct sle44xx_pri
         } else {
             snprintf(text, sizeof(text), "%d clocks, I/O %d", clk, high);
         }
-        C_ANN_PUT(di, s->proc_state.ss, s->proc_state.es, s->out_ann, ANN_PROC_DATA, text);
+        c_put(di, s->proc_state.ss, s->proc_state.es, s->out_ann, ANN_PROC_DATA, text);
     }
 
     /* Reset accumulators */
@@ -259,13 +259,7 @@ static void sle44xx_command_check(struct sle44xx_priv *s, int ctrl, int addr, in
         break;
     }
 
-    snprintf(texts, texts_size, fmt_long, addr, data);
-    /* Append short form */
-    int len = (int)strlen(texts);
-    if (len < texts_size - 64) {
-        texts[len] = '|';
-        snprintf(texts + len + 1, texts_size - len - 1, fmt_short, addr, data);
-    }
+    snprintf(texts, texts_size, fmt_long, ctrl, addr, data);
 }
 
 static void sle44xx_handle_data_byte(struct srd_decoder_inst *di, struct sle44xx_priv *s,
@@ -294,13 +288,29 @@ static void sle44xx_handle_data_byte(struct srd_decoder_inst *di, struct sle44xx
             int ctrl = s->cmd_bytes[0].data;
             int addr = s->cmd_bytes[1].data;
             int d = s->cmd_bytes[2].data;
-            char texts[256];
+            char text_long[256], text_short[128];
             int out_len = 0, is_proc = 0;
-            sle44xx_command_check(s, ctrl, addr, d, texts, sizeof(texts), &out_len, &is_proc);
+            /* Generate long form */
+            sle44xx_command_check(s, ctrl, addr, d, text_long, sizeof(text_long), &out_len, &is_proc);
+            /* Generate short form */
+            {
+                const char *fmt_short;
+                switch (ctrl) {
+                case 0x30: fmt_short = "RD-M @%02x"; break;
+                case 0x31: fmt_short = "RD-S"; break;
+                case 0x33: fmt_short = "CMP-V @%02x =%02x"; break;
+                case 0x34: fmt_short = "RD-P @%02x"; break;
+                case 0x38: fmt_short = "WR-M @%02x =%02x"; break;
+                case 0x39: fmt_short = "WR-S @%02x =%02x"; break;
+                case 0x3c: fmt_short = "WR-P @%02x =%02x"; break;
+                default:   fmt_short = "UNK-%02x @%02x, =%02x"; break;
+                }
+                snprintf(text_short, sizeof(text_short), fmt_short, ctrl, addr, d);
+            }
 
             uint64_t css = s->cmd_bytes[0].ss;
             uint64_t ces = s->cmd_bytes[2].es;
-            C_ANN_PUT(di, css, ces, s->out_ann, ANN_CMD_DATA, texts);
+            c_put(di, css, ces, s->out_ann, ANN_CMD_DATA, text_long, text_short);
 
             s->cmd_count = 0;
             s->out_len = out_len;
@@ -330,8 +340,14 @@ static void sle44xx_handle_data_bit(struct srd_decoder_inst *di, struct sle44xx_
     if (s->state == STATE_DATA) {
         if (s->out_len > 0)
             s->state = STATE_OUT;
-        else if (s->cmd_proc)
+        else if (s->cmd_proc) {
             s->state = STATE_PROC;
+            /* Match Python's processing_start(ss or es, es or ss, bit == 1) */
+            s->proc_state.ss = ss ? ss : es;
+            s->proc_state.es = es ? es : ss;
+            s->proc_state.clk_count = 0;
+            s->proc_state.io_high = (bit_val == 1);
+        }
         else
             s->state = STATE_OUT;
     }
@@ -374,7 +390,7 @@ static void sle44xx_handle_data_bit(struct srd_decoder_inst *di, struct sle44xx_
         /* Emit bit annotation */
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[s->bit_count].val);
-        C_ANN_PUT(di, s->bits[s->bit_count].ss, es, s->out_ann, ANN_BIT_SYM, bit_str);
+        c_put(di, s->bits[s->bit_count].ss, es, s->out_ann, ANN_BIT_SYM, bit_str);
         s->bit_count++;
         s->cur_bit_started = 0;
     }
@@ -400,12 +416,36 @@ static void sle44xx_handle_data_bit(struct srd_decoder_inst *di, struct sle44xx_
     default: ann_cls = ANN_OUT_BYTE; break;
     }
 
-    char byte_txt[32];
-    snprintf(byte_txt, sizeof(byte_txt), "%02x", data);
-    C_ANN_PUT_VAL(di, bss, bes, s->out_ann, ann_cls, data, byte_txt);
+    char byte_hex[8], byte_long[64], byte_mid[32];
+    snprintf(byte_hex, sizeof(byte_hex), "%02x", data);
+    switch (ann_cls) {
+    case ANN_ATR_BYTE:
+        snprintf(byte_long, sizeof(byte_long), "Answer To Reset: %s", byte_hex);
+        snprintf(byte_mid, sizeof(byte_mid), "ATR: %s", byte_hex);
+        c_put_v(di, bss, bes, s->out_ann, ann_cls, data, byte_long, byte_mid, byte_hex);
+        break;
+    case ANN_CMD_BYTE:
+        snprintf(byte_long, sizeof(byte_long), "Command: %s", byte_hex);
+        snprintf(byte_mid, sizeof(byte_mid), "Cmd: %s", byte_hex);
+        c_put_v(di, bss, bes, s->out_ann, ann_cls, data, byte_long, byte_mid, byte_hex);
+        break;
+    case ANN_OUT_BYTE:
+        snprintf(byte_long, sizeof(byte_long), "Outgoing data: %s", byte_hex);
+        snprintf(byte_mid, sizeof(byte_mid), "Data: %s", byte_hex);
+        c_put_v(di, bss, bes, s->out_ann, ann_cls, data, byte_long, byte_mid, byte_hex);
+        break;
+    case ANN_PROC_BYTE:
+        snprintf(byte_long, sizeof(byte_long), "Internal processing: %s", byte_hex);
+        snprintf(byte_mid, sizeof(byte_mid), "Proc: %s", byte_hex);
+        c_put_v(di, bss, bes, s->out_ann, ann_cls, data, byte_long, byte_mid, byte_hex);
+        break;
+    default:
+        c_put_v(di, bss, bes, s->out_ann, ann_cls, data, byte_hex);
+        break;
+    }
 
     /* Binary output */
-    c_decoder_put_binary(di, bss, bes, s->out_binary, 0, 1, &data);
+    c_put_bin(di, bss, bes, s->out_binary, 0, 1, &data);
 
     /* Pass to handler */
     sle44xx_handle_data_byte(di, s, bss, bes, data);
@@ -429,8 +469,8 @@ static void sle44xx_reset(struct srd_decoder_inst *di)
 static void sle44xx_start(struct srd_decoder_inst *di)
 {
     struct sle44xx_priv *s = (struct sle44xx_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sle44xx");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "sle44xx");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sle44xx");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "sle44xx");
 }
 
 static void sle44xx_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -443,11 +483,8 @@ static void sle44xx_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
 static void sle44xx_decode(struct srd_decoder_inst *di)
 {
     struct sle44xx_priv *s = (struct sle44xx_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
 
     uint64_t ss_reset = 0, es_reset = 0;
     uint64_t ss_clk = 0, es_clk = 0;
@@ -457,52 +494,16 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
         int is_outgoing = (s->state == STATE_OUT);
         int is_processing = (s->state == STATE_PROC);
 
-        srd_cond_builder *cb = c_cond_new();
-        /* COND_RESET_START: RST rising */
-        c_cond_rise(cb, CH_RST);
-        c_cond_or(cb);
-        /* COND_RESET_STOP: RST falling */
-        c_cond_fall(cb, CH_RST);
-        c_cond_or(cb);
-        /* COND_RSTCLK_START: RST high, CLK rising */
-        c_cond_high(cb, CH_RST);
-        c_cond_rise(cb, CH_CLK);
-        c_cond_or(cb);
-        /* COND_RSTCLK_STOP: RST high, CLK falling */
-        c_cond_high(cb, CH_RST);
-        c_cond_fall(cb, CH_CLK);
-        c_cond_or(cb);
-        /* COND_DATA_START: RST low, CLK rising */
-        c_cond_low(cb, CH_RST);
-        c_cond_rise(cb, CH_CLK);
-        c_cond_or(cb);
-        /* COND_DATA_STOP: RST low, CLK falling */
-        c_cond_low(cb, CH_RST);
-        c_cond_fall(cb, CH_CLK);
-        c_cond_or(cb);
-        /* COND_CMD_START: CLK high, IO falling */
-        c_cond_high(cb, CH_CLK);
-        c_cond_fall(cb, CH_IO);
-        c_cond_or(cb);
-        /* COND_CMD_STOP: CLK high, IO rising */
-        c_cond_high(cb, CH_CLK);
-        c_cond_rise(cb, CH_IO);
-        c_cond_or(cb);
-        /* COND_PROC_IOH: RST low, IO rising */
-        c_cond_low(cb, CH_RST);
-        c_cond_rise(cb, CH_IO);
-
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(CH_RST), CW_OR, CW_F(CH_RST), CW_OR, CW_H(CH_RST), CW_R(CH_CLK), CW_OR, CW_H(CH_RST), CW_F(CH_CLK), CW_OR, CW_L(CH_RST), CW_R(CH_CLK), CW_OR, CW_L(CH_RST), CW_F(CH_CLK), CW_OR, CW_H(CH_CLK), CW_F(CH_IO), CW_OR, CW_H(CH_CLK), CW_R(CH_IO), CW_OR, CW_L(CH_RST), CW_R(CH_IO), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int io = c_decoder_get_pin(di, CH_IO, samplenum);
+        int io = c_pin(di, CH_IO);
 
         /* COND_RESET_START */
-        if (matched & (1ULL << 0)) {
+        if (di_matched(di) & (1ULL << 0)) {
             sle44xx_flush_queued(di, s);
-            ss_reset = samplenum;
+            ss_reset = di_samplenum(di);
             es_reset = 0;
             ss_clk = 0;
             es_clk = 0;
@@ -511,19 +512,19 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
             continue;
         }
         /* COND_RESET_STOP */
-        if (matched & (1ULL << 1)) {
+        if (di_matched(di) & (1ULL << 1)) {
             if (has_reset_start) {
-                es_reset = samplenum;
+                es_reset = di_samplenum(di);
                 sle44xx_flush_queued(di, s);
                 if (has_rstclk && es_clk > 0) {
                     /* RESET with CLK pulse */
-                    C_ANN_PUT(di, ss_reset, es_reset, s->out_ann, ANN_RESET_SYM, "Reset", "R");
+                    c_put(di, ss_reset, es_reset, s->out_ann, ANN_RESET_SYM, "Reset", "R");
                     s->bit_count = 0;
                     s->cur_bit_started = 0;
                     s->state = STATE_ATR;
                 } else {
                     /* INTERRUPT (no CLK pulse) */
-                    C_ANN_PUT(di, ss_reset, es_reset, s->out_ann, ANN_INTR_SYM, "Interrupt", "Intr", "I");
+                    c_put(di, ss_reset, es_reset, s->out_ann, ANN_INTR_SYM, "Interrupt", "Intr", "I");
                     s->bit_count = 0;
                     s->cur_bit_started = 0;
                     s->state = STATE_NONE;
@@ -533,45 +534,45 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
             continue;
         }
         /* COND_RSTCLK_START */
-        if (matched & (1ULL << 2)) {
-            ss_clk = samplenum;
+        if (di_matched(di) & (1ULL << 2)) {
+            ss_clk = di_samplenum(di);
             has_rstclk = 1;
             continue;
         }
         /* COND_RSTCLK_STOP */
-        if (matched & (1ULL << 3)) {
-            es_clk = samplenum;
+        if (di_matched(di) & (1ULL << 3)) {
+            es_clk = di_samplenum(di);
             continue;
         }
         /* COND_DATA_START */
-        if (matched & (1ULL << 4)) {
-            sle44xx_handle_data_bit(di, s, samplenum, 0, io, 1);
+        if (di_matched(di) & (1ULL << 4)) {
+            sle44xx_handle_data_bit(di, s, di_samplenum(di), 0, io, 1);
             continue;
         }
         /* COND_DATA_STOP */
-        if (matched & (1ULL << 5)) {
-            sle44xx_handle_data_bit(di, s, 0, samplenum, 0, 0);
+        if (di_matched(di) & (1ULL << 5)) {
+            sle44xx_handle_data_bit(di, s, 0, di_samplenum(di), 0, 0);
             continue;
         }
         /* PROC IO high check */
-        if (is_processing && (matched & (1ULL << 8))) {
-            sle44xx_handle_data_bit(di, s, samplenum, samplenum, io, 1);
+        if (is_processing && (di_matched(di) & (1ULL << 8))) {
+            sle44xx_handle_data_bit(di, s, di_samplenum(di), di_samplenum(di), io, 1);
             continue;
         }
         /* CMD START/STOP only outside OUT/PROC */
         if (!is_outgoing && !is_processing) {
-            if (matched & (1ULL << 6)) {
+            if (di_matched(di) & (1ULL << 6)) {
                 /* START condition */
                 sle44xx_flush_queued(di, s);
-                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_START_SYM, "Start", "ST", "S");
+                c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_START_SYM, "Start", "ST", "S");
                 s->bit_count = 0;
                 s->cur_bit_started = 0;
                 s->state = STATE_CMD;
                 continue;
             }
-            if (matched & (1ULL << 7)) {
+            if (di_matched(di) & (1ULL << 7)) {
                 /* STOP condition */
-                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_STOP_SYM, "Stop", "SP", "P");
+                c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_STOP_SYM, "Stop", "SP", "P");
                 s->bit_count = 0;
                 s->cur_bit_started = 0;
                 s->state = STATE_DATA;
@@ -618,6 +619,7 @@ struct srd_c_decoder sle44xx_c_decoder = {
     .start = sle44xx_start,
     .decode = sle44xx_decode,
     .destroy = sle44xx_destroy,
+    .state_size = 0,
     .metadata = sle44xx_metadata,
 };
 

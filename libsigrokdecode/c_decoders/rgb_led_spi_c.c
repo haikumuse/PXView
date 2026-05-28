@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2014 Matt Ranostay <mranostay@gmail.com>
@@ -74,11 +74,11 @@ static const struct srd_c_ann_row rgb_led_spi_ann_rows[] = {
     {"warnings", "Warnings", rgb_led_spi_row_warnings_classes, 1},
 };
 
-static uint64_t rgb_led_spi_read_le64(const unsigned char *data)
+static uint64_t rgb_led_spi_read_le64(const c_field *fields)
 {
     uint64_t val = 0;
     for (int i = 0; i < 8; i++)
-        val |= ((uint64_t)data[i]) << (8 * i);
+        val |= ((uint64_t)fields[i].u8) << (8 * i);
     return val;
 }
 
@@ -92,9 +92,9 @@ static void rgb_led_spi_output_simple(struct srd_decoder_inst *di,
 
     char buf[32];
     snprintf(buf, sizeof(buf), "#%.6x", rgb_value);
-    C_ANN_PUT_VAL(di, start_sample, end_sample, s->out_ann, ANN_RGB,
+    c_put_v(di, start_sample, end_sample, s->out_ann, ANN_RGB,
                   rgb_value, buf);
-    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_LED_FRAME, buf);
+    c_put(di, start_sample, end_sample, s->out_ann, ANN_LED_FRAME, buf);
 }
 
 static void rgb_led_spi_output_apa102(struct srd_decoder_inst *di,
@@ -109,27 +109,25 @@ static void rgb_led_spi_output_apa102(struct srd_decoder_inst *di,
 
     char buf[64];
     snprintf(buf, sizeof(buf), "LED %d: B=%d #%.6x", s->led_index, brightness, rgb_value);
-    C_ANN_PUT_VAL(di, start_sample, end_sample, s->out_ann, ANN_RGB,
+    c_put_v(di, start_sample, end_sample, s->out_ann, ANN_RGB,
                   rgb_value, buf);
-    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_LED_FRAME, buf);
+    c_put(di, start_sample, end_sample, s->out_ann, ANN_LED_FRAME, buf);
     s->led_index++;
 }
 
-static void rgb_led_spi_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void rgb_led_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     rgb_led_spi_state *s = (rgb_led_spi_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "DATA") == 0) {
         if (!s->cs_asserted) return;
-        if (data_len < 17) return;
+        if (n_fields < 17) return;
 
-        int have_mosi = data[0] & 1;
+        int have_mosi = fields[0].u8 & 1;
         if (!have_mosi) return;
 
-        uint64_t mosi = rgb_led_spi_read_le64(data + 1);
+        uint64_t mosi = rgb_led_spi_read_le64(fields + 1);
         uint8_t byte_val = (uint8_t)(mosi & 0xFF);
 
         if (s->byte_count == 0)
@@ -140,7 +138,7 @@ static void rgb_led_spi_recv_proto(struct srd_decoder_inst *di,
             if (s->in_start_frame) {
                 s->start_frame_count++;
                 if (s->start_frame_count >= 4) {
-                    C_ANN_PUT(di, s->frame_start, end_sample,
+                    c_put(di, s->frame_start, end_sample,
                               s->out_ann, ANN_START_FRAME, "Start frame");
                     s->in_start_frame = 0;
                     s->byte_count = 0;
@@ -175,7 +173,7 @@ static void rgb_led_spi_recv_proto(struct srd_decoder_inst *di,
             }
         }
     } else if (strcmp(cmd, "CS-CHANGE") == 0) {
-        int new_cs = (data && data_len >= 2) ? data[1] : 0;
+        int new_cs = (fields && n_fields >= 2) ? fields[1].u8 : 0;
         s->cs_asserted = (new_cs == 0);
 
         if (s->cs_asserted) {
@@ -189,7 +187,7 @@ static void rgb_led_spi_recv_proto(struct srd_decoder_inst *di,
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Incomplete frame (%d byte%s)",
                          s->byte_count, s->byte_count > 1 ? "s" : "");
-                C_ANN_PUT(di, s->frame_start, end_sample,
+                c_put(di, s->frame_start, end_sample,
                           s->out_ann, ANN_WARNING, buf);
             }
             s->byte_count = 0;
@@ -213,9 +211,9 @@ static void rgb_led_spi_reset(struct srd_decoder_inst *di)
 static void rgb_led_spi_start(struct srd_decoder_inst *di)
 {
     rgb_led_spi_state *s = (rgb_led_spi_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "rgb_led_spi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "rgb_led_spi");
 
-    const char *led_type = c_decoder_get_option_string(di, "led_type", "simple");
+    const char *led_type = c_opt_str(di, "led_type", "simple");
     if (led_type && strcmp(led_type, "apa102") == 0)
         s->led_type = LED_TYPE_APA102;
     else
@@ -264,7 +262,8 @@ struct srd_c_decoder rgb_led_spi_c_decoder = {
     .start = rgb_led_spi_start,
     .decode = rgb_led_spi_decode,
     .destroy = rgb_led_spi_destroy,
-    .recv_proto = rgb_led_spi_recv_proto,
+    .decode_upper = rgb_led_spi_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

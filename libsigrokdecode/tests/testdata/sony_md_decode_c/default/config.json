@@ -1,10 +1,15 @@
 {
   "decoder": "sony_md_decode_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "sony_md"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "sony_md_c",
+      "channels": {
+        "data": 0
+      }
+    }
+  ]
 }

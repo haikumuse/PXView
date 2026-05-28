@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -51,14 +51,14 @@ static void rpm_reset(struct srd_decoder_inst *di)
 static void rpm_start(struct srd_decoder_inst *di)
 {
     rpm_state *s = (rpm_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "rpm");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "rpm");
+    s->samplerate = c_samplerate(di);
 
-    s->num_pulses = (int)c_decoder_get_option_int(di, "num_pulses", 2);
+    s->num_pulses = (int)c_opt_int(di, "num_pulses", 2);
     if (s->num_pulses < 1)
         s->num_pulses = 1;
 
-    const char *edge_str = c_decoder_get_option_string(di, "edge", "falling");
+    const char *edge_str = c_opt_str(di, "edge", "falling");
     s->edge_type = (strcmp(edge_str, "rising") == 0) ? 0 : 1;
 }
 
@@ -72,36 +72,32 @@ static void rpm_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void rpm_decode(struct srd_decoder_inst *di)
 {
     rpm_state *s = (rpm_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate == 0) return;
     }
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
         if (s->edge_type == 0)
-            c_cond_rise(cb, 0);
+            ret = c_wait(di, CW_R(0), CW_END);
         else
-            c_cond_fall(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
         if (s->last_samplenum == 0) {
-            s->last_samplenum = samplenum;
+            s->last_samplenum = di_samplenum(di);
             continue;
         }
 
         s->edge_num++;
-        double t = (double)(samplenum - s->last_samplenum) / (double)s->samplerate;
+        double t = (double)(di_samplenum(di) - s->last_samplenum) / (double)s->samplerate;
 
         if (t >= 0.5) {
             s->edge_num = 0;
-            s->last_samplenum = samplenum;
+            s->last_samplenum = di_samplenum(di);
             continue;
         }
 
@@ -110,8 +106,8 @@ static void rpm_decode(struct srd_decoder_inst *di)
             int rpm = (int)(60.0 / t);
             char buf[32];
             snprintf(buf, sizeof(buf), "%d", rpm);
-            C_ANN_PUT_VAL(di, s->last_samplenum, samplenum, s->out_ann, ANN_RPM, rpm, buf);
-            s->last_samplenum = samplenum;
+            c_put_v(di, s->last_samplenum, di_samplenum(di), s->out_ann, ANN_RPM, rpm, buf);
+            s->last_samplenum = di_samplenum(di);
         }
     }
 }
@@ -154,6 +150,7 @@ struct srd_c_decoder rpm_c_decoder = {
     .metadata = rpm_metadata,
     .decode = rpm_decode,
     .destroy = rpm_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

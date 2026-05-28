@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -136,9 +136,7 @@ static const struct ds243x_cmd *find_command(uint8_t code,
     return NULL;
 }
 
-static void ds243x_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ds243x_state *s = (ds243x_state *)c_decoder_get_private(di);
     if (!s)
@@ -147,12 +145,12 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
     s->ss = start_sample;
     s->es = end_sample;
 
-    uint8_t val = (data && data_len > 0) ? data[0] : 0;
+    uint8_t val = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "RESET/PRESENCE") == 0) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Reset/presence: %s", val ? "true" : "false");
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_RESET_PRESENCE, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_RESET_PRESENCE, buf);
         s->num_bytes = 0;
         s->state = STATE_IDLE;
         return;
@@ -160,11 +158,11 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "ROM") == 0) {
         uint64_t rom = 0;
-        if (data_len >= 8) {
+        if (n_fields >= 8) {
             for (int i = 0; i < 8; i++)
-                rom |= ((uint64_t)data[i]) << (i * 8);
+                rom |= ((uint64_t)fields[i].u8) << (i * 8);
         }
-        s->family_code = data_len > 0 ? data[0] : 0;
+        s->family_code = n_fields > 0 ? fields[0].u8 : 0;
 
         if (s->family_code == family_2432) {
             s->commands = cmds_2432;
@@ -183,7 +181,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
         char buf[128];
         snprintf(buf, sizeof(buf), "ROM: 0x%016llx (family code 0x%02x, %s)",
                  (unsigned long long)rom, s->family_code, s->family_name);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ROM, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_ROM, buf);
         s->num_bytes = 0;
         s->state = STATE_CMD;
         return;
@@ -202,11 +200,11 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
         if (c) {
             char buf[128];
             snprintf(buf, sizeof(buf), "Function command: %s (0x%02x)", c->name, val);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_CMD, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_CMD, buf);
         } else {
             char buf[64];
             snprintf(buf, sizeof(buf), "Unrecognized command: 0x%02x", val);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_WARN, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_WARN, buf);
             return;
         }
 
@@ -228,7 +226,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
             uint16_t addr = (s->bytes[2] << 8) + s->bytes[1];
             char buf[64];
             snprintf(buf, sizeof(buf), "Target address: 0x%04x", addr);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
         } else if (s->num_bytes >= 4 && s->num_bytes <= 11) {
             /* Data bytes 3..10 */
             if (s->num_bytes == 11) {
@@ -239,7 +237,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
                     if (i > 3) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
                     pos += snprintf(buf + pos, sizeof(buf) - pos, "0x%02x", s->bytes[i]);
                 }
-                C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_DATA, buf);
+                c_put(di, s->ss_block, end_sample, s->out_ann, ANN_DATA, buf);
             }
         } else if (s->num_bytes == 13) {
             /* CRC-16 */
@@ -247,7 +245,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
             uint16_t calc_crc = crc16(s->bytes, 11);
             char buf[64];
             snprintf(buf, sizeof(buf), "CRC: %s", calc_crc == recv_crc ? "ok" : "error");
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
         }
     } else if (s->state == STATE_READ_SCRATCHPAD) {
         if (s->num_bytes == 2) {
@@ -257,11 +255,11 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
             uint16_t addr = (s->bytes[2] << 8) + s->bytes[1];
             char buf[64];
             snprintf(buf, sizeof(buf), "Target address: 0x%04x", addr);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
         } else if (s->num_bytes == 4) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Data status (E/S): 0x%02x", s->bytes[3]);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ES, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_ES, buf);
         } else if (s->num_bytes >= 5 && s->num_bytes <= 12) {
             if (s->num_bytes == 12) {
                 char buf[256];
@@ -271,14 +269,14 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
                     if (i > 4) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
                     pos += snprintf(buf + pos, sizeof(buf) - pos, "0x%02x", s->bytes[i]);
                 }
-                C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_DATA, buf);
+                c_put(di, s->ss_block, end_sample, s->out_ann, ANN_DATA, buf);
             }
         } else if (s->num_bytes == 14) {
             uint16_t recv_crc = s->bytes[12] | (s->bytes[13] << 8);
             uint16_t calc_crc = crc16(s->bytes, 12);
             char buf[64];
             snprintf(buf, sizeof(buf), "CRC: %s", calc_crc == recv_crc ? "ok" : "error");
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
         }
     } else if (s->state == STATE_COPY_SCRATCHPAD) {
         if (s->num_bytes == 2) {
@@ -293,7 +291,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
                 if (i > 1) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
                 pos += snprintf(buf + pos, sizeof(buf) - pos, "0x%02x", s->bytes[i]);
             }
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_AUTH, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_AUTH, buf);
         } else if (s->num_bytes == 24) {
             char buf[256];
             int pos = 0;
@@ -302,13 +300,13 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
                 if (i > 4) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
                 pos += snprintf(buf + pos, sizeof(buf) - pos, "0x%02x", s->bytes[i]);
             }
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_MAC, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_MAC, buf);
         } else if (s->num_bytes > 24) {
             if (val == 0xaa || val == 0x55) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
                           "Operation succeeded");
             } else if (val == 0x00) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
                           "Operation failed");
             }
         }
@@ -320,11 +318,11 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
             uint16_t addr = (s->bytes[2] << 8) + s->bytes[1];
             char buf[64];
             snprintf(buf, sizeof(buf), "Target address: 0x%04x", addr);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
         } else if (s->num_bytes > 3) {
             char buf[32];
             snprintf(buf, sizeof(buf), "Data: 0x%02x", val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_DATA, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_DATA, buf);
         }
     } else if (s->state == STATE_LOAD_FIRST_SECRET) {
         if (s->num_bytes == 2) {
@@ -339,10 +337,10 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
                 if (i > 1) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
                 pos += snprintf(buf + pos, sizeof(buf) - pos, "0x%02x", s->bytes[i]);
             }
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_AUTH, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_AUTH, buf);
         } else if (s->num_bytes > 4) {
             if (val == 0xaa || val == 0x55) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
                           "End of operation");
             }
         }
@@ -354,10 +352,10 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
             uint16_t addr = (s->bytes[2] << 8) + s->bytes[1];
             char buf[64];
             snprintf(buf, sizeof(buf), "Target address: 0x%04x", addr);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
         } else if (s->num_bytes > 3) {
             if (val == 0xaa || val == 0x55) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
                           "End of operation");
             }
         }
@@ -369,7 +367,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
             uint16_t addr = (s->bytes[2] << 8) + s->bytes[1];
             char buf[64];
             snprintf(buf, sizeof(buf), "Target address: 0x%04x", addr);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
         } else if (s->num_bytes == 35) {
             char buf[256];
             int pos = 0;
@@ -378,17 +376,17 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
                 if (i > 3) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
                 pos += snprintf(buf + pos, sizeof(buf) - pos, "0x%02x", s->bytes[i]);
             }
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_DATA, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_DATA, buf);
         } else if (s->num_bytes == 36) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Padding: %s", val == 0xff ? "ok" : "error");
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_DATA, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_DATA, buf);
         } else if (s->num_bytes == 38) {
             uint16_t recv_crc = s->bytes[36] | (s->bytes[37] << 8);
             uint16_t calc_crc = crc16(s->bytes, 36);
             char buf[64];
             snprintf(buf, sizeof(buf), "CRC: %s", calc_crc == recv_crc ? "ok" : "error");
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
         } else if (s->num_bytes == 58) {
             char buf[256];
             int pos = 0;
@@ -397,16 +395,16 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di,
                 if (i > 38) pos += snprintf(buf + pos, sizeof(buf) - pos, ",");
                 pos += snprintf(buf + pos, sizeof(buf) - pos, "0x%02x", s->bytes[i]);
             }
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_MAC, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_MAC, buf);
         } else if (s->num_bytes == 60) {
             uint16_t recv_crc = s->bytes[58] | (s->bytes[59] << 8);
             uint16_t calc_crc = crc16(s->bytes + 38, 20);
             char buf[64];
             snprintf(buf, sizeof(buf), "MAC CRC: %s", calc_crc == recv_crc ? "ok" : "error");
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
         } else if (s->num_bytes > 60) {
             if (val == 0xaa || val == 0x55) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_STATUS,
                           "Operation completed");
             }
         }
@@ -428,7 +426,7 @@ static void ds243x_reset(struct srd_decoder_inst *di)
 static void ds243x_start(struct srd_decoder_inst *di)
 {
     ds243x_state *s = (ds243x_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds243x");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ds243x");
 }
 
 static void ds243x_decode(struct srd_decoder_inst *di)
@@ -473,7 +471,8 @@ struct srd_c_decoder ds243x_c_decoder = {
     .start = ds243x_start,
     .decode = ds243x_decode,
     .destroy = ds243x_destroy,
-    .recv_proto = ds243x_recv_proto,
+    .decode_upper = ds243x_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

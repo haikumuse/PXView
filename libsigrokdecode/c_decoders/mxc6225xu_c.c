@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012 Uwe Hermann <uwe@hermann-uwe.de>
@@ -75,14 +75,14 @@ static void mxc6225xu_handle_reg_0x00(struct srd_decoder_inst *di, mxc6225xu_pri
 {
     char buf[64];
     snprintf(buf, sizeof(buf), "XOUT: %d", (int8_t)b);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
 }
 
 static void mxc6225xu_handle_reg_0x01(struct srd_decoder_inst *di, mxc6225xu_priv *s, uint8_t b)
 {
     char buf[64];
     snprintf(buf, sizeof(buf), "YOUT: %d", (int8_t)b);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
 }
 
 static void mxc6225xu_handle_reg_0x02(struct srd_decoder_inst *di, mxc6225xu_priv *s, uint8_t b)
@@ -112,7 +112,7 @@ static void mxc6225xu_handle_reg_0x02(struct srd_decoder_inst *di, mxc6225xu_pri
     pos += snprintf(buf + pos, sizeof(buf) - pos,
         "OR[1:0] = %d: %s\n", or_val, mxc6225xu_ori_str[or_val]);
 
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
 }
 
 static void mxc6225xu_handle_reg_0x03(struct srd_decoder_inst *di, mxc6225xu_priv *s, uint8_t b)
@@ -141,7 +141,7 @@ static void mxc6225xu_handle_reg_0x03(struct srd_decoder_inst *di, mxc6225xu_pri
     pos += snprintf(buf + pos, sizeof(buf) - pos,
         "ORC[1:0] = %d: Set orientation count to %s readings\n", orc, mxc6225xu_orc_str[orc]);
 
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
 }
 
 static void mxc6225xu_handle_reg(struct srd_decoder_inst *di, mxc6225xu_priv *s, uint8_t b)
@@ -155,9 +155,7 @@ static void mxc6225xu_handle_reg(struct srd_decoder_inst *di, mxc6225xu_priv *s,
     }
 }
 
-static void mxc6225xu_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void mxc6225xu_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     mxc6225xu_priv *s = (mxc6225xu_priv *)c_decoder_get_private(di);
     if (!s)
@@ -166,7 +164,7 @@ static void mxc6225xu_recv_proto(struct srd_decoder_inst *di,
     s->ss = start_sample;
     s->es = end_sample;
 
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (s->state == MXC6225XU_IDLE) {
         if (strcmp(cmd, "START") == 0)
@@ -177,7 +175,7 @@ static void mxc6225xu_recv_proto(struct srd_decoder_inst *di,
                 char buf[64];
                 snprintf(buf, sizeof(buf),
                     "Warning: I²C slave 0x%02X not an MXC6225XU compatible sensor.", databyte);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
                 s->state = MXC6225XU_IDLE;
                 return;
             }
@@ -203,7 +201,7 @@ static void mxc6225xu_recv_proto(struct srd_decoder_inst *di,
                 char buf[64];
                 snprintf(buf, sizeof(buf),
                     "Warning: I²C slave 0x%02X not an MXC6225XU compatible sensor.", databyte);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT, buf);
                 s->state = MXC6225XU_IDLE;
                 return;
             }
@@ -232,7 +230,7 @@ static void mxc6225xu_reset(struct srd_decoder_inst *di)
 static void mxc6225xu_start(struct srd_decoder_inst *di)
 {
     mxc6225xu_priv *s = (mxc6225xu_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mxc6225xu");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mxc6225xu");
 }
 
 static void mxc6225xu_decode(struct srd_decoder_inst *di)
@@ -277,7 +275,8 @@ struct srd_c_decoder mxc6225xu_c_decoder = {
     .start = mxc6225xu_start,
     .decode = mxc6225xu_decode,
     .destroy = mxc6225xu_destroy,
-    .recv_proto = mxc6225xu_recv_proto,
+    .decode_upper = mxc6225xu_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

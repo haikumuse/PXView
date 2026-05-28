@@ -124,12 +124,12 @@ static void rc6_reset(struct srd_decoder_inst *di)
 static void rc6_start(struct srd_decoder_inst *di)
 {
     rc6_priv *s = (rc6_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_rc6");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_rc6");
 
-    const char *polarity = c_decoder_get_option_string(di, "polarity", "auto");
+    const char *polarity = c_opt_str(di, "polarity", "auto");
     s->polarity_auto = (polarity && strcmp(polarity, "auto") == 0);
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0)
         s->halfbit = (uint64_t)((double)s->samplerate * 0.000889 / 2.0);
 }
@@ -141,19 +141,17 @@ static void handle_bit(struct srd_decoder_inst *di, rc6_priv *s)
 
     /* bits[0]: sync bit (width=8, value must be 1) */
     if (s->bits[0].width == 8 && s->bits[0].value == 1) {
-        C_ANN_PUT(di, s->bits[0].ss, s->bits[0].es, s->out_ann, ANN_SYNC,
+        c_put(di, s->bits[0].ss, s->bits[0].es, s->out_ann, ANN_SYNC,
             "Synchronisation", "Sync");
     } else {
-        s->state = STATE_IDLE;
         return;
     }
 
     /* bits[1]: start bit (value must be 1) */
     if (s->bits[1].value == 1) {
-        C_ANN_PUT(di, s->bits[1].ss, s->bits[1].es, s->out_ann, ANN_STARTBIT,
+        c_put(di, s->bits[1].ss, s->bits[1].es, s->out_ann, ANN_STARTBIT,
             "Startbit", "Start");
     } else {
-        s->state = STATE_IDLE;
         return;
     }
 
@@ -165,12 +163,12 @@ static void handle_bit(struct srd_decoder_inst *di, rc6_priv *s)
 
     char field_str[32];
     snprintf(field_str, sizeof(field_str), "Field: %d", s->mode);
-    C_ANN_PUT(di, s->bits[2].ss, s->bits[4].es, s->out_ann, ANN_FIELD, field_str);
+    c_put(di, s->bits[2].ss, s->bits[4].es, s->out_ann, ANN_FIELD, field_str);
 
     /* bits[5]: toggle bit */
     char toggle_str[32];
     snprintf(toggle_str, sizeof(toggle_str), "Toggle: %d", s->bits[5].value);
-    C_ANN_PUT(di, s->bits[5].ss, s->bits[5].es, s->out_ann, ANN_TOGGLEBIT, toggle_str);
+    c_put(di, s->bits[5].ss, s->bits[5].es, s->out_ann, ANN_TOGGLEBIT, toggle_str);
 }
 
 static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
@@ -190,7 +188,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
 
         char addr_str[32];
         snprintf(addr_str, sizeof(addr_str), "Address: %0.2X", (uint8_t)value);
-        C_ANN_PUT(di, s->bits[6].ss, s->bits[13].es, s->out_ann, ANN_ADDRESS, addr_str);
+        c_put(di, s->bits[6].ss, s->bits[13].es, s->out_ann, ANN_ADDRESS, addr_str);
 
         value = 0;
         for (i = 0; i < 8; i++)
@@ -198,7 +196,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
 
         char cmd_str[32];
         snprintf(cmd_str, sizeof(cmd_str), "Data: %0.2X", (uint8_t)value);
-        C_ANN_PUT(di, s->bits[14].ss, s->bits[21].es, s->out_ann, ANN_COMMAND, cmd_str);
+        c_put(di, s->bits[14].ss, s->bits[21].es, s->out_ann, ANN_COMMAND, cmd_str);
 
         s->num_bits = 0;
     }
@@ -213,7 +211,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
 
             char addr_str[32];
             snprintf(addr_str, sizeof(addr_str), "Address: %0.2X", (uint8_t)value);
-            C_ANN_PUT(di, s->bits[6].ss, s->bits[13].es, s->out_ann, ANN_ADDRESS, addr_str);
+            c_put(di, s->bits[6].ss, s->bits[13].es, s->out_ann, ANN_ADDRESS, addr_str);
 
             int num_data_bits = s->num_bits - 14;
             value = 0;
@@ -222,7 +220,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
 
             char cmd_str[32];
             snprintf(cmd_str, sizeof(cmd_str), "Data: %X", value);
-            C_ANN_PUT(di, s->bits[14].ss, s->bits[s->num_bits - 1].es, s->out_ann, ANN_COMMAND, cmd_str);
+            c_put(di, s->bits[14].ss, s->bits[s->num_bits - 1].es, s->out_ann, ANN_COMMAND, cmd_str);
 
             s->num_bits = 0;
         } else if (s->num_bits >= 23) {
@@ -234,7 +232,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
 
             char addr_str[32];
             snprintf(addr_str, sizeof(addr_str), "Address: %0.2X", (uint16_t)value);
-            C_ANN_PUT(di, s->bits[6].ss, s->bits[21].es, s->out_ann, ANN_ADDRESS, addr_str);
+            c_put(di, s->bits[6].ss, s->bits[21].es, s->out_ann, ANN_ADDRESS, addr_str);
 
             int num_data_bits = s->num_bits - 22;
             value = 0;
@@ -243,7 +241,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
 
             char cmd_str[32];
             snprintf(cmd_str, sizeof(cmd_str), "Data: %X", value);
-            C_ANN_PUT(di, s->bits[22].ss, s->bits[s->num_bits - 1].es, s->out_ann, ANN_COMMAND, cmd_str);
+            c_put(di, s->bits[22].ss, s->bits[s->num_bits - 1].es, s->out_ann, ANN_COMMAND, cmd_str);
 
             s->num_bits = 0;
         }
@@ -253,12 +251,10 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
 static void rc6_decode(struct srd_decoder_inst *di)
 {
     rc6_priv *s = (rc6_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int value = 0;
 
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             s->halfbit = (uint64_t)((double)s->samplerate * 0.000889 / 2.0);
     }
@@ -269,26 +265,21 @@ static void rc6_decode(struct srd_decoder_inst *di)
     s->invert = 0;
 
     while (1) {
-        srd_cond_builder *cb;
         int ret;
         int ir;
 
-        cb = c_cond_new();
-        c_cond_edge(cb, IR_CH);
-        if (s->state == STATE_DATA) {
-            c_cond_or(cb);
-            c_cond_skip(cb, s->halfbit * 6);
-        }
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            if (s->state == STATE_DATA)
+            ret = c_wait(di, CW_E(IR_CH), CW_OR, CW_SKIP(s->halfbit * 6), CW_END);
+        else
+            ret = c_wait(di, CW_E(IR_CH), CW_END);
         if (ret != SRD_OK)
             return;
 
-        ir = c_decoder_get_pin(di, IR_CH, samplenum);
+        ir = c_pin(di, IR_CH);
 
         /* Check skip timeout in DATA state */
         if (s->state == STATE_DATA) {
-            if (matched & (1ULL << 1)) {
+            if (di_matched(di) & (1ULL << 1)) {
                 s->state = STATE_IDLE;
                 /* Don't process this edge further, just continue */
                 /* But we still need to update edges for potential sync detection */
@@ -297,13 +288,13 @@ static void rc6_decode(struct srd_decoder_inst *di)
 
         /* Add edge */
         if (s->num_edges < MAX_EDGES) {
-            s->edges[s->num_edges++] = samplenum;
+            s->edges[s->num_edges++] = di_samplenum(di);
         } else {
             /* Shift edges array */
             int j;
             for (j = 1; j < MAX_EDGES; j++)
                 s->edges[j - 1] = s->edges[j];
-            s->edges[MAX_EDGES - 1] = samplenum;
+            s->edges[MAX_EDGES - 1] = di_samplenum(di);
         }
 
         if (s->num_edges < 2)
@@ -335,7 +326,7 @@ static void rc6_decode(struct srd_decoder_inst *di)
             if (s->polarity_auto) {
                 value = 1;
             } else {
-                const char *pol = c_decoder_get_option_string(di, "polarity", "auto");
+                const char *pol = c_opt_str(di, "polarity", "auto");
                 value = (pol && strcmp(pol, "active-high") == 0) ? ir : 1 - ir;
             }
 
@@ -352,7 +343,7 @@ static void rc6_decode(struct srd_decoder_inst *di)
 
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", value);
-            C_ANN_PUT(di, s->bits[s->num_bits - 1].ss, s->bits[s->num_bits - 1].es,
+            c_put(di, s->bits[s->num_bits - 1].ss, s->bits[s->num_bits - 1].es,
                 s->out_ann, ANN_BIT, bit_str);
         }
 
@@ -410,7 +401,7 @@ static void rc6_decode(struct srd_decoder_inst *di)
                     if (s->num_bits > 0) {
                         char bit_str[4];
                         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[s->num_bits - 1].value);
-                        C_ANN_PUT(di, s->bits[s->num_bits - 1].ss, s->bits[s->num_bits - 1].es,
+                        c_put(di, s->bits[s->num_bits - 1].ss, s->bits[s->num_bits - 1].es,
                             s->out_ann, ANN_BIT, bit_str);
                     }
                 }
@@ -429,7 +420,7 @@ static void rc6_decode(struct srd_decoder_inst *di)
         if (s->polarity_auto) {
             value = s->invert ? ir : 1 - ir;
         } else {
-            const char *pol = c_decoder_get_option_string(di, "polarity", "auto");
+            const char *pol = c_opt_str(di, "polarity", "auto");
             value = (pol && strcmp(pol, "active-low") == 0) ? ir : 1 - ir;
         }
 
@@ -475,6 +466,7 @@ struct srd_c_decoder ir_rc6_c_decoder = {
     .start = rc6_start,
     .decode = rc6_decode,
     .destroy = rc6_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

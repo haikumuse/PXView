@@ -1,11 +1,11 @@
 {
 	"decoder": "usb_power_delivery_c",
-	"samplerate": 10000000,
+	"samplerate": 12000000,
 	"num_annotations": 31,
 	"annotations": [
 		{
-			"start_sample": 64,
-			"end_sample": 2176,
+			"start_sample": 2080,
+			"end_sample": 4720,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -14,8 +14,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2176,
-			"end_sample": 2336,
+			"start_sample": 4720,
+			"end_sample": 4920,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -24,8 +24,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2336,
-			"end_sample": 2496,
+			"start_sample": 4920,
+			"end_sample": 5120,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -34,8 +34,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2496,
-			"end_sample": 2656,
+			"start_sample": 5120,
+			"end_sample": 5320,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -44,18 +44,18 @@
 			]
 		}, 
 		{
-			"start_sample": 2656,
-			"end_sample": 2816,
+			"start_sample": 5320,
+			"end_sample": 5520,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0xE", 
-				"E"
+				"0x2", 
+				"2"
 			]
 		}, 
 		{
-			"start_sample": 2176,
-			"end_sample": 2816,
+			"start_sample": 4720,
+			"end_sample": 5520,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -64,18 +64,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2816,
-			"end_sample": 2976,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"0x9", 
-				"9"
-			]
-		}, 
-		{
-			"start_sample": 2976,
-			"end_sample": 3136,
+			"start_sample": 5520,
+			"end_sample": 5720,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -84,18 +74,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3136,
-			"end_sample": 3296,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"0x9", 
-				"9"
-			]
-		}, 
-		{
-			"start_sample": 3296,
-			"end_sample": 3456,
+			"start_sample": 5720,
+			"end_sample": 5920,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -104,68 +84,58 @@
 			]
 		}, 
 		{
-			"start_sample": 2816,
-			"end_sample": 3456,
+			"start_sample": 5920,
+			"end_sample": 6120,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x9", 
+				"9"
+			]
+		}, 
+		{
+			"start_sample": 6120,
+			"end_sample": 6320,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x2", 
+				"2"
+			]
+		}, 
+		{
+			"start_sample": 5520,
+			"end_sample": 6320,
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [
-				"H:2929", 
+				"H:2922", 
 				"HD"
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 4816,
+			"start_sample": 2080,
+			"end_sample": 8040,
 			"ann_class": 9,
 			"ann_type": 16,
 			"texts": [
-				"(r1) SRC[4]: EPR_Request", 
-				"EPR_Request"
+				"(r1) SRC[4]: REQUEST", 
+				"REQUEST"
 			]
 		}, 
 		{
-			"start_sample": 3456,
-			"end_sample": 3616,
+			"start_sample": 6320,
+			"end_sample": 6520,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
-				"0x4", 
-				"4"
+				"0xA", 
+				"A"
 			]
 		}, 
 		{
-			"start_sample": 3616,
-			"end_sample": 3776,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"0x5", 
-				"5"
-			]
-		}, 
-		{
-			"start_sample": 3776,
-			"end_sample": 3936,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"EOP", 
-				"#"
-			]
-		}, 
-		{
-			"start_sample": 3936,
-			"end_sample": 4096,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"0x8", 
-				"8"
-			]
-		}, 
-		{
-			"start_sample": 4096,
-			"end_sample": 4256,
+			"start_sample": 6520,
+			"end_sample": 6720,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -174,18 +144,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4256,
-			"end_sample": 4416,
-			"ann_class": 7,
-			"ann_type": 14,
-			"texts": [
-				"0x4", 
-				"4"
-			]
-		}, 
-		{
-			"start_sample": 4416,
-			"end_sample": 4576,
+			"start_sample": 6720,
+			"end_sample": 6920,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -194,8 +154,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4576,
-			"end_sample": 4736,
+			"start_sample": 6920,
+			"end_sample": 7120,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -204,28 +164,68 @@
 			]
 		}, 
 		{
-			"start_sample": 3456,
-			"end_sample": 4736,
+			"start_sample": 7120,
+			"end_sample": 7320,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x5", 
+				"5"
+			]
+		}, 
+		{
+			"start_sample": 7320,
+			"end_sample": 7520,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0xC", 
+				"C"
+			]
+		}, 
+		{
+			"start_sample": 7520,
+			"end_sample": 7720,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0x1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7720,
+			"end_sample": 7920,
+			"ann_class": 7,
+			"ann_type": 14,
+			"texts": [
+				"0xB", 
+				"B"
+			]
+		}, 
+		{
+			"start_sample": 6320,
+			"end_sample": 7920,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"[0]3c479654", 
+				"[0]b1c53c7a", 
 				"D0"
 			]
 		}, 
 		{
-			"start_sample": 3456,
-			"end_sample": 4736,
+			"start_sample": 6320,
+			"end_sample": 7920,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
-				"[1] (PDO #3) 4.85A (operating) / 5.96A (max) [give_back] [cap_mismatch]", 
-				"[1] (PDO #3) 4.85A (operating) / 5.96A (max) [give_back] [cap_mismatch]"
+				"[1] (PDO #11) 3.35A (operating) / 1.22A (max) [no_suspend] [unchunked]", 
+				"[1] (PDO #11) 3.35A (operating) / 1.22A (max) [no_suspend] [unchunked]"
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 4816,
+			"start_sample": 2080,
+			"end_sample": 8040,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -234,8 +234,8 @@
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 4816,
+			"start_sample": 2080,
+			"end_sample": 8040,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -244,8 +244,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3456,
-			"end_sample": 4736,
+			"start_sample": 6320,
+			"end_sample": 7920,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
@@ -254,18 +254,18 @@
 			]
 		}, 
 		{
-			"start_sample": 3456,
-			"end_sample": 4736,
+			"start_sample": 6320,
+			"end_sample": 7920,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
-				"[2] [Fixed] 41.7V 9.41A (392.397W) [unconstrained] [dual_role_data] [unchunked]", 
-				"[2] [Fixed] 41.7V 9.41A (392.397W) [unconstrained] [dual_role_data] [unchunked]"
+				"[2] (PDO #0) 8.34A (operating) / 9.41A (max) [give_back] [comm_cap] [no_suspend] [unchunked]", 
+				"[2] (PDO #0) 8.34A (operating) / 9.41A (max) [give_back] [comm_cap] [no_suspend] [unchunked]"
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 4816,
+			"start_sample": 2080,
+			"end_sample": 8040,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -274,8 +274,8 @@
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 4816,
+			"start_sample": 2080,
+			"end_sample": 8040,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -284,18 +284,18 @@
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 4816,
+			"start_sample": 2080,
+			"end_sample": 8040,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
-				"Bad CRC 0bad0bad != 6a4790e8", 
+				"Bad CRC 0bad0bad != 878e56ab", 
 				"CRC!"
 			]
 		}, 
 		{
-			"start_sample": 3456,
-			"end_sample": 4736,
+			"start_sample": 6320,
+			"end_sample": 7920,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -304,8 +304,8 @@
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 4816,
+			"start_sample": 2080,
+			"end_sample": 8040,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [

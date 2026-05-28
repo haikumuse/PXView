@@ -1,4 +1,4 @@
-/*
+﻿/*
  * SDIO C decoder
  * Ported from Python sdio decoder
  */
@@ -361,21 +361,21 @@ static void sdio_reset(struct srd_decoder_inst *di)
 static void sdio_start(struct srd_decoder_inst *di)
 {
     sdio_state *s = (sdio_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sdio");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sdio");
 
-    const char *lines_str = c_decoder_get_option_string(di, "lines", "1-line");
+    const char *lines_str = c_opt_str(di, "lines", "1-line");
     s->four_line = (strcmp(lines_str, "4-line") == 0) ? 1 : 0;
 
-    s->io_block_len = (int)c_decoder_get_option_int(di, "io_block_len", 512);
+    s->io_block_len = (int)c_opt_int(di, "io_block_len", 512);
 
-    const char *pol_str = c_decoder_get_option_string(di, "polarity", "risedge");
+    const char *pol_str = c_opt_str(di, "polarity", "risedge");
     s->rise_sample = (strcmp(pol_str, "risedge") == 0) ? 1 : 0;
 }
 
 /* Helper annotation macros - variadic to support variable text counts */
 #define SDIO_PUTF(s, di, start, end, ann_class, ...) do { \
     if ((start) < (s)->token_count && (end) < (s)->token_count) { \
-        C_ANN_PUT(di, (s)->token_ss[start], (s)->token_es[end], (s)->out_ann, ann_class, __VA_ARGS__); \
+        c_put(di, (s)->token_ss[start], (s)->token_es[end], (s)->out_ann, ann_class, __VA_ARGS__); \
     } \
 } while(0)
 
@@ -383,13 +383,13 @@ static void sdio_start(struct srd_decoder_inst *di)
     int _rs = 47 - 8 - (end); \
     int _re = 47 - 8 - (start); \
     if (_rs >= 0 && _re < (s)->token_count) { \
-        C_ANN_PUT(di, (s)->token_ss[_rs], (s)->token_es[_re], (s)->out_ann, ann_class, __VA_ARGS__); \
+        c_put(di, (s)->token_ss[_rs], (s)->token_es[_re], (s)->out_ann, ann_class, __VA_ARGS__); \
     } \
 } while(0)
 
 #define SDIO_PUTT(s, di, ann_class, ...) do { \
     if ((s)->token_count >= 48) { \
-        C_ANN_PUT(di, (s)->token_ss[0], (s)->token_es[47], (s)->out_ann, ann_class, __VA_ARGS__); \
+        c_put(di, (s)->token_ss[0], (s)->token_es[47], (s)->out_ann, ann_class, __VA_ARGS__); \
     } \
 } while(0)
 
@@ -617,27 +617,22 @@ static void handle_response_r7(sdio_state *s, struct srd_decoder_inst *di, int c
 static void sdio_decode(struct srd_decoder_inst *di)
 {
     sdio_state *s = (sdio_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     int CMD = 0, CLK = 1;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        int ret;
         if (s->rise_sample)
-            c_cond_rise(cb, CLK);
+            ret = c_wait(di, CW_R(CLK), CW_END);
         else
-            c_cond_fall(cb, CLK);
+            ret = c_wait(di, CW_F(CLK), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
-
-        int cmd = c_decoder_get_pin(di, CMD, samplenum);
-        int dat0 = c_decoder_has_channel(di, 2) ? c_decoder_get_pin(di, 2, samplenum) : 0;
-        int dat1 = c_decoder_has_channel(di, 3) ? c_decoder_get_pin(di, 3, samplenum) : 0;
-        int dat2 = c_decoder_has_channel(di, 4) ? c_decoder_get_pin(di, 4, samplenum) : 0;
-        int dat3 = c_decoder_has_channel(di, 5) ? c_decoder_get_pin(di, 5, samplenum) : 0;
+        int cmd = c_pin(di, CMD);
+        int dat0 = c_has_ch(di, 2) ? c_pin(di, 2) : 0;
+        int dat1 = c_has_ch(di, 3) ? c_pin(di, 3) : 0;
+        int dat2 = c_has_ch(di, 4) ? c_pin(di, 4) : 0;
+        int dat3 = c_has_ch(di, 5) ? c_pin(di, 5) : 0;
         int pins[6] = {cmd, 0/*clk*/, dat0, dat1, dat2, dat3};
 
         /* Handle data lines */
@@ -651,7 +646,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
 
             if (s->data_recv_count == 0) {
                 if (!is_pending) {
-                    s->data_recv_ss[0] = samplenum;
+                    s->data_recv_ss[0] = di_samplenum(di);
                     s->data_recv_pins[0][0] = dat0;
                     s->data_recv_pins[0][1] = dat1;
                     s->data_recv_pins[0][2] = dat2;
@@ -660,9 +655,9 @@ static void sdio_decode(struct srd_decoder_inst *di)
                 }
             } else {
                 /* Output "Start of Data" annotation for the data start bit */
-                C_ANN_PUT(di, s->data_recv_ss[0], samplenum, s->out_ann, ANN_DATA_FIELD, "Start of Data", "Start", "S");
+                c_put(di, s->data_recv_ss[0], di_samplenum(di), s->out_ann, ANN_DATA_FIELD, "Start of Data", "Start", "S");
                 if (s->data_recv_count > 0 && s->data_recv_count < MAX_DATA_RECV) {
-                    s->data_recv_ss[s->data_recv_count] = samplenum;
+                    s->data_recv_ss[s->data_recv_count] = di_samplenum(di);
                     s->data_recv_pins[s->data_recv_count][0] = dat0;
                     s->data_recv_pins[s->data_recv_count][1] = dat1;
                     s->data_recv_pins[s->data_recv_count][2] = dat2;
@@ -673,7 +668,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
             }
         } else if (s->data_state == DATA_STATE_DATA) {
             if (s->data_recv_count < MAX_DATA_RECV) {
-                s->data_recv_ss[s->data_recv_count] = samplenum;
+                s->data_recv_ss[s->data_recv_count] = di_samplenum(di);
                 s->data_recv_pins[s->data_recv_count][0] = dat0;
                 s->data_recv_pins[s->data_recv_count][1] = dat1;
                 s->data_recv_pins[s->data_recv_count][2] = dat2;
@@ -698,14 +693,14 @@ static void sdio_decode(struct srd_decoder_inst *di)
                     }
                     char hex_str[16];
                     snprintf(hex_str, sizeof(hex_str), "0x%02X", value);
-                    C_ANN_PUT(di, s->data_recv_ss[s->four_line ? i * 2 : i * 8],
+                    c_put(di, s->data_recv_ss[s->four_line ? i * 2 : i * 8],
                               s->data_recv_ss[s->four_line ? (i + 1) * 2 : (i + 1) * 8],
                               s->out_ann, ANN_DATA, hex_str);
                 }
                 s->data_state = DATA_STATE_CRC;
                 /* Keep last sample for CRC */
                 s->data_recv_count = 1;
-                s->data_recv_ss[0] = samplenum;
+                s->data_recv_ss[0] = di_samplenum(di);
                 s->data_recv_pins[0][0] = dat0;
                 s->data_recv_pins[0][1] = dat1;
                 s->data_recv_pins[0][2] = dat2;
@@ -713,7 +708,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
             }
         } else if (s->data_state == DATA_STATE_CRC) {
             if (s->data_recv_count < MAX_DATA_RECV) {
-                s->data_recv_ss[s->data_recv_count] = samplenum;
+                s->data_recv_ss[s->data_recv_count] = di_samplenum(di);
                 s->data_recv_pins[s->data_recv_count][0] = dat0;
                 s->data_recv_pins[s->data_recv_count][1] = dat1;
                 s->data_recv_pins[s->data_recv_count][2] = dat2;
@@ -721,9 +716,9 @@ static void sdio_decode(struct srd_decoder_inst *di)
                 s->data_recv_count++;
             }
             if (s->data_recv_count > 17) {
-                C_ANN_PUT(di, s->data_recv_ss[0], s->data_recv_ss[15],
+                c_put(di, s->data_recv_ss[0], s->data_recv_ss[15],
                           s->out_ann, ANN_DATA_FIELD, "CRC", "C");
-                C_ANN_PUT(di, s->data_recv_ss[15], s->data_recv_ss[16],
+                c_put(di, s->data_recv_ss[15], s->data_recv_ss[16],
                           s->out_ann, ANN_DATA_FIELD, "End", "E");
                 if (s->data_crc_resp) {
                     s->data_state = DATA_STATE_CARD_BUSY;
@@ -735,7 +730,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
             }
         } else if (s->data_state == DATA_STATE_CARD_BUSY) {
             if (dat0 == 1) {
-                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_DATA_BUSY, "Card Busy", "Busy", "B");
+                c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_DATA_BUSY, "Card Busy", "Busy", "B");
                 s->data_state = DATA_STATE_IDLE;
                 s->data_recv_count = 0;
             }
@@ -745,9 +740,9 @@ static void sdio_decode(struct srd_decoder_inst *di)
         if (s->state >= STATE_GET_RESPONSE_R1 && s->state <= STATE_GET_RESPONSE_R7) {
             if (s->token_count == 0) {
                 if (cmd != 0) continue;
-                if (!get_token_bits(s, samplenum, cmd, 2)) continue;
+                if (!get_token_bits(s, di_samplenum(di), cmd, 2)) continue;
             } else if (s->token_count < 2) {
-                if (!get_token_bits(s, samplenum, cmd, 2)) continue;
+                if (!get_token_bits(s, di_samplenum(di), cmd, 2)) continue;
                 if (s->token_val[1] == 1) {
                     s->state = STATE_GET_COMMAND_TOKEN;
                     s->token_count = 0;
@@ -771,7 +766,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
             if (s->token_count == 0) {
                 if (cmd != 0) continue;
             }
-            if (!get_token_bits(s, samplenum, cmd, 48)) continue;
+            if (!get_token_bits(s, di_samplenum(di), cmd, 48)) continue;
 
             handle_common_token_fields(s, di);
 
@@ -1013,6 +1008,7 @@ struct srd_c_decoder sdio_c_decoder = {
     .start = sdio_start,
     .decode = sdio_decode,
     .destroy = sdio_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

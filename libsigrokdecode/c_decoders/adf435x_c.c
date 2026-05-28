@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Joel Holdsworth <joel@airwebreathe.org.uk>
@@ -275,7 +275,7 @@ static void adf435x_decode_word(struct srd_decoder_inst *di, adf435x_state *s)
         char buf[64];
         snprintf(buf, sizeof(buf),
                  "Frame error: Bit count: want 32, got %d", s->bit_count);
-        C_ANN_PUT(di, s->bit_ss[0], s->bit_es[s->bit_count - 1],
+        c_put(di, s->bit_ss[0], s->bit_es[s->bit_count - 1],
                   s->out_ann, ANN_WARN, buf);
         return;
     }
@@ -295,7 +295,7 @@ static void adf435x_decode_word(struct srd_decoder_inst *di, adf435x_state *s)
     uint64_t reg_es = s->bit_es[31];
     char buf[32];
     snprintf(buf, sizeof(buf), "Register: %d", reg_addr);
-    C_ANN_PUT(di, reg_ss, reg_es, s->out_ann, ANN_REG, buf);
+    c_put(di, reg_ss, reg_es, s->out_ann, ANN_REG, buf);
 
     /* Parse fields */
     if (reg_addr < 0 || reg_addr > 5) return;
@@ -325,7 +325,7 @@ static void adf435x_decode_word(struct srd_decoder_inst *di, adf435x_state *s)
             int msb_start = 31 - (fields[i].offset + fields[i].width - 1);
             int msb_end = 31 - fields[i].offset;
             if (msb_start >= 0 && msb_start < 32 && msb_end >= 0 && msb_end < 32) {
-                C_ANN_PUT(di, s->bit_ss[msb_start], s->bit_es[msb_end],
+                c_put(di, s->bit_ss[msb_start], s->bit_es[msb_end],
                           s->out_ann, ANN_REG, text);
             }
         }
@@ -336,7 +336,7 @@ static void adf435x_decode_word(struct srd_decoder_inst *di, adf435x_state *s)
                 int msb_start = 31 - (fields[i].offset + fields[i].width - 1);
                 int msb_end = 31 - fields[i].offset;
                 if (msb_start >= 0 && msb_start < 32 && msb_end >= 0 && msb_end < 32) {
-                    C_ANN_PUT(di, s->bit_ss[msb_start], s->bit_es[msb_end],
+                    c_put(di, s->bit_ss[msb_start], s->bit_es[msb_end],
                               s->out_ann, ANN_WARN, warn);
                 }
             }
@@ -344,9 +344,7 @@ static void adf435x_decode_word(struct srd_decoder_inst *di, adf435x_state *s)
     }
 }
 
-static void adf435x_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void adf435x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     adf435x_state *s = (adf435x_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -356,20 +354,20 @@ static void adf435x_recv_proto(struct srd_decoder_inst *di,
             adf435x_decode_word(di, s);
         s->bit_count = 0;
     } else if (strcmp(cmd, "BITS") == 0) {
-        if (data_len < 2) return;
+        if (n_fields < 2) return;
         int pos = 0;
-        uint8_t flags = data[pos++];
+        uint8_t flags = fields[pos++].u8;
         int have_mosi = flags & 1;
         if (have_mosi) {
-            int mosi_count = (int)data[pos++];
-            for (int i = 0; i < mosi_count && s->bit_count < 32 && pos + 17 <= (int)data_len; i++) {
-                s->bits[s->bit_count] = data[pos++];
+            int mosi_count = (int)fields[pos++].u8;
+            for (int i = 0; i < mosi_count && s->bit_count < 32 && pos + 17 <= (int)n_fields; i++) {
+                s->bits[s->bit_count] = fields[pos++].u8;
                 s->bit_ss[s->bit_count] = 0;
                 for (int b = 0; b < 8; b++)
-                    s->bit_ss[s->bit_count] |= ((uint64_t)data[pos++]) << (8 * b);
+                    s->bit_ss[s->bit_count] |= ((uint64_t)fields[pos++].u8) << (8 * b);
                 s->bit_es[s->bit_count] = 0;
                 for (int b = 0; b < 8; b++)
-                    s->bit_es[s->bit_count] |= ((uint64_t)data[pos++]) << (8 * b);
+                    s->bit_es[s->bit_count] |= ((uint64_t)fields[pos++].u8) << (8 * b);
                 s->bit_count++;
             }
         }
@@ -388,7 +386,7 @@ static void adf435x_reset(struct srd_decoder_inst *di)
 static void adf435x_start(struct srd_decoder_inst *di)
 {
     adf435x_state *s = (adf435x_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "adf435x");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "adf435x");
 }
 
 static void adf435x_decode(struct srd_decoder_inst *di)
@@ -433,7 +431,8 @@ struct srd_c_decoder adf435x_c_decoder = {
     .start = adf435x_start,
     .decode = adf435x_decode,
     .destroy = adf435x_destroy,
-    .recv_proto = adf435x_recv_proto,
+    .decode_upper = adf435x_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

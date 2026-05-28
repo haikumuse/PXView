@@ -123,7 +123,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[32];
         snprintf(t2, sizeof(t2), "%skm/h", kmh);
         snprintf(ann_text, sizeof(ann_text), "Speed: %s km/h, %s mph", kmh, mph);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2);
     } else if (m[0] == 0xE4 && s->ccd_msg_len >= 4) {
         /* RPM + MAP */
@@ -136,7 +136,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         snprintf(t2, sizeof(t2), "RPM=%s,MAP=%s", rpm_str, map_str);
         snprintf(t3, sizeof(t3), "R%s,M%s", rpm_str, map_str);
         snprintf(ann_text, sizeof(ann_text), "RPM: %s rpm, MAP: %s kPa", rpm_str, map_str);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2, t3);
     } else if (m[0] == 0x6D && s->ccd_msg_len >= 4) {
         /* VIN character */
@@ -148,7 +148,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         snprintf(t2, sizeof(t2), "VIN[%d]:%c,VIN:%s", pos, ch, s->vin);
         snprintf(t3, sizeof(t3), "VIN[%d]:%c", pos, ch);
         snprintf(ann_text, sizeof(ann_text), "VIN character %d: %c, VIN: %s", pos, ch, s->vin);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2, t3);
     } else if (m[0] == 0x86 && s->ccd_msg_len >= 4) {
         /* Door lock/alarm */
@@ -166,7 +166,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
             snprintf(t3, sizeof(t3), "UNK:%x%x", m[1], m[2]);
             snprintf(ann_text, sizeof(ann_text), "unknown DDM/PDM: 0x%02X 0x%02X", m[1], m[2]);
         }
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2, t3);
     } else if (m[0] == 0x42 && s->ccd_msg_len >= 4) {
         /* TPS/Cruise */
@@ -176,7 +176,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[64];
         snprintf(t2, sizeof(t2), "TPS:%s,CRUISE:%s", tps, cruise);
         snprintf(ann_text, sizeof(ann_text), "TPS: %s, CRUISE: %s", tps, cruise);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2);
     } else if (m[0] == 0x35 && s->ccd_msg_len >= 4) {
         /* Ignition switch */
@@ -185,7 +185,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[32];
         snprintf(t2, sizeof(t2), "IGN:%s", ignstr);
         snprintf(ann_text, sizeof(ann_text), "Ignition switch: %s", ignstr);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2, t2);
     } else if (m[0] == 0xA4 && s->ccd_msg_len >= 4) {
         /* Instrument cluster lamps */
@@ -194,7 +194,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[32];
         snprintf(t2, sizeof(t2), "LAMPS:%s", lampsstr);
         snprintf(ann_text, sizeof(ann_text), "Instrumental cluster lamps: %s", lampsstr);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2);
     } else if (m[0] == 0x8C && s->ccd_msg_len >= 4) {
         /* Temperatures */
@@ -206,12 +206,12 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[64];
         snprintf(t2, sizeof(t2), "EngTemp=%s,BatTemp=%s", eng_str, bat_str);
         snprintf(ann_text, sizeof(ann_text), "Engine temperature: %s, battery temperature: %s", eng_str, bat_str);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2);
     } else if (m[0] == 0x84 && s->ccd_msg_len >= 4) {
         /* Increment odometer */
         snprintf(ann_text, sizeof(ann_text), "Increment odometer: %d", 256 * m[1] + m[2]);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else if (m[0] == 0x7B && s->ccd_msg_len >= 3) {
         /* Ambient temperature */
@@ -223,7 +223,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[32];
         snprintf(t2, sizeof(t2), "AmbTemp:%s", af_str);
         snprintf(ann_text, sizeof(ann_text), "Ambient temperature: %s F (%s C)", af_str, ac_str);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2);
     } else if (m[0] == 0x82 && s->ccd_msg_len >= 5) {
         /* Steering wheel volume */
@@ -232,7 +232,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[48];
         snprintf(t2, sizeof(t2), "volume: %s", vol);
         snprintf(ann_text, sizeof(ann_text), "Steering wheel volume buttons: %s", vol);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2);
     } else if (m[0] == 0x8E && s->ccd_msg_len >= 3) {
         /* Doors */
@@ -242,31 +242,31 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         if (m[1] & 0x04) strcat(doors_str, " LeftRear");
         if (m[1] & 0x08) strcat(doors_str, " RightRear");
         if (m[1] & 0x10) strcat(doors_str, " Liftgate");
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   doors_str);
     } else if (m[0] == 0xFE && s->ccd_msg_len >= 3) {
         /* Panel lamp dim */
         int pwm = (int)floor(m[1] / 2.55);
         snprintf(ann_text, sizeof(ann_text), "Pannel lamp dim: %d%%", pwm);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else if (m[0] == 0xEE && s->ccd_msg_len >= 5) {
         /* Trip distance */
         double trip = ((65536.0 * m[1] + 256.0 * m[2] + m[3]) * 128.0) / 4971.0;
         snprintf(ann_text, sizeof(ann_text), "Trip distance: %.1f km", trip);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else if (m[0] == 0x50 && s->ccd_msg_len >= 3) {
         /* Airbag lamp */
         const char *airbag = (m[1] == 0) ? "OFF" : "PROBLEM";
         snprintf(ann_text, sizeof(ann_text), "Airbag lamp: %s", airbag);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else if (m[0] == 0x25 && s->ccd_msg_len >= 3) {
         /* Fuel level */
         int fuel = (int)floor(m[1] / 2.55);
         snprintf(ann_text, sizeof(ann_text), "Fuel level: %d%%", fuel);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else if (m[0] == 0x0C && s->ccd_msg_len >= 6) {
         /* Voltage + temperatures + oil pressure */
@@ -279,13 +279,13 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         snprintf(ann_text, sizeof(ann_text),
                  "Engine temperature: %d C, battery temperature: %d C, battery voltage: %.3g V, oil pressure: %d kPa",
                  engtemp, battemp, voltage, oil);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2);
     } else if (m[0] == 0xDA && s->ccd_msg_len >= 3) {
         /* Check engine lamp */
         const char *mil = (m[1] & 0x40) ? "PROBLEM" : "OFF";
         snprintf(ann_text, sizeof(ann_text), "Check engine lamp: %s (0x%02X)", mil, m[1]);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else if (m[0] == 0xCE && s->ccd_msg_len >= 6) {
         /* Odometer */
@@ -293,12 +293,12 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
                         ((uint64_t)m[3] << 8) | m[4];
         odo /= 4971;
         snprintf(ann_text, sizeof(ann_text), "Odo: %llu km", (unsigned long long)odo);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else if (m[0] == 0x62 && s->ccd_msg_len >= 4) {
         /* Electric doors/mirrors */
         snprintf(ann_text, sizeof(ann_text), "Windows: 0x%02X, Mirrors: 0x%02X", m[1], m[2]);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text);
     } else {
         /* Unknown message */
@@ -309,7 +309,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char t2[256];
         snprintf(t2, sizeof(t2), "CCD: %s", msg_str);
         snprintf(ann_text, sizeof(ann_text), "Unknown CCD message: %s", msg_str);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
                   ann_text, t2, msg_str);
     }
 
@@ -319,7 +319,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         int pos = 0;
         for (int i = 0; i < s->ccd_msg_len && pos < 200; i++)
             pos += snprintf(msg_str + pos, sizeof(msg_str) - pos, "%x ", m[i]);
-        C_ANN_PUT(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_MESSAGE, msg_str);
+        c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_MESSAGE, msg_str);
     }
 }
 
@@ -343,16 +343,16 @@ static void ccd_reset(struct srd_decoder_inst *di)
 static void ccd_start(struct srd_decoder_inst *di)
 {
     ccd_state *s = (ccd_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ccd");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "ccd");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ccd");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "ccd");
 
-    const char *ie_str = c_decoder_get_option_string(di, "ignoreerrors", "no");
+    const char *ie_str = c_opt_str(di, "ignoreerrors", "no");
     s->opt_ignoreerrors = (strcmp(ie_str, "yes") == 0) ? 1 : 0;
 
-    const char *ib_str = c_decoder_get_option_string(di, "invert_bus", "no");
+    const char *ib_str = c_opt_str(di, "invert_bus", "no");
     s->opt_invert_bus = (strcmp(ib_str, "yes") == 0) ? 1 : 0;
 
-    const char *u_str = c_decoder_get_option_string(di, "units", "native");
+    const char *u_str = c_opt_str(di, "units", "native");
     if (strcmp(u_str, "metric") == 0)       s->opt_units = 0;
     else if (strcmp(u_str, "imperial") == 0) s->opt_units = 1;
     else if (strcmp(u_str, "both") == 0)     s->opt_units = 2;
@@ -371,11 +371,8 @@ static void ccd_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void ccd_decode(struct srd_decoder_inst *di)
 {
     ccd_state *s = (ccd_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             s->bit_width = (uint64_t)ceil((double)s->samplerate / 7812.5);
     }
@@ -383,47 +380,13 @@ static void ccd_decode(struct srd_decoder_inst *di)
         return;
 
     while (1) {
-        /* Build wait conditions dynamically */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);  /* Condition 0: bus edge */
-
-        /* Condition 1: UART timing */
-        int have_uart_cond = 0;
-        if (s->uart_state == UART_GET_DATA || s->uart_state == UART_GET_STOP) {
-            uint64_t skip_uart = 0;
-            if (s->waitfortime > samplenum)
-                skip_uart = s->waitfortime - samplenum;
-            if (skip_uart > 0) {
-                c_cond_or(cb);
-                c_cond_skip(cb, skip_uart);
-                have_uart_cond = 1;
-            }
-        } else if (s->uart_state == UART_WAIT_START && s->idle == IDLE_BUSY) {
-            /* Wait for start bit edge while busy */
-        }
-
-        /* Condition 2: IDLE timing — fire 1 sample past the exact timeout
-         * to match Python's two-step detection (check fails at exact
-         * timeout, then dif=1 retry succeeds one sample later). */
-        int have_idle_cond = 0;
-        if (s->idle == IDLE_BUSY) {
-            uint64_t idle_elapsed = samplenum - s->idlestart;
-            if (idle_elapsed <= s->bit_width * 10) {
-                uint64_t skip_idle = s->bit_width * 10 - idle_elapsed + 1;
-                if (skip_idle > 0) {
-                    c_cond_or(cb);
-                    c_cond_skip(cb, skip_idle);
-                    have_idle_cond = 1;
-                }
-            }
-        }
-
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        /* Build wait conditions dynamically, matching Python's waituart/waitidle */
+        /* Single combined wait: edge OR skip_uart OR skip_idle */
+        int ret = c_wait(di, CW_E(0), CW_OR, CW_SKIP(1), CW_OR, CW_SKIP(1), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int bus = c_decoder_get_pin(di, 0, samplenum);
+        int bus = c_pin(di, 0);
         if (s->opt_invert_bus)
             bus = 1 - bus;
 
@@ -431,21 +394,21 @@ static void ccd_decode(struct srd_decoder_inst *di)
         if (s->oldbus != bus) {
             /* Bus changed */
             if (s->idle == IDLE_BUSY) {
-                s->idlestart = samplenum;
+                s->idlestart = di_samplenum(di);
             } else {
-                C_ANN_PUT(di, s->idlestart, samplenum - 1, s->out_ann, ANN_IDLE, "Idle", "Id", "I");
+                c_put(di, s->idlestart, di_samplenum(di) - 1, s->out_ann, ANN_IDLE, "Idle", "Id", "I");
                 s->idle = IDLE_BUSY;
-                s->idlestart = samplenum;
-                s->busystart = samplenum;
+                s->idlestart = di_samplenum(di);
+                s->busystart = di_samplenum(di);
             }
         } else {
             /* Bus not changed */
             if (s->idle == IDLE_BUSY && bus &&
-                (samplenum - s->idlestart) > s->bit_width * 10) {
+                (di_samplenum(di) - s->idlestart) > s->bit_width * 10) {
                 /* Idle for more than 10 bits */
-                C_ANN_PUT(di, s->busystart, samplenum - 1, s->out_ann, ANN_IDLE, "Busy", "Bsy", "B");
+                c_put(di, s->busystart, di_samplenum(di) - 1, s->out_ann, ANN_IDLE, "Busy", "Bsy", "B");
                 s->idle = IDLE_IDLE;
-                s->idlestart = samplenum;
+                s->idlestart = di_samplenum(di);
 
                 /* BUSY ended, decode collected bytes */
                 /* Check checksum */
@@ -455,7 +418,7 @@ static void ccd_decode(struct srd_decoder_inst *di)
                         chksum += s->ccd_message[i];
                     chksum = chksum % 256;
                     if (s->ccd_message[s->ccd_msg_len - 1] != chksum) {
-                        C_ANN_PUT(di, s->busystart, samplenum - 1, s->out_ann,
+                        c_put(di, s->busystart, di_samplenum(di) - 1, s->out_ann,
                                   ANN_CHECKSUM, "Checksum error", "Bad sum", "CHK");
                         s->errors++;
                     }
@@ -475,14 +438,14 @@ static void ccd_decode(struct srd_decoder_inst *di)
                 /* Start bit detected */
                 s->databit = 0;
                 s->databyte = 0;
-                s->framestart = samplenum;
-                s->waitfortime = samplenum + (uint64_t)ceil(1.5 * s->bit_width);
+                s->framestart = di_samplenum(di);
+                s->waitfortime = di_samplenum(di) + (uint64_t)ceil(1.5 * s->bit_width);
                 s->uart_state = UART_GET_DATA;
-                C_ANN_PUT(di, samplenum, samplenum + s->bit_width - 1,
+                c_put(di, di_samplenum(di), di_samplenum(di) + s->bit_width - 1,
                           s->out_ann, ANN_BUS_BITS, "Start bit", "Start", "S");
             }
         } else if (s->uart_state == UART_GET_DATA) {
-            if (samplenum >= s->waitfortime) {
+            if (di_samplenum(di) >= s->waitfortime) {
                 /* Sample data bit */
                 s->databyte = s->databyte >> 1;
                 if (bus)
@@ -490,12 +453,12 @@ static void ccd_decode(struct srd_decoder_inst *di)
 
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", bus);
-                uint64_t bit_ss = samplenum - (uint64_t)ceil(s->bit_width / 2.0);
-                uint64_t bit_es = samplenum + (uint64_t)floor(s->bit_width / 2.0) - 1;
-                C_ANN_PUT(di, bit_ss, bit_es, s->out_ann, ANN_BUS_BITS,
+                uint64_t bit_ss = di_samplenum(di) - (uint64_t)ceil(s->bit_width / 2.0);
+                uint64_t bit_es = di_samplenum(di) + (uint64_t)floor(s->bit_width / 2.0) - 1;
+                c_put(di, bit_ss, bit_es, s->out_ann, ANN_BUS_BITS,
                           bit_str, bit_str, bit_str);
 
-                s->waitfortime = samplenum + s->bit_width;
+                s->waitfortime = di_samplenum(di) + s->bit_width;
                 s->databit++;
 
                 if (s->databit == 8) {
@@ -508,28 +471,28 @@ static void ccd_decode(struct srd_decoder_inst *di)
                     snprintf(byte_str, sizeof(byte_str), "0x%x", s->databyte);
                     char byte_short[4];
                     snprintf(byte_short, sizeof(byte_short), "%x", s->databyte);
-                    C_ANN_PUT(di, s->framestart + s->bit_width,
-                              samplenum + (uint64_t)floor(s->bit_width / 2.0),
+                    c_put(di, s->framestart + s->bit_width,
+                              di_samplenum(di) + (uint64_t)floor(s->bit_width / 2.0),
                               s->out_ann, ANN_BUS_BYTES, byte_str, byte_short, byte_short);
                 }
             }
         } else if (s->uart_state == UART_GET_STOP) {
-            if (samplenum >= s->waitfortime) {
+            if (di_samplenum(di) >= s->waitfortime) {
                 if (!bus) {
                     /* Frame error */
                     s->errors++;
-                    C_ANN_PUT(di, s->framestart,
-                              samplenum + (uint64_t)floor(s->bit_width / 2.0),
+                    c_put(di, s->framestart,
+                              di_samplenum(di) + (uint64_t)floor(s->bit_width / 2.0),
                               s->out_ann, ANN_FRAME_ERROR, "Frame error", "Fr.ERR", "FE");
                 }
                 /* Stop bit annotation */
-                uint64_t stop_ss = samplenum - (uint64_t)ceil(s->bit_width / 2.0);
-                uint64_t stop_es = samplenum + (uint64_t)floor(s->bit_width / 2.0) - 1;
-                C_ANN_PUT(di, stop_ss, stop_es, s->out_ann, ANN_BUS_BITS,
+                uint64_t stop_ss = di_samplenum(di) - (uint64_t)ceil(s->bit_width / 2.0);
+                uint64_t stop_es = di_samplenum(di) + (uint64_t)floor(s->bit_width / 2.0) - 1;
+                c_put(di, stop_ss, stop_es, s->out_ann, ANN_BUS_BITS,
                           "Stop bit", "Stop", "E");
 
                 s->uart_state = UART_WAIT_START;
-                s->idlestart = samplenum;
+                s->idlestart = di_samplenum(di);
             }
         }
 
@@ -574,6 +537,7 @@ struct srd_c_decoder ccd_c_decoder = {
     .start = ccd_start,
     .decode = ccd_decode,
     .destroy = ccd_destroy,
+    .state_size = 0,
     .metadata = ccd_metadata,
 };
 

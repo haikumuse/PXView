@@ -139,8 +139,6 @@ typedef struct {
     uint64_t ss_bitstring;
     uint64_t es_bitstring;
     int first;
-    int first_shift_bit;
-
     int out_ann;
     int out_python;
 } cjtag_priv;
@@ -265,105 +263,121 @@ static void cjtag_handle_rising_tck_edge(struct srd_decoder_inst *di, cjtag_priv
         p->es_item = samplenum;
         /* Output the old JTAG state */
         if (p->old_jtag_state >= 0 && p->old_jtag_state < 16) {
-            C_ANN_PUT(di, p->ss_item, p->es_item, p->out_ann,
+            c_put(di, p->ss_item, p->es_item, p->out_ann,
                       p->old_jtag_state, jtag_state_names[p->old_jtag_state]);
         }
         /* Output cJTAG state */
         if (p->old_cjtag_state >= 0 && p->old_cjtag_state <= CJTAG_OSCAN1) {
-            C_ANN_PUT(di, p->ss_item, p->es_item, p->out_ann,
+            c_put(di, p->ss_item, p->es_item, p->out_ann,
                       ANN_STATE_TAPC, cjtag_state_names[p->old_cjtag_state]);
         }
         /* Output TMS bit for cJTAG states */
         if (p->old_cjtag_state >= CJTAG_OAC && p->old_cjtag_state <= CJTAG_CP) {
             char tms_str[4];
             snprintf(tms_str, sizeof(tms_str), "%d", p->oldtms);
-            C_ANN_PUT(di, p->ss_item, p->es_item, p->out_ann, ANN_BIT_TMS, tms_str);
+            c_put(di, p->ss_item, p->es_item, p->out_ann, ANN_BIT_TMS, tms_str);
         }
     }
     p->oldtms = tms;
 
     /* Collect TDI/TDO in SHIFT states */
     if (p->jtag_state == SHIFT_DR || p->jtag_state == SHIFT_IR) {
-        if (p->first_shift_bit) {
-            p->first_shift_bit = 0;
-        } else {
-            if (p->bits_cnt > 0) {
-                if (p->bits_cnt == 1)
-                    p->ss_bitstring = samplenum;
+        if (p->bits_cnt > 0) {
+            if (p->bits_cnt == 1)
+                p->ss_bitstring = samplenum;
 
-                if (p->bits_cnt > 1) {
-                    char tdi_str[4], tdo_str[4];
-                    snprintf(tdi_str, sizeof(tdi_str), "%d", p->bits_tdi[0]);
-                    snprintf(tdo_str, sizeof(tdo_str), "%d", p->bits_tdo[0]);
-                    C_ANN_PUT(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDI, tdi_str);
-                    C_ANN_PUT(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDO, tdo_str);
-                }
+            if (p->bits_cnt > 1) {
+                char tdi_str[4], tdo_str[4];
+                snprintf(tdi_str, sizeof(tdi_str), "%d", p->bits_tdi[0]);
+                snprintf(tdo_str, sizeof(tdo_str), "%d", p->bits_tdo[0]);
+                c_put(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDI, tdi_str);
+                c_put(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDO, tdo_str);
+            }
 
-                /* Shift bits: insert at position 0 */
-                if (p->bits_cnt < 255) {
-                    memmove(&p->bits_tdi[1], &p->bits_tdi[0], p->bits_cnt * sizeof(int));
-                    memmove(&p->bits_tdo[1], &p->bits_tdo[0], p->bits_cnt * sizeof(int));
-                }
+            /* Shift bits: insert at position 0 */
+            if (p->bits_cnt < 255) {
+                memmove(&p->bits_tdi[1], &p->bits_tdi[0], p->bits_cnt * sizeof(int));
+                memmove(&p->bits_tdo[1], &p->bits_tdo[0], p->bits_cnt * sizeof(int));
             }
 
             p->bits_tdi[0] = tdi;
             p->bits_tdo[0] = tdo;
-            p->bits_cnt++;
         }
+
+        p->bits_cnt++;
     }
 
     /* Output bitstring when transitioning from SHIFT to EXIT1 */
     if ((p->old_jtag_state == SHIFT_DR && p->jtag_state == EXIT1_DR) ||
         (p->old_jtag_state == SHIFT_IR && p->jtag_state == EXIT1_IR)) {
         if (p->bits_cnt > 0) {
-            /* Add the last bit */
-            if (p->bits_cnt < 255) {
-                memmove(&p->bits_tdi[1], &p->bits_tdi[0], p->bits_cnt * sizeof(int));
-                memmove(&p->bits_tdo[1], &p->bits_tdo[0], p->bits_cnt * sizeof(int));
-            }
-            p->bits_tdi[0] = tdi;
-            p->bits_tdo[0] = tdo;
-            p->bits_cnt++;
+            if (p->bits_cnt == 1) {
+                /* Only shifted one bit */
+                p->ss_bitstring = samplenum;
+                p->bits_tdi[0] = tdi;
+                p->bits_tdo[0] = tdo;
+            } else {
+                /* Output the previous bit */
+                char tdi_str[4], tdo_str[4];
+                snprintf(tdi_str, sizeof(tdi_str), "%d", p->bits_tdi[0]);
+                snprintf(tdo_str, sizeof(tdo_str), "%d", p->bits_tdo[0]);
+                c_put(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDI, tdi_str);
+                c_put(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDO, tdo_str);
 
+                /* Add the last bit: insert at position 0 */
+                if (p->bits_cnt < 255) {
+                    memmove(&p->bits_tdi[1], &p->bits_tdi[0], p->bits_cnt * sizeof(int));
+                    memmove(&p->bits_tdo[1], &p->bits_tdo[0], p->bits_cnt * sizeof(int));
+                }
+                p->bits_tdi[0] = tdi;
+                p->bits_tdo[0] = tdo;
+            }
+
+            p->bits_cnt++;
             p->data_ready = 1;
         }
-        p->first_shift_bit = 1;
     }
 
     /* Output bitstring when transitioning from EXIT to PAUSE */
     if (p->old_jtag_state == EXIT1_DR || p->old_jtag_state == EXIT1_IR ||
         p->old_jtag_state == EXIT2_DR || p->old_jtag_state == EXIT2_IR) {
-        if (p->data_ready && p->bits_cnt > 0) {
+        if (p->data_ready && p->bits_cnt > 1) {
             p->data_ready = 0;
             p->es_bitstring = samplenum;
 
-            int cnt = p->bits_cnt > 256 ? 256 : p->bits_cnt;
+            /* bits_cnt includes the phantom first SHIFT clock where no data was stored,
+               so actual data count is bits_cnt - 1 (matching Python's len(bits_tdi)) */
+            int cnt = p->bits_cnt - 1;
+            if (cnt > 256) cnt = 256;
             const char *dr_ir = (p->old_jtag_state == EXIT1_IR || p->old_jtag_state == EXIT2_IR) ? "IR" : "DR";
 
             /* Build bitstring */
             uint64_t tdi_val = 0, tdo_val = 0;
             for (int i = 0; i < cnt; i++) {
-                tdi_val |= ((uint64_t)p->bits_tdi[i] << i);
-                tdo_val |= ((uint64_t)p->bits_tdo[i] << i);
+                tdi_val |= ((uint64_t)p->bits_tdi[i] << (cnt - 1 - i));
+                tdo_val |= ((uint64_t)p->bits_tdo[i] << (cnt - 1 - i));
             }
 
             char tdi_str[128], tdo_str[128];
-            snprintf(tdi_str, sizeof(tdi_str), "%s TDI: (0x%llX), %d bits",
-                     dr_ir, (unsigned long long)tdi_val, cnt);
-            snprintf(tdo_str, sizeof(tdo_str), "%s TDO: (0x%llX), %d bits",
+            snprintf(tdi_str, sizeof(tdi_str), "%s TDI:  (0x%llX), %d bits",
+                dr_ir, (unsigned long long)tdi_val, cnt);
+            snprintf(tdo_str, sizeof(tdo_str), "%s TDO:  (0x%llX), %d bits",
                      dr_ir, (unsigned long long)tdo_val, cnt);
 
-            C_ANN_PUT(di, p->ss_bitstring, samplenum, p->out_ann,
+            /* Output in interleaved order: TDI bitstring, TDI last bit, TDO bitstring, TDO last bit */
+            c_put(di, p->ss_bitstring, samplenum, p->out_ann,
                       ANN_BITSTRING_TDI, tdi_str);
-            C_ANN_PUT(di, p->ss_bitstring, samplenum, p->out_ann,
+
+            char tdi_last[4];
+            snprintf(tdi_last, sizeof(tdi_last), "%d", p->bits_tdi[0]);
+            c_put(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDI, tdi_last);
+
+            c_put(di, p->ss_bitstring, samplenum, p->out_ann,
                       ANN_BITSTRING_TDO, tdo_str);
 
-            /* Output last bit annotation */
-            char tdi_last[4], tdo_last[4];
-            snprintf(tdi_last, sizeof(tdi_last), "%d", p->bits_tdi[0]);
+            char tdo_last[4];
             snprintf(tdo_last, sizeof(tdo_last), "%d", p->bits_tdo[0]);
-            C_ANN_PUT(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDI, tdi_last);
-            C_ANN_PUT(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDO, tdo_last);
+            c_put(di, p->ss_item, samplenum, p->out_ann, ANN_BIT_TDO, tdo_last);
 
             /* Output Python protocol data */
             {
@@ -378,10 +392,10 @@ static void cjtag_handle_rising_tck_edge(struct srd_decoder_inst *di, cjtag_priv
                     if (p->bits_tdo[i])
                         tdo_bytes[i / 8] |= (1 << (i % 8));
                 }
-                c_decoder_put_python(di, p->ss_bitstring, samplenum, p->out_python,
-                                     is_ir ? "IR TDI" : "DR TDI", tdi_bytes, byte_count);
-                c_decoder_put_python(di, p->ss_bitstring, samplenum, p->out_python,
-                                     is_ir ? "IR TDO" : "DR TDO", tdo_bytes, byte_count);
+                c_proto(di, p->ss_bitstring, samplenum, p->out_python,
+                                     is_ir ? "IR TDI" : "DR TDI", C_BYTES(tdi_bytes, byte_count), C_END);
+                c_proto(di, p->ss_bitstring, samplenum, p->out_python,
+                                     is_ir ? "IR TDO" : "DR TDO", C_BYTES(tdo_bytes, byte_count), C_END);
             }
 
             p->bits_cnt = 0;
@@ -404,14 +418,13 @@ static void cjtag_reset(struct srd_decoder_inst *di)
     p->out_ann = -1;
     p->out_python = -1;
     p->first = 1;
-    p->first_shift_bit = 1;
 }
 
 static void cjtag_start(struct srd_decoder_inst *di)
 {
     cjtag_priv *p = (cjtag_priv *)c_decoder_get_private(di);
-    p->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "jtag");
-    p->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "jtag");
+    p->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "jtag");
+    p->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "jtag");
 }
 
 static void cjtag_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -424,22 +437,16 @@ static void cjtag_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void cjtag_decode(struct srd_decoder_inst *di)
 {
     cjtag_priv *p = (cjtag_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     while (1) {
         /* Wait for rising TCK edge */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, TCK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(TCK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int tdi = c_decoder_get_pin(di, TDI, samplenum);
-        int tdo = c_decoder_get_pin(di, TDO, samplenum);
-        int tck = c_decoder_get_pin(di, TCK, samplenum);
-        int tms = c_decoder_get_pin(di, TMS, samplenum);
+        int tdi = c_pin(di, TDI);
+        int tdo = c_pin(di, TDO);
+        int tck = c_pin(di, TCK);
+        int tms = c_pin(di, TMS);
 
         /* Handle TAPC state (escape detection) */
         p->old_cjtag_state = p->cjtag_state;
@@ -469,30 +476,30 @@ static void cjtag_decode(struct srd_decoder_inst *di)
             } else {
                 /* TDO cycle */
                 tdo_real = tms;
-                cjtag_handle_rising_tck_edge(di, p, tdi_real, tdo_real, tck, tms_real, samplenum);
+                cjtag_handle_rising_tck_edge(di, p, tdi_real, tdo_real, tck, tms_real, di_samplenum(di));
                 p->oscan1cycle = 0;
                 goto after_tck_rising;
             }
         } else {
-            cjtag_handle_rising_tck_edge(di, p, tdi, tdo, tck, tms, samplenum);
+            cjtag_handle_rising_tck_edge(di, p, tdi, tdo, tck, tms, di_samplenum(di));
         }
 
 after_tck_rising:
-        /* Wait for TCK falling edge or TMS change while TCK is high */
+        /* Wait for TCK falling edge or TMS change while TCK is high.
+         * Match Python's while(tck == 1) loop that monitors TMS changes. */
         {
-            srd_cond_builder *cb2 = c_cond_new();
-            c_cond_fall(cb2, TCK);   /* TCK falling */
-            c_cond_or(cb2);
-            c_cond_edge(cb2, TMS);   /* TMS edge */
-            ret = c_cond_wait(cb2, di, &samplenum, &matched);
-            c_cond_free(cb2);
-            if (ret != SRD_OK)
-                return;
+            int tck_now = c_pin(di, TCK);
+            while (tck_now == 1) {
+                ret = c_wait(di, CW_F(TCK), CW_OR, CW_E(TMS), CW_END);
+                if (ret != SRD_OK)
+                    return;
 
-            int tms_new = c_decoder_get_pin(di, TMS, samplenum);
-            if (tms_new != tms) {
-                tms = tms_new;
-                p->escape_edges++;
+                int tms_new = c_pin(di, TMS);
+                if (tms_new != tms) {
+                    tms = tms_new;
+                    p->escape_edges++;
+                }
+                tck_now = c_pin(di, TCK);
             }
         }
     }
@@ -535,6 +542,7 @@ struct srd_c_decoder cjtag_oscan0_c_decoder = {
     .start = cjtag_start,
     .decode = cjtag_decode,
     .destroy = cjtag_destroy,
+    .state_size = 0,
     .metadata = cjtag_metadata,
 };
 

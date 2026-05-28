@@ -2,7 +2,7 @@
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 original Python version
- * Copyright (C) 2024 C port
+ * Copyright (C) 2025 C port (v4 API)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,11 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 /* Annotations */
 enum {
@@ -31,13 +31,14 @@ enum {
     NUM_ANN,
 };
 
-/* Decoder private state */
-typedef struct {
+/* Decoder private state — C_DECODER_STATE auto-generates ipv4_s typedef,
+ * ipv4_reset (calloc), and ipv4_destroy (free). */
+C_DECODER_STATE(ipv4, {
     int out_ann;
-    int out_python;
+    int out_proto;
     uint64_t ss_block;
     uint64_t es_block;
-} ipv4_state;
+})
 
 /* --- IP Protocol lookup table --- */
 
@@ -195,19 +196,24 @@ static const ip_protocol_entry *find_ip_protocol(uint8_t proto)
     return NULL;
 }
 
-/* --- Helper to read block ss/es --- */
+/* --- Helper to read block ss/es from c_field BYTES --- */
+
+typedef struct {
+    uint64_t ss;
+    uint64_t es;
+} ipv4_block_t;
 
 static uint64_t blk_ss(const uint8_t *blocks_data, int idx)
 {
     uint64_t v;
-    memcpy(&v, blocks_data + idx * 16, 8);
+    memcpy(&v, blocks_data + idx * sizeof(ipv4_block_t), 8);
     return v;
 }
 
 static uint64_t blk_es(const uint8_t *blocks_data, int idx)
 {
     uint64_t v;
-    memcpy(&v, blocks_data + idx * 16 + 8, 8);
+    memcpy(&v, blocks_data + idx * sizeof(ipv4_block_t) + 8, 8);
     return v;
 }
 
@@ -241,33 +247,45 @@ static const struct srd_c_ann_row ipv4_ann_rows[] = {
     {"datas", "Datas", row_datas_classes, 1},
 };
 
-/* --- Core recv_proto --- */
+/* --- Core decode_upper --- */
 
-static void ipv4_recv_proto(struct srd_decoder_inst *di,
+static void ipv4_decode_upper(struct srd_decoder_inst *di,
     uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+    const char *cmd, const c_field *fields, int n_fields)
 {
-    ipv4_state *s = (ipv4_state *)c_decoder_get_private(di);
+    (void)start_sample;
+    (void)end_sample;
+    ipv4_s *s = (ipv4_s *)c_decoder_get_private(di);
     if (!s) return;
 
-    if (strcmp(cmd, "PAYLOAD") != 0 || !data || data_len < 4)
+    if (strcmp(cmd, "PAYLOAD") != 0 || n_fields < 2)
         return;
 
-    /* Parse PAYLOAD data layout */
-    uint16_t payload_len;
-    memcpy(&payload_len, data, 2);
-    const uint8_t *payload = data + 2;
+    /* Extract payload bytes and blocks from c_field */
+    const uint8_t *payload = NULL;
+    uint32_t payload_len = 0;
+    const uint8_t *blocks_data = NULL;
+    uint32_t blocks_size = 0;
 
-    uint16_t block_count;
-    memcpy(&block_count, data + 2 + payload_len, 2);
-    const uint8_t *blocks_data = data + 4 + payload_len;
+    if (fields[0].type == C_FIELD_BYTES) {
+        payload = fields[0].bytes.data;
+        payload_len = fields[0].bytes.len;
+    }
+    if (fields[1].type == C_FIELD_BYTES) {
+        blocks_data = fields[1].bytes.data;
+        blocks_size = fields[1].bytes.len;
+    }
+
+    if (!payload || payload_len < 20 || !blocks_data)
+        return;
+
+    int block_count = blocks_size / sizeof(ipv4_block_t);
+    if (block_count < 20)
+        return;
 
     /* Get IHL */
     int ihl = (payload[0] & 0x0F) * 4;
     if (ihl != 20) return; /* Only support standard 20-byte header */
-
-    if ((int)payload_len < 20 || (int)block_count < 20)
-        return;
 
     char t[128], t2[64], t3[16];
 
@@ -277,12 +295,12 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     snprintf(t, sizeof(t), "Version: 4 Header Length: %d bytes", ihl);
     snprintf(t2, sizeof(t2), "Version: 4 Len: %d", ihl);
     snprintf(t3, sizeof(t3), "4/%d", ihl);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2, t3);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2, t3);
 
     /* DSCP and ECN */
     s->ss_block = blk_ss(blocks_data, 1);
     s->es_block = blk_es(blocks_data, 1);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER,
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER,
               "Differentiated Services Code Point (DSCP) and Explicit Congestion Notification (ECN)",
               "DSCP and ECN");
 
@@ -292,7 +310,7 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 3);
     snprintf(t, sizeof(t), "Packet Length: %d bytes", total_length);
     snprintf(t2, sizeof(t2), "Pkt Len: %d", total_length);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Identification */
     uint16_t ident = ((uint16_t)payload[4] << 8) | payload[5];
@@ -300,16 +318,19 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 5);
     snprintf(t, sizeof(t), "Identification: %d", ident);
     snprintf(t2, sizeof(t2), "ID: %d", ident);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Flags */
     int df = (payload[6] & 0x40) >> 6;
     int mf = (payload[6] & 0x20) >> 5;
     s->ss_block = blk_ss(blocks_data, 6);
     uint64_t flags_es = blk_ss(blocks_data, 6) + (uint64_t)(((blk_es(blocks_data, 6) - blk_ss(blocks_data, 6)) * 3) / 8);
-    snprintf(t, sizeof(t), "Don't Fragment: %d    More Fragments: %d", df, mf);
-    snprintf(t2, sizeof(t2), "DF: %d    MF: %d", df, mf);
-    C_ANN_PUT(di, s->ss_block, flags_es, s->out_ann, ANN_HEADER, t, t2, "DF and MF", "Flags");
+    /* Match Python: use True/False strings instead of %d integers */
+    const char *df_str = df ? "True" : "False";
+    const char *mf_str = mf ? "True" : "False";
+    snprintf(t, sizeof(t), "Don't Fragment: %s    More Fragments: %s", df_str, mf_str);
+    snprintf(t2, sizeof(t2), "DF: %s    MF: %s", df_str, mf_str);
+    c_put(di, s->ss_block, flags_es, s->out_ann, ANN_HEADER, t, t2, "DF and MF", "Flags");
 
     /* Fragment offset */
     uint16_t frag_offset = (((uint16_t)(payload[6] & 0x1F) << 8) | payload[7]) * 8;
@@ -317,7 +338,7 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 7);
     snprintf(t, sizeof(t), "Fragment Offset: %d bytes", frag_offset);
     snprintf(t2, sizeof(t2), "Offset: %d", frag_offset);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* TTL */
     uint8_t ttl = payload[8];
@@ -325,7 +346,7 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 8);
     snprintf(t, sizeof(t), "Time To Live: %d", ttl);
     snprintf(t2, sizeof(t2), "TTL: %d", ttl);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Protocol */
     uint8_t protocol = payload[9];
@@ -333,12 +354,11 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 9);
     const ip_protocol_entry *proto_entry = find_ip_protocol(protocol);
     if (proto_entry) {
-        snprintf(t, sizeof(t), "Protocol: %s (%d)", proto_entry->long_name, proto_entry->short_name[0] ? 0 : protocol);
         snprintf(t, sizeof(t), "Protocol: %s (%s)", proto_entry->long_name, proto_entry->short_name);
         snprintf(t2, sizeof(t2), "%s", proto_entry->short_name);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
     } else {
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, "Protocol: UNKNOWN", "UNKNOWN");
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, "Protocol: UNKNOWN", "UNKNOWN");
     }
 
     /* Header checksum */
@@ -348,7 +368,7 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 11);
     snprintf(t, sizeof(t), "Header Checksum: %s", cs_str);
     snprintf(t2, sizeof(t2), "Checksum: %s", cs_str);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Source IP */
     char src_ip[16];
@@ -357,7 +377,7 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 15);
     snprintf(t, sizeof(t), "Source IP Address: %s", src_ip);
     snprintf(t2, sizeof(t2), "Src IP: %s", src_ip);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* Destination IP */
     char dst_ip[16];
@@ -366,67 +386,41 @@ static void ipv4_recv_proto(struct srd_decoder_inst *di,
     s->es_block = blk_es(blocks_data, 19);
     snprintf(t, sizeof(t), "Destination IP Address: %s", dst_ip);
     snprintf(t2, sizeof(t2), "DEST IP: %s", dst_ip);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
     /* IP Payload annotations */
-    for (int i = 20; i < (int)payload_len && i < (int)block_count; i++) {
+    for (int i = 20; i < (int)payload_len && i < block_count; i++) {
         s->ss_block = blk_ss(blocks_data, i);
         s->es_block = blk_es(blocks_data, i);
         snprintf(t, sizeof(t), "0x%02X", payload[i]);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t);
     }
 
     /* Push payload to stacked decoders */
-    if (s->out_python >= 0 && (int)payload_len > 20 && (int)block_count > 20) {
-        uint16_t ip_plen = (uint16_t)(payload_len - 20);
-        uint16_t bc = (uint16_t)(block_count - 20);
-        int buf_size = 2 + ip_plen + 2 + bc * 16 + 4 + 4;
-        uint8_t *buf = g_malloc(buf_size);
-        int pos = 0;
-        memcpy(buf + pos, &ip_plen, 2); pos += 2;
-        memcpy(buf + pos, payload + 20, ip_plen); pos += ip_plen;
-        memcpy(buf + pos, &bc, 2); pos += 2;
-        memcpy(buf + pos, blocks_data + 20 * 16, bc * 16); pos += bc * 16;
-        memcpy(buf + pos, payload + 12, 4); pos += 4;  /* src_ip */
-        memcpy(buf + pos, payload + 16, 4); pos += 4;  /* dst_ip */
-        c_decoder_put_python(di, blk_ss(blocks_data, 20), blk_es(blocks_data, block_count - 1),
-                             s->out_python, "IP_PAYLOAD", buf, pos);
-        g_free(buf);
+    if (s->out_proto >= 0 && (int)payload_len > 20 && block_count > 20) {
+        uint32_t ip_plen = (uint32_t)(payload_len - 20);
+        uint32_t bc = (uint32_t)(block_count - 20);
+        c_proto(di, blk_ss(blocks_data, 20), blk_es(blocks_data, block_count - 1),
+                s->out_proto, "IP_PAYLOAD",
+                C_BYTES(payload + 20, ip_plen),
+                C_BYTES(blocks_data + 20 * sizeof(ipv4_block_t), bc * sizeof(ipv4_block_t)),
+                C_BYTES(payload + 12, 4),  /* src_ip */
+                C_BYTES(payload + 16, 4),  /* dst_ip */
+                C_END);
     }
 }
 
 /* --- Decoder lifecycle --- */
 
-static void ipv4_reset(struct srd_decoder_inst *di)
-{
-    if (!c_decoder_get_private(di))
-        c_decoder_set_private(di, g_malloc0(sizeof(ipv4_state)));
-    ipv4_state *s = (ipv4_state *)c_decoder_get_private(di);
-    memset(s, 0, sizeof(ipv4_state));
-}
-
 static void ipv4_start(struct srd_decoder_inst *di)
 {
-    ipv4_state *s = (ipv4_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ipv4");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "ipv4");
+    ipv4_s *s = (ipv4_s *)c_decoder_get_private(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ipv4");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "ipv4");
 }
 
-static void ipv4_decode(struct srd_decoder_inst *di)
-{
-    (void)di;
-}
-
-static void ipv4_destroy(struct srd_decoder_inst *di)
-{
-    void *priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
-        c_decoder_set_private(di, NULL);
-    }
-}
-
-struct srd_c_decoder ipv4_c_decoder = {
+/* ---- Decoder definition (v4 API) ---- */
+static struct srd_c_decoder ipv4_c_def = {
     .id = "ipv4_c",
     .name = "IPv4(C)",
     .longname = "Internet Protocol Version 4 (C)",
@@ -450,16 +444,19 @@ struct srd_c_decoder ipv4_c_decoder = {
     .num_binary = 0,
     .tags = ipv4_tags,
     .num_tags = 2,
+    .state_size = sizeof(ipv4_s),
     .reset = ipv4_reset,
     .start = ipv4_start,
-    .decode = ipv4_decode,
+    .decode = NULL,
+    .end = NULL,
+    .metadata = NULL,
     .destroy = ipv4_destroy,
-    .recv_proto = ipv4_recv_proto,
+    .decode_upper = ipv4_decode_upper,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
-    return &ipv4_c_decoder;
+    return &ipv4_c_def;
 }
 
 SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)

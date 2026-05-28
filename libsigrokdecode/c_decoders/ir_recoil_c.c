@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Ryan "Izzy" Bales <izzy84075@gmail.com>
@@ -128,16 +128,16 @@ static void recoil_reset(struct srd_decoder_inst *di)
 static void recoil_start(struct srd_decoder_inst *di)
 {
     recoil_priv *s = (recoil_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_recoil");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_recoil");
 
-    const char *polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char *polarity = c_opt_str(di, "polarity", "active-low");
     s->active = (polarity && strcmp(polarity, "active-high") == 0) ? 1 : 0;
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0)
         calc_rate(s);
 
-    s->ir = c_decoder_get_initial_pin(di, 0);
+    s->ir = c_init_pin(di, 0);
     if (s->ir == 0xFF)
         s->ir = 1;
 }
@@ -162,11 +162,8 @@ static void handle_bit(recoil_priv *s, uint64_t tick)
 static void recoil_decode(struct srd_decoder_inst *di)
 {
     recoil_priv *s = (recoil_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             calc_rate(s);
     }
@@ -174,47 +171,38 @@ static void recoil_decode(struct srd_decoder_inst *di)
         return;
 
     while (1) {
-        srd_cond_builder *cb;
         int ret;
 
         s->oldedgesample = s->newedgesample;
         s->oldpinstate = s->ir;
 
         if (s->state == STATE_DATA) {
-            cb = c_cond_new();
-            c_cond_edge(cb, IR_CH);
-            c_cond_or(cb);
-            c_cond_skip(cb, s->damaximum + s->margin);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_E(IR_CH), CW_OR, CW_SKIP(s->damaximum + s->margin), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if (matched & (1ULL << 1)) {
+            if (di_matched(di) & (1ULL << 1)) {
                 /* skip timeout */
-                s->ir = c_decoder_get_pin(di, IR_CH, samplenum);
+                s->ir = c_pin(di, IR_CH);
             } else {
-                s->ir = c_decoder_get_pin(di, IR_CH, samplenum);
+                s->ir = c_pin(di, IR_CH);
             }
         } else {
-            cb = c_cond_new();
-            c_cond_edge(cb, IR_CH);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_E(IR_CH), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->ir = c_decoder_get_pin(di, IR_CH, samplenum);
+            s->ir = c_pin(di, IR_CH);
         }
 
-        s->newedgesample = samplenum;
+        s->newedgesample = di_samplenum(di);
         uint64_t length = s->newedgesample - s->oldedgesample;
 
         switch (s->state) {
         case STATE_IDLE:
             if (length >= s->sync - s->margin && length < s->sync + s->margin
                 && s->oldpinstate == s->active) {
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_SYNC,
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_SYNC,
                     "SYNC Pulse", "SYNC", "S");
                 s->data[0] = '\0';
                 s->count = 0;
@@ -225,7 +213,7 @@ static void recoil_decode(struct srd_decoder_inst *di)
 
         case STATE_SYNCING:
             if (length >= s->syncpause - s->margin && length < s->syncpause + s->margin) {
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_SYNC_PAUSE,
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_SYNC_PAUSE,
                     "SYNC Pause", "SYNC P", "SP");
                 s->state = STATE_DATA;
             } else {
@@ -235,7 +223,7 @@ static void recoil_decode(struct srd_decoder_inst *di)
                     snprintf(str1, sizeof(str1), "Packet, %d bits: 0b%s", s->count, s->data);
                     snprintf(str2, sizeof(str2), "Pack, %d: 0b%s", s->count, s->data);
                     snprintf(str3, sizeof(str3), "P %d: 0b%s", s->count, s->data);
-                    C_ANN_PUT(di, s->packetstartsample, s->oldedgesample + 1, s->out_ann, ANN_PACKET,
+                    c_put(di, s->packetstartsample, s->oldedgesample + 1, s->out_ann, ANN_PACKET,
                         str1, str2, str3);
                 }
                 s->state = STATE_IDLE;
@@ -244,14 +232,14 @@ static void recoil_decode(struct srd_decoder_inst *di)
 
         case STATE_DATA: {
             /* Check if skip timeout occurred */
-            if (matched & (1ULL << 1)) {
+            if (di_matched(di) & (1ULL << 1)) {
                 /* timeout - output packet */
                 if (s->count > 0) {
                     char str1[300], str2[300], str3[300];
                     snprintf(str1, sizeof(str1), "Packet, %d bits: 0b%s", s->count, s->data);
                     snprintf(str2, sizeof(str2), "Pack, %d: 0b%s", s->count, s->data);
                     snprintf(str3, sizeof(str3), "P %d: 0b%s", s->count, s->data);
-                    C_ANN_PUT(di, s->packetstartsample, s->oldedgesample + 1, s->out_ann, ANN_PACKET,
+                    c_put(di, s->packetstartsample, s->oldedgesample + 1, s->out_ann, ANN_PACKET,
                         str1, str2, str3);
                 }
                 s->state = STATE_IDLE;
@@ -262,7 +250,7 @@ static void recoil_decode(struct srd_decoder_inst *di)
             if (s->lastbit == 0 || s->lastbit == 1) {
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->lastbit);
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT, bit_str);
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT, bit_str);
             } else {
                 /* bit error, output packet */
                 if (s->count > 0) {
@@ -270,7 +258,7 @@ static void recoil_decode(struct srd_decoder_inst *di)
                     snprintf(str1, sizeof(str1), "Packet, %d bits: 0b%s", s->count, s->data);
                     snprintf(str2, sizeof(str2), "Pack, %d: 0b%s", s->count, s->data);
                     snprintf(str3, sizeof(str3), "P %d: 0b%s", s->count, s->data);
-                    C_ANN_PUT(di, s->packetstartsample, s->oldedgesample + 1, s->out_ann, ANN_PACKET,
+                    c_put(di, s->packetstartsample, s->oldedgesample + 1, s->out_ann, ANN_PACKET,
                         str1, str2, str3);
                 }
                 s->state = STATE_IDLE;
@@ -319,6 +307,7 @@ struct srd_c_decoder ir_recoil_c_decoder = {
     .start = recoil_start,
     .decode = recoil_decode,
     .destroy = recoil_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

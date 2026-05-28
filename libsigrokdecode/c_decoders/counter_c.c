@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -79,10 +79,10 @@ static void counter_reset(struct srd_decoder_inst *di)
 static void counter_start(struct srd_decoder_inst *di)
 {
     counter_state *s = (counter_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "counter");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "counter");
+    s->samplerate = c_samplerate(di);
 
-    const char *de = c_decoder_get_option_string(di, "data_edge", "any");
+    const char *de = c_opt_str(di, "data_edge", "any");
     if (strcmp(de, "rising") == 0)
         s->data_edge = 1;
     else if (strcmp(de, "falling") == 0)
@@ -90,18 +90,18 @@ static void counter_start(struct srd_decoder_inst *di)
     else
         s->data_edge = 0;
 
-    s->divider = (int)c_decoder_get_option_int(di, "divider", 0);
+    s->divider = (int)c_opt_int(di, "divider", 0);
     if (s->divider < 0)
         s->divider = 0;
 
-    const char *re = c_decoder_get_option_string(di, "reset_edge", "falling");
+    const char *re = c_opt_str(di, "reset_edge", "falling");
     s->reset_edge = (strcmp(re, "rising") == 0) ? 1 : 2;
 
-    s->edge_off = (int64_t)c_decoder_get_option_int(di, "edge_off", 0);
-    s->word_off = (int64_t)c_decoder_get_option_int(di, "word_off", 0);
-    s->dead_cycles = (int)c_decoder_get_option_int(di, "dead_cycles", 0);
+    s->edge_off = (int64_t)c_opt_int(di, "edge_off", 0);
+    s->word_off = (int64_t)c_opt_int(di, "word_off", 0);
+    s->dead_cycles = (int)c_opt_int(di, "dead_cycles", 0);
 
-    const char *swr = c_decoder_get_option_string(di, "start_with_reset", "no");
+    const char *swr = c_opt_str(di, "start_with_reset", "no");
     s->start_with_reset = (strcmp(swr, "yes") == 0) ? 1 : 0;
 
     s->edge_count = s->edge_off;
@@ -117,38 +117,46 @@ static void counter_start(struct srd_decoder_inst *di)
 static void counter_decode(struct srd_decoder_inst *di)
 {
     counter_state *s = (counter_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-    int has_reset = c_decoder_has_channel(di, 1);
+    int has_reset = c_has_ch(di, 1);
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        if (s->data_edge == 1)
-            c_cond_rise(cb, 0);
-        else if (s->data_edge == 2)
-            c_cond_fall(cb, 0);
-        else
-            c_cond_edge(cb, 0);
+        int ret;
         if (has_reset) {
-            c_cond_or(cb);
-            if (s->reset_edge == 1)
-                c_cond_rise(cb, 1);
+            if (s->data_edge == 1) {
+                if (s->reset_edge == 1)
+                    ret = c_wait(di, CW_R(0), CW_OR, CW_R(1), CW_END);
+                else
+                    ret = c_wait(di, CW_R(0), CW_OR, CW_F(1), CW_END);
+            } else if (s->data_edge == 2) {
+                if (s->reset_edge == 1)
+                    ret = c_wait(di, CW_F(0), CW_OR, CW_R(1), CW_END);
+                else
+                    ret = c_wait(di, CW_F(0), CW_OR, CW_F(1), CW_END);
+            } else {
+                if (s->reset_edge == 1)
+                    ret = c_wait(di, CW_E(0), CW_OR, CW_R(1), CW_END);
+                else
+                    ret = c_wait(di, CW_E(0), CW_OR, CW_F(1), CW_END);
+            }
+        } else {
+            if (s->data_edge == 1)
+                ret = c_wait(di, CW_R(0), CW_END);
+            else if (s->data_edge == 2)
+                ret = c_wait(di, CW_F(0), CW_END);
             else
-                c_cond_fall(cb, 1);
+                ret = c_wait(di, CW_E(0), CW_END);
         }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
 
-        if (has_reset && (matched & 0x2)) {
+        if (has_reset && (di_matched(di) & 0x2)) {
             s->edge_count = s->edge_off;
-            s->edge_start = samplenum;
+            s->edge_start = di_samplenum(di);
             s->edge_start_set = 1;
             s->word_count = s->word_off;
-            s->word_start = samplenum;
+            s->word_start = di_samplenum(di);
             s->word_start_set = 1;
-            C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_WORD_RESET,
+            c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_WORD_RESET,
                 "Word reset", "Reset", "Rst", "R");
             s->dead_count = s->dead_cycles;
             continue;
@@ -156,9 +164,9 @@ static void counter_decode(struct srd_decoder_inst *di)
 
         if (s->dead_count) {
             s->dead_count--;
-            s->edge_start = samplenum;
+            s->edge_start = di_samplenum(di);
             s->edge_start_set = 1;
-            s->word_start = samplenum;
+            s->word_start = di_samplenum(di);
             s->word_start_set = 1;
             continue;
         }
@@ -175,15 +183,15 @@ static void counter_decode(struct srd_decoder_inst *di)
         s->edge_count++;
         char t1[32];
         snprintf(t1, sizeof(t1), "%lld", (long long)s->edge_count);
-        C_ANN_PUT(di, s->edge_start, samplenum, s->out_ann, ANN_EDGE_COUNT, t1);
-        s->edge_start = samplenum;
+        c_put(di, s->edge_start, di_samplenum(di), s->out_ann, ANN_EDGE_COUNT, t1);
+        s->edge_start = di_samplenum(di);
 
         int64_t word_edge_count = s->edge_count - s->edge_off;
         if (s->divider && (word_edge_count % s->divider) == 0) {
             s->word_count++;
             snprintf(t1, sizeof(t1), "%lld", (long long)s->word_count);
-            C_ANN_PUT(di, s->word_start, samplenum, s->out_ann, ANN_WORD_COUNT, t1);
-            s->word_start = samplenum;
+            c_put(di, s->word_start, di_samplenum(di), s->out_ann, ANN_WORD_COUNT, t1);
+            s->word_start = di_samplenum(di);
         }
     }
 }
@@ -225,6 +233,7 @@ struct srd_c_decoder counter_c_decoder = {
     .start = counter_start,
     .decode = counter_decode,
     .destroy = counter_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -52,7 +52,7 @@ static void tca6408a_put_logic_states(struct srd_decoder_inst *di, tca6408a_stat
     if (s->es > s->logic_output_es) {
         uint8_t logic_data[1];
         logic_data[0] = s->logic_value;
-        c_decoder_put_logic(di, s->logic_output_es, s->es,
+        c_put_logic(di, s->logic_output_es, s->es,
                             s->out_logic, 0xFF, logic_data, 8);
         s->logic_output_es = s->es;
     }
@@ -65,21 +65,21 @@ static void tca6408a_handle_reg(struct srd_decoder_inst *di, tca6408a_state *s,
     switch (reg) {
     case 0x00:
         snprintf(buf, sizeof(buf), "State of inputs: %02X", b);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
         break;
     case 0x01:
         tca6408a_put_logic_states(di, s);
         snprintf(buf, sizeof(buf), "Outputs set: %02X", b);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
         s->logic_value = b;
         break;
     case 0x02:
         snprintf(buf, sizeof(buf), "Polarity inverted: %02X", b);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
         break;
     case 0x03:
         snprintf(buf, sizeof(buf), "Configuration: %02X", b);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_VALUE, buf);
         break;
     }
 }
@@ -87,10 +87,10 @@ static void tca6408a_handle_reg(struct srd_decoder_inst *di, tca6408a_state *s,
 static void tca6408a_handle_write_reg(struct srd_decoder_inst *di, tca6408a_state *s, int reg)
 {
     switch (reg) {
-    case 0: C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Input port", "In", "I"); break;
-    case 1: C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Output port", "Out", "O"); break;
-    case 2: C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Polarity inversion register", "Pol", "P"); break;
-    case 3: C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Configuration register", "Conf", "C"); break;
+    case 0: c_put(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Input port", "In", "I"); break;
+    case 1: c_put(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Output port", "Out", "O"); break;
+    case 2: c_put(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Polarity inversion register", "Pol", "P"); break;
+    case 3: c_put(di, s->ss, s->es, s->out_ann, ANN_REGISTER, "Configuration register", "Conf", "C"); break;
     }
 }
 
@@ -100,14 +100,12 @@ static void tca6408a_check_correct_chip(struct srd_decoder_inst *di, tca6408a_st
         char buf[128];
         snprintf(buf, sizeof(buf),
                  "Warning: I²C slave 0x%02X not a TCA6408A compatible chip.", addr);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
         s->state = TCA6408A_IDLE;
     }
 }
 
-static void tca6408a_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void tca6408a_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     tca6408a_state *s = (tca6408a_state *)c_decoder_get_private(di);
     if (!s)
@@ -122,27 +120,27 @@ static void tca6408a_recv_proto(struct srd_decoder_inst *di,
     } else if (s->state == TCA6408A_GET_SLAVE_ADDR) {
         /* Only process ADDRESS WRITE/READ commands, ignore BITS etc. */
         if (strcmp(cmd, "ADDRESS WRITE") == 0 || strcmp(cmd, "ADDRESS READ") == 0) {
-            s->chip = (data_len > 0) ? data[0] : 0;
+            s->chip = (n_fields > 0) ? fields[0].u8 : 0;
             tca6408a_check_correct_chip(di, s, s->chip);
             if (s->state != TCA6408A_IDLE)
                 s->state = TCA6408A_GET_REG_ADDR;
         }
     } else if (s->state == TCA6408A_GET_REG_ADDR) {
         if (strcmp(cmd, "ADDRESS READ") == 0 || strcmp(cmd, "ADDRESS WRITE") == 0) {
-            tca6408a_check_correct_chip(di, s, (data_len > 0) ? data[0] : 0);
+            tca6408a_check_correct_chip(di, s, (n_fields > 0) ? fields[0].u8 : 0);
             if (s->state == TCA6408A_IDLE)
                 return;
         }
         if (strcmp(cmd, "DATA WRITE") != 0)
             return;
-        s->reg = (data_len > 0) ? data[0] : 0;
+        s->reg = (n_fields > 0) ? fields[0].u8 : 0;
         tca6408a_handle_write_reg(di, s, s->reg);
         s->state = TCA6408A_WRITE_IO_REGS;
     } else if (s->state == TCA6408A_WRITE_IO_REGS) {
         if (strcmp(cmd, "START REPEAT") == 0) {
             s->state = TCA6408A_READ_IO_REGS;
         } else if (strcmp(cmd, "DATA WRITE") == 0) {
-            tca6408a_handle_reg(di, s, s->reg, (data_len > 0) ? data[0] : 0);
+            tca6408a_handle_reg(di, s, s->reg, (n_fields > 0) ? fields[0].u8 : 0);
         } else if (strcmp(cmd, "STOP") == 0) {
             s->state = TCA6408A_IDLE;
             s->chip = -1;
@@ -150,11 +148,11 @@ static void tca6408a_recv_proto(struct srd_decoder_inst *di,
     } else if (s->state == TCA6408A_READ_IO_REGS) {
         if (strcmp(cmd, "ADDRESS READ") == 0) {
             s->state = TCA6408A_READ_IO_REGS2;
-            s->chip = (data_len > 0) ? data[0] : 0;
+            s->chip = (n_fields > 0) ? fields[0].u8 : 0;
         }
     } else if (s->state == TCA6408A_READ_IO_REGS2) {
         if (strcmp(cmd, "DATA READ") == 0) {
-            tca6408a_handle_reg(di, s, s->reg, (data_len > 0) ? data[0] : 0);
+            tca6408a_handle_reg(di, s, s->reg, (n_fields > 0) ? fields[0].u8 : 0);
         } else if (strcmp(cmd, "STOP") == 0) {
             s->state = TCA6408A_IDLE;
         }
@@ -175,8 +173,8 @@ static void tca6408a_reset(struct srd_decoder_inst *di)
 static void tca6408a_start(struct srd_decoder_inst *di)
 {
     tca6408a_state *s = (tca6408a_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tca6408a");
-    s->out_logic = c_decoder_register_output(di, SRD_OUTPUT_LOGIC, "tca6408a");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tca6408a");
+    s->out_logic = c_reg_out(di, SRD_OUTPUT_LOGIC, "tca6408a");
 }
 
 static void tca6408a_decode(struct srd_decoder_inst *di)
@@ -221,7 +219,8 @@ struct srd_c_decoder tca6408a_c_decoder = {
     .start = tca6408a_start,
     .decode = tca6408a_decode,
     .destroy = tca6408a_destroy,
-    .recv_proto = tca6408a_recv_proto,
+    .decode_upper = tca6408a_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

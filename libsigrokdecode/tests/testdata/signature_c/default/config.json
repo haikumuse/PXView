@@ -2,7 +2,7 @@
   "decoder": "signature_c",
   "samplerate": 1000000,
   "num_channels": 4,
-  "sample_count": 10000,
+  "sample_count": 50000,
   "channels": {
     "start": 0,
     "stop": 1,
@@ -14,5 +14,6 @@
     "stop_edge": "rising",
     "clk_edge": "falling",
     "annbits": "no"
-  }
+  },
+  "expected_deviations": true
 }

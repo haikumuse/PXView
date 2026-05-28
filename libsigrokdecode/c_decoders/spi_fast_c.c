@@ -114,13 +114,13 @@ static void spi_fast_format_value(uint64_t val, int wordsize, int format,
         if (val >= 32 && val <= 126)
             snprintf(buf, bufsize, "%c", (char)val);
         else
-            snprintf(buf, bufsize, "%02llX", (unsigned long long)val);
+            snprintf(buf, bufsize, "%02llx", (unsigned long long)val);
         break;
     case 1: /* dec */
         snprintf(buf, bufsize, "%llu", (unsigned long long)val);
         break;
     case 2: /* hex */
-        snprintf(buf, bufsize, "%02llX", (unsigned long long)val);
+        snprintf(buf, bufsize, "%02llx", (unsigned long long)val);
         break;
     case 3: /* oct */
         snprintf(buf, bufsize, "%03llo", (unsigned long long)val);
@@ -131,7 +131,7 @@ static void spi_fast_format_value(uint64_t val, int wordsize, int format,
         buf[wordsize] = '\0';
         break;
     default:
-        snprintf(buf, bufsize, "%02llX", (unsigned long long)val);
+        snprintf(buf, bufsize, "%02llx", (unsigned long long)val);
         break;
     }
 }
@@ -145,7 +145,7 @@ static void spi_fast_format_transfer(uint64_t *vals, int cnt, int format,
         if (i > 0 && format != 4)
             pos += snprintf(out + pos, out_size - pos, " ");
         if (format == 0) {
-            pos += snprintf(out + pos, out_size - pos, "%02llX", (unsigned long long)vals[i]);
+            pos += snprintf(out + pos, out_size - pos, "%02llx", (unsigned long long)vals[i]);
         } else if (format == 1) {
             pos += snprintf(out + pos, out_size - pos, "%llu", (unsigned long long)vals[i]);
         } else if (format == 2) {
@@ -163,7 +163,7 @@ static void spi_fast_format_transfer(uint64_t *vals, int cnt, int format,
             if (vals[i] >= 32 && vals[i] <= 126)
                 pos += snprintf(out + pos, out_size - pos, "%c", (char)vals[i]);
             else
-                pos += snprintf(out + pos, out_size - pos, "\\x%02llX", (unsigned long long)vals[i]);
+                pos += snprintf(out + pos, out_size - pos, "\\x%02llx", (unsigned long long)vals[i]);
         }
     }
 }
@@ -191,7 +191,7 @@ static void spi_fast_put_data(struct srd_decoder_inst *di, spi_fast_state *s)
         unsigned char bdata[8];
         for (int i = 0; i < s->bw; i++)
             bdata[i] = (unsigned char)(s->miso_byte >> (8 * (s->bw - 1 - i)));
-        c_decoder_put_binary(di, miso_ss, miso_es, s->out_binary, 0, s->bw, bdata);
+        c_put_bin(di, miso_ss, miso_es, s->out_binary, 0, s->bw, bdata);
         ss = miso_ss;
         es = miso_es;
     }
@@ -201,7 +201,7 @@ static void spi_fast_put_data(struct srd_decoder_inst *di, spi_fast_state *s)
         unsigned char bdata[8];
         for (int i = 0; i < s->bw; i++)
             bdata[i] = (unsigned char)(s->mosi_byte >> (8 * (s->bw - 1 - i)));
-        c_decoder_put_binary(di, mosi_ss, mosi_es, s->out_binary, 1, s->bw, bdata);
+        c_put_bin(di, mosi_ss, mosi_es, s->out_binary, 1, s->bw, bdata);
         ss = mosi_ss;
         es = mosi_es;
     }
@@ -239,7 +239,7 @@ static void spi_fast_put_data(struct srd_decoder_inst *di, spi_fast_state *s)
                 bits_data[bpos++] = (unsigned char)(es_val >> (8 * b));
         }
 
-        c_decoder_put_python(di, ss, es, s->out_python, "BITS", bits_data, bpos);
+        c_proto(di, ss, es, s->out_python, "BITS", C_BYTES(bits_data, bpos), C_END);
     }
 
     /* DATA 17-byte format */
@@ -253,7 +253,7 @@ static void spi_fast_put_data(struct srd_decoder_inst *di, spi_fast_state *s)
             data_data[dpos++] = (unsigned char)(mv >> (8 * i));
         for (int i = 0; i < 8; i++)
             data_data[dpos++] = (unsigned char)(sv >> (8 * i));
-        c_decoder_put_python(di, ss, es, s->out_python, "DATA", data_data, dpos);
+        c_proto(di, ss, es, s->out_python, "DATA", C_BYTES(data_data, dpos), C_END);
     }
 
     if (s->have_miso && s->misobytes_cnt < MAX_TRANSFER_BYTES) {
@@ -268,12 +268,12 @@ static void spi_fast_put_data(struct srd_decoder_inst *di, spi_fast_state *s)
     if (s->have_miso) {
         char miso_str[128];
         spi_fast_format_value(s->miso_byte, s->wordsize, s->format, miso_str, sizeof(miso_str));
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_MISO_DATA, miso_str);
+        c_put(di, ss, es, s->out_ann, ANN_MISO_DATA, miso_str);
     }
     if (s->have_mosi) {
         char mosi_str[128];
         spi_fast_format_value(s->mosi_byte, s->wordsize, s->format, mosi_str, sizeof(mosi_str));
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_MOSI_DATA, mosi_str);
+        c_put(di, ss, es, s->out_ann, ANN_MOSI_DATA, mosi_str);
     }
 }
 
@@ -296,29 +296,29 @@ static void spi_fast_reset(struct srd_decoder_inst *di)
 static void spi_fast_start(struct srd_decoder_inst *di)
 {
     spi_fast_state *s = (spi_fast_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spi");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "spi");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "spi");
-    s->out_bitrate = c_decoder_register_output(di, SRD_OUTPUT_META, "spi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "spi");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "spi");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "spi");
+    s->out_bitrate = c_reg_out(di, SRD_OUTPUT_META, "spi");
 
-    const char *cs_pol_str = c_decoder_get_option_string(di, "cs_polarity", "active-low");
+    const char *cs_pol_str = c_opt_str(di, "cs_polarity", "active-low");
     s->cs_polarity = (strcmp(cs_pol_str, "active-low") == 0) ? 0 : 1;
 
-    s->cpol = (int)c_decoder_get_option_int(di, "cpol", 0);
-    s->cpha = (int)c_decoder_get_option_int(di, "cpha", 0);
+    s->cpol = (int)c_opt_int(di, "cpol", 0);
+    s->cpha = (int)c_opt_int(di, "cpha", 0);
 
-    const char *bitorder_str = c_decoder_get_option_string(di, "bitorder", "msb-first");
+    const char *bitorder_str = c_opt_str(di, "bitorder", "msb-first");
     s->bit_order = (strcmp(bitorder_str, "msb-first") == 0) ? 0 : 1;
 
-    s->wordsize = (int)c_decoder_get_option_int(di, "wordsize", 8);
+    s->wordsize = (int)c_opt_int(di, "wordsize", 8);
     if (s->wordsize < 1 || s->wordsize > 64)
         s->wordsize = 8;
     s->bw = (s->wordsize + 7) / 8;
 
-    const char *show_dp_str = c_decoder_get_option_string(di, "show_data_point", "no");
+    const char *show_dp_str = c_opt_str(di, "show_data_point", "no");
     s->show_data_point = (strcmp(show_dp_str, "yes") == 0) ? 1 : 0;
 
-    const char *format_str = c_decoder_get_option_string(di, "format", "hex");
+    const char *format_str = c_opt_str(di, "format", "hex");
     if (strcmp(format_str, "ascii") == 0)
         s->format = 0;
     else if (strcmp(format_str, "dec") == 0)
@@ -332,9 +332,9 @@ static void spi_fast_start(struct srd_decoder_inst *di)
     else
         s->format = 2;
 
-    s->have_miso = c_decoder_has_channel(di, 1);
-    s->have_mosi = c_decoder_has_channel(di, 2);
-    s->have_cs = c_decoder_has_channel(di, 3);
+    s->have_miso = c_has_ch(di, 1);
+    s->have_mosi = c_has_ch(di, 2);
+    s->have_cs = c_has_ch(di, 3);
 
     int mode;
     if (s->cpol == 0 && s->cpha == 0)
@@ -358,35 +358,32 @@ static void spi_fast_metadata(struct srd_decoder_inst *di, int key, uint64_t val
 static void spi_fast_decode(struct srd_decoder_inst *di)
 {
     spi_fast_state *s = (spi_fast_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     int CLK = 0;
     int MISO = 1;
     int MOSI = 2;
     int CS = 3;
 
-    C_ANN_PUT(di, 0, 0, s->out_ann, ANN_ATK_DATA_POINT, "color:#F32FDC");
-    C_ANN_PUT(di, 0, 0, s->out_ann, ANN_ATK_RISING_EDGE, "color:#F32FDC");
-    C_ANN_PUT(di, 0, 0, s->out_ann, ANN_ATK_FALLING_EDGE, "color:#F32FDC");
+    c_put(di, 0, 0, s->out_ann, ANN_ATK_DATA_POINT, "color:#F32FDC");
+    c_put(di, 0, 0, s->out_ann, ANN_ATK_RISING_EDGE, "color:#F32FDC");
+    c_put(di, 0, 0, s->out_ann, ANN_ATK_FALLING_EDGE, "color:#F32FDC");
 
     if (!s->have_cs) {
-        c_decoder_put_python(di, 0, 0, s->out_python, "CS-CHANGE", NULL, 0);
+        c_proto(di, 0, 0, s->out_python, "CS-CHANGE", C_END);
     }
 
     /* Get initial pin states */
     uint64_t cur_sample;
-    if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
+    if (c_wait(di, CW_END) != SRD_OK)
         return;
 
     if (s->have_cs) {
-        int cs = c_decoder_get_pin(di, CS, cur_sample);
+        int cs = c_pin(di, CS);
         s->cs_active = spi_fast_cs_asserted(s, cs);
 
         unsigned char cs_data[2];
         cs_data[0] = 0xFF;
         cs_data[1] = (unsigned char)cs;
-        c_decoder_put_python(di, cur_sample, cur_sample, s->out_python, "CS-CHANGE", cs_data, 2);
+        c_proto(di, cur_sample, cur_sample, s->out_python, "CS-CHANGE", C_U8(cs_data[0]), C_U8(cs_data[1]), C_END);
 
         if (s->cs_active) {
             s->transfer_start = cur_sample;
@@ -396,32 +393,29 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
     }
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        if (s->sample_edge_rise)
-            c_cond_rise(cb, CLK);
-        else
-            c_cond_fall(cb, CLK);
-
-        int cs_cond_idx = -1;
+        int ret;
         if (s->have_cs) {
-            cs_cond_idx = 1;
-            c_cond_or(cb);
-            c_cond_edge(cb, CS);
+            if (s->sample_edge_rise)
+                ret = c_wait(di, CW_R(CLK), CW_OR, CW_E(CS), CW_END);
+            else
+                ret = c_wait(di, CW_F(CLK), CW_OR, CW_E(CS), CW_END);
+        } else {
+            if (s->sample_edge_rise)
+                ret = c_wait(di, CW_R(CLK), CW_END);
+            else
+                ret = c_wait(di, CW_F(CLK), CW_END);
         }
-
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
 
         if (ret != SRD_OK)
             return;
 
-        int clk = c_decoder_get_pin(di, CLK, samplenum);
-        int miso = s->have_miso ? c_decoder_get_pin(di, MISO, samplenum) : 0;
-        int mosi = s->have_mosi ? c_decoder_get_pin(di, MOSI, samplenum) : 0;
-        int cs = s->have_cs ? c_decoder_get_pin(di, CS, samplenum) : 1;
+        int clk = c_pin(di, CLK);
+        int miso = s->have_miso ? c_pin(di, MISO) : 0;
+        int mosi = s->have_mosi ? c_pin(di, MOSI) : 0;
+        int cs = s->have_cs ? c_pin(di, CS) : 1;
 
-        int clk_matched = (matched & (1ULL << 0));
-        int cs_matched = s->have_cs && (matched & (1ULL << cs_cond_idx));
+        int clk_matched = (di_matched(di) & (1ULL << 0));
+        int cs_matched = s->have_cs && (di_matched(di) & (1ULL << 1));
 
         s->cs_active = s->have_cs ? spi_fast_cs_asserted(s, cs) : 1;
 
@@ -429,10 +423,10 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
             unsigned char cs_data[2];
             cs_data[0] = (unsigned char)(1 - cs);
             cs_data[1] = (unsigned char)cs;
-            c_decoder_put_python(di, samplenum, samplenum, s->out_python, "CS-CHANGE", cs_data, 2);
+            c_proto(di, di_samplenum(di), di_samplenum(di), s->out_python, "CS-CHANGE", C_U8(cs_data[0]), C_U8(cs_data[1]), C_END);
 
             if (s->cs_active) {
-                s->transfer_start = samplenum;
+                s->transfer_start = di_samplenum(di);
                 s->misobytes_cnt = 0;
                 s->mosibytes_cnt = 0;
             } else if (s->transfer_start != (uint64_t)-1) {
@@ -440,15 +434,15 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
                     char transfer_str[4096];
                     spi_fast_format_transfer(s->misobytes_val, s->misobytes_cnt,
                         s->format, s->wordsize, transfer_str, sizeof(transfer_str));
-                    C_ANN_PUT(di, s->transfer_start, samplenum, s->out_ann, ANN_MISO_DATA, transfer_str);
+                    c_put(di, s->transfer_start, di_samplenum(di), s->out_ann, ANN_MISO_DATA, transfer_str);
                 }
                 if (s->have_mosi) {
                     char transfer_str[4096];
                     spi_fast_format_transfer(s->mosibytes_val, s->mosibytes_cnt,
                         s->format, s->wordsize, transfer_str, sizeof(transfer_str));
-                    C_ANN_PUT(di, s->transfer_start, samplenum, s->out_ann, ANN_MOSI_DATA, transfer_str);
+                    c_put(di, s->transfer_start, di_samplenum(di), s->out_ann, ANN_MOSI_DATA, transfer_str);
                 }
-                c_decoder_put_python(di, s->transfer_start, samplenum, s->out_python, "TRANSFER", NULL, 0);
+                c_proto(di, s->transfer_start, di_samplenum(di), s->out_python, "TRANSFER", C_END);
             }
 
             spi_fast_reset_word(s);
@@ -483,29 +477,29 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
             char dp_str[8];
             if (correct_edge == 1) {
                 snprintf(dp_str, sizeof(dp_str), "%d", CLK);
-                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_ATK_RISING_EDGE, dp_str);
+                c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_ATK_RISING_EDGE, dp_str);
             } else {
                 snprintf(dp_str, sizeof(dp_str), "%d", CLK);
-                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_ATK_FALLING_EDGE, dp_str);
+                c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_ATK_FALLING_EDGE, dp_str);
             }
             snprintf(dp_str, sizeof(dp_str), "%d", MISO);
-            C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_ATK_DATA_POINT, dp_str);
+            c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_ATK_DATA_POINT, dp_str);
             snprintf(dp_str, sizeof(dp_str), "%d", MOSI);
-            C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_ATK_DATA_POINT, dp_str);
+            c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_ATK_DATA_POINT, dp_str);
         }
 
         if (s->bit_count == 0) {
-            s->start_sample = samplenum;
+            s->start_sample = di_samplenum(di);
             s->cs_was_deasserted = s->have_cs ? !spi_fast_cs_asserted(s, cs) : 0;
         }
 
         if (s->bit_count > 0) {
             if (s->have_miso && s->bit_count <= s->wordsize)
-                s->miso_bits_es[s->bit_count - 1] = samplenum;
+                s->miso_bits_es[s->bit_count - 1] = di_samplenum(di);
             if (s->have_mosi && s->bit_count <= s->wordsize)
-                s->mosi_bits_es[s->bit_count - 1] = samplenum;
+                s->mosi_bits_es[s->bit_count - 1] = di_samplenum(di);
         }
-        s->last_bit_sample = samplenum;
+        s->last_bit_sample = di_samplenum(di);
 
         if (s->have_mosi) {
             if (s->bit_order == 0)
@@ -514,8 +508,8 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
                 s->mosi_byte |= ((uint64_t)mosi << s->bit_count);
 
             if (s->bit_count < s->wordsize) {
-                s->mosi_bits_ss[s->bit_count] = samplenum;
-                s->mosi_bits_es[s->bit_count] = samplenum;
+                s->mosi_bits_ss[s->bit_count] = di_samplenum(di);
+                s->mosi_bits_es[s->bit_count] = di_samplenum(di);
                 s->mosi_bits_val[s->bit_count] = mosi;
             }
         }
@@ -527,8 +521,8 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
                 s->miso_byte |= ((uint64_t)miso << s->bit_count);
 
             if (s->bit_count < s->wordsize) {
-                s->miso_bits_ss[s->bit_count] = samplenum;
-                s->miso_bits_es[s->bit_count] = samplenum;
+                s->miso_bits_ss[s->bit_count] = di_samplenum(di);
+                s->miso_bits_es[s->bit_count] = di_samplenum(di);
                 s->miso_bits_val[s->bit_count] = miso;
             }
         }
@@ -542,9 +536,9 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
 
         if (s->samplerate > 0) {
             double elapsed = 1.0 / (double)s->samplerate;
-            elapsed *= (double)(samplenum - s->start_sample + 1);
+            elapsed *= (double)(di_samplenum(di) - s->start_sample + 1);
             int bitrate = (int)(1.0 / elapsed * s->wordsize);
-            c_decoder_put_meta_int(di, s->start_sample, samplenum, s->out_bitrate, bitrate);
+            c_put_meta_int(di, s->start_sample, di_samplenum(di), s->out_bitrate, bitrate);
         }
 
         spi_fast_reset_word(s);
@@ -588,6 +582,7 @@ struct srd_c_decoder spi_fast_c_decoder = {
     .start = spi_fast_start,
     .decode = spi_fast_decode,
     .destroy = spi_fast_destroy,
+    .state_size = 0,
     .metadata = spi_fast_metadata,
 };
 

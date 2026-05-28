@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -236,7 +236,7 @@ static void oregon_put_nib(struct srd_decoder_inst *di, oregon_state *s,
 
     /* Put field annotation */
     if (s->decode_pos < s->num_bits && (s->decode_pos + numbits - 1) < s->num_bits) {
-        C_ANN_PUT(di, s->ss_arr[s->decode_pos], s->es_arr[s->decode_pos + numbits - 1],
+        c_put(di, s->ss_arr[s->decode_pos], s->es_arr[s->decode_pos + numbits - 1],
                   s->out_ann, ANN_FIELD, field_text);
     }
 
@@ -306,7 +306,7 @@ static void oregon_put_l2_param(struct srd_decoder_inst *di, oregon_state *s,
         /* Align temp to include +/- nibble */
         if (strcmp(label, "\xC2\xB0""C") == 0 && (offset + digits) < s->num_nibbles)
             es = s->nib_es[offset + digits];
-        C_ANN_PUT(di, s->nib_ss[offset], es, s->out_ann, ANN_L2, text);
+        c_put(di, s->nib_ss[offset], es, s->out_ann, ANN_L2, text);
     }
 }
 
@@ -338,7 +338,7 @@ static void oregon_baro(struct srd_decoder_inst *di, oregon_state *s, int offset
     int baro = val + 856;
     char buf[64];
     snprintf(buf, sizeof(buf), "%d mb", baro);
-    C_ANN_PUT(di, s->nib_ss[offset], s->nib_es[offset + 3], s->out_ann, ANN_L2, buf);
+    c_put(di, s->nib_ss[offset], s->nib_es[offset + 3], s->out_ann, ANN_L2, buf);
 }
 
 static void oregon_wind_dir(struct srd_decoder_inst *di, oregon_state *s, int offset)
@@ -353,7 +353,7 @@ static void oregon_wind_dir(struct srd_decoder_inst *di, oregon_state *s, int of
     if (idx > 16) idx = 16;
     char buf[64];
     snprintf(buf, sizeof(buf), "%s (%d\xC2\xB0)", dir_table[idx], w_dir);
-    C_ANN_PUT(di, s->nib_ss[offset], s->nib_es[offset], s->out_ann, ANN_L2, buf);
+    c_put(di, s->nib_ss[offset], s->nib_es[offset], s->out_ann, ANN_L2, buf);
 }
 
 static void oregon_channel(struct srd_decoder_inst *di, oregon_state *s, int offset)
@@ -380,7 +380,7 @@ static void oregon_channel(struct srd_decoder_inst *di, oregon_state *s, int off
     if (channel_str[0] != '\0') {
         char buf[32];
         snprintf(buf, sizeof(buf), "Ch %s", channel_str);
-        C_ANN_PUT(di, s->nib_ss[offset], s->nib_es[offset], s->out_ann, ANN_L2, buf);
+        c_put(di, s->nib_ss[offset], s->nib_es[offset], s->out_ann, ANN_L2, buf);
     }
 }
 
@@ -393,7 +393,7 @@ static void oregon_battery(struct srd_decoder_inst *di, oregon_state *s, int off
     const char *batt = ((v >> 2) & 0x1) ? "Low" : "OK";
     char buf[32];
     snprintf(buf, sizeof(buf), "Batt %s", batt);
-    C_ANN_PUT(di, s->nib_ss[offset], s->nib_es[offset], s->out_ann, ANN_L2, buf);
+    c_put(di, s->nib_ss[offset], s->nib_es[offset], s->out_ann, ANN_L2, buf);
 }
 
 static void oregon_put_checksum(struct srd_decoder_inst *di, oregon_state *s,
@@ -419,7 +419,7 @@ static void oregon_put_checksum(struct srd_decoder_inst *di, oregon_state *s,
              s->nib_hex[nibbles] ? s->nib_hex[nibbles] : '?');
     char buf[128];
     snprintf(buf, sizeof(buf), "Checksum %s Calc %X Rx %s", result, checksum, rx_check);
-    C_ANN_PUT(di, s->nib_ss[nibbles], s->nib_es[nibbles + 1], s->out_ann, ANN_L2, buf);
+    c_put(di, s->nib_ss[nibbles], s->nib_es[nibbles + 1], s->out_ann, ANN_L2, buf);
 }
 
 static void oregon_checksum(struct srd_decoder_inst *di, oregon_state *s, int nibbles)
@@ -495,7 +495,7 @@ static void oregon_level2(struct srd_decoder_inst *di, oregon_state *s)
 
     char text[128];
     snprintf(text, sizeof(text), "%s - %d", models, stype);
-    C_ANN_PUT(di, s->nib_ss[0], s->nib_es[3], s->out_ann, ANN_L2, text);
+    c_put(di, s->nib_ss[0], s->nib_es[3], s->out_ann, ANN_L2, text);
 
     oregon_channel(di, s, 4);
     oregon_battery(di, s, 7);
@@ -570,7 +570,7 @@ static void oregon_dump_hex(struct srd_decoder_inst *di, oregon_state *s,
     snprintf(buf, sizeof(buf), "Oregon %s \"%s\"", s->ver_str, hexstring);
     /* Output as binary */
     int len = (int)strlen(buf);
-    C_ANN_PUT(di, start, finish, s->out_ann, ANN_BIT, buf);
+    c_put(di, start, finish, s->out_ann, ANN_BIT, buf);
 }
 
 static void oregon_put_pre_and_sync(struct srd_decoder_inst *di, oregon_state *s,
@@ -583,10 +583,10 @@ static void oregon_put_pre_and_sync(struct srd_decoder_inst *di, oregon_state *s
     /* Preamble annotation */
     char pre_text[64];
     snprintf(pre_text, sizeof(pre_text), "Oregon %s Preamble", ver);
-    C_ANN_PUT(di, s->ss_arr[0], s->ss_arr[len_pream], s->out_ann, ANN_FIELD, pre_text);
+    c_put(di, s->ss_arr[0], s->ss_arr[len_pream], s->out_ann, ANN_FIELD, pre_text);
 
     /* Sync annotation */
-    C_ANN_PUT(di, s->ss_arr[len_pream], s->ss_arr[decode_pos], s->out_ann, ANN_FIELD, "Sync");
+    c_put(di, s->ss_arr[len_pream], s->ss_arr[decode_pos], s->out_ann, ANN_FIELD, "Sync");
 
     /* Strip off preamble and sync */
     int strip = decode_pos;
@@ -626,7 +626,7 @@ static void oregon_v3(struct srd_decoder_inst *di, oregon_state *s)
     s->num_nibbles = 0;
 
     if (s->num_bits < 32) {
-        C_ANN_PUT(di, s->ss_arr[0], s->es_arr[s->num_bits - 1],
+        c_put(di, s->ss_arr[0], s->es_arr[s->num_bits - 1],
                   s->out_ann, ANN_FIELD, "Too short to decode");
         return;
     }
@@ -714,13 +714,11 @@ static void oregon_decode(struct srd_decoder_inst *di, oregon_state *s)
         }
     }
     /* Not Oregon or wrong preamble */
-    C_ANN_PUT(di, s->ss_arr[0], s->es_arr[s->num_bits - 1],
+    c_put(di, s->ss_arr[0], s->es_arr[s->num_bits - 1],
               s->out_ann, ANN_FIELD, "Not Oregon or wrong preamble");
 }
 
-static void ook_oregon_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ook_oregon_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     oregon_state *s = (oregon_state *)c_decoder_get_private(di);
     if (!s)
@@ -731,7 +729,7 @@ static void ook_oregon_recv_proto(struct srd_decoder_inst *di,
          * Format: each bit is 9 bytes:
          *   ss (4 bytes LE) + es (4 bytes LE) + bit_char (1 byte: '0','1','E')
          */
-        int num_entries = (int)(data_len / 9);
+        int num_entries = (int)(n_fields / 9);
         s->num_bits = 0;
         s->ook_len = 0;
         s->decode_pos = 0;
@@ -752,15 +750,15 @@ static void ook_oregon_recv_proto(struct srd_decoder_inst *di,
         }
 
         for (int i = 0; i < num_entries; i++) {
-            const unsigned char *p = data + i * 9;
+            const c_field *p = fields + i * 9;
             uint64_t ss = 0, es = 0;
             for (int j = 0; j < 8; j++) {
-                ss |= ((uint64_t)p[j]) << (j * 8);
+                ss |= ((uint64_t)p[j].u8) << (j * 8);
             }
             for (int j = 0; j < 8; j++) {
-                es |= ((uint64_t)p[4 + j]) << (j * 8);
+                es |= ((uint64_t)p[4 + j].u8) << (j * 8);
             }
-            char bit_char = p[8];
+            char bit_char = p[8].u8;
             s->ss_arr[i] = ss;
             s->es_arr[i] = es;
             s->bit_arr[i] = bit_char;
@@ -796,9 +794,9 @@ static void ook_oregon_reset(struct srd_decoder_inst *di)
 static void ook_oregon_start(struct srd_decoder_inst *di)
 {
     oregon_state *s = (oregon_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ook_oregon");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ook_oregon");
 
-    const char *unknown = c_decoder_get_option_string(di, "unknown", "Unknown");
+    const char *unknown = c_opt_str(di, "unknown", "Unknown");
     if (unknown) {
         if (strcmp(unknown, "Temp") == 0) s->unknown_type = ORE_TYPE_TEMP;
         else if (strcmp(unknown, "Temp_Hum") == 0) s->unknown_type = ORE_TYPE_TEMP_HUM;
@@ -858,7 +856,8 @@ struct srd_c_decoder ook_oregon_c_decoder = {
     .start = ook_oregon_start,
     .decode = ook_oregon_decode,
     .destroy = ook_oregon_destroy,
-    .recv_proto = ook_oregon_recv_proto,
+    .decode_upper = ook_oregon_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

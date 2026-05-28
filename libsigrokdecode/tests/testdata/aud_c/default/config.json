@@ -2,7 +2,7 @@
   "decoder": "aud_c",
   "samplerate": 1000000,
   "num_channels": 6,
-  "sample_count": 10000,
+  "sample_count": 50000,
   "channels": {
     "audck": 0,
     "naudsync": 1,

@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -95,34 +95,32 @@ static const struct ds28ea00_cmd *find_ds28ea00_command(uint8_t code)
     return NULL;
 }
 
-static void ds28ea00_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ds28ea00_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ds28ea00_state *s = (ds28ea00_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
-    uint8_t val = (data && data_len > 0) ? data[0] : 0;
+    uint8_t val = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "RESET/PRESENCE") == 0) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Reset/presence: %s", val ? "true" : "false");
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_RESET_PRESENCE, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_RESET_PRESENCE, buf);
         s->state = STATE_ROM;
         return;
     }
 
     if (strcmp(cmd, "ROM") == 0) {
         uint64_t rom = 0;
-        if (data_len >= 8) {
+        if (n_fields >= 8) {
             for (int i = 0; i < 8; i++)
-                rom |= ((uint64_t)data[i]) << (i * 8);
+                rom |= ((uint64_t)fields[i].u8) << (i * 8);
         }
         s->rom = rom;
         char buf[64];
         snprintf(buf, sizeof(buf), "ROM: 0x%016llx", (unsigned long long)rom);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ROM, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_ROM, buf);
         s->state = STATE_COMMAND;
         return;
     }
@@ -135,12 +133,12 @@ static void ds28ea00_recv_proto(struct srd_decoder_inst *di,
         if (!c) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Unrecognized command: 0x%02x", val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARN, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN, buf);
             return;
         }
         char buf[128];
         snprintf(buf, sizeof(buf), "Function command: 0x%02x '%s'", val, c->name);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_CMD, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_CMD, buf);
 
         switch (val) {
         case 0x4e: s->state = STATE_WRITE_SCRATCHPAD; break;
@@ -157,19 +155,19 @@ static void ds28ea00_recv_proto(struct srd_decoder_inst *di,
     } else if (s->state == STATE_READ_SCRATCHPAD) {
         char buf[32];
         snprintf(buf, sizeof(buf), "Scratchpad data: 0x%02x", val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SCRATCHPAD, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_SCRATCHPAD, buf);
     } else if (s->state == STATE_CONVERT_TEMP) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Temperature conversion status: 0x%02x", val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEMP_CONV, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_TEMP_CONV, buf);
     } else if (s->state == STATE_PIO_READ) {
         char buf[32];
         snprintf(buf, sizeof(buf), "PIO read: 0x%02x", val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_PIO_READ, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_PIO_READ, buf);
     } else if (s->state == STATE_PIO_WRITE) {
         char buf[32];
         snprintf(buf, sizeof(buf), "PIO write: 0x%02x", val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_PIO_WRITE, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_PIO_WRITE, buf);
     } else if (s->state == STATE_WRITE_SCRATCHPAD ||
                s->state == STATE_COPY_SCRATCHPAD ||
                s->state == STATE_READ_POWER_MODE ||
@@ -177,7 +175,7 @@ static void ds28ea00_recv_proto(struct srd_decoder_inst *di,
                s->state == STATE_CHAIN) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Data: 0x%02x", val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_OTHER, buf);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_OTHER, buf);
     }
 }
 
@@ -193,7 +191,7 @@ static void ds28ea00_reset(struct srd_decoder_inst *di)
 static void ds28ea00_start(struct srd_decoder_inst *di)
 {
     ds28ea00_state *s = (ds28ea00_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds28ea00");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ds28ea00");
 }
 
 static void ds28ea00_decode(struct srd_decoder_inst *di)
@@ -238,7 +236,8 @@ struct srd_c_decoder ds28ea00_c_decoder = {
     .start = ds28ea00_start,
     .decode = ds28ea00_decode,
     .destroy = ds28ea00_destroy,
-    .recv_proto = ds28ea00_recv_proto,
+    .decode_upper = ds28ea00_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -139,31 +139,31 @@ static void emit_subframe(struct srd_decoder_inst* di, struct spdif_priv* s)
     snprintf(str_buf, sizeof(str_buf), "Aux 0x%x", aux_val);
     char aux_short[16];
     snprintf(aux_short, sizeof(aux_short), "0x%x", aux_val);
-    C_ANN_PUT(di, sf[0].ss, sf[3].es, s->out_ann, ANN_AUX, str_buf, aux_short);
+    c_put(di, sf[0].ss, sf[3].es, s->out_ann, ANN_AUX, str_buf, aux_short);
 
     snprintf(str_buf, sizeof(str_buf), "Sample 0x%x", full_val);
     char sample_short[16];
     snprintf(sample_short, sizeof(sample_short), "0x%x", full_val);
-    C_ANN_PUT(di, sf[4].ss, sf[23].es, s->out_ann, ANN_AUX, str_buf, sample_short);
+    c_put(di, sf[4].ss, sf[23].es, s->out_ann, ANN_AUX, str_buf, sample_short);
 
     snprintf(str_buf, sizeof(str_buf), "Audio 0x%x", full_rot);
     char audio_short[16];
     snprintf(audio_short, sizeof(audio_short), "0x%x", full_rot);
-    C_ANN_PUT(di, sf[0].ss, sf[23].es, s->out_ann, ANN_SAMPLES, str_buf, audio_short);
+    c_put(di, sf[0].ss, sf[23].es, s->out_ann, ANN_SAMPLES, str_buf, audio_short);
 
     if (sf[24].pulse_type == 0)
-        C_ANN_PUT(di, sf[24].ss, sf[24].es, s->out_ann, ANN_VALIDITY, "V");
+        c_put(di, sf[24].ss, sf[24].es, s->out_ann, ANN_VALIDITY, "V");
     else
-        C_ANN_PUT(di, sf[24].ss, sf[24].es, s->out_ann, ANN_VALIDITY, "E");
+        c_put(di, sf[24].ss, sf[24].es, s->out_ann, ANN_VALIDITY, "E");
 
     snprintf(str_buf, sizeof(str_buf), "S: %d", sf[25].pulse_type == 1 ? 1 : 0);
-    C_ANN_PUT(di, sf[25].ss, sf[25].es, s->out_ann, ANN_SUBCODE, str_buf);
+    c_put(di, sf[25].ss, sf[25].es, s->out_ann, ANN_SUBCODE, str_buf);
 
     snprintf(str_buf, sizeof(str_buf), "C: %d", sf[26].pulse_type == 1 ? 1 : 0);
-    C_ANN_PUT(di, sf[26].ss, sf[26].es, s->out_ann, ANN_CHAN_STAT, str_buf);
+    c_put(di, sf[26].ss, sf[26].es, s->out_ann, ANN_CHAN_STAT, str_buf);
 
     snprintf(str_buf, sizeof(str_buf), "P: %d", sf[27].pulse_type == 1 ? 1 : 0);
-    C_ANN_PUT(di, sf[27].ss, sf[27].es, s->out_ann, ANN_PARITY, str_buf);
+    c_put(di, sf[27].ss, sf[27].es, s->out_ann, ANN_PARITY, str_buf);
 }
 
 static void spdif_reset(struct srd_decoder_inst* di)
@@ -183,7 +183,7 @@ static void spdif_reset(struct srd_decoder_inst* di)
 static void spdif_start(struct srd_decoder_inst* di)
 {
     struct spdif_priv* s = (struct spdif_priv*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spdif");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "spdif");
 }
 
 /* Re-check buffered preamble data after clock range is determined.
@@ -214,19 +214,19 @@ static int decode_recheck_preamble(struct srd_decoder_inst* di, struct spdif_pri
         } else if (preamble_state == 2) {
             temp_preamble[preamble_count++] = pul_type;
             if (temp_preamble[0] == 2 && temp_preamble[1] == 0 && temp_preamble[2] == 1 && temp_preamble[3] == 0) {
-                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                c_put(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
                     "Preamble W", "W");
                 s->seen_preamble = 1;
             } else if (temp_preamble[0] == 2 && temp_preamble[1] == 2 && temp_preamble[2] == 1 && temp_preamble[3] == 1) {
-                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                c_put(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
                     "Preamble M", "M");
                 s->seen_preamble = 1;
             } else if (temp_preamble[0] == 2 && temp_preamble[1] == 1 && temp_preamble[2] == 1 && temp_preamble[3] == 2) {
-                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                c_put(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
                     "Preamble B", "B");
                 s->seen_preamble = 1;
             } else {
-                C_ANN_PUT(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
+                c_put(di, s->ss_edge, temp_samnum, s->out_ann, ANN_PREAMBLE,
                     "Unknown Preamble", "Unknown Prea.", "U");
             }
             preamble_state = -1;
@@ -291,7 +291,7 @@ static int decode_recheck_stream(struct srd_decoder_inst* di, struct spdif_priv*
             temp_subframe[temp_bitcount].es = samnum;
         } else if (pul_type == 1 && !temp_first_one) {
             temp_subframe[temp_bitcount].es = samnum;
-            C_ANN_PUT(di, temp_subframe[temp_bitcount].ss, samnum,
+            c_put(di, temp_subframe[temp_bitcount].ss, samnum,
                 s->out_ann, ANN_BITS, "1");
             temp_bitcount++;
             temp_first_one = 1;
@@ -299,7 +299,7 @@ static int decode_recheck_stream(struct srd_decoder_inst* di, struct spdif_priv*
             temp_subframe[temp_bitcount].pulse_type = pul_type;
             temp_subframe[temp_bitcount].ss = samnum - pul_width - 1;
             temp_subframe[temp_bitcount].es = samnum;
-            C_ANN_PUT(di, samnum - pul_width - 1, samnum,
+            c_put(di, samnum - pul_width - 1, samnum,
                 s->out_ann, ANN_BITS, "0");
             temp_bitcount++;
         }
@@ -346,34 +346,25 @@ static int decode_recheck_stream(struct srd_decoder_inst* di, struct spdif_priv*
 static void spdif_decode(struct srd_decoder_inst* di)
 {
     struct spdif_priv* s = (struct spdif_priv*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
-    srd_cond_builder* cb = c_cond_new();
-    c_cond_edge(cb, 0);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
+    int ret = c_wait(di, CW_E(0), CW_END);
     if (ret != SRD_OK)
         return;
 
-    s->samplenum_prev_edge = samplenum;
+    s->samplenum_prev_edge = di_samplenum(di);
 
     while (1) {
-        cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        s->pulse_width = samplenum - s->samplenum_prev_edge - 1;
-        s->samplenum_prev_edge = samplenum;
+        s->pulse_width = di_samplenum(di) - s->samplenum_prev_edge - 1;
+        s->samplenum_prev_edge = di_samplenum(di);
 
         if (s->state == STATE_GET_FIRST_PULSE) {
             /* Buffer pulse for later re-check */
             if (s->temp_count < MAX_PULSE_BUF) {
                 s->temp_pulse_width[s->temp_count] = s->pulse_width;
-                s->temp_samplenum[s->temp_count] = samplenum;
+                s->temp_samplenum[s->temp_count] = di_samplenum(di);
                 s->temp_count++;
             }
             if (s->pulse_width != 0) {
@@ -385,7 +376,7 @@ static void spdif_decode(struct srd_decoder_inst* di)
             /* Buffer pulse for later re-check */
             if (s->temp_count < MAX_PULSE_BUF) {
                 s->temp_pulse_width[s->temp_count] = s->pulse_width;
-                s->temp_samplenum[s->temp_count] = samplenum;
+                s->temp_samplenum[s->temp_count] = di_samplenum(di);
                 s->temp_count++;
             }
             if (s->pulse_width > (s->clocks[0] * 13 / 10) || s->pulse_width < (s->clocks[0] * 7 / 10)) {
@@ -397,7 +388,7 @@ static void spdif_decode(struct srd_decoder_inst* di)
             /* Buffer pulse for later re-check */
             if (s->temp_count < MAX_PULSE_BUF) {
                 s->temp_pulse_width[s->temp_count] = s->pulse_width;
-                s->temp_samplenum[s->temp_count] = samplenum;
+                s->temp_samplenum[s->temp_count] = di_samplenum(di);
                 s->temp_count++;
             }
             if ((s->pulse_width <= (s->clocks[0] * 13 / 10) && s->pulse_width >= (s->clocks[0] * 7 / 10)) || (s->pulse_width <= (s->clocks[1] * 13 / 10) && s->pulse_width >= (s->clocks[1] * 7 / 10))) {
@@ -426,16 +417,16 @@ static void spdif_decode(struct srd_decoder_inst* di)
             s->range1 = ((double)s->clocks[0] + (double)s->clocks[1]) / 2.0;
             s->range2 = ((double)s->clocks[1] + (double)s->clocks[2]) / 2.0;
 
-            uint64_t samplerate = c_decoder_get_samplerate(di);
+            uint64_t samplerate = c_samplerate(di);
             int spdif_bitrate = (int)((double)samplerate / ((double)s->clocks[2] / 1.5));
 
             char bitrate_str[128];
             snprintf(bitrate_str, sizeof(bitrate_str),
                 "Signal Bitrate: %d Mbit/s (=> %d kHz)",
                 spdif_bitrate, spdif_bitrate / (2 * 32));
-            C_ANN_PUT(di, 0, s->temp_samplenum[0] - 24, s->out_ann, ANN_BITRATE, bitrate_str);
+            c_put(di, 0, s->temp_samplenum[0] - 24, s->out_ann, ANN_BITRATE, bitrate_str);
 
-            s->last_preamble = samplenum;
+            s->last_preamble = di_samplenum(di);
             s->ss_edge = 0;
 
             /* Re-process buffered pulse data now that clock range is known */
@@ -467,7 +458,7 @@ static void spdif_decode(struct srd_decoder_inst* di)
                     s->preamble_count = 1;
                     s->preamble_state = 0;
                     s->state = STATE_DECODE_PREAMBLE;
-                    s->ss_edge = samplenum - s->pulse_width - 1;
+                    s->ss_edge = di_samplenum(di) - s->pulse_width - 1;
                 }
                 continue;
             }
@@ -475,19 +466,19 @@ static void spdif_decode(struct srd_decoder_inst* di)
             if (pulse == 1 && s->first_one) {
                 s->first_one = 0;
                 s->subframe[s->bitcount].pulse_type = pulse;
-                s->subframe[s->bitcount].ss = samplenum - s->pulse_width - 1;
-                s->subframe[s->bitcount].es = samplenum;
+                s->subframe[s->bitcount].ss = di_samplenum(di) - s->pulse_width - 1;
+                s->subframe[s->bitcount].es = di_samplenum(di);
             } else if (pulse == 1 && !s->first_one) {
-                s->subframe[s->bitcount].es = samplenum;
-                C_ANN_PUT(di, s->subframe[s->bitcount].ss, samplenum,
+                s->subframe[s->bitcount].es = di_samplenum(di);
+                c_put(di, s->subframe[s->bitcount].ss, di_samplenum(di),
                     s->out_ann, ANN_BITS, "1");
                 s->bitcount++;
                 s->first_one = 1;
             } else {
                 s->subframe[s->bitcount].pulse_type = pulse;
-                s->subframe[s->bitcount].ss = samplenum - s->pulse_width - 1;
-                s->subframe[s->bitcount].es = samplenum;
-                C_ANN_PUT(di, samplenum - s->pulse_width - 1, samplenum,
+                s->subframe[s->bitcount].ss = di_samplenum(di) - s->pulse_width - 1;
+                s->subframe[s->bitcount].es = di_samplenum(di);
+                c_put(di, di_samplenum(di) - s->pulse_width - 1, di_samplenum(di),
                     s->out_ann, ANN_BITS, "0");
                 s->bitcount++;
             }
@@ -506,25 +497,25 @@ static void spdif_decode(struct srd_decoder_inst* di)
 
             if (s->preamble_count == 4) {
                 if (s->preamble[0] == 2 && s->preamble[1] == 0 && s->preamble[2] == 1 && s->preamble[3] == 0) {
-                    C_ANN_PUT(di, s->ss_edge, samplenum, s->out_ann, ANN_PREAMBLE,
+                    c_put(di, s->ss_edge, di_samplenum(di), s->out_ann, ANN_PREAMBLE,
                         "Preamble W", "W");
                     s->seen_preamble = 1;
                 } else if (s->preamble[0] == 2 && s->preamble[1] == 2 && s->preamble[2] == 1 && s->preamble[3] == 1) {
-                    C_ANN_PUT(di, s->ss_edge, samplenum, s->out_ann, ANN_PREAMBLE,
+                    c_put(di, s->ss_edge, di_samplenum(di), s->out_ann, ANN_PREAMBLE,
                         "Preamble M", "M");
                     s->seen_preamble = 1;
                 } else if (s->preamble[0] == 2 && s->preamble[1] == 1 && s->preamble[2] == 1 && s->preamble[3] == 2) {
-                    C_ANN_PUT(di, s->ss_edge, samplenum, s->out_ann, ANN_PREAMBLE,
+                    c_put(di, s->ss_edge, di_samplenum(di), s->out_ann, ANN_PREAMBLE,
                         "Preamble B", "B");
                     s->seen_preamble = 1;
                 } else {
-                    C_ANN_PUT(di, s->ss_edge, samplenum, s->out_ann, ANN_PREAMBLE,
+                    c_put(di, s->ss_edge, di_samplenum(di), s->out_ann, ANN_PREAMBLE,
                         "Unknown Preamble", "Unknown Prea.", "U");
                 }
 
                 s->bitcount = 0;
                 s->first_one = 1;
-                s->last_preamble = samplenum;
+                s->last_preamble = di_samplenum(di);
                 s->state = STATE_DECODE_STREAM;
             }
         }
@@ -568,6 +559,7 @@ struct srd_c_decoder spdif_c_decoder = {
     .start = spdif_start,
     .decode = spdif_decode,
     .destroy = spdif_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

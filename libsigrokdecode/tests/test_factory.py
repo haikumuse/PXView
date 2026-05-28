@@ -23,11 +23,11 @@ from protocol_synthesizer import (
     C2Generator, AVRPDIGenerator, DeltaSigmaGenerator, EM4100Generator,
     OneSingleWireGenerator, OOKGenerator, SonyMDGenerator,
     TDMAudioGenerator, TLC5620Generator, USBPowerDeliveryGenerator,
-    MillerGenerator, IEBUSGenerator, IEEE488Generator, FSiGenerator,
+    MillerGenerator, IEBUSGenerator, Ieee488Generator, FSiGenerator,
     EthANGenerator, QiGenerator, PXX1Generator, PJDLGenerator,
     RCEncodeGenerator, RGBLEDWS281xGenerator, RinnaiControlPanelGenerator,
     CarreraGenerator, SDQGenerator, SwimGenerator, SWIGenerator,
-    MVBGenerator, MorseGenerator, LFASTGenerator, DSIGenerator,
+    MvbGenerator, MorseGenerator, LFASTGenerator, DSIGenerator,
     EM4305Generator, TL5620Generator, T55xxGenerator, BEANGenerator,
     CCDGenerator, MapleBusGenerator, RVSWDGenerator, SDIOGenerator
 )
@@ -123,6 +123,102 @@ def _gen_nrzi(bb):
     gen = NRZIGenerator(bb, channel=0)
     gen.send_bytes(b'\x55\xAA\xFF')
 
+def _gen_ethernet(bb):
+    """Generate NRZI-encoded 4B5B/Ethernet frame waveform.
+
+    Produces a complete Ethernet II frame over the NRZI -> 4B5B -> Ethernet
+    decoder chain: preamble for NRZI sync, 4B5B IDLE symbols, JK start
+    sequence, Ethernet preamble+SFD, MAC headers, EtherType, payload,
+    FCS (CRC32), and TR end sequence.
+    """
+    import zlib as _zlib
+
+    # 4B5B data encoding: nibble -> 5-bit symbol
+    _DATA_ENCODE = {
+        0x0: 0b11110, 0x1: 0b01001, 0x2: 0b10100, 0x3: 0b10101,
+        0x4: 0b01010, 0x5: 0b01011, 0x6: 0b01110, 0x7: 0b01111,
+        0x8: 0b10010, 0x9: 0b10011, 0xA: 0b10110, 0xB: 0b10111,
+        0xC: 0b11010, 0xD: 0b11011, 0xE: 0b11100, 0xF: 0b11101,
+    }
+    _CTRL_J = 0b11000
+    _CTRL_K = 0b10001
+    _CTRL_T = 0b01101
+    _CTRL_R = 0b00111
+    _CTRL_I = 0b11111
+
+    ch = 0
+    bit_width = max(2, bb.samplerate // 100000)
+    level = 0
+
+    def send_nrzi_bit(data_bit):
+        nonlocal level
+        if data_bit == 1:
+            level = 1 - level
+        bb.set_level(ch, level, bit_width)
+
+    def send_symbol(sym5):
+        for i in range(4, -1, -1):
+            send_nrzi_bit((sym5 >> i) & 1)
+
+    def send_byte(val):
+        send_symbol(_DATA_ENCODE[val & 0x0F])
+        send_symbol(_DATA_ENCODE[(val >> 4) & 0x0F])
+
+    # Brief idle before preamble
+    bb.set_level(ch, 0, bit_width * 4)
+
+    # NRZI preamble: 32 toggles for clock sync (16 rising edges)
+    for _ in range(32):
+        send_nrzi_bit(1)
+
+    # 4B5B IDLE symbols
+    for _ in range(5):
+        send_symbol(_CTRL_I)
+
+    # JK start sequence
+    send_symbol(_CTRL_J)
+    send_symbol(_CTRL_K)
+
+    # Ethernet preamble: 7 bytes of 0x55
+    for _ in range(7):
+        send_byte(0x55)
+
+    # SFD: 0xD5
+    send_byte(0xD5)
+
+    # DST MAC: FF:FF:FF:FF:FF:FF (broadcast)
+    for b in [0xFF] * 6:
+        send_byte(b)
+
+    # SRC MAC: 00:11:22:33:44:55
+    for b in [0x00, 0x11, 0x22, 0x33, 0x44, 0x55]:
+        send_byte(b)
+
+    # EtherType: 0x0800 (IPv4)
+    send_byte(0x08)
+    send_byte(0x00)
+
+    # Payload: 46 bytes (minimum Ethernet payload)
+    payload = bytes([i & 0xFF for i in range(46)])
+    for b in payload:
+        send_byte(b)
+
+    # FCS: CRC32 of frame (DST+SRC+EtherType+Payload)
+    frame = bytes([0xFF] * 6 + [0x00, 0x11, 0x22, 0x33, 0x44, 0x55]
+                  + [0x08, 0x00] + list(payload))
+    crc = _zlib.crc32(frame) & 0xFFFFFFFF
+    fcs = crc.to_bytes(4, byteorder='little')
+    for b in fcs:
+        send_byte(b)
+
+    # End sequence: T + R
+    send_symbol(_CTRL_T)
+    send_symbol(_CTRL_R)
+
+    # Trailing IDLE
+    for _ in range(5):
+        send_symbol(_CTRL_I)
+
 def _gen_nec(bb):
     gen = IRNECGenerator(bb, channel=0)
     gen.send_nec(address=0x04, command=0x08)
@@ -177,7 +273,7 @@ def _gen_sent(bb):
 
 def _gen_mipi_rffe(bb):
     gen = MIPIRFFEGenerator(bb, 0, 1)
-    gen.send_ext_write(command=0x11, address=0x0, data=0x55)
+    gen.send_r0w(slave_addr=0x0)
 
 def _gen_j1850vpw(bb):
     # J1850 VPW: edge-based, measures time between edges.
@@ -238,18 +334,46 @@ def _gen_spi_dual_quad(bb):
     gen.write_byte(0x00)
 
 def _gen_st7735(bb):
-    # ST7735: SPI display with DC (ch2) and CS (ch3)
-    gen = SPIGenerator(bb, clk=0, mosi=1, miso=1, cs=3)
-    # Command: SWRESET (0x01)
-    bb.set_level(2, 0, 0)  # DC=0 for command
-    gen.write_byte(0x01)
-    # Command: SLPOUT (0x11)
-    gen.write_byte(0x11)
-    # Command: DISPON (0x29)
-    gen.write_byte(0x29)
+    # ST7735: CS(ch0), CLK(ch1), MOSI(ch2), DC(ch3)
+    # Decoder checks data on CLK rising edge, CS must be low.
+    # DC=0 for command, DC=1 for data.
+    # Description is flushed on NEXT command, so send TWO commands.
+    hp = max(2, int(bb.samplerate / 2000000))
+    # Idle: CS high, CLK low
+    bb.write_channels({0: 1, 1: 0, 2: 0, 3: 0}, hp)
+    # CS low (active) + Command 1: SWRESET (0x01) with DC=0
+    for i in range(7, -1, -1):
+        bit = (0x01 >> i) & 1
+        bb.write_channels({0: 0, 1: 1, 2: bit, 3: 0}, hp)  # CLK high, MOSI=bit, DC=0
+        bb.write_channels({0: 0, 1: 0, 2: bit, 3: 0}, hp)  # CLK low
+    # Command 2: SLPOUT (0x11) with DC=0 - this flushes description of cmd1
+    for i in range(7, -1, -1):
+        bit = (0x11 >> i) & 1
+        bb.write_channels({0: 0, 1: 1, 2: bit, 3: 0}, hp)  # CLK high, MOSI=bit, DC=0
+        bb.write_channels({0: 0, 1: 0, 2: bit, 3: 0}, hp)  # CLK low
+    # CS high (inactive)
+    bb.write_channels({0: 1, 1: 0, 2: 0, 3: 0}, hp)
 
 def _gen_st7789(bb):
-    _gen_st7735(bb)
+    # ST7789: CSX(ch0), DCX(ch1), SDO(ch2), WRX(ch3)
+    # Decoder waits for CSX falling edge, then reads bits on DCX rising edge.
+    # WRX=0 for command, WRX=1 for data.
+    # cmd_data is flushed on CSX rising or next command, so send TWO commands.
+    hp = max(2, int(bb.samplerate / 2000000))
+    # Idle: CSX high, DCX low
+    bb.write_channels({0: 1, 1: 0, 2: 0, 3: 1}, hp)
+    # CSX low (active) + Command 1: SWRESET (0x01) with WRX=0
+    for i in range(7, -1, -1):
+        bit = (0x01 >> i) & 1
+        bb.write_channels({0: 0, 1: 1, 2: bit, 3: 0}, hp)  # DCX rising, SDO=bit, WRX=0
+        bb.write_channels({0: 0, 1: 0, 2: bit, 3: 0}, hp)  # DCX falling
+    # Command 2: SLPOUT (0x11) with WRX=0
+    for i in range(7, -1, -1):
+        bit = (0x11 >> i) & 1
+        bb.write_channels({0: 0, 1: 1, 2: bit, 3: 0}, hp)  # DCX rising, SDO=bit, WRX=0
+        bb.write_channels({0: 0, 1: 0, 2: bit, 3: 0}, hp)  # DCX falling
+    # CSX high (inactive) - flushes cmd_data
+    bb.write_channels({0: 1, 1: 0, 2: 0, 3: 1}, hp)
 
 def _gen_spacewire(bb):
     # SpaceWire: DIN(ch0) + SIN(ch1), Data-Strobe encoding
@@ -402,8 +526,10 @@ def _gen_iebus(bb):
     gen.send_frame([1,1,1,0], 0x01, 0x02)
 
 def _gen_ieee488(bb):
-    gen = IEEE488Generator(bb, channel=0)
-    gen.send_byte_handshake(0x55)
+    # IEEE488 in parallel GPIB mode - reuse GPIBGenerator with 16 channels
+    # Channels: DIO1-8(ch0-7), EOI(ch8), DAV(ch9), NRFD(ch10), NDAC(ch11), IFC(ch12), SRQ(ch13), ATN(ch14), REN(ch15)
+    gen = GPIBGenerator(bb)
+    gen.command_sequence()
 
 def _gen_fsi(bb):
     gen = FSiGenerator(bb, 0, 1)
@@ -459,7 +585,7 @@ def _gen_swi(bb):
     gen.write_byte(0x55)
 
 def _gen_mvbus(bb):
-    gen = MVBGenerator(bb, channel=0)
+    gen = MvbGenerator(bb, {'mvb': 0}, 6000000)
     gen.send_master_frame(f_code=0, address=0x001)
 
 def _gen_morse(bb):
@@ -524,12 +650,52 @@ def _gen_sle44xx(bb):
     gen.send_atr()
 
 def _gen_tmc(bb):
-    # TMC (Test Measurement Class) over SPI
-    gen = SPIGenerator(bb, clk=0, mosi=1, miso=2, cs=3)
-    gen.select()
-    gen.write_byte(0x00)  # Command
-    gen.write_byte(0x01)
-    gen.deselect()
+    # TMC (Titan Micro Circuit) - I2C-like 2-wire protocol
+    # Channels: CLK(ch0), DIO(ch1), STB(ch2, optional)
+    # TMC decoder uses 2-wire mode (CLK+DIO):
+    # START: DIO falling edge while CLK high
+    # DATA: 8 bits LSB-first, sampled on CLK rising edge
+    # ACK: CLK falling edge after 8th data bit
+    # STOP: DIO rising edge while CLK high
+    # For TM1637: send DATA_CMD(0x40) + ADDR_CMD(0xC0) + DATA(0x06) + STOP
+    hp = max(2, int(bb.samplerate / 100000))
+    # Idle: CLK high, DIO high
+    bb.set_level(0, 1, hp * 2)
+    bb.set_level(1, 1, hp * 2)
+
+    def start_condition():
+        # DIO falls while CLK high
+        bb.set_level(0, 1, hp)   # CLK high
+        bb.set_level(1, 1, hp // 2)  # DIO high
+        bb.set_level(1, 0, hp - hp // 2)  # DIO falls (START)
+
+    def send_byte_lsb(val):
+        # 8 bits LSB-first on CLK rising edge
+        for i in range(8):
+            bit = (val >> i) & 1
+            bb.set_level(1, bit, 0)  # Set DIO
+            bb.set_level(0, 1, hp)   # CLK rising edge (sample)
+            bb.set_level(0, 0, hp)   # CLK falling edge
+        # ACK: one more CLK pulse (DIO can be anything)
+        bb.set_level(0, 1, hp)   # CLK rising edge
+        bb.set_level(0, 0, hp)   # CLK falling edge
+
+    def stop_condition():
+        # DIO rises while CLK high
+        bb.set_level(1, 0, hp // 2)  # DIO low
+        bb.set_level(0, 1, hp)       # CLK high
+        bb.set_level(1, 1, hp)       # DIO rises (STOP)
+
+    # Transaction 1: DATA command (0x40 = write, auto-address, normal mode)
+    start_condition()
+    send_byte_lsb(0x40)
+    stop_condition()
+
+    # Transaction 2: ADDRESS command (0xC0 = address 0) + DATA byte
+    start_condition()
+    send_byte_lsb(0xC0)  # Address command, digit 1
+    send_byte_lsb(0x06)  # Data: segments for '1'
+    stop_condition()
 
 def _gen_usb_signalling(bb):
     gen = USBGenerator(bb, dp_ch=0, dm_ch=1)
@@ -739,7 +905,7 @@ DECODER_CONFIG = {
     "xy2_100_c":         {"gen": _gen_xy2_100, "num_channels": 3, "sample_count": 100000},
 
     # === Special: multi-channel complex protocols ===
-    "z80_c":             {"gen": _gen_z80, "num_channels": 11, "sample_count": 100000},
+    "z80_c":             {"gen": _gen_z80, "num_channels": 13, "sample_count": 100000},
     "mcs48_c":           {"gen": _gen_mcs48, "num_channels": 14, "sample_count": 100000},
     "gpib_c":            {"gen": _gen_gpib, "num_channels": 16, "sample_count": 100000},
     "lpc_c":             {"gen": _gen_lpc, "num_channels": 6, "sample_count": 100000},
@@ -761,7 +927,7 @@ DECODER_CONFIG = {
     "usb_power_delivery_c": {"gen": _gen_usb_pd, "num_channels": 1, "samplerate": 10000000, "sample_count": 200000},
     "miller_c":          {"gen": _gen_miller, "num_channels": 1, "sample_count": 100000},
     "iebus_c":           {"gen": _gen_iebus, "num_channels": 1, "sample_count": 100000},
-    "ieee488_c":         {"gen": _gen_ieee488, "num_channels": 1, "sample_count": 100000},
+    "ieee488_c":         {"gen": _gen_ieee488, "num_channels": 16, "sample_count": 100000},
     "fsi_c":             {"gen": _gen_fsi, "num_channels": 2, "sample_count": 100000},
     "eth_an_c":          {"gen": _gen_eth_an, "num_channels": 1, "sample_count": 100000},
     "qi_c":              {"gen": _gen_qi, "num_channels": 1, "sample_count": 100000},
@@ -863,11 +1029,11 @@ STACK_CONFIG = {
 
 # For stack decoders, what generator to use for the ROOT (bottom of stack)
 STACK_ROOT_GEN = {
-    "4b5b_c":        _gen_nrzi,
-    "ethernet_c":    _gen_nrzi,
-    "arp_c":         _gen_nrzi,
-    "ipv4_c":        _gen_nrzi,
-    "udp_c":         _gen_nrzi,
+    "4b5b_c":        _gen_ethernet,
+    "ethernet_c":    _gen_ethernet,
+    "arp_c":         _gen_ethernet,
+    "ipv4_c":        _gen_ethernet,
+    "udp_c":         _gen_ethernet,
     "onewire_network_c": _gen_onewire,
     "ds2408_c":      _gen_onewire,
     "ds243x_c":      _gen_onewire,

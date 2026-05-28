@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -229,7 +229,7 @@ static void tmp102_handle_addr_ann(struct srd_decoder_inst *di, tmp102_state *s,
     };
     int idx = ann * 3;
     if (ann <= ANN_ADDR_SCL)
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ann, labels[idx], labels[idx+1], labels[idx+2]);
+        c_put(di, s->ss, s->es, s->out_ann, ann, labels[idx], labels[idx+1], labels[idx+2]);
 }
 
 static void tmp102_handle_reg_ann(struct srd_decoder_inst *di, tmp102_state *s, int reg)
@@ -243,7 +243,7 @@ static void tmp102_handle_reg_ann(struct srd_decoder_inst *di, tmp102_state *s, 
     case REG_THIGH: ann = ANN_REG_THIGH; name = "High alert"; break;
     default: return;
     }
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ann, name);
+    c_put(di, s->ss, s->es, s->out_ann, ann, name);
 }
 
 static void tmp102_handle_datareg_0x00(struct srd_decoder_inst *di, tmp102_state *s, int dataword)
@@ -252,10 +252,10 @@ static void tmp102_handle_datareg_0x00(struct srd_decoder_inst *di, tmp102_state
     const char *unit = tmp102_unit_str(s->units);
     char buf[64];
     snprintf(buf, sizeof(buf), "Temperature: %.2f %s", temp, unit);
-    C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_TEMP, buf);
+    c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_TEMP, buf);
     /* Register annotation */
     snprintf(buf, sizeof(buf), "Temperature register: 0x%04X", dataword);
-    C_ANN_PUT(di, s->ssd, s->es, s->out_ann, ANN_REG_TEMP, buf);
+    c_put(di, s->ssd, s->es, s->out_ann, ANN_REG_TEMP, buf);
 }
 
 static void tmp102_handle_datareg_0x01(struct srd_decoder_inst *di, tmp102_state *s, int dataword)
@@ -284,19 +284,19 @@ static void tmp102_handle_datareg_0x01(struct srd_decoder_inst *di, tmp102_state
              rates[cr],
              al,
              em ? "enabled" : "disabled");
-    C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_CONF, buf);
+    c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_CONF, buf);
 
     /* Check for power-up default */
     if (dataword == PWRUP_CONF) {
-        C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_PWRUP, "Power-up reset");
+        c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_PWRUP, "Power-up reset");
     } else {
-        C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_CUSTOM, "Custom");
+        c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_CUSTOM, "Custom");
     }
 
     /* Register annotation */
     char reg_buf[64];
     snprintf(reg_buf, sizeof(reg_buf), "Configuration register: 0x%04X", dataword);
-    C_ANN_PUT(di, s->ssd, s->es, s->out_ann, ANN_REG_CONF, reg_buf);
+    c_put(di, s->ssd, s->es, s->out_ann, ANN_REG_CONF, reg_buf);
 }
 
 static void tmp102_handle_datareg_0x02(struct srd_decoder_inst *di, tmp102_state *s, int dataword)
@@ -306,9 +306,9 @@ static void tmp102_handle_datareg_0x02(struct srd_decoder_inst *di, tmp102_state
     char buf[64];
     const char *rw = s->write ? "Write" : "Read";
     snprintf(buf, sizeof(buf), "Low alert: %.2f %s (%s)", temp, unit, rw);
-    C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_TLOW, buf);
+    c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_TLOW, buf);
     snprintf(buf, sizeof(buf), "Low alert register: 0x%04X", dataword);
-    C_ANN_PUT(di, s->ssd, s->es, s->out_ann, ANN_REG_TLOW, buf);
+    c_put(di, s->ssd, s->es, s->out_ann, ANN_REG_TLOW, buf);
 }
 
 static void tmp102_handle_datareg_0x03(struct srd_decoder_inst *di, tmp102_state *s, int dataword)
@@ -318,14 +318,14 @@ static void tmp102_handle_datareg_0x03(struct srd_decoder_inst *di, tmp102_state
     char buf[64];
     const char *rw = s->write ? "Write" : "Read";
     snprintf(buf, sizeof(buf), "High alert: %.2f %s (%s)", temp, unit, rw);
-    C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_THIGH, buf);
+    c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_THIGH, buf);
     snprintf(buf, sizeof(buf), "High alert register: 0x%04X", dataword);
-    C_ANN_PUT(di, s->ssd, s->es, s->out_ann, ANN_REG_THIGH, buf);
+    c_put(di, s->ssd, s->es, s->out_ann, ANN_REG_THIGH, buf);
 }
 
 static void tmp102_handle_datareg_0x06(struct srd_decoder_inst *di, tmp102_state *s)
 {
-    C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_GRST, "General reset");
+    c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_GRST, "General reset");
 }
 
 static void tmp102_handle_data(struct srd_decoder_inst *di, tmp102_state *s)
@@ -349,9 +349,7 @@ static void tmp102_handle_data(struct srd_decoder_inst *di, tmp102_state *s)
     }
 }
 
-static void tmp102_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void tmp102_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     tmp102_state *s = (tmp102_state *)c_decoder_get_private(di);
     if (!s)
@@ -372,7 +370,7 @@ static void tmp102_recv_proto(struct srd_decoder_inst *di,
         }
     } else if (s->state == TMP102_ADDRESS_SLAVE) {
         if (strcmp(cmd, "ADDRESS WRITE") == 0 || strcmp(cmd, "ADDRESS READ") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (tmp102_check_addr(addr, 1)) {
                 s->addr = addr;
                 tmp102_handle_addr_ann(di, s, addr);
@@ -393,24 +391,24 @@ static void tmp102_recv_proto(struct srd_decoder_inst *di,
                 snprintf(buf3, sizeof(buf3), "Unknown: 0x%02X", s->addr);
                 snprintf(buf4, sizeof(buf4), "Unk: 0x%02X", s->addr);
                 snprintf(buf5, sizeof(buf5), "U: 0x%02X", s->addr);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_INFO_BADADD,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_INFO_BADADD,
                           buf1, buf2, buf3, buf4, buf5, "Unk", "U");
                 s->state = TMP102_IDLE;
             }
         }
     } else if (s->state == TMP102_REGISTER_ADDRESS) {
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
-            s->reg = (data_len > 0) ? data[0] : 0;
+            s->reg = (n_fields > 0) ? fields[0].u8 : 0;
             tmp102_handle_reg_ann(di, s, s->reg);
             s->state = TMP102_REGISTER_DATA;
             s->bytes_len = 0;
         } else if (strcmp(cmd, "STOP") == 0 || strcmp(cmd, "START REPEAT") == 0) {
-            C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_INFO_CHECK, "Slave presence check");
+            c_put(di, s->ssb, s->es, s->out_ann, ANN_INFO_CHECK, "Slave presence check");
             s->state = TMP102_IDLE;
         }
     } else if (s->state == TMP102_REGISTER_DATA) {
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
-            uint8_t databyte = (data_len > 0) ? data[0] : 0;
+            uint8_t databyte = (n_fields > 0) ? fields[0].u8 : 0;
             if (s->bytes_len == 0) {
                 s->ssd = start_sample;
                 s->bytes[s->bytes_len++] = databyte;
@@ -440,13 +438,13 @@ static void tmp102_reset(struct srd_decoder_inst *di)
     s->reg = REG_TEMP;
     s->write = 1;
 
-    const char *radix_str = c_decoder_get_option_string(di, "radix", "Hex");
+    const char *radix_str = c_opt_str(di, "radix", "Hex");
     if (radix_str && strcmp(radix_str, "Dec") == 0) s->radix = 1;
     else if (radix_str && strcmp(radix_str, "Oct") == 0) s->radix = 2;
     else if (radix_str && strcmp(radix_str, "Bin") == 0) s->radix = 3;
     else s->radix = 0;
 
-    const char *units_str = c_decoder_get_option_string(di, "units", "Celsius");
+    const char *units_str = c_opt_str(di, "units", "Celsius");
     if (units_str && strcmp(units_str, "Fahrenheit") == 0) s->units = 1;
     else if (units_str && strcmp(units_str, "Kelvin") == 0) s->units = 2;
     else s->units = 0;
@@ -455,15 +453,15 @@ static void tmp102_reset(struct srd_decoder_inst *di)
 static void tmp102_start(struct srd_decoder_inst *di)
 {
     tmp102_state *s = (tmp102_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tmp102");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tmp102");
 
-    const char *radix_str = c_decoder_get_option_string(di, "radix", "Hex");
+    const char *radix_str = c_opt_str(di, "radix", "Hex");
     if (radix_str && strcmp(radix_str, "Dec") == 0) s->radix = 1;
     else if (radix_str && strcmp(radix_str, "Oct") == 0) s->radix = 2;
     else if (radix_str && strcmp(radix_str, "Bin") == 0) s->radix = 3;
     else s->radix = 0;
 
-    const char *units_str = c_decoder_get_option_string(di, "units", "Celsius");
+    const char *units_str = c_opt_str(di, "units", "Celsius");
     if (units_str && strcmp(units_str, "Fahrenheit") == 0) s->units = 1;
     else if (units_str && strcmp(units_str, "Kelvin") == 0) s->units = 2;
     else s->units = 0;
@@ -511,7 +509,8 @@ struct srd_c_decoder tmp102_c_decoder = {
     .start = tmp102_start,
     .decode = tmp102_decode,
     .destroy = tmp102_destroy,
-    .recv_proto = tmp102_recv_proto,
+    .decode_upper = tmp102_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

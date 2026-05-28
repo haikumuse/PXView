@@ -105,55 +105,38 @@ static void seg7_reset(struct srd_decoder_inst* di)
 static void seg7_start(struct srd_decoder_inst* di)
 {
     seg7_state* s = (seg7_state*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "seven_segment");
-    s->have_dp = c_decoder_has_channel(di, 7);
-    const char* pol = c_decoder_get_option_string(di, "polarity", "common-cathode");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "seven_segment");
+    s->have_dp = c_has_ch(di, 7);
+    const char* pol = c_opt_str(di, "polarity", "common-cathode");
     s->polarity = (strcmp(pol, "common-anode") == 0) ? 1 : 0;
 }
 
 static void seg7_decode(struct srd_decoder_inst* di)
 {
     seg7_state* s = (seg7_state*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     while (1) {
-        srd_cond_builder* cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        c_cond_or(cb);
-        c_cond_edge(cb, 1);
-        c_cond_or(cb);
-        c_cond_edge(cb, 2);
-        c_cond_or(cb);
-        c_cond_edge(cb, 3);
-        c_cond_or(cb);
-        c_cond_edge(cb, 4);
-        c_cond_or(cb);
-        c_cond_edge(cb, 5);
-        c_cond_or(cb);
-        c_cond_edge(cb, 6);
-        if (s->have_dp) {
-            c_cond_or(cb);
-            c_cond_edge(cb, 7);
-        }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            int ret;
+            if (s->have_dp)
+                ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_OR, CW_E(3), CW_OR, CW_E(4), CW_OR, CW_E(5), CW_OR, CW_E(6), CW_OR, CW_E(7), CW_END);
+            else
+                ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_OR, CW_E(2), CW_OR, CW_E(3), CW_OR, CW_E(4), CW_OR, CW_E(5), CW_OR, CW_E(6), CW_END);
         if (ret != SRD_OK)
             return;
 
         int pins[8];
         for (int i = 0; i < 7; i++)
-            pins[i] = c_decoder_get_pin(di, i, samplenum);
+            pins[i] = c_pin(di, i);
         if (s->have_dp)
-            pins[7] = c_decoder_get_pin(di, 7, samplenum);
+            pins[7] = c_pin(di, 7);
         else
             pins[7] = 0;
 
         if (s->first_sample) {
             s->first_sample = 0;
-            memcpy(s->oldpins, pins, sizeof(s->oldpins));
-            s->lastpos = samplenum;
-            continue;
+            s->lastpos = 0;
+            /* oldpins is already zero-initialized from seg7_reset(), representing
+             * the initial pin state. Do NOT overwrite with post-edge pins.
+             * Fall through to annotate the initial state. */
         }
 
         int old[8];
@@ -176,10 +159,10 @@ static void seg7_decode(struct srd_decoder_inst* di)
                 snprintf(str, sizeof(str), "%c.", digit);
             else
                 snprintf(str, sizeof(str), "%c", digit);
-            C_ANN_PUT(di, s->lastpos, samplenum, s->out_ann, ANN_DIGIT, str);
+            c_put(di, s->lastpos, di_samplenum(di), s->out_ann, ANN_DIGIT, str);
         }
 
-        s->lastpos = samplenum;
+        s->lastpos = di_samplenum(di);
         memcpy(s->oldpins, pins, sizeof(s->oldpins));
     }
 }
@@ -221,6 +204,7 @@ struct srd_c_decoder segment_7_c_decoder = {
     .start = seg7_start,
     .decode = seg7_decode,
     .destroy = seg7_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

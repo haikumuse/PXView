@@ -6,5 +6,9 @@
   "channels": {
     "afsk": 0
   },
-  "options": {}
+  "options": {
+    "markfreq": 2000,
+    "spacefreq": 4000,
+    "marginpct": 40
+  }
 }

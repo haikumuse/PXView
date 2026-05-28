@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <math.h>
 #include <stdio.h>
@@ -118,12 +118,12 @@ static void dmx_start(struct srd_decoder_inst* di)
 {
     struct dmx_priv* s = (struct dmx_priv*)c_decoder_get_private(di);
 
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "dmx512");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "dmx512");
 
-    const char* invert_str = c_decoder_get_option_string(di, "invert", "no");
+    const char* invert_str = c_opt_str(di, "invert", "no");
     s->invert = (strcmp(invert_str, "yes") == 0) ? 1 : 0;
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0) {
         s->sample_usec = 1000000.0 / (double)s->samplerate;
         s->skip_per_bit = (int)(4.0 / s->sample_usec);
@@ -135,12 +135,10 @@ static void dmx_start(struct srd_decoder_inst* di)
 static void dmx_decode(struct srd_decoder_inst* di)
 {
     struct dmx_priv* s = (struct dmx_priv*)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0) {
             s->sample_usec = 1000000.0 / (double)s->samplerate;
             s->skip_per_bit = (int)(4.0 / s->sample_usec);
@@ -152,85 +150,70 @@ static void dmx_decode(struct srd_decoder_inst* di)
         return;
 
     {
-        srd_cond_builder* b = c_cond_new();
         if (s->invert)
-            c_cond_high(b, DMX_CH);
+            ret = c_wait(di, CW_H(DMX_CH), CW_END);
         else
-            c_cond_low(b, DMX_CH);
-        ret = c_cond_wait(b, di, &samplenum, &matched);
-        c_cond_free(b);
+            ret = c_wait(di, CW_L(DMX_CH), CW_END);
         if (ret != SRD_OK)
             return;
-        s->run_start = samplenum;
+        s->run_start = di_samplenum(di);
     }
 
     while (1) {
         switch (s->state) {
 
         case FIND_BREAK: {
-            srd_cond_builder* b = c_cond_new();
             if (s->invert)
-                c_cond_fall(b, DMX_CH);
+                ret = c_wait(di, CW_F(DMX_CH), CW_END);
             else
-                c_cond_rise(b, DMX_CH);
-            ret = c_cond_wait(b, di, &samplenum, &matched);
-            c_cond_free(b);
+                ret = c_wait(di, CW_R(DMX_CH), CW_END);
             if (ret != SRD_OK)
                 return;
 
             {
-                double runlen = (double)(samplenum - s->run_start) * s->sample_usec;
+                double runlen = (double)(di_samplenum(di) - s->run_start) * s->sample_usec;
                 if (runlen > 88.0 && runlen < 1000000.0) {
-                    C_ANN_PUT(di, s->run_start, samplenum, s->out_ann, ANN_BREAK, "Break");
+                    c_put(di, s->run_start, di_samplenum(di), s->out_ann, ANN_BREAK, "Break");
                     s->state = MARK_MAB;
                     s->channel = 0;
                 } else if (runlen >= 1000000.0) {
-                    C_ANN_PUT(di, s->run_start, samplenum, s->out_ann, ANN_ERROR, "Invalid break length");
-                    srd_cond_builder* b2 = c_cond_new();
+                    c_put(di, s->run_start, di_samplenum(di), s->out_ann, ANN_ERROR, "Invalid break length");
                     if (s->invert)
-                        c_cond_high(b2, DMX_CH);
+                        ret = c_wait(di, CW_H(DMX_CH), CW_END);
                     else
-                        c_cond_low(b2, DMX_CH);
-                    ret = c_cond_wait(b2, di, &samplenum, &matched);
-                    c_cond_free(b2);
+                        ret = c_wait(di, CW_L(DMX_CH), CW_END);
                     if (ret != SRD_OK)
                         return;
-                    s->run_start = samplenum;
+                    s->run_start = di_samplenum(di);
                 } else {
-                    srd_cond_builder* b2 = c_cond_new();
                     if (s->invert)
-                        c_cond_high(b2, DMX_CH);
+                        ret = c_wait(di, CW_H(DMX_CH), CW_END);
                     else
-                        c_cond_low(b2, DMX_CH);
-                    ret = c_cond_wait(b2, di, &samplenum, &matched);
-                    c_cond_free(b2);
+                        ret = c_wait(di, CW_L(DMX_CH), CW_END);
                     if (ret != SRD_OK)
                         return;
-                    s->run_start = samplenum;
+                    s->run_start = di_samplenum(di);
                 }
             }
             break;
         }
 
         case MARK_MAB: {
-            s->run_start = samplenum;
+            s->run_start = di_samplenum(di);
             {
-                srd_cond_builder* b = c_cond_new();
                 if (s->invert)
-                    c_cond_rise(b, DMX_CH);
+                    ret = c_wait(di, CW_R(DMX_CH), CW_END);
                 else
-                    c_cond_fall(b, DMX_CH);
-                ret = c_cond_wait(b, di, &samplenum, &matched);
-                c_cond_free(b);
+                    ret = c_wait(di, CW_F(DMX_CH), CW_END);
                 if (ret != SRD_OK)
                     return;
             }
-            C_ANN_PUT(di, s->run_start, samplenum, s->out_ann, ANN_MAB, "MAB");
+            c_put(di, s->run_start, di_samplenum(di), s->out_ann, ANN_MAB, "MAB");
             s->state = READ_BYTE;
             s->channel = 0;
             s->bit = 0;
             s->byte_val = 0;
-            s->run_start = samplenum;
+            s->run_start = di_samplenum(di);
             break;
         }
 
@@ -246,18 +229,15 @@ static void dmx_decode(struct srd_decoder_inst* di)
 
                 {
                     uint64_t sample_point = s->run_start + (uint64_t)i * s->skip_per_bit + s->skip_per_bit / 2;
-                    srd_cond_builder* b = c_cond_new();
                     uint64_t skip_count = 0;
-                    if (sample_point > samplenum)
-                        skip_count = sample_point - samplenum;
-                    c_cond_skip(b, skip_count);
-                    ret = c_cond_wait(b, di, &samplenum, &matched);
-                    c_cond_free(b);
+                    if (sample_point > di_samplenum(di))
+                        skip_count = sample_point - di_samplenum(di);
+                    ret = c_wait(di, CW_SKIP(skip_count), CW_END);
                     if (ret != SRD_OK)
                         return;
 
                     {
-                        int raw = c_decoder_get_pin(di, DMX_CH, samplenum);
+                        int raw = c_pin(di, DMX_CH);
                         bval = s->invert ? (!raw) : raw;
                     }
                 }
@@ -280,12 +260,9 @@ static void dmx_decode(struct srd_decoder_inst* di)
                     break;
 
                 if (i < 10) {
-                    uint64_t remaining = bit_end - samplenum;
+                    uint64_t remaining = bit_end - di_samplenum(di);
                     if (remaining > 0) {
-                        srd_cond_builder* b2 = c_cond_new();
-                        c_cond_skip(b2, remaining);
-                        ret = c_cond_wait(b2, di, &samplenum, &matched);
-                        c_cond_free(b2);
+                        ret = c_wait(di, CW_SKIP(remaining), CW_END);
                         if (ret != SRD_OK)
                             return;
                     }
@@ -298,12 +275,9 @@ static void dmx_decode(struct srd_decoder_inst* di)
 
                 /* Skip to byte_end (matching Python's last wait in READ BYTE) */
                 {
-                    uint64_t remaining = byte_end - samplenum;
+                    uint64_t remaining = byte_end - di_samplenum(di);
                     if (remaining > 0) {
-                        srd_cond_builder* b_skip = c_cond_new();
-                        c_cond_skip(b_skip, remaining);
-                        ret = c_cond_wait(b_skip, di, &samplenum, &matched);
-                        c_cond_free(b_skip);
+                        ret = c_wait(di, CW_SKIP(remaining), CW_END);
                         if (ret != SRD_OK)
                             return;
                     }
@@ -315,29 +289,29 @@ static void dmx_decode(struct srd_decoder_inst* di)
 
                     if (i == 0) {
                         if (bit_val[i] == 0) {
-                            C_ANN_PUT(di, bs, be, s->out_ann, ANN_STARTBIT, "Start bit");
+                            c_put(di, bs, be, s->out_ann, ANN_STARTBIT, "Start bit");
                         } else {
-                            C_ANN_PUT(di, bs, be, s->out_ann, ANN_ERROR, "Invalid start bit");
+                            c_put(di, bs, be, s->out_ann, ANN_ERROR, "Invalid start bit");
                         }
                     } else if (i >= 9) {
                         if (bit_val[i] == 1) {
-                            C_ANN_PUT(di, bs, be, s->out_ann, ANN_STOPBIT, "Stop bit");
+                            c_put(di, bs, be, s->out_ann, ANN_STOPBIT, "Stop bit");
                         } else {
-                            C_ANN_PUT(di, bs, be, s->out_ann, ANN_ERROR, "Invalid stop bit");
+                            c_put(di, bs, be, s->out_ann, ANN_ERROR, "Invalid stop bit");
                         }
                     } else {
                         char bit_str[4];
                         snprintf(bit_str, sizeof(bit_str), "%d", bit_val[i]);
-                        C_ANN_PUT(di, bs, be, s->out_ann, ANN_BIT, bit_str);
+                        c_put(di, bs, be, s->out_ann, ANN_BIT, bit_str);
                     }
                 }
 
                 if (s->channel == 0) {
-                    C_ANN_PUT(di, byte_start, byte_end, s->out_ann, ANN_STARTCODE, "Start code");
+                    c_put(di, byte_start, byte_end, s->out_ann, ANN_STARTCODE, "Start code");
                 } else {
                     char ch_str[32];
                     snprintf(ch_str, sizeof(ch_str), "Channel %d", s->channel);
-                    C_ANN_PUT(di, byte_start, byte_end, s->out_ann, ANN_CHANNEL, ch_str);
+                    c_put(di, byte_start, byte_end, s->out_ann, ANN_CHANNEL, ch_str);
                 }
 
                 {
@@ -345,50 +319,44 @@ static void dmx_decode(struct srd_decoder_inst* di)
                     snprintf(data_str, sizeof(data_str), "%d / 0x%x", s->byte_val, s->byte_val);
                     uint64_t data_ss = s->run_start + s->skip_per_bit;
                     uint64_t data_es = byte_end - 2 * s->skip_per_bit;
-                    C_ANN_PUT(di, data_ss, data_es, s->out_ann, ANN_DATA, data_str);
+                    c_put(di, data_ss, data_es, s->out_ann, ANN_DATA, data_str);
                 }
 
                 s->channel++;
-                s->run_start = samplenum;
+                s->run_start = di_samplenum(di);
                 s->state = MARK_IFT;
             }
             break;
         }
 
         case MARK_IFT: {
-            s->run_start = samplenum;
+            s->run_start = di_samplenum(di);
             if (s->channel > 65535) {
-                srd_cond_builder* b = c_cond_new();
                 if (s->invert)
-                    c_cond_high(b, DMX_CH);
+                    ret = c_wait(di, CW_H(DMX_CH), CW_END);
                 else
-                    c_cond_low(b, DMX_CH);
-                ret = c_cond_wait(b, di, &samplenum, &matched);
-                c_cond_free(b);
+                    ret = c_wait(di, CW_L(DMX_CH), CW_END);
                 if (ret != SRD_OK)
                     return;
-                C_ANN_PUT(di, s->run_start, samplenum, s->out_ann, ANN_INTERPACKET, "Interpacket");
+                c_put(di, s->run_start, di_samplenum(di), s->out_ann, ANN_INTERPACKET, "Interpacket");
                 s->state = FIND_BREAK;
-                s->run_start = samplenum;
+                s->run_start = di_samplenum(di);
             } else {
-                int dmx_val = c_decoder_get_pin(di, DMX_CH, samplenum);
+                int dmx_val = c_pin(di, DMX_CH);
                 int line_val = s->invert ? (!dmx_val) : dmx_val;
                 if (line_val) {
-                    srd_cond_builder* b = c_cond_new();
                     if (s->invert)
-                        c_cond_high(b, DMX_CH);
+                        ret = c_wait(di, CW_H(DMX_CH), CW_END);
                     else
-                        c_cond_low(b, DMX_CH);
-                    ret = c_cond_wait(b, di, &samplenum, &matched);
-                    c_cond_free(b);
+                        ret = c_wait(di, CW_L(DMX_CH), CW_END);
                     if (ret != SRD_OK)
                         return;
-                    C_ANN_PUT(di, s->run_start, samplenum, s->out_ann, ANN_INTERFRAME, "Interframe");
+                    c_put(di, s->run_start, di_samplenum(di), s->out_ann, ANN_INTERFRAME, "Interframe");
                 }
                 s->state = READ_BYTE;
                 s->bit = 0;
                 s->byte_val = 0;
-                s->run_start = samplenum;
+                s->run_start = di_samplenum(di);
             }
             break;
         }
@@ -434,6 +402,7 @@ struct srd_c_decoder dmx512_c_decoder = {
     .start = dmx_start,
     .decode = dmx_decode,
     .destroy = dmx_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

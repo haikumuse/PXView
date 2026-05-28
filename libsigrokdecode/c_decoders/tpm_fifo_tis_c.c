@@ -403,7 +403,7 @@ static void tpm_annotate_command(struct srd_decoder_inst *di, tpm_state *s,
     if (len < 10) {
         char buf[128];
         snprintf(buf, sizeof(buf), "[%d bytes]", len);
-        C_ANN_PUT(di, s->command_start, s->state_start, s->out_ann, ANN_TPM_CMD, buf);
+        c_put(di, s->command_start, s->state_start, s->out_ann, ANN_TPM_CMD, buf);
         return;
     }
     uint32_t cmd_code = ((uint32_t)data[6] << 24) | ((uint32_t)data[7] << 16) |
@@ -412,7 +412,7 @@ static void tpm_annotate_command(struct srd_decoder_inst *di, tpm_state *s,
 
     char buf[256];
     snprintf(buf, sizeof(buf), "%s (%04X)", name, cmd_code);
-    C_ANN_PUT(di, s->command_start, s->state_start, s->out_ann, ANN_TPM_CMD, buf);
+    c_put(di, s->command_start, s->state_start, s->out_ann, ANN_TPM_CMD, buf);
 }
 
 static void tpm_annotate_response(struct srd_decoder_inst *di, tpm_state *s,
@@ -421,7 +421,7 @@ static void tpm_annotate_response(struct srd_decoder_inst *di, tpm_state *s,
     if (len < 10) {
         char buf[128];
         snprintf(buf, sizeof(buf), "[%d bytes]", len);
-        C_ANN_PUT(di, s->response_start, es, s->out_ann, ANN_TPM_RSP, buf);
+        c_put(di, s->response_start, es, s->out_ann, ANN_TPM_RSP, buf);
         return;
     }
     uint32_t rsp_code = ((uint32_t)data[6] << 24) | ((uint32_t)data[7] << 16) |
@@ -430,7 +430,7 @@ static void tpm_annotate_response(struct srd_decoder_inst *di, tpm_state *s,
 
     char buf[256];
     snprintf(buf, sizeof(buf), "%s (%04X)", name, rsp_code);
-    C_ANN_PUT(di, s->response_start, es, s->out_ann, ANN_TPM_RSP, buf);
+    c_put(di, s->response_start, es, s->out_ann, ANN_TPM_RSP, buf);
 }
 
 static const char *tpm_state_name(int state)
@@ -452,7 +452,7 @@ static void tpm_set_state(struct srd_decoder_inst *di, tpm_state *s,
     if (new_state == s->state)
         return;
     if (s->state_start != 0) {
-        C_ANN_PUT(di, s->state_start, ss, s->out_ann, ANN_STATE,
+        c_put(di, s->state_start, ss, s->out_ann, ANN_STATE,
                   tpm_state_name(s->state));
     }
     s->state = new_state;
@@ -467,7 +467,7 @@ static void tpm_reset_command(tpm_state *s, uint64_t ss, const uint8_t *data, in
     s->command_start = ss;
     if (data && len > 0) {
         int copy = len < TPM_MAX_BUFFER ? len : TPM_MAX_BUFFER;
-        memcpy(s->command_buffer, data, copy);
+        for (int j = 0; j < copy; j++) s->command_buffer[j] = data[j];
         s->command_len = copy;
     }
 }
@@ -478,7 +478,7 @@ static void tpm_reset_response(tpm_state *s, uint64_t ss, const uint8_t *data, i
     s->response_start = ss;
     if (data && len > 0) {
         int copy = len < TPM_MAX_BUFFER ? len : TPM_MAX_BUFFER;
-        memcpy(s->response_buffer, data, copy);
+        for (int j = 0; j < copy; j++) s->response_buffer[j] = data[j];
         s->response_len = copy;
     }
 }
@@ -559,7 +559,7 @@ static void tpm_on_write(struct srd_decoder_inst *di, tpm_state *s,
     if (reg == TPM_STS_X) {
         uint8_t status = xfer_data[0];
         if (!is_power_of_two(status)) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN,
+            c_put(di, ss, es, s->out_ann, ANN_WARN,
                       "Only one field may be set at a time when writing to TPM_STS_X");
             tpm_set_state(di, s, TPM_STATE_UNKNOWN, ss);
             return;
@@ -572,13 +572,13 @@ static void tpm_on_write(struct srd_decoder_inst *di, tpm_state *s,
             /* Already ready */
         } else if (s->state == TPM_STATE_RECEPTION) {
             if (status & TPM_STS_commandReady) {
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN,
+                c_put(di, ss, es, s->out_ann, ANN_WARN,
                           "Command aborted (while sending command)");
                 tpm_reset_command(s, 0, NULL, 0);
                 tpm_set_state(di, s, TPM_STATE_IDLE, es);
             } else if (status & TPM_STS_tpmGo) {
                 if (!s->state_finished) {
-                    C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN,
+                    c_put(di, ss, es, s->out_ann, ANN_WARN,
                               "TPM is still expecting data, so this tpmGo signal is ignored");
                 } else {
                     tpm_annotate_command(di, s, s->command_buffer, s->command_len);
@@ -588,7 +588,7 @@ static void tpm_on_write(struct srd_decoder_inst *di, tpm_state *s,
             }
         } else if (s->state == TPM_STATE_EXECUTION) {
             if (status & TPM_STS_commandReady) {
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN,
+                c_put(di, ss, es, s->out_ann, ANN_WARN,
                           "Command aborted (while executing command)");
                 tpm_set_state(di, s, TPM_STATE_IDLE, es);
             }
@@ -620,9 +620,7 @@ static void tpm_on_write(struct srd_decoder_inst *di, tpm_state *s,
     }
 }
 
-static void tpm_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void tpm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     tpm_state *s = (tpm_state *)c_decoder_get_private(di);
     if (!s)
@@ -631,18 +629,22 @@ static void tpm_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "TRANSACTION") != 0)
         return;
 
-    /* Data format: [addr(4B LE)][reading(1B)][xfer_len(2B LE)][xfer_data...] */
-    if (data_len < 7)
+    /* Data format from tpm_tis_spi_c:
+       fields[0].u8 = reading (0=write, 1=read)
+       fields[1].u8 = addr >> 16
+       fields[2].u8 = addr >> 8
+       fields[3].u8 = addr & 0xFF
+       fields[4].u8 = data_count
+       fields[5..] = data bytes (C_BYTES) */
+    if (n_fields < 5)
         return;
 
-    uint32_t addr;
-    memcpy(&addr, data, 4);
-    int reading = data[4] ? 1 : 0;
-    uint16_t xfer_len;
-    memcpy(&xfer_len, data + 5, 2);
-    const uint8_t *xfer_data = data + 7;
-    if (xfer_len > data_len - 7)
-        xfer_len = (uint16_t)(data_len - 7);
+    int reading = fields[0].u8 ? 1 : 0;
+    uint32_t addr = ((uint32_t)fields[1].u8 << 16) | ((uint32_t)fields[2].u8 << 8) | fields[3].u8;
+    uint16_t xfer_len = fields[4].u8;
+    const c_field *xfer_data = fields + 5;
+    if (xfer_len > n_fields - 5)
+        xfer_len = (uint16_t)(n_fields - 5);
 
     /* Emit register read/write annotation */
     int ann_cls = reading ? ANN_REG_READ : ANN_REG_WRITE;
@@ -682,13 +684,17 @@ static void tpm_recv_proto(struct srd_decoder_inst *di,
     for (int i = 0; i < xfer_len && pos < (int)sizeof(ann_buf) - 3; i++)
         pos += snprintf(ann_buf + pos, sizeof(ann_buf) - pos, "%02X", xfer_data[i]);
 
-    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ann_cls, ann_buf);
+    c_put(di, start_sample, end_sample, s->out_ann, ann_cls, ann_buf);
 
     /* Process state machine */
+    uint8_t *xfer_bytes = (uint8_t *)g_malloc(xfer_len);
+    for (int i = 0; i < xfer_len; i++)
+        xfer_bytes[i] = xfer_data[i].u8;
     if (reading)
-        tpm_on_read(di, s, addr, xfer_data, xfer_len, start_sample, end_sample);
+        tpm_on_read(di, s, addr, xfer_bytes, xfer_len, start_sample, end_sample);
     else
-        tpm_on_write(di, s, addr, xfer_data, xfer_len, start_sample, end_sample);
+        tpm_on_write(di, s, addr, xfer_bytes, xfer_len, start_sample, end_sample);
+    g_free(xfer_bytes);
 }
 
 static void tpm_reset(struct srd_decoder_inst *di)
@@ -704,8 +710,8 @@ static void tpm_reset(struct srd_decoder_inst *di)
 static void tpm_start(struct srd_decoder_inst *di)
 {
     tpm_state *s = (tpm_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tpm_fifo_tis");
-    s->out_py = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "tpm");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tpm_fifo_tis");
+    s->out_py = c_reg_out(di, SRD_OUTPUT_PYTHON, "tpm");
 }
 
 static void tpm_decode(struct srd_decoder_inst *di)
@@ -750,7 +756,8 @@ struct srd_c_decoder tpm_fifo_tis_c_decoder = {
     .start = tpm_start,
     .decode = tpm_decode,
     .destroy = tpm_destroy,
-    .recv_proto = tpm_recv_proto,
+    .decode_upper = tpm_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

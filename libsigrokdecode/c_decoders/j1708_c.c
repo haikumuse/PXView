@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -52,6 +52,7 @@ typedef struct {
     enum j1708_fsm_state fsm_state;
     uint8_t data[MAX_MSG_LEN];
     int data_len;
+    int n_fields;
     uint64_t first_startbit_ss;
     uint64_t prev_stopbit_es;
     uint64_t last_valid_msg_stopbit_es;
@@ -117,8 +118,8 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
         int pos = 0;
         for (int i = 0; i < s->data_len && pos < 200; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x", s->data[i]);
-        C_ANN_PUT(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_INLINE_ERROR, buf);
-        C_ANN_PUT(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_ERROR, "Message too short");
+        c_put(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_INLINE_ERROR, buf);
+        c_put(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_ERROR, "Message too short");
         s->data_len = 0;
         return;
     }
@@ -134,25 +135,25 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
         for (int i = 0; i < s->data_len - 1 && pos < 200; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x", s->data[i]);
         pos += snprintf(buf + pos, sizeof(buf) - pos, "(%02x)", recv_crc);
-        C_ANN_PUT(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_INLINE_ERROR, buf);
+        c_put(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_INLINE_ERROR, buf);
 
         uint64_t crc_ss = (uint64_t)(s->prev_stopbit_es - s->bit_width * 10);
-        C_ANN_PUT(di, crc_ss, s->prev_stopbit_es, s->out_ann, ANN_ERROR, "Checksum", "CRC");
+        c_put(di, crc_ss, s->prev_stopbit_es, s->out_ann, ANN_ERROR, "Checksum", "CRC");
     } else {
         /* Valid message */
         char buf[256];
         int pos = 0;
         for (int i = 0; i < s->data_len - 1 && pos < 200; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x", s->data[i]);
-        C_ANN_PUT(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_DATUM, buf);
+        c_put(di, s->first_startbit_ss, s->prev_stopbit_es, s->out_ann, ANN_DATUM, buf);
 
-        /* MID field - match Python: 'MID: ' + hex(data[0]), hex(data[0]), 'MID' */
+        /* MID field - match Python: 'MID: ' + hex(fields[0].u8), hex(fields[0].u8), 'MID' */
         char mid_long[32], mid_mid[16];
         snprintf(mid_long, sizeof(mid_long), "MID: 0x%x", s->data[0]);
         snprintf(mid_mid, sizeof(mid_mid), "0x%x", s->data[0]);
         uint64_t mid_es = (uint64_t)(s->first_startbit_ss + s->bit_width * 10);
-        C_ANN_PUT(di, s->first_startbit_ss, mid_es, s->out_ann, ANN_INFO, mid_long, mid_mid, "MID");
-        c_decoder_put_binary(di, s->first_startbit_ss, mid_es, s->out_bin, BIN_MID, 1, &s->data[0]);
+        c_put(di, s->first_startbit_ss, mid_es, s->out_ann, ANN_INFO, mid_long, mid_mid, "MID");
+        c_put_bin(di, s->first_startbit_ss, mid_es, s->out_bin, BIN_MID, 1, &s->data[0]);
 
         /* Payload field - match Python: 'Payload: ' + hex, hex, 'Payload' */
         if (s->data_len > 2) {
@@ -163,8 +164,8 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
             char payload_long[280];
             snprintf(payload_long, sizeof(payload_long), "Payload: %s", payload_buf);
             uint64_t payload_es = (uint64_t)(s->prev_stopbit_es - s->bit_width * 10);
-            C_ANN_PUT(di, mid_es, payload_es, s->out_ann, ANN_INFO, payload_long, payload_buf, "Payload");
-            c_decoder_put_binary(di, mid_es, payload_es, s->out_bin, BIN_PAYLOAD,
+            c_put(di, mid_es, payload_es, s->out_ann, ANN_INFO, payload_long, payload_buf, "Payload");
+            c_put_bin(di, mid_es, payload_es, s->out_bin, BIN_PAYLOAD,
                                  s->data_len - 2, &s->data[1]);
         }
 
@@ -173,8 +174,8 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
         snprintf(crc_buf, sizeof(crc_buf), "CRC: %02x", recv_crc);
         snprintf(crc_mid, sizeof(crc_mid), "%02x", recv_crc);
         uint64_t crc_ss = (uint64_t)(s->prev_stopbit_es - s->bit_width * 10);
-        C_ANN_PUT(di, crc_ss, s->prev_stopbit_es, s->out_ann, ANN_INFO, crc_buf, crc_mid, "CRC");
-        c_decoder_put_binary(di, crc_ss, s->prev_stopbit_es, s->out_bin, BIN_CRC, 1, &recv_crc);
+        c_put(di, crc_ss, s->prev_stopbit_es, s->out_ann, ANN_INFO, crc_buf, crc_mid, "CRC");
+        c_put_bin(di, crc_ss, s->prev_stopbit_es, s->out_bin, BIN_CRC, 1, &recv_crc);
     }
 
     s->data_len = 0;
@@ -197,9 +198,9 @@ static void j1708_flush_message_break_measurement(struct srd_decoder_inst *di, j
     double inter_delay = (double)(startbit_ss - s->last_valid_msg_stopbit_es) / s->bit_width;
     char buf[32];
     snprintf(buf, sizeof(buf), "%05.1f", inter_delay);
-    C_ANN_PUT(di, s->last_valid_msg_stopbit_es, startbit_ss, s->out_ann, ANN_DELAY, buf);
+    c_put(di, s->last_valid_msg_stopbit_es, startbit_ss, s->out_ann, ANN_DELAY, buf);
     if (inter_delay < MIN_BUS_ACCESS_BIT_TIMES) {
-        C_ANN_PUT(di, s->last_valid_msg_stopbit_es, startbit_ss, s->out_ann, ANN_BUS_ACCESS, buf);
+        c_put(di, s->last_valid_msg_stopbit_es, startbit_ss, s->out_ann, ANN_BUS_ACCESS, buf);
     }
 }
 
@@ -215,9 +216,7 @@ static void j1708_maybe_flush_message(struct srd_decoder_inst *di, j1708_state *
     }
 }
 
-static void j1708_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void j1708_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     j1708_state *s = (j1708_state *)c_decoder_get_private(di);
     if (!s)
@@ -225,7 +224,7 @@ static void j1708_recv_proto(struct srd_decoder_inst *di,
 
     /* Get bit_width from samplerate, like Python decoder does */
     if (s->bit_width == 0) {
-        uint64_t samplerate = c_decoder_get_samplerate(di);
+        uint64_t samplerate = c_samplerate(di);
         if (samplerate > 0) {
             s->bit_width = (double)samplerate / (double)J1708_BAUD;
         } else {
@@ -241,9 +240,9 @@ static void j1708_recv_proto(struct srd_decoder_inst *di,
 
     /* Only process RX */
     if (strcmp(cmd, "DATA") == 0) {
-        if (data_len < 2)
+        if (n_fields < 2)
             return;
-        uint8_t rxtx = data[1];
+        uint8_t rxtx = fields[1].u8;
         if (rxtx != 0)
             return;
     }
@@ -280,9 +279,9 @@ static void j1708_recv_proto(struct srd_decoder_inst *di,
     /* FSM: WaitForData */
     if (s->fsm_state == J1708_FSM_WAIT_DATA) {
         if (strcmp(cmd, "DATA") == 0) {
-            if (data_len < 2)
+            if (n_fields < 2)
                 return;
-            uint8_t byte_val = data[0];
+            uint8_t byte_val = fields[0].u8;
             if (s->data_len < MAX_MSG_LEN)
                 s->data[s->data_len++] = byte_val;
             s->fsm_state = J1708_FSM_WAIT_STOPBIT;
@@ -318,9 +317,9 @@ static void j1708_reset(struct srd_decoder_inst *di)
 static void j1708_start(struct srd_decoder_inst *di)
 {
     j1708_state *s = (j1708_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "j1708");
-    s->out_bin = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "j1708");
-    s->message_break = (int)c_decoder_get_option_int(di, "message_break", 2);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "j1708");
+    s->out_bin = c_reg_out(di, SRD_OUTPUT_BINARY, "j1708");
+    s->message_break = (int)c_opt_int(di, "message_break", 2);
 }
 
 static void j1708_end(struct srd_decoder_inst *di)
@@ -380,7 +379,8 @@ struct srd_c_decoder j1708_c_decoder = {
     .decode = j1708_decode,
     .end = j1708_end,
     .destroy = j1708_destroy,
-    .recv_proto = j1708_recv_proto,
+    .decode_upper = j1708_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

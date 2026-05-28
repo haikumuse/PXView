@@ -40,21 +40,22 @@ typedef struct {
     const char *name;
     int addr_len;
     int data_len;
+    int n_fields;
 } sipi_command_entry;
 
 static const sipi_command_entry command_table[] = {
-    {0x00, "Read byte", 4, 0},
-    {0x01, "Read 2 byte", 4, 0},
-    {0x02, "Read 4 byte", 4, 0},
-    {0x04, "Write byte with ACK", 4, 4},
-    {0x05, "Write 2 byte with ACK", 4, 4},
-    {0x06, "Write 4 byte with ACK", 4, 4},
-    {0x08, "ACK", 0, 0},
-    {0x09, "NACK (Target Error)", 0, 0},
-    {0x0A, "Read Answer with ACK", 4, 4},
-    {0x0C, "Trigger with ACK", 0, 0},
-    {0x12, "Read 4-byte JTAG ID", 0, 0},
-    {0x17, "Stream 32 byte with ACK", 0, 32},
+    {0x00, "Read byte", 4, 0, 0},
+    {0x01, "Read 2 byte", 4, 0, 0},
+    {0x02, "Read 4 byte", 4, 0, 0},
+    {0x04, "Write byte with ACK", 4, 4, 4},
+    {0x05, "Write 2 byte with ACK", 4, 4, 4},
+    {0x06, "Write 4 byte with ACK", 4, 4, 4},
+    {0x08, "ACK", 0, 0, 0},
+    {0x09, "NACK (Target Error)", 0, 0, 0},
+    {0x0A, "Read Answer with ACK", 4, 4, 4},
+    {0x0C, "Trigger with ACK", 0, 0, 0},
+    {0x12, "Read 4-byte JTAG ID", 0, 0, 0},
+    {0x17, "Stream 32 byte with ACK", 0, 32, 32},
 };
 #define COMMAND_TABLE_SIZE 12
 
@@ -63,6 +64,7 @@ typedef struct {
     double bit_len;
     int addr_len;
     int data_len;
+    int n_fields;
     int frame_len;
 } sipi_state;
 
@@ -113,9 +115,7 @@ static const sipi_command_entry *sipi_lookup_command(uint8_t cmd_id)
     return NULL;
 }
 
-static void sipi_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void sipi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     sipi_state *s = (sipi_state *)c_decoder_get_private(di);
     if (!s)
@@ -126,9 +126,9 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
 
     /* data format from lfast_c: each entry is 17 bytes:
        [value(1B)][ss(8B LE)][es(8B LE)] */
-    int num_bytes = (int)(data_len / 17);
+    int num_bytes = (int)(n_fields / 17);
     if (num_bytes < 2) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING,
                   "Header too short");
         return;
     }
@@ -139,8 +139,8 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
     uint64_t *byte_es = (uint64_t *)g_malloc(num_bytes * sizeof(uint64_t));
 
     for (int i = 0; i < num_bytes; i++) {
-        const unsigned char *p = data + i * 17;
-        byte_vals[i] = p[0];
+        const c_field *p = fields + i * 17;
+        byte_vals[i] = p[0].u8;
         memcpy(&byte_ss[i], p + 1, 8);
         memcpy(&byte_es[i], p + 9, 8);
     }
@@ -159,7 +159,7 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
     uint8_t tag = (header & 0xE000) >> 13;
     char buf[64];
     snprintf(buf, sizeof(buf), "%02X", tag);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_HEADER_TAG, buf);
+    c_put(di, ss, es, s->out_ann, ANN_HEADER_TAG, buf);
 
     /* Command Code (bits 12-8) */
     ss = es;
@@ -170,13 +170,13 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
         s->addr_len = entry->addr_len;
         s->data_len = entry->data_len;
         s->frame_len = 2 + 2 + s->addr_len + s->data_len;
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_HEADER_CMD, entry->name);
+        c_put(di, ss, es, s->out_ann, ANN_HEADER_CMD, entry->name);
     } else {
         s->addr_len = 0;
         s->data_len = 0;
         s->frame_len = 4;
         snprintf(buf, sizeof(buf), "Reserved (%02X)", cmd_id);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_HEADER_CMD, buf);
+        c_put(di, ss, es, s->out_ann, ANN_HEADER_CMD, buf);
     }
 
     /* Reserved bits 4-7 */
@@ -184,7 +184,7 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
     es = ss + (uint64_t)(4 * s->bit_len);
     uint8_t reserved_bits = (header & 0x00F0) >> 4;
     if (reserved_bits > 0) {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARNING,
+        c_put(di, ss, es, s->out_ann, ANN_WARNING,
                   "Reserved bits #4..7 should be 0");
     }
 
@@ -193,13 +193,13 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
     es = ss + (uint64_t)(3 * s->bit_len);
     uint8_t ch = (header & 0x000E) >> 1;
     snprintf(buf, sizeof(buf), "%d", ch);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_HEADER_CH, buf);
+    c_put(di, ss, es, s->out_ann, ANN_HEADER_CH, buf);
 
     /* Reserved bit 0 */
     if (header & 0x0001) {
         ss = es;
         es = ss + (uint64_t)(s->bit_len);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARNING,
+        c_put(di, ss, es, s->out_ann, ANN_WARNING,
                   "Reserved bit #0 should be 0");
     }
 
@@ -212,7 +212,7 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
         if (s->addr_len > 0) {
             for (int i = 0; i < s->addr_len && byte_idx < num_bytes; i++, byte_idx++) {
                 snprintf(buf, sizeof(buf), "%02X", byte_vals[byte_idx]);
-                C_ANN_PUT(di, byte_ss[byte_idx], byte_es[byte_idx],
+                c_put(di, byte_ss[byte_idx], byte_es[byte_idx],
                           s->out_ann, ANN_ADDRESS, buf);
             }
         }
@@ -221,7 +221,7 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
         if (s->data_len > 0) {
             for (int i = 0; i < s->data_len && byte_idx < num_bytes; i++, byte_idx++) {
                 snprintf(buf, sizeof(buf), "%02X", byte_vals[byte_idx]);
-                C_ANN_PUT(di, byte_ss[byte_idx], byte_es[byte_idx],
+                c_put(di, byte_ss[byte_idx], byte_es[byte_idx],
                           s->out_ann, ANN_DATA, buf);
             }
         }
@@ -243,16 +243,16 @@ static void sipi_recv_proto(struct srd_decoder_inst *di,
             g_free(crc_payload);
 
             if (calculated_crc == crc_value) {
-                C_ANN_PUT(di, crc_ss, crc_es, s->out_ann, ANN_CRC, "CRC OK");
+                c_put(di, crc_ss, crc_es, s->out_ann, ANN_CRC, "CRC OK");
             } else {
                 snprintf(buf, sizeof(buf),
-                         "Have %04X but calculated %04X", crc_value, calculated_crc);
-                C_ANN_PUT(di, crc_ss, crc_es, s->out_ann, ANN_CRC, buf);
-                C_ANN_PUT(di, crc_ss, crc_es, s->out_ann, ANN_WARNING, "CRC mismatch");
+                         "Have %02X but calculated %02X", crc_value, calculated_crc);
+                c_put(di, crc_ss, crc_es, s->out_ann, ANN_CRC, buf);
+                c_put(di, crc_ss, crc_es, s->out_ann, ANN_WARNING, "CRC mismatch");
             }
         }
     } else if (num_bytes > byte_idx) {
-        C_ANN_PUT(di, byte_ss[byte_idx], byte_es[num_bytes - 1],
+        c_put(di, byte_ss[byte_idx], byte_es[num_bytes - 1],
                   s->out_ann, ANN_WARNING, "CRC incomplete or missing");
     }
 
@@ -273,7 +273,7 @@ static void sipi_reset(struct srd_decoder_inst *di)
 static void sipi_start(struct srd_decoder_inst *di)
 {
     sipi_state *s = (sipi_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sipi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sipi");
 }
 
 static void sipi_decode(struct srd_decoder_inst *di)
@@ -318,7 +318,8 @@ struct srd_c_decoder sipi_c_decoder = {
     .start = sipi_start,
     .decode = sipi_decode,
     .destroy = sipi_destroy,
-    .recv_proto = sipi_recv_proto,
+    .decode_upper = sipi_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

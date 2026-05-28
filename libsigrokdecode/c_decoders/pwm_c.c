@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,79 +63,68 @@ static void pwm_reset(struct srd_decoder_inst* di)
 static void pwm_start(struct srd_decoder_inst* di)
 {
     pwm_state* s = (pwm_state*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pwm");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "pwm");
-    s->out_average = c_decoder_register_output_meta(di, SRD_OUTPUT_META, "pwm",
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pwm");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "pwm");
+    s->out_average = c_reg_meta(di, SRD_OUTPUT_META, "pwm",
         "float", "Average", "PWM base (cycle) frequency");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
 
-    const char* pol = c_decoder_get_option_string(di, "polarity", "active-high");
+    const char* pol = c_opt_str(di, "polarity", "active-high");
     s->polarity = (strcmp(pol, "active-low") == 0) ? 1 : 0;
 }
 
 static void pwm_decode(struct srd_decoder_inst* di)
 {
     pwm_state* s = (pwm_state*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
     {
-        srd_cond_builder* cb = c_cond_new();
+        int ret;
         if (s->polarity == 1)
-            c_cond_fall(cb, 0);
+            ret = c_wait(di, CW_F(0), CW_END);
         else
-            c_cond_rise(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            ret = c_wait(di, CW_R(0), CW_END);
         if (ret != SRD_OK)
             return;
-        s->first_samplenum = samplenum;
+        s->first_samplenum = di_samplenum(di);
     }
 
     while (1) {
-        uint64_t start_samplenum = samplenum;
+        uint64_t start_samplenum = di_samplenum(di);
 
         {
-            srd_cond_builder* cb = c_cond_new();
-            c_cond_edge(cb, 0);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_E(0), CW_END);
             if (ret != SRD_OK)
                 return;
         }
-        uint64_t end_samplenum = samplenum;
+        uint64_t end_samplenum = di_samplenum(di);
 
         {
-            srd_cond_builder* cb = c_cond_new();
-            c_cond_edge(cb, 0);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_E(0), CW_END);
             if (ret != SRD_OK)
                 return;
         }
 
         s->ss_block = start_samplenum;
-        s->es_block = samplenum;
+        s->es_block = di_samplenum(di);
 
-        uint64_t period = samplenum - start_samplenum;
+        uint64_t period = di_samplenum(di) - start_samplenum;
         uint64_t duty = end_samplenum - start_samplenum;
         double ratio = (double)duty / (double)period;
         double percent = ratio * 100.0;
 
         char pct_str[32];
         snprintf(pct_str, sizeof(pct_str), "%f%%", percent);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DUTY, pct_str);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DUTY, pct_str);
 
         {
             unsigned char b = (unsigned char)(ratio * 256.0);
             if (ratio * 256.0 >= 256.0)
                 b = 255;
-            c_decoder_put_binary(di, s->ss_block, s->es_block, s->out_binary, 0, 1, &b);
+            c_put_bin(di, s->ss_block, s->es_block, s->out_binary, 0, 1, &b);
         }
 
         double period_t = (double)period / (double)s->samplerate;
@@ -153,11 +142,11 @@ static void pwm_decode(struct srd_decoder_inst* di)
         } else {
             snprintf(period_s, sizeof(period_s), "%.1f ms", period_t * 1e3);
         }
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_PERIOD, period_s);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_PERIOD, period_s);
 
         s->num_cycles++;
         s->average += percent;
-        c_decoder_put_meta_double(di, s->first_samplenum, s->es_block,
+        c_put_meta_dbl(di, s->first_samplenum, s->es_block,
             s->out_average, s->average / (double)s->num_cycles);
     }
 }
@@ -199,6 +188,7 @@ struct srd_c_decoder pwm_c_decoder = {
     .start = pwm_start,
     .decode = pwm_decode,
     .destroy = pwm_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

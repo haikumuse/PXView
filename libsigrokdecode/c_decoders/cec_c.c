@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -238,7 +238,7 @@ static void handle_frame(struct srd_decoder_inst* di, cec_priv* s, int is_nack)
         pos += snprintf(hex_str + pos, sizeof(hex_str) - pos, "%02x", s->cmd_bytes[i].val);
     }
     hex_str[pos] = '\0';
-    C_ANN_PUT(di, s->frame_start, s->frame_end, s->out_ann, ANN_FRAMES, hex_str);
+    c_put(di, s->frame_start, s->frame_end, s->out_ann, ANN_FRAMES, hex_str);
 
     pos = 0;
     operands = 0;
@@ -271,7 +271,7 @@ static void handle_frame(struct srd_decoder_inst* di, cec_priv* s, int is_nack)
 
     pos += snprintf(sec_str + pos, sizeof(sec_str) - pos,
         " | R: %s", is_nack ? "NACK" : "ACK");
-    C_ANN_PUT(di, s->frame_start, s->frame_end, s->out_ann, ANN_SECTIONS, sec_str);
+    c_put(di, s->frame_start, s->frame_end, s->out_ann, ANN_SECTIONS, sec_str);
 }
 
 static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
@@ -290,19 +290,19 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
 
     if (pulse == PULSE_INVALID) {
         s->state = WAIT_START;
-        C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
+        c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
             "Invalid pulse: Wrong timing");
         return;
     }
 
     if (s->state == WAIT_START && pulse != PULSE_START) {
-        C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
+        c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
             "Expected START: BIT found");
         return;
     }
 
     if ((s->state == WAIT_ACK || s->state == WAIT_EOM) && pulse == PULSE_START) {
-        C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
+        c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
             "Expected BIT: START received)");
         s->state = WAIT_START;
     }
@@ -310,7 +310,7 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
     if (s->state == WAIT_ACK && pulse != PULSE_START) {
         double total_min = (pulse == PULSE_ZERO) ? ZERO_TOTAL_MIN : ONE_TOTAL_MIN;
         if (total_time < total_min) {
-            C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
+            c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
                 "ACK pulse below minimun time");
             s->state = WAIT_START;
             return;
@@ -321,7 +321,7 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
         if (s->bit_count == 0) {
             handle_frame(di, s, s->is_nack);
         } else {
-            C_ANN_PUT(di, s->frame_start, s->fall_end, s->out_ann, ANN_WARN,
+            c_put(di, s->frame_start, s->fall_end, s->out_ann, ANN_WARN,
                 "ERROR: Incomplete byte received");
         }
         s->state = WAIT_START;
@@ -331,7 +331,7 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
         double total_min = (pulse == PULSE_ZERO) ? ZERO_TOTAL_MIN : ONE_TOTAL_MIN;
         double total_max = (pulse == PULSE_ZERO) ? ZERO_TOTAL_MAX : ONE_TOTAL_MAX;
         if (total_time < total_min || total_time > total_max) {
-            C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
+            c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_WARN,
                 "Bit pulse exceeds total pulse timespan");
             pulse = PULSE_INVALID;
             s->state = WAIT_START;
@@ -349,7 +349,7 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
     case WAIT_START:
         s->state = GET_BITS;
         reset_frame_vars(s);
-        C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_START, "ST");
+        c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_START, "ST");
         break;
 
     case GET_BITS:
@@ -364,7 +364,7 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
         {
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", bit);
-            C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_BITS, bit_str);
+            c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_BITS, bit_str);
         }
         if (s->bit_count == 8) {
             char byte_str[8];
@@ -372,7 +372,7 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
             s->byte_count++;
             s->state = WAIT_EOM;
             snprintf(byte_str, sizeof(byte_str), "0x%02x", s->byte_val);
-            C_ANN_PUT(di, s->byte_start, s->fall_end, s->out_ann, ANN_BYTES, byte_str);
+            c_put(di, s->byte_start, s->fall_end, s->out_ann, ANN_BYTES, byte_str);
             if (s->cmd_bytes_count < MAX_CMD_BYTES) {
                 s->cmd_bytes[s->cmd_bytes_count].st = s->byte_start;
                 s->cmd_bytes[s->cmd_bytes_count].ed = s->fall_end;
@@ -386,9 +386,9 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
         s->eom = bit;
         s->frame_end = s->fall_end;
         if (s->eom)
-            C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_EOM_1, "EOM=Y");
+            c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_EOM_1, "EOM=Y");
         else
-            C_ANN_PUT(di, s->fall_start, s->fall_end, s->out_ann, ANN_EOM_0, "EOM=N");
+            c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_EOM_0, "EOM=N");
         s->state = WAIT_ACK;
         break;
 
@@ -404,9 +404,9 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
                 ann_end = s->fall_end;
             if (ack_bit) {
                 s->is_nack = 1;
-                C_ANN_PUT(di, s->fall_start, ann_end, s->out_ann, ANN_NACK, "NACK");
+                c_put(di, s->fall_start, ann_end, s->out_ann, ANN_NACK, "NACK");
             } else {
-                C_ANN_PUT(di, s->fall_start, ann_end, s->out_ann, ANN_ACK, "ACK");
+                c_put(di, s->fall_start, ann_end, s->out_ann, ANN_ACK, "ACK");
             }
         }
         if (s->eom || s->is_nack) {
@@ -442,8 +442,8 @@ static void cec_reset(struct srd_decoder_inst* di)
 static void cec_start(struct srd_decoder_inst* di)
 {
     cec_priv* s = (cec_priv*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "cec");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "cec");
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0)
         s->max_ack_len_samples = (uint64_t)((4.1 / 1000.0) * (double)s->samplerate + 0.5);
 }
@@ -451,12 +451,10 @@ static void cec_start(struct srd_decoder_inst* di)
 static void cec_decode(struct srd_decoder_inst* di)
 {
     cec_priv* s = (cec_priv*)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             s->max_ack_len_samples = (uint64_t)((4.1 / 1000.0) * (double)s->samplerate + 0.5);
     }
@@ -464,56 +462,38 @@ static void cec_decode(struct srd_decoder_inst* di)
         return;
 
     {
-        srd_cond_builder* cb = c_cond_new();
-        c_cond_fall(cb, CEC_CH);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_F(CEC_CH), CW_END);
         if (ret != SRD_OK)
             return;
-        s->fall_end = samplenum;
+        s->fall_end = di_samplenum(di);
     }
 
     while (1) {
-        srd_cond_builder* cb;
-        uint64_t wait_matched;
-
         {
-            cb = c_cond_new();
-            c_cond_rise(cb, CEC_CH);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_R(CEC_CH), CW_END);
             if (ret != SRD_OK)
                 return;
-            s->rise = samplenum;
+            s->rise = di_samplenum(di);
         }
 
         {
-            cb = c_cond_new();
-            if (s->state == WAIT_ACK) {
-                c_cond_fall(cb, CEC_CH);
-                c_cond_or(cb);
-                c_cond_skip(cb, s->max_ack_len_samples);
-            } else {
-                c_cond_fall(cb, CEC_CH);
-            }
-            ret = c_cond_wait(cb, di, &samplenum, &wait_matched);
-            c_cond_free(cb);
+            if (s->state == WAIT_ACK)
+                ret = c_wait(di, CW_F(CEC_CH), CW_OR, CW_SKIP(s->max_ack_len_samples), CW_END);
+            else
+                ret = c_wait(di, CW_F(CEC_CH), CW_END);
             if (ret != SRD_OK)
                 return;
         }
 
         s->fall_start = s->fall_end;
-        s->fall_end = samplenum;
+        s->fall_end = di_samplenum(di);
         cec_process(di, s);
 
-        if (wait_matched & 2) {
-            cb = c_cond_new();
-            c_cond_fall(cb, CEC_CH);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+        if (di_matched(di) & 2) {
+            ret = c_wait(di, CW_F(CEC_CH), CW_END);
             if (ret != SRD_OK)
                 return;
-            s->fall_end = samplenum;
+            s->fall_end = di_samplenum(di);
         }
     }
 }
@@ -556,6 +536,7 @@ struct srd_c_decoder cec_c_decoder = {
     .start = cec_start,
     .decode = cec_decode,
     .destroy = cec_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

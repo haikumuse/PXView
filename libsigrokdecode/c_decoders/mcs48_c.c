@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the PXView project.
  *
  * Copyright (C) 2024 DreamSourceLab <info@dreamsourcelab.com>
@@ -90,36 +90,29 @@ static void mcs48_reset(struct srd_decoder_inst *di)
 static void mcs48_start(struct srd_decoder_inst *di)
 {
     mcs48_priv *s = (mcs48_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mcs48");
-    s->out_bin = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "mcs48");
-    s->has_bank = c_decoder_has_channel(di, 14);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mcs48");
+    s->out_bin = c_reg_out(di, SRD_OUTPUT_BINARY, "mcs48");
+    s->has_bank = c_has_ch(di, 14);
 }
 
 static void mcs48_decode(struct srd_decoder_inst *di)
 {
     mcs48_priv *s = (mcs48_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_fall(cb, 0);   /* ALE falling edge */
-        c_cond_or(cb);
-        c_cond_rise(cb, 1);   /* /PSEN rising edge */
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        int ret = c_wait(di, CW_F(0), CW_OR, CW_R(1), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        /* Read all channel values at samplenum */
+        /* Read all channel values at di_samplenum(di) */
         int d[8], a[4], bank = 0;
         for (int i = 0; i < 8; i++)
-            d[i] = c_decoder_get_pin(di, 2 + i, samplenum);
+            d[i] = c_pin(di, 2 + i);
         for (int i = 0; i < 4; i++)
-            a[i] = c_decoder_get_pin(di, 10 + i, samplenum);
+            a[i] = c_pin(di, 10 + i);
         if (s->has_bank)
-            bank = c_decoder_get_pin(di, 14, samplenum);
+            bank = c_pin(di, 14);
 
-        if (matched & (1ULL << 0)) { /* ALE falling edge */
+        if (di_matched(di) & (1ULL << 0)) { /* ALE falling edge */
             s->started = 1;
             uint16_t addr = 0;
             for (int i = 0; i < 4; i++)
@@ -129,24 +122,24 @@ static void mcs48_decode(struct srd_decoder_inst *di)
             if (s->has_bank)
                 addr |= (bank << 12);
             s->addr = addr;
-            s->addr_s = samplenum;
+            s->addr_s = di_samplenum(di);
         }
-        if (matched & (1ULL << 1)) { /* /PSEN rising edge */
+        if (di_matched(di) & (1ULL << 1)) { /* /PSEN rising edge */
             uint8_t data = 0;
             for (int i = 0; i < 8; i++)
                 data |= (d[i] << i);
             s->data = data;
-            s->data_s = samplenum;
+            s->data_s = di_samplenum(di);
             if (s->started) {
                 char text[16];
                 snprintf(text, sizeof(text), "%04X:%02X", s->addr, s->data);
-                C_ANN_PUT(di, s->addr_s, s->data_s, s->out_ann, ANN_ROMDATA, text);
+                c_put(di, s->addr_s, s->data_s, s->out_ann, ANN_ROMDATA, text);
                 /* Binary output: 2 bytes addr (big-endian) + 1 byte data */
                 uint8_t bindata[3];
                 bindata[0] = (s->addr >> 8) & 0xFF;
                 bindata[1] = s->addr & 0xFF;
                 bindata[2] = s->data;
-                c_decoder_put_binary(di, s->addr_s, s->data_s, s->out_bin, 0, 3, bindata);
+                c_put_bin(di, s->addr_s, s->data_s, s->out_bin, 0, 3, bindata);
             }
         }
     }
@@ -189,6 +182,7 @@ static struct srd_c_decoder mcs48_c_decoder = {
     .start = mcs48_start,
     .decode = mcs48_decode,
     .destroy = mcs48_destroy,
+    .state_size = 0,
     .metadata = NULL,
 };
 

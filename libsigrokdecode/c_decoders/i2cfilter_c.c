@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012 Bert Vermeulen <bert@biot.com>
@@ -58,9 +58,7 @@ static struct srd_decoder_option i2cfilter_options[] = {
     {"direction", "dec_i2cfilter_opt_direction", "Direction to filter", NULL, NULL},
 };
 
-static void i2cfilter_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void i2cfilter_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     i2cfilter_state *s = (i2cfilter_state *)c_decoder_get_private(di);
     if (!s)
@@ -73,14 +71,14 @@ static void i2cfilter_recv_proto(struct srd_decoder_inst *di,
         s->packets[i].es = end_sample;
         strncpy(s->packets[i].cmd, cmd, sizeof(s->packets[i].cmd) - 1);
         s->packets[i].cmd[sizeof(s->packets[i].cmd) - 1] = '\0';
-        uint64_t copy_len = data_len < sizeof(s->packets[i].data) ? data_len : sizeof(s->packets[i].data);
-        if (data && copy_len > 0)
-            memcpy(s->packets[i].data, data, copy_len);
+        uint64_t copy_len = n_fields < sizeof(s->packets[i].data) ? n_fields : sizeof(s->packets[i].data);
+        if (fields && copy_len > 0)
+            for (uint64_t j = 0; j < copy_len; j++) s->packets[i].data[j] = fields[j].u8;
         s->packets[i].data_len = copy_len;
     }
 
     if (strcmp(cmd, "ADDRESS READ") == 0 || strcmp(cmd, "ADDRESS WRITE") == 0) {
-        s->curslave = (data && data_len > 0) ? data[0] : 0;
+        s->curslave = (fields && n_fields > 0) ? fields[0].u8 : 0;
         s->curdirection = (strcmp(cmd, "ADDRESS READ") == 0) ? DIR_READ : DIR_WRITE;
     } else if (strcmp(cmd, "STOP") == 0 || strcmp(cmd, "START REPEAT") == 0) {
         /* Address filter: if address != 0, only pass matching address */
@@ -95,9 +93,9 @@ static void i2cfilter_recv_proto(struct srd_decoder_inst *di,
         }
         /* Forward all cached packets */
         for (int i = 0; i < s->num_packets; i++) {
-            c_decoder_put_python(di, s->packets[i].ss, s->packets[i].es,
+            c_proto(di, s->packets[i].ss, s->packets[i].es,
                 s->out_python, s->packets[i].cmd,
-                s->packets[i].data, s->packets[i].data_len);
+                C_BYTES(s->packets[i].data, s->packets[i].data_len), C_END);
         }
         s->num_packets = 0;
     }
@@ -117,11 +115,11 @@ static void i2cfilter_reset(struct srd_decoder_inst *di)
 static void i2cfilter_start(struct srd_decoder_inst *di)
 {
     i2cfilter_state *s = (i2cfilter_state *)c_decoder_get_private(di);
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "i2c");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PYTHON, "i2c");
 
-    s->filter_address = (int)c_decoder_get_option_int(di, "address", 0);
+    s->filter_address = (int)c_opt_int(di, "address", 0);
 
-    const char *direction = c_decoder_get_option_string(di, "direction", "both");
+    const char *direction = c_opt_str(di, "direction", "both");
     if (direction && strcmp(direction, "read") == 0)
         s->filter_direction = DIR_READ;
     else if (direction && strcmp(direction, "write") == 0)
@@ -172,7 +170,8 @@ struct srd_c_decoder i2cfilter_c_decoder = {
     .start = i2cfilter_start,
     .decode = i2cfilter_decode,
     .destroy = i2cfilter_destroy,
-    .recv_proto = i2cfilter_recv_proto,
+    .decode_upper = i2cfilter_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

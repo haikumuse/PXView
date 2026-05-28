@@ -77,7 +77,7 @@ static uint64_t parallel_bitpack(struct srd_decoder_inst *di,
     int idx_strip = s->max_connected + 1;
     for (int i = 1; i < idx_strip; i++) {
         if (s->idx_channels[i] != -1) {
-            int pin = c_decoder_get_pin(di, s->idx_channels[i], samplenum);
+            int pin = c_pin(di, s->idx_channels[i]);
             item |= ((uint64_t)pin << (i - 1));
         }
         /* Not-connected channels are treated as 0 */
@@ -99,7 +99,7 @@ static void parallel_handle_word(struct srd_decoder_inst *di,
             snprintf(fmt, sizeof(fmt), "@%%0%dX", num_digits);
             char word_str[64];
             snprintf(word_str, sizeof(word_str), fmt, s->saved_word);
-            C_ANN_PUT(di, s->ss_word, s->es_word, s->out_ann, ANN_WORDS, word_str);
+            c_put(di, s->ss_word, s->es_word, s->out_ann, ANN_WORDS, word_str);
             /* Python output */
             unsigned char py_data[12];
             int pos = 0;
@@ -109,8 +109,8 @@ static void parallel_handle_word(struct srd_decoder_inst *di,
                 py_data[pos++] = (unsigned char)(s->num_item_bits >> (8 * b));
             for (int b = 0; b < 2; b++)
                 py_data[pos++] = (unsigned char)(s->wordsize >> (8 * b));
-            c_decoder_put_proto(di, s->ss_word, s->es_word, s->out_python,
-                                "WORD", py_data, pos);
+            c_proto(di, s->ss_word, s->es_word, s->out_python,
+                                "WORD", C_U64(s->saved_word), C_U16(s->num_item_bits), C_U16(s->wordsize), C_END);
         }
         s->has_saved_word = 0;
     }
@@ -158,25 +158,25 @@ static void parallel_reset(struct srd_decoder_inst *di)
 static void parallel_start(struct srd_decoder_inst *di)
 {
     parallel_state *s = (parallel_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "parallel");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "parallel");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "parallel");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "parallel");
+    s->samplerate = c_samplerate(di);
 
-    const char *ce = c_decoder_get_option_string(di, "clock_edge", "rising");
+    const char *ce = c_opt_str(di, "clock_edge", "rising");
     s->clock_edge = (strcmp(ce, "falling") == 0) ? 1 : 0;
 
-    s->wordsize = (int)c_decoder_get_option_int(di, "wordsize", 0);
+    s->wordsize = (int)c_opt_int(di, "wordsize", 0);
     if (s->wordsize < 0)
         s->wordsize = 0;
 
-    const char *en = c_decoder_get_option_string(di, "endianness", "little");
+    const char *en = c_opt_str(di, "endianness", "little");
     s->endianness = (strcmp(en, "big") == 0) ? 1 : 0;
 
     /* Determine which optional channels are connected */
     s->num_has_channels = 0;
     s->max_connected = -1;
     for (int i = 0; i < PARALLEL_MAX_CHANNELS; i++) {
-        if (c_decoder_has_channel(di, i)) {
+        if (c_has_ch(di, i)) {
             s->idx_channels[i] = i;
             s->has_channels[s->num_has_channels++] = i;
             if (i > s->max_connected)
@@ -186,7 +186,7 @@ static void parallel_start(struct srd_decoder_inst *di)
         }
     }
 
-    s->have_clock = c_decoder_has_channel(di, 0);
+    s->have_clock = c_has_ch(di, 0);
     s->num_item_bits = s->max_connected; /* max_connected is the highest index; data lines start at 1 */
     s->first = 1;
 }
@@ -201,12 +201,10 @@ static void parallel_metadata(struct srd_decoder_inst *di, int key, uint64_t val
 static void parallel_decode(struct srd_decoder_inst *di)
 {
     parallel_state *s = (parallel_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate == 0) return;
     }
 
@@ -215,39 +213,42 @@ static void parallel_decode(struct srd_decoder_inst *di)
 
     while (1) {
         if (s->have_clock) {
-            srd_cond_builder *cb = c_cond_new();
             if (s->clock_edge == 0)
-                c_cond_rise(cb, 0);
+                ret = c_wait(di, CW_R(0), CW_END);
             else
-                c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+                ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
         } else {
             if (s->is_first_wait) {
                 /* No clock first wait: get initial values */
-                ret = c_cond_wait_current(di, &samplenum);
+                ret = c_wait(di, CW_END);
                 if (ret != SRD_OK) return;
             } else {
                 /* Wait for edge on any connected data channel */
-                srd_cond_builder *cb = c_cond_new();
+                GSList *or_groups = NULL;
                 for (int i = 0; i < s->num_has_channels; i++) {
-                    if (i > 0) c_cond_or(cb);
-                    c_cond_edge(cb, s->has_channels[i]);
+                    GSList *and_group = NULL;
+                    struct srd_term *t = g_malloc0(sizeof(struct srd_term));
+                    t->type = SRD_TERM_EITHER_EDGE;
+                    t->channel = s->has_channels[i];
+                    and_group = g_slist_append(and_group, t);
+                    or_groups = g_slist_append(or_groups, and_group);
                 }
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
+                ret = c_decoder_wait(di, or_groups, NULL, NULL);
+                /* NOTE: c_decoder_wait_impl takes ownership of or_groups;
+                 * do NOT free it here to avoid double-free. */
                 if (ret != SRD_OK) return;
             }
         }
 
-        uint64_t item = parallel_bitpack(di, s, samplenum);
+        uint64_t item = parallel_bitpack(di, s, di_samplenum(di));
 
         if (!s->have_clock && s->is_first_wait) {
             s->is_first_wait = 0;
             s->saved_item = item;
             s->has_saved_item = 1;
-            s->prv_dex = samplenum;
+            s->prv_dex = di_samplenum(di);
             continue;
         }
 
@@ -277,7 +278,7 @@ static void parallel_decode(struct srd_decoder_inst *di)
                 snprintf(fmt, sizeof(fmt), "@%%0%dX", num_digits);
                 snprintf(item_str, sizeof(item_str), fmt, s->saved_item);
             }
-            C_ANN_PUT(di, s->prv_dex, samplenum, s->out_ann, ANN_ITEMS, item_str);
+            c_put(di, s->prv_dex, di_samplenum(di), s->out_ann, ANN_ITEMS, item_str);
             /* Python output */
             unsigned char py_data[10];
             int pos = 0;
@@ -285,16 +286,16 @@ static void parallel_decode(struct srd_decoder_inst *di)
                 py_data[pos++] = (unsigned char)(s->saved_item >> (8 * b));
             for (int b = 0; b < 2; b++)
                 py_data[pos++] = (unsigned char)(s->num_item_bits >> (8 * b));
-            c_decoder_put_proto(di, s->prv_dex, samplenum, s->out_python,
-                                "ITEM", py_data, pos);
+            c_proto(di, s->prv_dex, di_samplenum(di), s->out_python,
+                                "ITEM", C_U64(s->saved_item), C_U16(s->num_item_bits), C_END);
         }
 
         s->saved_item = item;
         s->has_saved_item = 1;
-        s->prv_dex = samplenum;
+        s->prv_dex = di_samplenum(di);
 
         /* Handle word assembly */
-        parallel_handle_word(di, s, item, samplenum);
+        parallel_handle_word(di, s, item, di_samplenum(di));
     }
 }
 
@@ -303,7 +304,7 @@ static void parallel_end(struct srd_decoder_inst *di)
     parallel_state *s = (parallel_state *)c_decoder_get_private(di);
     if (!s || !s->has_saved_item) return;
 
-    uint64_t last_sample = c_decoder_get_last_samplenum(di);
+    uint64_t last_sample = c_last_samplenum(di);
     char item_str[64];
     if (s->num_item_bits <= 8 && s->saved_item <= 0xFF) {
         unsigned char ch = (unsigned char)s->saved_item;
@@ -328,15 +329,15 @@ static void parallel_end(struct srd_decoder_inst *di)
         snprintf(fmt, sizeof(fmt), "@%%0%dX", num_digits);
         snprintf(item_str, sizeof(item_str), fmt, s->saved_item);
     }
-    C_ANN_PUT(di, s->prv_dex, last_sample, s->out_ann, ANN_ITEMS, item_str);
+    c_put(di, s->prv_dex, last_sample, s->out_ann, ANN_ITEMS, item_str);
     unsigned char py_data[10];
     int pos = 0;
     for (int b = 0; b < 8; b++)
         py_data[pos++] = (unsigned char)(s->saved_item >> (8 * b));
     for (int b = 0; b < 2; b++)
         py_data[pos++] = (unsigned char)(s->num_item_bits >> (8 * b));
-    c_decoder_put_proto(di, s->prv_dex, last_sample, s->out_python,
-                        "ITEM", py_data, pos);
+    c_proto(di, s->prv_dex, last_sample, s->out_python,
+                        "ITEM", C_U64(s->saved_item), C_U16(s->num_item_bits), C_END);
     s->has_saved_item = 0;
 }
 
@@ -379,6 +380,7 @@ struct srd_c_decoder parallel_c_decoder = {
     .decode = parallel_decode,
     .end = parallel_end,
     .destroy = parallel_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

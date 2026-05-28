@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -142,7 +142,7 @@ static void ds1307_output_datetime(struct srd_decoder_inst *di, ds1307_state *s,
     char t[128];
     snprintf(t, sizeof(t), "%s date/time: %s, %02d.%02d.%4d %02d:%02d:%02d",
              rw, ws, s->date, s->months, s->years, s->hours, s->minutes, s->seconds);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, cls, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, cls, t);
 }
 
 static void ds1307_handle_reg(struct srd_decoder_inst *di, ds1307_state *s,
@@ -152,88 +152,88 @@ static void ds1307_handle_reg(struct srd_decoder_inst *di, ds1307_state *s,
 
     switch (r) {
     case 0x00: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_SECONDS, "Seconds", "Sec", "S");
+        c_put(di, ss, es, s->out_ann, ANN_REG_SECONDS, "Seconds", "Sec", "S");
         int ch = (b & (1 << 7)) ? 1 : 0;
         char t[32];
         snprintf(t, sizeof(t), "Clock halt: %d", ch);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_CLOCK_HALT, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_CLOCK_HALT, t);
         s->seconds = bcd2int(b & 0x7f);
         snprintf(t, sizeof(t), "Second: %d", s->seconds);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_SECONDS, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_SECONDS, t);
         break;
     }
     case 0x01: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_MINUTES, "Minutes", "Min", "M");
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
+        c_put(di, ss, es, s->out_ann, ANN_REG_MINUTES, "Minutes", "Min", "M");
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
         s->minutes = bcd2int(b & 0x7f);
         char t[32];
         snprintf(t, sizeof(t), "Minute: %d", s->minutes);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_MINUTES, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_MINUTES, t);
         break;
     }
     case 0x02: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_HOURS, "Hours", "H");
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
+        c_put(di, ss, es, s->out_ann, ANN_REG_HOURS, "Hours", "H");
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
         int ampm_mode = (b & (1 << 6)) ? 1 : 0;
         if (ampm_mode) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_12_24_HOURS, "12-hour mode", "12h mode", "12h");
+            c_put(di, ss, es, s->out_ann, ANN_BIT_12_24_HOURS, "12-hour mode", "12h mode", "12h");
             const char *a = (b & (1 << 5)) ? "PM" : "AM";
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_AM_PM, a);
+            c_put(di, ss, es, s->out_ann, ANN_BIT_AM_PM, a);
             s->hours = bcd2int(b & 0x1f);
             char t[32];
             snprintf(t, sizeof(t), "Hour: %d", s->hours);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_HOURS, t);
+            c_put(di, ss, es, s->out_ann, ANN_BIT_HOURS, t);
         } else {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_12_24_HOURS, "24-hour mode", "24h mode", "24h");
+            c_put(di, ss, es, s->out_ann, ANN_BIT_12_24_HOURS, "24-hour mode", "24h mode", "24h");
             s->hours = bcd2int(b & 0x3f);
             char t[32];
             snprintf(t, sizeof(t), "Hour: %d", s->hours);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_HOURS, t);
+            c_put(di, ss, es, s->out_ann, ANN_BIT_HOURS, t);
         }
         break;
     }
     case 0x03: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_DAY, "Day of week", "Day", "D");
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
+        c_put(di, ss, es, s->out_ann, ANN_REG_DAY, "Day of week", "Day", "D");
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
         s->days = bcd2int(b & 0x07);
         if (s->days >= 1 && s->days <= 7) {
             const char *ws = days_of_week[s->days - 1];
             char t[64];
             snprintf(t, sizeof(t), "Weekday: %s", ws);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_DAY, t);
+            c_put(di, ss, es, s->out_ann, ANN_BIT_DAY, t);
         }
         break;
     }
     case 0x04: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_DATE, "Date", "D");
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
+        c_put(di, ss, es, s->out_ann, ANN_REG_DATE, "Date", "D");
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
         s->date = bcd2int(b & 0x3f);
         char t[32];
         snprintf(t, sizeof(t), "Date: %d", s->date);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_DATE, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_DATE, t);
         break;
     }
     case 0x05: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_MONTH, "Month", "Mon", "M");
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
+        c_put(di, ss, es, s->out_ann, ANN_REG_MONTH, "Month", "Mon", "M");
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
         s->months = bcd2int(b & 0x1f);
         char t[32];
         snprintf(t, sizeof(t), "Month: %d", s->months);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_MONTH, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_MONTH, t);
         break;
     }
     case 0x06: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_YEAR, "Year", "Y");
+        c_put(di, ss, es, s->out_ann, ANN_REG_YEAR, "Year", "Y");
         s->years = bcd2int(b & 0xff);
         s->years += 2000;
         char t[32];
         snprintf(t, sizeof(t), "Year: %d", s->years);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_YEAR, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_YEAR, t);
         break;
     }
     case 0x07: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_CONTROL, "Control", "Ctrl", "C");
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
+        c_put(di, ss, es, s->out_ann, ANN_REG_CONTROL, "Control", "Ctrl", "C");
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RESERVED, "Reserved", "Rsvd", "R");
         int o = (b & (1 << 7)) ? 1 : 0;
         int sqwe_en = (b & (1 << 4)) ? 1 : 0;
         const char *s2 = sqwe_en ? "en" : "dis";
@@ -241,18 +241,18 @@ static void ds1307_handle_reg(struct srd_decoder_inst *di, ds1307_state *s,
         const char *r = rates[b & 0x03];
         char t[64];
         snprintf(t, sizeof(t), "Output control: %d", o);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_OUT, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_OUT, t);
         snprintf(t, sizeof(t), "Square wave output: %sabled", s2);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_SQWE, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_SQWE, t);
         snprintf(t, sizeof(t), "Square wave output rate: %s", r);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RS, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RS, t);
         break;
     }
     case 0x3f: {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG_RAM, "RAM", "R");
+        c_put(di, ss, es, s->out_ann, ANN_REG_RAM, "RAM", "R");
         char t[32];
         snprintf(t, sizeof(t), "SRAM: 0x%02X", b);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_RAM, t);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_RAM, t);
         break;
     }
     }
@@ -262,9 +262,7 @@ static void ds1307_handle_reg(struct srd_decoder_inst *di, ds1307_state *s,
         s->reg = 0;
 }
 
-static void ds1307_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ds1307_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ds1307_state *s = (ds1307_state *)c_decoder_get_private(di);
     if (!s)
@@ -273,7 +271,7 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
     s->ss = start_sample;
     s->es = end_sample;
 
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "START") == 0) {
         s->state = STATE_GET_SLAVE_ADDR;
@@ -291,7 +289,7 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
                 if (databyte != 0x7F) {
                     char t[64];
                     snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
-                    C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                    c_put(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
                 }
                 s->state = STATE_IDLE;
                 return;
@@ -302,7 +300,7 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
                 if (databyte != 0x7F) {
                     char t[64];
                     snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
-                    C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                    c_put(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
                 }
                 s->state = STATE_IDLE;
                 return;
@@ -321,7 +319,7 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
         }
         if (strcmp(cmd, "DATA WRITE") == 0) {
             ds1307_handle_reg(di, s, databyte, start_sample, end_sample);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WRITE_REG,
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WRITE_REG,
                       "Register write");
         } else if (strcmp(cmd, "STOP") == 0) {
             ds1307_output_datetime(di, s, ANN_WRITE_DATE_TIME, "Written");
@@ -333,7 +331,7 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
                 if (databyte != 0x7F) {
                     char t[64];
                     snprintf(t, sizeof(t), "Ignoring non-DS1307 data (slave 0x%02X)", databyte);
-                    C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
+                    c_put(di, s->ss_block, end_sample, s->out_ann, ANN_WARNING, t);
                 }
                 s->state = STATE_IDLE;
                 return;
@@ -343,7 +341,7 @@ static void ds1307_recv_proto(struct srd_decoder_inst *di,
     } else if (s->state == STATE_READ_RTC_REGS2) {
         if (strcmp(cmd, "DATA READ") == 0) {
             ds1307_handle_reg(di, s, databyte, start_sample, end_sample);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_READ_REG,
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_READ_REG,
                       "Register read");
         } else if (strcmp(cmd, "STOP") == 0) {
             ds1307_output_datetime(di, s, ANN_READ_DATE_TIME, "Read");
@@ -375,7 +373,7 @@ static void ds1307_reset(struct srd_decoder_inst *di)
 static void ds1307_start(struct srd_decoder_inst *di)
 {
     ds1307_state *s = (ds1307_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ds1307");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ds1307");
 }
 
 static void ds1307_decode(struct srd_decoder_inst *di)
@@ -420,7 +418,8 @@ struct srd_c_decoder ds1307_c_decoder = {
     .start = ds1307_start,
     .decode = ds1307_decode,
     .destroy = ds1307_destroy,
-    .recv_proto = ds1307_recv_proto,
+    .decode_upper = ds1307_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,10 +1,15 @@
 {
   "decoder": "pjon_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "pjon_link"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "pjdl_c",
+      "channels": {
+        "data": 0
+      }
+    }
+  ]
 }

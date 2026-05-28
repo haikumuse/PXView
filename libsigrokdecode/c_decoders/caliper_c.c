@@ -79,11 +79,11 @@ static void caliper_reset(struct srd_decoder_inst *di)
 static void caliper_start(struct srd_decoder_inst *di)
 {
     caliper_state *s = (caliper_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "caliper");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "caliper");
 
-    s->timeout_ms = (int)c_decoder_get_option_int(di, "timeout_ms", 10);
+    s->timeout_ms = (int)c_opt_int(di, "timeout_ms", 10);
 
-    const char *unit_str = c_decoder_get_option_string(di, "unit", "keep");
+    const char *unit_str = c_opt_str(di, "unit", "keep");
     if (strcmp(unit_str, "mm") == 0)
         s->unit = 1;
     else if (strcmp(unit_str, "inch") == 0)
@@ -91,7 +91,7 @@ static void caliper_start(struct srd_decoder_inst *di)
     else
         s->unit = 0;
 
-    const char *changes_str = c_decoder_get_option_string(di, "changes", "no");
+    const char *changes_str = c_opt_str(di, "changes", "no");
     s->changes_only = (strcmp(changes_str, "yes") == 0) ? 1 : 0;
 }
 
@@ -106,11 +106,10 @@ static void caliper_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
 static void caliper_decode(struct srd_decoder_inst *di)
 {
     caliper_state *s = (caliper_state *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
     int ret;
 
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
@@ -121,37 +120,34 @@ static void caliper_decode(struct srd_decoder_inst *di)
     }
 
     while (1) {
-        /* Wait for CLK rising edge, optionally with timeout */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, 0);
-        if (has_timeout) {
-            c_cond_or(cb);
-            c_cond_skip(cb, timeout_snum);
-        }
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        /* Wait for CLK rising edge, optionally with timeout — single combined wait */
+        if (has_timeout)
+            ret = c_wait(di, CW_R(0), CW_OR, CW_SKIP(timeout_snum), CW_END);
+        else
+            ret = c_wait(di, CW_R(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        /* Timeout check: bit 0 = CLK rise matched */
-        if (has_timeout && !(matched & 0x1)) {
+        /* Timeout check: bit 0 = CLK rise di_matched(di) */
+        if (has_timeout && !(di_matched(di) & 0x1)) {
             if (s->number_count > 0 || s->flags_count > 0) {
                 int count = s->number_count + s->flags_count;
                 char tmp[64];
                 snprintf(tmp, sizeof(tmp), "timeout with %d bits in buffer", count);
                 char tmp2[32];
                 snprintf(tmp2, sizeof(tmp2), "timeout (%d bits)", count);
-                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_WARNING, tmp, tmp2, "timeout");
+                c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_WARNING, tmp, tmp2, "timeout");
             }
             caliper_reset_state(s);
             continue;
         }
 
         /* Sample DATA pin at CLK rising edge */
-        uint8_t data = c_decoder_get_pin(di, 1, samplenum);
+        uint8_t data = c_pin(di, 1);
 
         /* Record position */
-        if (!s->ss) s->ss = samplenum;
-        s->es = samplenum;
+        if (!s->ss) s->ss = di_samplenum(di);
+        s->es = di_samplenum(di);
 
         /* Collect bits */
         if (s->number_count < 16) {
@@ -167,10 +163,10 @@ static void caliper_decode(struct srd_decoder_inst *di)
         int negative = s->flags_bits[4] ? 1 : 0;
         int is_inch = s->flags_bits[7] ? 1 : 0;
 
-        /* bitpack: MSB first */
+        /* bitpack: LSB first — match Python's bitpack() = sum([b << i for i, b in enumerate(bits)]) */
         uint32_t number = 0;
         for (int i = 0; i < 16; i++)
-            number = (number << 1) | s->number_bits[i];
+            number |= ((uint32_t)s->number_bits[i] << i);
 
         int32_t signed_number = (int32_t)number;
         if (negative) signed_number = -signed_number;
@@ -201,10 +197,13 @@ static void caliper_decode(struct srd_decoder_inst *di)
 
         if (should_output) {
             char tmp[64];
-            snprintf(tmp, sizeof(tmp), "%.1f%s", value, unit_str);
+            /* Match Python: '{number}{unit}'.format(number=value, unit=unit_str)
+             * Python's default float formatting removes trailing zeros,
+             * which is equivalent to %g with enough precision. */
+            snprintf(tmp, sizeof(tmp), "%g%s", value, unit_str);
             char tmp2[32];
-            snprintf(tmp2, sizeof(tmp2), "%.1f", value);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MEASUREMENT, tmp, tmp2);
+            snprintf(tmp2, sizeof(tmp2), "%g", value);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_MEASUREMENT, tmp, tmp2);
             s->last_number = value;
             s->last_is_inch = is_inch;
             s->has_last = 1;
@@ -251,6 +250,7 @@ struct srd_c_decoder caliper_c_decoder = {
     .start = caliper_start,
     .decode = caliper_decode,
     .destroy = caliper_destroy,
+    .state_size = 0,
     .metadata = caliper_metadata,
 };
 

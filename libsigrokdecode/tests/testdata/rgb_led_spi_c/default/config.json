@@ -1,12 +1,15 @@
 {
   "decoder": "rgb_led_spi_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "spi"
-  ],
+  "num_channels": 4,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "led_type": "simple"
-  }
+  "stack": [
+    {
+      "id": "spi_c",
+      "channels": {
+        "clk": 0
+      }
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2022 Sergey Spivak <sespivak@yandex.ru>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -142,7 +142,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
             s->checksum = byte_val;
             char hdr_str[32];
             snprintf(hdr_str, sizeof(hdr_str), "HEAD: 0x%02X", byte_val);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_HEADER, hdr_str, "HEAD", "H");
+            c_put(di, ss, es, s->out_ann, ANN_HEADER, hdr_str, "HEAD", "H");
         }
         return;
     }
@@ -153,24 +153,24 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
         if (s->packet_size > STRELETZ_MAX_PKT) {
             char warn_str[32];
             snprintf(warn_str, sizeof(warn_str), "Wrong DS: 0x%02X", byte_val);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, warn_str, "WDS");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, warn_str, "WDS");
             streletz_reset_state(s);
             return;
         }
         char ds_str[32];
         snprintf(ds_str, sizeof(ds_str), "DS: 0x%02X", byte_val);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATASIZE, ds_str, "DS");
+        c_put(di, ss, es, s->out_ann, ANN_DATASIZE, ds_str, "DS");
     }
     /* Data type */
     else if (s->buf_pos == BUF_DATA_TYPE) {
         if (rxtx == TX) {
             char cmd_str[32];
             snprintf(cmd_str, sizeof(cmd_str), "CMD: 0x%02X", byte_val);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_COMMAND, cmd_str, "CMD");
+            c_put(di, ss, es, s->out_ann, ANN_COMMAND, cmd_str, "CMD");
         } else {
             char ans_str[32];
             snprintf(ans_str, sizeof(ans_str), "ANS: 0x%02X", byte_val);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_ANSWER, ans_str, "ANS");
+            c_put(di, ss, es, s->out_ann, ANN_ANSWER, ans_str, "ANS");
         }
     }
     /* Data start */
@@ -192,7 +192,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
             /* Correct checksum */
             char cs_str[32];
             snprintf(cs_str, sizeof(cs_str), "CS: 0x%02X", byte_val);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_CHECKSUM, cs_str, "CS");
+            c_put(di, ss, es, s->out_ann, ANN_CHECKSUM, cs_str, "CS");
 
             int packet_ann = (rxtx == TX) ? ANN_PACKET_TX : ANN_PACKET_RX;
             /* Build packet hex string */
@@ -203,7 +203,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
             }
             char pkt_ann_str[256];
             snprintf(pkt_ann_str, sizeof(pkt_ann_str), "%s PACKET: %s", rxtx_str, pkt_str);
-            C_ANN_PUT(di, s->packet_ss, s->packet_es, s->out_ann, packet_ann,
+            c_put(di, s->packet_ss, s->packet_es, s->out_ann, packet_ann,
                       pkt_ann_str, rxtx_str, rxtx_str);
 
             /* Data section */
@@ -216,14 +216,14 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
                 int data_ann = (rxtx == TX) ? ANN_DATA_TX : ANN_DATA_RX;
                 char data_ann_str[256];
                 snprintf(data_ann_str, sizeof(data_ann_str), "%s DATA: %s", rxtx_str, data_str);
-                C_ANN_PUT(di, s->data_ss, s->data_es, s->out_ann, data_ann,
+                c_put(di, s->data_ss, s->data_es, s->out_ann, data_ann,
                           data_ann_str, rxtx_str, "D");
             }
 
             /* Protocol output for upper-layer decoders */
             unsigned char proto_data[2] = {byte_val, (uint8_t)rxtx};
-            c_decoder_put_proto(di, s->packet_ss, s->packet_es, s->out_python,
-                                "PACKET", s->accum_bytes, s->accum_count);
+            c_proto(di, s->packet_ss, s->packet_es, s->out_python,
+                                "PACKET", C_BYTES(s->accum_bytes, s->accum_count), C_END);
         } else {
             /* Wrong checksum */
             char pkt_str[256];
@@ -233,7 +233,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
             }
             char err_str[256];
             snprintf(err_str, sizeof(err_str), "Err %s PACKET: %s", rxtx_str, pkt_str);
-            C_ANN_PUT(di, s->packet_ss, s->packet_es, s->out_ann, ANN_WARN,
+            c_put(di, s->packet_ss, s->packet_es, s->out_ann, ANN_WARN,
                       err_str, rxtx_str, "EP");
         }
 
@@ -241,9 +241,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
     }
 }
 
-static void streletz_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void streletz_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     streletz_state *s = (streletz_state *)c_decoder_get_private(di);
     if (!s)
@@ -252,11 +250,11 @@ static void streletz_recv_proto(struct srd_decoder_inst *di,
     /* Python version only processes FRAME events */
     if (strcmp(cmd, "FRAME") != 0)
         return;
-    if (data_len < 2)
+    if (n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];
-    int rxtx = data[1];
+    uint8_t byte_val = fields[0].u8;
+    int rxtx = fields[1].u8;
 
     streletz_handle_byte(di, s, start_sample, end_sample, byte_val, rxtx);
 }
@@ -276,11 +274,11 @@ static void streletz_reset(struct srd_decoder_inst *di)
 static void streletz_start(struct srd_decoder_inst *di)
 {
     streletz_state *s = (streletz_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "streletz");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "streletz");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "streletz");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "streletz");
 
-    s->header_tx = (uint8_t)c_decoder_get_option_int(di, "header_tx", 217);
-    s->header_rx = (uint8_t)c_decoder_get_option_int(di, "header_rx", 157);
+    s->header_tx = (uint8_t)c_opt_int(di, "header_tx", 217);
+    s->header_rx = (uint8_t)c_opt_int(di, "header_rx", 157);
 }
 
 static void streletz_decode(struct srd_decoder_inst *di)
@@ -325,7 +323,8 @@ struct srd_c_decoder streletz_c_decoder = {
     .start = streletz_start,
     .decode = streletz_decode,
     .destroy = streletz_destroy,
-    .recv_proto = streletz_recv_proto,
+    .decode_upper = streletz_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

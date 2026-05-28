@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -485,7 +485,7 @@ static const char *midi_get_note_name(int channel, int note)
 
 static void midi_putx(struct srd_decoder_inst *di, midi_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, cls, text);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, cls, text);
 }
 
 static enum midi_state midi_get_next_state(midi_state *s, uint8_t newbyte)
@@ -971,16 +971,14 @@ static void midi_handle_sysrealtime_msg(struct srd_decoder_inst *di, midi_state 
 
     char buf[128];
     snprintf(buf, sizeof(buf), "System Realtime: %s", sb0);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_TEXT_SYSREAL_VERBOSE, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT_SYSREAL_VERBOSE, buf);
 
     s->ss_block = old_ss_block;
     s->es_block = old_es_block;
     /* Deliberately not resetting cmd or state */
 }
 
-static void midi_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void midi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     midi_state *s = (midi_state *)c_decoder_get_private(di);
     if (!s)
@@ -988,11 +986,11 @@ static void midi_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 2)
+    if (n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];
-    /* uint8_t rxtx = data[1]; */ /* MIDI doesn't distinguish RX/TX */
+    uint8_t byte_val = fields[0].u8;
+    /* uint8_t rxtx = fields[1].u8; */ /* MIDI doesn't distinguish RX/TX */
 
     s->ss = start_sample;
     s->es = end_sample;
@@ -1045,7 +1043,7 @@ static void midi_reset(struct srd_decoder_inst *di)
 static void midi_start(struct srd_decoder_inst *di)
 {
     midi_state *s = (midi_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "midi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "midi");
 }
 
 static void midi_decode(struct srd_decoder_inst *di)
@@ -1090,7 +1088,8 @@ struct srd_c_decoder midi_c_decoder = {
     .start = midi_start,
     .decode = midi_decode,
     .destroy = midi_destroy,
-    .recv_proto = midi_recv_proto,
+    .decode_upper = midi_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

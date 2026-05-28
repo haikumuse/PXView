@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -159,16 +159,16 @@ static void am230x_reset(struct srd_decoder_inst *di)
 static void am230x_start(struct srd_decoder_inst *di)
 {
     am230x_state *s = (am230x_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "am230x");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "am230x");
 
-    const char *dev_str = c_decoder_get_option_string(di, "device", "am230x");
+    const char *dev_str = c_opt_str(di, "device", "am230x");
     if (strcmp(dev_str, "dht11") == 0)
         s->device = 1;
     else
         s->device = 0;
 
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     am230x_calc_timing(s);
 }
 
@@ -184,11 +184,10 @@ static void am230x_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void am230x_decode(struct srd_decoder_inst *di)
 {
     am230x_state *s = (am230x_state *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
     int ret;
 
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
     am230x_calc_timing(s);
@@ -197,25 +196,21 @@ static void am230x_decode(struct srd_decoder_inst *di)
         switch (s->state) {
         case STATE_WAIT_START_LOW:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->fall = samplenum;
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->fall = di_samplenum(di);
             s->state = STATE_WAIT_START_HIGH;
             break;
         }
 
         case STATE_WAIT_START_HIGH:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            if (is_valid(s, samplenum, TIMING_START_LOW)) {
-                s->rise = samplenum;
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            if (is_valid(s, di_samplenum(di), TIMING_START_LOW)) {
+                s->rise = di_samplenum(di);
                 s->state = STATE_WAIT_RESPONSE_LOW;
             } else {
                 am230x_reset_state(s);
@@ -225,14 +220,12 @@ static void am230x_decode(struct srd_decoder_inst *di)
 
         case STATE_WAIT_RESPONSE_LOW:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            if (is_valid(s, samplenum, TIMING_START_HIGH)) {
-                C_ANN_PUT(di, s->fall, samplenum, s->out_ann, ANN_START, "Start", "S");
-                s->fall = samplenum;
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            if (is_valid(s, di_samplenum(di), TIMING_START_HIGH)) {
+                c_put(di, s->fall, di_samplenum(di), s->out_ann, ANN_START, "Start", "S");
+                s->fall = di_samplenum(di);
                 s->state = STATE_WAIT_RESPONSE_HIGH;
             } else {
                 am230x_reset_state(s);
@@ -242,13 +235,11 @@ static void am230x_decode(struct srd_decoder_inst *di)
 
         case STATE_WAIT_RESPONSE_HIGH:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            if (is_valid(s, samplenum, TIMING_RESPONSE_LOW)) {
-                s->rise = samplenum;
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            if (is_valid(s, di_samplenum(di), TIMING_RESPONSE_LOW)) {
+                s->rise = di_samplenum(di);
                 s->state = STATE_WAIT_FIRST_BIT;
             } else {
                 am230x_reset_state(s);
@@ -258,15 +249,13 @@ static void am230x_decode(struct srd_decoder_inst *di)
 
         case STATE_WAIT_FIRST_BIT:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            if (is_valid(s, samplenum, TIMING_RESPONSE_HIGH)) {
-                C_ANN_PUT(di, s->fall, samplenum, s->out_ann, ANN_RESPONSE, "Response", "R");
-                s->fall = samplenum;
-                s->bytepos[s->bytepos_count++] = samplenum;
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            if (is_valid(s, di_samplenum(di), TIMING_RESPONSE_HIGH)) {
+                c_put(di, s->fall, di_samplenum(di), s->out_ann, ANN_RESPONSE, "Response", "R");
+                s->fall = di_samplenum(di);
+                s->bytepos[s->bytepos_count++] = di_samplenum(di);
                 s->state = STATE_WAIT_BIT_HIGH;
             } else {
                 am230x_reset_state(s);
@@ -276,13 +265,11 @@ static void am230x_decode(struct srd_decoder_inst *di)
 
         case STATE_WAIT_BIT_HIGH:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            if (is_valid(s, samplenum, TIMING_BIT_LOW)) {
-                s->rise = samplenum;
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            if (is_valid(s, di_samplenum(di), TIMING_BIT_LOW)) {
+                s->rise = di_samplenum(di);
                 s->state = STATE_WAIT_BIT_LOW;
             } else {
                 am230x_reset_state(s);
@@ -292,16 +279,14 @@ static void am230x_decode(struct srd_decoder_inst *di)
 
         case STATE_WAIT_BIT_LOW:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
 
             int bit;
-            if (is_valid(s, samplenum, TIMING_BIT_0_HIGH)) {
+            if (is_valid(s, di_samplenum(di), TIMING_BIT_0_HIGH)) {
                 bit = 0;
-            } else if (is_valid(s, samplenum, TIMING_BIT_1_HIGH)) {
+            } else if (is_valid(s, di_samplenum(di), TIMING_BIT_1_HIGH)) {
                 bit = 1;
             } else {
                 am230x_reset_state(s);
@@ -313,9 +298,9 @@ static void am230x_decode(struct srd_decoder_inst *di)
             {
                 char tmp[16];
                 snprintf(tmp, sizeof(tmp), "Bit: %d", bit);
-                C_ANN_PUT(di, s->fall, samplenum, s->out_ann, ANN_BIT, tmp, bit ? "1" : "0");
+                c_put(di, s->fall, di_samplenum(di), s->out_ann, ANN_BIT, tmp, bit ? "1" : "0");
             }
-            s->fall = samplenum;
+            s->fall = di_samplenum(di);
             s->state = STATE_WAIT_BIT_HIGH;
 
             if (s->bit_count % 8 == 0) {
@@ -324,7 +309,7 @@ static void am230x_decode(struct srd_decoder_inst *di)
                 char tmp2[32], tmp3[32];
                 snprintf(tmp2, sizeof(tmp2), "Byte: 0x%02x", byte_val);
                 snprintf(tmp3, sizeof(tmp3), "0x%02x", byte_val);
-                C_ANN_PUT(di, s->bytepos[s->bytepos_count - 1], samplenum, s->out_ann, ANN_BYTE, tmp2, tmp3);
+                c_put(di, s->bytepos[s->bytepos_count - 1], di_samplenum(di), s->out_ann, ANN_BYTE, tmp2, tmp3);
 
                 if (s->bit_count == 16) {
                     /* Humidity */
@@ -338,7 +323,7 @@ static void am230x_decode(struct srd_decoder_inst *di)
                     snprintf(htmp, sizeof(htmp), "Humidity: %.1f %%", h);
                     char hshort[32];
                     snprintf(hshort, sizeof(hshort), "RH = %.1f %%", h);
-                    C_ANN_PUT(di, s->bytepos[s->bytepos_count - 2], samplenum, s->out_ann, ANN_HUMIDITY, htmp, hshort);
+                    c_put(di, s->bytepos[s->bytepos_count - 2], di_samplenum(di), s->out_ann, ANN_HUMIDITY, htmp, hshort);
                 } else if (s->bit_count == 32) {
                     /* Temperature */
                     double t;
@@ -352,7 +337,7 @@ static void am230x_decode(struct srd_decoder_inst *di)
                     snprintf(ttmp, sizeof(ttmp), "Temperature: %.1f \xc2\xb0""C", t);
                     char tshort[32];
                     snprintf(tshort, sizeof(tshort), "T = %.1f \xc2\xb0""C", t);
-                    C_ANN_PUT(di, s->bytepos[s->bytepos_count - 2], samplenum, s->out_ann, ANN_TEMPERATURE, ttmp, tshort);
+                    c_put(di, s->bytepos[s->bytepos_count - 2], di_samplenum(di), s->out_ann, ANN_TEMPERATURE, ttmp, tshort);
                 } else if (s->bit_count == 40) {
                     /* Checksum */
                     uint8_t parity = bits2num(&s->bits[32], 8);
@@ -361,25 +346,23 @@ static void am230x_decode(struct srd_decoder_inst *di)
                         checksum += bits2num(&s->bits[i * 8], 8);
                     checksum %= 256;
                     if (parity == checksum) {
-                        C_ANN_PUT(di, s->bytepos[s->bytepos_count - 1], samplenum, s->out_ann, ANN_CHECKSUM, "Checksum: OK", "OK");
+                        c_put(di, s->bytepos[s->bytepos_count - 1], di_samplenum(di), s->out_ann, ANN_CHECKSUM, "Checksum: OK", "OK");
                     } else {
-                        C_ANN_PUT(di, s->bytepos[s->bytepos_count - 1], samplenum, s->out_ann, ANN_CHECKSUM, "Checksum: not OK", "NOK");
+                        c_put(di, s->bytepos[s->bytepos_count - 1], di_samplenum(di), s->out_ann, ANN_CHECKSUM, "Checksum: not OK", "NOK");
                     }
                     s->state = STATE_WAIT_END;
                 }
-                s->bytepos[s->bytepos_count++] = samplenum;
+                s->bytepos[s->bytepos_count++] = di_samplenum(di);
             }
             break;
         }
 
         case STATE_WAIT_END:
         {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            C_ANN_PUT(di, s->fall, samplenum, s->out_ann, ANN_END, "End", "E");
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            c_put(di, s->fall, di_samplenum(di), s->out_ann, ANN_END, "End", "E");
             am230x_reset_state(s);
             break;
         }
@@ -424,6 +407,7 @@ struct srd_c_decoder am230x_c_decoder = {
     .start = am230x_start,
     .decode = am230x_decode,
     .destroy = am230x_destroy,
+    .state_size = 0,
     .metadata = am230x_metadata,
 };
 

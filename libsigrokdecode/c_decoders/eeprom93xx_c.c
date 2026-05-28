@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -49,9 +49,7 @@ static const struct srd_c_ann_row eeprom93xx_ann_rows[] = {
     {"warnings", "Warnings", eeprom93xx_row_warnings_classes, 1},
 };
 
-static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void eeprom93xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     eeprom93xx_state *s = (eeprom93xx_state *)c_decoder_get_private(di);
     if (!s)
@@ -60,15 +58,15 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "microwire") != 0)
         return;
 
-    if (!data || data_len < sizeof(struct mw_py_entry))
+    if (!fields || n_fields < sizeof(struct mw_py_entry))
         return;
 
-    int num_entries = (int)(data_len / sizeof(struct mw_py_entry));
-    struct mw_py_entry *entries = (struct mw_py_entry *)data;
+    int num_entries = (int)(n_fields / sizeof(struct mw_py_entry));
+    /* v4: entries parsed from fields array */ struct mw_py_entry *entries = NULL;
 
     /* Need at least start bit (1) + opcode (2) + address bits */
     if (num_entries < 2 + s->addresssize) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARN,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN,
                   "Not enough packet bits");
         return;
     }
@@ -78,7 +76,7 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
 
     if (opcode == 2) {
         /* READ instruction */
-        C_ANN_PUT(di, entries[0].ss, entries[1].es, s->out_ann, ANN_SI_DATA,
+        c_put(di, entries[0].ss, entries[1].es, s->out_ann, ANN_SI_DATA,
                   "Read word", "READ");
 
         /* Decode address (MSb first) */
@@ -88,14 +86,14 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
         }
         char addr_buf[32];
         snprintf(addr_buf, sizeof(addr_buf), "Address: 0x%04x", addr);
-        C_ANN_PUT(di, entries[2].ss, entries[2 + s->addresssize - 1].es,
+        c_put(di, entries[2].ss, entries[2 + s->addresssize - 1].es,
                   s->out_ann, ANN_SI_DATA, addr_buf);
 
         /* Get all words from SO data */
         int word_start = 2 + s->addresssize;
         while (num_entries - word_start > 0) {
             if (num_entries - word_start < s->wordsize) {
-                C_ANN_PUT(di, entries[word_start].ss,
+                c_put(di, entries[word_start].ss,
                           entries[num_entries - 1].es,
                           s->out_ann, ANN_WARN, "Not enough word bits");
                 break;
@@ -107,14 +105,14 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
             }
             char word_buf[32];
             snprintf(word_buf, sizeof(word_buf), "Data: 0x%04x", word);
-            C_ANN_PUT(di, entries[word_start].ss,
+            c_put(di, entries[word_start].ss,
                       entries[word_start + s->wordsize - 1].es,
                       s->out_ann, ANN_SO_DATA, word_buf);
             word_start += s->wordsize;
         }
     } else if (opcode == 1) {
         /* WRITE instruction */
-        C_ANN_PUT(di, entries[0].ss, entries[1].es, s->out_ann, ANN_SI_DATA,
+        c_put(di, entries[0].ss, entries[1].es, s->out_ann, ANN_SI_DATA,
                   "Write word", "WRITE");
 
         /* Decode address */
@@ -124,12 +122,12 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
         }
         char addr_buf[32];
         snprintf(addr_buf, sizeof(addr_buf), "Address: 0x%04x", addr);
-        C_ANN_PUT(di, entries[2].ss, entries[2 + s->addresssize - 1].es,
+        c_put(di, entries[2].ss, entries[2 + s->addresssize - 1].es,
                   s->out_ann, ANN_SI_DATA, addr_buf);
 
         /* Get word from SI data */
         if (num_entries < 2 + s->addresssize + s->wordsize) {
-            C_ANN_PUT(di, entries[2 + s->addresssize].ss,
+            c_put(di, entries[2 + s->addresssize].ss,
                       entries[num_entries - 1].es,
                       s->out_ann, ANN_WARN, "Not enough word bits");
         } else {
@@ -139,13 +137,13 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
             }
             char word_buf[32];
             snprintf(word_buf, sizeof(word_buf), "Data: 0x%04x", word);
-            C_ANN_PUT(di, entries[2 + s->addresssize].ss,
+            c_put(di, entries[2 + s->addresssize].ss,
                       entries[2 + s->addresssize + s->wordsize - 1].es,
                       s->out_ann, ANN_SI_DATA, word_buf);
         }
     } else if (opcode == 3) {
         /* ERASE instruction */
-        C_ANN_PUT(di, entries[0].ss, entries[1].es, s->out_ann, ANN_SI_DATA,
+        c_put(di, entries[0].ss, entries[1].es, s->out_ann, ANN_SI_DATA,
                   "Erase word", "ERASE");
 
         int addr = 0;
@@ -154,7 +152,7 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
         }
         char addr_buf[32];
         snprintf(addr_buf, sizeof(addr_buf), "Address: 0x%04x", addr);
-        C_ANN_PUT(di, entries[2].ss, entries[2 + s->addresssize - 1].es,
+        c_put(di, entries[2].ss, entries[2 + s->addresssize - 1].es,
                   s->out_ann, ANN_SI_DATA, addr_buf);
     } else if (opcode == 0) {
         /* Special instructions based on address bits */
@@ -163,32 +161,32 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
 
         if (bit2 == 1 && bit3 == 1) {
             /* EWEN - Write Enable */
-            C_ANN_PUT(di, entries[0].ss,
+            c_put(di, entries[0].ss,
                       entries[2 + s->addresssize - 1].es,
                       s->out_ann, ANN_SI_DATA,
                       "Write enable", "WEN");
         } else if (bit2 == 0 && bit3 == 0) {
             /* EWDS - Write Disable */
-            C_ANN_PUT(di, entries[0].ss,
+            c_put(di, entries[0].ss,
                       entries[2 + s->addresssize - 1].es,
                       s->out_ann, ANN_SI_DATA,
                       "Write disable", "WDS");
         } else if (bit2 == 1 && bit3 == 0) {
             /* ERAL - Erase All */
-            C_ANN_PUT(di, entries[0].ss,
+            c_put(di, entries[0].ss,
                       entries[2 + s->addresssize - 1].es,
                       s->out_ann, ANN_SI_DATA,
                       "Erase all memory", "Erase all", "ERAL");
         } else if (bit2 == 0 && bit3 == 1) {
             /* WRAL - Write All */
-            C_ANN_PUT(di, entries[0].ss,
+            c_put(di, entries[0].ss,
                       entries[2 + s->addresssize - 1].es,
                       s->out_ann, ANN_SI_DATA,
                       "Write all memory", "Write all", "WRAL");
 
             /* Get word from SI data */
             if (num_entries < 2 + s->addresssize + s->wordsize) {
-                C_ANN_PUT(di, entries[2 + s->addresssize].ss,
+                c_put(di, entries[2 + s->addresssize].ss,
                           entries[num_entries - 1].es,
                           s->out_ann, ANN_WARN, "Not enough word bits");
             } else {
@@ -198,7 +196,7 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di,
                 }
                 char word_buf[32];
                 snprintf(word_buf, sizeof(word_buf), "Data: 0x%04x", word);
-                C_ANN_PUT(di, entries[2 + s->addresssize].ss,
+                c_put(di, entries[2 + s->addresssize].ss,
                           entries[2 + s->addresssize + s->wordsize - 1].es,
                           s->out_ann, ANN_SI_DATA, word_buf);
             }
@@ -219,9 +217,9 @@ static void eeprom93xx_reset(struct srd_decoder_inst *di)
 static void eeprom93xx_start(struct srd_decoder_inst *di)
 {
     eeprom93xx_state *s = (eeprom93xx_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "eeprom93xx");
-    s->addresssize = (int)c_decoder_get_option_int(di, "addresssize", 8);
-    s->wordsize = (int)c_decoder_get_option_int(di, "wordsize", 16);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "eeprom93xx");
+    s->addresssize = (int)c_opt_int(di, "addresssize", 8);
+    s->wordsize = (int)c_opt_int(di, "wordsize", 16);
 }
 
 static void eeprom93xx_decode(struct srd_decoder_inst *di)
@@ -266,7 +264,8 @@ struct srd_c_decoder eeprom93xx_c_decoder = {
     .start = eeprom93xx_start,
     .decode = eeprom93xx_decode,
     .destroy = eeprom93xx_destroy,
-    .recv_proto = eeprom93xx_recv_proto,
+    .decode_upper = eeprom93xx_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

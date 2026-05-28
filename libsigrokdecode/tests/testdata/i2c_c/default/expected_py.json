@@ -1,7 +1,7 @@
 {
 	"decoder": "i2c",
 	"samplerate": 1000000,
-	"num_annotations": 60,
+	"num_annotations": 86,
 	"annotations": [
 		{
 			"start_sample": 1.8446744073709552e+19,
@@ -22,8 +22,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2,
-			"end_sample": 2,
+			"start_sample": 2002,
+			"end_sample": 2002,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -32,8 +32,8 @@
 			]
 		}, 
 		{
-			"start_sample": 79,
-			"end_sample": 89,
+			"start_sample": 2079,
+			"end_sample": 2089,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -41,8 +41,8 @@
 			]
 		}, 
 		{
-			"start_sample": 79,
-			"end_sample": 79,
+			"start_sample": 2079,
+			"end_sample": 2079,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -50,8 +50,8 @@
 			]
 		}, 
 		{
-			"start_sample": 79,
-			"end_sample": 79,
+			"start_sample": 2079,
+			"end_sample": 2079,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -59,8 +59,8 @@
 			]
 		}, 
 		{
-			"start_sample": 69,
-			"end_sample": 79,
+			"start_sample": 2069,
+			"end_sample": 2079,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -68,8 +68,8 @@
 			]
 		}, 
 		{
-			"start_sample": 69,
-			"end_sample": 69,
+			"start_sample": 2069,
+			"end_sample": 2069,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -77,8 +77,8 @@
 			]
 		}, 
 		{
-			"start_sample": 69,
-			"end_sample": 69,
+			"start_sample": 2069,
+			"end_sample": 2069,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -86,8 +86,8 @@
 			]
 		}, 
 		{
-			"start_sample": 59,
-			"end_sample": 69,
+			"start_sample": 2059,
+			"end_sample": 2069,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -95,8 +95,8 @@
 			]
 		}, 
 		{
-			"start_sample": 59,
-			"end_sample": 59,
+			"start_sample": 2059,
+			"end_sample": 2059,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -104,8 +104,8 @@
 			]
 		}, 
 		{
-			"start_sample": 59,
-			"end_sample": 59,
+			"start_sample": 2059,
+			"end_sample": 2059,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -113,8 +113,8 @@
 			]
 		}, 
 		{
-			"start_sample": 49,
-			"end_sample": 59,
+			"start_sample": 2049,
+			"end_sample": 2059,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -122,8 +122,8 @@
 			]
 		}, 
 		{
-			"start_sample": 49,
-			"end_sample": 49,
+			"start_sample": 2049,
+			"end_sample": 2049,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -131,8 +131,8 @@
 			]
 		}, 
 		{
-			"start_sample": 49,
-			"end_sample": 49,
+			"start_sample": 2049,
+			"end_sample": 2049,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -140,8 +140,8 @@
 			]
 		}, 
 		{
-			"start_sample": 39,
-			"end_sample": 49,
+			"start_sample": 2039,
+			"end_sample": 2049,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -149,8 +149,8 @@
 			]
 		}, 
 		{
-			"start_sample": 39,
-			"end_sample": 39,
+			"start_sample": 2039,
+			"end_sample": 2039,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -158,8 +158,8 @@
 			]
 		}, 
 		{
-			"start_sample": 39,
-			"end_sample": 39,
+			"start_sample": 2039,
+			"end_sample": 2039,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -167,8 +167,8 @@
 			]
 		}, 
 		{
-			"start_sample": 29,
-			"end_sample": 39,
+			"start_sample": 2029,
+			"end_sample": 2039,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -176,8 +176,8 @@
 			]
 		}, 
 		{
-			"start_sample": 29,
-			"end_sample": 29,
+			"start_sample": 2029,
+			"end_sample": 2029,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -185,8 +185,8 @@
 			]
 		}, 
 		{
-			"start_sample": 29,
-			"end_sample": 29,
+			"start_sample": 2029,
+			"end_sample": 2029,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -194,8 +194,8 @@
 			]
 		}, 
 		{
-			"start_sample": 19,
-			"end_sample": 29,
+			"start_sample": 2019,
+			"end_sample": 2029,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -203,8 +203,8 @@
 			]
 		}, 
 		{
-			"start_sample": 19,
-			"end_sample": 19,
+			"start_sample": 2019,
+			"end_sample": 2019,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -212,8 +212,8 @@
 			]
 		}, 
 		{
-			"start_sample": 19,
-			"end_sample": 19,
+			"start_sample": 2019,
+			"end_sample": 2019,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -221,8 +221,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9,
-			"end_sample": 19,
+			"start_sample": 2009,
+			"end_sample": 2019,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -230,8 +230,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9,
-			"end_sample": 9,
+			"start_sample": 2009,
+			"end_sample": 2009,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -239,8 +239,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9,
-			"end_sample": 9,
+			"start_sample": 2009,
+			"end_sample": 2009,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -248,8 +248,8 @@
 			]
 		}, 
 		{
-			"start_sample": 79,
-			"end_sample": 89,
+			"start_sample": 2079,
+			"end_sample": 2089,
 			"ann_class": 6,
 			"ann_type": 13,
 			"texts": [
@@ -259,8 +259,8 @@
 			]
 		}, 
 		{
-			"start_sample": 79,
-			"end_sample": 79,
+			"start_sample": 2079,
+			"end_sample": 2079,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -268,8 +268,8 @@
 			]
 		}, 
 		{
-			"start_sample": 79,
-			"end_sample": 79,
+			"start_sample": 2079,
+			"end_sample": 2079,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -277,8 +277,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9,
-			"end_sample": 79,
+			"start_sample": 2009,
+			"end_sample": 2079,
 			"ann_class": 6,
 			"ann_type": 13,
 			"texts": [
@@ -288,8 +288,8 @@
 			]
 		}, 
 		{
-			"start_sample": 89,
-			"end_sample": 99,
+			"start_sample": 2089,
+			"end_sample": 2099,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
@@ -298,8 +298,8 @@
 			]
 		}, 
 		{
-			"start_sample": 169,
-			"end_sample": 179,
+			"start_sample": 2169,
+			"end_sample": 2179,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -307,8 +307,8 @@
 			]
 		}, 
 		{
-			"start_sample": 169,
-			"end_sample": 169,
+			"start_sample": 2169,
+			"end_sample": 2169,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -316,8 +316,8 @@
 			]
 		}, 
 		{
-			"start_sample": 169,
-			"end_sample": 169,
+			"start_sample": 2169,
+			"end_sample": 2169,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -325,8 +325,8 @@
 			]
 		}, 
 		{
-			"start_sample": 159,
-			"end_sample": 169,
+			"start_sample": 2159,
+			"end_sample": 2169,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -334,8 +334,8 @@
 			]
 		}, 
 		{
-			"start_sample": 159,
-			"end_sample": 159,
+			"start_sample": 2159,
+			"end_sample": 2159,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -343,8 +343,8 @@
 			]
 		}, 
 		{
-			"start_sample": 159,
-			"end_sample": 159,
+			"start_sample": 2159,
+			"end_sample": 2159,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -352,8 +352,8 @@
 			]
 		}, 
 		{
-			"start_sample": 149,
-			"end_sample": 159,
+			"start_sample": 2149,
+			"end_sample": 2159,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -361,8 +361,8 @@
 			]
 		}, 
 		{
-			"start_sample": 149,
-			"end_sample": 149,
+			"start_sample": 2149,
+			"end_sample": 2149,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -370,8 +370,8 @@
 			]
 		}, 
 		{
-			"start_sample": 149,
-			"end_sample": 149,
+			"start_sample": 2149,
+			"end_sample": 2149,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -379,8 +379,8 @@
 			]
 		}, 
 		{
-			"start_sample": 139,
-			"end_sample": 149,
+			"start_sample": 2139,
+			"end_sample": 2149,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -388,8 +388,8 @@
 			]
 		}, 
 		{
-			"start_sample": 139,
-			"end_sample": 139,
+			"start_sample": 2139,
+			"end_sample": 2139,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -397,8 +397,8 @@
 			]
 		}, 
 		{
-			"start_sample": 139,
-			"end_sample": 139,
+			"start_sample": 2139,
+			"end_sample": 2139,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -406,8 +406,8 @@
 			]
 		}, 
 		{
-			"start_sample": 129,
-			"end_sample": 139,
+			"start_sample": 2129,
+			"end_sample": 2139,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -415,8 +415,8 @@
 			]
 		}, 
 		{
-			"start_sample": 129,
-			"end_sample": 129,
+			"start_sample": 2129,
+			"end_sample": 2129,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -424,8 +424,8 @@
 			]
 		}, 
 		{
-			"start_sample": 129,
-			"end_sample": 129,
+			"start_sample": 2129,
+			"end_sample": 2129,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -433,8 +433,8 @@
 			]
 		}, 
 		{
-			"start_sample": 119,
-			"end_sample": 129,
+			"start_sample": 2119,
+			"end_sample": 2129,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -442,8 +442,8 @@
 			]
 		}, 
 		{
-			"start_sample": 119,
-			"end_sample": 119,
+			"start_sample": 2119,
+			"end_sample": 2119,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -451,8 +451,8 @@
 			]
 		}, 
 		{
-			"start_sample": 119,
-			"end_sample": 119,
+			"start_sample": 2119,
+			"end_sample": 2119,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -460,8 +460,8 @@
 			]
 		}, 
 		{
-			"start_sample": 109,
-			"end_sample": 119,
+			"start_sample": 2109,
+			"end_sample": 2119,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -469,8 +469,8 @@
 			]
 		}, 
 		{
-			"start_sample": 109,
-			"end_sample": 109,
+			"start_sample": 2109,
+			"end_sample": 2109,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -478,8 +478,8 @@
 			]
 		}, 
 		{
-			"start_sample": 109,
-			"end_sample": 109,
+			"start_sample": 2109,
+			"end_sample": 2109,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -487,8 +487,8 @@
 			]
 		}, 
 		{
-			"start_sample": 99,
-			"end_sample": 109,
+			"start_sample": 2099,
+			"end_sample": 2109,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -496,8 +496,8 @@
 			]
 		}, 
 		{
-			"start_sample": 99,
-			"end_sample": 99,
+			"start_sample": 2099,
+			"end_sample": 2099,
 			"ann_class": 11,
 			"ann_type": 18,
 			"texts": [
@@ -505,8 +505,8 @@
 			]
 		}, 
 		{
-			"start_sample": 99,
-			"end_sample": 99,
+			"start_sample": 2099,
+			"end_sample": 2099,
 			"ann_class": 12,
 			"ann_type": 19,
 			"texts": [
@@ -514,8 +514,8 @@
 			]
 		}, 
 		{
-			"start_sample": 99,
-			"end_sample": 179,
+			"start_sample": 2099,
+			"end_sample": 2179,
 			"ann_class": 8,
 			"ann_type": 15,
 			"texts": [
@@ -525,8 +525,8 @@
 			]
 		}, 
 		{
-			"start_sample": 179,
-			"end_sample": 189,
+			"start_sample": 2179,
+			"end_sample": 2189,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
@@ -535,18 +535,255 @@
 			]
 		}, 
 		{
-			"start_sample": 2,
-			"end_sample": 196,
-			"ann_class": 10,
-			"ann_type": 17,
+			"start_sample": 2259,
+			"end_sample": 2269,
+			"ann_class": 5,
+			"ann_type": 12,
 			"texts": [
-				"0x7F RD: FF", 
-				"7F RD: FF"
+				"1"
 			]
 		}, 
 		{
-			"start_sample": 196,
-			"end_sample": 196,
+			"start_sample": 2259,
+			"end_sample": 2259,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2259,
+			"end_sample": 2259,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2249,
+			"end_sample": 2259,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2249,
+			"end_sample": 2249,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2249,
+			"end_sample": 2249,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2239,
+			"end_sample": 2249,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2239,
+			"end_sample": 2239,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2239,
+			"end_sample": 2239,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2229,
+			"end_sample": 2239,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2229,
+			"end_sample": 2229,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2229,
+			"end_sample": 2229,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2219,
+			"end_sample": 2229,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2219,
+			"end_sample": 2219,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2219,
+			"end_sample": 2219,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2209,
+			"end_sample": 2219,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2209,
+			"end_sample": 2209,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2209,
+			"end_sample": 2209,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2199,
+			"end_sample": 2209,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2199,
+			"end_sample": 2199,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2199,
+			"end_sample": 2199,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2189,
+			"end_sample": 2199,
+			"ann_class": 5,
+			"ann_type": 12,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2189,
+			"end_sample": 2189,
+			"ann_class": 11,
+			"ann_type": 18,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2189,
+			"end_sample": 2189,
+			"ann_class": 12,
+			"ann_type": 19,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2189,
+			"end_sample": 2269,
+			"ann_class": 8,
+			"ann_type": 15,
+			"texts": [
+				"Data read: FF", 
+				"DR: FF", 
+				"FF"
+			]
+		}, 
+		{
+			"start_sample": 2269,
+			"end_sample": 2279,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"NACK", 
+				"N"
+			]
+		}, 
+		{
+			"start_sample": 2002,
+			"end_sample": 2286,
+			"ann_class": 10,
+			"ann_type": 17,
+			"texts": [
+				"0x7F RD: FF FF", 
+				"7F RD: FF FF"
+			]
+		}, 
+		{
+			"start_sample": 2286,
+			"end_sample": 2286,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [

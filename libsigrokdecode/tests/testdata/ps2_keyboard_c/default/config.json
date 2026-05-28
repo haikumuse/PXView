@@ -1,10 +1,16 @@
 {
   "decoder": "ps2_keyboard_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "ps2"
-  ],
+  "num_channels": 2,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "ps2_c",
+      "channels": {
+        "clk": 0,
+        "data": 1
+      }
+    }
+  ]
 }

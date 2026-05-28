@@ -239,9 +239,9 @@ static void nec_start(struct srd_decoder_inst* di)
 {
     nec_state* s = (nec_state*)c_decoder_get_private(di);
 
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_nec");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_nec");
 
-    const char* polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char* polarity = c_opt_str(di, "polarity", "active-low");
     if (polarity && strcmp(polarity, "active-high") == 0)
         s->active = 1;
     else if (polarity && strcmp(polarity, "active-low") == 0)
@@ -249,13 +249,13 @@ static void nec_start(struct srd_decoder_inst* di)
     else
         s->active = -1;
 
-    s->cd_freq = (int)c_decoder_get_option_int(di, "cd_freq", 0);
+    s->cd_freq = (int)c_opt_int(di, "cd_freq", 0);
 
-    const char* extended = c_decoder_get_option_string(di, "extended", "no");
+    const char* extended = c_opt_str(di, "extended", "no");
     s->is_extended = (extended && strcmp(extended, "yes") == 0);
     s->want_addr_len = s->is_extended ? 16 : 8;
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
 }
 
 static void calc_rate(nec_state* s)
@@ -279,21 +279,21 @@ static void calc_rate(nec_state* s)
     }
 }
 
-static void putpause(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, int is_long)
+static void putpause(struct srd_decoder_inst* di, nec_state* s, uint64_t es, int is_long)
 {
-    C_ANN_PUT(di, s->ss_start, s->ss_other_edge, s->out_ann, ANN_AGC,
+    c_put(di, s->ss_start, s->ss_other_edge, s->out_ann, ANN_AGC,
         "AGC pulse", "AGC", "A");
 
     if (is_long) {
-        C_ANN_PUT(di, s->ss_other_edge, samplenum, s->out_ann, ANN_LONG_PAUSE,
+        c_put(di, s->ss_other_edge, es, s->out_ann, ANN_LONG_PAUSE,
             "Long pause", "L-pause", "LP", "P");
     } else {
-        C_ANN_PUT(di, s->ss_other_edge, samplenum, s->out_ann, ANN_SHORT_PAUSE,
+        c_put(di, s->ss_other_edge, es, s->out_ann, ANN_SHORT_PAUSE,
             "Short pause", "S-pause", "SP", "P");
     }
 }
 
-static void putd(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, uint16_t data_val, int ann_class, const char* name, const char* short_name, const char* shortest, int bit_count)
+static void putd(struct srd_decoder_inst* di, nec_state* s, uint64_t es, uint16_t data_val, int ann_class, const char* name, const char* short_name, const char* shortest, int bit_count)
 {
     char long_str[64];
     char mid_str[32];
@@ -312,7 +312,7 @@ static void putd(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, 
         snprintf(short_str, sizeof(short_str), "%s", shortest);
     }
 
-    C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ann_class, long_str, mid_str, mid2_str, short_str);
+    c_put(di, s->ss_start, es, s->out_ann, ann_class, long_str, mid_str, mid2_str, short_str);
 }
 
 static void putremote(struct srd_decoder_inst* di, nec_state* s)
@@ -329,10 +329,10 @@ static void putremote(struct srd_decoder_inst* di, nec_state* s)
     snprintf(str2, sizeof(str2), "%s: %s", dev, btn_short);
     snprintf(str3, sizeof(str3), "%s", btn_short);
 
-    C_ANN_PUT(di, s->ss_remote, s->ss_bit + s->stop, s->out_ann, ANN_REMOTE, str1, str2, str3);
+    c_put(di, s->ss_remote, s->ss_bit + s->stop, s->out_ann, ANN_REMOTE, str1, str2, str3);
 }
 
-static void handle_bit(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, uint64_t width)
+static void handle_bit(struct srd_decoder_inst* di, nec_state* s, uint64_t es, uint64_t width)
 {
     int ret = -1;
     if (compare_with_tolerance(s, width, s->dazero))
@@ -343,13 +343,13 @@ static void handle_bit(struct srd_decoder_inst* di, nec_state* s, uint64_t sampl
     if (ret == 0 || ret == 1) {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", ret);
-        C_ANN_PUT(di, s->ss_bit, samplenum, s->out_ann, ANN_BIT, bit_str);
+        c_put(di, s->ss_bit, es, s->out_ann, ANN_BIT, bit_str);
         if (s->data_len < 32)
             s->data[s->data_len++] = ret;
     }
 }
 
-static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum, int check, int want_len)
+static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t es, int check, int want_len)
 {
     uint8_t normal = bitpack(s->data, 8);
     uint8_t inverted = bitpack(s->data + 8, 8);
@@ -357,10 +357,10 @@ static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum
 
     if (s->is_extended && s->state == STATE_ADDRESS) {
         uint16_t ext_addr = bitpack16(s->data, s->data_len);
-        putd(di, s, samplenum, ext_addr, ANN_ADDR, "Address", "ADDR", "A", s->data_len);
+        putd(di, s, es, ext_addr, ANN_ADDR, "Address", "ADDR", "A", s->data_len);
         s->addr = ext_addr;
         s->data_len = 0;
-        s->ss_bit = s->ss_start = samplenum;
+        s->ss_bit = s->ss_start = es;
         return 1;
     }
 
@@ -411,8 +411,8 @@ static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum
     }
 
     if (s->data_len == want_len) {
-        putd(di, s, samplenum, show, ann_class, name, short_name, shortest, want_len);
-        s->ss_start = samplenum;
+        putd(di, s, es, show, ann_class, name, short_name, shortest, want_len);
+        s->ss_start = es;
         if (s->is_extended && s->state == STATE_ADDRESS) {
             s->data_len = 0;
             s->ss_bit = s->ss_start;
@@ -420,29 +420,26 @@ static int data_ok(struct srd_decoder_inst* di, nec_state* s, uint64_t samplenum
         return 1;
     }
 
-    putd(di, s, samplenum, show, ann_class, name, short_name, shortest, want_len);
+    putd(di, s, es, show, ann_class, name, short_name, shortest, want_len);
 
     if (check && !valid) {
         char warn_str[64];
         uint16_t warn_show = bitpack(s->data, 8);
         warn_show |= (uint16_t)bitpack(s->data + 8, 8) << 8;
         snprintf(warn_str, sizeof(warn_str), "%s error: 0x%04X", name, warn_show);
-        C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ANN_WARN, warn_str);
+        c_put(di, s->ss_start, es, s->out_ann, ANN_WARN, warn_str);
     }
 
     s->data_len = 0;
-    s->ss_bit = s->ss_start = samplenum;
+    s->ss_bit = s->ss_start = es;
     return valid;
 }
 
 static void nec_decode(struct srd_decoder_inst* di)
 {
     nec_state* s = (nec_state*)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             calc_rate(s);
     }
@@ -452,58 +449,46 @@ static void nec_decode(struct srd_decoder_inst* di)
     calc_rate(s);
 
     if (s->active == -1) {
-        srd_cond_builder* cb = c_cond_new();
-        c_cond_skip(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_SKIP(0), CW_END);
         if (ret != SRD_OK)
             return;
-        uint8_t curr_level = c_decoder_get_pin(di, IR_CH, samplenum);
+        uint8_t curr_level = c_pin(di, IR_CH);
         s->active = 1 - curr_level;
     }
 
     while (1) {
-        srd_cond_builder* cb;
         int ret;
         int ir_val;
 
         if (s->have_cd_count) {
-            cb = c_cond_new();
-            c_cond_edge(cb, IR_CH);
-            c_cond_or(cb);
-            c_cond_skip(cb, s->cd_count);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_E(IR_CH), CW_OR, CW_SKIP(s->cd_count), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if (matched & (1ULL << 0)) {
+            if (di_matched(di) & (1ULL << 0)) {
                 ir_val = s->active;
             } else {
-                ir_val = c_decoder_get_pin(di, IR_CH, samplenum);
+                ir_val = c_pin(di, IR_CH);
             }
 
             if (ir_val == s->prev_ir)
                 continue;
             s->prev_ir = ir_val;
         } else {
-            cb = c_cond_new();
-            c_cond_edge(cb, IR_CH);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_E(IR_CH), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            ir_val = c_decoder_get_pin(di, IR_CH, samplenum);
+            ir_val = c_pin(di, IR_CH);
         }
 
         if (ir_val != s->active) {
-            s->ss_other_edge = samplenum;
+            s->ss_other_edge = di_samplenum(di);
             if (s->state != STATE_STOP)
                 continue;
         }
 
-        uint64_t width = samplenum - s->ss_bit;
+        uint64_t width = di_samplenum(di) - s->ss_bit;
         if (width >= s->idle_to && s->state != STATE_STOP) {
             s->state = STATE_IDLE;
             s->data_len = 0;
@@ -517,76 +502,76 @@ static void nec_decode(struct srd_decoder_inst* di)
 
         case STATE_IDLE: {
             if (compare_with_tolerance(s, width, s->lc)) {
-                putpause(di, s, samplenum, 1);
-                C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ANN_LEADER_CODE,
+                putpause(di, s, di_samplenum(di), 1);
+                c_put(di, s->ss_start, di_samplenum(di), s->out_ann, ANN_LEADER_CODE,
                     "Leader code", "Leader", "LC", "L");
                 s->ss_remote = s->ss_start;
                 s->data_len = 0;
                 s->state = STATE_ADDRESS;
             } else if (compare_with_tolerance(s, width, s->rc)) {
-                putpause(di, s, samplenum, 0);
-                C_ANN_PUT(di, s->ss_bit, s->ss_bit + s->stop, s->out_ann, ANN_STOP_BIT,
+                putpause(di, s, di_samplenum(di), 0);
+                c_put(di, di_samplenum(di), di_samplenum(di) + s->stop, s->out_ann, ANN_STOP_BIT,
                     "Stop bit", "Stop", "St", "S");
-                C_ANN_PUT(di, s->ss_start, samplenum, s->out_ann, ANN_REPEAT_CODE,
+                c_put(di, s->ss_start, di_samplenum(di) + s->stop, s->out_ann, ANN_REPEAT_CODE,
                     "Repeat code", "Repeat", "RC", "R");
                 s->data_len = 0;
             }
-            s->ss_bit = samplenum;
-            s->ss_start = samplenum;
+            s->ss_bit = di_samplenum(di);
+            s->ss_start = di_samplenum(di);
             break;
         }
 
         case STATE_ADDRESS: {
-            handle_bit(di, s, samplenum, width);
+            handle_bit(di, s, di_samplenum(di), width);
             if (s->data_len == s->want_addr_len) {
                 if (s->is_extended) {
-                    data_ok(di, s, samplenum, 0, s->want_addr_len);
+                    data_ok(di, s, di_samplenum(di), 0, s->want_addr_len);
                     s->state = STATE_COMMAND;
                 } else {
-                    data_ok(di, s, samplenum, 0, s->want_addr_len);
+                    data_ok(di, s, di_samplenum(di), 0, s->want_addr_len);
                     s->state = STATE_ADDRESS_INV;
                 }
             }
-            s->ss_bit = samplenum;
+            s->ss_bit = di_samplenum(di);
             break;
         }
 
         case STATE_ADDRESS_INV: {
-            handle_bit(di, s, samplenum, width);
+            handle_bit(di, s, di_samplenum(di), width);
             if (s->data_len == 16) {
-                data_ok(di, s, samplenum, 1, 8);
+                data_ok(di, s, di_samplenum(di), 1, 8);
                 s->state = STATE_COMMAND;
             }
-            s->ss_bit = samplenum;
+            s->ss_bit = di_samplenum(di);
             break;
         }
 
         case STATE_COMMAND: {
-            handle_bit(di, s, samplenum, width);
+            handle_bit(di, s, di_samplenum(di), width);
             if (s->data_len == 8) {
-                data_ok(di, s, samplenum, 0, 8);
+                data_ok(di, s, di_samplenum(di), 0, 8);
                 s->state = STATE_COMMAND_INV;
             }
-            s->ss_bit = samplenum;
+            s->ss_bit = di_samplenum(di);
             break;
         }
 
         case STATE_COMMAND_INV: {
-            handle_bit(di, s, samplenum, width);
+            handle_bit(di, s, di_samplenum(di), width);
             if (s->data_len == 16) {
-                data_ok(di, s, samplenum, 1, 8);
+                data_ok(di, s, di_samplenum(di), 1, 8);
                 s->state = STATE_STOP;
             }
-            s->ss_bit = samplenum;
+            s->ss_bit = di_samplenum(di);
             break;
         }
 
         case STATE_STOP: {
-            C_ANN_PUT(di, s->ss_bit, s->ss_bit + s->stop, s->out_ann, ANN_STOP_BIT,
+            c_put(di, s->ss_bit, s->ss_bit + s->stop, s->out_ann, ANN_STOP_BIT,
                 "Stop bit", "Stop", "St", "S");
             putremote(di, s);
-            s->ss_bit = samplenum;
-            s->ss_start = samplenum;
+            s->ss_bit = di_samplenum(di);
+            s->ss_start = di_samplenum(di);
             s->state = STATE_IDLE;
             s->data_len = 0;
             break;
@@ -633,6 +618,7 @@ struct srd_c_decoder ir_nec_c_decoder = {
     .start = nec_start,
     .decode = nec_decode,
     .destroy = nec_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

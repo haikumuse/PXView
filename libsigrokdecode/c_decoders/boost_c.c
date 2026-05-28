@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012-2013 Uwe Hermann <uwe@hermann-uwe.de>
@@ -113,7 +113,7 @@ static void boost_putx(struct srd_decoder_inst *di, boost_state *s,
         return;
     if (cls == ANN_BYTES && !s->show_bytes)
         return;
-    C_ANN_PUT(di, ss, es, s->out_ann, cls, text);
+    c_put(di, ss, es, s->out_ann, cls, text);
 }
 
 static int boost_handle_message(struct srd_decoder_inst *di, boost_state *s, int rxtx)
@@ -245,9 +245,7 @@ failed_checksum:
     return 1;
 }
 
-static void boost_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void boost_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     boost_state *s = (boost_state *)c_decoder_get_private(di);
     if (!s)
@@ -256,11 +254,11 @@ static void boost_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    if (data_len < 2)
+    if (n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];
-    int rxtx = data[1]; /* 0=RX, 1=TX */
+    uint8_t byte_val = fields[0].u8;
+    int rxtx = fields[1].u8; /* 0=RX, 1=TX */
 
     if (rxtx != RX && rxtx != TX)
         rxtx = RX;
@@ -300,12 +298,12 @@ static void boost_reset(struct srd_decoder_inst *di)
 static void boost_start(struct srd_decoder_inst *di)
 {
     boost_state *s = (boost_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "boost");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "boost");
 
-    const char *show_err = c_decoder_get_option_string(di, "show_errors", "yes");
+    const char *show_err = c_opt_str(di, "show_errors", "yes");
     s->show_errors = (show_err && strcmp(show_err, "yes") == 0) ? 1 : 0;
 
-    const char *show_byt = c_decoder_get_option_string(di, "show_bytes", "no");
+    const char *show_byt = c_opt_str(di, "show_bytes", "no");
     s->show_bytes = (show_byt && strcmp(show_byt, "yes") == 0) ? 1 : 0;
 }
 
@@ -351,7 +349,8 @@ struct srd_c_decoder boost_c_decoder = {
     .start = boost_start,
     .decode = boost_decode,
     .destroy = boost_destroy,
-    .recv_proto = boost_recv_proto,
+    .decode_upper = boost_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

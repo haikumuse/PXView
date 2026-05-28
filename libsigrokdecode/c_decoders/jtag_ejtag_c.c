@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -231,11 +231,11 @@ static const struct srd_c_ann_row jtag_ejtag_ann_rows[] = {
     {"pracc", "PrAcc", jtag_ejtag_row_pracc_classes, 1},
 };
 
-static uint32_t bytes_to_uint32(const unsigned char *data, uint64_t data_len)
+static uint32_t bytes_to_uint32(const c_field *fields, int n_fields)
 {
     uint32_t val = 0;
-    for (uint64_t i = 0; i < data_len && i < 4; i++)
-        val |= ((uint32_t)data[i]) << (i * 8);
+    for (uint64_t i = 0; i < n_fields && i < 4; i++)
+        val |= ((uint32_t)fields[i].u8) << (i * 8);
     return val;
 }
 
@@ -298,7 +298,7 @@ static void ejtag_parse_control_reg(struct srd_decoder_inst *di, jtag_ejtag_stat
         } else {
             snprintf(buf, sizeof(buf), "%s: %d", field->name, value);
         }
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ann, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ann, buf);
     }
 }
 
@@ -332,12 +332,10 @@ static void ejtag_parse_pracc(struct srd_decoder_inst *di, jtag_ejtag_state *s)
     /* Reset pracc state */
     memset(&s->pracc, 0, sizeof(s->pracc));
 
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_PRACC, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_PRACC, buf);
 }
 
-static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     jtag_ejtag_state *s = (jtag_ejtag_state *)c_decoder_get_private(di);
     if (!s)
@@ -347,24 +345,24 @@ static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di,
     s->es = end_sample;
 
     if (strcmp(cmd, "IR TDI") == 0) {
-        uint8_t ir_val = (data_len > 0) ? data[0] : 0;
+        uint8_t ir_val = (n_fields > 0) ? fields[0].u8 : 0;
         const char *name = ejtag_find_insn_name(ir_val);
         const char *desc = ejtag_find_insn_desc(ir_val);
 
         char buf[128];
         if (name) {
             snprintf(buf, sizeof(buf), "%s: %s (0x%02X)", name, desc ? desc : "", ir_val);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_INSTRUCTION, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_INSTRUCTION, buf);
         } else {
             snprintf(buf, sizeof(buf), "0x%02X", ir_val);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_INSTRUCTION, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_INSTRUCTION, buf);
         }
         s->state = ejtag_select_state(ir_val);
         return;
     }
 
     if (strcmp(cmd, "DR TDI") == 0) {
-        uint32_t value = bytes_to_uint32(data, data_len);
+        uint32_t value = bytes_to_uint32(fields, n_fields);
         s->last_data.data_in = value;
         s->last_data.ss_in = start_sample;
         s->last_data.es_in = end_sample;
@@ -382,13 +380,13 @@ static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di,
             /* FASTDATA: 33 bits, bit 32 is SPrAcc, bits 31:0 are data */
             char buf[64];
             snprintf(buf, sizeof(buf), "FASTDATA IN: 0x%08X", value);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CONTROL_FIELD_IN, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_CONTROL_FIELD_IN, buf);
         }
         return;
     }
 
     if (strcmp(cmd, "DR TDO") == 0) {
-        uint32_t value = bytes_to_uint32(data, data_len);
+        uint32_t value = bytes_to_uint32(fields, n_fields);
         s->last_data.data_out = value;
         s->last_data.ss_out = start_sample;
         s->last_data.es_out = end_sample;
@@ -402,7 +400,7 @@ static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di,
         } else if (s->state == EJTAG_STATE_FASTDATA) {
             char buf[64];
             snprintf(buf, sizeof(buf), "FASTDATA OUT: 0x%08X", value);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CONTROL_FIELD_OUT, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_CONTROL_FIELD_OUT, buf);
         }
         return;
     }
@@ -417,32 +415,32 @@ static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di,
             const char *reg_name = ejtag_reg_names[s->state];
             char buf[64];
             snprintf(buf, sizeof(buf), "%s", reg_name);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ann_idx, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ann_idx, buf);
 
             /* For data/address registers, show the value */
             if (s->state == EJTAG_STATE_DEVICE_ID && s->last_data.has_out) {
                 snprintf(buf, sizeof(buf), "IDCODE: 0x%08X", s->last_data.data_out);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DEVICE_ID, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DEVICE_ID, buf);
             } else if (s->state == EJTAG_STATE_IMPLEMENTATION && s->last_data.has_out) {
                 snprintf(buf, sizeof(buf), "IMPCODE: 0x%08X", s->last_data.data_out);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_IMPLEMENTATION, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_REG_IMPLEMENTATION, buf);
             } else if (s->state == EJTAG_STATE_ADDRESS) {
                 if (s->last_data.has_in) {
                     snprintf(buf, sizeof(buf), "ADDRESS IN: 0x%08X", s->last_data.data_in);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, buf);
+                    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, buf);
                 }
                 if (s->last_data.has_out) {
                     snprintf(buf, sizeof(buf), "ADDRESS OUT: 0x%08X", s->last_data.data_out);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, buf);
+                    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, buf);
                 }
             } else if (s->state == EJTAG_STATE_DATA) {
                 if (s->last_data.has_in) {
                     snprintf(buf, sizeof(buf), "DATA IN: 0x%08X", s->last_data.data_in);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, buf);
+                    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, buf);
                 }
                 if (s->last_data.has_out) {
                     snprintf(buf, sizeof(buf), "DATA OUT: 0x%08X", s->last_data.data_out);
-                    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, buf);
+                    c_put(di, s->ss, s->es, s->out_ann, ANN_REG_DATA, buf);
                 }
             } else if (s->state == EJTAG_STATE_CONTROL) {
                 /* Parse control register fields */
@@ -475,7 +473,7 @@ static void jtag_ejtag_reset(struct srd_decoder_inst *di)
 static void jtag_ejtag_start(struct srd_decoder_inst *di)
 {
     jtag_ejtag_state *s = (jtag_ejtag_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "jtag_ejtag");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "jtag_ejtag");
 }
 
 static void jtag_ejtag_decode(struct srd_decoder_inst *di)
@@ -520,7 +518,8 @@ struct srd_c_decoder jtag_ejtag_c_decoder = {
     .start = jtag_ejtag_start,
     .decode = jtag_ejtag_decode,
     .destroy = jtag_ejtag_destroy,
-    .recv_proto = jtag_ejtag_recv_proto,
+    .decode_upper = jtag_ejtag_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

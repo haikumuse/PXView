@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Karl Palsson <karlp@tweak.net.au>
@@ -77,30 +77,30 @@ static const struct srd_c_ann_row adns5020_ann_rows[] = {
     {"warnings", "Warnings", adns5020_row_warnings_classes, 1},
 };
 
-static void parse_spi_data(const unsigned char *data, uint64_t data_len,
+static void parse_spi_data(const c_field *fields, int n_fields,
     int *have_mosi, int *have_miso, uint8_t *mosi_byte, uint8_t *miso_byte)
 {
-    if (data_len < 1) return;
-    *have_mosi = (data[0] & 1) ? 1 : 0;
-    *have_miso = (data[0] & 2) ? 1 : 0;
+    if (n_fields < 1) return;
+    *have_mosi = (fields[0].u8 & 1) ? 1 : 0;
+    *have_miso = (fields[0].u8 & 2) ? 1 : 0;
     uint64_t mv = 0, sv = 0;
-    if (data_len >= 9) {
+    if (n_fields >= 9) {
         for (int i = 0; i < 8; i++)
-            mv |= ((uint64_t)data[1 + i]) << (8 * i);
+            mv |= ((uint64_t)fields[1 + i].u8) << (8 * i);
     }
-    if (data_len >= 17) {
+    if (n_fields >= 17) {
         for (int i = 0; i < 8; i++)
-            sv |= ((uint64_t)data[9 + i]) << (8 * i);
+            sv |= ((uint64_t)fields[9 + i].u8) << (8 * i);
     }
     *mosi_byte = (uint8_t)mv;
     *miso_byte = (uint8_t)sv;
 }
 
-static void parse_cs_change(const unsigned char *data, uint64_t data_len,
+static void parse_cs_change(const c_field *fields, int n_fields,
     int *cs_old, int *cs_new)
 {
-    *cs_old = (data_len > 0) ? (int)data[0] : -1;
-    *cs_new = (data_len > 1) ? (int)data[1] : -1;
+    *cs_old = (n_fields > 0) ? (int)fields[0].u8 : -1;
+    *cs_new = (n_fields > 1) ? (int)fields[1].u8 : -1;
     if (*cs_old == 0xFF) *cs_old = -1;
 }
 
@@ -114,19 +114,17 @@ static const char *adns5020_reg_name(int reg)
     return "Reserved";
 }
 
-static void adns5020_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void adns5020_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     adns5020_state *s = (adns5020_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
         int cs_old = -1, cs_new = -1;
-        parse_cs_change(data, data_len, &cs_old, &cs_new);
+        parse_cs_change(fields, n_fields, &cs_old, &cs_new);
         if (cs_old == 0 && cs_new == 1) {
             if (s->byte_count != 0 && s->byte_count != 2) {
-                C_ANN_PUT(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARN, "Misplaced CS#!");
+                c_put(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARN, "Misplaced CS#!");
             }
             s->byte_count = 0;
         }
@@ -137,7 +135,7 @@ static void adns5020_recv_proto(struct srd_decoder_inst *di,
 
     int have_mosi, have_miso;
     uint8_t mosi, miso;
-    parse_spi_data(data, data_len, &have_mosi, &have_miso, &mosi, &miso);
+    parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
     if (!have_mosi) return;
 
     if (s->byte_count == 0)
@@ -155,10 +153,10 @@ static void adns5020_recv_proto(struct srd_decoder_inst *di,
     char buf[128];
     if (write) {
         snprintf(buf, sizeof(buf), "%s: %02X", reg_desc, arg);
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WRITE, buf);
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WRITE, buf);
     } else {
         snprintf(buf, sizeof(buf), "%s: %02X", reg_desc, arg);
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_READ, buf);
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_READ, buf);
     }
     s->byte_count = 0;
 }
@@ -175,7 +173,7 @@ static void adns5020_reset(struct srd_decoder_inst *di)
 static void adns5020_start(struct srd_decoder_inst *di)
 {
     adns5020_state *s = (adns5020_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "adns5020");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "adns5020");
 }
 
 static void adns5020_decode(struct srd_decoder_inst *di)
@@ -220,7 +218,8 @@ struct srd_c_decoder adns5020_c_decoder = {
     .start = adns5020_start,
     .decode = adns5020_decode,
     .destroy = adns5020_destroy,
-    .recv_proto = adns5020_recv_proto,
+    .decode_upper = adns5020_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

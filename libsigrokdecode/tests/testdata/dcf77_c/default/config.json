@@ -1,8 +1,8 @@
 {
   "decoder": "dcf77_c",
-  "samplerate": 100000,
+  "samplerate": 10000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 600000,
   "channels": {
     "data": 0
   },

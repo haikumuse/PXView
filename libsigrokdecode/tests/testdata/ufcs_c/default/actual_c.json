@@ -729,15 +729,6 @@
 			]
 		}, 
 		{
-			"start_sample": 841,
-			"end_sample": 910,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"00"
-			]
-		}, 
-		{
 			"start_sample": 217,
 			"end_sample": 494,
 			"ann_class": 2,
@@ -775,6 +766,15 @@
 			"texts": [
 				"CRC:00", 
 				"CRC"
+			]
+		}, 
+		{
+			"start_sample": 841,
+			"end_sample": 910,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"00"
 			]
 		}, 
 		{

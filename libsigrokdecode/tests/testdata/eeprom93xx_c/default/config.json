@@ -1,13 +1,18 @@
 {
   "decoder": "eeprom93xx_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "microwire"
-  ],
+  "num_channels": 4,
+  "sample_count": 100000,
   "channels": {},
-  "options": {
-    "addresssize": 8,
-    "wordsize": 16
-  }
+  "stack": [
+    {
+      "id": "microwire_c",
+      "channels": {
+        "cs": 0,
+        "sk": 1,
+        "si": 2,
+        "so": 3
+      }
+    }
+  ]
 }

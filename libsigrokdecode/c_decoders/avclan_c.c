@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2023 Maciej Grela <enki@fsck.pl>
@@ -338,7 +338,7 @@ static int pkt_comm_ctrl(struct srd_decoder_inst *di, avclan_state *s)
     if (opcode_name) {
         char t[128];
         snprintf(t, sizeof(t), "Opcode: %s", opcode_name);
-        C_ANN_PUT(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CTRL_OPCODE, t, opcode_name);
+        c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CTRL_OPCODE, t, opcode_name);
 
         if (opcode_val == 0x45) { /* ADVERTISE_FUNCTION */
             if (s->num_data_bytes >= 2) {
@@ -349,14 +349,14 @@ static int pkt_comm_ctrl(struct srd_decoder_inst *di, avclan_state *s)
                     snprintf(t2, sizeof(t2), "Function: %s", lname);
                 else
                     snprintf(t2, sizeof(t2), "Function: 0x%02X", logic_id);
-                C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_ADVERTISED_FUNC, t2, lname ? lname : "Func");
+                c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_ADVERTISED_FUNC, t2, lname ? lname : "Func");
             }
         } else if (opcode_val == 0x20 || opcode_val == 0x30) { /* PING_REQ / PING_RESP */
             if (s->num_data_bytes >= 2) {
                 int seq = s->data_bytes[1].b;
                 char t2[64];
                 snprintf(t2, sizeof(t2), "Sequence Number: %d", seq);
-                C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_SEQUENCE_NO, t2);
+                c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_SEQUENCE_NO, t2);
             }
         } else if (opcode_val == 0x10) { /* LIST_FUNCTIONS_RESP */
             for (int idx = 1; idx < s->num_data_bytes; idx++) {
@@ -367,7 +367,7 @@ static int pkt_comm_ctrl(struct srd_decoder_inst *di, avclan_state *s)
                     snprintf(t2, sizeof(t2), "Function: %s", lname);
                 else
                     snprintf(t2, sizeof(t2), "Function: 0x%02x", logical_addr);
-                C_ANN_PUT(di, s->data_bytes[idx].ss, s->data_bytes[idx].es, s->out_ann, ANN_ADVERTISED_FUNC, t2, lname ? lname : "Func");
+                c_put(di, s->data_bytes[idx].ss, s->data_bytes[idx].es, s->out_ann, ANN_ADVERTISED_FUNC, t2, lname ? lname : "Func");
             }
         }
         return 1;
@@ -385,7 +385,7 @@ static int pkt_from_25(struct srd_decoder_inst *di, avclan_state *s)
     if (opcode_name) {
         char t[128];
         snprintf(t, sizeof(t), "Opcode: %s", opcode_name);
-        C_ANN_PUT(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CMD_OPCODE, t, opcode_name);
+        c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CMD_OPCODE, t, opcode_name);
     }
     return 0;
 }
@@ -400,7 +400,7 @@ static int pkt_from_60(struct srd_decoder_inst *di, avclan_state *s)
     if (opcode_name) {
         char t[128];
         snprintf(t, sizeof(t), "Opcode: %s", opcode_name);
-        C_ANN_PUT(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_RADIO_OPCODE, t, opcode_name);
+        c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_RADIO_OPCODE, t, opcode_name);
 
         if (opcode_val == 0xf1 && s->num_data_bytes >= 9) { /* REPORT */
             /* State */
@@ -411,7 +411,7 @@ static int pkt_from_60(struct srd_decoder_inst *di, avclan_state *s)
                 snprintf(t2, sizeof(t2), "State: %s", state_name);
             else
                 snprintf(t2, sizeof(t2), "State: 0x%02X", tuner_state_val);
-            C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_RADIO_STATE, t2, state_name ? state_name : "State");
+            c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_RADIO_STATE, t2, state_name ? state_name : "State");
 
             /* Mode */
             int tuner_mode_val = s->data_bytes[2].b;
@@ -420,7 +420,7 @@ static int pkt_from_60(struct srd_decoder_inst *di, avclan_state *s)
                 snprintf(t2, sizeof(t2), "Mode: %s", mode_name);
             else
                 snprintf(t2, sizeof(t2), "Mode: 0x%02X", tuner_mode_val);
-            C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_RADIO_MODE, t2, mode_name ? mode_name : "Mode");
+            c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_RADIO_MODE, t2, mode_name ? mode_name : "Mode");
 
             /* Band */
             int band_type = s->data_bytes[3].b & 0xF0;
@@ -436,7 +436,7 @@ static int pkt_from_60(struct srd_decoder_inst *di, avclan_state *s)
                 band_str = "AM"; freq_start = 522; freq_step = 9; freq_unit = "kHz";
             }
             snprintf(t2, sizeof(t2), "Band: %s %d", band_str, band_number);
-            C_ANN_PUT(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_BAND, t2, band_str, "Band");
+            c_put(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_BAND, t2, band_str, "Band");
 
             /* Frequency */
             int freq_raw = (s->data_bytes[4].b << 8) | s->data_bytes[5].b;
@@ -444,24 +444,24 @@ static int pkt_from_60(struct srd_decoder_inst *di, avclan_state *s)
             char t3[64];
             snprintf(t3, sizeof(t3), "Freq: %.2f %s", freq, freq_unit);
             snprintf(t2, sizeof(t2), "%.2f %s", freq, freq_unit);
-            C_ANN_PUT(di, s->data_bytes[4].ss, s->data_bytes[5].es, s->out_ann, ANN_FREQ, t3, t2, "Freq");
+            c_put(di, s->data_bytes[4].ss, s->data_bytes[5].es, s->out_ann, ANN_FREQ, t3, t2, "Freq");
 
             /* Channel */
             int channel = s->data_bytes[6].b;
             if (channel > 0) {
                 snprintf(t2, sizeof(t2), "CH #%d", channel);
-                C_ANN_PUT(di, s->data_bytes[6].ss, s->data_bytes[6].es, s->out_ann, ANN_CHANNEL, t2, "CH");
+                c_put(di, s->data_bytes[6].ss, s->data_bytes[6].es, s->out_ann, ANN_CHANNEL, t2, "CH");
             }
 
             /* Flags */
             char flag_buf[128];
             format_bitmask(tuner_flag_bits, 8, s->data_bytes[7].b, flag_buf, sizeof(flag_buf));
             snprintf(t2, sizeof(t2), "Flags: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[7].ss, s->data_bytes[7].es, s->out_ann, ANN_RADIO_FLAGS, t2, "Flags", "F");
+            c_put(di, s->data_bytes[7].ss, s->data_bytes[7].es, s->out_ann, ANN_RADIO_FLAGS, t2, "Flags", "F");
 
             format_bitmask(tuner_flag_bits, 8, s->data_bytes[8].b, flag_buf, sizeof(flag_buf));
             snprintf(t2, sizeof(t2), "Flags: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[8].ss, s->data_bytes[8].es, s->out_ann, ANN_RADIO_FLAGS, t2, "Flags", "F");
+            c_put(di, s->data_bytes[8].ss, s->data_bytes[8].es, s->out_ann, ANN_RADIO_FLAGS, t2, "Flags", "F");
         }
         return 1;
     }
@@ -492,21 +492,21 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
             format_bitmask(cd_state_bits, 8, cd_state_val, flag_buf, sizeof(flag_buf));
             char t[128];
             snprintf(t, sizeof(t), "State: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_CD_STATE, t, flag_buf, "State");
+            c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_CD_STATE, t, flag_buf, "State");
 
             int disc_number = s->data_bytes[3].b;
             if (disc_number != 0xff)
                 snprintf(t, sizeof(t), "CD #%d", disc_number);
             else
                 snprintf(t, sizeof(t), "CD #");
-            C_ANN_PUT(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_DISC_NUMBER, t, "CD", "C");
+            c_put(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_DISC_NUMBER, t, "CD", "C");
 
             int track_number = s->data_bytes[4].b;
             if (track_number != 0xff)
                 snprintf(t, sizeof(t), "Track #%d", track_number);
             else
                 snprintf(t, sizeof(t), "Track #");
-            C_ANN_PUT(di, s->data_bytes[4].ss, s->data_bytes[4].es, s->out_ann, ANN_TRACK_NUMBER, t, "Tra", "T");
+            c_put(di, s->data_bytes[4].ss, s->data_bytes[4].es, s->out_ann, ANN_TRACK_NUMBER, t, "Tra", "T");
 
             int minutes = s->data_bytes[5].b;
             int seconds = s->data_bytes[6].b;
@@ -516,15 +516,15 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
                 snprintf(t, sizeof(t), "Time: %02d:%02d", minutes, seconds);
                 char t2[16];
                 snprintf(t2, sizeof(t2), "%02d:%02d", minutes, seconds);
-                C_ANN_PUT(di, s->data_bytes[5].ss, s->data_bytes[6].es, s->out_ann, ANN_PLAYBACK_TIME, t, t2, "T");
+                c_put(di, s->data_bytes[5].ss, s->data_bytes[6].es, s->out_ann, ANN_PLAYBACK_TIME, t, t2, "T");
             } else {
-                C_ANN_PUT(di, s->data_bytes[5].ss, s->data_bytes[6].es, s->out_ann, ANN_PLAYBACK_TIME, "Time", "T");
+                c_put(di, s->data_bytes[5].ss, s->data_bytes[6].es, s->out_ann, ANN_PLAYBACK_TIME, "Time", "T");
             }
 
             int cd_flags_val = s->data_bytes[7].b;
             format_bitmask(cd_flag_bits, 8, cd_flags_val, flag_buf, sizeof(flag_buf));
             snprintf(t, sizeof(t), "Flags: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[7].ss, s->data_bytes[7].es, s->out_ann, ANN_CD_FLAGS, t, flag_buf, "Flags");
+            c_put(di, s->data_bytes[7].ss, s->data_bytes[7].es, s->out_ann, ANN_CD_FLAGS, t, flag_buf, "Flags");
 
         } else if (opcode_val == 0xfd && s->num_data_bytes >= 6) {
             /* REPORT_TRACK_NAME */
@@ -533,10 +533,10 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
             char t[64];
             if (disc_number != 0xff) {
                 snprintf(t, sizeof(t), "CD #%d", disc_number);
-                C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_DISC_NUMBER, t, "CD #");
+                c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_DISC_NUMBER, t, "CD #");
             }
             snprintf(t, sizeof(t), "Track #%d", track_number);
-            C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_TRACK_NUMBER, t, "Track #");
+            c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_TRACK_NUMBER, t, "Track #");
 
             /* Text from index 5 onward */
             if (s->num_data_bytes > 5) {
@@ -547,7 +547,7 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
                 text[tlen] = '\0';
                 char t2[300];
                 snprintf(t2, sizeof(t2), "Title: %s", text);
-                C_ANN_PUT(di, s->data_bytes[5].ss, s->data_bytes[s->num_data_bytes - 1].es,
+                c_put(di, s->data_bytes[5].ss, s->data_bytes[s->num_data_bytes - 1].es,
                           s->out_ann, ANN_TRACK_TITLE, t2, "Title");
             }
 
@@ -558,17 +558,17 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
             format_bitmask(cd_slot_bits, 6, slots_val, flag_buf, sizeof(flag_buf));
             char t[128];
             snprintf(t, sizeof(t), "Available: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_DISC_SLOTS, t, flag_buf, "Avail");
+            c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_DISC_SLOTS, t, flag_buf, "Avail");
 
             slots_val = s->data_bytes[4].b;
             format_bitmask(cd_slot_bits, 6, slots_val, flag_buf, sizeof(flag_buf));
             snprintf(t, sizeof(t), "Disc Present: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[4].ss, s->data_bytes[4].es, s->out_ann, ANN_DISC_SLOTS, t, flag_buf, "Pres");
+            c_put(di, s->data_bytes[4].ss, s->data_bytes[4].es, s->out_ann, ANN_DISC_SLOTS, t, flag_buf, "Pres");
 
             slots_val = s->data_bytes[6].b;
             format_bitmask(cd_slot_bits, 6, slots_val, flag_buf, sizeof(flag_buf));
             snprintf(t, sizeof(t), "Slot-3: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[6].ss, s->data_bytes[6].es, s->out_ann, ANN_DISC_SLOTS, t, flag_buf, "Pres");
+            c_put(di, s->data_bytes[6].ss, s->data_bytes[6].es, s->out_ann, ANN_DISC_SLOTS, t, flag_buf, "Pres");
 
         } else if (opcode_val == 0xf9 && s->num_data_bytes >= 6) {
             /* REPORT_TOC */
@@ -578,21 +578,21 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
                 snprintf(t, sizeof(t), "CD #%d", disc_number);
             else
                 snprintf(t, sizeof(t), "CD #");
-            C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_DISC_NUMBER, t, "CD", "C");
+            c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_DISC_NUMBER, t, "CD", "C");
 
             int track_number = s->data_bytes[2].b;
             if (track_number != 0xff)
                 snprintf(t, sizeof(t), "Track #%d", track_number);
             else
                 snprintf(t, sizeof(t), "Track #");
-            C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_TRACK_NUMBER, t, "Tra", "T");
+            c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_TRACK_NUMBER, t, "Tra", "T");
 
             int track_count = s->data_bytes[3].b;
             if (track_count != 0xff)
                 snprintf(t, sizeof(t), "Track Count: %d", track_count);
             else
                 snprintf(t, sizeof(t), "Track Count");
-            C_ANN_PUT(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_TRACK_COUNT, t, "Count", "Cnt");
+            c_put(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_TRACK_COUNT, t, "Count", "Cnt");
 
             int minutes = s->data_bytes[4].b;
             int seconds = s->data_bytes[5].b;
@@ -602,9 +602,9 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
                 snprintf(t, sizeof(t), "Total Time: %02d:%02d", minutes, seconds);
                 char t2[16];
                 snprintf(t2, sizeof(t2), "%02d:%02d", minutes, seconds);
-                C_ANN_PUT(di, s->data_bytes[4].ss, s->data_bytes[5].es, s->out_ann, ANN_PLAYBACK_TIME, t, t2, "T");
+                c_put(di, s->data_bytes[4].ss, s->data_bytes[5].es, s->out_ann, ANN_PLAYBACK_TIME, t, t2, "T");
             } else {
-                C_ANN_PUT(di, s->data_bytes[4].ss, s->data_bytes[5].es, s->out_ann, ANN_PLAYBACK_TIME, "Total Time", "T");
+                c_put(di, s->data_bytes[4].ss, s->data_bytes[5].es, s->out_ann, ANN_PLAYBACK_TIME, "Total Time", "T");
             }
         }
         ret = 1;
@@ -613,7 +613,7 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
     /* Always output opcode annotation */
     char t[128];
     snprintf(t, sizeof(t), "Opcode: %s", opcode_anno);
-    C_ANN_PUT(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CD_OPCODE, t, opcode_anno, "Opcode");
+    c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CD_OPCODE, t, opcode_anno, "Opcode");
 
     return ret;
 }
@@ -641,21 +641,21 @@ static int pkt_to_cd_player(struct srd_decoder_inst *di, avclan_state *s)
             snprintf(t, sizeof(t), "CD #%d", disc_number);
         else
             snprintf(t, sizeof(t), "CD #");
-        C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_DISC_NUMBER, t, "CD", "C");
+        c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_DISC_NUMBER, t, "CD", "C");
 
         int track_number = s->data_bytes[2].b;
         if (track_number != 0xff)
             snprintf(t, sizeof(t), "Track #%d", track_number);
         else
             snprintf(t, sizeof(t), "Track #");
-        C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_TRACK_NUMBER, t, "Tra", "T");
+        c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_TRACK_NUMBER, t, "Tra", "T");
 
         ret = 1;
     }
 
     char t[128];
     snprintf(t, sizeof(t), "Opcode: %s", opcode_anno);
-    C_ANN_PUT(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CD_OPCODE, t, opcode_anno, "Opcode");
+    c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CD_OPCODE, t, opcode_anno, "Opcode");
 
     return ret;
 }
@@ -670,40 +670,40 @@ static int pkt_74(struct srd_decoder_inst *di, avclan_state *s)
     if (opcode_name) {
         char t[128];
         snprintf(t, sizeof(t), "Opcode: %s", opcode_name);
-        C_ANN_PUT(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_AUDIO_OPCODE, t, opcode_name);
+        c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_AUDIO_OPCODE, t, opcode_name);
 
         if (opcode_val == 0xf1 && s->num_data_bytes >= 13) { /* REPORT */
             /* Volume at index 2 */
             int volume = s->data_bytes[2].b;
             snprintf(t, sizeof(t), "Volume: %d", volume);
-            C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_VOLUME, t, "Volume", "Vol");
+            c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_VOLUME, t, "Volume", "Vol");
 
             /* Balance at index 3 */
             char lr[16];
             map_left_right(s->data_bytes[3].b, 0x10, "L", "R", lr, sizeof(lr));
             snprintf(t, sizeof(t), "Balance: %s", lr);
-            C_ANN_PUT(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_BALANCE, t, "Balance", "Bal");
+            c_put(di, s->data_bytes[3].ss, s->data_bytes[3].es, s->out_ann, ANN_BALANCE, t, "Balance", "Bal");
 
             /* Fade at index 4 */
             map_left_right(s->data_bytes[4].b, 0x10, "F", "R", lr, sizeof(lr));
             snprintf(t, sizeof(t), "Fade: %s", lr);
-            C_ANN_PUT(di, s->data_bytes[4].ss, s->data_bytes[4].es, s->out_ann, ANN_FADE, t, "Fade");
+            c_put(di, s->data_bytes[4].ss, s->data_bytes[4].es, s->out_ann, ANN_FADE, t, "Fade");
 
             /* Bass at index 5 */
             map_left_right(s->data_bytes[5].b, 0x10, "-", "+", lr, sizeof(lr));
             snprintf(t, sizeof(t), "Bass: %s", lr);
-            C_ANN_PUT(di, s->data_bytes[5].ss, s->data_bytes[5].es, s->out_ann, ANN_BASS, t, "Bass");
+            c_put(di, s->data_bytes[5].ss, s->data_bytes[5].es, s->out_ann, ANN_BASS, t, "Bass");
 
             /* Treble at index 7 */
             map_left_right(s->data_bytes[7].b, 0x10, "-", "+", lr, sizeof(lr));
             snprintf(t, sizeof(t), "Treble: %s", lr);
-            C_ANN_PUT(di, s->data_bytes[7].ss, s->data_bytes[7].es, s->out_ann, ANN_TREBLE, t, "Treble");
+            c_put(di, s->data_bytes[7].ss, s->data_bytes[7].es, s->out_ann, ANN_TREBLE, t, "Treble");
 
             /* Flags at index 12 */
             char flag_buf[128];
             format_bitmask(audio_amp_flag_bits, 8, s->data_bytes[12].b, flag_buf, sizeof(flag_buf));
             snprintf(t, sizeof(t), "Flags: %s", flag_buf);
-            C_ANN_PUT(di, s->data_bytes[12].ss, s->data_bytes[12].es, s->out_ann, ANN_AUDIO_FLAGS, t, "Flags");
+            c_put(di, s->data_bytes[12].ss, s->data_bytes[12].es, s->out_ann, ANN_AUDIO_FLAGS, t, "Flags");
         }
         return 1;
     }
@@ -776,9 +776,7 @@ static void dispatch_packet(struct srd_decoder_inst *di, avclan_state *s)
 
 /* --- Core recv_proto --- */
 
-static void avclan_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void avclan_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     avclan_state *s = (avclan_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -793,57 +791,56 @@ static void avclan_recv_proto(struct srd_decoder_inst *di,
 
     if (s->state == AVC_IDLE) {
         if (strcmp(cmd, "HEADER") == 0) {
-            s->broadcast_bit = (data && data_len > 0) ? data[0] : 0;
+            s->broadcast_bit = (fields && n_fields > 0) ? fields[0].u8 : 0;
             s->state = AVC_MASTER_ADDRESS;
         }
     } else if (s->state == AVC_MASTER_ADDRESS) {
         if (strcmp(cmd, "MASTER ADDRESS") == 0) {
-            if (data && data_len >= 2) {
-                memcpy(&s->master_addr, data, 2);
+            if (fields && n_fields >= 2) {
+                s->master_addr = fields[0].u8 | (fields[1].u8 << 8);
                 const char *name = find_name(hw_addresses, HW_ADDR_COUNT, s->master_addr);
                 if (name)
-                    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ADDRESS, name);
+                    c_put(di, start_sample, end_sample, s->out_ann, ANN_ADDRESS, name);
             }
             s->state = AVC_SLAVE_ADDRESS;
         }
     } else if (s->state == AVC_SLAVE_ADDRESS) {
         if (strcmp(cmd, "SLAVE ADDRESS") == 0) {
-            if (data && data_len >= 2) {
-                memcpy(&s->slave_addr, data, 2);
+            if (fields && n_fields >= 2) {
+                s->slave_addr = fields[0].u8 | (fields[1].u8 << 8);
                 const char *name = find_name(hw_addresses, HW_ADDR_COUNT, s->slave_addr);
                 if (name)
-                    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ADDRESS, name);
+                    c_put(di, start_sample, end_sample, s->out_ann, ANN_ADDRESS, name);
             }
             s->state = AVC_CONTROL;
         }
     } else if (s->state == AVC_CONTROL) {
         if (strcmp(cmd, "CONTROL") == 0) {
-            s->control = (data && data_len > 0) ? data[0] : 0;
+            s->control = (fields && n_fields > 0) ? fields[0].u8 : 0;
             s->state = AVC_DATA_LENGTH;
         }
     } else if (s->state == AVC_DATA_LENGTH) {
         if (strcmp(cmd, "DATA LENGTH") == 0) {
-            s->data_length = (data && data_len > 0) ? data[0] : 0;
+            s->data_length = (fields && n_fields > 0) ? fields[0].u8 : 0;
             s->state = AVC_DATA;
         }
     } else if (s->state == AVC_DATA) {
         if (strcmp(cmd, "DATA") == 0) {
             /* Parse DATA entries: uint16_t count, then (byte_val, parity, ack, ss, es) * count */
-            if (!data || data_len < 2) return;
+            if (!fields || n_fields < 2) return;
 
             uint16_t count;
-            memcpy(&count, data, 2);
+            count = fields[0].u8 | (fields[1].u8 << 8);
 
-            const unsigned char *ptr = data + 2;
-            uint64_t remaining = data_len - 2;
+            const c_field *ptr = fields + 2;
+            uint64_t remaining = n_fields - 2;
 
             for (uint16_t i = 0; i < count; i++) {
-                if (remaining < 19) break; /* 1+1+1+8+8 = 19 bytes per entry */
-                uint8_t byte_val = ptr[0];
+                if (remaining < 5) break; /* 5 c_fields per entry: byte_val, parity, ack, ss, es */
+                uint8_t byte_val = ptr[0].u8;
                 /* ptr[1] = parity_bit, ptr[2] = ack_bit */
-                uint64_t entry_ss, entry_es;
-                memcpy(&entry_ss, ptr + 3, 8);
-                memcpy(&entry_es, ptr + 11, 8);
+                uint64_t entry_ss = ptr[3].u64;
+                uint64_t entry_es = ptr[4].u64;
 
                 if (s->num_data_bytes < 256) {
                     s->data_bytes[s->num_data_bytes].b = byte_val;
@@ -852,8 +849,8 @@ static void avclan_recv_proto(struct srd_decoder_inst *di,
                     s->num_data_bytes++;
                 }
 
-                ptr += 19;
-                remaining -= 19;
+                ptr += 5;
+                remaining -= 5;
             }
 
             /* Decode logical device IDs */
@@ -868,14 +865,14 @@ static void avclan_recv_proto(struct srd_decoder_inst *di,
                     snprintf(t, sizeof(t), "From Function: %s", from_name);
                 else
                     snprintf(t, sizeof(t), "From Function");
-                C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_FUNCTION, t, from_name ? from_name : "From");
+                c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_FUNCTION, t, from_name ? from_name : "From");
 
                 const char *to_name = find_name(function_ids, FUNC_ID_COUNT, s->to_function);
                 if (to_name)
                     snprintf(t, sizeof(t), "To Function: %s", to_name);
                 else
                     snprintf(t, sizeof(t), "To Function");
-                C_ANN_PUT(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_FUNCTION, t, to_name ? to_name : "To");
+                c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_FUNCTION, t, to_name ? to_name : "To");
 
                 /* Shift data_bytes: remove first 3 */
                 int shift = s->num_data_bytes - 3;
@@ -894,14 +891,14 @@ static void avclan_recv_proto(struct srd_decoder_inst *di,
                     snprintf(t, sizeof(t), "From Function: %s", from_name);
                 else
                     snprintf(t, sizeof(t), "From Function");
-                C_ANN_PUT(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_FUNCTION, t, from_name ? from_name : "From");
+                c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_FUNCTION, t, from_name ? from_name : "From");
 
                 const char *to_name = find_name(function_ids, FUNC_ID_COUNT, s->to_function);
                 if (to_name)
                     snprintf(t, sizeof(t), "To Function: %s", to_name);
                 else
                     snprintf(t, sizeof(t), "To Function");
-                C_ANN_PUT(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_FUNCTION, t, to_name ? to_name : "To");
+                c_put(di, s->data_bytes[1].ss, s->data_bytes[1].es, s->out_ann, ANN_FUNCTION, t, to_name ? to_name : "To");
 
                 /* Shift data_bytes: remove first 2 */
                 int shift = s->num_data_bytes - 2;
@@ -945,7 +942,7 @@ static void avclan_reset(struct srd_decoder_inst *di)
 static void avclan_start(struct srd_decoder_inst *di)
 {
     avclan_state *s = (avclan_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "avclan");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "avclan");
 }
 
 static void avclan_decode(struct srd_decoder_inst *di)
@@ -990,7 +987,8 @@ struct srd_c_decoder avclan_c_decoder = {
     .start = avclan_start,
     .decode = avclan_decode,
     .destroy = avclan_destroy,
-    .recv_proto = avclan_recv_proto,
+    .decode_upper = avclan_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

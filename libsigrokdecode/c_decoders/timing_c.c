@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -133,15 +133,15 @@ static void timing_reset(struct srd_decoder_inst *di)
 static void timing_start(struct srd_decoder_inst *di)
 {
     timing_state *s = (timing_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "timing");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "timing");
 
-    s->avg_period = (int)c_decoder_get_option_int(di, "avg_period", 100);
+    s->avg_period = (int)c_opt_int(di, "avg_period", 100);
     if (s->avg_period < 0)
         s->avg_period = 0;
     if (s->avg_period > TIMING_MAX_AVG)
         s->avg_period = TIMING_MAX_AVG;
 
-    const char *edge_str = c_decoder_get_option_string(di, "edge", "any");
+    const char *edge_str = c_opt_str(di, "edge", "any");
     if (strcmp(edge_str, "rising") == 0)
         s->edge = 1;
     else if (strcmp(edge_str, "falling") == 0)
@@ -149,10 +149,10 @@ static void timing_start(struct srd_decoder_inst *di)
     else
         s->edge = 0;
 
-    const char *delta_str = c_decoder_get_option_string(di, "delta", "no");
+    const char *delta_str = c_opt_str(di, "delta", "no");
     s->delta = (strcmp(delta_str, "yes") == 0) ? 1 : 0;
 
-    const char *format_str = c_decoder_get_option_string(di, "format", "full");
+    const char *format_str = c_opt_str(di, "format", "full");
     if (strcmp(format_str, "full") == 0)
         s->format = 0;
     else if (strcmp(format_str, "terse-auto") == 0)
@@ -183,31 +183,26 @@ static void timing_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void timing_decode(struct srd_decoder_inst *di)
 {
     timing_state *s = (timing_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        int ret;
         switch (s->edge) {
-        case 1: c_cond_rise(cb, 0); break;
-        case 2: c_cond_fall(cb, 0); break;
-        default: c_cond_edge(cb, 0); break;
+        case 1:  ret = c_wait(di, CW_R(0), CW_END); break;
+        case 2:  ret = c_wait(di, CW_F(0), CW_END); break;
+        default: ret = c_wait(di, CW_E(0), CW_END); break;
         }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
 
         if (!s->have_ss) {
-            s->ss = samplenum;
+            s->ss = di_samplenum(di);
             s->have_ss = 1;
             continue;
         }
 
-        uint64_t es = samplenum;
+        uint64_t es = di_samplenum(di);
         uint64_t sa = es - s->ss;
         double t = (double)sa / (double)s->samplerate;
 
@@ -215,24 +210,24 @@ static void timing_decode(struct srd_decoder_inst *di)
         if (s->format == 0) {
             char full_buf[128];
             timing_normalize_time(t, full_buf, sizeof(full_buf));
-            C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_TIME, full_buf);
+            c_put(di, s->ss, es, s->out_ann, ANN_TIME, full_buf);
         } else if (s->format == 7) {
             /* Samples format */
             char samp_buf[32];
             snprintf(samp_buf, sizeof(samp_buf), "%llu samples", (unsigned long long)sa);
-            C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_TIME, samp_buf);
+            c_put(di, s->ss, es, s->out_ann, ANN_TIME, samp_buf);
         } else {
             /* Terse formats */
             char terse1[64], terse2[64];
             timing_terse_time(t, s->format, terse1, sizeof(terse1), terse2, sizeof(terse2));
-            C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_TIME, terse1, terse2);
+            c_put(di, s->ss, es, s->out_ann, ANN_TIME, terse1, terse2);
         }
 
         /* Terse annotation (only for non-full formats) */
         if (s->format != 0) {
             char terse1[64], terse2[64];
             timing_terse_time(t, s->format, terse1, sizeof(terse1), terse2, sizeof(terse2));
-            C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_TERSE, terse1, terse2);
+            c_put(di, s->ss, es, s->out_ann, ANN_TERSE, terse1, terse2);
         }
 
         /* Sliding window average */
@@ -248,7 +243,7 @@ static void timing_decode(struct srd_decoder_inst *di)
             double average = s->avg_sum / s->avg_count;
             char avg_buf[128];
             timing_normalize_time(average, avg_buf, sizeof(avg_buf));
-            C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_AVG, avg_buf);
+            c_put(di, s->ss, es, s->out_ann, ANN_AVG, avg_buf);
         }
 
         /* Delta from last */
@@ -261,11 +256,11 @@ static void timing_decode(struct srd_decoder_inst *di)
                 snprintf(delta_buf, sizeof(delta_buf), "%+.3f \xCE\xBCs", dt * 1e6);
             else
                 snprintf(delta_buf, sizeof(delta_buf), "%+.3f ns", dt * 1e9);
-            C_ANN_PUT(di, s->ss, es, s->out_ann, ANN_DELTA, delta_buf);
+            c_put(di, s->ss, es, s->out_ann, ANN_DELTA, delta_buf);
         }
 
         s->last_t = t;
-        s->ss = samplenum;
+        s->ss = di_samplenum(di);
     }
 }
 
@@ -306,6 +301,7 @@ struct srd_c_decoder timing_c_decoder = {
     .start = timing_start,
     .decode = timing_decode,
     .destroy = timing_destroy,
+    .state_size = 0,
     .metadata = timing_metadata,
 };
 

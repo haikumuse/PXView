@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2018 Aleksander Alekseev <afiskon@gmail.com>
@@ -144,19 +144,19 @@ static void st7735_put_desc(struct srd_decoder_inst *di, st7735_state *s)
     if (entry) {
         char buf[256];
         snprintf(buf, sizeof(buf), "%s: %s", entry->name, entry->desc);
-        C_ANN_PUT(di, s->desc_ss, s->desc_es, s->out_ann, ANN_DESC, buf);
+        c_put(di, s->desc_ss, s->desc_es, s->out_ann, ANN_DESC, buf);
     } else {
         /* Unknown command */
         char data_str[512];
         int pos = 0;
-        int data_len = s->current_data_len;
+        int n_fields = s->current_data_len;
         int truncated = 0;
-        if (data_len == ST7735_MAX_DATA_LEN) {
-            data_len = ST7735_MAX_DATA_LEN - 1;
+        if (n_fields == ST7735_MAX_DATA_LEN) {
+            n_fields = ST7735_MAX_DATA_LEN - 1;
             truncated = 1;
         }
-        if (data_len > 0) {
-            for (int i = 0; i < data_len && pos < (int)sizeof(data_str) - 8; i++)
+        if (n_fields > 0) {
+            for (int i = 0; i < n_fields && pos < (int)sizeof(data_str) - 8; i++)
                 pos += snprintf(data_str + pos, sizeof(data_str) - pos, "%s%02X", (i > 0) ? " " : "", s->current_data[i]);
         } else {
             snprintf(data_str, sizeof(data_str), "(none)");
@@ -164,7 +164,7 @@ static void st7735_put_desc(struct srd_decoder_inst *di, st7735_state *s)
         char buf[512];
         snprintf(buf, sizeof(buf), "Unknown command: %02X. Data: %s%s",
                  s->current_cmd, data_str, truncated ? "..." : "");
-        C_ANN_PUT(di, s->desc_ss, s->desc_es, s->out_ann, ANN_DESC, buf);
+        c_put(di, s->desc_ss, s->desc_es, s->out_ann, ANN_DESC, buf);
     }
 }
 
@@ -193,28 +193,22 @@ static void st7735_reset(struct srd_decoder_inst *di)
 static void st7735_start(struct srd_decoder_inst *di)
 {
     st7735_state *s = (st7735_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "st7735");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "st7735");
 }
 
 static void st7735_decode(struct srd_decoder_inst *di)
 {
     st7735_state *s = (st7735_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     while (1) {
         /* Check data on both CLK edges */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, CH_CLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(CH_CLK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int cs  = c_decoder_get_pin(di, CH_CS, samplenum);
-        int clk = c_decoder_get_pin(di, CH_CLK, samplenum);
-        int mosi = c_decoder_get_pin(di, CH_MOSI, samplenum);
-        int dc  = c_decoder_get_pin(di, CH_DC, samplenum);
+        int cs  = c_pin(di, CH_CS);
+        int clk = c_pin(di, CH_CLK);
+        int mosi = c_pin(di, CH_MOSI);
+        int dc  = c_pin(di, CH_DC);
 
         if (cs == 1) {
             /* Wait for CS = low, ignore the rest */
@@ -224,9 +218,9 @@ static void st7735_decode(struct srd_decoder_inst *di)
 
         if (clk == 1) {
             /* Rising edge: read one bit */
-            s->bit_ss = samplenum;
+            s->bit_ss = di_samplenum(di);
             if (s->accum_bits_num == 0)
-                s->byte_ss = samplenum;
+                s->byte_ss = di_samplenum(di);
             s->current_bit = mosi;
         }
 
@@ -234,7 +228,7 @@ static void st7735_decode(struct srd_decoder_inst *di)
             /* Falling edge: process one bit */
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", s->current_bit);
-            C_ANN_PUT(di, s->bit_ss, samplenum, s->out_ann, ANN_BIT, bit_str);
+            c_put(di, s->bit_ss, di_samplenum(di), s->out_ann, ANN_BIT, bit_str);
 
             s->accum_byte = (s->accum_byte << 1) | s->current_bit; /* MSB-first */
             s->accum_bits_num++;
@@ -244,20 +238,20 @@ static void st7735_decode(struct srd_decoder_inst *di)
                 int ann = dc ? ANN_DATA : ANN_CMD; /* DC = low for commands */
                 char byte_str[8];
                 snprintf(byte_str, sizeof(byte_str), "%02X", s->accum_byte);
-                C_ANN_PUT(di, s->byte_ss, samplenum, s->out_ann, ann, byte_str);
+                c_put(di, s->byte_ss, di_samplenum(di), s->out_ann, ann, byte_str);
 
                 if (ann == ANN_CMD) {
                     /* Output description of previous command */
                     st7735_put_desc(di, s);
                     s->desc_ss = s->byte_ss;
-                    s->desc_es = samplenum; /* For cmds without data */
+                    s->desc_es = di_samplenum(di); /* For cmds without data */
                     s->current_cmd = s->accum_byte;
                     s->current_data_len = 0;
                 } else {
                     /* Data byte */
                     if (s->current_data_len < ST7735_MAX_DATA_LEN)
                         s->current_data[s->current_data_len++] = (uint8_t)s->accum_byte;
-                    s->desc_es = samplenum;
+                    s->desc_es = di_samplenum(di);
                 }
 
                 s->accum_bits_num = 0;
@@ -307,6 +301,7 @@ struct srd_c_decoder st7735_c_decoder = {
     .start = st7735_start,
     .decode = st7735_decode,
     .destroy = st7735_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

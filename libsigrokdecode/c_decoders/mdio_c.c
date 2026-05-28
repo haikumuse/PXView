@@ -1,8 +1,41 @@
+﻿/*
+ * This file is part of the libsigrokdecode project.
+ *
+ * Copyright (C) 2016 Elias Oenal <sigrok@eliasoenal.com>
+ * Copyright (C) 2019 DreamSourceLab <support@dreamsourcelab.com>
+ * Copyright (C) 2025 C port (v4 API)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Channel indices — match Python: MDC=0, MDIO=1 */
+#define CH_MDC  0
+#define CH_MDIO 1
 
 enum {
     ANN_BIT_VAL = 0,
@@ -24,10 +57,7 @@ enum mdio_state {
     STATE_DATA,
 };
 
-#define CH_MDC 0
-#define CH_MDIO 1
-
-struct mdio_priv {
+C_DECODER_STATE(mdio, {
     int state;
     int bitcount;
     int opcode;
@@ -39,7 +69,7 @@ struct mdio_priv {
     int devad_bits;
     int data;
     int data_bits;
-    int ta_invalid;
+    int ta_invalid;       /* 0=valid, 1=bit1, 2=bit2, 3=both */
     int ta_first_bit;
     char op_invalid[32];
     int is_read;
@@ -52,9 +82,7 @@ struct mdio_priv {
     int read_edge_falling;
     int illegal_bus;
     uint64_t ss_illegal;
-    uint64_t ss_bit;
-    uint64_t prev_samplenum;
-    int mdiobits_head_mdio;
+    uint64_t mdiobits_head_mdio;
     uint64_t mdiobits_head_ss;
     uint64_t mdiobits_head_es;
     uint64_t cycle_lengths[48];
@@ -63,7 +91,8 @@ struct mdio_priv {
     uint64_t sample_hist[33];
     int sample_hist_idx;
     int sample_hist_count;
-};
+    uint64_t prev_samplenum;
+});
 
 static struct srd_channel mdio_channels[] = {
     { "mdc", "MDC", "Clock", 0, SRD_CHANNEL_SCLK, NULL },
@@ -101,7 +130,7 @@ static const char* mdio_inputs[] = { "logic" };
 static const char* mdio_outputs[] = { "mdio" };
 static const char* mdio_tags[] = { "Networking" };
 
-static uint64_t mdio_get_sample_hist(struct mdio_priv* s, int back)
+static uint64_t mdio_get_sample_hist(mdio_s *s, int back)
 {
     if (back < 0 || back >= s->sample_hist_count || back >= 33)
         return 0;
@@ -109,7 +138,7 @@ static uint64_t mdio_get_sample_hist(struct mdio_priv* s, int back)
     return s->sample_hist[idx];
 }
 
-static void mdio_reset_state(struct mdio_priv* s)
+static void mdio_reset_state(mdio_s *s)
 {
     s->bitcount = -1;
     s->opcode = -1;
@@ -134,50 +163,43 @@ static void mdio_reset_state(struct mdio_priv* s)
     s->ss_preamble_first = 0;
 }
 
-static void mdio_reset(struct srd_decoder_inst* di)
+static void mdio_start(struct srd_decoder_inst *di)
 {
-    if (!c_decoder_get_private(di)) {
-        c_decoder_set_private(di, g_malloc0(sizeof(struct mdio_priv)));
-    }
-    struct mdio_priv* s = (struct mdio_priv*)c_decoder_get_private(di);
-    memset(s, 0, sizeof(struct mdio_priv));
+    mdio_s *s = (mdio_s *)c_decoder_get_private(di);
+
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mdio");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "mdio");
+
+    const char *debug_str = c_opt_str(di, "show_debug_bits", "no");
+    s->show_debug_bits = (debug_str && strcmp(debug_str, "yes") == 0) ? 1 : 0;
+
+    const char *edge_str = c_opt_str(di, "read_edge", "falling");
+    s->read_edge_falling = (edge_str && strcmp(edge_str, "falling") == 0) ? 1 : 0;
+
+    /* Non-zero defaults that calloc didn't set */
     s->clause45_addr = -1;
     s->ss_frame = (uint64_t)-1;
-    s->ss_illegal = 0;
-    s->illegal_bus = 0;
+    s->ss_frame_field = (uint64_t)-1;
     mdio_reset_state(s);
 }
 
-static void mdio_start(struct srd_decoder_inst* di)
-{
-    struct mdio_priv* s = (struct mdio_priv*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mdio");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "mdio");
-
-    const char* debug_str = c_decoder_get_option_string(di, "show_debug_bits", "no");
-    s->show_debug_bits = (debug_str && strcmp(debug_str, "yes") == 0) ? 1 : 0;
-
-    const char* edge_str = c_decoder_get_option_string(di, "read_edge", "falling");
-    s->read_edge_falling = (edge_str && strcmp(edge_str, "falling") == 0) ? 1 : 0;
-}
-
-static void mdio_putbit(struct srd_decoder_inst* di, struct mdio_priv* s,
-    int mdio, uint64_t ss, uint64_t es)
+static void mdio_putbit(struct srd_decoder_inst *di, mdio_s *s,
+    int mdio_val, uint64_t ss, uint64_t es)
 {
     char val_str[4];
-    snprintf(val_str, sizeof(val_str), "%d", mdio);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_VAL, val_str);
+    snprintf(val_str, sizeof(val_str), "%d", mdio_val);
+    c_put(di, ss, es, s->out_ann, ANN_BIT_VAL, val_str);
 
     if (s->show_debug_bits) {
         char num_str[16];
         char num_short[4];
         snprintf(num_str, sizeof(num_str), "%d", s->bitcount - 1);
         snprintf(num_short, sizeof(num_short), "%d", (s->bitcount - 1) % 10);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT_NUM, num_str, num_short);
+        c_put(di, ss, es, s->out_ann, ANN_BIT_NUM, num_str, num_short);
     }
 }
 
-static uint64_t mdio_quartile_cycle_length(struct mdio_priv* s)
+static uint64_t mdio_quartile_cycle_length(mdio_s *s)
 {
     if (s->num_cycle_lengths < 1)
         return 1;
@@ -194,18 +216,16 @@ static uint64_t mdio_quartile_cycle_length(struct mdio_priv* s)
         }
     }
     int idx = count / 4;
-    if (idx < 0)
-        idx = 0;
-    if (idx >= count)
-        idx = count - 1;
+    if (idx < 0) idx = 0;
+    if (idx >= count) idx = count - 1;
     return sorted[idx] > 0 ? sorted[idx] : 1;
 }
 
-static void mdio_putdata(struct srd_decoder_inst* di, struct mdio_priv* s)
+static void mdio_putdata(struct srd_decoder_inst *di, mdio_s *s)
 {
     char data_str[32];
     snprintf(data_str, sizeof(data_str), "DATA: %04X", s->data);
-    C_ANN_PUT(di, s->ss_frame_field, s->mdiobits_head_es, s->out_ann, ANN_FRAME,
+    c_put(di, s->ss_frame_field, s->mdiobits_head_es, s->out_ann, ANN_FRAME,
         data_str, "DATA", "D");
 
     if (s->clause45 && s->opcode == 0) {
@@ -249,21 +269,14 @@ static void mdio_putdata(struct srd_decoder_inst* di, struct mdio_priv* s)
 
         char full[256];
         snprintf(full, sizeof(full), "%s%s", decoded_min, decoded_ext);
-        C_ANN_PUT(di, s->ss_frame, s->mdiobits_head_es, s->out_ann, ANN_DECODE,
+        c_put(di, s->ss_frame, s->mdiobits_head_es, s->out_ann, ANN_DECODE,
             full, decoded_min);
 
-        if (s->out_python >= 0) {
-            unsigned char py_data[12];
-            py_data[0] = (unsigned char)s->clause45;
-            int32_t addr = (int32_t)(s->clause45_addr >= 0 ? s->clause45_addr : 0);
-            memcpy(py_data + 1, &addr, 4);
-            py_data[5] = (unsigned char)is_read;
-            py_data[6] = (unsigned char)s->portad;
-            py_data[7] = (unsigned char)s->devad;
-            int32_t data_val = (int32_t)s->data;
-            memcpy(py_data + 8, &data_val, 4);
-            c_decoder_put_python(di, s->ss_frame, s->mdiobits_head_es, s->out_python, "DATA", py_data, 12);
-        }
+        /* Protocol output */
+        c_proto(di, s->ss_frame, s->mdiobits_head_es, s->out_python, "DATA",
+                C_U8(s->clause45), C_I32(s->clause45_addr),
+                C_U8(is_read), C_U8(s->portad), C_U8(s->devad),
+                C_U16(s->data), C_END);
     }
 
     if (s->clause45 && s->opcode == 2 && s->clause45_addr != -1) {
@@ -271,14 +284,14 @@ static void mdio_putdata(struct srd_decoder_inst* di, struct mdio_priv* s)
     }
 }
 
-static void mdio_state_PRE(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
+static void mdio_state_PRE(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
     if (s->illegal_bus) {
-        if (mdio == 0) {
+        if (mdio_val == 0) {
             return;
         } else {
             s->illegal_bus = 0;
-            C_ANN_PUT(di, s->ss_illegal, samplenum, s->out_ann, ANN_FRAME_ERROR,
+            c_put(di, s->ss_illegal, samplenum, s->out_ann, ANN_FRAME_ERROR,
                 "ILLEGAL BUS STATE", "ILL");
             s->ss_frame = samplenum;
         }
@@ -288,7 +301,7 @@ static void mdio_state_PRE(struct srd_decoder_inst* di, struct mdio_priv* s, int
         s->ss_frame = samplenum;
     }
 
-    if (mdio == 1) {
+    if (mdio_val == 1) {
         if (s->preamble_len == 0)
             s->ss_preamble_first = samplenum;
         s->preamble_len += 1;
@@ -299,22 +312,22 @@ static void mdio_state_PRE(struct srd_decoder_inst* di, struct mdio_priv* s, int
             uint64_t ss_32 = mdio_get_sample_hist(s, 32);
             char idle_str[32];
             snprintf(idle_str, sizeof(idle_str), "IDLE #%d", s->preamble_len - 32);
-            C_ANN_PUT(di, s->ss_frame, ss_32, s->out_ann, ANN_FRAME_IDLE,
+            c_put(di, s->ss_frame, ss_32, s->out_ann, ANN_FRAME_IDLE,
                 idle_str, "IDLE", "I");
             s->ss_frame = ss_32;
             s->preamble_len = 32;
         }
-        if (mdio == 0) {
+        if (mdio_val == 0) {
             if (s->preamble_len < 32) {
                 s->ss_frame = s->ss_preamble_first;
-                C_ANN_PUT(di, s->ss_frame, samplenum, s->out_ann, ANN_FRAME_ERROR,
+                c_put(di, s->ss_frame, samplenum, s->out_ann, ANN_FRAME_ERROR,
                     "SHORT PREAMBLE", "SHRT PRE");
             } else if (s->preamble_len > 32) {
                 uint64_t ss_32 = mdio_get_sample_hist(s, 32);
                 s->ss_frame = ss_32;
                 char idle_str[32];
                 snprintf(idle_str, sizeof(idle_str), "IDLE #%d", s->preamble_len - 32);
-                C_ANN_PUT(di, s->ss_preamble_first, ss_32, s->out_ann, ANN_FRAME_IDLE,
+                c_put(di, s->ss_preamble_first, ss_32, s->out_ann, ANN_FRAME_IDLE,
                     idle_str, "IDLE", "I");
                 s->preamble_len = 32;
             } else {
@@ -323,48 +336,48 @@ static void mdio_state_PRE(struct srd_decoder_inst* di, struct mdio_priv* s, int
             }
             char pre_str[32];
             snprintf(pre_str, sizeof(pre_str), "PRE #%d", s->preamble_len);
-            C_ANN_PUT(di, s->ss_frame, samplenum, s->out_ann, ANN_FRAME,
+            c_put(di, s->ss_frame, samplenum, s->out_ann, ANN_FRAME,
                 pre_str, "PRE", "P");
             s->ss_frame_field = samplenum;
             s->state = STATE_ST;
         }
-    } else if (mdio == 0) {
+    } else if (mdio_val == 0) {
         s->ss_illegal = s->ss_frame;
         s->illegal_bus = 1;
     }
 }
 
-static void mdio_state_ST(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
+static void mdio_state_ST(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
     (void)di;
     (void)samplenum;
-    if (mdio == 0) {
+    if (mdio_val == 0) {
         s->clause45 = 1;
     }
     s->state = STATE_OP;
 }
 
-static void mdio_state_OP(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
+static void mdio_state_OP(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
     if (s->opcode == -1) {
         if (s->clause45) {
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "ST (Clause 45)", "ST 45", "ST", "S");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "ST (Clause 45)", "ST 45", "ST", "S");
         } else {
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "ST (Clause 22)", "ST 22", "ST", "S");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "ST (Clause 22)", "ST 22", "ST", "S");
         }
         s->ss_frame_field = samplenum;
 
-        if (mdio) {
+        if (mdio_val) {
             s->opcode = 2;
         } else {
             s->opcode = 0;
         }
     } else {
         if (s->clause45) {
-            s->opcode += mdio;
+            s->opcode += mdio_val;
             s->state = STATE_PRTAD;
         } else {
-            if (mdio == s->opcode) {
+            if (mdio_val == s->opcode) {
                 strncpy(s->op_invalid, "invalid for Clause 22", sizeof(s->op_invalid) - 1);
                 s->op_invalid[sizeof(s->op_invalid) - 1] = '\0';
             }
@@ -373,95 +386,84 @@ static void mdio_state_OP(struct srd_decoder_inst* di, struct mdio_priv* s, int 
     }
 }
 
-static void mdio_state_PRTAD(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
+static void mdio_state_PRTAD(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
     if (s->portad == -1) {
         s->portad = 0;
-        const char* op_long = "";
-        const char* op_short = "";
+        const char *op_long = "";
+        const char *op_short = "";
         if (s->clause45) {
             if (s->opcode == 0) {
-                op_long = "OP: ADDR";
-                op_short = "OP: A";
+                op_long = "OP: ADDR"; op_short = "OP: A";
             } else if (s->opcode == 1) {
-                op_long = "OP: WRITE";
-                op_short = "OP: W";
-                s->is_read = 0;
+                op_long = "OP: WRITE"; op_short = "OP: W"; s->is_read = 0;
             } else if (s->opcode == 2) {
-                op_long = "OP: READINC";
-                op_short = "OP: RI";
-                s->is_read = 1;
+                op_long = "OP: READINC"; op_short = "OP: RI"; s->is_read = 1;
             } else if (s->opcode == 3) {
-                op_long = "OP: READ";
-                op_short = "OP: R";
-                s->is_read = 1;
+                op_long = "OP: READ"; op_short = "OP: R"; s->is_read = 1;
             }
         } else {
             if (s->opcode) {
-                op_long = "OP: READ";
-                op_short = "OP: R";
-                s->is_read = 1;
+                op_long = "OP: READ"; op_short = "OP: R"; s->is_read = 1;
             } else {
-                op_long = "OP: WRITE";
-                op_short = "OP: W";
-                s->is_read = 0;
+                op_long = "OP: WRITE"; op_short = "OP: W"; s->is_read = 0;
             }
         }
-        C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, op_long, op_short, "OP", "O");
+        c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, op_long, op_short, "OP", "O");
         if (s->op_invalid[0]) {
             char op_err[64];
             snprintf(op_err, sizeof(op_err), "OP %s", s->op_invalid);
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, op_err, "OP", "O");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, op_err, "OP", "O");
         }
         s->ss_frame_field = samplenum;
     }
 
     s->portad_bits--;
-    s->portad |= mdio << s->portad_bits;
+    s->portad |= mdio_val << s->portad_bits;
     if (!s->portad_bits) {
         s->state = STATE_DEVAD;
     }
 }
 
-static void mdio_state_DEVAD(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
+static void mdio_state_DEVAD(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
     if (s->devad == -1) {
         s->devad = 0;
         char prtad_str[32];
         if (s->clause45) {
             snprintf(prtad_str, sizeof(prtad_str), "PRTAD: %02d", s->portad);
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, prtad_str, "PRT", "P");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, prtad_str, "PRT", "P");
         } else {
             snprintf(prtad_str, sizeof(prtad_str), "PHYAD: %02d", s->portad);
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, prtad_str, "PHY", "P");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, prtad_str, "PHY", "P");
         }
         s->ss_frame_field = samplenum;
     }
     s->devad_bits--;
-    s->devad |= mdio << s->devad_bits;
+    s->devad |= mdio_val << s->devad_bits;
     if (!s->devad_bits) {
         s->state = STATE_TA;
     }
 }
 
-static void mdio_state_TA(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
+static void mdio_state_TA(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
     if (s->ta_first_bit) {
         s->ta_first_bit = 0;
         char regad_str[32];
         if (s->clause45) {
             snprintf(regad_str, sizeof(regad_str), "DEVAD: %02d", s->devad);
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, regad_str, "DEV", "D");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, regad_str, "DEV", "D");
         } else {
             snprintf(regad_str, sizeof(regad_str), "REGAD: %02d", s->devad);
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, regad_str, "REG", "R");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, regad_str, "REG", "R");
         }
         s->ss_frame_field = samplenum;
-        if (mdio != 1 && ((s->clause45 && s->opcode < 2) || (!s->clause45 && s->opcode == 0))) {
+        if (mdio_val != 1 && ((s->clause45 && s->opcode < 2) || (!s->clause45 && s->opcode == 0))) {
             s->ta_invalid = 1;
         }
     } else {
-        if (mdio != 0) {
+        if (mdio_val != 0) {
             if (s->ta_invalid)
                 s->ta_invalid = 3;
             else
@@ -471,13 +473,13 @@ static void mdio_state_TA(struct srd_decoder_inst* di, struct mdio_priv* s, int 
     }
 }
 
-static void mdio_state_DATA(struct srd_decoder_inst* di, struct mdio_priv* s, int mdio, uint64_t samplenum)
+static void mdio_state_DATA(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
     if (s->data == -1) {
         s->data = 0;
-        C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "TA", "T");
+        c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "TA", "T");
         if (s->ta_invalid) {
-            const char* ta_str = "";
+            const char *ta_str = "";
             if (s->ta_invalid == 3) {
                 ta_str = "TA invalid (bit1 and bit2)";
             } else if (s->ta_invalid == 2) {
@@ -485,12 +487,12 @@ static void mdio_state_DATA(struct srd_decoder_inst* di, struct mdio_priv* s, in
             } else {
                 ta_str = "TA invalid (bit1)";
             }
-            C_ANN_PUT(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, ta_str, "TA", "T");
+            c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME_ERROR, ta_str, "TA", "T");
         }
         s->ss_frame_field = samplenum;
     }
     s->data_bits--;
-    s->data |= mdio << s->data_bits;
+    s->data |= mdio_val << s->data_bits;
     if (!s->data_bits) {
         s->mdiobits_head_es = s->mdiobits_head_ss + mdio_quartile_cycle_length(s);
         s->bitcount++;
@@ -500,8 +502,8 @@ static void mdio_state_DATA(struct srd_decoder_inst* di, struct mdio_priv* s, in
     }
 }
 
-static void mdio_handle_bit(struct srd_decoder_inst* di, struct mdio_priv* s,
-    int mdio, uint64_t samplenum)
+static void mdio_handle_bit(struct srd_decoder_inst *di, mdio_s *s,
+    int mdio_val, uint64_t samplenum)
 {
     s->sample_hist[s->sample_hist_idx] = samplenum;
     s->sample_hist_idx = (s->sample_hist_idx + 1) % 33;
@@ -516,7 +518,7 @@ static void mdio_handle_bit(struct srd_decoder_inst* di, struct mdio_priv* s,
         mdio_putbit(di, s, s->mdiobits_head_mdio, s->mdiobits_head_ss, samplenum);
     }
 
-    s->mdiobits_head_mdio = mdio;
+    s->mdiobits_head_mdio = mdio_val;
     s->mdiobits_head_ss = samplenum;
     s->bitcount++;
 
@@ -524,50 +526,47 @@ static void mdio_handle_bit(struct srd_decoder_inst* di, struct mdio_priv* s,
 
     switch (s->state) {
     case STATE_PRE:
-        mdio_state_PRE(di, s, mdio, samplenum);
+        mdio_state_PRE(di, s, mdio_val, samplenum);
         break;
     case STATE_ST:
-        mdio_state_ST(di, s, mdio, samplenum);
+        mdio_state_ST(di, s, mdio_val, samplenum);
         break;
     case STATE_OP:
-        mdio_state_OP(di, s, mdio, samplenum);
+        mdio_state_OP(di, s, mdio_val, samplenum);
         break;
     case STATE_PRTAD:
-        mdio_state_PRTAD(di, s, mdio, samplenum);
+        mdio_state_PRTAD(di, s, mdio_val, samplenum);
         break;
     case STATE_DEVAD:
-        mdio_state_DEVAD(di, s, mdio, samplenum);
+        mdio_state_DEVAD(di, s, mdio_val, samplenum);
         break;
     case STATE_TA:
-        mdio_state_TA(di, s, mdio, samplenum);
+        mdio_state_TA(di, s, mdio_val, samplenum);
         break;
     case STATE_DATA:
-        mdio_state_DATA(di, s, mdio, samplenum);
+        mdio_state_DATA(di, s, mdio_val, samplenum);
         break;
     }
 }
 
-static void mdio_decode(struct srd_decoder_inst* di)
+static void mdio_decode(struct srd_decoder_inst *di)
 {
-    struct mdio_priv* s = (struct mdio_priv*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
+    mdio_s *s = (mdio_s *)c_decoder_get_private(di);
     int use_falling = 0;
 
     while (1) {
-        srd_cond_builder* cb = c_cond_new();
+        int ret;
         if (use_falling) {
-            c_cond_fall(cb, CH_MDC);
+            ret = c_wait(di, CW_F(CH_MDC), CW_END);
         } else {
-            c_cond_rise(cb, CH_MDC);
+            ret = c_wait(di, CW_R(CH_MDC), CW_END);
         }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
 
-        int mdio = c_decoder_get_pin(di, CH_MDIO, samplenum);
-        mdio_handle_bit(di, s, mdio, samplenum);
+        uint64_t samplenum = di_samplenum(di);
+        int mdio_val = c_pin(di, CH_MDIO);
+        mdio_handle_bit(di, s, mdio_val, samplenum);
 
         if (s->state == STATE_DATA && s->is_read && s->read_edge_falling) {
             use_falling = 1;
@@ -577,16 +576,7 @@ static void mdio_decode(struct srd_decoder_inst* di)
     }
 }
 
-static void mdio_destroy(struct srd_decoder_inst* di)
-{
-    void* priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
-        c_decoder_set_private(di, NULL);
-    }
-}
-
-struct srd_c_decoder mdio_c_decoder = {
+static struct srd_c_decoder mdio_c_def = {
     .id = "mdio_c",
     .name = "MDIO(C)",
     .longname = "Management Data Input/Output (C)",
@@ -610,6 +600,7 @@ struct srd_c_decoder mdio_c_decoder = {
     .num_binary = 0,
     .tags = mdio_tags,
     .num_tags = 1,
+    .state_size = sizeof(mdio_s),
     .reset = mdio_reset,
     .start = mdio_start,
     .decode = mdio_decode,
@@ -630,7 +621,7 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
     edge_vals = g_slist_append(edge_vals, g_variant_new_string("falling"));
     mdio_options[1].values = edge_vals;
 
-    return &mdio_c_decoder;
+    return &mdio_c_def;
 }
 
 SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)

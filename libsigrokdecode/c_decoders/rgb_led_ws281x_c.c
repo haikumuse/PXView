@@ -1,4 +1,4 @@
-/*
+﻿/*
  * rgb_led_ws281x_c.c — RGB LED WS281x color decoder (C implementation)
  *
  * Decodes colors from bus pulses for single wire RGB leds like
@@ -195,7 +195,7 @@ static void ws281x_output_color(struct srd_decoder_inst *di, ws281x_state *s, ui
         }
     }
 
-    C_ANN_PUT(di, s->ss_packet, es, s->out_ann, ANN_RGB, color_str);
+    c_put(di, s->ss_packet, es, s->out_ann, ANN_RGB, color_str);
 }
 
 static void ws281x_reset(struct srd_decoder_inst *di)
@@ -213,9 +213,9 @@ static void ws281x_reset(struct srd_decoder_inst *di)
 static void ws281x_start(struct srd_decoder_inst *di)
 {
     ws281x_state *s = (ws281x_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "rgb_led_ws281x");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "rgb_led_ws281x");
 
-    const char *colors_str = c_decoder_get_option_string(di, "colors", "GRB");
+    const char *colors_str = c_opt_str(di, "colors", "GRB");
     if (strcmp(colors_str, "GRB") == 0)       s->color_mode = MODE_GRB;
     else if (strcmp(colors_str, "RGB") == 0)   s->color_mode = MODE_RGB;
     else if (strcmp(colors_str, "BRG") == 0)   s->color_mode = MODE_BRG;
@@ -235,7 +235,7 @@ static void ws281x_start(struct srd_decoder_inst *di)
     /* 3-char mode names -> 24-bit, 4-char -> 32-bit */
     s->colorsize = (strlen(colors_str) == 4) ? 32 : 24;
 
-    const char *pol_str = c_decoder_get_option_string(di, "polarity", "normal");
+    const char *pol_str = c_opt_str(di, "polarity", "normal");
     s->polarity = (strcmp(pol_str, "inverted") == 0) ? 1 : 0;
 }
 
@@ -264,91 +264,77 @@ static void ws281x_check_bit(ws281x_state *s, uint64_t samplenum)
 static void ws281x_decode(struct srd_decoder_inst *di)
 {
     ws281x_state *s = (ws281x_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         ws281x_calc_thresholds(s);
     }
     if (s->samplerate == 0)
         return;
 
     while (1) {
-        srd_cond_builder *cb;
         int ret;
 
         switch (s->state) {
         case STATE_FIND_RESET:
             /* Wait for low (normal) or high (inverted) */
-            cb = c_cond_new();
             if (s->polarity == 0)
-                c_cond_low(cb, 0);
+                ret = c_wait(di, CW_L(0), CW_END);
             else
-                c_cond_high(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->last_samplenum = samplenum;
+                ret = c_wait(di, CW_H(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->last_samplenum = di_samplenum(di);
 
-            s->ss = samplenum;
+            s->ss = di_samplenum(di);
 
             /* Wait for next edge */
-            cb = c_cond_new();
-            c_cond_edge(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->last_samplenum = samplenum;
+            ret = c_wait(di, CW_E(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->last_samplenum = di_samplenum(di);
 
-            s->es = samplenum;
+            s->es = di_samplenum(di);
 
             if ((s->es - s->ss) > s->reset_threshold) {
                 s->state = STATE_RESET;
             } else if ((s->es - s->ss) > s->bit_threshold) {
                 /* Not a RESET, might be a bit */
                 s->bit_count = 0;
-                s->ss = samplenum;
-                s->ss_packet = samplenum;
-                cb = c_cond_new();
-                c_cond_edge(cb, 0);
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
-                if (ret != SRD_OK) return;
-                s->last_samplenum = samplenum;
+                s->ss = di_samplenum(di);
+                s->ss_packet = di_samplenum(di);
+                ret = c_wait(di, CW_E(0), CW_END);
+                if (ret != SRD_OK)
+                    return;
+                s->last_samplenum = di_samplenum(di);
                 s->state = STATE_BIT_FALLING;
             }
             break;
 
         case STATE_RESET:
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_RESET, "RESET", "RST", "R");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_RESET, "RESET", "RST", "R");
             s->bit_count = 0;
-            s->ss = samplenum;
-            s->ss_packet = samplenum;
-            cb = c_cond_new();
-            c_cond_edge(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->last_samplenum = samplenum;
+            s->ss = di_samplenum(di);
+            s->ss_packet = di_samplenum(di);
+            ret = c_wait(di, CW_E(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->last_samplenum = di_samplenum(di);
             s->state = STATE_BIT_FALLING;
             break;
 
         case STATE_BIT_FALLING:
-            s->es = samplenum;
-            cb = c_cond_new();
-            c_cond_edge(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->last_samplenum = samplenum;
+            s->es = di_samplenum(di);
+            ret = c_wait(di, CW_E(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->last_samplenum = di_samplenum(di);
 
-            if ((samplenum - s->es) > s->reset_threshold) {
+            if ((di_samplenum(di) - s->es) > s->reset_threshold) {
                 /* Check bit value before RESET */
-                ws281x_check_bit(s, samplenum);
+                ws281x_check_bit(s, di_samplenum(di));
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
 
                 if (s->bit_count < 32) {
                     s->bits[s->bit_count] = s->bit_val;
@@ -357,7 +343,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
                 ws281x_output_color(di, s, s->es);
 
                 s->ss = s->es;
-                s->es = samplenum;
+                s->es = di_samplenum(di);
                 s->state = STATE_RESET;
             } else {
                 s->state = STATE_BIT_RISING;
@@ -365,25 +351,23 @@ static void ws281x_decode(struct srd_decoder_inst *di)
             break;
 
         case STATE_BIT_RISING:
-            ws281x_check_bit(s, samplenum);
+            ws281x_check_bit(s, di_samplenum(di));
             {
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
-                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_BIT, bit_str);
+                c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_BIT, bit_str);
             }
             if (s->bit_count < 32) {
                 s->bits[s->bit_count] = s->bit_val;
                 s->bit_count++;
             }
-            ws281x_output_color(di, s, samplenum);
+            ws281x_output_color(di, s, di_samplenum(di));
 
-            s->ss = samplenum;
-            cb = c_cond_new();
-            c_cond_edge(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->last_samplenum = samplenum;
+            s->ss = di_samplenum(di);
+            ret = c_wait(di, CW_E(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->last_samplenum = di_samplenum(di);
             s->state = STATE_BIT_FALLING;
             break;
         }
@@ -400,13 +384,13 @@ static void ws281x_end(struct srd_decoder_inst *di)
      * matching Python's end() method behavior.
      * Use the actual last sample of the data stream (like Python's
      * self.last_samplenum) so the duty cycle check works correctly. */
-    uint64_t last_sample = c_decoder_get_last_samplenum(di);
+    uint64_t last_sample = c_last_samplenum(di);
     if (last_sample == 0)
         last_sample = s->last_samplenum;
     ws281x_check_bit(s, last_sample);
     char bit_str[4];
     snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
 
     if (s->bit_count < 32) {
         s->bits[s->bit_count] = s->bit_val;
@@ -453,6 +437,7 @@ struct srd_c_decoder rgb_led_ws281x_c_decoder = {
     .decode = ws281x_decode,
     .end = ws281x_end,
     .destroy = ws281x_destroy,
+    .state_size = 0,
     .metadata = ws281x_metadata,
 };
 

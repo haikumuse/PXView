@@ -1,0 +1,5 @@
+- [ ] `c_cond_either_edge(b, rxtx)` replaced with `c_cond_edge(b, rxtx)` on line 1102
+- [ ] FRAME protocol output field order matches Python: `C_I32(rxtx)` before `C_U8(datavalue)`
+- [ ] IDLE protocol output includes `C_U8(0)` data value matching Python `['IDLE', rxtx, 0]`
+- [ ] BREAK protocol output includes `C_U8(0)` data value matching Python `['BREAK', rxtx, 0]`
+- [ ] uart_c.c compiles without errors in incremental build

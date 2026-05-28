@@ -242,13 +242,13 @@ static void putf(struct srd_decoder_inst *di, struct ac97_priv *s,
 }
 
 static void putb(struct srd_decoder_inst *di, struct ac97_priv *s,
-    int frombit, int bitcount, int bincls, const unsigned char *data, int data_len)
+    int frombit, int bitcount, int bincls, const unsigned char *data, int n_fields)
 {
     if (frombit + bitcount > s->frame_ss_count)
         return;
     uint64_t ss = s->frame_ss_list[frombit];
     uint64_t es = s->frame_ss_list[frombit + bitcount];
-    c_decoder_put_binary(di, ss, es, s->out_binary, bincls, data_len, data);
+    c_decoder_put_binary(di, ss, es, s->out_binary, bincls, n_fields, data);
 }
 
 static void handle_slot_dummy(struct srd_decoder_inst *di, struct ac97_priv *s,
@@ -552,51 +552,41 @@ static void ac97_decode(struct srd_decoder_inst *di)
     if (!s->have_sdo && !s->have_sdi)
         return;
 
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
         s->samplerate = c_decoder_get_samplerate(di);
     }
 
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_edge(cb, CH_CLK);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
+    int ret = c_wait(di, CW_E(CH_CLK), CW_END);
     if (ret != SRD_OK)
         return;
 
-    int clk = c_decoder_get_pin(di, CH_CLK, samplenum);
-    uint64_t bit_ss = samplenum;
+    int clk = c_pin(di, CH_CLK);
+    uint64_t bit_ss = di_samplenum(di);
 
     if (clk == 0) {
-        s->prev_sync[2] = c_decoder_get_pin(di, CH_SYNC, samplenum);
-        cb = c_cond_new();
-        c_cond_rise(cb, CH_CLK);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        s->prev_sync[2] = c_pin(di, CH_SYNC);
+        ret = c_wait(di, CW_R(CH_CLK), CW_END);
         if (ret != SRD_OK)
             return;
-        bit_ss = samplenum;
+        bit_ss = di_samplenum(di);
     }
 
     while (1) {
-        cb = c_cond_new();
-        c_cond_fall(cb, CH_CLK);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_F(CH_CLK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int sync = c_decoder_get_pin(di, CH_SYNC, samplenum);
+        int sync = c_pin(di, CH_SYNC);
         s->prev_sync[0] = s->prev_sync[1];
         s->prev_sync[1] = s->prev_sync[2];
         s->prev_sync[2] = sync;
 
-        cb = c_cond_new();
-        c_cond_rise(cb, CH_CLK);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        /* Read SDATA_OUT/SDATA_IN at the falling edge (data is valid here),
+         * matching Python which reads from the falling-edge wait() return. */
+        int bit_out = s->have_sdo ? c_pin(di, CH_SDATA_OUT) : -1;
+        int bit_in = s->have_sdi ? c_pin(di, CH_SDATA_IN) : -1;
+
+        ret = c_wait(di, CW_R(CH_CLK), CW_END);
         if (ret != SRD_OK)
             return;
 
@@ -606,10 +596,8 @@ static void ac97_decode(struct srd_decoder_inst *di)
             start_frame(s, bit_ss);
         }
 
-        int bit_out = s->have_sdo ? c_decoder_get_pin(di, CH_SDATA_OUT, samplenum) : -1;
-        int bit_in = s->have_sdi ? c_decoder_get_pin(di, CH_SDATA_IN, samplenum) : -1;
-        handle_bits(di, s, bit_ss, samplenum, bit_out, bit_in);
-        bit_ss = samplenum;
+        handle_bits(di, s, bit_ss, di_samplenum(di), bit_out, bit_in);
+        bit_ss = di_samplenum(di);
     }
 }
 

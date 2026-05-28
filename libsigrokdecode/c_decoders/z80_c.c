@@ -756,8 +756,10 @@ static const int ann_data_cycle_map[] = {
 
 static int reduce_bus(const uint8_t *pins, int start, int end)
 {
+    /* Match Python's reduce(lambda a, b: (a<<1)|b, reversed(bus)):
+     * process from high index (MSB) to low index (LSB) */
     int val = 0;
-    for (int i = start; i <= end; i++) {
+    for (int i = end; i >= start; i--) {
         if (pins[i] == 0xFF) return -1;  /* unassigned */
         val = (val << 1) | pins[i];
     }
@@ -782,7 +784,7 @@ static void format_hex(char *buf, size_t sz, int value, int width)
 static void put_text(struct srd_decoder_inst *di, z80_priv *s,
                      uint64_t ss, int ann_idx, const char *text)
 {
-    C_ANN_PUT(di, ss, s->cur_samplenum, s->out_ann, ann_idx, text);
+    c_put(di, ss, s->cur_samplenum, s->out_ann, ann_idx, text);
 }
 
 static void put_disasm(struct srd_decoder_inst *di, z80_priv *s, uint64_t samplenum)
@@ -857,7 +859,7 @@ static void put_disasm(struct srd_decoder_inst *di, z80_priv *s, uint64_t sample
 static int z80_detect_cycle(const uint8_t *pins, int has_mreq, int has_iorq)
 {
     int mreq = has_mreq ? pins[11] : 0;  /* default asserted (active low) when unassigned */
-    int iorq = has_iorq ? pins[12] : 0;  /* default asserted (active low) when unassigned */
+    int iorq = has_iorq ? pins[12] : 1;  /* default NOT asserted when unassigned */
     int m1 = pins[8];
     int rd = pins[9];
     int wr = pins[10];
@@ -897,43 +899,55 @@ static void z80_reset(struct srd_decoder_inst *di)
 static void z80_start(struct srd_decoder_inst *di)
 {
     z80_priv *s = (z80_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "z80");
-    s->has_mreq = c_decoder_has_channel(di, 11);
-    s->has_iorq = c_decoder_has_channel(di, 12);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "z80");
+    s->has_mreq = c_has_ch(di, 11);
+    s->has_iorq = c_has_ch(di, 12);
 }
 
 static void z80_decode(struct srd_decoder_inst *di)
 {
     z80_priv *s = (z80_priv *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
 
-    while (1) {
-        /* Wait for any control signal change */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 8);   /* M1 */
-        c_cond_or(cb);
-        c_cond_edge(cb, 9);   /* RD */
-        c_cond_or(cb);
-        c_cond_edge(cb, 10);  /* WR */
-        if (s->has_mreq) {
-            c_cond_or(cb);
-            c_cond_edge(cb, 11);  /* MREQ */
-        }
-        if (s->has_iorq) {
-            c_cond_or(cb);
-            c_cond_edge(cb, 12);  /* IORQ */
-        }
-
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+    /* Process initial sample to detect starting cycle state */
+    {
+        int ret = c_wait(di, CW_END);
         if (ret != SRD_OK)
             return;
-        s->cur_samplenum = samplenum;
+        s->cur_samplenum = di_samplenum(di);
+
+        uint8_t pins[29];
+        for (int i = 0; i < 29; i++)
+            pins[i] = c_pin(di, i);
+
+        int cycle = z80_detect_cycle(pins, s->has_mreq, s->has_iorq);
+        if (cycle != CYCLE_NONE) {
+            s->bus_data = reduce_bus(pins, 0, 7);
+            s->addr_start = di_samplenum(di);
+            s->pend_addr = reduce_bus(pins, 13, 28);
+            s->data_start = di_samplenum(di);
+        }
+        s->prev_cycle = cycle;
+    }
+
+    while (1) {
+        /* Wait for any control signal change — single combined wait */
+        int ret;
+        if (s->has_mreq && s->has_iorq)
+            ret = c_wait(di, CW_E(8), CW_OR, CW_E(9), CW_OR, CW_E(10), CW_OR, CW_E(11), CW_OR, CW_E(12), CW_END);
+        else if (s->has_mreq)
+            ret = c_wait(di, CW_E(8), CW_OR, CW_E(9), CW_OR, CW_E(10), CW_OR, CW_E(11), CW_END);
+        else if (s->has_iorq)
+            ret = c_wait(di, CW_E(8), CW_OR, CW_E(9), CW_OR, CW_E(10), CW_OR, CW_E(12), CW_END);
+        else
+            ret = c_wait(di, CW_E(8), CW_OR, CW_E(9), CW_OR, CW_E(10), CW_END);
+        if (ret != SRD_OK)
+            return;
+        s->cur_samplenum = di_samplenum(di);
 
         /* Read all pins */
         uint8_t pins[29];
         for (int i = 0; i < 29; i++)
-            pins[i] = c_decoder_get_pin(di, i, samplenum);
+            pins[i] = c_pin(di, i);
 
         int cycle = z80_detect_cycle(pins, s->has_mreq, s->has_iorq);
 
@@ -948,7 +962,7 @@ static void z80_decode(struct srd_decoder_inst *di)
                     snprintf(addr_str, sizeof(addr_str), "%04X", s->pend_addr);
                     put_text(di, s, s->addr_start, ANN_ADDR, addr_str);
                 }
-                s->addr_start = samplenum;
+                s->addr_start = di_samplenum(di);
                 s->pend_addr = reduce_bus(pins, 13, 28);
             } else if (cycle == CYCLE_NONE) {
                 /* Cycle end */
@@ -969,7 +983,7 @@ static void z80_decode(struct srd_decoder_inst *di)
                     s->arg_reg[0] = '\0';
                     s->mnemonic[0] = '\0';
                     s->instr_pend = 0; s->read_pend = 0; s->write_pend = 0;
-                    s->dasm_start = samplenum;
+                    s->dasm_start = di_samplenum(di);
                     s->op_prefix = 0;
                     s->instr_len = 0;
                     if (s->bus_data == 0xCB || s->bus_data == 0xED ||
@@ -1174,7 +1188,7 @@ static void z80_decode(struct srd_decoder_inst *di)
                 }
 
                 if (s->ann_dasm != -1)
-                    put_disasm(di, s, samplenum);
+                    put_disasm(di, s, di_samplenum(di));
                 if (s->op_state == STATE_RESTART)
                     s->op_state = STATE_IDLE;
 
@@ -1183,12 +1197,12 @@ static void z80_decode(struct srd_decoder_inst *di)
                     snprintf(data_str, sizeof(data_str), "%02X", s->pend_data);
                     put_text(di, s, s->data_start, s->ann_data, data_str);
                 }
-                s->data_start = samplenum;
+                s->data_start = di_samplenum(di);
                 s->pend_data = s->bus_data;
                 s->ann_data = ann_data_cycle_map[s->prev_cycle];
             } else {
                 /* Cycle transition */
-                put_text(di, s, samplenum - 1, ANN_WARN,
+                put_text(di, s, di_samplenum(di) - 1, ANN_WARN,
                          "Illegal transition between control states");
                 s->pend_addr = -1;
                 s->ann_data = -1;
@@ -1236,6 +1250,7 @@ struct srd_c_decoder z80_c_decoder = {
     .start = z80_start,
     .decode = z80_decode,
     .destroy = z80_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

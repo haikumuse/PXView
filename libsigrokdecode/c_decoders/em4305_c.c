@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2016 Benjamin Larsson <benjamin@southpole.se>
@@ -159,10 +159,10 @@ static void em4305_print_row_parity(struct srd_decoder_inst *di, em4305_state *s
     parity = parity & 0x1;
     if (idx + length < 70) {
         if (parity == s->bits_pos_val[idx + length]) {
-            C_ANN_PUT(di, s->bits_pos_ss[idx + length], s->bits_pos_es[idx + length],
+            c_put(di, s->bits_pos_ss[idx + length], s->bits_pos_es[idx + length],
                       s->out_ann, ANN_OPCODE, "Row parity OK", "Parity OK", "OK");
         } else {
-            C_ANN_PUT(di, s->bits_pos_ss[idx + length], s->bits_pos_es[idx + length],
+            c_put(di, s->bits_pos_ss[idx + length], s->bits_pos_es[idx + length],
                       s->out_ann, ANN_OPCODE, "Row parity failed", "Parity failed", "Fail");
         }
     }
@@ -180,10 +180,10 @@ static void em4305_print_col_parity(struct srd_decoder_inst *di, em4305_state *s
     int cp_idx = idx + 9 + 9 + 9 + 9;
     if (cp_idx + 7 < 70) {
         if (col_par == col_par_calc) {
-            C_ANN_PUT(di, s->bits_pos_ss[cp_idx], s->bits_pos_es[cp_idx + 7],
+            c_put(di, s->bits_pos_ss[cp_idx], s->bits_pos_es[cp_idx + 7],
                       s->out_ann, ANN_OPCODE, "Column parity OK", "Parity OK", "OK");
         } else {
-            C_ANN_PUT(di, s->bits_pos_ss[cp_idx], s->bits_pos_es[cp_idx + 7],
+            c_put(di, s->bits_pos_ss[cp_idx], s->bits_pos_es[cp_idx + 7],
                       s->out_ann, ANN_OPCODE, "Column parity failed", "Parity failed", "Fail");
         }
     }
@@ -196,7 +196,7 @@ static void em4305_print_8bit_data(struct srd_decoder_inst *di, em4305_state *s,
     snprintf(buf, sizeof(buf), "Data: %X", data);
     snprintf(short_buf, sizeof(short_buf), "%X", data);
     if (idx + 7 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 7], s->out_ann, ANN_ADDRESS, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 7], s->out_ann, ANN_ADDRESS, buf, short_buf);
 }
 
 static void em4305_put4bits(struct srd_decoder_inst *di, em4305_state *s, int idx)
@@ -206,7 +206,7 @@ static void em4305_put4bits(struct srd_decoder_inst *di, em4305_state *s, int id
     char buf[16];
     snprintf(buf, sizeof(buf), "%X", bits);
     if (idx + 3 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 3], s->out_ann, ANN_BITRATE, buf);
+        c_put(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 3], s->out_ann, ANN_BITRATE, buf);
 }
 
 static void em4305_decode_config(struct srd_decoder_inst *di, em4305_state *s, int idx)
@@ -217,7 +217,7 @@ static void em4305_decode_config(struct srd_decoder_inst *di, em4305_state *s, i
         char buf[128], short_buf[64];
         snprintf(buf, sizeof(buf), "Data rate: %s", br_string[bitrate]);
         snprintf(short_buf, sizeof(short_buf), "%s", br_string[bitrate]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 5], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 5], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Encoder */
@@ -226,12 +226,12 @@ static void em4305_decode_config(struct srd_decoder_inst *di, em4305_state *s, i
         char buf[128], short_buf[64];
         snprintf(buf, sizeof(buf), "Encoder: %s", encoder_str[encoding]);
         snprintf(short_buf, sizeof(short_buf), "%s", encoder_str[encoding]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 6], s->bits_pos_es[idx + 10], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx + 6], s->bits_pos_es[idx + 10], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Zero bits */
     if (idx + 12 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 11], s->bits_pos_es[idx + 12], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
+        c_put(di, s->bits_pos_ss[idx + 11], s->bits_pos_es[idx + 12], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
 
     /* Delayed on */
     int delay_on = (s->bits_pos_val[idx + 13] << 0) | (s->bits_pos_val[idx + 14] << 1);
@@ -239,7 +239,7 @@ static void em4305_decode_config(struct srd_decoder_inst *di, em4305_state *s, i
         char buf[128], short_buf[64];
         snprintf(buf, sizeof(buf), "Delayed on: %s", delayed_on_str[delay_on]);
         snprintf(short_buf, sizeof(short_buf), "%s", delayed_on_str[delay_on]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 13], s->bits_pos_es[idx + 14], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx + 13], s->bits_pos_es[idx + 14], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Last default read word */
@@ -250,7 +250,7 @@ static void em4305_decode_config(struct srd_decoder_inst *di, em4305_state *s, i
         snprintf(buf, sizeof(buf), "Last default read word: %d", lwr);
         snprintf(short_buf, sizeof(short_buf), "LWR: %d", lwr);
         snprintf(tiny_buf, sizeof(tiny_buf), "%d", lwr);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 15], s->bits_pos_es[idx + 19], s->out_ann, ANN_BITRATE, buf, short_buf, tiny_buf);
+        c_put(di, s->bits_pos_ss[idx + 15], s->bits_pos_es[idx + 19], s->out_ann, ANN_BITRATE, buf, short_buf, tiny_buf);
     }
 
     /* Read login */
@@ -258,31 +258,31 @@ static void em4305_decode_config(struct srd_decoder_inst *di, em4305_state *s, i
         char buf[64], short_buf[16];
         snprintf(buf, sizeof(buf), "Read login: %d", s->bits_pos_val[idx + 20]);
         snprintf(short_buf, sizeof(short_buf), "%d", s->bits_pos_val[idx + 20]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 20], s->bits_pos_es[idx + 20], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx + 20], s->bits_pos_es[idx + 20], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Zero bits */
     if (idx + 21 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 21], s->bits_pos_es[idx + 21], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
+        c_put(di, s->bits_pos_ss[idx + 21], s->bits_pos_es[idx + 21], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
 
     /* Write login */
     if (idx + 22 < 70) {
         char buf[64], short_buf[16];
         snprintf(buf, sizeof(buf), "Write login: %d", s->bits_pos_val[idx + 22]);
         snprintf(short_buf, sizeof(short_buf), "%d", s->bits_pos_val[idx + 22]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 22], s->bits_pos_es[idx + 22], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx + 22], s->bits_pos_es[idx + 22], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Zero bits */
     if (idx + 24 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 23], s->bits_pos_es[idx + 24], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
+        c_put(di, s->bits_pos_ss[idx + 23], s->bits_pos_es[idx + 24], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
 
     /* Disable */
     if (idx + 25 < 70) {
         char buf[64], short_buf[16];
         snprintf(buf, sizeof(buf), "Disable: %d", s->bits_pos_val[idx + 25]);
         snprintf(short_buf, sizeof(short_buf), "%d", s->bits_pos_val[idx + 25]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 25], s->bits_pos_es[idx + 25], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx + 25], s->bits_pos_es[idx + 25], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Reader talk first */
@@ -290,30 +290,30 @@ static void em4305_decode_config(struct srd_decoder_inst *di, em4305_state *s, i
         char buf[64], short_buf[16];
         snprintf(buf, sizeof(buf), "Reader talk first: %d", s->bits_pos_val[idx + 27]);
         snprintf(short_buf, sizeof(short_buf), "RTF: %d", s->bits_pos_val[idx + 27]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 27], s->bits_pos_es[idx + 27], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx + 27], s->bits_pos_es[idx + 27], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Zero bits */
     if (idx + 28 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 28], s->bits_pos_es[idx + 28], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
+        c_put(di, s->bits_pos_ss[idx + 28], s->bits_pos_es[idx + 28], s->out_ann, ANN_BITRATE, "Zero bits", "ZB");
 
     /* Pigeon mode */
     if (idx + 29 < 70) {
         char buf[64], short_buf[16];
         snprintf(buf, sizeof(buf), "Pigeon mode: %d", s->bits_pos_val[idx + 29]);
         snprintf(short_buf, sizeof(short_buf), "%d", s->bits_pos_val[idx + 29]);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 29], s->bits_pos_es[idx + 29], s->out_ann, ANN_BITRATE, buf, short_buf);
+        c_put(di, s->bits_pos_ss[idx + 29], s->bits_pos_es[idx + 29], s->out_ann, ANN_BITRATE, buf, short_buf);
     }
 
     /* Reserved */
     if (idx + 34 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 30], s->bits_pos_es[idx + 34], s->out_ann, ANN_BITRATE, "Reserved", "Res", "R");
+        c_put(di, s->bits_pos_ss[idx + 30], s->bits_pos_es[idx + 34], s->out_ann, ANN_BITRATE, "Reserved", "Res", "R");
 }
 
 static void em4305_em4100_decode1(struct srd_decoder_inst *di, em4305_state *s, int idx)
 {
     if (idx + 9 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 9], s->out_ann, ANN_BITRATE, "EM4100 header", "EM header", "Header", "H");
+        c_put(di, s->bits_pos_ss[idx], s->bits_pos_es[idx + 9], s->out_ann, ANN_BITRATE, "EM4100 header", "EM header", "Header", "H");
     em4305_put4bits(di, s, idx + 10);
 
     int bits = (s->bits_pos_val[idx + 15] << 3) | (s->bits_pos_val[idx + 16] << 2) |
@@ -321,7 +321,7 @@ static void em4305_em4100_decode1(struct srd_decoder_inst *di, em4305_state *s, 
     if (idx + 19 < 70) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%X", bits);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 15], s->bits_pos_es[idx + 19], s->out_ann, ANN_BITRATE, buf);
+        c_put(di, s->bits_pos_ss[idx + 15], s->bits_pos_es[idx + 19], s->out_ann, ANN_BITRATE, buf);
     }
 
     em4305_put4bits(di, s, idx + 21);
@@ -331,7 +331,7 @@ static void em4305_em4100_decode1(struct srd_decoder_inst *di, em4305_state *s, 
                                  (s->bits_pos_val[idx + 33] << 2) |
                                  (s->bits_pos_val[idx + 34] << 1);
     if (idx + 34 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 32], s->bits_pos_es[idx + 34], s->out_ann, ANN_BITRATE, "Partial nibble");
+        c_put(di, s->bits_pos_ss[idx + 32], s->bits_pos_es[idx + 34], s->out_ann, ANN_BITRATE, "Partial nibble");
 }
 
 static void em4305_em4100_decode2(struct srd_decoder_inst *di, em4305_state *s, int idx)
@@ -341,11 +341,11 @@ static void em4305_em4100_decode2(struct srd_decoder_inst *di, em4305_state *s, 
         char buf[16];
         snprintf(buf, sizeof(buf), "%X", bits);
         if (idx < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[idx], s->bits_pos_es[idx], s->out_ann, ANN_BITRATE, buf);
+            c_put(di, s->bits_pos_ss[idx], s->bits_pos_es[idx], s->out_ann, ANN_BITRATE, buf);
         s->em4100_decode1_partial = 0;
     } else {
         if (idx < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[idx], s->bits_pos_es[idx], s->out_ann, ANN_BITRATE, "Partial nibble");
+            c_put(di, s->bits_pos_ss[idx], s->bits_pos_es[idx], s->out_ann, ANN_BITRATE, "Partial nibble");
     }
 
     em4305_put4bits(di, s, idx + 2);
@@ -355,7 +355,7 @@ static void em4305_em4100_decode2(struct srd_decoder_inst *di, em4305_state *s, 
     if (idx + 11 < 70) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%X", bits);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 7], s->bits_pos_es[idx + 11], s->out_ann, ANN_BITRATE, buf);
+        c_put(di, s->bits_pos_ss[idx + 7], s->bits_pos_es[idx + 11], s->out_ann, ANN_BITRATE, buf);
     }
 
     em4305_put4bits(di, s, idx + 13);
@@ -366,11 +366,11 @@ static void em4305_em4100_decode2(struct srd_decoder_inst *di, em4305_state *s, 
     if (idx + 28 < 70) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%X", bits);
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 24], s->bits_pos_es[idx + 28], s->out_ann, ANN_BITRATE, buf);
+        c_put(di, s->bits_pos_ss[idx + 24], s->bits_pos_es[idx + 28], s->out_ann, ANN_BITRATE, buf);
     }
 
     if (idx + 34 < 70)
-        C_ANN_PUT(di, s->bits_pos_ss[idx + 30], s->bits_pos_es[idx + 34], s->out_ann, ANN_BITRATE, "EM4100 trailer");
+        c_put(di, s->bits_pos_ss[idx + 30], s->bits_pos_es[idx + 34], s->out_ann, ANN_BITRATE, "EM4100 trailer");
 }
 
 static void em4305_add_bits_pos(em4305_state *s, int bit, uint64_t ss_bit, uint64_t es_bit)
@@ -385,22 +385,22 @@ static void em4305_add_bits_pos(em4305_state *s, int bit, uint64_t ss_bit, uint6
 
 static void em4305_put_fields(struct srd_decoder_inst *di, em4305_state *s)
 {
-    const char *em4100_decode_str = c_decoder_get_option_string(di, "em4100_decode", "on");
+    const char *em4100_decode_str = c_opt_str(di, "em4100_decode", "on");
     int do_em4100 = (strcmp(em4100_decode_str, "on") == 0) ? 1 : 0;
 
     if (s->bit_nr == 50) {
         /* Login frame */
         if (0 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[0], s->bits_pos_es[0], s->out_ann, ANN_BIT, "Logic zero");
+            c_put(di, s->bits_pos_ss[0], s->bits_pos_es[0], s->out_ann, ANN_BIT, "Logic zero");
         if (4 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[1], s->bits_pos_es[4], s->out_ann, ANN_BIT, "Command", "Cmd", "C");
+            c_put(di, s->bits_pos_ss[1], s->bits_pos_es[4], s->out_ann, ANN_BIT, "Command", "Cmd", "C");
         if (49 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[5], s->bits_pos_es[49], s->out_ann, ANN_BIT, "Password", "Passwd", "Pass", "P");
+            c_put(di, s->bits_pos_ss[5], s->bits_pos_es[49], s->out_ann, ANN_BIT, "Password", "Passwd", "Pass", "P");
 
         /* Get command */
         int cmd = em4305_get_3_bits(s, 1);
         if (cmd >= 0 && cmd < 8 && 3 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[1], s->bits_pos_es[3], s->out_ann, ANN_OPCODE, cmds[cmd]);
+            c_put(di, s->bits_pos_ss[1], s->bits_pos_es[3], s->out_ann, ANN_OPCODE, cmds[cmd]);
         em4305_print_row_parity(di, s, 1, 3);
 
         /* Print data */
@@ -416,9 +416,9 @@ static void em4305_put_fields(struct srd_decoder_inst *di, em4305_state *s)
 
         if (49 < 70) {
             if (s->bits_pos_val[49] == 0) {
-                C_ANN_PUT(di, s->bits_pos_ss[49], s->bits_pos_es[49], s->out_ann, ANN_OPCODE, "Stop bit", "Stop", "SB");
+                c_put(di, s->bits_pos_ss[49], s->bits_pos_es[49], s->out_ann, ANN_OPCODE, "Stop bit", "Stop", "SB");
             } else {
-                C_ANN_PUT(di, s->bits_pos_ss[49], s->bits_pos_es[49], s->out_ann, ANN_OPCODE, "Stop bit error", "Error");
+                c_put(di, s->bits_pos_ss[49], s->bits_pos_es[49], s->out_ann, ANN_OPCODE, "Stop bit error", "Error");
             }
         }
 
@@ -427,25 +427,25 @@ static void em4305_put_fields(struct srd_decoder_inst *di, em4305_state *s)
             char buf[64];
             snprintf(buf, sizeof(buf), "Login password: %X", password);
             if (12 < 70 && 46 < 70)
-                C_ANN_PUT(di, s->bits_pos_ss[12], s->bits_pos_es[46], s->out_ann, ANN_BITRATE, buf);
+                c_put(di, s->bits_pos_ss[12], s->bits_pos_es[46], s->out_ann, ANN_BITRATE, buf);
         }
     }
 
     if (s->bit_nr == 57) {
         /* Write/Read frame */
         if (0 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[0], s->bits_pos_es[0], s->out_ann, ANN_BIT, "Logic zero", "LZ");
+            c_put(di, s->bits_pos_ss[0], s->bits_pos_es[0], s->out_ann, ANN_BIT, "Logic zero", "LZ");
         if (4 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[1], s->bits_pos_es[4], s->out_ann, ANN_BIT, "Command", "Cmd", "C");
+            c_put(di, s->bits_pos_ss[1], s->bits_pos_es[4], s->out_ann, ANN_BIT, "Command", "Cmd", "C");
         if (11 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[5], s->bits_pos_es[11], s->out_ann, ANN_BIT, "Address", "Addr", "A");
+            c_put(di, s->bits_pos_ss[5], s->bits_pos_es[11], s->out_ann, ANN_BIT, "Address", "Addr", "A");
         if (56 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[12], s->bits_pos_es[56], s->out_ann, ANN_BIT, "Data", "Da", "D");
+            c_put(di, s->bits_pos_ss[12], s->bits_pos_es[56], s->out_ann, ANN_BIT, "Data", "Da", "D");
 
         /* Get command */
         int cmd = em4305_get_3_bits(s, 1);
         if (cmd >= 0 && cmd < 8 && 3 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[1], s->bits_pos_es[3], s->out_ann, ANN_OPCODE, cmds[cmd]);
+            c_put(di, s->bits_pos_ss[1], s->bits_pos_es[3], s->out_ann, ANN_OPCODE, cmds[cmd]);
         em4305_print_row_parity(di, s, 1, 3);
 
         /* Get address */
@@ -454,10 +454,10 @@ static void em4305_put_fields(struct srd_decoder_inst *di, em4305_state *s)
             char buf[64], short_buf[16];
             snprintf(buf, sizeof(buf), "Addr: %d", addr);
             snprintf(short_buf, sizeof(short_buf), "%d", addr);
-            C_ANN_PUT(di, s->bits_pos_ss[5], s->bits_pos_es[8], s->out_ann, ANN_ADDRESS, buf, short_buf);
+            c_put(di, s->bits_pos_ss[5], s->bits_pos_es[8], s->out_ann, ANN_ADDRESS, buf, short_buf);
         }
         if (10 < 70)
-            C_ANN_PUT(di, s->bits_pos_ss[9], s->bits_pos_es[10], s->out_ann, ANN_OPCODE, "Zero bits", "ZB");
+            c_put(di, s->bits_pos_ss[9], s->bits_pos_es[10], s->out_ann, ANN_OPCODE, "Zero bits", "ZB");
         em4305_print_row_parity(di, s, 5, 6);
 
         /* Print data */
@@ -473,9 +473,9 @@ static void em4305_put_fields(struct srd_decoder_inst *di, em4305_state *s)
 
         if (56 < 70) {
             if (s->bits_pos_val[56] == 0) {
-                C_ANN_PUT(di, s->bits_pos_ss[56], s->bits_pos_es[56], s->out_ann, ANN_OPCODE, "Stop bit", "Stop", "SB");
+                c_put(di, s->bits_pos_ss[56], s->bits_pos_es[56], s->out_ann, ANN_OPCODE, "Stop bit", "Stop", "SB");
             } else {
-                C_ANN_PUT(di, s->bits_pos_ss[56], s->bits_pos_es[56], s->out_ann, ANN_OPCODE, "Stop bit error", "Error");
+                c_put(di, s->bits_pos_ss[56], s->bits_pos_es[56], s->out_ann, ANN_OPCODE, "Stop bit error", "Error");
             }
         }
 
@@ -487,7 +487,7 @@ static void em4305_put_fields(struct srd_decoder_inst *di, em4305_state *s)
             char buf[64];
             snprintf(buf, sizeof(buf), "Write password: %X", password);
             if (12 < 70 && 46 < 70)
-                C_ANN_PUT(di, s->bits_pos_ss[12], s->bits_pos_es[46], s->out_ann, ANN_BITRATE, buf);
+                c_put(di, s->bits_pos_ss[12], s->bits_pos_es[46], s->out_ann, ANN_BITRATE, buf);
         }
 
         if (addr == 5 && do_em4100)
@@ -514,7 +514,7 @@ static void em4305_reset(struct srd_decoder_inst *di)
 static void em4305_start(struct srd_decoder_inst *di)
 {
     em4305_state *s = (em4305_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "em4305");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "em4305");
 }
 
 static void em4305_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -525,12 +525,12 @@ static void em4305_metadata(struct srd_decoder_inst *di, int key, uint64_t value
     }
     if (s->samplerate == 0) return;
 
-    int64_t coilfreq = c_decoder_get_option_int(di, "coilfreq", 125000);
-    int64_t first_field_stop = c_decoder_get_option_int(di, "first_field_stop", 40);
-    int64_t w_gap = c_decoder_get_option_int(di, "w_gap", 12);
-    int64_t w_one_max = c_decoder_get_option_int(di, "w_one_max", 32);
-    int64_t w_zero_on_min = c_decoder_get_option_int(di, "w_zero_on_min", 15);
-    int64_t w_zero_off_max = c_decoder_get_option_int(di, "w_zero_off_max", 27);
+    int64_t coilfreq = c_opt_int(di, "coilfreq", 125000);
+    int64_t first_field_stop = c_opt_int(di, "first_field_stop", 40);
+    int64_t w_gap = c_opt_int(di, "w_gap", 12);
+    int64_t w_one_max = c_opt_int(di, "w_one_max", 32);
+    int64_t w_zero_on_min = c_opt_int(di, "w_zero_on_min", 15);
+    int64_t w_zero_off_max = c_opt_int(di, "w_zero_off_max", 27);
 
     s->field_clock = (double)s->samplerate / (double)coilfreq;
     s->wzmax = (double)w_zero_off_max * s->field_clock;
@@ -550,7 +550,7 @@ static void em4305_decode(struct srd_decoder_inst *di)
     /* Initialize internal state */
     if (!s->initialized) {
         uint64_t cur_sample;
-        if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
+        if (c_wait(di, CW_END) != SRD_OK)
             return;
         s->last_samplenum = cur_sample;
         s->oldsamplenum = 0;
@@ -561,14 +561,11 @@ static void em4305_decode(struct srd_decoder_inst *di)
     }
 
     while (1) {
-        srd_cond_builder *b = c_cond_new();
-        c_cond_edge(b, 0);
-        uint64_t samplenum, matched;
-        int ret = c_cond_wait(b, di, &samplenum, &matched);
-        c_cond_free(b);
-        if (ret != SRD_OK) return;
+        int ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        uint64_t pl = samplenum - s->oldsamplenum;
+        uint64_t pl = di_samplenum(di) - s->oldsamplenum;
 
         if (s->state == EM_FFS_DETECTED) {
             if (pl > s->writegap)
@@ -576,7 +573,7 @@ static void em4305_decode(struct srd_decoder_inst *di)
             if ((s->last_samplenum - s->old_gap_end) > s->nogap) {
                 s->gap_detected = 0;
                 s->state = EM_FFS_SEARCH;
-                C_ANN_PUT(di, s->old_gap_end, s->last_samplenum, s->out_ann, ANN_WRITE_MODE_EXIT, "Write mode exit");
+                c_put(di, s->old_gap_end, s->last_samplenum, s->out_ann, ANN_WRITE_MODE_EXIT, "Write mode exit");
                 em4305_put_fields(di, s);
             }
         }
@@ -584,7 +581,7 @@ static void em4305_decode(struct srd_decoder_inst *di)
         if (s->state == EM_FFS_SEARCH) {
             if (pl > s->ffs) {
                 s->gap_detected = 1;
-                C_ANN_PUT(di, s->last_samplenum, samplenum, s->out_ann, ANN_FIRST_FIELD_STOP, "First field stop", "Field stop", "FFS");
+                c_put(di, s->last_samplenum, di_samplenum(di), s->out_ann, ANN_FIRST_FIELD_STOP, "First field stop", "Field stop", "FFS");
                 s->state = EM_FFS_DETECTED;
             }
         }
@@ -593,8 +590,8 @@ static void em4305_decode(struct srd_decoder_inst *di)
             s->gap_detected = 0;
             if ((s->last_samplenum - s->old_gap_end) > s->wzmin &&
                 (s->last_samplenum - s->old_gap_end) < s->wzmax) {
-                C_ANN_PUT(di, s->old_gap_end, samplenum, s->out_ann, ANN_BIT_VALUE, "0");
-                em4305_add_bits_pos(s, 0, s->old_gap_end, samplenum);
+                c_put(di, s->old_gap_end, di_samplenum(di), s->out_ann, ANN_BIT_VALUE, "0");
+                em4305_add_bits_pos(s, 0, s->old_gap_end, di_samplenum(di));
             }
             if ((s->last_samplenum - s->old_gap_end) > s->womax &&
                 (s->last_samplenum - s->old_gap_end) < s->nogap) {
@@ -602,24 +599,24 @@ static void em4305_decode(struct srd_decoder_inst *di)
                 for (int ox = 0; ox < one_bits; ox++) {
                     uint64_t bs = (uint64_t)(s->old_gap_end + ox * s->womax);
                     uint64_t be = (uint64_t)(s->old_gap_end + ox * s->womax + s->womax);
-                    C_ANN_PUT(di, bs, be, s->out_ann, ANN_BIT_VALUE, "1");
+                    c_put(di, bs, be, s->out_ann, ANN_BIT_VALUE, "1");
                     em4305_add_bits_pos(s, 1, bs, be);
                 }
-                if ((samplenum - s->last_samplenum) > s->wzmin &&
-                    (samplenum - s->last_samplenum) < s->wzmax) {
+                if ((di_samplenum(di) - s->last_samplenum) > s->wzmin &&
+                    (di_samplenum(di) - s->last_samplenum) < s->wzmax) {
                     uint64_t bs = (uint64_t)(s->old_gap_end + one_bits * s->womax);
-                    C_ANN_PUT(di, bs, samplenum, s->out_ann, ANN_BIT_VALUE, "0");
-                    em4305_add_bits_pos(s, 0, bs, samplenum);
+                    c_put(di, bs, di_samplenum(di), s->out_ann, ANN_BIT_VALUE, "0");
+                    em4305_add_bits_pos(s, 0, bs, di_samplenum(di));
                 }
             }
-            s->old_gap_end = samplenum;
+            s->old_gap_end = di_samplenum(di);
         }
 
         if (s->state == EM_SKIP)
             s->state = EM_FFS_SEARCH;
 
-        s->oldsamplenum = samplenum;
-        s->last_samplenum = samplenum;
+        s->oldsamplenum = di_samplenum(di);
+        s->last_samplenum = di_samplenum(di);
     }
 }
 
@@ -660,6 +657,7 @@ struct srd_c_decoder em4305_c_decoder = {
     .start = em4305_start,
     .decode = em4305_decode,
     .destroy = em4305_destroy,
+    .state_size = 0,
     .metadata = em4305_metadata,
 };
 

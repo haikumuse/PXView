@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2023 James Cordell <james@cordell.org.uk>
@@ -144,7 +144,7 @@ static void crsf_handle_rc_channels(struct srd_decoder_inst *di, crsf_state *s)
         }
         char t[64];
         snprintf(t, sizeof(t), "Chan:%d Value:%u", chan, raw);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
     }
 }
 
@@ -156,34 +156,34 @@ static void crsf_handle_link_statistics(struct srd_decoder_inst *di, crsf_state 
 
     char t[128];
     snprintf(t, sizeof(t), "Uplink RSSI 1: -%ddB", s->payload[0]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Uplink RSSI 2: -%ddB", s->payload[1]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Uplink Link Quality: %d", s->payload[2]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Uplink SNR: %ddB", (int8_t)s->payload[3]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Active Antenna: %d", s->payload[4]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "RF Mode: %d", s->payload[5]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Uplink TX Power: %d mW", s->payload[6]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Downlink RSSI: -%ddB", s->payload[7]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Downlink Link Quality: %d", s->payload[8]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 
     snprintf(t, sizeof(t), "Downlink SNR: %ddB", (int8_t)s->payload[9]);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 }
 
 static void crsf_handle_gps(struct srd_decoder_inst *di, crsf_state *s)
@@ -200,7 +200,7 @@ static void crsf_handle_gps(struct srd_decoder_inst *di, crsf_state *s)
     char t[256];
     snprintf(t, sizeof(t), "GPS: Lat=%d/1e7 Lon=%d/1e7 Speed=%u Heading=%u Alt=%u Sats=%u",
              lat, lon, speed, heading, altitude, satellites);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 }
 
 static void crsf_handle_battery(struct srd_decoder_inst *di, crsf_state *s)
@@ -215,7 +215,7 @@ static void crsf_handle_battery(struct srd_decoder_inst *di, crsf_state *s)
     char t[128];
     snprintf(t, sizeof(t), "Battery: V=%umV I=%umA Cap=%umAh Rem=%u%%",
              voltage, current, capacity, remaining);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 }
 
 static void crsf_handle_attitude(struct srd_decoder_inst *di, crsf_state *s)
@@ -228,7 +228,7 @@ static void crsf_handle_attitude(struct srd_decoder_inst *di, crsf_state *s)
 
     char t[128];
     snprintf(t, sizeof(t), "Attitude: Pitch=%d Roll=%d Yaw=%d", pitch, roll, yaw);
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 }
 
 static void crsf_handle_flight_mode(struct srd_decoder_inst *di, crsf_state *s)
@@ -243,7 +243,7 @@ static void crsf_handle_flight_mode(struct srd_decoder_inst *di, crsf_state *s)
     } else {
         snprintf(t, sizeof(t), "Flight mode: (empty)");
     }
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
 }
 
 static void crsf_process_frame(struct srd_decoder_inst *di, crsf_state *s)
@@ -265,20 +265,18 @@ static void crsf_process_frame(struct srd_decoder_inst *di, crsf_state *s)
     } else if (type_name) {
         char t[128];
         snprintf(t, sizeof(t), "%s (%d bytes payload)", type_name, s->payload_len - 1);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
     } else {
         char t[64];
         snprintf(t, sizeof(t), "Unknown packet type%d", s->frame_type);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, t);
     }
 
     /* CRC byte */
-    C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, "Checksum crc8 poly 0xD5");
+    c_put(di, s->ss_block, s->es, s->out_ann, ANN_TEXT, "Checksum crc8 poly 0xD5");
 }
 
-static void crsf_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void crsf_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     crsf_state *s = (crsf_state *)c_decoder_get_private(di);
     if (!s)
@@ -287,10 +285,10 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    if (data_len < 1)
+    if (n_fields < 1)
         return;
 
-    uint8_t byte_val = data[0];
+    uint8_t byte_val = fields[0].u8;
     s->es = end_sample;
     char t[128];
 
@@ -301,7 +299,7 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
             if (crsf_sync_bytes[i].byte == byte_val) {
                 s->sync_byte = byte_val;
                 s->ss_block = start_sample;
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_TEXT,
                           crsf_sync_bytes[i].name);
                 s->state = CRSF_WAIT_LEN;
                 return;
@@ -309,18 +307,18 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
         }
         /* Unknown byte, ignore */
         snprintf(t, sizeof(t), "Unknown packet type%d", byte_val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
         break;
 
     case CRSF_WAIT_LEN:
         if (byte_val >= 2 && byte_val <= 62) {
             s->len_byte = byte_val;
             snprintf(t, sizeof(t), "Num of bytes succeeding: %d", byte_val - 2);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
             s->state = CRSF_WAIT_TYPE;
         } else {
             snprintf(t, sizeof(t), "Unknown packet type%d", byte_val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
             s->state = CRSF_WAIT_SYNC;
         }
         break;
@@ -331,10 +329,10 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
         {
             const char *name = crsf_get_frame_type_name(byte_val);
             if (name) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, name);
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_TEXT, name);
             } else {
                 snprintf(t, sizeof(t), "Unknown packet type%d", byte_val);
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_TEXT, t);
                 s->state = CRSF_WAIT_SYNC;
                 break;
             }
@@ -343,7 +341,7 @@ static void crsf_recv_proto(struct srd_decoder_inst *di,
         if (s->len_byte <= 2) {
             /* No payload, just CRC */
             s->state = CRSF_WAIT_SYNC;
-            C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_TEXT,
+            c_put(di, s->ss_block, end_sample, s->out_ann, ANN_TEXT,
                       "Checksum crc8 poly 0xD5");
         } else {
             s->state = CRSF_WAIT_PAYLOAD;
@@ -378,7 +376,7 @@ static void crsf_reset(struct srd_decoder_inst *di)
 static void crsf_start(struct srd_decoder_inst *di)
 {
     crsf_state *s = (crsf_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "crsf");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "crsf");
 }
 
 static void crsf_decode(struct srd_decoder_inst *di)
@@ -423,7 +421,8 @@ struct srd_c_decoder crsf_c_decoder = {
     .start = crsf_start,
     .decode = crsf_decode,
     .destroy = crsf_destroy,
-    .recv_proto = crsf_recv_proto,
+    .decode_upper = crsf_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

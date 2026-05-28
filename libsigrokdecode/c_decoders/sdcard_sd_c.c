@@ -68,68 +68,63 @@ enum sdcard_sd_ann {
   ANN_R_STATUS_ERASE_RESET = 152,
   ANN_R_STATUS_CURRENT_STATE = 153,
   ANN_R_STATUS_READY_FOR_DATA = 154,
-  ANN_R_STATUS_RSVD2 = 155,
-  ANN_R_STATUS_FX_EVENT = 156,
-  ANN_R_STATUS_APP_CMD = 157,
-  ANN_R_STATUS_RSVD_SDIO = 158,
-  ANN_R_STATUS_AKE_SEQ_ERROR = 159,
-  ANN_R_STATUS_RSVD_APP_CMD = 160,
-  ANN_R_STATUS_RSVD_TESTMODE = 161,
-  ANN_R_CID_MID = 162,
-  ANN_R_CID_OID = 163,
-  ANN_R_CID_PNM = 164,
-  ANN_R_CID_PRV = 165,
-  ANN_R_CID_PSN = 166,
-  ANN_R_CID_RSVD = 167,
-  ANN_R_CID_MDT = 168,
-  ANN_R_CID_CRC = 169,
-  ANN_R_CID_ONE = 170,
-  ANN_R_CSD_CSD_STRUCTURE = 171,
-  ANN_R_CSD_RSVD = 172,
-  ANN_R_CSD_TAAC = 173,
-  ANN_R_CSD_NSAC = 174,
-  ANN_R_CSD_TRAN_SPEED = 175,
-  ANN_R_CSD_CCC = 176,
-  ANN_R_CSD_READ_BL_LEN = 177,
-  ANN_R_CSD_READ_BL_PARTIAL = 178,
-  ANN_R_CSD_WRITE_BLK_MISALIGN = 179,
-  ANN_R_CSD_READ_BLK_MISALIGN = 180,
-  ANN_R_CSD_DSR_IMP = 181,
-  ANN_R_CSD_RSVD2 = 182,
-  ANN_R_CSD_C_SIZE = 183,
-  ANN_R_CSD_VDD_R_CURR_MIN = 184,
-  ANN_R_CSD_VDD_R_CURR_MAX = 185,
-  ANN_R_CSD_VDD_W_CURR_MIN = 186,
-  ANN_R_CSD_VDD_W_CURR_MAX = 187,
-  ANN_R_CSD_C_SIZE_MULT = 188,
-  ANN_R_CSD_ERASE_BLK_EN = 189,
-  ANN_R_CSD_SECTOR_SIZE = 190,
-  ANN_R_CSD_WP_GRP_SIZE = 191,
-  ANN_R_CSD_WP_GRP_ENABLE = 192,
-  ANN_R_CSD_RSVD3 = 193,
-  ANN_R_CSD_R2W_FACTOR = 194,
-  ANN_R_CSD_WRITE_BL_LEN = 195,
-  ANN_R_CSD_WRITE_BL_PARTIAL = 196,
-  ANN_R_CSD_RSVD4 = 197,
-  ANN_R_CSD_FILE_FORMAT_GRP = 198,
-  ANN_R_CSD_COPY = 199,
-  ANN_R_CSD_PERM_WRITE_PROTECT = 200,
-  ANN_R_CSD_TMP_WRITE_PROTECT = 201,
-  ANN_R_CSD_FILE_FORMAT = 202,
-  ANN_R_CSD_RSVD5 = 203,
-  ANN_R_CSD_CRC = 204,
-  ANN_R_CSD_ONE = 205,
-  ANN_BIT_0 = 206,
-  ANN_BIT_1 = 207,
-  ANN_F_START = 208,
-  ANN_F_TRANSMISSION = 209,
-  ANN_F_CMD = 210,
-  ANN_F_ARG = 211,
-  ANN_F_CRC = 212,
-  ANN_F_END = 213,
-  ANN_DECODED_BIT = 214,
-  ANN_DECODED_F = 215,
-  NUM_ANN = 216,
+  ANN_R_STATUS_FX_EVENT = 155,
+  ANN_R_STATUS_APP_CMD = 156,
+  ANN_R_STATUS_RSVD_SDIO = 157,
+  ANN_R_STATUS_AKE_SEQ_ERROR = 158,
+  ANN_R_STATUS_RSVD_APP_CMD = 159,
+  ANN_R_STATUS_RSVD_TESTMODE = 160,
+  ANN_R_CID_MID = 161,
+  ANN_R_CID_OID = 162,
+  ANN_R_CID_PNM = 163,
+  ANN_R_CID_PRV = 164,
+  ANN_R_CID_PSN = 165,
+  ANN_R_CID_RSVD = 166,
+  ANN_R_CID_MDT = 167,
+  ANN_R_CID_CRC = 168,
+  ANN_R_CID_ONE = 169,
+  ANN_R_CSD_CSD_STRUCTURE = 170,
+  ANN_R_CSD_RSVD = 171,
+  ANN_R_CSD_TAAC = 172,
+  ANN_R_CSD_NSAC = 173,
+  ANN_R_CSD_TRAN_SPEED = 174,
+  ANN_R_CSD_CCC = 175,
+  ANN_R_CSD_READ_BL_LEN = 176,
+  ANN_R_CSD_READ_BL_PARTIAL = 177,
+  ANN_R_CSD_WRITE_BLK_MISALIGN = 178,
+  ANN_R_CSD_READ_BLK_MISALIGN = 179,
+  ANN_R_CSD_DSR_IMP = 180,
+  ANN_R_CSD_C_SIZE = 181,
+  ANN_R_CSD_VDD_R_CURR_MIN = 182,
+  ANN_R_CSD_VDD_R_CURR_MAX = 183,
+  ANN_R_CSD_VDD_W_CURR_MIN = 184,
+  ANN_R_CSD_VDD_W_CURR_MAX = 185,
+  ANN_R_CSD_C_SIZE_MULT = 186,
+  ANN_R_CSD_ERASE_BLK_EN = 187,
+  ANN_R_CSD_SECTOR_SIZE = 188,
+  ANN_R_CSD_WP_GRP_SIZE = 189,
+  ANN_R_CSD_WP_GRP_ENABLE = 190,
+  ANN_R_CSD_R2W_FACTOR = 191,
+  ANN_R_CSD_WRITE_BL_LEN = 192,
+  ANN_R_CSD_WRITE_BL_PARTIAL = 193,
+  ANN_R_CSD_FILE_FORMAT_GRP = 194,
+  ANN_R_CSD_COPY = 195,
+  ANN_R_CSD_PERM_WRITE_PROTECT = 196,
+  ANN_R_CSD_TMP_WRITE_PROTECT = 197,
+  ANN_R_CSD_FILE_FORMAT = 198,
+  ANN_R_CSD_CRC = 199,
+  ANN_R_CSD_ONE = 200,
+  ANN_BIT_0 = 201,
+  ANN_BIT_1 = 202,
+  ANN_F_START = 203,
+  ANN_F_TRANSMISSION = 204,
+  ANN_F_CMD = 205,
+  ANN_F_ARG = 206,
+  ANN_F_CRC = 207,
+  ANN_F_END = 208,
+  ANN_DECODED_BIT = 209,
+  ANN_DECODED_F = 210,
+  NUM_ANN = 211,
 };
 
 struct sd_bit {
@@ -372,14 +367,13 @@ static void init_ann_labels(void) {
                                        "ERASE_RESET",
                                        "CURRENT_STATE",
                                        "READY_FOR_DATA",
-                                       "RSVD",
                                        "FX_EVENT",
                                        "APP_CMD",
                                        "RSVD_SDIO",
                                        "AKE_SEQ_ERROR",
                                        "RSVD_APP_CMD",
                                        "RSVD_TESTMODE"};
-  for (int i = 0; i < 28; i++) {
+  for (int i = 0; i < 27; i++) {
     ann_label_ptrs[134 + i][0] = "";
     ann_label_ptrs[134 + i][1] = g_strdup_printf("Status: %s", status_names[i]);
     ann_label_ptrs[134 + i][2] = g_strdup_printf("Status: %s", status_names[i]);
@@ -388,9 +382,9 @@ static void init_ann_labels(void) {
   static const char *cid_names[] = {"MID",  "OID", "PNM", "PRV", "PSN",
                                     "RSVD", "MDT", "CRC", "ONE"};
   for (int i = 0; i < 9; i++) {
-    ann_label_ptrs[162 + i][0] = "";
-    ann_label_ptrs[162 + i][1] = g_strdup_printf("CID: %s", cid_names[i]);
-    ann_label_ptrs[162 + i][2] = g_strdup_printf("CID: %s", cid_names[i]);
+    ann_label_ptrs[161 + i][0] = "";
+    ann_label_ptrs[161 + i][1] = g_strdup_printf("CID: %s", cid_names[i]);
+    ann_label_ptrs[161 + i][2] = g_strdup_printf("CID: %s", cid_names[i]);
   }
 
   static const char *csd_names[] = {"CSD_STRUCTURE",
@@ -404,7 +398,6 @@ static void init_ann_labels(void) {
                                     "WRITE_BLK_MISALIGN",
                                     "READ_BLK_MISALIGN",
                                     "DSR_IMP",
-                                    "RSVD",
                                     "C_SIZE",
                                     "VDD_R_CURR_MIN",
                                     "VDD_R_CURR_MAX",
@@ -415,55 +408,52 @@ static void init_ann_labels(void) {
                                     "SECTOR_SIZE",
                                     "WP_GRP_SIZE",
                                     "WP_GRP_ENABLE",
-                                    "RSVD",
                                     "R2W_FACTOR",
                                     "WRITE_BL_LEN",
                                     "WRITE_BL_PARTIAL",
-                                    "RSVD",
                                     "FILE_FORMAT_GRP",
                                     "COPY",
                                     "PERM_WRITE_PROTECT",
                                     "TMP_WRITE_PROTECT",
                                     "FILE_FORMAT",
-                                    "RSVD",
                                     "CRC",
                                     "ONE"};
-  for (int i = 0; i < 34; i++) {
-    ann_label_ptrs[171 + i][0] = "";
-    ann_label_ptrs[171 + i][1] = g_strdup_printf("CSD: %s", csd_names[i]);
-    ann_label_ptrs[171 + i][2] = g_strdup_printf("CSD: %s", csd_names[i]);
+  for (int i = 0; i < 30; i++) {
+    ann_label_ptrs[170 + i][0] = "";
+    ann_label_ptrs[170 + i][1] = g_strdup_printf("CSD: %s", csd_names[i]);
+    ann_label_ptrs[170 + i][2] = g_strdup_printf("CSD: %s", csd_names[i]);
   }
 
+  ann_label_ptrs[201][0] = "";
+  ann_label_ptrs[201][1] = "Bit 0";
+  ann_label_ptrs[201][2] = "Bit 0";
+  ann_label_ptrs[202][0] = "";
+  ann_label_ptrs[202][1] = "Bit 1";
+  ann_label_ptrs[202][2] = "Bit 1";
+  ann_label_ptrs[203][0] = "";
+  ann_label_ptrs[203][1] = "Start bit";
+  ann_label_ptrs[203][2] = "Start bit";
+  ann_label_ptrs[204][0] = "";
+  ann_label_ptrs[204][1] = "Transmission bit";
+  ann_label_ptrs[204][2] = "Transmission bit";
+  ann_label_ptrs[205][0] = "";
+  ann_label_ptrs[205][1] = "Command";
+  ann_label_ptrs[205][2] = "Command";
   ann_label_ptrs[206][0] = "";
-  ann_label_ptrs[206][1] = "Bit 0";
-  ann_label_ptrs[206][2] = "Bit 0";
+  ann_label_ptrs[206][1] = "Argument";
+  ann_label_ptrs[206][2] = "Argument";
   ann_label_ptrs[207][0] = "";
-  ann_label_ptrs[207][1] = "Bit 1";
-  ann_label_ptrs[207][2] = "Bit 1";
+  ann_label_ptrs[207][1] = "CRC";
+  ann_label_ptrs[207][2] = "CRC";
   ann_label_ptrs[208][0] = "";
-  ann_label_ptrs[208][1] = "Start bit";
-  ann_label_ptrs[208][2] = "Start bit";
+  ann_label_ptrs[208][1] = "End bit";
+  ann_label_ptrs[208][2] = "End bit";
   ann_label_ptrs[209][0] = "";
-  ann_label_ptrs[209][1] = "Transmission bit";
-  ann_label_ptrs[209][2] = "Transmission bit";
+  ann_label_ptrs[209][1] = "Decoded bit";
+  ann_label_ptrs[209][2] = "Decoded bit";
   ann_label_ptrs[210][0] = "";
-  ann_label_ptrs[210][1] = "Command";
-  ann_label_ptrs[210][2] = "Command";
-  ann_label_ptrs[211][0] = "";
-  ann_label_ptrs[211][1] = "Argument";
-  ann_label_ptrs[211][2] = "Argument";
-  ann_label_ptrs[212][0] = "";
-  ann_label_ptrs[212][1] = "CRC";
-  ann_label_ptrs[212][2] = "CRC";
-  ann_label_ptrs[213][0] = "";
-  ann_label_ptrs[213][1] = "End bit";
-  ann_label_ptrs[213][2] = "End bit";
-  ann_label_ptrs[214][0] = "";
-  ann_label_ptrs[214][1] = "Decoded bit";
-  ann_label_ptrs[214][2] = "Decoded bit";
-  ann_label_ptrs[215][0] = "";
-  ann_label_ptrs[215][1] = "Decoded field";
-  ann_label_ptrs[215][2] = "Decoded field";
+  ann_label_ptrs[210][1] = "Decoded field";
+  ann_label_ptrs[210][2] = "Decoded field";
 }
 
 static const char *cmd_name(int cmd, int is_acmd) {
@@ -482,7 +472,7 @@ static void sdcard_sd_putt(struct srd_decoder_inst *di,
                            const char *text) {
   if (s->token_len < 48)
     return;
-  C_ANN_PUT(di, s->token[0].ss, s->token[47].es, s->out_ann, cls, text);
+  c_put(di, s->token[0].ss, s->token[47].es, s->out_ann, cls, text);
 }
 
 static void sdcard_sd_putf(struct srd_decoder_inst *di,
@@ -490,7 +480,7 @@ static void sdcard_sd_putf(struct srd_decoder_inst *di,
                            int cls, const char *text) {
   if (start >= s->token_len || end >= s->token_len)
     return;
-  C_ANN_PUT(di, s->token[start].ss, s->token[end].es, s->out_ann, cls, text);
+  c_put(di, s->token[start].ss, s->token[end].es, s->out_ann, cls, text);
 }
 
 static void sdcard_sd_puta(struct srd_decoder_inst *di,
@@ -502,7 +492,7 @@ static void sdcard_sd_puta(struct srd_decoder_inst *di,
   int e_idx = 47 - 8 - start;
   if (s_idx < 0 || e_idx < 0 || s_idx >= s->token_len || e_idx >= s->token_len)
     return;
-  C_ANN_PUT(di, s->token[s_idx].ss, s->token[e_idx].es, s->out_ann, cls, text);
+  c_put(di, s->token[s_idx].ss, s->token[e_idx].es, s->out_ann, cls, text);
 }
 
 static void sdcard_sd_putc(struct srd_decoder_inst *di,
@@ -630,7 +620,6 @@ static void handle_reg_status(struct srd_decoder_inst *di,
                                    ANN_R_STATUS_ERASE_RESET,
                                    ANN_R_STATUS_CURRENT_STATE,
                                    ANN_R_STATUS_READY_FOR_DATA,
-                                   ANN_R_STATUS_RSVD2,
                                    ANN_R_STATUS_FX_EVENT,
                                    ANN_R_STATUS_APP_CMD,
                                    ANN_R_STATUS_RSVD_SDIO,
@@ -658,14 +647,13 @@ static void handle_reg_status(struct srd_decoder_inst *di,
                                        "ERASE_RESET",
                                        "CURRENT_STATE",
                                        "READY_FOR_DATA",
-                                       "RSVD",
                                        "FX_EVENT",
                                        "APP_CMD",
                                        "RSVD_SDIO",
                                        "AKE_SEQ_ERROR",
                                        "RSVD_APP_CMD",
                                        "RSVD_TESTMODE"};
-  for (int i = 0; i < 28; i++) {
+  for (int i = 0; i < 27; i++) {
     if (i == 19)
       sdcard_sd_putf(di, s, 8 + i, 8 + i + 3, status_ann[i], status_names[i]);
     else if (i >= 20)
@@ -707,7 +695,7 @@ static void handle_reg_csd(struct srd_decoder_inst *di,
   sdcard_sd_putf(di, s, 58, 58, ANN_R_CSD_READ_BLK_MISALIGN,
                  "Read block misalignment");
   sdcard_sd_putf(di, s, 59, 59, ANN_R_CSD_DSR_IMP, "DSR implemented");
-  sdcard_sd_putf(di, s, 60, 61, ANN_R_CSD_RSVD2, "Reserved");
+  sdcard_sd_putf(di, s, 60, 61, ANN_R_CSD_RSVD, "Reserved");
   sdcard_sd_putf(di, s, 62, 73, ANN_R_CSD_C_SIZE, "Device size");
   sdcard_sd_putf(di, s, 74, 76, ANN_R_CSD_VDD_R_CURR_MIN,
                  "Max. read current @VDD min");
@@ -726,13 +714,13 @@ static void handle_reg_csd(struct srd_decoder_inst *di,
                  "Write protect group size");
   sdcard_sd_putf(di, s, 104, 104, ANN_R_CSD_WP_GRP_ENABLE,
                  "Write protect group enable");
-  sdcard_sd_putf(di, s, 105, 106, ANN_R_CSD_RSVD3, "Reserved");
+  sdcard_sd_putf(di, s, 105, 106, ANN_R_CSD_RSVD, "Reserved");
   sdcard_sd_putf(di, s, 107, 109, ANN_R_CSD_R2W_FACTOR, "Write speed factor");
   sdcard_sd_putf(di, s, 110, 113, ANN_R_CSD_WRITE_BL_LEN,
                  "Max. write data block length");
   sdcard_sd_putf(di, s, 114, 114, ANN_R_CSD_WRITE_BL_PARTIAL,
                  "Partial blocks for write allowed");
-  sdcard_sd_putf(di, s, 115, 119, ANN_R_CSD_RSVD4, "Reserved");
+  sdcard_sd_putf(di, s, 115, 119, ANN_R_CSD_RSVD, "Reserved");
   sdcard_sd_putf(di, s, 120, 120, ANN_R_CSD_FILE_FORMAT_GRP,
                  "File format group");
   sdcard_sd_putf(di, s, 121, 121, ANN_R_CSD_COPY, "Copy flag");
@@ -741,7 +729,7 @@ static void handle_reg_csd(struct srd_decoder_inst *di,
   sdcard_sd_putf(di, s, 123, 123, ANN_R_CSD_TMP_WRITE_PROTECT,
                  "Temporary write protection");
   sdcard_sd_putf(di, s, 124, 125, ANN_R_CSD_FILE_FORMAT, "File format");
-  sdcard_sd_putf(di, s, 126, 127, ANN_R_CSD_RSVD5, "Reserved");
+  sdcard_sd_putf(di, s, 126, 127, ANN_R_CSD_RSVD, "Reserved");
   sdcard_sd_putf(di, s, 128, 134, ANN_R_CSD_CRC, "CRC");
   sdcard_sd_putf(di, s, 135, 135, ANN_R_CSD_ONE, "Always 1");
 }
@@ -761,7 +749,7 @@ static void handle_cmd(struct srd_decoder_inst *di, struct sdcard_sd_priv *s);
 
 static void get_command_token(struct srd_decoder_inst *di,
                               struct sdcard_sd_priv *s, int cmd_pin) {
-  if (!get_token_bits(s, cmd_pin, 0, 48))
+  if (!get_token_bits(s, cmd_pin, di_samplenum(di), 48))
     return;
   if (!is_from_host(s)) {
     s->token_len = 0;
@@ -947,7 +935,7 @@ static void handle_acmd999(struct srd_decoder_inst *di,
 
 static void handle_response_r1(struct srd_decoder_inst *di,
                                struct sdcard_sd_priv *s, int cmd_pin) {
-  if (!get_token_bits(s, cmd_pin, 0, 48))
+  if (!get_token_bits(s, cmd_pin, di_samplenum(di), 48))
     return;
   if (!is_from_card(s)) {
     handle_cmd(di, s);
@@ -963,7 +951,7 @@ static void handle_response_r1(struct srd_decoder_inst *di,
 
 static void handle_response_r1b(struct srd_decoder_inst *di,
                                 struct sdcard_sd_priv *s, int cmd_pin) {
-  if (!get_token_bits(s, cmd_pin, 0, 48))
+  if (!get_token_bits(s, cmd_pin, di_samplenum(di), 48))
     return;
   if (!is_from_card(s)) {
     handle_cmd(di, s);
@@ -978,7 +966,7 @@ static void handle_response_r1b(struct srd_decoder_inst *di,
 
 static void handle_response_r2(struct srd_decoder_inst *di,
                                struct sdcard_sd_priv *s, int cmd_pin) {
-  if (!get_token_bits(s, cmd_pin, 0, 136))
+  if (!get_token_bits(s, cmd_pin, di_samplenum(di), 136))
     return;
   for (int bit = 0; bit < s->token_len; bit++) {
     char text[4];
@@ -1007,7 +995,7 @@ static void handle_response_r2(struct srd_decoder_inst *di,
 
 static void handle_response_r3(struct srd_decoder_inst *di,
                                struct sdcard_sd_priv *s, int cmd_pin) {
-  if (!get_token_bits(s, cmd_pin, 0, 48))
+  if (!get_token_bits(s, cmd_pin, di_samplenum(di), 48))
     return;
   sdcard_sd_putr(di, s, ANN_RESPONSE_R3);
   for (int bit = 0; bit < s->token_len; bit++) {
@@ -1031,7 +1019,7 @@ static void handle_response_r3(struct srd_decoder_inst *di,
 
 static void handle_response_r6(struct srd_decoder_inst *di,
                                struct sdcard_sd_priv *s, int cmd_pin) {
-  if (!get_token_bits(s, cmd_pin, 0, 48))
+  if (!get_token_bits(s, cmd_pin, di_samplenum(di), 48))
     return;
   if (!is_from_card(s)) {
     handle_cmd(di, s);
@@ -1047,7 +1035,7 @@ static void handle_response_r6(struct srd_decoder_inst *di,
 
 static void handle_response_r7(struct srd_decoder_inst *di,
                                struct sdcard_sd_priv *s, int cmd_pin) {
-  if (!get_token_bits(s, cmd_pin, 0, 48))
+  if (!get_token_bits(s, cmd_pin, di_samplenum(di), 48))
     return;
   if (!is_from_card(s)) {
     handle_cmd(di, s);
@@ -1081,33 +1069,27 @@ static void sdcard_sd_reset(struct srd_decoder_inst *di) {
 
 static void sdcard_sd_start(struct srd_decoder_inst *di) {
   struct sdcard_sd_priv *s = (struct sdcard_sd_priv *)c_decoder_get_private(di);
-  s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sdcard_sd");
+  s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sdcard_sd");
   init_ann_labels();
 }
 
 static void sdcard_sd_decode(struct srd_decoder_inst *di) {
   struct sdcard_sd_priv *s = (struct sdcard_sd_priv *)c_decoder_get_private(di);
-  uint64_t samplenum;
-  uint64_t matched;
-
   while (1) {
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_rise(cb, CH_CLK);
-
+    int ret;
     if ((s->state == STATE_GET_COMMAND_TOKEN ||
          (s->state >= STATE_GET_RESPONSE_R1 &&
           s->state <= STATE_GET_RESPONSE_R7)) &&
         s->token_len == 0) {
-      c_cond_or(cb);
-      c_cond_low(cb, CH_CMD);
+      /* Match Python: single dict {CLK:'r', CMD:'l'} = AND condition */
+      ret = c_wait(di, CW_R(CH_CLK), CW_L(CH_CMD), CW_END);
+    } else {
+      ret = c_wait(di, CW_R(CH_CLK), CW_END);
     }
-
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
     if (ret != SRD_OK)
       return;
 
-    int cmd_pin = c_decoder_get_pin(di, CH_CMD, samplenum);
+    int cmd_pin = c_pin(di, CH_CMD);
 
     if ((s->state == STATE_GET_COMMAND_TOKEN ||
          (s->state >= STATE_GET_RESPONSE_R1 &&
@@ -1396,6 +1378,7 @@ struct srd_c_decoder sdcard_sd_c_decoder = {
     .start = sdcard_sd_start,
     .decode = sdcard_sd_decode,
     .destroy = sdcard_sd_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void) {

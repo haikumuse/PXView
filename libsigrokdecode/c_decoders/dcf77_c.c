@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,11 +135,11 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
     if (s->bitnumber_is_known) {
         snprintf(t1, sizeof(t1), "Bit %d: %d", c, bit);
         snprintf(t2, sizeof(t2), "%d", bit);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_RAW_BITS, t1, t2);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_RAW_BITS, t1, t2);
     } else {
         snprintf(t1, sizeof(t1), "Unknown bit %d: %d", c, bit);
         snprintf(t2, sizeof(t2), "%d", bit);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_UNKNOWN_BITS, t1, t2);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_UNKNOWN_BITS, t1, t2);
     }
 
     if (!s->bitnumber_is_known)
@@ -151,10 +151,10 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
 
     if (c == 0) {
         if (bit == 0) {
-            C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_START_OF_MINUTE,
+            c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_START_OF_MINUTE,
                 "Start of minute (always 0)", "Start of minute", "SoM");
         } else {
-            C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN,
+            c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN,
                 "Start of minute != 0", "SoM != 0");
         }
     } else if (c >= 1 && c <= 14) {
@@ -167,13 +167,13 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         if (c == 14) {
             snprintf(t1, sizeof(t1), "Special bits: %014b", (unsigned)s->tmp);
             snprintf(t2, sizeof(t2), "SB: %014b", (unsigned)s->tmp);
-            C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_SPECIAL_BITS, t1, t2);
+            c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_SPECIAL_BITS, t1, t2);
         }
     } else if (c == 15) {
         const char* not_str = (bit == 1) ? "" : "not ";
         snprintf(t1, sizeof(t1), "Call bit: %sset", not_str);
         snprintf(t2, sizeof(t2), "CB: %sset", not_str);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_CALL_BIT, t1, t2);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_CALL_BIT, t1, t2);
     } else if (c == 16) {
         const char* not_str = (bit == 1) ? "" : "not ";
         const char* yesno = (bit == 1) ? "yes" : "no";
@@ -182,19 +182,19 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         snprintf(t2, sizeof(t2), "Summer time: %sactive", not_str);
         snprintf(st4, sizeof(st4), "Summer time: %s", yesno);
         snprintf(t3, sizeof(t3), "ST: %s", yesno);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_SUMMER_TIME, t1, t2, st4, t3);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_SUMMER_TIME, t1, t2, st4, t3);
     } else if (c == 17) {
         const char* not_str = (bit == 1) ? "" : "not ";
         const char* yesno = (bit == 1) ? "yes" : "no";
         snprintf(t1, sizeof(t1), "CEST: %sin effect", not_str);
         snprintf(t2, sizeof(t2), "CEST: %s", yesno);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_CEST, t1, t2);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_CEST, t1, t2);
     } else if (c == 18) {
         const char* not_str = (bit == 1) ? "" : "not ";
         const char* yesno = (bit == 1) ? "yes" : "no";
         snprintf(t1, sizeof(t1), "CET: %sin effect", not_str);
         snprintf(t2, sizeof(t2), "CET: %s", yesno);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_CET, t1, t2);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_CET, t1, t2);
     } else if (c == 19) {
         const char* not_str = (bit == 1) ? "" : "not ";
         const char* yesno = (bit == 1) ? "yes" : "no";
@@ -203,13 +203,13 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         snprintf(t2, sizeof(t2), "Leap second: %sactive", not_str);
         snprintf(ls4, sizeof(ls4), "Leap second: %s", yesno);
         snprintf(t3, sizeof(t3), "LS: %s", yesno);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_LEAP_SECOND, t1, t2, ls4, t3);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_LEAP_SECOND, t1, t2, ls4, t3);
     } else if (c == 20) {
         if (bit == 1) {
-            C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_START_OF_TIME,
+            c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_START_OF_TIME,
                 "Start of encoded time (always 1)", "Start of encoded time", "SoeT");
         } else {
-            C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN,
+            c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN,
                 "Start of encoded time != 1", "SoeT != 1");
         }
     } else if (c >= 21 && c <= 27) {
@@ -223,7 +223,7 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
             int m = bcd2int(s->tmp);
             snprintf(t1, sizeof(t1), "Minutes: %d", m);
             snprintf(t2, sizeof(t2), "Min: %d", m);
-            C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_MINUTE, t1, t2);
+            c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_MINUTE, t1, t2);
         }
     } else if (c == 28) {
         s->tmp |= ((uint64_t)bit << (c - 21));
@@ -231,7 +231,7 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         const char* ok_str = ((parity % 2) == 0) ? "OK" : "INVALID!";
         snprintf(t1, sizeof(t1), "Minute parity: %s", ok_str);
         snprintf(t2, sizeof(t2), "Min parity: %s", ok_str);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_MINUTE_PARITY, t1, t2);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_MINUTE_PARITY, t1, t2);
     } else if (c >= 29 && c <= 34) {
         if (c == 29) {
             s->tmp = bit;
@@ -242,14 +242,14 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         if (c == 34) {
             int h = bcd2int(s->tmp);
             snprintf(t1, sizeof(t1), "Hours: %d", h);
-            C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_HOUR, t1);
+            c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_HOUR, t1);
         }
     } else if (c == 35) {
         s->tmp |= ((uint64_t)bit << (c - 29));
         int parity = popcount64(s->tmp);
         const char* ok_str = ((parity % 2) == 0) ? "OK" : "INVALID!";
         snprintf(t1, sizeof(t1), "Hour parity: %s", ok_str);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_HOUR_PARITY, t1);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_HOUR_PARITY, t1);
     } else if (c >= 36 && c <= 41) {
         if (c == 36) {
             s->tmp = bit;
@@ -260,7 +260,7 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         if (c == 41) {
             int d = bcd2int(s->tmp);
             snprintf(t1, sizeof(t1), "Day: %d", d);
-            C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_DAY, t1);
+            c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_DAY, t1);
         }
     } else if (c >= 42 && c <= 44) {
         if (c == 42) {
@@ -275,11 +275,11 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
                 const char* dn = day_names[d - 1];
                 snprintf(t1, sizeof(t1), "Day of week: %d (%s)", d, dn);
                 snprintf(t2, sizeof(t2), "DoW: %d (%s)", d, dn);
-                C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_DAY_OF_WEEK, t1, t2);
+                c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_DAY_OF_WEEK, t1, t2);
             } else {
                 snprintf(t1, sizeof(t1), "Day of week: %d (invalid)", d);
                 snprintf(t2, sizeof(t2), "DoW: %d (inv)", d);
-                C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_WARN, t1, t2);
+                c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_WARN, t1, t2);
             }
         }
     } else if (c >= 45 && c <= 49) {
@@ -295,11 +295,11 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
                 const char* mn = month_names[m];
                 snprintf(t1, sizeof(t1), "Month: %d (%s)", m, mn);
                 snprintf(t2, sizeof(t2), "Mon: %d (%s)", m, mn);
-                C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_MONTH, t1, t2);
+                c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_MONTH, t1, t2);
             } else {
                 snprintf(t1, sizeof(t1), "Month: %d (invalid)", m);
                 snprintf(t2, sizeof(t2), "Mon: %d (inv)", m);
-                C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_WARN, t1, t2);
+                c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_WARN, t1, t2);
             }
         }
     } else if (c >= 50 && c <= 57) {
@@ -312,7 +312,7 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         if (c == 57) {
             int y = bcd2int(s->tmp);
             snprintf(t1, sizeof(t1), "Year: %d", y);
-            C_ANN_PUT(di, s->ss_block, s->es_bit, s->out_ann, ANN_YEAR, t1);
+            c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_YEAR, t1);
         }
     } else if (c == 58) {
         int i;
@@ -323,13 +323,13 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
         const char* ok_str = ((parity % 2) == 0) ? "OK" : "INVALID!";
         snprintf(t1, sizeof(t1), "Date parity: %s", ok_str);
         snprintf(t2, sizeof(t2), "DP: %s", ok_str);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_DATE_PARITY, t1, t2);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_DATE_PARITY, t1, t2);
         s->datebits_count = 0;
     } else {
         snprintf(t1, sizeof(t1), "Invalid DCF77 bit: %d", c);
         snprintf(t2, sizeof(t2), "Invalid bit: %d", c);
         snprintf(t3, sizeof(t3), "Inv: %d", c);
-        C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN, t1, t2, t3);
+        c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN, t1, t2, t3);
     }
 }
 
@@ -349,32 +349,27 @@ static void dcf77_reset(struct srd_decoder_inst* di)
 static void dcf77_start(struct srd_decoder_inst* di)
 {
     struct dcf77_priv* s = (struct dcf77_priv*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "dcf77");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "dcf77");
 }
 
 static void dcf77_decode(struct srd_decoder_inst* di)
 {
     struct dcf77_priv* s = (struct dcf77_priv*)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     while (1) {
         switch (s->state) {
 
         case STATE_WAIT_RISING: {
-            srd_cond_builder* b = c_cond_new();
-            c_cond_rise(b, DATA_CH);
-            ret = c_cond_wait(b, di, &samplenum, &matched);
-            c_cond_free(b);
+            ret = c_wait(di, CW_R(DATA_CH), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->ss_bit = samplenum;
+            s->ss_bit = di_samplenum(di);
 
             if (s->ss_bit_old != 0) {
                 uint64_t len_edges = s->ss_bit - s->ss_bit_old;
-                uint64_t samplerate = c_decoder_get_samplerate(di);
+                uint64_t samplerate = c_samplerate(di);
                 if (samplerate > 0) {
                     int len_edges_ms = (int)(((double)len_edges / (double)samplerate) * 1000.0);
                     if (len_edges_ms >= 1600 && len_edges_ms <= 2400) {
@@ -390,17 +385,14 @@ static void dcf77_decode(struct srd_decoder_inst* di)
         }
 
         case STATE_GET_BIT: {
-            srd_cond_builder* b = c_cond_new();
-            c_cond_fall(b, DATA_CH);
-            ret = c_cond_wait(b, di, &samplenum, &matched);
-            c_cond_free(b);
+            ret = c_wait(di, CW_F(DATA_CH), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->es_bit = samplenum;
+            s->es_bit = di_samplenum(di);
 
-            uint64_t len_high = samplenum - s->ss_bit;
-            uint64_t samplerate = c_decoder_get_samplerate(di);
+            uint64_t len_high = di_samplenum(di) - s->ss_bit;
+            uint64_t samplerate = c_samplerate(di);
             int bit = -1;
 
             if (samplerate > 0) {
@@ -415,7 +407,7 @@ static void dcf77_decode(struct srd_decoder_inst* di)
                 handle_dcf77_bit(di, bit);
                 s->bitcount++;
             } else {
-                C_ANN_PUT(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN,
+                c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_WARN,
                     "Invalid bit timing", "Inv timing", "Inv");
             }
 
@@ -463,6 +455,7 @@ struct srd_c_decoder dcf77_c_decoder = {
     .start = dcf77_start,
     .decode = dcf77_decode,
     .destroy = dcf77_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

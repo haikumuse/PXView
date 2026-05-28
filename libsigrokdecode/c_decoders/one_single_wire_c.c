@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the PXView project.
  *
  * Copyright (C) 2024 DreamSourceLab <info@dreamsourcelab.com>
@@ -87,8 +87,8 @@ static void osw_reset(struct srd_decoder_inst *di)
 static void osw_start(struct srd_decoder_inst *di)
 {
     osw_priv *s = (osw_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "OneSingleWire");
-    s->threshold_us = c_decoder_get_option_int(di, "threshold", 8);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "OneSingleWire");
+    s->threshold_us = c_opt_int(di, "threshold", 8);
 }
 
 static void osw_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -104,41 +104,32 @@ static void osw_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void osw_decode(struct srd_decoder_inst *di)
 {
     osw_priv *s = (osw_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (s->samplerate == 0)
         return;
 
     /* Phase 1: Wait for start pulse (strt rising edge) */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_rise(cb, 1);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK) return;
+    int ret = c_wait(di, CW_R(1), CW_END);
+    if (ret != SRD_OK)
+        return;
 
     /* Phase 2: Wait for signal falling edge (osw) */
-    cb = c_cond_new();
-    c_cond_fall(cb, 0);
-    ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK) return;
+    ret = c_wait(di, CW_F(0), CW_END);
+    if (ret != SRD_OK)
+        return;
 
-    s->bt_block_ss = samplenum;
-    s->by_block_ss = samplenum;
+    s->bt_block_ss = di_samplenum(di);
+    s->by_block_ss = di_samplenum(di);
     s->bit_index = 0;
     s->decoded_byte = 0;
     s->parity_bit = 0;
 
     /* Phase 3: Main decode loop */
     while (1) {
-        cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        uint64_t period_range = samplenum - s->bt_block_ss;
+        uint64_t period_range = di_samplenum(di) - s->bt_block_ss;
 
         if (s->bit_index < 9) {
             int osw = (period_range < s->threshold_samples) ? 1 : 0;
@@ -150,7 +141,7 @@ static void osw_decode(struct srd_decoder_inst *di)
                 snprintf(byte_str, sizeof(byte_str), "Byte: %d", s->decoded_byte);
                 char val_str[8];
                 snprintf(val_str, sizeof(val_str), "%d", s->decoded_byte);
-                C_ANN_PUT(di, s->by_block_ss, samplenum, s->out_ann, ANN_BYTE, byte_str, val_str);
+                c_put(di, s->by_block_ss, di_samplenum(di), s->out_ann, ANN_BYTE, byte_str, val_str);
             } else if (s->bit_index == 8) {
                 const char *pstr = (s->parity_bit == 0) ? "OK" : "ERR";
                 char pb_str[32];
@@ -158,32 +149,32 @@ static void osw_decode(struct srd_decoder_inst *di)
                     snprintf(pb_str, sizeof(pb_str), "Parity check: %s", pstr);
                 else
                     snprintf(pb_str, sizeof(pb_str), "%s", pstr);
-                C_ANN_PUT(di, s->bt_block_ss, samplenum, s->out_ann, ANN_PB, pb_str, pstr);
+                c_put(di, s->bt_block_ss, di_samplenum(di), s->out_ann, ANN_PB, pb_str, pstr);
             }
 
             char bit_str[16], bit_short[4];
             snprintf(bit_str, sizeof(bit_str), "Bit: %d", osw);
             snprintf(bit_short, sizeof(bit_short), "%d", osw);
-            C_ANN_PUT(di, s->bt_block_ss, samplenum, s->out_ann, ANN_BIT, bit_str, bit_short);
+            c_put(di, s->bt_block_ss, di_samplenum(di), s->out_ann, ANN_BIT, bit_str, bit_short);
 
             char samp_str[32], samp_short[16];
             snprintf(samp_str, sizeof(samp_str), "Samples: %d", (int)period_range);
             snprintf(samp_short, sizeof(samp_short), "%d", (int)period_range);
-            C_ANN_PUT(di, s->bt_block_ss, samplenum, s->out_ann, ANN_SAMPLE, samp_str, samp_short);
+            c_put(di, s->bt_block_ss, di_samplenum(di), s->out_ann, ANN_SAMPLE, samp_str, samp_short);
 
             s->bit_index++;
         } else {
-            C_ANN_PUT(di, s->bt_block_ss, samplenum, s->out_ann, ANN_WAIT, "Wait", "w");
+            c_put(di, s->bt_block_ss, di_samplenum(di), s->out_ann, ANN_WAIT, "Wait", "w");
             char samp_str[32], samp_short[16];
             snprintf(samp_str, sizeof(samp_str), "Samples: %d", (int)period_range);
             snprintf(samp_short, sizeof(samp_short), "%d", (int)period_range);
-            C_ANN_PUT(di, s->bt_block_ss, samplenum, s->out_ann, ANN_SAMPLE, samp_str, samp_short);
-            s->by_block_ss = samplenum;
+            c_put(di, s->bt_block_ss, di_samplenum(di), s->out_ann, ANN_SAMPLE, samp_str, samp_short);
+            s->by_block_ss = di_samplenum(di);
             s->decoded_byte = 0;
             s->parity_bit = 0;
             s->bit_index = 0;
         }
-        s->bt_block_ss = samplenum;
+        s->bt_block_ss = di_samplenum(di);
     }
 }
 
@@ -224,6 +215,7 @@ static struct srd_c_decoder osw_c_decoder = {
     .start = osw_start,
     .decode = osw_decode,
     .destroy = osw_destroy,
+    .state_size = 0,
     .metadata = osw_metadata,
 };
 
