@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -109,11 +109,11 @@ static void lin_output_checksum(struct srd_decoder_inst *di, struct lin_priv *pr
     struct lin_byte_entry *checksum_entry = &priv->rsp[priv->rsp_cnt - 1];
 
     /* Sync byte annotation */
-    C_ANN_PUT(di, sync_entry->ss, sync_entry->es, priv->out_ann, ANN_DATA,
+    c_put(di, sync_entry->ss, sync_entry->es, priv->out_ann, ANN_DATA,
               "Sync", "S");
 
     if (sync_entry->val != 0x55) {
-        C_ANN_PUT(di, sync_entry->ss, sync_entry->es, priv->out_ann, ANN_ERROR,
+        c_put(di, sync_entry->ss, sync_entry->es, priv->out_ann, ANN_ERROR,
                   "Sync is not 0x55", "Not 0x55", "!= 0x55");
     }
 
@@ -127,7 +127,7 @@ static void lin_output_checksum(struct srd_decoder_inst *di, struct lin_priv *pr
     if (!parity_valid) {
         char pt[16];
         snprintf(pt, sizeof(pt), "P != %d", expected_parity);
-        C_ANN_PUT(di, pid_entry->ss, pid_entry->es, priv->out_ann, ANN_ERROR, pt);
+        c_put(di, pid_entry->ss, pid_entry->es, priv->out_ann, ANN_ERROR, pt);
     }
 
     int ann_cls = parity_valid ? ANN_DATA : ANN_INLINE_ERROR;
@@ -136,7 +136,7 @@ static void lin_output_checksum(struct srd_decoder_inst *di, struct lin_priv *pr
     snprintf(t1, sizeof(t1), "ID: %02X Parity: %d (%s)", id, parity, pstr);
     snprintf(t2, sizeof(t2), "ID: 0x%02X", id);
     snprintf(t3, sizeof(t3), "I: %d", id);
-    C_ANN_PUT(di, pid_entry->ss, pid_entry->es, priv->out_ann, ann_cls, t1, t2, t3);
+    c_put(di, pid_entry->ss, pid_entry->es, priv->out_ann, ann_cls, t1, t2, t3);
 
     /* Data bytes and checksum — rsp_cnt includes the checksum byte */
     int data_cnt = priv->rsp_cnt - 1;
@@ -147,7 +147,7 @@ static void lin_output_checksum(struct srd_decoder_inst *di, struct lin_priv *pr
             char d1[32], d2[16];
             snprintf(d1, sizeof(d1), "Data: 0x%02X", b->val);
             snprintf(d2, sizeof(d2), "D: 0x%02X", b->val);
-            C_ANN_PUT(di, b->ss, b->es, priv->out_ann, ANN_DATA, d1, d2);
+            c_put(di, b->ss, b->es, priv->out_ann, ANN_DATA, d1, d2);
         }
 
         /* Checksum validation */
@@ -164,10 +164,10 @@ static void lin_output_checksum(struct srd_decoder_inst *di, struct lin_priv *pr
         snprintf(c1, sizeof(c1), "Checksum: 0x%02X", checksum_entry->val);
         snprintf(c2, sizeof(c2), "Checksum");
         snprintf(c3, sizeof(c3), "Chk");
-        C_ANN_PUT(di, checksum_entry->ss, checksum_entry->es, priv->out_ann, chk_cls, c1, c2, c3);
+        c_put(di, checksum_entry->ss, checksum_entry->es, priv->out_ann, chk_cls, c1, c2, c3);
 
         if (!checksum_ok) {
-            C_ANN_PUT(di, checksum_entry->ss, checksum_entry->es, priv->out_ann, ANN_ERROR,
+            c_put(di, checksum_entry->ss, checksum_entry->es, priv->out_ann, ANN_ERROR,
                       "Checksum invalid");
         }
     }
@@ -220,13 +220,11 @@ static void lin_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void lin_start(struct srd_decoder_inst *di)
 {
     struct lin_priv *priv = (struct lin_priv *)c_decoder_get_private(di);
-    priv->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "lin");
-    priv->version = (int)c_decoder_get_option_int(di, "version", 2);
+    priv->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "lin");
+    priv->version = (int)c_opt_int(di, "version", 2);
 }
 
-static void lin_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void lin_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     struct lin_priv *priv = (struct lin_priv *)c_decoder_get_private(di);
     if (!priv)
@@ -262,7 +260,7 @@ static void lin_recv_proto(struct srd_decoder_inst *di,
            Subsequent breaks while already waiting (FIND_BREAK state) are expected
            and don't need a separate LIN-level annotation. */
         if (priv->state != FIND_BREAK || !priv->done_break) {
-            C_ANN_PUT(di, start_sample, end_sample, priv->out_ann, ANN_CONTROL,
+            c_put(di, start_sample, end_sample, priv->out_ann, ANN_CONTROL,
                       "Break condition", "Break", "Brk", "B");
         }
 
@@ -273,10 +271,10 @@ static void lin_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 1)
+    if (n_fields < 1)
         return;
 
-    uint8_t byte_val = data[0];
+    uint8_t byte_val = fields[0].u8;
 
     switch (priv->state) {
 
@@ -299,8 +297,8 @@ static void lin_recv_proto(struct srd_decoder_inst *di,
         entry->es = end_sample;
         entry->val = byte_val;
 
-        int data_len = pid_to_data_len(byte_val);
-        priv->state = (data_len > 0) ? DATA : CHECKSUM;
+        int n_fields = pid_to_data_len(byte_val);
+        priv->state = (n_fields > 0) ? DATA : CHECKSUM;
         break;
     }
 
@@ -389,7 +387,8 @@ static struct srd_c_decoder lin_c_decoder = {
     .decode = lin_decode,
     .end = lin_end,
     .destroy = lin_destroy,
-    .recv_proto = lin_recv_proto,
+    .decode_upper = lin_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

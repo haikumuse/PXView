@@ -1,20 +1,20 @@
 {
 	"decoder": "sda2506_c",
 	"samplerate": 1000000,
-	"num_annotations": 21,
+	"num_annotations": 17,
 	"annotations": [
 		{
-			"start_sample": 4,
-			"end_sample": 6,
-			"ann_class": 1,
-			"ann_type": 8,
+			"start_sample": 2020,
+			"end_sample": 2030,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
 				"1"
 			]
 		}, 
 		{
-			"start_sample": 14,
-			"end_sample": 16,
+			"start_sample": 2050,
+			"end_sample": 2052,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -22,17 +22,8 @@
 			]
 		}, 
 		{
-			"start_sample": 24,
-			"end_sample": 26,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 34,
-			"end_sample": 36,
+			"start_sample": 2070,
+			"end_sample": 2072,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -40,8 +31,8 @@
 			]
 		}, 
 		{
-			"start_sample": 44,
-			"end_sample": 46,
+			"start_sample": 2090,
+			"end_sample": 2092,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -49,8 +40,8 @@
 			]
 		}, 
 		{
-			"start_sample": 54,
-			"end_sample": 56,
+			"start_sample": 2110,
+			"end_sample": 2112,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -58,8 +49,8 @@
 			]
 		}, 
 		{
-			"start_sample": 64,
-			"end_sample": 66,
+			"start_sample": 2130,
+			"end_sample": 2132,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -67,8 +58,8 @@
 			]
 		}, 
 		{
-			"start_sample": 74,
-			"end_sample": 76,
+			"start_sample": 2150,
+			"end_sample": 2152,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -76,17 +67,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4,
-			"end_sample": 76,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"05"
-			]
-		}, 
-		{
-			"start_sample": 84,
-			"end_sample": 86,
+			"start_sample": 2170,
+			"end_sample": 2172,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -94,8 +76,8 @@
 			]
 		}, 
 		{
-			"start_sample": 94,
-			"end_sample": 96,
+			"start_sample": 2190,
+			"end_sample": 2192,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -103,62 +85,8 @@
 			]
 		}, 
 		{
-			"start_sample": 104,
-			"end_sample": 106,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 114,
-			"end_sample": 116,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 124,
-			"end_sample": 126,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 134,
-			"end_sample": 136,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 144,
-			"end_sample": 146,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 154,
-			"end_sample": 156,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 84,
-			"end_sample": 156,
+			"start_sample": 2050,
+			"end_sample": 2192,
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [
@@ -166,8 +94,8 @@
 			]
 		}, 
 		{
-			"start_sample": 164,
-			"end_sample": 166,
+			"start_sample": 2210,
+			"end_sample": 2212,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -175,8 +103,8 @@
 			]
 		}, 
 		{
-			"start_sample": 174,
-			"end_sample": 176,
+			"start_sample": 2230,
+			"end_sample": 2232,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -184,12 +112,48 @@
 			]
 		}, 
 		{
-			"start_sample": 184,
-			"end_sample": 186,
+			"start_sample": 2250,
+			"end_sample": 2252,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
-				"1"
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2270,
+			"end_sample": 2272,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2290,
+			"end_sample": 2292,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2310,
+			"end_sample": 2312,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2330,
+			"end_sample": 2332,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
 			]
 		}
 	]

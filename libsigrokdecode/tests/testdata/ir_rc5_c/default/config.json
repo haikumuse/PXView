@@ -2,7 +2,7 @@
   "decoder": "ir_rc5_c",
   "samplerate": 100000,
   "num_channels": 1,
-  "sample_count": 100000,
+  "sample_count": 500000,
   "channels": {
     "ir": 0
   },

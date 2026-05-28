@@ -1,11 +1,11 @@
 {
 	"decoder": "spdif_c",
 	"samplerate": 6000000,
-	"num_annotations": 18,
+	"num_annotations": 26,
 	"annotations": [
 		{
 			"start_sample": 0,
-			"end_sample": 336,
+			"end_sample": 2156,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -13,8 +13,30 @@
 			]
 		}, 
 		{
-			"start_sample": 2400,
-			"end_sample": 2880,
+			"start_sample": 2000,
+			"end_sample": 2540,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Unknown Preamble", 
+				"Unknown Prea.", 
+				"U"
+			]
+		}, 
+		{
+			"start_sample": 4400,
+			"end_sample": 4940,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Unknown Preamble", 
+				"Unknown Prea.", 
+				"U"
+			]
+		}, 
+		{
+			"start_sample": 6800,
+			"end_sample": 7280,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -23,8 +45,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2880,
-			"end_sample": 3000,
+			"start_sample": 7280,
+			"end_sample": 7340,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -32,8 +54,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3000,
-			"end_sample": 3120,
+			"start_sample": 7340,
+			"end_sample": 7460,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -41,8 +63,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3120,
-			"end_sample": 3240,
+			"start_sample": 7460,
+			"end_sample": 7580,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -50,8 +72,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3240,
-			"end_sample": 3360,
+			"start_sample": 7580,
+			"end_sample": 7640,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -59,8 +81,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3360,
-			"end_sample": 3480,
+			"start_sample": 7640,
+			"end_sample": 7700,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -68,8 +90,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3480,
-			"end_sample": 3600,
+			"start_sample": 7700,
+			"end_sample": 7760,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -77,8 +99,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3600,
-			"end_sample": 3720,
+			"start_sample": 7760,
+			"end_sample": 7850,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -86,8 +108,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3720,
-			"end_sample": 3840,
+			"start_sample": 7850,
+			"end_sample": 7910,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -95,8 +117,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3840,
-			"end_sample": 3960,
+			"start_sample": 7910,
+			"end_sample": 8000,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -104,8 +126,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3960,
-			"end_sample": 4080,
+			"start_sample": 8000,
+			"end_sample": 8090,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -113,8 +135,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4080,
-			"end_sample": 4200,
+			"start_sample": 8090,
+			"end_sample": 8180,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -122,8 +144,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4200,
-			"end_sample": 4320,
+			"start_sample": 8180,
+			"end_sample": 8240,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -131,8 +153,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4320,
-			"end_sample": 4440,
+			"start_sample": 8240,
+			"end_sample": 8330,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -140,8 +162,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4440,
-			"end_sample": 4560,
+			"start_sample": 8330,
+			"end_sample": 8420,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -149,8 +171,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4560,
-			"end_sample": 4680,
+			"start_sample": 8420,
+			"end_sample": 8540,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -158,8 +180,62 @@
 			]
 		}, 
 		{
-			"start_sample": 4680,
-			"end_sample": 4740,
+			"start_sample": 8540,
+			"end_sample": 8630,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8630,
+			"end_sample": 8690,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8690,
+			"end_sample": 8780,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8780,
+			"end_sample": 8870,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8870,
+			"end_sample": 8960,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8960,
+			"end_sample": 9080,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9080,
+			"end_sample": 9170,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [

@@ -155,31 +155,23 @@ static void spacewire_reset(struct srd_decoder_inst *di)
 static void spacewire_start(struct srd_decoder_inst *di)
 {
     spacewire_state *s = (spacewire_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "spacewire");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "spacewire");
 }
 
 static void spacewire_decode(struct srd_decoder_inst *di)
 {
     spacewire_state *s = (spacewire_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, CH_DATA);
-        c_cond_or(cb);
-        c_cond_edge(cb, CH_STROBE);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(CH_DATA), CW_OR, CW_E(CH_STROBE), CW_END);
         if (ret != SRD_OK)
             return;
 
-        sn_insert(s, samplenum);
+        sn_insert(s, di_samplenum(di));
 
-        uint8_t data = c_decoder_get_pin(di, CH_DATA, samplenum);
+        uint8_t data = c_pin(di, CH_DATA);
 
+        /* Match Python: check data_val BEFORE shifting, then shift at end */
         if (s->state == STATE_IDLE) {
-            s->data_val = (s->data_val << 1) | data;
             if ((s->data_val & 0b1111111) == 0b1110100) {
                 /* NULL code detected */
                 /* Parity bit (bit 7) */
@@ -205,8 +197,6 @@ static void spacewire_decode(struct srd_decoder_inst *di)
                 s->index = 0;
             }
         } else if (s->state == STATE_SYNC) {
-            s->data_val = (s->data_val << 1) | data;
-
             if (s->index == 1) {
                 /* DCF bit */
                 if (s->data_val & 0b1)
@@ -303,6 +293,9 @@ static void spacewire_decode(struct srd_decoder_inst *di)
                 s->index++;
             }
         }
+
+        /* Shift in the data at the end — match Python's ordering */
+        s->data_val = (s->data_val << 1) | data;
     }
 }
 
@@ -335,6 +328,7 @@ static struct srd_c_decoder spacewire_c_decoder = {
     .start = spacewire_start,
     .decode = spacewire_decode,
     .destroy = spacewire_destroy,
+    .state_size = 0,
     .inputs = spacewire_inputs,
     .num_inputs = 1,
     .outputs = spacewire_outputs,

@@ -1,11 +1,11 @@
 {
 	"decoder": "ir_rc5_c",
-	"samplerate": 1000000,
+	"samplerate": 100000,
 	"num_annotations": 19,
 	"annotations": [
 		{
-			"start_sample": 0,
-			"end_sample": 1779,
+			"start_sample": 2500,
+			"end_sample": 2678,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -13,17 +13,53 @@
 			]
 		}, 
 		{
-			"start_sample": 1779,
+			"start_sample": 2678,
+			"end_sample": 2853,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2853,
+			"end_sample": 3029,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3029,
+			"end_sample": 3205,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3205,
+			"end_sample": 3381,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3381,
 			"end_sample": 3557,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
 			"start_sample": 3557,
-			"end_sample": 5335,
+			"end_sample": 3733,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -31,8 +67,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5335,
-			"end_sample": 7113,
+			"start_sample": 3733,
+			"end_sample": 3909,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -40,8 +76,8 @@
 			]
 		}, 
 		{
-			"start_sample": 7113,
-			"end_sample": 8891,
+			"start_sample": 3909,
+			"end_sample": 4085,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -49,8 +85,8 @@
 			]
 		}, 
 		{
-			"start_sample": 8891,
-			"end_sample": 10669,
+			"start_sample": 4085,
+			"end_sample": 4261,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -58,8 +94,8 @@
 			]
 		}, 
 		{
-			"start_sample": 10669,
-			"end_sample": 12447,
+			"start_sample": 4261,
+			"end_sample": 4437,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -67,8 +103,8 @@
 			]
 		}, 
 		{
-			"start_sample": 12447,
-			"end_sample": 14225,
+			"start_sample": 4437,
+			"end_sample": 4613,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -76,8 +112,8 @@
 			]
 		}, 
 		{
-			"start_sample": 14225,
-			"end_sample": 16003,
+			"start_sample": 4613,
+			"end_sample": 4789,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -85,44 +121,8 @@
 			]
 		}, 
 		{
-			"start_sample": 16003,
-			"end_sample": 17781,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 17781,
-			"end_sample": 19559,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 19559,
-			"end_sample": 21337,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 21337,
-			"end_sample": 23115,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 23115,
-			"end_sample": 24893,
+			"start_sample": 4789,
+			"end_sample": 4965,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -130,8 +130,8 @@
 			]
 		}, 
 		{
-			"start_sample": 0,
-			"end_sample": 1779,
+			"start_sample": 2500,
+			"end_sample": 2678,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -143,8 +143,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1779,
-			"end_sample": 3557,
+			"start_sample": 2678,
+			"end_sample": 2853,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -156,8 +156,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3557,
-			"end_sample": 5335,
+			"start_sample": 2853,
+			"end_sample": 3029,
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [
@@ -169,8 +169,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5335,
-			"end_sample": 14225,
+			"start_sample": 3029,
+			"end_sample": 3909,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -182,8 +182,8 @@
 			]
 		}, 
 		{
-			"start_sample": 14225,
-			"end_sample": 24893,
+			"start_sample": 3909,
+			"end_sample": 4965,
 			"ann_class": 6,
 			"ann_type": 13,
 			"texts": [

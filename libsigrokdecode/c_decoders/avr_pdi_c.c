@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2011-2014 Uwe Hermann <uwe@hermann-uwe.de>
@@ -217,7 +217,7 @@ static void put_ann_bit(struct srd_decoder_inst *di, avr_pdi_priv *s, int bit_nr
     struct pdi_bit *b = &s->bits[bit_nr];
     char val_str[4];
     snprintf(val_str, sizeof(val_str), "%d", b->val);
-    C_ANN_PUT(di, b->ss, b->es, s->out_ann, ann_idx, val_str);
+    c_put(di, b->ss, b->es, s->out_ann, ann_idx, val_str);
 }
 
 static void put_ann_data(struct srd_decoder_inst *di, avr_pdi_priv *s, int bit_nr, int ann_idx, const char **txts)
@@ -349,7 +349,7 @@ static void handle_bits(struct srd_decoder_inst *di, avr_pdi_priv *s,
     if (valid_frame) {
         uint64_t byte_ss = s->bits[0].ss;
         uint64_t byte_es = s->bits[frame_bitcount - 1].es;
-        c_decoder_put_binary(di, byte_ss, byte_es, s->out_binary, BIN_BYTES, 1, &data_val);
+        c_put_bin(di, byte_ss, byte_es, s->out_binary, BIN_BYTES, 1, &data_val);
         handle_byte(di, s, byte_ss, byte_es, 0, data_val);
     }
 
@@ -649,8 +649,8 @@ static void avr_pdi_reset(struct srd_decoder_inst *di)
 static void avr_pdi_start(struct srd_decoder_inst *di)
 {
     avr_pdi_priv *s = (avr_pdi_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "avr_pdi");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "avr_pdi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "avr_pdi");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "avr_pdi");
 }
 
 static void avr_pdi_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -664,18 +664,13 @@ static void avr_pdi_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
 static void avr_pdi_decode(struct srd_decoder_inst *di)
 {
     avr_pdi_priv *s = (avr_pdi_priv *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
-
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);  /* Wait for RESET/PDI_CLK edge */
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int clock_pin = c_decoder_get_pin(di, 0, samplenum);
-        int data_pin = c_decoder_get_pin(di, 1, samplenum);
+        int clock_pin = c_pin(di, 0);
+        int data_pin = c_pin(di, 1);
 
         /* Sample data on rising clock edge */
         if (clock_pin == 1) {
@@ -685,7 +680,7 @@ static void avr_pdi_decode(struct srd_decoder_inst *di)
 
         /* Falling clock edge: process previous bit slot */
         s->ss_last_fall = s->ss_curr_fall;
-        s->ss_curr_fall = samplenum;
+        s->ss_curr_fall = di_samplenum(di);
         if (s->ss_last_fall == 0) {
             /* First falling edge, no previous bit slot */
             continue;
@@ -735,6 +730,7 @@ struct srd_c_decoder avr_pdi_c_decoder = {
     .start = avr_pdi_start,
     .decode = avr_pdi_decode,
     .destroy = avr_pdi_destroy,
+    .state_size = 0,
     .metadata = avr_pdi_metadata,
 };
 

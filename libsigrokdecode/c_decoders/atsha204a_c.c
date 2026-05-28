@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -130,26 +130,26 @@ static const struct srd_c_ann_row atsha204a_ann_rows[] = {
 
 static void atsha204a_putx(struct srd_decoder_inst *di, atsha204a_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, cls, text);
+    c_put(di, s->ss, s->es, s->out_ann, cls, text);
 }
 
 static void atsha204a_putz(struct srd_decoder_inst *di, uint64_t ss, uint64_t es, atsha204a_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, ss, es, s->out_ann, cls, text);
+    c_put(di, ss, es, s->out_ann, cls, text);
 }
 
 static void atsha204a_puty(struct srd_decoder_inst *di, atsha204a_state *s, int start_idx, int end_idx, int cls, const char *text)
 {
     if (start_idx < 0 || end_idx < 0 || start_idx >= s->num_bytes || end_idx >= s->num_bytes)
         return;
-    C_ANN_PUT(di, s->bytes[start_idx].ss, s->bytes[end_idx].es, s->out_ann, cls, text);
+    c_put(di, s->bytes[start_idx].ss, s->bytes[end_idx].es, s->out_ann, cls, text);
 }
 
 static void atsha204a_put_warning(struct srd_decoder_inst *di, atsha204a_state *s, uint64_t ss, uint64_t es, const char *msg)
 {
     char buf[256];
     snprintf(buf, sizeof(buf), "Warning: %s", msg);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARNING, buf);
+    c_put(di, ss, es, s->out_ann, ANN_WARNING, buf);
 }
 
 static void atsha204a_put_data_hex(struct srd_decoder_inst *di, atsha204a_state *s,
@@ -162,7 +162,7 @@ static void atsha204a_put_data_hex(struct srd_decoder_inst *di, atsha204a_state 
     pos += snprintf(buf + pos, sizeof(buf) - pos, "%s: ", label);
     for (int i = start_idx; i <= end_idx && pos < (int)sizeof(buf) - 10; i++)
         pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x ", s->bytes[i].val);
-    C_ANN_PUT(di, s->bytes[start_idx].ss, s->bytes[end_idx].es, s->out_ann, ANN_DATA, buf);
+    c_put(di, s->bytes[start_idx].ss, s->bytes[end_idx].es, s->out_ann, ANN_DATA, buf);
 }
 
 static void atsha204a_output_tx_bytes(struct srd_decoder_inst *di, atsha204a_state *s)
@@ -179,7 +179,7 @@ static void atsha204a_output_tx_bytes(struct srd_decoder_inst *di, atsha204a_sta
     } else {
         snprintf(buf, sizeof(buf), "Word addr: 0x%02X", s->waddr);
     }
-    C_ANN_PUT(di, s->bytes[0].ss, s->bytes[0].es, s->out_ann, ANN_WADDR, buf);
+    c_put(di, s->bytes[0].ss, s->bytes[0].es, s->out_ann, ANN_WADDR, buf);
 
     if (s->waddr != WORD_ADDR_COMMAND)
         return;
@@ -189,7 +189,7 @@ static void atsha204a_output_tx_bytes(struct srd_decoder_inst *di, atsha204a_sta
     /* Count */
     int count = s->bytes[1].val;
     snprintf(buf, sizeof(buf), "Count: %d", count);
-    C_ANN_PUT(di, s->bytes[1].ss, s->bytes[1].es, s->out_ann, ANN_COUNT, buf);
+    c_put(di, s->bytes[1].ss, s->bytes[1].es, s->out_ann, ANN_COUNT, buf);
 
     if (n - 1 != count) {
         snprintf(buf, sizeof(buf), "Invalid frame length: Got %d, expecting %d", n - 1, count);
@@ -202,7 +202,7 @@ static void atsha204a_output_tx_bytes(struct srd_decoder_inst *di, atsha204a_sta
     /* Opcode */
     s->opcode = s->bytes[2].val;
     snprintf(buf, sizeof(buf), "Opcode: %s", opcode_name(s->opcode));
-    C_ANN_PUT(di, s->bytes[2].ss, s->bytes[2].es, s->out_ann, ANN_OPCODE, buf);
+    c_put(di, s->bytes[2].ss, s->bytes[2].es, s->out_ann, ANN_OPCODE, buf);
 
     if (n < 4) return;
 
@@ -238,7 +238,7 @@ static void atsha204a_output_tx_bytes(struct srd_decoder_inst *di, atsha204a_sta
     } else {
         snprintf(buf, sizeof(buf), "Param1: %02X", p1);
     }
-    C_ANN_PUT(di, s->bytes[3].ss, s->bytes[3].es, s->out_ann, ANN_PARAM1, buf);
+    c_put(di, s->bytes[3].ss, s->bytes[3].es, s->out_ann, ANN_PARAM1, buf);
 
     if (n < 6) return;
 
@@ -329,7 +329,7 @@ static void atsha204a_output_rx_bytes(struct srd_decoder_inst *di, atsha204a_sta
     /* Count */
     int count = s->bytes[0].val;
     snprintf(buf, sizeof(buf), "Count: %d", count);
-    C_ANN_PUT(di, s->bytes[0].ss, s->bytes[0].es, s->out_ann, ANN_COUNT, buf);
+    c_put(di, s->bytes[0].ss, s->bytes[0].es, s->out_ann, ANN_COUNT, buf);
 
     if (s->waddr == WORD_ADDR_RESET) {
         /* Response to reset */
@@ -339,7 +339,7 @@ static void atsha204a_output_rx_bytes(struct srd_decoder_inst *di, atsha204a_sta
                 snprintf(buf, sizeof(buf), "CRC: %02X %02X", s->bytes[2].val, s->bytes[3].val);
                 atsha204a_puty(di, s, 2, 3, ANN_CRC, buf);
                 /* Status */
-                C_ANN_PUT(di, s->bytes[0].ss, s->bytes[n - 1].es, s->out_ann, ANN_STATUS,
+                c_put(di, s->bytes[0].ss, s->bytes[n - 1].es, s->out_ann, ANN_STATUS,
                     status_str(s->bytes[1].val));
             }
         }
@@ -351,7 +351,7 @@ static void atsha204a_output_rx_bytes(struct srd_decoder_inst *di, atsha204a_sta
                 if (n >= 4) {
                     snprintf(buf, sizeof(buf), "CRC: %02X %02X", s->bytes[2].val, s->bytes[3].val);
                     atsha204a_puty(di, s, 2, 3, ANN_CRC, buf);
-                    C_ANN_PUT(di, s->bytes[0].ss, s->bytes[n - 1].es, s->out_ann, ANN_STATUS,
+                    c_put(di, s->bytes[0].ss, s->bytes[n - 1].es, s->out_ann, ANN_STATUS,
                         status_str(s->bytes[1].val));
                 }
             }
@@ -366,9 +366,7 @@ static void atsha204a_output_rx_bytes(struct srd_decoder_inst *di, atsha204a_sta
     }
 }
 
-static void atsha204a_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void atsha204a_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     atsha204a_state *s = (atsha204a_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -398,7 +396,7 @@ static void atsha204a_recv_proto(struct srd_decoder_inst *di,
         break;
     case ATSHA204A_READ_REGS:
         if (strcmp(cmd, "DATA READ") == 0) {
-            uint8_t b = (data_len > 0) ? data[0] : 0;
+            uint8_t b = (n_fields > 0) ? fields[0].u8 : 0;
             if (s->num_bytes < ATSHA204A_MAX_BYTES) {
                 s->bytes[s->num_bytes].ss = start_sample;
                 s->bytes[s->num_bytes].es = end_sample;
@@ -417,7 +415,7 @@ static void atsha204a_recv_proto(struct srd_decoder_inst *di,
         break;
     case ATSHA204A_WRITE_REGS:
         if (strcmp(cmd, "DATA WRITE") == 0) {
-            uint8_t b = (data_len > 0) ? data[0] : 0;
+            uint8_t b = (n_fields > 0) ? fields[0].u8 : 0;
             if (s->num_bytes < ATSHA204A_MAX_BYTES) {
                 s->bytes[s->num_bytes].ss = start_sample;
                 s->bytes[s->num_bytes].es = end_sample;
@@ -453,7 +451,7 @@ static void atsha204a_reset(struct srd_decoder_inst *di)
 static void atsha204a_start(struct srd_decoder_inst *di)
 {
     atsha204a_state *s = (atsha204a_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "atsha204a");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "atsha204a");
 }
 
 static void atsha204a_decode(struct srd_decoder_inst *di)
@@ -498,7 +496,8 @@ struct srd_c_decoder atsha204a_c_decoder = {
     .start = atsha204a_start,
     .decode = atsha204a_decode,
     .destroy = atsha204a_destroy,
-    .recv_proto = atsha204a_recv_proto,
+    .decode_upper = atsha204a_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

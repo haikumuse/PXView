@@ -155,7 +155,7 @@ static void rffe_put_python(mipi_rffe_state *s, struct srd_decoder_inst *di,
 {
     if (s->out_python < 0)
         return;
-    c_decoder_put_python(di, ss, es, s->out_python, text, NULL, 0);
+    c_proto(di, ss, es, s->out_python, text, C_END);
 }
 
 static void rffe_init(mipi_rffe_state *s)
@@ -201,7 +201,7 @@ static void rffe_cmdset(mipi_rffe_state *s, struct srd_decoder_inst *di,
                         int cmd, int state)
 {
     s->ss = s->DATAss;
-    s->es = s->BPss; /* use last known position - will be updated by caller */
+    s->es = di_samplenum(di);
     int pidx = cmdkey_to_proto[cmd];
     const char *txts[] = {proto_map[pidx].long_name, proto_map[pidx].short_name, NULL};
     rffe_put(s, di, s->ss, s->es, proto_map[pidx].ann_class, txts);
@@ -215,49 +215,34 @@ static void rffe_cmdset(mipi_rffe_state *s, struct srd_decoder_inst *di,
 static int rffe_read_sclk_fall(mipi_rffe_state *s, struct srd_decoder_inst *di,
                                uint8_t *sdata_out)
 {
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (s->_display) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_fall(cb, CH_SCLK);
-        c_cond_or(cb);
-        c_cond_low(cb, CH_SCLK);
-        c_cond_edge(cb, CH_SDATA);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_F(CH_SCLK), CW_OR, CW_L(CH_SCLK), CW_E(CH_SDATA), CW_END);
         if (ret != SRD_OK)
             return -1;
 
-        if (matched & (1 << 0)) {
+        if (di_matched(di) & (1 << 0)) {
             /* SCLK falling edge */
-            uint8_t sdata = c_decoder_get_pin(di, CH_SDATA, samplenum);
+            uint8_t sdata = c_pin(di, CH_SDATA);
             if (sdata_out) *sdata_out = sdata;
             return 0;
         }
-        if (matched & (1 << 1)) {
+        if (di_matched(di) & (1 << 1)) {
             /* IJE: SCLK low + SDATA edge */
-            s->ss = samplenum;
-            cb = c_cond_new();
-            c_cond_fall(cb, CH_SCLK);
-            c_cond_or(cb);
-            c_cond_low(cb, CH_SCLK);
-            c_cond_edge(cb, CH_SDATA);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            s->ss = di_samplenum(di);
+            ret = c_wait(di, CW_F(CH_SCLK), CW_OR, CW_L(CH_SCLK), CW_E(CH_SDATA), CW_END);
             if (ret != SRD_OK)
                 return -1;
 
-            if (matched & (1 << 0)) {
-                s->es = samplenum;
+            if (di_matched(di) & (1 << 0)) {
+                s->es = di_samplenum(di);
                 const char *ije_txts[] = {proto_map[17].long_name, proto_map[17].short_name, NULL};
                 rffe_put(s, di, s->ss, s->es, ANN_IJE, ije_txts);
-                uint8_t sdata = c_decoder_get_pin(di, CH_SDATA, samplenum);
+                uint8_t sdata = c_pin(di, CH_SDATA);
                 if (sdata_out) *sdata_out = sdata;
                 return 0;
             }
-            if (matched & (1 << 1)) {
-                s->es = samplenum;
+            if (di_matched(di) & (1 << 1)) {
+                s->es = di_samplenum(di);
                 const char *ije_txts[] = {proto_map[17].long_name, proto_map[17].short_name, NULL};
                 rffe_put(s, di, s->ss, s->es, ANN_IJE, ije_txts);
                 /* Continue reading */
@@ -267,14 +252,11 @@ static int rffe_read_sclk_fall(mipi_rffe_state *s, struct srd_decoder_inst *di,
         }
         return -1;
     } else {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_fall(cb, CH_SCLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_F(CH_SCLK), CW_END);
         if (ret != SRD_OK)
             return -1;
 
-        uint8_t sdata = c_decoder_get_pin(di, CH_SDATA, samplenum);
+        uint8_t sdata = c_pin(di, CH_SDATA);
         if (sdata_out) *sdata_out = sdata;
         return 0;
     }
@@ -297,11 +279,7 @@ static void rffe_handle(mipi_rffe_state *s, struct srd_decoder_inst *di,
             return;
 
         /* Wait for SCLK rising edge */
-        uint64_t samplenum = 0, matched = 0;
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, CH_SCLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(CH_SCLK), CW_END);
         if (ret != SRD_OK)
             return;
 
@@ -318,11 +296,7 @@ static void rffe_handle(mipi_rffe_state *s, struct srd_decoder_inst *di,
             return;
 
         /* Wait for SCLK rising edge */
-        uint64_t samplenum = 0, matched = 0;
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, CH_SCLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(CH_SCLK), CW_END);
         if (ret != SRD_OK)
             return;
 
@@ -330,20 +304,9 @@ static void rffe_handle(mipi_rffe_state *s, struct srd_decoder_inst *di,
         s->databyte |= sdata;
     }
 
-    /* Wait for SCLK falling edge */
-    {
-        uint64_t samplenum = 0, matched = 0;
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_fall(cb, CH_SCLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK)
-            return;
-    }
-
     uint32_t d = s->databyte;
     s->ss = s->DATAss;
-    s->es = s->BPss; /* approximate end */
+    s->es = di_samplenum(di);
 
     if (cmd != 10) { /* not 'P' */
         s->Pdata = d;
@@ -411,25 +374,17 @@ static void rffe_handle(mipi_rffe_state *s, struct srd_decoder_inst *di,
 
 static void rffe_handle_CMD(mipi_rffe_state *s, struct srd_decoder_inst *di)
 {
-    uint64_t samplenum = 0, matched = 0;
-
     if (s->bitcount == 0) {
         s->DATAss = s->BPss;
 
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_fall(cb, CH_SCLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_F(CH_SCLK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        uint8_t sdata = c_decoder_get_pin(di, CH_SDATA, samplenum);
+        uint8_t sdata = c_pin(di, CH_SDATA);
         if (sdata) {
             /* Wait for SCLK rise */
-            cb = c_cond_new();
-            c_cond_rise(cb, CH_SCLK);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_R(CH_SCLK), CW_END);
             if (ret != SRD_OK)
                 return;
 
@@ -497,58 +452,40 @@ static void rffe_handle_CMD(mipi_rffe_state *s, struct srd_decoder_inst *di)
     if (s->bitcount < 4) {
         uint8_t sdata_val;
         if (s->_display) {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, CH_SCLK);
-            c_cond_or(cb);
-            c_cond_low(cb, CH_SCLK);
-            c_cond_edge(cb, CH_SDATA);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_F(CH_SCLK), CW_OR, CW_L(CH_SCLK), CW_E(CH_SDATA), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if (matched & (1 << 0)) {
-                s->sdata = c_decoder_get_pin(di, CH_SDATA, samplenum);
+            if (di_matched(di) & (1 << 0)) {
+                s->sdata = c_pin(di, CH_SDATA);
             }
-            if (matched & (1 << 1)) {
-                s->ss = samplenum;
-                cb = c_cond_new();
-                c_cond_fall(cb, CH_SCLK);
-                c_cond_or(cb);
-                c_cond_low(cb, CH_SCLK);
-                c_cond_edge(cb, CH_SDATA);
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
+            if (di_matched(di) & (1 << 1)) {
+                s->ss = di_samplenum(di);
+                ret = c_wait(di, CW_F(CH_SCLK), CW_OR, CW_L(CH_SCLK), CW_E(CH_SDATA), CW_END);
                 if (ret != SRD_OK)
                     return;
 
-                if (matched & (1 << 0)) {
-                    s->es = samplenum;
+                if (di_matched(di) & (1 << 0)) {
+                    s->es = di_samplenum(di);
                     const char *ije_txts[] = {proto_map[17].long_name, proto_map[17].short_name, NULL};
                     rffe_put(s, di, s->ss, s->es, ANN_IJE, ije_txts);
-                    s->sdata = c_decoder_get_pin(di, CH_SDATA, samplenum);
+                    s->sdata = c_pin(di, CH_SDATA);
                 }
-                if (matched & (1 << 1)) {
-                    s->es = samplenum;
+                if (di_matched(di) & (1 << 1)) {
+                    s->es = di_samplenum(di);
                     const char *ije_txts[] = {proto_map[17].long_name, proto_map[17].short_name, NULL};
                     rffe_put(s, di, s->ss, s->es, ANN_IJE, ije_txts);
                 }
             }
         } else {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, CH_SCLK);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_F(CH_SCLK), CW_END);
             if (ret != SRD_OK)
                 return;
-            s->sdata = c_decoder_get_pin(di, CH_SDATA, samplenum);
+            s->sdata = c_pin(di, CH_SDATA);
         }
 
         /* Wait for SCLK rise */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, CH_SCLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(CH_SCLK), CW_END);
         if (ret != SRD_OK)
             return;
 
@@ -616,12 +553,12 @@ static void mipi_rffe_reset(struct srd_decoder_inst *di)
 static void mipi_rffe_start(struct srd_decoder_inst *di)
 {
     mipi_rffe_state *s = (mipi_rffe_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mipi_rffe");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "mipi_rffe");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mipi_rffe");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "mipi_rffe");
 
-    const char *err_disp = c_decoder_get_option_string(di, "error_display", "display");
+    const char *err_disp = c_opt_str(di, "error_display", "display");
     s->_display = (strcmp(err_disp, "display") == 0) ? 1 : 0;
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
 }
 
 static void mipi_rffe_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -634,67 +571,48 @@ static void mipi_rffe_metadata(struct srd_decoder_inst *di, int key, uint64_t va
 static void mipi_rffe_decode(struct srd_decoder_inst *di)
 {
     mipi_rffe_state *s = (mipi_rffe_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     while (1) {
         if (s->state == STATE_FIND_SSC) {
             /* Wait for SCLK low + SDATA rising edge */
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_low(cb, CH_SCLK);
-            c_cond_rise(cb, CH_SDATA);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_L(CH_SCLK), CW_R(CH_SDATA), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->BPss = samplenum;
+            s->BPss = di_samplenum(di);
 
             /* Wait for SCLK high OR SCLK low + SDATA falling edge */
-            cb = c_cond_new();
-            c_cond_high(cb, CH_SCLK);
-            c_cond_or(cb);
-            c_cond_low(cb, CH_SCLK);
-            c_cond_fall(cb, CH_SDATA);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_H(CH_SCLK), CW_OR, CW_L(CH_SCLK), CW_F(CH_SDATA), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if (matched & (1 << 0))
+            if (di_matched(di) & (1 << 0))
                 continue; /* SCLK high, not SSC */
 
             /* SCLK low + SDATA falling edge */
-            cb = c_cond_new();
-            c_cond_low(cb, CH_SCLK);
-            c_cond_edge(cb, CH_SDATA);
-            c_cond_or(cb);
-            c_cond_rise(cb, CH_SCLK);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_L(CH_SCLK), CW_E(CH_SDATA), CW_OR, CW_R(CH_SCLK), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if (matched & (1 << 0))
+            if (di_matched(di) & (1 << 0))
                 continue; /* SDATA edge while SCLK low */
 
             /* SCLK rising edge = SSC found */
             s->ss = s->BPss;
-            s->es = samplenum;
+            s->es = di_samplenum(di);
             const char *ssc_txts[] = {proto_map[0].long_name, proto_map[0].short_name, NULL};
             rffe_put(s, di, s->ss, s->es, ANN_SSC, ssc_txts);
             s->state = STATE_FIND_SLAVE_ADDRESS;
 
         } else if (s->state == STATE_FIND_SLAVE_ADDRESS) {
-            s->BPss = samplenum;
+            s->BPss = di_samplenum(di);
             rffe_handle(s, di, 1, STATE_FIND_COMMAND, 3, 0); /* SA */
 
         } else if (s->state == STATE_FIND_COMMAND) {
-            s->BPss = samplenum;
+            s->BPss = di_samplenum(di);
             rffe_handle_CMD(s, di);
 
         } else if (s->state == STATE_FIND_BYTE_COUNT) {
-            s->BPss = samplenum;
+            s->BPss = di_samplenum(di);
             if (s->cmdkey == CMD_ERW || s->cmdkey == CMD_ERR)
                 rffe_handle(s, di, 9, STATE_FIND_PARITY, 3, 0); /* BC */
             else
@@ -702,7 +620,7 @@ static void mipi_rffe_decode(struct srd_decoder_inst *di)
             s->bits = s->BC * 8;
 
         } else if (s->state == STATE_FIND_ADDRESS) {
-            s->BPss = samplenum;
+            s->BPss = di_samplenum(di);
             if (s->cmdkey == CMD_RW || s->cmdkey == CMD_RR)
                 rffe_handle(s, di, 11, STATE_FIND_PARITY, 4, 0); /* ADDRESS */
             else if (s->cmdkey == CMD_ERR || s->cmdkey == CMD_ERW)
@@ -715,7 +633,7 @@ static void mipi_rffe_decode(struct srd_decoder_inst *di)
             }
 
         } else if (s->state == STATE_FIND_DATA) {
-            s->BPss = samplenum;
+            s->BPss = di_samplenum(di);
             if (s->cmdkey == CMD_R0W)
                 rffe_handle(s, di, 13, STATE_FIND_PARITY, 6, 0); /* DATA */
             else if (s->cmdkey == CMD_RW || s->cmdkey == CMD_RR)
@@ -724,7 +642,7 @@ static void mipi_rffe_decode(struct srd_decoder_inst *di)
                 rffe_handle(s, di, 13, STATE_FIND_PARITY, s->bits - 1, s->bits - 8); /* DATA */
 
         } else if (s->state == STATE_FIND_PARITY) {
-            s->BPss = samplenum;
+            s->BPss = di_samplenum(di);
             s->Pcount++;
             rffe_handle(s, di, 10, STATE_FIND_PARITY, 0, 0); /* P */
 
@@ -761,16 +679,12 @@ static void mipi_rffe_decode(struct srd_decoder_inst *di)
             }
 
         } else if (s->state == STATE_FIND_BUS_PARK) {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_low(cb, CH_SCLK);
-            c_cond_low(cb, CH_SDATA);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_L(CH_SCLK), CW_L(CH_SDATA), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->ss = samplenum;
-            s->es = samplenum;
+            s->ss = di_samplenum(di);
+            s->es = di_samplenum(di);
             const char *bp_txts[] = {proto_map[12].long_name, proto_map[12].short_name, NULL};
             rffe_put(s, di, s->ss, s->es, ANN_BP, bp_txts);
 
@@ -817,6 +731,7 @@ static struct srd_c_decoder mipi_rffe_c_decoder = {
     .decode = mipi_rffe_decode,
     .metadata = mipi_rffe_metadata,
     .destroy = mipi_rffe_destroy,
+    .state_size = 0,
     .inputs = mipi_rffe_inputs,
     .num_inputs = 1,
     .outputs = mipi_rffe_outputs,

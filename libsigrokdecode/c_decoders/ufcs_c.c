@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2023 edison ren <i2tv@qq.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -188,7 +188,7 @@ static void ufcs_puthead(struct srd_decoder_inst *di, ufcs_state *s)
 
     char longm[128];
     snprintf(longm, sizeof(longm), "(r%d) %s[%d]: %s", ufcs_head_rev(s), role, ufcs_head_id(s), shortm);
-    C_ANN_PUT(di, s->bytepos_ss[0], s->bytepos_es[2], s->out_ann, ann_type, longm, shortm);
+    c_put(di, s->bytepos_ss[0], s->bytepos_es[2], s->out_ann, ann_type, longm, shortm);
     strncat(s->text, longm, sizeof(s->text) - strlen(s->text) - 1);
 }
 
@@ -219,12 +219,12 @@ static void ufcs_decode_data_msg(struct srd_decoder_inst *di, ufcs_state *s)
             if (idx + 7 < UFCS_MAX_PKT) {
                 char hexbuf[32];
                 snprintf(hexbuf, sizeof(hexbuf), "[%d]%08llx", numb, (unsigned long long)d);
-                C_ANN_PUT(di, s->bytepos_ss[idx], s->bytepos_es[idx + 7], s->out_ann, ANN_DATA, hexbuf);
+                c_put(di, s->bytepos_ss[idx], s->bytepos_es[idx + 7], s->out_ann, ANN_DATA, hexbuf);
 
                 char pdobuf[128];
                 snprintf(pdobuf, sizeof(pdobuf), "(PDO [%d] %g/%gV *%dmv %g/%gA *%dma)",
                     mode, min_mv, max_mv, step_mv, min_ma, max_ma, step_ma);
-                C_ANN_PUT(di, s->bytepos_ss[idx], s->bytepos_es[idx + 7], s->out_ann, ANN_PAYLOAD, pdobuf);
+                c_put(di, s->bytepos_ss[idx], s->bytepos_es[idx + 7], s->out_ann, ANN_PAYLOAD, pdobuf);
 
                 strncat(s->text, " - ", sizeof(s->text) - strlen(s->text) - 1);
                 strncat(s->text, pdobuf, sizeof(s->text) - strlen(s->text) - 1);
@@ -316,8 +316,8 @@ static void ufcs_decode_data_msg(struct srd_decoder_inst *di, ufcs_state *s)
     if (end_idx < UFCS_MAX_PKT && idx < UFCS_MAX_PKT) {
         char hexbuf[32];
         snprintf(hexbuf, sizeof(hexbuf), "H:%08llx", (unsigned long long)d);
-        C_ANN_PUT(di, s->bytepos_ss[idx], s->bytepos_es[end_idx], s->out_ann, ANN_DATA, hexbuf, "DATA");
-        C_ANN_PUT(di, s->bytepos_ss[idx], s->bytepos_es[end_idx], s->out_ann, ANN_PAYLOAD, txt);
+        c_put(di, s->bytepos_ss[idx], s->bytepos_es[end_idx], s->out_ann, ANN_DATA, hexbuf, "DATA");
+        c_put(di, s->bytepos_ss[idx], s->bytepos_es[end_idx], s->out_ann, ANN_PAYLOAD, txt);
         strncat(s->text, " - ", sizeof(s->text) - strlen(s->text) - 1);
         strncat(s->text, txt, sizeof(s->text) - strlen(s->text) - 1);
     }
@@ -328,18 +328,18 @@ static void ufcs_decode_pkt(struct srd_decoder_inst *di, ufcs_state *s)
     /* Packet header */
     char buf[64];
     snprintf(buf, sizeof(buf), "HEAD:%04x", ((unsigned)s->datapkt[0] << 8) | s->datapkt[1]);
-    C_ANN_PUT(di, s->bytepos_ss[0], s->bytepos_es[1], s->out_ann, ANN_HEADER, buf, "HD");
+    c_put(di, s->bytepos_ss[0], s->bytepos_es[1], s->out_ann, ANN_HEADER, buf, "HD");
 
     ufcs_puthead(di, s);
 
     /* CMD */
     snprintf(buf, sizeof(buf), "CMD:%02x", s->datapkt[2]);
-    C_ANN_PUT(di, s->bytepos_ss[2], s->bytepos_es[2], s->out_ann, ANN_HEADER, buf, "CMD");
+    c_put(di, s->bytepos_ss[2], s->bytepos_es[2], s->out_ann, ANN_HEADER, buf, "CMD");
 
     /* Data length */
     if (ufcs_data_len(s)) {
         snprintf(buf, sizeof(buf), "LEN:%02x", s->datapkt[3]);
-        C_ANN_PUT(di, s->bytepos_ss[3], s->bytepos_es[3], s->out_ann, ANN_HEADER, buf, "LEN");
+        c_put(di, s->bytepos_ss[3], s->bytepos_es[3], s->out_ann, ANN_HEADER, buf, "LEN");
     }
 
     /* Decode data payload */
@@ -351,15 +351,15 @@ static void ufcs_decode_pkt(struct srd_decoder_inst *di, ufcs_state *s)
     if (crc != ccrc) {
         char warn[64];
         snprintf(warn, sizeof(warn), "Bad CRC %02x != %02x", crc, ccrc);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_WARNINGS, warn, "CRC!");
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_WARNINGS, warn, "CRC!");
     }
 
     snprintf(buf, sizeof(buf), "CRC:%02x", crc);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_CRC, buf, "CRC");
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_CRC, buf, "CRC");
 
     /* Full text trace */
     if (s->fulltext) {
-        C_ANN_PUT(di, s->bytepos_ss[0], s->es_block, s->out_ann, ANN_TEXT, s->text, "...");
+        c_put(di, s->bytepos_ss[0], s->es_block, s->out_ann, ANN_TEXT, s->text, "...");
     }
 }
 
@@ -370,9 +370,7 @@ static void ufcs_reset_state(ufcs_state *s)
     s->text[0] = '\0';
 }
 
-static void ufcs_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ufcs_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ufcs_state *s = (ufcs_state *)c_decoder_get_private(di);
     if (!s)
@@ -380,17 +378,17 @@ static void ufcs_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 1)
+    if (n_fields < 1)
         return;
 
     s->ss_block = start_sample;
     s->es_block = end_sample;
 
-    uint8_t val = data[0];
+    uint8_t val = fields[0].u8;
 
     /* SOP detection */
     if (val == 0xaa) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_DATA, "SOP:0xaa", "SOP");
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_DATA, "SOP:0xaa", "SOP");
         ufcs_reset_state(s);
         return;
     }
@@ -433,9 +431,9 @@ static void ufcs_reset(struct srd_decoder_inst *di)
 static void ufcs_start(struct srd_decoder_inst *di)
 {
     ufcs_state *s = (ufcs_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ufcs");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ufcs");
 
-    const char *ft = c_decoder_get_option_string(di, "fulltext", "no");
+    const char *ft = c_opt_str(di, "fulltext", "no");
     s->fulltext = (ft && strcmp(ft, "yes") == 0) ? 1 : 0;
 }
 
@@ -481,7 +479,8 @@ struct srd_c_decoder ufcs_c_decoder = {
     .start = ufcs_start,
     .decode = ufcs_decode,
     .destroy = ufcs_destroy,
-    .recv_proto = ufcs_recv_proto,
+    .decode_upper = ufcs_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -204,7 +204,7 @@ static void hdmi_scdc_handle_scdc(struct srd_decoder_inst *di, hdmi_scdc_state *
     }
 
     if (pos > 0) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELDS, messages);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELDS, messages);
     }
 
     /* Handle CED registers (0x50-0x56) */
@@ -224,13 +224,13 @@ static void hdmi_scdc_handle_scdc(struct srd_decoder_inst *di, hdmi_scdc_state *
                                 "Channel %d Error Counter = %d", channel, error_counter);
             ced_pos += snprintf(ced_msg + ced_pos, sizeof(ced_msg) - ced_pos,
                                 " | Ch%d_Valid = %d", channel, reg_val >> 7);
-            C_ANN_PUT(di, s->block_s, s->es, s->out_ann, ANN_FIELDS, ced_msg);
+            c_put(di, s->block_s, s->es, s->out_ann, ANN_FIELDS, ced_msg);
         }
 
         /* Auto-increment offset for next CED register */
         s->offset++;
     } else if (s->offset == 0x56) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELDS,
+        c_put(di, s->ss, s->es, s->out_ann, ANN_FIELDS,
                   "Checksum of Character Error Detection registers");
         s->offset++;
     }
@@ -258,9 +258,7 @@ static const struct srd_c_ann_row hdmi_scdc_ann_rows[] = {
     {"debug", "Debug", hdmi_scdc_row_debug_classes, 1},
 };
 
-static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     hdmi_scdc_state *s = (hdmi_scdc_state *)c_decoder_get_private(di);
     if (!s)
@@ -272,14 +270,14 @@ static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di,
     if (s->verbosity == 2) {
         char dbg[64];
         snprintf(dbg, sizeof(dbg), "%d %s", s->state, cmd);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DEBUG, dbg);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_DEBUG, dbg);
     }
 
     if (strcmp(cmd, "STOP") == 0) {
         memset(s, 0, sizeof(hdmi_scdc_state));
         s->state = SCDC_IDLE;
         /* Re-read verbosity option */
-        const char *verb = c_decoder_get_option_string(di, "verbosity", "short");
+        const char *verb = c_opt_str(di, "verbosity", "short");
         if (verb && strcmp(verb, "long") == 0) s->verbosity = 1;
         else if (verb && strcmp(verb, "debug") == 0) s->verbosity = 2;
         else s->verbosity = 0;
@@ -293,17 +291,17 @@ static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di,
         break;
     case SCDC_GET_SLAVE_ADDR:
         if (strcmp(cmd, "ADDRESS WRITE") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr == 0x54) { /* 7-bit address */
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ADDRESS,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_ADDRESS,
                           "SCDC write - Address : 0xA8");
                 s->protocol = 1;
                 s->state = SCDC_GET_OFFSET;
             }
         } else if (strcmp(cmd, "ADDRESS READ") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr == 0x54) { /* 7-bit address */
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ADDRESS,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_ADDRESS,
                           "SCDC read - Address : 0xA9");
                 s->protocol = 1;
                 s->state = SCDC_READ_REGISTER;
@@ -313,14 +311,14 @@ static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di,
     case SCDC_GET_OFFSET:
         if (strcmp(cmd, "DATA WRITE") == 0) {
             if (s->protocol) {
-                s->offset = (data_len > 0) ? data[0] : 0;
+                s->offset = (n_fields > 0) ? fields[0].u8 : 0;
                 const char *reg_name = hdmi_scdc_lookup_reg_name(s->offset);
                 char buf[128];
                 if (reg_name)
                     snprintf(buf, sizeof(buf), "Register: %s (0x%02x)", reg_name, s->offset);
                 else
                     snprintf(buf, sizeof(buf), "Unknown Register (0x%02x)", s->offset);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REGISTER, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_REGISTER, buf);
                 s->state = SCDC_OFFSET_RECEIVED;
             }
         }
@@ -329,7 +327,7 @@ static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di,
         if (strcmp(cmd, "START REPEAT") == 0) {
             s->state = SCDC_GET_SLAVE_ADDR;
         } else if (strcmp(cmd, "DATA WRITE") == 0) {
-            s->databytes[s->databytes_len++] = (data_len > 0) ? data[0] : 0;
+            s->databytes[s->databytes_len++] = (n_fields > 0) ? fields[0].u8 : 0;
             s->state = SCDC_WRITE_REGISTER;
             hdmi_scdc_handle_scdc(di, s);
         }
@@ -337,12 +335,12 @@ static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di,
     case SCDC_READ_REGISTER:
     case SCDC_WRITE_REGISTER:
         if (strcmp(cmd, "DATA READ") == 0 || strcmp(cmd, "DATA WRITE") == 0) {
-            s->databytes[s->databytes_len++] = (data_len > 0) ? data[0] : 0;
+            s->databytes[s->databytes_len++] = (n_fields > 0) ? fields[0].u8 : 0;
             hdmi_scdc_handle_scdc(di, s);
         } else if (strcmp(cmd, "STOP") == 0 || strcmp(cmd, "START REPEAT") == 0) {
             memset(s, 0, sizeof(hdmi_scdc_state));
             s->state = SCDC_IDLE;
-            const char *verb = c_decoder_get_option_string(di, "verbosity", "short");
+            const char *verb = c_opt_str(di, "verbosity", "short");
             if (verb && strcmp(verb, "long") == 0) s->verbosity = 1;
             else if (verb && strcmp(verb, "debug") == 0) s->verbosity = 2;
             else s->verbosity = 0;
@@ -361,7 +359,7 @@ static void hdmi_scdc_reset(struct srd_decoder_inst *di)
     hdmi_scdc_state *s = (hdmi_scdc_state *)c_decoder_get_private(di);
     memset(s, 0, sizeof(hdmi_scdc_state));
     s->state = SCDC_IDLE;
-    const char *verb = c_decoder_get_option_string(di, "verbosity", "short");
+    const char *verb = c_opt_str(di, "verbosity", "short");
     if (verb && strcmp(verb, "long") == 0) s->verbosity = 1;
     else if (verb && strcmp(verb, "debug") == 0) s->verbosity = 2;
     else s->verbosity = 0;
@@ -370,8 +368,8 @@ static void hdmi_scdc_reset(struct srd_decoder_inst *di)
 static void hdmi_scdc_start(struct srd_decoder_inst *di)
 {
     hdmi_scdc_state *s = (hdmi_scdc_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "hdmi_scdc");
-    const char *verb = c_decoder_get_option_string(di, "verbosity", "short");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "hdmi_scdc");
+    const char *verb = c_opt_str(di, "verbosity", "short");
     if (verb && strcmp(verb, "long") == 0) s->verbosity = 1;
     else if (verb && strcmp(verb, "debug") == 0) s->verbosity = 2;
     else s->verbosity = 0;
@@ -419,7 +417,8 @@ struct srd_c_decoder hdmi_scdc_c_decoder = {
     .start = hdmi_scdc_start,
     .decode = hdmi_scdc_decode,
     .destroy = hdmi_scdc_destroy,
-    .recv_proto = hdmi_scdc_recv_proto,
+    .decode_upper = hdmi_scdc_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

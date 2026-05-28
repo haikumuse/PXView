@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -53,10 +53,10 @@ static void ssi32_handle_ack(struct srd_decoder_inst *di, ssi32_state *s)
     uint64_t es = s->es_array[0];
 
     snprintf(buf, sizeof(buf), "> ACK:0x%02x", s->mosi_bytes[0]);
-    C_ANN_PUT(di, s->ss_cmd, es, s->out_ann, ANN_ACK_TX, buf);
+    c_put(di, s->ss_cmd, es, s->out_ann, ANN_ACK_TX, buf);
 
     snprintf(buf, sizeof(buf), "< ACK:0x%02x", s->miso_bytes[0]);
-    C_ANN_PUT(di, s->ss_cmd, es, s->out_ann, ANN_ACK_RX, buf);
+    c_put(di, s->ss_cmd, es, s->out_ann, ANN_ACK_RX, buf);
 }
 
 static void ssi32_handle_ctrl(struct srd_decoder_inst *di, ssi32_state *s)
@@ -77,7 +77,7 @@ static void ssi32_handle_ctrl(struct srd_decoder_inst *di, ssi32_state *s)
     {
         int idx = (tx_size + 3 < s->num_bytes) ? tx_size + 3 : s->num_bytes - 1;
         uint64_t tx_es = s->es_array[idx];
-        C_ANN_PUT(di, s->ss_cmd, tx_es, s->out_ann, ANN_CTRL_TX, buf);
+        c_put(di, s->ss_cmd, tx_es, s->out_ann, ANN_CTRL_TX, buf);
     }
 
     /* RX CTRL */
@@ -91,13 +91,11 @@ static void ssi32_handle_ctrl(struct srd_decoder_inst *di, ssi32_state *s)
     {
         int idx = (rx_size + 3 < s->num_bytes) ? rx_size + 3 : s->num_bytes - 1;
         uint64_t rx_es = s->es_array[idx];
-        C_ANN_PUT(di, s->ss_cmd, rx_es, s->out_ann, ANN_CTRL_RX, buf);
+        c_put(di, s->ss_cmd, rx_es, s->out_ann, ANN_CTRL_RX, buf);
     }
 }
 
-static void ssi32_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ssi32_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ssi32_state *s = (ssi32_state *)c_decoder_get_private(di);
     if (!s)
@@ -109,16 +107,16 @@ static void ssi32_recv_proto(struct srd_decoder_inst *di,
         return;
     }
 
-    if (strcmp(cmd, "DATA") != 0 || data_len < 17)
+    if (strcmp(cmd, "DATA") != 0 || n_fields < 17)
         return;
 
-    int have_mosi = data[0] & 1;
-    int have_miso = (data[0] >> 1) & 1;
+    int have_mosi = fields[0].u8 & 1;
+    int have_miso = (fields[0].u8 >> 1) & 1;
     uint64_t mosi_val = 0, miso_val = 0;
     for (int i = 0; i < 8; i++)
-        mosi_val |= ((uint64_t)data[1 + i] << (8 * i));
+        mosi_val |= ((uint64_t)fields[1 + i].u8 << (8 * i));
     for (int i = 0; i < 8; i++)
-        miso_val |= ((uint64_t)data[9 + i] << (8 * i));
+        miso_val |= ((uint64_t)fields[9 + i].u8 << (8 * i));
 
     if (s->num_bytes == 0)
         s->ss_cmd = start_sample;
@@ -159,9 +157,9 @@ static void ssi32_reset(struct srd_decoder_inst *di)
 static void ssi32_start(struct srd_decoder_inst *di)
 {
     ssi32_state *s = (ssi32_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ssi32");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ssi32");
 
-    s->msgsize = (int)c_decoder_get_option_int(di, "msgsize", 64);
+    s->msgsize = (int)c_opt_int(di, "msgsize", 64);
 }
 
 static void ssi32_decode(struct srd_decoder_inst *di)
@@ -206,7 +204,8 @@ struct srd_c_decoder ssi32_c_decoder = {
     .start = ssi32_start,
     .decode = ssi32_decode,
     .destroy = ssi32_destroy,
-    .recv_proto = ssi32_recv_proto,
+    .decode_upper = ssi32_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

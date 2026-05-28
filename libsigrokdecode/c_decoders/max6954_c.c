@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Paul Evans <leonerd@leonerd.org.uk>
@@ -151,7 +151,7 @@ static void max6954_handle_register(struct srd_decoder_inst *di, max6954_state *
         char digit_buf[16];
         max6954_decode_digit(val, digit_buf, sizeof(digit_buf));
         snprintf(buf, sizeof(buf), "Digit %d%s%s: %s", digit_idx, plane_str, seg_str, digit_buf);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_DIGIT, buf);
+        c_put(di, ss, es, s->out_ann, ANN_DIGIT, buf);
         return;
     }
 
@@ -195,7 +195,7 @@ static void max6954_handle_register(struct srd_decoder_inst *di, max6954_state *
     case 0x8F: name = "Key_D Pressed"; snprintf(buf, sizeof(buf), "not done"); break;
     default:
         snprintf(buf, sizeof(buf), "Unknown register %02X", addr);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARNING, buf);
+        c_put(di, ss, es, s->out_ann, ANN_WARNING, buf);
         return;
     }
 
@@ -204,22 +204,20 @@ static void max6954_handle_register(struct srd_decoder_inst *di, max6954_state *
         snprintf(ann_text, sizeof(ann_text), "%s: %s", name, buf);
     else
         snprintf(ann_text, sizeof(ann_text), "%s", name);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG, ann_text);
+    c_put(di, ss, es, s->out_ann, ANN_REG, ann_text);
 }
 
-static void max6954_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void max6954_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     max6954_state *s = (max6954_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "DATA") == 0) {
         if (!s->cs_asserted) return;
-        if (data_len < 17) return;
+        if (n_fields < 17) return;
 
-        int have_mosi = data[0] & 1;
-        uint8_t mosi_byte = have_mosi ? data[1] : 0;
+        int have_mosi = fields[0].u8 & 1;
+        uint8_t mosi_byte = have_mosi ? fields[1].u8 : 0;
 
         if (s->pos == 0) {
             s->addr = mosi_byte;
@@ -230,16 +228,16 @@ static void max6954_recv_proto(struct srd_decoder_inst *di,
         }
         s->pos++;
     } else if (strcmp(cmd, "CS-CHANGE") == 0) {
-        int new_cs = (data && data_len >= 2) ? data[1] : 0;
+        int new_cs = (fields && n_fields >= 2) ? fields[1].u8 : 0;
         s->cs_asserted = (new_cs == 0);
         if (s->cs_asserted) {
             s->pos = 0;
             s->cs_start = start_sample;
         } else {
             if (s->pos == 1) {
-                C_ANN_PUT(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Short write");
+                c_put(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Short write");
             } else if (s->pos > 2) {
-                C_ANN_PUT(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Overlong write");
+                c_put(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Overlong write");
             }
         }
     }
@@ -257,7 +255,7 @@ static void max6954_reset(struct srd_decoder_inst *di)
 static void max6954_start(struct srd_decoder_inst *di)
 {
     max6954_state *s = (max6954_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "max6954");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "max6954");
     s->pos = 0;
     s->cs_start = 0;
 }
@@ -304,7 +302,8 @@ struct srd_c_decoder max6954_c_decoder = {
     .start = max6954_start,
     .decode = max6954_decode,
     .destroy = max6954_destroy,
-    .recv_proto = max6954_recv_proto,
+    .decode_upper = max6954_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

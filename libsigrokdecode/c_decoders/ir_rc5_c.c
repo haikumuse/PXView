@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -223,7 +223,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
 
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits_val[i]);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT, bit_str);
+        c_put(di, ss, es, s->out_ann, ANN_BIT, bit_str);
     }
 
     {
@@ -233,7 +233,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
         snprintf(str3, sizeof(str3), "SB1");
         snprintf(str4, sizeof(str4), "S1");
         snprintf(str5, sizeof(str5), "S");
-        C_ANN_PUT(di, s->ss_es_bits_ss[0], s->ss_es_bits_es[0], s->out_ann, ANN_STARTBIT1,
+        c_put(di, s->ss_es_bits_ss[0], s->ss_es_bits_es[0], s->out_ann, ANN_STARTBIT1,
             str1, str2, str3, str4, str5);
     }
 
@@ -247,7 +247,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
             snprintf(str4, sizeof(str4), "C#");
             snprintf(str5, sizeof(str5), "C");
             ann_idx = ANN_COMMAND;
-            C_ANN_PUT(di, s->ss_es_bits_ss[1], s->ss_es_bits_es[1], s->out_ann, ann_idx,
+            c_put(di, s->ss_es_bits_ss[1], s->ss_es_bits_es[1], s->out_ann, ann_idx,
                 str1, str2, str3, str4, str5);
         } else {
             char str1[32], str2[16], str3[8], str4[8], str5[4];
@@ -256,7 +256,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
             snprintf(str3, sizeof(str3), "SB2");
             snprintf(str4, sizeof(str4), "S2");
             snprintf(str5, sizeof(str5), "S");
-            C_ANN_PUT(di, s->ss_es_bits_ss[1], s->ss_es_bits_es[1], s->out_ann, ann_idx,
+            c_put(di, s->ss_es_bits_ss[1], s->ss_es_bits_es[1], s->out_ann, ann_idx,
                 str1, str2, str3, str4, str5);
         }
     }
@@ -269,7 +269,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
         snprintf(str3, sizeof(str3), "TB: %d", s->bits_val[2]);
         snprintf(str4, sizeof(str4), "TB");
         snprintf(str5, sizeof(str5), "T");
-        C_ANN_PUT(di, s->ss_es_bits_ss[2], s->ss_es_bits_es[2], s->out_ann, ann_idx,
+        c_put(di, s->ss_es_bits_ss[2], s->ss_es_bits_es[2], s->out_ann, ann_idx,
             str1, str2, str3, str4, str5);
     }
 
@@ -285,7 +285,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
         snprintf(str3, sizeof(str3), "Addr: %d", a);
         snprintf(str4, sizeof(str4), "A: %d", a);
         snprintf(str5, sizeof(str5), "A");
-        C_ANN_PUT(di, s->ss_es_bits_ss[3], s->ss_es_bits_es[7], s->out_ann, ANN_ADDRESS,
+        c_put(di, s->ss_es_bits_ss[3], s->ss_es_bits_es[7], s->out_ann, ANN_ADDRESS,
             str1, str2, str3, str4, str5);
     }
 
@@ -312,7 +312,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
         snprintf(str3, sizeof(str3), "Cmd: %d", c);
         snprintf(str4, sizeof(str4), "C: %d", c);
         snprintf(str5, sizeof(str5), "C");
-        C_ANN_PUT(di, s->ss_es_bits_ss[8], s->ss_es_bits_es[13], s->out_ann, ANN_COMMAND,
+        c_put(di, s->ss_es_bits_ss[8], s->ss_es_bits_es[13], s->out_ann, ANN_COMMAND,
             str1, str2, str3, str4, str5);
     }
 }
@@ -331,15 +331,15 @@ static void rc5_start(struct srd_decoder_inst* di)
 {
     struct rc5_priv* s = (struct rc5_priv*)c_decoder_get_private(di);
 
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_rc5");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_rc5");
 
-    const char* polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char* polarity = c_opt_str(di, "polarity", "active-low");
     s->next_edge_is_low = (strcmp(polarity, "active-low") == 0) ? 1 : 0;
 
-    const char* protocol = c_decoder_get_option_string(di, "protocol", "standard");
+    const char* protocol = c_opt_str(di, "protocol", "standard");
     s->is_extended = (strcmp(protocol, "extended") == 0) ? 1 : 0;
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate)
         s->halfbit = (uint64_t)((double)s->samplerate * 0.00178 / 2.0);
 }
@@ -356,34 +356,26 @@ static void rc5_metadata(struct srd_decoder_inst* di, int key, uint64_t value)
 static void rc5_decode(struct srd_decoder_inst* di)
 {
     struct rc5_priv* s = (struct rc5_priv*)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     if (!s->samplerate)
         return;
 
     while (1) {
-        srd_cond_builder* cb = c_cond_new();
-        /* Python uses {0: self.next_edge} where next_edge is 'l' or 'h'
-         * (LEVEL conditions), not edge conditions. Use c_cond_low/high
-         * to match Python's behavior. */
+        int ret;
         if (s->next_edge_is_low)
-            c_cond_low(cb, IR_CH);
+            ret = c_wait(di, CW_L(IR_CH), CW_END);
         else
-            c_cond_high(cb, IR_CH);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            ret = c_wait(di, CW_H(IR_CH), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int ir = c_decoder_get_pin(di, IR_CH, samplenum);
+        int ir = c_pin(di, IR_CH);
 
         if (s->state == STATE_IDLE) {
             s->num_edges = 0;
             s->num_bits = 0;
-            s->edges[0] = samplenum;
+            s->edges[0] = di_samplenum(di);
             s->num_edges = 1;
-            s->bits_ss[0] = samplenum;
+            s->bits_ss[0] = di_samplenum(di);
             s->bits_val[0] = 1;
             s->num_bits = 1;
             s->state = STATE_MID1;
@@ -391,7 +383,7 @@ static void rc5_decode(struct srd_decoder_inst* di)
             continue;
         }
 
-        char etype = rc5_edge_type(s, samplenum);
+        char etype = rc5_edge_type(s, di_samplenum(di));
         if (etype == 'e') {
             s->num_edges = 0;
             s->num_bits = 0;
@@ -434,12 +426,12 @@ static void rc5_decode(struct srd_decoder_inst* di)
         }
 
         if (s->num_edges < MAX_EDGES) {
-            s->edges[s->num_edges] = samplenum;
+            s->edges[s->num_edges] = di_samplenum(di);
             s->num_edges++;
         }
 
         if (bit >= 0 && s->num_bits < MAX_BITS) {
-            s->bits_ss[s->num_bits] = samplenum;
+            s->bits_ss[s->num_bits] = di_samplenum(di);
             s->bits_val[s->num_bits] = bit;
             s->num_bits++;
         }
@@ -494,6 +486,7 @@ struct srd_c_decoder ir_rc5_c_decoder = {
     .end = NULL,
     .metadata = rc5_metadata,
     .destroy = rc5_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

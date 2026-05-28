@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Jeremy Swanson <jeremy@rakocontrols.com>
@@ -91,7 +91,7 @@ static void dsi_reset_decoder_state(dsi_state *s)
 
 #define DSI_PUTB(di, s, bit1, bit2, cls, ...) do { \
     if ((bit1) >= 0 && (bit1) < (s)->ss_es_bits_count && (bit2) >= 0 && (bit2) < (s)->ss_es_bits_count) \
-        C_ANN_PUT(di, (s)->ss_es_bits[bit1][0], (s)->ss_es_bits[bit2][1], (s)->out_ann, cls, __VA_ARGS__); \
+        c_put(di, (s)->ss_es_bits[bit1][0], (s)->ss_es_bits[bit2][1], (s)->out_ann, cls, __VA_ARGS__); \
 } while(0)
 
 static void dsi_handle_bits(struct srd_decoder_inst *di, dsi_state *s, int length)
@@ -102,7 +102,7 @@ static void dsi_handle_bits(struct srd_decoder_inst *di, dsi_state *s, int lengt
     for (int i = 0; i < length && i < 32; i++) {
         uint64_t ss;
         if (i == 0)
-            ss = (s->bits[0].pos > (uint64_t)s->halfbit) ? s->bits[0].pos - s->halfbit : 0;
+            ss = s->bits[0].pos;
         else
             ss = s->ss_es_bits[i - 1][1];
         uint64_t es = s->bits[i].pos + (s->halfbit * 2);
@@ -170,9 +170,9 @@ static void dsi_reset(struct srd_decoder_inst *di)
 static void dsi_start(struct srd_decoder_inst *di)
 {
     dsi_state *s = (dsi_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "dsi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "dsi");
 
-    const char *polarity_str = c_decoder_get_option_string(di, "polarity", "active-high");
+    const char *polarity_str = c_opt_str(di, "polarity", "active-high");
     s->polarity_active_high = (strcmp(polarity_str, "active-high") == 0) ? 1 : 0;
     s->old_dsi = s->polarity_active_high ? 0 : 1;
 }
@@ -193,15 +193,27 @@ static void dsi_decode(struct srd_decoder_inst *di)
     if (s->samplerate == 0) return;
 
     while (1) {
-        /* Wait for any edge on channel 0 */
-        srd_cond_builder *b = c_cond_new();
-        c_cond_edge(b, 0);
-        uint64_t samplenum, matched;
-        int ret = c_cond_wait(b, di, &samplenum, &matched);
-        c_cond_free(b);
-        if (ret != SRD_OK) return;
+        /* Wait for edge OR timeout (skip to 1.5*halfbit after last edge).
+         * This mirrors the Python decoder's per-sample timeout logic:
+         *   elif self.samplenum == (self.edges[-1] + int(self.halfbit * 1.5)):
+         * The C decoder can't process every sample efficiently, so we use
+         * CW_SKIP to wake up at the timeout point if no edge arrives first. */
+        uint64_t skip_to = 0;
+        if (s->edges_count > 0 && s->state != DSI_IDLE) {
+            uint64_t timeout_sample = s->edges[s->edges_count - 1] + (uint64_t)(s->halfbit * 3 / 2);
+            if (timeout_sample > di_samplenum(di))
+                skip_to = timeout_sample - di_samplenum(di);
+        }
 
-        int dsi = c_decoder_get_pin(di, 0, samplenum);
+        int ret;
+        if (skip_to > 0)
+            ret = c_wait(di, CW_E(0), CW_OR, CW_SKIP(skip_to), CW_END);
+        else
+            ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
+
+        int dsi = c_pin(di, 0);
         if (s->polarity_active_high)
             dsi ^= 1; /* Invert for active-high */
 
@@ -210,8 +222,8 @@ static void dsi_decode(struct srd_decoder_inst *di)
                 continue;
             /* Add in the first half of the start bit */
             if (s->edges_count < 64) {
-                s->edges[s->edges_count++] = samplenum - s->halfbit;
-                s->edges[s->edges_count++] = samplenum;
+                s->edges[s->edges_count++] = di_samplenum(di) - s->halfbit;
+                s->edges[s->edges_count++] = di_samplenum(di);
             }
             s->phase0 = dsi ^ 1;
             s->state = DSI_PHASE1;
@@ -223,11 +235,11 @@ static void dsi_decode(struct srd_decoder_inst *di)
         if (s->old_dsi != dsi) {
             /* Real edge detected */
             if (s->edges_count < 64)
-                s->edges[s->edges_count++] = samplenum;
-        } else if (s->edges_count > 0 && samplenum == (s->edges[s->edges_count - 1] + (uint64_t)(s->halfbit * 1.5))) {
+                s->edges[s->edges_count++] = di_samplenum(di);
+        } else if (s->edges_count > 0 && di_samplenum(di) == (s->edges[s->edges_count - 1] + (uint64_t)(s->halfbit * 3 / 2))) {
             /* Half-bit timeout: insert virtual edge */
             if (s->edges_count < 64)
-                s->edges[s->edges_count++] = samplenum - (uint64_t)(s->halfbit * 0.5);
+                s->edges[s->edges_count++] = di_samplenum(di) - (uint64_t)(s->halfbit / 2);
         } else {
             continue;
         }
@@ -296,6 +308,7 @@ struct srd_c_decoder dsi_c_decoder = {
     .start = dsi_start,
     .decode = dsi_decode,
     .destroy = dsi_destroy,
+    .state_size = 0,
     .metadata = dsi_metadata,
 };
 

@@ -52,7 +52,7 @@ typedef struct {
     int have_load;
     int have_ldac;
 
-    /* Condition indices for matched bitmask */
+    /* Condition indices for di_matched(di) bitmask */
     int cond_idx_load;
     int cond_idx_ldac;
 } tlc5620_state;
@@ -127,26 +127,26 @@ static void tlc5620_reset(struct srd_decoder_inst *di)
 static void tlc5620_start(struct srd_decoder_inst *di)
 {
     tlc5620_state *s = (tlc5620_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tlc5620");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tlc5620");
 
-    s->have_load = c_decoder_has_channel(di, 2);
-    s->have_ldac = c_decoder_has_channel(di, 3);
+    s->have_load = c_has_ch(di, 2);
+    s->have_ldac = c_has_ch(di, 3);
 
-    s->vref[0] = c_decoder_get_option_double(di, "vref_a", 3.3);
-    s->vref[1] = c_decoder_get_option_double(di, "vref_b", 3.3);
-    s->vref[2] = c_decoder_get_option_double(di, "vref_c", 3.3);
-    s->vref[3] = c_decoder_get_option_double(di, "vref_d", 3.3);
+    s->vref[0] = c_opt_dbl(di, "vref_a", 3.3);
+    s->vref[1] = c_opt_dbl(di, "vref_b", 3.3);
+    s->vref[2] = c_opt_dbl(di, "vref_c", 3.3);
+    s->vref[3] = c_opt_dbl(di, "vref_d", 3.3);
 
     /* Get initial LDAC level */
     if (s->have_ldac) {
-        uint8_t init_ldac = c_decoder_get_initial_pin(di, 3);
+        uint8_t init_ldac = c_init_pin(di, 3);
         if (init_ldac != 0xFF)
             s->ldac = init_ldac;
         else
             s->ldac = 1;
     }
 
-    /* Pre-compute condition indices for matched bitmask */
+    /* Pre-compute condition indices for di_matched(di) bitmask */
     int idx = 1; /* condition 0 is always CLK falling */
     s->cond_idx_load = -1;
     s->cond_idx_ldac = -1;
@@ -189,7 +189,7 @@ static int tlc5620_handle_11bits(struct srd_decoder_inst *di, tlc5620_state *s)
             uint64_t cw = s->bits_es[1] - s->bits_ss[1];
             es = s->bits_es[s->bits_count - 1] + cw;
         }
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_INVALID_CMD, "Command too short");
+        c_put(di, ss, es, s->out_ann, ANN_INVALID_CMD, "Command too short");
         s->bits_count = 0;
         return 0;
     }
@@ -212,7 +212,7 @@ static int tlc5620_handle_11bits(struct srd_decoder_inst *di, tlc5620_state *s)
 
     char dac_str[32];
     snprintf(dac_str, sizeof(dac_str), "DAC select: %s", dac_names[dac_idx]);
-    C_ANN_PUT(di, s->ss_dac, s->es_dac, s->out_ann, ANN_DAC_SELECT,
+    c_put(di, s->ss_dac, s->es_dac, s->out_ann, ANN_DAC_SELECT,
               dac_str, dac_names[dac_idx]);
 
     /* Parse gain (bit 2) */
@@ -221,7 +221,7 @@ static int tlc5620_handle_11bits(struct srd_decoder_inst *di, tlc5620_state *s)
     snprintf(gain_str, sizeof(gain_str), "Gain: x%d", s->gain);
     char gain_short[8];
     snprintf(gain_short, sizeof(gain_short), "x%d", s->gain);
-    C_ANN_PUT(di, s->ss_gain, s->es_gain, s->out_ann, ANN_GAIN,
+    c_put(di, s->ss_gain, s->es_gain, s->out_ann, ANN_GAIN,
               gain_str, gain_short);
 
     /* Parse DAC value (bit 3-10, MSB first) */
@@ -234,18 +234,18 @@ static int tlc5620_handle_11bits(struct srd_decoder_inst *di, tlc5620_state *s)
     snprintf(val_str, sizeof(val_str), "DAC value: %d", val);
     char val_short[16];
     snprintf(val_short, sizeof(val_short), "%d", val);
-    C_ANN_PUT(di, s->ss_value, s->es_value, s->out_ann, ANN_VALUE,
+    c_put(di, s->ss_value, s->es_value, s->out_ann, ANN_VALUE,
               val_str, val_short);
 
     /* Output per-bit annotations */
     for (int i = 1; i < 11; i++) {
         char bstr[4];
         snprintf(bstr, sizeof(bstr), "%d", s->bits_value[i - 1]);
-        C_ANN_PUT(di, s->bits_ss[i - 1], s->bits_ss[i], s->out_ann, ANN_BIT, bstr);
+        c_put(di, s->bits_ss[i - 1], s->bits_ss[i], s->out_ann, ANN_BIT, bstr);
     }
     char bstr_last[4];
     snprintf(bstr_last, sizeof(bstr_last), "%d", s->bits_value[10]);
-    C_ANN_PUT(di, s->bits_ss[10], s->bits_ss[10] + s->clock_width, s->out_ann, ANN_BIT, bstr_last);
+    c_put(di, s->bits_ss[10], s->bits_ss[10] + s->clock_width, s->out_ann, ANN_BIT, bstr_last);
 
     s->bits_count = 0;
     return 1;
@@ -257,7 +257,7 @@ static void tlc5620_handle_load_fall(struct srd_decoder_inst *di, tlc5620_state 
         return;
 
     const char *dac_names[] = {"DACA", "DACB", "DACC", "DACD"};
-    C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_DATA_LATCH,
+    c_put(di, samplenum, samplenum, s->out_ann, ANN_DATA_LATCH,
               "Falling edge on LOAD", "LOAD fall", "F");
 
     double vref = s->vref[s->dac_select];
@@ -270,14 +270,14 @@ static void tlc5620_handle_load_fall(struct srd_decoder_inst *di, tlc5620_state 
         snprintf(ann_str, sizeof(ann_str), "Setting %s voltage to %s", dac_names[s->dac_select], v_str);
         char short_str[32];
         snprintf(short_str, sizeof(short_str), "%s=%s", dac_names[s->dac_select], v_str);
-        C_ANN_PUT(di, s->ss_dac, s->es_value, s->out_ann, ANN_VOLTAGE_UPDATE,
+        c_put(di, s->ss_dac, s->es_value, s->out_ann, ANN_VOLTAGE_UPDATE,
                   ann_str, short_str);
     } else {
         char ann_str[64];
         snprintf(ann_str, sizeof(ann_str), "Setting %s register value to %s", dac_names[s->dac_select], v_str);
         char short_str[32];
         snprintf(short_str, sizeof(short_str), "%s=%s", dac_names[s->dac_select], v_str);
-        C_ANN_PUT(di, s->ss_dac, s->es_value, s->out_ann, ANN_REG_WRITE,
+        c_put(di, s->ss_dac, s->es_value, s->out_ann, ANN_REG_WRITE,
                   ann_str, short_str);
     }
 
@@ -287,7 +287,7 @@ static void tlc5620_handle_load_fall(struct srd_decoder_inst *di, tlc5620_state 
 
 static void tlc5620_handle_ldac_fall(struct srd_decoder_inst *di, tlc5620_state *s, uint64_t samplenum)
 {
-    C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_LDAC_FALL,
+    c_put(di, samplenum, samplenum, s->out_ann, ANN_LDAC_FALL,
               "Falling edge on LDAC", "LDAC fall", "LDAC", "L");
 
     if (s->ss_dac_first == (uint64_t)-1)
@@ -322,7 +322,7 @@ static void tlc5620_handle_ldac_fall(struct srd_decoder_inst *di, tlc5620_state 
 
     char update_str[256];
     snprintf(update_str, sizeof(update_str), "Updating voltages: %s", full_str);
-    C_ANN_PUT(di, s->ss_dac_first, samplenum, s->out_ann, ANN_VOLTAGE_UPDATE_ALL,
+    c_put(di, s->ss_dac_first, di_samplenum(di), s->out_ann, ANN_VOLTAGE_UPDATE_ALL,
               update_str, full_str, short_str);
 
     s->ss_dac_first = (uint64_t)-1;
@@ -331,58 +331,52 @@ static void tlc5620_handle_ldac_fall(struct srd_decoder_inst *di, tlc5620_state 
 static void tlc5620_decode(struct srd_decoder_inst *di)
 {
     tlc5620_state *s = (tlc5620_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     }
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_fall(cb, 0);   /* CLK falling edge */
-        if (s->have_load) {
-            c_cond_or(cb);
-            c_cond_fall(cb, 2); /* LOAD falling edge */
-        }
-        if (s->have_ldac) {
-            c_cond_or(cb);
-            c_cond_fall(cb, 3); /* LDAC falling edge */
-        }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret;
+        if (s->have_load && s->have_ldac)
+            ret = c_wait(di, CW_F(0), CW_OR, CW_F(2), CW_OR, CW_F(3), CW_END);
+        else if (s->have_load)
+            ret = c_wait(di, CW_F(0), CW_OR, CW_F(2), CW_END);
+        else if (s->have_ldac)
+            ret = c_wait(di, CW_F(0), CW_OR, CW_F(3), CW_END);
+        else
+            ret = c_wait(di, CW_F(0), CW_END);
         if (ret != SRD_OK)
             return;
 
         /* CLK falling edge: sample DATA pin */
-        if (matched & (1ULL << 0)) {
-            int data = c_decoder_get_pin(di, 1, samplenum);
+        if (di_matched(di) & (1ULL << 0)) {
+            int data = c_pin(di, 1);
 
             /* Track LDAC level */
             if (s->have_ldac)
-                s->ldac = c_decoder_get_pin(di, 3, samplenum);
+                s->ldac = c_pin(di, 3);
 
             if (s->bits_count < TLC5620_MAX_BITS) {
                 s->bits_value[s->bits_count] = data;
-                s->bits_ss[s->bits_count] = samplenum;
-                s->bits_es[s->bits_count] = samplenum;
+                s->bits_ss[s->bits_count] = di_samplenum(di);
+                s->bits_es[s->bits_count] = di_samplenum(di);
                 if (s->bits_count > 0)
-                    s->bits_es[s->bits_count - 1] = samplenum;
+                    s->bits_es[s->bits_count - 1] = di_samplenum(di);
             }
             s->bits_count++;
         }
 
         /* LOAD falling edge */
         if (s->have_load && s->cond_idx_load >= 0 &&
-            (matched & (1ULL << s->cond_idx_load))) {
-            tlc5620_handle_load_fall(di, s, samplenum);
+            (di_matched(di) & (1ULL << s->cond_idx_load))) {
+            tlc5620_handle_load_fall(di, s, di_samplenum(di));
         }
 
         /* LDAC falling edge */
         if (s->have_ldac && s->cond_idx_ldac >= 0 &&
-            (matched & (1ULL << s->cond_idx_ldac))) {
+            (di_matched(di) & (1ULL << s->cond_idx_ldac))) {
             s->ldac = 0;
-            tlc5620_handle_ldac_fall(di, s, samplenum);
+            tlc5620_handle_ldac_fall(di, s, di_samplenum(di));
         }
     }
 }
@@ -424,6 +418,7 @@ static struct srd_c_decoder tlc5620_c_decoder = {
     .start = tlc5620_start,
     .decode = tlc5620_decode,
     .destroy = tlc5620_destroy,
+    .state_size = 0,
     .metadata = tlc5620_metadata,
 };
 

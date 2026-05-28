@@ -1,10 +1,15 @@
 {
   "decoder": "ir_ltto_decode_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "ir_ltto"
-  ],
+  "num_channels": 1,
+  "sample_count": 200000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "ir_ltto_c",
+      "channels": {
+        "ir": 0
+      }
+    }
+  ]
 }

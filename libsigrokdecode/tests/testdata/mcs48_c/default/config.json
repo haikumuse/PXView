@@ -2,7 +2,7 @@
   "decoder": "mcs48_c",
   "samplerate": 1000000,
   "num_channels": 15,
-  "sample_count": 10000,
+  "sample_count": 50000,
   "channels": {
     "ale": 0,
     "psen": 1,

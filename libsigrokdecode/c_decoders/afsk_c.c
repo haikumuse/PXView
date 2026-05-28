@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +19,7 @@ enum cycle_type {
     CYCLE_PROCESSED,
 };
 
-typedef struct {
+C_DECODER_STATE(afsk, {
     uint64_t samplerate;
     int out_ann;
     int out_proto;
@@ -36,7 +36,7 @@ typedef struct {
     uint64_t twoedgesagosample;
     uint64_t oneedgeagosample;
     uint64_t currentedgesample;
-} afsk_state;
+})
 
 static struct srd_channel afsk_channels[] = {
     { "afsk", "afsk", "AFSK stream", 0, SRD_CHANNEL_SDATA, NULL },
@@ -66,34 +66,18 @@ static const char* afsk_inputs[] = { "logic" };
 static const char* afsk_outputs[] = { "afsk_bits" };
 static const char* afsk_tags[] = { "Embedded/industrial" };
 
-static void afsk_reset(struct srd_decoder_inst *di)
-{
-    if (!c_decoder_get_private(di)) {
-        c_decoder_set_private(di, g_malloc0(sizeof(afsk_state)));
-    }
-    afsk_state *s = (afsk_state *)c_decoder_get_private(di);
-    memset(s, 0, sizeof(afsk_state));
-    s->out_ann = -1;
-    s->out_proto = -1;
-    s->markfreq = 2000;
-    s->spacefreq = 4000;
-    s->marginpct = 40;
-    s->cycletype = CYCLE_IDLE;
-    s->lastcycletype = CYCLE_IDLE;
-}
-
 static void afsk_start(struct srd_decoder_inst *di)
 {
-    afsk_state *s = (afsk_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "afsk");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "afsk_bits");
+    afsk_s *s = (afsk_s *)c_decoder_get_private(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "afsk");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "afsk_bits");
 
-    s->markfreq = (int)c_decoder_get_option_int(di, "markfreq", 2000);
-    s->spacefreq = (int)c_decoder_get_option_int(di, "spacefreq", 4000);
-    s->marginpct = (int)c_decoder_get_option_int(di, "marginpct", 40);
+    s->markfreq = (int)c_opt_int(di, "markfreq", 2000);
+    s->spacefreq = (int)c_opt_int(di, "spacefreq", 4000);
+    s->marginpct = (int)c_opt_int(di, "marginpct", 40);
 
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
 
     if (s->samplerate) {
         s->markhalfcycle = (int64_t)(s->samplerate * (1.0 / s->markfreq) / 2.0) - 1;
@@ -105,7 +89,7 @@ static void afsk_start(struct srd_decoder_inst *di)
 
 static void afsk_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 {
-    afsk_state *s = (afsk_state *)c_decoder_get_private(di);
+    afsk_s *s = (afsk_s *)c_decoder_get_private(di);
     if (key == SRD_CONF_SAMPLERATE) {
         s->samplerate = value;
         s->markhalfcycle = (int64_t)(s->samplerate * (1.0 / s->markfreq) / 2.0) - 1;
@@ -117,11 +101,10 @@ static void afsk_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 
 static void afsk_decode(struct srd_decoder_inst *di)
 {
-    afsk_state *s = (afsk_state *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
+    afsk_s *s = (afsk_s *)c_decoder_get_private(di);
 
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
@@ -139,13 +122,10 @@ static void afsk_decode(struct srd_decoder_inst *di)
         s->lastcycletype = s->cycletype;
 
         /* Wait for any edge */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK) return;
 
-        s->currentedgesample = samplenum;
+        s->currentedgesample = di_samplenum(di);
         int64_t length = (int64_t)(s->currentedgesample - s->oneedgeagosample);
 
         /* Determine half-cycle type */
@@ -162,49 +142,36 @@ static void afsk_decode(struct srd_decoder_inst *di)
         /* State transitions */
         if (s->cycletype == CYCLE_SPACE && s->lastcycletype == CYCLE_SPACE) {
             s->lastbit = 0;
-            char tmp[8];
-            snprintf(tmp, sizeof(tmp), "%d", s->lastbit);
-            C_ANN_PUT(di, s->twoedgesagosample, s->currentedgesample, s->out_ann, ANN_BIT_RAW, tmp);
-            unsigned char bit_data = (unsigned char)s->lastbit;
-            c_decoder_put_proto(di, s->twoedgesagosample, s->currentedgesample,
-                s->out_proto, "BIT", &bit_data, 1);
+            c_put(di, s->twoedgesagosample, s->currentedgesample, s->out_ann, ANN_BIT_RAW,
+                  s->lastbit ? "1" : "0");
+            c_proto(di, s->twoedgesagosample, s->currentedgesample, s->out_proto,
+                    "BIT", C_U8(s->lastbit), C_END);
             s->cycletype = CYCLE_PROCESSED;
         } else if (s->cycletype == CYCLE_MARK && s->lastcycletype == CYCLE_MARK) {
             s->lastbit = 1;
-            char tmp[8];
-            snprintf(tmp, sizeof(tmp), "%d", s->lastbit);
-            C_ANN_PUT(di, s->twoedgesagosample, s->currentedgesample, s->out_ann, ANN_BIT_RAW, tmp);
-            unsigned char bit_data = (unsigned char)s->lastbit;
-            c_decoder_put_proto(di, s->twoedgesagosample, s->currentedgesample,
-                s->out_proto, "BIT", &bit_data, 1);
+            c_put(di, s->twoedgesagosample, s->currentedgesample, s->out_ann, ANN_BIT_RAW,
+                  s->lastbit ? "1" : "0");
+            c_proto(di, s->twoedgesagosample, s->currentedgesample, s->out_proto,
+                    "BIT", C_U8(s->lastbit), C_END);
             s->cycletype = CYCLE_PROCESSED;
         } else if (s->cycletype == CYCLE_ERROR) {
             s->lastbit = 2;
-            C_ANN_PUT(di, s->oneedgeagosample, s->currentedgesample, s->out_ann, ANN_BIT_ERROR,
-                "Error: Invalid cycle", "Error", "Err", "E");
-            c_decoder_put_proto(di, s->oneedgeagosample, s->currentedgesample,
-                s->out_proto, "ERROR", (const unsigned char*)"INVALID", 7);
+            c_put(di, s->oneedgeagosample, s->currentedgesample, s->out_ann, ANN_BIT_ERROR,
+                  "Error: Invalid cycle", "Error", "Err", "E");
+            c_proto(di, s->oneedgeagosample, s->currentedgesample, s->out_proto,
+                    "ERROR", C_STR("INVALID"), C_END);
         } else if ((s->cycletype == CYCLE_SPACE && s->lastcycletype == CYCLE_MARK) ||
                    (s->cycletype == CYCLE_MARK && s->lastcycletype == CYCLE_SPACE)) {
             s->lastbit = 2;
-            C_ANN_PUT(di, s->oneedgeagosample, s->currentedgesample, s->out_ann, ANN_BIT_PHASE,
-                "Phase error: Resyncing", "Phase error", "Phase", "P");
-            c_decoder_put_proto(di, s->oneedgeagosample, s->currentedgesample,
-                s->out_proto, "ERROR", (const unsigned char*)"PHASE", 5);
+            c_put(di, s->oneedgeagosample, s->currentedgesample, s->out_ann, ANN_BIT_PHASE,
+                  "Phase error: Resyncing", "Phase error", "Phase", "P");
+            c_proto(di, s->oneedgeagosample, s->currentedgesample, s->out_proto,
+                    "ERROR", C_STR("PHASE"), C_END);
         }
     }
 }
 
-static void afsk_destroy(struct srd_decoder_inst *di)
-{
-    void *priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
-        c_decoder_set_private(di, NULL);
-    }
-}
-
-struct srd_c_decoder afsk_c_decoder = {
+struct srd_c_decoder afsk_c_def = {
     .id = "afsk_c",
     .name = "AFSK(C)",
     .longname = "Audio Frequency Shift Keying (C)",
@@ -228,6 +195,7 @@ struct srd_c_decoder afsk_c_decoder = {
     .num_binary = 0,
     .tags = afsk_tags,
     .num_tags = 1,
+    .state_size = sizeof(afsk_s),
     .reset = afsk_reset,
     .start = afsk_start,
     .decode = afsk_decode,
@@ -237,7 +205,10 @@ struct srd_c_decoder afsk_c_decoder = {
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)
 {
-    return &afsk_c_decoder;
+    afsk_options[0].def = g_variant_new_int32(2000);
+    afsk_options[1].def = g_variant_new_int32(4000);
+    afsk_options[2].def = g_variant_new_int32(40);
+    return &afsk_c_def;
 }
 
 SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)

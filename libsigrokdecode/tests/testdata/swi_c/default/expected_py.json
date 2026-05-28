@@ -4,8 +4,8 @@
 	"num_annotations": 4,
 	"annotations": [
 		{
-			"start_sample": 260,
-			"end_sample": 468,
+			"start_sample": 2260,
+			"end_sample": 2468,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -13,8 +13,8 @@
 			]
 		}, 
 		{
-			"start_sample": 468,
-			"end_sample": 676,
+			"start_sample": 2468,
+			"end_sample": 2676,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -22,8 +22,8 @@
 			]
 		}, 
 		{
-			"start_sample": 676,
-			"end_sample": 884,
+			"start_sample": 2676,
+			"end_sample": 2884,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -31,8 +31,8 @@
 			]
 		}, 
 		{
-			"start_sample": 884,
-			"end_sample": 1040,
+			"start_sample": 2884,
+			"end_sample": 3040,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [

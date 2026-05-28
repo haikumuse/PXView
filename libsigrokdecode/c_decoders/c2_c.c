@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -82,32 +82,27 @@ static void c2_reset(struct srd_decoder_inst *di)
 static void c2_start(struct srd_decoder_inst *di)
 {
     struct c2_priv *s = (struct c2_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "C2");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "C2");
 }
 
 static void c2_decode(struct srd_decoder_inst *di)
 {
     struct c2_priv *s = (struct c2_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
     int ret;
 
-    if (!c_decoder_get_samplerate(di))
+    if (!c_samplerate(di))
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, C2CK);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_E(C2CK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int c2ck = c_decoder_get_pin(di, C2CK, samplenum);
-        int c2d = c_decoder_get_pin(di, C2D, samplenum);
+        int c2ck = c_pin(di, C2CK);
+        int c2d = c_pin(di, C2D);
 
         if (c2ck == 0) {
-            s->tf = samplenum;
+            s->tf = di_samplenum(di);
 
             switch (s->state) {
             case STATE_DATA_READ:
@@ -120,7 +115,7 @@ static void c2_decode(struct srd_decoder_inst *di)
                 if (s->bitcount >= 8) {
                     char buf[8];
                     snprintf(buf, sizeof(buf), "%02X", s->c2data);
-                    C_ANN_PUT(di, s->ss, s->tf, s->out_ann, ANN_RAW, buf);
+                    c_put(di, s->ss, s->tf, s->out_ann, ANN_RAW, buf);
                     s->bitcount = 0;
                     s->data |= (uint32_t)s->c2data << ((s->dataLen - s->remainData) * 8);
                     s->remainData--;
@@ -139,7 +134,7 @@ static void c2_decode(struct srd_decoder_inst *di)
                 if (s->bitcount >= 8) {
                     char buf[8];
                     snprintf(buf, sizeof(buf), "%02X", s->c2data);
-                    C_ANN_PUT(di, s->ss, s->tf, s->out_ann, ANN_RAW, buf);
+                    c_put(di, s->ss, s->tf, s->out_ann, ANN_RAW, buf);
                     s->state = STATE_END;
                 }
                 break;
@@ -149,7 +144,7 @@ static void c2_decode(struct srd_decoder_inst *di)
                     s->ss = s->tf;
                 s->bitcount++;
                 if (c2d == 1) {
-                    C_ANN_PUT(di, s->ss, s->tf, s->out_ann, ANN_RAW, "Wait", "W");
+                    c_put(di, s->ss, s->tf, s->out_ann, ANN_RAW, "Wait", "W");
                     s->bitcount = 0;
                     s->state = STATE_DATA_READ;
                 }
@@ -160,7 +155,7 @@ static void c2_decode(struct srd_decoder_inst *di)
                     s->ss = s->tr;
                 s->bitcount++;
                 if (c2d == 1) {
-                    C_ANN_PUT(di, s->ss, s->tf, s->out_ann, ANN_RAW, "Wait", "W");
+                    c_put(di, s->ss, s->tf, s->out_ann, ANN_RAW, "Wait", "W");
                     s->state = STATE_END;
                 }
                 break;
@@ -169,18 +164,18 @@ static void c2_decode(struct srd_decoder_inst *di)
                 break;
             }
         } else {
-            s->tr = samplenum;
+            s->tr = di_samplenum(di);
 
-            uint64_t samplerate = c_decoder_get_samplerate(di);
+            uint64_t samplerate = c_samplerate(di);
             double interval = (double)(s->tr - s->tf) * 1000000.0 / (double)samplerate;
 
             if (interval > 20.0) {
-                C_ANN_PUT(di, s->tf, s->tr, s->out_ann, ANN_RAW, "Reset", "R");
+                c_put(di, s->tf, s->tr, s->out_ann, ANN_RAW, "Reset", "R");
                 s->state = STATE_START;
             } else {
                 switch (s->state) {
                 case STATE_START:
-                    C_ANN_PUT(di, s->tf, s->tr, s->out_ann, ANN_RAW, "Start", "S");
+                    c_put(di, s->tf, s->tr, s->out_ann, ANN_RAW, "Start", "S");
                     s->state = STATE_INS;
                     s->bitcount = 0;
                     s->ins = 0;
@@ -197,10 +192,7 @@ static void c2_decode(struct srd_decoder_inst *di)
                     s->ins |= c2d << s->bitcount;
                     s->bitcount++;
                     if (s->bitcount >= 2) {
-                        srd_cond_builder *cb2 = c_cond_new();
-                        c_cond_fall(cb2, C2CK);
-                        ret = c_cond_wait(cb2, di, &samplenum, &matched);
-                        c_cond_free(cb2);
+                        ret = c_wait(di, CW_F(C2CK), CW_END);
                         if (ret != SRD_OK)
                             return;
 
@@ -215,7 +207,7 @@ static void c2_decode(struct srd_decoder_inst *di)
 
                         char buf[4];
                         snprintf(buf, sizeof(buf), "%1d", s->ins);
-                        C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_RAW, buf);
+                        c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_RAW, buf);
                         s->bitcount = 0;
                     }
                     break;
@@ -228,17 +220,14 @@ static void c2_decode(struct srd_decoder_inst *di)
                     s->c2data |= c2d << s->bitcount;
                     s->bitcount++;
                     if (s->bitcount >= 8) {
-                        srd_cond_builder *cb2 = c_cond_new();
-                        c_cond_fall(cb2, C2CK);
-                        ret = c_cond_wait(cb2, di, &samplenum, &matched);
-                        c_cond_free(cb2);
+                        ret = c_wait(di, CW_F(C2CK), CW_END);
                         if (ret != SRD_OK)
                             return;
 
-                        s->tf = samplenum;
+                        s->tf = di_samplenum(di);
                         char buf[8];
                         snprintf(buf, sizeof(buf), "%02X", s->c2data);
-                        C_ANN_PUT(di, s->ss, s->tf, s->out_ann, ANN_RAW, buf);
+                        c_put(di, s->ss, s->tf, s->out_ann, ANN_RAW, buf);
                         s->bitcount = 0;
                         s->state = STATE_END;
                     }
@@ -256,7 +245,7 @@ static void c2_decode(struct srd_decoder_inst *di)
                         s->remainData = s->dataLen;
                         char buf[4];
                         snprintf(buf, sizeof(buf), "%01d", s->c2data);
-                        C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_RAW, buf);
+                        c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_RAW, buf);
                         s->state = STATE_READ_WAIT;
                         s->bitcount = 0;
                     }
@@ -273,16 +262,13 @@ static void c2_decode(struct srd_decoder_inst *di)
                         s->dataLen = s->c2data + 1;
                         s->remainData = s->dataLen;
 
-                        srd_cond_builder *cb2 = c_cond_new();
-                        c_cond_fall(cb2, C2CK);
-                        ret = c_cond_wait(cb2, di, &samplenum, &matched);
-                        c_cond_free(cb2);
+                        ret = c_wait(di, CW_F(C2CK), CW_END);
                         if (ret != SRD_OK)
                             return;
 
                         char buf[4];
                         snprintf(buf, sizeof(buf), "%01d", s->c2data);
-                        C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_RAW, buf);
+                        c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_RAW, buf);
                         s->state = STATE_DATA_WRITE;
                         s->bitcount = 0;
                         s->c2data = 0;
@@ -299,7 +285,7 @@ static void c2_decode(struct srd_decoder_inst *di)
                     if (s->bitcount >= 8) {
                         char buf[8];
                         snprintf(buf, sizeof(buf), "%02X", s->c2data);
-                        C_ANN_PUT(di, s->ss, s->tr, s->out_ann, ANN_RAW, buf);
+                        c_put(di, s->ss, s->tr, s->out_ann, ANN_RAW, buf);
                         s->bitcount = 0;
                         s->data |= (uint32_t)s->c2data << ((s->dataLen - s->remainData) * 8);
                         s->remainData--;
@@ -310,23 +296,23 @@ static void c2_decode(struct srd_decoder_inst *di)
 
                 case STATE_END:
                     s->state = STATE_START;
-                    C_ANN_PUT(di, s->tf, s->tr, s->out_ann, ANN_RAW, "End", "E");
+                    c_put(di, s->tf, s->tr, s->out_ann, ANN_RAW, "End", "E");
                     if (s->ins == 0) {
                         char buf[64];
                         snprintf(buf, sizeof(buf), "ReadData(%01d)=0x%02X", s->dataLen, (unsigned int)s->data);
-                        C_ANN_PUT(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
+                        c_put(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
                     } else if (s->ins == 1) {
                         char buf[64];
                         snprintf(buf, sizeof(buf), "WriteData(0x%02X,%01d)", (unsigned int)s->data, s->dataLen);
-                        C_ANN_PUT(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
+                        c_put(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
                     } else if (s->ins == 2) {
                         char buf[64];
                         snprintf(buf, sizeof(buf), "ReadAddress()=0x%02X", s->c2data);
-                        C_ANN_PUT(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
+                        c_put(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
                     } else if (s->ins == 3) {
                         char buf[64];
                         snprintf(buf, sizeof(buf), "WriteAddress(0x%02X)", s->c2data);
-                        C_ANN_PUT(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
+                        c_put(di, s->ss1, s->tr, s->out_ann, ANN_C2DATA, buf);
                     }
                     break;
 
@@ -375,6 +361,7 @@ struct srd_c_decoder c2_c_decoder = {
     .start = c2_start,
     .decode = c2_decode,
     .destroy = c2_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

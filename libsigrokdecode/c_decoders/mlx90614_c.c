@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012 Uwe Hermann <uwe@hermann-uwe.de>
@@ -58,9 +58,7 @@ static const struct srd_c_ann_row mlx90614_ann_rows[] = {
     {"temps-kelvin", "Temperature / K", mlx90614_row_kelvin_classes, 1},
 };
 
-static void mlx90614_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void mlx90614_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     mlx90614_priv *s = (mlx90614_priv *)c_decoder_get_private(di);
     if (!s)
@@ -77,7 +75,7 @@ static void mlx90614_recv_proto(struct srd_decoder_inst *di,
             s->state = MLX90614_GET_TEMPERATURE;
     } else if (s->state == MLX90614_GET_TEMPERATURE) {
         if (strcmp(cmd, "DATA READ") == 0) {
-            uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+            uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
             if (s->data_count == 0) {
                 s->data[0] = databyte;
                 s->ss = start_sample;
@@ -89,9 +87,9 @@ static void mlx90614_recv_proto(struct srd_decoder_inst *di,
                 double celsius = kelvin - 273.15;
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Temperature: %.2f °C", celsius);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CELSIUS, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_CELSIUS, buf);
                 snprintf(buf, sizeof(buf), "Temperature: %.2f K", kelvin);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_KELVIN, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_KELVIN, buf);
                 s->state = MLX90614_IGNORE_START_REPEAT;
                 s->data_count = 0;
             }
@@ -112,7 +110,7 @@ static void mlx90614_reset(struct srd_decoder_inst *di)
 static void mlx90614_start(struct srd_decoder_inst *di)
 {
     mlx90614_priv *s = (mlx90614_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mlx90614");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mlx90614");
 }
 
 static void mlx90614_decode(struct srd_decoder_inst *di)
@@ -157,7 +155,8 @@ struct srd_c_decoder mlx90614_c_decoder = {
     .start = mlx90614_start,
     .decode = mlx90614_decode,
     .destroy = mlx90614_destroy,
-    .recv_proto = mlx90614_recv_proto,
+    .decode_upper = mlx90614_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

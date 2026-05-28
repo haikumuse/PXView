@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -232,14 +232,14 @@ static void tm1638_putd(struct srd_decoder_inst *di, tm1638_state *s,
 {
     if (bit_start < 0 || bit_end < 0 || bit_start >= s->num_bits || bit_end >= s->num_bits)
         return;
-    C_ANN_PUT(di, s->bit_ss[bit_start], s->bit_es[bit_end], s->out_ann, cls, text);
+    c_put(di, s->bit_ss[bit_start], s->bit_es[bit_end], s->out_ann, cls, text);
 }
 
 static void tm1638_putr(struct srd_decoder_inst *di, tm1638_state *s,
     int bit_start, int bit_end)
 {
     for (int i = bit_start; i <= bit_end && i < s->num_bits; i++)
-        C_ANN_PUT(di, s->bit_ss[i], s->bit_es[i], s->out_ann, ANN_RESERVED, "Reserved");
+        c_put(di, s->bit_ss[i], s->bit_es[i], s->out_ann, ANN_RESERVED, "Reserved");
 }
 
 static char tm1638_font_lookup(uint8_t segs)
@@ -397,13 +397,13 @@ static void tm1638_handle_info(struct srd_decoder_inst *di, tm1638_state *s)
     if (s->display_len > 0) {
         char buf[TM1638_MAX_DISPLAY * 2 + 16];
         snprintf(buf, sizeof(buf), "Tubes: %s", s->display);
-        C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_DISPLAY_INFO, buf);
+        c_put(di, s->ssb, s->es, s->out_ann, ANN_DISPLAY_INFO, buf);
     }
     /* LEDchain row */
     if (s->leds_len > 0) {
         char buf[TM1638_MAX_LEDS * 2 + 16];
         snprintf(buf, sizeof(buf), "LEDs: %s", s->leds_buf);
-        C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_LEDS_INFO, buf);
+        c_put(di, s->ssb, s->es, s->out_ann, ANN_LEDS_INFO, buf);
     }
     /* Keyboard row */
     if (s->keys_len > 0) {
@@ -417,7 +417,7 @@ static void tm1638_handle_info(struct srd_decoder_inst *di, tm1638_state *s)
         }
         char ann_buf[TM1638_MAX_KEYS * 16 + 16];
         snprintf(ann_buf, sizeof(ann_buf), "Keys: %s", buf);
-        C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_KEYS_INFO, ann_buf);
+        c_put(di, s->ssb, s->es, s->out_ann, ANN_KEYS_INFO, ann_buf);
     }
 
     /* Clear data */
@@ -428,9 +428,7 @@ static void tm1638_handle_info(struct srd_decoder_inst *di, tm1638_state *s)
     s->keys_len = 0;
 }
 
-static void tm1638_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void tm1638_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     tm1638_state *s = (tm1638_state *)c_decoder_get_private(di);
     if (!s)
@@ -441,19 +439,19 @@ static void tm1638_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "BITS") == 0) {
         /* BITS v2 format from tmc_c:
-           data[0] = flags, data[1] = bit_count,
+           fields[0].u8 = flags, fields[1].u8 = bit_count,
            then per bit: [value(1B)][ss(8B LE)][es(8B LE)] */
-        if (data_len < 2)
+        if (n_fields < 2)
             return;
-        uint8_t flags = data[0];
+        uint8_t flags = fields[0].u8;
         (void)flags;
-        uint8_t bit_count = data[1];
+        uint8_t bit_count = fields[1].u8;
         if (bit_count > TM1638_MAX_BITS)
             bit_count = TM1638_MAX_BITS;
         s->num_bits = 0;
-        const unsigned char *p = data + 2;
-        for (int i = 0; i < bit_count && (p + 17) <= data + data_len; i++, p += 17) {
-            s->bit_val[i] = p[0];
+        const c_field *p = fields + 2;
+        for (int i = 0; i < bit_count && (p + 17) <= fields + n_fields; i++, p += 17) {
+            s->bit_val[i] = p[0].u8;
             memcpy(&s->bit_ss[i], p + 1, 8);
             memcpy(&s->bit_es[i], p + 9, 8);
             s->num_bits++;
@@ -462,11 +460,11 @@ static void tm1638_recv_proto(struct srd_decoder_inst *di,
         s->ssb = start_sample;
         s->state = STATE_REG_CMD;
     } else if (strcmp(cmd, "COMMAND") == 0) {
-        uint8_t databyte = (data_len > 0) ? data[0] : 0;
+        uint8_t databyte = (n_fields > 0) ? fields[0].u8 : 0;
         tm1638_handle_command(di, s, databyte);
         s->state = STATE_REG_DATA;
     } else if (strcmp(cmd, "DATA") == 0) {
-        uint8_t databyte = (data_len > 0) ? data[0] : 0;
+        uint8_t databyte = (n_fields > 0) ? fields[0].u8 : 0;
         tm1638_handle_data(di, s, databyte);
     } else if (strcmp(cmd, "STOP") == 0) {
         tm1638_handle_info(di, s);
@@ -487,7 +485,7 @@ static void tm1638_reset(struct srd_decoder_inst *di)
 static void tm1638_start(struct srd_decoder_inst *di)
 {
     tm1638_state *s = (tm1638_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tm1638");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tm1638");
 }
 
 static void tm1638_decode(struct srd_decoder_inst *di)
@@ -532,7 +530,8 @@ struct srd_c_decoder tm1638_c_decoder = {
     .start = tm1638_start,
     .decode = tm1638_decode,
     .destroy = tm1638_destroy,
-    .recv_proto = tm1638_recv_proto,
+    .decode_upper = tm1638_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

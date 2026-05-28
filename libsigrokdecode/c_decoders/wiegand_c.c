@@ -71,7 +71,7 @@ static void wiegand_update_state(struct srd_decoder_inst *di, struct wiegand_pri
         }
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->cur_bit);
-        C_ANN_PUT(di, s->ss_bit, samplenum, s->out_ann, ANN_BITS, bit_str);
+        c_put(di, s->ss_bit, samplenum, s->out_ann, ANN_BITS, bit_str);
     }
 
     s->cur_bit = bit;
@@ -93,9 +93,9 @@ static void wiegand_update_state(struct srd_decoder_inst *di, struct wiegand_pri
             char s2[32];
             snprintf(s1, sizeof(s1), "%d bits %s", s->num_bits, accum_str);
             snprintf(s2, sizeof(s2), "%d bits", s->num_bits);
-            C_ANN_PUT(di, s->ss_state, samplenum, s->out_ann, ANN_STATE, s1, s2);
+            c_put(di, s->ss_state, samplenum, s->out_ann, ANN_STATE, s1, s2);
         } else if (s->state == STATE_INVALID) {
-            C_ANN_PUT(di, s->ss_state, samplenum, s->out_ann, ANN_STATE, "invalid");
+            c_put(di, s->ss_state, samplenum, s->out_ann, ANN_STATE, "invalid");
         }
 
         s->ss_state = samplenum;
@@ -123,9 +123,9 @@ static void wiegand_start(struct srd_decoder_inst *di)
 {
     struct wiegand_priv *s = (struct wiegand_priv *)c_decoder_get_private(di);
 
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "wiegand");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "wiegand");
 
-    const char *active_str = c_decoder_get_option_string(di, "active", "low");
+    const char *active_str = c_opt_str(di, "active", "low");
     if (active_str && strcmp(active_str, "high") == 0) {
         s->active = 1;
         s->inactive = 0;
@@ -141,7 +141,7 @@ static void wiegand_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
     if (key == SRD_CONF_SAMPLERATE) {
         s->samplerate = value;
         if (s->samplerate) {
-            int bitwidth_ms = (int)c_decoder_get_option_int(di, "bitwidth_ms", 4);
+            int bitwidth_ms = (int)c_opt_int(di, "bitwidth_ms", 4);
             double ms_per_sample = 1000.0 / (double)s->samplerate;
             double ms_per_bit = (double)bitwidth_ms;
             int spb = (int)(ms_per_bit / ms_per_sample);
@@ -153,43 +153,45 @@ static void wiegand_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
 static void wiegand_decode(struct srd_decoder_inst *di)
 {
     struct wiegand_priv *s = (struct wiegand_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-    int first_call = 1;
 
     if (!s->samplerate)
         return;
 
+    /* Grab first sample to initialize previous pin states */
+    int ret = c_wait(di, CW_SKIP(0), CW_END);
+    if (ret != SRD_OK)
+        return;
+
+    s->d0_prev = c_pin(di, CH_D0);
+    s->d1_prev = c_pin(di, CH_D1);
+
     while (1) {
-        /* Match Python's self.wait() with no conditions:
-         * - First call: SKIP(0) to process sample 0
-         * - Subsequent calls: SKIP(1) to advance one sample */
-        srd_cond_builder *cb = c_cond_new();
-        if (first_call) {
-            c_cond_skip(cb, 0);
-            first_call = 0;
+        /* Wait for edge on D0 or D1, or for bit timeout */
+        if (s->es_bit && s->es_bit > di_samplenum(di)) {
+            uint64_t skip = s->es_bit - di_samplenum(di);
+            ret = c_wait(di, CW_E(CH_D0), CW_OR, CW_E(CH_D1), CW_OR, CW_SKIP(skip), CW_END);
         } else {
-            c_cond_skip(cb, 1);
+            ret = c_wait(di, CW_E(CH_D0), CW_OR, CW_E(CH_D1), CW_END);
         }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
         if (ret != SRD_OK)
             return;
 
-        int d0 = c_decoder_get_pin(di, CH_D0, samplenum);
-        int d1 = c_decoder_get_pin(di, CH_D1, samplenum);
+        uint64_t samplenum = di_samplenum(di);
+        int d0 = c_pin(di, CH_D0);
+        int d1 = c_pin(di, CH_D1);
 
-        /* Check for no change (same as Python: d0 == _d0_prev and d1 == _d1_prev) */
-        if (d0 == s->d0_prev && d1 == s->d1_prev) {
-            if (s->es_bit && samplenum >= s->es_bit) {
-                if (d0 == s->inactive && d1 == s->inactive) {
-                    wiegand_update_state(di, s, samplenum, STATE_IDLE, -1);
-                } else {
-                    wiegand_update_state(di, s, samplenum, STATE_INVALID, -1);
-                }
+        /* Check for bit timeout (es_bit reached without pin change) */
+        if (s->es_bit && samplenum >= s->es_bit) {
+            if (d0 == s->inactive && d1 == s->inactive) {
+                wiegand_update_state(di, s, samplenum, STATE_IDLE, -1);
+            } else {
+                wiegand_update_state(di, s, samplenum, STATE_INVALID, -1);
             }
-            continue;
         }
+
+        /* Skip if pins haven't changed */
+        if (d0 == s->d0_prev && d1 == s->d1_prev)
+            continue;
 
         if (s->state == STATE_NONE || s->state == STATE_IDLE || s->state == STATE_DATA) {
             if (d0 == s->active && d1 == s->inactive) {
@@ -249,6 +251,7 @@ struct srd_c_decoder wiegand_c_decoder = {
     .end = NULL,
     .metadata = wiegand_metadata,
     .destroy = wiegand_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

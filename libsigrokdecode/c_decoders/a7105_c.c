@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Richard Li <richard.li@ces.hk>
@@ -135,24 +135,24 @@ static const struct srd_c_ann_row a7105_ann_rows[] = {
     {"warnings", "Warnings", a7105_row_warnings_classes, 1},
 };
 
-static void parse_spi_data(const unsigned char *data, uint64_t data_len,
+static void parse_spi_data(const c_field *fields, int n_fields,
     int *have_mosi, int *have_miso, uint64_t *mosi_val, uint64_t *miso_val)
 {
     int pos = 0;
-    uint8_t flags = data[pos++];
+    uint8_t flags = fields[pos++].u8;
     *have_mosi = (flags & 1) ? 1 : 0;
     *have_miso = (flags & 2) ? 1 : 0;
 
     *mosi_val = 0;
     if (*have_mosi) {
-        for (int i = 0; i < 8 && pos < (int)data_len; i++)
-            *mosi_val |= ((uint64_t)data[pos++]) << (8 * i);
+        for (int i = 0; i < 8 && pos < (int)n_fields; i++)
+            *mosi_val |= ((uint64_t)fields[pos++].u8) << (8 * i);
     }
 
     *miso_val = 0;
     if (*have_miso) {
-        for (int i = 0; i < 8 && pos < (int)data_len; i++)
-            *miso_val |= ((uint64_t)data[pos++]) << (8 * i);
+        for (int i = 0; i < 8 && pos < (int)n_fields; i++)
+            *miso_val |= ((uint64_t)fields[pos++].u8) << (8 * i);
     }
 }
 
@@ -239,11 +239,11 @@ static void a7105_decode_mb_data(struct srd_decoder_inst *di, a7105_state *s,
 
     char buf[160];
     snprintf(buf, sizeof(buf), "%s = \"$\"", label);
-    C_ANN_PUT(di, s->mb_ss, s->mb_es, s->out_ann, ann, buf);
+    c_put(di, s->mb_ss, s->mb_es, s->out_ann, ann, buf);
 
     char at_buf[100];
     snprintf(at_buf, sizeof(at_buf), "@%s", hex_buf);
-    C_ANN_PUT(di, s->mb_ss, s->mb_es, s->out_ann, ann, at_buf);
+    c_put(di, s->mb_ss, s->mb_es, s->out_ann, ann, at_buf);
 }
 
 static void a7105_finish_command(struct srd_decoder_inst *di, a7105_state *s)
@@ -273,9 +273,7 @@ static void a7105_finish_command(struct srd_decoder_inst *di, a7105_state *s)
     }
 }
 
-static void a7105_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void a7105_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     a7105_state *s = (a7105_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -287,19 +285,19 @@ static void a7105_recv_proto(struct srd_decoder_inst *di,
         if (s->state == A7105_CMD_RECEIVED && s->mb_count >= s->cmd_min) {
             a7105_finish_command(di, s);
         } else if (s->state == A7105_CMD_RECEIVED && s->mb_count < s->cmd_min && s->mb_count > 0) {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "missing data bytes");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "missing data bytes");
         }
         a7105_reset_cmd(s);
         s->cs_was_released = 1;
     } else if (strcmp(cmd, "CS-CHANGE") == 0) {
-        uint8_t cs_old = (data_len > 0) ? data[0] : 0xFF;
-        uint8_t cs_new = (data_len > 1) ? data[1] : 0;
+        uint8_t cs_old = (n_fields > 0) ? fields[0].u8 : 0xFF;
+        uint8_t cs_new = (n_fields > 1) ? fields[1].u8 : 0;
 
         if (cs_old == 0 && cs_new == 1) {
             if (s->state == A7105_CMD_RECEIVED && s->mb_count >= s->cmd_min) {
                 a7105_finish_command(di, s);
             } else if (s->state == A7105_CMD_RECEIVED && s->mb_count < s->cmd_min && s->mb_count > 0) {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "missing data bytes");
+                c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "missing data bytes");
             }
             a7105_reset_cmd(s);
             s->cs_was_released = 1;
@@ -307,7 +305,7 @@ static void a7105_recv_proto(struct srd_decoder_inst *di,
     } else if (strcmp(cmd, "DATA") == 0 && s->cs_was_released) {
         int have_mosi, have_miso;
         uint64_t mosi_val, miso_val;
-        parse_spi_data(data, data_len, &have_mosi, &have_miso, &mosi_val, &miso_val);
+        parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi_val, &miso_val);
 
         if (!have_mosi && !have_miso) {
             s->requirements_met = 0;
@@ -319,7 +317,7 @@ static void a7105_recv_proto(struct srd_decoder_inst *di,
             uint8_t cmd_byte = (uint8_t)mosi_val;
             if (!a7105_parse_command(cmd_byte, s->cmd_name, &s->cmd_reg,
                     &s->cmd_min, &s->cmd_max)) {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "unknown command");
+                c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "unknown command");
                 return;
             }
             s->state = A7105_CMD_RECEIVED;
@@ -330,7 +328,7 @@ static void a7105_recv_proto(struct srd_decoder_inst *di,
             } else {
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Cmd %s", s->cmd_name);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CMD, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_CMD, buf);
             }
         } else {
             if (s->mb_count < s->cmd_max) {
@@ -340,7 +338,7 @@ static void a7105_recv_proto(struct srd_decoder_inst *di,
                 s->miso_bytes[s->mb_count] = (uint8_t)miso_val;
                 s->mb_count++;
             } else {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARN, "excess byte");
+                c_put(di, s->ss, s->es, s->out_ann, ANN_WARN, "excess byte");
             }
         }
     }
@@ -361,7 +359,7 @@ static void a7105_reset(struct srd_decoder_inst *di)
 static void a7105_start(struct srd_decoder_inst *di)
 {
     a7105_state *s = (a7105_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "a7105");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "a7105");
 }
 
 static void a7105_decode(struct srd_decoder_inst *di)
@@ -406,7 +404,8 @@ struct srd_c_decoder a7105_c_decoder = {
     .start = a7105_start,
     .decode = a7105_decode,
     .destroy = a7105_destroy,
-    .recv_proto = a7105_recv_proto,
+    .decode_upper = a7105_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

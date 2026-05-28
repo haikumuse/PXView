@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Petteri Aimonen <jpa@sigrok.mail.kapsi.fi>
@@ -80,7 +80,7 @@ static void arm_tpiu_stream_changed(struct srd_decoder_inst *di, arm_tpiu_state 
         if (s->stream != 0) {
             char t[32];
             snprintf(t, sizeof(t), "Stream %d", s->stream);
-            C_ANN_PUT(di, s->ss_stream, ss, s->out_ann, ANN_STREAM, t);
+            c_put(di, s->ss_stream, ss, s->out_ann, ANN_STREAM, t);
         }
         s->stream = stream;
         s->ss_stream = ss;
@@ -93,12 +93,12 @@ static void arm_tpiu_emit_byte(struct srd_decoder_inst *di, arm_tpiu_state *s,
     if (s->stream == s->opt_stream) {
         char t[16];
         snprintf(t, sizeof(t), "0x%02x", byte_val);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_DATA, t);
+        c_put(di, ss, es, s->out_ann, ANN_DATA, t);
         /* Emit as protocol data for upper-layer decoders */
         unsigned char py_data[2];
         py_data[0] = byte_val;
         py_data[1] = 0; /* rxtx = 0 (RX) */
-        c_decoder_put_proto(di, ss, es, s->out_proto, "DATA", py_data, 2);
+        c_proto(di, ss, es, s->out_proto, "DATA", C_U8(byte_val), C_U8(0), C_END);
     }
 }
 
@@ -136,9 +136,7 @@ static void arm_tpiu_process_frame(struct srd_decoder_inst *di, arm_tpiu_state *
     }
 }
 
-static void arm_tpiu_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void arm_tpiu_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     arm_tpiu_state *s = (arm_tpiu_state *)c_decoder_get_private(di);
     if (!s)
@@ -147,10 +145,10 @@ static void arm_tpiu_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    if (data_len < 1)
+    if (n_fields < 1)
         return;
 
-    uint8_t byte_val = data[0];
+    uint8_t byte_val = fields[0].u8;
 
     s->byte_len = end_sample - start_sample;
 
@@ -211,10 +209,10 @@ static void arm_tpiu_reset(struct srd_decoder_inst *di)
 static void arm_tpiu_start(struct srd_decoder_inst *di)
 {
     arm_tpiu_state *s = (arm_tpiu_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "arm_tpiu");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "arm_tpiu");
-    s->opt_stream = (int)c_decoder_get_option_int(di, "stream", 1);
-    s->opt_sync_offset = (int)c_decoder_get_option_int(di, "sync_offset", 0);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "arm_tpiu");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "arm_tpiu");
+    s->opt_stream = (int)c_opt_int(di, "stream", 1);
+    s->opt_sync_offset = (int)c_opt_int(di, "sync_offset", 0);
 }
 
 static void arm_tpiu_decode(struct srd_decoder_inst *di)
@@ -259,7 +257,8 @@ struct srd_c_decoder arm_tpiu_c_decoder = {
     .start = arm_tpiu_start,
     .decode = arm_tpiu_decode,
     .destroy = arm_tpiu_destroy,
-    .recv_proto = arm_tpiu_recv_proto,
+    .decode_upper = arm_tpiu_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

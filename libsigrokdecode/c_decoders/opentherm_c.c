@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the PXView project.
  *
  * Copyright (C) 2024 DreamSourceLab <info@dreamsourcelab.com>
@@ -228,7 +228,7 @@ static void handle_timing_error(struct srd_decoder_inst *di, ot_priv *s,
     int64_t us = s2t(s, tes - tss);
     char text[64];
     snprintf(text, sizeof(text), "Timing error (%lld us)", (long long)us);
-    C_ANN_PUT(di, tss, tes, s->out_ann, ANN_TIMING,
+    c_put(di, tss, tes, s->out_ann, ANN_TIMING,
               text, "Timing", "T");
     s->last_frame_edge = tes;
 }
@@ -247,17 +247,17 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
 
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[i].value);
-        C_ANN_PUT(di, s->ss_es_bits[i].ss, s->ss_es_bits[i].es, s->out_ann, ANN_BIT, bit_str);
+        c_put(di, s->ss_es_bits[i].ss, s->ss_es_bits[i].es, s->out_ann, ANN_BIT, bit_str);
     }
 
     /* Start bit (bit 0) */
     char start_str[32];
     snprintf(start_str, sizeof(start_str), "Startbit: %d", s->bits[0].value);
-    C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[0].es, s->out_ann, ANN_STARTBIT,
+    c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[0].es, s->out_ann, ANN_STARTBIT,
               start_str, "STRB", "S");
 
     if (s->bit_count < 2) {
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
                   s->out_ann, ANN_WARNING, "Incomplete frame", "Incomplete", "!");
         return;
     }
@@ -265,7 +265,7 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
     /* Parity bit (bit 1) */
     char par_str[32];
     snprintf(par_str, sizeof(par_str), "Paritybit: %d", s->bits[1].value);
-    C_ANN_PUT(di, s->ss_es_bits[1].ss, s->ss_es_bits[1].es, s->out_ann, ANN_PARITYBIT,
+    c_put(di, s->ss_es_bits[1].ss, s->ss_es_bits[1].es, s->out_ann, ANN_PARITYBIT,
               par_str, "PB", "P");
 
     /* Check parity */
@@ -275,11 +275,11 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
             parity ^= s->bits[i + 1].value;
     }
     if (parity == 1 && s->bit_count == 34)
-        C_ANN_PUT(di, s->ss_es_bits[1].ss, s->ss_es_bits[1].es,
+        c_put(di, s->ss_es_bits[1].ss, s->ss_es_bits[1].es,
                   s->out_ann, ANN_WARNING, "Parity error", "PE", "!");
 
     if (s->bit_count < 5) {
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
                   s->out_ann, ANN_WARNING, "Incomplete frame", "Incomplete", "!");
         return;
     }
@@ -296,19 +296,19 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
 
     char mt_str[64];
     snprintf(mt_str, sizeof(mt_str), "MSG-TYPE: %s (%d)", mt_name, msg_type_val);
-    C_ANN_PUT(di, s->ss_es_bits[2].ss, s->ss_es_bits[4].es, s->out_ann, ANN_MSGTYPE,
+    c_put(di, s->ss_es_bits[2].ss, s->ss_es_bits[4].es, s->out_ann, ANN_MSGTYPE,
               mt_str, mt_short, mt_short);
 
     /* Direction annotation */
     if (strcmp(mt_dir, "M2S") == 0)
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
                   s->out_ann, ANN_M2S, "MasterToSlave", mt_dir);
     else if (strcmp(mt_dir, "S2M") == 0)
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
                   s->out_ann, ANN_S2M, "SlaveToMaster", mt_dir);
 
     if (s->bit_count < 9) {
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
                   s->out_ann, ANN_WARNING, "Incomplete frame", "Incomplete", "!");
         return;
     }
@@ -319,7 +319,7 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
         spare_val |= (s->bits[5 + i].value << (3 - i));
     char spare_str[32];
     snprintf(spare_str, sizeof(spare_str), "Spare: %d", spare_val);
-    C_ANN_PUT(di, s->ss_es_bits[5].ss, s->ss_es_bits[8].es, s->out_ann, ANN_SPARE,
+    c_put(di, s->ss_es_bits[5].ss, s->ss_es_bits[8].es, s->out_ann, ANN_SPARE,
               spare_str, "SP", "SP");
 
     /* DATA-ID (bits 9-16, MSB first) */
@@ -340,11 +340,11 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
     }
     default: snprintf(id_str, sizeof(id_str), "DATA-ID: %d", data_id); break;
     }
-    C_ANN_PUT(di, s->ss_es_bits[9].ss, s->ss_es_bits[16].es, s->out_ann, ANN_DATAID,
+    c_put(di, s->ss_es_bits[9].ss, s->ss_es_bits[16].es, s->out_ann, ANN_DATAID,
               id_str, "ID", "ID");
 
     if (s->bit_count < 33) {
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[s->bit_count - 1].es,
                   s->out_ann, ANN_WARNING, "Incomplete frame", "Incomplete", "!");
         return;
     }
@@ -367,18 +367,18 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
     }
     default: snprintf(val_str, sizeof(val_str), "DATA-VALUE: %d", data_value); break;
     }
-    C_ANN_PUT(di, s->ss_es_bits[17].ss, s->ss_es_bits[32].es, s->out_ann, ANN_DATAVALUE,
+    c_put(di, s->ss_es_bits[17].ss, s->ss_es_bits[32].es, s->out_ann, ANN_DATAVALUE,
               val_str, "VAL", "V");
 
     /* Stop bit (bit 33) */
     if (s->bit_count == 34) {
         char stop_str[32];
         snprintf(stop_str, sizeof(stop_str), "Stopbit: %d", s->bits[33].value);
-        C_ANN_PUT(di, s->ss_es_bits[33].ss, s->ss_es_bits[33].es, s->out_ann, ANN_STOPBIT,
+        c_put(di, s->ss_es_bits[33].ss, s->ss_es_bits[33].es, s->out_ann, ANN_STOPBIT,
                   stop_str, "STPB", "E");
 
         if (s->bits[33].value != 1)
-            C_ANN_PUT(di, s->ss_es_bits[33].ss, s->ss_es_bits[33].es,
+            c_put(di, s->ss_es_bits[33].ss, s->ss_es_bits[33].es,
                       s->out_ann, ANN_WARNING, "Stop bit should be 1", "Stop err", "!");
     }
 
@@ -399,13 +399,13 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
                      mt_dir, mt_name, msg_type_val, data_id, data_value);
             break;
         }
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[33].es, s->out_ann, ANN_FRAME,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[33].es, s->out_ann, ANN_FRAME,
                   frame_str, mt_name, "F");
 
         /* OTX annotation */
         char otx_str[64];
         snprintf(otx_str, sizeof(otx_str), "%s %s", mt_dir, mt_name);
-        C_ANN_PUT(di, s->ss_es_bits[0].ss, s->ss_es_bits[33].es, s->out_ann, ANN_OTX,
+        c_put(di, s->ss_es_bits[0].ss, s->ss_es_bits[33].es, s->out_ann, ANN_OTX,
                   otx_str, mt_short, mt_short);
     }
 }
@@ -434,21 +434,21 @@ static void ot_reset(struct srd_decoder_inst *di)
 static void ot_start(struct srd_decoder_inst *di)
 {
     ot_priv *s = (ot_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "opentherm");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "opentherm");
 
-    const char *pol_str = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char *pol_str = c_opt_str(di, "polarity", "active-low");
     s->polarity = (strcmp(pol_str, "active-low") == 0) ? 0 : 1;
 
-    s->bitlen = c_decoder_get_option_int(di, "bitlen", 1000);
-    s->jitter_m = c_decoder_get_option_int(di, "jitter_m", 100);
-    s->jitter_p = c_decoder_get_option_int(di, "jitter_p", 150);
-    s->m2s_silence_min = c_decoder_get_option_int(di, "m2s_silence_min", 20000);
-    s->m2s_silence_max = c_decoder_get_option_int(di, "m2s_silence_max", 800000);
-    s->s2m_silence_min = c_decoder_get_option_int(di, "s2m_silence_min", 100000);
-    s->m2m_act_max = c_decoder_get_option_int(di, "m2m_act_max", 1150000);
-    s->ignore_glitches = c_decoder_get_option_int(di, "ignore_glitches", 0);
+    s->bitlen = c_opt_int(di, "bitlen", 1000);
+    s->jitter_m = c_opt_int(di, "jitter_m", 100);
+    s->jitter_p = c_opt_int(di, "jitter_p", 150);
+    s->m2s_silence_min = c_opt_int(di, "m2s_silence_min", 20000);
+    s->m2s_silence_max = c_opt_int(di, "m2s_silence_max", 800000);
+    s->s2m_silence_min = c_opt_int(di, "s2m_silence_min", 100000);
+    s->m2m_act_max = c_opt_int(di, "m2m_act_max", 1150000);
+    s->ignore_glitches = c_opt_int(di, "ignore_glitches", 0);
 
-    const char *fmt_str = c_decoder_get_option_string(di, "format", "dec");
+    const char *fmt_str = c_opt_str(di, "format", "dec");
     if (strcmp(fmt_str, "hex") == 0)
         s->format = 0;
     else if (strcmp(fmt_str, "dec") == 0)
@@ -473,9 +473,6 @@ static void ot_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void ot_decode(struct srd_decoder_inst *di)
 {
     ot_priv *s = (ot_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (s->samplerate == 0)
         return;
 
@@ -483,36 +480,34 @@ static void ot_decode(struct srd_decoder_inst *di)
         if (!s->timing_set)
             setup_calc(s);
 
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        int ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        int lvl = c_decoder_get_pin(di, 0, samplenum);
+        int lvl = c_pin(di, 0);
 
         if (!s->prev_samplenum_valid) {
-            s->prev_samplenum = samplenum;
+            s->prev_samplenum = di_samplenum(di);
             s->prev_lvl = lvl;
             s->prev_samplenum_valid = 1;
             continue;
         }
 
         /* Glitch filtering */
-        if (s->glitchlen > 0 && (samplenum - s->prev_samplenum) <= s->glitchlen) {
+        if (s->glitchlen > 0 && (di_samplenum(di) - s->prev_samplenum) <= s->glitchlen) {
             char glitch_str[64];
             snprintf(glitch_str, sizeof(glitch_str), "Glitch (%lld us)",
-                     (long long)s2t(s, samplenum - s->prev_samplenum));
-            C_ANN_PUT(di, s->prev_samplenum, samplenum, s->out_ann, ANN_WARNING,
+                     (long long)s2t(s, di_samplenum(di) - s->prev_samplenum));
+            c_put(di, s->prev_samplenum, di_samplenum(di), s->out_ann, ANN_WARNING,
                       glitch_str, "Glitch", "G");
-            s->prev_samplenum = samplenum;
+            s->prev_samplenum = di_samplenum(di);
             s->prev_lvl = lvl;
             continue;
         }
 
         s->c_samplenum = s->prev_samplenum;
         s->c_lvl = s->prev_lvl;
-        s->prev_samplenum = samplenum;
+        s->prev_samplenum = di_samplenum(di);
         s->prev_lvl = lvl;
 
         if (s->edge_count < 64)
@@ -525,7 +520,7 @@ static void ot_decode(struct srd_decoder_inst *di)
         if (s->state == STATE_IDLE) {
             /* Check silence duration */
             if (s->last_frame_edge != 0 && (s->c_samplenum - s->last_frame_edge) < s->halfbit * 4) {
-                C_ANN_PUT(di, s->last_frame_edge, s->c_samplenum, s->out_ann, ANN_WARNING,
+                c_put(di, s->last_frame_edge, s->c_samplenum, s->out_ann, ANN_WARNING,
                           "Sync error: silence too short", "Sync err", "S");
                 s->last_frame_edge = s->c_samplenum;
                 continue;
@@ -549,7 +544,7 @@ static void ot_decode(struct srd_decoder_inst *di)
                 bitpos = s->edges[s->edge_count - 2];
             } else {
                 handle_bits(di, s);
-                C_ANN_PUT(di, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1],
+                c_put(di, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1],
                           s->out_ann, ANN_WARNING,
                           "Sync error: start bit len error", "Sync err", "S");
                 handle_timing_error(di, s, s->edges[s->edge_count - 2], s->edges[s->edge_count - 1]);
@@ -667,6 +662,7 @@ static struct srd_c_decoder opentherm_c_decoder = {
     .start = ot_start,
     .decode = ot_decode,
     .destroy = ot_destroy,
+    .state_size = 0,
     .metadata = ot_metadata,
 };
 

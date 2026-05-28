@@ -654,10 +654,10 @@ static void decode_packet(usb_pd_state *s, struct srd_decoder_inst *di)
         uint64_t es = s->edges[s->num_edges - 1];
         if (es > ss) {
             int64_t bitrate = (int64_t)((double)s->samplerate * s->num_bits / (double)(es - ss));
-            c_decoder_put_meta_int(di, es, ss, s->out_bitrate, bitrate);
+            c_put_meta_int(di, es, ss, s->out_bitrate, bitrate);
         }
         /* Raw binary data */
-        c_decoder_put_binary(di, es, ss, s->out_binary, 0, s->num_bits, s->bits);
+        c_put_bin(di, es, ss, s->out_binary, 0, s->num_bits, s->bits);
     }
 }
 
@@ -728,16 +728,16 @@ static void usb_pd_reset(struct srd_decoder_inst *di)
 static void usb_pd_start(struct srd_decoder_inst *di)
 {
     usb_pd_state *s = (usb_pd_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "usb_pd");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "usb_pd");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "usb_pd");
-    s->out_bitrate = c_decoder_register_output_meta(di, SRD_OUTPUT_META,
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "usb_pd");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "usb_pd");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "usb_pd");
+    s->out_bitrate = c_reg_meta(di, SRD_OUTPUT_META,
         "usb_pd", "i", "Bitrate", "Bitrate during the packet");
 
-    const char *ft = c_decoder_get_option_string(di, "fulltext", "no");
+    const char *ft = c_opt_str(di, "fulltext", "no");
     s->fulltext = (ft && strcmp(ft, "yes") == 0);
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0) {
         s->maxbit = (uint64_t)(3.0 * UI_US * (double)s->samplerate / 1000000.0);
         s->threshold = (uint64_t)(THRESHOLD_US * (double)s->samplerate / 1000000.0);
@@ -759,12 +759,9 @@ static void usb_pd_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void usb_pd_decode(struct srd_decoder_inst *di)
 {
     usb_pd_state *s = (usb_pd_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     /* Fallback samplerate */
     if (s->samplerate == 0)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (s->samplerate == 0)
         return;
 
@@ -773,31 +770,26 @@ static void usb_pd_decode(struct srd_decoder_inst *di)
         s->threshold = (uint64_t)(THRESHOLD_US * (double)s->samplerate / 1000000.0);
     }
 
-    int has_cc2 = c_decoder_has_channel(di, CH_CC2);
+    int has_cc2 = c_has_ch(di, CH_CC2);
 
     while (1) {
-        /* Wait for CC1 edge, CC2 edge (if present), or timeout */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, CH_CC1);
-        if (has_cc2) {
-            c_cond_or(cb);
-            c_cond_edge(cb, CH_CC2);
-        }
-        c_cond_or(cb);
-        c_cond_skip(cb, s->samplerate / 1000);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        /* Wait for CC1 edge, CC2 edge (if present), or timeout — single combined wait */
+        int ret;
+        if (has_cc2)
+            ret = c_wait(di, CW_E(CH_CC1), CW_OR, CW_E(CH_CC2), CW_OR, CW_SKIP(s->samplerate / 1000), CW_END);
+        else
+            ret = c_wait(di, CW_E(CH_CC1), CW_OR, CW_SKIP(s->samplerate / 1000), CW_END);
         if (ret != SRD_OK)
             return;
 
         /* First sample of the packet */
         if (!s->startsample) {
-            s->startsample = samplenum;
-            s->previous = samplenum;
+            s->startsample = di_samplenum(di);
+            s->previous = di_samplenum(di);
             continue;
         }
 
-        uint64_t diff = samplenum - s->previous;
+        uint64_t diff = di_samplenum(di) - s->previous;
 
         /* Large idle: end of packet */
         if (diff > s->maxbit) {
@@ -809,7 +801,7 @@ static void usb_pd_decode(struct srd_decoder_inst *di)
             decode_packet(s, di);
 
             /* Reset for next packet */
-            s->startsample = samplenum;
+            s->startsample = di_samplenum(di);
             s->num_bits = 0;
             s->num_edges = 0;
             s->half_one = 0;
@@ -840,7 +832,7 @@ static void usb_pd_decode(struct srd_decoder_inst *di)
                 s->half_one = 0;
             }
         }
-        s->previous = samplenum;
+        s->previous = di_samplenum(di);
     }
 }
 
@@ -874,6 +866,7 @@ static struct srd_c_decoder usb_power_delivery_c_decoder = {
     .decode = usb_pd_decode,
     .metadata = usb_pd_metadata,
     .destroy = usb_pd_destroy,
+    .state_size = 0,
     .inputs = usb_pd_inputs,
     .num_inputs = 1,
     .outputs = usb_pd_outputs,

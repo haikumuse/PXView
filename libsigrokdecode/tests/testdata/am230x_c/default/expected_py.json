@@ -4,8 +4,8 @@
 	"num_annotations": 51,
 	"annotations": [
 		{
-			"start_sample": 500,
-			"end_sample": 1530,
+			"start_sample": 2500,
+			"end_sample": 3530,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -14,8 +14,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1530,
-			"end_sample": 1690,
+			"start_sample": 3530,
+			"end_sample": 3690,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -24,8 +24,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1690,
-			"end_sample": 1766,
+			"start_sample": 3690,
+			"end_sample": 3766,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -34,8 +34,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1766,
-			"end_sample": 1842,
+			"start_sample": 3766,
+			"end_sample": 3842,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -44,8 +44,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1842,
-			"end_sample": 1918,
+			"start_sample": 3842,
+			"end_sample": 3918,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -54,8 +54,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1918,
-			"end_sample": 1994,
+			"start_sample": 3918,
+			"end_sample": 3994,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -64,8 +64,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1994,
-			"end_sample": 2070,
+			"start_sample": 3994,
+			"end_sample": 4070,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -74,8 +74,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2070,
-			"end_sample": 2146,
+			"start_sample": 4070,
+			"end_sample": 4146,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -84,8 +84,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2146,
-			"end_sample": 2222,
+			"start_sample": 4146,
+			"end_sample": 4222,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -94,8 +94,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2222,
-			"end_sample": 2342,
+			"start_sample": 4222,
+			"end_sample": 4342,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -104,8 +104,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1690,
-			"end_sample": 2342,
+			"start_sample": 3690,
+			"end_sample": 4342,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
@@ -114,8 +114,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2342,
-			"end_sample": 2462,
+			"start_sample": 4342,
+			"end_sample": 4462,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -124,8 +124,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2462,
-			"end_sample": 2582,
+			"start_sample": 4462,
+			"end_sample": 4582,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -134,8 +134,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2582,
-			"end_sample": 2702,
+			"start_sample": 4582,
+			"end_sample": 4702,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -144,8 +144,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2702,
-			"end_sample": 2822,
+			"start_sample": 4702,
+			"end_sample": 4822,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -154,8 +154,18 @@
 			]
 		}, 
 		{
-			"start_sample": 2822,
-			"end_sample": 2898,
+			"start_sample": 4822,
+			"end_sample": 4942,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4942,
+			"end_sample": 5018,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -164,8 +174,18 @@
 			]
 		}, 
 		{
-			"start_sample": 2898,
-			"end_sample": 3018,
+			"start_sample": 5018,
+			"end_sample": 5094,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5094,
+			"end_sample": 5214,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -174,48 +194,28 @@
 			]
 		}, 
 		{
-			"start_sample": 3018,
-			"end_sample": 3094,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"Bit: 0", 
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 3094,
-			"end_sample": 3170,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"Bit: 0", 
-				"0"
-			]
-		}, 
-		{
-			"start_sample": 2342,
-			"end_sample": 3170,
+			"start_sample": 4342,
+			"end_sample": 5214,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"Byte: 0xf4", 
-				"0xf4"
+				"Byte: 0xf9", 
+				"0xf9"
 			]
 		}, 
 		{
-			"start_sample": 1690,
-			"end_sample": 3170,
+			"start_sample": 3690,
+			"end_sample": 5214,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
-				"Humidity: 50.0 %", 
-				"RH = 50.0 %"
+				"Humidity: 50.5 %", 
+				"RH = 50.5 %"
 			]
 		}, 
 		{
-			"start_sample": 3170,
-			"end_sample": 3246,
+			"start_sample": 5214,
+			"end_sample": 5290,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -224,8 +224,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3246,
-			"end_sample": 3322,
+			"start_sample": 5290,
+			"end_sample": 5366,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -234,8 +234,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3322,
-			"end_sample": 3398,
+			"start_sample": 5366,
+			"end_sample": 5442,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -244,8 +244,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3398,
-			"end_sample": 3474,
+			"start_sample": 5442,
+			"end_sample": 5518,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -254,8 +254,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3474,
-			"end_sample": 3550,
+			"start_sample": 5518,
+			"end_sample": 5594,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -264,8 +264,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3550,
-			"end_sample": 3626,
+			"start_sample": 5594,
+			"end_sample": 5670,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -274,8 +274,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3626,
-			"end_sample": 3702,
+			"start_sample": 5670,
+			"end_sample": 5746,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -284,8 +284,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3702,
-			"end_sample": 3778,
+			"start_sample": 5746,
+			"end_sample": 5822,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -294,8 +294,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3170,
-			"end_sample": 3778,
+			"start_sample": 5214,
+			"end_sample": 5822,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
@@ -304,8 +304,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3778,
-			"end_sample": 3898,
+			"start_sample": 5822,
+			"end_sample": 5942,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -314,8 +314,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3898,
-			"end_sample": 4018,
+			"start_sample": 5942,
+			"end_sample": 6062,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -324,8 +324,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4018,
-			"end_sample": 4138,
+			"start_sample": 6062,
+			"end_sample": 6182,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -334,8 +334,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4138,
-			"end_sample": 4258,
+			"start_sample": 6182,
+			"end_sample": 6302,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -344,8 +344,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4258,
-			"end_sample": 4378,
+			"start_sample": 6302,
+			"end_sample": 6422,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -354,8 +354,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4378,
-			"end_sample": 4454,
+			"start_sample": 6422,
+			"end_sample": 6498,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -364,8 +364,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4454,
-			"end_sample": 4574,
+			"start_sample": 6498,
+			"end_sample": 6618,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -374,38 +374,38 @@
 			]
 		}, 
 		{
-			"start_sample": 4574,
-			"end_sample": 4650,
+			"start_sample": 6618,
+			"end_sample": 6738,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
-				"Bit: 0", 
-				"0"
+				"Bit: 1", 
+				"1"
 			]
 		}, 
 		{
-			"start_sample": 3778,
-			"end_sample": 4650,
+			"start_sample": 5822,
+			"end_sample": 6738,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"Byte: 0xfa", 
-				"0xfa"
+				"Byte: 0xfb", 
+				"0xfb"
 			]
 		}, 
 		{
-			"start_sample": 3170,
-			"end_sample": 4650,
+			"start_sample": 5214,
+			"end_sample": 6738,
 			"ann_class": 6,
 			"ann_type": 13,
 			"texts": [
-				"Temperature: 25.0 °C", 
-				"T = 25.0 °C"
+				"Temperature: 25.1 °C", 
+				"T = 25.1 °C"
 			]
 		}, 
 		{
-			"start_sample": 4650,
-			"end_sample": 4770,
+			"start_sample": 6738,
+			"end_sample": 6858,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -414,8 +414,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4770,
-			"end_sample": 4890,
+			"start_sample": 6858,
+			"end_sample": 6978,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -424,8 +424,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4890,
-			"end_sample": 5010,
+			"start_sample": 6978,
+			"end_sample": 7098,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -434,8 +434,18 @@
 			]
 		}, 
 		{
-			"start_sample": 5010,
-			"end_sample": 5086,
+			"start_sample": 7098,
+			"end_sample": 7218,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7218,
+			"end_sample": 7294,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -444,8 +454,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5086,
-			"end_sample": 5206,
+			"start_sample": 7294,
+			"end_sample": 7414,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -454,8 +464,18 @@
 			]
 		}, 
 		{
-			"start_sample": 5206,
-			"end_sample": 5326,
+			"start_sample": 7414,
+			"end_sample": 7490,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7490,
+			"end_sample": 7610,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -464,38 +484,18 @@
 			]
 		}, 
 		{
-			"start_sample": 5326,
-			"end_sample": 5446,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"Bit: 1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 5446,
-			"end_sample": 5566,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"Bit: 1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 4650,
-			"end_sample": 5566,
+			"start_sample": 6738,
+			"end_sample": 7610,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
-				"Byte: 0xef", 
-				"0xef"
+				"Byte: 0xf5", 
+				"0xf5"
 			]
 		}, 
 		{
-			"start_sample": 4650,
-			"end_sample": 5566,
+			"start_sample": 6738,
+			"end_sample": 7610,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [
@@ -504,8 +504,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5566,
-			"end_sample": 5576,
+			"start_sample": 7610,
+			"end_sample": 7620,
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2025 Petteri Aimonen <jpa@sigrok.mail.kapsi.fi>
@@ -139,7 +139,7 @@ static void arm_itm_mode_change(struct srd_decoder_inst *di, arm_itm_state *s,
                                  const char *mode_str, int ann_idx)
 {
     if (s->current_mode) {
-        C_ANN_PUT(di, s->mode_ss, s->ss, s->out_ann, s->mode_ann_idx, mode_str);
+        c_put(di, s->mode_ss, s->ss, s->out_ann, s->mode_ann_idx, mode_str);
     }
     if (mode_str) {
         s->current_mode = 1;
@@ -165,13 +165,13 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
     char t[256];
 
     if (strcmp(ptype, "overflow") == 0) {
-        C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, "Overflow");
+        c_put(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, "Overflow");
     } else if (strcmp(ptype, "sync") == 0) {
         snprintf(t, sizeof(t), "Unhandled %s:", ptype);
         int pos = (int)strlen(t);
         for (int i = 0; i < s->buf_len && pos < (int)sizeof(t) - 5; i++)
             pos += snprintf(t + pos, sizeof(t) - pos, " %02x", s->buf[i]);
-        C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, t);
+        c_put(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, t);
     } else if (strcmp(ptype, "timestamp") == 0) {
         if (s->buf[s->buf_len - 1] & 0x80)
             return; /* Not complete yet */
@@ -197,7 +197,7 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
         else if (tc == 2) msg = "(event delayed)";
         else msg = "(event and timestamp delayed)";
         snprintf(t, sizeof(t), "Timestamp: %llu %s", (unsigned long long)s->dwt_timestamp, msg);
-        C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TIMESTAMP, t);
+        c_put(di, s->ss_packet, s->es, s->out_ann, ANN_TIMESTAMP, t);
     } else if (strcmp(ptype, "software") == 0) {
         int plen = get_payload_len(s->buf[0]);
         int pid = s->buf[0] >> 3;
@@ -213,7 +213,7 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
         } else {
             snprintf(t, sizeof(t), "%d: (empty)", pid);
         }
-        C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_SOFTWARE, t);
+        c_put(di, s->ss_packet, s->es, s->out_ann, ANN_SOFTWARE, t);
     } else if (strcmp(ptype, "hardware") == 0) {
         int plen = get_payload_len(s->buf[0]);
         int pid = s->buf[0] >> 3;
@@ -229,7 +229,7 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
             if (s->buf[1] & 0x04) pos += snprintf(t + pos, sizeof(t) - pos, " Sleep");
             if (s->buf[1] & 0x02) pos += snprintf(t + pos, sizeof(t) - pos, " Exc");
             if (s->buf[1] & 0x01) pos += snprintf(t + pos, sizeof(t) - pos, " CPI");
-            C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_EVENT, t);
+            c_put(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_EVENT, t);
         } else if (pid == 1 && plen >= 2) {
             /* Exception trace */
             int excnum = ((s->buf[2] & 1) << 8) | s->buf[1];
@@ -247,12 +247,12 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
             } else {
                 snprintf(t, sizeof(t), "Exception event %d: %s", event, excstr);
             }
-            C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_EXC, t);
+            c_put(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_EXC, t);
         } else if (pid == 2 && plen == 4) {
             /* Program counter */
             uint32_t pc = s->buf[1] | (s->buf[2] << 8) | (s->buf[3] << 16) | (s->buf[4] << 24);
             snprintf(t, sizeof(t), "PC: 0x%08x", pc);
-            C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_PC, t);
+            c_put(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_PC, t);
         } else if ((s->buf[0] & 0xC4) == 0x84) {
             /* Data watchpoint */
             int comp = (s->buf[0] & 0x30) >> 4;
@@ -267,14 +267,14 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
                          s->buf[1] | (s->buf[2] << 8) | (s->buf[3] << 16) | (s->buf[4] << 24));
             else
                 snprintf(t, sizeof(t), "Watchpoint %d: %s", comp, what);
-            C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_WATCHPOINT, t);
+            c_put(di, s->ss_packet, s->es, s->out_ann, ANN_DWT_WATCHPOINT, t);
         } else {
             /* Unhandled hardware packet */
             snprintf(t, sizeof(t), "Unhandled %s:", ptype);
             int pos = (int)strlen(t);
             for (int i = 0; i < s->buf_len && pos < (int)sizeof(t) - 5; i++)
                 pos += snprintf(t + pos, sizeof(t) - pos, " %02x", s->buf[i]);
-            C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, t);
+            c_put(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, t);
         }
     } else {
         /* Unhandled: sw_extension, hw_extension, reserved */
@@ -282,7 +282,7 @@ static void arm_itm_handle_packet(struct srd_decoder_inst *di, arm_itm_state *s)
         int pos = (int)strlen(t);
         for (int i = 0; i < s->buf_len && pos < (int)sizeof(t) - 5; i++)
             pos += snprintf(t + pos, sizeof(t) - pos, " %02x", s->buf[i]);
-        C_ANN_PUT(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, t);
+        c_put(di, s->ss_packet, s->es, s->out_ann, ANN_TRACE, t);
     }
 }
 
@@ -318,9 +318,7 @@ static int arm_itm_packet_complete(arm_itm_state *s)
     return 1;
 }
 
-static void arm_itm_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void arm_itm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     arm_itm_state *s = (arm_itm_state *)c_decoder_get_private(di);
     if (!s)
@@ -329,11 +327,11 @@ static void arm_itm_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    if (data_len < 2)
+    if (n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];
-    /* data[1] is rxtx (0=RX, 1=TX), not used for ITM */
+    uint8_t byte_val = fields[0].u8;
+    /* fields[1].u8 is rxtx (0=RX, 1=TX), not used for ITM */
 
     s->byte_len = end_sample - start_sample;
 
@@ -391,8 +389,8 @@ static void arm_itm_reset(struct srd_decoder_inst *di)
 static void arm_itm_start(struct srd_decoder_inst *di)
 {
     arm_itm_state *s = (arm_itm_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "arm_itm");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "arm_itm");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "arm_itm");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "arm_itm");
 }
 
 static void arm_itm_decode(struct srd_decoder_inst *di)
@@ -437,7 +435,8 @@ struct srd_c_decoder arm_itm_c_decoder = {
     .start = arm_itm_start,
     .decode = arm_itm_decode,
     .destroy = arm_itm_destroy,
-    .recv_proto = arm_itm_recv_proto,
+    .decode_upper = arm_itm_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

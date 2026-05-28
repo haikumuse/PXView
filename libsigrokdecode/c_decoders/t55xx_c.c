@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -107,7 +107,7 @@ static void t55xx_put4bits(struct srd_decoder_inst *di, t55xx_state *s, int idx)
               (s->bits_pos[idx + 2].bit_val << 1) | s->bits_pos[idx + 3].bit_val;
     char buf[32];
     snprintf(buf, sizeof(buf), "%X", val);
-    C_ANN_PUT(di, s->bits_pos[idx].ss, s->bits_pos[idx + 3].es,
+    c_put(di, s->bits_pos[idx].ss, s->bits_pos[idx + 3].es,
               s->out_ann, ANN_BITRATE, buf);
 }
 
@@ -128,7 +128,7 @@ static void t55xx_decode_config(struct srd_decoder_inst *di, t55xx_state *s, int
                     (s->bits_pos[idx + 2].bit_val << 1) | s->bits_pos[idx + 3].bit_val;
     char buf[64];
     snprintf(buf, sizeof(buf), "Safer Key: %X", safer_key);
-    C_ANN_PUT(di, s->bits_pos[idx].ss, s->bits_pos[idx + 3].es, s->out_ann, ANN_BITRATE, buf);
+    c_put(di, s->bits_pos[idx].ss, s->bits_pos[idx + 3].es, s->out_ann, ANN_BITRATE, buf);
 
     /* Data Bit Rate (3 bits at idx+11) */
     if (idx + 13 < s->bit_nr) {
@@ -137,7 +137,7 @@ static void t55xx_decode_config(struct srd_decoder_inst *di, t55xx_state *s, int
                       s->bits_pos[idx + 13].bit_val;
         if (bitrate < 8) {
             snprintf(buf, sizeof(buf), "Data Bit Rate: %s", br_string[bitrate]);
-            C_ANN_PUT(di, s->bits_pos[idx + 11].ss, s->bits_pos[idx + 13].es,
+            c_put(di, s->bits_pos[idx + 11].ss, s->bits_pos[idx + 13].es,
                       s->out_ann, ANN_BITRATE, buf);
         }
     }
@@ -158,7 +158,7 @@ static void t55xx_decode_config(struct srd_decoder_inst *di, t55xx_state *s, int
             mod_string = "Unknown";
 
         snprintf(buf, sizeof(buf), "Modulation: %s", mod_string);
-        C_ANN_PUT(di, s->bits_pos[idx + 15].ss, s->bits_pos[idx + 19].es,
+        c_put(di, s->bits_pos[idx + 15].ss, s->bits_pos[idx + 19].es,
                   s->out_ann, ANN_BITRATE, buf);
     }
 
@@ -168,7 +168,7 @@ static void t55xx_decode_config(struct srd_decoder_inst *di, t55xx_state *s, int
                     s->bits_pos[idx + 21].bit_val;
         if (pskcf < 4) {
             snprintf(buf, sizeof(buf), "PSK-CF: %s", pskcf_str[pskcf]);
-            C_ANN_PUT(di, s->bits_pos[idx + 20].ss, s->bits_pos[idx + 21].es,
+            c_put(di, s->bits_pos[idx + 20].ss, s->bits_pos[idx + 21].es,
                       s->out_ann, ANN_BITRATE, buf);
         }
     }
@@ -176,7 +176,7 @@ static void t55xx_decode_config(struct srd_decoder_inst *di, t55xx_state *s, int
     /* AOR (1 bit at idx+22) */
     if (idx + 22 < s->bit_nr) {
         snprintf(buf, sizeof(buf), "AOR: %d", s->bits_pos[idx + 22].bit_val);
-        C_ANN_PUT(di, s->bits_pos[idx + 22].ss, s->bits_pos[idx + 22].es,
+        c_put(di, s->bits_pos[idx + 22].ss, s->bits_pos[idx + 22].es,
                   s->out_ann, ANN_BITRATE, buf);
     }
 
@@ -186,14 +186,14 @@ static void t55xx_decode_config(struct srd_decoder_inst *di, t55xx_state *s, int
                        (s->bits_pos[idx + 24].bit_val << 1) |
                        s->bits_pos[idx + 25].bit_val;
         snprintf(buf, sizeof(buf), "Max-Block: %d", maxblock);
-        C_ANN_PUT(di, s->bits_pos[idx + 23].ss, s->bits_pos[idx + 25].es,
+        c_put(di, s->bits_pos[idx + 23].ss, s->bits_pos[idx + 25].es,
                   s->out_ann, ANN_BITRATE, buf);
     }
 
     /* PWD (1 bit at idx+26) */
     if (idx + 26 < s->bit_nr) {
         snprintf(buf, sizeof(buf), "PWD: %d", s->bits_pos[idx + 26].bit_val);
-        C_ANN_PUT(di, s->bits_pos[idx + 26].ss, s->bits_pos[idx + 26].es,
+        c_put(di, s->bits_pos[idx + 26].ss, s->bits_pos[idx + 26].es,
                   s->out_ann, ANN_BITRATE, buf);
     }
 }
@@ -203,7 +203,7 @@ static void t55xx_em4100_decode1(struct srd_decoder_inst *di, t55xx_state *s, in
     if (idx + 32 > s->bit_nr)
         return;
 
-    C_ANN_PUT(di, s->bits_pos[idx].ss, s->bits_pos[idx + 8].es,
+    c_put(di, s->bits_pos[idx].ss, s->bits_pos[idx + 8].es,
               s->out_ann, ANN_BITRATE, "EM4100 header", "EM header", "Header", "H");
 
     /* Output 4 nibbles */
@@ -216,7 +216,7 @@ static void t55xx_em4100_decode1(struct srd_decoder_inst *di, t55xx_state *s, in
     s->em4100_decode1_partial = (s->bits_pos[idx + 29].bit_val << 3) |
                                  (s->bits_pos[idx + 30].bit_val << 2) |
                                  (s->bits_pos[idx + 31].bit_val << 1);
-    C_ANN_PUT(di, s->bits_pos[idx + 29].ss, s->bits_pos[idx + 31].es,
+    c_put(di, s->bits_pos[idx + 29].ss, s->bits_pos[idx + 31].es,
               s->out_ann, ANN_BITRATE, "Partial nibble");
 }
 
@@ -226,7 +226,7 @@ static void t55xx_put_fields(struct srd_decoder_inst *di, t55xx_state *s)
         /* Opcode: bits 0-1 (2 bits) */
         char op_buf[16];
         snprintf(op_buf, sizeof(op_buf), "Opcode: %d%d", s->bits_pos[0].bit_val, s->bits_pos[1].bit_val);
-        C_ANN_PUT(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
+        c_put(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
 
         /* Password: bits 2-33 (32 bits) */
         uint64_t password = 0;
@@ -234,12 +234,12 @@ static void t55xx_put_fields(struct srd_decoder_inst *di, t55xx_state *s)
             password = (password << 1) | s->bits_pos[i].bit_val;
         char pw_buf[64];
         snprintf(pw_buf, sizeof(pw_buf), "Password: %X", (unsigned)password);
-        C_ANN_PUT(di, s->bits_pos[2].ss, s->bits_pos[33].es, s->out_ann, ANN_PASSWORD, pw_buf);
+        c_put(di, s->bits_pos[2].ss, s->bits_pos[33].es, s->out_ann, ANN_PASSWORD, pw_buf);
 
         /* Lock: bit 34 */
         char lock_buf[16];
         snprintf(lock_buf, sizeof(lock_buf), "Lock: %X", s->bits_pos[34].bit_val);
-        C_ANN_PUT(di, s->bits_pos[34].ss, s->bits_pos[34].es, s->out_ann, ANN_LOCK, lock_buf);
+        c_put(di, s->bits_pos[34].ss, s->bits_pos[34].es, s->out_ann, ANN_LOCK, lock_buf);
 
         /* Data: bits 35-66 (32 bits) */
         uint64_t data = 0;
@@ -247,20 +247,20 @@ static void t55xx_put_fields(struct srd_decoder_inst *di, t55xx_state *s)
             data = (data << 1) | s->bits_pos[i].bit_val;
         char data_buf[64];
         snprintf(data_buf, sizeof(data_buf), "Data: %X", (unsigned)data);
-        C_ANN_PUT(di, s->bits_pos[35].ss, s->bits_pos[66].es, s->out_ann, ANN_DATA, data_buf);
+        c_put(di, s->bits_pos[35].ss, s->bits_pos[66].es, s->out_ann, ANN_DATA, data_buf);
 
         /* Addr: bits 67-69 (3 bits) */
         int addr = (s->bits_pos[67].bit_val << 2) | (s->bits_pos[68].bit_val << 1) | s->bits_pos[69].bit_val;
         char addr_buf[32];
         snprintf(addr_buf, sizeof(addr_buf), "Addr: %X", addr);
-        C_ANN_PUT(di, s->bits_pos[67].ss, s->bits_pos[69].es, s->out_ann, ANN_ADDRESS, addr_buf);
+        c_put(di, s->bits_pos[67].ss, s->bits_pos[69].es, s->out_ann, ANN_ADDRESS, addr_buf);
 
         if (addr == 0)
             t55xx_decode_config(di, s, 35);
         if (addr == 7) {
             char pw2_buf[64];
             snprintf(pw2_buf, sizeof(pw2_buf), "Password: %X", (unsigned)data);
-            C_ANN_PUT(di, s->bits_pos[35].ss, s->bits_pos[66].es, s->out_ann, ANN_BITRATE, pw2_buf);
+            c_put(di, s->bits_pos[35].ss, s->bits_pos[66].es, s->out_ann, ANN_BITRATE, pw2_buf);
         }
         if (addr == 1 && s->em4100_decode)
             t55xx_em4100_decode1(di, s, 35);
@@ -270,12 +270,12 @@ static void t55xx_put_fields(struct srd_decoder_inst *di, t55xx_state *s)
         /* Opcode: bits 0-1 (2 bits) */
         char op_buf[16];
         snprintf(op_buf, sizeof(op_buf), "Opcode: %d%d", s->bits_pos[0].bit_val, s->bits_pos[1].bit_val);
-        C_ANN_PUT(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
+        c_put(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
 
         /* Lock: bit 2 */
         char lock_buf[16];
         snprintf(lock_buf, sizeof(lock_buf), "Lock: %X", s->bits_pos[2].bit_val);
-        C_ANN_PUT(di, s->bits_pos[2].ss, s->bits_pos[2].es, s->out_ann, ANN_LOCK, lock_buf);
+        c_put(di, s->bits_pos[2].ss, s->bits_pos[2].es, s->out_ann, ANN_LOCK, lock_buf);
 
         /* Data: bits 3-34 (32 bits) */
         uint64_t data = 0;
@@ -283,20 +283,20 @@ static void t55xx_put_fields(struct srd_decoder_inst *di, t55xx_state *s)
             data = (data << 1) | s->bits_pos[i].bit_val;
         char data_buf[64];
         snprintf(data_buf, sizeof(data_buf), "Data: %X", (unsigned)data);
-        C_ANN_PUT(di, s->bits_pos[3].ss, s->bits_pos[34].es, s->out_ann, ANN_DATA, data_buf);
+        c_put(di, s->bits_pos[3].ss, s->bits_pos[34].es, s->out_ann, ANN_DATA, data_buf);
 
         /* Addr: bits 35-37 (3 bits) */
         int addr = (s->bits_pos[35].bit_val << 2) | (s->bits_pos[36].bit_val << 1) | s->bits_pos[37].bit_val;
         char addr_buf[32];
         snprintf(addr_buf, sizeof(addr_buf), "Addr: %X", addr);
-        C_ANN_PUT(di, s->bits_pos[35].ss, s->bits_pos[37].es, s->out_ann, ANN_ADDRESS, addr_buf);
+        c_put(di, s->bits_pos[35].ss, s->bits_pos[37].es, s->out_ann, ANN_ADDRESS, addr_buf);
 
         if (addr == 0)
             t55xx_decode_config(di, s, 3);
         if (addr == 7) {
             char pw_buf[64];
             snprintf(pw_buf, sizeof(pw_buf), "Password: %X", (unsigned)data);
-            C_ANN_PUT(di, s->bits_pos[3].ss, s->bits_pos[34].es, s->out_ann, ANN_BITRATE, pw_buf);
+            c_put(di, s->bits_pos[3].ss, s->bits_pos[34].es, s->out_ann, ANN_BITRATE, pw_buf);
         }
         if (addr == 1 && s->em4100_decode)
             t55xx_em4100_decode1(di, s, 3);
@@ -306,7 +306,7 @@ static void t55xx_put_fields(struct srd_decoder_inst *di, t55xx_state *s)
         /* Opcode: bits 0-1 (2 bits) */
         char op_buf[16];
         snprintf(op_buf, sizeof(op_buf), "Opcode: %d%d", s->bits_pos[0].bit_val, s->bits_pos[1].bit_val);
-        C_ANN_PUT(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
+        c_put(di, s->bits_pos[0].ss, s->bits_pos[1].es, s->out_ann, ANN_OPCODE, op_buf);
     }
 
     s->bit_nr = 0;
@@ -333,17 +333,17 @@ static void t55xx_reset(struct srd_decoder_inst *di)
 static void t55xx_start(struct srd_decoder_inst *di)
 {
     t55xx_state *s = (t55xx_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "t55xx");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "t55xx");
 
-    s->coilfreq = c_decoder_get_option_int(di, "coilfreq", 125000);
-    s->start_gap_val = c_decoder_get_option_int(di, "start_gap", 20);
-    s->w_gap_val = c_decoder_get_option_int(di, "w_gap", 20);
-    s->w_one_min_val = c_decoder_get_option_int(di, "w_one_min", 48);
-    s->w_one_max_val = c_decoder_get_option_int(di, "w_one_max", 63);
-    s->w_zero_min_val = c_decoder_get_option_int(di, "w_zero_min", 16);
-    s->w_zero_max_val = c_decoder_get_option_int(di, "w_zero_max", 31);
+    s->coilfreq = c_opt_int(di, "coilfreq", 125000);
+    s->start_gap_val = c_opt_int(di, "start_gap", 20);
+    s->w_gap_val = c_opt_int(di, "w_gap", 20);
+    s->w_one_min_val = c_opt_int(di, "w_one_min", 48);
+    s->w_one_max_val = c_opt_int(di, "w_one_max", 63);
+    s->w_zero_min_val = c_opt_int(di, "w_zero_min", 16);
+    s->w_zero_max_val = c_opt_int(di, "w_zero_max", 31);
 
-    const char *em_str = c_decoder_get_option_string(di, "em4100_decode", "on");
+    const char *em_str = c_opt_str(di, "em4100_decode", "on");
     s->em4100_decode = (strcmp(em_str, "on") == 0) ? 1 : 0;
 }
 
@@ -368,8 +368,6 @@ static void t55xx_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void t55xx_decode(struct srd_decoder_inst *di)
 {
     t55xx_state *s = (t55xx_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
     uint64_t last_samplenum = 0;
 
     if (!s->samplerate || !s->field_clock)
@@ -383,24 +381,21 @@ static void t55xx_decode(struct srd_decoder_inst *di)
     s->bit_nr = 0;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        uint64_t pl = samplenum - s->oldsamplenum;
+        uint64_t pl = di_samplenum(di) - s->oldsamplenum;
 
         if (s->state == STATE_WRITE_GAP) {
             if (pl > s->writegap) {
                 s->gap_detected = 1;
-                C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_WRITE_GAP, "Write gap");
+                c_put(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_WRITE_GAP, "Write gap");
             }
             if ((last_samplenum - s->old_gap_end) > s->nogap) {
                 s->gap_detected = 0;
                 s->state = STATE_START_GAP;
-                C_ANN_PUT(di, s->old_gap_end, last_samplenum, s->out_ann, ANN_WRITE_MODE_EXIT,
+                c_put(di, s->old_gap_end, last_samplenum, s->out_ann, ANN_WRITE_MODE_EXIT,
                           "Write mode exit", "Exit", "X");
                 t55xx_put_fields(di, s);
             }
@@ -409,7 +404,7 @@ static void t55xx_decode(struct srd_decoder_inst *di)
         if (s->state == STATE_START_GAP) {
             if (pl > s->startgap) {
                 s->gap_detected = 1;
-                C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_START_GAP, "Start gap");
+                c_put(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_START_GAP, "Start gap");
                 s->state = STATE_WRITE_GAP;
             }
         }
@@ -418,9 +413,9 @@ static void t55xx_decode(struct srd_decoder_inst *di)
             s->gap_detected = 0;
             if ((last_samplenum - s->old_gap_end) > s->wzmin \
                     && (last_samplenum - s->old_gap_end) < s->wzmax) {
-                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                c_put(di, s->old_gap_end, last_samplenum,
                           s->out_ann, ANN_BIT_VALUE, "0");
-                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                c_put(di, s->old_gap_end, last_samplenum,
                           s->out_ann, ANN_BIT, "0");
                 if (s->bit_nr < T55XX_MAX_BITS) {
                     s->bits_pos[s->bit_nr].bit_val = 0;
@@ -431,9 +426,9 @@ static void t55xx_decode(struct srd_decoder_inst *di)
             }
             if ((last_samplenum - s->old_gap_end) > s->womin \
                     && (last_samplenum - s->old_gap_end) < s->womax) {
-                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                c_put(di, s->old_gap_end, last_samplenum,
                           s->out_ann, ANN_BIT_VALUE, "1");
-                C_ANN_PUT(di, s->old_gap_end, last_samplenum,
+                c_put(di, s->old_gap_end, last_samplenum,
                           s->out_ann, ANN_BIT, "1");
                 if (s->bit_nr < T55XX_MAX_BITS) {
                     s->bits_pos[s->bit_nr].bit_val = 1;
@@ -444,11 +439,11 @@ static void t55xx_decode(struct srd_decoder_inst *di)
             }
 
             s->old_gap_start = last_samplenum;
-            s->old_gap_end = samplenum;
+            s->old_gap_end = di_samplenum(di);
         }
 
-        s->oldsamplenum = samplenum;
-        last_samplenum = samplenum;
+        s->oldsamplenum = di_samplenum(di);
+        last_samplenum = di_samplenum(di);
     }
 }
 
@@ -489,6 +484,7 @@ struct srd_c_decoder t55xx_c_decoder = {
     .start = t55xx_start,
     .decode = t55xx_decode,
     .destroy = t55xx_destroy,
+    .state_size = 0,
     .metadata = t55xx_metadata,
 };
 

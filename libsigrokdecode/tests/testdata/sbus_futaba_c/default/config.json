@@ -1,13 +1,15 @@
 {
   "decoder": "sbus_futaba_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "uart"
-  ],
+  "num_channels": 2,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "prop_val_min": 0,
-    "prop_val_max": 2047
-  }
+  "stack": [
+    {
+      "id": "uart_c",
+      "channels": {
+        "rx": 0
+      }
+    }
+  ]
 }

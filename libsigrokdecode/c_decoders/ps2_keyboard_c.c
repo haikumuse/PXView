@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -89,18 +89,16 @@ static const char *ps2kb_lookup_key(uint8_t code, int extended)
     return NULL;
 }
 
-static void ps2kb_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ps2kb_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ps2kb_state *s = (ps2kb_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "BYTE") != 0) return;
-    if (!data || data_len < 4) return;
+    if (!fields || n_fields < 4) return;
 
-    uint8_t val = data[0];
-    int is_host = data[1];
+    uint8_t val = fields[0].u8;
+    int is_host = fields[1].u8;
 
     /* Reset state when host sends */
     if (is_host) {
@@ -131,14 +129,14 @@ static void ps2kb_recv_proto(struct srd_decoder_inst *di,
     if (s->sw < 3) {
         const char *key_name = ps2kb_lookup_key(val, s->extended);
         if (key_name) {
-            C_ANN_PUT(di, s->ss, end_sample, s->out_ann, s->ann, key_name);
+            c_put(di, s->ss, end_sample, s->out_ann, s->ann, key_name);
         } else {
             char buf[16];
             if (s->extended)
                 snprintf(buf, sizeof(buf), "[E0%02X]", val);
             else
                 snprintf(buf, sizeof(buf), "[%02X]", val);
-            C_ANN_PUT(di, s->ss, end_sample, s->out_ann, s->ann, buf);
+            c_put(di, s->ss, end_sample, s->out_ann, s->ann, buf);
         }
     }
 
@@ -146,7 +144,7 @@ static void ps2kb_recv_proto(struct srd_decoder_inst *di,
     if (s->ann == ANN_PRESS && s->sw < 3) {
         const char *key_name = ps2kb_lookup_key(val, s->extended);
         if (key_name) {
-            c_decoder_put_binary(di, s->ss, end_sample, s->out_binary,
+            c_put_bin(di, s->ss, end_sample, s->out_binary,
                                  BINARY_KEYS, strlen(key_name), (const uint8_t *)key_name);
         }
     }
@@ -170,8 +168,8 @@ static void ps2kb_reset(struct srd_decoder_inst *di)
 static void ps2kb_start(struct srd_decoder_inst *di)
 {
     ps2kb_state *s = (ps2kb_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ps2_keyboard");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "keys");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ps2_keyboard");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "keys");
 }
 
 static void ps2kb_decode(struct srd_decoder_inst *di)
@@ -216,7 +214,8 @@ struct srd_c_decoder ps2_keyboard_c_decoder = {
     .start = ps2kb_start,
     .decode = ps2kb_decode,
     .destroy = ps2kb_destroy,
-    .recv_proto = ps2kb_recv_proto,
+    .decode_upper = ps2kb_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

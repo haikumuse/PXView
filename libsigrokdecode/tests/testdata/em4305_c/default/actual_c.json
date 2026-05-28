@@ -5,7 +5,7 @@
 	"annotations": [
 		{
 			"start_sample": 0,
-			"end_sample": 800,
+			"end_sample": 2000,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [

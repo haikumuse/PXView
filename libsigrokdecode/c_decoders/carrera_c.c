@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -199,7 +199,7 @@ static void carrera_print_reglerdatenwort(struct srd_decoder_inst *di, carrera_s
         snprintf(desc, sizeof(desc), "Regler %d", regler_id);
     }
 
-    C_ANN_PUT(di, s->beginDataWord, s->endDataWord, s->out_ann, ann_idx, desc_short, desc, desc_long);
+    c_put(di, s->beginDataWord, s->endDataWord, s->out_ann, ann_idx, desc_short, desc, desc_long);
 }
 
 static void carrera_print_aktivdatenwort(struct srd_decoder_inst *di, carrera_state *s)
@@ -217,7 +217,7 @@ static void carrera_print_aktivdatenwort(struct srd_decoder_inst *di, carrera_st
     char desc_long[128];
     snprintf(desc_long, sizeof(desc_long), "R0:%d R1:%d R2:%d R3:%d R4:%d R5:%d IE:%d", r0, r1, r2, r3, r4, r5, ie);
 
-    C_ANN_PUT(di, s->beginDataWord, s->endDataWord, s->out_ann, ANN_CONTROLLER_ACTIVE, desc_short, desc_long);
+    c_put(di, s->beginDataWord, s->endDataWord, s->out_ann, ANN_CONTROLLER_ACTIVE, desc_short, desc_long);
 }
 
 static void carrera_print_quittierungswort(struct srd_decoder_inst *di, carrera_state *s)
@@ -234,7 +234,7 @@ static void carrera_print_quittierungswort(struct srd_decoder_inst *di, carrera_
     char desc_long[128];
     snprintf(desc_long, sizeof(desc_long), "S0:%d S1:%d S2:%d S3:%d S4:%d S5:%d S6:%d S7:%d", s0, s1, s2, s3, s4, s5, s6, s7);
 
-    C_ANN_PUT(di, s->beginDataWord, s->endDataWord, s->out_ann, ANN_QUITTIERUNG, "Q", "Quitt.", desc_long);
+    c_put(di, s->beginDataWord, s->endDataWord, s->out_ann, ANN_QUITTIERUNG, "Q", "Quitt.", desc_long);
 }
 
 static void carrera_print_programmierdatenwort(struct srd_decoder_inst *di, carrera_state *s)
@@ -258,7 +258,7 @@ static void carrera_print_programmierdatenwort(struct srd_decoder_inst *di, carr
     int ann_idx = 11 + (int)befehl;
     if (ann_idx >= NUM_ANN) ann_idx = ANN_PROG_GENERAL;
 
-    C_ANN_PUT(di, s->beginDataWord, s->endDataWord, s->out_ann, ann_idx, desc);
+    c_put(di, s->beginDataWord, s->endDataWord, s->out_ann, ann_idx, desc);
 }
 
 static void carrera_reset(struct srd_decoder_inst *di)
@@ -275,12 +275,12 @@ static void carrera_reset(struct srd_decoder_inst *di)
 static void carrera_start(struct srd_decoder_inst *di)
 {
     carrera_state *s = (carrera_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "carrera");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "carrera");
 
-    const char *invert_str = c_decoder_get_option_string(di, "invert", "nein");
+    const char *invert_str = c_opt_str(di, "invert", "nein");
     s->invert = (strcmp(invert_str, "ja") == 0) ? 1 : 0;
 
-    const char *fmt_str = c_decoder_get_option_string(di, "format", "hex");
+    const char *fmt_str = c_opt_str(di, "format", "hex");
     if (strcmp(fmt_str, "hex") == 0)
         s->format = 0;
     else if (strcmp(fmt_str, "dec") == 0)
@@ -306,27 +306,24 @@ static void carrera_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
 static void carrera_decode(struct srd_decoder_inst *di)
 {
     carrera_state *s = (carrera_state *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
     int ret;
     int bit_val = s->invert ? 1 : 0;
 
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        s->currentMicros = carrera_get_usec(samplenum, s->samplerate);
+        s->currentMicros = carrera_get_usec(di_samplenum(di), s->samplerate);
         s->intervalMicros = s->currentMicros - s->previousMicros;
 
         if (s->intervalMicros < 200.0) {
-            s->endDataWord = samplenum;
+            s->endDataWord = di_samplenum(di);
         }
 
         if (s->intervalMicros >= 75.0 && s->intervalMicros <= 125.0) {
@@ -334,14 +331,14 @@ static void carrera_decode(struct srd_decoder_inst *di)
             s->previousMicros = s->currentMicros;
             s->dataWord <<= 1;
 
-            uint8_t pin = c_decoder_get_pin(di, 0, samplenum);
+            uint8_t pin = c_pin(di, 0);
             if (pin == bit_val) {
                 s->dataWord |= 1;
-                C_ANN_PUT(di, s->bitStart, samplenum, s->out_ann, ANN_BIT, "1");
+                c_put(di, s->bitStart, di_samplenum(di), s->out_ann, ANN_BIT, "1");
             } else {
-                C_ANN_PUT(di, s->bitStart, samplenum, s->out_ann, ANN_BIT, "0");
+                c_put(di, s->bitStart, di_samplenum(di), s->out_ann, ANN_BIT, "0");
             }
-            s->bitStart = samplenum;
+            s->bitStart = di_samplenum(di);
         } else if (s->intervalMicros > 6000.0) {
             /* Word gap */
             if (s->next_could_be_active_data_word) {
@@ -358,8 +355,8 @@ static void carrera_decode(struct srd_decoder_inst *di)
             }
             s->dataWord = 1;
             s->previousMicros = s->currentMicros;
-            s->beginDataWord = samplenum;
-            s->bitStart = samplenum;
+            s->beginDataWord = di_samplenum(di);
+            s->bitStart = di_samplenum(di);
         }
     }
 }
@@ -401,6 +398,7 @@ struct srd_c_decoder carrera_c_decoder = {
     .start = carrera_start,
     .decode = carrera_decode,
     .destroy = carrera_destroy,
+    .state_size = 0,
     .metadata = carrera_metadata,
 };
 

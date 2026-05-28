@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2016 Rudolf Reuter <reuterru@arcor.de>
@@ -127,7 +127,7 @@ static void gpib_handle_bits(struct srd_decoder_inst *di, const uint8_t *pins, u
 
         char buf[32];
         snprintf(buf, sizeof(buf), "%02X", dbyte);
-        C_ANN_PUT(di, s->ss_item, es_item, s->out_ann, ANN_ITEMS, buf);
+        c_put(di, s->ss_item, es_item, s->out_ann, ANN_ITEMS, buf);
 
         /* Encode item byte to GPIB convention */
         const char *strgpib = " ";
@@ -167,12 +167,12 @@ static void gpib_handle_bits(struct srd_decoder_inst *di, const uint8_t *pins, u
                 strgpib = "CR";
         }
 
-        C_ANN_PUT(di, s->ss_item, es_item, s->out_ann, ANN_GPIB, strgpib);
+        c_put(di, s->ss_item, es_item, s->out_ann, ANN_GPIB, strgpib);
 
         const char *strEOI = " ";
         if (dEOI)
             strEOI = "EOI";
-        C_ANN_PUT(di, s->ss_item, es_item, s->out_ann, ANN_EOI, strEOI);
+        c_put(di, s->ss_item, es_item, s->out_ann, ANN_EOI, strEOI);
 
         s->ss_item = samplenum;
         s->saved_item = item;
@@ -202,43 +202,33 @@ static void gpib_reset(struct srd_decoder_inst *di)
 static void gpib_start(struct srd_decoder_inst *di)
 {
     struct gpib_priv *s = (struct gpib_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "gpib");
-    s->sample_total = c_decoder_get_option_int(di, "sample_total", 0);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "gpib");
+    s->sample_total = c_opt_int(di, "sample_total", 0);
 }
 
 static void gpib_decode(struct srd_decoder_inst *di)
 {
     struct gpib_priv *s = (struct gpib_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
     int first_wait = 1;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-
-        if (first_wait) {
-            c_cond_low(cb, 9);  /* DAV low */
-        } else {
-            c_cond_fall(cb, 9); /* DAV falling edge */
-        }
-
-        if (s->sample_total > 0) {
-            c_cond_or(cb);
-            c_cond_skip(cb, (uint64_t)(s->sample_total - samplenum - 1));
-        }
-
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret;
+        if (first_wait)
+            ret = c_wait(di, CW_L(9), CW_END);
+        else
+            ret = c_wait(di, CW_F(9), CW_END);
+        if (s->sample_total > 0)
+            ret = c_wait(di, CW_OR, CW_SKIP((uint64_t)s->sample_total), CW_END);
         if (ret != SRD_OK)
             return;
 
         /* Read all 16 channels */
         uint8_t pins[16];
         for (int i = 0; i < 16; i++) {
-            pins[i] = c_decoder_get_pin(di, i, samplenum);
+            pins[i] = c_pin(di, i);
         }
 
-        gpib_handle_bits(di, pins, samplenum);
+        gpib_handle_bits(di, pins, di_samplenum(di));
         first_wait = 0;
     }
 }
@@ -280,6 +270,7 @@ struct srd_c_decoder gpib_c_decoder = {
     .start = gpib_start,
     .decode = gpib_decode,
     .destroy = gpib_destroy,
+    .state_size = 0,
     .metadata = NULL,
 };
 

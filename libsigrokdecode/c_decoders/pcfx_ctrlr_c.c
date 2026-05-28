@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -110,7 +110,7 @@ static void pcfx_putbit(struct srd_decoder_inst *di, pcfx_state *s,
                          int annot_type, uint32_t value, int bitnum, const char *dispval)
 {
     if (value & (1 << bitnum)) {
-        C_ANN_PUT(di, s->bits_start[bitnum], s->bits_end[bitnum],
+        c_put(di, s->bits_start[bitnum], s->bits_end[bitnum],
                   s->out_ann, annot_type, dispval);
     }
 }
@@ -123,7 +123,7 @@ static void pcfx_handle_complete(struct srd_decoder_inst *di, pcfx_state *s)
         uint32_t value = pcfx_get_bitfield(s, startbit, 8);
         char buf[16];
         snprintf(buf, sizeof(buf), "0x%2.2X", value);
-        C_ANN_PUT(di, s->bits_start[startbit], s->bits_end[startbit + 7],
+        c_put(di, s->bits_start[startbit], s->bits_end[startbit + 7],
                   s->out_ann, ANN_BYTE, buf);
     }
 
@@ -131,14 +131,14 @@ static void pcfx_handle_complete(struct srd_decoder_inst *di, pcfx_state *s)
     uint32_t word_val = pcfx_get_bitfield(s, 0, 32);
     char word_buf[16];
     snprintf(word_buf, sizeof(word_buf), "0x%8.8X", word_val);
-    C_ANN_PUT(di, s->bits_start[0], s->bits_end[31],
+    c_put(di, s->bits_start[0], s->bits_end[31],
               s->out_ann, ANN_WORD, word_buf);
 
     /* Controller type detection */
     uint32_t ctrl_type = pcfx_get_bitfield(s, 28, 4);
     if (ctrl_type == 15) {
         /* Joypad */
-        C_ANN_PUT(di, s->bits_start[28], s->bits_end[31],
+        c_put(di, s->bits_start[28], s->bits_end[31],
                   s->out_ann, ANN_CTRLPAD, "Joypad");
         uint32_t btns = pcfx_get_bitfield(s, 0, 16);
         pcfx_putbit(di, s, ANN_CTRLDATA, btns, 0, "I");
@@ -157,11 +157,11 @@ static void pcfx_handle_complete(struct srd_decoder_inst *di, pcfx_state *s)
         pcfx_putbit(di, s, ANN_CTRLDATA, btns, 14, "Mode 2");
     } else if (ctrl_type == 14) {
         /* Multitap */
-        C_ANN_PUT(di, s->bits_start[28], s->bits_end[31],
+        c_put(di, s->bits_start[28], s->bits_end[31],
                   s->out_ann, ANN_CTRLTAP, "Multitap");
     } else if (ctrl_type == 13) {
         /* Mouse */
-        C_ANN_PUT(di, s->bits_start[28], s->bits_end[31],
+        c_put(di, s->bits_start[28], s->bits_end[31],
                   s->out_ann, ANN_CTRLMOUSE, "Mouse");
 
         /* Y coordinate */
@@ -172,7 +172,7 @@ static void pcfx_handle_complete(struct srd_decoder_inst *di, pcfx_state *s)
         } else {
             snprintf(y_buf, sizeof(y_buf), "Y=%d (Down)", (int)yval);
         }
-        C_ANN_PUT(di, s->bits_start[0], s->bits_end[7],
+        c_put(di, s->bits_start[0], s->bits_end[7],
                   s->out_ann, ANN_CTRLDATA, y_buf);
 
         /* X coordinate */
@@ -183,26 +183,26 @@ static void pcfx_handle_complete(struct srd_decoder_inst *di, pcfx_state *s)
         } else {
             snprintf(x_buf, sizeof(x_buf), "X=%d (Right)", (int)xval);
         }
-        C_ANN_PUT(di, s->bits_start[8], s->bits_end[15],
+        c_put(di, s->bits_start[8], s->bits_end[15],
                   s->out_ann, ANN_CTRLDATA, x_buf);
 
         /* Left button */
         uint32_t lbtn = pcfx_get_bitfield(s, 16, 1);
         if (lbtn == 1) {
-            C_ANN_PUT(di, s->bits_start[16], s->bits_end[16],
+            c_put(di, s->bits_start[16], s->bits_end[16],
                       s->out_ann, ANN_CTRLDATA, "Left");
         }
 
         /* Right button */
         uint32_t rbtn = pcfx_get_bitfield(s, 17, 1);
         if (rbtn == 1) {
-            C_ANN_PUT(di, s->bits_start[17], s->bits_end[17],
+            c_put(di, s->bits_start[17], s->bits_end[17],
                       s->out_ann, ANN_CTRLDATA, "Right");
         }
     } else {
         char buf[16];
         snprintf(buf, sizeof(buf), "(%d)", ctrl_type);
-        C_ANN_PUT(di, s->bits_start[28], s->bits_end[31],
+        c_put(di, s->bits_start[28], s->bits_end[31],
                   s->out_ann, ANN_CTRLUNKN, buf);
     }
 }
@@ -219,11 +219,11 @@ static void pcfx_reset(struct srd_decoder_inst *di)
 static void pcfx_start(struct srd_decoder_inst *di)
 {
     pcfx_state *s = (pcfx_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pcfx");
-    s->samplerate = c_decoder_get_samplerate(di);
-    s->have_direction = c_decoder_has_channel(di, CH_DIR);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pcfx");
+    s->samplerate = c_samplerate(di);
+    s->have_direction = c_has_ch(di, CH_DIR);
 
-    const char *bv = c_decoder_get_option_string(di, "bitvals", "electrical");
+    const char *bv = c_opt_str(di, "bitvals", "electrical");
     s->bitvals = (strcmp(bv, "internal") == 0) ? 1 : 0;
 }
 
@@ -237,12 +237,10 @@ static void pcfx_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void pcfx_decode(struct srd_decoder_inst *di)
 {
     pcfx_state *s = (pcfx_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate == 0) return;
     }
 
@@ -250,40 +248,33 @@ static void pcfx_decode(struct srd_decoder_inst *di)
         switch (s->state) {
 
         case STATE_FIND_START: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, CH_TRG);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->startsamplenum = samplenum;
+            ret = c_wait(di, CW_F(CH_TRG), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->startsamplenum = di_samplenum(di);
             s->state = STATE_CHECK_RESET;
             s->triggertype = 0;
             break;
         }
 
         case STATE_CHECK_RESET: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_low(cb, CH_TRG);
-            c_cond_fall(cb, CH_CLK);
-            c_cond_or(cb);
-            c_cond_rise(cb, CH_TRG);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_L(CH_TRG), CW_F(CH_CLK), CW_OR, CW_R(CH_TRG), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & 0x1) {
+            if (di_matched(di) & 0x1) {
                 /* TRG low + CLK fall = Reset joypad counter */
                 s->triggertype = 1;
             }
 
             s->bitcount = 0;
-            s->startbit = samplenum;
+            s->startbit = di_samplenum(di);
 
             if (s->triggertype == 0) {
-                C_ANN_PUT(di, s->startsamplenum, samplenum, s->out_ann, ANN_START,
+                c_put(di, s->startsamplenum, di_samplenum(di), s->out_ann, ANN_START,
                           "Trigger", "Trig", "T");
             } else {
-                C_ANN_PUT(di, s->startsamplenum, samplenum, s->out_ann, ANN_RESET,
+                c_put(di, s->startsamplenum, di_samplenum(di), s->out_ann, ANN_RESET,
                           "Reset Joy Count", "Reset", "R");
             }
             s->state = STATE_START_BIT;
@@ -291,17 +282,13 @@ static void pcfx_decode(struct srd_decoder_inst *di)
         }
 
         case STATE_START_BIT: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_fall(cb, CH_CLK);
-            c_cond_or(cb);
-            c_cond_fall(cb, CH_TRG);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(CH_CLK), CW_OR, CW_F(CH_TRG), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & 0x1) {
-                /* CLK fall matched */
-                s->bitvalue = c_decoder_get_pin(di, CH_DATA, samplenum);
+            if (di_matched(di) & 0x1) {
+                /* CLK fall di_matched(di) */
+                s->bitvalue = c_pin(di, CH_DATA);
                 s->bits_value[s->bitcount] = 1 - s->bitvalue; /* internal value is inverted */
                 s->bits_start[s->bitcount] = s->startbit;
                 s->state = STATE_END_BIT;
@@ -311,31 +298,27 @@ static void pcfx_decode(struct srd_decoder_inst *di)
         }
 
         case STATE_END_BIT: {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_rise(cb, CH_CLK);
-            c_cond_or(cb);
-            c_cond_fall(cb, CH_TRG);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_R(CH_CLK), CW_OR, CW_F(CH_TRG), CW_END);
+            if (ret != SRD_OK)
+                return;
 
-            if (matched & 0x1) {
-                /* CLK rise matched */
-                s->bits_end[s->bitcount] = samplenum;
+            if (di_matched(di) & 0x1) {
+                /* CLK rise di_matched(di) */
+                s->bits_end[s->bitcount] = di_samplenum(di);
 
                 int disp = (s->bitvals == 0) ? s->bitvalue : (1 - s->bitvalue);
                 int ann_class;
                 if (s->have_direction) {
-                    int dir_val = c_decoder_get_pin(di, CH_DIR, samplenum);
+                    int dir_val = c_pin(di, CH_DIR);
                     ann_class = (dir_val == 1) ? ANN_OUTBITS : ANN_BIT;
                 } else {
                     ann_class = ANN_BIT;
                 }
                 char bit_str[2] = {disp ? '1' : '0', '\0'};
-                C_ANN_PUT(di, s->startbit, samplenum, s->out_ann, ann_class, bit_str);
+                c_put(di, s->startbit, di_samplenum(di), s->out_ann, ann_class, bit_str);
             }
 
-            s->startbit = samplenum;
+            s->startbit = di_samplenum(di);
             s->bitcount++;
 
             if (s->bitcount == 32) {
@@ -389,6 +372,7 @@ struct srd_c_decoder pcfx_ctrlr_c_decoder = {
     .metadata = pcfx_metadata,
     .decode = pcfx_decode,
     .destroy = pcfx_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

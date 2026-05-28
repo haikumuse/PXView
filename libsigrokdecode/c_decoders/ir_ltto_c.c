@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Ryan "Izzy" Bales <izzy84075@gmail.com>
@@ -141,17 +141,17 @@ static void ltto_reset(struct srd_decoder_inst *di)
 static void ltto_start(struct srd_decoder_inst *di)
 {
     ltto_priv *s = (ltto_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_ltto");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "ir_ltto");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_ltto");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "ir_ltto");
 
-    const char *polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char *polarity = c_opt_str(di, "polarity", "active-low");
     s->active = (polarity && strcmp(polarity, "active-high") == 0) ? 1 : 0;
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0)
         calc_rate(s);
 
-    s->ir = c_decoder_get_initial_pin(di, 0);
+    s->ir = c_init_pin(di, 0);
     if (s->ir == 0xFF)
         s->ir = 1;
 }
@@ -173,11 +173,8 @@ static void handle_bit(ltto_priv *s, uint64_t tick)
 static void ltto_decode(struct srd_decoder_inst *di)
 {
     ltto_priv *s = (ltto_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             calc_rate(s);
     }
@@ -185,39 +182,30 @@ static void ltto_decode(struct srd_decoder_inst *di)
         return;
 
     while (1) {
-        srd_cond_builder *cb;
         int ret;
 
         s->oldedgesample = s->newedgesample;
         s->oldpinstate = s->ir;
 
         if (s->state == STATE_BIT || s->state == STATE_BITPAUSE) {
-            cb = c_cond_new();
-            c_cond_edge(cb, IR_CH);
-            c_cond_or(cb);
-            c_cond_skip(cb, s->bitpause + s->margin + s->margin);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_E(IR_CH), CW_OR, CW_SKIP(s->bitpause + s->margin + s->margin), CW_END);
             if (ret != SRD_OK)
                 return;
         } else {
-            cb = c_cond_new();
-            c_cond_edge(cb, IR_CH);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_E(IR_CH), CW_END);
             if (ret != SRD_OK)
                 return;
         }
 
-        s->ir = c_decoder_get_pin(di, IR_CH, samplenum);
-        s->newedgesample = samplenum;
+        s->ir = c_pin(di, IR_CH);
+        s->newedgesample = di_samplenum(di);
         uint64_t length = s->newedgesample - s->oldedgesample;
 
         switch (s->state) {
         case STATE_IDLE:
             if (length >= s->presync - s->margin && length < s->presync + s->margin
                 && s->oldpinstate == s->active) {
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_PRE_SYNC,
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_PRE_SYNC,
                     "PRE-SYNC Pulse", "PRE-SYNC", "PS");
                 s->data = 0;
                 s->count = 0;
@@ -229,11 +217,11 @@ static void ltto_decode(struct srd_decoder_inst *di)
 
         case STATE_PSP:
             if (length >= s->presyncpause - s->margin && length < s->presyncpause + s->margin) {
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_PRE_SYNC_PAUSE,
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_PRE_SYNC_PAUSE,
                     "PRE-SYNC Pause", "PRE-SYNC P", "PSP");
                 s->state = STATE_SYNC;
             } else {
-                C_ANN_PUT(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
+                c_put(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
                     "Error", "Err", "E");
                 s->state = STATE_IDLE;
             }
@@ -241,16 +229,16 @@ static void ltto_decode(struct srd_decoder_inst *di)
 
         case STATE_SYNC:
             if (length >= s->sync - s->margin && length < s->sync + s->margin) {
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_SYNC,
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_SYNC,
                     "SYNC Pulse", "SYNC P", "SP");
                 s->state = STATE_BITPAUSE;
             } else if (length >= s->longsync - s->margin && length < s->longsync + s->margin) {
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_LONG_SYNC,
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_LONG_SYNC,
                     "Long SYNC Pulse", "Long SYNC P", "LSP");
                 s->waslongsync = 1;
                 s->state = STATE_BITPAUSE;
             } else {
-                C_ANN_PUT(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
+                c_put(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
                     "Error", "Err", "E");
                 s->state = STATE_IDLE;
             }
@@ -258,12 +246,12 @@ static void ltto_decode(struct srd_decoder_inst *di)
 
         case STATE_BITPAUSE:
             if (length >= s->bitpause - s->margin && length < s->bitpause + s->margin) {
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT_PAUSE,
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT_PAUSE,
                     "Bit Pause", "Bit P", "BP");
                 s->state = STATE_BIT;
             } else {
                 if (s->count == 0) {
-                    C_ANN_PUT(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
+                    c_put(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
                         "Error", "Err", "E");
                 } else {
                     if (s->waslongsync == 0) {
@@ -272,7 +260,7 @@ static void ltto_decode(struct srd_decoder_inst *di)
                         snprintf(str1, sizeof(str1), "Signature, %d bits: 0x%03X", s->count, s->data);
                         snprintf(str2, sizeof(str2), "Sig, %d: 0x%03X", s->count, s->data);
                         snprintf(str3, sizeof(str3), "S %d: 0x%03X", s->count, s->data);
-                        C_ANN_PUT(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_SIGNATURE,
+                        c_put(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_SIGNATURE,
                             str1, str2, str3);
 
                         /* PROTO output: ['SHORT', count, data] */
@@ -282,15 +270,15 @@ static void ltto_decode(struct srd_decoder_inst *di)
                         uint16_t d = (uint16_t)s->data;
                         memcpy(py_data + 6, &d, 2);
                         py_data[8] = 0;
-                        c_decoder_put_proto(di, s->packetstartsample, s->oldedgesample,
-                            s->out_python, "SHORT", py_data, 9);
+                        c_proto(di, s->packetstartsample, s->oldedgesample,
+                            s->out_python, "SHORT", C_U8(s->count), C_U16((uint16_t)s->data), C_U8(0), C_END);
                     } else {
                         /* LONG signature with PROTO output */
                         char str1[80], str2[80], str3[80];
                         snprintf(str1, sizeof(str1), "Signature, long SYNC, %d bits: 0x%03X", s->count, s->data);
                         snprintf(str2, sizeof(str2), "Sig, LS, %d: 0x%03X", s->count, s->data);
                         snprintf(str3, sizeof(str3), "S LS %d: 0x%03X", s->count, s->data);
-                        C_ANN_PUT(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_LONG_SYNC_SIGNATURE,
+                        c_put(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_LONG_SYNC_SIGNATURE,
                             str1, str2, str3);
 
                         /* PROTO output: ['LONG', count, data] */
@@ -300,8 +288,8 @@ static void ltto_decode(struct srd_decoder_inst *di)
                         uint16_t d = (uint16_t)s->data;
                         memcpy(py_data + 5, &d, 2);
                         py_data[7] = 0;
-                        c_decoder_put_proto(di, s->packetstartsample, s->oldedgesample,
-                            s->out_python, "LONG", py_data, 8);
+                        c_proto(di, s->packetstartsample, s->oldedgesample,
+                            s->out_python, "LONG", C_U8(s->count), C_U16((uint16_t)s->data), C_U8(0), C_END);
                     }
                 }
                 s->state = STATE_IDLE;
@@ -312,9 +300,9 @@ static void ltto_decode(struct srd_decoder_inst *di)
             /* Check if skip timeout occurred */
             int skip_matched = 0;
             if (s->state == STATE_BIT) {
-                /* We already used the condition builder above; check matched */
+                /* We already used the condition builder above; check di_matched(di) */
                 /* For BIT state, the condition was edge OR skip(bitpause+margin+margin) */
-                /* If skip matched, treat as bitpause timeout */
+                /* If skip di_matched(di), treat as bitpause timeout */
                 /* Actually in Python, BIT state doesn't have a separate skip condition,
                    the skip is only for BITPAUSE. Let me re-check...
                    Actually BIT/BITPAUSE both use the same wait condition with skip.
@@ -325,13 +313,13 @@ static void ltto_decode(struct srd_decoder_inst *di)
             s->state = STATE_BITPAUSE;
 
             if (s->lastbit == -1) {
-                C_ANN_PUT(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
+                c_put(di, s->packetstartsample, s->oldedgesample, s->out_ann, ANN_ERROR,
                     "Error", "Err", "E");
                 s->state = STATE_IDLE;
             } else {
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->lastbit);
-                C_ANN_PUT(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT, bit_str);
+                c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT, bit_str);
             }
             break;
         }
@@ -377,6 +365,7 @@ struct srd_c_decoder ir_ltto_c_decoder = {
     .start = ltto_start,
     .decode = ltto_decode,
     .destroy = ltto_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

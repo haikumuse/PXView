@@ -226,10 +226,10 @@ static void nas_reset(struct srd_decoder_inst* di)
 static void nas_start(struct srd_decoder_inst* di)
 {
     nas_state* s = (nas_state*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "numbers_and_state");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "numbers_and_state");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "numbers_and_state");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "numbers_and_state");
 
-    const char* ce = c_decoder_get_option_string(di, "clkedge", "rising");
+    const char* ce = c_opt_str(di, "clkedge", "rising");
     if (strcmp(ce, "falling") == 0)
         s->clk_edge = 2;
     else if (strcmp(ce, "either") == 0)
@@ -237,9 +237,9 @@ static void nas_start(struct srd_decoder_inst* di)
     else
         s->clk_edge = 1;
 
-    s->bitcount = (int)c_decoder_get_option_int(di, "count", 0);
+    s->bitcount = (int)c_opt_int(di, "count", 0);
 
-    const char* interp = c_decoder_get_option_string(di, "interp", "unsigned");
+    const char* interp = c_opt_str(di, "interp", "unsigned");
     if (strcmp(interp, "signed") == 0)
         s->interp = INTERP_SIGNED;
     else if (strcmp(interp, "fixpoint") == 0)
@@ -253,9 +253,9 @@ static void nas_start(struct srd_decoder_inst* di)
     else
         s->interp = INTERP_UNSIGNED;
 
-    s->fracbits = (int)c_decoder_get_option_int(di, "fracbits", 0);
+    s->fracbits = (int)c_opt_int(di, "fracbits", 0);
 
-    const char* fmt = c_decoder_get_option_string(di, "format", "-");
+    const char* fmt = c_opt_str(di, "format", "-");
     if (strcmp(fmt, "bin") == 0)
         s->format = FMT_BIN;
     else if (strcmp(fmt, "oct") == 0)
@@ -267,22 +267,28 @@ static void nas_start(struct srd_decoder_inst* di)
     else
         s->format = FMT_NATIVE;
 
-    s->have_clk = c_decoder_has_channel(di, 0);
+    s->have_clk = c_has_ch(di, 0);
     s->num_data_channels = 0;
     for (int i = 0; i < MAX_CHANNELS; i++) {
-        if (c_decoder_has_channel(di, i + 1)) {
+        if (c_has_ch(di, i + 1)) {
             s->data_channels[s->num_data_channels] = i + 1;
             s->num_data_channels++;
         }
     }
 
     if (s->bitcount == 0 && s->num_data_channels > 0) {
-        s->bitcount = s->data_channels[s->num_data_channels - 1] - 1 + 1;
+        /* Match Python: bitcount = channels[-1] - Pin.BIT_0 + 1
+         * Python's range(_max_channels) only goes to _max_channels-1=15,
+         * so channels[-1] max is 15, bitcount = 15 - 1 + 1 = 15 */
+        int max_ch = s->data_channels[s->num_data_channels - 1];
+        if (max_ch > MAX_CHANNELS - 1)
+            max_ch = MAX_CHANNELS - 1;
+        s->bitcount = max_ch;
     }
 
     s->enum_count = 0;
     s->enum_have = 0;
-    const char* enum_str = c_decoder_get_option_string(di, "enum", "");
+    const char* enum_str = c_opt_str(di, "enum", "");
     if (enum_str && enum_str[0] != '\0') {
         gchar** pairs = g_strsplit(enum_str, ";", -1);
         for (int i = 0; pairs[i] && s->enum_count < MAX_ENUM_SLOTS; i++) {
@@ -312,8 +318,8 @@ static uint64_t nas_grab_pattern(struct srd_decoder_inst* di, nas_state* s, uint
     uint64_t pattern = 0;
     for (int i = 0; i < s->bitcount && i < MAX_CHANNELS; i++) {
         int ch = i + 1;
-        if (c_decoder_has_channel(di, ch)) {
-            int bit = c_decoder_get_pin(di, ch, samplenum);
+        if (c_has_ch(di, ch)) {
+            int bit = c_pin(di, ch);
             if (bit)
                 pattern |= (1ULL << i);
         }
@@ -502,7 +508,7 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
         raw_str[i] = bit ? '1' : '0';
     }
     raw_str[s->bitcount < 64 ? s->bitcount : 64] = '\0';
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_RAW, raw_str);
+    c_put(di, ss, es, s->out_ann, ANN_RAW, raw_str);
 
     {
         unsigned char py_raw[12];
@@ -510,7 +516,7 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
         py_raw[pos++] = (unsigned char)(s->bitcount & 0xFF);
         for (int i = 0; i < 8 && pos < (int)sizeof(py_raw); i++)
             py_raw[pos++] = (unsigned char)((pattern >> (8 * i)) & 0xFF);
-        c_decoder_put_python(di, ss, es, s->out_python, "RAW", py_raw, pos);
+        c_proto(di, ss, es, s->out_python, "RAW", C_U8(s->bitcount), C_U64(pattern), C_END);
     }
 
     double value;
@@ -525,7 +531,7 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
         } u;
         u.d = value;
         memcpy(py_num, u.b, 8);
-        c_decoder_put_python(di, ss, es, s->out_python, "NUMBER", py_num, 8);
+        c_proto(di, ss, es, s->out_python, "NUMBER", C_F64(value), C_END);
     }
 
     char fmt_buf[128];
@@ -535,7 +541,7 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
     const char* enum_name = nas_lookup_enum(s, pattern);
     const char* display_text = enum_name ? enum_name : fmt_buf;
 
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_NUM, display_text);
+    c_put(di, ss, es, s->out_ann, ANN_NUM, display_text);
 
     if (s->interp == INTERP_ENUM) {
         int cls;
@@ -543,7 +549,7 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
             cls = ANN_ENUM_0 + (int)pattern;
         else
             cls = ANN_ENUM_OVR;
-        C_ANN_PUT(di, ss, es, s->out_ann, cls, display_text);
+        c_put(di, ss, es, s->out_ann, cls, display_text);
     }
 
     if (enum_name || s->interp == INTERP_ENUM) {
@@ -558,23 +564,20 @@ static void nas_handle_pattern(struct srd_decoder_inst* di, nas_state* s,
         int namelen = (int)strlen(name_to_send);
         if (namelen > 64) namelen = 64;
         memcpy(py_enum + 8, name_to_send, namelen);
-        c_decoder_put_python(di, ss, es, s->out_python, "ENUM", py_enum, 8 + namelen);
+        c_proto(di, ss, es, s->out_python, "ENUM", C_F64(value), C_STR(name_to_send), C_END);
     }
 }
 
 static void nas_decode(struct srd_decoder_inst* di)
 {
     nas_state* s = (nas_state*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (s->num_data_channels == 0)
         return;
 
     /* Read initial sample at current position, like Python's self.wait(cur_cond=None) */
     {
-        uint64_t cur_sample;
-        if (c_cond_wait_current(di, &cur_sample) == SRD_OK) {
+        if (c_wait(di, CW_END) == SRD_OK) {
+            uint64_t cur_sample = di_samplenum(di);
             s->ss = cur_sample;
             s->prev_pattern = nas_grab_pattern(di, s, cur_sample);
             s->bFirst = 0;
@@ -582,31 +585,19 @@ static void nas_decode(struct srd_decoder_inst* di)
     }
 
     while (1) {
-        srd_cond_builder* cb = c_cond_new();
-
-        if (s->have_clk) {
-            if (s->clk_edge == 1)
-                c_cond_rise(cb, 0);
-            else if (s->clk_edge == 2)
-                c_cond_fall(cb, 0);
-            else
-                c_cond_edge(cb, 0);
-        } else {
-            for (int i = 0; i < s->num_data_channels; i++) {
-                if (i > 0)
-                    c_cond_or(cb);
-                c_cond_edge(cb, s->data_channels[i]);
-            }
-        }
-
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret;
+        if (s->clk_edge == 1)
+            ret = c_wait(di, CW_R(0), CW_END);
+        else if (s->clk_edge == 2)
+            ret = c_wait(di, CW_F(0), CW_END);
+        else
+            ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        uint64_t pattern = nas_grab_pattern(di, s, samplenum);
+        uint64_t pattern = nas_grab_pattern(di, s, di_samplenum(di));
 
-        uint64_t es = samplenum;
+        uint64_t es = di_samplenum(di);
         if (pattern == s->prev_pattern)
             continue;
 
@@ -656,6 +647,7 @@ struct srd_c_decoder numbers_and_state_c_decoder = {
     .start = nas_start,
     .decode = nas_decode,
     .destroy = nas_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

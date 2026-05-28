@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -90,30 +90,30 @@ static const struct srd_c_ann_row as5047_ann_rows[] = {
     {"warnings", "warnings", as5047_row_warnings_classes, 1},
 };
 
-static void parse_spi_data(const unsigned char *data, uint64_t data_len,
+static void parse_spi_data(const c_field *fields, int n_fields,
     int *have_mosi, int *have_miso, uint8_t *mosi_byte, uint8_t *miso_byte)
 {
-    if (data_len < 1) return;
-    *have_mosi = (data[0] & 1) ? 1 : 0;
-    *have_miso = (data[0] & 2) ? 1 : 0;
+    if (n_fields < 1) return;
+    *have_mosi = (fields[0].u8 & 1) ? 1 : 0;
+    *have_miso = (fields[0].u8 & 2) ? 1 : 0;
     uint64_t mv = 0, sv = 0;
-    if (data_len >= 9) {
+    if (n_fields >= 9) {
         for (int i = 0; i < 8; i++)
-            mv |= ((uint64_t)data[1 + i]) << (8 * i);
+            mv |= ((uint64_t)fields[1 + i].u8) << (8 * i);
     }
-    if (data_len >= 17) {
+    if (n_fields >= 17) {
         for (int i = 0; i < 8; i++)
-            sv |= ((uint64_t)data[9 + i]) << (8 * i);
+            sv |= ((uint64_t)fields[9 + i].u8) << (8 * i);
     }
     *mosi_byte = (uint8_t)mv;
     *miso_byte = (uint8_t)sv;
 }
 
-static void parse_cs_change(const unsigned char *data, uint64_t data_len,
+static void parse_cs_change(const c_field *fields, int n_fields,
     int *cs_old, int *cs_new)
 {
-    *cs_old = (data_len > 0) ? (int)data[0] : -1;
-    *cs_new = (data_len > 1) ? (int)data[1] : -1;
+    *cs_old = (n_fields > 0) ? (int)fields[0].u8 : -1;
+    *cs_new = (n_fields > 1) ? (int)fields[1].u8 : -1;
     if (*cs_old == 0xFF) *cs_old = -1;
 }
 
@@ -133,16 +133,14 @@ static int popcount_parity(uint16_t v)
     return count % 2;
 }
 
-static void as5047_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void as5047_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     as5047_state *s = (as5047_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
         int cs_old = -1, cs_new = -1;
-        parse_cs_change(data, data_len, &cs_old, &cs_new);
+        parse_cs_change(fields, n_fields, &cs_old, &cs_new);
         if (cs_old == 0 && cs_new == 1) {
             s->state = AS5047_STATE_INIT;
             s->byte_idx = 0;
@@ -154,10 +152,10 @@ static void as5047_recv_proto(struct srd_decoder_inst *di,
 
     int have_mosi, have_miso;
     uint8_t mosi_b, miso_b;
-    parse_spi_data(data, data_len, &have_mosi, &have_miso, &mosi_b, &miso_b);
+    parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi_b, &miso_b);
 
     /* Detect if SPI wordsize is 16 (mosi_byte > 0xFF won't happen, but
-       if data_len >= 9 the mosi value could be > 255 for 16-bit words).
+       if n_fields >= 9 the mosi value could be > 255 for 16-bit words).
        For 16-bit SPI, each DATA callback gives a full 16-bit word.
        For 8-bit SPI, we need to assemble two bytes.
        We use byte_idx to track: 0 = waiting for high byte, 1 = waiting for low byte.
@@ -165,13 +163,13 @@ static void as5047_recv_proto(struct srd_decoder_inst *di,
 
     /* Check if this looks like a 16-bit word by examining the raw mosi value */
     uint64_t mosi_raw = 0, miso_raw = 0;
-    if (data_len >= 9) {
+    if (n_fields >= 9) {
         for (int i = 0; i < 8; i++)
-            mosi_raw |= ((uint64_t)data[1 + i]) << (8 * i);
+            mosi_raw |= ((uint64_t)fields[1 + i].u8) << (8 * i);
     }
-    if (data_len >= 17) {
+    if (n_fields >= 17) {
         for (int i = 0; i < 8; i++)
-            miso_raw |= ((uint64_t)data[9 + i]) << (8 * i);
+            miso_raw |= ((uint64_t)fields[9 + i].u8) << (8 * i);
     }
 
     int is_16bit = (mosi_raw > 0xFF || miso_raw > 0xFF) ? 1 : 0;
@@ -201,7 +199,7 @@ static void as5047_recv_proto(struct srd_decoder_inst *di,
 
     if (s->state == AS5047_STATE_INIT || s->state == AS5047_STATE_WRITE) {
         if (have_mosi && popcount_parity(mosi_word) != 0) {
-            C_ANN_PUT(di, frame_ss, end_sample, s->out_ann, ANN_WARN, "mosi parity");
+            c_put(di, frame_ss, end_sample, s->out_ann, ANN_WARN, "mosi parity");
         }
     }
 
@@ -215,38 +213,38 @@ static void as5047_recv_proto(struct srd_decoder_inst *di,
             s->state = AS5047_STATE_READ;
             char buf[128];
             snprintf(buf, sizeof(buf), "read from %s (0x%04x)", reg_desc, reg);
-            C_ANN_PUT(di, frame_ss, end_sample, s->out_ann, ANN_COMMANDFRAME, buf);
+            c_put(di, frame_ss, end_sample, s->out_ann, ANN_COMMANDFRAME, buf);
         } else {
             s->state = AS5047_STATE_WRITE;
             char buf[128];
             snprintf(buf, sizeof(buf), "write to %s (0x%04x)", reg_desc, reg);
-            C_ANN_PUT(di, frame_ss, end_sample, s->out_ann, ANN_COMMANDFRAME, buf);
+            c_put(di, frame_ss, end_sample, s->out_ann, ANN_COMMANDFRAME, buf);
         }
         s->transaction_start = frame_ss;
     } else {
         if (have_miso && popcount_parity(miso_word) != 0) {
-            C_ANN_PUT(di, frame_ss, end_sample, s->out_ann, ANN_WARN, "miso parity");
+            c_put(di, frame_ss, end_sample, s->out_ann, ANN_WARN, "miso parity");
         }
         const char *reg_desc = as5047_reg_name(s->current_reg);
 
         if (s->state == AS5047_STATE_READ) {
             if (miso_word & 0x4000) {
-                C_ANN_PUT(di, frame_ss, end_sample, s->out_ann, ANN_WARN, "error flag set");
+                c_put(di, frame_ss, end_sample, s->out_ann, ANN_WARN, "error flag set");
             }
             uint16_t rdata = miso_word & 0x3FFF;
             char buf[128];
             snprintf(buf, sizeof(buf), "read data frame: 0x%04x", rdata);
-            C_ANN_PUT(di, frame_ss, end_sample, s->out_ann, ANN_READDATAFRAME, buf);
+            c_put(di, frame_ss, end_sample, s->out_ann, ANN_READDATAFRAME, buf);
             snprintf(buf, sizeof(buf), "Read 0x%04x from %s", rdata, reg_desc);
-            C_ANN_PUT(di, s->transaction_start, end_sample, s->out_ann, ANN_REGISTERREAD, buf);
+            c_put(di, s->transaction_start, end_sample, s->out_ann, ANN_REGISTERREAD, buf);
         }
         if (s->state == AS5047_STATE_WRITE) {
             uint16_t wdata = mosi_word & 0x3FFF;
             char buf[128];
             snprintf(buf, sizeof(buf), "write data frame: 0x%04x", wdata);
-            C_ANN_PUT(di, frame_ss, end_sample, s->out_ann, ANN_WRITEDATAFRAME, buf);
+            c_put(di, frame_ss, end_sample, s->out_ann, ANN_WRITEDATAFRAME, buf);
             snprintf(buf, sizeof(buf), "Write 0x%04x to %s", wdata, reg_desc);
-            C_ANN_PUT(di, s->transaction_start, end_sample, s->out_ann, ANN_REGISTERWRITE, buf);
+            c_put(di, s->transaction_start, end_sample, s->out_ann, ANN_REGISTERWRITE, buf);
         }
 
         s->state = AS5047_STATE_INIT;
@@ -266,7 +264,7 @@ static void as5047_reset(struct srd_decoder_inst *di)
 static void as5047_start(struct srd_decoder_inst *di)
 {
     as5047_state *s = (as5047_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "as5047");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "as5047");
 }
 
 static void as5047_decode(struct srd_decoder_inst *di)
@@ -311,7 +309,8 @@ struct srd_c_decoder as5047_c_decoder = {
     .start = as5047_start,
     .decode = as5047_decode,
     .destroy = as5047_destroy,
-    .recv_proto = as5047_recv_proto,
+    .decode_upper = as5047_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

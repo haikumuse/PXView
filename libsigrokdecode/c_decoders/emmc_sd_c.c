@@ -147,44 +147,69 @@ static void emmc_init_ann_labels(void)
         emmc_ann_label_ptrs[i][1] = g_strdup_printf("CMD%d", i);
         emmc_ann_label_ptrs[i][2] = g_strdup_printf("CMD%d", i);
     }
-    emmc_ann_label_ptrs[64][0] = ""; emmc_ann_label_ptrs[64][1] = "Bits"; emmc_ann_label_ptrs[64][2] = "Bits";
-    emmc_ann_label_ptrs[65][0] = ""; emmc_ann_label_ptrs[65][1] = "Start bit"; emmc_ann_label_ptrs[65][2] = "Start bit";
-    emmc_ann_label_ptrs[66][0] = ""; emmc_ann_label_ptrs[66][1] = "Transmission bit"; emmc_ann_label_ptrs[66][2] = "Transmission bit";
-    emmc_ann_label_ptrs[67][0] = ""; emmc_ann_label_ptrs[67][1] = "Command"; emmc_ann_label_ptrs[67][2] = "Command";
-    emmc_ann_label_ptrs[68][0] = ""; emmc_ann_label_ptrs[68][1] = "Argument"; emmc_ann_label_ptrs[68][2] = "Argument";
-    emmc_ann_label_ptrs[69][0] = ""; emmc_ann_label_ptrs[69][1] = "CRC"; emmc_ann_label_ptrs[69][2] = "CRC";
-    emmc_ann_label_ptrs[70][0] = ""; emmc_ann_label_ptrs[70][1] = "End bit"; emmc_ann_label_ptrs[70][2] = "End bit";
-    emmc_ann_label_ptrs[71][0] = ""; emmc_ann_label_ptrs[71][1] = "Decoded bit"; emmc_ann_label_ptrs[71][2] = "Decoded bit";
-    emmc_ann_label_ptrs[72][0] = ""; emmc_ann_label_ptrs[72][1] = "Decoded field"; emmc_ann_label_ptrs[72][2] = "Decoded field";
+    emmc_ann_label_ptrs[64][0] = "Bits"; emmc_ann_label_ptrs[64][1] = "Bits"; emmc_ann_label_ptrs[64][2] = "Bits";
+    emmc_ann_label_ptrs[65][0] = "Start bit"; emmc_ann_label_ptrs[65][1] = "Start"; emmc_ann_label_ptrs[65][2] = "S";
+    emmc_ann_label_ptrs[66][0] = "Transmission bit"; emmc_ann_label_ptrs[66][1] = "Transmission bit"; emmc_ann_label_ptrs[66][2] = "T";
+    emmc_ann_label_ptrs[67][0] = "Command"; emmc_ann_label_ptrs[67][1] = "Command"; emmc_ann_label_ptrs[67][2] = "Cmd";
+    emmc_ann_label_ptrs[68][0] = "Argument"; emmc_ann_label_ptrs[68][1] = "Argument"; emmc_ann_label_ptrs[68][2] = "Arg";
+    emmc_ann_label_ptrs[69][0] = "CRC"; emmc_ann_label_ptrs[69][1] = "CRC"; emmc_ann_label_ptrs[69][2] = "CRC";
+    emmc_ann_label_ptrs[70][0] = "End bit"; emmc_ann_label_ptrs[70][1] = "End"; emmc_ann_label_ptrs[70][2] = "E";
+    emmc_ann_label_ptrs[71][0] = "Decoded bit"; emmc_ann_label_ptrs[71][1] = "Decoded bit"; emmc_ann_label_ptrs[71][2] = "Decoded bit";
+    emmc_ann_label_ptrs[72][0] = "Decoded field"; emmc_ann_label_ptrs[72][1] = "Decoded field"; emmc_ann_label_ptrs[72][2] = "Decoded field";
 }
 
 static void emmc_putt(struct srd_decoder_inst *di, struct emmc_sd_priv *s, int cls, const char *text)
 {
     if (s->token_len < 48) return;
-    C_ANN_PUT(di, s->token[0].ss, s->token[47].es, s->out_ann, cls, text);
+    c_put(di, s->token[0].ss, s->token[47].es, s->out_ann, cls, text);
 }
 
 static void emmc_putf(struct srd_decoder_inst *di, struct emmc_sd_priv *s, int start, int end, int cls, const char *text)
 {
     if (start >= s->token_len || end >= s->token_len) return;
-    C_ANN_PUT(di, s->token[start].ss, s->token[end].es, s->out_ann, cls, text);
+    c_put(di, s->token[start].ss, s->token[end].es, s->out_ann, cls, text);
 }
 
-static void emmc_puta(struct srd_decoder_inst *di, struct emmc_sd_priv *s, int start, int end, int cls, const char *text)
+static void emmc_puta4(struct srd_decoder_inst *di, struct emmc_sd_priv *s, int start, int end, int cls,
+                        const char *t1, const char *t2, const char *t3, const char *t4)
 {
     if (s->token_len < 48) return;
     int s_idx = 47 - 8 - end;
     int e_idx = 47 - 8 - start;
     if (s_idx < 0 || e_idx < 0 || s_idx >= s->token_len || e_idx >= s->token_len) return;
-    C_ANN_PUT(di, s->token[s_idx].ss, s->token[e_idx].es, s->out_ann, cls, text);
+    if (t2 && t3 && t4)
+        c_put(di, s->token[s_idx].ss, s->token[e_idx].es, s->out_ann, cls, t1, t2, t3, t4);
+    else if (t2 && t3)
+        c_put(di, s->token[s_idx].ss, s->token[e_idx].es, s->out_ann, cls, t1, t2, t3);
+    else if (t2)
+        c_put(di, s->token[s_idx].ss, s->token[e_idx].es, s->out_ann, cls, t1, t2);
+    else
+        c_put(di, s->token[s_idx].ss, s->token[e_idx].es, s->out_ann, cls, t1);
+}
+
+static void emmc_puta(struct srd_decoder_inst *di, struct emmc_sd_priv *s, int start, int end, int cls, const char *text)
+{
+    emmc_puta4(di, s, start, end, cls, text, NULL, NULL, NULL);
 }
 
 static void emmc_putc(struct srd_decoder_inst *di, struct emmc_sd_priv *s, int cmd, const char *desc)
 {
     s->last_cmd = cmd;
+    if (s->token_len < 48) return;
     char text[128];
     snprintf(text, sizeof(text), "%s: %s", s->cmd_str, desc);
-    emmc_putt(di, s, cmd, text);
+    /* Extract short form (e.g., "CMD0" from "CMD0 (GO_IDLE_STATE)") */
+    char short_str[16];
+    const char *space = strchr(s->cmd_str, ' ');
+    if (space) {
+        int len = (int)(space - s->cmd_str);
+        if (len >= (int)sizeof(short_str)) len = (int)sizeof(short_str) - 1;
+        memcpy(short_str, s->cmd_str, len);
+        short_str[len] = '\0';
+    } else {
+        snprintf(short_str, sizeof(short_str), "%s", s->cmd_str);
+    }
+    c_put(di, s->token[0].ss, s->token[47].es, s->out_ann, cmd, text, s->cmd_str, short_str);
 }
 
 static void emmc_putr(struct srd_decoder_inst *di, struct emmc_sd_priv *s, const char *desc)
@@ -218,33 +243,41 @@ static void emmc_handle_common_token_fields(struct srd_decoder_inst *di, struct 
         emmc_putf(di, s, bit, bit, ANN_DECODED_BIT, text);
     }
 
-    emmc_putf(di, s, 0, 0, ANN_F_START, "Start bit");
+    c_put(di, s->token[0].ss, s->token[0].es, s->out_ann, ANN_F_START, "Start bit", "Start", "S");
 
     const char *t = (s->token_len > 1 && s->token[1].val == 1) ? "host" : "card";
+    const char *t_short = (s->token_len > 1 && s->token[1].val == 1) ? "H" : "C";
     char text[64];
     snprintf(text, sizeof(text), "Transmission: %s", t);
-    emmc_putf(di, s, 1, 1, ANN_F_TRANSMISSION, text);
+    char text2[32];
+    snprintf(text2, sizeof(text2), "T: %s", t);
+    c_put(di, s->token[1].ss, s->token[1].es, s->out_ann, ANN_F_TRANSMISSION, text, text2, t_short);
 
     s->cmd = 0;
     for (int i = 2; i < 8 && i < s->token_len; i++)
         s->cmd = (s->cmd << 1) | s->token[i].val;
     const char *cname = emmc_cmd_name(s->cmd);
-    snprintf(text, sizeof(text), "Command: %s (%d)", cname, s->cmd);
-    emmc_putf(di, s, 2, 7, ANN_F_CMD, text);
+    char cmd_text[64], cmd_text2[64], cmd_text3[16];
+    snprintf(cmd_text, sizeof(cmd_text), "Command: %s (%d)", cname, s->cmd);
+    snprintf(cmd_text2, sizeof(cmd_text2), "Cmd: %s (%d)", cname, s->cmd);
+    snprintf(cmd_text3, sizeof(cmd_text3), "CMD%d", s->cmd);
+    c_put(di, s->token[2].ss, s->token[7].es, s->out_ann, ANN_F_CMD, cmd_text, cmd_text2, cmd_text3, "Cmd", "C");
 
     s->arg = 0;
     for (int i = 8; i < 40 && i < s->token_len; i++)
         s->arg = (s->arg << 1) | s->token[i].val;
-    snprintf(text, sizeof(text), "Argument: 0x%08x", s->arg);
-    emmc_putf(di, s, 8, 39, ANN_F_ARG, text);
+    char arg_text[64];
+    snprintf(arg_text, sizeof(arg_text), "Argument: 0x%08x", s->arg);
+    c_put(di, s->token[8].ss, s->token[39].es, s->out_ann, ANN_F_ARG, arg_text, "Arg", "A");
 
     s->crc = 0;
     for (int i = 40; i < 47 && i < s->token_len; i++)
         s->crc = (s->crc << 1) | s->token[i].val;
-    snprintf(text, sizeof(text), "CRC: 0x%x", s->crc);
-    emmc_putf(di, s, 40, 46, ANN_F_CRC, text);
+    char crc_text[32];
+    snprintf(crc_text, sizeof(crc_text), "CRC: 0x%x", s->crc);
+    c_put(di, s->token[40].ss, s->token[46].es, s->out_ann, ANN_F_CRC, crc_text, "CRC", "C");
 
-    emmc_putf(di, s, 47, 47, ANN_F_END, "End bit");
+    c_put(di, s->token[47].ss, s->token[47].es, s->out_ann, ANN_F_END, "End bit", "End", "E");
 }
 
 static void emmc_get_command_token(struct srd_decoder_inst *di, struct emmc_sd_priv *s, int cmd_pin, uint64_t samplenum)
@@ -274,58 +307,58 @@ static void emmc_get_command_token(struct srd_decoder_inst *di, struct emmc_sd_p
 
 static void emmc_handle_cmd0(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "IDLE_STATE");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "IDLE_STATE", "IDLE", "ID", "I");
     emmc_putc(di, s, 0, "Reset Device to IDLE_STATE");
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
 
 static void emmc_handle_cmd1(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "OCR_WO_BUSY");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "OCR_WO_BUSY", "OCR", NULL, NULL);
     emmc_putc(di, s, 1, "Send OCR in idle state");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R3;
 }
 
 static void emmc_handle_cmd2(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 2, "Ask card for CID number");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R2;
 }
 
 static void emmc_handle_cmd3(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "Set Relative Card Addr");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "Set Relative Card Addr", "Set RCA", "SRCA", "SR");
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 3, "Set relative card address (RCA)");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd4(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "Set DSR");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "Set DSR", "SDSR", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 4, "Programs the DSR of the Device");
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
 
 static void emmc_handle_cmd5(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "Set DSR");
-    emmc_puta(di, s, 15, 15, ANN_DECODED_F, "Sleep/Awake");
-    emmc_puta(di, s, 0, 14, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "Set DSR", "SDSR", NULL, NULL);
+    emmc_puta4(di, s, 15, 15, ANN_DECODED_F, "Sleep/Awake", "S/A", NULL, NULL);
+    emmc_puta4(di, s, 0, 14, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 5, "Sleep/Awake");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1B;
 }
 
 static void emmc_handle_cmd6(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 26, 31, ANN_DECODED_F, "Set to 0");
-    emmc_puta(di, s, 24, 25, ANN_DECODED_F, "Access");
-    emmc_puta(di, s, 16, 23, ANN_DECODED_F, "Index");
-    emmc_puta(di, s, 8, 15, ANN_DECODED_F, "Value");
-    emmc_puta(di, s, 3, 7, ANN_DECODED_F, "Set to 0");
-    emmc_puta(di, s, 0, 2, ANN_DECODED_F, "CMD Set");
+    emmc_puta4(di, s, 26, 31, ANN_DECODED_F, "Set to 0", "Set 0", "S0", "Z");
+    emmc_puta4(di, s, 24, 25, ANN_DECODED_F, "Access", "A", NULL, NULL);
+    emmc_puta4(di, s, 16, 23, ANN_DECODED_F, "Index", "Id", NULL, NULL);
+    emmc_puta4(di, s, 8, 15, ANN_DECODED_F, "Value", "Val", "V", NULL);
+    emmc_puta4(di, s, 3, 7, ANN_DECODED_F, "Set to 0", "Set 0", "S0", "Z");
+    emmc_puta4(di, s, 0, 2, ANN_DECODED_F, "CMD Set", "CMD S", NULL, NULL);
     emmc_putc(di, s, 6, "Switch card function");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1B;
 }
@@ -338,65 +371,65 @@ static void emmc_handle_cmd7(struct srd_decoder_inst *di, struct emmc_sd_priv *s
 
 static void emmc_handle_cmd8(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 8, "Device sends its EXT_CSD register");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd9(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 9, "Send card-specific data (CSD)");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R2;
 }
 
 static void emmc_handle_cmd10(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 10, "Send card identification data (CID)");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R2;
 }
 
 static void emmc_handle_cmd12(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 1, 15, ANN_DECODED_F, "Stuff bits");
-    emmc_puta(di, s, 0, 0, ANN_DECODED_F, "HPI");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 1, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
+    emmc_puta4(di, s, 0, 0, ANN_DECODED_F, "HPI", NULL, NULL, NULL);
     emmc_putc(di, s, 12, "Forces the Device to stop transmission");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd13(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 15, 15, ANN_DECODED_F, "SQS");
-    emmc_puta(di, s, 1, 14, ANN_DECODED_F, "Stuff bits");
-    emmc_puta(di, s, 0, 0, ANN_DECODED_F, "HPI");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 15, 15, ANN_DECODED_F, "SQS", NULL, NULL, NULL);
+    emmc_puta4(di, s, 1, 14, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
+    emmc_puta4(di, s, 0, 0, ANN_DECODED_F, "HPI", NULL, NULL, NULL);
     emmc_putc(di, s, 13, "Send card status register");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd14(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 14, "Host Bus Test read from Device");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd15(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 15, "Set Device at RCA to Inactive State");
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
 
 static void emmc_handle_cmd16(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Block length");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Block length", "Blocklen", "BL", "B");
     char text[64];
     snprintf(text, sizeof(text), "Read the block length to %u bytes", s->arg);
     emmc_putc(di, s, 16, text);
@@ -405,242 +438,242 @@ static void emmc_handle_cmd16(struct srd_decoder_inst *di, struct emmc_sd_priv *
 
 static void emmc_handle_cmd17(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 17, "Read a block of data set by SET_BLOCKLEN");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd18(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 18, "Read Multiple blocks of data");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd19(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 19, "Host Bus Test Write to Device");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd21(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 21, "128 clocks of tuning pattern for HS200");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd23(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 30, 30, ANN_DECODED_F, "Packed");
+    emmc_puta4(di, s, 30, 30, ANN_DECODED_F, "Packed", NULL, NULL, NULL);
     if (s->token_len > 30 && s->token[30].val == 1) {
-        emmc_puta(di, s, 31, 31, ANN_DECODED_F, "Set to 0");
-        emmc_puta(di, s, 16, 29, ANN_DECODED_F, "Set to 0");
+        emmc_puta4(di, s, 31, 31, ANN_DECODED_F, "Set to 0", "Set 0", "S0", "Z");
+        emmc_puta4(di, s, 16, 29, ANN_DECODED_F, "Set to 0", "Set 0", "S0", "Z");
     } else {
-        emmc_puta(di, s, 31, 31, ANN_DECODED_F, "Reliable Write");
-        emmc_puta(di, s, 25, 28, ANN_DECODED_F, "Context ID");
-        emmc_puta(di, s, 24, 24, ANN_DECODED_F, "Forced Programming");
-        emmc_puta(di, s, 16, 23, ANN_DECODED_F, "Set to 0");
+        emmc_puta4(di, s, 31, 31, ANN_DECODED_F, "Reliable Write", "RLB W", NULL, NULL);
+        emmc_puta4(di, s, 25, 28, ANN_DECODED_F, "Context ID", "CntxtID", NULL, NULL);
+        emmc_puta4(di, s, 24, 24, ANN_DECODED_F, "Forced Programming", "Forced Prog", "FP", NULL);
+        emmc_puta4(di, s, 16, 23, ANN_DECODED_F, "Set to 0", "Set 0", "S0", "Z");
     }
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Number of Blocks");
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Number of Blocks", "NUM BLK", "NoB", NULL);
     emmc_putc(di, s, 23, "Defines the number of blocks");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd24(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 24, "Writes a block of Data");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd25(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 25, "Writes multiple blocks of Data");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd26(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 26, "Programming of the Device identification register");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd27(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 27, "Programming of the programmable bits of the CSD");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd28(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 28, "Set Write Protect or Release address group");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1B;
 }
 
 static void emmc_handle_cmd29(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 29, "Clear Write Protect or Ignored");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1B;
 }
 
 static void emmc_handle_cmd30(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 30, "Send status of Write Protect or released group");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd31(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 31, "Send type of Write Protect or 64bit 0s");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd35(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 35, "Set Address of the 1st erase group");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd36(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Data Address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Data Address", "Dat Addr", "DADD", "DA");
     emmc_putc(di, s, 36, "Set Address of the last erase group");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd38(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 31, 31, ANN_DECODED_F, "Secure Request");
-    emmc_puta(di, s, 16, 30, ANN_DECODED_F, "Set to 0");
-    emmc_puta(di, s, 15, 15, ANN_DECODED_F, "Force Garbage Collect");
-    emmc_puta(di, s, 2, 14, ANN_DECODED_F, "Set to 0");
-    emmc_puta(di, s, 1, 1, ANN_DECODED_F, "Discard Enable");
-    emmc_puta(di, s, 0, 0, ANN_DECODED_F, "TRIM Enable");
+    emmc_puta4(di, s, 31, 31, ANN_DECODED_F, "Secure Request", "Sec Req", "SR", NULL);
+    emmc_puta4(di, s, 16, 30, ANN_DECODED_F, "Set to 0", "Set 0", "S0", "Z");
+    emmc_puta4(di, s, 15, 15, ANN_DECODED_F, "Force Garbage Collect", "F Garb Clct", "FGC", NULL);
+    emmc_puta4(di, s, 2, 14, ANN_DECODED_F, "Set to 0", "Set 0", "S0", "Z");
+    emmc_puta4(di, s, 1, 1, ANN_DECODED_F, "Discard Enable", "DISG EN", "DE", NULL);
+    emmc_puta4(di, s, 0, 0, ANN_DECODED_F, "TRIM Enable", "TRIM EN", "TE", NULL);
     emmc_putc(di, s, 38, "Erase all groups defined by CMD35/36");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1B;
 }
 
 static void emmc_handle_cmd39(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 15, 15, ANN_DECODED_F, "Write Flag");
-    emmc_puta(di, s, 8, 14, ANN_DECODED_F, "Register Addr");
-    emmc_puta(di, s, 0, 7, ANN_DECODED_F, "Register Data");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 15, 15, ANN_DECODED_F, "Write Flag", "W Flag", "WF", "W");
+    emmc_puta4(di, s, 8, 14, ANN_DECODED_F, "Register Addr", "REGADD", "RA", NULL);
+    emmc_puta4(di, s, 0, 7, ANN_DECODED_F, "Register Data", "REGDAT", "DAT", "D");
     emmc_putc(di, s, 39, "R/W 8 bit (register) data fields");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R4;
 }
 
 static void emmc_handle_cmd40(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 40, "Sets the system into interrupt mode");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R5;
 }
 
 static void emmc_handle_cmd42(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 42, "set/reset the password or lock/unlock the Device");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd44(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 31, 31, ANN_DECODED_F, "Reliable Write Request");
-    emmc_puta(di, s, 30, 30, ANN_DECODED_F, "Data Direction(1:R/0:W)");
-    emmc_puta(di, s, 29, 29, ANN_DECODED_F, "Tag request");
-    emmc_puta(di, s, 25, 28, ANN_DECODED_F, "Context ID");
-    emmc_puta(di, s, 24, 24, ANN_DECODED_F, "Forced Programming");
-    emmc_puta(di, s, 23, 23, ANN_DECODED_F, "Priority(0:Simple/1:High)");
-    emmc_puta(di, s, 21, 22, ANN_DECODED_F, "Reserved");
-    emmc_puta(di, s, 16, 20, ANN_DECODED_F, "Task ID");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Block Numbers");
+    emmc_puta4(di, s, 31, 31, ANN_DECODED_F, "Reliable Write Request", "RWR", NULL, NULL);
+    emmc_puta4(di, s, 30, 30, ANN_DECODED_F, "Data Direction(1:R/0:W)", "DD", NULL, NULL);
+    emmc_puta4(di, s, 29, 29, ANN_DECODED_F, "Tag request", "Tag Req", "TR", NULL);
+    emmc_puta4(di, s, 25, 28, ANN_DECODED_F, "Context ID", "CntxtID", NULL, NULL);
+    emmc_puta4(di, s, 24, 24, ANN_DECODED_F, "Forced Programming", "F Prog", "FP", NULL);
+    emmc_puta4(di, s, 23, 23, ANN_DECODED_F, "Priority(0:Simple/1:High)", "Prio", NULL, NULL);
+    emmc_puta4(di, s, 21, 22, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
+    emmc_puta4(di, s, 16, 20, ANN_DECODED_F, "Task ID", "TID", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Block Numbers", "Blk NUM", NULL, NULL);
     emmc_putc(di, s, 44, "Def data dir for R/W, Priority, Task ID, blk count for qd Task");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd45(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Start of block address");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Start of block address", "Start BLK ADDR", "SBA", "SA");
     emmc_putc(di, s, 45, "Defines the block address of queued task");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd46(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 21, 31, ANN_DECODED_F, "Reserved");
-    emmc_puta(di, s, 16, 20, ANN_DECODED_F, "Task ID");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Reserved");
+    emmc_puta4(di, s, 21, 31, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
+    emmc_puta4(di, s, 16, 20, ANN_DECODED_F, "Task ID", "TID", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
     emmc_putc(di, s, 46, "execute task from the queue with TID");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd47(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 21, 31, ANN_DECODED_F, "Reserved");
-    emmc_puta(di, s, 16, 20, ANN_DECODED_F, "Task ID");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Reserved");
+    emmc_puta4(di, s, 21, 31, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
+    emmc_puta4(di, s, 16, 20, ANN_DECODED_F, "Task ID", "TID", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
     emmc_putc(di, s, 47, "execute task from the queue with TID");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd48(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 21, 31, ANN_DECODED_F, "Reserved");
-    emmc_puta(di, s, 16, 20, ANN_DECODED_F, "Task ID");
-    emmc_puta(di, s, 4, 15, ANN_DECODED_F, "Reserved");
-    emmc_puta(di, s, 0, 3, ANN_DECODED_F, "TM Op-code");
+    emmc_puta4(di, s, 21, 31, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
+    emmc_puta4(di, s, 16, 20, ANN_DECODED_F, "Task ID", "TID", NULL, NULL);
+    emmc_puta4(di, s, 4, 15, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
+    emmc_puta4(di, s, 0, 3, ANN_DECODED_F, "TM Op-code", "TMOP", NULL, NULL);
     emmc_putc(di, s, 48, "discard a specific task or entire queue");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1B;
 }
 
 static void emmc_handle_cmd49(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 49, "Sets the real time clock according to the RTC");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd53(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "Security Protocol Specific");
-    emmc_puta(di, s, 8, 15, ANN_DECODED_F, "Security Protocol");
-    emmc_puta(di, s, 0, 7, ANN_DECODED_F, "Reserved");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "Security Protocol Specific", "Sec P Spec", "SPS", NULL);
+    emmc_puta4(di, s, 8, 15, ANN_DECODED_F, "Security Protocol", "Sec P", "SP", NULL);
+    emmc_puta4(di, s, 0, 7, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
     emmc_putc(di, s, 53, "Transfer 512B Blk from device to host");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd54(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "Security Protocol Specific");
-    emmc_puta(di, s, 8, 15, ANN_DECODED_F, "Security Protocol");
-    emmc_puta(di, s, 0, 7, ANN_DECODED_F, "Reserved");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "Security Protocol Specific", "Sec P Spec", "SPS", NULL);
+    emmc_puta4(di, s, 8, 15, ANN_DECODED_F, "Security Protocol", "Sec P", "SP", NULL);
+    emmc_puta4(di, s, 0, 7, ANN_DECODED_F, "Reserved", "RSVD", NULL, NULL);
     emmc_putc(di, s, 54, "Transfer 512B Blk from host to device");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd55(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Stuff bits");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
     emmc_putc(di, s, 55, "Next command is an application-specific command");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void emmc_handle_cmd56(struct srd_decoder_inst *di, struct emmc_sd_priv *s)
 {
-    emmc_puta(di, s, 1, 31, ANN_DECODED_F, "Stuff bits");
-    emmc_puta(di, s, 0, 0, ANN_DECODED_F, "RD/WR");
+    emmc_puta4(di, s, 1, 31, ANN_DECODED_F, "Stuff bits", "Stuff", "SB", "S");
+    emmc_puta4(di, s, 0, 0, ANN_DECODED_F, "RD/WR", NULL, NULL, NULL);
     emmc_putc(di, s, 56, "R/W a data block from/to the Device");
     s->token_len = 0; s->state = STATE_GET_RESPONSE_R1;
 }
@@ -656,7 +689,7 @@ static void emmc_handle_response_r1(struct srd_decoder_inst *di, struct emmc_sd_
         return;
     emmc_handle_common_token_fields(di, s);
     emmc_putr(di, s, "R1");
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Card status");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Card status", "Status", "S", NULL);
     for (int i = 0; i < 32; i++) {
         if (8 + i < s->token_len)
             emmc_putf(di, s, 8 + i, 8 + i, ANN_DECODED_BIT, device_status[31 - i]);
@@ -669,7 +702,7 @@ static void emmc_handle_response_r1b(struct srd_decoder_inst *di, struct emmc_sd
     if (!emmc_get_token_bits(s, cmd_pin, samplenum, 48))
         return;
     emmc_handle_common_token_fields(di, s);
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "Card status");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "Card status", "Status", "S", NULL);
     emmc_putr(di, s, "R1b");
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -683,16 +716,19 @@ static void emmc_handle_response_r2(struct srd_decoder_inst *di, struct emmc_sd_
         snprintf(text, sizeof(text), "%d", s->token[bit].val);
         emmc_putf(di, s, bit, bit, ANN_DECODED_BIT, text);
     }
-    emmc_putf(di, s, 0, 0, ANN_F_START, "Start bit");
+    c_put(di, s->token[0].ss, s->token[0].es, s->out_ann, ANN_F_START, "Start bit", "Start", "S");
     const char *t = (s->token_len > 1 && s->token[1].val == 1) ? "host" : "card";
+    const char *t_short = (s->token_len > 1 && s->token[1].val == 1) ? "H" : "C";
     char text[64];
     snprintf(text, sizeof(text), "Transmission: %s", t);
-    emmc_putf(di, s, 1, 1, ANN_F_TRANSMISSION, text);
-    emmc_putf(di, s, 2, 7, ANN_F_CMD, "Check Bits");
-    emmc_putf(di, s, 8, 134, ANN_F_ARG, "Argument");
-    emmc_putf(di, s, 135, 135, ANN_F_END, "End bit");
-    emmc_putf(di, s, 8, 134, ANN_DECODED_F, "CID/CSD register");
-    emmc_putf(di, s, 0, 135, s->last_cmd < NUM_ANN ? s->last_cmd : 0, "R2");
+    char text2[32];
+    snprintf(text2, sizeof(text2), "T: %s", t);
+    c_put(di, s->token[1].ss, s->token[1].es, s->out_ann, ANN_F_TRANSMISSION, text, text2, t_short);
+    c_put(di, s->token[2].ss, s->token[7].es, s->out_ann, ANN_F_CMD, "Check Bits", "CHECK", "C");
+    c_put(di, s->token[8].ss, s->token[134].es, s->out_ann, ANN_F_ARG, "Argument", "Arg", "A");
+    c_put(di, s->token[135].ss, s->token[135].es, s->out_ann, ANN_F_END, "End bit", "End", "E");
+    c_put(di, s->token[8].ss, s->token[134].es, s->out_ann, ANN_DECODED_F, "CID/CSD register", "CID/CSD", "C");
+    c_put(di, s->token[0].ss, s->token[135].es, s->out_ann, s->last_cmd < NUM_ANN ? s->last_cmd : 0, "R2");
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
 
@@ -706,16 +742,19 @@ static void emmc_handle_response_r3(struct srd_decoder_inst *di, struct emmc_sd_
         snprintf(text, sizeof(text), "%d", s->token[bit].val);
         emmc_putf(di, s, bit, bit, ANN_DECODED_BIT, text);
     }
-    emmc_putf(di, s, 0, 0, ANN_F_START, "Start bit");
+    c_put(di, s->token[0].ss, s->token[0].es, s->out_ann, ANN_F_START, "Start bit", "Start", "S");
     const char *t = (s->token_len > 1 && s->token[1].val == 1) ? "host" : "card";
+    const char *t_short = (s->token_len > 1 && s->token[1].val == 1) ? "H" : "C";
     char text[64];
     snprintf(text, sizeof(text), "Transmission: %s", t);
-    emmc_putf(di, s, 1, 1, ANN_F_TRANSMISSION, text);
-    emmc_putf(di, s, 2, 7, ANN_F_CMD, "Check bits");
-    emmc_putf(di, s, 8, 39, ANN_F_ARG, "Argument");
-    emmc_putf(di, s, 40, 46, ANN_F_CRC, "Check bits");
-    emmc_putf(di, s, 47, 47, ANN_F_END, "End bit");
-    emmc_puta(di, s, 0, 31, ANN_DECODED_F, "OCR register");
+    char text2[32];
+    snprintf(text2, sizeof(text2), "T: %s", t);
+    c_put(di, s->token[1].ss, s->token[1].es, s->out_ann, ANN_F_TRANSMISSION, text, text2, t_short);
+    c_put(di, s->token[2].ss, s->token[7].es, s->out_ann, ANN_F_CMD, "Check bits", "CHECK", "C");
+    c_put(di, s->token[8].ss, s->token[39].es, s->out_ann, ANN_F_ARG, "Argument", "Arg", "A");
+    c_put(di, s->token[40].ss, s->token[46].es, s->out_ann, ANN_F_CRC, "Check bits", "CHECK", "C");
+    c_put(di, s->token[47].ss, s->token[47].es, s->out_ann, ANN_F_END, "End bit", "End", "E");
+    emmc_puta4(di, s, 0, 31, ANN_DECODED_F, "OCR register", "OCR reg", "OCR", "O");
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
 
@@ -724,8 +763,8 @@ static void emmc_handle_response_r4(struct srd_decoder_inst *di, struct emmc_sd_
     if (!emmc_get_token_bits(s, cmd_pin, samplenum, 39))
         return;
     emmc_handle_common_token_fields(di, s);
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Card status bits");
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "Relative card address");
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Card status bits", "Status", "S", NULL);
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "Relative card address", "RCA", "R", NULL);
     emmc_putr(di, s, "R4");
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
@@ -736,8 +775,8 @@ static void emmc_handle_response_r5(struct srd_decoder_inst *di, struct emmc_sd_
         return;
     emmc_handle_common_token_fields(di, s);
     emmc_putr(di, s, "R5");
-    emmc_puta(di, s, 16, 31, ANN_DECODED_F, "RCA");
-    emmc_puta(di, s, 0, 15, ANN_DECODED_F, "Not Defined/IRQ data");
+    emmc_puta4(di, s, 16, 31, ANN_DECODED_F, "RCA", "R", NULL, NULL);
+    emmc_puta4(di, s, 0, 15, ANN_DECODED_F, "Not Defined/IRQ data", "NDEF", NULL, NULL);
     s->token_len = 0; s->state = STATE_GET_COMMAND_TOKEN;
 }
 
@@ -755,30 +794,24 @@ static void emmc_sd_reset(struct srd_decoder_inst *di)
 static void emmc_sd_start(struct srd_decoder_inst *di)
 {
     struct emmc_sd_priv *s = (struct emmc_sd_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "emmc_sd");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "emmc_sd");
     emmc_init_ann_labels();
 }
 
 static void emmc_sd_decode(struct srd_decoder_inst *di)
 {
     struct emmc_sd_priv *s = (struct emmc_sd_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, CH_CLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(CH_CLK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int cmd_pin = c_decoder_get_pin(di, CH_CMD, samplenum);
+        int cmd_pin = c_pin(di, CH_CMD);
 
         if (s->state == STATE_GET_COMMAND_TOKEN) {
             if (s->token_len == 0 && cmd_pin != 0)
                 continue;
-            emmc_get_command_token(di, s, cmd_pin, samplenum);
+            emmc_get_command_token(di, s, cmd_pin, di_samplenum(di));
         } else if (s->state >= STATE_HANDLE_CMD0 && s->state <= STATE_HANDLE_CMD0 + 63) {
             int cmdidx = s->state - STATE_HANDLE_CMD0;
             switch (cmdidx) {
@@ -834,27 +867,27 @@ static void emmc_sd_decode(struct srd_decoder_inst *di)
         } else if (s->state == STATE_GET_RESPONSE_R1) {
             if (s->token_len == 0 && cmd_pin != 0)
                 continue;
-            emmc_handle_response_r1(di, s, cmd_pin, samplenum);
+            emmc_handle_response_r1(di, s, cmd_pin, di_samplenum(di));
         } else if (s->state == STATE_GET_RESPONSE_R1B) {
             if (s->token_len == 0 && cmd_pin != 0)
                 continue;
-            emmc_handle_response_r1b(di, s, cmd_pin, samplenum);
+            emmc_handle_response_r1b(di, s, cmd_pin, di_samplenum(di));
         } else if (s->state == STATE_GET_RESPONSE_R2) {
             if (s->token_len == 0 && cmd_pin != 0)
                 continue;
-            emmc_handle_response_r2(di, s, cmd_pin, samplenum);
+            emmc_handle_response_r2(di, s, cmd_pin, di_samplenum(di));
         } else if (s->state == STATE_GET_RESPONSE_R3) {
             if (s->token_len == 0 && cmd_pin != 0)
                 continue;
-            emmc_handle_response_r3(di, s, cmd_pin, samplenum);
+            emmc_handle_response_r3(di, s, cmd_pin, di_samplenum(di));
         } else if (s->state == STATE_GET_RESPONSE_R4) {
             if (s->token_len == 0 && cmd_pin != 0)
                 continue;
-            emmc_handle_response_r4(di, s, cmd_pin, samplenum);
+            emmc_handle_response_r4(di, s, cmd_pin, di_samplenum(di));
         } else if (s->state == STATE_GET_RESPONSE_R5) {
             if (s->token_len == 0 && cmd_pin != 0)
                 continue;
-            emmc_handle_response_r5(di, s, cmd_pin, samplenum);
+            emmc_handle_response_r5(di, s, cmd_pin, di_samplenum(di));
         }
     }
 }
@@ -913,6 +946,7 @@ struct srd_c_decoder emmc_sd_c_decoder = {
     .start = emmc_sd_start,
     .decode = emmc_sd_decode,
     .destroy = emmc_sd_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

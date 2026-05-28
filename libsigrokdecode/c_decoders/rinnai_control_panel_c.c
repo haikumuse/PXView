@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -105,11 +105,11 @@ static void rinnai_byte_append(struct srd_decoder_inst *di, rinnai_state *s,
 {
     char buf[8];
     snprintf(buf, sizeof(buf), "%02x", byte_val);
-    C_ANN_PUT(di, start, end, s->out_ann, ANN_BYTE, buf);
+    c_put(di, start, end, s->out_ann, ANN_BYTE, buf);
     /* Python output */
     unsigned char py_data[1];
     py_data[0] = byte_val;
-    c_decoder_put_proto(di, start, end, s->out_python, "BYTE", py_data, 1);
+    c_proto(di, start, end, s->out_python, "BYTE", C_U8(byte_val), C_END);
     rinnai_bits_reset(s);
     if (s->packet_start == (uint64_t)-1)
         s->packet_start = start;
@@ -127,7 +127,7 @@ static void rinnai_bytes_flush(struct srd_decoder_inst *di, rinnai_state *s, uin
                 pos += snprintf(pkt_buf + pos, sizeof(pkt_buf) - pos, ",");
             pos += snprintf(pkt_buf + pos, sizeof(pkt_buf) - pos, "%02x", s->bytes[i]);
         }
-        C_ANN_PUT(di, s->packet_start, end, s->out_ann, ANN_PACKET, pkt_buf);
+        c_put(di, s->packet_start, end, s->out_ann, ANN_PACKET, pkt_buf);
     }
     rinnai_bytes_reset(s);
 }
@@ -137,7 +137,7 @@ static void rinnai_bit_append(struct srd_decoder_inst *di, rinnai_state *s,
 {
     /* Render bit */
     char bit_str[2] = {bit ? '1' : '0', '\0'};
-    C_ANN_PUT(di, start, end, s->out_ann, ANN_BIT, bit_str);
+    c_put(di, start, end, s->out_ann, ANN_BIT, bit_str);
 
     /* Manage bytes */
     if (s->byte_start == (uint64_t)-1)
@@ -167,14 +167,14 @@ static void rinnai_reset(struct srd_decoder_inst *di)
 static void rinnai_start(struct srd_decoder_inst *di)
 {
     rinnai_state *s = (rinnai_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "rinnai");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "rinnai");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "rinnai");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "rinnai");
+    s->samplerate = c_samplerate(di);
 
-    const char *inv = c_decoder_get_option_string(di, "invert", "no");
+    const char *inv = c_opt_str(di, "invert", "no");
     s->invert = (strcmp(inv, "yes") == 0) ? 1 : 0;
 
-    const char *bn = c_decoder_get_option_string(di, "bit_numbering", "lsb");
+    const char *bn = c_opt_str(di, "bit_numbering", "lsb");
     s->lsb_first = (strcmp(bn, "lsb") == 0) ? 1 : 0;
 
     s->byte_start = (uint64_t)-1;
@@ -191,84 +191,71 @@ static void rinnai_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void rinnai_decode(struct srd_decoder_inst *di)
 {
     rinnai_state *s = (rinnai_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate == 0) return;
     }
 
     while (1) {
-        srd_cond_builder *cb;
         switch (s->state) {
 
         case STATE_INITIAL: {
-            cb = c_cond_new();
-            c_cond_low(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->fall = samplenum;
+            ret = c_wait(di, CW_L(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->fall = di_samplenum(di);
             s->state = STATE_IDLE;
             break;
         }
 
         case STATE_IDLE: {
-            cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->rise = samplenum;
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->rise = di_samplenum(di);
             s->state = STATE_PRE;
             break;
         }
 
         case STATE_PRE: {
-            cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            double time_us = rinnai_samples_to_us(s, samplenum - s->rise);
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            double time_us = rinnai_samples_to_us(s, di_samplenum(di) - s->rise);
             if (time_us > RESET_RATIO_MIN * SYMBOL_DURATION_US &&
                 time_us < RESET_RATIO_MAX * SYMBOL_DURATION_US) {
                 char buf[32];
                 snprintf(buf, sizeof(buf), "Reset: %d", (int)time_us);
-                C_ANN_PUT(di, s->rise, samplenum, s->out_ann, ANN_RESET, buf);
+                c_put(di, s->rise, di_samplenum(di), s->out_ann, ANN_RESET, buf);
                 s->state = STATE_SYMBOL;
-                rinnai_bytes_flush(di, s, samplenum);
+                rinnai_bytes_flush(di, s, di_samplenum(di));
             } else {
                 char buf[32];
                 snprintf(buf, sizeof(buf), "Bad pre: %d", (int)time_us);
-                C_ANN_PUT(di, s->rise, samplenum, s->out_ann, ANN_WARNING, buf);
+                c_put(di, s->rise, di_samplenum(di), s->out_ann, ANN_WARNING, buf);
                 s->state = STATE_IDLE;
-                rinnai_bytes_flush(di, s, samplenum);
+                rinnai_bytes_flush(di, s, di_samplenum(di));
             }
-            s->fall = samplenum;
+            s->fall = di_samplenum(di);
             break;
         }
 
         case STATE_SYMBOL: {
             /* Wait for rising edge */
-            cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
-            s->rise = samplenum;
+            ret = c_wait(di, CW_R(0), CW_END);
+            if (ret != SRD_OK)
+                return;
+            s->rise = di_samplenum(di);
 
             /* Wait for falling edge */
-            cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            if (ret != SRD_OK) return;
+            ret = c_wait(di, CW_F(0), CW_END);
+            if (ret != SRD_OK)
+                return;
 
             double timeA = rinnai_samples_to_us(s, s->rise - s->fall);
-            double timeB = rinnai_samples_to_us(s, samplenum - s->rise);
+            double timeB = rinnai_samples_to_us(s, di_samplenum(di) - s->rise);
 
             if (timeA > SHORT_RATIO_MIN * SYMBOL_DURATION_US &&
                 timeA < SHORT_RATIO_MAX * SYMBOL_DURATION_US &&
@@ -276,32 +263,32 @@ static void rinnai_decode(struct srd_decoder_inst *di)
                 timeB < LONG_RATIO_MAX * SYMBOL_DURATION_US) {
                 /* Short A + Long B = bit 1 (or 0 if inverted) */
                 int bit = s->invert ? 0 : 1;
-                rinnai_bit_append(di, s, s->fall, samplenum, bit);
+                rinnai_bit_append(di, s, s->fall, di_samplenum(di), bit);
             } else if (timeB > SHORT_RATIO_MIN * SYMBOL_DURATION_US &&
                        timeB < SHORT_RATIO_MAX * SYMBOL_DURATION_US &&
                        timeA > LONG_RATIO_MIN * SYMBOL_DURATION_US &&
                        timeA < LONG_RATIO_MAX * SYMBOL_DURATION_US) {
                 /* Long A + Short B = bit 0 (or 1 if inverted) */
                 int bit = s->invert ? 1 : 0;
-                rinnai_bit_append(di, s, s->fall, samplenum, bit);
+                rinnai_bit_append(di, s, s->fall, di_samplenum(di), bit);
             } else if (timeB > RESET_RATIO_MIN * SYMBOL_DURATION_US &&
                        timeB < RESET_RATIO_MAX * SYMBOL_DURATION_US) {
                 /* Reset detected in B phase */
                 rinnai_bits_reset(s);
                 char buf[32];
                 snprintf(buf, sizeof(buf), "Reset: %d", (int)timeB);
-                C_ANN_PUT(di, s->rise, samplenum, s->out_ann, ANN_RESET, buf);
+                c_put(di, s->rise, di_samplenum(di), s->out_ann, ANN_RESET, buf);
                 rinnai_bytes_flush(di, s, s->fall);
             } else {
                 /* Bad bit */
                 rinnai_bits_reset(s);
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Bad Bit: %d,%d", (int)timeA, (int)timeB);
-                C_ANN_PUT(di, s->fall, samplenum, s->out_ann, ANN_WARNING, buf);
+                c_put(di, s->fall, di_samplenum(di), s->out_ann, ANN_WARNING, buf);
                 s->state = STATE_IDLE;
                 rinnai_bytes_flush(di, s, s->fall);
             }
-            s->fall = samplenum;
+            s->fall = di_samplenum(di);
             break;
         }
 
@@ -347,6 +334,7 @@ struct srd_c_decoder rinnai_control_panel_c_decoder = {
     .metadata = rinnai_metadata,
     .decode = rinnai_decode,
     .destroy = rinnai_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

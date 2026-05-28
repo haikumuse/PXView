@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -61,60 +61,58 @@ static const char *cfp_lookup_module_id(uint8_t id)
     return "Reserved";
 }
 
-static void cfp_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void cfp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     cfp_state *s = (cfp_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "DATA") != 0) return;
-    if (!data || data_len < 8) return;
+    if (!fields || n_fields < 8) return;
 
-    int clause45 = data[0];
-    int clause45_addr = (data[1] << 8) | data[2];
-    int is_read = data[3];
-    int reg = (data[6] << 8) | data[7];
+    int clause45 = fields[0].u8;
+    int clause45_addr = (fields[1].u8 << 8) | fields[2].u8;
+    int is_read = fields[3].u8;
+    int reg = (fields[6].u8 << 8) | fields[7].u8;
 
     (void)clause45;
 
     if (!is_read) return;
 
     if (clause45_addr >= 0x8000 && clause45_addr <= 0x807F) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "CFP NVR 1: Basic ID register", "NVR1");
         if (clause45_addr == 0x8000) {
             const char *mod_name = cfp_lookup_module_id((uint8_t)reg);
             char buf[128];
             snprintf(buf, sizeof(buf), "Module identifier: %s", mod_name);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_DECODE, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_DECODE, buf);
         }
     } else if (clause45_addr >= 0x8080 && clause45_addr <= 0x80FF) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "CFP NVR 2: Extended ID register", "NVR2");
     } else if (clause45_addr >= 0x8100 && clause45_addr <= 0x817F) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "CFP NVR 3: Network lane specific register", "NVR3");
     } else if (clause45_addr >= 0x8180 && clause45_addr <= 0x81FF) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "CFP NVR 4", "NVR4");
     } else if (clause45_addr >= 0x8400 && clause45_addr <= 0x847F) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "Vendor NVR 1: Vendor data register", "V-NVR1");
     } else if (clause45_addr >= 0x8480 && clause45_addr <= 0x84FF) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "Vendor NVR 2: Vendor data register", "V-NVR2");
     } else if (clause45_addr >= 0x8800 && clause45_addr <= 0x887F) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "User NVR 1: User data register", "U-NVR1");
     } else if (clause45_addr >= 0x8880 && clause45_addr <= 0x88FF) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "User NVR 2: User data register", "U-NVR2");
     } else if (clause45_addr >= 0xA000 && clause45_addr <= 0xA07F) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "CFP Module VR 1: CFP Module level control and DDM register", "Mod-VR1");
     } else if (clause45_addr >= 0xA080 && clause45_addr <= 0xA0FF) {
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_REGISTER,
                   "MLG VR 1: MLG Management Interface register", "MLG-VR1");
     }
 }
@@ -131,7 +129,7 @@ static void cfp_reset(struct srd_decoder_inst *di)
 static void cfp_start(struct srd_decoder_inst *di)
 {
     cfp_state *s = (cfp_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "cfp");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "cfp");
 }
 
 static void cfp_decode(struct srd_decoder_inst *di)
@@ -176,7 +174,8 @@ struct srd_c_decoder cfp_c_decoder = {
     .start = cfp_start,
     .decode = cfp_decode,
     .destroy = cfp_destroy,
-    .recv_proto = cfp_recv_proto,
+    .decode_upper = cfp_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

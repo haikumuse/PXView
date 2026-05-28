@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2022 Gerhard Sittig <gerhard.sittig@gmx.net>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -139,9 +139,9 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
         sbus_get_ss_es_bits(s, 8, &ss, &es, bits);
         uint32_t value = bitpack_lsb(bits, 8);
         snprintf(buf, sizeof(buf), "0x%02x", value);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_HEADER, buf);
+        c_put(di, ss, es, s->out_ann, ANN_HEADER, buf);
         if (value != 0x0f) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Unexpected header", "Header");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, "Unexpected header", "Header");
         }
         s->sent_fields++;
     }
@@ -154,12 +154,12 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
         sbus_get_ss_es_bits(s, 11, &ss, &es, bits);
         uint32_t value = bitpack_lsb(bits, 11);
         snprintf(buf, sizeof(buf), "%d", value);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_PROPORTIONAL, buf);
+        c_put(di, ss, es, s->out_ann, ANN_PROPORTIONAL, buf);
         if ((int)value < s->prop_val_min) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Low proportional value", "Low value", "Low");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, "Low proportional value", "Low value", "Low");
         }
         if ((int)value > s->prop_val_max) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "High proportional value", "High value", "High");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, "High proportional value", "High value", "High");
         }
         s->sent_fields++;
     }
@@ -172,7 +172,7 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
         sbus_get_ss_es_bits(s, 1, &ss, &es, bits);
         uint32_t value = bitpack_lsb(bits, 1);
         snprintf(buf, sizeof(buf), "%d", value);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_DIGITAL, buf);
+        c_put(di, ss, es, s->out_ann, ANN_DIGITAL, buf);
         s->sent_fields++;
     }
 
@@ -186,7 +186,7 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
         snprintf(buf, sizeof(buf), "%d", value);
         int idx = s->sent_fields - (upto - 2);
         int cls = ANN_FRAME_LOST + idx;
-        C_ANN_PUT(di, ss, es, s->out_ann, cls, buf);
+        c_put(di, ss, es, s->out_ann, cls, buf);
         s->sent_fields++;
     }
 
@@ -198,7 +198,7 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
         sbus_get_ss_es_bits(s, 4, &ss, &es, bits);
         uint32_t value = bitpack_lsb(bits, 4);
         if (value != 0x0) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Unexpected MSB flags", "Flags");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, "Unexpected MSB flags", "Flags");
         }
         s->sent_fields++;
     }
@@ -211,9 +211,9 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
         sbus_get_ss_es_bits(s, 8, &ss, &es, bits);
         uint32_t value = bitpack_lsb(bits, 8);
         snprintf(buf, sizeof(buf), "0x%02x", value);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_FOOTER, buf);
+        c_put(di, ss, es, s->out_ann, ANN_FOOTER, buf);
         if (value != 0x00) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Unexpected footer", "Footer");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, "Unexpected footer", "Footer");
         }
         s->sent_fields++;
     }
@@ -239,16 +239,16 @@ static void sbus_handle_idle(struct srd_decoder_inst *di, sbus_state *s, uint64_
         uint64_t warn_es = s->bit_es[s->num_bits - 1];
         switch (s->fail_type) {
         case FAIL_INVALID_DATA:
-            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Invalid data", "Invalid");
+            c_put(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Invalid data", "Invalid");
             break;
         case FAIL_UNPROCESSED:
-            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Unprocessed data bits", "Unprocessed");
+            c_put(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Unprocessed data bits", "Unprocessed");
             break;
         case FAIL_BREAK:
-            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "BREAK condition", "Break");
+            c_put(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "BREAK condition", "Break");
             break;
         case FAIL_EXCESS:
-            C_ANN_PUT(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Excess data bits", "Excess");
+            c_put(di, warn_ss, warn_es, s->out_ann, ANN_WARN, "Excess data bits", "Excess");
             break;
         default:
             break;
@@ -266,21 +266,19 @@ static void sbus_handle_break(struct srd_decoder_inst *di, sbus_state *s, uint64
     /* Re-use idle logic for annotated bits warning */
     sbus_handle_idle(di, s, 0, 0);
     /* Annotate BREAK as warning */
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "BREAK condition", "Break");
+    c_put(di, ss, es, s->out_ann, ANN_WARN, "BREAK condition", "Break");
     sbus_reset_state(s);
 }
 
-static void sbus_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void sbus_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     sbus_state *s = (sbus_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
     if (strcmp(cmd, "DATA") == 0) {
-        if (data_len < 1) return;
-        uint8_t byte_val = data[0];
+        if (n_fields < 1) return;
+        uint8_t byte_val = fields[0].u8;
         /* Expand byte to 8 bits LSB-first */
         for (int i = 0; i < 8; i++) {
             if (s->num_bits < 256) {
@@ -291,7 +289,7 @@ static void sbus_recv_proto(struct srd_decoder_inst *di,
             }
         }
     } else if (strcmp(cmd, "FRAME") == 0) {
-        if (data_len >= 3 && (data[1] == 0 || data[2] == 0)) {
+        if (n_fields >= 3 && (fields[1].u8 == 0 || fields[2].u8 == 0)) {
             s->failed = 1;
             s->fail_type = FAIL_INVALID_DATA;
         }
@@ -318,11 +316,11 @@ static void sbus_reset(struct srd_decoder_inst *di)
 static void sbus_start(struct srd_decoder_inst *di)
 {
     sbus_state *s = (sbus_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sbus_futaba");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "sbus_futaba");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sbus_futaba");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "sbus_futaba");
 
-    s->prop_val_min = (int)c_decoder_get_option_int(di, "prop_val_min", 0);
-    s->prop_val_max = (int)c_decoder_get_option_int(di, "prop_val_max", 2047);
+    s->prop_val_min = (int)c_opt_int(di, "prop_val_min", 0);
+    s->prop_val_max = (int)c_opt_int(di, "prop_val_max", 2047);
 }
 
 static void sbus_decode(struct srd_decoder_inst *di)
@@ -367,7 +365,8 @@ struct srd_c_decoder sbus_futaba_c_decoder = {
     .start = sbus_start,
     .decode = sbus_decode,
     .destroy = sbus_destroy,
-    .recv_proto = sbus_recv_proto,
+    .decode_upper = sbus_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

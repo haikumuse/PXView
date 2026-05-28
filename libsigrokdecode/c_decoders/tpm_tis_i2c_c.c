@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv3+
  *
@@ -91,7 +91,7 @@ static void tpm_tis_output_transaction(struct srd_decoder_inst *di,
     snprintf(buf, sizeof(buf), "%s %02X %s %s", op_long, s->tis_addr, arrow, hex);
     char buf2[64];
     snprintf(buf2, sizeof(buf2), "%s %02X", op_short, s->tis_addr);
-    C_ANN_PUT(di, s->addr_ss, s->data_es, s->out_ann, ANN_TRANSACTION, buf, buf2);
+    c_put(di, s->addr_ss, s->data_es, s->out_ann, ANN_TRANSACTION, buf, buf2);
 
     /* Output PROTO for downstream decoders */
     if (s->out_proto >= 0) {
@@ -100,21 +100,19 @@ static void tpm_tis_output_transaction(struct srd_decoder_inst *di,
         proto_data[1] = s->tis_addr;
         int dlen = s->data_len < 256 ? s->data_len : 256;
         memcpy(proto_data + 2, s->data, dlen);
-        c_decoder_put_proto(di, s->addr_ss, s->data_es, s->out_proto,
-            "TRANSACTION", proto_data, 2 + dlen);
+        c_proto(di, s->addr_ss, s->data_es, s->out_proto,
+            "TRANSACTION", C_U8(s->reading ? 1 : 0), C_U8(s->tis_addr), C_BYTES(s->data, dlen), C_END);
     }
 }
 
 /* ===== recv_proto ===== */
-static void tpm_tis_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void tpm_tis_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     tpm_tis_state *s = (tpm_tis_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;
     s->es = end_sample;
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "BITS") == 0) return;
 
@@ -145,13 +143,13 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di,
             s->tis_addr = databyte;
             char buf[16];
             snprintf(buf, sizeof(buf), "%02X", databyte);
-            C_ANN_PUT(di, s->addr_ss, end_sample, s->out_ann, ANN_ADDRESS, buf);
+            c_put(di, s->addr_ss, end_sample, s->out_ann, ANN_ADDRESS, buf);
             s->state = TPM_TIS_REG_ADDR_ACK;
         } else {
             /* Unexpected command, reset with warning */
             char buf[128];
             snprintf(buf, sizeof(buf), "got I2C %s but expected DATA WRITE", cmd);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;
         }
         break;
@@ -181,7 +179,7 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di,
         } else {
             char buf[128];
             snprintf(buf, sizeof(buf), "got I2C %s but expected START REPEAT, STOP, or DATA WRITE", cmd);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;
         }
         break;
@@ -193,7 +191,7 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di,
         } else {
             char buf[128];
             snprintf(buf, sizeof(buf), "got I2C %s but expected ADDRESS READ", cmd);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;
         }
         break;
@@ -219,7 +217,7 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di,
             int pos = 0;
             for (int i = 0; i < s->data_len && pos < (int)sizeof(hex) - 4; i++)
                 pos += snprintf(hex + pos, sizeof(hex) - pos, "%02X", s->data[i]);
-            C_ANN_PUT(di, s->data_ss, s->data_es, s->out_ann, ANN_DATA_READ, hex);
+            c_put(di, s->data_ss, s->data_es, s->out_ann, ANN_DATA_READ, hex);
             tpm_tis_output_transaction(di, s);
             s->state = TPM_TIS_IDLE;
         } else {
@@ -245,13 +243,13 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di,
             int pos = 0;
             for (int i = 0; i < s->data_len && pos < (int)sizeof(hex) - 4; i++)
                 pos += snprintf(hex + pos, sizeof(hex) - pos, "%02X", s->data[i]);
-            C_ANN_PUT(di, s->data_ss, s->data_es, s->out_ann, ANN_DATA_WRITE, hex);
+            c_put(di, s->data_ss, s->data_es, s->out_ann, ANN_DATA_WRITE, hex);
             tpm_tis_output_transaction(di, s);
             s->state = TPM_TIS_IDLE;
         } else {
             char buf[128];
             snprintf(buf, sizeof(buf), "got I2C %s but expected DATA WRITE or STOP", cmd);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;
         }
         break;
@@ -272,8 +270,8 @@ static void tpm_tis_reset(struct srd_decoder_inst *di)
 static void tpm_tis_start(struct srd_decoder_inst *di)
 {
     tpm_tis_state *s = (tpm_tis_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tpm_tis_i2c");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "tpm-tis");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tpm_tis_i2c");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "tpm-tis");
 }
 
 static void tpm_tis_decode(struct srd_decoder_inst *di)
@@ -319,7 +317,8 @@ struct srd_c_decoder tpm_tis_i2c_c_decoder = {
     .start = tpm_tis_start,
     .decode = tpm_tis_decode,
     .destroy = tpm_tis_destroy,
-    .recv_proto = tpm_tis_recv_proto,
+    .decode_upper = tpm_tis_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== 导出函数 ===== */

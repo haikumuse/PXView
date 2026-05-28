@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv3+
  *
@@ -54,16 +54,16 @@ typedef struct {
 } tpm_tis_state;
 
 /* ===== SPI DATA packet helpers ===== */
-static inline int spi_proto_get_mosi(const unsigned char *data, uint64_t data_len, uint8_t *mosi_val)
+static inline int spi_proto_get_mosi(const c_field *fields, int n_fields, uint8_t *mosi_val)
 {
-    if (data_len < 17 || !(data[0] & 1)) { *mosi_val = 0; return 0; }
-    *mosi_val = (uint8_t)data[1]; return 1;
+    if (n_fields < 17 || !(fields[0].u8 & 1)) { *mosi_val = 0; return 0; }
+    *mosi_val = (uint8_t)fields[1].u8; return 1;
 }
 
-static inline int spi_proto_get_miso(const unsigned char *data, uint64_t data_len, uint8_t *miso_val)
+static inline int spi_proto_get_miso(const c_field *fields, int n_fields, uint8_t *miso_val)
 {
-    if (data_len < 17 || !((data[0] >> 1) & 1)) { *miso_val = 0; return 0; }
-    *miso_val = (uint8_t)data[9]; return 1;
+    if (n_fields < 17 || !((fields[0].u8 >> 1) & 1)) { *miso_val = 0; return 0; }
+    *miso_val = (uint8_t)fields[9].u8; return 1;
 }
 
 /* ===== Static data ===== */
@@ -97,16 +97,16 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
     char rwl_buf[32];
     char rw_char = s->reading ? 'R' : 'W';
     snprintf(rwl_buf, sizeof(rwl_buf), "%c %d", rw_char, s->length);
-    C_ANN_PUT(di, s->rwl_ss, s->rwl_es, s->out_ann, ANN_RW_LENGTH, rwl_buf);
+    c_put(di, s->rwl_ss, s->rwl_es, s->out_ann, ANN_RW_LENGTH, rwl_buf);
 
     /* Address annotation */
     char addr_buf[32];
     snprintf(addr_buf, sizeof(addr_buf), "%06X", s->addr);
-    C_ANN_PUT(di, s->addr2_ss, s->addr0_es, s->out_ann, ANN_ADDRESS, addr_buf);
+    c_put(di, s->addr2_ss, s->addr0_es, s->out_ann, ANN_ADDRESS, addr_buf);
 
     /* Wait State annotation */
     if (s->wait_state) {
-        C_ANN_PUT(di, s->addr0_es, s->data_ss, s->out_ann, ANN_WAIT_STATE, "wait state");
+        c_put(di, s->addr0_es, s->data_ss, s->out_ann, ANN_WAIT_STATE, "wait state");
     }
 
     /* Data annotation */
@@ -115,7 +115,7 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
         int pos = 0;
         for (int i = 0; i < s->data_count && pos < (int)sizeof(data_str) - 3; i++)
             pos += snprintf(data_str + pos, sizeof(data_str) - pos, "%02X", s->data[i]);
-        C_ANN_PUT(di, s->data_ss, s->data_es, s->out_ann, ANN_DATA, data_str);
+        c_put(di, s->data_ss, s->data_es, s->out_ann, ANN_DATA, data_str);
     }
 
     /* Transaction annotation */
@@ -132,7 +132,7 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
         } else {
             snprintf(tx_buf, sizeof(tx_buf), "%s %X", op_long, s->addr);
         }
-        C_ANN_PUT(di, s->rwl_ss, s->data_es, s->out_ann, ANN_TRANSACTION, tx_buf);
+        c_put(di, s->rwl_ss, s->data_es, s->out_ann, ANN_TRANSACTION, tx_buf);
     }
 
     /* Output python protocol data */
@@ -145,15 +145,13 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
         py_data[4] = (unsigned char)s->data_count;
         if (s->data_count > 0)
             memcpy(py_data + 5, s->data, s->data_count);
-        c_decoder_put_python(di, s->rwl_ss, s->data_es, s->out_python,
-                             "TRANSACTION", py_data, 5 + s->data_count);
+        c_proto(di, s->rwl_ss, s->data_es, s->out_python,
+                             "TRANSACTION", C_U8(s->reading), C_U8(s->addr >> 16), C_U8(s->addr >> 8), C_U8(s->addr), C_U8(s->data_count), C_BYTES(s->data, s->data_count), C_END);
     }
 }
 
 /* ===== recv_proto ===== */
-static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     tpm_tis_state *s = (tpm_tis_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -162,14 +160,14 @@ static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di,
         return;
 
     uint8_t mosi, miso;
-    spi_proto_get_mosi(data, data_len, &mosi);
-    spi_proto_get_miso(data, data_len, &miso);
+    spi_proto_get_mosi(fields, n_fields, &mosi);
+    spi_proto_get_miso(fields, n_fields, &miso);
 
     switch (s->state) {
     case TIS_GET_RW_LENGTH: {
         /* Check duplex warning: MISO should be 0 */
         if (miso != 0) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
         }
 
         s->reading = (mosi & 0x80) == 0x80 ? 1 : 0;
@@ -186,7 +184,7 @@ static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di,
     case TIS_GET_ADDR_BYTE2: {
         /* Check duplex warning */
         if (miso != 0) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
         }
 
         s->addr_bytes[2] = mosi;
@@ -199,7 +197,7 @@ static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di,
     case TIS_GET_ADDR_BYTE1: {
         /* Check duplex warning */
         if (miso != 0) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
         }
 
         s->addr_bytes[1] = mosi;
@@ -215,7 +213,7 @@ static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di,
         /* Check duplex warning (miso high at end of addr0 is allowed for wait) */
         s->wait_state = (miso == 0) ? 1 : 0;
         if (miso != 0 && miso != 1) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
         }
 
         s->addr0_ss = start_sample;
@@ -239,7 +237,7 @@ static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di,
 
         /* Check duplex warning */
         if (cross_byte != 0) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, "unexpected duplex operation");
         }
 
         if (s->data_count == 0)
@@ -281,8 +279,8 @@ static void tpm_tis_spi_reset(struct srd_decoder_inst *di)
 static void tpm_tis_spi_start(struct srd_decoder_inst *di)
 {
     tpm_tis_state *s = (tpm_tis_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "tpm_tis_spi");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "tpm-tis");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "tpm_tis_spi");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PYTHON, "tpm-tis");
 }
 
 static void tpm_tis_spi_decode(struct srd_decoder_inst *di)
@@ -328,7 +326,8 @@ struct srd_c_decoder tpm_tis_spi_c_decoder = {
     .start = tpm_tis_spi_start,
     .decode = tpm_tis_spi_decode,
     .destroy = tpm_tis_spi_destroy,
-    .recv_proto = tpm_tis_spi_recv_proto,
+    .decode_upper = tpm_tis_spi_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== Export functions ===== */

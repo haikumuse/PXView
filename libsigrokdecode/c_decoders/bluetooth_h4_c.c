@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Hattori, Hiroki <seagull.kamome@gmail.com>
@@ -153,7 +153,7 @@ static void bluetooth_h4_output_packet(struct srd_decoder_inst *di,
         } else {
             snprintf(t, sizeof(t), "%s: CMD (incomplete)", dir);
         }
-        C_ANN_PUT(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 0, t);
+        c_put(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 0, t);
     } else if (s->pkt_type[rxtx] == 0x02) {
         /* ACL Data */
         if (len >= 5) {
@@ -163,7 +163,7 @@ static void bluetooth_h4_output_packet(struct srd_decoder_inst *di,
         } else {
             snprintf(t, sizeof(t), "%s: ACL (incomplete)", dir);
         }
-        C_ANN_PUT(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 1, t);
+        c_put(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 1, t);
     } else if (s->pkt_type[rxtx] == 0x03) {
         /* SCO Data */
         if (len >= 4) {
@@ -172,7 +172,7 @@ static void bluetooth_h4_output_packet(struct srd_decoder_inst *di,
         } else {
             snprintf(t, sizeof(t), "%s: SCO (incomplete)", dir);
         }
-        C_ANN_PUT(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 2, t);
+        c_put(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 2, t);
     } else if (s->pkt_type[rxtx] == 0x04) {
         /* HCI Event */
         if (len >= 3) {
@@ -181,7 +181,7 @@ static void bluetooth_h4_output_packet(struct srd_decoder_inst *di,
         } else {
             snprintf(t, sizeof(t), "%s: EVENT (incomplete)", dir);
         }
-        C_ANN_PUT(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 3, t);
+        c_put(di, s->ss_block[rxtx], s->es, s->out_ann, base_ann + 3, t);
     }
 
     /* Reset state */
@@ -191,9 +191,7 @@ static void bluetooth_h4_output_packet(struct srd_decoder_inst *di,
     s->ss_block[rxtx] = 0;
 }
 
-static void bluetooth_h4_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void bluetooth_h4_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     bluetooth_h4_state *s = (bluetooth_h4_state *)c_decoder_get_private(di);
     if (!s)
@@ -202,11 +200,11 @@ static void bluetooth_h4_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    if (data_len < 2)
+    if (n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];
-    int rxtx = data[1]; /* 0=RX, 1=TX */
+    uint8_t byte_val = fields[0].u8;
+    int rxtx = fields[1].u8; /* 0=RX, 1=TX */
 
     if (rxtx != RX && rxtx != TX)
         rxtx = RX;
@@ -219,7 +217,7 @@ static void bluetooth_h4_recv_proto(struct srd_decoder_inst *di,
             /* Invalid packet type - junk */
             char t[32];
             snprintf(t, sizeof(t), "%02X ", byte_val);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, 6 + rxtx * 9, t);
+            c_put(di, start_sample, end_sample, s->out_ann, 6 + rxtx * 9, t);
             return;
         }
         s->pkt_type[rxtx] = byte_val;
@@ -288,8 +286,8 @@ static void bluetooth_h4_reset(struct srd_decoder_inst *di)
 static void bluetooth_h4_start(struct srd_decoder_inst *di)
 {
     bluetooth_h4_state *s = (bluetooth_h4_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "bluetooth_h4");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "bluetooth_h4");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "bluetooth_h4");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "bluetooth_h4");
 }
 
 static void bluetooth_h4_decode(struct srd_decoder_inst *di)
@@ -334,7 +332,8 @@ struct srd_c_decoder bluetooth_h4_c_decoder = {
     .start = bluetooth_h4_start,
     .decode = bluetooth_h4_decode,
     .destroy = bluetooth_h4_destroy,
-    .recv_proto = bluetooth_h4_recv_proto,
+    .decode_upper = bluetooth_h4_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

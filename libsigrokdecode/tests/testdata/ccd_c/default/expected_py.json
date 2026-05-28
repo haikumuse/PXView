@@ -1,11 +1,11 @@
 {
 	"decoder": "ccd",
 	"samplerate": 1000000,
-	"num_annotations": 48,
+	"num_annotations": 99,
 	"annotations": [
 		{
 			"start_sample": 1.8446744073709552e+19,
-			"end_sample": 1535,
+			"end_sample": 1,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -15,8 +15,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1536,
-			"end_sample": 1663,
+			"start_sample": 2,
+			"end_sample": 129,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -26,8 +26,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1664,
-			"end_sample": 1791,
+			"start_sample": 130,
+			"end_sample": 257,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -37,8 +37,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1792,
-			"end_sample": 1919,
+			"start_sample": 258,
+			"end_sample": 385,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -48,19 +48,8 @@
 			]
 		}, 
 		{
-			"start_sample": 1920,
-			"end_sample": 2047,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 2048,
-			"end_sample": 2175,
+			"start_sample": 386,
+			"end_sample": 513,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -70,8 +59,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2176,
-			"end_sample": 2303,
+			"start_sample": 514,
+			"end_sample": 641,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -81,19 +70,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2304,
-			"end_sample": 2431,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 2432,
-			"end_sample": 2559,
+			"start_sample": 642,
+			"end_sample": 769,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -103,8 +81,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2560,
-			"end_sample": 2687,
+			"start_sample": 770,
+			"end_sample": 897,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -114,19 +92,52 @@
 			]
 		}, 
 		{
-			"start_sample": 1664,
-			"end_sample": 2688,
+			"start_sample": 898,
+			"end_sample": 1025,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1026,
+			"end_sample": 1153,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 130,
+			"end_sample": 1154,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
-				"0x24", 
-				"24", 
-				"24"
+				"0x0", 
+				"0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2688,
-			"end_sample": 2815,
+			"start_sample": 2,
+			"end_sample": 1282,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 1154,
+			"end_sample": 1281,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -136,8 +147,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2816,
-			"end_sample": 2943,
+			"start_sample": 1220,
+			"end_sample": 1347,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -147,8 +158,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2944,
-			"end_sample": 3071,
+			"start_sample": 1348,
+			"end_sample": 1475,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -158,19 +169,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3072,
-			"end_sample": 3199,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 3200,
-			"end_sample": 3327,
+			"start_sample": 1476,
+			"end_sample": 1603,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -180,8 +180,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3328,
-			"end_sample": 3455,
+			"start_sample": 1604,
+			"end_sample": 1731,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -191,30 +191,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3456,
-			"end_sample": 3583,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 3584,
-			"end_sample": 3711,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 3712,
-			"end_sample": 3839,
+			"start_sample": 1732,
+			"end_sample": 1859,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -224,8 +202,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3840,
-			"end_sample": 3967,
+			"start_sample": 1860,
+			"end_sample": 1987,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -235,19 +213,63 @@
 			]
 		}, 
 		{
-			"start_sample": 2944,
-			"end_sample": 3968,
+			"start_sample": 1988,
+			"end_sample": 2115,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2116,
+			"end_sample": 2243,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2244,
+			"end_sample": 2371,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 1348,
+			"end_sample": 2372,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
-				"0x32", 
-				"32", 
-				"32"
+				"0x0", 
+				"0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3968,
-			"end_sample": 4095,
+			"start_sample": 1220,
+			"end_sample": 2500,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 2372,
+			"end_sample": 2499,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -257,8 +279,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4096,
-			"end_sample": 4223,
+			"start_sample": 2438,
+			"end_sample": 2565,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -268,8 +290,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4224,
-			"end_sample": 4351,
+			"start_sample": 2566,
+			"end_sample": 2693,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -279,8 +301,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4352,
-			"end_sample": 4479,
+			"start_sample": 2694,
+			"end_sample": 2821,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -290,19 +312,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4480,
-			"end_sample": 4607,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 4608,
-			"end_sample": 4735,
+			"start_sample": 2822,
+			"end_sample": 2949,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -312,19 +323,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4736,
-			"end_sample": 4863,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 4864,
-			"end_sample": 4991,
+			"start_sample": 2950,
+			"end_sample": 3077,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -334,8 +334,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4992,
-			"end_sample": 5119,
+			"start_sample": 3078,
+			"end_sample": 3205,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -345,8 +345,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5120,
-			"end_sample": 5247,
+			"start_sample": 3206,
+			"end_sample": 3333,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -356,19 +356,52 @@
 			]
 		}, 
 		{
-			"start_sample": 4224,
-			"end_sample": 5248,
+			"start_sample": 3334,
+			"end_sample": 3461,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3462,
+			"end_sample": 3589,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2566,
+			"end_sample": 3590,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
-				"0x14", 
-				"14", 
-				"14"
+				"0x0", 
+				"0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 5248,
-			"end_sample": 5375,
+			"start_sample": 2438,
+			"end_sample": 3718,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 3590,
+			"end_sample": 3717,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -378,8 +411,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5376,
-			"end_sample": 5503,
+			"start_sample": 3656,
+			"end_sample": 3783,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -389,8 +422,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5504,
-			"end_sample": 5631,
+			"start_sample": 3784,
+			"end_sample": 3911,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -400,19 +433,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5632,
-			"end_sample": 5759,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 5760,
-			"end_sample": 5887,
+			"start_sample": 3912,
+			"end_sample": 4039,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -422,19 +444,8 @@
 			]
 		}, 
 		{
-			"start_sample": 5888,
-			"end_sample": 6015,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 6016,
-			"end_sample": 6143,
+			"start_sample": 4040,
+			"end_sample": 4167,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -444,30 +455,8 @@
 			]
 		}, 
 		{
-			"start_sample": 6144,
-			"end_sample": 6271,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 6272,
-			"end_sample": 6399,
-			"ann_class": 0,
-			"ann_type": 7,
-			"texts": [
-				"1", 
-				"1", 
-				"1"
-			]
-		}, 
-		{
-			"start_sample": 6400,
-			"end_sample": 6527,
+			"start_sample": 4168,
+			"end_sample": 4295,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -477,19 +466,74 @@
 			]
 		}, 
 		{
-			"start_sample": 5504,
-			"end_sample": 6528,
+			"start_sample": 4296,
+			"end_sample": 4423,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4424,
+			"end_sample": 4551,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4552,
+			"end_sample": 4679,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4680,
+			"end_sample": 4807,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3784,
+			"end_sample": 4808,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
-				"0x6a", 
-				"6a", 
-				"6a"
+				"0x0", 
+				"0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 6528,
-			"end_sample": 6655,
+			"start_sample": 3656,
+			"end_sample": 4936,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 4808,
+			"end_sample": 4935,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -499,33 +543,553 @@
 			]
 		}, 
 		{
-			"start_sample": 1536,
-			"end_sample": 7872,
-			"ann_class": 2,
-			"ann_type": 9,
+			"start_sample": 4874,
+			"end_sample": 5001,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"Busy", 
-				"Bsy", 
-				"B"
+				"Start bit", 
+				"Start", 
+				"S"
 			]
 		}, 
 		{
-			"start_sample": 1536,
-			"end_sample": 7872,
-			"ann_class": 5,
-			"ann_type": 12,
+			"start_sample": 5002,
+			"end_sample": 5129,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"Speed: 20 km/h, 50 mph", 
-				"20km/h"
+				"0", 
+				"0", 
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1536,
-			"end_sample": 7872,
-			"ann_class": 6,
-			"ann_type": 13,
+			"start_sample": 5130,
+			"end_sample": 5257,
+			"ann_class": 0,
+			"ann_type": 7,
 			"texts": [
-				"24 32 14 6a "
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5258,
+			"end_sample": 5385,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5386,
+			"end_sample": 5513,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5514,
+			"end_sample": 5641,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5642,
+			"end_sample": 5769,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5770,
+			"end_sample": 5897,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5898,
+			"end_sample": 6025,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5002,
+			"end_sample": 6026,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4874,
+			"end_sample": 6154,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6026,
+			"end_sample": 6153,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 6092,
+			"end_sample": 6219,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 6220,
+			"end_sample": 6347,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6348,
+			"end_sample": 6475,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6476,
+			"end_sample": 6603,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6604,
+			"end_sample": 6731,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6732,
+			"end_sample": 6859,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6860,
+			"end_sample": 6987,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6988,
+			"end_sample": 7115,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7116,
+			"end_sample": 7243,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6220,
+			"end_sample": 7244,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6092,
+			"end_sample": 7372,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 7244,
+			"end_sample": 7371,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 7310,
+			"end_sample": 7437,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 7438,
+			"end_sample": 7565,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7566,
+			"end_sample": 7693,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7694,
+			"end_sample": 7821,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7822,
+			"end_sample": 7949,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7950,
+			"end_sample": 8077,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8078,
+			"end_sample": 8205,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8206,
+			"end_sample": 8333,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8334,
+			"end_sample": 8461,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7438,
+			"end_sample": 8462,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7310,
+			"end_sample": 8590,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 8462,
+			"end_sample": 8589,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 8528,
+			"end_sample": 8655,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 8656,
+			"end_sample": 8783,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8784,
+			"end_sample": 8911,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8912,
+			"end_sample": 9039,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9040,
+			"end_sample": 9167,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9168,
+			"end_sample": 9295,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9296,
+			"end_sample": 9423,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9424,
+			"end_sample": 9551,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9552,
+			"end_sample": 9679,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8656,
+			"end_sample": 9680,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0x0", 
+				"0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8528,
+			"end_sample": 9808,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Frame error", 
+				"Fr.ERR", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 9680,
+			"end_sample": 9807,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Stop bit", 
+				"Stop", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 9746,
+			"end_sample": 9873,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start bit", 
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 9874,
+			"end_sample": 10001,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0", 
+				"0", 
+				"0"
 			]
 		}
 	]

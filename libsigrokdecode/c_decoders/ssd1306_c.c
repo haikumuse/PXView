@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -247,7 +247,7 @@ static const ssd1306_cmd_entry *ssd1306_find_cmd(uint8_t b)
 static void ssd1306_output_block(struct srd_decoder_inst *di, ssd1306_state *s)
 {
     if (s->blockstring[0] != '\0') {
-        C_ANN_PUT(di, s->sscmd, s->es, s->out_ann, ANN_BLOCK, s->blockstring);
+        c_put(di, s->sscmd, s->es, s->out_ann, ANN_BLOCK, s->blockstring);
         s->blockstring[0] = '\0';
     }
 }
@@ -261,7 +261,7 @@ static void ssd1306_handle_par_0x00(struct srd_decoder_inst *di,
     int val = param & 0xf;
     char buf[64];
     snprintf(buf, sizeof(buf), "Lwr col start addr= %d", val);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_LC, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_LC, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "= %d", val);
     s->substate = SSD1306_SUB_COMMAND;
@@ -273,7 +273,7 @@ static void ssd1306_handle_par_0x10(struct srd_decoder_inst *di,
     int val = param & 0xf;
     char buf[64];
     snprintf(buf, sizeof(buf), "Hghr col start addr= %d", val);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_HC, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_HC, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "= %d", val);
     s->substate = SSD1306_SUB_COMMAND;
@@ -287,7 +287,7 @@ static void ssd1306_handle_par_0x20(struct srd_decoder_inst *di,
     int mode = param & 3;
     char buf[128];
     snprintf(buf, sizeof(buf), "Display mode: %s", am[mode]);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DM, buf, am2[mode]);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_DM, buf, am2[mode]);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ": %s", am[mode]);
     s->substate = SSD1306_SUB_COMMAND;
@@ -301,7 +301,7 @@ static void ssd1306_handle_par_0x21(struct srd_decoder_inst *di,
         int sc = param & 0x7f;
         const char *res = (sc == 0) ? " (reset)" : "";
         snprintf(buf, sizeof(buf), "Start column: %d%s", sc, res);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SCA, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SCA, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " from %d%s ", sc, res);
         s->substate = SSD1306_SUB_PARAMETER2;
@@ -309,7 +309,7 @@ static void ssd1306_handle_par_0x21(struct srd_decoder_inst *di,
         int ec = param & 0x7f;
         const char *res = (ec == 0x7f) ? " (reset)" : "";
         snprintf(buf, sizeof(buf), "End column: %d%s", ec, res);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SCA, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SCA, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "to %d%s", ec, res);
         s->substate = SSD1306_SUB_COMMAND;
@@ -324,7 +324,7 @@ static void ssd1306_handle_par_0x22(struct srd_decoder_inst *di,
         int sp = param & 0x7;
         const char *res = (sp == 0) ? " (reset)" : "";
         snprintf(buf, sizeof(buf), "Start Page: %d%s", sp, res);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SPA, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SPA, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " from %d%s ", sp, res);
         s->substate = SSD1306_SUB_PARAMETER2;
@@ -332,7 +332,7 @@ static void ssd1306_handle_par_0x22(struct srd_decoder_inst *di,
         int ep = param & 0x7;
         const char *res = (ep == 0x7) ? " (reset)" : "";
         snprintf(buf, sizeof(buf), "End Page: %d%s", ep, res);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SPA, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SPA, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "to %d%s", ep, res);
         s->substate = SSD1306_SUB_COMMAND;
@@ -347,7 +347,7 @@ static void ssd1306_handle_par_0x23(struct srd_decoder_inst *di,
     int fo = ((param & 0xf) << 3) + 8;
     char buf[128];
     snprintf(buf, sizeof(buf), "%s (%d frames)", bf[idx], fo);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SFB, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_SFB, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ": %s, %d frames", bf[idx], fo);
     s->substate = SSD1306_SUB_COMMAND;
@@ -363,21 +363,21 @@ static void ssd1306_handle_par_0x26(struct srd_decoder_inst *di,
     } else if (s->substate == SSD1306_SUB_PARAMETER2) {
         int sp = param & 0x7;
         snprintf(buf, sizeof(buf), "Start Page: %d", sp);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_RHS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_RHS, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " from page %d, ", sp);
         s->substate = SSD1306_SUB_PARAMETER3;
     } else if (s->substate == SSD1306_SUB_PARAMETER3) {
         int iv = iv_table[param & 0x7];
         snprintf(buf, sizeof(buf), "Scroll Interval: %d", iv);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_RHS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_RHS, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "time interval %d, ", iv);
         s->substate = SSD1306_SUB_PARAMETER4;
     } else if (s->substate == SSD1306_SUB_PARAMETER4) {
         int ep = param & 0x7;
         snprintf(buf, sizeof(buf), "End Page: %d", ep);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_RHS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_RHS, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "to page %d", ep);
         s->substate = SSD1306_SUB_PARAMETER5;
@@ -398,28 +398,28 @@ static void ssd1306_handle_par_0x29(struct srd_decoder_inst *di,
     } else if (s->substate == SSD1306_SUB_PARAMETER2) {
         int sp = param & 0x7;
         snprintf(buf, sizeof(buf), "Start Page: %d", sp);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " from page %d, ", sp);
         s->substate = SSD1306_SUB_PARAMETER3;
     } else if (s->substate == SSD1306_SUB_PARAMETER3) {
         int iv = iv_table[param & 0x7];
         snprintf(buf, sizeof(buf), "Scroll Interval: %d", iv);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "time interval %d, ", iv);
         s->substate = SSD1306_SUB_PARAMETER4;
     } else if (s->substate == SSD1306_SUB_PARAMETER4) {
         int ep = param & 0x7;
         snprintf(buf, sizeof(buf), "End Page: %d", ep);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "to page %d", ep);
         s->substate = SSD1306_SUB_PARAMETER5;
     } else if (s->substate == SSD1306_SUB_PARAMETER5) {
         int vso = param & 0x3f;
         snprintf(buf, sizeof(buf), "Vert Scroll Ofs: %d", vso);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ssd1306_find_cmd(s->prevreg) ? ssd1306_find_cmd(s->prevreg)->ann_id : ANN_VRHS, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " (vertical offset= %d rows)", vso);
         s->substate = SSD1306_SUB_COMMAND;
@@ -432,7 +432,7 @@ static void ssd1306_handle_par_0x40(struct srd_decoder_inst *di,
     int val = param & 0x3f;
     char buf[64];
     snprintf(buf, sizeof(buf), "Start line= %d", val);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DSL, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_DSL, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "= %d", val);
     s->substate = SSD1306_SUB_COMMAND;
@@ -444,7 +444,7 @@ static void ssd1306_handle_par_0x81(struct srd_decoder_inst *di,
     char buf[64];
     const char *res = (param == 0x7f) ? " (reset)" : "";
     snprintf(buf, sizeof(buf), "Contrast= %d%s", param, res);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SCC, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_SCC, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " to %d%s ", param, res);
     s->substate = SSD1306_SUB_COMMAND;
@@ -457,7 +457,7 @@ static void ssd1306_handle_par_0x8d(struct srd_decoder_inst *di,
     const char *res = (param & 4) ? "" : " (reset)";
     char buf[64];
     snprintf(buf, sizeof(buf), "Charge pump= %s", cp);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SCPU, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_SCPU, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " to %s%s", cp, res);
     s->substate = SSD1306_SUB_COMMAND;
@@ -471,7 +471,7 @@ static void ssd1306_handle_par_0xa3(struct srd_decoder_inst *di,
         int tfr = param & 0x3f;
         const char *res = (tfr == 0) ? " (reset)" : "";
         snprintf(buf, sizeof(buf), "Top fixed rows: %d%s", tfr, res);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SVSA, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SVSA, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ", top fixed rows: %d%s, ", tfr, res);
         s->substate = SSD1306_SUB_PARAMETER2;
@@ -479,7 +479,7 @@ static void ssd1306_handle_par_0xa3(struct srd_decoder_inst *di,
         int sr = param & 0x7f;
         const char *res = (sr == 0x40) ? " (reset)" : "";
         snprintf(buf, sizeof(buf), "Scroll rows: %d%s", sr, res);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SVSA, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SVSA, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "scroll rows: %d%s", sr, res);
         s->substate = SSD1306_SUB_COMMAND;
@@ -493,13 +493,13 @@ static void ssd1306_handle_par_0xa8(struct srd_decoder_inst *di,
     if (mux < 16) {
         char buf[64];
         snprintf(buf, sizeof(buf), "invalid multiplex ratio < 16 (%d)", mux);
-        C_ANN_PUT(di, s->sscmd, s->es, s->out_ann, ANN_WARN, buf);
+        c_put(di, s->sscmd, s->es, s->out_ann, ANN_WARN, buf);
         s->blockstring[0] = '\0';
     } else {
         const char *res = (mux == 64) ? " (reset)" : "";
         char buf[64];
         snprintf(buf, sizeof(buf), "%d%s", mux, res);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SMR, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SMR, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " to %d%s", mux, res);
     }
@@ -512,7 +512,7 @@ static void ssd1306_handle_par_0xb0(struct srd_decoder_inst *di,
     int val = param & 0x7;
     char buf[64];
     snprintf(buf, sizeof(buf), "Page start addr= %d", val);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_PSA, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_PSA, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, "= %d", val);
     s->substate = SSD1306_SUB_COMMAND;
@@ -524,7 +524,7 @@ static void ssd1306_handle_par_0xd3(struct srd_decoder_inst *di,
     int vo = param & 0x3f;
     char buf[64];
     snprintf(buf, sizeof(buf), "Vertical offset = %d", vo);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SVO, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_SVO, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, " = %d", vo);
     s->substate = SSD1306_SUB_COMMAND;
@@ -538,7 +538,7 @@ static void ssd1306_handle_par_0xd5(struct srd_decoder_inst *di,
     const char *res = (of == 8) ? "(reset)" : "";
     char buf[128];
     snprintf(buf, sizeof(buf), "Freq=%d, div ratio=%d %s", of, dr, res);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DCR, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_DCR, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ": fOSC=%d, divide ratio=%d %s", of, dr, res);
     s->substate = SSD1306_SUB_COMMAND;
@@ -550,7 +550,7 @@ static void ssd1306_handle_par_0xd6(struct srd_decoder_inst *di,
     const char *zo = (param & 1) ? "enable" : "disable (reset)";
     char buf[64];
     snprintf(buf, sizeof(buf), "Zoom-in: %s", zo);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ZI, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_ZI, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ": %s", zo);
     s->substate = SSD1306_SUB_COMMAND;
@@ -564,14 +564,14 @@ static void ssd1306_handle_par_0xd9(struct srd_decoder_inst *di,
     if (p1 == 0 || p2 == 0) {
         char buf[128];
         snprintf(buf, sizeof(buf), "invalid precharge period = 0 (p1: %d, p2: %d)", p1, p2);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_WARN, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_WARN, buf);
         s->blockstring[0] = '\0';
     } else {
         const char *res1 = (p1 == 2) ? " (reset)" : "";
         const char *res2 = (p2 == 2) ? " (reset)" : "";
         char buf[128];
         snprintf(buf, sizeof(buf), "P1=%d%s, P2=%d%s", p1, res1, p2, res2);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SPP, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SPP, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ": P1=%d%s, P2=%d%s", p1, res1, p2, res2);
     }
@@ -585,7 +585,7 @@ static void ssd1306_handle_par_0xda(struct srd_decoder_inst *di,
     const char *lrm = (param & 0x10) ? "no " : "";
     char buf[128];
     snprintf(buf, sizeof(buf), "COM pins: %s, %s L/R remap", seq, lrm);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SCPI, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_SCPI, buf);
     int pos = (int)strlen(s->blockstring);
     snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ": %s, %s L/R remap", seq, lrm);
     s->substate = SSD1306_SUB_COMMAND;
@@ -599,12 +599,12 @@ static void ssd1306_handle_par_0xdb(struct srd_decoder_inst *di,
     if (vc != 0 && vc != 2 && vc != 3) {
         char buf[64];
         snprintf(buf, sizeof(buf), "invalid Vcomh deselect = 0x%02x", vc);
-        C_ANN_PUT(di, s->ss_block, s->es, s->out_ann, ANN_WARN, buf);
+        c_put(di, s->ss_block, s->es, s->out_ann, ANN_WARN, buf);
         s->blockstring[0] = '\0';
     } else {
         char buf[64];
         snprintf(buf, sizeof(buf), "Vcomh = %s", vcomh[vc]);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SVD, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_SVD, buf);
         int pos = (int)strlen(s->blockstring);
         snprintf(s->blockstring + pos, sizeof(s->blockstring) - pos, ": Vcomh = %s", vcomh[vc]);
     }
@@ -636,7 +636,7 @@ static void ssd1306_handle_command(struct srd_decoder_inst *di,
 
     if (s->substate == SSD1306_SUB_COMMAND && !is_param) {
         /* New command */
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, entry->ann_id, entry->texts[0], entry->texts[1], entry->texts[2]);
+        c_put(di, s->ss, s->es, s->out_ann, entry->ann_id, entry->texts[0], entry->texts[1], entry->texts[2]);
         snprintf(s->blockstring, sizeof(s->blockstring), "%s", entry->texts[0]);
         s->sscmd = s->ss_block;
         s->prevreg = b;
@@ -677,15 +677,13 @@ static void ssd1306_handle_command(struct srd_decoder_inst *di,
 }
 
 /* ===== recv_proto ===== */
-static void ssd1306_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ssd1306_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ssd1306_state *s = (ssd1306_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;
     s->es = end_sample;
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "BITS") == 0) return;
 
@@ -704,7 +702,7 @@ static void ssd1306_recv_proto(struct srd_decoder_inst *di,
             }
             char buf[64];
             snprintf(buf, sizeof(buf), "Device address: 0x%02X", databyte);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_DA, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_DA, buf);
             s->state = SSD1306_WRITE_CONTROL_BYTE;
         }
         break;
@@ -712,7 +710,7 @@ static void ssd1306_recv_proto(struct srd_decoder_inst *di,
         if (strcmp(cmd, "DATA WRITE") == 0) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Control byte = 0x%02X", databyte);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_CB, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_CB, buf);
             if (databyte == 0x80)
                 s->state = SSD1306_SSD_COMMAND;
             else if (databyte == 0x40)
@@ -739,7 +737,7 @@ static void ssd1306_recv_proto(struct srd_decoder_inst *di,
         if (strcmp(cmd, "DATA WRITE") == 0) {
             char buf[32];
             snprintf(buf, sizeof(buf), "GDDRAM data: 0x%02X", databyte);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_GR, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_GR, buf);
         } else if (strcmp(cmd, "STOP") == 0) {
             s->state = SSD1306_IDLE;
         }
@@ -762,7 +760,7 @@ static void ssd1306_reset(struct srd_decoder_inst *di)
 static void ssd1306_start(struct srd_decoder_inst *di)
 {
     ssd1306_state *s = (ssd1306_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ssd1306");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ssd1306");
 }
 
 static void ssd1306_decode(struct srd_decoder_inst *di)
@@ -808,7 +806,8 @@ struct srd_c_decoder ssd1306_c_decoder = {
     .start = ssd1306_start,
     .decode = ssd1306_decode,
     .destroy = ssd1306_destroy,
-    .recv_proto = ssd1306_recv_proto,
+    .decode_upper = ssd1306_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== 导出函数 ===== */

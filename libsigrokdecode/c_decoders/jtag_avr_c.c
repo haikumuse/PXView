@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -167,21 +167,21 @@ static const char *avr_find_part(uint16_t part)
     return NULL;
 }
 
-static uint64_t bytes_to_uint64(const unsigned char *data, uint64_t data_len)
+static uint64_t bytes_to_uint64(const c_field *fields, int n_fields)
 {
     uint64_t val = 0;
-    for (uint64_t i = 0; i < data_len && i < 8; i++)
-        val |= ((uint64_t)data[i]) << (i * 8);
+    for (uint64_t i = 0; i < n_fields && i < 8; i++)
+        val |= ((uint64_t)fields[i].u8) << (i * 8);
     return val;
 }
 
 static void jtag_avr_handle_idcode(struct srd_decoder_inst *di, jtag_avr_state *s,
-                                    const unsigned char *data, uint64_t data_len)
+                                    const c_field *fields, int n_fields)
 {
-    if (data_len < 4)
+    if (n_fields < 4)
         return;
 
-    uint32_t idcode = (uint32_t)bytes_to_uint64(data, data_len);
+    uint32_t idcode = (uint32_t)bytes_to_uint64(fields, n_fields);
     int version = (idcode >> 28) & 0x0F;
     uint16_t part = (idcode >> 12) & 0xFFFF;
     int manufacturer = (idcode >> 1) & 0x7FF;
@@ -196,26 +196,26 @@ static void jtag_avr_handle_idcode(struct srd_decoder_inst *di, jtag_avr_state *
 
     char buf[128];
     snprintf(buf, sizeof(buf), "Manufacturer: %s", manuf_str);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     snprintf(buf, sizeof(buf), "Part: %s", part_str);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     snprintf(buf, sizeof(buf), "Version: %d", version);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
     snprintf(buf, sizeof(buf), "IDCODE: 0x%08X (%s: %s@r%d)",
              idcode, manuf_str, part_str, version);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
 }
 
 static void jtag_avr_handle_bypass(struct srd_decoder_inst *di, jtag_avr_state *s,
-                                    const unsigned char *data, uint64_t data_len)
+                                    const c_field *fields, int n_fields)
 {
     char buf[32];
-    uint64_t val = bytes_to_uint64(data, data_len);
+    uint64_t val = bytes_to_uint64(fields, n_fields);
     snprintf(buf, sizeof(buf), "BYPASS: %llu", (unsigned long long)val);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ITEM, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_ITEM, buf);
 }
 
 /* PDI instruction handling */
@@ -325,13 +325,13 @@ static const char *pdi_opcode_name(int opcode)
 }
 
 static void pdi_handle_data_in(struct srd_decoder_inst *di, jtag_avr_state *s,
-                                const unsigned char *data, uint64_t data_len)
+                                const c_field *fields, int n_fields)
 {
     if (s->pdi_opcode < 0)
         return;
 
     if (s->pdi_data_count > 0 && s->pdi_data_idx < 8) {
-        s->pdi_data_bytes[s->pdi_data_idx++] = (data_len > 0) ? data[0] : 0;
+        s->pdi_data_bytes[s->pdi_data_idx++] = (n_fields > 0) ? fields[0].u8 : 0;
         s->pdi_data_count--;
         if (s->pdi_data_count > 0)
             return;
@@ -347,7 +347,7 @@ static void pdi_handle_data_in(struct srd_decoder_inst *di, jtag_avr_state *s,
 
         char buf[64];
         snprintf(buf, sizeof(buf), "Data: %s", hex_buf);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DATA_PROG, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_DATA_PROG, buf);
 
         /* Check if we need more data */
         if (s->pdi_num_wr > 1) {
@@ -367,7 +367,7 @@ static void pdi_handle_data_in(struct srd_decoder_inst *di, jtag_avr_state *s,
 
         char cmd_buf[64];
         snprintf(cmd_buf, sizeof(cmd_buf), "%s", pdi_opcode_name(s->pdi_opcode));
-        C_ANN_PUT(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, cmd_buf);
+        c_put(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, cmd_buf);
 
         int save_rep = s->pdi_rep_count;
         pdi_clear_insn(s);
@@ -376,13 +376,13 @@ static void pdi_handle_data_in(struct srd_decoder_inst *di, jtag_avr_state *s,
 }
 
 static void pdi_handle_data_out(struct srd_decoder_inst *di, jtag_avr_state *s,
-                                 const unsigned char *data, uint64_t data_len)
+                                 const c_field *fields, int n_fields)
 {
     if (s->pdi_opcode < 0)
         return;
 
     if (s->pdi_data_count > 0 && s->pdi_data_idx < 8) {
-        s->pdi_data_bytes[s->pdi_data_idx++] = (data_len > 0) ? data[0] : 0;
+        s->pdi_data_bytes[s->pdi_data_idx++] = (n_fields > 0) ? fields[0].u8 : 0;
         s->pdi_data_count--;
         if (s->pdi_data_count > 0)
             return;
@@ -396,7 +396,7 @@ static void pdi_handle_data_out(struct srd_decoder_inst *di, jtag_avr_state *s,
 
         char buf[64];
         snprintf(buf, sizeof(buf), "Data: %s", hex_buf);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DATA_DEV, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_DATA_DEV, buf);
 
         if (s->pdi_num_rd > 1) {
             for (int i = 1; i < s->pdi_num_rd; i++)
@@ -409,7 +409,7 @@ static void pdi_handle_data_out(struct srd_decoder_inst *di, jtag_avr_state *s,
 
         char cmd_buf[64];
         snprintf(cmd_buf, sizeof(cmd_buf), "%s", pdi_opcode_name(s->pdi_opcode));
-        C_ANN_PUT(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, cmd_buf);
+        c_put(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, cmd_buf);
 
         int save_rep = s->pdi_rep_count;
         pdi_clear_insn(s);
@@ -417,9 +417,7 @@ static void pdi_handle_data_out(struct srd_decoder_inst *di, jtag_avr_state *s,
     }
 }
 
-static void jtag_avr_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void jtag_avr_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     jtag_avr_state *s = (jtag_avr_state *)c_decoder_get_private(di);
     if (!s)
@@ -430,24 +428,24 @@ static void jtag_avr_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "IR TDI") == 0) {
         /* Decode instruction register */
-        uint8_t ir_val = (data_len > 0) ? data[0] : 0;
+        uint8_t ir_val = (n_fields > 0) ? fields[0].u8 : 0;
         ir_val &= 0x0F; /* 4-bit IR */
 
         if (ir_val == AVR_IR_BYPASS) {
             s->state = AVR_STATE_BYPASS;
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "IR: BYPASS");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "IR: BYPASS");
         } else if (ir_val == AVR_IR_IDCODE) {
             s->state = AVR_STATE_IDCODE;
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "IR: IDCODE");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "IR: IDCODE");
         } else if (ir_val == AVR_IR_PDICOM) {
             s->state = AVR_STATE_PDICOM;
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_FIELD, "IR: PDICOM");
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_ENABLE, "Enable PDI");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "IR: PDICOM");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_ENABLE, "Enable PDI");
         } else {
             s->state = AVR_STATE_IDLE;
             char buf[32];
             snprintf(buf, sizeof(buf), "IR: UNKNOWN (0x%X)", ir_val);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
         }
         return;
     }
@@ -455,7 +453,7 @@ static void jtag_avr_recv_proto(struct srd_decoder_inst *di,
     if (strcmp(cmd, "NEW STATE") == 0) {
         /* On state transition back to idle, disable PDI if active */
         if (s->state == AVR_STATE_PDICOM) {
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DISABLE, "Disable PDI");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_DISABLE, "Disable PDI");
         }
         s->state = AVR_STATE_IDLE;
         return;
@@ -463,44 +461,44 @@ static void jtag_avr_recv_proto(struct srd_decoder_inst *di,
 
     if (s->state == AVR_STATE_BYPASS) {
         if (strcmp(cmd, "DR TDI") == 0) {
-            jtag_avr_handle_bypass(di, s, data, data_len);
+            jtag_avr_handle_bypass(di, s, fields, n_fields);
             s->state = AVR_STATE_IDLE;
         }
     } else if (s->state == AVR_STATE_IDCODE) {
         if (strcmp(cmd, "DR TDO") == 0) {
-            jtag_avr_handle_idcode(di, s, data, data_len);
+            jtag_avr_handle_idcode(di, s, fields, n_fields);
             s->state = AVR_STATE_IDLE;
         }
     } else if (s->state == AVR_STATE_PDICOM) {
         if (strcmp(cmd, "DR TDI") == 0) {
             /* PDI input data */
-            if (s->pdi_opcode < 0 && data_len > 0) {
+            if (s->pdi_opcode < 0 && n_fields > 0) {
                 /* First byte is opcode */
-                uint8_t byte_val = data[0];
+                uint8_t byte_val = fields[0].u8;
                 int opcode = (byte_val & 0xE0) >> 5;
                 int args = byte_val & 0x1F;
                 s->pdi_cmd_ss = start_sample;
 
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Opcode: %s", pdi_opcode_name(opcode));
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_OPCODE, buf);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_OPCODE, buf);
 
                 pdi_setup_insn(s, opcode, args);
 
                 /* If no data expected, command is complete */
                 if (s->pdi_data_count == 0 && s->pdi_num_wr == 0 && s->pdi_num_rd == 0) {
                     snprintf(buf, sizeof(buf), "%s", pdi_opcode_name(opcode));
-                    C_ANN_PUT(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, buf);
+                    c_put(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, buf);
                     int save_rep = s->pdi_rep_count;
                     pdi_clear_insn(s);
                     s->pdi_rep_count = save_rep;
                 } else if (s->pdi_data_count > 0) {
                     /* Process remaining data bytes if any */
-                    if (data_len > 1) {
+                    if (n_fields > 1) {
                         /* Multi-byte in single call - process byte by byte */
-                        for (uint64_t i = 1; i < data_len && s->pdi_data_count > 0; i++) {
+                        for (uint64_t i = 1; i < n_fields && s->pdi_data_count > 0; i++) {
                             if (s->pdi_data_idx < 8)
-                                s->pdi_data_bytes[s->pdi_data_idx++] = data[i];
+                                s->pdi_data_bytes[s->pdi_data_idx++] = fields[i].u8;
                             s->pdi_data_count--;
                         }
                         if (s->pdi_data_count == 0) {
@@ -513,14 +511,14 @@ static void jtag_avr_recv_proto(struct srd_decoder_inst *di,
 
                             char dbuf[64];
                             snprintf(dbuf, sizeof(dbuf), "Data: %s", hex_buf);
-                            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_DATA_PROG, dbuf);
+                            c_put(di, s->ss, s->es, s->out_ann, ANN_DATA_PROG, dbuf);
 
                             if (s->pdi_opcode == PDI_OP_REPEAT)
                                 s->pdi_rep_count = (int)val;
 
                             char cmd_buf[64];
                             snprintf(cmd_buf, sizeof(cmd_buf), "%s", pdi_opcode_name(s->pdi_opcode));
-                            C_ANN_PUT(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, cmd_buf);
+                            c_put(di, s->pdi_cmd_ss, s->es, s->out_ann, ANN_CMD_DATA, cmd_buf);
 
                             int save_rep = s->pdi_rep_count;
                             pdi_clear_insn(s);
@@ -529,13 +527,13 @@ static void jtag_avr_recv_proto(struct srd_decoder_inst *di,
                     }
                 }
             } else if (s->pdi_opcode >= 0) {
-                pdi_handle_data_in(di, s, data, data_len);
+                pdi_handle_data_in(di, s, fields, n_fields);
             }
         } else if (strcmp(cmd, "DR TDO") == 0) {
             /* PDI output data */
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_COMMAND, "PDICOM");
+            c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, "PDICOM");
             if (s->pdi_opcode >= 0) {
-                pdi_handle_data_out(di, s, data, data_len);
+                pdi_handle_data_out(di, s, fields, n_fields);
             }
         }
     }
@@ -555,7 +553,7 @@ static void jtag_avr_reset(struct srd_decoder_inst *di)
 static void jtag_avr_start(struct srd_decoder_inst *di)
 {
     jtag_avr_state *s = (jtag_avr_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "jtag_avr");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "jtag_avr");
 }
 
 static void jtag_avr_decode(struct srd_decoder_inst *di)
@@ -600,7 +598,8 @@ struct srd_c_decoder jtag_avr_c_decoder = {
     .start = jtag_avr_start,
     .decode = jtag_avr_decode,
     .destroy = jtag_avr_destroy,
-    .recv_proto = jtag_avr_recv_proto,
+    .decode_upper = jtag_avr_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

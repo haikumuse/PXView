@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -108,9 +108,9 @@ static void onewire_reset(struct srd_decoder_inst* di)
 static void onewire_start(struct srd_decoder_inst* di)
 {
     struct ow_priv* s = (struct ow_priv*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "onewire_link");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "onewire_link");
-    const char* od = c_decoder_get_option_string(di, "overdrive", "no");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "onewire_link");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "onewire_link");
+    const char* od = c_opt_str(di, "overdrive", "no");
     s->overdrive = (strcmp(od, "yes") == 0) ? 1 : 0;
     s->bit_cnt = -1;
 }
@@ -126,18 +126,18 @@ static void onewire_checks(struct srd_decoder_inst* di, struct ow_priv* s)
 {
     if (s->overdrive) {
         if (s->samplerate < 2000000) {
-            C_ANN_PUT(di, 0, 0, s->out_ann, ANN_WARN,
+            c_put(di, 0, 0, s->out_ann, ANN_WARN,
                 "Sampling rate is too low. Must be above 2MHz for proper overdrive mode decoding.");
         } else if (s->samplerate < 5000000) {
-            C_ANN_PUT(di, 0, 0, s->out_ann, ANN_WARN,
+            c_put(di, 0, 0, s->out_ann, ANN_WARN,
                 "Sampling rate is suggested to be above 5MHz for proper overdrive mode decoding.");
         }
     } else {
         if (s->samplerate < 400000) {
-            C_ANN_PUT(di, 0, 0, s->out_ann, ANN_WARN,
+            c_put(di, 0, 0, s->out_ann, ANN_WARN,
                 "Sampling rate is too low. Must be above 400kHz for proper normal mode decoding.");
         } else if (s->samplerate < 1000000) {
-            C_ANN_PUT(di, 0, 0, s->out_ann, ANN_WARN,
+            c_put(di, 0, 0, s->out_ann, ANN_WARN,
                 "Sampling rate is suggested to be above 1MHz for proper normal mode decoding.");
         }
     }
@@ -146,9 +146,7 @@ static void onewire_checks(struct srd_decoder_inst* di, struct ow_priv* s)
 static void onewire_decode(struct srd_decoder_inst* di)
 {
     struct ow_priv* s = (struct ow_priv*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-    uint64_t samplerate = c_decoder_get_samplerate(di);
+    uint64_t samplerate = c_samplerate(di);
 
     if (!s->samplerate)
         s->samplerate = samplerate;
@@ -160,32 +158,25 @@ static void onewire_decode(struct srd_decoder_inst* di)
     samplerate = s->samplerate;
 
     while (1) {
-        srd_cond_builder* cb;
         int ret;
         int od = s->overdrive ? 1 : 0;
 
         switch (s->state) {
 
         case STATE_INITIAL: {
-            cb = c_cond_new();
-            c_cond_high(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_H(0), CW_END);
             if (ret != SRD_OK)
                 return;
-            s->ss_rise = samplenum;
+            s->ss_rise = di_samplenum(di);
             s->state = STATE_IDLE;
             break;
         }
 
         case STATE_IDLE: {
-            cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_F(0), CW_END);
             if (ret != SRD_OK)
                 return;
-            s->ss_fall = samplenum;
+            s->ss_fall = di_samplenum(di);
 
             /* Check REC timing */
             od = s->overdrive ? 1 : 0;
@@ -194,7 +185,7 @@ static void onewire_decode(struct srd_decoder_inst* di)
                 if (rec_us < ow_timing.REC_min[od]) {
                     char txt[128];
                     snprintf(txt, sizeof(txt), "Recovery time not long enough, REC < %.0f us", ow_timing.REC_min[od]);
-                    C_ANN_PUT(di, s->ss_rise, s->ss_fall, s->out_ann, ANN_WARN, txt);
+                    c_put(di, s->ss_rise, s->ss_fall, s->out_ann, ANN_WARN, txt);
                 }
             }
             s->state = STATE_LOW;
@@ -202,21 +193,18 @@ static void onewire_decode(struct srd_decoder_inst* di)
         }
 
         case STATE_LOW: {
-            cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_R(0), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->ss_rise = samplenum;
-            double time_us = (double)(samplenum - s->ss_fall) / (double)samplerate * 1000000.0;
+            s->ss_rise = di_samplenum(di);
+            double time_us = (double)(di_samplenum(di) - s->ss_fall) / (double)samplerate * 1000000.0;
             od = s->overdrive ? 1 : 0;
 
             if (time_us >= ow_timing.RSTL_min[0]) {
                 /* Normal-speed reset (>= 480us) always clears overdrive */
                 if (s->overdrive) {
-                    C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_OVERDRIVE,
+                    c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_OVERDRIVE,
                         "Exiting overdrive mode", "Overdrive off");
                     s->overdrive = 0;
                     od = 0;
@@ -225,13 +213,13 @@ static void onewire_decode(struct srd_decoder_inst* di)
                 if (time_us < ow_timing.RSTL_min[0]) {
                     char txt[128];
                     snprintf(txt, sizeof(txt), "Reset pulse too short, RSTL < %.0f us", ow_timing.RSTL_min[0]);
-                    C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                    c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN, txt);
                 } else if (time_us > ow_timing.RSTL_max[0]) {
                     char txt[128];
                     snprintf(txt, sizeof(txt), "Reset pulse too long, RST > %.0f us", ow_timing.RSTL_max[0]);
-                    C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                    c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN, txt);
                 }
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_RESET,
+                c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_RESET,
                     "Reset", "Rst", "R");
                 s->state = STATE_WAIT_PRESENCE_FALL;
             } else if (s->overdrive && time_us >= ow_timing.RSTL_min[1]) {
@@ -239,9 +227,9 @@ static void onewire_decode(struct srd_decoder_inst* di)
                 if (time_us > ow_timing.RSTL_max[1]) {
                     char txt[128];
                     snprintf(txt, sizeof(txt), "Reset pulse too long, RST > %.0f us", ow_timing.RSTL_max[1]);
-                    C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                    c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN, txt);
                 }
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_RESET,
+                c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_RESET,
                     "Reset", "Rst", "R");
                 s->state = STATE_WAIT_PRESENCE_FALL;
             } else if (time_us < ow_timing.SLOT_max[od]) {
@@ -250,7 +238,7 @@ static void onewire_decode(struct srd_decoder_inst* di)
                 if (time_us < ow_timing.LOWR_min[od]) {
                     char txt[128];
                     snprintf(txt, sizeof(txt), "Low signal not long enough, LOW < %.0f us", ow_timing.LOWR_min[od]);
-                    C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                    c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN, txt);
                 }
 
                 /* Determine bit value */
@@ -265,11 +253,11 @@ static void onewire_decode(struct srd_decoder_inst* di)
                 char bit_long[16], bit_short[4];
                 snprintf(bit_long, sizeof(bit_long), "Bit: %d", bit_val);
                 snprintf(bit_short, sizeof(bit_short), "%d", bit_val);
-                C_ANN_PUT(di, s->ss_fall, bit_end, s->out_ann, ANN_BIT,
+                c_put(di, s->ss_fall, bit_end, s->out_ann, ANN_BIT,
                     bit_long, bit_short);
 
                 unsigned char bit_byte = (unsigned char)bit_val;
-                c_decoder_put_python(di, s->ss_fall, bit_end, s->out_python, "BIT", &bit_byte, 1);
+                c_proto(di, s->ss_fall, bit_end, s->out_python, "BIT", C_U8(bit_byte), C_END);
 
                 /* Handle byte assembly */
                 if (s->bit_cnt >= 0) {
@@ -279,7 +267,7 @@ static void onewire_decode(struct srd_decoder_inst* di)
                 if (s->bit_cnt == 8) {
                     if ((s->byte_val == 0x3C || s->byte_val == 0x69) && !s->overdrive) {
                         s->overdrive = 1;
-                        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_OVERDRIVE,
+                        c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_OVERDRIVE,
                             "Entering overdrive mode", "Overdrive on");
                     }
                     s->bit_cnt = -1;
@@ -289,7 +277,7 @@ static void onewire_decode(struct srd_decoder_inst* di)
                 s->state = STATE_SLOT;
             } else {
                 /* Unknown - too long for slot, too short for reset */
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN,
+                c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN,
                     "Ambiguous pulse width");
                 s->state = STATE_IDLE;
             }
@@ -300,24 +288,19 @@ static void onewire_decode(struct srd_decoder_inst* di)
             od = s->overdrive ? 1 : 0;
             uint64_t slot_min_samples = us_to_samples(samplerate, ow_timing.SLOT_min[od]);
             uint64_t skip_count = 0;
-            if (s->ss_fall + slot_min_samples > samplenum)
-                skip_count = s->ss_fall + slot_min_samples - samplenum;
+            if (s->ss_fall + slot_min_samples > di_samplenum(di))
+                skip_count = s->ss_fall + slot_min_samples - di_samplenum(di);
 
-            cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            c_cond_or(cb);
-            c_cond_skip(cb, skip_count);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_F(0), CW_OR, CW_SKIP(skip_count), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if ((matched & 0b1) && !(matched & 0b10)) {
+            if ((di_matched(di) & 0b1) && !(di_matched(di) & 0b10)) {
                 /* Falling edge before SLOT min - slot too short */
                 char txt[128];
                 snprintf(txt, sizeof(txt), "Time slot not long enough, SLOT < %.0f us", ow_timing.SLOT_min[od]);
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
-                s->ss_fall = samplenum;
+                c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN, txt);
+                s->ss_fall = di_samplenum(di);
                 s->state = STATE_LOW;
             } else {
                 /* SLOT min timeout - normal end */
@@ -330,67 +313,59 @@ static void onewire_decode(struct srd_decoder_inst* di)
             /* Wait for falling edge (presence signal) with timeout (PDH max) */
             uint64_t pdh_max_samples = us_to_samples(samplerate, ow_timing.PDH_max[od]);
             uint64_t skip_count = 0;
-            if (s->ss_rise + pdh_max_samples > samplenum)
-                skip_count = s->ss_rise + pdh_max_samples - samplenum;
+            if (s->ss_rise + pdh_max_samples > di_samplenum(di))
+                skip_count = s->ss_rise + pdh_max_samples - di_samplenum(di);
 
-            cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            c_cond_or(cb);
-            c_cond_skip(cb, skip_count);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_F(0), CW_OR, CW_SKIP(skip_count), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            double time_us = (double)(samplenum - s->ss_rise) / (double)samplerate * 1000000.0;
+            double time_us = (double)(di_samplenum(di) - s->ss_rise) / (double)samplerate * 1000000.0;
 
-            if ((matched & 0b1) && !(matched & 0b10)) {
+            if ((di_matched(di) & 0b1) && !(di_matched(di) & 0b10)) {
                 /* Presence detected (falling edge, not timeout) */
                 if (time_us < ow_timing.PDH_min[od]) {
                     char txt[64];
                     snprintf(txt, sizeof(txt), "Presence detect too early, PDH < %.0f us", ow_timing.PDH_min[od]);
-                    C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_WARN, txt);
+                    c_put(di, s->ss_rise, di_samplenum(di), s->out_ann, ANN_WARN, txt);
                 }
-                s->ss_fall = samplenum;
+                s->ss_fall = di_samplenum(di);
                 s->state = STATE_WAIT_PRESENCE_RISE;
             } else {
                 /* No presence detected (timeout) */
-                C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_PRESENCE,
+                c_put(di, s->ss_rise, di_samplenum(di), s->out_ann, ANN_PRESENCE,
                     "Presence: false", "Presence", "Pres", "P");
                 unsigned char pres_byte = 0;
-                c_decoder_put_python(di, s->ss_rise, samplenum, s->out_python, "RESET/PRESENCE", &pres_byte, 1);
+                c_proto(di, s->ss_rise, di_samplenum(di), s->out_python, "RESET/PRESENCE", C_U8(pres_byte), C_END);
                 s->state = STATE_IDLE;
             }
             break;
         }
 
         case STATE_WAIT_PRESENCE_RISE: {
-            cb = c_cond_new();
-            c_cond_rise(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_R(0), CW_END);
             if (ret != SRD_OK)
                 return;
 
             /* Check presence low timing */
-            double pdl_us = (double)(samplenum - s->ss_fall) / (double)samplerate * 1000000.0;
+            double pdl_us = (double)(di_samplenum(di) - s->ss_fall) / (double)samplerate * 1000000.0;
             od = s->overdrive ? 1 : 0;
             if (pdl_us < ow_timing.PDL_min[od]) {
                 char txt[64];
                 snprintf(txt, sizeof(txt), "Presence detect too short, PDL < %.0f us", ow_timing.PDL_min[od]);
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN, txt);
             } else if (pdl_us > ow_timing.PDL_max[od]) {
                 char txt[64];
                 snprintf(txt, sizeof(txt), "Presence detect too long, PDL > %.0f us", ow_timing.PDL_max[od]);
-                C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_WARN, txt);
+                c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_WARN, txt);
             }
 
-            C_ANN_PUT(di, s->ss_fall, samplenum, s->out_ann, ANN_PRESENCE,
+            c_put(di, s->ss_fall, di_samplenum(di), s->out_ann, ANN_PRESENCE,
                 "Presence: true", "Presence", "Pres", "P");
             unsigned char pres_byte = 1;
-            c_decoder_put_python(di, s->ss_rise, samplenum, s->out_python, "RESET/PRESENCE", &pres_byte, 1);
+            c_proto(di, s->ss_rise, di_samplenum(di), s->out_python, "RESET/PRESENCE", C_U8(pres_byte), C_END);
 
-            s->ss_rise = samplenum;
+            s->ss_rise = di_samplenum(di);
             s->state = STATE_PRESENCE_DETECT;
             break;
         }
@@ -399,24 +374,19 @@ static void onewire_decode(struct srd_decoder_inst* di)
             od = s->overdrive ? 1 : 0;
             uint64_t rsth_min_samples = us_to_samples(samplerate, ow_timing.RSTH_min[od]);
             uint64_t skip_count = 0;
-            if (s->ss_rise + rsth_min_samples > samplenum)
-                skip_count = s->ss_rise + rsth_min_samples - samplenum;
+            if (s->ss_rise + rsth_min_samples > di_samplenum(di))
+                skip_count = s->ss_rise + rsth_min_samples - di_samplenum(di);
 
-            cb = c_cond_new();
-            c_cond_fall(cb, 0);
-            c_cond_or(cb);
-            c_cond_skip(cb, skip_count);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_F(0), CW_OR, CW_SKIP(skip_count), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if ((matched & 0b1) && !(matched & 0b10)) {
+            if ((di_matched(di) & 0b1) && !(di_matched(di) & 0b10)) {
                 /* Falling edge before RSTH min */
                 char txt[128];
                 snprintf(txt, sizeof(txt), "Reset high not long enough, RSTH < %.0f us", ow_timing.RSTH_min[od]);
-                C_ANN_PUT(di, s->ss_rise, samplenum, s->out_ann, ANN_WARN, txt);
-                s->ss_fall = samplenum;
+                c_put(di, s->ss_rise, di_samplenum(di), s->out_ann, ANN_WARN, txt);
+                s->ss_fall = di_samplenum(di);
                 s->state = STATE_LOW;
             } else {
                 /* RSTH min timeout - normal end */
@@ -468,6 +438,7 @@ struct srd_c_decoder onewire_c_decoder = {
     .start = onewire_start,
     .decode = onewire_decode,
     .destroy = onewire_destroy,
+    .state_size = 0,
     .metadata = onewire_metadata,
 };
 

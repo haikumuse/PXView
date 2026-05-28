@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -130,7 +130,7 @@ static void ookvis_put_field(struct srd_decoder_inst *di, ookvis_state *s,
     }
 
     if (s->decode_pos < s->num_bits && (s->decode_pos + numbits - 1) < s->num_bits)
-        C_ANN_PUT(di, s->ss_arr[s->decode_pos], s->es_arr[s->decode_pos + numbits - 1],
+        c_put(di, s->ss_arr[s->decode_pos], s->es_arr[s->decode_pos + numbits - 1],
                   s->out_ann, line, param);
 
     s->decode_pos += numbits;
@@ -179,13 +179,13 @@ static void ookvis_display_level2(struct srd_decoder_inst *di, ookvis_state *s,
         if (preamble_end < 0) preamble_end = 0;
         if (preamble_end >= s->num_bits) preamble_end = s->num_bits - 1;
 
-        C_ANN_PUT(di, s->ss_arr[0], s->es_arr[preamble_end], s->out_ann, line, "Preamble");
+        c_put(di, s->ss_arr[0], s->es_arr[preamble_end], s->out_ann, line, "Preamble");
         s->decode_pos = preamble_end;
 
         if (s->num_bits > s->decode_pos + s->sync_length) {
-            int sync_end = s->decode_pos + s->sync_length;
-            C_ANN_PUT(di, s->ss_arr[s->decode_pos], s->es_arr[sync_end], s->out_ann, line, "Sync");
-            s->decode_pos = sync_end + 1;
+            int synNULL = s->decode_pos + s->sync_length;
+            c_put(di, s->ss_arr[s->decode_pos], s->es_arr[synNULL], s->out_ann, line, "Sync");
+            s->decode_pos = synNULL + 1;
         }
 
         /* Display remaining nibbles/bytes */
@@ -229,7 +229,7 @@ static void ookvis_display_all(struct srd_decoder_inst *di, ookvis_state *s)
                 display_len = s->num_bits;
             for (int i = 0; i < display_len; i++) {
                 char bit_str[2] = {s->cache_bits[ref][i], '\0'};
-                C_ANN_PUT(di, s->ss_arr[i], s->es_arr[i], s->out_ann, ANN_REF, bit_str);
+                c_put(di, s->ss_arr[i], s->es_arr[i], s->out_ann, ANN_REF, bit_str);
             }
         }
     } else if (s->ref_sample == -1) {
@@ -237,7 +237,7 @@ static void ookvis_display_all(struct srd_decoder_inst *di, ookvis_state *s)
         if (s->trace_num < s->cache_count) {
             char num_str[16];
             snprintf(num_str, sizeof(num_str), "%d", s->trace_num + 1);
-            C_ANN_PUT(di, s->ss_arr[0], s->es_arr[s->num_bits - 1],
+            c_put(di, s->ss_arr[0], s->es_arr[s->num_bits - 1],
                       s->out_ann, ANN_REF, num_str);
         }
     }
@@ -256,9 +256,7 @@ static void ookvis_add_to_cache(ookvis_state *s)
     s->cache_count++;
 }
 
-static void ookvis_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ookvis_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ookvis_state *s = (ookvis_state *)c_decoder_get_private(di);
     if (!s)
@@ -266,7 +264,7 @@ static void ookvis_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") == 0) {
         /* Parse bit list from data */
-        int num_entries = (int)(data_len / 9);
+        int num_entries = (int)(n_fields / 9);
         s->num_bits = 0;
         s->ook_len = 0;
         s->decode_pos = 0;
@@ -282,15 +280,15 @@ static void ookvis_recv_proto(struct srd_decoder_inst *di,
         }
 
         for (int i = 0; i < num_entries; i++) {
-            const unsigned char *p = data + i * 9;
+            const c_field *p = fields + i * 9;
             uint64_t ss = 0, es = 0;
             for (int j = 0; j < 8; j++)
-                ss |= ((uint64_t)p[j]) << (j * 8);
+                ss |= ((uint64_t)p[j].u8) << (j * 8);
             for (int j = 0; j < 8; j++)
-                es |= ((uint64_t)p[4 + j]) << (j * 8);
+                es |= ((uint64_t)p[4 + j].u8) << (j * 8);
             s->ss_arr[i] = ss;
             s->es_arr[i] = es;
-            s->bit_arr[i] = p[8];
+            s->bit_arr[i] = p[8].u8;
             s->num_bits++;
         }
 
@@ -325,9 +323,9 @@ static void ookvis_reset(struct srd_decoder_inst *di)
 static void ookvis_start(struct srd_decoder_inst *di)
 {
     ookvis_state *s = (ookvis_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ook_vis");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ook_vis");
 
-    const char *displayas = c_decoder_get_option_string(di, "displayas", "Nibble - Hex");
+    const char *displayas = c_opt_str(di, "displayas", "Nibble - Hex");
     if (displayas) {
         if (strcmp(displayas, "Byte - Hex") == 0) s->displayas = OOKVIS_BYTE_HEX;
         else if (strcmp(displayas, "Byte - Hex rev") == 0) s->displayas = OOKVIS_BYTE_HEX_REV;
@@ -339,13 +337,13 @@ static void ookvis_start(struct srd_decoder_inst *di)
         else if (strcmp(displayas, "Nibble - BCD rev") == 0) s->displayas = OOKVIS_NIBBLE_BCD_REV;
     }
 
-    const char *synclen = c_decoder_get_option_string(di, "synclen", "4");
+    const char *synclen = c_opt_str(di, "synclen", "4");
     if (synclen) s->sync_length = atoi(synclen);
 
-    const char *syncoffset = c_decoder_get_option_string(di, "syncoffset", "0");
+    const char *syncoffset = c_opt_str(di, "syncoffset", "0");
     if (syncoffset) s->sync_offset = atoi(syncoffset);
 
-    const char *refsample = c_decoder_get_option_string(di, "refsample", "off");
+    const char *refsample = c_opt_str(di, "refsample", "off");
     if (refsample) {
         if (strcmp(refsample, "off") == 0) s->ref_sample = 0;
         else if (strcmp(refsample, "show numbers") == 0) s->ref_sample = -1;
@@ -398,7 +396,8 @@ struct srd_c_decoder ook_vis_c_decoder = {
     .start = ookvis_start,
     .decode = ookvis_decode,
     .destroy = ookvis_destroy,
-    .recv_proto = ookvis_recv_proto,
+    .decode_upper = ookvis_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

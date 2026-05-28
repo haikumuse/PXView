@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2022 Sergey Spivak <sespivak@yandex.ru>
@@ -144,20 +144,19 @@ static void i2c_packet_handle_packet(struct srd_decoder_inst *di,
 
     /* Output Python protocol data: PACKET READ/WRITE */
     const char *ptype = s->read_sign ? "PACKET READ" : "PACKET WRITE";
-    /* Pack data: data[0] = address, data[1..] = packet_data */
+    /* Pack data: fields[0].u8 = address, data[1..] = packet_data */
     int py_len = 1 + s->packet_data_len;
     uint8_t *py_data = (uint8_t *)g_malloc(py_len);
     py_data[0] = s->address;
     if (s->packet_data_len > 0)
         memcpy(py_data + 1, s->packet_data, s->packet_data_len);
-    c_decoder_put_python(di, s->packet_part_ss, s->packet_es,
-                         s->out_py, ptype, py_data, py_len);
+    c_proto(di, s->packet_part_ss, s->packet_es,
+                         s->out_py, ptype, C_U8(s->address), C_BYTES(s->packet_data, s->packet_data_len), C_END);
     g_free(py_data);
 
     if (!start_repeat) {
         /* Output TRANSACTION END */
-        c_decoder_put_python(di, s->packet_es, s->packet_es,
-                             s->out_py, "TRANSACTION END", NULL, 0);
+        c_proto(di, s->packet_es, s->packet_es, s->out_py, "TRANSACTION END", C_END);
     }
 
     if (start_repeat) {
@@ -189,20 +188,18 @@ static void i2c_packet_handle_packet(struct srd_decoder_inst *di,
             strncpy(final_short, cur_short, sizeof(final_short) - 1);
             final_short[sizeof(final_short) - 1] = '\0';
         }
-        C_ANN_PUT(di, s->packet_ss, s->packet_es, s->out_ann, ANN_DATA, final_str, final_short);
+        c_put(di, s->packet_ss, s->packet_es, s->out_ann, ANN_DATA, final_str, final_short);
         i2c_packet_reset_state(s);
     }
 }
 
-static void i2c_packet_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void i2c_packet_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     i2c_packet_state *s = (i2c_packet_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strncmp(cmd, "DATA", 4) == 0) {
         if (s->packet_data_len < MAX_PACKET_DATA)
@@ -239,10 +236,10 @@ static void i2c_packet_reset(struct srd_decoder_inst *di)
 static void i2c_packet_start(struct srd_decoder_inst *di)
 {
     i2c_packet_state *s = (i2c_packet_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "i2c_packet");
-    s->out_py = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "i2c_packet");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "i2c_packet");
+    s->out_py = c_reg_out(di, SRD_OUTPUT_PYTHON, "i2c_packet");
 
-    const char *fmt = c_decoder_get_option_string(di, "format", "hex");
+    const char *fmt = c_opt_str(di, "format", "hex");
     if (fmt && strcmp(fmt, "ascii") == 0)
         s->format = 0;
     else if (fmt && strcmp(fmt, "dec") == 0)
@@ -299,7 +296,8 @@ struct srd_c_decoder i2c_packet_c_decoder = {
     .start = i2c_packet_start,
     .decode = i2c_packet_decode,
     .destroy = i2c_packet_destroy,
-    .recv_proto = i2c_packet_recv_proto,
+    .decode_upper = i2c_packet_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,354 +1,288 @@
 decoder,testdata,status,detail,elapsed_s
-adb_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adb_c\default,PASS,All 27 annotations match,1.900623083114624
-afsk_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\afsk_c\default,PASS,All 55 annotations match,2.4511194229125977
-am230x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\am230x_c\default,PASS,All 51 annotations match,2.475923538208008
-amulet_ascii_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\amulet_ascii_c\default,PASS,All 169 annotations match,2.6446075439453125
-a7105_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\a7105_c\default,PASS,All 3 annotations match,2.694899320602417
-ac97_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ac97_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.6966981887817383
-ad5626_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ad5626_c\default,PASS,All 3 annotations match,2.8115386962890625
-arm_etmv3_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arm_etmv3_c\default,PASS,All 161 annotations match,2.88159441947937
-ad5593r_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ad5593r_c\default,PASS,All 58 annotations match,2.8896758556365967
-ad79x0_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ad79x0_c\default,PASS,All 3 annotations match,2.8993961811065674
-adf435x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adf435x_c\default,PASS,All 3 annotations match,2.953314781188965
-ade77xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ade77xx_c\default,PASS,All 3 annotations match,3.0031898021698
-adxl345_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adxl345_c\default,PASS,All 3 annotations match,3.006117105484009
-adns5020_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adns5020_c\default,PASS,All 3 annotations match,3.049696445465088
-arm_itm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arm_itm_c\default,PASS,All 169 annotations match,2.2368834018707275
-4b5b_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\4b5b_c\default,PASS,All 9060 annotations match,4.34731125831604
-arp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arp_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.1610095500946045
-arm_tpiu_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arm_tpiu_c\default,PASS,All 161 annotations match,2.2062466144561768
-aud_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\aud_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.410151481628418
-atsha204a_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\atsha204a_c\default,PASS,All 59 annotations match,2.4834229946136475
-as5047_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\as5047_c\default,PASS,All 3 annotations match,2.6699886322021484
-avclan_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\avclan_c\default,PASS,All 20 annotations match,2.5203089714050293
-bean_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\bean_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.4960155487060547
-bh1750_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\bh1750_c\default,PASS,All 59 annotations match,2.452955722808838
-avr_pdi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\avr_pdi_c\default,PASS,All 1 annotations match,2.521052837371826
-c2_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\c2_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.40281343460083
-bluetooth_h4_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\bluetooth_h4_c\default,PASS,All 169 annotations match,2.48240327835083
-avr_isp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\avr_isp_c\default,PASS,All 3 annotations match,2.6187312602996826
-boost_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\boost_c\default,PASS,All 161 annotations match,2.570965528488159
-caliper_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\caliper_c\default,PASS,All 1 annotations match,2.4826478958129883
-can_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\can_c\default,PASS,All 160 annotations match,2.4940085411071777
-carrera_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\carrera_c\default,PASS,All 4 annotations match,2.513328790664673
-ccd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ccd_c\default,PASS,All 48 annotations match,2.6139602661132812
-cc1101_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cc1101_c\default,PASS,All 3 annotations match,2.858978033065796
-counter_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\counter_c\default,PASS,All 19 annotations match,2.809328079223633
-cec_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cec_c\default,PASS,All 10 annotations match,2.909864664077759
-cfp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cfp_c\default,PASS,All 72 annotations match,2.94516658782959
-cjtag_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cjtag_c\default,PASS,All 2 annotations match,2.925720691680908
-crsf_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\crsf_c\default,PASS,All 169 annotations match,2.899554491043091
-dcc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dcc_c\default,PASS,All 46 annotations match,2.790522575378418
-cyrf6936_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cyrf6936_c\default,PASS,All 3 annotations match,3.012295722961426
-dali_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dali_c\default,FAIL,"0 matches, 13 deviations found.
-MISSED at sample 2080: Py has class 0 (1) but C doesn't
-MISSED at sample 2080: Py has class 1 (Startbit: 1) but C doesn't
-MISSED at sample 2080: Py has class 7 (Startbit: 1) but C doesn't
-MISSED at sample 2912: Py has class 0 (1) but C doesn't
-MISSED at sample 2912: Py has class 6 (Reply: 252) but C doesn't
-MISSED at sample 2912: Py has class 7 (Reply: FC) but C doesn't
-MISSED at sample 3744: Py has class 0 (1) but C doesn't
-MISSED at sample 4576: Py has class 0 (1) but C doesn't
-MISSED at sample 5408: Py has class 0 (1) but C doesn't
-MISSED at sample 6240: Py has class 0 (1) but C doesn't
-... and 3 more",3.0292844772338867
-dcf77_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dcf77_c\default,PASS,All 1 annotations match,2.383831262588501
-dmx512_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dmx512_c\default,PASS,All 80 annotations match,2.298126459121704
-can_fd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\can_fd_c\default,PASS,All 160 annotations match,5.041651010513306
-ds1307_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds1307_c\default,PASS,All 58 annotations match,2.1964054107666016
-ds2408_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds2408_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.1368391513824463
-ds28ea00_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds28ea00_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.200515031814575
-ds243x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds243x_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.290273427963257
-ds3231_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds3231_c\default,PASS,All 58 annotations match,2.2741901874542236
-edid_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\edid_c\default,PASS,All 58 annotations match,2.2137629985809326
-eeprom24xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\eeprom24xx_c\default,PASS,All 63 annotations match,2.2272768020629883
-cjtag_oscan0_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cjtag_oscan0_c\default,PASS,All 32 annotations match,5.200570106506348
-dsi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dsi_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.3702478408813477
-eeprom93xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\eeprom93xx_c\default,PASS,All 27 annotations match,2.1943516731262207
-em4100_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\em4100_c\default,PASS,All 62 annotations match,2.1882712841033936
-em4305_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\em4305_c\default,PASS,All 1 annotations match,1.9564006328582764
-delta-sigma_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\delta-sigma_c\default,FAIL,"282 matches, 6 deviations found.
-MISMATCH at sample 120: texts Py=['1'] vs C=['4'].
-MISMATCH at sample 120: texts Py=['1'] vs C=['4'].
-MISMATCH at sample 220: texts Py=['32'] vs C=['44'].
-MISMATCH at sample 220: texts Py=['32'] vs C=['44'].
-MISMATCH at sample 320: texts Py=['63'] vs C=['64'].
-MISMATCH at sample 320: texts Py=['63'] vs C=['64'].",4.434984445571899
-emmc_sd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\emmc_sd_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),1.9584803581237793
-enc28j60_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\enc28j60_c\default,PASS,All 3 annotations match,1.9647629261016846
-adat_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adat_c\default,FAIL,"8377 matches, 16184 deviations found.
-MISMATCH at sample 0: texts Py=['SYNC', 'S'] vs C=['SYNC'].
-MISMATCH at sample 90: texts Py=['ERROR', 'ERR', 'E'] vs C=['ERROR'].
-MISSED at sample 4167: Py has class 0 (0) but C doesn't
-MISSED at sample 4175: Py has class 0 (0) but C doesn't
-MISSED at sample 4183: Py has class 0 (0) but C doesn't
-MISSED at sample 4191: Py has class 0 (0) but C doesn't
-MISSED at sample 4199: Py has class 0 (0) but C doesn't
-MISSED at sample 4207: Py has class 0 (0) but C doesn't
-MISSED at sample 4215: Py has class 0 (0) but C doesn't
-MISSED at sample 4224: Py has class 0 (0) but C doesn't
-... and 16174 more",11.963331937789917
-ethernet_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ethernet_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),1.883866786956787
-flexray_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\flexray_c\default,PASS,All 1 annotations match,1.9850797653198242
-fsi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\fsi_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.1053359508514404
-gpib_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\gpib_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.1785807609558105
-guess_bitrate_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\guess_bitrate_c\default,PASS,All 1 annotations match,2.2300095558166504
-hdcp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\hdcp_c\default,PASS,All 58 annotations match,2.259164810180664
-graycode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\graycode_c\default,PASS,All 19 annotations match,2.2997217178344727
-hdmi_scdc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\hdmi_scdc_c\default,PASS,All 58 annotations match,2.2861835956573486
-hdlc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\hdlc_c\default,PASS,All 20 annotations match,2.2956583499908447
-i2c_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2c_c\default,PASS,All 58 annotations match,2.2748773097991943
-i2c_packet_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2c_packet_c\default,PASS,All 58 annotations match,2.310476303100586
-i2cdemux_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2cdemux_c\default,PASS,All 58 annotations match,2.403031826019287
-i2cfilter_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2cfilter_c\default,PASS,All 58 annotations match,2.4192421436309814
-eth_an_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\eth_an_c\default,PASS,All 16 annotations match,4.064956188201904
-i2s_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2s_c\default,PASS,All 1 annotations match,2.5139453411102295
-iec_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\iec_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),3.030127763748169
-iebus_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\iebus_c\default,PASS,All 20 annotations match,3.0610711574554443
-ieee488_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ieee488_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),3.095104217529297
-ipv4_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ipv4_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),3.0123589038848877
-ir_ltto_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_ltto_c\default,PASS,All 14 annotations match,3.0518884658813477
-ir_ltto_decode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_ltto_decode_c\default,PASS,All 14 annotations match,3.021857500076294
-ir_nec_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_nec_c\default,PASS,All 37 annotations match,3.048478126525879
-ir_rc5_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_rc5_c\default,PASS,All 19 annotations match,3.0029420852661133
-ir_recoil_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_recoil_c\default,PASS,All 12 annotations match,3.020878314971924
-ir_rc6_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_rc6_c\default,PASS,All 21 annotations match,3.036682367324829
-ir_irmp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_irmp_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),3.388615846633911
-ir_sirc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_sirc_c\default,PASS,All 18 annotations match,2.848417282104492
-iso7816_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\iso7816_c\default,PASS,All 2 annotations match,2.729022741317749
-j1708_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\j1708_c\default,PASS,All 165 annotations match,2.744342803955078
-jitter_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jitter_c\default,PASS,All 48 annotations match,2.606618881225586
-jtag_avr_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_avr_c\default,PASS,All 16 annotations match,2.5651190280914307
-jtag_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_c\default,PASS,All 16 annotations match,2.162564992904663
-jtag_ejtag_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_ejtag_c\default,PASS,All 16 annotations match,2.2403550148010254
-jtag_stm32_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_stm32_c\default,PASS,All 16 annotations match,2.215582847595215
-lfast_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lfast_c\default,FAIL,"62 matches, 12 deviations found.
-MISMATCH at sample 200: end Py=230 vs C=233. 
-MISSED at sample 230: Py has class 3 (Data Channel G) but C doesn't
-EXTRA at sample 233: C has class 3 (Data Channel G) but Py doesn't
-MISSED at sample 270: Py has class 4 (0) but C doesn't
-EXTRA at sample 277: C has class 4 (0) but Py doesn't
-MISSED at sample 280: Py has class 5 (6A) but C doesn't
-EXTRA at sample 290: C has class 5 (D5) but Py doesn't
-MISSED at sample 360: Py has class 7 (LVDS sleep mode request) but C doesn't
-EXTRA at sample 370: C has class 0 (0) but Py doesn't
-MISMATCH at sample 380: texts Py=['Wrong Sync Value: AAAA'] vs C=['Invalid sync pattern'].
-... and 2 more",2.276134967803955
-lpc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lpc_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.3277804851531982
-lm75_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lm75_c\default,PASS,All 59 annotations match,2.3613810539245605
-ltar_smartdevice_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltar_smartdevice_c\default,PASS,All 39 annotations match,2.3903679847717285
-lin_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lin_c\default,PASS,All 162 annotations match,2.5341477394104004
-ltar_smartdevice_decode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltar_smartdevice_decode_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.433659553527832
-maple_bus_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\maple_bus_c\default,FAIL,"0 matches, 48 deviations found.
-MISSED at sample 0: Py has class 0 (Start pattern) but C doesn't
-MISSED at sample 18: Py has class 6 (Size: 01) but C doesn't
-MISSED at sample 20: Py has class 5 (Bit: 0) but C doesn't
-MISSED at sample 24: Py has class 5 (Bit: 0) but C doesn't
-MISSED at sample 28: Py has class 5 (Bit: 0) but C doesn't
-MISSED at sample 32: Py has class 5 (Bit: 0) but C doesn't
-MISSED at sample 36: Py has class 5 (Bit: 0) but C doesn't
-MISSED at sample 40: Py has class 5 (Bit: 0) but C doesn't
-MISSED at sample 44: Py has class 5 (Bit: 0) but C doesn't
-MISSED at sample 50: Py has class 5 (Bit: 1) but C doesn't
-... and 38 more",2.3917410373687744
-ltc26x7_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltc26x7_c\default,PASS,All 58 annotations match,2.395020008087158
-ltc242x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltc242x_c\default,PASS,All 3 annotations match,2.551893472671509
-max6954_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\max6954_c\default,PASS,All 3 annotations match,2.372514247894287
-mcs48_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mcs48_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.2523508071899414
-max7219_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\max7219_c\default,PASS,All 3 annotations match,2.3715269565582275
-mdio_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mdio_c\default,PASS,All 72 annotations match,2.252502918243408
-microwire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\microwire_c\default,PASS,All 27 annotations match,2.2218759059906006
-midi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\midi_c\default,PASS,All 161 annotations match,2.244403123855591
-miller_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\miller_c\default,PASS,All 8 annotations match,2.2150275707244873
-mipi_dsi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mipi_dsi_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.303776502609253
-mipi_rffe_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mipi_rffe_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.530250310897827
-mlx90614_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mlx90614_c\default,PASS,All 58 annotations match,2.5473859310150146
-morse_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\morse_c\default,PASS,All 4 annotations match,2.569223165512085
-modbus_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\modbus_c\default,PASS,All 169 annotations match,2.6196353435516357
-mvb_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mvb_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.5356900691986084
-mxc6225xu_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mxc6225xu_c\default,PASS,All 58 annotations match,2.5174667835235596
-mpu6050_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mpu6050_c\default,PASS,All 58 annotations match,2.7189455032348633
-mrf24j40_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mrf24j40_c\default,PASS,All 3 annotations match,2.665118455886841
-nes_gamepad_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nes_gamepad_c\default,PASS,All 3 annotations match,2.684044122695923
-nrf24l01_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nrf24l01_c\default,PASS,All 3 annotations match,2.711066484451294
-nrf905_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nrf905_c\default,PASS,All 3 annotations match,2.692197561264038
-numbers_and_state_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\numbers_and_state_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.56150221824646
-nunchuk_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nunchuk_c\default,PASS,All 59 annotations match,2.495278835296631
-onewire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\onewire_c\default,PASS,All 39 annotations match,2.255405902862549
-nrzi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nrzi_c\default,PASS,All 9060 annotations match,3.8517894744873047
-onewire_link_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\onewire_link_c\default,PASS,All 39 annotations match,2.26068377494812
-onewire_network_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\onewire_network_c\default,PASS,All 39 annotations match,2.290189266204834
-ook_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ook_c\default,FAIL,"0 matches, 18 deviations found.
-MISSED at sample 4250: Py has class 3 (1) but C doesn't
-MISSED at sample 5000: Py has class 3 (0) but C doesn't
-MISSED at sample 6000: Py has class 3 (1) but C doesn't
-MISSED at sample 7000: Py has class 3 (0) but C doesn't
-MISSED at sample 8000: Py has class 3 (1) but C doesn't
-MISSED at sample 9000: Py has class 3 (0) but C doesn't
-MISSED at sample 10000: Py has class 3 (1) but C doesn't
-MISSED at sample 11000: Py has class 3 (0) but C doesn't
-MISSED at sample 12000: Py has class 3 (1) but C doesn't
-MISSED at sample 13000: Py has class 3 (0) but C doesn't
-... and 8 more",2.3590903282165527
-ook_oregon_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ook_oregon_c\default,FAIL,"0 matches, 18 deviations found.
-MISSED at sample 4250: Py has class 3 (1) but C doesn't
-MISSED at sample 5000: Py has class 3 (0) but C doesn't
-MISSED at sample 6000: Py has class 3 (1) but C doesn't
-MISSED at sample 7000: Py has class 3 (0) but C doesn't
-MISSED at sample 8000: Py has class 3 (1) but C doesn't
-MISSED at sample 9000: Py has class 3 (0) but C doesn't
-MISSED at sample 10000: Py has class 3 (1) but C doesn't
-MISSED at sample 11000: Py has class 3 (0) but C doesn't
-MISSED at sample 12000: Py has class 3 (1) but C doesn't
-MISSED at sample 13000: Py has class 3 (0) but C doesn't
-... and 8 more",2.403792381286621
-ook_vis_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ook_vis_c\default,FAIL,"0 matches, 29 deviations found.
-MISSED at sample 4000: Py has class 2 (f) but C doesn't
-MISSED at sample 4000: Py has class 4 (Preamble) but C doesn't
-MISSED at sample 4250: Py has class 2 (a) but C doesn't
-MISSED at sample 4250: Py has class 3 (1) but C doesn't
-MISSED at sample 4250: Py has class 4 (Preamble) but C doesn't
-MISSED at sample 5000: Py has class 3 (0) but C doesn't
-MISSED at sample 6000: Py has class 3 (1) but C doesn't
-MISSED at sample 7000: Py has class 3 (0) but C doesn't
-MISSED at sample 8000: Py has class 2 (a) but C doesn't
-MISSED at sample 8000: Py has class 3 (1) but C doesn't
-... and 19 more",2.408817768096924
-opentherm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\opentherm_c\default,PASS,All 63 annotations match,2.386162519454956
-parallel_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\parallel_c\default,PASS,All 5 annotations match,2.482848882675171
-pan1321_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pan1321_c\default,PASS,All 161 annotations match,2.5276095867156982
-pca9571_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pca9571_c\default,PASS,All 59 annotations match,2.3853847980499268
-pjdl_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pjdl_c\default,PASS,All 8 annotations match,2.374906301498413
-one_single_wire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\one_single_wire_c\default,PASS,All 42 annotations match,4.372680187225342
-pjon_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pjon_c\default,PASS,All 8 annotations match,2.3915090560913086
-pn532_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pn532_c\default,PASS,All 161 annotations match,2.4170949459075928
-ps2_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ps2_c\default,PASS,All 45 annotations match,2.533547878265381
-ps2_keyboard_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ps2_keyboard_c\default,PASS,All 46 annotations match,2.531531572341919
-ps2_mouse_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ps2_mouse_c\default,PASS,All 45 annotations match,2.5094759464263916
-pwm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pwm_c\default,PASS,All 36 annotations match,2.4833457469940186
-pxx1_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pxx1_c\default,PASS,All 14 annotations match,2.3985612392425537
-qi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\qi_c\default,PASS,All 47 annotations match,2.393906354904175
-pcfx_ctrlr_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pcfx_ctrlr_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),4.301790237426758
-rc_encode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rc_encode_c\default,PASS,All 6 annotations match,2.451192617416382
-rfm12_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rfm12_c\default,PASS,All 3 annotations match,2.5004005432128906
-rgb_led_ws281x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rgb_led_ws281x_c\default,PASS,All 26 annotations match,2.378755569458008
-rgb_led_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rgb_led_spi_c\default,PASS,All 3 annotations match,2.5365488529205322
-rpm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rpm_c\default,PASS,All 4 annotations match,2.424769878387451
-rtc8564_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rtc8564_c\default,PASS,All 58 annotations match,2.4598963260650635
-rvswd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rvswd_c\default,FAIL,"0 matches, 59 deviations found.
-MISMATCH at sample 5: texts Py=['START', 'S'] vs C=['START'].
-EXTRA at sample 10: C has class 10 (BIT 0: 0) but Py doesn't
-EXTRA at sample 10: C has class 2 (0x01) but Py doesn't
-EXTRA at sample 25: C has class 10 (BIT 1: 0) but Py doesn't
-EXTRA at sample 40: C has class 10 (BIT 2: 0) but Py doesn't
-EXTRA at sample 55: C has class 10 (BIT 3: 0) but Py doesn't
-EXTRA at sample 70: C has class 10 (BIT 4: 0) but Py doesn't
-EXTRA at sample 85: C has class 10 (BIT 5: 0) but Py doesn't
-EXTRA at sample 100: C has class 10 (BIT 6: 1) but Py doesn't
-EXTRA at sample 115: C has class 8 (0x0) but Py doesn't
-... and 49 more",2.398890733718872
-sae_j1850_vpw_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sae_j1850_vpw_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.1582391262054443
-sbus_futaba_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sbus_futaba_c\default,PASS,All 177 annotations match,2.4199130535125732
-sda2506_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sda2506_c\default,PASS,All 21 annotations match,2.5365054607391357
-scs_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\scs_c\default,PASS,All 167 annotations match,2.565072536468506
-qspi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\qspi_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),4.755563020706177
-sdcard_sd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdcard_sd_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.6128811836242676
-sdcard_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdcard_spi_c\default,PASS,All 3 annotations match,2.7278518676757812
-sdq_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdq_c\default,PASS,All 10 annotations match,2.6625115871429443
-sdio_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdio_c\default,PASS,All 57 annotations match,2.787731409072876
-sent_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sent_c\default,PASS,All 15 annotations match,2.6070213317871094
-signature_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\signature_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.594895124435425
-rinnai_control_panel_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rinnai_control_panel_c\default,PASS,All 11 annotations match,4.880704641342163
-seven_segment_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\seven_segment_c\default,PASS,All 9 annotations match,2.680523633956909
-sipi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sipi_c\default,FAIL,"62 matches, 14 deviations found.
-MISMATCH at sample 200: end Py=230 vs C=233. 
-MISSED at sample 230: Py has class 3 (Data Channel G) but C doesn't
-EXTRA at sample 233: C has class 3 (Data Channel G) but Py doesn't
-MISSED at sample 270: Py has class 4 (0) but C doesn't
-EXTRA at sample 277: C has class 4 (0) but Py doesn't
-MISSED at sample 280: Py has class 5 (6A) but C doesn't
-MISSED at sample 280: Py has class 6 (Header too short) but C doesn't
-EXTRA at sample 290: C has class 5 (D5) but Py doesn't
-EXTRA at sample 290: C has class 6 (Header too short) but Py doesn't
-MISSED at sample 360: Py has class 7 (LVDS sleep mode request) but C doesn't
-... and 4 more",2.4857733249664307
-sony_md_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sony_md_c\default,PASS,All 17 annotations match,2.418560028076172
-sony_md_decode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sony_md_decode_c\default,PASS,All 17 annotations match,2.6715598106384277
-spacewire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spacewire_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.448948860168457
-sle44xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sle44xx_c\default,PASS,All 6696 annotations match,3.519324779510498
-spdif_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spdif_c\default,FAIL,"18 matches, 1 deviations found.
-MISSED at sample 180: Py has class 1 (Unknown Preamble) but C doesn't",2.368290901184082
-spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_c\default,PASS,All 3 annotations match,2.4357481002807617
-spi_tpm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_tpm_c\default,PASS,All 3 annotations match,2.464925527572632
-spiflash_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spiflash_c\default,PASS,All 3 annotations match,2.455958366394043
-ssd1306_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ssd1306_c\default,PASS,All 58 annotations match,2.391056537628174
-st25dv_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st25dv_c\default,PASS,All 59 annotations match,2.361412525177002
-ssi32_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ssi32_c\default,PASS,All 3 annotations match,2.4263417720794678
-st7735_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st7735_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.299687623977661
-st25r39xx_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st25r39xx_spi_c\default,PASS,All 3 annotations match,2.5357861518859863
-st7789_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st7789_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.2382595539093018
-stepper_motor_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\stepper_motor_c\default,PASS,All 26 annotations match,2.279134511947632
-streletz_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\streletz_c\default,PASS,All 161 annotations match,2.0569539070129395
-swd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\swd_c\default,PASS,All 4 annotations match,2.1704859733581543
-swi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\swi_c\default,PASS,All 4 annotations match,2.139647960662842
-swim_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\swim_c\default,FAIL,"1 matches, 2 deviations found.
-MISSED at sample 50: Py has class 0 (0) but C doesn't
-MISMATCH at sample 50: texts Py=['start', 's'] vs C=['start'].",2.1725943088531494
-t55xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\t55xx_c\default,PASS,All 78 annotations match,2.1356518268585205
-spi_fast_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_fast_c\default,PASS,All 3 annotations match,4.832292079925537
-tca6408a_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tca6408a_c\default,PASS,All 59 annotations match,2.364769220352173
-tcs3472x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tcs3472x_c\default,PASS,All 58 annotations match,2.487839698791504
-tdm_audio_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tdm_audio_c\default,FAIL,"0 matches, 8 deviations found.
-MISSED at sample 60: Py has class 0 (Channel 0: 0001) but C doesn't
-MISSED at sample 210: Py has class 1 (Channel 1: 0000) but C doesn't
-MISSED at sample 370: Py has class 2 (Channel 2: 0000) but C doesn't
-MISSED at sample 530: Py has class 3 (Channel 3: 0000) but C doesn't
-MISSED at sample 690: Py has class 4 (Channel 4: 0000) but C doesn't
-MISSED at sample 850: Py has class 5 (Channel 5: 0000) but C doesn't
-MISSED at sample 1010: Py has class 6 (Channel 6: 0000) but C doesn't
-MISSED at sample 1170: Py has class 7 (Channel 7: 0000) but C doesn't",2.4357028007507324
-timing_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\timing_c\default,PASS,All 36 annotations match,2.459296226501465
-tlc5620_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tlc5620_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.466397285461426
-tm1637_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tm1637_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.727123498916626
-tmc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tmc_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.707127332687378
-tm1638_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tm1638_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.735555648803711
-tmp102_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tmp102_c\default,PASS,All 59 annotations match,2.6743838787078857
-tpm_fifo_tis_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tpm_fifo_tis_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.6258962154388428
-tpm_tis_i2c_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tpm_tis_i2c_c\default,PASS,All 58 annotations match,2.5896079540252686
-spi_dual_quad_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_dual_quad_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),6.947602987289429
-tpm_tis_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tpm_tis_spi_c\default,PASS,All 3 annotations match,2.7295970916748047
-uart_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\uart_c\default,FAIL,"127 matches, 614 deviations found.
-EXTRA at sample 104: C has class 5 (Start bit) but Py doesn't
-EXTRA at sample 113: C has class 3 (00) but Py doesn't
-EXTRA at sample 113: C has class 13 (0) but Py doesn't
-EXTRA at sample 117: C has class 20 (1) but Py doesn't
-EXTRA at sample 121: C has class 13 (0) but Py doesn't
-EXTRA at sample 125: C has class 20 (1) but Py doesn't
-EXTRA at sample 130: C has class 13 (0) but Py doesn't
-EXTRA at sample 134: C has class 20 (1) but Py doesn't
-EXTRA at sample 139: C has class 13 (0) but Py doesn't
-EXTRA at sample 143: C has class 20 (1) but Py doesn't
-... and 604 more",2.6564807891845703
-udp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\udp_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.39231276512146
-ufcs_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ufcs_c\default,PASS,All 163 annotations match,2.3653509616851807
-usb_packet_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_packet_c\default,PASS,All 34 annotations match,2.2614028453826904
-usb_power_delivery_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_power_delivery_c\default,PASS,All 24 annotations match,2.2834131717681885
-usb_request_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_request_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.182251214981079
-usb_signalling_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_signalling_c\default,PASS,All 2499 annotations match,2.2621073722839355
-xfp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\xfp_c\default,PASS,All 60 annotations match,1.78690767288208
-x2444m_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\x2444m_c\default,PASS,All 3 annotations match,1.8135097026824951
-wiegand_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\wiegand_c\default,PASS,All 27 annotations match,2.0462875366210938
-z80_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\z80_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),1.596381425857544
-uart_fast_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\uart_fast_c\default,FAIL,"33 matches, 32 deviations found.
-EXTRA at sample 208: C has class 5 (Start bit) but Py doesn't
-EXTRA at sample 217: C has class 3 (00) but Py doesn't
-EXTRA at sample 286: C has class 1 (Stop bit error) but Py doesn't
-EXTRA at sample 286: C has class 11 (Stop bit) but Py doesn't
-EXTRA at sample 416: C has class 5 (Start bit) but Py doesn't
-EXTRA at sample 425: C has class 3 (00) but Py doesn't
-EXTRA at sample 494: C has class 1 (Stop bit error) but Py doesn't
-EXTRA at sample 494: C has class 11 (Stop bit) but Py doesn't
-EXTRA at sample 624: C has class 5 (Start bit) but Py doesn't
-EXTRA at sample 633: C has class 3 (00) but Py doesn't
-... and 22 more",3.425818681716919
-xy2_100_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\xy2_100_c\default,PASS,All 76 annotations match,2.3458690643310547
+ac97_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ac97_c\default,PASS,All 510 annotations match,2.4309298992156982
+adat_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adat_c\default,PASS,All 750 annotations match,2.92232084274292
+adb_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adb_c\default,PASS,All 26 annotations match,2.97357177734375
+afsk_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\afsk_c\default,PASS,All 2 annotations match,3.1183788776397705
+a7105_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\a7105_c\default,PASS,All 3 annotations match,3.2452564239501953
+ad79x0_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ad79x0_c\default,PASS,All 3 annotations match,3.253709554672241
+adns5020_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adns5020_c\default,PASS,All 3 annotations match,3.3480048179626465
+am230x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\am230x_c\default,PASS,All 51 annotations match,3.3674516677856445
+amulet_ascii_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\amulet_ascii_c\default,PASS,All 169 annotations match,3.425307273864746
+ad5593r_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ad5593r_c\default,FAIL,"60 matches, 2 deviations found.
+MISSED at sample 9: Py has class 5 (I²C slave is not compatible.) but C doesn't
+EXTRA at sample 9: C has class 5 (I2C slave is not compatible.) but Py doesn't",3.4941062927246094
+adf435x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adf435x_c\default,PASS,All 3 annotations match,3.4942357540130615
+arm_etmv3_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arm_etmv3_c\default,PASS,All 161 annotations match,3.5008609294891357
+ade77xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ade77xx_c\default,PASS,All 3 annotations match,3.5428626537323
+adxl345_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\adxl345_c\default,PASS,All 3 annotations match,4.223330736160278
+arm_itm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arm_itm_c\default,PASS,All 169 annotations match,1.987626552581787
+ad5626_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ad5626_c\default,PASS,All 3 annotations match,4.492164373397827
+4b5b_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\4b5b_c\default,PASS,All 10867 annotations match,4.700820207595825
+arm_tpiu_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arm_tpiu_c\default,PASS,All 161 annotations match,1.9142768383026123
+aud_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\aud_c\default,PASS,All 1 annotations match,1.9469070434570312
+as5047_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\as5047_c\default,PASS,All 3 annotations match,2.0826663970947266
+atsha204a_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\atsha204a_c\default,PASS,All 61 annotations match,2.016047239303589
+avclan_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\avclan_c\default,PASS,All 20 annotations match,2.130913734436035
+avr_isp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\avr_isp_c\default,PASS,All 3 annotations match,2.187346935272217
+bean_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\bean_c\default,PASS,All 71 annotations match,2.0756402015686035
+avr_pdi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\avr_pdi_c\default,PASS,All 1 annotations match,2.141303300857544
+bh1750_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\bh1750_c\default,PASS,All 61 annotations match,2.10314679145813
+bluetooth_h4_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\bluetooth_h4_c\default,PASS,All 169 annotations match,2.10709547996521
+boost_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\boost_c\default,PASS,All 161 annotations match,2.209198236465454
+c2_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\c2_c\default,PASS,All 9 annotations match,1.920804738998413
+caliper_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\caliper_c\default,PASS,All 1 annotations match,1.9566526412963867
+can_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\can_c\default,PASS,All 160 annotations match,2.0287389755249023
+carrera_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\carrera_c\default,PASS,All 5 annotations match,1.8415298461914062
+arp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\arp_c\default,PASS,All 10867 annotations match,4.140258073806763
+cec_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cec_c\default,PASS,All 1 annotations match,1.868211269378662
+ccd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ccd_c\default,PASS,All 99 annotations match,1.9525783061981201
+cc1101_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cc1101_c\default,PASS,All 3 annotations match,2.061469554901123
+cfp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cfp_c\default,PASS,All 72 annotations match,1.914459228515625
+counter_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\counter_c\default,PASS,All 10 annotations match,1.924980878829956
+cjtag_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cjtag_c\default,PASS,All 80 annotations match,2.025944471359253
+crsf_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\crsf_c\default,PASS,All 169 annotations match,2.034519910812378
+cyrf6936_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cyrf6936_c\default,PASS,All 3 annotations match,2.1228268146514893
+dali_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dali_c\default,PASS,All 13 annotations match,2.0008041858673096
+dcc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dcc_c\default,PASS,All 47 annotations match,1.8618593215942383
+dcf77_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dcf77_c\default,PASS,All 1 annotations match,1.9403908252716064
+dmx512_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dmx512_c\default,PASS,All 82 annotations match,1.92630934715271
+can_fd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\can_fd_c\default,PASS,All 572 annotations match,4.274283170700073
+ds2408_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds2408_c\default,PASS,All 59 annotations match,2.124399423599243
+ds1307_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds1307_c\default,PASS,All 60 annotations match,2.142368793487549
+ds243x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds243x_c\default,PASS,All 131 annotations match,2.1148300170898438
+ds28ea00_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds28ea00_c\default,PASS,All 91 annotations match,2.0784051418304443
+ds3231_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ds3231_c\default,PASS,All 60 annotations match,2.188223123550415
+dsi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\dsi_c\default,PASS,All 13 annotations match,2.4666476249694824
+edid_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\edid_c\default,PASS,All 60 annotations match,2.3982226848602295
+eeprom24xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\eeprom24xx_c\default,PASS,All 67 annotations match,2.3680264949798584
+eeprom93xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\eeprom93xx_c\default,PASS,All 27 annotations match,2.265846014022827
+em4100_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\em4100_c\default,PASS,All 48 annotations match,2.357548952102661
+emmc_sd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\emmc_sd_c\default,FAIL,"1 matches, 110 deviations found.
+MISSED at sample 2008: Py has class 65 (Start bit) but C doesn't
+MISSED at sample 2008: Py has class 71 (0) but C doesn't
+EXTRA at sample 2008: C has class 128 (0) but Py doesn't
+EXTRA at sample 2008: C has class 129 (Start bit) but Py doesn't
+MISSED at sample 2012: Py has class 66 (Transmission: host) but C doesn't
+MISSED at sample 2012: Py has class 71 (1) but C doesn't
+EXTRA at sample 2012: C has class 128 (1) but Py doesn't
+EXTRA at sample 2012: C has class 130 (Transmission: host) but Py doesn't
+MISSED at sample 2016: Py has class 67 (Command: GO_IDLE_STATE (0)) but C doesn't
+MISSED at sample 2016: Py has class 71 (0) but C doesn't
+... and 100 more",2.2232625484466553
+enc28j60_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\enc28j60_c\default,PASS,All 3 annotations match,2.476586103439331
+delta-sigma_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\delta-sigma_c\default,PASS,All 768 annotations match,4.7488908767700195
+cjtag_oscan0_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\cjtag_oscan0_c\default,PASS,All 84 annotations match,5.701908826828003
+fsi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\fsi_c\default,PASS,All 166 annotations match,2.3254706859588623
+flexray_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\flexray_c\default,PASS,All 20 annotations match,2.3540141582489014
+em4305_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\em4305_c\default,PASS,All 1 annotations match,4.0114781856536865
+gpib_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\gpib_c\default,PASS,All 9 annotations match,2.7053375244140625
+guess_bitrate_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\guess_bitrate_c\default,PASS,All 2 annotations match,2.24287486076355
+hdcp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\hdcp_c\default,PASS,All 60 annotations match,2.281503200531006
+hdlc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\hdlc_c\default,WARN,All 0 annotations match (vacuous - no output from either decoder),2.277726411819458
+hdmi_scdc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\hdmi_scdc_c\default,PASS,All 60 annotations match,2.302480936050415
+i2c_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2c_c\default,PASS,All 86 annotations match,2.2327513694763184
+i2c_packet_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2c_packet_c\default,PASS,All 61 annotations match,2.0928235054016113
+graycode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\graycode_c\default,PASS,All 35 annotations match,3.4314889907836914
+i2cdemux_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2cdemux_c\default,PASS,All 60 annotations match,1.9999785423278809
+i2s_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2s_c\default,PASS,All 1 annotations match,1.9772427082061768
+i2cfilter_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\i2cfilter_c\default,PASS,All 60 annotations match,1.9866893291473389
+iec_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\iec_c\default,PASS,All 6 annotations match,1.8839752674102783
+iebus_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\iebus_c\default,PASS,All 1 annotations match,1.91459059715271
+eth_an_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\eth_an_c\default,PASS,All 17 annotations match,4.818748950958252
+ethernet_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ethernet_c\default,FAIL,"11657 matches, 3 deviations found.
+MISSED at sample 5515: Py has class 0 (Frame Check Sequence: FAILED) but C doesn't
+MISSED at sample 8715: Py has class 0 (Frame Check Sequence: FAILED) but C doesn't
+MISSED at sample 9265: Py has class 0 (Frame Check Sequence: FAILED) but C doesn't",4.750830173492432
+ieee488_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ieee488_c\default,PASS,All 30 annotations match,1.9879705905914307
+ir_ltto_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_ltto_c\default,PASS,All 14 annotations match,1.966580867767334
+ir_ltto_decode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_ltto_decode_c\default,PASS,All 14 annotations match,1.9530541896820068
+ir_rc5_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_rc5_c\default,PASS,All 19 annotations match,1.9178216457366943
+ir_rc6_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_rc6_c\default,PASS,All 26 annotations match,1.8580200672149658
+ir_irmp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_irmp_c\default,PASS,All 1 annotations match,2.615561008453369
+ir_recoil_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_recoil_c\default,PASS,All 12 annotations match,1.907724142074585
+iso7816_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\iso7816_c\default,PASS,All 2 annotations match,2.302452325820923
+j1708_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\j1708_c\default,PASS,All 165 annotations match,2.2964863777160645
+jitter_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jitter_c\default,PASS,All 15 annotations match,2.181576728820801
+jtag_avr_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_avr_c\default,PASS,All 16 annotations match,2.17976975440979
+ir_nec_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_nec_c\default,PASS,All 86 annotations match,3.512830972671509
+jtag_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_c\default,PASS,All 13 annotations match,2.348241090774536
+ipv4_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ipv4_c\default,PASS,All 10867 annotations match,4.417620658874512
+jtag_ejtag_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_ejtag_c\default,PASS,All 16 annotations match,2.4609081745147705
+jtag_stm32_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\jtag_stm32_c\default,PASS,All 16 annotations match,2.460304021835327
+lm75_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lm75_c\default,PASS,All 61 annotations match,2.308814287185669
+lin_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lin_c\default,PASS,All 162 annotations match,2.3996469974517822
+lpc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lpc_c\default,PASS,All 6 annotations match,2.201881170272827
+ltar_smartdevice_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltar_smartdevice_c\default,PASS,All 39 annotations match,2.084700345993042
+ltar_smartdevice_decode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltar_smartdevice_decode_c\default,PASS,All 1047 annotations match,2.1363492012023926
+ir_sirc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ir_sirc_c\default,PASS,All 18 annotations match,4.275387287139893
+maple_bus_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\maple_bus_c\default,PASS,All 84 annotations match,2.1925063133239746
+lfast_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\lfast_c\default,PASS,All 9997 annotations match,3.7970893383026123
+ltc26x7_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltc26x7_c\default,PASS,All 60 annotations match,2.483394145965576
+ltc242x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ltc242x_c\default,PASS,All 3 annotations match,2.4859137535095215
+max6954_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\max6954_c\default,PASS,All 3 annotations match,2.342951536178589
+max7219_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\max7219_c\default,PASS,All 3 annotations match,2.3531181812286377
+mdio_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mdio_c\default,PASS,All 72 annotations match,2.3026123046875
+microwire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\microwire_c\default,PASS,All 1 annotations match,2.333758592605591
+mipi_dsi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mipi_dsi_c\default,PASS,All 2 annotations match,2.211310863494873
+midi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\midi_c\default,PASS,All 161 annotations match,2.404958724975586
+mipi_rffe_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mipi_rffe_c\default,FAIL,"21 matches, 5 deviations found.
+MISSED at sample 2108: Py has class 17 (Illegal Jump Edge) but C doesn't
+MISSED at sample 2136: Py has class 12 (Bus Pack) but C doesn't
+EXTRA at sample 2138: C has class 12 (Bus Pack) but Py doesn't
+MISSED at sample 2454: Py has class 12 (Bus Pack) but C doesn't
+EXTRA at sample 2458: C has class 12 (Bus Pack) but Py doesn't",2.18705677986145
+mlx90614_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mlx90614_c\default,PASS,All 60 annotations match,2.1193037033081055
+miller_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\miller_c\default,PASS,All 4999 annotations match,2.598888874053955
+modbus_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\modbus_c\default,PASS,All 169 annotations match,2.129777669906616
+morse_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\morse_c\default,PASS,All 38 annotations match,2.0077056884765625
+mcs48_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mcs48_c\default,PASS,All 1 annotations match,4.1843650341033936
+mpu6050_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mpu6050_c\default,PASS,All 60 annotations match,2.587902545928955
+mxc6225xu_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mxc6225xu_c\default,PASS,All 60 annotations match,2.4486711025238037
+mrf24j40_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mrf24j40_c\default,PASS,All 3 annotations match,2.52376651763916
+nes_gamepad_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nes_gamepad_c\default,PASS,All 3 annotations match,2.5791361331939697
+nrf24l01_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nrf24l01_c\default,PASS,All 3 annotations match,2.5313220024108887
+nrzi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nrzi_c\default,PASS,All 768 annotations match,2.6046102046966553
+nunchuk_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nunchuk_c\default,PASS,All 61 annotations match,2.6453158855438232
+numbers_and_state_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\numbers_and_state_c\default,PASS,All 16 annotations match,2.692161798477173
+nrf905_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\nrf905_c\default,PASS,All 3 annotations match,2.768887758255005
+onewire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\onewire_c\default,PASS,All 39 annotations match,2.618495464324951
+mvb_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\mvb_c\default,PASS,All 24 annotations match,3.992612838745117
+opentherm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\opentherm_c\default,PASS,All 13 annotations match,2.5830185413360596
+onewire_link_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\onewire_link_c\default,PASS,All 39 annotations match,3.905695676803589
+onewire_network_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\onewire_network_c\default,PASS,All 43 annotations match,3.8967525959014893
+pan1321_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pan1321_c\default,PASS,All 161 annotations match,2.5967094898223877
+parallel_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\parallel_c\default,PASS,All 5 annotations match,2.588141679763794
+pca9571_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pca9571_c\default,PASS,All 61 annotations match,2.5138559341430664
+one_single_wire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\one_single_wire_c\default,PASS,All 42 annotations match,4.90822958946228
+ps2_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ps2_c\default,PASS,All 15 annotations match,2.188814640045166
+pn532_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pn532_c\default,PASS,All 161 annotations match,2.309007406234741
+pjdl_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pjdl_c\default,PASS,All 8 annotations match,2.3986189365386963
+pjon_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pjon_c\default,PASS,All 8 annotations match,2.44046688079834
+ps2_keyboard_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ps2_keyboard_c\default,PASS,All 47 annotations match,2.1634562015533447
+pwm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pwm_c\default,PASS,All 14 annotations match,2.6143407821655273
+ps2_mouse_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ps2_mouse_c\default,PASS,All 46 annotations match,2.6351006031036377
+pxx1_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pxx1_c\default,PASS,All 14 annotations match,2.6390483379364014
+qi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\qi_c\default,PASS,All 47 annotations match,2.653928279876709
+rc_encode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rc_encode_c\default,PASS,All 2 annotations match,2.6888842582702637
+rgb_led_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rgb_led_spi_c\default,PASS,All 3 annotations match,2.752635955810547
+rpm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rpm_c\default,PASS,All 2 annotations match,2.648831844329834
+rtc8564_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rtc8564_c\default,PASS,All 60 annotations match,2.4426541328430176
+pcfx_ctrlr_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\pcfx_ctrlr_c\default,PASS,All 39 annotations match,5.897825717926025
+rvswd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rvswd_c\default,PASS,All 59 annotations match,2.246659755706787
+sae_j1850_vpw_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sae_j1850_vpw_c\default,PASS,All 33 annotations match,2.330345630645752
+sbus_futaba_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sbus_futaba_c\default,PASS,All 177 annotations match,2.5257771015167236
+scs_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\scs_c\default,PASS,All 167 annotations match,2.5015530586242676
+rfm12_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rfm12_c\default,PASS,All 3 annotations match,4.545298337936401
+qspi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\qspi_c\default,DEVIATION,"0 matches, 45 deviations found.
+EXTRA at sample 2012: C has class 0 (Command : Read Status Register) but Py doesn't
+EXTRA at sample 2012: C has class 2 (
+) but Py doesn't
+MISSED at sample 2012: Py has class 3 (
+) but C doesn't
+EXTRA at sample 2012: C has class 3 (
+) but Py doesn't
+MISSED at sample 2012: Py has class 4 (
+) but C doesn't
+EXTRA at sample 2012: C has class 4 (
+) but Py doesn't
+MISSED at sample 2012: Py has class 5 (
+) but C doesn't
+MISSED at sample 2012: Py has class 6 (
+) but C doesn't
+MISSED at sample 2012: Py has class 7 (SPI) but C doesn't
+EXTRA at sample 2204: C has class 0 (Read Data : 0x00) but Py doesn't
+... and 35 more",5.223538637161255
+sda2506_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sda2506_c\default,PASS,All 17 annotations match,2.7802696228027344
+sdcard_sd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdcard_sd_c\default,FAIL,"48 matches, 16 deviations found.
+MISSED at sample 2008: Py has class 0 (CMD0 (GO_IDLE_STATE): Reset all SD cards) but C doesn't
+EXTRA at sample 2008: C has class 0 (CMD0 (GO_IDLE_STATE): Reset all SD cards) but Py doesn't
+MISSED at sample 2008: Py has class 203 (Start bit) but C doesn't
+EXTRA at sample 2008: C has class 203 (Start bit) but Py doesn't
+MISSED at sample 2012: Py has class 204 (Transmission: host) but C doesn't
+EXTRA at sample 2012: C has class 204 (Transmission: host) but Py doesn't
+MISSED at sample 2016: Py has class 205 (Command: GO_IDLE_STATE (0)) but C doesn't
+EXTRA at sample 2016: C has class 205 (Command: GO_IDLE_STATE (0)) but Py doesn't
+MISSED at sample 2040: Py has class 206 (Argument: 0x00000000) but C doesn't
+EXTRA at sample 2040: C has class 206 (Argument: 0x00000000) but Py doesn't
+... and 6 more",2.395174980163574
+sdcard_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdcard_spi_c\default,PASS,All 3 annotations match,2.3790547847747803
+sdio_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdio_c\default,PASS,All 67 annotations match,2.4575724601745605
+rinnai_control_panel_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rinnai_control_panel_c\default,PASS,All 10 annotations match,5.235010623931885
+sent_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sent_c\default,PASS,All 1 annotations match,2.1595754623413086
+sdq_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sdq_c\default,PASS,All 5622 annotations match,3.1011979579925537
+signature_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\signature_c\default,PASS,All 1 annotations match,2.272404193878174
+sony_md_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sony_md_c\default,PASS,All 17 annotations match,2.3800103664398193
+sipi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sipi_c\default,PASS,All 69 annotations match,2.6989240646362305
+rgb_led_ws281x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\rgb_led_ws281x_c\default,PASS,All 26 annotations match,7.178096532821655
+sony_md_decode_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sony_md_decode_c\default,PASS,All 17 annotations match,2.407396078109741
+sle44xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\sle44xx_c\default,PASS,All 37 annotations match,2.8084616661071777
+spdif_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spdif_c\default,PASS,All 26 annotations match,2.183908224105835
+spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_c\default,PASS,All 5 annotations match,2.171818256378174
+spacewire_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spacewire_c\default,PASS,All 40 annotations match,2.2968578338623047
+spiflash_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spiflash_c\default,PASS,All 3 annotations match,2.266981601715088
+ssd1306_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ssd1306_c\default,PASS,All 60 annotations match,2.1835484504699707
+st7735_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st7735_c\default,PASS,All 19 annotations match,2.325472831726074
+st25dv_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st25dv_c\default,PASS,All 61 annotations match,2.466010570526123
+spi_tpm_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_tpm_c\default,PASS,All 3 annotations match,3.0872371196746826
+stepper_motor_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\stepper_motor_c\default,PASS,All 18 annotations match,2.2977712154388428
+st7789_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st7789_c\default,PASS,All 21 annotations match,2.5032906532287598
+st25r39xx_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\st25r39xx_spi_c\default,PASS,All 3 annotations match,2.729828119277954
+seven_segment_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\seven_segment_c\default,PASS,All 5 annotations match,6.685880661010742
+swi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\swi_c\default,PASS,All 4 annotations match,1.9428584575653076
+swd_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\swd_c\default,PASS,All 5 annotations match,2.1835789680480957
+tca6408a_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tca6408a_c\default,PASS,All 61 annotations match,1.896611213684082
+t55xx_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\t55xx_c\default,PASS,All 79 annotations match,2.0007729530334473
+swim_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\swim_c\default,PASS,All 3 annotations match,2.069281578063965
+tcs3472x_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tcs3472x_c\default,PASS,All 60 annotations match,2.0062763690948486
+tlc5620_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tlc5620_c\default,PASS,All 1 annotations match,1.1212875843048096
+tm1637_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tm1637_c\default,PASS,All 27 annotations match,2.7475383281707764
+spi_dual_quad_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_dual_quad_c\default,DEVIATION,"114 matches, 304 deviations found.
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+EXTRA at sample 0: C has class 3 (0) but Py doesn't
+... and 294 more",8.584140062332153
+spi_fast_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\spi_fast_c\default,PASS,All 4963 annotations match,7.807908773422241
+streletz_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\streletz_c\default,PASS,All 161 annotations match,6.788942813873291
+tpm_tis_i2c_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tpm_tis_i2c_c\default,PASS,All 60 annotations match,2.518021583557129
+tmp102_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tmp102_c\default,PASS,All 61 annotations match,2.7009997367858887
+ssi32_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ssi32_c\default,PASS,All 3 annotations match,7.187741756439209
+tpm_fifo_tis_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tpm_fifo_tis_c\default,PASS,All 25 annotations match,2.663529396057129
+tpm_tis_spi_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tpm_tis_spi_c\default,PASS,All 3 annotations match,2.410146474838257
+tmc_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tmc_c\default,PASS,All 22 annotations match,2.858295440673828
+tdm_audio_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tdm_audio_c\default,PASS,All 8 annotations match,4.570487976074219
+uart_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\uart_c\default,PASS,All 221 annotations match,1.2952368259429932
+timing_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\timing_c\default,PASS,All 18 annotations match,6.37760066986084
+usb_packet_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_packet_c\default,PASS,All 35 annotations match,2.227006196975708
+usb_request_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_request_c\default,FAIL,"240 matches, 15 deviations found.
+MISSED at sample 2118: Py has class 15 (DATA0 [ 80 06 00 01 00 00 40 00 ]) but C doesn't
+EXTRA at sample 2118: C has class 15 (DATA0: 8 bytes) but Py doesn't
+MISSED at sample 2134: Py has class 2 (PID: DATA0) but C doesn't
+EXTRA at sample 2134: C has class 2 (PID: DATA0) but Py doesn't
+MISSED at sample 2150: Py has class 8 (Databyte: 80) but C doesn't
+EXTRA at sample 2150: C has class 8 (DATA: 80 06 00 01 00 00 40 00) but Py doesn't
+MISSED at sample 2165: Py has class 8 (Databyte: 06) but C doesn't
+MISSED at sample 2181: Py has class 8 (Databyte: 00) but C doesn't
+MISSED at sample 2198: Py has class 8 (Databyte: 01) but C doesn't
+MISSED at sample 2214: Py has class 8 (Databyte: 00) but C doesn't
+... and 5 more",2.158853530883789
+usb_signalling_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_signalling_c\default,PASS,All 154 annotations match,2.596240997314453
+usb_power_delivery_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\usb_power_delivery_c\default,PASS,All 31 annotations match,2.7722506523132324
+ufcs_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ufcs_c\default,PASS,All 165 annotations match,2.9324817657470703
+x2444m_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\x2444m_c\default,PASS,All 3 annotations match,2.7602269649505615
+xfp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\xfp_c\default,PASS,All 62 annotations match,2.763611078262329
+tm1638_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\tm1638_c\default,PASS,All 55 annotations match,6.524855136871338
+z80_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\z80_c\default,PASS,All 5 annotations match,1.512880802154541
+uart_fast_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\uart_fast_c\default,PASS,All 1 annotations match,4.380657196044922
+udp_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\udp_c\default,PASS,All 10867 annotations match,4.476938962936401
+xy2_100_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\xy2_100_c\default,PASS,All 37 annotations match,3.5531675815582275
+ook_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ook_c\default,ERROR,"C error: Command '['C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\build.dir\\decoder_test.exe', '-d', 'ook_c', '-t', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\ook_c\\default', '-f', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\ook_c\\default\\actual_c.json', '--tolerance', '2', '--generate-only']' timed out after 30 seconds",91.7490463256836
+ook_oregon_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ook_oregon_c\default,ERROR,"C error: Command '['C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\build.dir\\decoder_test.exe', '-d', 'ook_oregon_c', '-t', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\ook_oregon_c\\default', '-f', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\ook_oregon_c\\default\\actual_c.json', '--tolerance', '2', '--generate-only']' timed out after 30 seconds",91.78540468215942
+ook_vis_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\ook_vis_c\default,ERROR,"C error: Command '['C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\build.dir\\decoder_test.exe', '-d', 'ook_vis_c', '-t', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\ook_vis_c\\default', '-f', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\ook_vis_c\\default\\actual_c.json', '--tolerance', '2', '--generate-only']' timed out after 30 seconds",92.02136850357056
+wiegand_c,C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokdecode\tests\testdata\wiegand_c\default,ERROR,"C error: Command '['C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\build.dir\\decoder_test.exe', '-d', 'wiegand_c', '-t', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\wiegand_c\\default', '-f', 'C:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrokdecode\\tests\\testdata\\wiegand_c\\default\\actual_c.json', '--tolerance', '2', '--generate-only']' timed out after 30 seconds",91.00242614746094

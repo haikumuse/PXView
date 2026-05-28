@@ -2,7 +2,7 @@
   "decoder": "tmc_c",
   "samplerate": 1000000,
   "num_channels": 3,
-  "sample_count": 10000,
+  "sample_count": 50000,
   "channels": {
     "clk": 0,
     "dio": 1,

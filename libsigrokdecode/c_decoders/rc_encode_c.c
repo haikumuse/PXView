@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -125,7 +125,7 @@ static void rc_decode_model(struct srd_decoder_inst *di)
         pos += snprintf(addr_text + pos, sizeof(addr_text) - pos,
                         "%sA%d=%s", (i > 0 ? ", " : ""), i, state_str);
     }
-    C_ANN_PUT(di, s->bits_ss[0], s->bits_es[5], s->out_ann, ANN_CODE_WORD_ADDR, addr_text);
+    c_put(di, s->bits_ss[0], s->bits_es[5], s->out_ann, ANN_CODE_WORD_ADDR, addr_text);
 
     /* Buttons: A6/D5-A11/D0 */
     char data_text[128] = "";
@@ -141,7 +141,7 @@ static void rc_decode_model(struct srd_decoder_inst *di)
         pos += snprintf(data_text + pos, sizeof(data_text) - pos,
                         "%sA%d/D%d=%s", (i > 6 ? ", " : ""), i, 12 - i, bit_str);
     }
-    C_ANN_PUT(di, s->bits_ss[6], s->bits_es[11], s->out_ann, ANN_CODE_WORD_DATA, data_text);
+    c_put(di, s->bits_ss[6], s->bits_es[11], s->out_ann, ANN_CODE_WORD_DATA, data_text);
 }
 
 static void rc_encode_reset_state(struct srd_decoder_inst *di)
@@ -167,9 +167,9 @@ static void rc_encode_reset(struct srd_decoder_inst *di)
 static void rc_encode_start(struct srd_decoder_inst *di)
 {
     struct rc_encode_priv *s = (struct rc_encode_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "rc_encode");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "rc_encode");
 
-    const char *remote_str = c_decoder_get_option_string(di, "remote", "none");
+    const char *remote_str = c_opt_str(di, "remote", "none");
     if (strcmp(remote_str, "maplin_l95ar") == 0)
         s->model = 1;
     else
@@ -186,23 +186,19 @@ static void rc_encode_metadata(struct srd_decoder_inst *di, int key, uint64_t va
 static void rc_encode_decode(struct srd_decoder_inst *di)
 {
     struct rc_encode_priv *s = (struct rc_encode_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
     int ret;
 
     if (s->samplerate == 0)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
+        ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
         if (!s->have_last) {
-            s->samplenumber_last = samplenum;
-            s->ss = samplenum;
+            s->samplenumber_last = di_samplenum(di);
+            s->ss = di_samplenum(di);
             s->have_last = 1;
             continue;
         }
@@ -213,17 +209,15 @@ static void rc_encode_decode(struct srd_decoder_inst *di)
             /* Collect 4 pulses */
             for (int i = 0; i < 4; i++) {
                 if (i > 0) {
-                    cb = c_cond_new();
-                    c_cond_edge(cb, 0);
-                    ret = c_cond_wait(cb, di, &samplenum, &matched);
-                    c_cond_free(cb);
-                    if (ret != SRD_OK) return;
+                    ret = c_wait(di, CW_E(0), CW_END);
+                    if (ret != SRD_OK)
+                        return;
                 }
-                uint64_t samples = samplenum - s->samplenumber_last;
+                uint64_t samples = di_samplenum(di) - s->samplenumber_last;
                 s->pulses[i] = samples;
-                s->samplenumber_last = samplenum;
+                s->samplenumber_last = di_samplenum(di);
             }
-            s->es = samplenum;
+            s->es = di_samplenum(di);
 
             int bit_val = rc_decode_bit(s->pulses);
             s->bits[s->bit_count - 1] = bit_val;
@@ -232,7 +226,7 @@ static void rc_encode_decode(struct srd_decoder_inst *di)
 
             /* Output bit annotation */
             static const char *bit_names[] = {"0", "1", "f", "U"};
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, bit_val, bit_names[bit_val]);
+            c_put(di, s->ss, s->es, s->out_ann, bit_val, bit_names[bit_val]);
 
             /* Output pin label */
             char pin_label[16];
@@ -241,32 +235,30 @@ static void rc_encode_decode(struct srd_decoder_inst *di)
             else
                 snprintf(pin_label, sizeof(pin_label), "A%d/D%d",
                          s->bit_count - 1, 12 - s->bit_count);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_PIN, pin_label);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_PIN, pin_label);
 
-            s->ss = samplenum;
+            s->ss = di_samplenum(di);
         } else {
             /* Sync bit */
             if (s->model == 1) {
                 rc_decode_model(di);
             }
-            uint64_t samples = samplenum - s->samplenumber_last;
+            uint64_t samples = di_samplenum(di) - s->samplenumber_last;
             /* Wait for sync bit end */
             {
-                cb = c_cond_new();
-                c_cond_skip(cb, 8 * samples);
-                ret = c_cond_wait(cb, di, &samplenum, &matched);
-                c_cond_free(cb);
-                if (ret != SRD_OK) return;
+                ret = c_wait(di, CW_SKIP(8 * samples), CW_END);
+                if (ret != SRD_OK)
+                    return;
             }
-            s->es = samplenum;
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_SYNC, "Sync");
+            s->es = di_samplenum(di);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_SYNC, "Sync");
             /* Reset */
             rc_encode_reset_state(di);
             s->state = 2; /* DECODE_TIMEOUT */
         }
 
         if (s->state != 2) {
-            s->samplenumber_last = samplenum;
+            s->samplenumber_last = di_samplenum(di);
         }
     }
 }
@@ -308,6 +300,7 @@ static struct srd_c_decoder rc_encode_c_decoder = {
     .start = rc_encode_start,
     .decode = rc_encode_decode,
     .destroy = rc_encode_destroy,
+    .state_size = 0,
     .metadata = rc_encode_metadata,
 };
 

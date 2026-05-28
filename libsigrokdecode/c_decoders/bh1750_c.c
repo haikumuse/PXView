@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -157,25 +157,25 @@ static void bh1750_handle_data(struct srd_decoder_inst *di, bh1750_state *s)
         if (s->reg == BH1750_REG_MTHIGH || s->reg == BH1750_REG_MTLOW) {
             char buf[64];
             snprintf(buf, sizeof(buf), "MTreg: %d", s->mtreg);
-            C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_MTREG, buf);
+            c_put(di, s->ssb, s->es, s->out_ann, ANN_MTREG, buf);
         }
         if (s->mode >= BH1750_REG_MCHIGH && s->mode <= BH1750_REG_MOLOW) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Sensitivity: %.2f lux/cnt", bh1750_calculate_sensitivity(s));
-            C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_SENSE, buf);
+            c_put(di, s->ssb, s->es, s->out_ann, ANN_SENSE, buf);
         }
     } else {
         /* Read mode: output illuminance data */
         if (s->num_data >= 2) {
             int rawdata = (s->data_bytes[1] << 8) | s->data_bytes[0];
             /* Registers row */
-            C_ANN_PUT(di, s->ssd, s->es, s->out_ann, ANN_DATA,
+            c_put(di, s->ssd, s->es, s->out_ann, ANN_DATA,
                 "Illuminance data register", "Illuminance", "Light", "L");
             /* Info row: light value */
             double light = rawdata * bh1750_calculate_sensitivity(s);
             char buf[64];
             snprintf(buf, sizeof(buf), "Ambient light: %.2f lux", light);
-            C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_LIGHT, buf);
+            c_put(di, s->ssb, s->es, s->out_ann, ANN_LIGHT, buf);
         }
     }
     /* Clear data cache */
@@ -192,7 +192,7 @@ static void bh1750_handle_register(struct srd_decoder_inst *di, bh1750_state *s,
         int mtreg_high = (reg >> 3) & 0x03;
         s->mtreg = (s->mtreg & 0x1F) | (mtreg_high << 5);
         s->reg = BH1750_REG_MTHIGH;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MTHIGH,
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MTHIGH,
             "Measurement time high bits", "Mtime Hbits", "MTH", "H");
         return;
     }
@@ -200,7 +200,7 @@ static void bh1750_handle_register(struct srd_decoder_inst *di, bh1750_state *s,
         /* MTLOW: bits 0-4 are low bits of MTreg */
         s->mtreg = (s->mtreg & 0xE0) | (reg & 0x1F);
         s->reg = BH1750_REG_MTLOW;
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MTLOW,
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MTLOW,
             "Measurement time low bits", "Mtime Lbits", "MTL", "L");
         return;
     }
@@ -213,41 +213,39 @@ static void bh1750_handle_register(struct srd_decoder_inst *di, bh1750_state *s,
     /* Output register annotation */
     switch (reg) {
     case BH1750_REG_PWRDOWN:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_PWRDOWN, "Power down", "Pwr Dwn", "Off", "D");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_PWRDOWN, "Power down", "Pwr Dwn", "Off", "D");
         break;
     case BH1750_REG_PWRUP:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_PWRUP, "Power up", "Pwr Up", "On", "U");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_PWRUP, "Power up", "Pwr Up", "On", "U");
         break;
     case BH1750_REG_RESET:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_RESET, "Reset light register", "Reset light", "Reset", "Rst", "R");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_RESET, "Reset light register", "Reset light", "Reset", "Rst", "R");
         break;
     case BH1750_REG_MCHIGH:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MCHIGH, "Continuous measurement high resolution", "Cont high", "CH");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MCHIGH, "Continuous measurement high resolution", "Cont high", "CH");
         break;
     case BH1750_REG_MCHIGH2:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MCHIGH2, "Continuous measurement double high res", "Cont double", "CH2");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MCHIGH2, "Continuous measurement double high res", "Cont double", "CH2");
         break;
     case BH1750_REG_MCLOW:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MCLOW, "Continuous measurement low resolution", "Cont low", "CL");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MCLOW, "Continuous measurement low resolution", "Cont low", "CL");
         break;
     case BH1750_REG_MOHIGH:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MOHIGH, "One time measurement high resolution", "One high", "OH");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MOHIGH, "One time measurement high resolution", "One high", "OH");
         break;
     case BH1750_REG_MOHIGH2:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MOHIGH2, "One time measurement double high res", "One double", "OH2");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MOHIGH2, "One time measurement double high res", "One double", "OH2");
         break;
     case BH1750_REG_MOLOW:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_MOLOW, "One time measurement low resolution", "One low", "OL");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_MOLOW, "One time measurement low resolution", "One low", "OL");
         break;
     default:
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_RESERVED, "Reserved", "Rsvd", "R");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_RESERVED, "Reserved", "Rsvd", "R");
         break;
     }
 }
 
-static void bh1750_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void bh1750_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     bh1750_state *s = (bh1750_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -268,14 +266,14 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
         break;
     case BH1750_ADDRESS_SLAVE:
         if (strcmp(cmd, "ADDRESS WRITE") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr == BH1750_ADDR_GND || addr == BH1750_ADDR_VCC) {
                 s->addr = addr;
                 s->is_write = 1;
                 int ann = (addr == BH1750_ADDR_GND) ? ANN_ADDR_GND : ANN_ADDR_VCC;
                 const char *label = (addr == BH1750_ADDR_GND) ? "ADDR grounded" : "ADDR powered";
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ann, label);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WRITE, "Write", "Wr", "W");
+                c_put(di, s->ss, s->es, s->out_ann, ann, label);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_WRITE, "Write", "Wr", "W");
                 s->state = BH1750_REGISTER_ADDRESS;
             } else {
                 /* Use s->addr (default address) for BADADD text, matching Python's
@@ -287,19 +285,19 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
                 snprintf(buf3, sizeof(buf3), "Unknown: 0x%02X", s->addr);
                 snprintf(buf4, sizeof(buf4), "Unk: 0x%02X", s->addr);
                 snprintf(buf5, sizeof(buf5), "U: 0x%02X", s->addr);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_BADADD,
                           buf1, buf2, buf3, buf4, buf5, "Unk", "U");
                 s->state = BH1750_IDLE;
             }
         } else if (strcmp(cmd, "ADDRESS READ") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr == BH1750_ADDR_GND || addr == BH1750_ADDR_VCC) {
                 s->addr = addr;
                 s->is_write = 0;
                 int ann = (addr == BH1750_ADDR_GND) ? ANN_ADDR_GND : ANN_ADDR_VCC;
                 const char *label = (addr == BH1750_ADDR_GND) ? "ADDR grounded" : "ADDR powered";
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ann, label);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_READ, "Read", "Rd", "R");
+                c_put(di, s->ss, s->es, s->out_ann, ann, label);
+                c_put(di, s->ss, s->es, s->out_ann, ANN_READ, "Read", "Rd", "R");
                 s->state = BH1750_REGISTER_ADDRESS;
             } else {
                 char buf1[64], buf2[64], buf3[48], buf4[32], buf5[16];
@@ -308,7 +306,7 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
                 snprintf(buf3, sizeof(buf3), "Unknown: 0x%02X", s->addr);
                 snprintf(buf4, sizeof(buf4), "Unk: 0x%02X", s->addr);
                 snprintf(buf5, sizeof(buf5), "U: 0x%02X", s->addr);
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BADADD,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_BADADD,
                           buf1, buf2, buf3, buf4, buf5, "Unk", "U");
                 s->state = BH1750_IDLE;
             }
@@ -316,18 +314,18 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
         break;
     case BH1750_REGISTER_ADDRESS:
         if (strcmp(cmd, "DATA WRITE") == 0) {
-            uint8_t reg = (data_len > 0) ? data[0] : 0;
+            uint8_t reg = (n_fields > 0) ? fields[0].u8 : 0;
             bh1750_handle_register(di, s, reg);
             s->state = BH1750_REGISTER_DATA;
         } else if (strcmp(cmd, "DATA READ") == 0) {
-            uint8_t b = (data_len > 0) ? data[0] : 0;
+            uint8_t b = (n_fields > 0) ? fields[0].u8 : 0;
             s->ssd = start_sample;
             s->data_bytes[0] = b;
             s->num_data = 1;
             s->state = BH1750_REGISTER_DATA;
         } else if (strcmp(cmd, "STOP") == 0 || strcmp(cmd, "START REPEAT") == 0) {
             /* No data transfer - slave presence check */
-            C_ANN_PUT(di, s->ssb, s->es, s->out_ann, ANN_CHECK, "Slave presence check", "Slave check", "Check", "Chk", "C");
+            c_put(di, s->ssb, s->es, s->out_ann, ANN_CHECK, "Slave presence check", "Slave check", "Check", "Chk", "C");
             if (strcmp(cmd, "START REPEAT") == 0) {
                 s->ssb = start_sample;
                 s->state = BH1750_ADDRESS_SLAVE;
@@ -338,7 +336,7 @@ static void bh1750_recv_proto(struct srd_decoder_inst *di,
         break;
     case BH1750_REGISTER_DATA:
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
-            uint8_t b = (data_len > 0) ? data[0] : 0;
+            uint8_t b = (n_fields > 0) ? fields[0].u8 : 0;
             if (s->is_write) {
                 /* Write mode data - typically no additional data for BH1750 */
             } else {
@@ -378,16 +376,16 @@ static void bh1750_reset(struct srd_decoder_inst *di)
 static void bh1750_start(struct srd_decoder_inst *di)
 {
     bh1750_state *s = (bh1750_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "bh1750");
-    s->out_proto = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "bh1750");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "bh1750");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "bh1750");
 
-    const char *radix_str = c_decoder_get_option_string(di, "radix", "Hex");
+    const char *radix_str = c_opt_str(di, "radix", "Hex");
     if (radix_str && strcmp(radix_str, "Dec") == 0) s->radix = 1;
     else if (radix_str && strcmp(radix_str, "Oct") == 0) s->radix = 2;
     else if (radix_str && strcmp(radix_str, "Bin") == 0) s->radix = 3;
     else s->radix = 0;
 
-    const char *params_str = c_decoder_get_option_string(di, "params", "Typical");
+    const char *params_str = c_opt_str(di, "params", "Typical");
     if (params_str && strcmp(params_str, "Maximal") == 0) s->params = 1;
     else if (params_str && strcmp(params_str, "Minimal") == 0) s->params = 2;
     else s->params = 0;
@@ -435,7 +433,8 @@ struct srd_c_decoder bh1750_c_decoder = {
     .start = bh1750_start,
     .decode = bh1750_decode,
     .destroy = bh1750_destroy,
-    .recv_proto = bh1750_recv_proto,
+    .decode_upper = bh1750_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,13 +1,16 @@
 {
   "decoder": "i2cfilter_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "i2c"
-  ],
+  "num_channels": 2,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "address": 0,
-    "direction": "both"
-  }
+  "stack": [
+    {
+      "id": "i2c_c",
+      "channels": {
+        "scl": 0,
+        "sda": 1
+      }
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -252,11 +252,11 @@ static void nrf24l01_decode_mb_data(struct srd_decoder_inst *di, nrf24l01_state 
     char long_str[768], short_str[512];
     snprintf(long_str, sizeof(long_str), "%s = \"{$}\"", label);
     snprintf(short_str, sizeof(short_str), "@%s", data_str);
-    C_ANN_PUT(di, ss, es, s->out_ann, ann, long_str, short_str);
+    c_put(di, ss, es, s->out_ann, ann, long_str, short_str);
 }
 
 static void nrf24l01_decode_register(struct srd_decoder_inst *di, nrf24l01_state *s,
-    uint64_t ss, uint64_t es, int ann, int regid, const uint8_t *data, int data_len)
+    uint64_t ss, uint64_t es, int ann, int regid, const uint8_t *data, int n_fields)
 {
     char label[128];
     if (regid >= 0) {
@@ -275,10 +275,10 @@ static void nrf24l01_decode_register(struct srd_decoder_inst *di, nrf24l01_state
 
     /* Multi byte registers come LSByte first, reverse for display */
     uint8_t rev[NRF24_MAX_CMD_BYTES];
-    for (int i = 0; i < data_len && i < NRF24_MAX_CMD_BYTES; i++)
-        rev[i] = data[data_len - 1 - i];
+    for (int i = 0; i < n_fields && i < NRF24_MAX_CMD_BYTES; i++)
+        rev[i] = data[n_fields - 1 - i];
 
-    nrf24l01_decode_mb_data(di, s, ss, es, ann, rev, data_len, label, 1);
+    nrf24l01_decode_mb_data(di, s, ss, es, ann, rev, n_fields, label, 1);
 }
 
 static void nrf24l01_finish_command(struct srd_decoder_inst *di, nrf24l01_state *s)
@@ -310,40 +310,38 @@ static void nrf24l01_finish_command(struct srd_decoder_inst *di, nrf24l01_state 
     } else if (strcmp(s->cmd, "R_RX_PL_WID") == 0) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Payload width = %d", s->miso_bytes[0]);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG, buf);
+        c_put(di, ss, es, s->out_ann, ANN_REG, buf);
     } else if (strcmp(s->cmd, "ACTIVATE") == 0) {
         if (s->mosi_bytes[0] == 0x8c)
             snprintf(s->cmd, sizeof(s->cmd), "DEACTIVATE");
         else if (s->mosi_bytes[0] != 0x73)
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "wrong data for \"ACTIVATE\" command");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, "wrong data for \"ACTIVATE\" command");
         char buf[128];
         nrf24l01_format_command(s, buf, sizeof(buf));
-        C_ANN_PUT(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, buf);
+        c_put(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, buf);
     } else if (strcmp(s->cmd, "RST_FSPI") == 0) {
         if (s->mosi_bytes[0] == 0x5a)
             snprintf(s->cmd, sizeof(s->cmd), "RST_FSPI_HOLD");
         else if (s->mosi_bytes[0] == 0xa5)
             snprintf(s->cmd, sizeof(s->cmd), "RST_FSPI_RELS");
         else
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "wrong data for \"RST_FSPI\" command");
+            c_put(di, ss, es, s->out_ann, ANN_WARN, "wrong data for \"RST_FSPI\" command");
         char buf[128];
         nrf24l01_format_command(s, buf, sizeof(buf));
-        C_ANN_PUT(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, buf);
+        c_put(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, buf);
     }
 }
 
-static void nrf24l01_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void nrf24l01_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     nrf24l01_state *s = (nrf24l01_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        if (data_len >= 2) {
-            int old_val = data[0];
-            int new_val = data[1];
+        if (n_fields >= 2) {
+            int old_val = fields[0].u8;
+            int new_val = fields[1].u8;
             if (old_val == 0xFF && new_val == 1) {
                 /* First CS release */
                 s->cs_was_released = 1;
@@ -351,7 +349,7 @@ static void nrf24l01_recv_proto(struct srd_decoder_inst *di,
                 /* CS rising edge (deassert) - process command */
                 if (s->cmd[0] != '\0') {
                     if (s->num_bytes < s->min_bytes) {
-                        C_ANN_PUT(di, start_sample, start_sample, s->out_ann, ANN_WARN,
+                        c_put(di, start_sample, start_sample, s->out_ann, ANN_WARN,
                                   "missing data bytes");
                     } else if (s->num_bytes > 0) {
                         nrf24l01_finish_command(di, s);
@@ -364,7 +362,7 @@ static void nrf24l01_recv_proto(struct srd_decoder_inst *di,
     } else if (strcmp(cmd, "TRANSFER") == 0) {
         if (s->cmd[0] != '\0') {
             if (s->num_bytes < s->min_bytes) {
-                C_ANN_PUT(di, start_sample, start_sample, s->out_ann, ANN_WARN,
+                c_put(di, start_sample, start_sample, s->out_ann, ANN_WARN,
                           "missing data bytes");
             } else if (s->num_bytes > 0) {
                 nrf24l01_finish_command(di, s);
@@ -372,14 +370,14 @@ static void nrf24l01_recv_proto(struct srd_decoder_inst *di,
         }
         nrf24l01_next(s);
         s->cs_was_released = 1;
-    } else if (strcmp(cmd, "DATA") == 0 && s->cs_was_released && data_len >= 17) {
-        int have_mosi = data[0] & 1;
-        int have_miso = (data[0] >> 1) & 1;
+    } else if (strcmp(cmd, "DATA") == 0 && s->cs_was_released && n_fields >= 17) {
+        int have_mosi = fields[0].u8 & 1;
+        int have_miso = (fields[0].u8 >> 1) & 1;
         uint64_t mosi_val = 0, miso_val = 0;
         for (int i = 0; i < 8; i++)
-            mosi_val |= ((uint64_t)data[1 + i] << (8 * i));
+            mosi_val |= ((uint64_t)fields[1 + i].u8 << (8 * i));
         for (int i = 0; i < 8; i++)
-            miso_val |= ((uint64_t)data[9 + i] << (8 * i));
+            miso_val |= ((uint64_t)fields[9 + i].u8 << (8 * i));
         uint8_t mosi = (uint8_t)mosi_val;
         uint8_t miso = (uint8_t)miso_val;
 
@@ -388,7 +386,7 @@ static void nrf24l01_recv_proto(struct srd_decoder_inst *di,
             /* First MOSI byte is the command */
             int ret = nrf24l01_parse_command(s, mosi);
             if (ret < 0) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARN,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN,
                           "unknown command");
                 s->cmd[0] = '\0';
             } else {
@@ -401,14 +399,14 @@ static void nrf24l01_recv_proto(struct srd_decoder_inst *di,
                 } else {
                     char buf[128];
                     nrf24l01_format_command(s, buf, sizeof(buf));
-                    C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_CMD, buf);
+                    c_put(di, start_sample, end_sample, s->out_ann, ANN_CMD, buf);
                 }
             }
             /* First MISO byte is always STATUS */
             nrf24l01_decode_register(di, s, start_sample, end_sample, ANN_REG, -1, &miso, 1);
         } else {
             if (s->cmd[0] == '\0' || s->num_bytes >= s->max_bytes) {
-                C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARN,
+                c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN,
                           "excess byte");
             } else {
                 if (s->num_bytes == 0 || s->mb_ss == 0)
@@ -438,9 +436,9 @@ static void nrf24l01_reset(struct srd_decoder_inst *di)
 static void nrf24l01_start(struct srd_decoder_inst *di)
 {
     nrf24l01_state *s = (nrf24l01_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "nrf24l01");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "nrf24l01");
 
-    const char *chip = c_decoder_get_option_string(di, "chip", "nrf24l01");
+    const char *chip = c_opt_str(di, "chip", "nrf24l01");
     s->chip_type = (chip && strcmp(chip, "xn297") == 0) ? 1 : 0;
 }
 
@@ -486,7 +484,8 @@ struct srd_c_decoder nrf24l01_c_decoder = {
     .start = nrf24l01_start,
     .decode = nrf24l01_decode,
     .destroy = nrf24l01_destroy,
-    .recv_proto = nrf24l01_recv_proto,
+    .decode_upper = nrf24l01_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

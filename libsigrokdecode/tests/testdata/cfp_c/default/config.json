@@ -1,10 +1,16 @@
 {
   "decoder": "cfp_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "mdio"
-  ],
+  "num_channels": 2,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "mdio_c",
+      "channels": {
+        "mdc": 0,
+        "mdio": 1
+      }
+    }
+  ]
 }

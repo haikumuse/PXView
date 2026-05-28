@@ -93,6 +93,11 @@ static const huntingdir_entry huntingdir_table[] = {
 
 typedef struct {
     int out_ann;
+    /* Accumulated frames for current block */
+    uint8_t frame_bytes[LTAR_SD_DEC_MAX_FRAMES];
+    uint64_t frame_ss[LTAR_SD_DEC_MAX_FRAMES];
+    uint64_t frame_es[LTAR_SD_DEC_MAX_FRAMES];
+    int frame_count;
 } ltar_sd_dec_state;
 
 static const char *ltar_sd_dec_inputs[] = {"ltar_smartdevice", NULL};
@@ -163,8 +168,8 @@ static void ltar_sd_dec_check_block_length(struct srd_decoder_inst *di,
     uint64_t block_ss, uint64_t block_es)
 {
     if (btype == 0x02 && length != 11) {
-        C_ANN_PUT(di, block_ss, block_es, s->out_ann, ANN_BLOCK_ERROR,
-                  "Invalid block length");
+        c_put(di, block_ss, block_es, s->out_ann, ANN_BLOCK_ERROR,
+                  "Invalid block length", "Invalid B length", "E: B length", "E: BL");
     }
 }
 
@@ -180,11 +185,11 @@ static void ltar_sd_dec_check_block_csum(struct srd_decoder_inst *di,
     temp = temp & 0xFF;
 
     if (temp != 0) {
-        C_ANN_PUT(di, block_ss, block_es, s->out_ann, ANN_BLOCK_ERROR,
-                  "Invalid block checksum");
+        c_put(di, block_ss, block_es, s->out_ann, ANN_BLOCK_ERROR,
+                  "Invalid block checksum", "Invalid B CSum", "E: B CSum", "E: B CS");
     } else if (num_frames > 0) {
-        C_ANN_PUT(di, frame_ss[num_frames - 1], frame_es[num_frames - 1],
-                  s->out_ann, ANN_FRAME_BITS_DATA, "Valid Checksum");
+        c_put(di, frame_ss[num_frames - 1], frame_es[num_frames - 1],
+                  s->out_ann, ANN_FRAME_BITS_DATA, "Valid Checksum", "Valid CSum");
     }
 }
 
@@ -192,196 +197,186 @@ static void ltar_sd_dec_put_block_type(struct srd_decoder_inst *di,
     ltar_sd_dec_state *s, uint8_t btype,
     uint64_t frame_ss, uint64_t frame_es)
 {
-    C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_NAME, "Block Type");
-    C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME, "Block Type");
+    c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_NAME, "Block Type", "BType", "BT");
+    c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME, "Block Type", "BType", "BT");
 
     const char *name = ltar_sd_dec_lookup_btype(btype);
-    char buf[64];
+    char buf[64], buf2[64], buf3[64], buf4[64];
     if (name)
         snprintf(buf, sizeof(buf), "%s (0x%02X)", name, btype);
-    else
+    else {
         snprintf(buf, sizeof(buf), "Unknown Block Type (0x%02X)", btype);
-    C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+        snprintf(buf2, sizeof(buf2), "Unknown BType (0x%02X)", btype);
+        snprintf(buf3, sizeof(buf3), "Unk BType (0x%02X)", btype);
+        snprintf(buf4, sizeof(buf4), "E: BT 0x%02X", btype);
+    }
+    if (name)
+        c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+    else
+        c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf, buf2, buf3, buf4);
 }
 
 static void ltar_sd_dec_put_csum(struct srd_decoder_inst *di,
     ltar_sd_dec_state *s,
     uint64_t frame_ss, uint64_t frame_es)
 {
-    C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_NAME, "Block Checksum");
-    C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME, "Block Checksum");
+    c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_NAME, "Block Checksum", "B Checksum", "B CSum", "B CS");
+    c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME, "Block Checksum", "B Checksum", "B CSum", "B CS");
 }
 
 static void ltar_sd_dec_put_data(struct srd_decoder_inst *di,
     ltar_sd_dec_state *s, uint8_t btype, int index, uint8_t value,
     uint64_t frame_ss, uint64_t frame_es)
 {
-    char buf[64];
+    char buf[64], buf2[64];
     snprintf(buf, sizeof(buf), "Block Data %d", index);
-    C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_NAME, buf);
+    snprintf(buf2, sizeof(buf2), "BData%d", index);
+    c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_NAME, buf, buf2);
 
     if (btype == 0x02) {
         /* TAGGER-STATUS */
         switch (index) {
         case 0: {
             /* Player Number (bits 0-2) */
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Player Number");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Player Number", "Player Num", "Player #", "Play #", "P");
             snprintf(buf, sizeof(buf), "%d", value & 0x07);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             /* Team Number (bits 3-4) */
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Team Number");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Team Number", "Team Num", "Team #", "T");
             snprintf(buf, sizeof(buf), "%d", (value & 0x18) >> 3);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         }
         case 1: {
             /* Weapon Mode (bits 0-1) */
             uint8_t wm = value & 0x03;
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Weapon Mode");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Weapon Mode", "Weap Mode", "WM");
             const char *wm_name = ltar_sd_dec_lookup_weapmode(wm);
             if (wm_name)
-                C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, wm_name);
+                c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, wm_name);
             else
-                C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, "Unknown");
+                c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, "Unknown", "Unk");
             /* Shield State (bits 2-3) */
             uint8_t ss = (value & 0x0C) >> 2;
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Shield State");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Shield State", "Shield St", "Shld");
             const char *ss_name = ltar_sd_dec_lookup_shieldstatus(ss);
             if (ss_name)
-                C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, ss_name);
+                c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, ss_name);
             else
-                C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, "Unknown");
+                c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, "Unknown", "Unk");
             /* Hunting Direction (bit 5) */
             uint8_t hd = (value & 0x20) >> 5;
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Hunting Direction");
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA,
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Hunting Direction", "Hunting Dir", "Hnt Dir");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA,
                       ltar_sd_dec_lookup_huntingdir(hd));
             break;
         }
         case 2:
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Health Remaining");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Health Remaining", "Health Remain", "Health Rem", "Health", "H");
             snprintf(buf, sizeof(buf), "%d", value);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         case 3:
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Loaded Ammo");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Loaded Ammo", "Ammo");
             snprintf(buf, sizeof(buf), "%d", value);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         case 4:
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Remaining Ammo, Low");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Remaining Ammo, Low", "Remain Ammo, Low", "Rem Ammo, L");
             snprintf(buf, sizeof(buf), "%d", value);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         case 5:
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Remaining Ammo, High");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Remaining Ammo, High", "Remain Ammo, High", "Rem Ammo, H");
             snprintf(buf, sizeof(buf), "%d", value << 8);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         case 6:
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Shield Time");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Shield Time", "Shld Tim");
             snprintf(buf, sizeof(buf), "%d", value);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         case 7:
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Game Time, Minutes");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Game Time, Minutes", "Game Time, Min", "Game Tim, Min", "Game Min");
             snprintf(buf, sizeof(buf), "%d", value);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         case 8:
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
-                      "Game Time, Seconds");
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BIT_NAME,
+                      "Game Time, Seconds", "Game Time, Sec", "Game Tim, Sec", "Game Sec");
             snprintf(buf, sizeof(buf), "%d", value);
-            C_ANN_PUT(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
+            c_put(di, frame_ss, frame_es, s->out_ann, ANN_FRAME_BITS_DATA, buf);
             break;
         }
     }
 }
 
-static void ltar_sd_dec_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ltar_sd_dec_process_block(struct srd_decoder_inst *di, ltar_sd_dec_state *s,
+    uint64_t start_sample, uint64_t end_sample)
 {
-    ltar_sd_dec_state *s = (ltar_sd_dec_state *)c_decoder_get_private(di);
-    if (!s)
-        return;
-
-    if (strcmp(cmd, "BLOCK") != 0)
-        return;
-
-    /* Data format from ltar_smartdevice_c:
-       data[0] = frame_count (uint8_t)
-       Each frame: [byte_value(1B)][bit_count(1B)][per bit: value(1B)+ss(8B LE)+es(8B LE)] */
-    if (data_len < 1)
-        return;
-
-    int num_frames = data[0];
+    int num_frames = s->frame_count;
     if (num_frames <= 0 || num_frames > LTAR_SD_DEC_MAX_FRAMES)
         return;
 
-    /* Parse frames */
-    uint8_t *byte_values = (uint8_t *)g_malloc(num_frames);
-    uint64_t *frame_ss = (uint64_t *)g_malloc(num_frames * sizeof(uint64_t));
-    uint64_t *frame_es = (uint64_t *)g_malloc(num_frames * sizeof(uint64_t));
-
-    const unsigned char *p = data + 1;
-    for (int i = 0; i < num_frames; i++) {
-        if (p + 2 > data + data_len) break;
-        byte_values[i] = p[0];
-        uint8_t bit_count = p[1];
-        /* Skip bit data to find frame boundaries */
-        if (bit_count > 0 && p + 2 + (size_t)bit_count * 17 <= data + data_len) {
-            /* Frame start = first bit's ss */
-            memcpy(&frame_ss[i], p + 3, 8);
-            /* Frame end = last bit's es */
-            memcpy(&frame_es[i], p + 2 + (bit_count - 1) * 17 + 9, 8);
-            p += 2 + bit_count * 17;
-        } else {
-            frame_ss[i] = start_sample;
-            frame_es[i] = end_sample;
-            p += 2;
-        }
-    }
-
-    uint8_t btype = byte_values[0];
+    uint8_t btype = s->frame_bytes[0];
 
     /* Check block length */
     ltar_sd_dec_check_block_length(di, s, btype, num_frames, start_sample, end_sample);
 
     /* Check block checksum */
-    ltar_sd_dec_check_block_csum(di, s, byte_values, num_frames,
-                                 frame_ss, frame_es, start_sample, end_sample);
+    ltar_sd_dec_check_block_csum(di, s, s->frame_bytes, num_frames,
+                                 s->frame_ss, s->frame_es, start_sample, end_sample);
 
     /* Process frames */
     for (int i = 0; i < num_frames; i++) {
         if (i == 0) {
             /* Block Type */
-            ltar_sd_dec_put_block_type(di, s, byte_values[i], frame_ss[i], frame_es[i]);
+            ltar_sd_dec_put_block_type(di, s, s->frame_bytes[i], s->frame_ss[i], s->frame_es[i]);
         } else if (i == num_frames - 1) {
             /* Checksum */
-            ltar_sd_dec_put_csum(di, s, frame_ss[i], frame_es[i]);
+            ltar_sd_dec_put_csum(di, s, s->frame_ss[i], s->frame_es[i]);
         } else {
             /* Data */
             int data_count = i - 1;
-            ltar_sd_dec_put_data(di, s, btype, data_count, byte_values[i],
-                                 frame_ss[i], frame_es[i]);
+            ltar_sd_dec_put_data(di, s, btype, data_count, s->frame_bytes[i],
+                                 s->frame_ss[i], s->frame_es[i]);
         }
     }
+}
 
-    g_free(byte_values);
-    g_free(frame_ss);
-    g_free(frame_es);
+static void ltar_sd_dec_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
+{
+    ltar_sd_dec_state *s = (ltar_sd_dec_state *)c_decoder_get_private(di);
+    if (!s)
+        return;
+
+    if (strcmp(cmd, "FRAME") == 0) {
+        /* Per-frame data from ltar_smartdevice_c:
+           fields[0].u8 = byte_value, fields[1].u64 = ss, fields[2].u64 = es */
+        if (n_fields < 3)
+            return;
+        if (s->frame_count < LTAR_SD_DEC_MAX_FRAMES) {
+            s->frame_bytes[s->frame_count] = fields[0].u8;
+            s->frame_ss[s->frame_count] = fields[1].u64;
+            s->frame_es[s->frame_count] = fields[2].u64;
+            s->frame_count++;
+        }
+    } else if (strcmp(cmd, "BLOCK_END") == 0) {
+        /* Block end signal from ltar_smartdevice_c */
+        ltar_sd_dec_process_block(di, s, start_sample, end_sample);
+        s->frame_count = 0;
+    }
 }
 
 static void ltar_sd_dec_reset(struct srd_decoder_inst *di)
@@ -396,7 +391,7 @@ static void ltar_sd_dec_reset(struct srd_decoder_inst *di)
 static void ltar_sd_dec_start(struct srd_decoder_inst *di)
 {
     ltar_sd_dec_state *s = (ltar_sd_dec_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ltar_smartdevice_decode");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ltar_smartdevice_decode");
 }
 
 static void ltar_sd_dec_decode(struct srd_decoder_inst *di)
@@ -441,7 +436,8 @@ struct srd_c_decoder ltar_smartdevice_decode_c_decoder = {
     .start = ltar_sd_dec_start,
     .decode = ltar_sd_dec_decode,
     .destroy = ltar_sd_dec_destroy,
-    .recv_proto = ltar_sd_dec_recv_proto,
+    .decode_upper = ltar_sd_dec_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,13 +1,16 @@
 {
   "decoder": "ltc26x7_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "i2c"
-  ],
+  "num_channels": 2,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "chip": "ltc2607",
-    "vref": 1.5
-  }
+  "stack": [
+    {
+      "id": "i2c_c",
+      "channels": {
+        "scl": 0,
+        "sda": 1
+      }
+    }
+  ]
 }

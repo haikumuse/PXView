@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Benjamin Larsson <benjamin@southpole.se>
@@ -112,14 +112,14 @@ static void em4100_putbit(struct srd_decoder_inst *di, em4100_state *s, int bit,
 {
     char buf[16];
     snprintf(buf, sizeof(buf), "%d", bit);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT, buf);
+    c_put(di, ss, es, s->out_ann, ANN_BIT, buf);
 
     if (s->state == EM_HEADER) {
         if (bit == 1) {
             if (s->first_one > 0)
                 s->first_one++;
             if (s->first_one == 9) {
-                C_ANN_PUT(di, s->ss_first, es, s->out_ann, ANN_HEADER, "Header", "Head", "He", "H");
+                c_put(di, s->ss_first, es, s->out_ann, ANN_HEADER, "Header", "Head", "He", "H");
                 s->first_one = 0;
                 s->state = EM_PAYLOAD;
                 return;
@@ -148,7 +148,7 @@ static void em4100_putbit(struct srd_decoder_inst *di, em4100_state *s, int bit,
             int cls = (s->payload_cnt <= 10) ? ANN_VERSION_CUSTOMER : ANN_DATA;
             snprintf(data_buf, sizeof(data_buf), "%s: %X", label, s->data);
             snprintf(short_buf, sizeof(short_buf), "%X", s->data);
-            C_ANN_PUT(di, s->ss_data, ss, s->out_ann, cls, data_buf, short_buf);
+            c_put(di, s->ss_data, ss, s->out_ann, cls, data_buf, short_buf);
 
             const char *parity_str = (s->data_parity == bit) ? "OK" : "ERROR";
             int parity_cls = (s->data_parity == bit) ? ANN_ROWPARITY_OK : ANN_ROWPARITY_ERR;
@@ -159,7 +159,7 @@ static void em4100_putbit(struct srd_decoder_inst *di, em4100_state *s, int bit,
             snprintf(rp_short, sizeof(rp_short), "RP: %s", parity_str);
             snprintf(rp_tiny, sizeof(rp_tiny), "RP");
             snprintf(rp_t, sizeof(rp_t), "R");
-            C_ANN_PUT(di, ss, es, s->out_ann, parity_cls, rp_buf, rp_short, rp_tiny, rp_t);
+            c_put(di, ss, es, s->out_ann, parity_cls, rp_buf, rp_short, rp_tiny, rp_t);
 
             s->tag = (s->tag << 4) | s->data;
             s->data_bits = 0;
@@ -189,7 +189,7 @@ static void em4100_putbit(struct srd_decoder_inst *di, em4100_state *s, int bit,
         }
 
         if (s->data_bits == 5) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_STOPBIT, "Stop bit", "SB", "S");
+            c_put(di, ss, es, s->out_ann, ANN_STOPBIT, "Stop bit", "SB", "S");
 
             for (int i = 1; i <= 4; i++) {
                 const char *cp_str = (s->data_col_parity[i] == s->col_parity[i]) ? "OK" : "ERROR";
@@ -199,7 +199,7 @@ static void em4100_putbit(struct srd_decoder_inst *di, em4100_state *s, int bit,
                 snprintf(cp_short, sizeof(cp_short), "CP%d: %s", i, cp_str);
                 snprintf(cp_tiny, sizeof(cp_tiny), "CP%d", i);
                 snprintf(cp_t, sizeof(cp_t), "C");
-                C_ANN_PUT(di, s->col_parity_pos[i - 1][0], s->col_parity_pos[i - 1][1],
+                c_put(di, s->col_parity_pos[i - 1][0], s->col_parity_pos[i - 1][1],
                           s->out_ann, cp_cls, cp_buf, cp_short, cp_tiny, cp_t);
             }
 
@@ -215,7 +215,7 @@ static void em4100_putbit(struct srd_decoder_inst *di, em4100_state *s, int bit,
                 snprintf(tag_buf, sizeof(tag_buf), "Tag: %010llX", (unsigned long long)s->tag);
                 snprintf(tag_short, sizeof(tag_short), "Tag");
                 snprintf(tag_tiny, sizeof(tag_tiny), "T");
-                C_ANN_PUT(di, s->ss_first, es, s->out_ann, ANN_TAG, tag_buf, tag_short, tag_tiny);
+                c_put(di, s->ss_first, es, s->out_ann, ANN_TAG, tag_buf, tag_short, tag_tiny);
             }
 
             s->tag = 0;
@@ -280,7 +280,7 @@ static void em4100_reset(struct srd_decoder_inst *di)
 static void em4100_start(struct srd_decoder_inst *di)
 {
     em4100_state *s = (em4100_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "em4100");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "em4100");
 }
 
 static void em4100_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -291,9 +291,9 @@ static void em4100_metadata(struct srd_decoder_inst *di, int key, uint64_t value
     }
     if (s->samplerate == 0) return;
 
-    int64_t datarate = c_decoder_get_option_int(di, "datarate", 64);
-    int64_t coilfreq = c_decoder_get_option_int(di, "coilfreq", 125000);
-    const char *polarity_str = c_decoder_get_option_string(di, "polarity", "active-high");
+    int64_t datarate = c_opt_int(di, "datarate", 64);
+    int64_t coilfreq = c_opt_int(di, "coilfreq", 125000);
+    const char *polarity_str = c_opt_str(di, "polarity", "active-high");
 
     s->bit_width = ((double)s->samplerate / (double)coilfreq) * (double)datarate;
     s->halfbit_limit = s->bit_width / 2.0 + s->bit_width / 4.0;
@@ -309,9 +309,9 @@ static void em4100_decode(struct srd_decoder_inst *di)
     /* Initialize internal state from the very first sample */
     if (!s->initialized) {
         uint64_t cur_sample;
-        if (c_cond_wait_current(di, &cur_sample) != SRD_OK)
+        if (c_wait(di, CW_END) != SRD_OK)
             return;
-        s->oldpin = c_decoder_get_pin(di, 0, cur_sample);
+        s->oldpin = c_pin(di, 0);
         s->last_samplenum = cur_sample;
         s->lastlast_samplenum = cur_sample;
         s->last_edge = cur_sample;
@@ -323,20 +323,17 @@ static void em4100_decode(struct srd_decoder_inst *di)
     }
 
     while (1) {
-        srd_cond_builder *b = c_cond_new();
-        c_cond_edge(b, 0);
-        uint64_t samplenum, matched;
-        int ret = c_cond_wait(b, di, &samplenum, &matched);
-        c_cond_free(b);
-        if (ret != SRD_OK) return;
+        int ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
 
-        int pin = c_decoder_get_pin(di, 0, samplenum);
-        uint64_t pl = samplenum - s->oldsamplenum;
+        int pin = c_pin(di, 0);
+        uint64_t pl = di_samplenum(di) - s->oldsamplenum;
         int pp = pin;
-        em4100_manchester_decode(di, s, pl, pp, pin, samplenum);
+        em4100_manchester_decode(di, s, pl, pp, pin, di_samplenum(di));
         s->oldpl = pl;
         s->oldpp = pp;
-        s->oldsamplenum = samplenum;
+        s->oldsamplenum = di_samplenum(di);
         s->oldpin = pin;
     }
 }
@@ -378,6 +375,7 @@ struct srd_c_decoder em4100_c_decoder = {
     .start = em4100_start,
     .decode = em4100_decode,
     .destroy = em4100_destroy,
+    .state_size = 0,
     .metadata = em4100_metadata,
 };
 

@@ -1,7 +1,19 @@
 {
 	"decoder": "tlc5620",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 1,
 	"annotations": [
+		{
+			"start_sample": 2120,
+			"end_sample": 2120,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Falling edge on LDAC", 
+				"LDAC fall", 
+				"LDAC", 
+				"L"
+			]
+		}
 	]
 }

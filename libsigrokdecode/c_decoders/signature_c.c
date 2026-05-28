@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Shirow Miura <shirowmiura@gmail.com>
@@ -34,10 +34,10 @@ enum {
 #define CH_CLK   2
 #define CH_DATA  3
 
-/* Symbol map: 4-bit nibble -> character (HP 5004A style) */
+/* Symbol map: 4-bit nibble -> character (HP 5004A style, bit-reversed keys) */
 static const char symbol_map[16] = {
-    '0', '1', '2', '3', '4', '5', '6', '7',
-    '8', '9', 'A', 'C', 'F', 'H', 'P', 'U',
+    '0', '8', '4', 'F', '2', 'A', '6', 'P',
+    '1', '9', '5', 'H', '3', 'C', '7', 'U',
 };
 
 typedef struct {
@@ -109,7 +109,7 @@ static void sig_putsig(struct srd_decoder_inst *di, sig_state *s,
     buf[2] = symbol_map[(signature >>  8) & 0x0f];
     buf[3] = symbol_map[(signature >> 12) & 0x0f];
     buf[4] = '\0';
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIGNATURE, buf);
+    c_put(di, ss, es, s->out_ann, ANN_SIGNATURE, buf);
 }
 
 static void sig_reset(struct srd_decoder_inst *di)
@@ -126,17 +126,17 @@ static void sig_reset(struct srd_decoder_inst *di)
 static void sig_start(struct srd_decoder_inst *di)
 {
     sig_state *s = (sig_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "signature");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "signature");
 
-    const char *start_edge = c_decoder_get_option_string(di, "start_edge", "rising");
+    const char *start_edge = c_opt_str(di, "start_edge", "rising");
     s->start_edge_rising = (strcmp(start_edge, "rising") == 0) ? 1 : 0;
     s->prev_start = s->start_edge_rising ? 0 : 1;
 
-    const char *stop_edge = c_decoder_get_option_string(di, "stop_edge", "rising");
+    const char *stop_edge = c_opt_str(di, "stop_edge", "rising");
     s->stop_edge_rising = (strcmp(stop_edge, "rising") == 0) ? 1 : 0;
     s->prev_stop = s->stop_edge_rising ? 0 : 1;
 
-    const char *annbits_str = c_decoder_get_option_string(di, "annbits", "no");
+    const char *annbits_str = c_opt_str(di, "annbits", "no");
     s->annbits = (strcmp(annbits_str, "yes") == 0) ? 1 : 0;
 }
 
@@ -151,33 +151,28 @@ static void sig_decode(struct srd_decoder_inst *di)
 {
     sig_state *s = (sig_state *)c_decoder_get_private(di);
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
 
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
-    const char *clk_edge_str = c_decoder_get_option_string(di, "clk_edge", "falling");
+    const char *clk_edge_str = c_opt_str(di, "clk_edge", "falling");
     int clk_edge_rising = (strcmp(clk_edge_str, "rising") == 0) ? 1 : 0;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
+        int ret;
         if (clk_edge_rising)
-            c_cond_rise(cb, CH_CLK);
+            ret = c_wait(di, CW_R(CH_CLK), CW_END);
         else
-            c_cond_fall(cb, CH_CLK);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            ret = c_wait(di, CW_F(CH_CLK), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int start = c_decoder_get_pin(di, CH_START, samplenum);
-        int stop  = c_decoder_get_pin(di, CH_STOP, samplenum);
-        int data  = c_decoder_get_pin(di, CH_DATA, samplenum);
+        int start = c_pin(di, CH_START);
+        int stop  = c_pin(di, CH_STOP);
+        int data  = c_pin(di, CH_DATA);
 
         if (start != s->prev_start && !s->gate_is_open) {
             s->gate_is_open = s->start_edge_rising ? (start == 1) : (start == 0);
             if (s->gate_is_open) {
-                s->sample_start = samplenum;
+                s->sample_start = di_samplenum(di);
                 s->started = 1;
             }
         } else if (stop != s->prev_stop && s->gate_is_open) {
@@ -185,8 +180,8 @@ static void sig_decode(struct srd_decoder_inst *di)
             s->gate_is_open = !stop_active;
             if (!s->gate_is_open) {
                 if (s->annbits)
-                    C_ANN_PUT(di, s->last_samplenum, samplenum, s->out_ann, ANN_STOP, "STOP", "STP", "P");
-                sig_putsig(di, s, s->sample_start, samplenum, s->shiftreg);
+                    c_put(di, s->last_samplenum, di_samplenum(di), s->out_ann, ANN_STOP, "STOP", "STP", "P");
+                sig_putsig(di, s, s->sample_start, di_samplenum(di), s->shiftreg);
                 s->shiftreg = 0;
                 s->sample_start = 0;
             }
@@ -200,13 +195,13 @@ static void sig_decode(struct srd_decoder_inst *di)
                     char buf2[16], buf3[16];
                     snprintf(buf2, sizeof(buf2), "START%s", buf + 1);
                     snprintf(buf3, sizeof(buf3), "S%s", buf + 1);
-                    C_ANN_PUT(di, s->last_samplenum, samplenum, s->out_ann, ANN_START, buf2, buf3, buf);
+                    c_put(di, s->last_samplenum, di_samplenum(di), s->out_ann, ANN_START, buf2, buf3, buf);
                     s->started = 0;
                 } else {
                     char bit_str[4];
                     snprintf(bit_str, sizeof(bit_str), "%d", data);
                     int ann_cls = data ? ANN_BIT1 : ANN_BIT0;
-                    C_ANN_PUT(di, s->last_samplenum, samplenum, s->out_ann, ann_cls, bit_str);
+                    c_put(di, s->last_samplenum, di_samplenum(di), s->out_ann, ann_cls, bit_str);
                 }
             }
             int incoming = (popcount16(s->shiftreg & 0x0291) + data) & 1;
@@ -215,7 +210,7 @@ static void sig_decode(struct srd_decoder_inst *di)
 
         s->prev_start = start;
         s->prev_stop = stop;
-        s->last_samplenum = samplenum;
+        s->last_samplenum = di_samplenum(di);
     }
 }
 
@@ -256,6 +251,7 @@ struct srd_c_decoder signature_c_decoder = {
     .start = sig_start,
     .decode = sig_decode,
     .destroy = sig_destroy,
+    .state_size = 0,
     .metadata = sig_metadata,
 };
 

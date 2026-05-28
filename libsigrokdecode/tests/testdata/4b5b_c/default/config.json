@@ -1,10 +1,15 @@
 {
   "decoder": "4b5b_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "nrzi"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "nrzi_c",
+      "channels": {
+        "data": 0
+      }
+    }
+  ]
 }

@@ -1,15 +1,15 @@
 {
   "decoder": "ook_vis_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "ook"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {
-    "displayas": "Nibble - Hex",
-    "synclen": "4",
-    "syncoffset": "0",
-    "refsample": "off"
-  }
+  "stack": [
+    {
+      "id": "ook_c",
+      "channels": {
+        "data": 0
+      }
+    }
+  ]
 }

@@ -169,18 +169,18 @@ static void bean_reset(struct srd_decoder_inst *di)
 static void bean_start(struct srd_decoder_inst *di)
 {
     bean_state *s = (bean_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "bean");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "bean");
 
-    const char *ba_str = c_decoder_get_option_string(di, "bit_annotations", "none");
+    const char *ba_str = c_opt_str(di, "bit_annotations", "none");
     s->opt_bit_annotations = (strcmp(ba_str, "yes") == 0) ? 1 : 0;
 
-    const char *pl_str = c_decoder_get_option_string(di, "pulse_len", "none");
+    const char *pl_str = c_opt_str(di, "pulse_len", "none");
     s->opt_pulse_len = (strcmp(pl_str, "yes") == 0) ? 1 : 0;
 
-    const char *cmd_str = c_decoder_get_option_string(di, "command", "yes");
+    const char *cmd_str = c_opt_str(di, "command", "yes");
     s->opt_command = (strcmp(cmd_str, "yes") == 0) ? 1 : 0;
 
-    const char *ab_str = c_decoder_get_option_string(di, "all byte", "yes");
+    const char *ab_str = c_opt_str(di, "all byte", "yes");
     s->opt_all_byte = (strcmp(ab_str, "yes") == 0) ? 1 : 0;
 }
 
@@ -241,21 +241,18 @@ static void bean_parse_frame(struct srd_decoder_inst *di, bean_state *s)
         byte_es[byte_count] = s->bits_es[i * 8 + 7];
 
         char *ab_pos = allbyte + strlen(allbyte);
-        if (strlen(allbyte) > 0)
-            snprintf(ab_pos, sizeof(allbyte) - strlen(allbyte), " %s", byte_val[byte_count]);
-        else
-            snprintf(ab_pos, sizeof(allbyte) - strlen(allbyte), "%s", byte_val[byte_count]);
+        snprintf(ab_pos, sizeof(allbyte) - strlen(allbyte), " %s", byte_val[byte_count]);
 
         if (i == 0) {
             snprintf(byte_ann_label[byte_ann_count], sizeof(byte_ann_label[0]),
-                     "PRI: %X", frame_pri);
+                     "PRI: 0x%x", frame_pri);
             byte_ann_ss[byte_ann_count] = s->bits_ss[0];
             byte_ann_es[byte_ann_count] = s->bits_es[3];
             byte_ann_type[byte_ann_count] = 0;
             byte_ann_count++;
 
             snprintf(byte_ann_label[byte_ann_count], sizeof(byte_ann_label[0]),
-                     "ML: %X", frame_length);
+                     "ML: 0x%x", frame_length);
             byte_ann_ss[byte_ann_count] = s->bits_ss[4];
             byte_ann_es[byte_ann_count] = s->bits_es[7];
             byte_ann_type[byte_ann_count] = 0;
@@ -322,7 +319,7 @@ static void bean_parse_frame(struct srd_decoder_inst *di, bean_state *s)
                     cmd_es = byte_ann_es[i];
             }
             if (cmd_ss && cmd_es)
-                C_ANN_PUT(di, cmd_ss, cmd_es, s->out_ann, ANN_DEBUG, cmd);
+                c_put(di, cmd_ss, cmd_es, s->out_ann, ANN_DEBUG, cmd);
         }
     }
 
@@ -331,69 +328,63 @@ static void bean_parse_frame(struct srd_decoder_inst *di, bean_state *s)
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), " %d", s->bits[i]);
         int ann_class = s->bits[i] ? ANN_BIT1 : ANN_BIT0;
-        C_ANN_PUT(di, s->bits_ss[i], s->bits_es[i], s->out_ann, ann_class, bit_str);
+        c_put(di, s->bits_ss[i], s->bits_es[i], s->out_ann, ann_class, bit_str);
     }
 
     /* Output bit annotations (SOF/Stuff) */
     if (s->opt_bit_annotations) {
         for (int i = 0; i < s->bits_ann_count; i++) {
-            C_ANN_PUT(di, s->bits_ann_ss[i], s->bits_ann_es[i],
+            c_put(di, s->bits_ann_ss[i], s->bits_ann_es[i],
                       s->out_ann, ANN_BITE_ANN, s->bits_ann_label[i]);
         }
     }
 
     /* Output all byte */
     if (s->opt_all_byte && byte_all_str[0]) {
-        C_ANN_PUT(di, byte_all_ss, byte_all_es, s->out_ann, ANN_ALL_BYTE, byte_all_str);
+        c_put(di, byte_all_ss, byte_all_es, s->out_ann, ANN_ALL_BYTE, byte_all_str);
     }
 
     /* Output bytes */
     for (int i = 0; i < byte_count; i++) {
-        C_ANN_PUT(di, byte_ss[i], byte_es[i], s->out_ann, ANN_BYTE, byte_val[i]);
+        c_put(di, byte_ss[i], byte_es[i], s->out_ann, ANN_BYTE, byte_val[i]);
     }
 
     /* Output byte annotations */
     for (int i = 0; i < byte_ann_count; i++) {
         int ann_class = byte_ann_type[i] ? ANN_FRAME : ANN_MESSAGE;
-        C_ANN_PUT(di, byte_ann_ss[i], byte_ann_es[i], s->out_ann, ann_class, byte_ann_label[i]);
+        c_put(di, byte_ann_ss[i], byte_ann_es[i], s->out_ann, ann_class, byte_ann_label[i]);
     }
 }
 
 static void bean_decode(struct srd_decoder_inst *di)
 {
     bean_state *s = (bean_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     }
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int pin = c_decoder_get_pin(di, 0, samplenum);
+        int pin = c_pin(di, 0);
 
         if (!s->samplenumber_last) {
-            s->samplenumber_last = samplenum;
+            s->samplenumber_last = di_samplenum(di);
             s->pin_last = pin;
-            s->ss = samplenum;
+            s->ss = di_samplenum(di);
             continue;
         }
 
-        s->es = samplenum;
+        s->es = di_samplenum(di);
         uint64_t puls = s->es - s->ss;
 
         /* Pulse length option */
         if (s->opt_pulse_len) {
             char puls_str[32];
             snprintf(puls_str, sizeof(puls_str), " %llu", (unsigned long long)puls);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_PULSE_WIDTH, puls_str);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_PULSE_WIDTH, puls_str);
         }
 
         uint64_t count = puls / 100;
@@ -479,7 +470,11 @@ static void bean_decode(struct srd_decoder_inst *di)
                 }
             }
             if (s->eom) {
-                /* RSP annotation */
+                /* RSP annotation - short pulse after EOM */
+                if (!s->noresp && s->bit_count >= 2) {
+                    c_put(di, s->bits_ss[s->bit_count - 2], s->bits_es[s->bit_count - 1],
+                          s->out_ann, ANN_MESSAGE, "RSP");
+                }
                 s->draw = 1;
             }
         } else {
@@ -503,7 +498,7 @@ static void bean_decode(struct srd_decoder_inst *di)
             s->stuff = 0;
         }
 
-        s->ss = samplenum;
+        s->ss = di_samplenum(di);
         s->pin_last = pin;
 
         if (s->draw) {
@@ -511,7 +506,7 @@ static void bean_decode(struct srd_decoder_inst *di)
             if (s->noresp)
                 bean_reset_frame(s);
             else
-                bean_reset_frame(s);
+                bean_reset(di);
         }
     }
 }
@@ -553,6 +548,7 @@ struct srd_c_decoder bean_c_decoder = {
     .start = bean_start,
     .decode = bean_decode,
     .destroy = bean_destroy,
+    .state_size = 0,
     .metadata = bean_metadata,
 };
 

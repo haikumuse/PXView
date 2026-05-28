@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -145,35 +145,35 @@ static const char *dir_cmd[] = {
 };
 
 /* ===== SPI DATA packet helpers ===== */
-static inline int spi_proto_get_mosi(const unsigned char *data, uint64_t data_len, uint8_t *mosi_val)
+static inline int spi_proto_get_mosi(const c_field *fields, int n_fields, uint8_t *mosi_val)
 {
-    if (data_len < 17 || !(data[0] & 1)) {
+    if (n_fields < 17 || !(fields[0].u8 & 1)) {
         *mosi_val = 0;
         return 0;
     }
-    *mosi_val = (uint8_t)data[1];
+    *mosi_val = (uint8_t)fields[1].u8;
     return 1;
 }
 
-static inline int spi_proto_get_miso(const unsigned char *data, uint64_t data_len, uint8_t *miso_val)
+static inline int spi_proto_get_miso(const c_field *fields, int n_fields, uint8_t *miso_val)
 {
-    if (data_len < 17 || !((data[0] >> 1) & 1)) {
+    if (n_fields < 17 || !((fields[0].u8 >> 1) & 1)) {
         *miso_val = 0;
         return 0;
     }
-    *miso_val = (uint8_t)data[9];
+    *miso_val = (uint8_t)fields[9].u8;
     return 1;
 }
 
-static inline int spi_proto_cs_change_get_values(const unsigned char *data, uint64_t data_len,
+static inline int spi_proto_cs_change_get_values(const c_field *fields, int n_fields,
                                                   uint8_t *prev, uint8_t *cur)
 {
-    if (data_len < 2) {
+    if (n_fields < 2) {
         *prev = 0xFF; *cur = 0xFF;
         return -1;
     }
-    *prev = data[0];
-    *cur = data[1];
+    *prev = fields[0].u8;
+    *cur = fields[1].u8;
     return 0;
 }
 
@@ -283,20 +283,20 @@ static int st25r39xx_parse_command(st25r39xx_state *s, struct srd_decoder_inst *
     if (s->cmd_type == CMD_SPACE_B) {
         if ((mosi & 0xC0) == 0x00) { s->cmd_type = CMD_WRITEB; s->cmd_dat = addr; s->cmd_min = 1; s->cmd_max = 99999; return 0; }
         if ((mosi & 0xC0) == 0x40) { s->cmd_type = CMD_READB; s->cmd_dat = addr; s->cmd_min = 1; s->cmd_max = 99999; return 0; }
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
+        c_put(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
         return -1;
     }
     if (s->cmd_type == CMD_TEST_ACCESS) {
         if ((mosi & 0xC0) == 0x00) { s->cmd_type = CMD_WRITET; s->cmd_dat = addr; s->cmd_min = 1; s->cmd_max = 99999; return 0; }
         if ((mosi & 0xC0) == 0x40) { s->cmd_type = CMD_READT; s->cmd_dat = addr; s->cmd_min = 1; s->cmd_max = 99999; return 0; }
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
+        c_put(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
         return -1;
     }
 
     if (mosi <= 0x7F) {
         if ((mosi & 0xC0) == 0x00) { s->cmd_type = CMD_WRITE; s->cmd_dat = addr; s->cmd_min = 1; s->cmd_max = 99999; return 0; }
         if ((mosi & 0xC0) == 0x40) { s->cmd_type = CMD_READ; s->cmd_dat = addr; s->cmd_min = 1; s->cmd_max = 99999; return 0; }
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
+        c_put(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
         return -1;
     }
 
@@ -308,7 +308,7 @@ static int st25r39xx_parse_command(st25r39xx_state *s, struct srd_decoder_inst *
     if (mosi == 0xFB) { s->cmd_type = CMD_SPACE_B; s->cmd_dat = mosi; s->cmd_min = 0; s->cmd_max = 0; return 0; }
     if (mosi == 0xFC) { s->cmd_type = CMD_TEST_ACCESS; s->cmd_dat = mosi; s->cmd_min = 0; s->cmd_max = 0; return 0; }
 
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
+    c_put(di, ss, es, s->out_ann, ANN_WARN, "Unknown address/command combination");
     return -1;
 }
 
@@ -331,7 +331,7 @@ static void st25r39xx_finish_command(struct srd_decoder_inst *di, st25r39xx_stat
     case CMD_FIFO_READ:  ann = ANN_FIFO_READ;  break;
     case CMD_DIRECT:  ann = ANN_DIRECTCMD;     break;
     default:
-        C_ANN_PUT(di, s->ss_mb, s->es_mb, s->out_ann, ANN_WARN, "Unhandled command");
+        c_put(di, s->ss_mb, s->es_mb, s->out_ann, ANN_WARN, "Unhandled command");
         return;
     }
 
@@ -343,7 +343,7 @@ static void st25r39xx_finish_command(struct srd_decoder_inst *di, st25r39xx_stat
             snprintf(buf, sizeof(buf), "Cmd %s", dname);
         else
             snprintf(buf, sizeof(buf), "Cmd 0x%02X", s->cmd_dat);
-        C_ANN_PUT(di, s->ss_mb, s->es_mb, s->out_ann, ann, buf);
+        c_put(di, s->ss_mb, s->es_mb, s->out_ann, ann, buf);
         return;
     }
 
@@ -390,7 +390,7 @@ static void st25r39xx_finish_command(struct srd_decoder_inst *di, st25r39xx_stat
         }
     }
 
-    C_ANN_PUT(di, s->ss_mb, s->es_mb, s->out_ann, ann, buf);
+    c_put(di, s->ss_mb, s->es_mb, s->out_ann, ann, buf);
 }
 
 /* ===== Reset state ===== */
@@ -407,16 +407,14 @@ static void st25r39xx_next(st25r39xx_state *s)
 }
 
 /* ===== recv_proto ===== */
-static void st25r39xx_spi_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void st25r39xx_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     st25r39xx_state *s = (st25r39xx_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
         uint8_t prev_cs, cur_cs;
-        spi_proto_cs_change_get_values(data, data_len, &prev_cs, &cur_cs);
+        spi_proto_cs_change_get_values(fields, n_fields, &prev_cs, &cur_cs);
 
         if (prev_cs == 0xFF && cur_cs == 0xFF) {
             /* No CS pin */
@@ -433,7 +431,7 @@ static void st25r39xx_spi_recv_proto(struct srd_decoder_inst *di,
             /* CS rising edge: transaction complete */
             if (s->cmd_type != CMD_NONE && s->cmd_type != CMD_SPACE_B && s->cmd_type != CMD_TEST_ACCESS) {
                 if (s->mb_count < s->cmd_min) {
-                    C_ANN_PUT(di, start_sample, start_sample, s->out_ann, ANN_WARN, "Missing data bytes");
+                    c_put(di, start_sample, start_sample, s->out_ann, ANN_WARN, "Missing data bytes");
                 } else if (s->mb_count > 0) {
                     st25r39xx_finish_command(di, s);
                 }
@@ -451,8 +449,8 @@ static void st25r39xx_spi_recv_proto(struct srd_decoder_inst *di,
         return;
 
     uint8_t mosi, miso;
-    int have_mosi = spi_proto_get_mosi(data, data_len, &mosi);
-    int have_miso = spi_proto_get_miso(data, data_len, &miso);
+    int have_mosi = spi_proto_get_mosi(fields, n_fields, &mosi);
+    int have_miso = spi_proto_get_miso(fields, n_fields, &miso);
     (void)have_mosi; (void)have_miso;
 
     if (!s->requirements_met) {
@@ -496,7 +494,7 @@ static void st25r39xx_spi_recv_proto(struct srd_decoder_inst *di,
     } else {
         /* Collect data bytes */
         if (s->cmd_type == CMD_NONE || s->mb_count >= s->cmd_max) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARN, "Excess byte");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN, "Excess byte");
             return;
         }
 
@@ -528,7 +526,7 @@ static void st25r39xx_spi_reset(struct srd_decoder_inst *di)
 static void st25r39xx_spi_start(struct srd_decoder_inst *di)
 {
     st25r39xx_state *s = (st25r39xx_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "st25r39xx_spi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "st25r39xx_spi");
 }
 
 static void st25r39xx_spi_decode(struct srd_decoder_inst *di)
@@ -574,7 +572,8 @@ struct srd_c_decoder st25r39xx_spi_c_decoder = {
     .start = st25r39xx_spi_start,
     .decode = st25r39xx_spi_decode,
     .destroy = st25r39xx_spi_destroy,
-    .recv_proto = st25r39xx_spi_recv_proto,
+    .decode_upper = st25r39xx_spi_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== Export functions ===== */

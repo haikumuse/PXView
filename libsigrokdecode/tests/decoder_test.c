@@ -470,6 +470,30 @@ static void print_usage(const char *prog)
         prog);
 }
 
+/* Look up the default GVariant for a given option id from the decoder definition.
+ * Returns NULL if not found. The returned GVariant is owned by the decoder struct. */
+static GVariant *lookup_option_default(struct srd_decoder *dec, const char *opt_id)
+{
+    if (!dec || !opt_id) return NULL;
+
+    /* Check Python-style options (GSList) */
+    for (GSList *l = dec->options; l; l = l->next) {
+        struct srd_decoder_option *opt = (struct srd_decoder_option *)l->data;
+        if (opt->id && strcmp(opt->id, opt_id) == 0)
+            return opt->def;
+    }
+
+    /* Check C decoder options (array) */
+    if (dec->is_c_decoder && dec->c_dec) {
+        for (int i = 0; i < dec->c_dec->num_options; i++) {
+            if (dec->c_dec->options[i].id && strcmp(dec->c_dec->options[i].id, opt_id) == 0)
+                return dec->c_dec->options[i].def;
+        }
+    }
+
+    return NULL;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main                                                               */
 /* ------------------------------------------------------------------ */
@@ -694,8 +718,20 @@ int main(int argc, char **argv)
             if (cJSON_IsString(opt)) gvar = g_variant_new_string(opt->valuestring);
             else if (cJSON_IsNumber(opt)) {
                 double v = opt->valuedouble;
-                if (v == (double)(int64_t)v) gvar = g_variant_new_int64((int64_t)v);
-                else gvar = g_variant_new_double(v);
+                /* Look up the option's default type from the decoder definition
+                 * to determine whether to create int64 or double GVariant.
+                 * Without this, whole-number floats like 70.0 would be
+                 * incorrectly converted to int64, causing type mismatch errors
+                 * with Python decoders that expect double. */
+                GVariant *def = lookup_option_default(dec, opt->string);
+                if (def && g_variant_is_of_type(def, G_VARIANT_TYPE_DOUBLE))
+                    gvar = g_variant_new_double(v);
+                else if (def && g_variant_is_of_type(def, G_VARIANT_TYPE_INT64))
+                    gvar = g_variant_new_int64((int64_t)v);
+                else if (v == (double)(int64_t)v)
+                    gvar = g_variant_new_int64((int64_t)v);
+                else
+                    gvar = g_variant_new_double(v);
             } else if (cJSON_IsBool(opt)) gvar = g_variant_new_boolean(cJSON_IsTrue(opt));
             if (gvar) g_hash_table_insert(opt_hash, g_strdup(opt->string), g_variant_ref_sink(gvar));
             opt = opt->next;
@@ -772,10 +808,30 @@ int main(int argc, char **argv)
                 srd_inst_channel_set_all(s_di, sh);
                 g_hash_table_destroy(sh);
             }
-            if (prev_di) srd_inst_stack(sess, prev_di, s_di);
+            if (prev_di) {
+                ret = srd_inst_stack(sess, prev_di, s_di);
+                if (ret != SRD_OK) {
+                    fprintf(stderr, "Error: srd_inst_stack() failed for %s -> %s "
+                            "(C→Python stacking is not supported in v4 API)\n",
+                            prev_di->inst_id, s_di->inst_id);
+                    srd_session_destroy(sess); free(inbuf); free(inbuf_const);
+                    free(input_data); cJSON_Delete(config);
+                    return 2;
+                }
+            }
             prev_di = s_di;
         }
-        if (prev_di) srd_inst_stack(sess, prev_di, di);
+        if (prev_di) {
+            ret = srd_inst_stack(sess, prev_di, di);
+            if (ret != SRD_OK) {
+                fprintf(stderr, "Error: srd_inst_stack() failed for %s -> %s "
+                        "(C→Python stacking is not supported in v4 API)\n",
+                        prev_di->inst_id, di->inst_id);
+                srd_session_destroy(sess); free(inbuf); free(inbuf_const);
+                free(input_data); cJSON_Delete(config);
+                return 2;
+            }
+        }
     }
 
     annotation_list ann_list;

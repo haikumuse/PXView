@@ -1,11 +1,11 @@
 {
 	"decoder": "i2s_c",
-	"samplerate": 4000000,
+	"samplerate": 1000000,
 	"num_annotations": 1,
 	"annotations": [
 		{
-			"start_sample": 60,
-			"end_sample": 540,
+			"start_sample": 2012,
+			"end_sample": 2108,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [

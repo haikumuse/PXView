@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Paul Evans <leonerd@leonerd.org.uk>
@@ -85,7 +85,7 @@ static void max7219_handle_register(struct srd_decoder_inst *di, max7219_state *
         /* Digit display */
         char buf[64];
         snprintf(buf, sizeof(buf), "Digit %d: 0x%02X", addr, val);
-        C_ANN_PUT_VAL(di, ss, es, s->out_ann, ANN_DIGIT, val, buf);
+        c_put_v(di, ss, es, s->out_ann, ANN_DIGIT, val, buf);
         return;
     }
 
@@ -118,26 +118,24 @@ static void max7219_handle_register(struct srd_decoder_inst *di, max7219_state *
         break;
     default:
         snprintf(buf, sizeof(buf), "Unknown register 0x%02X", addr);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_WARNING, buf);
+        c_put(di, ss, es, s->out_ann, ANN_WARNING, buf);
         return;
     }
 
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_REG, buf);
+    c_put(di, ss, es, s->out_ann, ANN_REG, buf);
 }
 
-static void max7219_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void max7219_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     max7219_state *s = (max7219_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "DATA") == 0) {
         if (!s->cs_asserted) return;
-        if (data_len < 17) return;
+        if (n_fields < 17) return;
 
-        int have_mosi = data[0] & 1;
-        uint8_t mosi_byte = have_mosi ? data[1] : 0;
+        int have_mosi = fields[0].u8 & 1;
+        uint8_t mosi_byte = have_mosi ? fields[1].u8 : 0;
 
         if (s->pos == 0) {
             s->addr = mosi_byte;
@@ -148,16 +146,16 @@ static void max7219_recv_proto(struct srd_decoder_inst *di,
         }
         s->pos++;
     } else if (strcmp(cmd, "CS-CHANGE") == 0) {
-        int new_cs = (data && data_len >= 2) ? data[1] : 0;
+        int new_cs = (fields && n_fields >= 2) ? fields[1].u8 : 0;
         s->cs_asserted = (new_cs == 0);
         if (s->cs_asserted) {
             s->pos = 0;
             s->cs_start = start_sample;
         } else {
             if (s->pos == 1) {
-                C_ANN_PUT(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Short write");
+                c_put(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Short write");
             } else if (s->pos > 2) {
-                C_ANN_PUT(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Overlong write");
+                c_put(di, s->cs_start, end_sample, s->out_ann, ANN_WARNING, "Overlong write");
             }
         }
     }
@@ -175,7 +173,7 @@ static void max7219_reset(struct srd_decoder_inst *di)
 static void max7219_start(struct srd_decoder_inst *di)
 {
     max7219_state *s = (max7219_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "max7219");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "max7219");
     s->pos = 0;
     s->cs_start = 0;
 }
@@ -222,7 +220,8 @@ struct srd_c_decoder max7219_c_decoder = {
     .start = max7219_start,
     .decode = max7219_decode,
     .destroy = max7219_destroy,
-    .recv_proto = max7219_recv_proto,
+    .decode_upper = max7219_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

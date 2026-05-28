@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -90,12 +90,12 @@ static const struct srd_c_ann_row ad5593r_ann_rows[] = {
 
 static void ad5593r_putx(struct srd_decoder_inst *di, ad5593r_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, cls, text);
+    c_put(di, s->ss, s->es, s->out_ann, cls, text);
 }
 
 static void ad5593r_putb(struct srd_decoder_inst *di, ad5593r_state *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, cls, text);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, cls, text);
 }
 
 static const char *bit_indices_str(uint16_t val)
@@ -144,7 +144,7 @@ static void ad5593r_handle_pointer_byte(struct srd_decoder_inst *di, ad5593r_sta
     uint8_t opcode = (ptr_byte >> 4) & 0x0F;
     uint8_t low_nibble = ptr_byte & 0x0F;
 
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_PTR_BYTE, "Pointer Byte", "Ptr Byte");
+    c_put(di, s->ss, s->es, s->out_ann, ANN_PTR_BYTE, "Pointer Byte", "Ptr Byte");
 
     /* Determine register from opcode */
     const char *reg_name = NULL;
@@ -152,7 +152,7 @@ static void ad5593r_handle_pointer_byte(struct srd_decoder_inst *di, ad5593r_sta
         reg_name = config_mode_bits_map[opcode];
 
     if (reg_name) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REGISTER, reg_name);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REGISTER, reg_name);
     }
 
     /* Decode pointer byte fields based on specific pointer byte type */
@@ -212,7 +212,7 @@ static void ad5593r_handle_data_bytes(struct srd_decoder_inst *di, ad5593r_state
     if (!reg || reg[0] == '\0')
         return;
 
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_REGISTER, reg);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_REGISTER, reg);
 
     if (strcmp(reg, "NOOP") == 0) {
         ad5593r_decode_field(di, s, "No operation", data16 & 0x7FF);
@@ -296,9 +296,7 @@ static void ad5593r_handle_data_bytes(struct srd_decoder_inst *di, ad5593r_state
     }
 }
 
-static void ad5593r_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ad5593r_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ad5593r_state *s = (ad5593r_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -321,23 +319,23 @@ static void ad5593r_recv_proto(struct srd_decoder_inst *di,
         break;
     case AD5593R_GET_SLAVE_ADDR:
         if (strcmp(cmd, "ADDRESS WRITE") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr != 0x10 && addr != 0x11) {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING,
                     "I2C slave is not compatible.");
             } else {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
                     "I2C Slave address", "I2C Slave");
             }
             s->io_operation_type = 0;
             s->state = AD5593R_GET_POINTER_BYTE;
         } else if (strcmp(cmd, "ADDRESS READ") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr != 0x10 && addr != 0x11) {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_WARNING,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING,
                     "I2C slave is not compatible.");
             } else {
-                C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
+                c_put(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
                     "I2C Slave address", "I2C Slave");
             }
             s->io_operation_type = 1;
@@ -346,23 +344,23 @@ static void ad5593r_recv_proto(struct srd_decoder_inst *di,
         break;
     case AD5593R_GET_POINTER_BYTE:
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
-            uint8_t ptr_byte = (data_len > 0) ? data[0] : 0;
+            uint8_t ptr_byte = (n_fields > 0) ? fields[0].u8 : 0;
             ad5593r_handle_pointer_byte(di, s, ptr_byte);
             s->state = AD5593R_GET_DATA_HIGH;
         }
         break;
     case AD5593R_GET_DATA_HIGH:
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
-            s->data_high = (data_len > 0) ? data[0] : 0;
+            s->data_high = (n_fields > 0) ? fields[0].u8 : 0;
             s->ss_block = s->ss;
             s->state = AD5593R_GET_DATA_LOW;
         }
         break;
     case AD5593R_GET_DATA_LOW:
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
-            s->data_low = (data_len > 0) ? data[0] : 0;
+            s->data_low = (n_fields > 0) ? fields[0].u8 : 0;
             s->es_block = s->es;
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA_BYTE, "Data Bytes");
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA_BYTE, "Data Bytes");
             uint16_t data16 = ((uint16_t)s->data_high << 8) | s->data_low;
             ad5593r_handle_data_bytes(di, s, data16);
             s->state = AD5593R_GET_DATA_HIGH;
@@ -385,8 +383,8 @@ static void ad5593r_reset(struct srd_decoder_inst *di)
 static void ad5593r_start(struct srd_decoder_inst *di)
 {
     ad5593r_state *s = (ad5593r_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ad5593r");
-    s->vref = c_decoder_get_option_double(di, "Vref", 2.5);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ad5593r");
+    s->vref = c_opt_dbl(di, "Vref", 2.5);
 }
 
 static void ad5593r_decode(struct srd_decoder_inst *di)
@@ -431,7 +429,8 @@ struct srd_c_decoder ad5593r_c_decoder = {
     .start = ad5593r_start,
     .decode = ad5593r_decode,
     .destroy = ad5593r_destroy,
-    .recv_proto = ad5593r_recv_proto,
+    .decode_upper = ad5593r_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

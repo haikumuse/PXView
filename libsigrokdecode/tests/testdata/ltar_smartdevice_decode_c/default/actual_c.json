@@ -1,7 +1,10993 @@
 {
 	"decoder": "ltar_smartdevice_decode_c",
-	"samplerate": 1000000,
-	"num_annotations": 0,
+	"samplerate": 100000,
+	"num_annotations": 1047,
 	"annotations": [
+		{
+			"start_sample": 0,
+			"end_sample": 2000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 2000,
+			"end_sample": 2050,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2075,
+			"end_sample": 2083,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2083,
+			"end_sample": 2108,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2083,
+			"end_sample": 2133,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2158,
+			"end_sample": 2166,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2158,
+			"end_sample": 2178,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2158,
+			"end_sample": 2178,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 2178,
+			"end_sample": 2202,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2178,
+			"end_sample": 2202,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2202,
+			"end_sample": 2226,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2202,
+			"end_sample": 2226,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2238,
+			"end_sample": 2274,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 2158,
+			"end_sample": 2226,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 2274,
+			"end_sample": 2324,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2332,
+			"end_sample": 2357,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2332,
+			"end_sample": 2382,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2407,
+			"end_sample": 2415,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2415,
+			"end_sample": 2440,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2415,
+			"end_sample": 2465,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2490,
+			"end_sample": 2498,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2498,
+			"end_sample": 2523,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2498,
+			"end_sample": 2548,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2573,
+			"end_sample": 2581,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2581,
+			"end_sample": 2606,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2581,
+			"end_sample": 2631,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2656,
+			"end_sample": 2664,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2664,
+			"end_sample": 2689,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2664,
+			"end_sample": 2714,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 2739,
+			"end_sample": 2747,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2739,
+			"end_sample": 2759,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2739,
+			"end_sample": 2759,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 2759,
+			"end_sample": 2783,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2759,
+			"end_sample": 2783,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2783,
+			"end_sample": 2807,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2783,
+			"end_sample": 2807,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2819,
+			"end_sample": 2842,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2739,
+			"end_sample": 2807,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 2842,
+			"end_sample": 2854,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2842,
+			"end_sample": 2866,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2842,
+			"end_sample": 2866,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 2866,
+			"end_sample": 2890,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2866,
+			"end_sample": 2890,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2902,
+			"end_sample": 2925,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2842,
+			"end_sample": 2890,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 2925,
+			"end_sample": 2937,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2925,
+			"end_sample": 2949,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2925,
+			"end_sample": 2949,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 2949,
+			"end_sample": 2973,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2949,
+			"end_sample": 2973,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2985,
+			"end_sample": 3008,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2925,
+			"end_sample": 2973,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 3008,
+			"end_sample": 3020,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3008,
+			"end_sample": 3032,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3008,
+			"end_sample": 3032,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 3032,
+			"end_sample": 3056,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3032,
+			"end_sample": 3056,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3068,
+			"end_sample": 3104,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3008,
+			"end_sample": 3056,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 3104,
+			"end_sample": 3154,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3154,
+			"end_sample": 3174,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3154,
+			"end_sample": 3174,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 3174,
+			"end_sample": 3198,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3174,
+			"end_sample": 3198,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3198,
+			"end_sample": 3222,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3198,
+			"end_sample": 3222,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3234,
+			"end_sample": 3270,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3154,
+			"end_sample": 3222,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 3270,
+			"end_sample": 3320,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3328,
+			"end_sample": 3353,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3328,
+			"end_sample": 3378,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3403,
+			"end_sample": 3411,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3403,
+			"end_sample": 3423,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3403,
+			"end_sample": 3423,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 3423,
+			"end_sample": 3447,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3423,
+			"end_sample": 3447,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3447,
+			"end_sample": 3471,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3447,
+			"end_sample": 3471,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3483,
+			"end_sample": 3519,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 3403,
+			"end_sample": 3471,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 3519,
+			"end_sample": 3569,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3577,
+			"end_sample": 3602,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3577,
+			"end_sample": 3627,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3652,
+			"end_sample": 3660,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3660,
+			"end_sample": 3685,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3660,
+			"end_sample": 3710,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3735,
+			"end_sample": 3743,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3743,
+			"end_sample": 3768,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3743,
+			"end_sample": 3793,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3818,
+			"end_sample": 3826,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3818,
+			"end_sample": 3838,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3818,
+			"end_sample": 3838,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 3838,
+			"end_sample": 3862,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3838,
+			"end_sample": 3862,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3862,
+			"end_sample": 3886,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3862,
+			"end_sample": 3886,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3898,
+			"end_sample": 3921,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3818,
+			"end_sample": 3886,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 3921,
+			"end_sample": 3933,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3921,
+			"end_sample": 3945,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3921,
+			"end_sample": 3945,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 3945,
+			"end_sample": 3969,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3945,
+			"end_sample": 3969,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3981,
+			"end_sample": 4004,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 3921,
+			"end_sample": 3969,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 4004,
+			"end_sample": 4016,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4004,
+			"end_sample": 4028,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4004,
+			"end_sample": 4028,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 4028,
+			"end_sample": 4052,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4028,
+			"end_sample": 4052,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4064,
+			"end_sample": 4087,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4004,
+			"end_sample": 4052,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 4087,
+			"end_sample": 4099,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4087,
+			"end_sample": 4111,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4087,
+			"end_sample": 4111,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 4111,
+			"end_sample": 4135,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4111,
+			"end_sample": 4135,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4147,
+			"end_sample": 4183,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 4087,
+			"end_sample": 4135,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 4183,
+			"end_sample": 4233,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4233,
+			"end_sample": 4253,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4233,
+			"end_sample": 4253,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 4253,
+			"end_sample": 4277,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4253,
+			"end_sample": 4277,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4277,
+			"end_sample": 4301,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4277,
+			"end_sample": 4301,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4313,
+			"end_sample": 4349,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 4233,
+			"end_sample": 4301,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 4349,
+			"end_sample": 4399,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4399,
+			"end_sample": 4419,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4399,
+			"end_sample": 4419,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 4419,
+			"end_sample": 4443,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4419,
+			"end_sample": 4443,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4443,
+			"end_sample": 4467,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4443,
+			"end_sample": 4467,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4479,
+			"end_sample": 4515,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 4399,
+			"end_sample": 4467,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 4515,
+			"end_sample": 4565,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4573,
+			"end_sample": 4598,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4573,
+			"end_sample": 4623,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4648,
+			"end_sample": 4656,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4656,
+			"end_sample": 4681,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4656,
+			"end_sample": 4706,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4731,
+			"end_sample": 4739,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4739,
+			"end_sample": 4764,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4739,
+			"end_sample": 4789,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4814,
+			"end_sample": 4822,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4822,
+			"end_sample": 4847,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4822,
+			"end_sample": 4872,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4897,
+			"end_sample": 4905,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4897,
+			"end_sample": 4917,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4897,
+			"end_sample": 4917,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 4917,
+			"end_sample": 4941,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4917,
+			"end_sample": 4941,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4941,
+			"end_sample": 4965,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4941,
+			"end_sample": 4965,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4977,
+			"end_sample": 5000,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4897,
+			"end_sample": 4965,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5000,
+			"end_sample": 5012,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5000,
+			"end_sample": 5024,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5000,
+			"end_sample": 5024,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 5024,
+			"end_sample": 5048,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5024,
+			"end_sample": 5048,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5060,
+			"end_sample": 5083,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5000,
+			"end_sample": 5048,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5083,
+			"end_sample": 5095,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5083,
+			"end_sample": 5107,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5083,
+			"end_sample": 5107,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 5107,
+			"end_sample": 5131,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5107,
+			"end_sample": 5131,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5143,
+			"end_sample": 5166,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5083,
+			"end_sample": 5131,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5166,
+			"end_sample": 5178,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5166,
+			"end_sample": 5190,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5166,
+			"end_sample": 5190,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 5190,
+			"end_sample": 5214,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5190,
+			"end_sample": 5214,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5226,
+			"end_sample": 5262,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 5166,
+			"end_sample": 5214,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5262,
+			"end_sample": 5312,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5320,
+			"end_sample": 5345,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5320,
+			"end_sample": 5370,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5395,
+			"end_sample": 5403,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5403,
+			"end_sample": 5428,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5403,
+			"end_sample": 5453,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5478,
+			"end_sample": 5486,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5478,
+			"end_sample": 5498,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5478,
+			"end_sample": 5498,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 5498,
+			"end_sample": 5522,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5498,
+			"end_sample": 5522,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5522,
+			"end_sample": 5546,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5522,
+			"end_sample": 5546,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5558,
+			"end_sample": 5594,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 5478,
+			"end_sample": 5546,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5594,
+			"end_sample": 5644,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5652,
+			"end_sample": 5677,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5652,
+			"end_sample": 5702,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5727,
+			"end_sample": 5735,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5727,
+			"end_sample": 5747,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5727,
+			"end_sample": 5747,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 5747,
+			"end_sample": 5771,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5747,
+			"end_sample": 5771,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5771,
+			"end_sample": 5795,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5771,
+			"end_sample": 5795,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5807,
+			"end_sample": 5830,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5727,
+			"end_sample": 5795,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5830,
+			"end_sample": 5842,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5830,
+			"end_sample": 5854,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5830,
+			"end_sample": 5854,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 5854,
+			"end_sample": 5878,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5854,
+			"end_sample": 5878,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5890,
+			"end_sample": 5926,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 5830,
+			"end_sample": 5878,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 5926,
+			"end_sample": 5976,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5976,
+			"end_sample": 5996,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5976,
+			"end_sample": 5996,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 5996,
+			"end_sample": 6020,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5996,
+			"end_sample": 6020,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6020,
+			"end_sample": 6044,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6020,
+			"end_sample": 6044,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6056,
+			"end_sample": 6079,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 5976,
+			"end_sample": 6044,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6079,
+			"end_sample": 6091,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6079,
+			"end_sample": 6103,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6079,
+			"end_sample": 6103,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 6103,
+			"end_sample": 6127,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6103,
+			"end_sample": 6127,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6139,
+			"end_sample": 6162,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6079,
+			"end_sample": 6127,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6162,
+			"end_sample": 6174,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6162,
+			"end_sample": 6186,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6162,
+			"end_sample": 6186,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 6186,
+			"end_sample": 6210,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6186,
+			"end_sample": 6210,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6222,
+			"end_sample": 6245,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6162,
+			"end_sample": 6210,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6245,
+			"end_sample": 6257,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6245,
+			"end_sample": 6269,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6245,
+			"end_sample": 6269,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 6269,
+			"end_sample": 6293,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6269,
+			"end_sample": 6293,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6305,
+			"end_sample": 6341,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 6245,
+			"end_sample": 6293,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6341,
+			"end_sample": 6391,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6399,
+			"end_sample": 6424,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6399,
+			"end_sample": 6449,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6474,
+			"end_sample": 6482,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6474,
+			"end_sample": 6494,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6474,
+			"end_sample": 6494,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 6494,
+			"end_sample": 6518,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6494,
+			"end_sample": 6518,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6518,
+			"end_sample": 6542,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6518,
+			"end_sample": 6542,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6554,
+			"end_sample": 6577,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6474,
+			"end_sample": 6542,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6577,
+			"end_sample": 6589,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6577,
+			"end_sample": 6601,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6577,
+			"end_sample": 6601,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 6601,
+			"end_sample": 6625,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6601,
+			"end_sample": 6625,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6637,
+			"end_sample": 6660,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6577,
+			"end_sample": 6625,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6660,
+			"end_sample": 6672,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6660,
+			"end_sample": 6684,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6660,
+			"end_sample": 6684,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 6684,
+			"end_sample": 6708,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6684,
+			"end_sample": 6708,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6720,
+			"end_sample": 6743,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6660,
+			"end_sample": 6708,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6743,
+			"end_sample": 6755,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6743,
+			"end_sample": 6767,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6743,
+			"end_sample": 6767,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 6767,
+			"end_sample": 6791,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6767,
+			"end_sample": 6791,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6803,
+			"end_sample": 6839,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 6743,
+			"end_sample": 6791,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 6839,
+			"end_sample": 6889,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6897,
+			"end_sample": 6922,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6897,
+			"end_sample": 6947,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6972,
+			"end_sample": 6980,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6980,
+			"end_sample": 7005,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 6980,
+			"end_sample": 7030,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7055,
+			"end_sample": 7063,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7055,
+			"end_sample": 7075,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7055,
+			"end_sample": 7075,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 7075,
+			"end_sample": 7099,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7075,
+			"end_sample": 7099,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7099,
+			"end_sample": 7123,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7099,
+			"end_sample": 7123,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7135,
+			"end_sample": 7158,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7055,
+			"end_sample": 7123,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 7158,
+			"end_sample": 7170,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7158,
+			"end_sample": 7182,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7158,
+			"end_sample": 7182,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 7182,
+			"end_sample": 7206,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7182,
+			"end_sample": 7206,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7218,
+			"end_sample": 7241,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7158,
+			"end_sample": 7206,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 7241,
+			"end_sample": 7253,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7241,
+			"end_sample": 7265,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7241,
+			"end_sample": 7265,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 7265,
+			"end_sample": 7289,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7265,
+			"end_sample": 7289,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7301,
+			"end_sample": 7324,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7241,
+			"end_sample": 7289,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 7324,
+			"end_sample": 7336,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7324,
+			"end_sample": 7348,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7324,
+			"end_sample": 7348,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 7348,
+			"end_sample": 7372,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7348,
+			"end_sample": 7372,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7384,
+			"end_sample": 7420,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 7324,
+			"end_sample": 7372,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 7420,
+			"end_sample": 7470,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7478,
+			"end_sample": 7503,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7478,
+			"end_sample": 7528,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7553,
+			"end_sample": 7561,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7561,
+			"end_sample": 7586,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7561,
+			"end_sample": 7611,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7636,
+			"end_sample": 7644,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7644,
+			"end_sample": 7669,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7644,
+			"end_sample": 7694,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7719,
+			"end_sample": 7727,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7727,
+			"end_sample": 7752,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7727,
+			"end_sample": 7777,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7802,
+			"end_sample": 7810,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7810,
+			"end_sample": 7835,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7810,
+			"end_sample": 7860,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7885,
+			"end_sample": 7893,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7893,
+			"end_sample": 7918,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7893,
+			"end_sample": 7943,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7968,
+			"end_sample": 7976,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7976,
+			"end_sample": 8001,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 7976,
+			"end_sample": 8026,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8051,
+			"end_sample": 8059,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8059,
+			"end_sample": 8084,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8059,
+			"end_sample": 8109,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8134,
+			"end_sample": 8142,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8134,
+			"end_sample": 8154,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8134,
+			"end_sample": 8154,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 8154,
+			"end_sample": 8178,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8154,
+			"end_sample": 8178,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8178,
+			"end_sample": 8202,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8178,
+			"end_sample": 8202,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8214,
+			"end_sample": 8237,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8134,
+			"end_sample": 8202,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 8237,
+			"end_sample": 8249,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8237,
+			"end_sample": 8261,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8237,
+			"end_sample": 8261,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 8261,
+			"end_sample": 8285,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8261,
+			"end_sample": 8285,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8297,
+			"end_sample": 8320,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8237,
+			"end_sample": 8285,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 8320,
+			"end_sample": 8332,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8320,
+			"end_sample": 8344,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8320,
+			"end_sample": 8344,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 8344,
+			"end_sample": 8368,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8344,
+			"end_sample": 8368,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8380,
+			"end_sample": 8403,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8320,
+			"end_sample": 8368,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 8403,
+			"end_sample": 8415,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8403,
+			"end_sample": 8427,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8403,
+			"end_sample": 8427,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 8427,
+			"end_sample": 8451,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8427,
+			"end_sample": 8451,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8463,
+			"end_sample": 8499,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 8403,
+			"end_sample": 8451,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 8499,
+			"end_sample": 8549,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8557,
+			"end_sample": 8582,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8557,
+			"end_sample": 8607,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8632,
+			"end_sample": 8640,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8640,
+			"end_sample": 8665,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8640,
+			"end_sample": 8690,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8715,
+			"end_sample": 8723,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8723,
+			"end_sample": 8748,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8723,
+			"end_sample": 8773,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8798,
+			"end_sample": 8806,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8806,
+			"end_sample": 8831,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8806,
+			"end_sample": 8856,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8881,
+			"end_sample": 8889,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8889,
+			"end_sample": 8914,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8889,
+			"end_sample": 8939,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8964,
+			"end_sample": 8972,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8972,
+			"end_sample": 8997,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 8972,
+			"end_sample": 9022,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9047,
+			"end_sample": 9055,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9055,
+			"end_sample": 9080,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9055,
+			"end_sample": 9105,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9130,
+			"end_sample": 9138,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9138,
+			"end_sample": 9163,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9138,
+			"end_sample": 9188,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9213,
+			"end_sample": 9221,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9213,
+			"end_sample": 9233,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9213,
+			"end_sample": 9233,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 9233,
+			"end_sample": 9257,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9233,
+			"end_sample": 9257,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9257,
+			"end_sample": 9281,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9257,
+			"end_sample": 9281,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9293,
+			"end_sample": 9316,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9213,
+			"end_sample": 9281,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 9316,
+			"end_sample": 9328,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9316,
+			"end_sample": 9340,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9316,
+			"end_sample": 9340,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 9340,
+			"end_sample": 9364,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9340,
+			"end_sample": 9364,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9376,
+			"end_sample": 9399,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9316,
+			"end_sample": 9364,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 9399,
+			"end_sample": 9411,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9399,
+			"end_sample": 9423,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9399,
+			"end_sample": 9423,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 9423,
+			"end_sample": 9447,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9423,
+			"end_sample": 9447,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9459,
+			"end_sample": 9482,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9399,
+			"end_sample": 9447,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 9482,
+			"end_sample": 9494,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9482,
+			"end_sample": 9506,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9482,
+			"end_sample": 9506,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 9506,
+			"end_sample": 9530,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9506,
+			"end_sample": 9530,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 9542,
+			"end_sample": 9578,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 9482,
+			"end_sample": 9530,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 9578,
+			"end_sample": 9628,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9636,
+			"end_sample": 9661,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9636,
+			"end_sample": 9686,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9711,
+			"end_sample": 9719,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9719,
+			"end_sample": 9744,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9719,
+			"end_sample": 9769,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9794,
+			"end_sample": 9802,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9802,
+			"end_sample": 9827,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9802,
+			"end_sample": 9852,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9877,
+			"end_sample": 9885,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9885,
+			"end_sample": 9910,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9885,
+			"end_sample": 9935,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9960,
+			"end_sample": 9968,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9968,
+			"end_sample": 9993,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 9968,
+			"end_sample": 10018,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10043,
+			"end_sample": 10051,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10051,
+			"end_sample": 10076,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10051,
+			"end_sample": 10101,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10126,
+			"end_sample": 10134,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10134,
+			"end_sample": 10159,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10134,
+			"end_sample": 10184,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10209,
+			"end_sample": 10217,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10217,
+			"end_sample": 10242,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10217,
+			"end_sample": 10267,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10292,
+			"end_sample": 10300,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10292,
+			"end_sample": 10312,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10292,
+			"end_sample": 10312,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 10312,
+			"end_sample": 10336,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10312,
+			"end_sample": 10336,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10336,
+			"end_sample": 10360,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10336,
+			"end_sample": 10360,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10372,
+			"end_sample": 10395,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10292,
+			"end_sample": 10360,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 10395,
+			"end_sample": 10407,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10395,
+			"end_sample": 10419,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10395,
+			"end_sample": 10419,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 10419,
+			"end_sample": 10443,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10419,
+			"end_sample": 10443,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10455,
+			"end_sample": 10478,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10395,
+			"end_sample": 10443,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 10478,
+			"end_sample": 10490,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10478,
+			"end_sample": 10502,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10478,
+			"end_sample": 10502,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 10502,
+			"end_sample": 10526,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10502,
+			"end_sample": 10526,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10538,
+			"end_sample": 10561,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10478,
+			"end_sample": 10526,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 10561,
+			"end_sample": 10573,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 10561,
+			"end_sample": 10585,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10561,
+			"end_sample": 10585,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 10585,
+			"end_sample": 10609,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10585,
+			"end_sample": 10609,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10621,
+			"end_sample": 10657,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 10561,
+			"end_sample": 10609,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 10657,
+			"end_sample": 10707,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10707,
+			"end_sample": 10727,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10707,
+			"end_sample": 10727,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 10727,
+			"end_sample": 10751,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10727,
+			"end_sample": 10751,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10751,
+			"end_sample": 10775,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10751,
+			"end_sample": 10775,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10787,
+			"end_sample": 10823,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 10707,
+			"end_sample": 10775,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 10823,
+			"end_sample": 10873,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10873,
+			"end_sample": 10893,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10873,
+			"end_sample": 10893,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 10893,
+			"end_sample": 10917,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10893,
+			"end_sample": 10917,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10917,
+			"end_sample": 10941,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10917,
+			"end_sample": 10941,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10953,
+			"end_sample": 10989,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 10873,
+			"end_sample": 10941,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 10989,
+			"end_sample": 11039,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11047,
+			"end_sample": 11072,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11047,
+			"end_sample": 11097,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11122,
+			"end_sample": 11130,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11130,
+			"end_sample": 11155,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11130,
+			"end_sample": 11180,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11205,
+			"end_sample": 11213,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11213,
+			"end_sample": 11238,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11213,
+			"end_sample": 11263,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11288,
+			"end_sample": 11296,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11296,
+			"end_sample": 11321,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11296,
+			"end_sample": 11346,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11371,
+			"end_sample": 11379,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11371,
+			"end_sample": 11391,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11371,
+			"end_sample": 11391,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 11391,
+			"end_sample": 11415,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11391,
+			"end_sample": 11415,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11415,
+			"end_sample": 11439,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11415,
+			"end_sample": 11439,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11451,
+			"end_sample": 11474,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11371,
+			"end_sample": 11439,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 11474,
+			"end_sample": 11486,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11474,
+			"end_sample": 11498,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11474,
+			"end_sample": 11498,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 11498,
+			"end_sample": 11522,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11498,
+			"end_sample": 11522,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11534,
+			"end_sample": 11557,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11474,
+			"end_sample": 11522,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 11557,
+			"end_sample": 11569,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11557,
+			"end_sample": 11581,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11557,
+			"end_sample": 11581,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 11581,
+			"end_sample": 11605,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11581,
+			"end_sample": 11605,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11617,
+			"end_sample": 11640,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11557,
+			"end_sample": 11605,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 11640,
+			"end_sample": 11652,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11640,
+			"end_sample": 11664,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11640,
+			"end_sample": 11664,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 11664,
+			"end_sample": 11688,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11664,
+			"end_sample": 11688,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11700,
+			"end_sample": 11736,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 11640,
+			"end_sample": 11688,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 11736,
+			"end_sample": 11786,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11794,
+			"end_sample": 11819,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11794,
+			"end_sample": 11844,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11869,
+			"end_sample": 11877,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11877,
+			"end_sample": 11902,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11877,
+			"end_sample": 11927,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11952,
+			"end_sample": 11960,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11960,
+			"end_sample": 11985,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 11960,
+			"end_sample": 12010,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12035,
+			"end_sample": 12043,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12043,
+			"end_sample": 12068,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12043,
+			"end_sample": 12093,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12118,
+			"end_sample": 12126,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12126,
+			"end_sample": 12151,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12126,
+			"end_sample": 12176,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12201,
+			"end_sample": 12209,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12209,
+			"end_sample": 12234,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12209,
+			"end_sample": 12259,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12284,
+			"end_sample": 12292,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12292,
+			"end_sample": 12317,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12292,
+			"end_sample": 12342,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12367,
+			"end_sample": 12375,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12375,
+			"end_sample": 12400,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12375,
+			"end_sample": 12425,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12450,
+			"end_sample": 12458,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12450,
+			"end_sample": 12470,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12450,
+			"end_sample": 12470,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 12470,
+			"end_sample": 12494,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12470,
+			"end_sample": 12494,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12494,
+			"end_sample": 12518,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12494,
+			"end_sample": 12518,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12530,
+			"end_sample": 12553,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12450,
+			"end_sample": 12518,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 12553,
+			"end_sample": 12565,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12553,
+			"end_sample": 12577,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12553,
+			"end_sample": 12577,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 12577,
+			"end_sample": 12601,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12577,
+			"end_sample": 12601,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12613,
+			"end_sample": 12636,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12553,
+			"end_sample": 12601,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 12636,
+			"end_sample": 12648,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12636,
+			"end_sample": 12660,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12636,
+			"end_sample": 12660,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 12660,
+			"end_sample": 12684,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12660,
+			"end_sample": 12684,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12696,
+			"end_sample": 12719,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12636,
+			"end_sample": 12684,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 12719,
+			"end_sample": 12731,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12719,
+			"end_sample": 12743,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12719,
+			"end_sample": 12743,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 12743,
+			"end_sample": 12767,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12743,
+			"end_sample": 12767,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12779,
+			"end_sample": 12815,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 12719,
+			"end_sample": 12767,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 12815,
+			"end_sample": 12865,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12873,
+			"end_sample": 12898,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12873,
+			"end_sample": 12923,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12948,
+			"end_sample": 12956,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12956,
+			"end_sample": 12981,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 12956,
+			"end_sample": 13006,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13031,
+			"end_sample": 13039,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13039,
+			"end_sample": 13064,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13039,
+			"end_sample": 13089,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13114,
+			"end_sample": 13122,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13114,
+			"end_sample": 13134,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13114,
+			"end_sample": 13134,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13134,
+			"end_sample": 13158,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13134,
+			"end_sample": 13158,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13158,
+			"end_sample": 13182,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13158,
+			"end_sample": 13182,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13194,
+			"end_sample": 13230,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 13114,
+			"end_sample": 13182,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13230,
+			"end_sample": 13280,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13280,
+			"end_sample": 13300,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13280,
+			"end_sample": 13300,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13300,
+			"end_sample": 13324,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13300,
+			"end_sample": 13324,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13324,
+			"end_sample": 13348,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13324,
+			"end_sample": 13348,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13360,
+			"end_sample": 13383,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13280,
+			"end_sample": 13348,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13383,
+			"end_sample": 13395,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13383,
+			"end_sample": 13407,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13383,
+			"end_sample": 13407,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13407,
+			"end_sample": 13431,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13407,
+			"end_sample": 13431,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13443,
+			"end_sample": 13479,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 13383,
+			"end_sample": 13431,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13479,
+			"end_sample": 13529,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13529,
+			"end_sample": 13549,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13529,
+			"end_sample": 13549,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13549,
+			"end_sample": 13573,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13549,
+			"end_sample": 13573,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13573,
+			"end_sample": 13597,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13573,
+			"end_sample": 13597,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13609,
+			"end_sample": 13632,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13529,
+			"end_sample": 13597,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13632,
+			"end_sample": 13644,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13632,
+			"end_sample": 13656,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13632,
+			"end_sample": 13656,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13656,
+			"end_sample": 13680,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13656,
+			"end_sample": 13680,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13692,
+			"end_sample": 13715,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13632,
+			"end_sample": 13680,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13715,
+			"end_sample": 13727,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13715,
+			"end_sample": 13739,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13715,
+			"end_sample": 13739,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13739,
+			"end_sample": 13763,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13739,
+			"end_sample": 13763,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13775,
+			"end_sample": 13798,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13715,
+			"end_sample": 13763,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13798,
+			"end_sample": 13810,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13798,
+			"end_sample": 13822,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13798,
+			"end_sample": 13822,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13822,
+			"end_sample": 13846,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13822,
+			"end_sample": 13846,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13858,
+			"end_sample": 13881,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13798,
+			"end_sample": 13846,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13881,
+			"end_sample": 13893,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13881,
+			"end_sample": 13905,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13881,
+			"end_sample": 13905,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13905,
+			"end_sample": 13929,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13905,
+			"end_sample": 13929,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13941,
+			"end_sample": 13964,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13881,
+			"end_sample": 13929,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 13964,
+			"end_sample": 13976,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13964,
+			"end_sample": 13988,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13964,
+			"end_sample": 13988,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 13988,
+			"end_sample": 14012,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13988,
+			"end_sample": 14012,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14024,
+			"end_sample": 14047,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 13964,
+			"end_sample": 14012,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14047,
+			"end_sample": 14059,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14047,
+			"end_sample": 14071,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14047,
+			"end_sample": 14071,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14071,
+			"end_sample": 14095,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14071,
+			"end_sample": 14095,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14107,
+			"end_sample": 14130,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14047,
+			"end_sample": 14095,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14130,
+			"end_sample": 14142,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14130,
+			"end_sample": 14154,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14130,
+			"end_sample": 14154,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14154,
+			"end_sample": 14178,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14154,
+			"end_sample": 14178,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14190,
+			"end_sample": 14213,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14130,
+			"end_sample": 14178,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14213,
+			"end_sample": 14225,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14213,
+			"end_sample": 14237,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14213,
+			"end_sample": 14237,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14237,
+			"end_sample": 14261,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14237,
+			"end_sample": 14261,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14273,
+			"end_sample": 14296,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14213,
+			"end_sample": 14261,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14296,
+			"end_sample": 14308,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14296,
+			"end_sample": 14320,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14296,
+			"end_sample": 14320,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14320,
+			"end_sample": 14344,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14320,
+			"end_sample": 14344,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14356,
+			"end_sample": 14379,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14296,
+			"end_sample": 14344,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14379,
+			"end_sample": 14391,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14379,
+			"end_sample": 14403,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14379,
+			"end_sample": 14403,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14403,
+			"end_sample": 14427,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14403,
+			"end_sample": 14427,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14439,
+			"end_sample": 14462,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14379,
+			"end_sample": 14427,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14462,
+			"end_sample": 14474,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14462,
+			"end_sample": 14486,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14462,
+			"end_sample": 14486,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14486,
+			"end_sample": 14510,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14486,
+			"end_sample": 14510,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14522,
+			"end_sample": 14545,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14462,
+			"end_sample": 14510,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14545,
+			"end_sample": 14557,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14545,
+			"end_sample": 14569,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14545,
+			"end_sample": 14569,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14569,
+			"end_sample": 14593,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14569,
+			"end_sample": 14593,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14605,
+			"end_sample": 14628,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14545,
+			"end_sample": 14593,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14628,
+			"end_sample": 14640,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14628,
+			"end_sample": 14652,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14628,
+			"end_sample": 14652,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14652,
+			"end_sample": 14676,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14652,
+			"end_sample": 14676,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14688,
+			"end_sample": 14711,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14628,
+			"end_sample": 14676,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14711,
+			"end_sample": 14723,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14711,
+			"end_sample": 14735,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14711,
+			"end_sample": 14735,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14735,
+			"end_sample": 14759,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14735,
+			"end_sample": 14759,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14771,
+			"end_sample": 14794,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14711,
+			"end_sample": 14759,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14794,
+			"end_sample": 14806,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 14794,
+			"end_sample": 14818,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14794,
+			"end_sample": 14818,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14818,
+			"end_sample": 14842,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14818,
+			"end_sample": 14842,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14854,
+			"end_sample": 14890,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 14794,
+			"end_sample": 14842,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 14890,
+			"end_sample": 14940,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 14940,
+			"end_sample": 14960,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14940,
+			"end_sample": 14960,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 14960,
+			"end_sample": 14984,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14960,
+			"end_sample": 14984,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14984,
+			"end_sample": 15008,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14984,
+			"end_sample": 15008,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15020,
+			"end_sample": 15056,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 14940,
+			"end_sample": 15008,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 15056,
+			"end_sample": 15106,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15114,
+			"end_sample": 15139,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15114,
+			"end_sample": 15164,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15189,
+			"end_sample": 15197,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15197,
+			"end_sample": 15222,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15197,
+			"end_sample": 15247,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15272,
+			"end_sample": 15280,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15280,
+			"end_sample": 15305,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15280,
+			"end_sample": 15330,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15355,
+			"end_sample": 15363,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15363,
+			"end_sample": 15388,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15363,
+			"end_sample": 15413,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15438,
+			"end_sample": 15446,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15446,
+			"end_sample": 15471,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15446,
+			"end_sample": 15496,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15521,
+			"end_sample": 15529,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15529,
+			"end_sample": 15554,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15529,
+			"end_sample": 15579,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 15604,
+			"end_sample": 15612,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15604,
+			"end_sample": 15624,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15604,
+			"end_sample": 15624,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 15624,
+			"end_sample": 15648,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15624,
+			"end_sample": 15648,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15648,
+			"end_sample": 15672,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15648,
+			"end_sample": 15672,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15684,
+			"end_sample": 15707,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15604,
+			"end_sample": 15672,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 15707,
+			"end_sample": 15719,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15707,
+			"end_sample": 15731,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15707,
+			"end_sample": 15731,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 15731,
+			"end_sample": 15755,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15731,
+			"end_sample": 15755,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15767,
+			"end_sample": 15790,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15707,
+			"end_sample": 15755,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 15790,
+			"end_sample": 15802,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15790,
+			"end_sample": 15814,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15790,
+			"end_sample": 15814,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 15814,
+			"end_sample": 15838,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15814,
+			"end_sample": 15838,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15850,
+			"end_sample": 15873,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15790,
+			"end_sample": 15838,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 15873,
+			"end_sample": 15885,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 15873,
+			"end_sample": 15897,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15873,
+			"end_sample": 15897,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 15897,
+			"end_sample": 15921,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15897,
+			"end_sample": 15921,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 15933,
+			"end_sample": 15969,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 15873,
+			"end_sample": 15921,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 15969,
+			"end_sample": 16019,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 16019,
+			"end_sample": 16039,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16019,
+			"end_sample": 16039,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16039,
+			"end_sample": 16063,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16039,
+			"end_sample": 16063,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16063,
+			"end_sample": 16087,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16063,
+			"end_sample": 16087,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16099,
+			"end_sample": 16122,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16019,
+			"end_sample": 16087,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16122,
+			"end_sample": 16134,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16122,
+			"end_sample": 16146,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16122,
+			"end_sample": 16146,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16146,
+			"end_sample": 16170,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16146,
+			"end_sample": 16170,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16182,
+			"end_sample": 16205,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16122,
+			"end_sample": 16170,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16205,
+			"end_sample": 16217,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16205,
+			"end_sample": 16229,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16205,
+			"end_sample": 16229,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16229,
+			"end_sample": 16253,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16229,
+			"end_sample": 16253,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16265,
+			"end_sample": 16288,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16205,
+			"end_sample": 16253,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16288,
+			"end_sample": 16300,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16288,
+			"end_sample": 16312,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16288,
+			"end_sample": 16312,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16312,
+			"end_sample": 16336,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16312,
+			"end_sample": 16336,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16348,
+			"end_sample": 16371,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16288,
+			"end_sample": 16336,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16371,
+			"end_sample": 16383,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16371,
+			"end_sample": 16395,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16371,
+			"end_sample": 16395,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16395,
+			"end_sample": 16419,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16395,
+			"end_sample": 16419,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16431,
+			"end_sample": 16454,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16371,
+			"end_sample": 16419,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16454,
+			"end_sample": 16466,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16454,
+			"end_sample": 16478,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16454,
+			"end_sample": 16478,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16478,
+			"end_sample": 16502,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16478,
+			"end_sample": 16502,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16514,
+			"end_sample": 16537,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16454,
+			"end_sample": 16502,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16537,
+			"end_sample": 16549,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16537,
+			"end_sample": 16561,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16537,
+			"end_sample": 16561,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16561,
+			"end_sample": 16585,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16561,
+			"end_sample": 16585,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16597,
+			"end_sample": 16620,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16537,
+			"end_sample": 16585,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16620,
+			"end_sample": 16632,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16620,
+			"end_sample": 16644,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16620,
+			"end_sample": 16644,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16644,
+			"end_sample": 16668,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16644,
+			"end_sample": 16668,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16680,
+			"end_sample": 16703,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16620,
+			"end_sample": 16668,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16703,
+			"end_sample": 16715,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16703,
+			"end_sample": 16727,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16703,
+			"end_sample": 16727,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16727,
+			"end_sample": 16751,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16727,
+			"end_sample": 16751,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16763,
+			"end_sample": 16786,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16703,
+			"end_sample": 16751,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16786,
+			"end_sample": 16798,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16786,
+			"end_sample": 16810,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16786,
+			"end_sample": 16810,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16810,
+			"end_sample": 16834,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16810,
+			"end_sample": 16834,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16846,
+			"end_sample": 16869,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16786,
+			"end_sample": 16834,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16869,
+			"end_sample": 16881,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16869,
+			"end_sample": 16893,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16869,
+			"end_sample": 16893,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16893,
+			"end_sample": 16917,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16893,
+			"end_sample": 16917,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16929,
+			"end_sample": 16952,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16869,
+			"end_sample": 16917,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 16952,
+			"end_sample": 16964,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 16952,
+			"end_sample": 16976,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16952,
+			"end_sample": 16976,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 16976,
+			"end_sample": 17000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 16976,
+			"end_sample": 17000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17012,
+			"end_sample": 17048,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Error: Invalid cycle", 
+				"Error", 
+				"Err", 
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 16952,
+			"end_sample": 17000,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17048,
+			"end_sample": 17098,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 17098,
+			"end_sample": 17118,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17098,
+			"end_sample": 17118,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17118,
+			"end_sample": 17142,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17118,
+			"end_sample": 17142,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17142,
+			"end_sample": 17166,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17142,
+			"end_sample": 17166,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17178,
+			"end_sample": 17201,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17098,
+			"end_sample": 17166,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17201,
+			"end_sample": 17213,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17201,
+			"end_sample": 17225,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17201,
+			"end_sample": 17225,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17225,
+			"end_sample": 17249,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17225,
+			"end_sample": 17249,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17261,
+			"end_sample": 17284,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17201,
+			"end_sample": 17249,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17284,
+			"end_sample": 17296,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17284,
+			"end_sample": 17308,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17284,
+			"end_sample": 17308,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17308,
+			"end_sample": 17332,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17308,
+			"end_sample": 17332,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17344,
+			"end_sample": 17367,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17284,
+			"end_sample": 17332,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17367,
+			"end_sample": 17379,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17367,
+			"end_sample": 17391,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17367,
+			"end_sample": 17391,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17391,
+			"end_sample": 17415,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17391,
+			"end_sample": 17415,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17427,
+			"end_sample": 17450,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17367,
+			"end_sample": 17415,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17450,
+			"end_sample": 17462,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17450,
+			"end_sample": 17474,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17450,
+			"end_sample": 17474,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17474,
+			"end_sample": 17498,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17474,
+			"end_sample": 17498,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17510,
+			"end_sample": 17533,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17450,
+			"end_sample": 17498,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17533,
+			"end_sample": 17545,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17533,
+			"end_sample": 17557,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17533,
+			"end_sample": 17557,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17557,
+			"end_sample": 17581,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17557,
+			"end_sample": 17581,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17593,
+			"end_sample": 17616,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17533,
+			"end_sample": 17581,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17616,
+			"end_sample": 17628,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17616,
+			"end_sample": 17640,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17616,
+			"end_sample": 17640,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17640,
+			"end_sample": 17664,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17640,
+			"end_sample": 17664,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17676,
+			"end_sample": 17699,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17616,
+			"end_sample": 17664,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17699,
+			"end_sample": 17711,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17699,
+			"end_sample": 17723,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17699,
+			"end_sample": 17723,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17723,
+			"end_sample": 17747,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17723,
+			"end_sample": 17747,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17759,
+			"end_sample": 17782,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17699,
+			"end_sample": 17747,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17782,
+			"end_sample": 17794,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17782,
+			"end_sample": 17806,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17782,
+			"end_sample": 17806,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17806,
+			"end_sample": 17830,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17806,
+			"end_sample": 17830,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17842,
+			"end_sample": 17865,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17782,
+			"end_sample": 17830,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17865,
+			"end_sample": 17877,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17865,
+			"end_sample": 17889,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17865,
+			"end_sample": 17889,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17889,
+			"end_sample": 17913,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17889,
+			"end_sample": 17913,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17925,
+			"end_sample": 17948,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17865,
+			"end_sample": 17913,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 17948,
+			"end_sample": 17960,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17948,
+			"end_sample": 17972,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17948,
+			"end_sample": 17972,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 17972,
+			"end_sample": 17996,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 17972,
+			"end_sample": 17996,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18008,
+			"end_sample": 18031,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 17948,
+			"end_sample": 17996,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18031,
+			"end_sample": 18043,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18031,
+			"end_sample": 18055,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18031,
+			"end_sample": 18055,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18055,
+			"end_sample": 18079,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18055,
+			"end_sample": 18079,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18091,
+			"end_sample": 18114,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18031,
+			"end_sample": 18079,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18114,
+			"end_sample": 18126,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18114,
+			"end_sample": 18138,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18114,
+			"end_sample": 18138,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18138,
+			"end_sample": 18162,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18138,
+			"end_sample": 18162,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18174,
+			"end_sample": 18197,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18114,
+			"end_sample": 18162,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18197,
+			"end_sample": 18209,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18197,
+			"end_sample": 18221,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18197,
+			"end_sample": 18221,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18221,
+			"end_sample": 18245,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18221,
+			"end_sample": 18245,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18257,
+			"end_sample": 18280,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18197,
+			"end_sample": 18245,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18280,
+			"end_sample": 18292,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18280,
+			"end_sample": 18304,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18280,
+			"end_sample": 18304,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18304,
+			"end_sample": 18328,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18304,
+			"end_sample": 18328,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18340,
+			"end_sample": 18363,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18280,
+			"end_sample": 18328,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18363,
+			"end_sample": 18375,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18363,
+			"end_sample": 18387,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18363,
+			"end_sample": 18387,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18387,
+			"end_sample": 18411,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18387,
+			"end_sample": 18411,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18423,
+			"end_sample": 18446,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18363,
+			"end_sample": 18411,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18446,
+			"end_sample": 18458,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18446,
+			"end_sample": 18470,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18446,
+			"end_sample": 18470,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18470,
+			"end_sample": 18494,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18470,
+			"end_sample": 18494,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18506,
+			"end_sample": 18529,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18446,
+			"end_sample": 18494,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18529,
+			"end_sample": 18541,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18529,
+			"end_sample": 18553,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18529,
+			"end_sample": 18553,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18553,
+			"end_sample": 18577,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18553,
+			"end_sample": 18577,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18589,
+			"end_sample": 18612,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18529,
+			"end_sample": 18577,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18612,
+			"end_sample": 18624,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18612,
+			"end_sample": 18636,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18612,
+			"end_sample": 18636,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18636,
+			"end_sample": 18660,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18636,
+			"end_sample": 18660,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18672,
+			"end_sample": 18695,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18612,
+			"end_sample": 18660,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18695,
+			"end_sample": 18707,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18695,
+			"end_sample": 18719,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18695,
+			"end_sample": 18719,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18719,
+			"end_sample": 18743,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18719,
+			"end_sample": 18743,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18755,
+			"end_sample": 18778,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18695,
+			"end_sample": 18743,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18778,
+			"end_sample": 18790,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18778,
+			"end_sample": 18802,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18778,
+			"end_sample": 18802,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18802,
+			"end_sample": 18826,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18802,
+			"end_sample": 18826,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18838,
+			"end_sample": 18861,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18778,
+			"end_sample": 18826,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18861,
+			"end_sample": 18873,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18861,
+			"end_sample": 18885,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18861,
+			"end_sample": 18885,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18885,
+			"end_sample": 18909,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18885,
+			"end_sample": 18909,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18921,
+			"end_sample": 18944,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18861,
+			"end_sample": 18909,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 18944,
+			"end_sample": 18956,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18944,
+			"end_sample": 18968,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18944,
+			"end_sample": 18968,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 18968,
+			"end_sample": 18992,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 18968,
+			"end_sample": 18992,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19004,
+			"end_sample": 19027,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 18944,
+			"end_sample": 18992,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"Data framing error", 
+				"Framing error", 
+				"Frame Error", 
+				"FE"
+			]
+		}, 
+		{
+			"start_sample": 19027,
+			"end_sample": 19039,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Phase error: Resyncing", 
+				"Phase error", 
+				"Phase", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 19027,
+			"end_sample": 19051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19027,
+			"end_sample": 19051,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start Bit", 
+				"Start B", 
+				"Start"
+			]
+		}, 
+		{
+			"start_sample": 19051,
+			"end_sample": 19075,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19051,
+			"end_sample": 19075,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"0"
+			]
+		}
 	]
 }

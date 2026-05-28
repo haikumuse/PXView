@@ -1,11 +1,11 @@
 {
 	"decoder": "dcf77",
-	"samplerate": 1000000,
+	"samplerate": 10000,
 	"num_annotations": 1,
 	"annotations": [
 		{
-			"start_sample": 100000,
-			"end_sample": 1000000,
+			"start_sample": 4000,
+			"end_sample": 12000,
 			"ann_class": 19,
 			"ann_type": 26,
 			"texts": [

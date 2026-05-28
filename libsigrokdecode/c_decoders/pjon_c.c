@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Gerhard Sittig <gerhard.sittig@gmx.net>
@@ -167,7 +167,7 @@ static void pjon_frame_flush(struct srd_decoder_inst *di, pjon_state *s)
                         pos > 0 ? " - " : "", s->frame_has_ack);
 
     if (pos > 0)
-        C_ANN_PUT(di, s->frame_ss, s->frame_es, s->out_ann, ANN_RELATION, text);
+        c_put(di, s->frame_ss, s->frame_es, s->out_ann, ANN_RELATION, text);
 }
 
 static void pjon_reset_frame(pjon_state *s)
@@ -223,7 +223,7 @@ static void pjon_handle_field_rx_id(struct srd_decoder_inst *di, pjon_state *s,
 
     char buf[64];
     snprintf(buf, sizeof(buf), "RX_ID %s", id_txt);
-    C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_RX_INFO, buf);
+    c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_RX_INFO, buf);
 }
 
 static void pjon_handle_field_config(struct srd_decoder_inst *di, pjon_state *s,
@@ -253,7 +253,7 @@ static void pjon_handle_field_config(struct srd_decoder_inst *di, pjon_state *s,
     pos += snprintf(text + pos, sizeof(text) - pos, "%s ", s->cfg_tx_info ? "tx_info" : "-");
     pos += snprintf(text + pos, sizeof(text) - pos, "%s", s->cfg_shared ? "bus_id" : "-");
 
-    C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_HDR_CFG, text);
+    c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_HDR_CFG, text);
 
     /* Calculate overhead */
     int len_size = s->cfg_len16 ? 2 : 1;
@@ -339,7 +339,7 @@ static void pjon_handle_field_config(struct srd_decoder_inst *di, pjon_state *s,
                              "%sextended length needs CRC32", warn_pos > 0 ? ", " : "");
 
     if (warn_pos > 0)
-        C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, warn_buf);
+        c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, warn_buf);
 }
 
 static void pjon_handle_field_pkt_len(struct srd_decoder_inst *di, pjon_state *s,
@@ -367,7 +367,7 @@ static void pjon_handle_field_pkt_len(struct srd_decoder_inst *di, pjon_state *s
         pl_len = 0;
     }
     if (warn_pos > 0)
-        C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, warn_buf);
+        c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, warn_buf);
 
     /* Update payload field width (second last field) */
     if (s->num_fields >= 2)
@@ -375,7 +375,7 @@ static void pjon_handle_field_pkt_len(struct srd_decoder_inst *di, pjon_state *s
 
     char buf[128];
     snprintf(buf, sizeof(buf), "LENGTH %d (PAYLOAD %d)", pkt_len, pl_len);
-    C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_PKT_LEN, buf);
+    c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_PKT_LEN, buf);
 }
 
 static void pjon_handle_field_meta_crc(struct srd_decoder_inst *di, pjon_state *s,
@@ -387,10 +387,10 @@ static void pjon_handle_field_meta_crc(struct srd_decoder_inst *di, pjon_state *
     char buf[64];
     if (want != have) {
         snprintf(buf, sizeof(buf), "META_CRC mismatch - want %02x have %02x", want, have);
-        C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, buf);
+        c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, buf);
     }
     snprintf(buf, sizeof(buf), "META_CRC %02x", have);
-    C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_META_CRC, buf);
+    c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_META_CRC, buf);
 }
 
 static void pjon_handle_field_end_crc(struct srd_decoder_inst *di, pjon_state *s,
@@ -404,7 +404,7 @@ static void pjon_handle_field_end_crc(struct srd_decoder_inst *di, pjon_state *s
         uint32_t want = calc_crc32(s->frame_bytes, crc_data_len > 0 ? crc_data_len : 0);
         if (want != have) {
             snprintf(buf, sizeof(buf), "END_CRC mismatch - want %08x have %08x", want, have);
-            C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, buf);
+            c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, buf);
         }
         snprintf(buf, sizeof(buf), "END_CRC %08x", have);
     } else {
@@ -413,11 +413,11 @@ static void pjon_handle_field_end_crc(struct srd_decoder_inst *di, pjon_state *s
         uint8_t want = calc_crc8(s->frame_bytes, crc_data_len > 0 ? crc_data_len : 0);
         if (want != have) {
             snprintf(buf, sizeof(buf), "END_CRC mismatch - want %02x have %02x", want, have);
-            C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, buf);
+            c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_WARN, buf);
         }
         snprintf(buf, sizeof(buf), "END_CRC %02x", have);
     }
-    C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_END_CRC, buf);
+    c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_END_CRC, buf);
 }
 
 static void pjon_handle_field_payload(struct srd_decoder_inst *di, pjon_state *s,
@@ -434,7 +434,7 @@ static void pjon_handle_field_payload(struct srd_decoder_inst *di, pjon_state *s
 
     char buf[512];
     snprintf(buf, sizeof(buf), "PAYLOAD %s", text);
-    C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_PAYLOAD, buf);
+    c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_PAYLOAD, buf);
     g_free(text);
 }
 
@@ -445,7 +445,7 @@ static void pjon_handle_field_anon(struct srd_decoder_inst *di, pjon_state *s,
     int pos = 0;
     for (int i = 0; i < width && pos < (int)sizeof(buf) - 4; i++)
         pos += snprintf(buf + pos, sizeof(buf) - pos, "%s%02x", i > 0 ? " " : "", raw[i]);
-    C_ANN_PUT(di, s->ann_ss, s->ann_es, s->out_ann, ANN_ANON_DATA, buf);
+    c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_ANON_DATA, buf);
 
     /* Track TX ID if present */
     if (s->cfg_tx_info && !s->cfg_shared && width == 1 && field_index >= 4) {
@@ -497,9 +497,7 @@ static void pjon_process_field(struct srd_decoder_inst *di, pjon_state *s)
     s->field_got = 0;
 }
 
-static void pjon_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void pjon_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     pjon_state *s = (pjon_state *)c_decoder_get_private(di);
     if (!s)
@@ -513,7 +511,7 @@ static void pjon_recv_proto(struct srd_decoder_inst *di,
         s->frame_ss = start_sample;
         s->frame_es = end_sample;
     } else if (strcmp(cmd, "DATA_BYTE") == 0) {
-        uint8_t b = (data_len > 0) ? data[0] : 0;
+        uint8_t b = (n_fields > 0) ? fields[0].u8 : 0;
 
         /* ACK collection mode */
         if (s->state == STATE_ACK) {
@@ -521,7 +519,7 @@ static void pjon_recv_proto(struct srd_decoder_inst *di,
             s->frame_has_ack = b;
             char buf[32];
             snprintf(buf, sizeof(buf), "ACK %02x", b);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_SYN_RSP, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_SYN_RSP, buf);
             return;
         }
 
@@ -580,7 +578,7 @@ static void pjon_reset(struct srd_decoder_inst *di)
 static void pjon_start(struct srd_decoder_inst *di)
 {
     pjon_state *s = (pjon_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pjon");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pjon");
 }
 
 static void pjon_decode(struct srd_decoder_inst *di)
@@ -630,7 +628,8 @@ struct srd_c_decoder pjon_c_decoder = {
     .start = pjon_start,
     .decode = pjon_decode,
     .destroy = pjon_destroy,
-    .recv_proto = pjon_recv_proto,
+    .decode_upper = pjon_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

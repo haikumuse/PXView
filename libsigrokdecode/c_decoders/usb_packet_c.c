@@ -1,8 +1,29 @@
+/*
+ * This file is part of the libsigrokdecode project.
+ *
+ * Copyright (C) 2011 Gareth McMullin <gareth@blacksphere.co.nz>
+ * Copyright (C) 2012-2014 Uwe Hermann <uwe@hermann-uwe.de>
+ * Copyright (C) 2025 C port (v4 API)
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 enum {
     ANN_SYNC_OK = 0,
@@ -51,7 +72,9 @@ enum pid_category {
     PID_CAT_SPECIAL,
 };
 
-typedef struct {
+/* Decoder private state — C_DECODER_STATE auto-generates usb_pkt_s typedef,
+ * usb_pkt_reset (calloc), and usb_pkt_destroy (free). */
+C_DECODER_STATE(usb_pkt, {
     int state;
     char bits[USB_PKT_MAX_BITS];
     int bits_len;
@@ -60,8 +83,8 @@ typedef struct {
     uint64_t ss_packet;
     uint64_t es_packet;
     int out_ann;
-    int out_python;
-} usb_pkt_state;
+    int out_proto;
+})
 
 static const char *usb_pkt_inputs[] = {"usb_signalling", NULL};
 static const char *usb_pkt_outputs[] = {"usb_packet", NULL};
@@ -172,7 +195,7 @@ static uint16_t usb_pkt_calc_crc16(const char *bitstr, int len)
     uint32_t crc16 = 0xffff;
     for (int i = 0; i < len; i++) {
         crc16 <<= 1;
-        if ((bitstr[i] - '0') != (crc16 >> 16))
+        if ((uint32_t)(bitstr[i] - '0') != (crc16 >> 16))
             crc16 ^= poly16;
         crc16 &= 0xffff;
     }
@@ -218,7 +241,7 @@ static int usb_pkt_find_pid(const char *bitstr8)
     return -1;
 }
 
-static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_state *s)
+static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_s *s)
 {
     if (s->bits_len < 8) return;
 
@@ -230,33 +253,29 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_state *s)
     if (s->bits[7] != '1') sync_ok = 0;
 
     if (sync_ok) {
-        C_ANN_PUT(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_OK, "SYNC");
+        c_put(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_OK, "SYNC: 00000001", "SYNC", "S");
     } else {
-        /* Build sync bit pattern string for error message */
         char sync_bits[9];
         for (int i = 0; i < 8; i++) sync_bits[i] = s->bits[i];
         sync_bits[8] = '\0';
-        char sync_err_long[48], sync_err_mid[48], sync_err_short[16], sync_err_tiny[8], sync_err_tiny2[4];
-        snprintf(sync_err_long, sizeof(sync_err_long), "SYNC ERROR: %s", sync_bits);
-        snprintf(sync_err_mid, sizeof(sync_err_mid), "SYNC ERR: %s", sync_bits);
-        snprintf(sync_err_short, sizeof(sync_err_short), "SYNC ERR");
-        snprintf(sync_err_tiny, sizeof(sync_err_tiny), "SE");
-        snprintf(sync_err_tiny2, sizeof(sync_err_tiny2), "S");
-        C_ANN_PUT(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_ERR,
-                  sync_err_long, sync_err_mid, sync_err_short, sync_err_tiny, sync_err_tiny2);
-        /* Don't return here - Python continues to check packet length */
+        char t[48];
+        snprintf(t, sizeof(t), "SYNC ERROR: %s", sync_bits);
+        char t2[48];
+        snprintf(t2, sizeof(t2), "SYNC ERR: %s", sync_bits);
+        c_put(di, s->bit_ss[0], s->bit_es[7], s->out_ann, ANN_SYNC_ERR,
+              t, t2, "SYNC ERR", "SE", "S");
     }
 
     if (s->bits_len < 16) {
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID,
-                  "Invalid packet (shorter than 16 bits)");
+        c_put(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID,
+              "Invalid packet (shorter than 16 bits)");
         return;
     }
 
     /* If SYNC was bad, we still reported it but now return since we can't parse further */
     if (!sync_ok) {
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID,
-                  "Invalid packet (SYNC error)", "Invalid (SYNC)", "Invalid", "Inv", "I");
+        c_put(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID,
+              "Invalid packet (SYNC error)", "Invalid (SYNC)", "Invalid", "Inv", "I");
         return;
     }
 
@@ -268,8 +287,8 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_state *s)
         pid_str[8] = '\0';
         char buf[32];
         snprintf(buf, sizeof(buf), "PID: %s (invalid)", pid_str);
-        C_ANN_PUT(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, buf);
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+        c_put(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, buf);
+        c_put(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
         return;
     }
 
@@ -279,84 +298,87 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_state *s)
 
     char pid_buf[32];
     snprintf(pid_buf, sizeof(pid_buf), "PID: %s", pid_name);
-    C_ANN_PUT(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, pid_buf);
-
-    /* Prepare python output data */
-    /* Format: pcategory(1 byte) + pid_name string (null-terminated) + packet-specific data */
-    unsigned char py_data[512];
-    int py_len = 0;
-    py_data[py_len++] = (unsigned char)pid_cat;
-    int name_len = (int)strlen(pid_name);
-    memcpy(py_data + py_len, pid_name, name_len + 1); /* include null terminator */
-    py_len += name_len + 1;
+    c_put(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, pid_buf, pid_name, &pid_name[0]);
 
     if (pid_cat == PID_CAT_TOKEN) {
         /* Token packet: SYNC + PID + ADDR(7) + ENDP(4) + CRC5(5) */
         if (s->bits_len < 40) {
-            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+            c_put(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
             return;
         }
 
-        uint32_t addr = usb_pkt_bits_to_int(s->bits, 16, 7);
-        uint32_t ep = usb_pkt_bits_to_int(s->bits, 23, 4);
-        uint32_t crc5_rx = usb_pkt_bits_to_int(s->bits, 27, 5);
-
-        /* CRC5 covers PID + ADDR + ENDP (bits 8-26, 19 bits) */
-        uint8_t crc5_calc = usb_pkt_calc_crc5(&s->bits[8], 19);
-
-        char addr_buf[32];
-        snprintf(addr_buf, sizeof(addr_buf), "ADDR: %d", addr);
-        C_ANN_PUT(di, s->bit_ss[16], s->bit_es[22], s->out_ann, ANN_ADDR, addr_buf);
-
-        char ep_buf[32];
-        snprintf(ep_buf, sizeof(ep_buf), "EP: %d", ep);
-        C_ANN_PUT(di, s->bit_ss[23], s->bit_es[26], s->out_ann, ANN_EP, ep_buf);
-
-        if (crc5_rx == crc5_calc) {
-            char crc5_buf[32];
-            snprintf(crc5_buf, sizeof(crc5_buf), "CRC5: 0x%02X", crc5_rx);
-            C_ANN_PUT(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_OK, crc5_buf);
-        } else {
-            char crc5_buf[64];
-            snprintf(crc5_buf, sizeof(crc5_buf), "CRC5: 0x%02X (expected 0x%02X)", crc5_rx, crc5_calc);
-            C_ANN_PUT(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_ERR, crc5_buf);
-        }
-
-        /* Packet summary */
         if (strcmp(pid_name, "SOF") == 0) {
             uint32_t framenum = usb_pkt_bits_to_int(s->bits, 16, 11);
             char fn_buf[32];
-            snprintf(fn_buf, sizeof(fn_buf), "FRAMENUM: %d", framenum);
-            C_ANN_PUT(di, s->bit_ss[16], s->bit_es[26], s->out_ann, ANN_FRAMENUM, fn_buf);
-            char pkt_buf[64];
-            snprintf(pkt_buf, sizeof(pkt_buf), "SOF: Frame %d", framenum);
-            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+            snprintf(fn_buf, sizeof(fn_buf), "Frame: %d", framenum);
+            c_put(di, s->bit_ss[16], s->bit_es[26], s->out_ann, ANN_FRAMENUM,
+                  fn_buf, "Frame", "Fr", "F");
 
-            /* Python output: pcategory + name + framenum(2 bytes) */
-            py_data[py_len++] = (framenum >> 8) & 0xFF;
-            py_data[py_len++] = framenum & 0xFF;
+            uint32_t crc5_rx = usb_pkt_bits_to_int(s->bits, 27, 5);
+            uint8_t crc5_calc = usb_pkt_calc_crc5(&s->bits[8], 19);
+            if (crc5_rx == crc5_calc) {
+                char crc5_buf[32];
+                snprintf(crc5_buf, sizeof(crc5_buf), "CRC5: 0x%02X", crc5_rx);
+                c_put(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_OK, crc5_buf, "CRC5", "C");
+            } else {
+                char crc5_buf[64];
+                snprintf(crc5_buf, sizeof(crc5_buf), "CRC5 ERROR: 0x%02X", crc5_rx);
+                c_put(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_ERR, crc5_buf, "CRC5 ERR", "CE", "C");
+            }
+
+            char pkt_buf[64];
+            snprintf(pkt_buf, sizeof(pkt_buf), "SOF %d", framenum);
+            c_put(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+
+            c_proto(di, s->ss_packet, s->es_packet, s->out_proto, "PACKET",
+                    C_STR("TOKEN"), C_STR("SOF"), C_U16(framenum), C_END);
         } else {
+            /* OUT, IN, SETUP, PING */
+            uint32_t addr = usb_pkt_bits_to_int(s->bits, 16, 7);
+            uint32_t ep = usb_pkt_bits_to_int(s->bits, 23, 4);
+
+            char addr_buf[32];
+            snprintf(addr_buf, sizeof(addr_buf), "Address: %d", addr);
+            c_put(di, s->bit_ss[16], s->bit_es[22], s->out_ann, ANN_ADDR,
+                  addr_buf, "Addr", "A");
+
+            char ep_buf[32];
+            snprintf(ep_buf, sizeof(ep_buf), "Endpoint: %d", ep);
+            c_put(di, s->bit_ss[23], s->bit_es[26], s->out_ann, ANN_EP,
+                  ep_buf, "EP", "E");
+
+            uint32_t crc5_rx = usb_pkt_bits_to_int(s->bits, 27, 5);
+            uint8_t crc5_calc = usb_pkt_calc_crc5(&s->bits[8], 19);
+            if (crc5_rx == crc5_calc) {
+                char crc5_buf[32];
+                snprintf(crc5_buf, sizeof(crc5_buf), "CRC5: 0x%02X", crc5_rx);
+                c_put(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_OK, crc5_buf, "CRC5", "C");
+            } else {
+                char crc5_buf[64];
+                snprintf(crc5_buf, sizeof(crc5_buf), "CRC5 ERROR: 0x%02X", crc5_rx);
+                c_put(di, s->bit_ss[27], s->bit_es[31], s->out_ann, ANN_CRC5_ERR, crc5_buf, "CRC5 ERR", "CE", "C");
+            }
+
             char pkt_buf[64];
             snprintf(pkt_buf, sizeof(pkt_buf), "%s: ADDR %d EP %d", pid_name, addr, ep);
-            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+            c_put(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
 
-            /* Python output: pcategory + name + addr(1 byte) + ep(1 byte) */
-            py_data[py_len++] = (unsigned char)addr;
-            py_data[py_len++] = (unsigned char)ep;
+            c_proto(di, s->ss_packet, s->es_packet, s->out_proto, "PACKET",
+                    C_STR("TOKEN"), C_STR(pid_name), C_U8(addr), C_U8(ep), C_END);
         }
 
     } else if (pid_cat == PID_CAT_DATA) {
         /* Data packet: SYNC + PID + DATA(N*8) + CRC16(16) */
-        int data_bits = s->bits_len - 16 - 16; /* subtract PID and CRC16 */
+        int data_bits = s->bits_len - 16 - 16;
         if (data_bits < 0 || (data_bits % 8) != 0) {
-            C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
+            c_put(di, s->ss_packet, s->es_packet, s->out_ann, ANN_PKT_INVALID, "Invalid");
             return;
         }
 
         int data_bytes = data_bits / 8;
 
         /* CRC16 covers PID + DATA (bits 8 to bits_len-17) */
-        int crc_bits = s->bits_len - 16 - 8; /* bits for CRC calculation */
+        int crc_bits = s->bits_len - 16 - 8;
         uint16_t crc16_rx = (uint16_t)usb_pkt_bits_to_int(s->bits, s->bits_len - 16, 16);
         uint16_t crc16_calc = usb_pkt_calc_crc16(&s->bits[8], crc_bits);
 
@@ -369,56 +391,61 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_state *s)
             dpos += snprintf(data_buf + dpos, sizeof(data_buf) - dpos, " %02X", b);
         }
         if (data_bytes > 0) {
-            C_ANN_PUT(di, s->bit_ss[16], s->bit_es[16 + data_bits - 1], s->out_ann, ANN_DATA, data_buf);
+            c_put(di, s->bit_ss[16], s->bit_es[16 + data_bits - 1], s->out_ann, ANN_DATA, data_buf);
         }
 
         if (crc16_rx == crc16_calc) {
             char crc16_buf[32];
             snprintf(crc16_buf, sizeof(crc16_buf), "CRC16: 0x%04X", crc16_rx);
-            C_ANN_PUT(di, s->bit_ss[s->bits_len - 16], s->bit_es[s->bits_len - 1],
-                      s->out_ann, ANN_CRC16_OK, crc16_buf);
+            c_put(di, s->bit_ss[s->bits_len - 16], s->bit_es[s->bits_len - 1],
+                  s->out_ann, ANN_CRC16_OK, crc16_buf, "CRC16", "C");
         } else {
             char crc16_buf[64];
-            snprintf(crc16_buf, sizeof(crc16_buf), "CRC16: 0x%04X (expected 0x%04X)", crc16_rx, crc16_calc);
-            C_ANN_PUT(di, s->bit_ss[s->bits_len - 16], s->bit_es[s->bits_len - 1],
-                      s->out_ann, ANN_CRC16_ERR, crc16_buf);
+            snprintf(crc16_buf, sizeof(crc16_buf), "CRC16 ERROR: 0x%04X", crc16_rx);
+            c_put(di, s->bit_ss[s->bits_len - 16], s->bit_es[s->bits_len - 1],
+                  s->out_ann, ANN_CRC16_ERR, crc16_buf, "CRC16 ERR", "CE", "C");
         }
 
         /* Packet summary */
         char pkt_buf[64];
         snprintf(pkt_buf, sizeof(pkt_buf), "%s: %d bytes", pid_name, data_bytes);
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+        c_put(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
 
-        /* Python output: pcategory + name + data_len(2 bytes) + data bytes */
-        py_data[py_len++] = (data_bytes >> 8) & 0xFF;
-        py_data[py_len++] = data_bytes & 0xFF;
-        for (int i = 0; i < data_bytes && py_len < 500; i++) {
-            py_data[py_len++] = usb_pkt_bits_to_byte(s->bits, 16 + i * 8, 8);
-        }
+        /* Protocol output */
+        uint8_t data_bytes_arr[1024];
+        int db_cnt = (data_bytes < 1024) ? data_bytes : 1024;
+        for (int i = 0; i < db_cnt; i++)
+            data_bytes_arr[i] = usb_pkt_bits_to_byte(s->bits, 16 + i * 8, 8);
+        c_proto(di, s->ss_packet, s->es_packet, s->out_proto, "PACKET",
+                C_STR("DATA"), C_STR(pid_name), C_BYTES(data_bytes_arr, db_cnt), C_END);
 
     } else if (pid_cat == PID_CAT_HANDSHAKE) {
         /* Handshake packet: SYNC + PID only */
         char pkt_buf[32];
         snprintf(pkt_buf, sizeof(pkt_buf), "%s", pid_name);
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+        c_put(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
+
+        c_proto(di, s->ss_packet, s->es_packet, s->out_proto, "PACKET",
+                C_STR("HANDSHAKE"), C_STR(pid_name), C_END);
 
     } else if (pid_cat == PID_CAT_SPECIAL) {
         /* Special packet */
         char pkt_buf[32];
         snprintf(pkt_buf, sizeof(pkt_buf), "%s", pid_name);
-        C_ANN_PUT(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
-    }
+        c_put(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
 
-    /* Send python output */
-    c_decoder_put_python(di, s->ss_packet, s->es_packet, s->out_python,
-                         "PACKET", py_data, py_len);
+        c_proto(di, s->ss_packet, s->es_packet, s->out_proto, "PACKET",
+                C_STR("SPECIAL"), C_STR(pid_name), C_END);
+    }
 }
 
-static void usb_pkt_recv_proto(struct srd_decoder_inst *di,
+/* --- Core decode_upper --- */
+
+static void usb_pkt_decode_upper(struct srd_decoder_inst *di,
     uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+    const char *cmd, const c_field *fields, int n_fields)
 {
-    usb_pkt_state *s = (usb_pkt_state *)c_decoder_get_private(di);
+    usb_pkt_s *s = (usb_pkt_s *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "SOP") == 0) {
@@ -428,8 +455,9 @@ static void usb_pkt_recv_proto(struct srd_decoder_inst *di,
         s->state = PKT_GET_BIT;
     } else if (strcmp(cmd, "BIT") == 0) {
         if (s->state != PKT_GET_BIT) return;
-        if (s->bits_len < USB_PKT_MAX_BITS && data && data_len > 0) {
-            s->bits[s->bits_len] = (char)data[0]; /* '0' or '1' */
+        uint8_t bit_val = (n_fields > 0 && fields[0].type == C_FIELD_U8) ? fields[0].u8 : 0;
+        if (s->bits_len < USB_PKT_MAX_BITS) {
+            s->bits[s->bits_len] = (bit_val == 1) ? '1' : '0';
             s->bit_ss[s->bits_len] = start_sample;
             s->bit_es[s->bits_len] = end_sample;
             s->bits_len++;
@@ -444,38 +472,18 @@ static void usb_pkt_recv_proto(struct srd_decoder_inst *di,
     /* Ignore STUFF BIT, SYM, RESET, KEEP ALIVE */
 }
 
-static void usb_pkt_reset(struct srd_decoder_inst *di)
-{
-    if (!c_decoder_get_private(di)) {
-        c_decoder_set_private(di, g_malloc0(sizeof(usb_pkt_state)));
-    }
-    usb_pkt_state *s = (usb_pkt_state *)c_decoder_get_private(di);
-    memset(s, 0, sizeof(usb_pkt_state));
-    s->state = PKT_WAIT_SOP;
-}
+/* --- Decoder lifecycle --- */
 
 static void usb_pkt_start(struct srd_decoder_inst *di)
 {
-    usb_pkt_state *s = (usb_pkt_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "usb_packet");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "usb_packet");
+    usb_pkt_s *s = (usb_pkt_s *)c_decoder_get_private(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "usb_packet");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "usb_packet");
+    s->state = PKT_WAIT_SOP;
 }
 
-static void usb_pkt_decode(struct srd_decoder_inst *di)
-{
-    (void)di;
-}
-
-static void usb_pkt_destroy(struct srd_decoder_inst *di)
-{
-    void *priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
-        c_decoder_set_private(di, NULL);
-    }
-}
-
-struct srd_c_decoder usb_packet_c_decoder = {
+/* ---- Decoder definition (v4 API) ---- */
+static struct srd_c_decoder usb_packet_c_def = {
     .id = "usb_packet_c",
     .name = "USB packet(C)",
     .longname = "Universal Serial Bus (LS/FS) packet (C)",
@@ -499,11 +507,14 @@ struct srd_c_decoder usb_packet_c_decoder = {
     .num_binary = 0,
     .tags = usb_pkt_tags,
     .num_tags = 1,
+    .state_size = sizeof(usb_pkt_s),
     .reset = usb_pkt_reset,
     .start = usb_pkt_start,
-    .decode = usb_pkt_decode,
+    .decode = NULL,
+    .end = NULL,
+    .metadata = NULL,
     .destroy = usb_pkt_destroy,
-    .recv_proto = usb_pkt_recv_proto,
+    .decode_upper = usb_pkt_decode_upper,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
@@ -514,7 +525,7 @@ SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
     sig_vals = g_slist_append(sig_vals, g_variant_new_string("low-speed"));
     usb_pkt_options[0].values = sig_vals;
 
-    return &usb_packet_c_decoder;
+    return &usb_packet_c_def;
 }
 
 SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)

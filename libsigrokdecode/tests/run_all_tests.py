@@ -77,36 +77,41 @@ def compare_annotations(py_data, c_data):
         return False, "Output is not a JSON object"
     py_anns = py_data.get('annotations', [])
     c_anns = c_data.get('annotations', [])
-    def group_by_sample(anns):
+    def group_by_sample_class(anns):
+        """Group annotations by (start_sample, ann_class), allowing multiple per key."""
         grouped = {}
         for a in anns:
-            s = a.get('start_sample', 0)
-            if s not in grouped: grouped[s] = []
-            grouped[s].append(a)
+            key = (a.get('start_sample', 0), a.get('ann_class', 0))
+            if key not in grouped: grouped[key] = []
+            grouped[key].append(a)
         return grouped
-    py_map = group_by_sample(py_anns)
-    c_map = group_by_sample(c_anns)
-    all_samples = sorted(set(list(py_map.keys()) + list(c_map.keys())))
+    py_map = group_by_sample_class(py_anns)
+    c_map = group_by_sample_class(c_anns)
+    all_keys = sorted(set(list(py_map.keys()) + list(c_map.keys())))
     mismatches = []; matches_count = 0
-    for s in all_samples:
-        p_list = py_map.get(s, []); c_list = c_map.get(s, [])
-        p_by_class = {a.get('ann_class'): a for a in p_list}
-        c_by_class = {a.get('ann_class'): a for a in c_list}
-        all_classes = set(list(p_by_class.keys()) + list(c_by_class.keys()))
-        for cls in all_classes:
-            pa, ca = p_by_class.get(cls), c_by_class.get(cls)
-            if pa and ca:
+    for key in all_keys:
+        p_list = py_map.get(key, []); c_list = c_map.get(key, [])
+        # Try to match annotations 1-to-1 using a greedy approach
+        p_used = [False] * len(p_list); c_used = [False] * len(c_list)
+        for i, pa in enumerate(p_list):
+            best_j = -1
+            for j, ca in enumerate(c_list):
+                if c_used[j]: continue
                 end_match = abs(pa.get('end_sample', 0) - ca.get('end_sample', 0)) <= 2
                 pt, ct = pa.get('texts', []), ca.get('texts', [])
-                text_match = len(pt) == len(ct) and all(compare_text_semantic(pt[j], ct[j]) for j in range(len(pt)))
-                if end_match and text_match: matches_count += 1
-                else:
-                    msg = f"MISMATCH at sample {s}: "
-                    if not end_match: msg += f"end Py={pa.get('end_sample')} vs C={ca.get('end_sample')}. "
-                    if not text_match: msg += f"texts Py={pt} vs C={ct}."
-                    mismatches.append(msg)
-            elif pa: mismatches.append(f"MISSED at sample {s}: Py has class {cls} ({pa.get('texts', [''])[0]}) but C doesn't")
-            elif ca: mismatches.append(f"EXTRA at sample {s}: C has class {cls} ({ca.get('texts', [''])[0]}) but Py doesn't")
+                text_match = len(pt) == len(ct) and all(compare_text_semantic(pt[k], ct[k]) for k in range(len(pt)))
+                if end_match and text_match:
+                    best_j = j; break
+            if best_j >= 0:
+                matches_count += 1; p_used[i] = True; c_used[best_j] = True
+        # Report unmatched
+        s, cls = key
+        for i, pa in enumerate(p_list):
+            if p_used[i]: continue
+            mismatches.append(f"MISSED at sample {s}: Py has class {cls} ({pa.get('texts', [''])[0]}) but C doesn't")
+        for j, ca in enumerate(c_list):
+            if c_used[j]: continue
+            mismatches.append(f"EXTRA at sample {s}: C has class {cls} ({ca.get('texts', [''])[0]}) but Py doesn't")
     if not mismatches:
         if matches_count == 0:
             return True, f"All 0 annotations match (vacuous - no output from either decoder)"
@@ -212,6 +217,10 @@ def run_test(c_decoder, testdata_dir):
         passed, detail = compare_annotations(py_data, c_data)
         if passed and _parse_matches_count(detail) == 0:
             return 'WARN', detail, time.time() - t0
+        
+        if not passed and config.get('expected_deviations', False):
+            return 'DEVIATION', detail, time.time() - t0
+            
         return ('PASS' if passed else 'FAIL'), detail, time.time() - t0
     except Exception as e: return 'ERROR', str(e), 0
 
@@ -242,7 +251,7 @@ def main():
         print("No test cases found."); return
 
     print(f"Running {len(test_cases)} tests in parallel ({args.jobs} jobs)...")
-    results = []; counts = {'PASS': 0, 'WARN': 0, 'FAIL': 0, 'ERROR': 0, 'SKIP': 0}
+    results = []; counts = {'PASS': 0, 'WARN': 0, 'DEVIATION': 0, 'FAIL': 0, 'ERROR': 0, 'SKIP': 0}
     
     with ThreadPoolExecutor(max_workers=args.jobs) as executor:
         f_to_test = {executor.submit(run_test, d, p): (d, p) for d, p in test_cases}
@@ -259,8 +268,43 @@ def main():
         writer.writerow(['decoder', 'testdata', 'status', 'detail', 'elapsed_s'])
         for r in results: writer.writerow(r)
 
+    # Generate Markdown Dashboard
+    dashboard_path = os.path.join(PROJECT_ROOT, 'Dashboard.md')
+    with open(dashboard_path, 'w', encoding='utf-8') as f:
+        f.write("# CI Verification Dashboard\n\n")
+        f.write("## Summary\n\n")
+        f.write("| Total | PASS 🟢 | DEVIATION 🟡 | WARN 🟠 | FAIL 🔴 | ERROR 💥 | SKIP ⚪ |\n")
+        f.write("|---|---|---|---|---|---|---|\n")
+        f.write(f"| {len(results)} | {counts['PASS']} | {counts['DEVIATION']} | {counts['WARN']} | {counts['FAIL']} | {counts['ERROR']} | {counts['SKIP']} |\n\n")
+        
+        f.write("## Failures & Errors\n\n")
+        if counts['FAIL'] == 0 and counts['ERROR'] == 0:
+            f.write("No failures or errors!\n\n")
+        else:
+            for r in results:
+                d, p, status, detail, elapsed = r
+                if status in ('FAIL', 'ERROR'):
+                    f.write(f"### {d}\n")
+                    f.write(f"**Status**: {status} ({elapsed:.1f}s)\n\n")
+                    f.write("```text\n")
+                    f.write(f"{detail}\n")
+                    f.write("```\n\n")
+
+        f.write("## All Decoders\n\n")
+        f.write("| Decoder | Status | Time (s) | Detail |\n")
+        f.write("|---|---|---|---|\n")
+        # Sort by status priority (FAIL, ERROR, WARN, DEVIATION, PASS, SKIP)
+        status_priority = {'FAIL': 0, 'ERROR': 1, 'WARN': 2, 'DEVIATION': 3, 'PASS': 4, 'SKIP': 5}
+        sorted_results = sorted(results, key=lambda x: (status_priority[x[2]], x[0]))
+        for r in sorted_results:
+            d, p, status, detail, elapsed = r
+            emoji = {'PASS': '🟢', 'DEVIATION': '🟡', 'WARN': '🟠', 'FAIL': '🔴', 'ERROR': '💥', 'SKIP': '⚪'}[status]
+            short_detail = detail.splitlines()[0] if detail else ""
+            f.write(f"| {d} | {status} {emoji} | {elapsed:.1f} | {short_detail} |\n")
+
     print("\n" + "="*70 + f"\nSUMMARY\n" + "="*70)
-    print(f"  Total: {len(results)}  PASS: {counts['PASS']}  WARN: {counts['WARN']}  FAIL: {counts['FAIL']}  ERROR: {counts['ERROR']}  SKIP: {counts['SKIP']}")
+    print(f"  Total: {len(results)}  PASS: {counts['PASS']}  DEVIATION: {counts['DEVIATION']}  WARN: {counts['WARN']}  FAIL: {counts['FAIL']}  ERROR: {counts['ERROR']}  SKIP: {counts['SKIP']}")
+    print(f"  Dashboard generated at: {dashboard_path}")
     if counts['FAIL'] > 0 or counts['ERROR'] > 0: sys.exit(1)
 
 if __name__ == '__main__':

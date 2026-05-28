@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * ST7789 TFT controller protocol decoder (C implementation).
@@ -202,9 +202,9 @@ static void st7789_output_cmd_data(struct srd_decoder_inst* di, st7789_state* s)
         int pos = snprintf(buf, sizeof(buf), "%s: ", cmd_str);
         for (int i = 0; i < s->last_cmd_data_len && pos < (int)sizeof(buf) - 8; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, " %02X", s->last_cmd_data[i]);
-        C_ANN_PUT(di, s->last_cmd_data_ss, s->last_cmd_data_es, s->out_ann, ANN_CMD_DATA, buf);
+        c_put(di, s->last_cmd_data_ss, s->last_cmd_data_es, s->out_ann, ANN_CMD_DATA, buf);
     } else {
-        C_ANN_PUT(di, s->last_cmd_data_ss, s->last_cmd_data_es, s->out_ann, ANN_CMD_DATA, cmd_str);
+        c_put(di, s->last_cmd_data_ss, s->last_cmd_data_es, s->out_ann, ANN_CMD_DATA, cmd_str);
     }
 
     s->last_cmd = -1;
@@ -225,25 +225,19 @@ static void st7789_reset(struct srd_decoder_inst* di)
 static void st7789_start(struct srd_decoder_inst* di)
 {
     st7789_state* s = (st7789_state*)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "st7789");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "st7789");
 }
 
 static void st7789_decode(struct srd_decoder_inst* di)
 {
     st7789_state* s = (st7789_state*)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     while (1) {
         /* Outer loop: wait for CSX falling edge */
-        srd_cond_builder* cb = c_cond_new();
-        c_cond_fall(cb, CH_CSX);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_F(CH_CSX), CW_END);
         if (ret != SRD_OK)
             return;
 
-        s->csx_start_samplenum = samplenum;
+        s->csx_start_samplenum = di_samplenum(di);
         s->bit = -1;
         s->bit_count = 0;
         s->byte_val = 0;
@@ -251,23 +245,18 @@ static void st7789_decode(struct srd_decoder_inst* di)
 
         while (1) {
             /* Inner loop: wait for CSX rising edge or DCX edge */
-            cb = c_cond_new();
-            c_cond_rise(cb, CH_CSX);
-            c_cond_or(cb);
-            c_cond_edge(cb, CH_DCX);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_R(CH_CSX), CW_OR, CW_E(CH_DCX), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            int csx = c_decoder_get_pin(di, CH_CSX, samplenum);
-            int dcx = c_decoder_get_pin(di, CH_DCX, samplenum);
-            int sdo = c_decoder_get_pin(di, CH_SDO, samplenum);
-            int wrx = c_decoder_get_pin(di, CH_WRX, samplenum);
+            int csx = c_pin(di, CH_CSX);
+            int dcx = c_pin(di, CH_DCX);
+            int sdo = c_pin(di, CH_SDO);
+            int wrx = c_pin(di, CH_WRX);
 
             if (csx == 1) {
                 /* CSX released: output Asserted and cmd_data */
-                C_ANN_PUT(di, s->csx_start_samplenum, samplenum, s->out_ann, ANN_ASSERTED, "Asserted");
+                c_put(di, s->csx_start_samplenum, di_samplenum(di), s->out_ann, ANN_ASSERTED, "Asserted");
 
                 if (s->last_cmd >= 0) {
                     st7789_output_cmd_data(di, s);
@@ -278,35 +267,35 @@ static void st7789_decode(struct srd_decoder_inst* di)
             if (dcx == 1 && s->bit == -1) {
                 /* Sample SDO bit (data bit start) */
                 s->bit = sdo;
-                s->bit_start_samplenum = samplenum;
+                s->bit_start_samplenum = di_samplenum(di);
                 s->bit_count++;
                 s->byte_val = (s->byte_val << 1) | s->bit;
                 if (s->byte_sample_startnum == 0)
-                    s->byte_sample_startnum = samplenum;
+                    s->byte_sample_startnum = di_samplenum(di);
             }
 
             if (dcx == 0 && s->bit != -1) {
                 /* Complete one bit */
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->bit);
-                C_ANN_PUT(di, s->bit_start_samplenum, samplenum, s->out_ann, ANN_BIT, bit_str);
+                c_put(di, s->bit_start_samplenum, di_samplenum(di), s->out_ann, ANN_BIT, bit_str);
                 s->bit = -1;
 
                 if (s->bit_count == 8) {
                     if (wrx) {
                         /* Data byte */
-                        s->last_cmd_data_es = samplenum;
+                        s->last_cmd_data_es = di_samplenum(di);
                         if (s->last_cmd_data_len < MAX_CMD_DATA)
                             s->last_cmd_data[s->last_cmd_data_len++] = s->byte_val;
 
                         char buf[32];
                         snprintf(buf, sizeof(buf), "Data(%02X)", s->byte_val);
-                        C_ANN_PUT(di, s->byte_sample_startnum, samplenum, s->out_ann, ANN_DATA, buf);
+                        c_put(di, s->byte_sample_startnum, di_samplenum(di), s->out_ann, ANN_DATA, buf);
                     } else {
                         /* Command byte */
                         char cmd_buf[64];
                         st7789_get_cmd_str(s->byte_val, cmd_buf, sizeof(cmd_buf));
-                        C_ANN_PUT(di, s->byte_sample_startnum, samplenum, s->out_ann, ANN_CMD, cmd_buf);
+                        c_put(di, s->byte_sample_startnum, di_samplenum(di), s->out_ann, ANN_CMD, cmd_buf);
 
                         /* Output previous cmd_data combination */
                         if (s->last_cmd >= 0) {
@@ -315,7 +304,7 @@ static void st7789_decode(struct srd_decoder_inst* di)
 
                         s->last_cmd = s->byte_val;
                         s->last_cmd_data_ss = s->byte_sample_startnum;
-                        s->last_cmd_data_es = samplenum;
+                        s->last_cmd_data_es = di_samplenum(di);
                         s->last_cmd_data_len = 0;
                     }
 
@@ -365,6 +354,7 @@ struct srd_c_decoder st7789_c_decoder = {
     .start = st7789_start,
     .decode = st7789_decode,
     .destroy = st7789_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

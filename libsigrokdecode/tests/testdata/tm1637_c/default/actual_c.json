@@ -1,7 +1,271 @@
 {
 	"decoder": "tm1637_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 27,
 	"annotations": [
+		{
+			"start_sample": 2001,
+			"end_sample": 2001,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2150,
+			"end_sample": 2170,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2130,
+			"end_sample": 2150,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2110,
+			"end_sample": 2130,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2090,
+			"end_sample": 2110,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2070,
+			"end_sample": 2090,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2050,
+			"end_sample": 2070,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2050,
+			"end_sample": 2170,
+			"ann_class": 4,
+			"ann_type": 11,
+			"texts": [
+				"Command: 0x00", 
+				"Cmd: 0x00", 
+				"C: 0x00", 
+				"Cmd", 
+				"C"
+			]
+		}, 
+		{
+			"start_sample": 2170,
+			"end_sample": 2170,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2171,
+			"end_sample": 2171,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2190,
+			"end_sample": 2210,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2230,
+			"end_sample": 2230,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2250,
+			"end_sample": 2250,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2260,
+			"end_sample": 2260,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2261,
+			"end_sample": 2261,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2280,
+			"end_sample": 2280,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2281,
+			"end_sample": 2281,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2300,
+			"end_sample": 2300,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2301,
+			"end_sample": 2301,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2320,
+			"end_sample": 2320,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2321,
+			"end_sample": 2321,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2340,
+			"end_sample": 2360,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2360,
+			"end_sample": 2380,
+			"ann_class": 6,
+			"ann_type": 13,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2400,
+			"end_sample": 2400,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2401,
+			"end_sample": 2401,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}, 
+		{
+			"start_sample": 2440,
+			"end_sample": 2440,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Stop", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 2460,
+			"end_sample": 2460,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Start", 
+				"S"
+			]
+		}
 	]
 }

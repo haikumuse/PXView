@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Marco Geisler <m-sigrok@mageis.de>
@@ -132,30 +132,30 @@ static const struct srd_c_ann_row cc1101_ann_rows[] = {
     {"warnings", "Warnings", cc1101_row_warnings_classes, 1},
 };
 
-static void parse_spi_data(const unsigned char *data, uint64_t data_len,
+static void parse_spi_data(const c_field *fields, int n_fields,
     int *have_mosi, int *have_miso, uint8_t *mosi_byte, uint8_t *miso_byte)
 {
-    if (data_len < 1) return;
-    *have_mosi = (data[0] & 1) ? 1 : 0;
-    *have_miso = (data[0] & 2) ? 1 : 0;
+    if (n_fields < 1) return;
+    *have_mosi = (fields[0].u8 & 1) ? 1 : 0;
+    *have_miso = (fields[0].u8 & 2) ? 1 : 0;
     uint64_t mv = 0, sv = 0;
-    if (data_len >= 9) {
+    if (n_fields >= 9) {
         for (int i = 0; i < 8; i++)
-            mv |= ((uint64_t)data[1 + i]) << (8 * i);
+            mv |= ((uint64_t)fields[1 + i].u8) << (8 * i);
     }
-    if (data_len >= 17) {
+    if (n_fields >= 17) {
         for (int i = 0; i < 8; i++)
-            sv |= ((uint64_t)data[9 + i]) << (8 * i);
+            sv |= ((uint64_t)fields[9 + i].u8) << (8 * i);
     }
     *mosi_byte = (uint8_t)mv;
     *miso_byte = (uint8_t)sv;
 }
 
-static void parse_cs_change(const unsigned char *data, uint64_t data_len,
+static void parse_cs_change(const c_field *fields, int n_fields,
     int *cs_old, int *cs_new)
 {
-    *cs_old = (data_len > 0) ? (int)data[0] : -1;
-    *cs_new = (data_len > 1) ? (int)data[1] : -1;
+    *cs_old = (n_fields > 0) ? (int)fields[0].u8 : -1;
+    *cs_new = (n_fields > 1) ? (int)fields[1].u8 : -1;
     if (*cs_old == 0xFF) *cs_old = -1;
 }
 
@@ -214,7 +214,7 @@ static void cc1101_decode_status(struct srd_decoder_inst *di, cc1101_state *s,
                            ? "available in RX FIFO" : "free in TX FIFO";
     snprintf(buf, sizeof(buf), "%s = %02X; %sSTATE is %s, %d bytes %s",
              label, status, chip_rdy, cc1101_status_states[state_idx], fifo, fifo_dir);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_STATUS, buf);
+    c_put(di, ss, es, s->out_ann, ANN_STATUS, buf);
 }
 
 static void cc1101_finish_command(struct srd_decoder_inst *di, cc1101_state *s)
@@ -239,7 +239,7 @@ static void cc1101_finish_command(struct srd_decoder_inst *di, cc1101_state *s)
     case CC1101_CMD_STATUS_READ:
         cmd_name = "Status read"; ann = ANN_STATUS_READ; use_miso = 1; break;
     default:
-        C_ANN_PUT(di, s->ss_mb, s->es_mb, s->out_ann, ANN_WARN, "unhandled command");
+        c_put(di, s->ss_mb, s->es_mb, s->out_ann, ANN_WARN, "unhandled command");
         return;
     }
 
@@ -258,19 +258,17 @@ static void cc1101_finish_command(struct srd_decoder_inst *di, cc1101_state *s)
         pos += snprintf(buf + pos, sizeof(buf) - pos, "%02X", b);
     }
 
-    C_ANN_PUT(di, s->ss_mb, s->es_mb, s->out_ann, ann, buf);
+    c_put(di, s->ss_mb, s->es_mb, s->out_ann, ann, buf);
 }
 
-static void cc1101_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void cc1101_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     cc1101_state *s = (cc1101_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
         int cs_old = -1, cs_new = -1;
-        parse_cs_change(data, data_len, &cs_old, &cs_new);
+        parse_cs_change(fields, n_fields, &cs_old, &cs_new);
 
         if (cs_old == -1 && cs_new == 1) {
             s->cs_was_released = 1;
@@ -280,7 +278,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di,
             /* Rising edge: process collected data */
             if (s->cmd_type != CC1101_CMD_UNKNOWN && s->mb_count > 0) {
                 if (s->mb_count < s->min_bytes) {
-                    C_ANN_PUT(di, start_sample, start_sample, s->out_ann, ANN_WARN, "missing data bytes");
+                    c_put(di, start_sample, start_sample, s->out_ann, ANN_WARN, "missing data bytes");
                 } else {
                     cc1101_finish_command(di, s);
                 }
@@ -299,7 +297,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di,
 
     int have_mosi, have_miso;
     uint8_t mosi, miso;
-    parse_spi_data(data, data_len, &have_mosi, &have_miso, &mosi, &miso);
+    parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
 
     if (!have_mosi || !have_miso) return;
 
@@ -313,7 +311,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di,
         s->max_bytes = max_b;
 
         if (s->cmd_type == CC1101_CMD_UNKNOWN) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARN, "unknown command");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN, "unknown command");
             return;
         }
 
@@ -342,7 +340,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di,
             char buf[128];
             const char *sname = cc1101_strobe_name(s->cmd_addr);
             snprintf(buf, sizeof(buf), "Strobe %s", sname);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_STROBE, buf);
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_STROBE, buf);
         } else {
             /* Start collecting data bytes */
             s->ss_mb = start_sample;
@@ -353,7 +351,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di,
         if (s->cmd_type == CC1101_CMD_UNKNOWN) return;
 
         if (s->mb_count >= s->max_bytes) {
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_WARN, "excess byte");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN, "excess byte");
             return;
         }
 
@@ -378,7 +376,7 @@ static void cc1101_reset(struct srd_decoder_inst *di)
 static void cc1101_start(struct srd_decoder_inst *di)
 {
     cc1101_state *s = (cc1101_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "cc1101");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "cc1101");
 }
 
 static void cc1101_decode(struct srd_decoder_inst *di)
@@ -423,7 +421,8 @@ struct srd_c_decoder cc1101_c_decoder = {
     .start = cc1101_start,
     .decode = cc1101_decode,
     .destroy = cc1101_destroy,
-    .recv_proto = cc1101_recv_proto,
+    .decode_upper = cc1101_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -859,6 +859,39 @@ foreach(dec ${C_DECODERS})
 endforeach()
 
 #===============================================================================
+#= irmp shared library
+#-------------------------------------------------------------------------------
+
+add_library(irmp SHARED
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/irmp/irmp-main-sharedlib.c
+)
+
+target_include_directories(irmp PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/irmp
+	${GLIB_INCLUDE_DIRS}
+	${Python3_INCLUDE_DIRS}
+)
+
+target_compile_definitions(irmp PRIVATE
+	IRMP_PROTOCOL_NAMES=1
+)
+
+if(WIN32)
+	target_compile_definitions(irmp PRIVATE WIN32)
+endif()
+
+target_link_libraries(irmp
+	Python3::Python
+	-lglib-2.0
+)
+
+set_target_properties(irmp PROPERTIES
+	PREFIX ""
+	LIBRARY_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+	RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+)
+
+#===============================================================================
 #= Copy language files to output directory (for development)
 #-------------------------------------------------------------------------------
 if(WIN32)
@@ -952,6 +985,8 @@ foreach(dec ${C_DECODERS})
 		DESTINATION ${MAC_RES_PREFIX}share/libsigrokdecode/c_decoders
 	)
 endforeach()
+
+install(TARGETS irmp DESTINATION ${MAC_RES_PREFIX}bin)
 
 install(DIRECTORY lang DESTINATION ${MAC_RES_PREFIX}share/PXView)
 

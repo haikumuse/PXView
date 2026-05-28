@@ -1,4 +1,4 @@
-/*
+﻿/*
  * stepper_motor_c.c — Stepper motor position / speed decoder (C implementation)
  *
  * Decodes absolute position and movement speed from step/dir signals.
@@ -70,12 +70,12 @@ static void stepper_reset(struct srd_decoder_inst *di)
 static void stepper_start(struct srd_decoder_inst *di)
 {
     stepper_state *s = (stepper_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "stepper_motor");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "stepper_motor");
 
-    const char *unit_str = c_decoder_get_option_string(di, "unit", "steps");
+    const char *unit_str = c_opt_str(di, "unit", "steps");
     if (strcmp(unit_str, "mm") == 0) {
         s->is_mm = 1;
-        s->steps_per_mm = c_decoder_get_option_double(di, "steps_per_mm", 100.0);
+        s->steps_per_mm = c_opt_dbl(di, "steps_per_mm", 100.0);
         if (s->steps_per_mm <= 0)
             s->steps_per_mm = 100.0;
         s->scale = s->steps_per_mm;
@@ -96,27 +96,21 @@ static void stepper_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
 static void stepper_decode(struct srd_decoder_inst *di)
 {
     stepper_state *s = (stepper_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     }
     if (s->samplerate == 0)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, 0);  /* Step rising edge */
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int direction = c_decoder_get_pin(di, 1, samplenum);
+        int direction = c_pin(di, 1);
 
         if (s->ss_prev_step != 0) {
-            uint64_t delta = samplenum - s->ss_prev_step;
+            uint64_t delta = di_samplenum(di) - s->ss_prev_step;
 
             /* Speed */
             double speed = (double)s->samplerate / (double)delta / s->scale;
@@ -128,7 +122,7 @@ static void stepper_decode(struct srd_decoder_inst *di)
                 snprintf(speed_str, sizeof(speed_str), "%.0f steps/s", speed);
                 snprintf(speed_short, sizeof(speed_short), "%.0f", speed);
             }
-            C_ANN_PUT(di, s->ss_prev_step, samplenum, s->out_ann, ANN_SPEED,
+            c_put(di, s->ss_prev_step, di_samplenum(di), s->out_ann, ANN_SPEED,
                       speed_str, speed_short);
 
             /* Position */
@@ -140,12 +134,12 @@ static void stepper_decode(struct srd_decoder_inst *di)
                 snprintf(pos_str, sizeof(pos_str), "%lld steps", (long long)s->pos);
                 snprintf(pos_short, sizeof(pos_short), "%lld", (long long)s->pos);
             }
-            C_ANN_PUT(di, s->ss_prev_step, samplenum, s->out_ann, ANN_POSITION,
+            c_put(di, s->ss_prev_step, di_samplenum(di), s->out_ann, ANN_POSITION,
                       pos_str, pos_short);
         }
 
         s->pos += direction ? 1 : -1;
-        s->ss_prev_step = samplenum;
+        s->ss_prev_step = di_samplenum(di);
     }
 }
 
@@ -186,6 +180,7 @@ struct srd_c_decoder stepper_motor_c_decoder = {
     .start = stepper_start,
     .decode = stepper_decode,
     .destroy = stepper_destroy,
+    .state_size = 0,
     .metadata = stepper_metadata,
 };
 

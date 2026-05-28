@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 original Python version
@@ -114,18 +114,14 @@ static const ethertype_entry *find_ethertype(uint16_t type)
 
 /* --- Helper to read block ss/es --- */
 
-static uint64_t block_ss(const uint8_t *blocks_data, int idx)
+static uint64_t block_ss(const c_field *blocks_data, int idx)
 {
-    uint64_t v;
-    memcpy(&v, blocks_data + idx * 16, 8);
-    return v;
+    return blocks_data[idx * 2].u64;
 }
 
-static uint64_t block_es(const uint8_t *blocks_data, int idx)
+static uint64_t block_es(const c_field *blocks_data, int idx)
 {
-    uint64_t v;
-    memcpy(&v, blocks_data + idx * 16 + 8, 8);
-    return v;
+    return blocks_data[idx * 2 + 1].u64;
 }
 
 /* --- Decoder metadata --- */
@@ -148,24 +144,22 @@ static const struct srd_c_ann_row arp_ann_rows[] = {
 
 /* --- Core recv_proto --- */
 
-static void arp_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void arp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     arp_state *s = (arp_state *)c_decoder_get_private(di);
     if (!s) return;
 
-    if (strcmp(cmd, "PAYLOAD") != 0 || !data || data_len < 4)
+    if (strcmp(cmd, "PAYLOAD") != 0 || !fields || n_fields < 4)
         return;
 
     /* Parse PAYLOAD data layout */
     uint16_t payload_len;
-    memcpy(&payload_len, data, 2);
-    const uint8_t *payload = data + 2;
+    payload_len = fields[0].u16;
+    const uint8_t *payload = fields[1].bytes.data;
 
     uint16_t block_count;
-    memcpy(&block_count, data + 2 + payload_len, 2);
-    const uint8_t *blocks_data = data + 4 + payload_len;
+    block_count = fields[2].u16;
+    const c_field *blocks_data = fields + 4 + payload_len;
 
     /* ARP packet needs at least 28 bytes */
     if (payload_len < 28 || block_count < 28)
@@ -188,7 +182,7 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
     char t[64], t2[32];
     snprintf(t, sizeof(t), "Hardware Type: %d", htype);
     snprintf(t2, sizeof(t2), "Type: %d", htype);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
 
     /* Protocol Type (EtherType) */
     s->ss_block = block_ss(blocks_data, 2);
@@ -201,21 +195,21 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
         snprintf(t, sizeof(t), "Protocol: UNKNOWN");
         snprintf(t2, sizeof(t2), "UNKNOWN");
     }
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
 
     /* Hardware Address Length */
     s->ss_block = block_ss(blocks_data, 4);
     s->es_block = block_es(blocks_data, 4);
     snprintf(t, sizeof(t), "Hardware Address Length: %d", hlen);
     snprintf(t2, sizeof(t2), "HW Len: %d", hlen);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
 
     /* Protocol Address Length */
     s->ss_block = block_ss(blocks_data, 5);
     s->es_block = block_es(blocks_data, 5);
     snprintf(t, sizeof(t), "Protocol Address Length: %d", plen);
     snprintf(t2, sizeof(t2), "Prot addr Len: %d", plen);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
 
     /* Operation */
     const char *oper_str = "";
@@ -226,7 +220,7 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
     s->es_block = block_es(blocks_data, 7);
     snprintf(t, sizeof(t), "Operation: %s", oper_str);
     snprintf(t2, sizeof(t2), "OP: %s", oper_str);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
 
     /* Sender Hardware Address (SHA) MAC */
     char sha_str[24];
@@ -236,7 +230,7 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
     s->es_block = block_es(blocks_data, 13);
     snprintf(t, sizeof(t), "Source MAC: %s", sha_str);
     snprintf(t2, sizeof(t2), "Src MAC: %s", sha_str);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
     uint64_t msg_start = s->ss_block;
 
     /* Sender Protocol Address (SPA) IP */
@@ -246,7 +240,7 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
     s->es_block = block_es(blocks_data, 17);
     snprintf(t, sizeof(t), "Source IP: %s", spa_str);
     snprintf(t2, sizeof(t2), "Src IP: %s", spa_str);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
 
     /* Target Hardware Address (THA) MAC */
     char tha_str[24];
@@ -256,7 +250,7 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
     s->es_block = block_es(blocks_data, 23);
     snprintf(t, sizeof(t), "Destination MAC: %s", tha_str);
     snprintf(t2, sizeof(t2), "Dst MAC: %s", tha_str);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
 
     /* Target Protocol Address (TPA) IP */
     char tpa_str[16];
@@ -265,7 +259,7 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
     s->es_block = block_es(blocks_data, 27);
     snprintf(t, sizeof(t), "Destination IP: %s", tpa_str);
     snprintf(t2, sizeof(t2), "Dst IP: %s", tpa_str);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);
     uint64_t msg_end = s->es_block;
 
     /* Message annotation */
@@ -275,17 +269,17 @@ static void arp_recv_proto(struct srd_decoder_inst *di,
     if (oper == 1) { /* Request */
         if (strcmp(spa_str, tpa_str) == 0) {
             snprintf(t, sizeof(t), "ARP Announcement for %s (%s)", spa_str, sha_str);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
         } else if (strcmp(spa_str, "0.0.0.0") == 0) {
             snprintf(t, sizeof(t), "ARP Probe for %s (%s)", tpa_str, sha_str);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
         } else {
             snprintf(t, sizeof(t), "Who has %s? Tell %s (%s)", tpa_str, spa_str, sha_str);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
         }
     } else if (oper == 2) { /* Reply */
         snprintf(t, sizeof(t), "%s is at %s", spa_str, sha_str);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_MSG, t);
     }
 }
 
@@ -302,7 +296,7 @@ static void arp_reset(struct srd_decoder_inst *di)
 static void arp_start(struct srd_decoder_inst *di)
 {
     arp_state *s = (arp_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "arp");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "arp");
 }
 
 static void arp_decode(struct srd_decoder_inst *di)
@@ -347,7 +341,8 @@ struct srd_c_decoder arp_c_decoder = {
     .start = arp_start,
     .decode = arp_decode,
     .destroy = arp_destroy,
-    .recv_proto = arp_recv_proto,
+    .decode_upper = arp_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

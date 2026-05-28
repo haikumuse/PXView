@@ -1,7 +1,26 @@
 {
 	"decoder": "mipi_dsi",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 2,
 	"annotations": [
+		{
+			"start_sample": 2050,
+			"end_sample": 2120,
+			"ann_class": 5,
+			"ann_type": 6,
+			"texts": [
+				"Bi-directional Data Lane Turnaround", 
+				"BTA"
+			]
+		}, 
+		{
+			"start_sample": 2120,
+			"end_sample": 2305,
+			"ann_class": 7,
+			"ann_type": 0,
+			"texts": [
+				"0x54"
+			]
+		}
 	]
 }

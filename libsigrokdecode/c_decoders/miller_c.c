@@ -8,7 +8,6 @@
 enum miller_ann {
     ANN_BIT = 0,
     ANN_BITSTRING,
-    ANN_ERROR,
     NUM_ANN,
 };
 
@@ -41,17 +40,14 @@ static struct srd_decoder_option miller_options[] = {
 static const char *miller_ann_labels[][3] = {
     {"", "bit", "Bit"},
     {"", "bitstring", "Bitstring"},
-    {"", "error", "Error"},
 };
 
 static const int miller_row_bit_classes[] = {ANN_BIT, -1};
 static const int miller_row_bitstring_classes[] = {ANN_BITSTRING, -1};
-static const int miller_row_error_classes[] = {ANN_ERROR, -1};
 
 static const struct srd_c_ann_row miller_ann_rows[] = {
     {"bit", "Bit", miller_row_bit_classes, 1},
     {"bitstring", "Bitstring", miller_row_bitstring_classes, 1},
-    {"error", "Error", miller_row_error_classes, 1},
 };
 
 static const struct srd_decoder_binary miller_binary[] = {
@@ -74,14 +70,14 @@ static void miller_reset(struct srd_decoder_inst *di)
 static void miller_start(struct srd_decoder_inst *di)
 {
     struct miller_priv *s = (struct miller_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "miller");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "miller");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "miller");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "miller");
 
-    int64_t baudrate = c_decoder_get_option_int(di, "baudrate", 106000);
+    int64_t baudrate = c_opt_int(di, "baudrate", 106000);
     if (baudrate <= 0)
         baudrate = 106000;
 
-    const char *edge_str = c_decoder_get_option_string(di, "edge", "falling");
+    const char *edge_str = c_opt_str(di, "edge", "falling");
     if (strcmp(edge_str, "rising") == 0)
         s->edge_type = 0;
     else if (strcmp(edge_str, "either") == 0)
@@ -102,7 +98,7 @@ static void output_bit(struct srd_decoder_inst *di, struct miller_priv *s,
 {
     char bit_str[4];
     snprintf(bit_str, sizeof(bit_str), "%d", bit);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_BIT, bit_str);
+    c_put(di, ss, es, s->out_ann, ANN_BIT, bit_str);
 
     if (s->numbits == 0)
         s->stringstart = ss;
@@ -128,7 +124,7 @@ static void flush_bitstring(struct srd_decoder_inst *di, struct miller_priv *s)
             pos += snprintf(bs + pos, sizeof(bs) - pos, " ");
         pos += snprintf(bs + pos, sizeof(bs) - pos, "%d", s->bits[i]);
     }
-    C_ANN_PUT(di, s->stringstart, s->stringend, s->out_ann, ANN_BITSTRING, bs);
+    c_put(di, s->stringstart, s->stringend, s->out_ann, ANN_BITSTRING, bs);
 
     /* Binary output */
     int numbytes = (s->numbits + 7) / 8;
@@ -138,7 +134,7 @@ static void flush_bitstring(struct srd_decoder_inst *di, struct miller_priv *s)
         if (s->bits[i])
             bdata[i / 8] |= (1 << (i % 8));
     }
-    c_decoder_put_binary(di, s->stringstart, s->stringend,
+    c_put_bin(di, s->stringstart, s->stringend,
                          s->out_binary, 0, numbytes, bdata);
 
     /* Reset for next bitstring */
@@ -149,15 +145,12 @@ static void flush_bitstring(struct srd_decoder_inst *di, struct miller_priv *s)
 static void miller_decode(struct srd_decoder_inst *di)
 {
     struct miller_priv *s = (struct miller_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         s->samplerate = 1;
 
-    int64_t baudrate = c_decoder_get_option_int(di, "baudrate", 106000);
+    int64_t baudrate = c_opt_int(di, "baudrate", 106000);
     if (baudrate <= 0)
         baudrate = 106000;
     s->timeunit = (uint64_t)((double)s->samplerate / (double)baudrate + 0.5);
@@ -167,45 +160,38 @@ static void miller_decode(struct srd_decoder_inst *di)
     /* Main loop: like Python's while True: decode_run() */
     while (1) {
         /* Wait for first edge - like Python's self.wait({0: edgetype}) */
-        srd_cond_builder *cb = c_cond_new();
+        int ret;
         switch (s->edge_type) {
-        case 0: c_cond_rise(cb, 0); break;
-        case 1: c_cond_fall(cb, 0); break;
-        case 2: c_cond_edge(cb, 0); break;
+        case 0: ret = c_wait(di, CW_R(0), CW_END); break;
+        case 1: ret = c_wait(di, CW_F(0), CW_END); break;
+        case 2: ret = c_wait(di, CW_E(0), CW_END); break;
         }
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
         if (ret != SRD_OK) {
             flush_bitstring(di, s);
             return;
         }
 
-        s->prevedge = samplenum;
+        s->prevedge = di_samplenum(di);
         s->prevbit = 0;
-        s->expectedstart = samplenum + s->timeunit;
+        s->expectedstart = di_samplenum(di) + s->timeunit;
 
         /* Output initial "0" bit, like Python's yield (0, prevedge, prevedge + timeunit) */
-        output_bit(di, s, 0, samplenum, samplenum + s->timeunit);
+        output_bit(di, s, 0, di_samplenum(di), di_samplenum(di) + s->timeunit);
 
         /* Inner loop: process bits within one message */
         while (1) {
-            cb = c_cond_new();
             switch (s->edge_type) {
-            case 0: c_cond_rise(cb, 0); break;
-            case 1: c_cond_fall(cb, 0); break;
-            case 2: c_cond_edge(cb, 0); break;
+            case 0: ret = c_wait(di, CW_R(0), CW_OR, CW_SKIP(3 * s->timeunit), CW_END); break;
+            case 1: ret = c_wait(di, CW_F(0), CW_OR, CW_SKIP(3 * s->timeunit), CW_END); break;
+            case 2: ret = c_wait(di, CW_E(0), CW_OR, CW_SKIP(3 * s->timeunit), CW_END); break;
             }
-            c_cond_or(cb);
-            c_cond_skip(cb, 3 * s->timeunit);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
             if (ret != SRD_OK) {
                 flush_bitstring(di, s);
                 return;
             }
 
-            uint64_t sampledelta = samplenum - s->prevedge;
-            s->prevedge = samplenum;
+            uint64_t sampledelta = di_samplenum(di) - s->prevedge;
+            s->prevedge = di_samplenum(di);
 
             /* Round timedelta to nearest 0.5 */
             double td_exact = (double)sampledelta / (double)s->timeunit;
@@ -215,48 +201,48 @@ static void miller_decode(struct srd_decoder_inst *di)
                 /* After space */
                 if (timedelta == 1.0) {
                     /* space (0) */
-                    output_bit(di, s, 0, samplenum, samplenum + s->timeunit);
+                    output_bit(di, s, 0, di_samplenum(di), di_samplenum(di) + s->timeunit);
                     s->prevbit = 0;
-                    s->expectedstart = samplenum + s->timeunit;
+                    s->expectedstart = di_samplenum(di) + s->timeunit;
                 } else if (timedelta == 1.5) {
                     /* mark (1) */
-                    output_bit(di, s, 1, s->expectedstart, samplenum + s->timeunit / 2);
+                    output_bit(di, s, 1, s->expectedstart, di_samplenum(di) + s->timeunit / 2);
                     s->prevbit = 1;
-                    s->expectedstart = samplenum + s->timeunit / 2;
+                    s->expectedstart = di_samplenum(di) + s->timeunit / 2;
                 } else if (timedelta >= 2.0) {
                     /* idle - end of message */
                     flush_bitstring(di, s);
                     break; /* Break inner loop, start new run */
                 } else {
                     /* timedelta < 1.0: error */
-                    C_ANN_PUT(di, samplenum - sampledelta, samplenum, s->out_ann, ANN_ERROR, "ERROR", "Err", "E");
-                    flush_bitstring(di, s);
+                    c_put(di, di_samplenum(di) - sampledelta, di_samplenum(di), s->out_ann, ANN_BITSTRING, "ERROR");
+                    s->numbits = 0; /* Match Python: skip bitstring output on error */
                     break;
                 }
             } else {
                 /* After mark */
                 if (timedelta <= 0.5) {
                     /* Error: edges too close after mark */
-                    C_ANN_PUT(di, samplenum - sampledelta, samplenum, s->out_ann, ANN_ERROR, "ERROR", "Err", "E");
-                    flush_bitstring(di, s);
+                    c_put(di, di_samplenum(di) - sampledelta, di_samplenum(di), s->out_ann, ANN_BITSTRING, "ERROR");
+                    s->numbits = 0; /* Match Python: skip bitstring output on error */
                     break;
                 } else if (timedelta == 1.0) {
                     /* mark (1) */
-                    output_bit(di, s, 1, s->expectedstart, samplenum + s->timeunit / 2);
+                    output_bit(di, s, 1, s->expectedstart, di_samplenum(di) + s->timeunit / 2);
                     s->prevbit = 1;
-                    s->expectedstart = samplenum + s->timeunit / 2;
+                    s->expectedstart = di_samplenum(di) + s->timeunit / 2;
                 } else if (timedelta == 1.5) {
                     /* space (0) + space (0) */
-                    output_bit(di, s, 0, s->expectedstart, samplenum);
-                    output_bit(di, s, 0, samplenum, samplenum + s->timeunit);
+                    output_bit(di, s, 0, s->expectedstart, di_samplenum(di));
+                    output_bit(di, s, 0, di_samplenum(di), di_samplenum(di) + s->timeunit);
                     s->prevbit = 0;
-                    s->expectedstart = samplenum + s->timeunit;
+                    s->expectedstart = di_samplenum(di) + s->timeunit;
                 } else if (timedelta == 2.0) {
                     /* space (0) + mark (1) */
                     output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
-                    output_bit(di, s, 1, samplenum - s->timeunit / 2, samplenum + s->timeunit / 2);
+                    output_bit(di, s, 1, di_samplenum(di) - s->timeunit / 2, di_samplenum(di) + s->timeunit / 2);
                     s->prevbit = 1;
-                    s->expectedstart = samplenum + s->timeunit / 2;
+                    s->expectedstart = di_samplenum(di) + s->timeunit / 2;
                 } else {
                     /* timedelta > 2.0: space (0) + idle - end */
                     output_bit(di, s, 0, s->expectedstart, s->expectedstart + s->timeunit);
@@ -291,7 +277,7 @@ static struct srd_c_decoder miller_c_decoder = {
     .num_options = 2,
     .num_annotations = NUM_ANN,
     .ann_labels = miller_ann_labels,
-    .num_annotation_rows = 3,
+    .num_annotation_rows = 2,
     .annotation_rows = miller_ann_rows,
     .inputs = miller_inputs,
     .num_inputs = 1,
@@ -305,6 +291,7 @@ static struct srd_c_decoder miller_c_decoder = {
     .start = miller_start,
     .decode = miller_decode,
     .destroy = miller_destroy,
+    .state_size = 0,
     .metadata = miller_metadata,
 };
 

@@ -1,11 +1,11 @@
 {
 	"decoder": "ir_sirc",
-	"samplerate": 1000000,
+	"samplerate": 100000,
 	"num_annotations": 18,
 	"annotations": [
 		{
-			"start_sample": 0,
-			"end_sample": 2400,
+			"start_sample": 2500,
+			"end_sample": 2740,
 			"ann_class": 1,
 			"ann_type": 8,
 			"texts": [
@@ -14,8 +14,8 @@
 			]
 		}, 
 		{
-			"start_sample": 2400,
-			"end_sample": 3000,
+			"start_sample": 2740,
+			"end_sample": 2800,
 			"ann_class": 2,
 			"ann_type": 9,
 			"texts": [
@@ -24,8 +24,8 @@
 			]
 		}, 
 		{
-			"start_sample": 0,
-			"end_sample": 3000,
+			"start_sample": 2500,
+			"end_sample": 2800,
 			"ann_class": 3,
 			"ann_type": 10,
 			"texts": [
@@ -34,8 +34,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3000,
-			"end_sample": 4800,
+			"start_sample": 2800,
+			"end_sample": 2980,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -43,8 +43,8 @@
 			]
 		}, 
 		{
-			"start_sample": 4800,
-			"end_sample": 6000,
+			"start_sample": 2980,
+			"end_sample": 3100,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -52,8 +52,8 @@
 			]
 		}, 
 		{
-			"start_sample": 6000,
-			"end_sample": 7800,
+			"start_sample": 3100,
+			"end_sample": 3280,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -61,8 +61,8 @@
 			]
 		}, 
 		{
-			"start_sample": 7800,
-			"end_sample": 9000,
+			"start_sample": 3280,
+			"end_sample": 3400,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -70,8 +70,8 @@
 			]
 		}, 
 		{
-			"start_sample": 9000,
-			"end_sample": 10800,
+			"start_sample": 3400,
+			"end_sample": 3580,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -79,8 +79,8 @@
 			]
 		}, 
 		{
-			"start_sample": 10800,
-			"end_sample": 12000,
+			"start_sample": 3580,
+			"end_sample": 3700,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -88,8 +88,8 @@
 			]
 		}, 
 		{
-			"start_sample": 12000,
-			"end_sample": 13200,
+			"start_sample": 3700,
+			"end_sample": 3820,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -97,8 +97,8 @@
 			]
 		}, 
 		{
-			"start_sample": 13200,
-			"end_sample": 15000,
+			"start_sample": 3820,
+			"end_sample": 4000,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -106,8 +106,8 @@
 			]
 		}, 
 		{
-			"start_sample": 15000,
-			"end_sample": 16200,
+			"start_sample": 4000,
+			"end_sample": 4120,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -115,8 +115,8 @@
 			]
 		}, 
 		{
-			"start_sample": 16200,
-			"end_sample": 17400,
+			"start_sample": 4120,
+			"end_sample": 4240,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -124,8 +124,8 @@
 			]
 		}, 
 		{
-			"start_sample": 17400,
-			"end_sample": 18600,
+			"start_sample": 4240,
+			"end_sample": 4360,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -133,8 +133,8 @@
 			]
 		}, 
 		{
-			"start_sample": 18600,
-			"end_sample": 19800,
+			"start_sample": 4360,
+			"end_sample": 4480,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -142,8 +142,8 @@
 			]
 		}, 
 		{
-			"start_sample": 3000,
-			"end_sample": 13200,
+			"start_sample": 2800,
+			"end_sample": 3820,
 			"ann_class": 4,
 			"ann_type": 11,
 			"texts": [
@@ -152,8 +152,8 @@
 			]
 		}, 
 		{
-			"start_sample": 13200,
-			"end_sample": 19800,
+			"start_sample": 3820,
+			"end_sample": 4480,
 			"ann_class": 5,
 			"ann_type": 12,
 			"texts": [
@@ -162,8 +162,8 @@
 			]
 		}, 
 		{
-			"start_sample": 0,
-			"end_sample": 19800,
+			"start_sample": 2500,
+			"end_sample": 4480,
 			"ann_class": 7,
 			"ann_type": 14,
 			"texts": [

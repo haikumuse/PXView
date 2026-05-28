@@ -215,7 +215,7 @@ static const char *fsi_data_size_name(int sz)
 
 static void fsi_putb(struct srd_decoder_inst *di, struct fsi_priv *s, int cls, const char *text)
 {
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, cls, text);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, cls, text);
 }
 
 static void fsi_putb_fmt(struct srd_decoder_inst *di, struct fsi_priv *s, int cls, const char *fmt, ...)
@@ -225,7 +225,7 @@ static void fsi_putb_fmt(struct srd_decoder_inst *di, struct fsi_priv *s, int cl
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
-    C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, cls, buf);
+    c_put(di, s->ss_block, s->es_block, s->out_ann, cls, buf);
 }
 
 static void fsi_reset(struct srd_decoder_inst *di)
@@ -245,31 +245,25 @@ static void fsi_reset(struct srd_decoder_inst *di)
 static void fsi_start(struct srd_decoder_inst *di)
 {
     struct fsi_priv *s = (struct fsi_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "fsi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "fsi");
 }
 
 static void fsi_decode(struct srd_decoder_inst *di)
 {
     struct fsi_priv *s = (struct fsi_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     while (1) {
         /* Wait for either clock edge */
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 1);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(1), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int data_pin = c_decoder_get_pin(di, 0, samplenum);
-        int clk_pin = c_decoder_get_pin(di, 1, samplenum);
+        int data_pin = c_pin(di, 0);
+        int clk_pin = c_pin(di, 1);
 
         /* FSI data is electrically inverted */
         int fsi_data = !data_pin;
         int fsi_clk = clk_pin;
-        uint64_t current_sample_number = samplenum;
+        uint64_t current_sample_number = di_samplenum(di);
 
         /* Detect BREAK commands (master only, sample on rising clock edge) */
         if (fsi_clk) {
@@ -304,11 +298,11 @@ static void fsi_decode(struct srd_decoder_inst *di)
             ((s->state == STATE_CRC) && (s->valid_response))) {
             /* Slave is transmitting, sample on falling clock edge only */
             if (fsi_clk)
-                goto update_prev;
+                continue;
         } else {
             /* Master is transmitting, sample on rising clock edge only */
             if (!fsi_clk)
-                goto update_prev;
+                continue;
         }
 
         /* Transfer state machine */
@@ -794,7 +788,6 @@ static void fsi_decode(struct srd_decoder_inst *di)
             }
         }
 
-update_prev:
         s->fsi_data_prev = fsi_data;
         s->samplenum_prev = current_sample_number;
     }
@@ -837,6 +830,7 @@ struct srd_c_decoder fsi_c_decoder = {
     .start = fsi_start,
     .decode = fsi_decode,
     .destroy = fsi_destroy,
+    .state_size = 0,
     .metadata = NULL,
 };
 

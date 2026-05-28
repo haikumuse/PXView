@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <math.h>
 #include <stdio.h>
@@ -171,7 +171,7 @@ static void sent_reset(struct srd_decoder_inst *di)
 static void sent_start(struct srd_decoder_inst *di)
 {
     struct sent_priv *s = (struct sent_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sent");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sent");
 }
 
 static void sent_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -184,27 +184,24 @@ static void sent_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void sent_decode(struct srd_decoder_inst *di)
 {
     struct sent_priv *s = (struct sent_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
     /* Read options */
-    s->dataSizeOpt = (int)c_decoder_get_option_int(di, "dataSize", 6);
-    s->tickPer = (int)c_decoder_get_option_int(di, "tickPer", 3);
-    s->tickTol = (int)c_decoder_get_option_int(di, "tickTol", 5);
+    s->dataSizeOpt = (int)c_opt_int(di, "dataSize", 6);
+    s->tickPer = (int)c_opt_int(di, "tickPer", 3);
+    s->tickTol = (int)c_opt_int(di, "tickTol", 5);
 
-    const char *pp_str = c_decoder_get_option_string(di, "pausePulse", "on");
+    const char *pp_str = c_opt_str(di, "pausePulse", "on");
     s->pausePulse = (strcmp(pp_str, "off") == 0) ? 0 : 1;
     s->pauseTmp = s->pausePulse;
 
-    const char *crc_str = c_decoder_get_option_string(di, "crcMode", "recommended");
+    const char *crc_str = c_opt_str(di, "crcMode", "recommended");
     s->crcMode = (strcmp(crc_str, "legacy") == 0) ? 0 : 1;
 
-    const char *ser_str = c_decoder_get_option_string(di, "serialMode", "off");
+    const char *ser_str = c_opt_str(di, "serialMode", "off");
     if (strcmp(ser_str, "short") == 0)
         s->serialMode = 0;
     else if (strcmp(ser_str, "enhanced") == 0)
@@ -230,26 +227,20 @@ static void sent_decode(struct srd_decoder_inst *di)
     s->serialCtr = 0;
 
     /* Wait for first falling edge */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_fall(cb, CH_DATA);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
+    int ret = c_wait(di, CW_F(CH_DATA), CW_END);
     if (ret != SRD_OK)
         return;
 
-    uint64_t last_samplenum = samplenum;
+    uint64_t last_samplenum = di_samplenum(di);
 
     while (1) {
-        cb = c_cond_new();
-        c_cond_fall(cb, CH_DATA);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        ret = c_wait(di, CW_F(CH_DATA), CW_END);
         if (ret != SRD_OK)
             return;
 
         int storeCal = 0;
         int nibble = -1;
-        uint64_t period = samplenum - last_samplenum;
+        uint64_t period = di_samplenum(di) - last_samplenum;
         const char *fault = "OK";
 
         if (s->state == STATE_SYNC_ST) {
@@ -343,7 +334,7 @@ static void sent_decode(struct srd_decoder_inst *di)
             s->tickPeriod = (uint64_t)round((double)s->calPeriod / 56.0);
             s->maxPausePulse = (uint64_t)round((double)s->calPeriod * PP_TICKS / 56);
             s->calStart = last_samplenum;
-            s->calEnd = samplenum;
+            s->calEnd = di_samplenum(di);
         }
 
         /* Display tick pulse length */
@@ -352,7 +343,7 @@ static void sent_decode(struct srd_decoder_inst *di)
             char tick_long[32], tick_short[8];
             snprintf(tick_long, sizeof(tick_long), "%4.1f\xC2\xB5s", perMicroSec);
             snprintf(tick_short, sizeof(tick_short), "%3.0f", perMicroSec);
-            C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_TICK, tick_long, tick_short);
+            c_put(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_TICK, tick_long, tick_short);
         }
 
         /* Display nibbles */
@@ -360,20 +351,20 @@ static void sent_decode(struct srd_decoder_inst *di)
             if (s->pulseCtr == 1) {
                 char txt[64];
                 snprintf(txt, sizeof(txt), "Status&Comm 0x%01X", nibble);
-                C_ANN_PUT_VAL(di, last_samplenum, samplenum, s->out_ann, ANN_SC, nibble, txt, "SC 0x%01X", "%01X");
+                c_put_v(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_SC, nibble, txt, "SC 0x%01X", "%01X");
             } else if (s->pulseCtr == s->crcPos) {
                 char txt[32];
                 snprintf(txt, sizeof(txt), "CRC 0x%01X", nibble);
-                C_ANN_PUT_VAL(di, last_samplenum, samplenum, s->out_ann, ANN_CRC, nibble, txt, "CRC %01X");
+                c_put_v(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_CRC, nibble, txt, "CRC %01X");
             } else if ((s->pausePulse != 0) && (s->pulseCtr == s->dataSize)) {
-                C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_PAUSE, "Pause Pulse", "Pause", "P");
+                c_put(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_PAUSE, "Pause Pulse", "Pause", "P");
             } else {
                 int dataIndex = s->pulseCtr - 2;
                 char txt[32];
                 snprintf(txt, sizeof(txt), "DATA_%d 0x%01X", dataIndex, nibble);
                 char short_txt[8];
                 snprintf(short_txt, sizeof(short_txt), "%01X", nibble);
-                C_ANN_PUT_VAL(di, last_samplenum, samplenum, s->out_ann, ANN_DATA, nibble, txt, "0x%01X", short_txt);
+                c_put_v(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_DATA, nibble, txt, "0x%01X", short_txt);
             }
         }
 
@@ -382,16 +373,16 @@ static void sent_decode(struct srd_decoder_inst *di)
             if (strcmp(fault, "CRC_ERROR") == 0) {
                 char txt[64];
                 snprintf(txt, sizeof(txt), "CRC_ERROR");
-                C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_WARNING, txt, "CRC_ERROR", "CRC");
+                c_put(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_WARNING, txt, "CRC_ERROR", "CRC");
             } else {
-                C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_WARNING, fault, "Fault", "F");
+                c_put(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_WARNING, fault, "Fault", "F");
             }
             s->serialState = SER_SYNC_ST;
         }
 
         /* Display CAL annotation */
         if (storeCal != 0) {
-            C_ANN_PUT(di, last_samplenum, samplenum, s->out_ann, ANN_CAL,
+            c_put(di, last_samplenum, di_samplenum(di), s->out_ann, ANN_CAL,
                 "Calibration Pulse", "Calibration", "CAL", "C");
         }
 
@@ -405,7 +396,7 @@ static void sent_decode(struct srd_decoder_inst *di)
         if (s->pausePulse == 0)
             s->pauseTmp = 0;
 
-        last_samplenum = samplenum;
+        last_samplenum = di_samplenum(di);
     }
 }
 
@@ -446,6 +437,7 @@ struct srd_c_decoder sent_c_decoder = {
     .start = sent_start,
     .decode = sent_decode,
     .destroy = sent_destroy,
+    .state_size = 0,
     .metadata = sent_metadata,
 };
 

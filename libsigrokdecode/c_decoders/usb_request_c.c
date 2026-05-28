@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿﻿﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -40,6 +40,7 @@ typedef struct {
     int setup_data_len;
     uint8_t data[USB_REQ_MAX_DATA];
     int data_len;
+    int n_fields;
     uint16_t wLength;
     int handshake;              /* 0=none, 1=ACK, 2=NAK, 3=STALL, 4=NYET, 5=timeout */
     uint64_t ss;
@@ -167,7 +168,7 @@ static void usb_req_write_pcap_header(struct srd_decoder_inst *di, usb_req_state
     hdr[12] = 0x00; hdr[13] = 0x00; hdr[14] = 0x00; hdr[15] = 0x00; /* Accuracy */
     hdr[16] = 0xff; hdr[17] = 0xff; hdr[18] = 0xff; hdr[19] = 0xff; /* Max len */
     hdr[20] = 0x00; hdr[21] = 0x00; hdr[22] = 0x00; hdr[23] = 0xdc; /* LINKTYPE_USB_LINUX_MMAPPED=220 */
-    c_decoder_put_binary(di, 0, 0, s->out_binary, BINARY_PCAP, 24, hdr);
+    c_put_bin(di, 0, 0, s->out_binary, BINARY_PCAP, 24, hdr);
     s->wrote_pcap_header = 1;
 }
 
@@ -191,19 +192,19 @@ static void usb_req_handle_request(struct srd_decoder_inst *di, usb_req_state *s
         if (r->type == REQ_SETUP_IN) {
             char buf[600];
             snprintf(buf, sizeof(buf), "SETUP in: %s", summary);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SETUP_READ, buf);
+            c_put(di, ss, es, s->out_ann, ANN_SETUP_READ, buf);
         } else if (r->type == REQ_SETUP_OUT) {
             char buf[600];
             snprintf(buf, sizeof(buf), "SETUP out: %s", summary);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SETUP_WRITE, buf);
+            c_put(di, ss, es, s->out_ann, ANN_SETUP_WRITE, buf);
         } else if (r->type == REQ_BULK_IN) {
             char buf[600];
             snprintf(buf, sizeof(buf), "BULK in: %s", summary);
-            C_ANN_PUT(di, ss_data, es, s->out_ann, ANN_BULK_READ, buf);
+            c_put(di, ss_data, es, s->out_ann, ANN_BULK_READ, buf);
         } else if (r->type == REQ_BULK_OUT) {
             char buf[600];
             snprintf(buf, sizeof(buf), "BULK out: %s", summary);
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_BULK_WRITE, buf);
+            c_put(di, ss, es, s->out_ann, ANN_BULK_WRITE, buf);
         }
 
         usb_req_remove(s, r->addr, r->ep);
@@ -220,8 +221,9 @@ static void usb_req_handle_transfer(struct srd_decoder_inst *di, usb_req_state *
 
     /* Handle protocol STALLs */
     if (s->transaction_type == 2) { /* SETUP */
+        /* Only close existing requests that are SETUP IN or SETUP OUT */
         usb_req_request *existing = usb_req_find_or_create(s, addr, ep);
-        if (existing && existing->type != REQ_NONE) {
+        if (existing && (existing->type == REQ_SETUP_IN || existing->type == REQ_SETUP_OUT)) {
             existing->es = s->ss_transaction;
             usb_req_handle_request(di, s, existing, 0, 1);
         }
@@ -300,26 +302,27 @@ static void usb_req_handle_transfer(struct srd_decoder_inst *di, usb_req_state *
     }
 }
 
-static void usb_req_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void usb_req_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     usb_req_state *s = (usb_req_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "PACKET") != 0) return;
-    if (!data || data_len < 2) return;
+    if (!fields || n_fields < 2) return;
 
-    /* Parse pcategory and pname from python output of usb_packet_c */
-    /* Format: pcategory(1 byte) + pname(null-terminated string) + packet data */
-    int pcategory = data[0];
-    const char *pname = (const char *)(data + 1);
-    int pname_len = (int)strnlen(pname, data_len - 1);
-    const unsigned char *pkt_data = (const unsigned char *)(pname + pname_len + 1);
-    int pkt_data_len = (int)(data_len - 1 - pname_len - 1);
-    if (pkt_data_len < 0) pkt_data_len = 0;
+    /* Parse packet category and name from usb_packet_c output.
+       Format from usb_packet_c:
+       TOKEN:    C_STR("TOKEN"), C_STR(pid_name), C_U8(addr), C_U8(ep)
+       DATA:     C_STR("DATA"), C_STR(pid_name), C_BYTES(data, len)
+       HANDSHAKE: C_STR("HANDSHAKE"), C_STR(pid_name)
+       SPECIAL:  C_STR("SPECIAL"), C_STR(pid_name)
+    */
+    if (fields[0].type != C_FIELD_STR) return;
+    const char *pcategory = fields[0].str;
+    if (fields[1].type != C_FIELD_STR) return;
+    const char *pname = fields[1].str;
 
-    if (pcategory == 0) { /* TOKEN */
+    if (strcmp(pcategory, "TOKEN") == 0) {
         if (strcmp(pname, "SOF") == 0) return;
 
         if (s->transaction_state == TX_TOKEN_RECEIVED) {
@@ -337,16 +340,19 @@ static void usb_req_recv_proto(struct srd_decoder_inst *di,
 
         if (s->transaction_state != TX_IDLE) {
             char buf[128];
-            snprintf(buf, sizeof(buf), "ERR: received %s token in state %d", pname, s->transaction_state);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ERROR, buf);
+            snprintf(buf, sizeof(buf), "ERR: received %s token in state %s", pname,
+                s->transaction_state == TX_IDLE ? "IDLE" :
+                s->transaction_state == TX_TOKEN_RECEIVED ? "TOKEN RECEIVED" :
+                s->transaction_state == TX_DATA_RECEIVED ? "DATA RECEIVED" : "UNKNOWN");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_ERROR, buf);
             return;
         }
 
-        /* Parse addr and ep from pkt_data */
+        /* Parse addr and ep from fields */
         int addr = 0, ep = 0;
-        if (pkt_data_len >= 2) {
-            addr = pkt_data[0];
-            ep = pkt_data[1];
+        if (n_fields >= 4 && fields[2].type == C_FIELD_U8 && fields[3].type == C_FIELD_U8) {
+            addr = fields[2].u8;
+            ep = fields[3].u8;
         }
 
         s->transaction_data_len = 0;
@@ -365,31 +371,36 @@ static void usb_req_recv_proto(struct srd_decoder_inst *di,
             s->transaction_type = 2; /* SETUP */
         }
 
-    } else if (pcategory == 1) { /* DATA */
+    } else if (strcmp(pcategory, "DATA") == 0) {
         if (s->transaction_state != TX_TOKEN_RECEIVED) {
             char buf[128];
-            snprintf(buf, sizeof(buf), "ERR: received %s token in state %d", pname, s->transaction_state);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ERROR, buf);
+            snprintf(buf, sizeof(buf), "ERR: received %s token in state %s", pname,
+                s->transaction_state == TX_IDLE ? "IDLE" :
+                s->transaction_state == TX_TOKEN_RECEIVED ? "TOKEN RECEIVED" :
+                s->transaction_state == TX_DATA_RECEIVED ? "DATA RECEIVED" : "UNKNOWN");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_ERROR, buf);
             return;
         }
 
-        /* Parse data bytes from pkt_data: 2 bytes length + data */
-        if (pkt_data_len >= 2) {
-            int data_len_pkt = (pkt_data[0] << 8) | pkt_data[1];
+        /* Parse data bytes from C_BYTES field */
+        if (n_fields >= 3 && fields[2].type == C_FIELD_BYTES) {
+            int data_len_pkt = fields[2].bytes.len;
             int copy_len = data_len_pkt < USB_REQ_MAX_DATA ? data_len_pkt : USB_REQ_MAX_DATA;
-            if (copy_len > pkt_data_len - 2) copy_len = pkt_data_len - 2;
             if (copy_len > 0) {
-                memcpy(s->transaction_data, pkt_data + 2, copy_len);
+                memcpy(s->transaction_data, fields[2].bytes.data, copy_len);
             }
             s->transaction_data_len = copy_len;
         }
         s->transaction_state = TX_DATA_RECEIVED;
 
-    } else if (pcategory == 2) { /* HANDSHAKE */
+    } else if (strcmp(pcategory, "HANDSHAKE") == 0) {
         if (s->transaction_state != TX_TOKEN_RECEIVED && s->transaction_state != TX_DATA_RECEIVED) {
             char buf[128];
-            snprintf(buf, sizeof(buf), "ERR: received %s token in state %d", pname, s->transaction_state);
-            C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ERROR, buf);
+            snprintf(buf, sizeof(buf), "ERR: received %s token in state %s", pname,
+                s->transaction_state == TX_IDLE ? "IDLE" :
+                s->transaction_state == TX_TOKEN_RECEIVED ? "TOKEN RECEIVED" :
+                s->transaction_state == TX_DATA_RECEIVED ? "DATA RECEIVED" : "UNKNOWN");
+            c_put(di, start_sample, end_sample, s->out_ann, ANN_ERROR, buf);
             return;
         }
 
@@ -403,12 +414,9 @@ static void usb_req_recv_proto(struct srd_decoder_inst *di,
         s->es_transaction = end_sample;
         usb_req_handle_transfer(di, s);
 
-    } else if (strcmp(pname, "PRE") == 0) {
-        return;
-    } else {
-        char buf[128];
-        snprintf(buf, sizeof(buf), "ERR: received unhandled %s token in state %d", pname, s->transaction_state);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_ERROR, buf);
+    } else if (strcmp(pcategory, "SPECIAL") == 0) {
+        if (strcmp(pname, "PRE") == 0) return;
+        /* Ignore other special packets */
     }
 }
 
@@ -425,11 +433,11 @@ static void usb_req_reset(struct srd_decoder_inst *di)
 static void usb_req_start(struct srd_decoder_inst *di)
 {
     usb_req_state *s = (usb_req_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "usb_request");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "pcap");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PYTHON, "usb_request");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "usb_request");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "pcap");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PYTHON, "usb_request");
 
-    const char *irs = c_decoder_get_option_string(di, "in_request_start", "submit");
+    const char *irs = c_opt_str(di, "in_request_start", "submit");
     s->in_request_start = (irs && strcmp(irs, "first-ack") == 0) ? 1 : 0;
 }
 
@@ -475,7 +483,8 @@ struct srd_c_decoder usb_request_c_decoder = {
     .start = usb_req_start,
     .decode = usb_req_decode,
     .destroy = usb_req_destroy,
-    .recv_proto = usb_req_recv_proto,
+    .decode_upper = usb_req_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

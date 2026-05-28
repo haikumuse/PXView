@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -146,17 +146,17 @@ static void swi_put_word_ann(struct srd_decoder_inst *di, swi_state *s,
     char buf[64];
     const char *type_str = (w->type_int == WORD_TYPE_UNICAST) ? "Unicast" : "Broadcast";
     snprintf(buf, sizeof(buf), "%s: %d (0x%03X)", type_str, w->data_int, w->data_int);
-    C_ANN_PUT(di, w->startN, w->endN, s->out_ann, ANN_BYTES, buf, type_str, w->bit_string);
+    c_put(di, w->startN, w->endN, s->out_ann, ANN_BYTES, buf, type_str, w->bit_string);
 
     snprintf(buf, sizeof(buf), "0x%03X", w->data_int);
-    C_ANN_PUT(di, w->startN, w->endN, s->out_ann, ANN_PBYTES, buf);
+    c_put(di, w->startN, w->endN, s->out_ann, ANN_PBYTES, buf);
 }
 
 static void swi_parse_enumerate(struct srd_decoder_inst *di, swi_state *s,
                                  int start_idx)
 {
     /* Enumerate/Select parsing */
-    C_ANN_PUT(di, s->pastWords[start_idx].startN, s->pastWords[start_idx + 4].endN,
+    c_put(di, s->pastWords[start_idx].startN, s->pastWords[start_idx + 4].endN,
               s->out_ann, ANN_MEAN, "Enumerate/Select", "Enum/Select", "Enum");
 
     /* Parse UID from following words */
@@ -174,7 +174,7 @@ static void swi_parse_broadcast(struct srd_decoder_inst *di, swi_state *s,
 
     struct swi_word *w3 = &s->pastWords[start_idx + 3];
     if (w3->data_int == 0) {
-        C_ANN_PUT(di, w3->startN, w3->endN, s->out_ann, ANN_MEAN,
+        c_put(di, w3->startN, w3->endN, s->out_ann, ANN_MEAN,
                   "Initialize", "Init", "I");
         return;
     }
@@ -186,17 +186,17 @@ static void swi_parse_broadcast(struct srd_decoder_inst *di, swi_state *s,
     int cmd = (w4_bits >> 3) & 0x3F;
     if (cmd == 0x03) {
         /* Enumerate/Select */
-        C_ANN_PUT(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
+        c_put(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
                   "Enumerate/Select", "Enum/Select", "Enum");
         swi_parse_enumerate(di, s, start_idx);
     } else if (cmd == 0x02) {
         /* Packet Header */
-        C_ANN_PUT(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
+        c_put(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
                   "Packet Header", "Pkt Header", "PH");
         s->lastHdrIdx = start_idx + 4;
     } else if (cmd == 0x05) {
         /* Packet Class */
-        C_ANN_PUT(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
+        c_put(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
                   "Packet Class", "Pkt Class", "PC");
         s->packetClass = w4_bits & 0x03;
     } else {
@@ -204,7 +204,7 @@ static void swi_parse_broadcast(struct srd_decoder_inst *di, swi_state *s,
         if (sel_bits == 0x01 || sel_bits == 0x02) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Selected device byte: 0x%03X", w4_bits);
-            C_ANN_PUT(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
+            c_put(di, w4->startN, w4->endN, s->out_ann, ANN_MEAN,
                       buf, "Sel Dev", "SD");
         }
     }
@@ -221,11 +221,11 @@ static void swi_parse_packet(struct srd_decoder_inst *di, swi_state *s)
 
     if (s->packetClass == 0) {
         /* Packet class 0: UID, polling */
-        C_ANN_PUT(di, s->pastWords[idx].startN, s->pastWords[idx].endN,
+        c_put(di, s->pastWords[idx].startN, s->pastWords[idx].endN,
                   s->out_ann, ANN_MEAN, "UID/Polling", "UID", "U");
     } else if (s->packetClass == 1) {
         /* Packet class 1: read, request */
-        C_ANN_PUT(di, s->pastWords[idx].startN, s->pastWords[idx].endN,
+        c_put(di, s->pastWords[idx].startN, s->pastWords[idx].endN,
                   s->out_ann, ANN_MEAN, "Read/Request", "Read", "R");
     }
 }
@@ -263,7 +263,7 @@ static void swi_reset(struct srd_decoder_inst *di)
 static void swi_start(struct srd_decoder_inst *di)
 {
     swi_state *s = (swi_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "swi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "swi");
 }
 
 static void swi_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -276,40 +276,34 @@ static void swi_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void swi_decode(struct srd_decoder_inst *di)
 {
     swi_state *s = (swi_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int pin_val = c_decoder_get_pin(di, 0, samplenum);
-        swi_save_log(s, samplenum, pin_val);
+        int pin_val = c_pin(di, 0);
+        swi_save_log(s, di_samplenum(di), pin_val);
 
         if (s->log_count < 2)
             continue;
 
         if (s->strt) {
-            C_ANN_PUT(di, s->pastNs[s->log_count - 3], samplenum, s->out_ann, ANN_BYTES, "[START]");
+            c_put(di, s->pastNs[s->log_count - 3], di_samplenum(di), s->out_ann, ANN_BYTES, "[START]");
             s->strt = 0;
         }
 
         uint64_t prevN = s->pastNs[s->log_count - 2];
-        int bauds = swi_calculate_bauds(samplenum, prevN, s->samplerate, &s->halfRate);
+        int bauds = swi_calculate_bauds(di_samplenum(di), prevN, s->samplerate, &s->halfRate);
 
         /* Check for valid data baud interval (1 or 3) */
         if (bauds != 1 && bauds != 3) {
             if (s->pastVs[s->log_count - 2] != 1) {
                 if (bauds < 3) {
-                    C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_ERR, "Error");
-                    C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BYTES, "[ACK]");
+                    c_put(di, prevN, di_samplenum(di), s->out_ann, ANN_ERR, "Error");
+                    c_put(di, prevN, di_samplenum(di), s->out_ann, ANN_BYTES, "[ACK]");
                 } else {
                     s->strt = 1;
                 }
@@ -330,7 +324,7 @@ static void swi_decode(struct srd_decoder_inst *di)
 
         if (!have_word_gap) {
             if (s->pastVs[s->log_count - 2] != 1) {
-                C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BYTES, "[ACK]");
+                c_put(di, prevN, di_samplenum(di), s->out_ann, ANN_BYTES, "[ACK]");
             }
             continue;
         }
@@ -342,42 +336,39 @@ static void swi_decode(struct srd_decoder_inst *di)
         data_bauds[0] = bauds;
 
         if (bauds == 1)
-            C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BAUD_RATE, "B1");
+            c_put(di, prevN, di_samplenum(di), s->out_ann, ANN_BAUD_RATE, "B1");
         else if (bauds == 3)
-            C_ANN_PUT(di, prevN, samplenum, s->out_ann, ANN_BAUD_RATE, "B3");
+            c_put(di, prevN, di_samplenum(di), s->out_ann, ANN_BAUD_RATE, "B3");
 
         int collected = 1;
         int inverted = 0;
 
         for (int i = 1; i < 13; i++) {
-            srd_cond_builder *cb2 = c_cond_new();
-            c_cond_edge(cb2, 0);
-            ret = c_cond_wait(cb2, di, &samplenum, &matched);
-            c_cond_free(cb2);
+            ret = c_wait(di, CW_E(0), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            pin_val = c_decoder_get_pin(di, 0, samplenum);
-            swi_save_log(s, samplenum, pin_val);
+            pin_val = c_pin(di, 0);
+            swi_save_log(s, di_samplenum(di), pin_val);
 
-            int b = swi_calculate_bauds(samplenum, s->pastNs[s->log_count - 2],
+            int b = swi_calculate_bauds(di_samplenum(di), s->pastNs[s->log_count - 2],
                                          s->samplerate, &s->halfRate);
 
             if (b == 1) {
-                C_ANN_PUT(di, s->pastNs[s->log_count - 2], samplenum,
+                c_put(di, s->pastNs[s->log_count - 2], di_samplenum(di),
                           s->out_ann, ANN_BAUD_RATE, "B1");
             } else if (b == 3) {
-                C_ANN_PUT(di, s->pastNs[s->log_count - 2], samplenum,
+                c_put(di, s->pastNs[s->log_count - 2], di_samplenum(di),
                           s->out_ann, ANN_BAUD_RATE, "B3");
             } else if (b == 2) {
                 /* Round 2 bauds to nearest valid: treat as B3 */
                 b = 3;
-                C_ANN_PUT(di, s->pastNs[s->log_count - 2], samplenum,
+                c_put(di, s->pastNs[s->log_count - 2], di_samplenum(di),
                           s->out_ann, ANN_BAUD_RATE, "B3");
             } else if (b >= 4) {
                 /* Round >=4 bauds to B3 */
                 b = 3;
-                C_ANN_PUT(di, s->pastNs[s->log_count - 2], samplenum,
+                c_put(di, s->pastNs[s->log_count - 2], di_samplenum(di),
                           s->out_ann, ANN_BAUD_RATE, "B3");
             } else {
                 /* b == 0 or negative, abort word collection */
@@ -390,7 +381,7 @@ static void swi_decode(struct srd_decoder_inst *di)
         }
 
         if (collected < 13) {
-            C_ANN_PUT(di, data_ns[0], samplenum, s->out_ann, ANN_ERR,
+            c_put(di, data_ns[0], di_samplenum(di), s->out_ann, ANN_ERR,
                       "Incomplete word", "Err", "!");
             continue;
         }
@@ -431,7 +422,7 @@ static void swi_decode(struct srd_decoder_inst *di)
             int bit = swi_calculate_bit(data_bauds[i], inverted);
             char bit_str[4];
             snprintf(bit_str, sizeof(bit_str), "%d", bit);
-            C_ANN_PUT(di, data_ns[i], data_ns[i + 1],
+            c_put(di, data_ns[i], data_ns[i + 1],
                       s->out_ann, ANN_BITS, bit_str);
         }
 
@@ -451,7 +442,7 @@ static void swi_decode(struct srd_decoder_inst *di)
         } else if (w.type_int == WORD_TYPE_UNICAST) {
             swi_parse_unicast(di, s, word_idx);
         } else {
-            C_ANN_PUT(di, w.startN, w.endN, s->out_ann, ANN_ERR,
+            c_put(di, w.startN, w.endN, s->out_ann, ANN_ERR,
                       "Invalid training bits", "Err", "!");
         }
     }
@@ -494,6 +485,7 @@ struct srd_c_decoder swi_c_decoder = {
     .start = swi_start,
     .decode = swi_decode,
     .destroy = swi_destroy,
+    .state_size = 0,
     .metadata = swi_metadata,
 };
 

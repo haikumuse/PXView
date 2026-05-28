@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -81,7 +81,7 @@ static void vpw_handle_bit(struct srd_decoder_inst *di, vpw_state *s,
     s->byte_val |= (bit << (7 - s->bit_count));  /* MSB-first */
 
     char bit_str[2] = {bit ? '1' : '0', '\0'};
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_RAW, bit_str);
+    c_put(di, ss, es, s->out_ann, ANN_RAW, bit_str);
 
     if (s->bit_count == 0)
         s->datastart = ss;
@@ -91,24 +91,24 @@ static void vpw_handle_bit(struct srd_decoder_inst *di, vpw_state *s,
         s->csb = es;
         char byte_str[8];
         snprintf(byte_str, sizeof(byte_str), "%02X", s->byte_val);
-        C_ANN_PUT(di, s->datastart, es, s->out_ann, ANN_DATA, byte_str);
+        c_put(di, s->datastart, es, s->out_ann, ANN_DATA, byte_str);
 
         /* Packet field annotation */
         if (s->byte_count == 0) {
-            C_ANN_PUT(di, s->datastart, es, s->out_ann, ANN_PACKET,
+            c_put(di, s->datastart, es, s->out_ann, ANN_PACKET,
                       "Priority", "Prio", "P");
         } else if (s->byte_count == 1) {
-            C_ANN_PUT(di, s->datastart, es, s->out_ann, ANN_PACKET,
+            c_put(di, s->datastart, es, s->out_ann, ANN_PACKET,
                       "Destination", "Dest", "D");
         } else if (s->byte_count == 2) {
-            C_ANN_PUT(di, s->datastart, es, s->out_ann, ANN_PACKET,
+            c_put(di, s->datastart, es, s->out_ann, ANN_PACKET,
                       "Source", "Src", "S");
         } else if (s->byte_count == 3) {
-            C_ANN_PUT(di, s->datastart, es, s->out_ann, ANN_PACKET,
+            c_put(di, s->datastart, es, s->out_ann, ANN_PACKET,
                       "Mode", "M");
             s->mode = s->byte_val;
         } else if (s->mode == 1 && s->byte_count == 4) {
-            C_ANN_PUT(di, s->datastart, es, s->out_ann, ANN_PACKET,
+            c_put(di, s->datastart, es, s->out_ann, ANN_PACKET,
                       "Pid", "P");
         }
 
@@ -133,8 +133,8 @@ static void vpw_reset(struct srd_decoder_inst *di)
 static void vpw_start(struct srd_decoder_inst *di)
 {
     vpw_state *s = (vpw_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sae_j1850_vpw");
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sae_j1850_vpw");
+    s->samplerate = c_samplerate(di);
 }
 
 static void vpw_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -147,41 +147,35 @@ static void vpw_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void vpw_decode(struct srd_decoder_inst *di)
 {
     vpw_state *s = (vpw_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched;
     int ret;
 
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate == 0) return;
     }
 
     /* Wait for first edge */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_edge(cb, 0);
-    ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK) return;
+    ret = c_wait(di, CW_E(0), CW_END);
+    if (ret != SRD_OK)
+        return;
 
-    uint64_t es = samplenum;
+    uint64_t es = di_samplenum(di);
 
     while (1) {
         uint64_t ss = es;
-        cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
-        es = samplenum;
+        ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
+        es = di_samplenum(di);
 
         uint64_t samples = es - ss;
         int t = vpw_samples_to_us(s, samples);
-        int pin = c_decoder_get_pin(di, 0, ss);  /* pin level at pulse start */
+        int pin = c_pin(di, 0);  /* pin level at pulse start */
 
         if (s->state == STATE_IDLE) {
             /* Detect SOF and set speed */
             if (pin == s->active && t >= VPW_SOF_L_US && t < VPW_SOF_H_US) {
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_RAW, "1X SOF", "S1", "S");
+                c_put(di, ss, es, s->out_ann, ANN_RAW, "1X SOF", "S1", "S");
                 s->spd = 1;
                 s->byte_val = 0;
                 s->bit_count = 0;
@@ -190,7 +184,7 @@ static void vpw_decode(struct srd_decoder_inst *di)
                 s->state = STATE_DATA;
             } else if (pin == s->active &&
                        t >= VPW_SOF_L_US / 4 && t < VPW_SOF_H_US / 4) {
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_RAW, "4X SOF", "S4", "4");
+                c_put(di, ss, es, s->out_ann, ANN_RAW, "4X SOF", "S4", "4");
                 s->spd = 4;
                 s->byte_val = 0;
                 s->bit_count = 0;
@@ -209,9 +203,9 @@ static void vpw_decode(struct srd_decoder_inst *di)
             if (t >= ifs) {
                 /* EOF/IFS */
                 s->state = STATE_IDLE;
-                C_ANN_PUT(di, ss, es, s->out_ann, ANN_RAW, "EOF/IFS", "E");
+                c_put(di, ss, es, s->out_ann, ANN_RAW, "EOF/IFS", "E");
                 /* Retrospective checksum annotation */
-                C_ANN_PUT(di, s->csa, s->csb, s->out_ann, ANN_PACKET,
+                c_put(di, s->csa, s->csb, s->out_ann, ANN_PACKET,
                           "Checksum", "CS", "C");
                 s->byte_count = 0;
             } else if (t >= shortl && t < shorth) {
@@ -265,6 +259,7 @@ struct srd_c_decoder sae_j1850_vpw_c_decoder = {
     .metadata = vpw_metadata,
     .decode = vpw_decode,
     .destroy = vpw_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

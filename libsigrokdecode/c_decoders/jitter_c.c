@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -110,10 +110,10 @@ static void jitter_reset(struct srd_decoder_inst *di)
 static void jitter_start(struct srd_decoder_inst *di)
 {
     struct jitter_priv *s = (struct jitter_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "jitter");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "jitter");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "jitter");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "jitter");
 
-    const char *clk_pol = c_decoder_get_option_string(di, "clk_polarity", "rising");
+    const char *clk_pol = c_opt_str(di, "clk_polarity", "rising");
     if (strcmp(clk_pol, "falling") == 0)
         s->clk_edge_type = 1;
     else if (strcmp(clk_pol, "both") == 0)
@@ -121,7 +121,7 @@ static void jitter_start(struct srd_decoder_inst *di)
     else
         s->clk_edge_type = 0;
 
-    const char *sig_pol = c_decoder_get_option_string(di, "sig_polarity", "rising");
+    const char *sig_pol = c_opt_str(di, "sig_polarity", "rising");
     if (strcmp(sig_pol, "falling") == 0)
         s->sig_edge_type = 1;
     else if (strcmp(sig_pol, "both") == 0)
@@ -140,77 +140,69 @@ static void jitter_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void jitter_decode(struct srd_decoder_inst *di)
 {
     struct jitter_priv *s = (struct jitter_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     if (!s->samplerate)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (!s->samplerate)
         return;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        c_cond_or(cb);
-        c_cond_edge(cb, 1);
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_OR, CW_E(1), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int clk = c_decoder_get_pin(di, 0, samplenum);
-        int sig = c_decoder_get_pin(di, 1, samplenum);
+        int clk = c_pin(di, 0);
+        int sig = c_pin(di, 1);
 
         /* Inner loop: can advance 2 states per sample */
         while (1) {
             if (s->state == STATE_CLK) {
-                if (s->clk_start == samplenum)
+                if (s->clk_start == di_samplenum(di))
                     break;
                 if (is_edge(s->oldclk, clk, s->clk_edge_type)) {
-                    s->clk_start = samplenum;
+                    s->clk_start = di_samplenum(di);
                     s->state = STATE_SIG;
                 } else {
                     /* Check for missed signal */
-                    if (s->sig_start != 0 && s->sig_start != samplenum
+                    if (s->sig_start != 0 && s->sig_start != di_samplenum(di)
                         && is_edge(s->oldsig, sig, s->sig_edge_type)) {
                         s->sig_missed++;
                         char miss_str[64];
                         snprintf(miss_str, sizeof(miss_str), "Missed signal");
                         char miss_short[16];
                         snprintf(miss_short, sizeof(miss_short), "MS");
-                        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_SIG_MISSED, miss_str, miss_short);
+                        c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_SIG_MISSED, miss_str, miss_short);
                     }
                     break;
                 }
             }
             if (s->state == STATE_SIG) {
-                if (s->sig_start == samplenum)
+                if (s->sig_start == di_samplenum(di))
                     break;
                 if (is_edge(s->oldsig, sig, s->sig_edge_type)) {
-                    s->sig_start = samplenum;
+                    s->sig_start = di_samplenum(di);
                     double delta = (double)(s->sig_start - s->clk_start) / (double)s->samplerate;
 
                     char jitter_str[64];
                     format_jitter(delta, jitter_str, sizeof(jitter_str));
-                    C_ANN_PUT(di, s->clk_start, s->sig_start, s->out_ann, ANN_JITTER, jitter_str);
+                    c_put(di, s->clk_start, s->sig_start, s->out_ann, ANN_JITTER, jitter_str);
 
                     /* Binary output: ASCII float + newline */
                     char bin_str[64];
                     snprintf(bin_str, sizeof(bin_str), "%.9g\n", delta);
-                    c_decoder_put_binary(di, s->clk_start, s->sig_start,
+                    c_put_bin(di, s->clk_start, s->sig_start,
                                          s->out_binary, 0, strlen(bin_str), (const unsigned char *)bin_str);
 
                     s->state = STATE_CLK;
                 } else {
                     /* Check for missed clock */
-                    if (s->clk_start != samplenum
+                    if (s->clk_start != di_samplenum(di)
                         && is_edge(s->oldclk, clk, s->clk_edge_type)) {
                         s->clk_missed++;
                         char miss_str[64];
                         snprintf(miss_str, sizeof(miss_str), "Missed clock");
                         char miss_short[16];
                         snprintf(miss_short, sizeof(miss_short), "MC");
-                        C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_CLK_MISSED, miss_str, miss_short);
+                        c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_CLK_MISSED, miss_str, miss_short);
                     }
                     break;
                 }
@@ -259,6 +251,7 @@ static struct srd_c_decoder jitter_c_decoder = {
     .start = jitter_start,
     .decode = jitter_decode,
     .destroy = jitter_destroy,
+    .state_size = 0,
     .metadata = jitter_metadata,
 };
 

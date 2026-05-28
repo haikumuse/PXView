@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Stephan Thiele <stephan.thiele@mailbox.org>
@@ -486,13 +486,13 @@ static void flexray_reset(struct srd_decoder_inst *di)
 static void flexray_start(struct srd_decoder_inst *di)
 {
     flexray_state *s = (flexray_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "flexray");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "flexray");
 
-    const char *ch_type = c_decoder_get_option_string(di, "channel_type", "A");
+    const char *ch_type = c_opt_str(di, "channel_type", "A");
     s->channel_type = (strcmp(ch_type, "B") == 0) ? 1 : 0;
 
-    s->bitrate = (int)c_decoder_get_option_int(di, "bitrate", 10000000);
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->bitrate = (int)c_opt_int(di, "bitrate", 10000000);
+    s->samplerate = c_samplerate(di);
 
     if (s->samplerate > 0 && s->bitrate > 0) {
         s->bit_width = (double)s->samplerate / (double)s->bitrate;
@@ -515,12 +515,9 @@ static void flexray_metadata(struct srd_decoder_inst *di, int key, uint64_t valu
 static void flexray_decode(struct srd_decoder_inst *di)
 {
     flexray_state *s = (flexray_state *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
     /* Fallback samplerate */
     if (s->samplerate == 0)
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     if (s->samplerate == 0 || s->bitrate == 0)
         return;
 
@@ -531,47 +528,36 @@ static void flexray_decode(struct srd_decoder_inst *di)
 
     while (1) {
         if (s->state == STATE_IDLE) {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_low(cb, CH_CHANNEL);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_L(CH_CHANNEL), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->tss_start = samplenum;
+            s->tss_start = di_samplenum(di);
 
-            cb = c_cond_new();
-            c_cond_high(cb, CH_CHANNEL);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            ret = c_wait(di, CW_H(CH_CHANNEL), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            s->tss_end = samplenum;
-            dom_edge_seen(s, samplenum);
+            s->tss_end = di_samplenum(di);
+            dom_edge_seen(s, di_samplenum(di));
             s->state = STATE_GET_BITS;
 
         } else if (s->state == STATE_GET_BITS) {
             uint64_t pos = get_sample_point(s, s->curbit);
             uint64_t skip_count = 0;
-            if (pos > samplenum)
-                skip_count = pos - samplenum;
+            if (pos > di_samplenum(di))
+                skip_count = pos - di_samplenum(di);
 
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_skip(cb, skip_count);
-            c_cond_or(cb);
-            c_cond_fall(cb, CH_CHANNEL);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_SKIP(skip_count), CW_OR, CW_F(CH_CHANNEL), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            if (matched & (1 << 1)) {
-                dom_edge_seen(s, samplenum);
+            if (di_matched(di) & (1 << 1)) {
+                dom_edge_seen(s, di_samplenum(di));
             }
 
-            if (matched & (1 << 0)) {
-                uint8_t fr_rx = c_decoder_get_pin(di, CH_CHANNEL, pos);
+            if (di_matched(di) & (1 << 0)) {
+                uint8_t fr_rx = c_pin(di, CH_CHANNEL);
                 handle_bit(s, di, fr_rx, pos);
                 if (s->state != STATE_GET_BITS)
                     continue;
@@ -610,6 +596,7 @@ static struct srd_c_decoder flexray_c_decoder = {
     .decode = flexray_decode,
     .metadata = flexray_metadata,
     .destroy = flexray_destroy,
+    .state_size = 0,
     .inputs = flexray_inputs,
     .num_inputs = 1,
     .outputs = flexray_outputs,

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2023 perigoso
@@ -99,40 +99,68 @@ static void put_annotation_bits(struct srd_decoder_inst *di, struct rvswd_priv *
     for (int i = start_idx; i < start_idx + count; i++)
         data = (data << 1) | s->bits[i].val;
 
-    char text[64];
+    char text1[64], text2[64], text3[64];
     switch (ann_id) {
     case ANN_ADDRESS_HOST:
+        snprintf(text1, sizeof(text1), "ADDR HOST 0x%02llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "AH 0x%02llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%02llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
+        break;
     case ANN_ADDRESS_TARGET:
-        snprintf(text, sizeof(text), "0x%02llx", (unsigned long long)data);
+        snprintf(text1, sizeof(text1), "ADDR TARGET 0x%02llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "AT 0x%02llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%02llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
         break;
     case ANN_DATA_HOST:
+        snprintf(text1, sizeof(text1), "DATA HOST 0x%08llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "DH 0x%08llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%08llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
+        break;
     case ANN_DATA_TARGET:
-        snprintf(text, sizeof(text), "0x%08llx", (unsigned long long)data);
+        snprintf(text1, sizeof(text1), "DATA TARGET 0x%08llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "DT 0x%08llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%08llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
         break;
     case ANN_PARITY_HOST:
+        snprintf(text1, sizeof(text1), "PARITY HOST 0x%01llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "PH 0x%01llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%01llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
+        break;
     case ANN_PARITY_TARGET:
-        snprintf(text, sizeof(text), "0x%01llx", (unsigned long long)data);
+        snprintf(text1, sizeof(text1), "PARITY TARGET 0x%01llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "PT 0x%01llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%01llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
         break;
     case ANN_OPERATION:
-        snprintf(text, sizeof(text), "0x%01llx", (unsigned long long)data);
+        snprintf(text1, sizeof(text1), "OPERATION 0x%01llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "OP 0x%01llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%01llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
         break;
     case ANN_STATUS:
-        snprintf(text, sizeof(text), "0x%01llx", (unsigned long long)data);
+        snprintf(text1, sizeof(text1), "STATUS 0x%01llx", (unsigned long long)data);
+        snprintf(text2, sizeof(text2), "ST 0x%01llx", (unsigned long long)data);
+        snprintf(text3, sizeof(text3), "%01llx", (unsigned long long)data);
+        c_put_v(di, ss, es, s->out_ann, ann_id, data, text1, text2, text3);
         break;
     default:
-        snprintf(text, sizeof(text), "0x%llx", (unsigned long long)data);
         break;
     }
-
-    C_ANN_PUT_VAL(di, ss, es, s->out_ann, ann_id, data, text);
 }
 
 static void process_short_packet(struct srd_decoder_inst *di, struct rvswd_priv *s)
 {
     for (int i = 0; i < s->bits_len && i < 52; i++) {
-        char text[32];
-        snprintf(text, sizeof(text), "BIT %d: %d", i, s->bits[i].val);
-        C_ANN_PUT(di, s->bits[i].start, s->bits[i].end, s->out_ann, ANN_BIT, text);
+        char text1[32], text2[8];
+        snprintf(text1, sizeof(text1), "BIT %d: %d", i, s->bits[i].val);
+        snprintf(text2, sizeof(text2), "%d", s->bits[i].val);
+        c_put(di, s->bits[i].start, s->bits[i].end, s->out_ann, ANN_BIT, text1, text2);
     }
 
     put_annotation_bits(di, s, 0, 7, ANN_ADDRESS_HOST);
@@ -145,9 +173,10 @@ static void process_short_packet(struct srd_decoder_inst *di, struct rvswd_priv 
 static void process_long_packet(struct srd_decoder_inst *di, struct rvswd_priv *s)
 {
     for (int i = 0; i < s->bits_len && i < 84; i++) {
-        char text[32];
-        snprintf(text, sizeof(text), "BIT %d: %d", i, s->bits[i].val);
-        C_ANN_PUT(di, s->bits[i].start, s->bits[i].end, s->out_ann, ANN_BIT, text);
+        char text1[32], text2[8];
+        snprintf(text1, sizeof(text1), "BIT %d: %d", i, s->bits[i].val);
+        snprintf(text2, sizeof(text2), "%d", s->bits[i].val);
+        c_put(di, s->bits[i].start, s->bits[i].end, s->out_ann, ANN_BIT, text1, text2);
     }
 
     put_annotation_bits(di, s, 0, 7, ANN_ADDRESS_HOST);
@@ -184,75 +213,52 @@ static void rvswd_reset(struct srd_decoder_inst *di)
 static void rvswd_start(struct srd_decoder_inst *di)
 {
     struct rvswd_priv *s = (struct rvswd_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "rvswd");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "rvswd");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "rvswd");
+    s->out_python = c_reg_out(di, SRD_OUTPUT_PROTO, "rvswd");
 }
 
 static void rvswd_decode(struct srd_decoder_inst *di)
 {
     struct rvswd_priv *s = (struct rvswd_priv *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     while (1) {
         if (!s->in_packet) {
-            srd_cond_builder *cb = c_cond_new();
-            c_cond_high(cb, CH_CLK);
-            c_cond_fall(cb, CH_DIO);
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_H(CH_CLK), CW_F(CH_DIO), CW_END);
             if (ret != SRD_OK)
                 return;
 
             s->bits_len = 0;
             s->curr_bit_val = -1;
             s->curr_bit_start = (uint64_t)-1;
-            C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_START, "START");
+            c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_START, "START", "S");
             s->in_packet = 1;
         } else {
-            srd_cond_builder *cb = c_cond_new();
-
-            /* OR branch 0: CLK rising edge */
-            c_cond_rise(cb, CH_CLK);
-            c_cond_or(cb);
-
-            /* OR branch 1: CLK falling edge */
-            c_cond_fall(cb, CH_CLK);
-            c_cond_or(cb);
-
-            /* OR branch 2: STOP condition (CLK=high, DIO=rising) */
-            c_cond_high(cb, CH_CLK);
-            c_cond_rise(cb, CH_DIO);
-
-            int ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
+            int ret = c_wait(di, CW_R(CH_CLK), CW_OR, CW_F(CH_CLK), CW_OR, CW_H(CH_CLK), CW_R(CH_DIO), CW_END);
             if (ret != SRD_OK)
                 return;
 
-            int clk = c_decoder_get_pin(di, CH_CLK, samplenum);
-            int dio = c_decoder_get_pin(di, CH_DIO, samplenum);
+            int dio = c_pin(di, CH_DIO);
 
-            if (matched & (1ULL << 2)) {
-                /* STOP condition */
+            if (di_matched(di) == (1ULL << 2)) {
+                /* STOP condition - ONLY condition 2 di_matched(di) */
                 process_packet(di, s);
-                C_ANN_PUT(di, samplenum, samplenum, s->out_ann, ANN_STOP, "STOP");
+                c_put(di, di_samplenum(di), di_samplenum(di), s->out_ann, ANN_STOP, "STOP", "P");
                 s->in_packet = 0;
-            } else if (matched & (1ULL << 0)) {
+            } else if (di_matched(di) & (1ULL << 0)) {
                 /* CLK rising edge: sample DIO */
                 if (s->curr_bit_start == (uint64_t)-1)
-                    s->curr_bit_start = samplenum;
+                    s->curr_bit_start = di_samplenum(di);
                 s->curr_bit_val = dio;
-            } else if (matched & (1ULL << 1)) {
+            } else if (di_matched(di) & (1ULL << 1)) {
                 /* CLK falling edge: terminate current bit */
                 if (s->curr_bit_val != -1 && s->curr_bit_start != (uint64_t)-1 &&
                     s->bits_len < RVSWD_MAX_BITS) {
                     s->bits[s->bits_len].val = s->curr_bit_val;
                     s->bits[s->bits_len].start = s->curr_bit_start;
-                    s->bits[s->bits_len].end = samplenum;
+                    s->bits[s->bits_len].end = di_samplenum(di);
                     s->bits_len++;
                 }
                 s->curr_bit_val = -1;
-                s->curr_bit_start = samplenum;
+                s->curr_bit_start = di_samplenum(di);
             }
         }
     }
@@ -295,6 +301,7 @@ struct srd_c_decoder rvswd_c_decoder = {
     .start = rvswd_start,
     .decode = rvswd_decode,
     .destroy = rvswd_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

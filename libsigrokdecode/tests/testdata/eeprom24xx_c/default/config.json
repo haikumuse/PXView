@@ -1,13 +1,16 @@
 {
   "decoder": "eeprom24xx_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "i2c"
-  ],
+  "num_channels": 2,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "chip": "generic",
-    "addr_counter": 0
-  }
+  "stack": [
+    {
+      "id": "i2c_c",
+      "channels": {
+        "scl": 0,
+        "sda": 1
+      }
+    }
+  ]
 }

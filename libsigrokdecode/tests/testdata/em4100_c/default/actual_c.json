@@ -1,11 +1,11 @@
 {
 	"decoder": "em4100_c",
 	"samplerate": 1000000,
-	"num_annotations": 62,
+	"num_annotations": 48,
 	"annotations": [
 		{
 			"start_sample": 0,
-			"end_sample": 32,
+			"end_sample": 1016,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
@@ -13,583 +13,426 @@
 			]
 		}, 
 		{
-			"start_sample": 32,
-			"end_sample": 96,
+			"start_sample": 1016,
+			"end_sample": 2064,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 96,
-			"end_sample": 160,
+			"start_sample": 2064,
+			"end_sample": 2128,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 160,
-			"end_sample": 224,
+			"start_sample": 2128,
+			"end_sample": 2192,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 224,
-			"end_sample": 288,
+			"start_sample": 2192,
+			"end_sample": 2256,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 288,
-			"end_sample": 352,
+			"start_sample": 2256,
+			"end_sample": 2320,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 352,
-			"end_sample": 416,
+			"start_sample": 2320,
+			"end_sample": 2384,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 416,
-			"end_sample": 480,
+			"start_sample": 2384,
+			"end_sample": 2448,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 480,
-			"end_sample": 544,
+			"start_sample": 2448,
+			"end_sample": 2512,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 0,
-			"end_sample": 544,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"Header", 
-				"Head", 
-				"He", 
-				"H"
-			]
-		}, 
-		{
-			"start_sample": 544,
-			"end_sample": 640,
+			"start_sample": 2512,
+			"end_sample": 2608,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 640,
-			"end_sample": 704,
+			"start_sample": 2608,
+			"end_sample": 2672,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 704,
-			"end_sample": 800,
+			"start_sample": 2672,
+			"end_sample": 2736,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 800,
-			"end_sample": 864,
+			"start_sample": 2736,
+			"end_sample": 2832,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 864,
-			"end_sample": 960,
+			"start_sample": 2832,
+			"end_sample": 2928,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 544,
-			"end_sample": 864,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"Version/customer: F", 
-				"F"
-			]
-		}, 
-		{
-			"start_sample": 864,
-			"end_sample": 960,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"Row parity: ERROR", 
-				"RP: ERROR", 
-				"RP", 
-				"R"
-			]
-		}, 
-		{
-			"start_sample": 960,
-			"end_sample": 1056,
+			"start_sample": 2928,
+			"end_sample": 2992,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1056,
-			"end_sample": 1184,
+			"start_sample": 2992,
+			"end_sample": 3120,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1184,
-			"end_sample": 1280,
+			"start_sample": 3120,
+			"end_sample": 3248,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1280,
-			"end_sample": 1376,
+			"start_sample": 3248,
+			"end_sample": 3312,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1376,
-			"end_sample": 1440,
+			"start_sample": 3312,
+			"end_sample": 3408,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 960,
-			"end_sample": 1376,
-			"ann_class": 2,
-			"ann_type": 9,
-			"texts": [
-				"Version/customer: F", 
-				"F"
-			]
-		}, 
-		{
-			"start_sample": 1376,
-			"end_sample": 1440,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"Row parity: ERROR", 
-				"RP: ERROR", 
-				"RP", 
-				"R"
-			]
-		}, 
-		{
-			"start_sample": 1440,
-			"end_sample": 1536,
+			"start_sample": 3408,
+			"end_sample": 3504,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1536,
-			"end_sample": 1632,
+			"start_sample": 3504,
+			"end_sample": 3568,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1632,
-			"end_sample": 1728,
+			"start_sample": 3568,
+			"end_sample": 3696,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1728,
-			"end_sample": 1824,
+			"start_sample": 3696,
+			"end_sample": 3760,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1824,
-			"end_sample": 1952,
+			"start_sample": 3760,
+			"end_sample": 3888,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1440,
-			"end_sample": 1824,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"Data: F", 
-				"F"
-			]
-		}, 
-		{
-			"start_sample": 1824,
-			"end_sample": 1952,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"Row parity: ERROR", 
-				"RP: ERROR", 
-				"RP", 
-				"R"
-			]
-		}, 
-		{
-			"start_sample": 1952,
-			"end_sample": 2080,
+			"start_sample": 3888,
+			"end_sample": 4016,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2080,
-			"end_sample": 2176,
+			"start_sample": 4016,
+			"end_sample": 4144,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2176,
-			"end_sample": 2272,
+			"start_sample": 4144,
+			"end_sample": 4208,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2272,
-			"end_sample": 2336,
+			"start_sample": 4208,
+			"end_sample": 4304,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2336,
-			"end_sample": 2432,
+			"start_sample": 4304,
+			"end_sample": 4400,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 1952,
-			"end_sample": 2336,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"Data: F", 
-				"F"
-			]
-		}, 
-		{
-			"start_sample": 2336,
-			"end_sample": 2432,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"Row parity: ERROR", 
-				"RP: ERROR", 
-				"RP", 
-				"R"
-			]
-		}, 
-		{
-			"start_sample": 2432,
-			"end_sample": 2496,
+			"start_sample": 4400,
+			"end_sample": 4464,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2496,
-			"end_sample": 2592,
+			"start_sample": 4464,
+			"end_sample": 4528,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2592,
-			"end_sample": 2656,
+			"start_sample": 4528,
+			"end_sample": 4624,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2656,
-			"end_sample": 2720,
+			"start_sample": 4624,
+			"end_sample": 4688,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2720,
-			"end_sample": 2784,
+			"start_sample": 4688,
+			"end_sample": 4752,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2432,
-			"end_sample": 2720,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"Data: F", 
-				"F"
-			]
-		}, 
-		{
-			"start_sample": 2720,
-			"end_sample": 2784,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"Row parity: ERROR", 
-				"RP: ERROR", 
-				"RP", 
-				"R"
-			]
-		}, 
-		{
-			"start_sample": 2784,
-			"end_sample": 2848,
+			"start_sample": 4752,
+			"end_sample": 4816,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2848,
-			"end_sample": 2944,
+			"start_sample": 4816,
+			"end_sample": 4912,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2944,
-			"end_sample": 3008,
+			"start_sample": 4912,
+			"end_sample": 4976,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3008,
-			"end_sample": 3104,
+			"start_sample": 4976,
+			"end_sample": 5040,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3104,
-			"end_sample": 3168,
+			"start_sample": 5040,
+			"end_sample": 5136,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 2784,
-			"end_sample": 3104,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"Data: F", 
-				"F"
-			]
-		}, 
-		{
-			"start_sample": 3104,
-			"end_sample": 3168,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"Row parity: ERROR", 
-				"RP: ERROR", 
-				"RP", 
-				"R"
-			]
-		}, 
-		{
-			"start_sample": 3168,
-			"end_sample": 3264,
+			"start_sample": 5136,
+			"end_sample": 5232,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3264,
-			"end_sample": 3360,
+			"start_sample": 5232,
+			"end_sample": 5296,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3360,
-			"end_sample": 3488,
+			"start_sample": 5296,
+			"end_sample": 5424,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3488,
-			"end_sample": 3616,
+			"start_sample": 5424,
+			"end_sample": 5552,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3616,
-			"end_sample": 3712,
+			"start_sample": 5552,
+			"end_sample": 5680,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3168,
-			"end_sample": 3616,
-			"ann_class": 3,
-			"ann_type": 10,
-			"texts": [
-				"Data: F", 
-				"F"
-			]
-		}, 
-		{
-			"start_sample": 3616,
-			"end_sample": 3712,
-			"ann_class": 5,
-			"ann_type": 12,
-			"texts": [
-				"Row parity: ERROR", 
-				"RP: ERROR", 
-				"RP", 
-				"R"
-			]
-		}, 
-		{
-			"start_sample": 3712,
-			"end_sample": 3808,
+			"start_sample": 5680,
+			"end_sample": 5744,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3808,
-			"end_sample": 3936,
+			"start_sample": 5744,
+			"end_sample": 5872,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
 			]
 		}, 
 		{
-			"start_sample": 3936,
-			"end_sample": 4000,
+			"start_sample": 5872,
+			"end_sample": 5968,
 			"ann_class": 0,
 			"ann_type": 7,
 			"texts": [
-				"1"
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5968,
+			"end_sample": 6064,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"0"
 			]
 		}
 	]

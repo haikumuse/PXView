@@ -391,25 +391,21 @@ static int read_pulse(struct srd_decoder_inst* di, sirc_state* s,
     int high, double time_us, uint64_t pulse_ss,
     uint64_t* pulse_es)
 {
-    uint64_t samplenum;
-    uint64_t matched;
     uint64_t max_samples = (uint64_t)(time_us * 1.30 * s->snum_per_us);
 
-    srd_cond_builder* cb = c_cond_new();
-    if (high)
-        c_cond_fall(cb, IR_CH);
-    else
-        c_cond_rise(cb, IR_CH);
-    c_cond_or(cb);
-    c_cond_skip(cb, max_samples);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK)
-        return -1;
+    if (high) {
+        int ret = c_wait(di, CW_F(IR_CH), CW_OR, CW_SKIP(max_samples), CW_END);
+        if (ret != SRD_OK)
+            return -1;
+    } else {
+        int ret = c_wait(di, CW_R(IR_CH), CW_OR, CW_SKIP(max_samples), CW_END);
+        if (ret != SRD_OK)
+            return -1;
+    }
 
-    *pulse_es = samplenum;
+    *pulse_es = di_samplenum(di);
 
-    if (matched & (1ULL << 1))
+    if (di_matched(di) & (1ULL << 1))
         return -2;
 
     if (!tolerance_check(s, pulse_ss, *pulse_es, time_us))
@@ -422,25 +418,21 @@ static int read_bit(struct srd_decoder_inst* di, sirc_state* s,
     uint64_t high_ss,
     int* bit_val, uint64_t* bit_ss, uint64_t* bit_es, int* good)
 {
-    uint64_t samplenum;
-    uint64_t matched;
     uint64_t max_high_samples = (uint64_t)(2000.0 * s->snum_per_us);
 
-    srd_cond_builder* cb = c_cond_new();
-    if (s->active)
-        c_cond_fall(cb, IR_CH);
-    else
-        c_cond_rise(cb, IR_CH);
-    c_cond_or(cb);
-    c_cond_skip(cb, max_high_samples);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK)
-        return -1;
+    if (s->active) {
+        int ret = c_wait(di, CW_F(IR_CH), CW_END);
+        if (ret != SRD_OK)
+            return -1;
+    } else {
+        int ret = c_wait(di, CW_R(IR_CH), CW_OR, CW_SKIP(max_high_samples), CW_END);
+        if (ret != SRD_OK)
+            return -1;
+    }
 
-    uint64_t high_es = samplenum;
+    uint64_t high_es = di_samplenum(di);
 
-    if (matched & (1ULL << 1))
+    if (di_matched(di) & (1ULL << 1))
         return -2;
 
     if (tolerance_check(s, high_ss, high_es, ONE_USEC)) {
@@ -468,7 +460,7 @@ static int read_bit(struct srd_decoder_inst* di, sirc_state* s,
     {
         char bit_str[4];
         snprintf(bit_str, sizeof(bit_str), "%d", *bit_val);
-        C_ANN_PUT(di, *bit_ss, *bit_es, s->out_ann, ANN_BIT, bit_str);
+        c_put(di, *bit_ss, *bit_es, s->out_ann, ANN_BIT, bit_str);
     }
 
     return 0;
@@ -496,15 +488,15 @@ static void sirc_start(struct srd_decoder_inst* di)
 {
     sirc_state* s = (sirc_state*)c_decoder_get_private(di);
 
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_sirc");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_sirc");
 
-    const char* polarity = c_decoder_get_option_string(di, "polarity", "active-low");
+    const char* polarity = c_opt_str(di, "polarity", "active-low");
     if (polarity && strcmp(polarity, "active-high") == 0)
         s->active = 1;
     else
         s->active = 0;
 
-    s->samplerate = c_decoder_get_samplerate(di);
+    s->samplerate = c_samplerate(di);
     if (s->samplerate > 0)
         s->snum_per_us = (double)s->samplerate / 1e6;
 }
@@ -512,11 +504,8 @@ static void sirc_start(struct srd_decoder_inst* di)
 static void sirc_decode(struct srd_decoder_inst* di)
 {
     sirc_state* s = (sirc_state*)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate > 0)
             s->snum_per_us = (double)s->samplerate / 1e6;
     }
@@ -524,22 +513,18 @@ static void sirc_decode(struct srd_decoder_inst* di)
         return;
 
     while (1) {
-        srd_cond_builder* cb;
         int ret;
 
-        cb = c_cond_new();
         if (s->active)
-            c_cond_high(cb, IR_CH);
+            ret = c_wait(di, CW_H(IR_CH), CW_END);
         else
-            c_cond_low(cb, IR_CH);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+            ret = c_wait(di, CW_L(IR_CH), CW_END);
         if (ret != SRD_OK)
             return;
 
-        uint64_t frame_ss = samplenum;
+        uint64_t frame_ss = di_samplenum(di);
 
-        uint64_t agc_ss = samplenum;
+        uint64_t agc_ss = di_samplenum(di);
         uint64_t agc_es;
         ret = read_pulse(di, s, s->active, AGC_USEC, agc_ss, &agc_es);
         if (ret != 0)
@@ -551,9 +536,9 @@ static void sirc_decode(struct srd_decoder_inst* di)
         if (ret != 0)
             continue;
 
-        C_ANN_PUT(di, agc_ss, agc_es, s->out_ann, ANN_AGC, "AGC", "A");
-        C_ANN_PUT(di, pause_ss, pause_es, s->out_ann, ANN_PAUSE, "Pause", "P");
-        C_ANN_PUT(di, agc_ss, pause_es, s->out_ann, ANN_START, "Start", "S");
+        c_put(di, agc_ss, agc_es, s->out_ann, ANN_AGC, "AGC", "A");
+        c_put(di, pause_ss, pause_es, s->out_ann, ANN_PAUSE, "Pause", "P");
+        c_put(di, agc_ss, pause_es, s->out_ann, ANN_START, "Start", "S");
 
         uint8_t bits[21];
         uint64_t bit_ss_arr[21];
@@ -571,7 +556,12 @@ static void sirc_decode(struct srd_decoder_inst* di)
             if (ret == -1)
                 return;
             if (ret == -2) {
-                error = 1;
+                /* Last bit — pause detection failed but bit value is valid.
+                 * Match Python: the last bit doesn't need a following pause. */
+                bits[bit_count] = bval;
+                bit_ss_arr[bit_count] = bss;
+                bit_es_arr[bit_count] = bes;
+                bit_count++;
                 break;
             }
 
@@ -587,11 +577,8 @@ static void sirc_decode(struct srd_decoder_inst* di)
         }
 
         if (error || bit_count > 20) {
-            cb = c_cond_new();
-            c_cond_skip(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            C_ANN_PUT(di, frame_ss, samplenum, s->out_ann, ANN_WARN,
+            ret = c_wait(di, CW_SKIP(0), CW_END);
+            c_put(di, frame_ss, di_samplenum(di), s->out_ann, ANN_WARN,
                 "Error: too many bits", "Error", "E");
             continue;
         }
@@ -627,11 +614,8 @@ static void sirc_decode(struct srd_decoder_inst* di)
         } else {
             char err_str[64];
             snprintf(err_str, sizeof(err_str), "Error: incorrect bits count %d", bit_count);
-            cb = c_cond_new();
-            c_cond_skip(cb, 0);
-            ret = c_cond_wait(cb, di, &samplenum, &matched);
-            c_cond_free(cb);
-            C_ANN_PUT(di, frame_ss, samplenum, s->out_ann, ANN_WARN, err_str, "Error", "E");
+            ret = c_wait(di, CW_SKIP(0), CW_END);
+            c_put(di, frame_ss, di_samplenum(di), s->out_ann, ANN_WARN, err_str, "Error", "E");
             continue;
         }
 
@@ -642,7 +626,7 @@ static void sirc_decode(struct srd_decoder_inst* di)
             char cmd_long[32], cmd_mid[16];
             snprintf(cmd_long, sizeof(cmd_long), "Command: 0x%02X", command_num);
             snprintf(cmd_mid, sizeof(cmd_mid), "C:0x%02X", command_num);
-            C_ANN_PUT(di, bit_ss_arr[0], bit_es_arr[command_count - 1],
+            c_put(di, bit_ss_arr[0], bit_es_arr[command_count - 1],
                 s->out_ann, ANN_CMD, cmd_long, cmd_mid);
         }
 
@@ -651,7 +635,7 @@ static void sirc_decode(struct srd_decoder_inst* di)
             int addr_hex_width = (address_count + 3) / 4;
             snprintf(addr_long, sizeof(addr_long), "Address: 0x%0*X", addr_hex_width, address_num);
             snprintf(addr_mid, sizeof(addr_mid), "A:0x%0*X", addr_hex_width, address_num);
-            C_ANN_PUT(di, bit_ss_arr[command_count], bit_es_arr[command_count + address_count - 1],
+            c_put(di, bit_ss_arr[command_count], bit_es_arr[command_count + address_count - 1],
                 s->out_ann, ANN_ADDR, addr_long, addr_mid);
         }
 
@@ -661,7 +645,7 @@ static void sirc_decode(struct srd_decoder_inst* di)
             int ext_hex_width = (extended_count + 3) / 4;
             snprintf(ext_long, sizeof(ext_long), "Extended: 0x%0*X", ext_hex_width, extended_num);
             snprintf(ext_mid, sizeof(ext_mid), "E:0x%0*X", ext_hex_width, extended_num);
-            C_ANN_PUT(di, bit_ss_arr[command_count + address_count],
+            c_put(di, bit_ss_arr[command_count + address_count],
                 bit_es_arr[command_count + address_count + extended_count - 1],
                 s->out_ann, ANN_EXT, ext_long, ext_mid);
         }
@@ -675,25 +659,11 @@ static void sirc_decode(struct srd_decoder_inst* di)
                 snprintf(remote_long, sizeof(remote_long), "%s%s", dev->name_long, key_text);
                 snprintf(remote_mid, sizeof(remote_mid), "%s%s", dev->name_short, key_text);
             } else {
-                if (extended_count > 0) {
-                    uint16_t extended_num = bitpack_lsb(extended_bits, extended_count);
-                    snprintf(remote_long, sizeof(remote_long),
-                        "Unknown Device: 0x%02X:0x%02X:0x%02X",
-                        (uint8_t)address_num, command_num, (uint8_t)extended_num);
-                    snprintf(remote_mid, sizeof(remote_mid),
-                        "UNK: 0x%02X:0x%02X:0x%02X",
-                        (uint8_t)address_num, command_num, (uint8_t)extended_num);
-                } else {
-                    int addr_hex_width = (address_count + 3) / 4;
-                    snprintf(remote_long, sizeof(remote_long),
-                        "Unknown Device: 0x%0*X:0x%02X",
-                        addr_hex_width, address_num, command_num);
-                    snprintf(remote_mid, sizeof(remote_mid),
-                        "UNK: 0x%0*X:0x%02X",
-                        addr_hex_width, address_num, command_num);
-                }
+                /* Match Python: unknown device outputs "Unknown Device: Unknown" / "UNK: Unknown" */
+                snprintf(remote_long, sizeof(remote_long), "Unknown Device: Unknown");
+                snprintf(remote_mid, sizeof(remote_mid), "UNK: Unknown");
             }
-            C_ANN_PUT(di, frame_ss, bit_es_arr[bit_count - 1],
+            c_put(di, frame_ss, bit_es_arr[bit_count - 1],
                 s->out_ann, ANN_REMOTE, remote_long, remote_mid);
         }
     }
@@ -737,6 +707,7 @@ struct srd_c_decoder ir_sirc_c_decoder = {
     .start = sirc_start,
     .decode = sirc_decode,
     .destroy = sirc_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder* srd_c_decoder_entry(void)

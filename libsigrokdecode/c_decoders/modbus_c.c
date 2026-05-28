@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -46,6 +46,7 @@ typedef struct {
     uint8_t data[MODBUS_MAX_FRAME];
     uint64_t starts[MODBUS_MAX_FRAME];
     uint64_t ends[MODBUS_MAX_FRAME];
+    int n_fields;
     int data_len;
     uint64_t last_read;
     int start_new_frame;
@@ -134,7 +135,7 @@ static void modbus_adu_reset(modbus_adu *adu, uint64_t start)
 static void modbus_puta(struct srd_decoder_inst *di, modbus_state *s,
                         uint64_t start, uint64_t end, int ann, const char *msg)
 {
-    C_ANN_PUT(di, start, end, s->out_ann, ann, msg);
+    c_put(di, start, end, s->out_ann, ann, msg);
 }
 
 /* Put annotation from last_byte_put+1 to byte_to_put */
@@ -622,9 +623,7 @@ static void modbus_decode_adu(struct srd_decoder_inst *di, modbus_state *s,
         modbus_cs_parse(di, s, adu);
 }
 
-static void modbus_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void modbus_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     modbus_state *s = (modbus_state *)c_decoder_get_private(di);
     if (!s)
@@ -641,11 +640,11 @@ static void modbus_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 2)
+    if (n_fields < 2)
         return;
 
-    uint8_t byte_val = data[0];
-    uint8_t rxtx = data[1];
+    uint8_t byte_val = fields[0].u8;
+    uint8_t rxtx = fields[1].u8;
 
     /* Dispatch to SC or CS ADU */
     if (rxtx == s->sc_channel) {
@@ -679,13 +678,13 @@ static void modbus_reset(struct srd_decoder_inst *di)
 static void modbus_start(struct srd_decoder_inst *di)
 {
     modbus_state *s = (modbus_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "modbus");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "modbus");
 
-    const char *sc = c_decoder_get_option_string(di, "scchannel", "RX");
-    const char *cs = c_decoder_get_option_string(di, "cschannel", "TX");
+    const char *sc = c_opt_str(di, "scchannel", "RX");
+    const char *cs = c_opt_str(di, "cschannel", "TX");
     s->sc_channel = (strcmp(sc, "TX") == 0) ? 1 : 0;
     s->cs_channel = (strcmp(cs, "TX") == 0) ? 1 : 0;
-    s->framegap = (int)c_decoder_get_option_int(di, "framegap", 28);
+    s->framegap = (int)c_opt_int(di, "framegap", 28);
 }
 
 static void modbus_decode(struct srd_decoder_inst *di)
@@ -730,7 +729,8 @@ struct srd_c_decoder modbus_c_decoder = {
     .start = modbus_start,
     .decode = modbus_decode,
     .destroy = modbus_destroy,
-    .recv_proto = modbus_recv_proto,
+    .decode_upper = modbus_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

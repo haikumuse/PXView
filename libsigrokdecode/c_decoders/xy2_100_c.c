@@ -1,4 +1,4 @@
-#include "libsigrokdecode.h"
+﻿#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,8 +118,8 @@ static void xy2100_reset(struct srd_decoder_inst *di)
 static void xy2100_start(struct srd_decoder_inst *di)
 {
     xy2100_state *s = (xy2100_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "xy2-100");
-    s->has_stat = c_decoder_has_channel(di, 3);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "xy2-100");
+    s->has_stat = c_has_ch(di, 3);
 }
 
 static void xy2100_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -140,7 +140,7 @@ static void xy2100_process_stat_bit(struct srd_decoder_inst *di, xy2100_state *s
 
     char bstr[4];
     snprintf(bstr, sizeof(bstr), "%d", bit_value);
-    C_ANN_PUT(di, bit_ss, bit_es, s->out_ann, ANN_STAT_BIT, bstr);
+    c_put(di, bit_ss, bit_es, s->out_ann, ANN_STAT_BIT, bstr);
 
     if (s->stat_bits_count < XY2100_MAX_STAT_BITS) {
         s->stat_bits_ss[s->stat_bits_count] = bit_ss;
@@ -163,7 +163,7 @@ static void xy2100_process_stat_bit(struct srd_decoder_inst *di, xy2100_state *s
         snprintf(stat_str, sizeof(stat_str), "Status 0x%X", status);
         char stat_short[16];
         snprintf(stat_short, sizeof(stat_short), "0x%X", status);
-        C_ANN_PUT(di, stat_ss, stat_es, s->out_ann, ANN_STATUS, stat_str, stat_short);
+        c_put(di, stat_ss, stat_es, s->out_ann, ANN_STATUS, stat_str, stat_short);
     }
 }
 
@@ -172,7 +172,7 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
 {
     char bstr[4];
     snprintf(bstr, sizeof(bstr), "%d", bit_value);
-    C_ANN_PUT(di, bit_ss, bit_es, s->out_ann, ANN_BIT, bstr);
+    c_put(di, bit_ss, bit_es, s->out_ann, ANN_BIT, bstr);
 
     if (s->bits_count < XY2100_MAX_BITS) {
         s->bits_ss[s->bits_count] = bit_ss;
@@ -183,7 +183,7 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
 
     if (sync == 0) {
         if (s->bits_count < 20) {
-            C_ANN_PUT(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
+            c_put(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
                       "Not enough data bits");
             xy2100_reset_state(s);
             return;
@@ -210,7 +210,7 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
         if (type_1_value == 1 && parity_odd == 1) {
             frame_type = FRAME_TYPE_18BIT_POS;
             type_es = s->bits_es[0];
-            C_ANN_PUT(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
+            c_put(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
                       "Careful: 18-bit position frames with wrong parity and command frames with wrong parity cannot be identified");
         }
         /* 16-bit position frame */
@@ -220,19 +220,19 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
                 parity_status = "OK";
             else {
                 parity_status = "NOK";
-                C_ANN_PUT(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
+                c_put(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
                           "Parity error", "PE");
             }
         }
         /* Command frame */
         else if (type_3_value == 7 && parity_even == 1) {
             frame_type = FRAME_TYPE_COMMAND;
-            C_ANN_PUT(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
+            c_put(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
                       "Careful: 18-bit position frames with wrong parity and command frames with wrong parity cannot be identified");
         }
         /* Unknown */
         else {
-            C_ANN_PUT(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
+            c_put(di, s->bits_ss[0], bit_es, s->out_ann, ANN_WARNING,
                       "Error", "Unknown command or parity error");
             xy2100_reset_state(s);
             return;
@@ -240,20 +240,20 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
 
         /* Output frame type */
         if (frame_type == FRAME_TYPE_16BIT_POS) {
-            C_ANN_PUT(di, type_ss, type_es, s->out_ann, ANN_TYPE,
+            c_put(di, type_ss, type_es, s->out_ann, ANN_TYPE,
                       "16 bit Position Frame", "16 bit Pos", "Pos", "P");
         } else if (frame_type == FRAME_TYPE_18BIT_POS) {
-            C_ANN_PUT(di, type_ss, type_es, s->out_ann, ANN_TYPE,
+            c_put(di, type_ss, type_es, s->out_ann, ANN_TYPE,
                       "18 bit Position Frame", "18 bit Pos", "Pos", "P");
         } else if (frame_type == FRAME_TYPE_COMMAND) {
-            C_ANN_PUT(di, type_ss, type_es, s->out_ann, ANN_TYPE,
+            c_put(di, type_ss, type_es, s->out_ann, ANN_TYPE,
                       "Command Frame", "Command", "C");
         }
 
         /* Output parity */
         uint64_t par_ss = s->bits_ss[19];
         uint64_t par_es = s->bits_es[19];
-        C_ANN_PUT(di, par_ss, par_es, s->out_ann, ANN_PARITY, parity_status);
+        c_put(di, par_ss, par_es, s->out_ann, ANN_PARITY, parity_status);
 
         /* Output position value */
         if (frame_type == FRAME_TYPE_16BIT_POS || frame_type == FRAME_TYPE_18BIT_POS) {
@@ -275,7 +275,7 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
             }
             char pos_str[32];
             snprintf(pos_str, sizeof(pos_str), "%lld", (long long)pos);
-            C_ANN_PUT(di, type_es, par_ss, s->out_ann, ANN_POS, pos_str);
+            c_put(di, type_es, par_ss, s->out_ann, ANN_POS, pos_str);
         }
 
         /* Output command and parameter */
@@ -292,7 +292,7 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
             snprintf(cmd_str, sizeof(cmd_str), "Command 0x%X", cmd);
             char cmd_short[16];
             snprintf(cmd_short, sizeof(cmd_short), "0x%X", cmd);
-            C_ANN_PUT(di, type_es, cmd_es, s->out_ann, ANN_COMMAND, cmd_str, cmd_short);
+            c_put(di, type_es, cmd_es, s->out_ann, ANN_COMMAND, cmd_str, cmd_short);
 
             int param = 0;
             count = 7;
@@ -306,7 +306,7 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
             snprintf(param_short, sizeof(param_short), "0x%X / %d", param, param);
             char param_tiny[16];
             snprintf(param_tiny, sizeof(param_tiny), "0x%X", param);
-            C_ANN_PUT(di, cmd_es, par_ss, s->out_ann, ANN_PARAMETER, param_str, param_short, param_tiny);
+            c_put(di, cmd_es, par_ss, s->out_ann, ANN_PARAMETER, param_str, param_short, param_tiny);
         }
 
         xy2100_reset_state(s);
@@ -316,11 +316,8 @@ static void xy2100_process_bit(struct srd_decoder_inst *di, xy2100_state *s,
 static void xy2100_decode(struct srd_decoder_inst *di)
 {
     xy2100_state *s = (xy2100_state *)c_decoder_get_private(di);
-    uint64_t samplenum;
-    uint64_t matched;
-
     if (!s->samplerate) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
     }
 
     uint64_t bit_ss = (uint64_t)-1;
@@ -330,36 +327,33 @@ static void xy2100_decode(struct srd_decoder_inst *di)
     int sync_value = 0;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);  /* CLK any edge */
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        int clk = c_decoder_get_pin(di, 0, samplenum);
-        int sync = c_decoder_get_pin(di, 1, samplenum);
-        int data = c_decoder_get_pin(di, 2, samplenum);
-        int stat = s->has_stat ? c_decoder_get_pin(di, 3, samplenum) : 0;
+        int clk = c_pin(di, 0);
+        int sync = c_pin(di, 1);
+        int data = c_pin(di, 2);
+        int stat = s->has_stat ? c_pin(di, 3) : 0;
 
         if (clk == 1) {
             /* Rising edge: end data bit, start new bit */
             stat_value = stat;
-            uint64_t bit_es = samplenum;
+            uint64_t bit_es = di_samplenum(di);
             if (bit_ss != (uint64_t)-1) {
                 xy2100_process_bit(di, s, sync_value, bit_ss, bit_es, bit_value);
             }
-            bit_ss = samplenum;
+            bit_ss = di_samplenum(di);
         } else {
             /* Falling edge: sample DATA and SYNC */
             bit_value = data;
             sync_value = sync;
 
-            uint64_t stat_es = samplenum;
+            uint64_t stat_es = di_samplenum(di);
             if (stat_ss != (uint64_t)-1 && s->has_stat) {
                 xy2100_process_stat_bit(di, s, sync_value, stat_ss, stat_es, stat_value);
             }
-            stat_ss = samplenum;
+            stat_ss = di_samplenum(di);
         }
     }
 }
@@ -401,6 +395,7 @@ static struct srd_c_decoder xy2100_c_decoder = {
     .start = xy2100_start,
     .decode = xy2100_decode,
     .destroy = xy2100_destroy,
+    .state_size = 0,
     .metadata = xy2100_metadata,
 };
 

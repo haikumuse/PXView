@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -137,7 +137,7 @@ static void sony_md_put_value_lsb(struct srd_decoder_inst *di, sony_md_state *s,
         snprintf(h, sizeof(h), "0x%X ", value);
         strcat(s->debug_hex, h);
     }
-    C_ANN_PUT(di, s->bit_ss[start_bit], s->bit_es[start_bit + num_bits - 1],
+    c_put(di, s->bit_ss[start_bit], s->bit_es[start_bit + num_bits - 1],
               s->out_ann, ANN_RAW_VALUE, buf);
 }
 
@@ -146,14 +146,14 @@ static void sony_md_put_static_byte(struct srd_decoder_inst *di, sony_md_state *
 {
     if (current_bit + 7 >= s->num_bits)
         return;
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_DATA_FIELD_NAME, "Static?");
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_DATA_STATIC, "Static?");
     if (value != expected) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Previously static, expected 0x%02X!", expected);
-        C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                   s->out_ann, ANN_ERROR, buf);
     }
 }
@@ -163,16 +163,16 @@ static void sony_md_put_unused_byte(struct srd_decoder_inst *di, sony_md_state *
 {
     if (current_bit + 7 >= s->num_bits)
         return;
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_DATA_FIELD_NAME, "Unused?");
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_DATA_UNUSED, "Unused?");
     if (value != expected) {
-        C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                   s->out_ann, ANN_ERROR, "Previously unused byte is not expected value!");
     }
     if (value != 0x00) {
-        C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                   s->out_ann, ANN_WARNING, "Unused byte has non-zero value!");
     }
 }
@@ -182,14 +182,14 @@ static void sony_md_put_unknown_byte(struct srd_decoder_inst *di, sony_md_state 
 {
     if (current_bit + 7 >= s->num_bits)
         return;
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_DATA_FIELD_NAME, "Unknown?");
     char buf[64];
     snprintf(buf, sizeof(buf), "Unknown: 0x%02X", value);
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_DATA_UNKNOWN, buf);
     if (value != 0x00) {
-        C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                   s->out_ann, ANN_ERROR, "Unknown byte has non-zero value!");
     }
 }
@@ -199,9 +199,9 @@ static void sony_md_put_remote_header(struct srd_decoder_inst *di, sony_md_state
 {
     if (current_bit + 7 >= s->num_bits)
         return;
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_TRANSFER_BLOCK, "Header from remote");
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_SENDER_REMOTE, "Remote");
 
     sony_md_put_value_lsb(di, s, current_bit, 8);
@@ -209,78 +209,78 @@ static void sony_md_put_remote_header(struct srd_decoder_inst *di, sony_md_state
 
     /* Unused bit 0 */
     if (current_bit < s->num_bits) {
-        C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit],
+        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit],
                   s->out_ann, ANN_DATA_FIELD_NAME, "Unused?");
-        C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit],
+        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit],
                   s->out_ann, ANN_DATA_UNUSED, "Unused?");
     }
 
     /* Bit 1: ready for text */
     if (current_bit + 1 < s->num_bits) {
         if (s->bit_val[current_bit + 1] == 1)
-            C_ANN_PUT(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 1],
+            c_put(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 1],
                       s->out_ann, ANN_DATA_VAL_POS, "Remote is ready for text");
         else
-            C_ANN_PUT(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 1],
+            c_put(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 1],
                       s->out_ann, ANN_DATA_VAL_NEG, "Remote is NOT ready for text");
     }
 
     /* Bit 2: done scrolling */
     if (current_bit + 2 < s->num_bits) {
         if (s->bit_val[current_bit + 2] == 1) {
-            C_ANN_PUT(di, s->bit_ss[current_bit + 2], s->bit_es[current_bit + 2],
+            c_put(di, s->bit_ss[current_bit + 2], s->bit_es[current_bit + 2],
                       s->out_ann, ANN_DATA_VAL_POS, "Remote is done scrolling text?");
-            C_ANN_PUT(di, s->bit_ss[current_bit + 2], s->bit_es[current_bit + 2],
+            c_put(di, s->bit_ss[current_bit + 2], s->bit_es[current_bit + 2],
                       s->out_ann, ANN_DATA_FIELD_NAME, "Weird header, look here");
         } else {
-            C_ANN_PUT(di, s->bit_ss[current_bit + 2], s->bit_es[current_bit + 2],
+            c_put(di, s->bit_ss[current_bit + 2], s->bit_es[current_bit + 2],
                       s->out_ann, ANN_DATA_VAL_NEG, "Remote is NOT done scrolling text?");
         }
     }
 
     /* Bit 3: unused */
     if (current_bit + 3 < s->num_bits) {
-        C_ANN_PUT(di, s->bit_ss[current_bit + 3], s->bit_es[current_bit + 3],
+        c_put(di, s->bit_ss[current_bit + 3], s->bit_es[current_bit + 3],
                   s->out_ann, ANN_DATA_FIELD_NAME, "Unused?");
-        C_ANN_PUT(di, s->bit_ss[current_bit + 3], s->bit_es[current_bit + 3],
+        c_put(di, s->bit_ss[current_bit + 3], s->bit_es[current_bit + 3],
                   s->out_ann, ANN_DATA_UNUSED, "Unused?");
     }
 
     /* Bit 4: data to send */
     if (current_bit + 4 < s->num_bits) {
         if (s->bit_val[current_bit + 4] == 1)
-            C_ANN_PUT(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
+            c_put(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
                       s->out_ann, ANN_DATA_VAL_POS, "Remote HAS data to send");
         else
-            C_ANN_PUT(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
+            c_put(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
                       s->out_ann, ANN_DATA_VAL_NEG, "Remote has NO data to send");
     }
 
     /* Bit 5: unused */
     if (current_bit + 5 < s->num_bits) {
-        C_ANN_PUT(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 5],
+        c_put(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 5],
                   s->out_ann, ANN_DATA_FIELD_NAME, "Unused?");
-        C_ANN_PUT(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 5],
+        c_put(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 5],
                   s->out_ann, ANN_DATA_UNUSED, "Unused?");
     }
 
     /* Bit 6: Kanji capable */
     if (current_bit + 6 < s->num_bits) {
         if (s->bit_val[current_bit + 6] == 1)
-            C_ANN_PUT(di, s->bit_ss[current_bit + 6], s->bit_es[current_bit + 6],
+            c_put(di, s->bit_ss[current_bit + 6], s->bit_es[current_bit + 6],
                       s->out_ann, ANN_DATA_VAL_POS, "Remote IS Kanji-capable?");
         else
-            C_ANN_PUT(di, s->bit_ss[current_bit + 6], s->bit_es[current_bit + 6],
+            c_put(di, s->bit_ss[current_bit + 6], s->bit_es[current_bit + 6],
                       s->out_ann, ANN_DATA_VAL_NEG, "Remote is NOT Kanji-capable?");
     }
 
     /* Bit 7: present */
     if (current_bit + 7 < s->num_bits) {
         if (s->bit_val[current_bit + 7] == 1)
-            C_ANN_PUT(di, s->bit_ss[current_bit + 7], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit + 7], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Remote Present");
         else
-            C_ANN_PUT(di, s->bit_ss[current_bit + 7], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit + 7], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_NEG, "Remote NOT Present");
     }
 }
@@ -290,9 +290,9 @@ static void sony_md_put_player_header(struct srd_decoder_inst *di, sony_md_state
 {
     if (current_bit + 7 >= s->num_bits)
         return;
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_TRANSFER_BLOCK, "Header from player");
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
               s->out_ann, ANN_SENDER_PLAYER, "Player");
 
     sony_md_put_value_lsb(di, s, current_bit, 8);
@@ -300,42 +300,42 @@ static void sony_md_put_player_header(struct srd_decoder_inst *di, sony_md_state
     /* Bit 0: data to send */
     if (current_bit < s->num_bits) {
         if (s->bit_val[current_bit] == 0)
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit],
                       s->out_ann, ANN_DATA_VAL_POS, "Player HAS data to send");
         else
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit],
                       s->out_ann, ANN_DATA_VAL_NEG, "Player has NO data to send");
     }
 
     /* Bits 1-3: unused */
     if (current_bit + 3 < s->num_bits) {
-        C_ANN_PUT(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 3],
+        c_put(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 3],
                   s->out_ann, ANN_DATA_FIELD_NAME, "Unused?");
-        C_ANN_PUT(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 3],
+        c_put(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 3],
                   s->out_ann, ANN_DATA_UNUSED, "Unused?");
     }
 
     /* Bit 4: cede bus */
     if (current_bit + 4 < s->num_bits) {
         if (s->bit_val[current_bit + 4] == 1)
-            C_ANN_PUT(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
+            c_put(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
                       s->out_ann, ANN_DATA_VAL_POS, "Player cedes the bus to remote after header");
         else
-            C_ANN_PUT(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
+            c_put(di, s->bit_ss[current_bit + 4], s->bit_es[current_bit + 4],
                       s->out_ann, ANN_DATA_VAL_NEG, "Player does NOT cede the bus to remote after header");
     }
 
     /* Bits 5-6: unused */
     if (current_bit + 6 < s->num_bits) {
-        C_ANN_PUT(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 6],
+        c_put(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 6],
                   s->out_ann, ANN_DATA_FIELD_NAME, "Unused?");
-        C_ANN_PUT(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 6],
+        c_put(di, s->bit_ss[current_bit + 5], s->bit_es[current_bit + 6],
                   s->out_ann, ANN_DATA_UNUSED, "Unused?");
     }
 
     /* Bit 7: present */
     if (current_bit + 7 < s->num_bits) {
-        C_ANN_PUT(di, s->bit_ss[current_bit + 7], s->bit_es[current_bit + 7],
+        c_put(di, s->bit_ss[current_bit + 7], s->bit_es[current_bit + 7],
                   s->out_ann, ANN_DATA_VAL_POS, "Player Present");
     }
 }
@@ -361,39 +361,39 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             continue;
         }
 
-        C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                   s->out_ann, ANN_DATA_FIELD_NAME, "Packet type");
 
         switch (s->values[current_byte]) {
         case 0x01: /* Request Remote Capabilities */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "Request Remote Capabilities");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Request Remote capabilities");
             if (current_byte + 1 < s->value_count) {
                 switch (s->values[current_byte + 1]) {
                 case 0x01:
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "First block");
                     break;
                 case 0x02:
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Second block, LCD capabilities?");
                     break;
                 case 0x05:
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Fifth block");
                     break;
                 case 0x06:
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Sixth block?");
                     break;
                 case 0x7F:
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Unknown, seen from D-EJ955");
                     break;
                 default:
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
                     break;
                 }
@@ -403,9 +403,9 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x02: /* Unknown initialization */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "Unknown, seems to be two bytes sent soon after initialization?");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Unknown, seems to be two bytes sent soon after initialization?");
             if (current_byte + 1 < s->value_count)
                 sony_md_put_static_byte(di, s, current_bit + 8, s->values[current_byte + 1], 0x80);
@@ -414,21 +414,21 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x03: /* Scroll Control */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 31],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 31],
                       s->out_ann, ANN_COMMAND, "Scroll Control?");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Scroll control?");
             if (current_byte + 1 < s->value_count)
                 sony_md_put_static_byte(di, s, current_bit + 8, s->values[current_byte + 1], 0x80);
             if (current_byte + 3 < s->value_count) {
                 if (s->values[current_byte + 2] == 0x02 && s->values[current_byte + 3] == 0x80)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 31],
+                    c_put(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 31],
                               s->out_ann, ANN_DATA_VAL_POS, "Scrolling: Enabled");
                 else if (s->values[current_byte + 2] == 0x00 && s->values[current_byte + 3] == 0x00)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 31],
+                    c_put(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 31],
                               s->out_ann, ANN_DATA_VAL_POS, "Scrolling: Disabled");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 31],
+                    c_put(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 31],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             current_bit += 32;
@@ -436,19 +436,19 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x05: /* LCD Backlight Control */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "LCD Backlight Control");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "LCD Backlight Control");
             if (current_byte + 1 < s->value_count) {
                 if (s->values[current_byte + 1] == 0x00)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Backlight: Off");
                 else if (s->values[current_byte + 1] == 0x7F)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Backlight: On");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             current_bit += 16;
@@ -456,13 +456,13 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x06: /* LCD Remote Service Mode */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 47],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 47],
                       s->out_ann, ANN_COMMAND, "LCD Remote Service Mode?");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "LCD Remote Service Mode Control?");
             if (current_byte + 1 < s->value_count) {
                 if (s->values[current_byte + 1] == 0x7F) {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Remote Service Mode End");
                 } else if (current_byte + 5 < s->value_count &&
                            s->values[current_byte + 1] == 0x00 &&
@@ -470,10 +470,10 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                            s->values[current_byte + 3] == 0x01 &&
                            s->values[current_byte + 4] == 0x03 &&
                            s->values[current_byte + 5] == 0x80) {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 47],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 47],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Remote Service Mode All Segments On?");
                 } else {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
                 }
             }
@@ -482,9 +482,9 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x08: /* Pre-text update */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 31],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 31],
                       s->out_ann, ANN_COMMAND, "Unknown, seems to be sent before 0xC8 text updates?");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Unknown, seems to be sent before 0xC8 text updates");
             if (current_byte + 1 < s->value_count)
                 sony_md_put_static_byte(di, s, current_bit + 8, s->values[current_byte + 1], 0x80);
@@ -497,9 +497,9 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x40: /* Volume Level */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "Volume Level");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Volume Level");
             if (current_byte + 1 < s->value_count) {
                 char buf[64];
@@ -509,7 +509,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                     snprintf(buf, sizeof(buf), "Current Volume Level: %d/32", s->values[current_byte + 1]);
                 else
                     snprintf(buf, sizeof(buf), "UNRECOGNIZED VALUE");
-                C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                           s->out_ann, s->values[current_byte + 1] < 33 ? ANN_DATA_VAL_POS : ANN_ERROR, buf);
             }
             current_bit += 16;
@@ -517,9 +517,9 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x41: /* Playback Mode */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "Playback Mode");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Playback Mode");
             if (current_byte + 1 < s->value_count) {
                 const char *mode = NULL;
@@ -536,10 +536,10 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 if (mode) {
                     char buf[128];
                     snprintf(buf, sizeof(buf), "Current Playback Mode: %s", mode);
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
                 } else {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
                 }
             }
@@ -548,19 +548,19 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x42: /* Recording Indicator */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "Recording Indicator");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Recording Indicator");
             if (current_byte + 1 < s->value_count) {
                 if (s->values[current_byte + 1] == 0x00)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Recording Indicator: Off");
                 else if (s->values[current_byte + 1] == 0x7F)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Recording Indicator: On");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             current_bit += 16;
@@ -568,9 +568,9 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x43: /* Battery Level Indicator */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "Battery Level Indicator");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Battery Level Indicator");
             if (current_byte + 1 < s->value_count) {
                 const char *batt = NULL;
@@ -587,10 +587,10 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 if (batt) {
                     char buf[128];
                     snprintf(buf, sizeof(buf), "Battery Level Indicator: %s", batt);
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
                 } else {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
                 }
             }
@@ -599,9 +599,9 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x46: /* EQ/Sound Indicator */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "EQ/Sound Indicator");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "EQ/Sound Indicator");
             if (current_byte + 1 < s->value_count) {
                 const char *eq = NULL;
@@ -615,10 +615,10 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 if (eq) {
                     char buf[128];
                     snprintf(buf, sizeof(buf), "EQ/Sound Indicator: %s", eq);
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
                 } else {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
                 }
             }
@@ -627,19 +627,19 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0x47: /* Alarm Indicator */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 15],
                       s->out_ann, ANN_COMMAND, "Alarm Indicator");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Alarm Indicator");
             if (current_byte + 1 < s->value_count) {
                 if (s->values[current_byte + 1] == 0x00)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Alarm Indicator: Off");
                 else if (s->values[current_byte + 1] == 0x7F)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Alarm Indicator: On");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             current_bit += 16;
@@ -647,19 +647,19 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0xA0: /* Track number */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 39],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 39],
                       s->out_ann, ANN_COMMAND, "Track number");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Track number");
             if (current_byte + 1 < s->value_count) {
                 if (s->values[current_byte + 1] == 0x00)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Track Number Indicator: On");
                 else if (s->values[current_byte + 1] == 0x80)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Track Number Indicator: Off");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             if (current_byte + 2 < s->value_count)
@@ -669,7 +669,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             if (current_byte + 4 < s->value_count) {
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Current Track Number: %d", s->values[current_byte + 4]);
-                C_ANN_PUT(di, s->bit_ss[current_bit + 32], s->bit_es[current_bit + 39],
+                c_put(di, s->bit_ss[current_bit + 32], s->bit_es[current_bit + 39],
                           s->out_ann, ANN_DATA_VAL_POS, buf);
             }
             current_bit += 40;
@@ -677,32 +677,32 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0xA1: /* LCD Disc Icon Control */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 39],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 39],
                       s->out_ann, ANN_COMMAND, "LCD Disc Icon Control");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "LCD Disc Icon Control");
             if (current_byte + 1 < s->value_count)
                 sony_md_put_static_byte(di, s, current_bit + 8, s->values[current_byte + 1], 0x00);
             if (current_byte + 2 < s->value_count) {
                 if (s->values[current_byte + 2] == 0x00)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 23],
+                    c_put(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 23],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Disc Icon Outline: Off");
                 else if (s->values[current_byte + 2] == 0x7F)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 23],
+                    c_put(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 23],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Disc Icon Outline: On");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 23],
+                    c_put(di, s->bit_ss[current_bit + 16], s->bit_es[current_bit + 23],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             if (current_byte + 3 < s->value_count) {
                 if (s->values[current_byte + 3] == 0x00)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 24], s->bit_es[current_bit + 31],
+                    c_put(di, s->bit_ss[current_bit + 24], s->bit_es[current_bit + 31],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Disc Icon Fill Segments: All disabled");
                 else if (s->values[current_byte + 3] == 0x7F)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 24], s->bit_es[current_bit + 31],
+                    c_put(di, s->bit_ss[current_bit + 24], s->bit_es[current_bit + 31],
                               s->out_ann, ANN_DATA_VAL_POS, "LCD Disc Icon Fill Segments: All enabled");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 24], s->bit_es[current_bit + 31],
+                    c_put(di, s->bit_ss[current_bit + 24], s->bit_es[current_bit + 31],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             if (current_byte + 4 < s->value_count) {
@@ -716,10 +716,10 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 if (anim) {
                     char buf[128];
                     snprintf(buf, sizeof(buf), "LCD Disc Icon Fill Segment Animation: %s", anim);
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 32], s->bit_es[current_bit + 39],
+                    c_put(di, s->bit_ss[current_bit + 32], s->bit_es[current_bit + 39],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
                 } else {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 32], s->bit_es[current_bit + 39],
+                    c_put(di, s->bit_ss[current_bit + 32], s->bit_es[current_bit + 39],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
                 }
             }
@@ -728,18 +728,18 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0xC0: /* Player capabilities */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 79],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 79],
                       s->out_ann, ANN_COMMAND, "Player capabilities?");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "Player capabilities?");
             if (current_byte + 1 < s->value_count) {
                 if (s->values[current_byte + 1] == 0x05) {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Fifth block?");
                     for (int i = 2; i <= 9 && (current_byte + i) < s->value_count; i++)
                         sony_md_put_unknown_byte(di, s, current_bit + i * 8, s->values[current_byte + i]);
                 } else {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
                 }
             }
@@ -748,19 +748,19 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         case 0xC8: /* LCD Text */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 79],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 79],
                       s->out_ann, ANN_COMMAND, "LCD Text");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_DATA_VAL_POS, "LCD Text");
             if (current_byte + 1 < s->value_count) {
                 if (s->values[current_byte + 1] == 0x02)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Non-final segment?");
                 else if (s->values[current_byte + 1] == 0x01)
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, "Final segment?");
                 else
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
+                    c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             }
             if (current_byte + 2 < s->value_count)
@@ -769,7 +769,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             for (int i = 0; i < 7 && (current_byte + 3 + i) < s->value_count; i++) {
                 char pos_buf[32];
                 snprintf(pos_buf, sizeof(pos_buf), "String position %d", i + 1);
-                C_ANN_PUT(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
+                c_put(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
                           s->out_ann, ANN_DATA_FIELD_NAME, pos_buf);
                 /* Simple character display */
                 uint8_t ch = s->values[current_byte + 3 + i];
@@ -777,15 +777,15 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                     char cbuf[4];
                     cbuf[0] = (char)ch;
                     cbuf[1] = '\0';
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
+                    c_put(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
                               s->out_ann, ANN_DATA_VAL_POS, cbuf);
                 } else if (ch == 0xFF) {
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
+                    c_put(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
                               s->out_ann, ANN_DATA_VAL_POS, "<End of string>");
                 } else {
                     char cbuf[32];
                     snprintf(cbuf, sizeof(cbuf), "0x%02X", ch);
-                    C_ANN_PUT(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
+                    c_put(di, s->bit_ss[current_bit + 24 + i * 8], s->bit_es[current_bit + 31 + i * 8],
                               s->out_ann, ANN_DATA_UNKNOWN, cbuf);
                 }
             }
@@ -794,7 +794,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
             break;
 
         default:
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
                       s->out_ann, ANN_ERROR, "UNRECOGNIZED VALUE");
             current_bit += 8;
             current_byte += 1;
@@ -809,9 +809,9 @@ static void sony_md_put_player_data_block(struct srd_decoder_inst *di, sony_md_s
 {
     if (current_bit + 87 >= s->num_bits)
         return;
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 87],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 87],
               s->out_ann, ANN_TRANSFER_BLOCK, "Player data block?");
-    C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 87],
+    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 87],
               s->out_ann, ANN_SENDER_PLAYER, "Player");
 
     /* Read 11 bytes (10 data + 1 checksum) */
@@ -819,7 +819,7 @@ static void sony_md_put_player_data_block(struct srd_decoder_inst *di, sony_md_s
         sony_md_put_value_lsb(di, s, current_bit + i * 8, 8);
 
     /* Checksum */
-    C_ANN_PUT(di, s->bit_ss[current_bit + 80], s->bit_es[current_bit + 87],
+    c_put(di, s->bit_ss[current_bit + 80], s->bit_es[current_bit + 87],
               s->out_ann, ANN_DATA_FIELD_NAME, "Checksum");
     uint8_t calced = s->checksum;
     uint8_t received = (uint8_t)sony_md_get_value_lsb(s, current_bit + 80, 8);
@@ -828,7 +828,7 @@ static void sony_md_put_player_data_block(struct srd_decoder_inst *di, sony_md_s
         snprintf(chk_buf, sizeof(chk_buf), "Checksum, calculated value 0x%02X, valid!", calced);
     else
         snprintf(chk_buf, sizeof(chk_buf), "Checksum, calculated value 0x%02X, invalid!", calced);
-    C_ANN_PUT(di, s->bit_ss[current_bit + 80], s->bit_es[current_bit + 87],
+    c_put(di, s->bit_ss[current_bit + 80], s->bit_es[current_bit + 87],
               s->out_ann, (calced == received) ? ANN_DATA_VAL_POS : ANN_DATA_VAL_NEG, chk_buf);
 
     sony_md_expand_player_data_block(di, s, current_bit);
@@ -855,21 +855,19 @@ static void sony_md_expand_message(struct srd_decoder_inst *di, sony_md_state *s
             sony_md_put_player_data_block(di, s, current_bit);
         } else if (s->bit_val[12] == 1) {
             /* Remote data block - simplified */
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit + 98],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 98],
                       s->out_ann, ANN_TRANSFER_BLOCK, "Remote Data Block");
-            C_ANN_PUT(di, s->bit_ss[current_bit], s->bit_es[current_bit],
+            c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit],
                       s->out_ann, ANN_SENDER_PLAYER, "Player");
-            C_ANN_PUT(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 8],
+            c_put(di, s->bit_ss[current_bit + 1], s->bit_es[current_bit + 8],
                       s->out_ann, ANN_SENDER_REMOTE, "Remote");
         }
     }
 
-    C_ANN_PUT(di, s->msg_start_ss, s->msg_end_es, s->out_ann, ANN_DEBUG, s->debug_hex);
+    c_put(di, s->msg_start_ss, s->msg_end_es, s->out_ann, ANN_DEBUG, s->debug_hex);
 }
 
-static void sony_md_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void sony_md_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     sony_md_state *s = (sony_md_state *)c_decoder_get_private(di);
     if (!s)
@@ -879,10 +877,10 @@ static void sony_md_recv_proto(struct srd_decoder_inst *di,
         /* Parse bit data from the message.
          * Format: num_bits(2 bytes LE) + bit entries (9 bytes each: ss(4) + es(4) + val(1))
          */
-        if (data_len < 2)
+        if (n_fields < 2)
             return;
 
-        int num_bits = (int)data[0] | ((int)data[1] << 8);
+        int num_bits = (int)fields[0].u8 | ((int)fields[1].u8 << 8);
         s->num_bits = 0;
         s->value_count = 0;
         s->checksum = 0;
@@ -890,20 +888,20 @@ static void sony_md_recv_proto(struct srd_decoder_inst *di,
         s->debug_hex[0] = '\0';
 
         int expected_len = 2 + num_bits * 9;
-        if ((int)data_len < expected_len)
-            num_bits = ((int)data_len - 2) / 9;
+        if ((int)n_fields < expected_len)
+            num_bits = ((int)n_fields - 2) / 9;
 
         if (num_bits > SONY_MD_MAX_BITS)
             num_bits = SONY_MD_MAX_BITS;
 
         for (int i = 0; i < num_bits; i++) {
-            const unsigned char *p = data + 2 + i * 9;
+            const c_field *p = fields + 2 + i * 9;
             uint64_t ss = 0, es = 0;
             for (int j = 0; j < 4; j++) {
-                ss |= ((uint64_t)p[j]) << (j * 8);
-                es |= ((uint64_t)p[4 + j]) << (j * 8);
+                ss |= ((uint64_t)p[j].u8) << (j * 8);
+                es |= ((uint64_t)p[4 + j].u8) << (j * 8);
             }
-            int val = p[8] & 1;
+            int val = p[8].u8 & 1;
             s->bit_ss[i] = ss;
             s->bit_es[i] = es;
             s->bit_val[i] = val;
@@ -915,12 +913,12 @@ static void sony_md_recv_proto(struct srd_decoder_inst *di,
             s->msg_end_es = s->bit_es[s->num_bits - 1];
 
             /* Message start */
-            C_ANN_PUT(di, s->msg_start_ss, s->msg_start_ss, s->out_ann, ANN_INFO, "Message Start");
+            c_put(di, s->msg_start_ss, s->msg_start_ss, s->out_ann, ANN_INFO, "Message Start");
 
             sony_md_expand_message(di, s);
 
             /* Message end */
-            C_ANN_PUT(di, s->msg_end_es, s->msg_end_es, s->out_ann, ANN_INFO, "Message End");
+            c_put(di, s->msg_end_es, s->msg_end_es, s->out_ann, ANN_INFO, "Message End");
         }
     }
 }
@@ -937,7 +935,7 @@ static void sony_md_reset(struct srd_decoder_inst *di)
 static void sony_md_start(struct srd_decoder_inst *di)
 {
     sony_md_state *s = (sony_md_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sony_md_decode");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sony_md_decode");
 }
 
 static void sony_md_decode(struct srd_decoder_inst *di)
@@ -982,7 +980,8 @@ struct srd_c_decoder sony_md_decode_c_decoder = {
     .start = sony_md_start,
     .decode = sony_md_decode,
     .destroy = sony_md_destroy,
-    .recv_proto = sony_md_recv_proto,
+    .decode_upper = sony_md_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -132,35 +132,35 @@ static const char *acmd_names[] = {
 };
 
 /* ===== SPI DATA packet helpers ===== */
-static inline int spi_proto_get_mosi(const unsigned char *data, uint64_t data_len, uint8_t *mosi_val)
+static inline int spi_proto_get_mosi(const c_field *fields, int n_fields, uint8_t *mosi_val)
 {
-    if (data_len < 17 || !(data[0] & 1)) {
+    if (n_fields < 17 || !(fields[0].u8 & 1)) {
         *mosi_val = 0;
         return 0;
     }
-    *mosi_val = (uint8_t)data[1];
+    *mosi_val = (uint8_t)fields[1].u8;
     return 1;
 }
 
-static inline int spi_proto_get_miso(const unsigned char *data, uint64_t data_len, uint8_t *miso_val)
+static inline int spi_proto_get_miso(const c_field *fields, int n_fields, uint8_t *miso_val)
 {
-    if (data_len < 17 || !((data[0] >> 1) & 1)) {
+    if (n_fields < 17 || !((fields[0].u8 >> 1) & 1)) {
         *miso_val = 0;
         return 0;
     }
-    *miso_val = (uint8_t)data[9];
+    *miso_val = (uint8_t)fields[9].u8;
     return 1;
 }
 
-static inline int spi_proto_cs_change_get_values(const unsigned char *data, uint64_t data_len,
+static inline int spi_proto_cs_change_get_values(const c_field *fields, int n_fields,
                                                   uint8_t *prev, uint8_t *cur)
 {
-    if (data_len < 2) {
+    if (n_fields < 2) {
         *prev = 0xFF; *cur = 0xFF;
         return -1;
     }
-    *prev = data[0];
-    *cur = data[1];
+    *prev = fields[0].u8;
+    *cur = fields[1].u8;
     return 0;
 }
 
@@ -247,7 +247,7 @@ static void sdcard_putc(struct srd_decoder_inst *di, sdcard_state *s, int cls, c
 {
     char buf[128];
     snprintf(buf, sizeof(buf), "%s: %s", s->cmd_str, desc);
-    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, cls, buf);
+    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, cls, buf);
 }
 
 /* ===== Command handlers ===== */
@@ -385,7 +385,7 @@ static void sdcard_handle_command_token(struct srd_decoder_inst *di, sdcard_stat
                  s->cmd_token[3], s->cmd_token[4], s->cmd_token[5]);
         char buf[128];
         snprintf(buf, sizeof(buf), "%s%d: %s", prefix, cmd, hex);
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ann, buf);
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ann, buf);
         s->state = SDCARD_HANDLE_CMD999;
     }
 
@@ -397,7 +397,7 @@ static void sdcard_handle_response_r1(struct srd_decoder_inst *di, sdcard_state 
 {
     char buf[64];
     snprintf(buf, sizeof(buf), "R1: 0x%02x", res);
-    C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_R1, buf);
+    c_put(di, s->ss, s->es, s->out_ann, ANN_R1, buf);
 
     if (s->is_cmd17) {
         s->state = SDCARD_HANDLE_DATA_CMD17;
@@ -422,16 +422,16 @@ static void sdcard_handle_data_cmd17(struct srd_decoder_inst *di, sdcard_state *
             return;
         if ((uint32_t)s->read_buf_count == s->blocklen) {
             s->es_data = s->es;
-            C_ANN_PUT(di, s->ss_data, s->es_data, s->out_ann, ANN_CMD17, "Block data");
+            c_put(di, s->ss_data, s->es_data, s->out_ann, ANN_CMD17, "Block data");
         } else if ((uint32_t)s->read_buf_count == s->blocklen + 1) {
             s->ss_crc = s->ss;
         } else if ((uint32_t)s->read_buf_count == s->blocklen + 2) {
             s->es_crc = s->es;
-            C_ANN_PUT(di, s->ss_crc, s->es_crc, s->out_ann, ANN_CMD17, "CRC");
+            c_put(di, s->ss_crc, s->es_crc, s->out_ann, ANN_CMD17, "CRC");
             s->state = SDCARD_IDLE;
         }
     } else if (miso == 0xfe) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CMD17, "Start Block");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_CMD17, "Start Block");
         s->cmd17_start_token_found = 1;
         s->read_buf_count = 0;
     }
@@ -450,11 +450,11 @@ static void sdcard_handle_data_cmd24(struct srd_decoder_inst *di, sdcard_state *
         if ((uint32_t)s->read_buf_count < s->blocklen)
             return;
         s->es_data = s->es;
-        C_ANN_PUT(di, s->ss_data, s->es_data, s->out_ann, ANN_CMD24, "Block data");
+        c_put(di, s->ss_data, s->es_data, s->out_ann, ANN_CMD24, "Block data");
         s->read_buf_count = 0;
         s->state = SDCARD_DATA_RESPONSE;
     } else if (mosi == 0xfe) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CMD24, "Start Block");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_CMD24, "Start Block");
         s->cmd24_start_token_found = 1;
         s->read_buf_count = 0;
     }
@@ -468,15 +468,15 @@ static void sdcard_handle_data_response(struct srd_decoder_inst *di, sdcard_stat
         return;
 
     if (miso == 0x05) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, "Data accepted");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, "Data accepted");
     } else if (miso == 0x0b) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, "Data rejected (CRC error)");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, "Data rejected (CRC error)");
     } else if (miso == 0x0d) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT, "Data rejected (write error)");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, "Data rejected (write error)");
     }
 
     if (s->is_cmd24) {
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_CMD24, "Data Response");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_CMD24, "Data Response");
         s->state = SDCARD_WAIT_BUSY;
         s->busy_first_byte = 1;
     } else {
@@ -489,7 +489,7 @@ static void sdcard_wait_busy(struct srd_decoder_inst *di, sdcard_state *s, uint8
 {
     if (miso != 0x00) {
         if (s->is_cmd24) {
-            C_ANN_PUT(di, s->ss_busy, s->es_busy, s->out_ann, ANN_CMD24, "Card is busy");
+            c_put(di, s->ss_busy, s->es_busy, s->out_ann, ANN_CMD24, "Card is busy");
         }
         s->state = SDCARD_IDLE;
     } else {
@@ -503,9 +503,7 @@ static void sdcard_wait_busy(struct srd_decoder_inst *di, sdcard_state *s, uint8
 }
 
 /* ===== recv_proto ===== */
-static void sdcard_spi_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void sdcard_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     sdcard_state *s = (sdcard_state *)c_decoder_get_private(di);
     if (!s) return;
@@ -528,8 +526,8 @@ static void sdcard_spi_recv_proto(struct srd_decoder_inst *di,
     s->es = end_sample;
 
     uint8_t mosi, miso;
-    spi_proto_get_mosi(data, data_len, &mosi);
-    spi_proto_get_miso(data, data_len, &miso);
+    spi_proto_get_mosi(fields, n_fields, &mosi);
+    spi_proto_get_miso(fields, n_fields, &miso);
 
     switch (s->state) {
     case SDCARD_IDLE:
@@ -551,7 +549,7 @@ static void sdcard_spi_recv_proto(struct srd_decoder_inst *di,
         if (s->read_buf_count < 20)
             return;
         s->es_cmd = s->es;
-        C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_CMD9, "CSD data");
+        c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_CMD9, "CSD data");
         s->read_buf_count = 0;
         s->state = SDCARD_IDLE;
         break;
@@ -560,7 +558,7 @@ static void sdcard_spi_recv_proto(struct srd_decoder_inst *di,
         s->read_buf[s->read_buf_count++] = miso;
         if (s->read_buf_count < 16)
             return;
-        C_ANN_PUT(di, s->ss_cmd, s->es, s->out_ann, ANN_CMD10, "CID data");
+        c_put(di, s->ss_cmd, s->es, s->out_ann, ANN_CMD10, "CID data");
         s->read_buf_count = 0;
         s->state = SDCARD_GET_RESPONSE_R1;
         break;
@@ -624,7 +622,7 @@ static void sdcard_spi_reset(struct srd_decoder_inst *di)
 static void sdcard_spi_start(struct srd_decoder_inst *di)
 {
     sdcard_state *s = (sdcard_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "sdcard_spi");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "sdcard_spi");
 }
 
 static void sdcard_spi_decode(struct srd_decoder_inst *di)
@@ -670,7 +668,8 @@ struct srd_c_decoder sdcard_spi_c_decoder = {
     .start = sdcard_spi_start,
     .decode = sdcard_spi_decode,
     .destroy = sdcard_spi_destroy,
-    .recv_proto = sdcard_spi_recv_proto,
+    .decode_upper = sdcard_spi_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== Export functions ===== */

@@ -1,6 +1,6 @@
 {
 	"decoder": "ook_c",
-	"samplerate": 1000000,
+	"samplerate": 100000,
 	"num_annotations": 0,
 	"annotations": [
 	]

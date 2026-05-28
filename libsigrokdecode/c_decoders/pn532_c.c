@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -257,12 +257,12 @@ static void pn532_handle_command_default(struct srd_decoder_inst *di, pn532_stat
     if (s->tfi.byte_val == 0xD4 && s->data_packet_len > 0) {
         const char *cmd_name = pn532_find_cmd(s->data_packet[0].byte_val);
         if (cmd_name) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_CMD, cmd_name);
+            c_put(di, ss, es, s->out_ann, ANN_CMD, cmd_name);
         }
     } else if (s->tfi.byte_val == 0xD5 && s->data_packet_len > 0) {
         const char *cmd_name = pn532_find_cmd(s->data_packet[0].byte_val);
         if (cmd_name) {
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_CMD, cmd_name);
+            c_put(di, ss, es, s->out_ann, ANN_CMD, cmd_name);
         }
     } else if (s->tfi.byte_val == 0x7F) {
         /* Error frame */
@@ -280,8 +280,8 @@ static void pn532_handle_start_frame(struct srd_decoder_inst *di, pn532_state *s
             s->start_frame[2].byte_val == 0xFF) {
             /* Preamble + Start code */
             s->preamble_byte = s->start_frame[0];
-            C_ANN_PUT(di, s->start_frame[0].ss, s->start_frame[0].es, s->out_ann, ANN_PREAMBLE, "Preamble", "PR");
-            C_ANN_PUT(di, s->start_frame[1].ss, s->start_frame[2].es, s->out_ann, ANN_START, "Start Frame", "Start", "S");
+            c_put(di, s->start_frame[0].ss, s->start_frame[0].es, s->out_ann, ANN_PREAMBLE, "Preamble", "PR");
+            c_put(di, s->start_frame[1].ss, s->start_frame[2].es, s->out_ann, ANN_START, "Start Frame", "Start", "S");
             s->state = PN532_LENGTH;
             s->length_idx = 0;
             return;
@@ -331,14 +331,14 @@ static void pn532_handle_length(struct srd_decoder_inst *di, pn532_state *s, pn5
     char val_buf[16];
     pn532_format_value(s->data_size, s->format, val_buf, sizeof(val_buf));
     snprintf(buf, sizeof(buf), "Data Length: %s", val_buf);
-    C_ANN_PUT(di, s->length[0].ss, s->length[0].es, s->out_ann, ANN_LEN, buf, "Length", "LEN");
+    c_put(di, s->length[0].ss, s->length[0].es, s->out_ann, ANN_LEN, buf, "Length", "LEN");
 
     /* Verify LCS: LEN + LCS should be 0 */
     if (pn532_checksum_ok(s->length, 1, s->length[1].byte_val)) {
-        C_ANN_PUT(di, s->length[1].ss, s->length[1].es, s->out_ann, ANN_LCS, "Data Length Checksum: OK", "Checksum: OK", "LCS");
+        c_put(di, s->length[1].ss, s->length[1].es, s->out_ann, ANN_LCS, "Data Length Checksum: OK", "Checksum: OK", "LCS");
         s->state = PN532_TFI;
     } else {
-        C_ANN_PUT(di, s->length[1].ss, s->length[1].es, s->out_ann, ANN_ERROR, "Checksum Error", "Error", "E");
+        c_put(di, s->length[1].ss, s->length[1].es, s->out_ann, ANN_ERROR, "Checksum Error", "Error", "E");
         s->state = PN532_END_FRAME;
     }
 }
@@ -366,7 +366,7 @@ static void pn532_handle_tfi(struct srd_decoder_inst *di, pn532_state *s, pn532_
     snprintf(buf, sizeof(buf), "Frame identifier: %s", val_buf);
     char short_buf[32];
     snprintf(short_buf, sizeof(short_buf), "TFI: %s", val_buf);
-    C_ANN_PUT(di, bd->ss, bd->es, s->out_ann, ANN_TFI, buf, short_buf, "TFI");
+    c_put(di, bd->ss, bd->es, s->out_ann, ANN_TFI, buf, short_buf, "TFI");
 }
 
 static void pn532_handle_data(struct srd_decoder_inst *di, pn532_state *s, pn532_byte_data *bd)
@@ -385,7 +385,7 @@ static void pn532_handle_data(struct srd_decoder_inst *di, pn532_state *s, pn532
     /* First data byte = command */
     pn532_format_value(s->data_packet[0].byte_val, s->format, val_buf, sizeof(val_buf));
     snprintf(buf, sizeof(buf), "Command: %s", val_buf);
-    C_ANN_PUT(di, s->data_packet[0].ss, s->data_packet[0].es, s->out_ann, ANN_DATA, buf, val_buf);
+    c_put(di, s->data_packet[0].ss, s->data_packet[0].es, s->out_ann, ANN_DATA, buf, val_buf);
 
     /* Remaining data bytes */
     if (s->data_packet_len > 1) {
@@ -398,7 +398,7 @@ static void pn532_handle_data(struct srd_decoder_inst *di, pn532_state *s, pn532
                 pos += snprintf(data_buf + pos, sizeof(data_buf) - pos, " ");
             pos += snprintf(data_buf + pos, sizeof(data_buf) - pos, "%s", val_buf);
         }
-        C_ANN_PUT(di, s->data_packet[1].ss, s->data_packet[s->data_packet_len - 1].es,
+        c_put(di, s->data_packet[1].ss, s->data_packet[s->data_packet_len - 1].es,
                   s->out_ann, ANN_DATA, data_buf);
     }
 
@@ -415,10 +415,10 @@ static void pn532_handle_checksum(struct srd_decoder_inst *di, pn532_state *s, p
         sum += s->data_packet[i].byte_val;
 
     if ((sum + bd->byte_val) & 0xFF == 0) {
-        C_ANN_PUT(di, bd->ss, bd->es, s->out_ann, ANN_DCS, "Data Checksum: OK", "DCS");
+        c_put(di, bd->ss, bd->es, s->out_ann, ANN_DCS, "Data Checksum: OK", "DCS");
     } else {
-        C_ANN_PUT(di, bd->ss, bd->es, s->out_ann, ANN_DCS, "Data Checksum", "DCS");
-        C_ANN_PUT(di, bd->ss, bd->es, s->out_ann, ANN_ERROR, "Checksum Error", "Error", "E");
+        c_put(di, bd->ss, bd->es, s->out_ann, ANN_DCS, "Data Checksum", "DCS");
+        c_put(di, bd->ss, bd->es, s->out_ann, ANN_ERROR, "Checksum Error", "Error", "E");
     }
 
     s->state = PN532_END_FRAME;
@@ -428,11 +428,11 @@ static void pn532_handle_end_frame(struct srd_decoder_inst *di, pn532_state *s, 
 {
     /* Output frame type annotation */
     int ft = (s->frame_type < 5) ? s->frame_type : 4;
-    C_ANN_PUT(di, s->preamble_byte.ss, bd->es, s->out_ann, ANN_FRAME,
+    c_put(di, s->preamble_byte.ss, bd->es, s->out_ann, ANN_FRAME,
               frame_type_strings[ft][0], frame_type_strings[ft][1]);
 
     /* Postamble */
-    C_ANN_PUT(di, bd->ss, bd->es, s->out_ann, ANN_END, "Postamble", "PO");
+    c_put(di, bd->ss, bd->es, s->out_ann, ANN_END, "Postamble", "PO");
 
     /* Handle command for non-ACK/NACK/ERROR frames */
     if (s->frame_type != FRAME_ACK && s->frame_type != FRAME_NACK && s->frame_type != FRAME_ERROR) {
@@ -443,9 +443,7 @@ static void pn532_handle_end_frame(struct srd_decoder_inst *di, pn532_state *s, 
     pn532_reset_state(s);
 }
 
-static void pn532_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void pn532_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     pn532_state *s = (pn532_state *)c_decoder_get_private(di);
     if (!s)
@@ -453,11 +451,11 @@ static void pn532_recv_proto(struct srd_decoder_inst *di,
 
     if (strcmp(cmd, "DATA") != 0)
         return;
-    if (data_len < 1)
+    if (n_fields < 1)
         return;
 
     pn532_byte_data bd;
-    bd.byte_val = data[0];
+    bd.byte_val = fields[0].u8;
     bd.ss = start_sample;
     bd.es = end_sample;
 
@@ -497,9 +495,9 @@ static void pn532_reset(struct srd_decoder_inst *di)
 static void pn532_start(struct srd_decoder_inst *di)
 {
     pn532_state *s = (pn532_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "pn532");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "pn532");
 
-    const char *fmt = c_decoder_get_option_string(di, "format", "hex");
+    const char *fmt = c_opt_str(di, "format", "hex");
     if (strcmp(fmt, "ascii") == 0)
         s->format = 1;
     else if (strcmp(fmt, "dec") == 0)
@@ -554,7 +552,8 @@ struct srd_c_decoder pn532_c_decoder = {
     .start = pn532_start,
     .decode = pn532_decode,
     .destroy = pn532_destroy,
-    .recv_proto = pn532_recv_proto,
+    .decode_upper = pn532_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

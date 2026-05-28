@@ -1,7 +1,909 @@
 {
 	"decoder": "ds28ea00_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 91,
 	"annotations": [
+		{
+			"start_sample": 2495,
+			"end_sample": 2555,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2960,
+			"end_sample": 3020,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3030,
+			"end_sample": 3090,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3100,
+			"end_sample": 3160,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3220,
+			"end_sample": 3280,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3290,
+			"end_sample": 3350,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3360,
+			"end_sample": 3420,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3480,
+			"end_sample": 3540,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 2495,
+			"end_sample": 3540,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM command: 0x48 'unrecognized'"
+			]
+		}, 
+		{
+			"start_sample": 3550,
+			"end_sample": 3610,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3620,
+			"end_sample": 3680,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 3750,
+			"end_sample": 3810,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3820,
+			"end_sample": 3880,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3890,
+			"end_sample": 3950,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 4020,
+			"end_sample": 4080,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4140,
+			"end_sample": 4200,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4260,
+			"end_sample": 4320,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 3550,
+			"end_sample": 4320,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM error data: 0x12"
+			]
+		}, 
+		{
+			"start_sample": 4380,
+			"end_sample": 4440,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 4500,
+			"end_sample": 4980,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"Reset", 
+				"Rst", 
+				"R"
+			]
+		}, 
+		{
+			"start_sample": 4980,
+			"end_sample": 5460,
+			"ann_class": 3,
+			"ann_type": 10,
+			"texts": [
+				"Presence: true", 
+				"Presence", 
+				"Pres", 
+				"P"
+			]
+		}, 
+		{
+			"start_sample": 4980,
+			"end_sample": 5460,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Reset/presence: true"
+			]
+		}, 
+		{
+			"start_sample": 4980,
+			"end_sample": 5460,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Reset/presence: true"
+			]
+		}, 
+		{
+			"start_sample": 5530,
+			"end_sample": 5590,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5600,
+			"end_sample": 5660,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5720,
+			"end_sample": 5780,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5790,
+			"end_sample": 5850,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 5860,
+			"end_sample": 5920,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5980,
+			"end_sample": 6040,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6050,
+			"end_sample": 6110,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6170,
+			"end_sample": 6230,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 5530,
+			"end_sample": 6230,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM command: 0xd2 'unrecognized'"
+			]
+		}, 
+		{
+			"start_sample": 6290,
+			"end_sample": 6350,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6420,
+			"end_sample": 6480,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 6540,
+			"end_sample": 6600,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6660,
+			"end_sample": 6720,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6780,
+			"end_sample": 6840,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6900,
+			"end_sample": 6960,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7020,
+			"end_sample": 7080,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7140,
+			"end_sample": 7200,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 6290,
+			"end_sample": 7200,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM error data: 0x03"
+			]
+		}, 
+		{
+			"start_sample": 7260,
+			"end_sample": 7320,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7380,
+			"end_sample": 7440,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7500,
+			"end_sample": 7560,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7620,
+			"end_sample": 7680,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7740,
+			"end_sample": 7800,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7860,
+			"end_sample": 7920,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 7980,
+			"end_sample": 8040,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8100,
+			"end_sample": 8160,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 7260,
+			"end_sample": 8160,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM error data: 0x3c"
+			]
+		}, 
+		{
+			"start_sample": 8220,
+			"end_sample": 8280,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8340,
+			"end_sample": 8400,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8460,
+			"end_sample": 8520,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8580,
+			"end_sample": 8640,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8700,
+			"end_sample": 8760,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8820,
+			"end_sample": 8880,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 8940,
+			"end_sample": 9000,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9060,
+			"end_sample": 9120,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 8220,
+			"end_sample": 9120,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM error data: 0xdc"
+			]
+		}, 
+		{
+			"start_sample": 9180,
+			"end_sample": 9240,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9300,
+			"end_sample": 9360,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9420,
+			"end_sample": 9480,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9540,
+			"end_sample": 9600,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9660,
+			"end_sample": 9720,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9780,
+			"end_sample": 9840,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9900,
+			"end_sample": 9960,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10020,
+			"end_sample": 10080,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 9180,
+			"end_sample": 10080,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM error data: 0xff"
+			]
+		}, 
+		{
+			"start_sample": 10140,
+			"end_sample": 10200,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10260,
+			"end_sample": 10320,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 10380,
+			"end_sample": 10440,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10500,
+			"end_sample": 10560,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10620,
+			"end_sample": 10680,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10740,
+			"end_sample": 10800,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11295,
+			"end_sample": 11355,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11760,
+			"end_sample": 11820,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 10140,
+			"end_sample": 11820,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM error data: 0x03"
+			]
+		}, 
+		{
+			"start_sample": 11830,
+			"end_sample": 11890,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11900,
+			"end_sample": 11960,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12020,
+			"end_sample": 12080,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12090,
+			"end_sample": 12150,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12160,
+			"end_sample": 12220,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12280,
+			"end_sample": 12340,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12410,
+			"end_sample": 12470,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12540,
+			"end_sample": 12600,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 11830,
+			"end_sample": 12600,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"ROM error data: 0xf2"
+			]
+		}, 
+		{
+			"start_sample": 12660,
+			"end_sample": 12720,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12780,
+			"end_sample": 12840,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 12900,
+			"end_sample": 12960,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 1", 
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13020,
+			"end_sample": 13080,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 13140,
+			"end_sample": 13200,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"Bit: 0", 
+				"0"
+			]
+		}
 	]
 }

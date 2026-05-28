@@ -161,7 +161,7 @@ static void look_for_sync_pad(struct srd_decoder_inst *di, adat_priv *s, uint64_
 
         if (s->annotations_mode != 1) {  /* not per-frame only */
             uint64_t es = s->times[9] + (uint64_t)(2 * s->bit_time + 0.5);
-            C_ANN_PUT(di, s->times[0], es, s->out_ann, ANN_SYNC, "SYNC");
+            c_put(di, s->times[0], es, s->out_ann, ANN_SYNC, "SYNC", "S");
         }
         s->frame_start_time = s->times[0];
 
@@ -190,7 +190,7 @@ static void decode_user_bits(struct srd_decoder_inst *di, adat_priv *s, uint64_t
 
     /* First bit must be 1 (4b/5b encoding) */
     if (s->signal[0] != 1) {
-        C_ANN_PUT(di, s->times[0], s->times[1], s->out_ann, ANN_ERROR, "ERROR");
+        c_put(di, s->times[0], s->times[1], s->out_ann, ANN_ERROR, "ERROR", "ERR", "E");
         /* Remove one bit */
         for (int i = 0; i < s->signal_len - 1; i++) {
             s->signal[i] = s->signal[i + 1];
@@ -225,9 +225,9 @@ static void decode_user_bits(struct srd_decoder_inst *di, adat_priv *s, uint64_t
         c_decoder_put(di, s->times[0], s->times[4] + s->bit_time_int, s->out_ann, &ann);
 
         char hex_str[8];
-        snprintf(hex_str, sizeof(hex_str), "0x%X", s->frame_user_data);
+        snprintf(hex_str, sizeof(hex_str), "0x%x", s->frame_user_data);
         char hex_str2[8];
-        snprintf(hex_str2, sizeof(hex_str2), "%X", s->frame_user_data);
+        snprintf(hex_str2, sizeof(hex_str2), "%x", s->frame_user_data);
         const char *nib_txts[] = {hex_str, hex_str2, NULL};
         struct srd_c_annotation ann2;
         ann2.ann_class = ANN_NIBBLE;
@@ -252,7 +252,7 @@ static void decode_channel_data(struct srd_decoder_inst *di, adat_priv *s, uint6
 
     /* First bit must be 1 (4b/5b encoding) */
     if (s->signal[0] != 1) {
-        C_ANN_PUT(di, s->times[0], s->times[1], s->out_ann, ANN_ERROR, "ERROR");
+        c_put(di, s->times[0], s->times[1], s->out_ann, ANN_ERROR, "ERROR", "ERR", "E");
         for (int i = 0; i < s->signal_len - 1; i++) {
             s->signal[i] = s->signal[i + 1];
             s->times[i] = s->times[i + 1];
@@ -279,9 +279,9 @@ static void decode_channel_data(struct srd_decoder_inst *di, adat_priv *s, uint6
 
     if (s->annotations_mode != 1) {  /* not per-frame only */
         char hex_str[8];
-        snprintf(hex_str, sizeof(hex_str), "0x%X", nibble);
+        snprintf(hex_str, sizeof(hex_str), "0x%x", nibble);
         char hex_str2[8];
-        snprintf(hex_str2, sizeof(hex_str2), "%X", nibble);
+        snprintf(hex_str2, sizeof(hex_str2), "%x", nibble);
         const char *nib_txts[] = {hex_str, hex_str2, NULL};
         struct srd_c_annotation ann;
         ann.ann_class = ANN_NIBBLE;
@@ -314,7 +314,7 @@ static void decode_channel_data(struct srd_decoder_inst *di, adat_priv *s, uint6
             ann.ann_class = ANN_CHANNEL;
             ann.ann_type = 0;
             ann.ann_text = (char **)ch_txts;
-            c_decoder_put(di, s->channel_start_time, samplenum + s->bit_time_int, s->out_ann, &ann);
+            c_decoder_put(di, s->channel_start_time, di_samplenum(di) + s->bit_time_int, s->out_ann, &ann);
         }
 
         s->all_channels_data[s->channel_no] = s->channel_data;
@@ -344,7 +344,7 @@ static void decode_channel_data(struct srd_decoder_inst *di, adat_priv *s, uint6
                 ann.ann_class = ANN_CHANNEL_0 + ch;
                 ann.ann_type = 0;
                 ann.ann_text = (char **)ch_txts;
-                c_decoder_put(di, s->frame_start_time, samplenum + s->bit_time_int, s->out_ann, &ann);
+                c_decoder_put(di, s->frame_start_time, di_samplenum(di) + s->bit_time_int, s->out_ann, &ann);
             }
 
             /* Frame user data */
@@ -360,7 +360,7 @@ static void decode_channel_data(struct srd_decoder_inst *di, adat_priv *s, uint6
             ann.ann_class = ANN_USER_DATA;
             ann.ann_type = 0;
             ann.ann_text = (char **)ud_txts;
-            c_decoder_put(di, s->frame_start_time, samplenum + s->bit_time_int, s->out_ann, &ann);
+            c_decoder_put(di, s->frame_start_time, di_samplenum(di) + s->bit_time_int, s->out_ann, &ann);
         }
 
         s->channel_no = 0;
@@ -382,14 +382,14 @@ static void adat_reset(struct srd_decoder_inst *di)
 static void adat_start(struct srd_decoder_inst *di)
 {
     adat_priv *s = (adat_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "adat");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "adat");
 
-    int audio_samplerate = (int)c_decoder_get_option_int(di, "samplerate", 48000);
+    int audio_samplerate = (int)c_opt_int(di, "samplerate", 48000);
 
-    const char *sample_display = c_decoder_get_option_string(di, "sample_display", "decimal");
+    const char *sample_display = c_opt_str(di, "sample_display", "decimal");
     s->sample_display_hex = (strcmp(sample_display, "hexadecimal") == 0) ? 1 : 0;
 
-    const char *annotations = c_decoder_get_option_string(di, "annotations", "both");
+    const char *annotations = c_opt_str(di, "annotations", "both");
     if (strcmp(annotations, "intra-frame") == 0)
         s->annotations_mode = 0;
     else if (strcmp(annotations, "per-frame") == 0)
@@ -408,7 +408,7 @@ static void adat_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
     adat_priv *s = (adat_priv *)c_decoder_get_private(di);
     if (key == SRD_CONF_SAMPLERATE) {
         s->samplerate = value;
-        int audio_samplerate = (int)c_decoder_get_option_int(di, "samplerate", 48000);
+        int audio_samplerate = (int)c_opt_int(di, "samplerate", 48000);
         if (audio_samplerate > 0) {
             s->bit_time = (double)value / (256.0 * audio_samplerate);
             s->bit_time_int = (int)(s->bit_time + 0.5);
@@ -419,13 +419,11 @@ static void adat_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void adat_decode(struct srd_decoder_inst *di)
 {
     adat_priv *s = (adat_priv *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
-
     if (s->samplerate == 0) {
-        s->samplerate = c_decoder_get_samplerate(di);
+        s->samplerate = c_samplerate(di);
         if (s->samplerate == 0)
             return;
-        int audio_samplerate = (int)c_decoder_get_option_int(di, "samplerate", 48000);
+        int audio_samplerate = (int)c_opt_int(di, "samplerate", 48000);
         if (audio_samplerate > 0) {
             s->bit_time = (double)s->samplerate / (256.0 * audio_samplerate);
             s->bit_time_int = (int)(s->bit_time + 0.5);
@@ -435,14 +433,11 @@ static void adat_decode(struct srd_decoder_inst *di)
     uint64_t last_time = 0;
 
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_edge(cb, 0);  /* Wait for ADAT signal edge */
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_E(0), CW_END);
         if (ret != SRD_OK)
             return;
 
-        uint64_t now = samplenum;
+        uint64_t now = di_samplenum(di);
         uint64_t diff = now - last_time;
         int num_bits = (int)((double)diff / s->bit_time + 0.5);
 
@@ -457,18 +452,18 @@ static void adat_decode(struct srd_decoder_inst *di)
             if (s->annotations_mode != 1) {  /* not per-frame only */
                 char bit_str[4];
                 snprintf(bit_str, sizeof(bit_str), "%d", bit);
-                C_ANN_PUT(di, t, t + s->bit_time_int, s->out_ann, ANN_BIT, bit_str);
+                c_put(di, t, t + s->bit_time_int, s->out_ann, ANN_BIT, bit_str);
             }
         }
 
         /* Process signal buffer based on state */
         if (s->state == STATE_SYNC) {
             while (s->state == STATE_SYNC && s->signal_len >= 11)
-                look_for_sync_pad(di, s, samplenum);
+                look_for_sync_pad(di, s, di_samplenum(di));
         } else if (s->state == STATE_USER_BITS) {
-            decode_user_bits(di, s, samplenum);
+            decode_user_bits(di, s, di_samplenum(di));
         } else if (s->state == STATE_CHANNEL_DATA) {
-            decode_channel_data(di, s, samplenum);
+            decode_channel_data(di, s, di_samplenum(di));
         }
 
         last_time = now;
@@ -512,6 +507,7 @@ struct srd_c_decoder adat_c_decoder = {
     .start = adat_start,
     .decode = adat_decode,
     .destroy = adat_destroy,
+    .state_size = 0,
     .metadata = adat_metadata,
 };
 

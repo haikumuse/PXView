@@ -2,7 +2,7 @@
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 original Python version
- * Copyright (C) 2024 C port
+ * Copyright (C) 2025 C port (v4 API)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,11 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "libsigrokdecode.h"
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include "libsigrokdecode.h"
 
 /* Annotations */
 enum {
@@ -47,11 +47,12 @@ typedef struct {
     uint64_t es;
 } eth_block_t;
 
-/* Decoder private state */
-typedef struct {
+/* Decoder private state — C_DECODER_STATE auto-generates ethernet_s typedef,
+ * ethernet_reset (calloc), and ethernet_destroy (free). */
+C_DECODER_STATE(ethernet, {
     enum eth_state state;
     int out_ann;
-    int out_python;
+    int out_proto;
     int out_binary;
 
     int jk_seen_j;
@@ -75,7 +76,7 @@ typedef struct {
 
     uint64_t ss_block;
     uint64_t es_block;
-} ethernet_state;
+})
 
 /* --- EtherType lookup table --- */
 
@@ -178,7 +179,7 @@ static uint32_t crc32_calc(const uint8_t *buf, int len)
 
 /* --- Helper to reset frame state --- */
 
-static void ethernet_reset_vars(ethernet_state *s)
+static void ethernet_reset_vars(ethernet_s *s)
 {
     s->state = ETH_IDLE;
     s->jk_seen_j = 0;
@@ -215,7 +216,7 @@ static const struct srd_decoder_binary ethernet_binary[] = {
 
 /* --- pcapng output --- */
 
-static void pcap_headers(struct srd_decoder_inst *di, ethernet_state *s)
+static void pcap_headers(struct srd_decoder_inst *di, ethernet_s *s)
 {
     /* Section Header Block */
     uint8_t shb[28];
@@ -229,7 +230,7 @@ static void pcap_headers(struct srd_decoder_inst *di, ethernet_state *s)
     int64_t sl = -1;
     memcpy(shb + 16, &sl, 8);
     v = 28;         memcpy(shb + 24, &v, 4);
-    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, 28, shb);
+    c_put_bin(di, 0, 0, s->out_binary, 0, 28, shb);
 
     /* Interface Description Block */
     uint8_t idb[20];
@@ -241,10 +242,10 @@ static void pcap_headers(struct srd_decoder_inst *di, ethernet_state *s)
     memcpy(idb + 10, &reserved, 2);
     v = 1522; memcpy(idb + 12, &v, 4);
     v = 20;   memcpy(idb + 16, &v, 4);
-    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, 20, idb);
+    c_put_bin(di, 0, 0, s->out_binary, 0, 20, idb);
 }
 
-static void pcap_append(struct srd_decoder_inst *di, ethernet_state *s)
+static void pcap_append(struct srd_decoder_inst *di, ethernet_s *s)
 {
     int frame_len = s->frame_len;
     int pad_len = (4 - (frame_len % 4)) % 4;
@@ -259,13 +260,13 @@ static void pcap_append(struct srd_decoder_inst *di, ethernet_state *s)
     if (pad_len > 0) memset(pkt + 12 + frame_len, 0, pad_len);
     v = block_len;    memcpy(pkt + 12 + frame_len + pad_len, &v, 4);
 
-    c_decoder_put_binary(di, 0, 0, s->out_binary, 0, block_len, pkt);
+    c_put_bin(di, 0, 0, s->out_binary, 0, block_len, pkt);
     g_free(pkt);
 }
 
 /* --- Handle data byte --- */
 
-static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_state *s,
+static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_s *s,
                                        uint8_t byte_val, uint64_t start_sample, uint64_t end_sample)
 {
     if (s->state == ETH_IDLE) return;
@@ -276,12 +277,12 @@ static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_stat
             /* Preamble annotation */
             s->ss_block = s->frame_start;
             s->es_block = end_sample - ((end_sample - s->frame_start) / s->buffer_len);
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, "Preamble");
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, "Preamble");
 
             /* SFD annotation */
             s->ss_block = s->es_block;
             s->es_block = end_sample;
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, "Start Frame Delimiter", "SFD");
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, "Start Frame Delimiter", "SFD");
 
             s->buffer_len = 0;
             s->header_start = end_sample;
@@ -303,7 +304,7 @@ static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_stat
                                 s->buffer[2] == 0xFF && s->buffer[3] == 0xFF &&
                                 s->buffer[4] == 0xFF && s->buffer[5] == 0xFF);
 
-            char t[48];
+            char t[64];
             if (is_broadcast)
                 snprintf(t, sizeof(t), "Destination MAC: %s (Broadcast)", mac_str);
             else
@@ -311,7 +312,7 @@ static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_stat
             char t2[40];
             snprintf(t2, sizeof(t2), "Dst MAC: %s", mac_str);
             s->es_block = end_sample;
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
             memcpy(s->frame + s->frame_len, s->buffer, 6);
             s->frame_len += 6;
@@ -330,12 +331,12 @@ static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_stat
                      s->buffer[0], s->buffer[1], s->buffer[2],
                      s->buffer[3], s->buffer[4], s->buffer[5]);
 
-            char t[48];
+            char t[64];
             snprintf(t, sizeof(t), "Source MAC:    %s", mac_str);
             char t2[40];
             snprintf(t2, sizeof(t2), "Src MAC: %s", mac_str);
             s->es_block = end_sample;
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
             memcpy(s->frame + s->frame_len, s->buffer, 6);
             s->frame_len += 6;
@@ -361,7 +362,7 @@ static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_stat
                 snprintf(t2, sizeof(t2), "UNKNOWN");
             }
             s->es_block = end_sample;
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_HEADER, t, t2);
 
             memcpy(s->frame + s->frame_len, s->buffer, 2);
             s->frame_len += 2;
@@ -385,17 +386,17 @@ static void ethernet_handle_data_byte(struct srd_decoder_inst *di, ethernet_stat
 
         char t[8];
         snprintf(t, sizeof(t), "0x%02X", byte_val);
-        C_ANN_PUT(di, start_sample, end_sample, s->out_ann, ANN_DATA, t);
+        c_put(di, start_sample, end_sample, s->out_ann, ANN_DATA, t);
     }
 }
 
-/* --- Core recv_proto --- */
+/* --- Core decode_upper --- */
 
-static void ethernet_recv_proto(struct srd_decoder_inst *di,
+static void ethernet_decode_upper(struct srd_decoder_inst *di,
     uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+    const char *cmd, const c_field *fields, int n_fields)
 {
-    ethernet_state *s = (ethernet_state *)c_decoder_get_private(di);
+    ethernet_s *s = (ethernet_s *)c_decoder_get_private(di);
     if (!s) return;
 
     /* J control symbol (SSD first part) */
@@ -418,42 +419,32 @@ static void ethernet_recv_proto(struct srd_decoder_inst *di,
 
     /* T control symbol (ESD - frame end) */
     if (strcmp(cmd, "T") == 0) {
-        if (s->state != ETH_IDLE) {
-            /* Add payload to frame for FCS verification */
-            memcpy(s->frame + s->frame_len, s->payload, s->payload_len);
-            s->frame_len += s->payload_len;
+        /* Add payload to frame for FCS verification */
+        memcpy(s->frame + s->frame_len, s->payload, s->payload_len);
+        s->frame_len += s->payload_len;
 
-            /* Verify FCS */
-            uint32_t crc = crc32_calc(s->frame, s->frame_len);
-            int fcs_ok = (crc == 0x2144DF1C);
-            const char *fcs_str = fcs_ok ? "OK" : "FAILED";
+        /* Verify FCS */
+        uint32_t crc = crc32_calc(s->frame, s->frame_len);
+        int fcs_ok = (crc == 0x2144DF1C);
+        const char *fcs_str = fcs_ok ? "OK" : "FAILED";
 
-            /* FCS annotation */
-            uint64_t fcs_start = start_sample - (uint64_t)((end_sample - start_sample) * 8);
-            uint64_t fcs_end = end_sample - (end_sample - start_sample);
-            char t[64], t2[32];
-            snprintf(t, sizeof(t), "Frame Check Sequence: %s", fcs_str);
-            snprintf(t2, sizeof(t2), "FCS: %s", fcs_str);
-            C_ANN_PUT(di, fcs_start, fcs_end, s->out_ann, ANN_HEADER, t, t2);
+        /* FCS annotation */
+        uint64_t fcs_start = start_sample - (uint64_t)((end_sample - start_sample) * 8);
+        uint64_t fcs_end = end_sample - (end_sample - start_sample);
+        char t[64], t2[32];
+        snprintf(t, sizeof(t), "Frame Check Sequence: %s", fcs_str);
+        snprintf(t2, sizeof(t2), "FCS: %s", fcs_str);
+        c_put(di, fcs_start, fcs_end, s->out_ann, ANN_HEADER, t, t2);
 
-            /* Add frame to pcapng */
-            pcap_append(di, s);
+        /* Add frame to pcapng */
+        pcap_append(di, s);
 
-            /* Push payload to stacked decoders */
-            if (s->out_python >= 0 && s->payload_len >= 4) {
-                uint16_t plen = (uint16_t)(s->payload_len - 4); /* without FCS */
-                int data_size = 2 + plen + 2 + s->block_count * 16;
-                uint8_t *buf = g_malloc(data_size);
-                int pos = 0;
-                memcpy(buf + pos, &plen, 2); pos += 2;
-                memcpy(buf + pos, s->payload, plen); pos += plen;
-                uint16_t bc = (uint16_t)s->block_count;
-                memcpy(buf + pos, &bc, 2); pos += 2;
-                memcpy(buf + pos, s->blocks, bc * 16); pos += bc * 16;
-                c_decoder_put_python(di, s->payload_start, fcs_start,
-                                     s->out_python, "PAYLOAD", buf, pos);
-                g_free(buf);
-            }
+        /* Push payload to stacked decoders */
+        if (s->out_proto >= 0 && s->payload_len >= 4) {
+            uint16_t plen = (uint16_t)(s->payload_len - 4); /* without FCS */
+            c_proto(di, s->payload_start, fcs_start, s->out_proto, "PAYLOAD",
+                    C_BYTES(s->payload, plen),
+                    C_BYTES((const uint8_t *)s->blocks, s->block_count * sizeof(eth_block_t)), C_END);
         }
         ethernet_reset_vars(s);
         return;
@@ -465,56 +456,29 @@ static void ethernet_recv_proto(struct srd_decoder_inst *di,
         return;
     }
 
-    /* Idle/pause/error control symbols */
-    if (strcmp(cmd, "I") == 0 || strcmp(cmd, "S") == 0 ||
-        strcmp(cmd, "Q") == 0 || strcmp(cmd, "H") == 0 ||
-        strcmp(cmd, "L") == 0) {
-        ethernet_reset_vars(s);
-        return;
-    }
+    /* Idle/pause/error control symbols — Python ignores these, only resets on R */
+    /* Removed: I/S/Q/H/L reset to match Python behavior */
 
     /* Data byte */
     if (strcmp(cmd, "DATA") == 0) {
-        uint8_t byte_val = (data && data_len > 0) ? data[0] : 0;
+        uint8_t byte_val = (n_fields > 0 && fields[0].type == C_FIELD_U8) ? fields[0].u8 : 0;
         ethernet_handle_data_byte(di, s, byte_val, start_sample, end_sample);
     }
 }
 
 /* --- Decoder lifecycle --- */
 
-static void ethernet_reset(struct srd_decoder_inst *di)
-{
-    if (!c_decoder_get_private(di))
-        c_decoder_set_private(di, g_malloc0(sizeof(ethernet_state)));
-    ethernet_state *s = (ethernet_state *)c_decoder_get_private(di);
-    memset(s, 0, sizeof(ethernet_state));
-    s->state = ETH_IDLE;
-}
-
 static void ethernet_start(struct srd_decoder_inst *di)
 {
-    ethernet_state *s = (ethernet_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ethernet");
-    s->out_python = c_decoder_register_output(di, SRD_OUTPUT_PROTO, "ethernet");
-    s->out_binary = c_decoder_register_output(di, SRD_OUTPUT_BINARY, "ethernet");
+    ethernet_s *s = (ethernet_s *)c_decoder_get_private(di);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ethernet");
+    s->out_proto = c_reg_out(di, SRD_OUTPUT_PROTO, "ethernet");
+    s->out_binary = c_reg_out(di, SRD_OUTPUT_BINARY, "ethernet");
     pcap_headers(di, s);
 }
 
-static void ethernet_decode(struct srd_decoder_inst *di)
-{
-    (void)di;
-}
-
-static void ethernet_destroy(struct srd_decoder_inst *di)
-{
-    void *priv = c_decoder_get_private(di);
-    if (priv) {
-        g_free(priv);
-        c_decoder_set_private(di, NULL);
-    }
-}
-
-struct srd_c_decoder ethernet_c_decoder = {
+/* ---- Decoder definition (v4 API) ---- */
+static struct srd_c_decoder ethernet_c_def = {
     .id = "ethernet_c",
     .name = "Ethernet(C)",
     .longname = "Ethernet II (IEEE 802.3) (C)",
@@ -538,16 +502,19 @@ struct srd_c_decoder ethernet_c_decoder = {
     .num_binary = 1,
     .tags = ethernet_tags,
     .num_tags = 2,
+    .state_size = sizeof(ethernet_s),
     .reset = ethernet_reset,
     .start = ethernet_start,
-    .decode = ethernet_decode,
+    .decode = NULL,
+    .end = NULL,
+    .metadata = NULL,
     .destroy = ethernet_destroy,
-    .recv_proto = ethernet_recv_proto,
+    .decode_upper = ethernet_decode_upper,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)
 {
-    return &ethernet_c_decoder;
+    return &ethernet_c_def;
 }
 
 SRD_C_DECODER_EXPORT int srd_c_decoder_api_version(void)

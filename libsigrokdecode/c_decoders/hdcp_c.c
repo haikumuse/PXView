@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -152,7 +152,7 @@ static void hdcp_process_buffer(struct srd_decoder_inst *di, hdcp_state *s)
         return;
 
     if (s->stack_len == 0) {
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, s->type);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, s->type);
         return;
     }
 
@@ -168,7 +168,7 @@ static void hdcp_process_buffer(struct srd_decoder_inst *di, hdcp_state *s)
                  s->type, reauth_req ? "True" : "False",
                  ready ? "True" : "False",
                  length ? "True" : "False");
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, buf);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, buf);
     } else if (strcmp(s->type, "1.4 Bstatus") == 0) {
         int lo = (s->stack_len >= 1) ? s->stack[s->stack_len - 1] : 0;
         int hi = (s->stack_len >= 2) ? s->stack[s->stack_len - 2] : 0;
@@ -179,29 +179,27 @@ static void hdcp_process_buffer(struct srd_decoder_inst *di, hdcp_state *s)
         char buf[128];
         snprintf(buf, sizeof(buf), "%s, %d devices, depth %d, hdmi mode %s",
                  s->type, device_count, depth, hdmi_mode ? "True" : "False");
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, buf);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, buf);
     } else if (strcmp(s->type, "Read_Message") == 0 || strcmp(s->type, "Write_Message") == 0) {
         int msg = s->stack[0];
         const char *msg_name = hdcp_lookup_msg_name(msg);
         int ann_cls = (msg >= 0 && msg < 18) ? msg : ANN_SUMMARY;
         char buf[128];
         snprintf(buf, sizeof(buf), "%s, %s", s->type, msg_name);
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ann_cls, buf);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ann_cls, buf);
     } else if (strcmp(s->type, "HDCP2Version") == 0) {
         int version = s->stack[0];
         if (version & 0x04) {
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, "HDCP2");
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, "HDCP2");
         } else {
-            C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, "NOT HDCP2");
+            c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, "NOT HDCP2");
         }
     } else {
-        C_ANN_PUT(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, s->type);
+        c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, s->type);
     }
 }
 
-static void hdcp_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void hdcp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     hdcp_state *s = (hdcp_state *)c_decoder_get_private(di);
     if (!s)
@@ -222,14 +220,14 @@ static void hdcp_recv_proto(struct srd_decoder_inst *di,
         s->state = HDCP_GET_SLAVE_ADDR;
     } else if (s->state == HDCP_GET_SLAVE_ADDR) {
         if (strcmp(cmd, "ADDRESS READ") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr != 0x3a) {
                 s->state = HDCP_IDLE;
                 return;
             }
             s->state = HDCP_BUFFER_DATA;
         } else if (strcmp(cmd, "ADDRESS WRITE") == 0) {
-            uint8_t addr = (data_len > 0) ? data[0] : 0;
+            uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr != 0x3a) {
                 s->state = HDCP_IDLE;
                 return;
@@ -238,7 +236,7 @@ static void hdcp_recv_proto(struct srd_decoder_inst *di,
         }
     } else if (s->state == HDCP_WRITE_OFFSET) {
         if (strcmp(cmd, "DATA WRITE") == 0) {
-            uint8_t databyte = (data_len > 0) ? data[0] : 0;
+            uint8_t databyte = (n_fields > 0) ? fields[0].u8 : 0;
             const char *type_name = hdcp_lookup_write_item(databyte);
             if (type_name)
                 strncpy(s->type, type_name, sizeof(s->type) - 1);
@@ -254,7 +252,7 @@ static void hdcp_recv_proto(struct srd_decoder_inst *di,
             hdcp_process_buffer(di, s);
             s->state = HDCP_IDLE;
         } else if (strcmp(cmd, "DATA READ") == 0 || strcmp(cmd, "DATA WRITE") == 0) {
-            uint8_t databyte = (data_len > 0) ? data[0] : 0;
+            uint8_t databyte = (n_fields > 0) ? fields[0].u8 : 0;
             if (s->stack_len < (int)sizeof(s->stack))
                 s->stack[s->stack_len++] = databyte;
         }
@@ -274,7 +272,7 @@ static void hdcp_reset(struct srd_decoder_inst *di)
 static void hdcp_start(struct srd_decoder_inst *di)
 {
     hdcp_state *s = (hdcp_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "hdcp");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "hdcp");
 }
 
 static void hdcp_decode(struct srd_decoder_inst *di)
@@ -319,7 +317,8 @@ struct srd_c_decoder hdcp_c_decoder = {
     .start = hdcp_start,
     .decode = hdcp_decode,
     .destroy = hdcp_destroy,
-    .recv_proto = hdcp_recv_proto,
+    .decode_upper = hdcp_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

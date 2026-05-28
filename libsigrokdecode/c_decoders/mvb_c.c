@@ -23,8 +23,8 @@
 #include <glib.h>
 #include "libsigrokdecode.h"
 
-#define PREAMBLE_MASTER 0x16465   /* 0b101100011100010101 */
-#define PREAMBLE_SLAVE  0x15463   /* 0b101010100011100011 */
+#define PREAMBLE_MASTER 0x2C715   /* 0b101100011100010101 */
+#define PREAMBLE_SLAVE  0x2A8E3   /* 0b101010100011100011 */
 #define PREAMBLE_LENGTH 18
 #define PREAMBLE_MASK   0x3FFFF   /* 18-bit mask */
 #define MVB_CLOCK_RATE  3000000ULL /* 3 MHz */
@@ -106,33 +106,72 @@ static const struct srd_c_ann_row mvb_ann_rows[] = {
 static const char *mvb_inputs[] = { "logic" };
 static const char *mvb_tags[] = { "Frame" };
 
-static uint8_t mvb_crc8(const uint8_t *data, int bit_len)
-{
-    uint8_t crc = 0;
-    for (int i = 0; i < bit_len; i++) {
-        uint8_t msb = (crc >> 7) & 1;
-        crc = (crc << 1) & 0xFF;
-        if (msb ^ data[i])
-            crc ^= 0xE5;
-    }
-    return crc;
-}
+/* Polynomial: 11100101 (0xE5) */
+static const uint8_t crc_poly[] = {1, 1, 1, 0, 0, 1, 0, 1};
+#define CRC_POLY_LEN 8
 
 static int check_check_sequence(const uint8_t *frame_bits, int total_bits)
 {
-    int parity = 0;
-    for (int i = 0; i < total_bits - 8; i++)
-        parity ^= frame_bits[i];
+    int data_len = total_bits - 8;
+    if (data_len <= 0) return 0;
 
-    uint8_t calc_crc = mvb_crc8(frame_bits, total_bits - 8);
-    uint8_t check = calc_crc ^ 0xFF;
-    check ^= parity;
+    /* Create appended_data = data + 7 zeros */
+    int appended_len = data_len + 7;
+    uint8_t *appended = (uint8_t *)malloc(appended_len);
+    if (!appended) return 0;
+    memcpy(appended, frame_bits, data_len);
+    memset(appended + data_len, 0, 7);
 
-    uint8_t received = 0;
-    for (int i = 0; i < 8; i++)
-        received = (received << 1) | frame_bits[total_bits - 8 + i];
+    /* Polynomial division to get 7-bit remainder (matches Python mod2div) */
+    uint8_t *tmp = (uint8_t *)malloc(CRC_POLY_LEN);
+    if (!tmp) { free(appended); return 0; }
+    memcpy(tmp, appended, CRC_POLY_LEN);
 
-    return check == received;
+    int pick = CRC_POLY_LEN;
+    while (pick < appended_len) {
+        if (tmp[0] == 1) {
+            for (int i = 0; i < CRC_POLY_LEN - 1; i++)
+                tmp[i] = tmp[i + 1] ^ crc_poly[i + 1];
+        } else {
+            for (int i = 0; i < CRC_POLY_LEN - 1; i++)
+                tmp[i] = tmp[i + 1];
+        }
+        tmp[CRC_POLY_LEN - 1] = appended[pick];
+        pick++;
+    }
+
+    /* Final step */
+    uint8_t remainder[7];
+    if (tmp[0] == 1) {
+        for (int i = 0; i < CRC_POLY_LEN - 1; i++)
+            remainder[i] = tmp[i + 1] ^ crc_poly[i + 1];
+    } else {
+        for (int i = 0; i < CRC_POLY_LEN - 1; i++)
+            remainder[i] = tmp[i + 1];
+    }
+
+    free(tmp);
+    free(appended);
+
+    /* Compute parity of (data + 7-bit-remainder) */
+    int p = 0;
+    for (int i = 0; i < data_len; i++)
+        p ^= frame_bits[i];
+    for (int i = 0; i < 7; i++)
+        p ^= remainder[i];
+
+    /* Concatenate inverted(remainder + parity) */
+    uint8_t calculated[8];
+    for (int i = 0; i < 7; i++)
+        calculated[i] = 1 ^ remainder[i];
+    calculated[7] = 1 ^ p;
+
+    /* Compare with received check bits */
+    for (int i = 0; i < 8; i++) {
+        if (calculated[i] != frame_bits[data_len + i])
+            return 0;
+    }
+    return 1;
 }
 
 static void reset_frame(mvb_priv *s)
@@ -141,91 +180,164 @@ static void reset_frame(mvb_priv *s)
     s->received_slave_header = 0;
     s->decoded_len = 0;
     s->matching_header_ticks = 0;
-    s->is_even_tick = 0;
+    s->is_even_tick = 1;
     s->last_tick = 0;
     s->state = STATE_FIND_START;
 }
 
-static void process_master_frame(struct srd_decoder_inst *di, mvb_priv *s)
+/* Process master frame: outputs CRC/CRC_ERROR annotation and returns fcode/addr.
+ * Returns 1 if CRC OK, 0 if CRC error. */
+static int process_master_frame(struct srd_decoder_inst *di, mvb_priv *s, int *out_fcode, uint16_t *out_addr)
 {
-    if (s->decoded_len < 24) return;
+    if (s->decoded_len < 24) return 0;
 
     /* Master frame: 4-bit flag + 12-bit address + 8-bit CRC = 24 bits */
     int crc_ok = check_check_sequence(s->decoded_buffer, s->decoded_len);
-
-    /* Address: bits 4-15 (12 bits, MSB first) */
-    uint16_t addr = 0;
-    for (int i = 4; i < 16 && i < s->decoded_len; i++)
-        addr = (addr << 1) | s->decoded_buffer[i];
 
     /* F-code: bits 0-3 (4 bits, MSB first) */
     int fcode = 0;
     for (int i = 0; i < 4 && i < s->decoded_len; i++)
         fcode = (fcode << 1) | s->decoded_buffer[i];
 
-    /* Master data annotation */
-    char data_str[64];
-    snprintf(data_str, sizeof(data_str), "Master: F=%s Addr=%d",
-             (fcode < 16) ? F_codes[fcode] : "?", addr);
-    C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_MASTER_DATA, data_str);
+    /* Address: bits 4-15 (12 bits, MSB first) */
+    uint16_t addr = 0;
+    for (int i = 4; i < 16 && i < s->decoded_len; i++)
+        addr = (addr << 1) | s->decoded_buffer[i];
 
-    /* F-code annotation */
-    if (fcode < 16) {
-        char fc_str[64];
-        snprintf(fc_str, sizeof(fc_str), "F-code: %s (%d)", F_codes[fcode], fcode);
-        C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_F_CODE, fc_str);
+    *out_fcode = fcode;
+    *out_addr = addr;
+
+    /* CRC annotation at bits 16-23 */
+    uint64_t crc_begin = s->frame_data_begin + 16 * s->mvb_samples_per_bit;
+    uint64_t crc_end = crc_begin + 8 * s->mvb_samples_per_bit;
+
+    if (crc_ok) {
+        uint8_t crc_val = 0;
+        for (int i = s->decoded_len - 8; i < s->decoded_len; i++)
+            crc_val = (crc_val << 1) | s->decoded_buffer[i];
+        char crc_str[16];
+        snprintf(crc_str, sizeof(crc_str), "0x%x", crc_val);
+        c_put(di, crc_begin, crc_end, s->out_ann, ANN_CRC, crc_str);
+    } else {
+        c_put(di, crc_begin, crc_end, s->out_ann, ANN_CRC_ERROR, "CRC Error");
     }
 
-    /* Address annotation */
-    char addr_str[32];
-    snprintf(addr_str, sizeof(addr_str), "Address: %d (0x%03X)", addr, addr);
-    C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_ADDR, addr_str);
-
-    /* CRC annotation */
-    char crc_str[32];
-    snprintf(crc_str, sizeof(crc_str), "CRC: %s", crc_ok ? "OK" : "ERROR");
-    C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_CRC, crc_str);
-
-    if (!crc_ok)
-        C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_CRC_ERROR, "CRC Error");
+    return crc_ok;
 }
 
 static void process_slave_frame(struct srd_decoder_inst *di, mvb_priv *s)
 {
-    if (s->decoded_len < 24) return;
+    int ret = s->decoded_len;
 
-    /* Slave frame: 16/32/64-bit data + 8-bit CRC */
-    /* Determine data length by dividing into 72-bit segments (64 data + 8 CRC) */
-    int data_bits = s->decoded_len - 8;
-    if (data_bits <= 0) return;
+    if (ret == 24) {
+        /* 16-bit data + 8-bit CRC */
+        uint64_t data_begin = s->frame_data_begin;
+        uint64_t data_end = data_begin + 16 * s->mvb_samples_per_bit;
+        uint64_t crc_end = data_end + 8 * s->mvb_samples_per_bit;
+        int check_ok = check_check_sequence(s->decoded_buffer, s->decoded_len);
+        if (check_ok) {
+            uint8_t crc_val = 0;
+            for (int i = s->decoded_len - 8; i < s->decoded_len; i++)
+                crc_val = (crc_val << 1) | s->decoded_buffer[i];
+            char crc_str[16];
+            snprintf(crc_str, sizeof(crc_str), "0x%x", crc_val);
+            c_put(di, data_end, crc_end, s->out_ann, ANN_CRC, crc_str);
 
-    int crc_ok = check_check_sequence(s->decoded_buffer, s->decoded_len);
-
-    /* Extract data bytes */
-    int num_bytes = data_bits / 8;
-    char data_hex[256];
-    int pos = 0;
-    for (int byte_idx = 0; byte_idx < num_bytes && pos < (int)sizeof(data_hex) - 4; byte_idx++) {
-        uint8_t byte_val = 0;
-        for (int bit = 0; bit < 8; bit++) {
-            int idx = byte_idx * 8 + bit;
-            if (idx < data_bits)
-                byte_val = (byte_val << 1) | s->decoded_buffer[idx];
+            int num_bytes = 16 / 8;
+            char data_hex[64];
+            int pos = 0;
+            for (int byte_idx = 0; byte_idx < num_bytes; byte_idx++) {
+                uint8_t byte_val = 0;
+                for (int bit = 0; bit < 8; bit++)
+                    byte_val = (byte_val << 1) | s->decoded_buffer[byte_idx * 8 + bit];
+                pos += snprintf(data_hex + pos, sizeof(data_hex) - pos, "%02x", byte_val);
+            }
+            char slave_str[80];
+            snprintf(slave_str, sizeof(slave_str), "0x%s", data_hex);
+            c_put(di, data_begin, data_end, s->out_ann, ANN_SLAVE_DATA, slave_str);
+        } else {
+            c_put(di, data_end, crc_end, s->out_ann, ANN_CRC_ERROR, "CRC Error");
         }
-        pos += snprintf(data_hex + pos, sizeof(data_hex) - pos, "%s%02X",
-                        (byte_idx > 0) ? " " : "", byte_val);
+        return;
     }
 
-    char slave_str[256];
-    snprintf(slave_str, sizeof(slave_str), "Slave: %s", data_hex);
-    C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_SLAVE_DATA, slave_str);
+    if (ret == 40) {
+        /* 32-bit data + 8-bit CRC */
+        uint64_t data_begin = s->frame_data_begin;
+        uint64_t data_end = data_begin + 32 * s->mvb_samples_per_bit;
+        uint64_t crc_end = data_end + 8 * s->mvb_samples_per_bit;
+        int check_ok = check_check_sequence(s->decoded_buffer, s->decoded_len);
+        if (check_ok) {
+            uint8_t crc_val = 0;
+            for (int i = s->decoded_len - 8; i < s->decoded_len; i++)
+                crc_val = (crc_val << 1) | s->decoded_buffer[i];
+            char crc_str[16];
+            snprintf(crc_str, sizeof(crc_str), "0x%x", crc_val);
+            c_put(di, data_end, crc_end, s->out_ann, ANN_CRC, crc_str);
 
-    char crc_str[32];
-    snprintf(crc_str, sizeof(crc_str), "CRC: %s", crc_ok ? "OK" : "ERROR");
-    C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_CRC, crc_str);
+            int num_bytes = 32 / 8;
+            char data_hex[64];
+            int pos = 0;
+            for (int byte_idx = 0; byte_idx < num_bytes; byte_idx++) {
+                uint8_t byte_val = 0;
+                for (int bit = 0; bit < 8; bit++)
+                    byte_val = (byte_val << 1) | s->decoded_buffer[byte_idx * 8 + bit];
+                pos += snprintf(data_hex + pos, sizeof(data_hex) - pos, "%02x", byte_val);
+            }
+            char slave_str[80];
+            snprintf(slave_str, sizeof(slave_str), "0x%s", data_hex);
+            c_put(di, data_begin, data_end, s->out_ann, ANN_SLAVE_DATA, slave_str);
+        } else {
+            c_put(di, data_end, crc_end, s->out_ann, ANN_CRC_ERROR, "CRC Error");
+        }
+        return;
+    }
 
-    if (!crc_ok)
-        C_ANN_PUT(di, s->frame_data_begin, s->sample_end, s->out_ann, ANN_CRC_ERROR, "CRC Error");
+    /* 64-bit data segments: each 72-bit segment (64 data + 8 CRC) checked independently */
+    {
+        int data_segment_length = 64 + 8;
+        int segments = s->decoded_len / data_segment_length;
+        char all_data_hex[256];
+        int all_pos = 0;
+
+        for (int seg = 0; seg < segments; seg++) {
+            uint64_t seg_data_begin = s->frame_data_begin + seg * data_segment_length * s->mvb_samples_per_bit;
+            uint64_t seg_data_end = seg_data_begin + 64 * s->mvb_samples_per_bit;
+            uint64_t seg_crc_end = seg_data_end + 8 * s->mvb_samples_per_bit;
+
+            uint8_t sub_bits[72];
+            int sub_len = data_segment_length;
+            for (int i = 0; i < sub_len; i++)
+                sub_bits[i] = s->decoded_buffer[seg * data_segment_length + i];
+
+            int check_ok = check_check_sequence(sub_bits, sub_len);
+            if (check_ok) {
+                uint8_t crc_val = 0;
+                for (int i = sub_len - 8; i < sub_len; i++)
+                    crc_val = (crc_val << 1) | sub_bits[i];
+                char crc_str[16];
+                snprintf(crc_str, sizeof(crc_str), "0x%x", crc_val);
+                c_put(di, seg_data_end, seg_crc_end, s->out_ann, ANN_CRC, crc_str);
+
+                for (int byte_idx = 0; byte_idx < 8 && all_pos < (int)sizeof(all_data_hex) - 3; byte_idx++) {
+                    uint8_t byte_val = 0;
+                    for (int bit = 0; bit < 8; bit++)
+                        byte_val = (byte_val << 1) | sub_bits[byte_idx * 8 + bit];
+                    all_pos += snprintf(all_data_hex + all_pos, sizeof(all_data_hex) - all_pos, "%02x", byte_val);
+                }
+            } else {
+                c_put(di, seg_data_end, seg_crc_end, s->out_ann, ANN_CRC_ERROR, "CRC Error");
+                return;
+            }
+        }
+
+        if (all_pos > 0) {
+            char slave_str[280];
+            snprintf(slave_str, sizeof(slave_str), "0x%s", all_data_hex);
+            c_put(di, s->frame_data_begin, s->frame_data_begin + s->decoded_len * s->mvb_samples_per_bit,
+                  s->out_ann, ANN_SLAVE_DATA, slave_str);
+        }
+    }
 }
 
 static int process_tick(struct srd_decoder_inst *di, mvb_priv *s, int tick_value, uint64_t samplenum)
@@ -235,15 +347,15 @@ static int process_tick(struct srd_decoder_inst *di, mvb_priv *s, int tick_value
         if (s->matching_header_ticks == PREAMBLE_MASTER) {
             s->received_master_header = 1;
             s->matching_header_ticks = 0;
-            C_ANN_PUT(di, samplenum - (PREAMBLE_LENGTH * s->mvb_samples_per_bit / 2),
-                      s->sample_end, s->out_ann, ANN_MASTER_PREAMBLE, "Master preamble", "MP");
+            c_put(di, samplenum - ((PREAMBLE_LENGTH + 1) * s->mvb_samples_per_bit / 2),
+                      s->sample_end, s->out_ann, ANN_MASTER_PREAMBLE, "Master p");
             s->frame_data_begin = s->sample_end;
         }
         if (s->matching_header_ticks == PREAMBLE_SLAVE) {
             s->received_slave_header = 1;
             s->matching_header_ticks = 0;
-            C_ANN_PUT(di, samplenum - (PREAMBLE_LENGTH * s->mvb_samples_per_bit / 2),
-                      s->sample_end, s->out_ann, ANN_SLAVE_PREAMBLE, "Slave preamble", "SP");
+            c_put(di, samplenum - ((PREAMBLE_LENGTH + 1) * s->mvb_samples_per_bit / 2),
+                      s->sample_end, s->out_ann, ANN_SLAVE_PREAMBLE, "Slave p");
             s->frame_data_begin = s->sample_end;
         }
         return 1;
@@ -255,15 +367,32 @@ static int process_tick(struct srd_decoder_inst *di, mvb_priv *s, int tick_value
         if (s->last_tick == 0 && tick_value == 1) {
             if (s->decoded_len < 512)
                 s->decoded_buffer[s->decoded_len++] = 0;
-            C_ANN_PUT(di, bit_begin, s->sample_end, s->out_ann, ANN_BIT, "0");
+            c_put(di, bit_begin, s->sample_end, s->out_ann, ANN_BIT, "0");
         } else if (s->last_tick == 1 && tick_value == 0) {
             if (s->decoded_len < 512)
                 s->decoded_buffer[s->decoded_len++] = 1;
-            C_ANN_PUT(di, bit_begin, s->sample_end, s->out_ann, ANN_BIT, "1");
+            c_put(di, bit_begin, s->sample_end, s->out_ann, ANN_BIT, "1");
         } else {
             /* Same bit twice = transition error = frame boundary */
-            if (s->received_master_header)
-                process_master_frame(di, s);
+            if (s->received_master_header) {
+                int fcode = 0;
+                uint16_t addr = 0;
+                process_master_frame(di, s, &fcode, &addr);
+                uint64_t addr_begin = s->frame_data_begin + 4 * s->mvb_samples_per_bit;
+                char fc_hex[16], addr_hex[16];
+                snprintf(fc_hex, sizeof(fc_hex), "0x%x", fcode);
+                snprintf(addr_hex, sizeof(addr_hex), "0x%x", addr);
+                c_put(di, s->frame_data_begin, addr_begin, s->out_ann, ANN_MASTER_DATA, fc_hex);
+                c_put(di, addr_begin, addr_begin + 12 * s->mvb_samples_per_bit, s->out_ann, ANN_MASTER_DATA, addr_hex);
+                if (fcode < 16) {
+                    c_put(di, s->frame_data_begin, addr_begin, s->out_ann, ANN_F_CODE, F_codes[fcode]);
+                }
+                if (fcode >= 0 && fcode <= 4) {
+                    char addr_str[16];
+                    snprintf(addr_str, sizeof(addr_str), "%d", addr);
+                    c_put(di, addr_begin, addr_begin + 12 * s->mvb_samples_per_bit, s->out_ann, ANN_ADDR, addr_str);
+                }
+            }
             if (s->received_slave_header)
                 process_slave_frame(di, s);
             reset_frame(s);
@@ -282,13 +411,14 @@ static void mvb_reset(struct srd_decoder_inst *di)
     mvb_priv *s = (mvb_priv *)c_decoder_get_private(di);
     memset(s, 0, sizeof(mvb_priv));
     s->state = STATE_FIND_START;
+    s->is_even_tick = 1;
     s->out_ann = -1;
 }
 
 static void mvb_start(struct srd_decoder_inst *di)
 {
     mvb_priv *s = (mvb_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "mvb");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "mvb");
 }
 
 static void mvb_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
@@ -306,32 +436,34 @@ static void mvb_metadata(struct srd_decoder_inst *di, int key, uint64_t value)
 static void mvb_decode(struct srd_decoder_inst *di)
 {
     mvb_priv *s = (mvb_priv *)c_decoder_get_private(di);
-    uint64_t samplenum = 0;
-    uint64_t matched = 0;
-
+    if (!s->samplerate)
+        s->samplerate = c_samplerate(di);
     if (s->samplerate == 0)
         return;
 
-    /* Wait for first falling edge */
-    srd_cond_builder *cb = c_cond_new();
-    c_cond_fall(cb, 0);
-    int ret = c_cond_wait(cb, di, &samplenum, &matched);
-    c_cond_free(cb);
-    if (ret != SRD_OK) return;
+    if (s->samples_per_tick == 0) {
+        s->samples_per_tick = s->samplerate / MVB_CLOCK_RATE;
+        s->mvb_samples_per_bit = 2 * s->samples_per_tick;
+    }
 
-    s->sample_begin = samplenum;
-    s->sample_end = samplenum;
+    /* Wait for first falling edge */
+    int ret = c_wait(di, CW_F(0), CW_END);
+    if (ret != SRD_OK)
+        return;
+
+    s->sample_begin = di_samplenum(di);
+    s->sample_end = di_samplenum(di);
+
+    uint64_t notch_begin = di_samplenum(di);
+    int phase = 0;
 
     while (1) {
-        cb = c_cond_new();
-        c_cond_edge(cb, 0);
-        ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
-        if (ret != SRD_OK) return;
-
-        uint64_t notch = samplenum - s->sample_end;
+        ret = c_wait(di, CW_E(0), CW_END);
+        if (ret != SRD_OK)
+            return;
+        uint64_t notch = di_samplenum(di) - s->sample_end;
         s->sample_begin = s->sample_end;
-        s->sample_end = samplenum;
+        s->sample_end = di_samplenum(di);
 
         /* Convert notch length to tick count */
         int num_ticks = 0;
@@ -341,13 +473,28 @@ static void mvb_decode(struct srd_decoder_inst *di)
             if (num_ticks > 4) num_ticks = 4;
         }
 
-        /* Process each tick */
-        int pin = c_decoder_get_pin(di, 0, samplenum);
-        for (int t = 0; t < num_ticks; t++) {
-            int tick_value = (t == num_ticks - 1) ? pin : (1 - pin);
-            int cont = process_tick(di, s, tick_value, samplenum);
+        /* Handle long notches (>= 4 ticks): process one tick then reset */
+        if (num_ticks >= 4) {
+            s->sample_begin = notch_begin;
+            s->sample_end = notch_begin + s->samples_per_tick;
+            process_tick(di, s, 1, s->sample_end);
+            reset_frame(s);
+            notch_begin = di_samplenum(di);
+            phase = !phase;
+            continue;
+        }
+
+        /* Process each tick with phase-based tick values */
+        for (int i = 0; i < num_ticks; i++) {
+            int tick_value = phase ? 1 : 0;
+            s->sample_begin = notch_begin + i * s->samples_per_tick;
+            s->sample_end = notch_begin + (i + 1) * s->samples_per_tick;
+            int cont = process_tick(di, s, tick_value, s->sample_end);
             if (!cont) break;
         }
+
+        notch_begin = di_samplenum(di);
+        phase = !phase;
     }
 }
 
@@ -388,6 +535,7 @@ static struct srd_c_decoder mvb_c_decoder = {
     .start = mvb_start,
     .decode = mvb_decode,
     .destroy = mvb_destroy,
+    .state_size = 0,
     .metadata = mvb_metadata,
 };
 

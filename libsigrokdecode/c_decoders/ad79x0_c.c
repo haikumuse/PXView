@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Analog Devices Inc.
@@ -62,16 +62,14 @@ static const struct srd_c_ann_row ad79x0_ann_rows[] = {
     {"data_validation", "Data validation", ad79x0_row_validation_classes, 1},
 };
 
-static void ad79x0_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ad79x0_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ad79x0_state *s = (ad79x0_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        uint8_t cs_old = (data_len > 0) ? data[0] : 0xFF;
-        uint8_t cs_new = (data_len > 1) ? data[1] : 0;
+        uint8_t cs_old = (n_fields > 0) ? fields[0].u8 : 0xFF;
+        uint8_t cs_new = (n_fields > 1) ? fields[1].u8 : 0;
 
         if (cs_old == 0 && cs_new == 1) {
             if (s->samples_bit == -1) return;
@@ -80,33 +78,33 @@ static void ad79x0_recv_proto(struct srd_decoder_inst *di,
 
             if (nb_bits >= 10) {
                 if (s->data == 0xFFF) {
-                    C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                    c_put(di, s->start_sample, end_sample, s->out_ann,
                               ANN_MODE, "Power Up Mode");
-                    C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                    c_put(di, s->start_sample, end_sample, s->out_ann,
                               ANN_VALIDATION, "Invalid data");
                     s->previous_state = 0;
                 } else {
-                    C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                    c_put(di, s->start_sample, end_sample, s->out_ann,
                               ANN_MODE, "Normal Mode");
                     if (nb_bits == 16)
-                        C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                        c_put(di, s->start_sample, end_sample, s->out_ann,
                                   ANN_VALIDATION, "Complete conversion");
                     else
-                        C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                        c_put(di, s->start_sample, end_sample, s->out_ann,
                                   ANN_VALIDATION, "Incomplete conversion");
                     double vin = ((double)s->data / 4095.0) * s->vref;
                     char buf[64];
                     snprintf(buf, sizeof(buf), "%.6fV", vin);
-                    C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                    c_put(di, s->start_sample, end_sample, s->out_ann,
                               ANN_VOLTAGE, buf);
                     snprintf(buf, sizeof(buf), "%.2fV", vin);
-                    C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                    c_put(di, s->start_sample, end_sample, s->out_ann,
                               ANN_VOLTAGE, buf);
                 }
             } else {
-                C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                c_put(di, s->start_sample, end_sample, s->out_ann,
                           ANN_MODE, "Power Down Mode");
-                C_ANN_PUT(di, s->start_sample, end_sample, s->out_ann,
+                c_put(di, s->start_sample, end_sample, s->out_ann,
                           ANN_VALIDATION, "Invalid data");
                 s->previous_state = 1;
             }
@@ -119,30 +117,30 @@ static void ad79x0_recv_proto(struct srd_decoder_inst *di,
             s->samples_bit = -1;
         }
     } else if (strcmp(cmd, "BITS") == 0) {
-        if (data_len < 2) return;
+        if (n_fields < 2) return;
         int pos = 0;
-        uint8_t flags = data[pos++];
+        uint8_t flags = fields[pos++].u8;
         int have_mosi = flags & 1;
         int have_miso = (flags >> 1) & 1;
 
         /* Skip MOSI bits */
         if (have_mosi) {
-            int mosi_count = (int)data[pos++];
+            int mosi_count = (int)fields[pos++].u8;
             pos += mosi_count * 17;
         }
 
         /* Parse MISO bits */
         if (have_miso) {
-            if (pos < (int)data_len && data[pos] == 0x00) pos++;
-            int miso_count = (pos < (int)data_len) ? (int)data[pos++] : 0;
+            if (pos < (int)n_fields && fields[pos].u8 == 0x00) pos++;
+            int miso_count = (pos < (int)n_fields) ? (int)fields[pos++].u8 : 0;
 
-            for (int i = 0; i < miso_count && pos + 17 <= (int)data_len; i++) {
-                uint8_t bit_val = data[pos++];
+            for (int i = 0; i < miso_count && pos + 17 <= (int)n_fields; i++) {
+                uint8_t bit_val = fields[pos++].u8;
                 uint64_t bit_ss = 0, bit_es = 0;
                 for (int b = 0; b < 8; b++)
-                    bit_ss |= ((uint64_t)data[pos++]) << (8 * b);
+                    bit_ss |= ((uint64_t)fields[pos++].u8) << (8 * b);
                 for (int b = 0; b < 8; b++)
-                    bit_es |= ((uint64_t)data[pos++]) << (8 * b);
+                    bit_es |= ((uint64_t)fields[pos++].u8) << (8 * b);
 
                 if (s->samples_bit == -1 && i == 0) {
                     s->samples_bit = (int)(bit_es - bit_ss);
@@ -172,8 +170,8 @@ static void ad79x0_reset(struct srd_decoder_inst *di)
 static void ad79x0_start(struct srd_decoder_inst *di)
 {
     ad79x0_state *s = (ad79x0_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ad79x0");
-    s->vref = c_decoder_get_option_double(di, "vref", 1.5);
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ad79x0");
+    s->vref = c_opt_dbl(di, "vref", 1.5);
 }
 
 static void ad79x0_decode(struct srd_decoder_inst *di)
@@ -218,7 +216,8 @@ struct srd_c_decoder ad79x0_c_decoder = {
     .start = ad79x0_start,
     .decode = ad79x0_decode,
     .destroy = ad79x0_destroy,
-    .recv_proto = ad79x0_recv_proto,
+    .decode_upper = ad79x0_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

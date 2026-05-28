@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Karl Palsson <karlp@etactica.com>
@@ -146,24 +146,24 @@ static const struct srd_c_ann_row ade77xx_ann_rows[] = {
     {"warnings", "Warnings", ade77xx_row_warnings_classes, 1},
 };
 
-static void parse_spi_data(const unsigned char *data, uint64_t data_len,
+static void parse_spi_data(const c_field *fields, int n_fields,
     int *have_mosi, int *have_miso, uint64_t *mosi_val, uint64_t *miso_val)
 {
     int pos = 0;
-    uint8_t flags = data[pos++];
+    uint8_t flags = fields[pos++].u8;
     *have_mosi = (flags & 1) ? 1 : 0;
     *have_miso = (flags & 2) ? 1 : 0;
 
     *mosi_val = 0;
     if (*have_mosi) {
-        for (int i = 0; i < 8 && pos < (int)data_len; i++)
-            *mosi_val |= ((uint64_t)data[pos++]) << (8 * i);
+        for (int i = 0; i < 8 && pos < (int)n_fields; i++)
+            *mosi_val |= ((uint64_t)fields[pos++].u8) << (8 * i);
     }
 
     *miso_val = 0;
     if (*have_miso) {
-        for (int i = 0; i < 8 && pos < (int)data_len; i++)
-            *miso_val |= ((uint64_t)data[pos++]) << (8 * i);
+        for (int i = 0; i < 8 && pos < (int)n_fields; i++)
+            *miso_val |= ((uint64_t)fields[pos++].u8) << (8 * i);
     }
 }
 
@@ -173,16 +173,14 @@ static void ade77xx_reset_data(ade77xx_state *s)
     s->byte_count = 0;
 }
 
-static void ade77xx_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ade77xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ade77xx_state *s = (ade77xx_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "CS-CHANGE") == 0) {
-        uint8_t cs_old = (data_len > 0) ? data[0] : 0xFF;
-        uint8_t cs_new = (data_len > 1) ? data[1] : 0;
+        uint8_t cs_old = (n_fields > 0) ? fields[0].u8 : 0xFF;
+        uint8_t cs_new = (n_fields > 1) ? fields[1].u8 : 0;
 
         if (cs_old == 0 && cs_new == 1) {
             if (s->byte_count > 1 && (s->byte_count - 1) < s->expected) {
@@ -193,8 +191,8 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di,
                 int idx = write ? ANN_WRITE : ANN_READ;
                 char buf[128];
                 snprintf(buf, sizeof(buf), "%s: SHORT", ri->name);
-                C_ANN_PUT(di, s->ss_cmd, end_sample, s->out_ann, idx, buf);
-                C_ANN_PUT(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARN,
+                c_put(di, s->ss_cmd, end_sample, s->out_ann, idx, buf);
+                c_put(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARN,
                           "Short transfer!");
             }
             ade77xx_reset_data(s);
@@ -206,7 +204,7 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di,
 
     int have_mosi, have_miso;
     uint64_t mosi_val, miso_val;
-    parse_spi_data(data, data_len, &have_mosi, &have_miso, &mosi_val, &miso_val);
+    parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi_val, &miso_val);
 
     if (s->byte_count == 0) s->ss_cmd = start_sample;
 
@@ -223,7 +221,7 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di,
     int reg = cmd_byte & 0x7f;
 
     if (reg >= 0x80 || ade77xx_regs[reg].name == NULL) {
-        C_ANN_PUT(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARN,
+        c_put(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARN,
                   "Unknown register!");
         ade77xx_reset_data(s);
         return;
@@ -251,11 +249,11 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di,
     int idx = write ? ANN_WRITE : ANN_READ;
     char buf[128];
     snprintf(buf, sizeof(buf), "%s: {$}", ri->name);
-    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, idx, buf);
+    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, idx, buf);
 
     char hex_buf[16];
     snprintf(hex_buf, sizeof(hex_buf), "@%02X", valo);
-    C_ANN_PUT(di, s->ss_cmd, s->es_cmd, s->out_ann, idx, hex_buf);
+    c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, idx, hex_buf);
 
     ade77xx_reset_data(s);
 }
@@ -272,7 +270,7 @@ static void ade77xx_reset(struct srd_decoder_inst *di)
 static void ade77xx_start(struct srd_decoder_inst *di)
 {
     ade77xx_state *s = (ade77xx_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ade77xx");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ade77xx");
 }
 
 static void ade77xx_decode(struct srd_decoder_inst *di)
@@ -317,7 +315,8 @@ struct srd_c_decoder ade77xx_c_decoder = {
     .start = ade77xx_start,
     .decode = ade77xx_decode,
     .destroy = ade77xx_destroy,
-    .recv_proto = ade77xx_recv_proto,
+    .decode_upper = ade77xx_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

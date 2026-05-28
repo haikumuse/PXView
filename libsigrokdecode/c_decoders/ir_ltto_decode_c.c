@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -153,7 +153,7 @@ static void ltto_put_tag_signature(struct srd_decoder_inst *di, ltto_decode_stat
 
     int megatag = bitdata & 0x03;
 
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Tag");
+    c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Tag");
 
     if (team == 0) {
         char buf[128];
@@ -170,18 +170,18 @@ static void ltto_put_tag_signature(struct srd_decoder_inst *di, ltto_decode_stat
         default: tag_type = "Unknown"; break;
         }
         snprintf(buf, sizeof(buf), "%s, Megatag: %d", tag_type, megatag);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
+        c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
     } else {
         char buf[128];
         snprintf(buf, sizeof(buf), "Team: %d, Player: %d, Megatag: %d", team, player, megatag);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
+        c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
     }
 }
 
 static void ltto_put_multibyte_start(struct srd_decoder_inst *di, ltto_decode_state *s,
                                       uint64_t ss, uint64_t es, int bitdata)
 {
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Multibyte Packet Type");
+    c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Multibyte Packet Type");
 
     s->multibyte_start_ss = ss;
     s->multibyte_data_count = 0;
@@ -192,11 +192,11 @@ static void ltto_put_multibyte_start(struct srd_decoder_inst *di, ltto_decode_st
 
     const char *pname = ltto_find_ptype(bitdata & 0xFF);
     if (pname) {
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, pname);
+        c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, pname);
     } else {
         char buf[64];
         snprintf(buf, sizeof(buf), "Unknown(0x%02X)", bitdata & 0xFF);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
+        c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
     }
 }
 
@@ -206,11 +206,11 @@ static void ltto_put_multibyte_data(struct srd_decoder_inst *di, ltto_decode_sta
     int idx = s->multibyte_data_count - 2;
     char type_buf[64];
     snprintf(type_buf, sizeof(type_buf), "Multibyte Packet Data %d", idx);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_TYPE, type_buf);
+    c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, type_buf);
 
     char buf[64];
     snprintf(buf, sizeof(buf), "0x%02X", bitdata & 0xFF);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
+    c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
 
     if (s->multibyte_data_count < LTTO_MAX_MULTIBYTE) {
         s->multibyte_data_ss[s->multibyte_data_count] = ss;
@@ -223,16 +223,16 @@ static void ltto_put_multibyte_data(struct srd_decoder_inst *di, ltto_decode_sta
 static void ltto_put_multibyte_end(struct srd_decoder_inst *di, ltto_decode_state *s,
                                     uint64_t ss, uint64_t es, int bitdata)
 {
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Multibyte Packet Checksum");
+    c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Multibyte Packet Checksum");
 
     char buf[64];
     snprintf(buf, sizeof(buf), "0x%02X", bitdata & 0xFF);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
+    c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
 
     s->multibyte_end_es = es;
 
     /* Put the complete multibyte packet */
-    C_ANN_PUT(di, s->multibyte_start_ss, s->multibyte_end_es,
+    c_put(di, s->multibyte_start_ss, s->multibyte_end_es,
               s->out_ann, ANN_PKT_TYPE, "Multibyte Packet");
 
     s->multibyte_data_count = 0;
@@ -254,30 +254,30 @@ static void ltto_put_ltto_beacon(struct srd_decoder_inst *di, ltto_decode_state 
 
     if (hitflag == 0 && extra != 0) {
         /* Special Team 0 beacon - Area Beacon */
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Area Beacon");
+        c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Area Beacon");
         switch (extra) {
         case 1:
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, "Mine Tag");
+            c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, "Mine Tag");
             break;
         case 2:
-            C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, "Zone");
+            c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, "Zone");
             break;
         case 3:
             switch (team) {
-            case 0: C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, "Neutral Base"); break;
-            case 1: C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, "Team 1 Base"); break;
-            case 2: C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, "Team 2 Base"); break;
-            case 3: C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, "Team 3 Base"); break;
+            case 0: c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, "Neutral Base"); break;
+            case 1: c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, "Team 1 Base"); break;
+            case 2: c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, "Team 2 Base"); break;
+            case 3: c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, "Team 3 Base"); break;
             }
             break;
         }
     } else {
         /* Normal beacon */
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_TYPE, "LTTO Beacon");
+        c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "LTTO Beacon");
         char buf[128];
         snprintf(buf, sizeof(buf), "Team: %d, Just hit: %d, Extra damage: %d",
                  team, hitflag, extra);
-        C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
+        c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
     }
 }
 
@@ -304,18 +304,16 @@ static void ltto_put_ltar_beacon(struct srd_decoder_inst *di, ltto_decode_state 
 
     int player = bitdata & 0x07;
 
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_TYPE, "LTAR Beacon");
+    c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "LTAR Beacon");
 
     char buf[128];
     const char *ht = (health >= 0 && health <= 3) ? healthtext[health] : "?";
     snprintf(buf, sizeof(buf), "Just hit: %d, Shields up: %d, Rough Health: %s, Team: %d, Player: %d",
              hitflag, shields, ht, team, player);
-    C_ANN_PUT(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
+    c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
 }
 
-static void ltto_decode_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void ltto_decode_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     ltto_decode_state *s = (ltto_decode_state *)c_decoder_get_private(di);
     if (!s)
@@ -328,11 +326,11 @@ static void ltto_decode_recv_proto(struct srd_decoder_inst *di,
         return;
 
     /* data format: bitcount(1 byte) + bitdata(2 bytes LE) */
-    if (data_len < 3)
+    if (n_fields < 3)
         return;
 
-    int bitcount = data[0];
-    int bitdata = (int)data[1] | ((int)data[2] << 8);
+    int bitcount = fields[0].u8;
+    int bitdata = (int)fields[1].u8 | ((int)fields[2].u8 << 8);
 
     if (is_short) {
         if (bitcount == 7) {
@@ -373,7 +371,7 @@ static void ltto_decode_reset(struct srd_decoder_inst *di)
 static void ltto_decode_start(struct srd_decoder_inst *di)
 {
     ltto_decode_state *s = (ltto_decode_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "ir_ltto_decode");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "ir_ltto_decode");
 }
 
 static void ltto_decode_decode(struct srd_decoder_inst *di)
@@ -418,7 +416,8 @@ struct srd_c_decoder ir_ltto_decode_c_decoder = {
     .start = ltto_decode_start,
     .decode = ltto_decode_decode,
     .destroy = ltto_decode_destroy,
-    .recv_proto = ltto_decode_recv_proto,
+    .decode_upper = ltto_decode_recv_proto,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

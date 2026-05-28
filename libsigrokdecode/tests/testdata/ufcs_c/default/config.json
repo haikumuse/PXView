@@ -1,12 +1,15 @@
 {
   "decoder": "ufcs_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "uart"
-  ],
+  "num_channels": 2,
+  "sample_count": 20000,
   "channels": {},
-  "options": {
-    "fulltext": "no"
-  }
+  "stack": [
+    {
+      "id": "uart_c",
+      "channels": {
+        "rx": 0
+      }
+    }
+  ]
 }

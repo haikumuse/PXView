@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2016 fenugrec <fenugrec users.sourceforge.net>
@@ -72,28 +72,23 @@ static void aud_reset(struct srd_decoder_inst *di)
 static void aud_start(struct srd_decoder_inst *di)
 {
     aud_priv *s = (aud_priv *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "aud");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "aud");
 }
 
 static void aud_decode(struct srd_decoder_inst *di)
 {
     aud_priv *s = (aud_priv *)c_decoder_get_private(di);
-    uint64_t samplenum, matched;
-
     while (1) {
-        srd_cond_builder *cb = c_cond_new();
-        c_cond_rise(cb, 0);  /* AUDCK rising edge */
-        int ret = c_cond_wait(cb, di, &samplenum, &matched);
-        c_cond_free(cb);
+        int ret = c_wait(di, CW_R(0), CW_END);
         if (ret != SRD_OK)
             return;
 
         /* Read all pins */
-        int sync = c_decoder_get_pin(di, 1, samplenum);
-        int d3   = c_decoder_get_pin(di, 2, samplenum);
-        int d2   = c_decoder_get_pin(di, 3, samplenum);
-        int d1   = c_decoder_get_pin(di, 4, samplenum);
-        int d0   = c_decoder_get_pin(di, 5, samplenum);
+        int sync = c_pin(di, 1);
+        int d3   = c_pin(di, 2);
+        int d2   = c_pin(di, 3);
+        int d1   = c_pin(di, 4);
+        int d0   = c_pin(di, 5);
 
         /* Reconstruct nibble: audata3=MSB, audata0=LSB */
         int nib = (d3 << 3) | (d2 << 2) | (d1 << 1) | d0;
@@ -103,12 +98,12 @@ static void aud_decode(struct srd_decoder_inst *di)
             if (s->ncnt == s->nmax && s->nmax != 0) {
                 char buf[32];
                 snprintf(buf, sizeof(buf), "0x%08X", s->addr);
-                C_ANN_PUT(di, s->ss, samplenum, s->out_ann, ANN_DEST, buf);
+                c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_DEST, buf);
                 s->lastaddr = s->addr;
             }
             s->ncnt = 0;
             s->addr = s->lastaddr;
-            s->ss = samplenum;
+            s->ss = di_samplenum(di);
             if (nib == 0x08)
                 s->nmax = 1;
             else if (nib == 0x09)
@@ -168,6 +163,7 @@ struct srd_c_decoder aud_c_decoder = {
     .start = aud_start,
     .decode = aud_decode,
     .destroy = aud_destroy,
+    .state_size = 0,
 };
 
 SRD_C_DECODER_EXPORT struct srd_c_decoder *srd_c_decoder_entry(void)

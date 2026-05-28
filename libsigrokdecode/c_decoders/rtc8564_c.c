@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -102,7 +102,7 @@ static void rtc8564_handle_reg(struct srd_decoder_inst *di,
 
     switch (reg) {
     case 0x00: /* Control register 1 */
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x00, "Control 1");
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x00, "Control 1");
         break;
     case 0x01: { /* Control register 2 */
         int ti_tp = (b >> 4) & 1;
@@ -118,7 +118,7 @@ static void rtc8564_handle_reg(struct srd_decoder_inst *di,
         snprintf(buf, sizeof(buf),
             "TI/TP=%d: %s\nAF=%d: %salarm\nTF=%d: %stimer\nAIE=%d: INT# %s\nTIE=%d: INT# %s",
             ti_tp, s1, af, s2, tf, s3, aie, s4, tie, s5);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x01, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x01, buf);
         break;
     }
     case 0x02: { /* Seconds / VL bit */
@@ -126,37 +126,37 @@ static void rtc8564_handle_reg(struct srd_decoder_inst *di,
         int sec = bcd2int(b & 0x7f);
         s->seconds = sec;
         snprintf(buf, sizeof(buf), "Voltage low: %d", vl);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_VL, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_VL, buf);
         snprintf(buf, sizeof(buf), "Second: %d", sec);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x02, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x02, buf);
         break;
     }
     case 0x03: { /* Minutes */
         int min = bcd2int(b & 0x7f);
         s->minutes = min;
         snprintf(buf, sizeof(buf), "Minute: %d", min);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x03, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x03, buf);
         break;
     }
     case 0x04: { /* Hours */
         int h = bcd2int(b & 0x3f);
         s->hours = h;
         snprintf(buf, sizeof(buf), "Hour: %d", h);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x04, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x04, buf);
         break;
     }
     case 0x05: { /* Days */
         int d = bcd2int(b & 0x3f);
         s->days = d;
         snprintf(buf, sizeof(buf), "Day: %d", d);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x05, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x05, buf);
         break;
     }
     case 0x06: { /* Weekdays */
         int w = bcd2int(b & 0x07);
         s->weekdays = w;
         snprintf(buf, sizeof(buf), "Weekday: %d", w);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x06, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x06, buf);
         break;
     }
     case 0x07: { /* Months / Century bit */
@@ -164,16 +164,16 @@ static void rtc8564_handle_reg(struct srd_decoder_inst *di,
         int m = bcd2int(b & 0x1f);
         s->months = m;
         snprintf(buf, sizeof(buf), "Century bit: %d", c);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_BIT_CENTURY, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_BIT_CENTURY, buf);
         snprintf(buf, sizeof(buf), "Month: %d", m);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x07, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x07, buf);
         break;
     }
     case 0x08: { /* Years */
         int y = bcd2int(b);
         s->years = y;
         snprintf(buf, sizeof(buf), "Year: %d", y);
-        C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_0x08, buf);
+        c_put(di, s->ss, s->es, s->out_ann, ANN_REG_0x08, buf);
         break;
     }
     default:
@@ -182,15 +182,13 @@ static void rtc8564_handle_reg(struct srd_decoder_inst *di,
 }
 
 /* ===== recv_proto ===== */
-static void rtc8564_recv_proto(struct srd_decoder_inst *di,
-    uint64_t start_sample, uint64_t end_sample,
-    const char *cmd, const unsigned char *data, uint64_t data_len)
+static void rtc8564_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
     rtc8564_state *s = (rtc8564_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;
     s->es = end_sample;
-    uint8_t databyte = (data && data_len > 0) ? data[0] : 0;
+    uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;
 
     if (strcmp(cmd, "BITS") == 0) return;
 
@@ -217,14 +215,14 @@ static void rtc8564_recv_proto(struct srd_decoder_inst *di,
         } else if (strcmp(cmd, "DATA WRITE") == 0) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Write register %02X: %02X", s->reg, databyte);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_WRITE, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_REG_WRITE, buf);
             rtc8564_handle_reg(di, s, s->reg, databyte);
             s->reg++;
         } else if (strcmp(cmd, "STOP") == 0) {
             char buf[128];
             snprintf(buf, sizeof(buf), "Write date/time: %02d.%02d.%02d %02d:%02d:%02d",
                 s->days, s->months, s->years, s->hours, s->minutes, s->seconds);
-            C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_WRITE, buf);
+            c_put(di, s->ss_block, end_sample, s->out_ann, ANN_WRITE, buf);
             s->state = RTC8564_IDLE;
         }
         break;
@@ -236,14 +234,14 @@ static void rtc8564_recv_proto(struct srd_decoder_inst *di,
         if (strcmp(cmd, "DATA READ") == 0) {
             char buf[64];
             snprintf(buf, sizeof(buf), "Read register %02X: %02X", s->reg, databyte);
-            C_ANN_PUT(di, s->ss, s->es, s->out_ann, ANN_REG_READ, buf);
+            c_put(di, s->ss, s->es, s->out_ann, ANN_REG_READ, buf);
             rtc8564_handle_reg(di, s, s->reg, databyte);
             s->reg++;
         } else if (strcmp(cmd, "STOP") == 0) {
             char buf[128];
             snprintf(buf, sizeof(buf), "Read date/time: %02d.%02d.%02d %02d:%02d:%02d",
                 s->days, s->months, s->years, s->hours, s->minutes, s->seconds);
-            C_ANN_PUT(di, s->ss_block, end_sample, s->out_ann, ANN_READ, buf);
+            c_put(di, s->ss_block, end_sample, s->out_ann, ANN_READ, buf);
             s->state = RTC8564_IDLE;
         }
         break;
@@ -271,7 +269,7 @@ static void rtc8564_reset(struct srd_decoder_inst *di)
 static void rtc8564_start(struct srd_decoder_inst *di)
 {
     rtc8564_state *s = (rtc8564_state *)c_decoder_get_private(di);
-    s->out_ann = c_decoder_register_output(di, SRD_OUTPUT_ANN, "rtc8564");
+    s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "rtc8564");
 }
 
 static void rtc8564_decode(struct srd_decoder_inst *di)
@@ -317,7 +315,8 @@ struct srd_c_decoder rtc8564_c_decoder = {
     .start = rtc8564_start,
     .decode = rtc8564_decode,
     .destroy = rtc8564_destroy,
-    .recv_proto = rtc8564_recv_proto,
+    .decode_upper = rtc8564_recv_proto,
+    .state_size = 0,
 };
 
 /* ===== 导出函数 ===== */

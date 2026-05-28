@@ -1,10 +1,18 @@
 {
   "decoder": "ds28ea00_c",
   "samplerate": 1000000,
-  "needs_upstream": true,
-  "inputs": [
-    "onewire_network"
-  ],
+  "num_channels": 1,
+  "sample_count": 100000,
   "channels": {},
-  "options": {}
+  "stack": [
+    {
+      "id": "onewire_link_c",
+      "channels": {
+        "owr": 0
+      }
+    },
+    {
+      "id": "onewire_network_c"
+    }
+  ]
 }
