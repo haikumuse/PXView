@@ -1,7 +1,106 @@
 {
 	"decoder": "ook_oregon_c",
 	"samplerate": 1000000,
-	"num_annotations": 0,
+	"num_annotations": 11,
 	"annotations": [
+		{
+			"start_sample": 4000,
+			"end_sample": 11500,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}, 
+		{
+			"start_sample": 11500,
+			"end_sample": 12500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 12500,
+			"end_sample": 13500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 13500,
+			"end_sample": 14500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 14500,
+			"end_sample": 15500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 16500,
+			"end_sample": 17500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"1"
+			]
+		}, 
+		{
+			"start_sample": 17500,
+			"end_sample": 18500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"E"
+			]
+		}, 
+		{
+			"start_sample": 18500,
+			"end_sample": 19500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 19500,
+			"end_sample": 20500,
+			"ann_class": 2,
+			"ann_type": 9,
+			"texts": [
+				"0"
+			]
+		}, 
+		{
+			"start_sample": 11500,
+			"end_sample": 20500,
+			"ann_class": 0,
+			"ann_type": 7,
+			"texts": [
+				"01011E00"
+			]
+		}, 
+		{
+			"start_sample": 30000,
+			"end_sample": 70000,
+			"ann_class": 1,
+			"ann_type": 8,
+			"texts": [
+				"Preamble detected"
+			]
+		}
 	]
 }

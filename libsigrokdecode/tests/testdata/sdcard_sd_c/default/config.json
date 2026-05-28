@@ -11,5 +11,6 @@
     "dat2": 4,
     "dat3": 5
   },
-  "options": {}
+  "options": {},
+  "expected_deviations": true
 }

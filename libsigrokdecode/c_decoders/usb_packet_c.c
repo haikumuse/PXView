@@ -298,7 +298,8 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_s *s)
 
     char pid_buf[32];
     snprintf(pid_buf, sizeof(pid_buf), "PID: %s", pid_name);
-    c_put(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, pid_buf, pid_name, &pid_name[0]);
+    char short_pid[2] = {pid_name[0], '\0'};
+    c_put(di, s->bit_ss[8], s->bit_es[15], s->out_ann, ANN_PID, pid_buf, pid_name, short_pid);
 
     if (pid_cat == PID_CAT_TOKEN) {
         /* Token packet: SYNC + PID + ADDR(7) + ENDP(4) + CRC5(5) */
@@ -383,15 +384,14 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_s *s)
         uint16_t crc16_calc = usb_pkt_calc_crc16(&s->bits[8], crc_bits);
 
         /* Format data bytes */
-        char data_buf[256];
-        int dpos = 0;
-        dpos += snprintf(data_buf + dpos, sizeof(data_buf) - dpos, "DATA:");
-        for (int i = 0; i < data_bytes && dpos < 240; i++) {
+        for (int i = 0; i < data_bytes; i++) {
             uint8_t b = usb_pkt_bits_to_byte(s->bits, 16 + i * 8, 8);
-            dpos += snprintf(data_buf + dpos, sizeof(data_buf) - dpos, " %02X", b);
-        }
-        if (data_bytes > 0) {
-            c_put(di, s->bit_ss[16], s->bit_es[16 + data_bits - 1], s->out_ann, ANN_DATA, data_buf);
+            char db1[32], db2[32], db3[32], db4[32];
+            snprintf(db1, sizeof(db1), "Databyte: %02X", b);
+            snprintf(db2, sizeof(db2), "Data: %02X", b);
+            snprintf(db3, sizeof(db3), "DB: %02X", b);
+            snprintf(db4, sizeof(db4), "%02X", b);
+            c_put(di, s->bit_ss[16 + i * 8], s->bit_es[16 + i * 8 + 7], s->out_ann, ANN_DATA, db1, db2, db3, db4);
         }
 
         if (crc16_rx == crc16_calc) {
@@ -407,8 +407,17 @@ static void usb_pkt_handle_packet(struct srd_decoder_inst *di, usb_pkt_s *s)
         }
 
         /* Packet summary */
-        char pkt_buf[64];
-        snprintf(pkt_buf, sizeof(pkt_buf), "%s: %d bytes", pid_name, data_bytes);
+        char pkt_buf[128];
+        if (data_bytes <= 8) {
+            int pos = snprintf(pkt_buf, sizeof(pkt_buf), "%s [", pid_name);
+            for (int i = 0; i < data_bytes; i++) {
+                uint8_t b = usb_pkt_bits_to_byte(s->bits, 16 + i * 8, 8);
+                pos += snprintf(pkt_buf + pos, sizeof(pkt_buf) - pos, " %02X", b);
+            }
+            snprintf(pkt_buf + pos, sizeof(pkt_buf) - pos, " ]");
+        } else {
+            snprintf(pkt_buf, sizeof(pkt_buf), "%s: %d bytes", pid_name, data_bytes);
+        }
         c_put(di, s->ss_packet, s->es_packet, s->out_ann, pkt_ann, pkt_buf);
 
         /* Protocol output */

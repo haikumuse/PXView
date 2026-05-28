@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -58,6 +58,9 @@ typedef struct {
     uint8_t data_low;
     uint64_t ss, es;
     uint64_t ss_block, es_block;
+    uint64_t bits_ss_msb;
+    uint64_t bits_es_bit1;
+    uint64_t bits_es_bit0;
     int out_ann;
     double vref;
 } ad5593r_state;
@@ -304,8 +307,23 @@ static void ad5593r_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
     s->ss = start_sample;
     s->es = end_sample;
 
-    if (strcmp(cmd, "BITS") == 0)
+    if (strcmp(cmd, "BITS") == 0) {
+        if (n_fields > 0 && fields[0].bytes.len >= 140) {
+            const unsigned char *bdata = (const unsigned char *)fields[0].bytes.data;
+            if (bdata[0] == 0x02) {
+                uint64_t msb_ss = 0, bit1_es = 0, bit0_es = 0;
+                for(int b=0; b<8; b++) {
+                    msb_ss  |= ((uint64_t)bdata[5  + 0*17 + b]) << (b*8);
+                    bit1_es |= ((uint64_t)bdata[13 + 6*17 + b]) << (b*8);
+                    bit0_es |= ((uint64_t)bdata[13 + 7*17 + b]) << (b*8);
+                }
+                s->bits_ss_msb = msb_ss;
+                s->bits_es_bit1 = bit1_es;
+                s->bits_es_bit0 = bit0_es;
+            }
+        }
         return;
+    }
 
     if (strcmp(cmd, "STOP") == 0) {
         s->state = AD5593R_IDLE;
@@ -319,10 +337,12 @@ static void ad5593r_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         break;
     case AD5593R_GET_SLAVE_ADDR:
         if (strcmp(cmd, "ADDRESS WRITE") == 0) {
+            s->ss = s->bits_ss_msb;
+            s->es = s->bits_es_bit1;
             uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr != 0x10 && addr != 0x11) {
                 c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING,
-                    "I2C slave is not compatible.");
+                    "I\xC2\xB2" "C slave is not compatible.");
             } else {
                 c_put(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
                     "I2C Slave address", "I2C Slave");
@@ -330,10 +350,12 @@ static void ad5593r_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
             s->io_operation_type = 0;
             s->state = AD5593R_GET_POINTER_BYTE;
         } else if (strcmp(cmd, "ADDRESS READ") == 0) {
+            s->ss = s->bits_ss_msb;
+            s->es = s->bits_es_bit1;
             uint8_t addr = (n_fields > 0) ? fields[0].u8 : 0;
             if (addr != 0x10 && addr != 0x11) {
                 c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING,
-                    "I2C slave is not compatible.");
+                    "I\xC2\xB2" "C slave is not compatible.");
             } else {
                 c_put(di, s->ss, s->es, s->out_ann, ANN_SLAVE_ADDR,
                     "I2C Slave address", "I2C Slave");
@@ -344,6 +366,8 @@ static void ad5593r_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         break;
     case AD5593R_GET_POINTER_BYTE:
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
+            s->ss = s->bits_ss_msb;
+            s->es = s->bits_es_bit0;
             uint8_t ptr_byte = (n_fields > 0) ? fields[0].u8 : 0;
             ad5593r_handle_pointer_byte(di, s, ptr_byte);
             s->state = AD5593R_GET_DATA_HIGH;
@@ -352,14 +376,14 @@ static void ad5593r_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
     case AD5593R_GET_DATA_HIGH:
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
             s->data_high = (n_fields > 0) ? fields[0].u8 : 0;
-            s->ss_block = s->ss;
+            s->ss_block = s->bits_ss_msb;
             s->state = AD5593R_GET_DATA_LOW;
         }
         break;
     case AD5593R_GET_DATA_LOW:
         if (strcmp(cmd, "DATA WRITE") == 0 || strcmp(cmd, "DATA READ") == 0) {
             s->data_low = (n_fields > 0) ? fields[0].u8 : 0;
-            s->es_block = s->es;
+            s->es_block = s->bits_es_bit0;
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA_BYTE, "Data Bytes");
             uint16_t data16 = ((uint16_t)s->data_high << 8) | s->data_low;
             ad5593r_handle_data_bytes(di, s, data16);

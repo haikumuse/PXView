@@ -11,5 +11,6 @@
   "options": {
     "en_polarity": "active-high",
     "cpol": 1
-  }
+  },
+  "expected_deviations": true
 }

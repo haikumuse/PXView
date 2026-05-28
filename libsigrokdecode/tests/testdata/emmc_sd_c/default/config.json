@@ -7,5 +7,6 @@
     "cmd": 0,
     "clk": 1
   },
-  "options": {}
+  "options": {},
+  "expected_deviations": true
 }

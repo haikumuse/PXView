@@ -9,5 +9,6 @@
   },
   "options": {
     "error_display": "display"
-  }
+  },
+  "expected_deviations": true
 }

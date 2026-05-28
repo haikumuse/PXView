@@ -165,7 +165,13 @@ static void wiegand_decode(struct srd_decoder_inst *di)
     s->d0_prev = c_pin(di, CH_D0);
     s->d1_prev = c_pin(di, CH_D1);
 
+    int loop_count = 0;
     while (1) {
+        if (loop_count++ > 100000) {
+            fprintf(stderr, "wiegand_decode infinite loop detected!\n");
+            break;
+        }
+
         /* Wait for edge on D0 or D1, or for bit timeout */
         if (s->es_bit && s->es_bit > di_samplenum(di)) {
             uint64_t skip = s->es_bit - di_samplenum(di);
@@ -179,6 +185,9 @@ static void wiegand_decode(struct srd_decoder_inst *di)
         uint64_t samplenum = di_samplenum(di);
         int d0 = c_pin(di, CH_D0);
         int d1 = c_pin(di, CH_D1);
+
+        fprintf(stderr, "wiegand samplenum=%llu, d0=%d, d1=%d, es_bit=%llu, ret=%d\n", (unsigned long long)samplenum, d0, d1, (unsigned long long)s->es_bit, ret);
+
 
         /* Check for bit timeout (es_bit reached without pin change) */
         if (s->es_bit && samplenum >= s->es_bit) {

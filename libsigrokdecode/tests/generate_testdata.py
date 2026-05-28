@@ -441,8 +441,10 @@ def synthesize_input_bin(decoder_id, num_channels, sample_count, channels_map):
             gen = ps.EthANGenerator(builder, ch, samplerate=synth_sr)
             gen.send_negotiation()
         elif decoder_id == "hdlc_c":
-            ch = channels_map.get("data", 1)
-            gen = ps.HDLCGenerator(builder, ch)
+            clk = channels_map.get("clk", 0)
+            data = channels_map.get("data", 1)
+            en = channels_map.get("en", 2)
+            gen = ps.HDLCGenerator(builder, clk, data, en)
             gen.send_frame(0x01, 0x03, b"HELLO")
         elif decoder_id == "i2s_c":
             sck = channels_map.get("sck", 0)

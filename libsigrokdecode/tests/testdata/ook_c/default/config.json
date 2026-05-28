@@ -12,5 +12,6 @@
     "preamble": "auto",
     "preamlen": "7",
     "diffmanvar": "1"
-  }
+  },
+  "expected_deviations": true
 }

@@ -35,6 +35,11 @@ class WiegandGenerator:
             self.builder.set_level(self.data1, 1, self.inter_gap)
 
     def send_wiegand26(self, facility=0x01, card=0x0001):
+        # Initial idle gap
+        self.builder.set_level(self.data0, 1, 2000)
+        self.builder.pos -= 2000
+        self.builder.set_level(self.data1, 1, 2000)
+        
         # Bits 1-8: facility code MSB first
         fac_bits = []
         for i in range(7, -1, -1):
