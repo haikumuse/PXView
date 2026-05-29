@@ -1132,12 +1132,28 @@
         "text": "Overlay Background"
     },
     {
+        "id": "IDS_STYLE_TITLEBAR_BG",
+        "text": "Title Bar Background"
+    },
+    {
+        "id": "IDS_STYLE_RIBBON_BG",
+        "text": "Ribbon Background"
+    },
+    {
+        "id": "IDS_STYLE_TABVIEW_BG",
+        "text": "Waveform Base Background"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_BG",
+        "text": "Sidebar Background"
+    },
+    {
         "id": "IDS_STYLE_PANEL_BG",
         "text": "Panel Background"
     },
     {
         "id": "IDS_STYLE_GROUP_CARD_BG",
-        "text": "Waveform Background"
+        "text": "Waveform Group Card"
     },
     {
         "id": "IDS_STYLE_FG_BASE",
@@ -1358,6 +1374,138 @@
     {
         "id": "IDS_STYLE_DEC_NO_DECODE",
         "text": "No Decode BG"
+    },
+    {
+        "id": "IDS_STYLE_CAT_DECODER_ANN",
+        "text": "Decoder Annotation Colors"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_0",
+        "text": "Annotation 0"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_1",
+        "text": "Annotation 1"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_2",
+        "text": "Annotation 2"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_3",
+        "text": "Annotation 3"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_4",
+        "text": "Annotation 4"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_5",
+        "text": "Annotation 5"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_6",
+        "text": "Annotation 6"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_7",
+        "text": "Annotation 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_8",
+        "text": "Annotation 8"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_9",
+        "text": "Annotation 9"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_10",
+        "text": "Annotation 10"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_11",
+        "text": "Annotation 11"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_12",
+        "text": "Annotation 12"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_13",
+        "text": "Annotation 13"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_14",
+        "text": "Annotation 14"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_15",
+        "text": "Annotation 15"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT0",
+        "text": "Annotation Outline 0"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT1",
+        "text": "Annotation Outline 1"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT2",
+        "text": "Annotation Outline 2"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT3",
+        "text": "Annotation Outline 3"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT4",
+        "text": "Annotation Outline 4"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT5",
+        "text": "Annotation Outline 5"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT6",
+        "text": "Annotation Outline 6"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT7",
+        "text": "Annotation Outline 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT8",
+        "text": "Annotation Outline 8"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT9",
+        "text": "Annotation Outline 9"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT10",
+        "text": "Annotation Outline 10"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT11",
+        "text": "Annotation Outline 11"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT12",
+        "text": "Annotation Outline 12"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT13",
+        "text": "Annotation Outline 13"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT14",
+        "text": "Annotation Outline 14"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT15",
+        "text": "Annotation Outline 15"
     },
     {
         "id": "IDS_STYLE_FONT_MAIN_TITLE",

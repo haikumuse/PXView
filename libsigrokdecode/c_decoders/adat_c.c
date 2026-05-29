@@ -150,6 +150,7 @@ static uint32_t bits_to_int(const int *bits, int count)
 
 static void look_for_sync_pad(struct srd_decoder_inst *di, adat_priv *s, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->signal_len < 11)
         return;
 
@@ -185,6 +186,7 @@ static void look_for_sync_pad(struct srd_decoder_inst *di, adat_priv *s, uint64_
 
 static void decode_user_bits(struct srd_decoder_inst *di, adat_priv *s, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->signal_len < 5)
         return;
 
@@ -212,7 +214,7 @@ static void decode_user_bits(struct srd_decoder_inst *di, adat_priv *s, uint64_t
         snprintf(content, sizeof(content), "0b%d%d%d%d",
                  user_data_bits[0], user_data_bits[1], user_data_bits[2], user_data_bits[3]);
 
-        char t1[64], t2[64], t3[16], t4[8];
+        char t1[64], t2[64], t3[48], t4[8];
         snprintf(t1, sizeof(t1), "USER DATA: %s", content);
         snprintf(t2, sizeof(t2), "USER %s", content);
         snprintf(t3, sizeof(t3), "U %s", content);
@@ -247,6 +249,7 @@ static void decode_user_bits(struct srd_decoder_inst *di, adat_priv *s, uint64_t
 
 static void decode_channel_data(struct srd_decoder_inst *di, adat_priv *s, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->signal_len < 5)
         return;
 

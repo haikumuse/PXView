@@ -6,6 +6,10 @@
       "tokens": [
         { "id": "@bg-base", "type": "color", "label": "IDS_STYLE_BG_BASE", "desc": "IDS_STYLE_BG_BASE_DESC" },
         { "id": "@bg-overlay", "type": "color", "label": "IDS_STYLE_BG_OVERLAY" },
+        { "id": "@titlebar-bg", "type": "color", "label": "IDS_STYLE_TITLEBAR_BG" },
+        { "id": "@ribbon-bg", "type": "color", "label": "IDS_STYLE_RIBBON_BG" },
+        { "id": "@tabview-bg", "type": "color", "label": "IDS_STYLE_TABVIEW_BG" },
+        { "id": "@sidebar-bg", "type": "color", "label": "IDS_STYLE_SIDEBAR_BG" },
         { "id": "@panel-bg", "type": "color", "label": "IDS_STYLE_PANEL_BG" },
         { "id": "@group-card-bg", "type": "color", "label": "IDS_STYLE_GROUP_CARD_BG" },
         { "id": "@input-bg", "type": "color", "label": "IDS_STYLE_INPUT_BG" },

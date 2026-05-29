@@ -315,6 +315,7 @@ static void nas_start(struct srd_decoder_inst* di)
 
 static uint64_t nas_grab_pattern(struct srd_decoder_inst* di, nas_state* s, uint64_t samplenum)
 {
+    (void)samplenum;
     uint64_t pattern = 0;
     for (int i = 0; i < s->bitcount && i < MAX_CHANNELS; i++) {
         int ch = i + 1;
