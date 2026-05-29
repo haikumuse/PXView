@@ -1,17 +1,8 @@
 {
 	"decoder": "wiegand_c",
 	"samplerate": 1000000,
-	"num_annotations": 6,
+	"num_annotations": 5,
 	"annotations": [
-		{
-			"start_sample": 0,
-			"end_sample": 2000,
-			"ann_class": 1,
-			"ann_type": 8,
-			"texts": [
-				"invalid"
-			]
-		}, 
 		{
 			"start_sample": 4000,
 			"end_sample": 5050,

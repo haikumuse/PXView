@@ -122,12 +122,7 @@ static const int lpc_ct_dr_wr[] = {
     0,
 };
 
-static const char* __attribute__((unused)) lpc_size_names[] = {
-    "8 bits",
-    "16 bits",
-    "Reserved",
-    "32 bits",
-};
+
 
 static const char* lpc_sync_names[] = {
     "Ready",
@@ -227,6 +222,7 @@ static void lpc_start(struct srd_decoder_inst* di)
 
 static void lpc_handle_get_start(struct srd_decoder_inst* di, lpc_decoder_state* s, int lframe, int lad)
 {
+    (void)lad;
     s->es_block = di_samplenum(di);
     /* Match Python: use oldlad (previous iteration's LAD) for START annotation */
     if (s->oldlad >= 0 && s->oldlad <= 15) {

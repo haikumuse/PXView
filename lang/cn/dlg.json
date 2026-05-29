@@ -1132,12 +1132,28 @@
         "text": "遮罩背景"
     },
     {
+        "id": "IDS_STYLE_TITLEBAR_BG",
+        "text": "标题栏背景"
+    },
+    {
+        "id": "IDS_STYLE_RIBBON_BG",
+        "text": "Ribbon背景"
+    },
+    {
+        "id": "IDS_STYLE_TABVIEW_BG",
+        "text": "波形绘图区基础背景"
+    },
+    {
+        "id": "IDS_STYLE_SIDEBAR_BG",
+        "text": "侧边栏背景"
+    },
+    {
         "id": "IDS_STYLE_PANEL_BG",
         "text": "悬浮面板背景"
     },
     {
         "id": "IDS_STYLE_GROUP_CARD_BG",
-        "text": "波形绘图区背景"
+        "text": "波形分组卡片颜色"
     },
     {
         "id": "IDS_STYLE_FG_BASE",
@@ -1358,6 +1374,138 @@
     {
         "id": "IDS_STYLE_DEC_NO_DECODE",
         "text": "未解码背景色"
+    },
+    {
+        "id": "IDS_STYLE_CAT_DECODER_ANN",
+        "text": "解码器标注颜色"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_0",
+        "text": "标注颜色 0"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_1",
+        "text": "标注颜色 1"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_2",
+        "text": "标注颜色 2"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_3",
+        "text": "标注颜色 3"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_4",
+        "text": "标注颜色 4"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_5",
+        "text": "标注颜色 5"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_6",
+        "text": "标注颜色 6"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_7",
+        "text": "标注颜色 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_8",
+        "text": "标注颜色 8"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_9",
+        "text": "标注颜色 9"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_10",
+        "text": "标注颜色 10"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_11",
+        "text": "标注颜色 11"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_12",
+        "text": "标注颜色 12"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_13",
+        "text": "标注颜色 13"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_14",
+        "text": "标注颜色 14"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_15",
+        "text": "标注颜色 15"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT0",
+        "text": "标注轮廓 0"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT1",
+        "text": "标注轮廓 1"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT2",
+        "text": "标注轮廓 2"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT3",
+        "text": "标注轮廓 3"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT4",
+        "text": "标注轮廓 4"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT5",
+        "text": "标注轮廓 5"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT6",
+        "text": "标注轮廓 6"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT7",
+        "text": "标注轮廓 7"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT8",
+        "text": "标注轮廓 8"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT9",
+        "text": "标注轮廓 9"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT10",
+        "text": "标注轮廓 10"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT11",
+        "text": "标注轮廓 11"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT12",
+        "text": "标注轮廓 12"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT13",
+        "text": "标注轮廓 13"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT14",
+        "text": "标注轮廓 14"
+    },
+    {
+        "id": "IDS_STYLE_DEC_ANN_OUT15",
+        "text": "标注轮廓 15"
     },
     {
         "id": "IDS_STYLE_FONT_MAIN_TITLE",

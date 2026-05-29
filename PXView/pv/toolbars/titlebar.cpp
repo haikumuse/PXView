@@ -103,11 +103,11 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
 
   assert(parent);
 
-  setObjectName("TitleBar");
+  setObjectName(_enableRibbon ? "TitleBar" : "SubTitleBar");
   setContentsMargins(0, 0, 0, 0);
 
   QWidget *titleRow = new QWidget(this);
-  titleRow->setObjectName("TitleRow");
+  titleRow->setObjectName(_enableRibbon ? "TitleRow" : "SubTitleRow");
   titleRow->setFixedHeight(32);
   titleRow->setContentsMargins(0, 0, 0, 0);
 
@@ -192,6 +192,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
     _ribbonPanel->setObjectName("RibbonPanel");
     _ribbonPanel->setContentsMargins(0, 0, 0, 0);
     _ribbonPanel->setFixedSize(1, _ribbonExpandedHeight);
+    _ribbonPanel->setAttribute(Qt::WA_StyledBackground);
     _ribbonPanel->move(0, 32);
     _ribbonPanel->hide();
 

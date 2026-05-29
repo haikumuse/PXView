@@ -548,9 +548,9 @@ static void sirc_decode(struct srd_decoder_inst* di)
         uint64_t next_bit_ss = pause_es;
 
         while (bit_count <= 20) {
-            int bval;
-            uint64_t bss, bes;
-            int good;
+            int bval = 0;
+            uint64_t bss = 0, bes = 0;
+            int good = 0;
 
             ret = read_bit(di, s, next_bit_ss, &bval, &bss, &bes, &good);
             if (ret == -1)

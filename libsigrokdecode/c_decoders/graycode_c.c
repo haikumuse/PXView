@@ -69,6 +69,7 @@ static uint32_t gray_to_binary(uint32_t gray, int bits)
 
 static int bitpack_pins(struct srd_decoder_inst* di, int num_channels, uint64_t samplenum)
 {
+    (void)samplenum;
     int val = 0;
     for (int i = 0; i < num_channels; i++) {
         if (c_pin(di, i))
@@ -291,10 +292,6 @@ static void gray_code_decode(struct srd_decoder_inst* di)
         int old_bin = s->prev_bin;
 
         /* Save old values for annotation (Python outputs old values, not new) */
-        int64_t old_count = s->count;
-        int64_t old_turns = 0;
-        if (s->edges_per_rotation > 0)
-            old_turns = s->count / s->edges_per_rotation;
 
         /* Python: phasedelta_raw = (newphase - oldphase + (ENCODER_STEPS // 2 - 1)) % ENCODER_STEPS - (ENCODER_STEPS // 2 - 1) */
         int phasedelta_raw = (cur_bin - old_bin + (s->encoder_steps / 2 - 1)) % s->encoder_steps - (s->encoder_steps / 2 - 1);
@@ -308,7 +305,7 @@ static void gray_code_decode(struct srd_decoder_inst* di)
         int64_t new_count = s->count + phasedelta;
 
         /* Phase annotation - show old value (valid during this period) */
-        char t1[128];
+        char t1[150];
         snprintf(t1, sizeof(t1), "%d", old_bin);
         c_put(di, s->last_edge_sample, di_samplenum(di), s->out_ann, ANN_PHASE, t1);
 

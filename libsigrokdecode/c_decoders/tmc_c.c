@@ -233,7 +233,7 @@ static void tmc_handle_data_wire2(struct srd_decoder_inst *di, tmc_s *s, uint64_
         char val_str[16];
         tmc_format_value(s->databyte, s->radix, val_str, sizeof(val_str));
         if (cmd == ANN_COMMAND) {
-            char long_str[64], mid_str[32], short_str[16];
+            char long_str[64], mid_str[32], short_str[32];
             snprintf(long_str, sizeof(long_str), "Command: %s", val_str);
             snprintf(mid_str, sizeof(mid_str), "Cmd: %s", val_str);
             snprintf(short_str, sizeof(short_str), "C: %s", val_str);
@@ -309,7 +309,7 @@ static void tmc_handle_byte_wire3(struct srd_decoder_inst *di, tmc_s *s, uint64_
         char val_str[16];
         tmc_format_value(s->databyte, s->radix, val_str, sizeof(val_str));
         if (cmd == ANN_COMMAND) {
-            char long_str[64], mid_str[32], short_str[16];
+            char long_str[64], mid_str[32], short_str[32];
             snprintf(long_str, sizeof(long_str), "Command: %s", val_str);
             snprintf(mid_str, sizeof(mid_str), "Cmd: %s", val_str);
             snprintf(short_str, sizeof(short_str), "C: %s", val_str);

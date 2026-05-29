@@ -305,7 +305,7 @@ static const char *accepted_voltages[] = {
     "not defined",
 };
 
-static char *ann_label_storage[NUM_ANN][3];
+
 static const char *ann_label_ptrs[NUM_ANN][3];
 static int ann_labels_initialized = 0;
 
@@ -315,7 +315,7 @@ static void init_ann_labels(void) {
   ann_labels_initialized = 1;
 
   for (int i = 0; i < 64; i++) {
-    snprintf(ann_label_storage[i][0], 0, "");
+
     char buf[16];
     snprintf(buf, sizeof(buf), "cmd%d", i);
     ann_label_ptrs[i][0] = "";
@@ -499,7 +499,7 @@ static void sdcard_sd_putc(struct srd_decoder_inst *di,
                            struct sdcard_sd_priv *s, const char *desc) {
   int cmd = s->is_acmd ? ANN_ACMD0 + s->cmd : s->cmd;
   s->last_cmd = cmd;
-  char text[128];
+  char text[256];
   snprintf(text, sizeof(text), "%s: %s", s->cmd_str, desc);
   sdcard_sd_putt(di, s, cmd, text);
 }
@@ -923,12 +923,14 @@ static void handle_acmd51(struct srd_decoder_inst *di,
 
 static void handle_cmd999(struct srd_decoder_inst *di,
                           struct sdcard_sd_priv *s) {
+  (void)di;
   s->token_len = 0;
   s->state = STATE_GET_RESPONSE_R1;
 }
 
 static void handle_acmd999(struct srd_decoder_inst *di,
                            struct sdcard_sd_priv *s) {
+  (void)di;
   s->token_len = 0;
   s->state = STATE_GET_RESPONSE_R1;
 }

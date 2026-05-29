@@ -254,6 +254,7 @@ static void putb(struct srd_decoder_inst *di, struct ac97_priv *s,
 static void handle_slot_dummy(struct srd_decoder_inst *di, struct ac97_priv *s,
     int slotidx, int bitidx, int bitcount, int is_out, uint32_t data)
 {
+    (void)bitidx;
     int *have_slots = is_out ? s->have_slots_out : s->have_slots_in;
     if (!have_slots[slotidx])
         return;
@@ -274,6 +275,7 @@ static void handle_slot_dummy(struct srd_decoder_inst *di, struct ac97_priv *s,
 static void handle_slot_00(struct srd_decoder_inst *di, struct ac97_priv *s,
     int slotidx, int bitidx, int bitcount, int is_out, uint32_t data)
 {
+    (void)bitidx;
     int slotpos = frame_slot_lens[slotidx];
     int fieldoff = 0;
     int anncls = is_out ? ANN_SLOT_OUT_TAG : ANN_SLOT_IN_TAG;
@@ -313,6 +315,7 @@ static void handle_slot_00(struct srd_decoder_inst *di, struct ac97_priv *s,
 static void handle_slot_01(struct srd_decoder_inst *di, struct ac97_priv *s,
     int slotidx, int bitidx, int bitcount, int is_out, uint32_t data)
 {
+    (void)bitidx;
     int slotpos = frame_slot_lens[slotidx];
     int *have_slots = is_out ? s->have_slots_out : s->have_slots_in;
     if (!have_slots[slotidx])
@@ -360,6 +363,7 @@ static void handle_slot_01(struct srd_decoder_inst *di, struct ac97_priv *s,
 static void handle_slot_02(struct srd_decoder_inst *di, struct ac97_priv *s,
     int slotidx, int bitidx, int bitcount, int is_out, uint32_t data)
 {
+    (void)bitidx;
     int slotpos = frame_slot_lens[slotidx];
     int *have_slots = is_out ? s->have_slots_out : s->have_slots_in;
     if (!have_slots[slotidx])

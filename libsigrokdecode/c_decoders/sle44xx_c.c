@@ -84,9 +84,9 @@ static struct srd_channel sle44xx_channels[] = {
 
 static const char *sle44xx_ann_labels[][3] = {
     { "", "Reset Symbol", "R" },
-    { "", "Interrupt Symbol", "Intr", "I" },
-    { "", "Start Symbol", "ST", "S" },
-    { "", "Stop Symbol", "SP", "P" },
+    { "", "Interrupt Symbol", "Intr" },
+    { "", "Start Symbol", "ST" },
+    { "", "Stop Symbol", "SP" },
     { "", "Bit Symbol", "B" },
     { "", "ATR Byte", "ATR" },
     { "", "Command Byte", "Cmd" },
@@ -206,54 +206,45 @@ static void sle44xx_command_check(struct sle44xx_priv *s, int ctrl, int addr, in
     char *texts, int texts_size, int *out_len, int *is_proc)
 {
     const char *fmt_long = NULL;
-    const char *fmt_short = NULL;
 
     switch (ctrl) {
     case 0x30:
         fmt_long = "read main memory, addr %02x";
-        fmt_short = "RD-M @%02x";
         *out_len = s->max_addr - addr;
         *is_proc = 0;
         break;
     case 0x31:
         fmt_long = "read security memory";
-        fmt_short = "RD-S";
         *out_len = 4;
         *is_proc = 0;
         break;
     case 0x33:
         fmt_long = "compare verification data, addr %02x, data %02x";
-        fmt_short = "CMP-V @%02x =%02x";
         *out_len = 0;
         *is_proc = 1;
         break;
     case 0x34:
         fmt_long = "read protection memory, addr %02x";
-        fmt_short = "RD-P @%02x";
         *out_len = 4;
         *is_proc = 0;
         break;
     case 0x38:
         fmt_long = "update main memory, addr %02x, data %02x";
-        fmt_short = "WR-M @%02x =%02x";
         *out_len = 0;
         *is_proc = 1;
         break;
     case 0x39:
         fmt_long = "update security memory, addr %02x, data %02x";
-        fmt_short = "WR-S @%02x =%02x";
         *out_len = 0;
         *is_proc = 1;
         break;
     case 0x3c:
         fmt_long = "write protection memory, addr %02x, data %02x";
-        fmt_short = "WR-P @%02x =%02x";
         *out_len = 0;
         *is_proc = 1;
         break;
     default:
         fmt_long = "unknown, ctrl %02x, addr %02x, data %02x";
-        fmt_short = "UNK-%02x @%02x, =%02x";
         *out_len = 0;
         *is_proc = 0;
         break;
@@ -506,6 +497,7 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
             ss_reset = di_samplenum(di);
             es_reset = 0;
             ss_clk = 0;
+            (void)ss_clk;
             es_clk = 0;
             has_reset_start = 1;
             has_rstclk = 0;
@@ -536,6 +528,7 @@ static void sle44xx_decode(struct srd_decoder_inst *di)
         /* COND_RSTCLK_START */
         if (di_matched(di) & (1ULL << 2)) {
             ss_clk = di_samplenum(di);
+            (void)ss_clk;
             has_rstclk = 1;
             continue;
         }

@@ -33,6 +33,10 @@
  *
  * @bg-base: #202020
  * @bg-overlay: #2d2d2d
+ * @titlebar-bg: #202020
+ * @ribbon-bg: #2d2d2d
+ * @tabview-bg: #202020
+ * @sidebar-bg: #202020
  * @fg-base: #eff0f1
  * @fg-bright: #ffffff
  * @fg-muted: #7a7a7a
@@ -341,7 +345,7 @@ QRadioButton::indicator:unchecked:disabled
 
 QMenuBar
 {
-    background-color: @bg-base;
+    background-color: @titlebar-bg;
     color: @fg-base;
 }
 
@@ -636,7 +640,7 @@ QFrame[frameShape="5"]
 
 QToolBar#sidebar {
     border-left: 1px solid @border-strong;
-    background-color: @bg-base;
+    background-color: @sidebar-bg;
     padding: 0px;
     spacing: 0px;
 }
@@ -1631,7 +1635,7 @@ QTextEdit#PathLine{
 
 /* TitleBar */
 QWidget#TitleBar {
-    background: @bg-base;
+    background: @titlebar-bg;
 }
 
 QWidget#TitleBarBottomLine {
@@ -1639,6 +1643,14 @@ QWidget#TitleBarBottomLine {
 }
 
 QWidget#TitleRow {
+    background: @titlebar-bg;
+}
+
+QWidget#SubTitleBar {
+    background: @bg-base;
+}
+
+QWidget#SubTitleRow {
     background: @bg-base;
 }
 
@@ -1683,7 +1695,7 @@ QWidget#TabBottomLine {
 }
 
 QWidget#RibbonPanel {
-    background: @bg-overlay;
+    background: @ribbon-bg;
 }
 
 QWidget#RibbonSeparator {
@@ -1921,5 +1933,5 @@ QPushButton#log_clear_btn:hover
 pv--view--Viewport,
 pv--view--Header
 {
-    background-color: @bg-base;
+    background-color: @tabview-bg;
 }
