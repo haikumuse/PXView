@@ -185,16 +185,15 @@ void SlidingDrawer::setPushLayout(QVBoxLayout *layout) {
 void SlidingDrawer::applyPushMargin() {
   if (!_push_layout)
     return;
-  // Set right margin = drawer width → tab widget shrinks, drawer sits in empty
-  // space
-  _push_layout->setContentsMargins(0, 0, _drawer_width, 0);
+  int left = _push_layout->contentsMargins().left();
+  _push_layout->setContentsMargins(left, 0, _drawer_width, 0);
 }
 
 void SlidingDrawer::removePushMargin() {
   if (!_push_layout)
     return;
-  // Remove right margin → tab widget expands to fill
-  _push_layout->setContentsMargins(0, 0, 0, 0);
+  int left = _push_layout->contentsMargins().left();
+  _push_layout->setContentsMargins(left, 0, 0, 0);
 }
 
 // ---- Page management ----

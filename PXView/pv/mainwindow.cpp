@@ -291,7 +291,7 @@ void MainWindow::setup_ui() {
   _central_widget = new QWidget(this);
   _vertical_layout = new QVBoxLayout(_central_widget);
   _vertical_layout->setSpacing(0);
-  _vertical_layout->setContentsMargins(0, 0, 0, 0);
+  _vertical_layout->setContentsMargins(10, 0, 0, 0);
   setCentralWidget(_central_widget);
 
   // Setup the sampling bar
@@ -311,6 +311,7 @@ void MainWindow::setup_ui() {
   _file_bar->setFloatable(false);
   _file_bar->hide();
   _logo_bar->setFloatable(false);
+  _logo_bar->hide();
 
   // trigger dock
   _trigger_dock = new QDockWidget(
@@ -375,7 +376,7 @@ void MainWindow::setup_ui() {
   // addToolBar(Qt::TopToolBarArea,_sampling_bar);
   // addToolBar(Qt::LeftToolBarArea,_trig_bar);
   // addToolBar(Qt::LeftToolBarArea,_file_bar);
-  addToolBar(Qt::LeftToolBarArea, _logo_bar);
+  // addToolBar(Qt::LeftToolBarArea, _logo_bar);
 
   // Setup the dockWidget
   _protocol_dock = new QDockWidget(
