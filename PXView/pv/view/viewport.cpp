@@ -84,13 +84,13 @@ static void drawFloatingPanel(QPainter &p, const QPointF &cursorPos,
   BrutalStyle style = getBrutalStyle(back, panelBg, panelText);
 
   QFont labelFont = p.font();
-  labelFont.setPixelSize(floating_panel_font_label_size());
+  labelFont.setPointSizeF(floating_panel_font_label_size() * 0.75);
   labelFont.setWeight(QFont::Black);
   labelFont.setCapitalization(QFont::AllUppercase);
   labelFont.setLetterSpacing(QFont::AbsoluteSpacing, 0.5);
 
   QFont valueFont = p.font();
-  valueFont.setPixelSize(floating_panel_font_value_size());
+  valueFont.setPointSizeF(floating_panel_font_value_size() * 0.75);
   valueFont.setWeight(QFont::Black);
   valueFont.setFamily("Space Mono, Courier New, monospace");
 

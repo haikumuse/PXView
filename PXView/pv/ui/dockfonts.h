@@ -21,7 +21,7 @@ inline int get_dock_font_size(const QString& token, int defaultSize) {
 inline QFont dock_font_main_title()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@dock-font-main-title", DockFontSizes::MainTitle));
+    font.setPointSizeF(get_dock_font_size("@dock-font-main-title", DockFontSizes::MainTitle) * 0.75);
     font.setBold(true);
     return font;
 }
@@ -29,7 +29,7 @@ inline QFont dock_font_main_title()
 inline QFont dock_font_section_title()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@dock-font-section-title", DockFontSizes::SectionTitle));
+    font.setPointSizeF(get_dock_font_size("@dock-font-section-title", DockFontSizes::SectionTitle) * 0.75);
     font.setBold(true);
     return font;
 }
@@ -37,14 +37,14 @@ inline QFont dock_font_section_title()
 inline QFont dock_font_label()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@dock-font-label", DockFontSizes::Label));
+    font.setPointSizeF(get_dock_font_size("@dock-font-label", DockFontSizes::Label) * 0.75);
     return font;
 }
 
 inline QFont dock_font_content()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@dock-font-content", DockFontSizes::Content));
+    font.setPointSizeF(get_dock_font_size("@dock-font-content", DockFontSizes::Content) * 0.75);
     return font;
 }
 
@@ -61,49 +61,49 @@ inline int floating_panel_font_value_size()
 inline QFont theme_font_titlebar()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@titlebar-font-size", 13));
+    font.setPointSizeF(get_dock_font_size("@titlebar-font-size", 13) * 0.75);
     return font;
 }
 
 inline QFont theme_font_toolbar()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@toolbar-font-size", 12));
+    font.setPointSizeF(get_dock_font_size("@toolbar-font-size", 12) * 0.75);
     return font;
 }
 
 inline QFont theme_font_sidebar()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@sidebar-font-size", 12));
+    font.setPointSizeF(get_dock_font_size("@sidebar-font-size", 12) * 0.75);
     return font;
 }
 
 inline QFont theme_font_dialog()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@dialog-font-size", 12));
+    font.setPointSizeF(get_dock_font_size("@dialog-font-size", 12) * 0.75);
     return font;
 }
 
 inline QFont theme_font_trace_label()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@trace-label-font-size", 10));
+    font.setPointSizeF(get_dock_font_size("@trace-label-font-size", 10) * 0.75);
     return font;
 }
 
 inline QFont theme_font_ruler()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@ruler-font-size", 10));
+    font.setPointSizeF(get_dock_font_size("@ruler-font-size", 10) * 0.75);
     return font;
 }
 
 inline QFont theme_font_cursor()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@cursor-font-size", 10));
+    font.setPointSizeF(get_dock_font_size("@cursor-font-size", 10) * 0.75);
     return font;
 }
 
