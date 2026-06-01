@@ -1148,6 +1148,10 @@
         "text": "Sidebar Background"
     },
     {
+        "id": "IDS_STYLE_STATUSBAR_BG",
+        "text": "Status Bar Background"
+    },
+    {
         "id": "IDS_STYLE_PANEL_BG",
         "text": "Panel Background"
     },

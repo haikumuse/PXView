@@ -9,6 +9,7 @@
         "@ribbon-bg": "#3e3d32",
         "@tabview-bg": "#272822",
         "@sidebar-bg": "#272822",
+        "@statusbar-bg": "#272822",
         "@fg-base": "#f8f8f2",
         "@fg-bright": "#ffffff",
         "@fg-muted": "#75715e",
