@@ -1148,6 +1148,10 @@
         "text": "侧边栏背景"
     },
     {
+        "id": "IDS_STYLE_STATUSBAR_BG",
+        "text": "状态栏背景"
+    },
+    {
         "id": "IDS_STYLE_PANEL_BG",
         "text": "悬浮面板背景"
     },

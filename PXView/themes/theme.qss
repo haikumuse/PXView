@@ -37,6 +37,7 @@
  * @ribbon-bg: #2d2d2d
  * @tabview-bg: #202020
  * @sidebar-bg: #202020
+ * @statusbar-bg: #202020
  * @fg-base: #eff0f1
  * @fg-bright: #ffffff
  * @fg-muted: #7a7a7a
@@ -1434,12 +1435,24 @@ QTableCornerButton::section
 
 QStatusBar
 {
+    background-color: @statusbar-bg;
     border-top: 1px solid @border-strong;
 }
 
 QStatusBar::item
 {
     border: 0px transparent;
+    background-color: @statusbar-bg;
+}
+
+QStatusBar QLabel
+{
+    background-color: @statusbar-bg;
+}
+
+QSizeGrip
+{
+    background-color: @statusbar-bg;
 }
 
 QFrame[height="3"],
