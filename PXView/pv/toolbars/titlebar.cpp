@@ -564,7 +564,7 @@ void TitleBar::resizeEvent(QResizeEvent *event) {
            maximumHeight());
   QMenuBar::resizeEvent(event);
 
-  QWidget *titleRow = findChild<QWidget *>("TitleRow");
+  QWidget *titleRow = findChild<QWidget *>(_enableRibbon ? "TitleRow" : "SubTitleRow");
   if (titleRow) {
     titleRow->setFixedWidth(width());
   }
