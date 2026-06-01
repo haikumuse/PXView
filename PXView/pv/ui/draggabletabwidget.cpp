@@ -83,7 +83,7 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
     _add_button->raise();
     _add_button->show();
 
-    _tab_bottom_line = new QWidget(this);
+    _tab_bottom_line = new QWidget(parent);
     _tab_bottom_line->setObjectName("TabBottomLine");
     _tab_bottom_line->setFixedHeight(1);
     _tab_bottom_line->raise();
@@ -123,9 +123,8 @@ void DraggableTabWidget::update_add_button_position()
     }
 
     if (_tab_bottom_line && _draggable_tab_bar) {
-        QPoint tab_bar_pos = _draggable_tab_bar->mapToParent(QPoint(0, 0));
-        int lineY = tab_bar_pos.y() + _draggable_tab_bar->height();
-        _tab_bottom_line->setGeometry(0, lineY, width(), 1);
+        int lineY = mapToParent(QPoint(0, _draggable_tab_bar->geometry().bottom())).y();
+        _tab_bottom_line->setGeometry(0, lineY, parentWidget() ? parentWidget()->width() : width(), 1);
         _tab_bottom_line->raise();
     }
 }

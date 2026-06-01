@@ -1,0 +1,9 @@
+- [ ] MainWindow 左侧不再有 LogoBar 的 QToolBar 占位
+- [ ] Tab 栏从窗口最左侧开始（不再被推 10px）
+- [ ] Ribbon 面板从窗口最左侧开始
+- [ ] Ruler 左侧的 DevMode 按钮位置正确
+- [ ] Header 和 Viewport 从窗口最左侧开始
+- [ ] 分组卡片覆盖完整 Viewport 宽度，@tabview-bg 不再出现窄条
+- [ ] Ribbon 中的语言切换、关于、帮助等功能正常可用
+- [ ] 子窗口（SubMainFrame）布局不受影响
+- [ ] 编译无错误
