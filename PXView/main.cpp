@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
         QStringList fontFamilies = fontDb.applicationFontFamilies(fontId);
         if (!fontFamilies.isEmpty()) {
             font.setFamily(fontFamilies.at(0));
-            font.setPointSizeF(9.0);
+            font.setPointSizeF(10.0);
             font.setHintingPreference(QFont::PreferVerticalHinting);
             font.setStyleHint(QFont::System, QFont::NoSubpixelAntialias);
             a.setFont(font);
