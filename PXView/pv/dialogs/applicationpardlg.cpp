@@ -1062,7 +1062,7 @@ void ApplicationParamDlg::applyLivePreview() {
       qssContent.replace(key, tokens[key]);
     }
 
-    // Process SVG files that contain token placeholders (e.g. @accent-light)
+    // Process SVG files that contain token placeholders (e.g. @accent)
     // Read each referenced SVG, replace token placeholders, write to temp dir
     QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) +
                       "/pxview_themed_svgs";
@@ -1646,7 +1646,7 @@ void ApplicationParamDlg::saveStyleOptions() {
         qssContent.replace(key, tokens[key]);
       }
 
-      // Process SVG files that contain token placeholders (e.g. @accent-light)
+      // Process SVG files that contain token placeholders (e.g. @accent)
       QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) +
                         "/pxview_themed_svgs";
       QDir().mkpath(tempDir);

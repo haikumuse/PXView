@@ -2215,7 +2215,7 @@ void MainWindow::switchTheme(QString style) {
     qssContent.replace(key, tokens[key]);
   }
 
-  // Process SVG files that contain token placeholders (e.g. @accent-light)
+  // Process SVG files that contain token placeholders (e.g. @accent)
   QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) +
                     "/pxview_themed_svgs";
   QDir().mkpath(tempDir);

@@ -16,7 +16,7 @@ namespace DockFontSizes
     constexpr int MainTitle = 18;
     constexpr int SectionTitle = 16;
     constexpr int Label = 14;
-    constexpr int Content = 14;
+    constexpr int Content = 12;
 }
 
 // Ensure a font inherits the global rendering strategy (NoSubpixelAntialias, hinting).
@@ -29,8 +29,13 @@ inline void apply_global_font_strategy(QFont &font)
 }
 
 inline int get_dock_font_size(const QString& token, int defaultSize) {
-    int sz = AppConfig::Instance().GetThemeTokenValue(token).toInt();
-    return sz > 0 ? sz : defaultSize;
+    QString val = AppConfig::Instance().GetThemeTokenValue(token).trimmed();
+    // Token values may have "px" suffix (e.g. "12px"), strip it before conversion
+    if (val.endsWith("px", Qt::CaseInsensitive))
+        val.chop(2);
+    bool ok = false;
+    int sz = val.toInt(&ok);
+    return (ok && sz > 0) ? sz : defaultSize;
 }
 
 // --- Dock panel fonts (pixel-perfect ATK alignment) ---
@@ -84,7 +89,7 @@ inline int floating_panel_font_value_size()
 inline QFont theme_font_titlebar()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@titlebar-font-size", 12));
+    font.setPixelSize(get_dock_font_size("@titlebar-font-size", 13));
     apply_global_font_strategy(font);
     return font;
 }
@@ -108,7 +113,7 @@ inline QFont theme_font_sidebar()
 inline QFont theme_font_dialog()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@dialog-font-size", 14));
+    font.setPixelSize(get_dock_font_size("@dialog-font-size", 12));
     apply_global_font_strategy(font);
     return font;
 }
@@ -116,7 +121,7 @@ inline QFont theme_font_dialog()
 inline QFont theme_font_trace_label()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@trace-label-font-size", 12));
+    font.setPixelSize(get_dock_font_size("@trace-label-font-size", 10));
     apply_global_font_strategy(font);
     return font;
 }
@@ -124,7 +129,7 @@ inline QFont theme_font_trace_label()
 inline QFont theme_font_ruler()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@ruler-font-size", 11));
+    font.setPixelSize(get_dock_font_size("@ruler-font-size", 10));
     apply_global_font_strategy(font);
     return font;
 }
@@ -132,7 +137,7 @@ inline QFont theme_font_ruler()
 inline QFont theme_font_cursor()
 {
     QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@cursor-font-size", 11));
+    font.setPixelSize(get_dock_font_size("@cursor-font-size", 10));
     apply_global_font_strategy(font);
     return font;
 }

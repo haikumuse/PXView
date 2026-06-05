@@ -44,9 +44,6 @@
  * @border: #393939
  * @border-strong: #37373b
  * @accent: #1185d1
- * @accent-hover: #3a9ee8
- * @accent-light: #5aacf0
- * @accent-muted: #334e5e
  * @danger: #c42b1c
  * @danger-hover: #d43d2e
  * @danger-pressed: #b22218
@@ -86,6 +83,7 @@
  * @search-input-label: #aaaaaa
  * @sidebar-accent: #5b8def
  * @titlebar-icon-accent: #1E90FF
+ * @titlebar-icon-color: #E0E0E0
  * @sidebar-icon-color: #E0E0E0
  * @sidebar-text-color: #A0A0B0
  * @flat-hover-fg: #ffffff
@@ -1350,7 +1348,7 @@ QTableView::item:!selected:hover
 
 QTableView::item:selected:hover
 {
-    background-color: @accent-light;
+    background-color: @accent;
     color: @fg-base;
 }
 
@@ -1401,11 +1399,6 @@ QHeaderView::section::horizontal
 }
 
 
-QHeaderView::section:checked
-{
-    color: @fg-bright;
-    background-color: @accent-muted;
-}
 
  /* style the sort indicator */
 QHeaderView::down-arrow
@@ -1913,13 +1906,13 @@ QPushButton#log_scroll_bottom_btn:hover
 QPushButton#log_scroll_bottom_btn:checked
 {
     border: 1px solid @accent;
-    background-color: @accent-muted;
+    background-color: #202020;
 }
 
 QPushButton#log_scroll_bottom_btn:checked:hover
 {
-    border: 1px solid @accent-hover;
-    background-color: @accent-muted;
+    border: 1px solid @accent;
+    background-color: #202020;
 }
 
 QPushButton#log_refresh_btn,

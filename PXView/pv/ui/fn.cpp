@@ -45,7 +45,7 @@
 namespace ui {
 
 void set_font_param(QFont &font, struct FontParam &param) {
-  font.setPixelSize(param.size >= 12.0f ? (int)param.size : 12);
+  font.setPixelSize(param.size >= 12.0f ? (int)param.size : dock_font_content().pixelSize());
 
   if (param.name != "") {
     font.setFamily(param.name);
@@ -120,7 +120,7 @@ void set_form_font(QWidget *wid, QFont font) {
   }
 
   // Magnify the size.
-  font.setPixelSize(font.pixelSize() > 0 ? font.pixelSize() + 1 : 13);
+  font.setPixelSize(font.pixelSize() > 0 ? font.pixelSize() + 1 : dock_font_label().pixelSize());
 
   auto tabs = wid->findChildren<QTabWidget *>();
   for (auto o : tabs) {

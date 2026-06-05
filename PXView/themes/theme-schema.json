@@ -29,12 +29,9 @@
       "name": "IDS_STYLE_CAT_ACCENT",
       "tokens": [
         { "id": "@accent", "type": "color", "label": "IDS_STYLE_ACCENT", "desc": "IDS_STYLE_ACCENT_DESC" },
-        { "id": "@accent-hover", "type": "color", "label": "IDS_STYLE_ACCENT_HOVER" },
-        { "id": "@accent-light", "type": "color", "label": "IDS_STYLE_ACCENT_LIGHT" },
-        { "id": "@accent-muted", "type": "color", "label": "IDS_STYLE_ACCENT_MUTED" },
         { "id": "@sidebar-accent", "type": "color", "label": "IDS_STYLE_SIDEBAR_ACCENT", "desc": "IDS_STYLE_SIDEBAR_ACCENT_DESC" },
+        { "id": "@titlebar-icon-color", "type": "color", "label": "IDS_STYLE_TITLEBAR_ICON_COLOR", "desc": "IDS_STYLE_TITLEBAR_ICON_COLOR_DESC" },
         { "id": "@titlebar-icon-accent", "type": "color", "label": "IDS_STYLE_TITLEBAR_ICON", "desc": "IDS_STYLE_TITLEBAR_ICON_DESC" },
-        { "id": "@titlebar-icon-active", "type": "color", "label": "IDS_STYLE_TITLEBAR_ICON_ACTIVE" },
         { "id": "@titlebar-text-color", "type": "color", "label": "IDS_STYLE_TITLEBAR_TEXT", "desc": "IDS_STYLE_TITLEBAR_TEXT_DESC" },
         { "id": "@sidebar-icon-color", "type": "color", "label": "IDS_STYLE_SIDEBAR_ICON", "desc": "IDS_STYLE_SIDEBAR_ICON_DESC" },
         { "id": "@sidebar-text-color", "type": "color", "label": "IDS_STYLE_SIDEBAR_TEXT", "desc": "IDS_STYLE_SIDEBAR_TEXT_DESC" },

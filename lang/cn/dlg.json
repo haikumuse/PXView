@@ -1205,15 +1205,19 @@
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON",
-        "text": "标题栏图标颜色"
-    },
-    {
-        "id": "IDS_STYLE_TITLEBAR_ICON_ACTIVE",
-        "text": "标题栏图标激活状态"
+        "text": "标题栏图标强调色"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
         "text": "标题栏图标激活颜色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_COLOR",
+        "text": "标题栏图标颜色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_COLOR_DESC",
+        "text": "标题栏/Ribbon区域的图标默认颜色"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_TEXT",
@@ -1594,14 +1598,6 @@
     {
         "id": "IDS_STYLE_HEADER_H_BG",
         "text": "表头背景"
-    },
-    {
-        "id": "IDS_STYLE_ACCENT_LIGHT",
-        "text": "强调色（亮）"
-    },
-    {
-        "id": "IDS_STYLE_ACCENT_MUTED",
-        "text": "强调色（暗）"
     },
     {
         "id": "IDS_STYLE_DANGER_HOVER",

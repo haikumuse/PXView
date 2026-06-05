@@ -236,8 +236,7 @@ SearchDock::SearchDock(QWidget *parent, View *view, SigSession *session)
   _legend_c = new QLabel(_widget);
   _legend_c->setObjectName("dock_label");
 
-  QFont legendFont;
-  legendFont.setPixelSize(14);
+  QFont legendFont = dock_font_label();
 
   QColor legendColor = AppConfig::Instance().GetThemeColor("@fg-muted");
   if (!legendColor.isValid())
@@ -718,7 +717,7 @@ void SearchDock::UpdateFont() {
   QFont font("Source Code Pro");
   font.setStyleHint(QFont::Monospace);
   font.setFixedPitch(true);
-  font.setPixelSize(DockFontSizes::Content);
+  font.setPixelSize(dock_font_content().pixelSize());
   _pattern_input->setFont(font);
   _pattern_input->update();
 }
