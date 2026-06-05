@@ -64,31 +64,17 @@ TrigBar::TrigBar(SigSession *session, QWidget *parent) :
     _action_lissajous = new QAction(this);
     _action_lissajous->setObjectName(QString::fromUtf8("actionLissajous"));
 
-    _dark_style = new QAction(this);
-    _dark_style->setObjectName(QString::fromUtf8("actionDark"));
-
-    _light_style = new QAction(this);
-    _light_style->setObjectName(QString::fromUtf8("actionLight"));
-
-    _themes = new QMenu(this);
-    _themes->setObjectName(QString::fromUtf8("menuThemes"));
-    _themes->addAction(_light_style);
-    _themes->addAction(_dark_style);
-
     _action_dispalyOptions = new QAction(this);
 
     _display_menu = new QMenu(this);
     _display_menu->setContentsMargins(0,0,0,0);
 
     _display_menu->addAction(_action_lissajous);
-    _display_menu->addMenu(_themes);
     _display_menu->addAction(_action_dispalyOptions);
 
     connect(_action_fft, &QAction::triggered, this, &TrigBar::on_actionFft_triggered);
     connect(_action_math, &QAction::triggered, this, &TrigBar::on_actionMath_triggered);
     connect(_action_lissajous, &QAction::triggered, this, &TrigBar::on_actionLissajous_triggered);
-    connect(_dark_style, &QAction::triggered, this, &TrigBar::on_actionDark_triggered);
-    connect(_light_style, &QAction::triggered, this, &TrigBar::on_actionLight_triggered);
     connect(_action_dispalyOptions, &QAction::triggered, this, &TrigBar::on_display_setting);
 
     ADD_UI(this);
@@ -101,11 +87,7 @@ TrigBar::~TrigBar()
 
 void TrigBar::retranslateUi()
 {
-    _themes->setTitle(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_THEMES), "Themes"));
     _action_lissajous->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_LISSAJOUS), "Lissajous"));
-
-    _dark_style->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_THEMES_DARK), "Dark"));
-    _light_style->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DISPLAY_THEMES_LIGHT), "Light"));
 
     _action_fft->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FUNCTION_FFT), "FFT"));
     _action_math->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FUNCTION_MATH), "Math"));
@@ -116,7 +98,7 @@ void TrigBar::retranslateUi()
 void TrigBar::reStyle()
 {
     QString iconPath = GetIconPath();
-    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
 
     auto getIcon = [&](const QString &name) {
         return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
@@ -126,14 +108,7 @@ void TrigBar::reStyle()
     _action_fft->setIcon(getIcon("/fft.svg"));
     _action_math->setIcon(getIcon("/math.svg"));
     _action_lissajous->setIcon(getIcon("/lissajous.svg"));
-    _dark_style->setIcon(getIcon("/dark.svg"));
-    _light_style->setIcon(getIcon("/light.svg"));
-
     _action_dispalyOptions->setIcon(getIcon("/gear.svg"));
-
-    AppConfig &app = AppConfig::Instance();
-    QString icon_fname = "/" + app.frameOptions.style + ".svg";
-    _themes->setIcon(getIcon(icon_fname));
 }
 
 void TrigBar::reload()
@@ -157,19 +132,7 @@ void TrigBar::on_actionMath_triggered()
     }
 }
 
-void TrigBar::on_actionDark_triggered()
-{
-    sig_setTheme(THEME_STYLE_DARK);
-    QString icon = GetIconPath() + "/" + THEME_STYLE_DARK + ".svg";
-    _themes->setIcon(QIcon(icon));
-}
 
-void TrigBar::on_actionLight_triggered()
-{
-    sig_setTheme(THEME_STYLE_LIGHT);
-    QString icon = GetIconPath() + "/" + THEME_STYLE_LIGHT +".svg";
-    _themes->setIcon(QIcon(icon));
-}
 
 void TrigBar::on_actionLissajous_triggered()
 {

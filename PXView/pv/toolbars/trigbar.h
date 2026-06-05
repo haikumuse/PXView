@@ -60,8 +60,6 @@ signals:
     void sig_show_lissajous(bool visible);
 
 private slots:
-    void on_actionDark_triggered();
-    void on_actionLight_triggered();
     void on_actionLissajous_triggered();
     void on_actionFft_triggered();
     void on_actionMath_triggered();
@@ -77,10 +75,7 @@ public:
     QAction     *_action_math;
 
     QMenu       *_display_menu;
-    QMenu       *_themes;
     QAction     *_action_dispalyOptions;
-    QAction     *_dark_style;
-    QAction     *_light_style;
     QAction     *_action_lissajous;
 };
 

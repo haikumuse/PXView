@@ -1208,6 +1208,10 @@
         "text": "標題欄圖示顏色"
     },
     {
+        "id": "IDS_STYLE_TITLEBAR_ICON_ACTIVE",
+        "text": "標題欄圖示啟用狀態"
+    },
+    {
         "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
         "text": "標題欄圖示啟用顏色"
     },
@@ -1610,6 +1614,10 @@
     {
         "id": "IDS_STYLE_SCROLLBAR",
         "text": "滾動條"
+    },
+    {
+        "id": "IDS_STYLE_SCROLLBAR_HOVER",
+        "text": "滾動條懸停"
     },
     {
         "id": "IDS_STYLE_TAB_HOVER",

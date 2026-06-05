@@ -213,9 +213,6 @@ void MainWindow::setupDisplayCategory() {
 
   _title_bar->addSeparator(_category_display_index);
 
-  _title_bar->addAction(_category_display_index, _trig_bar->_light_style);
-  _title_bar->addAction(_category_display_index, _trig_bar->_dark_style);
-  _title_bar->addSeparator(_category_display_index);
 
   _title_bar->addAction(_category_display_index,
                         _trig_bar->_action_dispalyOptions);
