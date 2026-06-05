@@ -160,7 +160,7 @@ void DevMode::set_device()
         if (cur_mode == _mode_list[action]->mode)
         {
             QString icon_fname = iconPath + icon_name;
-            _mode_btn->setIcon(QIcon(icon_fname));
+            _mode_btn->setIcon(IconCache::Instance().icon(icon_fname));
             
             if (cur_mode == LOGIC)
                 _mode_btn->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_DEVICE_MODE_LOGIC), "Logic Analyzer"));
@@ -223,7 +223,7 @@ void DevMode::on_mode_change()
             auto *mode_name = get_mode_name(mode);
             QString icon_fname = iconPath + "/" + QString::fromLocal8Bit(mode_name->_logo);
             
-            _mode_btn->setIcon(QIcon(icon_fname));
+            _mode_btn->setIcon(IconCache::Instance().icon(icon_fname));
             int cur_mode = mode_name->_mode;
 
             if (cur_mode == LOGIC)

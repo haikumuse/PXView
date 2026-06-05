@@ -52,12 +52,21 @@ static const struct { const char *name; const char *token; } kIconTokenMap[] = {
     {"modes.svg",          "@icon-accent"},
     {"moder.svg",          "@icon-accent"},
     {"single.svg",         "@icon-accent"},
-    {"osc.svg",            "@icon-accent"},
-    {"daq.svg",            "@icon-accent"},
-    {"la.svg",             "@icon-accent"},
-    {"pwm.svg",            "@icon-accent"},
+    {"osc.svg",            "@icon-special"},
+    {"daq.svg",            "@icon-special"},
+    {"la.svg",             "@icon-special"},
+    {"pwm.svg",            "@icon-special"},
     {"lissajous.svg",      "@icon-accent"},
     {"logo_color.svg",     "@icon-accent"},
+    {"usb2.svg",           "@icon-special"},
+    {"usb3.svg",           "@icon-special"},
+    {"demo.svg",           "@icon-special"},
+    {"data.svg",           "@icon-special"},
+    {"square-la.svg",      "@icon-special"},
+    {"square-daq.svg",     "@icon-special"},
+    {"square-osc.svg",     "@icon-special"},
+    {"square-pwm.svg",     "@icon-special"},
+    {"status-warning.svg", "@icon-special"},
 
     // Category B — foreground color icons
     {"close.svg",          "@icon-foreground"},
@@ -134,6 +143,56 @@ private:
     QString _svgPath;
 };
 
+class StatefulTintedIconEngine : public QIconEngine {
+public:
+    StatefulTintedIconEngine(const QString &svgPath, const QColor &normalColor, const QColor &activeColor)
+        : _baseIcon(svgPath), _normalColor(normalColor), _activeColor(activeColor), _svgPath(svgPath) {}
+
+    void paint(QPainter *painter, const QRect &rect, QIcon::Mode mode, QIcon::State state) override {
+        qreal dpr = painter->device() ? painter->device()->devicePixelRatioF() : 1.0;
+        QPixmap pix = scaledPixmap(rect.size(), mode, state, dpr);
+        painter->drawPixmap(rect, pix);
+    }
+
+    QPixmap pixmap(const QSize &size, QIcon::Mode mode, QIcon::State state) override {
+        QPixmap pix = _baseIcon.pixmap(size, mode, state);
+        QColor color = (mode == QIcon::Active || mode == QIcon::Selected) ? _activeColor : _normalColor;
+        if (!pix.isNull() && color.isValid()) {
+            QPainter p(&pix);
+            p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+            p.fillRect(pix.rect(), color);
+            p.end();
+        }
+        return pix;
+    }
+
+    QPixmap scaledPixmap(const QSize &size, QIcon::Mode mode, QIcon::State state, qreal scale) override {
+        QPixmap pix = _baseIcon.pixmap(size, scale, mode, state);
+        QColor color = (mode == QIcon::Active || mode == QIcon::Selected) ? _activeColor : _normalColor;
+        if (!pix.isNull() && color.isValid()) {
+            QPainter p(&pix);
+            p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+            p.fillRect(pix.rect(), color);
+            p.end();
+        }
+        return pix;
+    }
+
+    QIconEngine *clone() const override {
+        return new StatefulTintedIconEngine(_svgPath, _normalColor, _activeColor);
+    }
+
+    QSize actualSize(const QSize &size, QIcon::Mode mode, QIcon::State state) override {
+        return _baseIcon.actualSize(size, mode, state);
+    }
+
+private:
+    QIcon _baseIcon;
+    QColor _normalColor;
+    QColor _activeColor;
+    QString _svgPath;
+};
+
 IconCache::IconCache()
 {
 }
@@ -187,6 +246,24 @@ QIcon IconCache::tintedIcon(const QString &svgPath, const QColor &color, const Q
     }
 
     QIcon tinted(new TintedIconEngine(svgPath, color));
+    _iconCache.insert(key, tinted);
+    return tinted;
+}
+
+QIcon IconCache::statefulTintedIcon(const QString &svgPath, const QColor &normalColor, const QColor &activeColor)
+{
+    QString key = svgPath + "_stateful_" + normalColor.name() + "_" + activeColor.name();
+    auto it = _iconCache.find(key);
+    if (it != _iconCache.end())
+        return it.value();
+
+    QIcon ic(svgPath);
+    if (ic.isNull()) {
+        _iconCache.insert(key, ic);
+        return ic;
+    }
+
+    QIcon tinted(new StatefulTintedIconEngine(svgPath, normalColor, activeColor));
     _iconCache.insert(key, tinted);
     return tinted;
 }

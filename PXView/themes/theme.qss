@@ -528,7 +528,7 @@ QScrollBar::handle:horizontal
 
 QScrollBar::handle:horizontal:hover
 {
-    background-color: @progress-track;
+    background-color: @scrollbar-hover;
 }
 
 QScrollBar::add-line:horizontal,
@@ -570,7 +570,7 @@ QScrollBar::handle:vertical
 
 QScrollBar::handle:vertical:hover
 {
-    background-color: @progress-track;
+    background-color: @scrollbar-hover;
 }
 
 QScrollBar::add-line:vertical,
@@ -720,8 +720,6 @@ QPushButton:focus
 QPushButton:pressed
 {
     background-color: @bg-base;
-    padding-top: -15px;
-    padding-bottom: -17px;
 }
 
 
@@ -737,8 +735,6 @@ QPushButton:hover
     background-color: @bg-base;
     border: 1px solid @accent;
     color: @fg-base;
-    padding-top: 6px;
-    padding-bottom: 4px;
 }
 
 QPushButton:checked:hover
@@ -749,8 +745,6 @@ QPushButton:checked:hover
                                        stop: 1 @bg-base);
     border: 1px solid @accent;
     color: @fg-base;
-    padding-top: 6px;
-    padding-bottom: 4px;
 }
 
 QComboBox:hover,
@@ -768,8 +762,6 @@ QTreeView:hover
 QComboBox:on
 {
     background-color: @combo-active;
-    padding-top: 3px;
-    padding-left: 4px;
     selection-background-color: @combo-highlight;
 }
 
@@ -1204,10 +1196,10 @@ QToolButton
     border: 0px;
     border-radius: 2px;
     margin: 0px;
-    padding-top: 0px;
+    padding-top: 1px;
     padding-left: 2px;
     padding-right: 2px;
-    padding-bottom: 2px;
+    padding-bottom: 1px;
 }
 
 QToolButton[popupMode="1"] /* only for MenuButtonPopup */
@@ -1216,10 +1208,10 @@ QToolButton[popupMode="1"] /* only for MenuButtonPopup */
     border: 0px;
     border-radius: 5px;
     margin: 0px;
-    padding-top: 0px;
+    padding-top: 1px;
     padding-left: 2px;
     padding-right: 2px;
-    padding-bottom: 2px;
+    padding-bottom: 1px;
 }
 
 QToolButton[popupMode="2"] /* only for InstantPopup */
@@ -1227,10 +1219,10 @@ QToolButton[popupMode="2"] /* only for InstantPopup */
     padding-right: 10px; /* make way for the popup button */
     border: 0px;
     margin: 0px;
-    padding-top: 0px;
+    padding-top: 1px;
     padding-left: 2px;
     padding-right: 2px;
-    padding-bottom: 2px;
+    padding-bottom: 1px;
 }
 
 QToolButton:hover, 
@@ -1248,10 +1240,10 @@ QToolButton::menu-button:checked:hover
 QToolButton:checked, QToolButton:pressed,
 QToolButton::menu-button:pressed {
     background-color: @toolbtn-hover;
-    padding-top: 2px;
+    padding-top: 1px;
     padding-left: 2px;
     padding-right: 2px;
-    padding-bottom: 0px;				       
+    padding-bottom: 1px;
 }
 
 
@@ -1649,6 +1641,10 @@ QTextEdit#PathLine{
 /* TitleBar */
 QWidget#TitleBar {
     background: @titlebar-bg;
+}
+
+QWidget#TitleBar QToolButton {
+    color: @titlebar-text-color;
 }
 
 QWidget#TitleBarBottomLine {

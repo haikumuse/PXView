@@ -1208,6 +1208,10 @@
         "text": "Titlebar Icon Color"
     },
     {
+        "id": "IDS_STYLE_TITLEBAR_ICON_ACTIVE",
+        "text": "Titlebar Icon Active State"
+    },
+    {
         "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
         "text": "Titlebar icon active color"
     },
@@ -1610,6 +1614,10 @@
     {
         "id": "IDS_STYLE_SCROLLBAR",
         "text": "Scrollbar"
+    },
+    {
+        "id": "IDS_STYLE_SCROLLBAR_HOVER",
+        "text": "Scrollbar Hover"
     },
     {
         "id": "IDS_STYLE_TAB_HOVER",

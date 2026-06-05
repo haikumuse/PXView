@@ -148,27 +148,30 @@ void LogoBar::retranslateUi() {
 
 void LogoBar::reStyle() {
   QString iconPath = GetIconPath();
-  QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
+  QColor normalColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
+  QColor activeColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-active");
 
   auto getIcon = [&](const QString &name) {
-      return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
+      return normalColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, normalColor)
                                  : IconCache::Instance().icon(iconPath + name);
   };
 
-  auto getQrcIcon = [&](const QString &path) {
-      return iconColor.isValid() ? IconCache::Instance().tintedIcon(path, iconColor)
-                                 : IconCache::Instance().icon(path);
+  auto getQrcIcon = [&](const QString &path, bool active) {
+      QColor c = active ? activeColor : normalColor;
+      return c.isValid() ? IconCache::Instance().tintedIcon(path, c)
+                         : IconCache::Instance().icon(path);
   };
 
-  _action_en->setIcon(getQrcIcon(":/icons/English.svg"));
-  _action_cn->setIcon(getQrcIcon(":/icons/Chinese.svg"));
-  _action_traditional->setIcon(getQrcIcon(":/icons/Chinese.svg"));
-
   AppConfig &app = AppConfig::Instance();
+  
+  _action_en->setIcon(getQrcIcon(":/icons/English.svg", app.frameOptions.language == LAN_EN));
+  _action_cn->setIcon(getQrcIcon(":/icons/Chinese.svg", app.frameOptions.language == LAN_CN));
+  _action_traditional->setIcon(getQrcIcon(":/icons/Chinese.svg", app.frameOptions.language == LAN_TRADITIONAL));
+
   if (app.frameOptions.language == LAN_EN)
-    _language->setIcon(getQrcIcon(":/icons/English.svg"));
+    _language->setIcon(getQrcIcon(":/icons/English.svg", false));
   else
-    _language->setIcon(getQrcIcon(":/icons/Chinese.svg"));
+    _language->setIcon(getQrcIcon(":/icons/Chinese.svg", false));
 
   _about->setIcon(getIcon("/about.svg"));
   _manual->setIcon(getIcon("/manual.svg"));

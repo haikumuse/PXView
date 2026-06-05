@@ -1208,6 +1208,10 @@
         "text": "标题栏图标颜色"
     },
     {
+        "id": "IDS_STYLE_TITLEBAR_ICON_ACTIVE",
+        "text": "标题栏图标激活状态"
+    },
+    {
         "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
         "text": "标题栏图标激活颜色"
     },
@@ -1610,6 +1614,10 @@
     {
         "id": "IDS_STYLE_SCROLLBAR",
         "text": "滚动条"
+    },
+    {
+        "id": "IDS_STYLE_SCROLLBAR_HOVER",
+        "text": "滚动条悬停"
     },
     {
         "id": "IDS_STYLE_TAB_HOVER",

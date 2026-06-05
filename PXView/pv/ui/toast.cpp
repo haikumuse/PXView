@@ -20,6 +20,7 @@
 #include <QIcon>
 #include <QGraphicsOpacityEffect>
 #include "../config/appconfig.h"
+#include "iconcache.h"
 
 namespace pv {
 namespace ui {
@@ -43,7 +44,9 @@ Toast::Toast(QWidget *parent, const QString &text, Level level)
     _iconLabel = new QLabel(this);
     
     _textLabel = new QLabel(text, this);
-    _textLabel->setStyleSheet("color: white; font-size: 14px;");
+    QColor textColor = AppConfig::Instance().GetThemeColor("@fg-base");
+    if (!textColor.isValid()) textColor = Qt::white;
+    _textLabel->setStyleSheet(QString("color: %1; font-size: 14px;").arg(textColor.name()));
 
     layout->addWidget(_iconLabel);
     layout->addWidget(_textLabel);
@@ -96,7 +99,7 @@ void Toast::updateContent(const QString &text, Level level)
     _textLabel->setText(text);
     
     if (level == Warning) {
-        QIcon warnIcon(":/icons/status-warning.svg");
+        QIcon warnIcon = IconCache::Instance().icon(":/icons/status-warning.svg");
         if (!warnIcon.isNull()) {
             _iconLabel->setPixmap(warnIcon.pixmap(24, 24));
         } else {
@@ -164,12 +167,14 @@ void Toast::paintEvent(QPaintEvent *)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
     
-    // Get theme-aware color or fallback to dark gray
-    QColor bgColor(30, 30, 30, 230);
-    if (AppConfig::Instance().IsDarkStyle()) {
-        bgColor = QColor(45, 45, 45, 240);
-    } else {
-        bgColor = QColor(30, 30, 30, 230); // Use dark bg even on light theme for contrast
+    // Get theme-aware color
+    QColor bgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
+    if (!bgColor.isValid()) {
+        if (AppConfig::Instance().IsDarkStyle()) {
+            bgColor = QColor(45, 45, 45, 240);
+        } else {
+            bgColor = QColor(30, 30, 30, 230); // Use dark bg even on light theme for contrast
+        }
     }
 
     p.setBrush(bgColor);

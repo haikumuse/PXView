@@ -278,7 +278,7 @@ int TitleBar::addCategory(const QString &title) {
   QWidget *categoryWidget = new QWidget(_categoryStack);
   categoryWidget->setContentsMargins(0, 0, 0, 0);
   QHBoxLayout *categoryLayout = new QHBoxLayout(categoryWidget);
-  categoryLayout->setContentsMargins(20, 10, 20, 4); // Match ATK's larger left/right margins
+  categoryLayout->setContentsMargins(20, 4, 20, 4); // Reduced top margin to bring icons closer to tabs
   categoryLayout->setSpacing(20); // Match ATK's larger 20px spacing
   categoryLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding));
 
@@ -301,7 +301,8 @@ void TitleBar::addAction(int categoryIndex, QAction *action) {
 
   QToolButton *btn = new QToolButton;
   btn->setProperty("cssClass", "ActionText");
-  btn->setIconSize(QSize(30, 30)); // Match ATK's 30x30 icon size
+  btn->setIconSize(QSize(32, 32)); // Restored 32x32 size for better visual weight
+  btn->setMinimumWidth(64);        // Force uniform width to ensure equal icon spacing
   btn->setAutoRaise(true);
   btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 

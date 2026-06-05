@@ -121,7 +121,7 @@ void FileBar::retranslateUi()
 void FileBar::reStyle()
 {
     QString iconPath = GetIconPath();
-    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
 
     auto getIcon = [&](const QString &name) {
         return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor)
