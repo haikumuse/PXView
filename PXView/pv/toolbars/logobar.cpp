@@ -149,7 +149,7 @@ void LogoBar::retranslateUi() {
 void LogoBar::reStyle() {
   QString iconPath = GetIconPath();
   QColor normalColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
-  QColor activeColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-active");
+  QColor activeColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
 
   auto getIcon = [&](const QString &name) {
       return normalColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, normalColor)

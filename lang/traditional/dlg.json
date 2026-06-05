@@ -1192,10 +1192,6 @@
         "text": "軟體的主題色，用於高亮、選中狀態"
     },
     {
-        "id": "IDS_STYLE_ACCENT_HOVER",
-        "text": "強調色（懸停）"
-    },
-    {
         "id": "IDS_STYLE_SIDEBAR_ACCENT",
         "text": "側邊欄提示條顏色"
     },
@@ -1205,15 +1201,19 @@
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON",
-        "text": "標題欄圖示顏色"
-    },
-    {
-        "id": "IDS_STYLE_TITLEBAR_ICON_ACTIVE",
-        "text": "標題欄圖示啟用狀態"
+        "text": "標題欄圖示強調色"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
         "text": "標題欄圖示啟用顏色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_COLOR",
+        "text": "標題欄圖示顏色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_COLOR_DESC",
+        "text": "標題欄/Ribbon區域的圖示默認顏色"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_TEXT",
@@ -1594,14 +1594,6 @@
     {
         "id": "IDS_STYLE_HEADER_H_BG",
         "text": "表頭背景"
-    },
-    {
-        "id": "IDS_STYLE_ACCENT_LIGHT",
-        "text": "強調色（亮）"
-    },
-    {
-        "id": "IDS_STYLE_ACCENT_MUTED",
-        "text": "強調色（暗）"
     },
     {
         "id": "IDS_STYLE_DANGER_HOVER",

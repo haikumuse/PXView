@@ -1192,10 +1192,6 @@
         "text": "Theme color for highlights and selections"
     },
     {
-        "id": "IDS_STYLE_ACCENT_HOVER",
-        "text": "Accent (Hover)"
-    },
-    {
         "id": "IDS_STYLE_SIDEBAR_ACCENT",
         "text": "Sidebar Indicator"
     },
@@ -1205,15 +1201,19 @@
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON",
-        "text": "Titlebar Icon Color"
-    },
-    {
-        "id": "IDS_STYLE_TITLEBAR_ICON_ACTIVE",
-        "text": "Titlebar Icon Active State"
+        "text": "Titlebar Icon Accent"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_DESC",
         "text": "Titlebar icon active color"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_COLOR",
+        "text": "Titlebar Icon Color"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_ICON_COLOR_DESC",
+        "text": "Default icon color in Titlebar/Ribbon"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_TEXT",
@@ -1594,14 +1594,6 @@
     {
         "id": "IDS_STYLE_HEADER_H_BG",
         "text": "Header Background"
-    },
-    {
-        "id": "IDS_STYLE_ACCENT_LIGHT",
-        "text": "Accent (Light)"
-    },
-    {
-        "id": "IDS_STYLE_ACCENT_MUTED",
-        "text": "Accent (Muted)"
     },
     {
         "id": "IDS_STYLE_DANGER_HOVER",

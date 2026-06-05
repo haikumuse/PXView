@@ -30,6 +30,7 @@
 #include <QApplication>
 #include "../log.h"
 #include "../config/appconfig.h"
+#include "../ui/dockfonts.h"
 
 namespace pv {
 namespace widgets {
@@ -139,7 +140,7 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
     QFont labelFont("Source Code Pro");
     labelFont.setStyleHint(QFont::Monospace);
     labelFont.setFixedPitch(true);
-    labelFont.setPixelSize(14);
+    labelFont.setPixelSize(dock_font_label().pixelSize());
     p.setFont(labelFont);
     p.setPen(labelColor);
 
@@ -156,7 +157,7 @@ void SearchPatternInput::paintEvent(QPaintEvent *)
     QFont charFont("Source Code Pro");
     charFont.setStyleHint(QFont::Monospace);
     charFont.setFixedPitch(true);
-    charFont.setPixelSize(12);
+    charFont.setPixelSize(dock_font_content().pixelSize());
 
     for (int i = 0; i < _channel_count; i++) {
         int x = kPadding + i * cw;
