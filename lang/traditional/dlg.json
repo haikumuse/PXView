@@ -1193,7 +1193,7 @@
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ACCENT",
-        "text": "側邊欄提示條顏色"
+        "text": "側邊欄圖示強調色"
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ACCENT_DESC",
@@ -1209,7 +1209,7 @@
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_COLOR",
-        "text": "標題欄圖示顏色"
+        "text": "標題欄圖示未選中色"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_COLOR_DESC",
@@ -1225,7 +1225,7 @@
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ICON",
-        "text": "側邊欄圖示顏色"
+        "text": "側邊欄圖示未選中色"
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ICON_DESC",

@@ -1338,6 +1338,48 @@ QListView::item:selected:active
     color: @fg-base;
 }
 
+/* Settings dialog navigation list */
+#settingsNavList
+{
+    border: none;
+    background-color: @bg-base;
+    outline: none;
+}
+
+#settingsNavList::item
+{
+    padding: 4px 12px;
+    border: none;
+    background: transparent;
+}
+
+/* Settings dialog style category tree */
+#styleCategoryTree
+{
+    border: none;
+    background-color: @bg-base;
+    outline: none;
+}
+
+#styleCategoryTree::item
+{
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    margin: 1px 2px;
+}
+
+#styleCategoryTree::item:hover
+{
+    background-color: rgba(255, 255, 255, 16);
+}
+
+#styleCategoryTree::item:selected
+{
+    background-color: rgba(255, 255, 255, 24);
+    color: @fg-bright;
+}
+
 QTableView::item:!selected:hover
 {
     background-color: @winbtn-hover;
