@@ -162,10 +162,12 @@ int main(int argc, char *argv[])
     if (fontId != -1) {
         QStringList fontFamilies = fontDb.applicationFontFamilies(fontId);
         if (!fontFamilies.isEmpty()) {
-            font.setFamily(fontFamilies.at(0));
+            // Do not force SourceHanSansCN-Regular globally to prevent uniform thickness and missing weights.
+            // Do not disable subpixel antialiasing to prevent fonts from bunching up.
+            // font.setFamily(fontFamilies.at(0));
+            // font.setHintingPreference(QFont::PreferVerticalHinting);
+            // font.setStyleHint(QFont::System, QFont::NoSubpixelAntialias);
             font.setPointSizeF(10.0);
-            font.setHintingPreference(QFont::PreferVerticalHinting);
-            font.setStyleHint(QFont::System, QFont::NoSubpixelAntialias);
             a.setFont(font);
         }
     }

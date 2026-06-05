@@ -108,6 +108,17 @@ public:
         return pix;
     }
 
+    QPixmap scaledPixmap(const QSize &size, QIcon::Mode mode, QIcon::State state, qreal scale) override {
+        QPixmap pix = _baseIcon.pixmap(size, scale, mode, state);
+        if (!pix.isNull() && _color.isValid()) {
+            QPainter p(&pix);
+            p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+            p.fillRect(pix.rect(), _color);
+            p.end();
+        }
+        return pix;
+    }
+
     QIconEngine *clone() const override {
         return new TintedIconEngine(_svgPath, _color);
     }
