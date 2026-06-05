@@ -45,7 +45,7 @@
     "@combo-highlight": "#4a4a4a",
     "@input-bg": "#e8e8e8",
     "@dock-gridline": "#d0d0d0",
-    "@dock-section-title-fg": "#333333",
+    "@dock-section-title-fg": "#2a2a2a",
     "@dock-status-ok": "#008000",
     "@dock-status-error": "#cc0000",
     "@icon-accent": "#1E90FF",

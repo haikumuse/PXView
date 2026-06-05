@@ -1033,7 +1033,7 @@ void DsoSignal::paint_fore(QPainter &p, int left, int right, QColor fore, QColor
                                        Qt::AlignLeft | Qt::AlignTop, t_vol_s).width();
         const QRectF t_vol_rect = QRectF(right-vol_width, trigp-10, vol_width, 20);
         p.setPen(fore);
-        p.drawText(t_vol_rect, Qt::AlignRight | Qt::AlignVCenter, t_vol_s);
+        p.drawText(t_vol_rect, Qt::AlignRight | Qt::AlignVCenter | Qt::TextDontClip, t_vol_s);
 
         // paint the _trig_vpos line
         if (_view->get_dso_trig_moved()) {
@@ -1043,7 +1043,7 @@ void DsoSignal::paint_fore(QPainter &p, int left, int right, QColor fore, QColor
 
         // Paint the text
         p.setPen(fore);
-        p.drawText(label_rect, Qt::AlignCenter | Qt::AlignVCenter, "T");
+        p.drawText(label_rect, Qt::AlignCenter | Qt::AlignVCenter | Qt::TextDontClip, "T");
 
         // Paint measure
         if (session->is_stopped_status())

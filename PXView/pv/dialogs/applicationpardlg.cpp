@@ -544,8 +544,8 @@ QWidget *ApplicationParamDlg::createStylePage() {
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_ATOM), "Atom One Dark"),
       ":/atom.json");
   _preset_combo->addItem(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_MONOKAI), "Monokai"),
-      ":/monokai.json");
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_AYU), "Ayu Light"),
+      ":/ayu.json");
 
   QString userThemePath =
       QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) +

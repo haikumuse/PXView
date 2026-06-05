@@ -124,10 +124,10 @@ void ViewStatus::paintEvent(QPaintEvent *)
                 title += dsoSig->get_measure(mtype);
                 int width = p.boundingRect(rect, title).width();
                 p.drawText(QRect(rect.left()+10+rect.height(), rect.top(), width, rect.height()),
-                           Qt::AlignLeft | Qt::AlignVCenter, title);
+                           Qt::AlignLeft | Qt::AlignVCenter | Qt::TextDontClip, title);
             }
             else {
-                p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MEASURE), "Measure") + QString::number(i));
+                p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter | Qt::TextDontClip, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MEASURE), "Measure") + QString::number(i));
             }
         }
     }

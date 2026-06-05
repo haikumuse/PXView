@@ -93,7 +93,8 @@ public:
         : _baseIcon(svgPath), _color(color), _svgPath(svgPath) {}
 
     void paint(QPainter *painter, const QRect &rect, QIcon::Mode mode, QIcon::State state) override {
-        QPixmap pix = pixmap(rect.size(), mode, state);
+        qreal dpr = painter->device() ? painter->device()->devicePixelRatioF() : 1.0;
+        QPixmap pix = scaledPixmap(rect.size(), mode, state, dpr);
         painter->drawPixmap(rect, pix);
     }
 
