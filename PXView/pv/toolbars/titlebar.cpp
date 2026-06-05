@@ -129,6 +129,7 @@ TitleBar::TitleBar(bool top, QWidget *parent, ITitleParent *titleParent,
   titleRowLayout->addStretch(500);
 
   _title = new QLabel(titleRow);
+  _title->setProperty("cssClass", "TitleText");
   _title->setAlignment(Qt::AlignCenter);
   titleRowLayout->addWidget(_title);
 
@@ -299,6 +300,7 @@ void TitleBar::addAction(int categoryIndex, QAction *action) {
   QHBoxLayout *layout = _categoryLayouts[categoryIndex];
 
   QToolButton *btn = new QToolButton;
+  btn->setProperty("cssClass", "ActionText");
   btn->setIconSize(QSize(32, 32));
   btn->setAutoRaise(true);
   btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);

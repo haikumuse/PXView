@@ -22,7 +22,6 @@ inline QFont dock_font_main_title()
 {
     QFont font = QApplication::font();
     font.setPointSizeF(get_dock_font_size("@dock-font-main-title", DockFontSizes::MainTitle) * 0.75);
-    font.setBold(true);
     return font;
 }
 
@@ -30,7 +29,6 @@ inline QFont dock_font_section_title()
 {
     QFont font = QApplication::font();
     font.setPointSizeF(get_dock_font_size("@dock-font-section-title", DockFontSizes::SectionTitle) * 0.75);
-    font.setBold(true);
     return font;
 }
 

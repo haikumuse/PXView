@@ -194,11 +194,13 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   QFont labelFont = dock_font_label();
   QFont contentFont = dock_font_content();
   _settings_title_label->setFont(sectionFont);
+  _settings_title_label->setProperty("cssClass", "SectionTitleText");
 
   // Row 0: 设备
   _dev_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_DEVICE), "设备"), inner);
   _dev_label->setFont(labelFont);
+  _dev_label->setProperty("cssClass", "LabelText");
   _dev_label->setObjectName("dock_label");
   grid->addWidget(_dev_label, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
@@ -216,6 +218,7 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   _depth_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_DEPTH), "采样深度"), inner);
   _depth_label->setFont(labelFont);
+  _depth_label->setProperty("cssClass", "LabelText");
   _depth_label->setObjectName("dock_label");
   grid->addWidget(_depth_label, 1, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
@@ -229,6 +232,7 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
   _rate_label = new QLabel(
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_SAMPLE_RATE), "采样率"), inner);
   _rate_label->setFont(labelFont);
+  _rate_label->setProperty("cssClass", "LabelText");
   _rate_label->setObjectName("dock_label");
   grid->addWidget(_rate_label, 2, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
@@ -243,6 +247,7 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
       L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_CAPTURE_MODE_ROW), "捕获模式"),
       inner);
   _mode_label->setFont(labelFont);
+  _mode_label->setProperty("cssClass", "LabelText");
   _mode_label->setObjectName("mode_label");
   grid->addWidget(_mode_label, 3, 0, Qt::AlignLeft | Qt::AlignVCenter);
 

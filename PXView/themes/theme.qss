@@ -1948,3 +1948,25 @@ pv--view--Header
 {
     background-color: @tabview-bg;
 }
+
+/* ==================================================
+ * Typography Design System
+ * Global classes for managing font-weight hierarchy
+ * ================================================== */
+
+*[cssClass="TitleText"] { 
+    font-weight: normal; 
+}
+
+*[cssClass="SectionTitleText"],
+#dock_section_title { 
+    font-weight: normal; 
+}
+
+*[cssClass="ActionText"] { 
+    font-weight: normal; 
+}
+
+*[cssClass="LabelText"] { 
+    font-weight: normal; 
+}
