@@ -685,7 +685,7 @@ QString GetIconPath()
     if (style == ""){
         style = THEME_STYLE_DARK;
     }
-    // Custom themes (atom, monokai, etc.) don't have their own icon directories;
+    // Custom themes (atom, ayu, etc.) don't have their own icon directories;
     // fall back to dark or light based on theme type
     if (style != THEME_STYLE_DARK && style != THEME_STYLE_LIGHT){
         style = AppConfig::Instance().IsDarkStyle() ? THEME_STYLE_DARK : THEME_STYLE_LIGHT;

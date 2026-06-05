@@ -66,6 +66,11 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
     // Disable Qt Accessibility to prevent UIAutomation from stalling the main thread during high-frequency data updates
     qputenv("QT_ACCESSIBILITY", "0");
+    // Force FreeType font engine instead of DirectWrite/GDI.
+    // ATK uses QML Software Scene Graph which inherently uses FreeType/Grayscale.
+    // This perfectly aligns the QWidget text rendering with ATK, ensuring zero color fringes
+    // and strict pixel alignment.
+    qputenv("QT_QPA_PLATFORM", "windows:fontengine=freetype");
 #endif
 
 	int ret = 0; 
@@ -162,12 +167,12 @@ int main(int argc, char *argv[])
     if (fontId != -1) {
         QStringList fontFamilies = fontDb.applicationFontFamilies(fontId);
         if (!fontFamilies.isEmpty()) {
-            // Do not force SourceHanSansCN-Regular globally to prevent uniform thickness and missing weights.
-            // Do not disable subpixel antialiasing to prevent fonts from bunching up.
-            // font.setFamily(fontFamilies.at(0));
-            // font.setHintingPreference(QFont::PreferVerticalHinting);
-            // font.setStyleHint(QFont::System, QFont::NoSubpixelAntialias);
-            font.setPointSizeF(10.0);
+            // Use PreferNoHinting with FreeType to ensure smooth grayscale antialiasing.
+            // PreferVerticalHinting can cause FreeType to aggressively snap and disable antialiasing for some font sizes.
+            font.setHintingPreference(QFont::PreferNoHinting);
+            font.setStyleStrategy(QFont::PreferAntialias);
+            font.setFamily(fontFamilies.at(0));
+            font.setPixelSize(12); // ATK uses exactly 12px for its global base (like MenuBar)
             a.setFont(font);
         }
     }

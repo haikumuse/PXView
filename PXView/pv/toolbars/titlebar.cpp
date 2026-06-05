@@ -278,8 +278,8 @@ int TitleBar::addCategory(const QString &title) {
   QWidget *categoryWidget = new QWidget(_categoryStack);
   categoryWidget->setContentsMargins(0, 0, 0, 0);
   QHBoxLayout *categoryLayout = new QHBoxLayout(categoryWidget);
-  categoryLayout->setContentsMargins(4, 4, 4, 4);
-  categoryLayout->setSpacing(6);
+  categoryLayout->setContentsMargins(20, 10, 20, 4); // Match ATK's larger left/right margins
+  categoryLayout->setSpacing(20); // Match ATK's larger 20px spacing
   categoryLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding));
 
   _categoryStack->addWidget(categoryWidget);
@@ -301,7 +301,7 @@ void TitleBar::addAction(int categoryIndex, QAction *action) {
 
   QToolButton *btn = new QToolButton;
   btn->setProperty("cssClass", "ActionText");
-  btn->setIconSize(QSize(32, 32));
+  btn->setIconSize(QSize(30, 30)); // Match ATK's 30x30 icon size
   btn->setAutoRaise(true);
   btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
@@ -565,6 +565,37 @@ void TitleBar::resizeEvent(QResizeEvent *event) {
            event->size().width(), event->size().height(), minimumHeight(),
            maximumHeight());
   QMenuBar::resizeEvent(event);
+
+  // --- DIAGNOSTIC: Check if QSS has stripped font rendering strategy ---
+  {
+    QFont appFont = QApplication::font();
+    dsv_info("FONT DIAG: App font: family='%s' strategy=0x%x hinting=%d",
+             appFont.family().toUtf8().constData(),
+             (int)appFont.styleStrategy(),
+             (int)appFont.hintingPreference());
+    if (_title) {
+      QFont titleFont = _title->font();
+      dsv_info("FONT DIAG: Title label font: family='%s' strategy=0x%x hinting=%d",
+               titleFont.family().toUtf8().constData(),
+               (int)titleFont.styleStrategy(),
+               (int)titleFont.hintingPreference());
+    }
+    // Check first ribbon action button
+    if (!_categoryLayouts.isEmpty()) {
+      QHBoxLayout *layout = _categoryLayouts[0];
+      for (int i = 0; i < layout->count(); i++) {
+        QWidget *w = layout->itemAt(i)->widget();
+        if (w) {
+          QFont wf = w->font();
+          dsv_info("FONT DIAG: Ribbon btn[%d] font: family='%s' strategy=0x%x hinting=%d",
+                   i, wf.family().toUtf8().constData(),
+                   (int)wf.styleStrategy(),
+                   (int)wf.hintingPreference());
+          break;
+        }
+      }
+    }
+  }
 
   QWidget *titleRow = findChild<QWidget *>(_enableRibbon ? "TitleRow" : "SubTitleRow");
   if (titleRow) {

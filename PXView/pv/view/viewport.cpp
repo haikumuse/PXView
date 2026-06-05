@@ -84,15 +84,17 @@ static void drawFloatingPanel(QPainter &p, const QPointF &cursorPos,
   BrutalStyle style = getBrutalStyle(back, panelBg, panelText);
 
   QFont labelFont = p.font();
-  labelFont.setPointSizeF(floating_panel_font_label_size() * 0.75);
+  labelFont.setPixelSize(floating_panel_font_label_size());
   labelFont.setWeight(QFont::Black);
   labelFont.setCapitalization(QFont::AllUppercase);
   labelFont.setLetterSpacing(QFont::AbsoluteSpacing, 0.5);
+  apply_global_font_strategy(labelFont);
 
   QFont valueFont = p.font();
-  valueFont.setPointSizeF(floating_panel_font_value_size() * 0.75);
+  valueFont.setPixelSize(floating_panel_font_value_size());
   valueFont.setWeight(QFont::Black);
   valueFont.setFamily("Space Mono, Courier New, monospace");
+  apply_global_font_strategy(valueFont);
 
   QFontMetrics fmLabel(labelFont);
   QFontMetrics fmValue(valueFont);
@@ -1068,6 +1070,7 @@ void Viewport::paintProgress(QPainter &p, QColor fore, QColor back) {
     QFont font = p.font();
     font.setPointSize(50);
     font.setBold(true);
+    apply_global_font_strategy(font);
     p.setFont(font);
 
     p.drawText(_view.get_view_rect(), Qt::AlignCenter | Qt::AlignVCenter,
@@ -1079,7 +1082,7 @@ void Viewport::paintProgress(QPainter &p, QColor fore, QColor back) {
   const int int_radius = max(radius - 4, 0);
   p.drawArc(cenPos.x() - int_radius, cenPos.y() - int_radius, 2 * int_radius,
             2 * int_radius, 180 * 16, -captured_progress * 3.6 * 16);
-  QFont font;
+  QFont font = QApplication::font();
   p.setFont(font);
 
   p.setRenderHint(QPainter::Antialiasing, false);
@@ -2193,10 +2196,8 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back) {
         view::DsoSignal *dsoSig = (view::DsoSignal *)s;
         if (dsoSig->get_index() == _dso_ym_sig_index) {
           p.setPen(QPen(dsoSig->get_colour(), 1, Qt::DotLine));
-          const int text_height =
-              p.boundingRect(0, 0, INT_MAX, INT_MAX,
-                             Qt::AlignLeft | Qt::AlignTop, "W")
-                  .height();
+          QFontMetrics fm(p.font());
+          const int text_height = fm.height();
           const int64_t x = _view.index2pixel(_dso_ym_index);
           p.drawLine(x - 10, _dso_ym_start, x + 10, _dso_ym_start);
           p.drawLine(x, _dso_ym_start, x, _dso_ym_end);
