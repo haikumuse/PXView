@@ -1197,7 +1197,7 @@
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ACCENT",
-        "text": "侧边栏提示条颜色"
+        "text": "侧边栏图标强调色"
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ACCENT_DESC",
@@ -1213,7 +1213,7 @@
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_COLOR",
-        "text": "标题栏图标颜色"
+        "text": "标题栏图标未选中色"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_COLOR_DESC",
@@ -1229,7 +1229,7 @@
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ICON",
-        "text": "侧边栏图标颜色"
+        "text": "侧边栏图标未选中色"
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ICON_DESC",

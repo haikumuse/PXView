@@ -1193,7 +1193,7 @@
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ACCENT",
-        "text": "Sidebar Indicator"
+        "text": "Sidebar Icon Accent"
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ACCENT_DESC",
@@ -1209,7 +1209,7 @@
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_COLOR",
-        "text": "Titlebar Icon Color"
+        "text": "Titlebar Icon Unselected"
     },
     {
         "id": "IDS_STYLE_TITLEBAR_ICON_COLOR_DESC",
@@ -1225,7 +1225,7 @@
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ICON",
-        "text": "Sidebar Icon Color"
+        "text": "Sidebar Icon Unselected"
     },
     {
         "id": "IDS_STYLE_SIDEBAR_ICON_DESC",

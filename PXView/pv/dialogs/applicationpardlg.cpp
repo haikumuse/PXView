@@ -651,7 +651,9 @@ QWidget *ApplicationParamDlg::createStylePage() {
       });
 
   _style_category_tree = new QTreeWidget();
+  _style_category_tree->setObjectName("styleCategoryTree");
   _style_category_tree->setHeaderHidden(true);
+  _style_category_tree->setRootIsDecorated(false);
   _style_category_tree->setFixedWidth(200);
 
   _style_page_stack = new QStackedWidget();
@@ -1729,9 +1731,46 @@ bool ApplicationParamDlg::ShowDlg(QWidget *parent) {
   public:
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const override {
-      QStyleOptionViewItem opt = option;
-      opt.state &= ~(QStyle::State_MouseOver | QStyle::State_Sunken);
-      QStyledItemDelegate::paint(painter, opt, index);
+      painter->save();
+      painter->setRenderHint(QPainter::Antialiasing);
+
+      bool isSelected = option.state & QStyle::State_Selected;
+      bool isHovered = option.state & QStyle::State_MouseOver;
+
+      // Draw rounded background for hover/selected
+      QRect rect = option.rect.adjusted(2, 2, -2, -2);
+      if (isSelected || isHovered) {
+        bool isDark = AppConfig::Instance().IsDarkStyle();
+        int rgb = isDark ? 255 : 0;
+        int alpha = isSelected ? 15 : 8;
+        QColor bgColor = QColor(rgb, rgb, rgb, alpha);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(bgColor);
+        painter->drawRoundedRect(rect, 4, 4);
+      }
+
+      // Draw half-height pill indicator for selected item
+      if (isSelected) {
+        QColor accent = AppConfig::Instance().GetThemeColor("@accent");
+        if (!accent.isValid()) accent = QColor("#5b8def");
+        
+        int pillHeight = 16;
+        int pillY = rect.y() + (rect.height() - pillHeight) / 2;
+        QRect pillRect(rect.x() + 2, pillY, 2, pillHeight);
+        
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(accent);
+        painter->drawRect(pillRect);
+      }
+
+      // Draw text
+      QColor fg = AppConfig::Instance().GetThemeColor(isSelected ? "@fg-bright" : "@fg-base");
+      painter->setPen(fg.isValid() ? fg : (isSelected ? QColor("#ffffff") : QColor("#eff0f1")));
+      
+      QRect textRect = rect.adjusted(12, 0, 0, 0);
+      painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, index.data().toString());
+
+      painter->restore();
     }
   };
   _nav_list->setItemDelegate(new NavListDelegate());
