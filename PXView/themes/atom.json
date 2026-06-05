@@ -20,7 +20,7 @@
         "@titlebar-icon-accent": "#5b8def",
         "@titlebar-icon-color": "#7f848e",
         "@titlebar-icon-active": "#5b8def",
-        "@titlebar-text-color": "#7f848e",
+        "@titlebar-text-color": "#abb2bf",
         "@sidebar-icon-color": "#7f848e",
         "@sidebar-text-color": "#7f848e",
         "@accent-hover": "#7ec0ff",

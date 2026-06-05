@@ -530,23 +530,27 @@ bool TitleBar::isOnTabBar(const QPoint &pos) const {
 
 void TitleBar::reStyle() {
   QString iconPath = GetIconPath();
-  QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-accent");
+  QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
+  
+  auto getIcon = [&](const QString& name) {
+    return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor) : IconCache::Instance().icon(iconPath + name);
+  };
   
   if (_isTop) {
-    _minimizeButton->setIcon(IconCache::Instance().icon(iconPath + "/minimize.svg"));
+    _minimizeButton->setIcon(getIcon("/minimize.svg"));
     if (ParentIsMaxsized())
-      _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
+      _maximizeButton->setIcon(getIcon("/restore.svg"));
     else
-      _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
+      _maximizeButton->setIcon(getIcon("/maximize.svg"));
   }
   if (_isTop || _hasClose)
-    _closeButton->setIcon(IconCache::Instance().icon(iconPath + "/close.svg"));
+    _closeButton->setIcon(getIcon("/close.svg"));
 
   if (_pinButton && _enableRibbon) {
     if (_ribbonPinned)
-      _pinButton->setIcon(iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + "/unpin.svg", iconColor) : IconCache::Instance().icon(iconPath + "/unpin.svg"));
+      _pinButton->setIcon(getIcon("/unpin.svg"));
     else
-      _pinButton->setIcon(iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + "/pin.svg", iconColor) : IconCache::Instance().icon(iconPath + "/pin.svg"));
+      _pinButton->setIcon(getIcon("/pin.svg"));
   }
 }
 
@@ -635,14 +639,19 @@ QString TitleBar::title() {
 
 void TitleBar::showMaxRestore() {
     QString iconPath = GetIconPath();
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
+    auto getIcon = [&](const QString& name) {
+        return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor) : IconCache::Instance().icon(iconPath + name);
+    };
+
     if (ParentIsMaxsized()) {
-        _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
+        _maximizeButton->setIcon(getIcon("/maximize.svg"));
         if (_titleParent)
             _titleParent->ParentShowNormal();
         else
             parentWidget()->showNormal();
     } else {
-        _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
+        _maximizeButton->setIcon(getIcon("/restore.svg"));
         if (_titleParent)
             _titleParent->ParentShowMaximized();
         else
@@ -652,10 +661,15 @@ void TitleBar::showMaxRestore() {
 
 void TitleBar::setRestoreButton(bool max) {
   QString iconPath = GetIconPath();
+  QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
+  auto getIcon = [&](const QString& name) {
+    return iconColor.isValid() ? IconCache::Instance().tintedIcon(iconPath + name, iconColor) : IconCache::Instance().icon(iconPath + name);
+  };
+
   if (!max) {
-    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/maximize.svg"));
+    _maximizeButton->setIcon(getIcon("/maximize.svg"));
   } else {
-    _maximizeButton->setIcon(IconCache::Instance().icon(iconPath + "/restore.svg"));
+    _maximizeButton->setIcon(getIcon("/restore.svg"));
   }
 }
 
@@ -803,7 +817,11 @@ void TitleBar::onPinToggled(bool checked) {
   QString iconPath = GetIconPath();
 
   if (checked) {
-    _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/unpin.svg"));
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
+    if (iconColor.isValid())
+      _pinButton->setIcon(IconCache::Instance().tintedIcon(iconPath + "/unpin.svg", iconColor));
+    else
+      _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/unpin.svg"));
     _pinButton->setToolTip(tr("Unpin Ribbon"));
     qApp->removeEventFilter(this);
 
@@ -824,7 +842,11 @@ void TitleBar::onPinToggled(bool checked) {
       _ribbonPanel->hide();
     }
   } else {
-    _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/pin.svg"));
+    QColor iconColor = AppConfig::Instance().GetThemeColor("@titlebar-icon-color");
+    if (iconColor.isValid())
+      _pinButton->setIcon(IconCache::Instance().tintedIcon(iconPath + "/pin.svg", iconColor));
+    else
+      _pinButton->setIcon(IconCache::Instance().icon(iconPath + "/pin.svg"));
     _pinButton->setToolTip(tr("Pin Ribbon"));
 
     if (_ribbonExpanded) {

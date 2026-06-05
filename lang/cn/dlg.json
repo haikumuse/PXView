@@ -1216,6 +1216,14 @@
         "text": "标题栏图标激活颜色"
     },
     {
+        "id": "IDS_STYLE_TITLEBAR_TEXT",
+        "text": "标题栏文字颜色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_TEXT_DESC",
+        "text": "标题栏/Ribbon区域的文字颜色"
+    },
+    {
         "id": "IDS_STYLE_SIDEBAR_ICON",
         "text": "侧边栏图标颜色"
     },
@@ -1250,6 +1258,14 @@
     {
         "id": "IDS_STYLE_ICON_ACCENT_DESC",
         "text": "蓝色功能图标的着色颜色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_SPECIAL",
+        "text": "图标特殊色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_SPECIAL_DESC",
+        "text": "特殊功能图标的着色颜色"
     },
     {
         "id": "IDS_STYLE_ICON_FOREGROUND",

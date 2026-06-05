@@ -161,8 +161,12 @@ void SideBarButton::drawText(QPainter *painter) {
     return;
 
   if (_isChecked) {
-    bool isDark = AppConfig::Instance().IsDarkStyle();
-    painter->setPen(isDark ? QColor("#E0E0E0") : QColor("#1A1A1A"));
+    QColor activeTextColor = AppConfig::Instance().GetThemeColor("@fg-base");
+    if (!activeTextColor.isValid()) {
+      bool isDark = AppConfig::Instance().IsDarkStyle();
+      activeTextColor = isDark ? QColor("#E0E0E0") : QColor("#1A1A1A");
+    }
+    painter->setPen(activeTextColor);
   } else {
     QColor textColor =
         AppConfig::Instance().GetThemeColor("@sidebar-text-color");

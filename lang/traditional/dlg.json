@@ -1216,6 +1216,14 @@
         "text": "標題欄圖示啟用顏色"
     },
     {
+        "id": "IDS_STYLE_TITLEBAR_TEXT",
+        "text": "標題欄文字顏色"
+    },
+    {
+        "id": "IDS_STYLE_TITLEBAR_TEXT_DESC",
+        "text": "標題欄/Ribbon區域的文字顏色"
+    },
+    {
         "id": "IDS_STYLE_SIDEBAR_ICON",
         "text": "側邊欄圖示顏色"
     },
@@ -1250,6 +1258,14 @@
     {
         "id": "IDS_STYLE_ICON_ACCENT_DESC",
         "text": "藍色功能圖示的著色顏色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_SPECIAL",
+        "text": "圖示特殊色"
+    },
+    {
+        "id": "IDS_STYLE_ICON_SPECIAL_DESC",
+        "text": "特殊功能圖示的著色顏色"
     },
     {
         "id": "IDS_STYLE_ICON_FOREGROUND",
