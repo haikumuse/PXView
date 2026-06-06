@@ -1130,7 +1130,7 @@ void DeviceOptionsDock::device_updated() {
 
 void DeviceOptionsDock::UpdateLanguage() { update_view(); }
 
-void DeviceOptionsDock::UpdateTheme() { this->update(); }
+void DeviceOptionsDock::UpdateTheme() { update_view(); }
 
 void DeviceOptionsDock::UpdateFont() {
   if (_container_panel == NULL)

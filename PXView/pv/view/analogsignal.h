@@ -174,6 +174,7 @@ private:
 	float _scale;
     double _zero_vrate;
     int _zero_offset;
+    int _cached_hw_offset;
     int _bits;
     double _ref_min;
     double _ref_max;

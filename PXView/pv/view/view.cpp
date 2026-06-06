@@ -2102,7 +2102,8 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 void View::rebuild_signals() {
   pxv_info("View::rebuild_signals() doc=%p has_config=%d", _document,
            _document ? _document->has_signal_config() : 0);
-  if (_document && _document->has_signal_config()) {
+  
+  if (_data_source == _document && _document && _document->has_signal_config()) {
     const auto &config = _document->get_signal_config();
     // 检查配置的通道数是否与设备当前的通道数匹配
     // 如果不匹配，说明通道模式已切换，需要从设备重新创建信号

@@ -20,7 +20,7 @@
         { "id": "@fg-bright", "type": "color", "label": "IDS_STYLE_FG_BRIGHT" },
         { "id": "@fg-muted", "type": "color", "label": "IDS_STYLE_FG_MUTED" },
         { "id": "@panel-text", "type": "color", "label": "IDS_STYLE_PANEL_TEXT" },
-        { "id": "@border", "type": "color", "label": "IDS_STYLE_BORDER" },
+        { "id": "@input-border", "type": "color", "label": "IDS_STYLE_BORDER" },
         { "id": "@border-strong", "type": "color", "label": "IDS_STYLE_BORDER_STRONG" },
         { "id": "@group-card-colored", "type": "bool", "label": "IDS_STYLE_GROUP_CARD_COLORED", "desc": "IDS_STYLE_GROUP_CARD_COLORED_DESC" }
       ]

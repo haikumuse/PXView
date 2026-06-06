@@ -41,7 +41,7 @@
  * @fg-base: #eff0f1
  * @fg-bright: #ffffff
  * @fg-muted: #7a7a7a
- * @border: #393939
+ * @input-border: #393939
  * @border-strong: #37373b
  * @accent: #1185d1
  * @danger: #c42b1c
@@ -197,7 +197,7 @@ QPushButton#flat:hover
 #dsComboPopup
 {
     background-color: @bg-base;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
 }
 
 QCheckBox
@@ -471,7 +471,7 @@ QLineEdit
     background-color: @bg-base;
     padding: 2px;
     border-style: solid;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     border-radius: 0px;
     color: @fg-base;
 }
@@ -596,7 +596,7 @@ QTextEdit
 {
     background-color: @bg-base;
     color: @fg-base;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     margin: 0;
 }
 
@@ -612,7 +612,7 @@ QMenu::separator
 QFrame
 {
     border-radius: 2px;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
 }
 
 QFrame[frameShape="0"]
@@ -689,7 +689,7 @@ QPushButton
     color: @fg-base;
     background-color: @bg-base;
     border-width: 1px;
-    border-color: @border;
+    border-color: @input-border;
     border-style: solid;
     padding: 5px;
     border-radius: 5px;
@@ -700,7 +700,7 @@ QPushButton:disabled
 {
     background-color: @bg-base;
     border-width: 1px;
-    border-color: @border;
+    border-color: @input-border;
     border-style: solid;
     padding-top: 5px;
     padding-bottom: 5px;
@@ -768,7 +768,7 @@ QComboBox
     selection-background-color: @combo-selection;
     background-color: @bg-base;
     border-style: solid;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     border-radius: 0px !important;
     padding: 2px;
     min-width: 30px;
@@ -778,7 +778,7 @@ QComboBox QAbstractItemView
 {
     background-color: @bg-base;
     border-radius: 0px;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     selection-background-color: @combo-selection;
 }
 
@@ -1588,7 +1588,7 @@ QDoubleSpinBox
     padding: 2px;
     padding-right: 0px;
     background-color: @bg-base;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     border-radius: 2px;
     color: @fg-base;
     min-width: 60px;
@@ -1924,7 +1924,7 @@ QPlainTextEdit#log_view
 {
     background-color: @input-bg;
     color: @fg-base;
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     border-radius: 4px;
     selection-background-color: @accent;
     selection-color: @fg-bright;
@@ -1932,9 +1932,9 @@ QPlainTextEdit#log_view
 
 QPushButton#log_scroll_bottom_btn
 {
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     border-radius: 4px;
-    background-color: @bg-overlay;
+    background-color: @bg-base;
     padding: 0px;
     icon-size: 16px;
 }
@@ -1942,33 +1942,35 @@ QPushButton#log_scroll_bottom_btn
 QPushButton#log_scroll_bottom_btn:hover
 {
     border: 1px solid @accent;
-    background-color: @bg-overlay;
+    background-color: @bg-base;
 }
 
 QPushButton#log_scroll_bottom_btn:checked
 {
     border: 1px solid @accent;
-    background-color: #202020;
+    background-color: @bg-base;
 }
 
 QPushButton#log_scroll_bottom_btn:checked:hover
 {
     border: 1px solid @accent;
-    background-color: #202020;
+    background-color: @bg-base;
 }
 
 QPushButton#log_refresh_btn,
-QPushButton#log_clear_btn
+QPushButton#log_clear_btn,
+QPushButton#log_open_btn
 {
-    border: 1px solid @border;
+    border: 1px solid @input-border;
     border-radius: 4px;
-    background-color: @bg-overlay;
+    background-color: @bg-base;
     padding: 4px 10px;
     color: @fg-base;
 }
 
 QPushButton#log_refresh_btn:hover,
-QPushButton#log_clear_btn:hover
+QPushButton#log_clear_btn:hover,
+QPushButton#log_open_btn:hover
 {
     border: 1px solid @accent;
     color: @fg-bright;

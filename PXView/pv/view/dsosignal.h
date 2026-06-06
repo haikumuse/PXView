@@ -288,6 +288,7 @@ private:
     int _trig_value;
     double _trig_delta;
     int _zero_offset;
+    int _cached_hw_offset;
 
     bool _mValid;
     uint8_t _max;

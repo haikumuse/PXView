@@ -15,13 +15,10 @@
 ########################
 
 //Build the C decoder test program
-BUILD_DECODER_TEST:BOOL=ON
+BUILD_DECODER_TEST:BOOL=OFF
 
 //The directory containing a CMake configuration file for Boost.
 Boost_DIR:PATH=D:/msys64/mingw64/lib/cmake/Boost-1.91.0
-
-//Path to a file.
-Boost_INCLUDE_DIR:PATH=D:/msys64/mingw64/include
 
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=D:/msys64/mingw64/bin/addr2line.exe
@@ -207,9 +204,6 @@ CMAKE_OBJCOPY:FILEPATH=D:/msys64/mingw64/bin/objcopy.exe
 //Path to a program.
 CMAKE_OBJDUMP:FILEPATH=D:/msys64/mingw64/bin/objdump.exe
 
-//No help, variable specified on the command line.
-CMAKE_PREFIX_PATH:UNINITIALIZED=D:/msys64/mingw64
-
 //Value Computed by CMake
 CMAKE_PROJECT_COMPAT_VERSION:STATIC=
 
@@ -330,22 +324,16 @@ CPACK_BINARY_WIX:BOOL=OFF
 CPACK_BINARY_ZIP:BOOL=OFF
 
 //Enable standard sigrok compatible drivers
-ENABLE_COMPAT_DRIVERS:BOOL=ON
-
-//Enable UI debug hover helper
-ENABLE_DEBUG_HELPER:BOOL=OFF
+ENABLE_COMPAT_DRIVERS:BOOL=OFF
 
 //Enable fx2lafw driver
-ENABLE_DRIVER_FX2LAFW:BOOL=ON
+ENABLE_DRIVER_FX2LAFW:BOOL=OFF
 
 //Enable raspberrypi-pico driver
-ENABLE_DRIVER_RASPBERRYPI_PICO:BOOL=ON
+ENABLE_DRIVER_RASPBERRYPI_PICO:BOOL=OFF
 
 //Enable saleae-logic16 driver
-ENABLE_DRIVER_SALEAE_LOGIC16:BOOL=ON
-
-//Enable UI debug hover helper
-ENABLE_THEME_INSPECTOR:BOOL=ON
+ENABLE_DRIVER_SALEAE_LOGIC16:BOOL=OFF
 
 //Path to a file.
 FFTW_INCLUDE_DIR:PATH=D:/msys64/mingw64/include
@@ -374,27 +362,12 @@ PXView_IS_TOP_LEVEL:STATIC=ON
 //Value Computed by CMake
 PXView_SOURCE_DIR:STATIC=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb
 
-//Path to a library.
-PYTHON_DEBUG_LIBRARY:FILEPATH=PYTHON_DEBUG_LIBRARY-NOTFOUND
-
-//Path to a file.
-PYTHON_INCLUDE_DIR:PATH=D:/msys64/mingw64/include/python3.14
-
-//Path to a library.
-PYTHON_LIBRARY:FILEPATH=D:/msys64/mingw64/lib/libpython3.14.dll.a
-
-//Path to a library.
-PYTHON_LIBRARY_DEBUG:FILEPATH=PYTHON_LIBRARY_DEBUG-NOTFOUND
-
 //Additional directories where find(Qt6 ...) host Qt components
 // are searched
 QT_ADDITIONAL_HOST_PACKAGES_PREFIX_PATH:STRING=
 
 //Additional directories where find(Qt6 ...) components are searched
 QT_ADDITIONAL_PACKAGES_PREFIX_PATH:STRING=
-
-//No help, variable specified on the command line.
-QT_VERSION_FORCE:UNINITIALIZED=6
 
 //The directory containing a CMake configuration file for Qt6Concurrent.
 Qt6Concurrent_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6Concurrent
@@ -433,16 +406,16 @@ Qt6Widgets_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6Widgets
 Qt6_DIR:PATH=D:/msys64/mingw64/lib/cmake/Qt6
 
 //Path to a program.
-Vulkan_GLSLANG_VALIDATOR_EXECUTABLE:FILEPATH=D:/msys64/mingw64/bin/glslangValidator.exe
+Vulkan_GLSLANG_VALIDATOR_EXECUTABLE:FILEPATH=D:/VulkanSDK/1.4.309.0/Bin/glslangValidator.exe
 
 //Path to a program.
-Vulkan_GLSLC_EXECUTABLE:FILEPATH=D:/msys64/mingw64/bin/glslc.exe
+Vulkan_GLSLC_EXECUTABLE:FILEPATH=D:/VulkanSDK/1.4.309.0/Bin/glslc.exe
 
 //Path to a file.
-Vulkan_INCLUDE_DIR:PATH=D:/msys64/mingw64/include
+Vulkan_INCLUDE_DIR:PATH=D:/VulkanSDK/1.4.309.0/include
 
 //Path to a library.
-Vulkan_LIBRARY:FILEPATH=D:/msys64/mingw64/lib/libvulkan-1.dll.a
+Vulkan_LIBRARY:FILEPATH=D:/VulkanSDK/1.4.309.0/Lib/vulkan-1.lib
 
 //Path to a program.
 WINDEPLOYQT_EXECUTABLE:FILEPATH=D:/msys64/mingw64/bin/windeployqt.exe
@@ -1113,16 +1086,11 @@ pkgcfg_lib_GLIB_glib-2.0:FILEPATH=D:/msys64/mingw64/lib/libglib-2.0.dll.a
 //Path to a library.
 pkgcfg_lib_GLIB_intl:FILEPATH=D:/msys64/mingw64/lib/libintl.dll.a
 
-//Dependencies for the target
-sigrokdecode_static_LIB_DEPENDS:STATIC=general;-lglib-2.0;general;D:/msys64/mingw64/lib/libpython3.14.dll.a;
-
 
 ########################
 # INTERNAL cache entries
 ########################
 
-//ADVANCED property for variable: Boost_DIR
-Boost_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_ADDR2LINE
 CMAKE_ADDR2LINE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_AR
@@ -1334,13 +1302,13 @@ CPACK_BINARY_ZIP-ADVANCED:INTERNAL=1
 //Details about finding PkgConfig
 FIND_PACKAGE_MESSAGE_DETAILS_PkgConfig:INTERNAL=[D:/msys64/mingw64/bin/pkg-config.exe][v2.5.1()]
 //Details about finding Python3
-FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[D:/msys64/mingw64/bin/python3.14.exe][D:/msys64/mingw64/lib/libpython3.14.dll.a][D:/msys64/mingw64/include/python3.14][found components: Interpreter Development Development.Module Development.Embed ][v3.14.4()]
+FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[D:/Scoop/apps/python/3.14.4/python.exe][D:/Scoop/apps/python/3.14.4/libs/python314.lib][D:/Scoop/apps/python/3.14.4/Include][found components: Interpreter Development Development.Module Development.Embed ][v3.14.4()]
 //Details about finding Threads
 FIND_PACKAGE_MESSAGE_DETAILS_Threads:INTERNAL=[TRUE][v()]
 //Details about finding WrapAtomic
 FIND_PACKAGE_MESSAGE_DETAILS_WrapAtomic:INTERNAL=[1][v()]
 //Details about finding WrapVulkanHeaders
-FIND_PACKAGE_MESSAGE_DETAILS_WrapVulkanHeaders:INTERNAL=[D:/msys64/mingw64/include][v()]
+FIND_PACKAGE_MESSAGE_DETAILS_WrapVulkanHeaders:INTERNAL=[D:/VulkanSDK/1.4.309.0/include][v()]
 GLIB_CFLAGS:INTERNAL=-ID:/msys64/mingw64/include/glib-2.0;-ID:/msys64/mingw64/lib/glib-2.0/include;-ID:/msys64/mingw64/include
 GLIB_CFLAGS_I:INTERNAL=
 GLIB_CFLAGS_OTHER:INTERNAL=
@@ -1378,43 +1346,10 @@ GLIB_glib-2.0_PREFIX:INTERNAL=
 GLIB_glib-2.0_VERSION:INTERNAL=
 //Test HAVE_STDATOMIC
 HAVE_STDATOMIC:INTERNAL=1
-LIBSERIALPORT_CFLAGS:INTERNAL=
-LIBSERIALPORT_CFLAGS_I:INTERNAL=
-LIBSERIALPORT_CFLAGS_OTHER:INTERNAL=
-LIBSERIALPORT_FOUND:INTERNAL=
-LIBSERIALPORT_INCLUDEDIR:INTERNAL=
-LIBSERIALPORT_LIBDIR:INTERNAL=
-LIBSERIALPORT_LIBS:INTERNAL=
-LIBSERIALPORT_LIBS_L:INTERNAL=
-LIBSERIALPORT_LIBS_OTHER:INTERNAL=
-LIBSERIALPORT_LIBS_PATHS:INTERNAL=
-LIBSERIALPORT_MODULE_NAME:INTERNAL=
-LIBSERIALPORT_PREFIX:INTERNAL=
-LIBSERIALPORT_STATIC_CFLAGS:INTERNAL=
-LIBSERIALPORT_STATIC_CFLAGS_I:INTERNAL=
-LIBSERIALPORT_STATIC_CFLAGS_OTHER:INTERNAL=
-LIBSERIALPORT_STATIC_LIBDIR:INTERNAL=
-LIBSERIALPORT_STATIC_LIBS:INTERNAL=
-LIBSERIALPORT_STATIC_LIBS_L:INTERNAL=
-LIBSERIALPORT_STATIC_LIBS_OTHER:INTERNAL=
-LIBSERIALPORT_STATIC_LIBS_PATHS:INTERNAL=
-LIBSERIALPORT_VERSION:INTERNAL=
-LIBSERIALPORT_libserialport_INCLUDEDIR:INTERNAL=
-LIBSERIALPORT_libserialport_LIBDIR:INTERNAL=
-LIBSERIALPORT_libserialport_PREFIX:INTERNAL=
-LIBSERIALPORT_libserialport_VERSION:INTERNAL=
 //ADVANCED property for variable: PKG_CONFIG_ARGN
 PKG_CONFIG_ARGN-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: PKG_CONFIG_EXECUTABLE
 PKG_CONFIG_EXECUTABLE-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: PYTHON_DEBUG_LIBRARY
-PYTHON_DEBUG_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: PYTHON_INCLUDE_DIR
-PYTHON_INCLUDE_DIR-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: PYTHON_LIBRARY
-PYTHON_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: PYTHON_LIBRARY_DEBUG
-PYTHON_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //Qt feature: abstractbutton (from target Qt6::Widgets)
 QT_FEATURE_abstractbutton:INTERNAL=ON
 //Qt feature: abstractslider (from target Qt6::Widgets)
@@ -2268,31 +2203,28 @@ ZLIB_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 _GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/install.dir
 //Compiler reason failure
 _Python3_Compiler_REASON_FAILURE:INTERNAL=
-_Python3_DEVELOPMENT_EMBED_SIGNATURE:INTERNAL=55d2b6fbb3ce8fc275e0f77fc18f7cb5
-_Python3_DEVELOPMENT_MODULE_SIGNATURE:INTERNAL=55d2b6fbb3ce8fc275e0f77fc18f7cb5
+_Python3_DEVELOPMENT_EMBED_SIGNATURE:INTERNAL=f1f1aa231f21fc568e0541a8067ff97c
+_Python3_DEVELOPMENT_MODULE_SIGNATURE:INTERNAL=f1f1aa231f21fc568e0541a8067ff97c
 //Development reason failure
 _Python3_Development_REASON_FAILURE:INTERNAL=
 //Path to a program.
-_Python3_EXECUTABLE:INTERNAL=D:/msys64/mingw64/bin/python3.14.exe
+_Python3_EXECUTABLE:INTERNAL=D:/Scoop/apps/python/3.14.4/python.exe
 //Path to a program.
 _Python3_EXECUTABLE_DEBUG:INTERNAL=_Python3_EXECUTABLE_DEBUG-NOTFOUND
 //Path to a file.
-_Python3_INCLUDE_DIR:INTERNAL=D:/msys64/mingw64/include/python3.14
+_Python3_INCLUDE_DIR:INTERNAL=D:/Scoop/apps/python/3.14.4/Include
 //Python3 Properties
-_Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;14;4;64;<none>;cp314-mingw_x86_64_msvcrt_gnu;;D:/msys64/mingw64/lib/python3.14;D:/msys64/mingw64/lib/python3.14;D:/msys64/mingw64/lib/python3.14/site-packages;D:/msys64/mingw64/lib/python3.14/site-packages
-_Python3_INTERPRETER_SIGNATURE:INTERNAL=5867db697b8668ccf7a0e288193d9208
-//Interpreter reason failure
-_Python3_Interpreter_REASON_FAILURE:INTERNAL=
+_Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;14;4;64;<none>;cp314-win_amd64;;D:/Scoop/apps/python/3.14.4/Lib;D:/Scoop/apps/python/3.14.4/Lib;D:/Scoop/apps/python/3.14.4/Lib/site-packages;D:/Scoop/apps/python/3.14.4/Lib/site-packages
+_Python3_INTERPRETER_SIGNATURE:INTERNAL=91b3cd2076ca05807a145784e89dbc7a
 //Path to a library.
 _Python3_LIBRARY_DEBUG:INTERNAL=_Python3_LIBRARY_DEBUG-NOTFOUND
 //Path to a library.
-_Python3_LIBRARY_RELEASE:INTERNAL=D:/msys64/mingw64/lib/libpython3.14.dll.a
+_Python3_LIBRARY_RELEASE:INTERNAL=D:/Scoop/apps/python/3.14.4/libs/python314.lib
 //NumPy reason failure
 _Python3_NumPy_REASON_FAILURE:INTERNAL=
 //Path to a library.
-_Python3_RUNTIME_LIBRARY_RELEASE:INTERNAL=D:/msys64/mingw64/bin/libpython3.14.dll
+_Python3_RUNTIME_LIBRARY_RELEASE:INTERNAL=D:/Scoop/apps/python/3.14.4/python314.dll
 __pkg_config_checked_GLIB:INTERNAL=1
-__pkg_config_checked_LIBSERIALPORT:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_GLIB_glib-2.0
 pkgcfg_lib_GLIB_glib-2.0-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_GLIB_intl
