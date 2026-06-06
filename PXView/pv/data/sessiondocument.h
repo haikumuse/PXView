@@ -44,8 +44,12 @@ struct ChannelConfig {
     uint64_t vdiv;
     int coupling;
     bool map_default;
+    uint16_t hw_offset;
+    uint16_t offset;
+    uint16_t zero_offset;
 
-    ChannelConfig() : index(0), enabled(false), vdiv(0), coupling(0), map_default(true) {}
+    ChannelConfig() : index(0), enabled(false), vdiv(0), coupling(0),
+                      map_default(true), hw_offset(0), offset(0), zero_offset(0) {}
 };
 
 struct SignalConfig {

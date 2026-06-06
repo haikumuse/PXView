@@ -2017,6 +2017,9 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     probe->vdiv = ch.vdiv;
     probe->coupling = ch.coupling;
     probe->map_default = ch.map_default;
+    probe->hw_offset = ch.hw_offset;
+    probe->offset = ch.offset;
+    probe->zero_offset = ch.zero_offset;
     probe->name = g_strdup(QString::number(ch.index).toUtf8().data());
     probe->trigger = NULL;
 
