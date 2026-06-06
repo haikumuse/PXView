@@ -64,7 +64,8 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data, sr_channel *probe) :
     _hover_en(false),
     _hover_index(0),
     _hover_point(QPointF(-1, -1)),
-    _hover_value(0)
+    _hover_value(0),
+    _cached_hw_offset(probe ? probe->hw_offset : 128)
 {
     _typeWidth = 5;
     _colour = getSignalColor(probe->index);
@@ -104,7 +105,8 @@ AnalogSignal::AnalogSignal(view::AnalogSignal *s, pv::data::AnalogSnapshot *data
     _hover_en(false),
     _hover_index(0),
     _hover_point(QPointF(-1, -1)),
-    _hover_value(0)
+    _hover_value(0),
+    _cached_hw_offset(s->_cached_hw_offset)
 { 
     _typeWidth = 5;
     _bits = s->get_bits();
@@ -133,9 +135,13 @@ AnalogSignal::~AnalogSignal()
 
 int AnalogSignal::get_hw_offset()
 {
-    int hw_offset = 0;
-    session->get_device()->get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset, _probe, NULL);
-    return hw_offset;
+    if (session->is_running_status()) {
+        int hw_offset = _cached_hw_offset;
+        if (session->get_device()->get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset, _probe, NULL)) {
+            _cached_hw_offset = hw_offset;
+        }
+    }
+    return _cached_hw_offset;
 }
 
 int AnalogSignal::commit_settings()

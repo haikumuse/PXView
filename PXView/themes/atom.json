@@ -13,7 +13,7 @@
         "@fg-base": "#abb2bf",
         "@fg-bright": "#ffffff",
         "@fg-muted": "#5c6370",
-        "@border": "#181a1f",
+        "@input-border": "#3e4451",
         "@border-strong": "#3b4048",
         "@accent": "#61afef",
         "@sidebar-accent": "#5b8def",

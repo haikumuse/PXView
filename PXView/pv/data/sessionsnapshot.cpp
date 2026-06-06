@@ -138,114 +138,14 @@ void SessionSnapshot::copy_from_analog(AnalogSnapshot *src) {
   if (!src || src->empty())
     return;
 
-  _analog.free_data();
-  _analog.free_envelop();
-
-  _analog._capacity = src->_capacity;
-  _analog._channel_num = src->_channel_num;
-  _analog._sample_count = src->_sample_count;
-  _analog._total_sample_count = src->_total_sample_count;
-  _analog._ring_sample_count = src->_ring_sample_count;
-  _analog._unit_size = src->_unit_size;
-  _analog._unit_bytes = src->_unit_bytes;
-  _analog._unit_pitch = src->_unit_pitch;
-  _analog._memory_failed = src->_memory_failed;
-  _analog._last_ended = src->_last_ended;
-  _analog._samplerate = src->_samplerate;
-  _analog._ch_index = src->_ch_index;
-
-  if (src->_data && src->_capacity > 0) {
-    _analog._data = malloc(src->_capacity);
-    if (_analog._data)
-      memcpy(_analog._data, src->_data, src->_capacity);
-    else
-      _analog._memory_failed = true;
-  }
-
-  for (unsigned int i = 0; i < src->_channel_num; i++) {
-    for (unsigned int level = 0; level < AnalogSnapshot::ScaleStepCount;
-         level++) {
-      const AnalogSnapshot::Envelope &src_env = src->_envelope_levels[i][level];
-      AnalogSnapshot::Envelope &dst_env = _analog._envelope_levels[i][level];
-      dst_env.length = src_env.length;
-      dst_env.ring_length = src_env.ring_length;
-      dst_env.count = src_env.count;
-      dst_env.data_length = src_env.data_length;
-      dst_env.samples = NULL;
-      dst_env.max = NULL;
-      dst_env.min = NULL;
-      if (src_env.samples && src_env.count > 0) {
-        dst_env.samples = (AnalogSnapshot::EnvelopeSample *)malloc(
-            src_env.count * sizeof(AnalogSnapshot::EnvelopeSample));
-        if (dst_env.samples)
-          memcpy(dst_env.samples, src_env.samples,
-                 src_env.count * sizeof(AnalogSnapshot::EnvelopeSample));
-      }
-    }
-  }
-
-  _analog._enabled_channel_indexs = src->_enabled_channel_indexs;
+  _analog.copy_from(*src);
 }
 
 void SessionSnapshot::copy_from_dso(DsoSnapshot *src) {
   if (!src || src->empty())
     return;
 
-  _dso.free_data();
-  _dso.free_envelop();
-
-  _dso._capacity = src->_capacity;
-  _dso._channel_num = src->_channel_num;
-  _dso._sample_count = src->_sample_count;
-  _dso._total_sample_count = src->_total_sample_count;
-  _dso._ring_sample_count = src->_ring_sample_count;
-  _dso._unit_size = src->_unit_size;
-  _dso._unit_bytes = src->_unit_bytes;
-  _dso._unit_pitch = src->_unit_pitch;
-  _dso._memory_failed = src->_memory_failed;
-  _dso._last_ended = src->_last_ended;
-  _dso._samplerate = src->_samplerate;
-  _dso._ch_index = src->_ch_index;
-
-  for (size_t i = 0; i < src->_ch_data.size(); i++) {
-    uint8_t *chan_buffer = (uint8_t *)malloc(src->_total_sample_count + 1);
-    if (chan_buffer) {
-      memcpy(chan_buffer, src->_ch_data[i], src->_total_sample_count + 1);
-    } else {
-      _dso._memory_failed = true;
-    }
-    _dso._ch_data.push_back(chan_buffer);
-  }
-
-  for (unsigned int i = 0; i < src->_channel_num; i++) {
-    for (unsigned int level = 0; level < DsoSnapshot::ScaleStepCount; level++) {
-      const DsoSnapshot::Envelope &src_env = src->_envelope_levels[i][level];
-      DsoSnapshot::Envelope &dst_env = _dso._envelope_levels[i][level];
-      dst_env.length = src_env.length;
-      dst_env.data_length = src_env.data_length;
-      dst_env.samples = NULL;
-      if (src_env.samples && src_env.data_length > 0) {
-        dst_env.samples = (DsoSnapshot::EnvelopeSample *)malloc(
-            src_env.data_length * sizeof(DsoSnapshot::EnvelopeSample));
-        if (dst_env.samples)
-          memcpy(dst_env.samples, src_env.samples,
-                 src_env.data_length * sizeof(DsoSnapshot::EnvelopeSample));
-      }
-    }
-  }
-
-  _dso._envelope_en = src->_envelope_en;
-  _dso._envelope_done = src->_envelope_done;
-  _dso._instant = src->_instant;
-  _dso._threshold = src->_threshold;
-  _dso._measure_voltage_factor1 = src->_measure_voltage_factor1;
-  _dso._measure_voltage_factor2 = src->_measure_voltage_factor2;
-  _dso._data_scale1 = src->_data_scale1;
-  _dso._data_scale2 = src->_data_scale2;
-  _dso._is_file = src->_is_file;
-  _dso._ref_min = src->_ref_min;
-  _dso._ref_max = src->_ref_max;
-  _dso._data_out_off_range = src->_data_out_off_range;
+  _dso.copy_from(*src);
 }
 
 bool SessionSnapshot::load_from_file(const QString &file_name) {

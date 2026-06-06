@@ -71,7 +71,8 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
                      sr_channel *probe):
     Signal(probe),
     _data(data), 
-    _hover_point(QPointF(-1, -1))
+    _hover_point(QPointF(-1, -1)),
+    _cached_hw_offset(probe ? probe->hw_offset : 128)
 {
     QVector<uint64_t> vValue;
     QVector<QString> vUnit;
@@ -140,6 +141,7 @@ DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data, sr_channel *prob
     _trig_value(s->_trig_value),
     _trig_delta(s->_trig_delta),
     _zero_offset(s->_zero_offset),
+    _cached_hw_offset(s->_cached_hw_offset),
     _mValid(false),
     _max(0),
     _min(0),
@@ -544,9 +546,13 @@ double DsoSignal::get_zero_ratio()
 
 int DsoSignal::get_hw_offset()
 {
-    int hw_offset = 0;
-    session->get_device()->get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset, _probe, NULL);
-    return hw_offset;
+    if (session->is_running_status()) {
+        int hw_offset = _cached_hw_offset;
+        if (session->get_device()->get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset, _probe, NULL)) {
+            _cached_hw_offset = hw_offset;
+        }
+    }
+    return _cached_hw_offset;
 }
 
 void DsoSignal::set_zero_vpos(int pos)
