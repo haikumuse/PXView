@@ -71,6 +71,7 @@
     "@logic-channel-5": "#CC0000",
     "@logic-channel-6": "#8F5202",
     "@logic-channel-7": "#505050",
+    "@logic-channel-height": "24",
     "@search-input-label": "#8a8a8a",
     "@dock-font-main-title": "18px",
     "@dock-font-section-title": "16px",

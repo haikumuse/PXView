@@ -37,6 +37,7 @@
 
 #include <QDebug>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QPainterPath>
 #include <QScrollBar>
 #include <QStyleOption>
@@ -448,10 +449,32 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
 
         QRectF cardRect(-View::GroupCardRadius, cardTop,
                         width() + View::GroupCardRadius + 1, cardHeight);
-        p.setPen(Qt::NoPen);
-        p.setBrush(_view.get_group_card_color(group_indices[idx]));
-        p.drawRoundedRect(cardRect, View::GroupCardRadius,
-                          View::GroupCardRadius);
+        QPainterPath groupPath;
+        groupPath.addRoundedRect(cardRect, View::GroupCardRadius, View::GroupCardRadius);
+
+        if (_view.is_colored_card_mode()) {
+          p.save();
+          p.setClipPath(groupPath);
+          p.setPen(Qt::NoPen);
+
+          for (size_t i = 0; i < group.traces.size(); i++) {
+            auto gt = group.traces[i];
+            double tTop = gt->get_v_offset() - gt->get_totalHeight() * 0.5 - View::SignalMargin;
+            double tBottom = gt->get_v_offset() + gt->get_totalHeight() * 0.5 + View::SignalMargin;
+            
+            if (i == 0) tTop -= View::GroupGap * 0.5;
+            if (i == group.traces.size() - 1) tBottom += View::GroupGap * 0.5;
+            
+            QRectF traceRect(-View::GroupCardRadius, tTop, width() + View::GroupCardRadius + 1, tBottom - tTop);
+            p.setBrush(_view.get_trace_card_color(gt));
+            p.drawRect(traceRect);
+          }
+          p.restore();
+        } else {
+          p.setPen(Qt::NoPen);
+          p.setBrush(_view.get_group_card_color());
+          p.drawPath(groupPath);
+        }
       }
     }
 #ifndef NDEBUG

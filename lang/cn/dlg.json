@@ -1352,6 +1352,10 @@
         "text": "逻辑通道 7"
     },
     {
+        "id": "IDS_STYLE_LOGIC_CH_HEIGHT",
+        "text": "通道高度"
+    },
+    {
         "id": "IDS_STYLE_DEC_CH0",
         "text": "通道 0"
     },
