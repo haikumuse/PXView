@@ -31,6 +31,7 @@
 #include "view.h"
 #include "../sigsession.h"
 #include "../dsvdef.h"
+#include "../log.h"
 #include "../config/appconfig.h"
 #include "../config/appconfig.h"
 #include "../appcontrol.h"
@@ -210,6 +211,11 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
     if (_type != SR_CHANNEL_DSO && _type != SR_CHANNEL_MATH && !visible())
         return;
 
+    if (_type == SR_CHANNEL_DSO) {
+        pxv_info("[DEBUG-DSO] paint_label: name=%s, y=%d, right=%d, enabled=%d, visible=%d",
+                 _name.toUtf8().data(), get_y(), right, enabled(), visible());
+    }
+
     compute_text_size(p);
     const int y = get_y();
 
@@ -247,7 +253,9 @@ void Trace::paint_label(QPainter &p, int right, const QPoint pt, QColor fore)
             else
                 p.drawText(color_rect, Qt::AlignCenter | Qt::AlignVCenter, QString::number(_index_list.front()));
         }
-        return;
+        // DSO controls are drawn in paint_type_options, don't return early
+        if (_type != SR_CHANNEL_DSO && _type != SR_CHANNEL_MATH)
+            return;
     }
 
     const QRectF name_rect  = get_rect("name",  y, right);

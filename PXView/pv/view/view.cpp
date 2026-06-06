@@ -1225,11 +1225,16 @@ void View::signals_changed(const Trace *eventTrace) {
       _signalHeight = _signalHeightScale;
       pxv_info("[DEBUG] LOGIC branch: _signalHeight=%d", _signalHeight);
     } else if (get_work_mode() == DSO) {
-      _signalHeight = (_header->height() - horizontalScrollBar()->height() -
+      // PXView's _viewbottom is hidden and overlaid on viewport,
+      // so _header->height() is ~DsoStatusHeight larger than original DSView.
+      // Subtract DsoStatusHeight to match the original signal height.
+      _signalHeight = (_header->height() - DsoStatusHeight -
+                       horizontalScrollBar()->height() -
                        2 * actualMargin * label_size) *
                       1.0 / total_rows;
       pxv_info("[DEBUG] DSO branch: _signalHeight=%d (raw=%f)", _signalHeight,
-               (_header->height() - horizontalScrollBar()->height() -
+               (_header->height() - DsoStatusHeight -
+                horizontalScrollBar()->height() -
                 2 * actualMargin * label_size) * 1.0 / total_rows);
     } else {
       _signalHeight = (int)((height <= 0) ? 1 : height);
@@ -1306,7 +1311,11 @@ void View::signals_changed(const Trace *eventTrace) {
 
       if (t->signal_type() == SR_CHANNEL_DSO) {
         auto sig = dynamic_cast<view::DsoSignal *>(t);
-        sig->set_scale(sig->get_view_rect().height());
+        // PXView's _viewbottom is hidden and overlaid on viewport,
+        // so viewport height is ~DsoStatusHeight larger than original DSView.
+        // Subtract DsoStatusHeight to match the original scale.
+        const int scale_height = sig->get_view_rect().height() - DsoStatusHeight;
+        sig->set_scale(scale_height > 0 ? scale_height : sig->get_view_rect().height());
       } else if (t->signal_type() == SR_CHANNEL_ANALOG) {
         auto sig = dynamic_cast<view::AnalogSignal *>(t);
         sig->set_scale(sig->get_totalHeight());
