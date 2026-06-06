@@ -1,0 +1,7 @@
+- [x] ChannelConfig 结构体包含 hw_offset、offset、zero_offset 字段，构造函数初始化为 0
+- [x] save_signal_config() 在 DSO/ANALOG 模式下保存 hw_offset、offset、zero_offset
+- [x] apply_signal_config() 在 DSO/ANALOG 模式下恢复 hw_offset、offset、zero_offset 到设备真实通道
+- [x] signal_config_to_json() 序列化 hw_offset、offset、zero_offset
+- [x] signal_config_from_json() 反序列化 hw_offset、offset、zero_offset
+- [x] rebuild_signals_from_config() 创建假 probe 时从 ChannelConfig 设置 hw_offset、offset、zero_offset
+- [x] 项目编译通过无错误

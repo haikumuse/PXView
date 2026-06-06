@@ -201,6 +201,9 @@ QJsonObject SessionDocument::signal_config_to_json() const {
     ch_obj["vdiv"] = (qint64)ch.vdiv;
     ch_obj["coupling"] = ch.coupling;
     ch_obj["map_default"] = ch.map_default;
+    ch_obj["hw_offset"] = ch.hw_offset;
+    ch_obj["offset"] = ch.offset;
+    ch_obj["zero_offset"] = ch.zero_offset;
     ch_array.append(ch_obj);
   }
   obj["channels"] = ch_array;
@@ -226,6 +229,9 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
       cfg.vdiv = (uint64_t)ch_obj["vdiv"].toVariant().toULongLong();
       cfg.coupling = ch_obj["coupling"].toInt();
       cfg.map_default = ch_obj["map_default"].toBool();
+      cfg.hw_offset = (uint16_t)ch_obj["hw_offset"].toInt();
+      cfg.offset = (uint16_t)ch_obj["offset"].toInt();
+      cfg.zero_offset = (uint16_t)ch_obj["zero_offset"].toInt();
       _signal_config.channels.push_back(cfg);
     }
   }
@@ -284,6 +290,10 @@ void SessionDocument::save_signal_config(DeviceAgent *agent) {
       agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default, probe,
                              NULL);
       cfg.map_default = map_default;
+
+      cfg.hw_offset = probe->hw_offset;
+      cfg.offset = probe->offset;
+      cfg.zero_offset = probe->zero_offset;
     }
 
     _signal_config.channels.push_back(cfg);
@@ -338,6 +348,9 @@ void SessionDocument::apply_signal_config(DeviceAgent *agent) {
                                 NULL);
         agent->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT, cfg.map_default,
                                probe, NULL);
+        probe->hw_offset = cfg.hw_offset;
+        probe->offset = cfg.offset;
+        probe->zero_offset = cfg.zero_offset;
       }
     }
     idx++;
