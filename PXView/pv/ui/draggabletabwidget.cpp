@@ -33,6 +33,7 @@
 #include <QResizeEvent>
 #include <QPaintEvent>
 #include <QStylePainter>
+#include <QStackedWidget>
 
 namespace pv {
 namespace ui {
@@ -42,6 +43,12 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
 {
     _draggable_tab_bar = new DraggableTabBar(this);
     setTabBar(_draggable_tab_bar);
+
+    // Add left padding to the content pane so the tab bar can extend
+    // to the left edge while the content area stays offset
+    if (auto *pane = findChild<QStackedWidget*>()) {
+        pane->setContentsMargins(10, 0, 0, 0);
+    }
 
     setTabsClosable(true);
     setMovable(true);

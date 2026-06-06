@@ -288,7 +288,7 @@ void MainWindow::setup_ui() {
   _central_widget = new QWidget(this);
   _vertical_layout = new QVBoxLayout(_central_widget);
   _vertical_layout->setSpacing(0);
-  _vertical_layout->setContentsMargins(10, 0, 0, 0);
+  _vertical_layout->setContentsMargins(0, 0, 0, 0);
   setCentralWidget(_central_widget);
 
   // Setup the sampling bar
@@ -1067,8 +1067,13 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
     current_view()->show_search_cursor(true);
     drawerPage = _drawer_page_search;
     break;
-  case SIDEBAR_FUNCTION:
+  case SIDEBAR_FUNCTION: {
+    // Show function menu (FFT/Math) at the sidebar button position
+    auto btn = _side_bar->getItem(SIDEBAR_FUNCTION)->button;
+    QPoint pos = btn->mapToGlobal(QPoint(btn->width(), 0));
+    _trig_bar->_function_menu->popup(pos);
     break;
+  }
   case SIDEBAR_OPTIONS:
     _device_options_widget->update_view();
     drawerPage = _drawer_page_device_options;

@@ -78,6 +78,7 @@ private:
   void set_all_probes(bool set);
   void enable_max_probes();
   void build_dynamic_panel();
+  void update_dynamic_panel_visibility(bool visible);
   void try_resize_scroll();
   void channel_checkbox_clicked(QCheckBox *sc);
   void ChannelChecked(int index, QObject *object);

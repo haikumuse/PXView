@@ -73,7 +73,23 @@ void DraggableTabBar::mousePressEvent(QMouseEvent *event)
         if (_drag_index >= 0) {
             QRect tr = tabRect(_drag_index);
             _drag_offset = event->position().toPoint() - tr.topLeft();
+
+            // Check if click is on the close button
+            QWidget *closeBtn = tabButton(_drag_index, QTabBar::RightSide);
+            if (!closeBtn)
+                closeBtn = tabButton(_drag_index, QTabBar::LeftSide);
+            if (closeBtn && closeBtn->isVisible()) {
+                QPoint closePos = closeBtn->mapFromParent(event->position().toPoint());
+                if (closeBtn->rect().contains(closePos)) {
+                    emit tabCloseRequested(_drag_index);
+                    _drag_index = -1;
+                    return;
+                }
+            }
+
+            setCurrentIndex(_drag_index);
         }
+        return;
     }
     QTabBar::mousePressEvent(event);
 }
@@ -108,6 +124,7 @@ void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
                 destroy_drag_preview();
             }
         }
+        return;
     }
     QTabBar::mouseMoveEvent(event);
 }
@@ -124,7 +141,9 @@ void DraggableTabBar::mouseReleaseEvent(QMouseEvent *event)
     _drag_started = false;
     _drag_index = -1;
     _drag_outside = false;
-    QTabBar::mouseReleaseEvent(event);
+
+    if (event->button() != Qt::LeftButton)
+        QTabBar::mouseReleaseEvent(event);
 }
 
 void DraggableTabBar::contextMenuEvent(QContextMenuEvent *event)
@@ -171,30 +190,15 @@ void DraggableTabBar::create_drag_preview(int index)
         return;
 
     QRect tab_rect = this->tabRect(index);
-    QPixmap pixmap(tab_rect.size() * devicePixelRatioF());
-    pixmap.setDevicePixelRatio(devicePixelRatioF());
-    pixmap.fill(Qt::transparent);
+    QPixmap pixmap = this->grab(tab_rect);
 
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-
-    QStyleOptionTab opt;
-    opt.initFrom(this);
-    opt.rect = QRect(0, 0, tab_rect.width(), tab_rect.height());
-    opt.text = tabText(index);
-    opt.icon = tabIcon(index);
-    opt.state = QStyle::State_Selected | QStyle::State_Enabled | QStyle::State_Active;
-    opt.iconSize = iconSize();
-
-    style()->drawControl(QStyle::CE_TabBarTab, &opt, &painter, this);
+    setTabVisible(index, false);
 
     _drag_preview = new QLabel(nullptr,
         static_cast<Qt::WindowFlags>(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint));
     _drag_preview->setAttribute(Qt::WA_ShowWithoutActivating);
-    _drag_preview->setAttribute(Qt::WA_TranslucentBackground);
-    _drag_preview->setWindowOpacity(0.8);
     _drag_preview->setPixmap(pixmap);
-    _drag_preview->setFixedSize(pixmap.size() / devicePixelRatioF());
+    _drag_preview->setFixedSize(pixmap.size() / pixmap.devicePixelRatioF());
     _drag_preview->show();
 }
 
@@ -211,6 +215,9 @@ void DraggableTabBar::destroy_drag_preview()
         _drag_preview->close();
         _drag_preview->deleteLater();
         _drag_preview = nullptr;
+    }
+    if (_drag_index >= 0 && _drag_index < count()) {
+        setTabVisible(_drag_index, true);
     }
 }
 
