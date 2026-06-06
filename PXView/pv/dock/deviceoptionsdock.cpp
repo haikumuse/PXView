@@ -943,20 +943,35 @@ void DeviceOptionsDock::build_dynamic_panel() {
     dyn_title->setFont(sectionTitleFont);
   dyn_title->setText(title);
 
-  if (title == "") {
-    _dynamic_panel->setVisible(true);
-    QTimer::singleShot(500, this, [this]() {
-      if (_dynamic_panel && !_dynamic_panel->isVisible())
-        return;
-      build_dynamic_panel();
-      try_resize_scroll();
-    });
-  }
+  update_dynamic_panel_visibility(title != "");
 
   if (inner)
     inner->setContentsMargins(5, 2, 5, 5);
 
   _isBuilding = false;
+}
+
+void DeviceOptionsDock::update_dynamic_panel_visibility(bool visible) {
+  if (!_dynamic_panel)
+    return;
+
+  _dynamic_panel->setVisible(visible);
+
+  // Find and update adjacent separators
+  int dyn_idx = _container_lay->indexOf(_dynamic_panel);
+  if (dyn_idx < 0)
+    return;
+
+  for (int offset : {-1, 1}) {
+    int sep_idx = dyn_idx + offset;
+    if (sep_idx >= 0 && sep_idx < _container_lay->count()) {
+      QLayoutItem *item = _container_lay->itemAt(sep_idx);
+      if (item && item->widget() &&
+          item->widget()->objectName() == "dock_section_separator") {
+        item->widget()->setVisible(visible);
+      }
+    }
+  }
 }
 
 void DeviceOptionsDock::try_resize_scroll() {
@@ -1075,6 +1090,11 @@ void DeviceOptionsDock::update_view() {
   _container_lay->addStretch();
 
   try_resize_scroll();
+
+  // Ensure separator visibility matches dynamic panel content
+  QLabel *dyn_title = _dynamic_panel->findChild<QLabel *>("dock_section_title");
+  if (dyn_title)
+    update_dynamic_panel_visibility(!dyn_title->text().isEmpty());
 }
 
 void DeviceOptionsDock::update_widgets_status() {
