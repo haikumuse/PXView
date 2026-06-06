@@ -278,6 +278,7 @@ public:
   QRect get_view_rect();
   int get_view_width();
   int get_view_height();
+  int get_work_mode() const;
 
   double get_hori_res();
 
@@ -466,6 +467,7 @@ private:
   int _signalHeight;
   int _vOffset;
   int _signalHeightScale;
+  int _lastWidth;
   std::vector<SignalGroup> _signal_groups;
   QColor _group_card_color;
   bool _updating_scroll;
