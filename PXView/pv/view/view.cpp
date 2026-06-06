@@ -727,19 +727,26 @@ QColor View::get_group_card_color(int group_index) {
       const auto &group = groups[group_index];
       if (!group.traces.empty()) {
         auto *trace = group.traces[0];
-        auto index_list = trace->get_index_list();
-        if (!index_list.empty()) {
-          int idx = *index_list.begin() % 8;
-          QString token = QString("@logic-channel-%1").arg(idx);
-          QColor signalColor = AppConfig::Instance().GetThemeColor(token);
-          if (!signalColor.isValid())
-            signalColor = Trace::PROBE_COLORS[idx];
-          // PulseView style: signal color + 8% alpha
-          QColor bgColor = signalColor;
-          bgColor.setAlpha(8 * 255 / 100);
-          return bgColor;
-        }
+        return get_trace_card_color(trace);
       }
+    }
+  }
+  return get_group_card_color();
+}
+
+QColor View::get_trace_card_color(Trace *trace) {
+  if (is_colored_card_mode() && trace) {
+    auto index_list = trace->get_index_list();
+    if (!index_list.empty()) {
+      int idx = *index_list.begin() % 8;
+      QString token = QString("@logic-channel-%1").arg(idx);
+      QColor signalColor = AppConfig::Instance().GetThemeColor(token);
+      if (!signalColor.isValid())
+        signalColor = Trace::PROBE_COLORS[idx];
+      // PulseView style: signal color + 8% alpha
+      QColor bgColor = signalColor;
+      bgColor.setAlpha(8 * 255 / 100);
+      return bgColor;
     }
   }
   return get_group_card_color();
@@ -2236,7 +2243,29 @@ Cursor *View::get_cursor_by_index(int index) {
 
 void View::UpdateLanguage() {}
 
-void View::UpdateTheme() { refreshSignalColors(); viewport_update(); }
+void View::UpdateTheme() { 
+  refreshSignalColors(); 
+
+  QString heightStr = AppConfig::Instance().GetThemeTokenValue("@logic-channel-height");
+  bool ok;
+  int h = heightStr.toInt(&ok);
+  if (ok && h > 0) {
+    _signalHeightScale = h;
+    _signalHeight = h;
+    
+    std::vector<Trace *> traces;
+    get_traces(ALL_VIEW, traces);
+    for (Trace *t : traces) {
+      if (t && (t->get_type() == SR_CHANNEL_LOGIC || t->get_type() == SR_CHANNEL_GROUP)) {
+        t->set_totalHeight(h);
+        t->set_own_height(h);
+      }
+    }
+    update_all_trace_postion();
+  }
+
+  viewport_update(); 
+}
 
 void View::UpdateFont() { update_font(); }
 

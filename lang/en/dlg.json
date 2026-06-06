@@ -1345,7 +1345,11 @@
     },
     {
         "id": "IDS_STYLE_LOGIC_CH7",
-        "text": "Logic Ch7"
+        "text": "Channel 7"
+    },
+    {
+        "id": "IDS_STYLE_LOGIC_CH_HEIGHT",
+        "text": "Channel Height"
     },
     {
         "id": "IDS_STYLE_DEC_CH0",

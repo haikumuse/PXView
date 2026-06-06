@@ -109,7 +109,8 @@
         { "id": "@logic-channel-4", "type": "color", "label": "IDS_STYLE_LOGIC_CH4" },
         { "id": "@logic-channel-5", "type": "color", "label": "IDS_STYLE_LOGIC_CH5" },
         { "id": "@logic-channel-6", "type": "color", "label": "IDS_STYLE_LOGIC_CH6" },
-        { "id": "@logic-channel-7", "type": "color", "label": "IDS_STYLE_LOGIC_CH7" }
+        { "id": "@logic-channel-7", "type": "color", "label": "IDS_STYLE_LOGIC_CH7" },
+        { "id": "@logic-channel-height", "type": "size", "label": "IDS_STYLE_LOGIC_CH_HEIGHT" }
       ]
     },
     {

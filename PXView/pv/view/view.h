@@ -207,6 +207,7 @@ public:
   }
   QColor get_group_card_color();
   QColor get_group_card_color(int group_index);
+  QColor get_trace_card_color(Trace *trace);
   void set_group_card_color(QColor color) { _group_card_color = color; }
   bool is_colored_card_mode();
 

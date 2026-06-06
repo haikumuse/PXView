@@ -28,6 +28,7 @@
 #include "../data/logicsnapshot.h"
 #include "view.h"
 #include "../dsvdef.h"
+#include "../config/appconfig.h"
 
 using namespace std;
 
@@ -46,6 +47,13 @@ LogicSignal::LogicSignal(data::LogicSnapshot *data,
 {
     _trig = NONTRIG; 
     _paint_align_sample_count = 0;
+
+    QString heightStr = AppConfig::Instance().GetThemeTokenValue("@logic-channel-height");
+    bool ok;
+    int h = heightStr.toInt(&ok);
+    if (ok && h > 0) {
+        set_totalHeight(h);
+    }
 }
 
 LogicSignal::LogicSignal(view::LogicSignal *s,
@@ -56,6 +64,13 @@ LogicSignal::LogicSignal(view::LogicSignal *s,
     _trig(s->get_trig())
 { 
     _paint_align_sample_count = 0;
+
+    QString heightStr = AppConfig::Instance().GetThemeTokenValue("@logic-channel-height");
+    bool ok;
+    int h = heightStr.toInt(&ok);
+    if (ok && h > 0) {
+        set_totalHeight(h);
+    }
 }
 
 LogicSignal* LogicSignal::clone() const
