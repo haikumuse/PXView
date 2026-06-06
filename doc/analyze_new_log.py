@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Analyze DSView.log for performance bottlenecks - comprehensive version"""
+"""Analyze PXView.log for performance bottlenecks - comprehensive version"""
 import re, sys, os
 
-log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\DSView.log"
+log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\PXView.log"
 
 # Containers
 paint_signals = []       # (line_no, took_ms, rebuilt, rebuild_time_ms)
@@ -24,7 +24,7 @@ re_check_update = re.compile(r'check_update.*took (\d+) ms')
 re_generic_took = re.compile(r'took (\d+) ms')
 
 print("=" * 70)
-print("DSView.log 性能分析")
+print("PXView.log 性能分析")
 print("=" * 70)
 
 with open(log_path, 'r', encoding='utf-8', errors='replace') as f:

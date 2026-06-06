@@ -682,7 +682,7 @@ set(common_HEADERS
 #= compile config
 #-------------------------------------------------------------------------------
 
-set(DSView_FORMS
+set(PXView_FORMS
 )
 
 set(PXView_RESOURCES
@@ -751,7 +751,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 #-------------------------------------------------------------------------------
 
 
-set(DSVIEW_LINK_LIBS
+set(PXVIEW_LINK_LIBS
 	-lz
 	-lglib-2.0
 	${CMAKE_THREAD_LIBS_INIT}
@@ -763,19 +763,19 @@ set(DSVIEW_LINK_LIBS
 
 if(STATIC_PKGDEPS_LIBS)
 	link_directories(${PKGDEPS_STATIC_LIBRARY_DIRS})
-	list(APPEND DSVIEW_LINK_LIBS ${PKGDEPS_STATIC_LIBRARIES})
+	list(APPEND PXVIEW_LINK_LIBS ${PKGDEPS_STATIC_LIBRARIES})
 if(WIN32)
 	# Workaround for a MinGW linking issue.
 	list(APPEND PULSEVIEW_LINK_LIBS "-llzma -llcms2")
 endif()
 else()
 	link_directories(${PKGDEPS_LIBRARY_DIRS})
-	list(APPEND DSVIEW_LINK_LIBS ${PKGDEPS_LIBRARIES})
+	list(APPEND PXVIEW_LINK_LIBS ${PKGDEPS_LIBRARIES})
 endif()
 
 # Add libserialport if found (for serial compat layer)
 if(LIBSERIALPORT_FOUND)
-	list(APPEND DSVIEW_LINK_LIBS ${LIBSERIALPORT_LIBRARIES})
+	list(APPEND PXVIEW_LINK_LIBS ${LIBSERIALPORT_LIBRARIES})
 	link_directories(${LIBSERIALPORT_LIBRARY_DIRS})
 endif()
 
@@ -790,7 +790,7 @@ add_executable(${PROJECT_NAME}
 	${libsigrokdecode_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} ${DSVIEW_LINK_LIBS})
+target_link_libraries(${PROJECT_NAME} ${PXVIEW_LINK_LIBS})
 
 if(NOT WIN32 AND NOT APPLE)
 	target_link_libraries(${PROJECT_NAME} "-Wl,--export-dynamic")

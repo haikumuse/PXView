@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_SHADOW_H
-#define DSVIEW_PV_SHADOW_H
+#ifndef PXVIEW_PV_SHADOW_H
+#define PXVIEW_PV_SHADOW_H
 
 #include <QGraphicsDropShadowEffect>
 #include <QGraphicsEffect>
@@ -57,4 +57,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_SHADOW_H
+#endif // PXVIEW_PV_SHADOW_H

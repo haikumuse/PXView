@@ -6,7 +6,7 @@
     "Language": 31,
     "Operation Mode": 0,
     "Time base": "10000",
-    "Title": "DSView v1.3.0-RC7",
+    "Title": "PXView v1.3.0-RC7",
     "Trigger channel": 0,
     "Trigger hold off": "0",
     "Trigger margin": 8,

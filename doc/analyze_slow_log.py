@@ -1,6 +1,6 @@
 import re
 
-log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\DSView.log"
+log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\PXView.log"
 
 try:
     with open(log_path, 'r', encoding='utf-8') as f:

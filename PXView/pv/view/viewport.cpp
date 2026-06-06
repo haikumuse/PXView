@@ -336,7 +336,7 @@ void Viewport::paintEvent(QPaintEvent *event) {
     p.drawPixmap(0, 0, g_drag_snapshot);
 #ifndef NDEBUG
     qint64 t_snap = timer.elapsed();
-    dsv_warn("[DIAG] Viewport::paintEvent drew snapshot in %lld ms", t_snap);
+    pxv_warn("[DIAG] Viewport::paintEvent drew snapshot in %lld ms", t_snap);
 #endif
     return;
   }
@@ -358,7 +358,7 @@ void Viewport::paintEvent(QPaintEvent *event) {
 
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
-  dsv_warn("[DIAG] Viewport::paintEvent full repaint took %lld ms, size: %dx%d",
+  pxv_warn("[DIAG] Viewport::paintEvent full repaint took %lld ms, size: %dx%d",
            total, size().width(), size().height());
 #endif
 }
@@ -622,7 +622,7 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
 
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
-  dsv_warn(
+  pxv_warn(
       "[DIAG] Viewport::doPaint took %lld ms: init: %lld ms, check_update: "
       "%lld ms, get_traces: %lld ms, group_cards: %lld ms, dividers: %lld ms, "
       "paint_back: %lld ms, paint_signals: %lld ms, paint_fore: %lld ms",
@@ -1003,7 +1003,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
-  dsv_warn("[DIAG] Viewport::paintSignals took %lld ms, rebuilt: %d, "
+  pxv_warn("[DIAG] Viewport::paintSignals took %lld ms, rebuilt: %d, "
            "rebuild_time: %lld ms, blit: %lld ms, decode: %lld ms, cursor: "
            "%lld ms, xcursor: %lld ms, marker: %lld ms, measure: %lld ms",
            total, rebuilt ? 1 : 0, t_rebuild, t_blit, t_decode, t_cursor,
@@ -1448,7 +1448,7 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
 
                 static int times = 0;
                 times++;
-                dsv_info("click by edge %d", times);
+                pxv_info("click by edge %d", times);
                 break;
               }
             }

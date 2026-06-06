@@ -64,7 +64,7 @@ bool DSApplication::notify(QObject *receiver_, QEvent *event_)
         if (is_profile_event) {
             qint64 elapsed = timer.elapsed();
             if (elapsed > 0 && receiverGuard) {
-                dsv_warn("[PROFILER] Receiver: %s (%s), EventType: %d, took %lld ms",
+                pxv_warn("[PROFILER] Receiver: %s (%s), EventType: %d, took %lld ms",
                          receiver_->objectName().isEmpty() ? "unnamed" : receiver_->objectName().toUtf8().constData(),
                          receiver_->metaObject()->className(),
                          type,

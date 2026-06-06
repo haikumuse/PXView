@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DATA_DISK_WRITE_THREAD_H
-#define DSVIEW_PV_DATA_DISK_WRITE_THREAD_H
+#ifndef PXVIEW_PV_DATA_DISK_WRITE_THREAD_H
+#define PXVIEW_PV_DATA_DISK_WRITE_THREAD_H
 
 #include "disk_buffer_manager.h"
 #include <thread>

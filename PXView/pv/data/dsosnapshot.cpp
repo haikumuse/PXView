@@ -171,7 +171,7 @@ void DsoSnapshot::first_payload(const sr_datafeed_dso &dso, uint64_t total_sampl
                 uint8_t *chan_buffer = (uint8_t*)malloc(total_sample_count + 1);
                 if (chan_buffer == NULL){
                     isOk = false;
-                    dsv_err("DsoSnapshot::first_payload, Malloc memory failed!");
+                    pxv_err("DsoSnapshot::first_payload, Malloc memory failed!");
                     break;
                 }
                 _ch_data.push_back(chan_buffer);
@@ -194,7 +194,7 @@ void DsoSnapshot::first_payload(const sr_datafeed_dso &dso, uint64_t total_sampl
                     _envelope_levels[i][level].samples = (EnvelopeSample*)malloc(buffer_len);
                     
                     if (_envelope_levels[i][level].samples == NULL) {
-                        dsv_err("DsoSnapshot::first_payload, malloc failed!");
+                        pxv_err("DsoSnapshot::first_payload, malloc failed!");
                         isOk = false;
                         break;
                     }
@@ -293,7 +293,7 @@ const uint8_t *DsoSnapshot::get_samples(int64_t start_sample, int64_t end_sample
     int order = get_ch_order(ch_index);
 
     if (order == -1){
-        dsv_err("The channel index is not exist:%d", ch_index);
+        pxv_err("The channel index is not exist:%d", ch_index);
         assert(false);
     } 
 

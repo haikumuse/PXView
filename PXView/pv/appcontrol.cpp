@@ -75,26 +75,26 @@ bool AppControl::Init()
 
     qs = GetAppDataDir();
     cs = pv::path::ToUnicodePath(qs);
-    dsv_info("GetAppDataDir:\"%s\"", cs.c_str());
+    pxv_info("GetAppDataDir:\"%s\"", cs.c_str());
     cs = pv::path::ConvertPath(qs);
     ds_set_user_data_dir(cs.c_str());
 
     qs = GetFirmwareDir();
     cs = pv::path::ToUnicodePath(qs);
-    dsv_info("GetFirmwareDir:\"%s\"", cs.c_str());
+    pxv_info("GetFirmwareDir:\"%s\"", cs.c_str());
 
     qs = GetUserDataDir();
     cs = pv::path::ToUnicodePath(qs);
-    dsv_info("GetUserDataDir:\"%s\"", cs.c_str());
+    pxv_info("GetUserDataDir:\"%s\"", cs.c_str());
 
     qs = GetDecodeScriptDir();
     cs = pv::path::ToUnicodePath(qs);
-    dsv_info("GetDecodeScriptDir:\"%s\"", cs.c_str());
+    pxv_info("GetDecodeScriptDir:\"%s\"", cs.c_str());
     //---------------end print directorys.
 
     _session->init();
 
-    srd_log_set_context(dsv_log_context());
+    srd_log_set_context(pxv_log_context());
 
 #if defined(_WIN32)
     // Set Python home to application directory for embedded Python
@@ -104,7 +104,7 @@ bool AppControl::Init()
     if (!zipFiles.isEmpty()) {
         const wchar_t *pyhome = reinterpret_cast<const wchar_t*>(pythonHome.utf16());
         srd_set_python_home(pyhome);
-        dsv_info("Set Python home to: %s", pythonHome.toUtf8().data());
+        pxv_info("Set Python home to: %s", pythonHome.toUtf8().data());
     }
 #if defined(DEBUG_INFO)
     //able run debug with qtcreator
@@ -125,7 +125,7 @@ bool AppControl::Init()
     // Initialise libsigrokdecode
     if (srd_init(path) != SRD_OK)
     { 
-        dsv_err("ERROR: libsigrokdecode init failed.");
+        pxv_err("ERROR: libsigrokdecode init failed.");
         return false;
     }
 
@@ -136,14 +136,14 @@ bool AppControl::Init()
         if (cDecPath.cd("c_decoders") || cDecPath.cd("../libsigrokdecode/c_decoders")) {
             std::string cs = pv::path::ConvertPath(cDecPath.absolutePath());
             srd_c_decoder_path_add(cs.c_str());
-            dsv_info("C decoder path: \"%s\"", cs.c_str());
+            pxv_info("C decoder path: \"%s\"", cs.c_str());
         }
     }
 
     // Load the protocol decoders
     if (srd_decoder_load_all() != SRD_OK)
     {
-        dsv_err("ERROR: load the protocol decoders failed.");
+        pxv_err("ERROR: load the protocol decoders failed.");
         return false;
     }
  

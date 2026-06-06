@@ -92,16 +92,16 @@ std::vector<const srd_channel*> Decoder::binded_probe_list()
 
 bool Decoder::have_required_probes()
 {
-	dsv_info("decoder:%p", this);
+	pxv_info("decoder:%p", this);
 
 	for (GSList *l = _decoder->channels; l; l = l->next) {
 		const srd_channel *const pdch = (const srd_channel*)l->data;
-		dsv_info("base decoder:%p", (void*)pdch);
+		pxv_info("base decoder:%p", (void*)pdch);
 	}
 
 	for (auto it = _probes.begin(); it != _probes.end(); ++it){
 		const srd_channel *const pdch = (const srd_channel*)(*it).first;
-		dsv_info("got decoder:%p", (void*)pdch);
+		pxv_info("got decoder:%p", (void*)pdch);
 	}
 
 	for (GSList *l = _decoder->channels; l; l = l->next) {

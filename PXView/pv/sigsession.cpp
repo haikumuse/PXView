@@ -173,7 +173,7 @@ SigSession::~SigSession() {
 }
 
 bool SigSession::init() {
-  ds_log_set_context(dsv_log_context());
+  ds_log_set_context(pxv_log_context());
 
   ds_set_event_callback(device_lib_event_callback);
 
@@ -185,7 +185,7 @@ bool SigSession::init() {
   ds_set_firmware_resource_dir(res_path.c_str());
 
   if (ds_lib_init() != SR_OK) {
-    dsv_err("DSView run ERROR: collect lib init failed.");
+    pxv_err("PXView run ERROR: collect lib init failed.");
     return false;
   }
 
@@ -202,23 +202,23 @@ bool SigSession::set_default_device() {
   assert(!_is_saving);
 
   if (_is_working) {
-    dsv_info("SigSession::set_default_device()，The current device is working, "
+    pxv_info("SigSession::set_default_device()，The current device is working, "
              "now to stop it.");
-    dsv_info("SigSession::set_default_device(), stop capture");
+    pxv_info("SigSession::set_default_device(), stop capture");
     stop_capture();
   }
 
   struct ds_device_base_info *array = NULL;
   int count = 0;
 
-  dsv_info("Set default device.");
+  pxv_info("Set default device.");
 
   if (ds_get_device_list(&array, &count) != SR_OK) {
-    dsv_err("Get device list error!");
+    pxv_err("Get device list error!");
     return false;
   }
   if (count < 1 || array == NULL) {
-    dsv_err("Error! Device list is empty, can't set default device.");
+    pxv_err("Error! Device list is empty, can't set default device.");
     return false;
   }
 
@@ -246,7 +246,7 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   _device_status = ST_INIT;
 
   if (ds_active_device(dev_handle) != SR_OK) {
-    dsv_err("Switch device error!");
+    pxv_err("Switch device error!");
     return false;
   }
 
@@ -255,9 +255,9 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
 
   if (_device_agent.is_file()) {
     std::string dev_name = pv::path::ToUnicodePath(_device_agent.name());
-    dsv_info("Switch to file \"%s\" done.", dev_name.c_str());
+    pxv_info("Switch to file \"%s\" done.", dev_name.c_str());
   } else
-    dsv_info("Switch to device \"%s\" done.",
+    pxv_info("Switch to device \"%s\" done.",
              _device_agent.name().toUtf8().data());
 
   clear_all_documents_decoders();
@@ -313,12 +313,12 @@ bool SigSession::set_file(QString name) {
   assert(!_is_working);
 
   std::string file_name = pv::path::ToUnicodePath(name);
-  dsv_info("Load file: \"%s\"", file_name.c_str());
+  pxv_info("Load file: \"%s\"", file_name.c_str());
 
   std::string file_str = name.toUtf8().toStdString();
 
   if (ds_device_from_file(file_str.c_str()) != SR_OK) {
-    dsv_err("Load file error!");
+    pxv_err("Load file error!");
     return false;
   }
 
@@ -329,13 +329,13 @@ void SigSession::close_file(ds_device_handle dev_handle) {
   assert(dev_handle);
 
   if (dev_handle == _device_agent.handle() && _is_working) {
-    dsv_err("The virtual device is running, can't remove it.");
+    pxv_err("The virtual device is running, can't remove it.");
     return;
   }
   bool isCurrent = dev_handle == _device_agent.handle();
 
   if (ds_remove_device(dev_handle) != SR_OK) {
-    dsv_err("Remove virtual deivice error!");
+    pxv_err("Remove virtual deivice error!");
   }
 
   if (isCurrent)
@@ -496,25 +496,25 @@ bool SigSession::start_capture(bool instant) {
 bool SigSession::action_start_capture(bool instant) {
   assert(_callback);
 
-  dsv_info("Start collect.");
+  pxv_info("Start collect.");
 
   if (_is_working) {
-    dsv_err("Error! Is working now.");
+    pxv_err("Error! Is working now.");
     return false;
   }
 
   if (_signals.empty()) {
-    dsv_info("ERROR: channel list is empty, unable to capture data.");
+    pxv_info("ERROR: channel list is empty, unable to capture data.");
     return false;
   }
 
   // Check that a device instance has been selected.
   if (_device_agent.have_instance() == false) {
-    dsv_err("Error!No device selected");
+    pxv_err("Error!No device selected");
     assert(false);
   }
   if (_device_status == ST_RUNNING || _device_agent.is_collecting()) {
-    dsv_err("Error!Device is running.");
+    pxv_err("Error!Device is running.");
     return false;
   }
 
@@ -588,7 +588,7 @@ bool SigSession::action_start_capture(bool instant) {
 
   _disk_cache_config.enabled = false;
 
-  dsv_info(
+  pxv_info(
       "SigSession::start_capture: _is_stream_mode=%d, disk_cache_enabled=%d",
       _is_stream_mode, disk_cache_enabled);
 
@@ -614,11 +614,11 @@ bool SigSession::action_start_capture(bool instant) {
                                            1024ULL * 1024 * 1024 /
                                            bytes_per_block;
 
-    dsv_info("SigSession::start_capture: Configured disk cache: "
+    pxv_info("SigSession::start_capture: Configured disk cache: "
              "disk_gb=%f, path=%s",
              disk_gb, _disk_cache_config.cache_path.c_str());
   } else {
-    dsv_info("SigSession::start_capture: Disk cache NOT configured.");
+    pxv_info("SigSession::start_capture: Disk cache NOT configured.");
   }
 
   // update setting
@@ -648,14 +648,14 @@ bool SigSession::action_start_capture(bool instant) {
 
 bool SigSession::exec_capture() {
   if (_device_agent.is_collecting()) {
-    dsv_err("Error!Device is running.");
+    pxv_err("Error!Device is running.");
     return false;
   }
 
   // Wait for background copy_data_to_document to complete before
   // starting a new capture, to prevent source data from being cleared.
   if (_copy_in_progress) {
-    dsv_info("Waiting for background copy_data_to_document to complete...");
+    pxv_info("Waiting for background copy_data_to_document to complete...");
     while (_copy_in_progress) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -751,7 +751,7 @@ bool SigSession::exec_capture() {
   attach_data_to_signal(_capture_data);
 
   if (_device_agent.start() == false) {
-    dsv_err("Start collect error!");
+    pxv_err("Start collect error!");
     return false;
   }
 
@@ -779,7 +779,7 @@ bool SigSession::action_stop_capture() {
   if (!_is_working)
     return false;
 
-  dsv_info("Stop collect.");
+  pxv_info("Stop collect.");
 
   if (_bClose) {
     _is_working = false;
@@ -821,7 +821,7 @@ bool SigSession::action_stop_capture() {
 
     return true;
   } else {
-    dsv_info("Data is uploading from device data buffer, waiting for stop.");
+    pxv_info("Data is uploading from device data buffer, waiting for stop.");
   }
   return false;
 }
@@ -981,7 +981,7 @@ void SigSession::init_signals() {
   math_disable();
 
   if (_signals.empty()) {
-    dsv_info("ERROR: Unable to create any channel.");
+    pxv_info("ERROR: Unable to create any channel.");
   }
 }
 
@@ -1079,7 +1079,7 @@ void SigSession::reload() {
       view_indexs.push_back(s->get_view_index());
     }
 
-    dsv_info("SigSession::reload(), clear signals");
+    pxv_info("SigSession::reload(), clear signals");
     clear_signals();
     std::vector<view::Signal *>().swap(_signals);
     _signals = sigs;
@@ -1092,7 +1092,7 @@ void SigSession::reload() {
       }
     }
   } else if (mode == LOGIC || mode == ANALOG) {
-    dsv_info("ERROR: Unable to create any channel.");
+    pxv_info("ERROR: Unable to create any channel.");
     _signals.clear();
   }
 
@@ -1188,7 +1188,7 @@ void SigSession::feed_in_trigger(const ds_trigger_pos &trigger_pos) {
 
 void SigSession::feed_in_logic(const sr_datafeed_logic &o) {
   if (_capture_data->get_logic()->memory_failed()) {
-    dsv_err("Unexpected logic packet");
+    pxv_err("Unexpected logic packet");
     return;
   }
 
@@ -1229,7 +1229,7 @@ void SigSession::feed_in_logic(const sr_datafeed_logic &o) {
 
 void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
   if (_capture_data->get_dso()->memory_failed()) {
-    dsv_err("Unexpected dso packet");
+    pxv_err("Unexpected dso packet");
     return; // This dso packet was not expected.
   }
 
@@ -1302,7 +1302,7 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
 
 void SigSession::feed_in_analog(const sr_datafeed_analog &o) {
   if (_capture_data->get_analog()->memory_failed()) {
-    dsv_err("Unexpected analog packet");
+    pxv_err("Unexpected analog packet");
     return; // This analog packet was not expected.
   }
 
@@ -1383,7 +1383,7 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
     break;
   }
   case SR_DF_END: {
-    dsv_info("------------SR_DF_END packet.");
+    pxv_info("------------SR_DF_END packet.");
 
     _capture_data->get_logic()->capture_ended();
     _capture_data->get_dso()->capture_ended();
@@ -1466,13 +1466,13 @@ bool SigSession::add_decoder(
     std::list<pv::data::decode::Decoder *> &sub_decoders,
     view::Trace *&out_trace) {
   if (dec == NULL) {
-    dsv_err("Decoder instance is null!");
+    pxv_err("Decoder instance is null!");
     assert(false);
   }
 
   out_trace = NULL;
 
-  // dsv_info("Create new decoder,name:\"%s\",id:\"%s\"", dec->name, dec->id);
+  // pxv_info("Create new decoder,name:\"%s\",id:\"%s\"", dec->name, dec->id);
 
   try {
     bool ret = false;
@@ -1553,7 +1553,7 @@ bool SigSession::add_decoder(
 
     return ret;
   } catch (...) {
-    dsv_err("Error!add_decoder() throws an exception.");
+    pxv_err("Error!add_decoder() throws an exception.");
   }
 
   return false;
@@ -1754,7 +1754,7 @@ void SigSession::Close() {
   // Stop decode thread.
   clear_all_documents_decoders();
 
-  dsv_info("SigSession::Close(), stop capture");
+  pxv_info("SigSession::Close(), stop capture");
   stop_capture();
 
   for (auto p : _data_list) {
@@ -1874,14 +1874,14 @@ view::DecodeTrace *SigSession::get_decoder_trace(int index) {
 }
 
 void SigSession::decode_single_task(view::DecodeTrace *task) {
-  dsv_info("------->decode thread start");
+  pxv_info("------->decode thread start");
 
   if (!task->_delete_flag) {
     task->decoder()->begin_decode_work();
   }
 
   if (task->_delete_flag) {
-    dsv_info("destroy a decoder in task thread");
+    pxv_info("destroy a decoder in task thread");
 
     DESTROY_QT_LATER(task);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -1905,7 +1905,7 @@ void SigSession::decode_single_task(view::DecodeTrace *task) {
     }
   }
 
-  dsv_info("------->decode thread end");
+  pxv_info("------->decode thread end");
 }
 
 Snapshot *SigSession::get_signal_snapshot() {
@@ -1920,7 +1920,7 @@ Snapshot *SigSession::get_signal_snapshot() {
 
 void SigSession::device_lib_event_callback(int event) {
   if (_session == NULL) {
-    dsv_err("Error!Global variable \"_session\" is null.");
+    pxv_err("Error!Global variable \"_session\" is null.");
     return;
   }
   _session->on_device_lib_event(event);
@@ -1928,7 +1928,7 @@ void SigSession::device_lib_event_callback(int event) {
 
 void SigSession::on_device_lib_event(int event) {
   if (_callback == NULL) {
-    dsv_detail("The callback is null, so the device event was ignored.");
+    pxv_detail("The callback is null, so the device event was ignored.");
     return;
   }
 
@@ -1944,7 +1944,7 @@ void SigSession::on_device_lib_event(int event) {
     if (!_capture_data->get_logic()->last_ended() ||
         !_capture_data->get_dso()->last_ended() ||
         !_capture_data->get_analog()->last_ended()) {
-      dsv_err("Error!The data is not completed.");
+      pxv_err("Error!The data is not completed.");
       assert(false);
     }
     break;
@@ -1959,13 +1959,13 @@ void SigSession::on_device_lib_event(int event) {
     _callback->trigger_message(DSV_MSG_COLLECT_END);
 
     if (_capture_data->get_logic()->last_ended() == false)
-      dsv_err("The collected data is error!");
+      pxv_err("The collected data is error!");
 
     if (_capture_data->get_dso()->last_ended() == false)
-      dsv_err("The collected data is error!");
+      pxv_err("The collected data is error!");
 
     if (_capture_data->get_analog()->last_ended() == false)
-      dsv_err("The collected data is error!");
+      pxv_err("The collected data is error!");
 
     // trig next collect
     if (is_repeat_mode() && _is_working && event == DS_EV_COLLECT_TASK_END) {
@@ -1983,7 +1983,7 @@ void SigSession::on_device_lib_event(int event) {
 
   case DS_EV_CURRENT_DEVICE_DETACH: {
     if (_is_working) {
-      dsv_info("SigSession::on_device_lib_event,DS_EV_CURRENT_DEVICE_DETACH, "
+      pxv_info("SigSession::on_device_lib_event,DS_EV_CURRENT_DEVICE_DETACH, "
                "stop capture");
       stop_capture();
     }
@@ -2001,7 +2001,7 @@ void SigSession::on_device_lib_event(int event) {
     break;
 
   default:
-    dsv_err("Error!Unknown device event.");
+    pxv_err("Error!Unknown device event.");
     break;
   }
 }
@@ -2166,7 +2166,7 @@ void SigSession::OnMessage(int msg) {
       de->frame_ended();
       add_decode_task(de);
     }
-    dsv_info("Background copy_data_to_document completed. Decoders started.");
+    pxv_info("Background copy_data_to_document completed. Decoders started.");
   } break;
 
   case DS_EV_DEVICE_SPEED_NOT_MATCH: {
@@ -2215,7 +2215,7 @@ bool SigSession::switch_work_mode(int mode) {
     set_cur_snap_samplerate(_device_agent.get_sample_rate());
     set_cur_samplelimits(_device_agent.get_sample_limit());
 
-    dsv_info("Switch work mode to:%d", mode);
+    pxv_info("Switch work mode to:%d", mode);
 
     broadcast_msg(DSV_MSG_DEVICE_MODE_CHANGED);
 

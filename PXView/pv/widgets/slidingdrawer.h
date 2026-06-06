@@ -1,5 +1,5 @@
 /*
- * This file is part of the DSView project.
+ * This file is part of the PXView project.
  *
  * Copyright (C) 2025 DreamSourceLab <support@dreamsourcelab.com>
  *
@@ -14,8 +14,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef DSVIEW_PV_WIDGETS_SLIDINGDRAWER_H
-#define DSVIEW_PV_WIDGETS_SLIDINGDRAWER_H
+#ifndef PXVIEW_PV_WIDGETS_SLIDINGDRAWER_H
+#define PXVIEW_PV_WIDGETS_SLIDINGDRAWER_H
 
 #include <QWidget>
 #include <QPropertyAnimation>
@@ -158,4 +158,4 @@ private:
 } // namespace widgets
 } // namespace pv
 
-#endif // DSVIEW_PV_WIDGETS_SLIDINGDRAWER_H
+#endif // PXVIEW_PV_WIDGETS_SLIDINGDRAWER_H

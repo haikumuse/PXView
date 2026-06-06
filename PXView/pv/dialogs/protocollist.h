@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_PROTOCOLLIST_H
-#define DSVIEW_PV_PROTOCOLLIST_H
+#ifndef PXVIEW_PV_PROTOCOLLIST_H
+#define PXVIEW_PV_PROTOCOLLIST_H
 
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -74,4 +74,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_PROTOCOLLIST_H
+#endif // PXVIEW_PV_PROTOCOLLIST_H

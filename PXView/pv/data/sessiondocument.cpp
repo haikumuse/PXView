@@ -1,5 +1,5 @@
 /*
- * This file is part of the DSView project.
+ * This file is part of the PXView project.
  *
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  *
@@ -331,14 +331,14 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
   }
 
   _signal_config.is_valid = true;
-  dsv_info(
+  pxv_info(
       "SessionDocument::save_signal_config() done, work_mode=%d ch_count=%d",
       _signal_config.work_mode, (int)_signal_config.channels.size());
 }
 
 void SessionDocument::save_signal_config(DeviceAgent *agent) {
   if (!agent || !agent->have_instance()) {
-    dsv_info(
+    pxv_info(
         "SessionDocument::save_signal_config() skip, agent=%p have_instance=%d",
         agent, agent ? agent->have_instance() : 0);
     return;
@@ -397,14 +397,14 @@ void SessionDocument::apply_signal_config(DeviceAgent *agent) {
            << _signal_config.is_valid
            << "have_instance=" << (agent ? agent->have_instance() : 0);
   if (!agent || !agent->have_instance() || !_signal_config.is_valid) {
-    dsv_info("SessionDocument::apply_signal_config() skip, agent=%p "
+    pxv_info("SessionDocument::apply_signal_config() skip, agent=%p "
              "have_instance=%d is_valid=%d",
              agent, agent ? agent->have_instance() : 0,
              _signal_config.is_valid);
     return;
   }
 
-  dsv_info("SessionDocument::apply_signal_config() work_mode=%d op_mode=%d "
+  pxv_info("SessionDocument::apply_signal_config() work_mode=%d op_mode=%d "
            "ch_mode=%d",
            _signal_config.work_mode, _signal_config.operation_mode,
            _signal_config.channel_mode);

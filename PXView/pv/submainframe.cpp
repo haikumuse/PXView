@@ -179,7 +179,7 @@ void SubMainFrame::AttachNativeWindow()
     WinNativeWidget *nativeWindow = new WinNativeWidget(x, y, w, h, bkColor);
 
     if (nativeWindow->Handle() == NULL){
-        dsv_info("ERROR: native window is invalid for sub window.");
+        pxv_info("ERROR: native window is invalid for sub window.");
         delete nativeWindow;
         return;
     }

@@ -1,5 +1,5 @@
 /*
- * This file is part of the DSView project.
+ * This file is part of the PXView project.
  * Copyright (C) 2025 DreamSourceLab <support@dreamsourcelab.com>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -7,8 +7,8 @@
  * (at your option) any later version.
  */
 
-#ifndef DSVIEW_PV_WIDGETS_SIDEBARBUTTON_H
-#define DSVIEW_PV_WIDGETS_SIDEBARBUTTON_H
+#ifndef PXVIEW_PV_WIDGETS_SIDEBARBUTTON_H
+#define PXVIEW_PV_WIDGETS_SIDEBARBUTTON_H
 
 #include <QString>
 #include <QWidget>

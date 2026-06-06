@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_DATA_SESSIONSNAPSHOT_H
-#define DSVIEW_PV_DATA_SESSIONSNAPSHOT_H
+#ifndef PXVIEW_PV_DATA_SESSIONSNAPSHOT_H
+#define PXVIEW_PV_DATA_SESSIONSNAPSHOT_H
 
 #include <stdint.h>
 #include <vector>

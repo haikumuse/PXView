@@ -79,7 +79,7 @@ void* DiskReadCache::load(int channel, uint64_t block_index)
 
     void *buf = malloc((size_t)LeafBlockSpace);
     if (!buf) {
-        dsv_err("DiskReadCache: malloc failed for block load");
+        pxv_err("DiskReadCache: malloc failed for block load");
         return nullptr;
     }
 

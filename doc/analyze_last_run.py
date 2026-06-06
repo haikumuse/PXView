@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import re
 
-log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\DSView.log"
+log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\PXView.log"
 
 with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
     lines = f.readlines()

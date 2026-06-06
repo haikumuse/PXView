@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_WIDGETS_BORDER_H
-#define DSVIEW_PV_WIDGETS_BORDER_H
+#ifndef PXVIEW_PV_WIDGETS_BORDER_H
+#define PXVIEW_PV_WIDGETS_BORDER_H
 
 #include <QWidget>
 
@@ -58,4 +58,4 @@ private:
 } // namespace widgets
 } // namespace pv
 
-#endif // DSVIEW_PV_WIDGETS_BORDER_H
+#endif // PXVIEW_PV_WIDGETS_BORDER_H

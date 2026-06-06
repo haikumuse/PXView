@@ -18,8 +18,8 @@ if sys.stdout.encoding != "utf-8":
 if sys.stderr.encoding != "utf-8":
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-DEFAULT_PROFILE = r"c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\doc\PXView.exe 2026-05-21 09.53 profile.json"
-NM_FILE = r"c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\doc\nm_sorted.txt"
+DEFAULT_PROFILE = r"c:\Users\admin\Downloads\PXView-main_2026_4_27cppnb\doc\PXView.exe 2026-05-21 09.53 profile.json"
+NM_FILE = r"c:\Users\admin\Downloads\PXView-main_2026_4_27cppnb\doc\nm_sorted.txt"
 IMAGE_BASE = 0x140000000
 
 

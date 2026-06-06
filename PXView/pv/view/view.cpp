@@ -1975,7 +1975,7 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
   qDebug() << "View::rebuild_signals_from_config() work_mode="
            << config.work_mode << "ch_count=" << config.channels.size()
            << "is_valid=" << config.is_valid;
-  dsv_info("View::rebuild_signals_from_config() work_mode=%d ch_count=%d "
+  pxv_info("View::rebuild_signals_from_config() work_mode=%d ch_count=%d "
            "is_valid=%d",
            config.work_mode, (int)config.channels.size(), config.is_valid);
 
@@ -2100,7 +2100,7 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 }
 
 void View::rebuild_signals() {
-  dsv_info("View::rebuild_signals() doc=%p has_config=%d", _document,
+  pxv_info("View::rebuild_signals() doc=%p has_config=%d", _document,
            _document ? _document->has_signal_config() : 0);
   if (_document && _document->has_signal_config()) {
     const auto &config = _document->get_signal_config();
@@ -2114,7 +2114,7 @@ void View::rebuild_signals() {
       rebuild_signals_from_config(config);
       return;
     }
-    dsv_info("View::rebuild_signals() config ch_count=%d != device "
+    pxv_info("View::rebuild_signals() config ch_count=%d != device "
              "ch_count=%d, ignore config",
              (int)config.channels.size(), device_ch_count);
   }

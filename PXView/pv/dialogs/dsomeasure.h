@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DSOMEASURE_H
-#define DSVIEW_PV_DSOMEASURE_H
+#ifndef PXVIEW_PV_DSOMEASURE_H
+#define PXVIEW_PV_DSOMEASURE_H
 
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
@@ -79,4 +79,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_DSOMEASURE_H
+#endif // PXVIEW_PV_DSOMEASURE_H

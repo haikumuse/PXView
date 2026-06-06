@@ -37,7 +37,7 @@
 #define THEME_STYLE_DARK   "dark"
 #define THEME_STYLE_LIGHT  "light"
 
-#define APP_NAME  "DSView"
+#define APP_NAME  "PXView"
   
 //--------------------api---
 QString GetIconPath();

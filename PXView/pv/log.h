@@ -20,33 +20,33 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef _DSV_LOG_H_
-#define _DSV_LOG_H_
+#ifndef _PXV_LOG_H_
+#define _PXV_LOG_H_
 
 #include <QString>
 #include <assert.h>
 #include <log/xlog.h>
 
-extern xlog_writer *dsv_log;
+extern xlog_writer *pxv_log;
 
-void dsv_log_init();
-void dsv_log_uninit();
+void pxv_log_init();
+void pxv_log_uninit();
 
-xlog_context *dsv_log_context();
-void dsv_log_level(int l);
+xlog_context *pxv_log_context();
+void pxv_log_level(int l);
 
-void dsv_log_enalbe_logfile(bool append);
-void dsv_remove_log_file();
-void dsv_clear_log_file();
-void dsv_set_log_file_enable(bool flag);
+void pxv_log_enalbe_logfile(bool append);
+void pxv_remove_log_file();
+void pxv_clear_log_file();
+void pxv_set_log_file_enable(bool flag);
 
-QString get_dsv_log_path();
+QString get_pxv_log_path();
 
 #define LOG_PREFIX ""
-#define dsv_err(fmt, args...) xlog_err(dsv_log, LOG_PREFIX fmt, ## args)
-#define dsv_warn(fmt, args...) xlog_warn(dsv_log, LOG_PREFIX fmt, ## args)
-#define dsv_info(fmt, args...) xlog_info(dsv_log, LOG_PREFIX fmt, ## args)
-#define dsv_dbg(fmt, args...) xlog_dbg(dsv_log, LOG_PREFIX fmt, ## args)
-#define dsv_detail(fmt, args...) xlog_detail(dsv_log, LOG_PREFIX fmt, ## args)
+#define pxv_err(fmt, args...) xlog_err(pxv_log, LOG_PREFIX fmt, ## args)
+#define pxv_warn(fmt, args...) xlog_warn(pxv_log, LOG_PREFIX fmt, ## args)
+#define pxv_info(fmt, args...) xlog_info(pxv_log, LOG_PREFIX fmt, ## args)
+#define pxv_dbg(fmt, args...) xlog_dbg(pxv_log, LOG_PREFIX fmt, ## args)
+#define pxv_detail(fmt, args...) xlog_detail(pxv_log, LOG_PREFIX fmt, ## args)
 
 #endif

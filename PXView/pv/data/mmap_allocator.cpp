@@ -43,7 +43,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
         if (!dir.exists()) {
             dir.mkpath(".");
         }
-        _file_path = dir.absoluteFilePath("dsview_mmap_cache.dat");
+        _file_path = dir.absoluteFilePath("pxview_mmap_cache.dat");
         
         _hFile = CreateFileA(_file_path.toUtf8().constData(),
                              GENERIC_READ | GENERIC_WRITE,
@@ -54,7 +54,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
                              NULL);
                              
         if (_hFile == INVALID_HANDLE_VALUE) {
-            dsv_err("MmapAllocator: Failed to create disk cache file %s, error %lu", 
+            pxv_err("MmapAllocator: Failed to create disk cache file %s, error %lu", 
                     _file_path.toUtf8().constData(), GetLastError());
             return false;
         }
@@ -70,7 +70,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
                                NULL);
                                
     if (!_hMap) {
-        dsv_err("MmapAllocator: CreateFileMapping failed, error %lu", GetLastError());
+        pxv_err("MmapAllocator: CreateFileMapping failed, error %lu", GetLastError());
         if (_hFile != INVALID_HANDLE_VALUE) {
             CloseHandle(_hFile);
             _hFile = INVALID_HANDLE_VALUE;
@@ -80,7 +80,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
 
     _base_ptr = MapViewOfFile(_hMap, FILE_MAP_ALL_ACCESS, 0, 0, _total_bytes);
     if (!_base_ptr) {
-        dsv_err("MmapAllocator: MapViewOfFile failed, error %lu", GetLastError());
+        pxv_err("MmapAllocator: MapViewOfFile failed, error %lu", GetLastError());
         CloseHandle(_hMap);
         _hMap = nullptr;
         if (_hFile != INVALID_HANDLE_VALUE) {
@@ -95,14 +95,14 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
         if (!dir.exists()) {
             dir.mkpath(".");
         }
-        _file_path = dir.absoluteFilePath("dsview_mmap_cache.dat");
+        _file_path = dir.absoluteFilePath("pxview_mmap_cache.dat");
         _fd = open(_file_path.toUtf8().constData(), O_RDWR | O_CREAT | O_TRUNC, 0666);
         if (_fd < 0) {
-            dsv_err("MmapAllocator: Failed to open disk cache file");
+            pxv_err("MmapAllocator: Failed to open disk cache file");
             return false;
         }
         if (ftruncate(_fd, _total_bytes) < 0) {
-            dsv_err("MmapAllocator: ftruncate failed");
+            pxv_err("MmapAllocator: ftruncate failed");
             close(_fd);
             _fd = -1;
             return false;
@@ -113,7 +113,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
     }
     
     if (_base_ptr == MAP_FAILED) {
-        dsv_err("MmapAllocator: mmap failed");
+        pxv_err("MmapAllocator: mmap failed");
         _base_ptr = nullptr;
         if (_fd >= 0) {
             close(_fd);
@@ -123,7 +123,7 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
     }
 #endif
 
-    dsv_info("MmapAllocator: Configured successfully, %llu bytes mapped at %p", 
+    pxv_info("MmapAllocator: Configured successfully, %llu bytes mapped at %p", 
              (unsigned long long)_total_bytes, _base_ptr);
     return true;
 }
@@ -136,7 +136,7 @@ void* MmapAllocator::get_block_data(int channel, uint64_t block_index, uint64_t 
     
     uint64_t global_offset = ((uint64_t)channel * max_blocks_per_channel + wrapped_block_index) * block_size;
     if (global_offset + block_size > _total_bytes) {
-        dsv_err("MmapAllocator: Out of bounds access! offset %llu > total %llu", 
+        pxv_err("MmapAllocator: Out of bounds access! offset %llu > total %llu", 
                 (unsigned long long)(global_offset + block_size), (unsigned long long)_total_bytes);
         return nullptr;
     }

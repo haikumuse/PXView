@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DATA_DISK_CACHE_CONFIG_H
-#define DSVIEW_PV_DATA_DISK_CACHE_CONFIG_H
+#ifndef PXVIEW_PV_DATA_DISK_CACHE_CONFIG_H
+#define PXVIEW_PV_DATA_DISK_CACHE_CONFIG_H
 
 #include <string>
 #include <cstdint>

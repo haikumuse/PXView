@@ -30,6 +30,6 @@ ninja install
 cd ..
 #window/package.sh
 cd package
-rm -rf ./DSView.exe
-cp ../install.dir/bin/DSView.exe .
+rm -rf ./PXView.exe
+cp ../install.dir/bin/PXView.exe .
  

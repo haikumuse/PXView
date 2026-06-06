@@ -84,7 +84,7 @@ FftOptions::FftOptions(QWidget *parent, SigSession *session) :
         _sample_limit = _sample_limit * 0.5;
     }
     else {
-        dsv_err("ERROR: config_get SR_CONF_MAX_DSO_SAMPLELIMITS failed.");
+        pxv_err("ERROR: config_get SR_CONF_MAX_DSO_SAMPLELIMITS failed.");
     }
 
     std::vector<QString> windows;

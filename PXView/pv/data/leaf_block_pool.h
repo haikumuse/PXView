@@ -12,8 +12,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef DSVIEW_PV_DATA_LEAF_BLOCK_POOL_H
-#define DSVIEW_PV_DATA_LEAF_BLOCK_POOL_H
+#ifndef PXVIEW_PV_DATA_LEAF_BLOCK_POOL_H
+#define PXVIEW_PV_DATA_LEAF_BLOCK_POOL_H
 
 #include <vector>
 #include <mutex>
@@ -87,4 +87,4 @@ private:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_DATA_LEAF_BLOCK_POOL_H
+#endif // PXVIEW_PV_DATA_LEAF_BLOCK_POOL_H

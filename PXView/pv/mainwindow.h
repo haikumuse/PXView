@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_MAINWINDOW_H
-#define DSVIEW_PV_MAINWINDOW_H
+#ifndef PXVIEW_PV_MAINWINDOW_H
+#define PXVIEW_PV_MAINWINDOW_H
 
 #include <list>
 #include <vector>
@@ -329,4 +329,4 @@ private:
 
 } // namespace pv
 
-#endif // DSVIEW_PV_MAINWINDOW_H
+#endif // PXVIEW_PV_MAINWINDOW_H

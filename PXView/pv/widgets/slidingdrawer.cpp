@@ -1,5 +1,5 @@
 /*
- * This file is part of the DSView project.
+ * This file is part of the PXView project.
  *
  * Copyright (C) 2025 DreamSourceLab <support@dreamsourcelab.com>
  *
@@ -450,7 +450,7 @@ void SlidingDrawer::setSlideOffset(int offset) {
 
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
-  dsv_warn("[DIAG] SlidingDrawer::setSlideOffset took %lld ms: overlay: %lld "
+  pxv_warn("[DIAG] SlidingDrawer::setSlideOffset took %lld ms: overlay: %lld "
            "ms, parentUpdate: %lld ms, offset: %d",
            total, t_overlay, t_update, offset);
 #endif
@@ -479,7 +479,7 @@ void SlidingDrawer::paintEvent(QPaintEvent *event) {
 
 #ifndef NDEBUG
   qint64 total = timer.elapsed();
-  dsv_warn("[DIAG] SlidingDrawer::paintEvent took %lld ms", total);
+  pxv_warn("[DIAG] SlidingDrawer::paintEvent took %lld ms", total);
 #endif
 }
 

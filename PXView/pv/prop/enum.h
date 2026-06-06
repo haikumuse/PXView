@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_PROP_ENUM_H
-#define DSVIEW_PV_PROP_ENUM_H
+#ifndef PXVIEW_PV_PROP_ENUM_H
+#define PXVIEW_PV_PROP_ENUM_H
 
 #include <utility>
 #include <vector>
@@ -60,4 +60,4 @@ private:
 } // prop
 } // pv
 
-#endif // DSVIEW_PV_PROP_ENUM_H
+#endif // PXVIEW_PV_PROP_ENUM_H

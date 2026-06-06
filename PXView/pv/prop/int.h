@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_PROP_INT_H
-#define DSVIEW_PV_PROP_INT_H
+#ifndef PXVIEW_PV_PROP_INT_H
+#define PXVIEW_PV_PROP_INT_H
 
 #include <utility>
 
@@ -66,4 +66,4 @@ private:
 } // prop
 } // pv
 
-#endif // DSVIEW_PV_PROP_INT_H
+#endif // PXVIEW_PV_PROP_INT_H

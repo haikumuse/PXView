@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_TRIGGERDOCK_H
-#define DSVIEW_PV_TRIGGERDOCK_H
+#ifndef PXVIEW_PV_TRIGGERDOCK_H
+#define PXVIEW_PV_TRIGGERDOCK_H
 
 #include <QDockWidget>
 #include <QPushButton>
@@ -171,4 +171,4 @@ private:
 } // namespace dock
 } // namespace pv
 
-#endif // DSVIEW_PV_TRIGGERDOCK_H
+#endif // PXVIEW_PV_TRIGGERDOCK_H

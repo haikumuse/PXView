@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_VIEW_HEADER_H
-#define DSVIEW_PV_VIEW_HEADER_H
+#ifndef PXVIEW_PV_VIEW_HEADER_H
+#define PXVIEW_PV_VIEW_HEADER_H
 
 #include <list>
 #include <utility>
@@ -120,4 +120,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_VIEW_HEADER_H
+#endif // PXVIEW_PV_VIEW_HEADER_H

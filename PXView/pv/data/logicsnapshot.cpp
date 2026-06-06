@@ -143,7 +143,7 @@ void LogicSnapshot::clear() {
 }
 
 void LogicSnapshot::set_disk_cache_config(const DiskCacheConfig &config) {
-  dsv_info("LogicSnapshot::set_disk_cache_config: enabled=%d, path=%s",
+  pxv_info("LogicSnapshot::set_disk_cache_config: enabled=%d, path=%s",
            config.enabled, config.cache_path.c_str());
   _disk_cache_config = config;
 }
@@ -279,7 +279,7 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     }
 
     if (_ch_index.size() == 0) {
-      dsv_info("ERROR: all channels disalbed");
+      pxv_info("ERROR: all channels disalbed");
       assert(0);
     }
   } else {
@@ -309,7 +309,7 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     _cur_ref_block_indexs[i].lbp_index = 0;
   }
 
-  dsv_info("LogicSnapshot::first_payload: disk_cache_config.enabled=%d, "
+  pxv_info("LogicSnapshot::first_payload: disk_cache_config.enabled=%d, "
            "ch_data.size()=%zu",
            _disk_cache_config.enabled, _ch_data.size());
 
@@ -325,7 +325,7 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     bool use_disk = _disk_cache_config.enabled;
     QString disk_dir = QString::fromStdString(_disk_cache_config.cache_path);
     if (!_mmap_alloc->configure(use_disk, disk_dir, total_bytes)) {
-        dsv_err("LogicSnapshot::first_payload: MmapAllocator configure failed!");
+        pxv_err("LogicSnapshot::first_payload: MmapAllocator configure failed!");
     }
   }
 
@@ -389,7 +389,7 @@ void LogicSnapshot::async_write_worker() {
     
     static int packet_count = 0;
     if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
-        dsv_info("async_write_worker: pkt %d, len=%llu, first_bytes: %02x %02x %02x %02x", 
+        pxv_info("async_write_worker: pkt %d, len=%llu, first_bytes: %02x %02x %02x %02x", 
                  packet_count, (unsigned long long)logic.length,
                  logic.length > 0 ? ((uint8_t*)logic.data)[0] : 0,
                  logic.length > 1 ? ((uint8_t*)logic.data)[1] : 0,
@@ -430,7 +430,7 @@ void* LogicSnapshot::allocate_block(uint16_t channel, uint64_t index0, uint64_t 
     if (lbp == NULL) {
         lbp = LeafBlockPool::instance().acquire(LeafBlockSpace);
         if (lbp == NULL) {
-            dsv_err("LogicSnapshot: Malloc memory failed!");
+            pxv_err("LogicSnapshot: Malloc memory failed!");
             return NULL;
         }
     }
@@ -445,7 +445,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
   assert(logic.data);
 
   if (logic.length % 128 != 0) {
-      dsv_warn("append_cross_payload: length %llu is NOT a multiple of 128!", (unsigned long long)logic.length);
+      pxv_warn("append_cross_payload: length %llu is NOT a multiple of 128!", (unsigned long long)logic.length);
   }
 
   uint8_t *data_src_ptr = (uint8_t *)logic.data;
@@ -468,7 +468,7 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
     _sample_count = _total_sample_count;
   }
 
-  // dsv_info("_loop_offset:%llu, _total_sample_count:%llu,
+  // pxv_info("_loop_offset:%llu, _total_sample_count:%llu,
   // _ring_sample_count:%llu, cur samples:%llu",
   //     _loop_offset, _total_sample_count, _ring_sample_count, samples);
 
@@ -650,12 +650,12 @@ void LogicSnapshot::capture_ended() {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       drain_loops++;
       if (drain_loops > 10000) { // 10s safety timeout
-        dsv_err("capture_ended: async queue drain timeout!");
+        pxv_err("capture_ended: async queue drain timeout!");
         break;
       }
     }
     if (drain_loops > 0) {
-      dsv_info("capture_ended: drained async queue in %d ms", drain_loops);
+      pxv_info("capture_ended: drained async queue in %d ms", drain_loops);
     }
   }
 
@@ -677,7 +677,7 @@ void LogicSnapshot::capture_ended() {
       uint8_t *lbp = (uint8_t *)_ch_data[chan][index0].lbp[index1];
 
       if (lbp == NULL) {
-        dsv_err("ERROR:LogicSnapshot::capture_ended(),buffer is null.");
+        pxv_err("ERROR:LogicSnapshot::capture_ended(),buffer is null.");
         assert(false);
       } else {
         // ONLY clear the signal data part, NOT the mipmaps! Mipmaps start at LeafBlockSamples / 8.
@@ -1136,7 +1136,7 @@ bool LogicSnapshot::get_nxt_edge_self(uint64_t &index, bool last_sample,
     bool sample_before =
         (index > 0) ? get_sample_self(index - 1, sig_index) : last_sample;
     if (sample_at_edge == sample_before) {
-      dsv_warn("[GlitchFilter] FAKE EDGE at %llu: before=%d at=%d (same!)",
+      pxv_warn("[GlitchFilter] FAKE EDGE at %llu: before=%d at=%d (same!)",
                (unsigned long long)index, sample_before, sample_at_edge);
     }
   }
@@ -2054,7 +2054,7 @@ void LogicSnapshot::apply_glitch_filter(
   bool accepted_level = get_sample_self(scan_pos, sig_index);
   int last_progress = -1;
 
-  dsv_info("[GlitchFilter] START sig_index=%d threshold=%u max_sample=%llu "
+  pxv_info("[GlitchFilter] START sig_index=%d threshold=%u max_sample=%llu "
            "accepted_level=%d filter_mode=%d",
            sig_index, threshold, (unsigned long long)max_sample,
            accepted_level, (int)filter_mode);
@@ -2080,7 +2080,7 @@ void LogicSnapshot::apply_glitch_filter(
     uint64_t batch_start = fills.front().start;
     uint64_t batch_end = fills.back().end;
 
-    dsv_info(
+    pxv_info(
         "[GlitchFilter] apply_batch fills=%zu batch_start=%llu batch_end=%llu",
         fills.size(), (unsigned long long)batch_start,
         (unsigned long long)batch_end);
@@ -2163,7 +2163,7 @@ void LogicSnapshot::apply_glitch_filter(
                                    sig_index);
 
     if (!found) {
-      dsv_info("[GlitchFilter] no more edges at scan_pos=%llu",
+      pxv_info("[GlitchFilter] no more edges at scan_pos=%llu",
                (unsigned long long)scan_pos);
       break;
     }
@@ -2205,7 +2205,7 @@ void LogicSnapshot::apply_glitch_filter(
           glitch_count++;
 
           if (glitch_count <= 5 || glitch_count % 1000 == 0) {
-            dsv_info(
+            pxv_info(
                 "[GlitchFilter] GLITCH #%llu scan=%llu pulse=[%llu,%llu) "
                 "len=%llu accepted=%d fills=%zu",
                 (unsigned long long)glitch_count, (unsigned long long)scan_pos,
@@ -2226,7 +2226,7 @@ void LogicSnapshot::apply_glitch_filter(
         } else {
           // Not filtering this pulse, treat as stable transition
           stable_count++;
-          dsv_info("[GlitchFilter] SKIP-FILTER #%llu scan=%llu pulse=[%llu,%llu) "
+          pxv_info("[GlitchFilter] SKIP-FILTER #%llu scan=%llu pulse=[%llu,%llu) "
                    "len=%llu old_accepted=%d -> new_accepted=%d (mode=%d)",
                    (unsigned long long)stable_count, (unsigned long long)scan_pos,
                    (unsigned long long)pulse_start, (unsigned long long)pulse_end,
@@ -2238,7 +2238,7 @@ void LogicSnapshot::apply_glitch_filter(
       } else {
         // 判断为稳定的状态迁移：新电平持续了足够长的时间
         stable_count++;
-        dsv_info("[GlitchFilter] STABLE #%llu scan=%llu pulse=[%llu,%llu) "
+        pxv_info("[GlitchFilter] STABLE #%llu scan=%llu pulse=[%llu,%llu) "
                  "len=%llu old_accepted=%d -> new_accepted=%d",
                  (unsigned long long)stable_count, (unsigned long long)scan_pos,
                  (unsigned long long)pulse_start, (unsigned long long)pulse_end,
@@ -2250,7 +2250,7 @@ void LogicSnapshot::apply_glitch_filter(
       }
     } else {
       // 防御性设计：依照状态机逻辑不会跑到这
-      dsv_warn("[GlitchFilter] UNEXPECTED current_scan_level(%d) != "
+      pxv_warn("[GlitchFilter] UNEXPECTED current_scan_level(%d) != "
                "accepted_level(%d) at scan_pos=%llu",
                current_scan_level, accepted_level,
                (unsigned long long)scan_pos);
@@ -2268,29 +2268,29 @@ void LogicSnapshot::apply_glitch_filter(
   apply_batch();
 
   // 验证：采样前100个点，确认数据确实被修改了
-  dsv_info(
+  pxv_info(
       "[GlitchFilter] VERIFY start: sampling first 100 points after filter");
   for (int v = 0; v < 100; v++) {
     uint64_t vpos = _loop_offset + v;
     bool vlevel = get_sample_self(vpos, sig_index);
     if (vlevel != accepted_level) {
-      dsv_info(
+      pxv_info(
           "[GlitchFilter] VERIFY pos=%llu level=%d (MISMATCH! expected=%d)",
           (unsigned long long)vpos, vlevel, accepted_level);
     }
   }
-  dsv_info("[GlitchFilter] VERIFY: also sampling fills region boundaries");
+  pxv_info("[GlitchFilter] VERIFY: also sampling fills region boundaries");
   if (!fills.empty()) {
     for (size_t fi = 0; fi < fills.size() && fi < 5; fi++) {
       uint64_t vpos = fills[fi].start;
       bool vlevel = get_sample_self(vpos, sig_index);
-      dsv_info(
+      pxv_info(
           "[GlitchFilter] VERIFY fill[%zu] start_pos=%llu level=%d expected=%d",
           fi, (unsigned long long)vpos, vlevel, fills[fi].level);
     }
   }
 
-  dsv_info("[GlitchFilter] END sig_index=%d loops=%llu glitches=%llu "
+  pxv_info("[GlitchFilter] END sig_index=%d loops=%llu glitches=%llu "
            "stables=%llu fills_final=%zu",
            sig_index, (unsigned long long)loop_count,
            (unsigned long long)glitch_count, (unsigned long long)stable_count,

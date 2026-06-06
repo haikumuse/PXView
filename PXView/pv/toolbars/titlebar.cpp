@@ -285,7 +285,7 @@ int TitleBar::addCategory(const QString &title) {
   _categoryStack->addWidget(categoryWidget);
   _categoryLayouts.append(categoryLayout);
 
-  dsv_info("TitleBar::addCategory index=%d title='%s'", index,
+  pxv_info("TitleBar::addCategory index=%d title='%s'", index,
            title.toUtf8().constData());
 
   return index;
@@ -293,7 +293,7 @@ int TitleBar::addCategory(const QString &title) {
 
 void TitleBar::addAction(int categoryIndex, QAction *action) {
   if (categoryIndex < 0 || categoryIndex >= _categoryLayouts.size()) {
-    dsv_info("TitleBar::addAction invalid categoryIndex=%d", categoryIndex);
+    pxv_info("TitleBar::addAction invalid categoryIndex=%d", categoryIndex);
     return;
   }
 
@@ -316,7 +316,7 @@ void TitleBar::addAction(int categoryIndex, QAction *action) {
   if (action->icon().isNull()) {
     static QIcon defaultIcon(":/icons/light/gear.svg");
     action->setIcon(defaultIcon);
-    dsv_info("TitleBar::addAction '%s' icon was NULL, set default",
+    pxv_info("TitleBar::addAction '%s' icon was NULL, set default",
              action->text().toUtf8().constData());
   }
 
@@ -327,13 +327,13 @@ void TitleBar::addAction(int categoryIndex, QAction *action) {
     insertPos = 0;
   layout->insertWidget(insertPos, btn);
 
-  dsv_info("TitleBar::addAction categoryIndex=%d action='%s'", categoryIndex,
+  pxv_info("TitleBar::addAction categoryIndex=%d action='%s'", categoryIndex,
            action->text().toUtf8().constData());
 }
 
 void TitleBar::addSeparator(int categoryIndex) {
   if (categoryIndex < 0 || categoryIndex >= _categoryLayouts.size()) {
-    dsv_info("TitleBar::addSeparator invalid categoryIndex=%d", categoryIndex);
+    pxv_info("TitleBar::addSeparator invalid categoryIndex=%d", categoryIndex);
     return;
   }
 
@@ -404,7 +404,7 @@ void TitleBar::expandRibbonPinned() {
   if (!_enableRibbon || !_ribbonAnimation)
     return;
 
-  dsv_info("expandRibbonPinned");
+  pxv_info("expandRibbonPinned");
 
   if (_ribbonAnimation->state() == QAbstractAnimation::Running)
     _ribbonAnimation->stop();
@@ -434,7 +434,7 @@ void TitleBar::hideRibbonPinned() {
   if (!_enableRibbon || !_ribbonAnimation)
     return;
 
-  dsv_info("hideRibbonPinned");
+  pxv_info("hideRibbonPinned");
 
   if (_ribbonAnimation->state() == QAbstractAnimation::Running)
     _ribbonAnimation->stop();
@@ -565,7 +565,7 @@ bool TitleBar::ParentIsMaxsized() {
 void TitleBar::paintEvent(QPaintEvent *event) { QMenuBar::paintEvent(event); }
 
 void TitleBar::resizeEvent(QResizeEvent *event) {
-  dsv_info("TitleBar::resizeEvent old=%dx%d new=%dx%d minH=%d maxH=%d",
+  pxv_info("TitleBar::resizeEvent old=%dx%d new=%dx%d minH=%d maxH=%d",
            event->oldSize().width(), event->oldSize().height(),
            event->size().width(), event->size().height(), minimumHeight(),
            maximumHeight());
@@ -574,13 +574,13 @@ void TitleBar::resizeEvent(QResizeEvent *event) {
   // --- DIAGNOSTIC: Check if QSS has stripped font rendering strategy ---
   {
     QFont appFont = QApplication::font();
-    dsv_info("FONT DIAG: App font: family='%s' strategy=0x%x hinting=%d",
+    pxv_info("FONT DIAG: App font: family='%s' strategy=0x%x hinting=%d",
              appFont.family().toUtf8().constData(),
              (int)appFont.styleStrategy(),
              (int)appFont.hintingPreference());
     if (_title) {
       QFont titleFont = _title->font();
-      dsv_info("FONT DIAG: Title label font: family='%s' strategy=0x%x hinting=%d",
+      pxv_info("FONT DIAG: Title label font: family='%s' strategy=0x%x hinting=%d",
                titleFont.family().toUtf8().constData(),
                (int)titleFont.styleStrategy(),
                (int)titleFont.hintingPreference());
@@ -592,7 +592,7 @@ void TitleBar::resizeEvent(QResizeEvent *event) {
         QWidget *w = layout->itemAt(i)->widget();
         if (w) {
           QFont wf = w->font();
-          dsv_info("FONT DIAG: Ribbon btn[%d] font: family='%s' strategy=0x%x hinting=%d",
+          pxv_info("FONT DIAG: Ribbon btn[%d] font: family='%s' strategy=0x%x hinting=%d",
                    i, wf.family().toUtf8().constData(),
                    (int)wf.styleStrategy(),
                    (int)wf.hintingPreference());
@@ -812,7 +812,7 @@ void TitleBar::onPinToggled(bool checked) {
   if (!_enableRibbon)
     return;
 
-  dsv_info("onPinToggled: checked=%d", checked);
+  pxv_info("onPinToggled: checked=%d", checked);
   _ribbonPinned = checked;
   QString iconPath = GetIconPath();
 

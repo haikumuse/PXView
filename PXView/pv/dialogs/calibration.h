@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_CALIBRATION_H
-#define DSVIEW_PV_CALIBRATION_H
+#ifndef PXVIEW_PV_CALIBRATION_H
+#define PXVIEW_PV_CALIBRATION_H
 
 #include <QDialogButtonBox>
 #include <QPushButton>
@@ -88,4 +88,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_CALIBRATION_H
+#endif // PXVIEW_PV_CALIBRATION_H

@@ -224,7 +224,7 @@ void ProtocolExp::save_proc()
     }
 
     if (row_num == 0){
-        dsv_info("ERROR: There have no decode data row to export.");
+        pxv_info("ERROR: There have no decode data row to export.");
         return;
     }
 

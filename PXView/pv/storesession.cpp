@@ -1,6 +1,6 @@
 /*
  * This file is part of the PulseView project.
- * DSView is based on PulseView.
+ * PXView is based on PulseView.
  *
  * Copyright (C) 2014 Joel Holdsworth <joel@airwebreathe.org.uk>
  * Copyright (C) 2016 DreamSourceLab <support@dreamsourcelab.com>
@@ -143,7 +143,7 @@ bool StoreSession::save_start()
 
     if (type_set.size() > 1) {
         _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR1),
-                "DSView does not currently support\nfile saving for multiple data types.");
+                "PXView does not currently support\nfile saving for multiple data types.");
         return false;
 
     } else if (type_set.size() == 0) {
@@ -239,7 +239,7 @@ void StoreSession::save_logic(pv::data::LogicSnapshot *logic_snapshot)
     int end_block = 0;
 
     if (start_index > logic_snapshot->get_ring_sample_count()){
-        dsv_err("ERROR:the start curosr is invalid!");
+        pxv_err("ERROR:the start curosr is invalid!");
         _units_stored = -1;
         progress_updated();
         return;
@@ -337,7 +337,7 @@ void StoreSession::save_logic(pv::data::LogicSnapshot *logic_snapshot)
                 if (_units_stored > _unit_count 
                         && start_index == 0
                         && end_index == 0){
-                    dsv_err("Read block data error!");
+                    pxv_err("Read block data error!");
                     assert(false);
                 }
 
@@ -519,7 +519,7 @@ void StoreSession::save_proc(data::Snapshot *snapshot)
 
     _is_busy = true;
 
-    dsv_info("save task start.");
+    pxv_info("save task start.");
 
     if ((logic_snapshot = dynamic_cast<data::LogicSnapshot*>(snapshot))) {
         save_logic(logic_snapshot);
@@ -531,7 +531,7 @@ void StoreSession::save_proc(data::Snapshot *snapshot)
         save_dso(dso_snapshot);
     }
  
-    dsv_info("save task end.");
+    pxv_info("save task end.");
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     _is_busy = false;   
@@ -800,7 +800,7 @@ bool StoreSession::export_start()
 
     if (type_set.size() > 1) {
         _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR1), 
-                "DSView does not currently support\nfile export for multiple data types.");
+                "PXView does not currently support\nfile export for multiple data types.");
         return false;
     } else if (type_set.size() == 0) {
         _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR2), "No data to save.");
@@ -852,11 +852,11 @@ void StoreSession::export_proc(data::Snapshot *snapshot)
 {
     _is_busy = true;
 
-    dsv_info("export task start.");
+    pxv_info("export task start.");
 
     export_exec(snapshot);
 
-    dsv_info("export task end.");
+    pxv_info("export task end.");
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     
     _is_busy = false;
@@ -905,7 +905,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
 
     if(_outModule->init){
        if(_outModule->init(&output, params) != SR_OK){
-        dsv_err("Failed to init export module.");
+        pxv_err("Failed to init export module.");
         return;
        }
     }
@@ -991,7 +991,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         int end_block = 0;
 
         if (start_index > logic_snapshot->get_ring_sample_count()){
-            dsv_err("ERROR:the start curosr is invalid!");
+            pxv_err("ERROR:the start curosr is invalid!");
             _units_stored = -1;
             progress_updated();
             return;
@@ -1093,7 +1093,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
 
         uint8_t *ch_data_buffer = (uint8_t*)malloc(usize * dso_snapshot->get_channel_num() + 1);
         if (ch_data_buffer == NULL){
-            dsv_err("StoreSession::export_proc, malloc failed.");
+            pxv_err("StoreSession::export_proc, malloc failed.");
             return;
         }
 
@@ -1173,7 +1173,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
             if (sample_count == 0)
                 break;
 
-            //dsv_info("sample_count:%llu,total:%llu", sample_count, unit_count);
+            //pxv_info("sample_count:%llu,total:%llu", sample_count, unit_count);
 
             for(uint64_t i = 0; i < sample_count; i += usize){
                 
@@ -1202,7 +1202,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                 _units_stored += size;
                 progress_updated();
 
-               // dsv_info("size:%llu;_units_stored:%llu", size, _units_stored);
+               // pxv_info("size:%llu;_units_stored:%llu", size, _units_stored);
             }
         }
     }
@@ -1322,12 +1322,12 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
 {
     if (_session->get_device()->get_work_mode() != LOGIC)
     {
-        dsv_info("StoreSession::load_decoders(), is not LOGIC mode.");
+        pxv_info("StoreSession::load_decoders(), is not LOGIC mode.");
         return false;
     }
 
     if (dec_array.isEmpty()){
-        dsv_info("StoreSession::load_decoders(), json object array is empty.");
+        pxv_info("StoreSession::load_decoders(), json object array is empty.");
         return false;
     }
 
@@ -1624,7 +1624,7 @@ QString StoreSession::MakeSaveFile(bool bDlg)
             L_S(STR_PAGE_MSG, S_ID(IDS_MSG_SAVE_FILE),"Save File"),
             default_name,
             //tr
-            "DSView Data (*.pxl)");
+            "PXView Data (*.pxl)");
 
         if (default_name.isEmpty())
         {

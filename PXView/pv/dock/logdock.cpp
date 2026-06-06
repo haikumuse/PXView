@@ -108,7 +108,7 @@ LogDock::LogDock(QWidget *parent)
   _open_btn->setObjectName("log_open_btn");
   connect(_open_btn, &QPushButton::clicked, this, &LogDock::on_open_log_file);
 
-  QFile qf(get_dsv_log_path());
+  QFile qf(get_pxv_log_path());
   if (!qf.exists()) {
     _open_btn->setEnabled(false);
   }
@@ -148,7 +148,7 @@ LogDock::LogDock(QWidget *parent)
   connect(&_buffer_timer, &QTimer::timeout, this, &LogDock::on_flush_buffer);
   _buffer_timer.start();
 
-  xlog_context *ctx = dsv_log_context();
+  xlog_context *ctx = pxv_log_context();
   if (ctx) {
     xlog_add_receiver(ctx, on_log_callback, &_callback_index);
   }
@@ -161,7 +161,7 @@ LogDock::LogDock(QWidget *parent)
 LogDock::~LogDock() {
   _buffer_timer.stop();
 
-  xlog_context *ctx = dsv_log_context();
+  xlog_context *ctx = pxv_log_context();
   if (ctx && _callback_index >= 0) {
     xlog_remove_receiver_by_index(ctx, _callback_index);
   }
@@ -182,7 +182,7 @@ void LogDock::bind_context(TabContext *ctx) { (void)ctx; }
 void LogDock::unbind_context() {}
 
 void LogDock::load_log_file() {
-  QString log_path = get_dsv_log_path();
+  QString log_path = get_pxv_log_path();
   QFile file(log_path);
   if (!file.exists()) {
     _log_view->setPlainText(
@@ -250,14 +250,14 @@ void LogDock::showEvent(QShowEvent *event) {
 }
 
 void LogDock::on_clear() {
-  dsv_clear_log_file();
+  pxv_clear_log_file();
   _log_view->clear();
-  QFile qf(get_dsv_log_path());
+  QFile qf(get_pxv_log_path());
   _open_btn->setEnabled(qf.exists());
 }
 
 void LogDock::on_level_changed(int index) {
-  dsv_log_level(index);
+  pxv_log_level(index);
   AppConfig::Instance().appOptions.logLevel = index;
   AppConfig::Instance().SaveApp();
 }
@@ -277,11 +277,11 @@ void LogDock::on_save_to_file_changed(int state) {
   app.SaveApp();
 
   if (checked) {
-    dsv_log_enalbe_logfile(false);
+    pxv_log_enalbe_logfile(false);
   }
-  dsv_set_log_file_enable(checked);
+  pxv_set_log_file_enable(checked);
 
-  QFile qf(get_dsv_log_path());
+  QFile qf(get_pxv_log_path());
   _open_btn->setEnabled(qf.exists());
 }
 
@@ -293,9 +293,9 @@ void LogDock::on_append_mode_changed(int state) {
 }
 
 void LogDock::on_open_log_file() {
-  QFile qf(get_dsv_log_path());
+  QFile qf(get_pxv_log_path());
   if (qf.exists()) {
-    QDesktopServices::openUrl(QUrl("file:///" + get_dsv_log_path()));
+    QDesktopServices::openUrl(QUrl("file:///" + get_pxv_log_path()));
   } else {
     QString strMsg(
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FILE_NOT_EXIST), "Not exist!"));

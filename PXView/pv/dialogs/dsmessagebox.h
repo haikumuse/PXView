@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DSMESSAGEBOX_H
-#define DSVIEW_PV_DSMESSAGEBOX_H
+#ifndef PXVIEW_PV_DSMESSAGEBOX_H
+#define PXVIEW_PV_DSMESSAGEBOX_H
 
 #include <QDialog>
 #include <QWidget>
@@ -72,4 +72,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_DSMESSAGEBOX_H
+#endif // PXVIEW_PV_DSMESSAGEBOX_H

@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_MATHTRACE_H
-#define DSVIEW_PV_MATHTRACE_H
+#ifndef PXVIEW_PV_MATHTRACE_H
+#define PXVIEW_PV_MATHTRACE_H
 
 #include "trace.h" 
 
@@ -168,4 +168,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_MATHTRACE_H
+#endif // PXVIEW_PV_MATHTRACE_H

@@ -75,7 +75,7 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data, sr_channel *probe) :
     bool ret  = session->get_device()->get_config_byte(SR_CONF_UNIT_BITS, _bits);
     if (!ret) { 
         _bits = DefaultBits;
-        dsv_warn("%s%d", "Warning: config_get SR_CONF_UNIT_BITS failed, set to %d(default).", DefaultBits);
+        pxv_warn("%s%d", "Warning: config_get SR_CONF_UNIT_BITS failed, set to %d(default).", DefaultBits);
     }
 
     ret = session->get_device()->get_config_uint32(SR_CONF_REF_MIN, ui32);
@@ -93,7 +93,7 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data, sr_channel *probe) :
     // -- vpos
     ret = session->get_device()->get_config_uint16( SR_CONF_PROBE_OFFSET, _zero_offset, _probe, NULL);
     if (!ret) {
-        dsv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
+        pxv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
     }
 }
 
@@ -297,7 +297,7 @@ uint64_t AnalogSignal::get_factor()
         return factor;
     } 
     else { 
-        dsv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
+        pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
         return 1;
     }
 }

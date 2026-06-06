@@ -75,17 +75,17 @@ void TabContext::activate()
     _state = LIVE;
     if (_document && _document->has_signal_config()) {
         if (!_session->is_working()) {
-            dsv_info("TabContext::activate() applying signal config, work_mode=%d ch_count=%d",
+            pxv_info("TabContext::activate() applying signal config, work_mode=%d ch_count=%d",
                 _document->get_signal_config().work_mode,
                 (int)_document->get_signal_config().channels.size());
             _document->apply_signal_config(_session->get_device());
             _session->reload();
         } else {
-            dsv_info("TabContext::activate() session working, saving pending config");
+            pxv_info("TabContext::activate() session working, saving pending config");
             _document->_pending_device_config = _document->_signal_config;
         }
         _view->rebuild_signals_from_config(_document->get_signal_config());
-        dsv_info("TabContext::activate() rebuild_signals_from_config done, own_signals=%d",
+        pxv_info("TabContext::activate() rebuild_signals_from_config done, own_signals=%d",
             (int)_view->get_own_signals().size());
     }
     if (_document && _document->has_data()) {
@@ -105,17 +105,17 @@ void TabContext::activate()
         // so waveforms remain visible during active capture or background copy.
         _view->set_signal_data_from_source(_session);
     } else {
-        dsv_info("TabContext::activate() no data, clearing signal data bindings");
+        pxv_info("TabContext::activate() no data, clearing signal data bindings");
         _view->clear_signal_data();
     }
     _view->update_scale_offset();
     _view->signals_changed(nullptr);
-    dsv_info("TabContext::activate() completed");
+    pxv_info("TabContext::activate() completed");
 }
 
 void TabContext::deactivate()
 {
-    dsv_info("TabContext::deactivate() doc=%p", _document);
+    pxv_info("TabContext::deactivate() doc=%p", _document);
     if (_document) {
         _document->save_signal_config(_session->get_device());
     }

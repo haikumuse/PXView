@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_ABOUT_H
-#define DSVIEW_PV_ABOUT_H
+#ifndef PXVIEW_PV_ABOUT_H
+#define PXVIEW_PV_ABOUT_H
 
 #include <QLabel>
 #include "dsdialog.h"
@@ -44,4 +44,4 @@ public:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_ABOUT_H
+#endif // PXVIEW_PV_ABOUT_H

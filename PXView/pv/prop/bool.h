@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_PROP_BOOL_H
-#define DSVIEW_PV_PROP_BOOL_H
+#ifndef PXVIEW_PV_PROP_BOOL_H
+#define PXVIEW_PV_PROP_BOOL_H
 
 #include "property.h"
 
@@ -57,4 +57,4 @@ private:
 } // prop
 } // pv
 
-#endif // DSVIEW_PV_PROP_BOOL_H
+#endif // PXVIEW_PV_PROP_BOOL_H

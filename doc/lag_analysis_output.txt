@@ -1,7 +1,7 @@
 ==========================================================================================
 PXView GUI Lag Analysis - Capture & Decode Profile
 ==========================================================================================
-Profile: c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\doc\PXView.exe 2026-05-21 09.53 profile.json
+Profile: c:\Users\admin\Downloads\PXView-main_2026_4_27cppnb\doc\PXView.exe 2026-05-21 09.53 profile.json
 
 Loaded 10734 symbols from nm output
 ==========================================================================================

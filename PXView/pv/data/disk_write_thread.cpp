@@ -44,7 +44,7 @@ DiskWriteThread::DiskWriteThread(DiskBufferManager *manager) :
     _disk_full(false),
     _cache_size_bytes(0)
 {
-    dsv_info("DiskWriteThread: Created new write thread, manager=%p", manager);
+    pxv_info("DiskWriteThread: Created new write thread, manager=%p", manager);
 }
 
 DiskWriteThread::~DiskWriteThread()
@@ -75,7 +75,7 @@ bool DiskWriteThread::start()
     }
 
     _thread = thread(&DiskWriteThread::thread_func, this);
-    dsv_info("DiskWriteThread: started");
+    pxv_info("DiskWriteThread: started");
     return true;
 }
 
@@ -103,7 +103,7 @@ void DiskWriteThread::stop()
         _running = false;
     }
 
-    dsv_info("DiskWriteThread: stopped");
+    pxv_info("DiskWriteThread: stopped");
 }
 
 void DiskWriteThread::flush()
@@ -128,7 +128,7 @@ void DiskWriteThread::submit(WriteTask task)
         _queue.push(task);
         static int _last_log_depth = -1;
         if ((_queue.size() % 10 == 0 || task.block_index < 5) && _queue.size() != _last_log_depth) {
-            dsv_info("DiskWriteThread: submit task ch=%d blk=%llu (queue depth %zu)", task.channel, (unsigned long long)task.block_index, _queue.size());
+            pxv_info("DiskWriteThread: submit task ch=%d blk=%llu (queue depth %zu)", task.channel, (unsigned long long)task.block_index, _queue.size());
             _last_log_depth = _queue.size();
         }
     }
@@ -149,7 +149,7 @@ double DiskWriteThread::write_speed_mbps()
 
 void DiskWriteThread::thread_func()
 {
-    dsv_info("DiskWriteThread: thread started");
+    pxv_info("DiskWriteThread: thread started");
 
     while (true) {
         WriteTask task;
@@ -184,7 +184,7 @@ void DiskWriteThread::thread_func()
                 _disk_full = true;
                 do_write = false;
                 warn_disk_full = true;
-                dsv_err("DiskWriteThread: disk space low, stopping writes");
+                pxv_err("DiskWriteThread: disk space low, stopping writes");
             }
 
             if (warn_disk_full && on_warning)
@@ -197,7 +197,7 @@ void DiskWriteThread::thread_func()
                 if (ok) {
                     static int _last_written = -1;
                     if ((task.block_index % 10 == 0 || task.block_index < 5) && task.block_index != _last_written) {
-                        dsv_info("DiskWriteThread: successfully wrote ch=%d blk=%llu", task.channel, (unsigned long long)task.block_index);
+                        pxv_info("DiskWriteThread: successfully wrote ch=%d blk=%llu", task.channel, (unsigned long long)task.block_index);
                         _last_written = task.block_index;
                     }
                     auto now = steady_clock::now();
@@ -226,7 +226,7 @@ void DiskWriteThread::thread_func()
                     }
                 }
             } else {
-                dsv_err("DiskWriteThread: write failed ch=%d blk=%llu",
+                pxv_err("DiskWriteThread: write failed ch=%d blk=%llu",
                     task.channel, (unsigned long long)task.block_index);
                 if (on_warning) {
                     on_warning("Disk write failed for channel " +
@@ -247,7 +247,7 @@ void DiskWriteThread::thread_func()
         }
     }
 
-    dsv_info("DiskWriteThread: thread exiting");
+    pxv_info("DiskWriteThread: thread exiting");
 }
 
 bool DiskWriteThread::is_disk_full()

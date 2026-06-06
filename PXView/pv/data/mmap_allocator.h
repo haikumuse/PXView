@@ -1,5 +1,5 @@
-#ifndef DSVIEW_PV_DATA_MMAP_ALLOCATOR_H
-#define DSVIEW_PV_DATA_MMAP_ALLOCATOR_H
+#ifndef PXVIEW_PV_DATA_MMAP_ALLOCATOR_H
+#define PXVIEW_PV_DATA_MMAP_ALLOCATOR_H
 
 #include <string>
 #include <cstdint>
@@ -42,4 +42,4 @@ private:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_DATA_MMAP_ALLOCATOR_H
+#endif // PXVIEW_PV_DATA_MMAP_ALLOCATOR_H
