@@ -416,6 +416,10 @@
         "text": "啟用浮動測量"
     },
     {
+        "id": "IDS_DLG_PANEL_ALPHA_NOTE",
+        "text": "*在 選項 → 樣式 → 全域顏色 → 懸浮面板背景 中調整 Alpha 通道值可更改面板透明度"
+    },
+    {
         "id": "IDS_DLG_CURSOR_DISTANCE",
         "text": "游標距離"
     },
@@ -1064,6 +1068,14 @@
         "text": "Ayu Light"
     },
     {
+        "id": "IDS_DLG_STYLE_DARK_CARDS",
+        "text": "深色（彩色卡片）"
+    },
+    {
+        "id": "IDS_DLG_STYLE_LIGHT_CARDS",
+        "text": "淺色（彩色卡片）"
+    },
+    {
         "id": "IDS_DLG_STYLE_PRESET",
         "text": "預設主題："
     },
@@ -1158,6 +1170,14 @@
     {
         "id": "IDS_STYLE_GROUP_CARD_BG",
         "text": "波形分組卡片顏色"
+    },
+    {
+        "id": "IDS_STYLE_GROUP_CARD_COLORED",
+        "text": "彩色分組卡片"
+    },
+    {
+        "id": "IDS_STYLE_GROUP_CARD_COLORED_DESC",
+        "text": "使用通道信號顏色作為分組卡片背景色"
     },
     {
         "id": "IDS_STYLE_FG_BASE",

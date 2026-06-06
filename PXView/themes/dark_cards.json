@@ -1,8 +1,9 @@
 {
-  "name": "PXView Dark",
+  "name": "PXView Dark (Colored Cards)",
   "type": "dark",
   "tokens": {
     "@icon-dir": "dark",
+    "@group-card-colored": "true",
     "@bg-base": "#202020",
     "@bg-overlay": "#2d2d2d",
     "@titlebar-bg": "#202020",
@@ -52,7 +53,6 @@
     "@icon-special": "#1e90ff",
     "@icon-foreground": "#999999",
     "@group-card-bg": "#1A1A1A",
-    "@group-card-colored": "false",
     "@panel-bg": "#1a1a1a",
     "@panel-text": "#f5f0e5",
     "@signal-red": "#D50F25",

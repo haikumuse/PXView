@@ -47,6 +47,7 @@
 #include "ruler.h"
 #include "signal.h"
 #include "spectrumtrace.h"
+#include "trace.h"
 #include "view.h"
 #include "viewport.h"
 
@@ -712,6 +713,36 @@ QColor View::get_group_card_color() {
     return QColor(0x1a, 0x1a, 0x1a);
   else
     return QColor(0xfa, 0xfa, 0xfa);
+}
+
+bool View::is_colored_card_mode() {
+  QString val = AppConfig::Instance().GetThemeTokenValue("@group-card-colored");
+  return val == "true";
+}
+
+QColor View::get_group_card_color(int group_index) {
+  if (is_colored_card_mode()) {
+    const auto &groups = get_signal_groups();
+    if (group_index >= 0 && group_index < (int)groups.size()) {
+      const auto &group = groups[group_index];
+      if (!group.traces.empty()) {
+        auto *trace = group.traces[0];
+        auto index_list = trace->get_index_list();
+        if (!index_list.empty()) {
+          int idx = *index_list.begin() % 8;
+          QString token = QString("@logic-channel-%1").arg(idx);
+          QColor signalColor = AppConfig::Instance().GetThemeColor(token);
+          if (!signalColor.isValid())
+            signalColor = Trace::PROBE_COLORS[idx];
+          // PulseView style: signal color + 8% alpha
+          QColor bgColor = signalColor;
+          bgColor.setAlpha(8 * 255 / 100);
+          return bgColor;
+        }
+      }
+    }
+  }
+  return get_group_card_color();
 }
 
 void View::timebase_changed() {

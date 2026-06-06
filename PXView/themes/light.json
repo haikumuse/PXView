@@ -52,6 +52,7 @@
     "@icon-special": "#1e90ff",
     "@icon-foreground": "#666666",
     "@group-card-bg": "#FAFAFA",
+    "@group-card-colored": "false",
     "@panel-bg": "#1a1a1a",
     "@panel-text": "#f5f0e5",
     "@signal-red": "#D50F25",

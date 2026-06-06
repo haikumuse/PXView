@@ -546,6 +546,12 @@ QWidget *ApplicationParamDlg::createStylePage() {
   _preset_combo->addItem(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_AYU), "Ayu Light"),
       ":/ayu.json");
+  _preset_combo->addItem(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_DARK_CARDS), "Dark (Colored Cards)"),
+      ":/dark_cards.json");
+  _preset_combo->addItem(
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_LIGHT_CARDS), "Light (Colored Cards)"),
+      ":/light_cards.json");
 
   QString userThemePath =
       QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) +
@@ -732,6 +738,18 @@ QWidget *ApplicationParamDlg::createStylePage() {
 
         QObject::connect(colorBtn, &QPushButton::clicked, colorBtn,
                          [this, tId]() { onStyleTokenColorChanged(tId); });
+      } else if (tType == "bool") {
+        QCheckBox *checkBox = new QCheckBox();
+        checkBox->setChecked(currentValue == "true");
+        rowLay->addStretch();
+        rowLay->addWidget(checkBox);
+
+        _style_checkbox_widgets[tId] = checkBox;
+
+        QObject::connect(checkBox, &QCheckBox::toggled, checkBox,
+                         [this, tId](bool checked) {
+                           onStyleTokenBoolChanged(tId, checked);
+                         });
       } else {
         QLineEdit *lineEdit = new QLineEdit(currentValue);
         lineEdit->setFixedWidth(130);
@@ -929,6 +947,18 @@ void ApplicationParamDlg::onStyleTokenColorChanged(const QString &tokenName) {
 void ApplicationParamDlg::onStyleTokenTextChanged(const QString &tokenName,
                                                   const QString &value) {
   _style_tokens[tokenName] = value;
+
+  if (_preset_combo) {
+    bool oldState = _preset_combo->blockSignals(true);
+    _preset_combo->setCurrentIndex(0);
+    _preset_combo->blockSignals(oldState);
+  }
+  // scheduleLivePreview();
+}
+
+void ApplicationParamDlg::onStyleTokenBoolChanged(const QString &tokenName,
+                                                   bool checked) {
+  _style_tokens[tokenName] = checked ? "true" : "false";
 
   if (_preset_combo) {
     bool oldState = _preset_combo->blockSignals(true);
@@ -1509,6 +1539,11 @@ void ApplicationParamDlg::refreshStyleWidgets() {
     }
     if (_style_line_edit_widgets.contains(tokenName)) {
       _style_line_edit_widgets[tokenName]->setText(value);
+    }
+    if (_style_checkbox_widgets.contains(tokenName)) {
+      _style_checkbox_widgets[tokenName]->blockSignals(true);
+      _style_checkbox_widgets[tokenName]->setChecked(value == "true");
+      _style_checkbox_widgets[tokenName]->blockSignals(false);
     }
   }
 }

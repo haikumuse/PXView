@@ -133,9 +133,6 @@ void Header::paintEvent(QPaintEvent *) {
   if (_view.session().get_device()->get_work_mode() == LOGIC) {
     const auto &groups = _view.get_signal_groups();
     if (!groups.empty()) {
-      QColor cardColor = _view.get_group_card_color();
-
-      // 创建索引数组并按组的实际位置排序
       std::vector<size_t> group_indices(groups.size());
       for (size_t i = 0; i < groups.size(); i++)
         group_indices[i] = i;
@@ -169,7 +166,7 @@ void Header::paintEvent(QPaintEvent *) {
 
         QRectF cardRect(0, cardTop, w + View::GroupCardRadius + 1, cardHeight);
         painter.setPen(Qt::NoPen);
-        painter.setBrush(cardColor);
+        painter.setBrush(_view.get_group_card_color(group_indices[idx]));
         painter.drawRoundedRect(cardRect, View::GroupCardRadius,
                                 View::GroupCardRadius);
       }

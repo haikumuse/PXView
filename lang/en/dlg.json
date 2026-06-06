@@ -416,6 +416,10 @@
         "text": "Enable floating measurement"
     },
     {
+        "id": "IDS_DLG_PANEL_ALPHA_NOTE",
+        "text": "*Adjust the alpha channel of \"Panel Background\" in Options > Style > Global Colors to change panel transparency"
+    },
+    {
         "id": "IDS_DLG_CURSOR_DISTANCE",
         "text": "Cursor Distance"
     },
@@ -1064,6 +1068,14 @@
         "text": "Ayu Light"
     },
     {
+        "id": "IDS_DLG_STYLE_DARK_CARDS",
+        "text": "Dark (Colored Cards)"
+    },
+    {
+        "id": "IDS_DLG_STYLE_LIGHT_CARDS",
+        "text": "Light (Colored Cards)"
+    },
+    {
         "id": "IDS_DLG_STYLE_PRESET",
         "text": "Preset Theme:"
     },
@@ -1158,6 +1170,14 @@
     {
         "id": "IDS_STYLE_GROUP_CARD_BG",
         "text": "Waveform Group Card"
+    },
+    {
+        "id": "IDS_STYLE_GROUP_CARD_COLORED",
+        "text": "Colored Group Cards"
+    },
+    {
+        "id": "IDS_STYLE_GROUP_CARD_COLORED_DESC",
+        "text": "Use channel signal color as group card background"
     },
     {
         "id": "IDS_STYLE_FG_BASE",

@@ -56,6 +56,23 @@ namespace dock {
 
 using namespace pv::view;
 
+class NoteLabel : public QLabel {
+public:
+    explicit NoteLabel(QWidget* parent = nullptr) : QLabel(parent) {}
+    QSize sizeHint() const override {
+        return QSize(10, 10);
+    }
+    QSize minimumSizeHint() const override {
+        return QSize(10, 10);
+    }
+    bool hasHeightForWidth() const override {
+        return true;
+    }
+    int heightForWidth(int w) const override {
+        return QLabel::heightForWidth(w);
+    }
+};
+
 MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     pv::widgets::SmoothScrollArea(parent),
     _session(session),
@@ -82,6 +99,11 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     _duty_label = new QLabel(_mouse_section);
     _duty_label->setObjectName("dock_label");
 
+    _panel_alpha_note = new NoteLabel(_widget);
+    _panel_alpha_note->setObjectName("dock_label");
+    _panel_alpha_note->setWordWrap(true);
+    _panel_alpha_note->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+
     _w_label = new QLabel(_mouse_section);
     _w_label->setObjectName("dock_label");
     _p_label = new QLabel(_mouse_section);
@@ -103,7 +125,7 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     mouse_layout->addWidget(_d_label, 2, 0);
     mouse_layout->addWidget(_duty_label, 2, 1);
     mouse_layout->addWidget(_f_label, 2, 3);
-    mouse_layout->addWidget(_freq_label, 2, 4);    
+    mouse_layout->addWidget(_freq_label, 2, 4);
 
     mouse_layout->setContentsMargins(5, 2, 5, 5);
     QVBoxLayout *mouse_vbox = new QVBoxLayout(_mouse_section);
@@ -179,6 +201,7 @@ MeasureDock::MeasureDock(QWidget *parent, View *view, SigSession *session) :
     QVBoxLayout *layout = new QVBoxLayout(_widget);
     layout->setContentsMargins(12, 8, 12, 8);
     layout->addWidget(_mouse_section);
+    layout->addWidget(_panel_alpha_note);
     QFrame *sep1 = new QFrame(_widget);
     sep1->setObjectName("dock_section_separator");
     sep1->setFrameShape(QFrame::HLine);
@@ -350,6 +373,7 @@ void MeasureDock::retranslateUi()
 {
     _mouse_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MOUSE_MEASUREMENT), "Mouse measurement"));
     _fen_checkBox->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_ENABLE_FLOATING_MEASUREMENT), "Enable floating measurement"));
+    _panel_alpha_note->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_PANEL_ALPHA_NOTE), "*Adjust the alpha channel of \"Panel Background\" in Settings > Style > Global Colors to change panel transparency"));
     _dist_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CURSOR_DISTANCE), "Cursor Distance"));
     _edge_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_EDGES), "Edges"));
     _cursor_title->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CURSORS), "Cursors"));
@@ -1205,6 +1229,8 @@ void MeasureDock::adjust_form_size(QWidget *wid)
     auto labels = wid->findChildren<QLabel*>();
     for(auto o : labels)
     { 
+        if (o->wordWrap()) continue; // Never force fixed width on wrapped labels
+        
         QFontMetrics labelFm(o->font());
         QRect rc = labelFm.boundingRect(o->text());
         QSize size(rc.width() + 15, rc.height()); 
