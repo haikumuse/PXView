@@ -1173,7 +1173,9 @@ void DsoSignal::paint_envelope(QPainter &p,
 }
 
 void DsoSignal::paint_type_options(QPainter &p, int right, const QPoint pt, QColor fore)
-{ 
+{
+    pxv_info("[DEBUG-DSO] paint_type_options: name=%s, y=%d, right=%d, enabled=%d, visible=%d",
+             _name.toUtf8().data(), get_y(), right, enabled(), visible());
     p.setRenderHint(QPainter::Antialiasing, true);
 
     QColor foreBack = fore;

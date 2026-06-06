@@ -121,6 +121,17 @@ void Header::paintEvent(QPaintEvent *) {
   std::vector<Trace *> traces;
   _view.get_traces(ALL_VIEW, traces);
 
+  int dso_count = 0;
+  for (auto t : traces) {
+    if (t->signal_type() == SR_CHANNEL_DSO) {
+      dso_count++;
+      pxv_info("[DEBUG-DSO] Header trace: name=%s, y=%d, enabled=%d, visible=%d, totalH=%d",
+               t->get_name().toUtf8().data(), t->get_y(), t->enabled(), t->visible(), t->get_totalHeight());
+    }
+  }
+  pxv_info("[DEBUG-DSO] Header::paintEvent: traces=%d, dso_count=%d, work_mode=%d, vOffset=%d, header_h=%d, header_w=%d",
+           (int)traces.size(), dso_count, _view.get_work_mode(), _view.get_vOffset(), height(), width());
+
   const bool dragging = !_drag_traces.empty();
   QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
   fore.setAlpha(View::ForeAlpha);
@@ -129,7 +140,11 @@ void Header::paintEvent(QPaintEvent *) {
   painter.setFont(font);
 
   painter.save();
-  painter.translate(0, -_view.get_vOffset());
+  pxv_info("[DEBUG-DSO] Header::paintEvent: work_mode=%d, vOffset=%d, header_h=%d",
+           _view.get_work_mode(), _view.get_vOffset(), height());
+  if (_view.get_work_mode() != DSO) {
+    painter.translate(0, -_view.get_vOffset());
+  }
 
   if (_view.get_work_mode() == LOGIC) {
     const auto &groups = _view.get_signal_groups();
