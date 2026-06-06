@@ -1,0 +1,4 @@
+- [x] View::get_work_mode() 方法已声明并实现，优先从 document 获取模式
+- [x] viewport.cpp 中所有 get_work_mode() 查询已替换为 _view.get_work_mode()
+- [x] header.cpp 中所有 get_work_mode() 查询已替换为 _view.get_work_mode()
+- [x] 项目编译通过无错误

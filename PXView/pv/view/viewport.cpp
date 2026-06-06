@@ -295,7 +295,7 @@ int Viewport::get_total_height() {
   std::vector<Trace *> traces;
   _view.get_traces(_type, traces);
 
-  if (_view.session().get_device()->get_work_mode() == LOGIC &&
+  if (_view.get_work_mode() == LOGIC &&
       _type == TIME_VIEW) {
     const auto &groups = _view.get_signal_groups();
     if (!groups.empty()) {
@@ -409,7 +409,7 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
   qint64 t_group_cards = 0;
 #endif
   if (_type == TIME_VIEW &&
-      _view.session().get_device()->get_work_mode() == LOGIC) {
+      _view.get_work_mode() == LOGIC) {
 #ifndef NDEBUG
     QElapsedTimer groupTimer;
     groupTimer.start();
@@ -497,7 +497,7 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
 
   std::set<Trace *> lastInGroup;
   if (_type == TIME_VIEW &&
-      _view.session().get_device()->get_work_mode() == LOGIC) {
+      _view.get_work_mode() == LOGIC) {
     const auto &groups = _view.get_signal_groups();
     for (const auto &group : groups) {
       if (group.traces.empty())
@@ -560,7 +560,7 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
   QElapsedTimer signalsTimer;
   signalsTimer.start();
 #endif
-  int mode = _view.session().get_device()->get_work_mode();
+  int mode = _view.get_work_mode();
 
   if (mode == LOGIC || _view.session().is_instant()) {
     if (_view.session().is_init_status()) {
@@ -662,7 +662,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 
   bool rebuilt = false;
 
-  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+  if (_view.get_work_mode() == LOGIC) {
     // Determine if view parameters changed (requires full logic signal rebuild)
     bool view_params_changed =
         (_view.scale() != _curScale || _view.offset() != _curOffset ||
@@ -786,7 +786,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 
       bool isLissa = false;
 
-      if (_view.session().get_device()->get_work_mode() == DSO) {
+      if (_view.get_work_mode() == DSO) {
         auto lis_trace = _view.effective_data_source()->get_lissajous_trace();
         if (lis_trace && lis_trace->enabled()) {
           isLissa = true;
@@ -921,7 +921,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 #endif
 
     // plot trigger information
-    if (_view.session().get_device()->get_work_mode() == DSO &&
+    if (_view.get_work_mode() == DSO &&
         _view.session().is_running_status()) {
       int type;
       bool roll = false;
@@ -1020,7 +1020,7 @@ void Viewport::get_captured_progress(double &progress, int &progress100) {
 void Viewport::paintProgress(QPainter &p, QColor fore, QColor back) {
   (void)back;
 
-  if (_view.session().get_device()->get_work_mode() == LOGIC &&
+  if (_view.get_work_mode() == LOGIC &&
       _view.session().is_repeat_mode()) {
     return;
   }
@@ -1118,7 +1118,7 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
   _elapsed_time.restart();
 
   if (_type == TIME_VIEW &&
-      _view.session().get_device()->get_work_mode() == LOGIC) {
+      _view.get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(TIME_VIEW, traces);
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
@@ -1164,9 +1164,9 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
 
   if (_action_type == NO_ACTION && event->button() == Qt::RightButton &&
       _view.session().is_stopped_status()) {
-    if (_view.session().get_device()->get_work_mode() == LOGIC) {
+    if (_view.get_work_mode() == LOGIC) {
       set_action(LOGIC_ZOOM);
-    } else if (_view.session().get_device()->get_work_mode() == DSO) {
+    } else if (_view.get_work_mode() == DSO) {
       if (_hover_hit) {
         const int64_t index =
             _view.pixel2index(event->position().toPoint().x());
@@ -1177,7 +1177,7 @@ void Viewport::mousePressEvent(QMouseEvent *event) {
   }
 
   if (_action_type == NO_ACTION && event->button() == Qt::LeftButton &&
-      _view.session().get_device()->get_work_mode() == DSO) {
+      _view.get_work_mode() == DSO) {
 
     for (auto s : _view.get_own_signals()) {
       if (s->signal_type() == SR_CHANNEL_DSO && s->enabled()) {
@@ -1302,7 +1302,7 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
   _hover_hit = false;
 
   if (_action_type == NO_ACTION && _type == TIME_VIEW &&
-      _view.session().get_device()->get_work_mode() == LOGIC) {
+      _view.get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(TIME_VIEW, traces);
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
@@ -1633,7 +1633,7 @@ void Viewport::mouseReleaseEvent(QMouseEvent *event) {
     return;
   }
 
-  int mode = _view.session().get_device()->get_work_mode();
+  int mode = _view.get_work_mode();
 
   if (_action_type == RESIZE_SIGNAL) {
     _resize_trace_upper = NULL;
@@ -1693,10 +1693,10 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
   if (!_view.get_view_rect().contains(event->position().toPoint()))
     return;
 
-  int mode = _view.session().get_device()->get_work_mode();
+  int mode = _view.get_work_mode();
 
   if (_type == TIME_VIEW &&
-      _view.session().get_device()->get_work_mode() == LOGIC) {
+      _view.get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(TIME_VIEW, traces);
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
@@ -1774,7 +1774,7 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
     }
 
     update(UpdateEventType::UPDATE_EV_MS_CLICK);
-  } else if (_view.session().get_device()->get_work_mode() == DSO &&
+  } else if (_view.get_work_mode() == DSO &&
              _view.session().is_init_status() == false &&
              event->button() == Qt::LeftButton) {
     if (_dso_xm_valid) {
@@ -1790,7 +1790,7 @@ void Viewport::mouseDoubleClickEvent(QMouseEvent *event) {
         break;
       }
     }
-  } else if (_view.session().get_device()->get_work_mode() == ANALOG) {
+  } else if (_view.get_work_mode() == ANALOG) {
     if (event->button() == Qt::LeftButton) {
       uint64_t index;
       const double curX = event->position().toPoint().x();
@@ -1962,7 +1962,7 @@ void Viewport::set_receive_len(quint64 length) {
       _sample_received += length;
   }
 
-  int mode = _view.session().get_device()->get_work_mode();
+  int mode = _view.get_work_mode();
 
   if (mode == LOGIC) {
     if (_view.session().get_device()->is_file() == false) {
@@ -2466,7 +2466,7 @@ void Viewport::on_trigger_timer() {
   _timer_cnt++;
 
   if (!_is_checked_trig) {
-    if (_view.session().get_device()->get_work_mode() == LOGIC &&
+    if (_view.get_work_mode() == LOGIC &&
         _view.session().get_device()->is_file() == false) {
       if (_view.session().is_triged()) {
         _is_checked_trig = true;
@@ -2478,7 +2478,7 @@ void Viewport::on_trigger_timer() {
     }
   }
 
-  if (_view.session().get_device()->get_work_mode() == DSO) {
+  if (_view.get_work_mode() == DSO) {
     update(UpdateEventType::UPDATE_EV_GENERIC);
   }
 }
@@ -2489,14 +2489,15 @@ void Viewport::applyDragFrame() {
   if (_action_type == RESIZE_SIGNAL) {
     int deltaY = _drag_last_pos.y() - _resize_mouse_down_y;
     int newUpperHeight = _resize_upper_height + deltaY;
-    if (newUpperHeight >= View::MinSignalHeight) {
+    if (newUpperHeight >= View::MinSignalHeight &&
+        _view.get_work_mode() == LOGIC) {
       _resize_trace_upper->set_own_height(newUpperHeight);
       _view.signals_changed(NULL);
     }
     return;
   }
 
-  int mode = _view.session().get_device()->get_work_mode();
+  int mode = _view.get_work_mode();
 
   if (_type == TIME_VIEW) {
     if (_drag_buttons & Qt::LeftButton) {
@@ -2641,20 +2642,20 @@ void Viewport::set_decode_dirty() { _decode_needs_rebuild = true; }
 void Viewport::show_wait_trigger() {
   _waiting_trig %= (WaitLoopTime / SigSession::FeedInterval) * 4;
   _waiting_trig++;
-  if (_view.session().get_device()->get_work_mode() == DSO)
+  if (_view.get_work_mode() == DSO)
     update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
 void Viewport::unshow_wait_trigger() {
   _waiting_trig = 0;
-  if (_view.session().get_device()->get_work_mode() == DSO)
+  if (_view.get_work_mode() == DSO)
     update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
 bool Viewport::get_dso_trig_moved() { return _dso_trig_moved; }
 
 void Viewport::show_contextmenu(const QPoint &pos) {
-  if (_cmenu && _view.session().get_device()->get_work_mode() == DSO) {
+  if (_cmenu && _view.get_work_mode() == DSO) {
     _cur_preX = pos.x();
     _cur_preY = pos.y();
     _cmenu->exec(QCursor::pos());

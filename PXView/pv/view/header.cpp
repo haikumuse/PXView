@@ -131,7 +131,7 @@ void Header::paintEvent(QPaintEvent *) {
   painter.save();
   painter.translate(0, -_view.get_vOffset());
 
-  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+  if (_view.get_work_mode() == LOGIC) {
     const auto &groups = _view.get_signal_groups();
     if (!groups.empty()) {
       std::vector<size_t> group_indices(groups.size());
@@ -206,7 +206,7 @@ void Header::paintEvent(QPaintEvent *) {
   }
 
   std::set<Trace *> lastInGroup;
-  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+  if (_view.get_work_mode() == LOGIC) {
     const auto &groups = _view.get_signal_groups();
     for (const auto &group : groups) {
       if (group.traces.empty())
@@ -258,7 +258,7 @@ void Header::mouseDoubleClickEvent(QMouseEvent *event) {
 
   _view.get_traces(ALL_VIEW, traces);
 
-  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+  if (_view.get_work_mode() == LOGIC) {
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
     const int HitBorderMargin = 5;
 
@@ -324,7 +324,7 @@ void Header::mousePressEvent(QMouseEvent *event) {
     return;
   }
 
-  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+  if (_view.get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(ALL_VIEW, traces);
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
@@ -448,7 +448,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
   }
 
   // Make view index by Y value;
-  int mode = _view.session().get_device()->get_work_mode();
+  int mode = _view.get_work_mode();
   if (_moveFlag && mode == LOGIC) {
     const auto &groups = _view.get_signal_groups();
 
@@ -617,7 +617,7 @@ void Header::changeName(QMouseEvent *event) {
 
 void Header::changeColor(QMouseEvent *event) {
   if (_view.session().is_working() &&
-      _view.session().get_device()->get_work_mode() == ANALOG) {
+      _view.get_work_mode() == ANALOG) {
     // Disable to select color when working on analog mode.
     return;
   }
@@ -636,7 +636,7 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
   assert(event);
 
   if (_view.session().is_working() &&
-      _view.session().get_device()->get_work_mode() == LOGIC) {
+      _view.get_work_mode() == LOGIC) {
     // Disable the hover status of trig button on left pannel.
     return;
   }
@@ -647,14 +647,15 @@ void Header::mouseMoveEvent(QMouseEvent *event) {
     int deltaY = event->position().toPoint().y() - _resize_mouse_down_y;
     int newUpperHeight = _resize_upper_height + deltaY;
 
-    if (newUpperHeight >= View::MinSignalHeight) {
+    if (newUpperHeight >= View::MinSignalHeight &&
+        _view.get_work_mode() == LOGIC) {
       _resize_trace_upper->set_own_height(newUpperHeight);
       _view.signals_changed(NULL);
     }
     return;
   }
 
-  if (_view.session().get_device()->get_work_mode() == LOGIC) {
+  if (_view.get_work_mode() == LOGIC) {
     std::vector<Trace *> traces;
     _view.get_traces(ALL_VIEW, traces);
     int mouseY = event->position().toPoint().y() + _view.get_vOffset();
@@ -771,7 +772,7 @@ QMenu *Header::create_height_submenu(bool is_batch) {
 void Header::contextMenuEvent(QContextMenuEvent *event) {
   (void)event;
 
-  if (_view.session().get_device()->get_work_mode() != LOGIC)
+  if (_view.get_work_mode() != LOGIC)
     return;
 
   int action;

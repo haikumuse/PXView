@@ -852,7 +852,7 @@ void DsoSignal::paint_back(QPainter &p, int left, int right, QColor fore, QColor
     for (i = 1; i <= DS_CONF_DSO_HDIVS; i++) {
         const double posX = spanX * i;
         if (i != DS_CONF_DSO_HDIVS)
-            p.drawLine(posX, UpMargin,posX, height + UpMargin);
+            p.drawLine(posX, UpMargin, posX, height + UpMargin);
         const double miniSpanX = spanX / 5;
         for (j = 1; j < 5; j++) {
             p.drawLine(posX - miniSpanX * j, height / 2.0f + UpMargin - 5,

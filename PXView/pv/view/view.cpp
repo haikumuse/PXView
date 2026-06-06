@@ -141,7 +141,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
     : QScrollArea(parent), _sampling_bar(sampling_bar), _scale(10),
       _preScale(1e-6), _maxscale(1e9), _minscale(1e-15), _offset(0),
       _preOffset(0), _vOffset(0), _signalHeightScale(MaxHeightUnit),
-      _updating_scroll(false), _trig_hoff(0), _show_cursors(false),
+      _lastWidth(-1), _updating_scroll(false), _trig_hoff(0), _show_cursors(false),
       _search_hit(false), _show_xcursors(false), _hover_point(-1, -1),
       _dso_auto(true), _show_lissajous(false), _back_ready(false) {
   _trig_cursor = NULL;
@@ -437,7 +437,7 @@ void View::capture_init() {
     return;
   }
 
-  int mode = _device_agent->get_work_mode();
+  int mode = get_work_mode();
 
   if (mode == DSO)
     show_trig_cursor(true);
@@ -477,7 +477,7 @@ void View::set_all_update(bool need_update) {
 double View::get_hori_res() { return _sampling_bar->get_hori_res(); }
 
 void View::update_hori_res() {
-  if (_device_agent->get_work_mode() == DSO) {
+  if (get_work_mode() == DSO) {
     _sampling_bar->hori_knob(0);
   }
 }
@@ -492,7 +492,7 @@ bool View::zoom(double steps, int offset) {
   _preScale = _scale;
   _preOffset = _offset;
 
-  if (_device_agent->get_work_mode() != DSO) {
+  if (get_work_mode() != DSO) {
     _scale *= std::pow(3.0 / 2.0, -steps);
     _scale = max(min(_scale, _maxscale), _minscale);
   } else {
@@ -544,9 +544,6 @@ void View::zoom_vertical(double steps) {
       if (t->get_own_height() > 0) {
         t->set_own_height(
             max(MinSignalHeight, (int)(t->get_own_height() * scale)));
-      } else if (_device_agent->get_work_mode() == DSO || _device_agent->get_work_mode() == ANALOG) {
-        int current_height = _signalHeight * t->rows_size();
-        t->set_own_height(max(MinSignalHeight, (int)(current_height * scale)));
       }
     }
     signals_changed(NULL);
@@ -558,7 +555,7 @@ void View::zoom_vertical(double steps) {
 void View::compute_signal_groups() {
   _signal_groups.clear();
 
-  if (_device_agent->get_work_mode() != LOGIC) {
+  if (get_work_mode() != LOGIC) {
     return;
   }
 
@@ -758,7 +755,7 @@ void View::timebase_changed() {
     return;
   }
 
-  if (_device_agent->get_work_mode() != DSO) {
+  if (get_work_mode() != DSO) {
     return;
   }
 
@@ -788,7 +785,7 @@ void View::set_scale_offset(double scale, int64_t offset) {
 }
 
 void View::limit_scale_offset() {
-  if (_device_agent->get_work_mode() != DSO) {
+  if (get_work_mode() != DSO) {
     int width = get_view_width();
     double sampletime = effective_data_source()->cur_sampletime();
     uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
@@ -919,7 +916,7 @@ void View::frame_began() {
 }
 
 void View::receive_end() {
-  if (_device_agent->get_work_mode() == LOGIC) {
+  if (get_work_mode() == LOGIC) {
     bool rle = false;
     uint64_t actual_samples;
     bool ret;
@@ -956,7 +953,7 @@ void View::set_trig_cursor_posistion(uint64_t trig_pos) {
   assert(width > 0);
 
   if (ds_trigger_get_en() || _device_agent->is_virtual() ||
-      _device_agent->get_work_mode() == DSO) {
+      get_work_mode() == DSO) {
     _show_trig_cursor = true;
 
     AppConfig &app = AppConfig::Instance();
@@ -1074,7 +1071,7 @@ void View::update_scale_offset() {
     return;
   }
 
-  if (_device_agent->get_work_mode() != DSO) {
+  if (get_work_mode() != DSO) {
     double sampletime = effective_data_source()->cur_sampletime();
     uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
     if (sampletime > 0 && samplerate > 0) {
@@ -1124,7 +1121,7 @@ void View::signals_changed(const Trace *eventTrace) {
 
   compute_signal_groups();
 
-  if (_device_agent->get_work_mode() == LOGIC && !_signal_groups.empty()) {
+  if (get_work_mode() == LOGIC && !_signal_groups.empty()) {
     std::vector<size_t> group_order(_signal_groups.size());
     for (size_t i = 0; i < _signal_groups.size(); i++)
       group_order[i] = i;
@@ -1159,7 +1156,7 @@ void View::signals_changed(const Trace *eventTrace) {
     if (_trace_view_map[t->get_type()] == TIME_VIEW) {
       time_traces.push_back(t);
     } else if (_trace_view_map[t->get_type()] == FFT_VIEW) {
-      if (t->visible())
+      if (t->enabled())
         fft_traces.push_back(t);
     }
 
@@ -1216,16 +1213,27 @@ void View::signals_changed(const Trace *eventTrace) {
       assert(false);
     }
 
-    int mode = _device_agent->get_work_mode();
+    int mode = get_work_mode();
+    pxv_info("[DEBUG signals_changed] mode=%d(LOGIC=0,DSO=1,ANALOG=2) "
+             "header_h=%d scrollbar_h=%d actualMargin=%d label_size=%d "
+             "total_rows=%d viewport_h=%d _signalHeightScale=%d",
+             mode, _header->height(), horizontalScrollBar()->height(),
+             actualMargin, label_size, total_rows,
+             _time_viewport->height(), _signalHeightScale);
 
     if (mode == LOGIC) {
       _signalHeight = _signalHeightScale;
-    } else if (_device_agent->get_work_mode() == DSO) {
+      pxv_info("[DEBUG] LOGIC branch: _signalHeight=%d", _signalHeight);
+    } else if (get_work_mode() == DSO) {
       _signalHeight = (_header->height() - horizontalScrollBar()->height() -
                        2 * actualMargin * label_size) *
                       1.0 / total_rows;
+      pxv_info("[DEBUG] DSO branch: _signalHeight=%d (raw=%f)", _signalHeight,
+               (_header->height() - horizontalScrollBar()->height() -
+                2 * actualMargin * label_size) * 1.0 / total_rows);
     } else {
       _signalHeight = (int)((height <= 0) ? 1 : height);
+      pxv_info("[DEBUG] ANALOG branch: _signalHeight=%d", _signalHeight);
     }
 
     _spanY = _signalHeight + 2 * actualMargin;
@@ -1285,6 +1293,9 @@ void View::signals_changed(const Trace *eventTrace) {
 
       double traceHeight;
       if (t->get_own_height() > 0) {
+        pxv_info("[DEBUG] trace '%s' using own_height=%d (type=%d)",
+                 t->get_name().toUtf8().data(), t->get_own_height(),
+                 t->signal_type());
         traceHeight = t->get_own_height();
       } else {
         traceHeight = _signalHeight * t->rows_size();
@@ -1331,7 +1342,7 @@ bool View::eventFilter(QObject *object, QEvent *event) {
           round(cur_periods) * _ruler->get_min_period() / _scale - _offset;
       double cur_deviate_x =
           qAbs(mouse_event->position().toPoint().x() - integer_x);
-      if (_device_agent->get_work_mode() == LOGIC && cur_deviate_x < 10)
+      if (get_work_mode() == LOGIC && cur_deviate_x < 10)
         _hover_point = QPoint(integer_x, mouse_event->position().toPoint().y());
       else
         _hover_point = mouse_event->position().toPoint();
@@ -1406,11 +1417,10 @@ void View::resizeEvent(QResizeEvent *event) {
 
   // 优化：如果只是高度变化（如 TitleBar Ribbon 展开/折叠），且宽度不变，
   // 则跳过大部分重计算，因为 viewport 只是被平移，内容没有变化
-  static int lastWidth = -1;
-  bool widthChanged = (lastWidth != width);
-  lastWidth = width;
+  bool widthChanged = (_lastWidth != width);
+  _lastWidth = width;
 
-  if (!widthChanged) {
+  if (!widthChanged && get_work_mode() != DSO) {
     setViewportMargins(headerWidth(), RulerHeight, 0, 0);
     _header->header_resize();
     update_scroll();
@@ -1424,11 +1434,11 @@ void View::resizeEvent(QResizeEvent *event) {
   update_scroll();
   signals_changed(NULL);
 
-  if (_device_agent->get_work_mode() == DSO) {
+  if (get_work_mode() == DSO) {
     _scale = _session->cur_view_time() / width;
   }
 
-  if (_device_agent->get_work_mode() != DSO) {
+  if (get_work_mode() != DSO) {
     _maxscale =
         effective_data_source()->cur_sampletime() / (width * MaxViewRate);
     if (_scale > _maxscale) {
@@ -1700,7 +1710,7 @@ void View::on_state_changed(bool stop) {
 }
 
 QRect View::get_view_rect() {
-  if (_device_agent->get_work_mode() == DSO) {
+  if (get_work_mode() == DSO) {
     const auto &sigs = _own_signals;
     if (sigs.size() > 0) {
       return sigs[0]->get_view_rect();
@@ -1710,9 +1720,16 @@ QRect View::get_view_rect() {
   return _viewcenter->rect();
 }
 
+int View::get_work_mode() const {
+  if (_document && _document->has_signal_config()) {
+    return _document->get_signal_config().work_mode;
+  }
+  return _device_agent->get_work_mode();
+}
+
 int View::get_view_width() {
   int view_width = 0;
-  if (_device_agent->get_work_mode() == DSO) {
+  if (get_work_mode() == DSO) {
     for (auto s : _own_signals) {
       view_width = max(view_width, s->get_view_rect().width());
     }
@@ -1729,7 +1746,7 @@ int View::get_view_width() {
 
 int View::get_view_height() {
   int view_height = 0;
-  if (_device_agent->get_work_mode() == DSO) {
+  if (get_work_mode() == DSO) {
     for (auto s : _own_signals) {
       view_height = max(view_height, s->get_view_rect().height());
     }
@@ -1879,7 +1896,7 @@ void View::reload() {
 void View::clear() {
   show_trig_cursor(false);
 
-  if (_device_agent->get_work_mode() != DSO) {
+  if (get_work_mode() != DSO) {
     show_xcursors(false);
   } else {
     if (!get_xcursorList().empty())
@@ -1888,7 +1905,7 @@ void View::clear() {
 }
 
 void View::reconstruct() {
-  if (_device_agent->get_work_mode() == DSO)
+  if (get_work_mode() == DSO)
     _viewbottom->setFixedHeight(DsoStatusHeight);
   else
     _viewbottom->setFixedHeight(StatusHeight);
@@ -2064,6 +2081,11 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     if (signal) {
       signal->set_enabled(ch.enabled);
       signal->set_visible(ch.enabled);
+      // DSO/Analog signals use auto-calculated height, reset _ownHeight
+      // to avoid inheriting a fixed height from Logic mode or zoom_vertical
+      if (config.work_mode == DSO || config.work_mode == ANALOG) {
+        signal->set_own_height(-1);
+      }
       if (ch.enabled) {
         signal->set_view_index(view_index++);
       } else {
@@ -2144,6 +2166,10 @@ void View::rebuild_signals() {
   for (auto sig : shared_sigs) {
     auto cloned = sig->clone();
     cloned->set_view_index(sig->get_view_index());
+    // DSO/Analog signals use auto-calculated height, reset _ownHeight
+    if (get_work_mode() == DSO || get_work_mode() == ANALOG) {
+      cloned->set_own_height(-1);
+    }
     _own_signals.push_back(cloned);
   }
 
@@ -2163,7 +2189,7 @@ void View::rebuild_signals() {
 }
 
 void View::check_calibration() {
-  if (_device_agent->get_work_mode() == DSO) {
+  if (get_work_mode() == DSO) {
     bool cali = false;
     _device_agent->get_config_bool(SR_CONF_CALI, cali);
 

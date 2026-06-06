@@ -1,0 +1,9 @@
+- [x] DsoSignal::get_view_rect() 返回基于信号自身区域的矩形（get_y() 和 get_totalHeight()）
+- [x] View::signals_changed() 中 DSO 的 set_scale 使用 get_totalHeight()
+- [x] DsoSignal::paint_back() 中网格和缩放指示器基于信号区域绘制
+- [x] DSO 信号 go_vDialPre/go_vDialNext 中 set_scale 在新坐标系统下正确
+- [x] 项目编译通过无错误
+- [x] MathTrace::get_view_rect/get_zero_vpos/set_zero_vpos 同步修改为基于信号自身区域
+- [ ] DSO 模式下2通道信号填满各自分配区域，波形幅度正确
+- [ ] DSO 零线位于信号区域中心
+- [ ] Analog 模式不受影响，仍然正常显示
