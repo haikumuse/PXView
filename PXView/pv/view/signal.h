@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_SIGNAL_H
-#define DSVIEW_PV_SIGNAL_H
+#ifndef PXVIEW_PV_SIGNAL_H
+#define PXVIEW_PV_SIGNAL_H
  
 
 #include <QColor>
@@ -88,4 +88,4 @@ protected:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_SIGNAL_H
+#endif // PXVIEW_PV_SIGNAL_H

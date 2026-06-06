@@ -1,6 +1,6 @@
 /*
  * This file is part of the PulseView project.
- * DSView is based on PulseView.
+ * PXView is based on PulseView.
  * 
  * Copyright (C) 2016 DreamSourceLab <support@dreamsourcelab.com>
  *
@@ -95,7 +95,7 @@ MathStack::MathStack(pv::SigSession *session,
     memset(_envelope_level, 0, sizeof(_envelope_level));
 
     if (dsoSig1 == NULL || dsoSig2 == NULL){
-        dsv_info("ERROR: MathStack::MathStack, dsoSig1 or dsoSig2 is null.");
+        pxv_info("ERROR: MathStack::MathStack, dsoSig1 or dsoSig2 is null.");
         assert(false);
     }
 }

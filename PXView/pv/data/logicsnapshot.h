@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DATA_LOGICSNAPSHOT_H
-#define DSVIEW_PV_DATA_LOGICSNAPSHOT_H
+#ifndef PXVIEW_PV_DATA_LOGICSNAPSHOT_H
+#define PXVIEW_PV_DATA_LOGICSNAPSHOT_H
 
 #include <libsigrok.h>
 #include "snapshot.h"
@@ -332,4 +332,4 @@ private:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_DATA_LOGICSNAPSHOT_H
+#endif // PXVIEW_PV_DATA_LOGICSNAPSHOT_H

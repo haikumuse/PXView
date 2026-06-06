@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_PROP_PROPERTY_H
-#define DSVIEW_PV_PROP_PROPERTY_H
+#ifndef PXVIEW_PV_PROP_PROPERTY_H
+#define PXVIEW_PV_PROP_PROPERTY_H
 
 #include <glib.h>
 
@@ -76,4 +76,4 @@ private:
 } // prop
 } // pv
 
-#endif // DSVIEW_PV_PROP_PROPERTY_H
+#endif // PXVIEW_PV_PROP_PROPERTY_H

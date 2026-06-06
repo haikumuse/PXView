@@ -94,7 +94,7 @@ bool LangResource::Load(int lang)
 
     if (lan_name == NULL)
     {
-        dsv_err("Can't find language key,lang:%d", lang);
+        pxv_err("Can't find language key,lang:%d", lang);
         return false;
     }
 
@@ -141,7 +141,7 @@ void LangResource::load_page(Lang_resource_page &p)
 
     const char *lan_name = get_lang_key(_cur_lang);
     if (lan_name == NULL){
-        dsv_err("Can't find language key,lang:%d", _cur_lang);
+        pxv_err("Can't find language key,lang:%d", _cur_lang);
         return;
     }
 
@@ -159,7 +159,7 @@ void LangResource::load_page(Lang_resource_page &p, QString file)
     QFile f(file);
     if (f.exists() == false){
         if (_cur_lang != LAN_EN && p._is_dynamic == false)
-            dsv_warn("Warning:Language source file is not exists: %s", file.toLocal8Bit().data());
+            pxv_warn("Warning:Language source file is not exists: %s", file.toLocal8Bit().data());
         return;
     }
     if (!f.open(QFile::ReadOnly | QFile::Text)) {
@@ -171,7 +171,7 @@ void LangResource::load_page(Lang_resource_page &p, QString file)
     if (raw_bytes.length() == 0)
         return;
 
-    //dsv_info("Load lang resouce file: %s", file.toLocal8Bit().data());
+    //pxv_info("Load lang resouce file: %s", file.toLocal8Bit().data());
 
     QJsonParseError error;
     QString jsonStr(raw_bytes.data());
@@ -181,7 +181,7 @@ void LangResource::load_page(Lang_resource_page &p, QString file)
     if (error.error != QJsonParseError::NoError)
     {
         QString estr = error.errorString();
-        dsv_err("LangResource::load_page(), parse json error:\"%s\"!", estr.toUtf8().data());
+        pxv_err("LangResource::load_page(), parse json error:\"%s\"!", estr.toUtf8().data());
         return;
     }
 
@@ -207,7 +207,7 @@ const char* LangResource::get_lang_text(int page_id, const char *str_id, const c
     std::lock_guard<std::mutex> lock(_mutex);
 
     if (*str_id == '\0' || *default_str == '\0'){
-        dsv_err("LangResource::get_lang_text(), param is empty.");
+        pxv_err("LangResource::get_lang_text(), param is empty.");
         assert(false);
     }
 
@@ -223,7 +223,7 @@ const char* LangResource::get_lang_text(int page_id, const char *str_id, const c
 
     if (_current_page == NULL){
         if (_cur_lang != LAN_EN)
-            dsv_warn("Warning:Can't find language source page:%d", page_id);
+            pxv_warn("Warning:Can't find language source page:%d", page_id);
         return default_str;
     }
 
@@ -250,7 +250,7 @@ const char* LangResource::get_lang_text(int page_id, const char *str_id, const c
     }   
    
     if(_cur_lang != LAN_EN){
-        dsv_warn("Warning:Can't get language text:%s", str_id);
+        pxv_warn("Warning:Can't get language text:%s", str_id);
     }
 
     return default_str;

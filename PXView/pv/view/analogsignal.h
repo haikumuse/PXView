@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_ANALOGSIGNAL_H
-#define DSVIEW_PV_ANALOGSIGNAL_H
+#ifndef PXVIEW_PV_ANALOGSIGNAL_H
+#define PXVIEW_PV_ANALOGSIGNAL_H
 
 #include "signal.h"
 
@@ -187,4 +187,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_ANALOGSIGNAL_H
+#endif // PXVIEW_PV_ANALOGSIGNAL_H

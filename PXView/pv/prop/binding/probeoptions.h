@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_PROP_BINDING_PROBEOPTIONS_H
-#define DSVIEW_PV_PROP_BINDING_PROBEOPTIONS_H
+#ifndef PXVIEW_PV_PROP_BINDING_PROBEOPTIONS_H
+#define PXVIEW_PV_PROP_BINDING_PROBEOPTIONS_H
 
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
@@ -80,4 +80,4 @@ protected:
 } // prop
 } // pv
 
-#endif // DSVIEW_PV_PROP_BINDING_DEVICEOPTIONS_H
+#endif // PXVIEW_PV_PROP_BINDING_DEVICEOPTIONS_H

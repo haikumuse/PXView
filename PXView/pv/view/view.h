@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_VIEW_VIEW_H
-#define DSVIEW_PV_VIEW_VIEW_H
+#ifndef PXVIEW_PV_VIEW_VIEW_H
+#define PXVIEW_PV_VIEW_VIEW_H
 
 #include <set>
 #include <stdint.h>
@@ -500,4 +500,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_VIEW_VIEW_H
+#endif // PXVIEW_PV_VIEW_VIEW_H

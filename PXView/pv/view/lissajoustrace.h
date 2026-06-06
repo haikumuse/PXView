@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_LISSAJOUSTRACE_H
-#define DSVIEW_PV_LISSAJOUSTRACE_H
+#ifndef PXVIEW_PV_LISSAJOUSTRACE_H
+#define PXVIEW_PV_LISSAJOUSTRACE_H
 
 #include "trace.h"
   
@@ -120,4 +120,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_LISSAJOUSTRACE_H
+#endif // PXVIEW_PV_LISSAJOUSTRACE_H

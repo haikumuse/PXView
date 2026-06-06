@@ -27,79 +27,79 @@
 #include "utility/path.h"
 #include <string>
 
-xlog_writer *dsv_log = nullptr;
+xlog_writer *pxv_log = nullptr;
 static xlog_context *log_ctx = nullptr;
 static bool b_logfile = false;
 static int log_file_index = -1; 
 
-void dsv_log_init()
+void pxv_log_init()
 {
     if (log_ctx == nullptr){
         log_ctx = xlog_new();  
-        dsv_log = xlog_create_writer(log_ctx, "DSView"); 
+        pxv_log = xlog_create_writer(log_ctx, "PXView"); 
     }
 } 
 
-void dsv_log_uninit()
+void pxv_log_uninit()
 { 
     xlog_free(log_ctx);
-    xlog_free_writer(dsv_log);
+    xlog_free_writer(pxv_log);
     log_ctx = nullptr;
-    dsv_log = nullptr;
+    pxv_log = nullptr;
 }
 
-xlog_context* dsv_log_context()
+xlog_context* pxv_log_context()
 {
     return log_ctx;
 }
 
-void dsv_log_level(int l)
+void pxv_log_level(int l)
 {
     xlog_set_level(log_ctx, l);
-    dsv_info("%s%d", "Set log level: ", l);
+    pxv_info("%s%d", "Set log level: ", l);
 }
 
-void dsv_log_enalbe_logfile(bool append)
+void pxv_log_enalbe_logfile(bool append)
 {
     if (!b_logfile && log_ctx){
         b_logfile = true; 
         
-        QString lf = get_dsv_log_path();
+        QString lf = get_pxv_log_path();
         
-        dsv_info("%s\"%s\"", "Store log to file: ", lf.toUtf8().data());
+        pxv_info("%s\"%s\"", "Store log to file: ", lf.toUtf8().data());
 
         QFileInfo fileInfo(lf);
         QString file_dir = fileInfo.absolutePath();
 
         QDir dir;
         if (!dir.exists(file_dir) && !dir.mkpath(file_dir)){
-            dsv_err("ERROR: failed to create log directory.");
+            pxv_err("ERROR: failed to create log directory.");
         }
 
         std::string log_file = pv::path::ToUnicodePath(lf);
 
         int ret = xlog_add_receiver_from_file(log_ctx, log_file.c_str(), &log_file_index, append);
         if (ret != 0){
-            dsv_err("Create log file error!");
+            pxv_err("Create log file error!");
         }
     }
 }
 
-void dsv_clear_log_file()
+void pxv_clear_log_file()
 {   
     if (b_logfile && log_ctx)
     {
-        QString lf = get_dsv_log_path();
+        QString lf = get_pxv_log_path();
         std::string log_file = pv::path::ToUnicodePath(lf);
         int ret = xlog_reset_log_file(log_ctx, log_file_index, log_file.c_str());
 
         if (ret != 0){
-            dsv_err("Clear log file error!");
+            pxv_err("Clear log file error!");
         }
     }
     else{
         QDir dir;
-        QString filePath = get_dsv_log_path();
+        QString filePath = get_pxv_log_path();
         if (dir.exists(filePath))
         {
             dir.remove(filePath);
@@ -107,7 +107,7 @@ void dsv_clear_log_file()
     }
 }
 
-void dsv_set_log_file_enable(bool flag)
+void pxv_set_log_file_enable(bool flag)
 {
     if (b_logfile && log_ctx)
     {
@@ -115,7 +115,7 @@ void dsv_set_log_file_enable(bool flag)
     }
 }
 
-void dsv_remove_log_file()
+void pxv_remove_log_file()
 {
     if (b_logfile && log_ctx)
     {
@@ -125,20 +125,20 @@ void dsv_remove_log_file()
     }
 }
 
-QString get_dsv_log_path()
+QString get_pxv_log_path()
 {
     QString lf;
 
     #ifdef Q_OS_LINUX
-        lf = QDir::homePath() + "/DSView.log";
+        lf = QDir::homePath() + "/PXView.log";
     #endif
 
     #ifdef _WIN32
-        lf = GetUserDataDir() + "/DSView.log";
+        lf = GetUserDataDir() + "/PXView.log";
     #endif
 
     #ifdef Q_OS_DARWIN
-        lf = GetUserDataDir() + "/DSView.log";
+        lf = GetUserDataDir() + "/PXView.log";
     #endif
 
     return lf;

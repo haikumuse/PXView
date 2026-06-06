@@ -1,6 +1,6 @@
 
-#ifndef DSVIEW_PV_SUBMAINFRAME_H
-#define DSVIEW_PV_SUBMAINFRAME_H
+#ifndef PXVIEW_PV_SUBMAINFRAME_H
+#define PXVIEW_PV_SUBMAINFRAME_H
 
 #include "widgets/border.h"
 

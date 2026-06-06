@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_WAITINGDIALOG_H
-#define DSVIEW_PV_WAITINGDIALOG_H
+#ifndef PXVIEW_PV_WAITINGDIALOG_H
+#define PXVIEW_PV_WAITINGDIALOG_H
 
 #include <QDialogButtonBox>
 #include <QTimer>
@@ -84,4 +84,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_WAITINGDIALOG_H
+#endif // PXVIEW_PV_WAITINGDIALOG_H

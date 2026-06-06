@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_PROP_BINDING_BINDING_H
-#define DSVIEW_PV_PROP_BINDING_BINDING_H
+#ifndef PXVIEW_PV_PROP_BINDING_BINDING_H
+#define PXVIEW_PV_PROP_BINDING_BINDING_H
 
 #include <glib.h>
 
@@ -74,4 +74,4 @@ protected:
 } // prop
 } // pv
 
-#endif // DSVIEW_PV_PROP_BINDING_BINDING_H
+#endif // PXVIEW_PV_PROP_BINDING_BINDING_H

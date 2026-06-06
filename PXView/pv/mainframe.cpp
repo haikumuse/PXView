@@ -235,7 +235,7 @@ void MainFrame::MoveEnd()
     QRect rc = GetFormRegion();
 
     if (rc.top() < 0){
-        dsv_info("The top is out of range.");
+        pxv_info("The top is out of range.");
         rc.setY(0);
         SetFormRegion(rc.x(), rc.y(), rc.width(), rc.height());
     }
@@ -265,7 +265,7 @@ void MainFrame::OnParentNaitveWindowEvent(int msg)
         QTimer::singleShot(100, this, [this](){                
             auto screen = _parentNativeWidget->GetPointScreen();
             if (screen == NULL){
-                dsv_info("ERROR: MainFrame::OnParentNaitveWindowEvent, failed to get pointing screen.");
+                pxv_info("ERROR: MainFrame::OnParentNaitveWindowEvent, failed to get pointing screen.");
                 screen = QGuiApplication::primaryScreen();
             }
 
@@ -398,7 +398,7 @@ void MainFrame::showMinimized()
 void MainFrame::changeEvent(QEvent *event)
 {
     if (event->type() == QEvent::WindowStateChange && _is_resize_ready) {     
-        //dsv_info("Window state changed.");
+        //pxv_info("Window state changed.");
         QWindowStateChangeEvent *stateChangeEvent = static_cast<QWindowStateChangeEvent*>(event);
         if (stateChangeEvent->oldState() & Qt::WindowMaximized 
                 && !(windowState() & Qt::WindowMaximized)) {
@@ -642,7 +642,7 @@ void MainFrame::writeSettings()
     int w = app.frameOptions.right - app.frameOptions.left;
     int h = app.frameOptions.bottom - app.frameOptions.top;
 
-    dsv_info("Save form, x:%d, y:%d, w:%d, h:%d", x, y, w, h);
+    pxv_info("Save form, x:%d, y:%d, w:%d, h:%d", x, y, w, h);
 }
 
 void MainFrame::ShowFormInit()
@@ -665,7 +665,7 @@ void MainFrame::ShowFormInit()
         h++;
     }
 
-    dsv_info("Init form, x:%d, y:%d, w:%d, h:%d, k:%d",
+    pxv_info("Init form, x:%d, y:%d, w:%d, h:%d, k:%d",
              x, y, w, h, _initWndInfo.k);
 
     bool isWin32 = false;
@@ -717,7 +717,7 @@ void MainFrame::AttachNativeWindow()
     nativeWindow->setGeometry(x, y, w, h);
 
     if (nativeWindow->Handle() == NULL){
-        dsv_info("ERROR: native window is invalid.");
+        pxv_info("ERROR: native window is invalid.");
         return;
     }
   
@@ -740,13 +740,13 @@ void MainFrame::AttachNativeWindow()
             this->resize(w1,w1);
             nativeWindow->setGeometry(x2 , y2 , w1 * k, h1 *k);
 
-            dsv_info("%s:Reset the normal region, x:%d, y:%d, w:%d, h:%d",
+            pxv_info("%s:Reset the normal region, x:%d, y:%d, w:%d, h:%d",
                         scr->name().toStdString().c_str(),
                         x1, y1, w1, h1);
         }
     }
     else{
-        dsv_info("ERROR: get point screen error.");
+        pxv_info("ERROR: get point screen error.");
     }
 
     nativeWindow->SetChildWidget(this);
@@ -879,11 +879,11 @@ void MainFrame::ReadSettings()
         y = top;
     }
 
-    dsv_info("Read region info, x:%d, y:%d, w:%d, h:%d, isMax:%d",
+    pxv_info("Read region info, x:%d, y:%d, w:%d, h:%d, isMax:%d",
             x, y, right-left, bottom-top, app.frameOptions.isMax);
 
     if (lstDisplayName != ""){
-        dsv_info("Last display:%s", lstDisplayName.toStdString().c_str());
+        pxv_info("Last display:%s", lstDisplayName.toStdString().c_str());
     }
 
     bool bReset = false;
@@ -902,7 +902,7 @@ void MainFrame::ReadSettings()
             scrIndex = i;
         }
 
-        dsv_info("Screen name:%s, region, left:%d, top:%d, width:%d, height:%d",
+        pxv_info("Screen name:%s, region, left:%d, top:%d, width:%d, height:%d",
             name.toStdString().c_str(), rc.left(), rc.top(), rc.width(), rc.height() );
     }
  
@@ -963,7 +963,7 @@ void MainFrame::ReadSettings()
             _normalRegion.y /= zoomk;
         }
 
-        dsv_info("Show as max, screen:%s, x:%d, y:%d, w:%d, h:%d", 
+        pxv_info("Show as max, screen:%s, x:%d, y:%d, w:%d, h:%d", 
             scrName.toStdString().c_str(), full_rect.x(), full_rect.y(),
             full_rect.width(), full_rect.height());
     }
@@ -980,7 +980,7 @@ void MainFrame::ReadSettings()
         _initWndInfo.r.h = h;
         _normalRegion = _initWndInfo.r;
 
-        dsv_info("Reset, screen:%s, x:%d, y:%d, w:%d, h:%d", 
+        pxv_info("Reset, screen:%s, x:%d, y:%d, w:%d, h:%d", 
             scrName.toStdString().c_str(), full_rect.left(), full_rect.top(),
              full_rect.width(), full_rect.height());
     }
@@ -1003,12 +1003,12 @@ void MainFrame::ReadSettings()
         _initWndInfo.r.h = bottom - top;
         _normalRegion = _initWndInfo.r; 
  
-        dsv_info("Restore, screen:%s, x:%d, y:%d, w:%d, h:%d", 
+        pxv_info("Restore, screen:%s, x:%d, y:%d, w:%d, h:%d", 
             scrName.toStdString().c_str() ,full_rect.left(), full_rect.top(), 
             full_rect.width(), full_rect.height());
     }
 
-    dsv_info("Normal region, x:%d, y:%d, w:%d, h:%d",  
+    pxv_info("Normal region, x:%d, y:%d, w:%d, h:%d",  
        _normalRegion.x, _normalRegion.y, _normalRegion.w, _normalRegion.h);
 
     // restore dockwidgets

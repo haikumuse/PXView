@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin St, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_TABCONTEXT_H
-#define DSVIEW_PV_TABCONTEXT_H
+#ifndef PXVIEW_PV_TABCONTEXT_H
+#define PXVIEW_PV_TABCONTEXT_H
 
 #include <QString>
 #include <QDateTime>

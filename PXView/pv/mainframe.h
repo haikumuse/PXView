@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_MAINFRAME_H
-#define DSVIEW_PV_MAINFRAME_H
+#ifndef PXVIEW_PV_MAINFRAME_H
+#define PXVIEW_PV_MAINFRAME_H
 
 #include "widgets/border.h"
 
@@ -184,4 +184,4 @@ private:
 
 } // namespace pv
 
-#endif // DSVIEW_PV_MAINFRAME_H
+#endif // PXVIEW_PV_MAINFRAME_H

@@ -54,7 +54,7 @@ namespace path{
             QByteArray encoded = encoder.encode(path);
             str = encoded.data();
         } else {
-            dsv_err("Error: can't get System encoder");
+            pxv_err("Error: can't get System encoder");
             str = path.toUtf8().data();
         }
 #else

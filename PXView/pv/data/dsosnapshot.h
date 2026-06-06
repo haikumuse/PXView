@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DATA_DSOSNAPSHOT_H
-#define DSVIEW_PV_DATA_DSOSNAPSHOT_H
+#ifndef PXVIEW_PV_DATA_DSOSNAPSHOT_H
+#define PXVIEW_PV_DATA_DSOSNAPSHOT_H
 
 #include <utility>
 #include <vector>
@@ -173,4 +173,4 @@ private:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_DATA_DSOSNAPSHOT_H
+#endif // PXVIEW_PV_DATA_DSOSNAPSHOT_H

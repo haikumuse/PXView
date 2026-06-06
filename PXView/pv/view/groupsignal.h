@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_SV_GROUPSIGNAL_H
-#define DSVIEW_SV_GROUPSIGNAL_H
+#ifndef PXVIEW_SV_GROUPSIGNAL_H
+#define PXVIEW_SV_GROUPSIGNAL_H
 
 /*
 #include "signal.h"
@@ -83,4 +83,4 @@ private:
 
 */
 
-#endif // DSVIEW_PV_GROUPSIGNAL_H
+#endif // PXVIEW_PV_GROUPSIGNAL_H

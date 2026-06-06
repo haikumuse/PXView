@@ -241,7 +241,7 @@ void MainWindow::Ribbon_retranslateUi() {
 
 MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
     : QMainWindow(parent) {
-  dsv_info("DBG MainWindow::MainWindow() START");
+  pxv_info("DBG MainWindow::MainWindow() START");
   _msg = NULL;
   _frame = parent;
   _category_file_index = -1;
@@ -340,7 +340,7 @@ void MainWindow::setup_ui() {
 
   if (_device_agent && _device_agent->have_instance()) {
     initial_doc->save_signal_config(_device_agent);
-    dsv_info("MainWindow::setup_ui() saved initial signal config, mode=%d "
+    pxv_info("MainWindow::setup_ui() saved initial signal config, mode=%d "
              "ch_count=%d",
              initial_doc->get_signal_config().work_mode,
              (int)initial_doc->get_signal_config().channels.size());
@@ -353,9 +353,9 @@ void MainWindow::setup_ui() {
   _tab_contexts.append(initial_ctx);
   qDebug() << "MainWindow::setup_ui() before addTab, initial_doc="
            << initial_doc << "has_config=" << initial_doc->has_signal_config();
-  dsv_info("DBG before addTab has_config=%d", initial_doc->has_signal_config());
+  pxv_info("DBG before addTab has_config=%d", initial_doc->has_signal_config());
   _tab_widget->addTab(initial_view, initial_ctx->title());
-  dsv_info("DBG after addTab");
+  pxv_info("DBG after addTab");
   fprintf(stderr, "DBG MainWindow::setup_ui() after addTab\n");
   fflush(stderr);
   _current_tab_index = 0;
@@ -775,10 +775,10 @@ void MainWindow::setup_ui() {
     std::string file_name = pv::path::ToUnicodePath(ldFileName);
 
     if (QFile::exists(ldFileName)) {
-      dsv_info("Auto load file:%s", file_name.c_str());
+      pxv_info("Auto load file:%s", file_name.c_str());
       tmp_file = ldFileName;
     } else {
-      dsv_err("file is not exists:%s", file_name.c_str());
+      pxv_err("file is not exists:%s", file_name.c_str());
       MsgBox::Show(
           L_S(STR_PAGE_MSG, S_ID(IDS_MSG_OPEN_FILE_ERROR), "Open file error!"),
           ldFileName, NULL);
@@ -920,7 +920,7 @@ void MainWindow::on_session_error() {
 
   switch (_session->get_error()) {
   case SigSession::Hw_err:
-    dsv_info("MainWindow::on_session_error(),Hw_err, stop capture");
+    pxv_info("MainWindow::on_session_error(),Hw_err, stop capture");
     _session->stop_capture();
     title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_HARDWARE_ERROR),
                 "Hardware Operation Failed");
@@ -928,7 +928,7 @@ void MainWindow::on_session_error() {
                   "Please replug device to refresh hardware configuration!");
     break;
   case SigSession::Malloc_err:
-    dsv_info("MainWindow::on_session_error(),Malloc_err, stop capture");
+    pxv_info("MainWindow::on_session_error(),Malloc_err, stop capture");
     _session->stop_capture();
     title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MALLOC_ERROR), "Malloc Error");
     details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_MALLOC_ERROR_DET),
@@ -942,7 +942,7 @@ void MainWindow::on_session_error() {
     _session->refresh(0);
     break;
   case SigSession::Data_overflow:
-    dsv_info("MainWindow::on_session_error(),Data_overflow, stop capture");
+    pxv_info("MainWindow::on_session_error(),Data_overflow, stop capture");
     _session->stop_capture();
     title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DATA_OVERFLOW), "Data Overflow");
     details = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DATA_OVERFLOW_DET),
@@ -971,7 +971,7 @@ void MainWindow::on_session_error() {
 
 void MainWindow::save_config() {
   if (_device_agent->have_instance() == false) {
-    dsv_info("There is no need to save the configuration");
+    pxv_info("There is no need to save the configuration");
     return;
   }
 
@@ -1184,12 +1184,12 @@ void MainWindow::on_save() {
   using pv::dialogs::StoreProgress;
 
   if (_device_agent->have_instance() == false) {
-    dsv_info("Have no device, can't to save data.");
+    pxv_info("Have no device, can't to save data.");
     return;
   }
 
   if (_session->is_working()) {
-    dsv_info("Save data: stop the current device.");
+    pxv_info("Save data: stop the current device.");
     _session->stop_capture();
   }
 
@@ -1204,7 +1204,7 @@ void MainWindow::on_export() {
   using pv::dialogs::StoreProgress;
 
   if (_session->is_working()) {
-    dsv_info("Export data: stop the current device.");
+    pxv_info("Export data: stop the current device.");
     _session->stop_capture();
   }
 
@@ -1219,25 +1219,25 @@ bool MainWindow::on_load_session(QString name) {
 
 bool MainWindow::load_config_from_file(QString file) {
   if (file == "") {
-    dsv_err("File name is empty.");
+    pxv_err("File name is empty.");
     assert(false);
   }
 
   _protocol_widget->del_all_protocol();
 
   std::string file_name = pv::path::ToUnicodePath(file);
-  dsv_info("Load device profile: \"%s\"", file_name.c_str());
+  pxv_info("Load device profile: \"%s\"", file_name.c_str());
 
   QFile sf(file);
 
   if (!sf.exists()) {
-    dsv_warn("Warning: device profile is not exists: \"%s\"",
+    pxv_warn("Warning: device profile is not exists: \"%s\"",
              file_name.c_str());
     return false;
   }
 
   if (!sf.open(QIODevice::ReadOnly)) {
-    dsv_warn("Warning: Couldn't open device profile to load!");
+    pxv_warn("Warning: Couldn't open device profile to load!");
     return false;
   }
 
@@ -1284,7 +1284,7 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
 
   gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_SESSIONS);
   if (gvar_opts == NULL) {
-    dsv_warn("Device config list is empty. id:SR_CONF_DEVICE_SESSIONS");
+    pxv_warn("Device config list is empty. id:SR_CONF_DEVICE_SESSIONS");
     /* Driver supports no device instance sessions. */
     return false;
   }
@@ -1319,7 +1319,7 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
         sessionVar[info->name] =
             QJsonValue::fromVariant(g_variant_get_int16(gvar));
       else {
-        dsv_err("Unkown config info type:%d", info->datatype);
+        pxv_err("Unkown config info type:%d", info->datatype);
         assert(false);
       }
       g_variant_unref(gvar);
@@ -1400,14 +1400,14 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
 
   // check config file version
   if (!sessionObj.contains("Version")) {
-    dsv_dbg("Profile version is not exists!");
+    pxv_dbg("Profile version is not exists!");
     return false;
   }
 
   int format_ver = sessionObj["Version"].toInt();
 
   if (format_ver < 2) {
-    dsv_err("Profile version is error!");
+    pxv_err("Profile version is error!");
     return false;
   }
 
@@ -1484,11 +1484,11 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
               sessionObj[info->name].toString().toLocal8Bit().data();
           id = ds_dsl_option_value_to_code(conf_dev_mode, info->key, fd_key);
           if (id == -1) {
-            dsv_err("Convert failed, key:\"%s\", value:\"%s\"", info->name,
+            pxv_err("Convert failed, key:\"%s\", value:\"%s\"", info->name,
                     fd_key);
             id = 0; // set default value.
           } else {
-            dsv_info("Convert success, key:\"%s\", value:\"%s\", get code:%d",
+            pxv_info("Convert success, key:\"%s\", value:\"%s\", get code:%d",
                      info->name, fd_key, id);
           }
         }
@@ -1496,13 +1496,13 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
       }
 
       if (gvar == NULL) {
-        dsv_warn("Warning: Profile failed to parse key:'%s'", info->name);
+        pxv_warn("Warning: Profile failed to parse key:'%s'", info->name);
         continue;
       }
 
       bool bFlag = _device_agent->set_config(info->key, gvar);
       if (!bFlag) {
-        dsv_err("Set device config option failed, id:%d, code:%d", info->key,
+        pxv_err("Set device config option failed, id:%d, code:%d", info->key,
                 id);
       }
     }
@@ -1703,16 +1703,16 @@ bool MainWindow::on_store_session(QString name) {
 
 bool MainWindow::save_config_to_file(QString name) {
   if (name == "") {
-    dsv_err("Session file name is empty.");
+    pxv_err("Session file name is empty.");
     assert(false);
   }
 
   std::string file_name = pv::path::ToUnicodePath(name);
-  dsv_info("Store session to file: \"%s\"", file_name.c_str());
+  pxv_info("Store session to file: \"%s\"", file_name.c_str());
 
   QFile sf(name);
   if (!sf.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    dsv_warn("Warning: Couldn't open profile to write!");
+    pxv_warn("Warning: Couldn't open profile to write!");
     return false;
   }
 
@@ -1866,7 +1866,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
     QKeyEvent *ke = (QKeyEvent *)event;
     QWidget *focused = qApp->focusWidget();
 
-    dsv_info("MainWindow::eventFilter key=%d, object=%p (%s), focused=%p (%s)",
+    pxv_info("MainWindow::eventFilter key=%d, object=%p (%s), focused=%p (%s)",
              ke->key(), object, object->metaObject()->className(), focused,
              focused ? focused->metaObject()->className() : "NULL");
 
@@ -1953,7 +1953,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
       QKeyEvent newEvent(ke->type(), key, ke->modifiers(), text,
                          ke->isAutoRepeat(), ke->count());
 
-      dsv_info("  Forwarding event to focused widget: %s (target: %s, text: "
+      pxv_info("  Forwarding event to focused widget: %s (target: %s, text: "
                "%s, mapped_key: %d)",
                focused->metaObject()->className(),
                target->metaObject()->className(), text.toStdString().c_str(),
@@ -2326,7 +2326,7 @@ void MainWindow::frame_ended() {
 }
 
 void MainWindow::on_frame_ended() {
-  dsv_info("MainWindow::on_frame_ended()");
+  pxv_info("MainWindow::on_frame_ended()");
   _acq_count++;
   _side_bar->setItemRunning(SIDEBAR_RUNSTOP, false);
   _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
@@ -2407,7 +2407,7 @@ void MainWindow::check_usb_device_speed() {
     bool usb30_support = false;
 
     if (_device_agent->get_config_bool(SR_CONF_USB30_SUPPORT, usb30_support)) {
-      dsv_info("The device's USB module version: %d.0", usb30_support ? 3 : 2);
+      pxv_info("The device's USB module version: %d.0", usb30_support ? 3 : 2);
 
       int cable_ver = 1;
       if (usb_speed == LIBUSB_SPEED_HIGH)
@@ -2415,7 +2415,7 @@ void MainWindow::check_usb_device_speed() {
       else if (usb_speed == LIBUSB_SPEED_SUPER)
         cable_ver = 3;
 
-      dsv_info("The cable's USB port version: %d.0", cable_ver);
+      pxv_info("The cable's USB port version: %d.0", cable_ver);
 
       if (usb30_support && usb_speed == LIBUSB_SPEED_HIGH) {
         QString str_err(
@@ -2475,7 +2475,7 @@ bool MainWindow::confirm_to_store_data() {
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_SAVE_CAPDATE), "Save captured data?"));
 
     if (!ret && _is_auto_switch_device) {
-      dsv_info("The data save confirm end, auto switch to the new device.");
+      pxv_info("The data save confirm end, auto switch to the new device.");
       _is_auto_switch_device = false;
 
       if (_session->is_working())
@@ -2519,7 +2519,7 @@ void MainWindow::load_device_config() {
 
     QFile sf(ses_name);
     if (!sf.exists()) {
-      dsv_info("Try to load the low version profile.");
+      pxv_info("Try to load the low version profile.");
       ses_name = gen_config_file_path(false);
     } else {
       bExist = true;
@@ -2528,7 +2528,7 @@ void MainWindow::load_device_config() {
     if (!bExist) {
       QFile sf2(ses_name);
       if (!sf2.exists()) {
-        dsv_info("Try to load the default profile.");
+        pxv_info("Try to load the default profile.");
         ses_name = _file_bar->genDefaultSessionFile();
       }
     }
@@ -2563,7 +2563,7 @@ QJsonDocument MainWindow::get_config_json_from_data_file(QString file,
   bSucesss = false;
 
   if (file == "") {
-    dsv_err("File name is empty.");
+    pxv_err("File name is empty.");
     assert(false);
   }
 
@@ -2579,7 +2579,7 @@ QJsonDocument MainWindow::get_config_json_from_data_file(QString file,
 
     if (error.error != QJsonParseError::NoError) {
       QString estr = error.errorString();
-      dsv_err("File::get_session(), parse json error:\"%s\"!",
+      pxv_err("File::get_session(), parse json error:\"%s\"!",
               estr.toUtf8().data());
     } else {
       bSucesss = true;
@@ -2599,7 +2599,7 @@ QJsonArray MainWindow::get_decoder_json_from_data_file(QString file,
   bSucesss = false;
 
   if (file == "") {
-    dsv_err("File name is empty.");
+    pxv_err("File name is empty.");
     assert(false);
   }
 
@@ -2616,7 +2616,7 @@ QJsonArray MainWindow::get_decoder_json_from_data_file(QString file,
 
     if (error.error != QJsonParseError::NoError) {
       QString estr = error.errorString();
-      dsv_err(
+      pxv_err(
           "MainWindow::get_decoder_json_from_file(), parse json error:\"%s\"!",
           estr.toUtf8().data());
     } else {
@@ -2773,7 +2773,7 @@ void MainWindow::OnMessage(int msg) {
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(_session->get_device());
         current_view()->rebuild_signals();
-        dsv_info("DSV_MSG_CURRENT_DEVICE_CHANGED: saved config and rebuilt "
+        pxv_info("DSV_MSG_CURRENT_DEVICE_CHANGED: saved config and rebuilt "
                  "signals for current tab");
       }
     }
@@ -2872,7 +2872,7 @@ void MainWindow::OnMessage(int msg) {
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(_session->get_device());
         current_view()->rebuild_signals();
-        dsv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
+        pxv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
                  "signals for current tab");
       }
     }
@@ -2926,13 +2926,13 @@ void MainWindow::OnMessage(int msg) {
 
     // The store confirm is not processed.
     if (_is_save_confirm_msg) {
-      dsv_info("New device attached:Waitting for the confirm box be closed.");
+      pxv_info("New device attached:Waitting for the confirm box be closed.");
       _is_auto_switch_device = true;
       return;
     }
 
     if (_session->is_saving()) {
-      dsv_info("New device attached:Waitting for store the data. and will "
+      pxv_info("New device attached:Waitting for store the data. and will "
                "switch to new device.");
       _is_auto_switch_device = true;
       return;
@@ -2968,7 +2968,7 @@ void MainWindow::OnMessage(int msg) {
     current_view()->hide_calibration();
 
     if (_session->is_saving()) {
-      dsv_info("Device detached:Waitting for store the data. and will switch "
+      pxv_info("Device detached:Waitting for store the data. and will switch "
                "to new device.");
       _is_auto_switch_device = true;
       return;
@@ -2991,7 +2991,7 @@ void MainWindow::OnMessage(int msg) {
     } else {
       ds_device_handle devh = _sampling_bar->get_next_device_handle();
       if (devh != NULL_HANDLE) {
-        dsv_info("Auto switch to the selected device.");
+        pxv_info("Auto switch to the selected device.");
         _session->set_device(devh);
       }
     }
@@ -3269,7 +3269,7 @@ void MainWindow::on_tab_changed(int index) {
     return;
 
   int old_index = _current_tab_index;
-  dsv_info("MainWindow::on_tab_changed(%d) old=%d", index, old_index);
+  pxv_info("MainWindow::on_tab_changed(%d) old=%d", index, old_index);
 
   if (old_index >= 0 && old_index < _tab_contexts.size() &&
       old_index != index) {
@@ -3368,7 +3368,7 @@ void MainWindow::on_new_tab_requested() {
 
   if (_device_agent && _device_agent->have_instance()) {
     new_doc->save_signal_config(_device_agent);
-    dsv_info("MainWindow::on_new_tab_requested() saved signal config, mode=%d "
+    pxv_info("MainWindow::on_new_tab_requested() saved signal config, mode=%d "
              "ch_count=%d",
              new_doc->get_signal_config().work_mode,
              (int)new_doc->get_signal_config().channels.size());

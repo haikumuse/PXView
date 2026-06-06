@@ -276,7 +276,7 @@
     },
     {
         "id": "IDS_MSG_STORESESS_EXPORTSTART_ERROR1",
-        "text": "DSView当前不支持\n多数据类型的文件导出."
+        "text": "PXView当前不支持\n多数据类型的文件导出."
     },
     {
         "id": "IDS_MSG_STORESESS_EXPORTSTART_ERROR2",

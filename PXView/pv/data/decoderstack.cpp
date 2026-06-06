@@ -1,6 +1,6 @@
 /*
  * This file is part of the PulseView project.
- * DSView is based on PulseView.
+ * PXView is based on PulseView.
  *
  * Copyright (C) 2012 Joel Holdsworth <joel@airwebreathe.org.uk>
  * Copyright (C) 2014 DreamSourceLab <support@dreamsourcelab.com>
@@ -412,7 +412,7 @@ void DecoderStack::do_decode_work() {
   _decoder_status->clear(); // clear old items
 
   if (!_options_changed) {
-    dsv_err("ERROR:Decoder options have not changed.");
+    pxv_err("ERROR:Decoder options have not changed.");
     return;
   }
   _options_changed = false;
@@ -425,7 +425,7 @@ void DecoderStack::do_decode_work() {
     _error_message =
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_WORK_ERROR),
             "One or more required channels have not been specified");
-    dsv_err("ERROR:%s", _error_message.toStdString().c_str());
+    pxv_err("ERROR:%s", _error_message.toStdString().c_str());
     return;
   }
 
@@ -448,19 +448,19 @@ void DecoderStack::do_decode_work() {
     _error_message =
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_WORK_ERROR),
             "One or more required channels have not been specified");
-    dsv_err("ERROR:%s", _error_message.toStdString().c_str());
+    pxv_err("ERROR:%s", _error_message.toStdString().c_str());
     return;
   }
 
   if (_session->is_realtime_refresh() == false && _snapshot->empty()) {
-    dsv_err("ERROR:Decode data is empty.");
+    pxv_err("ERROR:Decode data is empty.");
     return;
   }
 
   // Get the samplerate
   _samplerate = _snapshot->samplerate();
   if (_samplerate == 0.0) {
-    dsv_err("ERROR:Decode data got an invalid sample rate.");
+    pxv_err("ERROR:Decode data got an invalid sample rate.");
     return;
   }
 
@@ -509,7 +509,7 @@ void DecoderStack::decode_data(const uint64_t decode_start,
   // struct srd_push_param push_param;
 
   if (i >= decode_end) {
-    dsv_info("decode data index have been to end");
+    pxv_info("decode data index have been to end");
   }
 
   std::vector<const uint8_t *> chunk;
@@ -540,12 +540,12 @@ void DecoderStack::decode_data(const uint64_t decode_start,
 
         if (end_index >= align_sample_count) {
           end_index = align_sample_count - 1;
-          dsv_info("Reset the decode end sample, new:%llu, old:%llu",
+          pxv_info("Reset the decode end sample, new:%llu, old:%llu",
                    (u64_t)end_index, (u64_t)decode_end);
         }
 
         if (i >= align_sample_count) {
-          dsv_info("ERROR: the decoding sample index is out of range.");
+          pxv_info("ERROR: the decoding sample index is out of range.");
           break;
         }
       }
@@ -603,7 +603,7 @@ void DecoderStack::decode_data(const uint64_t decode_start,
 
       if (error) {
         _error_message = QString::fromLocal8Bit(error);
-        dsv_err("Failed to call srd_session_send:%s", error);
+        pxv_err("Failed to call srd_session_send:%s", error);
         g_free(error);
         error = NULL;
       }
@@ -642,11 +642,11 @@ void DecoderStack::decode_data(const uint64_t decode_start,
 
     if (error != NULL) {
       _error_message = QString::fromLocal8Bit(error);
-      dsv_err("Failed to call srd_session_end:%s", error);
+      pxv_err("Failed to call srd_session_end:%s", error);
     }
   }
 
-  dsv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
+  pxv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
 
   uint64_t total_annotations = 0;
   uint64_t total_capacity = 0;
@@ -657,13 +657,13 @@ void DecoderStack::decode_data(const uint64_t decode_start,
       }
   }
   
-  dsv_info("DEBUG PROBE: Decode End.");
-  dsv_info("DEBUG PROBE: Total Annotations: %llu", (unsigned long long)total_annotations);
-  dsv_info("DEBUG PROBE: Total Vector Capacity: %llu", (unsigned long long)total_capacity);
+  pxv_info("DEBUG PROBE: Decode End.");
+  pxv_info("DEBUG PROBE: Total Annotations: %llu", (unsigned long long)total_annotations);
+  pxv_info("DEBUG PROBE: Total Vector Capacity: %llu", (unsigned long long)total_capacity);
 
   // === Comprehensive Memory Breakdown ===
   auto &pool = decode::AnnotationPool::instance();
-  dsv_info("DEBUG MEM [1/5] Annotation Pool: alloc=%zu free=%zu chunks=%zu pool_memory=%zu MB",
+  pxv_info("DEBUG MEM [1/5] Annotation Pool: alloc=%zu free=%zu chunks=%zu pool_memory=%zu MB",
            pool.alloc_count(), pool.free_count(), pool.chunk_count(),
            pool.total_memory_bytes() / (1024*1024));
 
@@ -676,18 +676,18 @@ void DecoderStack::decode_data(const uint64_t decode_start,
       // Plus the std::map<std::string, int> index overhead (~80 bytes/entry for RB tree nodes + key)
       restable_str_bytes = restable_items * (128 + 80); // conservative base estimate
   }
-  dsv_info("DEBUG MEM [2/5] ResTable: unique_items=%llu, estimated_base=%llu MB",
+  pxv_info("DEBUG MEM [2/5] ResTable: unique_items=%llu, estimated_base=%llu MB",
            (unsigned long long)restable_items,
            (unsigned long long)(restable_str_bytes / (1024*1024)));
 
   // Vector<Annotation*> pointer storage
   uint64_t vec_pointer_bytes = total_capacity * sizeof(Annotation*);
-  dsv_info("DEBUG MEM [3/5] Vector<Annotation*> pointers: %llu MB",
+  pxv_info("DEBUG MEM [3/5] Vector<Annotation*> pointers: %llu MB",
            (unsigned long long)(vec_pointer_bytes / (1024*1024)));
 
   // LeafBlockPool (wave data blocks held in memory, not mmap)
   size_t leaf_idle = pv::data::LeafBlockPool::instance().idle_count();
-  dsv_info("DEBUG MEM [4/5] LeafBlockPool idle_blocks=%zu (each ~2MB = ~%zu MB)",
+  pxv_info("DEBUG MEM [4/5] LeafBlockPool idle_blocks=%zu (each ~2MB = ~%zu MB)",
            leaf_idle, leaf_idle * 2);
 
   // Process working set
@@ -698,9 +698,9 @@ void DecoderStack::decode_data(const uint64_t decode_start,
       ws = pmc.WorkingSetSize;
   }
 #endif
-  dsv_info("DEBUG MEM [5/5] Process WorkingSet: %llu MB",
+  pxv_info("DEBUG MEM [5/5] Process WorkingSet: %llu MB",
            (unsigned long long)(ws / (1024*1024)));
-  dsv_info("=== END MEMORY BREAKDOWN ===");
+  pxv_info("=== END MEMORY BREAKDOWN ===");
 
   if (error != NULL)
     g_free(error);
@@ -723,7 +723,7 @@ void DecoderStack::execute_decode_stack() {
   srd_session_new(&session);
 
   if (session == NULL) {
-    dsv_err("Failed to call srd_session_new()");
+    pxv_err("Failed to call srd_session_new()");
     assert(false);
   }
 
@@ -754,7 +754,7 @@ void DecoderStack::execute_decode_stack() {
       decode_end = max(dec->decode_end(), decode_end);
   }
 
-  dsv_info("decoder start sample:%llu, end sample:%llu, count:%llu",
+  pxv_info("decoder start sample:%llu, end sample:%llu, count:%llu",
            (u64_t)decode_start, (u64_t)decode_end,
            (u64_t)(decode_end - decode_start + 1));
 
@@ -804,7 +804,7 @@ void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
     return;
   }
   if (d->_decoder_status == NULL) {
-    dsv_err("decode task was deleted.");
+    pxv_err("decode task was deleted.");
     assert(false);
   }
 
@@ -839,7 +839,7 @@ void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
 
   assert(row_iter != d->_rows.end());
   if (row_iter == d->_rows.end()) {
-    dsv_err("Unexpected annotation: decoder = 0x%x, format = %d", (void *)decc,
+    pxv_err("Unexpected annotation: decoder = 0x%x, format = %d", (void *)decc,
             a->format());
     assert(0);
     return;

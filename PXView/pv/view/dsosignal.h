@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DSOSIGNAL_H
-#define DSVIEW_PV_DSOSIGNAL_H
+#ifndef PXVIEW_PV_DSOSIGNAL_H
+#define PXVIEW_PV_DSOSIGNAL_H
 
 #include "signal.h"
 #include "../dstimer.h"
@@ -319,4 +319,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_DSOSIGNAL_H
+#endif // PXVIEW_PV_DSOSIGNAL_H

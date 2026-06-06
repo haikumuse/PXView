@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_DSAPPLICATION_H
-#define DSVIEW_DSAPPLICATION_H
+#ifndef PXVIEW_DSAPPLICATION_H
+#define PXVIEW_DSAPPLICATION_H
 
 #include <QObject>
 #include <QApplication>
@@ -35,4 +35,4 @@ private:
     bool notify(QObject *receiver_, QEvent *event_);
 };
 
-#endif // DSVIEW_DSAPPLICATION_H
+#endif // PXVIEW_DSAPPLICATION_H

@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DATA_SIGNALDATA_H
-#define DSVIEW_PV_DATA_SIGNALDATA_H
+#ifndef PXVIEW_PV_DATA_SIGNALDATA_H
+#define PXVIEW_PV_DATA_SIGNALDATA_H
 
 #include <stdint.h>
 #include <mutex>
@@ -53,4 +53,4 @@ protected:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_DATA_SIGNALDATA_H
+#endif // PXVIEW_PV_DATA_SIGNALDATA_H

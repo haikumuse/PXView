@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DEVICEOPTIONS_H
-#define DSVIEW_PV_DEVICEOPTIONS_H
+#ifndef PXVIEW_PV_DEVICEOPTIONS_H
+#define PXVIEW_PV_DEVICEOPTIONS_H
 
 #include <libsigrok.h> 
 #include <QDialog>
@@ -162,4 +162,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_DEVICEOPTIONS_H
+#endif // PXVIEW_PV_DEVICEOPTIONS_H

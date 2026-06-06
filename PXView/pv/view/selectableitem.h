@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_SELECTABLEITEM_H
-#define DSVIEW_PV_SELECTABLEITEM_H
+#ifndef PXVIEW_PV_SELECTABLEITEM_H
+#define PXVIEW_PV_SELECTABLEITEM_H
 
 #include <list>
 #include <QObject>
@@ -68,4 +68,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_SELECTABLEITEM_H
+#endif // PXVIEW_PV_SELECTABLEITEM_H

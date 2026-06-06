@@ -82,11 +82,11 @@ About::About(QWidget *parent) :
                   .arg(tr("© PX. All rights reserved."));
 
     QString thanks = tr("<font size=16>Special Thanks</font><br />"
-                        "<a href=\"%1\" style=\"%2\">All members of DSView projectr</a><br />"
+                        "<a href=\"%1\" style=\"%2\">All members of PXView projectr</a><br />"
                         "<a href=\"%3\" style=\"%4\">All members of Sigrok project</a><br />"
                         "All contributors of all open-source projects</a><br />"
                         "<br /><br />")
-                        .arg("https://github.com/DreamSourceLab/DSView", linkStyle)
+                        .arg("https://github.com/DreamSourceLab/PXView", linkStyle)
                         .arg("http://sigrok.org/", linkStyle);
 
     QString changlogs = tr("<font size=16>Changelogs</font><br />");

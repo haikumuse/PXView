@@ -1,5 +1,5 @@
 /*
- * This file is part of the DSView project.
+ * This file is part of the PXView project.
  *
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  *
@@ -9,8 +9,8 @@
  * (at your option) any later version.
  */
 
-#ifndef DSVIEW_PV_DATA_SESSIONDOCUMENT_H
-#define DSVIEW_PV_DATA_SESSIONDOCUMENT_H
+#ifndef PXVIEW_PV_DATA_SESSIONDOCUMENT_H
+#define PXVIEW_PV_DATA_SESSIONDOCUMENT_H
 
 #include <stdint.h>
 #include <vector>
@@ -159,4 +159,4 @@ private:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_DATA_SESSIONDOCUMENT_H
+#endif // PXVIEW_PV_DATA_SESSIONDOCUMENT_H

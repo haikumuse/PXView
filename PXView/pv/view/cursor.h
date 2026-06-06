@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_VIEW_CURSOR_H
-#define DSVIEW_PV_VIEW_CURSOR_H
+#ifndef PXVIEW_PV_VIEW_CURSOR_H
+#define PXVIEW_PV_VIEW_CURSOR_H
 
 #include "timemarker.h"
 
@@ -100,4 +100,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_VIEW_CURSOR_H
+#endif // PXVIEW_PV_VIEW_CURSOR_H

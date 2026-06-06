@@ -95,7 +95,7 @@ WinNativeWidget::WinNativeWidget(const int x, const int y, const int width,
     RegisterClassEx(&wcx);
     if (FAILED(RegisterClassEx(&wcx)))
     {
-        dsv_info("ERROR: can't register window class");
+        pxv_info("ERROR: can't register window class");
         assert(false);
     }
  
@@ -107,7 +107,7 @@ WinNativeWidget::WinNativeWidget(const int x, const int y, const int width,
 
     if (!_hWnd)
     {
-        dsv_info("ERROR: can't create naitive window");
+        pxv_info("ERROR: can't create naitive window");
         assert(false);
     }
     
@@ -265,12 +265,12 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
                 HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
 
                 if (hMonitor == NULL){
-                    dsv_info("ERROR: WM_MOVE: get an invalid monitor.");
+                    pxv_info("ERROR: WM_MOVE: get an invalid monitor.");
                 }
                 else if (self->_hCurrentMonitor == NULL){
                     RECT rc = GetMonitorArea(hMonitor, true);
 
-                    dsv_info("WM_MOVE: get a monitor, handle:%x, x:%d, y:%d, w:%d, h:%d", 
+                    pxv_info("WM_MOVE: get a monitor, handle:%x, x:%d, y:%d, w:%d, h:%d", 
                         hMonitor, rc.left, rc.top,
                         rc.right - rc.left,
                         rc.bottom - rc.top);
@@ -280,7 +280,7 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
                 {
                     RECT rc = GetMonitorArea(hMonitor, true);
 
-                    dsv_info("WM_MOVE: display be changed, handle:%x, x:%d, y:%d, w:%d, h:%d", 
+                    pxv_info("WM_MOVE: display be changed, handle:%x, x:%d, y:%d, w:%d, h:%d", 
                         hMonitor, rc.left, rc.top,
                         rc.right - rc.left,
                         rc.bottom - rc.top);
@@ -295,10 +295,10 @@ LRESULT CALLBACK WinNativeWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam
         case WM_DISPLAYCHANGE:            
         {
             if (message == WM_DPICHANGED){
-                dsv_info("dpi changed.");
+                pxv_info("dpi changed.");
             }
             else{
-                dsv_info("display changed.");
+                pxv_info("display changed.");
             }
 
             if (self->_event_callback != NULL && self->_childWindow != NULL){ 
@@ -622,7 +622,7 @@ void WinNativeWidget::UpdateChildDpi()
     QScreen *screen = GetPointScreen();
 
     if (screen == NULL){
-        dsv_info("ERROR: failed to get pointing screen, will select the primary.");
+        pxv_info("ERROR: failed to get pointing screen, will select the primary.");
         screen = QGuiApplication::primaryScreen();
     }
 
@@ -646,7 +646,7 @@ QScreen* WinNativeWidget::screenFromCurrentMonitorHandle()
         rc = GetMonitorArea(hMonitor, true);
 
         if (rc.right - rc.left == 0){
-          //  dsv_info("ERROR: Got an invalid monitor information from current monitor handle.");
+          //  pxv_info("ERROR: Got an invalid monitor information from current monitor handle.");
             hMonitor = NULL;
         }
     }
@@ -655,14 +655,14 @@ QScreen* WinNativeWidget::screenFromCurrentMonitorHandle()
         hMonitor = MonitorFromWindow(_hWnd, MONITOR_DEFAULTTONEAREST);
 
         if (hMonitor == NULL){
-            dsv_info("ERROR: MonitorFromWindow() can't returns a handle.");
+            pxv_info("ERROR: MonitorFromWindow() can't returns a handle.");
             return NULL;
         }
 
         rc = GetMonitorArea(hMonitor, true);
 
         if (rc.right - rc.left == 0){
-          //  dsv_info("ERROR: Got an invalid monitor information from window handle.");
+          //  pxv_info("ERROR: Got an invalid monitor information from window handle.");
             return NULL;
         }
     } 
@@ -680,7 +680,7 @@ QScreen* WinNativeWidget::screenFromCurrentMonitorHandle()
         }
     }
 
-   // dsv_info("ERROR: can't match a monitor.");
+   // pxv_info("ERROR: can't match a monitor.");
   
     return NULL;
 }

@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_TOOLBARS_FILEBAR_H
-#define DSVIEW_PV_TOOLBARS_FILEBAR_H
+#ifndef PXVIEW_PV_TOOLBARS_FILEBAR_H
+#define PXVIEW_PV_TOOLBARS_FILEBAR_H
 
 #include <QToolBar>
 #include <QAction>
@@ -93,4 +93,4 @@ public:
 } // namespace toolbars
 } // namespace pv
 
-#endif // DSVIEW_PV_TOOLBARS_FILEBAR_H
+#endif // PXVIEW_PV_TOOLBARS_FILEBAR_H

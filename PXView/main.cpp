@@ -187,24 +187,24 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationDomain("www.marrychip.com");
 
 	//----------------------init log
-	dsv_log_init(); // Don't call before QApplication be inited
+	pxv_log_init(); // Don't call before QApplication be inited
 
 	if (bStoreLog && logLevel < XLOG_LEVEL_DBG){
 		logLevel = XLOG_LEVEL_DBG;
 	}
 	if (logLevel != -1){
-		dsv_log_level(logLevel);
+		pxv_log_level(logLevel);
 	}
 
 	#ifdef DEBUG_INFO
 		if (XLOG_LEVEL_INFO > logLevel){
-			dsv_log_level(XLOG_LEVEL_INFO); // on develop mode, set the default log level
+			pxv_log_level(XLOG_LEVEL_INFO); // on develop mode, set the default log level
 			logLevel = XLOG_LEVEL_INFO;
 		}
 	#endif
 
 	if (bStoreLog){
-		dsv_log_enalbe_logfile(true);
+		pxv_log_enalbe_logfile(true);
 	} 
 
 	AppControl *control = AppControl::Instance();	
@@ -214,30 +214,30 @@ int main(int argc, char *argv[])
 	LangResource::Instance()->Load(app.frameOptions.language);
 
 	if (app.appOptions.ableSaveLog){
-		dsv_log_enalbe_logfile(app.appOptions.appendLogMode);
+		pxv_log_enalbe_logfile(app.appOptions.appendLogMode);
 
 		if (app.appOptions.logLevel >= logLevel){
-			dsv_log_level(app.appOptions.logLevel);
+			pxv_log_level(app.appOptions.logLevel);
 		}
 	}
 
 	//----------------------run
-	dsv_info("----------------- version: %s-----------------", DS_VERSION_STRING);
-	dsv_info("Qt:%s", QT_VERSION_STR);
+	pxv_info("----------------- version: %s-----------------", DS_VERSION_STRING);
+	pxv_info("Qt:%s", QT_VERSION_STR);
 
 	QDateTime dateTime = QDateTime::currentDateTime();
 	std::string strTime = dateTime .toString("yyyy-MM-dd hh:mm:ss").toStdString();
-	dsv_info("%s", strTime.c_str());
+	pxv_info("%s", strTime.c_str());
 
 	int bit_width = sizeof(u64_t);
 	if (bit_width != 8){
-		dsv_err("Can only run on 64 bit systems");
+		pxv_err("Can only run on 64 bit systems");
 		return 0;
 	}
  
 	//init core
 	if (!control->Init()){ 
-		dsv_err("init error!"); 
+		pxv_err("init error!"); 
 		return 1;
 	}
 	
@@ -255,21 +255,21 @@ int main(int argc, char *argv[])
 		ret = a.exec(); //Run the application
 		control->Stop();
 
-		dsv_info("Main window closed.");
+		pxv_info("Main window closed.");
 	}
 	catch (const std::exception &e)
 	{
-        dsv_err("main() catch a except!");
+        pxv_err("main() catch a except!");
 		const char *exstr = e.what();
-		dsv_err("%s", exstr);
+		pxv_err("%s", exstr);
 	}
 
 	control->UnInit();  //uninit
 	control->Destroy();
 
-	dsv_info("Uninit log.");
+	pxv_info("Uninit log.");
 
-	dsv_log_uninit();
+	pxv_log_uninit();
  
 	return ret;
 }

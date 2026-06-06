@@ -276,7 +276,7 @@
     },
     {
         "id": "IDS_MSG_STORESESS_EXPORTSTART_ERROR1",
-        "text": "DSView目前不支援\n多資料類型的檔案匯出."
+        "text": "PXView目前不支援\n多資料類型的檔案匯出."
     },
     {
         "id": "IDS_MSG_STORESESS_EXPORTSTART_ERROR2",

@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_MATHOPTIONS_H
-#define DSVIEW_PV_MATHOPTIONS_H
+#ifndef PXVIEW_PV_MATHOPTIONS_H
+#define PXVIEW_PV_MATHOPTIONS_H
 
 #include <QGridLayout> 
 #include <QDialogButtonBox>
@@ -88,4 +88,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_MATHOPTIONS_H
+#endif // PXVIEW_PV_MATHOPTIONS_H

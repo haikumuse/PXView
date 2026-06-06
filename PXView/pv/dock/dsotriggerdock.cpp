@@ -303,7 +303,7 @@ void DsoTriggerDock::source_changed() {
   int id = _source_group->checkedId();
   int ret;
 
-  dsv_info("Set DSO trig type:%d", id);
+  pxv_info("Set DSO trig type:%d", id);
 
   ret = _session->get_device()->set_config_byte(SR_CONF_TRIGGER_SOURCE, id);
   if (!ret) {
@@ -331,13 +331,13 @@ bool DsoTriggerDock::check_trig_channel() {
   bool b1 = _session->get_device()->channel_is_enable(1);
 
   if (DSO_TRIGGER_CH0 == id && !b0) {
-    dsv_err("ERROR: The trigger channel is disabled");
+    pxv_err("ERROR: The trigger channel is disabled");
     return false;
   } else if (DSO_TRIGGER_CH1 == id && !b1) {
-    dsv_err("ERROR: The trigger channel is disabled");
+    pxv_err("ERROR: The trigger channel is disabled");
     return false;
   } else if (DSO_TRIGGER_CH0A1 == id && (!b0 || !b1)) {
-    dsv_err("ERROR: The trigger channel is disabled");
+    pxv_err("ERROR: The trigger channel is disabled");
     return false;
   }
 

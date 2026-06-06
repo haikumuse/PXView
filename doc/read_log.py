@@ -1,6 +1,6 @@
 import os
 
-log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\DSView.log"
+log_path = r"C:\Users\admin\AppData\Roaming\PXlogicV20\PXView\PXView.log"
 
 # Let's detect encoding or try both utf-8 and utf-16
 try:

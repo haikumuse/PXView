@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_VIEW_RULER_H
-#define DSVIEW_PV_VIEW_RULER_H
+#ifndef PXVIEW_PV_VIEW_RULER_H
+#define PXVIEW_PV_VIEW_RULER_H
 
 #include <QWidget>
 #include <stdint.h>
@@ -118,4 +118,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_VIEW_RULER_H
+#endif // PXVIEW_PV_VIEW_RULER_H

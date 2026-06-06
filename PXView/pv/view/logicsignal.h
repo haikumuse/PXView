@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_LOGICSIGNAL_H
-#define DSVIEW_PV_LOGICSIGNAL_H
+#ifndef PXVIEW_PV_LOGICSIGNAL_H
+#define PXVIEW_PV_LOGICSIGNAL_H
 
 #include "signal.h"
 
@@ -133,4 +133,4 @@ private:
 } // namespace view
 } // namespace pv
 
-#endif // DSVIEW_PV_LOGICSIGNAL_H
+#endif // PXVIEW_PV_LOGICSIGNAL_H

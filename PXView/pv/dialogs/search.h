@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_SEARCH_H
-#define DSVIEW_PV_SEARCH_H
+#ifndef PXVIEW_PV_SEARCH_H
+#define PXVIEW_PV_SEARCH_H
 
 #include <QLabel>
 #include <QLineEdit>
@@ -76,4 +76,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_SEARCH_H
+#endif // PXVIEW_PV_SEARCH_H

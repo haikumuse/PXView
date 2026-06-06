@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DSDIALOG_H
-#define DSVIEW_PV_DSDIALOG_H
+#ifndef PXVIEW_PV_DSDIALOG_H
+#define PXVIEW_PV_DSDIALOG_H
 
 #include <QDialog>
 #include <QWidget>
@@ -40,7 +40,7 @@ namespace dialogs {
 
     class Shadow;
 
-//DSView any dialog base class
+//PXView any dialog base class
 class DSDialog : public QDialog
 {
 	Q_OBJECT
@@ -98,4 +98,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_DSDIALOG_H
+#endif // PXVIEW_PV_DSDIALOG_H

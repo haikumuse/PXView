@@ -171,7 +171,7 @@ const char* AnnotationResTable::format_to_string(const char *hex_str, int fmt)
 			 dex = (int)(c - 'a') + 10;
 		 }
 		 else{ 
-			 dsv_err("is not a hex string");
+			 pxv_err("is not a hex string");
 			 assert(false);
 		 }
 

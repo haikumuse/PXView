@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_INTERVAL_H
-#define DSVIEW_PV_INTERVAL_H
+#ifndef PXVIEW_PV_INTERVAL_H
+#define PXVIEW_PV_INTERVAL_H
 
 #include <QLabel>
 #include <QDoubleSpinBox>
@@ -71,4 +71,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_INTERVAL_H
+#endif // PXVIEW_PV_INTERVAL_H

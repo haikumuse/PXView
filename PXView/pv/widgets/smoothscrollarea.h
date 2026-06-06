@@ -14,8 +14,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef DSVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
-#define DSVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
+#ifndef PXVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
+#define PXVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
 
 #include <QPropertyAnimation>
 #include <QScrollArea>
@@ -61,4 +61,4 @@ private:
 } // namespace widgets
 } // namespace pv
 
-#endif // DSVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H
+#endif // PXVIEW_PV_WIDGETS_SMOOTHSCROLLAREA_H

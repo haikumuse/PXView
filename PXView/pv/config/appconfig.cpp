@@ -423,7 +423,7 @@ void AppConfig::LoadAll()
     _loadShortcuts(shortcutOptions, st);
     _loadStyle(styleOptions, st);
 
-    //dsv_dbg("Config file path:\"%s\"", st.fileName().toUtf8().data());
+    //pxv_dbg("Config file path:\"%s\"", st.fileName().toUtf8().data());
 }
 
 void AppConfig::SaveApp()
@@ -707,7 +707,7 @@ QString GetAppDataDir()
         return dir1.absolutePath();
     }
 
-    dsv_err("Data directory is not exists: ../share/PXView");
+    pxv_err("Data directory is not exists: ../share/PXView");
     assert(false);   
 #else
 
@@ -757,7 +757,7 @@ QString GetFirmwareDir()
     }
 #endif
 
-    dsv_err("%s%s", "Resource directory is not exists:", dir1.absolutePath().toUtf8().data());
+    pxv_err("%s%s", "Resource directory is not exists:", dir1.absolutePath().toUtf8().data());
     return dir1.absolutePath();
 }
 
@@ -785,7 +785,7 @@ QString GetDecodeScriptDir()
 
 #ifdef Q_OS_DARWIN
     dir1.cd(QCoreApplication::applicationDirPath());
-    //if (dir1.cd("..") && dir1.cd("Resources") && dir1.cd("share") && dir1.cd("DSView") &&
+    //if (dir1.cd("..") && dir1.cd("Resources") && dir1.cd("share") && dir1.cd("PXView") &&
     if (dir1.cd("..") && dir1.cd("Resources") && dir1.cd("share") &&
         dir1.cd("libsigrokdecode") && dir1.cd("decoders"))
     {

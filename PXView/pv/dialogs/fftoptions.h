@@ -21,8 +21,8 @@
  */
 
 
-#ifndef DSVIEW_PV_FFTOPTIONS_H
-#define DSVIEW_PV_FFTOPTIONS_H
+#ifndef PXVIEW_PV_FFTOPTIONS_H
+#define PXVIEW_PV_FFTOPTIONS_H
 
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -83,4 +83,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // DSVIEW_PV_FFTOPTIONS_H
+#endif // PXVIEW_PV_FFTOPTIONS_H

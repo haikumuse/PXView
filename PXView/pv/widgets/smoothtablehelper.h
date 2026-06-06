@@ -14,8 +14,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef DSVIEW_PV_WIDGETS_SMOOTHTABLEHELPER_H
-#define DSVIEW_PV_WIDGETS_SMOOTHTABLEHELPER_H
+#ifndef PXVIEW_PV_WIDGETS_SMOOTHTABLEHELPER_H
+#define PXVIEW_PV_WIDGETS_SMOOTHTABLEHELPER_H
 
 #include <QObject>
 #include <QPropertyAnimation>
@@ -63,4 +63,4 @@ private:
 } // namespace widgets
 } // namespace pv
 
-#endif // DSVIEW_PV_WIDGETS_SMOOTHTABLEHELPER_H
+#endif // PXVIEW_PV_WIDGETS_SMOOTHTABLEHELPER_H

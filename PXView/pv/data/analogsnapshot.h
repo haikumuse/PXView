@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DATA_ANALOGSNAPSHOT_H
-#define DSVIEW_PV_DATA_ANALOGSNAPSHOT_H
+#ifndef PXVIEW_PV_DATA_ANALOGSNAPSHOT_H
+#define PXVIEW_PV_DATA_ANALOGSNAPSHOT_H
 
 #include <libsigrok.h>
 #include "snapshot.h"
@@ -131,4 +131,4 @@ private:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_DATA_ANALOGSNAPSHOT_H
+#endif // PXVIEW_PV_DATA_ANALOGSNAPSHOT_H

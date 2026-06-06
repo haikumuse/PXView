@@ -519,10 +519,10 @@ void SamplingBar::update_sample_rate_selector() {
   const uint64_t *elements = NULL;
   gsize num_elements;
 
-  dsv_info("Update rate list.");
+  pxv_info("Update rate list.");
 
   if (_updating_sample_rate) {
-    dsv_err("Error! The rate list is updating.");
+    pxv_err("Error! The rate list is updating.");
     return;
   }
 
@@ -530,7 +530,7 @@ void SamplingBar::update_sample_rate_selector() {
              this, &SamplingBar::on_samplerate_sel);
 
   if (_device_agent->have_instance() == false) {
-    dsv_info("SamplingBar::update_sample_rate_selector, have no device.");
+    pxv_info("SamplingBar::update_sample_rate_selector, have no device.");
     return;
   }
 
@@ -616,10 +616,10 @@ void SamplingBar::update_sample_count_selector() {
   double duration;
   bool rle_support = false;
 
-  dsv_info("Update sample count list.");
+  pxv_info("Update sample count list.");
 
   if (_updating_sample_count) {
-    dsv_err("Error! The sample count is updating.");
+    pxv_err("Error! The sample count is updating.");
     return;
   }
 
@@ -777,14 +777,14 @@ void SamplingBar::update_sample_count_selector_value() {
     if (_device_agent->get_config_uint64(SR_CONF_TIMEBASE, v)) {
       duration = (double)v;
     } else {
-      dsv_err("ERROR: config_get SR_CONF_TIMEBASE failed.");
+      pxv_err("ERROR: config_get SR_CONF_TIMEBASE failed.");
       return;
     }
   } else {
     if (_device_agent->get_config_uint64(SR_CONF_LIMIT_SAMPLES, v)) {
       duration = (double)v;
     } else {
-      dsv_err("ERROR: config_get SR_CONF_TIMEBASE failed.");
+      pxv_err("ERROR: config_get SR_CONF_TIMEBASE failed.");
       return;
     }
     const uint64_t samplerate = _device_agent->get_sample_rate();
@@ -885,7 +885,7 @@ double SamplingBar::commit_hori_res() {
 
   if (_device_agent->get_config_uint64(SR_CONF_MAX_DSO_SAMPLERATE,
                                        max_sample_rate) == false) {
-    dsv_err("ERROR: config_get SR_CONF_MAX_DSO_SAMPLERATE failed.");
+    pxv_err("ERROR: config_get SR_CONF_MAX_DSO_SAMPLERATE failed.");
     return -1;
   }
 
@@ -947,7 +947,7 @@ bool SamplingBar::action_run_stop() {
     return false;
 
   if (_session->is_doing_action()) {
-    dsv_info("Task is busy.");
+    pxv_info("Task is busy.");
     return false;
   }
 
@@ -956,7 +956,7 @@ bool SamplingBar::action_run_stop() {
   }
 
   if (_device_agent->have_instance() == false) {
-    dsv_info("Have no device, can't to collect data.");
+    pxv_info("Have no device, can't to collect data.");
     return false;
   }
 
@@ -1005,7 +1005,7 @@ bool SamplingBar::action_instant_stop() {
     return false;
 
   if (_session->is_doing_action()) {
-    dsv_info("Task is busy.");
+    pxv_info("Task is busy.");
     return false;
   }
 
@@ -1014,7 +1014,7 @@ bool SamplingBar::action_instant_stop() {
   }
 
   if (_device_agent->have_instance() == false) {
-    dsv_info("Error! Have no device, can't to collect data.");
+    pxv_info("Error! Have no device, can't to collect data.");
     return false;
   }
 
@@ -1056,7 +1056,7 @@ void SamplingBar::on_device_selected() {
     return;
   }
   if (_device_selector.currentIndex() == -1) {
-    dsv_err("Have no selected device.");
+    pxv_err("Have no selected device.");
     return;
   }
   _session->stop_capture();
@@ -1251,12 +1251,12 @@ void SamplingBar::update_device_list() {
   int dev_count = 0;
   int select_index = 0;
 
-  dsv_info("Update device list.");
+  pxv_info("Update device list.");
 
   array = _session->get_device_list(dev_count, select_index);
 
   if (array == NULL) {
-    dsv_err("Get deivce list error!");
+    pxv_err("Get deivce list error!");
     return;
   }
 

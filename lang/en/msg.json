@@ -241,7 +241,7 @@
     },
     {
         "id": "IDS_MSG_STORESESS_SAVESTART_ERROR1",
-        "text": "DSView does not currently support\nfile saving for multiple data types."
+        "text": "PXView does not currently support\nfile saving for multiple data types."
     },
     {
         "id": "IDS_MSG_STORESESS_SAVESTART_ERROR2",

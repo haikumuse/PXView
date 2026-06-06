@@ -1,6 +1,6 @@
 /*
  * This file is part of the PulseView project.
- * DSView is based on PulseView.
+ * PXView is based on PulseView.
  * 
  * Copyright (C) 2013 Joel Holdsworth <joel@airwebreathe.org.uk>
  * Copyright (C) 2016 DreamSourceLab <support@dreamsourcelab.com>
@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_VIEW_DECODE_ANNOTATION_H
-#define DSVIEW_PV_VIEW_DECODE_ANNOTATION_H
+#ifndef PXVIEW_PV_VIEW_DECODE_ANNOTATION_H
+#define PXVIEW_PV_VIEW_DECODE_ANNOTATION_H
 
 #include <stdint.h>
 
@@ -105,4 +105,4 @@ private:
 } // namespace data
 } // namespace pv
 
-#endif // DSVIEW_PV_VIEW_DECODE_ANNOTATION_H
+#endif // PXVIEW_PV_VIEW_DECODE_ANNOTATION_H

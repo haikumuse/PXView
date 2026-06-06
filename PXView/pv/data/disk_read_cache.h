@@ -22,8 +22,8 @@
  */
 
 
-#ifndef DSVIEW_PV_DATA_DISK_READ_CACHE_H
-#define DSVIEW_PV_DATA_DISK_READ_CACHE_H
+#ifndef PXVIEW_PV_DATA_DISK_READ_CACHE_H
+#define PXVIEW_PV_DATA_DISK_READ_CACHE_H
 
 #include "disk_buffer_manager.h"
 #include <list>

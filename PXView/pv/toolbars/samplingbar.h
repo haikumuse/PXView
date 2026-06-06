@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_TOOLBARS_SAMPLINGBAR_H
-#define DSVIEW_PV_TOOLBARS_SAMPLINGBAR_H
+#ifndef PXVIEW_PV_TOOLBARS_SAMPLINGBAR_H
+#define PXVIEW_PV_TOOLBARS_SAMPLINGBAR_H
 
 #include "../sigsession.h"
 
@@ -204,4 +204,4 @@ namespace pv
     } // namespace toolbars
 } // namespace pv
 
-#endif // DSVIEW_PV_TOOLBARS_SAMPLINGBAR_H
+#endif // PXVIEW_PV_TOOLBARS_SAMPLINGBAR_H

@@ -71,7 +71,7 @@ bool DiskBufferManager::open(const DiskCacheConfig &config, int channel_count)
     _next_disk_offset = 0;
 
     if (_cache_path.empty()) {
-        dsv_err("DiskBufferManager: cache path is empty");
+        pxv_err("DiskBufferManager: cache path is empty");
         return false;
     }
 
@@ -94,14 +94,14 @@ bool DiskBufferManager::open(const DiskCacheConfig &config, int channel_count)
 
     for (int i = 0; i < _channel_count; i++) {
         if (!create_channel_file(i)) {
-            dsv_err("DiskBufferManager: failed to create channel file %d", i);
+            pxv_err("DiskBufferManager: failed to create channel file %d", i);
             close();
             return false;
         }
     }
 
     _is_open = true;
-    dsv_info("DiskBufferManager: opened %d channels at %s", _channel_count, _cache_path.c_str());
+    pxv_info("DiskBufferManager: opened %d channels at %s", _channel_count, _cache_path.c_str());
     return true;
 }
 
@@ -123,7 +123,7 @@ void DiskBufferManager::close()
 
     _channel_indexes.clear();
     _is_open = false;
-    dsv_info("DiskBufferManager: closed");
+    pxv_info("DiskBufferManager: closed");
 }
 
 bool DiskBufferManager::write_block(int channel, uint64_t block_index, const void *data, uint64_t size)
@@ -150,7 +150,7 @@ bool DiskBufferManager::write_block(int channel, uint64_t block_index, const voi
     _next_disk_offset += size;
 
     if (!write_file(channel, offset, data, size)) {
-        dsv_err("DiskBufferManager: write_block failed ch=%d blk=%llu", channel, (unsigned long long)block_index);
+        pxv_err("DiskBufferManager: write_block failed ch=%d blk=%llu", channel, (unsigned long long)block_index);
         return false;
     }
 
@@ -193,7 +193,7 @@ bool DiskBufferManager::save_index()
     HANDLE hFile = CreateFileA(filename.c_str(), GENERIC_WRITE, 0, NULL,
         CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        dsv_err("DiskBufferManager: failed to create index file");
+        pxv_err("DiskBufferManager: failed to create index file");
         return false;
     }
 
@@ -218,7 +218,7 @@ bool DiskBufferManager::save_index()
 #else
     int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
-        dsv_err("DiskBufferManager: failed to create index file");
+        pxv_err("DiskBufferManager: failed to create index file");
         return false;
     }
 
@@ -241,7 +241,7 @@ bool DiskBufferManager::save_index()
     ::close(fd);
 #endif
 
-    dsv_info("DiskBufferManager: index saved");
+    pxv_info("DiskBufferManager: index saved");
     return true;
 }
 
@@ -258,7 +258,7 @@ bool DiskBufferManager::load_index()
     HANDLE hFile = CreateFileA(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        dsv_err("DiskBufferManager: index file not found");
+        pxv_err("DiskBufferManager: index file not found");
         return false;
     }
 
@@ -267,7 +267,7 @@ bool DiskBufferManager::load_index()
     ReadFile(hFile, magic, 4, &bytesRead, NULL);
     if (memcmp(magic, IndexMagic, 4) != 0) {
         CloseHandle(hFile);
-        dsv_err("DiskBufferManager: invalid index magic");
+        pxv_err("DiskBufferManager: invalid index magic");
         return false;
     }
 
@@ -275,7 +275,7 @@ bool DiskBufferManager::load_index()
     ReadFile(hFile, &version, sizeof(uint32_t), &bytesRead, NULL);
     if (version != IndexVersion) {
         CloseHandle(hFile);
-        dsv_err("DiskBufferManager: unsupported index version %u", version);
+        pxv_err("DiskBufferManager: unsupported index version %u", version);
         return false;
     }
 
@@ -283,7 +283,7 @@ bool DiskBufferManager::load_index()
     ReadFile(hFile, &ch_count, sizeof(uint32_t), &bytesRead, NULL);
     if ((int)ch_count != _channel_count) {
         CloseHandle(hFile);
-        dsv_err("DiskBufferManager: index channel count mismatch");
+        pxv_err("DiskBufferManager: index channel count mismatch");
         return false;
     }
 
@@ -304,7 +304,7 @@ bool DiskBufferManager::load_index()
 #else
     int fd = ::open(filename.c_str(), O_RDONLY);
     if (fd < 0) {
-        dsv_err("DiskBufferManager: index file not found");
+        pxv_err("DiskBufferManager: index file not found");
         return false;
     }
 
@@ -312,7 +312,7 @@ bool DiskBufferManager::load_index()
     ::read(fd, magic, 4);
     if (memcmp(magic, IndexMagic, 4) != 0) {
         ::close(fd);
-        dsv_err("DiskBufferManager: invalid index magic");
+        pxv_err("DiskBufferManager: invalid index magic");
         return false;
     }
 
@@ -320,7 +320,7 @@ bool DiskBufferManager::load_index()
     ::read(fd, &version, sizeof(uint32_t));
     if (version != IndexVersion) {
         ::close(fd);
-        dsv_err("DiskBufferManager: unsupported index version %u", version);
+        pxv_err("DiskBufferManager: unsupported index version %u", version);
         return false;
     }
 
@@ -328,7 +328,7 @@ bool DiskBufferManager::load_index()
     ::read(fd, &ch_count, sizeof(uint32_t));
     if ((int)ch_count != _channel_count) {
         ::close(fd);
-        dsv_err("DiskBufferManager: index channel count mismatch");
+        pxv_err("DiskBufferManager: index channel count mismatch");
         return false;
     }
 
@@ -348,7 +348,7 @@ bool DiskBufferManager::load_index()
     ::close(fd);
 #endif
 
-    dsv_info("DiskBufferManager: index loaded, next_offset=%llu", (unsigned long long)_next_disk_offset);
+    pxv_info("DiskBufferManager: index loaded, next_offset=%llu", (unsigned long long)_next_disk_offset);
     return true;
 }
 
@@ -384,7 +384,7 @@ void DiskBufferManager::cleanup()
     for (int i = 0; i < _channel_count; i++)
         create_channel_file(i);
 
-    dsv_info("DiskBufferManager: cleanup done");
+    pxv_info("DiskBufferManager: cleanup done");
 }
 
 void DiskBufferManager::destroy()
@@ -424,7 +424,7 @@ void DiskBufferManager::destroy()
     _channel_indexes.clear();
     _is_open = false;
 
-    dsv_info("DiskBufferManager: destroy done");
+    pxv_info("DiskBufferManager: destroy done");
 }
 
 bool DiskBufferManager::check_disk_space(uint64_t required_bytes)
@@ -473,14 +473,14 @@ bool DiskBufferManager::create_channel_file(int channel)
     HANDLE hFile = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE,
         0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        dsv_err("DiskBufferManager: failed to create file %s", filename.c_str());
+        pxv_err("DiskBufferManager: failed to create file %s", filename.c_str());
         return false;
     }
     _channel_handles[channel] = hFile;
 #else
     int fd = ::open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
-        dsv_err("DiskBufferManager: failed to create file %s", filename.c_str());
+        pxv_err("DiskBufferManager: failed to create file %s", filename.c_str());
         return false;
     }
     _channel_fds[channel] = fd;

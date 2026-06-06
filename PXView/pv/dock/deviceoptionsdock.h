@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef DSVIEW_PV_DEVICEOPTIONSDOCK_H
-#define DSVIEW_PV_DEVICEOPTIONSDOCK_H
+#ifndef PXVIEW_PV_DEVICEOPTIONSDOCK_H
+#define PXVIEW_PV_DEVICEOPTIONSDOCK_H
 
 #include <QCheckBox>
 #include <QFrame>
@@ -130,4 +130,4 @@ private:
 } // namespace dock
 } // namespace pv
 
-#endif // DSVIEW_PV_DEVICEOPTIONSDOCK_H
+#endif // PXVIEW_PV_DEVICEOPTIONSDOCK_H
