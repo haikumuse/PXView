@@ -415,8 +415,6 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
 #endif
     const auto &groups = _view.get_signal_groups();
     if (!groups.empty()) {
-      QColor cardColor = _view.get_group_card_color();
-
       std::vector<size_t> group_indices(groups.size());
       for (size_t i = 0; i < groups.size(); i++)
         group_indices[i] = i;
@@ -451,7 +449,7 @@ void Viewport::doPaint(const QRect & /* dirtyRect */) {
         QRectF cardRect(-View::GroupCardRadius, cardTop,
                         width() + View::GroupCardRadius + 1, cardHeight);
         p.setPen(Qt::NoPen);
-        p.setBrush(cardColor);
+        p.setBrush(_view.get_group_card_color(group_indices[idx]));
         p.drawRoundedRect(cardRect, View::GroupCardRadius,
                           View::GroupCardRadius);
       }

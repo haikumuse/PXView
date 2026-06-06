@@ -206,7 +206,9 @@ public:
     return _signal_groups;
   }
   QColor get_group_card_color();
+  QColor get_group_card_color(int group_index);
   void set_group_card_color(QColor color) { _group_card_color = color; }
+  bool is_colored_card_mode();
 
   int headerWidth();
 

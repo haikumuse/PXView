@@ -99,6 +99,7 @@ namespace dialogs
         void onStyleCategoryChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
         void onStyleTokenColorChanged(const QString &tokenName);
         void onStyleTokenTextChanged(const QString &tokenName, const QString &value);
+        void onStyleTokenBoolChanged(const QString &tokenName, bool checked);
         void onResetStyle();
         void onExportStyle();
         void onImportStyle();
@@ -139,6 +140,7 @@ namespace dialogs
         QMap<QString, QWidget*> _style_preview_widgets;
         QMap<QString, QPushButton*> _style_button_widgets;
         QMap<QString, class QLineEdit*> _style_line_edit_widgets;
+        QMap<QString, QCheckBox*> _style_checkbox_widgets;
         DsComboBox *_preset_combo;
         
         class QTimer *_live_preview_timer;
