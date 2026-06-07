@@ -109,7 +109,9 @@ link_directories(${GLIB_LIBDIR})
 #= python3
 #-------------------------------------------------------------------------------
 
-cmake_policy(SET CMP0148 NEW)
+if(POLICY CMP0148)
+	cmake_policy(SET CMP0148 NEW)
+endif()
 find_package(Python3 COMPONENTS Interpreter Development)
 
 if (Python3_FOUND)
@@ -185,7 +187,9 @@ endif()
 #===============================================================================
 #= boost
 #-------------------------------------------------------------------------------
-cmake_policy(SET CMP0167 NEW)
+if(POLICY CMP0167)
+	cmake_policy(SET CMP0167 NEW)
+endif()
 find_package(Boost 1.42 QUIET)
 
 if(NOT Boost_FOUND)
