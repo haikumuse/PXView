@@ -40,6 +40,90 @@
 namespace pv {
 namespace ui {
 
+class TabCloseButton : public QAbstractButton {
+public:
+    explicit TabCloseButton(QWidget *parent = nullptr) : QAbstractButton(parent), _hovered(false), _pressed(false) {
+        setFixedSize(16, 16);
+        setCursor(Qt::ArrowCursor);
+        setFocusPolicy(Qt::NoFocus);
+        setToolTip(tr("Close"));
+    }
+
+protected:
+    void paintEvent(QPaintEvent *event) override {
+        Q_UNUSED(event);
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        if (_pressed) {
+            QString pressColorStr = AppConfig::Instance().GetThemeTokenValue("@bg-overlay");
+            QColor pressColor(pressColorStr);
+            if (!pressColor.isValid()) pressColor = QColor(128, 128, 128, 80);
+            p.setBrush(pressColor);
+            p.setPen(Qt::NoPen);
+            p.drawRoundedRect(rect(), 4, 4);
+        } else if (_hovered) {
+            QString hoverColorStr = AppConfig::Instance().GetThemeTokenValue("@bg-overlay");
+            QColor hoverColor(hoverColorStr);
+            if (!hoverColor.isValid()) hoverColor = QColor(128, 128, 128, 50);
+            p.setBrush(hoverColor);
+            p.setPen(Qt::NoPen);
+            p.drawRoundedRect(rect(), 4, 4);
+        }
+
+        QString fgColorStr = AppConfig::Instance().GetThemeTokenValue("@fg-muted");
+        QColor fgColor(fgColorStr);
+        if (!fgColor.isValid()) fgColor = QColor(150, 150, 150);
+
+        if (_hovered || _pressed) {
+            QString hoverFgStr = AppConfig::Instance().GetThemeTokenValue("@fg-bright");
+            QColor hoverFg(hoverFgStr);
+            if (hoverFg.isValid()) fgColor = hoverFg;
+            else fgColor = Qt::white;
+        }
+
+        QPen pen(fgColor, 1.2);
+        pen.setCapStyle(Qt::RoundCap);
+        p.setPen(pen);
+
+        int margin = 5;
+        p.drawLine(margin, margin, width() - margin, height() - margin);
+        p.drawLine(width() - margin, margin, margin, height() - margin);
+    }
+
+    void enterEvent(QEnterEvent *event) override {
+        _hovered = true;
+        update();
+        QAbstractButton::enterEvent(event);
+    }
+
+    void leaveEvent(QEvent *event) override {
+        _hovered = false;
+        update();
+        QAbstractButton::leaveEvent(event);
+    }
+
+    void mousePressEvent(QMouseEvent *e) override {
+        if (e->button() == Qt::LeftButton) {
+            _pressed = true;
+            update();
+        }
+        QAbstractButton::mousePressEvent(e);
+    }
+
+    void mouseReleaseEvent(QMouseEvent *e) override {
+        if (e->button() == Qt::LeftButton) {
+            _pressed = false;
+            update();
+        }
+        QAbstractButton::mouseReleaseEvent(e);
+    }
+
+private:
+    bool _hovered;
+    bool _pressed;
+};
+
 DraggableTabWidget::DraggableTabWidget(QWidget *parent)
     : QTabWidget(parent)
 {
@@ -143,6 +227,22 @@ void DraggableTabWidget::update_add_button_position()
 void DraggableTabWidget::tabInserted(int index)
 {
     QTabWidget::tabInserted(index);
+    
+    TabCloseButton *btn = new TabCloseButton(this);
+    connect(btn, &QAbstractButton::clicked, this, [this, btn]() {
+        int idx = -1;
+        for (int i = 0; i < count(); ++i) {
+            if (tabBar()->tabButton(i, QTabBar::RightSide) == btn) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx != -1) {
+            emit tabCloseRequested(idx);
+        }
+    });
+    tabBar()->setTabButton(index, QTabBar::RightSide, btn);
+    
     QTimer::singleShot(0, this, [this]() { update_add_button_position(); });
 }
 
