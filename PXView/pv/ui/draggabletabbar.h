@@ -45,6 +45,7 @@ signals:
     void tabRenameRequested(int index);
     void tabCloseOthersRequested(int index);
     void tabCloseRightRequested(int index);
+    void tabMoveRequested(int from, int to);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -67,6 +68,8 @@ private:
     QLabel *_drag_preview;
     bool _drag_outside;
     QPoint _drag_offset;
+    QPixmap _drag_pixmap;
+    int _drop_index;
 };
 
 } // namespace ui

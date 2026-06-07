@@ -108,4 +108,16 @@ void SessionManager::remove_from_main_list(TabContext *ctx)
         _contexts.erase(it);
 }
 
+void SessionManager::move_context(int from, int to)
+{
+    if (from < 0 || from >= (int)_contexts.size() || to < 0 || to >= (int)_contexts.size())
+        return;
+    if (from == to)
+        return;
+
+    TabContext* ctx = _contexts[from];
+    _contexts.erase(_contexts.begin() + from);
+    _contexts.insert(_contexts.begin() + to, ctx);
+}
+
 } // namespace pv

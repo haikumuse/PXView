@@ -31,6 +31,8 @@
 #include <QStyleOption>
 #include <QStylePainter>
 
+#include "../config/appconfig.h"
+
 namespace pv {
 namespace ui {
 
@@ -39,7 +41,8 @@ DraggableTabBar::DraggableTabBar(QWidget *parent)
       _drag_started(false),
       _drag_index(-1),
       _drag_preview(nullptr),
-      _drag_outside(false)
+      _drag_outside(false),
+      _drop_index(-1)
 {
     setDrawBase(false);
 }
@@ -51,17 +54,42 @@ DraggableTabBar::~DraggableTabBar()
 
 void DraggableTabBar::paintEvent(QPaintEvent *event)
 {
-    Q_UNUSED(event);
-    QStylePainter p(this);
+    QTabBar::paintEvent(event);
 
-    for (int i = 0; i < count(); ++i) {
-        if (!tabRect(i).isValid())
-            continue;
-        QStyleOptionTab opt;
-        initStyleOption(&opt, i);
-        p.drawControl(QStyle::CE_TabBarTab, opt);
+    if (_drag_started && !_drag_outside && _drop_index >= 0) {
+        QPainter p(this);
+        
+        QString accentStr = AppConfig::Instance().GetThemeTokenValue("@accent");
+        QColor accentColor(accentStr);
+        if (!accentColor.isValid()) accentColor = QColor(0, 120, 215);
+        
+        p.setPen(QPen(accentColor, 3));
+        
+        int x = 0;
+        if (_drop_index < count()) {
+            QRect r = tabRect(_drop_index);
+            if (r.isValid()) {
+                x = r.left();
+            } else {
+                for (int i = _drop_index + 1; i < count(); ++i) {
+                    if (tabRect(i).isValid()) {
+                        x = tabRect(i).left();
+                        break;
+                    }
+                }
+            }
+        } else if (count() > 0) {
+            for (int i = count() - 1; i >= 0; --i) {
+                if (tabRect(i).isValid()) {
+                    x = tabRect(i).right();
+                    break;
+                }
+            }
+        }
+        p.drawLine(x, 0, x, height());
     }
 }
+
 
 void DraggableTabBar::mousePressEvent(QMouseEvent *event)
 {
@@ -73,6 +101,7 @@ void DraggableTabBar::mousePressEvent(QMouseEvent *event)
         if (_drag_index >= 0) {
             QRect tr = tabRect(_drag_index);
             _drag_offset = event->position().toPoint() - tr.topLeft();
+            _drag_pixmap = this->grab(tr);
 
             // Check if click is on the close button
             QWidget *closeBtn = tabButton(_drag_index, QTabBar::RightSide);
@@ -81,15 +110,10 @@ void DraggableTabBar::mousePressEvent(QMouseEvent *event)
             if (closeBtn && closeBtn->isVisible()) {
                 QPoint closePos = closeBtn->mapFromParent(event->position().toPoint());
                 if (closeBtn->rect().contains(closePos)) {
-                    emit tabCloseRequested(_drag_index);
-                    _drag_index = -1;
-                    return;
+                    _drag_index = -1; // Don't initiate drag if clicking close button
                 }
             }
-
-            setCurrentIndex(_drag_index);
         }
-        return;
     }
     QTabBar::mousePressEvent(event);
 }
@@ -102,6 +126,7 @@ void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
 
         if (!_drag_started && distance > _drag_threshold) {
             _drag_started = true;
+            create_drag_preview(_drag_index);
         }
 
         if (_drag_started) {
@@ -112,38 +137,63 @@ void DraggableTabBar::mouseMoveEvent(QMouseEvent *event)
                 bar_rect.adjust(0, 0, 0, tabRect(count() - 1).bottom() - bar_rect.bottom());
             }
 
-            if (!bar_rect.contains(event->position().toPoint())) {
-                if (!_drag_outside) {
-                    _drag_outside = true;
-                    create_drag_preview(_drag_index);
+            QRect detach_bounds = bar_rect.adjusted(-20, -50, 20, 50);
+
+            if (!detach_bounds.contains(event->position().toPoint())) {
+                _drag_outside = true;
+                if (_drop_index != -1) {
+                    _drop_index = -1;
+                    update();
                 }
-                update_drag_preview_pos(global_pos);
-                return;
-            } else if (_drag_outside) {
+            } else {
                 _drag_outside = false;
-                destroy_drag_preview();
+                int new_drop_index = count();
+                for (int i = 0; i < count(); ++i) {
+                    QRect r = tabRect(i);
+                    if (r.isValid() && event->position().toPoint().x() < r.center().x()) {
+                        new_drop_index = i;
+                        break;
+                    }
+                }
+                if (_drop_index != new_drop_index) {
+                    _drop_index = new_drop_index;
+                    update();
+                }
             }
+            update_drag_preview_pos(global_pos);
+            return;
         }
-        return;
     }
     QTabBar::mouseMoveEvent(event);
 }
 
 void DraggableTabBar::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (_drag_outside && _drag_index >= 0) {
+    if (event->button() == Qt::LeftButton && _drag_started) {
         QPoint global_pos = mapToGlobal(event->position().toPoint());
+        int detach_idx = _drag_index;
+        int drop_idx = _drop_index;
+        bool was_outside = _drag_outside;
+        
         destroy_drag_preview();
-        emit detachTab(_drag_index, global_pos);
-    } else {
-        destroy_drag_preview();
-    }
-    _drag_started = false;
-    _drag_index = -1;
-    _drag_outside = false;
-
-    if (event->button() != Qt::LeftButton)
+        
+        _drag_started = false;
+        _drag_index = -1;
+        _drag_outside = false;
+        _drop_index = -1;
+        update();
+        
         QTabBar::mouseReleaseEvent(event);
+        
+        if (was_outside) {
+            emit detachTab(detach_idx, global_pos);
+        } else if (drop_idx >= 0) {
+            emit tabMoveRequested(detach_idx, drop_idx);
+        }
+        return;
+    }
+    
+    QTabBar::mouseReleaseEvent(event);
 }
 
 void DraggableTabBar::contextMenuEvent(QContextMenuEvent *event)
@@ -189,16 +239,13 @@ void DraggableTabBar::create_drag_preview(int index)
     if (index < 0 || index >= count())
         return;
 
-    QRect tab_rect = this->tabRect(index);
-    QPixmap pixmap = this->grab(tab_rect);
-
     setTabVisible(index, false);
 
     _drag_preview = new QLabel(nullptr,
         static_cast<Qt::WindowFlags>(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint));
     _drag_preview->setAttribute(Qt::WA_ShowWithoutActivating);
-    _drag_preview->setPixmap(pixmap);
-    _drag_preview->setFixedSize(pixmap.size() / pixmap.devicePixelRatioF());
+    _drag_preview->setPixmap(_drag_pixmap);
+    _drag_preview->setFixedSize(_drag_pixmap.size() / _drag_pixmap.devicePixelRatioF());
     _drag_preview->show();
 }
 

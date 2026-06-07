@@ -24,6 +24,8 @@
 #include "draggabletabbar.h"
 #include "../submainframe.h"
 #include "../config/appconfig.h"
+#include "../sessionmanager.h"
+#include "../tabcontext.h"
 
 #include <QPushButton>
 #include <QHBoxLayout>
@@ -51,11 +53,13 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
     }
 
     setTabsClosable(true);
-    setMovable(true);
+    setMovable(false);
     setDocumentMode(true);
 
     connect(_draggable_tab_bar, &DraggableTabBar::detachTab,
             this, &DraggableTabWidget::onDetachTab);
+    connect(_draggable_tab_bar, &DraggableTabBar::tabMoveRequested,
+            this, &DraggableTabWidget::onTabMoveRequested);
     connect(this, &QTabWidget::tabCloseRequested,
             this, &DraggableTabWidget::onTabCloseRequested);
     connect(_draggable_tab_bar, &DraggableTabBar::tabRenameRequested,
@@ -243,6 +247,37 @@ void DraggableTabWidget::closeAllDetachedWindows()
         }
     }
     _detached_windows.clear();
+}
+
+void DraggableTabWidget::onTabMoveRequested(int from, int to)
+{
+    if (from < 0 || from >= count() || to < 0 || to > count() || from == to)
+        return;
+        
+    QWidget *w = widget(from);
+    QString text = tabText(from);
+    QIcon icon = tabIcon(from);
+    QString toolTip = tabToolTip(from);
+    
+    bool old_block = blockSignals(true);
+    
+    removeTab(from);
+    
+    int insert_idx = to;
+    if (to > from) {
+        insert_idx = to - 1; 
+    }
+    
+    insertTab(insert_idx, w, icon, text);
+    setTabToolTip(insert_idx, toolTip);
+    
+    SessionManager::instance()->move_context(from, insert_idx);
+    
+    blockSignals(old_block);
+    
+    emit tabMoved(from, insert_idx);
+    
+    setCurrentIndex(insert_idx);
 }
 
 } // namespace ui

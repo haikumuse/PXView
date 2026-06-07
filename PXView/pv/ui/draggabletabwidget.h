@@ -57,12 +57,14 @@ signals:
     void tabCloseRequested(int index);
     void tabCloseOthersRequested(int index);
     void tabCloseRightRequested(int index);
+    void tabMoved(int from, int to);
 
 private slots:
     void onDetachTab(int index, const QPoint &dropPos);
     void onTabCloseRequested(int index);
     void onTabRenameRequested(int index);
     void onDetachedWindowClosed(QWidget *content, const QString &title);
+    void onTabMoveRequested(int from, int to);
 
 private:
     void update_add_button_position();

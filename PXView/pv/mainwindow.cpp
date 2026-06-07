@@ -719,6 +719,8 @@ void MainWindow::setup_ui() {
 
   connect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this,
           &MainWindow::on_tab_changed);
+  connect(_tab_widget, &pv::ui::DraggableTabWidget::tabMoved, this,
+          &MainWindow::on_tab_moved);
   connect(_tab_widget, &pv::ui::DraggableTabWidget::tabDetached, this,
           &MainWindow::on_tab_detach);
   connect(_tab_widget, &pv::ui::DraggableTabWidget::tabAttached, this,
@@ -3318,6 +3320,25 @@ void MainWindow::on_tab_changed(int index) {
 
   update_title_bar_text();
   SessionManager::instance()->set_active_context(_tab_contexts[index]);
+}
+
+void MainWindow::on_tab_moved(int from, int to) {
+  if (from < 0 || from >= _tab_contexts.size() || to < 0 || to >= _tab_contexts.size())
+    return;
+  if (from == to)
+    return;
+
+  pv::TabContext *ctx = _tab_contexts[from];
+  _tab_contexts.removeAt(from);
+  _tab_contexts.insert(to, ctx);
+
+  if (_current_tab_index == from) {
+    _current_tab_index = to;
+  } else if (from < _current_tab_index && to >= _current_tab_index) {
+    _current_tab_index--;
+  } else if (from > _current_tab_index && to <= _current_tab_index) {
+    _current_tab_index++;
+  }
 }
 
 void MainWindow::on_tab_detach(int index, QWidget *widget,
