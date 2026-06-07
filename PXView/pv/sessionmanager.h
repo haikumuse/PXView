@@ -29,6 +29,7 @@ public:
     TabContext* context_at(int index);
 
     void remove_from_main_list(TabContext *ctx);
+    void move_context(int from, int to);
 
 private:
     SessionManager();

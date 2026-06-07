@@ -141,6 +141,7 @@ private slots:
     void on_delay_prop_msg();
     void on_load_device_first();
     void on_tab_changed(int index);
+    void on_tab_moved(int from, int to);
     void on_tab_detach(int index, QWidget *widget, const QString &title);
     void on_tab_attached(QWidget *widget, const QString &title);
     void on_new_tab_requested();
