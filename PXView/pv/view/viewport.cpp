@@ -1448,7 +1448,6 @@ void Viewport::onLogicMouseRelease(QMouseEvent *event) {
 
                 static int times = 0;
                 times++;
-                pxv_info("click by edge %d", times);
                 break;
               }
             }

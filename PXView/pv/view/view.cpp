@@ -1214,16 +1214,9 @@ void View::signals_changed(const Trace *eventTrace) {
     }
 
     int mode = get_work_mode();
-    pxv_info("[DEBUG signals_changed] mode=%d(LOGIC=0,DSO=1,ANALOG=2) "
-             "header_h=%d scrollbar_h=%d actualMargin=%d label_size=%d "
-             "total_rows=%d viewport_h=%d _signalHeightScale=%d",
-             mode, _header->height(), horizontalScrollBar()->height(),
-             actualMargin, label_size, total_rows,
-             _time_viewport->height(), _signalHeightScale);
 
     if (mode == LOGIC) {
       _signalHeight = _signalHeightScale;
-      pxv_info("[DEBUG] LOGIC branch: _signalHeight=%d", _signalHeight);
     } else if (get_work_mode() == DSO) {
       // PXView's _viewbottom is hidden and overlaid on viewport,
       // so _header->height() is ~DsoStatusHeight larger than original DSView.
@@ -1232,13 +1225,8 @@ void View::signals_changed(const Trace *eventTrace) {
                        horizontalScrollBar()->height() -
                        2 * actualMargin * label_size) *
                       1.0 / total_rows;
-      pxv_info("[DEBUG] DSO branch: _signalHeight=%d (raw=%f)", _signalHeight,
-               (_header->height() - DsoStatusHeight -
-                horizontalScrollBar()->height() -
-                2 * actualMargin * label_size) * 1.0 / total_rows);
     } else {
       _signalHeight = (int)((height <= 0) ? 1 : height);
-      pxv_info("[DEBUG] ANALOG branch: _signalHeight=%d", _signalHeight);
     }
 
     _spanY = _signalHeight + 2 * actualMargin;
@@ -1298,9 +1286,6 @@ void View::signals_changed(const Trace *eventTrace) {
 
       double traceHeight;
       if (t->get_own_height() > 0) {
-        pxv_info("[DEBUG] trace '%s' using own_height=%d (type=%d)",
-                 t->get_name().toUtf8().data(), t->get_own_height(),
-                 t->signal_type());
         traceHeight = t->get_own_height();
       } else {
         traceHeight = _signalHeight * t->rows_size();
@@ -2001,9 +1986,6 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
   qDebug() << "View::rebuild_signals_from_config() work_mode="
            << config.work_mode << "ch_count=" << config.channels.size()
            << "is_valid=" << config.is_valid;
-  pxv_info("View::rebuild_signals_from_config() work_mode=%d ch_count=%d "
-           "is_valid=%d",
-           config.work_mode, (int)config.channels.size(), config.is_valid);
 
   std::vector<Signal *> old_signals = _own_signals;
   _own_signals.clear();
@@ -2134,8 +2116,6 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 }
 
 void View::rebuild_signals() {
-  pxv_info("View::rebuild_signals() doc=%p has_config=%d", _document,
-           _document ? _document->has_signal_config() : 0);
   
   if (_data_source == _document && _document && _document->has_signal_config()) {
     const auto &config = _document->get_signal_config();
@@ -2149,9 +2129,6 @@ void View::rebuild_signals() {
       rebuild_signals_from_config(config);
       return;
     }
-    pxv_info("View::rebuild_signals() config ch_count=%d != device "
-             "ch_count=%d, ignore config",
-             (int)config.channels.size(), device_ch_count);
   }
 
   if (!_data_source)

@@ -2216,6 +2216,8 @@ _Python3_INCLUDE_DIR:INTERNAL=D:/Scoop/apps/python/3.14.4/Include
 //Python3 Properties
 _Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;14;4;64;<none>;cp314-win_amd64;;D:/Scoop/apps/python/3.14.4/Lib;D:/Scoop/apps/python/3.14.4/Lib;D:/Scoop/apps/python/3.14.4/Lib/site-packages;D:/Scoop/apps/python/3.14.4/Lib/site-packages
 _Python3_INTERPRETER_SIGNATURE:INTERNAL=91b3cd2076ca05807a145784e89dbc7a
+//Interpreter reason failure
+_Python3_Interpreter_REASON_FAILURE:INTERNAL=
 //Path to a library.
 _Python3_LIBRARY_DEBUG:INTERNAL=_Python3_LIBRARY_DEBUG-NOTFOUND
 //Path to a library.
