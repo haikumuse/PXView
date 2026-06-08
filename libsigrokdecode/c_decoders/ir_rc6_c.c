@@ -341,7 +341,7 @@ static void rc6_decode(struct srd_decoder_inst *di)
 
             s->invert = (ir == 0);
 
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", value);
             c_put(di, s->bits[s->num_bits - 1].ss, s->bits[s->num_bits - 1].es,
                 s->out_ann, ANN_BIT, bit_str);
@@ -399,7 +399,7 @@ static void rc6_decode(struct srd_decoder_inst *di)
 
                     /* Output bit annotation */
                     if (s->num_bits > 0) {
-                        char bit_str[4];
+                        char bit_str[16];
                         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[s->num_bits - 1].value);
                         c_put(di, s->bits[s->num_bits - 1].ss, s->bits[s->num_bits - 1].es,
                             s->out_ann, ANN_BIT, bit_str);

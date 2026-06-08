@@ -586,7 +586,7 @@ static void midi_handle_channel_msg(struct srd_decoder_inst *di, midi_state *s, 
     const char *sb0 = (idx >= 0) ? status_bytes[idx][0] : "unknown";
     const char *sb1 = (idx >= 0) ? status_bytes[idx][1] : "unknown";
     const char *sb2 = (idx >= 0) ? status_bytes[idx][2] : "???";
-    char buf[256];
+    char buf[512];
 
     switch (msg_type) {
     case 0x80: { /* Note off */
@@ -819,7 +819,7 @@ static void midi_handle_sysex_msg(struct srd_decoder_inst *di, midi_state *s, in
 
     /* Extract manufacturer */
     if (s->cmd_len - idx < 1) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s: truncated manufacturer code (<1 bytes)", sb0);
         midi_putx(di, s, ANN_TEXT_ERROR, buf);
         s->cmd_len = 0;
@@ -835,7 +835,7 @@ static void midi_handle_sysex_msg(struct srd_decoder_inst *di, midi_state *s, in
 
     if (m1 == 0x00) {
         if (s->cmd_len - idx < 2) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "%s: truncated manufacturer code (<3 bytes)", sb0);
             midi_putx(di, s, ANN_TEXT_ERROR, buf);
             s->cmd_len = 0;
@@ -897,7 +897,7 @@ static void midi_handle_syscommon_msg(struct srd_decoder_inst *di, midi_state *s
     const char *group0 = "System Common";
     const char *group1 = "SysCom";
     const char *group2 = "SC";
-    char buf[256];
+    char buf[512];
 
     if (msg == 0xF1) {
         /* MIDI time code quarter frame */
@@ -969,7 +969,7 @@ static void midi_handle_sysrealtime_msg(struct srd_decoder_inst *di, midi_state 
     const char *sb1 = (idx >= 0) ? status_bytes[idx][1] : "???";
     const char *sb2 = (idx >= 0) ? status_bytes[idx][2] : "?";
 
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "System Realtime: %s", sb0);
     c_put(di, s->ss, s->es, s->out_ann, ANN_TEXT_SYSREAL_VERBOSE, buf);
 
@@ -980,6 +980,7 @@ static void midi_handle_sysrealtime_msg(struct srd_decoder_inst *di, midi_state 
 
 static void midi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     midi_state *s = (midi_state *)c_decoder_get_private(di);
     if (!s)
         return;

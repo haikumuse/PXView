@@ -262,7 +262,7 @@ static void irmp_decode(struct srd_decoder_inst *di)
     s->fn_reset_state();
 
     /* Get initial IR value */
-    uint64_t cur_sample;
+    uint64_t cur_sample = 0;
     if (c_wait(di, CW_END) != SRD_OK)
         return;
 

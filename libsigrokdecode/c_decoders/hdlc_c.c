@@ -223,6 +223,7 @@ static void hdlc_putt(struct srd_decoder_inst *di, hdlc_s *priv)
 /* ---- Helper: shift bit — match Python shift_bit() ---- */
 static void hdlc_shift_bit(hdlc_s *priv, int data, uint64_t samplenum)
 {
+    (void)samplenum;
     if (priv->flag_found) {
         if (priv->bitcount < 8)
             priv->ss_bits[priv->bitcount] = samplenum;
@@ -235,11 +236,12 @@ static void hdlc_shift_bit(hdlc_s *priv, int data, uint64_t samplenum)
 static void hdlc_handle_bit(struct srd_decoder_inst *di, hdlc_s *priv,
                             int data, uint64_t samplenum)
 {
+    (void)samplenum;
     /* Display previous bit — match Python:
      *   if(self.ss_prev_clock != -1):
      *       self.put(self.ss_prev_clock, self.samplenum, self.out_ann, [ann_bit, ['%d' % self.prev_bit]]) */
     if (priv->ss_prev_clock != (uint64_t)-1) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", priv->prev_bit);
         c_put(di, priv->ss_prev_clock, samplenum, priv->out_ann, ANN_RX_BIT, bit_str);
     }

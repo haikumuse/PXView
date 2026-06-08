@@ -318,7 +318,7 @@ static void st25r39xx_finish_command(struct srd_decoder_inst *di, st25r39xx_stat
     int ann;
     const char *cmd_label;
     const char *reg_name;
-    char buf[256];
+    char buf[512];
 
     switch (s->cmd_type) {
     case CMD_WRITE:   ann = ANN_BURST_WRITE;  break;
@@ -409,6 +409,7 @@ static void st25r39xx_next(st25r39xx_state *s)
 /* ===== recv_proto ===== */
 static void st25r39xx_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     st25r39xx_state *s = (st25r39xx_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -448,7 +449,7 @@ static void st25r39xx_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start
     if (!s->cs_was_released)
         return;
 
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     int have_mosi = spi_proto_get_mosi(fields, n_fields, &mosi);
     int have_miso = spi_proto_get_miso(fields, n_fields, &miso);
     (void)have_mosi; (void)have_miso;

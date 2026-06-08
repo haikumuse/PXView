@@ -107,8 +107,8 @@ static void rinnai_byte_append(struct srd_decoder_inst *di, rinnai_state *s,
     snprintf(buf, sizeof(buf), "%02x", byte_val);
     c_put(di, start, end, s->out_ann, ANN_BYTE, buf);
     /* Python output */
-    unsigned char py_data[1];
-    py_data[0] = byte_val;
+    
+    
     c_proto(di, start, end, s->out_python, "BYTE", C_U8(byte_val), C_END);
     rinnai_bits_reset(s);
     if (s->packet_start == (uint64_t)-1)

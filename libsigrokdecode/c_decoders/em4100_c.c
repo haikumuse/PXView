@@ -236,6 +236,7 @@ static void em4100_putbit(struct srd_decoder_inst *di, em4100_state *s, int bit,
 static void em4100_manchester_decode(struct srd_decoder_inst *di, em4100_state *s,
                                       uint64_t pl, int pp, int pin, uint64_t samplenum)
 {
+    (void)samplenum;
     (void)pp;
     (void)pin;
     int bit = s->oldpin ^ s->polarity;
@@ -308,7 +309,7 @@ static void em4100_decode(struct srd_decoder_inst *di)
 
     /* Initialize internal state from the very first sample */
     if (!s->initialized) {
-        uint64_t cur_sample;
+        uint64_t cur_sample = 0;
         if (c_wait(di, CW_END) != SRD_OK)
             return;
         s->oldpin = c_pin(di, 0);

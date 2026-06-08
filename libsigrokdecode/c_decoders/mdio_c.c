@@ -286,6 +286,7 @@ static void mdio_putdata(struct srd_decoder_inst *di, mdio_s *s)
 
 static void mdio_state_PRE(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->illegal_bus) {
         if (mdio_val == 0) {
             return;
@@ -349,6 +350,7 @@ static void mdio_state_PRE(struct srd_decoder_inst *di, mdio_s *s, int mdio_val,
 
 static void mdio_state_ST(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     (void)di;
     (void)samplenum;
     if (mdio_val == 0) {
@@ -359,6 +361,7 @@ static void mdio_state_ST(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, 
 
 static void mdio_state_OP(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->opcode == -1) {
         if (s->clause45) {
             c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "ST (Clause 45)", "ST 45", "ST", "S");
@@ -388,6 +391,7 @@ static void mdio_state_OP(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, 
 
 static void mdio_state_PRTAD(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->portad == -1) {
         s->portad = 0;
         const char *op_long = "";
@@ -427,6 +431,7 @@ static void mdio_state_PRTAD(struct srd_decoder_inst *di, mdio_s *s, int mdio_va
 
 static void mdio_state_DEVAD(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->devad == -1) {
         s->devad = 0;
         char prtad_str[32];
@@ -448,6 +453,7 @@ static void mdio_state_DEVAD(struct srd_decoder_inst *di, mdio_s *s, int mdio_va
 
 static void mdio_state_TA(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->ta_first_bit) {
         s->ta_first_bit = 0;
         char regad_str[32];
@@ -475,6 +481,7 @@ static void mdio_state_TA(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, 
 
 static void mdio_state_DATA(struct srd_decoder_inst *di, mdio_s *s, int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->data == -1) {
         s->data = 0;
         c_put(di, s->ss_frame_field, s->prev_samplenum, s->out_ann, ANN_FRAME, "TA", "T");
@@ -505,6 +512,7 @@ static void mdio_state_DATA(struct srd_decoder_inst *di, mdio_s *s, int mdio_val
 static void mdio_handle_bit(struct srd_decoder_inst *di, mdio_s *s,
     int mdio_val, uint64_t samplenum)
 {
+    (void)samplenum;
     s->sample_hist[s->sample_hist_idx] = samplenum;
     s->sample_hist_idx = (s->sample_hist_idx + 1) % 33;
     if (s->sample_hist_count < 33)

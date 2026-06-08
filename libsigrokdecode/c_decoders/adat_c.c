@@ -151,6 +151,7 @@ static uint32_t bits_to_int(const int *bits, int count)
 static void look_for_sync_pad(struct srd_decoder_inst *di, adat_priv *s, uint64_t samplenum)
 {
     (void)samplenum;
+    (void)samplenum;
     if (s->signal_len < 11)
         return;
 
@@ -186,6 +187,7 @@ static void look_for_sync_pad(struct srd_decoder_inst *di, adat_priv *s, uint64_
 
 static void decode_user_bits(struct srd_decoder_inst *di, adat_priv *s, uint64_t samplenum)
 {
+    (void)samplenum;
     (void)samplenum;
     if (s->signal_len < 5)
         return;
@@ -249,6 +251,7 @@ static void decode_user_bits(struct srd_decoder_inst *di, adat_priv *s, uint64_t
 
 static void decode_channel_data(struct srd_decoder_inst *di, adat_priv *s, uint64_t samplenum)
 {
+    (void)samplenum;
     (void)samplenum;
     if (s->signal_len < 5)
         return;
@@ -453,7 +456,7 @@ static void adat_decode(struct srd_decoder_inst *di)
             s->signal_len++;
 
             if (s->annotations_mode != 1) {  /* not per-frame only */
-                char bit_str[4];
+                char bit_str[16];
                 snprintf(bit_str, sizeof(bit_str), "%d", bit);
                 c_put(di, t, t + s->bit_time_int, s->out_ann, ANN_BIT, bit_str);
             }

@@ -73,6 +73,7 @@ static uint64_t parallel_bitpack(struct srd_decoder_inst *di,
                                   parallel_state *s,
                                   uint64_t samplenum)
 {
+    (void)samplenum;
     uint64_t item = 0;
     int idx_strip = s->max_connected + 1;
     for (int i = 1; i < idx_strip; i++) {
@@ -101,14 +102,8 @@ static void parallel_handle_word(struct srd_decoder_inst *di,
             snprintf(word_str, sizeof(word_str), fmt, s->saved_word);
             c_put(di, s->ss_word, s->es_word, s->out_ann, ANN_WORDS, word_str);
             /* Python output */
-            unsigned char py_data[12];
-            int pos = 0;
-            for (int b = 0; b < 8; b++)
-                py_data[pos++] = (unsigned char)(s->saved_word >> (8 * b));
-            for (int b = 0; b < 2; b++)
-                py_data[pos++] = (unsigned char)(s->num_item_bits >> (8 * b));
-            for (int b = 0; b < 2; b++)
-                py_data[pos++] = (unsigned char)(s->wordsize >> (8 * b));
+            
+            
             c_proto(di, s->ss_word, s->es_word, s->out_python,
                                 "WORD", C_U64(s->saved_word), C_U16(s->num_item_bits), C_U16(s->wordsize), C_END);
         }
@@ -280,12 +275,8 @@ static void parallel_decode(struct srd_decoder_inst *di)
             }
             c_put(di, s->prv_dex, di_samplenum(di), s->out_ann, ANN_ITEMS, item_str);
             /* Python output */
-            unsigned char py_data[10];
-            int pos = 0;
-            for (int b = 0; b < 8; b++)
-                py_data[pos++] = (unsigned char)(s->saved_item >> (8 * b));
-            for (int b = 0; b < 2; b++)
-                py_data[pos++] = (unsigned char)(s->num_item_bits >> (8 * b));
+            
+            
             c_proto(di, s->prv_dex, di_samplenum(di), s->out_python,
                                 "ITEM", C_U64(s->saved_item), C_U16(s->num_item_bits), C_END);
         }
@@ -330,12 +321,8 @@ static void parallel_end(struct srd_decoder_inst *di)
         snprintf(item_str, sizeof(item_str), fmt, s->saved_item);
     }
     c_put(di, s->prv_dex, last_sample, s->out_ann, ANN_ITEMS, item_str);
-    unsigned char py_data[10];
-    int pos = 0;
-    for (int b = 0; b < 8; b++)
-        py_data[pos++] = (unsigned char)(s->saved_item >> (8 * b));
-    for (int b = 0; b < 2; b++)
-        py_data[pos++] = (unsigned char)(s->num_item_bits >> (8 * b));
+    
+    
     c_proto(di, s->prv_dex, last_sample, s->out_python,
                         "ITEM", C_U64(s->saved_item), C_U16(s->num_item_bits), C_END);
     s->has_saved_item = 0;

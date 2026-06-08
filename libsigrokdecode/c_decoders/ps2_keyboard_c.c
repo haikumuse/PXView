@@ -91,6 +91,7 @@ static const char *ps2kb_lookup_key(uint8_t code, int extended)
 
 static void ps2kb_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ps2kb_state *s = (ps2kb_state *)c_decoder_get_private(di);
     if (!s) return;
 

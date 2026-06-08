@@ -297,7 +297,7 @@ static void nrf905_handle_CC(struct srd_decoder_inst *di, nrf905_state *s)
     uint8_t dta = s->mosi_bytes[1];
     int channel = ((cmd_byte & 0x01) << 8) + dta;
 
-    char buf[256];
+    char buf[512];
     int pos = 0;
     /* Extract CHN_CFG fields from command byte */
     for (int i = 0; chn_cfg[i].name != NULL; i++) {
@@ -370,6 +370,7 @@ static void nrf905_process_cmd(struct srd_decoder_inst *di, nrf905_state *s)
 
 static void nrf905_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     nrf905_state *s = (nrf905_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -402,8 +403,8 @@ static void nrf905_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             }
         }
     } else if (strcmp(cmd, "DATA") == 0 && s->cs_asserted && n_fields >= 17) {
-        int have_mosi = fields[0].u8 & 1;
-        int have_miso = (fields[0].u8 >> 1) & 1;
+        
+        
         uint64_t mosi_val = 0, miso_val = 0;
         for (int i = 0; i < 8; i++)
             mosi_val |= ((uint64_t)fields[1 + i].u8 << (8 * i));

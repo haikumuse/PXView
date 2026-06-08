@@ -55,3 +55,24 @@ class IrIrmpGenerator:
     def generate_testdata(self):
         # Send a NEC frame
         self.send_nec(0x04, 0x08)
+        
+        # Add 50ms idle
+        self.builder.set_level(self.channel, 1, self._us(50000))
+        
+        # Send RC5 frame
+        from .irrc5 import IrRc5Generator
+        rc5 = IrRc5Generator(self.builder, self.channels_map, self.samplerate)
+        rc5._send_rc5_frame(self.channel, address=0x05, command=0x0A, toggle=0)
+        self.builder.set_level(self.channel, 1, self._us(50000))
+        
+        # Send RC6 frame
+        from .irrc6 import IRRC6Generator
+        rc6 = IRRC6Generator(self.builder, self.channel, self.samplerate)
+        rc6.send_rc6(address=0x06, command=0x0B)
+        self.builder.set_level(self.channel, 1, self._us(50000))
+        
+        # Send SIRC frame
+        from .irsirc import IrSircGenerator
+        sirc = IrSircGenerator(self.builder, self.channels_map, self.samplerate)
+        sirc._send_sirc_frame(self.channel, command=0x15, address=0x01)
+        self.builder.set_level(self.channel, 1, self._us(50000))

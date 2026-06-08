@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -127,6 +127,8 @@ static const spiflash_cmd_def spiflash_cmds[] = {
 
 /* ===== State structure ===== */
 typedef struct {
+    uint64_t ss;
+    uint64_t es;
     int state;          /* Current command byte, 0 = NULL */
     int cmdstate;       /* Byte counter within command */
     uint32_t addr;
@@ -136,7 +138,7 @@ typedef struct {
     int device_id;
     uint64_t ss_cmd, es_cmd;
     uint64_t ss_field, es_field;
-    uint64_t ss, es;
+    
     int chip_index;
     int format;         /* 0=hex, 1=ascii */
     int manufacturer_id_first;
@@ -279,7 +281,7 @@ static void spiflash_emit_cmd_byte(struct srd_decoder_inst *di, spiflash_state *
     s->ss_cmd = s->ss;
     const spiflash_cmd_def *c = spiflash_find_cmd((uint8_t)s->state);
     if (c) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Command: %s (%s)", c->longname, c->shortname);
         c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
     }
@@ -328,7 +330,7 @@ static void spiflash_output_data_block(struct srd_decoder_inst *di, spiflash_sta
     snprintf(field_buf, sizeof(field_buf), "Data (%d bytes)", s->data_count);
     c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, field_buf);
 
-    char cmd_buf[256];
+    char cmd_buf[2048];
     snprintf(cmd_buf, sizeof(cmd_buf), "%s (addr @%06x, %d bytes): %s",
              cmd_name, s->addr, s->data_count, data_str);
     c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, s->delayed_ann, cmd_buf);
@@ -399,7 +401,7 @@ static void spiflash_handle_rdsr(struct srd_decoder_inst *di, spiflash_state *s,
         spiflash_emit_cmd_byte(di, s);
     } else {
         s->es_cmd = s->es;
-        char buf[256];
+        char buf[512];
         spiflash_decode_status_reg(miso, buf, sizeof(buf));
         c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register");
@@ -415,7 +417,7 @@ static void spiflash_handle_rdsr2(struct srd_decoder_inst *di, spiflash_state *s
         spiflash_emit_cmd_byte(di, s);
     } else {
         s->es_cmd = s->es;
-        char buf[256];
+        char buf[512];
         spiflash_decode_status_reg(miso, buf, sizeof(buf));
         c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 2");
@@ -430,13 +432,13 @@ static void spiflash_handle_wrsr(struct srd_decoder_inst *di, spiflash_state *s,
     if (s->cmdstate == 1) {
         spiflash_emit_cmd_byte(di, s);
     } else if (s->cmdstate == 2) {
-        char buf[256];
+        char buf[512];
         spiflash_decode_status_reg(mosi, buf, sizeof(buf));
         c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 1");
         s->writestate = (mosi & 2) ? 1 : 0;
     } else if (s->cmdstate == 3) {
-        char buf[256];
+        char buf[512];
         spiflash_decode_status_reg(mosi, buf, sizeof(buf));
         c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, buf);
         c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, "Status register 2");
@@ -540,7 +542,7 @@ static void spiflash_handle_se(struct srd_decoder_inst *di, spiflash_state *s, u
     }
     if (s->cmdstate == 4) {
         s->es_cmd = s->es;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Erase sector @%06x", s->addr);
         c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SE, buf);
         if (s->addr % 4096 != 0) {
@@ -590,7 +592,7 @@ static void spiflash_handle_rdp_res(struct srd_decoder_inst *di, spiflash_state 
         s->device_id = miso;
         const char *vendor = spiflash_chips[s->chip_index].vendor;
         const char *dev_name = spiflash_find_device_name(vendor, miso);
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Device ID: %s %s", vendor, dev_name);
         c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
         s->es_cmd = s->es;
@@ -667,7 +669,8 @@ static void spiflash_handle_status(struct srd_decoder_inst *di, spiflash_state *
 }
 
 /* ===== Command handler dispatch ===== */
-typedef void (*spiflash_cmd_handler)(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso);
+typedef void (*spiflash_cmd_handler)(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
+;
 
 typedef struct { uint8_t cmd; spiflash_cmd_handler handler; } spiflash_cmd_entry;
 static const spiflash_cmd_entry spiflash_cmd_table[] = {
@@ -713,6 +716,7 @@ static spiflash_cmd_handler spiflash_find_handler(uint8_t cmd_byte)
 /* ===== recv_proto ===== */
 static void spiflash_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     spiflash_state *s = (spiflash_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -727,7 +731,7 @@ static void spiflash_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     spi_proto_get_mosi(fields, n_fields, &mosi);
     spi_proto_get_miso(fields, n_fields, &miso);
 

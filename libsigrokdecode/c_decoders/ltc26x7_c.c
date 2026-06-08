@@ -139,7 +139,7 @@ static void ltc26x7_handle_slave_addr(struct srd_decoder_inst *di,
     int ternary[3];
     convert_ternary(addr, ternary);
 
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "CA2=%s CA1=%s CA0=%s",
              slave_address_str[ternary[0]][0],
              slave_address_str[ternary[1]][0],
@@ -228,6 +228,7 @@ static void ltc26x7_handle_data(struct srd_decoder_inst *di,
 
 static void ltc26x7_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ltc26x7_state *s = (ltc26x7_state *)c_decoder_get_private(di);
     if (!s)
         return;

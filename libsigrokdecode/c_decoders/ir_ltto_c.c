@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Ryan "Izzy" Bales <izzy84075@gmail.com>
@@ -264,7 +264,8 @@ static void ltto_decode(struct srd_decoder_inst *di)
                             str1, str2, str3);
 
                         /* PROTO output: ['SHORT', count, data] */
-                        unsigned char py_data[9];
+                        
+                        unsigned char py_data[32];
                         memcpy(py_data, "SHORT", 5);
                         py_data[5] = (unsigned char)s->count;
                         uint16_t d = (uint16_t)s->data;
@@ -282,7 +283,8 @@ static void ltto_decode(struct srd_decoder_inst *di)
                             str1, str2, str3);
 
                         /* PROTO output: ['LONG', count, data] */
-                        unsigned char py_data[8];
+                        
+                        unsigned char py_data[32];
                         memcpy(py_data, "LONG", 4);
                         py_data[4] = (unsigned char)s->count;
                         uint16_t d = (uint16_t)s->data;
@@ -298,7 +300,7 @@ static void ltto_decode(struct srd_decoder_inst *di)
 
         case STATE_BIT: {
             /* Check if skip timeout occurred */
-            int skip_matched = 0;
+            
             if (s->state == STATE_BIT) {
                 /* We already used the condition builder above; check di_matched(di) */
                 /* For BIT state, the condition was edge OR skip(bitpause+margin+margin) */
@@ -317,7 +319,7 @@ static void ltto_decode(struct srd_decoder_inst *di)
                     "Error", "Err", "E");
                 s->state = STATE_IDLE;
             } else {
-                char bit_str[4];
+                char bit_str[16];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->lastbit);
                 c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT, bit_str);
             }

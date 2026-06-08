@@ -228,7 +228,7 @@ static void nrzi_decode(struct srd_decoder_inst *di)
              *   self.es_block = self.samplenum
              *   self.putx([1, ['{:n}'.format(self.matched & (0b1 << 0))]]) */
             int bit_val = (matched & (1ULL << 0)) ? 1 : 0;
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", bit_val);
             c_put(di, start_sample, di_samplenum(di), s->out_ann, ANN_BIT, bit_str);
 

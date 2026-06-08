@@ -276,7 +276,7 @@ static void st7789_decode(struct srd_decoder_inst* di)
 
             if (dcx == 0 && s->bit != -1) {
                 /* Complete one bit */
-                char bit_str[4];
+                char bit_str[16];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->bit);
                 c_put(di, s->bit_start_samplenum, di_samplenum(di), s->out_ann, ANN_BIT, bit_str);
                 s->bit = -1;

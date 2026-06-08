@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2022 Sergey Spivak <sespivak@yandex.ru>
@@ -27,6 +27,12 @@
 #include <string.h>
 #include <glib.h>
 #include "libsigrokdecode.h"
+
+static void fmt_binary(uint8_t val, char *buf, int bufsize) {
+    if (bufsize < 9) { buf[0] = '\0'; return; }
+    for (int i = 7; i >= 0; i--) buf[7 - i] = (val & (1 << i)) ? '1' : '0';
+    buf[8] = '\0';
+}
 
 enum {
     ANN_DATA = 0,
@@ -93,7 +99,7 @@ static void i2c_packet_format_value(i2c_packet_state *s, uint8_t v, char *buf, i
         snprintf(buf, buflen, "%03o", v);
         break;
     case 4: /* bin */
-        snprintf(buf, buflen, "%08b", v);
+        fmt_binary(v, buf, buflen);
         break;
     default: /* ascii */
         if (v >= 32 && v <= 126)
@@ -169,8 +175,8 @@ static void i2c_packet_handle_packet(struct srd_decoder_inst *di,
             snprintf(s->packet_str_short + len, sizeof(s->packet_str_short) - len,
                      " [SR] %s", cur_short);
         } else {
-            strncpy(s->packet_str, cur_str, sizeof(s->packet_str) - 1);
-            strncpy(s->packet_str_short, cur_short, sizeof(s->packet_str_short) - 1);
+            snprintf(s->packet_str, sizeof(s->packet_str), "%s", cur_str);
+            snprintf(s->packet_str_short, sizeof(s->packet_str_short), "%s", cur_short);
         }
         s->packet_data_len = 0;
     } else {
@@ -183,10 +189,8 @@ static void i2c_packet_handle_packet(struct srd_decoder_inst *di,
             snprintf(final_short, sizeof(final_short), "%s [SR] %s",
                      s->packet_str_short, cur_short);
         } else {
-            strncpy(final_str, cur_str, sizeof(final_str) - 1);
-            final_str[sizeof(final_str) - 1] = '\0';
-            strncpy(final_short, cur_short, sizeof(final_short) - 1);
-            final_short[sizeof(final_short) - 1] = '\0';
+            snprintf(final_str, sizeof(final_str), "%s", cur_str);
+            snprintf(final_short, sizeof(final_short), "%s", cur_short);
         }
         c_put(di, s->packet_ss, s->packet_es, s->out_ann, ANN_DATA, final_str, final_short);
         i2c_packet_reset_state(s);
@@ -195,6 +199,7 @@ static void i2c_packet_handle_packet(struct srd_decoder_inst *di,
 
 static void i2c_packet_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     i2c_packet_state *s = (i2c_packet_state *)c_decoder_get_private(di);
     if (!s)
         return;

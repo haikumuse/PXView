@@ -106,7 +106,7 @@ static const tcs3472x_register *tcs3472x_find_reg(uint8_t addr)
 static void tcs3472x_interpret_byte_values(struct srd_decoder_inst *di,
     tcs3472x_state *s)
 {
-    char buf[256];
+    char buf[512];
 
     if (s->num_bytes == 0) {
         /* Command only, no data */
@@ -221,6 +221,7 @@ static void tcs3472x_interpret_byte_values(struct srd_decoder_inst *di,
 /* ===== recv_proto ===== */
 static void tcs3472x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     tcs3472x_state *s = (tcs3472x_state *)c_decoder_get_private(di);
     if (!s) return;
     uint8_t databyte = (fields && n_fields > 0) ? fields[0].u8 : 0;

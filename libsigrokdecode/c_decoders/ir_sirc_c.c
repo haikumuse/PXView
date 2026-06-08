@@ -458,7 +458,7 @@ static int read_bit(struct srd_decoder_inst* di, sirc_state* s,
     }
 
     {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", *bit_val);
         c_put(di, *bit_ss, *bit_es, s->out_ann, ANN_BIT, bit_str);
     }

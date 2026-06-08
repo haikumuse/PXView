@@ -238,7 +238,7 @@ static int pn532_checksum_ok(pn532_byte_data *bytes, int num_bytes, uint8_t chec
     int sum = 0;
     for (int i = 0; i < num_bytes; i++)
         sum += bytes[i].byte_val;
-    return (sum + checksum) & 0xFF == 0;
+    return ((sum + checksum) & 0xFF) == 0;
 }
 
 static void pn532_reset_state(pn532_state *s)
@@ -380,7 +380,7 @@ static void pn532_handle_data(struct srd_decoder_inst *di, pn532_state *s, pn532
 
     /* All data bytes received */
     char val_buf[16];
-    char buf[256];
+    char buf[512];
 
     /* First data byte = command */
     pn532_format_value(s->data_packet[0].byte_val, s->format, val_buf, sizeof(val_buf));
@@ -414,7 +414,7 @@ static void pn532_handle_checksum(struct srd_decoder_inst *di, pn532_state *s, p
     for (int i = 0; i < s->data_packet_len; i++)
         sum += s->data_packet[i].byte_val;
 
-    if ((sum + bd->byte_val) & 0xFF == 0) {
+    if (((sum + bd->byte_val) & 0xFF) == 0) {
         c_put(di, bd->ss, bd->es, s->out_ann, ANN_DCS, "Data Checksum: OK", "DCS");
     } else {
         c_put(di, bd->ss, bd->es, s->out_ann, ANN_DCS, "Data Checksum", "DCS");
@@ -445,6 +445,7 @@ static void pn532_handle_end_frame(struct srd_decoder_inst *di, pn532_state *s, 
 
 static void pn532_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     pn532_state *s = (pn532_state *)c_decoder_get_private(di);
     if (!s)
         return;

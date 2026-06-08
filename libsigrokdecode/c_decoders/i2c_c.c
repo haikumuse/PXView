@@ -18,6 +18,12 @@
  */
 
 #include "libsigrokdecode.h"
+
+static void fmt_binary(uint8_t val, char *buf, int bufsize) {
+    if (bufsize < 9) { buf[0] = '\0'; return; }
+    for (int i = 7; i >= 0; i--) buf[7 - i] = (val & (1 << i)) ? '1' : '0';
+    buf[8] = '\0';
+}
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -239,7 +245,7 @@ static void i2c_data_array_to_str(i2c_s *s, char *out, int out_size)
         if (s->packets_format == 5) { /* oct */
             snprintf(tmp, sizeof(tmp), "%03o", v);
         } else if (s->packets_format == 4) { /* bin */
-            snprintf(tmp, sizeof(tmp), "%08b", v);
+            fmt_binary(v, tmp, sizeof(tmp));
         } else if (s->packets_format == 3) { /* dec */
             snprintf(tmp, sizeof(tmp), "%d", v);
         } else if (s->packets_format == 2) { /* ascii */
@@ -455,7 +461,7 @@ static void i2c_handle_address_or_data(struct srd_decoder_inst *di, i2c_s *s)
      *   for bit in self.bits:
      *       self.put(bit[1], bit[2], self.out_ann, [5, ['%d' % bit[0]]]) */
     for (int i = 0; i < 8; i++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[i].sda);
         c_put(di, s->bits[i].ss, s->bits[i].es, s->out_ann, ANN_BIT, bit_str);
         if (s->show_data_point) {
@@ -487,7 +493,7 @@ static void i2c_handle_address_or_data(struct srd_decoder_inst *di, i2c_s *s)
             /* Python: self.put(ss_byte, samplenum, ..., [proto[cmd][0], format_data(d, cmd, is_address=True)]) */
             snprintf(val_str, sizeof(val_str), "%02X", d);
             char long_str[64];
-            char short_str[16];
+            char short_str[64];
             snprintf(long_str, sizeof(long_str), "%s: %s",
                      (ann_class == ANN_ADDRESS_WRITE) ? "Address write" : "Address read", val_str);
             snprintf(short_str, sizeof(short_str), "%s: %s",
@@ -500,7 +506,7 @@ static void i2c_handle_address_or_data(struct srd_decoder_inst *di, i2c_s *s)
             if (s->packets_format == 5) { /* oct */
                 snprintf(val_str, sizeof(val_str), "%03o", d);
             } else if (s->packets_format == 4) { /* bin */
-                snprintf(val_str, sizeof(val_str), "%08b", d);
+                fmt_binary(d, val_str, sizeof(val_str));
             } else if (s->packets_format == 3) { /* dec */
                 snprintf(val_str, sizeof(val_str), "%d", d);
             } else if (s->packets_format == 2) { /* ascii */
@@ -512,7 +518,7 @@ static void i2c_handle_address_or_data(struct srd_decoder_inst *di, i2c_s *s)
                 snprintf(val_str, sizeof(val_str), "%02X", d);
             }
             char long_str[64];
-            char short_str[16];
+            char short_str[64];
             snprintf(long_str, sizeof(long_str), "%s: %s",
                      (ann_class == ANN_DATA_WRITE) ? "Data write" : "Data read", val_str);
             snprintf(short_str, sizeof(short_str), "%s: %s",

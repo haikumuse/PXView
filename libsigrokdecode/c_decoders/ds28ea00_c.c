@@ -97,6 +97,7 @@ static const struct ds28ea00_cmd *find_ds28ea00_command(uint8_t code)
 
 static void ds28ea00_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ds28ea00_state *s = (ds28ea00_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -136,7 +137,7 @@ static void ds28ea00_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
             c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN, buf);
             return;
         }
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Function command: 0x%02x '%s'", val, c->name);
         c_put(di, start_sample, end_sample, s->out_ann, ANN_CMD, buf);
 

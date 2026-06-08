@@ -245,7 +245,7 @@ static void handle_bits(struct srd_decoder_inst *di, ot_priv *s)
         else
             s->ss_es_bits[i].es = s->bits[i].sample + s->halfbit * 2;
 
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[i].value);
         c_put(di, s->ss_es_bits[i].ss, s->ss_es_bits[i].es, s->out_ann, ANN_BIT, bit_str);
     }

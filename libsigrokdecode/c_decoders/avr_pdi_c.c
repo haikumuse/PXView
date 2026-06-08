@@ -297,7 +297,7 @@ static void handle_bits(struct srd_decoder_inst *di, avr_pdi_priv *s,
     for (int pos = 0; pos < frame_bitcount; pos++)
         bits_num |= s->bits[pos].val << pos;
 
-    int start_bit = bits_num & 0x01; bits_num >>= 1;
+    bits_num >>= 1;
     uint8_t data_val = bits_num & 0xff; bits_num >>= 8;
     int parity_bit = bits_num & 0x01; bits_num >>= 1;
     int stop_bit = bits_num & 0x01;
@@ -317,7 +317,7 @@ static void handle_bits(struct srd_decoder_inst *di, avr_pdi_priv *s,
     /* Data bits */
     char data_text[8];
     snprintf(data_text, sizeof(data_text), "%02x", data_val);
-    char d1[32], d2[16], d3[8];
+    char d1[32], d2[16];
     snprintf(d1, sizeof(d1), "Data: %s", data_text);
     snprintf(d2, sizeof(d2), "D: %s", data_text);
     const char *data_txts[] = {d1, d2, data_text, NULL};

@@ -430,6 +430,7 @@ static void tm1638_handle_info(struct srd_decoder_inst *di, tm1638_state *s)
 
 static void tm1638_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     tm1638_state *s = (tm1638_state *)c_decoder_get_private(di);
     if (!s)
         return;

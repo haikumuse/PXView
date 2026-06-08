@@ -221,7 +221,7 @@ Viewport::Viewport(View &parent, View_type type)
       _resize_trace_lower(NULL), _resize_mouse_down_y(0),
       _resize_upper_height(0), _resize_lower_height(0), _curs_moved(false),
       _xcurs_moved(false), _curVOffset(0), _max_frame_time(0), _fps(0),
-      g_drag_active(false), _paint_in_this_second(0), _is_idle(true),
+      g_drag_active(false), _is_idle(true), _paint_in_this_second(0),
       _drag_frame_pending(false) {
   _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
   if (!_panelBgColor.isValid())
@@ -2152,19 +2152,26 @@ void Viewport::measure() {
 void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back) {
   QColor active_color = back.black() > 0x80 ? View::Orange : View::Purple;
   _hover_hit = false;
+
+  int v_offset = _view.get_vOffset();
+  int screen_midY = _cur_midY - v_offset;
+  int screen_preY = _cur_preY - v_offset;
+  int screen_aftY = _cur_aftY - v_offset;
+  QPointF screen_hover_point = _view.hover_point() - QPointF(0, v_offset);
+
   if (_action_type == NO_ACTION && _measure_type == LOGIC_FREQ) {
     p.setPen(active_color);
-    p.drawLine(QLineF(_cur_preX, _cur_midY, _cur_aftX, _cur_midY));
-    p.drawLine(QLineF(_cur_preX, _cur_midY, _cur_preX + 2, _cur_midY - 2));
-    p.drawLine(QLineF(_cur_preX, _cur_midY, _cur_preX + 2, _cur_midY + 2));
-    p.drawLine(QLineF(_cur_aftX - 2, _cur_midY - 2, _cur_aftX, _cur_midY));
-    p.drawLine(QLineF(_cur_aftX - 2, _cur_midY + 2, _cur_aftX, _cur_midY));
+    p.drawLine(QLineF(_cur_preX, screen_midY, _cur_aftX, screen_midY));
+    p.drawLine(QLineF(_cur_preX, screen_midY, _cur_preX + 2, screen_midY - 2));
+    p.drawLine(QLineF(_cur_preX, screen_midY, _cur_preX + 2, screen_midY + 2));
+    p.drawLine(QLineF(_cur_aftX - 2, screen_midY - 2, _cur_aftX, screen_midY));
+    p.drawLine(QLineF(_cur_aftX - 2, screen_midY + 2, _cur_aftX, screen_midY));
     if (_thd_sample != 0) {
-      p.drawLine(QLineF(_cur_aftX, _cur_midY, _cur_thdX, _cur_midY));
-      p.drawLine(QLineF(_cur_aftX, _cur_midY, _cur_aftX + 2, _cur_midY - 2));
-      p.drawLine(QLineF(_cur_aftX, _cur_midY, _cur_aftX + 2, _cur_midY + 2));
-      p.drawLine(QLineF(_cur_thdX - 2, _cur_midY - 2, _cur_thdX, _cur_midY));
-      p.drawLine(QLineF(_cur_thdX - 2, _cur_midY + 2, _cur_thdX, _cur_midY));
+      p.drawLine(QLineF(_cur_aftX, screen_midY, _cur_thdX, screen_midY));
+      p.drawLine(QLineF(_cur_aftX, screen_midY, _cur_aftX + 2, screen_midY - 2));
+      p.drawLine(QLineF(_cur_aftX, screen_midY, _cur_aftX + 2, screen_midY + 2));
+      p.drawLine(QLineF(_cur_thdX - 2, screen_midY - 2, _cur_thdX, screen_midY));
+      p.drawLine(QLineF(_cur_thdX - 2, screen_midY + 2, _cur_thdX, screen_midY));
     }
 
     if (_measure_en) {
@@ -2175,7 +2182,7 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back) {
           {L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DUTY_CYCLE), "Duty Cycle: "),
            _mm_duty}};
 
-      drawFloatingPanel(p, _view.hover_point(), _view.get_view_width(),
+      drawFloatingPanel(p, screen_hover_point, _view.get_view_width(),
                         _view.viewport()->height(), back, _panelBgColor,
                         _panelTextColor, rows);
     }
@@ -2367,14 +2374,14 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back) {
 
   if (_action_type == LOGIC_EDGE && _view.session().have_view_data()) {
     p.setPen(active_color);
-    p.drawLine(QLineF(_cur_preX, _cur_midY - 5, _cur_preX, _cur_midY + 5));
-    p.drawLine(QLineF(_cur_aftX, _cur_midY - 5, _cur_aftX, _cur_midY + 5));
-    p.drawLine(QLineF(_cur_preX, _cur_midY, _cur_aftX, _cur_midY));
+    p.drawLine(QLineF(_cur_preX, screen_midY - 5, _cur_preX, screen_midY + 5));
+    p.drawLine(QLineF(_cur_aftX, screen_midY - 5, _cur_aftX, screen_midY + 5));
+    p.drawLine(QLineF(_cur_preX, screen_midY, _cur_aftX, screen_midY));
 
     vector<pair<QString, QString>> rows = {
         {"", _em_edges}, {"", _em_rising}, {"", _em_falling}};
 
-    drawFloatingPanel(p, _view.hover_point(), _view.get_view_width(),
+    drawFloatingPanel(p, screen_hover_point, _view.get_view_width(),
                       _view.viewport()->height(), back, _panelBgColor,
                       _panelTextColor, rows);
   }
@@ -2383,29 +2390,29 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back) {
     p.setPen(active_color);
     p.setBrush(Qt::NoBrush);
     const QPoint pre_points[] = {
-        QPoint(_cur_preX, _cur_preY),
-        QPoint(_cur_preX - 1, _cur_preY - 1),
-        QPoint(_cur_preX + 1, _cur_preY - 1),
-        QPoint(_cur_preX - 1, _cur_preY + 1),
-        QPoint(_cur_preX + 1, _cur_preY + 1),
-        QPoint(_cur_preX - 2, _cur_preY - 2),
-        QPoint(_cur_preX + 2, _cur_preY - 2),
-        QPoint(_cur_preX - 2, _cur_preY + 2),
-        QPoint(_cur_preX + 2, _cur_preY + 2),
+        QPoint(_cur_preX, screen_preY),
+        QPoint(_cur_preX - 1, screen_preY - 1),
+        QPoint(_cur_preX + 1, screen_preY - 1),
+        QPoint(_cur_preX - 1, screen_preY + 1),
+        QPoint(_cur_preX + 1, screen_preY + 1),
+        QPoint(_cur_preX - 2, screen_preY - 2),
+        QPoint(_cur_preX + 2, screen_preY - 2),
+        QPoint(_cur_preX - 2, screen_preY + 2),
+        QPoint(_cur_preX + 2, screen_preY + 2),
     };
     p.drawPoints(pre_points, countof(pre_points));
     if (abs(_cur_aftX - _cur_preX) + abs(_cur_aftY - _cur_preY) > 20) {
       if (_edge_hit) {
         const QPoint aft_points[] = {
-            QPoint(_cur_aftX, _cur_aftY),
-            QPoint(_cur_aftX - 1, _cur_aftY - 1),
-            QPoint(_cur_aftX + 1, _cur_aftY - 1),
-            QPoint(_cur_aftX - 1, _cur_aftY + 1),
-            QPoint(_cur_aftX + 1, _cur_aftY + 1),
-            QPoint(_cur_aftX - 2, _cur_aftY - 2),
-            QPoint(_cur_aftX + 2, _cur_aftY - 2),
-            QPoint(_cur_aftX - 2, _cur_aftY + 2),
-            QPoint(_cur_aftX + 2, _cur_aftY + 2),
+            QPoint(_cur_aftX, screen_aftY),
+            QPoint(_cur_aftX - 1, screen_aftY - 1),
+            QPoint(_cur_aftX + 1, screen_aftY - 1),
+            QPoint(_cur_aftX - 1, screen_aftY + 1),
+            QPoint(_cur_aftX + 1, screen_aftY + 1),
+            QPoint(_cur_aftX - 2, screen_aftY - 2),
+            QPoint(_cur_aftX + 2, screen_aftY - 2),
+            QPoint(_cur_aftX - 2, screen_aftY + 2),
+            QPoint(_cur_aftX + 2, screen_aftY + 2),
         };
         p.drawPoints(aft_points, countof(aft_points));
       }
@@ -2415,14 +2422,14 @@ void Viewport::paintMeasure(QPainter &p, QColor fore, QColor back) {
 
       vector<pair<QString, QString>> rows = {{"", delta_text}};
 
-      drawFloatingPanel(p, _view.hover_point(), _view.get_view_width(),
+      drawFloatingPanel(p, screen_hover_point, _view.get_view_width(),
                         _view.viewport()->height(), back, _panelBgColor,
                         _panelTextColor, rows);
 
-      QPainterPath path(QPoint(_cur_preX, _cur_preY));
-      QPoint c1((_cur_preX + _cur_aftX) / 2, _cur_preY);
-      QPoint c2((_cur_preX + _cur_aftX) / 2, _cur_aftY);
-      path.cubicTo(c1, c2, QPoint(_cur_aftX, _cur_aftY));
+      QPainterPath path(QPoint(_cur_preX, screen_preY));
+      QPoint c1((_cur_preX + _cur_aftX) / 2, screen_preY);
+      QPoint c2((_cur_preX + _cur_aftX) / 2, screen_aftY);
+      path.cubicTo(c1, c2, QPoint(_cur_aftX, screen_aftY));
       p.drawPath(path);
     }
   }

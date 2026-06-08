@@ -82,10 +82,12 @@ typedef struct {
     int bytes_len;
     uint64_t ssd;       /* Data block start sample */
     uint64_t ssb;       /* Block start sample */
-    uint64_t ss, es;
+    
     int out_ann;
     int radix;          /* 0=Hex, 1=Dec, 2=Oct, 3=Bin */
     int units;          /* 0=Celsius, 1=Fahrenheit, 2=Kelvin */
+    uint64_t ss;
+    uint64_t es;
 } tmp102_state;
 
 static const char *tmp102_inputs[] = {"i2c", NULL};
@@ -272,7 +274,7 @@ static void tmp102_handle_datareg_0x01(struct srd_decoder_inst *di, tmp102_state
     int em = (dataword >> 4) & 1;
     s->em = em;
 
-    char buf[256];
+    char buf[512];
     snprintf(buf, sizeof(buf),
              "Configuration: OS=%s R=%s F=%s POL=%s TM=%s SD=%s CR=%sHz AL=%d EM=%s",
              os ? "enabled" : "disabled",
@@ -351,6 +353,7 @@ static void tmp102_handle_data(struct srd_decoder_inst *di, tmp102_state *s)
 
 static void tmp102_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     tmp102_state *s = (tmp102_state *)c_decoder_get_private(di);
     if (!s)
         return;

@@ -372,6 +372,7 @@ static void ufcs_reset_state(ufcs_state *s)
 
 static void ufcs_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ufcs_state *s = (ufcs_state *)c_decoder_get_private(di);
     if (!s)
         return;

@@ -202,6 +202,7 @@ static int is_stuff_bit(can_s *s)
 
 static void dom_edge_seen(can_s *s, uint64_t samplenum)
 {
+    (void)samplenum;
     s->dom_edge_snum = samplenum;
     s->dom_edge_bcount = s->curbit;
 }
@@ -215,6 +216,7 @@ static uint64_t get_sample_point(can_s *s, int bitnum)
 static int decode_frame_end(struct srd_decoder_inst *di, can_s *s,
                             uint8_t can_rx, int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum == s->last_databit + 1) {
         s->ss_block = samplenum;
         s->crc_len = 15;
@@ -281,6 +283,7 @@ static int decode_frame_end(struct srd_decoder_inst *di, can_s *s,
 static void decode_data_field(struct srd_decoder_inst *di, can_s *s,
                               int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum > s->dlc_start + 3 && bitnum < s->last_databit) {
         if (s->num_databytebits < 64)
             s->ss_databytebits[s->num_databytebits++] = samplenum;
@@ -311,6 +314,7 @@ static void decode_data_field(struct srd_decoder_inst *di, can_s *s,
 static int decode_standard_frame(struct srd_decoder_inst *di, can_s *s,
                                 uint8_t can_rx, int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum == 14) {
         char t1[32], t2[32], t3[16];
         snprintf(t1, sizeof(t1), "Reserved bit 0: %d", can_rx);
@@ -359,6 +363,7 @@ static int decode_standard_frame(struct srd_decoder_inst *di, can_s *s,
 static int decode_extended_frame(struct srd_decoder_inst *di, can_s *s,
                                 uint8_t can_rx, int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum == 14) {
         s->ss_block = samplenum;
         s->dlc_start = 35;
@@ -444,6 +449,7 @@ static int decode_extended_frame(struct srd_decoder_inst *di, can_s *s,
 static void handle_bit(struct srd_decoder_inst *di, can_s *s,
                        uint8_t can_rx, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->num_rawbits < 512) s->rawbits[s->num_rawbits++] = can_rx;
     if (s->num_bits < 512) s->bits[s->num_bits++] = can_rx;
 

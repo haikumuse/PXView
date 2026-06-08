@@ -762,6 +762,7 @@ static void get_command_token(struct srd_decoder_inst *di,
 static void handle_cmd(struct srd_decoder_inst *di, struct sdcard_sd_priv *s) {
   handle_common_token_fields(di, s);
 
+  
   const char *prefix = s->is_acmd ? "ACMD" : "CMD";
   snprintf(s->cmd_str, sizeof(s->cmd_str), "%s%d (%s)", prefix, s->cmd,
            cmd_name(s->cmd, s->is_acmd));

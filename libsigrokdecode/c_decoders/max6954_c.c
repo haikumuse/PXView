@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Paul Evans <leonerd@leonerd.org.uk>
@@ -131,13 +131,12 @@ static void max6954_handle_register(struct srd_decoder_inst *di, max6954_state *
 {
     char buf[512];
     const char *name = NULL;
-    int is_digit = 0;
+    
 
     /* Digit registers: 0x20-0x2F (P0), 0x40-0x4F (P1), 0x60-0x6F (Both) */
     if ((addr >= 0x20 && addr <= 0x2F) ||
         (addr >= 0x40 && addr <= 0x4F) ||
         (addr >= 0x60 && addr <= 0x6F)) {
-        is_digit = 1;
         /* Determine digit name */
         int digit_idx = addr & 0x07;
         int plane = (addr >> 5) & 0x03;
@@ -209,6 +208,7 @@ static void max6954_handle_register(struct srd_decoder_inst *di, max6954_state *
 
 static void max6954_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     max6954_state *s = (max6954_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -216,7 +216,7 @@ static void max6954_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         if (!s->cs_asserted) return;
         if (n_fields < 17) return;
 
-        int have_mosi = fields[0].u8 & 1;
+        int have_mosi = (fields[0].u8 & 1) ? 1 : 0;
         uint8_t mosi_byte = have_mosi ? fields[1].u8 : 0;
 
         if (s->pos == 0) {

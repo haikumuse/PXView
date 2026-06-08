@@ -24,11 +24,13 @@ typedef struct {
     enum tca6408a_state state;
     int reg;
     int chip;
-    uint64_t ss, es;
+    
     uint64_t logic_output_es;
     uint8_t logic_value;
     int out_ann;
     int out_logic;
+    uint64_t ss;
+    uint64_t es;
 } tca6408a_state;
 
 static const char *tca6408a_inputs[] = {"i2c", NULL};
@@ -97,7 +99,7 @@ static void tca6408a_handle_write_reg(struct srd_decoder_inst *di, tca6408a_stat
 static void tca6408a_check_correct_chip(struct srd_decoder_inst *di, tca6408a_state *s, int addr)
 {
     if (addr != 0x20 && addr != 0x21) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf),
                  "Warning: I²C slave 0x%02X not a TCA6408A compatible chip.", addr);
         c_put(di, s->ss, s->es, s->out_ann, ANN_WARNING, buf);
@@ -107,6 +109,7 @@ static void tca6408a_check_correct_chip(struct srd_decoder_inst *di, tca6408a_st
 
 static void tca6408a_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     tca6408a_state *s = (tca6408a_state *)c_decoder_get_private(di);
     if (!s)
         return;

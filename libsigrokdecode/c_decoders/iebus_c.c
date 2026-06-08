@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2023 Maciej Grela <enki@fsck.pl>
@@ -121,7 +121,7 @@ static int read_bit(struct srd_decoder_inst *di, iebus_s *s)
     /* Assume 33us bit length */
     uint64_t bit_end = bit_start + (uint64_t)(33e-6 * (double)s->samplerate);
 
-    char bit_str[4];
+    char bit_str[16];
     snprintf(bit_str, sizeof(bit_str), "%d", bit);
     c_put(di, bit_start, bit_end, s->out_ann, ANN_BIT, bit_str);
 
@@ -274,7 +274,8 @@ static int handle_data_bytes(struct srd_decoder_inst *di, iebus_s *s, int n_fiel
 {
     while (n_fields > 0) {
         uint16_t b;
-        uint64_t ss, es;
+        uint64_t ss = 0, es = 0;
+        
         if (read_value(di, s, 8, &b, &ss, &es) < 0)
             return -1;
 
@@ -376,7 +377,7 @@ static void iebus_decode(struct srd_decoder_inst *di)
 
     while (1) {
         int start_bit, broadcast_bit;
-        uint64_t ss, es;
+        uint64_t ss = 0, es = 0;
 
         if (read_header(di, s, &start_bit, &broadcast_bit, &ss, &es) < 0)
             return;

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2023 James Cordell <james@cordell.org.uk>
@@ -102,16 +102,7 @@ static const struct srd_c_ann_row crsf_ann_rows[] = {
     {"normal", "Normal", crsf_row_normal_classes, 2},
 };
 
-static const char *crsf_get_sync_name(uint8_t byte_val)
-{
-    for (int i = 0; crsf_sync_bytes[i].name; i++) {
-        if (crsf_sync_bytes[i].byte == byte_val)
-            return crsf_sync_bytes[i].name;
-    }
-    return NULL;
-}
-
-static const char *crsf_get_frame_type_name(uint8_t type)
+    static const char *crsf_get_frame_type_name(uint8_t type)
 {
     for (int i = 0; crsf_frame_types[i].name; i++) {
         if (crsf_frame_types[i].type == type)
@@ -128,8 +119,6 @@ static void crsf_handle_rc_channels(struct srd_decoder_inst *di, crsf_state *s)
 
     for (int chan = 0; chan < 16; chan++) {
         int bit_offset = chan * 11;
-        int byte_offset = bit_offset / 8;
-        int bit_in_byte = bit_offset % 8;
 
         uint32_t raw = 0;
         /* Extract 11 bits starting at bit_offset */
@@ -278,6 +267,7 @@ static void crsf_process_frame(struct srd_decoder_inst *di, crsf_state *s)
 
 static void crsf_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     crsf_state *s = (crsf_state *)c_decoder_get_private(di);
     if (!s)
         return;

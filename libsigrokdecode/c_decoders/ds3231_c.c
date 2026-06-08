@@ -149,7 +149,7 @@ static void ds3231_output_datetime(struct srd_decoder_inst* di, ds3231_state* s,
     if (s->ss_block == (uint64_t)-1 || s->days < 1)
         return;
     const char* ws = days_of_week[(s->days + s->dayoffset) % 7];
-    char t[128], t2[128];
+    char t[128], t2[256];
     snprintf(t, sizeof(t), "%s, %02d.%02d.%4d %02d:%02d:%02d",
         ws, s->date, s->months, s->years, s->hours, s->minutes, s->seconds);
     snprintf(t2, sizeof(t2), "%s date/time: %s", rw, t);
@@ -489,6 +489,7 @@ static void ds3231_handle_reg(struct srd_decoder_inst* di, ds3231_state* s,
 
 static void ds3231_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ds3231_state* s = (ds3231_state*)c_decoder_get_private(di);
     if (!s)
         return;

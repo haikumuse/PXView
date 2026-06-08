@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -135,6 +135,7 @@ static const struct srd_c_ann_row ds1307_ann_rows[] = {
 static void ds1307_output_datetime(struct srd_decoder_inst *di, ds1307_state *s,
                                     int cls, const char *rw)
 {
+    (void)rw;
     if (s->days < 1 || s->date < 0 || s->months < 0 || s->years < 0 ||
         s->hours < 0 || s->minutes < 0 || s->seconds < 0)
         return;
@@ -264,6 +265,7 @@ static void ds1307_handle_reg(struct srd_decoder_inst *di, ds1307_state *s,
 
 static void ds1307_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ds1307_state *s = (ds1307_state *)c_decoder_get_private(di);
     if (!s)
         return;

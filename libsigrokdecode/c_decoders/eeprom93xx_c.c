@@ -51,6 +51,7 @@ static const struct srd_c_ann_row eeprom93xx_ann_rows[] = {
 
 static void eeprom93xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     eeprom93xx_state *s = (eeprom93xx_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -58,7 +59,7 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sa
     if (strcmp(cmd, "microwire") != 0)
         return;
 
-    if (!fields || n_fields < sizeof(struct mw_py_entry))
+    if (!fields || (size_t)n_fields < sizeof(struct mw_py_entry))
         return;
 
     int num_entries = (int)(n_fields / sizeof(struct mw_py_entry));

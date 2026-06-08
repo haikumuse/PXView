@@ -304,6 +304,7 @@ static void usb_req_handle_transfer(struct srd_decoder_inst *di, usb_req_state *
 
 static void usb_req_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     usb_req_state *s = (usb_req_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -339,7 +340,7 @@ static void usb_req_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         }
 
         if (s->transaction_state != TX_IDLE) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "ERR: received %s token in state %s", pname,
                 s->transaction_state == TX_IDLE ? "IDLE" :
                 s->transaction_state == TX_TOKEN_RECEIVED ? "TOKEN RECEIVED" :
@@ -373,7 +374,7 @@ static void usb_req_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
 
     } else if (strcmp(pcategory, "DATA") == 0) {
         if (s->transaction_state != TX_TOKEN_RECEIVED) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "ERR: received %s token in state %s", pname,
                 s->transaction_state == TX_IDLE ? "IDLE" :
                 s->transaction_state == TX_TOKEN_RECEIVED ? "TOKEN RECEIVED" :
@@ -395,7 +396,7 @@ static void usb_req_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
 
     } else if (strcmp(pcategory, "HANDSHAKE") == 0) {
         if (s->transaction_state != TX_TOKEN_RECEIVED && s->transaction_state != TX_DATA_RECEIVED) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "ERR: received %s token in state %s", pname,
                 s->transaction_state == TX_IDLE ? "IDLE" :
                 s->transaction_state == TX_TOKEN_RECEIVED ? "TOKEN RECEIVED" :

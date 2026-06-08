@@ -117,6 +117,7 @@ static const sipi_command_entry *sipi_lookup_command(uint8_t cmd_id)
 
 static void sipi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     sipi_state *s = (sipi_state *)c_decoder_get_private(di);
     if (!s)
         return;

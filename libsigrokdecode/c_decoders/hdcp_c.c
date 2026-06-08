@@ -40,9 +40,11 @@ typedef struct {
     uint8_t stack[256];
     int stack_len;
     char type[64];
-    uint64_t ss, es;
+    
     uint64_t ss_block, es_block;
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 } hdcp_state;
 
 /* HDCP 2.2 message ID mapping */
@@ -163,7 +165,7 @@ static void hdcp_process_buffer(struct srd_decoder_inst *di, hdcp_state *s)
         int reauth_req = (rxstatus & 0x800) != 0;
         int ready = (rxstatus & 0x400) != 0;
         int length = rxstatus & 0x3ff;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s, reauth %s, ready %s, length %s",
                  s->type, reauth_req ? "True" : "False",
                  ready ? "True" : "False",
@@ -176,7 +178,7 @@ static void hdcp_process_buffer(struct srd_decoder_inst *di, hdcp_state *s)
         int device_count = bstatus & 0x7f;
         int depth = (bstatus & 0x700) >> 8;
         int hdmi_mode = (bstatus & 0x1000) != 0;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s, %d devices, depth %d, hdmi mode %s",
                  s->type, device_count, depth, hdmi_mode ? "True" : "False");
         c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_SUMMARY, buf);
@@ -184,7 +186,7 @@ static void hdcp_process_buffer(struct srd_decoder_inst *di, hdcp_state *s)
         int msg = s->stack[0];
         const char *msg_name = hdcp_lookup_msg_name(msg);
         int ann_cls = (msg >= 0 && msg < 18) ? msg : ANN_SUMMARY;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s, %s", s->type, msg_name);
         c_put(di, s->ss_block, s->es_block, s->out_ann, ann_cls, buf);
     } else if (strcmp(s->type, "HDCP2Version") == 0) {
@@ -201,6 +203,7 @@ static void hdcp_process_buffer(struct srd_decoder_inst *di, hdcp_state *s)
 
 static void hdcp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     hdcp_state *s = (hdcp_state *)c_decoder_get_private(di);
     if (!s)
         return;

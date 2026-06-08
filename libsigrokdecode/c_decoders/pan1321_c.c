@@ -66,13 +66,13 @@ static void pan1321_handle_host_command(struct srd_decoder_inst *di, pan1321_sta
         if (*p == '=')
             p++;
         if (strcmp(p, "0") != 0 && strcmp(p, "1") != 0) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Warning: Invalid JAAC parameter \"%s\"", p);
             pan1321_putx(di, s, 1, ANN_WARNINGS, buf);
             return;
         }
         const char *x = (strcmp(p, "1") == 0) ? "Auto" : "Don't auto";
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s-accept new connections", x);
         pan1321_putx(di, s, 1, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "%s-accept connections", x);
@@ -83,14 +83,14 @@ static void pan1321_handle_host_command(struct srd_decoder_inst *di, pan1321_sta
         if (*p == '=')
             p++;
         if (strcmp(p, "0") != 0 && strcmp(p, "1") != 0) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Warning: Invalid JPRO parameter \"%s\"", p);
             pan1321_putx(di, s, 1, ANN_WARNINGS, buf);
             return;
         }
         const char *x = (strcmp(p, "0") == 0) ? "Leaving" : "Entering";
         const char *onoff = (strcmp(p, "0") == 0) ? "off" : "on";
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s production mode", x);
         pan1321_putx(di, s, 1, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "Production mode = %s", onoff);
@@ -118,7 +118,7 @@ static void pan1321_handle_host_command(struct srd_decoder_inst *di, pan1321_sta
         const char *d = comma + 1;
         int d_len = (int)strlen(d);
         if (len_val != d_len) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Warning: Data length mismatch (%d != %d).", len_val, d_len);
             pan1321_putx(di, s, 1, ANN_WARNINGS, buf);
         }
@@ -129,7 +129,7 @@ static void pan1321_handle_host_command(struct srd_decoder_inst *di, pan1321_sta
             pos += snprintf(hex_buf + pos, sizeof(hex_buf) - pos, "%02x ", (unsigned char)d[i]);
         if (pos > 0)
             hex_buf[pos - 1] = '\0'; /* Remove trailing space */
-        char buf[256];
+        char buf[512];
         snprintf(buf, sizeof(buf), "Sending %d data bytes: %s", len_val, hex_buf);
         pan1321_putx(di, s, 1, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "Send %d = %s", len_val, hex_buf);
@@ -143,7 +143,7 @@ static void pan1321_handle_host_command(struct srd_decoder_inst *di, pan1321_sta
             strncpy(pin, cmd + cmd_len - 4, 4);
             pin[4] = '\0';
         }
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Host set the Bluetooth PIN to \"%s\"", pin);
         pan1321_putx(di, s, 1, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "PIN = %s", pin);
@@ -158,13 +158,13 @@ static void pan1321_handle_host_command(struct srd_decoder_inst *di, pan1321_sta
             name++;
         else
             name = params;
-        char buf[256];
+        char buf[512];
         snprintf(buf, sizeof(buf), "Host set the Bluetooth name to \"%s\"", name);
         pan1321_putx(di, s, 1, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "BT name = %s", name);
         pan1321_putx(di, s, 1, ANN_TEXT, buf);
     } else {
-        char buf[256];
+        char buf[512];
         snprintf(buf, sizeof(buf), "Host sent unsupported command: %s", cmd);
         pan1321_putx(di, s, 1, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "Unsupported command: %s", cmd);
@@ -184,13 +184,13 @@ static void pan1321_handle_device_reply(struct srd_decoder_inst *di, pan1321_sta
         const char *error = cmd + 3;
         if (*error == '=')
             error++;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Device sent error code %s", error);
         pan1321_putx(di, s, 0, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "ERR = %s", error);
         pan1321_putx(di, s, 0, ANN_TEXT, buf);
     } else {
-        char buf[256];
+        char buf[512];
         snprintf(buf, sizeof(buf), "Device sent an unknown reply: %s", cmd);
         pan1321_putx(di, s, 0, ANN_TEXT_VERBOSE, buf);
         snprintf(buf, sizeof(buf), "Unknown reply: %s", cmd);
@@ -200,6 +200,7 @@ static void pan1321_handle_device_reply(struct srd_decoder_inst *di, pan1321_sta
 
 static void pan1321_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     pan1321_state *s = (pan1321_state *)c_decoder_get_private(di);
     if (!s)
         return;

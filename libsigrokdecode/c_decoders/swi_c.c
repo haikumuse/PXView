@@ -155,6 +155,7 @@ static void swi_put_word_ann(struct srd_decoder_inst *di, swi_state *s,
 static void swi_parse_enumerate(struct srd_decoder_inst *di, swi_state *s,
                                  int start_idx)
 {
+    (void)start_idx;
     /* Enumerate/Select parsing */
     c_put(di, s->pastWords[start_idx].startN, s->pastWords[start_idx + 4].endN,
               s->out_ann, ANN_MEAN, "Enumerate/Select", "Enum/Select", "Enum");
@@ -169,6 +170,7 @@ static void swi_parse_enumerate(struct srd_decoder_inst *di, swi_state *s,
 static void swi_parse_broadcast(struct srd_decoder_inst *di, swi_state *s,
                                  int start_idx)
 {
+    (void)start_idx;
     if (s->word_count < start_idx + 5)
         return;
 
@@ -233,6 +235,7 @@ static void swi_parse_packet(struct srd_decoder_inst *di, swi_state *s)
 static void swi_parse_unicast(struct srd_decoder_inst *di, swi_state *s,
                                 int start_idx)
 {
+    (void)start_idx;
     if (s->lastHdrIdx < 2)
         return;
 
@@ -420,7 +423,7 @@ static void swi_decode(struct srd_decoder_inst *di)
         /* Output bit annotations */
         for (int i = 2; i < 12; i++) {
             int bit = swi_calculate_bit(data_bauds[i], inverted);
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", bit);
             c_put(di, data_ns[i], data_ns[i + 1],
                       s->out_ann, ANN_BITS, bit_str);

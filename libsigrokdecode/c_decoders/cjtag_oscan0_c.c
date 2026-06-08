@@ -252,6 +252,7 @@ static void cjtag_handle_rising_tck_edge(struct srd_decoder_inst *di, cjtag_priv
                                           int tdi, int tdo, int tck, int tms,
                                           uint64_t samplenum)
 {
+    (void)samplenum;
     p->old_cjtag_state = p->cjtag_state;
 
     cjtag_advance_state_machine(p, tms);

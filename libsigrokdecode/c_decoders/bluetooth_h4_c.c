@@ -193,6 +193,7 @@ static void bluetooth_h4_output_packet(struct srd_decoder_inst *di,
 
 static void bluetooth_h4_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     bluetooth_h4_state *s = (bluetooth_h4_state *)c_decoder_get_private(di);
     if (!s)
         return;

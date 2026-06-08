@@ -468,7 +468,7 @@ static void cyrf6936_finish_command(struct srd_decoder_inst *di, cyrf6936_state 
     const char *decoded = cyrf6936_decode_reg(s->addr, s->dir_wr ? s->mosi_mb : s->miso_mb,
                                                s->mb_count, warn_buf, sizeof(warn_buf));
 
-    char cmd_buf[256];
+    char cmd_buf[2048];
     cyrf6936_format_command(s, decoded, cmd_buf, sizeof(cmd_buf));
 
     c_put(di, s->mb_s, s->mb_e, s->out_ann,
@@ -490,6 +490,7 @@ static void cyrf6936_next(cyrf6936_state *s)
 
 static void cyrf6936_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     cyrf6936_state *s = (cyrf6936_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -534,7 +535,7 @@ static void cyrf6936_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
     if (!s->cs_was_released) return;
 
     int have_mosi, have_miso;
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
 
     if (!have_mosi) return;

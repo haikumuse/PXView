@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -80,17 +80,16 @@ typedef struct {
 } ds243x_state;
 
 /* CRC-16 calculation */
-static uint16_t crc16(const uint8_t *bytes, int len)
+static uint16_t crc16(const uint8_t *data, int len)
 {
-    uint16_t crc = 0x0000;
+    uint16_t crc = 0;
     for (int i = 0; i < len; i++) {
-        uint8_t byte = bytes[i];
-        for (int bit = 0; bit < 8; bit++) {
-            if ((byte ^ crc) & 1)
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            if (crc & 1)
                 crc = (crc >> 1) ^ 0xa001;
             else
                 crc >>= 1;
-            byte >>= 1;
         }
     }
     crc ^= 0xffff;
@@ -138,6 +137,7 @@ static const struct ds243x_cmd *find_command(uint8_t code,
 
 static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ds243x_state *s = (ds243x_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -178,7 +178,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             snprintf(s->family_name, sizeof(s->family_name), "unknown");
         }
 
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "ROM: 0x%016llx (family code 0x%02x, %s)",
                  (unsigned long long)rom, s->family_code, s->family_name);
         c_put(di, start_sample, end_sample, s->out_ann, ANN_ROM, buf);
@@ -198,7 +198,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
         s->es_block = end_sample;
         const struct ds243x_cmd *c = find_command(val, s->commands, s->num_commands);
         if (c) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Function command: %s (0x%02x)", c->name, val);
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_CMD, buf);
         } else {
@@ -230,7 +230,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
         } else if (s->num_bytes >= 4 && s->num_bytes <= 11) {
             /* Data bytes 3..10 */
             if (s->num_bytes == 11) {
-                char buf[256];
+                char buf[512];
                 int pos = 0;
                 pos += snprintf(buf + pos, sizeof(buf) - pos, "Data: ");
                 for (int i = 3; i < 11; i++) {
@@ -262,7 +262,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             c_put(di, start_sample, end_sample, s->out_ann, ANN_ES, buf);
         } else if (s->num_bytes >= 5 && s->num_bytes <= 12) {
             if (s->num_bytes == 12) {
-                char buf[256];
+                char buf[512];
                 int pos = 0;
                 pos += snprintf(buf + pos, sizeof(buf) - pos, "Data: ");
                 for (int i = 4; i < 12; i++) {
@@ -283,7 +283,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             s->ss_block = start_sample;
         } else if (s->num_bytes == 4) {
             s->es_block = end_sample;
-            char buf[128];
+            char buf[256];
             int pos = 0;
             pos += snprintf(buf + pos, sizeof(buf) - pos,
                             "Authorization pattern (TA1, TA2, E/S): ");
@@ -293,7 +293,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             }
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_AUTH, buf);
         } else if (s->num_bytes == 24) {
-            char buf[256];
+            char buf[512];
             int pos = 0;
             pos += snprintf(buf + pos, sizeof(buf) - pos, "Message authentication code: ");
             for (int i = 4; i < 24; i++) {
@@ -329,7 +329,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             s->ss_block = start_sample;
         } else if (s->num_bytes == 4) {
             s->es_block = end_sample;
-            char buf[128];
+            char buf[256];
             int pos = 0;
             pos += snprintf(buf + pos, sizeof(buf) - pos,
                             "Authorization pattern (TA1, TA2, E/S): ");
@@ -369,7 +369,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             snprintf(buf, sizeof(buf), "Target address: 0x%04x", addr);
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_ADDRESS, buf);
         } else if (s->num_bytes == 35) {
-            char buf[256];
+            char buf[512];
             int pos = 0;
             pos += snprintf(buf + pos, sizeof(buf) - pos, "Data: ");
             for (int i = 3; i < 35; i++) {
@@ -388,7 +388,7 @@ static void ds243x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
             snprintf(buf, sizeof(buf), "CRC: %s", calc_crc == recv_crc ? "ok" : "error");
             c_put(di, start_sample, end_sample, s->out_ann, ANN_CRC, buf);
         } else if (s->num_bytes == 58) {
-            char buf[256];
+            char buf[512];
             int pos = 0;
             pos += snprintf(buf + pos, sizeof(buf) - pos, "Message authentication code: ");
             for (int i = 38; i < 58; i++) {

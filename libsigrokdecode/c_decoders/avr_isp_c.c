@@ -144,7 +144,7 @@ static const char *part_name(uint8_t fam, uint8_t part)
 static void avr_isp_handle_command(struct srd_decoder_inst *di, avr_isp_state *s,
     const uint8_t *cmd, const uint8_t *ret)
 {
-    char buf[256];
+    char buf[512];
 
     /* Programming Enable: [0xAC, 0x53, *, *] */
     if (cmd[0] == 0xAC && cmd[1] == 0x53) {
@@ -289,6 +289,7 @@ static void avr_isp_handle_command(struct srd_decoder_inst *di, avr_isp_state *s
 
 static void avr_isp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     avr_isp_state *s = (avr_isp_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -296,7 +297,7 @@ static void avr_isp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
     if (strcmp(cmd, "DATA") != 0) return;
 
     int have_mosi, have_miso;
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
 
     if (s->byte_count == 0)

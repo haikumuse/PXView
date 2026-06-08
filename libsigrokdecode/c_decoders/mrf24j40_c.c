@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Karl Palsson <karlp@tweak.net.au>
@@ -229,12 +229,12 @@ static void mrf24j40_handle_short(struct srd_decoder_inst *di, mrf24j40_state *s
     }
 
     if (write) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->mosi_bytes[1]);
         c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SWRITE,
             s->mosi_bytes[1], buf);
     } else {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->miso_bytes[1]);
         c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_SREAD,
             s->miso_bytes[1], buf);
@@ -272,12 +272,12 @@ static void mrf24j40_handle_long(struct srd_decoder_inst *di, mrf24j40_state *s)
     const char *reg_desc = mrf24j40_get_lreg_desc(reg);
 
     if (write) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->mosi_bytes[2]);
         c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_LWRITE,
             s->mosi_bytes[2], buf);
     } else {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s: 0x%02X", reg_desc, s->miso_bytes[2]);
         c_put_v(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_LREAD,
             s->miso_bytes[2], buf);
@@ -305,6 +305,7 @@ static void mrf24j40_handle_long(struct srd_decoder_inst *di, mrf24j40_state *s)
 
 static void mrf24j40_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     mrf24j40_state *s = (mrf24j40_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -322,8 +323,9 @@ static void mrf24j40_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
     if (strcmp(cmd, "DATA") != 0) return;
     if (n_fields < 17) return;
 
-    int have_mosi = fields[0].u8 & 1;
-    int have_miso = (fields[0].u8 >> 1) & 1;
+    
+    int have_mosi = (fields[0].u8 & 1) ? 1 : 0;
+    int have_miso = (fields[0].u8 & 2) ? 1 : 0;
     uint8_t mosi = have_mosi ? fields[1].u8 : 0;
     uint8_t miso = have_miso ? fields[9].u8 : 0;
 

@@ -160,7 +160,7 @@ static void spi_dq_reset_decoder_state(spi_dq_state *s)
 static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
 {
     int ws = s->wordsize;
-    uint64_t ss, es;
+    uint64_t ss = 0, es = 0;
 
     /* Get ss/es from bit records */
     if (s->current_mode == CUR_MODE_QUAD) {
@@ -209,7 +209,7 @@ static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
         int sio1_cnt = bit_count;
         int sio2_cnt = s->is_quad ? bit_count : 0;
         int sio3_cnt = s->is_quad ? bit_count : 0;
-        int total_bits = sio0_cnt + sio1_cnt + sio2_cnt + sio3_cnt;
+        
         unsigned char bits_buf[8800];
         int bpos = 0;
 
@@ -270,23 +270,23 @@ static void spi_dq_putdata(struct srd_decoder_inst *di, spi_dq_state *s)
     int total_bit_count = (s->current_mode == CUR_MODE_QUAD) ? ws / 4 :
                           (s->current_mode == CUR_MODE_DUAL) ? ws / 2 : ws;
     for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->sio0bits_val[i]);
         c_put(di, s->sio0bits_ss[i], s->sio0bits_es[i], s->out_ann, ANN_SIO0_BIT, bit_str);
     }
     for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->sio1bits_val[i]);
         c_put(di, s->sio1bits_ss[i], s->sio1bits_es[i], s->out_ann, ANN_SIO1_BIT, bit_str);
     }
     if (s->is_quad) {
         for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", s->sio2bits_val[i]);
             c_put(di, s->sio2bits_ss[i], s->sio2bits_es[i], s->out_ann, ANN_SIO2_BIT, bit_str);
         }
         for (int i = total_bit_count - 1; i >= 0 && i < MAX_BITS; i--) {
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", s->sio3bits_val[i]);
             c_put(di, s->sio3bits_ss[i], s->sio3bits_es[i], s->out_ann, ANN_SIO3_BIT, bit_str);
         }
@@ -460,7 +460,7 @@ static void spi_dq_decode(struct srd_decoder_inst *di)
                 if (s->spibytes_cnt > 0) {
                     char transfer_str[4096];
                     int pos = 0;
-                    const char *prefix = "";
+                    
                     if (s->protocol == PROTO_DUAL) {
                         pos += snprintf(transfer_str + pos, sizeof(transfer_str) - pos, "DUAL: ");
                     } else if (s->protocol == PROTO_QUAD) {

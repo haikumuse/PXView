@@ -122,7 +122,7 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
     {
         const char *op_long = s->reading ? "Read" : "Write";
         const char *op_arrow = s->reading ? "->" : "<-";
-        char tx_buf[256];
+        char tx_buf[512];
         if (s->data_count > 0) {
             char data_str[512];
             int pos = 0;
@@ -137,7 +137,8 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
 
     /* Output python protocol data */
     if (s->out_python >= 0) {
-        unsigned char py_data[270];
+        
+        uint8_t py_data[1];
         py_data[0] = (unsigned char)s->reading;
         py_data[1] = (unsigned char)(s->addr >> 16);
         py_data[2] = (unsigned char)(s->addr >> 8);
@@ -153,13 +154,14 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
 /* ===== recv_proto ===== */
 static void tpm_tis_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     tpm_tis_state *s = (tpm_tis_state *)c_decoder_get_private(di);
     if (!s) return;
 
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     spi_proto_get_mosi(fields, n_fields, &mosi);
     spi_proto_get_miso(fields, n_fields, &miso);
 

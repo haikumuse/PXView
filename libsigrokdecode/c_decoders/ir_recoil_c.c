@@ -248,7 +248,7 @@ static void recoil_decode(struct srd_decoder_inst *di)
 
             handle_bit(s, length);
             if (s->lastbit == 0 || s->lastbit == 1) {
-                char bit_str[4];
+                char bit_str[16];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->lastbit);
                 c_put(di, s->oldedgesample, s->newedgesample, s->out_ann, ANN_BIT, bit_str);
             } else {

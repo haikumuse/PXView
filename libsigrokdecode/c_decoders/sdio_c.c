@@ -1,4 +1,4 @@
-﻿/*
+/*
  * SDIO C decoder
  * Ported from Python sdio decoder
  */
@@ -70,18 +70,6 @@ static uint8_t crc7(const int *bin_array, int len)
         data = (data & 0x78) | ((data & 0x03) << 1) | di;
     }
     return (uint8_t)data;
-}
-
-static uint16_t crc16(const int *bin_array, int len)
-{
-    int data = 0;
-    for (int i = 0; i < len; i++) {
-        int di = bin_array[i] ^ crc_BIT(data, 15);
-        data = (data & 0x0FFF) | ((data & 0x7000) << 1) | ((di ^ crc_BIT(data, 11)) << 12);
-        data = (data & 0xF01F) | ((data & 0x07E0) << 1) | ((di ^ crc_BIT(data, 4)) << 5);
-        data = (data & 0xFFE0) | ((data & 0x000F) << 1) | di;
-    }
-    return (uint16_t)data;
 }
 
 /* Command name lookup */
@@ -397,7 +385,7 @@ static void handle_common_token_fields(sdio_state *s, struct srd_decoder_inst *d
 {
     /* Individual bit annotations */
     for (int bit = 0; bit < s->token_count && bit < MAX_TOKEN_BITS; bit++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->token_val[bit]);
         SDIO_PUTF(s, di, bit, bit, ANN_BITS, bit_str, NULL);
     }
@@ -493,7 +481,7 @@ static void handle_response_r2(sdio_state *s, struct srd_decoder_inst *di, int c
 {
     if (!get_token_bits(s, 0, cmd_val, 136)) return;
     for (int bit = 0; bit < s->token_count && bit < MAX_TOKEN_BITS; bit++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->token_val[bit]);
         SDIO_PUTF(s, di, bit, bit, ANN_BITS, bit_str, NULL);
     }
@@ -518,7 +506,7 @@ static void handle_response_r3(sdio_state *s, struct srd_decoder_inst *di, int c
     if (!get_token_bits(s, 0, cmd_val, 48)) return;
     SDIO_PUTT(s, di, ANN_DECODED_FIELD, "Reply: R3", NULL);
     for (int bit = 0; bit < s->token_count && bit < MAX_TOKEN_BITS; bit++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->token_val[bit]);
         SDIO_PUTF(s, di, bit, bit, ANN_BITS, bit_str, NULL);
     }
@@ -544,7 +532,7 @@ static void handle_response_r4(sdio_state *s, struct srd_decoder_inst *di, int c
     if (!get_token_bits(s, 0, cmd_val, 48)) return;
     SDIO_PUTT(s, di, ANN_DECODED_FIELD, "Reply: R4", NULL);
     for (int bit = 0; bit < s->token_count && bit < MAX_TOKEN_BITS; bit++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->token_val[bit]);
         SDIO_PUTF(s, di, bit, bit, ANN_BITS, bit_str, NULL);
     }
@@ -633,7 +621,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
         int dat1 = c_has_ch(di, 3) ? c_pin(di, 3) : 0;
         int dat2 = c_has_ch(di, 4) ? c_pin(di, 4) : 0;
         int dat3 = c_has_ch(di, 5) ? c_pin(di, 5) : 0;
-        int pins[6] = {cmd, 0/*clk*/, dat0, dat1, dat2, dat3};
+        
 
         /* Handle data lines */
         if (s->data_state == DATA_STATE_IDLE || s->data_state == DATA_STATE_WAIT_FOR_START) {
@@ -771,7 +759,7 @@ static void sdio_decode(struct srd_decoder_inst *di)
             handle_common_token_fields(s, di);
 
             s->cmd_str_is_acmd = s->is_acmd;
-            const char *prefix = s->is_acmd ? "A" : "";
+            
 
             if (!s->is_acmd) {
                 if (is_in_list(cmd_list, s->cmd)) {

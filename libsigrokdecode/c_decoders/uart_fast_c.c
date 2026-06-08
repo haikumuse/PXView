@@ -233,6 +233,8 @@ static uint64_t get_bit_end(uart_fast_state *s, int rxtx, int bit_num)
 
 static int get_rxtx_pin(uart_fast_state *s, struct srd_decoder_inst *di, int rxtx, int ch, uint64_t samplenum)
 {
+    (void)samplenum;
+    (void)rxtx;
     int val = c_pin(di, ch);
     if (s->invert) val = val ? 0 : 1;
     return val;
@@ -356,10 +358,7 @@ static void uart_fast_metadata(struct srd_decoder_inst *di, int key, uint64_t va
 static void handle_frame(struct srd_decoder_inst *di, int rxtx, uint64_t ss, uint64_t es)
 {
     uart_fast_state *s = (uart_fast_state *)c_decoder_get_private(di);
-    unsigned char frame_data[3];
-    frame_data[0] = (unsigned char)s->datavalue[rxtx];
-    frame_data[1] = (unsigned char)rxtx;
-    frame_data[2] = (unsigned char)s->frame_valid[rxtx];
+    
     c_proto(di, ss, es, s->out_python, "FRAME", C_U8(s->datavalue[rxtx]), C_U8(rxtx), C_U8(s->frame_valid[rxtx]), C_END);
 
     /* Binary output */
@@ -406,6 +405,7 @@ static void get_packet_data(uart_fast_state *s, int rxtx, uint64_t frame_end)
 
 static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplenum)
 {
+    (void)samplenum;
     uart_fast_state *s = (uart_fast_state *)c_decoder_get_private(di);
     int ch = rxtx;
     int signal = get_rxtx_pin(s, di, rxtx, ch, samplenum);
@@ -477,9 +477,7 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
                 char val_str[32];
                 uart_fast_format_value(s->datavalue[rxtx], s->data_bits, s->format, val_str, sizeof(val_str));
                 c_put(di, data_ss, data_es, s->out_ann, ANN_RX_DATA + rxtx, val_str);
-                unsigned char py_data[2];
-                py_data[0] = (unsigned char)s->datavalue[rxtx];
-                py_data[1] = (unsigned char)rxtx;
+                
                 c_proto(di, data_ss, data_es, s->out_python, "DATA", C_U8(s->datavalue[rxtx]), C_U8(rxtx), C_END);
 
                 if (s->parity_type != PARITY_NONE)
@@ -509,9 +507,7 @@ static void process_rxtx(struct srd_decoder_inst *di, int rxtx, uint64_t samplen
                 c_put(di, ss, es, s->out_ann, ANN_RX_PARITY_ERR + rxtx, "Parity error", "Parity err", "PE");
                 unsigned char pval = (unsigned char)parity_val;
                 c_proto(di, ss, es, s->out_python, "PARITYBIT", C_U8(pval), C_END);
-                unsigned char err_data[2];
-                err_data[0] = (unsigned char)(!parity_val);
-                err_data[1] = (unsigned char)parity_val;
+                
                 c_proto(di, ss, es, s->out_python, "PARITY ERROR", C_U8(!parity_val), C_U8(parity_val), C_END);
                 s->frame_valid[rxtx] = 0;
             }

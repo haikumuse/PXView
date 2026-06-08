@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -24,7 +24,8 @@ enum maple_ann {
 };
 
 struct maple_priv {
-    uint64_t ss, es;
+    uint64_t ss;
+    uint64_t es;
     uint64_t last_samplenum;
     int data;
     int length;

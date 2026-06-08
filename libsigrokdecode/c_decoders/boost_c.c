@@ -109,6 +109,7 @@ static void boost_putx(struct srd_decoder_inst *di, boost_state *s,
                         int rxtx, int cls, const char *text,
                         uint64_t ss, uint64_t es)
 {
+    (void)rxtx;
     if (cls == ANN_ERROR && !s->show_errors)
         return;
     if (cls == ANN_BYTES && !s->show_bytes)
@@ -247,6 +248,7 @@ failed_checksum:
 
 static void boost_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     boost_state *s = (boost_state *)c_decoder_get_private(di);
     if (!s)
         return;

@@ -170,8 +170,10 @@ typedef struct {
     uint64_t sn[256][2];
     int cur_highmem_page;
     int have_clei;
-    uint64_t ss, es;
+    
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 } xfp_state;
 
 static const char *xfp_inputs[] = {"i2c", NULL};
@@ -194,7 +196,7 @@ static void xfp_annotate(struct srd_decoder_inst *di, xfp_state *s,
 {
     if (start_cnt < 0 || end_cnt < 0 || start_cnt > 255 || end_cnt > 255)
         return;
-    char buf[256];
+    char buf[512];
     snprintf(buf, sizeof(buf), "%s: %s", key, value);
     c_put(di, s->sn[start_cnt][0], s->sn[end_cnt][1], s->out_ann, ANN_FIELD_NAME_VAL, buf);
     c_put(di, s->sn[start_cnt][0], s->sn[end_cnt][1], s->out_ann, ANN_FIELD_VAL, value);
@@ -257,12 +259,16 @@ static const char *xfp_lookup_connector(int id)
 
 static void xfp_handle_module_id(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     const char *name = xfp_lookup_module_id(s->buf[0]);
     xfp_annotate(di, s, "Module identifier", name, s->cnt, s->cnt);
 }
 
 static void xfp_handle_signal_cc(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf[0] != 0x00) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%.2x", s->buf[0]);
@@ -272,6 +278,8 @@ static void xfp_handle_signal_cc(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_alarm_warnings(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     int cnt_idx = s->cnt - s->buf_len;
     int idx = 0;
     while (idx < 56) {
@@ -305,6 +313,8 @@ static void xfp_handle_alarm_warnings(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_vps(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len >= 2 && (s->buf[0] != 0 || s->buf[1] != 0)) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%.2x%.2x", s->buf[0], s->buf[1]);
@@ -314,6 +324,8 @@ static void xfp_handle_vps(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_ber(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len >= 2 && (s->buf[0] != 0 || s->buf[1] != 0)) {
         char buf[32];
         snprintf(buf, sizeof(buf), "[%d, %d]", s->buf[0], s->buf[1]);
@@ -323,6 +335,8 @@ static void xfp_handle_ber(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_wavelength_cr(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len >= 4 && (s->buf[0] || s->buf[1] || s->buf[2] || s->buf[3])) {
         char buf[64];
         snprintf(buf, sizeof(buf), "[%d,%d,%d,%d]", s->buf[0], s->buf[1], s->buf[2], s->buf[3]);
@@ -332,6 +346,8 @@ static void xfp_handle_wavelength_cr(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_fec_cr(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len >= 4 && (s->buf[0] || s->buf[1] || s->buf[2] || s->buf[3])) {
         char buf[64];
         snprintf(buf, sizeof(buf), "[%d,%d,%d,%d]", s->buf[0], s->buf[1], s->buf[2], s->buf[3]);
@@ -341,6 +357,8 @@ static void xfp_handle_fec_cr(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_int_ctrl(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[128];
     int pos = 0;
     for (int i = 0; i < s->buf_len && i < 16; i++) {
@@ -353,6 +371,8 @@ static void xfp_handle_int_ctrl(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_ad_readout(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     int cnt_idx = s->cnt - s->buf_len + 1;
     int idx = 0;
     while (idx < 14) {
@@ -386,6 +406,8 @@ static void xfp_handle_ad_readout(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_gcs(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len < 2)
         return;
     int allbits = (s->buf[0] << 8) | s->buf[1];
@@ -404,11 +426,15 @@ static void xfp_handle_gcs(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_page_select(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     s->cur_highmem_page = s->buf[0];
 }
 
 static void xfp_handle_ext_module_id(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[128];
     int pos = 0;
     pos += snprintf(out + pos, sizeof(out) - pos, "Power level %d module", ((s->buf[0] >> 6) + 1));
@@ -424,6 +450,8 @@ static void xfp_handle_ext_module_id(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_connector(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     const char *name = xfp_lookup_connector(s->buf[0]);
     if (name)
         xfp_annotate(di, s, "Connector", name, s->cnt, s->cnt);
@@ -431,6 +459,8 @@ static void xfp_handle_connector(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_transceiver(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[512];
     int pos = 0;
     for (int t = 0; t < 8 && t < s->buf_len; t++) {
@@ -457,6 +487,8 @@ static void xfp_handle_transceiver(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_serial_encoding(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[256];
     int pos = 0;
     uint8_t value = s->buf[0];
@@ -478,6 +510,8 @@ static void xfp_handle_serial_encoding(struct srd_decoder_inst *di, xfp_state *s
 
 static void xfp_handle_br_min(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     double rate = s->buf[0] / 10.0;
     char buf[32];
     snprintf(buf, sizeof(buf), "%.3f GB/s", rate);
@@ -486,6 +520,8 @@ static void xfp_handle_br_min(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_br_max(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     double rate = s->buf[0] / 10.0;
     char buf[32];
     snprintf(buf, sizeof(buf), "%.3f GB/s", rate);
@@ -514,6 +550,8 @@ static void xfp_handle_link_length(struct srd_decoder_inst *di, xfp_state *s,
 
 static void xfp_handle_device_tech(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[256];
     int pos = 0;
     int xmit = s->buf[0] >> 4;
@@ -547,6 +585,8 @@ static void xfp_handle_vendor(struct srd_decoder_inst *di, xfp_state *s, const c
 
 static void xfp_handle_cdr(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[256];
     int pos = 0;
     uint8_t value = s->buf[0];
@@ -563,6 +603,8 @@ static void xfp_handle_cdr(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_vendor_oui(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len >= 3 && (s->buf[0] || s->buf[1] || s->buf[2])) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%.2X-%.2X-%.2X", s->buf[0], s->buf[1], s->buf[2]);
@@ -572,6 +614,8 @@ static void xfp_handle_vendor_oui(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_wavelength(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len >= 2) {
         int value = (s->buf[0] << 8) | s->buf[1];
         char buf[32];
@@ -582,6 +626,8 @@ static void xfp_handle_wavelength(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_wavelength_tolerance(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len >= 2) {
         int value = (s->buf[0] << 8) | s->buf[1];
         char buf[32];
@@ -592,6 +638,8 @@ static void xfp_handle_wavelength_tolerance(struct srd_decoder_inst *di, xfp_sta
 
 static void xfp_handle_max_case_temp(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char buf[32];
     snprintf(buf, sizeof(buf), "%d C", s->buf[0]);
     xfp_annotate(di, s, "Maximum case temperature", buf, s->cnt, s->cnt);
@@ -599,6 +647,8 @@ static void xfp_handle_max_case_temp(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_power_supply(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len < 4)
         return;
     char buf[64];
@@ -631,6 +681,8 @@ static void xfp_handle_power_supply(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_diag_mon(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[128];
     int pos = 0;
     if (s->buf[0] & 0x10) {
@@ -648,6 +700,8 @@ static void xfp_handle_diag_mon(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_enhanced_opts(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     char out[256];
     int pos = 0;
     uint8_t value = s->buf[0];
@@ -664,6 +718,8 @@ static void xfp_handle_enhanced_opts(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_aux_mon(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     int aux1_idx = s->buf[0] >> 4;
     int aux2_idx = s->buf[0] & 0x0f;
     const char *aux1 = (aux1_idx < 16) ? xfp_aux_types[aux1_idx] : "(unknown)";
@@ -674,6 +730,8 @@ static void xfp_handle_aux_mon(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_handle_manuf_date(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     if (s->buf_len < 6)
         return;
     int y = s->buf[0] * 10 + s->buf[1] + 2000;
@@ -762,6 +820,8 @@ static const xfp_map_entry xfp_map_high_table_1[] = {
 
 static void xfp_dispatch_lower_memory(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     for (int i = 0; xfp_map_lower_memory[i].end_idx != -1; i++) {
         if (s->cnt == xfp_map_lower_memory[i].end_idx) {
             if (xfp_map_lower_memory[i].handler)
@@ -774,6 +834,8 @@ static void xfp_dispatch_lower_memory(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_dispatch_high_table_1(struct srd_decoder_inst *di, xfp_state *s)
 {
+    (void)di;
+
     /* Handle special cases first */
     if (s->cnt == 142) {
         xfp_handle_link_length(di, s, "Link length (SMF)", 1);
@@ -847,6 +909,7 @@ static void xfp_dispatch_high_table_1(struct srd_decoder_inst *di, xfp_state *s)
 
 static void xfp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     xfp_state *s = (xfp_state *)c_decoder_get_private(di);
     if (!s)
         return;

@@ -96,7 +96,7 @@ static void miller_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 static void output_bit(struct srd_decoder_inst *di, struct miller_priv *s,
                        int bit, uint64_t ss, uint64_t es)
 {
-    char bit_str[4];
+    char bit_str[16];
     snprintf(bit_str, sizeof(bit_str), "%d", bit);
     c_put(di, ss, es, s->out_ann, ANN_BIT, bit_str);
 

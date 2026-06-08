@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2017 Karl Palsson <karlp@etactica.com>
@@ -175,6 +175,7 @@ static void ade77xx_reset_data(ade77xx_state *s)
 
 static void ade77xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ade77xx_state *s = (ade77xx_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -189,7 +190,7 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
                 int reg = cmd_byte & 0x7f;
                 const ade77xx_reg_info *ri = &ade77xx_regs[reg];
                 int idx = write ? ANN_WRITE : ANN_READ;
-                char buf[128];
+                char buf[256];
                 snprintf(buf, sizeof(buf), "%s: SHORT", ri->name);
                 c_put(di, s->ss_cmd, end_sample, s->out_ann, idx, buf);
                 c_put(di, s->ss_cmd, end_sample, s->out_ann, ANN_WARN,
@@ -234,7 +235,8 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
 
     s->es_cmd = end_sample;
 
-    uint32_t valo = 0, vali = 0;
+    uint32_t valo = 0;
+    uint32_t vali = 0;
     if (s->expected == 3) {
         valo = (uint32_t)s->mosi_bytes[1] << 16 | (uint32_t)s->mosi_bytes[2] << 8 | s->mosi_bytes[3];
         vali = (uint32_t)s->miso_bytes[1] << 16 | (uint32_t)s->miso_bytes[2] << 8 | s->miso_bytes[3];
@@ -247,7 +249,7 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
     }
 
     int idx = write ? ANN_WRITE : ANN_READ;
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "%s: {$}", ri->name);
     c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, idx, buf);
 

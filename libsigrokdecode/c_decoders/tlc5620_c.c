@@ -217,7 +217,7 @@ static int tlc5620_handle_11bits(struct srd_decoder_inst *di, tlc5620_state *s)
 
     /* Parse gain (bit 2) */
     s->gain = 1 + s->bits_value[2];
-    char gain_str[16];
+    char gain_str[32];
     snprintf(gain_str, sizeof(gain_str), "Gain: x%d", s->gain);
     char gain_short[8];
     snprintf(gain_short, sizeof(gain_short), "x%d", s->gain);
@@ -253,6 +253,7 @@ static int tlc5620_handle_11bits(struct srd_decoder_inst *di, tlc5620_state *s)
 
 static void tlc5620_handle_load_fall(struct srd_decoder_inst *di, tlc5620_state *s, uint64_t samplenum)
 {
+    (void)samplenum;
     if (!tlc5620_handle_11bits(di, s))
         return;
 
@@ -287,6 +288,7 @@ static void tlc5620_handle_load_fall(struct srd_decoder_inst *di, tlc5620_state 
 
 static void tlc5620_handle_ldac_fall(struct srd_decoder_inst *di, tlc5620_state *s, uint64_t samplenum)
 {
+    (void)samplenum;
     c_put(di, samplenum, samplenum, s->out_ann, ANN_LDAC_FALL,
               "Falling edge on LDAC", "LDAC fall", "LDAC", "L");
 

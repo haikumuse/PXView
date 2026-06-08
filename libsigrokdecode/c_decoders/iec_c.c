@@ -73,6 +73,7 @@ static const char *iec_tags[] = {"PC", "Retro computing", NULL};
 
 static void iec_handle_bits(struct srd_decoder_inst *di, uint64_t samplenum)
 {
+    (void)samplenum;
     struct iec_priv *s = (struct iec_priv *)c_decoder_get_private(di);
     int dbyte = s->bits;
     int dATN = s->saved_ATN;

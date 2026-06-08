@@ -240,7 +240,7 @@ static void amulet_emit_cmd_byte(struct srd_decoder_inst *di, amulet_state *s)
 {
     s->ss_cmd = s->ss;
     const char *name = amulet_cmd_name(s->state);
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Command: %s", name);
     c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf, name);
 }
@@ -249,7 +249,7 @@ static void amulet_emit_cmd_end(struct srd_decoder_inst *di, amulet_state *s, in
 {
     s->es_cmd = s->es;
     const char *name = amulet_cmd_name(s->state);
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Command: %s", name);
     c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ann_class, buf, name);
     s->state = 0;
@@ -308,7 +308,7 @@ static void amulet_handle_string(struct srd_decoder_inst *di, amulet_state *s, u
     if (pdata == 0x00) {
         s->es_field = s->es;
         c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, "NULL");
-        char buf[256];
+        char buf[512];
         snprintf(buf, sizeof(buf), "Value: %s", s->str_val);
         c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, buf);
         amulet_emit_cmd_end(di, s, ann_class);
@@ -808,6 +808,7 @@ static void amulet_handle_command(struct srd_decoder_inst *di, amulet_state *s, 
 
 static void amulet_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     amulet_state *s = (amulet_state *)c_decoder_get_private(di);
     if (!s)
         return;

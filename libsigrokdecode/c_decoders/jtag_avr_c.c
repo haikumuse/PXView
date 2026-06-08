@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -64,27 +64,8 @@ enum avr_state {
 };
 
 /* PDI control register names */
-static const char *pdi_ctrl_reg_name(int reg)
-{
-    switch (reg) {
-    case 0: return "status";
-    case 1: return "reset";
-    case 2: return "ctrl";
-    default: return NULL;
-    }
-}
 
 /* PDI pointer format names */
-static const char *pdi_ptr_format_nice(int fmt)
-{
-    switch (fmt) {
-    case 0: return "*(ptr)";
-    case 1: return "*(ptr++)";
-    case 2: return "ptr";
-    case 3: return "ptr++ (rsv)";
-    default: return "???";
-    }
-}
 
 typedef struct {
     int out_ann;
@@ -170,7 +151,7 @@ static const char *avr_find_part(uint16_t part)
 static uint64_t bytes_to_uint64(const c_field *fields, int n_fields)
 {
     uint64_t val = 0;
-    for (uint64_t i = 0; i < n_fields && i < 8; i++)
+    for (uint64_t i = 0; i < (uint64_t)n_fields && i < 8; i++)
         val |= ((uint64_t)fields[i].u8) << (i * 8);
     return val;
 }
@@ -194,7 +175,7 @@ static void jtag_avr_handle_idcode(struct srd_decoder_inst *di, jtag_avr_state *
         part_str = part_buf;
     }
 
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Manufacturer: %s", manuf_str);
     c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
@@ -419,6 +400,7 @@ static void pdi_handle_data_out(struct srd_decoder_inst *di, jtag_avr_state *s,
 
 static void jtag_avr_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     jtag_avr_state *s = (jtag_avr_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -496,7 +478,7 @@ static void jtag_avr_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
                     /* Process remaining data bytes if any */
                     if (n_fields > 1) {
                         /* Multi-byte in single call - process byte by byte */
-                        for (uint64_t i = 1; i < n_fields && s->pdi_data_count > 0; i++) {
+                        for (uint64_t i = 1; i < (uint64_t)n_fields && s->pdi_data_count > 0; i++) {
                             if (s->pdi_data_idx < 8)
                                 s->pdi_data_bytes[s->pdi_data_idx++] = fields[i].u8;
                             s->pdi_data_count--;

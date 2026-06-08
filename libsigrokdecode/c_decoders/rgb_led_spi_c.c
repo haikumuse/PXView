@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2014 Matt Ranostay <mranostay@gmail.com>
@@ -117,6 +117,7 @@ static void rgb_led_spi_output_apa102(struct srd_decoder_inst *di,
 
 static void rgb_led_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     rgb_led_spi_state *s = (rgb_led_spi_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -124,7 +125,7 @@ static void rgb_led_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_s
         if (!s->cs_asserted) return;
         if (n_fields < 17) return;
 
-        int have_mosi = fields[0].u8 & 1;
+        int have_mosi = (fields[0].u8 & 1) ? 1 : 0;
         if (!have_mosi) return;
 
         uint64_t mosi = rgb_led_spi_read_le64(fields + 1);

@@ -95,9 +95,9 @@ static void arm_tpiu_emit_byte(struct srd_decoder_inst *di, arm_tpiu_state *s,
         snprintf(t, sizeof(t), "0x%02x", byte_val);
         c_put(di, ss, es, s->out_ann, ANN_DATA, t);
         /* Emit as protocol data for upper-layer decoders */
-        unsigned char py_data[2];
-        py_data[0] = byte_val;
-        py_data[1] = 0; /* rxtx = 0 (RX) */
+        
+        
+         /* rxtx = 0 (RX) */
         c_proto(di, ss, es, s->out_proto, "DATA", C_U8(byte_val), C_U8(0), C_END);
     }
 }
@@ -138,6 +138,7 @@ static void arm_tpiu_process_frame(struct srd_decoder_inst *di, arm_tpiu_state *
 
 static void arm_tpiu_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     arm_tpiu_state *s = (arm_tpiu_state *)c_decoder_get_private(di);
     if (!s)
         return;

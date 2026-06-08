@@ -190,6 +190,7 @@ static int is_bss_sequence(flexray_state *s)
 
 static void dom_edge_seen(flexray_state *s, uint64_t samplenum)
 {
+    (void)samplenum;
     s->dom_edge_snum = samplenum;
     s->dom_edge_bcount = s->curbit;
 }
@@ -203,6 +204,7 @@ static uint64_t get_sample_point(flexray_state *s, int bitnum)
 static void handle_bit(flexray_state *s, struct srd_decoder_inst *di,
                        uint8_t fr_rx, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->num_rawbits < 4096) s->rawbits[s->num_rawbits++] = fr_rx;
     if (s->num_bits < 4096) s->bits[s->num_bits++] = fr_rx;
 
@@ -225,7 +227,7 @@ static void handle_bit(flexray_state *s, struct srd_decoder_inst *di,
         return;
     } else {
         if (bitnum > 1) {
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", fr_rx);
             const char *bit_txts[] = {bit_str, NULL};
             flexray_putx(s, di, samplenum, ANN_BIT, bit_txts);

@@ -64,6 +64,7 @@ static const struct srd_c_ann_row ad79x0_ann_rows[] = {
 
 static void ad79x0_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ad79x0_state *s = (ad79x0_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -120,8 +121,10 @@ static void ad79x0_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
         if (n_fields < 2) return;
         int pos = 0;
         uint8_t flags = fields[pos++].u8;
-        int have_mosi = flags & 1;
-        int have_miso = (flags >> 1) & 1;
+        int have_mosi = (flags & 1) ? 1 : 0;
+        int have_miso = (flags & 2) ? 1 : 0;
+        
+        
 
         /* Skip MOSI bits */
         if (have_mosi) {

@@ -362,7 +362,7 @@ static void cec_process(struct srd_decoder_inst* di, cec_priv* s)
         s->byte_val |= (bit << (7 - s->bit_count));
         s->bit_count++;
         {
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", bit);
             c_put(di, s->fall_start, s->fall_end, s->out_ann, ANN_BITS, bit_str);
         }

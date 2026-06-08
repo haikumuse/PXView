@@ -69,7 +69,7 @@ static void wiegand_update_state(struct srd_decoder_inst *di, struct wiegand_pri
             s->bits[s->num_bits] = s->cur_bit;
             s->num_bits++;
         }
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->cur_bit);
         c_put(di, s->ss_bit, samplenum, s->out_ann, ANN_BITS, bit_str);
     }

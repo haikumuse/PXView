@@ -258,7 +258,7 @@ static void nrf24l01_decode_mb_data(struct srd_decoder_inst *di, nrf24l01_state 
 static void nrf24l01_decode_register(struct srd_decoder_inst *di, nrf24l01_state *s,
     uint64_t ss, uint64_t es, int ann, int regid, const uint8_t *data, int n_fields)
 {
-    char label[128];
+    char label[256];
     if (regid >= 0) {
         const char *name = nrf24l01_get_reg_name(s, (uint8_t)regid);
         if (strcmp(s->cmd, "W_REGISTER") == 0 && ann == ANN_CMD) {
@@ -316,7 +316,7 @@ static void nrf24l01_finish_command(struct srd_decoder_inst *di, nrf24l01_state 
             snprintf(s->cmd, sizeof(s->cmd), "DEACTIVATE");
         else if (s->mosi_bytes[0] != 0x73)
             c_put(di, ss, es, s->out_ann, ANN_WARN, "wrong data for \"ACTIVATE\" command");
-        char buf[128];
+        char buf[256];
         nrf24l01_format_command(s, buf, sizeof(buf));
         c_put(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, buf);
     } else if (strcmp(s->cmd, "RST_FSPI") == 0) {
@@ -326,7 +326,7 @@ static void nrf24l01_finish_command(struct srd_decoder_inst *di, nrf24l01_state 
             snprintf(s->cmd, sizeof(s->cmd), "RST_FSPI_RELS");
         else
             c_put(di, ss, es, s->out_ann, ANN_WARN, "wrong data for \"RST_FSPI\" command");
-        char buf[128];
+        char buf[256];
         nrf24l01_format_command(s, buf, sizeof(buf));
         c_put(di, s->cmd_ss, s->cmd_es, s->out_ann, ANN_CMD, buf);
     }
@@ -334,6 +334,7 @@ static void nrf24l01_finish_command(struct srd_decoder_inst *di, nrf24l01_state 
 
 static void nrf24l01_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     nrf24l01_state *s = (nrf24l01_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -371,8 +372,8 @@ static void nrf24l01_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
         nrf24l01_next(s);
         s->cs_was_released = 1;
     } else if (strcmp(cmd, "DATA") == 0 && s->cs_was_released && n_fields >= 17) {
-        int have_mosi = fields[0].u8 & 1;
-        int have_miso = (fields[0].u8 >> 1) & 1;
+        
+        
         uint64_t mosi_val = 0, miso_val = 0;
         for (int i = 0; i < 8; i++)
             mosi_val |= ((uint64_t)fields[1 + i].u8 << (8 * i));
@@ -397,7 +398,7 @@ static void nrf24l01_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
                     strcmp(s->cmd, "RST_FSPI") == 0) {
                     s->mb_ss = start_sample;
                 } else {
-                    char buf[128];
+                    char buf[256];
                     nrf24l01_format_command(s, buf, sizeof(buf));
                     c_put(di, start_sample, end_sample, s->out_ann, ANN_CMD, buf);
                 }

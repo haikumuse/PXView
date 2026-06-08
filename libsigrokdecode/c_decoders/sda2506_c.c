@@ -189,7 +189,7 @@ static void sda2506_decode(struct srd_decoder_inst *di)
                 return;
 
             sda2506_insert_cmdbit(s, d, bitstart, di_samplenum(di));
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", d);
             c_put(di, bitstart, di_samplenum(di), s->out_ann, ANN_CMDBIT, bit_str);
 
@@ -221,7 +221,7 @@ static void sda2506_decode(struct srd_decoder_inst *di)
             s->databits_val[0] = d;
             s->num_databits++;
 
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", d);
             c_put(di, bitstart, di_samplenum(di), s->out_ann, ANN_DATABIT, bit_str);
 
@@ -244,7 +244,7 @@ static void sda2506_decode(struct srd_decoder_inst *di)
                 /* Read command */
                 if (s->num_cmdbits >= 14) {
                     sda2506_decode_field(di, s, "read", 1, 7);
-                    uint64_t ss, es;
+                    uint64_t ss;
                     sda2506_decode_bits(s, 7, 1, &ss, NULL);
                     c_put(di, ss, di_samplenum(di), s->out_ann, ANN_CMD, "read");
                 }

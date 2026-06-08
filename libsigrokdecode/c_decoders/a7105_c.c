@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Richard Li <richard.li@ces.hk>
@@ -114,8 +114,10 @@ typedef struct {
     uint64_t mb_ss;
     uint64_t mb_es;
 
-    uint64_t ss, es;
+    
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 } a7105_state;
 
 static const char *a7105_inputs[] = {"spi", NULL};
@@ -275,6 +277,7 @@ static void a7105_finish_command(struct srd_decoder_inst *di, a7105_state *s)
 
 static void a7105_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     a7105_state *s = (a7105_state *)c_decoder_get_private(di);
     if (!s) return;
 
