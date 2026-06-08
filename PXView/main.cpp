@@ -29,7 +29,7 @@
 #include <QGuiApplication>
 #include <QAccessible>
 #include <QScreen>
-#include "dsapplication.h"
+#include "application.h"
 #include "mystyle.h" 
 #include "pv/mainframe.h"
 #include "pv/config/appconfig.h"
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 	}
 
 	//----------------------init app
-    DSApplication a(argcFinal, argvFinal);
+    Application a(argcFinal, argvFinal);
 #ifdef _WIN32
     QAccessible::setActive(false);
 #endif

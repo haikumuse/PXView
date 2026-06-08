@@ -27,11 +27,13 @@ sudo apt install git gcc g++ make cmake ninja-build libglib2.0-dev zlib1g-dev li
 ```
 
 **How to install Qt 6.11 on Ubuntu:**
-The default apt repository may not provide Qt 6.11, so you must install it manually using `aqtinstall`:
+The default apt repository may not provide Qt 6.11, so you must install it manually using `aqtinstall`.
+*Note on caching*: `aqtinstall` ("Another Qt Installer") deletes downloaded archives immediately after extraction to save space, as it was designed for CI/CD environments. To avoid re-downloading Qt every time you clean or move your project, it is highly recommended to install it to a global user directory.
+
 ```bash
 pip3 install aqtinstall
-# Install Qt 6.11 to the current directory's 'Qt' folder
-aqt install-qt linux desktop 6.11.0 linux_gcc_64 --outputdir ./Qt
+# Install Qt 6.11 globally to ~/Qt (only needs to be run once!)
+aqt install-qt linux desktop 6.11.0 linux_gcc_64 --outputdir ~/Qt
 ```
 
 #### Fedora:
@@ -64,8 +66,8 @@ If you installed Qt manually via `aqtinstall` (e.g. on Ubuntu) in Step 1, you mu
 ```bash
 mkdir build && cd build
 
-# For Ubuntu with aqtinstall:
-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="$(pwd)/../Qt/6.11.0/gcc_64"
+# For Ubuntu with aqtinstall (using the global ~/Qt path):
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
 
 # For Arch / Fedora / macOS (System Qt):
 # cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
@@ -85,9 +87,9 @@ wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/
 chmod +x linuxdeploy*.AppImage
 
 # Explicitly tell linuxdeploy where the Qt 6.11 binaries are located.
-# Adjust the QMAKE and LD_LIBRARY_PATH if your Qt installation is elsewhere.
-export QMAKE="$(pwd)/Qt/6.11.0/gcc_64/bin/qmake"
-export LD_LIBRARY_PATH="$(pwd)/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH"
+# We use the global Qt installation path ~/Qt.
+export QMAKE="$HOME/Qt/6.11.0/gcc_64/bin/qmake"
+export LD_LIBRARY_PATH="$HOME/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH"
 export OUTPUT="PXView-x86_64.AppImage"
 
 ./linuxdeploy-x86_64.AppImage --appdir install.dir -e install.dir/usr/bin/PXView -d install.dir/usr/share/applications/pxview.desktop --plugin qt --output appimage
