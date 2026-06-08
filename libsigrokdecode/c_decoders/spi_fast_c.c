@@ -372,7 +372,7 @@ static void spi_fast_decode(struct srd_decoder_inst *di)
     }
 
     /* Get initial pin states */
-    uint64_t cur_sample;
+    uint64_t cur_sample = 0;
     if (c_wait(di, CW_END) != SRD_OK)
         return;
 

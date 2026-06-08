@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -158,24 +158,6 @@ static void sony_md_put_static_byte(struct srd_decoder_inst *di, sony_md_state *
     }
 }
 
-static void sony_md_put_unused_byte(struct srd_decoder_inst *di, sony_md_state *s,
-                                     int current_bit, uint8_t value, uint8_t expected)
-{
-    if (current_bit + 7 >= s->num_bits)
-        return;
-    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
-              s->out_ann, ANN_DATA_FIELD_NAME, "Unused?");
-    c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
-              s->out_ann, ANN_DATA_UNUSED, "Unused?");
-    if (value != expected) {
-        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
-                  s->out_ann, ANN_ERROR, "Previously unused byte is not expected value!");
-    }
-    if (value != 0x00) {
-        c_put(di, s->bit_ss[current_bit], s->bit_es[current_bit + 7],
-                  s->out_ann, ANN_WARNING, "Unused byte has non-zero value!");
-    }
-}
 
 static void sony_md_put_unknown_byte(struct srd_decoder_inst *di, sony_md_state *s,
                                       int current_bit, uint8_t value)
@@ -206,6 +188,7 @@ static void sony_md_put_remote_header(struct srd_decoder_inst *di, sony_md_state
 
     sony_md_put_value_lsb(di, s, current_bit, 8);
     uint8_t val = s->values[0];
+    (void)val;
 
     /* Unused bit 0 */
     if (current_bit < s->num_bits) {
@@ -534,7 +517,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 case 0x07: mode = "PGM, Repeat"; break;
                 }
                 if (mode) {
-                    char buf[128];
+                    char buf[256];
                     snprintf(buf, sizeof(buf), "Current Playback Mode: %s", mode);
                     c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
@@ -585,7 +568,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 case 0xFF: batt = "4/4 bars"; break;
                 }
                 if (batt) {
-                    char buf[128];
+                    char buf[256];
                     snprintf(buf, sizeof(buf), "Battery Level Indicator: %s", batt);
                     c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
@@ -613,7 +596,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 case 0x04: eq = "Sound 2"; break;
                 }
                 if (eq) {
-                    char buf[128];
+                    char buf[256];
                     snprintf(buf, sizeof(buf), "EQ/Sound Indicator: %s", eq);
                     c_put(di, s->bit_ss[current_bit + 8], s->bit_es[current_bit + 15],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
@@ -714,7 +697,7 @@ static void sony_md_expand_player_data_block(struct srd_decoder_inst *di, sony_m
                 case 0x7F: anim = "No animation, all segments displayed"; break;
                 }
                 if (anim) {
-                    char buf[128];
+                    char buf[256];
                     snprintf(buf, sizeof(buf), "LCD Disc Icon Fill Segment Animation: %s", anim);
                     c_put(di, s->bit_ss[current_bit + 32], s->bit_es[current_bit + 39],
                               s->out_ann, ANN_DATA_VAL_POS, buf);
@@ -869,6 +852,7 @@ static void sony_md_expand_message(struct srd_decoder_inst *di, sony_md_state *s
 
 static void sony_md_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     sony_md_state *s = (sony_md_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -880,16 +864,14 @@ static void sony_md_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         if (n_fields < 2)
             return;
 
-        int num_bits = (int)fields[0].u8 | ((int)fields[1].u8 << 8);
+        
         s->num_bits = 0;
         s->value_count = 0;
         s->checksum = 0;
         s->sjis_carryover = 0;
         s->debug_hex[0] = '\0';
 
-        int expected_len = 2 + num_bits * 9;
-        if ((int)n_fields < expected_len)
-            num_bits = ((int)n_fields - 2) / 9;
+        int num_bits = ((int)n_fields - 2) / 9;
 
         if (num_bits > SONY_MD_MAX_BITS)
             num_bits = SONY_MD_MAX_BITS;

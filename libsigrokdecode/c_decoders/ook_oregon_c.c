@@ -297,7 +297,7 @@ static void oregon_put_l2_param(struct srd_decoder_inst *di, oregon_state *s,
                 result += v * pow(10, i - dec_point);
             }
         }
-        char buf[128];
+        char buf[256];
         /* Format result without trailing zeros */
         snprintf(buf, sizeof(buf), "%g", result);
         char text[256];
@@ -417,7 +417,7 @@ static void oregon_put_checksum(struct srd_decoder_inst *di, oregon_state *s,
     snprintf(rx_check, sizeof(rx_check), "%c%c",
              s->nib_hex[nibbles + 1] ? s->nib_hex[nibbles + 1] : '?',
              s->nib_hex[nibbles] ? s->nib_hex[nibbles] : '?');
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Checksum %s Calc %X Rx %s", result, checksum, rx_check);
     c_put(di, s->nib_ss[nibbles], s->nib_es[nibbles + 1], s->out_ann, ANN_L2, buf);
 }
@@ -720,6 +720,7 @@ static void oregon_decode(struct srd_decoder_inst *di, oregon_state *s)
 
 static void ook_oregon_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     oregon_state *s = (oregon_state *)c_decoder_get_private(di);
     if (!s)
         return;

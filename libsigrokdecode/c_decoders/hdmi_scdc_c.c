@@ -32,9 +32,11 @@ typedef struct {
     int databytes_len;
     int err_det_lower;
     uint64_t block_s, block_e;
-    uint64_t ss, es;
+    
     int out_ann;
     int verbosity;  /* 0=short, 1=long, 2=debug */
+    uint64_t ss;
+    uint64_t es;
 } hdmi_scdc_state;
 
 /* SCDC register definitions */
@@ -260,6 +262,7 @@ static const struct srd_c_ann_row hdmi_scdc_ann_rows[] = {
 
 static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     hdmi_scdc_state *s = (hdmi_scdc_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -313,7 +316,7 @@ static void hdmi_scdc_recv_proto(struct srd_decoder_inst *di, uint64_t start_sam
             if (s->protocol) {
                 s->offset = (n_fields > 0) ? fields[0].u8 : 0;
                 const char *reg_name = hdmi_scdc_lookup_reg_name(s->offset);
-                char buf[128];
+                char buf[256];
                 if (reg_name)
                     snprintf(buf, sizeof(buf), "Register: %s (0x%02x)", reg_name, s->offset);
                 else

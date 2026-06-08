@@ -342,6 +342,7 @@ static void process_slave_frame(struct srd_decoder_inst *di, mvb_priv *s)
 
 static int process_tick(struct srd_decoder_inst *di, mvb_priv *s, int tick_value, uint64_t samplenum)
 {
+    (void)samplenum;
     if (!s->received_master_header && !s->received_slave_header) {
         s->matching_header_ticks = ((s->matching_header_ticks << 1) | tick_value) & PREAMBLE_MASK;
         if (s->matching_header_ticks == PREAMBLE_MASTER) {

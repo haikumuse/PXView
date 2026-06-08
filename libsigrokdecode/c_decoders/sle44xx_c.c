@@ -379,7 +379,7 @@ static void sle44xx_handle_data_bit(struct srd_decoder_inst *di, struct sle44xx_
     if (s->bit_count < 8) {
         s->bits[s->bit_count].es = es;
         /* Emit bit annotation */
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[s->bit_count].val);
         c_put(di, s->bits[s->bit_count].ss, es, s->out_ann, ANN_BIT_SYM, bit_str);
         s->bit_count++;

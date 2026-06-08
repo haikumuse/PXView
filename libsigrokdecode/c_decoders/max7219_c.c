@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Paul Evans <leonerd@leonerd.org.uk>
@@ -90,7 +90,7 @@ static void max7219_handle_register(struct srd_decoder_inst *di, max7219_state *
     }
 
     /* Control registers */
-    char buf[256];
+    char buf[512];
     switch (addr) {
     case 0x00:
         snprintf(buf, sizeof(buf), "No-op");
@@ -127,6 +127,7 @@ static void max7219_handle_register(struct srd_decoder_inst *di, max7219_state *
 
 static void max7219_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     max7219_state *s = (max7219_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -134,7 +135,7 @@ static void max7219_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         if (!s->cs_asserted) return;
         if (n_fields < 17) return;
 
-        int have_mosi = fields[0].u8 & 1;
+        int have_mosi = (fields[0].u8 & 1) ? 1 : 0;
         uint8_t mosi_byte = have_mosi ? fields[1].u8 : 0;
 
         if (s->pos == 0) {

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2010-2014 Uwe Hermann <uwe@hermann-uwe.de>
@@ -55,9 +55,11 @@ typedef struct {
     int sx, sy, ax, ay, az, bz, bc;
     uint8_t init_seq[2];
     int init_seq_count;
-    uint64_t ss, es;
+    
     uint64_t ss_block, es_block;
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 } nunchuk_priv;
 
 static const char *nunchuk_inputs[] = {"i2c", NULL};
@@ -201,7 +203,7 @@ static void nunchuk_output_full_block_if_possible(struct srd_decoder_inst *di, n
         return;
     const char *bz = (s->bz == 0) ? "pressed" : "not pressed";
     const char *bc = (s->bc == 0) ? "pressed" : "not pressed";
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf),
         "Analog stick: %d/%d, accelerometer: %d/%d/%d, Z: %s, C: %s",
         s->sx, s->sy, s->ax, s->ay, s->az, bz, bc);
@@ -237,6 +239,7 @@ static void nunchuk_output_init_seq(struct srd_decoder_inst *di, nunchuk_priv *s
 
 static void nunchuk_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     nunchuk_priv *s = (nunchuk_priv *)c_decoder_get_private(di);
     if (!s)
         return;

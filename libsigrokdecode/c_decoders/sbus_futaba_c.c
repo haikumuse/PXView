@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2022 Gerhard Sittig <gerhard.sittig@gmx.net>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -230,6 +230,7 @@ static void sbus_flush_accum_bits(struct srd_decoder_inst *di, sbus_state *s)
 
 static void sbus_handle_idle(struct srd_decoder_inst *di, sbus_state *s, uint64_t ss, uint64_t es)
 {
+    (void)ss; (void)es;
     if (s->num_bits > 0 && !s->failed) {
         s->failed = 1;
         s->fail_type = FAIL_UNPROCESSED;
@@ -259,6 +260,7 @@ static void sbus_handle_idle(struct srd_decoder_inst *di, sbus_state *s, uint64_
 
 static void sbus_handle_break(struct srd_decoder_inst *di, sbus_state *s, uint64_t ss, uint64_t es)
 {
+    (void)ss; (void)es;
     if (!s->failed) {
         s->failed = 1;
         s->fail_type = FAIL_BREAK;
@@ -272,6 +274,7 @@ static void sbus_handle_break(struct srd_decoder_inst *di, sbus_state *s, uint64
 
 static void sbus_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     sbus_state *s = (sbus_state *)c_decoder_get_private(di);
     if (!s)
         return;

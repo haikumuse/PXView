@@ -93,13 +93,6 @@ static int qi_packet_len(uint8_t byte_val)
         return 20 + (byte_val - 224) / 4;
 }
 
-static uint8_t qi_calc_checksum(const uint8_t *packet, int len)
-{
-    uint8_t cs = 0;
-    for (int i = 0; i < len - 1; i++)
-        cs ^= packet[i];
-    return cs;
-}
 
 static uint32_t qi_bits_to_uint(int *bits, int count)
 {
@@ -304,7 +297,7 @@ static void qi_add_bit(struct srd_decoder_inst *di, int bit)
 
     /* Output bit annotation */
     if (s->state != STATE_IDLE) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", bit);
         c_put(di, s->lastbit, s->prev_samplenum, s->out_ann, ANN_BITS, bit_str);
     }
@@ -393,7 +386,7 @@ static void qi_decode(struct srd_decoder_inst *di)
 
     /* Get initial pin state */
     {
-        uint64_t cur_sample;
+        uint64_t cur_sample = 0;
         ret = c_wait(di, CW_END);
         if (ret != SRD_OK)
             return;

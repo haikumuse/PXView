@@ -98,7 +98,7 @@ static int bcd2int(uint8_t b)
 static void rtc8564_handle_reg(struct srd_decoder_inst *di,
     rtc8564_state *s, uint8_t reg, uint8_t b)
 {
-    char buf[256];
+    char buf[512];
 
     switch (reg) {
     case 0x00: /* Control register 1 */
@@ -184,6 +184,7 @@ static void rtc8564_handle_reg(struct srd_decoder_inst *di,
 /* ===== recv_proto ===== */
 static void rtc8564_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     rtc8564_state *s = (rtc8564_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;
@@ -219,7 +220,7 @@ static void rtc8564_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
             rtc8564_handle_reg(di, s, s->reg, databyte);
             s->reg++;
         } else if (strcmp(cmd, "STOP") == 0) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Write date/time: %02d.%02d.%02d %02d:%02d:%02d",
                 s->days, s->months, s->years, s->hours, s->minutes, s->seconds);
             c_put(di, s->ss_block, end_sample, s->out_ann, ANN_WRITE, buf);
@@ -238,7 +239,7 @@ static void rtc8564_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
             rtc8564_handle_reg(di, s, s->reg, databyte);
             s->reg++;
         } else if (strcmp(cmd, "STOP") == 0) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Read date/time: %02d.%02d.%02d %02d:%02d:%02d",
                 s->days, s->months, s->years, s->hours, s->minutes, s->seconds);
             c_put(di, s->ss_block, end_sample, s->out_ann, ANN_READ, buf);

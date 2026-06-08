@@ -373,7 +373,7 @@ static void pjon_handle_field_pkt_len(struct srd_decoder_inst *di, pjon_state *s
     if (s->num_fields >= 2)
         s->field_widths[s->num_fields - 2] = pl_len;
 
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "LENGTH %d (PAYLOAD %d)", pkt_len, pl_len);
     c_put(di, s->ann_ss, s->ann_es, s->out_ann, ANN_PKT_LEN, buf);
 }
@@ -441,7 +441,7 @@ static void pjon_handle_field_payload(struct srd_decoder_inst *di, pjon_state *s
 static void pjon_handle_field_anon(struct srd_decoder_inst *di, pjon_state *s,
     const uint8_t *raw, int width, int field_index)
 {
-    char buf[128];
+    char buf[256];
     int pos = 0;
     for (int i = 0; i < width && pos < (int)sizeof(buf) - 4; i++)
         pos += snprintf(buf + pos, sizeof(buf) - pos, "%s%02x", i > 0 ? " " : "", raw[i]);
@@ -499,6 +499,7 @@ static void pjon_process_field(struct srd_decoder_inst *di, pjon_state *s)
 
 static void pjon_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     pjon_state *s = (pjon_state *)c_decoder_get_private(di);
     if (!s)
         return;

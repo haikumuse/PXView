@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -71,8 +71,10 @@ enum sdcard_state {
 
 /* ===== State structure ===== */
 typedef struct {
+    uint64_t ss;
+    uint64_t es;
     enum sdcard_state state;
-    uint64_t ss, es;
+    
     uint64_t ss_cmd, es_cmd;
     uint64_t ss_busy, es_busy;
     uint8_t cmd_token[6];
@@ -245,7 +247,7 @@ static const char *sdcard_cmd_name(int cmd, int is_acmd)
 /* ===== Helper: put command annotation ===== */
 static void sdcard_putc(struct srd_decoder_inst *di, sdcard_state *s, int cls, const char *desc)
 {
-    char buf[128];
+    char buf[512];
     snprintf(buf, sizeof(buf), "%s: %s", s->cmd_str, desc);
     c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, cls, buf);
 }
@@ -280,7 +282,7 @@ static void sdcard_handle_cmd10(struct srd_decoder_inst *di, sdcard_state *s)
 static void sdcard_handle_cmd16(struct srd_decoder_inst *di, sdcard_state *s)
 {
     s->blocklen = s->arg;
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Set the block length to %d bytes", s->blocklen);
     sdcard_putc(di, s, ANN_CMD16, buf);
     s->state = SDCARD_GET_RESPONSE_R1;
@@ -288,7 +290,7 @@ static void sdcard_handle_cmd16(struct srd_decoder_inst *di, sdcard_state *s)
 
 static void sdcard_handle_cmd17(struct srd_decoder_inst *di, sdcard_state *s)
 {
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Read a block from address 0x%04X", s->arg);
     sdcard_putc(di, s, ANN_CMD17, buf);
     s->is_cmd17 = 1;
@@ -299,7 +301,7 @@ static void sdcard_handle_cmd17(struct srd_decoder_inst *di, sdcard_state *s)
 
 static void sdcard_handle_cmd24(struct srd_decoder_inst *di, sdcard_state *s)
 {
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Write a block to address 0x%04X", s->arg);
     sdcard_putc(di, s, ANN_CMD24, buf);
     s->is_cmd24 = 1;
@@ -323,22 +325,13 @@ static void sdcard_handle_cmd55(struct srd_decoder_inst *di, sdcard_state *s)
 static void sdcard_handle_cmd59(struct srd_decoder_inst *di, sdcard_state *s)
 {
     int crc_on_off = s->arg & 1;
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Turn the SD card CRC option %s", crc_on_off ? "on" : "off");
     sdcard_putc(di, s, ANN_CMD59, buf);
     s->state = SDCARD_GET_RESPONSE_R1;
 }
 
-static void sdcard_handle_acmd41(struct srd_decoder_inst *di, sdcard_state *s)
-{
-    sdcard_putc(di, s, ANN_ACMD41, "Send HCS info and activate the card init process");
-    s->state = SDCARD_GET_RESPONSE_R1;
-}
 
-static void sdcard_handle_cmd999(struct srd_decoder_inst *di, sdcard_state *s)
-{
-    s->state = SDCARD_GET_RESPONSE_R1;
-}
 
 /* ===== Handle command token ===== */
 static void sdcard_handle_command_token(struct srd_decoder_inst *di, sdcard_state *s,
@@ -383,7 +376,7 @@ static void sdcard_handle_command_token(struct srd_decoder_inst *di, sdcard_stat
         snprintf(hex, sizeof(hex), "%02X %02X %02X %02X %02X %02X",
                  s->cmd_token[0], s->cmd_token[1], s->cmd_token[2],
                  s->cmd_token[3], s->cmd_token[4], s->cmd_token[5]);
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s%d: %s", prefix, cmd, hex);
         c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ann, buf);
         s->state = SDCARD_HANDLE_CMD999;
@@ -505,6 +498,7 @@ static void sdcard_wait_busy(struct srd_decoder_inst *di, sdcard_state *s, uint8
 /* ===== recv_proto ===== */
 static void sdcard_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     sdcard_state *s = (sdcard_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -525,7 +519,7 @@ static void sdcard_spi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sa
     s->ss = start_sample;
     s->es = end_sample;
 
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     spi_proto_get_mosi(fields, n_fields, &mosi);
     spi_proto_get_miso(fields, n_fields, &miso);
 

@@ -56,8 +56,9 @@ typedef struct {
     char databyte_register[64];
     uint8_t data_high;
     uint8_t data_low;
-    uint64_t ss, es;
+    
     uint64_t ss_block, es_block;
+    uint64_t ss, es;
     uint64_t bits_ss_msb;
     uint64_t bits_es_bit1;
     uint64_t bits_es_bit0;
@@ -121,7 +122,7 @@ static const char *bit_indices_str(uint16_t val)
 static void ad5593r_decode_field(struct srd_decoder_inst *di, ad5593r_state *s,
     const char *name, uint16_t val)
 {
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "%s: %u", name, val);
     ad5593r_putx(di, s, ANN_FIELD, buf);
 }
@@ -129,7 +130,7 @@ static void ad5593r_decode_field(struct srd_decoder_inst *di, ad5593r_state *s,
 static void ad5593r_decode_field_hex(struct srd_decoder_inst *di, ad5593r_state *s,
     const char *name, uint16_t val)
 {
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "%s: 0x%02X", name, val);
     ad5593r_putx(di, s, ANN_FIELD, buf);
 }
@@ -137,7 +138,7 @@ static void ad5593r_decode_field_hex(struct srd_decoder_inst *di, ad5593r_state 
 static void ad5593r_decode_field_str(struct srd_decoder_inst *di, ad5593r_state *s,
     const char *name, const char *str)
 {
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "%s: %s", name, str);
     ad5593r_putx(di, s, ANN_FIELD, buf);
 }
@@ -301,6 +302,7 @@ static void ad5593r_handle_data_bytes(struct srd_decoder_inst *di, ad5593r_state
 
 static void ad5593r_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ad5593r_state *s = (ad5593r_state *)c_decoder_get_private(di);
     if (!s) return;
 

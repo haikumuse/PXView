@@ -261,11 +261,7 @@ static const char* cjtag_outputs[] = { "jtag", NULL };
 static const char* cjtag_tags[] = { "Debug/trace", NULL };
 
 /* JTAG state name strings for Python output */
-static const char* jtag_state_names[] = {
-    "TEST-LOGIC-RESET", "RUN-TEST/IDLE",
-    "SELECT-DR-SCAN", "CAPTURE-DR", "UPDATE-DR", "PAUSE-DR", "SHIFT-DR", "EXIT1-DR", "EXIT2-DR",
-    "SELECT-IR-SCAN", "CAPTURE-IR", "UPDATE-IR", "PAUSE-IR", "SHIFT-IR", "EXIT1-IR", "EXIT2-IR",
-};
+
 
 static void cjtag_reset(struct srd_decoder_inst *di)
 {

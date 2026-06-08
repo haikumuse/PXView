@@ -39,8 +39,10 @@ typedef struct {
     enum mlx90614_state state;
     uint8_t data[2];
     int data_count;
-    uint64_t ss, es;
+    
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 } mlx90614_priv;
 
 static const char *mlx90614_inputs[] = {"i2c", NULL};
@@ -60,6 +62,7 @@ static const struct srd_c_ann_row mlx90614_ann_rows[] = {
 
 static void mlx90614_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     mlx90614_priv *s = (mlx90614_priv *)c_decoder_get_private(di);
     if (!s)
         return;

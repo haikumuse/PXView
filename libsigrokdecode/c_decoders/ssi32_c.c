@@ -97,6 +97,7 @@ static void ssi32_handle_ctrl(struct srd_decoder_inst *di, ssi32_state *s)
 
 static void ssi32_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ssi32_state *s = (ssi32_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -110,8 +111,8 @@ static void ssi32_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample,
     if (strcmp(cmd, "DATA") != 0 || n_fields < 17)
         return;
 
-    int have_mosi = fields[0].u8 & 1;
-    int have_miso = (fields[0].u8 >> 1) & 1;
+    
+    
     uint64_t mosi_val = 0, miso_val = 0;
     for (int i = 0; i < 8; i++)
         mosi_val |= ((uint64_t)fields[1 + i].u8 << (8 * i));

@@ -220,7 +220,7 @@ static void fsi_putb(struct srd_decoder_inst *di, struct fsi_priv *s, int cls, c
 
 static void fsi_putb_fmt(struct srd_decoder_inst *di, struct fsi_priv *s, int cls, const char *fmt, ...)
 {
-    char buf[128];
+    char buf[256];
     va_list ap;
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);

@@ -234,7 +234,7 @@ static const struct srd_c_ann_row jtag_ejtag_ann_rows[] = {
 static uint32_t bytes_to_uint32(const c_field *fields, int n_fields)
 {
     uint32_t val = 0;
-    for (uint64_t i = 0; i < n_fields && i < 4; i++)
+    for (uint64_t i = 0; i < (uint64_t)n_fields && i < 4; i++)
         val |= ((uint32_t)fields[i].u8) << (i * 8);
     return val;
 }
@@ -277,7 +277,7 @@ static void ejtag_parse_control_reg(struct srd_decoder_inst *di, jtag_ejtag_stat
 
     for (int f = 0; f < (int)NUM_CTRL_FIELDS; f++) {
         const ejtag_ctrl_field *field = &ejtag_ctrl_fields[f];
-        int num_bits = field->start_bit - field->end_bit + 1;
+        
         uint32_t mask = 0;
         for (int b = field->end_bit; b <= field->start_bit; b++)
             mask |= (1U << b);
@@ -292,7 +292,7 @@ static void ejtag_parse_control_reg(struct srd_decoder_inst *di, jtag_ejtag_stat
                 desc = field->read_desc[value];
         }
 
-        char buf[128];
+        char buf[256];
         if (desc) {
             snprintf(buf, sizeof(buf), "%s: %s", field->name, desc);
         } else {
@@ -312,7 +312,7 @@ static void ejtag_parse_pracc(struct srd_decoder_inst *di, jtag_ejtag_state *s)
         return;
 
     int pracc_write = (ctrl_out & EJTAG_CTRL_PRNW) != 0;
-    char buf[256];
+    char buf[512];
     int pos = 0;
     pos += snprintf(buf + pos, sizeof(buf) - pos, "PrAcc: %s",
                     pracc_write ? "Store" : "Load/Fetch");
@@ -337,6 +337,7 @@ static void ejtag_parse_pracc(struct srd_decoder_inst *di, jtag_ejtag_state *s)
 
 static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     jtag_ejtag_state *s = (jtag_ejtag_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -349,7 +350,7 @@ static void jtag_ejtag_recv_proto(struct srd_decoder_inst *di, uint64_t start_sa
         const char *name = ejtag_find_insn_name(ir_val);
         const char *desc = ejtag_find_insn_desc(ir_val);
 
-        char buf[128];
+        char buf[256];
         if (name) {
             snprintf(buf, sizeof(buf), "%s: %s (0x%02X)", name, desc ? desc : "", ir_val);
             c_put(di, s->ss, s->es, s->out_ann, ANN_INSTRUCTION, buf);

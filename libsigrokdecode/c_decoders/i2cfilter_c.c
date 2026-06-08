@@ -60,6 +60,7 @@ static struct srd_decoder_option i2cfilter_options[] = {
 
 static void i2cfilter_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     i2cfilter_state *s = (i2cfilter_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -71,7 +72,7 @@ static void i2cfilter_recv_proto(struct srd_decoder_inst *di, uint64_t start_sam
         s->packets[i].es = end_sample;
         strncpy(s->packets[i].cmd, cmd, sizeof(s->packets[i].cmd) - 1);
         s->packets[i].cmd[sizeof(s->packets[i].cmd) - 1] = '\0';
-        uint64_t copy_len = n_fields < sizeof(s->packets[i].data) ? n_fields : sizeof(s->packets[i].data);
+        uint64_t copy_len = (size_t)n_fields < sizeof(s->packets[i].data) ? n_fields : sizeof(s->packets[i].data);
         if (fields && copy_len > 0)
             for (uint64_t j = 0; j < copy_len; j++) s->packets[i].data[j] = fields[j].u8;
         s->packets[i].data_len = copy_len;

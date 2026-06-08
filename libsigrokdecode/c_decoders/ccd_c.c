@@ -12,6 +12,12 @@
 #include <glib.h>
 #include "libsigrokdecode.h"
 
+static void fmt_binary(uint8_t val, char *buf, int bufsize) {
+    if (bufsize < 9) { buf[0] = '\0'; return; }
+    for (int i = 7; i >= 0; i--) buf[7 - i] = (val & (1 << i)) ? '1' : '0';
+    buf[8] = '\0';
+}
+
 enum ccd_ann {
     ANN_BUS_BITS = 0,
     ANN_BUS_BYTES,
@@ -120,7 +126,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char kmh[16], mph[16];
         snprintf(kmh, sizeof(kmh), "%d", m[2]);
         snprintf(mph, sizeof(mph), "%d", m[1]);
-        char t2[32];
+        char t2[64];
         snprintf(t2, sizeof(t2), "%skm/h", kmh);
         snprintf(ann_text, sizeof(ann_text), "Speed: %s km/h, %s mph", kmh, mph);
         c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
@@ -181,8 +187,8 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
     } else if (m[0] == 0x35 && s->ccd_msg_len >= 4) {
         /* Ignition switch */
         char ignstr[32];
-        snprintf(ignstr, sizeof(ignstr), "%08b %d", m[1], m[2]);
-        char t2[32];
+        { char bbuf[9]; fmt_binary(m[1], bbuf, sizeof(bbuf)); snprintf(ignstr, sizeof(ignstr), "%s %d", bbuf, m[2]); }
+        char t2[64];
         snprintf(t2, sizeof(t2), "IGN:%s", ignstr);
         snprintf(ann_text, sizeof(ann_text), "Ignition switch: %s", ignstr);
         c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
@@ -190,8 +196,8 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
     } else if (m[0] == 0xA4 && s->ccd_msg_len >= 4) {
         /* Instrument cluster lamps */
         char lampsstr[32];
-        snprintf(lampsstr, sizeof(lampsstr), "%08b %02x", m[1], m[2]);
-        char t2[32];
+        { char bbuf[9]; fmt_binary(m[1], bbuf, sizeof(bbuf)); snprintf(lampsstr, sizeof(lampsstr), "%s %02x", bbuf, m[2]); }
+        char t2[64];
         snprintf(t2, sizeof(t2), "LAMPS:%s", lampsstr);
         snprintf(ann_text, sizeof(ann_text), "Instrumental cluster lamps: %s", lampsstr);
         c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
@@ -220,7 +226,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char af_str[16], ac_str[16];
         snprintf(af_str, sizeof(af_str), "%d", ambientf);
         snprintf(ac_str, sizeof(ac_str), "%d", ambientc);
-        char t2[32];
+        char t2[64];
         snprintf(t2, sizeof(t2), "AmbTemp:%s", af_str);
         snprintf(ann_text, sizeof(ann_text), "Ambient temperature: %s F (%s C)", af_str, ac_str);
         c_put(di, s->busystart, s->idlestart - 1, s->out_ann, ANN_BUS_DECODED,
@@ -274,7 +280,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         int oil = (int)(m[2] * 3.4473785 + 0.5);
         int engtemp = m[3] - 64;
         int battemp = m[4] - 64;
-        char t2[128];
+        char t2[256];
         snprintf(t2, sizeof(t2), "EngTemp=%d,BatTemp=%d", engtemp, battemp);
         snprintf(ann_text, sizeof(ann_text),
                  "Engine temperature: %d C, battery temperature: %d C, battery voltage: %.3g V, oil pressure: %d kPa",
@@ -451,7 +457,7 @@ static void ccd_decode(struct srd_decoder_inst *di)
                 if (bus)
                     s->databyte += 128;
 
-                char bit_str[4];
+                char bit_str[8];
                 snprintf(bit_str, sizeof(bit_str), "%d", bus);
                 uint64_t bit_ss = di_samplenum(di) - (uint64_t)ceil(s->bit_width / 2.0);
                 uint64_t bit_es = di_samplenum(di) + (uint64_t)floor(s->bit_width / 2.0) - 1;

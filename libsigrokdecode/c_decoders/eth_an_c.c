@@ -41,7 +41,7 @@ enum eth_an_state {
 
 struct eth_an_priv {
     uint64_t samplerate;
-    uint64_t ss, es;
+    
     uint64_t pre_ss, pre_es;
     uint64_t last_valid_ss;
     uint16_t hex;
@@ -56,6 +56,8 @@ struct eth_an_priv {
     uint64_t dl_pre_end[16];
 
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 };
 
 static struct srd_channel eth_an_channels[] = {

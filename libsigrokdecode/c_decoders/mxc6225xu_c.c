@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012 Uwe Hermann <uwe@hermann-uwe.de>
@@ -42,8 +42,10 @@ enum mxc6225xu_state {
 typedef struct {
     enum mxc6225xu_state state;
     int reg;
-    uint64_t ss, es;
+    
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 } mxc6225xu_priv;
 
 static const char *mxc6225xu_inputs[] = {"i2c", NULL};
@@ -87,7 +89,7 @@ static void mxc6225xu_handle_reg_0x01(struct srd_decoder_inst *di, mxc6225xu_pri
 
 static void mxc6225xu_handle_reg_0x02(struct srd_decoder_inst *di, mxc6225xu_priv *s, uint8_t b)
 {
-    char buf[256];
+    char buf[512];
     int pos = 0;
 
     int int_val = (b >> 7) & 1;
@@ -117,7 +119,7 @@ static void mxc6225xu_handle_reg_0x02(struct srd_decoder_inst *di, mxc6225xu_pri
 
 static void mxc6225xu_handle_reg_0x03(struct srd_decoder_inst *di, mxc6225xu_priv *s, uint8_t b)
 {
-    char buf[256];
+    char buf[512];
     int pos = 0;
 
     int pd = (b >> 7) & 1;
@@ -157,6 +159,7 @@ static void mxc6225xu_handle_reg(struct srd_decoder_inst *di, mxc6225xu_priv *s,
 
 static void mxc6225xu_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     mxc6225xu_priv *s = (mxc6225xu_priv *)c_decoder_get_private(di);
     if (!s)
         return;

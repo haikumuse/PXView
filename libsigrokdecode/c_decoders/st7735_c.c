@@ -142,7 +142,7 @@ static void st7735_put_desc(struct srd_decoder_inst *di, st7735_state *s)
 
     const st7735_cmd_entry *entry = st7735_find_cmd((uint8_t)s->current_cmd);
     if (entry) {
-        char buf[256];
+        char buf[512];
         snprintf(buf, sizeof(buf), "%s: %s", entry->name, entry->desc);
         c_put(di, s->desc_ss, s->desc_es, s->out_ann, ANN_DESC, buf);
     } else {
@@ -226,7 +226,7 @@ static void st7735_decode(struct srd_decoder_inst *di)
 
         if (clk == 0 && s->current_bit >= 0) {
             /* Falling edge: process one bit */
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", s->current_bit);
             c_put(di, s->bit_ss, di_samplenum(di), s->out_ann, ANN_BIT, bit_str);
 

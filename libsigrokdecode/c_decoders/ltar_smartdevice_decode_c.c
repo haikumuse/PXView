@@ -357,6 +357,7 @@ static void ltar_sd_dec_process_block(struct srd_decoder_inst *di, ltar_sd_dec_s
 
 static void ltar_sd_dec_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ltar_sd_dec_state *s = (ltar_sd_dec_state *)c_decoder_get_private(di);
     if (!s)
         return;

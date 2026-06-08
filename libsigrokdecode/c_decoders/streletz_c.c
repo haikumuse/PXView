@@ -201,7 +201,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
             for (int i = 0; i < s->accum_count && pos < (int)sizeof(pkt_str) - 4; i++) {
                 pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "%02X ", s->accum_bytes[i]);
             }
-            char pkt_ann_str[256];
+            char pkt_ann_str[512];
             snprintf(pkt_ann_str, sizeof(pkt_ann_str), "%s PACKET: %s", rxtx_str, pkt_str);
             c_put(di, s->packet_ss, s->packet_es, s->out_ann, packet_ann,
                       pkt_ann_str, rxtx_str, rxtx_str);
@@ -214,14 +214,14 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
                     dpos += snprintf(data_str + dpos, sizeof(data_str) - dpos, "%02X ", s->accum_bytes[i]);
                 }
                 int data_ann = (rxtx == TX) ? ANN_DATA_TX : ANN_DATA_RX;
-                char data_ann_str[256];
+                char data_ann_str[512];
                 snprintf(data_ann_str, sizeof(data_ann_str), "%s DATA: %s", rxtx_str, data_str);
                 c_put(di, s->data_ss, s->data_es, s->out_ann, data_ann,
                           data_ann_str, rxtx_str, "D");
             }
 
             /* Protocol output for upper-layer decoders */
-            unsigned char proto_data[2] = {byte_val, (uint8_t)rxtx};
+            
             c_proto(di, s->packet_ss, s->packet_es, s->out_python,
                                 "PACKET", C_BYTES(s->accum_bytes, s->accum_count), C_END);
         } else {
@@ -231,7 +231,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
             for (int i = 0; i < s->accum_count && pos < (int)sizeof(pkt_str) - 4; i++) {
                 pos += snprintf(pkt_str + pos, sizeof(pkt_str) - pos, "%02X ", s->accum_bytes[i]);
             }
-            char err_str[256];
+            char err_str[512];
             snprintf(err_str, sizeof(err_str), "Err %s PACKET: %s", rxtx_str, pkt_str);
             c_put(di, s->packet_ss, s->packet_es, s->out_ann, ANN_WARN,
                       err_str, rxtx_str, "EP");
@@ -243,6 +243,7 @@ static void streletz_handle_byte(struct srd_decoder_inst *di, streletz_state *s,
 
 static void streletz_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     streletz_state *s = (streletz_state *)c_decoder_get_private(di);
     if (!s)
         return;

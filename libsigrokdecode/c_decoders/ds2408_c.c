@@ -97,6 +97,7 @@ static const struct ds2408_cmd *find_ds2408_command(uint8_t code)
 
 static void ds2408_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ds2408_state *s = (ds2408_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -122,7 +123,7 @@ static void ds2408_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
                 rom |= ((uint64_t)fields[i].u8) << (i * 8);
         }
         uint8_t family_code = n_fields > 0 ? fields[0].u8 : 0;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "ROM: 0x%016llx (family code 0x%02x)",
                  (unsigned long long)rom, family_code);
         c_put(di, start_sample, end_sample, s->out_ann, ANN_ROM, buf);
@@ -142,7 +143,7 @@ static void ds2408_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
         s->es_block = end_sample;
         const struct ds2408_cmd *c = find_ds2408_command(val);
         if (c) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "%s (0x%02x)", c->name, val);
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_CMD, buf);
         } else {
@@ -191,12 +192,12 @@ static void ds2408_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
         s->es_block = end_sample;
         uint8_t data_byte = s->bytes[s->num_bytes - 2];
         if (val == (data_byte ^ 0xff)) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Data: 0x%02x (bit-inversion correct: 0x%02x)",
                      data_byte, val);
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, buf);
         } else {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf),
                      "Data error: second byte (0x%02x) is not bit-inverse of first (0x%02x)",
                      val, data_byte);

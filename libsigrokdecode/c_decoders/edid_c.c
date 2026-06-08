@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012 Bert Vermeulen <bert@biot.com>
@@ -153,7 +153,7 @@ static void edid_decode_vid(struct srd_decoder_inst *di, edid_state *s, int offs
     pnpid[2] = (char)(64 + (c[offset + 1] & 0x1f));
     pnpid[3] = '\0';
     /* Simplified: just output PNPID code without vendor name lookup */
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "%s", pnpid);
     edid_ann_field(di, s, offset, offset + 1, buf);
 }
@@ -194,13 +194,13 @@ static void edid_decode_serial(struct srd_decoder_inst *di, edid_state *s, int o
 static void edid_decode_mfrdate(struct srd_decoder_inst *di, edid_state *s, int offset)
 {
     uint8_t *c = edid_get_cache(s);
-    char buf[128];
+    char buf[256];
     int pos = 0;
     if (c[offset])
         pos += snprintf(buf + pos, sizeof(buf) - pos, "week %d, ", c[offset]);
     pos += snprintf(buf + pos, sizeof(buf) - pos, "%d", 1990 + c[offset + 1]);
     if (pos > 0) {
-        char buf2[128];
+        char buf2[512];
         snprintf(buf2, sizeof(buf2), "Manufactured %s", buf);
         edid_ann_field(di, s, offset, offset + 1, buf2);
     }
@@ -260,7 +260,7 @@ static void edid_decode_basicdisplay(struct srd_decoder_inst *di, edid_state *s,
         strcat(dpms, "active off, ");
     if (dpms[0]) {
         dpms[strlen(dpms) - 2] = '\0';
-        char buf[256];
+        char buf[512];
         snprintf(buf, sizeof(buf), "DPMS support: %s", dpms);
         edid_ann_field(di, s, offset + 4, offset + 4, buf);
     }
@@ -273,7 +273,7 @@ static void edid_decode_basicdisplay(struct srd_decoder_inst *di, edid_state *s,
     else if (dt == 2)
         dtstr = "non-RGB multicolor";
     if (dtstr) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Display type: %s", dtstr);
         edid_ann_field(di, s, offset + 4, offset + 4, buf);
     }
@@ -281,7 +281,7 @@ static void edid_decode_basicdisplay(struct srd_decoder_inst *di, edid_state *s,
         edid_ann_field(di, s, offset + 4, offset + 4, "Color space: standard sRGB");
     s->have_preferred_timing = (fs & 0x02) == 0x02;
     const char *gft = (fs & 0x01) ? "" : "not ";
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Generalized timing formula: %ssupported", gft);
     edid_ann_field(di, s, offset + 4, offset + 4, buf);
 }
@@ -289,7 +289,7 @@ static void edid_decode_basicdisplay(struct srd_decoder_inst *di, edid_state *s,
 static void edid_decode_chromaticity(struct srd_decoder_inst *di, edid_state *s, int offset)
 {
     uint8_t *c = edid_get_cache(s);
-    char buf[128];
+    char buf[256];
 
     int redx = (c[offset + 2] << 2) + ((c[offset] & 0xc0) >> 6);
     int redy = (c[offset + 3] << 2) + ((c[offset] & 0x30) >> 4);
@@ -370,7 +370,7 @@ static void edid_decode_detailed_timing(struct srd_decoder_inst *di, edid_state 
         snprintf(section, sizeof(section), "Detailed timing descriptor");
     c_put(di, sn_ptr[0][0], sn_ptr[17][1], s->out_ann, ANN_SECTIONS, section);
 
-    char buf[256];
+    char buf[512];
 
     double pixclock = (double)((cache[1] << 8) + cache[0]) / 100.0;
     snprintf(buf, sizeof(buf), "Pixel clock: %.2f MHz", pixclock);
@@ -482,7 +482,7 @@ static void edid_decode_descriptor(struct srd_decoder_inst *di, edid_state *s,
     } else if (tag == 0xfd) {
         c_put(di, sn_ptr[offset][0], sn_ptr[offset + 17][1],
                   s->out_ann, ANN_SECTIONS, "Monitor range limits");
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Minimum vertical rate: %dHz", cache[5]);
         edid_ann_field(di, s, offset + 5, offset + 5, buf);
         snprintf(buf, sizeof(buf), "Maximum vertical rate: %dHz", cache[6]);
@@ -535,7 +535,7 @@ static void edid_decode_data_block_collection(struct srd_decoder_inst *di, edid_
     while (offset < len) {
         int length = 1 + (cache[offset] & 0x1f);
         int tag = cache[offset] >> 5;
-        char buf[256];
+        char buf[512];
 
         if (tag < 7) {
             const char *code_names[] = {
@@ -621,6 +621,7 @@ static void edid_decode_data_block_collection(struct srd_decoder_inst *di, edid_
 
 static void edid_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     edid_state *s = (edid_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -820,7 +821,7 @@ static void edid_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, 
             const char *audio = (v & 0x40) ? "Basic" : "No";
             const char *ycbcr_vals[] = {"None", "422", "444", "422+444"};
             const char *ycbcr = ycbcr_vals[(v & 0x30) >> 4];
-            char buf[256];
+            char buf[512];
             snprintf(buf, sizeof(buf),
                      "Underscan: %s, %s Audio, YCbCr: %s, DTDs: %d",
                      underscan, audio, ycbcr, v & 0xf);

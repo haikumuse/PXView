@@ -401,7 +401,7 @@ static void tpm_annotate_command(struct srd_decoder_inst *di, tpm_state *s,
     const uint8_t *data, int len)
 {
     if (len < 10) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "[%d bytes]", len);
         c_put(di, s->command_start, s->state_start, s->out_ann, ANN_TPM_CMD, buf);
         return;
@@ -410,7 +410,7 @@ static void tpm_annotate_command(struct srd_decoder_inst *di, tpm_state *s,
                         ((uint32_t)data[8] << 8) | data[9];
     const char *name = tpm_lookup_command_name(cmd_code);
 
-    char buf[256];
+    char buf[512];
     snprintf(buf, sizeof(buf), "%s (%04X)", name, cmd_code);
     c_put(di, s->command_start, s->state_start, s->out_ann, ANN_TPM_CMD, buf);
 }
@@ -419,7 +419,7 @@ static void tpm_annotate_response(struct srd_decoder_inst *di, tpm_state *s,
     const uint8_t *data, int len, uint64_t es)
 {
     if (len < 10) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "[%d bytes]", len);
         c_put(di, s->response_start, es, s->out_ann, ANN_TPM_RSP, buf);
         return;
@@ -428,7 +428,7 @@ static void tpm_annotate_response(struct srd_decoder_inst *di, tpm_state *s,
                         ((uint32_t)data[8] << 8) | data[9];
     const char *name = tpm_lookup_response_name(rsp_code);
 
-    char buf[256];
+    char buf[512];
     snprintf(buf, sizeof(buf), "%s (%04X)", name, rsp_code);
     c_put(di, s->response_start, es, s->out_ann, ANN_TPM_RSP, buf);
 }
@@ -622,6 +622,7 @@ static void tpm_on_write(struct srd_decoder_inst *di, tpm_state *s,
 
 static void tpm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     tpm_state *s = (tpm_state *)c_decoder_get_private(di);
     if (!s)
         return;

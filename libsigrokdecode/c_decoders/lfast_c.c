@@ -27,7 +27,7 @@ enum {
 
 struct lfast_priv {
     int state;
-    uint64_t ss, es;
+    
     uint64_t ss_bit, es_bit;
     uint64_t ss_sync, ss_header, ss_byte;
     uint64_t ss_payload, es_payload;
@@ -42,6 +42,8 @@ struct lfast_priv {
     int payload_byte_count;
     int out_ann;
     int out_proto;
+    uint64_t ss;
+    uint64_t es;
 };
 
 static const char *payload_sizes[] = {
@@ -239,7 +241,7 @@ static void lfast_decode(struct srd_decoder_inst *di)
             s->es_bit = (uint64_t)(s->ss_bit + divided_len);
 
             /* Output bit annotation */
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", bval);
             c_put(di, s->ss_bit, s->es_bit, s->out_ann, ANN_BIT, bit_str);
 

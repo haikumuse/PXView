@@ -88,6 +88,7 @@ static const struct srd_decoder_binary udp_binary[] = {
 
 static void udp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     udp_state *s = (udp_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -128,7 +129,7 @@ static void udp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, u
     uint16_t src_port = ((uint16_t)payload[0] << 8) | payload[1];
     uint16_t dst_port = ((uint16_t)payload[2] << 8) | payload[3];
     uint16_t udp_length = ((uint16_t)payload[4] << 8) | payload[5];
-    uint16_t udp_checksum = ((uint16_t)payload[6] << 8) | payload[7];
+    
 
     char t[64], t2[48];
 

@@ -604,9 +604,27 @@ def _gen_dsi(bb):
     gen.send_backward_frame(0x80)
 
 def _gen_ir_irmp(bb):
-    # IRMP can decode many IR protocols - use NEC as it's the most common
-    gen = IRNECGenerator(bb, channel=0)
-    gen.send_nec(address=0x04, command=0x08)
+    # IRMP can decode many IR protocols - test multiple protocols
+    
+    # 1. NEC
+    gen_nec = IRNECGenerator(bb, channel=0)
+    gen_nec.send_nec(address=0x04, command=0x08)
+    bb.set_level(0, 1, int(bb.samplerate * 0.05))  # 50ms idle
+    
+    # 2. RC5
+    gen_rc5 = IRRC5Generator(bb, channel=0)
+    gen_rc5.send_rc5(address=0x05, command=0x0A)
+    bb.set_level(0, 1, int(bb.samplerate * 0.05))  # 50ms idle
+    
+    # 3. RC6
+    gen_rc6 = IRRC6Generator(bb, channel=0)
+    gen_rc6.send_rc6(address=0x06, command=0x0B)
+    bb.set_level(0, 1, int(bb.samplerate * 0.05))  # 50ms idle
+    
+    # 4. SIRC (Sony)
+    gen_sirc = IRSIRCGenerator(bb, channel=0)
+    gen_sirc.send_sirc(command=0x15, address=0x01)
+    bb.set_level(0, 1, int(bb.samplerate * 0.05))  # 50ms idle
 
 def _gen_ir_ltto(bb):
     # LTTO uses specific IR protocol: pre-sync + pause + sync + data bits

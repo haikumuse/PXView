@@ -65,7 +65,7 @@ If you installed Qt manually via `aqtinstall` (e.g. on Ubuntu) in Step 1, you mu
 mkdir build && cd build
 
 # For Ubuntu with aqtinstall:
-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="../Qt/6.11.0/gcc_64"
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="$(pwd)/../Qt/6.11.0/gcc_64"
 
 # For Arch / Fedora / macOS (System Qt):
 # cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr

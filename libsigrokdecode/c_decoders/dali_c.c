@@ -236,7 +236,7 @@ static void dali_handle_bits(struct srd_decoder_inst *di, struct dali_priv *s, i
         s->ss_es_bits[i][0] = ss;
         s->ss_es_bits[i][1] = es;
 
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", b[i]);
         c_put(di, ss, es, s->out_ann, ANN_BIT, bit_str);
     }

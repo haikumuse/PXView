@@ -114,7 +114,7 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
 
     if (s->data_len < 2) {
         /* Too short for checksum validation */
-        char buf[256];
+        char buf[512];
         int pos = 0;
         for (int i = 0; i < s->data_len && pos < 200; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x", s->data[i]);
@@ -130,7 +130,7 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
 
     if (calc_crc != recv_crc) {
         /* Checksum error */
-        char buf[256];
+        char buf[512];
         int pos = 0;
         for (int i = 0; i < s->data_len - 1 && pos < 200; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x", s->data[i]);
@@ -141,7 +141,7 @@ static void j1708_flush_message(struct srd_decoder_inst *di, j1708_state *s)
         c_put(di, crc_ss, s->prev_stopbit_es, s->out_ann, ANN_ERROR, "Checksum", "CRC");
     } else {
         /* Valid message */
-        char buf[256];
+        char buf[512];
         int pos = 0;
         for (int i = 0; i < s->data_len - 1 && pos < 200; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02x", s->data[i]);
@@ -218,6 +218,7 @@ static void j1708_maybe_flush_message(struct srd_decoder_inst *di, j1708_state *
 
 static void j1708_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     j1708_state *s = (j1708_state *)c_decoder_get_private(di);
     if (!s)
         return;

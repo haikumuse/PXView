@@ -717,9 +717,10 @@ static void get_data_bits(struct srd_decoder_inst *di, int rxtx, int signal)
 {
     uart_s *s = (uart_s *)c_decoder_get_private(di);
     uint64_t ss, es;
+    
     frame_bit_bounds(s, rxtx, &ss, &es);
 
-    char bit_str[4];
+    char bit_str[16];
     snprintf(bit_str, sizeof(bit_str), "%d", signal);
     c_put(di, ss, es, s->out_ann, RX_DATA_BIT + rxtx, bit_str);
 
@@ -748,6 +749,7 @@ static void get_parity_bit(struct srd_decoder_inst *di, int rxtx, int signal)
     uart_s *s = (uart_s *)c_decoder_get_private(di);
     s->paritybit[rxtx] = signal;
     uint64_t ss, es;
+    
     frame_bit_bounds(s, rxtx, &ss, &es);
 
     if (parity_ok(s->parity_type, s->paritybit[rxtx], s->datavalue[rxtx], s->data_bits)) {
@@ -774,6 +776,7 @@ static void get_stop_bits(struct srd_decoder_inst *di, int rxtx, int signal)
     uart_s *s = (uart_s *)c_decoder_get_private(di);
     g_array_append_val(s->stopbits[rxtx], signal);
     uint64_t ss, es;
+    
     frame_bit_bounds(s, rxtx, &ss, &es);
 
     int stopbit_error = (signal != 1);

@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -72,9 +72,10 @@ typedef struct {
     int mtreg;
     uint8_t data_bytes[4];
     int num_data;
-    uint64_t ss, es;
+    
     uint64_t ssb;  /* start sample of block */
     uint64_t ssd;  /* start sample of data */
+    uint64_t ss, es;
     int out_ann;
     int out_proto;
     int radix;    /* 0=Hex, 1=Dec, 2=Oct, 3=Bin */
@@ -247,6 +248,7 @@ static void bh1750_handle_register(struct srd_decoder_inst *di, bh1750_state *s,
 
 static void bh1750_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     bh1750_state *s = (bh1750_state *)c_decoder_get_private(di);
     if (!s) return;
 

@@ -74,6 +74,7 @@ static void ltc242x_handle_voltage(struct srd_decoder_inst *di, ltc242x_state *s
 
 static void ltc242x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ltc242x_state *s = (ltc242x_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -93,7 +94,9 @@ static void ltc242x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         if (!fields || n_fields < 2) return;
 
         uint8_t flags = fields[0].u8;
-        int have_miso = (flags >> 1) & 1;
+        int have_mosi = (flags & 1) ? 1 : 0;
+        int have_miso = (flags & 2) ? 1 : 0;
+        
         int mosi_cnt = fields[1].u8;
         int pos = 2;
 

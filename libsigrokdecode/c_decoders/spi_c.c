@@ -343,7 +343,7 @@ static void spi_put_data(struct srd_decoder_inst *di, spi_s *s)
      *       self.put(bit[1], bit[2], self.out_ann, [2, ['%d' % bit[0]]]) */
     if (s->have_miso) {
         for (int i = 0; i < s->wordsize; i++) {
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", s->miso_bits_val[i]);
             c_put(di, s->miso_bits_ss[i], s->miso_bits_es[i],
                   s->out_ann, ANN_MISO_BIT, bit_str);
@@ -351,7 +351,7 @@ static void spi_put_data(struct srd_decoder_inst *di, spi_s *s)
     }
     if (s->have_mosi) {
         for (int i = 0; i < s->wordsize; i++) {
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", s->mosi_bits_val[i]);
             c_put(di, s->mosi_bits_ss[i], s->mosi_bits_es[i],
                   s->out_ann, ANN_MOSI_BIT, bit_str);
@@ -378,6 +378,7 @@ static void spi_put_data(struct srd_decoder_inst *di, spi_s *s)
 static void spi_put_transfer(struct srd_decoder_inst *di, spi_s *s,
                              uint64_t samplenum)
 {
+    (void)samplenum;
     /* Match Python:
      *   if self.have_miso:
      *       formatted_miso = self.format_data(self.misobytes, fmt)

@@ -549,7 +549,7 @@ static void em4305_decode(struct srd_decoder_inst *di)
 
     /* Initialize internal state */
     if (!s->initialized) {
-        uint64_t cur_sample;
+        uint64_t cur_sample = 0;
         if (c_wait(di, CW_END) != SRD_OK)
             return;
         s->last_samplenum = cur_sample;

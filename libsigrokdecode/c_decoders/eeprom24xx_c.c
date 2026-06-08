@@ -91,8 +91,9 @@ typedef struct {
     int is_page_write;
     int addr_counter;
     int chip_idx;
-    uint64_t ss, es;
+    
     uint64_t ss_block, es_block;
+    uint64_t ss, es;
     int out_ann;
     int out_binary;
     eeprom24xx_bit bits[EEPROM24XX_MAX_BITS];
@@ -207,7 +208,7 @@ static void eeprom24xx_putb(struct srd_decoder_inst *di, eeprom24xx_state *s, in
 
 static void eeprom24xx_put_warning(struct srd_decoder_inst *di, eeprom24xx_state *s, const char *msg)
 {
-    char buf[256];
+    char buf[512];
     snprintf(buf, sizeof(buf), "Warning: %s", msg);
     eeprom24xx_putb(di, s, ANN_WARNINGS, buf);
 }
@@ -226,7 +227,7 @@ static void eeprom24xx_put_control_word(struct srd_decoder_inst *di, eeprom24xx_
     snprintf(code_str, sizeof(code_str), "%u%u%u%u",
         (unsigned)bits[7].value, (unsigned)bits[6].value,
         (unsigned)bits[5].value, (unsigned)bits[4].value);
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Control code bits: %s", code_str);
     char buf2[128];
     snprintf(buf2, sizeof(buf2), "Control code: %s", code_str);
@@ -270,7 +271,7 @@ static void eeprom24xx_put_word_addr(struct srd_decoder_inst *di, eeprom24xx_sta
     if (chip->addr_bytes == 1) {
         if (n >= 2) {
             uint8_t a = p[1].databyte;
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Word address byte: %02X", a);
             c_put(di, p[1].ss, p[1].es, s->out_ann, ANN_WORD_ADDR_BYTE, buf);
             c_put(di, p[1].ss, p[1].es, s->out_ann, ANN_WORD_ADDR, "Word address", "Word addr", "Addr", "A");
@@ -280,7 +281,7 @@ static void eeprom24xx_put_word_addr(struct srd_decoder_inst *di, eeprom24xx_sta
         if (n >= 3) {
             uint8_t ah = p[1].databyte;
             uint8_t al = p[2].databyte;
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Word address high byte: %02X", ah);
             c_put(di, p[1].ss, p[1].es, s->out_ann, ANN_WORD_ADDR_BYTE, buf);
             snprintf(buf, sizeof(buf), "Word address low byte: %02X", al);
@@ -300,7 +301,7 @@ static void eeprom24xx_put_data_byte(struct srd_decoder_inst *di, eeprom24xx_sta
     else
         snprintf(addr_buf, sizeof(addr_buf), "%04X", s->addr_counter);
 
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Data byte %s: %02X", addr_buf, p->databyte);
     c_put(di, p->ss, p->es, s->out_ann, ANN_DATA_BYTE, buf);
 }
@@ -332,7 +333,7 @@ static void eeprom24xx_put_data_bytes(struct srd_decoder_inst *di, eeprom24xx_st
     char len_str[32];
     snprintf(len_str, sizeof(len_str), "%d byte%s", num_data_bytes, (num_data_bytes != 1) ? "s" : "");
 
-    char buf[256];
+    char buf[512];
     snprintf(buf, sizeof(buf), "%s (addr=%s, %s): ", op_name, addr_str, len_str);
     int pos = strlen(buf);
     for (int i = chip->addr_bytes; i < s->num_bytebuf && pos < (int)sizeof(buf) - 10; i++)
@@ -374,7 +375,7 @@ static void eeprom24xx_put_operation(struct srd_decoder_inst *di, eeprom24xx_sta
         eeprom24xx_put_data_bytes(di, s, idx, ANN_PAGE_WRITE, "Page write");
         int num_bytes_to_write = s->num_packets - idx;
         if (num_bytes_to_write > chip->page_size) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Wrote %d bytes but page size is only %d bytes!",
                      num_bytes_to_write, chip->page_size);
             eeprom24xx_put_warning(di, s, buf);
@@ -382,7 +383,7 @@ static void eeprom24xx_put_operation(struct srd_decoder_inst *di, eeprom24xx_sta
         int page1 = initial_addr / chip->page_size;
         int page2 = (s->addr_counter - 1) / chip->page_size;
         if (page1 != page2) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Page write crossed page boundary from page %d to %d!", page1, page2);
             eeprom24xx_put_warning(di, s, buf);
         }
@@ -407,6 +408,7 @@ static void eeprom24xx_put_operation(struct srd_decoder_inst *di, eeprom24xx_sta
 
 static void eeprom24xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     eeprom24xx_state *s = (eeprom24xx_state *)c_decoder_get_private(di);
     if (!s) return;
 

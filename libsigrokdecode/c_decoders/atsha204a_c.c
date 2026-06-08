@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -62,8 +62,9 @@ typedef struct {
     enum atsha204a_state state;
     int waddr;
     int opcode;
-    uint64_t ss, es;
+    
     uint64_t ss_block, es_block;
+    uint64_t ss, es;
     atsha204a_byte_entry bytes[ATSHA204A_MAX_BYTES];
     int num_bytes;
     int out_ann;
@@ -128,15 +129,7 @@ static const struct srd_c_ann_row atsha204a_ann_rows[] = {
     {"warnings", "Warnings", atsha204a_row_warnings_classes, 1},
 };
 
-static void atsha204a_putx(struct srd_decoder_inst *di, atsha204a_state *s, int cls, const char *text)
-{
-    c_put(di, s->ss, s->es, s->out_ann, cls, text);
-}
 
-static void atsha204a_putz(struct srd_decoder_inst *di, uint64_t ss, uint64_t es, atsha204a_state *s, int cls, const char *text)
-{
-    c_put(di, ss, es, s->out_ann, cls, text);
-}
 
 static void atsha204a_puty(struct srd_decoder_inst *di, atsha204a_state *s, int start_idx, int end_idx, int cls, const char *text)
 {
@@ -147,7 +140,7 @@ static void atsha204a_puty(struct srd_decoder_inst *di, atsha204a_state *s, int 
 
 static void atsha204a_put_warning(struct srd_decoder_inst *di, atsha204a_state *s, uint64_t ss, uint64_t es, const char *msg)
 {
-    char buf[256];
+    char buf[512];
     snprintf(buf, sizeof(buf), "Warning: %s", msg);
     c_put(di, ss, es, s->out_ann, ANN_WARNING, buf);
 }
@@ -173,7 +166,7 @@ static void atsha204a_output_tx_bytes(struct srd_decoder_inst *di, atsha204a_sta
 
     /* Word address */
     s->waddr = s->bytes[0].val;
-    char buf[128];
+    char buf[256];
     if (s->waddr >= 0 && s->waddr <= 3) {
         snprintf(buf, sizeof(buf), "Word addr: %s", word_addr_str[s->waddr]);
     } else {
@@ -324,7 +317,7 @@ static void atsha204a_output_rx_bytes(struct srd_decoder_inst *di, atsha204a_sta
     if (n < 1)
         return;
 
-    char buf[128];
+    char buf[256];
 
     /* Count */
     int count = s->bytes[0].val;
@@ -368,6 +361,7 @@ static void atsha204a_output_rx_bytes(struct srd_decoder_inst *di, atsha204a_sta
 
 static void atsha204a_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     atsha204a_state *s = (atsha204a_state *)c_decoder_get_private(di);
     if (!s) return;
 

@@ -185,12 +185,12 @@ static void ownet_decode_upper(struct srd_decoder_inst *di,
             return;
         const struct rom_cmd *c = find_rom_command(s->data);
         if (c) {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "ROM command: 0x%02x '%s'", s->data, c->name);
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
             s->state = c->next_state;
         } else {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "ROM command: 0x%02x '%s'", s->data, "unrecognized");
             c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_TEXT, buf);
             s->state = STATE_COMMAND_ERROR;

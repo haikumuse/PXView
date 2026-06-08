@@ -43,6 +43,7 @@ static const struct srd_c_ann_row scs_ann_rows[] = {
 
 static void scs_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     scs_state *s = (scs_state *)c_decoder_get_private(di);
     if (!s)
         return;

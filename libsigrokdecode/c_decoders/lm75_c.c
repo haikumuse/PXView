@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -79,7 +79,7 @@ static void lm75_putb(struct srd_decoder_inst *di, lm75_state *s, int cls, const
 static void lm75_warn_upon_invalid_slave(struct srd_decoder_inst *di, lm75_state *s, int addr)
 {
     if (addr < 0x48 || addr > 0x4f) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Warning: I²C slave 0x%02x not an LM75 compatible sensor.", addr);
         lm75_putx(di, s, ANN_WARN, buf);
     }
@@ -87,6 +87,7 @@ static void lm75_warn_upon_invalid_slave(struct srd_decoder_inst *di, lm75_state
 
 static void lm75_output_temperature(struct srd_decoder_inst *di, lm75_state *s, const char *reg_name, const char *rw)
 {
+    (void)rw;
     int before = s->databytes[0];
     int after = (s->databytes[1] >> 7) * 5;
     double celsius = (double)before + (double)after / 10.0;
@@ -119,11 +120,13 @@ static void lm75_handle_temperature_reg(struct srd_decoder_inst *di, lm75_state 
 
 static void lm75_handle_reg_0x00(struct srd_decoder_inst *di, lm75_state *s, uint8_t b, const char *rw)
 {
+    (void)rw;
     lm75_handle_temperature_reg(di, s, "Temperature", rw, b);
 }
 
 static void lm75_handle_reg_0x01(struct srd_decoder_inst *di, lm75_state *s, uint8_t b, const char *rw)
 {
+    (void)rw;
     int sd = b & (1 << 0);
     const char *tmp = (sd == 0) ? "normal operation" : "shutdown mode";
     char s_buf[256];
@@ -159,11 +162,13 @@ static void lm75_handle_reg_0x01(struct srd_decoder_inst *di, lm75_state *s, uin
 
 static void lm75_handle_reg_0x02(struct srd_decoder_inst *di, lm75_state *s, uint8_t b, const char *rw)
 {
+    (void)rw;
     lm75_handle_temperature_reg(di, s, "T_HYST trip temperature", rw, b);
 }
 
 static void lm75_handle_reg_0x03(struct srd_decoder_inst *di, lm75_state *s, uint8_t b, const char *rw)
 {
+    (void)rw;
     lm75_handle_temperature_reg(di, s, "T_OS trip temperature", rw, b);
 }
 
@@ -178,6 +183,7 @@ static const lm75_handle_reg_fn lm75_reg_handlers[4] = {
 
 static void lm75_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     lm75_state *s = (lm75_state *)c_decoder_get_private(di);
     if (!s)
         return;

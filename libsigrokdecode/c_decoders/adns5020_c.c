@@ -116,6 +116,7 @@ static const char *adns5020_reg_name(int reg)
 
 static void adns5020_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     adns5020_state *s = (adns5020_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -134,7 +135,7 @@ static void adns5020_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
     if (strcmp(cmd, "DATA") != 0) return;
 
     int have_mosi, have_miso;
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
     if (!have_mosi) return;
 
@@ -150,7 +151,7 @@ static void adns5020_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
     int reg = c & 0x7f;
     const char *reg_desc = adns5020_reg_name(reg);
 
-    char buf[128];
+    char buf[256];
     if (write) {
         snprintf(buf, sizeof(buf), "%s: %02X", reg_desc, arg);
         c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, ANN_WRITE, buf);

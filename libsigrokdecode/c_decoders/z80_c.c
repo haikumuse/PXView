@@ -789,6 +789,7 @@ static void put_text(struct srd_decoder_inst *di, z80_priv *s,
 
 static void put_disasm(struct srd_decoder_inst *di, z80_priv *s, uint64_t samplenum)
 {
+    (void)samplenum;
     /* Format the mnemonic with operands */
     char text[256];
     const char *fmt = s->mnemonic;

@@ -193,7 +193,7 @@ static void pxx1_add_bit(struct srd_decoder_inst *di, int value)
         s->byte_val <<= 1;
         s->byte_val |= value;
         s->cur_bit += 1;
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%X", value);
         c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_BIT, bit_str);
         s->state_word <<= 1;
@@ -509,7 +509,7 @@ static void pxx1_decode(struct srd_decoder_inst *di)
             if (ret != SRD_OK)
                 return;
         }
-        uint64_t end_samplenum = di_samplenum(di);
+        
 
         /* Wait for falling edge */
         {

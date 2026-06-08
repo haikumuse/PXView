@@ -71,7 +71,7 @@ enum {
 
 typedef struct {
     uint64_t samplerate;
-    uint64_t ss, es;
+    
     int bitcount;
     uint32_t databyte;
     int state;
@@ -85,6 +85,8 @@ typedef struct {
     uint64_t BPss;
     uint64_t SSCs;
     uint64_t Pes;
+    uint64_t ss;
+    uint64_t es;
     int sdata;
     int Pdata;
     int Pkey;
@@ -143,20 +145,7 @@ static void rffe_put(mipi_rffe_state *s, struct srd_decoder_inst *di,
     c_decoder_put(di, ss, es, s->out_ann, &ann);
 }
 
-static void rffe_put_proto(mipi_rffe_state *s, struct srd_decoder_inst *di,
-                           uint64_t ss, uint64_t es, int proto_idx,
-                           const char **txts)
-{
-    rffe_put(s, di, ss, es, proto_map[proto_idx].ann_class, txts);
-}
 
-static void rffe_put_python(mipi_rffe_state *s, struct srd_decoder_inst *di,
-                            uint64_t ss, uint64_t es, const char *text)
-{
-    if (s->out_python < 0)
-        return;
-    c_proto(di, ss, es, s->out_python, text, C_END);
-}
 
 static void rffe_init(mipi_rffe_state *s)
 {
@@ -450,7 +439,7 @@ static void rffe_handle_CMD(mipi_rffe_state *s, struct srd_decoder_inst *di)
 
     /* Read next command bit */
     if (s->bitcount < 4) {
-        uint8_t sdata_val;
+        
         if (s->_display) {
             int ret = c_wait(di, CW_F(CH_SCLK), CW_OR, CW_L(CH_SCLK), CW_E(CH_SDATA), CW_END);
             if (ret != SRD_OK)

@@ -1,4 +1,4 @@
-﻿#include "libsigrokdecode.h"
+#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -191,6 +191,7 @@ static const rc5_command_entry* rc5_lookup_command(const rc5_command_entry* tabl
 
 static char rc5_edge_type(struct rc5_priv* s, uint64_t samplenum)
 {
+    (void)samplenum;
     uint64_t distance = samplenum - s->edges[s->num_edges - 1];
     uint64_t half = s->halfbit;
     uint64_t long_dist = half * 2;
@@ -207,10 +208,11 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
 {
     int i;
     int a = 0, c = 0;
+    uint64_t ss, es;
 
     s->num_ss_es_bits = 0;
     for (i = 0; i < s->num_bits; i++) {
-        uint64_t ss, es;
+        
         if (i == 0) {
             ss = (s->bits_ss[0] > s->halfbit) ? (s->bits_ss[0] - s->halfbit) : 0;
         } else {
@@ -221,7 +223,7 @@ static void rc5_handle_bits(struct srd_decoder_inst* di, struct rc5_priv* s)
         s->ss_es_bits_es[i] = es;
         s->num_ss_es_bits++;
 
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits_val[i]);
         c_put(di, ss, es, s->out_ann, ANN_BIT, bit_str);
     }

@@ -146,6 +146,7 @@ static const struct srd_c_ann_row arp_ann_rows[] = {
 
 static void arp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     arp_state *s = (arp_state *)c_decoder_get_private(di);
     if (!s) return;
 

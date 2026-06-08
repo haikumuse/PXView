@@ -146,6 +146,7 @@ static void tmc_clear_data(tmc_s *s)
 
 static void tmc_handle_bitrate(struct srd_decoder_inst *di, tmc_s *s, uint64_t samplenum)
 {
+    (void)samplenum;
     if (!s->samplerate || !s->pdu_start)
         return;
     double elapsed = 1.0 / (double)s->samplerate;
@@ -158,6 +159,7 @@ static void tmc_handle_bitrate(struct srd_decoder_inst *di, tmc_s *s, uint64_t s
 
 static void tmc_handle_start(struct srd_decoder_inst *di, tmc_s *s, uint64_t samplenum)
 {
+    (void)samplenum;
     s->ss = samplenum;
     s->es = samplenum;
     s->pdu_start = samplenum;
@@ -181,7 +183,7 @@ static void tmc_handle_data_wire2(struct srd_decoder_inst *di, tmc_s *s, uint64_
     if (s->bitcount > 0) {
         s->bits[1].es = samplenum;
         if (s->bitcount <= 8) {
-            char bit_str[4];
+            char bit_str[16];
             snprintf(bit_str, sizeof(bit_str), "%d", s->bits[1].val);
             c_put(di, s->bits[1].ss, s->bits[1].es, s->out_ann, ANN_BIT, bit_str);
         }
@@ -256,6 +258,7 @@ static void tmc_handle_data_wire2(struct srd_decoder_inst *di, tmc_s *s, uint64_
 
 static void tmc_handle_byte_wire3(struct srd_decoder_inst *di, tmc_s *s, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->bitcount == 0)
         return;
 
@@ -265,7 +268,7 @@ static void tmc_handle_byte_wire3(struct srd_decoder_inst *di, tmc_s *s, uint64_
     /* Display all bits — match Python's reverse chronological order
      * (Python iterates self.bits from index 0=MSB/newest to N-1=LSB/oldest) */
     for (int i = 0; i < s->bitcount; i++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[i].val);
         c_put(di, s->bits[i].ss, s->bits[i].es, s->out_ann, ANN_BIT, bit_str);
     }
@@ -375,6 +378,7 @@ static void tmc_handle_ack(struct srd_decoder_inst *di, tmc_s *s, uint64_t sampl
 
 static void tmc_handle_stop(struct srd_decoder_inst *di, tmc_s *s, uint64_t samplenum)
 {
+    (void)samplenum;
     tmc_handle_bitrate(di, s, samplenum);
 
     if (s->bustype == 1) /* wire3: flush last byte */

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2013-2020 Sven Bursch-Osewold
@@ -207,7 +207,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
             validPacketFound = 1;
         } else if ((s->decodedBytes[pos] >> 4) == 0b0111 && s->decodedBytesCount == 4) {
             DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Service Mode", "Service");
-            if ((s->decodedBytes[pos] >> 2) & 0b11 == 0b01) {
+            if ((s->decodedBytes[pos] >> 2) == 0b01) {
                 DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Verify byte", "v");
                 pos = dcc_incPos(di, s, pos);
                 cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -218,7 +218,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                 snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]);
                 DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf);
                 DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Value");
-            } else if ((s->decodedBytes[pos] >> 2) & 0b11 == 0b11) {
+            } else if ((s->decodedBytes[pos] >> 2) == 0b11) {
                 DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Write byte", "w");
                 pos = dcc_incPos(di, s, pos);
                 cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -229,7 +229,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                 DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Value");
                 snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]);
                 DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf);
-            } else if ((s->decodedBytes[pos] >> 2) & 0b11 == 0b10) {
+            } else if ((s->decodedBytes[pos] >> 2) == 0b10) {
                 DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Bit manipulation", "bit");
                 pos = dcc_incPos(di, s, pos);
                 cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -537,7 +537,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                     if (dec_addr != 0)
                         DCC_PUT_PACKETBYTES(di, s, 0, s->decodedBytesCount - 2, ANN_ERROR, "Only Broadcast allowed");
                     int value = s->decodedBytes[pos];
-                    if ((value >> 6) & 0b11 == 0b00) {
+                    if ((value >> 6) == 0b00) {
                         DCC_PUT_PACKETBYTE(di, s, pos - 1, ANN_DATA, "Model-Time");
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "00MMMMMM");
                         pos = dcc_incPos(di, s, pos);
@@ -552,7 +552,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                         snprintf(buf, sizeof(buf), "%s %02d:%02d hrs, Update:%d, Acceleration:%d", weekday[wd], hr, mn, upd, acc);
                         snprintf(buf2, sizeof(buf2), "%s %02d:%02d, U:%d, Acc:%d", weekday_short[wd], hr, mn, upd, acc);
                         DCC_PUT_PACKETBYTES(di, s, pos - 2, pos, ANN_DATA, buf, buf2);
-                    } else if ((value >> 6) & 0b11 == 0b01) {
+                    } else if ((value >> 6) == 0b01) {
                         DCC_PUT_PACKETBYTE(di, s, pos - 1, ANN_DATA, "Model-Date");
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "010TTTTT");
                         pos = dcc_incPos(di, s, pos);
@@ -641,7 +641,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                 } else if ((pos == 1 && s->decodedBytesCount == 5) || (pos == 2 && s->decodedBytesCount == 6)) {
                     /* Long Form (POM) */
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Configuration Variable Access Instruction - Long Form (POM)", "CV Access Instruction long (POM)", "CV long (POM)");
-                    if ((subcmd >> 2) & 0b11 == 0b01) {
+                    if ((subcmd >> 2) == 0b01) {
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Read/Verify byte", "r/v");
                         pos = dcc_incPos(di, s, pos);
                         cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -652,7 +652,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                         snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]);
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf);
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Value");
-                    } else if ((subcmd >> 2) & 0b11 == 0b11) {
+                    } else if ((subcmd >> 2) == 0b11) {
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Write byte", "w");
                         pos = dcc_incPos(di, s, pos);
                         cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -663,7 +663,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                         snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]);
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf);
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Value");
-                    } else if ((subcmd >> 2) & 0b11 == 0b10) {
+                    } else if ((subcmd >> 2) == 0b10) {
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Bit manipulation", "Bit");
                         pos = dcc_incPos(di, s, pos);
                         cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -683,7 +683,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                 } else if ((pos == 1 && s->decodedBytesCount >= 6) || (pos == 2 && s->decodedBytesCount >= 7)) {
                     /* XPOM */
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "XPOM");
-                    if ((subcmd >> 2) & 0b11 == 0b01) {
+                    if ((subcmd >> 2) == 0b01) {
                         snprintf(buf, sizeof(buf), "Read bytes, SS:%d", s->decodedBytes[pos] & 0b11);
                         snprintf(buf2, sizeof(buf2), "r,SS:%d", s->decodedBytes[pos] & 0b11);
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf, buf2);
@@ -692,7 +692,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                         snprintf(buf, sizeof(buf), "%lld", (long long)cv_addr);
                         DCC_PUT_PACKETBYTES(di, s, pos - 2, pos, ANN_DATA_CV, buf);
                         DCC_PUT_PACKETBYTES(di, s, pos - 2, pos, ANN_COMMAND, "CV");
-                    } else if ((subcmd >> 2) & 0b11 == 0b11) {
+                    } else if ((subcmd >> 2) == 0b11) {
                         snprintf(buf, sizeof(buf), "Write byte(s), SS:%d", s->decodedBytes[pos] & 0b11);
                         snprintf(buf2, sizeof(buf2), "w,SS:%d", s->decodedBytes[pos] & 0b11);
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf, buf2);
@@ -708,7 +708,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                         if (s->decodedBytesCount > pos + 2) { pos = dcc_incPos(di, s, pos); DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Data-2"); snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]); DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf); }
                         if (s->decodedBytesCount > pos + 2) { pos = dcc_incPos(di, s, pos); DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Data-3"); snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]); DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf); }
                         if (s->decodedBytesCount > pos + 2) { pos = dcc_incPos(di, s, pos); DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Data-4"); snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]); DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf); }
-                    } else if ((subcmd >> 2) & 0b11 == 0b10) {
+                    } else if ((subcmd >> 2) == 0b10) {
                         snprintf(buf, sizeof(buf), "Bit write, SS:%d", s->decodedBytes[pos] & 0b11);
                         snprintf(buf2, sizeof(buf2), "bit,SS:%d", s->decodedBytes[pos] & 0b11);
                         DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf, buf2);
@@ -756,7 +756,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                 if (s->decodedBytesCount == 3 || s->decodedBytesCount == 4) {
                     DCC_PUT_PACKETBYTE(di, s, pos - 1, ANN_COMMAND, "Basic Accessory Decoder", "Basic Accessory", "Basic Acc.");
                     if (acc_addr + 3 == 2047) {
-                        if (((s->decodedBytes[pos] >> 3) & 1) == 0 && (s->decodedBytes[pos] & 1) == 0) {
+                        if ((((s->decodedBytes[pos] >> 3) & 1) == 0) && ((s->decodedBytes[pos] & 1) == 0)) {
                             DCC_PUT_PACKETBYTE(di, s, pos - 1, ANN_DATA_ACC, "Broadcast");
                             DCC_PUT_PACKETBYTE(di, s, pos - 1, ANN_COMMAND, "Broadcast");
                             DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "ESTOP");
@@ -837,7 +837,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
 
             if (pom) {
                 int pom_subcmd = s->decodedBytes[pos] & 0b00011111;
-                if ((pom_subcmd >> 2) & 0b11 == 0b01) {
+                if ((pom_subcmd >> 2) == 0b01) {
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Read/Verify byte", "r/v");
                     pos = dcc_incPos(di, s, pos);
                     cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -848,7 +848,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                     snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]);
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf);
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Value");
-                } else if ((pom_subcmd >> 2) & 0b11 == 0b11) {
+                } else if ((pom_subcmd >> 2) == 0b11) {
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Write byte", "w");
                     pos = dcc_incPos(di, s, pos);
                     cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;
@@ -859,7 +859,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
                     snprintf(buf, sizeof(buf), "%d", s->decodedBytes[pos]);
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, buf);
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_COMMAND, "Value");
-                } else if ((pom_subcmd >> 2) & 0b11 == 0b10) {
+                } else if ((pom_subcmd >> 2) == 0b10) {
                     DCC_PUT_PACKETBYTE(di, s, pos, ANN_DATA, "Bit manipulation", "Bit");
                     pos = dcc_incPos(di, s, pos);
                     cv_addr = (s->decodedBytes[pos - 1] & 0b00000011) * 256 + s->decodedBytes[pos] + 1;

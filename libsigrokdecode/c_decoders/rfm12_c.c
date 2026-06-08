@@ -74,6 +74,7 @@ static void rfm12_get_span(rfm12_state *s, uint64_t *ss, uint64_t *es)
 
 static void rfm12_handle_configuration_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -105,6 +106,7 @@ static void rfm12_handle_configuration_cmd(struct srd_decoder_inst *di, rfm12_st
 
 static void rfm12_handle_power_management_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -117,7 +119,7 @@ static void rfm12_handle_power_management_cmd(struct srd_decoder_inst *di, rfm12
         "Synthesizer (es)", "Crystal oscillator (ex)", "Low battery detector (eb)",
         "Wake-up timer (ew)", "Clock output off switch (dc)"
     };
-    char buf[256];
+    char buf[512];
     int pos = 0;
     for (int i = 7; i >= 0; i--) {
         if (cmd1 & (1 << i)) {
@@ -133,6 +135,7 @@ static void rfm12_handle_power_management_cmd(struct srd_decoder_inst *di, rfm12
 
 static void rfm12_handle_frequency_setting_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
 
@@ -151,6 +154,7 @@ static void rfm12_handle_frequency_setting_cmd(struct srd_decoder_inst *di, rfm1
 
 static void rfm12_handle_data_rate_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -171,6 +175,7 @@ static void rfm12_handle_data_rate_cmd(struct srd_decoder_inst *di, rfm12_state 
 
 static void rfm12_handle_receiver_control_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
 
@@ -209,6 +214,7 @@ static void rfm12_handle_receiver_control_cmd(struct srd_decoder_inst *di, rfm12
 
 static void rfm12_handle_data_filter_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -236,6 +242,7 @@ static void rfm12_handle_data_filter_cmd(struct srd_decoder_inst *di, rfm12_stat
 
 static void rfm12_handle_fifo_and_reset_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -278,6 +285,7 @@ static void rfm12_handle_fifo_and_reset_cmd(struct srd_decoder_inst *di, rfm12_s
 
 static void rfm12_handle_synchron_pattern_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
 
@@ -296,6 +304,7 @@ static void rfm12_handle_synchron_pattern_cmd(struct srd_decoder_inst *di, rfm12
 
 static void rfm12_handle_fifo_read_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
 
@@ -311,6 +320,7 @@ static void rfm12_handle_fifo_read_cmd(struct srd_decoder_inst *di, rfm12_state 
 
 static void rfm12_handle_afc_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -346,6 +356,7 @@ static void rfm12_handle_afc_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 
 static void rfm12_handle_transceiver_control_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -369,6 +380,7 @@ static void rfm12_handle_transceiver_control_cmd(struct srd_decoder_inst *di, rf
 
 static void rfm12_handle_pll_setting_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -389,6 +401,7 @@ static void rfm12_handle_pll_setting_cmd(struct srd_decoder_inst *di, rfm12_stat
 
 static void rfm12_handle_transmitter_register_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
 
@@ -403,6 +416,7 @@ static void rfm12_handle_transmitter_register_cmd(struct srd_decoder_inst *di, r
 
 static void rfm12_handle_software_reset_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     c_put(di, ss, es, s->out_ann, ANN_CMD, "Software reset command");
@@ -410,6 +424,7 @@ static void rfm12_handle_software_reset_cmd(struct srd_decoder_inst *di, rfm12_s
 
 static void rfm12_handle_wake_up_timer_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
 
@@ -427,6 +442,7 @@ static void rfm12_handle_wake_up_timer_cmd(struct srd_decoder_inst *di, rfm12_st
 
 static void rfm12_handle_low_duty_cycle_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     c_put(di, ss, es, s->out_ann, ANN_CMD, "Low duty cycle command");
@@ -434,6 +450,7 @@ static void rfm12_handle_low_duty_cycle_cmd(struct srd_decoder_inst *di, rfm12_s
 
 static void rfm12_handle_low_battery_detector_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
     uint8_t cmd1 = s->mosi_bytes[1];
@@ -455,6 +472,7 @@ static void rfm12_handle_low_battery_detector_cmd(struct srd_decoder_inst *di, r
 
 static void rfm12_handle_status_read_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 {
+    
     uint64_t ss, es;
     rfm12_get_span(s, &ss, &es);
 
@@ -544,8 +562,9 @@ static void rfm12_handle_cmd(struct srd_decoder_inst *di, rfm12_state *s)
     else if (cmd0 == 0x00)
         rfm12_handle_status_read_cmd(di, s);
     else {
+        
         uint64_t ss, es;
-        rfm12_get_span(s, &ss, &es);
+    rfm12_get_span(s, &ss, &es);
         char buf[64];
         snprintf(buf, sizeof(buf), "Unknown command: 0x%02X 0x%02X", s->mosi_bytes[0],
                  (s->num_bytes >= 2) ? s->mosi_bytes[1] : 0);
@@ -555,13 +574,14 @@ static void rfm12_handle_cmd(struct srd_decoder_inst *di, rfm12_state *s)
 
 static void rfm12_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     rfm12_state *s = (rfm12_state *)c_decoder_get_private(di);
     if (!s)
         return;
 
     if (strcmp(cmd, "DATA") == 0 && n_fields >= 17) {
-        int have_mosi = fields[0].u8 & 1;
-        int have_miso = (fields[0].u8 >> 1) & 1;
+        
+        
         uint64_t mosi_val = 0, miso_val = 0;
         for (int i = 0; i < 8; i++)
             mosi_val |= ((uint64_t)fields[1 + i].u8 << (8 * i));

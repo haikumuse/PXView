@@ -70,6 +70,7 @@ static uint32_t gray_to_binary(uint32_t gray, int bits)
 static int bitpack_pins(struct srd_decoder_inst* di, int num_channels, uint64_t samplenum)
 {
     (void)samplenum;
+    (void)samplenum;
     int val = 0;
     for (int i = 0; i < num_channels; i++) {
         if (c_pin(di, i))

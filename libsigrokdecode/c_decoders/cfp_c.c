@@ -63,6 +63,7 @@ static const char *cfp_lookup_module_id(uint8_t id)
 
 static void cfp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     cfp_state *s = (cfp_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -83,7 +84,7 @@ static void cfp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, u
                   "CFP NVR 1: Basic ID register", "NVR1");
         if (clause45_addr == 0x8000) {
             const char *mod_name = cfp_lookup_module_id((uint8_t)reg);
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "Module identifier: %s", mod_name);
             c_put(di, start_sample, end_sample, s->out_ann, ANN_DECODE, buf);
         }

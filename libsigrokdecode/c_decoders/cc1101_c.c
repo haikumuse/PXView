@@ -204,7 +204,7 @@ static const char *cc1101_strobe_name(int addr)
 static void cc1101_decode_status(struct srd_decoder_inst *di, cc1101_state *s,
     uint64_t ss, uint64_t es, uint8_t status, const char *label)
 {
-    char buf[256];
+    char buf[512];
     const char *chip_rdy = (status & 0x80) ? "CHIP_RDYn is high! " : "";
     int state_idx = (status & 0x70) >> 4;
     int fifo = status & 0x0F;
@@ -263,6 +263,7 @@ static void cc1101_finish_command(struct srd_decoder_inst *di, cc1101_state *s)
 
 static void cc1101_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     cc1101_state *s = (cc1101_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -296,7 +297,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
     if (!s->cs_was_released) return;
 
     int have_mosi, have_miso;
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
 
     if (!have_mosi || !have_miso) return;
@@ -337,7 +338,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
 
         if (s->cmd_type == CC1101_CMD_STROBE) {
             /* Strobe command: output immediately */
-            char buf[128];
+            char buf[256];
             const char *sname = cc1101_strobe_name(s->cmd_addr);
             snprintf(buf, sizeof(buf), "Strobe %s", sname);
             c_put(di, start_sample, end_sample, s->out_ann, ANN_STROBE, buf);

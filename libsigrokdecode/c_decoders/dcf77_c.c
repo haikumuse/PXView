@@ -1,4 +1,10 @@
 ﻿#include "libsigrokdecode.h"
+
+static void fmt_binary14(uint16_t val, char *buf, int bufsize) {
+    if (bufsize < 15) { buf[0] = '\0'; return; }
+    for (int i = 13; i >= 0; i--) buf[13 - i] = (val & (1 << i)) ? '1' : '0';
+    buf[14] = '\0';
+}
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,8 +171,8 @@ static void handle_dcf77_bit(struct srd_decoder_inst* di, int bit)
             s->tmp |= ((uint64_t)bit << (c - 1));
         }
         if (c == 14) {
-            snprintf(t1, sizeof(t1), "Special bits: %014b", (unsigned)s->tmp);
-            snprintf(t2, sizeof(t2), "SB: %014b", (unsigned)s->tmp);
+            { char bbuf[15]; fmt_binary14(s->tmp, bbuf, sizeof(bbuf)); snprintf(t1, sizeof(t1), "Special bits: %s", bbuf); }
+            { char bbuf[15]; fmt_binary14(s->tmp, bbuf, sizeof(bbuf)); snprintf(t2, sizeof(t2), "SB: %s", bbuf); }
             c_put(di, s->ss_block, s->es_bit, s->out_ann, ANN_SPECIAL_BITS, t1, t2);
         }
     } else if (c == 15) {

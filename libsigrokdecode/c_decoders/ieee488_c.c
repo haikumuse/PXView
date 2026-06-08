@@ -320,6 +320,7 @@ static void handle_ifc_change(struct srd_decoder_inst *di, ieee488_priv *s, int 
 
 static void handle_eoi_change(struct srd_decoder_inst *di, ieee488_priv *s, int eoi, uint64_t samplenum)
 {
+    (void)samplenum;
     if (eoi) {
         s->ss_eoi = samplenum;
         s->curr_eoi = eoi;
@@ -422,7 +423,7 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
         int saddr = is_secondary_addr(b);
         int msb = is_msb_set(b);
 
-        int ann_cls = -1;
+        
         int upd_iec = 0;
         int iec_addr = -1, iec_sec = -1, iec_data = -1;
         const char *py_type = NULL;
@@ -451,7 +452,6 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
                 c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_WARN,
                     "Unknown GPIB command", "unknown", "UNK");
             }
-            ann_cls = ANN_CMD;
             py_type = "COMMAND";
             py_addr = 0;
 
@@ -475,7 +475,6 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str2, sizeof(str2), "L %d", laddr);
             snprintf(str3, sizeof(str3), "L%c", '0' + laddr);
             c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_LADDR, str1, str2, str3);
-            ann_cls = ANN_LADDR;
             py_type = "LISTEN";
             py_addr = laddr;
 
@@ -492,7 +491,6 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str2, sizeof(str2), "T %d", taddr);
             snprintf(str3, sizeof(str3), "T%c", '0' + taddr);
             c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_TADDR, str1, str2, str3);
-            ann_cls = ANN_TADDR;
             py_type = "TALK";
             py_addr = taddr;
 
@@ -516,7 +514,6 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str2, sizeof(str2), "S %d", saddr);
             snprintf(str3, sizeof(str3), "S%c", '0' + saddr);
             c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_SADDR, str1, str2, str3);
-            ann_cls = ANN_SADDR;
             upd_iec = 1;
             iec_sec = b;
             py_type = "SECONDARY";
@@ -527,7 +524,6 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
             snprintf(str2, sizeof(str2), "S %d", msb);
             snprintf(str3, sizeof(str3), "S%c", '0' + (msb & 0x1f));
             c_put(di, s->ss_raw, s->es_raw, s->out_ann, ANN_SADDR, str1, str2, str3);
-            ann_cls = ANN_SADDR;
             upd_iec = 1;
             iec_sec = b;
             py_type = "MSB_SET";
@@ -616,6 +612,7 @@ static void handle_data_byte(struct srd_decoder_inst *di, ieee488_priv *s)
 static void handle_dav_change(struct srd_decoder_inst *di, ieee488_priv *s,
     int dav, uint8_t *data, uint64_t samplenum)
 {
+    (void)samplenum;
     if (dav) {
         s->ss_raw = samplenum;
         s->curr_raw = bitpack(data, 8);
@@ -747,13 +744,12 @@ static void decode_serial(struct srd_decoder_inst *di, ieee488_priv *s)
                 } else {
                     /* Falling edge: end of bit */
                     uint64_t es_bit = di_samplenum(di);
-                    char bit_str[4];
+                    char bit_str[16];
                     snprintf(bit_str, sizeof(bit_str), "%d", s->serial_bits[s->serial_bit_count]);
                     c_put(di, s->ss_bit, es_bit, s->out_ann, ANN_BIT, bit_str);
 
                     /* PROTO: IEC_BIT */
-                    unsigned char bit_data[1];
-                    bit_data[0] = s->serial_bits[s->serial_bit_count];
+                    
                     c_proto(di, s->ss_bit, es_bit, s->out_python,
                         "IEC_BIT", C_U8(s->serial_bits[s->serial_bit_count]), C_END);
 
@@ -885,78 +881,6 @@ static void ieee488_start(struct srd_decoder_inst *di)
     s->is_serial = s->has_clk;
 }
 
-static void decode_data_only(struct srd_decoder_inst *di, ieee488_priv *s)
-{
-    /* Simplified decode path when neither CLK nor DAV is available.
-     * Wait for any change on the DIO channels and output raw byte annotations. */
-    int prev_data[8];
-    int first = 1;
-    uint64_t ss_byte = 0;
-
-    memset(prev_data, -1, sizeof(prev_data));
-
-    while (1) {
-        /* Wait for edge on any DIO channel */
-        int ret;
-        GSList *or_groups = NULL;
-        for (int i = 0; i < 8; i++) {
-            if (c_has_ch(di, i)) {
-                GSList *and_group = NULL;
-                struct srd_term *t = g_malloc0(sizeof(struct srd_term));
-                t->type = SRD_TERM_EITHER_EDGE;
-                t->channel = i;
-                and_group = g_slist_append(and_group, t);
-                or_groups = g_slist_append(or_groups, and_group);
-            }
-        }
-        ret = c_decoder_wait(di, or_groups, NULL, NULL);
-        /* NOTE: c_decoder_wait_impl takes ownership of or_groups;
-         * do NOT free it here to avoid double-free. */
-        if (ret != SRD_OK)
-            return;
-
-        /* Read all DIO pins */
-        int pins[8];
-        uint8_t raw = 0;
-        for (int i = 0; i < 8; i++) {
-            if (c_has_ch(di, i)) {
-                pins[i] = c_pin(di, i);
-                if (pins[i])
-                    raw |= (1 << i);
-            } else {
-                pins[i] = 0;
-            }
-        }
-
-        if (first) {
-            first = 0;
-            memcpy(prev_data, pins, sizeof(prev_data));
-            ss_byte = di_samplenum(di);
-            continue;
-        }
-
-        /* Check if any DIO pin changed */
-        int changed = 0;
-        for (int i = 0; i < 8; i++) {
-            if (pins[i] != prev_data[i]) {
-                changed = 1;
-                break;
-            }
-        }
-
-        if (changed) {
-            /* Output raw byte annotation */
-            char raw_text[16];
-            snprintf(raw_text, sizeof(raw_text), "%02x", raw);
-            c_put(di, ss_byte, di_samplenum(di), s->out_ann, ANN_RAW_BYTE, raw_text);
-
-            c_put_bin(di, ss_byte, di_samplenum(di), s->out_bin, BIN_RAW, 1, &raw);
-
-            memcpy(prev_data, pins, sizeof(prev_data));
-            ss_byte = di_samplenum(di);
-        }
-    }
-}
 
 static void ieee488_decode(struct srd_decoder_inst *di)
 {

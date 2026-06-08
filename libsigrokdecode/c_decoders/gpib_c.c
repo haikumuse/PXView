@@ -88,6 +88,7 @@ static const char *gpib_tags[] = {"PC", NULL};
 
 static void gpib_handle_bits(struct srd_decoder_inst *di, const uint8_t *pins, uint64_t samplenum)
 {
+    (void)samplenum;
     struct gpib_priv *s = (struct gpib_priv *)c_decoder_get_private(di);
     int item2 = 0;
     int item3 = 0;

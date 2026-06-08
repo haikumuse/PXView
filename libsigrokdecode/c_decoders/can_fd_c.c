@@ -251,6 +251,7 @@ static int is_stuff_bit(canfd_s *s)
 
 static void dom_edge_seen(canfd_s *s, uint64_t samplenum)
 {
+    (void)samplenum;
     s->dom_edge_snum = samplenum;
     s->dom_edge_bcount = s->curbit;
 }
@@ -282,6 +283,7 @@ static void set_fast_bitrate(canfd_s *s)
 static int decode_frame_end(struct srd_decoder_inst *di, canfd_s *s,
                             uint8_t can_rx, int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum == s->last_databit + 1) {
         s->ss_block = samplenum;
         if (s->fd) {
@@ -430,6 +432,7 @@ static int decode_frame_end(struct srd_decoder_inst *di, canfd_s *s,
 static void decode_data_field(struct srd_decoder_inst *di, canfd_s *s,
                               int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum > s->dlc_start + 3 && bitnum < s->last_databit) {
         if (s->num_databytebits < 512)
             s->ss_databytebits[s->num_databytebits++] = samplenum;
@@ -462,6 +465,7 @@ static void decode_data_field(struct srd_decoder_inst *di, canfd_s *s,
 static int decode_standard_frame(struct srd_decoder_inst *di, canfd_s *s,
                                 uint8_t can_rx, int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum == 14) {
         s->fd = can_rx ? 1 : 0;
         char t1[64], t2[32], t3[8];
@@ -543,6 +547,7 @@ static int decode_standard_frame(struct srd_decoder_inst *di, canfd_s *s,
 static int decode_extended_frame(struct srd_decoder_inst *di, canfd_s *s,
                                 uint8_t can_rx, int bitnum, uint64_t samplenum)
 {
+    (void)samplenum;
     if (bitnum == 14) {
         s->ss_block = samplenum;
         s->dlc_start = 35;
@@ -663,6 +668,7 @@ static int decode_extended_frame(struct srd_decoder_inst *di, canfd_s *s,
 static void handle_bit(struct srd_decoder_inst *di, canfd_s *s,
                        uint8_t can_rx, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->num_rawbits < 1024) s->rawbits[s->num_rawbits++] = can_rx;
     if (s->num_bits < 1024) s->bits[s->num_bits++] = can_rx;
 

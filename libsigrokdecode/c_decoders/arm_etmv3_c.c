@@ -579,6 +579,7 @@ static void process_buffer(struct srd_decoder_inst *di, etmv3_priv *s,
 
 static void arm_etmv3_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     etmv3_priv *s = (etmv3_priv *)c_decoder_get_private(di);
     if (!s)
         return;

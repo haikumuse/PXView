@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -76,6 +76,7 @@ typedef struct {
     int has_data_lo;
     uint64_t ss_data_lo;
     uint64_t ss, es;
+    
     int out_ann;
 } adxl345_state;
 
@@ -111,7 +112,7 @@ static void adxl345_handle_reg_with_scaling(struct srd_decoder_inst *di, adxl345
         adxl345_putx(di, s, ANN_WARNING, error_msg);
     } else {
         double result = (data * factor) / 1000.0;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s: %f %s", name, result, unit);
         adxl345_putx(di, s, ANN_REG_DATA, buf);
     }
@@ -131,7 +132,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
         char buf[16];
         snprintf(buf, sizeof(buf), "%d", addr);
         c_put(di, s->ss, s->es, s->out_ann, ANN_REG_ADDRESS, buf);
-        char buf2[16];
+        char buf2[32];
         snprintf(buf2, sizeof(buf2), "%d", data);
         adxl345_putx(di, s, ANN_REG_DATA, buf2);
         return;
@@ -170,7 +171,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
         break;
     case 0x27: /* ACT_INACT_CTL */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         pos += snprintf(buf + pos, sizeof(buf) - pos, "ACT: %s, ", (data & 0x80) ? "ac" : "dc");
         pos += snprintf(buf + pos, sizeof(buf) - pos, "ACT_X: %s, ", (data & 0x40) ? "Enable" : "Disable");
@@ -191,7 +192,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
         break;
     case 0x2A: /* TAP_AXES */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         pos += snprintf(buf + pos, sizeof(buf) - pos, "Suppressed: %s, ", (data & 0x10) ? "Yes" : "No");
         pos += snprintf(buf + pos, sizeof(buf) - pos, "TAP_X: %s, ", (data & 0x04) ? "Enable" : "Disable");
@@ -202,7 +203,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     }
     case 0x2B: /* ACT_TAP_STATUS */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         pos += snprintf(buf + pos, sizeof(buf) - pos, "ACT_X: %s, ", (data & 0x40) ? "Involved" : "Not involved");
         pos += snprintf(buf + pos, sizeof(buf) - pos, "ACT_Y: %s, ", (data & 0x20) ? "Involved" : "Not involved");
@@ -218,7 +219,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     {
         int low_power = (data >> 3) & 1;
         int rate_idx = data & 0x0F;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s, Rate: %f Hz",
                  low_power ? "Reduce power" : "Normal operation",
                  (rate_idx < 16) ? rate_code[rate_idx] : 0.0);
@@ -227,7 +228,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     }
     case 0x2D: /* POWER_CTL */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         int wakeup = data & 0x03;
         double freq = 1 << (3 - wakeup);
@@ -241,7 +242,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     }
     case 0x2E: /* INT_ENABLE */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         pos += snprintf(buf + pos, sizeof(buf) - pos, "DATA_READY: %s, ", (data & 0x80) ? "Enable" : "Disable");
         pos += snprintf(buf + pos, sizeof(buf) - pos, "SINGLE_TAP: %s, ", (data & 0x40) ? "Enable" : "Disable");
@@ -256,7 +257,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     }
     case 0x2F: /* INT_MAP */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         pos += snprintf(buf + pos, sizeof(buf) - pos, "DATA_READY: %s, ", (data & 0x80) ? "INT2" : "INT1");
         pos += snprintf(buf + pos, sizeof(buf) - pos, "SINGLE_TAP: %s, ", (data & 0x40) ? "INT2" : "INT1");
@@ -271,7 +272,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     }
     case 0x30: /* INT_SOURCE */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         pos += snprintf(buf + pos, sizeof(buf) - pos, "DATA_READY: %s, ", (data & 0x80) ? "Yes" : "No");
         pos += snprintf(buf + pos, sizeof(buf) - pos, "SINGLE_TAP: %s, ", (data & 0x40) ? "Yes" : "No");
@@ -286,7 +287,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     }
     case 0x31: /* DATA_FORMAT */
     {
-        char buf[256];
+        char buf[512];
         int pos = 0;
         int range_g = (data >> 0) & 0x03;
         int result = 1 << (range_g + 1);
@@ -333,7 +334,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     {
         int fifo_mode = (data >> 6) & 0x03;
         int samples = data & 0x1F;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Mode: %s, Trigger: INT%d, Samples: %d",
                  (fifo_mode < 4) ? fifo_modes[fifo_mode] : "Unknown",
                  (data & 0x20) ? 2 : 1, samples);
@@ -344,7 +345,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
     {
         int entries = data & 0x3F;
         int triggered = (data >> 7) & 1;
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Triggered: %s, Entries: %d",
                  triggered ? "Yes" : "No", entries);
         adxl345_putx(di, s, ANN_REG_DATA, buf);
@@ -362,6 +363,7 @@ static void adxl345_handle_register_data(struct srd_decoder_inst *di, adxl345_st
 
 static void adxl345_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     adxl345_state *s = (adxl345_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -387,8 +389,10 @@ static void adxl345_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
     if (strcmp(cmd, "DATA") == 0 && n_fields >= 17) {
         /* SPI DATA format: fields[0].u8=flags, data[1..8]=mosi_val(LE), data[9..16]=miso_val(LE) */
         uint8_t flags = fields[0].u8;
-        int have_mosi = flags & 1;
-        int have_miso = (flags >> 1) & 1;
+        int have_mosi = (flags & 1) ? 1 : 0;
+        int have_miso = (flags & 2) ? 1 : 0;
+        
+        
         uint64_t mosi_val = 0, miso_val = 0;
         for (int i = 0; i < 8; i++) {
             mosi_val |= (uint64_t)fields[1 + i].u8 << (8 * i);

@@ -224,7 +224,7 @@ typedef struct {
     uint64_t ss_addr, es_addr;
     uint64_t ss_data, es_data;
     uint64_t ss_wait, es_wait;
-    uint64_t ss, es;
+    
     /* VMK extraction */
     uint8_t vmk_queue[12];
     int vmk_queue_count;
@@ -238,6 +238,8 @@ typedef struct {
     uint8_t end_wait;       /* 0x01 */
     uint8_t wait_mask;      /* 0x00 (2.0) or 0xFE (1.2) */
     int out_ann;
+    uint64_t ss;
+    uint64_t es;
 } spi_tpm_state;
 
 /* ===== SPI DATA packet helpers ===== */
@@ -342,7 +344,7 @@ static void spi_tpm_recover_vmk(struct srd_decoder_inst *di, spi_tpm_state *s, u
                     int pos = 0;
                     for (int i = 0; i < 12; i++)
                         pos += snprintf(hex + pos, sizeof(hex) - pos, "%02x", s->vmk_queue[i]);
-                    char buf[128];
+                    char buf[256];
                     snprintf(buf, sizeof(buf), "VMK header: %s", hex);
                     c_put(di, s->vmk_queue_ss[0], s->es, s->out_ann, ANN_VMK, buf);
                     s->saving_vmk = 1;
@@ -367,7 +369,7 @@ static void spi_tpm_recover_vmk(struct srd_decoder_inst *di, spi_tpm_state *s, u
                 int pos = 0;
                 for (int i = 0; i < 32; i++)
                     pos += snprintf(hex + pos, sizeof(hex) - pos, "%02x", s->vmk[i]);
-                char buf[128];
+                char buf[256];
                 snprintf(buf, sizeof(buf), "VMK: %s", hex);
                 c_put(di, s->vmk_ss, s->vmk_es, s->out_ann, ANN_VMK, buf);
                 s->saving_vmk = 0;
@@ -423,6 +425,7 @@ static void spi_tpm_output_transaction(struct srd_decoder_inst *di, spi_tpm_stat
 /* ===== recv_proto ===== */
 static void spi_tpm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     spi_tpm_state *s = (spi_tpm_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -437,7 +440,7 @@ static void spi_tpm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
     if (strcmp(cmd, "DATA") != 0)
         return;
 
-    uint8_t mosi, miso;
+    uint8_t mosi = 0, miso = 0;
     spi_proto_get_mosi(fields, n_fields, &mosi);
     spi_proto_get_miso(fields, n_fields, &miso);
 

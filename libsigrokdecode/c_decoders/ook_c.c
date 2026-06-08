@@ -60,8 +60,9 @@ typedef struct {
 } ook_bit_t;
 
 typedef struct ook_s {
+    uint64_t ss;
+    uint64_t es;
     int state;
-    uint64_t ss, es;
     uint64_t ss_1111, ss_1010;
     uint64_t samplenumber_last;
     uint64_t sample_first;
@@ -247,7 +248,7 @@ static void output_decoded_manchester(struct srd_decoder_inst *di, ook_s *s,
     ook_bit_t *decoded, int decoded_count, int ann_class)
 {
     for (int i = 0; i < decoded_count; i++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%c", decoded[i].state);
         c_put(di, decoded[i].ss, decoded[i].es, s->out_ann, ann_class, bit_str);
     }
@@ -340,7 +341,7 @@ static void decode_diff_manchester(struct srd_decoder_inst *di, ook_s *s,
             s->decoded_count++;
         }
 
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%c", transition);
         c_put(di, start, start + dsamples, s->out_ann, ANN_DIFFMAN, bit_str);
     }
@@ -349,6 +350,7 @@ static void decode_diff_manchester(struct srd_decoder_inst *di, ook_s *s,
 static void decode_nrz(struct srd_decoder_inst *di, ook_s *s,
     uint64_t start, uint64_t samples, char state)
 {
+    
     int num_bits = 0;
     if (s->sample_high > 0)
         num_bits = (int)((samples + s->sample_high / 2) / s->sample_high);
@@ -356,7 +358,7 @@ static void decode_nrz(struct srd_decoder_inst *di, ook_s *s,
     if (num_bits > 64) num_bits = 64;
 
     for (int i = 0; i < num_bits; i++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%c", state);
         uint64_t bit_ss = start + i * s->sample_high;
         uint64_t bit_es = bit_ss + s->sample_high;

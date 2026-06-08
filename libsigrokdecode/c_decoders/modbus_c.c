@@ -21,6 +21,12 @@
 #include <glib.h>
 #include "libsigrokdecode.h"
 
+static void fmt_binary(uint8_t val, char *buf, int bufsize) {
+    if (bufsize < 9) { buf[0] = '\0'; return; }
+    for (int i = 7; i >= 0; i--) buf[7 - i] = (val & (1 << i)) ? '1' : '0';
+    buf[8] = '\0';
+}
+
 #define MODBUS_MAX_FRAME 256
 
 enum {
@@ -219,7 +225,7 @@ static void modbus_sc_parse_read_bits(struct srd_decoder_inst *di, modbus_state 
     /* Data bytes */
     for (int i = 3; i < adu->data_len - 2 && i < bytecount + 3; i++) {
         char dbuf[32];
-        snprintf(dbuf, sizeof(dbuf), "%08b", adu->data[i]);
+        fmt_binary(adu->data[i], dbuf, sizeof(dbuf));
         modbus_adu_puti(di, s, adu, i, ANN_SC_DATA, dbuf);
     }
 
@@ -298,7 +304,7 @@ static void modbus_sc_parse_write_multiple(struct srd_decoder_inst *di, modbus_s
     uint8_t function = adu->data[1];
     const char *data_unit = (function == 15) ? "Coils" : "Registers";
     int long_offset = (function == 15) ? 10001 : 30001;
-    char buf[128];
+    char buf[256];
 
     snprintf(buf, sizeof(buf), "Function %d: Write Multiple %s", function, data_unit);
     modbus_adu_puti(di, s, adu, 1, ANN_SC_FUNCTION, buf);
@@ -318,7 +324,7 @@ static void modbus_sc_parse_error(struct srd_decoder_inst *di, modbus_state *s, 
 {
     adu->minimum_length = 5;
     int functioncode = adu->data[1] - 0x80;
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Error for function %d", functioncode);
     modbus_adu_puti(di, s, adu, 1, ANN_SC_FUNCTION, buf);
 
@@ -388,7 +394,7 @@ static void modbus_cs_parse_read_data_command(struct srd_decoder_inst *di, modbu
         [3] = "Read Holding Registers", [4] = "Read Input Registers",
     };
     const char *fn_name = (function >= 1 && function <= 4) ? fn_names[function] : "Unknown";
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Function %d: %s", function, fn_name);
     modbus_adu_puti(di, s, adu, 1, ANN_CS_FUNCTION, buf);
 
@@ -449,7 +455,7 @@ static void modbus_cs_parse_single_byte_request(struct srd_decoder_inst *di, mod
     };
     const char *fn_name = (function == 7 || function == 11 || function == 12 || function == 17) ?
                           fn_names[function] : "Unknown";
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Function %d: %s", function, fn_name);
     modbus_adu_puti(di, s, adu, 1, ANN_CS_FUNCTION, buf);
 
@@ -462,7 +468,7 @@ static void modbus_cs_parse_write_multiple(struct srd_decoder_inst *di, modbus_s
     uint8_t function = adu->data[1];
     const char *data_unit = (function == 15) ? "Coils" : "Registers";
     int long_offset = (function == 15) ? 10001 : 30001;
-    char buf[128];
+    char buf[256];
 
     snprintf(buf, sizeof(buf), "Function %d: Write Multiple %s", function, data_unit);
     modbus_adu_puti(di, s, adu, 1, ANN_CS_FUNCTION, buf);
@@ -503,11 +509,11 @@ static void modbus_cs_parse_mask_write_register(struct srd_decoder_inst *di, mod
     modbus_adu_puti(di, s, adu, 3, ANN_CS_ADDRESS, buf);
 
     if (adu->data_len > 5) {
-        snprintf(buf, sizeof(buf), "AND mask: %08b %08b", adu->data[4], adu->data[5]);
+        { char b1[9], b2[9]; fmt_binary(adu->data[4], b1, 9); fmt_binary(adu->data[5], b2, 9); snprintf(buf, sizeof(buf), "AND mask: %s %s", b1, b2); }
         modbus_adu_puti(di, s, adu, 5, ANN_CS_DATA, buf);
     }
     if (adu->data_len > 7) {
-        snprintf(buf, sizeof(buf), "OR mask: %08b %08b", adu->data[6], adu->data[7]);
+        { char b1[9], b2[9]; fmt_binary(adu->data[6], b1, 9); fmt_binary(adu->data[7], b2, 9); snprintf(buf, sizeof(buf), "OR mask: %s %s", b1, b2); }
         modbus_adu_puti(di, s, adu, 7, ANN_CS_DATA, buf);
     }
 
@@ -625,6 +631,7 @@ static void modbus_decode_adu(struct srd_decoder_inst *di, modbus_state *s,
 
 static void modbus_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     modbus_state *s = (modbus_state *)c_decoder_get_private(di);
     if (!s)
         return;

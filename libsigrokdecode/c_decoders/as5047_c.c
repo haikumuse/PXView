@@ -135,6 +135,7 @@ static int popcount_parity(uint16_t v)
 
 static void as5047_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     as5047_state *s = (as5047_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -211,12 +212,12 @@ static void as5047_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
 
         if (mosi_word & 0x4000) {
             s->state = AS5047_STATE_READ;
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "read from %s (0x%04x)", reg_desc, reg);
             c_put(di, frame_ss, end_sample, s->out_ann, ANN_COMMANDFRAME, buf);
         } else {
             s->state = AS5047_STATE_WRITE;
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "write to %s (0x%04x)", reg_desc, reg);
             c_put(di, frame_ss, end_sample, s->out_ann, ANN_COMMANDFRAME, buf);
         }
@@ -232,7 +233,7 @@ static void as5047_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
                 c_put(di, frame_ss, end_sample, s->out_ann, ANN_WARN, "error flag set");
             }
             uint16_t rdata = miso_word & 0x3FFF;
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "read data frame: 0x%04x", rdata);
             c_put(di, frame_ss, end_sample, s->out_ann, ANN_READDATAFRAME, buf);
             snprintf(buf, sizeof(buf), "Read 0x%04x from %s", rdata, reg_desc);
@@ -240,7 +241,7 @@ static void as5047_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
         }
         if (s->state == AS5047_STATE_WRITE) {
             uint16_t wdata = mosi_word & 0x3FFF;
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "write data frame: 0x%04x", wdata);
             c_put(di, frame_ss, end_sample, s->out_ann, ANN_WRITEDATAFRAME, buf);
             snprintf(buf, sizeof(buf), "Write 0x%04x to %s", wdata, reg_desc);

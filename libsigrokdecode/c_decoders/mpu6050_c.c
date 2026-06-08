@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012-2014 Uwe Hermann <uwe@hermann-uwe.de>
@@ -72,8 +72,10 @@ typedef struct {
     int acc_x, acc_y, acc_z;
     int temp;
     int gyro_x, gyro_y, gyro_z;
-    uint64_t ss, es;
+    
     uint64_t ss_block;
+    uint64_t ss;
+    uint64_t es;
     int out_ann;
 } mpu6050_priv;
 
@@ -338,6 +340,7 @@ static void mpu6050_handle_reg(struct srd_decoder_inst *di, mpu6050_priv *s, uin
 
 static void mpu6050_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     mpu6050_priv *s = (mpu6050_priv *)c_decoder_get_private(di);
     if (!s)
         return;

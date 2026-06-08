@@ -226,6 +226,7 @@ static void lin_start(struct srd_decoder_inst *di)
 
 static void lin_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     struct lin_priv *priv = (struct lin_priv *)c_decoder_get_private(di);
     if (!priv)
         return;

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv3+
  *
@@ -45,6 +45,7 @@ typedef struct {
     int reading;
     uint64_t addr_ss, data_ss, data_es;
     uint64_t ss, es;
+    
     int out_ann;
     int out_proto;
 } tpm_tis_state;
@@ -108,6 +109,7 @@ static void tpm_tis_output_transaction(struct srd_decoder_inst *di,
 /* ===== recv_proto ===== */
 static void tpm_tis_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     tpm_tis_state *s = (tpm_tis_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;
@@ -147,7 +149,7 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
             s->state = TPM_TIS_REG_ADDR_ACK;
         } else {
             /* Unexpected command, reset with warning */
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "got I2C %s but expected DATA WRITE", cmd);
             c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;
@@ -177,7 +179,7 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
             s->data_ss = start_sample;
             s->state = TPM_TIS_WRITE_DATA_ACK;
         } else {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "got I2C %s but expected START REPEAT, STOP, or DATA WRITE", cmd);
             c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;
@@ -189,7 +191,7 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
             s->data_ss = start_sample;
             s->state = TPM_TIS_READ_ADDR_ACK;
         } else {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "got I2C %s but expected ADDRESS READ", cmd);
             c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;
@@ -247,7 +249,7 @@ static void tpm_tis_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
             tpm_tis_output_transaction(di, s);
             s->state = TPM_TIS_IDLE;
         } else {
-            char buf[128];
+            char buf[256];
             snprintf(buf, sizeof(buf), "got I2C %s but expected DATA WRITE or STOP", cmd);
             c_put(di, start_sample, end_sample, s->out_ann, ANN_WARNING, buf);
             s->state = TPM_TIS_IDLE;

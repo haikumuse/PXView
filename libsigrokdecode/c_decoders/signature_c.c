@@ -198,7 +198,7 @@ static void sig_decode(struct srd_decoder_inst *di)
                     c_put(di, s->last_samplenum, di_samplenum(di), s->out_ann, ANN_START, buf2, buf3, buf);
                     s->started = 0;
                 } else {
-                    char bit_str[4];
+                    char bit_str[16];
                     snprintf(bit_str, sizeof(bit_str), "%d", data);
                     int ann_cls = data ? ANN_BIT1 : ANN_BIT0;
                     c_put(di, s->last_samplenum, di_samplenum(di), s->out_ann, ann_cls, bit_str);

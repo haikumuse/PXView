@@ -86,6 +86,7 @@ static const char* delta_sigma_tags[] = { "Util" };
 
 static void delta_sigma_put_result(struct srd_decoder_inst *di, delta_sigma_state *s, int64_t code, uint64_t samplenum)
 {
+    (void)samplenum;
     code = code >> s->shift;
     char buf1[64], buf2[64];
     snprintf(buf1, sizeof(buf1), "%lld", (long long)code);
@@ -96,6 +97,7 @@ static void delta_sigma_put_result(struct srd_decoder_inst *di, delta_sigma_stat
 
 static void delta_sigma_run_sinc1(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
 {
+    (void)samplenum;
     int64_t sinc_DELTA1;
     if (dat > 0)
         sinc_DELTA1 = s->sinc_DELTA1 + 1;
@@ -120,6 +122,7 @@ static void delta_sigma_run_sinc1(struct srd_decoder_inst *di, delta_sigma_state
 
 static void delta_sigma_run_sinc2(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
 {
+    (void)samplenum;
     int64_t sinc_DELTA1;
     if (dat > 0)
         sinc_DELTA1 = s->sinc_DELTA1 + 1;
@@ -149,6 +152,7 @@ static void delta_sigma_run_sinc2(struct srd_decoder_inst *di, delta_sigma_state
 
 static void delta_sigma_run_sinc3(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
 {
+    (void)samplenum;
     int64_t sinc_DELTA1;
     if (dat > 0)
         sinc_DELTA1 = s->sinc_DELTA1 + 1;
@@ -182,6 +186,7 @@ static void delta_sigma_run_sinc3(struct srd_decoder_inst *di, delta_sigma_state
 
 static void delta_sigma_find_clk_edge(struct srd_decoder_inst *di, delta_sigma_state *s, int dat, uint64_t samplenum)
 {
+    (void)samplenum;
     if (!s->first_sample) {
         s->first_sample = 1;
         s->last_samplenum = 0;

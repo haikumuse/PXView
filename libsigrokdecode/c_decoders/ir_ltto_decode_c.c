@@ -156,7 +156,7 @@ static void ltto_put_tag_signature(struct srd_decoder_inst *di, ltto_decode_stat
     c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "Tag");
 
     if (team == 0) {
-        char buf[128];
+        char buf[256];
         const char *tag_type;
         switch (player) {
         case 0: tag_type = "LTAG(SOLO)"; break;
@@ -172,7 +172,7 @@ static void ltto_put_tag_signature(struct srd_decoder_inst *di, ltto_decode_stat
         snprintf(buf, sizeof(buf), "%s, Megatag: %d", tag_type, megatag);
         c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
     } else {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Team: %d, Player: %d, Megatag: %d", team, player, megatag);
         c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
     }
@@ -274,7 +274,7 @@ static void ltto_put_ltto_beacon(struct srd_decoder_inst *di, ltto_decode_state 
     } else {
         /* Normal beacon */
         c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "LTTO Beacon");
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Team: %d, Just hit: %d, Extra damage: %d",
                  team, hitflag, extra);
         c_put(di, ss, es, s->out_ann, ANN_SIG_DATA, buf);
@@ -306,7 +306,7 @@ static void ltto_put_ltar_beacon(struct srd_decoder_inst *di, ltto_decode_state 
 
     c_put(di, ss, es, s->out_ann, ANN_SIG_TYPE, "LTAR Beacon");
 
-    char buf[128];
+    char buf[256];
     const char *ht = (health >= 0 && health <= 3) ? healthtext[health] : "?";
     snprintf(buf, sizeof(buf), "Just hit: %d, Shields up: %d, Rough Health: %s, Team: %d, Player: %d",
              hitflag, shields, ht, team, player);
@@ -315,6 +315,7 @@ static void ltto_put_ltar_beacon(struct srd_decoder_inst *di, ltto_decode_state 
 
 static void ltto_decode_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ltto_decode_state *s = (ltto_decode_state *)c_decoder_get_private(di);
     if (!s)
         return;

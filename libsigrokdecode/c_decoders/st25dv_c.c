@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: mit
  *
@@ -87,11 +87,14 @@ typedef struct {
     const char *op;
     uint8_t data[256];
     int data_len;
-    uint64_t ss, es;
+    
     uint64_t reg_start_sample, reg_end_sample;
     uint64_t data_start_sample;
     int out_ann;
     int out_proto;
+    int cur_idx;
+    uint64_t ss;
+    uint64_t es;
 } st25dv_state;
 
 #define ST25DV_DATA_ADDR   0x53  /* 0xA6 >> 1 */
@@ -145,7 +148,7 @@ static void st25dv_annotate_register_address(struct srd_decoder_inst *di,
     const char *op_str = (strcmp(s->op, "READ") == 0) ? "Read" : "Write";
 
     const st25dv_register *reg = st25dv_find_reg(s->reg_address);
-    char buf[128];
+    char buf[256];
     if (reg) {
         snprintf(buf, sizeof(buf), "%s: %04X: %s", op_str, s->reg_address, reg->short_name);
         c_put(di, s->reg_start_sample, s->reg_end_sample, s->out_ann, ann_code, buf);
@@ -168,12 +171,12 @@ static void st25dv_annotate_register_value(struct srd_decoder_inst *di,
         snprintf(buf, sizeof(buf), "%02X", byte);
         c_put(di, ss, es, s->out_ann, ann_code, buf);
     } else if (reg->length == 1 && s->data_len == 1) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "%s: %02X", reg->long_name, byte);
         c_put(di, ss, es, s->out_ann, ann_code, buf);
         s->data_len = 0;
     } else if (reg->length > 1 && s->data_len == reg->length) {
-        char buf[256];
+        char buf[512];
         int pos = snprintf(buf, sizeof(buf), "%s: ", reg->long_name);
         for (int i = 0; i < reg->length && pos < (int)sizeof(buf) - 4; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "%02X ", s->data[i]);
@@ -188,6 +191,7 @@ static void st25dv_annotate_register_value(struct srd_decoder_inst *di,
 /* ===== recv_proto ===== */
 static void st25dv_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     st25dv_state *s = (st25dv_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;

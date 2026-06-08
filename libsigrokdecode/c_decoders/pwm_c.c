@@ -1,4 +1,4 @@
-﻿#include "libsigrokdecode.h"
+#include "libsigrokdecode.h"
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>

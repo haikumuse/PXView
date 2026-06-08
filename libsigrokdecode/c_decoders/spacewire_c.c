@@ -87,6 +87,7 @@ static void spacewire_put(spacewire_state *s, struct srd_decoder_inst *di,
 
 static void sn_insert(spacewire_state *s, uint64_t samplenum)
 {
+    (void)samplenum;
     if (s->num_samplenums < MAX_SAMPLENUMS) {
         memmove(&s->last_samplenums[1], &s->last_samplenums[0],
                 (MAX_SAMPLENUMS - 1) * sizeof(uint64_t));

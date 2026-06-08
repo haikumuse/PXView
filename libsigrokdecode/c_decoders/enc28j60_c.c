@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Jiahao Li <reg@ljh.me>
@@ -374,6 +374,7 @@ static void enc28j60_process_command(struct srd_decoder_inst *di, enc28j60_state
 
 static void enc28j60_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     enc28j60_state *s = (enc28j60_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -394,8 +395,8 @@ static void enc28j60_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
         if (!s->active) return;
         if (n_fields < 17) return;
 
-        int have_mosi = fields[0].u8 & 1;
-        int have_miso = (fields[0].u8 >> 1) & 1;
+        int have_mosi = (fields[0].u8 & 1) ? 1 : 0;
+        int have_miso = (fields[0].u8 & 2) ? 1 : 0;
         uint8_t mosi_byte = 0, miso_byte = 0;
         if (have_mosi)
             mosi_byte = fields[1].u8;

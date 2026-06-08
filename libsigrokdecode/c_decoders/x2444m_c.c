@@ -126,6 +126,7 @@ static uint64_t x2444m_read_le64(const c_field *fields)
 
 static void x2444m_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     x2444m_state *s = (x2444m_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -133,8 +134,10 @@ static void x2444m_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
         if (!s->cs_asserted) return;
         if (n_fields < 17) return;
 
-        int have_mosi = fields[0].u8 & 1;
-        int have_miso = fields[0].u8 & 2;
+        
+        
+        int have_mosi = (fields[0].u8 & 1) ? 1 : 0;
+        int have_miso = ((fields[0].u8 >> 1) & 1) ? 1 : 0;
         uint64_t mosi = have_mosi ? x2444m_read_le64(fields + 1) : 0;
         uint64_t miso = have_miso ? x2444m_read_le64(fields + 9) : 0;
 
@@ -175,7 +178,7 @@ static void x2444m_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
                 else
                     value = s->mosi_val;
 
-                char buf[128];
+                char buf[256];
                 snprintf(buf, sizeof(buf), "%s: 0x%x => 0x%llx", name, addr,
                          (unsigned long long)value);
                 c_put_v(di, s->cmd_start, end_sample, s->out_ann, idx,

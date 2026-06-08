@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Mickael Bosch <mickael.bosch@linux.com>
@@ -43,7 +43,8 @@ typedef struct {
     enum pca9571_state state;
     uint8_t last_write;
     uint64_t last_write_es;
-    uint64_t ss, es;
+    uint64_t ss;
+    uint64_t es;
     int out_ann;
     int out_logic;
 } pca9571_priv;
@@ -89,6 +90,7 @@ static void pca9571_handle_io(struct srd_decoder_inst *di, pca9571_priv *s, uint
 
 static void pca9571_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     pca9571_priv *s = (pca9571_priv *)c_decoder_get_private(di);
     if (!s)
         return;

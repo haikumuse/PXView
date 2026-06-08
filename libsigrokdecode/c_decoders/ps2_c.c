@@ -123,7 +123,7 @@ static void ps2_handle_byte(struct srd_decoder_inst *di, ps2_s *s)
     /* Per-bit annotations — match Python:
      *   for i in range(11): self.putb(i, Ann.BIT) */
     for (i = 0; i < 11; i++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", s->bits[i]);
         uint64_t es;
         if (i < 10)

@@ -341,7 +341,7 @@ static void handle_bit(struct srd_decoder_inst* di, nec_state* s, uint64_t es, u
         ret = 1;
 
     if (ret == 0 || ret == 1) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), "%d", ret);
         c_put(di, s->ss_bit, es, s->out_ann, ANN_BIT, bit_str);
         if (s->data_len < 32)

@@ -285,7 +285,7 @@ static void ssd1306_handle_par_0x20(struct srd_decoder_inst *di,
     static const char *am[] = {"hor. addr.", "vert. addr.", "page addr.", "invalid"};
     static const char *am2[] = {"HA", "VA", "PA", "IV"};
     int mode = param & 3;
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Display mode: %s", am[mode]);
     c_put(di, s->ss, s->es, s->out_ann, ANN_DM, buf, am2[mode]);
     int pos = (int)strlen(s->blockstring);
@@ -345,7 +345,7 @@ static void ssd1306_handle_par_0x23(struct srd_decoder_inst *di,
     static const char *bf[] = {"no FA / blnk", "invalid", "fade-out", "blink"};
     int idx = (param >> 4) & 3;
     int fo = ((param & 0xf) << 3) + 8;
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "%s (%d frames)", bf[idx], fo);
     c_put(di, s->ss, s->es, s->out_ann, ANN_SFB, buf);
     int pos = (int)strlen(s->blockstring);
@@ -536,7 +536,7 @@ static void ssd1306_handle_par_0xd5(struct srd_decoder_inst *di,
     int of = (param >> 4) & 0xf;
     int dr = (param & 0xf) + 1;
     const char *res = (of == 8) ? "(reset)" : "";
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Freq=%d, div ratio=%d %s", of, dr, res);
     c_put(di, s->ss, s->es, s->out_ann, ANN_DCR, buf);
     int pos = (int)strlen(s->blockstring);
@@ -562,14 +562,14 @@ static void ssd1306_handle_par_0xd9(struct srd_decoder_inst *di,
     int p1 = param & 0xf;
     int p2 = (param >> 4) & 0xf;
     if (p1 == 0 || p2 == 0) {
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "invalid precharge period = 0 (p1: %d, p2: %d)", p1, p2);
         c_put(di, s->ss_block, s->es, s->out_ann, ANN_WARN, buf);
         s->blockstring[0] = '\0';
     } else {
         const char *res1 = (p1 == 2) ? " (reset)" : "";
         const char *res2 = (p2 == 2) ? " (reset)" : "";
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "P1=%d%s, P2=%d%s", p1, res1, p2, res2);
         c_put(di, s->ss, s->es, s->out_ann, ANN_SPP, buf);
         int pos = (int)strlen(s->blockstring);
@@ -583,7 +583,7 @@ static void ssd1306_handle_par_0xda(struct srd_decoder_inst *di,
 {
     const char *seq = (param & 0x20) ? "sequential" : "alternative";
     const char *lrm = (param & 0x10) ? "no " : "";
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "COM pins: %s, %s L/R remap", seq, lrm);
     c_put(di, s->ss, s->es, s->out_ann, ANN_SCPI, buf);
     int pos = (int)strlen(s->blockstring);
@@ -679,6 +679,7 @@ static void ssd1306_handle_command(struct srd_decoder_inst *di,
 /* ===== recv_proto ===== */
 static void ssd1306_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     ssd1306_state *s = (ssd1306_state *)c_decoder_get_private(di);
     if (!s) return;
     s->ss = start_sample;

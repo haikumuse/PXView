@@ -228,7 +228,7 @@ static void bean_parse_frame(struct srd_decoder_inst *di, bean_state *s)
 
     /* byte_all */
     char byte_all_str[512];
-    uint64_t byte_all_ss, byte_all_es;
+    uint64_t byte_all_ss = 0, byte_all_es = 0;
     byte_all_str[0] = '\0';
 
     for (int i = 0; i < frame_length + 3 && i * 8 + 7 < s->bit_count; i++) {
@@ -325,7 +325,7 @@ static void bean_parse_frame(struct srd_decoder_inst *di, bean_state *s)
 
     /* Output bits */
     for (int i = 0; i < s->bit_count; i++) {
-        char bit_str[4];
+        char bit_str[16];
         snprintf(bit_str, sizeof(bit_str), " %d", s->bits[i]);
         int ann_class = s->bits[i] ? ANN_BIT1 : ANN_BIT0;
         c_put(di, s->bits_ss[i], s->bits_es[i], s->out_ann, ann_class, bit_str);

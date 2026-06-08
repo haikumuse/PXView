@@ -41,6 +41,7 @@ static const struct srd_c_ann_row nes_gamepad_ann_rows[] = {
 
 static void nes_gamepad_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     nes_gamepad_state *s = (nes_gamepad_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -48,7 +49,7 @@ static void nes_gamepad_recv_proto(struct srd_decoder_inst *di, uint64_t start_s
     if (strcmp(cmd, "DATA") != 0 || n_fields < 17)
         return;
 
-    int have_miso = (fields[0].u8 >> 1) & 1;
+    
     uint64_t miso_val = 0;
     for (int i = 0; i < 8; i++)
         miso_val |= ((uint64_t)fields[9 + i].u8 << (8 * i));
@@ -64,7 +65,7 @@ static void nes_gamepad_recv_proto(struct srd_decoder_inst *di, uint64_t start_s
         static const char *buttons[] = {
             "A", "B", "Select", "Start", "North", "South", "West", "East"
         };
-        char buf[128];
+        char buf[256];
         int pos = 0;
         for (int i = 0; i < 8; i++) {
             if (!(miso & (1 << i))) {

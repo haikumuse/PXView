@@ -250,6 +250,7 @@ static void ws281x_metadata(struct srd_decoder_inst *di, int key, uint64_t value
 
 static void ws281x_check_bit(ws281x_state *s, uint64_t samplenum)
 {
+    (void)samplenum;
     uint64_t period = samplenum - s->ss;
     uint64_t tH_samples = s->es - s->ss;
 
@@ -332,7 +333,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
             if ((di_samplenum(di) - s->es) > s->reset_threshold) {
                 /* Check bit value before RESET */
                 ws281x_check_bit(s, di_samplenum(di));
-                char bit_str[4];
+                char bit_str[16];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
                 c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
 
@@ -353,7 +354,7 @@ static void ws281x_decode(struct srd_decoder_inst *di)
         case STATE_BIT_RISING:
             ws281x_check_bit(s, di_samplenum(di));
             {
-                char bit_str[4];
+                char bit_str[16];
                 snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
                 c_put(di, s->ss, di_samplenum(di), s->out_ann, ANN_BIT, bit_str);
             }
@@ -388,7 +389,7 @@ static void ws281x_end(struct srd_decoder_inst *di)
     if (last_sample == 0)
         last_sample = s->last_samplenum;
     ws281x_check_bit(s, last_sample);
-    char bit_str[4];
+    char bit_str[16];
     snprintf(bit_str, sizeof(bit_str), "%d", s->bit_val);
     c_put(di, s->ss, s->es, s->out_ann, ANN_BIT, bit_str);
 

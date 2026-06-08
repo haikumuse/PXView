@@ -300,7 +300,7 @@ static void dmx_decode(struct srd_decoder_inst* di)
                             c_put(di, bs, be, s->out_ann, ANN_ERROR, "Invalid stop bit");
                         }
                     } else {
-                        char bit_str[4];
+                        char bit_str[16];
                         snprintf(bit_str, sizeof(bit_str), "%d", bit_val[i]);
                         c_put(di, bs, be, s->out_ann, ANN_BIT, bit_str);
                     }

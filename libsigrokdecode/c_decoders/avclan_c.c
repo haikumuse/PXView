@@ -344,7 +344,7 @@ static int pkt_comm_ctrl(struct srd_decoder_inst *di, avclan_state *s)
             if (s->num_data_bytes >= 2) {
                 int logic_id = s->data_bytes[1].b;
                 const char *lname = find_name(function_ids, FUNC_ID_COUNT, logic_id);
-                char t2[128];
+                char t2[256];
                 if (lname)
                     snprintf(t2, sizeof(t2), "Function: %s", lname);
                 else
@@ -362,7 +362,7 @@ static int pkt_comm_ctrl(struct srd_decoder_inst *di, avclan_state *s)
             for (int idx = 1; idx < s->num_data_bytes; idx++) {
                 int logical_addr = s->data_bytes[idx].b;
                 const char *lname = find_name(function_ids, FUNC_ID_COUNT, logical_addr);
-                char t2[128];
+                char t2[256];
                 if (lname)
                     snprintf(t2, sizeof(t2), "Function: %s", lname);
                 else
@@ -778,6 +778,7 @@ static void dispatch_packet(struct srd_decoder_inst *di, avclan_state *s)
 
 static void avclan_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     avclan_state *s = (avclan_state *)c_decoder_get_private(di);
     if (!s) return;
 

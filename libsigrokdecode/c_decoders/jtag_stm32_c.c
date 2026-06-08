@@ -110,7 +110,7 @@ static const struct srd_c_ann_row jtag_stm32_ann_rows[] = {
 static uint64_t bytes_to_uint64(const c_field *fields, int n_fields)
 {
     uint64_t val = 0;
-    for (uint64_t i = 0; i < n_fields && i < 8; i++)
+    for (uint64_t i = 0; i < (uint64_t)n_fields && i < 8; i++)
         val |= ((uint64_t)fields[i].u8) << (i * 8);
     return val;
 }
@@ -143,7 +143,7 @@ static void stm32_handle_idcode(struct srd_decoder_inst *di, jtag_stm32_state *s
     const char *manuf_str = ((cont_code + 1) == ARM_JEDEC_CONT_CODE &&
                              identity == ARM_JEDEC_ID_CODE) ? "ARM Ltd." : "UNKNOWN";
 
-    char buf[128];
+    char buf[256];
     snprintf(buf, sizeof(buf), "Continuation code: 0x%x", cont_code);
     c_put(di, s->ss, s->es, s->out_ann, ANN_FIELD, buf);
 
@@ -190,7 +190,7 @@ static void stm32_handle_dpacc_apacc(struct srd_decoder_inst *di, jtag_stm32_sta
 
     /* 35 bits: DATA[34:3] + A[2:1] + RnW[0] for TDI,
        or DATA[34:3] + ACK[2:0] for TDO */
-    const char *instr_name = is_apacc ? "APACC" : "DPACC";
+    
 
     if (strcmp(cmd, "DR TDI") == 0) {
         /* TDI: DATA[31:0] in bits[34:3], A[3:2] in bits[2:1], RnW in bit[0] */
@@ -201,7 +201,7 @@ static void stm32_handle_dpacc_apacc(struct srd_decoder_inst *di, jtag_stm32_sta
         int rnw = val & 0x01;
         const char *rw_str = rnw ? "Read request" : "Write request";
 
-        char buf[128];
+        char buf[256];
         if (is_apacc) {
             const char *ap_reg = apb_ap_reg_name(a * 4);
             if (ap_reg)
@@ -228,7 +228,7 @@ static void stm32_handle_dpacc_apacc(struct srd_decoder_inst *di, jtag_stm32_sta
         default:                 ack_str = "Reserved"; break;
         }
 
-        char buf[128];
+        char buf[256];
         snprintf(buf, sizeof(buf), "Previous transaction result: DATA: 0x%08X, ACK: %s",
                  (uint32_t)data_val, ack_str);
         c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
@@ -244,7 +244,7 @@ static void stm32_handle_abort(struct srd_decoder_inst *di, jtag_stm32_state *s,
     uint64_t val = bytes_to_uint64(fields, n_fields);
     int dapabort = val & 0x01;
 
-    char buf[128];
+    char buf[256];
     const char *a = dapabort ? "" : "No ";
     snprintf(buf, sizeof(buf), "DAPABORT = %d: %sDAP abort generated", dapabort, a);
     c_put(di, s->ss, s->es, s->out_ann, ANN_COMMAND, buf);
@@ -258,6 +258,7 @@ static void stm32_handle_abort(struct srd_decoder_inst *di, jtag_stm32_state *s,
 
 static void jtag_stm32_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     jtag_stm32_state *s = (jtag_stm32_state *)c_decoder_get_private(di);
     if (!s)
         return;

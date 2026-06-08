@@ -346,6 +346,7 @@ static void adf435x_decode_word(struct srd_decoder_inst *di, adf435x_state *s)
 
 static void adf435x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
+    (void)start_sample; (void)end_sample;
     adf435x_state *s = (adf435x_state *)c_decoder_get_private(di);
     if (!s) return;
 
@@ -357,7 +358,8 @@ static void adf435x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         if (n_fields < 2) return;
         int pos = 0;
         uint8_t flags = fields[pos++].u8;
-        int have_mosi = flags & 1;
+        int have_mosi = (flags & 1) ? 1 : 0;
+        
         if (have_mosi) {
             int mosi_count = (int)fields[pos++].u8;
             for (int i = 0; i < mosi_count && s->bit_count < 32 && pos + 17 <= (int)n_fields; i++) {
