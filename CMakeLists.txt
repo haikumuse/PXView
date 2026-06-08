@@ -212,7 +212,7 @@ find_package(Threads)
 
 set(PXView_SOURCES
     PXView/main.cpp
-    PXView/dsapplication.cpp
+    PXView/application.cpp
     PXView/pv/log.cpp
     PXView/pv/sigsession.cpp
     PXView/pv/sessionmanager.cpp
