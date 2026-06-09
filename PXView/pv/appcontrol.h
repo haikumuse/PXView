@@ -2,7 +2,7 @@
  * This file is part of the PXView project.
  * PXView is based on DSView.
  * PXView is based on PulseView.
- * 
+ *
  * Copyright (C) 2021 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,8 +29,17 @@
 struct sr_context;
 class QWidget;
 
-namespace pv{ 
+namespace pv{
     class SigSession;
+}
+
+namespace pv::api {
+    class IAppService;
+    class AppService;
+    class RpcDispatcher;
+    class WsTransport;
+    class McpTransport;
+    class DirectTransport;
 }
 
 class AppControl
@@ -51,11 +60,13 @@ public:
 
     void Stop();
 
-    void UnInit(); 
+    void UnInit();
 
     inline pv::SigSession*  GetSession(){
         return _session;
-    } 
+    }
+
+    pv::api::IAppService* GetAppService();
 
     inline void SetTopWindow(QWidget *w){
         _topWindow = w;
@@ -68,10 +79,17 @@ public:
     bool TopWindowIsMaximized();
 
 public:
-    std::string        _open_file_name; 
+    std::string        _open_file_name;
     QRect              _screenRect;
 
-private: 
+private:
     pv::SigSession      *_session;
-    QWidget             *_topWindow; 
+    QWidget             *_topWindow;
+
+    // API Service Layer
+    pv::api::AppService* _app_service = nullptr;
+    pv::api::RpcDispatcher* _rpc_dispatcher = nullptr;
+    pv::api::WsTransport* _ws_transport = nullptr;
+    pv::api::McpTransport* _mcp_transport = nullptr;
+    pv::api::DirectTransport* _direct_transport = nullptr;
 };

@@ -143,7 +143,6 @@ SigSession::SigSession() {
   _lissajous_trace = NULL;
   _math_trace = NULL;
   _bClose = false;
-  _callback = NULL;
   _work_time_id = 0;
   _capture_times = 0;
   _confirm_store_time_id = 0;
@@ -236,11 +235,11 @@ bool SigSession::set_default_device() {
 bool SigSession::set_device(ds_device_handle dev_handle) {
   assert(!_is_saving);
   assert(!_is_working);
-  assert(_callback);
+  assert(!_callbacks.empty());
 
   ds_device_handle old_dev = _device_agent.handle();
 
-  _callback->trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGE_PREV);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGE_PREV);
   // Release the old device.
   _device_agent.release();
   _device_status = ST_INIT;
@@ -272,26 +271,26 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   set_cur_samplelimits(_device_agent.get_sample_limit());
 
   // The current device changed.
-  _callback->trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGED);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGED);
 
   if (ds_get_last_error() == SR_ERR_DEVICE_FIRMWARE_VERSION_LOW) {
     QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_RECONNECT_FOR_FIRMWARE),
                          "Please reconnect the device!");
-    _callback->delay_prop_msg(strMsg);
+    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
     return false;
   }
 
   if (ds_get_last_error() == SR_ERR_FIRMWARE_NOT_EXIST) {
     QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FIRMWARE_NOT_EXIST),
                          "Firmware not exist!");
-    _callback->delay_prop_msg(strMsg);
+    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
     return false;
   }
 
   if (ds_get_last_error() == SR_ERR_DEVICE_USB_IO_ERROR) {
     QString strMsg =
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_USB_IO_ERROR), "USB io error!");
-    _callback->delay_prop_msg(strMsg);
+    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
     return false;
   }
 
@@ -301,7 +300,7 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
     if (old_dev != NULL_HANDLE)
       MsgBox::Show(strMsg);
     else
-      _callback->delay_prop_msg(strMsg);
+      for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
     return false;
   }
 
@@ -434,7 +433,7 @@ void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
     m->get_spectrum_stack()->set_samplerate(samplerate);
   }
 
-  _callback->cur_snap_samplerate_changed();
+  for (auto* cb : _callbacks) cb->cur_snap_samplerate_changed();
 }
 
 void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
@@ -445,7 +444,7 @@ void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
 void SigSession::capture_init() {
   // update instant setting
   _device_agent.set_config_bool(SR_CONF_INSTANT, _is_instant);
-  _callback->update_capture();
+  for (auto* cb : _callbacks) cb->update_capture();
 
   set_cur_snap_samplerate(_device_agent.get_sample_rate());
   set_cur_samplelimits(_device_agent.get_sample_limit());
@@ -494,7 +493,7 @@ bool SigSession::start_capture(bool instant) {
 }
 
 bool SigSession::action_start_capture(bool instant) {
-  assert(_callback);
+  assert(!_callbacks.empty());
 
   pxv_info("Start collect.");
 
@@ -572,7 +571,7 @@ bool SigSession::action_start_capture(bool instant) {
     _view_data->get_dso()->set_ref_range(ref_max, ref_min);
   }
 
-  _callback->trigger_message(DSV_MSG_CAPTURE_STATE_CHANGED);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CAPTURE_STATE_CHANGED);
 
   bool disk_cache_enabled = false;
   _device_agent.get_config_bool(SR_CONF_DISK_CACHE_ENABLE, disk_cache_enabled);
@@ -627,13 +626,13 @@ bool SigSession::action_start_capture(bool instant) {
   else
     _is_instant = instant;
 
-  _callback->trigger_message(DSV_MSG_START_COLLECT_WORK_PREV);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_START_COLLECT_WORK_PREV);
 
   if (exec_capture()) {
     _work_time_id++;
     _is_working = true;
     _capture_owner_document = _active_document;
-    _callback->trigger_message(DSV_MSG_START_COLLECT_WORK);
+    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_START_COLLECT_WORK);
 
     // Start a timer, for able to refresh the view per (1000 / 30)ms.
     if (is_realtime_refresh()) {
@@ -806,17 +805,17 @@ bool SigSession::action_stop_capture() {
 
     if (_repeat_hold_prg != 0 && is_repeat_mode()) {
       _repeat_hold_prg = 0;
-      _callback->repeat_hold(_repeat_hold_prg);
+      for (auto* cb : _callbacks) cb->repeat_hold(_repeat_hold_prg);
     }
 
-    _callback->trigger_message(DSV_MSG_END_COLLECT_WORK_PREV);
+    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_END_COLLECT_WORK_PREV);
 
     exit_capture();
 
     data_unlock();
 
     if (is_repeat_mode() && _device_status != ST_RUNNING) {
-      _callback->trigger_message(DSV_MSG_END_COLLECT_WORK);
+      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_END_COLLECT_WORK);
     }
 
     return true;
@@ -1136,7 +1135,7 @@ bool SigSession::get_data_auto_lock() { return _data_auto_lock != 0; }
 
 void SigSession::feed_in_header(const sr_dev_inst *sdi) {
   (void)sdi;
-  _callback->receive_header();
+  for (auto* cb : _callbacks) cb->receive_header();
 }
 
 void SigSession::feed_in_meta(const sr_dev_inst *sdi,
@@ -1164,7 +1163,7 @@ void SigSession::feed_in_trigger(const ds_trigger_pos &trigger_pos) {
 
       // Update trig position for current view.
       if (_capture_data == _view_data) {
-        _callback->receive_trigger(_capture_data->_trig_pos);
+        for (auto* cb : _callbacks) cb->receive_trigger(_capture_data->_trig_pos);
       }
     }
   } else {
@@ -1182,7 +1181,7 @@ void SigSession::feed_in_trigger(const ds_trigger_pos &trigger_pos) {
 
     _capture_data->_trig_pos =
         trigger_pos.real_pos * probe_count / probe_en_count;
-    _callback->receive_trigger(_capture_data->_trig_pos);
+    for (auto* cb : _callbacks) cb->receive_trigger(_capture_data->_trig_pos);
   }
 }
 
@@ -1210,7 +1209,7 @@ void SigSession::feed_in_logic(const sr_datafeed_logic &o) {
     // for logic will be notified. Currently the only user of
     // frame_began is DecoderStack, but in future we need to signal
     // this after both analog and logic sweeps have begun.
-    _callback->frame_began();
+    for (auto* cb : _callbacks) cb->frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_logic()->append_payload(o);
@@ -1218,7 +1217,7 @@ void SigSession::feed_in_logic(const sr_datafeed_logic &o) {
 
   if (_capture_data->get_logic()->memory_failed()) {
     _error = Malloc_err;
-    _callback->session_error();
+    for (auto* cb : _callbacks) cb->session_error();
     return;
   }
 
@@ -1259,7 +1258,7 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
     _capture_data->get_dso()->first_payload(
         o, _device_agent.get_sample_limit(), _device_agent.get_channels(),
         _is_instant, _device_agent.is_file());
-    _callback->frame_began();
+    for (auto* cb : _callbacks) cb->frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_dso()->append_payload(o);
@@ -1272,7 +1271,7 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
 
   if (_capture_data->get_dso()->memory_failed()) {
     _error = Malloc_err;
-    _callback->session_error();
+    for (auto* cb : _callbacks) cb->session_error();
     return;
   }
 
@@ -1313,7 +1312,7 @@ void SigSession::feed_in_analog(const sr_datafeed_analog &o) {
     // first payload
     _capture_data->get_analog()->first_payload(
         o, _device_agent.get_sample_limit(), _device_agent.get_channels());
-    _callback->frame_began();
+    for (auto* cb : _callbacks) cb->frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_analog()->append_payload(o);
@@ -1321,7 +1320,7 @@ void SigSession::feed_in_analog(const sr_datafeed_analog &o) {
 
   if (_capture_data->get_analog()->memory_failed()) {
     _error = Malloc_err;
-    _callback->session_error();
+    for (auto* cb : _callbacks) cb->session_error();
     return;
   }
 
@@ -1341,7 +1340,7 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
 
   if (packet->type != SR_DF_END && packet->status != SR_PKT_OK) {
     _error = Pkt_data_err;
-    _callback->session_error();
+    for (auto* cb : _callbacks) cb->session_error();
     return;
   }
 
@@ -1378,7 +1377,7 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
   case SR_DF_OVERFLOW: {
     if (_error == No_err) {
       _error = Data_overflow;
-      _callback->session_error();
+      for (auto* cb : _callbacks) cb->session_error();
     }
     break;
   }
@@ -1391,13 +1390,13 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
 
     if (packet->status != SR_PKT_OK) {
       _error = Pkt_data_err;
-      _callback->session_error();
+      for (auto* cb : _callbacks) cb->session_error();
     } else {
       int mode = _device_agent.get_work_mode();
 
       // Post a message to start all decode tasks.
       if (mode == LOGIC) {
-        _callback->trigger_message(DSV_MSG_REV_END_PACKET);
+        for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_REV_END_PACKET);
       } else {
         if (mode == DSO && _is_instant) {
           sr_status status;
@@ -1408,7 +1407,7 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
           }
         }
 
-        _callback->frame_ended();
+        for (auto* cb : _callbacks) cb->frame_ended();
       }
     }
 
@@ -1587,17 +1586,31 @@ void SigSession::remove_decoder(int index) {
       stacks.erase(sit);
   }
 
-  bool isRunning = trace->decoder()->IsRunning();
-
+  // Stop the decode work and mark for deletion
   remove_decode_task(trace);
+  trace->_delete_flag = true;
 
-  if (isRunning) {
-    // destroy it in thread
-    trace->_delete_flag = true;
-  } else {
+  // Check if the decode thread is still using this trace.
+  // We must NOT join threads here as that can deadlock
+  // (decode thread may need the main thread for Qt signals).
+  bool thread_holds_trace = false;
+  {
+    std::lock_guard<std::mutex> lock(_running_tasks_mutex);
+    for (auto *task : _running_tasks) {
+      if (task == trace) {
+        thread_holds_trace = true;
+        break;
+      }
+    }
+  }
+
+  if (!thread_holds_trace) {
+    // No thread is using this trace, safe to delete now
     delete trace;
     signals_changed();
   }
+  // If thread still holds the trace, decode_single_task will
+  // delete it via DESTROY_QT_LATER when it sees _delete_flag
 }
 
 void SigSession::remove_decoder_by_key_handel(void *handel) {
@@ -1698,7 +1711,7 @@ void SigSession::nodata_timeout() {
   int flag;
   _device_agent.get_config_byte(SR_CONF_TRIGGER_SOURCE, flag);
   if (flag != DSO_TRIGGER_AUTO) {
-    _callback->show_wait_trigger();
+    for (auto* cb : _callbacks) cb->show_wait_trigger();
   }
 }
 
@@ -1927,8 +1940,8 @@ void SigSession::device_lib_event_callback(int event) {
 }
 
 void SigSession::on_device_lib_event(int event) {
-  if (_callback == NULL) {
-    pxv_detail("The callback is null, so the device event was ignored.");
+  if (_callbacks.empty()) {
+    pxv_detail("The callback list is empty, so the device event was ignored.");
     return;
   }
 
@@ -1950,13 +1963,13 @@ void SigSession::on_device_lib_event(int event) {
     break;
 
   case DS_EV_COLLECT_TASK_START:
-    _callback->trigger_message(DSV_MSG_COLLECT_START);
+    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COLLECT_START);
     break;
 
   case DS_EV_COLLECT_TASK_END:
   case DS_EV_COLLECT_TASK_END_BY_ERROR:
   case DS_EV_COLLECT_TASK_END_BY_DETACHED: {
-    _callback->trigger_message(DSV_MSG_COLLECT_END);
+    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COLLECT_END);
 
     if (_capture_data->get_logic()->last_ended() == false)
       pxv_err("The collected data is error!");
@@ -1969,16 +1982,16 @@ void SigSession::on_device_lib_event(int event) {
 
     // trig next collect
     if (is_repeat_mode() && _is_working && event == DS_EV_COLLECT_TASK_END) {
-      _callback->trigger_message(DSV_MSG_TRIG_NEXT_COLLECT);
+      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_TRIG_NEXT_COLLECT);
     } else {
       _is_working = false;
       _is_instant = false;
-      _callback->trigger_message(DSV_MSG_END_COLLECT_WORK);
+      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_END_COLLECT_WORK);
     }
   } break;
 
   case DS_EV_NEW_DEVICE_ATTACH:
-    _callback->trigger_message(DSV_MSG_NEW_USB_DEVICE);
+    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_NEW_USB_DEVICE);
     break;
 
   case DS_EV_CURRENT_DEVICE_DETACH: {
@@ -1988,16 +2001,16 @@ void SigSession::on_device_lib_event(int event) {
       stop_capture();
     }
 
-    _callback->trigger_message(DSV_MSG_CURRENT_DEVICE_DETACHED);
+    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CURRENT_DEVICE_DETACHED);
   } break;
 
   case DS_EV_INACTIVE_DEVICE_DETACH:
-    _callback->trigger_message(
+    for (auto* cb : _callbacks) cb->trigger_message(
         DSV_MSG_DEVICE_LIST_UPDATED); // Update list only.
     break;
 
   case DS_EV_DEVICE_SPEED_NOT_MATCH:
-    _callback->trigger_message(DS_EV_DEVICE_SPEED_NOT_MATCH);
+    for (auto* cb : _callbacks) cb->trigger_message(DS_EV_DEVICE_SPEED_NOT_MATCH);
     break;
 
   default:
@@ -2008,6 +2021,12 @@ void SigSession::on_device_lib_event(int event) {
 
 void SigSession::add_msg_listener(IMessageListener *ln) {
   _msg_listeners.push_back(ln);
+}
+
+void SigSession::remove_callback(ISessionCallback *callback) {
+  auto it = std::find(_callbacks.begin(), _callbacks.end(), callback);
+  if (it != _callbacks.end())
+    _callbacks.erase(it);
 }
 
 void SigSession::broadcast_msg(int msg) {
@@ -2024,7 +2043,7 @@ void SigSession::set_collect_mode(DEVICE_COLLECT_MODE m) {
     _repeat_hold_prg = 0;
   }
 
-  _callback->trigger_message(DSV_MSG_COLLECT_MODE_CHANGED);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COLLECT_MODE_CHANGED);
 }
 
 void SigSession::repeat_capture_wait_timeout() {
@@ -2034,7 +2053,7 @@ void SigSession::repeat_capture_wait_timeout() {
   _repeat_hold_prg = 0;
 
   if (_is_working) {
-    _callback->repeat_hold(_repeat_hold_prg);
+    for (auto* cb : _callbacks) cb->repeat_hold(_repeat_hold_prg);
     exec_capture();
   }
 }
@@ -2046,7 +2065,7 @@ void SigSession::repeat_wait_prog_timeout() {
     _repeat_hold_prg = 0;
 
   if (_is_working)
-    _callback->repeat_hold(_repeat_hold_prg);
+    for (auto* cb : _callbacks) cb->repeat_hold(_repeat_hold_prg);
 }
 
 void SigSession::OnMessage(int msg) {
@@ -2126,10 +2145,10 @@ void SigSession::OnMessage(int msg) {
         attach_data_to_signal(_view_data);
         set_session_time(_trig_time);
 
-        _callback->receive_trigger(
+        for (auto* cb : _callbacks) cb->receive_trigger(
             _view_data->_trig_pos); // Update trig position.
 
-        _callback->trigger_message(DSV_MSG_DATA_POOL_CHANGED);
+        for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_DATA_POOL_CHANGED);
       }
 
       if (bAddDecoder && _active_document) {
@@ -2141,7 +2160,7 @@ void SigSession::OnMessage(int msg) {
         std::thread([this, doc]() {
           copy_data_to_document(doc);
           _copy_in_progress = false;
-          _callback->trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
+          for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
         }).detach();
       } else {
         _capture_owner_document = nullptr;
@@ -2150,7 +2169,7 @@ void SigSession::OnMessage(int msg) {
         }
       }
 
-      _callback->frame_ended();
+      for (auto* cb : _callbacks) cb->frame_ended();
     }
   } break;
 
@@ -2172,7 +2191,7 @@ void SigSession::OnMessage(int msg) {
   case DS_EV_DEVICE_SPEED_NOT_MATCH: {
     QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_SPEED_TOO_LOW),
                        "Speed too low!"));
-    _callback->delay_prop_msg(strMsg);
+    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
   } break;
   }
 }
@@ -2249,7 +2268,7 @@ void SigSession::clear_decode_result() {
     de->decoder()->init();
     de->decoder()->set_capture_end_flag(false);
   }
-  _callback->trigger_message(DSV_MSG_CLEAR_DECODE_DATA);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CLEAR_DECODE_DATA);
 }
 
 void SigSession::clear_signals() {
@@ -2479,7 +2498,7 @@ void SigSession::set_glitch_filter(
     return;
 
   _glitch_filter_running = true;
-  _callback->trigger_message(DSV_MSG_GLITCH_FILTER_STARTED);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_STARTED);
 
   if (_glitch_filter_thread) {
     _glitch_filter_thread->join();
@@ -2500,7 +2519,7 @@ void SigSession::glitch_filter_task(
       delete _view_data->_logic_backup;
       _view_data->_logic_backup = nullptr;
       _glitch_filter_running = false;
-      _callback->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
+      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
       return;
     }
   } else {
@@ -2526,7 +2545,7 @@ void SigSession::glitch_filter_task(
       thresholds,
       [this](int progress) {
         (void)progress;
-        _callback->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS);
+        for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS);
       },
       filter_modes);
 
@@ -2535,8 +2554,8 @@ void SigSession::glitch_filter_task(
   _view_data->_glitch_filter_modes = filter_modes;
   _glitch_filter_running = false;
 
-  _callback->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
-  _callback->data_updated();
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
+  for (auto* cb : _callbacks) cb->data_updated();
 }
 
 void SigSession::clear_glitch_filter() {
@@ -2556,8 +2575,8 @@ void SigSession::clear_glitch_filter() {
   _view_data->_glitch_filter_thresholds.clear();
   _view_data->_glitch_filter_modes.clear();
 
-  _callback->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
-  _callback->data_updated();
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
+  for (auto* cb : _callbacks) cb->data_updated();
 }
 
 bool SigSession::is_glitch_filter_active() {
@@ -2582,7 +2601,7 @@ void SigSession::set_signal_invert(const std::vector<bool> &channels) {
     return;
 
   _signal_invert_running = true;
-  _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_STARTED);
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_STARTED);
 
   if (_signal_invert_thread) {
     _signal_invert_thread->join();
@@ -2601,7 +2620,7 @@ void SigSession::signal_invert_task(const std::vector<bool> channels) {
       delete _view_data->_logic_backup;
       _view_data->_logic_backup = nullptr;
       _signal_invert_running = false;
-      _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
+      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
       return;
     }
   } else {
@@ -2631,8 +2650,8 @@ void SigSession::signal_invert_task(const std::vector<bool> channels) {
   _view_data->_signal_invert_channels = channels;
   _signal_invert_running = false;
 
-  _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
-  _callback->data_updated();
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
+  for (auto* cb : _callbacks) cb->data_updated();
 }
 
 void SigSession::clear_signal_invert() {
@@ -2658,8 +2677,8 @@ void SigSession::clear_signal_invert() {
   _view_data->_signal_invert_active = false;
   _view_data->_signal_invert_channels.clear();
 
-  _callback->trigger_message(DSV_MSG_SIGNAL_INVERT_CLEARED);
-  _callback->data_updated();
+  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_CLEARED);
+  for (auto* cb : _callbacks) cb->data_updated();
 }
 
 bool SigSession::is_signal_invert_active() {

@@ -85,6 +85,10 @@ public:
         return _file_name;
     }
 
+    inline void SetFileName(const QString &name){
+        _file_name = name;
+    }
+
     bool IsLogicDataType();
 
     inline void SetDataRange(uint64_t start_index, uint64_t end_index){
@@ -94,6 +98,22 @@ public:
 
     inline bool is_busy(){
         return _is_busy;
+    }
+
+    inline void set_analog_downsample_ratio(uint64_t ratio){
+        _analog_downsample_ratio = ratio;
+    }
+
+    inline uint64_t get_analog_downsample_ratio() const {
+        return _analog_downsample_ratio;
+    }
+
+    inline void set_iso8601_timestamp(bool enabled){
+        _iso8601_timestamp = enabled;
+    }
+
+    inline bool get_iso8601_timestamp() const {
+        return _iso8601_timestamp;
     }
 
 private:
@@ -123,6 +143,8 @@ private:
     uint64_t        _start_index;
     uint64_t        _end_index;
     volatile bool   _is_busy;
+    uint64_t        _analog_downsample_ratio = 1;
+    bool            _iso8601_timestamp = false;
 };
 
 } // pv

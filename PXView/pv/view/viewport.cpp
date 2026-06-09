@@ -42,6 +42,7 @@
 #include <QScrollBar>
 #include <QStyleOption>
 #include <QWheelEvent>
+#include <QKeyEvent>
 #include <math.h>
 #include <set>
 
@@ -222,7 +223,7 @@ Viewport::Viewport(View &parent, View_type type)
       _resize_upper_height(0), _resize_lower_height(0), _curs_moved(false),
       _xcurs_moved(false), _curVOffset(0), _max_frame_time(0), _fps(0),
       g_drag_active(false), _is_idle(true), _paint_in_this_second(0),
-      _drag_frame_pending(false) {
+      _drag_frame_pending(false), _hover_logic_signal(nullptr) {
   _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
   if (!_panelBgColor.isValid())
     _panelBgColor = QColor("#1a1a1a");
@@ -233,6 +234,7 @@ Viewport::Viewport(View &parent, View_type type)
   setMouseTracking(true);
   setAutoFillBackground(true);
   setBackgroundRole(QPalette::Base);
+  setFocusPolicy(Qt::StrongFocus);
 
   // setFixedSize(QSize(600, 400));
   _mm_width = View::Unknown_Str;
@@ -284,6 +286,16 @@ Viewport::Viewport(View &parent, View_type type)
   _drag_frame_timer.setSingleShot(true);
   connect(&_drag_frame_timer, &QTimer::timeout, this,
           &Viewport::applyDragFrame);
+
+  // Edge navigation buttons
+  _prev_edge_btn = new EdgeNavButton(EdgeNavButton::Previous, this);
+  _next_edge_btn = new EdgeNavButton(EdgeNavButton::Next, this);
+  _prev_edge_btn->hide();
+  _next_edge_btn->hide();
+  connect(_prev_edge_btn, &EdgeNavButton::clicked, this,
+          [this]() { navigate_to_edge(EdgeNavButton::Previous); });
+  connect(_next_edge_btn, &EdgeNavButton::clicked, this,
+          [this]() { navigate_to_edge(EdgeNavButton::Next); });
 
   ADD_UI(this);
 }
@@ -1374,6 +1386,8 @@ void Viewport::mouseMoveEvent(QMouseEvent *event) {
 
   measure();
 
+  update_edge_nav_buttons();
+
   update(UpdateEventType::UPDATE_EV_MS_MOVE);
 }
 
@@ -1843,6 +1857,11 @@ void Viewport::wheelEvent(QWheelEvent *event) {
       return;
     }
 
+    if (event->modifiers() & Qt::AltModifier) {
+      _view.set_scale_offset(_view.scale(), _view.offset() - delta);
+      return;
+    }
+
     if (isVertical) {
       // Vertical scrolling is interpreted as zooming in/out
 #ifdef Q_OS_DARWIN
@@ -1934,6 +1953,28 @@ void Viewport::leaveEvent(QEvent *) {
   }
 
   clear_measure();
+
+  // Hide edge navigation buttons when mouse leaves
+  _hover_logic_signal = nullptr;
+  _prev_edge_btn->hide();
+  _next_edge_btn->hide();
+}
+
+void Viewport::keyPressEvent(QKeyEvent *event) {
+  // Alt+Left / Alt+Right for edge navigation
+  if (event->modifiers() & Qt::AltModifier) {
+    if (_hover_logic_signal && _view.get_work_mode() == LOGIC &&
+        _view.session().is_stopped_status()) {
+      if (event->key() == Qt::Key_Left) {
+        navigate_to_edge(EdgeNavButton::Previous);
+        return;
+      } else if (event->key() == Qt::Key_Right) {
+        navigate_to_edge(EdgeNavButton::Next);
+        return;
+      }
+    }
+  }
+  QWidget::keyPressEvent(event);
 }
 
 void Viewport::resizeEvent(QResizeEvent *e) {
@@ -2696,6 +2737,10 @@ void Viewport::UpdateTheme() {
   _panelTextColor = AppConfig::Instance().GetThemeColor("@panel-text");
   if (!_panelTextColor.isValid())
     _panelTextColor = QColor("#f5f0e5");
+
+  _prev_edge_btn->UpdateTheme();
+  _next_edge_btn->UpdateTheme();
+
   update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
@@ -2706,6 +2751,144 @@ void Viewport::UpdateFont() {
 }
 
 int Viewport::get_fps() { return _fps; }
+
+LogicSignal *Viewport::get_hovered_logic_signal(const QPoint &pos) {
+  if (_type != TIME_VIEW)
+    return nullptr;
+  if (_view.get_work_mode() != LOGIC)
+    return nullptr;
+  if (!_view.session().is_stopped_status())
+    return nullptr;
+
+  int mouseY = pos.y() + _view.get_vOffset();
+  for (auto s : _view.get_own_signals()) {
+    if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled()) {
+      int sigY = s->get_v_offset();
+      int halfH = s->get_totalHeight() / 2 + View::SignalMargin;
+      if (abs(mouseY - sigY) < halfH) {
+        return (LogicSignal *)s;
+      }
+    }
+  }
+  return nullptr;
+}
+
+void Viewport::update_edge_nav_buttons() {
+  if (_type != TIME_VIEW || _view.get_work_mode() != LOGIC ||
+      !_view.session().is_stopped_status()) {
+    _prev_edge_btn->hide();
+    _next_edge_btn->hide();
+    _hover_logic_signal = nullptr;
+    return;
+  }
+
+  QPoint screenPos = _mouse_point - QPoint(0, _view.get_vOffset());
+  LogicSignal *sig = get_hovered_logic_signal(screenPos);
+  if (!sig || !sig->data() || sig->data()->empty()) {
+    _prev_edge_btn->hide();
+    _next_edge_btn->hide();
+    _hover_logic_signal = nullptr;
+    return;
+  }
+
+  _hover_logic_signal = sig;
+
+  // Position buttons vertically centered on the signal row
+  int sigY = sig->get_v_offset() - _view.get_vOffset();
+  int halfH = sig->get_totalHeight() / 2;
+  int btnY = sigY - halfH + (sig->get_totalHeight() - _prev_edge_btn->height()) / 2;
+  const int hOffset = 5;
+
+  _prev_edge_btn->move(hOffset, btnY);
+  _next_edge_btn->move(width() - _next_edge_btn->width() - hOffset, btnY);
+
+  // Check if previous/next edges exist outside the viewport
+  auto *snapshot = sig->data();
+  int sig_index = sig->get_index();
+  uint64_t end = snapshot->get_ring_sample_count() - 1;
+
+  // Get current viewport boundaries in sample indices
+  uint64_t leftIndex = _view.pixel2index(0);
+  uint64_t rightIndex = _view.pixel2index(_view.get_view_width());
+
+  // Check previous edge: search backward from the left edge of viewport
+  bool hasPrev = false;
+  if (leftIndex > 0) {
+    uint64_t searchIdx = leftIndex;
+    bool sample = snapshot->get_sample(searchIdx, sig_index);
+    hasPrev = snapshot->get_pre_edge(searchIdx, sample, 1, sig_index);
+  }
+
+  // Check next edge: search forward from the right edge of viewport
+  bool hasNext = false;
+  if (rightIndex < end) {
+    uint64_t searchIdx = rightIndex;
+    bool sample = snapshot->get_sample(searchIdx, sig_index);
+    hasNext = snapshot->get_nxt_edge(searchIdx, sample, end, 1, sig_index);
+  }
+
+  _prev_edge_btn->setEnabled(hasPrev);
+  _next_edge_btn->setEnabled(hasNext);
+  _prev_edge_btn->setVisible(true);
+  _next_edge_btn->setVisible(true);
+}
+
+void Viewport::navigate_to_edge(EdgeNavButton::Direction dir) {
+  if (!_hover_logic_signal)
+    return;
+
+  auto *snapshot = _hover_logic_signal->data();
+  if (!snapshot || snapshot->empty())
+    return;
+
+  int sig_index = _hover_logic_signal->get_index();
+  uint64_t end = snapshot->get_ring_sample_count() - 1;
+
+  // Start searching from the viewport edge (consistent with Logic 2:
+  // next edge searches from right edge, previous edge searches from left edge)
+  uint64_t searchIdx;
+  if (dir == EdgeNavButton::Next) {
+    searchIdx = _view.pixel2index(_view.get_view_width());
+  } else {
+    searchIdx = _view.pixel2index(0);
+  }
+
+  if (searchIdx > end)
+    return;
+
+  bool sample = snapshot->get_sample(searchIdx, sig_index);
+  bool found = false;
+
+  if (dir == EdgeNavButton::Next) {
+    found = snapshot->get_nxt_edge(searchIdx, sample, end, 1, sig_index);
+  } else {
+    found = snapshot->get_pre_edge(searchIdx, sample, 1, sig_index);
+  }
+
+  if (!found)
+    return;
+
+  // Move search cursor to the found edge
+  _view.show_search_cursor(true);
+  _view.get_search_cursor()->set_index(searchIdx);
+
+  // Calculate offset to place the edge at 25% position
+  const double time =
+      searchIdx * 1.0 / _view.session().cur_snap_samplerate();
+  int viewWidth = _view.get_view_width();
+  double scale = _view.scale();
+
+  int64_t newOffset;
+  if (dir == EdgeNavButton::Next) {
+    // Place edge at left 25%
+    newOffset = (int64_t)(time / scale - viewWidth * 0.25);
+  } else {
+    // Place edge at right 25%
+    newOffset = (int64_t)(time / scale - viewWidth * 0.75);
+  }
+
+  _view.set_scale_offset(scale, newOffset);
+}
 
 } // namespace view
 } // namespace pv

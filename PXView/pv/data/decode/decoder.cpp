@@ -34,7 +34,7 @@ void Decoder::set_option(const char *id, GVariant *value)
     if (_options[id]) {
         g_variant_unref(_options[id]);
     }
-	g_variant_ref(value);
+	g_variant_ref_sink(value);
     _options[id] = value;
 }
 
