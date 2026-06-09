@@ -102,6 +102,7 @@
 /* __STDC_FORMAT_MACROS is required for PRIu64 and friends (in C++). */
 #include "ZipMaker.h"
 #include "appcontrol.h"
+#include "api/app_service.h"
 #include "config/appconfig.h"
 #include "config/shortcutdefs.h"
 #include "deviceagent.h"
@@ -254,7 +255,7 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   _title_bar = title_bar;
 
   _session = AppControl::Instance()->GetSession();
-  _session->set_callback(this);
+  _session->add_callback(this);
   _device_agent = _session->get_device();
   _session->add_msg_listener(this);
 
@@ -274,6 +275,17 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   _last_key_press_time = high_resolution_clock::now();
 
     update_title_bar_text();
+
+    // Register new-tab callback with AppService so MCP API can create tabs
+    auto* app_svc = AppControl::Instance()->GetAppService();
+    if (app_svc) {
+        auto* concrete = dynamic_cast<pv::api::AppService*>(app_svc);
+        if (concrete) {
+            concrete->set_new_tab_callback([this]() {
+                on_new_tab_requested();
+            });
+        }
+    }
 }
 
 MainWindow::~MainWindow() {

@@ -1,0 +1,32 @@
+- [ ] McpTransport 支持 MCP 协议握手（initialize → 返回 protocolVersion/capabilities/serverInfo）
+- [ ] McpTransport 支持 tools/list（返回 15 个工具的 name/description/inputSchema）
+- [ ] McpTransport 支持 tools/call（从 params.name + params.arguments 路由到处理器）
+- [ ] McpTransport 支持 notifications/initialized（返回 204 无 body）
+- [ ] McpTransport 支持 ping 方法
+- [ ] MCP 错误响应使用标准格式（isError: true + content 数组）
+- [ ] MCP 成功响应使用标准格式（content 数组）
+- [ ] wait_capture 工具可阻塞等待采集完成
+- [ ] wait_capture 在采集已完成时立即返回
+- [ ] wait_capture 在无活动采集时返回错误
+- [ ] start_capture 支持 logicDeviceConfiguration 参数（通道/采样率/阈值/毛刺滤波）
+- [ ] start_capture 支持 captureConfiguration 参数（手动/定时/触发模式）
+- [ ] start_capture 返回 captureId
+- [ ] close_capture 工具可关闭会话释放资源
+- [ ] export_raw_data_csv 支持 analogDownsampleRatio 和 iso8601Timestamp 参数
+- [ ] export_raw_data_binary 工具可导出原始二进制数据
+- [ ] export_data_table_csv 工具可导出解码结果数据表（支持进制选择）
+- [ ] add_decoder 等待解码完成后再返回
+- [ ] add_decoder 解码失败时自动移除已添加的解码器
+- [ ] add_decoder 支持 analyzerLabel 参数
+- [ ] WebSocket 推送采集进度事件（on_capture_progress）
+- [ ] WebSocket 推送解码进度事件（on_decode_progress）
+- [ ] WebSocket 推送状态变更事件（on_capture_state_changed）
+- [ ] McpTransport 支持 SSE 流式响应（wait_capture 使用 SSE 推送进度）
+- [ ] 纯 UI 方法（zoom_fit/zoom_in/zoom_out）已从 MCP 工具列表移除
+- [ ] 项目可成功编译（build_incremental.cmd）
+- [ ] MCP 端口 10530 可连接且 initialize 握手成功
+- [ ] tools/list 返回完整工具列表
+- [ ] tools/call get_devices 返回设备列表
+- [ ] tools/call start_capture 可启动采集
+- [ ] tools/call wait_capture 可阻塞等待采集完成
+- [ ] 现有 Qt 桌面 UI 功能不受影响

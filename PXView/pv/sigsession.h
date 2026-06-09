@@ -154,7 +154,10 @@ public:
 
   inline DeviceAgent *get_device() { return &_device_agent; }
 
-  inline void set_callback(ISessionCallback *callback) { _callback = callback; }
+  void add_callback(ISessionCallback *callback) { _callbacks.push_back(callback); }
+  void remove_callback(ISessionCallback *callback);
+  // Deprecated: use add_callback instead
+  void set_callback(ISessionCallback *callback) { add_callback(callback); }
 
   bool init();
   void uninit();
@@ -308,13 +311,13 @@ public:
     return _clt_mode == COLLECT_REPEAT && !_is_instant;
   }
 
-  inline void session_save() { _callback->session_save(); }
+  inline void session_save() { for (auto* cb : _callbacks) cb->session_save(); }
 
   inline void show_region(uint64_t start, uint64_t end, bool keep) {
-    _callback->show_region(start, end, keep);
+    for (auto* cb : _callbacks) cb->show_region(start, end, keep);
   }
 
-  inline void decode_done() { _callback->decode_done(); }
+  inline void decode_done() { for (auto* cb : _callbacks) cb->decode_done(); }
 
   inline bool is_saving() { return _is_saving; }
 
@@ -332,7 +335,7 @@ public:
 
   inline bool is_single_buffer() { return _view_data == _capture_data; }
 
-  inline void update_view() { _callback->data_updated(); }
+  inline void update_view() { for (auto* cb : _callbacks) cb->data_updated(); }
 
   void auto_end();
   bool have_hardware_data();
@@ -361,7 +364,15 @@ public:
     _decoder_pannel = pannel;
   }
 
+  void rebuild_decoder_pannel() {
+    if (_decoder_pannel)
+      _decoder_pannel->rebuild_layers();
+  }
+
   void update_dso_data_scale();
+
+  void add_decode_task(view::DecodeTrace *trace);
+  void remove_decode_task(view::DecodeTrace *trace);
 
   inline sr_status get_dso_status() { return _dso_status; }
 
@@ -424,16 +435,14 @@ private:
   bool exec_capture();
   void exit_capture();
 
-  inline void data_updated() { _callback->data_updated(); }
+  inline void data_updated() { for (auto* cb : _callbacks) cb->data_updated(); }
 
-  inline void signals_changed() { _callback->signals_changed(); }
+  inline void signals_changed() { for (auto* cb : _callbacks) cb->signals_changed(); }
 
   inline void set_receive_data_len(quint64 len) {
-    _callback->receive_data_len(len);
+    for (auto* cb : _callbacks) cb->receive_data_len(len);
   }
 
-  void add_decode_task(view::DecodeTrace *trace);
-  void remove_decode_task(view::DecodeTrace *trace);
   void clear_all_decode_task(int &runningDex);
 
   inline void clear_all_decode_task2() {
@@ -566,7 +575,7 @@ private:
   bool _is_action;
   uint64_t _dso_packet_count;
 
-  ISessionCallback *_callback;
+  std::vector<ISessionCallback*> _callbacks;
   DeviceAgent _device_agent;
   std::vector<IMessageListener *> _msg_listeners;
   DeviceEventObject _device_event;

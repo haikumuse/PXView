@@ -36,6 +36,12 @@
 #include "utility/path.h"
 #include "utility/encoding.h"
 #include "data/leaf_block_pool.h"
+#include "api/iapp_service.h"
+#include "api/app_service.h"
+#include "api/rpc_dispatcher.h"
+#include "api/ws_transport.h"
+#include "api/mcp_transport.h"
+#include "api/direct_transport.h"
 
 AppControl::AppControl()
 {
@@ -151,14 +157,40 @@ bool AppControl::Init()
 }
 
 bool AppControl::Start()
-{  
-    _session->Open(); 
+{
+    _session->Open();
+
+    // Initialize API Service Layer
+    _app_service = new pv::api::AppService(this);
+    _app_service->initialize();
+
+    _rpc_dispatcher = new pv::api::RpcDispatcher(_app_service);
+
+    _ws_transport = new pv::api::WsTransport(_rpc_dispatcher, 10430);
+    _ws_transport->start();
+
+    _mcp_transport = new pv::api::McpTransport(_rpc_dispatcher, 10530);
+    _mcp_transport->start();
+
+    auto* active_session = _app_service->get_active_session();
+    if (active_session) {
+        _direct_transport = new pv::api::DirectTransport(active_session);
+        active_session->add_event_listener(_ws_transport);
+    }
+
     return true;
 }
 
  void AppControl::Stop()
  {
-    _session->Close();  
+    // Cleanup API Service Layer
+    if (_ws_transport) { _ws_transport->stop(); delete _ws_transport; _ws_transport = nullptr; }
+    if (_mcp_transport) { _mcp_transport->stop(); delete _mcp_transport; _mcp_transport = nullptr; }
+    if (_direct_transport) { delete _direct_transport; _direct_transport = nullptr; }
+    if (_rpc_dispatcher) { delete _rpc_dispatcher; _rpc_dispatcher = nullptr; }
+    if (_app_service) { _app_service->shutdown(); delete _app_service; _app_service = nullptr; }
+
+    _session->Close();
  }
 
 void AppControl::UnInit()
@@ -175,4 +207,8 @@ bool AppControl::TopWindowIsMaximized()
         return _topWindow->isMaximized();
     }
     return false;
+}
+
+pv::api::IAppService* AppControl::GetAppService() {
+    return _app_service;
 }

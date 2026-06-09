@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"add_analyzer","arguments":{"analyzerName":"spi","analyzerLabel":"spi_test"}},"id":22}

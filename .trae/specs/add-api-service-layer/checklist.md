@@ -1,0 +1,43 @@
+- [ ] types.h 中所有枚举类型已定义（WorkMode, CaptureState, CollectMode, ChannelType, TriggerSlope, TriggerSource, Coupling, GlitchFilterMode, ErrorCode, ServiceEvent）
+- [ ] Result<T> 模板和 Result<void> 特化可正确编译，Success/Fail 静态方法工作正常
+- [ ] 所有数据结构体已定义且无 Qt 依赖（无 QString/QDateTime/QJsonObject 等）
+- [ ] IServiceEventListener 接口已定义
+- [ ] ISessionService 接口覆盖 21 个功能域的所有方法声明
+- [ ] ISessionService 所有方法返回 Result<T> 或值类型，不暴露 Qt 类型或原始指针
+- [ ] IAppService 接口覆盖 5 个功能域的所有方法声明
+- [ ] SigSession::_callback 已改为 std::vector<ISessionCallback*> _callbacks
+- [ ] SigSession::add_callback() 和 remove_callback() 方法已添加
+- [ ] SigSession::set_callback() 保留为兼容方法
+- [ ] SigSession 所有回调通知方法遍历 _callbacks vector
+- [ ] MainWindow 构造中 set_callback(this) 已改为 add_callback(this)
+- [ ] SessionService 实现了 ISessionCallback 接口，回调正确转发为 ServiceEvent
+- [ ] SessionService 实现了 IMessageListener 接口，DSV_MSG_* 正确映射为 ServiceEvent
+- [ ] SessionService::get_capture_state() 正确将 bool 标志位映射为 CaptureState 状态机
+- [ ] SessionService::get_device_info() 正确将 DeviceAgent 的 QString 字段转为 std::string
+- [ ] SessionService::get_channels() 正确将 GSList* 转为 std::vector<ChannelInfo>
+- [ ] SessionService::get_logic_samples() 能正确读取 LogicSnapshot 数据
+- [ ] SessionService::add_decoder() 能正确调用 SigSession::add_decoder 并返回实例 ID
+- [ ] AppService::get_device_list() 正确将 ds_device_base_info 转为 DeviceInfo
+- [ ] AppService::create_session() 能创建 SessionService 实例并注册
+- [ ] AppService::get_active_session() 能返回当前活动标签页的 ISessionService
+- [ ] ITransport 和 IJsonRpcHandler 接口已定义
+- [ ] JsonRpcRequest/JsonRpcResponse 结构体已定义
+- [ ] RpcDispatcher 能正确分发所有 P0 阶段的 JSON-RPC 方法
+- [ ] RpcDispatcher 的 Result<T> → JsonRpcResponse 转换正确（成功/失败两种路径）
+- [ ] WsTransport 能在 127.0.0.1:10430 监听 WebSocket 连接
+- [ ] WsTransport 能接收 JSON-RPC 请求并返回响应
+- [ ] WsTransport 能广播 ServiceEvent 事件给所有已连接客户端
+- [ ] McpTransport 能在 127.0.0.1:10530 监听 HTTP POST 请求
+- [ ] McpTransport 能解析 HTTP 请求体中的 JSON-RPC 消息
+- [ ] DirectTransport 能直接调用 ISessionService 方法，零序列化开销
+- [ ] AppControl::Start() 中创建了 AppService、RpcDispatcher、三种 Transport
+- [ ] WsTransport 已注册为 SessionService 的事件监听器
+- [ ] AppControl::Close() 中正确停止并清理所有组件
+- [ ] CMakeLists.txt 包含 pv/api/ 目录下所有新源文件
+- [ ] CMakeLists.txt 包含 Qt6::WebSockets 模块依赖
+- [ ] 项目能通过 build_incremental.cmd 成功编译
+- [ ] 启动 PXView 后 WebSocket 端口 10430 可连接
+- [ ] 启动 PXView 后 MCP 端口 10530 可连接
+- [ ] 通过 WebSocket 发送 get_devices 请求能返回设备列表 JSON
+- [ ] 通过 WebSocket 发送 start_capture 请求能启动采集
+- [ ] 现有 Qt 桌面 UI 功能不受影响（回归测试）

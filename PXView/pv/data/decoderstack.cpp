@@ -30,19 +30,12 @@
 #include "../ui/langresource.h"
 #include "../view/logicsignal.h"
 #include "decode/annotation.h"
-#include "decode/annotation_pool.h"
 #include "decode/decoder.h"
 #include "decode/rowdata.h"
 #include "decoderstack.h"
 #include "logicsnapshot.h"
-#include "leaf_block_pool.h"
 #include "sessiondocument.h"
 #include <ds_types.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <psapi.h>
-#endif
 
 using namespace pv::data::decode;
 using namespace std;
@@ -648,60 +641,6 @@ void DecoderStack::decode_data(const uint64_t decode_start,
 
   pxv_info("%s%llu", "send to decoder times: ", (u64_t)entry_cnt);
 
-  uint64_t total_annotations = 0;
-  uint64_t total_capacity = 0;
-  for (auto &kv : _rows) {
-      if (kv.second) {
-          total_annotations += kv.second->get_annotation_size();
-          total_capacity += kv.second->get_annotation_capacity();
-      }
-  }
-  
-  pxv_info("DEBUG PROBE: Decode End.");
-  pxv_info("DEBUG PROBE: Total Annotations: %llu", (unsigned long long)total_annotations);
-  pxv_info("DEBUG PROBE: Total Vector Capacity: %llu", (unsigned long long)total_capacity);
-
-  // === Comprehensive Memory Breakdown ===
-  auto &pool = decode::AnnotationPool::instance();
-  pxv_info("DEBUG MEM [1/5] Annotation Pool: alloc=%zu free=%zu chunks=%zu pool_memory=%zu MB",
-           pool.alloc_count(), pool.free_count(), pool.chunk_count(),
-           pool.total_memory_bytes() / (1024*1024));
-
-  // ResTable: count unique entries and estimate their memory
-  uint64_t restable_items = 0;
-  uint64_t restable_str_bytes = 0;
-  if (_decoder_status) {
-      restable_items = _decoder_status->m_resTable.GetCount();
-      // Estimate memory: each AnnotationSourceItem is ~128 bytes + QString data + hex string
-      // Plus the std::map<std::string, int> index overhead (~80 bytes/entry for RB tree nodes + key)
-      restable_str_bytes = restable_items * (128 + 80); // conservative base estimate
-  }
-  pxv_info("DEBUG MEM [2/5] ResTable: unique_items=%llu, estimated_base=%llu MB",
-           (unsigned long long)restable_items,
-           (unsigned long long)(restable_str_bytes / (1024*1024)));
-
-  // Vector<Annotation*> pointer storage
-  uint64_t vec_pointer_bytes = total_capacity * sizeof(Annotation*);
-  pxv_info("DEBUG MEM [3/5] Vector<Annotation*> pointers: %llu MB",
-           (unsigned long long)(vec_pointer_bytes / (1024*1024)));
-
-  // LeafBlockPool (wave data blocks held in memory, not mmap)
-  size_t leaf_idle = pv::data::LeafBlockPool::instance().idle_count();
-  pxv_info("DEBUG MEM [4/5] LeafBlockPool idle_blocks=%zu (each ~2MB = ~%zu MB)",
-           leaf_idle, leaf_idle * 2);
-
-  // Process working set
-  uint64_t ws = 0;
-#ifdef _WIN32
-  PROCESS_MEMORY_COUNTERS pmc;
-  if (K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
-      ws = pmc.WorkingSetSize;
-  }
-#endif
-  pxv_info("DEBUG MEM [5/5] Process WorkingSet: %llu MB",
-           (unsigned long long)(ws / (1024*1024)));
-  pxv_info("=== END MEMORY BREAKDOWN ===");
-
   if (error != NULL)
     g_free(error);
 
@@ -748,10 +687,16 @@ void DecoderStack::execute_decode_stack() {
     prev_di = di;
     decode_start = dec->decode_start();
 
-    if (_session->is_realtime_refresh() == false)
-      decode_end = min(dec->decode_end(), _sample_count - 1);
-    else
+    if (_session->is_realtime_refresh() == false) {
+      // If decode_end is 0 (not explicitly set, e.g. when added via MCP
+      // with silent=true which skips create_popup), use the full data range.
+      uint64_t dec_end = dec->decode_end();
+      if (dec_end == 0)
+        dec_end = _sample_count - 1;
+      decode_end = min(dec_end, _sample_count - 1);
+    } else {
       decode_end = max(dec->decode_end(), decode_end);
+    }
   }
 
   pxv_info("decoder start sample:%llu, end sample:%llu, count:%llu",
@@ -766,7 +711,9 @@ void DecoderStack::execute_decode_stack() {
                              DecoderStack::annotation_callback, _stask_stauts);
 
   char *error = NULL;
-  if (srd_session_start(session, &error) == SRD_OK) {
+  int srd_ret = srd_session_start(session, &error);
+
+  if (srd_ret == SRD_OK) {
     // need a lot time
     decode_data(decode_start, decode_end, session);
   } else if (error != NULL) {

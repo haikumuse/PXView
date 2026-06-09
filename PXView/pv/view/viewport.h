@@ -38,6 +38,7 @@
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
 #include "../view/view.h"
+#include "edge_nav_button.h"
 
 
 class QPainter;
@@ -59,6 +60,7 @@ enum UpdateEventType {
 };
 
 class Signal;
+class LogicSignal;
 class View;
 
 // main graph view port, in the middle region
@@ -146,6 +148,7 @@ private:
   void wheelEvent(QWheelEvent *event) override;
   void leaveEvent(QEvent *) override;
   void resizeEvent(QResizeEvent *e) override;
+  void keyPressEvent(QKeyEvent *event) override;
   bool gestureEvent(QNativeGestureEvent *event);
 
   void paintSignals(QPainter &p, QColor fore, QColor back);
@@ -160,6 +163,10 @@ private:
   void onLogicMouseRelease(QMouseEvent *event);
   void onDsoMouseRelease(QMouseEvent *event);
   void onAnalogMouseRelease(QMouseEvent *event);
+
+  void update_edge_nav_buttons();
+  void navigate_to_edge(EdgeNavButton::Direction dir);
+  LogicSignal* get_hovered_logic_signal(const QPoint &pos);
 
 private slots:
   void on_trigger_timer();
@@ -272,6 +279,11 @@ private:
   Qt::MouseButtons _drag_buttons;
 
   static constexpr int DragFrameInterval = 16;
+
+  // Edge navigation buttons
+  EdgeNavButton *_prev_edge_btn;
+  EdgeNavButton *_next_edge_btn;
+  LogicSignal *_hover_logic_signal;
 
 public:
   bool g_drag_active;

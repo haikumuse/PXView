@@ -171,18 +171,29 @@ include_directories(${ZLIB_INCLUDE_DIRS})
 #-------------------------------------------------------------------------------
 
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core Widgets Gui GuiPrivate Svg Concurrent)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Core Widgets Gui GuiPrivate Svg Concurrent WebSockets)
 message("----- Qt6:")
 message(STATUS "	 includes:" ${Qt6Core_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt6Widgets_EXECUTABLE_COMPILE_FLAGS}")
 set(QT_INCLUDE_DIRS ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS} ${Qt6Svg_INCLUDE_DIRS} ${Qt6Concurrent_INCLUDE_DIRS})
-set(QT_LIBRARIES Qt6::Gui Qt6::GuiPrivate Qt6::Widgets Qt6::Svg Qt6::Concurrent)
+set(QT_LIBRARIES Qt6::Gui Qt6::GuiPrivate Qt6::Widgets Qt6::Svg Qt6::Concurrent Qt6::WebSockets)
 add_definitions(${Qt6Gui_DEFINITIONS} ${Qt6Widgets_DEFINITIONS})
 if(APPLE)
 	find_package(Qt6DBus REQUIRED)
 	set(QT_LIBRARIES ${QT_LIBRARIES} Qt6::DBus)
 endif()
 
+
+#===============================================================================
+#= nlohmann/json (header-only JSON library for API layer)
+#-------------------------------------------------------------------------------
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
 #===============================================================================
 #= boost
@@ -236,6 +247,7 @@ set(PXView_SOURCES
     PXView/pv/prop/binding/binding.cpp
     PXView/pv/toolbars/samplingbar.cpp
     PXView/pv/view/viewport.cpp
+    PXView/pv/view/edge_nav_button.cpp
     PXView/pv/view/view.cpp
     PXView/pv/view/timemarker.cpp
     PXView/pv/view/signal.cpp
@@ -352,6 +364,11 @@ set(PXView_SOURCES
     PXView/pv/ui/iconcache.cpp
     PXView/pv/ui/widgetinspector.cpp
     PXView/pv/tabcontext.cpp
+    PXView/pv/api/session_service.cpp
+    PXView/pv/api/app_service.cpp
+    PXView/pv/api/rpc_dispatcher.cpp
+    PXView/pv/api/ws_transport.cpp
+    PXView/pv/api/mcp_transport.cpp
 )
 
 set(UIS
@@ -394,6 +411,7 @@ set(PXView_HEADERS
     PXView/pv/prop/bool.h
     PXView/pv/toolbars/samplingbar.h
     PXView/pv/view/viewport.h
+    PXView/pv/view/edge_nav_button.h
     PXView/pv/view/view.h
     PXView/pv/view/timemarker.h
     PXView/pv/view/ruler.h
@@ -495,6 +513,11 @@ set(PXView_HEADERS
     PXView/pv/ui/iconcache.h
     PXView/pv/ui/widgetinspector.h
     PXView/pv/tabcontext.h
+    PXView/pv/api/session_service.h
+    PXView/pv/api/app_service.h
+    PXView/pv/api/rpc_dispatcher.h
+    PXView/pv/api/ws_transport.h
+    PXView/pv/api/mcp_transport.h
     ${UI_HEADERS}
 )
  
@@ -794,7 +817,7 @@ add_executable(${PROJECT_NAME}
 	${libsigrokdecode_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} ${PXVIEW_LINK_LIBS})
+target_link_libraries(${PROJECT_NAME} ${PXVIEW_LINK_LIBS} nlohmann_json::nlohmann_json)
 
 if(NOT WIN32 AND NOT APPLE)
 	target_link_libraries(${PROJECT_NAME} "-Wl,--export-dynamic")

@@ -1260,6 +1260,10 @@ void ProtocolDock::update_deocder_item_name(void *trace_handel,
   }
 }
 
+void ProtocolDock::rebuild_layers() {
+  rebuild_protocol_layers();
+}
+
 void ProtocolDock::UpdateLanguage() { retranslateUi(); }
 
 void ProtocolDock::UpdateTheme() { reStyle(); }

@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_analyzer_results","arguments":{"analyzerId":"197496288","maxCount":5}},"id":33}
