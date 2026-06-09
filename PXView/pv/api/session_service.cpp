@@ -313,7 +313,26 @@ Result<int> SessionService::configure_and_start(
     const std::vector<std::pair<int16_t, double>>& glitch_filters,
     const std::string& capture_mode,
     double duration_seconds,
-    bool instant) {
+    bool instant,
+    int trigger_channel_index,
+    const std::string& trigger_type,
+    double after_trigger_seconds,
+    double min_pulse_width_seconds,
+    double max_pulse_width_seconds,
+    const std::vector<std::pair<int16_t, std::string>>& linked_channels,
+    const std::string& channel_mode,
+    bool rle_enabled,
+    double stream_buffer_size_gb,
+    double stream_mem_buffer_size_gb,
+    bool disk_cache_enabled,
+    const std::string& disk_cache_path,
+    const std::string& threshold_preset,
+    const std::string& operation_mode,
+    const std::string& buffer_options,
+    const std::string& digital_filter,
+    int capture_ratio,
+    double repeat_interval_seconds,
+    uint64_t sample_count) {
     if (!_session)
         return Result<int>::Fail(ErrorCode::InternalError,
                                  "Session is null");
@@ -427,6 +446,106 @@ Result<int> SessionService::configure_and_start(
     // If the user wants to clear decoders, they can call
     // clear_decoders() explicitly before start_capture().
 
+    // 2a. Set channel mode if specified (e.g. "Buffer", "Stream")
+    if (!channel_mode.empty()) {
+        _device->set_config_string(SR_CONF_CHANNEL_MODE, channel_mode.c_str());
+    }
+
+    // 2b. Configure logic trigger if specified
+    ds_trigger_reset();
+
+    if (trigger_channel_index >= 0) {
+        ds_trigger_set_en(1);
+        ds_trigger_set_mode(SIMPLE_TRIGGER);
+
+        // Mark trigger as preconfigured so TriggerDock::try_commit_trigger()
+        // won't overwrite our settings with ds_trigger_reset() at capture start.
+        _session->set_trigger_preconfigured(true);
+
+        // Map trigger_type to ds_trigger_probe_set values
+        // (following LogicSignal::commit_trig() pattern)
+        if (trigger_type == "rising") {
+            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'R', 'X');
+        } else if (trigger_type == "falling") {
+            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'F', 'X');
+        } else if (trigger_type == "pulse_high") {
+            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), '1', 'X');
+        } else if (trigger_type == "pulse_low") {
+            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), '0', 'X');
+        } else {
+            // Default to edge trigger
+            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'C', 'X');
+        }
+
+        // Set linked channel conditions (additional channels with required state)
+        for (const auto &lc : linked_channels) {
+            if (lc.second == "high") {
+                ds_trigger_probe_set(static_cast<uint16_t>(lc.first), '1', 'X');
+            } else if (lc.second == "low") {
+                ds_trigger_probe_set(static_cast<uint16_t>(lc.first), '0', 'X');
+            }
+        }
+
+        // Set trigger position based on afterTriggerSeconds
+        if (after_trigger_seconds > 0.0) {
+            uint64_t rate = (digital_sample_rate > 0) ? digital_sample_rate : _device->get_sample_rate();
+            uint64_t sample_limit = _device->get_sample_limit();
+            if (rate > 0 && sample_limit > 0) {
+                uint64_t after_samples = static_cast<uint64_t>(
+                    after_trigger_seconds * static_cast<double>(rate));
+                uint16_t pos = static_cast<uint16_t>(
+                    (after_samples * 100) / sample_limit);
+                if (pos > 100) pos = 100;
+                ds_trigger_set_pos(pos);
+            }
+        }
+
+        // Configure pulse width trigger counts if specified
+        if ((trigger_type == "pulse_high" || trigger_type == "pulse_low") &&
+            (min_pulse_width_seconds > 0.0 || max_pulse_width_seconds > 0.0)) {
+            uint64_t rate = (digital_sample_rate > 0) ? digital_sample_rate : _device->get_sample_rate();
+            if (rate > 0) {
+                uint32_t min_count = static_cast<uint32_t>(
+                    min_pulse_width_seconds * static_cast<double>(rate));
+                uint32_t max_count = static_cast<uint32_t>(
+                    max_pulse_width_seconds * static_cast<double>(rate));
+                ds_trigger_stage_set_count(0, 1, min_count, max_count);
+            }
+        }
+    } else {
+        ds_trigger_set_en(0);
+    }
+
+    // 2c. Sync trigger state to LogicSignal UI (header trigger icons)
+    // This ensures the per-channel trigger icons in the signal header
+    // reflect the MCP-configured trigger, not just the ds_trigger API state.
+    if (trigger_channel_index >= 0) {
+        auto sigs = _session->get_signals();
+        for (auto s : sigs) {
+            if (s->signal_type() == SR_CHANNEL_LOGIC) {
+                auto *logicSig = static_cast<view::LogicSignal*>(s);
+                auto indices = logicSig->get_index_list();
+                if (!indices.empty() && indices.front() == trigger_channel_index) {
+                    int trig_type = view::LogicSignal::NONTRIG;
+                    if (trigger_type == "rising") trig_type = view::LogicSignal::POSTRIG;
+                    else if (trigger_type == "falling") trig_type = view::LogicSignal::NEGTRIG;
+                    else if (trigger_type == "pulse_high") trig_type = view::LogicSignal::HIGTRIG;
+                    else if (trigger_type == "pulse_low") trig_type = view::LogicSignal::LOWTRIG;
+                    else trig_type = view::LogicSignal::EDGTRIG;
+                    logicSig->set_trig(trig_type);
+                }
+                // Also sync linked channels
+                for (const auto &lc : linked_channels) {
+                    if (!indices.empty() && indices.front() == lc.first) {
+                        int trig_type = (lc.second == "high") ?
+                            view::LogicSignal::HIGTRIG : view::LogicSignal::LOWTRIG;
+                        logicSig->set_trig(trig_type);
+                    }
+                }
+            }
+        }
+    }
+
     // 2. Rebuild signal list to reflect the new channel enable/disable state.
     // This is critical: action_start_capture() checks _signals.empty() and
     // the signal list must match the currently enabled channels.
@@ -475,6 +594,70 @@ Result<int> SessionService::configure_and_start(
         _session->set_glitch_filter(thresholds, modes);
     }
 
+    dbg_log("configure_and_start: step 5b - RLE");
+
+    // 5b. Set RLE if specified
+    if (rle_enabled) {
+        _device->set_config_bool(SR_CONF_RLE, true);
+    }
+
+    dbg_log("configure_and_start: step 5c - stream buffer");
+
+    // 5c. Set disk cache and stream buffer sizes
+    if (disk_cache_enabled) {
+        _device->set_config_bool(SR_CONF_DISK_CACHE_ENABLE, true);
+        if (stream_buffer_size_gb > 0.0) {
+            _device->set_config_double(SR_CONF_STREAM_BUFF, stream_buffer_size_gb);
+        }
+        if (!disk_cache_path.empty()) {
+            _device->set_config_string(SR_CONF_DISK_CACHE_PATH, disk_cache_path.c_str());
+        }
+    } else {
+        _device->set_config_bool(SR_CONF_DISK_CACHE_ENABLE, false);
+        if (stream_mem_buffer_size_gb > 0.0) {
+            _device->set_config_double(SR_CONF_STREAM_MEM_BUFF, stream_mem_buffer_size_gb);
+        }
+    }
+
+    dbg_log("configure_and_start: step 5d - threshold preset");
+
+    // 5d. Set threshold preset if specified (distinct from VTH raw voltage)
+    if (!threshold_preset.empty()) {
+        _device->set_config_string(SR_CONF_THRESHOLD, threshold_preset.c_str());
+    }
+
+    dbg_log("configure_and_start: step 5e - operation mode");
+
+    // 5e. Set operation mode if specified
+    if (!operation_mode.empty()) {
+        // Operation mode is a list-type config; try string first, then int16
+        if (!_device->set_config_string(SR_CONF_OPERATION_MODE, operation_mode.c_str())) {
+            // Some devices use int16 for operation mode
+            // Try common mappings: Buffer=0, Stream=1, InternalTest=2
+            int16_t mode_val = -1;
+            if (operation_mode == "Buffer" || operation_mode == "buffer") mode_val = 0;
+            else if (operation_mode == "Stream" || operation_mode == "stream") mode_val = 1;
+            else if (operation_mode == "Internal test" || operation_mode == "internal_test") mode_val = 2;
+            if (mode_val >= 0) {
+                _device->set_config_int16(SR_CONF_OPERATION_MODE, mode_val);
+            }
+        }
+    }
+
+    dbg_log("configure_and_start: step 5f - buffer options");
+
+    // 5f. Set buffer options if specified
+    if (!buffer_options.empty()) {
+        _device->set_config_string(SR_CONF_BUFFER_OPTIONS, buffer_options.c_str());
+    }
+
+    dbg_log("configure_and_start: step 5g - digital filter");
+
+    // 5g. Set digital filter if specified
+    if (!digital_filter.empty()) {
+        _device->set_config_string(SR_CONF_FILTER, digital_filter.c_str());
+    }
+
     dbg_log("configure_and_start: step 6 - set capture mode");
 
     // 6. Set capture mode
@@ -484,6 +667,16 @@ Result<int> SessionService::configure_and_start(
         _session->set_collect_mode(COLLECT_REPEAT);
     } else if (capture_mode == "loop") {
         _session->set_collect_mode(COLLECT_LOOP);
+    }
+
+    // Set repeat interval if specified
+    if (repeat_interval_seconds > 0.0) {
+        _session->set_repeat_intvl(repeat_interval_seconds);
+    }
+
+    // 6b. Set capture ratio (trigger position percentage) if specified
+    if (capture_ratio >= 0 && capture_ratio <= 100) {
+        _device->set_config_uint64(SR_CONF_CAPTURE_RATIO, static_cast<uint64_t>(capture_ratio));
     }
 
     dbg_log("configure_and_start: step 7 - set duration");
@@ -496,6 +689,9 @@ Result<int> SessionService::configure_and_start(
                 duration_seconds * static_cast<double>(rate));
             _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_limit);
         }
+    } else if (sample_count > 0) {
+        // Use explicit sample count when duration is not specified
+        _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
     }
 
     // Let the UI process any pending config change events before starting
@@ -1707,7 +1903,8 @@ Result<std::string> SessionService::add_decoder(
     const std::map<std::string, std::string> &options,
     const std::map<std::string, int16_t> &channel_map,
     const std::string &label,
-    bool wait_for_completion) {
+    bool wait_for_completion,
+    const std::string &stack_on_analyzer_id) {
     if (!_session)
         return Result<std::string>::Fail(ErrorCode::InternalError,
                                          "Session is null");
@@ -1717,6 +1914,197 @@ Result<std::string> SessionService::add_decoder(
     if (!dec)
         return Result<std::string>::Fail(ErrorCode::DecoderNotFound,
                                          "Decoder not found: " + decoder_id);
+
+    // Handle stacked decoder: add to an existing DecoderStack instead of
+    // creating a new DecodeTrace. This follows the same pattern as
+    // ProtocolDock::on_add_protocol() which builds sub_decoders and
+    // passes them to SigSession::add_decoder().
+    if (!stack_on_analyzer_id.empty()) {
+        auto do_stack = [this, dec, &options, &channel_map, &label, &stack_on_analyzer_id]() -> Result<std::string> {
+            // Find the parent DecodeTrace by converting the analyzer ID
+            // (which is the string representation of the trace pointer)
+            auto &traces = _session->get_decode_signals();
+            view::DecodeTrace *parent_trace = nullptr;
+            for (auto *trace : traces) {
+                if (!trace) continue;
+                std::string tid =
+                    std::to_string(reinterpret_cast<intptr_t>(trace));
+                if (tid == stack_on_analyzer_id) {
+                    parent_trace = trace;
+                    break;
+                }
+            }
+
+            if (!parent_trace)
+                return Result<std::string>::Fail(ErrorCode::DecoderNotFound,
+                                                 "Parent analyzer not found: " + stack_on_analyzer_id);
+
+            auto *decoder_stack = parent_trace->decoder();
+            if (!decoder_stack)
+                return Result<std::string>::Fail(ErrorCode::DecoderError,
+                                                 "Parent decoder stack is null");
+
+            // Create the new sub-decoder and add it to the parent stack
+            auto *new_decoder = new data::decode::Decoder(dec);
+            decoder_stack->add_sub_decoder(new_decoder);
+
+            // Apply label to the parent trace if specified
+            if (!label.empty()) {
+                parent_trace->set_name(QString::fromStdString(label));
+            }
+
+            // Apply options to the new sub-decoder
+            auto &stack = decoder_stack->stack();
+            if (!stack.empty()) {
+                auto *sub_dec = stack.back(); // the newly added decoder
+
+                for (const auto &opt : options) {
+                    GVariant *val = nullptr;
+                    bool found_type = false;
+
+                    for (const GSList *o = dec->options; o; o = o->next) {
+                        auto *opt_def = static_cast<srd_decoder_option*>(o->data);
+                        if (!opt_def || !opt_def->id) continue;
+                        if (opt.first != opt_def->id) continue;
+
+                        if (opt_def->values) {
+                            for (const GSList *v = opt_def->values; v; v = v->next) {
+                                auto *enum_val = static_cast<GVariant*>(v->data);
+                                if (!enum_val) continue;
+                                gchar *enum_str = g_variant_print(enum_val, false);
+                                std::string cmp_str = enum_str ? enum_str : "";
+                                g_free(enum_str);
+                                if (cmp_str.size() >= 2 && cmp_str.front() == '\'' && cmp_str.back() == '\'')
+                                    cmp_str = cmp_str.substr(1, cmp_str.size() - 2);
+                                if (cmp_str == opt.second) {
+                                    if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("s")))
+                                        val = g_variant_new_string(g_variant_get_string(enum_val, nullptr));
+                                    else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("t")))
+                                        val = g_variant_new_uint64(g_variant_get_uint64(enum_val));
+                                    else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("x")))
+                                        val = g_variant_new_int64(g_variant_get_int64(enum_val));
+                                    else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("d")))
+                                        val = g_variant_new_double(g_variant_get_double(enum_val));
+                                    else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("b")))
+                                        val = g_variant_new_boolean(g_variant_get_boolean(enum_val));
+                                    else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("i")))
+                                        val = g_variant_new_int32(g_variant_get_int32(enum_val));
+                                    else if (g_variant_is_of_type(enum_val, G_VARIANT_TYPE("u")))
+                                        val = g_variant_new_uint32(g_variant_get_uint32(enum_val));
+                                    else
+                                        val = g_variant_new_string(opt.second.c_str());
+                                    break;
+                                }
+                            }
+                            if (!val && opt_def->def) {
+                                if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("s")))
+                                    val = g_variant_new_string(opt.second.c_str());
+                                else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("d")))
+                                    val = g_variant_new_double(std::stod(opt.second));
+                                else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("x")))
+                                    val = g_variant_new_int64(std::stoll(opt.second));
+                                else
+                                    val = g_variant_new_string(opt.second.c_str());
+                            }
+                            if (!val)
+                                val = g_variant_new_string(opt.second.c_str());
+                        } else if (opt_def->def) {
+                            if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("d")))
+                                val = g_variant_new_double(std::stod(opt.second));
+                            else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("x")))
+                                val = g_variant_new_int64(std::stoll(opt.second));
+                            else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("s")))
+                                val = g_variant_new_string(opt.second.c_str());
+                            else if (g_variant_is_of_type(opt_def->def, G_VARIANT_TYPE("b")))
+                                val = g_variant_new_boolean(opt.second == "True" || opt.second == "1");
+                            else
+                                val = g_variant_new_string(opt.second.c_str());
+                        } else {
+                            val = g_variant_new_string(opt.second.c_str());
+                        }
+                        found_type = true;
+                        break;
+                    }
+
+                    if (!found_type)
+                        val = g_variant_new_string(opt.second.c_str());
+
+                    sub_dec->set_option(opt.first.c_str(), val);
+                }
+            }
+
+            decoder_stack->set_options_changed(true);
+
+            // Prepare decode if data is ready
+            bool copy_in_progress = _session->is_copy_in_progress();
+            if (!_session->have_view_data() || copy_in_progress) {
+                decoder_stack->set_options_changed(true);
+            } else {
+                decoder_stack->set_capture_end_flag(true);
+                decoder_stack->frame_ended();
+            }
+
+            _session->rebuild_decoder_pannel();
+
+            std::string instance_id =
+                std::to_string(reinterpret_cast<intptr_t>(parent_trace));
+
+            broadcast_event(ServiceEvent::DecoderAdded,
+                            {{"instance_id", instance_id},
+                             {"decoder_id", dec->id ? dec->id : ""},
+                             {"stacked_on", stack_on_analyzer_id}});
+
+            return Result<std::string>::Success(instance_id);
+        };
+
+        Result<std::string> result = Result<std::string>::Fail(
+            ErrorCode::InternalError, "Pending");
+
+        if (QThread::currentThread() == qApp->thread()) {
+            result = do_stack();
+        } else {
+            std::mutex result_mutex;
+            std::condition_variable result_cv;
+            bool done = false;
+
+            QMetaObject::invokeMethod(qApp, [&do_stack, &result, &result_mutex, &result_cv, &done]() {
+                result = do_stack();
+                {
+                    std::lock_guard<std::mutex> lock(result_mutex);
+                    done = true;
+                }
+                result_cv.notify_one();
+            }, Qt::BlockingQueuedConnection);
+
+            {
+                std::unique_lock<std::mutex> lock(result_mutex);
+                result_cv.wait(lock, [&done]() { return done; });
+            }
+        }
+
+        if (!result.ok())
+            return result;
+
+        // Start decode if data is ready and copy is not in progress
+        {
+            std::string instance_id = result.value();
+            auto *decode_trace = reinterpret_cast<view::DecodeTrace*>(
+                std::stoll(instance_id));
+            auto *decoder_stack = decode_trace->decoder();
+
+            if (decoder_stack && decoder_stack->options_changed() &&
+                _session->have_view_data() &&
+                !_session->is_copy_in_progress()) {
+                QTimer::singleShot(0, qApp, [this, decode_trace]() {
+                    if (decode_trace && !decode_trace->_delete_flag) {
+                        _session->add_decode_task(decode_trace);
+                    }
+                });
+            }
+        }
+
+        return result;
+    }
 
     // The add_decoder operation creates QObjects (DecodeTrace) and triggers
     // Qt signals, so it MUST run on the main (Qt GUI) thread.

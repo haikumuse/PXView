@@ -1006,12 +1006,19 @@ void TriggerDock::lineEdit_highlight(PopupLineEdit *dst) {
 }
 
 void TriggerDock::try_commit_trigger()
-{   
-    AppConfig &app = AppConfig::Instance(); 
+{
+    AppConfig &app = AppConfig::Instance();
     int num = 0;
 
     int mode = _session->get_device()->get_work_mode();
     bool bInstant = _session->is_instant();
+
+    // If trigger was preconfigured by MCP/API, skip GUI commit to avoid
+    // overwriting the externally-set trigger state with ds_trigger_reset().
+    if (_session->is_trigger_preconfigured()) {
+        _session->set_trigger_preconfigured(false);
+        return;
+    }
 
     ds_trigger_reset();
 

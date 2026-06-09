@@ -219,7 +219,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 1. get_devices
         {
             {"name", "get_devices"},
-            {"description", "List connected devices"},
+            {"description", "List connected devices. Call this first to discover available devices and their IDs before starting a capture."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -233,7 +233,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 2. start_capture
         {
             {"name", "start_capture"},
-            {"description", "Start a new capture"},
+            {"description", "Start a new capture. Typical workflow: 1) get_devices to find device ID, 2) add_analyzer to add decoders (recommended BEFORE capture so auto-decode works), 3) start_capture with device/channel config, 4) wait_capture to wait for completion, 5) get_analyzer_results to read decoded data."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -250,7 +250,27 @@ json RpcDispatcher::get_tool_schemas() {
                             {"digitalSampleRate", {{"type", "integer"}, {"description", "Digital sample rate in Hz"}}},
                             {"analogSampleRate", {{"type", "integer"}, {"description", "Analog sample rate in Hz"}}},
                             {"digitalThresholdVolts", {{"type", "number"}, {"description", "Digital threshold voltage"}}},
-                            {"glitchFilters", {{"type", "array"}, {"description", "Glitch filter configurations"}}}
+                            {"glitchFilters", {
+                                {"type", "array"},
+                                {"description", "Glitch filter configurations"},
+                                {"items", {
+                                    {"type", "object"},
+                                    {"properties", {
+                                        {"channelIndex", {{"type", "integer"}, {"description", "Digital channel index to apply filter"}}},
+                                        {"threshold", {{"type", "number"}, {"description", "Minimum pulse width in samples to filter out"}}}
+                                    }}
+                                }}
+                            }},
+                            {"channelMode", {{"type", "string"}, {"description", "Channel mode (e.g. Buffer, Stream). Device-specific."}}},
+                            {"rleEnabled", {{"type", "boolean"}, {"description", "Enable RLE (Run-Length Encoding) compression"}}},
+                            {"streamBufferSizeGB", {{"type", "number"}, {"description", "Disk stream buffer size in GB (1-1024). Used when diskCacheEnabled=true."}}},
+                            {"streamMemBufferSizeGB", {{"type", "number"}, {"description", "Memory stream buffer size in GB (1-64). Used when diskCacheEnabled=false."}}},
+                            {"diskCacheEnabled", {{"type", "boolean"}, {"description", "Enable disk cache for long captures"}}},
+                            {"diskCachePath", {{"type", "string"}, {"description", "Custom disk cache directory path"}}},
+                            {"thresholdPreset", {{"type", "string"}, {"description", "Threshold preset name (e.g. 1.8V, 3.3V, 5V, Adjustable). Some devices only support presets, not custom voltage."}}},
+                            {"operationMode", {{"type", "string"}, {"description", "Device operation mode (e.g. Buffer, Stream, Internal test). Device-specific."}}},
+                            {"bufferOptions", {{"type", "string"}, {"description", "Buffer configuration options. Device-specific."}}},
+                            {"digitalFilter", {{"type", "string"}, {"description", "Digital filter mode. Device-specific."}}}
                         }}
                     }},
                     {"captureConfiguration", {
@@ -268,7 +288,31 @@ json RpcDispatcher::get_tool_schemas() {
                                 {"properties", {
                                     {"sampleCount", {{"type", "integer"}, {"description", "Number of samples to capture"}}}
                                 }}
-                            }}
+                            }},
+                            {"digitalCaptureMode", {
+                                {"type", "object"},
+                                {"description", "Digital trigger capture mode"},
+                                {"properties", {
+                                    {"triggerChannelIndex", {{"type", "integer"}, {"description", "Digital channel index for trigger (must be enabled)"}}},
+                                    {"triggerType", {{"type", "string"}, {"description", "Trigger type: rising, falling, pulse_high, pulse_low"}, {"enum", json::array({"rising", "falling", "pulse_high", "pulse_low"})}}},
+                                    {"afterTriggerSeconds", {{"type", "number"}, {"description", "Post-trigger buffer duration in seconds"}}},
+                                    {"minPulseWidthSeconds", {{"type", "number"}, {"description", "Minimum pulse width for pulse trigger in seconds"}}},
+                                    {"maxPulseWidthSeconds", {{"type", "number"}, {"description", "Maximum pulse width for pulse trigger in seconds"}}},
+                                    {"linkedChannels", {
+                                        {"type", "array"},
+                                        {"description", "Additional channels with required state for trigger"},
+                                        {"items", {
+                                            {"type", "object"},
+                                            {"properties", {
+                                                {"channelIndex", {{"type", "integer"}, {"description", "Digital channel index"}}},
+                                                {"state", {{"type", "string"}, {"description", "Required state: high or low"}, {"enum", json::array({"high", "low"})}}}
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }},
+                            {"captureRatio", {{"type", "integer"}, {"description", "Trigger position as percentage (0-100). 0=trigger at start, 100=trigger at end. Alternative to afterTriggerSeconds."}}},
+                            {"repeatIntervalSeconds", {{"type", "number"}, {"description", "Time between repeat captures in seconds. Only used with repeat capture mode. Default: 0.1"}}}
                         }}
                     }}
                 }}
@@ -277,7 +321,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 3. stop_capture
         {
             {"name", "stop_capture"},
-            {"description", "Stop the active capture"},
+            {"description", "Stop the active capture. Use this to abort a capture that is in progress."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", json::object()}
@@ -286,7 +330,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 4. wait_capture
         {
             {"name", "wait_capture"},
-            {"description", "Wait for the current capture to complete (blocks until done or timeout)"},
+            {"description", "Wait for the current capture to complete. This call blocks until the capture finishes or times out. Call this after start_capture. May take minutes for long captures — set timeoutSeconds accordingly."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -301,7 +345,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 5. load_capture
         {
             {"name", "load_capture"},
-            {"description", "Load a capture from a file"},
+            {"description", "Load a capture from a .dsc session file. Use this to analyze previously saved captures."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -316,7 +360,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 6. save_capture
         {
             {"name", "save_capture"},
-            {"description", "Save the current capture to a file"},
+            {"description", "Save the current capture to a .dsc session file. Requires an active or completed capture."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -331,7 +375,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 7. close_capture
         {
             {"name", "close_capture"},
-            {"description", "Close the current capture and free resources"},
+            {"description", "Close the current capture and free resources. Call this after you are done analyzing the data."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", json::object()}
@@ -340,7 +384,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 8. add_analyzer
         {
             {"name", "add_analyzer"},
-            {"description", "Add a protocol analyzer to the current capture"},
+            {"description", "Add a protocol analyzer/decoder. Best called BEFORE start_capture so auto-decode triggers on capture completion. Use list_analyzers to discover available decoders, get_analyzer_options to see required channels/options. Use stackOnAnalyzerId to stack decoders (e.g. i2c_c -> eeprom24c)."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -355,6 +399,10 @@ json RpcDispatcher::get_tool_schemas() {
                     {"settings", {
                         {"type", "object"},
                         {"description", "Analyzer-specific settings (channel map, options, etc.)"}
+                    }},
+                    {"stackOnAnalyzerId", {
+                        {"type", "string"},
+                        {"description", "ID of an existing analyzer to stack this decoder on top of (for stacked/hierarchical decoding)"}
                     }}
                 }},
                 {"required", json::array({"analyzerName"})}
@@ -363,7 +411,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 9. remove_analyzer
         {
             {"name", "remove_analyzer"},
-            {"description", "Remove a protocol analyzer"},
+            {"description", "Remove a protocol analyzer. Use the analyzerId returned by add_analyzer."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -402,7 +450,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 10. export_raw_data_csv
         {
             {"name", "export_raw_data_csv"},
-            {"description", "Export raw capture data as CSV files"},
+            {"description", "Export raw capture data as CSV files. Requires a completed capture. Use after wait_capture."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -437,7 +485,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 11. export_raw_data_binary
         {
             {"name", "export_raw_data_binary"},
-            {"description", "Export raw capture data as binary files"},
+            {"description", "Export raw capture data as binary files. Requires a completed capture. Use after wait_capture."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -467,7 +515,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 12. export_data_table_csv
         {
             {"name", "export_data_table_csv"},
-            {"description", "Export analyzer results as a CSV data table"},
+            {"description", "Export analyzer results as a CSV data table. Requires a completed capture with analyzer results. Use get_analyzer_results first to verify data exists."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -498,7 +546,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 13. get_capture_status
         {
             {"name", "get_capture_status"},
-            {"description", "Get the current capture status"},
+            {"description", "Get the current capture status and progress. Use this to check if capture is idle, capturing, or completed."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", json::object()}
@@ -507,7 +555,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 14. get_channels
         {
             {"name", "get_channels"},
-            {"description", "Get the list of channels for the current device"},
+            {"description", "Get the list of channels for the current device. Call this to discover available channel indices before configuring start_capture."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", json::object()}
@@ -516,7 +564,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 15. get_analyzer_results
         {
             {"name", "get_analyzer_results"},
-            {"description", "Get protocol analyzer annotations/results"},
+            {"description", "Get protocol analyzer decoded annotations/results. Call after wait_capture completes and decoding finishes. Use the analyzerId returned by add_analyzer."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -788,6 +836,7 @@ JsonRpcResponse RpcDispatcher::on_start_capture(int id, const json& params) {
         std::vector<std::pair<int16_t, double>> glitch_filters;
         std::string capture_mode = "manual";
         double duration_seconds = 0.0;
+        uint64_t sample_count = 0;
 
         if (logic_config.contains("digitalChannels"))
             for (auto& ch : logic_config["digitalChannels"])
@@ -807,14 +856,71 @@ JsonRpcResponse RpcDispatcher::on_start_capture(int id, const json& params) {
             duration_seconds = capture_config["timedCaptureMode"].value("durationSeconds", 0.0);
         } else if (capture_config.contains("manualCaptureMode")) {
             capture_mode = "manual";
+            sample_count = capture_config["manualCaptureMode"].value("sampleCount", (uint64_t)0);
         }
+
+        // Parse digitalCaptureMode
+        int trigger_channel_index = -1;
+        std::string trigger_type;
+        double after_trigger_seconds = 0.0;
+        double min_pulse_width_seconds = 0.0;
+        double max_pulse_width_seconds = 0.0;
+        std::vector<std::pair<int16_t, std::string>> linked_channels;
+
+        if (capture_config.contains("digitalCaptureMode") && capture_config["digitalCaptureMode"].is_object()) {
+            auto& dtm = capture_config["digitalCaptureMode"];
+            trigger_channel_index = dtm.value("triggerChannelIndex", -1);
+            trigger_type = dtm.value("triggerType", "");
+            after_trigger_seconds = dtm.value("afterTriggerSeconds", 0.0);
+            min_pulse_width_seconds = dtm.value("minPulseWidthSeconds", 0.0);
+            max_pulse_width_seconds = dtm.value("maxPulseWidthSeconds", 0.0);
+            if (dtm.contains("linkedChannels") && dtm["linkedChannels"].is_array()) {
+                for (auto& lc : dtm["linkedChannels"]) {
+                    linked_channels.push_back({
+                        lc.value("channelIndex", (int16_t)-1),
+                        lc.value("state", "")
+                    });
+                }
+            }
+        }
+
+        // Parse channelMode from logicDeviceConfiguration
+        std::string channel_mode;
+        if (logic_config.contains("channelMode"))
+            channel_mode = logic_config["channelMode"].get<std::string>();
+
+        // Parse new logicDeviceConfiguration parameters
+        bool rle_enabled = logic_config.value("rleEnabled", false);
+        double stream_buffer_size_gb = logic_config.value("streamBufferSizeGB", 0.0);
+        double stream_mem_buffer_size_gb = logic_config.value("streamMemBufferSizeGB", 0.0);
+        bool disk_cache_enabled = logic_config.value("diskCacheEnabled", false);
+        std::string disk_cache_path = logic_config.value("diskCachePath", "");
+        std::string threshold_preset = logic_config.value("thresholdPreset", "");
+        std::string operation_mode = logic_config.value("operationMode", "");
+        std::string buffer_options = logic_config.value("bufferOptions", "");
+        std::string digital_filter = logic_config.value("digitalFilter", "");
+
+        // Parse captureRatio and repeatIntervalSeconds
+        int capture_ratio = capture_config.value("captureRatio", -1);
+        double repeat_interval_seconds = capture_config.value("repeatIntervalSeconds", 0.0);
 
         mcp_dbg_log("on_start_capture: calling configure_and_start");
         auto r = session->configure_and_start(
             digital_channels, analog_channels,
             digital_sample_rate, analog_sample_rate,
             digital_threshold_volts, glitch_filters,
-            capture_mode, duration_seconds, false);
+            capture_mode, duration_seconds, false,
+            trigger_channel_index, trigger_type,
+            after_trigger_seconds, min_pulse_width_seconds,
+            max_pulse_width_seconds, linked_channels,
+            channel_mode,
+            rle_enabled,
+            stream_buffer_size_gb, stream_mem_buffer_size_gb,
+            disk_cache_enabled, disk_cache_path,
+            threshold_preset,
+            operation_mode, buffer_options, digital_filter,
+            capture_ratio, repeat_interval_seconds,
+            sample_count);
         mcp_dbg_log("on_start_capture: configure_and_start returned");
         return wrap_result(id, r);
     }
@@ -970,7 +1076,17 @@ JsonRpcResponse RpcDispatcher::on_add_analyzer(int id, const json& params) {
             channel_map[k] = v.get<int16_t>();
     }
 
-    auto r = session->add_decoder(decoder_id, options, channel_map, "", false);
+    // Extract analyzerLabel
+    std::string label;
+    if (params.contains("analyzerLabel"))
+        label = params["analyzerLabel"].get<std::string>();
+
+    // Extract stackOnAnalyzerId
+    std::string stack_on_id;
+    if (params.contains("stackOnAnalyzerId"))
+        stack_on_id = params["stackOnAnalyzerId"].get<std::string>();
+
+    auto r = session->add_decoder(decoder_id, options, channel_map, label, false, stack_on_id);
     return wrap_result(id, r);
 }
 

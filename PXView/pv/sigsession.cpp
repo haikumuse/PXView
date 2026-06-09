@@ -123,6 +123,7 @@ SigSession::SigSession() {
   _decoder_pannel = NULL;
   _active_document = nullptr;
   _is_triged = false;
+  _trigger_preconfigured = false;
   _dso_status_valid = false;
   _glitch_filter_thread = nullptr;
   _glitch_filter_running = false;
