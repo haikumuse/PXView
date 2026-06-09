@@ -25,7 +25,26 @@ public:
         const std::vector<std::pair<int16_t, double>>& glitch_filters = {},
         const std::string& capture_mode = "manual",
         double duration_seconds = 0.0,
-        bool instant = false) = 0;
+        bool instant = false,
+        int trigger_channel_index = -1,
+        const std::string& trigger_type = "",
+        double after_trigger_seconds = 0.0,
+        double min_pulse_width_seconds = 0.0,
+        double max_pulse_width_seconds = 0.0,
+        const std::vector<std::pair<int16_t, std::string>>& linked_channels = {},
+        const std::string& channel_mode = "",
+        bool rle_enabled = false,
+        double stream_buffer_size_gb = 0.0,
+        double stream_mem_buffer_size_gb = 0.0,
+        bool disk_cache_enabled = false,
+        const std::string& disk_cache_path = "",
+        const std::string& threshold_preset = "",
+        const std::string& operation_mode = "",
+        const std::string& buffer_options = "",
+        const std::string& digital_filter = "",
+        int capture_ratio = -1,
+        double repeat_interval_seconds = 0.0,
+        uint64_t sample_count = 0) = 0;
     virtual int get_current_capture_id() const = 0;
     virtual Result<void> close_capture() = 0;
 
@@ -119,7 +138,8 @@ public:
         const std::map<std::string, std::string>& options = {},
         const std::map<std::string, int16_t>& channel_map = {},
         const std::string& label = "",
-        bool wait_for_completion = true) = 0;
+        bool wait_for_completion = true,
+        const std::string& stack_on_analyzer_id = "") = 0;
     virtual Result<void> remove_decoder(const std::string& instance_id) = 0;
     virtual Result<void> clear_all_decoders() = 0;
 

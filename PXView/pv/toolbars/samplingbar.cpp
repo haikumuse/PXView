@@ -398,12 +398,16 @@ void SamplingBar::retranslateUi() {
       int usb_speed = LIBUSB_SPEED_HIGH;
       _device_agent->get_config_int32(SR_CONF_USB_SPEED, usb_speed);
 
-      if (usb_speed == LIBUSB_SPEED_HIGH)
+      if (usb_speed == LIBUSB_SPEED_HIGH) {
         _device_type_label->setText("USB 2.0");
-      else if (usb_speed == LIBUSB_SPEED_SUPER)
+        _device_type.setToolTip(tr("USB 2.0 (High Speed)\nMax bandwidth: ~40 MB/s\nStream mode: lower sample rates\nBuffer mode: full sample rates"));
+      } else if (usb_speed == LIBUSB_SPEED_SUPER) {
         _device_type_label->setText("USB 3.0");
-      else
+        _device_type.setToolTip(tr("USB 3.0 (SuperSpeed)\nMax bandwidth: ~400 MB/s\nStream mode: higher sample rates available"));
+      } else {
         _device_type_label->setText("USB UNKNOWN");
+        _device_type.setToolTip(tr("USB speed unknown"));
+      }
     }
   }
   _mode_button.setText(

@@ -1,0 +1,11 @@
+- [x] start_capture schema 包含 digitalCaptureMode 定义（triggerChannelIndex/triggerType/afterTriggerSeconds/minPulseWidthSeconds/maxPulseWidthSeconds/linkedChannels）
+- [x] configure_and_start 可解析 digitalCaptureMode 参数并设置 ds_trigger_* 配置
+- [x] MCP 触发配置不会被 GUI try_commit_trigger() 覆盖（_trigger_preconfigured 标志）
+- [x] add_analyzer schema 包含 stackOnAnalyzerId 参数
+- [x] 堆叠解码器可正确添加到父解码器的 DecoderStack 中（add_sub_decoder）
+- [x] 堆叠解码器自动继承父解码器的通道映射
+- [x] analyzerLabel 参数生效，解码器实例显示自定义标签
+- [x] start_capture schema 包含 channelMode 参数
+- [x] configure_and_start 可设置 SR_CONF_CHANNEL_MODE
+- [x] 所有新增功能不影响现有 MCP 工具的兼容性
+- [x] 项目可成功编译（build_incremental.cmd）

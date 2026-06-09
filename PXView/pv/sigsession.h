@@ -247,8 +247,9 @@ public:
                     data::MathStack::MathType type);
 
   inline bool trigd() { return _trigger_flag; }
-
   inline uint8_t trigd_ch() { return _trigger_ch; }
+  inline void set_trigger_preconfigured(bool v) { _trigger_preconfigured = v; }
+  inline bool is_trigger_preconfigured() { return _trigger_preconfigured; }
 
   data::Snapshot *get_snapshot(int type) override;
 
@@ -548,6 +549,7 @@ private:
   bool _is_triged;
   bool _trigger_flag;
   uint8_t _trigger_ch;
+  bool _trigger_preconfigured;  // set by MCP/API when trigger is configured externally
   bool _hw_replied;
 
   SESSION_ERROR_STATUS _error;

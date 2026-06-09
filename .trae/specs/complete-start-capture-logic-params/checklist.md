@@ -1,0 +1,24 @@
+- [x] start_capture schema 包含 rleEnabled 参数
+- [x] start_capture schema 包含 streamBufferSizeGB 和 streamMemBufferSizeGB 参数
+- [x] start_capture schema 包含 diskCacheEnabled 和 diskCachePath 参数
+- [x] start_capture schema 包含 thresholdPreset 参数
+- [x] start_capture schema 包含 operationMode 参数
+- [x] start_capture schema 包含 bufferOptions 参数
+- [x] start_capture schema 包含 digitalFilter 参数
+- [x] start_capture schema 包含 captureRatio 参数
+- [x] start_capture schema 包含 repeatIntervalSeconds 参数
+- [x] glitchFilters schema 包含完整 items 定义（channelIndex + threshold）
+- [x] manualCaptureMode.sampleCount 在 configure_and_start 中正确实现
+- [x] configure_and_start 正确映射 rle_enabled → SR_CONF_RLE
+- [x] configure_and_start 正确映射 stream_buffer_size_gb → SR_CONF_STREAM_BUFF
+- [x] configure_and_start 正确映射 stream_mem_buffer_size_gb → SR_CONF_STREAM_MEM_BUFF
+- [x] configure_and_start 正确映射 disk_cache_enabled → SR_CONF_DISK_CACHE_ENABLE
+- [x] configure_and_start 正确映射 disk_cache_path → SR_CONF_DISK_CACHE_PATH
+- [x] configure_and_start 正确映射 threshold_preset → SR_CONF_THRESHOLD
+- [x] configure_and_start 正确映射 operation_mode → SR_CONF_OPERATION_MODE
+- [x] configure_and_start 正确映射 buffer_options → SR_CONF_BUFFER_OPTIONS
+- [x] configure_and_start 正确映射 digital_filter → SR_CONF_FILTER
+- [x] configure_and_start 正确映射 capture_ratio → SR_CONF_CAPTURE_RATIO
+- [x] configure_and_start 正确映射 repeat_interval_seconds → SigSession::set_repeat_intvl
+- [x] 项目可成功编译（build_incremental.cmd）
+- [x] 所有新增参数不影响现有 MCP 工具的兼容性（新参数均为可选）
