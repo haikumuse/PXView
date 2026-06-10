@@ -66,11 +66,6 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
     // Disable Qt Accessibility to prevent UIAutomation from stalling the main thread during high-frequency data updates
     qputenv("QT_ACCESSIBILITY", "0");
-    // Force FreeType font engine instead of DirectWrite/GDI.
-    // ATK uses QML Software Scene Graph which inherently uses FreeType/Grayscale.
-    // This perfectly aligns the QWidget text rendering with ATK, ensuring zero color fringes
-    // and strict pixel alignment.
-    qputenv("QT_QPA_PLATFORM", "windows:fontengine=freetype");
 #endif
 
 	int ret = 0; 
