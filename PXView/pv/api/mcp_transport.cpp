@@ -68,7 +68,104 @@ void McpTransport::on_ready_read()
     if (!socket)
         return;
 
+    // Check if we already have a pending read for this socket
+    if (_pending_sockets.contains(socket))
+        return;
+
+    // Try to read a complete HTTP request
+    try_handle_request(socket);
+}
+
+void McpTransport::try_handle_request(QTcpSocket* socket)
+{
     QByteArray data = socket->readAll();
+
+    // Find header/body boundary
+    int header_end = data.indexOf("\r\n\r\n");
+    if (header_end < 0) {
+        // Incomplete headers — wait for more data
+        _pending_sockets.insert(socket);
+        // Disconnect the current readyRead and connect a one-shot handler
+        disconnect(socket, &QTcpSocket::readyRead, this, &McpTransport::on_ready_read);
+        connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
+            // Append new data
+            QByteArray more = socket->readAll();
+            // Accumulate in socket property
+            QByteArray accumulated = socket->property("_http_buffer").toByteArray();
+            accumulated.append(more);
+            socket->setProperty("_http_buffer", accumulated);
+
+            // Check if we have complete headers now
+            int he = accumulated.indexOf("\r\n\r\n");
+            if (he < 0) return; // Still incomplete
+
+            // Check Content-Length
+            int content_length = 0;
+            QList<QByteArray> header_lines = accumulated.left(he).split('\n');
+            for (int i = 1; i < header_lines.size(); ++i) {
+                QByteArray line = header_lines[i].trimmed();
+                if (line.startsWith("Content-Length:") || line.startsWith("content-length:")) {
+                    content_length = line.mid(15).trimmed().toInt();
+                    break;
+                }
+            }
+
+            QByteArray body = accumulated.mid(he + 4);
+            if (content_length > 0 && body.size() < content_length) {
+                return; // Body incomplete, wait for more
+            }
+
+            // Complete request received
+            _pending_sockets.remove(socket);
+            socket->setProperty("_http_buffer", QByteArray());
+            // Reconnect the normal handler
+            disconnect(socket, &QTcpSocket::readyRead, this, nullptr);
+            connect(socket, &QTcpSocket::readyRead, this, &McpTransport::on_ready_read);
+            handle_http_request(socket, accumulated);
+        }, Qt::UniqueConnection);
+        socket->setProperty("_http_buffer", data);
+        return;
+    }
+
+    // We have headers — check Content-Length
+    int content_length = 0;
+    QList<QByteArray> header_lines = data.left(header_end).split('\n');
+    for (int i = 1; i < header_lines.size(); ++i) {
+        QByteArray line = header_lines[i].trimmed();
+        if (line.startsWith("Content-Length:") || line.startsWith("content-length:")) {
+            content_length = line.mid(15).trimmed().toInt();
+            break;
+        }
+    }
+
+    QByteArray body = data.mid(header_end + 4);
+    if (content_length > 0 && body.size() < content_length) {
+        // Body incomplete — wait for more data
+        _pending_sockets.insert(socket);
+        disconnect(socket, &QTcpSocket::readyRead, this, &McpTransport::on_ready_read);
+        connect(socket, &QTcpSocket::readyRead, this, [this, socket, content_length]() {
+            QByteArray accumulated = socket->property("_http_buffer").toByteArray();
+            accumulated.append(socket->readAll());
+            socket->setProperty("_http_buffer", accumulated);
+
+            int he = accumulated.indexOf("\r\n\r\n");
+            if (he < 0) return;
+
+            QByteArray body = accumulated.mid(he + 4);
+            if (body.size() < content_length) return;
+
+            // Complete
+            _pending_sockets.remove(socket);
+            socket->setProperty("_http_buffer", QByteArray());
+            disconnect(socket, &QTcpSocket::readyRead, this, nullptr);
+            connect(socket, &QTcpSocket::readyRead, this, &McpTransport::on_ready_read);
+            handle_http_request(socket, accumulated);
+        }, Qt::UniqueConnection);
+        socket->setProperty("_http_buffer", data);
+        return;
+    }
+
+    // Complete request available
     handle_http_request(socket, data);
 }
 
@@ -116,7 +213,7 @@ void McpTransport::handle_http_request(QTcpSocket* socket, const QByteArray& dat
         return;
     }
 
-    // Read Content-Length and extract body
+    // Read Content-Length (already validated by try_handle_request, but parse for reference)
     int content_length = -1;
     for (int i = 1; i < request_lines.size(); ++i) {
         QByteArray line = request_lines[i].trimmed();
@@ -124,10 +221,6 @@ void McpTransport::handle_http_request(QTcpSocket* socket, const QByteArray& dat
             QByteArray value = line.mid(15).trimmed();
             content_length = value.toInt();
         }
-    }
-
-    if (content_length > 0 && body.size() < content_length) {
-        // Incomplete body — in a simple implementation we process what we have.
     }
 
     // Parse JSON-RPC request
@@ -386,11 +479,17 @@ void McpTransport::send_http_response(QTcpSocket* socket, int status,
     response.append("Access-Control-Allow-Methods: POST, OPTIONS\r\n");
     response.append("Access-Control-Allow-Headers: Content-Type\r\n");
     response.append("Content-Length: " + QByteArray::number(body.size()) + "\r\n");
+    response.append("Connection: close\r\n");
     response.append("\r\n");
     response.append(body);
 
     socket->write(response);
     socket->flush();
+
+    // Wait for bytes to be written before disconnecting
+    if (socket->state() == QAbstractSocket::ConnectedState) {
+        socket->waitForBytesWritten(3000);
+    }
     socket->disconnectFromHost();
 }
 
@@ -402,10 +501,15 @@ void McpTransport::send_http_204(QTcpSocket* socket)
     response.append("Access-Control-Allow-Methods: POST, OPTIONS\r\n");
     response.append("Access-Control-Allow-Headers: Content-Type\r\n");
     response.append("Content-Length: 0\r\n");
+    response.append("Connection: close\r\n");
     response.append("\r\n");
 
     socket->write(response);
     socket->flush();
+
+    if (socket->state() == QAbstractSocket::ConnectedState) {
+        socket->waitForBytesWritten(3000);
+    }
     socket->disconnectFromHost();
 }
 
