@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QSet>
 #include <map>
 
 namespace pv::api {
@@ -32,7 +33,9 @@ private:
     IJsonRpcHandler* _handler;
     int _port;
     QTcpServer* _server = nullptr;
+    QSet<QTcpSocket*> _pending_sockets;
 
+    void try_handle_request(QTcpSocket* socket);
     void handle_http_request(QTcpSocket* socket, const QByteArray& data);
     void send_http_response(QTcpSocket* socket, int status, const QByteArray& body,
                             const char* content_type = "application/json");

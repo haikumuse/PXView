@@ -2111,6 +2111,83 @@ Result<std::string> SessionService::add_decoder(
     // If already on the main thread, execute directly to avoid deadlock.
 
     auto do_add = [this, dec, &options, &channel_map, &label]() -> Result<std::string> {
+        // Validate: decoder can only be added in LOGIC mode.
+        // This mirrors ProtocolDock::add_protocol_by_id() which checks
+        // get_work_mode() != LOGIC and rejects the operation.
+        if (_session->get_device()->get_work_mode() != LOGIC) {
+            return Result<std::string>::Fail(
+                ErrorCode::DecoderError,
+                "Protocol analyzers are only valid in Digital/Logic mode. "
+                "Please switch to Logic mode first using switch_work_mode.");
+        }
+
+        // Validate: all required channels must be provided in channel_map.
+        // This mirrors the check that ProtocolDock::create_popup() does via
+        // DecoderStack::check_required_probes(). Without this validation,
+        // MCP add_decoder with silent=true would bypass the channel
+        // configuration dialog and allow decoders with missing required
+        // channels, which would silently fail to decode.
+        if (!channel_map.empty()) {
+            // Check that all required channels are covered
+            std::string missing;
+            for (const GSList *c = dec->channels; c; c = c->next) {
+                auto *ch = static_cast<srd_channel*>(c->data);
+                std::string ch_id = ch->id ? ch->id : "";
+                std::string ch_name = ch->name ? ch->name : "";
+                std::string ch_desc = ch->desc ? ch->desc : "";
+
+                auto ci_eq = [](const std::string& a, const std::string& b) {
+                    if (a.size() != b.size()) return false;
+                    for (size_t i = 0; i < a.size(); i++)
+                        if (tolower(a[i]) != tolower(b[i])) return false;
+                    return true;
+                };
+
+                bool found = false;
+                for (const auto& [key, _val] : channel_map) {
+                    if (ci_eq(key, ch_id) || ci_eq(key, ch_name) || ci_eq(key, ch_desc)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    if (!missing.empty()) missing += ", ";
+                    missing += ch_id.empty() ? (ch_name.empty() ? "?" : ch_name) : ch_id;
+                }
+            }
+
+            // Auto-map: if channelMap has exactly one entry and decoder
+            // has exactly one required channel, skip the missing check
+            int required_ch_count = 0;
+            for (const GSList *c = dec->channels; c; c = c->next)
+                required_ch_count++;
+            bool auto_map = (channel_map.size() == 1 && required_ch_count == 1);
+
+            if (!missing.empty() && !auto_map) {
+                return Result<std::string>::Fail(
+                    ErrorCode::DecoderError,
+                    "Required channel(s) not mapped: " + missing +
+                    ". Please provide a channelMap with all required channels.");
+            }
+        } else if (dec->channels) {
+            // channel_map is empty but decoder has required channels
+            int required_ch_count = 0;
+            for (const GSList *c = dec->channels; c; c = c->next)
+                required_ch_count++;
+            if (required_ch_count > 0) {
+                std::string missing;
+                for (const GSList *c = dec->channels; c; c = c->next) {
+                    auto *ch = static_cast<srd_channel*>(c->data);
+                    if (!missing.empty()) missing += ", ";
+                    missing += ch->id ? ch->id : (ch->name ? ch->name : "?");
+                }
+                return Result<std::string>::Fail(
+                    ErrorCode::DecoderError,
+                    "Required channel(s) not mapped: " + missing +
+                    ". Please provide a channelMap with all required channels.");
+            }
+        }
+
         // Do NOT call processEvents() or wait for _copy_in_progress here.
         // Calling processEvents() while inside do_add() on the main thread
         // causes a crash: it processes DSV_MSG_COPY_TO_DOC_DONE which calls
