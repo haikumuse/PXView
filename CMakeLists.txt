@@ -1100,3 +1100,6 @@ if(BUILD_DECODER_TEST)
 endif()
 
 
+
+add_executable(test_font test_font.cpp)
+target_link_libraries(test_font Qt6::Gui Qt6::Widgets)

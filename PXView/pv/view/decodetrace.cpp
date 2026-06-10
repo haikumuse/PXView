@@ -37,6 +37,7 @@
 #include "../ui/dscombobox.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
+#include "../ui/dockfonts.h"
 #include "../view/cursor.h"
 #include "../view/logicsignal.h"
 #include "../view/view.h"
@@ -498,10 +499,24 @@ void DecodeTrace::draw_instant(const pv::data::decode::Annotation &a,
   // read anyway
   if (w > 4.0) {
     p.setPen(text_color);
-    const bool wasTextAA = p.renderHints() & QPainter::TextAntialiasing;
     p.setRenderHint(QPainter::TextAntialiasing, false);
+    QFont dec_font = p.font();
+    dec_font.setFamily("Arial");
+    dec_font.setPixelSize(12);
+    dec_font.setHintingPreference(QFont::PreferVerticalHinting);
+    dec_font.setStyleStrategy(QFont::NoAntialias);
+    p.setFont(dec_font);
+    
+    static bool logged_font = false;
+    if (!logged_font) {
+        pxv_info("DECODER FONT: opposans_family_name() returned '%s', resolved family is '%s', exact match: %d", 
+                 opposans_family_name().toUtf8().constData(),
+                 QFontInfo(dec_font).family().toUtf8().constData(),
+                 QFontInfo(dec_font).exactMatch());
+        logged_font = true;
+    }
+
     p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter, text);
-    p.setRenderHint(QPainter::TextAntialiasing, wasTextAA);
   }
 }
 
@@ -546,10 +561,13 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
     return;
 
   p.setPen(text_color);
-
-  // Disable text antialiasing for crisp pixel-aligned rendering
-  const bool wasTextAA = p.renderHints() & QPainter::TextAntialiasing;
   p.setRenderHint(QPainter::TextAntialiasing, false);
+  QFont dec_font = p.font();
+  dec_font.setFamily("Arial");
+  dec_font.setPixelSize(12);
+  dec_font.setHintingPreference(QFont::PreferVerticalHinting);
+  dec_font.setStyleStrategy(QFont::NoAntialias);
+  p.setFont(dec_font);
 
   // Get best annotation representation using the new high-performance cache
   const QString best_annotation =
@@ -558,8 +576,6 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
   const QString elided =
       p.fontMetrics().elidedText(best_annotation, Qt::ElideRight, rect.width());
   p.drawText(rect, Qt::AlignCenter, elided);
-
-  p.setRenderHint(QPainter::TextAntialiasing, wasTextAA);
 }
 
 void DecodeTrace::draw_error(QPainter &p, const QString &message, int left,

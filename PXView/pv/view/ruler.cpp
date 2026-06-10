@@ -233,6 +233,7 @@ void Ruler::paintEvent(QPaintEvent*)
 
     QFont font = theme_font_ruler();
     p.setFont(font);
+    p.setRenderHint(QPainter::TextAntialiasing, false);
 
     SigSession *session = AppControl::Instance()->GetSession();
 

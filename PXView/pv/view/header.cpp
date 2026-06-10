@@ -138,6 +138,7 @@ void Header::paintEvent(QPaintEvent *) {
 
   QFont font = theme_font_trace_label();
   painter.setFont(font);
+  painter.setRenderHint(QPainter::TextAntialiasing, false);
 
   painter.save();
   pxv_info("[DEBUG-DSO] Header::paintEvent: work_mode=%d, vOffset=%d, header_h=%d",

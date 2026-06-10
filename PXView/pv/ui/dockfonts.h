@@ -3,6 +3,7 @@
 
 #include <QFont>
 #include <QApplication>
+#include <QFontDatabase>
 #include "../config/appconfig.h"
 
 // ATK QML font.pixelSize reference:
@@ -120,17 +121,21 @@ inline QFont theme_font_dialog()
 
 inline QFont theme_font_trace_label()
 {
-    QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@trace-label-font-size", 10));
-    apply_global_font_strategy(font);
+    QFont font;
+    font.setFamily("Arial");
+    font.setPixelSize(12);
+    font.setHintingPreference(QFont::PreferVerticalHinting);
+    font.setStyleStrategy(QFont::NoAntialias);
     return font;
 }
 
 inline QFont theme_font_ruler()
 {
-    QFont font = QApplication::font();
-    font.setPixelSize(get_dock_font_size("@ruler-font-size", 10));
-    apply_global_font_strategy(font);
+    QFont font;
+    font.setFamily("Arial");
+    font.setPixelSize(12);
+    font.setHintingPreference(QFont::PreferVerticalHinting);
+    font.setStyleStrategy(QFont::NoAntialias);
     return font;
 }
 
@@ -140,6 +145,24 @@ inline QFont theme_font_cursor()
     font.setPixelSize(get_dock_font_size("@cursor-font-size", 10));
     apply_global_font_strategy(font);
     return font;
+}
+
+// Dynamically resolve the actual family name of OPPOSans (e.g., "OPPOSans M" or "OPPOSans")
+// to prevent silent fallback to SourceHanSansCN which has a diagonal slash in its '0'.
+inline QString opposans_family_name()
+{
+    static QString resolvedName;
+    if (resolvedName.isEmpty()) {
+        resolvedName = "OPPOSans"; // Fallback
+        int id = QFontDatabase::addApplicationFont(":/fonts/OPPOSans-M.ttf");
+        if (id != -1) {
+            QStringList families = QFontDatabase::applicationFontFamilies(id);
+            if (!families.isEmpty()) {
+                resolvedName = families.at(0);
+            }
+        }
+    }
+    return resolvedName;
 }
 
 #endif
