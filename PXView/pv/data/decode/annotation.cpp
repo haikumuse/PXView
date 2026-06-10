@@ -187,16 +187,6 @@ bool Annotation::is_numberic()
 	return resItem->is_numeric;
 }
 
-QStaticText* Annotation::get_cached_text(const QString &text, const QFont &font) const
-{
-    if (_cached_text.text() != text || _cached_font != font) {
-        _cached_text.setText(text);
-        _cached_text.prepare(QTransform(), font);
-        _cached_font = font;
-    }
-    return &_cached_text;
-}
-
 QString Annotation::get_cached_best_annotation(double rect_width, const QFont &font, const QFontMetrics &fm) const
 {
     if (_cached_rect_width == rect_width && _cached_width_font == font) {

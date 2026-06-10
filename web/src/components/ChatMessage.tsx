@@ -1,13 +1,14 @@
-import type { DisplayMessage } from '../hooks/useAppStore';
+import type { ConversationMessage } from '../hooks/useAppStore';
 import ToolCallCard from './ToolCallCard';
 import { Loader2, Brain } from 'lucide-react';
 
-export default function ChatMessage({ message }: { message: DisplayMessage }) {
+export default function ChatMessage({ message }: { message: ConversationMessage }) {
   const isUser = message.role === 'user';
   const isStreaming = message.isStreaming;
   const isToolRunning = message.isToolRunning;
-  const hasToolCalls = message.toolCalls && message.toolCalls.length > 0;
-  const showThinking = isStreaming && !message.content && (!hasToolCalls || message.toolCalls!.every(tc => tc.status === 'pending'));
+  const isStopped = message.isStopped;
+  const hasToolCalls = message.toolCallStatuses && message.toolCallStatuses.length > 0;
+  const showThinking = isStreaming && !message.content && (!hasToolCalls || message.toolCallStatuses!.every(tc => tc.status === 'pending'));
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
@@ -36,17 +37,22 @@ export default function ChatMessage({ message }: { message: DisplayMessage }) {
           </p>
         )}
 
+        {/* Stopped indicator */}
+        {isStopped && (
+          <span className="text-xs text-text-secondary ml-1">[已停止]</span>
+        )}
+
         {/* Tool calls */}
         {hasToolCalls && (
           <div className="mt-2 space-y-1">
-            {message.toolCalls!.map((tc) => (
+            {message.toolCallStatuses!.map((tc) => (
               <ToolCallCard key={tc.id} toolCall={tc} />
             ))}
           </div>
         )}
 
         {/* Tool running indicator (when no more text but tools still executing) */}
-        {isToolRunning && hasToolCalls && message.toolCalls!.some(tc => tc.status === 'running') && (
+        {isToolRunning && hasToolCalls && message.toolCallStatuses!.some(tc => tc.status === 'running') && (
           <div className="flex items-center gap-2 text-text-secondary text-xs mt-2 pt-2 border-t border-border/50">
             <Loader2 className="w-3 h-3 animate-spin" />
             <span>Executing tools…</span>

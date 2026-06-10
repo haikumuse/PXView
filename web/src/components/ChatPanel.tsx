@@ -3,6 +3,7 @@ import { Cpu } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import ErrorBoundary from './ErrorBoundary';
 
 export default function ChatPanel() {
   const messages = useAppStore((s) => s.messages);
@@ -24,7 +25,11 @@ export default function ChatPanel() {
             </p>
           </div>
         ) : (
-          messages.map((msg) => <ChatMessage key={msg.id} message={msg} />)
+          messages.map((msg) => (
+            <ErrorBoundary key={msg.id}>
+              <ChatMessage message={msg} />
+            </ErrorBoundary>
+          ))
         )}
         <div ref={bottomRef} />
       </div>

@@ -1,12 +1,14 @@
-import { Activity, Usb, Plug, Unplug } from 'lucide-react';
+import { Activity, Usb, Plug, Unplug, Loader2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 
 export default function DevicePanel() {
   const deviceInfo = useAppStore((s) => s.deviceInfo);
   const captureStatus = useAppStore((s) => s.captureStatus);
   const mcpConnected = useAppStore((s) => s.mcpConnected);
+  const reconnectStatus = useAppStore((s) => s.reconnectStatus);
   const connectMcp = useAppStore((s) => s.connectMcp);
   const disconnectMcp = useAppStore((s) => s.disconnectMcp);
+  const attemptReconnect = useAppStore((s) => s.attemptReconnect);
 
   const statusColors: Record<string, string> = {
     idle: 'bg-text-secondary',
@@ -67,9 +69,24 @@ export default function DevicePanel() {
         </div>
       </div>
 
-      {/* Connect / Disconnect */}
+      {/* Connect / Disconnect / Reconnect */}
       <div className="p-4 mt-auto">
-        {mcpConnected ? (
+        {reconnectStatus === 'reconnecting' ? (
+          <div className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-warning/15 text-warning text-sm">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Reconnecting…</span>
+          </div>
+        ) : reconnectStatus === 'failed' ? (
+          <div className="p-2 space-y-2">
+            <p className="text-xs text-error text-center">Connection lost</p>
+            <button
+              onClick={attemptReconnect}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-accent/15 text-accent text-sm hover:bg-accent/25 transition-colors"
+            >
+              <Plug className="w-4 h-4" /> Reconnect
+            </button>
+          </div>
+        ) : mcpConnected ? (
           <button
             onClick={disconnectMcp}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-error/15 text-error text-sm hover:bg-error/25 transition-colors"

@@ -216,16 +216,27 @@ export class LlmClient {
         }
       }
     } catch (err: any) {
-      // If aborted by user, don't treat as error
+      // If aborted by user, call onDone with partial message before returning
       if (signal?.aborted || err.name === 'AbortError') {
         const partialMessage = {
           content: fullContent || null,
           tool_calls: toolCallsMap.size > 0 ? Array.from(toolCallsMap.values()) : undefined,
         };
+        callbacks.onDone(partialMessage);
         return partialMessage;
       }
       callbacks.onError(err);
       return { content: null };
+    }
+
+    // If we broke out of the while loop due to signal.aborted, call onDone
+    if (signal?.aborted) {
+      const partialMessage = {
+        content: fullContent || null,
+        tool_calls: toolCallsMap.size > 0 ? Array.from(toolCallsMap.values()) : undefined,
+      };
+      callbacks.onDone(partialMessage);
+      return partialMessage;
     }
 
     // Final assembled message

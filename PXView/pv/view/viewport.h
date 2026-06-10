@@ -186,8 +186,6 @@ private:
   View_type _type;
   bool _need_update;
   QPixmap _pixmap;
-  QPixmap _decode_pixmap;
-  bool _decode_needs_rebuild;
   QMenu *_cmenu;
 
   uint64_t _sample_received;
