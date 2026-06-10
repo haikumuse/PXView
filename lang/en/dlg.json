@@ -1608,6 +1608,10 @@
         "text": "Cursor Size"
     },
     {
+        "id": "IDS_STYLE_FONT_DECODER",
+        "text": "Decoder Font Size"
+    },
+    {
         "id": "IDS_STYLE_INPUT_BG",
         "text": "Input Background"
     },

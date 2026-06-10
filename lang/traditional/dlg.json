@@ -1604,6 +1604,10 @@
         "text": "游標數值字號"
     },
     {
+        "id": "IDS_STYLE_FONT_DECODER",
+        "text": "解碼器註釋字號"
+    },
+    {
         "id": "IDS_STYLE_INPUT_BG",
         "text": "輸入框背景"
     },

@@ -155,8 +155,9 @@
  * @toolbar-font-size: 12px
  * @sidebar-font-size: 12px
  * @dialog-font-size: 12px
- * @trace-label-font-size: 10px
- * @ruler-font-size: 10px
+ * @trace-label-font-size: 12px
+ * @ruler-font-size: 12px
+ * @decoder-font-size: 12px
  * @cursor-font-size: 10px
  * @icon-dir: dark
  */
