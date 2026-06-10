@@ -500,21 +500,8 @@ void DecodeTrace::draw_instant(const pv::data::decode::Annotation &a,
   if (w > 4.0) {
     p.setPen(text_color);
     p.setRenderHint(QPainter::TextAntialiasing, false);
-    QFont dec_font = p.font();
-    dec_font.setFamily("Arial");
-    dec_font.setPixelSize(12);
-    dec_font.setHintingPreference(QFont::PreferVerticalHinting);
-    dec_font.setStyleStrategy(QFont::NoAntialias);
+    QFont dec_font = theme_font_decoder();
     p.setFont(dec_font);
-    
-    static bool logged_font = false;
-    if (!logged_font) {
-        pxv_info("DECODER FONT: opposans_family_name() returned '%s', resolved family is '%s', exact match: %d", 
-                 opposans_family_name().toUtf8().constData(),
-                 QFontInfo(dec_font).family().toUtf8().constData(),
-                 QFontInfo(dec_font).exactMatch());
-        logged_font = true;
-    }
 
     p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter, text);
   }
@@ -562,11 +549,7 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
 
   p.setPen(text_color);
   p.setRenderHint(QPainter::TextAntialiasing, false);
-  QFont dec_font = p.font();
-  dec_font.setFamily("Arial");
-  dec_font.setPixelSize(12);
-  dec_font.setHintingPreference(QFont::PreferVerticalHinting);
-  dec_font.setStyleStrategy(QFont::NoAntialias);
+  QFont dec_font = theme_font_decoder();
   p.setFont(dec_font);
 
   // Get best annotation representation using the new high-performance cache

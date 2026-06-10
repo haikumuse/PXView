@@ -191,6 +191,7 @@
         { "id": "@dialog-font-size", "type": "size", "label": "IDS_STYLE_FONT_DIALOG" },
         { "id": "@trace-label-font-size", "type": "size", "label": "IDS_STYLE_FONT_TRACE_LABEL" },
         { "id": "@ruler-font-size", "type": "size", "label": "IDS_STYLE_FONT_RULER" },
+        { "id": "@decoder-font-size", "type": "size", "label": "IDS_STYLE_FONT_DECODER" },
         { "id": "@cursor-font-size", "type": "size", "label": "IDS_STYLE_FONT_CURSOR" }
       ]
     }
