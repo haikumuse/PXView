@@ -498,7 +498,10 @@ void DecodeTrace::draw_instant(const pv::data::decode::Annotation &a,
   // read anyway
   if (w > 4.0) {
     p.setPen(text_color);
+    const bool wasTextAA = p.renderHints() & QPainter::TextAntialiasing;
+    p.setRenderHint(QPainter::TextAntialiasing, false);
     p.drawText(rect, Qt::AlignCenter | Qt::AlignVCenter, text);
+    p.setRenderHint(QPainter::TextAntialiasing, wasTextAA);
   }
 }
 
@@ -544,17 +547,19 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
 
   p.setPen(text_color);
 
+  // Disable text antialiasing for crisp pixel-aligned rendering
+  const bool wasTextAA = p.renderHints() & QPainter::TextAntialiasing;
+  p.setRenderHint(QPainter::TextAntialiasing, false);
+
   // Get best annotation representation using the new high-performance cache
   const QString best_annotation =
       a.get_cached_best_annotation(rect.width(), p.font(), p.fontMetrics());
 
   const QString elided =
       p.fontMetrics().elidedText(best_annotation, Qt::ElideRight, rect.width());
-  QStaticText *st = a.get_cached_text(elided, p.font());
-  p.drawStaticText(
-      QPointF(rect.x() + (rect.width() - st->size().width()) / 2,
-              rect.y() + (rect.height() - st->size().height()) / 2),
-      *st);
+  p.drawText(rect, Qt::AlignCenter, elided);
+
+  p.setRenderHint(QPainter::TextAntialiasing, wasTextAA);
 }
 
 void DecodeTrace::draw_error(QPainter &p, const QString &message, int left,
@@ -664,8 +669,13 @@ void DecodeTrace::on_decode_done() {
   // elapsed < 20ms, leaving the progress bar stuck at 99%.
   decoded_progress(_decoder_stack->get_progress());
 
-  const int expectedHeight = rows_size() * _view->get_signalHeight();
-  if (_totalHeight != expectedHeight) {
+  // Always recalculate layout after decode completes.
+  // This is critical for MCP-initiated decodes where set_data_document()
+  // may have been called without triggering signals_changed(), leaving
+  // the DecodeTrace at an incorrect y position (e.g. off-screen).
+  // Without this, the decode track appears empty until the user manually
+  // triggers a layout recalculation (e.g. by re-capturing).
+  if (_view) {
     _view->signals_changed(NULL);
   }
 

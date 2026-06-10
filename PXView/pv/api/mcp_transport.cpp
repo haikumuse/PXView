@@ -395,7 +395,9 @@ void McpTransport::handle_sse_wait_capture(QTcpSocket* socket,
     double timeout_seconds = 300.0;
     try {
         json args = json::parse(req.mcp_tool_args);
-        if (args.contains("timeout_seconds") && args["timeout_seconds"].is_number())
+        if (args.contains("timeoutSeconds") && args["timeoutSeconds"].is_number())
+            timeout_seconds = args["timeoutSeconds"].get<double>();
+        else if (args.contains("timeout_seconds") && args["timeout_seconds"].is_number())
             timeout_seconds = args["timeout_seconds"].get<double>();
     } catch (...) {}
 

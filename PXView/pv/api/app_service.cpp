@@ -44,7 +44,17 @@ AppService::~AppService()
 Result<void> AppService::initialize()
 {
     // AppControl is already initialized by the time AppService is created.
-    // Return success; actual init is handled by AppControl::Init()/Start().
+    // Auto-register the existing SigSession so that MCP tools can use it
+    // immediately without requiring an explicit create_session() call.
+    // The GUI already has a SigSession with a device connected, so we just
+    // need to wrap it in a SessionService and register it.
+    SigSession* session = _app_control ? _app_control->GetSession() : nullptr;
+    if (session) {
+        int session_id = _next_session_id++;
+        auto* svc = new SessionService(session, session->get_device());
+        _sessions[session_id] = svc;
+        _active_session_id = session_id;
+    }
     return Result<void>::Success();
 }
 

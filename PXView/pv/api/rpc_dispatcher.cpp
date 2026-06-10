@@ -995,12 +995,14 @@ JsonRpcResponse RpcDispatcher::on_close_capture(int id, const json& /*params*/) 
 }
 
 JsonRpcResponse RpcDispatcher::on_add_analyzer(int id, const json& params) {
+    mcp_dbg_log("on_add_analyzer: ENTER");
     auto session = app_svc_->get_active_session();
 
     // Auto-create session if none exists, so that add_analyzer can be called
     // before start_capture (the recommended MCP workflow: add decoder first,
     // then start capture, so DSV_MSG_COPY_TO_DOC_DONE auto-starts decode).
     if (!session) {
+        mcp_dbg_log("on_add_analyzer: no active session, creating one");
         auto devices = app_svc_->get_device_list();
         std::string device_id;
         for (const auto& d : devices) {
@@ -1013,19 +1015,25 @@ JsonRpcResponse RpcDispatcher::on_add_analyzer(int id, const json& params) {
             device_id = devices[0].id;
 
         if (!device_id.empty()) {
+            mcp_dbg_log("on_add_analyzer: calling create_session");
             auto r = app_svc_->create_session(device_id, "");
-            if (!r.ok())
+            if (!r.ok()) {
+                mcp_dbg_log("on_add_analyzer: create_session FAILED");
                 return error_resp(id, static_cast<int>(r.error().code),
                                   "Failed to create session: " + r.error().message);
+            }
             session = app_svc_->get_active_session();
+            mcp_dbg_log("on_add_analyzer: session created, processing events");
             QCoreApplication::processEvents();
             QCoreApplication::processEvents();
         }
     }
 
-    if (!session)
+    if (!session) {
+        mcp_dbg_log("on_add_analyzer: no session available");
         return error_resp(id, static_cast<int>(ErrorCode::MissingDevice),
                           "No active session");
+    }
 
     // MCP uses "analyzerName", internal uses "id"
     std::string decoder_id;
@@ -1086,7 +1094,9 @@ JsonRpcResponse RpcDispatcher::on_add_analyzer(int id, const json& params) {
     if (params.contains("stackOnAnalyzerId"))
         stack_on_id = params["stackOnAnalyzerId"].get<std::string>();
 
+    mcp_dbg_log(QString("on_add_analyzer: calling add_decoder(%1)").arg(QString::fromStdString(decoder_id)).toUtf8().constData());
     auto r = session->add_decoder(decoder_id, options, channel_map, label, false, stack_on_id);
+    mcp_dbg_log("on_add_analyzer: add_decoder returned");
     return wrap_result(id, r);
 }
 

@@ -4,6 +4,7 @@ import TopBar from './components/TopBar';
 import ChatPanel from './components/ChatPanel';
 import DevicePanel from './components/DevicePanel';
 import SettingsDrawer from './components/SettingsDrawer';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   const settings = useAppStore((s) => s.settings);
@@ -22,6 +23,16 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
+    <ErrorBoundary fallback={
+      <div className="h-screen flex items-center justify-center bg-bg-primary text-text-primary">
+        <div className="text-center space-y-4">
+          <p className="text-lg">应用错误</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-accent text-white rounded-lg">
+            重新加载
+          </button>
+        </div>
+      </div>
+    }>
     <div className="h-screen flex flex-col bg-bg-primary text-text-primary">
       <TopBar
         onSettingsClick={() => setSettingsOpen(true)}
@@ -67,5 +78,6 @@ export default function App() {
       {/* Settings drawer */}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
+    </ErrorBoundary>
   );
 }

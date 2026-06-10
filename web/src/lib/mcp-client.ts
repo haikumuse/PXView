@@ -169,6 +169,10 @@ export class McpClient {
     }
 
     if (!finalResult) {
+      // If the stream was aborted, throw AbortError instead of generic message
+      if (signal?.aborted) {
+        throw new DOMException('The operation was aborted.', 'AbortError');
+      }
       throw new Error('SSE stream ended without a final result');
     }
 

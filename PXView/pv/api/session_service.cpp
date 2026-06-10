@@ -200,6 +200,14 @@ Result<void> SessionService::stop_capture() {
     if (!ok)
         return Result<void>::Fail(ErrorCode::DeviceError,
                                  "Failed to stop capture");
+
+    // Wait for capture to actually stop (max 3 seconds)
+    for (int i = 0; i < 30; i++) {
+        if (!_session->is_working() && !_session->is_running_status())
+            break;
+        QThread::msleep(100);
+    }
+
     return Result<void>::Success();
 }
 

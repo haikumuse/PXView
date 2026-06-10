@@ -1,0 +1,21 @@
+- [x] 统一消息数据模型：`chatHistory` 从模块级变量改为从 Zustand `messages` 派生，无独立状态
+- [x] `sendMessage` 中所有状态变更通过 Zustand `set`，无模块级变量直接修改
+- [x] `clearChat` 只需清空 `messages`，无需额外清理 `chatHistory` 或 `abortController`
+- [x] `stopGeneration` 正确标记当前消息 `isStreaming: false, isToolRunning: false`，追加"[已停止]"
+- [x] 停止时进行中的工具状态标记为 `error: "Cancelled by user"`
+- [x] `sendMessage` 入口检查 `isProcessing`，为 true 时拒绝新请求
+- [x] `llm-client.ts` chatStream 在 abort 退出时调用 `onDone(partialMessage)`，UI 状态正确更新
+- [x] `mcp-client.ts` callTool 在 abort 时抛出 `AbortError`
+- [x] 上下文窗口：派生 `chatHistory` 时保留 system prompt + 最近 30 条消息
+- [x] 工具结果超过 4000 字符时截断并追加提示
+- [x] 同一工具连续失败 3 次时追加警告，阻止 LLM 无限重试
+- [x] MCP 自动重连：失败后最多 6 次，间隔 5 秒
+- [x] 重连成功后刷新工具列表和设备信息
+- [x] 重连全部失败后显示"连接已断开"+ 手动连接按钮
+- [x] `disconnectMcp` 时先停止正在进行的请求
+- [x] 后端 `mcp_transport.cpp` SSE 超时参数同时支持 `timeoutSeconds` 和 `timeout_seconds`
+- [x] 后端 `session_service.cpp` stop_capture 等待采集真正停止（最多 3 秒轮询）
+- [x] `ToolCallCard` 对 `get_analyzer_results` 使用 `DecoderResultTable` 渲染
+- [x] `ToolCallCard` 对 `get_devices` 使用设备卡片渲染
+- [x] React ErrorBoundary 包裹每条聊天消息，异常时显示占位符
+- [x] React ErrorBoundary 包裹 App 最外层，异常时显示重载按钮

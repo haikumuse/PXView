@@ -214,7 +214,7 @@ const QColor Viewport::PROBE_COLORS[8] = {
 
 Viewport::Viewport(View &parent, View_type type)
     : QWidget(&parent), _view(parent), _type(type), _need_update(false),
-      _decode_needs_rebuild(true), _sample_received(0), _action_type(NO_ACTION),
+      _sample_received(0), _action_type(NO_ACTION),
       _measure_type(NO_MEASURE), _cur_sample(0), _nxt_sample(1), _cur_preX(0),
       _cur_aftX(1), _cur_midY(0), _hover_index(0), _hover_hit(false),
       _dso_xm_valid(false), _dso_ym_valid(false), _waiting_trig(0),
@@ -693,10 +693,13 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       _curSignalHeight = _view.get_signalHeight();
       _curVOffset = _view.get_vOffset();
 
-      _pixmap = QPixmap(size());
+      const qreal dpr = devicePixelRatioF();
+      _pixmap = QPixmap(size() * dpr);
+      _pixmap.setDevicePixelRatio(dpr);
       _pixmap.fill(Qt::transparent);
 
       QPainter dbp(&_pixmap);
+      dbp.scale(dpr, dpr);
       dbp.translate(0, -_view.get_vOffset());
 
       bool bFirst = true;
@@ -741,39 +744,28 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
     t_blit = blitTimer.elapsed();
 #endif
 
-    // 2. Paint decode traces into a cached pixmap (same double-buffering
-    //    pattern as logic signals). This eliminates:
-    //    - Dock animation stutter (no decode rebuild during animation)
-    //    - Thin line artifacts (pixmap content is always complete)
-#ifndef NDEBUG
-    QElapsedTimer decodeTimer;
-    decodeTimer.start();
-#endif
-    // Rebuild decode pixmap when view parameters changed, data was
-    // explicitly updated, or new decode data arrived
-    bool decode_rebuild = rebuilt || _decode_needs_rebuild;
-    if (decode_rebuild) {
-      _decode_needs_rebuild = false;
-      _decode_pixmap = QPixmap(size());
-      _decode_pixmap.fill(Qt::transparent);
-
-      QPainter dp(&_decode_pixmap);
-      dp.translate(0, -_view.get_vOffset());
+    // 2. Paint decode traces directly on the widget (not via QPixmap).
+    //    Rendering text into a QPixmap forces grayscale antialiasing
+    //    even when the font strategy requests no antialiasing, because
+    //    the raster paint engine on an offscreen surface ignores the
+    //    TextAntialiasing hint.  Painting directly on the QWidget
+    //    respects the hint, producing crisp pixel-aligned text.
+    //    Logic-signal waveforms are still cached in _pixmap because
+    //    lines are not affected by the antialiasing difference.
+    {
+      p.save();
+      p.translate(0, -_view.get_vOffset());
 
       QFont dfont = theme_font_trace_label();
-      dp.setFont(dfont);
+      p.setFont(dfont);
 
       for (auto t : traces) {
         if (t->enabled() && t->signal_type() == SR_CHANNEL_DECODER) {
-          t->paint_mid(dp, 0, t->get_view_rect().right(), fore, back);
+          t->paint_mid(p, 0, t->get_view_rect().right(), fore, back);
         }
       }
+      p.restore();
     }
-    // Blit the cached decode pixmap (cheap operation, even during animation)
-    p.drawPixmap(0, 0, _decode_pixmap);
-#ifndef NDEBUG
-    t_decode = decodeTimer.elapsed();
-#endif
   } else {
     if (_view.scale() != _curScale || _view.offset() != _curOffset ||
         _view.get_signalHeight() != _curSignalHeight ||
@@ -790,10 +782,13 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       _curSignalHeight = _view.get_signalHeight();
       _curVOffset = _view.get_vOffset();
 
-      _pixmap = QPixmap(size());
+      const qreal dpr = devicePixelRatioF();
+      _pixmap = QPixmap(size() * dpr);
+      _pixmap.setDevicePixelRatio(dpr);
       _pixmap.fill(Qt::transparent);
 
       QPainter dbp(&_pixmap);
+      dbp.scale(dpr, dpr);
       dbp.translate(0, -_view.get_vOffset());
 
       bool isLissa = false;
@@ -2684,7 +2679,7 @@ void Viewport::on_drag_timer() {
 
 void Viewport::set_need_update(bool update) { _need_update = update; }
 
-void Viewport::set_decode_dirty() { _decode_needs_rebuild = true; }
+void Viewport::set_decode_dirty() { _need_update = true; }
 
 void Viewport::show_wait_trigger() {
   _waiting_trig %= (WaitLoopTime / SigSession::FeedInterval) * 4;
