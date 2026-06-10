@@ -170,9 +170,9 @@ int main(int argc, char *argv[])
         if (!fontFamilies.isEmpty()) {
             // Use PreferNoHinting with FreeType to ensure smooth grayscale antialiasing.
             // PreferVerticalHinting can cause FreeType to aggressively snap and disable antialiasing for some font sizes.
-            font.setHintingPreference(QFont::PreferNoHinting);
-            font.setStyleStrategy(QFont::PreferAntialias);
-            font.setFamily(fontFamilies.at(0));
+            font.setHintingPreference(QFont::PreferVerticalHinting);
+            font.setStyleStrategy(QFont::PreferAntialias);            
+			font.setFamily(fontFamilies.at(0));
             font.setPixelSize(12); // ATK uses exactly 12px for its global base (like MenuBar)
             a.setFont(font);
         }
