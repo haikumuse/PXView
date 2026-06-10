@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QPixmap>
 #include <QImage>
 #include <QPainter>
 #include <QFont>
@@ -6,14 +7,32 @@
 #include <QString>
 #include <QStringList>
 #include <QDebug>
+#include <QProcess>
 #include <cstdlib>
 
 int main(int argc, char *argv[]) {
     bool useFreetype = false;
+    bool isChild = false;
+
     for (int i = 1; i < argc; ++i) {
         if (QString(argv[i]) == "freetype") {
             useFreetype = true;
+            isChild = true;
+        } else if (QString(argv[i]) == "directwrite") {
+            useFreetype = false;
+            isChild = true;
         }
+    }
+
+    if (!isChild) {
+        qDebug() << "Spawning directwrite and freetype processes...";
+        QProcess p1, p2;
+        p1.start(argv[0], QStringList() << "directwrite");
+        p1.waitForFinished();
+        p2.start(argv[0], QStringList() << "freetype");
+        p2.waitForFinished();
+        qDebug() << "Done generating both images.";
+        return 0;
     }
 
     if (useFreetype) {
@@ -28,7 +47,7 @@ int main(int argc, char *argv[]) {
     QFontDatabase::addApplicationFont("PXView/fonts/SourceCodePro-Medium.ttf");
 
     // We'll generate a very tall image to fit all combinations
-    QImage img(1000, 4500, QImage::Format_ARGB32);
+    QPixmap img(1000, 4500);
     img.fill(Qt::white);
     QPainter p(&img);
 
@@ -89,8 +108,21 @@ int main(int argc, char *argv[]) {
                     p.drawText(10, y, desc);
 
                     // Draw actual text with target font
-                    p.setFont(f);
-                    p.drawText(350, y, text);
+                    if (aaMode == 1) {
+                        // To force true Grayscale AA on Windows, we draw to an ARGB32 QImage first,
+                        // which forces Qt's raster engine (no subpixel AA).
+                        QImage tmp(600, 30, QImage::Format_ARGB32);
+                        tmp.fill(Qt::transparent);
+                        QPainter tp(&tmp);
+                        tp.setRenderHint(QPainter::TextAntialiasing, true);
+                        tp.setFont(f);
+                        tp.setPen(Qt::black);
+                        tp.drawText(0, 20, text);
+                        p.drawImage(350, y - 20, tmp);
+                    } else {
+                        p.setFont(f);
+                        p.drawText(350, y, text);
+                    }
                     y += 20;
                 }
             }
