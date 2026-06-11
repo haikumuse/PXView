@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
-import { SendHorizontal, Square } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
+import { useTranslation } from 'react-i18next';
 
 export default function ChatInput() {
   const [text, setText] = useState('');
@@ -8,6 +8,7 @@ export default function ChatInput() {
   const sendMessage = useAppStore((s) => s.sendMessage);
   const stopGeneration = useAppStore((s) => s.stopGeneration);
   const isProcessing = useAppStore((s) => s.isProcessing);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -32,32 +33,32 @@ export default function ChatInput() {
   };
 
   return (
-    <div className="flex items-end gap-2 p-3 border-t border-border bg-bg-secondary">
+    <div className="flex items-end gap-2 p-3 bg-bg-screen-light border-t-2 border-border shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
+      <div className="text-text-screen font-bold pt-2 select-none">&gt;</div>
       <textarea
         ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Type a message…"
+        placeholder={t('INPUT_PLACEHOLDER')}
         rows={1}
-        className="flex-1 resize-none rounded-xl bg-bg-card border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent transition-colors"
+        className="flex-1 resize-none bg-transparent outline-none border-none px-2 py-2 text-lg text-text-screen placeholder:text-text-screen-alt placeholder:opacity-40 font-mono"
+        spellCheck="false"
       />
       {isProcessing ? (
         <button
           onClick={stopGeneration}
-          className="p-2 rounded-xl bg-error/20 text-error hover:bg-error/30 transition-colors shrink-0"
-          title="Stop"
+          className="px-4 py-2 border-2 border-border bg-error text-bg-casing font-bold uppercase tracking-widest hover:bg-opacity-80 active:translate-y-[2px]"
         >
-          <Square className="w-4 h-4" />
+          {t('HALT')}
         </button>
       ) : (
         <button
           onClick={handleSend}
           disabled={!text.trim() || isProcessing}
-          className="p-2 rounded-xl bg-accent/20 text-accent hover:bg-accent/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-          title="Send"
+          className="px-4 py-2 border-2 border-border bg-text-screen text-bg-screen font-bold uppercase tracking-widest hover:bg-text-screen-alt disabled:opacity-30 disabled:hover:bg-text-screen active:translate-y-[2px]"
         >
-          <SendHorizontal className="w-4 h-4" />
+          {t('EXECUTE')}
         </button>
       )}
     </div>

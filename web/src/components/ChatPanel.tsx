@@ -1,28 +1,74 @@
 import { useEffect, useRef } from 'react';
-import { Cpu } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import ErrorBoundary from './ErrorBoundary';
+import { useTranslation } from 'react-i18next';
 
 export default function ChatPanel() {
   const messages = useAppStore((s) => s.messages);
+  const clearChat = useAppStore((s) => s.clearChat);
+  const isProcessing = useAppStore((s) => s.isProcessing);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleExport = () => {
+    if (messages.length === 0) return;
+    const content = messages.map(m => {
+      const prefix = m.role === 'user' ? 'USER>' : m.role === 'tool' ? 'OUT >' : 'SYS >';
+      return `${prefix}\n${m.content}\n`;
+    }).join('\n');
+    
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pxview_diag_${new Date().getTime()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="flex flex-col h-full w-full md:w-[70%]">
+    <div className="flex flex-col h-full w-full relative">
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-lg flex flex-col gap-2 relative">
+        <div className="text-text-screen-alt opacity-70 mb-4 uppercase tracking-widest border-b border-text-screen-alt border-dashed pb-2 flex justify-between items-end">
+          <div>
+            {t('APP_TITLE')} v1.0 [{t('TERMINAL_MODE')}]<br />
+            {t('READY_MSG')}
+          </div>
+          <div className="flex gap-2 mb-1 opacity-0 hover:opacity-100 transition-opacity">
+            <button 
+              onClick={handleExport}
+              disabled={messages.length === 0}
+              className="text-xs bg-bg-screen-light border border-border px-2 py-1 text-text-screen hover:bg-border hover:text-bg-screen transition-colors disabled:opacity-50"
+            >
+              {t('EXPORT_LOG')}
+            </button>
+            <button 
+              onClick={clearChat}
+              disabled={isProcessing}
+              className="text-xs bg-bg-screen-light border border-border px-2 py-1 text-error hover:bg-error hover:text-bg-screen transition-colors disabled:opacity-50"
+            >
+              {t('CLEAR_LOG')}
+            </button>
+          </div>
+        </div>
+        
+        {/* Helper overlay for actions */}
+        <div className="absolute top-4 right-4 text-xs opacity-30 pointer-events-none">
+          {t('HOVER_ACTIONS')}
+        </div>
+        
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-3">
-            <Cpu className="w-12 h-12 text-accent/50" />
-            <p className="text-text-secondary text-sm">
-              Connect to PXView and start analyzing signals
-            </p>
+          <div className="text-text-screen font-bold animate-pulse">
+            {t('AWAITING_INPUT')}
           </div>
         ) : (
           messages.map((msg) => (

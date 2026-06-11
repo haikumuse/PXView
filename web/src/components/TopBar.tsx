@@ -1,5 +1,6 @@
-import { Cpu, Settings, MessageSquarePlus } from 'lucide-react';
+import { Settings, MessageSquarePlus } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
+import { useTranslation } from 'react-i18next';
 
 export default function TopBar({
   onSettingsClick,
@@ -9,46 +10,65 @@ export default function TopBar({
   onNewChat: () => void;
 }) {
   const mcpConnected = useAppStore((s) => s.mcpConnected);
+  const settings = useAppStore((s) => s.settings);
+  const updateSettings = useAppStore((s) => s.updateSettings);
+  const { t, i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const nextLang = i18n.language === 'en' ? 'zh' : 'en';
+    updateSettings({ language: nextLang });
+  };
 
   return (
-    <div className="h-12 bg-bg-secondary border-b border-border flex items-center justify-between px-4 shrink-0">
-      {/* Left: Logo */}
-      <div className="flex items-center gap-2">
-        <Cpu className="w-5 h-5 text-accent" />
-        <span className="text-accent font-bold text-lg tracking-tight">PXView MCP</span>
+    <div className="h-16 bg-bg-casing border-b-4 border-border flex items-center justify-between px-6 shrink-0 shadow-[0_4px_0_rgba(0,0,0,0.1)] z-10 relative">
+      {/* Left: Logo/Label */}
+      <div className="flex items-center gap-4">
+        <div className="bg-border text-bg-casing px-3 py-1 font-bold tracking-widest text-xl uppercase">
+          {t('APP_TITLE')}
+        </div>
+        <div className="text-text-casing font-bold tracking-widest text-sm uppercase hidden sm:block border-l-2 border-border pl-4">
+          {t('APP_SUBTITLE')}
+        </div>
       </div>
 
       {/* Center: Connection status */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 bg-bg-screen-light px-4 py-2 border-2 border-border shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
         <span
-          className={`w-2 h-2 rounded-full ${
+          className={`w-3 h-3 border border-border shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)] ${
             mcpConnected ? 'bg-success' : 'bg-error'
           }`}
         />
         <span
-          className={`text-sm ${
+          className={`text-sm font-bold uppercase tracking-wider ${
             mcpConnected ? 'text-success' : 'text-error'
           }`}
         >
-          {mcpConnected ? 'Connected' : 'Disconnected'}
+          {mcpConnected ? 'LINK_OK' : 'NO_LINK'}
         </span>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleLanguage}
+          className="px-3 py-1.5 border-2 border-border bg-bg-casing shadow-[2px_2px_0_0_#000] active:shadow-[0_0_0_0_#000] active:translate-x-[2px] active:translate-y-[2px] transition-all text-text-casing hover:bg-bg-casing-dark font-bold font-mono text-xs"
+          title={t('LANG_TOGGLE')}
+        >
+          {t('LANG_TOGGLE')} ({i18n.language.toUpperCase()})
+        </button>
         <button
           onClick={onSettingsClick}
-          className="p-2 rounded-lg hover:bg-bg-card transition-colors text-text-secondary hover:text-text-primary"
-          title="Settings"
+          className="p-2 border-2 border-border bg-bg-casing shadow-[2px_2px_0_0_#000] active:shadow-[0_0_0_0_#000] active:translate-x-[2px] active:translate-y-[2px] transition-all text-text-casing hover:bg-bg-casing-dark"
+          title={t('MAINTENANCE_PNL')}
         >
-          <Settings className="w-4 h-4" />
+          <Settings className="w-5 h-5" />
         </button>
         <button
           onClick={onNewChat}
-          className="p-2 rounded-lg hover:bg-bg-card transition-colors text-text-secondary hover:text-text-primary"
-          title="New Chat"
+          className="p-2 border-2 border-border bg-bg-casing shadow-[2px_2px_0_0_#000] active:shadow-[0_0_0_0_#000] active:translate-x-[2px] active:translate-y-[2px] transition-all text-text-casing hover:bg-bg-casing-dark"
+          title="Reset Terminal"
         >
-          <MessageSquarePlus className="w-4 h-4" />
+          <MessageSquarePlus className="w-5 h-5" />
         </button>
       </div>
     </div>
