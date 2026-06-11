@@ -1,5 +1,5 @@
-import { Activity, Usb, Plug, Unplug, Loader2 } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
+import { useTranslation } from 'react-i18next';
 
 export default function DevicePanel() {
   const deviceInfo = useAppStore((s) => s.deviceInfo);
@@ -9,97 +9,96 @@ export default function DevicePanel() {
   const connectMcp = useAppStore((s) => s.connectMcp);
   const disconnectMcp = useAppStore((s) => s.disconnectMcp);
   const attemptReconnect = useAppStore((s) => s.attemptReconnect);
+  const { t } = useTranslation();
 
-  const statusColors: Record<string, string> = {
-    idle: 'bg-text-secondary',
-    capturing: 'bg-success animate-pulse',
-    completed: 'bg-accent',
-  };
-
-  const statusLabels: Record<string, string> = {
-    idle: 'Idle',
-    capturing: 'Capturing',
-    completed: 'Completed',
-  };
-
-  const dot = statusColors[captureStatus] ?? 'bg-text-secondary';
-  const label = statusLabels[captureStatus] ?? captureStatus;
+  const isCapturing = captureStatus === 'capturing';
 
   return (
-    <div className="w-full flex flex-col">
-      {/* Device info card */}
-      <div className="p-4 border-b border-border">
-        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Device</h3>
-        {deviceInfo ? (
-          <div className="bg-bg-card rounded-lg p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-text-primary">{deviceInfo.name}</span>
-              {deviceInfo.usbType && (
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                    deviceInfo.usbType.includes('3')
-                      ? 'bg-accent/20 text-accent'
-                      : 'bg-text-secondary/20 text-text-secondary'
-                  }`}
-                >
-                  <Usb className="w-3 h-3 inline mr-0.5" />
-                  {deviceInfo.usbType}
-                </span>
-              )}
-            </div>
-            {deviceInfo.mode && (
-              <div className="text-xs text-text-secondary">Mode: {deviceInfo.mode}</div>
-            )}
+    <div className="w-full h-full flex flex-col p-4 gap-6 overflow-y-auto">
+      {/* Module Title */}
+      <div className="flex items-center gap-2 border-b-4 border-border pb-2">
+        <div className="w-4 h-4 bg-border"></div>
+        <h2 className="font-bold uppercase tracking-widest text-text-casing text-xl">{t('HW_DIAG_MOD')}</h2>
+      </div>
+
+      {/* Connection State LED */}
+      <div className="bg-bg-casing p-4 border-4 border-border shadow-[4px_4px_0_0_rgba(0,0,0,0.2)]">
+        <div className="text-xs font-bold text-text-casing-muted uppercase mb-3 tracking-widest">{t('MASTER_LINK')}</div>
+        <div className="flex items-center gap-4">
+          {/* Physical looking LED */}
+          <div className="w-8 h-8 rounded-full border-4 border-border shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center bg-bg-screen-light relative">
+             <div className={`w-4 h-4 rounded-full ${mcpConnected ? 'bg-success shadow-[0_0_10px_#2ECC71]' : 'bg-[#111]'}`}></div>
           </div>
+          <div className="flex-1">
+            <div className={`font-bold text-lg uppercase tracking-widest ${mcpConnected ? 'text-success' : 'text-error'}`}>
+              {reconnectStatus === 'reconnecting' ? t('RECONNECTING') : reconnectStatus === 'failed' ? t('LINK_FAILED') : mcpConnected ? t('ONLINE') : t('OFFLINE')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Hardware Info Box */}
+      <div className="bg-bg-screen p-4 border-4 border-border shadow-[inset_0_4px_10px_rgba(0,0,0,0.5)] flex flex-col gap-3 scanlines">
+        <div className="text-xs font-bold text-text-screen-alt opacity-70 uppercase tracking-widest">{t('HARDWARE_ID')}</div>
+        {deviceInfo ? (
+          <>
+            <div className="flex justify-between items-baseline border-b border-text-screen-alt border-dashed pb-1">
+              <span className="text-text-screen-alt opacity-80 text-sm">{t('UNIT')}</span>
+              <span className="text-text-screen font-bold tracking-wider">{deviceInfo.name}</span>
+            </div>
+            <div className="flex justify-between items-baseline border-b border-text-screen-alt border-dashed pb-1">
+              <span className="text-text-screen-alt opacity-80 text-sm">{t('BUS')}</span>
+              <span className="text-text-screen font-bold tracking-wider">USB {deviceInfo.usbType}</span>
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-text-screen-alt opacity-80 text-sm">{t('MODE')}</span>
+              <span className="text-text-screen font-bold tracking-wider uppercase">{deviceInfo.mode}</span>
+            </div>
+          </>
         ) : (
-          <div className="bg-bg-card rounded-lg p-4 text-center">
-            <Unplug className="w-6 h-6 text-text-secondary mx-auto mb-2" />
-            <p className="text-xs text-text-secondary">No device connected</p>
+          <div className="text-text-screen text-center py-4 font-bold animate-pulse">
+             {t('AWAITING_SIGNAL')}
           </div>
         )}
       </div>
 
-      {/* Capture status */}
-      <div className="p-4 border-b border-border">
-        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Capture</h3>
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${dot}`} />
-          <Activity className="w-4 h-4 text-text-secondary" />
-          <span className="text-sm text-text-primary capitalize">{label}</span>
+      {/* Capture Status */}
+      <div className="bg-bg-casing p-4 border-4 border-border shadow-[4px_4px_0_0_rgba(0,0,0,0.2)]">
+        <div className="text-xs font-bold text-text-casing-muted uppercase mb-3 tracking-widest">{t('CAPTURE_STATE')}</div>
+        <div className="flex items-center gap-4">
+          <div className="w-8 h-8 rounded-full border-4 border-border shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center bg-bg-screen-light relative">
+             <div className={`w-4 h-4 rounded-full ${isCapturing ? 'bg-warning shadow-[0_0_10px_#F39C12]' : 'bg-[#111]'}`}></div>
+          </div>
+          <div className={`font-bold text-lg uppercase tracking-widest ${isCapturing ? 'text-warning animate-pulse' : 'text-text-casing-muted'}`}>
+            {captureStatus.toUpperCase()}
+          </div>
         </div>
       </div>
 
-      {/* Connect / Disconnect / Reconnect */}
-      <div className="p-4 mt-auto">
-        {reconnectStatus === 'reconnecting' ? (
-          <div className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-warning/15 text-warning text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Reconnecting…</span>
-          </div>
-        ) : reconnectStatus === 'failed' ? (
-          <div className="p-2 space-y-2">
-            <p className="text-xs text-error text-center">Connection lost</p>
-            <button
-              onClick={attemptReconnect}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-accent/15 text-accent text-sm hover:bg-accent/25 transition-colors"
-            >
-              <Plug className="w-4 h-4" /> Reconnect
-            </button>
-          </div>
+      {/* Main Action Buttons */}
+      <div className="mt-auto pt-4 flex flex-col gap-3">
+        {reconnectStatus === 'failed' ? (
+           <button
+             onClick={attemptReconnect}
+             className="w-full py-3 bg-accent text-bg-casing font-bold uppercase tracking-widest border-4 border-border shadow-[4px_4px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-[0_0_0_0_#000] transition-all"
+           >
+             {t('RESET_LINK')}
+           </button>
         ) : mcpConnected ? (
-          <button
-            onClick={disconnectMcp}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-error/15 text-error text-sm hover:bg-error/25 transition-colors"
-          >
-            <Unplug className="w-4 h-4" /> Disconnect
-          </button>
+           <button
+             onClick={disconnectMcp}
+             className="w-full py-3 bg-error text-bg-casing font-bold uppercase tracking-widest border-4 border-border shadow-[4px_4px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-[0_0_0_0_#000] transition-all"
+           >
+             {t('CUT_POWER')}
+           </button>
         ) : (
-          <button
-            onClick={connectMcp}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-accent/15 text-accent text-sm hover:bg-accent/25 transition-colors"
-          >
-            <Plug className="w-4 h-4" /> Connect
-          </button>
+           <button
+             onClick={connectMcp}
+             className="w-full py-3 bg-success text-bg-casing font-bold uppercase tracking-widest border-4 border-border shadow-[4px_4px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-[0_0_0_0_#000] transition-all disabled:opacity-50"
+             disabled={reconnectStatus === 'reconnecting'}
+           >
+             {t('ENGAGE')}
+           </button>
         )}
       </div>
     </div>

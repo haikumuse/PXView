@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { useAppStore } from '../hooks/useAppStore';
+import { useTranslation } from 'react-i18next';
 
 interface Settings {
   mcpServerUrl: string;
   llmBaseUrl: string;
   llmApiKey: string;
   llmModel: string;
+  systemPrompt: string;
 }
 
 export default function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const { t } = useTranslation();
 
   const [form, setForm] = useState<Settings>({
     mcpServerUrl: '',
     llmBaseUrl: '',
     llmApiKey: '',
     llmModel: '',
+    systemPrompt: '',
   });
 
   useEffect(() => {
@@ -27,6 +30,7 @@ export default function SettingsDrawer({ open, onClose }: { open: boolean; onClo
         llmBaseUrl: settings?.llmBaseUrl ?? '',
         llmApiKey: settings?.llmApiKey ?? '',
         llmModel: settings?.llmModel ?? '',
+        systemPrompt: settings?.systemPrompt ?? '',
       });
     }
   }, [open, settings]);
@@ -39,47 +43,66 @@ export default function SettingsDrawer({ open, onClose }: { open: boolean; onClo
   if (!open) return null;
 
   const field = (label: string, key: keyof Settings, type: string = 'text') => (
-    <div>
-      <label className="block text-xs text-text-secondary mb-1">{label}</label>
-      <input
-        type={type}
-        value={form[key]}
-        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-        className="w-full rounded-lg bg-bg-card border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent transition-colors"
-      />
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-text-casing-muted uppercase tracking-widest">{label}</label>
+      {type === 'textarea' ? (
+        <textarea
+          value={form[key]}
+          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          rows={4}
+          className="w-full bg-bg-screen-light border-2 border-border px-3 py-2 text-sm text-text-screen font-mono placeholder:text-text-screen-alt placeholder:opacity-30 focus:outline-none focus:border-text-screen shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] transition-colors resize-y"
+        />
+      ) : (
+        <input
+          type={type}
+          value={form[key]}
+          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          className="w-full bg-bg-screen-light border-2 border-border px-3 py-2 text-sm text-text-screen font-mono placeholder:text-text-screen-alt placeholder:opacity-30 focus:outline-none focus:border-text-screen shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] transition-colors"
+        />
+      )}
     </div>
   );
 
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/80 z-40" onClick={onClose} />
 
       {/* Drawer */}
-      <div className="fixed top-0 right-0 h-full w-[360px] max-w-full bg-bg-secondary border-l border-border z-50 flex flex-col shadow-xl">
+      <div className="fixed top-0 right-0 h-full w-[450px] max-w-full bg-bg-casing border-l-4 border-border z-50 flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-sm font-semibold text-text-primary">Settings</h2>
-          <button onClick={onClose} className="p-1 rounded hover:bg-bg-card text-text-secondary hover:text-text-primary transition-colors">
-            <X className="w-4 h-4" />
+        <div className="flex items-center justify-between px-6 py-4 border-b-4 border-border bg-bg-casing-dark">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-warning shadow-[0_0_5px_#F39C12] rounded-full border border-border"></div>
+            <h2 className="text-lg font-bold text-text-casing uppercase tracking-widest">{t('MAINTENANCE_PNL')}</h2>
+          </div>
+          <button onClick={onClose} className="px-3 py-1 font-bold text-bg-casing bg-border hover:bg-opacity-80">
+            [X]
           </button>
         </div>
 
         {/* Fields */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {field('MCP Server URL', 'mcpServerUrl')}
-          {field('LLM Base URL', 'llmBaseUrl')}
-          {field('LLM API Key', 'llmApiKey', 'password')}
-          {field('LLM Model', 'llmModel')}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-bg-casing">
+          {field(t('SYS_CONN'), 'mcpServerUrl')}
+          {field(t('AI_CORE'), 'llmBaseUrl')}
+          {field(t('AI_AUTH'), 'llmApiKey', 'password')}
+          {field(t('AI_MDL'), 'llmModel')}
+          {field(t('SYS_PROMPT'), 'systemPrompt', 'textarea')}
         </div>
 
         {/* Save */}
-        <div className="p-4 border-t border-border">
+        <div className="p-6 border-t-4 border-border bg-bg-casing-dark flex justify-end gap-4">
+          <button
+            onClick={onClose}
+            className="px-6 py-3 border-2 border-border bg-bg-casing font-bold uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-[0_0_0_0_#000] transition-all"
+          >
+            {t('CANCEL')}
+          </button>
           <button
             onClick={handleSave}
-            className="w-full py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/80 transition-colors"
+            className="px-6 py-3 border-2 border-border bg-success text-bg-casing font-bold uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-[0_0_0_0_#000] transition-all"
           >
-            Save
+            {t('WRITE_ROM')}
           </button>
         </div>
       </div>

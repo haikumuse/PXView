@@ -4,7 +4,8 @@ import type { McpTool } from '../lib/mcp-client';
 import type { ProgressEvent } from '../lib/mcp-client';
 import { LlmClient, mcpToOpenAITools } from '../lib/llm-client';
 import type { ChatMessage, ToolCall } from '../lib/llm-client';
-import { SYSTEM_PROMPT } from '../lib/system-prompt';
+import { SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT } from '../lib/system-prompt';
+import i18n from '../i18n';
 
 export interface ToolCallStatus {
   id: string;
@@ -20,29 +21,30 @@ export interface ConversationMessage {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
-  // LLM fields
   tool_calls?: ToolCall[];
   tool_call_id?: string;
-  // UI fields
   toolCallStatuses?: ToolCallStatus[];
   isStreaming?: boolean;
   isToolRunning?: boolean;
   isStopped?: boolean;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  updatedAt: number;
+  messages: ConversationMessage[];
+}
+
 const MAX_CONTEXT_MESSAGES = 30;
 const TRUNCATION_THRESHOLD = 50;
 const MAX_TOOL_RESULT_LENGTH = 4000;
 
-/** Derive ChatMessage[] for LLM from ConversationMessage[] */
 function messagesToChatHistory(messages: ConversationMessage[]): ChatMessage[] {
   let relevant = messages.filter(m => m.role !== 'system');
-
-  // Truncate if too many messages
   if (relevant.length > TRUNCATION_THRESHOLD) {
     relevant = relevant.slice(-MAX_CONTEXT_MESSAGES);
   }
-
   return relevant.map(m => {
     const base: ChatMessage = { role: m.role, content: m.content };
     if (m.tool_calls) base.tool_calls = m.tool_calls;
@@ -56,25 +58,25 @@ interface AppSettings {
   llmBaseUrl: string;
   llmApiKey: string;
   llmModel: string;
+  systemPrompt: string;
+  language: 'en' | 'zh';
 }
 
 interface AppState {
-  // Connection
   mcpConnected: boolean;
   mcpTools: McpTool[];
   settings: AppSettings;
 
-  // Chat
+  sessions: Record<string, ChatSession>;
+  currentSessionId: string | null;
   messages: ConversationMessage[];
   isProcessing: boolean;
 
-  // Device
   deviceInfo: { name: string; usbType: string; mode: string } | null;
   captureStatus: 'idle' | 'capturing' | 'completed';
   captureProgress: ProgressEvent | null;
   reconnectStatus: 'idle' | 'reconnecting' | 'failed';
 
-  // Actions
   updateSettings: (settings: Partial<AppSettings>) => void;
   connectMcp: () => Promise<void>;
   disconnectMcp: () => void;
@@ -84,36 +86,54 @@ interface AppState {
   setCaptureStatus: (status: 'idle' | 'capturing' | 'completed') => void;
   setCaptureProgress: (progress: ProgressEvent | null) => void;
   attemptReconnect: () => Promise<void>;
+
+  createNewSession: () => void;
+  switchSession: (id: string) => void;
+  deleteSession: (id: string) => void;
+  deleteMessageAndFollowing: (msgId: string) => void;
+  regenerateMessage: (msgId: string) => Promise<void>;
 }
 
-const CHAT_STORAGE_KEY = 'pxview-mcp-chat';
-const MAX_PERSIST_MESSAGES = 100;
+const CHAT_STORAGE_KEY = 'pxview-mcp-sessions';
+const CURRENT_SESSION_KEY = 'pxview-mcp-current-session';
 
-function loadChatMessages(): ConversationMessage[] {
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+}
+
+function loadSessions(): { sessions: Record<string, ChatSession>, current: string | null } {
   try {
     const saved = localStorage.getItem(CHAT_STORAGE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed.slice(-MAX_PERSIST_MESSAGES);
+      const sessions = JSON.parse(saved);
+      const current = localStorage.getItem(CURRENT_SESSION_KEY);
+      if (Object.keys(sessions).length > 0) {
+        return { sessions, current: current && sessions[current] ? current : Object.keys(sessions)[0] };
+      }
     }
   } catch {}
-  return [];
+  return { sessions: {}, current: null };
 }
 
-function saveChatMessages(messages: ConversationMessage[]) {
+function saveSessions(sessions: Record<string, ChatSession>, currentId: string | null) {
   try {
-    const toSave = messages
-      .filter(m => !m.isStreaming && !m.isToolRunning) // don't save in-progress messages
-      .slice(-MAX_PERSIST_MESSAGES);
+    const toSave: Record<string, ChatSession> = {};
+    for (const [id, s] of Object.entries(sessions)) {
+      toSave[id] = {
+        ...s,
+        messages: s.messages.filter(m => !m.isStreaming && !m.isToolRunning)
+      };
+    }
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave));
+    if (currentId) localStorage.setItem(CURRENT_SESSION_KEY, currentId);
   } catch {}
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedSaveMessages(messages: ConversationMessage[]) {
+function debouncedSaveSessions(sessions: Record<string, ChatSession>, currentId: string | null) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    saveChatMessages(messages);
+    saveSessions(sessions, currentId);
     saveTimer = null;
   }, 500);
 }
@@ -121,13 +141,19 @@ function debouncedSaveMessages(messages: ConversationMessage[]) {
 function loadSettings(): AppSettings {
   try {
     const saved = localStorage.getItem('pxview-mcp-settings');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!parsed.systemPrompt) parsed.systemPrompt = DEFAULT_SYSTEM_PROMPT;
+        return parsed;
+    }
   } catch {}
   return {
     mcpServerUrl: 'http://127.0.0.1:10530',
     llmBaseUrl: 'https://api.openai.com/v1',
     llmApiKey: '',
     llmModel: 'gpt-4o',
+    systemPrompt: DEFAULT_SYSTEM_PROMPT,
+    language: 'zh',
   };
 }
 
@@ -140,364 +166,426 @@ let llmClient: LlmClient | null = null;
 let msgCounter = 0;
 let abortController: AbortController | null = null;
 
-/** Update a specific message in the store by id, returning new array */
 function updateMessage(messages: ConversationMessage[], id: string, patch: Partial<ConversationMessage>): ConversationMessage[] {
   return messages.map(m => m.id === id ? { ...m, ...patch } : m);
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
-  mcpConnected: false,
-  mcpTools: [],
-  settings: loadSettings(),
-  messages: loadChatMessages(),
-  isProcessing: false,
-  deviceInfo: null,
-  captureStatus: 'idle',
-  captureProgress: null,
-  reconnectStatus: 'idle',
+export const useAppStore = create<AppState>((set, get) => {
+  const initialSessions = loadSessions();
+  let sessions = initialSessions.sessions;
+  let currentSessionId = initialSessions.current;
 
-  updateSettings: (partial) => {
-    const settings = { ...get().settings, ...partial };
-    saveSettings(settings);
-    set({ settings });
-    if (llmClient) {
-      llmClient.updateConfig(settings.llmBaseUrl, settings.llmApiKey, settings.llmModel);
-    }
-  },
+  if (!currentSessionId) {
+    currentSessionId = generateId();
+    sessions = {
+      [currentSessionId]: { id: currentSessionId, title: 'New Diagnostic', updatedAt: Date.now(), messages: [] }
+    };
+    saveSessions(sessions, currentSessionId);
+  }
 
-  connectMcp: async () => {
-    const { settings } = get();
-    try {
-      mcpClient = new McpClient(settings.mcpServerUrl);
-      await mcpClient.connect();
-      const tools = await mcpClient.listTools();
-      set({ mcpConnected: true, mcpTools: tools });
+  return {
+    mcpConnected: false,
+    mcpTools: [],
+    settings: loadSettings(),
+    sessions,
+    currentSessionId,
+    messages: sessions[currentSessionId].messages,
+    isProcessing: false,
+    deviceInfo: null,
+    captureStatus: 'idle',
+    captureProgress: null,
+    reconnectStatus: 'idle',
 
-      // Try to get device info
+    updateSettings: (partial) => {
+      const settings = { ...get().settings, ...partial };
+      saveSettings(settings);
+      set({ settings });
+      if (llmClient) {
+        llmClient.updateConfig(settings.llmBaseUrl, settings.llmApiKey, settings.llmModel);
+      }
+      if (partial.language && partial.language !== i18n.language) {
+        i18n.changeLanguage(partial.language);
+      }
+    },
+
+    connectMcp: async () => {
+      const { settings } = get();
       try {
-        const result = await mcpClient.callTool('get_devices', {});
-        const text = result.content?.[0]?.text;
-        if (text) {
-          const devices = JSON.parse(text);
-          if (devices.length > 0) {
-            set({ deviceInfo: {
-              name: devices[0].name || devices[0].modelName || 'Unknown',
-              usbType: devices[0].usbType || 'Unknown',
-              mode: devices[0].mode || 'Logic'
-            }});
+        mcpClient = new McpClient(settings.mcpServerUrl);
+        await mcpClient.connect();
+        const tools = await mcpClient.listTools();
+        set({ mcpConnected: true, mcpTools: tools });
+
+        try {
+          const result = await mcpClient.callTool('get_devices', {});
+          const text = result.content?.[0]?.text;
+          if (text) {
+            const devices = JSON.parse(text);
+            if (devices.length > 0) {
+              set({ deviceInfo: {
+                name: devices[0].name || devices[0].modelName || 'Unknown',
+                usbType: devices[0].usbType || 'Unknown',
+                mode: devices[0].mode || 'Logic'
+              }});
+            }
           }
+        } catch {}
+      } catch (err) {
+        mcpClient = null;
+        throw err;
+      }
+    },
+
+    disconnectMcp: () => {
+      if (get().isProcessing) {
+        get().stopGeneration();
+      }
+      if (mcpClient) {
+        mcpClient.disconnect();
+        mcpClient = null;
+      }
+      set({ mcpConnected: false, mcpTools: [], deviceInfo: null, captureStatus: 'idle', captureProgress: null, reconnectStatus: 'idle' });
+    },
+
+    createNewSession: () => {
+      if (get().isProcessing) return;
+      const id = generateId();
+      const newSession: ChatSession = { id, title: 'New Diagnostic', updatedAt: Date.now(), messages: [] };
+      const newSessions = { ...get().sessions, [id]: newSession };
+      set({ sessions: newSessions, currentSessionId: id, messages: [] });
+      debouncedSaveSessions(newSessions, id);
+    },
+
+    switchSession: (id: string) => {
+      if (get().isProcessing) return;
+      const s = get().sessions[id];
+      if (s) {
+        set({ currentSessionId: id, messages: s.messages });
+        localStorage.setItem(CURRENT_SESSION_KEY, id);
+      }
+    },
+
+    deleteSession: (id: string) => {
+      if (get().isProcessing) return;
+      const newSessions = { ...get().sessions };
+      delete newSessions[id];
+      
+      let nextCurrent = get().currentSessionId;
+      let nextMessages = get().messages;
+      
+      if (nextCurrent === id) {
+        const keys = Object.keys(newSessions).sort((a,b) => newSessions[b].updatedAt - newSessions[a].updatedAt);
+        if (keys.length > 0) {
+          nextCurrent = keys[0];
+          nextMessages = newSessions[nextCurrent].messages;
+        } else {
+          nextCurrent = generateId();
+          newSessions[nextCurrent] = { id: nextCurrent, title: 'New Diagnostic', updatedAt: Date.now(), messages: [] };
+          nextMessages = [];
         }
-      } catch {}
-    } catch (err) {
-      mcpClient = null;
-      throw err;
-    }
-  },
+      }
+      set({ sessions: newSessions, currentSessionId: nextCurrent, messages: nextMessages });
+      debouncedSaveSessions(newSessions, nextCurrent);
+    },
 
-  disconnectMcp: () => {
-    // Stop any ongoing requests first
-    if (get().isProcessing) {
-      get().stopGeneration();
-    }
-    if (mcpClient) {
-      mcpClient.disconnect();
-      mcpClient = null;
-    }
-    set({ mcpConnected: false, mcpTools: [], deviceInfo: null, captureStatus: 'idle', captureProgress: null, reconnectStatus: 'idle' });
-  },
+    deleteMessageAndFollowing: (msgId: string) => {
+      if (get().isProcessing) return;
+      const { messages, currentSessionId, sessions } = get();
+      if (!currentSessionId) return;
+      
+      const idx = messages.findIndex(m => m.id === msgId);
+      if (idx === -1) return;
+      
+      const newMessages = messages.slice(0, idx);
+      const newSessions = {
+        ...sessions,
+        [currentSessionId]: { ...sessions[currentSessionId], messages: newMessages, updatedAt: Date.now() }
+      };
+      set({ messages: newMessages, sessions: newSessions });
+      debouncedSaveSessions(newSessions, currentSessionId);
+    },
 
-  sendMessage: async (content: string) => {
-    const { settings, mcpConnected, mcpTools, isProcessing } = get();
-    if (isProcessing) return;
-    if (!mcpClient || !mcpConnected) {
-      throw new Error('MCP server not connected');
-    }
+    regenerateMessage: async (msgId: string) => {
+      if (get().isProcessing) return;
+      const { messages } = get();
+      const idx = messages.findIndex(m => m.id === msgId);
+      if (idx === -1) return;
+      
+      let userIdx = idx;
+      while (userIdx >= 0 && messages[userIdx].role !== 'user') {
+        userIdx--;
+      }
+      if (userIdx === -1) return;
+      
+      const userContent = messages[userIdx].content;
+      get().deleteMessageAndFollowing(messages[userIdx].id);
+      await get().sendMessage(userContent);
+    },
 
-    // Initialize LLM client if needed
-    if (!llmClient) {
-      llmClient = new LlmClient(settings.llmBaseUrl, settings.llmApiKey, settings.llmModel);
-    }
+    sendMessage: async (content: string) => {
+      const { settings, mcpConnected, mcpTools, isProcessing, currentSessionId, sessions } = get();
+      if (isProcessing || !currentSessionId) return;
+      if (!mcpClient || !mcpConnected) {
+        throw new Error('MCP server not connected');
+      }
 
-    // Create abort controller for this request
-    abortController = new AbortController();
-    const signal = abortController.signal;
+      if (!llmClient) {
+        llmClient = new LlmClient(settings.llmBaseUrl, settings.llmApiKey, settings.llmModel);
+      }
 
-    // Add user message
-    const userMsgId = `msg-${++msgCounter}`;
-    const userMsg: ConversationMessage = { id: userMsgId, role: 'user', content };
-    const afterUserMsg = [...get().messages, userMsg];
-    set({ messages: afterUserMsg, isProcessing: true });
-    debouncedSaveMessages(afterUserMsg);
+      abortController = new AbortController();
+      const signal = abortController.signal;
 
-    const openaiTools = mcpToOpenAITools(mcpTools);
+      const userMsgId = `msg-${++msgCounter}`;
+      const userMsg: ConversationMessage = { id: userMsgId, role: 'user', content };
+      const afterUserMsg = [...get().messages, userMsg];
+      
+      let title = sessions[currentSessionId].title;
+      if (afterUserMsg.filter(m => m.role === 'user').length === 1) {
+        title = content.slice(0, 30).trim();
+        if (title.length === 0) title = 'New Diagnostic';
+      }
 
-    try {
-      let continueLoop = true;
-      while (continueLoop) {
-        // Check if aborted
-        if (signal.aborted) break;
-
-        // Derive chat history from current messages
-        const chatHistory = messagesToChatHistory(get().messages);
-
-        // Create a placeholder assistant message — visible immediately
-        const assistantMsgId = `msg-${++msgCounter}`;
-        const assistantMsg: ConversationMessage = {
-          id: assistantMsgId,
-          role: 'assistant',
-          content: '',
-          toolCallStatuses: [],
-          isStreaming: true,
+      const updateState = (newMessages: ConversationMessage[]) => {
+        const newSessions = {
+          ...get().sessions,
+          [currentSessionId]: { ...get().sessions[currentSessionId], messages: newMessages, title, updatedAt: Date.now() }
         };
-        set(s => ({ messages: [...s.messages, assistantMsg] }));
+        set({ messages: newMessages, sessions: newSessions });
+        debouncedSaveSessions(newSessions, currentSessionId);
+      };
 
-        // Accumulate text & tool calls from streaming
-        let streamContent = '';
-        const streamToolCalls: ToolCallStatus[] = [];
+      set({ isProcessing: true });
+      updateState(afterUserMsg);
 
-        // Call LLM with streaming
-        const finalMessage = await llmClient.chatStream(
-          [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
-          openaiTools,
-          {
-            onText: (delta) => {
-              streamContent += delta;
-              set(s => ({
-                messages: updateMessage(s.messages, assistantMsgId, {
+      const openaiTools = mcpToOpenAITools(mcpTools);
+
+      try {
+        let continueLoop = true;
+        while (continueLoop) {
+          if (signal.aborted) break;
+
+          const chatHistory = messagesToChatHistory(get().messages);
+
+          const assistantMsgId = `msg-${++msgCounter}`;
+          const assistantMsg: ConversationMessage = {
+            id: assistantMsgId,
+            role: 'assistant',
+            content: '',
+            toolCallStatuses: [],
+            isStreaming: true,
+          };
+          updateState([...get().messages, assistantMsg]);
+
+          let streamContent = '';
+          const streamToolCalls: ToolCallStatus[] = [];
+
+          const finalMessage = await llmClient.chatStream(
+            [{ role: 'system', content: settings.systemPrompt }, ...chatHistory],
+            openaiTools,
+            {
+              onText: (delta) => {
+                streamContent += delta;
+                updateState(updateMessage(get().messages, assistantMsgId, {
                   content: streamContent,
-                }),
-              }));
-            },
+                }));
+              },
 
-            onToolCallStart: (tc) => {
-              const status: ToolCallStatus = {
-                id: tc.id,
-                name: tc.function.name,
-                args: {},
-                status: 'pending',
-                startTime: Date.now(),
-              };
-              streamToolCalls.push(status);
-              set(s => ({
-                messages: updateMessage(s.messages, assistantMsgId, {
+              onToolCallStart: (tc) => {
+                const status: ToolCallStatus = {
+                  id: tc.id,
+                  name: tc.function.name,
+                  args: {},
+                  status: 'pending',
+                  startTime: Date.now(),
+                };
+                streamToolCalls.push(status);
+                updateState(updateMessage(get().messages, assistantMsgId, {
                   toolCallStatuses: [...streamToolCalls],
-                }),
-              }));
-            },
+                }));
+              },
 
-            onToolCallArgs: (_id, _delta) => {
-              // We'll parse args after streaming completes
-            },
+              onToolCallArgs: () => {},
 
-            onDone: (msg) => {
-              // Parse tool call args now that streaming is complete
-              if (msg.tool_calls) {
-                for (let i = 0; i < msg.tool_calls.length; i++) {
-                  if (streamToolCalls[i]) {
-                    try {
-                      streamToolCalls[i].args = JSON.parse(msg.tool_calls[i].function.arguments || '{}');
-                    } catch {
-                      streamToolCalls[i].args = {};
+              onDone: (msg) => {
+                if (msg.tool_calls) {
+                  for (let i = 0; i < msg.tool_calls.length; i++) {
+                    if (streamToolCalls[i]) {
+                      try {
+                        streamToolCalls[i].args = JSON.parse(msg.tool_calls[i].function.arguments || '{}');
+                      } catch {
+                        streamToolCalls[i].args = {};
+                      }
                     }
                   }
                 }
-              }
-              // Mark streaming done
-              set(s => ({
-                messages: updateMessage(s.messages, assistantMsgId, {
+                updateState(updateMessage(get().messages, assistantMsgId, {
                   content: streamContent || msg.content || '',
                   tool_calls: msg.tool_calls || undefined,
                   toolCallStatuses: streamToolCalls.length > 0 ? [...streamToolCalls] : undefined,
                   isStreaming: false,
                   isToolRunning: msg.tool_calls ? msg.tool_calls.length > 0 : false,
-                }),
-              }));
-            },
+                }));
+              },
 
-            onError: (err) => {
-              set(s => ({
-                messages: updateMessage(s.messages, assistantMsgId, {
+              onError: (err) => {
+                updateState(updateMessage(get().messages, assistantMsgId, {
                   content: `Error: ${err.message}`,
                   isStreaming: false,
                   isToolRunning: false,
-                }),
-              }));
+                }));
+              },
             },
-          },
-          signal,
-        );
+            signal,
+          );
 
-        // If no tool calls, we're done
-        if (!finalMessage.tool_calls || finalMessage.tool_calls.length === 0) {
-          set(s => {
-            const final = updateMessage(s.messages, assistantMsgId, {
+          if (!finalMessage.tool_calls || finalMessage.tool_calls.length === 0) {
+            updateState(updateMessage(get().messages, assistantMsgId, {
               isStreaming: false,
               isToolRunning: false,
-            });
-            return { messages: final, isProcessing: false };
-          });
-          debouncedSaveMessages(get().messages);
-          return;
-        }
+            }));
+            set({ isProcessing: false });
+            return;
+          }
 
-        // Execute each tool call — update status in real-time
-        const toolFailCount = new Map<string, number>();
-        for (let i = 0; i < finalMessage.tool_calls.length; i++) {
-          if (signal.aborted) break;
-          const tc = finalMessage.tool_calls[i];
-          const tcStatus = streamToolCalls[i];
-          if (!tcStatus) continue;
+          const toolFailCount = new Map<string, number>();
+          for (let i = 0; i < finalMessage.tool_calls.length; i++) {
+            if (signal.aborted) break;
+            const tc = finalMessage.tool_calls[i];
+            const tcStatus = streamToolCalls[i];
+            if (!tcStatus) continue;
 
-          // Mark as running
-          tcStatus.status = 'running';
-          tcStatus.startTime = Date.now();
-          set(s => ({
-            messages: updateMessage(s.messages, assistantMsgId, {
+            tcStatus.status = 'running';
+            tcStatus.startTime = Date.now();
+            updateState(updateMessage(get().messages, assistantMsgId, {
               toolCallStatuses: [...streamToolCalls],
-            }),
-          }));
+            }));
 
-          try {
-            const onProgress = (tc.function.name === 'wait_capture')
-              ? (event: ProgressEvent) => {
-                  set({ captureProgress: event });
-                  if (event.progress !== undefined || event.message) {
-                    set({ captureStatus: 'capturing' });
+            try {
+              const onProgress = (tc.function.name === 'wait_capture')
+                ? (event: ProgressEvent) => {
+                    set({ captureProgress: event });
+                    if (event.progress !== undefined || event.message) {
+                      set({ captureStatus: 'capturing' });
+                    }
                   }
+                : undefined;
+
+              const result = await mcpClient.callTool(tc.function.name, tcStatus.args, onProgress, signal);
+              let resultText = result.content?.map(c => c.text).join('\n') || '';
+              if (resultText.length > MAX_TOOL_RESULT_LENGTH) {
+                resultText = resultText.slice(0, MAX_TOOL_RESULT_LENGTH) +
+                  `\n[Result truncated, total length ${resultText.length}]`;
+              }
+              const elapsed = Date.now() - tcStatus.startTime;
+
+              tcStatus.status = 'success';
+              tcStatus.result = resultText;
+              tcStatus.elapsed = elapsed;
+
+              if (tc.function.name === 'wait_capture') {
+                set({ captureStatus: 'completed', captureProgress: null });
+              }
+
+              const toolResultMsg: ConversationMessage = {
+                id: `msg-${++msgCounter}`,
+                role: 'tool',
+                content: resultText,
+                tool_call_id: tc.id,
+              };
+              updateState([...get().messages, toolResultMsg]);
+            } catch (err: any) {
+              const elapsed = Date.now() - tcStatus.startTime;
+
+              if (err.name === 'AbortError') {
+                tcStatus.status = 'cancelled';
+                tcStatus.result = 'Cancelled by user';
+                tcStatus.elapsed = elapsed;
+
+                if (tc.function.name === 'wait_capture') {
+                  set({ captureStatus: 'idle', captureProgress: null });
                 }
-              : undefined;
 
-            const result = await mcpClient.callTool(tc.function.name, tcStatus.args, onProgress, signal);
-            let resultText = result.content?.map(c => c.text).join('\n') || '';
-            if (resultText.length > MAX_TOOL_RESULT_LENGTH) {
-              resultText = resultText.slice(0, MAX_TOOL_RESULT_LENGTH) +
-                `\n[结果已截断，共 ${resultText.length} 字符]`;
-            }
-            const elapsed = Date.now() - tcStatus.startTime;
+                updateState(updateMessage(get().messages, assistantMsgId, {
+                  toolCallStatuses: [...streamToolCalls],
+                }));
+                break;
+              }
 
-            tcStatus.status = 'success';
-            tcStatus.result = resultText;
-            tcStatus.elapsed = elapsed;
+              tcStatus.status = 'error';
+              const failCount = (toolFailCount.get(tc.function.name) || 0) + 1;
+              toolFailCount.set(tc.function.name, failCount);
 
-            if (tc.function.name === 'wait_capture') {
-              set({ captureStatus: 'completed', captureProgress: null });
-            }
+              let errorText = err.message || String(err);
+              if (errorText.length > MAX_TOOL_RESULT_LENGTH) {
+                errorText = errorText.slice(0, MAX_TOOL_RESULT_LENGTH) +
+                  `\n[Error truncated, total length ${errorText.length}]`;
+              }
 
-            // Add tool result as ConversationMessage
-            const toolResultMsg: ConversationMessage = {
-              id: `msg-${++msgCounter}`,
-              role: 'tool',
-              content: resultText,
-              tool_call_id: tc.id,
-            };
-            set(s => ({ messages: [...s.messages, toolResultMsg] }));
-          } catch (err: any) {
-            const elapsed = Date.now() - tcStatus.startTime;
+              let errorContent = `Error: ${errorText}`;
+              if (failCount >= 3) {
+                errorContent += '\n[Tool failed 3 consecutive times, please review]';
+              }
 
-            // If aborted by user, mark as cancelled and stop tool loop
-            if (err.name === 'AbortError') {
-              tcStatus.status = 'cancelled';
-              tcStatus.result = 'Cancelled by user';
+              tcStatus.result = errorContent;
               tcStatus.elapsed = elapsed;
 
               if (tc.function.name === 'wait_capture') {
                 set({ captureStatus: 'idle', captureProgress: null });
               }
 
-              // Update tool call status and break out of tool loop
-              set(s => ({
-                messages: updateMessage(s.messages, assistantMsgId, {
-                  toolCallStatuses: [...streamToolCalls],
-                }),
-              }));
-              break;
+              const toolResultMsg: ConversationMessage = {
+                id: `msg-${++msgCounter}`,
+                role: 'tool',
+                content: errorContent,
+                tool_call_id: tc.id,
+              };
+              updateState([...get().messages, toolResultMsg]);
             }
 
-            tcStatus.status = 'error';
-            const failCount = (toolFailCount.get(tc.function.name) || 0) + 1;
-            toolFailCount.set(tc.function.name, failCount);
-
-            let errorText = err.message || String(err);
-            if (errorText.length > MAX_TOOL_RESULT_LENGTH) {
-              errorText = errorText.slice(0, MAX_TOOL_RESULT_LENGTH) +
-                `\n[错误信息已截断，共 ${errorText.length} 字符]`;
-            }
-
-            let errorContent = `Error: ${errorText}`;
-            if (failCount >= 3) {
-              errorContent += '\n[此工具已连续失败 3 次，请尝试其他方法或检查设备状态]';
-            }
-
-            tcStatus.result = errorContent;
-            tcStatus.elapsed = elapsed;
-
-            if (tc.function.name === 'wait_capture') {
-              set({ captureStatus: 'idle', captureProgress: null });
-            }
-
-            // Add tool error result as ConversationMessage
-            const toolResultMsg: ConversationMessage = {
-              id: `msg-${++msgCounter}`,
-              role: 'tool',
-              content: errorContent,
-              tool_call_id: tc.id,
-            };
-            set(s => ({ messages: [...s.messages, toolResultMsg] }));
+            updateState(updateMessage(get().messages, assistantMsgId, {
+              toolCallStatuses: [...streamToolCalls],
+            }));
           }
 
-          // Update tool call status in the message
-          set(s => ({
-            messages: updateMessage(s.messages, assistantMsgId, {
-              toolCallStatuses: [...streamToolCalls],
-            }),
+          updateState(updateMessage(get().messages, assistantMsgId, {
+            isToolRunning: false,
           }));
         }
+      } catch (err: any) {
+        if (signal.aborted || err.name === 'AbortError') {
+          set({ isProcessing: false });
+          return;
+        }
 
-        // All tools done for this round — mark not running
-        set(s => ({
-          messages: updateMessage(s.messages, assistantMsgId, {
-            isToolRunning: false,
-          }),
-        }));
+        if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+          get().attemptReconnect();
+        }
 
-        // Loop back to LLM with tool results
-      }
-    } catch (err: any) {
-      // If aborted by user, don't show error
-      if (signal.aborted || err.name === 'AbortError') {
+        const errorMsg: ConversationMessage = {
+          id: `msg-${++msgCounter}`,
+          role: 'assistant',
+          content: `Error: ${err.message || String(err)}`,
+          isStreaming: false,
+          isToolRunning: false,
+        };
+        updateState([...get().messages, errorMsg]);
         set({ isProcessing: false });
-        debouncedSaveMessages(get().messages);
-        return;
+      } finally {
+        abortController = null;
       }
+    },
 
-      // Check if it's a network error and we were connected — trigger auto-reconnect
-      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-        get().attemptReconnect();
+    stopGeneration: () => {
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
       }
+      
+      const { messages, currentSessionId, sessions } = get();
+      if (!currentSessionId) return;
 
-      // Add error as assistant message
-      const errorMsg: ConversationMessage = {
-        id: `msg-${++msgCounter}`,
-        role: 'assistant',
-        content: `Error: ${err.message || String(err)}`,
-        isStreaming: false,
-        isToolRunning: false,
-      };
-      set(s => ({ messages: [...s.messages, errorMsg], isProcessing: false }));
-      debouncedSaveMessages(get().messages);
-    } finally {
-      abortController = null;
-    }
-  },
-
-  stopGeneration: () => {
-    if (abortController) {
-      abortController.abort();
-      abortController = null;
-    }
-    // Mark in-progress messages as stopped
-    set(s => {
-      const messages = s.messages.map(m => {
+      const newMessages = messages.map(m => {
         if (!m.isStreaming && !m.isToolRunning) return m;
         const updated: ConversationMessage = {
           ...m,
@@ -506,7 +594,6 @@ export const useAppStore = create<AppState>((set, get) => ({
           isStopped: true,
           content: m.content,
         };
-        // Cancel in-progress tool calls
         if (updated.toolCallStatuses) {
           updated.toolCallStatuses = updated.toolCallStatuses.map(tc => {
             if (tc.status === 'pending' || tc.status === 'running') {
@@ -517,72 +604,76 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
         return updated;
       });
-      return { messages, isProcessing: false };
-    });
-    debouncedSaveMessages(get().messages);
-  },
+      
+      const newSessions = {
+        ...sessions,
+        [currentSessionId]: { ...sessions[currentSessionId], messages: newMessages, updatedAt: Date.now() }
+      };
+      
+      set({ messages: newMessages, sessions: newSessions, isProcessing: false });
+      debouncedSaveSessions(newSessions, currentSessionId);
+    },
 
-  clearChat: () => {
-    localStorage.removeItem(CHAT_STORAGE_KEY);
-    set({ messages: [] });
-  },
-
-  setCaptureStatus: (status) => set({ captureStatus: status }),
-  setCaptureProgress: (progress) => set({ captureProgress: progress }),
-
-  attemptReconnect: async () => {
-    const { settings, reconnectStatus, mcpConnected } = get();
-    if (reconnectStatus === 'reconnecting') return; // Already reconnecting
-    if (mcpConnected) return; // Still connected, no need
-
-    set({ reconnectStatus: 'reconnecting', mcpConnected: false });
-
-    const maxAttempts = 6;
-    const intervalMs = 5000;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, intervalMs));
-
-        // Try to create a new MCP client and connect
-        const newClient = new McpClient(settings.mcpServerUrl);
-        await newClient.connect();
-
-        mcpClient = newClient;
-
-        // Refresh tools and device info
-        const tools = await newClient.listTools();
-
-        // Try to get device info (same logic as connectMcp)
-        let deviceInfo = null;
-        try {
-          const result = await newClient.callTool('get_devices', {});
-          const text = result.content?.[0]?.text;
-          if (text) {
-            const devices = JSON.parse(text);
-            if (devices.length > 0) {
-              deviceInfo = {
-                name: devices[0].name || devices[0].modelName || 'Unknown',
-                usbType: devices[0].usbType || 'Unknown',
-                mode: devices[0].mode || 'Logic',
-              };
-            }
-          }
-        } catch {}
-
-        set({
-          mcpConnected: true,
-          reconnectStatus: 'idle',
-          mcpTools: tools,
-          deviceInfo,
-        });
-        return; // Success
-      } catch {
-        // Wait before next attempt (already waited at top of loop)
+    clearChat: () => {
+      const current = get().currentSessionId;
+      if (current) {
+        get().deleteSession(current);
+        get().createNewSession();
       }
-    }
+    },
 
-    // All attempts failed
-    set({ reconnectStatus: 'failed' });
-  },
-}));
+    setCaptureStatus: (status) => set({ captureStatus: status }),
+    setCaptureProgress: (progress) => set({ captureProgress: progress }),
+
+    attemptReconnect: async () => {
+      // (unchanged)
+      const { settings, reconnectStatus, mcpConnected } = get();
+      if (reconnectStatus === 'reconnecting') return;
+      if (mcpConnected) return;
+
+      set({ reconnectStatus: 'reconnecting', mcpConnected: false });
+
+      const maxAttempts = 6;
+      const intervalMs = 5000;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, intervalMs));
+
+          const newClient = new McpClient(settings.mcpServerUrl);
+          await newClient.connect();
+
+          mcpClient = newClient;
+
+          const tools = await newClient.listTools();
+
+          let deviceInfo = null;
+          try {
+            const result = await newClient.callTool('get_devices', {});
+            const text = result.content?.[0]?.text;
+            if (text) {
+              const devices = JSON.parse(text);
+              if (devices.length > 0) {
+                deviceInfo = {
+                  name: devices[0].name || devices[0].modelName || 'Unknown',
+                  usbType: devices[0].usbType || 'Unknown',
+                  mode: devices[0].mode || 'Logic',
+                };
+              }
+            }
+          } catch {}
+
+          set({
+            mcpConnected: true,
+            reconnectStatus: 'idle',
+            mcpTools: tools,
+            deviceInfo,
+          });
+          return;
+        } catch {}
+      }
+
+      set({ reconnectStatus: 'failed' });
+    },
+  };
+});
