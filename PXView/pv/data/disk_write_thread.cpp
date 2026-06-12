@@ -127,7 +127,7 @@ void DiskWriteThread::submit(WriteTask task)
         // No malloc/memcpy here. We take ownership of the task and will call on_complete.
         _queue.push(task);
         static int _last_log_depth = -1;
-        if ((_queue.size() % 10 == 0 || task.block_index < 5) && _queue.size() != _last_log_depth) {
+        if ((_queue.size() % 10 == 0 || task.block_index < 5) && _queue.size() != (size_t)_last_log_depth) {
             pxv_info("DiskWriteThread: submit task ch=%d blk=%llu (queue depth %zu)", task.channel, (unsigned long long)task.block_index, _queue.size());
             _last_log_depth = _queue.size();
         }
@@ -196,7 +196,7 @@ void DiskWriteThread::thread_func()
 
                 if (ok) {
                     static int _last_written = -1;
-                    if ((task.block_index % 10 == 0 || task.block_index < 5) && task.block_index != _last_written) {
+                    if ((task.block_index % 10 == 0 || task.block_index < 5) && task.block_index != (uint64_t)_last_written) {
                         pxv_info("DiskWriteThread: successfully wrote ch=%d blk=%llu", task.channel, (unsigned long long)task.block_index);
                         _last_written = task.block_index;
                     }

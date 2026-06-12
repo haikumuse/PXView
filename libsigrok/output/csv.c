@@ -87,6 +87,7 @@ static int init(struct sr_output *o, GHashTable *options)
     ctx->index = 0;
     ctx->type = g_variant_get_int16(g_hash_table_lookup(options, "type"));
     ch_num = 0;
+    (void)ch_num;
 
     if (o->start_sample_index > 0){
         ctx->index = o->start_sample_index;
@@ -332,7 +333,7 @@ static int receive(const struct sr_output *o, const struct sr_datafeed_packet *p
        for (i = 0; i < (uint64_t)analog->num_samples; i++) {
             ch_cfg_dex = 0;
 
-           for (j = 0; j < ch_num; j++) {
+           for (j = 0; j < (uint64_t)ch_num; j++) {
 
                if (enalbe_channel_flags[j] == 0){
                     continue;

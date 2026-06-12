@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -148,11 +148,11 @@ static void modbus_puta(struct srd_decoder_inst *di, modbus_state *s,
 static void modbus_adu_puti(struct srd_decoder_inst *di, modbus_state *s,
                             modbus_adu *adu, int byte_to_put, int ann, const char *msg)
 {
-    if (byte_to_put > adu->data_len - 1)
+    if (byte_to_put > adu->data_len - 1 || byte_to_put >= MODBUS_MAX_FRAME)
         return;
     if (ann == ANN_SC_ERROR || ann == ANN_CS_ERROR)
         adu->has_error = 1;
-    if (byte_to_put > adu->last_byte_put) {
+    if (byte_to_put > adu->last_byte_put && adu->last_byte_put + 1 >= 0 && adu->last_byte_put + 1 < MODBUS_MAX_FRAME) {
         uint64_t ss = adu->starts[adu->last_byte_put + 1];
         uint64_t es = adu->ends[byte_to_put];
         modbus_puta(di, s, ss, es, ann, msg);

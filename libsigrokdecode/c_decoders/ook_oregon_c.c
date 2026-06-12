@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -156,7 +156,7 @@ static const struct srd_c_ann_row oregon_ann_rows[] = {
     {"l2", "Level 2", oreg_row_l2_classes, 1},
 };
 
-static int bcd2int(unsigned char b)
+static int __attribute__((unused)) bcd2int(unsigned char b)
 {
     return ((b >> 4) & 0x0f) * 10 + (b & 0x0f);
 }
@@ -185,13 +185,12 @@ static const char *oregon_find_checksum_ver(const char *sensor_id)
 static void oregon_put_nib(struct srd_decoder_inst *di, oregon_state *s,
                             const char *label, int numbits)
 {
-    char param[64];
-    int plen = 0;
     int num_nibbles = numbits / 4;
 
     /* Build the hex result from the ookstring at decode_pos */
     /* First extract nibbles, reverse each nibble */
     char nib_strs[64][5];
+    memset(nib_strs, 0, sizeof(nib_strs));
     int has_error = 0;
     for (int i = 0; i < num_nibbles && i < 64; i++) {
         int base = s->decode_pos + 4 * i;
@@ -300,7 +299,7 @@ static void oregon_put_l2_param(struct srd_decoder_inst *di, oregon_state *s,
         char buf[256];
         /* Format result without trailing zeros */
         snprintf(buf, sizeof(buf), "%g", result);
-        char text[256];
+        char text[512];
         snprintf(text, sizeof(text), "%s%s%s", pre_label, buf, label);
         uint64_t es = s->nib_es[offset + digits - 1];
         /* Align temp to include +/- nibble */
@@ -568,8 +567,6 @@ static void oregon_dump_hex(struct srd_decoder_inst *di, oregon_state *s,
 
     char buf[600];
     snprintf(buf, sizeof(buf), "Oregon %s \"%s\"", s->ver_str, hexstring);
-    /* Output as binary */
-    int len = (int)strlen(buf);
     c_put(di, start, finish, s->out_ann, ANN_BIT, buf);
 }
 

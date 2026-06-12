@@ -1,4 +1,4 @@
-﻿#include "libsigrokdecode.h"
+#include "libsigrokdecode.h"
 #include <glib.h>
 #include <math.h>
 #include <stdio.h>
@@ -114,9 +114,9 @@ static const char *pjdl_ann_labels[][3] = {
     { "", "Short data", "SHORT" },
     { "", "Sync loss", "LOSS" },
     { "", "Data byte", "BYTE" },
-    { "", "Frame init", "INIT", "I" },
+    { "", "Frame init", "INIT" },
     { "", "Frame bytes", "FRAME" },
-    { "", "Frame wait", "WAIT", "W" },
+    { "", "Frame wait", "WAIT" },
 };
 
 static const int pjdl_row_carriers_classes[] = { ANN_CARRIER_BUSY, ANN_CARRIER_IDLE, -1 };

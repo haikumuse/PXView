@@ -243,7 +243,7 @@ static int is_command(uint8_t b, int *is_unl, int *is_unt)
 {
     *is_unl = 0;
     *is_unt = 0;
-    if (b >= 0x00 && b < 0x20) return 1;
+    if (b < 0x20) return 1;
     if (b >= 0x20 && b < 0x40 && (b & 0x1f) == 31) { *is_unl = 1; return 1; }
     if (b >= 0x40 && b < 0x60 && (b & 0x1f) == 31) { *is_unt = 1; return 1; }
     return 0;

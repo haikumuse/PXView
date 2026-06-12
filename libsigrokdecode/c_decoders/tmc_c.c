@@ -232,17 +232,17 @@ static void tmc_handle_data_wire2(struct srd_decoder_inst *di, tmc_s *s, uint64_
 
     /* Annotation — match Python's compose_annot multi-format strings */
     {
-        char val_str[16];
+        char val_str[32];
         tmc_format_value(s->databyte, s->radix, val_str, sizeof(val_str));
         if (cmd == ANN_COMMAND) {
-            char long_str[64], mid_str[32], short_str[32];
+            char long_str[64], mid_str[48], short_str[48];
             snprintf(long_str, sizeof(long_str), "Command: %s", val_str);
             snprintf(mid_str, sizeof(mid_str), "Cmd: %s", val_str);
             snprintf(short_str, sizeof(short_str), "C: %s", val_str);
             c_put_v(di, s->ss_byte, samplenum, s->out_ann, cmd,
                     s->databyte, long_str, mid_str, short_str, "Cmd", "C");
         } else {
-            char long_str[64], mid_str[32];
+            char long_str[64], mid_str[48];
             snprintf(long_str, sizeof(long_str), "Data: %s", val_str);
             snprintf(mid_str, sizeof(mid_str), "D: %s", val_str);
             c_put_v(di, s->ss_byte, samplenum, s->out_ann, cmd,
@@ -309,17 +309,17 @@ static void tmc_handle_byte_wire3(struct srd_decoder_inst *di, tmc_s *s, uint64_
 
     /* Annotation — match Python's compose_annot multi-format strings */
     {
-        char val_str[16];
+        char val_str[32];
         tmc_format_value(s->databyte, s->radix, val_str, sizeof(val_str));
         if (cmd == ANN_COMMAND) {
-            char long_str[64], mid_str[32], short_str[32];
+            char long_str[64], mid_str[48], short_str[48];
             snprintf(long_str, sizeof(long_str), "Command: %s", val_str);
             snprintf(mid_str, sizeof(mid_str), "Cmd: %s", val_str);
             snprintf(short_str, sizeof(short_str), "C: %s", val_str);
             c_put_v(di, s->ss_byte, samplenum, s->out_ann, cmd,
                     s->databyte, long_str, mid_str, short_str, "Cmd", "C");
         } else {
-            char long_str[64], mid_str[32];
+            char long_str[64], mid_str[48];
             snprintf(long_str, sizeof(long_str), "Data: %s", val_str);
             snprintf(mid_str, sizeof(mid_str), "D: %s", val_str);
             c_put_v(di, s->ss_byte, samplenum, s->out_ann, cmd,

@@ -6,7 +6,7 @@ import requests
 import time
 import sys
 
-MCP_URL = "http://127.0.0.1:10530/mcp"
+MCP_URL = "http://127.0.0.1:10110/mcp"
 
 def call_tool(name, args=None, timeout=60):
     """Call an MCP tool and return the result."""

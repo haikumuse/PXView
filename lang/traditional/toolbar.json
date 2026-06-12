@@ -92,6 +92,10 @@
         "text": "日誌"
     },
     {
+        "id": "IDS_TOOLBAR_MCP",
+        "text": "MCP"
+    },
+    {
         "id": "IDS_TOOLBAR_FUNCTION_FFT",
         "text": "&FFT"
     },

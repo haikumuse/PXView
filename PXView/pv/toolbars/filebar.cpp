@@ -177,7 +177,7 @@ void FileBar::on_actionLoad_triggered()
         this, 
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OPEN_SEESION), "Open Session"), 
         app.userHistory.sessionDir, 
-        "PXView Session (*.dsc)");
+        "PXView Session (*.pxc)");
 
     if (!file_name.isEmpty()) {
         QString fname = path::GetDirectoryName(file_name);
@@ -210,7 +210,7 @@ QString FileBar::genDefaultSessionFile()
 
     QString driver_name = _session->get_device()->driver_name();
     QString mode_name = QString::number(_session->get_device()->get_work_mode());
-    QString file_name = dir.absolutePath() + "/" + driver_name + mode_name +".def.dsc";
+    QString file_name = dir.absolutePath() + "/" + driver_name + mode_name +".def.pxc";
 
     return file_name;
 }
@@ -225,12 +225,12 @@ void FileBar::on_actionStore_triggered()
                 this, 
                 L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SAVE_SEESION), "Save Session"),
                 app.userHistory.sessionDir,
-                "PXView Session (*.dsc)");
+                "PXView Session (*.pxc)");
 
     if (!file_name.isEmpty()) {
         QFileInfo f(file_name);
-        if(f.suffix().compare("dsc"))
-            file_name.append(".dsc");
+        if(f.suffix().compare("pxc"))
+            file_name.append(".pxc");
 
         QString fname = path::GetDirectoryName(file_name);
         if (fname != app.userHistory.sessionDir){

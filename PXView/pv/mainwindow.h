@@ -81,6 +81,7 @@ class SearchDock;
 class DeviceOptionsDock;
 class LogDock;
 class SignalProcessingDock;
+class McpControlDock;
 }
 
 namespace view {
@@ -249,6 +250,7 @@ private:
     dock::LogDock           *_log_widget;
     QDockWidget             *_signal_processing_dock;
     dock::SignalProcessingDock *_signal_processing_widget;
+    dock::McpControlDock       *_mcp_control_widget;
 
     // Sliding drawer panel
     widgets::SlidingDrawer  *_sliding_drawer;
@@ -260,6 +262,7 @@ private:
     int _drawer_page_device_options;
     int _drawer_page_signal_processing;
     int _drawer_page_log;
+    int _drawer_page_mcp;
     int _drawer_current_page; // -1 = no page open
 
     QTranslator     _qtTrans;
@@ -310,9 +313,10 @@ private:
         SIDEBAR_FUNCTION = 4,
         SIDEBAR_OPTIONS = 5,
         SIDEBAR_SIGNAL_PROCESSING = 6,
-        SIDEBAR_LOG = 7,
-        SIDEBAR_RUNSTOP = 8,
-        SIDEBAR_INSTANT = 9
+        SIDEBAR_MCP = 7,
+        SIDEBAR_LOG = 8,
+        SIDEBAR_RUNSTOP = 9,
+        SIDEBAR_INSTANT = 10
     };
 
     ::DockOptions* getDockOptions();

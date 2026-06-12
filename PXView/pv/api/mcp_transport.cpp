@@ -3,6 +3,9 @@
 #include <nlohmann/json.hpp>
 
 #include <QEventLoop>
+#include <QFile>
+#include <QFileInfo>
+#include <QCoreApplication>
 #include <QTimer>
 
 using json = nlohmann::json;
@@ -200,6 +203,48 @@ void McpTransport::handle_http_request(QTcpSocket* socket, const QByteArray& dat
 
     QByteArray http_method = parts[0];
 
+    // Handle GET requests — serve static files from webui/ directory
+    if (http_method == "GET") {
+        QByteArray path = parts[1].trimmed();
+
+        // Default to index.html for root path
+        if (path == "/")
+            path = "/index.html";
+
+        // Security: reject paths with ".." to prevent directory traversal
+        if (path.contains("..")) {
+            send_http_response(socket, 403, "Forbidden");
+            return;
+        }
+
+        // Map to filesystem
+        QString file_path = QCoreApplication::applicationDirPath()
+                            + "/webui" + QString::fromUtf8(path);
+        QFile file(file_path);
+        if (!file.open(QIODevice::ReadOnly)) {
+            send_http_response(socket, 404, "Not Found", "text/plain");
+            return;
+        }
+        QByteArray file_data = file.readAll();
+        file.close();
+
+        // Determine MIME type from extension
+        QByteArray mime_type = "application/octet-stream";
+        if (file_path.endsWith(".html")) mime_type = "text/html; charset=utf-8";
+        else if (file_path.endsWith(".js")) mime_type = "application/javascript; charset=utf-8";
+        else if (file_path.endsWith(".mjs")) mime_type = "application/javascript; charset=utf-8";
+        else if (file_path.endsWith(".css")) mime_type = "text/css; charset=utf-8";
+        else if (file_path.endsWith(".svg")) mime_type = "image/svg+xml";
+        else if (file_path.endsWith(".json")) mime_type = "application/json";
+        else if (file_path.endsWith(".png")) mime_type = "image/png";
+        else if (file_path.endsWith(".ico")) mime_type = "image/x-icon";
+        else if (file_path.endsWith(".woff")) mime_type = "font/woff";
+        else if (file_path.endsWith(".woff2")) mime_type = "font/woff2";
+
+        send_http_response(socket, 200, file_data, mime_type.constData());
+        return;
+    }
+
     // Handle CORS preflight
     if (http_method == "OPTIONS") {
         send_http_response(socket, 200, "");
@@ -222,6 +267,7 @@ void McpTransport::handle_http_request(QTcpSocket* socket, const QByteArray& dat
             content_length = value.toInt();
         }
     }
+    (void)content_length;
 
     // Parse JSON-RPC request
     json j;
@@ -353,7 +399,7 @@ void McpTransport::send_sse_headers(QTcpSocket* socket)
     response.append("Content-Type: text/event-stream\r\n");
     response.append("Cache-Control: no-cache\r\n");
     response.append("Access-Control-Allow-Origin: *\r\n");
-    response.append("Access-Control-Allow-Methods: POST, OPTIONS\r\n");
+    response.append("Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n");
     response.append("Access-Control-Allow-Headers: Content-Type\r\n");
     response.append("\r\n");
 
@@ -400,6 +446,7 @@ void McpTransport::handle_sse_wait_capture(QTcpSocket* socket,
         else if (args.contains("timeout_seconds") && args["timeout_seconds"].is_number())
             timeout_seconds = args["timeout_seconds"].get<double>();
     } catch (...) {}
+    (void)timeout_seconds;
 
     // Dispatch the wait_capture call to the handler.
     // The handler's wait_capture_complete uses its own QEventLoop internally,
@@ -470,6 +517,8 @@ void McpTransport::send_http_response(QTcpSocket* socket, int status,
         case 200: status_text = "OK"; break;
         case 204: status_text = "No Content"; break;
         case 400: status_text = "Bad Request"; break;
+        case 403: status_text = "Forbidden"; break;
+        case 404: status_text = "Not Found"; break;
         case 405: status_text = "Method Not Allowed"; break;
         default:  status_text = "Unknown"; break;
     }
@@ -478,7 +527,7 @@ void McpTransport::send_http_response(QTcpSocket* socket, int status,
     response.append("HTTP/1.1 " + QByteArray::number(status) + " " + status_text + "\r\n");
     response.append("Content-Type: " + QByteArray(content_type) + "\r\n");
     response.append("Access-Control-Allow-Origin: *\r\n");
-    response.append("Access-Control-Allow-Methods: POST, OPTIONS\r\n");
+    response.append("Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n");
     response.append("Access-Control-Allow-Headers: Content-Type\r\n");
     response.append("Content-Length: " + QByteArray::number(body.size()) + "\r\n");
     response.append("Connection: close\r\n");
@@ -500,7 +549,7 @@ void McpTransport::send_http_204(QTcpSocket* socket)
     QByteArray response;
     response.append("HTTP/1.1 204 No Content\r\n");
     response.append("Access-Control-Allow-Origin: *\r\n");
-    response.append("Access-Control-Allow-Methods: POST, OPTIONS\r\n");
+    response.append("Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n");
     response.append("Access-Control-Allow-Headers: Content-Type\r\n");
     response.append("Content-Length: 0\r\n");
     response.append("Connection: close\r\n");

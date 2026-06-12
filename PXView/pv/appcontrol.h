@@ -68,6 +68,10 @@ public:
 
     pv::api::IAppService* GetAppService();
 
+    inline pv::api::McpTransport* get_mcp_transport() {
+        return _mcp_transport;
+    }
+
     inline void SetTopWindow(QWidget *w){
         _topWindow = w;
     }

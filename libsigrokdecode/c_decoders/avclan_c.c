@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2023 Maciej Grela <enki@fsck.pl>
@@ -406,7 +406,7 @@ static int pkt_from_60(struct srd_decoder_inst *di, avclan_state *s)
             /* State */
             int tuner_state_val = s->data_bytes[1].b;
             const char *state_name = find_name(tuner_states, TUNER_STATE_COUNT, tuner_state_val);
-            char t2[64];
+            char t2[256];
             if (state_name)
                 snprintf(t2, sizeof(t2), "State: %s", state_name);
             else
@@ -490,7 +490,7 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
             int cd_state_val = s->data_bytes[2].b;
             char flag_buf[128];
             format_bitmask(cd_state_bits, 8, cd_state_val, flag_buf, sizeof(flag_buf));
-            char t[128];
+            char t[256];
             snprintf(t, sizeof(t), "State: %s", flag_buf);
             c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_CD_STATE, t, flag_buf, "State");
 
@@ -556,7 +556,7 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
             char flag_buf[128];
             int slots_val = s->data_bytes[2].b;
             format_bitmask(cd_slot_bits, 6, slots_val, flag_buf, sizeof(flag_buf));
-            char t[128];
+            char t[256];
             snprintf(t, sizeof(t), "Available: %s", flag_buf);
             c_put(di, s->data_bytes[2].ss, s->data_bytes[2].es, s->out_ann, ANN_DISC_SLOTS, t, flag_buf, "Avail");
 
@@ -611,7 +611,7 @@ static int pkt_from_cd_player(struct srd_decoder_inst *di, avclan_state *s)
     }
 
     /* Always output opcode annotation */
-    char t[128];
+    char t[256];
     snprintf(t, sizeof(t), "Opcode: %s", opcode_anno);
     c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_CD_OPCODE, t, opcode_anno, "Opcode");
 
@@ -668,7 +668,7 @@ static int pkt_74(struct srd_decoder_inst *di, avclan_state *s)
     const char *opcode_name = find_name(audio_amp_opcodes, AUDIO_AMP_OPCODE_COUNT, opcode_val);
 
     if (opcode_name) {
-        char t[128];
+        char t[256];
         snprintf(t, sizeof(t), "Opcode: %s", opcode_name);
         c_put(di, s->data_bytes[0].ss, s->data_bytes[0].es, s->out_ann, ANN_AUDIO_OPCODE, t, opcode_name);
 

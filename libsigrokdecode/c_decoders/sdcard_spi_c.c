@@ -312,6 +312,7 @@ static void sdcard_handle_cmd24(struct srd_decoder_inst *di, sdcard_state *s)
 
 static void sdcard_handle_cmd49(struct srd_decoder_inst *di, sdcard_state *s)
 {
+    (void)di;
     s->state = SDCARD_GET_RESPONSE_R1;
 }
 

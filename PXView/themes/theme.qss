@@ -1921,6 +1921,15 @@ QLabel[status="error"]
 }
 
 /* Log Dock */
+
+/* MCP Command Frame */
+QFrame#mcpCmdFrame
+{
+    background-color: @bg-base;
+    border: 1px solid @border-strong;
+    border-radius: 4px;
+}
+
 QPlainTextEdit#log_view
 {
     background-color: @input-bg;

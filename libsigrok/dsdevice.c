@@ -88,7 +88,7 @@ SR_PRIV int sr_dev_probe_name_set(const struct sr_dev_inst *sdi,
 {
 	GSList *l;
 	struct sr_channel *probe;
-	int ret;
+	int ret = SR_ERR_ARG;
 
 	if (!sdi) {
 		sr_err("%s: sdi was NULL", __func__);
@@ -125,7 +125,7 @@ SR_PRIV int sr_dev_probe_enable(const struct sr_dev_inst *sdi, int probenum,
 {
 	GSList *l;
 	struct sr_channel *probe;
-	int ret;
+	int ret = SR_ERR_ARG;
 
 	if (!sdi)
 		return SR_ERR_ARG;
@@ -162,7 +162,7 @@ SR_PRIV int sr_dev_trigger_set(const struct sr_dev_inst *sdi, uint16_t probenum,
 {
 	GSList *l;
 	struct sr_channel *probe;
-	int ret;
+	int ret = SR_ERR_ARG;
 
 	if (!sdi)
 		return SR_ERR_ARG;
@@ -330,7 +330,7 @@ SR_PRIV void sr_serial_dev_inst_free(struct sr_serial_dev_inst *serial)
 SR_PRIV int sr_enable_device_channel(struct sr_dev_inst *sdi, const struct sr_channel *probe, gboolean enable)
 {
 	GSList *l;
-	int ret;
+	int ret = SR_ERR_CALL_STATUS;
 	struct sr_channel *ch;	
 
 	if (sdi == NULL || probe == NULL){

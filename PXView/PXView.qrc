@@ -165,6 +165,8 @@
         <file>icons/dark/log.svg</file>
         <file>icons/light/scroll-text.svg</file>
         <file>icons/dark/scroll-text.svg</file>
+        <file>icons/light/workflow.svg</file>
+        <file>icons/dark/workflow.svg</file>
         <file>icons/dark/audio-waveform.svg</file>
         <file>icons/light/scroll-bottom.svg</file>
         <file>icons/light/audio-waveform.svg</file>

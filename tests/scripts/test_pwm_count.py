@@ -5,7 +5,7 @@ import json
 import requests
 import time
 
-MCP_URL = "http://127.0.0.1:10530/mcp"
+MCP_URL = "http://127.0.0.1:10110/mcp"
 
 def call_tool(name, args=None, timeout=60):
     payload = {

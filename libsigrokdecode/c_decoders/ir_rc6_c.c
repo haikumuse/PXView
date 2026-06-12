@@ -187,7 +187,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
             value |= (s->bits[6 + i].value << (7 - i));
 
         char addr_str[32];
-        snprintf(addr_str, sizeof(addr_str), "Address: %0.2X", (uint8_t)value);
+        snprintf(addr_str, sizeof(addr_str), "Address: %.2X", (uint8_t)value);
         c_put(di, s->bits[6].ss, s->bits[13].es, s->out_ann, ANN_ADDRESS, addr_str);
 
         value = 0;
@@ -195,7 +195,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
             value |= (s->bits[14 + i].value << (7 - i));
 
         char cmd_str[32];
-        snprintf(cmd_str, sizeof(cmd_str), "Data: %0.2X", (uint8_t)value);
+        snprintf(cmd_str, sizeof(cmd_str), "Data: %.2X", (uint8_t)value);
         c_put(di, s->bits[14].ss, s->bits[21].es, s->out_ann, ANN_COMMAND, cmd_str);
 
         s->num_bits = 0;
@@ -210,7 +210,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
                 value |= (s->bits[6 + i].value << (7 - i));
 
             char addr_str[32];
-            snprintf(addr_str, sizeof(addr_str), "Address: %0.2X", (uint8_t)value);
+            snprintf(addr_str, sizeof(addr_str), "Address: %.2X", (uint8_t)value);
             c_put(di, s->bits[6].ss, s->bits[13].es, s->out_ann, ANN_ADDRESS, addr_str);
 
             int num_data_bits = s->num_bits - 14;
@@ -231,7 +231,7 @@ static void handle_package(struct srd_decoder_inst *di, rc6_priv *s)
                 value |= (s->bits[6 + i].value << (15 - i));
 
             char addr_str[32];
-            snprintf(addr_str, sizeof(addr_str), "Address: %0.2X", (uint16_t)value);
+            snprintf(addr_str, sizeof(addr_str), "Address: %.4X", (uint16_t)value);
             c_put(di, s->bits[6].ss, s->bits[21].es, s->out_ann, ANN_ADDRESS, addr_str);
 
             int num_data_bits = s->num_bits - 22;

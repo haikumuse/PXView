@@ -148,7 +148,7 @@ function loadSettings(): AppSettings {
     }
   } catch {}
   return {
-    mcpServerUrl: 'http://127.0.0.1:10530',
+    mcpServerUrl: 'http://127.0.0.1:10110',
     llmBaseUrl: 'https://api.openai.com/v1',
     llmApiKey: '',
     llmModel: 'gpt-4o',
@@ -288,10 +288,8 @@ export const useAppStore = create<AppState>((set, get) => {
       if (get().isProcessing) return;
       const s = get().sessions[id];
       if (s) {
-        const updatedSession = { ...s, updatedAt: Date.now() };
-        const newSessions = { ...get().sessions, [id]: updatedSession };
-        set({ currentSessionId: id, messages: s.messages, sessions: newSessions });
-        debouncedSaveSessions(newSessions, id);
+        set({ currentSessionId: id, messages: s.messages });
+        debouncedSaveSessions(get().sessions, id);
       }
     },
 

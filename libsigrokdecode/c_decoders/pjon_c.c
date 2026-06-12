@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Gerhard Sittig <gerhard.sittig@gmx.net>
@@ -208,6 +208,7 @@ static void pjon_seed_fields(pjon_state *s)
 static void pjon_handle_field_rx_id(struct srd_decoder_inst *di, pjon_state *s,
     const uint8_t *raw, int width)
 {
+    (void)width;
     uint8_t b = raw[0];
     const char *id_txt;
 
@@ -229,6 +230,7 @@ static void pjon_handle_field_rx_id(struct srd_decoder_inst *di, pjon_state *s,
 static void pjon_handle_field_config(struct srd_decoder_inst *di, pjon_state *s,
     const uint8_t *raw, int width)
 {
+    (void)width;
     uint8_t b = raw[0];
 
     s->cfg_shared = b & (1 << 0);
@@ -381,6 +383,7 @@ static void pjon_handle_field_pkt_len(struct srd_decoder_inst *di, pjon_state *s
 static void pjon_handle_field_meta_crc(struct srd_decoder_inst *di, pjon_state *s,
     const uint8_t *raw, int width)
 {
+    (void)width;
     uint8_t have = raw[0];
     uint8_t want = calc_crc8(s->frame_bytes, s->frame_byte_count - 1);
 
@@ -464,7 +467,7 @@ static void pjon_process_field(struct srd_decoder_inst *di, pjon_state *s)
         return;
 
     const uint8_t *raw = s->frame_bytes + s->frame_byte_count - w;
-    int cls = s->field_ann_classes[s->field_idx];
+    (void)s->field_ann_classes[s->field_idx]; /* cls unused but keep for reference */
 
     switch (s->field_idx) {
     case 0: /* RX ID */

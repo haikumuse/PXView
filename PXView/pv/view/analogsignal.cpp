@@ -61,11 +61,11 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data, sr_channel *probe) :
     Signal(probe),
     _data(data),
     _rects(NULL),
+    _cached_hw_offset(probe ? probe->hw_offset : 128),
     _hover_en(false),
     _hover_index(0),
     _hover_point(QPointF(-1, -1)),
-    _hover_value(0),
-    _cached_hw_offset(probe ? probe->hw_offset : 128)
+    _hover_value(0)
 {
     _typeWidth = 5;
     _colour = getSignalColor(probe->index);
@@ -102,11 +102,11 @@ AnalogSignal::AnalogSignal(view::AnalogSignal *s, pv::data::AnalogSnapshot *data
     Signal(*s, probe),
     _data(data),
     _rects(NULL),
+    _cached_hw_offset(s->_cached_hw_offset),
     _hover_en(false),
     _hover_index(0),
     _hover_point(QPointF(-1, -1)),
-    _hover_value(0),
-    _cached_hw_offset(s->_cached_hw_offset)
+    _hover_value(0)
 { 
     _typeWidth = 5;
     _bits = s->get_bits();

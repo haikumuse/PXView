@@ -1574,6 +1574,7 @@ int SigSession::get_trace_index_by_key_handel(void *handel) {
 
 void SigSession::remove_decoder(int index) {
   int size = (int)decode_traces().size();
+  (void)size;
   assert(index < size);
 
   auto it = decode_traces().begin() + index;
@@ -1885,6 +1886,7 @@ view::DecodeTrace *SigSession::get_decoder_trace(int index) {
     return decode_traces()[index];
   }
   assert(false);
+  return nullptr;
 }
 
 void SigSession::decode_single_task(view::DecodeTrace *task) {

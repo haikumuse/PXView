@@ -237,8 +237,8 @@ ApplicationParamDlg::ApplicationParamDlg()
       _shortcut_list(nullptr), _shortcut_selected_row(-1), _btn_accept(nullptr),
       _btn_restore(nullptr), _btn_reset_default(nullptr), _btn_delete(nullptr),
       _clash_warning_label(nullptr), _style_category_tree(nullptr),
-      _style_page_stack(nullptr), _live_preview_timer(nullptr),
-      _file_watcher(nullptr), _preset_combo(nullptr) {}
+      _style_page_stack(nullptr), _preset_combo(nullptr), _live_preview_timer(nullptr),
+      _file_watcher(nullptr) {}
 
 ApplicationParamDlg::~ApplicationParamDlg() {
   if (_file_watcher) {

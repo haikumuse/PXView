@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2018 Mike Jagdis <mjagdis@eris-associates.co.uk>
@@ -254,6 +254,7 @@ static void swim_decode_bit(struct srd_decoder_inst *di, struct swim_priv *s,
 static void detect_synchronize_frame(struct srd_decoder_inst *di, struct swim_priv *s,
     uint64_t start, uint64_t end)
 {
+    (void)start;
     uint64_t low_duration = end - s->eseq_edge_ss[1];
     if (low_duration >= s->sync_reflen_min && low_duration <= s->sync_reflen_max) {
         c_put(di, s->eseq_edge_ss[1], end, s->out_ann, ANN_ENTERSEQ,

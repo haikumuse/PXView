@@ -76,6 +76,25 @@ ninja
 DESTDIR=../install.dir ninja install
 ```
 
+`ninja install` will automatically install the MCP web client if it has been built. If the web client has not been built yet, it will be silently skipped.
+
+### Step 3b: Building the MCP web client (optional)
+
+The MCP web client provides a browser-based chat interface for controlling devices with natural language. It requires `npm` to be installed.
+
+```bash
+# Build the web client:
+ninja webui
+
+# Then re-run install to copy it:
+DESTDIR=../install.dir ninja install
+
+# Or build + copy in one step:
+ninja install-webui
+```
+
+The web client files will be installed to `<prefix>/bin/webui/` and served by the MCP server at `http://127.0.0.1:10110/`.
+
 ### Step 4: Packaging as AppImage (Linux)
 If you want to bundle the compiled binary and all its Qt dependencies into a single, portable `.AppImage` file, you can use linuxdeploy on the install directory:
 

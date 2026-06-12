@@ -74,13 +74,14 @@ Result<void> AppService::shutdown()
 DeviceInfo AppService::translate_device_info(void* base_info_v,
                                                      int index) const
 {
+    (void)index;
     auto* base_info = static_cast<::ds_device_base_info*>(base_info_v);
     DeviceInfo info;
     if (!base_info)
         return info;
 
     // Use the handle value as a string id
-    info.id = std::to_string(reinterpret_cast<uintptr_t>(base_info->handle));
+    info.id = std::to_string(static_cast<uint64_t>(base_info->handle));
     info.display_name = base_info->name;
 
     // Get richer info from the DeviceAgent if available
@@ -124,7 +125,7 @@ std::vector<DeviceInfo> AppService::get_device_list() const
         ::ds_device_base_info& item = array[i];
 
         // Use handle as string id
-        info.id = std::to_string(reinterpret_cast<uintptr_t>(item.handle));
+        info.id = std::to_string(static_cast<uint64_t>(item.handle));
         info.display_name = item.name;
 
         // Determine device type flags from the name convention.
@@ -156,7 +157,7 @@ Result<DeviceInfo> AppService::get_active_device() const
                                         "No active device");
 
     DeviceInfo info;
-    info.id = std::to_string(reinterpret_cast<uintptr_t>(dev->handle()));
+    info.id = std::to_string(static_cast<uint64_t>(dev->handle()));
     info.display_name = dev->name().toStdString();
     info.driver_name = dev->driver_name().toStdString();
     info.path = dev->path().toStdString();
@@ -197,6 +198,7 @@ Result<void> AppService::connect_device(const std::string& device_id)
 
 Result<void> AppService::disconnect_device(const std::string& device_id)
 {
+    (void)device_id;
     SigSession* session = _app_control ? _app_control->GetSession() : nullptr;
     if (!session)
         return Result<void>::Fail(ErrorCode::MissingDevice,

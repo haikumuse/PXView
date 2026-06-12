@@ -347,7 +347,7 @@ SR_API int ds_active_device(ds_device_handle handle)
 	GSList *l;
 	struct sr_dev_inst *dev;
 	int bFind = 0;
-	int ret;
+	int ret = 0;
 	struct sr_dev_inst *old_dev;
 
 	lib_ctx.last_error = SR_OK;
@@ -546,7 +546,7 @@ SR_API int ds_have_actived_device()
 SR_API int ds_device_from_file(const char *file_path)
 { 	
 	struct sr_dev_inst *dev;
-	int ret;
+	int ret = 0;
 
 	if (file_path == NULL || *file_path == '\0'){
 		sr_err("Error!File name is empty.");
@@ -678,7 +678,7 @@ SR_API int ds_get_actived_device_info(struct ds_device_full_info *fill_info)
 {
 	struct sr_dev_inst *dev;
 	struct ds_device_full_info *p;
-	int ret; 
+	int ret = SR_ERR_CALL_STATUS;
  
 
 	if (fill_info == NULL)
@@ -755,7 +755,7 @@ SR_API int ds_get_actived_device_mode()
  */
 SR_API int ds_start_collect()
 {
-	int ret;
+	int ret = 0;
 	struct sr_dev_inst *di;
 	di = lib_ctx.actived_device_instance;
 
@@ -812,7 +812,7 @@ static gpointer collect_run_proc(gpointer data)
 {
 	(void)data;
 
-	int ret;
+	int ret = 0;
 	struct sr_dev_inst *di;
 	int bError;
 	
@@ -939,9 +939,7 @@ int ds_trigger_is_enabled()
 {
 	GSList *l;
 	struct sr_channel *p;
-	int ret;
-
-	ret = 0;
+	int ret = 0;
 	pthread_mutex_lock(&lib_ctx.mutext);
 
 	if (lib_ctx.actived_device_instance != NULL)
@@ -1114,9 +1112,7 @@ int ds_channel_is_enabled()
 {
 	GSList *l;
 	struct sr_channel *p;
-	int ret;
-
-	ret = 0;
+	int ret = 0;
 	pthread_mutex_lock(&lib_ctx.mutext);
 
 	if (lib_ctx.actived_device_instance != NULL)
@@ -1611,7 +1607,7 @@ static gpointer post_event_proc(gpointer event)
 {
 	if (lib_ctx.event_callback != NULL)
 	{
-		lib_ctx.event_callback((int)((unsigned long)event));
+		lib_ctx.event_callback((int)((uintptr_t)event));
 	}
 
 	pthread_mutex_lock(&lib_ctx.mutext);
@@ -1627,7 +1623,7 @@ static void post_event_async(int event)
 	lib_ctx.callback_thread_count++;
 	pthread_mutex_unlock(&lib_ctx.mutext);
 
-	g_thread_new("callback_thread", post_event_proc, (gpointer)((unsigned long)event));
+	g_thread_new("callback_thread", post_event_proc, (gpointer)((uintptr_t)event));
 }
 
 static void send_event(int event)

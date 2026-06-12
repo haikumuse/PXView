@@ -393,7 +393,7 @@ LIBUSB_CALL int sr_hotplug_callback(struct libusb_context *ctx, struct libusb_de
 
 SR_PRIV int sr_listen_hotplug(struct sr_context *ctx, hotplug_event_callback callback)
 {
-	int ret;
+	int ret = 0;
 
 	if (!ctx) {
 		sr_err("%s(): libsigrok context was NULL.", __func__);

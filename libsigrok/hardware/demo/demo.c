@@ -1135,7 +1135,7 @@ static int config_set(int id, GVariant *data, struct sr_dev_inst *sdi,
                 if(logic_channel_modes[i].id == (enum DEMO_CHANNEL_ID)nv)
                 {
                     vdev->logic_ch_mode_index = i;
-                    vdev->logic_ch_mode = (enum DEMO_CHANNEL_ID)nv;
+                    vdev->logic_ch_mode = (enum DEMO_LOGIC_CHANNEL_ID)nv;
                     load_virtual_device_session(sdi);
                     vdev->channel_mode_change = TRUE;
                     break;

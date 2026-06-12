@@ -86,6 +86,7 @@
 #include "dock/searchdock.h"
 #include "dock/signalprocessingdock.h"
 #include "dock/triggerdock.h"
+#include "dock/mcpcontroldock.h"
 
 #include "data/sessiondocument.h"
 #include "interface/icontextaware.h"
@@ -176,6 +177,8 @@ void MainWindow::setupSideBar() {
   _side_bar->addItem("audio-waveform.svg", S_ID(IDS_TOOLBAR_SIGNAL_PROCESSING),
                      "Filter", widgets::SideBar::DockItem,
                      _drawer_page_signal_processing);
+  _side_bar->addItem("workflow.svg", S_ID(IDS_TOOLBAR_MCP), "MCP",
+                     widgets::SideBar::DockItem, _drawer_page_mcp);
   _side_bar->addItem("scroll-text.svg", S_ID(IDS_TOOLBAR_LOG), "Log",
                      widgets::SideBar::DockItem, _drawer_page_log);
   _side_bar->addSeparator();
@@ -254,7 +257,7 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
 
   _title_bar = title_bar;
 
-  _session = AppControl::Instance()->GetSession();
+  _session = ::AppControl::Instance()->GetSession();
   _session->add_callback(this);
   _device_agent = _session->get_device();
   _session->add_msg_listener(this);
@@ -277,7 +280,7 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
     update_title_bar_text();
 
     // Register new-tab callback with AppService so MCP API can create tabs
-    auto* app_svc = AppControl::Instance()->GetAppService();
+    auto* app_svc = ::AppControl::Instance()->GetAppService();
     if (app_svc) {
         auto* concrete = dynamic_cast<pv::api::AppService*>(app_svc);
         if (concrete) {
@@ -499,6 +502,9 @@ void MainWindow::setup_ui() {
   _signal_processing_dock->setTitleBarWidget(new QWidget());
   _signal_processing_dock->setVisible(false);
 
+  // MCP control dock
+  _mcp_control_widget = new dock::McpControlDock(this);
+
   // Do NOT add dock widgets to the main window layout.
   // They are hidden containers; content is shown via SlidingDrawer instead.
   _protocol_dock->setVisible(false);
@@ -564,6 +570,11 @@ void MainWindow::setup_ui() {
   _log_dock->setWidget(nullptr);
   _drawer_page_log = _sliding_drawer->addPage(
       _log_widget, L_S(STR_PAGE_DLG, S_ID(IDS_DLG_LOG_DOCK_TITLE), "Log"));
+
+  // MCP Server
+  _drawer_page_mcp = _sliding_drawer->addPage(
+      _mcp_control_widget,
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MCP_DOCK_TITLE), "MCP Server"));
 
   _drawer_current_page = -1;
 
@@ -784,7 +795,7 @@ void MainWindow::setup_ui() {
           });
 
   // Try load from file.
-  QString ldFileName(AppControl::Instance()->_open_file_name.c_str());
+  QString ldFileName(::AppControl::Instance()->_open_file_name.c_str());
   if (ldFileName != "") {
     std::string file_name = pv::path::ToUnicodePath(ldFileName);
 
@@ -1018,7 +1029,7 @@ QString MainWindow::gen_config_file_path(bool isNewFormat) {
     lang_name = QString::number(app.frameOptions.language);
   }
 
-  return base_path + ".ses" + lang_name + ".dsc";
+  return base_path + ".ses" + lang_name + ".pxc";
 }
 
 bool MainWindow::able_to_close() {
@@ -1095,6 +1106,10 @@ void MainWindow::on_side_bar_dock_clicked(int index) {
   case SIDEBAR_SIGNAL_PROCESSING:
     _signal_processing_widget->update_view();
     drawerPage = _drawer_page_signal_processing;
+    break;
+  case SIDEBAR_MCP:
+    _mcp_control_widget->refresh_status();
+    drawerPage = _drawer_page_mcp;
     break;
   case SIDEBAR_LOG:
     drawerPage = _drawer_page_log;
@@ -2558,7 +2573,7 @@ void MainWindow::load_device_config() {
     if (dir.exists()) {
       QString ses_name = dir.absolutePath() + "/" +
                          _device_agent->driver_name() + QString::number(mode) +
-                         ".dsc";
+                         ".pxc";
 
       QFile sf(ses_name);
       if (sf.exists()) {

@@ -188,7 +188,7 @@ static void dcc_handleDecodedBytes(struct srd_decoder_inst *di, dcc_state *s)
     /* Servicemode */
     if (s->serviceMode && 112 <= idPacket && idPacket <= 127) {
         if ((s->decodedBytes[pos] >> 4) == 0b0111 && s->decodedBytesCount == 3) {
-            if ((s->decodedBytes[pos] >> 3) & 1 == 0) {
+            if (((s->decodedBytes[pos] >> 3) & 1) == 0) {
                 snprintf(buf, sizeof(buf), "Verify, Register:%d", (s->decodedBytes[pos] & 0b111) + 1);
                 snprintf(buf2, sizeof(buf2), "v, R:%d", (s->decodedBytes[pos] & 0b111) + 1);
             } else {

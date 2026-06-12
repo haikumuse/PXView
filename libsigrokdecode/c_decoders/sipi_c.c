@@ -153,6 +153,7 @@ static void sipi_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, 
     uint16_t header = ((uint16_t)byte_vals[0] << 8) | byte_vals[1];
     uint64_t ss_header = byte_ss[0];
     uint64_t es_header = byte_es[1];
+    (void)es_header;
 
     /* Tag (bits 15-13) */
     uint64_t ss = ss_header;

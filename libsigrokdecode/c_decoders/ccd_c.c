@@ -138,7 +138,7 @@ static void ccd_decode_message(struct srd_decoder_inst *di, ccd_state *s)
         char rpm_str[16], map_str[16];
         snprintf(rpm_str, sizeof(rpm_str), "%d", rpm);
         snprintf(map_str, sizeof(map_str), "%d", mapsensor);
-        char t2[64], t3[32];
+        char t2[64], t3[64];
         snprintf(t2, sizeof(t2), "RPM=%s,MAP=%s", rpm_str, map_str);
         snprintf(t3, sizeof(t3), "R%s,M%s", rpm_str, map_str);
         snprintf(ann_text, sizeof(ann_text), "RPM: %s rpm, MAP: %s kPa", rpm_str, map_str);

@@ -2,7 +2,7 @@ import json, subprocess, time
 
 def mcp_call(method, params=None):
     body = {"jsonrpc":"2.0","id":1,"method":method,"params":params or {}}
-    cmd = ['curl', '-s', '-X', 'POST', 'http://127.0.0.1:10530/mcp',
+    cmd = ['curl', '-s', '-X', 'POST', 'http://127.0.0.1:10110/mcp',
            '-H', 'Content-Type: application/json',
            '-d', json.dumps(body)]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)

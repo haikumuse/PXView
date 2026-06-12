@@ -1,7 +1,7 @@
 """Simple test: configure_and_start directly with PX device."""
 import json, requests, time, sys
 
-URL = "http://127.0.0.1:10530/mcp"
+URL = "http://127.0.0.1:10110/mcp"
 
 def call_tool(name, args=None, timeout=10):
     body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args or {}}}

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2021 original Python version
@@ -180,7 +180,7 @@ static void arp_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, u
     /* Hardware Type */
     s->ss_block = block_ss(blocks_data, 0);
     s->es_block = block_es(blocks_data, 1);
-    char t[64], t2[32];
+    char t[256], t2[128];
     snprintf(t, sizeof(t), "Hardware Type: %d", htype);
     snprintf(t2, sizeof(t2), "Type: %d", htype);
     c_put(di, s->ss_block, s->es_block, s->out_ann, ANN_DATA, t, t2);

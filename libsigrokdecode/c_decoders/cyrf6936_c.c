@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2016 Soenke J. Peters
@@ -534,7 +534,7 @@ static void cyrf6936_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
     if (strcmp(cmd, "DATA") != 0) return;
     if (!s->cs_was_released) return;
 
-    int have_mosi, have_miso;
+    int have_mosi = 0, have_miso = 0;
     uint8_t mosi = 0, miso = 0;
     parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
 

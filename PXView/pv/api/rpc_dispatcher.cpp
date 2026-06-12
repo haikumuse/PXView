@@ -10,7 +10,7 @@ static void mcp_dbg_log(const char* msg) {
     static QFile dbg_file;
     if (!dbg_file.isOpen()) {
         dbg_file.setFileName(QDir::tempPath() + "/pxview_mcp_debug.log");
-        dbg_file.open(QIODevice::WriteOnly | QIODevice::Append);
+        (void)dbg_file.open(QIODevice::WriteOnly | QIODevice::Append);
     }
     if (dbg_file.isOpen()) {
         dbg_file.write(msg);
@@ -346,7 +346,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 5. load_capture
         {
             {"name", "load_capture"},
-            {"description", "Load a capture from a .dsc session file. Use this to analyze previously saved captures."},
+            {"description", "Load a capture from a .pxc session file. Use this to analyze previously saved captures."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -361,7 +361,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 6. save_capture
         {
             {"name", "save_capture"},
-            {"description", "Save the current capture to a .dsc session file. Requires an active or completed capture."},
+            {"description", "Save the current capture to a .pxc session file. Requires an active or completed capture."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -1137,6 +1137,7 @@ JsonRpcResponse RpcDispatcher::on_remove_analyzer(int id, const json& params) {
 }
 
 JsonRpcResponse RpcDispatcher::on_list_analyzers(int id, const json& params) {
+    (void)params;
     auto session = app_svc_->get_active_session();
     if (!session) {
         // Auto-create session with first available device

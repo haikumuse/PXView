@@ -64,6 +64,7 @@ DecoderGroupBox::DecoderGroupBox(data::DecoderStack *decoder_stack,
 
     const srd_decoder *const d = _dec->decoder();
     assert(d);
+    (void)d;
 
     _index = 0;
     for(auto dec : _decoder_stack->stack()) {

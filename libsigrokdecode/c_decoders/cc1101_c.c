@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Marco Geisler <m-sigrok@mageis.de>
@@ -296,7 +296,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
     if (strcmp(cmd, "DATA") != 0) return;
     if (!s->cs_was_released) return;
 
-    int have_mosi, have_miso;
+    int have_mosi = 0, have_miso = 0;
     uint8_t mosi = 0, miso = 0;
     parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi, &miso);
 
@@ -305,7 +305,7 @@ static void cc1101_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
     if (s->first) {
         s->first = 0;
         /* First MOSI byte is the command */
-        int addr, min_b, max_b;
+        int addr, min_b = 0, max_b = 0;
         s->cmd_type = cc1101_parse_command(mosi, &addr, &min_b, &max_b);
         s->cmd_addr = addr;
         s->min_bytes = min_b;

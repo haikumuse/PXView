@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2020 Analog Devices Inc.
@@ -96,6 +96,7 @@ static void ltc242x_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         uint8_t flags = fields[0].u8;
         int have_mosi = (flags & 1) ? 1 : 0;
         int have_miso = (flags & 2) ? 1 : 0;
+        (void)have_mosi;
         
         int mosi_cnt = fields[1].u8;
         int pos = 2;

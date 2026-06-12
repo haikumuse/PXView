@@ -368,6 +368,7 @@ int AnnotationResTable::hexToDecimal(char * hex)
 
 void AnnotationResTable::decimalToBinString(unsigned long long num, int bitSize, char *buffer, int buffer_size)
 {
+    (void)buffer_size;
 
 	assert(buffer);
 	assert(buffer_size);

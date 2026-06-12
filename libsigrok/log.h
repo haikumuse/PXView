@@ -49,10 +49,10 @@ SR_API void ds_log_set_context(xlog_context *ctx);
 SR_API void ds_log_level(int level);
 
 #define LOG_PREFIX ""
-#define sr_err(fmt, args...) xlog_err(sr_log, LOG_PREFIX fmt, ## args)
-#define sr_warn(fmt, args...) xlog_warn(sr_log, LOG_PREFIX fmt, ## args)
-#define sr_info(fmt, args...) xlog_info(sr_log, LOG_PREFIX fmt, ## args)
-#define sr_dbg(fmt, args...) xlog_dbg(sr_log, LOG_PREFIX fmt, ## args)
-#define sr_detail(fmt, args...) xlog_detail(sr_log, LOG_PREFIX fmt, ## args)
+#define sr_err(fmt, args...) ((void)xlog_err(sr_log, LOG_PREFIX fmt, ## args))
+#define sr_warn(fmt, args...) ((void)xlog_warn(sr_log, LOG_PREFIX fmt, ## args))
+#define sr_info(fmt, args...) ((void)xlog_info(sr_log, LOG_PREFIX fmt, ## args))
+#define sr_dbg(fmt, args...) ((void)xlog_dbg(sr_log, LOG_PREFIX fmt, ## args))
+#define sr_detail(fmt, args...) ((void)xlog_detail(sr_log, LOG_PREFIX fmt, ## args))
 
 #endif

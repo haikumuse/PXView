@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -222,7 +222,7 @@ static void nrf905_dump_cmd_bytes(struct srd_decoder_inst *di, nrf905_state *s,
             es = s->miso_es[i];
     }
 
-    char long_str[512], short_str[256];
+    char long_str[768], short_str[512];
     snprintf(long_str, sizeof(long_str), "%s{$}", prefix);
     snprintf(short_str, sizeof(short_str), "@%s", data_str);
     c_put(di, ss, es, s->out_ann, ann, long_str, short_str);

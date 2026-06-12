@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -229,7 +229,7 @@ static void rc_encode_decode(struct srd_decoder_inst *di)
             c_put(di, s->ss, s->es, s->out_ann, bit_val, bit_names[bit_val]);
 
             /* Output pin label */
-            char pin_label[16];
+            char pin_label[32];
             if (s->bit_count <= 6)
                 snprintf(pin_label, sizeof(pin_label), "A%d", s->bit_count - 1);
             else

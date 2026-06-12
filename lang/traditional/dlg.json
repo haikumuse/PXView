@@ -8,6 +8,46 @@
         "text": "日誌"
     },
     {
+        "id": "IDS_DLG_MCP_DOCK_TITLE",
+        "text": "MCP 服務"
+    },
+    {
+        "id": "IDS_DLG_MCP_WEB_CONSOLE",
+        "text": "網頁端聊天介面"
+    },
+    {
+        "id": "IDS_DLG_MCP_WEB_CONSOLE_DESC",
+        "text": "打開可視化介面，使用自然語言控制設備。"
+    },
+    {
+        "id": "IDS_DLG_MCP_OPEN_WEB",
+        "text": "打開MCP網頁端聊天介面"
+    },
+    {
+        "id": "IDS_DLG_MCP_DEVELOPER",
+        "text": "連接 AI 工具"
+    },
+    {
+        "id": "IDS_DLG_MCP_DEVELOPER_DESC",
+        "text": "在終端中運行以下命令，將 AI 工具連接到 PXView。"
+    },
+    {
+        "id": "IDS_DLG_MCP_RESTART",
+        "text": "重啟 MCP 服務"
+    },
+    {
+        "id": "IDS_DLG_MCP_RUNNING",
+        "text": "運行中"
+    },
+    {
+        "id": "IDS_DLG_MCP_STOPPED",
+        "text": "已停止"
+    },
+    {
+        "id": "IDS_DLG_MCP_COPY_TOOLTIP",
+        "text": "複製到剪貼簿"
+    },
+    {
         "id": "IDS_DLG_LOG_NO_FILE",
         "text": "未找到日誌檔案。"
     },
