@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -151,8 +151,8 @@ static void as5047_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample
 
     if (strcmp(cmd, "DATA") != 0) return;
 
-    int have_mosi, have_miso;
-    uint8_t mosi_b, miso_b;
+    int have_mosi = 0, have_miso = 0;
+    uint8_t mosi_b = 0, miso_b = 0;
     parse_spi_data(fields, n_fields, &have_mosi, &have_miso, &mosi_b, &miso_b);
 
     /* Detect if SPI wordsize is 16 (mosi_byte > 0xFF won't happen, but

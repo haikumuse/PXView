@@ -169,7 +169,7 @@ bool AppControl::Start()
     _ws_transport = new pv::api::WsTransport(_rpc_dispatcher, 10430);
     _ws_transport->start();
 
-    _mcp_transport = new pv::api::McpTransport(_rpc_dispatcher, 10530);
+    _mcp_transport = new pv::api::McpTransport(_rpc_dispatcher, 10110);
     _mcp_transport->start();
 
     auto* active_session = _app_service->get_active_session();

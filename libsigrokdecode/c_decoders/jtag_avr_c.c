@@ -214,6 +214,7 @@ static void pdi_setup_insn(jtag_avr_state *s, int opcode, int args)
     int sizeA = (args & 0x0C) >> 2;
     int sizeB = args & 0x03;
     int addr = args & 0x0F;
+    (void)addr;
     int widthAddr = sizeA + 1;
     int widthData = sizeB + 1;
 

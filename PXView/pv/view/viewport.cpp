@@ -222,8 +222,7 @@ Viewport::Viewport(View &parent, View_type type)
       _resize_trace_lower(NULL), _resize_mouse_down_y(0),
       _resize_upper_height(0), _resize_lower_height(0), _curs_moved(false),
       _xcurs_moved(false), _curVOffset(0), _max_frame_time(0), _fps(0),
-      g_drag_active(false), _is_idle(true), _paint_in_this_second(0),
-      _drag_frame_pending(false), _hover_logic_signal(nullptr) {
+      _is_idle(true), _drag_frame_pending(false), _hover_logic_signal(nullptr), g_drag_active(false), _paint_in_this_second(0) {
   _panelBgColor = AppConfig::Instance().GetThemeColor("@panel-bg");
   if (!_panelBgColor.isValid())
     _panelBgColor = QColor("#1a1a1a");
@@ -683,6 +682,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
 
     if (view_params_changed || _need_update) {
       rebuilt = true;
+      (void)rebuilt;
 #ifndef NDEBUG
       QElapsedTimer rebuildTimer;
       rebuildTimer.start();

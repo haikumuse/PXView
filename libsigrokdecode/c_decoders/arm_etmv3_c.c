@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2015 Petteri Aimonen <jpa@sigrok.mail.kapsi.fi>
@@ -336,6 +336,7 @@ static void handle_branch(struct srd_decoder_inst *di, etmv3_priv *s,
 
     char txt[256] = {0};
     const char *state_strs[] = {"arm", "thumb", "jazelle"};
+    (void)state_strs;
     int ann_idx = ANN_BRANCH;
 
     /* Exception info (simplified) */

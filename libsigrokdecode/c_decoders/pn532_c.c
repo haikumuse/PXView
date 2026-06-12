@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -180,7 +180,7 @@ static const char *frame_type_strings[][2] = {
     {"Application Error", "Error"},
 };
 
-static const char *pn532_error_strings[] = {
+static const char *pn532_error_strings[] __attribute__((unused)) = {
     [0x01] = "Time Out, the target has not answered",
     [0x02] = "A CRC error has been detected by the CIU",
     [0x03] = "A Parity error has been detected by the CIU",

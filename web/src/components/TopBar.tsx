@@ -26,7 +26,7 @@ export default function TopBar({
         <div className="bg-border text-bg-casing px-3 py-1 font-bold tracking-widest text-xl uppercase">
           {t('APP_TITLE')}
         </div>
-        <div className="text-text-casing font-bold tracking-widest text-sm uppercase hidden sm:block border-l-2 border-border pl-4">
+        <div className="font-bold truncate text-text-casing hidden sm:block border-l-2 border-border pl-4">
           {t('APP_SUBTITLE')}
         </div>
       </div>

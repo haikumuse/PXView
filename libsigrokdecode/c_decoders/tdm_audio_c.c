@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -154,7 +154,7 @@ static void tdm_audio_decode(struct srd_decoder_inst *di)
             s->bitcount = 0;
             int ch = s->channel % s->channels;
 
-            char c1[32], c2[16], c3[8], v[16];
+            char c1[32], c2[16], c3[16], v[16];
             snprintf(c1, sizeof(c1), "Channel %d", ch);
             snprintf(c2, sizeof(c2), "C%d", ch);
             snprintf(c3, sizeof(c3), "%d", ch);

@@ -1,4 +1,4 @@
-﻿#include "libsigrokdecode.h"
+#include "libsigrokdecode.h"
 #include <glib.h>
 #include <math.h>
 #include <stdio.h>
@@ -15,7 +15,7 @@ static const int crc4Table[16] = {
 };
 
 /* CRC6 table */
-static const int crc6Table[64] = {
+static const int crc6Table[64] __attribute__((unused)) = {
      0, 25, 50, 43, 61, 36, 15, 22, 35, 58, 17,  8, 30,  7, 44, 53,
     31,  6, 45, 52, 34, 59, 16,  9, 60, 37, 14, 23,  1, 24, 51, 42,
     62, 39, 12, 21,  3, 26, 49, 40, 29,  4, 47, 54, 32, 57, 18, 11,
@@ -124,19 +124,19 @@ static struct srd_decoder_option sent_options[] = {
 
 static const char *sent_ann_labels[][3] = {
     { "", "Pulse length", "Pulse" },
-    { "", "Calibration Pulse", "CAL", "C" },
+    { "", "Calibration Pulse", "CAL" },
     { "", "Status&Comm Nibble", "SC" },
-    { "", "Nibble Data", "Data", "D" },
+    { "", "Nibble Data", "Data" },
     { "", "CRC Nibble", "CRC" },
-    { "", "Pause Pulse", "Pause", "P" },
-    { "", "Start of Frame", "Start", "ST" },
+    { "", "Pause Pulse", "Pause" },
+    { "", "Start of Frame", "Start" },
     { "", "Serial Data", "SerData" },
     { "", "Serial ID", "SerID" },
     { "", "Serial Config", "SerCfg" },
     { "", "Serial Frame Bit", "SerFrame" },
     { "", "Serial Sync Bit", "SerSync" },
     { "", "Serial CRC", "SerCRC" },
-    { "", "Warning", "Warn", "W" },
+    { "", "Warning", "Warn" },
 };
 
 static const int sent_row_sent_classes[] = { ANN_CAL, ANN_SC, ANN_DATA, ANN_CRC, ANN_PAUSE, -1 };

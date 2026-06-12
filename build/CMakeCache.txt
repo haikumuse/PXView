@@ -15,7 +15,7 @@
 ########################
 
 //Build the C decoder test program
-BUILD_DECODER_TEST:BOOL=OFF
+BUILD_DECODER_TEST:BOOL=ON
 
 //The directory containing a CMake configuration file for Boost.
 Boost_DIR:PATH=D:/msys64/mingw64/lib/cmake/Boost-1.91.0
@@ -219,21 +219,6 @@ CMAKE_PROJECT_NAME:STATIC=PXView
 //Value Computed by CMake
 CMAKE_PROJECT_SPDX_LICENSE:STATIC=
 
-//Value Computed by CMake
-CMAKE_PROJECT_VERSION:STATIC=3.11.3
-
-//Value Computed by CMake
-CMAKE_PROJECT_VERSION_MAJOR:STATIC=3
-
-//Value Computed by CMake
-CMAKE_PROJECT_VERSION_MINOR:STATIC=11
-
-//Value Computed by CMake
-CMAKE_PROJECT_VERSION_PATCH:STATIC=3
-
-//Value Computed by CMake
-CMAKE_PROJECT_VERSION_TWEAK:STATIC=
-
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=D:/msys64/mingw64/bin/ranlib.exe
 
@@ -350,70 +335,20 @@ ENABLE_DRIVER_RASPBERRYPI_PICO:BOOL=OFF
 //Enable saleae-logic16 driver
 ENABLE_DRIVER_SALEAE_LOGIC16:BOOL=OFF
 
-//Directory under which to collect all populated content
-FETCHCONTENT_BASE_DIR:PATH=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/build/_deps
-
-//Disables all attempts to download or update content and assumes
-// source dirs already exist
-FETCHCONTENT_FULLY_DISCONNECTED:BOOL=OFF
-
-//Enables QUIET option for all content population
-FETCHCONTENT_QUIET:BOOL=ON
-
-//When not empty, overrides where to find pre-populated content
-// for nlohmann_json
-FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON:PATH=
-
-//Enables UPDATE_DISCONNECTED behavior for all content population
-FETCHCONTENT_UPDATES_DISCONNECTED:BOOL=OFF
-
-//Enables UPDATE_DISCONNECTED behavior just for population of nlohmann_json
-FETCHCONTENT_UPDATES_DISCONNECTED_NLOHMANN_JSON:BOOL=OFF
-
 //Path to a file.
 FFTW_INCLUDE_DIR:PATH=D:/msys64/mingw64/include
 
 //Path to a library.
 FFTW_LIBRARY:FILEPATH=D:/msys64/mingw64/lib/libfftw3.dll.a
 
-//Git command line client
-GIT_EXECUTABLE:FILEPATH=D:/msys64/usr/bin/git.exe
-
-//Build the unit tests when BUILD_TESTING is enabled.
-JSON_BuildTests:BOOL=OFF
-
-//Enable CI build targets.
-JSON_CI:BOOL=OFF
-
-//Use extended diagnostic messages.
-JSON_Diagnostics:BOOL=OFF
-
-//Disable default integer enum serialization.
-JSON_DisableEnumSerialization:BOOL=OFF
-
-//Place use-defined string literals in the global namespace.
-JSON_GlobalUDLs:BOOL=ON
-
-//Enable implicit conversions.
-JSON_ImplicitConversions:BOOL=ON
-
-//Install CMake targets during install step.
-JSON_Install:BOOL=OFF
-
-//Enable legacy discarded value comparison.
-JSON_LegacyDiscardedValueComparison:BOOL=OFF
-
-//Use non-amalgamated version of the library.
-JSON_MultipleHeaders:BOOL=ON
-
-//Include as system headers (skip for clang-tidy).
-JSON_SystemInclude:BOOL=OFF
-
 //Path to a file.
 LIBUSB_1_INCLUDE_DIR:PATH=D:/msys64/mingw64/include/libusb-1.0
 
 //Path to a library.
 LIBUSB_1_LIBRARY:FILEPATH=D:/msys64/mingw64/lib/libusb-1.0.dll.a
+
+//Path to a program.
+NPM_EXECUTABLE:FILEPATH=D:/nodejs/npm
 
 //Arguments to supply to pkg-config
 PKG_CONFIG_ARGN:STRING=
@@ -1154,20 +1089,17 @@ decoder_z80_c_LIB_DEPENDS:STATIC=general;-lglib-2.0;
 //Dependencies for the target
 irmp_LIB_DEPENDS:STATIC=general;Python3::Python;general;-lglib-2.0;
 
-//Value Computed by CMake
-nlohmann_json_BINARY_DIR:STATIC=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/build/_deps/nlohmann_json-build
-
-//Value Computed by CMake
-nlohmann_json_IS_TOP_LEVEL:STATIC=OFF
-
-//Value Computed by CMake
-nlohmann_json_SOURCE_DIR:STATIC=C:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/build/_deps/nlohmann_json-src
+//The directory containing a CMake configuration file for nlohmann_json.
+nlohmann_json_DIR:PATH=D:/msys64/mingw64/share/cmake/nlohmann_json
 
 //Path to a library.
 pkgcfg_lib_GLIB_glib-2.0:FILEPATH=D:/msys64/mingw64/lib/libglib-2.0.dll.a
 
 //Path to a library.
 pkgcfg_lib_GLIB_intl:FILEPATH=D:/msys64/mingw64/lib/libintl.dll.a
+
+//Dependencies for the target
+sigrokdecode_static_LIB_DEPENDS:STATIC=general;-lglib-2.0;general;D:/Scoop/apps/python/3.14.4/libs/python314.lib;
 
 
 ########################
@@ -1312,7 +1244,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=2
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP
@@ -1392,8 +1324,6 @@ FIND_PACKAGE_MESSAGE_DETAILS_Threads:INTERNAL=[TRUE][v()]
 FIND_PACKAGE_MESSAGE_DETAILS_WrapAtomic:INTERNAL=[1][v()]
 //Details about finding WrapVulkanHeaders
 FIND_PACKAGE_MESSAGE_DETAILS_WrapVulkanHeaders:INTERNAL=[D:/VulkanSDK/1.4.309.0/include][v()]
-//ADVANCED property for variable: GIT_EXECUTABLE
-GIT_EXECUTABLE-ADVANCED:INTERNAL=1
 GLIB_CFLAGS:INTERNAL=-ID:/msys64/mingw64/include/glib-2.0;-ID:/msys64/mingw64/lib/glib-2.0/include;-ID:/msys64/mingw64/include
 GLIB_CFLAGS_I:INTERNAL=
 GLIB_CFLAGS_OTHER:INTERNAL=
@@ -1431,7 +1361,6 @@ GLIB_glib-2.0_PREFIX:INTERNAL=
 GLIB_glib-2.0_VERSION:INTERNAL=
 //Test HAVE_STDATOMIC
 HAVE_STDATOMIC:INTERNAL=1
-NLOHMANN_JSON_CONFIG_INSTALL_DIR:INTERNAL=share/cmake/nlohmann_json
 //ADVANCED property for variable: PKG_CONFIG_ARGN
 PKG_CONFIG_ARGN-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: PKG_CONFIG_EXECUTABLE

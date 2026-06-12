@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -165,12 +165,13 @@ static void qi_process_packet(struct srd_decoder_inst *di)
         snprintf(text, sizeof(text), "Identification: Version = %d.%d, "
                  "Manufacturer = %02x%02x, Device = %02x%02x%02x%02x",
                  (p[1] & 0xf0) >> 4, p[1] & 0x0f,
-                 p[2], p[3], p[4] & ~0x80, p[5], p[6], p[7]);
+                 (unsigned)p[2], (unsigned)p[3], (unsigned)(p[4] & ~0x80), (unsigned)p[5], (unsigned)p[6], (unsigned)p[7]);
         c_put(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
                   s->out_ann, ANN_PACKET_DATA, text);
     } else if (p[0] == 0x81 && plen >= 8) {
-        snprintf(text, sizeof(text), "Extended Identification: %02x%02x%02x%02x%02x%02x%02x%02x",
-                 p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+        snprintf(text, sizeof(text), "Extended Identification: %02x%02x%02x%02x%02x%02x%02x",
+                 (unsigned)p[1], (unsigned)p[2], (unsigned)p[3], (unsigned)p[4],
+                 (unsigned)p[5], (unsigned)p[6], (unsigned)p[7]);
         c_put(di, s->bytesi[0], s->bytesi[s->bytesi_len - 1],
                   s->out_ann, ANN_PACKET_DATA, text);
     } else {

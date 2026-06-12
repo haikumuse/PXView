@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv2+
  *
@@ -318,7 +318,7 @@ static void st25r39xx_finish_command(struct srd_decoder_inst *di, st25r39xx_stat
     int ann;
     const char *cmd_label;
     const char *reg_name;
-    char buf[512];
+    char buf[1024];
 
     switch (s->cmd_type) {
     case CMD_WRITE:   ann = ANN_BURST_WRITE;  break;

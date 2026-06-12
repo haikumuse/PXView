@@ -1,0 +1,10 @@
+- [x] app_service.cpp 中 3 处 reinterpret_cast<uintptr_t> 已改为 static_cast<uint64_t>，Linux GCC 编译无类型转换错误
+- [x] session_service.cpp 中 QDateTime::fromMSecsSinceEpoch 使用非 deprecated 重载，Qt 6.9+ 无 deprecated 警告
+- [x] session_service.cpp 中 show_region 的 keep 参数不再产生 unused-parameter 警告
+- [x] rpc_dispatcher.cpp 中 QFile::open 返回值已处理，无 nodiscard/unused-result 警告
+- [x] rpc_dispatcher.cpp 中 on_list_analyzers 的 params 参数不再产生 unused-parameter 警告
+- [x] ook_oregon_c.c 中 nib_strs 数组初始化完整，无 maybe-uninitialized 警告
+- [x] instance.c 中 wanted_term 变量无 set-but-not-used 警告
+- [x] CMakeLists.txt 中 nlohmann_json 使用 find_package 优先 + FetchContent fallback，离线构建可用
+- [x] CMakeLists.txt 中 test_font 目标已移除，Release 构建不包含测试可执行文件
+- [x] 无其他非预期变更，所有修改严格对应 Linux 构建修复目标

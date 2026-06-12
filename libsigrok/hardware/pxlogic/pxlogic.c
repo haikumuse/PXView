@@ -430,6 +430,8 @@ static GSList* hw_scan(GSList* options)
     uint8_t bus;
     uint8_t address;
     int num = 0;
+    (void)devcnt;
+    (void)num;
     (void)options;
     drvc = di->priv;
     devices = NULL;
@@ -595,7 +597,7 @@ static const GSList* hw_dev_mode_list(const struct sr_dev_inst* sdi)
     devc = sdi->priv;
     for (i = 0; i < ARRAY_SIZE(sr_mode_list); i++) {
         if (devc->profile->dev_caps.mode_caps & (1 << i))
-            l = g_slist_append(l, &sr_mode_list[i]);
+            l = g_slist_append(l, (gpointer)&sr_mode_list[i]);
     }
 
     return l;
@@ -604,9 +606,11 @@ static const GSList* hw_dev_mode_list(const struct sr_dev_inst* sdi)
 SR_PRIV int firmware_config(struct libusb_device_handle* usbdevh, const char* filename, unsigned int mode)
 {
     FILE* fw;
-    int chunksize, ret;
+    int chunksize, ret = SR_OK;
     unsigned char* buf;
     int transferred;
+    (void)chunksize;
+    (void)transferred;
     uint64_t filesize;
 
     struct stat f_stat;
@@ -714,6 +718,10 @@ static int hw_usb_open(struct sr_dev_driver* di, struct sr_dev_inst* sdi, gboole
     struct PX_context* devc;
     struct drv_context* drvc;
     int ret, skip, i, device_count;
+    (void)drvc;
+    (void)skip;
+    (void)i;
+    (void)device_count;
 
     drvc = di->priv;
     devc = sdi->priv;
@@ -737,7 +745,7 @@ static int hw_usb_open(struct sr_dev_driver* di, struct sr_dev_inst* sdi, gboole
 
     sr_info("Open usb device instance, handle: %p", dev_handel);
 
-    if (libusb_open(dev_handel, &usb->devhdl) != 0) {
+    if ((ret = libusb_open(dev_handel, &usb->devhdl)) != 0) {
         sr_err("Failed to open device: %s, handle:%p",
             libusb_error_name(ret), dev_handel);
         return SR_ERR;
@@ -859,6 +867,7 @@ static int hw_dev_open(struct sr_dev_inst* sdi)
 {
     //(void)sdi;
     struct PX_context* const devc = sdi->priv;
+    (void)devc;
     gboolean fpga_done = 0;
 
     if (sdi->status != SR_ST_ACTIVE) {
@@ -910,6 +919,7 @@ static int hw_dev_close(struct sr_dev_inst* sdi)
 {
     //(void)sdi;
     struct PX_context* devc = sdi->priv;
+    (void)devc;
     // hw_dev_acquisition_stop(sdi,NULL);
     sr_info("hw_dev_close");
     hw_usb_close(sdi);
@@ -987,6 +997,7 @@ static int config_get(int id, GVariant** data, const struct sr_dev_inst* sdi,
     const struct sr_channel_group* cg)
 {
     (void)cg;
+    (void)ch;
 
     struct PX_context* devc;
 
@@ -1189,11 +1200,13 @@ static int config_set(int id, GVariant* data, struct sr_dev_inst* sdi,
     struct sr_channel_group* cg)
 {
     (void)cg;
+    (void)ch;
 
     uint16_t i, nv;
     int ret, num_probes;
     const char* stropt;
     uint64_t tmp_u64;
+    (void)tmp_u64;
     struct PX_context* devc;
     struct sr_usb_dev_inst* usb;
 
@@ -1523,7 +1536,7 @@ static int config_list(int key, GVariant** data, const struct sr_dev_inst* sdi,
         break;
     case SR_CONF_CHANNEL_MODE:
         num = 0;
-        for (i = 0; i < ARRAY_SIZE(channel_modes); i++) {
+        for (i = 0; i < (int)ARRAY_SIZE(channel_modes); i++) {
             if (channel_modes[i].stream == devc->stream && devc->profile->dev_caps.channels & (1 << i))
             // if ( devc->profile->dev_caps.channels & (1 << i))
             {
@@ -1597,7 +1610,6 @@ static void free_transfer(struct libusb_transfer* transfer)
 static void resubmit_transfer(struct libusb_transfer* transfer)
 {
     int ret;
-    int i = 10;
 
     if ((ret = libusb_submit_transfer(transfer)) == LIBUSB_SUCCESS) {
         // sr_info("resubmit_transfer OK ");
@@ -1621,9 +1633,14 @@ static void receive_transfer(struct libusb_transfer* transfer)
     struct sr_datafeed_packet packet;
     struct sr_datafeed_logic logic;
     double samples_elaspsed;
+    (void)samples_elaspsed;
     uint64_t samples_to_send = 0, sending_now;
+    (void)samples_to_send;
+    (void)sending_now;
     uint64_t i;
+    (void)i;
     uint64_t samples_counter2;
+    (void)samples_counter2;
     uint64_t offset = 0;
     // if(devc->buf != NULL){
     //    g_free(devc->buf);
@@ -1762,7 +1779,7 @@ static void receive_transfer(struct libusb_transfer* transfer)
     }
 
     if (transfer->status == LIBUSB_TRANSFER_COMPLETED) {
-        if (devc->block_size != transfer->actual_length && devc->usb_speed != LIBUSB_SPEED_SUPER) {
+        if (devc->block_size != (uint32_t)transfer->actual_length && devc->usb_speed != LIBUSB_SPEED_SUPER) {
             devc->usb_data_align_en = 1;
         } else {
             devc->usb_data_align_en = 0;
@@ -1954,12 +1971,15 @@ static void set_trigger(const struct sr_dev_inst* sdi)
     // struct sr_trigger_stage *stage;
     // struct sr_trigger_match *match;
     struct PX_context* devc;
-    uint32_t i, m;
+    uint32_t i;
     const unsigned int num_enabled_channels = en_ch_num(sdi);
+    (void)num_enabled_channels;
     int num_trigger_stages = 0;
+    (void)num_trigger_stages;
 
     int channelbit;
     uint32_t trigger_point;
+    (void)trigger_point;
     uint16_t stage = 16;
     devc = sdi->priv;
 
@@ -2114,7 +2134,9 @@ SR_PRIV int start_transfers(const struct sr_dev_inst* sdi)
     int ret, rc;
     unsigned char* buf = NULL;
     size_t size;
-    uint64_t samples_to_send = 0, sending_total = 0, sending_last = 0;
+    uint64_t samples_to_send = 0, sending_total = 0;
+    uint64_t sending_last = 0;
+    (void)sending_last;
     usb = sdi->conn;
     unsigned int ch_num;
     unsigned int ch_en = 0;
@@ -2123,7 +2145,9 @@ SR_PRIV int start_transfers(const struct sr_dev_inst* sdi)
     uint16_t op_mode;
     uint32_t stream_mask = 0;
     uint64_t dma_size = 4096;
+    (void)dma_size;
     uint64_t dma_size_min = 4096;
+    (void)dma_size_min;
 
     uint64_t samples_ch_1s = 0;
     uint64_t samples_ch_1s_align_4k = 0;
@@ -2165,7 +2189,7 @@ SR_PRIV int start_transfers(const struct sr_dev_inst* sdi)
     dma_size = 4096;
 
     if (devc->usb_speed == LIBUSB_SPEED_SUPER) {
-        usb_samples_1s = 5 * 1000 * 1000 * 1000; // 5G USB3.0
+        usb_samples_1s = 5LL * 1000 * 1000 * 1000; // 5G USB3.0
     } else {
         usb_samples_1s = 480 * 1000 * 1000; // 480M USB2.0
     }
@@ -2454,13 +2478,22 @@ static int receive_data2(int fd, int revents, const struct sr_dev_inst* sdi)
 {
     struct PX_context* devc = sdi->priv;
     struct sr_datafeed_packet packet;
+    (void)packet;
     struct sr_datafeed_logic logic;
+    (void)logic;
     double samples_elaspsed;
+    (void)samples_elaspsed;
     uint64_t samples_to_send = 0, sending_now;
+    (void)samples_to_send;
+    (void)sending_now;
     int64_t time, elapsed;
+    (void)time;
+    (void)elapsed;
     static uint16_t last_sample = 0;
+    (void)last_sample;
     uint32_t cur_sample;
     uint64_t i;
+    (void)i;
     int completed = 0;
     struct drv_context* drvc;
     struct timeval tv;
@@ -2469,6 +2502,7 @@ static int receive_data2(int fd, int revents, const struct sr_dev_inst* sdi)
     (void)revents;
     int ret = 0;
     uint32_t trigger_pos_real = 0;
+    (void)trigger_pos_real;
     struct sr_usb_dev_inst* usb;
     usb = sdi->conn;
     // struct ctl_data cmd_data;
@@ -2559,6 +2593,11 @@ static int hw_dev_acquisition_start(struct sr_dev_inst* sdi,
     struct drv_context* drvc;
     const struct libusb_pollfd** lupfd;
     int i, rc;
+    (void)usb;
+    (void)drvc;
+    (void)lupfd;
+    (void)i;
+    (void)rc;
     drvc = di->priv;
     if (sdi->status != SR_ST_ACTIVE)
         return SR_ERR_DEVICE_CLOSED;
@@ -2655,8 +2694,11 @@ static void finish_acquisition(struct sr_dev_inst* sdi)
 
     struct sr_usb_dev_inst* usb;
     usb = sdi->conn;
+    (void)usb;
     uint32_t trigger_pos_real;
     int ret;
+    (void)trigger_pos_real;
+    (void)ret;
     // if (devc->stop)
     //     return SR_OK;
     devc->stop = TRUE;
@@ -2734,6 +2776,8 @@ SR_PRIV int sr_dslogic_option_value_to_code2(const struct sr_dev_inst* sdi, int 
     int num;
     int i;
     int n;
+    (void)num;
+    (void)n;
     struct PX_context* devc;
 
     assert(sdi);
@@ -2744,13 +2788,13 @@ SR_PRIV int sr_dslogic_option_value_to_code2(const struct sr_dev_inst* sdi, int 
     if (config_id == SR_CONF_CHANNEL_MODE)
     // if (1)
     {
-        for (i = 0; i < ARRAY_SIZE(channel_modes); i++) {
+        for (i = 0; (size_t)i < ARRAY_SIZE(channel_modes); i++) {
             if (devc->profile->dev_caps.channels & (1 << i)) {
                 if (strcmp(channel_modes[i].descr, value) == 0)
                     return channel_modes[i].id;
 
-                if (i < ARRAY_SIZE(channel_mode_cn_map)) {
-                    if (channel_modes[i].id != channel_mode_cn_map[i].id)
+                if ((size_t)i < ARRAY_SIZE(channel_mode_cn_map)) {
+                    if ((int)channel_modes[i].id != channel_mode_cn_map[i].id)
                         assert(0);
                     if (strcmp(channel_mode_cn_map[i].name, value) == 0)
                         return channel_modes[i].id;

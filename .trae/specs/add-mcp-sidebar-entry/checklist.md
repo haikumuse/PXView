@@ -1,0 +1,15 @@
+- [x] MCP 端口已从 10530 改为 10420（C++ 后端 + 前端 + 测试脚本）
+- [x] workflow.svg 图标已添加到 icons/dark/ 和 icons/light/，使用 currentColor 支持主题染色
+- [x] McpTransport 支持 GET 请求返回 webui/ 目录下的静态文件，MIME 类型正确
+- [x] McpTransport GET 请求对不存在的文件返回 404
+- [x] McpTransport POST 请求行为不受 GET 支持影响
+- [x] McpControlWidget 面板正确显示 MCP 服务状态和监听地址
+- [x] 点击"打开 MCP 网页端聊天界面"按钮后外部浏览器打开 http://127.0.0.1:10420/
+- [x] 点击"复制 Claude 配置"按钮后剪贴板包含正确的 JSON 配置
+- [x] 点击"重启 MCP 服务"按钮后 MCP 传输层正确重启
+- [x] 侧边栏显示 "MCP 服务" 按钮，图标染色与其它 DockItem 一致
+- [x] 点击侧边栏 MCP 服务按钮后 SlidingDrawer 正确打开对应页面
+- [x] 侧边栏指示器动画正确移动到 MCP 服务按钮位置
+- [x] i18n 支持中英文（"MCP 服务" / "MCP Server"）
+- [x] CMakeLists.txt 已包含新源文件
+- [x] 编译通过，无新增警告

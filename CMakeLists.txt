@@ -187,13 +187,17 @@ endif()
 #===============================================================================
 #= nlohmann/json (header-only JSON library for API layer)
 #-------------------------------------------------------------------------------
-include(FetchContent)
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
-)
-FetchContent_MakeAvailable(nlohmann_json)
+# Try system package first, fall back to FetchContent
+find_package(nlohmann_json 3.2.0 QUIET)
+if(NOT nlohmann_json_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.11.3
+    )
+    FetchContent_MakeAvailable(nlohmann_json)
+endif()
 
 #===============================================================================
 #= boost
@@ -266,6 +270,7 @@ set(PXView_SOURCES
     PXView/pv/dock/logdock.cpp
     PXView/pv/dock/deviceoptionsdock.cpp
     PXView/pv/dock/signalprocessingdock.cpp
+    PXView/pv/dock/mcpcontroldock.cpp
     PXView/pv/toolbars/logobar.cpp
     PXView/pv/dialogs/about.cpp
     PXView/pv/dialogs/search.cpp
@@ -426,6 +431,7 @@ set(PXView_HEADERS
     PXView/pv/dock/logdock.h
     PXView/pv/dock/deviceoptionsdock.h
     PXView/pv/dock/signalprocessingdock.h
+    PXView/pv/dock/mcpcontroldock.h
     PXView/pv/toolbars/logobar.h
     PXView/pv/dialogs/about.h
     PXView/pv/dialogs/search.h
@@ -964,6 +970,41 @@ if(WIN32)
 endif()
 
 #===============================================================================
+#= Vite web client build (optional, run: cmake --build . --target webui)
+#-------------------------------------------------------------------------------
+
+find_program(NPM_EXECUTABLE npm)
+
+if(NPM_EXECUTABLE)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/web/dist/index.html
+        COMMAND ${NPM_EXECUTABLE} install
+        COMMAND ${NPM_EXECUTABLE} run build
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web
+        COMMENT "Building Vite web client..."
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/package.json
+    )
+
+    add_custom_target(webui
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/dist/index.html
+        COMMENT "Build the MCP web client (Vite)"
+    )
+
+    add_custom_target(install-webui
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/web/dist
+            ${CMAKE_INSTALL_PREFIX}/bin/webui
+        COMMENT "Copy web client to install directory"
+        DEPENDS webui
+    )
+
+    message(STATUS "Web UI build target available: cmake --build . --target webui")
+    message(STATUS "Web UI install target available: cmake --build . --target install-webui")
+else()
+    message(STATUS "npm not found, web UI build targets not available")
+endif()
+
+#===============================================================================
 #= Installation
 #-------------------------------------------------------------------------------
 
@@ -1016,6 +1057,17 @@ endforeach()
 install(TARGETS irmp DESTINATION ${MAC_RES_PREFIX}bin)
 
 install(DIRECTORY lang DESTINATION ${MAC_RES_PREFIX}share/PXView)
+
+# Install web client if it has been built
+install(CODE "
+    if(EXISTS \"${CMAKE_CURRENT_SOURCE_DIR}/web/dist/index.html\")
+        file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${MAC_RES_PREFIX}bin/webui\"
+             TYPE DIRECTORY FILES \"${CMAKE_CURRENT_SOURCE_DIR}/web/dist/\")
+        message(STATUS \"Installing web client to: \${CMAKE_INSTALL_PREFIX}/${MAC_RES_PREFIX}bin/webui\")
+    else()
+        message(STATUS \"Web client not built, skipping. Run: ninja webui\")
+    endif()
+")
 
 #===============================================================================
 #= Packaging (handled by CPack)
@@ -1101,5 +1153,5 @@ endif()
 
 
 
-add_executable(test_font test_font.cpp)
-target_link_libraries(test_font Qt6::Gui Qt6::Widgets)
+#add_executable(test_font test_font.cpp)
+#target_link_libraries(test_font Qt6::Gui Qt6::Widgets)

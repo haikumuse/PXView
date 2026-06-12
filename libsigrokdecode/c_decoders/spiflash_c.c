@@ -53,7 +53,7 @@ typedef struct {
     const char *key;
     const char *vendor;
     const char *model;
-    uint32_t rdid_id;
+    uint64_t rdid_id;
     uint16_t rems_id;
     uint16_t rems2_id;
     int page_size;
@@ -330,7 +330,7 @@ static void spiflash_output_data_block(struct srd_decoder_inst *di, spiflash_sta
     snprintf(field_buf, sizeof(field_buf), "Data (%d bytes)", s->data_count);
     c_put(di, s->ss_field, s->es_field, s->out_ann, ANN_FIELD, field_buf);
 
-    char cmd_buf[2048];
+    char cmd_buf[4096];
     snprintf(cmd_buf, sizeof(cmd_buf), "%s (addr @%06x, %d bytes): %s",
              cmd_name, s->addr, s->data_count, data_str);
     c_put(di, s->ss_cmd, s->es_cmd, s->out_ann, s->delayed_ann, cmd_buf);
@@ -397,6 +397,7 @@ static void spiflash_handle_rdid(struct srd_decoder_inst *di, spiflash_state *s,
 
 static void spiflash_handle_rdsr(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
+    (void)mosi;
     if (s->cmdstate == 1) {
         spiflash_emit_cmd_byte(di, s);
     } else {
@@ -413,6 +414,7 @@ static void spiflash_handle_rdsr(struct srd_decoder_inst *di, spiflash_state *s,
 
 static void spiflash_handle_rdsr2(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
+    (void)mosi;
     if (s->cmdstate == 1) {
         spiflash_emit_cmd_byte(di, s);
     } else {
@@ -556,7 +558,7 @@ static void spiflash_handle_se(struct srd_decoder_inst *di, spiflash_state *s, u
 
 static void spiflash_handle_be(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
-    (void)mosi; (void)miso;
+    (void)di; (void)s; (void)mosi; (void)miso;
     /* TODO */
 }
 
@@ -653,6 +655,7 @@ static void spiflash_handle_stub(struct srd_decoder_inst *di, spiflash_state *s,
 
 static void spiflash_handle_status(struct srd_decoder_inst *di, spiflash_state *s, uint8_t mosi, uint8_t miso)
 {
+    (void)mosi;
     if (s->cmdstate == 1) {
         spiflash_emit_cmd_byte(di, s);
         s->have_delayed_output = 1;

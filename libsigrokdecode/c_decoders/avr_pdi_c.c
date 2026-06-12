@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2011-2014 Uwe Hermann <uwe@hermann-uwe.de>
@@ -130,7 +130,7 @@ static const char *avr_pdi_ann_labels[][3] = {
     {"", "cmd-data",   "PDI command with data"},
 };
 
-static const char *avr_pdi_binary_labels[][3] = {
+static const char *avr_pdi_binary_labels[][3] __attribute__((unused)) = {
     {"", "bytes", "PDI protocol bytes"},
 };
 

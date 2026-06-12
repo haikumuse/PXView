@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2019 Vesa-Pekka Palmu <vpalmu@depili.fi>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -68,6 +68,7 @@ enum {
     NUM_ANN,
 };
 
+#undef L
 #define L 41  /* number of command annotations */
 
 typedef struct {

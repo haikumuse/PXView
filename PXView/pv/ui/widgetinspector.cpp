@@ -145,6 +145,7 @@ void WidgetInspector::updateTooltip()
 
 void WidgetInspector::showTooltip(const QString &text, const QPoint &pos, QWidget *widget)
 {
+    (void)widget;
     if (!_tooltipLabel) {
         _tooltipLabel = new QLabel();
         _tooltipLabel->setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);

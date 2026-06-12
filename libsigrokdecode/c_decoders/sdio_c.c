@@ -308,10 +308,10 @@ static const char *sdio_tags[] = { "Memory" };
 
 static int get_token_bits(sdio_state *s, uint64_t samplenum, int cmd_val, int n)
 {
-    if (s->token_count > 0) {
+    if (s->token_count > 0 && s->token_count - 1 < MAX_TOKEN_BITS) {
         s->token_es[s->token_count - 1] = samplenum;
     }
-    if (s->token_count < MAX_TOKEN_BITS) {
+    if (s->token_count >= 0 && s->token_count < MAX_TOKEN_BITS) {
         s->token_ss[s->token_count] = samplenum;
         s->token_es[s->token_count] = samplenum;
         s->token_val[s->token_count] = cmd_val;

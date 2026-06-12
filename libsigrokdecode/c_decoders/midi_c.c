@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2023 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -496,7 +496,7 @@ static enum midi_state midi_get_next_state(midi_state *s, uint8_t newbyte)
         return MIDI_HANDLE_SYSEX_MSG;
     if (newbyte >= 0xF1 && newbyte <= 0xF6)
         return MIDI_HANDLE_SYSCOMMON_MSG;
-    if (newbyte >= 0xF8 && newbyte <= 0xFF)
+    if (newbyte >= 0xF8)
         return MIDI_HANDLE_SYSREALTIME_MSG;
     if (newbyte == 0xF7)
         return MIDI_BUFFER_GARBAGE;
@@ -586,6 +586,7 @@ static void midi_handle_channel_msg(struct srd_decoder_inst *di, midi_state *s, 
     const char *sb0 = (idx >= 0) ? status_bytes[idx][0] : "unknown";
     const char *sb1 = (idx >= 0) ? status_bytes[idx][1] : "unknown";
     const char *sb2 = (idx >= 0) ? status_bytes[idx][2] : "???";
+    (void)sb1; (void)sb2;
     char buf[512];
 
     switch (msg_type) {
@@ -677,6 +678,7 @@ static void midi_handle_channel_msg(struct srd_decoder_inst *di, midi_state *s, 
             /* Channel mode */
             const char *mode_fn0 = midi_get_ctrl_fn(fn, 0);
             const char *mode_fn2 = midi_get_ctrl_fn(fn, 2);
+            (void)mode_fn2;
             char vv_str[64] = "";
             if (fn == 122) {
                 snprintf(vv_str, sizeof(vv_str), "%s", (param == 0) ? "off" : (param == 127) ? "on" : "(non-standard)");
@@ -692,6 +694,7 @@ static void midi_handle_channel_msg(struct srd_decoder_inst *di, midi_state *s, 
             const char *ctrl0 = midi_get_ctrl_fn(fn, 0);
             const char *ctrl1 = midi_get_ctrl_fn(fn, 1);
             const char *ctrl2 = midi_get_ctrl_fn(fn, 2);
+            (void)ctrl1; (void)ctrl2;
             snprintf(buf, sizeof(buf), "Channel %d: %s '%s' (param = 0x%02x)",
                      chan, sb0, ctrl0, param);
             midi_putx(di, s, ANN_TEXT_VERBOSE, buf);
@@ -816,6 +819,7 @@ static void midi_handle_sysex_msg(struct srd_decoder_inst *di, midi_state *s, in
     const char *sb0 = (msg_idx >= 0) ? status_bytes[msg_idx][0] : "SysEx";
     const char *sb1 = (msg_idx >= 0) ? status_bytes[msg_idx][1] : "SysEx";
     const char *sb2 = (msg_idx >= 0) ? status_bytes[msg_idx][2] : "SE";
+    (void)sb1; (void)sb2;
 
     /* Extract manufacturer */
     if (s->cmd_len - idx < 1) {
@@ -897,6 +901,7 @@ static void midi_handle_syscommon_msg(struct srd_decoder_inst *di, midi_state *s
     const char *group0 = "System Common";
     const char *group1 = "SysCom";
     const char *group2 = "SC";
+    (void)sb1; (void)sb2; (void)group1; (void)group2;
     char buf[512];
 
     if (msg == 0xF1) {
@@ -912,12 +917,14 @@ static void midi_handle_syscommon_msg(struct srd_decoder_inst *di, midi_state *s
         if (nn != 7) {
             const char *qft0 = (nn < 8) ? quarter_frame_type[nn][0] : "undefined";
             const char *qft1 = (nn < 8) ? quarter_frame_type[nn][1] : "undef";
+            (void)qft1;
             snprintf(buf, sizeof(buf), "%s: %s of %s, value 0x%01x", group0, sb0, qft0, dd);
             midi_putx(di, s, ANN_TEXT_VERBOSE, buf);
         } else {
             int tt = (dd & 0x6) >> 1;
             const char *qft0 = quarter_frame_type[7][0];
             const char *qft1 = quarter_frame_type[7][1];
+            (void)qft1;
             const char *smt = (tt < 4) ? smpte_type[tt] : "unknown";
             snprintf(buf, sizeof(buf), "%s: %s of %s, value 0x%01x for %s",
                      group0, sb0, qft0, dd, smt);
@@ -968,6 +975,7 @@ static void midi_handle_sysrealtime_msg(struct srd_decoder_inst *di, midi_state 
     const char *sb0 = (idx >= 0) ? status_bytes[idx][0] : "unknown";
     const char *sb1 = (idx >= 0) ? status_bytes[idx][1] : "???";
     const char *sb2 = (idx >= 0) ? status_bytes[idx][2] : "?";
+    (void)sb1; (void)sb2;
 
     char buf[256];
     snprintf(buf, sizeof(buf), "System Realtime: %s", sb0);

@@ -172,7 +172,7 @@ SR_PRIV struct sr_dev_driver **sr_driver_list(void)
  */
 SR_PRIV int sr_driver_init(struct sr_context *ctx, struct sr_dev_driver *driver)
 {
-	int ret;
+	int ret = 0;
 
 	if (!ctx) {
 		sr_err("Invalid libsigrok context, can't initialize.");
@@ -259,7 +259,7 @@ SR_PRIV int sr_config_get(const struct sr_dev_driver *driver,
                          const struct sr_channel_group *cg,
                          int key, GVariant **data)
 {
-	int ret;
+	int ret = 0;
 
 	if (!driver || !data)
 		return SR_ERR;
@@ -296,7 +296,7 @@ SR_PRIV int sr_config_set(struct sr_dev_inst *sdi,
                          struct sr_channel_group *cg,
                          int key, GVariant *data)
 {
-	int ret;
+	int ret = 0;
 
 	assert(data);
 	g_variant_ref_sink(data);
@@ -339,7 +339,7 @@ SR_PRIV int sr_config_list(const struct sr_dev_driver *driver,
                           const struct sr_channel_group *cg,
                           int key, GVariant **data)
 {
-	int ret;
+	int ret = 0;
 
 	if (!driver || !data){
 		ret = SR_ERR;
@@ -389,7 +389,7 @@ SR_PRIV const struct sr_config_info *sr_config_info_get(int key)
 SR_PRIV int sr_status_get(const struct sr_dev_inst *sdi,
                          struct sr_status *status, gboolean prg)
 {
-    int ret;
+    int ret = 0;
 
     if (!sdi->driver)
         ret = SR_ERR;
@@ -408,7 +408,7 @@ SR_PRIV int ds_scan_all_device_list(libusb_context *usb_ctx,struct libusb_device
 	libusb_device **devlist;
 	int i;
 	int wr;
-    int ret;
+    int ret = 0;
 	struct libusb_device_descriptor des;
 
 	assert(list_buf);

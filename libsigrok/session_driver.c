@@ -242,7 +242,7 @@ static int receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
     struct sr_datafeed_logic logic;
     struct sr_datafeed_dso dso;
     struct sr_datafeed_analog analog;
-    int ret;
+    int ret = 0;
     char file_name[32];
     struct sr_channel *probe = NULL;
     GSList *pl;
@@ -420,8 +420,8 @@ static int receive_data_logic_dso_v2(int fd, int revents, const struct sr_dev_in
     struct sr_datafeed_logic logic;
     struct sr_datafeed_dso dso;
 
-    int ret;
-    char file_name[32]; 
+    int ret = 0;
+    char file_name[32];
     int ch_index, malloc_chan_index;
     struct session_packet_buffer *pack_buffer;
     unz_file_info64 fileInfo;
@@ -735,7 +735,7 @@ static int dev_clear(void)
 
 static int dev_open(struct sr_dev_inst *sdi)
 {
-    int ret;
+    int ret = 0;
     struct session_vdev *vdev;
 
     assert(sdi);

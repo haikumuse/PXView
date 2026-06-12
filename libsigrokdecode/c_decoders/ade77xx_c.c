@@ -247,6 +247,7 @@ static void ade77xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sampl
         valo = s->mosi_bytes[1];
         vali = s->miso_bytes[1];
     }
+    (void)vali;
 
     int idx = write ? ANN_WRITE : ANN_READ;
     char buf[256];

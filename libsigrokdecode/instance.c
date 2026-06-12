@@ -1433,6 +1433,7 @@ static gpointer di_thread(gpointer data)
 
     if (!is_task_stop_signal)
         srd_dbg("%s: decode() terminated (req %d).", di->inst_id, wanted_term);
+    (void)wanted_term;
 
     PyErr_Clear();
     PyGILState_Release(gstate);
@@ -1464,6 +1465,7 @@ static gpointer c_di_thread(gpointer data)
     g_mutex_unlock(&di->data_mutex);
 
     srd_dbg("%s: C decode() terminated (req %d).", di->inst_id, wanted_term);
+    (void)wanted_term;
 
     return NULL;
 }

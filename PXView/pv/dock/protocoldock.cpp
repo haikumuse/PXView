@@ -87,6 +87,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   for (; l; l = l->next) {
     const srd_decoder *const d = (srd_decoder *)l->data;
     assert(d);
+    (void)d;
 
     DecoderInfoItem *info = new DecoderInfoItem();
     srd_decoder *dec = (srd_decoder *)(l->data);

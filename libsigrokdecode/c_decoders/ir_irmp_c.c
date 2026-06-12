@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2014 Gump Yang <gump.yang@gmail.com>
@@ -103,15 +103,15 @@ static int irmp_load_library(irmp_priv *s)
     if (!s->irmp_lib)
         return 0;
 
-    s->fn_get_sample_rate = (uint32_t (*)(void))
+    s->fn_get_sample_rate = (uint32_t (*)(void))(void *)
         GetProcAddress(s->irmp_lib, "irmp_get_sample_rate");
-    s->fn_add_one_sample = (int (*)(int))
+    s->fn_add_one_sample = (int (*)(int))(void *)
         GetProcAddress(s->irmp_lib, "irmp_add_one_sample");
-    s->fn_get_result_data = (int (*)(irmp_result_data *))
+    s->fn_get_result_data = (int (*)(irmp_result_data *))(void *)
         GetProcAddress(s->irmp_lib, "irmp_get_result_data");
-    s->fn_get_protocol_name = (char *(*)(uint32_t))
+    s->fn_get_protocol_name = (char *(*)(uint32_t))(void *)
         GetProcAddress(s->irmp_lib, "irmp_get_protocol_name");
-    s->fn_reset_state = (void (*)(void))
+    s->fn_reset_state = (void (*)(void))(void *)
         GetProcAddress(s->irmp_lib, "irmp_reset_state");
 #else
     s->irmp_lib = dlopen("libirmp.so", RTLD_LAZY);
@@ -263,6 +263,7 @@ static void irmp_decode(struct srd_decoder_inst *di)
 
     /* Get initial IR value */
     uint64_t cur_sample = 0;
+    (void)cur_sample;
     if (c_wait(di, CW_END) != SRD_OK)
         return;
 

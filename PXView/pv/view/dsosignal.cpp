@@ -71,8 +71,8 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
                      sr_channel *probe):
     Signal(probe),
     _data(data), 
-    _hover_point(QPointF(-1, -1)),
-    _cached_hw_offset(probe ? probe->hw_offset : 128)
+    _cached_hw_offset(probe ? probe->hw_offset : 128),
+    _hover_point(QPointF(-1, -1))
 {
     QVector<uint64_t> vValue;
     QVector<QString> vUnit;

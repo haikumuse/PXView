@@ -49,6 +49,7 @@
 #include <QDebug>
 #include <QColor>
 #include <QDateTime>
+#include <QTimeZone>
 #include <QDir>
 #include <QEventLoop>
 #include <QFile>
@@ -341,6 +342,7 @@ Result<int> SessionService::configure_and_start(
     int capture_ratio,
     double repeat_interval_seconds,
     uint64_t sample_count) {
+    (void)analog_sample_rate;
     if (!_session)
         return Result<int>::Fail(ErrorCode::InternalError,
                                  "Session is null");
@@ -356,7 +358,7 @@ Result<int> SessionService::configure_and_start(
         static QFile dbg_file;
         if (!dbg_file.isOpen()) {
             dbg_file.setFileName(QDir::tempPath() + "/pxview_mcp_debug.log");
-            dbg_file.open(QIODevice::WriteOnly | QIODevice::Append);
+            (void)dbg_file.open(QIODevice::WriteOnly | QIODevice::Append);
         }
         if (dbg_file.isOpen()) {
             dbg_file.write(msg);
@@ -2712,7 +2714,7 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
         static QFile s_dbg;
         if (!s_dbg.isOpen()) {
             s_dbg.setFileName(QDir::tempPath() + "/pxview_mcp_debug.log");
-            s_dbg.open(QIODevice::WriteOnly | QIODevice::Append);
+            (void)s_dbg.open(QIODevice::WriteOnly | QIODevice::Append);
         }
         if (s_dbg.isOpen()) {
             QString msg = QString("get_decoder_annotations: instance_id='%1', traces.size()=%2\n")
@@ -3271,9 +3273,9 @@ Result<void> SessionService::export_decoder_table(
                     double start_sec = static_cast<double>(ann.start_sample()) / samplerate;
                     double end_sec = static_cast<double>(ann.end_sample()) / samplerate;
                     auto start_dt = QDateTime::fromMSecsSinceEpoch(
-                        static_cast<qint64>(start_sec * 1000), Qt::UTC);
+                        static_cast<qint64>(start_sec * 1000), QTimeZone::UTC);
                     auto end_dt = QDateTime::fromMSecsSinceEpoch(
-                        static_cast<qint64>(end_sec * 1000), Qt::UTC);
+                        static_cast<qint64>(end_sec * 1000), QTimeZone::UTC);
                     start_str = start_dt.toString(Qt::ISODateWithMs);
                     end_str = end_dt.toString(Qt::ISODateWithMs);
                 } else {
@@ -3622,6 +3624,7 @@ void SessionService::frame_began() {
 }
 
 void SessionService::show_region(uint64_t start, uint64_t end, bool keep) {
+    (void)keep;
     broadcast_event(ServiceEvent::DataUpdated,
                     {{"start", std::to_string(start)},
                      {"end", std::to_string(end)}});

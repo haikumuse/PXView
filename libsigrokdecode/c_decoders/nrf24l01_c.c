@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -249,7 +249,7 @@ static void nrf24l01_decode_mb_data(struct srd_decoder_inst *di, nrf24l01_state 
         }
     }
 
-    char long_str[768], short_str[512];
+    char long_str[1024], short_str[768];
     snprintf(long_str, sizeof(long_str), "%s = \"{$}\"", label);
     snprintf(short_str, sizeof(short_str), "@%s", data_str);
     c_put(di, ss, es, s->out_ann, ann, long_str, short_str);

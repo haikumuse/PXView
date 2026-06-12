@@ -1,0 +1,12 @@
+- [x] avclan_c.c, arp_c.c, i2c_packet_c.c, ccd_c.c 无 format-truncation 警告
+- [x] as5047_c.c, cc1101_c.c, cyrf6936_c.c, adns5020_c.c 无 maybe-uninitialized 警告
+- [x] eeprom93xx_c.c 无 array-bounds 警告
+- [x] ir_irmp_c.c 无 cast-function-type 警告
+- [x] arm_etmv3_c.c, avr_pdi_c.c, cjtag_oscan0_c.c 无 unused-variable/parameter 警告
+- [x] i2cdemux_c.c, i2cfilter_c.c 无 sign-compare 警告
+- [x] ieee488_c.c 无 type-limits 警告
+- [x] ade77xx_c.c 无 unused-but-set-variable 警告
+- [x] dcc_c.c 无 parentheses 警告
+- [x] amulet_ascii_c.c 无 macro redefined 警告
+- [x] libsigrok/lib_main.c 无 int-to-pointer-cast / pointer-to-int-cast 警告
+- [x] 全量 clean build 排除 common/minizip 后零警告

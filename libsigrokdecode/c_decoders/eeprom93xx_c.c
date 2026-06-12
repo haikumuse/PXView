@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -51,7 +51,6 @@ static const struct srd_c_ann_row eeprom93xx_ann_rows[] = {
 
 static void eeprom93xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, uint64_t end_sample, const char *cmd, const c_field *fields, int n_fields)
 {
-    (void)start_sample; (void)end_sample;
     eeprom93xx_state *s = (eeprom93xx_state *)c_decoder_get_private(di);
     if (!s)
         return;
@@ -59,16 +58,33 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sa
     if (strcmp(cmd, "microwire") != 0)
         return;
 
-    if (!fields || (size_t)n_fields < sizeof(struct mw_py_entry))
+    if (!fields || n_fields < 1 || fields[0].type != C_FIELD_BYTES)
         return;
 
-    int num_entries = (int)(n_fields / sizeof(struct mw_py_entry));
-    /* v4: entries parsed from fields array */ struct mw_py_entry *entries = NULL;
+    const unsigned char *raw = fields[0].bytes.data;
+    int raw_len = (int)fields[0].bytes.len;
+    int entry_size = 18; /* mw_py_entry: 8(ss) + 8(es) + 1(si) + 1(so) = 18 bytes */
+
+    int num_entries = raw_len / entry_size;
+    if (num_entries < 1)
+        return;
+
+    /* Reconstruct entries from the packed byte buffer sent by microwire_c */
+    struct mw_py_entry *entries = (struct mw_py_entry *)g_malloc(num_entries * sizeof(struct mw_py_entry));
+    if (!entries)
+        return;
+    for (int i = 0; i < num_entries; i++) {
+        memcpy(&entries[i].ss, raw + i * entry_size, 8);
+        memcpy(&entries[i].es, raw + i * entry_size + 8, 8);
+        entries[i].si = raw[i * entry_size + 16];
+        entries[i].so = raw[i * entry_size + 17];
+    }
 
     /* Need at least start bit (1) + opcode (2) + address bits */
     if (num_entries < 2 + s->addresssize) {
         c_put(di, start_sample, end_sample, s->out_ann, ANN_WARN,
                   "Not enough packet bits");
+        g_free(entries);
         return;
     }
 
@@ -203,6 +219,7 @@ static void eeprom93xx_recv_proto(struct srd_decoder_inst *di, uint64_t start_sa
             }
         }
     }
+    g_free(entries);
 }
 
 static void eeprom93xx_reset(struct srd_decoder_inst *di)

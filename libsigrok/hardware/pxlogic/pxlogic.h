@@ -603,6 +603,6 @@ static const struct PX_profile supported_PX[] = {
           (1 << STREAM_LOGIC25x8) | (1 << STREAM_LOGIC10x16),
       SR_Gn(1), 0, BUFFER_LOGIC250x16, SR_NS(500)}},
 
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0}}};
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0}}};
 
 #endif

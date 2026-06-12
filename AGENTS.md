@@ -213,7 +213,7 @@ Status is shown in the UI via `_disk_cache_status_label` in MainWindow.
 
 C decoders are native shared libraries compiled separately. The CMake builds each as a `MODULE` library to `build.dir/decoders/c_decoders/`. At runtime, `libsigrokdecode/srd.c` loads these DLLs dynamically. The `c_decoder_api.c` file is dual-purpose: compiled with `SRD_C_DECODER_DLL` it exports the API for decoder DLLs; without it, it provides in-process decoder management.
 
-C decoder API version: `SRD_C_DECODER_API_VERSION = 3`. Each C decoder exports a `srd_c_decoder` struct with channels, options, annotations, and callback functions (reset/start/decode/end/metadata/destroy/recv_proto). Helper macros `C_ANN_PUT`, `C_ANN_PUT_TYPE`, `C_ANN_PUT_VAL` simplify annotation output. Condition builders (`c_cond_rise/fall/high/low/edge/skip`, `c_cond_wait`) simplify protocol state machines.
+C decoder API version: `SRD_C_DECODER_API_VERSION = 4`. Each C decoder exports a `srd_c_decoder` struct with channels, options, annotations, and callback functions (reset/start/decode/end/metadata/destroy/recv_proto). Helper macros `C_ANN_PUT`, `C_ANN_PUT_TYPE`, `C_ANN_PUT_VAL` simplify annotation output. Condition builders (`c_cond_rise/fall/high/low/edge/skip`, `c_cond_wait`) simplify protocol state machines.
 
 Available C decoders (215): spi_c, i2c_c, uart_c, can_c, can_fd_c, jtag_c, swd_c, onewire_c, i2s_c, lin_c, hdlc_c, microwire_c, mdio_c, ps2_c, dmx512_c, nrzi_c, ir_nec_c, ir_rc5_c, ir_sirc_c, dcf77_c, cec_c, spdif_c, usb_signalling_c, 4b5b_c, iso7816_c, lpc_c, dali_c, c2_c, graycode_c, counter_c, lm75_c, ds1307_c, ds3231_c, numbers_and_state_c, seven_segment_c, pwm_c, wiegand_c
 
@@ -228,7 +228,7 @@ Available C decoders (215): spi_c, i2c_c, uart_c, can_c, can_fd_c, jtag_c, swd_c
 - Singleton pattern for `AppControl`, `AppConfig`, `SessionManager`
 - Interface-based decoupling via abstract callback classes in `pv/interface/`
 - `IContextAware` pattern for binding components to `TabContext`
-- JSON format for configuration files (`.dsc` session config, `lang/` translations)
+- JSON format for configuration files (`.pxc` session config, `lang/` translations)
 - Custom UI components (borderless window, draggable tabs, sliding drawer, sidebar) instead of standard Qt dock widgets
 - Windows-specific code guarded by `#ifdef WIN32` / `if(WIN32)` in CMake
 - Resource files managed via Qt `.qrc` files

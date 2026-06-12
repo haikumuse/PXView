@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -94,6 +94,7 @@ static void nes_gamepad_start(struct srd_decoder_inst *di)
     s->out_ann = c_reg_out(di, SRD_OUTPUT_ANN, "nes_gamepad");
 
     const char *variant = c_opt_str(di, "variant", "Standard gamepad");
+    (void)variant;
     s->variant = 0; /* Only Standard gamepad supported */
 }
 

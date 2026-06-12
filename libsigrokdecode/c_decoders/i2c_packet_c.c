@@ -181,8 +181,8 @@ static void i2c_packet_handle_packet(struct srd_decoder_inst *di,
         s->packet_data_len = 0;
     } else {
         /* Final output annotation */
-        char final_str[MAX_STR_LEN * 2];
-        char final_short[MAX_STR_LEN];
+        char final_str[MAX_STR_LEN * 4];
+        char final_short[MAX_STR_LEN * 4];
         if (s->packet_str[0]) {
             snprintf(final_str, sizeof(final_str), "%s [SR] %s",
                      s->packet_str, cur_str);

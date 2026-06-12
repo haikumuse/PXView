@@ -269,14 +269,14 @@ static void tlc5620_handle_load_fall(struct srd_decoder_inst *di, tlc5620_state 
     if (s->ldac == 0) {
         char ann_str[64];
         snprintf(ann_str, sizeof(ann_str), "Setting %s voltage to %s", dac_names[s->dac_select], v_str);
-        char short_str[32];
+        char short_str[48];
         snprintf(short_str, sizeof(short_str), "%s=%s", dac_names[s->dac_select], v_str);
         c_put(di, s->ss_dac, s->es_value, s->out_ann, ANN_VOLTAGE_UPDATE,
                   ann_str, short_str);
     } else {
         char ann_str[64];
         snprintf(ann_str, sizeof(ann_str), "Setting %s register value to %s", dac_names[s->dac_select], v_str);
-        char short_str[32];
+        char short_str[48];
         snprintf(short_str, sizeof(short_str), "%s=%s", dac_names[s->dac_select], v_str);
         c_put(di, s->ss_dac, s->es_value, s->out_ann, ANN_REG_WRITE,
                   ann_str, short_str);

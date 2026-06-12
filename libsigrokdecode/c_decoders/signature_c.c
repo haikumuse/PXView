@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2019 Shirow Miura <shirowmiura@gmail.com>
@@ -190,9 +190,9 @@ static void sig_decode(struct srd_decoder_inst *di)
         if (s->gate_is_open) {
             if (s->annbits) {
                 if (s->started) {
-                    char buf[16];
+                    char buf[32];
                     snprintf(buf, sizeof(buf), "<%d>", data);
-                    char buf2[16], buf3[16];
+                    char buf2[32], buf3[32];
                     snprintf(buf2, sizeof(buf2), "START%s", buf + 1);
                     snprintf(buf3, sizeof(buf3), "S%s", buf + 1);
                     c_put(di, s->last_samplenum, di_samplenum(di), s->out_ann, ANN_START, buf2, buf3, buf);

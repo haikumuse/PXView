@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2018 Aleksander Alekseev <afiskon@gmail.com>
@@ -161,7 +161,7 @@ static void st7735_put_desc(struct srd_decoder_inst *di, st7735_state *s)
         } else {
             snprintf(data_str, sizeof(data_str), "(none)");
         }
-        char buf[512];
+        char buf[1024];
         snprintf(buf, sizeof(buf), "Unknown command: %02X. Data: %s%s",
                  s->current_cmd, data_str, truncated ? "..." : "");
         c_put(di, s->desc_ss, s->desc_es, s->out_ann, ANN_DESC, buf);

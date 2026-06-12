@@ -13,7 +13,7 @@ namespace pv::api {
 class McpTransport : public QObject, public ITransport {
     Q_OBJECT
 public:
-    McpTransport(IJsonRpcHandler* handler, int port = 10530);
+    McpTransport(IJsonRpcHandler* handler, int port = 10110);
     ~McpTransport();
 
     bool start() override;

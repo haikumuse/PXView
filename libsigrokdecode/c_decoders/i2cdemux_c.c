@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2012 Uwe Hermann <uwe@hermann-uwe.de>
@@ -60,7 +60,7 @@ static void i2cdemux_recv_proto(struct srd_decoder_inst *di, uint64_t start_samp
         s->packets[i].es = end_sample;
         strncpy(s->packets[i].cmd, cmd, sizeof(s->packets[i].cmd) - 1);
         s->packets[i].cmd[sizeof(s->packets[i].cmd) - 1] = '\0';
-        uint64_t copy_len = (size_t)n_fields < sizeof(s->packets[i].data) ? n_fields : sizeof(s->packets[i].data);
+        uint64_t copy_len = (uint64_t)n_fields < sizeof(s->packets[i].data) ? (uint64_t)n_fields : sizeof(s->packets[i].data);
         if (fields && copy_len > 0)
             for (uint64_t j = 0; j < copy_len; j++) s->packets[i].data[j] = fields[j].u8;
         s->packets[i].data_len = copy_len;
