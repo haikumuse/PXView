@@ -288,8 +288,10 @@ export const useAppStore = create<AppState>((set, get) => {
       if (get().isProcessing) return;
       const s = get().sessions[id];
       if (s) {
-        set({ currentSessionId: id, messages: s.messages });
-        localStorage.setItem(CURRENT_SESSION_KEY, id);
+        const updatedSession = { ...s, updatedAt: Date.now() };
+        const newSessions = { ...get().sessions, [id]: updatedSession };
+        set({ currentSessionId: id, messages: s.messages, sessions: newSessions });
+        debouncedSaveSessions(newSessions, id);
       }
     },
 
