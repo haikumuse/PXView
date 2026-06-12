@@ -132,16 +132,24 @@ export class McpClient {
           if (!dataLine) continue;
 
           try {
-            const event: ProgressEvent = JSON.parse(dataLine);
+            const event = JSON.parse(dataLine);
 
-            if (event.done && event.result) {
+            // Handle standard JSON-RPC response format sent over SSE
+            if (event.jsonrpc === '2.0') {
+              if (event.error) {
+                throw new Error(`MCP error: ${event.error.message}`);
+              }
+              finalResult = event.result;
+            } 
+            // Handle legacy ProgressEvent format
+            else if (event.done && event.result) {
               finalResult = event.result;
             }
 
-            if (onProgress) {
-              onProgress(event);
+            if (onProgress && !event.jsonrpc) {
+              onProgress(event as ProgressEvent);
             }
-          } catch {
+          } catch (e) {
             // Ignore malformed JSON in SSE events
           }
         }
@@ -152,14 +160,21 @@ export class McpClient {
         const dataLine = this.extractSSEData(buffer);
         if (dataLine) {
           try {
-            const event: ProgressEvent = JSON.parse(dataLine);
-            if (event.done && event.result) {
+            const event = JSON.parse(dataLine);
+
+            if (event.jsonrpc === '2.0') {
+              if (event.error) {
+                throw new Error(`MCP error: ${event.error.message}`);
+              }
+              finalResult = event.result;
+            } else if (event.done && event.result) {
               finalResult = event.result;
             }
-            if (onProgress) {
-              onProgress(event);
+
+            if (onProgress && !event.jsonrpc) {
+              onProgress(event as ProgressEvent);
             }
-          } catch {
+          } catch (e) {
             // Ignore malformed JSON
           }
         }

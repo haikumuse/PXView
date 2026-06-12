@@ -51,9 +51,9 @@ export default function App() {
           <HistoryPanel />
         </div>
 
-        {/* Chat panel — the main CRT terminal */}
-        <div className="flex-1 border-4 border-border bg-bg-screen flex flex-col shadow-[inset_0_10px_30px_rgba(0,0,0,0.8),0_4px_10px_rgba(0,0,0,0.1)] relative rounded-sm overflow-hidden scanlines">
-          <div className="bg-border text-text-screen-alt px-3 py-1 text-xs font-bold tracking-widest uppercase flex justify-between">
+        {/* Chat panel — Card interface */}
+        <div className="flex-1 border-4 border-border bg-bg-casing-dark flex flex-col shadow-[inset_0_4px_10px_rgba(0,0,0,0.2)] relative rounded-sm overflow-hidden">
+          <div className="bg-border text-bg-casing px-3 py-1 text-xs font-bold tracking-widest uppercase flex justify-between">
             <span>{t('TERMINAL_MODE')}</span>
             <span>{new Date().toLocaleTimeString()}</span>
           </div>

@@ -47,17 +47,27 @@ export default function SettingsDrawer({ open, onClose }: { open: boolean; onClo
       <label className="text-xs font-bold text-text-casing-muted uppercase tracking-widest">{label}</label>
       {type === 'textarea' ? (
         <textarea
-          value={form[key]}
-          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          ref={(el) => {
+            if (el) {
+              el.style.height = 'auto';
+              el.style.height = el.scrollHeight + 'px';
+            }
+          }}
+          value={form[key] as string}
+          onChange={(e) => {
+            setForm({ ...form, [key]: e.target.value });
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }}
           rows={4}
-          className="w-full bg-bg-screen-light border-2 border-border px-3 py-2 text-sm text-text-screen font-mono placeholder:text-text-screen-alt placeholder:opacity-30 focus:outline-none focus:border-text-screen shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] transition-colors resize-y"
+          className="w-full bg-bg-casing-dark border-2 border-border px-3 py-2 text-sm text-text-casing font-mono placeholder:text-text-casing-muted placeholder:opacity-50 focus:outline-none focus:bg-bg-casing shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1)] transition-colors overflow-hidden resize-none"
         />
       ) : (
         <input
           type={type}
-          value={form[key]}
+          value={form[key] as string}
           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-          className="w-full bg-bg-screen-light border-2 border-border px-3 py-2 text-sm text-text-screen font-mono placeholder:text-text-screen-alt placeholder:opacity-30 focus:outline-none focus:border-text-screen shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] transition-colors"
+          className="w-full bg-bg-casing-dark border-2 border-border px-3 py-2 text-sm text-text-casing font-mono placeholder:text-text-casing-muted placeholder:opacity-50 focus:outline-none focus:bg-bg-casing shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1)] transition-colors"
         />
       )}
     </div>

@@ -86,7 +86,8 @@ json RpcDispatcher::to_json(const DeviceInfo& d) {
         {"is_hardware_logic", d.is_hardware_logic},
         {"is_hardware_dso",   d.is_hardware_dso},
         {"is_dsl_device",     d.is_dsl_device},
-        {"is_compat_device",  d.is_compat_device}
+        {"is_compat_device",  d.is_compat_device},
+        {"usb_speed",         d.usb_speed}
     };
 }
 
@@ -787,9 +788,25 @@ JsonRpcResponse RpcDispatcher::handle_request(const JsonRpcRequest& req) {
 JsonRpcResponse RpcDispatcher::on_get_devices(int id, const json& params) {
     (void)params;
     auto devices = app_svc_->get_device_list();
+    auto session = app_svc_->get_active_session();
+    std::string active_id = "";
+    DeviceInfo dinfo;
+    if (session) {
+        dinfo = session->get_device_info();
+        active_id = dinfo.id;
+    }
+
     json arr = json::array();
-    for (const auto& d : devices)
-        arr.push_back(to_json(d));
+    for (const auto& d : devices) {
+        json j;
+        if (d.id == active_id) {
+            j = to_json(dinfo);
+        } else {
+            j = to_json(d);
+        }
+        j["is_active"] = (d.id == active_id);
+        arr.push_back(j);
+    }
     return success_resp(id, arr);
 }
 

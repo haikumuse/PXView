@@ -15,9 +15,9 @@ function getFriendlyLabel(name: string, args: Record<string, unknown>): string |
 }
 
 const StatusLabel = ({ status, t }: { status: ToolCallStatus['status'], t: any }) => {
-  if (status === 'pending') return <span className="text-text-screen-alt animate-pulse">{t('TOOL_PENDING')}</span>;
+  if (status === 'pending') return <span className="text-text-casing-muted animate-pulse">{t('TOOL_PENDING')}</span>;
   if (status === 'running') return <span className="text-warning animate-pulse">{t('TOOL_RUNNING')}</span>;
-  if (status === 'success') return <span className="text-success">{t('TOOL_SUCCESS')}</span>;
+  if (status === 'success') return <span className="text-text-casing font-bold">{t('TOOL_SUCCESS')}</span>;
   if (status === 'cancelled') return <span className="text-text-casing-muted">{t('TOOL_CANCELLED')}</span>;
   return <span className="text-error">{t('TOOL_ERROR')}</span>;
 };
@@ -31,9 +31,16 @@ function DeviceCards({ data, t }: { data: string, t: any }) {
         {devices.map((d: any, i: number) => (
           <div key={i} className="flex gap-4">
             <span className="w-4">{i}</span>
-            <span className="font-bold">{d.name || d.modelName || t('UNKNOWN_DEVICE')}</span>
-            <span>{d.usbType ? `USB${d.usbType}` : '---'}</span>
-            <span>{d.mode || '---'}</span>
+            <span className="font-bold">
+              {d.display_name || d.name || d.modelName || t('UNKNOWN_DEVICE')}
+              {d.is_active && <span className="ml-2 text-warning animate-pulse">[{t('ACTIVE')}]</span>}
+            </span>
+            <span>
+              {d.usb_speed === 4 ? 'USB 3.0' : d.usb_speed === 3 ? 'USB 2.0' : d.usb_speed === 2 ? 'USB 1.1' : d.is_virtual ? 'Virtual' : '---'}
+            </span>
+            <span>
+              {d.is_hardware_dso ? 'DSO' : d.is_hardware_logic ? 'Logic' : d.is_file ? 'File' : '---'}
+            </span>
           </div>
         ))}
       </div>
@@ -75,10 +82,10 @@ export default function ToolCallCard({ toolCall }: { toolCall: ToolCallStatus })
   const displayResult = truncated ? resultText.slice(0, 500) : resultText;
 
   return (
-    <div className="border border-text-casing-muted border-dashed p-2 my-2 bg-bg-screen-light">
+    <div className="border border-text-casing-muted border-dashed p-2 my-2 bg-bg-casing-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 text-left hover:bg-bg-screen cursor-pointer"
+        className="w-full flex items-center gap-2 text-left hover:bg-bg-casing cursor-pointer"
       >
         <span className="font-bold shrink-0">{expanded ? `[${t('COLLAPSE')}]` : `[${t('EXPAND')}]`}</span>
         <StatusLabel status={toolCall.status} t={t} />

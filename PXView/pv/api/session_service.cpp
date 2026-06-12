@@ -824,6 +824,10 @@ DeviceInfo SessionService::get_device_info() const {
     info.is_dsl_device = _device->is_dsl_device();
     info.is_compat_device = _device->is_compat_device();
 
+    int usb_speed = 3; // LIBUSB_SPEED_HIGH
+    _device->get_config_int32(SR_CONF_USB_SPEED, usb_speed);
+    info.usb_speed = usb_speed;
+
     // Device ID from handle
     auto handle = _device->handle();
     // Convert handle to string representation
@@ -3324,6 +3328,15 @@ Result<void> SessionService::export_raw_data_csv(
     if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
+
+    // Ensure output directory exists
+    QDir dir(QString::fromStdString(directory));
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            return Result<void>::Fail(ErrorCode::ExportFailed,
+                                      "Failed to create output directory");
+        }
+    }
 
     // Export digital channels as CSV
     for (int32_t ch : digital_channels) {
