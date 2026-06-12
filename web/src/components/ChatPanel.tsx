@@ -38,7 +38,7 @@ export default function ChatPanel() {
     <div className="flex flex-col h-full w-full relative">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-lg flex flex-col gap-2 relative">
-        <div className="text-text-screen-alt opacity-70 mb-4 uppercase tracking-widest border-b border-text-screen-alt border-dashed pb-2 flex justify-between items-end">
+        <div className="text-text-casing font-bold mb-4 tracking-widest border-b-2 border-border pb-2 flex justify-between items-end">
           <div>
             {t('APP_TITLE')} v1.0 [{t('TERMINAL_MODE')}]<br />
             {t('READY_MSG')}
@@ -47,14 +47,14 @@ export default function ChatPanel() {
             <button 
               onClick={handleExport}
               disabled={messages.length === 0}
-              className="text-xs bg-bg-screen-light border border-border px-2 py-1 text-text-screen hover:bg-border hover:text-bg-screen transition-colors disabled:opacity-50"
+              className="text-xs bg-bg-casing border-2 border-border px-2 py-1 text-text-casing hover:bg-border hover:text-bg-casing transition-colors disabled:opacity-50"
             >
               {t('EXPORT_LOG')}
             </button>
             <button 
               onClick={clearChat}
               disabled={isProcessing}
-              className="text-xs bg-bg-screen-light border border-border px-2 py-1 text-error hover:bg-error hover:text-bg-screen transition-colors disabled:opacity-50"
+              className="text-xs bg-bg-casing border-2 border-border px-2 py-1 text-error hover:bg-error hover:text-bg-casing transition-colors disabled:opacity-50"
             >
               {t('CLEAR_LOG')}
             </button>
@@ -67,7 +67,7 @@ export default function ChatPanel() {
         </div>
         
         {messages.length === 0 ? (
-          <div className="text-text-screen font-bold animate-pulse">
+          <div className="text-text-casing opacity-50 font-bold animate-pulse text-center mt-10">
             {t('AWAITING_INPUT')}
           </div>
         ) : (

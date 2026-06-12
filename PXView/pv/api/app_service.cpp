@@ -132,6 +132,8 @@ std::vector<DeviceInfo> AppService::get_device_list() const
         if (name.find("Demo") != std::string::npos) {
             info.is_demo = true;
             info.is_virtual = true;
+        } else {
+            info.is_hardware = true;
         }
 
         result.push_back(info);

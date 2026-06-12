@@ -227,6 +227,7 @@ struct DeviceInfo {
     bool        is_hardware_dso   = false;
     bool        is_dsl_device     = false;
     bool        is_compat_device  = false;
+    int         usb_speed         = 0;
 };
 
 struct ChannelInfo {

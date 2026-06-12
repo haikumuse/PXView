@@ -163,8 +163,8 @@ function saveSettings(settings: AppSettings) {
 
 let mcpClient: McpClient | null = null;
 let llmClient: LlmClient | null = null;
-let msgCounter = 0;
 let abortController: AbortController | null = null;
+let devicePollTimer: ReturnType<typeof setInterval> | null = null;
 
 function updateMessage(messages: ConversationMessage[], id: string, patch: Partial<ConversationMessage>): ConversationMessage[] {
   return messages.map(m => m.id === id ? { ...m, ...patch } : m);
@@ -216,20 +216,44 @@ export const useAppStore = create<AppState>((set, get) => {
         const tools = await mcpClient.listTools();
         set({ mcpConnected: true, mcpTools: tools });
 
-        try {
-          const result = await mcpClient.callTool('get_devices', {});
-          const text = result.content?.[0]?.text;
-          if (text) {
-            const devices = JSON.parse(text);
-            if (devices.length > 0) {
-              set({ deviceInfo: {
-                name: devices[0].name || devices[0].modelName || 'Unknown',
-                usbType: devices[0].usbType || 'Unknown',
-                mode: devices[0].mode || 'Logic'
-              }});
+        const fetchDevices = async () => {
+          if (!mcpClient) return;
+          try {
+            const result = await mcpClient.callTool('get_devices', {});
+            const text = result.content?.[0]?.text;
+            if (text) {
+              const devices = JSON.parse(text);
+              if (devices.length > 0) {
+                const activeDev = devices.find((d: any) => d.is_active) || devices[0];
+                let mode = 'Logic';
+                if (activeDev.is_hardware_dso) mode = 'DSO';
+                else if (activeDev.is_demo) mode = 'Demo';
+                else if (activeDev.is_file) mode = 'File';
+                
+                let usbType = 'Virtual';
+                if (activeDev.is_hardware) {
+                  if (activeDev.usb_speed === 4) usbType = 'USB 3.0 (SuperSpeed)';
+                  else if (activeDev.usb_speed === 3) usbType = 'USB 2.0 (High-Speed)';
+                  else if (activeDev.usb_speed === 2) usbType = 'USB 1.1 (Full-Speed)';
+                  else usbType = 'USB';
+                }
+                
+                set({ deviceInfo: {
+                  name: activeDev.display_name || activeDev.driver_name || 'Unknown Device',
+                  usbType,
+                  mode
+                }});
+              } else {
+                set({ deviceInfo: null });
+              }
             }
-          }
-        } catch {}
+          } catch {}
+        };
+
+        await fetchDevices();
+        if (!devicePollTimer) {
+          devicePollTimer = setInterval(fetchDevices, 3000);
+        }
       } catch (err) {
         mcpClient = null;
         throw err;
@@ -237,6 +261,10 @@ export const useAppStore = create<AppState>((set, get) => {
     },
 
     disconnectMcp: () => {
+      if (devicePollTimer) {
+        clearInterval(devicePollTimer);
+        devicePollTimer = null;
+      }
       if (get().isProcessing) {
         get().stopGeneration();
       }
@@ -308,21 +336,24 @@ export const useAppStore = create<AppState>((set, get) => {
     regenerateMessage: async (msgId: string) => {
       if (get().isProcessing) return;
       const { messages } = get();
-      const idx = messages.findIndex(m => m.id === msgId);
-      if (idx === -1) return;
+      let targetIdx = messages.findIndex(m => m.id === msgId);
+      if (targetIdx === -1) return;
       
-      let userIdx = idx;
-      while (userIdx >= 0 && messages[userIdx].role !== 'user') {
-        userIdx--;
+      // If regenerating a tool response, we must step back to the assistant message that made the tool call,
+      // because an LLM conversation cannot end with an unanswered tool call.
+      if (messages[targetIdx].role === 'tool') {
+        while (targetIdx > 0 && messages[targetIdx].role !== 'assistant') {
+          targetIdx--;
+        }
       }
-      if (userIdx === -1) return;
       
-      const userContent = messages[userIdx].content;
-      get().deleteMessageAndFollowing(messages[userIdx].id);
-      await get().sendMessage(userContent);
+      if (targetIdx < 0) return;
+      
+      get().deleteMessageAndFollowing(messages[targetIdx].id);
+      await get().sendMessage();
     },
 
-    sendMessage: async (content: string) => {
+    sendMessage: async (content?: string) => {
       const { settings, mcpConnected, mcpTools, isProcessing, currentSessionId, sessions } = get();
       if (isProcessing || !currentSessionId) return;
       if (!mcpClient || !mcpConnected) {
@@ -336,14 +367,18 @@ export const useAppStore = create<AppState>((set, get) => {
       abortController = new AbortController();
       const signal = abortController.signal;
 
-      const userMsgId = `msg-${++msgCounter}`;
-      const userMsg: ConversationMessage = { id: userMsgId, role: 'user', content };
-      const afterUserMsg = [...get().messages, userMsg];
-      
+      let afterUserMsg = get().messages;
       let title = sessions[currentSessionId].title;
-      if (afterUserMsg.filter(m => m.role === 'user').length === 1) {
-        title = content.slice(0, 30).trim();
-        if (title.length === 0) title = 'New Diagnostic';
+
+      if (content !== undefined && content.trim() !== '') {
+        const userMsgId = crypto.randomUUID();
+        const userMsg: ConversationMessage = { id: userMsgId, role: 'user', content };
+        afterUserMsg = [...afterUserMsg, userMsg];
+        
+        if (afterUserMsg.filter(m => m.role === 'user').length === 1) {
+          title = content.slice(0, 30).trim();
+          if (title.length === 0) title = 'New Diagnostic';
+        }
       }
 
       const updateState = (newMessages: ConversationMessage[]) => {
@@ -367,7 +402,7 @@ export const useAppStore = create<AppState>((set, get) => {
 
           const chatHistory = messagesToChatHistory(get().messages);
 
-          const assistantMsgId = `msg-${++msgCounter}`;
+          const assistantMsgId = crypto.randomUUID();
           const assistantMsg: ConversationMessage = {
             id: assistantMsgId,
             role: 'assistant',
@@ -488,7 +523,7 @@ export const useAppStore = create<AppState>((set, get) => {
               }
 
               const toolResultMsg: ConversationMessage = {
-                id: `msg-${++msgCounter}`,
+                id: crypto.randomUUID(),
                 role: 'tool',
                 content: resultText,
                 tool_call_id: tc.id,
@@ -535,7 +570,7 @@ export const useAppStore = create<AppState>((set, get) => {
               }
 
               const toolResultMsg: ConversationMessage = {
-                id: `msg-${++msgCounter}`,
+                id: crypto.randomUUID(),
                 role: 'tool',
                 content: errorContent,
                 tool_call_id: tc.id,
@@ -563,7 +598,7 @@ export const useAppStore = create<AppState>((set, get) => {
         }
 
         const errorMsg: ConversationMessage = {
-          id: `msg-${++msgCounter}`,
+          id: crypto.randomUUID(),
           role: 'assistant',
           content: `Error: ${err.message || String(err)}`,
           isStreaming: false,
@@ -647,27 +682,49 @@ export const useAppStore = create<AppState>((set, get) => {
 
           const tools = await newClient.listTools();
 
-          let deviceInfo = null;
-          try {
-            const result = await newClient.callTool('get_devices', {});
-            const text = result.content?.[0]?.text;
-            if (text) {
-              const devices = JSON.parse(text);
-              if (devices.length > 0) {
-                deviceInfo = {
-                  name: devices[0].name || devices[0].modelName || 'Unknown',
-                  usbType: devices[0].usbType || 'Unknown',
-                  mode: devices[0].mode || 'Logic',
-                };
+          const fetchDevices = async () => {
+            if (!mcpClient) return;
+            try {
+              const result = await mcpClient.callTool('get_devices', {});
+              const text = result.content?.[0]?.text;
+              if (text) {
+                const devices = JSON.parse(text);
+                if (devices.length > 0) {
+                  const activeDev = devices.find((d: any) => d.is_active) || devices[0];
+                  let mode = 'Logic';
+                  if (activeDev.is_hardware_dso) mode = 'DSO';
+                  else if (activeDev.is_demo) mode = 'Demo';
+                  else if (activeDev.is_file) mode = 'File';
+                  
+                  let usbType = 'Virtual';
+                  if (activeDev.is_hardware) {
+                    if (activeDev.usb_speed === 4) usbType = 'USB 3.0 (SuperSpeed)';
+                    else if (activeDev.usb_speed === 3) usbType = 'USB 2.0 (High-Speed)';
+                    else if (activeDev.usb_speed === 2) usbType = 'USB 1.1 (Full-Speed)';
+                    else usbType = 'USB';
+                  }
+                  
+                  set({ deviceInfo: {
+                    name: activeDev.display_name || activeDev.driver_name || 'Unknown Device',
+                    usbType,
+                    mode
+                  }});
+                } else {
+                  set({ deviceInfo: null });
+                }
               }
-            }
-          } catch {}
+            } catch {}
+          };
+
+          await fetchDevices();
+          if (!devicePollTimer) {
+            devicePollTimer = setInterval(fetchDevices, 3000);
+          }
 
           set({
             mcpConnected: true,
             reconnectStatus: 'idle',
             mcpTools: tools,
-            deviceInfo,
           });
           return;
         } catch {}

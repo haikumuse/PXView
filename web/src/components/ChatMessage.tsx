@@ -33,21 +33,23 @@ export default function ChatMessage({ message }: { message: ConversationMessage 
     }
   };
 
-  const prefix = isUser ? 'USER>' : message.role === 'tool' ? 'OUT >' : 'SYS >';
-  const color = isUser ? 'text-text-screen-alt' : message.role === 'tool' ? 'text-text-casing-muted' : 'text-text-screen';
+  const alignClass = isUser ? 'self-end' : 'self-start';
+  const cardColor = isUser ? 'bg-white' : 'bg-bg-casing';
+  const headerText = isUser ? 'USER INPUT' : message.role === 'tool' ? 'SYS OUTPUT' : 'RESPONSE DECK';
 
   return (
-    <div className={`mb-6 group ${color}`}>
-      <div className="flex items-start gap-2 relative">
-        <span className="font-bold shrink-0 mt-0.5">{prefix}</span>
-        
-        <div className="flex-1 min-w-0">
+    <div className={`mb-6 flex flex-col ${alignClass} max-w-[85%] group`}>
+      <div className={`relative border-2 border-border ${cardColor} text-text-casing shadow-[4px_4px_0_0_#000] p-4 flex flex-col gap-2`}>
+        {/* Card Header */}
+        <div className="flex justify-between items-center border-b-2 border-border pb-2 mb-2 font-bold text-xs uppercase tracking-widest opacity-60">
+          <span>{headerText}</span>
+          
           {/* Action buttons (Copy, Regenerate) shown on hover */}
-          <div className="absolute right-0 -top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
             {message.content && (
               <button 
                 onClick={handleCopy} 
-                className="text-xs bg-bg-screen-light border border-border px-1 py-0.5 text-text-screen hover:bg-border hover:text-bg-screen transition-colors"
+                className="bg-bg-casing-dark border border-border px-2 py-0.5 text-text-casing hover:bg-border hover:text-bg-casing transition-colors"
               >
                 {copied ? t('COPIED') : t('COPY')}
               </button>
@@ -55,52 +57,52 @@ export default function ChatMessage({ message }: { message: ConversationMessage 
             {isAssistant && !isProcessing && (
               <button 
                 onClick={handleRegenerate}
-                className="text-xs bg-bg-screen-light border border-border px-1 py-0.5 text-warning hover:bg-warning hover:text-bg-screen transition-colors"
+                className="bg-bg-casing-dark border border-border px-2 py-0.5 text-warning hover:bg-warning hover:text-bg-casing transition-colors"
                 title="Regenerate this response and discard everything after it"
               >
                 {t('REGENERATE')}
               </button>
             )}
           </div>
-
-          {/* Thinking indicator */}
-          {showThinking && (
-            <div className="animate-pulse">{t('PROCESSING')}</div>
-          )}
-
-          {/* Text content with Markdown support */}
-          {message.content && (
-            <div className="markdown-body leading-relaxed max-w-full overflow-hidden">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content}
-              </ReactMarkdown>
-              {isStreaming && (
-                <span className="inline-block w-2 h-4 bg-text-screen animate-pulse ml-1 align-text-bottom" />
-              )}
-            </div>
-          )}
-
-          {/* Stopped indicator */}
-          {isStopped && (
-            <div className="text-error uppercase mt-2">{t('HALTED_USER')}</div>
-          )}
-
-          {/* Tool calls */}
-          {hasToolCalls && (
-            <div className="mt-4 space-y-2">
-              {message.toolCallStatuses!.map((tc) => (
-                <ToolCallCard key={tc.id} toolCall={tc} />
-              ))}
-            </div>
-          )}
-
-          {/* Tool running indicator */}
-          {isToolRunning && hasToolCalls && message.toolCallStatuses!.some(tc => tc.status === 'running') && (
-            <div className="mt-2 animate-pulse text-warning">
-              {t('EXECUTING_SUBROUTINE')}
-            </div>
-          )}
         </div>
+
+        {/* Thinking indicator */}
+        {showThinking && (
+          <div className="animate-pulse font-bold">{t('PROCESSING')}</div>
+        )}
+
+        {/* Text content with Markdown support */}
+        {message.content && (
+          <div className="markdown-body leading-relaxed max-w-full overflow-hidden">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
+            {isStreaming && (
+              <span className="inline-block w-2 h-4 bg-text-casing animate-pulse ml-1 align-text-bottom" />
+            )}
+          </div>
+        )}
+
+        {/* Stopped indicator */}
+        {isStopped && (
+          <div className="text-error font-bold uppercase mt-2">{t('HALTED_USER')}</div>
+        )}
+
+        {/* Tool calls */}
+        {hasToolCalls && (
+          <div className="mt-4 space-y-2">
+            {message.toolCallStatuses!.map((tc) => (
+              <ToolCallCard key={tc.id} toolCall={tc} />
+            ))}
+          </div>
+        )}
+
+        {/* Tool running indicator */}
+        {isToolRunning && hasToolCalls && message.toolCallStatuses!.some(tc => tc.status === 'running') && (
+          <div className="mt-2 animate-pulse text-warning font-bold">
+            {t('EXECUTING_SUBROUTINE')}
+          </div>
+        )}
       </div>
     </div>
   );

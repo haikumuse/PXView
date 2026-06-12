@@ -31,21 +31,7 @@ export default function TopBar({
         </div>
       </div>
 
-      {/* Center: Connection status */}
-      <div className="flex items-center gap-3 bg-bg-screen-light px-4 py-2 border-2 border-border shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
-        <span
-          className={`w-3 h-3 border border-border shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)] ${
-            mcpConnected ? 'bg-success' : 'bg-error'
-          }`}
-        />
-        <span
-          className={`text-sm font-bold uppercase tracking-wider ${
-            mcpConnected ? 'text-success' : 'text-error'
-          }`}
-        >
-          {mcpConnected ? 'LINK_OK' : 'NO_LINK'}
-        </span>
-      </div>
+
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3">

@@ -38,25 +38,27 @@ export default function DevicePanel() {
       </div>
 
       {/* Hardware Info Box */}
-      <div className="bg-bg-screen p-4 border-4 border-border shadow-[inset_0_4px_10px_rgba(0,0,0,0.5)] flex flex-col gap-3 scanlines">
-        <div className="text-xs font-bold text-text-screen-alt opacity-70 uppercase tracking-widest">{t('HARDWARE_ID')}</div>
+      <div className="bg-bg-casing p-4 border-4 border-border shadow-[4px_4px_0_0_rgba(0,0,0,0.2)] flex flex-col gap-3">
+        <div className="text-xs font-bold text-text-casing-muted uppercase tracking-widest border-b-2 border-border pb-2">{t('HARDWARE_ID')}</div>
         {deviceInfo ? (
-          <>
-            <div className="flex justify-between items-baseline border-b border-text-screen-alt border-dashed pb-1">
-              <span className="text-text-screen-alt opacity-80 text-sm">{t('UNIT')}</span>
-              <span className="text-text-screen font-bold tracking-wider">{deviceInfo.name}</span>
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-start gap-4">
+              <span className="text-xs font-bold text-text-casing-muted uppercase tracking-widest mt-1 whitespace-nowrap">{t('UNIT')}</span>
+              <span className="text-text-casing font-bold text-lg leading-tight text-right break-words">{deviceInfo.name}</span>
             </div>
-            <div className="flex justify-between items-baseline border-b border-text-screen-alt border-dashed pb-1">
-              <span className="text-text-screen-alt opacity-80 text-sm">{t('BUS')}</span>
-              <span className="text-text-screen font-bold tracking-wider">USB {deviceInfo.usbType}</span>
+            <div className="border-t-2 border-border opacity-30 border-dashed"></div>
+            <div className="flex justify-between items-start gap-4">
+              <span className="text-xs font-bold text-text-casing-muted uppercase tracking-widest mt-1 whitespace-nowrap">{t('BUS')}</span>
+              <span className="text-text-casing font-bold text-lg leading-tight text-right">{deviceInfo.usbType}</span>
             </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-text-screen-alt opacity-80 text-sm">{t('MODE')}</span>
-              <span className="text-text-screen font-bold tracking-wider uppercase">{deviceInfo.mode}</span>
+            <div className="border-t-2 border-border opacity-30 border-dashed"></div>
+            <div className="flex justify-between items-start gap-4">
+              <span className="text-xs font-bold text-text-casing-muted uppercase tracking-widest mt-1 whitespace-nowrap">{t('MODE')}</span>
+              <span className="text-text-casing font-bold text-lg leading-tight text-right uppercase">{deviceInfo.mode}</span>
             </div>
-          </>
+          </div>
         ) : (
-          <div className="text-text-screen text-center py-4 font-bold animate-pulse">
+          <div className="text-text-casing-muted text-right py-4 font-bold animate-pulse uppercase tracking-widest">
              {t('AWAITING_SIGNAL')}
           </div>
         )}

@@ -58,7 +58,7 @@ export default function HistoryPanel() {
                   [X]
                 </button>
               </div>
-              <div className="text-xs font-mono opacity-60 mt-1">
+              <div className={`text-xs font-mono opacity-60 mt-1 ${isActive ? 'text-text-screen' : 'text-text-casing'}`}>
                 {dateStr} | {t('MSGS')}: {session.messages.length}
               </div>
             </div>
