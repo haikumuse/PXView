@@ -39,6 +39,10 @@
 #define MKDIR(path) mkdir(path, 0755)
 #endif
 
+// Suppress GCC warn_unused_result for read/write/fread calls where
+// we intentionally ignore the return value.
+#define IGNORE_RESULT(x) do { if (x) {} } while(0)
+
 using namespace std;
 
 namespace pv {
@@ -222,19 +226,19 @@ bool DiskBufferManager::save_index()
         return false;
     }
 
-    ::write(fd, IndexMagic, 4);
+    IGNORE_RESULT(::write(fd, IndexMagic, 4));
     uint32_t version = IndexVersion;
-    ::write(fd, &version, sizeof(uint32_t));
+    IGNORE_RESULT(::write(fd, &version, sizeof(uint32_t)));
     uint32_t ch_count = (uint32_t)_channel_count;
-    ::write(fd, &ch_count, sizeof(uint32_t));
+    IGNORE_RESULT(::write(fd, &ch_count, sizeof(uint32_t)));
 
     for (int i = 0; i < _channel_count; i++) {
         ChannelIndex &ch_idx = _channel_indexes[i];
         uint64_t bc = ch_idx.block_count;
-        ::write(fd, &bc, sizeof(uint64_t));
+        IGNORE_RESULT(::write(fd, &bc, sizeof(uint64_t)));
         for (uint64_t j = 0; j < ch_idx.entries.size(); j++) {
-            ::write(fd, &ch_idx.entries[j].disk_offset, sizeof(uint64_t));
-            ::write(fd, &ch_idx.entries[j].block_state, sizeof(uint32_t));
+            IGNORE_RESULT(::write(fd, &ch_idx.entries[j].disk_offset, sizeof(uint64_t)));
+            IGNORE_RESULT(::write(fd, &ch_idx.entries[j].block_state, sizeof(uint32_t)));
         }
     }
 
@@ -309,7 +313,7 @@ bool DiskBufferManager::load_index()
     }
 
     char magic[4];
-    ::read(fd, magic, 4);
+    IGNORE_RESULT(::read(fd, magic, 4));
     if (memcmp(magic, IndexMagic, 4) != 0) {
         ::close(fd);
         pxv_err("DiskBufferManager: invalid index magic");
@@ -317,7 +321,7 @@ bool DiskBufferManager::load_index()
     }
 
     uint32_t version;
-    ::read(fd, &version, sizeof(uint32_t));
+    IGNORE_RESULT(::read(fd, &version, sizeof(uint32_t)));
     if (version != IndexVersion) {
         ::close(fd);
         pxv_err("DiskBufferManager: unsupported index version %u", version);
@@ -325,7 +329,7 @@ bool DiskBufferManager::load_index()
     }
 
     uint32_t ch_count;
-    ::read(fd, &ch_count, sizeof(uint32_t));
+    IGNORE_RESULT(::read(fd, &ch_count, sizeof(uint32_t)));
     if ((int)ch_count != _channel_count) {
         ::close(fd);
         pxv_err("DiskBufferManager: index channel count mismatch");
@@ -335,11 +339,11 @@ bool DiskBufferManager::load_index()
     _next_disk_offset = 0;
     for (uint32_t i = 0; i < ch_count; i++) {
         ChannelIndex &ch_idx = _channel_indexes[i];
-        ::read(fd, &ch_idx.block_count, sizeof(uint64_t));
+        IGNORE_RESULT(::read(fd, &ch_idx.block_count, sizeof(uint64_t)));
         ch_idx.entries.resize(ch_idx.block_count);
         for (uint64_t j = 0; j < ch_idx.block_count; j++) {
-            ::read(fd, &ch_idx.entries[j].disk_offset, sizeof(uint64_t));
-            ::read(fd, &ch_idx.entries[j].block_state, sizeof(uint32_t));
+            IGNORE_RESULT(::read(fd, &ch_idx.entries[j].disk_offset, sizeof(uint64_t)));
+            IGNORE_RESULT(::read(fd, &ch_idx.entries[j].block_state, sizeof(uint32_t)));
             if (ch_idx.entries[j].disk_offset + LeafBlockSpace > _next_disk_offset)
                 _next_disk_offset = ch_idx.entries[j].disk_offset + LeafBlockSpace;
         }

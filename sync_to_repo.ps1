@@ -11,7 +11,7 @@ if (-Not (Test-Path $TargetDir)) {
 
 $FoldersToCopy = @("PXView", "libsigrok", "libsigrokdecode", "common", "lang", "CMake", "debian", "web")
 $FilesToCopy = @(
-    "CMakeLists.txt", "logo-win.ico", "applogo.rc", "README.md", "INSTALL.md", "COPYING", "LICENSE", 
+    "CMakeLists.txt", "logo-win.ico", "applogo.rc", "README.md", "INSTALL.md", "INSTALL_zh.md", "COPYING", "LICENSE", 
     "PXView.icns", "clean", "cmake_clear", "build_linux", "$([char]0x66F4)$([char]0x65B0)$([char]0x8BF4)$([char]0x660E).txt"
 )
 

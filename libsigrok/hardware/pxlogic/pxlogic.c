@@ -25,6 +25,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
+
+// Suppress GCC warn_unused_result for fread calls where we intentionally
+// ignore the return value.
+#define IGNORE_RESULT(x) do { if (x) {} } while(0)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -658,7 +662,7 @@ SR_PRIV int firmware_config(struct libusb_device_handle* usbdevh, const char* fi
     if (mode == 0) {
         base_addr = 48 * 1024;
         length = 48 * 1024;
-        fread(buf, 1, filesize, fw);
+        IGNORE_RESULT(fread(buf, 1, filesize, fw));
         memset(buf + filesize, 0xff, length - filesize);
         memcpy(buf + length, buf, length);
         // memset(buf+filesize+length,0xff,length-filesize);
@@ -674,7 +678,7 @@ SR_PRIV int firmware_config(struct libusb_device_handle* usbdevh, const char* fi
     } else if (mode == 2) {
         base_addr = 0;
         length = 32 * 1024;
-        fread(buf, 1, filesize, fw);
+        IGNORE_RESULT(fread(buf, 1, filesize, fw));
         memset(buf + filesize, 0xff, length - filesize);
         memcpy(buf + length, buf, length);
 
@@ -689,7 +693,7 @@ SR_PRIV int firmware_config(struct libusb_device_handle* usbdevh, const char* fi
         base_addr = 0;
         // length = filesize*2;
         length = filesize;
-        fread(buf, 1, filesize, fw);
+        IGNORE_RESULT(fread(buf, 1, filesize, fw));
         libusb_clear_halt(usbdevh, 0x03);
         ret = usb_wr_data_update(usbdevh, base_addr, length, 4, buf, 0);
         if (ret != 0) {

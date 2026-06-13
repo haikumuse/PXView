@@ -652,7 +652,7 @@ QStackedWidget
 
 QToolBar
 {
-    border: 1px transparent;
+    border: none;
     background-color: @bg-base;
     padding: 0px;
 }
@@ -861,32 +861,31 @@ QLabel
 QTabWidget::pane
 {
     padding: 0px;
-    padding-right: 3px;
     margin: 0px;
-    
+
 }
 
 QTabWidget::pane:top
 {
-    border: 1px transparent;
+    border: none;
     top: -1px;
 }
 
 QTabWidget::pane:bottom
 {
-    border: 1px transparent;
+    border: none;
     bottom: -1px;
 }
 
 QTabWidget::pane:left
 {
-    border: 1px transparent;
+    border: none;
     right: -1px;
 }
 
 QTabWidget::pane:right
 {
-    border: 1px transparent;
+    border: none;
     left: -1px;
 }
 

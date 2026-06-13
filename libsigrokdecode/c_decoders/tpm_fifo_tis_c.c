@@ -653,8 +653,10 @@ static void tpm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, u
     /* Simple register name lookup */
     const char *reg_name = NULL;
     uint32_t reg_offset = addr & 0xfff;
+    (void)reg_offset;
     if (addr > 0xff && (addr & 0xffff0000) == 0x00d40000) {
         int locality = (addr & 0xf000) >> 12;
+        (void)locality;
         for (int i = 0; i < (int)SPI_TPM_REGS_SIZE; i++) {
             if (spi_tpm_regs[i].addr == (addr & 0xffff0fff)) {
                 reg_name = spi_tpm_regs[i].name;
@@ -683,7 +685,7 @@ static void tpm_recv_proto(struct srd_decoder_inst *di, uint64_t start_sample, u
     int pos = 0;
     pos += snprintf(ann_buf + pos, sizeof(ann_buf) - pos, "%s=", reg_name);
     for (int i = 0; i < xfer_len && pos < (int)sizeof(ann_buf) - 3; i++)
-        pos += snprintf(ann_buf + pos, sizeof(ann_buf) - pos, "%02X", xfer_data[i]);
+        pos += snprintf(ann_buf + pos, sizeof(ann_buf) - pos, "%02X", xfer_data[i].u8);
 
     c_put(di, start_sample, end_sample, s->out_ann, ann_cls, ann_buf);
 

@@ -708,7 +708,8 @@ QString GetAppDataDir()
     }
 
     pxv_err("Data directory is not exists: ../share/PXView");
-    assert(false);   
+    assert(false);
+    return QString();
 #else
 
 #ifdef Q_OS_DARWIN
@@ -732,6 +733,7 @@ QString GetAppDataDir()
     // The bin location
     return QCoreApplication::applicationDirPath();
 #endif
+    return QString();
 }
 
 QString GetFirmwareDir()

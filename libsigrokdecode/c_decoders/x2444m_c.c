@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * Copyright (C) 2018 Stefan Petersen <spe@ciellt.se>
@@ -110,7 +110,7 @@ static int x2444m_cmd_index(uint8_t cmd)
     }
 }
 
-static int x2444m_is_data_cmd(uint8_t cmd)
+static int __attribute__((unused)) x2444m_is_data_cmd(uint8_t cmd)
 {
     uint8_t c = cmd & 0x87;
     return (c == 0x83 || c == 0x86 || c == 0x87);

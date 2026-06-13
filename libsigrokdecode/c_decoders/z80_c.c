@@ -820,11 +820,11 @@ static void put_disasm(struct srd_decoder_inst *di, z80_priv *s, uint64_t sample
                 pos += snprintf(text + pos, sizeof(text) - pos, "%+d", s->arg_dis + s->instr_len);
             } else if (strcmp(field, "i") == 0) {
                 if (strcmp(spec, "02H") == 0) {
-                    char hex[8];
+                    char hex[32];
                     format_hex(hex, sizeof(hex), s->arg_imm & 0xFF, 2);
                     pos += snprintf(text + pos, sizeof(text) - pos, "%s", hex);
                 } else if (strcmp(spec, "04H") == 0) {
-                    char hex[8];
+                    char hex[32];
                     format_hex(hex, sizeof(hex), s->arg_imm & 0xFFFF, 4);
                     pos += snprintf(text + pos, sizeof(text) - pos, "%s", hex);
                 } else {
