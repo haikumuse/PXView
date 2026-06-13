@@ -699,7 +699,6 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       _pixmap.fill(Qt::transparent);
 
       QPainter dbp(&_pixmap);
-      dbp.scale(dpr, dpr);
       dbp.translate(0, -_view.get_vOffset());
 
       bool bFirst = true;
@@ -788,7 +787,6 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       _pixmap.fill(Qt::transparent);
 
       QPainter dbp(&_pixmap);
-      dbp.scale(dpr, dpr);
       dbp.translate(0, -_view.get_vOffset());
 
       bool isLissa = false;
