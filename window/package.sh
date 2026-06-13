@@ -15,3 +15,9 @@ cp -r /mingw64/share/qt6/plugins/* .
 mkdir -p lib/python3.14
 unzip -q python314.zip -d lib/python3.14/
 cp /mingw64/lib/python3.14/lib-dynload/*.pyd lib/python3.14/
+
+# webui (Vite web client)
+if [ -d ../web/dist ]; then
+    mkdir -p webui
+    cp -r ../web/dist/* webui/
+fi
