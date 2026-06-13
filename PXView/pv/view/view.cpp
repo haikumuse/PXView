@@ -266,6 +266,16 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
 View::~View() {
   _destroying = true;
 
+  // Disconnect signals and remove event filters before child destruction
+  // to prevent callbacks on partially-destroyed View
+  disconnect(_header, nullptr, this, nullptr);
+  disconnect(_devmode, nullptr, this, nullptr);
+  _header->removeEventFilter(this);
+  _ruler->removeEventFilter(this);
+  _devmode->removeEventFilter(this);
+  _time_viewport->removeEventFilter(this);
+  _fft_viewport->removeEventFilter(this);
+
   for (auto sig : _own_signals)
     delete sig;
   _own_signals.clear();
@@ -1324,6 +1334,9 @@ void View::signals_changed(const Trace *eventTrace) {
 }
 
 bool View::eventFilter(QObject *object, QEvent *event) {
+  if (_destroying)
+    return QObject::eventFilter(object, event);
+
   const QEvent::Type type = event->type();
   if (type == QEvent::MouseMove) {
     const QMouseEvent *const mouse_event = (QMouseEvent *)event;

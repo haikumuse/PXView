@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2024 DreamSourceLab <support@dreamsourcelab.com>
  * License: gplv3+
  *
@@ -122,7 +122,7 @@ static void tpm_tis_finish_annotations(struct srd_decoder_inst *di, tpm_tis_stat
     {
         const char *op_long = s->reading ? "Read" : "Write";
         const char *op_arrow = s->reading ? "->" : "<-";
-        char tx_buf[512];
+        char tx_buf[1024];
         if (s->data_count > 0) {
             char data_str[512];
             int pos = 0;

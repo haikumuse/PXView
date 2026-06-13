@@ -73,7 +73,22 @@ cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE
 # cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
 
 ninja
-DESTDIR=../install.dir ninja install
+sudo ninja install
+```
+
+When `CMAKE_INSTALL_PREFIX` is `/usr` or `/usr/local`, udev rules will be installed to the system path (e.g. `/usr/lib/udev/rules.d`), which requires `sudo`.
+
+**Running the binary directly (without AppImage):** If Qt was installed via `aqtinstall` (not in a system library path), you must set `LD_LIBRARY_PATH` before running:
+
+```bash
+LD_LIBRARY_PATH="$HOME/Qt/6.11.0/gcc_64/lib" ./install.dir/bin/PXView
+```
+
+Or add it to your shell profile for convenience:
+
+```bash
+echo 'export LD_LIBRARY_PATH="$HOME/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 `ninja install` will automatically install the MCP web client if it has been built. If the web client has not been built yet, it will be silently skipped.
@@ -87,7 +102,7 @@ The MCP web client provides a browser-based chat interface for controlling devic
 ninja webui
 
 # Then re-run install to copy it:
-DESTDIR=../install.dir ninja install
+sudo ninja install
 
 # Or build + copy in one step:
 ninja install-webui
@@ -96,35 +111,62 @@ ninja install-webui
 The web client files will be installed to `<prefix>/bin/webui/` and served by the MCP server at `http://127.0.0.1:10110/`.
 
 ### Step 4: Packaging as AppImage (Linux)
-If you want to bundle the compiled binary and all its Qt dependencies into a single, portable `.AppImage` file, you can use linuxdeploy on the install directory:
+
+AppImage bundles the application and its dependencies into a single portable file. Since AppImage is a user-space portable package, **system-level files such as udev rules, desktop entries, and documentation should not be bundled inside** — they must be installed separately.
+
+#### 4.1 Build with a local install prefix
+
+When packaging an AppImage, use a local prefix (e.g. `../install.dir`) instead of a system prefix (`/usr`). This ensures that udev rules and other system files are installed under the local directory rather than system paths, avoiding the need for root privileges:
+
+```bash
+mkdir build && cd build
+
+# Use a local prefix — udev rules etc. will be installed under install.dir
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../install.dir -DCMAKE_PREFIX_PATH="$HOME/Qt/6.11.0/gcc_64"
+ninja
+ninja install
+```
+
+> **Note**: When `CMAKE_INSTALL_PREFIX` is `/usr` or `/usr/local`, udev rules are automatically installed to system paths (e.g. `/usr/lib/udev/rules.d`), requiring `sudo ninja install`. With a local prefix, all files are installed locally and no root privileges are needed.
+
+#### 4.2 Build the AppImage
 
 ```bash
 # Go back to the project root directory
 cd ..
+
 wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
 wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
 chmod +x linuxdeploy*.AppImage
 
-# Explicitly tell linuxdeploy where the Qt 6.11 binaries are located.
-# We use the global Qt installation path ~/Qt.
 export QMAKE="$HOME/Qt/6.11.0/gcc_64/bin/qmake"
 export LD_LIBRARY_PATH="$HOME/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH"
 export OUTPUT="PXView-x86_64.AppImage"
 
-./linuxdeploy-x86_64.AppImage --appdir install.dir -e install.dir/usr/bin/PXView -d install.dir/usr/share/applications/pxview.desktop --plugin qt --output appimage
+./linuxdeploy-x86_64.AppImage --appdir install.dir -e install.dir/bin/PXView -d install.dir/share/applications/pxview.desktop --plugin qt --output appimage
 ```
 
-**Note on Hardware Access (udev rules):**
-To allow the AppImage (or native build) to communicate with USB hardware without needing root permissions, you MUST manually copy the udev rules to your system once:
+#### 4.3 Install system-level files (outside AppImage)
 
+The AppImage does not include the following system-level files. Users must install them manually once:
+
+**udev rules (hardware access permissions):**
 ```bash
-sudo cp PXView/px.rules /etc/udev/rules.d/60-px.rules
+sudo cp install.dir/lib/udev/rules.d/60-px.rules /etc/udev/rules.d/60-px.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-See the following wiki page for more (OS-specific) instructions:
-http://sigrok.org/wiki/Building
+**Desktop entry (application menu integration):**
+```bash
+sudo cp install.dir/share/applications/pxview.desktop /usr/share/applications/pxview.desktop
+```
 
-The latest source code:
-https://github.com/PXLogic/PXView
+**Documentation and resources (optional):**
+```bash
+# Documentation and user manuals are already included inside the AppImage at share/PXView/
+# For system-wide installation:
+sudo cp -r install.dir/share/PXView /usr/share/PXView
+```
+
+> **Tip**: You can also write an `install.sh` script to distribute alongside the AppImage, automating the installation of the system-level files above.

@@ -133,7 +133,7 @@ DraggableTabWidget::DraggableTabWidget(QWidget *parent)
     // Add left padding to the content pane so the tab bar can extend
     // to the left edge while the content area stays offset
     if (auto *pane = findChild<QStackedWidget*>()) {
-        pane->setContentsMargins(10, 0, 0, 0);
+        pane->setContentsMargins(0, 0, 0, 0);
     }
 
     setTabsClosable(true);

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the libsigrokdecode project.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -173,7 +173,7 @@ typedef struct {
     char leds_buf[TM1638_MAX_LEDS * 2 + 1];
     int leds_len;
     /* Key buffer */
-    char keys[TM1638_MAX_KEYS][16];
+    char keys[TM1638_MAX_KEYS][32];
     int keys_len;
     /* Transmission */
     uint64_t ssb, ss, es;
@@ -346,6 +346,7 @@ static void tm1638_handle_data_led(struct srd_decoder_inst *di, tm1638_state *s,
     for (int i = 0; i < 2; i++) {
         if (data >> i & 1) {
             int ann_cls = (i == 0) ? ANN_RED : ANN_GREEN;
+            (void)ann_cls;
             tm1638_putd(di, s, i, i, ANN_LED,
                         i == 0 ? "Red LED" : "Green LED");
             led = leds[i];

@@ -1,7 +1,0 @@
-{
-	"decoder": "jitter_c",
-	"samplerate": 1000000,
-	"num_annotations": 0,
-	"annotations": [
-	]
-}

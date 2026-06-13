@@ -154,7 +154,7 @@ static void tdm_audio_decode(struct srd_decoder_inst *di)
             s->bitcount = 0;
             int ch = s->channel % s->channels;
 
-            char c1[32], c2[16], c3[16], v[16];
+            char c1[32], c2[16], c3[24], v[16];
             snprintf(c1, sizeof(c1), "Channel %d", ch);
             snprintf(c2, sizeof(c2), "C%d", ch);
             snprintf(c3, sizeof(c3), "%d", ch);
@@ -166,7 +166,7 @@ static void tdm_audio_decode(struct srd_decoder_inst *di)
             else
                 snprintf(v, sizeof(v), "%08llX", (unsigned long long)s->data);
 
-            char ann_long[64], ann_mid[48], ann_short[32];
+            char ann_long[64], ann_mid[48], ann_short[48];
             snprintf(ann_long, sizeof(ann_long), "%s: %s", c1, v);
             snprintf(ann_mid, sizeof(ann_mid), "%s: %s", c2, v);
             snprintf(ann_short, sizeof(ann_short), "%s: %s", c3, v);

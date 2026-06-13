@@ -180,13 +180,13 @@ static void ds3231_output_alarm(struct srd_decoder_inst* di, ds3231_state* s,
 {
     if (s->ss_block == (uint64_t)-1)
         return;
-    char s_buf[64];
+    char s_buf[96];
     const char* sec_part = (alm == 2) ? "00" : s->asecond;
     snprintf(s_buf, sizeof(s_buf), "%s %s:%s:%s%s",
         s->adaydate, s->ahour, s->aminute, sec_part, s->aampm);
     if (strcmp(s_buf, "* **:**:**") == 0)
         strcat(s_buf, " (every second)");
-    char t[128], t2[64];
+    char t[128], t2[128];
     snprintf(t, sizeof(t), "%s Alarm %d: %s", rw, alm, s_buf);
     snprintf(t2, sizeof(t2), "A%d: %s", alm, s_buf);
     c_put(di, s->ss_block, s->ss, s->out_ann, cls, t, t2);

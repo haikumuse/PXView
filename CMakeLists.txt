@@ -1026,25 +1026,27 @@ install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/PXView RE
 install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/icons/hicolor/scalable/apps RENAME pxview.svg)
 install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/pixmaps RENAME pxview.svg)
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")	
-	install(FILES PXView/PXView.desktop DESTINATION /usr/share/applications RENAME pxview.desktop)
-	
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+	install(FILES PXView/PXView.desktop DESTINATION ${MAC_RES_PREFIX}share/applications RENAME pxview.desktop)
+
 	#add_compile_definitions(_DEFAULT_SOURCE)
 
-	if(IS_DIRECTORY /usr/lib/udev/rules.d)
-		install(FILES PXView/px.rules DESTINATION /usr/lib/udev/rules.d RENAME 60-px.rules)
-	elseif(IS_DIRECTORY /lib/udev/rules.d)
-		install(FILES PXView/px.rules DESTINATION /lib/udev/rules.d RENAME 60-px.rules)
-	elseif(IS_DIRECTORY /etc/udev/rules.d)
-		install(FILES PXView/px.rules DESTINATION /etc/udev/rules.d RENAME 60-px.rules)
+	# udev rules: install to system path for system prefixes, local prefix otherwise
+	if(CMAKE_INSTALL_PREFIX STREQUAL "/usr" OR CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
+		if(IS_DIRECTORY /usr/lib/udev/rules.d)
+			install(FILES PXView/px.rules DESTINATION /usr/lib/udev/rules.d RENAME 60-px.rules)
+		elseif(IS_DIRECTORY /lib/udev/rules.d)
+			install(FILES PXView/px.rules DESTINATION /lib/udev/rules.d RENAME 60-px.rules)
+		elseif(IS_DIRECTORY /etc/udev/rules.d)
+			install(FILES PXView/px.rules DESTINATION /etc/udev/rules.d RENAME 60-px.rules)
+		endif()
+	else()
+		install(FILES PXView/px.rules DESTINATION ${MAC_RES_PREFIX}lib/udev/rules.d RENAME 60-px.rules)
 	endif()
 
 endif()
 
-install(FILES NEWS25 DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME NEWS25)
-install(FILES NEWS31 DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME NEWS31)
-install(FILES ug25.pdf DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME ug25.pdf)
-install(FILES ug31.pdf DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME ug31.pdf)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/doc/ DESTINATION ${MAC_RES_PREFIX}share/PXView)
 
 install(DIRECTORY libsigrokdecode/decoders DESTINATION ${MAC_RES_PREFIX}share/libsigrokdecode)
 

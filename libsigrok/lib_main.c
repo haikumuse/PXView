@@ -20,6 +20,12 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+/* Ensure POSIX declarations (e.g. usleep) are visible with strict C standard */
+#if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "libsigrok-internal.h"
 #include "hardware/compat/compat.h"
 #include "log.h"
@@ -32,6 +38,7 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <time.h>
 #endif
 
 #define MAX_DEVCIE_LIST_LENGTH  20
@@ -1734,7 +1741,8 @@ SR_PRIV void xsleep(int ms)
 #ifdef _WIN32
 	Sleep(ms);
 #else
-	usleep(ms * 1000);
+	struct timespec ts = { ms / 1000, (ms % 1000) * 1000000L };
+	nanosleep(&ts, NULL);
 #endif
 }
 

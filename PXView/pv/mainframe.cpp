@@ -179,6 +179,12 @@ MainFrame::MainFrame()
 
     setCentralWidget(centralWidget);
 
+    // Ensure no spacing between menu bar (titlebar), central widget, and tool bars (sidebar)
+    if (auto *mainLayout = layout()) {
+        mainLayout->setSpacing(0);
+        mainLayout->setContentsMargins(0, 0, 0, 0);
+    }
+
 #ifdef _WIN32
     _taskPrg = new WinTaskbarProgress();
 	connect(_mainWindow, &MainWindow::prgRate, this, &MainFrame::setTaskbarProgress);
@@ -255,7 +261,8 @@ void MainFrame::OnParentNativeEvent(ParentNativeEvent msg)
 
 void MainFrame::OnParentNaitveWindowEvent(int msg)
 {
- 
+    Q_UNUSED(msg);
+
 #ifdef _WIN32
     if (_parentNativeWidget != NULL 
             && msg == PARENT_EVENT_DISPLAY_CHANGED){

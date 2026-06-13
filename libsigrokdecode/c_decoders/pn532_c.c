@@ -225,7 +225,9 @@ static void pn532_format_value(uint8_t v, int format, char *buf, int buf_len)
         snprintf(buf, buf_len, "%03o", v);
         break;
     case 4: /* bin */
-        snprintf(buf, buf_len, "%08b", v);
+        snprintf(buf, buf_len, "%d%d%d%d%d%d%d%d",
+            (v >> 7) & 1, (v >> 6) & 1, (v >> 5) & 1, (v >> 4) & 1,
+            (v >> 3) & 1, (v >> 2) & 1, (v >> 1) & 1, v & 1);
         break;
     default: /* hex */
         snprintf(buf, buf_len, "%02X", v);
