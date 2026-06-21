@@ -1,0 +1,37 @@
+- [ ] SignalModel 类已创建，不依赖 pv::view::* 或 Qt Widgets 头文件
+- [ ] SignalModel 包含触发状态（可读写）和 commit_trig() 方法
+- [ ] DecodeModel、SpectrumModel、LissajousModel、MathModel 类已创建
+- [ ] DataSource 接口新增 get_signal_models()、get_decode_models() 等纯数据方法
+- [ ] SigSession::init_signals() 创建 SignalModel 而非 view::Signal
+- [ ] SigSession 不再持有 view::Signal*、view::DecodeTrace*、view::SpectrumTrace*、view::LissajousTrace*、view::MathTrace* 成员
+- [ ] SigSession 不再 #include 任何 pv/view/*.h 头文件
+- [ ] SigSession::add_decoder() 返回 DecodeModel* 而非 view::Trace*& out_trace
+- [ ] libsigrok 新增 ds_set_datafeed_callback_ex(cb, void*) 和 ds_set_event_callback_ex(cb, void*) API
+- [ ] SigSession::_session 静态成员已移除，改用 _ex 回调 API 传递 this 指针
+- [ ] SessionDocument 不再持有 view::* 类型成员
+- [ ] SessionSnapshot 不再持有 view::* 类型成员
+- [ ] SessionService 不再持有 view::View* 成员和 set_view() 方法
+- [ ] session_service.cpp 中 #include <QApplication> 已替换为 #include <QCoreApplication>
+- [ ] View 操作通过 ServiceEvent 事件通知（ViewShowRegion、ViewZoomFit、ViewZoomIn、ViewZoomOut）
+- [ ] MainWindow 注册为 IServiceEventListener 处理 View 事件
+- [ ] SignalFactory 可从 SignalModel 创建 view::Signal 子类
+- [ ] 所有 get_signals() 调用点已适配新接口
+- [ ] storesession.cpp 已适配 SignalModel
+- [ ] 所有 static_cast<view::LogicSignal*> 等类型转换已移除
+- [ ] DecoderStack 从 SignalModel 获取通道信息而非 view::Signal
+- [ ] ISessionCallback 已拆分为子接口并保持向后兼容
+- [ ] SessionService 中所有 invokeMethod(BlockingQueuedConnection) 已移除
+- [ ] SessionService 中所有 QThread::currentThread() == qApp->thread() 检查已移除
+- [ ] Headless 模式下 wait_capture_complete 使用 condition_variable 而非 QEventLoop
+- [ ] configure_and_start() 中 processEvents() 已替换为条件变量等待
+- [ ] --headless 模式可正常启动，不创建 QWidget
+- [ ] Headless 模式下 MCP API 可完成采集→解码→导出流程
+- [ ] Headless 模式下 WS API 可完成设备列表→配置→采集流程
+- [ ] Headless 模式下 add_decoder 不使用 invokeMethod，不死锁
+- [ ] Headless 模式下 wait_capture_complete 不依赖 QEventLoop
+- [ ] Headless + WS 新 GUI 场景：WS 客户端可读取波形数据并接收实时事件推送
+- [ ] 三种传输层（MCP/WS/Direct）共享 ISessionService 接口，功能一致
+- [ ] View 层 effective_data_source() 调用链正常工作
+- [ ] 解码器在 Headless 模式下可正常运行
+- [ ] pxview-core 静态库可独立编译，不依赖 Qt::Widgets
+- [ ] 最终 PXView 可执行文件链接 pxview-core + View 层代码，功能正常
