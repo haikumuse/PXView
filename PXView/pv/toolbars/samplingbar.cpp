@@ -670,7 +670,7 @@ void SamplingBar::update_sample_count_selector() {
   _sample_count->clear();
   const uint64_t samplerate =
       _sample_rate->itemData(_sample_rate->currentIndex()).value<uint64_t>();
-  const double hw_duration = hw_depth / (samplerate * (1.0 / SR_SEC(1)));
+  const double hw_duration = (samplerate > 0) ? (hw_depth / (samplerate * (1.0 / SR_SEC(1)))) : 0;
 
   if (mode == DSO)
     duration = max_timebase;
