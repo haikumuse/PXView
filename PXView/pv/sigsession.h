@@ -160,7 +160,8 @@ public:
   bool set_device(ds_device_handle dev_handle);
   bool set_file(QString name);
   void close_file(ds_device_handle dev_handle);
-  bool start_capture(bool instant);
+  bool start_capture(bool instant = false,
+                     data::SessionDocument *owner = nullptr);
   bool stop_capture();
   bool switch_work_mode(int mode);
 
@@ -196,18 +197,20 @@ public:
 
   bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
                    std::list<pv::data::decode::Decoder *> &sub_decoders,
-                   data::DecoderStack *&out_stack);
-  int get_trace_index_by_key_handel(void *handel);
-  void remove_decoder(int index);
-  void remove_decoder_by_key_handel(void *handel);
+                   data::DecoderStack *&out_stack,
+                   data::SessionDocument *doc = nullptr);
+  int get_trace_index_by_key_handel(void *handel,
+                                    data::SessionDocument *doc = nullptr);
+  void remove_decoder(int index, data::SessionDocument *doc = nullptr);
+  void remove_decoder_by_key_handel(void *handel,
+                                    data::SessionDocument *doc = nullptr);
 
-  inline std::vector<data::DecoderStack *> &get_decoder_stacks() override {
-    return _active_document ? _active_document->get_decoder_stacks()
-                            : _empty_decoder_stacks;
-  }
+  std::vector<data::DecoderStack *> &get_decoder_stacks(
+      data::SessionDocument *doc = nullptr) override;
 
-  void rst_decoder(int index);
-  void rst_decoder_by_key_handel(void *handel);
+  void rst_decoder(int index, data::SessionDocument *doc = nullptr);
+  void rst_decoder_by_key_handel(void *handel,
+                                 data::SessionDocument *doc = nullptr);
 
   inline pv::data::DecoderModel *get_decoder_model() override {
     return _decoder_model;
@@ -347,7 +350,8 @@ public:
   void add_msg_listener(IMessageListener *ln);
   void broadcast_msg(int msg);
   bool have_new_realtime_refresh(bool keep);
-  data::DecoderStack *get_decoder_trace(int index);
+  data::DecoderStack *get_decoder_trace(int index,
+                                        data::SessionDocument *doc = nullptr);
   data::SignalModel *get_signal_by_index(int index);
 
   inline bool have_view_data() { return get_signal_snapshot()->have_data(); }
@@ -404,9 +408,9 @@ public:
   }
   void clear_all_documents_decoders();
 
-  inline std::vector<data::DecoderStack *> &decode_traces() {
-    return _active_document ? _active_document->get_decoder_stacks()
-                            : _empty_decoder_stacks;
+  inline std::vector<data::DecoderStack *> &decode_traces(
+      data::SessionDocument *doc = nullptr) {
+    return get_decoder_stacks(doc);
   }
 
   void update_lang_text();
@@ -539,7 +543,8 @@ private:
   void feed_timeout();
   void clear_decode_result();
 
-  bool action_start_capture(bool instant);
+  bool action_start_capture(bool instant,
+                            data::SessionDocument *owner = nullptr);
   bool action_stop_capture();
 
   inline void set_session_time(QDateTime time) { _session_time = time; }

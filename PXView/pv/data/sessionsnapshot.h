@@ -51,7 +51,8 @@ public:
     ~SessionSnapshot();
 
     std::vector<SignalModel*>& get_signal_models() override;
-    std::vector<DecoderStack*>& get_decoder_stacks() override;
+    std::vector<DecoderStack*>& get_decoder_stacks(
+        SessionDocument *doc = nullptr) override;
     std::vector<SpectrumStack*>& get_spectrum_stacks() override;
     MathStack* get_math_stack() override;
     LissajousModel* get_lissajous_model() override;

@@ -20,6 +20,7 @@
 #include "../sigsession.h"
 #include "../deviceagent.h"
 #include "../config/appconfig.h"
+#include "../data/sessiondocument.h"
 
 #include <libsigrok.h>
 #include <algorithm>
@@ -52,6 +53,18 @@ Result<void> AppService::initialize()
     if (session) {
         int session_id = _next_session_id++;
         auto* svc = new SessionService(session, session->get_device());
+
+        // Create the MCP-dedicated document used as the stable target container
+        // for MCP operations, decoupled from the UI's _active_document cursor.
+        // This runs on the AppControl::Start() path, which is shared by both
+        // headless (--headless) and GUI modes, so _api_document is ready in
+        // either case. SessionDocument has a no-argument constructor.
+        // Ownership of the document transfers to the SessionService (released
+        // in its destructor); SigSession::register_document() is non-owning.
+        auto* api_doc = new pv::data::SessionDocument();
+        session->register_document(api_doc);
+        svc->set_api_document(api_doc);
+
         _sessions[session_id] = svc;
         _active_session_id = session_id;
     }
@@ -279,6 +292,15 @@ Result<int> AppService::create_session(
 
     int session_id = _next_session_id++;
     auto* svc = new SessionService(session, session->get_device());
+
+    // Inject the MCP-dedicated document (same rationale as in initialize()).
+    // This branch is only reached when no SessionService exists yet; the
+    // common path returns early above, reusing the SessionService created in
+    // initialize() which already has its _api_document set.
+    auto* api_doc = new pv::data::SessionDocument();
+    session->register_document(api_doc);
+    svc->set_api_document(api_doc);
+
     _sessions[session_id] = svc;
     _active_session_id = session_id;
 

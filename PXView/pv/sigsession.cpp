@@ -474,14 +474,15 @@ void SigSession::capture_init() {
     _feed_timer.Stop();
 }
 
-bool SigSession::start_capture(bool instant) {
+bool SigSession::start_capture(bool instant, data::SessionDocument *owner) {
   _is_action = true;
-  int ret = action_start_capture(instant);
+  int ret = action_start_capture(instant, owner);
   _is_action = false;
   return ret;
 }
 
-bool SigSession::action_start_capture(bool instant) {
+bool SigSession::action_start_capture(bool instant,
+                                      data::SessionDocument *owner) {
   assert(!_callbacks.empty());
 
   pxv_info("Start collect.");
@@ -620,7 +621,7 @@ bool SigSession::action_start_capture(bool instant) {
   if (exec_capture()) {
     _work_time_id++;
     _is_working = true;
-    _capture_owner_document = _active_document;
+    _capture_owner_document = owner ? owner : _active_document;
     trigger_message(DSV_MSG_START_COLLECT_WORK);
 
     // Start a timer, for able to refresh the view per (1000 / 30)ms.
@@ -1520,14 +1521,23 @@ uint16_t SigSession::get_ch_num(int type) {
   return num_channels;
 }
 
+std::vector<data::DecoderStack *> &
+SigSession::get_decoder_stacks(data::SessionDocument *doc) {
+  data::SessionDocument *target = doc ? doc : _active_document;
+  return target ? target->get_decoder_stacks() : _empty_decoder_stacks;
+}
+
 bool SigSession::add_decoder(
     srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
     std::list<pv::data::decode::Decoder *> &sub_decoders,
-    data::DecoderStack *&out_stack) {
+    data::DecoderStack *&out_stack,
+    data::SessionDocument *doc) {
   if (dec == NULL) {
     pxv_err("Decoder instance is null!");
     assert(false);
   }
+
+  data::SessionDocument *target = doc ? doc : _active_document;
 
   out_stack = NULL;
 
@@ -1579,12 +1589,17 @@ bool SigSession::add_decoder(
     ret = true;
 
     if (ret) {
-      if (_active_document) {
-        _active_document->get_decoder_stacks().push_back(decoder_stack);
-      } else {
-        _empty_decoder_stacks.push_back(decoder_stack);
+      if (target) {
+        target->get_decoder_stacks().push_back(decoder_stack);
       }
-      decoder_stack->set_owner_document(_active_document);
+      // When target is null (neither doc nor _active_document is bound, a
+      // rare edge case now that MCP uses _api_document and UI uses
+      // _active_document), the newly created DecoderStack is intentionally
+      // NOT stored in any container — it is returned via out_stack and the
+      // caller owns it. set_owner_document(nullptr) is safe (simple setter).
+      // The legacy _empty_decoder_stacks staging path was removed together
+      // with the set_active_document migration logic.
+      decoder_stack->set_owner_document(target);
 
       // NOTE: Starting the decode task here is intentionally avoided.
       // Previously this called `add_decode_task(decoder_stack)` when
@@ -1620,10 +1635,11 @@ bool SigSession::add_decoder(
   return false;
 }
 
-int SigSession::get_trace_index_by_key_handel(void *handel) {
+int SigSession::get_trace_index_by_key_handel(void *handel,
+                                               data::SessionDocument *doc) {
   int dex = 0;
 
-  for (auto stack : decode_traces()) {
+  for (auto stack : decode_traces(doc)) {
     if (stack->get_key_handel() == handel) {
       return dex;
     }
@@ -1633,16 +1649,17 @@ int SigSession::get_trace_index_by_key_handel(void *handel) {
   return -1;
 }
 
-void SigSession::remove_decoder(int index) {
-  int size = (int)decode_traces().size();
+void SigSession::remove_decoder(int index, data::SessionDocument *doc) {
+  data::SessionDocument *target = doc ? doc : _active_document;
+  int size = (int)decode_traces(target).size();
   (void)size;
   assert(index < size);
 
-  auto it = decode_traces().begin() + index;
+  auto it = decode_traces(target).begin() + index;
   auto stack = (*it);
-  decode_traces().erase(it);
+  decode_traces(target).erase(it);
 
-  // decode_traces() returns _active_document->get_decoder_stacks() (or
+  // decode_traces(target) returns target->get_decoder_stacks() (or
   // _empty_decoder_stacks), so the erase above already removed it from the
   // document's list.
 
@@ -1673,19 +1690,22 @@ void SigSession::remove_decoder(int index) {
   // delete it via DESTROY_QT_LATER when it sees _delete_flag
 }
 
-void SigSession::remove_decoder_by_key_handel(void *handel) {
-  int dex = get_trace_index_by_key_handel(handel);
-  remove_decoder(dex);
+void SigSession::remove_decoder_by_key_handel(void *handel,
+                                              data::SessionDocument *doc) {
+  data::SessionDocument *target = doc ? doc : _active_document;
+  int dex = get_trace_index_by_key_handel(handel, target);
+  remove_decoder(dex, target);
 }
 
-void SigSession::rst_decoder(int index) {
+void SigSession::rst_decoder(int index, data::SessionDocument *doc) {
+  data::SessionDocument *target = doc ? doc : _active_document;
   // The decoder options dialog (DecodeTrace::create_popup(false)) is now
   // shown by the View layer (View::rst_decoder_by_key_handel) BEFORE this
   // function is called. If the user cancels the dialog, View does not
   // forward to Core at all, so this reset path only runs when the user has
   // already accepted new settings. Core then just clears the existing
   // decode task and re-adds it.
-  auto stack = get_decoder_trace(index);
+  auto stack = get_decoder_trace(index, target);
 
   if (stack) {
     remove_decode_task(stack); // remove old task
@@ -1700,9 +1720,11 @@ void SigSession::rst_decoder(int index) {
   }
 }
 
-void SigSession::rst_decoder_by_key_handel(void *handel) {
-  int dex = get_trace_index_by_key_handel(handel);
-  rst_decoder(dex);
+void SigSession::rst_decoder_by_key_handel(void *handel,
+                                           data::SessionDocument *doc) {
+  data::SessionDocument *target = doc ? doc : _active_document;
+  int dex = get_trace_index_by_key_handel(handel, target);
+  rst_decoder(dex, target);
 }
 
 void SigSession::spectrum_rebuild() {
@@ -1946,9 +1968,11 @@ void SigSession::clear_all_decode_task(int &runningDex) {
   }
 }
 
-data::DecoderStack *SigSession::get_decoder_trace(int index) {
-  if (index >= 0 && index < (int)decode_traces().size()) {
-    return decode_traces()[index];
+data::DecoderStack *SigSession::get_decoder_trace(int index,
+                                                   data::SessionDocument *doc) {
+  auto &traces = decode_traces(doc);
+  if (index >= 0 && index < (int)traces.size()) {
+    return traces[index];
   }
   assert(false);
   return nullptr;
@@ -2221,7 +2245,8 @@ void SigSession::OnMessage(int msg) {
         // Move copy_data_to_document to a background thread
         // so the UI thread is not blocked by the deep copy.
         _copy_in_progress = true;
-        auto doc = _active_document;
+        auto doc = _capture_owner_document ? _capture_owner_document
+                                           : _active_document;
 
         std::thread([this, doc]() {
           copy_data_to_document(doc);
@@ -2487,18 +2512,6 @@ data::DsoSnapshot *SigSession::get_dso_snapshot() {
 }
 
 void SigSession::set_active_document(data::SessionDocument *doc) {
-  if (_active_document == nullptr && doc != nullptr &&
-      !_empty_decoder_stacks.empty()) {
-    // Move any DecoderStack instances created before a SessionDocument was
-    // bound (e.g. decoders added in headless mode without an active tab)
-    // into the new document.
-    auto &dst = doc->get_decoder_stacks();
-    for (auto stack : _empty_decoder_stacks) {
-      stack->set_owner_document(doc);
-      dst.push_back(stack);
-    }
-    _empty_decoder_stacks.clear();
-  }
   _active_document = doc;
 }
 
@@ -2753,8 +2766,10 @@ void SigSession::restart_decoders() {
   clear_decode_result();
 
   // Copy current data to document for decoders
-  if (_active_document) {
-    copy_data_to_document(_active_document);
+  auto doc = _capture_owner_document ? _capture_owner_document
+                                     : _active_document;
+  if (doc) {
+    copy_data_to_document(doc);
   }
 
   start_all_decode_tasks();
