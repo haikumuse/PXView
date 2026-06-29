@@ -120,6 +120,17 @@ enum class ServiceEvent : int32_t {
 
     SignalsChanged         = 600,
 
+    // View operations (broadcast requests; View layer subscribes via
+    // IServiceEventListener and applies them. In Headless mode these are
+    // no-ops because there is no View.)
+    ViewShowRegion         = 700,
+    ViewZoomFit            = 701,
+    ViewZoomIn             = 702,
+    ViewZoomOut            = 703,
+    ViewCursorAdded        = 704,
+    ViewCursorRemoved      = 705,
+    ViewCursorsCleared      = 706,
+
     ErrorOccurred          = 900
 };
 

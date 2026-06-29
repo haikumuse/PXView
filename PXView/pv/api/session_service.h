@@ -25,15 +25,13 @@
 #include <QString>
 #include "../interface/icallbacks.h"
 
+#include <condition_variable>
 #include <mutex>
 #include <vector>
 
 namespace pv {
 
 class SigSession;
-namespace view {
-class View;
-}
 
 } // namespace pv
 
@@ -43,7 +41,10 @@ namespace pv {
 namespace api {
 
 class SessionService : public ISessionService,
-                       public ISessionCallback,
+                       public IDataCallback,
+                       public ICaptureCallback,
+                       public ITriggerCallback,
+                       public ISessionStateCallback,
                        public IMessageListener {
 public:
     explicit SessionService(SigSession *session, DeviceAgent *device);
@@ -52,9 +53,6 @@ public:
     // Disable copy
     SessionService(const SessionService &) = delete;
     SessionService &operator=(const SessionService &) = delete;
-
-    // View binding for cursor/measure/zoom operations
-    void set_view(view::View *view);
 
     // ---- ISessionService: 1. Capture control ----
     Result<void> start_capture(bool instant = false) override;
@@ -284,17 +282,25 @@ public:
 
 private:
     void broadcast_event(ServiceEvent event,
-                         const std::map<std::string, std::string> &params = {});
+                         const std::map<std::string, std::string> &params = {}) const;
     ChannelType sr_channel_type_to_api(int sr_type) const;
+    // Returns true when running inside the GUI (QApplication), false when
+    // running headless (QCoreApplication only). In headless mode View-related
+    // operations are no-ops and QEventLoop-based waits fall back to a plain
+    // condition_variable + mutex.
+    static bool is_gui_mode();
 
 private:
     SigSession *_session;
     DeviceAgent *_device;
-    view::View *_view;
     std::vector<IServiceEventListener *> _listeners;
     mutable std::mutex _listeners_mutex;
     int _capture_id;
     bool _wait_capture_stop_flag;
+
+    // Wait-state used by wait_capture_complete() in headless mode.
+    mutable std::mutex _wait_mutex;
+    std::condition_variable _wait_cv;
 };
 
 } // namespace api

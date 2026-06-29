@@ -177,10 +177,16 @@ message(STATUS "	 includes:" ${Qt6Core_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt6Widgets_EXECUTABLE_COMPILE_FLAGS}")
 set(QT_INCLUDE_DIRS ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS} ${Qt6Svg_INCLUDE_DIRS} ${Qt6Concurrent_INCLUDE_DIRS})
 set(QT_LIBRARIES Qt6::Gui Qt6::GuiPrivate Qt6::Widgets Qt6::Svg Qt6::Concurrent Qt6::WebSockets)
+# Qt libraries split by Core/View layer:
+# - pxview-core (Core layer): QtCore + QtGui + QtNetwork + QtConcurrent + QtWebSockets (NO QtWidgets, NO QtSvg)
+# - pxview executable (View layer): adds QtWidgets + QtSvg on top of QT_CORE_LIBS
+set(QT_CORE_LIBS Qt6::Core Qt6::Gui Qt6::GuiPrivate Qt6::Network Qt6::Concurrent Qt6::WebSockets)
+set(QT_GUI_LIBS Qt6::Widgets Qt6::Svg)
 add_definitions(${Qt6Gui_DEFINITIONS} ${Qt6Widgets_DEFINITIONS})
 if(APPLE)
 	find_package(Qt6DBus REQUIRED)
 	set(QT_LIBRARIES ${QT_LIBRARIES} Qt6::DBus)
+	set(QT_CORE_LIBS ${QT_CORE_LIBS} Qt6::DBus)
 endif()
 
 
@@ -222,91 +228,137 @@ include_directories(${Boost_INCLUDE_DIRS})
 find_package(Threads)
 
 #===============================================================================
-#= PXView sources
+#= PXView sources — split into Core (no Qt Widgets) and GUI (View) layers
 #-------------------------------------------------------------------------------
 
-set(PXView_SOURCES
-    PXView/main.cpp
-    PXView/application.cpp
+# pxview-core: Core layer (no Qt Widgets dependency).
+# Contains: SigSession, DeviceAgent, SignalModel/LissajousModel, DecoderStack/
+# SpectrumStack/MathStack, DataSource, SessionDocument/SessionSnapshot,
+# SessionService/RpcDispatcher/Transports, utility, config.
+# AppControl stays in GUI layer because it references QWidget for top-window tracking.
+set(PXVIEW_CORE_SOURCES
+    # Core session/orchestration
     PXView/pv/log.cpp
     PXView/pv/sigsession.cpp
     PXView/pv/sessionmanager.cpp
-    PXView/pv/mainwindow.cpp
+    PXView/pv/deviceagent.cpp
+    PXView/pv/dstimer.cpp
+    PXView/pv/eventobject.cpp
+    PXView/pv/dsvdef.cpp
+    PXView/pv/ZipMaker.cpp
+    PXView/pv/storesession.cpp
+    PXView/pv/tabcontext.cpp
+    # Data layer (snapshots, models, stacks)
     PXView/pv/data/snapshot.cpp
     PXView/pv/data/signaldata.cpp
+    PXView/pv/data/signalmodel.cpp
+    PXView/pv/data/lissajousmodel.cpp
     PXView/pv/data/logicsnapshot.cpp
+    PXView/pv/data/dsosnapshot.cpp
+    PXView/pv/data/analogsnapshot.cpp
+    PXView/pv/data/sessionsnapshot.cpp
+    PXView/pv/data/sessiondocument.cpp
+    PXView/pv/data/decoderstack.cpp
+    PXView/pv/data/decodermodel.cpp
+    PXView/pv/data/mathstack.cpp
+    PXView/pv/data/spectrumstack.cpp
     PXView/pv/data/disk_buffer_manager.cpp
     PXView/pv/data/disk_write_thread.cpp
     PXView/pv/data/disk_read_cache.cpp
     PXView/pv/data/mmap_allocator.cpp
-    PXView/pv/data/analogsnapshot.cpp
-    PXView/pv/data/sessionsnapshot.cpp
-    PXView/pv/data/sessiondocument.cpp
-    PXView/pv/dialogs/deviceoptions.cpp
-    PXView/pv/prop/property.cpp
-    PXView/pv/prop/int.cpp
-    PXView/pv/prop/enum.cpp
-    PXView/pv/prop/double.cpp
-    PXView/pv/prop/bool.cpp
-    PXView/pv/prop/binding/binding.cpp
-    PXView/pv/toolbars/samplingbar.cpp
+    PXView/pv/data/decode/rowdata.cpp
+    PXView/pv/data/decode/row.cpp
+    PXView/pv/data/decode/decoder.cpp
+    PXView/pv/data/decode/annotation.cpp
+    PXView/pv/data/decode/annotationrestable.cpp
+    PXView/pv/data/decode/decoderstatus.cpp
+    # API/remote-control layer (SessionService, transports, RPC dispatcher)
+    PXView/pv/api/session_service.cpp
+    PXView/pv/api/app_service.cpp
+    PXView/pv/api/rpc_dispatcher.cpp
+    PXView/pv/api/ws_transport.cpp
+    PXView/pv/api/mcp_transport.cpp
+    # Utility + config (Core-only, no Qt Widgets)
+    PXView/pv/utility/encoding.cpp
+    PXView/pv/utility/path.cpp
+    PXView/pv/utility/array.cpp
+    PXView/pv/config/appconfig.cpp
+    PXView/pv/config/shortcutdefs.cpp
+)
+
+# GUI/View layer: Qt Widgets/Svg dependent sources (application entry, main window,
+# toolbars, docks, dialogs, view objects, widgets, ui utilities, prop bindings,
+# AppControl which references QWidget for top-window tracking).
+set(PXVIEW_GUI_SOURCES
+    PXView/main.cpp
+    PXView/application.cpp
+    PXView/pv/appcontrol.cpp
+    PXView/pv/mainwindow.cpp
+    PXView/pv/mainframe.cpp
+    PXView/pv/submainframe.cpp
+    # View layer rendering objects
     PXView/pv/view/viewport.cpp
     PXView/pv/view/edge_nav_button.cpp
     PXView/pv/view/view.cpp
     PXView/pv/view/timemarker.cpp
     PXView/pv/view/signal.cpp
+    PXView/pv/view/signalfactory.cpp
     PXView/pv/view/ruler.cpp
-    PXView/pv/view/logicsignal.cpp
     PXView/pv/view/header.cpp
     PXView/pv/view/cursor.cpp
+    PXView/pv/view/logicsignal.cpp
     PXView/pv/view/analogsignal.cpp
-    PXView/pv/prop/binding/deviceoptions.cpp
+    PXView/pv/view/dsosignal.cpp
+    PXView/pv/view/dsldial.cpp
+    PXView/pv/view/trace.cpp
+    PXView/pv/view/selectableitem.cpp
+    PXView/pv/view/decodetrace.cpp
+    PXView/pv/view/mathtrace.cpp
+    PXView/pv/view/spectrumtrace.cpp
+    PXView/pv/view/lissajoustrace.cpp
+    PXView/pv/view/devmode.cpp
+    PXView/pv/view/viewstatus.cpp
+    PXView/pv/view/xcursor.cpp
+    # Toolbars
+    PXView/pv/toolbars/samplingbar.cpp
     PXView/pv/toolbars/trigbar.cpp
     PXView/pv/toolbars/filebar.cpp
+    PXView/pv/toolbars/logobar.cpp
+    PXView/pv/toolbars/titlebar.cpp
+    # Docks
     PXView/pv/dock/protocoldock.cpp
     PXView/pv/dock/triggerdock.cpp
+    PXView/pv/dock/dsotriggerdock.cpp
     PXView/pv/dock/measuredock.cpp
     PXView/pv/dock/searchdock.cpp
     PXView/pv/dock/logdock.cpp
     PXView/pv/dock/deviceoptionsdock.cpp
     PXView/pv/dock/signalprocessingdock.cpp
     PXView/pv/dock/mcpcontroldock.cpp
-    PXView/pv/toolbars/logobar.cpp
+    PXView/pv/dock/protocolitemlayer.cpp
+    PXView/pv/dock/keywordlineedit.cpp
+    PXView/pv/dock/searchcombobox.cpp
+    # Dialogs
+    PXView/pv/dialogs/deviceoptions.cpp
     PXView/pv/dialogs/about.cpp
     PXView/pv/dialogs/search.cpp
-    PXView/pv/data/dsosnapshot.cpp
-    PXView/pv/view/dsosignal.cpp
-    PXView/pv/view/dsldial.cpp
-    PXView/pv/dock/dsotriggerdock.cpp
-    PXView/pv/view/trace.cpp
-    PXView/pv/view/selectableitem.cpp
-    PXView/pv/data/decoderstack.cpp
-    PXView/pv/data/decode/rowdata.cpp
-    PXView/pv/data/decode/row.cpp
-    PXView/pv/data/decode/decoder.cpp
-    PXView/pv/data/decode/annotation.cpp
-    PXView/pv/view/decodetrace.cpp
-    PXView/pv/prop/binding/decoderoptions.cpp
-    PXView/pv/widgets/fakelineedit.cpp
-    PXView/pv/widgets/searchpatterninput.cpp
-    PXView/pv/widgets/decodermenu.cpp
-    PXView/pv/widgets/decodergroupbox.cpp
-    PXView/pv/prop/string.cpp
     PXView/pv/dialogs/storeprogress.cpp
-    PXView/pv/storesession.cpp
-    PXView/pv/view/devmode.cpp
     PXView/pv/dialogs/waitingdialog.cpp
     PXView/pv/dialogs/dsomeasure.cpp
     PXView/pv/dialogs/calibration.cpp
-    PXView/pv/data/decodermodel.cpp
     PXView/pv/dialogs/protocollist.cpp
     PXView/pv/dialogs/protocolexp.cpp
     PXView/pv/dialogs/fftoptions.cpp
-    PXView/pv/data/mathstack.cpp
-    PXView/pv/view/mathtrace.cpp   
-    PXView/pv/toolbars/titlebar.cpp
-    PXView/pv/mainframe.cpp
-    PXView/pv/submainframe.cpp
+    PXView/pv/dialogs/dsmessagebox.cpp
+    PXView/pv/dialogs/shadow.cpp
+    PXView/pv/dialogs/dsdialog.cpp
+    PXView/pv/dialogs/interval.cpp
+    PXView/pv/dialogs/lissajousoptions.cpp
+    PXView/pv/dialogs/mathoptions.cpp
+    PXView/pv/dialogs/regionoptions.cpp
+    PXView/pv/dialogs/applicationpardlg.cpp
+    PXView/pv/dialogs/decoderoptionsdlg.cpp
+    # Custom widgets
     PXView/pv/widgets/border.cpp
     PXView/pv/widgets/slidingdrawer.cpp
     PXView/pv/widgets/smoothscrollbar.cpp
@@ -314,51 +366,15 @@ set(PXView_SOURCES
     PXView/pv/widgets/smoothtablehelper.cpp
     PXView/pv/widgets/sidebar.cpp
     PXView/pv/widgets/sidebarbutton.cpp
-    PXView/pv/dialogs/dsmessagebox.cpp
-    PXView/pv/dialogs/shadow.cpp
-    PXView/pv/dialogs/dsdialog.cpp
-    PXView/pv/dialogs/interval.cpp
-    PXView/pv/prop/binding/probeoptions.cpp
-    PXView/pv/view/viewstatus.cpp
-    PXView/pv/dialogs/lissajousoptions.cpp
-    PXView/pv/view/lissajoustrace.cpp
-    PXView/pv/view/spectrumtrace.cpp
-    PXView/pv/data/spectrumstack.cpp
-    PXView/pv/dialogs/mathoptions.cpp
-    PXView/pv/dialogs/regionoptions.cpp
-    PXView/pv/view/xcursor.cpp
-    PXView/pv/dock/protocoldock.cpp
-    PXView/pv/data/decoderstack.cpp
-    PXView/pv/data/decode/annotation.cpp
-    PXView/pv/data/decode/decoder.cpp
-    PXView/pv/data/decode/row.cpp
-    PXView/pv/data/decode/rowdata.cpp
-    PXView/pv/prop/binding/decoderoptions.cpp
-    PXView/pv/view/decodetrace.cpp
-    PXView/pv/widgets/decodergroupbox.cpp
+    PXView/pv/widgets/fakelineedit.cpp
+    PXView/pv/widgets/searchpatterninput.cpp
     PXView/pv/widgets/decodermenu.cpp
-    PXView/pv/config/appconfig.cpp
-    PXView/pv/config/shortcutdefs.cpp
-    PXView/pv/appcontrol.cpp
-    PXView/pv/dstimer.cpp
-    PXView/pv/eventobject.cpp
-    PXView/pv/ZipMaker.cpp
-    PXView/pv/data/decode/annotationrestable.cpp
-    PXView/pv/data/decode/decoderstatus.cpp
-    PXView/pv/dock/protocolitemlayer.cpp
+    PXView/pv/widgets/decodergroupbox.cpp
+    # UI utilities
     PXView/pv/ui/msgbox.cpp
     PXView/pv/ui/toast.cpp
     PXView/pv/ui/dscombobox.cpp
     PXView/pv/ui/dsspinbox.cpp
-    PXView/pv/dsvdef.cpp
-    PXView/pv/dialogs/applicationpardlg.cpp
-    PXView/pv/dock/keywordlineedit.cpp
-    PXView/pv/dock/searchcombobox.cpp
-    PXView/pv/dialogs/decoderoptionsdlg.cpp
-    PXView/pv/utility/encoding.cpp
-    PXView/pv/utility/path.cpp
-    PXView/pv/utility/array.cpp
-    PXView/pv/deviceagent.cpp
     PXView/pv/ui/langresource.cpp
     PXView/pv/ui/fn.cpp
     PXView/pv/ui/xtoolbutton.cpp
@@ -368,13 +384,20 @@ set(PXView_SOURCES
     PXView/pv/ui/popupdlglist.cpp
     PXView/pv/ui/iconcache.cpp
     PXView/pv/ui/widgetinspector.cpp
-    PXView/pv/tabcontext.cpp
-    PXView/pv/api/session_service.cpp
-    PXView/pv/api/app_service.cpp
-    PXView/pv/api/rpc_dispatcher.cpp
-    PXView/pv/api/ws_transport.cpp
-    PXView/pv/api/mcp_transport.cpp
+    # Property bindings (Qt property system tied to widgets)
+    PXView/pv/prop/property.cpp
+    PXView/pv/prop/int.cpp
+    PXView/pv/prop/enum.cpp
+    PXView/pv/prop/double.cpp
+    PXView/pv/prop/bool.cpp
+    PXView/pv/prop/string.cpp
+    PXView/pv/prop/binding/binding.cpp
+    PXView/pv/prop/binding/deviceoptions.cpp
+    PXView/pv/prop/binding/decoderoptions.cpp
+    PXView/pv/prop/binding/probeoptions.cpp
 )
+# Backwards-compat alias so any code referencing PXView_SOURCES still works.
+set(PXView_SOURCES ${PXVIEW_CORE_SOURCES} ${PXVIEW_GUI_SOURCES})
 
 set(UIS
 )
@@ -391,7 +414,7 @@ endif()
 
 # Windows-specific QT source files
 if(WIN32)
-	list(APPEND PXView_SOURCES
+	list(APPEND PXVIEW_GUI_SOURCES
 		PXView/pv/winnativewidget.cpp
 		PXView/pv/winshadow.cpp
 		PXView/pv/wintaskbarprogress.cpp
@@ -399,7 +422,7 @@ if(WIN32)
 	list(APPEND PXView_HEADERS
 		PXView/pv/wintaskbarprogress.h
 	)
-endif ()
+	endif ()
 
 set(PXView_HEADERS
     PXView/mystyle.h
@@ -729,7 +752,7 @@ if(WIN32)
 	# Use the PXView icon for the PXView.exe executable.
 	enable_language(RC)
 	# app icon
-        list(APPEND PXView_SOURCES applogo.rc)
+        list(APPEND PXVIEW_GUI_SOURCES applogo.rc)
 	# Unicode support for Windows API
 	add_definitions(-DUNICODE -D_UNICODE)
 endif()
@@ -788,11 +811,13 @@ set(PXVIEW_LINK_LIBS
 	-lz
 	-lglib-2.0
 	${CMAKE_THREAD_LIBS_INIT}
-	${QT_LIBRARIES}
 	${LIBUSB_1_LIBRARIES}
 	${FFTW_LIBRARIES}
 	${PY_LIB}
 )
+# Note: Qt libraries are NOT in PXVIEW_LINK_LIBS — they are linked per-target:
+#   - pxview-core links ${QT_CORE_LIBS} (no Qt::Widgets, no Qt::Svg)
+#   - PXView executable links ${QT_GUI_LIBS} (Qt::Widgets + Qt::Svg)
 
 if(STATIC_PKGDEPS_LIBS)
 	link_directories(${PKGDEPS_STATIC_LIBRARY_DIRS})
@@ -812,9 +837,28 @@ if(LIBSERIALPORT_FOUND)
 	link_directories(${LIBSERIALPORT_LIBRARY_DIRS})
 endif()
 
+#===============================================================================
+#= pxview-core static library — Core layer (no Qt Widgets dependency)
+#-------------------------------------------------------------------------------
+# Compiles the Core layer sources (SigSession, DeviceAgent, Data layer, API
+# layer, utility, config) into a standalone static library that depends only
+# on Qt6::Core/Gui/Network/Concurrent/WebSockets (NOT Qt6::Widgets/Svg).
+# Q_OBJECT meta-object implementations (moc_*.cpp) for Core classes are compiled
+# in the executable target below; the static library may carry unresolved
+# meta-object symbols which get resolved at final executable link time.
+add_library(pxview-core STATIC ${PXVIEW_CORE_SOURCES})
+target_link_libraries(pxview-core PUBLIC
+	${QT_CORE_LIBS}
+	${PXVIEW_LINK_LIBS}
+	nlohmann_json::nlohmann_json
+)
+
+#===============================================================================
+#= PXView executable — GUI/View layer linking pxview-core
+#-------------------------------------------------------------------------------
 add_executable(${PROJECT_NAME}
 	${common_SOURCES}
-	${PXView_SOURCES}
+	${PXVIEW_GUI_SOURCES}
 	${PXView_HEADERS_MOC}
 	${PXView_HEADERS_NO_MOC}
 	${PXView_FORMS_HEADERS}
@@ -823,7 +867,13 @@ add_executable(${PROJECT_NAME}
 	${libsigrokdecode_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} ${PXVIEW_LINK_LIBS} nlohmann_json::nlohmann_json)
+# Executable links pxview-core (which transitively provides Qt Core/Gui/Network
+# /WebSockets + external libs + nlohmann_json via PUBLIC linkage) and adds the
+# Qt Widgets + Svg modules that the View layer needs.
+target_link_libraries(${PROJECT_NAME}
+	pxview-core
+	${QT_GUI_LIBS}
+)
 
 if(NOT WIN32 AND NOT APPLE)
 	target_link_libraries(${PROJECT_NAME} "-Wl,--export-dynamic")

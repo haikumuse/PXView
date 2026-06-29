@@ -57,6 +57,8 @@ char DS_USR_PATH[500];
 struct sr_lib_context
 {
 	dslib_event_callback_t event_callback;
+	dslib_event_callback_ex_t event_callback_ex;
+	void *event_callback_user_data;
 	struct sr_context *sr_ctx;
 	GSList *device_list; // All device instance, sr_dev_inst* type
 	pthread_mutex_t mutext;
@@ -71,6 +73,8 @@ struct sr_lib_context
 	GThread *hotplug_thread;
 	GThread *collect_thread;
 	ds_datafeed_callback_t data_forward_callback;
+	ds_datafeed_callback_ex_t data_forward_callback_ex;
+	void *data_forward_callback_user_data;
 	int callback_thread_count;
 	int is_delay_destory_actived_device;
 	int is_stop_by_detached;
@@ -94,6 +98,8 @@ static struct libusb_device* get_new_detached_usb_device();
 
 static struct sr_lib_context lib_ctx = {
 	.event_callback = NULL,
+	.event_callback_ex = NULL,
+	.event_callback_user_data = NULL,
 	.sr_ctx = NULL,
 	.device_list = NULL,
 	.hotplug_thread = NULL,
@@ -106,6 +112,8 @@ static struct sr_lib_context lib_ctx = {
 	.detach_device_handle = NULL,
 	.actived_device_instance = NULL,
 	.data_forward_callback = NULL,
+	.data_forward_callback_ex = NULL,
+	.data_forward_callback_user_data = NULL,
 	.collect_thread = NULL,
 	.callback_thread_count = 0,
 	.is_delay_destory_actived_device = 0,
@@ -285,6 +293,26 @@ SR_API void ds_set_event_callback(dslib_event_callback_t cb)
 SR_API void ds_set_datafeed_callback(ds_datafeed_callback_t cb)
 {
 	lib_ctx.data_forward_callback = cb;
+}
+
+/**
+ * Set event callback with user data context.
+ * The user_data pointer will be passed back to the callback.
+ */
+SR_API void ds_set_event_callback_ex(dslib_event_callback_ex_t cb, void *user_data)
+{
+	lib_ctx.event_callback_ex = cb;
+	lib_ctx.event_callback_user_data = user_data;
+}
+
+/**
+ * Set the data receive callback with user data context.
+ * The user_data pointer will be passed back to the callback.
+ */
+SR_API void ds_set_datafeed_callback_ex(ds_datafeed_callback_ex_t cb, void *user_data)
+{
+	lib_ctx.data_forward_callback_ex = cb;
+	lib_ctx.data_forward_callback_user_data = user_data;
 }
 
 /**
@@ -790,9 +818,9 @@ SR_API int ds_start_collect()
 		sr_err("There have no useable channel, unable to collect.");
 		return SR_ERR_CALL_STATUS;
 	}
-	if (lib_ctx.data_forward_callback == NULL)
+	if (lib_ctx.data_forward_callback == NULL && lib_ctx.data_forward_callback_ex == NULL)
 	{
-		sr_err("Error! Data forwarding callback is not set, see \"ds_set_datafeed_callback()\".");
+		sr_err("Error! Data forwarding callback is not set, see \"ds_set_datafeed_callback()\" or \"ds_set_datafeed_callback_ex()\".");
 		return SR_ERR_CALL_STATUS;
 	}
 
@@ -1202,6 +1230,11 @@ SR_PRIV int ds_data_forward(const struct sr_dev_inst *sdi,
 
 	if (lib_ctx.data_forward_callback != NULL){
 		lib_ctx.data_forward_callback(sdi, packet);
+	}
+	if (lib_ctx.data_forward_callback_ex != NULL){
+		lib_ctx.data_forward_callback_ex(sdi, packet, lib_ctx.data_forward_callback_user_data);
+	}
+	if (lib_ctx.data_forward_callback != NULL || lib_ctx.data_forward_callback_ex != NULL){
 		return SR_OK;
 	}
 	return SR_ERR;
@@ -1636,9 +1669,9 @@ static void post_event_async(int event)
 static void send_event(int event)
 {
 	if (lib_ctx.event_callback != NULL)
-	{
 		lib_ctx.event_callback(event);
-	}
+	if (lib_ctx.event_callback_ex != NULL)
+		lib_ctx.event_callback_ex(event, lib_ctx.event_callback_user_data);
 }
 
 static struct libusb_device* get_new_attached_usb_device()

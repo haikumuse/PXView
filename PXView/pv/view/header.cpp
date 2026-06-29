@@ -51,6 +51,7 @@
 #include "dsosignal.h"
 #include "groupsignal.h"
 #include "logicsignal.h"
+#include "mathtrace.h"
 #include "trace.h"
 #include "view.h"
 
@@ -470,7 +471,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
 
     if (groups.size() <= 1) {
       std::vector<Trace *> traces;
-      for (auto s : _view.effective_data_source()->get_decode_signals()) {
+      for (auto s : _view.get_own_decode_traces()) {
         traces.push_back(s);
       }
       for (auto s : _view.get_own_signals()) {
@@ -900,7 +901,13 @@ void Header::on_action_set_name_triggered() {
     if (v == "")
       v = QString::number(context_Trace->get_index());
 
-    _view.session().set_trace_name(context_Trace, v);
+    // SigSession::set_trace_name now takes a SignalModel* (the Core layer
+    // signal state holder) instead of a view::Trace*. Look up the model by
+    // the trace's channel index so the name change is applied to the
+    // authoritative data holder.
+    auto model = _view.session().get_signal_by_index(context_Trace->get_index());
+    if (model)
+      _view.session().set_trace_name(model, v);
   }
 
   nameEdit->hide();

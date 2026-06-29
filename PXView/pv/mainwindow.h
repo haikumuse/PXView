@@ -44,6 +44,7 @@
 #include "widgets/slidingdrawer.h"
 #include "widgets/sidebar.h"
 #include "config/appconfig.h"
+#include "api/types.h"
 
 class QAction;
 class QMenu;
@@ -92,12 +93,16 @@ class View;
 
 //The mainwindow,referenced by MainFrame
 //TODO: create graph view,toolbar,and show device list
-class MainWindow : 
+class MainWindow :
     public QMainWindow,
-    public ISessionCallback,
+    public IDataCallback,
+    public ICaptureCallback,
+    public ITriggerCallback,
+    public ISessionStateCallback,
     public IMainForm,
     public ISessionDataGetter,
-    public IMessageListener
+    public IMessageListener,
+    public pv::api::IServiceEventListener
 {
 	Q_OBJECT
 
@@ -193,30 +198,42 @@ private:
 
   
 private:
-    //ISessionCallback 
+    //IDataCallback
+    void data_updated() override;
+    void receive_data_len(quint64 len) override;
+    void receive_header() override;
+    void cur_snap_samplerate_changed() override;
+
+    //ICaptureCallback
+    void frame_began() override;
+    void frame_ended() override;
+    void update_capture() override;
+    void show_region(uint64_t start, uint64_t end, bool keep) override;
+    void repeat_hold(int percent) override;
+
+    //ITriggerCallback
+    void receive_trigger(quint64 trigger_pos) override;
+    void show_wait_trigger() override;
+    void trigger_message(int msg) override;
+
+    //ISessionStateCallback
     void session_error() override;
     void session_save() override;
-    void data_updated() override;
-    void update_capture() override;
-    void cur_snap_samplerate_changed() override;      
     void signals_changed() override;
-    void receive_trigger(quint64 trigger_pos) override;
-    void frame_ended() override;
-    void frame_began() override;
-    void show_region(uint64_t start, uint64_t end, bool keep) override;
-    void show_wait_trigger() override;
-    void repeat_hold(int percent) override;
     void decode_done() override;
-    void receive_data_len(quint64 len) override;
-    void receive_header() override;    
-    void trigger_message(int msg) override;   
-    void delay_prop_msg(QString strMsg) override; 
+    void delay_prop_msg(QString strMsg) override;
 
     //ISessionDataGetter
     bool genSessionData(std::string &str) override;
 
     //IMessageListener
     void OnMessage(int msg) override;
+
+    //IServiceEventListener — receive View operation broadcasts from SessionService
+    //(show_region, zoom_fit, zoom_in/out, cursor operations). In GUI mode these are
+    //routed to the active View; in Headless mode there is no MainWindow so these
+    //events are simply not consumed.
+    void on_service_event(const pv::api::ServiceEventData &data) override;
 
 private: 
 	pv::ui::DraggableTabWidget *_tab_widget;

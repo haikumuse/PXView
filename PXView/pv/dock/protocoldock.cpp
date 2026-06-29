@@ -488,9 +488,13 @@ bool ProtocolDock::add_protocol_by_id(
     protocolId = QString((*it)->decoder()->id);
   }
 
-  pv::view::Trace *trace = NULL;
+  pv::data::DecoderStack *stack = NULL;
 
-  if (_session->add_decoder(decoder, silent, dstatus, sub_decoders, trace) ==
+  // Route through the View layer so the View can create its own DecodeTrace
+  // wrapper for the newly created DecoderStack. The View internally calls
+  // Core (SigSession::add_decoder) to create the stack, then creates the
+  // matching DecodeTrace and refreshes the layout.
+  if (_view->add_decoder(decoder, silent, dstatus, sub_decoders, stack) ==
       false) {
     return false;
   }
@@ -502,7 +506,7 @@ bool ProtocolDock::add_protocol_by_id(
   _top_layout->insertLayout(_protocol_lay_items.size(), layer);
   layer->m_decoderStatus = dstatus;
   layer->m_protocolId = protocolId;
-  layer->_trace = trace;
+  layer->_trace = stack;
   layer->SetVisibilityState(true);
 
   // set current protocol format
@@ -514,10 +518,13 @@ bool ProtocolDock::add_protocol_by_id(
   }
 
   // progress connection
-  const auto &decode_sigs = _session->get_decode_signals();
   protocol_updated();
-  connect(decode_sigs.back(), &view::DecodeTrace::decoded_progress, this,
-          &ProtocolDock::decoded_progress);
+  if (stack) {
+    connect(stack, &data::DecoderStack::new_decode_data, this,
+            &ProtocolDock::on_decoder_progress);
+    connect(stack, &data::DecoderStack::decode_done, this,
+            &ProtocolDock::on_decoder_progress);
+  }
 
   adjustPannelSize();
 
@@ -527,18 +534,26 @@ bool ProtocolDock::add_protocol_by_id(
 void ProtocolDock::rebuild_protocol_layers() {
   for (auto layer : _protocol_lay_items) {
     if (layer->_trace) {
-      auto dt = static_cast<view::DecodeTrace *>(layer->_trace);
-      disconnect(dt, &view::DecodeTrace::decoded_progress, this,
-                 &ProtocolDock::decoded_progress);
+      auto stack = static_cast<data::DecoderStack *>(layer->_trace);
+      disconnect(stack, &data::DecoderStack::new_decode_data, this,
+                 &ProtocolDock::on_decoder_progress);
+      disconnect(stack, &data::DecoderStack::decode_done, this,
+                 &ProtocolDock::on_decoder_progress);
     }
     _top_layout->removeItem(layer);
     DESTROY_QT_LATER(layer);
   }
   _protocol_lay_items.clear();
 
-  const auto &decode_sigs = _session->get_decode_signals();
-  for (auto trace : decode_sigs) {
-    auto stack = trace->decoder();
+  // Read decoder traces from the View layer (View-owned DecodeTrace list)
+  // instead of querying Core's DecoderStack list directly. Each DecodeTrace
+  // wraps a Core-owned DecoderStack accessed via trace->decoder().
+  const auto &decode_traces = _view->get_own_decode_traces();
+  for (auto trace : decode_traces) {
+    auto stack = trace ? trace->decoder() : nullptr;
+    if (!stack)
+      continue;
+
     DecoderStatus *dstatus = (DecoderStatus *)stack->get_key_handel();
 
     auto &decoders = stack->stack();
@@ -551,7 +566,7 @@ void ProtocolDock::rebuild_protocol_layers() {
     _top_layout->insertLayout(_protocol_lay_items.size(), layer);
     layer->m_decoderStatus = dstatus;
     layer->m_protocolId = protocolId;
-    layer->_trace = trace;
+    layer->_trace = stack;
     layer->SetVisibilityState(decoders.front()->shown());
 
     static const char *formatNames[] = {"hex", "dec", "oct", "bin", "ascii"};
@@ -560,7 +575,7 @@ void ProtocolDock::rebuild_protocol_layers() {
       layer->SetProtocolFormat(formatNames[fmt]);
     }
 
-    int pg = trace->get_progress();
+    int pg = stack->get_progress();
     QString err;
     if (stack->out_of_memory())
       err = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OUT_OF_MEMORY), "Out of Memory");
@@ -569,8 +584,10 @@ void ProtocolDock::rebuild_protocol_layers() {
       layer->enable_format(dstatus->m_bNumeric);
     }
 
-    connect(trace, &view::DecodeTrace::decoded_progress, this,
-            &ProtocolDock::decoded_progress);
+    connect(stack, &data::DecoderStack::new_decode_data, this,
+            &ProtocolDock::on_decoder_progress);
+    connect(stack, &data::DecoderStack::decode_done, this,
+            &ProtocolDock::on_decoder_progress);
   }
 
   protocol_updated();
@@ -611,14 +628,14 @@ void ProtocolDock::del_all_protocol() {
 }
 
 void ProtocolDock::decoded_progress(int progress) {
-  const auto &decode_sigs = _session->get_decode_signals();
+  const auto &decode_sigs = _session->get_decoder_stacks();
   unsigned int index = 0;
 
   for (auto d : decode_sigs) {
     int pg = d->get_progress();
     QString err;
 
-    if (d->decoder()->out_of_memory())
+    if (d->out_of_memory())
       err = L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OUT_OF_MEMORY), "Out of Memory");
 
     if (index < _protocol_lay_items.size()) {
@@ -645,6 +662,11 @@ void ProtocolDock::decoded_progress(int progress) {
   }
 }
 
+void ProtocolDock::on_decoder_progress() {
+  auto *stack = qobject_cast<data::DecoderStack *>(sender());
+  decoded_progress(stack ? stack->get_progress() : 0);
+}
+
 void ProtocolDock::set_model() {
   pv::dialogs::ProtocolList *protocollist_dlg =
       new pv::dialogs::ProtocolList(this, _session);
@@ -654,32 +676,32 @@ void ProtocolDock::set_model() {
   search_done();
 
   // clear mark_index of all DecoderStacks
-  const auto &decode_sigs = _session->get_decode_signals();
+  const auto &decode_sigs = _session->get_decoder_stacks();
 
   for (auto d : decode_sigs) {
-    d->decoder()->set_mark_index(-1);
+    d->set_mark_index(-1);
   }
 }
 
 void ProtocolDock::update_model() {
   pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
-  const auto &decode_sigs = _session->get_decode_signals();
+  const auto &decode_sigs = _session->get_decoder_stacks();
 
   if (decode_sigs.size() == 0)
     decoder_model->setDecoderStack(NULL);
   else if (!decoder_model->getDecoderStack())
-    decoder_model->setDecoderStack(decode_sigs.at(0)->decoder());
+    decoder_model->setDecoderStack(decode_sigs.at(0));
   else {
     unsigned int index = 0;
     for (auto d : decode_sigs) {
-      if (d->decoder() == decoder_model->getDecoderStack()) {
-        decoder_model->setDecoderStack(d->decoder());
+      if (d == decoder_model->getDecoderStack()) {
+        decoder_model->setDecoderStack(d);
         break;
       }
       index++;
     }
     if (index >= decode_sigs.size())
-      decoder_model->setDecoderStack(decode_sigs.at(0)->decoder());
+      decoder_model->setDecoderStack(decode_sigs.at(0));
   }
   _model_proxy.setSourceModel(decoder_model);
   search_done();
@@ -735,10 +757,10 @@ void ProtocolDock::item_clicked(const QModelIndex &index) {
   if (decoder_stack) {
     pv::data::decode::Annotation ann;
     if (decoder_stack->list_annotation(&ann, index.column(), index.row())) {
-      const auto &decode_sigs = _session->get_decode_signals();
+      const auto &decode_sigs = _session->get_decoder_stacks();
 
       for (auto d : decode_sigs) {
-        d->decoder()->set_mark_index(-1);
+        d->set_mark_index(-1);
       }
 
       decoder_stack->set_mark_index((ann.start_sample() + ann.end_sample()) /
@@ -840,10 +862,10 @@ void ProtocolDock::nav_table_view() {
         _table_view->scrollTo(index);
         _table_view->setCurrentIndex(index);
 
-        const auto &decode_sigs = _session->get_decode_signals();
+        const auto &decode_sigs = _session->get_decoder_stacks();
 
         for (auto d : decode_sigs) {
-          d->decoder()->set_mark_index(-1);
+          d->set_mark_index(-1);
         }
 
         decoder_stack->set_mark_index((ann.start_sample() + ann.end_sample()) /
@@ -1085,15 +1107,14 @@ void ProtocolDock::OnProtocolVisibilityChanged(void *handle) {
   for (auto it = _protocol_lay_items.begin(); it != _protocol_lay_items.end(); it++) {
     if ((*it) == handle) {
       auto lay = (*it);
-      auto trace = static_cast<pv::view::DecodeTrace*>(lay->_trace);
-      if (trace && trace->decoder()) {
-        auto dec_stack = trace->decoder();
-        if (!dec_stack->stack().empty()) {
-          auto root_dec = dec_stack->stack().front();
+      auto stack = static_cast<pv::data::DecoderStack*>(lay->_trace);
+      if (stack) {
+        if (!stack->stack().empty()) {
+          auto root_dec = stack->stack().front();
           bool current_shown = root_dec->shown();
           root_dec->show(!current_shown);
           lay->SetVisibilityState(!current_shown);
-          
+
           if (_view) {
             _view->signals_changed(NULL);
           }

@@ -91,9 +91,9 @@ SpectrumTrace::SpectrumTrace(pv::SigSession *session,
 {
     _typeWidth = 0;
 
-    for(auto s : _session->get_signals()) {
-        if (s->signal_type() == SR_CHANNEL_DSO && index == s->get_index()){
-            _colour = s->get_colour();
+    for(auto m : _session->get_signal_models()) {
+        if (m->type() == pv::api::ChannelType::Dso && index == m->index()){
+            _colour = QColor(QString::fromStdString(m->color()));
         }
     }
   
@@ -318,13 +318,15 @@ void SpectrumTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QCo
         double vdiv = 0;
         double vfactor = 0;
         
-        for(auto s : _session->get_signals()) {
-            if (s->signal_type() == SR_CHANNEL_DSO) {
-                view::DsoSignal *dsoSig = (view::DsoSignal*)s;
-                if(dsoSig->get_index() == _spectrum_stack->get_index()) {
-                    vdiv = dsoSig->get_vDialValue();
-                    vfactor = dsoSig->get_factor();
-                    break;
+        if (_view) {
+            for(auto s : _view->get_own_signals()) {
+                if (s->signal_type() == SR_CHANNEL_DSO) {
+                    view::DsoSignal *dsoSig = (view::DsoSignal*)s;
+                    if(dsoSig->get_index() == _spectrum_stack->get_index()) {
+                        vdiv = dsoSig->get_vDialValue();
+                        vfactor = dsoSig->get_factor();
+                        break;
+                    }
                 }
             }
         }

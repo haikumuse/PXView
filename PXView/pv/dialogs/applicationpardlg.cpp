@@ -21,6 +21,7 @@
  */
 
 #include "applicationpardlg.h"
+#include <QPainter>
 #include "../ui/widgetinspector.h"
 #include "dsdialog.h"
 #include <QApplication>

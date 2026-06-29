@@ -146,6 +146,7 @@ private slots:
   void on_add_protocol();
   void on_del_all_protocol();
   void decoded_progress(int progress);
+  void on_decoder_progress();
   void set_model();
   void export_table_view();
   void nav_table_view();

@@ -143,7 +143,15 @@ DecodeTrace::DecodeTrace(pv::SigSession *session,
 DecodeTrace::~DecodeTrace() {
   _cur_row_headings.clear();
 
-  DESTROY_OBJECT(_decoder_stack);
+  // NOTE: The DecoderStack is owned by the Core layer (SigSession /
+  // SessionDocument) and is deleted by SigSession::remove_decoder() /
+  // clear_all_decoder() / clear_all_documents_decoders(). The View only
+  // holds a non-owning pointer (_decoder_stack) for rendering purposes.
+  // Deleting it here would cause a double-free.
+  // The Qt signal/slot connections (new_decode_data / decode_done) are
+  // automatically disconnected by Qt when either sender or receiver is
+  // destroyed.
+  _decoder_stack = nullptr;
 }
 
 bool DecodeTrace::enabled() { return true; }
@@ -436,13 +444,15 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
                                  ? start
                                  : (int)mark_end;
 
-          for (auto s : _session->get_signals()) {
-            int binded_index = dec->binded_probe_index(probe);
-            if ((s->get_index() == binded_index) &&
-                s->signal_type() == SR_CHANNEL_LOGIC) {
-              view::LogicSignal *logicSig = (view::LogicSignal *)s;
-              logicSig->paint_mark(p, start, mark_end_int, type / 100);
-              break;
+          if (_view) {
+            for (auto s : _view->get_own_signals()) {
+              int binded_index = dec->binded_probe_index(probe);
+              if ((s->get_index() == binded_index) &&
+                  s->signal_type() == SR_CHANNEL_LOGIC) {
+                view::LogicSignal *logicSig = (view::LogicSignal *)s;
+                logicSig->paint_mark(p, start, mark_end_int, type / 100);
+                break;
+              }
             }
           }
         }

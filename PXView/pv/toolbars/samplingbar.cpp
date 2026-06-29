@@ -472,7 +472,10 @@ void SamplingBar::reStyle() {
 }
 
 void SamplingBar::zero_adj() {
-  for (auto s : _session->get_signals()) {
+  if (!_view)
+    return;
+
+  for (auto s : _view->get_own_signals()) {
     if (s->signal_type() == SR_CHANNEL_DSO) {
       view::DsoSignal *dsoSig = (view::DsoSignal *)s;
       dsoSig->set_enable(true);
@@ -495,7 +498,7 @@ void SamplingBar::zero_adj() {
 
   pv::dialogs::WaitingDialog wait(this, _session, SR_CONF_ZERO);
   if (wait.start() == QDialog::Rejected) {
-    for (auto s : _session->get_signals()) {
+    for (auto s : _view->get_own_signals()) {
       if (s->signal_type() == SR_CHANNEL_DSO) {
         view::DsoSignal *dsoSig = (view::DsoSignal *)s;
         dsoSig->commit_settings();

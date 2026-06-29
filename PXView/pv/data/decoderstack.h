@@ -193,6 +193,11 @@ public:
     void set_owner_document(data::SessionDocument *doc) { _owner_document = doc; }
     data::SessionDocument* get_owner_document() { return _owner_document; }
 
+    // Set by callers (e.g. SigSession) to mark a stack for asynchronous
+    // deletion by the decode thread. Mirrors the legacy
+    // view::DecodeTrace::_delete_flag mechanism.
+    volatile bool _delete_flag = false;
+
 private:
     void decode_data(const uint64_t decode_start, const uint64_t decode_end, srd_session *const session);
 	void execute_decode_stack();

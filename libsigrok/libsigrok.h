@@ -1400,6 +1400,18 @@ typedef void (*ds_datafeed_callback_t)(const struct sr_dev_inst *sdi,
                                        const struct sr_datafeed_packet *packet);
 
 /**
+ * Event callback with user data context.
+ */
+typedef void (*dslib_event_callback_ex_t)(int event, void *user_data);
+
+/**
+ * Data forwarding callback with user data context.
+ */
+typedef void (*ds_datafeed_callback_ex_t)(const struct sr_dev_inst *sdi,
+                                           const struct sr_datafeed_packet *packet,
+                                           void *user_data);
+
+/**
  * Must call first
  */
 SR_API int ds_lib_init();
@@ -1418,6 +1430,18 @@ SR_API void ds_set_event_callback(dslib_event_callback_t cb);
  * Set the data receive callback.
  */
 SR_API void ds_set_datafeed_callback(ds_datafeed_callback_t cb);
+
+/**
+ * Set event callback with user data context.
+ * The user_data pointer will be passed back to the callback.
+ */
+SR_API void ds_set_event_callback_ex(dslib_event_callback_ex_t cb, void *user_data);
+
+/**
+ * Set the data receive callback with user data context.
+ * The user_data pointer will be passed back to the callback.
+ */
+SR_API void ds_set_datafeed_callback_ex(ds_datafeed_callback_ex_t cb, void *user_data);
 
 /**
  * Set the firmware binary file directory,

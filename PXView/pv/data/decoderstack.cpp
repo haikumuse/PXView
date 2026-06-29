@@ -35,6 +35,7 @@
 #include "decoderstack.h"
 #include "logicsnapshot.h"
 #include "sessiondocument.h"
+#include "signalmodel.h"
 #include <ds_types.h>
 
 using namespace pv::data::decode;
@@ -424,10 +425,10 @@ void DecoderStack::do_decode_work() {
 
   for (auto dec : _stack) {
     if (dec->have_probes()) {
-      for (auto s : _session->get_signals()) {
-        if (s->get_index() == dec->first_probe_index() &&
-            s->signal_type() == SR_CHANNEL_LOGIC) {
-          _snapshot = ((pv::view::LogicSignal *)s)->data();
+      for (auto m : _session->get_signal_models()) {
+        if (m->index() == dec->first_probe_index() &&
+            m->type() == pv::api::ChannelType::Logic) {
+          _snapshot = (pv::data::LogicSnapshot*)m->snapshot();
           if (_snapshot != NULL)
             break;
         }

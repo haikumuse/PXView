@@ -62,12 +62,14 @@ ProtocolList::ProtocolList(QWidget *parent, SigSession *session) :
     connect(_map_zoom_combobox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ProtocolList::on_set_map_zoom);
 
     _protocol_combobox = new DsComboBox(this);
-    auto &decode_sigs = _session->get_decode_signals();
+    auto &decode_sigs = _session->get_decoder_stacks();
     int index = 0;
 
     for(auto d : decode_sigs) {
-        _protocol_combobox->addItem(d->get_name());
-        if (decoder_model->getDecoderStack() == d->decoder())
+        // TODO: adapt — DecoderStack no longer exposes a UI label; use the
+        // root decoder id as the display name.
+        _protocol_combobox->addItem(QString::fromUtf8(d->get_root_decoder_id()));
+        if (decoder_model->getDecoderStack() == d)
             _protocol_combobox->setCurrentIndex(index);
         index++;
     }
@@ -132,12 +134,12 @@ void ProtocolList::set_protocol(int index)
     _show_label_list.clear();
 
     pv::data::DecoderStack *decoder_stack = NULL;
-    const auto &decode_sigs = _session->get_decode_signals();
+    const auto &decode_sigs = _session->get_decoder_stacks();
     int cur_index = 0;
 
     for(auto d : decode_sigs) {
         if (index == cur_index) {
-            decoder_stack = d->decoder();
+            decoder_stack = d;
             break;
         }
         cur_index++;
@@ -174,12 +176,12 @@ void ProtocolList::on_row_check(bool show)
     int index = id.toInt();
 
     pv::data::DecoderStack *decoder_stack = NULL;
-    const auto &decode_sigs = _session->get_decode_signals();
+    const auto &decode_sigs = _session->get_decoder_stacks();
     int cur_index = 0;
 
     for(auto d : decode_sigs) {
         if (cur_index == _protocol_combobox->currentIndex()) {
-            decoder_stack = d->decoder();
+            decoder_stack = d;
             break;
         }
         cur_index++;

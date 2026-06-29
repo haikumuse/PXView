@@ -22,20 +22,19 @@
 #include "logicsnapshot.h"
 #include "analogsnapshot.h"
 #include "dsosnapshot.h"
+#include "signalmodel.h"
+#include "lissajousmodel.h"
 
 class DeviceAgent;
 
 namespace pv {
 class TabContext;
-namespace view { class Signal; }
-namespace view { class DecodeTrace; }
-namespace view { class SpectrumTrace; }
-namespace view { class LissajousTrace; }
-namespace view { class MathTrace; }
 
 namespace data {
 
 class DecoderStack;
+class SpectrumStack;
+class MathStack;
 class DecoderModel;
 
 struct ChannelConfig {
@@ -98,21 +97,16 @@ public:
 
     void clear();
 
-    std::vector<DecoderStack*>& get_decoder_stacks();
+    std::vector<DecoderStack*>& get_decoder_stacks() override;
     void add_decoder_stack(DecoderStack *stack);
     void remove_decoder_stack(DecoderStack *stack);
     DecoderModel* get_decoder_model() override;
     void set_decoder_model(DecoderModel *model);
 
-    std::vector<view::DecodeTrace*>& get_decode_traces();
-    void add_decode_trace(view::DecodeTrace *trace);
-    void remove_decode_trace(view::DecodeTrace *trace);
-
-    std::vector<view::Signal*>& get_signals() override;
-    std::vector<view::DecodeTrace*>& get_decode_signals() override;
-    std::vector<view::SpectrumTrace*>& get_spectrum_traces() override;
-    view::LissajousTrace* get_lissajous_trace() override;
-    view::MathTrace* get_math_trace() override;
+    std::vector<SignalModel*>& get_signal_models() override;
+    std::vector<SpectrumStack*>& get_spectrum_stacks() override;
+    MathStack* get_math_stack() override;
+    LissajousModel* get_lissajous_model() override;
     uint64_t cur_snap_samplerate() override;
     uint64_t cur_samplelimits() override;
     double cur_sampletime() override;
@@ -151,9 +145,10 @@ private:
     uint64_t        _trigger_pos;
     std::vector<DecoderStack*> _decoder_stacks;
     DecoderModel    *_decoder_model;
-    std::vector<view::DecodeTrace*> _decode_traces;
-    std::vector<view::Signal*> _signals;
-    std::vector<view::SpectrumTrace*> _spectrum_traces;
+    std::vector<SignalModel*> _signal_models;
+    std::vector<SpectrumStack*> _spectrum_stacks;
+    MathStack       *_math_stack = nullptr;
+    LissajousModel  *_lissajous_model = nullptr;
     SignalConfig _signal_config;
     SignalConfig _pending_device_config;
 

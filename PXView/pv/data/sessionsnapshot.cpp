@@ -22,12 +22,13 @@
  */
 
 #include "sessionsnapshot.h"
-#include "../view/signal.h"
 #include "analogsnapshot.h"
 #include "decodermodel.h"
 #include "dsosnapshot.h"
 #include "logicsnapshot.h"
 #include "snapshot.h"
+#include "signalmodel.h"
+#include "lissajousmodel.h"
 
 #include <libsigrok.h>
 #include <stdlib.h>
@@ -37,35 +38,27 @@ namespace pv {
 namespace data {
 
 SessionSnapshot::SessionSnapshot()
-    : _samplerate(0), _samplelimits(0), _trig_pos(0), _lissajous_trace(NULL),
-      _math_trace(NULL), _decoder_model(NULL) {}
+    : _samplerate(0), _samplelimits(0), _trig_pos(0), _decoder_model(NULL) {}
 
-SessionSnapshot::~SessionSnapshot() {
-  for (auto sig : _signals) {
-    // Only delete copied signals (Logic/Analog), not referenced ones (DSO)
-    int type = sig->signal_type();
-    if (type == SR_CHANNEL_LOGIC || type == SR_CHANNEL_ANALOG) {
-      delete sig;
-    }
-  }
-  _signals.clear();
+SessionSnapshot::~SessionSnapshot() {}
+
+std::vector<SignalModel *> &SessionSnapshot::get_signal_models() {
+  return _signal_models;
 }
 
-std::vector<view::Signal *> &SessionSnapshot::get_signals() { return _signals; }
-
-std::vector<view::DecodeTrace *> &SessionSnapshot::get_decode_signals() {
-  return _decode_traces;
+std::vector<DecoderStack *> &SessionSnapshot::get_decoder_stacks() {
+  return _decoder_stacks;
 }
 
-std::vector<view::SpectrumTrace *> &SessionSnapshot::get_spectrum_traces() {
-  return _spectrum_traces;
+std::vector<SpectrumStack *> &SessionSnapshot::get_spectrum_stacks() {
+  return _spectrum_stacks;
 }
 
-view::LissajousTrace *SessionSnapshot::get_lissajous_trace() {
-  return _lissajous_trace;
-}
+MathStack *SessionSnapshot::get_math_stack() { return _math_stack; }
 
-view::MathTrace *SessionSnapshot::get_math_trace() { return _math_trace; }
+LissajousModel *SessionSnapshot::get_lissajous_model() {
+  return _lissajous_model;
+}
 
 uint64_t SessionSnapshot::cur_snap_samplerate() {
   if (_samplerate == 0)
