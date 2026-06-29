@@ -356,6 +356,27 @@ public:
    */
   void remove_decoder(int index);
 
+  /**
+   * Resets (re-opens options dialog + re-runs decode) a protocol decoder
+   * by its DecoderStack key handle.
+   *
+   * The View layer first looks up the DecodeTrace that wraps the given
+   * DecoderStack, then re-opens the DecoderOptionsDlg via
+   * DecodeTrace::create_popup(false). If the user cancels the dialog (no
+   * settings change), no reset is performed and the existing configuration
+   * is preserved. Otherwise the View forwards to Core's
+   * rst_decoder_by_key_handel() to clear and re-add the decode task.
+   *
+   * This restores the pre-de-view-ization behavior where SigSession called
+   * DecodeTrace::create_popup(false) directly; that call was removed because
+   * Core must not depend on Qt Widgets.
+   *
+   * @param handel The key handle of the DecoderStack to reset.
+   * @return true if the reset proceeded (user accepted the dialog),
+   *         false if the decoder was not found or the user cancelled.
+   */
+  bool rst_decoder_by_key_handel(void *handel);
+
   inline std::vector<Signal *> &get_own_signals() { return _own_signals; }
 
   /**

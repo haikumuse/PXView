@@ -786,14 +786,18 @@ bool DecodeTrace::create_popup(bool isnew) {
   int ret = false; // setting have changed flag
   bool bOpenDlg = true;
 
+  pxv_info("DecodeTrace: enter create_popup");
   while (bOpenDlg) {
     bOpenDlg = false;
     QWidget *top = AppControl::Instance()->GetTopWindow();
+    pxv_info("DecodeTrace: GetTopWindow returned %p", top);
     dialogs::DecoderOptionsDlg dlg(top);
     dlg.set_cursor_range(_decode_cursor1, _decode_cursor2);
     dlg.load_options(this);
 
+    pxv_info("DecodeTrace: before dlg.exec()");
     int dlg_ret = dlg.exec();
+    pxv_info("DecodeTrace: after dlg.exec(), ret=%d (Accepted=%d)", dlg_ret, QDialog::Accepted);
 
     if (QDialog::Accepted == dlg_ret) {
       dlg.apply_setting();
@@ -827,6 +831,7 @@ bool DecodeTrace::create_popup(bool isnew) {
     }
   }
 
+  pxv_info("DecodeTrace: exit create_popup, returning %d", ret);
   return ret;
 }
 
