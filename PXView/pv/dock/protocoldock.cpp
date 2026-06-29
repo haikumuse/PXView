@@ -1120,10 +1120,22 @@ void ProtocolDock::OnProtocolVisibilityChanged(void *handle) {
         if (!stack->stack().empty()) {
           auto root_dec = stack->stack().front();
           bool current_shown = root_dec->shown();
-          root_dec->show(!current_shown);
-          lay->SetVisibilityState(!current_shown);
+          bool new_shown = !current_shown;
+          root_dec->show(new_shown);
+          lay->SetVisibilityState(new_shown);
 
+          // Sync Trace::_visible so the View layer (layout, header) also
+          // hides/shows the decode track.  Without this, only Decoder::_shown
+          // is toggled, but signals_changed() / paint_label() check
+          // Trace::visible(), so the header and track space remain.
           if (_view) {
+            auto &traces = _view->get_own_decode_traces();
+            for (auto *dt : traces) {
+              if (dt && dt->decoder() == stack) {
+                dt->set_visible(new_shown);
+                break;
+              }
+            }
             _view->signals_changed(NULL);
           }
         }

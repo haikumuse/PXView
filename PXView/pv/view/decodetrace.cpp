@@ -154,7 +154,7 @@ DecodeTrace::~DecodeTrace() {
   _decoder_stack = nullptr;
 }
 
-bool DecodeTrace::enabled() { return true; }
+bool DecodeTrace::enabled() { return visible(); }
 
 void DecodeTrace::set_view(pv::view::View *view) {
   assert(view);

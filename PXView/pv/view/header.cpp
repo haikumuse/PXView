@@ -901,13 +901,16 @@ void Header::on_action_set_name_triggered() {
     if (v == "")
       v = QString::number(context_Trace->get_index());
 
-    // SigSession::set_trace_name now takes a SignalModel* (the Core layer
-    // signal state holder) instead of a view::Trace*. Look up the model by
-    // the trace's channel index so the name change is applied to the
-    // authoritative data holder.
+    // Update Core layer (SignalModel + sr_channel) via SigSession.
     auto model = _view.session().get_signal_by_index(context_Trace->get_index());
     if (model)
       _view.session().set_trace_name(model, v);
+
+    // Also update View layer (Trace::_name) so that gen_config_json()
+    // saves the correct name and the header repaints with the new name.
+    // Without this, only the Core model is updated but Trace::_name
+    // remains stale — the saved config file contains the old name.
+    context_Trace->set_name(v);
   }
 
   nameEdit->hide();

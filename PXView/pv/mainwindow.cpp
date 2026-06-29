@@ -133,11 +133,23 @@
 #include <QLabel>
 #include <QScrollArea>
 #include <QTabBar>
+#include <map>
 
 namespace pv {
 
 namespace {
 QString tmp_file;
+
+/** Build a channel-index → visibility map from the View's signal list. */
+std::map<int, bool> build_channel_visibility(pv::view::View *view) {
+  std::map<int, bool> vis;
+  if (view) {
+    for (auto *sig : view->get_own_signals()) {
+      vis[sig->get_index()] = sig->visible();
+    }
+  }
+  return vis;
+}
 }
 
 void MainWindow::MainWindowRibbonHelper() {
@@ -1709,26 +1721,25 @@ void MainWindow::load_channel_view_indexs(QJsonDocument &doc) {
   if (mode != LOGIC)
     return;
 
-  std::vector<int> view_indexs;
-
-  for (const QJsonValue &value : sessionObj["channel"].toArray()) {
-    QJsonObject obj = value.toObject();
-
-    if (obj.contains("view_index")) {
-      view_indexs.push_back(obj["view_index"].toInt());
+  // Match view_index by channel index, not by position.
+  // The JSON channel order may differ from the signal list order
+  // (e.g. after user drag-reordered channels), so sequential
+  // assignment would assign view_index values to wrong channels.
+  bool any_loaded = false;
+  for (auto s : current_view()->get_own_signals()) {
+    for (const QJsonValue &value : sessionObj["channel"].toArray()) {
+      QJsonObject obj = value.toObject();
+      if (s->get_index() == obj["index"].toInt() &&
+          obj.contains("view_index")) {
+        s->set_view_index(obj["view_index"].toInt());
+        any_loaded = true;
+        break;
+      }
     }
   }
 
-  if (view_indexs.size()) {
-    int i = 0;
-
-    for (auto s : current_view()->get_own_signals()) {
-      s->set_view_index(view_indexs[i]);
-      i++;
-    }
-
+  if (any_loaded)
     current_view()->update_all_trace_postion();
-  }
 }
 
 bool MainWindow::on_store_session(QString name) {
@@ -2391,7 +2402,8 @@ void MainWindow::on_frame_ended() {
     } else {
       pxv_info("MainWindow::on_frame_ended: Background copy is in progress, waiting for DSV_MSG_COPY_TO_DOC_DONE");
     }
-    ctx->document()->save_signal_config(_session->get_device());
+    ctx->document()->save_signal_config(_session->get_device(),
+                                        build_channel_visibility(current_view()));
     ctx->activate();
   }
   current_view()->receive_end();
@@ -2819,7 +2831,8 @@ void MainWindow::OnMessage(int msg) {
     {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
-        ctx->document()->save_signal_config(_session->get_device());
+        ctx->document()->save_signal_config(_session->get_device(),
+                                            build_channel_visibility(current_view()));
         current_view()->rebuild_signals();
         pxv_info("DSV_MSG_CURRENT_DEVICE_CHANGED: saved config and rebuilt "
                  "signals for current tab");
@@ -2888,7 +2901,8 @@ void MainWindow::OnMessage(int msg) {
 
     pv::TabContext *ctx = current_context();
     if (ctx && ctx->document()) {
-      ctx->document()->save_signal_config(_session->get_device());
+      ctx->document()->save_signal_config(_session->get_device(),
+                                          build_channel_visibility(current_view()));
     }
 
     current_view()->rebuild_signals();
@@ -2918,7 +2932,8 @@ void MainWindow::OnMessage(int msg) {
     {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
-        ctx->document()->save_signal_config(_session->get_device());
+        ctx->document()->save_signal_config(_session->get_device(),
+                                            build_channel_visibility(current_view()));
         current_view()->rebuild_signals();
         pxv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
                  "signals for current tab");

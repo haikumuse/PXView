@@ -197,6 +197,7 @@ QJsonObject SessionDocument::signal_config_to_json() const {
     QJsonObject ch_obj;
     ch_obj["index"] = ch.index;
     ch_obj["enabled"] = ch.enabled;
+    ch_obj["visible"] = ch.visible;
     ch_obj["vdiv"] = (qint64)ch.vdiv;
     ch_obj["coupling"] = ch.coupling;
     ch_obj["map_default"] = ch.map_default;
@@ -225,6 +226,8 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
       ChannelConfig cfg;
       cfg.index = ch_obj["index"].toInt();
       cfg.enabled = ch_obj["enabled"].toBool();
+      cfg.visible = ch_obj.contains("visible") ? ch_obj["visible"].toBool()
+                                               : cfg.enabled;
       cfg.vdiv = (uint64_t)ch_obj["vdiv"].toVariant().toULongLong();
       cfg.coupling = ch_obj["coupling"].toInt();
       cfg.map_default = ch_obj["map_default"].toBool();
@@ -241,7 +244,8 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
       _signal_config.work_mode, (int)_signal_config.channels.size());
 }
 
-void SessionDocument::save_signal_config(DeviceAgent *agent) {
+void SessionDocument::save_signal_config(DeviceAgent *agent,
+                                          const std::map<int, bool> &channel_visibility) {
   if (!agent || !agent->have_instance()) {
     pxv_info(
         "SessionDocument::save_signal_config() skip, agent=%p have_instance=%d",
@@ -271,6 +275,12 @@ void SessionDocument::save_signal_config(DeviceAgent *agent) {
     ChannelConfig cfg;
     cfg.index = (int)probe->index;
     cfg.enabled = probe->enabled;
+    // Preserve per-channel visibility from the View layer.
+    // Fall back to probe->enabled for channels not in the map
+    // (e.g. DSO channels where enabled == visible).
+    auto vis_it = channel_visibility.find(cfg.index);
+    cfg.visible = (vis_it != channel_visibility.end()) ? vis_it->second
+                                                       : probe->enabled;
     cfg.vdiv = 0;
     cfg.coupling = 0;
     cfg.map_default = true;
