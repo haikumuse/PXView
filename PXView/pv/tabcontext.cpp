@@ -117,7 +117,15 @@ void TabContext::deactivate()
 {
     pxv_info("TabContext::deactivate() doc=%p", _document);
     if (_document) {
-        _document->save_signal_config(_session->get_device());
+        // Collect per-channel visibility from the View layer so that
+        // save_signal_config can persist the user's hide/show state.
+        std::map<int, bool> channel_visibility;
+        if (_view) {
+            for (auto *sig : _view->get_own_signals()) {
+                channel_visibility[sig->get_index()] = sig->visible();
+            }
+        }
+        _document->save_signal_config(_session->get_device(), channel_visibility);
     }
     _state = HISTORICAL;
 }

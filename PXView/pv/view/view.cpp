@@ -2145,7 +2145,10 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 
     if (signal) {
       signal->set_enabled(ch.enabled);
-      signal->set_visible(ch.enabled);
+      // Use persisted visibility from SignalConfig (saved at deactivate time).
+      // For newly created channels not yet in the config, default visible
+      // to enabled.
+      signal->set_visible(ch.visible);
       // DSO/Analog signals use auto-calculated height, reset _ownHeight
       // to avoid inheriting a fixed height from Logic mode or zoom_vertical
       if (config.work_mode == DSO || config.work_mode == ANALOG) {
@@ -2574,6 +2577,12 @@ void View::sync_derived_traces() {
     }
     if (!exists) {
       auto *dt = new DecodeTrace(_session, stack, decode_index);
+      // Sync _visible from Decoder::_shown so that a decoder the user
+      // previously hid stays hidden after tab switch (sync_derived_traces
+      // is called lazily when the DecodeTrace list is accessed).
+      if (!stack->stack().empty() && !stack->stack().front()->shown()) {
+        dt->set_visible(false);
+      }
       _own_decode_traces.push_back(dt);
     }
     decode_index++;

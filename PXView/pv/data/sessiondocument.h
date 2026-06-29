@@ -40,6 +40,7 @@ class DecoderModel;
 struct ChannelConfig {
     int index;
     bool enabled;
+    bool visible;
     uint64_t vdiv;
     int coupling;
     bool map_default;
@@ -47,7 +48,7 @@ struct ChannelConfig {
     uint16_t offset;
     uint16_t zero_offset;
 
-    ChannelConfig() : index(0), enabled(false), vdiv(0), coupling(0),
+    ChannelConfig() : index(0), enabled(false), visible(true), vdiv(0), coupling(0),
                       map_default(true), hw_offset(0), offset(0), zero_offset(0) {}
 };
 
@@ -130,7 +131,8 @@ public:
 
     QJsonObject signal_config_to_json() const;
     void signal_config_from_json(const QJsonObject &obj);
-    void save_signal_config(DeviceAgent *agent);
+    void save_signal_config(DeviceAgent *agent,
+                            const std::map<int, bool> &channel_visibility = {});
     void apply_signal_config(DeviceAgent *agent);
     void apply_pending_config(DeviceAgent *agent);
     bool has_signal_config() const;
