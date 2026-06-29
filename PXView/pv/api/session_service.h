@@ -33,6 +33,10 @@ namespace pv {
 
 class SigSession;
 
+namespace data {
+class SessionDocument;
+} // namespace data
+
 } // namespace pv
 
 class DeviceAgent;
@@ -53,6 +57,13 @@ public:
     // Disable copy
     SessionService(const SessionService &) = delete;
     SessionService &operator=(const SessionService &) = delete;
+
+    // ---- MCP document injection ----
+    // Injects the dedicated document used as the stable target container for
+    // MCP operations. Decouples MCP from the UI's _active_document cursor so
+    // the same target is available in both headless and GUI modes. Ownership
+    // of *doc transfers to this SessionService; it is released on destruction.
+    void set_api_document(pv::data::SessionDocument *doc);
 
     // ---- ISessionService: 1. Capture control ----
     Result<void> start_capture(bool instant = false) override;
@@ -301,6 +312,13 @@ private:
     // Wait-state used by wait_capture_complete() in headless mode.
     mutable std::mutex _wait_mutex;
     std::condition_variable _wait_cv;
+
+    // MCP-dedicated document. Owned by this SessionService (created by
+    // AppService and injected via set_api_document()). Registered with
+    // SigSession::register_document() (non-owning) so that session-wide
+    // lookups still see it; released in the destructor via unregister +
+    // delete.
+    pv::data::SessionDocument *_api_document = nullptr;
 };
 
 } // namespace api

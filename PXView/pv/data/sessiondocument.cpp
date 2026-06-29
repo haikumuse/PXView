@@ -124,7 +124,9 @@ void SessionDocument::clear() {
   }
 }
 
-std::vector<DecoderStack *> &SessionDocument::get_decoder_stacks() {
+std::vector<DecoderStack *> &
+SessionDocument::get_decoder_stacks(SessionDocument *doc) {
+  (void)doc; // A SessionDocument always returns its own stacks.
   return _decoder_stacks;
 }
 

@@ -97,7 +97,8 @@ public:
 
     void clear();
 
-    std::vector<DecoderStack*>& get_decoder_stacks() override;
+    std::vector<DecoderStack*>& get_decoder_stacks(
+        SessionDocument *doc = nullptr) override;
     void add_decoder_stack(DecoderStack *stack);
     void remove_decoder_stack(DecoderStack *stack);
     DecoderModel* get_decoder_model() override;

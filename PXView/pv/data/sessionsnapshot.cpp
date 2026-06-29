@@ -46,7 +46,9 @@ std::vector<SignalModel *> &SessionSnapshot::get_signal_models() {
   return _signal_models;
 }
 
-std::vector<DecoderStack *> &SessionSnapshot::get_decoder_stacks() {
+std::vector<DecoderStack *> &
+SessionSnapshot::get_decoder_stacks(SessionDocument *doc) {
+  (void)doc; // A SessionSnapshot always returns its own stacks.
   return _decoder_stacks;
 }
 

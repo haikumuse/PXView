@@ -49,6 +49,7 @@ class LissajousModel;
 class DecoderStack;
 class SpectrumStack;
 class MathStack;
+class SessionDocument;
 
 class DataSource
 {
@@ -57,7 +58,8 @@ public:
 
     // ---- New v2 pure-data interface (no view::* types) ----
     virtual std::vector<SignalModel*>& get_signal_models() = 0;
-    virtual std::vector<DecoderStack*>& get_decoder_stacks() = 0;
+    virtual std::vector<DecoderStack*>& get_decoder_stacks(
+        SessionDocument *doc = nullptr) = 0;
     virtual std::vector<SpectrumStack*>& get_spectrum_stacks() = 0;
     virtual MathStack* get_math_stack() = 0;
     virtual LissajousModel* get_lissajous_model() = 0;

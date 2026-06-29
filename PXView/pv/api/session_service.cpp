@@ -28,6 +28,7 @@
 #include "../data/analogsnapshot.h"
 #include "../data/dsosnapshot.h"
 #include "../data/decoderstack.h"
+#include "../data/sessiondocument.h"
 #include "../data/mathstack.h"
 #include "../data/decode/decoder.h"
 #include "../data/decode/annotation.h"
@@ -200,6 +201,8 @@ inline Result<void> run_void_on_main_thread(
 SessionService::SessionService(SigSession *session, DeviceAgent *device)
     : _session(session), _device(device),
       _capture_id(0), _wait_capture_stop_flag(false) {
+    // _api_document defaults to nullptr via its in-class default initializer.
+    // It is later injected via set_api_document() by AppService.
     if (_session) {
         _session->add_callback(this);
         _session->add_msg_listener(this);
@@ -210,6 +213,33 @@ SessionService::~SessionService() {
     if (_session) {
         _session->remove_callback(this);
     }
+    // Release the MCP-dedicated document. register_document() is non-owning
+    // (SigSession::_all_documents only holds a raw pointer), so we must
+    // unregister it here to avoid dangling entries, then delete the object we
+    // own. This mirrors TabContext::~TabContext() which owns and deletes its
+    // own _document after the session has been told to unregister it.
+    if (_api_document) {
+        if (_session) {
+            _session->unregister_document(_api_document);
+        }
+        delete _api_document;
+        _api_document = nullptr;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// MCP document injection
+// ---------------------------------------------------------------------------
+
+void SessionService::set_api_document(pv::data::SessionDocument *doc) {
+    // If a previous document was injected, release it first to avoid leaks.
+    if (_api_document && _api_document != doc) {
+        if (_session) {
+            _session->unregister_document(_api_document);
+        }
+        delete _api_document;
+    }
+    _api_document = doc;
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +290,7 @@ Result<void> SessionService::start_capture(bool instant) {
         return Result<void>::Fail(ErrorCode::CaptureInProgress,
                                  "Capture already in progress");
 
-    bool ok = _session->start_capture(instant);
+    bool ok = _session->start_capture(instant, _api_document);
     if (!ok)
         return Result<void>::Fail(ErrorCode::DeviceError,
                                  "Failed to start capture");
@@ -843,7 +873,7 @@ Result<int> SessionService::configure_and_start(
     dbg_log("configure_and_start: step 8 - start capture");
 
     // 10. Start capture
-    bool ok = _session->start_capture(instant);
+    bool ok = _session->start_capture(instant, _api_document);
     if (!ok) {
         dbg_log("configure_and_start: start_capture FAILED");
         return Result<int>::Fail(ErrorCode::DeviceError,
@@ -2019,7 +2049,7 @@ std::vector<DecoderInstance> SessionService::get_active_decoders() const {
     if (!_session)
         return result;
 
-    auto &stacks = _session->get_decoder_stacks();
+    auto &stacks = _session->get_decoder_stacks(_api_document);
     for (size_t i = 0; i < stacks.size(); i++) {
         auto *stack = stacks[i];
         if (!stack)
@@ -2077,7 +2107,7 @@ Result<std::string> SessionService::add_decoder(
         auto do_stack = [this, dec, &options, &channel_map, &label, &stack_on_analyzer_id]() -> Result<std::string> {
             // Find the parent DecoderStack by converting the analyzer ID
             // (which is the string representation of the stack pointer)
-            auto &stacks = _session->get_decoder_stacks();
+            auto &stacks = _session->get_decoder_stacks(_api_document);
             data::DecoderStack *parent_stack = nullptr;
             for (auto *stack : stacks) {
                 if (!stack) continue;
@@ -2359,7 +2389,7 @@ Result<std::string> SessionService::add_decoder(
         dstatus->m_format = (int)DecoderDataFormat::hex;
 
         bool ok = _session->add_decoder(dec, true, dstatus, sub_decoders,
-                                        decoder_stack);
+                                        decoder_stack, _api_document);
 
         if (!ok)
             return Result<std::string>::Fail(ErrorCode::DecoderError,
@@ -2714,10 +2744,10 @@ Result<std::string> SessionService::add_decoder(
                         bool rm_done = false;
 
                         QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
-                            auto &stacks = _session->get_decoder_stacks();
+                            auto &stacks = _session->get_decoder_stacks(_api_document);
                             for (size_t i = 0; i < stacks.size(); i++) {
                                 if (stacks[i] == decoder_stack) {
-                                    _session->remove_decoder(static_cast<int>(i));
+                                    _session->remove_decoder(static_cast<int>(i), _api_document);
                                     break;
                                 }
                             }
@@ -2745,10 +2775,10 @@ Result<std::string> SessionService::add_decoder(
                         bool rm_done = false;
 
                         QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
-                            auto &stacks = _session->get_decoder_stacks();
+                            auto &stacks = _session->get_decoder_stacks(_api_document);
                             for (size_t i = 0; i < stacks.size(); i++) {
                                 if (stacks[i] == decoder_stack) {
-                                    _session->remove_decoder(static_cast<int>(i));
+                                    _session->remove_decoder(static_cast<int>(i), _api_document);
                                     break;
                                 }
                             }
@@ -2782,7 +2812,7 @@ Result<void> SessionService::remove_decoder(const std::string &instance_id) {
     // triggers signals, so it MUST run on the main thread.
 
     auto do_remove = [this, &instance_id]() -> Result<void> {
-        auto &stacks = _session->get_decoder_stacks();
+        auto &stacks = _session->get_decoder_stacks(_api_document);
         for (size_t i = 0; i < stacks.size(); i++) {
             auto *stack = stacks[i];
             if (!stack)
@@ -2791,7 +2821,7 @@ Result<void> SessionService::remove_decoder(const std::string &instance_id) {
             std::string tid =
                 std::to_string(reinterpret_cast<intptr_t>(stack));
             if (tid == instance_id) {
-                _session->remove_decoder(static_cast<int>(i));
+                _session->remove_decoder(static_cast<int>(i), _api_document);
 
                 broadcast_event(ServiceEvent::DecoderRemoved,
                                 {{"instance_id", instance_id}});
@@ -2832,7 +2862,7 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
             ErrorCode::InternalError, "Session is null");
 
     // Find the decoder stack by instance_id
-    auto &stacks = _session->get_decoder_stacks();
+    auto &stacks = _session->get_decoder_stacks(_api_document);
 
     // MCP debug
     {
@@ -3298,7 +3328,7 @@ Result<void> SessionService::export_decoder_table(
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    auto &stacks = _session->get_decoder_stacks();
+    auto &stacks = _session->get_decoder_stacks(_api_document);
     if (stacks.empty())
         return Result<void>::Fail(ErrorCode::NoData,
                                   "No active decoders");
@@ -3682,7 +3712,7 @@ void SessionService::data_updated() {
 
     // Check for decode progress and emit DecodeProgress events
     if (_session) {
-        auto &stacks = _session->get_decoder_stacks();
+        auto &stacks = _session->get_decoder_stacks(_api_document);
         for (auto *stack : stacks) {
             if (!stack) continue;
             if (stack->IsRunning()) {
