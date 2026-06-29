@@ -183,6 +183,42 @@ void WsTransport::on_service_event(const ServiceEventData& data)
         break;
     }
 
+    case ServiceEvent::SampleConfigChanged:
+        notification["method"] = "on_sample_config_changed";
+        params = params_map;
+        notification["params"] = params;
+        break;
+
+    case ServiceEvent::ChannelConfigChanged:
+        notification["method"] = "on_channel_config_changed";
+        params = params_map;
+        notification["params"] = params;
+        break;
+
+    case ServiceEvent::TriggerConfigChanged:
+        notification["method"] = "on_trigger_config_changed";
+        params = params_map;
+        notification["params"] = params;
+        break;
+
+    case ServiceEvent::LoadComplete:
+        notification["method"] = "on_load_complete";
+        params = params_map;
+        notification["params"] = params;
+        break;
+
+    case ServiceEvent::SaveComplete:
+        notification["method"] = "on_save_complete";
+        params = params_map;
+        notification["params"] = params;
+        break;
+
+    case ServiceEvent::ExportComplete:
+        notification["method"] = "on_export_complete";
+        params = params_map;
+        notification["params"] = params;
+        break;
+
     default:
         // Generic event notification
         notification["method"] = "on_event";

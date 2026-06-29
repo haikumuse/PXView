@@ -428,6 +428,11 @@ void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
 void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
   assert(samplelimits != 0);
   _capture_data->_cur_samplelimits = samplelimits;
+  // R1: symmetric to set_cur_snap_samplerate which fires
+  // cur_snap_samplerate_changed(); notify capture listeners that the
+  // sample limit changed.
+  dispatch_to<ICaptureCallback>(
+      [](ICaptureCallback *cb) { cb->cur_samplelimits_changed(); });
 }
 
 void SigSession::capture_init() {
@@ -1714,9 +1719,11 @@ void SigSession::rst_decoder(int index, data::SessionDocument *doc) {
     // TabContext::activate()) with NULL snapshot pointers. Re-attach _view_data
     // so do_decode_work() can find a valid snapshot via SignalModel::snapshot().
     // Same rationale as start_all_decode_tasks().
+    // Note: attach_data_to_signal now auto-fires data_updated() +
+    // signals_changed(), so the manual data_updated() that used to follow
+    // add_decode_task() has been removed to avoid a redundant notification.
     attach_data_to_signal(_view_data);
     add_decode_task(stack);
-    data_updated();
   }
 }
 
@@ -2245,12 +2252,14 @@ void SigSession::OnMessage(int msg) {
         // Move copy_data_to_document to a background thread
         // so the UI thread is not blocked by the deep copy.
         _copy_in_progress = true;
+        trigger_message(DSV_MSG_COPY_IN_PROGRESS_CHANGED);
         auto doc = _capture_owner_document ? _capture_owner_document
                                            : _active_document;
 
         std::thread([this, doc]() {
           copy_data_to_document(doc);
           _copy_in_progress = false;
+          trigger_message(DSV_MSG_COPY_IN_PROGRESS_CHANGED);
           trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
         }).detach();
       } else {
@@ -2513,6 +2522,9 @@ data::DsoSnapshot *SigSession::get_dso_snapshot() {
 
 void SigSession::set_active_document(data::SessionDocument *doc) {
   _active_document = doc;
+  // R1: notify listeners that the active document changed. trigger_message
+  // also broadcasts via broadcast_msg so Core/headless listeners are reached.
+  trigger_message(DSV_MSG_ACTIVE_DOCUMENT_CHANGED);
 }
 
 void SigSession::copy_data_to_document(data::SessionDocument *doc) {
@@ -2548,6 +2560,12 @@ void SigSession::attach_data_to_signal(SessionData *data) {
       break;
     }
   }
+
+  // R1: snapshot pointers changed, so notify listeners that the data view
+  // and the signal list need refreshing. Centralizing the notification here
+  // removes the need for callers to manually re-fire these callbacks.
+  data_updated();
+  signals_changed();
 }
 
 void SigSession::set_glitch_filter(
