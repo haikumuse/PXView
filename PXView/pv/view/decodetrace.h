@@ -128,8 +128,6 @@ public:
   /**
    * decode region
    **/
-  void frame_ended();
-
   int get_progress();
 
   void *get_key_handel();

@@ -425,6 +425,12 @@ public:
   bool is_signal_invert_active();
 
   void restart_decoders();
+  // Re-attaches _view_data snapshots to SignalModels (which may have been
+  // recreated by reload() with NULL pointers) and starts decode tasks on all
+  // decoder stacks. Centralizes the "start decoders after data is ready" logic
+  // so every code path (capture end, copy-to-doc done, signal invert, etc.)
+  // consistently ensures SignalModels have valid snapshot pointers.
+  void start_all_decode_tasks();
 
   size_t get_disk_write_queue_depth();
   double get_disk_write_speed_mbps();

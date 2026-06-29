@@ -341,8 +341,6 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 }
 
 void LogicSnapshot::append_payload(const sr_datafeed_logic &logic) {
-  if (logic.length == 0 || logic.data == nullptr) return;
-  
   AsyncPayload payload;
   payload.format = logic.format;
   payload.data = std::vector<uint8_t>((uint8_t*)logic.data, (uint8_t*)logic.data + logic.length);

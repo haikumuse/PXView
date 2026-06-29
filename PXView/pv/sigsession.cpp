@@ -1026,6 +1026,11 @@ void SigSession::init_signals() {
   lissajous_disable();
   math_disable();
 
+  // Notify View layer to rebuild signals from the new SignalModels.
+  // Without this, LogicSignals keep stale model pointers (old models were
+  // deleted above) and never receive property-change notifications.
+  signals_changed();
+
   if (_signal_models.empty()) {
     pxv_info("ERROR: Unable to create any channel.");
   }
@@ -1685,6 +1690,11 @@ void SigSession::rst_decoder(int index) {
   if (stack) {
     remove_decode_task(stack); // remove old task
     stack->clear();
+    // SignalModels may have been recreated by reload() (e.g. during
+    // TabContext::activate()) with NULL snapshot pointers. Re-attach _view_data
+    // so do_decode_work() can find a valid snapshot via SignalModel::snapshot().
+    // Same rationale as start_all_decode_tasks().
+    attach_data_to_signal(_view_data);
     add_decode_task(stack);
     data_updated();
   }
@@ -2224,11 +2234,7 @@ void SigSession::OnMessage(int msg) {
         // read their snapshots from _view_data via get_signal_models(), so
         // they don't need a SessionDocument to be set up.
         _capture_owner_document = nullptr;
-        for (auto stack : decode_traces()) {
-          stack->set_capture_end_flag(true);
-          stack->frame_ended();
-          add_decode_task(stack);
-        }
+        start_all_decode_tasks();
       }
 
       frame_ended();
@@ -2242,11 +2248,7 @@ void SigSession::OnMessage(int msg) {
     // Background copy_data_to_document has completed.
     // NOW we can safely start the decoders!
     _capture_owner_document = nullptr;
-    for (auto stack : decode_traces()) {
-      stack->set_capture_end_flag(true);
-      stack->frame_ended();
-      add_decode_task(stack);
-    }
+    start_all_decode_tasks();
     pxv_info("Background copy_data_to_document completed. Decoders started.");
   } break;
 
@@ -2755,7 +2757,16 @@ void SigSession::restart_decoders() {
     copy_data_to_document(_active_document);
   }
 
-  // Restart all decoders
+  start_all_decode_tasks();
+}
+
+void SigSession::start_all_decode_tasks() {
+  // SignalModels may have been recreated (e.g. by reload() during
+  // TabContext::activate()) with NULL snapshot pointers. Re-attach _view_data
+  // so do_decode_work() can find a valid snapshot via SignalModel::snapshot().
+  // Without this, decoders fail with "没有设置需要解码哪些通道的数据".
+  attach_data_to_signal(_view_data);
+
   for (auto stack : decode_traces()) {
     stack->set_capture_end_flag(true);
     stack->frame_ended();

@@ -1401,9 +1401,11 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
 
     int dec_index = -1;
     
+    pxv_info("StoreSession::load_decoders: starting to process %d decoders", dec_array.size());
     for (const QJsonValue &dec_value : dec_array)
     {
         QJsonObject dec_obj = dec_value.toObject();
+        pxv_info("StoreSession::load_decoders: processing decoder %s", dec_obj["id"].toString().toStdString().c_str());
         std::vector<pv::data::DecoderStack*> &pre_dsigs = _session->get_decoder_stacks();
         std::list<pv::data::decode::Decoder*> sub_decoders;
 
@@ -1454,12 +1456,14 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
         std::list<int> bind_indexs;
 
         std::vector<pv::data::DecoderStack*> &aft_dsigs = _session->get_decoder_stacks();
+        pxv_info("StoreSession::load_decoders: pre_dsigs.size()=%d, aft_dsigs.size()=%d", (int)pre_dsigs.size(), (int)aft_dsigs.size());
 
         if (aft_dsigs.size() >= pre_dsigs.size()) {
             const GSList *l;
 
             auto new_dsig = aft_dsigs.back();
             auto stack = new_dsig;
+            pxv_info("StoreSession::load_decoders: new_dsig=%p", new_dsig);
 
             auto &decoder_list = stack->stack();
 
@@ -1473,12 +1477,14 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
                     // Load the mandatory channels
                     for(l = d->channels; l; l = l->next) {
                         const struct srd_channel *const pdch = (struct srd_channel *)l->data;
+                        pxv_info("StoreSession::load_decoders: checking mandatory channel '%s'", pdch->id);
 
                         for (const QJsonValue &value : dec_obj["channel"].toArray()) {
                             QJsonObject ch_obj = value.toObject();
                             if (ch_obj.contains(pdch->id)) {
                                 int bind_chan = ch_obj[pdch->id].toInt();
                                 probe_map[pdch] = bind_chan;
+                                pxv_info("StoreSession::load_decoders: mapped mandatory channel '%s' to bind_chan %d", pdch->id, bind_chan);
 
                                 auto fd_it = find(bind_indexs.begin(), bind_indexs.end(), bind_chan);
                                 if (fd_it == bind_indexs.end())
@@ -1491,12 +1497,14 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
                     // Load the optional channels
                     for(l = d->opt_channels; l; l = l->next) {
                         const struct srd_channel *const pdch = (struct srd_channel *)l->data;
+                        pxv_info("StoreSession::load_decoders: checking optional channel '%s'", pdch->id);
 
                         for (const QJsonValue &value : dec_obj["channel"].toArray()) {
                             QJsonObject ch_obj = value.toObject();
                             if (ch_obj.contains(pdch->id)) {
                                 int bind_chan = ch_obj[pdch->id].toInt();
                                 probe_map[pdch] = bind_chan;
+                                pxv_info("StoreSession::load_decoders: mapped optional channel '%s' to bind_chan %d", pdch->id, bind_chan);
 
                                 auto fd_it = find(bind_indexs.begin(), bind_indexs.end(), bind_chan);
                                 if (fd_it == bind_indexs.end())
@@ -1505,6 +1513,7 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
                             }
                         }
                     }
+                    pxv_info("StoreSession::load_decoders: setting %d probes on decoder", (int)probe_map.size());
                     dec->set_probes(probe_map);
                     options_obj = dec_obj["options"].toObject();
                 }

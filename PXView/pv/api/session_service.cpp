@@ -563,16 +563,21 @@ Result<int> SessionService::configure_and_start(
         // won't overwrite our settings with ds_trigger_reset() at capture start.
         _session->set_trigger_preconfigured(true);
 
-        // Map trigger_type to ds_trigger_probe_set values
+        // Map trigger_type to ds_trigger_probe_set values and SignalModel types
         // (following LogicSignal::commit_trig() pattern)
+        int model_trig = pv::data::SignalModel::EDGTRIG;
         if (trigger_type == "rising") {
             ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'R', 'X');
+            model_trig = pv::data::SignalModel::POSTRIG;
         } else if (trigger_type == "falling") {
             ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'F', 'X');
+            model_trig = pv::data::SignalModel::NEGTRIG;
         } else if (trigger_type == "pulse_high") {
             ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), '1', 'X');
+            model_trig = pv::data::SignalModel::HIGTRIG;
         } else if (trigger_type == "pulse_low") {
             ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), '0', 'X');
+            model_trig = pv::data::SignalModel::LOWTRIG;
         } else {
             // Default to edge trigger
             ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'C', 'X');
@@ -584,6 +589,30 @@ Result<int> SessionService::configure_and_start(
                 ds_trigger_probe_set(static_cast<uint16_t>(lc.first), '1', 'X');
             } else if (lc.second == "low") {
                 ds_trigger_probe_set(static_cast<uint16_t>(lc.first), '0', 'X');
+            }
+        }
+
+        // Update SignalModels so the UI renders the trigger
+        for (auto *model : _session->get_signal_models()) {
+            if (model->type() != api::ChannelType::Logic)
+                continue;
+                
+            if (model->index() == trigger_channel_index) {
+                pxv_info("API start_capture: MATCHED index %d, setting to %d", model->index(), model_trig);
+                model->set_trig_type(model_trig);
+            } else {
+                bool is_linked = false;
+                for (const auto &lc : linked_channels) {
+                    if (lc.first == model->index()) {
+                        is_linked = true;
+                        if (lc.second == "high") model->set_trig_type(pv::data::SignalModel::HIGTRIG);
+                        else if (lc.second == "low") model->set_trig_type(pv::data::SignalModel::LOWTRIG);
+                        break;
+                    }
+                }
+                if (!is_linked) {
+                    model->set_trig_type(pv::data::SignalModel::NONTRIG);
+                }
             }
         }
 
@@ -617,44 +646,55 @@ Result<int> SessionService::configure_and_start(
         ds_trigger_set_en(0);
     }
 
-    // 2c. Sync trigger state to SignalModel (header trigger icons)
-    // This ensures the per-channel trigger state stored on SignalModel
-    // reflects the MCP-configured trigger, not just the ds_trigger API state.
-    if (trigger_channel_index >= 0) {
-        auto &sigs = _session->get_signal_models();
-        for (auto *m : sigs) {
-            if (!m || m->type() != ChannelType::Logic)
-                continue;
-
-            if (m->index() == trigger_channel_index) {
-                int trig_type = data::SignalModel::NONTRIG;
-                if (trigger_type == "rising") trig_type = data::SignalModel::POSTRIG;
-                else if (trigger_type == "falling") trig_type = data::SignalModel::NEGTRIG;
-                else if (trigger_type == "pulse_high") trig_type = data::SignalModel::HIGTRIG;
-                else if (trigger_type == "pulse_low") trig_type = data::SignalModel::LOWTRIG;
-                else trig_type = data::SignalModel::EDGTRIG;
-                m->set_trig_type(trig_type);
-            }
-
-            // Also sync linked channels
-            for (const auto &lc : linked_channels) {
-                if (m->index() == lc.first) {
-                    int trig_type = (lc.second == "high") ?
-                        data::SignalModel::HIGTRIG : data::SignalModel::LOWTRIG;
-                    m->set_trig_type(trig_type);
-                }
-            }
-        }
-    }
-
     // 2. Rebuild signal list to reflect the new channel enable/disable state.
     // This is critical: action_start_capture() checks _signals.empty() and
     // the signal list must match the currently enabled channels.
     // init_signals() also clears view data and updates sample rate/limit.
     _session->init_signals();
 
+    // 2c. Sync trigger state to SignalModel (header trigger icons)
+    // MUST be done after init_signals() (which recreates models) but BEFORE
+    // processEvents() (which lets the View rebuild LogicSignals from the new
+    // models). This way the View reads the correct trig_type during rebuild
+    // and the SignalModel signal/slot connection is established with the
+    // already-correct value.
+    if (trigger_channel_index >= 0) {
+        auto &sigs = _session->get_signal_models();
+        for (auto *m : sigs) {
+            if (!m || m->type() != api::ChannelType::Logic)
+                continue;
+
+            if (m->index() == trigger_channel_index) {
+                int trig_type = pv::data::SignalModel::NONTRIG;
+                if (trigger_type == "rising") trig_type = pv::data::SignalModel::POSTRIG;
+                else if (trigger_type == "falling") trig_type = pv::data::SignalModel::NEGTRIG;
+                else if (trigger_type == "pulse_high") trig_type = pv::data::SignalModel::HIGTRIG;
+                else if (trigger_type == "pulse_low") trig_type = pv::data::SignalModel::LOWTRIG;
+                else trig_type = pv::data::SignalModel::EDGTRIG;
+
+                m->set_trig_type(trig_type);
+            } else {
+                bool is_linked = false;
+                for (const auto &lc : linked_channels) {
+                    if (m->index() == lc.first) {
+                        is_linked = true;
+                        int trig_type = (lc.second == "high") ?
+                            pv::data::SignalModel::HIGTRIG : pv::data::SignalModel::LOWTRIG;
+                        m->set_trig_type(trig_type);
+                        break;
+                    }
+                }
+                if (!is_linked) {
+                    m->set_trig_type(pv::data::SignalModel::NONTRIG);
+                }
+            }
+        }
+    }
+
     // Let the UI process the signals_changed event triggered by init_signals().
-    // In headless mode there is no UI to update; skip processEvents().
+    // The View rebuilds LogicSignals from the new SignalModels (which now have
+    // the correct trig_type set above). In headless mode there is no UI to
+    // update; skip processEvents().
     if (is_gui_mode()) QCoreApplication::processEvents();
 
     dbg_log("configure_and_start: step 3 - set sample rate");

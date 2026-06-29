@@ -756,27 +756,6 @@ QRectF DecodeTrace::get_rect(DecodeSetRegions type, int y, int right) {
     return QRectF(0, 0, 0, 0);
 }
 
-void DecodeTrace::frame_ended() {
-  const uint64_t last_samples = _session->cur_samplelimits() - 1;
-
-  if (_decode_start > last_samples) {
-    _decode_start = 0;
-    _decode_cursor1 = 0;
-  }
-
-  if (_decode_cursor2 == 0 || _decode_end > last_samples) {
-    _decode_end = last_samples;
-    _decode_cursor2 = 0;
-  }
-
-  decoder()->frame_ended();
-
-  for (auto dec : _decoder_stack->stack()) {
-    dec->set_decode_region(_decode_start, _decode_end);
-    dec->commit();
-  }
-}
-
 void *DecodeTrace::get_key_handel() { return _decoder_stack->get_key_handel(); }
 
 // to show decoder's property setting dialog
