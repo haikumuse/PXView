@@ -26,13 +26,16 @@
 #include <string>
 
 #include <libsigrok.h>
+#include <QObject>
 #include "pv/api/types.h"
 
 namespace pv {
 namespace data {
 
-class SignalModel
+class SignalModel : public QObject
 {
+    Q_OBJECT
+
 public:
     enum LogicTrigType {
         NONTRIG = 0,
@@ -47,8 +50,7 @@ public:
     SignalModel();
     ~SignalModel();
 
-    SignalModel(const SignalModel &o) = default;
-    SignalModel &operator=(const SignalModel &o) = default;
+    // QObject disables copy; SignalModel is managed by pointer (new/delete).
 
     // ---- Channel identity ----
     inline int index() const { return _index; }
@@ -109,6 +111,11 @@ public:
     // ---- Snapshot association ----
     inline void *snapshot() const { return _snapshot; }
     void set_snapshot(void *snapshot);
+
+signals:
+    /// Emitted when set_trig_type() changes the trigger type.
+    /// View layer LogicSignal connects to this to auto-sync its local _trig copy.
+    void trig_type_changed(int trig_type);
 
 private:
     int                 _index;

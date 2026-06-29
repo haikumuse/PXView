@@ -2345,7 +2345,13 @@ void MainWindow::signals_changed() {
   _event.signals_changed(); // safe call
 }
 
-void MainWindow::on_signals_changed() { current_view()->signals_changed(NULL); }
+void MainWindow::on_signals_changed() {
+  // Rebuild View signals from current SignalModels (SignalFactory::update_signals
+  // with AllReplaced preserves UI state), then refresh layout. This ensures
+  // LogicSignals pick up new SignalModel pointers and Qt signal/slot connections
+  // are re-established after init_signals()/reload() recreates models.
+  current_view()->on_signals_changed();
+}
 
 void MainWindow::receive_trigger(quint64 trigger_pos) {
   _event.receive_trigger(trigger_pos); // save call
@@ -2373,9 +2379,17 @@ void MainWindow::on_frame_ended() {
     // - If a background copy is already running, skip to avoid double copy;
     //   DSV_MSG_COPY_TO_DOC_DONE will handle reactivation later.
     if (_session->get_active_document() != ctx->document()) {
+      pxv_info("MainWindow::on_frame_ended: Synchronous copy_data_to_document (not active doc)");
       _session->copy_data_to_document(ctx->document());
+      // TEST FIX FOR HYPOTHESIS 1: Manually trigger decoders after synchronous copy
+      _session->start_all_decode_tasks();
     } else if (!_session->is_copy_in_progress()) {
+      pxv_info("MainWindow::on_frame_ended: Synchronous copy_data_to_document (no bg copy in progress)");
       _session->copy_data_to_document(ctx->document());
+      // TEST FIX FOR HYPOTHESIS 1: Manually trigger decoders after synchronous copy
+      _session->start_all_decode_tasks();
+    } else {
+      pxv_info("MainWindow::on_frame_ended: Background copy is in progress, waiting for DSV_MSG_COPY_TO_DOC_DONE");
     }
     ctx->document()->save_signal_config(_session->get_device());
     ctx->activate();

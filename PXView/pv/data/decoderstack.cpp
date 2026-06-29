@@ -425,10 +425,13 @@ void DecoderStack::do_decode_work() {
 
   for (auto dec : _stack) {
     if (dec->have_probes()) {
+      pxv_info("DecoderStack::do_decode_work: decoder %p has probes, first_probe_index=%d", dec, dec->first_probe_index());
       for (auto m : _session->get_signal_models()) {
+        pxv_info("DecoderStack::do_decode_work: checking model index=%d, type=%d, snapshot=%p", m->index(), m->type(), m->snapshot());
         if (m->index() == dec->first_probe_index() &&
             m->type() == pv::api::ChannelType::Logic) {
           _snapshot = (pv::data::LogicSnapshot*)m->snapshot();
+          pxv_info("DecoderStack::do_decode_work: found matching model! _snapshot=%p", _snapshot);
           if (_snapshot != NULL)
             break;
         }
@@ -696,7 +699,17 @@ void DecoderStack::execute_decode_stack() {
         dec_end = _sample_count - 1;
       decode_end = min(dec_end, _sample_count - 1);
     } else {
-      decode_end = max(dec->decode_end(), decode_end);
+      // In realtime refresh mode (stream/single mode, e.g. demo/file devices),
+      // data arrives incrementally. If decode_end is 0 (meaning "decode to end"),
+      // use UINT64_MAX so the decode loop waits for data and is bounded by
+      // _is_capture_end check in decode_data() (which sets end_index to
+      // align_sample_count - 1 when capture ends).
+      // Without this, decode_end stays 0 and the decode loop never executes,
+      // causing "send to decoder times: 0" and no decode results.
+      uint64_t dec_end = dec->decode_end();
+      if (dec_end == 0)
+        dec_end = UINT64_MAX;
+      decode_end = max(dec_end, decode_end);
     }
   }
 
@@ -798,7 +811,30 @@ void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
     d->_no_memory = true;
 }
 
-void DecoderStack::frame_ended() { _options_changed = true; }
+void DecoderStack::frame_ended() {
+  _options_changed = true;
+
+  if (_session) {
+    const uint64_t last_samples = _session->cur_samplelimits() > 0 
+                                      ? _session->cur_samplelimits() - 1 
+                                      : 0;
+
+    for (auto dec : _stack) {
+      uint64_t start = dec->decode_start();
+      uint64_t end = dec->decode_end();
+
+      if (start > last_samples) {
+        start = 0;
+      }
+
+      if (end == 0 || end > last_samples) {
+        end = last_samples;
+      }
+
+      dec->set_decode_region(start, end);
+    }
+  }
+}
 
 int DecoderStack::list_rows_size() {
   int rows_size = 0;

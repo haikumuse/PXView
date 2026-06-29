@@ -2202,6 +2202,8 @@ void View::rebuild_signals() {
     }
     if (config.channels.size() == (size_t)device_ch_count) {
       rebuild_signals_from_config(config);
+      SignalFactory::update_signals(_own_signals, _session, _session, SignalFactory::Modified);
+      update();
       return;
     }
   }

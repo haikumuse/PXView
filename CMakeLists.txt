@@ -500,6 +500,7 @@ set(PXView_HEADERS
     PXView/pv/data/spectrumstack.h
     PXView/pv/data/decodermodel.h
     PXView/pv/data/datasource.h
+    PXView/pv/data/signalmodel.h
     PXView/pv/data/sessionsnapshot.h
     PXView/pv/data/sessiondocument.h
     PXView/pv/dialogs/mathoptions.h

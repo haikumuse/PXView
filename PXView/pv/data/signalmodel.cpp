@@ -57,7 +57,12 @@ void SignalModel::set_vdiv(double vdiv) { _vdiv = vdiv; }
 void SignalModel::set_coupling(int coupling) { _coupling = coupling; }
 void SignalModel::set_vfactor(double vfactor) { _vfactor = vfactor; }
 void SignalModel::set_map_default(bool map_default) { _map_default = map_default; }
-void SignalModel::set_trig_type(int trig_type) { _trig_type = trig_type; }
+void SignalModel::set_trig_type(int trig_type) {
+    if (_trig_type != trig_type) {
+        _trig_type = trig_type;
+        emit trig_type_changed(_trig_type);
+    }
+}
 
 bool SignalModel::commit_trig()
 {

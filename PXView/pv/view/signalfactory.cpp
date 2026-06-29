@@ -83,6 +83,18 @@ static void apply_model_properties(Signal *signal, data::SignalModel *model)
 
     signal->set_enabled(model->enabled());
     signal->set_visible(model->enabled());
+
+    if (auto *logic_sig = dynamic_cast<LogicSignal*>(signal)) {
+        logic_sig->set_trig(model->trig_type());
+        // Establish live sync: subsequent SignalModel::set_trig_type() calls
+        // will auto-update this LogicSignal's _trig via Qt signal/slot.
+        // UniqueConnection prevents duplicate connections when apply_model_properties
+        // is called again (e.g. via update_signals(Modified)).
+        // Connection is auto-disconnected when either object is destroyed.
+        QObject::connect(model, &data::SignalModel::trig_type_changed,
+                         logic_sig, &LogicSignal::set_trig,
+                         Qt::UniqueConnection);
+    }
 }
 
 Signal* SignalFactory::create_signal(data::SignalModel *model, SigSession *session)
