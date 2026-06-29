@@ -493,11 +493,13 @@ bool ProtocolDock::add_protocol_by_id(
   // Route through the View layer so the View can create its own DecodeTrace
   // wrapper for the newly created DecoderStack. The View internally calls
   // Core (SigSession::add_decoder) to create the stack, then creates the
-  // matching DecodeTrace and refreshes the layout.
+  pxv_info("ProtocolDock: calling _view->add_decoder for %s, silent=%d", id.toUtf8().data(), silent);
   if (_view->add_decoder(decoder, silent, dstatus, sub_decoders, stack) ==
       false) {
+    pxv_info("ProtocolDock: _view->add_decoder returned false");
     return false;
   }
+  pxv_info("ProtocolDock: _view->add_decoder returned true");
 
   // create item layer
   ProtocolItemLayer *layer =
@@ -1072,7 +1074,13 @@ void ProtocolDock::OnProtocolSetting(void *handle) {
        it++) {
     if ((*it) == handle) {
       void *key_handel = (*it)->get_protocol_key_handel();
-      _session->rst_decoder_by_key_handel(key_handel);
+      // Route through the View layer so the DecoderOptionsDlg is shown
+      // (View owns the DecodeTrace; Core cannot show Qt dialogs). If the
+      // user cancels the dialog, no reset happens. Previously this called
+      // _session->rst_decoder_by_key_handel() directly, which never showed
+      // the dialog after de-view-ization (create_popup was moved out of
+      // Core but never re-added in the View layer).
+      _view->rst_decoder_by_key_handel(key_handel);
       protocol_updated();
       break;
     }

@@ -1565,8 +1565,12 @@ bool SigSession::add_decoder(
 
     sub_decoders.clear();
 
-    // create_popup was a view::DecodeTrace UI method, removed during de-view-ization.
-    // The View layer (Task 9/10) will handle decoder option popups.
+    // The decoder options dialog (DecodeTrace::create_popup) is now shown
+    // by the View layer (View::add_decoder) after Core returns the newly
+    // created DecoderStack. Core never touches Qt Widgets, so it always
+    // reports success here regardless of `silent`. The `silent` parameter
+    // is kept for API compatibility but no longer triggers automatic
+    // decode-task startup here (see the NOTE below).
     ret = true;
 
     if (ret) {
@@ -1577,11 +1581,25 @@ bool SigSession::add_decoder(
       }
       decoder_stack->set_owner_document(_active_document);
 
-      // add decode task from ui
-      if (!silent && have_view_data()) {
-        add_decode_task(decoder_stack);
-      }
-
+      // NOTE: Starting the decode task here is intentionally avoided.
+      // Previously this called `add_decode_task(decoder_stack)` when
+      // (!silent && have_view_data()). However, after de-view-ization the
+      // decoder options dialog (DecodeTrace::create_popup) is shown by
+      // the View layer AFTER this method returns, so the user has not yet
+      // had a chance to configure channel mappings when we would start the
+      // decode thread. The decode thread would then run with empty probes
+      // and bail out with "required channels have not been specified".
+      //
+      // Callers are responsible for starting the decode task at the right
+      // time:
+      //   - UI path (View::add_decoder): after create_popup() returns true
+      //     (user accepted the dialog and configured channels).
+      //   - MCP path (SessionService::add_decoder): via
+      //     QTimer::singleShot(0, ...) after do_add() returns to avoid
+      //     Qt signal races during rebuild_decoder_pannel().
+      //   - Capture pipeline: when DSV_MSG_COPY_TO_DOC_DONE fires and the
+      //     stack was added before capture, frame_ended() + add_decode_task()
+      //     is invoked by the message handler.
       data_updated();
 
       out_stack = decoder_stack;
@@ -1656,12 +1674,12 @@ void SigSession::remove_decoder_by_key_handel(void *handel) {
 }
 
 void SigSession::rst_decoder(int index) {
-  // TODO: Previously this called view::DecodeTrace::create_popup(false) to
-  // re-open the decoder options dialog. After de-view-ization, SigSession
-  // does not own view::DecodeTrace instances, so the popup must be triggered
-  // by the View layer. The reset/clear/re-add decode task logic below runs
-  // unconditionally; the View layer can hook into rst_decoder_by_key_handel
-  // to handle the UI popup separately.
+  // The decoder options dialog (DecodeTrace::create_popup(false)) is now
+  // shown by the View layer (View::rst_decoder_by_key_handel) BEFORE this
+  // function is called. If the user cancels the dialog, View does not
+  // forward to Core at all, so this reset path only runs when the user has
+  // already accepted new settings. Core then just clears the existing
+  // decode task and re-adds it.
   auto stack = get_decoder_trace(index);
 
   if (stack) {

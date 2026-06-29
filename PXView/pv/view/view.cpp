@@ -2273,18 +2273,90 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   //    the pattern in sync_derived_traces().
   int decode_index = (int)_own_decode_traces.size();
   auto *trace = new DecodeTrace(_session, out_stack, decode_index);
+
+  // 3. If silent is false, show the decoder options dialog so the user can
+  //    configure channel mappings, decode range, etc. This was previously
+  //    done inside SigSession::add_decoder() via DecodeTrace::create_popup();
+  //    it was moved here during de-view-ization because Core must not depend
+  //    on Qt Widgets. If the user cancels (or fails to set required probes),
+  //    roll back: delete the DecodeTrace and ask Core to delete the
+  //    DecoderStack so we don't leave an unconfigured decoder around.
+  pxv_info("View: before create_popup(true), silent=%d", silent);
+  if (!silent) {
+    bool settings_changed = trace->create_popup(true);
+    pxv_info("View: create_popup returned %d", settings_changed);
+    if (!settings_changed) {
+      delete trace;
+      void *key = out_stack->get_key_handel();
+      _session->remove_decoder_by_key_handel(key);
+      out_stack = nullptr;
+      pxv_info("View: rollback complete, returning false");
+      return false;
+    }
+  }
+
   _own_decode_traces.push_back(trace);
 
-  // 3. Mark derived traces NOT dirty since we just synced the DecodeTrace
+  // 4. Mark derived traces NOT dirty since we just synced the DecodeTrace
   //    list manually. This prevents sync_derived_traces() from recreating
   //    the DecodeTrace we just added.
   _derived_traces_dirty = false;
 
-  // 4. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
+  // 5. Start the decode task now that the user has configured channels via
+  //    create_popup() (or this is the silent/MCP path where channels were
+  //    pre-configured by the caller). Core no longer auto-starts the decode
+  //    task from inside SigSession::add_decoder() — that was a timing bug
+  //    because the dialog had not been shown yet, so the decode thread ran
+  //    with empty probes. If there is no view data yet (decoder added before
+  //    capture), the capture pipeline will start the decode for us via
+  //    DSV_MSG_COPY_TO_DOC_DONE → frame_ended() + add_decode_task().
+  if (!silent && _session->have_view_data()) {
+    _session->add_decode_task(out_stack);
+  }
+
+  // 6. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
   //    at the top, but since the DecodeTrace list is already in sync, the
   //    subsequent sync_derived_traces() will be a no-op for decoders.
   signals_changed(NULL);
 
+  return true;
+}
+
+bool View::rst_decoder_by_key_handel(void *handel) {
+  if (!_session || !handel)
+    return false;
+
+  // Find the View-owned DecodeTrace that wraps this DecoderStack.
+  auto find_trace = [&]() -> DecodeTrace * {
+    for (auto *trace : _own_decode_traces) {
+      if (trace && trace->decoder() &&
+          trace->decoder()->get_key_handel() == handel)
+        return trace;
+    }
+    return nullptr;
+  };
+
+  DecodeTrace *target = find_trace();
+
+  // Fall back to lazy sync if not found (the list might be dirty).
+  if (!target) {
+    sync_derived_traces();
+    target = find_trace();
+  }
+
+  if (!target)
+    return false;
+
+  // Re-open the options dialog. If the user cancels (no settings change),
+  // do NOT reset the decoder — keep the existing configuration. This
+  // restores the pre-de-view-ization behavior where SigSession bailed out
+  // of rst_decoder() when create_popup() returned false.
+  bool settings_changed = target->create_popup(false);
+  if (!settings_changed)
+    return false;
+
+  // Forward to Core to clear the existing decode task and re-add it.
+  _session->rst_decoder_by_key_handel(handel);
   return true;
 }
 
