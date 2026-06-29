@@ -71,7 +71,12 @@ void TabContext::activate()
         _session->is_working());
     fflush(stderr);
 
-    _session->set_active_document(_document);
+    // R6: 工作中（采集/copy 进行中）跳过 set_active_document，避免覆盖
+    // capture_owner_document 导致数据归属错乱。END_COLLECT_WORK 时由
+    // MainWindow 显式调用 set_active_document 恢复当前 tab 归属。
+    if (!_session->is_working()) {
+        _session->set_active_document(_document);
+    }
     _state = LIVE;
     if (_document && _document->has_signal_config()) {
         if (!_session->is_working()) {
@@ -80,6 +85,19 @@ void TabContext::activate()
                 (int)_document->get_signal_config().channels.size());
             _document->apply_signal_config(_session->get_device());
             _session->reload();
+            // R2: reload 重建 SignalModel 后，从 _signal_config 恢复 trig_type。
+            // reload 内部虽从 old_model 保留 trig_type (sigsession.cpp:1141)，
+            // 但 old_model 是上一个 tab 的，需覆盖为当前 tab 的配置。
+            for (const auto &ch : _document->_signal_config.channels) {
+                data::SignalModel *m = _session->get_signal_by_index(ch.index);
+                if (m)
+                    m->set_trig_type(ch.trig_type);
+            }
+            // R3: 通道配置已修改 Core (probe->enabled 等)，广播通知其他 GUI
+            // 组件刷新。MainWindow::OnMessage 会调 rebuild_signals 重建 view::Signal，
+            // SigSession::OnMessage 会调 reload (二次 reload 从 old_model 保留 trig_type，
+            // 不丢失)。tab 切换低频，二次重建开销可接受。
+            _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         } else {
             pxv_info("TabContext::activate() session working, saving pending config");
             _document->_pending_device_config = _document->_signal_config;
@@ -125,7 +143,9 @@ void TabContext::deactivate()
                 channel_visibility[sig->get_index()] = sig->visible();
             }
         }
-        _document->save_signal_config(_session->get_device(), channel_visibility);
+        // R2: 传入 SignalModel 列表，保存 Logic 通道 trig_type
+        _document->save_signal_config(_session->get_device(), channel_visibility,
+                                      _session->get_signal_models());
     }
     _state = HISTORICAL;
 }

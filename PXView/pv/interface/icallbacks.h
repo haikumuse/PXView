@@ -59,6 +59,7 @@ public:
     virtual void update_capture() = 0;
     virtual void show_region(uint64_t start, uint64_t end, bool keep) = 0;
     virtual void repeat_hold(int percent) = 0;
+    virtual void cur_samplelimits_changed() {}
 };
 
 // Trigger callbacks: invoked when a trigger fires or when a trigger-related
@@ -113,7 +114,6 @@ public:
 #define DSV_MSG_CAPTURE_STATE_CHANGED   5008
 
 #define DSV_MSG_DEVICE_LIST_UPDATED     6000
-#define DSV_MSG_BEGIN_DEVICE_OPTIONS    6001 //Begin show device options dialog.
 #define DSV_MSG_END_DEVICE_OPTIONS      6002
 #define DSV_MSG_DEVICE_OPTIONS_UPDATED  6003
 #define DSV_MSG_DEVICE_DURATION_UPDATED 6004
@@ -127,6 +127,7 @@ public:
 #define DSV_MSG_COLLECT_MODE_CHANGED    6012
 #define DSV_MSG_DATA_POOL_CHANGED       6013
 #define DSV_MSG_SIMPLE_TRIGGER_CHANGED  6014
+#define DSV_MSG_ACTIVE_DOCUMENT_CHANGED 6015
 #define DSV_MSG_GLITCH_FILTER_STARTED   6020
 #define DSV_MSG_GLITCH_FILTER_PROGRESS  6021
 #define DSV_MSG_GLITCH_FILTER_COMPLETED 6022
@@ -137,6 +138,7 @@ public:
 
 #define DSV_MSG_COPY_TO_DOC_DONE      6030
 #define DSV_MSG_SAMPLE_COUNT_UPDATED  6031
+#define DSV_MSG_COPY_IN_PROGRESS_CHANGED 6032
 
 #define DSV_MSG_TRIG_NEXT_COLLECT       7001
 #define DSV_MSG_SAVE_COMPLETE           7002

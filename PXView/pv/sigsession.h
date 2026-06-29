@@ -509,8 +509,13 @@ private:
   }
 
   inline void trigger_message(int msg) {
+    // R5: dispatch to GUI first (MainWindow::trigger_message via EventObject
+    // Qt signal), then broadcast to all IMessageListeners (including
+    // SigSession itself) so Core-side OnMessage handlers run without relying
+    // on the GUI to forward the message. This keeps headless mode working.
     dispatch_to<ITriggerCallback>(
         [msg](ITriggerCallback *cb) { cb->trigger_message(msg); });
+    broadcast_msg(msg);
   }
 
   // ISessionStateCallback dispatch helpers

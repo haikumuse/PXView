@@ -47,9 +47,11 @@ struct ChannelConfig {
     uint16_t hw_offset;
     uint16_t offset;
     uint16_t zero_offset;
+    int trig_type;  // R2: Logic 通道触发类型 (SignalModel::LogicTrigType)，仅 LOGIC 模式有意义
 
     ChannelConfig() : index(0), enabled(false), visible(true), vdiv(0), coupling(0),
-                      map_default(true), hw_offset(0), offset(0), zero_offset(0) {}
+                      map_default(true), hw_offset(0), offset(0), zero_offset(0),
+                      trig_type(0) {}
 };
 
 struct SignalConfig {
@@ -132,7 +134,8 @@ public:
     QJsonObject signal_config_to_json() const;
     void signal_config_from_json(const QJsonObject &obj);
     void save_signal_config(DeviceAgent *agent,
-                            const std::map<int, bool> &channel_visibility = {});
+                            const std::map<int, bool> &channel_visibility = {},
+                            const std::vector<SignalModel*> &signal_models = {});
     void apply_signal_config(DeviceAgent *agent);
     void apply_pending_config(DeviceAgent *agent);
     bool has_signal_config() const;

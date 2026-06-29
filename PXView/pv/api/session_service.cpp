@@ -1081,6 +1081,10 @@ Result<void> SessionService::set_channel_enabled(int16_t index, bool enabled) {
     if (!ok)
         return Result<void>::Fail(ErrorCode::ChannelNotFound,
                                   "Failed to enable/disable channel");
+    broadcast_event(ServiceEvent::ChannelConfigChanged,
+                    {{"field", "enabled"},
+                     {"channel_index", std::to_string(index)},
+                     {"value", enabled ? "1" : "0"}});
     return Result<void>::Success();
 }
 
@@ -1094,6 +1098,10 @@ Result<void> SessionService::set_channel_name(int16_t index,
     if (!ok)
         return Result<void>::Fail(ErrorCode::ChannelNotFound,
                                   "Failed to set channel name");
+    broadcast_event(ServiceEvent::ChannelConfigChanged,
+                    {{"field", "name"},
+                     {"channel_index", std::to_string(index)},
+                     {"value", name}});
     return Result<void>::Success();
 }
 
@@ -1149,6 +1157,9 @@ Result<void> SessionService::set_sample_rate(uint64_t rate) {
     if (!ok)
         return Result<void>::Fail(ErrorCode::ConfigInvalid,
                                   "Failed to set sample rate");
+    broadcast_event(ServiceEvent::SampleConfigChanged,
+                    {{"field", "sample_rate"},
+                     {"value", std::to_string(rate)}});
     return Result<void>::Success();
 }
 
@@ -1161,6 +1172,9 @@ Result<void> SessionService::set_sample_limit(uint64_t limit) {
     if (!ok)
         return Result<void>::Fail(ErrorCode::ConfigInvalid,
                                   "Failed to set sample limit");
+    broadcast_event(ServiceEvent::SampleConfigChanged,
+                    {{"field", "sample_limit"},
+                     {"value", std::to_string(limit)}});
     return Result<void>::Success();
 }
 
@@ -1173,6 +1187,9 @@ Result<void> SessionService::set_time_base(uint64_t tb) {
     if (!ok)
         return Result<void>::Fail(ErrorCode::ConfigInvalid,
                                   "Failed to set time base");
+    broadcast_event(ServiceEvent::SampleConfigChanged,
+                    {{"field", "time_base"},
+                     {"value", std::to_string(tb)}});
     return Result<void>::Success();
 }
 
@@ -1195,6 +1212,9 @@ Result<void> SessionService::set_collect_mode(CollectMode mode) {
     }
 
     _session->set_collect_mode(cm);
+    broadcast_event(ServiceEvent::SampleConfigChanged,
+                    {{"field", "collect_mode"},
+                     {"value", std::to_string(static_cast<int>(mode))}});
     return Result<void>::Success();
 }
 
@@ -1204,6 +1224,9 @@ Result<void> SessionService::set_repeat_interval(double seconds) {
                                   "Session is null");
 
     _session->set_repeat_intvl(seconds);
+    broadcast_event(ServiceEvent::SampleConfigChanged,
+                    {{"field", "repeat_interval"},
+                     {"value", std::to_string(seconds)}});
     return Result<void>::Success();
 }
 
@@ -1268,6 +1291,9 @@ Result<void> SessionService::set_logic_trigger_config(
 
     ds_trigger_set_en(config.config_json.empty() ? 0 : 1);
 
+    broadcast_event(ServiceEvent::TriggerConfigChanged,
+                    {{"kind", "logic"},
+                     {"stage_count", std::to_string(config.stage_count)}});
     return Result<void>::Success();
 }
 
@@ -1329,6 +1355,9 @@ Result<void> SessionService::set_dso_trigger_config(
     if (!any_ok)
         return Result<void>::Fail(ErrorCode::ConfigInvalid,
                                   "Failed to set any DSO trigger config");
+    broadcast_event(ServiceEvent::TriggerConfigChanged,
+                    {{"kind", "dso"},
+                     {"channel", std::to_string(config.channel)}});
     return Result<void>::Success();
 }
 
@@ -1419,6 +1448,9 @@ Result<void> SessionService::set_probe_config(int16_t channel,
     if (!any_ok)
         return Result<void>::Fail(ErrorCode::ConfigInvalid,
                                   "Failed to set probe config");
+    broadcast_event(ServiceEvent::ChannelConfigChanged,
+                    {{"field", "probe_config"},
+                     {"channel_index", std::to_string(channel)}});
     return Result<void>::Success();
 }
 
@@ -2842,11 +2874,28 @@ Result<void> SessionService::clear_all_decoders() {
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    // Pass bUpdateView=false to avoid triggering signals_changed() callback
-    // which can crash when invoked from the MCP context
-    _session->clear_all_decoder(false);
+    // Snapshot the current decoder stacks BEFORE clearing so each removed
+    // stack can be reported via DecoderRemoved events (mirrors remove_decoder).
+    auto &stacks_before = _session->get_decoder_stacks(_api_document);
+    std::vector<std::string> removed_ids;
+    removed_ids.reserve(stacks_before.size());
+    for (auto *stack : stacks_before) {
+        if (!stack)
+            continue;
+        removed_ids.push_back(
+            std::to_string(reinterpret_cast<intptr_t>(stack)));
+    }
+
+    // bUpdateView=true so the View layer refreshes; we emit DecoderRemoved
+    // events ourselves below so subscribers can react to each removal.
+    _session->clear_all_decoder(true);
     // Rebuild the protocol dock UI to remove stale layer items
     _session->rebuild_decoder_pannel();
+
+    for (const auto &instance_id : removed_ids) {
+        broadcast_event(ServiceEvent::DecoderRemoved,
+                        {{"instance_id", instance_id}});
+    }
     return Result<void>::Success();
 }
 
@@ -3133,6 +3182,8 @@ Result<void> SessionService::load_file(const std::string &path) {
     if (!ok)
         return Result<void>::Fail(ErrorCode::LoadFailed,
                                   "Failed to load file: " + path);
+    broadcast_event(ServiceEvent::LoadComplete,
+                    {{"path", path}});
     return Result<void>::Success();
 }
 
@@ -3150,6 +3201,8 @@ Result<void> SessionService::save_file(const std::string &path) {
                                   "Failed to save file: " + path);
 
     store.wait();
+    broadcast_event(ServiceEvent::SaveComplete,
+                    {{"path", path}});
     return Result<void>::Success();
 }
 
@@ -3499,6 +3552,9 @@ Result<void> SessionService::export_raw_data_csv(
             return r;
     }
 
+    broadcast_event(ServiceEvent::ExportComplete,
+                    {{"path", directory},
+                     {"format", "raw_csv"}});
     return Result<void>::Success();
 }
 

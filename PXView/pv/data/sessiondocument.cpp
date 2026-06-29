@@ -204,6 +204,7 @@ QJsonObject SessionDocument::signal_config_to_json() const {
     ch_obj["hw_offset"] = ch.hw_offset;
     ch_obj["offset"] = ch.offset;
     ch_obj["zero_offset"] = ch.zero_offset;
+    ch_obj["trig_type"] = ch.trig_type;
     ch_array.append(ch_obj);
   }
   obj["channels"] = ch_array;
@@ -234,6 +235,7 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
       cfg.hw_offset = (uint16_t)ch_obj["hw_offset"].toInt();
       cfg.offset = (uint16_t)ch_obj["offset"].toInt();
       cfg.zero_offset = (uint16_t)ch_obj["zero_offset"].toInt();
+      cfg.trig_type = ch_obj.contains("trig_type") ? ch_obj["trig_type"].toInt() : 0;
       _signal_config.channels.push_back(cfg);
     }
   }
@@ -245,7 +247,8 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
 }
 
 void SessionDocument::save_signal_config(DeviceAgent *agent,
-                                          const std::map<int, bool> &channel_visibility) {
+                                          const std::map<int, bool> &channel_visibility,
+                                          const std::vector<SignalModel*> &signal_models) {
   if (!agent || !agent->have_instance()) {
     pxv_info(
         "SessionDocument::save_signal_config() skip, agent=%p have_instance=%d",
@@ -303,6 +306,16 @@ void SessionDocument::save_signal_config(DeviceAgent *agent,
       cfg.hw_offset = probe->hw_offset;
       cfg.offset = probe->offset;
       cfg.zero_offset = probe->zero_offset;
+    }
+
+    // R2: 保存 Logic 通道触发类型 (trig_type 存于 SignalModel，不在 sr_channel 中)
+    if (mode == LOGIC) {
+      for (auto *m : signal_models) {
+        if (m && m->index() == cfg.index) {
+          cfg.trig_type = m->trig_type();
+          break;
+        }
+      }
     }
 
     _signal_config.channels.push_back(cfg);

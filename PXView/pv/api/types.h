@@ -114,6 +114,10 @@ enum class ServiceEvent : int32_t {
     DecoderRemoved         = 402,
     DecodeProgress         = 403,
 
+    SampleConfigChanged    = 450,
+    ChannelConfigChanged   = 451,
+    TriggerConfigChanged   = 452,
+
     SaveComplete           = 500,
     LoadComplete           = 501,
     ExportComplete         = 502,

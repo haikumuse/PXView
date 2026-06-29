@@ -24,8 +24,10 @@
 #include <libsigrokdecode.h>
 #include <math.h>
 #include "logicsignal.h"
-#include "view.h" 
+#include "view.h"
 #include "../data/logicsnapshot.h"
+#include "../data/signalmodel.h"
+#include "../sigsession.h"
 #include "view.h"
 #include "../dsvdef.h"
 #include "../config/appconfig.h"
@@ -94,15 +96,21 @@ void LogicSignal::set_trig(int trig)
     else
         _trig = NONTRIG;
 
+    // R2: 实时写回 Core。SignalModel 是 trig_type 的 single source of truth。
+    // 后续 SigSession::reload() 重建 SignalModel 时会从 old_model 保留 trig_type
+    // (sigsession.cpp:1141)，确保触发状态在 reload 后不丢失。
+    // 注意: SignalModel::set_trig_type 内部有 `if (_trig_type != trig_type)` 保护，
+    //       值相同时不 emit trig_type_changed，因此 apply_model_properties 调用
+    //       本函数同步时不会产生递归。值不同时 emit 会回调本函数一次，但第二次
+    //       进入时 model 值已更新，early return，递归终止（最多 1 层）。
+    if (session) {
+        data::SignalModel *model = session->get_signal_by_index(_probe->index);
+        if (model)
+            model->set_trig_type(static_cast<int>(_trig));
+    }
+
+    // 通知 TriggerDock UI 同步触发类型显示
     if (_view) {
-        // TODO: Previously this synced _trig between two view::Signal* instances
-        // (a document clone vs the original in the live SigSession). With the
-        // new DataSource v2 interface, get_signal_by_index() now returns
-        // SignalModel* (the Core layer state holder), not view::Signal*, so the
-        // static_cast<view::LogicSignal*> is invalid and has been removed.
-        // SignalModel is now the single source of truth for trigger state. If
-        // cross-layer trigger sync is needed, write to
-        // SignalModel::set_trig_type() instead.
         _view->session().broadcast_msg(DSV_MSG_SIMPLE_TRIGGER_CHANGED);
     }
 }

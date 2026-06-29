@@ -29,6 +29,7 @@
 #include "../dialogs/interval.h"
 #include "../dialogs/waitingdialog.h"
 #include "../dsvdef.h"
+#include "../interface/icallbacks.h"
 #include "../log.h"
 #include "../tabcontext.h"
 #include "../ui/dockfonts.h"
@@ -940,6 +941,14 @@ void SamplingBar::commit_settings() {
 
         bool rle_mode = _sample_count->currentText().contains(RLEString);
         _device_agent->set_config_bool(SR_CONF_RLE, rle_mode);
+      }
+      // R3: 采样率/采样数已修改，广播通知其他 GUI 组件刷新
+      // (MainWindow::OnMessage -> rebuild_signals; SigSession::OnMessage -> reload)
+      // R7: 同时发布 DEVICE_CONFIG_UPDATED（sample_rate/sample_limit 属于
+      // 设备配置变化），触发 SessionService 中此前为死代码的对应 case。
+      if (_session) {
+        _session->broadcast_msg(DSV_MSG_DEVICE_CONFIG_UPDATED);
+        _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
       }
     }
   }

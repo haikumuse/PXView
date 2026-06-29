@@ -55,6 +55,13 @@ bool Signal::enabled()
 void Signal::set_enabled(bool en)
 {
     _local_enabled = en;
+    // R2: 实时写回 Core (sr_channel->enabled)，让 SigSession::reload() 重建
+    // SignalModel 时能读到正确的 enabled 状态。
+    // 不在此处广播 DSV_MSG_DEVICE_OPTIONS_UPDATED: MainWindow::OnMessage 收到该
+    // 消息会调 rebuild_signals() -> apply_model_properties() -> set_enabled()，
+    // 形成无限循环。广播由用户交互入口负责（如 DeviceOptionsDock 已有广播）。
+    if (_probe)
+        _probe->enabled = en;
 }
 
 void Signal::set_name(QString name)

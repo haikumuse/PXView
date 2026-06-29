@@ -2383,20 +2383,28 @@ void MainWindow::on_frame_ended() {
   _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
   pv::TabContext *ctx = current_context();
   if (ctx && ctx->document()) {
+    // R6: 用 capture_owner_document 作为 copy 目标，避免错误地写到当前 tab。
+    // 异常情况（owner 为 nullptr）回退到当前 tab 的 document 并打日志。
+    pv::data::SessionDocument *owner_doc = _session->get_capture_owner_document();
+    if (!owner_doc) {
+      qWarning("MainWindow::on_frame_ended: capture_owner_document is null, "
+               "falling back to current_context()->document()");
+      owner_doc = ctx->document();
+    }
     // Copy data to document so activate() can bind signal data from it.
     // - If document is not the active document, always copy.
     // - If document is the active document and no background copy is in
     //   progress (LOGIC+decoders case), also copy here synchronously.
     // - If a background copy is already running, skip to avoid double copy;
     //   DSV_MSG_COPY_TO_DOC_DONE will handle reactivation later.
-    if (_session->get_active_document() != ctx->document()) {
+    if (_session->get_active_document() != owner_doc) {
       pxv_info("MainWindow::on_frame_ended: Synchronous copy_data_to_document (not active doc)");
-      _session->copy_data_to_document(ctx->document());
+      _session->copy_data_to_document(owner_doc);
       // TEST FIX FOR HYPOTHESIS 1: Manually trigger decoders after synchronous copy
       _session->start_all_decode_tasks();
     } else if (!_session->is_copy_in_progress()) {
       pxv_info("MainWindow::on_frame_ended: Synchronous copy_data_to_document (no bg copy in progress)");
-      _session->copy_data_to_document(ctx->document());
+      _session->copy_data_to_document(owner_doc);
       // TEST FIX FOR HYPOTHESIS 1: Manually trigger decoders after synchronous copy
       _session->start_all_decode_tasks();
     } else {
@@ -2491,7 +2499,8 @@ void MainWindow::check_usb_device_speed() {
 void MainWindow::trigger_message(int msg) { _event.trigger_message(msg); }
 
 void MainWindow::on_trigger_message(int msg) {
-  _session->broadcast_msg(msg);
+  // R5: broadcast_msg is now invoked inside SigSession::trigger_message,
+  // so the GUI no longer needs to forward the message back to Core.
 
   // After background copy_data_to_document completes, rebind signal data
   // from session to document so waveforms use the document's own data copy.
@@ -2804,6 +2813,11 @@ void MainWindow::OnMessage(int msg) {
       _device_options_widget->update_widgets_status();
       _signal_processing_widget->update_widgets_status();
     }
+    // R6: activate 在 working 时跳过了 set_active_document，工作结束后
+    // 显式恢复当前 tab 的 active_document 归属。
+    if (ctx) {
+      _session->set_active_document(ctx->document());
+    }
     break;
   }
   case DSV_MSG_CURRENT_DEVICE_CHANGE_PREV: {
@@ -2902,7 +2916,8 @@ void MainWindow::OnMessage(int msg) {
     pv::TabContext *ctx = current_context();
     if (ctx && ctx->document()) {
       ctx->document()->save_signal_config(_session->get_device(),
-                                          build_channel_visibility(current_view()));
+                                          build_channel_visibility(current_view()),
+                                          _session->get_signal_models());
     }
 
     current_view()->rebuild_signals();
@@ -3072,7 +3087,6 @@ void MainWindow::OnMessage(int msg) {
     }
     break;
   }
-  case DSV_MSG_BEGIN_DEVICE_OPTIONS:
   case DSV_MSG_COLLECT_MODE_CHANGED: {
     if (_device_agent->is_demo()) {
       _pattern_mode = _device_agent->get_demo_operation_mode();
@@ -3160,6 +3174,44 @@ void MainWindow::OnMessage(int msg) {
     }
     // Restart decoders after data change
     _session->restart_decoders();
+    break;
+  }
+  // R8: 补齐此前未被 GUI 订阅的消息，避免状态栏/标题栏等 UI 不更新。
+  case DSV_MSG_COLLECT_START: {
+    // 状态栏提示"采集中"
+    statusBar()->showMessage(tr("采集中..."), 3000);
+    break;
+  }
+  case DSV_MSG_TRIG_NEXT_COLLECT: {
+    // 状态栏提示"等待下一次采集"
+    statusBar()->showMessage(tr("等待下一次采集..."), 3000);
+    break;
+  }
+  case DSV_MSG_GLITCH_FILTER_STARTED: {
+    // 复用磁盘缓存状态标签显示毛刺滤波处理中指示
+    if (_disk_cache_status_label)
+      _disk_cache_status_label->setText(tr("毛刺滤波处理中..."));
+    break;
+  }
+  case DSV_MSG_GLITCH_FILTER_PROGRESS: {
+    // 进度信息未携带百分比载荷，仅刷新状态栏提示
+    statusBar()->showMessage(tr("毛刺滤波进行中..."), 2000);
+    break;
+  }
+  case DSV_MSG_SIGNAL_INVERT_STARTED: {
+    if (_disk_cache_status_label)
+      _disk_cache_status_label->setText(tr("信号反相处理中..."));
+    break;
+  }
+  case DSV_MSG_COPY_IN_PROGRESS_CHANGED: {
+    // 显示后台 copy 指示器；完成后由其它消息刷新
+    if (_disk_cache_status_label)
+      _disk_cache_status_label->setText(tr("后台数据拷贝中..."));
+    break;
+  }
+  case DSV_MSG_ACTIVE_DOCUMENT_CHANGED: {
+    // 活动文档已切换，更新标题栏与 dock 状态
+    update_title_bar_text();
     break;
   }
   }
