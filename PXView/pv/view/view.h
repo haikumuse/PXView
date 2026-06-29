@@ -24,6 +24,7 @@
 #ifndef PXVIEW_PV_VIEW_VIEW_H
 #define PXVIEW_PV_VIEW_VIEW_H
 
+#include <list>
 #include <set>
 #include <stdint.h>
 #include <vector>
@@ -47,6 +48,9 @@
 #include "viewstatus.h"
 #include "xcursor.h"
 
+struct srd_decoder;
+class DecoderStatus;
+
 class DeviceAgent;
 
 namespace pv {
@@ -63,6 +67,10 @@ class Lissajous;
 namespace data {
 class SessionDocument;
 struct SignalConfig;
+class DecoderStack;
+namespace decode {
+class Decoder;
+} // namespace decode
 } // namespace data
 
 class SigSession;
@@ -75,6 +83,10 @@ class Ruler;
 class Trace;
 class Viewport;
 class LissajousFigure;
+class DecodeTrace;
+class SpectrumTrace;
+class MathTrace;
+class LissajousTrace;
 
 struct SignalGroup {
   int group_id;
@@ -311,7 +323,67 @@ public:
   void rebuild_signals();
   void rebuild_signals_from_config(const data::SignalConfig &config);
 
+  /**
+   * Adds a protocol decoder.
+   * Calls Core layer (SigSession::add_decoder) to create the DecoderStack,
+   * then directly creates a DecodeTrace wrapping that stack. Does NOT rely
+   * on the signals_changed event callback to populate the View's
+   * DecodeTrace list.
+   *
+   * @param dec The srd_decoder to add.
+   * @param silent If true, do not auto-start the decode task.
+   * @param dstatus The DecoderStatus to associate with the new stack.
+   * @param sub_decoders Sub-decoders to attach to the root decoder.
+   * @param out_stack Output: the newly created DecoderStack (Core-owned).
+   * @return true on success, false on failure.
+   */
+  bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
+                   std::list<pv::data::decode::Decoder *> &sub_decoders,
+                   pv::data::DecoderStack *&out_stack);
+
+  /**
+   * Removes a protocol decoder.
+   * The View deletes its DecodeTrace (View-owned) first, then notifies
+   * the Core layer to delete the corresponding DecoderStack via
+   * remove_decoder_by_key_handel.
+   *
+   * @param trace The DecodeTrace to remove. Must be owned by this View.
+   */
+  void remove_decoder(DecodeTrace *trace);
+
+  /**
+   * Removes a protocol decoder by index in the View's DecodeTrace list.
+   */
+  void remove_decoder(int index);
+
   inline std::vector<Signal *> &get_own_signals() { return _own_signals; }
+
+  /**
+   * View-owned wrapper lists for derived trace types.
+   * These wrap the Core layer's Stack/Model objects (DecoderStack,
+   * SpectrumStack, MathStack, LissajousModel) into View layer Trace
+   * subclasses so that the rendering code can operate on view::Trace*.
+   * Synced lazily via sync_derived_traces() when the underlying data
+   * source changes.
+   */
+  inline std::vector<DecodeTrace *> &get_own_decode_traces() {
+    sync_derived_traces();
+    return _own_decode_traces;
+  }
+  inline std::vector<SpectrumTrace *> &get_own_spectrum_traces() {
+    sync_derived_traces();
+    return _own_spectrum_traces;
+  }
+  inline MathTrace *get_own_math_trace() {
+    sync_derived_traces();
+    return _own_math_trace;
+  }
+  inline LissajousTrace *get_own_lissajous_trace() {
+    sync_derived_traces();
+    return _own_lissajous_trace;
+  }
+  void sync_derived_traces();
+  void mark_derived_traces_dirty();
 
   void update_view_port();
 
@@ -362,6 +434,24 @@ public:
   static bool compare_trace_y(const Trace *a, const Trace *b);
 
   void signals_changed(const Trace *eventTrace);
+
+  /**
+   * Handler for the Core-layer signals_changed event.
+   * Incrementally updates _own_signals to match the Core's SignalModel
+   * list via SignalFactory::update_signals(), preserving UI state
+   * (selection, visibility, v_offset, etc.) for signals that survive.
+   * Does NOT directly affect DecodeTrace/SpectrumTrace/MathTrace — those
+   * are managed by sync_derived_traces() based on Core's Stack list.
+   * Then calls signals_changed(NULL) to refresh layout and trigger lazy
+   * sync of derived traces.
+   *
+   * This is intended as the View-layer entry point for the
+   * ISessionCallback::signals_changed() event. Currently MainWindow
+   * dispatches the event to View::signals_changed(NULL); once
+   * ISessionCallback is split (Task 13), MainWindow should call
+   * View::on_signals_changed() instead.
+   */
+  void on_signals_changed();
 
 public slots:
   void reload();
@@ -439,6 +529,13 @@ private:
   pv::toolbars::SamplingBar *_sampling_bar;
   std::vector<Signal *> _own_signals;
   std::vector<sr_channel *> _config_probes;
+  // View-owned wrapper traces for derived types. Synced lazily from the
+  // Core layer's Stack/Model objects via sync_derived_traces().
+  std::vector<DecodeTrace *> _own_decode_traces;
+  std::vector<SpectrumTrace *> _own_spectrum_traces;
+  MathTrace *_own_math_trace = nullptr;
+  LissajousTrace *_own_lissajous_trace = nullptr;
+  bool _derived_traces_dirty = true;
 
   QWidget *_viewcenter;
   ViewStatus *_viewbottom;

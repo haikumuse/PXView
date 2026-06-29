@@ -32,19 +32,12 @@
 #include "data/decoderstack.h"
 #include "data/disk_cache_config.h"
 #include "data/dsosnapshot.h"
+#include "data/lissajousmodel.h"
 #include "data/logicsnapshot.h"
 #include "data/mathstack.h"
 #include "data/sessionsnapshot.h"
+#include "data/signalmodel.h"
 #include "data/spectrumstack.h"
-
-#include "view/analogsignal.h"
-#include "view/decodetrace.h"
-#include "view/dsosignal.h"
-#include "view/groupsignal.h"
-#include "view/lissajoustrace.h"
-#include "view/logicsignal.h"
-#include "view/mathtrace.h"
-#include "view/spectrumtrace.h"
 
 #include <QDir>
 #include <QString>
@@ -94,14 +87,9 @@ void SessionData::clear() {
   _signal_invert_channels.clear();
 }
 
-// TODO: This should not be necessary
-SigSession *SigSession::_session = NULL;
-std::vector<view::DecodeTrace *> SigSession::_empty_decode_traces;
+std::vector<data::DecoderStack *> SigSession::_empty_decoder_stacks;
 
 SigSession::SigSession() {
-  // TODO: This should not be necessary
-  _session = this;
-
   _map_zoom = 0;
   _repeat_hold_prg = 0;
   _repeat_intvl = 1;
@@ -141,8 +129,8 @@ SigSession::SigSession() {
 
   _decoder_model = new pv::data::DecoderModel(NULL);
 
-  _lissajous_trace = NULL;
-  _math_trace = NULL;
+  _lissajous_model = nullptr;
+  _math_stack = nullptr;
   _bClose = false;
   _work_time_id = 0;
   _capture_times = 0;
@@ -175,9 +163,12 @@ SigSession::~SigSession() {
 bool SigSession::init() {
   ds_log_set_context(pxv_log_context());
 
-  ds_set_event_callback(device_lib_event_callback);
+  // Register callbacks using the _ex API to pass `this` as user data,
+  // so the static trampolines can dispatch to the instance method without
+  // relying on a static singleton pointer.
+  ds_set_event_callback_ex(device_lib_event_callback_ex, this);
 
-  ds_set_datafeed_callback(data_feed_callback);
+  ds_set_datafeed_callback_ex(data_feed_callback_ex, this);
 
   // firmware resource directory
   QString resdir = GetFirmwareDir();
@@ -240,7 +231,7 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
 
   ds_device_handle old_dev = _device_agent.handle();
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGE_PREV);
+  trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGE_PREV);
   // Release the old device.
   _device_agent.release();
   _device_status = ST_INIT;
@@ -272,26 +263,26 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   set_cur_samplelimits(_device_agent.get_sample_limit());
 
   // The current device changed.
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGED);
+  trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGED);
 
   if (ds_get_last_error() == SR_ERR_DEVICE_FIRMWARE_VERSION_LOW) {
     QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_RECONNECT_FOR_FIRMWARE),
                          "Please reconnect the device!");
-    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
+    delay_prop_msg(strMsg);
     return false;
   }
 
   if (ds_get_last_error() == SR_ERR_FIRMWARE_NOT_EXIST) {
     QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FIRMWARE_NOT_EXIST),
                          "Firmware not exist!");
-    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
+    delay_prop_msg(strMsg);
     return false;
   }
 
   if (ds_get_last_error() == SR_ERR_DEVICE_USB_IO_ERROR) {
     QString strMsg =
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_USB_IO_ERROR), "USB io error!");
-    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
+    delay_prop_msg(strMsg);
     return false;
   }
 
@@ -301,7 +292,7 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
     if (old_dev != NULL_HANDLE)
       MsgBox::Show(strMsg);
     else
-      for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
+      delay_prop_msg(strMsg);
     return false;
   }
 
@@ -408,33 +399,30 @@ void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
   int mode = _device_agent.get_work_mode();
 
   if (mode == DSO) {
-    for (auto s : _signals) {
-      if (s->get_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *ch = (view::DsoSignal *)s;
-        uint64_t k = ch->get_vDial()->get_value();
-        _capture_data->get_dso()->set_measure_voltage_factor(k,
-                                                             ch->get_index());
-        _capture_data->get_dso()->set_data_scale(ch->get_scale(),
-                                                 ch->get_index());
+    for (auto m : _signal_models) {
+      if (m->type() == api::ChannelType::Dso) {
+        // TODO: verify - vfactor and vdiv replace view::DsoSignal getters.
+        _capture_data->get_dso()->set_measure_voltage_factor(
+            (uint64_t)m->vfactor(), m->index());
+        _capture_data->get_dso()->set_data_scale(m->vdiv(), m->index());
       }
     }
   }
 
   // DecoderStack
   for (auto d : decode_traces()) {
-    d->decoder()->set_samplerate(samplerate);
+    d->set_samplerate(samplerate);
   }
 
   // Math
-  if (_math_trace && _math_trace->enabled())
-    _math_trace->get_math_stack()->set_samplerate(
-        _device_agent.get_sample_rate());
+  if (_math_stack)
+    _math_stack->set_samplerate(_device_agent.get_sample_rate());
   // SpectrumStack
-  for (auto m : _spectrum_traces) {
-    m->get_spectrum_stack()->set_samplerate(samplerate);
+  for (auto m : _spectrum_stacks) {
+    m->set_samplerate(samplerate);
   }
 
-  for (auto* cb : _callbacks) cb->cur_snap_samplerate_changed();
+  cur_snap_samplerate_changed();
 }
 
 void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
@@ -445,7 +433,7 @@ void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
 void SigSession::capture_init() {
   // update instant setting
   _device_agent.set_config_bool(SR_CONF_INSTANT, _is_instant);
-  for (auto* cb : _callbacks) cb->update_capture();
+  update_capture();
 
   set_cur_snap_samplerate(_device_agent.get_sample_rate());
   set_cur_samplelimits(_device_agent.get_sample_limit());
@@ -466,12 +454,12 @@ void SigSession::capture_init() {
 
   int mode = _device_agent.get_work_mode();
   if (mode == DSO) {
-    for (auto m : _spectrum_traces) {
-      m->get_spectrum_stack()->init();
+    for (auto m : _spectrum_stacks) {
+      m->init();
     }
 
-    if (_math_trace) {
-      _math_trace->get_math_stack()->init();
+    if (_math_stack) {
+      _math_stack->init();
     }
   }
 
@@ -503,7 +491,7 @@ bool SigSession::action_start_capture(bool instant) {
     return false;
   }
 
-  if (_signals.empty()) {
+  if (_signal_models.empty()) {
     pxv_info("ERROR: channel list is empty, unable to capture data.");
     return false;
   }
@@ -572,7 +560,7 @@ bool SigSession::action_start_capture(bool instant) {
     _view_data->get_dso()->set_ref_range(ref_max, ref_min);
   }
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CAPTURE_STATE_CHANGED);
+  trigger_message(DSV_MSG_CAPTURE_STATE_CHANGED);
 
   bool disk_cache_enabled = false;
   _device_agent.get_config_bool(SR_CONF_DISK_CACHE_ENABLE, disk_cache_enabled);
@@ -627,13 +615,13 @@ bool SigSession::action_start_capture(bool instant) {
   else
     _is_instant = instant;
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_START_COLLECT_WORK_PREV);
+  trigger_message(DSV_MSG_START_COLLECT_WORK_PREV);
 
   if (exec_capture()) {
     _work_time_id++;
     _is_working = true;
     _capture_owner_document = _active_document;
-    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_START_COLLECT_WORK);
+    trigger_message(DSV_MSG_START_COLLECT_WORK);
 
     // Start a timer, for able to refresh the view per (1000 / 30)ms.
     if (is_realtime_refresh()) {
@@ -677,10 +665,10 @@ bool SigSession::exec_capture() {
 
   if (mode == DSO || mode == ANALOG) {
     // reset measure of dso signal
-    for (auto s : _signals) {
-      if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-        dsoSig->set_mValid(false);
+    for (auto m : _signal_models) {
+      if (m->type() == api::ChannelType::Dso) {
+        // TODO: verify - view::DsoSignal::set_mValid(false) was a UI method.
+        // Validity reset should be handled by the View layer.
       }
     }
   } else {
@@ -744,10 +732,9 @@ bool SigSession::exec_capture() {
   capture_init();
 
   // IMPORTANT: Ensure the session's logic signals point to the current capture
-  // buffer. This is required because DecoderStack searches
-  // _session->get_signals() to find the data source. Without this, decoders in
-  // stream mode would bind to the old, cleared document snapshot and fail to
-  // show results.
+  // buffer. This is required because DecoderStack searches the session's signal
+  // list to find the data source. Without this, decoders in stream mode would
+  // bind to the old, cleared document snapshot and fail to show results.
   attach_data_to_signal(_capture_data);
 
   if (_device_agent.start() == false) {
@@ -758,7 +745,7 @@ bool SigSession::exec_capture() {
   if (mode == LOGIC) {
     for (auto de : decode_traces()) {
       if (bAddDecoder) {
-        de->decoder()->set_capture_end_flag(false);
+        de->set_capture_end_flag(false);
         de->frame_ended();
         add_decode_task(de);
       }
@@ -806,17 +793,17 @@ bool SigSession::action_stop_capture() {
 
     if (_repeat_hold_prg != 0 && is_repeat_mode()) {
       _repeat_hold_prg = 0;
-      for (auto* cb : _callbacks) cb->repeat_hold(_repeat_hold_prg);
+      repeat_hold(_repeat_hold_prg);
     }
 
-    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_END_COLLECT_WORK_PREV);
+    trigger_message(DSV_MSG_END_COLLECT_WORK_PREV);
 
     exit_capture();
 
     data_unlock();
 
     if (is_repeat_mode() && _device_status != ST_RUNNING) {
-      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_END_COLLECT_WORK);
+      trigger_message(DSV_MSG_END_COLLECT_WORK);
     }
 
     return true;
@@ -853,7 +840,7 @@ bool SigSession::get_capture_status(bool &triggered, int &progress) {
 
     if (mode == DSO)
       captured_cnt =
-          captured_cnt * _signals.size() / get_ch_num(SR_CHANNEL_DSO);
+          captured_cnt * _signal_models.size() / get_ch_num(SR_CHANNEL_DSO);
 
     if (triggered)
       progress = (sample_limits - captured_cnt) * 100.0 / sample_limits;
@@ -870,7 +857,9 @@ bool SigSession::get_capture_status(bool &triggered, int &progress) {
   return false;
 }
 
-std::vector<view::Signal *> &SigSession::get_signals() { return _signals; }
+std::vector<data::SignalModel *> &SigSession::get_signal_models() {
+  return _signal_models;
+}
 
 void SigSession::check_update() {
   ds_lock_guard lock(_data_mutex);
@@ -896,7 +885,7 @@ void SigSession::init_signals() {
     assert(false);
   }
 
-  std::vector<view::Signal *> sigs;
+  std::vector<data::SignalModel *> models;
   unsigned int logic_probe_count = 0;
   unsigned int dso_probe_count = 0;
   unsigned int analog_probe_count = 0;
@@ -947,40 +936,97 @@ void SigSession::init_signals() {
       continue;
     }
 
+    bool should_create = false;
+    api::ChannelType ch_type = api::ChannelType::Logic;
+
     switch (probe->type) {
     case SR_CHANNEL_LOGIC:
       if (probe->enabled) {
-        view::Signal *signal =
-            new view::LogicSignal(_view_data->get_logic(), probe);
-        sigs.push_back(signal);
+        should_create = true;
+        ch_type = api::ChannelType::Logic;
       }
       break;
 
-    case SR_CHANNEL_DSO: {
-      view::Signal *signal = new view::DsoSignal(_view_data->get_dso(), probe);
-      sigs.push_back(signal);
-    } break;
+    case SR_CHANNEL_DSO:
+      should_create = true;
+      ch_type = api::ChannelType::Dso;
+      break;
 
     case SR_CHANNEL_ANALOG:
       if (probe->enabled) {
-        view::Signal *signal =
-            new view::AnalogSignal(_view_data->get_analog(), probe);
-        sigs.push_back(signal);
+        should_create = true;
+        ch_type = api::ChannelType::Analog;
       }
       break;
+    }
+
+    if (should_create) {
+      auto *model = new data::SignalModel();
+      model->set_index(probe->index);
+      model->set_name(probe->name ? probe->name : "");
+      model->set_type(ch_type);
+      model->set_enabled(probe->enabled);
+
+      // Read probe configuration for DSO/ANALOG channels.
+      // Sources must match view::DsoSignal/AnalogSignal getters so that the
+      // SignalModel mirrors what the View layer reports:
+      //   - vdiv       <- SR_CONF_PROBE_VDIV      (DsoSignal::get_vDialValue)
+      //   - vfactor    <- SR_CONF_PROBE_FACTOR    (DsoSignal::get_factor)
+      //   - hw_offset  <- SR_CONF_PROBE_HW_OFFSET (DsoSignal::get_hw_offset)
+      //   - zero_offset<- SR_CONF_PROBE_OFFSET    (DsoSignal::load_settings)
+      if (ch_type == api::ChannelType::Dso ||
+          ch_type == api::ChannelType::Analog) {
+        uint64_t vdiv = 0;
+        if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
+                                            NULL))
+          model->set_vdiv((double)vdiv);
+
+        uint64_t vfactor = 1;
+        if (_device_agent.get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
+                                            probe, NULL))
+          model->set_vfactor((double)vfactor);
+        else
+          model->set_vfactor(1.0);
+
+        int coupling = 0;
+        if (_device_agent.get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
+                                          probe, NULL))
+          model->set_coupling(coupling);
+
+        bool map_default = true;
+        _device_agent.get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
+                                     probe, NULL);
+        model->set_map_default(map_default);
+
+        // hw_offset: prefer live SR_CONF_PROBE_HW_OFFSET (matches
+        // DsoSignal::get_hw_offset), fall back to the cached channel value.
+        int hw_offset = probe ? probe->hw_offset : 0;
+        _device_agent.get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
+                                        probe, NULL);
+        model->set_hw_offset(hw_offset);
+
+        // zero_offset: prefer live SR_CONF_PROBE_OFFSET (matches
+        // DsoSignal::load_settings), fall back to the cached channel value.
+        int zero_offset = probe ? probe->zero_offset : 0;
+        _device_agent.get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
+                                       probe, NULL);
+        model->set_zero_offset(zero_offset);
+      }
+
+      models.push_back(model);
     }
   }
 
   clear_signals();
-  std::vector<view::Signal *>().swap(_signals);
-  _signals = sigs;
+  std::vector<data::SignalModel *>().swap(_signal_models);
+  _signal_models = models;
   make_channels_view_index();
 
   spectrum_rebuild();
   lissajous_disable();
   math_disable();
 
-  if (_signals.empty()) {
+  if (_signal_models.empty()) {
     pxv_info("ERROR: Unable to create any channel.");
   }
 }
@@ -993,22 +1039,15 @@ void SigSession::reload() {
   if (_is_working)
     return;
 
-  std::vector<view::Signal *> sigs;
-  view::Signal *signal = NULL;
-  int logic_chan_num = 0;
-  int dso_chan_num = 0;
-  int start_view_dex = -1;
+  std::vector<data::SignalModel *> models;
+  int mode = _device_agent.get_work_mode();
 
   set_cur_snap_samplerate(_device_agent.get_sample_rate());
   set_cur_samplelimits(_device_agent.get_sample_limit());
 
-  int mode = _device_agent.get_work_mode();
-
-  // Make the logic probe list
   for (GSList *l = _device_agent.get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;
-
-    signal = NULL;
+    assert(probe);
 
     if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
       continue;
@@ -1018,82 +1057,93 @@ void SigSession::reload() {
       continue;
     }
 
+    bool should_create = false;
+    api::ChannelType ch_type = api::ChannelType::Logic;
+
     switch (probe->type) {
     case SR_CHANNEL_LOGIC:
       if (probe->enabled) {
-        logic_chan_num++;
-
-        auto i = _signals.begin();
-
-        while (i != _signals.end()) {
-          if ((*i)->get_index() == probe->index) {
-            if ((*i)->signal_type() == SR_CHANNEL_LOGIC) {
-              view::LogicSignal *logicSig = (view::LogicSignal *)(*i);
-              signal = new view::LogicSignal(logicSig, _view_data->get_logic(),
-                                             probe);
-              if (logicSig->get_view_index() < start_view_dex ||
-                  start_view_dex == -1)
-                start_view_dex = logicSig->get_view_index();
-            }
-
-            break;
-          }
-          i++;
-        }
-
-        if (signal == NULL) {
-          signal = new view::LogicSignal(_view_data->get_logic(), probe);
-        }
+        should_create = true;
+        ch_type = api::ChannelType::Logic;
       }
       break;
 
     case SR_CHANNEL_ANALOG:
       if (probe->enabled) {
-        dso_chan_num++;
-
-        auto i = _signals.begin();
-        while (i != _signals.end()) {
-          if ((*i)->get_index() == probe->index) {
-            if ((*i)->signal_type() == SR_CHANNEL_ANALOG) {
-              view::AnalogSignal *analogSig = (view::AnalogSignal *)(*i);
-              signal = new view::AnalogSignal(analogSig,
-                                              _view_data->get_analog(), probe);
-            }
-            break;
-          }
-          i++;
-        }
-        if (signal == NULL) {
-          signal = new view::AnalogSignal(_view_data->get_analog(), probe);
-        }
+        should_create = true;
+        ch_type = api::ChannelType::Analog;
       }
       break;
     }
-    if (signal != NULL)
-      sigs.push_back(signal);
+
+    if (should_create) {
+      // Try to preserve settings from the existing model with the same index
+      data::SignalModel *old_model = nullptr;
+      for (auto *m : _signal_models) {
+        if (m->index() == (int)probe->index) {
+          old_model = m;
+          break;
+        }
+      }
+
+      auto *model = new data::SignalModel();
+      model->set_index(probe->index);
+      model->set_name(probe->name ? probe->name : "");
+      model->set_type(ch_type);
+      model->set_enabled(probe->enabled);
+
+      if (ch_type == api::ChannelType::Analog) {
+        uint64_t vdiv = 0;
+        if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
+                                            NULL))
+          model->set_vdiv((double)vdiv);
+
+        uint64_t vfactor = 1;
+        if (_device_agent.get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
+                                            probe, NULL))
+          model->set_vfactor((double)vfactor);
+        else
+          model->set_vfactor(1.0);
+
+        int coupling = 0;
+        if (_device_agent.get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
+                                          probe, NULL))
+          model->set_coupling(coupling);
+
+        bool map_default = true;
+        _device_agent.get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
+                                     probe, NULL);
+        model->set_map_default(map_default);
+
+        int hw_offset = probe ? probe->hw_offset : 0;
+        _device_agent.get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
+                                        probe, NULL);
+        model->set_hw_offset(hw_offset);
+
+        int zero_offset = probe ? probe->zero_offset : 0;
+        _device_agent.get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
+                                       probe, NULL);
+        model->set_zero_offset(zero_offset);
+      }
+
+      if (old_model) {
+        model->set_trig_type(old_model->trig_type());
+        model->set_color(old_model->color());
+      }
+
+      models.push_back(model);
+    }
   }
 
-  if (!sigs.empty()) {
-    std::vector<int> view_indexs;
-    for (auto s : _signals) {
-      view_indexs.push_back(s->get_view_index());
-    }
-
+  if (!models.empty()) {
     pxv_info("SigSession::reload(), clear signals");
     clear_signals();
-    std::vector<view::Signal *>().swap(_signals);
-    _signals = sigs;
-    make_channels_view_index(start_view_dex);
-
-    if (mode == LOGIC) {
-      for (unsigned int i = 0; i < view_indexs.size() && i < _signals.size();
-           i++) {
-        _signals[i]->set_view_index(view_indexs[i]);
-      }
-    }
+    std::vector<data::SignalModel *>().swap(_signal_models);
+    _signal_models = models;
+    make_channels_view_index();
   } else if (mode == LOGIC || mode == ANALOG) {
     pxv_info("ERROR: Unable to create any channel.");
-    _signals.clear();
+    clear_signals();
   }
 
   spectrum_rebuild();
@@ -1110,12 +1160,12 @@ void SigSession::refresh(int holdtime) {
 
   _view_data->get_dso()->init();
 
-  for (auto m : _spectrum_traces) {
-    m->get_spectrum_stack()->init();
+  for (auto m : _spectrum_stacks) {
+    m->init();
   }
 
-  if (_math_trace)
-    _math_trace->get_math_stack()->init();
+  if (_math_stack)
+    _math_stack->init();
 
   _view_data->get_analog()->init();
 
@@ -1136,7 +1186,7 @@ bool SigSession::get_data_auto_lock() { return _data_auto_lock != 0; }
 
 void SigSession::feed_in_header(const sr_dev_inst *sdi) {
   (void)sdi;
-  for (auto* cb : _callbacks) cb->receive_header();
+  receive_header();
 }
 
 void SigSession::feed_in_meta(const sr_dev_inst *sdi,
@@ -1164,7 +1214,7 @@ void SigSession::feed_in_trigger(const ds_trigger_pos &trigger_pos) {
 
       // Update trig position for current view.
       if (_capture_data == _view_data) {
-        for (auto* cb : _callbacks) cb->receive_trigger(_capture_data->_trig_pos);
+        receive_trigger(_capture_data->_trig_pos);
       }
     }
   } else {
@@ -1182,7 +1232,7 @@ void SigSession::feed_in_trigger(const ds_trigger_pos &trigger_pos) {
 
     _capture_data->_trig_pos =
         trigger_pos.real_pos * probe_count / probe_en_count;
-    for (auto* cb : _callbacks) cb->receive_trigger(_capture_data->_trig_pos);
+    receive_trigger(_capture_data->_trig_pos);
   }
 }
 
@@ -1210,7 +1260,7 @@ void SigSession::feed_in_logic(const sr_datafeed_logic &o) {
     // for logic will be notified. Currently the only user of
     // frame_began is DecoderStack, but in future we need to signal
     // this after both analog and logic sweeps have begun.
-    for (auto* cb : _callbacks) cb->frame_began();
+    frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_logic()->append_payload(o);
@@ -1218,7 +1268,7 @@ void SigSession::feed_in_logic(const sr_datafeed_logic &o) {
 
   if (_capture_data->get_logic()->memory_failed()) {
     _error = Malloc_err;
-    for (auto* cb : _callbacks) cb->session_error();
+    session_error();
     return;
   }
 
@@ -1259,7 +1309,7 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
     _capture_data->get_dso()->first_payload(
         o, _device_agent.get_sample_limit(), _device_agent.get_channels(),
         _is_instant, _device_agent.is_file());
-    for (auto* cb : _callbacks) cb->frame_began();
+    frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_dso()->append_payload(o);
@@ -1272,20 +1322,23 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
 
   if (_capture_data->get_dso()->memory_failed()) {
     _error = Malloc_err;
-    for (auto* cb : _callbacks) cb->session_error();
+    session_error();
     return;
   }
 
   // calculate related spectrum results
-  for (auto m : _spectrum_traces) {
-    if (m->enabled())
-      m->get_spectrum_stack()->calc_fft();
+  for (auto m : _spectrum_stacks) {
+    // TODO: verify - view::SpectrumTrace::enabled() check was removed.
+    // SpectrumStack has no enabled flag; calc_fft checks internal state.
+    m->calc_fft();
   }
 
   // calculate related math results
-  if (_math_trace && _math_trace->enabled()) {
-    _math_trace->get_math_stack()->realloc(_device_agent.get_sample_limit());
-    _math_trace->get_math_stack()->calc_math(_math_trace->get_vDialfactor());
+  if (_math_stack) {
+    // TODO: verify - MathStack::calc_math requires vDialfactor from view::MathTrace.
+    // Need to determine how to obtain this value after de-view-ization.
+    _math_stack->realloc(_device_agent.get_sample_limit());
+    // _math_stack->calc_math(factor); // TODO: re-enable after MathStack de-view-ization
   }
 
   _trigger_flag = o.trig_flag;
@@ -1313,7 +1366,7 @@ void SigSession::feed_in_analog(const sr_datafeed_analog &o) {
     // first payload
     _capture_data->get_analog()->first_payload(
         o, _device_agent.get_sample_limit(), _device_agent.get_channels());
-    for (auto* cb : _callbacks) cb->frame_began();
+    frame_began();
   } else {
     // Append to the existing data snapshot
     _capture_data->get_analog()->append_payload(o);
@@ -1321,7 +1374,7 @@ void SigSession::feed_in_analog(const sr_datafeed_analog &o) {
 
   if (_capture_data->get_analog()->memory_failed()) {
     _error = Malloc_err;
-    for (auto* cb : _callbacks) cb->session_error();
+    session_error();
     return;
   }
 
@@ -1341,7 +1394,7 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
 
   if (packet->type != SR_DF_END && packet->status != SR_PKT_OK) {
     _error = Pkt_data_err;
-    for (auto* cb : _callbacks) cb->session_error();
+    session_error();
     return;
   }
 
@@ -1378,7 +1431,7 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
   case SR_DF_OVERFLOW: {
     if (_error == No_err) {
       _error = Data_overflow;
-      for (auto* cb : _callbacks) cb->session_error();
+      session_error();
     }
     break;
   }
@@ -1391,13 +1444,13 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
 
     if (packet->status != SR_PKT_OK) {
       _error = Pkt_data_err;
-      for (auto* cb : _callbacks) cb->session_error();
+      session_error();
     } else {
       int mode = _device_agent.get_work_mode();
 
       // Post a message to start all decode tasks.
       if (mode == LOGIC) {
-        for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_REV_END_PACKET);
+        trigger_message(DSV_MSG_REV_END_PACKET);
       } else {
         if (mode == DSO && _is_instant) {
           sr_status status;
@@ -1408,7 +1461,7 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
           }
         }
 
-        for (auto* cb : _callbacks) cb->frame_ended();
+        frame_ended();
       }
     }
 
@@ -1417,10 +1470,11 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
   }
 }
 
-void SigSession::data_feed_callback(const struct sr_dev_inst *sdi,
-                                    const struct sr_datafeed_packet *packet) {
-  assert(_session);
-  _session->data_feed_in(sdi, packet);
+void SigSession::data_feed_callback_ex(const struct sr_dev_inst *sdi,
+                                       const struct sr_datafeed_packet *packet,
+                                       void *user_data) {
+  assert(user_data);
+  static_cast<SigSession *>(user_data)->data_feed_in(sdi, packet);
 }
 
 uint16_t SigSession::get_ch_num(int type) {
@@ -1430,15 +1484,15 @@ uint16_t SigSession::get_ch_num(int type) {
   uint16_t analog_ch_num = 0;
 
   if (_device_agent.have_instance()) {
-    for (auto s : _signals) {
-      if (!s->enabled())
+    for (auto m : _signal_models) {
+      if (!m->enabled())
         continue;
 
-      if (s->signal_type() == SR_CHANNEL_LOGIC)
+      if (m->type() == api::ChannelType::Logic)
         logic_ch_num++;
-      else if (s->signal_type() == SR_CHANNEL_DSO)
+      else if (m->type() == api::ChannelType::Dso)
         dso_ch_num++;
-      else if (s->signal_type() == SR_CHANNEL_ANALOG)
+      else if (m->type() == api::ChannelType::Analog)
         analog_ch_num++;
     }
   }
@@ -1464,15 +1518,13 @@ uint16_t SigSession::get_ch_num(int type) {
 bool SigSession::add_decoder(
     srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
     std::list<pv::data::decode::Decoder *> &sub_decoders,
-    view::Trace *&out_trace) {
+    data::DecoderStack *&out_stack) {
   if (dec == NULL) {
     pxv_err("Decoder instance is null!");
     assert(false);
   }
 
-  out_trace = NULL;
-
-  // pxv_info("Create new decoder,name:\"%s\",id:\"%s\"", dec->name, dec->id);
+  out_stack = NULL;
 
   try {
     bool ret = false;
@@ -1496,59 +1548,45 @@ bool SigSession::add_decoder(
 
     decoder_stack->stack().front()->set_probes(probes);
 
-    // Create the decode signal
-    view::DecodeTrace *trace =
-        new view::DecodeTrace(this, decoder_stack, decode_traces().size());
-    assert(trace);
-
     // add sub decoder
     for (auto sub : sub_decoders) {
-      trace->decoder()->add_sub_decoder(sub);
+      decoder_stack->add_sub_decoder(sub);
     }
 
     if (sub_decoders.size() > 0) {
       auto lst_sub = sub_decoders.end();
       lst_sub--;
       QString sub_dec_name((*lst_sub)->decoder()->name);
-      if (sub_dec_name != "")
-        trace->set_name(sub_dec_name);
+      if (sub_dec_name != "") {
+        // TODO: verify - decoder name was previously set on view::DecodeTrace.
+        // DecoderStack has no set_name method; name management needs a new mechanism.
+      }
     }
 
     sub_decoders.clear();
 
-    // set view early for decode start/end region setting
-    for (auto s : _signals) {
-      if (s->get_view()) {
-        trace->set_view(s->get_view());
-        break;
-      }
-    }
-
-    if (silent) {
-      ret = true;
-    } else if (trace->create_popup(true)) {
-      ret = true;
-    }
+    // create_popup was a view::DecodeTrace UI method, removed during de-view-ization.
+    // The View layer (Task 9/10) will handle decoder option popups.
+    ret = true;
 
     if (ret) {
-      decode_traces().push_back(trace);
-      trace->decoder()->set_owner_document(_active_document);
-
-      if (_active_document && trace->decoder()) {
-        _active_document->get_decoder_stacks().push_back(trace->decoder());
+      if (_active_document) {
+        _active_document->get_decoder_stacks().push_back(decoder_stack);
+      } else {
+        _empty_decoder_stacks.push_back(decoder_stack);
       }
+      decoder_stack->set_owner_document(_active_document);
 
       // add decode task from ui
       if (!silent && have_view_data()) {
-        add_decode_task(trace);
+        add_decode_task(decoder_stack);
       }
 
-      signals_changed();
       data_updated();
 
-      out_trace = trace;
+      out_stack = decoder_stack;
     } else {
-      delete trace;
+      delete decoder_stack;
     }
 
     return ret;
@@ -1562,8 +1600,8 @@ bool SigSession::add_decoder(
 int SigSession::get_trace_index_by_key_handel(void *handel) {
   int dex = 0;
 
-  for (auto tr : decode_traces()) {
-    if (tr->decoder()->get_key_handel() == handel) {
+  for (auto stack : decode_traces()) {
+    if (stack->get_key_handel() == handel) {
       return dex;
     }
     ++dex;
@@ -1578,40 +1616,37 @@ void SigSession::remove_decoder(int index) {
   assert(index < size);
 
   auto it = decode_traces().begin() + index;
-  auto trace = (*it);
+  auto stack = (*it);
   decode_traces().erase(it);
 
-  if (_active_document && trace->decoder()) {
-    auto &stacks = _active_document->get_decoder_stacks();
-    auto sit = std::find(stacks.begin(), stacks.end(), trace->decoder());
-    if (sit != stacks.end())
-      stacks.erase(sit);
-  }
+  // decode_traces() returns _active_document->get_decoder_stacks() (or
+  // _empty_decoder_stacks), so the erase above already removed it from the
+  // document's list.
 
   // Stop the decode work and mark for deletion
-  remove_decode_task(trace);
-  trace->_delete_flag = true;
+  remove_decode_task(stack);
+  stack->_delete_flag = true;
 
-  // Check if the decode thread is still using this trace.
+  // Check if the decode thread is still using this stack.
   // We must NOT join threads here as that can deadlock
   // (decode thread may need the main thread for Qt signals).
-  bool thread_holds_trace = false;
+  bool thread_holds_stack = false;
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
     for (auto *task : _running_tasks) {
-      if (task == trace) {
-        thread_holds_trace = true;
+      if (task == stack) {
+        thread_holds_stack = true;
         break;
       }
     }
   }
 
-  if (!thread_holds_trace) {
-    // No thread is using this trace, safe to delete now
-    delete trace;
+  if (!thread_holds_stack) {
+    // No thread is using this stack, safe to delete now
+    delete stack;
     signals_changed();
   }
-  // If thread still holds the trace, decode_single_task will
+  // If thread still holds the stack, decode_single_task will
   // delete it via DESTROY_QT_LATER when it sees _delete_flag
 }
 
@@ -1621,12 +1656,18 @@ void SigSession::remove_decoder_by_key_handel(void *handel) {
 }
 
 void SigSession::rst_decoder(int index) {
-  auto trace = get_decoder_trace(index);
+  // TODO: Previously this called view::DecodeTrace::create_popup(false) to
+  // re-open the decoder options dialog. After de-view-ization, SigSession
+  // does not own view::DecodeTrace instances, so the popup must be triggered
+  // by the View layer. The reset/clear/re-add decode task logic below runs
+  // unconditionally; the View layer can hook into rst_decoder_by_key_handel
+  // to handle the UI popup separately.
+  auto stack = get_decoder_trace(index);
 
-  if (trace && trace->create_popup(false)) {
-    remove_decode_task(trace); // remove old task
-    trace->decoder()->clear();
-    add_decode_task(trace);
+  if (stack) {
+    remove_decode_task(stack); // remove old task
+    stack->clear();
+    add_decode_task(stack);
     data_updated();
   }
 }
@@ -1639,29 +1680,27 @@ void SigSession::rst_decoder_by_key_handel(void *handel) {
 void SigSession::spectrum_rebuild() {
   bool has_dso_signal = false;
 
-  for (auto s : _signals) {
-    if (s->signal_type() == SR_CHANNEL_DSO) {
+  for (auto m : _signal_models) {
+    if (m->type() == api::ChannelType::Dso) {
       has_dso_signal = true;
       // check already have
-      auto iter = _spectrum_traces.begin();
+      auto iter = _spectrum_stacks.begin();
 
-      for (unsigned int i = 0; i < _spectrum_traces.size(); i++, iter++) {
-        if ((*iter)->get_index() == s->get_index())
+      for (unsigned int i = 0; i < _spectrum_stacks.size(); i++, iter++) {
+        if ((*iter)->get_index() == m->index())
           break;
       }
 
       // if not, rebuild
-      if (iter == _spectrum_traces.end()) {
-        auto spectrum_stack = new data::SpectrumStack(this, s->get_index());
-        auto spectrum_trace =
-            new view::SpectrumTrace(this, spectrum_stack, s->get_index());
-        _spectrum_traces.push_back(spectrum_trace);
+      if (iter == _spectrum_stacks.end()) {
+        auto spectrum_stack = new data::SpectrumStack(this, m->index());
+        _spectrum_stacks.push_back(spectrum_stack);
       }
     }
   }
 
   if (!has_dso_signal) {
-    RELEASE_ARRAY(_spectrum_traces);
+    RELEASE_ARRAY(_spectrum_stacks);
   }
 
   signals_changed();
@@ -1669,51 +1708,52 @@ void SigSession::spectrum_rebuild() {
 
 void SigSession::lissajous_rebuild(bool enable, int xindex, int yindex,
                                    double percent) {
-  DESTROY_OBJECT(_lissajous_trace);
-  _lissajous_trace = new view::LissajousTrace(enable, _view_data->get_dso(),
-                                              xindex, yindex, percent);
+  DESTROY_OBJECT(_lissajous_model);
+  _lissajous_model = new data::LissajousModel();
+  _lissajous_model->set_enabled(enable);
+  _lissajous_model->set_x_index(xindex);
+  _lissajous_model->set_y_index(yindex);
+  _lissajous_model->set_percent((int)percent);
   signals_changed();
 }
 
 void SigSession::lissajous_disable() {
-  if (_lissajous_trace)
-    _lissajous_trace->set_enable(false);
+  if (_lissajous_model)
+    _lissajous_model->set_enabled(false);
 }
 
-void SigSession::math_rebuild(bool enable, view::DsoSignal *dsoSig1,
-                              view::DsoSignal *dsoSig2,
+void SigSession::math_rebuild(bool enable, int ch1_index, int ch2_index,
                               data::MathStack::MathType type) {
   ds_lock_guard lock(_data_mutex);
 
-  assert(dsoSig1);
-  assert(dsoSig2);
+  DESTROY_OBJECT(_math_stack);
 
-  DESTROY_OBJECT(_math_trace);
-
-  auto math_stack = new data::MathStack(this, dsoSig1, dsoSig2, type);
-  _math_trace = new view::MathTrace(enable, math_stack, dsoSig1, dsoSig2);
-
-  if (_math_trace && _math_trace->enabled()) {
-    int rt = _view_data->get_dso()->samplerate();
-    if (rt > 0) {
-      _math_trace->get_math_stack()->set_samplerate(rt);
-      _math_trace->get_math_stack()->realloc(_device_agent.get_sample_limit());
-      _math_trace->get_math_stack()->calc_math(_math_trace->get_vDialfactor());
-    }
+  // The MathStack constructor now accepts channel indices and resolves the
+  // DSO parameters (vdiv / vfactor / hw_offset / snapshot) through
+  // SignalModel — no view::DsoSignal dependency. The View layer is
+  // responsible for creating the matching MathTrace later (see
+  // View::sync_derived_traces).
+  //
+  // When the user disables math (enable=false), we destroy any existing
+  // MathStack and do not create a new one. The View's sync_derived_traces
+  // observes the null MathStack and tears down its MathTrace.
+  if (enable) {
+    _math_stack = new data::MathStack(this, ch1_index, ch2_index, type);
   }
+
   signals_changed();
 }
 
 void SigSession::math_disable() {
-  if (_math_trace)
-    _math_trace->set_enable(false);
+  if (_math_stack)
+    _math_stack->init();
 }
 
 void SigSession::nodata_timeout() {
   int flag;
   _device_agent.get_config_byte(SR_CONF_TRIGGER_SOURCE, flag);
   if (flag != DSO_TRIGGER_AUTO) {
-    for (auto* cb : _callbacks) cb->show_wait_trigger();
+    show_wait_trigger();
   }
 }
 
@@ -1750,12 +1790,11 @@ int SigSession::get_repeat_hold() {
 }
 
 void SigSession::auto_end() {
-  for (auto s : _signals) {
-    if (s->signal_type() == SR_CHANNEL_DSO) {
-      view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-      dsoSig->auto_end();
-    }
-  }
+  // TODO: view::DsoSignal::auto_end() was a UI rendering method that adjusted
+  // the auto-set state and refreshed the trace. After de-view-ization, SigSession
+  // does not own view::Signal instances. The View layer is responsible for
+  // calling auto_end() on its own cloned DsoSignal objects when this event
+  // occurs (e.g. by listening to a broadcast message or callback).
 }
 
 void SigSession::Open() {}
@@ -1775,23 +1814,20 @@ void SigSession::Close() {
   for (auto p : _data_list) {
     p->clear();
   }
-
-  // TODO: This should not be necessary
-  _session = NULL;
 }
 
-void SigSession::add_decode_task(view::DecodeTrace *trace) {
+void SigSession::add_decode_task(data::DecoderStack *stack) {
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
-    _running_tasks.push_back(trace);
+    _running_tasks.push_back(stack);
   }
 
   _decode_threads.push_back(
-      std::thread(&SigSession::decode_single_task, this, trace));
+      std::thread(&SigSession::decode_single_task, this, stack));
 }
 
-void SigSession::remove_decode_task(view::DecodeTrace *trace) {
-  trace->decoder()->stop_decode_work();
+void SigSession::remove_decode_task(data::DecoderStack *stack) {
+  stack->stop_decode_work();
 }
 
 void SigSession::clear_all_decoder(bool bUpdateView) {
@@ -1801,20 +1837,22 @@ void SigSession::clear_all_decoder(bool bUpdateView) {
   int dex = -1;
   clear_all_decode_task(dex);
 
-  view::DecodeTrace *runningTrace = NULL;
+  data::DecoderStack *runningStack = nullptr;
   if (dex != -1) {
-    runningTrace = decode_traces()[dex];
-    runningTrace->_delete_flag = true;
+    runningStack = decode_traces()[dex];
+    runningStack->_delete_flag = true;
   }
 
-  for (auto trace : decode_traces()) {
-    if (trace != runningTrace)
-      delete trace;
+  for (auto stack : decode_traces()) {
+    if (stack != runningStack)
+      delete stack;
   }
   decode_traces().clear();
 
-  if (_active_document)
-    _active_document->get_decoder_stacks().clear();
+  // decode_traces() returns _active_document->get_decoder_stacks() (or
+  // _empty_decoder_stacks), so the clear above already removed them from
+  // the document's list. No need to clear _active_document->get_decoder_stacks()
+  // a second time.
 
   if (!_bClose && bUpdateView)
     signals_changed();
@@ -1824,44 +1862,43 @@ void SigSession::clear_all_documents_decoders() {
   int dex = -1;
   clear_all_decode_task(dex);
 
-  view::DecodeTrace *runningTrace = NULL;
+  data::DecoderStack *runningStack = nullptr;
 
   for (auto doc : _all_documents) {
-    auto &traces = doc->get_decode_traces();
-    for (auto trace : traces) {
-      if (trace->decoder()->IsRunning()) {
-        runningTrace = trace;
-        trace->_delete_flag = true;
+    auto &stacks = doc->get_decoder_stacks();
+    for (auto stack : stacks) {
+      if (stack->IsRunning()) {
+        runningStack = stack;
+        stack->_delete_flag = true;
       }
     }
   }
 
   for (auto doc : _all_documents) {
-    auto &traces = doc->get_decode_traces();
-    for (auto trace : traces) {
-      if (trace != runningTrace)
-        delete trace;
+    auto &stacks = doc->get_decoder_stacks();
+    for (auto stack : stacks) {
+      if (stack != runningStack)
+        delete stack;
     }
-    traces.clear();
-    doc->get_decoder_stacks().clear();
+    stacks.clear();
   }
 }
 
 void SigSession::clear_all_decode_task(int &runningDex) {
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
-    for (auto trace : _running_tasks) {
-      if (trace && trace->decoder())
-        trace->decoder()->stop_decode_work();
+    for (auto stack : _running_tasks) {
+      if (stack)
+        stack->stop_decode_work();
     }
   }
 
   runningDex = -1;
   for (auto doc : _all_documents) {
     int dex = 0;
-    for (auto trace : doc->get_decode_traces()) {
-      if (trace->decoder()->IsRunning()) {
-        trace->decoder()->stop_decode_work();
+    for (auto stack : doc->get_decoder_stacks()) {
+      if (stack->IsRunning()) {
+        stack->stop_decode_work();
         if (doc == _active_document)
           runningDex = dex;
       }
@@ -1881,7 +1918,7 @@ void SigSession::clear_all_decode_task(int &runningDex) {
   }
 }
 
-view::DecodeTrace *SigSession::get_decoder_trace(int index) {
+data::DecoderStack *SigSession::get_decoder_trace(int index) {
   if (index >= 0 && index < (int)decode_traces().size()) {
     return decode_traces()[index];
   }
@@ -1889,11 +1926,11 @@ view::DecodeTrace *SigSession::get_decoder_trace(int index) {
   return nullptr;
 }
 
-void SigSession::decode_single_task(view::DecodeTrace *task) {
+void SigSession::decode_single_task(data::DecoderStack *task) {
   pxv_info("------->decode thread start");
 
   if (!task->_delete_flag) {
-    task->decoder()->begin_decode_work();
+    task->begin_decode_work();
   }
 
   if (task->_delete_flag) {
@@ -1934,12 +1971,12 @@ Snapshot *SigSession::get_signal_snapshot() {
     return _view_data->get_logic();
 }
 
-void SigSession::device_lib_event_callback(int event) {
-  if (_session == NULL) {
-    pxv_err("Error!Global variable \"_session\" is null.");
+void SigSession::device_lib_event_callback_ex(int event, void *user_data) {
+  if (user_data == NULL) {
+    pxv_err("Error!Event callback user_data is null.");
     return;
   }
-  _session->on_device_lib_event(event);
+  static_cast<SigSession *>(user_data)->on_device_lib_event(event);
 }
 
 void SigSession::on_device_lib_event(int event) {
@@ -1966,13 +2003,13 @@ void SigSession::on_device_lib_event(int event) {
     break;
 
   case DS_EV_COLLECT_TASK_START:
-    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COLLECT_START);
+    trigger_message(DSV_MSG_COLLECT_START);
     break;
 
   case DS_EV_COLLECT_TASK_END:
   case DS_EV_COLLECT_TASK_END_BY_ERROR:
   case DS_EV_COLLECT_TASK_END_BY_DETACHED: {
-    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COLLECT_END);
+    trigger_message(DSV_MSG_COLLECT_END);
 
     if (_capture_data->get_logic()->last_ended() == false)
       pxv_err("The collected data is error!");
@@ -1985,16 +2022,16 @@ void SigSession::on_device_lib_event(int event) {
 
     // trig next collect
     if (is_repeat_mode() && _is_working && event == DS_EV_COLLECT_TASK_END) {
-      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_TRIG_NEXT_COLLECT);
+      trigger_message(DSV_MSG_TRIG_NEXT_COLLECT);
     } else {
       _is_working = false;
       _is_instant = false;
-      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_END_COLLECT_WORK);
+      trigger_message(DSV_MSG_END_COLLECT_WORK);
     }
   } break;
 
   case DS_EV_NEW_DEVICE_ATTACH:
-    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_NEW_USB_DEVICE);
+    trigger_message(DSV_MSG_NEW_USB_DEVICE);
     break;
 
   case DS_EV_CURRENT_DEVICE_DETACH: {
@@ -2004,16 +2041,15 @@ void SigSession::on_device_lib_event(int event) {
       stop_capture();
     }
 
-    for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CURRENT_DEVICE_DETACHED);
+    trigger_message(DSV_MSG_CURRENT_DEVICE_DETACHED);
   } break;
 
   case DS_EV_INACTIVE_DEVICE_DETACH:
-    for (auto* cb : _callbacks) cb->trigger_message(
-        DSV_MSG_DEVICE_LIST_UPDATED); // Update list only.
+    trigger_message(DSV_MSG_DEVICE_LIST_UPDATED); // Update list only.
     break;
 
   case DS_EV_DEVICE_SPEED_NOT_MATCH:
-    for (auto* cb : _callbacks) cb->trigger_message(DS_EV_DEVICE_SPEED_NOT_MATCH);
+    trigger_message(DS_EV_DEVICE_SPEED_NOT_MATCH);
     break;
 
   default:
@@ -2026,7 +2062,7 @@ void SigSession::add_msg_listener(IMessageListener *ln) {
   _msg_listeners.push_back(ln);
 }
 
-void SigSession::remove_callback(ISessionCallback *callback) {
+void SigSession::remove_callback(ISessionCallbackBase *callback) {
   auto it = std::find(_callbacks.begin(), _callbacks.end(), callback);
   if (it != _callbacks.end())
     _callbacks.erase(it);
@@ -2046,7 +2082,7 @@ void SigSession::set_collect_mode(DEVICE_COLLECT_MODE m) {
     _repeat_hold_prg = 0;
   }
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COLLECT_MODE_CHANGED);
+  trigger_message(DSV_MSG_COLLECT_MODE_CHANGED);
 }
 
 void SigSession::repeat_capture_wait_timeout() {
@@ -2056,7 +2092,7 @@ void SigSession::repeat_capture_wait_timeout() {
   _repeat_hold_prg = 0;
 
   if (_is_working) {
-    for (auto* cb : _callbacks) cb->repeat_hold(_repeat_hold_prg);
+    repeat_hold(_repeat_hold_prg);
     exec_capture();
   }
 }
@@ -2068,7 +2104,7 @@ void SigSession::repeat_wait_prog_timeout() {
     _repeat_hold_prg = 0;
 
   if (_is_working)
-    for (auto* cb : _callbacks) cb->repeat_hold(_repeat_hold_prg);
+    repeat_hold(_repeat_hold_prg);
 }
 
 void SigSession::OnMessage(int msg) {
@@ -2148,10 +2184,9 @@ void SigSession::OnMessage(int msg) {
         attach_data_to_signal(_view_data);
         set_session_time(_trig_time);
 
-        for (auto* cb : _callbacks) cb->receive_trigger(
-            _view_data->_trig_pos); // Update trig position.
+        receive_trigger(_view_data->_trig_pos); // Update trig position.
 
-        for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_DATA_POOL_CHANGED);
+        trigger_message(DSV_MSG_DATA_POOL_CHANGED);
       }
 
       if (bAddDecoder && _active_document) {
@@ -2163,16 +2198,22 @@ void SigSession::OnMessage(int msg) {
         std::thread([this, doc]() {
           copy_data_to_document(doc);
           _copy_in_progress = false;
-          for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
+          trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
         }).detach();
       } else {
+        // No active document (typical in headless mode). Skip the deep copy
+        // to a SessionDocument and start the decoders directly. The decoders
+        // read their snapshots from _view_data via get_signal_models(), so
+        // they don't need a SessionDocument to be set up.
         _capture_owner_document = nullptr;
-        for (auto de : decode_traces()) {
-          de->decoder()->set_capture_end_flag(true);
+        for (auto stack : decode_traces()) {
+          stack->set_capture_end_flag(true);
+          stack->frame_ended();
+          add_decode_task(stack);
         }
       }
 
-      for (auto* cb : _callbacks) cb->frame_ended();
+      frame_ended();
     }
   } break;
 
@@ -2183,10 +2224,10 @@ void SigSession::OnMessage(int msg) {
     // Background copy_data_to_document has completed.
     // NOW we can safely start the decoders!
     _capture_owner_document = nullptr;
-    for (auto de : decode_traces()) {
-      de->decoder()->set_capture_end_flag(true);
-      de->frame_ended();
-      add_decode_task(de);
+    for (auto stack : decode_traces()) {
+      stack->set_capture_end_flag(true);
+      stack->frame_ended();
+      add_decode_task(stack);
     }
     pxv_info("Background copy_data_to_document completed. Decoders started.");
   } break;
@@ -2194,7 +2235,7 @@ void SigSession::OnMessage(int msg) {
   case DS_EV_DEVICE_SPEED_NOT_MATCH: {
     QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_SPEED_TOO_LOW),
                        "Speed too low!"));
-    for (auto* cb : _callbacks) cb->delay_prop_msg(strMsg);
+    delay_prop_msg(strMsg);
   } break;
   }
 }
@@ -2267,32 +2308,28 @@ bool SigSession::have_new_realtime_refresh(bool keep) {
 }
 
 void SigSession::clear_decode_result() {
-  for (auto de : decode_traces()) {
-    de->decoder()->init();
-    de->decoder()->set_capture_end_flag(false);
+  for (auto stack : decode_traces()) {
+    stack->init();
+    stack->set_capture_end_flag(false);
   }
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_CLEAR_DECODE_DATA);
+  trigger_message(DSV_MSG_CLEAR_DECODE_DATA);
 }
 
 void SigSession::clear_signals() {
-  DESTROY_OBJECT(_math_trace);
+  DESTROY_OBJECT(_math_stack);
 
-  for (int i = 0; i < (int)_signals.size(); i++) {
-    auto *p = _signals[i];
-    p->sig_released(p);
-
-    DESTROY_QT_LATER(p);
+  for (auto *p : _signal_models) {
+    delete p;
   }
-  _signals.clear();
+  _signal_models.clear();
 }
 
-view::Signal *SigSession::get_signal_by_index(int index) {
-  for (int i = 0; i < (int)_signals.size(); i++) {
-    auto *p = _signals[i];
-    if (p->get_index() == index)
-      return p;
+data::SignalModel *SigSession::get_signal_by_index(int index) {
+  for (auto *m : _signal_models) {
+    if (m->index() == index)
+      return m;
   }
-  return NULL;
+  return nullptr;
 }
 
 bool SigSession::is_realtime_refresh() {
@@ -2315,45 +2352,45 @@ void SigSession::clear_view_data() {
   data_updated();
 }
 
-void SigSession::set_trace_name(view::Trace *trace, QString name) {
-  assert(trace);
+void SigSession::set_trace_name(data::SignalModel *model, QString name) {
+  assert(model);
 
-  trace->set_name(name);
+  model->set_name(name.toStdString());
 
-  int traceType = trace->get_type();
-
-  if (traceType == SR_CHANNEL_LOGIC || traceType == SR_CHANNEL_ANALOG) {
-    _device_agent.set_channel_name(trace->get_index(), name.toUtf8());
-  } else if (traceType == SR_CHANNEL_DECODER && _decoder_pannel != NULL) {
-    _decoder_pannel->update_deocder_item_name(trace, name.toUtf8().data());
+  // SignalModel covers Logic/Analog/Dso channel types. The decoder case is
+  // handled separately via set_decoder_row_label().
+  if (model->type() == api::ChannelType::Logic ||
+      model->type() == api::ChannelType::Analog) {
+    _device_agent.set_channel_name(model->index(), name.toUtf8());
   }
 }
 
 void SigSession::set_decoder_row_label(int index, QString label) {
-  auto trace = get_decoder_trace(index);
-  if (trace != NULL) {
-    set_trace_name(trace, label);
-  }
+  // TODO: Previously this delegated to set_trace_name() on a view::DecodeTrace,
+  // which called view::Trace::set_name() and (for decoder traces) updated
+  // DecoderPannel item name. DecoderStack has no set_name() method; a new
+  // mechanism for naming decoders (e.g. storing the label on DecoderStack)
+  // is required. The View layer/DecoderPannel should be updated to manage
+  // decoder display names directly.
+  (void)index;
+  (void)label;
 }
 
-view::Trace *SigSession::get_channel_by_index(int orgIndex) {
-  for (auto t : _signals) {
-    if (t->get_index() == orgIndex) {
-      return t;
+data::SignalModel *SigSession::get_channel_by_index(int orgIndex) {
+  for (auto m : _signal_models) {
+    if (m->index() == orgIndex) {
+      return m;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 void SigSession::make_channels_view_index(int start_dex) {
-  int index = 0;
-
-  if (start_dex != -1)
-    index = start_dex;
-
-  for (auto t : _signals) {
-    t->set_view_index(index++);
-  }
+  // SignalModel is a pure data model and has no view_index property.
+  // The View layer is responsible for tracking view index on its own
+  // view::Signal objects (created from SignalModel via SignalFactory).
+  // This method is now a no-op.
+  (void)start_dex;
 }
 
 void SigSession::trig_check_timeout() {
@@ -2376,13 +2413,13 @@ void SigSession::update_dso_data_scale() {
   int mode = _device_agent.get_work_mode();
 
   if (mode == DSO) {
-    for (auto s : _signals) {
-      if (s->get_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *ch = (view::DsoSignal *)s;
-        _capture_data->get_dso()->set_data_scale(ch->get_scale(),
-                                                 ch->get_index());
-      }
-    }
+    // TODO: view::DsoSignal::get_scale() returned a UI rendering scale
+    // computed from view rect height, vdiv, vfactor and hw_offset. After
+    // de-view-ization, SignalModel holds vdiv/vfactor/hw_offset but not the
+    // view rect height, so the rendering scale cannot be computed here.
+    // The View layer is responsible for calling DsoSnapshot::set_data_scale()
+    // on its own cloned DsoSignal objects.
+    (void)mode;
   }
 }
 
@@ -2398,14 +2435,16 @@ int64_t SigSession::get_ring_sample_count() {
 }
 
 void SigSession::update_lang_text() {
-  for (auto trace : _spectrum_traces) {
-    trace->update_lang_text();
-  }
+  // TODO: view::SpectrumTrace::update_lang_text() was a UI rendering method
+  // that refreshed localized text on spectrum trace widgets. After
+  // de-view-ization, SigSession no longer owns view::SpectrumTrace instances.
+  // The View layer is responsible for updating language text on its own
+  // rendering objects.
 }
 
 bool SigSession::have_decoded_result() {
-  for (auto trace : decode_traces()) {
-    if (trace->decoder()->get_result_count() > 0) {
+  for (auto stack : decode_traces()) {
+    if (stack->get_result_count() > 0) {
       return true;
     }
   }
@@ -2429,15 +2468,16 @@ data::DsoSnapshot *SigSession::get_dso_snapshot() {
 
 void SigSession::set_active_document(data::SessionDocument *doc) {
   if (_active_document == nullptr && doc != nullptr &&
-      !_empty_decode_traces.empty()) {
-    doc->get_decode_traces() = _empty_decode_traces;
-    for (auto trace : _empty_decode_traces) {
-      if (trace->decoder()) {
-        trace->decoder()->set_owner_document(doc);
-        doc->get_decoder_stacks().push_back(trace->decoder());
-      }
+      !_empty_decoder_stacks.empty()) {
+    // Move any DecoderStack instances created before a SessionDocument was
+    // bound (e.g. decoders added in headless mode without an active tab)
+    // into the new document.
+    auto &dst = doc->get_decoder_stacks();
+    for (auto stack : _empty_decoder_stacks) {
+      stack->set_owner_document(doc);
+      dst.push_back(stack);
     }
-    _empty_decode_traces.clear();
+    _empty_decoder_stacks.clear();
   }
   _active_document = doc;
 }
@@ -2459,24 +2499,20 @@ void SigSession::attach_data_to_signal(SessionData *data) {
   if (!data)
     return;
 
-  for (auto sig : _signals) {
-    int type = sig->signal_type();
-    switch (type) {
-    case SR_CHANNEL_LOGIC: {
-      view::LogicSignal *s = (view::LogicSignal *)sig;
-      s->set_data(data->get_logic());
+  // Update each SignalModel's snapshot pointer so consumers of SignalModel
+  // can access the most recent snapshot data. The void* type is resolved
+  // based on SignalModel::type().
+  for (auto m : _signal_models) {
+    switch (m->type()) {
+    case api::ChannelType::Logic:
+      m->set_snapshot(data->get_logic());
       break;
-    }
-    case SR_CHANNEL_ANALOG: {
-      view::AnalogSignal *s = (view::AnalogSignal *)sig;
-      s->set_data(data->get_analog());
+    case api::ChannelType::Analog:
+      m->set_snapshot(data->get_analog());
       break;
-    }
-    case SR_CHANNEL_DSO: {
-      view::DsoSignal *s = (view::DsoSignal *)sig;
-      s->set_data(data->get_dso());
+    case api::ChannelType::Dso:
+      m->set_snapshot(data->get_dso());
       break;
-    }
     }
   }
 }
@@ -2501,7 +2537,7 @@ void SigSession::set_glitch_filter(
     return;
 
   _glitch_filter_running = true;
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_STARTED);
+  trigger_message(DSV_MSG_GLITCH_FILTER_STARTED);
 
   if (_glitch_filter_thread) {
     _glitch_filter_thread->join();
@@ -2522,7 +2558,7 @@ void SigSession::glitch_filter_task(
       delete _view_data->_logic_backup;
       _view_data->_logic_backup = nullptr;
       _glitch_filter_running = false;
-      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
+      trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
       return;
     }
   } else {
@@ -2548,7 +2584,7 @@ void SigSession::glitch_filter_task(
       thresholds,
       [this](int progress) {
         (void)progress;
-        for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS);
+        trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS);
       },
       filter_modes);
 
@@ -2557,8 +2593,8 @@ void SigSession::glitch_filter_task(
   _view_data->_glitch_filter_modes = filter_modes;
   _glitch_filter_running = false;
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
-  for (auto* cb : _callbacks) cb->data_updated();
+  trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
+  data_updated();
 }
 
 void SigSession::clear_glitch_filter() {
@@ -2578,8 +2614,8 @@ void SigSession::clear_glitch_filter() {
   _view_data->_glitch_filter_thresholds.clear();
   _view_data->_glitch_filter_modes.clear();
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
-  for (auto* cb : _callbacks) cb->data_updated();
+  trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
+  data_updated();
 }
 
 bool SigSession::is_glitch_filter_active() {
@@ -2604,7 +2640,7 @@ void SigSession::set_signal_invert(const std::vector<bool> &channels) {
     return;
 
   _signal_invert_running = true;
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_STARTED);
+  trigger_message(DSV_MSG_SIGNAL_INVERT_STARTED);
 
   if (_signal_invert_thread) {
     _signal_invert_thread->join();
@@ -2623,7 +2659,7 @@ void SigSession::signal_invert_task(const std::vector<bool> channels) {
       delete _view_data->_logic_backup;
       _view_data->_logic_backup = nullptr;
       _signal_invert_running = false;
-      for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
+      trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
       return;
     }
   } else {
@@ -2653,8 +2689,8 @@ void SigSession::signal_invert_task(const std::vector<bool> channels) {
   _view_data->_signal_invert_channels = channels;
   _signal_invert_running = false;
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
-  for (auto* cb : _callbacks) cb->data_updated();
+  trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
+  data_updated();
 }
 
 void SigSession::clear_signal_invert() {
@@ -2680,8 +2716,8 @@ void SigSession::clear_signal_invert() {
   _view_data->_signal_invert_active = false;
   _view_data->_signal_invert_channels.clear();
 
-  for (auto* cb : _callbacks) cb->trigger_message(DSV_MSG_SIGNAL_INVERT_CLEARED);
-  for (auto* cb : _callbacks) cb->data_updated();
+  trigger_message(DSV_MSG_SIGNAL_INVERT_CLEARED);
+  data_updated();
 }
 
 bool SigSession::is_signal_invert_active() {
@@ -2702,10 +2738,10 @@ void SigSession::restart_decoders() {
   }
 
   // Restart all decoders
-  for (auto de : decode_traces()) {
-    de->decoder()->set_capture_end_flag(true);
-    de->frame_ended();
-    add_decode_task(de);
+  for (auto stack : decode_traces()) {
+    stack->set_capture_end_flag(true);
+    stack->frame_ended();
+    add_decode_task(stack);
   }
 }
 

@@ -39,6 +39,7 @@
 #include "../ui/uimanager.h"
 #include "../view/view.h"
 #include "edge_nav_button.h"
+#include "trace.h"
 
 
 class QPainter;

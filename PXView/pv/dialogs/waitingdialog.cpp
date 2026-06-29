@@ -33,6 +33,7 @@
 #include "../view/trace.h"
 #include "../view/dsosignal.h"
 #include "../config/appconfig.h"
+#include "../data/signalmodel.h"
 #include "../ui/langresource.h"
 #include "../appcontrol.h"
 #include "../ui/dockfonts.h"
@@ -185,11 +186,10 @@ void WaitingDialog::changeText()
             
             if (_device_agent->get_config_bool(SR_CONF_ZERO_COMB_FGAIN, zero_fgain) && zero_fgain) {                 
                                         
-                for(auto s : _session->get_signals()){
-                    if (s->signal_type() == SR_CHANNEL_DSO){
-                        view::DsoSignal *dsoSig = (view::DsoSignal*)s;
-                        dsoSig->set_enable(dsoSig->get_index() == 0);
-                    }                                
+                for(auto m : _session->get_signal_models()){
+                    if (m->type() == pv::api::ChannelType::Dso){
+                        _device_agent->enable_probe(m->index(), m->index() == 0);
+                    }
                 }
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));

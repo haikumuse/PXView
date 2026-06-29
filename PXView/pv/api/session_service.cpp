@@ -22,20 +22,13 @@
 
 #include "../sigsession.h"
 #include "../deviceagent.h"
-#include "../view/view.h"
-#include "../view/signal.h"
-#include "../view/logicsignal.h"
-#include "../view/analogsignal.h"
-#include "../view/dsosignal.h"
-#include "../view/decodetrace.h"
-#include "../view/spectrumtrace.h"
-#include "../view/lissajoustrace.h"
-#include "../view/mathtrace.h"
-#include "../view/cursor.h"
+#include "../dsvdef.h"
+#include "../data/signalmodel.h"
 #include "../data/logicsnapshot.h"
 #include "../data/analogsnapshot.h"
 #include "../data/dsosnapshot.h"
 #include "../data/decoderstack.h"
+#include "../data/mathstack.h"
 #include "../data/decode/decoder.h"
 #include "../data/decode/annotation.h"
 #include "../data/decode/row.h"
@@ -45,7 +38,7 @@
 #include <libsigrok.h>
 #include <libsigrokdecode/libsigrokdecode.h>
 
-#include <QApplication>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QColor>
 #include <QDateTime>
@@ -61,6 +54,7 @@
 #include <algorithm>
 #include <cstring>
 #include <condition_variable>
+#include <functional>
 
 #ifdef WIN32
 #include <windows.h>
@@ -120,11 +114,91 @@ static std::string ensure_utf8(const char *str) {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-thread dispatch helper
+// ---------------------------------------------------------------------------
+//
+// Several SessionService methods (add_decoder, remove_decoder, ...) touch
+// QObject-derived types (DecoderStack, DecodeTrace, ...) and therefore must
+// run on the Qt main thread. The original code dispatched the work via
+// `QMetaObject::invokeMethod(qApp, lambda, Qt::QueuedConnection)` and waited
+// on a `std::condition_variable`.
+//
+// That pattern DEADLOCKS when the caller is already on the main thread:
+// `Qt::QueuedConnection` posts the lambda to the main thread's event queue,
+// but the main thread is blocked inside `result_cv.wait()` and never processes
+// the event loop, so the lambda never runs and the condition variable is
+// never notified. This is exactly what happens for MCP requests: the QTcpServer
+// owned by McpTransport lives on the main thread, so its `readyRead` signal
+// (and therefore `on_add_analyzer`) runs on the main thread.
+//
+// The helpers below detect this case and invoke the lambda inline. Otherwise
+// they fall back to the queued dispatch + condition_variable wait.
+inline bool on_main_thread() {
+    return qApp && QThread::currentThread() == qApp->thread();
+}
+
+// Run a `Result<std::string>`-returning lambda on the main thread.
+inline Result<std::string> run_string_on_main_thread(
+    const std::function<Result<std::string>()>& fn) {
+    if (on_main_thread())
+        return fn();
+
+    Result<std::string> result =
+        Result<std::string>::Fail(ErrorCode::InternalError, "Pending");
+    std::mutex result_mutex;
+    std::condition_variable result_cv;
+    bool done = false;
+
+    QMetaObject::invokeMethod(qApp, [&fn, &result, &result_mutex, &result_cv, &done]() {
+        result = fn();
+        {
+            std::lock_guard<std::mutex> lock(result_mutex);
+            done = true;
+        }
+        result_cv.notify_one();
+    }, Qt::QueuedConnection);
+
+    {
+        std::unique_lock<std::mutex> lock(result_mutex);
+        result_cv.wait(lock, [&done]() { return done; });
+    }
+    return result;
+}
+
+// Run a `Result<void>`-returning lambda on the main thread.
+inline Result<void> run_void_on_main_thread(
+    const std::function<Result<void>()>& fn) {
+    if (on_main_thread())
+        return fn();
+
+    Result<void> result =
+        Result<void>::Fail(ErrorCode::InternalError, "Pending");
+    std::mutex result_mutex;
+    std::condition_variable result_cv;
+    bool done = false;
+
+    QMetaObject::invokeMethod(qApp, [&fn, &result, &result_mutex, &result_cv, &done]() {
+        result = fn();
+        {
+            std::lock_guard<std::mutex> lock(result_mutex);
+            done = true;
+        }
+        result_cv.notify_one();
+    }, Qt::QueuedConnection);
+
+    {
+        std::unique_lock<std::mutex> lock(result_mutex);
+        result_cv.wait(lock, [&done]() { return done; });
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------
 // Construction / destruction
 // ---------------------------------------------------------------------------
 
 SessionService::SessionService(SigSession *session, DeviceAgent *device)
-    : _session(session), _device(device), _view(nullptr),
+    : _session(session), _device(device),
       _capture_id(0), _wait_capture_stop_flag(false) {
     if (_session) {
         _session->add_callback(this);
@@ -138,16 +212,20 @@ SessionService::~SessionService() {
     }
 }
 
-void SessionService::set_view(view::View *view) {
-    _view = view;
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+bool SessionService::is_gui_mode() {
+    // Detects whether we're running inside the full GUI (QApplication) or
+    // a plain QCoreApplication (headless mode). Uses inherits() so that
+    // QApplication.h does not need to be included here.
+    QCoreApplication *app = QCoreApplication::instance();
+    return app && app->inherits("QApplication");
+}
+
 void SessionService::broadcast_event(
-    ServiceEvent event, const std::map<std::string, std::string> &params) {
+    ServiceEvent event, const std::map<std::string, std::string> &params) const {
     std::lock_guard<std::mutex> lock(_listeners_mutex);
     ServiceEventData data;
     data.event = event;
@@ -273,38 +351,48 @@ Result<void> SessionService::wait_capture_complete(uint64_t timeout_ms) {
         return Result<void>::Fail(ErrorCode::InvalidState,
                                  "Unexpected capture state");
 
-    // Block using QEventLoop until capture stops or timeout
-    QEventLoop loop;
-    QTimer timeout_timer;
-    timeout_timer.setSingleShot(true);
-
+    // Block until capture stops or timeout. In GUI mode we use QEventLoop so
+    // that ISessionCallback/IMessageListener callbacks (which arrive on the
+    // main thread) are processed; in headless mode we use a plain
+    // condition_variable + mutex because there is no event loop to pump.
     _wait_capture_stop_flag = false;
 
-    // Connect timeout
-    QObject::connect(&timeout_timer, &QTimer::timeout, &loop, [&]() {
-        _wait_capture_stop_flag = false;
-        loop.quit();
-    });
+    if (is_gui_mode()) {
+        QEventLoop loop;
+        QTimer timeout_timer;
+        timeout_timer.setSingleShot(true);
 
-    // Check capture state periodically via a repeating timer.
-    // The ISessionCallback / IMessageListener callbacks arrive on the
-    // main thread, so a QEventLoop here will process them. We use a
-    // short-interval check timer to poll the session state.
-    QTimer check_timer;
-    QObject::connect(&check_timer, &QTimer::timeout, &loop, [&]() {
-        if (!_session->is_working() && !_session->is_running_status()) {
-            _wait_capture_stop_flag = true;
+        QObject::connect(&timeout_timer, &QTimer::timeout, &loop, [&]() {
+            _wait_capture_stop_flag = false;
             loop.quit();
-        }
-    });
+        });
 
-    timeout_timer.start(static_cast<int>(timeout_ms));
-    check_timer.start(100); // check every 100 ms
+        // Check capture state periodically via a repeating timer.
+        QTimer check_timer;
+        QObject::connect(&check_timer, &QTimer::timeout, &loop, [&]() {
+            if (!_session->is_working() && !_session->is_running_status()) {
+                _wait_capture_stop_flag = true;
+                loop.quit();
+            }
+        });
 
-    loop.exec();
+        timeout_timer.start(static_cast<int>(timeout_ms));
+        check_timer.start(100); // check every 100 ms
 
-    check_timer.stop();
-    timeout_timer.stop();
+        loop.exec();
+
+        check_timer.stop();
+        timeout_timer.stop();
+    } else {
+        // Headless mode: poll the session state on a worker thread.
+        std::unique_lock<std::mutex> lock(_wait_mutex);
+        bool timed_out = !_wait_cv.wait_for(lock,
+            std::chrono::milliseconds(timeout_ms), [this]() {
+                return !_session->is_working() &&
+                       !_session->is_running_status();
+            });
+        _wait_capture_stop_flag = !timed_out;
+    }
 
     if (_wait_capture_stop_flag)
         return Result<void>::Success();
@@ -394,14 +482,17 @@ Result<int> SessionService::configure_and_start(
                 // previously in DSO mode. Force a mode cycle to reinitialize.
                 dbg_log("  forcing mode cycle: LOGIC -> DSO -> LOGIC");
                 _device->set_config_int16(SR_CONF_DEVICE_MODE, DSO);
-                QCoreApplication::processEvents();
+                if (is_gui_mode()) QCoreApplication::processEvents();
                 _device->set_config_int16(SR_CONF_DEVICE_MODE, LOGIC);
                 // Re-initialize signals after mode change
                 _session->init_signals();
             }
-            // Let UI process the mode change events
-            QCoreApplication::processEvents();
-            QCoreApplication::processEvents();
+            // Let UI process the mode change events. In headless mode there
+            // is no event loop pumping UI signals, so skip processEvents().
+            if (is_gui_mode()) {
+                QCoreApplication::processEvents();
+                QCoreApplication::processEvents();
+            }
 
             // Re-check channel count after mode switch
             channels = _device->get_channels();
@@ -526,31 +617,31 @@ Result<int> SessionService::configure_and_start(
         ds_trigger_set_en(0);
     }
 
-    // 2c. Sync trigger state to LogicSignal UI (header trigger icons)
-    // This ensures the per-channel trigger icons in the signal header
-    // reflect the MCP-configured trigger, not just the ds_trigger API state.
+    // 2c. Sync trigger state to SignalModel (header trigger icons)
+    // This ensures the per-channel trigger state stored on SignalModel
+    // reflects the MCP-configured trigger, not just the ds_trigger API state.
     if (trigger_channel_index >= 0) {
-        auto sigs = _session->get_signals();
-        for (auto s : sigs) {
-            if (s->signal_type() == SR_CHANNEL_LOGIC) {
-                auto *logicSig = static_cast<view::LogicSignal*>(s);
-                auto indices = logicSig->get_index_list();
-                if (!indices.empty() && indices.front() == trigger_channel_index) {
-                    int trig_type = view::LogicSignal::NONTRIG;
-                    if (trigger_type == "rising") trig_type = view::LogicSignal::POSTRIG;
-                    else if (trigger_type == "falling") trig_type = view::LogicSignal::NEGTRIG;
-                    else if (trigger_type == "pulse_high") trig_type = view::LogicSignal::HIGTRIG;
-                    else if (trigger_type == "pulse_low") trig_type = view::LogicSignal::LOWTRIG;
-                    else trig_type = view::LogicSignal::EDGTRIG;
-                    logicSig->set_trig(trig_type);
-                }
-                // Also sync linked channels
-                for (const auto &lc : linked_channels) {
-                    if (!indices.empty() && indices.front() == lc.first) {
-                        int trig_type = (lc.second == "high") ?
-                            view::LogicSignal::HIGTRIG : view::LogicSignal::LOWTRIG;
-                        logicSig->set_trig(trig_type);
-                    }
+        auto &sigs = _session->get_signal_models();
+        for (auto *m : sigs) {
+            if (!m || m->type() != ChannelType::Logic)
+                continue;
+
+            if (m->index() == trigger_channel_index) {
+                int trig_type = data::SignalModel::NONTRIG;
+                if (trigger_type == "rising") trig_type = data::SignalModel::POSTRIG;
+                else if (trigger_type == "falling") trig_type = data::SignalModel::NEGTRIG;
+                else if (trigger_type == "pulse_high") trig_type = data::SignalModel::HIGTRIG;
+                else if (trigger_type == "pulse_low") trig_type = data::SignalModel::LOWTRIG;
+                else trig_type = data::SignalModel::EDGTRIG;
+                m->set_trig_type(trig_type);
+            }
+
+            // Also sync linked channels
+            for (const auto &lc : linked_channels) {
+                if (m->index() == lc.first) {
+                    int trig_type = (lc.second == "high") ?
+                        data::SignalModel::HIGTRIG : data::SignalModel::LOWTRIG;
+                    m->set_trig_type(trig_type);
                 }
             }
         }
@@ -562,8 +653,9 @@ Result<int> SessionService::configure_and_start(
     // init_signals() also clears view data and updates sample rate/limit.
     _session->init_signals();
 
-    // Let the UI process the signals_changed event triggered by init_signals()
-    QCoreApplication::processEvents();
+    // Let the UI process the signals_changed event triggered by init_signals().
+    // In headless mode there is no UI to update; skip processEvents().
+    if (is_gui_mode()) QCoreApplication::processEvents();
 
     dbg_log("configure_and_start: step 3 - set sample rate");
 
@@ -704,8 +796,9 @@ Result<int> SessionService::configure_and_start(
         _device->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
     }
 
-    // Let the UI process any pending config change events before starting
-    QCoreApplication::processEvents();
+    // Let the UI process any pending config change events before starting.
+    // In headless mode there is no UI to update; skip processEvents().
+    if (is_gui_mode()) QCoreApplication::processEvents();
 
     dbg_log("configure_and_start: step 8 - start capture");
 
@@ -1474,17 +1567,17 @@ std::vector<SignalInfo> SessionService::get_signal_list() const {
     if (!_session)
         return result;
 
-    auto &sig_list = _session->get_signals();
-    for (auto *sig : sig_list) {
-        if (!sig)
+    auto &sig_list = _session->get_signal_models();
+    for (auto *m : sig_list) {
+        if (!m)
             continue;
 
         SignalInfo info;
-        info.index = sig->get_index();
-        info.name = sig->get_name().toStdString();
-        info.type = sr_channel_type_to_api(sig->signal_type());
-        info.enabled = sig->enabled();
-        info.color = sig->get_colour().name(QColor::HexRgb).toStdString();
+        info.index = m->index();
+        info.name = m->name();
+        info.type = m->type();
+        info.enabled = m->enabled();
+        info.color = m->color();
 
         // Probe config for analog/dso signals
         if (info.type == ChannelType::Analog ||
@@ -1863,16 +1956,16 @@ Result<json> SessionService::get_decoder_options(const std::string& decoder_id) 
     // Available signals for channel mapping (matching create_probe_selector logic)
     json available_signals = json::array();
     if (_session) {
-        auto &sig_list = _session->get_signals();
-        for (auto *sig : sig_list) {
-            if (!sig || !sig->enabled())
+        auto &sig_list = _session->get_signal_models();
+        for (auto *m : sig_list) {
+            if (!m || !m->enabled())
                 continue;
             // Only logic signals can be mapped to decoder channels
-            if (sig->signal_type() != SR_CHANNEL_LOGIC)
+            if (m->type() != ChannelType::Logic)
                 continue;
             available_signals.push_back({
-                {"index", sig->get_index()},
-                {"name", sig->get_name().toStdString()}
+                {"index", m->index()},
+                {"name", m->name()}
             });
         }
     }
@@ -1886,26 +1979,33 @@ std::vector<DecoderInstance> SessionService::get_active_decoders() const {
     if (!_session)
         return result;
 
-    auto &traces = _session->get_decode_signals();
-    for (size_t i = 0; i < traces.size(); i++) {
-        auto *trace = traces[i];
-        if (!trace)
+    auto &stacks = _session->get_decoder_stacks();
+    for (size_t i = 0; i < stacks.size(); i++) {
+        auto *stack = stacks[i];
+        if (!stack)
             continue;
 
         DecoderInstance inst;
         inst.instance_id = std::to_string(
-            reinterpret_cast<intptr_t>(trace));
+            reinterpret_cast<intptr_t>(stack));
         inst.row_index = static_cast<int32_t>(i);
 
-        auto *decoder_stack = trace->decoder();
-        if (decoder_stack) {
-            inst.is_running = decoder_stack->IsRunning();
-            inst.progress = decoder_stack->get_progress() / 100.0;
-            const char *root_id = decoder_stack->get_root_decoder_id();
-            inst.decoder_id = root_id ? root_id : "";
-        }
+        inst.is_running = stack->IsRunning();
+        inst.progress = stack->get_progress() / 100.0;
+        const char *root_id = stack->get_root_decoder_id();
+        inst.decoder_id = root_id ? root_id : "";
 
-        inst.display_name = trace->get_name().toStdString();
+        // Derive display name from the root decoder's name. DecoderStack no
+        // longer has a Trace::get_name() since the de-view-ification; the
+        // srd_decoder's name field is the canonical protocol name.
+        std::string display_name;
+        auto &dec_list = stack->stack();
+        if (!dec_list.empty()) {
+            auto *root_dec = dec_list.front();
+            if (root_dec && root_dec->decoder() && root_dec->decoder()->name)
+                display_name = root_dec->decoder()->name;
+        }
+        inst.display_name = display_name;
 
         result.push_back(inst);
     }
@@ -1935,36 +2035,39 @@ Result<std::string> SessionService::add_decoder(
     // passes them to SigSession::add_decoder().
     if (!stack_on_analyzer_id.empty()) {
         auto do_stack = [this, dec, &options, &channel_map, &label, &stack_on_analyzer_id]() -> Result<std::string> {
-            // Find the parent DecodeTrace by converting the analyzer ID
-            // (which is the string representation of the trace pointer)
-            auto &traces = _session->get_decode_signals();
-            view::DecodeTrace *parent_trace = nullptr;
-            for (auto *trace : traces) {
-                if (!trace) continue;
+            // Find the parent DecoderStack by converting the analyzer ID
+            // (which is the string representation of the stack pointer)
+            auto &stacks = _session->get_decoder_stacks();
+            data::DecoderStack *parent_stack = nullptr;
+            for (auto *stack : stacks) {
+                if (!stack) continue;
                 std::string tid =
-                    std::to_string(reinterpret_cast<intptr_t>(trace));
+                    std::to_string(reinterpret_cast<intptr_t>(stack));
                 if (tid == stack_on_analyzer_id) {
-                    parent_trace = trace;
+                    parent_stack = stack;
                     break;
                 }
             }
 
-            if (!parent_trace)
+            if (!parent_stack)
                 return Result<std::string>::Fail(ErrorCode::DecoderNotFound,
                                                  "Parent analyzer not found: " + stack_on_analyzer_id);
 
-            auto *decoder_stack = parent_trace->decoder();
-            if (!decoder_stack)
-                return Result<std::string>::Fail(ErrorCode::DecoderError,
-                                                 "Parent decoder stack is null");
+            auto *decoder_stack = parent_stack;
 
             // Create the new sub-decoder and add it to the parent stack
             auto *new_decoder = new data::decode::Decoder(dec);
             decoder_stack->add_sub_decoder(new_decoder);
 
-            // Apply label to the parent trace if specified
+            // Label application: DecoderStack has no set_name method (it was
+            // a Trace property in the view layer). Custom labels for stacked
+            // decoders are not yet supported by the core layer; the View
+            // layer is responsible for tracking display names. We log the
+            // intent here so that callers can debug label-related issues.
             if (!label.empty()) {
-                parent_trace->set_name(QString::fromStdString(label));
+                pxv_info("add_decoder: stacked decoder label '%s' requested but "
+                         "DecoderStack has no set_name() method (TODO)",
+                         label.c_str());
             }
 
             // Apply options to the new sub-decoder
@@ -2061,7 +2164,7 @@ Result<std::string> SessionService::add_decoder(
             _session->rebuild_decoder_pannel();
 
             std::string instance_id =
-                std::to_string(reinterpret_cast<intptr_t>(parent_trace));
+                std::to_string(reinterpret_cast<intptr_t>(parent_stack));
 
             broadcast_event(ServiceEvent::DecoderAdded,
                             {{"instance_id", instance_id},
@@ -2071,30 +2174,11 @@ Result<std::string> SessionService::add_decoder(
             return Result<std::string>::Success(instance_id);
         };
 
-        Result<std::string> result = Result<std::string>::Fail(
-            ErrorCode::InternalError, "Pending");
-
-        if (QThread::currentThread() == qApp->thread()) {
-            result = do_stack();
-        } else {
-            std::mutex result_mutex;
-            std::condition_variable result_cv;
-            bool done = false;
-
-            QMetaObject::invokeMethod(qApp, [&do_stack, &result, &result_mutex, &result_cv, &done]() {
-                result = do_stack();
-                {
-                    std::lock_guard<std::mutex> lock(result_mutex);
-                    done = true;
-                }
-                result_cv.notify_one();
-            }, Qt::BlockingQueuedConnection);
-
-            {
-                std::unique_lock<std::mutex> lock(result_mutex);
-                result_cv.wait(lock, [&done]() { return done; });
-            }
-        }
+        // do_stack() touches Qt objects (DecoderStack is a QObject) and must
+        // run on the main thread. Use the helper that invokes inline when
+        // already on the main thread (avoids Qt::QueuedConnection deadlock).
+        Result<std::string> result =
+            run_string_on_main_thread(do_stack);
 
         if (!result.ok())
             return result;
@@ -2102,16 +2186,15 @@ Result<std::string> SessionService::add_decoder(
         // Start decode if data is ready and copy is not in progress
         {
             std::string instance_id = result.value();
-            auto *decode_trace = reinterpret_cast<view::DecodeTrace*>(
+            auto *decoder_stack = reinterpret_cast<data::DecoderStack*>(
                 std::stoll(instance_id));
-            auto *decoder_stack = decode_trace->decoder();
 
             if (decoder_stack && decoder_stack->options_changed() &&
                 _session->have_view_data() &&
                 !_session->is_copy_in_progress()) {
-                QTimer::singleShot(0, qApp, [this, decode_trace]() {
-                    if (decode_trace && !decode_trace->_delete_flag) {
-                        _session->add_decode_task(decode_trace);
+                QTimer::singleShot(0, qApp, [this, decoder_stack]() {
+                    if (decoder_stack && !decoder_stack->_delete_flag) {
+                        _session->add_decode_task(decoder_stack);
                     }
                 });
             }
@@ -2215,7 +2298,20 @@ Result<std::string> SessionService::add_decoder(
         // If copy is NOT in progress, we defer the decode start to after
         // do_add() returns using QTimer::singleShot.
 
-        view::Trace *out_trace = nullptr;
+        // Do NOT call processEvents() or wait for _copy_in_progress here.
+        // Calling processEvents() while inside do_add() on the main thread
+        // causes a crash: it processes DSV_MSG_COPY_TO_DOC_DONE which calls
+        // add_decode_task(), starting a decode thread that emits
+        // new_decode_data() signals. The main thread is still inside do_add()
+        // (e.g., in rebuild_decoder_pannel), causing a race in Qt's signal
+        // delivery mechanism (crash in Qt6Core.dll).
+        //
+        // Instead, if copy is in progress, we just set up the decoder and
+        // let DSV_MSG_COPY_TO_DOC_DONE start the decode task for us.
+        // If copy is NOT in progress, we defer the decode start to after
+        // do_add() returns using QTimer::singleShot.
+
+        data::DecoderStack *decoder_stack = nullptr;
         std::list<pv::data::decode::Decoder *> sub_decoders;
         // DecoderStatus must be heap-allocated; DecoderStack stores the pointer
         // and uses it for the lifetime of the decode trace.
@@ -2223,24 +2319,25 @@ Result<std::string> SessionService::add_decoder(
         dstatus->m_format = (int)DecoderDataFormat::hex;
 
         bool ok = _session->add_decoder(dec, true, dstatus, sub_decoders,
-                                        out_trace);
+                                        decoder_stack);
 
         if (!ok)
             return Result<std::string>::Fail(ErrorCode::DecoderError,
                                              "Failed to add decoder");
 
-        if (!out_trace)
+        if (!decoder_stack)
             return Result<std::string>::Fail(ErrorCode::DecoderError,
-                                             "No trace created");
+                                             "No decoder stack created");
 
-        auto *decode_trace = static_cast<view::DecodeTrace*>(out_trace);
-        auto *decoder_stack = decode_trace->decoder();
-
+        // Custom label: DecoderStack has no set_name method (label management
+        // was a Trace/view concern). Log the intent; the View layer is
+        // responsible for tracking display names.
         if (!label.empty()) {
-            decode_trace->set_name(QString::fromStdString(label));
+            pxv_info("add_decoder: label '%s' requested but DecoderStack has "
+                     "no set_name() method (TODO)", label.c_str());
         }
 
-        if (decoder_stack) {
+        {
             auto &stack = decoder_stack->stack();
             if (!stack.empty()) {
                 auto *root_decoder = stack.front();
@@ -2416,10 +2513,11 @@ Result<std::string> SessionService::add_decoder(
 
                 root_decoder->set_probes(probes);
 
-                if (!index_list.empty()) {
-                    decode_trace->set_index_list(index_list);
-                }
-
+                // set_index_list was a view::Trace method used to render the
+                // connected-signal indicators in the trace header. DecoderStack
+                // has no equivalent; the View layer/DecoderPannel is responsible
+                // for tracking channel index lists. We retain index_list only
+                // for the debug log below.
                 decoder_stack->set_options_changed(true);
 
                 // Note: We do NOT need to set decode_region here.
@@ -2480,7 +2578,7 @@ Result<std::string> SessionService::add_decoder(
         _session->rebuild_decoder_pannel();
 
         std::string instance_id =
-            std::to_string(reinterpret_cast<intptr_t>(out_trace));
+            std::to_string(reinterpret_cast<intptr_t>(decoder_stack));
 
         broadcast_event(ServiceEvent::DecoderAdded,
                         {{"instance_id", instance_id},
@@ -2489,32 +2587,13 @@ Result<std::string> SessionService::add_decoder(
         return Result<std::string>::Success(instance_id);
     };
 
-    Result<std::string> result = Result<std::string>::Fail(
-        ErrorCode::InternalError, "Pending");
-
-    if (QThread::currentThread() == qApp->thread()) {
-        // Already on the main thread, execute directly
-        result = do_add();
-    } else {
-        // Dispatch to the main thread and wait synchronously
-        std::mutex result_mutex;
-        std::condition_variable result_cv;
-        bool done = false;
-
-        QMetaObject::invokeMethod(qApp, [&do_add, &result, &result_mutex, &result_cv, &done]() {
-            result = do_add();
-            {
-                std::lock_guard<std::mutex> lock(result_mutex);
-                done = true;
-            }
-            result_cv.notify_one();
-        }, Qt::BlockingQueuedConnection);
-
-        {
-            std::unique_lock<std::mutex> lock(result_mutex);
-            result_cv.wait(lock, [&done]() { return done; });
-        }
-    }
+    // do_add() touches Qt objects (DecoderStack is a QObject, sub-decoders
+    // are QObjects) and must run on the Qt main thread. Use the helper that
+    // invokes inline when already on the main thread (avoids the
+    // Qt::QueuedConnection + result_cv.wait() deadlock that occurs when MCP
+    // requests — which already run on the main thread — call add_decoder).
+    Result<std::string> result =
+        run_string_on_main_thread(do_add);
 
     if (!result.ok())
         return result;
@@ -2526,22 +2605,21 @@ Result<std::string> SessionService::add_decoder(
     // get a duplicate decode task.
     {
         std::string instance_id = result.value();
-        auto *decode_trace = reinterpret_cast<view::DecodeTrace*>(
+        auto *decoder_stack = reinterpret_cast<data::DecoderStack*>(
             std::stoll(instance_id));
-        auto *decoder_stack = decode_trace->decoder();
 
         // Only start decode if copy is NOT in progress.
         // If copy is in progress, DSV_MSG_COPY_TO_DOC_DONE handler
-        // will iterate decode_traces() and start decode for us.
+        // will iterate decoder_stacks() and start decode for us.
         if (decoder_stack && decoder_stack->options_changed() &&
             _session->have_view_data() &&
             !_session->is_copy_in_progress()) {
             // Use QTimer::singleShot(0, ...) to defer the decode start
             // to the next event loop iteration, after all pending events
             // (including the DecoderAdded broadcast) have been processed.
-            QTimer::singleShot(0, qApp, [this, decode_trace]() {
-                if (decode_trace && !decode_trace->_delete_flag) {
-                    _session->add_decode_task(decode_trace);
+            QTimer::singleShot(0, qApp, [this, decoder_stack]() {
+                if (decoder_stack && !decoder_stack->_delete_flag) {
+                    _session->add_decode_task(decoder_stack);
                 }
             });
         }
@@ -2550,9 +2628,8 @@ Result<std::string> SessionService::add_decoder(
     // Wait for decoder completion if requested
     if (wait_for_completion && result.ok()) {
         std::string instance_id = result.value();
-        auto *decode_trace = reinterpret_cast<view::DecodeTrace*>(
+        auto *decoder_stack = reinterpret_cast<data::DecoderStack*>(
             std::stoll(instance_id));
-        auto *decoder_stack = decode_trace->decoder();
 
         if (decoder_stack) {
             QEventLoop loop;
@@ -2588,16 +2665,32 @@ Result<std::string> SessionService::add_decoder(
                 loop.exec();
 
                 if (!decoder_stack->error_message().isEmpty()) {
-                    // Remove decoder with error on main thread
-                    QMetaObject::invokeMethod(qApp, [this, decode_trace]() {
-                        auto &traces = _session->get_decode_signals();
-                        for (size_t i = 0; i < traces.size(); i++) {
-                            if (traces[i] == decode_trace) {
-                                _session->remove_decoder(static_cast<int>(i));
-                                break;
+                    // Remove decoder with error on main thread.
+                    // Use QueuedConnection + condition_variable instead of
+                    // BlockingQueuedConnection to avoid event-loop deadlock.
+                    {
+                        std::mutex rm_mutex;
+                        std::condition_variable rm_cv;
+                        bool rm_done = false;
+
+                        QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
+                            auto &stacks = _session->get_decoder_stacks();
+                            for (size_t i = 0; i < stacks.size(); i++) {
+                                if (stacks[i] == decoder_stack) {
+                                    _session->remove_decoder(static_cast<int>(i));
+                                    break;
+                                }
                             }
-                        }
-                    }, Qt::BlockingQueuedConnection);
+                            {
+                                std::lock_guard<std::mutex> lk(rm_mutex);
+                                rm_done = true;
+                            }
+                            rm_cv.notify_one();
+                        }, Qt::QueuedConnection);
+
+                        std::unique_lock<std::mutex> lk(rm_mutex);
+                        rm_cv.wait(lk, [&rm_done]() { return rm_done; });
+                    }
                     return Result<std::string>::Fail(
                         ErrorCode::DecoderError,
                         decoder_stack->error_message().toStdString());
@@ -2606,15 +2699,29 @@ Result<std::string> SessionService::add_decoder(
 
             if (decoder_stack->get_progress() < 100) {
                 if (!decoder_stack->error_message().isEmpty()) {
-                    QMetaObject::invokeMethod(qApp, [this, decode_trace]() {
-                        auto &traces = _session->get_decode_signals();
-                        for (size_t i = 0; i < traces.size(); i++) {
-                            if (traces[i] == decode_trace) {
-                                _session->remove_decoder(static_cast<int>(i));
-                                break;
+                    {
+                        std::mutex rm_mutex;
+                        std::condition_variable rm_cv;
+                        bool rm_done = false;
+
+                        QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
+                            auto &stacks = _session->get_decoder_stacks();
+                            for (size_t i = 0; i < stacks.size(); i++) {
+                                if (stacks[i] == decoder_stack) {
+                                    _session->remove_decoder(static_cast<int>(i));
+                                    break;
+                                }
                             }
-                        }
-                    }, Qt::BlockingQueuedConnection);
+                            {
+                                std::lock_guard<std::mutex> lk(rm_mutex);
+                                rm_done = true;
+                            }
+                            rm_cv.notify_one();
+                        }, Qt::QueuedConnection);
+
+                        std::unique_lock<std::mutex> lk(rm_mutex);
+                        rm_cv.wait(lk, [&rm_done]() { return rm_done; });
+                    }
                     return Result<std::string>::Fail(
                         ErrorCode::DecoderError,
                         decoder_stack->error_message().toStdString());
@@ -2631,18 +2738,18 @@ Result<void> SessionService::remove_decoder(const std::string &instance_id) {
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    // remove_decoder modifies Qt objects and triggers signals,
-    // so it MUST run on the main thread.
+    // remove_decoder modifies Qt objects (DecoderStack is a QObject) and
+    // triggers signals, so it MUST run on the main thread.
 
     auto do_remove = [this, &instance_id]() -> Result<void> {
-        auto &traces = _session->get_decode_signals();
-        for (size_t i = 0; i < traces.size(); i++) {
-            auto *trace = traces[i];
-            if (!trace)
+        auto &stacks = _session->get_decoder_stacks();
+        for (size_t i = 0; i < stacks.size(); i++) {
+            auto *stack = stacks[i];
+            if (!stack)
                 continue;
 
             std::string tid =
-                std::to_string(reinterpret_cast<intptr_t>(trace));
+                std::to_string(reinterpret_cast<intptr_t>(stack));
             if (tid == instance_id) {
                 _session->remove_decoder(static_cast<int>(i));
 
@@ -2655,31 +2762,9 @@ Result<void> SessionService::remove_decoder(const std::string &instance_id) {
                                   "Decoder instance not found");
     };
 
-    if (QThread::currentThread() == qApp->thread()) {
-        return do_remove();
-    }
-
-    std::mutex result_mutex;
-    std::condition_variable result_cv;
-    bool done = false;
-    Result<void> result = Result<void>::Fail(
-        ErrorCode::InternalError, "Pending");
-
-    QMetaObject::invokeMethod(qApp, [&do_remove, &result, &result_mutex, &result_cv, &done]() {
-        result = do_remove();
-        {
-            std::lock_guard<std::mutex> lock(result_mutex);
-            done = true;
-        }
-        result_cv.notify_one();
-    }, Qt::BlockingQueuedConnection);
-
-    {
-        std::unique_lock<std::mutex> lock(result_mutex);
-        result_cv.wait(lock, [&done]() { return done; });
-    }
-
-    return result;
+    // Dispatch to the main thread, invoking inline when already on the main
+    // thread (avoids the Qt::QueuedConnection + result_cv.wait() deadlock).
+    return run_void_on_main_thread(do_remove);
 }
 
 Result<void> SessionService::clear_all_decoders() {
@@ -2706,8 +2791,8 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
         return Result<std::vector<DecoderAnnotation>>::Fail(
             ErrorCode::InternalError, "Session is null");
 
-    // Find the decoder trace by instance_id
-    auto &traces = _session->get_decode_signals();
+    // Find the decoder stack by instance_id
+    auto &stacks = _session->get_decoder_stacks();
 
     // MCP debug
     {
@@ -2717,14 +2802,14 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
             (void)s_dbg.open(QIODevice::WriteOnly | QIODevice::Append);
         }
         if (s_dbg.isOpen()) {
-            QString msg = QString("get_decoder_annotations: instance_id='%1', traces.size()=%2\n")
+            QString msg = QString("get_decoder_annotations: instance_id='%1', stacks.size()=%2\n")
                 .arg(QString::fromStdString(instance_id))
-                .arg(traces.size());
+                .arg(stacks.size());
             s_dbg.write(msg.toUtf8());
-            for (auto *trace : traces) {
-                std::string tid = std::to_string(reinterpret_cast<intptr_t>(trace));
-                msg = QString("  trace: ptr=%1, tid='%2'\n")
-                    .arg(reinterpret_cast<quintptr>(trace))
+            for (auto *stack : stacks) {
+                std::string tid = std::to_string(reinterpret_cast<intptr_t>(stack));
+                msg = QString("  stack: ptr=%1, tid='%2'\n")
+                    .arg(reinterpret_cast<quintptr>(stack))
                     .arg(QString::fromStdString(tid));
                 s_dbg.write(msg.toUtf8());
             }
@@ -2732,26 +2817,23 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
         }
     }
 
-    view::DecodeTrace *target_trace = nullptr;
-    for (auto *trace : traces) {
-        if (!trace)
+    data::DecoderStack *target_stack = nullptr;
+    for (auto *stack : stacks) {
+        if (!stack)
             continue;
         std::string tid =
-            std::to_string(reinterpret_cast<intptr_t>(trace));
+            std::to_string(reinterpret_cast<intptr_t>(stack));
         if (tid == instance_id) {
-            target_trace = trace;
+            target_stack = stack;
             break;
         }
     }
 
-    if (!target_trace)
+    if (!target_stack)
         return Result<std::vector<DecoderAnnotation>>::Fail(
             ErrorCode::DecoderNotFound, "Decoder instance not found");
 
-    auto *decoder_stack = target_trace->decoder();
-    if (!decoder_stack)
-        return Result<std::vector<DecoderAnnotation>>::Fail(
-            ErrorCode::DecoderNotFound, "Decoder stack is null");
+    auto *decoder_stack = target_stack;
 
     std::vector<DecoderAnnotation> result;
     int row_count = decoder_stack->list_rows_size();
@@ -2791,46 +2873,16 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
 // ===========================================================================
 
 std::vector<MeasurementValue> SessionService::get_measurements() const {
-    if (!_view)
-        return {};
-
-    std::vector<MeasurementValue> result;
-    const char *options[] = {"width", "period", "frequency", "duty"};
-
-    for (const char *opt : options) {
-        QString val_str = _view->get_measure(QString(opt));
-        if (val_str.isEmpty())
-            continue;
-
-        MeasurementValue mv;
-        mv.valid = true;
-
-        if (strcmp(opt, "width") == 0) mv.type = 0;
-        else if (strcmp(opt, "period") == 0) mv.type = 1;
-        else if (strcmp(opt, "frequency") == 0) mv.type = 2;
-        else if (strcmp(opt, "duty") == 0) mv.type = 3;
-
-        bool ok = false;
-        mv.value = val_str.toDouble(&ok);
-        if (!ok)
-            mv.valid = false;
-
-        // Try to extract unit from the string (e.g., "1.5 kHz")
-        QString unit_part;
-        for (int i = 0; i < val_str.size(); i++) {
-            if (!val_str[i].isDigit() && val_str[i] != '.' &&
-                val_str[i] != '-' && val_str[i] != 'e' && val_str[i] != 'E' &&
-                val_str[i] != '+') {
-                unit_part = val_str.mid(i).trimmed();
-                break;
-            }
-        }
-        mv.unit = unit_part.toStdString();
-
-        result.push_back(mv);
-    }
-
-    return result;
+    // Measurement readout is a View concern — the View layer computes
+    // width/period/frequency/duty from the visible region and signal header.
+    // In the decoupled architecture the SessionService no longer holds a
+    // View pointer; measurement values are exposed via a future
+    // IServiceEventListener / measurement-request event or by direct
+    // View queries from the caller. For now we return an empty list and
+    // broadcast a request event so any subscribed View can respond.
+    broadcast_event(ServiceEvent::ErrorOccurred,
+                    {{"detail", "get_measurements_not_available_in_headless"}});
+    return {};
 }
 
 // ===========================================================================
@@ -2838,65 +2890,43 @@ std::vector<MeasurementValue> SessionService::get_measurements() const {
 // ===========================================================================
 
 std::vector<CursorInfo> SessionService::get_cursors() const {
-    if (!_view)
-        return {};
-
-    std::vector<CursorInfo> result;
-    auto &cursor_list = _view->get_cursorList();
-    uint64_t samplerate = _session ? _session->cur_samplerate() : 0;
-
-    int idx = 0;
-    for (auto *cursor : cursor_list) {
-        if (!cursor)
-            continue;
-
-        CursorInfo info;
-        info.index = idx;
-        info.sample_pos = static_cast<int64_t>(cursor->index());
-        info.time_sec = samplerate > 0
-            ? static_cast<double>(cursor->index()) / samplerate
-            : 0.0;
-
-        result.push_back(info);
-        idx++;
-    }
-
-    return result;
+    // Cursor state is owned by the View layer. Without a View binding the
+    // SessionService cannot enumerate cursors; return an empty list in
+    // headless mode. A subscribed View can be queried via a future event.
+    broadcast_event(ServiceEvent::ErrorOccurred,
+                    {{"detail", "get_cursors_not_available_in_headless"}});
+    return {};
 }
 
 Result<void> SessionService::add_cursor(uint64_t sample_pos) {
-    if (!_view)
+    if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
-                                  "View is not set");
+                                  "Session is null");
 
-    _view->add_cursor(sample_pos);
+    // Broadcast a request: the View layer (when present) listens via
+    // IServiceEventListener and calls View::add_cursor(). In headless
+    // mode this is a no-op but the request is logged for debugging.
+    broadcast_event(ServiceEvent::ViewCursorAdded,
+                    {{"sample_pos", std::to_string(sample_pos)}});
     return Result<void>::Success();
 }
 
 Result<void> SessionService::remove_cursor(int index) {
-    if (!_view)
+    if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
-                                  "View is not set");
+                                  "Session is null");
 
-    auto &cursor_list = _view->get_cursorList();
-    int idx = 0;
-    for (auto it = cursor_list.begin(); it != cursor_list.end(); ++it, ++idx) {
-        if (idx == index && *it) {
-            _view->del_cursor(*it);
-            return Result<void>::Success();
-        }
-    }
-
-    return Result<void>::Fail(ErrorCode::InvalidRequest,
-                              "Cursor index not found");
+    broadcast_event(ServiceEvent::ViewCursorRemoved,
+                    {{"index", std::to_string(index)}});
+    return Result<void>::Success();
 }
 
 Result<void> SessionService::clear_cursors() {
-    if (!_view)
+    if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
-                                  "View is not set");
+                                  "Session is null");
 
-    _view->clear_cursors();
+    broadcast_event(ServiceEvent::ViewCursorsCleared);
     return Result<void>::Success();
 }
 
@@ -3063,9 +3093,17 @@ Result<void> SessionService::export_data(const ExportConfig &config) {
     store.SetFileName(QString::fromStdString(config.output_path));
     store.SetDataRange(config.start_sample, config.end_sample);
     
-    // Set specific channels and type for export
+    // Set specific channels and type for export.
+    // NOTE: SignalModel::type() returns the pv::api::ChannelType enum
+    // (Logic=0, Analog=1, Dso=2), NOT the libsigrok SR_CHANNEL_* enum
+    // (SR_CHANNEL_LOGIC=10000, SR_CHANNEL_ANALOG=10002). Using the wrong
+    // enum here causes every channel to be filtered out in export_start()
+    // (the type check `_export_channel_type != (int)m->type()` always fails),
+    // producing "No data to save." even when data exists.
     store.set_export_channels(config.channels);
-    store.set_export_channel_type(config.is_logic ? SR_CHANNEL_LOGIC : SR_CHANNEL_ANALOG);
+    store.set_export_channel_type(config.is_logic
+        ? static_cast<int>(ChannelType::Logic)
+        : static_cast<int>(ChannelType::Analog));
 
     // Apply analog downsample ratio if > 1
     if (config.analog_downsample_ratio > 1) {
@@ -3078,11 +3116,21 @@ Result<void> SessionService::export_data(const ExportConfig &config) {
     }
 
     bool ok = store.export_start();
-    if (!ok)
-        return Result<void>::Fail(ErrorCode::ExportFailed,
-                                  "Failed to export data");
+    if (!ok) {
+        // Propagate StoreSession's specific error message (e.g. "Invalid
+        // export format", "No data to save") instead of a generic string,
+        // so MCP/API callers can diagnose the failure.
+        QString err = store.error();
+        std::string msg = err.isEmpty()
+            ? std::string("Failed to export data")
+            : ("Failed to export data: " + err.toStdString());
+        return Result<void>::Fail(ErrorCode::ExportFailed, msg);
+    }
 
     store.wait();
+    if (store.error() != "")
+        return Result<void>::Fail(ErrorCode::ExportFailed,
+                                  store.error().toStdString());
     return Result<void>::Success();
 }
 
@@ -3116,20 +3164,20 @@ Result<void> SessionService::export_binary(const ExportConfig &config) {
     // If no channels specified, export all enabled channels
     std::vector<int32_t> channels = config.channels;
     if (channels.empty()) {
-        auto &sig_list = _session->get_signals();
-        for (auto *sig : sig_list) {
-            if (sig && sig->enabled())
-                channels.push_back(sig->get_index());
+        auto &sig_list = _session->get_signal_models();
+        for (auto *m : sig_list) {
+            if (m && m->enabled())
+                channels.push_back(m->index());
         }
     }
 
     for (auto ch_idx : channels) {
-        // Determine channel type
-        auto &sig_list = _session->get_signals();
+        // Determine channel type from SignalModel
+        auto &sig_list = _session->get_signal_models();
         ChannelType ch_type = ChannelType::Logic;
-        for (auto *sig : sig_list) {
-            if (sig && sig->get_index() == ch_idx) {
-                ch_type = sr_channel_type_to_api(sig->signal_type());
+        for (auto *m : sig_list) {
+            if (m && m->index() == ch_idx) {
+                ch_type = m->type();
                 break;
             }
         }
@@ -3210,29 +3258,29 @@ Result<void> SessionService::export_decoder_table(
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    auto &traces = _session->get_decode_signals();
-    if (traces.empty())
+    auto &stacks = _session->get_decoder_stacks();
+    if (stacks.empty())
         return Result<void>::Fail(ErrorCode::NoData,
                                   "No active decoders");
 
     uint64_t samplerate = _session->cur_samplerate();
 
     // Determine which decoders to export
-    std::vector<std::pair<view::DecodeTrace*, int>> selected;
+    std::vector<std::pair<data::DecoderStack*, int>> selected;
     if (analyzers.empty()) {
         // Export all decoders
-        for (size_t i = 0; i < traces.size(); i++) {
-            if (traces[i])
-                selected.push_back({traces[i], 4}); // default Ascii radix
+        for (size_t i = 0; i < stacks.size(); i++) {
+            if (stacks[i])
+                selected.push_back({stacks[i], 4}); // default Ascii radix
         }
     } else {
         for (const auto &cfg : analyzers) {
-            for (auto *trace : traces) {
-                if (!trace) continue;
+            for (auto *stack : stacks) {
+                if (!stack) continue;
                 std::string tid =
-                    std::to_string(reinterpret_cast<intptr_t>(trace));
+                    std::to_string(reinterpret_cast<intptr_t>(stack));
                 if (tid == cfg.analyzer_id) {
-                    selected.push_back({trace, cfg.radix_type});
+                    selected.push_back({stack, cfg.radix_type});
                     break;
                 }
             }
@@ -3253,12 +3301,19 @@ Result<void> SessionService::export_decoder_table(
     // CSV header
     out << "start_sample,end_sample,analyzer_name,annotation_class,text\n";
 
-    for (auto &[trace, radix] : selected) {
-        auto *decoder_stack = trace->decoder();
+    for (auto &[stack, radix] : selected) {
+        auto *decoder_stack = stack;
         if (!decoder_stack)
             continue;
 
-        std::string analyzer_name = trace->get_name().toStdString();
+        // Derive analyzer name from the root decoder's name (srd_decoder.name)
+        std::string analyzer_name;
+        auto &dec_list = decoder_stack->stack();
+        if (!dec_list.empty()) {
+            auto *root_dec = dec_list.front();
+            if (root_dec && root_dec->decoder() && root_dec->decoder()->name)
+                analyzer_name = root_dec->decoder()->name;
+        }
         int row_count = decoder_stack->list_rows_size();
 
         for (int row = 0; row < row_count; row++) {
@@ -3396,10 +3451,10 @@ Result<void> SessionService::export_raw_data_binary(
 
     if (all_channels.empty()) {
         // Default to all enabled channels
-        auto &sig_list = _session->get_signals();
-        for (auto *sig : sig_list) {
-            if (sig && sig->enabled())
-                all_channels.push_back(sig->get_index());
+        auto &sig_list = _session->get_signal_models();
+        for (auto *m : sig_list) {
+            if (m && m->enabled())
+                all_channels.push_back(m->index());
         }
     }
 
@@ -3439,34 +3494,43 @@ Result<void> SessionService::show_region(uint64_t start_sample,
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
+    // Broadcast a ViewShowRegion request. The View layer (when present)
+    // subscribes via IServiceEventListener and calls View::set_view_region().
+    // SigSession::show_region() also forwards to ISessionCallback listeners
+    // for backward compatibility.
     _session->show_region(start_sample, end_sample, false);
+    broadcast_event(ServiceEvent::ViewShowRegion,
+                    {{"start", std::to_string(start_sample)},
+                     {"end", std::to_string(end_sample)}});
     return Result<void>::Success();
 }
 
 Result<void> SessionService::zoom_fit() {
-    if (!_view)
+    if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
-                                  "View is not set");
+                                  "Session is null");
 
-    _view->auto_set_max_scale();
+    // View-side operation. In GUI mode a subscribed View will respond;
+    // in headless mode this is a no-op.
+    broadcast_event(ServiceEvent::ViewZoomFit);
     return Result<void>::Success();
 }
 
 Result<void> SessionService::zoom_in() {
-    if (!_view)
+    if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
-                                  "View is not set");
+                                  "Session is null");
 
-    _view->zoom(1);
+    broadcast_event(ServiceEvent::ViewZoomIn);
     return Result<void>::Success();
 }
 
 Result<void> SessionService::zoom_out() {
-    if (!_view)
+    if (!_session)
         return Result<void>::Fail(ErrorCode::InternalError,
-                                  "View is not set");
+                                  "Session is null");
 
-    _view->zoom(-1);
+    broadcast_event(ServiceEvent::ViewZoomOut);
     return Result<void>::Success();
 }
 
@@ -3480,14 +3544,13 @@ Result<void> SessionService::enable_spectrum(int16_t channel_index,
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    // Find the matching SpectrumTrace and toggle its enabled state
-    auto &traces = _session->get_spectrum_traces();
-    for (auto *trace : traces) {
-        if (trace && trace->get_index() == channel_index) {
-            trace->set_enable(enable);
-            break;
-        }
-    }
+    // The legacy SpectrumTrace had a separate enabled flag; SpectrumStack
+    // (the de-view-ified core data object) does not. We rely on
+    // spectrum_rebuild() to create/refresh SpectrumStack entries for every
+    // enabled DSO channel. Toggling the visibility of an individual
+    // spectrum is now a View-layer concern and is not modelled here.
+    (void)channel_index;
+    (void)enable;
 
     _session->spectrum_rebuild();
     return Result<void>::Success();
@@ -3519,24 +3582,25 @@ Result<void> SessionService::enable_math(int16_t ch1, int16_t ch2,
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    // Look up DsoSignal pointers by channel index
-    view::DsoSignal *sig1 = nullptr;
-    view::DsoSignal *sig2 = nullptr;
-    auto &sig_list = _session->get_signals();
-    for (auto *sig : sig_list) {
-        if (!sig) continue;
-        if (sig->get_index() == ch1 && sig->signal_type() == SR_CHANNEL_DSO)
-            sig1 = dynamic_cast<view::DsoSignal*>(sig);
-        if (sig->get_index() == ch2 && sig->signal_type() == SR_CHANNEL_DSO)
-            sig2 = dynamic_cast<view::DsoSignal*>(sig);
+    // Verify that both indices are valid DSO channels before invoking
+    // math_rebuild (which now takes channel indices directly, not
+    // view::DsoSignal pointers).
+    bool found_ch1 = false;
+    bool found_ch2 = false;
+    auto &sig_list = _session->get_signal_models();
+    for (auto *m : sig_list) {
+        if (!m) continue;
+        if (m->type() != ChannelType::Dso) continue;
+        if (m->index() == ch1) found_ch1 = true;
+        if (m->index() == ch2) found_ch2 = true;
     }
 
-    if (!sig1 || !sig2)
+    if (!found_ch1 || !found_ch2)
         return Result<void>::Fail(ErrorCode::ChannelNotFound,
                                   "DSO channel not found");
 
     auto type = static_cast<data::MathStack::MathType>(math_type);
-    _session->math_rebuild(true, sig1, sig2, type);
+    _session->math_rebuild(true, ch1, ch2, type);
     return Result<void>::Success();
 }
 
@@ -3578,14 +3642,13 @@ void SessionService::data_updated() {
 
     // Check for decode progress and emit DecodeProgress events
     if (_session) {
-        auto &traces = _session->get_decode_signals();
-        for (auto *trace : traces) {
-            if (!trace) continue;
-            auto *decoder_stack = trace->decoder();
-            if (decoder_stack && decoder_stack->IsRunning()) {
-                int progress = decoder_stack->get_progress();
+        auto &stacks = _session->get_decoder_stacks();
+        for (auto *stack : stacks) {
+            if (!stack) continue;
+            if (stack->IsRunning()) {
+                int progress = stack->get_progress();
                 std::string instance_id =
-                    std::to_string(reinterpret_cast<intptr_t>(trace));
+                    std::to_string(reinterpret_cast<intptr_t>(stack));
                 broadcast_event(ServiceEvent::DecodeProgress,
                                 {{"instance_id", instance_id},
                                  {"progress", std::to_string(progress)}});
@@ -3603,6 +3666,11 @@ void SessionService::update_capture() {
     }
     broadcast_event(ServiceEvent::CaptureProgress,
                     {{"progress", std::to_string(progress)}});
+
+    // Wake up any headless wait_capture_complete() waiter so its predicate
+    // can re-check the session state. In GUI mode this is a no-op (no one
+    // is waiting on the cv).
+    _wait_cv.notify_all();
 }
 
 void SessionService::cur_snap_samplerate_changed() {
@@ -3621,6 +3689,9 @@ void SessionService::receive_trigger(quint64 trigger_pos) {
 
 void SessionService::frame_ended() {
     broadcast_event(ServiceEvent::FrameEnded);
+
+    // Wake up wait_capture_complete() in headless mode.
+    _wait_cv.notify_all();
 }
 
 void SessionService::frame_began() {

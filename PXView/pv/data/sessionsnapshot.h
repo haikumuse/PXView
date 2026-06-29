@@ -32,19 +32,16 @@
 #include "logicsnapshot.h"
 #include "analogsnapshot.h"
 #include "dsosnapshot.h"
+#include "signalmodel.h"
+#include "lissajousmodel.h"
 
 namespace pv {
 
-namespace view {
-class Signal;
-class DecodeTrace;
-class SpectrumTrace;
-class LissajousTrace;
-class MathTrace;
-}
-
 namespace data {
 
+class DecoderStack;
+class SpectrumStack;
+class MathStack;
 class DecoderModel;
 
 class SessionSnapshot : public DataSource
@@ -53,11 +50,11 @@ public:
     SessionSnapshot();
     ~SessionSnapshot();
 
-    std::vector<view::Signal*>& get_signals() override;
-    std::vector<view::DecodeTrace*>& get_decode_signals() override;
-    std::vector<view::SpectrumTrace*>& get_spectrum_traces() override;
-    view::LissajousTrace* get_lissajous_trace() override;
-    view::MathTrace* get_math_trace() override;
+    std::vector<SignalModel*>& get_signal_models() override;
+    std::vector<DecoderStack*>& get_decoder_stacks() override;
+    std::vector<SpectrumStack*>& get_spectrum_stacks() override;
+    MathStack* get_math_stack() override;
+    LissajousModel* get_lissajous_model() override;
     uint64_t cur_snap_samplerate() override;
     uint64_t cur_samplelimits() override;
     double cur_sampletime() override;
@@ -98,11 +95,11 @@ private:
     AnalogSnapshot _analog;
     DsoSnapshot _dso;
 
-    std::vector<view::Signal*> _signals;
-    std::vector<view::DecodeTrace*> _decode_traces;
-    std::vector<view::SpectrumTrace*> _spectrum_traces;
-    view::LissajousTrace *_lissajous_trace;
-    view::MathTrace *_math_trace;
+    std::vector<SignalModel*> _signal_models;
+    std::vector<DecoderStack*> _decoder_stacks;
+    std::vector<SpectrumStack*> _spectrum_stacks;
+    MathStack *_math_stack = nullptr;
+    LissajousModel *_lissajous_model = nullptr;
     DecoderModel *_decoder_model;
 
     QDateTime _timestamp;

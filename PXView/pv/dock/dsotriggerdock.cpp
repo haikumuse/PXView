@@ -427,11 +427,10 @@ void DsoTriggerDock::update_view() {
              &DsoTriggerDock::channel_changed);
   _channel_comboBox->clear();
 
-  for (auto s : _session->get_signals()) {
-    if (s->signal_type() == SR_CHANNEL_DSO) {
-      view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-      _channel_comboBox->addItem(dsoSig->get_name(),
-                                 QVariant::fromValue(dsoSig->get_index()));
+  for (auto s : _session->get_signal_models()) {
+    if (s->type() == api::ChannelType::Dso) {
+      _channel_comboBox->addItem(QString::fromStdString(s->name()),
+                                 QVariant::fromValue(s->index()));
     }
   }
   ret = _session->get_device()->get_config_byte(SR_CONF_TRIGGER_CHANNEL, src);

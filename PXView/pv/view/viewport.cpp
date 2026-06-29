@@ -54,6 +54,7 @@
 #include "../ui/fn.h"
 #include "../ui/langresource.h"
 #include "lissajoustrace.h"
+#include "mathtrace.h"
 
 using namespace std;
 
@@ -803,7 +804,7 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back) {
       bool isLissa = false;
 
       if (_view.get_work_mode() == DSO) {
-        auto lis_trace = _view.effective_data_source()->get_lissajous_trace();
+        auto lis_trace = _view.get_own_lissajous_trace();
         if (lis_trace && lis_trace->enabled()) {
           isLissa = true;
         }
@@ -1836,7 +1837,7 @@ void Viewport::wheelEvent(QWheelEvent *event) {
   }
 
   if (_type == FFT_VIEW) {
-    for (auto t : _view.effective_data_source()->get_spectrum_traces()) {
+    for (auto t : _view.get_own_spectrum_traces()) {
       if (t->enabled()) {
         t->zoom(zoom_scale, x);
         break;
@@ -2175,7 +2176,7 @@ void Viewport::measure() {
         }
       }
     }
-    const auto mathTrace = _view.effective_data_source()->get_math_trace();
+    const auto mathTrace = _view.get_own_math_trace();
     if (mathTrace && mathTrace->enabled()) {
       if (_measure_en && mathTrace->measure(_view.hover_point())) {
         _measure_type = DSO_VALUE;
@@ -2184,7 +2185,7 @@ void Viewport::measure() {
       }
     }
   } else if (_type == FFT_VIEW) {
-    for (auto t : _view.effective_data_source()->get_spectrum_traces()) {
+    for (auto t : _view.get_own_spectrum_traces()) {
       if (t->enabled()) {
         t->measure(_mouse_point);
       }
@@ -2561,7 +2562,7 @@ void Viewport::applyDragFrame() {
     }
   } else if (_type == FFT_VIEW) {
     if (_drag_buttons & Qt::LeftButton) {
-      for (auto t : _view.effective_data_source()->get_spectrum_traces()) {
+      for (auto t : _view.get_own_spectrum_traces()) {
         if (t->enabled()) {
           double delta = (_mouse_point - _drag_last_pos).x();
           t->set_offset(delta);

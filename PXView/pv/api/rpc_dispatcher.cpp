@@ -393,6 +393,10 @@ json RpcDispatcher::get_tool_schemas() {
                         {"type", "string"},
                         {"description", "Name/ID of the analyzer to add (e.g. 'spi', 'i2c', 'uart')"}
                     }},
+                    {"deviceId", {
+                        {"type", "string"},
+                        {"description", "Optional device ID. If the active session has no device connected yet (typical in headless mode), pass this to connect the device before adding the analyzer. Same as start_capture's deviceId."}
+                    }},
                     {"analyzerLabel", {
                         {"type", "string"},
                         {"description", "Custom label for the analyzer instance"}
@@ -814,17 +818,22 @@ JsonRpcResponse RpcDispatcher::on_start_capture(int id, const json& params) {
     mcp_dbg_log("on_start_capture: ENTER");
     auto session = app_svc_->get_active_session();
 
-    // Auto-create session if deviceId is provided (Logic 2 behavior)
-    if (!session && params.contains("deviceId")) {
+    // Ensure device is connected when deviceId is provided.
+    // AppService::initialize() pre-creates a SessionService WITHOUT any device
+    // connected (especially in headless mode), so even when an active session
+    // exists we must still call create_session(deviceId) to trigger set_device()
+    // when no device is currently active. create_session() is a no-op if the
+    // requested device is already the active one (it checks device_already_active).
+    if (params.contains("deviceId")) {
         std::string device_id = params.value("deviceId", "");
         if (!device_id.empty()) {
-            mcp_dbg_log(QString("on_start_capture: creating session for device %1").arg(QString::fromStdString(device_id)).toUtf8().constData());
+            mcp_dbg_log(QString("on_start_capture: ensuring device %1 is connected").arg(QString::fromStdString(device_id)).toUtf8().constData());
             auto r = app_svc_->create_session(device_id, "");
             if (!r.ok())
                 return error_resp(id, static_cast<int>(r.error().code),
                                   "Failed to create session: " + r.error().message);
             session = app_svc_->get_active_session();
-            mcp_dbg_log("on_start_capture: session created, processing events");
+            mcp_dbg_log("on_start_capture: session ready, processing events");
 
             // If create_session() called set_device() (device was not already active),
             // it triggered DSV_MSG_CURRENT_DEVICE_CHANGED which causes massive UI rebuilds.
@@ -1015,11 +1024,33 @@ JsonRpcResponse RpcDispatcher::on_add_analyzer(int id, const json& params) {
     mcp_dbg_log("on_add_analyzer: ENTER");
     auto session = app_svc_->get_active_session();
 
-    // Auto-create session if none exists, so that add_analyzer can be called
-    // before start_capture (the recommended MCP workflow: add decoder first,
-    // then start capture, so DSV_MSG_COPY_TO_DOC_DONE auto-starts decode).
-    if (!session) {
-        mcp_dbg_log("on_add_analyzer: no active session, creating one");
+    // Ensure a device is connected. AppService::initialize() pre-creates a
+    // SessionService WITHOUT any device connected (especially in headless
+    // mode), so even when an active session exists we must call
+    // create_session(deviceId) to trigger set_device() when no device is
+    // currently active. Same pattern as on_start_capture.
+    if (params.contains("deviceId")) {
+        std::string device_id = params["deviceId"].get<std::string>();
+        if (!device_id.empty()) {
+            mcp_dbg_log(QString("on_add_analyzer: ensuring device %1 is connected")
+                        .arg(QString::fromStdString(device_id))
+                        .toUtf8().constData());
+            auto r = app_svc_->create_session(device_id, "");
+            if (!r.ok()) {
+                mcp_dbg_log("on_add_analyzer: create_session FAILED");
+                return error_resp(id, static_cast<int>(r.error().code),
+                                  "Failed to create session: " + r.error().message);
+            }
+            session = app_svc_->get_active_session();
+            mcp_dbg_log("on_add_analyzer: session ready, processing events");
+            QCoreApplication::processEvents();
+            QCoreApplication::processEvents();
+        }
+    } else if (!session) {
+        // No deviceId provided and no active session — try to auto-create
+        // one with the first available (non-demo) device so that add_analyzer
+        // can still be called before start_capture (recommended MCP workflow).
+        mcp_dbg_log("on_add_analyzer: no active session, auto-creating one");
         auto devices = app_svc_->get_device_list();
         std::string device_id;
         for (const auto& d : devices) {

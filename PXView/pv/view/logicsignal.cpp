@@ -95,13 +95,14 @@ void LogicSignal::set_trig(int trig)
         _trig = NONTRIG;
 
     if (_view) {
-        auto original_sig = _view->session().get_signal_by_index(get_index());
-        if (original_sig && original_sig != this && original_sig->signal_type() == SR_CHANNEL_LOGIC) {
-            auto original_logic_sig = static_cast<view::LogicSignal*>(original_sig);
-            if (original_logic_sig->get_trig() != trig) {
-                original_logic_sig->set_trig(trig);
-            }
-        }
+        // TODO: Previously this synced _trig between two view::Signal* instances
+        // (a document clone vs the original in the live SigSession). With the
+        // new DataSource v2 interface, get_signal_by_index() now returns
+        // SignalModel* (the Core layer state holder), not view::Signal*, so the
+        // static_cast<view::LogicSignal*> is invalid and has been removed.
+        // SignalModel is now the single source of truth for trigger state. If
+        // cross-layer trigger sync is needed, write to
+        // SignalModel::set_trig_type() instead.
         _view->session().broadcast_msg(DSV_MSG_SIMPLE_TRIGGER_CHANGED);
     }
 }

@@ -231,27 +231,24 @@ Result<int> AppService::create_session(
         return Result<int>::Fail(ErrorCode::InternalError,
                                  "No SigSession available");
 
-    // Simplified: map the current single SigSession as session_id.
-    // If a default session already exists, return it.
-    if (!_sessions.empty()) {
-        // Return existing session id (the first one)
-        int existing_id = _sessions.begin()->first;
-        return Result<int>::Success(existing_id);
-    }
-
+    // ---- Device / file connection ----
+    // This MUST happen before the existing-session early-return below.
+    // Reason: AppService::initialize() pre-creates a SessionService wrapping
+    // the SigSession WITHOUT any device connected (especially in headless
+    // mode, where no device is selected at startup). If we early-returned
+    // here without calling set_device(), the SessionService would keep
+    // reporting "No device connected" for every capture/decoder call.
     // If a file path is provided, open the file
     if (!file_path.empty()) {
         if (!session->set_file(QString::fromStdString(file_path)))
             return Result<int>::Fail(ErrorCode::LoadFailed,
                                      "Failed to open file");
-    }
-
-    // If a device_id is specified, connect to that device.
-    // However, if the device is already the active device in SigSession,
-    // skip set_device() to avoid triggering DSV_MSG_CURRENT_DEVICE_CHANGED
-    // which causes massive UI rebuilds that can crash/hang when invoked
-    // from the MCP context.
-    if (!device_id.empty() && file_path.empty()) {
+    } else if (!device_id.empty()) {
+        // If a device_id is specified, connect to that device.
+        // However, if the device is already the active device in SigSession,
+        // skip set_device() to avoid triggering DSV_MSG_CURRENT_DEVICE_CHANGED
+        // which causes massive UI rebuilds that can crash/hang when invoked
+        // from the MCP context.
         bool device_already_active = false;
         if (session->get_device() && session->get_device()->have_instance()) {
             ds_device_handle current_handle = session->get_device()->handle();
@@ -267,6 +264,17 @@ Result<int> AppService::create_session(
                 return Result<int>::Fail(ErrorCode::DeviceError,
                                          "Failed to connect device");
         }
+    }
+
+    // Simplified: map the current single SigSession as session_id.
+    // If a default session already exists, return it. The device connection
+    // (if requested) has already been performed above, so the existing
+    // SessionService (which holds a stable pointer to SigSession's
+    // DeviceAgent) will see the updated device state.
+    if (!_sessions.empty()) {
+        int existing_id = _sessions.begin()->first;
+        _active_session_id = existing_id;
+        return Result<int>::Success(existing_id);
     }
 
     int session_id = _next_session_id++;

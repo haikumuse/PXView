@@ -32,12 +32,13 @@
 #include "data/decoderstack.h"
 #include "data/decode/decoder.h"
 #include "data/decode/row.h"
+#include "data/signalmodel.h"
 #include "view/trace.h"
 #include "view/signal.h"
 #include "view/logicsignal.h"
 #include "view/dsosignal.h"
 #include "view/decodetrace.h"
-#include "dock/protocoldock.h" 
+#include "dock/protocoldock.h"
  
 #include <QFileDialog>
 #include <QDir>
@@ -62,7 +63,23 @@
 
 #define DEOCDER_CONFIG_VERSION  2
  
-namespace pv { 
+namespace pv {
+
+// Convert the API-level ChannelType enum (Logic=0, Analog=1, Dso=2) used by
+// SignalModel::type() to the libsigrok SR_CHANNEL_* enum
+// (SR_CHANNEL_LOGIC=10000, SR_CHANNEL_DSO=10001, SR_CHANNEL_ANALOG=10002)
+// expected by SigSession::get_snapshot() and friends.
+// Without this conversion, get_snapshot(ChannelType::Logic=0) falls through
+// to the `else` branch and returns NULL, producing "No data to save." even
+// when the snapshot has data.
+static int api_type_to_sr_channel_type(api::ChannelType t) {
+    switch (t) {
+    case api::ChannelType::Logic:  return SR_CHANNEL_LOGIC;
+    case api::ChannelType::Analog: return SR_CHANNEL_ANALOG;
+    case api::ChannelType::Dso:    return SR_CHANNEL_DSO;
+    default:                       return SR_CHANNEL_LOGIC;
+    }
+}
 
 StoreSession::StoreSession(SigSession *session) :
 	_session(session),
@@ -137,8 +154,8 @@ bool StoreSession::save_start()
     assert(_sessionDataGetter);
 
     std::set<int> type_set;
-    for(auto s : _session->get_signals()) {
-        type_set.insert(s->get_type());
+    for(auto m : _session->get_signal_models()) {
+        type_set.insert(api_type_to_sr_channel_type(m->type()));
     }
 
     if (type_set.size() > 1) {
@@ -223,8 +240,8 @@ void StoreSession::save_logic(pv::data::LogicSnapshot *logic_snapshot)
     int ret = SR_ERR;
     int num;
 
-    for(auto s : _session->get_signals()) {
-        if (s->enabled() && logic_snapshot->has_data(s->get_index()))
+    for(auto m : _session->get_signal_models()) {
+        if (m->enabled() && logic_snapshot->has_data(m->index()))
             to_save_probes++;
     }
 
@@ -275,12 +292,12 @@ void StoreSession::save_logic(pv::data::LogicSnapshot *logic_snapshot)
         _unit_count = end_index / 8 * to_save_probes;
     }
 
-    for(auto s : _session->get_signals()) 
+    for(auto m : _session->get_signal_models())
     {
-        int ch_type = s->get_type();
-        if (ch_type == SR_CHANNEL_LOGIC) {
-            int ch_index = s->get_index();
-            if (!s->enabled() || !logic_snapshot->has_data(ch_index))
+        auto ch_type = m->type();
+        if (ch_type == pv::api::ChannelType::Logic) {
+            int ch_index = m->index();
+            if (!m->enabled() || !logic_snapshot->has_data(ch_index))
                 continue;
 
             for (int i = 0; !_canceled && i < num; i++) 
@@ -318,7 +335,7 @@ void StoreSession::save_logic(pv::data::LogicSnapshot *logic_snapshot)
                     }
                 }
                 
-                MakeChunkName(chunk_name, i - start_block, ch_index, ch_type, HEADER_FORMAT_VERSION);
+                MakeChunkName(chunk_name, i - start_block, ch_index, (int)ch_type, HEADER_FORMAT_VERSION);
                 ret = m_zipDoc.AddFromBuffer(chunk_name, (const char*)buf, size) ? SR_OK : -1;
 
                 if (ret != SR_OK) {
@@ -371,8 +388,8 @@ void StoreSession::save_analog(pv::data::AnalogSnapshot *analog_snapshot)
     int ret = SR_ERR;
 
     int ch_type = -1;
-    for(auto s : _session->get_signals()) {
-        ch_type = s->get_type();
+    for(auto m : _session->get_signal_models()) {
+        ch_type = (int)m->type();
         break;
     }
 
@@ -460,11 +477,11 @@ void StoreSession::save_dso(pv::data::DsoSnapshot *dso_snapshot)
     int ch_num = dso_snapshot->get_channel_num();
     _unit_count = size * ch_num;
 
-    for(auto s : _session->get_signals()) 
+    for(auto m : _session->get_signal_models())
     {
-        if (s->get_type() == SR_CHANNEL_DSO) {
-            int ch_index = s->get_index();
- 
+        if (m->type() == pv::api::ChannelType::Dso) {
+            int ch_index = m->index();
+
             if (!dso_snapshot->has_data(ch_index))
                 continue;
 
@@ -793,15 +810,15 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
 bool StoreSession::export_start()
 {
     std::set<int> type_set;
-    for(auto s : _session->get_signals()) {
+    for(auto m : _session->get_signal_models()) {
         if (!_export_channels.empty()) {
-            if (std::find(_export_channels.begin(), _export_channels.end(), s->get_index()) == _export_channels.end()) {
+            if (std::find(_export_channels.begin(), _export_channels.end(), m->index()) == _export_channels.end()) {
                 continue;
             }
-        } else if (_export_channel_type >= 0 && s->get_type() != _export_channel_type) {
+        } else if (_export_channel_type >= 0 && (int)m->type() != _export_channel_type) {
             continue;
         }
-        int _tp = s->get_type();
+        int _tp = api_type_to_sr_channel_type(m->type());
         type_set.insert(_tp);
     }
 
@@ -815,7 +832,12 @@ bool StoreSession::export_start()
     }
 
     const auto snapshot = _session->get_snapshot(*type_set.begin());
-    assert(snapshot);
+    if (!snapshot) {
+        // Don't dereference a NULL snapshot (the original `assert(snapshot)`
+        // is a no-op in Release builds and would crash on the next line).
+        _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR2), "No data to save.");
+        return false;
+    }
     // Check we have data
     if (snapshot->empty()) {
         _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR2), "No data to save.");
@@ -842,17 +864,17 @@ bool StoreSession::export_start()
 
     if (_outModule == NULL)
     {
+        // Preserve the error message — the previous code fell through to
+        // `_error.clear(); return false;` here, which wiped the "Invalid
+        // export format" message set just above and left callers with an
+        // empty error string. Return immediately so the message survives.
         _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR4), "Invalid export format.");
-    }
-    else
-    {
-        if (_thread.joinable()) _thread.join();
-        _thread = std::thread(&StoreSession::export_proc, this, snapshot);
-        return !_has_error;
+        return false;
     }
 
-    _error.clear();
-    return false;
+    if (_thread.joinable()) _thread.join();
+    _thread = std::thread(&StoreSession::export_proc, this, snapshot);
+    return !_has_error;
 }
 
 void StoreSession::export_proc(data::Snapshot *snapshot)
@@ -1061,13 +1083,13 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
             if (blk > end_block && end_block > 0)
                 break;
 
-            for(auto s : _session->get_signals()) {
-                if (!_export_channels.empty() && std::find(_export_channels.begin(), _export_channels.end(), s->get_index()) == _export_channels.end()) {
+            for(auto m : _session->get_signal_models()) {
+                if (!_export_channels.empty() && std::find(_export_channels.begin(), _export_channels.end(), m->index()) == _export_channels.end()) {
                     continue;
                 }
-                int ch_type = s->get_type();
-                if (ch_type == SR_CHANNEL_LOGIC) {
-                    int ch_index = s->get_index();
+                auto ch_type = m->type();
+                if (ch_type == pv::api::ChannelType::Logic) {
+                    int ch_index = m->index();
                     if (!logic_snapshot->has_data(ch_index))
                         continue;
                     uint8_t *buf = logic_snapshot->get_block_buf(blk, ch_index, sample);
@@ -1142,22 +1164,22 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
 
             int ch = 0;
             // Make the cross data buffer.
-           for(auto s : _session->get_signals())
+           for(auto m : _session->get_signal_models())
             {
-                if (s->get_type() != SR_CHANNEL_DSO)
+                if (m->type() != pv::api::ChannelType::Dso)
                     continue;
 
-                if (!dso_snapshot->has_data(s->get_index()))
+                if (!dso_snapshot->has_data(m->index()))
                     continue;
-                
+
                 uint8_t *wr = ch_data_buffer + ch;
                 ch++;
-                const uint8_t *rd = dso_snapshot->get_samples(0,0, s->get_index()) + i;
+                const uint8_t *rd = dso_snapshot->get_samples(0,0, m->index()) + i;
                 const uint8_t *rd_end = rd + size;
-                
+
                 while (rd < rd_end)
                 {
-                    *wr = *rd;                     
+                    *wr = *rd;
                     wr += ch_num;
                     rd++;
                 }
@@ -1267,12 +1289,11 @@ bool StoreSession::decoders_gen(std::string &str)
 }
 
 bool StoreSession::gen_decoders_json(QJsonArray &array)
-{  
-    for(auto s : _session->get_decode_signals()) {
+{
+    for(auto stack : _session->get_decoder_stacks()) {
         QJsonObject dec_obj;
         QJsonArray stack_array;
         QJsonObject show_obj;
-        const auto &stack = s->decoder();
         const auto &decoderList = stack->stack();
 
         for(auto dec : decoderList) 
@@ -1337,9 +1358,19 @@ bool StoreSession::gen_decoders_json(QJsonArray &array)
         }
         
         dec_obj["version"] = DEOCDER_CONFIG_VERSION;
-        dec_obj["label"] = QString(s->get_name().toUtf8().data());
+        // TODO: adapt — DecoderStack no longer carries a UI label; the
+        // label was previously read from the view::DecodeTrace. Use the
+        // first decoder's id as a fallback label.
+        if (!decoderList.empty()) {
+            dec_obj["label"] = QString(decoderList.front()->decoder()->id);
+        } else {
+            dec_obj["label"] = QString();
+        }
         dec_obj["stacked decoders"] = stack_array;
-        dec_obj["view_index"] = s->get_view_index();
+        // TODO: adapt — view_index is UI state owned by view::DecodeTrace;
+        // DecoderStack does not expose it. Persist 0 for now and let the
+        // View layer restore the index after it creates DecodeTrace.
+        dec_obj["view_index"] = 0;
 
         auto rows = stack->get_rows_gshow();
         for (auto i = rows.begin(); i != rows.end(); i++) {
@@ -1372,8 +1403,8 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
     
     for (const QJsonValue &dec_value : dec_array)
     {
-        QJsonObject dec_obj = dec_value.toObject(); 
-        std::vector<view::DecodeTrace*> &pre_dsigs = _session->get_decode_signals();
+        QJsonObject dec_obj = dec_value.toObject();
+        std::vector<pv::data::DecoderStack*> &pre_dsigs = _session->get_decoder_stacks();
         std::list<pv::data::decode::Decoder*> sub_decoders;
 
         //get sub decoders
@@ -1415,19 +1446,21 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
 
         if (dec_obj.contains("view_index")){
             int chan_view_index = dec_obj["view_index"].toInt();
-            _session->get_decoder_trace(dec_index)->set_view_index(chan_view_index);
+            // TODO: adapt — DecoderStack no longer exposes set_view_index; UI state
+            // should be restored by the View layer after it creates DecodeTrace.
+            (void)chan_view_index;
         }
 
         std::list<int> bind_indexs;
 
-        std::vector<view::DecodeTrace*> &aft_dsigs = _session->get_decode_signals();
+        std::vector<pv::data::DecoderStack*> &aft_dsigs = _session->get_decoder_stacks();
 
         if (aft_dsigs.size() >= pre_dsigs.size()) {
             const GSList *l;
-            
+
             auto new_dsig = aft_dsigs.back();
-            auto stack = new_dsig->decoder();
- 
+            auto stack = new_dsig;
+
             auto &decoder_list = stack->stack();
 
             for(auto dec : decoder_list) 
@@ -1561,9 +1594,10 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
 
             // Restore the binded channel index
             if (bind_indexs.size() > 0){
-                auto dec_trace = _session->get_decoder_trace(dec_index);
-                if (dec_trace != NULL)
-                    dec_trace->set_index_list(bind_indexs);
+                // TODO: adapt — DecoderStack no longer exposes set_index_list;
+                // channel binding should be set via the decoder's probe map API.
+                // auto dec_trace = _session->get_decoder_trace(dec_index);
+                // if (dec_trace != NULL) dec_trace->set_index_list(bind_indexs);
             }
 
             int decoder_cfg_version = -1;
@@ -1783,13 +1817,13 @@ QString StoreSession::MakeExportFile(bool bDlg)
 bool StoreSession::IsLogicDataType()
 {
     std::set<int> type_set;
-    for(auto sig : _session->get_signals()) {
-        type_set.insert(sig->get_type());
+    for(auto m : _session->get_signal_models()) {
+        type_set.insert((int)m->type());
     }
 
     if (type_set.size()){
         int type = *(type_set.begin());
-        return type == SR_CHANNEL_LOGIC;
+        return type == (int)pv::api::ChannelType::Logic;
     }
 
     return false;

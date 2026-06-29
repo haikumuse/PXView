@@ -35,6 +35,7 @@
 #include <algorithm>
 
 #include "../data/decode/decoder.h"
+#include "../data/decode/decoderstatus.h"
 #include "../data/decoderstack.h"
 #include "analogsignal.h"
 #include "decodetrace.h"
@@ -44,8 +45,10 @@
 #include "header.h"
 #include "lissajoustrace.h"
 #include "logicsignal.h"
+#include "mathtrace.h"
 #include "ruler.h"
 #include "signal.h"
+#include "signalfactory.h"
 #include "spectrumtrace.h"
 #include "trace.h"
 #include "view.h"
@@ -55,6 +58,7 @@
 #include "../config/appconfig.h"
 #include "../data/logicsnapshot.h"
 #include "../data/sessiondocument.h"
+#include "../data/spectrumstack.h"
 #include "../dialogs/calibration.h"
 #include "../dialogs/lissajousoptions.h"
 #include "../dsvdef.h"
@@ -280,6 +284,26 @@ View::~View() {
     delete sig;
   _own_signals.clear();
 
+  // Clean up View-owned wrapper traces (these wrap Core layer Stack/Model
+  // objects and are owned by the View, not by the data source).
+  for (auto dt : _own_decode_traces)
+    delete dt;
+  _own_decode_traces.clear();
+
+  for (auto st : _own_spectrum_traces)
+    delete st;
+  _own_spectrum_traces.clear();
+
+  if (_own_math_trace) {
+    delete _own_math_trace;
+    _own_math_trace = nullptr;
+  }
+
+  if (_own_lissajous_trace) {
+    delete _own_lissajous_trace;
+    _own_lissajous_trace = nullptr;
+  }
+
   for (auto p : _config_probes) {
     g_free(p->name);
     g_free(p->trigger);
@@ -294,6 +318,7 @@ View::~View() {
 
 void View::set_data_source(pv::data::DataSource *source) {
   _data_source = source;
+  mark_derived_traces_dirty();
   rebuild_signals();
 
   if (_time_viewport) {
@@ -372,16 +397,15 @@ void View::set_data_document(pv::data::SessionDocument *doc) {
     return;
 
   _document = doc;
+  mark_derived_traces_dirty();
 
   if (!doc->has_data())
     return;
 
   if (_own_signals.empty()) {
-    auto &shared_sigs = _data_source->get_signals();
-    for (auto sig : shared_sigs) {
-      auto cloned = sig->clone();
-      cloned->set_view_index(sig->get_view_index());
-      _own_signals.push_back(cloned);
+    auto created_sigs = SignalFactory::create_signals(_data_source, _session);
+    for (auto sig : created_sigs) {
+      _own_signals.push_back(sig);
     }
   }
 
@@ -421,11 +445,9 @@ void View::clone_signals_for_document(pv::data::SessionDocument *doc) {
 
   _own_signals.clear();
 
-  auto &shared_sigs = _data_source->get_signals();
-  for (auto sig : shared_sigs) {
-    auto cloned = sig->clone();
-    cloned->set_view_index(sig->get_view_index());
-    _own_signals.push_back(cloned);
+  auto created_sigs = SignalFactory::create_signals(_data_source, _session);
+  for (auto sig : created_sigs) {
+    _own_signals.push_back(sig);
   }
 
   set_data_document(doc);
@@ -818,9 +840,9 @@ void View::get_traces(int type, std::vector<Trace *> &traces) {
 
   auto &sigs = _own_signals;
 
-  const auto &decode_sigs = effective_data_source()->get_decode_signals();
+  auto &decode_sigs = get_own_decode_traces();
 
-  const auto &spectrums = effective_data_source()->get_spectrum_traces();
+  auto &spectrums = get_own_spectrum_traces();
 
   for (auto t : sigs) {
     if (type == ALL_VIEW || _trace_view_map[t->get_type()] == type)
@@ -837,13 +859,13 @@ void View::get_traces(int type, std::vector<Trace *> &traces) {
       traces.push_back(t);
   }
 
-  auto lissajous = effective_data_source()->get_lissajous_trace();
+  auto lissajous = get_own_lissajous_trace();
   if (lissajous && lissajous->enabled() &&
       (type == ALL_VIEW || _trace_view_map[lissajous->get_type()] == type)) {
     traces.push_back(lissajous);
   }
 
-  auto math = effective_data_source()->get_math_trace();
+  auto math = get_own_math_trace();
   if (math && math->enabled() &&
       (type == ALL_VIEW || _trace_view_map[math->get_type()] == type)) {
     traces.push_back(math);
@@ -1118,6 +1140,7 @@ void View::mode_changed() {
 }
 
 void View::signals_changed(const Trace *eventTrace) {
+  mark_derived_traces_dirty();
   double actualMargin = SignalMargin;
   int total_rows = 0;
   int label_size = 0;
@@ -1501,6 +1524,43 @@ void View::data_updated() {
     return;
   }
 
+  // Refresh data pointers in render objects (does NOT rebuild them).
+  // Signals hold raw snapshot pointers that may become stale when the
+  // active data source swaps its backing snapshots (e.g. after a capture,
+  // glitch filter, or document switch). Re-bind the latest snapshots from
+  // the effective data source.
+  auto *source = effective_data_source();
+  if (source) {
+    for (auto sig : _own_signals) {
+      int type = sig->signal_type();
+      switch (type) {
+      case SR_CHANNEL_LOGIC: {
+        view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
+        s->set_data(source->get_logic_snapshot());
+        break;
+      }
+      case SR_CHANNEL_ANALOG: {
+        view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
+        s->set_data(source->get_analog_snapshot());
+        break;
+      }
+      case SR_CHANNEL_DSO: {
+        view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
+        s->set_data(source->get_dso_snapshot());
+        break;
+      }
+      }
+    }
+
+    // LissajousTrace holds a DsoSnapshot pointer directly.
+    if (_own_lissajous_trace) {
+      _own_lissajous_trace->set_data(source->get_dso_snapshot());
+    }
+    // Note: DecodeTrace / SpectrumTrace / MathTrace wrap Core-owned
+    // Stack objects which manage their own snapshot pointers internally,
+    // so no explicit refresh is needed here.
+  }
+
   setViewportMargins(headerWidth(), RulerHeight, 0, 0);
   update_margins();
 
@@ -1823,14 +1883,14 @@ void View::vDial_updated() {
     _cali->update_device_info();
   }
 
-  auto math_trace = effective_data_source()->get_math_trace();
+  auto math_trace = get_own_math_trace();
   if (math_trace && math_trace->enabled()) {
     math_trace->update_vDial();
   }
 }
 
 void View::dso_factor_updated() {
-  auto math_trace = effective_data_source()->get_math_trace();
+  auto math_trace = get_own_math_trace();
   if (math_trace && math_trace->enabled()) {
     math_trace->update_vDial();
   }
@@ -2130,7 +2190,8 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 }
 
 void View::rebuild_signals() {
-  
+  mark_derived_traces_dirty();
+
   if (_data_source == _document && _document && _document->has_signal_config()) {
     const auto &config = _document->get_signal_config();
     // 检查配置的通道数是否与设备当前的通道数匹配
@@ -2148,8 +2209,8 @@ void View::rebuild_signals() {
   if (!_data_source)
     return;
 
-  auto &shared_sigs = _data_source->get_signals();
-  if (shared_sigs.empty())
+  auto created_sigs = SignalFactory::create_signals(_data_source, _session);
+  if (created_sigs.empty())
     return;
 
   for (auto sig : _own_signals)
@@ -2163,14 +2224,12 @@ void View::rebuild_signals() {
   }
   _config_probes.clear();
 
-  for (auto sig : shared_sigs) {
-    auto cloned = sig->clone();
-    cloned->set_view_index(sig->get_view_index());
+  for (auto sig : created_sigs) {
     // DSO/Analog signals use auto-calculated height, reset _ownHeight
     if (get_work_mode() == DSO || get_work_mode() == ANALOG) {
-      cloned->set_own_height(-1);
+      sig->set_own_height(-1);
     }
-    _own_signals.push_back(cloned);
+    _own_signals.push_back(sig);
   }
 
   for (auto sig : _own_signals) {
@@ -2185,6 +2244,103 @@ void View::rebuild_signals() {
     set_data_document(_document);
   }
 
+  signals_changed(NULL);
+}
+
+bool View::add_decoder(srd_decoder *const dec, bool silent,
+                       DecoderStatus *dstatus,
+                       std::list<pv::data::decode::Decoder *> &sub_decoders,
+                       pv::data::DecoderStack *&out_stack) {
+  if (!_session)
+    return false;
+
+  out_stack = nullptr;
+
+  // 1. Core layer creates the DecoderStack and adds it to the active
+  //    document's stack list. Core owns the DecoderStack.
+  if (!_session->add_decoder(dec, silent, dstatus, sub_decoders, out_stack))
+    return false;
+
+  if (!out_stack)
+    return false;
+
+  // 2. View directly creates its DecodeTrace wrapper for the new
+  //    DecoderStack. We do NOT rely on the signals_changed event callback
+  //    (which would only lazily sync via sync_derived_traces()) because the
+  //    caller may need to interact with the DecodeTrace immediately after
+  //    this method returns (e.g. to attach protocol layer items).
+  //    The index used here is the position in the View's own list, matching
+  //    the pattern in sync_derived_traces().
+  int decode_index = (int)_own_decode_traces.size();
+  auto *trace = new DecodeTrace(_session, out_stack, decode_index);
+  _own_decode_traces.push_back(trace);
+
+  // 3. Mark derived traces NOT dirty since we just synced the DecodeTrace
+  //    list manually. This prevents sync_derived_traces() from recreating
+  //    the DecodeTrace we just added.
+  _derived_traces_dirty = false;
+
+  // 4. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
+  //    at the top, but since the DecodeTrace list is already in sync, the
+  //    subsequent sync_derived_traces() will be a no-op for decoders.
+  signals_changed(NULL);
+
+  return true;
+}
+
+void View::remove_decoder(DecodeTrace *trace) {
+  if (!trace)
+    return;
+
+  auto it = std::find(_own_decode_traces.begin(), _own_decode_traces.end(),
+                      trace);
+  if (it == _own_decode_traces.end())
+    return;
+
+  pv::data::DecoderStack *stack = trace->decoder();
+  void *key_handel = stack ? stack->get_key_handel() : nullptr;
+
+  // 1. View deletes its DecodeTrace (View-owned). The DecodeTrace
+  //    destructor does NOT delete the DecoderStack (Core owns it).
+  _own_decode_traces.erase(it);
+  delete trace;
+
+  // 2. Notify Core layer to delete the corresponding DecoderStack.
+  //    Core's remove_decoder_by_key_handel() will remove the stack from
+  //    its list and delete it (immediately if no decode thread holds it,
+  //    otherwise asynchronously via _delete_flag). Core fires
+  //    signals_changed() callback which triggers View::signals_changed(NULL)
+  //    — at that point sync_derived_traces() will find no DecodeTrace to
+  //    remove (we already deleted it), so no double-free occurs.
+  if (key_handel) {
+    _session->remove_decoder_by_key_handel(key_handel);
+  }
+}
+
+void View::remove_decoder(int index) {
+  if (index < 0 || index >= (int)_own_decode_traces.size())
+    return;
+  remove_decoder(_own_decode_traces[index]);
+}
+
+void View::on_signals_changed() {
+  // Incrementally update _own_signals to match the Core's SignalModel
+  // list. Uses AllReplaced event so that SignalFactory preserves UI state
+  // (selection, visibility, v_offset, own_height, view_index) for signals
+  // that survive the update.
+  //
+  // This does NOT directly touch _own_decode_traces / _own_spectrum_traces
+  // / _own_math_trace / _own_lissajous_trace. Those are derived traces
+  // that wrap Core-owned Stack/Model objects and are synced lazily via
+  // sync_derived_traces() based on the Stack pointer identity (not the
+  // Signal list).
+  SignalFactory::update_signals(_own_signals, effective_data_source(),
+                                 _session, SignalFactory::AllReplaced);
+
+  // Refresh layout and trigger lazy sync of derived traces.
+  // signals_changed(NULL) calls mark_derived_traces_dirty() at the top
+  // and data_updated() at the end, the latter of which refreshes data
+  // pointers in render objects.
   signals_changed(NULL);
 }
 
@@ -2302,6 +2458,143 @@ void View::UpdateFont() { update_font(); }
 bool View::view_is_ready() {
   int w = get_view_width();
   return w > 0;
+}
+
+void View::mark_derived_traces_dirty() { _derived_traces_dirty = true; }
+
+void View::sync_derived_traces() {
+  if (!_derived_traces_dirty)
+    return;
+
+  _derived_traces_dirty = false;
+
+  auto *source = effective_data_source();
+  if (!source)
+    return;
+
+  // ---- Sync DecodeTrace list from DecoderStack list ----
+  auto &decoder_stacks = source->get_decoder_stacks();
+
+  // Remove DecodeTrace whose DecoderStack no longer exists.
+  for (auto it = _own_decode_traces.begin();
+       it != _own_decode_traces.end();) {
+    DecodeTrace *dt = *it;
+    if (std::find(decoder_stacks.begin(), decoder_stacks.end(),
+                  dt->decoder()) == decoder_stacks.end()) {
+      delete dt;
+      it = _own_decode_traces.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  // Add DecodeTrace for new DecoderStacks that have no wrapper yet.
+  int decode_index = 0;
+  for (auto *stack : decoder_stacks) {
+    bool exists = false;
+    for (auto *dt : _own_decode_traces) {
+      if (dt->decoder() == stack) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) {
+      auto *dt = new DecodeTrace(_session, stack, decode_index);
+      _own_decode_traces.push_back(dt);
+    }
+    decode_index++;
+  }
+
+  // ---- Sync SpectrumTrace list from SpectrumStack list ----
+  auto &spectrum_stacks = source->get_spectrum_stacks();
+
+  // Remove SpectrumTrace whose SpectrumStack no longer exists.
+  for (auto it = _own_spectrum_traces.begin();
+       it != _own_spectrum_traces.end();) {
+    SpectrumTrace *st = *it;
+    if (std::find(spectrum_stacks.begin(), spectrum_stacks.end(),
+                  st->get_spectrum_stack()) == spectrum_stacks.end()) {
+      delete st;
+      it = _own_spectrum_traces.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  // Add SpectrumTrace for new SpectrumStacks that have no wrapper yet.
+  for (auto *stack : spectrum_stacks) {
+    bool exists = false;
+    for (auto *st : _own_spectrum_traces) {
+      if (st->get_spectrum_stack() == stack) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) {
+      auto *st = new SpectrumTrace(_session, stack, stack->get_index());
+      _own_spectrum_traces.push_back(st);
+    }
+  }
+
+  // ---- Sync MathTrace from MathStack ----
+  auto *math_stack = source->get_math_stack();
+  if (math_stack) {
+    if (!_own_math_trace ||
+        _own_math_trace->get_math_stack() != math_stack) {
+      // Tear down any stale MathTrace bound to a previous MathStack.
+      if (_own_math_trace) {
+        delete _own_math_trace;
+        _own_math_trace = nullptr;
+      }
+
+      // MathStack now exposes the source channel indices. Look up the
+      // matching DsoSignal instances in _own_signals so the MathTrace can
+      // read DSO-specific UI state (ref_min/ref_max, view rect, etc.).
+      DsoSignal *dso1 = nullptr;
+      DsoSignal *dso2 = nullptr;
+      const int idx1 = math_stack->ch1_index();
+      const int idx2 = math_stack->ch2_index();
+      for (auto *sig : _own_signals) {
+        if (!sig || sig->signal_type() != SR_CHANNEL_DSO)
+          continue;
+        if (sig->get_index() == idx1)
+          dso1 = dynamic_cast<DsoSignal *>(sig);
+        if (sig->get_index() == idx2)
+          dso2 = dynamic_cast<DsoSignal *>(sig);
+        if (dso1 && dso2)
+          break;
+      }
+
+      if (dso1 && dso2) {
+        _own_math_trace = new MathTrace(true, math_stack, dso1, dso2);
+      } else {
+        pxv_warn("View::sync_derived_traces: DsoSignal not found for "
+                 "math src1=%d or src2=%d — MathTrace creation skipped.",
+                 idx1, idx2);
+      }
+    }
+  } else {
+    if (_own_math_trace) {
+      delete _own_math_trace;
+      _own_math_trace = nullptr;
+    }
+  }
+
+  // ---- Sync LissajousTrace from LissajousModel ----
+  auto *lissajous_model = source->get_lissajous_model();
+  if (lissajous_model && lissajous_model->enabled()) {
+    if (!_own_lissajous_trace) {
+      auto *snapshot = source->get_dso_snapshot();
+      _own_lissajous_trace = new LissajousTrace(
+          lissajous_model->enabled(), snapshot, lissajous_model->x_index(),
+          lissajous_model->y_index(), lissajous_model->percent());
+    }
+  } else {
+    if (_own_lissajous_trace) {
+      delete _own_lissajous_trace;
+      _own_lissajous_trace = nullptr;
+    }
+  }
 }
 
 } // namespace view

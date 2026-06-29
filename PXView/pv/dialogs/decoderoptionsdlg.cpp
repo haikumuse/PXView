@@ -292,27 +292,27 @@ DsComboBox* DecoderOptionsDlg::create_probe_selector(
 {
 	assert(dec);
     
-    const auto &sigs = AppControl::Instance()->GetSession()->get_signals();
+    const auto &sigs = AppControl::Instance()->GetSession()->get_signal_models();
 
     data::decode::Decoder *decoder = const_cast<data::decode::Decoder*>(dec);
- 
+
 	DsComboBox *selector = new DsComboBox(parent);
     selector->addItem("-", QVariant::fromValue(-1));
-  
+
     int dex = 0;
     const int binded_index = decoder->binded_probe_index(pdch);
 
-	for(auto s : sigs) 
+	for(auto s : sigs)
     {
         dex++;
 
-        if (s->signal_type() == SR_CHANNEL_LOGIC && s->enabled()){
-			selector->addItem(s->get_name(),QVariant::fromValue(s->get_index()));
-            
-            if (binded_index == s->get_index()){
+        if (s->type() == pv::api::ChannelType::Logic && s->enabled()){
+			selector->addItem(QString::fromStdString(s->name()), QVariant::fromValue(s->index()));
+
+            if (binded_index == s->index()){
                 selector->setCurrentIndex(dex);
             }
-		} 
+		}
 	}
 
     if (binded_index == -1){
@@ -495,7 +495,7 @@ void DecoderOptionsDlg::commit_decoder_probes(data::decode::Decoder *dec)
 	assert(dec); 
 
     std::map<const srd_channel*, int> probe_map;
-    const auto &sigs = AppControl::Instance()->GetSession()->get_signals();
+    const auto &sigs = AppControl::Instance()->GetSession()->get_signal_models();
 
     std::list<int> index_list;
 
@@ -507,7 +507,7 @@ void DecoderOptionsDlg::commit_decoder_probes(data::decode::Decoder *dec)
         const int selection = p._combo->itemData(p._combo->currentIndex()).value<int>();
 
         for(auto s : sigs){
-            if(s->get_index() == selection) {
+            if(s->index() == selection) {
                 probe_map[p._pdch] = selection;
                 index_list.push_back(selection);
 				break;

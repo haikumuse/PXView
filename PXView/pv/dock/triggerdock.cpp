@@ -1026,20 +1026,27 @@ void TriggerDock::try_commit_trigger()
         return;
     }
 
-    if (commit_trigger() == false) 
+    if (commit_trigger() == false)
     {
         /* simple trigger check trigger_enable */
-        std::vector<view::Signal *> sigs;
-        if (_context && _context->view()) {
-            sigs = _context->view()->get_own_signals();
+        bool has_view = _context && _context->view();
+
+        if (has_view) {
+            auto &sigs = _context->view()->get_own_signals();
+            for(auto s : sigs){
+                if (s->signal_type() == SR_CHANNEL_LOGIC) {
+                    view::LogicSignal *logicSig = (view::LogicSignal*)s;
+                    if (logicSig->commit_trig())
+                        num++;
+                }
+            }
         } else {
-            sigs = _session->get_signals();
-        }
-        for(auto s : sigs){ 
-            if (s->signal_type() == SR_CHANNEL_LOGIC) {
-                view::LogicSignal *logicSig = (view::LogicSignal*)s;
-                if (logicSig->commit_trig())
-                    num++;
+            auto &sigs = _session->get_signal_models();
+            for(auto s : sigs){
+                if (s->type() == api::ChannelType::Logic) {
+                    if (s->commit_trig())
+                        num++;
+                }
             }
         }
 
@@ -1047,7 +1054,7 @@ void TriggerDock::try_commit_trigger()
         {
             dialogs::DSMessageBox msg(this);
             msg.mBox()->setText(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TRIGGER), "Trigger"));
-            msg.mBox()->setInformativeText(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_SET_TRI_MULTI_CHANNEL), 
+            msg.mBox()->setInformativeText(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_SET_TRI_MULTI_CHANNEL),
                                           "Trigger setted on multiple channels!\nCapture will Only triggered when all setted channels fullfill at one sample"));
             msg.mBox()->setIcon(QMessageBox::Information);
 
@@ -1058,18 +1065,29 @@ void TriggerDock::try_commit_trigger()
             msg.exec();
 
             if (msg.mBox()->clickedButton() == cancelButton) {
-                for(auto s : sigs){
-                    if (s->signal_type() == SR_CHANNEL_LOGIC) {
-                        view::LogicSignal *logicSig = (view::LogicSignal*)s;
-                        logicSig->set_trig(view::LogicSignal::NONTRIG);
-                        logicSig->commit_trig();
+                if (has_view) {
+                    auto &sigs = _context->view()->get_own_signals();
+                    for(auto s : sigs){
+                        if (s->signal_type() == SR_CHANNEL_LOGIC) {
+                            view::LogicSignal *logicSig = (view::LogicSignal*)s;
+                            logicSig->set_trig(view::LogicSignal::NONTRIG);
+                            logicSig->commit_trig();
+                        }
+                    }
+                } else {
+                    auto &sigs = _session->get_signal_models();
+                    for(auto s : sigs){
+                        if (s->type() == api::ChannelType::Logic) {
+                            s->set_trig_type(data::SignalModel::NONTRIG);
+                            s->commit_trig();
+                        }
                     }
                 }
             }
 
             if (msg.mBox()->clickedButton() == noMoreButton)
             {
-                app.appOptions.warnofMultiTrig  = false;              
+                app.appOptions.warnofMultiTrig  = false;
             }
         }
     }

@@ -1360,7 +1360,7 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
     }
   }
 
-  for (auto s : _session->get_signals()) {
+  for (auto s : current_view()->get_own_signals()) {
     QJsonObject s_obj;
     s_obj["index"] = s->get_index();
     s_obj["view_index"] = s->get_view_index();
@@ -1609,7 +1609,7 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
 
   // load signal setting
   if (mode == DSO) {
-    for (auto s : _session->get_signals()) {
+    for (auto s : current_view()->get_own_signals()) {
       for (const QJsonValue &value : sessionObj["channel"].toArray()) {
         QJsonObject obj = value.toObject();
 
@@ -1629,7 +1629,7 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
       }
     }
   } else {
-    for (auto s : _session->get_signals()) {
+    for (auto s : current_view()->get_own_signals()) {
       for (const QJsonValue &value : sessionObj["channel"].toArray()) {
         QJsonObject obj = value.toObject();
         if ((s->get_index() == obj["index"].toInt()) &&
@@ -1722,7 +1722,7 @@ void MainWindow::load_channel_view_indexs(QJsonDocument &doc) {
   if (view_indexs.size()) {
     int i = 0;
 
-    for (auto s : _session->get_signals()) {
+    for (auto s : current_view()->get_own_signals()) {
       s->set_view_index(view_indexs[i]);
       i++;
     }
@@ -1998,7 +1998,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
       return true;
     }
 
-    const auto &sigs = _session->get_signals();
+    const auto &sigs = current_view()->get_own_signals();
 
     int modifier = ke->modifiers();
 
@@ -3134,6 +3134,67 @@ void MainWindow::OnMessage(int msg) {
     break;
   }
   }
+}
+
+// ---------------------------------------------------------------------------
+// IServiceEventListener — route View operation broadcasts from SessionService
+// (MCP/WS API) to the active View. In Headless mode there is no MainWindow,
+// so these events are simply not consumed.
+// ---------------------------------------------------------------------------
+void MainWindow::on_service_event(const pv::api::ServiceEventData &data) {
+    pv::view::View *view = current_view();
+    if (!view)
+        return;
+
+    const auto &params = data.params;
+
+    switch (data.event) {
+    case pv::api::ServiceEvent::ViewShowRegion: {
+        auto it_start = params.find("start");
+        auto it_end   = params.find("end");
+        if (it_start != params.end() && it_end != params.end()) {
+            uint64_t start = std::stoull(it_start->second);
+            uint64_t end   = std::stoull(it_end->second);
+            view->show_region(start, end, true);
+        }
+        break;
+    }
+    case pv::api::ServiceEvent::ViewZoomFit: {
+        // TODO: View has no zoom_fit() method yet; approximate with zoom out.
+        // A proper fit-to-screen implementation should be added to View.
+        view->zoom(-1.0);
+        break;
+    }
+    case pv::api::ServiceEvent::ViewZoomIn: {
+        view->zoom(1.0);
+        break;
+    }
+    case pv::api::ServiceEvent::ViewZoomOut: {
+        view->zoom(-1.0);
+        break;
+    }
+    case pv::api::ServiceEvent::ViewCursorAdded: {
+        auto it = params.find("sample_pos");
+        if (it != params.end()) {
+            uint64_t sample_pos = std::stoull(it->second);
+            view->add_cursor(sample_pos);
+        }
+        break;
+    }
+    case pv::api::ServiceEvent::ViewCursorRemoved: {
+        // Cursor removal by index is handled by View internally;
+        // no direct public API to remove by index from outside.
+        // TODO: Add View::remove_cursor(int index) if needed.
+        break;
+    }
+    case pv::api::ServiceEvent::ViewCursorsCleared: {
+        view->clear_cursors();
+        break;
+    }
+    default:
+        // Not a View event; ignore.
+        break;
+    }
 }
 
 void MainWindow::calc_min_height() {

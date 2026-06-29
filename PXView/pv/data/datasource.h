@@ -44,17 +44,25 @@ class AnalogSnapshot;
 class DsoSnapshot;
 class DecoderModel;
 class Snapshot;
+class SignalModel;
+class LissajousModel;
+class DecoderStack;
+class SpectrumStack;
+class MathStack;
 
 class DataSource
 {
 public:
     virtual ~DataSource() {}
 
-    virtual std::vector<view::Signal*>& get_signals() = 0;
-    virtual std::vector<view::DecodeTrace*>& get_decode_signals() = 0;
-    virtual std::vector<view::SpectrumTrace*>& get_spectrum_traces() = 0;
-    virtual view::LissajousTrace* get_lissajous_trace() = 0;
-    virtual view::MathTrace* get_math_trace() = 0;
+    // ---- New v2 pure-data interface (no view::* types) ----
+    virtual std::vector<SignalModel*>& get_signal_models() = 0;
+    virtual std::vector<DecoderStack*>& get_decoder_stacks() = 0;
+    virtual std::vector<SpectrumStack*>& get_spectrum_stacks() = 0;
+    virtual MathStack* get_math_stack() = 0;
+    virtual LissajousModel* get_lissajous_model() = 0;
+
+    // ---- Data access (unchanged) ----
     virtual uint64_t cur_snap_samplerate() = 0;
     virtual uint64_t cur_samplelimits() = 0;
     virtual double cur_sampletime() = 0;

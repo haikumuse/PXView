@@ -37,15 +37,16 @@
 #include "data/analogsnapshot.h"
 #include "data/datasource.h"
 #include "data/dsosnapshot.h"
+#include "data/lissajousmodel.h"
 #include "data/logicsnapshot.h"
 #include "data/mathstack.h"
 #include "data/sessiondocument.h"
 #include "data/sessionsnapshot.h"
+#include "data/signalmodel.h"
 #include "deviceagent.h"
 #include "dstimer.h"
 #include "eventobject.h"
 #include "interface/icallbacks.h"
-#include "view/mathtrace.h"
 #include <libsigrok.h>
 
 struct srd_decoder;
@@ -69,15 +70,6 @@ namespace decode {
 class Decoder;
 }
 } // namespace data
-
-namespace view {
-class Signal;
-class GroupSignal;
-class DecodeTrace;
-class SpectrumTrace;
-class LissajousTrace;
-class MathTrace;
-} // namespace view
 
 enum DEVICE_STATUS_TYPE {
   ST_INIT = 0,
@@ -154,10 +146,10 @@ public:
 
   inline DeviceAgent *get_device() { return &_device_agent; }
 
-  void add_callback(ISessionCallback *callback) { _callbacks.push_back(callback); }
-  void remove_callback(ISessionCallback *callback);
+  void add_callback(ISessionCallbackBase *callback) { _callbacks.push_back(callback); }
+  void remove_callback(ISessionCallbackBase *callback);
   // Deprecated: use add_callback instead
-  void set_callback(ISessionCallback *callback) { add_callback(callback); }
+  void set_callback(ISessionCallbackBase *callback) { add_callback(callback); }
 
   bool init();
   void uninit();
@@ -200,18 +192,18 @@ public:
     _confirm_store_time_id = _work_time_id;
   }
 
-  std::vector<view::Signal *> &get_signals() override;
+  std::vector<data::SignalModel *> &get_signal_models() override;
 
   bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
                    std::list<pv::data::decode::Decoder *> &sub_decoders,
-                   view::Trace *&out_trace);
+                   data::DecoderStack *&out_stack);
   int get_trace_index_by_key_handel(void *handel);
   void remove_decoder(int index);
   void remove_decoder_by_key_handel(void *handel);
 
-  inline std::vector<view::DecodeTrace *> &get_decode_signals() override {
-    return _active_document ? _active_document->get_decode_signals()
-                            : _empty_decode_traces;
+  inline std::vector<data::DecoderStack *> &get_decoder_stacks() override {
+    return _active_document ? _active_document->get_decoder_stacks()
+                            : _empty_decoder_stacks;
   }
 
   void rst_decoder(int index);
@@ -221,15 +213,15 @@ public:
     return _decoder_model;
   }
 
-  inline std::vector<view::SpectrumTrace *> &get_spectrum_traces() override {
-    return _spectrum_traces;
+  inline std::vector<data::SpectrumStack *> &get_spectrum_stacks() override {
+    return _spectrum_stacks;
   }
 
-  inline view::LissajousTrace *get_lissajous_trace() override {
-    return _lissajous_trace;
+  inline data::LissajousModel *get_lissajous_model() override {
+    return _lissajous_model;
   }
 
-  inline view::MathTrace *get_math_trace() override { return _math_trace; }
+  inline data::MathStack *get_math_stack() override { return _math_stack; }
 
   uint16_t get_ch_num(int type);
 
@@ -242,8 +234,7 @@ public:
   void lissajous_rebuild(bool enable, int xindex, int yindex, double percent);
   void lissajous_disable();
 
-  void math_rebuild(bool enable, pv::view::DsoSignal *dsoSig1,
-                    pv::view::DsoSignal *dsoSig2,
+  void math_rebuild(bool enable, int ch1_index, int ch2_index,
                     data::MathStack::MathType type);
 
   inline bool trigd() { return _trigger_flag; }
@@ -312,13 +303,22 @@ public:
     return _clt_mode == COLLECT_REPEAT && !_is_instant;
   }
 
-  inline void session_save() { for (auto* cb : _callbacks) cb->session_save(); }
-
-  inline void show_region(uint64_t start, uint64_t end, bool keep) {
-    for (auto* cb : _callbacks) cb->show_region(start, end, keep);
+  inline void session_save() {
+    dispatch_to<ISessionStateCallback>(
+        [](ISessionStateCallback *cb) { cb->session_save(); });
   }
 
-  inline void decode_done() { for (auto* cb : _callbacks) cb->decode_done(); }
+  inline void show_region(uint64_t start, uint64_t end, bool keep) {
+    dispatch_to<ICaptureCallback>(
+        [start, end, keep](ICaptureCallback *cb) {
+          cb->show_region(start, end, keep);
+        });
+  }
+
+  inline void decode_done() {
+    dispatch_to<ISessionStateCallback>(
+        [](ISessionStateCallback *cb) { cb->decode_done(); });
+  }
 
   inline bool is_saving() { return _is_saving; }
 
@@ -336,7 +336,9 @@ public:
 
   inline bool is_single_buffer() { return _view_data == _capture_data; }
 
-  inline void update_view() { for (auto* cb : _callbacks) cb->data_updated(); }
+  inline void update_view() {
+    dispatch_to<IDataCallback>([](IDataCallback *cb) { cb->data_updated(); });
+  }
 
   void auto_end();
   bool have_hardware_data();
@@ -345,8 +347,8 @@ public:
   void add_msg_listener(IMessageListener *ln);
   void broadcast_msg(int msg);
   bool have_new_realtime_refresh(bool keep);
-  view::DecodeTrace *get_decoder_trace(int index);
-  view::Signal *get_signal_by_index(int index);
+  data::DecoderStack *get_decoder_trace(int index);
+  data::SignalModel *get_signal_by_index(int index);
 
   inline bool have_view_data() { return get_signal_snapshot()->have_data(); }
   inline bool is_copy_in_progress() const { return _copy_in_progress; }
@@ -358,7 +360,7 @@ public:
   inline bool is_doing_action() { return _is_action; }
 
   void clear_view_data();
-  void set_trace_name(view::Trace *trace, QString name);
+  void set_trace_name(data::SignalModel *model, QString name);
   void set_decoder_row_label(int index, QString label);
 
   inline void set_decoder_pannel(IDecoderPannel *pannel) {
@@ -372,8 +374,8 @@ public:
 
   void update_dso_data_scale();
 
-  void add_decode_task(view::DecodeTrace *trace);
-  void remove_decode_task(view::DecodeTrace *trace);
+  void add_decode_task(data::DecoderStack *stack);
+  void remove_decode_task(data::DecoderStack *stack);
 
   inline sr_status get_dso_status() { return _dso_status; }
 
@@ -402,9 +404,9 @@ public:
   }
   void clear_all_documents_decoders();
 
-  inline std::vector<view::DecodeTrace *> &decode_traces() {
-    return _active_document ? _active_document->get_decode_traces()
-                            : _empty_decode_traces;
+  inline std::vector<data::DecoderStack *> &decode_traces() {
+    return _active_document ? _active_document->get_decoder_stacks()
+                            : _empty_decoder_stacks;
   }
 
   void update_lang_text();
@@ -436,12 +438,85 @@ private:
   bool exec_capture();
   void exit_capture();
 
-  inline void data_updated() { for (auto* cb : _callbacks) cb->data_updated(); }
+  // Dispatch helper: invokes fn on every registered callback that
+  // implements the given sub-interface (using dynamic_cast).
+  template <typename Iface, typename F> void dispatch_to(F fn) {
+    for (auto *cb : _callbacks) {
+      if (auto *iface = dynamic_cast<Iface *>(cb))
+        fn(iface);
+    }
+  }
 
-  inline void signals_changed() { for (auto* cb : _callbacks) cb->signals_changed(); }
+  // IDataCallback dispatch helpers
+  inline void data_updated() {
+    dispatch_to<IDataCallback>([](IDataCallback *cb) { cb->data_updated(); });
+  }
 
   inline void set_receive_data_len(quint64 len) {
-    for (auto* cb : _callbacks) cb->receive_data_len(len);
+    dispatch_to<IDataCallback>(
+        [len](IDataCallback *cb) { cb->receive_data_len(len); });
+  }
+
+  inline void receive_header() {
+    dispatch_to<IDataCallback>([](IDataCallback *cb) { cb->receive_header(); });
+  }
+
+  inline void cur_snap_samplerate_changed() {
+    dispatch_to<IDataCallback>(
+        [](IDataCallback *cb) { cb->cur_snap_samplerate_changed(); });
+  }
+
+  // ICaptureCallback dispatch helpers
+  inline void frame_began() {
+    dispatch_to<ICaptureCallback>([](ICaptureCallback *cb) { cb->frame_began(); });
+  }
+
+  inline void frame_ended() {
+    dispatch_to<ICaptureCallback>([](ICaptureCallback *cb) { cb->frame_ended(); });
+  }
+
+  inline void update_capture() {
+    dispatch_to<ICaptureCallback>(
+        [](ICaptureCallback *cb) { cb->update_capture(); });
+  }
+
+  inline void repeat_hold(int percent) {
+    dispatch_to<ICaptureCallback>(
+        [percent](ICaptureCallback *cb) { cb->repeat_hold(percent); });
+  }
+
+  // ITriggerCallback dispatch helpers
+  inline void receive_trigger(quint64 trigger_pos) {
+    dispatch_to<ITriggerCallback>(
+        [trigger_pos](ITriggerCallback *cb) {
+          cb->receive_trigger(trigger_pos);
+        });
+  }
+
+  inline void show_wait_trigger() {
+    dispatch_to<ITriggerCallback>(
+        [](ITriggerCallback *cb) { cb->show_wait_trigger(); });
+  }
+
+  inline void trigger_message(int msg) {
+    dispatch_to<ITriggerCallback>(
+        [msg](ITriggerCallback *cb) { cb->trigger_message(msg); });
+  }
+
+  // ISessionStateCallback dispatch helpers
+  inline void signals_changed() {
+    dispatch_to<ISessionStateCallback>(
+        [](ISessionStateCallback *cb) { cb->signals_changed(); });
+  }
+
+  inline void session_error() {
+    dispatch_to<ISessionStateCallback>(
+        [](ISessionStateCallback *cb) { cb->session_error(); });
+  }
+
+  inline void delay_prop_msg(QString strMsg) {
+    dispatch_to<ISessionStateCallback>(
+        [strMsg](ISessionStateCallback *cb) { cb->delay_prop_msg(strMsg); });
   }
 
   void clear_all_decode_task(int &runningDex);
@@ -451,7 +526,7 @@ private:
     clear_all_decode_task(run_dex);
   }
 
-  void decode_single_task(view::DecodeTrace *task);
+  void decode_single_task(data::DecoderStack *task);
 
   void capture_init();
   void nodata_timeout();
@@ -491,10 +566,11 @@ private:
   void data_feed_in(const struct sr_dev_inst *sdi,
                     const struct sr_datafeed_packet *packet);
 
-  static void data_feed_callback(const struct sr_dev_inst *sdi,
-                                 const struct sr_datafeed_packet *packet);
+  static void data_feed_callback_ex(const struct sr_dev_inst *sdi,
+                                    const struct sr_datafeed_packet *packet,
+                                    void *user_data);
 
-  static void device_lib_event_callback(int event);
+  static void device_lib_event_callback_ex(int event, void *user_data);
 
   void on_device_lib_event(int event);
   Snapshot *get_signal_snapshot();
@@ -513,7 +589,7 @@ private:
 
   inline void data_unlock() { _data_lock = false; }
 
-  view::Trace *get_channel_by_index(int orgIndex);
+  data::SignalModel *get_channel_by_index(int orgIndex);
   void make_channels_view_index(int start_dex = -1);
 
 private:
@@ -521,14 +597,14 @@ private:
   mutable std::mutex _data_mutex;
   mutable std::mutex _running_tasks_mutex;
   std::vector<std::thread> _decode_threads;
-  std::vector<view::DecodeTrace *> _running_tasks;
+  std::vector<data::DecoderStack *> _running_tasks;
 
-  std::vector<view::Signal *> _signals;
-  static std::vector<view::DecodeTrace *> _empty_decode_traces;
+  std::vector<data::SignalModel *> _signal_models;
+  static std::vector<data::DecoderStack *> _empty_decoder_stacks;
   pv::data::DecoderModel *_decoder_model;
-  std::vector<view::SpectrumTrace *> _spectrum_traces;
-  view::LissajousTrace *_lissajous_trace;
-  view::MathTrace *_math_trace;
+  std::vector<data::SpectrumStack *> _spectrum_stacks;
+  data::LissajousModel *_lissajous_model = nullptr;
+  data::MathStack *_math_stack = nullptr;
 
   DiskCacheConfig _disk_cache_config;
 
@@ -577,7 +653,7 @@ private:
   bool _is_action;
   uint64_t _dso_packet_count;
 
-  std::vector<ISessionCallback*> _callbacks;
+  std::vector<ISessionCallbackBase*> _callbacks;
   DeviceAgent _device_agent;
   std::vector<IMessageListener *> _msg_listeners;
   DeviceEventObject _device_event;
@@ -596,12 +672,6 @@ private:
   bool _signal_invert_running;
   volatile bool _copy_in_progress;
   data::SessionDocument *_capture_owner_document;
-
-private:
-  // TODO: This should not be necessary. Multiple concurrent
-  // sessions should should be supported and it should be
-  // possible to associate a pointer with a ds_session.
-  static SigSession *_session;
 };
 
 } // namespace pv

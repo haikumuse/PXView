@@ -59,7 +59,7 @@ DsoMeasure::DsoMeasure(SigSession *session, View &parent,
     _measure_tab->setTabPosition(QTabWidget::West);
     _measure_tab->setUsesScrollButtons(false);
 
-    for(auto s : _session->get_signals()) {
+    for(auto s : _view.get_own_signals()) {
         if (s->signal_type() == SR_CHANNEL_DSO && s->enabled()) {
             view::DsoSignal *dsoSig = (view::DsoSignal*)s;
             QWidget *measure_widget = new QWidget(this);
@@ -163,7 +163,7 @@ void DsoMeasure::accept()
         QVariant id = sc->property("id");
         enum DSO_MEASURE_TYPE ms_type = DSO_MEASURE_TYPE(id.toInt());
         
-        for(auto s : _session->get_signals()) { 
+        for(auto s : _view.get_own_signals()) {
             if (s->signal_type() == SR_CHANNEL_DSO) {
                 view::DsoSignal *dsoSig = (view::DsoSignal*)s;
                 if (_measure_tab->currentWidget()->property("index").toInt() == dsoSig->get_index()) {

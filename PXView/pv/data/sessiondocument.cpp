@@ -12,7 +12,10 @@
 #include "sessiondocument.h"
 #include "../deviceagent.h"
 #include "../log.h"
-#include "../view/decodetrace.h"
+#include "signalmodel.h"
+#include "lissajousmodel.h"
+#include "spectrumstack.h"
+#include "mathstack.h"
 #include <QDebug>
 #include <libsigrok.h>
 
@@ -99,6 +102,26 @@ void SessionDocument::clear() {
   _samplerate = 0;
   _samplelimits = 0;
   _trigger_pos = 0;
+
+  for (auto m : _signal_models) {
+    delete m;
+  }
+  _signal_models.clear();
+
+  for (auto s : _spectrum_stacks) {
+    delete s;
+  }
+  _spectrum_stacks.clear();
+
+  if (_math_stack) {
+    delete _math_stack;
+    _math_stack = nullptr;
+  }
+
+  if (_lissajous_model) {
+    delete _lissajous_model;
+    _lissajous_model = nullptr;
+  }
 }
 
 std::vector<DecoderStack *> &SessionDocument::get_decoder_stacks() {
@@ -122,45 +145,19 @@ void SessionDocument::set_decoder_model(DecoderModel *model) {
   _decoder_model = model;
 }
 
-std::vector<view::DecodeTrace *> &SessionDocument::get_decode_traces() {
-  return _decode_traces;
+std::vector<SignalModel *> &SessionDocument::get_signal_models() {
+  return _signal_models;
 }
 
-void SessionDocument::add_decode_trace(view::DecodeTrace *trace) {
-  if (trace) {
-    _decode_traces.push_back(trace);
-    if (trace->decoder()) {
-      _decoder_stacks.push_back(trace->decoder());
-    }
-  }
+std::vector<SpectrumStack *> &SessionDocument::get_spectrum_stacks() {
+  return _spectrum_stacks;
 }
 
-void SessionDocument::remove_decode_trace(view::DecodeTrace *trace) {
-  auto it = std::find(_decode_traces.begin(), _decode_traces.end(), trace);
-  if (it != _decode_traces.end()) {
-    if (trace->decoder()) {
-      auto sit = std::find(_decoder_stacks.begin(), _decoder_stacks.end(),
-                           trace->decoder());
-      if (sit != _decoder_stacks.end())
-        _decoder_stacks.erase(sit);
-    }
-    _decode_traces.erase(it);
-  }
+MathStack *SessionDocument::get_math_stack() { return _math_stack; }
+
+LissajousModel *SessionDocument::get_lissajous_model() {
+  return _lissajous_model;
 }
-
-std::vector<view::Signal *> &SessionDocument::get_signals() { return _signals; }
-
-std::vector<view::DecodeTrace *> &SessionDocument::get_decode_signals() {
-  return _decode_traces;
-}
-
-std::vector<view::SpectrumTrace *> &SessionDocument::get_spectrum_traces() {
-  return _spectrum_traces;
-}
-
-view::LissajousTrace *SessionDocument::get_lissajous_trace() { return nullptr; }
-
-view::MathTrace *SessionDocument::get_math_trace() { return nullptr; }
 
 uint64_t SessionDocument::cur_snap_samplerate() { return _samplerate; }
 
