@@ -151,6 +151,24 @@ std::map<int, bool> build_channel_visibility(pv::view::View *view) {
   }
   return vis;
 }
+
+/** Build a channel-index → ChannelLayoutState map from the View's signal list.
+ * Task 7 (unify-signal-layout-state): persists per-signal UI layout so the
+ * session can restore view_index / v_offset / own_height after reload. */
+std::map<int, pv::data::ChannelLayoutState>
+build_channel_layout(pv::view::View *view) {
+  std::map<int, pv::data::ChannelLayoutState> layout;
+  if (view) {
+    for (auto *sig : view->get_own_signals()) {
+      pv::data::ChannelLayoutState s;
+      s.view_index = sig->get_view_index();
+      s.v_offset = sig->get_v_offset();
+      s.own_height = sig->get_own_height();
+      layout[sig->get_index()] = s;
+    }
+  }
+  return layout;
+}
 }
 
 void MainWindow::MainWindowRibbonHelper() {
@@ -368,7 +386,7 @@ void MainWindow::setup_ui() {
 
   if (_device_agent && _device_agent->have_instance()) {
     initial_doc->save_signal_config(_device_agent, {},
-                                    _session->get_signal_models());
+                                    _session->get_signal_models(), {});
     pxv_info("MainWindow::setup_ui() saved initial signal config, mode=%d "
              "ch_count=%d",
              initial_doc->get_signal_config().work_mode,
@@ -2419,7 +2437,8 @@ void MainWindow::on_frame_ended() {
     }
     ctx->document()->save_signal_config(_session->get_device(),
                                         build_channel_visibility(current_view()),
-                                        _session->get_signal_models());
+                                        _session->get_signal_models(),
+                                        build_channel_layout(current_view()));
     ctx->activate();
   }
   current_view()->receive_end();
@@ -2883,7 +2902,8 @@ void MainWindow::OnMessage(int msg) {
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(_session->get_device(),
                                             build_channel_visibility(current_view()),
-                                            _session->get_signal_models());
+                                            _session->get_signal_models(),
+                                            build_channel_layout(current_view()));
         current_view()->rebuild_signals();
         pxv_info("DSV_MSG_CURRENT_DEVICE_CHANGED: saved config and rebuilt "
                  "signals for current tab");
@@ -2954,7 +2974,8 @@ void MainWindow::OnMessage(int msg) {
     if (ctx && ctx->document()) {
       ctx->document()->save_signal_config(_session->get_device(),
                                           build_channel_visibility(current_view()),
-                                          _session->get_signal_models());
+                                          _session->get_signal_models(),
+                                          build_channel_layout(current_view()));
     }
 
     current_view()->rebuild_signals();
@@ -2986,7 +3007,8 @@ void MainWindow::OnMessage(int msg) {
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(_session->get_device(),
                                             build_channel_visibility(current_view()),
-                                            _session->get_signal_models());
+                                            _session->get_signal_models(),
+                                            build_channel_layout(current_view()));
         current_view()->rebuild_signals();
         pxv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
                  "signals for current tab");
@@ -3621,7 +3643,7 @@ void MainWindow::on_new_tab_requested() {
 
   if (_device_agent && _device_agent->have_instance()) {
     new_doc->save_signal_config(_device_agent, {},
-                                _session->get_signal_models());
+                                _session->get_signal_models(), {});
     pxv_info("MainWindow::on_new_tab_requested() saved signal config, mode=%d "
              "ch_count=%d",
              new_doc->get_signal_config().work_mode,

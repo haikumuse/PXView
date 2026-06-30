@@ -44,6 +44,7 @@
 #include "../ui/uimanager.h"
 #include "../view/viewport.h"
 #include "cursor.h"
+#include "dock_ui_state.h"
 #include "signal.h"
 #include "viewstatus.h"
 #include "xcursor.h"
@@ -536,6 +537,16 @@ private:
 public:
   data::DataSource *effective_data_source();
 
+  /**
+   * Per-tab UI state cache for dock widgets and the sampling toolbar.
+   * View is per-tab and survives tab switches without destruction, so
+   * hosting DockUiState here gives docks/toolbar a stable per-tab store
+   * accessed via `ctx->view()->dock_ui_state()`. Replaces the former
+   * `_dock_*` fields on SessionDocument (Core layer).
+   */
+  DockUiState &dock_ui_state() { return _dock_ui_state; }
+  const DockUiState &dock_ui_state() const { return _dock_ui_state; }
+
 public:
   void show_wait_trigger();
   void set_device();
@@ -548,6 +559,7 @@ private:
   pv::data::DataSource *_data_source;
   pv::data::SessionDocument *_document;
   pv::toolbars::SamplingBar *_sampling_bar;
+  DockUiState _dock_ui_state;
   std::vector<Signal *> _own_signals;
   std::vector<sr_channel *> _config_probes;
   // View-owned wrapper traces for derived types. Synced lazily from the

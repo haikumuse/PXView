@@ -12,10 +12,10 @@
 #include "sessiondocument.h"
 #include "../deviceagent.h"
 #include "../log.h"
-#include "signalmodel.h"
 #include "lissajousmodel.h"
-#include "spectrumstack.h"
 #include "mathstack.h"
+#include "signalmodel.h"
+#include "spectrumstack.h"
 #include <QDebug>
 #include <libsigrok.h>
 
@@ -26,9 +26,8 @@ class DecoderStack;
 class DecoderModel;
 
 SessionDocument::SessionDocument()
-    : _dock_sample_rate(0), _dock_sample_limit(0), _dock_collect_mode(0),
-      _dock_measure_fen_enabled(false), _samplerate(0), _samplelimits(0),
-      _trigger_pos(0), _decoder_model(nullptr) {}
+    : _samplerate(0), _samplelimits(0), _trigger_pos(0),
+      _decoder_model(nullptr) {}
 
 SessionDocument::~SessionDocument() {}
 
@@ -205,6 +204,9 @@ QJsonObject SessionDocument::signal_config_to_json() const {
     ch_obj["offset"] = ch.offset;
     ch_obj["zero_offset"] = ch.zero_offset;
     ch_obj["trig_type"] = ch.trig_type;
+    ch_obj["view_index"] = ch.view_index;
+    ch_obj["v_offset"] = ch.v_offset;
+    ch_obj["own_height"] = ch.own_height;
     ch_array.append(ch_obj);
   }
   obj["channels"] = ch_array;
@@ -229,15 +231,22 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
       ChannelConfig cfg;
       cfg.index = ch_obj["index"].toInt();
       cfg.enabled = ch_obj["enabled"].toBool();
-      cfg.visible = ch_obj.contains("visible") ? ch_obj["visible"].toBool()
-                                               : cfg.enabled;
+      cfg.visible =
+          ch_obj.contains("visible") ? ch_obj["visible"].toBool() : cfg.enabled;
       cfg.vdiv = (uint64_t)ch_obj["vdiv"].toVariant().toULongLong();
       cfg.coupling = ch_obj["coupling"].toInt();
       cfg.map_default = ch_obj["map_default"].toBool();
       cfg.hw_offset = (uint16_t)ch_obj["hw_offset"].toInt();
       cfg.offset = (uint16_t)ch_obj["offset"].toInt();
       cfg.zero_offset = (uint16_t)ch_obj["zero_offset"].toInt();
-      cfg.trig_type = ch_obj.contains("trig_type") ? ch_obj["trig_type"].toInt() : 0;
+      cfg.trig_type =
+          ch_obj.contains("trig_type") ? ch_obj["trig_type"].toInt() : 0;
+      cfg.view_index =
+          ch_obj.contains("view_index") ? ch_obj["view_index"].toInt() : -1;
+      cfg.v_offset =
+          ch_obj.contains("v_offset") ? ch_obj["v_offset"].toInt() : 0;
+      cfg.own_height =
+          ch_obj.contains("own_height") ? ch_obj["own_height"].toInt() : -1;
       _signal_config.channels.push_back(cfg);
     }
   }
@@ -252,9 +261,10 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
       _signal_config.work_mode, (int)_signal_config.channels.size());
 }
 
-void SessionDocument::save_signal_config(DeviceAgent *agent,
-                                          const std::map<int, bool> &channel_visibility,
-                                          const std::vector<SignalModel*> &signal_models) {
+void SessionDocument::save_signal_config(
+    DeviceAgent *agent, const std::map<int, bool> &channel_visibility,
+    const std::vector<SignalModel *> &signal_models,
+    const std::map<int, ChannelLayoutState> &channel_layout) {
   if (!agent || !agent->have_instance()) {
     pxv_info(
         "SessionDocument::save_signal_config() skip, agent=%p have_instance=%d",
@@ -288,8 +298,8 @@ void SessionDocument::save_signal_config(DeviceAgent *agent,
     // Fall back to probe->enabled for channels not in the map
     // (e.g. DSO channels where enabled == visible).
     auto vis_it = channel_visibility.find(cfg.index);
-    cfg.visible = (vis_it != channel_visibility.end()) ? vis_it->second
-                                                       : probe->enabled;
+    cfg.visible =
+        (vis_it != channel_visibility.end()) ? vis_it->second : probe->enabled;
     cfg.vdiv = 0;
     cfg.coupling = 0;
     cfg.map_default = true;
@@ -314,7 +324,8 @@ void SessionDocument::save_signal_config(DeviceAgent *agent,
       cfg.zero_offset = probe->zero_offset;
     }
 
-    // R2: 保存 Logic 通道触发类型 (trig_type 存于 SignalModel，不在 sr_channel 中)
+    // R2: 保存 Logic 通道触发类型 (trig_type 存于 SignalModel，不在 sr_channel
+    // 中)
     if (mode == LOGIC) {
       for (auto *m : signal_models) {
         if (m && m->index() == cfg.index) {
@@ -322,6 +333,15 @@ void SessionDocument::save_signal_config(DeviceAgent *agent,
           break;
         }
       }
+    }
+
+    // UI 布局状态：从 channel_layout 按 index 匹配写入；map 中无此 index
+    // 时保持默认值
+    auto layout_it = channel_layout.find(cfg.index);
+    if (layout_it != channel_layout.end()) {
+      cfg.view_index = layout_it->second.view_index;
+      cfg.v_offset = layout_it->second.v_offset;
+      cfg.own_height = layout_it->second.own_height;
     }
 
     _signal_config.channels.push_back(cfg);
@@ -401,7 +421,7 @@ bool SessionDocument::has_pending_config() const {
   return _pending_device_config.is_valid;
 }
 
-void SessionDocument::set_trigger_config(const data::TriggerConfig& cfg) {
+void SessionDocument::set_trigger_config(const data::TriggerConfig &cfg) {
   _trigger_config = cfg;
 }
 

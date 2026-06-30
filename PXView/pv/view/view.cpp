@@ -2149,12 +2149,21 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
       // For newly created channels not yet in the config, default visible
       // to enabled.
       signal->set_visible(ch.visible);
-      // DSO/Analog signals use auto-calculated height, reset _ownHeight
-      // to avoid inheriting a fixed height from Logic mode or zoom_vertical
-      if (config.work_mode == DSO || config.work_mode == ANALOG) {
+
+      // UI 布局状态从 ChannelConfig 恢复（单一持久化状态源）：
+      // - view_index: 配置值 >= 0 时使用，否则按启用顺序派生（向后兼容）
+      // - v_offset: 直接使用配置值
+      // - own_height: 配置值 >= 0 时使用，否则 DSO/Analog 保持 -1（自动高度），
+      //   Logic 不调用 set_own_height（由 Trace 构造函数处理主题默认）
+      signal->set_v_offset(ch.v_offset);
+      if (ch.own_height >= 0) {
+        signal->set_own_height(ch.own_height);
+      } else if (config.work_mode == DSO || config.work_mode == ANALOG) {
         signal->set_own_height(-1);
       }
-      if (ch.enabled) {
+      if (ch.view_index >= 0) {
+        signal->set_view_index(ch.view_index);
+      } else if (ch.enabled) {
         signal->set_view_index(view_index++);
       } else {
         signal->set_view_index(-1);
@@ -2230,10 +2239,8 @@ void View::rebuild_signals() {
   _config_probes.clear();
 
   for (auto sig : created_sigs) {
-    // DSO/Analog signals use auto-calculated height, reset _ownHeight
-    if (get_work_mode() == DSO || get_work_mode() == ANALOG) {
-      sig->set_own_height(-1);
-    }
+    // create_signals 新建的信号已使用 Trace 构造函数的默认高度，
+    // 无需在此二次重置。DSO/Analog 的自动高度由 set_data_document 路径处理。
     _own_signals.push_back(sig);
   }
 

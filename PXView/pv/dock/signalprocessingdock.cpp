@@ -42,6 +42,8 @@
 #include "../ui/dockfonts.h"
 #include "../ui/dsspinbox.h"
 #include "../ui/langresource.h"
+#include "../view/view.h"
+
 
 using namespace std;
 
@@ -86,9 +88,7 @@ SignalProcessingDock::SignalProcessingDock(QWidget *parent, SigSession *session)
   ADD_UI(this);
 }
 
-SignalProcessingDock::~SignalProcessingDock() {
-  REMOVE_UI(this);
-}
+SignalProcessingDock::~SignalProcessingDock() { REMOVE_UI(this); }
 
 void SignalProcessingDock::build_ui() {
   QJsonObject saved_state;
@@ -98,15 +98,20 @@ void SignalProcessingDock::build_ui() {
   if (_invert_group != nullptr || _glitch_filter_group != nullptr) {
     saved_state = get_session();
     has_saved_state = true;
-    
+
     // Also save it to document right away to keep it updated
-    if (_context && _context->document()) {
-      _context->document()->_dock_signal_processing_session = saved_state;
+    if (_context && _context->view()) {
+      _context->view()->dock_ui_state().dock_signal_processing_session =
+          saved_state;
     }
-  } 
+  }
   // 2. If widgets don't exist yet, try to load from the document
-  else if (_context && _context->document() && !_context->document()->_dock_signal_processing_session.isEmpty()) {
-    saved_state = _context->document()->_dock_signal_processing_session;
+  else if (_context && _context->view() &&
+           !_context->view()
+                ->dock_ui_state()
+                .dock_signal_processing_session.isEmpty()) {
+    saved_state =
+        _context->view()->dock_ui_state().dock_signal_processing_session;
     has_saved_state = true;
   }
 
@@ -146,7 +151,9 @@ void SignalProcessingDock::build_ui() {
     hint_lay->setAlignment(Qt::AlignTop);
 
     QLabel *hint_label =
-        new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_LOGIC_MODE_ONLY", "This function is only available in Logic mode"), _no_logic_hint);
+        new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_LOGIC_MODE_ONLY",
+                       "This function is only available in Logic mode"),
+                   _no_logic_hint);
     hint_label->setFont(contentFont);
     hint_lay->addWidget(hint_label);
 
@@ -227,7 +234,9 @@ void SignalProcessingDock::build_invert_panel() {
   _invert_group = new QWidget(_container_panel);
   _invert_group->setMinimumWidth(0);
 
-  QLabel *invert_title = new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_INVERT_TITLE", "Signal Invert"), _invert_group);
+  QLabel *invert_title = new QLabel(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_INVERT_TITLE", "Signal Invert"),
+      _invert_group);
   invert_title->setObjectName("dock_section_title");
   invert_title->setFont(sectionTitleFont);
 
@@ -287,8 +296,11 @@ void SignalProcessingDock::build_invert_panel() {
   QHBoxLayout *btn_layout = new QHBoxLayout();
   btn_layout->setSpacing(5);
 
-  QPushButton *select_all_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SELECT_ALL", "Select All"), _invert_group);
-  QPushButton *deselect_all_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_DESELECT_ALL", "Deselect All"), _invert_group);
+  QPushButton *select_all_btn = new QPushButton(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_SELECT_ALL", "Select All"), _invert_group);
+  QPushButton *deselect_all_btn = new QPushButton(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_DESELECT_ALL", "Deselect All"),
+      _invert_group);
   select_all_btn->setObjectName("dock_content");
   deselect_all_btn->setObjectName("dock_content");
   select_all_btn->setFont(contentFont);
@@ -307,8 +319,11 @@ void SignalProcessingDock::build_invert_panel() {
   inner_layout->addLayout(btn_layout);
 
   // Hint text
-  QLabel *hint_label = new QLabel(
-      L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_INVERT_HINT", "*Check channels and click Apply, signal levels will be inverted (0→1, 1→0)"), _invert_group);
+  QLabel *hint_label =
+      new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SIGNAL_INVERT_HINT",
+                     "*Check channels and click Apply, signal levels will be "
+                     "inverted (0→1, 1→0)"),
+                 _invert_group);
   hint_label->setFont(contentFont);
   inner_layout->addWidget(hint_label);
 
@@ -316,8 +331,13 @@ void SignalProcessingDock::build_invert_panel() {
   QHBoxLayout *action_layout = new QHBoxLayout();
   action_layout->setSpacing(5);
 
-  _apply_invert_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_APPLY_INVERT", "Apply Invert"), _invert_group);
-  _restore_invert_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_RESTORE_ORIGINAL_DATA", "Restore Original Data"), _invert_group);
+  _apply_invert_btn = new QPushButton(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_APPLY_INVERT", "Apply Invert"),
+      _invert_group);
+  _restore_invert_btn =
+      new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_RESTORE_ORIGINAL_DATA",
+                          "Restore Original Data"),
+                      _invert_group);
   _apply_invert_btn->setObjectName("dock_content");
   _restore_invert_btn->setObjectName("dock_content");
   _apply_invert_btn->setFont(contentFont);
@@ -366,7 +386,9 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   _glitch_filter_group = new QWidget(_container_panel);
   _glitch_filter_group->setMinimumWidth(0);
 
-  QLabel *glitch_title = new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_TITLE", "Glitch Filter"), _glitch_filter_group);
+  QLabel *glitch_title = new QLabel(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_TITLE", "Glitch Filter"),
+      _glitch_filter_group);
   glitch_title->setObjectName("dock_section_title");
   glitch_title->setFont(sectionTitleFont);
 
@@ -422,9 +444,9 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     spin->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     _glitch_spinbox_list.push_back(spin);
 
-    QLabel *unit_label =
-        new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_UNIT", "cycles"),
-                   ch_container);
+    QLabel *unit_label = new QLabel(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_UNIT", "cycles"),
+        ch_container);
     unit_label->setObjectName("dock_label");
     unit_label->setFont(labelFont);
     unit_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -439,12 +461,12 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     DsComboBox *mode_combo = new DsComboBox(ch_container);
     mode_combo->setObjectName("dock_content");
     mode_combo->setFont(contentFont);
-    mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_BOTH",
-                            "Both"));
-    mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_HIGH",
-                            "High"));
-    mode_combo->addItem(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_LOW",
-                            "Low"));
+    mode_combo->addItem(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_BOTH", "Both"));
+    mode_combo->addItem(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_HIGH", "High"));
+    mode_combo->addItem(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_LOW", "Low"));
     mode_combo->setCurrentIndex(0);
     mode_combo->setMinimumWidth(150);
     mode_combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -478,9 +500,12 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   QHBoxLayout *btn_layout = new QHBoxLayout();
   btn_layout->setSpacing(5);
 
-  QPushButton *select_all_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SELECT_ALL", "Select All"), _glitch_filter_group);
-  QPushButton *deselect_all_btn =
-      new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_DESELECT_ALL", "Deselect All"), _glitch_filter_group);
+  QPushButton *select_all_btn =
+      new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_SELECT_ALL", "Select All"),
+                      _glitch_filter_group);
+  QPushButton *deselect_all_btn = new QPushButton(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_DESELECT_ALL", "Deselect All"),
+      _glitch_filter_group);
   select_all_btn->setObjectName("dock_content");
   deselect_all_btn->setObjectName("dock_content");
   select_all_btn->setFont(contentFont);
@@ -499,11 +524,13 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   inner_layout->addLayout(btn_layout);
 
   // Hint text
-  QLabel *hint_label =
-      new QLabel(L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_HINT",
-                 "*Check channels and click Apply, pulses narrower than the specified width will be filtered.\n"
-                 "Both: filter high and low pulses; High: filter low glitches on high level; Low: filter high glitches on low level"),
-                 _glitch_filter_group);
+  QLabel *hint_label = new QLabel(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_GLITCH_FILTER_HINT",
+          "*Check channels and click Apply, pulses narrower than the specified "
+          "width will be filtered.\n"
+          "Both: filter high and low pulses; High: filter low glitches on high "
+          "level; Low: filter high glitches on low level"),
+      _glitch_filter_group);
   hint_label->setFont(contentFont);
   inner_layout->addWidget(hint_label);
 
@@ -511,8 +538,13 @@ void SignalProcessingDock::build_glitch_filter_panel() {
   QHBoxLayout *action_layout = new QHBoxLayout();
   action_layout->setSpacing(5);
 
-  _apply_filter_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_APPLY_FILTER", "Apply Filter"), _glitch_filter_group);
-  _restore_data_btn = new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_RESTORE_ORIGINAL_DATA", "Restore Original Data"), _glitch_filter_group);
+  _apply_filter_btn = new QPushButton(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_APPLY_FILTER", "Apply Filter"),
+      _glitch_filter_group);
+  _restore_data_btn =
+      new QPushButton(L_S(STR_PAGE_SIGNAL_PROC, "IDS_RESTORE_ORIGINAL_DATA",
+                          "Restore Original Data"),
+                      _glitch_filter_group);
   _apply_filter_btn->setObjectName("dock_content");
   _restore_data_btn->setObjectName("dock_content");
   _apply_filter_btn->setFont(contentFont);
@@ -653,7 +685,9 @@ void SignalProcessingDock::update_invert_state() {
   bool is_active = _session->is_signal_invert_active();
 
   if (_invert_status_label) {
-    _invert_status_label->setText(is_active ? L_S(STR_PAGE_SIGNAL_PROC, "IDS_INVERT_ACTIVE", "Inverted") : "");
+    _invert_status_label->setText(
+        is_active ? L_S(STR_PAGE_SIGNAL_PROC, "IDS_INVERT_ACTIVE", "Inverted")
+                  : "");
   }
 
   if (_restore_invert_btn) {
@@ -665,7 +699,9 @@ void SignalProcessingDock::update_glitch_filter_state() {
   bool is_active = _session->is_glitch_filter_active();
 
   if (_filter_status_label) {
-    _filter_status_label->setText(is_active ? L_S(STR_PAGE_SIGNAL_PROC, "IDS_FILTER_ACTIVE", "Filtered") : "");
+    _filter_status_label->setText(
+        is_active ? L_S(STR_PAGE_SIGNAL_PROC, "IDS_FILTER_ACTIVE", "Filtered")
+                  : "");
   }
 
   if (_restore_data_btn) {
@@ -837,7 +873,7 @@ void SignalProcessingDock::hideEvent(QHideEvent *event) {
 void SignalProcessingDock::bind_context(TabContext *ctx) {
   _context = ctx;
   if (_device_agent && _device_agent->have_instance()) {
-    auto &saved = ctx->document()->_dock_signal_processing_session;
+    auto &saved = ctx->view()->dock_ui_state().dock_signal_processing_session;
     if (!saved.isEmpty()) {
       set_session(saved);
     } else {
@@ -849,9 +885,10 @@ void SignalProcessingDock::bind_context(TabContext *ctx) {
 }
 
 void SignalProcessingDock::unbind_context() {
-  if (_context && _context->document() && _device_agent &&
+  if (_context && _context->view() && _device_agent &&
       _device_agent->have_instance()) {
-    _context->document()->_dock_signal_processing_session = get_session();
+    _context->view()->dock_ui_state().dock_signal_processing_session =
+        get_session();
   }
   _context = nullptr;
 
@@ -910,10 +947,11 @@ QJsonObject SignalProcessingDock::get_session() {
 }
 
 void SignalProcessingDock::set_session(QJsonObject &obj) {
-  if (_context && _context->document()) {
-    _context->document()->_dock_signal_processing_session = obj;
+  if (_context && _context->view()) {
+    _context->view()->dock_ui_state().dock_signal_processing_session = obj;
   }
-  update_view(); // build_ui() will now read the state from the document or use get_session()
+  update_view(); // build_ui() will now read the state from the document or use
+                 // get_session()
 }
 
 } // namespace dock
