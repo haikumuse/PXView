@@ -23,8 +23,8 @@
 
 #include <assert.h>
 #include <cmath>
-#include <memory>
 #include <limits.h>
+#include <memory>
 #include <string.h>
 
 #include <QEvent>
@@ -35,9 +35,11 @@
 #include <QtGlobal>
 #include <algorithm>
 
+#include "../api/types.h"
 #include "../data/decode/decoder.h"
 #include "../data/decode/decoderstatus.h"
 #include "../data/decoderstack.h"
+#include "../data/signalmodel.h"
 #include "analogsignal.h"
 #include "decodetrace.h"
 #include "devmode.h"
@@ -305,13 +307,6 @@ View::~View() {
     delete _own_lissajous_trace;
     _own_lissajous_trace = nullptr;
   }
-
-  for (auto p : _config_probes) {
-    g_free(p->name);
-    g_free(p->trigger);
-    delete p;
-  }
-  _config_probes.clear();
 
   DESTROY_OBJECT(_trig_cursor);
   DESTROY_OBJECT(_search_cursor);
@@ -1866,7 +1861,7 @@ void View::show_calibration() {
     _cali = NULL;
   }
 
-  _cali = new pv::dialogs::Calibration(this);
+  _cali = new pv::dialogs::Calibration(_session, this);
   connect(_cali, &pv::dialogs::Calibration::sig_closed, this,
           &View::on_calibration_closed);
   _cali->update_device_info();
@@ -2068,13 +2063,6 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
   std::vector<Signal *> old_signals = _own_signals;
   _own_signals.clear();
 
-  for (auto p : _config_probes) {
-    g_free(p->name);
-    g_free(p->trigger);
-    delete p;
-  }
-  _config_probes.clear();
-
   int channel_type;
   switch (config.work_mode) {
   case LOGIC:
@@ -2095,21 +2083,40 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 
   int view_index = 0;
   for (const auto &ch : config.channels) {
-    sr_channel *probe = new sr_channel;
-    memset(probe, 0, sizeof(sr_channel));
-    probe->index = ch.index;
-    probe->type = channel_type;
-    probe->enabled = ch.enabled;
-    probe->vdiv = ch.vdiv;
-    probe->coupling = ch.coupling;
-    probe->map_default = ch.map_default;
-    probe->hw_offset = ch.hw_offset;
-    probe->offset = ch.offset;
-    probe->zero_offset = ch.zero_offset;
-    probe->name = g_strdup(QString::number(ch.index).toUtf8().data());
-    probe->trigger = NULL;
+    // Create a temporary SignalModel for the channel configuration.
+    // This SignalModel is not connected to a real device (no sr_channel),
+    // but it allows the View layer to create Signal objects using the new
+    // constructor signature.
+    auto model = std::make_shared<data::SignalModel>();
+    model->set_index(ch.index);
+    model->set_enabled(ch.enabled);
+    model->set_name(std::to_string(ch.index));
 
-    _config_probes.push_back(probe);
+    // Set channel type based on work mode
+    switch (config.work_mode) {
+    case LOGIC:
+      model->set_type(api::ChannelType::Logic);
+      break;
+    case DSO:
+      model->set_type(api::ChannelType::Dso);
+      model->set_vdiv(ch.vdiv);
+      model->set_coupling(ch.coupling);
+      model->set_hw_offset(ch.hw_offset);
+      model->set_vertical_offset(ch.offset);
+      model->set_zero_offset(ch.zero_offset);
+      break;
+    case ANALOG:
+      model->set_type(api::ChannelType::Analog);
+      model->set_vdiv(ch.vdiv);
+      model->set_coupling(ch.coupling);
+      model->set_hw_offset(ch.hw_offset);
+      model->set_vertical_offset(ch.offset);
+      model->set_zero_offset(ch.zero_offset);
+      break;
+    }
+
+    // Set session for the model (so it can call session methods if needed)
+    model->set_session(_session);
 
     Signal *old_signal = nullptr;
     for (auto os : old_signals) {
@@ -2124,25 +2131,25 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     case LOGIC:
       if (old_signal) {
         signal = new LogicSignal(static_cast<LogicSignal *>(old_signal),
-                                 nullptr, probe);
+                                 nullptr, model, _session);
       } else {
-        signal = new LogicSignal(nullptr, probe);
+        signal = new LogicSignal(nullptr, model, _session);
       }
       break;
     case DSO:
       if (old_signal) {
-        signal =
-            new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr, probe);
+        signal = new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr,
+                               model, _session);
       } else {
-        signal = new DsoSignal(nullptr, probe);
+        signal = new DsoSignal(nullptr, model, _session);
       }
       break;
     case ANALOG:
       if (old_signal) {
         signal = new AnalogSignal(static_cast<AnalogSignal *>(old_signal),
-                                  nullptr, probe);
+                                  nullptr, model, _session);
       } else {
-        signal = new AnalogSignal(nullptr, probe);
+        signal = new AnalogSignal(nullptr, model, _session);
       }
       break;
     }
@@ -2221,7 +2228,8 @@ void View::rebuild_signals() {
       rebuild_signals_from_config(config);
       SignalFactory::update_signals(_own_signals, _session, _session,
                                     SignalFactory::Modified);
-      update();
+      // Only property changes, no layout needed - use incremental refresh
+      signals_modified_refresh();
       return;
     }
   }
@@ -2237,13 +2245,6 @@ void View::rebuild_signals() {
     delete sig;
   _own_signals.clear();
 
-  for (auto p : _config_probes) {
-    g_free(p->name);
-    g_free(p->trigger);
-    delete p;
-  }
-  _config_probes.clear();
-
   for (auto sig : created_sigs) {
     // create_signals 新建的信号已使用 Trace 构造函数的默认高度，
     // 无需在此二次重置。DSO/Analog 的自动高度由 set_data_document 路径处理。
@@ -2252,9 +2253,9 @@ void View::rebuild_signals() {
 
   for (auto sig : _own_signals) {
     auto s = dynamic_cast<Signal *>(sig);
-    if (s) {
-      s->set_enabled(s->probe()->enabled);
-      sig->set_visible(s->probe()->enabled);
+    if (s && s->model()) {
+      s->set_enabled(s->model()->enabled());
+      sig->set_visible(s->model()->enabled());
     }
   }
 
@@ -2295,6 +2296,9 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   // as sync_derived_traces). Without this, view_index defaults to -1 and
   // causes incorrect layout ordering in LOGIC mode.
   trace->set_view_index((int)_own_signals.size() + decode_index);
+  // CRITICAL: set_view(this) must be called BEFORE create_popup() because
+  // the dialog accesses _trace->get_view() to get session and signal_models.
+  trace->set_view(this);
 
   // 3. If silent is false, show the decoder options dialog so the user can
   //    configure channel mappings, decode range, etc. This was previously
@@ -2439,9 +2443,8 @@ void View::remove_decoder(int index) {
 
 void View::on_signals_changed() {
   // Incrementally update _own_signals to match the Core's SignalModel
-  // list. Uses AllReplaced event so that SignalFactory preserves UI state
-  // (selection, visibility, v_offset, own_height, view_index) for signals
-  // that survive the update.
+  // list. Uses compute_change_event to detect the minimal update type,
+  // avoiding full object recreation for minor changes.
   //
   // IMPORTANT: SignalModels ALWAYS live in SigSession (_data_source), never
   // in SessionDocument. SessionDocument::_signal_models is never populated
@@ -2458,14 +2461,54 @@ void View::on_signals_changed() {
   // that wrap Core-owned Stack/Model objects and are synced lazily via
   // sync_derived_traces() based on the Stack pointer identity (not the
   // Signal list).
-  SignalFactory::update_signals(_own_signals, _data_source, _session,
-                                SignalFactory::AllReplaced);
 
-  // Refresh layout and trigger lazy sync of derived traces.
-  // signals_changed(NULL) calls mark_derived_traces_dirty() at the top
-  // and data_updated() at the end, the latter of which refreshes data
-  // pointers in render objects.
+  if (!_data_source)
+    return;
+
+  auto &models = _data_source->get_signal_models();
+  auto event = SignalFactory::compute_change_event(_own_signals, models);
+
+  SignalFactory::update_signals(_own_signals, _data_source, _session, event);
+
+  // Dispatch to appropriate layout method based on event type.
+  switch (event) {
+  case SignalFactory::Added:
+    // New signals added, layout needs adjustment
+    signals_added_layout();
+    break;
+  case SignalFactory::Removed:
+    signals_removed_layout();
+    break;
+  case SignalFactory::Modified:
+    // Only property changes, no layout needed
+    signals_modified_refresh();
+    break;
+  case SignalFactory::AllReplaced:
+    // Full rebuild, need full layout
+    signals_changed(NULL);
+    break;
+  }
+}
+
+void View::signals_added_layout() {
+  // Layout recalculation is O(N) but relatively cheap compared to object
+  // recreation. SignalFactory::update_signals(Added) already added the new
+  // Signal objects without recreating existing ones.
   signals_changed(NULL);
+}
+
+void View::signals_removed_layout() {
+  // Layout recalculation is O(N) but relatively cheap compared to object
+  // recreation. SignalFactory::update_signals(Removed) already removed the
+  // Signal objects without recreating existing ones.
+  signals_changed(NULL);
+}
+
+void View::signals_modified_refresh() {
+  // Only property changes, no layout changes needed.
+  // Just repaint the signals without calling signals_changed(NULL).
+  viewport_update();
+  header_updated();
 }
 
 void View::check_calibration() {
@@ -2605,8 +2648,11 @@ void View::sync_derived_traces() {
   for (auto it = _own_decode_traces.begin(); it != _own_decode_traces.end();) {
     DecodeTrace *dt = *it;
     auto target = dt->decoder().get();
-    auto it_stack = std::find_if(decoder_stacks.begin(), decoder_stacks.end(),
-        [target](const std::shared_ptr<pv::data::DecoderStack>& s) { return s.get() == target; });
+    auto it_stack = std::find_if(
+        decoder_stacks.begin(), decoder_stacks.end(),
+        [target](const std::shared_ptr<pv::data::DecoderStack> &s) {
+          return s.get() == target;
+        });
     if (it_stack == decoder_stacks.end()) {
       delete dt;
       it = _own_decode_traces.erase(it);
@@ -2650,8 +2696,11 @@ void View::sync_derived_traces() {
        it != _own_spectrum_traces.end();) {
     SpectrumTrace *st = *it;
     auto target = st->get_spectrum_stack().get();
-    auto it_stack = std::find_if(spectrum_stacks.begin(), spectrum_stacks.end(),
-        [target](const std::shared_ptr<pv::data::SpectrumStack>& s) { return s.get() == target; });
+    auto it_stack = std::find_if(
+        spectrum_stacks.begin(), spectrum_stacks.end(),
+        [target](const std::shared_ptr<pv::data::SpectrumStack> &s) {
+          return s.get() == target;
+        });
     if (it_stack == spectrum_stacks.end()) {
       delete st;
       it = _own_spectrum_traces.erase(it);
@@ -2678,7 +2727,8 @@ void View::sync_derived_traces() {
   // ---- Sync MathTrace from MathStack ----
   auto math_stack = source->get_math_stack();
   if (math_stack) {
-    if (!_own_math_trace || _own_math_trace->get_math_stack().get() != math_stack.get()) {
+    if (!_own_math_trace ||
+        _own_math_trace->get_math_stack().get() != math_stack.get()) {
       // Tear down any stale MathTrace bound to a previous MathStack.
       if (_own_math_trace) {
         delete _own_math_trace;

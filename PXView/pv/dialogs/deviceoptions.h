@@ -88,6 +88,8 @@ class DeviceAgent;
 
 namespace pv {
 
+class SigSession;
+
 namespace dialogs {
 
 class DeviceOptions : public DSDialog, public IChannelCheck
@@ -95,7 +97,7 @@ class DeviceOptions : public DSDialog, public IChannelCheck
 	Q_OBJECT
 
 public:
-    DeviceOptions(QWidget *parent);
+    DeviceOptions(SigSession *session, QWidget *parent);
 
     ~DeviceOptions();
 
@@ -148,6 +150,7 @@ private:
     int     _groupHeight1;
     int     _groupHeight2;
     volatile    bool _isBuilding;
+    SigSession *_session;
     DeviceAgent *_device_agent;
     int     _cur_analog_tag_index;
     QString _demo_operation_mode;

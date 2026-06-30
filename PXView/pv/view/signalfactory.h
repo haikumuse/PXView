@@ -90,6 +90,16 @@ public:
     static std::vector<Signal*> create_signals(data::DataSource *source, SigSession *session);
 
     /**
+     * Compute the change event type by comparing current signals with new models.
+     * @param current_signals Existing Signal objects in View.
+     * @param models New SignalModel objects from Core.
+     * @return SignalChangeEvent indicating the type of change.
+     */
+    static SignalChangeEvent compute_change_event(
+        const std::vector<Signal*> &current_signals,
+        const std::vector<std::shared_ptr<data::SignalModel>> &models);
+
+    /**
      * Incrementally update existing signals based on signal models.
      * Preserves UI state (selected, visible, v_offset, etc.) for signals
      * that survive the update.

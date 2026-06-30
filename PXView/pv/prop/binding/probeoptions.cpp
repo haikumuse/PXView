@@ -31,7 +31,6 @@
 #include "../int.h"
 #include "../../config/appconfig.h"
 #include "../../log.h"
-#include "../../appcontrol.h"
 #include "../../sigsession.h"
 #include "../../ui/langresource.h"
 
@@ -41,15 +40,17 @@ namespace pv {
 namespace prop {
 namespace binding {
 
-ProbeOptions::ProbeOptions(struct sr_channel *probe) :
+DeviceAgent* ProbeOptions::_static_device_agent = nullptr;
+
+ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
     Binding(), 
 	_probe(probe)
 { 
 	GVariant *gvar_opts;
 	gsize num_opts;
 
-    SigSession *session = AppControl::Instance()->GetSession();
     _device_agent = session->get_device();
+    _static_device_agent = _device_agent;
 
     gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_PROBE_CONFIGS);
     if (gvar_opts == NULL){
@@ -109,16 +110,12 @@ ProbeOptions::ProbeOptions(struct sr_channel *probe) :
 
 GVariant* ProbeOptions::config_getter(const struct sr_channel *probe, int key)
 { 
-    SigSession *session = AppControl::Instance()->GetSession();
-    DeviceAgent *_device_agent = session->get_device();
-    return _device_agent->get_config(key, probe, NULL);
+    return _static_device_agent->get_config(key, probe, NULL);
 }
 
 void ProbeOptions::config_setter(struct sr_channel *probe, int key, GVariant* value)
 {
-    SigSession *session = AppControl::Instance()->GetSession();
-    DeviceAgent *_device_agent = session->get_device();
-    _device_agent->set_config(key, value, probe, NULL);
+    _static_device_agent->set_config(key, value, probe, NULL);
 }
 
 void ProbeOptions::bind_bool(const QString &name, const QString label, int key)

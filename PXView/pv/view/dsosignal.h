@@ -26,10 +26,16 @@
 
 #include "signal.h"
 #include "../dstimer.h"
-  
+#include <libsigrok.h>
+#include <memory>
+
 namespace pv {
+
+class SigSession;
+
 namespace data {
 class DsoSnapshot;
+class SignalModel;
 }
 
 namespace view {
@@ -84,9 +90,13 @@ private:
 
 public:
     DsoSignal(pv::data::DsoSnapshot *data,
-              sr_channel *probe);
+              std::shared_ptr<data::SignalModel> model,
+              SigSession *session);
 
-    DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data, sr_channel *probe);
+    DsoSignal(DsoSignal *s,
+              pv::data::DsoSnapshot *data,
+              std::shared_ptr<data::SignalModel> model,
+              SigSession *session);
 
     virtual ~DsoSignal();
 

@@ -36,13 +36,15 @@ class DeviceAgent;
 
 namespace pv {
 
+class SigSession;
+
 namespace prop {
 namespace binding {
 
 class DeviceOptions : public Binding
 {
 public:
-	DeviceOptions();
+	DeviceOptions(SigSession *session);
 
 private:
 
@@ -85,6 +87,7 @@ private:
 
 private:
 	DeviceAgent *_device_agent;
+	static DeviceAgent *_static_device_agent;
  
 };
 

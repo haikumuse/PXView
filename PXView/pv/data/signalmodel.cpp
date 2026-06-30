@@ -22,6 +22,9 @@
 
 #include "signalmodel.h"
 
+#include "../sigsession.h"
+#include "../deviceagent.h"
+
 namespace pv {
 namespace data {
 
@@ -50,56 +53,130 @@ SignalModel::~SignalModel()
 }
 
 void SignalModel::set_index(int index) { _index = index; }
-void SignalModel::set_name(const std::string &name) { 
+
+void SignalModel::set_name(const std::string &name) {
     if (_name != name) {
-        _name = name; 
+        _name = name;
+        // Write back to the underlying sr_channel struct so libsigrok and
+        // any UI that reads from sr_channel directly stay in sync. The
+        // sr_channel owns its name string via g_strdup; free the old one
+        // and replace with a g_strdup of the new value.
+        if (_sr_channel) {
+            if (_sr_channel->name) {
+                g_free(_sr_channel->name);
+                _sr_channel->name = nullptr;
+            }
+            _sr_channel->name = g_strdup(name.c_str());
+        }
         emit appearance_changed();
     }
 }
+
 void SignalModel::set_type(api::ChannelType type) { _type = type; }
-void SignalModel::set_enabled(bool enabled) { 
+
+void SignalModel::set_enabled(bool enabled) {
     if (_enabled != enabled) {
-        _enabled = enabled; 
+        _enabled = enabled;
+        // Mirror to sr_channel.enabled so libsigrok reflects the new state.
+        if (_sr_channel) {
+            _sr_channel->enabled = enabled ? TRUE : FALSE;
+        }
         emit visibility_changed();
     }
 }
-void SignalModel::set_color(const std::string &color) { 
+
+void SignalModel::set_color(const std::string &color) {
     if (_color != color) {
-        _color = color; 
+        _color = color;
         emit appearance_changed();
     }
 }
-void SignalModel::set_vdiv(double vdiv) { 
+
+void SignalModel::set_vdiv(double vdiv) {
     if (_vdiv != vdiv) {
-        _vdiv = vdiv; 
+        _vdiv = vdiv;
+        // Push to libsigrok via DeviceAgent (uint64 key, matches
+        // DsoSignal::commit_settings which uses SR_CONF_PROBE_VDIV).
+        if (_sr_channel && _session) {
+            DeviceAgent *device = _session->get_device();
+            if (device && device->have_instance()) {
+                device->set_config_uint64(SR_CONF_PROBE_VDIV,
+                                          (uint64_t)vdiv, _sr_channel, NULL);
+            }
+        }
         emit appearance_changed();
     }
 }
-void SignalModel::set_coupling(int coupling) { 
+
+void SignalModel::set_coupling(int coupling) {
     if (_coupling != coupling) {
-        _coupling = coupling; 
+        _coupling = coupling;
+        // SR_CONF_PROBE_COUPLING is a byte-sized key (matches
+        // DsoSignal::set_acCoupling which uses set_config_byte).
+        if (_sr_channel && _session) {
+            DeviceAgent *device = _session->get_device();
+            if (device && device->have_instance()) {
+                device->set_config_byte(SR_CONF_PROBE_COUPLING,
+                                        (int)(uint8_t)coupling,
+                                        _sr_channel, NULL);
+            }
+        }
         emit appearance_changed();
     }
 }
-void SignalModel::set_vfactor(double vfactor) { 
+
+void SignalModel::set_vfactor(double vfactor) {
     if (_vfactor != vfactor) {
-        _vfactor = vfactor; 
+        _vfactor = vfactor;
+        // SR_CONF_PROBE_FACTOR is uint64 (matches DsoSignal::commit_settings).
+        if (_sr_channel && _session) {
+            DeviceAgent *device = _session->get_device();
+            if (device && device->have_instance()) {
+                device->set_config_uint64(SR_CONF_PROBE_FACTOR,
+                                          (uint64_t)vfactor, _sr_channel, NULL);
+            }
+        }
         emit appearance_changed();
     }
 }
-void SignalModel::set_map_default(bool map_default) { 
+
+void SignalModel::set_map_default(bool map_default) {
     if (_map_default != map_default) {
-        _map_default = map_default; 
+        _map_default = map_default;
+        if (_sr_channel && _session) {
+            DeviceAgent *device = _session->get_device();
+            if (device && device->have_instance()) {
+                device->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
+                                        _sr_channel, NULL);
+            }
+        }
         emit appearance_changed();
     }
 }
+
 void SignalModel::set_trig_type(int trig_type) {
     if (_trig_type != trig_type) {
         _trig_type = trig_type;
         emit trig_type_changed(_trig_type);
     }
 }
-void SignalModel::set_trig_value(double v) { _trig_value = v; }
+
+void SignalModel::set_trig_value(double v) {
+    if (_trig_value == v) return;
+    _trig_value = v;
+    // SR_CONF_TRIGGER_VALUE is a byte-sized key (matches
+    // DsoSignal::commit_settings which uses set_config_byte).
+    if (_sr_channel && _session) {
+        DeviceAgent *device = _session->get_device();
+        if (device && device->have_instance()) {
+            device->set_config_byte(SR_CONF_TRIGGER_VALUE,
+                                    (int)(uint8_t)v, _sr_channel, NULL);
+        }
+    }
+    // Note: existing behavior — set_trig_value did not emit appearance_changed
+    // and DsoSignal::set_trig_vrate does its own view refresh, so we keep the
+    // same no-emit contract here.
+}
 
 bool SignalModel::commit_trig()
 {
@@ -136,13 +213,95 @@ bool SignalModel::commit_trig()
     return true;
 }
 
-void SignalModel::set_vertical_offset(double offset) { _vertical_offset = offset; }
-void SignalModel::set_zero_offset(double offset) { _zero_offset = offset; }
-void SignalModel::set_hw_offset(double offset) { _hw_offset = offset; }
+void SignalModel::set_vertical_offset(double offset) {
+    if (_vertical_offset == offset) return;
+    _vertical_offset = offset;
+    // sr_channel.offset is a uint16 field used by the driver for the
+    // vertical position. There is no separate SR_CONF_PROBE_* key for it
+    // (SR_CONF_PROBE_OFFSET maps to sr_channel.zero_offset, see
+    // set_zero_offset) — so we write the struct field directly.
+    if (_sr_channel) {
+        _sr_channel->offset = (uint16_t)offset;
+    }
+}
+
+void SignalModel::set_zero_offset(double offset) {
+    if (_zero_offset == offset) return;
+    _zero_offset = offset;
+    // SR_CONF_PROBE_OFFSET is uint16 (matches DsoSignal::commit_settings).
+    if (_sr_channel && _session) {
+        DeviceAgent *device = _session->get_device();
+        if (device && device->have_instance()) {
+            device->set_config_uint16(SR_CONF_PROBE_OFFSET, (int)offset,
+                                      _sr_channel, NULL);
+        }
+    }
+}
+
+void SignalModel::set_hw_offset(double offset) {
+    if (_hw_offset == offset) return;
+    _hw_offset = offset;
+    // SR_CONF_PROBE_HW_OFFSET is uint16 (matches DsoSignal::get_hw_offset
+    // which calls get_config_uint16).
+    if (_sr_channel && _session) {
+        DeviceAgent *device = _session->get_device();
+        if (device && device->have_instance()) {
+            device->set_config_uint16(SR_CONF_PROBE_HW_OFFSET, (int)offset,
+                                      _sr_channel, NULL);
+        }
+    }
+}
+
 void SignalModel::set_glitch_filter_enabled(bool enabled) { _glitch_filter_enabled = enabled; }
 void SignalModel::set_glitch_filter_width(int width) { _glitch_filter_width = width; }
 void SignalModel::set_signal_invert_enabled(bool enabled) { _signal_invert_enabled = enabled; }
 void SignalModel::set_snapshot(void *snapshot) { _snapshot = snapshot; }
+
+void SignalModel::commit_to_device()
+{
+    // Headless-mode no-op: without a sr_channel there is nothing to sync to.
+    if (_sr_channel == nullptr) return;
+
+    // ---- Direct sr_channel struct fields ----
+    // name: free old g_strdup'd string and replace.
+    if (_sr_channel->name) {
+        g_free(_sr_channel->name);
+        _sr_channel->name = nullptr;
+    }
+    _sr_channel->name = g_strdup(_name.c_str());
+
+    _sr_channel->enabled = _enabled ? TRUE : FALSE;
+    _sr_channel->offset = (uint16_t)_vertical_offset;
+    _sr_channel->zero_offset = (uint16_t)_zero_offset;
+    _sr_channel->hw_offset = (uint16_t)_hw_offset;
+    _sr_channel->vdiv = (uint64_t)_vdiv;
+    _sr_channel->vfactor = (uint64_t)_vfactor;
+    _sr_channel->coupling = (uint8_t)_coupling;
+    _sr_channel->trig_value = (uint8_t)_trig_value;
+
+    // ---- Hardware-relevant fields via DeviceAgent set_config_* ----
+    // Same keys/types as DsoSignal::commit_settings() so the driver receives
+    // the same updates it would get from the View layer.
+    if (_session == nullptr) return;
+    DeviceAgent *device = _session->get_device();
+    if (device == nullptr || !device->have_instance()) return;
+
+    device->set_config_bool(SR_CONF_PROBE_EN, _enabled, _sr_channel, NULL);
+    device->set_config_uint64(SR_CONF_PROBE_VDIV, (uint64_t)_vdiv,
+                              _sr_channel, NULL);
+    device->set_config_uint64(SR_CONF_PROBE_FACTOR, (uint64_t)_vfactor,
+                              _sr_channel, NULL);
+    device->set_config_byte(SR_CONF_PROBE_COUPLING, (int)(uint8_t)_coupling,
+                            _sr_channel, NULL);
+    device->set_config_uint16(SR_CONF_PROBE_OFFSET, (int)_zero_offset,
+                              _sr_channel, NULL);
+    device->set_config_uint16(SR_CONF_PROBE_HW_OFFSET, (int)_hw_offset,
+                              _sr_channel, NULL);
+    device->set_config_byte(SR_CONF_TRIGGER_VALUE, (int)(uint8_t)_trig_value,
+                            _sr_channel, NULL);
+    device->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT, _map_default,
+                            _sr_channel, NULL);
+}
 
 } // namespace data
 } // namespace pv

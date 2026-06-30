@@ -35,8 +35,6 @@
 #include "../sigsession.h"
 #include "dsosignal.h"
 #include "../dsvdef.h"
-#include "../appcontrol.h"
-#include "../config/appconfig.h"
 #include "../config/appconfig.h"
 #include "../ui/fn.h"
 #include "../ui/dockfonts.h"
@@ -235,7 +233,7 @@ void Ruler::paintEvent(QPaintEvent*)
     p.setFont(font);
     p.setRenderHint(QPainter::TextAntialiasing, false);
 
-    SigSession *session = AppControl::Instance()->GetSession();
+    SigSession *session = &_view.session();
 
     // Draw tick mark
     if (session->get_device()->get_work_mode() == DSO)

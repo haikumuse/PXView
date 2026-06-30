@@ -30,6 +30,9 @@
 #include "pv/api/types.h"
 
 namespace pv {
+
+class SigSession;  // forward declaration — Core layer; full include in .cpp
+
 namespace data {
 
 class SignalModel : public QObject
@@ -115,6 +118,25 @@ public:
     inline void *snapshot() const { return _snapshot; }
     void set_snapshot(void *snapshot);
 
+    // ---- Device/session binding (Core layer only) ----
+    // Injected by SigSession::init_signals() / reload() so the model can
+    // write back to the underlying libsigrok sr_channel struct and the
+    // DeviceAgent API. Both are weak references — SignalModel does NOT own
+    // them.
+    void set_session(SigSession *session) { _session = session; }
+    void set_sr_channel(struct sr_channel *ch) { _sr_channel = ch; }
+
+    /// Core-layer only. View layer MUST NOT call this — use property
+    /// accessors (set_vdiv / set_coupling / ...) instead so the model can
+    /// keep sr_channel and libsigrok in sync.
+    inline struct sr_channel *sr_channel_handle() const { return _sr_channel; }
+
+    /// Batch-sync all model fields back to the underlying sr_channel struct
+    /// and to libsigrok via DeviceAgent. Used by SigSession::reload() to
+    /// restore hardware config after SignalModel rebuild (e.g. when
+    /// re-opening a session file). No-op in headless mode (no device).
+    void commit_to_device();
+
 signals:
     /// Emitted when visual properties (name, color, vdiv, etc.) change.
     void appearance_changed();
@@ -151,6 +173,10 @@ private:
     bool                _signal_invert_enabled;
 
     void               *_snapshot;
+
+    // Weak references — see set_session() / set_sr_channel().
+    SigSession         *_session = nullptr;
+    struct sr_channel  *_sr_channel = nullptr;
 };
 
 } // namespace data

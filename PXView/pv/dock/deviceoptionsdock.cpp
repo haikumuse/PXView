@@ -100,7 +100,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
   mainLay->addStretch();
 
   if (_device_agent->have_instance()) {
-    _device_options_binding = new pv::prop::binding::DeviceOptions();
+    _device_options_binding = new pv::prop::binding::DeviceOptions(_session);
 
     if (_sampling_settings_widget) {
       _container_lay->addWidget(_sampling_settings_widget);
@@ -762,7 +762,7 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
     probe_layout->addWidget(en_label, 0, 0, 1, 1);
     probe_layout->addWidget(probe_checkBox, 0, 1, 1, 3);
 
-    auto *probe_options_binding = new pv::prop::binding::ProbeOptions(probe);
+    auto *probe_options_binding = new pv::prop::binding::ProbeOptions(_session, probe);
     const auto &properties = probe_options_binding->properties();
     int i = 1;
 
@@ -1028,7 +1028,7 @@ void DeviceOptionsDock::update_view() {
   }
 
   if (_device_agent->have_instance()) {
-    _device_options_binding = new pv::prop::binding::DeviceOptions();
+    _device_options_binding = new pv::prop::binding::DeviceOptions(_session);
   }
 
   QLayoutItem *item;

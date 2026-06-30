@@ -26,10 +26,15 @@
 
 #include "signal.h"
 
+#include <memory>
+
 namespace pv {
+
+class SigSession;
 
 namespace data {
 class AnalogSnapshot;
+class SignalModel;
 }
 
 namespace view {
@@ -51,9 +56,13 @@ private:
 
 public:
     AnalogSignal(data::AnalogSnapshot *data,
-                 sr_channel *probe);
+                 std::shared_ptr<data::SignalModel> model,
+                 SigSession *session);
 
-    AnalogSignal(view::AnalogSignal* s, data::AnalogSnapshot *data,  sr_channel *probe);
+    AnalogSignal(view::AnalogSignal* s,
+                 data::AnalogSnapshot *data,
+                 std::shared_ptr<data::SignalModel> model,
+                 SigSession *session);
 
 	virtual ~AnalogSignal();
 

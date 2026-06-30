@@ -111,8 +111,9 @@ void TabContext::activate()
         auto &sigs = _view->get_own_signals();
         for (auto sig : sigs) {
             auto s = dynamic_cast<view::Signal*>(sig);
-            if (s && s->probe()) {
-                const_cast<sr_channel*>(s->probe())->enabled = s->enabled();
+            if (s && s->model()) {
+                // Signal::set_enabled() already writes back to SignalModel and sr_channel
+                s->model()->set_enabled(s->enabled());
             }
         }
     } else if (_session->have_view_data() &&

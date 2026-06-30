@@ -32,7 +32,6 @@
 #include "../view/trace.h"
 #include "../dialogs/dsmessagebox.h"
 #include "../dsvdef.h"
-#include "../appcontrol.h"
 #include "../sigsession.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
@@ -53,7 +52,7 @@ namespace
     QString CHANNEL_LABEL = "Channel";
 }
 
-Calibration::Calibration(QWidget *parent) :
+Calibration::Calibration(SigSession *session, QWidget *parent) :
     DSDialog(parent)
 { 
     _save_btn = NULL;
@@ -71,7 +70,7 @@ Calibration::Calibration(QWidget *parent) :
     this->setWindowOpacity(0.7);
     this->setModal(false);
 
-    _device_agent = AppControl::Instance()->GetSession()->get_device();
+    _device_agent = session->get_device();
 
     _save_btn = new QPushButton(this);
     _abort_btn = new QPushButton(this);
