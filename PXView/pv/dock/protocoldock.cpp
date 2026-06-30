@@ -315,13 +315,13 @@ void ProtocolDock::bind_context(TabContext *ctx) {
   rebuild_protocol_layers();
   update_view_status();
 
-  if (ctx->document()) {
-    auto doc = ctx->document();
-    if (!doc->_dock_protocol_search_text.isEmpty()) {
-      _ann_search_edit->setText(doc->_dock_protocol_search_text);
+  if (ctx->view()) {
+    auto &ui = ctx->view()->dock_ui_state();
+    if (!ui.dock_protocol_search_text.isEmpty()) {
+      _ann_search_edit->setText(ui.dock_protocol_search_text);
       search_done();
     }
-    const QJsonArray &expanded_states = doc->_dock_protocol_expanded_states;
+    const QJsonArray &expanded_states = ui.dock_protocol_expanded_states;
     for (int i = 0;
          i < (int)_protocol_lay_items.size() && i < expanded_states.size();
          i++) {
@@ -331,14 +331,14 @@ void ProtocolDock::bind_context(TabContext *ctx) {
 }
 
 void ProtocolDock::unbind_context() {
-  if (_context && _context->document()) {
-    auto doc = _context->document();
-    doc->_dock_protocol_search_text = _ann_search_edit->text();
+  if (_context && _context->view()) {
+    auto &ui = _context->view()->dock_ui_state();
+    ui.dock_protocol_search_text = _ann_search_edit->text();
     QJsonArray expanded_states;
     for (auto layer : _protocol_lay_items) {
       expanded_states.append(layer->m_expanded);
     }
-    doc->_dock_protocol_expanded_states = expanded_states;
+    ui.dock_protocol_expanded_states = expanded_states;
   }
   _context = nullptr;
 }
@@ -493,7 +493,8 @@ bool ProtocolDock::add_protocol_by_id(
   // Route through the View layer so the View can create its own DecodeTrace
   // wrapper for the newly created DecoderStack. The View internally calls
   // Core (SigSession::add_decoder) to create the stack, then creates the
-  pxv_info("ProtocolDock: calling _view->add_decoder for %s, silent=%d", id.toUtf8().data(), silent);
+  pxv_info("ProtocolDock: calling _view->add_decoder for %s, silent=%d",
+           id.toUtf8().data(), silent);
   if (_view->add_decoder(decoder, silent, dstatus, sub_decoders, stack) ==
       false) {
     pxv_info("ProtocolDock: _view->add_decoder returned false");
@@ -1112,10 +1113,11 @@ void ProtocolDock::OnProtocolDelete(void *handle) {
 }
 
 void ProtocolDock::OnProtocolVisibilityChanged(void *handle) {
-  for (auto it = _protocol_lay_items.begin(); it != _protocol_lay_items.end(); it++) {
+  for (auto it = _protocol_lay_items.begin(); it != _protocol_lay_items.end();
+       it++) {
     if ((*it) == handle) {
       auto lay = (*it);
-      auto stack = static_cast<pv::data::DecoderStack*>(lay->_trace);
+      auto stack = static_cast<pv::data::DecoderStack *>(lay->_trace);
       if (stack) {
         if (!stack->stack().empty()) {
           auto root_dec = stack->stack().front();
@@ -1304,9 +1306,7 @@ void ProtocolDock::update_deocder_item_name(void *trace_handel,
   }
 }
 
-void ProtocolDock::rebuild_layers() {
-  rebuild_protocol_layers();
-}
+void ProtocolDock::rebuild_layers() { rebuild_protocol_layers(); }
 
 void ProtocolDock::UpdateLanguage() { retranslateUi(); }
 

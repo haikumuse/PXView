@@ -32,6 +32,7 @@
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include "../view/dsosignal.h"
+#include "../view/view.h"
 #include "keywordlineedit.h"
 #include <QEvent>
 #include <QHBoxLayout>
@@ -561,8 +562,8 @@ void DsoTriggerDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
-  if (ctx && ctx->document()) {
-    auto &saved = ctx->document()->_dock_dso_trigger_session;
+  if (ctx && ctx->view()) {
+    auto &saved = ctx->view()->dock_ui_state().dock_dso_trigger_session;
     if (!saved.isEmpty()) {
       set_session(saved);
     }
@@ -570,8 +571,8 @@ void DsoTriggerDock::bind_context(TabContext *ctx) {
 }
 
 void DsoTriggerDock::unbind_context() {
-  if (_context && _context->document()) {
-    _context->document()->_dock_dso_trigger_session = get_session();
+  if (_context && _context->view()) {
+    _context->view()->dock_ui_state().dock_dso_trigger_session = get_session();
   }
   _context = nullptr;
 }

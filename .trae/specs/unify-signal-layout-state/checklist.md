@@ -1,0 +1,18 @@
+- [ ] ChannelConfig 包含 view_index/v_offset/own_height 三个字段，默认值 -1/0/-1
+- [ ] ChannelLayoutState 结构体定义（含 view_index/v_offset/own_height），用于 save_signal_config 参数传递
+- [ ] signal_config_to_json 序列化 view_index/v_offset/own_height 三个字段
+- [ ] signal_config_from_json 反序列化三字段，缺失时使用默认值（旧 .pxc 兼容）
+- [ ] save_signal_config 接受 channel_layout 参数并按 index 匹配写入 ChannelConfig
+- [ ] rebuild_signals_from_config 从 ChannelConfig 恢复 view_index（配置值优先，-1 时按启用顺序派生）
+- [ ] rebuild_signals_from_config 从 ChannelConfig 恢复 v_offset
+- [ ] rebuild_signals_from_config 从 ChannelConfig 恢复 own_height（配置值优先，-1 时按模式默认）
+- [ ] rebuild_signals_from_config 不再调用 set_own_height(-1) 重置 DSO/Analog 高度
+- [ ] rebuild_signals_from_config 不再按 view_index++ 顺序重置
+- [ ] rebuild_signals 的 config-based 分支不再二次重置 own_height
+- [ ] rebuild_signals 的 create 分支不再对 DSO/Analog 强制 set_own_height(-1)
+- [ ] TabContext::deactivate 收集 view_index/v_offset/own_height 传入 save_signal_config
+- [ ] MainWindow 6 处 save_signal_config 调用点均补 channel_layout 参数（有 view 时收集，无 view 时传空）
+- [ ] ninja 构建成功，无新增 warning
+- [ ] GUI 回归：重新采集后通道顺序和高度保留
+- [ ] GUI 回归：切 tab 再切回后通道顺序和高度保留
+- [ ] GUI 回归：加载旧 .pxc 文件不报错，布局使用默认值

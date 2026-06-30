@@ -57,6 +57,8 @@
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include "../ui/toast.h"
+#include "../view/view.h"
+
 
 using namespace boost;
 using namespace std;
@@ -1218,7 +1220,7 @@ void DeviceOptionsDock::hideEvent(QHideEvent *event) {
 void DeviceOptionsDock::bind_context(TabContext *ctx) {
   _context = ctx;
   if (_device_agent && _device_agent->have_instance()) {
-    auto &saved = ctx->document()->_dock_device_options_session;
+    auto &saved = ctx->view()->dock_ui_state().dock_device_options_session;
     if (!saved.isEmpty()) {
       set_session(saved);
     } else {
@@ -1230,9 +1232,10 @@ void DeviceOptionsDock::bind_context(TabContext *ctx) {
 }
 
 void DeviceOptionsDock::unbind_context() {
-  if (_context && _context->document() && _device_agent &&
+  if (_context && _context->view() && _device_agent &&
       _device_agent->have_instance()) {
-    _context->document()->_dock_device_options_session = get_session();
+    _context->view()->dock_ui_state().dock_device_options_session =
+        get_session();
   }
   _context = nullptr;
 }

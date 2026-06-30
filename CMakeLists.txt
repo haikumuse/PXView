@@ -442,6 +442,7 @@ set(PXView_HEADERS
     PXView/pv/view/viewport.h
     PXView/pv/view/edge_nav_button.h
     PXView/pv/view/view.h
+    PXView/pv/view/dock_ui_state.h
     PXView/pv/view/timemarker.h
     PXView/pv/view/ruler.h
     PXView/pv/view/header.h

@@ -353,8 +353,8 @@ void SearchDock::bind_context(TabContext *ctx) {
   _result_model->clear();
   _result_model->set_samplerate(_session->cur_snap_samplerate());
   _time_search_cur_index = -1;
-  if (ctx && ctx->document()) {
-    auto &saved = ctx->document()->_dock_search_pattern;
+  if (ctx && ctx->view()) {
+    auto &saved = ctx->view()->dock_ui_state().dock_search_pattern;
     if (!saved.empty()) {
       _pattern = saved;
     }
@@ -363,8 +363,8 @@ void SearchDock::bind_context(TabContext *ctx) {
 }
 
 void SearchDock::unbind_context() {
-  if (_context && _context->document()) {
-    _context->document()->_dock_search_pattern = _pattern;
+  if (_context && _context->view()) {
+    _context->view()->dock_ui_state().dock_search_pattern = _pattern;
   }
   _context = nullptr;
   stop_search();
