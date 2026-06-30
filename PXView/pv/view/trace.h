@@ -93,7 +93,7 @@ public:
 	/**
 	 * Set the colour of the signal.
 	 */
-	inline void set_colour(QColor colour){
+	virtual void set_colour(QColor colour){
         _colour = colour;
     }
 

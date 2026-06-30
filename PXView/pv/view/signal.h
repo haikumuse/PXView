@@ -56,6 +56,10 @@ class Signal : public Trace
 signals:
     void sig_released(void *o);
 
+public slots:
+    void on_appearance_changed();
+    void on_visibility_changed();
+
 protected:
     Signal(sr_channel * const probe);
 
@@ -73,7 +77,8 @@ public:
     /**
      * Sets the name of the signal.
      */
-    void set_name(QString name);
+    void set_name(QString name) override;
+    void set_colour(QColor colour) override;
 
     inline const sr_channel* probe(){
         return _probe;

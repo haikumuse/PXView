@@ -38,6 +38,13 @@ Signal::Signal(sr_channel *probe) :
     _probe(probe)
 {
     session = AppControl::Instance()->GetSession();
+    if (session) {
+        auto model = session->get_signal_by_index(_probe->index);
+        if (model) {
+            connect(model.get(), &data::SignalModel::appearance_changed, this, &Signal::on_appearance_changed);
+            connect(model.get(), &data::SignalModel::visibility_changed, this, &Signal::on_visibility_changed);
+        }
+    }
 }
 
 Signal::Signal(const Signal &s, sr_channel *probe) :
@@ -46,6 +53,13 @@ Signal::Signal(const Signal &s, sr_channel *probe) :
     _local_enabled(s._local_enabled)
 {   
     session = AppControl::Instance()->GetSession();
+    if (session) {
+        auto model = session->get_signal_by_index(_probe->index);
+        if (model) {
+            connect(model.get(), &data::SignalModel::appearance_changed, this, &Signal::on_appearance_changed);
+            connect(model.get(), &data::SignalModel::visibility_changed, this, &Signal::on_visibility_changed);
+        }
+    }
 }
 
 bool Signal::enabled()
@@ -77,6 +91,37 @@ void Signal::set_name(QString name)
     Trace::set_name(name);
     g_free(_probe->name);
     _probe->name = g_strdup(name.toUtf8().data());
+    if (session) {
+        auto model = session->get_signal_by_index(_probe->index);
+        if (model) {
+            model->set_name(name.toStdString());
+        }
+    }
 }
+
+void Signal::set_colour(QColor colour)
+{
+    Trace::set_colour(colour);
+    if (session) {
+        auto model = session->get_signal_by_index(_probe->index);
+        if (model) {
+            model->set_color(colour.name().toStdString());
+        }
+    }
+}
+void Signal::on_appearance_changed()
+{
+    if (_view) {
+        _view->update();
+        _view->header_updated();
+    }
+}
+
+void Signal::on_visibility_changed()
+{
+    if (_view)
+        _view->signals_changed(this);
+}
+
 } // namespace view
 } // namespace pv
