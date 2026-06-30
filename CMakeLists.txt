@@ -597,6 +597,7 @@ list(REMOVE_ITEM PXView_HEADERS ${PXView_HEADERS_NO_MOC})
 option(ENABLE_COMPAT_DRIVERS "Enable standard sigrok compatible drivers" OFF)
 option(ENABLE_DRIVER_FX2LAFW "Enable fx2lafw driver" OFF)
 option(ENABLE_DRIVER_SALEAE_LOGIC16 "Enable saleae-logic16 driver" OFF)
+option(ENABLE_DRIVER_SALEAE_LOGIC_PRO "Enable saleae-logic-pro driver" OFF)
 option(ENABLE_DRIVER_RASPBERRYPI_PICO "Enable raspberrypi-pico driver" OFF)
 
 if(ENABLE_COMPAT_DRIVERS)
@@ -617,6 +618,9 @@ if(ENABLE_COMPAT_DRIVERS)
     endif()
     if(ENABLE_DRIVER_SALEAE_LOGIC16)
         add_definitions(-DHAVE_DRIVER_SALEAE_LOGIC16)
+    endif()
+    if(ENABLE_DRIVER_SALEAE_LOGIC_PRO)
+        add_definitions(-DHAVE_DRIVER_SALEAE_LOGIC_PRO)
     endif()
     if(ENABLE_DRIVER_RASPBERRYPI_PICO)
         add_definitions(-DHAVE_DRIVER_RASPBERRYPI_PICO)
@@ -674,6 +678,12 @@ if(ENABLE_COMPAT_DRIVERS)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/saleae-logic16/api.c
             libsigrok/hardware/saleae-logic16/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SALEAE_LOGIC_PRO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/saleae-logic-pro/api.c
+            libsigrok/hardware/saleae-logic-pro/protocol.c
         )
     endif()
     if(ENABLE_DRIVER_RASPBERRYPI_PICO)

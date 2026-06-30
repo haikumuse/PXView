@@ -62,9 +62,16 @@ enum sr_channel_change {
 #define SR_CONF_SET     (1 << 1)
 #define SR_CONF_LIST    (1 << 2)
 
-/* Helper macro to build config key with capability flags */
+/* Helper macros to build config key with capability flags */
 #define SR_CONF_GET_SET(key)       (key | SR_CONF_GET | SR_CONF_SET)
 #define SR_CONF_GET_SET_LIST(key)  (key | SR_CONF_GET | SR_CONF_SET | SR_CONF_LIST)
 #define SR_CONF_GET_LIST(key)      (key | SR_CONF_GET | SR_CONF_LIST)
+#define SR_CONF_SET_LIST(key)      (key | SR_CONF_SET | SR_CONF_LIST)
+
+/* Macros to extract key and capability flags from combined value */
+#define SR_CONF_KEY_VALUE(val)     ((val) & ~(SR_CONF_GET | SR_CONF_SET | SR_CONF_LIST))
+#define SR_CONF_HAS_GET(val)       (((val) & SR_CONF_GET) != 0)
+#define SR_CONF_HAS_SET(val)       (((val) & SR_CONF_SET) != 0)
+#define SR_CONF_HAS_LIST(val)      (((val) & SR_CONF_LIST) != 0)
 
 #endif

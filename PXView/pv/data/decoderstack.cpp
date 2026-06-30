@@ -415,21 +415,41 @@ void DecoderStack::do_decode_work() {
 
   _snapshot = NULL;
 
+  pxv_info("DecoderStack::do_decode_work: _stack size=%zu, checking required probes", _stack.size());
+
   if (!check_required_probes()) {
     _error_message =
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_WORK_ERROR),
             "One or more required channels have not been specified");
     pxv_err("ERROR:%s", _error_message.toStdString().c_str());
+    // Diagnostic: log which decoder has missing required probes
+    for (auto dec : _stack) {
+      if (!dec->have_required_probes()) {
+        pxv_err("ERROR:Decoder %p is missing required probes", dec);
+      }
+    }
     return;
   }
 
+  pxv_info("DecoderStack::do_decode_work: required probes OK, signal_models count=%zu",
+           _session->get_signal_models().size());
+
   for (auto dec : _stack) {
     if (dec->have_probes()) {
-      pxv_info("DecoderStack::do_decode_work: decoder %p has probes, first_probe_index=%d", dec, dec->first_probe_index());
+      int probe_idx = dec->first_probe_index();
+      pxv_info("DecoderStack::do_decode_work: decoder %p has probes, first_probe_index=%d, checking %zu signal_models",
+               dec, probe_idx, _session->get_signal_models().size());
+
       for (auto m : _session->get_signal_models()) {
-        pxv_info("DecoderStack::do_decode_work: checking model index=%d, type=%d, snapshot=%p", m->index(), m->type(), m->snapshot());
-        if (m->index() == dec->first_probe_index() &&
-            m->type() == pv::api::ChannelType::Logic) {
+        bool index_match = (m->index() == probe_idx);
+        bool type_match = (m->type() == pv::api::ChannelType::Logic);
+        bool snapshot_ok = (m->snapshot() != NULL);
+
+        pxv_info("  model: index=%d, type=%d (Logic=%d), snapshot=%p, index_match=%d, type_match=%d, snapshot_ok=%d",
+                 m->index(), (int)m->type(), (int)pv::api::ChannelType::Logic,
+                 m->snapshot(), index_match, type_match, snapshot_ok);
+
+        if (index_match && type_match) {
           _snapshot = (pv::data::LogicSnapshot*)m->snapshot();
           pxv_info("DecoderStack::do_decode_work: found matching model! _snapshot=%p", _snapshot);
           if (_snapshot != NULL)
@@ -438,6 +458,8 @@ void DecoderStack::do_decode_work() {
       }
       if (_snapshot != NULL)
         break;
+    } else {
+      pxv_info("DecoderStack::do_decode_work: decoder %p has no probes, skipping", dec);
     }
   }
 
@@ -446,6 +468,7 @@ void DecoderStack::do_decode_work() {
         L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DECODERSTACK_DECODE_WORK_ERROR),
             "One or more required channels have not been specified");
     pxv_err("ERROR:%s", _error_message.toStdString().c_str());
+    pxv_err("ERROR:Failed to find matching LogicSnapshot for any decoder probe");
     return;
   }
 

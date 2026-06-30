@@ -115,6 +115,9 @@ extern SR_PRIV struct sr_dev_driver fx2lafw_driver_info;
 #ifdef HAVE_DRIVER_SALEAE_LOGIC16
 extern SR_PRIV struct sr_dev_driver saleae_logic16_driver_info;
 #endif
+#ifdef HAVE_DRIVER_SALEAE_LOGIC_PRO
+extern SR_PRIV struct sr_dev_driver saleae_logic_pro_driver_info;
+#endif
 #ifdef HAVE_DRIVER_RASPBERRYPI_PICO
 extern SR_PRIV struct sr_dev_driver raspberrypi_pico_driver_info;
 #endif
@@ -136,6 +139,9 @@ static struct sr_dev_driver *drivers_list[] = {
 #endif
 #ifdef HAVE_DRIVER_SALEAE_LOGIC16
     &saleae_logic16_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SALEAE_LOGIC_PRO
+    &saleae_logic_pro_driver_info,
 #endif
 #ifdef HAVE_DRIVER_RASPBERRYPI_PICO
     &raspberrypi_pico_driver_info,
