@@ -125,8 +125,6 @@ DecodeTrace::DecodeTrace(pv::SigSession *session,
 
   _colour = getChannelColor(index % 16);
 
-  _decode_start = 0;
-  _decode_end = INT64_MAX;
   _decoder_stack = decoder_stack;
   _session = session;
   _delete_flag = false;
@@ -181,8 +179,16 @@ void DecodeTrace::paint_back(QPainter &p, int left, int right, QColor fore,
   const double samples_per_pixel =
       (doc_samplerate > 0 ? doc_samplerate : _session->cur_snap_samplerate()) *
       _view->scale();
-  const double startX = _decode_start / samples_per_pixel - _view->offset();
-  const double endX = _decode_end / samples_per_pixel - _view->offset();
+
+  uint64_t d_start = 0;
+  uint64_t d_end = INT64_MAX;
+  if (!_decoder_stack->stack().empty()) {
+    d_start = _decoder_stack->stack().front()->decode_start();
+    d_end = _decoder_stack->stack().front()->decode_end();
+  }
+
+  const double startX = d_start / samples_per_pixel - _view->offset();
+  const double endX = d_end / samples_per_pixel - _view->offset();
   const double regionY = get_y() - _totalHeight * 0.5 - ControlRectWidth;
 
   p.setBrush(View::Blue);
@@ -208,7 +214,7 @@ void DecodeTrace::paint_back(QPainter &p, int left, int right, QColor fore,
     p.setPen(QPen(Qt::NoPen));
     p.setBrush(QApplication::palette().brush(QPalette::WindowText));
 
-    const QRect r(left + ArrowSize * 2, y, right - left, row_height / 2);
+    const QRect r(left + ArrowSize * 2, y, right - left, row_height);
     const QString h(_cur_row_headings[i]);
     const int f = Qt::AlignLeft | Qt::AlignVCenter | Qt::TextDontClip;
     const QPointF points[] = {QPointF(left, r.center().y() - ArrowSize),
@@ -784,8 +790,6 @@ bool DecodeTrace::create_popup(bool isnew) {
       for (auto dec : _decoder_stack->stack()) {
         if (dec->commit() || _decoder_stack->options_changed()) {
           _decoder_stack->set_options_changed(true);
-          _decode_start = dec->decode_start();
-          _decode_end = dec->decode_end();
           ret = true;
         }
       }

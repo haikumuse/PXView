@@ -87,10 +87,9 @@ const QColor View::CursorAreaColour(220, 231, 243);
 const QSizeF View::LabelPadding(4, 4);
 const QString View::Unknown_Str = "########";
 
-QColor View::Red =
-    AppConfig::Instance().GetThemeColor("@signal-red").isValid()
-        ? AppConfig::Instance().GetThemeColor("@signal-red")
-        : QColor(213, 15, 37, 255);
+QColor View::Red = AppConfig::Instance().GetThemeColor("@signal-red").isValid()
+                       ? AppConfig::Instance().GetThemeColor("@signal-red")
+                       : QColor(213, 15, 37, 255);
 QColor View::Orange =
     AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
         ? AppConfig::Instance().GetThemeColor("@signal-orange")
@@ -117,27 +116,28 @@ QColor View::LightRed =
         : QColor(213, 15, 37, 200);
 
 void View::refreshSignalColors() {
-    Red = AppConfig::Instance().GetThemeColor("@signal-red").isValid()
-              ? AppConfig::Instance().GetThemeColor("@signal-red")
-              : QColor(213, 15, 37, 255);
-    Orange = AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
-                 ? AppConfig::Instance().GetThemeColor("@signal-orange")
-                 : QColor(238, 178, 17, 255);
-    Blue = AppConfig::Instance().GetThemeColor("@signal-blue").isValid()
-               ? AppConfig::Instance().GetThemeColor("@signal-blue")
-               : QColor(17, 133, 209, 255);
-    Green = AppConfig::Instance().GetThemeColor("@signal-green").isValid()
-                ? AppConfig::Instance().GetThemeColor("@signal-green")
-                : QColor(0, 153, 37, 255);
-    Purple = AppConfig::Instance().GetThemeColor("@signal-purple").isValid()
-                 ? AppConfig::Instance().GetThemeColor("@signal-purple")
-                 : QColor(109, 50, 156, 255);
-    LightBlue = AppConfig::Instance().GetThemeColor("@signal-light-blue").isValid()
-                    ? AppConfig::Instance().GetThemeColor("@signal-light-blue")
-                    : QColor(17, 133, 209, 200);
-    LightRed = AppConfig::Instance().GetThemeColor("@signal-light-red").isValid()
-                   ? AppConfig::Instance().GetThemeColor("@signal-light-red")
-                   : QColor(213, 15, 37, 200);
+  Red = AppConfig::Instance().GetThemeColor("@signal-red").isValid()
+            ? AppConfig::Instance().GetThemeColor("@signal-red")
+            : QColor(213, 15, 37, 255);
+  Orange = AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
+               ? AppConfig::Instance().GetThemeColor("@signal-orange")
+               : QColor(238, 178, 17, 255);
+  Blue = AppConfig::Instance().GetThemeColor("@signal-blue").isValid()
+             ? AppConfig::Instance().GetThemeColor("@signal-blue")
+             : QColor(17, 133, 209, 255);
+  Green = AppConfig::Instance().GetThemeColor("@signal-green").isValid()
+              ? AppConfig::Instance().GetThemeColor("@signal-green")
+              : QColor(0, 153, 37, 255);
+  Purple = AppConfig::Instance().GetThemeColor("@signal-purple").isValid()
+               ? AppConfig::Instance().GetThemeColor("@signal-purple")
+               : QColor(109, 50, 156, 255);
+  LightBlue =
+      AppConfig::Instance().GetThemeColor("@signal-light-blue").isValid()
+          ? AppConfig::Instance().GetThemeColor("@signal-light-blue")
+          : QColor(17, 133, 209, 200);
+  LightRed = AppConfig::Instance().GetThemeColor("@signal-light-red").isValid()
+                 ? AppConfig::Instance().GetThemeColor("@signal-light-red")
+                 : QColor(213, 15, 37, 200);
 }
 
 View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
@@ -145,9 +145,10 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
     : QScrollArea(parent), _sampling_bar(sampling_bar), _scale(10),
       _preScale(1e-6), _maxscale(1e9), _minscale(1e-15), _offset(0),
       _preOffset(0), _vOffset(0), _signalHeightScale(MaxHeightUnit),
-      _lastWidth(-1), _updating_scroll(false), _trig_hoff(0), _show_cursors(false),
-      _search_hit(false), _show_xcursors(false), _hover_point(-1, -1),
-      _dso_auto(true), _show_lissajous(false), _back_ready(false) {
+      _lastWidth(-1), _updating_scroll(false), _trig_hoff(0),
+      _show_cursors(false), _search_hit(false), _show_xcursors(false),
+      _hover_point(-1, -1), _dso_auto(true), _show_lissajous(false),
+      _back_ready(false) {
   _trig_cursor = NULL;
   _search_cursor = NULL;
   _cali = NULL;
@@ -1254,10 +1255,10 @@ void View::signals_changed(const Trace *eventTrace) {
       // PXView's _viewbottom is hidden and overlaid on viewport,
       // so _header->height() is ~DsoStatusHeight larger than original DSView.
       // Subtract DsoStatusHeight to match the original signal height.
-      _signalHeight = (_header->height() - DsoStatusHeight -
-                       horizontalScrollBar()->height() -
-                       2 * actualMargin * label_size) *
-                      1.0 / total_rows;
+      _signalHeight =
+          (_header->height() - DsoStatusHeight -
+           horizontalScrollBar()->height() - 2 * actualMargin * label_size) *
+          1.0 / total_rows;
     } else {
       _signalHeight = (int)((height <= 0) ? 1 : height);
     }
@@ -1332,8 +1333,10 @@ void View::signals_changed(const Trace *eventTrace) {
         // PXView's _viewbottom is hidden and overlaid on viewport,
         // so viewport height is ~DsoStatusHeight larger than original DSView.
         // Subtract DsoStatusHeight to match the original scale.
-        const int scale_height = sig->get_view_rect().height() - DsoStatusHeight;
-        sig->set_scale(scale_height > 0 ? scale_height : sig->get_view_rect().height());
+        const int scale_height =
+            sig->get_view_rect().height() - DsoStatusHeight;
+        sig->set_scale(scale_height > 0 ? scale_height
+                                        : sig->get_view_rect().height());
       } else if (t->signal_type() == SR_CHANNEL_ANALOG) {
         auto sig = dynamic_cast<view::AnalogSignal *>(t);
         sig->set_scale(sig->get_totalHeight());
@@ -2204,7 +2207,8 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 void View::rebuild_signals() {
   mark_derived_traces_dirty();
 
-  if (_data_source == _document && _document && _document->has_signal_config()) {
+  if (_data_source == _document && _document &&
+      _document->has_signal_config()) {
     const auto &config = _document->get_signal_config();
     // 检查配置的通道数是否与设备当前的通道数匹配
     // 如果不匹配，说明通道模式已切换，需要从设备重新创建信号
@@ -2214,7 +2218,8 @@ void View::rebuild_signals() {
     }
     if (config.channels.size() == (size_t)device_ch_count) {
       rebuild_signals_from_config(config);
-      SignalFactory::update_signals(_own_signals, _session, _session, SignalFactory::Modified);
+      SignalFactory::update_signals(_own_signals, _session, _session,
+                                    SignalFactory::Modified);
       update();
       return;
     }
@@ -2285,6 +2290,10 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   //    the pattern in sync_derived_traces().
   int decode_index = (int)_own_decode_traces.size();
   auto *trace = new DecodeTrace(_session, out_stack, decode_index);
+  // Set initial view_index: place after all signal tracks (same pattern
+  // as sync_derived_traces). Without this, view_index defaults to -1 and
+  // causes incorrect layout ordering in LOGIC mode.
+  trace->set_view_index((int)_own_signals.size() + decode_index);
 
   // 3. If silent is false, show the decoder options dialog so the user can
   //    configure channel mappings, decode range, etc. This was previously
@@ -2386,8 +2395,8 @@ void View::remove_decoder(DecodeTrace *trace) {
   if (!trace)
     return;
 
-  auto it = std::find(_own_decode_traces.begin(), _own_decode_traces.end(),
-                      trace);
+  auto it =
+      std::find(_own_decode_traces.begin(), _own_decode_traces.end(), trace);
   if (it == _own_decode_traces.end())
     return;
 
@@ -2448,8 +2457,8 @@ void View::on_signals_changed() {
   // that wrap Core-owned Stack/Model objects and are synced lazily via
   // sync_derived_traces() based on the Stack pointer identity (not the
   // Signal list).
-  SignalFactory::update_signals(_own_signals, _data_source,
-                                 _session, SignalFactory::AllReplaced);
+  SignalFactory::update_signals(_own_signals, _data_source, _session,
+                                SignalFactory::AllReplaced);
 
   // Refresh layout and trigger lazy sync of derived traces.
   // signals_changed(NULL) calls mark_derived_traces_dirty() at the top
@@ -2543,20 +2552,22 @@ Cursor *View::get_cursor_by_index(int index) {
 
 void View::UpdateLanguage() {}
 
-void View::UpdateTheme() { 
-  refreshSignalColors(); 
+void View::UpdateTheme() {
+  refreshSignalColors();
 
-  QString heightStr = AppConfig::Instance().GetThemeTokenValue("@logic-channel-height");
+  QString heightStr =
+      AppConfig::Instance().GetThemeTokenValue("@logic-channel-height");
   bool ok;
   int h = heightStr.toInt(&ok);
   if (ok && h > 0) {
     _signalHeightScale = h;
     _signalHeight = h;
-    
+
     std::vector<Trace *> traces;
     get_traces(ALL_VIEW, traces);
     for (Trace *t : traces) {
-      if (t && (t->get_type() == SR_CHANNEL_LOGIC || t->get_type() == SR_CHANNEL_GROUP)) {
+      if (t && (t->get_type() == SR_CHANNEL_LOGIC ||
+                t->get_type() == SR_CHANNEL_GROUP)) {
         t->set_totalHeight(h);
         t->set_own_height(h);
       }
@@ -2564,7 +2575,7 @@ void View::UpdateTheme() {
     update_all_trace_postion();
   }
 
-  viewport_update(); 
+  viewport_update();
 }
 
 void View::UpdateFont() { update_font(); }
@@ -2590,8 +2601,7 @@ void View::sync_derived_traces() {
   auto &decoder_stacks = source->get_decoder_stacks();
 
   // Remove DecodeTrace whose DecoderStack no longer exists.
-  for (auto it = _own_decode_traces.begin();
-       it != _own_decode_traces.end();) {
+  for (auto it = _own_decode_traces.begin(); it != _own_decode_traces.end();) {
     DecodeTrace *dt = *it;
     if (std::find(decoder_stacks.begin(), decoder_stacks.end(),
                   dt->decoder()) == decoder_stacks.end()) {
@@ -2620,6 +2630,10 @@ void View::sync_derived_traces() {
       if (!stack->stack().empty() && !stack->stack().front()->shown()) {
         dt->set_visible(false);
       }
+      // Set initial view_index: place after all signal tracks.
+      // Without this, view_index defaults to -1 (trace.h:81) and
+      // causes incorrect layout ordering in LOGIC mode signals_changed.
+      dt->set_view_index((int)_own_signals.size() + decode_index);
       _own_decode_traces.push_back(dt);
     }
     decode_index++;
@@ -2659,8 +2673,7 @@ void View::sync_derived_traces() {
   // ---- Sync MathTrace from MathStack ----
   auto *math_stack = source->get_math_stack();
   if (math_stack) {
-    if (!_own_math_trace ||
-        _own_math_trace->get_math_stack() != math_stack) {
+    if (!_own_math_trace || _own_math_trace->get_math_stack() != math_stack) {
       // Tear down any stale MathTrace bound to a previous MathStack.
       if (_own_math_trace) {
         delete _own_math_trace;

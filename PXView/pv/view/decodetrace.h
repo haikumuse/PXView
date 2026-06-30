@@ -174,10 +174,7 @@ public:
 private:
   pv::SigSession *_session;
   pv::data::DecoderStack *_decoder_stack;
-
-  uint64_t _decode_start;
-  uint64_t _decode_end;
-
+  
   uint64_t _decode_cursor1; // the cursor key, sample start index
   uint64_t _decode_cursor2;
 

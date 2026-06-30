@@ -815,9 +815,8 @@ void DecoderStack::frame_ended() {
   _options_changed = true;
 
   if (_session) {
-    const uint64_t last_samples = _session->cur_samplelimits() > 0 
-                                      ? _session->cur_samplelimits() - 1 
-                                      : 0;
+    const uint64_t limit = _session->get_ring_sample_count();
+    const uint64_t last_samples = limit > 0 ? limit - 1 : 0;
 
     for (auto dec : _stack) {
       uint64_t start = dec->decode_start();
