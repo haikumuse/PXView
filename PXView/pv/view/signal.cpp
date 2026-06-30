@@ -21,106 +21,102 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-  
-#include <math.h> 
 #include "signal.h"
-#include "view.h"
-#include "../dsvdef.h"
-#include "../appcontrol.h"
-#include "../sigsession.h"
+#include "../api/types.h"
 #include "../data/signalmodel.h"
+#include "../dsvdef.h"
+#include "../sigsession.h"
+#include "view.h"
+#include <math.h>
 
 namespace pv {
 namespace view {
 
-Signal::Signal(sr_channel *probe) :
-    Trace(probe->name, probe->index, probe->type),
-    _probe(probe)
-{
-    session = AppControl::Instance()->GetSession();
-    if (session) {
-        auto model = session->get_signal_by_index(_probe->index);
-        if (model) {
-            connect(model.get(), &data::SignalModel::appearance_changed, this, &Signal::on_appearance_changed);
-            connect(model.get(), &data::SignalModel::visibility_changed, this, &Signal::on_visibility_changed);
-        }
-    }
+// Convert api::ChannelType (Logic=0/Analog=1/Dso=2) to the SR_CHANNEL_*
+// constants (10000+) that Trace's base class expects. Inlined here because
+// the existing helper in storesession.cpp is a file-static.
+static int api_type_to_sr_channel_type(api::ChannelType t) {
+  switch (t) {
+  case api::ChannelType::Logic:
+    return SR_CHANNEL_LOGIC;
+  case api::ChannelType::Analog:
+    return SR_CHANNEL_ANALOG;
+  case api::ChannelType::Dso:
+    return SR_CHANNEL_DSO;
+  default:
+    return SR_CHANNEL_LOGIC;
+  }
 }
 
-Signal::Signal(const Signal &s, sr_channel *probe) :
-    Trace((const Trace &)s), 
-    _probe(probe),
-    _local_enabled(s._local_enabled)
-{   
-    session = AppControl::Instance()->GetSession();
-    if (session) {
-        auto model = session->get_signal_by_index(_probe->index);
-        if (model) {
-            connect(model.get(), &data::SignalModel::appearance_changed, this, &Signal::on_appearance_changed);
-            connect(model.get(), &data::SignalModel::visibility_changed, this, &Signal::on_visibility_changed);
-        }
-    }
+Signal::Signal(std::shared_ptr<data::SignalModel> model, SigSession *session)
+    : Trace(QString::fromStdString(model ? model->name() : std::string()),
+            static_cast<uint16_t>(model ? model->index() : 0),
+            api_type_to_sr_channel_type(model ? model->type()
+                                              : api::ChannelType::Logic)),
+      _model(model), session(session) {
+  // Establish Qt signal connections directly from _model — no need to
+  // query the session for the model by index (the model is injected).
+  if (_model) {
+    connect(_model.get(), &data::SignalModel::appearance_changed, this,
+            &Signal::on_appearance_changed);
+    connect(_model.get(), &data::SignalModel::visibility_changed, this,
+            &Signal::on_visibility_changed);
+  }
 }
 
-bool Signal::enabled()
-{
-    return _local_enabled;
+Signal::Signal(const Signal &s, std::shared_ptr<data::SignalModel> model,
+               SigSession *session)
+    : Trace((const Trace &)s), _model(model), session(session),
+      _local_enabled(s._local_enabled) {
+  if (_model) {
+    connect(_model.get(), &data::SignalModel::appearance_changed, this,
+            &Signal::on_appearance_changed);
+    connect(_model.get(), &data::SignalModel::visibility_changed, this,
+            &Signal::on_visibility_changed);
+  }
 }
 
-void Signal::set_enabled(bool en)
-{
-    _local_enabled = en;
-    // R2: 实时写回 Core (sr_channel->enabled)，让 SigSession::reload() 重建
-    // SignalModel 时能读到正确的 enabled 状态。
-    // 不在此处广播 DSV_MSG_DEVICE_OPTIONS_UPDATED: MainWindow::OnMessage 收到该
-    // 消息会调 rebuild_signals() -> apply_model_properties() -> set_enabled()，
-    // 形成无限循环。广播由用户交互入口负责（如 DeviceOptionsDock 已有广播）。
-    if (_probe)
-        _probe->enabled = en;
-    // Task 6.1: 同步写回 Core SignalModel->enabled，保证 headless API 读取到最新状态。
-    // 不广播：由调用方（用户交互入口）负责广播，避免 rebuild 循环。
-    if (_probe && session) {
-        auto model = session->get_signal_by_index(_probe->index);
-        if (model)
-            model->set_enabled(en);
-    }
+bool Signal::enabled() { return _local_enabled; }
+
+void Signal::set_enabled(bool en) {
+  _local_enabled = en;
+  // R2: 实时写回 Core (sr_channel->enabled)，让 SigSession::reload() 重建
+  // SignalModel 时能读到正确的 enabled 状态。
+  // 不在此处广播 DSV_MSG_DEVICE_OPTIONS_UPDATED: MainWindow::OnMessage 收到该
+  // 消息会调 rebuild_signals() -> apply_model_properties() -> set_enabled()，
+  // 形成无限循环。广播由用户交互入口负责（如 DeviceOptionsDock 已有广播）。
+  // Task 6.1: 同步写回 Core SignalModel->enabled，保证 headless API
+  // 读取到最新状态。 不广播：由调用方（用户交互入口）负责广播，避免 rebuild
+  // 循环。 SignalModel::set_enabled() handles the write-back to
+  // sr_channel->enabled and to libsigrok via DeviceAgent.
+  if (_model)
+    _model->set_enabled(en);
 }
 
-void Signal::set_name(QString name)
-{
-    Trace::set_name(name);
-    g_free(_probe->name);
-    _probe->name = g_strdup(name.toUtf8().data());
-    if (session) {
-        auto model = session->get_signal_by_index(_probe->index);
-        if (model) {
-            model->set_name(name.toStdString());
-        }
-    }
+void Signal::set_name(QString name) {
+  Trace::set_name(name);
+  // Phase 2: delegate to the Core SignalModel setter, which handles writing
+  // back to sr_channel->name (g_free/g_strdup) and emitting appearance_changed.
+  if (_model)
+    _model->set_name(name.toStdString());
 }
 
-void Signal::set_colour(QColor colour)
-{
-    Trace::set_colour(colour);
-    if (session) {
-        auto model = session->get_signal_by_index(_probe->index);
-        if (model) {
-            model->set_color(colour.name().toStdString());
-        }
-    }
-}
-void Signal::on_appearance_changed()
-{
-    if (_view) {
-        _view->update();
-        _view->header_updated();
-    }
+void Signal::set_colour(QColor colour) {
+  Trace::set_colour(colour);
+  if (_model)
+    _model->set_color(colour.name().toStdString());
 }
 
-void Signal::on_visibility_changed()
-{
-    if (_view)
-        _view->signals_changed(this);
+void Signal::on_appearance_changed() {
+  if (_view) {
+    _view->update();
+    _view->header_updated();
+  }
+}
+
+void Signal::on_visibility_changed() {
+  if (_view)
+    _view->signals_changed(this);
 }
 
 } // namespace view

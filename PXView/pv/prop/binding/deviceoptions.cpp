@@ -34,7 +34,6 @@
 #include "../int.h"
 #include "../../config/appconfig.h"
 #include "../../log.h"
-#include "../../appcontrol.h"
 #include "../../sigsession.h"
 #include "../../deviceagent.h"
 #include "../../ui/langresource.h"
@@ -45,13 +44,15 @@ namespace pv {
 namespace prop {
 namespace binding {
 
-DeviceOptions::DeviceOptions()
+DeviceAgent* DeviceOptions::_static_device_agent = nullptr;
+
+DeviceOptions::DeviceOptions(SigSession *session)
 {
 	GVariant *gvar_opts, *gvar_list;
 	gsize num_opts;
 
-	SigSession *session = AppControl::Instance()->GetSession();
 	_device_agent = session->get_device();
+	_static_device_agent = _device_agent;
 
 	gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
 	 
@@ -172,16 +173,12 @@ DeviceOptions::DeviceOptions()
 
 GVariant* DeviceOptions::config_getter(int key)
 { 
-	SigSession *session = AppControl::Instance()->GetSession();
-	DeviceAgent *_device_agent = session->get_device();	
-	return _device_agent->get_config(key);
+	return _static_device_agent->get_config(key);
 }
 
 void DeviceOptions::config_setter(int key, GVariant* value)
 {
-	SigSession *session = AppControl::Instance()->GetSession();
-	DeviceAgent *_device_agent = session->get_device();
-    _device_agent->set_config(key, value);
+    _static_device_agent->set_config(key, value);
 }
 
 void DeviceOptions::bind_bool(const QString &name, const QString label, int key)

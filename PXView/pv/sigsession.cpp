@@ -87,7 +87,8 @@ void SessionData::clear() {
   _signal_invert_channels.clear();
 }
 
-std::vector<std::shared_ptr<data::DecoderStack>> SigSession::_empty_decoder_stacks;
+std::vector<std::shared_ptr<data::DecoderStack>>
+    SigSession::_empty_decoder_stacks;
 
 SigSession::SigSession() {
   _map_zoom = 0;
@@ -470,7 +471,8 @@ void SigSession::capture_init() {
 
   // In multi-tab architecture, SigSession::_signals do not have viewports.
   // We cannot call UI-dependent methods (like set_zero_ratio) on them here.
-  // Hardware offset is already updated via View's own signal events when user changes it.
+  // Hardware offset is already updated via View's own signal events when user
+  // changes it.
 
   // Start timer
   if (mode == DSO || mode == ANALOG)
@@ -864,7 +866,8 @@ bool SigSession::get_capture_status(bool &triggered, int &progress) {
   return false;
 }
 
-std::vector<std::shared_ptr<data::SignalModel>> &SigSession::get_signal_models() {
+std::vector<std::shared_ptr<data::SignalModel>> &
+SigSession::get_signal_models() {
   return _signal_models;
 }
 
@@ -974,6 +977,12 @@ void SigSession::init_signals() {
       model->set_type(ch_type);
       model->set_enabled(probe->enabled);
 
+      // Inject weak references so the model can write back to the
+      // sr_channel struct and the DeviceAgent API. See
+      // SignalModel::commit_to_device() and the enhanced setters.
+      model->set_session(this);
+      model->set_sr_channel(probe);
+
       // Read probe configuration for DSO/ANALOG channels.
       // Sources must match view::DsoSignal/AnalogSignal getters so that the
       // SignalModel mirrors what the View layer reports:
@@ -997,12 +1006,12 @@ void SigSession::init_signals() {
 
         int coupling = 0;
         if (_device_agent.get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
-                                          probe, NULL))
+                                           probe, NULL))
           model->set_coupling(coupling);
 
         bool map_default = true;
         _device_agent.get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
-                                     probe, NULL);
+                                      probe, NULL);
         model->set_map_default(map_default);
 
         // hw_offset: prefer live SR_CONF_PROBE_HW_OFFSET (matches
@@ -1016,7 +1025,7 @@ void SigSession::init_signals() {
         // DsoSignal::load_settings), fall back to the cached channel value.
         int zero_offset = probe ? probe->zero_offset : 0;
         _device_agent.get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
-                                       probe, NULL);
+                                        probe, NULL);
         model->set_zero_offset(zero_offset);
       }
 
@@ -1104,6 +1113,12 @@ void SigSession::reload() {
       model->set_type(ch_type);
       model->set_enabled(probe->enabled);
 
+      // Inject weak references (same as init_signals) so the rebuilt model
+      // can write back to sr_channel / DeviceAgent and so
+      // commit_to_device() works after reload.
+      model->set_session(this);
+      model->set_sr_channel(probe);
+
       if (ch_type == api::ChannelType::Analog) {
         uint64_t vdiv = 0;
         if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
@@ -1119,12 +1134,12 @@ void SigSession::reload() {
 
         int coupling = 0;
         if (_device_agent.get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
-                                          probe, NULL))
+                                           probe, NULL))
           model->set_coupling(coupling);
 
         bool map_default = true;
         _device_agent.get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
-                                     probe, NULL);
+                                      probe, NULL);
         model->set_map_default(map_default);
 
         int hw_offset = probe ? probe->hw_offset : 0;
@@ -1134,7 +1149,7 @@ void SigSession::reload() {
 
         int zero_offset = probe ? probe->zero_offset : 0;
         _device_agent.get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
-                                       probe, NULL);
+                                        probe, NULL);
         model->set_zero_offset(zero_offset);
       }
 
@@ -1314,7 +1329,7 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
 
   if (_capture_data->get_dso()->last_ended()) {
     // In multi-tab architecture, SigSession::_signals do not have a viewport,
-    // so we cannot and should not call get_view_rect() on them. 
+    // so we cannot and should not call get_view_rect() on them.
     // The View's own cloned signals will handle their own rendering scales.
 
     // first payload
@@ -1347,10 +1362,12 @@ void SigSession::feed_in_dso(const sr_datafeed_dso &o) {
 
   // calculate related math results
   if (_math_stack) {
-    // TODO: verify - MathStack::calc_math requires vDialfactor from view::MathTrace.
-    // Need to determine how to obtain this value after de-view-ization.
+    // TODO: verify - MathStack::calc_math requires vDialfactor from
+    // view::MathTrace. Need to determine how to obtain this value after
+    // de-view-ization.
     _math_stack->realloc(_device_agent.get_sample_limit());
-    // _math_stack->calc_math(factor); // TODO: re-enable after MathStack de-view-ization
+    // _math_stack->calc_math(factor); // TODO: re-enable after MathStack
+    // de-view-ization
   }
 
   _trigger_flag = o.trig_flag;
@@ -1552,7 +1569,8 @@ bool SigSession::add_decoder(
 
     // Create the decoder
     std::map<const srd_channel *, int> probes;
-    auto decoder_stack = std::make_shared<data::DecoderStack>(this, dec, dstatus);
+    auto decoder_stack =
+        std::make_shared<data::DecoderStack>(this, dec, dstatus);
     assert(decoder_stack);
 
     // Make a list of all the probes
@@ -1579,7 +1597,8 @@ bool SigSession::add_decoder(
       QString sub_dec_name((*lst_sub)->decoder()->name);
       if (sub_dec_name != "") {
         // TODO: verify - decoder name was previously set on view::DecodeTrace.
-        // DecoderStack has no set_name method; name management needs a new mechanism.
+        // DecoderStack has no set_name method; name management needs a new
+        // mechanism.
       }
     }
 
@@ -1639,7 +1658,7 @@ bool SigSession::add_decoder(
 }
 
 int SigSession::get_trace_index_by_key_handel(void *handel,
-                                               data::SessionDocument *doc) {
+                                              data::SessionDocument *doc) {
   int dex = 0;
 
   for (auto stack : decode_traces(doc)) {
@@ -1712,13 +1731,10 @@ void SigSession::rst_decoder(int index, data::SessionDocument *doc) {
     remove_decode_task(stack); // remove old task
     stack->clear();
     // SignalModels may have been recreated by reload() (e.g. during
-    // TabContext::activate()) with NULL snapshot pointers. Re-attach _view_data
-    // so do_decode_work() can find a valid snapshot via SignalModel::snapshot().
-    // Same rationale as start_all_decode_tasks().
-    // Note: attach_data_to_signal now auto-fires data_updated() +
-    // signals_changed(), so the manual data_updated() that used to follow
-    // add_decode_task() has been removed to avoid a redundant notification.
-    attach_data_to_signal(_view_data);
+    // TabContext::activate()) with NULL snapshot pointers. The
+    // add_decode_task() call below will ensure data attachment internally,
+    // so do_decode_work() can find a valid snapshot via
+    // SignalModel::snapshot().
     add_decode_task(stack);
   }
 }
@@ -1746,7 +1762,8 @@ void SigSession::spectrum_rebuild() {
 
       // if not, rebuild
       if (iter == _spectrum_stacks.end()) {
-        auto spectrum_stack = std::make_shared<data::SpectrumStack>(this, m->index());
+        auto spectrum_stack =
+            std::make_shared<data::SpectrumStack>(this, m->index());
         _spectrum_stacks.push_back(spectrum_stack);
       }
     }
@@ -1791,7 +1808,8 @@ void SigSession::math_rebuild(bool enable, int ch1_index, int ch2_index,
   // MathStack and do not create a new one. The View's sync_derived_traces
   // observes the null MathStack and tears down its MathTrace.
   if (enable) {
-    _math_stack = std::make_shared<data::MathStack>(this, ch1_index, ch2_index, type);
+    _math_stack =
+        std::make_shared<data::MathStack>(this, ch1_index, ch2_index, type);
   }
 
   signals_changed();
@@ -1844,10 +1862,10 @@ int SigSession::get_repeat_hold() {
 
 void SigSession::auto_end() {
   // TODO: view::DsoSignal::auto_end() was a UI rendering method that adjusted
-  // the auto-set state and refreshed the trace. After de-view-ization, SigSession
-  // does not own view::Signal instances. The View layer is responsible for
-  // calling auto_end() on its own cloned DsoSignal objects when this event
-  // occurs (e.g. by listening to a broadcast message or callback).
+  // the auto-set state and refreshed the trace. After de-view-ization,
+  // SigSession does not own view::Signal instances. The View layer is
+  // responsible for calling auto_end() on its own cloned DsoSignal objects when
+  // this event occurs (e.g. by listening to a broadcast message or callback).
 }
 
 void SigSession::Open() {}
@@ -1874,6 +1892,13 @@ void SigSession::Close() {
 }
 
 void SigSession::add_decode_task(std::shared_ptr<data::DecoderStack> stack) {
+  // Ensure SignalModels have valid snapshot pointers before the decode thread
+  // starts. SignalModels may have been recreated with NULL snapshots (e.g. by
+  // reload() during TabContext::activate()). Without this, decoders fail with
+  // "没有设置需要解码哪些通道的数据". This matches the pattern in
+  // start_all_decode_tasks() and rst_decoder().
+  attach_data_to_signal(_view_data);
+
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
     _running_tasks.push_back(stack);
@@ -1903,8 +1928,8 @@ void SigSession::clear_all_decoder(bool bUpdateView) {
 
   // decode_traces() returns _active_document->get_decoder_stacks() (or
   // _empty_decoder_stacks), so the clear above already removed them from
-  // the document's list. No need to clear _active_document->get_decoder_stacks()
-  // a second time.
+  // the document's list. No need to clear
+  // _active_document->get_decoder_stacks() a second time.
 
   if (!_bClose && bUpdateView)
     signals_changed();
@@ -1959,8 +1984,8 @@ void SigSession::clear_all_decode_task(int &runningDex) {
   }
 }
 
-std::shared_ptr<data::DecoderStack> SigSession::get_decoder_trace(int index,
-                                                   data::SessionDocument *doc) {
+std::shared_ptr<data::DecoderStack>
+SigSession::get_decoder_trace(int index, data::SessionDocument *doc) {
   auto &traces = decode_traces(doc);
   if (index >= 0 && index < (int)traces.size()) {
     return traces[index];
@@ -2240,7 +2265,7 @@ void SigSession::OnMessage(int msg) {
                                            : _active_document;
 
         if (_copy_thread.joinable()) {
-          _copy_thread.join();  // 等待上一个 copy 完成
+          _copy_thread.join(); // 等待上一个 copy 完成
         }
         _copy_thread = std::thread([this, doc]() {
           copy_data_to_document(doc);
@@ -2389,7 +2414,8 @@ void SigSession::clear_view_data() {
   data_updated();
 }
 
-void SigSession::set_trace_name(std::shared_ptr<data::SignalModel> model, QString name) {
+void SigSession::set_trace_name(std::shared_ptr<data::SignalModel> model,
+                                QString name) {
   assert(model);
 
   model->set_name(name.toStdString());
@@ -2413,7 +2439,8 @@ void SigSession::set_decoder_row_label(int index, QString label) {
   (void)label;
 }
 
-std::shared_ptr<data::SignalModel> SigSession::get_channel_by_index(int orgIndex) {
+std::shared_ptr<data::SignalModel>
+SigSession::get_channel_by_index(int orgIndex) {
   for (auto &m : _signal_models) {
     if (m->index() == orgIndex) {
       return m;
@@ -2504,7 +2531,7 @@ data::DsoSnapshot *SigSession::get_dso_snapshot() {
 }
 
 void SigSession::set_active_document(data::SessionDocument *doc) {
-  if (_active_document == doc)  // 去重，避免重复广播
+  if (_active_document == doc) // 去重，避免重复广播
     return;
   _active_document = doc;
   // R1: notify listeners that the active document changed. trigger_message
@@ -2525,7 +2552,7 @@ void SigSession::join_copy_thread() {
   }
 }
 
-void SigSession::set_trigger_config(const data::TriggerConfig& cfg) {
+void SigSession::set_trigger_config(const data::TriggerConfig &cfg) {
   _trigger_config = cfg;
   broadcast_msg(DSV_MSG_TRIGGER_CONFIG_CHANGED);
 }
@@ -2787,8 +2814,8 @@ void SigSession::restart_decoders() {
   clear_decode_result();
 
   // Copy current data to document for decoders
-  auto doc = _capture_owner_document ? _capture_owner_document
-                                     : _active_document;
+  auto doc =
+      _capture_owner_document ? _capture_owner_document : _active_document;
   if (doc) {
     copy_data_to_document(doc);
   }
@@ -2801,6 +2828,9 @@ void SigSession::start_all_decode_tasks() {
   // TabContext::activate()) with NULL snapshot pointers. Re-attach _view_data
   // so do_decode_work() can find a valid snapshot via SignalModel::snapshot().
   // Without this, decoders fail with "没有设置需要解码哪些通道的数据".
+  // Note: add_decode_task() also calls attach_data_to_signal internally for
+  // single-stack callers. We call it here once before the loop for efficiency
+  // (single attach instead of N attaches).
   attach_data_to_signal(_view_data);
 
   for (auto stack : decode_traces()) {

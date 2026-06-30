@@ -21,7 +21,6 @@
  */
 
 #include "decodetrace.h"
-#include "../appcontrol.h"
 #include "../config/appconfig.h"
 #include "../data/decode/annotation.h"
 #include "../data/decode/decoder.h"
@@ -34,10 +33,10 @@
 #include "../log.h"
 #include "../sigsession.h"
 #include "../toolbars/titlebar.h"
+#include "../ui/dockfonts.h"
 #include "../ui/dscombobox.h"
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
-#include "../ui/dockfonts.h"
 #include "../view/cursor.h"
 #include "../view/logicsignal.h"
 #include "../view/view.h"
@@ -68,43 +67,48 @@ const int DecodeTrace::DrawPadding = 100;
 const int DecodeTrace::ControlRectWidth;
 
 QColor DecodeTrace::getChannelColor(int channelIndex) {
-    QColor c = AppConfig::Instance().GetThemeColor(QString("@decoder-channel-%1").arg(channelIndex));
-    if (c.isValid()) return c;
-    
-    // Fallback original Colours array
-    static const QColor defaultColours[16] = {
-        QColor(0xEF, 0x29, 0x29), QColor(0xF6, 0x6A, 0x32),
-        QColor(0xFC, 0xAE, 0x3E), QColor(0xFB, 0xCA, 0x47),
-        QColor(0xFC, 0xE9, 0x4F), QColor(0xCD, 0xF0, 0x40),
-        QColor(0x8A, 0xE2, 0x34), QColor(0x4E, 0xDC, 0x44),
-        QColor(0x55, 0xD7, 0x95), QColor(0x64, 0xD1, 0xD2),
-        QColor(0x72, 0x9F, 0xCF), QColor(0xD4, 0x76, 0xC4),
-        QColor(0x9D, 0x79, 0xB9), QColor(0xAD, 0x7F, 0xA8),
-        QColor(0xC2, 0x62, 0x9B), QColor(0xD7, 0x47, 0x6F)
-    };
-    return defaultColours[channelIndex % 16];
+  QColor c = AppConfig::Instance().GetThemeColor(
+      QString("@decoder-channel-%1").arg(channelIndex));
+  if (c.isValid())
+    return c;
+
+  // Fallback original Colours array
+  static const QColor defaultColours[16] = {
+      QColor(0xEF, 0x29, 0x29), QColor(0xF6, 0x6A, 0x32),
+      QColor(0xFC, 0xAE, 0x3E), QColor(0xFB, 0xCA, 0x47),
+      QColor(0xFC, 0xE9, 0x4F), QColor(0xCD, 0xF0, 0x40),
+      QColor(0x8A, 0xE2, 0x34), QColor(0x4E, 0xDC, 0x44),
+      QColor(0x55, 0xD7, 0x95), QColor(0x64, 0xD1, 0xD2),
+      QColor(0x72, 0x9F, 0xCF), QColor(0xD4, 0x76, 0xC4),
+      QColor(0x9D, 0x79, 0xB9), QColor(0xAD, 0x7F, 0xA8),
+      QColor(0xC2, 0x62, 0x9B), QColor(0xD7, 0x47, 0x6F)};
+  return defaultColours[channelIndex % 16];
 }
 
 QColor DecodeTrace::getErrorBgColor() {
-    QColor c = AppConfig::Instance().GetThemeColor("@decoder-error-bg");
-    return c.isValid() ? c : QColor(0xEF, 0x29, 0x29);
+  QColor c = AppConfig::Instance().GetThemeColor("@decoder-error-bg");
+  return c.isValid() ? c : QColor(0xEF, 0x29, 0x29);
 }
 
 QColor DecodeTrace::getNoDecodeColor() {
-    QColor c = AppConfig::Instance().GetThemeColor("@decoder-no-decode");
-    return c.isValid() ? c : QColor(0x88, 0x8A, 0x85);
+  QColor c = AppConfig::Instance().GetThemeColor("@decoder-no-decode");
+  return c.isValid() ? c : QColor(0x88, 0x8A, 0x85);
 }
 
 QColor DecodeTrace::getAnnColor(int channelIndex) {
-    QColor c = AppConfig::Instance().GetThemeColor(QString("@decoder-ann-%1").arg(channelIndex));
-    if (c.isValid()) return c;
-    return getChannelColor(channelIndex);
+  QColor c = AppConfig::Instance().GetThemeColor(
+      QString("@decoder-ann-%1").arg(channelIndex));
+  if (c.isValid())
+    return c;
+  return getChannelColor(channelIndex);
 }
 
 QColor DecodeTrace::getAnnOutlineColor(int channelIndex) {
-    QColor c = AppConfig::Instance().GetThemeColor(QString("@decoder-ann-outline-%1").arg(channelIndex));
-    if (c.isValid()) return c;
-    return OutlineColours[channelIndex % 16];
+  QColor c = AppConfig::Instance().GetThemeColor(
+      QString("@decoder-ann-outline-%1").arg(channelIndex));
+  if (c.isValid())
+    return c;
+  return OutlineColours[channelIndex % 16];
 }
 
 const QColor DecodeTrace::OutlineColours[16] = {
@@ -118,7 +122,8 @@ const QColor DecodeTrace::OutlineColours[16] = {
     QColor(0x61, 0x31, 0x4D), QColor(0x6B, 0x23, 0x37)};
 
 DecodeTrace::DecodeTrace(pv::SigSession *session,
-                         std::shared_ptr<pv::data::DecoderStack> decoder_stack, int index)
+                         std::shared_ptr<pv::data::DecoderStack> decoder_stack,
+                         int index)
     : Trace(QString::fromUtf8(decoder_stack->stack().front()->decoder()->name),
             index, SR_CHANNEL_DECODER) {
   assert(decoder_stack);
@@ -383,8 +388,7 @@ void DecodeTrace::draw_annotation(const pv::data::decode::Annotation &a,
   const double end =
       min(a.end_sample() / samples_per_pixel - pixels_offset, (double)right);
 
-  const size_t colour =
-      ((base_colour + a.type()) % MaxAnnType) % 16;
+  const size_t colour = ((base_colour + a.type()) % MaxAnnType) % 16;
   const QColor fill = getAnnColor(colour);
   const QColor outline = getAnnOutlineColor(colour);
 
@@ -774,7 +778,7 @@ bool DecodeTrace::create_popup(bool isnew) {
   pxv_info("DecodeTrace: enter create_popup");
   while (bOpenDlg) {
     bOpenDlg = false;
-    QWidget *top = AppControl::Instance()->GetTopWindow();
+    QWidget *top = _view ? _view->window() : nullptr;
     pxv_info("DecodeTrace: GetTopWindow returned %p", top);
     dialogs::DecoderOptionsDlg dlg(top);
     dlg.set_cursor_range(_decode_cursor1, _decode_cursor2);
@@ -782,7 +786,8 @@ bool DecodeTrace::create_popup(bool isnew) {
 
     pxv_info("DecodeTrace: before dlg.exec()");
     int dlg_ret = dlg.exec();
-    pxv_info("DecodeTrace: after dlg.exec(), ret=%d (Accepted=%d)", dlg_ret, QDialog::Accepted);
+    pxv_info("DecodeTrace: after dlg.exec(), ret=%d (Accepted=%d)", dlg_ret,
+             QDialog::Accepted);
 
     if (QDialog::Accepted == dlg_ret) {
       dlg.apply_setting();

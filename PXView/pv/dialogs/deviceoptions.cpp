@@ -35,7 +35,6 @@
 #include <assert.h>
 
 
-#include "../appcontrol.h"
 #include "../config/appconfig.h"
 #include "../dsvdef.h"
 #include "../log.h"
@@ -141,7 +140,11 @@ void ChannelLabel::on_checked() {
 namespace pv {
 namespace dialogs {
 
-DeviceOptions::DeviceOptions(QWidget *parent) : DSDialog(parent) {
+DeviceOptions::DeviceOptions(SigSession *session, QWidget *parent) 
+  : DSDialog(parent)
+  , _session(session)
+  , _device_options_binding(session)
+{
   _scroll_panel = NULL;
   _container_panel = NULL;
   _scroll = NULL;
@@ -153,7 +156,6 @@ DeviceOptions::DeviceOptions(QWidget *parent) : DSDialog(parent) {
   _isBuilding = false;
   _cur_analog_tag_index = 0;
 
-  SigSession *session = AppControl::Instance()->GetSession();
   _device_agent = session->get_device();
 
   this->setTitle(
@@ -763,7 +765,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout) {
     probe_layout->addWidget(en_label, 0, 0, 1, 1);
     probe_layout->addWidget(probe_checkBox, 0, 1, 1, 3);
 
-    auto *probe_options_binding = new pv::prop::binding::ProbeOptions(probe);
+    auto *probe_options_binding = new pv::prop::binding::ProbeOptions(_session, probe);
     const auto &properties = probe_options_binding->properties();
     int i = 1;
 

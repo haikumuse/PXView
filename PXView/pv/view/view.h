@@ -475,6 +475,27 @@ public:
    */
   void on_signals_changed();
 
+  /**
+   * Incremental layout update for newly added signals.
+   * Called after SignalFactory::update_signals(Added) added new signals
+   * to _own_signals. Triggers signals_changed(NULL) for layout recalculation.
+   */
+  void signals_added_layout();
+
+  /**
+   * Incremental layout update for removed signals.
+   * Called after SignalFactory::update_signals(Removed) removed signals
+   * from _own_signals. Triggers signals_changed(NULL) for layout recalculation.
+   */
+  void signals_removed_layout();
+
+  /**
+   * Incremental update for modified signal properties.
+   * Called after SignalFactory::update_signals(Modified) refreshed properties.
+   * Only repaints the affected signals, no layout changes needed.
+   */
+  void signals_modified_refresh();
+
 public slots:
   void reload();
   void set_measure_en(int enable);
@@ -561,7 +582,6 @@ private:
   pv::toolbars::SamplingBar *_sampling_bar;
   DockUiState _dock_ui_state;
   std::vector<Signal *> _own_signals;
-  std::vector<sr_channel *> _config_probes;
   // View-owned wrapper traces for derived types. Synced lazily from the
   // Core layer's Stack/Model objects via sync_derived_traces().
   std::vector<DecodeTrace *> _own_decode_traces;

@@ -15,10 +15,9 @@
 class QLabel;
 class QPushButton;
 class QVBoxLayout;
+class AppControl;
 
 namespace pv {
-
-class AppControl;
 
 namespace api { class McpTransport; }
 
@@ -29,7 +28,7 @@ class McpControlDock : public QWidget
     Q_OBJECT
 
 public:
-    explicit McpControlDock(QWidget *parent = nullptr);
+    explicit McpControlDock(AppControl *app, QWidget *parent = nullptr);
 
     void refresh_status();
 
@@ -44,6 +43,7 @@ private:
                          const QString &command);
     pv::api::McpTransport* get_mcp_transport() const;
 
+    AppControl *_app;
     QLabel *_status_label;
     QLabel *_address_label;
     QPushButton *_btn_open_web;

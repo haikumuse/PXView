@@ -30,8 +30,9 @@ namespace dock {
 
 static const int MCP_PORT = 10110;
 
-McpControlDock::McpControlDock(QWidget *parent)
+McpControlDock::McpControlDock(AppControl *app, QWidget *parent)
     : QWidget(parent)
+    , _app(app)
     , _status_label(nullptr)
     , _address_label(nullptr)
     , _btn_open_web(nullptr)
@@ -260,10 +261,9 @@ void McpControlDock::on_restart_mcp()
 
 pv::api::McpTransport* McpControlDock::get_mcp_transport() const
 {
-    auto *app = ::AppControl::Instance();
-    if (!app)
+    if (!_app)
         return nullptr;
-    return app->get_mcp_transport();
+    return _app->get_mcp_transport();
 }
 
 } // namespace dock

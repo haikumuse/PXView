@@ -11,13 +11,33 @@ Four compiled components: `libsigrok/` (C11 hardware drivers), `libsigrokdecode/
 ```
 ./build_incremental.cmd          # Windows (MSYS2 + CMake/Ninja) → install.dir/bin/PXView.exe
 ```
-
+- Assume every terminal command is executed by PowerShell.Do not generate CMD commands even if running on Windows.
 - `build_incremental.cmd`/`.sh` **launches the app after building**. For compile-only (no launch), run the inner commands directly from `build_incremental.sh`: `cd build && ninja -j 16 && ninja install`.
 - MinGW64 toolchain (gcc/g++/ninja/cmake) is already in the system PATH — mingw commands can be invoked directly from any shell without sourcing msys2_shell.
 - Headless: `PXView.exe --headless` — runs without GUI (QCoreApplication), exposes MCP API on port 10110.
 - Options: `ENABLE_COMPAT_DRIVERS` (OFF), `BUILD_DECODER_TEST` (OFF).
 - Deps: Qt6.6+, glib, Python3, FFTW, libusb, zlib, Boost, nlohmann_json.
+## Build Rules
 
+The build directory is already configured.
+
+Do NOT verify:
+
+- build.ninja
+- CMakeCache.txt
+- ninja existence
+- cmake existence
+- compiler existence
+
+Assume the environment is valid.
+
+For compile-only execute exactly:
+
+cd build
+ninja -j 16
+ninja install
+
+Do not prepend any probing commands.
 ## Architecture: Core/View Layer Separation
 
 The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_SOURCES` vs `PXVIEW_GUI_SOURCES` in `CMakeLists.txt`):

@@ -39,6 +39,8 @@ class DeviceAgent;
 
 namespace pv {
 
+class SigSession;
+
 namespace dialogs {
 
 class Calibration : public DSDialog, public IUiWindow
@@ -46,7 +48,7 @@ class Calibration : public DSDialog, public IUiWindow
 	Q_OBJECT
 
 public:
-    Calibration(QWidget *parent);
+    Calibration(SigSession *session, QWidget *parent);
     ~Calibration();
 
     void update_device_info();

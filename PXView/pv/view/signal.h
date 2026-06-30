@@ -21,12 +21,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-
 #ifndef PXVIEW_PV_SIGNAL_H
 #define PXVIEW_PV_SIGNAL_H
- 
 
-#include <QColor>
 #include <QPainter>
 #include <QPen>
 #include <QRect>
@@ -34,21 +31,26 @@
 
 #include <stdint.h>
 #include <list>
+#include <memory>
 
-#include <libsigrok.h> 
 #include "trace.h"
 
 namespace pv {
 
 namespace data {
 class SignalData;
+class SignalModel;
 }
 
 class SigSession;
 
 namespace view {
 
-//draw signal trace base class
+/**
+ * draw signal trace base class
+ * Signal is the View layer representation of a Core-layer SignalModel.
+ * It bridges Qt Widget rendering with the data model.
+ */
 class Signal : public Trace
 {
     Q_OBJECT
@@ -61,31 +63,64 @@ public slots:
     void on_visibility_changed();
 
 protected:
-    Signal(sr_channel * const probe);
+    /**
+     * Constructor accepting a SignalModel and session reference.
+     * @param model The Core-layer SignalModel that backs this view::Signal.
+     * @param session The SigSession for device access.
+     */
+    Signal(std::shared_ptr<data::SignalModel> model, SigSession *session);
 
     /**
-     * Copy constructor
+     * Copy constructor for cloning in new views.
+     * @param s The Signal to copy from.
+     * @param model The SignalModel for the new Signal (shared with the original).
+     * @param session The SigSession for the new view.
      */
-    Signal(const Signal &s, sr_channel * const probe);
+    Signal(const Signal &s, std::shared_ptr<data::SignalModel> model, SigSession *session);
 
-public: 
+public:
+    virtual ~Signal() {}
+
+    /**
+     * Clone this Signal for a new view.
+     * The cloned Signal shares the same SignalModel as the original.
+     */
     virtual Signal* clone() const = 0;
 
+    /**
+     * Returns whether the signal is enabled.
+     */
     bool enabled();
-    void set_enabled(bool en);
 
     /**
-     * Sets the name of the signal.
+     * Sets the signal name.
+     * Override from Trace to also update the Core-layer SignalModel.
      */
     void set_name(QString name) override;
+
+    /**
+     * Sets whether the signal is enabled.
+     * Also updates the Core-layer SignalModel.
+     */
+    virtual void set_enabled(bool en);
+
+    /**
+     * Sets the colour of the signal.
+     * Override from Trace to also update the Core-layer SignalModel.
+     */
     void set_colour(QColor colour) override;
 
-    inline const sr_channel* probe(){
-        return _probe;
+    /**
+     * Accessor for the Core-layer SignalModel that backs this view::Signal.
+     * External consumers (DecoderOptionsDlg, etc.) should use this instead of
+     * the deprecated probe() accessor.
+     */
+    inline std::shared_ptr<data::SignalModel> model() {
+        return _model;
     }
 
-protected: 
-    sr_channel *const _probe;
+protected:
+    std::shared_ptr<data::SignalModel> _model;
     SigSession      *session;
     bool _local_enabled = true;
 };
