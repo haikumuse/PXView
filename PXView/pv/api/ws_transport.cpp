@@ -2,7 +2,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include <QCoreApplication>
 #include <QHostAddress>
+#include <QThread>
 
 namespace pv::api {
 
@@ -136,6 +138,23 @@ void WsTransport::on_client_disconnected()
     client->deleteLater();
 }
 
+void WsTransport::send_to_clients(const QString& msg)
+{
+    // QWebSocket::sendTextMessage is not thread-safe; on_service_event may be
+    // invoked from a worker thread (e.g. feed/device threads via
+    // SessionService::broadcast_event). Marshal to the GUI thread first.
+    if (QThread::currentThread() != qApp->thread()) {
+        QMetaObject::invokeMethod(qApp, [this, msg]() { send_to_clients(msg); },
+                                  Qt::QueuedConnection);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(_clients_mutex);
+    for (auto* client : _clients) {
+        client->sendTextMessage(msg);
+    }
+}
+
 void WsTransport::on_service_event(const ServiceEventData& data)
 {
     nlohmann::json notification;
@@ -230,10 +249,8 @@ void WsTransport::on_service_event(const ServiceEventData& data)
 
     const auto msg = QString::fromStdString(notification.dump());
 
-    std::lock_guard<std::mutex> lock(_clients_mutex);
-    for (auto* client : _clients) {
-        client->sendTextMessage(msg);
-    }
+    // Marshal-aware broadcast (handles cross-thread invocation).
+    send_to_clients(msg);
 }
 
 } // namespace pv::api

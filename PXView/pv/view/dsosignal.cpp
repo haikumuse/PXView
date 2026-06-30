@@ -30,6 +30,7 @@
 #include "../dsvdef.h"
 #include "../data/dsosnapshot.h"
 #include "../sigsession.h"
+#include "../data/signalmodel.h"
 #include "../log.h"
 #include "../appcontrol.h"
 #include "../ui/langresource.h"
@@ -296,6 +297,12 @@ bool DsoSignal::go_vDialPre(bool manul)
         _view->vDial_updated();
         _view->set_update(_viewport, true);
         _view->update();
+        // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press / 键盘快捷键）。
+        if (session) {
+            data::SignalModel *m = session->get_signal_by_index(_probe->index);
+            if (m) m->set_vdiv((double)_vDial->get_value());
+            session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+        }
         return true;
     }
     else {
@@ -331,8 +338,14 @@ bool DsoSignal::go_vDialNext(bool manul)
         _view->vDial_updated();
         _view->set_update(_viewport, true);
         _view->update();
+        // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press / 键盘快捷键）。
+        if (session) {
+            data::SignalModel *m = session->get_signal_by_index(_probe->index);
+            if (m) m->set_vdiv((double)_vDial->get_value());
+            session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+        }
         return true;
-    } 
+    }
     else {
         if (_autoV && !_autoV_over)
             autoV_end();
@@ -467,9 +480,15 @@ uint16_t DsoSignal::get_vDialSel()
 void DsoSignal::set_acCoupling(uint8_t coupling)
 {
     if (enabled()) {
-        _acCoupling = coupling; 
+        _acCoupling = coupling;
         session->get_device()->set_config_byte(SR_CONF_PROBE_COUPLING,
                               _acCoupling, _probe, NULL);
+        // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press AC/DC 切换）。
+        if (session) {
+            data::SignalModel *m = session->get_signal_by_index(_probe->index);
+            if (m) m->set_coupling((int)coupling);
+            session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+        }
     }
 }
 
@@ -532,6 +551,12 @@ void DsoSignal::set_trig_ratio(double ratio, bool delta_change)
         _trig_delta = get_trig_vrate() - get_zero_ratio();
     session->get_device()->set_config_byte(SR_CONF_TRIGGER_VALUE,
                           _trig_value, _probe, NULL);
+    // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON 恢复路径
+    // (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
+    if (session) {
+        data::SignalModel *m = session->get_signal_by_index(_probe->index);
+        if (m) m->set_trig_value((double)_trig_value);
+    }
 }
 
 int DsoSignal::get_zero_vpos()
@@ -565,9 +590,15 @@ void DsoSignal::set_zero_vpos(int pos)
 
 void DsoSignal::set_zero_ratio(double ratio)
 {
-    _zero_offset = ratio2value(ratio); 
+    _zero_offset = ratio2value(ratio);
     session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET,
                           _zero_offset, _probe, NULL);
+    // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON 恢复路径
+    // (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
+    if (session) {
+        data::SignalModel *m = session->get_signal_by_index(_probe->index);
+        if (m) m->set_zero_offset((double)_zero_offset);
+    }
 }
 
 void DsoSignal::set_factor(uint64_t factor)
@@ -588,6 +619,12 @@ void DsoSignal::set_factor(uint64_t factor)
             _vDial->set_factor(factor);
             _view->set_update(_viewport, true);
             _view->update();
+            // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press X1/X10/X100）。
+            if (session) {
+                data::SignalModel *m = session->get_signal_by_index(_probe->index);
+                if (m) m->set_vfactor((double)factor);
+                session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+            }
         }
     }
 }

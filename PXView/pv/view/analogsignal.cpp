@@ -28,6 +28,8 @@
 #include "../dsvdef.h"
 #include "../log.h"
 #include "../config/appconfig.h"
+#include "../sigsession.h"
+#include "../data/signalmodel.h"
 
 using namespace std;
 
@@ -352,6 +354,12 @@ void AnalogSignal::set_zero_ratio(double ratio)
     _zero_offset = ratio2value(ratio);
     session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET,
                           _zero_offset, _probe, NULL);
+    // Task 7.3: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON 恢复路径
+    // (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
+    if (session) {
+        data::SignalModel *m = session->get_signal_by_index(_probe->index);
+        if (m) m->set_zero_offset((double)_zero_offset);
+    }
 }
 
 double AnalogSignal::get_zero_ratio()

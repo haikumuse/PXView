@@ -428,6 +428,7 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_int32, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
  }
 
@@ -459,6 +460,7 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_string, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
  }
 
@@ -489,6 +491,7 @@ bool DeviceAgent::set_config_bool(int key, bool value, const sr_channel *ch, con
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_bool, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
 }
 
@@ -518,6 +521,7 @@ bool DeviceAgent::set_config_uint64(int key, uint64_t value, const sr_channel *c
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_uint64, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
 }
 
@@ -547,6 +551,7 @@ bool DeviceAgent::set_config_uint16(int key, int value, const sr_channel *ch, co
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_uint16, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
 }
 
@@ -576,6 +581,7 @@ bool DeviceAgent::set_config_uint32(int key, uint32_t value, const sr_channel *c
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_uint32, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
 }
 
@@ -605,6 +611,7 @@ bool DeviceAgent::set_config_int16(int key, int value, const sr_channel *ch, con
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_int16, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
 }
 
@@ -634,6 +641,7 @@ bool DeviceAgent::set_config_byte(int key, int value, const sr_channel *ch, cons
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_byte, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
 }
 
@@ -663,6 +671,7 @@ bool DeviceAgent::set_config_double(int key, double value, const sr_channel *ch,
             pxv_err("%s%d", "ERROR: DeviceAgent::set_config_double, Failed to set value of config id:", key);
         return false;
     }
+    config_changed();
     return true;
 }
 

@@ -51,7 +51,23 @@
 #include "../ui/fn.h"
 #include "../tabcontext.h"
 #include "../data/sessiondocument.h"
+#include "../data/triggerconfig.h"
 #include "../ui/dockfonts.h"
+
+// Split a combined "ext32 lower" trigger value (32 space-separated tokens) into
+// its ext32 (upper 16) and lower (lower 16) parts. For 16-channel values the
+// ext32 part is empty and lower_out receives the input unchanged.
+static void split_trigger_value(const QString& combined, QString& ext32_out, QString& lower_out)
+{
+    const QStringList parts = combined.split(' ', Qt::SkipEmptyParts);
+    if (parts.size() == 32) {
+        ext32_out = parts.mid(0, 16).join(' ');
+        lower_out = parts.mid(16, 16).join(' ');
+    } else {
+        ext32_out.clear();
+        lower_out = combined;
+    }
+}
 
 namespace pv {
 namespace dock {
@@ -328,10 +344,35 @@ bool TriggerDock::commit_trigger()
 
     // trigger mode update
     if (_simple_radioButton->isChecked()) {
+        // Task 8.4: mirror simple-mode state into Core TriggerConfig.
+        data::TriggerConfig cfg;
+        cfg.set_mode(data::TriggerConfig::Simple);
+        cfg.set_trigger_pos(_position_slider->value());
+        _session->set_trigger_config(cfg);
         ds_trigger_set_mode(SIMPLE_TRIGGER);
         return false;
     }
     else {
+        // Task 8.4: build Core TriggerConfig so headless/API layers can read
+        // the same trigger state without touching the UI. The ds_trigger_* calls
+        // below remain to keep the libsigrok driver in sync.
+        data::TriggerConfig cfg;
+        std::vector<data::TriggerConfig::Stage> stages;
+        cfg.set_trigger_pos(_position_slider->value());
+        cfg.set_adv_enabled(true);
+        cfg.set_adv_tab_index(_adv_tabWidget->currentIndex());
+        if (_adv_tabWidget->currentIndex() == 0)
+            cfg.set_mode(data::TriggerConfig::Adv);
+        else
+            cfg.set_mode(data::TriggerConfig::Serial);
+        const int stage_n = stages_comboBox->currentText().toInt();
+        cfg.set_stage_count(stage_n);
+        if (_adv_tabWidget->currentIndex() == 1) {
+            cfg.set_serial_data_channel(_serial_data_comboBox->currentText().toInt());
+            cfg.set_serial_bits(_serial_bits_comboBox->currentText().toInt());
+            cfg.set_serial_value(_serial_value_lineEdit->text());
+        }
+
         ds_trigger_set_en(true);
         if (_adv_tabWidget->currentIndex() == 0)
             ds_trigger_set_mode(ADV_TRIGGER);
@@ -339,11 +380,11 @@ bool TriggerDock::commit_trigger()
             ds_trigger_set_mode(SERIAL_TRIGGER);
 
         // trigger stage update
-        ds_trigger_set_stage(stages_comboBox->currentText().toInt() - 1);
+        ds_trigger_set_stage(stage_n - 1);
 
         // trigger value update
         if (_adv_tabWidget->currentIndex() == 0) {
-            for (int i = 0; i < stages_comboBox->currentText().toInt(); i++) {
+            for (int i = 0; i < stage_n; i++) {
                 QString value0_str, value1_str;
                 if (_cur_ch_num == 32) {
                     value0_str = _value0_ext32_lineEdit_list.at(i)->text() + " " + _value0_lineEdit_list.at(i)->text();
@@ -354,6 +395,10 @@ bool TriggerDock::commit_trigger()
                 }
                 ds_trigger_stage_set_value(i, _cur_ch_num, value0_str.toLocal8Bit().data(),
                                                            value1_str.toLocal8Bit().data());
+                data::TriggerConfig::Stage st;
+                st.value0 = value0_str;
+                st.value1 = value1_str;
+                stages.push_back(st);
             }
         } else if(_adv_tabWidget->currentIndex() == 1){
             QString start_str, stop_str, edge_str, comp_str;
@@ -391,38 +436,70 @@ bool TriggerDock::commit_trigger()
             ds_trigger_stage_set_value(STriggerDataStage, TriggerProbes,
                                  _serial_value_lineEdit->text().toLocal8Bit().data(),
                                  _value1_lineEdit_list.at(3)->text().toLocal8Bit().data());
+
+            // SERIAL stages: 0=start/stop, 1=edge/comp, 2=channel/channel_ext32, 3=data/comp_ext32
+            data::TriggerConfig::Stage s0; s0.value0 = start_str; s0.value1 = stop_str;
+            data::TriggerConfig::Stage s1; s1.value0 = edge_str;  s1.value1 = comp_str;
+            data::TriggerConfig::Stage s2; s2.value0 = channel;   s2.value1 = channel_ext32;
+            data::TriggerConfig::Stage s3; s3.value0 = _serial_value_lineEdit->text();
+                                          s3.value1 = _value1_lineEdit_list.at(3)->text();
+            stages.push_back(s0);
+            stages.push_back(s1);
+            stages.push_back(s2);
+            stages.push_back(s3);
         }
 
         // trigger logic update
-        for (int i = 0; i < stages_comboBox->currentText().toInt(); i++) {
+        for (int i = 0; i < stage_n; i++) {
             const char logic = (_contiguous_checkbox_list.at(i)->isChecked() << 1) +
                                _logic_comboBox_list.at(i)->currentIndex();
             ds_trigger_stage_set_logic(i, TriggerProbes,
                                  logic);
+            if (i < (int)stages.size())
+                stages[i].logic = logic;
         }
 
         // trigger inv update
-        for (int i = 0; i < stages_comboBox->currentText().toInt(); i++) {
+        for (int i = 0; i < stage_n; i++) {
             ds_trigger_stage_set_inv(i, TriggerProbes,
                                  _inv0_comboBox_list.at(i)->currentIndex(),
                                  _inv1_comboBox_list.at(i)->currentIndex());
+            if (i < (int)stages.size()) {
+                stages[i].inv0 = _inv0_comboBox_list.at(i)->currentIndex();
+                stages[i].inv1 = _inv1_comboBox_list.at(i)->currentIndex();
+            }
         }
 
         // trigger count update
         if (_adv_tabWidget->currentIndex() == 0) {
-            for (int i = 0; i < stages_comboBox->currentText().toInt(); i++) {
+            for (int i = 0; i < stage_n; i++) {
                 ds_trigger_stage_set_count(i, TriggerProbes,
                                            _count_spinBox_list.at(i)->value(),
                                            0);
+                if (i < (int)stages.size()) {
+                    stages[i].count0 = _count_spinBox_list.at(i)->value();
+                    stages[i].count1 = 0;
+                }
             }
         } else if(_adv_tabWidget->currentIndex() == 1){
             ds_trigger_stage_set_count(1, TriggerProbes,
                                        1,
                                        0);
+            if (1 < (int)stages.size()) {
+                stages[1].count0 = 1;
+                stages[1].count1 = 0;
+            }
             ds_trigger_stage_set_count(3, TriggerProbes,
                                        _serial_bits_comboBox->currentText().toInt() - 1,
                                        0);
+            if (3 < (int)stages.size()) {
+                stages[3].count0 = _serial_bits_comboBox->currentText().toInt() - 1;
+                stages[3].count1 = 0;
+            }
         }
+
+        cfg.set_stages(stages);
+        _session->set_trigger_config(cfg);
         return true;
     }
 }
@@ -433,51 +510,57 @@ void TriggerDock::update_view()
 
 QJsonObject TriggerDock::get_session()
 {
+    // Task 8.5: serialize from Core TriggerConfig (the canonical state) instead
+    // of reading UI controls directly. Original JSON key names are preserved.
+    const auto &cfg = _session->trigger_config();
     QJsonObject trigSes;
-    trigSes["advTriggerMode"] = _adv_radioButton->isChecked();
-    trigSes["triggerPos"] = _position_slider->value();
-    trigSes["triggerStages"] = stages_comboBox->currentIndex();
-    trigSes["triggerTab"] = _adv_tabWidget->currentIndex();
+    trigSes["advTriggerMode"] = cfg.adv_enabled();
+    trigSes["triggerPos"] = cfg.trigger_pos();
+    // original semantics: stages_comboBox currentIndex (= stage_count - 1)
+    trigSes["triggerStages"] = qMax(0, cfg.stage_count() - 1);
+    trigSes["triggerTab"] = cfg.adv_tab_index();
 
-    for (int i = 0; i < stages_comboBox->count(); i++) {
-        QString value0_str = "stageTriggerValue0" + QString::number(i);
-        QString inv0_str = "stageTriggerInv0" + QString::number(i);
-        QString value1_str = "stageTriggerValue1" + QString::number(i);
-        QString inv1_str = "stageTriggerInv1" + QString::number(i);
+    // SERIAL scalar fields
+    trigSes["serialTriggerChannel"] = cfg.serial_data_channel();
+    // original semantics: _serial_bits_comboBox currentIndex (= bits - 1)
+    trigSes["serialTriggerBits"] = qMax(0, cfg.serial_bits() - 1);
+    trigSes["serialTriggerData"] = cfg.serial_value();
 
-        QString logic_str = "stageTriggerLogic" + QString::number(i);
-        QString count_str = "stageTriggerCount" + QString::number(i);
-        QString conti_str = "stageTriggerContiguous" + QString::number(i);
-
-        trigSes[value0_str] = _value0_lineEdit_list.at(i)->text();
-        trigSes[value1_str] = _value1_lineEdit_list.at(i)->text();
-        trigSes[inv0_str] = _inv0_comboBox_list.at(i)->currentIndex();
-        trigSes[inv1_str] = _inv1_comboBox_list.at(i)->currentIndex();
-
-        trigSes[logic_str] = _logic_comboBox_list.at(i)->currentIndex();
-        trigSes[count_str] = _count_spinBox_list.at(i)->value();
-        trigSes[conti_str] = _contiguous_checkbox_list.at(i)->isChecked();
-
-        if (_cur_ch_num == 32) {
-            QString value0_ext32_str = "stageTriggerExt32Value0" + QString::number(i);
-            QString value1_ext32_str = "stageTriggerExt32Value1" + QString::number(i);
-
-            trigSes[value0_ext32_str] = _value0_ext32_lineEdit_list.at(i)->text();
-            trigSes[value1_ext32_str] = _value1_ext32_lineEdit_list.at(i)->text();
-        }
+    // SERIAL start/stop/clock live inside Core stages (layout: 0=start/stop, 1=edge/comp)
+    QString start_lower, start_ext32, stop_lower, stop_ext32, edge_lower, edge_ext32;
+    if (cfg.mode() == data::TriggerConfig::Serial && cfg.stages().size() >= 2) {
+        split_trigger_value(cfg.stages()[0].value0, start_ext32, start_lower);
+        split_trigger_value(cfg.stages()[0].value1, stop_ext32, stop_lower);
+        split_trigger_value(cfg.stages()[1].value0, edge_ext32, edge_lower);
+    }
+    trigSes["serialTriggerStart"] = start_lower;
+    trigSes["serialTriggerStop"] = stop_lower;
+    trigSes["serialTriggerClock"] = edge_lower;
+    if (_cur_ch_num == 32) {
+        trigSes["serialTriggerExt32Start"] = start_ext32;
+        trigSes["serialTriggerExt32Stop"] = stop_ext32;
+        trigSes["serialTriggerExt32Clock"] = edge_ext32;
     }
 
-    trigSes["serialTriggerStart"] = _serial_start_lineEdit->text();
-    trigSes["serialTriggerStop"] = _serial_stop_lineEdit->text();
-    trigSes["serialTriggerClock"] = _serial_edge_lineEdit->text();
-    trigSes["serialTriggerChannel"] = _serial_data_comboBox->currentIndex();
-    trigSes["serialTriggerData"] = _serial_value_lineEdit->text();
-    trigSes["serialTriggerBits"] = _serial_bits_comboBox->currentIndex();
+    // Per-stage data from Core
+    for (int i = 0; i < (int)cfg.stages().size(); i++) {
+        const auto &s = cfg.stages()[i];
+        QString v0_ext, v0_low, v1_ext, v1_low;
+        split_trigger_value(s.value0, v0_ext, v0_low);
+        split_trigger_value(s.value1, v1_ext, v1_low);
 
-    if (_cur_ch_num == 32) {
-        trigSes["serialTriggerExt32Start"] = _serial_start_ext32_lineEdit->text();
-        trigSes["serialTriggerExt32Stop"] = _serial_stop_ext32_lineEdit->text();
-        trigSes["serialTriggerExt32Clock"] = _serial_edge_ext32_lineEdit->text();
+        trigSes["stageTriggerValue0" + QString::number(i)] = v0_low;
+        trigSes["stageTriggerValue1" + QString::number(i)] = v1_low;
+        trigSes["stageTriggerInv0" + QString::number(i)] = s.inv0;
+        trigSes["stageTriggerInv1" + QString::number(i)] = s.inv1;
+        trigSes["stageTriggerLogic" + QString::number(i)] = s.logic & 1;
+        trigSes["stageTriggerCount" + QString::number(i)] = s.count0;
+        trigSes["stageTriggerContiguous" + QString::number(i)] = (s.logic >> 1) & 1;
+
+        if (_cur_ch_num == 32) {
+            trigSes["stageTriggerExt32Value0" + QString::number(i)] = v0_ext;
+            trigSes["stageTriggerExt32Value1" + QString::number(i)] = v1_ext;
+        }
     }
 
     return trigSes;
@@ -485,72 +568,201 @@ QJsonObject TriggerDock::get_session()
 
 void TriggerDock::set_session(QJsonObject ses)
 {
-    _position_slider->setValue(ses["triggerPos"].toDouble());
-    stages_comboBox->setCurrentIndex(ses["triggerStages"].toDouble());
-    _adv_tabWidget->setCurrentIndex(ses["triggerTab"].toDouble());
-    if (ses["advTriggerMode"].toBool())
+    // Task 8.5: build Core TriggerConfig from JSON, push it to Core, then fill
+    // the UI from Core (the canonical state). Original JSON key names preserved.
+    const bool adv_mode = ses.value("advTriggerMode").toBool(false);
+    const int tab = ses.value("triggerTab").toInt(0);
+    const int stage_count = ses.value("triggerStages").toInt(0) + 1; // index -> count
+
+    data::TriggerConfig cfg;
+    cfg.set_adv_enabled(adv_mode);
+    cfg.set_adv_tab_index(tab);
+    cfg.set_trigger_pos(ses.value("triggerPos").toInt(1));
+    cfg.set_stage_count(stage_count);
+    if (!adv_mode)
+        cfg.set_mode(data::TriggerConfig::Simple);
+    else if (tab == 1)
+        cfg.set_mode(data::TriggerConfig::Serial);
+    else
+        cfg.set_mode(data::TriggerConfig::Adv);
+    cfg.set_serial_data_channel(ses.value("serialTriggerChannel").toInt(0));
+    cfg.set_serial_bits(ses.value("serialTriggerBits").toInt(0) + 1); // index -> count
+    cfg.set_serial_value(ses.value("serialTriggerData").toString());
+
+    std::vector<data::TriggerConfig::Stage> stages;
+    if (cfg.mode() == data::TriggerConfig::Adv) {
+        for (int i = 0; i < stage_count; i++) {
+            data::TriggerConfig::Stage st;
+            const QString v0_low = ses.value("stageTriggerValue0" + QString::number(i)).toString();
+            const QString v1_low = ses.value("stageTriggerValue1" + QString::number(i)).toString();
+            QString v0_ext, v1_ext;
+            if (_cur_ch_num == 32) {
+                v0_ext = ses.value("stageTriggerExt32Value0" + QString::number(i)).toString();
+                v1_ext = ses.value("stageTriggerExt32Value1" + QString::number(i)).toString();
+            }
+            st.value0 = v0_ext.isEmpty() ? v0_low : (v0_ext + " " + v0_low);
+            st.value1 = v1_ext.isEmpty() ? v1_low : (v1_ext + " " + v1_low);
+            st.inv0 = ses.value("stageTriggerInv0" + QString::number(i)).toInt(0);
+            st.inv1 = ses.value("stageTriggerInv1" + QString::number(i)).toInt(0);
+            const int logic_index = ses.value("stageTriggerLogic" + QString::number(i)).toInt(0);
+            const bool conti = ses.value("stageTriggerContiguous" + QString::number(i)).toBool(false);
+            st.logic = (conti ? 2 : 0) | (logic_index & 1);
+            st.count0 = ses.value("stageTriggerCount" + QString::number(i)).toInt(1);
+            st.count1 = 0;
+            stages.push_back(st);
+        }
+    } else if (cfg.mode() == data::TriggerConfig::Serial) {
+        // SERIAL stages: 0=start/stop, 1=edge/comp, 2=channel, 3=data
+        const QString start_low = ses.value("serialTriggerStart").toString();
+        const QString stop_low = ses.value("serialTriggerStop").toString();
+        const QString edge_low = ses.value("serialTriggerClock").toString();
+        QString start_ext, stop_ext, edge_ext;
+        if (_cur_ch_num == 32) {
+            if (ses.contains("serialTriggerExt32Start"))
+                start_ext = ses.value("serialTriggerExt32Start").toString();
+            if (ses.contains("serialTriggerExt32Stop"))
+                stop_ext = ses.value("serialTriggerExt32Stop").toString();
+            if (ses.contains("serialTriggerExt32Clock"))
+                edge_ext = ses.value("serialTriggerExt32Clock").toString();
+        }
+        const QString start_str = start_ext.isEmpty() ? start_low : (start_ext + " " + start_low);
+        const QString stop_str = stop_ext.isEmpty() ? stop_low : (stop_ext + " " + stop_low);
+        const QString edge_str = edge_ext.isEmpty() ? edge_low : (edge_ext + " " + edge_low);
+
+        const int data_channel = cfg.serial_data_channel();
+        QString channel = "X X X X X X X X X X X X X X X X";
+        QString channel_ext32 = "X X X X X X X X X X X X X X X X";
+        if (_cur_ch_num == 32) {
+            if (data_channel < 16)
+                channel.replace(30 - 2*data_channel, 1, '0');
+            else
+                channel_ext32.replace(30 - 2*(data_channel - 16), 1, '0');
+        } else {
+            channel.replace(30 - 2*data_channel, 1, '0');
+        }
+
+        // comp (stage1.value1) and comp_ext32 lower (stage3.value1) from per-stage keys
+        const QString comp_low = ses.value("stageTriggerValue1" + QString::number(1)).toString();
+        QString comp_ext;
+        if (_cur_ch_num == 32)
+            comp_ext = ses.value("stageTriggerExt32Value1" + QString::number(1)).toString();
+        const QString comp_str = comp_ext.isEmpty() ? comp_low : (comp_ext + " " + comp_low);
+        const QString s3v1 = ses.value("stageTriggerValue1" + QString::number(3)).toString();
+
+        data::TriggerConfig::Stage s0; s0.value0 = start_str; s0.value1 = stop_str;
+        data::TriggerConfig::Stage s1; s1.value0 = edge_str;  s1.value1 = comp_str;
+        data::TriggerConfig::Stage s2; s2.value0 = channel;   s2.value1 = channel_ext32;
+        data::TriggerConfig::Stage s3; s3.value0 = cfg.serial_value(); s3.value1 = s3v1;
+        stages.push_back(s0);
+        stages.push_back(s1);
+        stages.push_back(s2);
+        stages.push_back(s3);
+    }
+    cfg.set_stages(stages);
+    _session->set_trigger_config(cfg);
+
+    // ---- Fill UI from Core cfg ----
+    const auto &tcfg = _session->trigger_config();
+    _position_slider->setValue(tcfg.trigger_pos());
+    stages_comboBox->setCurrentIndex(tcfg.stage_count() - 1);
+    _adv_tabWidget->setCurrentIndex(tcfg.adv_tab_index());
+    if (tcfg.adv_enabled())
         _adv_radioButton->click();
     else
         _simple_radioButton->click();
 
+    // Per-stage UI: for ADV mode read from Core stages; otherwise fall back to
+    // the raw JSON keys to preserve any pre-existing per-stage input.
     for (int i = 0; i < stages_comboBox->count(); i++) {
-        QString value0_str = "stageTriggerValue0" + QString::number(i);
-        QString inv0_str = "stageTriggerInv0" + QString::number(i);
-        QString value1_str = "stageTriggerValue1" + QString::number(i);
-        QString inv1_str = "stageTriggerInv1" + QString::number(i);
+        QString v0_low, v1_low, v0_ext, v1_ext;
+        int inv0 = 0, inv1 = 0, logic_index = 0, count0 = 1;
+        bool conti = false;
+        if (tcfg.mode() == data::TriggerConfig::Adv && i < (int)tcfg.stages().size()) {
+            const auto &s = tcfg.stages()[i];
+            split_trigger_value(s.value0, v0_ext, v0_low);
+            split_trigger_value(s.value1, v1_ext, v1_low);
+            inv0 = s.inv0;
+            inv1 = s.inv1;
+            logic_index = s.logic & 1;
+            conti = (s.logic >> 1) & 1;
+            count0 = s.count0;
+        } else {
+            v0_low = ses.value("stageTriggerValue0" + QString::number(i)).toString();
+            v1_low = ses.value("stageTriggerValue1" + QString::number(i)).toString();
+            if (_cur_ch_num == 32) {
+                v0_ext = ses.value("stageTriggerExt32Value0" + QString::number(i)).toString();
+                v1_ext = ses.value("stageTriggerExt32Value1" + QString::number(i)).toString();
+            }
+            inv0 = ses.value("stageTriggerInv0" + QString::number(i)).toInt(0);
+            inv1 = ses.value("stageTriggerInv1" + QString::number(i)).toInt(0);
+            logic_index = ses.value("stageTriggerLogic" + QString::number(i)).toInt(0);
+            count0 = ses.value("stageTriggerCount" + QString::number(i)).toInt(1);
+            conti = ses.value("stageTriggerContiguous" + QString::number(i)).toBool(false);
+        }
 
-        QString logic_str = "stageTriggerLogic" + QString::number(i);
-        QString count_str = "stageTriggerCount" + QString::number(i);
-        QString conti_str = "stageTriggerContiguous" + QString::number(i);
-
-        _value0_lineEdit_list.at(i)->setText(ses[value0_str].toString());
+        _value0_lineEdit_list.at(i)->setText(v0_low);
         lineEdit_highlight(_value0_lineEdit_list.at(i));
-        _value1_lineEdit_list.at(i)->setText(ses[value1_str].toString());
+        _value1_lineEdit_list.at(i)->setText(v1_low);
         lineEdit_highlight(_value1_lineEdit_list.at(i));
-        _inv0_comboBox_list.at(i)->setCurrentIndex(ses[inv0_str].toDouble());
-        _inv1_comboBox_list.at(i)->setCurrentIndex(ses[inv1_str].toDouble());
-
-        _logic_comboBox_list.at(i)->setCurrentIndex(ses[logic_str].toDouble());
-        _count_spinBox_list.at(i)->setValue(ses[count_str].toDouble());
-        _contiguous_checkbox_list.at(i)->setChecked(ses[conti_str].toBool());
+        _inv0_comboBox_list.at(i)->setCurrentIndex(inv0);
+        _inv1_comboBox_list.at(i)->setCurrentIndex(inv1);
+        _logic_comboBox_list.at(i)->setCurrentIndex(logic_index);
+        _count_spinBox_list.at(i)->setValue(count0);
+        _contiguous_checkbox_list.at(i)->setChecked(conti);
 
         if (_cur_ch_num == 32) {
-            QString value0_ext32_str = "stageTriggerExt32Value0" + QString::number(i);
-            QString value1_ext32_str = "stageTriggerExt32Value1" + QString::number(i);
-
-            if (ses.contains(value0_ext32_str)) {
-                _value0_ext32_lineEdit_list.at(i)->setText(ses[value0_ext32_str].toString());
+            if (ses.contains("stageTriggerExt32Value0" + QString::number(i)) || !v0_ext.isEmpty()) {
+                _value0_ext32_lineEdit_list.at(i)->setText(v0_ext);
                 lineEdit_highlight(_value0_ext32_lineEdit_list.at(i));
             }
-            if (ses.contains(value1_ext32_str)) {
-                _value1_ext32_lineEdit_list.at(i)->setText(ses[value1_ext32_str].toString());
+            if (ses.contains("stageTriggerExt32Value1" + QString::number(i)) || !v1_ext.isEmpty()) {
+                _value1_ext32_lineEdit_list.at(i)->setText(v1_ext);
                 lineEdit_highlight(_value1_ext32_lineEdit_list.at(i));
             }
         }
     }
 
-    _serial_start_lineEdit->setText(ses["serialTriggerStart"].toString());
+    // Serial UI: for SERIAL mode read from Core stages; otherwise fall back to JSON.
+    QString s_start_low, s_stop_low, s_edge_low, s_start_ext, s_stop_ext, s_edge_ext;
+    if (tcfg.mode() == data::TriggerConfig::Serial && tcfg.stages().size() >= 2) {
+        split_trigger_value(tcfg.stages()[0].value0, s_start_ext, s_start_low);
+        split_trigger_value(tcfg.stages()[0].value1, s_stop_ext, s_stop_low);
+        split_trigger_value(tcfg.stages()[1].value0, s_edge_ext, s_edge_low);
+    } else {
+        s_start_low = ses.value("serialTriggerStart").toString();
+        s_stop_low = ses.value("serialTriggerStop").toString();
+        s_edge_low = ses.value("serialTriggerClock").toString();
+        if (_cur_ch_num == 32) {
+            if (ses.contains("serialTriggerExt32Start"))
+                s_start_ext = ses.value("serialTriggerExt32Start").toString();
+            if (ses.contains("serialTriggerExt32Stop"))
+                s_stop_ext = ses.value("serialTriggerExt32Stop").toString();
+            if (ses.contains("serialTriggerExt32Clock"))
+                s_edge_ext = ses.value("serialTriggerExt32Clock").toString();
+        }
+    }
+    _serial_start_lineEdit->setText(s_start_low);
     lineEdit_highlight(_serial_start_lineEdit);
-    _serial_stop_lineEdit->setText(ses["serialTriggerStop"].toString());
+    _serial_stop_lineEdit->setText(s_stop_low);
     lineEdit_highlight(_serial_stop_lineEdit);
-    _serial_edge_lineEdit->setText(ses["serialTriggerClock"].toString());
+    _serial_edge_lineEdit->setText(s_edge_low);
     lineEdit_highlight(_serial_edge_lineEdit);
-    _serial_data_comboBox->setCurrentIndex(ses["serialTriggerChannel"].toDouble());
-    _serial_value_lineEdit->setText(ses["serialTriggerData"].toString());
+    _serial_data_comboBox->setCurrentIndex(tcfg.serial_data_channel());
+    _serial_value_lineEdit->setText(tcfg.serial_value());
     lineEdit_highlight(_serial_value_lineEdit);
-    _serial_bits_comboBox->setCurrentIndex(ses["serialTriggerBits"].toDouble());
+    _serial_bits_comboBox->setCurrentIndex(tcfg.serial_bits() - 1);
 
     if (_cur_ch_num == 32) {
-        if (ses.contains("serialTriggerExt32Start")) {
-            _serial_start_ext32_lineEdit->setText(ses["serialTriggerExt32Start"].toString());
+        if (!s_start_ext.isEmpty()) {
+            _serial_start_ext32_lineEdit->setText(s_start_ext);
             lineEdit_highlight(_serial_start_ext32_lineEdit);
         }
-        if (ses.contains("serialTriggerExt32Stop")) {
-            _serial_stop_ext32_lineEdit->setText(ses["serialTriggerExt32Stop"].toString());
+        if (!s_stop_ext.isEmpty()) {
+            _serial_stop_ext32_lineEdit->setText(s_stop_ext);
             lineEdit_highlight(_serial_stop_ext32_lineEdit);
         }
-        if (ses.contains("serialTriggerExt32Clock")) {
-            _serial_edge_ext32_lineEdit->setText(ses["serialTriggerExt32Clock"].toString());
+        if (!s_edge_ext.isEmpty()) {
+            _serial_edge_ext32_lineEdit->setText(s_edge_ext);
             lineEdit_highlight(_serial_edge_ext32_lineEdit);
         }
     }

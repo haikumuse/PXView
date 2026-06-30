@@ -175,8 +175,16 @@ bool AppControl::Start()
     auto* active_session = _app_service->get_active_session();
     if (active_session) {
         _direct_transport = new pv::api::DirectTransport(active_session);
+        // Session-scoped events (CaptureStateChanged, SampleConfigChanged, ...).
         active_session->add_event_listener(_ws_transport);
+        active_session->add_event_listener(_mcp_transport);
     }
+
+    // App-scoped events (DeviceConfigChanged, DeviceDetached, ...).
+    // Without this, AppService::_event_listeners stays empty and
+    // AppService::notify_event never reaches any transport.
+    _app_service->add_event_listener(_ws_transport);
+    _app_service->add_event_listener(_mcp_transport);
 
     return true;
 }

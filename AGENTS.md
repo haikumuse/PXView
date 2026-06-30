@@ -12,6 +12,8 @@ Four compiled components: `libsigrok/` (C11 hardware drivers), `libsigrokdecode/
 ./build_incremental.cmd          # Windows (MSYS2 + CMake/Ninja) → install.dir/bin/PXView.exe
 ```
 
+- `build_incremental.cmd`/`.sh` **launches the app after building**. For compile-only (no launch), run the inner commands directly from `build_incremental.sh`: `cd build && ninja -j 16 && ninja install`.
+- MinGW64 toolchain (gcc/g++/ninja/cmake) is already in the system PATH — mingw commands can be invoked directly from any shell without sourcing msys2_shell.
 - Headless: `PXView.exe --headless` — runs without GUI (QCoreApplication), exposes MCP API on port 10110.
 - Options: `ENABLE_COMPAT_DRIVERS` (OFF), `BUILD_DECODER_TEST` (OFF).
 - Deps: Qt6.6+, glib, Python3, FFTW, libusb, zlib, Boost, nlohmann_json.
@@ -66,6 +68,13 @@ The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_S
 - `assert()` is a no-op in Release — use explicit `if(!ptr)` checks.
 - New C decoder: create `libsigrokdecode/c_decoders/<name>_c.c`, add to `C_DECODERS` in CMakeLists.txt, rebuild.
 - ISessionCallback was split into 4 sub-interfaces (IDataCallback/ICaptureCallback/ITriggerCallback/ISessionStateCallback) — no backward-compat shim.
+
+## State Sync Conventions
+
+- **GUI thread marshal:** `MainWindow::OnMessage` and `ICaptureCallback` methods re-invoke onto `qApp->thread()` via `Qt::QueuedConnection` before touching any QWidget — Core worker threads (feed/device/copy) call them synchronously.
+- **Broadcast on state change:** any Core/View mutation that downstream layers track MUST broadcast a `DSV_MSG_*` (or `ServiceEvent` for MCP/WS). Broadcast only at user-interaction entry points, never from rebuild/restore paths (avoids loops).
+- **`_capture_owner_document` lifecycle:** set on `start_capture`, cleared via `clear_capture_owner_document()` when the owner Tab closes (after `join_copy_thread()`). Owner changes broadcast `DSV_MSG_CAPTURE_OWNER_CHANGED`.
+- **Advanced trigger via Core:** ADV/SERIAL trigger config lives in `SigSession::_trigger_config` (`data::TriggerConfig`), persisted by `SessionDocument`. `TriggerDock` writes Core first, then mirrors to `ds_trigger_*`. Broadcast `DSV_MSG_TRIGGER_CONFIG_CHANGED`.
 
 ## Remote Control API (MCP)
 

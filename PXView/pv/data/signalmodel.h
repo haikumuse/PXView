@@ -85,6 +85,9 @@ public:
     inline int trig_type() const { return _trig_type; }
     void set_trig_type(int trig_type);
 
+    inline double trig_value() const { return _trig_value; }
+    void set_trig_value(double v);
+
     bool commit_trig();
 
     // ---- DSO parameters ----
@@ -130,6 +133,7 @@ private:
     bool                _map_default;
 
     int                 _trig_type;
+    double              _trig_value = 0.0;
 
     double              _vertical_offset;
     double              _zero_offset;

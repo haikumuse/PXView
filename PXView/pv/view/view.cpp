@@ -2324,6 +2324,16 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   //    subsequent sync_derived_traces() will be a no-op for decoders.
   signals_changed(NULL);
 
+  // 7. Broadcast so the API layer (SessionService::OnMessage) can push a
+  //    ServiceEvent to MCP/WebSocket clients. View cannot call
+  //    SessionService::broadcast_event directly (View does not depend on the
+  //    API layer), so we forward via SigSession::broadcast_msg. There is no
+  //    dedicated DSV_MSG_DECODER_ADDED; DSV_MSG_DEVICE_OPTIONS_UPDATED is
+  //    mapped by SessionService to DeviceConfigChanged, which triggers state
+  //    synchronization for remote clients. (The MCP add_analyzer path already
+  //    broadcasts DecoderAdded directly; this covers the GUI-triggered path.)
+  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+
   return true;
 }
 
@@ -2392,6 +2402,16 @@ void View::remove_decoder(DecodeTrace *trace) {
   if (key_handel) {
     _session->remove_decoder_by_key_handel(key_handel);
   }
+
+  // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
+  //    View cannot call SessionService::broadcast_event directly (View does
+  //    not depend on the API layer), so we forward via
+  //    SigSession::broadcast_msg. There is no dedicated
+  //    DSV_MSG_DECODER_REMOVED; DSV_MSG_DEVICE_OPTIONS_UPDATED is mapped by
+  //    SessionService to DeviceConfigChanged, which triggers state
+  //    synchronization. (The MCP remove_analyzer path already broadcasts
+  //    DecoderRemoved directly; this covers the GUI-triggered path.)
+  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
 }
 
 void View::remove_decoder(int index) {
@@ -2406,12 +2426,22 @@ void View::on_signals_changed() {
   // (selection, visibility, v_offset, own_height, view_index) for signals
   // that survive the update.
   //
+  // IMPORTANT: SignalModels ALWAYS live in SigSession (_data_source), never
+  // in SessionDocument. SessionDocument::_signal_models is never populated
+  // (it only stores data snapshots via _logic/_analog/_dso). Using
+  // effective_data_source() here was a bug: when _document->has_data() is
+  // true (after a capture), effective_data_source() returns _document, and
+  // create_signals(_document) reads the empty _signal_models vector,
+  // returning an empty list. AllReplaced then deletes all existing view
+  // signals and creates 0 new ones, clearing the waveform tracks
+  // (Header::paintEvent shows traces=1).
+  //
   // This does NOT directly touch _own_decode_traces / _own_spectrum_traces
   // / _own_math_trace / _own_lissajous_trace. Those are derived traces
   // that wrap Core-owned Stack/Model objects and are synced lazily via
   // sync_derived_traces() based on the Stack pointer identity (not the
   // Signal list).
-  SignalFactory::update_signals(_own_signals, effective_data_source(),
+  SignalFactory::update_signals(_own_signals, _data_source,
                                  _session, SignalFactory::AllReplaced);
 
   // Refresh layout and trigger lazy sync of derived traces.

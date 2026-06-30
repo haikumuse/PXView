@@ -151,6 +151,13 @@ private slots:
     void on_tab_detach(int index, QWidget *widget, const QString &title);
     void on_tab_attached(QWidget *widget, const QString &title);
     void on_new_tab_requested();
+
+    // Task 1.3: ICaptureCallback methods now emit EventObject signals (cross-
+    // thread safe); these on_* slots run on the GUI thread to touch the View.
+    void on_update_capture();
+    void on_show_region(quint64 start, quint64 end, bool keep);
+    void on_show_wait_trigger();
+    void on_repeat_hold(int percent);
   
 signals:
     void prgRate(int progress);

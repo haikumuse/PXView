@@ -43,6 +43,7 @@
 #include "data/sessiondocument.h"
 #include "data/sessionsnapshot.h"
 #include "data/signalmodel.h"
+#include "data/triggerconfig.h"
 #include "deviceagent.h"
 #include "dstimer.h"
 #include "eventobject.h"
@@ -357,6 +358,8 @@ public:
   inline bool have_view_data() { return get_signal_snapshot()->have_data(); }
   inline bool is_copy_in_progress() const { return _copy_in_progress; }
   inline data::SessionDocument *get_capture_owner_document() const { return _capture_owner_document; }
+  void clear_capture_owner_document(data::SessionDocument *doc);
+  void join_copy_thread();
 
   void on_load_config_end();
   void init_signals();
@@ -397,6 +400,9 @@ public:
   data::SessionDocument *get_active_document() { return _active_document; }
   void copy_data_to_document(data::SessionDocument *doc);
   void attach_data_to_signal(SessionData *data);
+
+  inline const data::TriggerConfig& trigger_config() const { return _trigger_config; }
+  void set_trigger_config(const data::TriggerConfig& cfg);
 
   void register_document(data::SessionDocument *doc) {
     _all_documents.push_back(doc);
@@ -688,6 +694,8 @@ private:
   bool _signal_invert_running;
   volatile bool _copy_in_progress;
   data::SessionDocument *_capture_owner_document;
+  std::thread _copy_thread;
+  data::TriggerConfig _trigger_config;
 };
 
 } // namespace pv
