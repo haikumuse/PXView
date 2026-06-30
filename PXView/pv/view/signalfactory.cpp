@@ -70,7 +70,7 @@ static sr_channel* find_probe_by_index(SigSession *session, int index)
  * Apply properties (name, color, enabled, visible) from a SignalModel to
  * an already-constructed view::Signal.
  */
-static void apply_model_properties(Signal *signal, data::SignalModel *model)
+static void apply_model_properties(Signal *signal, std::shared_ptr<data::SignalModel> model)
 {
     if (!signal || !model)
         return;
@@ -91,13 +91,13 @@ static void apply_model_properties(Signal *signal, data::SignalModel *model)
         // UniqueConnection prevents duplicate connections when apply_model_properties
         // is called again (e.g. via update_signals(Modified)).
         // Connection is auto-disconnected when either object is destroyed.
-        QObject::connect(model, &data::SignalModel::trig_type_changed,
+        QObject::connect(model.get(), &data::SignalModel::trig_type_changed,
                          logic_sig, &LogicSignal::set_trig,
                          Qt::UniqueConnection);
     }
 }
 
-Signal* SignalFactory::create_signal(data::SignalModel *model, SigSession *session)
+Signal* SignalFactory::create_signal(std::shared_ptr<data::SignalModel> model, SigSession *session)
 {
     if (!model || !session)
         return nullptr;
@@ -135,7 +135,7 @@ std::vector<Signal*> SignalFactory::create_signals(data::DataSource *source, Sig
 
     auto &models = source->get_signal_models();
     result.reserve(models.size());
-    for (auto *model : models) {
+    for (auto model : models) {
         Signal *s = create_signal(model, session);
         if (s)
             result.push_back(s);
@@ -177,7 +177,7 @@ void SignalFactory::update_signals(std::vector<Signal*> &current_signals,
 
     case Added: {
         // Create signals for models that have no matching signal yet.
-        for (auto *model : models) {
+        for (auto model : models) {
             bool exists = false;
             for (auto *s : current_signals) {
                 if (s->get_index() == model->index()) {
@@ -199,7 +199,7 @@ void SignalFactory::update_signals(std::vector<Signal*> &current_signals,
         std::vector<Signal*> to_remove;
         for (auto *s : current_signals) {
             bool found = false;
-            for (auto *model : models) {
+            for (auto model : models) {
                 if (model->index() == s->get_index()) {
                     found = true;
                     break;
@@ -221,7 +221,7 @@ void SignalFactory::update_signals(std::vector<Signal*> &current_signals,
     case Modified: {
         // Refresh properties of existing signals from the models.
         for (auto *s : current_signals) {
-            for (auto *model : models) {
+            for (auto model : models) {
                 if (model->index() != s->get_index())
                     continue;
                 apply_model_properties(s, model);

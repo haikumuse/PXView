@@ -625,7 +625,7 @@ Result<int> SessionService::configure_and_start(
         }
 
         // Update SignalModels so the UI renders the trigger
-        for (auto *model : _session->get_signal_models()) {
+        for (auto model : _session->get_signal_models()) {
             if (model->type() != api::ChannelType::Logic)
                 continue;
                 
@@ -692,7 +692,7 @@ Result<int> SessionService::configure_and_start(
     // already-correct value.
     if (trigger_channel_index >= 0) {
         auto &sigs = _session->get_signal_models();
-        for (auto *m : sigs) {
+        for (auto m : sigs) {
             if (!m || m->type() != api::ChannelType::Logic)
                 continue;
 
@@ -1704,7 +1704,7 @@ std::vector<SignalInfo> SessionService::get_signal_list() const {
         return result;
 
     auto &sig_list = _session->get_signal_models();
-    for (auto *m : sig_list) {
+    for (auto m : sig_list) {
         if (!m)
             continue;
 
@@ -2093,16 +2093,16 @@ Result<json> SessionService::get_decoder_options(const std::string& decoder_id) 
     json available_signals = json::array();
     if (_session) {
         auto &sig_list = _session->get_signal_models();
-        for (auto *m : sig_list) {
+        for (auto m : sig_list) {
             if (!m || !m->enabled())
                 continue;
             // Only logic signals can be mapped to decoder channels
             if (m->type() != ChannelType::Logic)
                 continue;
-            available_signals.push_back({
-                {"index", m->index()},
-                {"name", m->name()}
-            });
+            json sig;
+            sig["index"] = m->index();
+            sig["name"] = m->name();
+            available_signals.push_back(sig);
         }
     }
     result["availableSignals"] = available_signals;
@@ -2117,13 +2117,13 @@ std::vector<DecoderInstance> SessionService::get_active_decoders() const {
 
     auto &stacks = _session->get_decoder_stacks(_api_document);
     for (size_t i = 0; i < stacks.size(); i++) {
-        auto *stack = stacks[i];
+        auto stack = stacks[i];
         if (!stack)
             continue;
 
         DecoderInstance inst;
         inst.instance_id = std::to_string(
-            reinterpret_cast<intptr_t>(stack));
+            reinterpret_cast<intptr_t>(stack.get()));
         inst.row_index = static_cast<int32_t>(i);
 
         inst.is_running = stack->IsRunning();
@@ -2174,11 +2174,11 @@ Result<std::string> SessionService::add_decoder(
             // Find the parent DecoderStack by converting the analyzer ID
             // (which is the string representation of the stack pointer)
             auto &stacks = _session->get_decoder_stacks(_api_document);
-            data::DecoderStack *parent_stack = nullptr;
-            for (auto *stack : stacks) {
+            std::shared_ptr<data::DecoderStack> parent_stack = nullptr;
+            for (auto stack : stacks) {
                 if (!stack) continue;
                 std::string tid =
-                    std::to_string(reinterpret_cast<intptr_t>(stack));
+                    std::to_string(reinterpret_cast<intptr_t>(stack.get()));
                 if (tid == stack_on_analyzer_id) {
                     parent_stack = stack;
                     break;
@@ -2189,7 +2189,7 @@ Result<std::string> SessionService::add_decoder(
                 return Result<std::string>::Fail(ErrorCode::DecoderNotFound,
                                                  "Parent analyzer not found: " + stack_on_analyzer_id);
 
-            auto *decoder_stack = parent_stack;
+            auto decoder_stack = parent_stack;
 
             // Create the new sub-decoder and add it to the parent stack
             auto *new_decoder = new data::decode::Decoder(dec);
@@ -2300,7 +2300,7 @@ Result<std::string> SessionService::add_decoder(
             _session->rebuild_decoder_pannel();
 
             std::string instance_id =
-                std::to_string(reinterpret_cast<intptr_t>(parent_stack));
+                std::to_string(reinterpret_cast<intptr_t>(parent_stack.get()));
 
             broadcast_event(ServiceEvent::DecoderAdded,
                             {{"instance_id", instance_id},
@@ -2322,8 +2322,14 @@ Result<std::string> SessionService::add_decoder(
         // Start decode if data is ready and copy is not in progress
         {
             std::string instance_id = result.value();
-            auto *decoder_stack = reinterpret_cast<data::DecoderStack*>(
-                std::stoll(instance_id));
+            std::shared_ptr<data::DecoderStack> decoder_stack;
+            auto &stacks = _session->get_decoder_stacks(_api_document);
+            for (auto stack : stacks) {
+                if (std::to_string(reinterpret_cast<intptr_t>(stack.get())) == instance_id) {
+                    decoder_stack = stack;
+                    break;
+                }
+            }
 
             if (decoder_stack && decoder_stack->options_changed() &&
                 _session->have_view_data() &&
@@ -2447,7 +2453,7 @@ Result<std::string> SessionService::add_decoder(
         // If copy is NOT in progress, we defer the decode start to after
         // do_add() returns using QTimer::singleShot.
 
-        data::DecoderStack *decoder_stack = nullptr;
+        std::shared_ptr<data::DecoderStack> decoder_stack;
         std::list<pv::data::decode::Decoder *> sub_decoders;
         // DecoderStatus must be heap-allocated; DecoderStack stores the pointer
         // and uses it for the lifetime of the decode trace.
@@ -2714,7 +2720,7 @@ Result<std::string> SessionService::add_decoder(
         _session->rebuild_decoder_pannel();
 
         std::string instance_id =
-            std::to_string(reinterpret_cast<intptr_t>(decoder_stack));
+            std::to_string(reinterpret_cast<intptr_t>(decoder_stack.get()));
 
         broadcast_event(ServiceEvent::DecoderAdded,
                         {{"instance_id", instance_id},
@@ -2741,8 +2747,14 @@ Result<std::string> SessionService::add_decoder(
     // get a duplicate decode task.
     {
         std::string instance_id = result.value();
-        auto *decoder_stack = reinterpret_cast<data::DecoderStack*>(
-            std::stoll(instance_id));
+        std::shared_ptr<data::DecoderStack> decoder_stack;
+        auto &stacks = _session->get_decoder_stacks(_api_document);
+        for (auto stack : stacks) {
+            if (std::to_string(reinterpret_cast<intptr_t>(stack.get())) == instance_id) {
+                decoder_stack = stack;
+                break;
+            }
+        }
 
         // Only start decode if copy is NOT in progress.
         // If copy is in progress, DSV_MSG_COPY_TO_DOC_DONE handler
@@ -2812,7 +2824,7 @@ Result<std::string> SessionService::add_decoder(
                         QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
                             auto &stacks = _session->get_decoder_stacks(_api_document);
                             for (size_t i = 0; i < stacks.size(); i++) {
-                                if (stacks[i] == decoder_stack) {
+                                if (stacks[i].get() == decoder_stack) {
                                     _session->remove_decoder(static_cast<int>(i), _api_document);
                                     break;
                                 }
@@ -2843,7 +2855,7 @@ Result<std::string> SessionService::add_decoder(
                         QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
                             auto &stacks = _session->get_decoder_stacks(_api_document);
                             for (size_t i = 0; i < stacks.size(); i++) {
-                                if (stacks[i] == decoder_stack) {
+                                if (stacks[i].get() == decoder_stack) {
                                     _session->remove_decoder(static_cast<int>(i), _api_document);
                                     break;
                                 }
@@ -2880,12 +2892,12 @@ Result<void> SessionService::remove_decoder(const std::string &instance_id) {
     auto do_remove = [this, &instance_id]() -> Result<void> {
         auto &stacks = _session->get_decoder_stacks(_api_document);
         for (size_t i = 0; i < stacks.size(); i++) {
-            auto *stack = stacks[i];
+            auto stack = stacks[i];
             if (!stack)
                 continue;
 
             std::string tid =
-                std::to_string(reinterpret_cast<intptr_t>(stack));
+                std::to_string(reinterpret_cast<intptr_t>(stack.get()));
             if (tid == instance_id) {
                 _session->remove_decoder(static_cast<int>(i), _api_document);
 
@@ -2913,11 +2925,11 @@ Result<void> SessionService::clear_all_decoders() {
     auto &stacks_before = _session->get_decoder_stacks(_api_document);
     std::vector<std::string> removed_ids;
     removed_ids.reserve(stacks_before.size());
-    for (auto *stack : stacks_before) {
+    for (auto stack : stacks_before) {
         if (!stack)
             continue;
         removed_ids.push_back(
-            std::to_string(reinterpret_cast<intptr_t>(stack)));
+            std::to_string(reinterpret_cast<intptr_t>(stack.get())));
     }
 
     // bUpdateView=true so the View layer refreshes; we emit DecoderRemoved
@@ -2959,10 +2971,10 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
                 .arg(QString::fromStdString(instance_id))
                 .arg(stacks.size());
             s_dbg.write(msg.toUtf8());
-            for (auto *stack : stacks) {
-                std::string tid = std::to_string(reinterpret_cast<intptr_t>(stack));
+            for (auto stack : stacks) {
+                std::string tid = std::to_string(reinterpret_cast<intptr_t>(stack.get()));
                 msg = QString("  stack: ptr=%1, tid='%2'\n")
-                    .arg(reinterpret_cast<quintptr>(stack))
+                    .arg(reinterpret_cast<quintptr>(stack.get()))
                     .arg(QString::fromStdString(tid));
                 s_dbg.write(msg.toUtf8());
             }
@@ -2970,12 +2982,12 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
         }
     }
 
-    data::DecoderStack *target_stack = nullptr;
-    for (auto *stack : stacks) {
+    std::shared_ptr<data::DecoderStack> target_stack = nullptr;
+    for (auto stack : stacks) {
         if (!stack)
             continue;
         std::string tid =
-            std::to_string(reinterpret_cast<intptr_t>(stack));
+            std::to_string(reinterpret_cast<intptr_t>(stack.get()));
         if (tid == instance_id) {
             target_stack = stack;
             break;
@@ -2986,7 +2998,7 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
         return Result<std::vector<DecoderAnnotation>>::Fail(
             ErrorCode::DecoderNotFound, "Decoder instance not found");
 
-    auto *decoder_stack = target_stack;
+    auto decoder_stack = target_stack;
 
     std::vector<DecoderAnnotation> result;
     int row_count = decoder_stack->list_rows_size();
@@ -3325,7 +3337,7 @@ Result<void> SessionService::export_binary(const ExportConfig &config) {
     std::vector<int32_t> channels = config.channels;
     if (channels.empty()) {
         auto &sig_list = _session->get_signal_models();
-        for (auto *m : sig_list) {
+        for (auto m : sig_list) {
             if (m && m->enabled())
                 channels.push_back(m->index());
         }
@@ -3335,7 +3347,7 @@ Result<void> SessionService::export_binary(const ExportConfig &config) {
         // Determine channel type from SignalModel
         auto &sig_list = _session->get_signal_models();
         ChannelType ch_type = ChannelType::Logic;
-        for (auto *m : sig_list) {
+        for (auto m : sig_list) {
             if (m && m->index() == ch_idx) {
                 ch_type = m->type();
                 break;
@@ -3429,21 +3441,21 @@ Result<void> SessionService::export_decoder_table(
     uint64_t samplerate = _session->cur_samplerate();
 
     // Determine which decoders to export
-    std::vector<std::pair<data::DecoderStack*, int>> selected;
+    std::vector<std::pair<std::shared_ptr<data::DecoderStack>, int>> selected;
     if (analyzers.empty()) {
         // Export all decoders
         for (size_t i = 0; i < stacks.size(); i++) {
             if (stacks[i])
-                selected.push_back({stacks[i], 4}); // default Ascii radix
+                selected.push_back(std::make_pair(stacks[i], 4)); // default Ascii radix
         }
     } else {
         for (const auto &cfg : analyzers) {
-            for (auto *stack : stacks) {
+            for (auto stack : stacks) {
                 if (!stack) continue;
                 std::string tid =
-                    std::to_string(reinterpret_cast<intptr_t>(stack));
+                    std::to_string(reinterpret_cast<intptr_t>(stack.get()));
                 if (tid == cfg.analyzer_id) {
-                    selected.push_back({stack, cfg.radix_type});
+                    selected.push_back(std::make_pair(stack, cfg.radix_type));
                     break;
                 }
             }
@@ -3465,7 +3477,7 @@ Result<void> SessionService::export_decoder_table(
     out << "start_sample,end_sample,analyzer_name,annotation_class,text\n";
 
     for (auto &[stack, radix] : selected) {
-        auto *decoder_stack = stack;
+        auto decoder_stack = stack;
         if (!decoder_stack)
             continue;
 
@@ -3621,7 +3633,7 @@ Result<void> SessionService::export_raw_data_binary(
     if (all_channels.empty()) {
         // Default to all enabled channels
         auto &sig_list = _session->get_signal_models();
-        for (auto *m : sig_list) {
+        for (auto m : sig_list) {
             if (m && m->enabled())
                 all_channels.push_back(m->index());
         }
@@ -3763,7 +3775,7 @@ Result<void> SessionService::enable_math(int16_t ch1, int16_t ch2,
     bool found_ch1 = false;
     bool found_ch2 = false;
     auto &sig_list = _session->get_signal_models();
-    for (auto *m : sig_list) {
+    for (auto m : sig_list) {
         if (!m) continue;
         if (m->type() != ChannelType::Dso) continue;
         if (m->index() == ch1) found_ch1 = true;
@@ -3821,12 +3833,12 @@ void SessionService::data_updated() {
     // Check for decode progress and emit DecodeProgress events
     if (_session) {
         auto &stacks = _session->get_decoder_stacks(_api_document);
-        for (auto *stack : stacks) {
+        for (auto stack : stacks) {
             if (!stack) continue;
             if (stack->IsRunning()) {
                 int progress = stack->get_progress();
                 std::string instance_id =
-                    std::to_string(reinterpret_cast<intptr_t>(stack));
+                    std::to_string(reinterpret_cast<intptr_t>(stack.get()));
                 broadcast_event(ServiceEvent::DecodeProgress,
                                 {{"instance_id", instance_id},
                                  {"progress", std::to_string(progress)}});

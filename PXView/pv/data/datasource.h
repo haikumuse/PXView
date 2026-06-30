@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <memory>
 
 namespace pv {
 
@@ -57,11 +58,11 @@ public:
     virtual ~DataSource() {}
 
     // ---- New v2 pure-data interface (no view::* types) ----
-    virtual std::vector<SignalModel*>& get_signal_models() = 0;
-    virtual std::vector<DecoderStack*>& get_decoder_stacks(
+    virtual std::vector<std::shared_ptr<SignalModel>>& get_signal_models() = 0;
+    virtual std::vector<std::shared_ptr<DecoderStack>>& get_decoder_stacks(
         SessionDocument *doc = nullptr) = 0;
-    virtual std::vector<SpectrumStack*>& get_spectrum_stacks() = 0;
-    virtual MathStack* get_math_stack() = 0;
+    virtual std::vector<std::shared_ptr<SpectrumStack>>& get_spectrum_stacks() = 0;
+    virtual std::shared_ptr<MathStack> get_math_stack() = 0;
     virtual LissajousModel* get_lissajous_model() = 0;
 
     // ---- Data access (unchanged) ----

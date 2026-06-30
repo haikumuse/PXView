@@ -50,14 +50,49 @@ SignalModel::~SignalModel()
 }
 
 void SignalModel::set_index(int index) { _index = index; }
-void SignalModel::set_name(const std::string &name) { _name = name; }
+void SignalModel::set_name(const std::string &name) { 
+    if (_name != name) {
+        _name = name; 
+        emit appearance_changed();
+    }
+}
 void SignalModel::set_type(api::ChannelType type) { _type = type; }
-void SignalModel::set_enabled(bool enabled) { _enabled = enabled; }
-void SignalModel::set_color(const std::string &color) { _color = color; }
-void SignalModel::set_vdiv(double vdiv) { _vdiv = vdiv; }
-void SignalModel::set_coupling(int coupling) { _coupling = coupling; }
-void SignalModel::set_vfactor(double vfactor) { _vfactor = vfactor; }
-void SignalModel::set_map_default(bool map_default) { _map_default = map_default; }
+void SignalModel::set_enabled(bool enabled) { 
+    if (_enabled != enabled) {
+        _enabled = enabled; 
+        emit visibility_changed();
+    }
+}
+void SignalModel::set_color(const std::string &color) { 
+    if (_color != color) {
+        _color = color; 
+        emit appearance_changed();
+    }
+}
+void SignalModel::set_vdiv(double vdiv) { 
+    if (_vdiv != vdiv) {
+        _vdiv = vdiv; 
+        emit appearance_changed();
+    }
+}
+void SignalModel::set_coupling(int coupling) { 
+    if (_coupling != coupling) {
+        _coupling = coupling; 
+        emit appearance_changed();
+    }
+}
+void SignalModel::set_vfactor(double vfactor) { 
+    if (_vfactor != vfactor) {
+        _vfactor = vfactor; 
+        emit appearance_changed();
+    }
+}
+void SignalModel::set_map_default(bool map_default) { 
+    if (_map_default != map_default) {
+        _map_default = map_default; 
+        emit appearance_changed();
+    }
+}
 void SignalModel::set_trig_type(int trig_type) {
     if (_trig_type != trig_type) {
         _trig_type = trig_type;

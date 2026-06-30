@@ -2858,7 +2858,7 @@ void MainWindow::OnMessage(int msg) {
       // Task 2.6 (R2): apply_pending_config 触发 reload 重建 SignalModel，
       // 从 _signal_config 回写 trig_type 到新建的 SignalModel（参考 tabcontext.cpp:86-95）。
       for (const auto &ch : ctx->document()->get_signal_config().channels) {
-        data::SignalModel *m = _session->get_signal_by_index(ch.index);
+        auto m = _session->get_signal_by_index(ch.index);
         if (m)
           m->set_trig_type(ch.trig_type);
       }

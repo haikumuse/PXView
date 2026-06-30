@@ -103,17 +103,15 @@ void SessionDocument::clear() {
   _trigger_pos = 0;
 
   for (auto m : _signal_models) {
-    delete m;
   }
   _signal_models.clear();
 
   for (auto s : _spectrum_stacks) {
-    delete s;
   }
   _spectrum_stacks.clear();
 
   if (_math_stack) {
-    delete _math_stack;
+    _math_stack.reset();
     _math_stack = nullptr;
   }
 
@@ -123,18 +121,18 @@ void SessionDocument::clear() {
   }
 }
 
-std::vector<DecoderStack *> &
+std::vector<std::shared_ptr<DecoderStack>> &
 SessionDocument::get_decoder_stacks(SessionDocument *doc) {
   (void)doc; // A SessionDocument always returns its own stacks.
   return _decoder_stacks;
 }
 
-void SessionDocument::add_decoder_stack(DecoderStack *stack) {
+void SessionDocument::add_decoder_stack(std::shared_ptr<DecoderStack> stack) {
   if (stack)
     _decoder_stacks.push_back(stack);
 }
 
-void SessionDocument::remove_decoder_stack(DecoderStack *stack) {
+void SessionDocument::remove_decoder_stack(std::shared_ptr<DecoderStack> stack) {
   auto it = std::find(_decoder_stacks.begin(), _decoder_stacks.end(), stack);
   if (it != _decoder_stacks.end())
     _decoder_stacks.erase(it);
@@ -146,15 +144,15 @@ void SessionDocument::set_decoder_model(DecoderModel *model) {
   _decoder_model = model;
 }
 
-std::vector<SignalModel *> &SessionDocument::get_signal_models() {
+std::vector<std::shared_ptr<SignalModel>> &SessionDocument::get_signal_models() {
   return _signal_models;
 }
 
-std::vector<SpectrumStack *> &SessionDocument::get_spectrum_stacks() {
+std::vector<std::shared_ptr<SpectrumStack>> &SessionDocument::get_spectrum_stacks() {
   return _spectrum_stacks;
 }
 
-MathStack *SessionDocument::get_math_stack() { return _math_stack; }
+std::shared_ptr<MathStack> SessionDocument::get_math_stack() { return _math_stack; }
 
 LissajousModel *SessionDocument::get_lissajous_model() {
   return _lissajous_model;
@@ -263,7 +261,7 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
 
 void SessionDocument::save_signal_config(
     DeviceAgent *agent, const std::map<int, bool> &channel_visibility,
-    const std::vector<SignalModel *> &signal_models,
+    const std::vector<std::shared_ptr<SignalModel>> &signal_models,
     const std::map<int, ChannelLayoutState> &channel_layout) {
   if (!agent || !agent->have_instance()) {
     pxv_info(
@@ -327,7 +325,7 @@ void SessionDocument::save_signal_config(
     // R2: 保存 Logic 通道触发类型 (trig_type 存于 SignalModel，不在 sr_channel
     // 中)
     if (mode == LOGIC) {
-      for (auto *m : signal_models) {
+      for (auto m : signal_models) {
         if (m && m->index() == cfg.index) {
           cfg.trig_type = m->trig_type();
           break;

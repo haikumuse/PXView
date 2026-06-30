@@ -118,7 +118,7 @@ const QColor DecodeTrace::OutlineColours[16] = {
     QColor(0x61, 0x31, 0x4D), QColor(0x6B, 0x23, 0x37)};
 
 DecodeTrace::DecodeTrace(pv::SigSession *session,
-                         pv::data::DecoderStack *decoder_stack, int index)
+                         std::shared_ptr<pv::data::DecoderStack> decoder_stack, int index)
     : Trace(QString::fromUtf8(decoder_stack->stack().front()->decoder()->name),
             index, SR_CHANNEL_DECODER) {
   assert(decoder_stack);
@@ -131,10 +131,10 @@ DecodeTrace::DecodeTrace(pv::SigSession *session,
   _decode_cursor1 = 0;
   _decode_cursor2 = 0;
 
-  connect(_decoder_stack, &data::DecoderStack::new_decode_data, this,
+  connect(_decoder_stack.get(), &data::DecoderStack::new_decode_data, this,
           &DecodeTrace::on_new_decode_data);
 
-  connect(_decoder_stack, &data::DecoderStack::decode_done, this,
+  connect(_decoder_stack.get(), &data::DecoderStack::decode_done, this,
           &DecodeTrace::on_decode_done);
 }
 

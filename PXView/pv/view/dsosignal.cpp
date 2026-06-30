@@ -299,7 +299,7 @@ bool DsoSignal::go_vDialPre(bool manul)
         _view->update();
         // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press / 键盘快捷键）。
         if (session) {
-            data::SignalModel *m = session->get_signal_by_index(_probe->index);
+            auto m = session->get_signal_by_index(_probe->index);
             if (m) m->set_vdiv((double)_vDial->get_value());
             session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         }
@@ -340,7 +340,7 @@ bool DsoSignal::go_vDialNext(bool manul)
         _view->update();
         // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press / 键盘快捷键）。
         if (session) {
-            data::SignalModel *m = session->get_signal_by_index(_probe->index);
+            auto m = session->get_signal_by_index(_probe->index);
             if (m) m->set_vdiv((double)_vDial->get_value());
             session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         }
@@ -485,7 +485,7 @@ void DsoSignal::set_acCoupling(uint8_t coupling)
                               _acCoupling, _probe, NULL);
         // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press AC/DC 切换）。
         if (session) {
-            data::SignalModel *m = session->get_signal_by_index(_probe->index);
+            auto m = session->get_signal_by_index(_probe->index);
             if (m) m->set_coupling((int)coupling);
             session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         }
@@ -554,7 +554,7 @@ void DsoSignal::set_trig_ratio(double ratio, bool delta_change)
     // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON 恢复路径
     // (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
     if (session) {
-        data::SignalModel *m = session->get_signal_by_index(_probe->index);
+        auto m = session->get_signal_by_index(_probe->index);
         if (m) m->set_trig_value((double)_trig_value);
     }
 }
@@ -596,7 +596,7 @@ void DsoSignal::set_zero_ratio(double ratio)
     // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON 恢复路径
     // (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
     if (session) {
-        data::SignalModel *m = session->get_signal_by_index(_probe->index);
+        auto m = session->get_signal_by_index(_probe->index);
         if (m) m->set_zero_offset((double)_zero_offset);
     }
 }
@@ -621,7 +621,7 @@ void DsoSignal::set_factor(uint64_t factor)
             _view->update();
             // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press X1/X10/X100）。
             if (session) {
-                data::SignalModel *m = session->get_signal_by_index(_probe->index);
+                auto m = session->get_signal_by_index(_probe->index);
                 if (m) m->set_vfactor((double)factor);
                 session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
             }

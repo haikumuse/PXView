@@ -136,7 +136,7 @@ void SpectrumStack::calc_fft()
     _spectrum_state = Running;
     // Get the dso data
     pv::data::DsoSnapshot *data = NULL;
-    pv::data::SignalModel *model = NULL;
+    std::shared_ptr<pv::data::SignalModel> model;
 
     for(auto m : _session->get_signal_models()) {
         if (m->type() == pv::api::ChannelType::Dso) {

@@ -194,11 +194,11 @@ public:
     _confirm_store_time_id = _work_time_id;
   }
 
-  std::vector<data::SignalModel *> &get_signal_models() override;
+  std::vector<std::shared_ptr<data::SignalModel>> &get_signal_models() override;
 
   bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
                    std::list<pv::data::decode::Decoder *> &sub_decoders,
-                   data::DecoderStack *&out_stack,
+                   std::shared_ptr<data::DecoderStack> &out_stack,
                    data::SessionDocument *doc = nullptr);
   int get_trace_index_by_key_handel(void *handel,
                                     data::SessionDocument *doc = nullptr);
@@ -206,7 +206,7 @@ public:
   void remove_decoder_by_key_handel(void *handel,
                                     data::SessionDocument *doc = nullptr);
 
-  std::vector<data::DecoderStack *> &get_decoder_stacks(
+  std::vector<std::shared_ptr<data::DecoderStack>> &get_decoder_stacks(
       data::SessionDocument *doc = nullptr) override;
 
   void rst_decoder(int index, data::SessionDocument *doc = nullptr);
@@ -217,7 +217,7 @@ public:
     return _decoder_model;
   }
 
-  inline std::vector<data::SpectrumStack *> &get_spectrum_stacks() override {
+  inline std::vector<std::shared_ptr<data::SpectrumStack>> &get_spectrum_stacks() override {
     return _spectrum_stacks;
   }
 
@@ -225,7 +225,7 @@ public:
     return _lissajous_model;
   }
 
-  inline data::MathStack *get_math_stack() override { return _math_stack; }
+  inline std::shared_ptr<data::MathStack> get_math_stack() override { return _math_stack; }
 
   uint16_t get_ch_num(int type);
 
@@ -351,9 +351,9 @@ public:
   void add_msg_listener(IMessageListener *ln);
   void broadcast_msg(int msg);
   bool have_new_realtime_refresh(bool keep);
-  data::DecoderStack *get_decoder_trace(int index,
+  std::shared_ptr<data::DecoderStack> get_decoder_trace(int index,
                                         data::SessionDocument *doc = nullptr);
-  data::SignalModel *get_signal_by_index(int index);
+  std::shared_ptr<data::SignalModel> get_signal_by_index(int index);
 
   inline bool have_view_data() { return get_signal_snapshot()->have_data(); }
   inline bool is_copy_in_progress() const { return _copy_in_progress; }
@@ -367,7 +367,7 @@ public:
   inline bool is_doing_action() { return _is_action; }
 
   void clear_view_data();
-  void set_trace_name(data::SignalModel *model, QString name);
+  void set_trace_name(std::shared_ptr<data::SignalModel> model, QString name);
   void set_decoder_row_label(int index, QString label);
 
   inline void set_decoder_pannel(IDecoderPannel *pannel) {
@@ -381,8 +381,8 @@ public:
 
   void update_dso_data_scale();
 
-  void add_decode_task(data::DecoderStack *stack);
-  void remove_decode_task(data::DecoderStack *stack);
+  void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
+  void remove_decode_task(std::shared_ptr<data::DecoderStack> stack);
 
   inline sr_status get_dso_status() { return _dso_status; }
 
@@ -414,7 +414,7 @@ public:
   }
   void clear_all_documents_decoders();
 
-  inline std::vector<data::DecoderStack *> &decode_traces(
+  inline std::vector<std::shared_ptr<data::DecoderStack>> &decode_traces(
       data::SessionDocument *doc = nullptr) {
     return get_decoder_stacks(doc);
   }
@@ -547,7 +547,7 @@ private:
     clear_all_decode_task(run_dex);
   }
 
-  void decode_single_task(data::DecoderStack *task);
+  void decode_single_task(std::shared_ptr<data::DecoderStack> task);
 
   void capture_init();
   void nodata_timeout();
@@ -611,7 +611,7 @@ private:
 
   inline void data_unlock() { _data_lock = false; }
 
-  data::SignalModel *get_channel_by_index(int orgIndex);
+  std::shared_ptr<data::SignalModel> get_channel_by_index(int orgIndex);
   void make_channels_view_index(int start_dex = -1);
 
 private:
@@ -619,14 +619,14 @@ private:
   mutable std::mutex _data_mutex;
   mutable std::mutex _running_tasks_mutex;
   std::vector<std::thread> _decode_threads;
-  std::vector<data::DecoderStack *> _running_tasks;
+  std::vector<std::shared_ptr<data::DecoderStack>> _running_tasks;
 
-  std::vector<data::SignalModel *> _signal_models;
-  static std::vector<data::DecoderStack *> _empty_decoder_stacks;
+  std::vector<std::shared_ptr<data::SignalModel>> _signal_models;
+  static std::vector<std::shared_ptr<data::DecoderStack>> _empty_decoder_stacks;
   pv::data::DecoderModel *_decoder_model;
-  std::vector<data::SpectrumStack *> _spectrum_stacks;
+  std::vector<std::shared_ptr<data::SpectrumStack>> _spectrum_stacks;
   data::LissajousModel *_lissajous_model = nullptr;
-  data::MathStack *_math_stack = nullptr;
+  std::shared_ptr<data::MathStack> _math_stack = nullptr;
 
   DiskCacheConfig _disk_cache_config;
 

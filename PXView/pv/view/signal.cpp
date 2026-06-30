@@ -66,7 +66,7 @@ void Signal::set_enabled(bool en)
     // Task 6.1: 同步写回 Core SignalModel->enabled，保证 headless API 读取到最新状态。
     // 不广播：由调用方（用户交互入口）负责广播，避免 rebuild 循环。
     if (_probe && session) {
-        data::SignalModel *model = session->get_signal_by_index(_probe->index);
+        auto model = session->get_signal_by_index(_probe->index);
         if (model)
             model->set_enabled(en);
     }

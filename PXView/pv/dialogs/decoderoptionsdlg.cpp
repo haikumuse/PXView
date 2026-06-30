@@ -471,7 +471,7 @@ void DecoderOptionsDlg::create_decoder_form(
     binding->add_properties_to_form(decoder_form, false, font);
 	_bindings.push_back(binding);
   
-    auto group = new pv::widgets::DecoderGroupBox(_trace->decoder(), 
+    auto group = new pv::widgets::DecoderGroupBox(_trace->decoder().get(), 
                             dec, 
                             decoder_form, 
                             parent, font);

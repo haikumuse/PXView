@@ -357,7 +357,7 @@ void AnalogSignal::set_zero_ratio(double ratio)
     // Task 7.3: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON 恢复路径
     // (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
     if (session) {
-        data::SignalModel *m = session->get_signal_by_index(_probe->index);
+        auto m = session->get_signal_by_index(_probe->index);
         if (m) m->set_zero_offset((double)_zero_offset);
     }
 }

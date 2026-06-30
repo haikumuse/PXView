@@ -87,7 +87,7 @@ void SessionData::clear() {
   _signal_invert_channels.clear();
 }
 
-std::vector<data::DecoderStack *> SigSession::_empty_decoder_stacks;
+std::vector<std::shared_ptr<data::DecoderStack>> SigSession::_empty_decoder_stacks;
 
 SigSession::SigSession() {
   _map_zoom = 0;
@@ -864,7 +864,7 @@ bool SigSession::get_capture_status(bool &triggered, int &progress) {
   return false;
 }
 
-std::vector<data::SignalModel *> &SigSession::get_signal_models() {
+std::vector<std::shared_ptr<data::SignalModel>> &SigSession::get_signal_models() {
   return _signal_models;
 }
 
@@ -892,7 +892,7 @@ void SigSession::init_signals() {
     assert(false);
   }
 
-  std::vector<data::SignalModel *> models;
+  std::vector<std::shared_ptr<data::SignalModel>> models;
   unsigned int logic_probe_count = 0;
   unsigned int dso_probe_count = 0;
   unsigned int analog_probe_count = 0;
@@ -968,7 +968,7 @@ void SigSession::init_signals() {
     }
 
     if (should_create) {
-      auto *model = new data::SignalModel();
+      auto model = std::make_shared<data::SignalModel>();
       model->set_index(probe->index);
       model->set_name(probe->name ? probe->name : "");
       model->set_type(ch_type);
@@ -1025,7 +1025,7 @@ void SigSession::init_signals() {
   }
 
   clear_signals();
-  std::vector<data::SignalModel *>().swap(_signal_models);
+  std::vector<std::shared_ptr<data::SignalModel>>().swap(_signal_models);
   _signal_models = models;
   make_channels_view_index();
 
@@ -1051,7 +1051,7 @@ void SigSession::reload() {
   if (_is_working)
     return;
 
-  std::vector<data::SignalModel *> models;
+  std::vector<std::shared_ptr<data::SignalModel>> models;
   int mode = _device_agent.get_work_mode();
 
   set_cur_snap_samplerate(_device_agent.get_sample_rate());
@@ -1090,15 +1090,15 @@ void SigSession::reload() {
 
     if (should_create) {
       // Try to preserve settings from the existing model with the same index
-      data::SignalModel *old_model = nullptr;
-      for (auto *m : _signal_models) {
+      std::shared_ptr<data::SignalModel> old_model = nullptr;
+      for (auto &m : _signal_models) {
         if (m->index() == (int)probe->index) {
           old_model = m;
           break;
         }
       }
 
-      auto *model = new data::SignalModel();
+      auto model = std::make_shared<data::SignalModel>();
       model->set_index(probe->index);
       model->set_name(probe->name ? probe->name : "");
       model->set_type(ch_type);
@@ -1150,7 +1150,7 @@ void SigSession::reload() {
   if (!models.empty()) {
     pxv_info("SigSession::reload(), clear signals");
     clear_signals();
-    std::vector<data::SignalModel *>().swap(_signal_models);
+    std::vector<std::shared_ptr<data::SignalModel>>().swap(_signal_models);
     _signal_models = models;
     make_channels_view_index();
   } else if (mode == LOGIC || mode == ANALOG) {
@@ -1527,7 +1527,7 @@ uint16_t SigSession::get_ch_num(int type) {
   return num_channels;
 }
 
-std::vector<data::DecoderStack *> &
+std::vector<std::shared_ptr<data::DecoderStack>> &
 SigSession::get_decoder_stacks(data::SessionDocument *doc) {
   data::SessionDocument *target = doc ? doc : _active_document;
   return target ? target->get_decoder_stacks() : _empty_decoder_stacks;
@@ -1536,7 +1536,7 @@ SigSession::get_decoder_stacks(data::SessionDocument *doc) {
 bool SigSession::add_decoder(
     srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
     std::list<pv::data::decode::Decoder *> &sub_decoders,
-    data::DecoderStack *&out_stack,
+    std::shared_ptr<data::DecoderStack> &out_stack,
     data::SessionDocument *doc) {
   if (dec == NULL) {
     pxv_err("Decoder instance is null!");
@@ -1545,15 +1545,14 @@ bool SigSession::add_decoder(
 
   data::SessionDocument *target = doc ? doc : _active_document;
 
-  out_stack = NULL;
+  out_stack = nullptr;
 
   try {
     bool ret = false;
 
     // Create the decoder
     std::map<const srd_channel *, int> probes;
-    data::DecoderStack *decoder_stack =
-        new data::DecoderStack(this, dec, dstatus);
+    auto decoder_stack = std::make_shared<data::DecoderStack>(this, dec, dstatus);
     assert(decoder_stack);
 
     // Make a list of all the probes
@@ -1629,8 +1628,6 @@ bool SigSession::add_decoder(
       data_updated();
 
       out_stack = decoder_stack;
-    } else {
-      delete decoder_stack;
     }
 
     return ret;
@@ -1679,7 +1676,7 @@ void SigSession::remove_decoder(int index, data::SessionDocument *doc) {
   bool thread_holds_stack = false;
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
-    for (auto *task : _running_tasks) {
+    for (auto task : _running_tasks) {
       if (task == stack) {
         thread_holds_stack = true;
         break;
@@ -1688,8 +1685,6 @@ void SigSession::remove_decoder(int index, data::SessionDocument *doc) {
   }
 
   if (!thread_holds_stack) {
-    // No thread is using this stack, safe to delete now
-    delete stack;
     signals_changed();
   }
   // If thread still holds the stack, decode_single_task will
@@ -1751,14 +1746,14 @@ void SigSession::spectrum_rebuild() {
 
       // if not, rebuild
       if (iter == _spectrum_stacks.end()) {
-        auto spectrum_stack = new data::SpectrumStack(this, m->index());
+        auto spectrum_stack = std::make_shared<data::SpectrumStack>(this, m->index());
         _spectrum_stacks.push_back(spectrum_stack);
       }
     }
   }
 
   if (!has_dso_signal) {
-    RELEASE_ARRAY(_spectrum_stacks);
+    _spectrum_stacks.clear();
   }
 
   signals_changed();
@@ -1784,7 +1779,7 @@ void SigSession::math_rebuild(bool enable, int ch1_index, int ch2_index,
                               data::MathStack::MathType type) {
   ds_lock_guard lock(_data_mutex);
 
-  DESTROY_OBJECT(_math_stack);
+  _math_stack.reset();
 
   // The MathStack constructor now accepts channel indices and resolves the
   // DSO parameters (vdiv / vfactor / hw_offset / snapshot) through
@@ -1796,7 +1791,7 @@ void SigSession::math_rebuild(bool enable, int ch1_index, int ch2_index,
   // MathStack and do not create a new one. The View's sync_derived_traces
   // observes the null MathStack and tears down its MathTrace.
   if (enable) {
-    _math_stack = new data::MathStack(this, ch1_index, ch2_index, type);
+    _math_stack = std::make_shared<data::MathStack>(this, ch1_index, ch2_index, type);
   }
 
   signals_changed();
@@ -1878,7 +1873,7 @@ void SigSession::Close() {
   }
 }
 
-void SigSession::add_decode_task(data::DecoderStack *stack) {
+void SigSession::add_decode_task(std::shared_ptr<data::DecoderStack> stack) {
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
     _running_tasks.push_back(stack);
@@ -1888,7 +1883,7 @@ void SigSession::add_decode_task(data::DecoderStack *stack) {
       std::thread(&SigSession::decode_single_task, this, stack));
 }
 
-void SigSession::remove_decode_task(data::DecoderStack *stack) {
+void SigSession::remove_decode_task(std::shared_ptr<data::DecoderStack> stack) {
   stack->stop_decode_work();
 }
 
@@ -1899,16 +1894,11 @@ void SigSession::clear_all_decoder(bool bUpdateView) {
   int dex = -1;
   clear_all_decode_task(dex);
 
-  data::DecoderStack *runningStack = nullptr;
   if (dex != -1) {
-    runningStack = decode_traces()[dex];
+    auto runningStack = decode_traces()[dex];
     runningStack->_delete_flag = true;
   }
 
-  for (auto stack : decode_traces()) {
-    if (stack != runningStack)
-      delete stack;
-  }
   decode_traces().clear();
 
   // decode_traces() returns _active_document->get_decoder_stacks() (or
@@ -1924,23 +1914,12 @@ void SigSession::clear_all_documents_decoders() {
   int dex = -1;
   clear_all_decode_task(dex);
 
-  data::DecoderStack *runningStack = nullptr;
-
   for (auto doc : _all_documents) {
     auto &stacks = doc->get_decoder_stacks();
     for (auto stack : stacks) {
       if (stack->IsRunning()) {
-        runningStack = stack;
         stack->_delete_flag = true;
       }
-    }
-  }
-
-  for (auto doc : _all_documents) {
-    auto &stacks = doc->get_decoder_stacks();
-    for (auto stack : stacks) {
-      if (stack != runningStack)
-        delete stack;
     }
     stacks.clear();
   }
@@ -1980,7 +1959,7 @@ void SigSession::clear_all_decode_task(int &runningDex) {
   }
 }
 
-data::DecoderStack *SigSession::get_decoder_trace(int index,
+std::shared_ptr<data::DecoderStack> SigSession::get_decoder_trace(int index,
                                                    data::SessionDocument *doc) {
   auto &traces = decode_traces(doc);
   if (index >= 0 && index < (int)traces.size()) {
@@ -1990,7 +1969,7 @@ data::DecoderStack *SigSession::get_decoder_trace(int index,
   return nullptr;
 }
 
-void SigSession::decode_single_task(data::DecoderStack *task) {
+void SigSession::decode_single_task(std::shared_ptr<data::DecoderStack> task) {
   pxv_info("------->decode thread start");
 
   if (!task->_delete_flag) {
@@ -2000,7 +1979,6 @@ void SigSession::decode_single_task(data::DecoderStack *task) {
   if (task->_delete_flag) {
     pxv_info("destroy a decoder in task thread");
 
-    DESTROY_QT_LATER(task);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (!_bClose) {
       signals_changed();
@@ -2378,16 +2356,13 @@ void SigSession::clear_decode_result() {
 }
 
 void SigSession::clear_signals() {
-  DESTROY_OBJECT(_math_stack);
+  _math_stack.reset();
 
-  for (auto *p : _signal_models) {
-    delete p;
-  }
   _signal_models.clear();
 }
 
-data::SignalModel *SigSession::get_signal_by_index(int index) {
-  for (auto *m : _signal_models) {
+std::shared_ptr<data::SignalModel> SigSession::get_signal_by_index(int index) {
+  for (auto &m : _signal_models) {
     if (m->index() == index)
       return m;
   }
@@ -2414,7 +2389,7 @@ void SigSession::clear_view_data() {
   data_updated();
 }
 
-void SigSession::set_trace_name(data::SignalModel *model, QString name) {
+void SigSession::set_trace_name(std::shared_ptr<data::SignalModel> model, QString name) {
   assert(model);
 
   model->set_name(name.toStdString());
@@ -2438,8 +2413,8 @@ void SigSession::set_decoder_row_label(int index, QString label) {
   (void)label;
 }
 
-data::SignalModel *SigSession::get_channel_by_index(int orgIndex) {
-  for (auto m : _signal_models) {
+std::shared_ptr<data::SignalModel> SigSession::get_channel_by_index(int orgIndex) {
+  for (auto &m : _signal_models) {
     if (m->index() == orgIndex) {
       return m;
     }
