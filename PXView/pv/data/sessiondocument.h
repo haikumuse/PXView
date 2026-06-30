@@ -24,6 +24,7 @@
 #include "dsosnapshot.h"
 #include "signalmodel.h"
 #include "lissajousmodel.h"
+#include "triggerconfig.h"
 
 class DeviceAgent;
 
@@ -142,6 +143,10 @@ public:
     bool has_pending_config() const;
     const SignalConfig& get_signal_config() const { return _signal_config; }
 
+    inline const data::TriggerConfig& trigger_config() const { return _trigger_config; }
+    inline data::TriggerConfig& trigger_config() { return _trigger_config; }
+    void set_trigger_config(const data::TriggerConfig& cfg);
+
 private:
     LogicSnapshot   _logic;
     AnalogSnapshot  _analog;
@@ -157,6 +162,7 @@ private:
     LissajousModel  *_lissajous_model = nullptr;
     SignalConfig _signal_config;
     SignalConfig _pending_device_config;
+    data::TriggerConfig _trigger_config;
 
     friend class pv::TabContext;
 };

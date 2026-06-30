@@ -252,6 +252,7 @@ set(PXVIEW_CORE_SOURCES
     PXView/pv/data/snapshot.cpp
     PXView/pv/data/signaldata.cpp
     PXView/pv/data/signalmodel.cpp
+    PXView/pv/data/triggerconfig.cpp
     PXView/pv/data/lissajousmodel.cpp
     PXView/pv/data/logicsnapshot.cpp
     PXView/pv/data/dsosnapshot.cpp

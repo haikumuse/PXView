@@ -51,6 +51,7 @@
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QTextStream>
+#include <QThread>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -366,7 +367,8 @@ void MainWindow::setup_ui() {
   pv::data::SessionDocument *initial_doc = new pv::data::SessionDocument();
 
   if (_device_agent && _device_agent->have_instance()) {
-    initial_doc->save_signal_config(_device_agent);
+    initial_doc->save_signal_config(_device_agent, {},
+                                    _session->get_signal_models());
     pxv_info("MainWindow::setup_ui() saved initial signal config, mode=%d "
              "ch_count=%d",
              initial_doc->get_signal_config().work_mode,
@@ -696,6 +698,16 @@ void MainWindow::setup_ui() {
           &MainWindow::on_receive_data_len);
   connect(&_event, &EventObject::trigger_message, this,
           &MainWindow::on_trigger_message);
+  // Task 1.3: ICaptureCallback signals are emitted from Core capture thread;
+  // route through Qt::QueuedConnection so the on_* slots touch View on GUI thread.
+  connect(&_event, &EventObject::update_capture_sig, this,
+          &MainWindow::on_update_capture, Qt::QueuedConnection);
+  connect(&_event, &EventObject::show_region_sig, this,
+          &MainWindow::on_show_region, Qt::QueuedConnection);
+  connect(&_event, &EventObject::show_wait_trigger_sig, this,
+          &MainWindow::on_show_wait_trigger, Qt::QueuedConnection);
+  connect(&_event, &EventObject::repeat_hold_sig, this,
+          &MainWindow::on_repeat_hold, Qt::QueuedConnection);
 
   // view
   connect(initial_view, &view::View::prgRate, this, &MainWindow::prgRate);
@@ -2339,7 +2351,9 @@ void MainWindow::openDoc() {
                                  QString::number(lan) + ".pdf"));
 }
 
-void MainWindow::update_capture() { current_view()->update_hori_res(); }
+void MainWindow::update_capture() { _event.update_capture_sig(); }
+
+void MainWindow::on_update_capture() { current_view()->update_hori_res(); }
 
 void MainWindow::cur_snap_samplerate_changed() {
   _event.cur_snap_samplerate_changed(); // safe call
@@ -2391,27 +2405,21 @@ void MainWindow::on_frame_ended() {
                "falling back to current_context()->document()");
       owner_doc = ctx->document();
     }
-    // Copy data to document so activate() can bind signal data from it.
-    // - If document is not the active document, always copy.
-    // - If document is the active document and no background copy is in
-    //   progress (LOGIC+decoders case), also copy here synchronously.
-    // - If a background copy is already running, skip to avoid double copy;
-    //   DSV_MSG_COPY_TO_DOC_DONE will handle reactivation later.
-    if (_session->get_active_document() != owner_doc) {
-      pxv_info("MainWindow::on_frame_ended: Synchronous copy_data_to_document (not active doc)");
-      _session->copy_data_to_document(owner_doc);
-      // TEST FIX FOR HYPOTHESIS 1: Manually trigger decoders after synchronous copy
-      _session->start_all_decode_tasks();
-    } else if (!_session->is_copy_in_progress()) {
+    // Task 5.1-5.3: 单一同步 copy 路径。原分支1（active_document != owner_doc
+    // 时同步 copy+start）会造成与后台 copy 的竞态：owner_doc 已是 active 时
+    // 仍可能在后台 copy，再发起同步 copy 会与后台线程冲突。
+    // 现统一为：仅当没有后台 copy 进行中时同步 copy+start，否则等待
+    // DSV_MSG_COPY_TO_DOC_DONE 由 on_trigger_message 处理 reactivation。
+    if (!_session->is_copy_in_progress()) {
       pxv_info("MainWindow::on_frame_ended: Synchronous copy_data_to_document (no bg copy in progress)");
       _session->copy_data_to_document(owner_doc);
-      // TEST FIX FOR HYPOTHESIS 1: Manually trigger decoders after synchronous copy
       _session->start_all_decode_tasks();
     } else {
       pxv_info("MainWindow::on_frame_ended: Background copy is in progress, waiting for DSV_MSG_COPY_TO_DOC_DONE");
     }
     ctx->document()->save_signal_config(_session->get_device(),
-                                        build_channel_visibility(current_view()));
+                                        build_channel_visibility(current_view()),
+                                        _session->get_signal_models());
     ctx->activate();
   }
   current_view()->receive_end();
@@ -2432,7 +2440,12 @@ void MainWindow::on_frame_began() {
     ctx->make_live();
     if (ctx->document()) {
       ctx->document()->clear();
-      _session->set_active_document(ctx->document());
+      // Task 11.3 (R6 对称): is_working 时跳过 set_active_document，
+      // 避免覆盖 capture owner——后台采集进行中切换 active 会造成数据归属错乱。
+      // END_COLLECT_WORK 时会显式恢复当前 tab 的 active_document 归属。
+      if (!_session->is_working()) {
+        _session->set_active_document(ctx->document());
+      }
     }
     current_view()->set_signal_data_from_source(_session);
   }
@@ -2440,12 +2453,20 @@ void MainWindow::on_frame_began() {
 }
 
 void MainWindow::show_region(uint64_t start, uint64_t end, bool keep) {
-  current_view()->show_region(start, end, keep);
+  _event.show_region_sig((quint64)start, (quint64)end, keep);
 }
 
-void MainWindow::show_wait_trigger() { current_view()->show_wait_trigger(); }
+void MainWindow::on_show_region(quint64 start, quint64 end, bool keep) {
+  current_view()->show_region((uint64_t)start, (uint64_t)end, keep);
+}
 
-void MainWindow::repeat_hold(int percent) {
+void MainWindow::show_wait_trigger() { _event.show_wait_trigger_sig(); }
+
+void MainWindow::on_show_wait_trigger() { current_view()->show_wait_trigger(); }
+
+void MainWindow::repeat_hold(int percent) { _event.repeat_hold_sig(percent); }
+
+void MainWindow::on_repeat_hold(int percent) {
   (void)percent;
   current_view()->repeat_show();
 }
@@ -2759,6 +2780,14 @@ void MainWindow::update_toolbar_view_status() {
 }
 
 void MainWindow::OnMessage(int msg) {
+  // Task 1.1: marshal to GUI thread — OnMessage touches QWidget/QDockWidget and
+  // must run on qApp->thread(). Broadcasts may originate from Core worker
+  // threads; re-invoke via QueuedConnection and return immediately.
+  if (QThread::currentThread() != qApp->thread()) {
+    QMetaObject::invokeMethod(this, [this, msg]() { OnMessage(msg); },
+                              Qt::QueuedConnection);
+    return;
+  }
   switch (msg) {
   case DSV_MSG_DEVICE_LIST_UPDATED: {
     _sampling_bar->update_device_list();
@@ -2807,6 +2836,13 @@ void MainWindow::OnMessage(int msg) {
     pv::TabContext *ctx = current_context();
     if (ctx && ctx->document() && ctx->document()->has_pending_config()) {
       ctx->document()->apply_pending_config(_session->get_device());
+      // Task 2.6 (R2): apply_pending_config 触发 reload 重建 SignalModel，
+      // 从 _signal_config 回写 trig_type 到新建的 SignalModel（参考 tabcontext.cpp:86-95）。
+      for (const auto &ch : ctx->document()->get_signal_config().channels) {
+        data::SignalModel *m = _session->get_signal_by_index(ch.index);
+        if (m)
+          m->set_trig_type(ch.trig_type);
+      }
       _device_options_widget->update_view();
       _signal_processing_widget->update_view();
     } else {
@@ -2846,7 +2882,8 @@ void MainWindow::OnMessage(int msg) {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(_session->get_device(),
-                                            build_channel_visibility(current_view()));
+                                            build_channel_visibility(current_view()),
+                                            _session->get_signal_models());
         current_view()->rebuild_signals();
         pxv_info("DSV_MSG_CURRENT_DEVICE_CHANGED: saved config and rebuilt "
                  "signals for current tab");
@@ -2948,7 +2985,8 @@ void MainWindow::OnMessage(int msg) {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(_session->get_device(),
-                                            build_channel_visibility(current_view()));
+                                            build_channel_visibility(current_view()),
+                                            _session->get_signal_models());
         current_view()->rebuild_signals();
         pxv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
                  "signals for current tab");
@@ -3214,6 +3252,22 @@ void MainWindow::OnMessage(int msg) {
     update_title_bar_text();
     break;
   }
+  case DSV_MSG_CAPTURE_OWNER_CHANGED: {
+    // Task 4.6: capture owner 变化，刷新当前 tab 状态（docks/signals 重新绑定）。
+    // 但采集进行中（is_working）时不调 activate()——start_capture 设置 owner 后
+    // 广播本消息，此时 activate() 会 rebuild_signals_from_config +
+    // signals_changed，导致正在显示的波形轨道被重建消失。owner 清除（tab 关闭/
+    // 采集结束）时 is_working 为 false，activate() 正常刷新。
+    if (current_context() && !_session->is_working())
+      current_context()->activate();
+    break;
+  }
+  case DSV_MSG_TRIGGER_CONFIG_CHANGED: {
+    // Task 8.8: TriggerConfig 变化，刷新 TriggerDock UI。
+    if (_trigger_widget)
+      _trigger_widget->update_view();
+    break;
+  }
   }
 }
 
@@ -3392,6 +3446,10 @@ void MainWindow::remove_tab(int index) {
   disconnect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this,
              &MainWindow::on_tab_changed);
   _tab_widget->removeTab(index);
+  // Task 4.5: 在销毁 ctx/document 之前清理 capture owner 引用并 join 后台 copy 线程，
+  // 避免后台线程访问已释放的 SessionDocument（见 SigSession::copy_data_to_document）。
+  _session->join_copy_thread();
+  _session->clear_capture_owner_document(ctx->document());
   _session->unregister_document(ctx->document());
   ctx->view()->deleteLater();
   SessionManager::instance()->destroy_context(ctx);
@@ -3562,7 +3620,8 @@ void MainWindow::on_new_tab_requested() {
   pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
 
   if (_device_agent && _device_agent->have_instance()) {
-    new_doc->save_signal_config(_device_agent);
+    new_doc->save_signal_config(_device_agent, {},
+                                _session->get_signal_models());
     pxv_info("MainWindow::on_new_tab_requested() saved signal config, mode=%d "
              "ch_count=%d",
              new_doc->get_signal_config().work_mode,

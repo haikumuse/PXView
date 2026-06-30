@@ -91,6 +91,8 @@ LogicSignal::~LogicSignal()
 
 void LogicSignal::set_trig(int trig)
 {
+    const int old_trig = static_cast<int>(_trig);
+
     if (trig > NONTRIG && trig <= EDGTRIG)
         _trig = (LogicSetRegions)trig;
     else
@@ -109,9 +111,14 @@ void LogicSignal::set_trig(int trig)
             model->set_trig_type(static_cast<int>(_trig));
     }
 
-    // 通知 TriggerDock UI 同步触发类型显示
-    if (_view) {
-        _view->session().broadcast_msg(DSV_MSG_SIMPLE_TRIGGER_CHANGED);
+    // Task 11.2: 仅当触发类型实际变化时才广播 DSV_MSG_SIMPLE_TRIGGER_CHANGED。
+    // 这也阻断了 set_trig_type emit trig_type_changed 回调本函数（重入）时的冗余广播：
+    // 重入时 _trig 已是目标值，old_trig == _trig，跳过广播，保证单次用户操作只广播一次。
+    if (old_trig != static_cast<int>(_trig)) {
+        // 通知 TriggerDock UI 同步触发类型显示
+        if (_view) {
+            _view->session().broadcast_msg(DSV_MSG_SIMPLE_TRIGGER_CHANGED);
+        }
     }
 }
 

@@ -209,6 +209,8 @@ QJsonObject SessionDocument::signal_config_to_json() const {
   }
   obj["channels"] = ch_array;
 
+  obj["triggerConfig"] = _trigger_config.to_json();
+
   return obj;
 }
 
@@ -238,6 +240,10 @@ void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
       cfg.trig_type = ch_obj.contains("trig_type") ? ch_obj["trig_type"].toInt() : 0;
       _signal_config.channels.push_back(cfg);
     }
+  }
+
+  if (obj.contains("triggerConfig")) {
+    _trigger_config.from_json(obj["triggerConfig"].toObject());
   }
 
   _signal_config.is_valid = true;
@@ -393,6 +399,10 @@ bool SessionDocument::has_signal_config() const {
 
 bool SessionDocument::has_pending_config() const {
   return _pending_device_config.is_valid;
+}
+
+void SessionDocument::set_trigger_config(const data::TriggerConfig& cfg) {
+  _trigger_config = cfg;
 }
 
 } // namespace data

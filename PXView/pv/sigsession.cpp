@@ -627,6 +627,7 @@ bool SigSession::action_start_capture(bool instant,
     _work_time_id++;
     _is_working = true;
     _capture_owner_document = owner ? owner : _active_document;
+    broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED);
     trigger_message(DSV_MSG_START_COLLECT_WORK);
 
     // Start a timer, for able to refresh the view per (1000 / 30)ms.
@@ -1868,6 +1869,10 @@ void SigSession::Close() {
   pxv_info("SigSession::Close(), stop capture");
   stop_capture();
 
+  // Join any in-flight background copy thread before tearing down data
+  // (a joinable std::thread would otherwise std::terminate on destruction).
+  join_copy_thread();
+
   for (auto p : _data_list) {
     p->clear();
   }
@@ -2256,12 +2261,15 @@ void SigSession::OnMessage(int msg) {
         auto doc = _capture_owner_document ? _capture_owner_document
                                            : _active_document;
 
-        std::thread([this, doc]() {
+        if (_copy_thread.joinable()) {
+          _copy_thread.join();  // 等待上一个 copy 完成
+        }
+        _copy_thread = std::thread([this, doc]() {
           copy_data_to_document(doc);
           _copy_in_progress = false;
           trigger_message(DSV_MSG_COPY_IN_PROGRESS_CHANGED);
           trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
-        }).detach();
+        });
       } else {
         // No active document (typical in headless mode). Skip the deep copy
         // to a SessionDocument and start the decoders directly. The decoders
@@ -2521,10 +2529,30 @@ data::DsoSnapshot *SigSession::get_dso_snapshot() {
 }
 
 void SigSession::set_active_document(data::SessionDocument *doc) {
+  if (_active_document == doc)  // 去重，避免重复广播
+    return;
   _active_document = doc;
   // R1: notify listeners that the active document changed. trigger_message
   // also broadcasts via broadcast_msg so Core/headless listeners are reached.
   trigger_message(DSV_MSG_ACTIVE_DOCUMENT_CHANGED);
+}
+
+void SigSession::clear_capture_owner_document(data::SessionDocument *doc) {
+  if (_capture_owner_document == doc) {
+    _capture_owner_document = nullptr;
+    broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED);
+  }
+}
+
+void SigSession::join_copy_thread() {
+  if (_copy_thread.joinable()) {
+    _copy_thread.join();
+  }
+}
+
+void SigSession::set_trigger_config(const data::TriggerConfig& cfg) {
+  _trigger_config = cfg;
+  broadcast_msg(DSV_MSG_TRIGGER_CONFIG_CHANGED);
 }
 
 void SigSession::copy_data_to_document(data::SessionDocument *doc) {

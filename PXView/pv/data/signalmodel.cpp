@@ -34,6 +34,7 @@ SignalModel::SignalModel()
     , _vfactor(1.0)
     , _map_default(true)
     , _trig_type(NONTRIG)
+    , _trig_value(0.0)
     , _vertical_offset(0.0)
     , _zero_offset(0.0)
     , _hw_offset(0.0)
@@ -63,6 +64,7 @@ void SignalModel::set_trig_type(int trig_type) {
         emit trig_type_changed(_trig_type);
     }
 }
+void SignalModel::set_trig_value(double v) { _trig_value = v; }
 
 bool SignalModel::commit_trig()
 {

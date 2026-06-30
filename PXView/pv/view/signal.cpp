@@ -24,10 +24,11 @@
   
 #include <math.h> 
 #include "signal.h"
-#include "view.h" 
+#include "view.h"
 #include "../dsvdef.h"
 #include "../appcontrol.h"
 #include "../sigsession.h"
+#include "../data/signalmodel.h"
 
 namespace pv {
 namespace view {
@@ -62,6 +63,13 @@ void Signal::set_enabled(bool en)
     // 形成无限循环。广播由用户交互入口负责（如 DeviceOptionsDock 已有广播）。
     if (_probe)
         _probe->enabled = en;
+    // Task 6.1: 同步写回 Core SignalModel->enabled，保证 headless API 读取到最新状态。
+    // 不广播：由调用方（用户交互入口）负责广播，避免 rebuild 循环。
+    if (_probe && session) {
+        data::SignalModel *model = session->get_signal_by_index(_probe->index);
+        if (model)
+            model->set_enabled(en);
+    }
 }
 
 void Signal::set_name(QString name)

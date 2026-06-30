@@ -43,6 +43,8 @@
 #include <QDebug>
 #include <QColor>
 #include <QDateTime>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTimeZone>
 #include <QDir>
 #include <QEventLoop>
@@ -882,6 +884,7 @@ Result<int> SessionService::configure_and_start(
 
     dbg_log("configure_and_start: SUCCESS");
     _capture_id++;
+    broadcast_event(ServiceEvent::SampleConfigChanged, {});
     return Result<int>::Success(_capture_id);
 }
 
@@ -1211,7 +1214,11 @@ Result<void> SessionService::set_collect_mode(CollectMode mode) {
         break;
     }
 
+    int old_mode = _session->get_collect_mode();
     _session->set_collect_mode(cm);
+    if (old_mode == static_cast<int>(cm))
+        return Result<void>::Success();
+
     broadcast_event(ServiceEvent::SampleConfigChanged,
                     {{"field", "collect_mode"},
                      {"value", std::to_string(static_cast<int>(mode))}});
@@ -1223,7 +1230,11 @@ Result<void> SessionService::set_repeat_interval(double seconds) {
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
+    double old_interval = _session->get_repeat_intvl();
     _session->set_repeat_intvl(seconds);
+    if (old_interval == seconds)
+        return Result<void>::Success();
+
     broadcast_event(ServiceEvent::SampleConfigChanged,
                     {{"field", "repeat_interval"},
                      {"value", std::to_string(seconds)}});
@@ -1269,9 +1280,23 @@ LogicTriggerConfig SessionService::get_logic_trigger_config() const {
     uint16_t en = ds_trigger_get_en();
     uint16_t pos = ds_trigger_get_pos();
 
-    config.config_json = "{\"enabled\":" + std::to_string(en) +
-                         ",\"position\":" + std::to_string(pos) + "}";
-    config.stage_count = 0;
+    // Task 8.7: embed the Core TriggerConfig advanced fields (mode/stages/
+    // trigger_pos/serial params) so MCP clients can read the complete advanced
+    // trigger configuration. Core TriggerConfig is the single source of truth
+    // for ADV/SERIAL trigger state; ds_trigger_* only mirrors it to the driver.
+    QJsonObject root;
+    root["enabled"] = static_cast<int>(en);
+    root["position"] = static_cast<int>(pos);
+    if (_session) {
+        const auto& tcfg = _session->trigger_config();
+        root["trigger_config"] = tcfg.to_json();
+        config.stage_count = tcfg.stage_count();
+    } else {
+        config.stage_count = 0;
+    }
+
+    config.config_json =
+        QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
 
     return config;
 }
@@ -1282,6 +1307,11 @@ Result<void> SessionService::set_logic_trigger_config(
         return Result<void>::Fail(ErrorCode::MissingDevice,
                                   "No device connected");
 
+    // Capture the pre-change enable state so we can skip the broadcast when
+    // the Core did not actually change (avoids spurious TriggerConfigChanged
+    // events for no-op writes).
+    uint16_t old_en = ds_trigger_get_en();
+
     // Logic trigger configuration is applied through the ds_trigger API.
     // The config_json should contain trigger pattern data that can be
     // parsed and applied via ds_trigger_set_stage, ds_trigger_set_en, etc.
@@ -1289,7 +1319,11 @@ Result<void> SessionService::set_logic_trigger_config(
         ds_trigger_set_stage(static_cast<uint16_t>(config.stage_count - 1));
     }
 
-    ds_trigger_set_en(config.config_json.empty() ? 0 : 1);
+    uint16_t new_en = config.config_json.empty() ? 0 : 1;
+    ds_trigger_set_en(new_en);
+
+    if (old_en == new_en)
+        return Result<void>::Success();
 
     broadcast_event(ServiceEvent::TriggerConfigChanged,
                     {{"kind", "logic"},
@@ -3254,6 +3288,9 @@ Result<void> SessionService::export_data(const ExportConfig &config) {
     if (store.error() != "")
         return Result<void>::Fail(ErrorCode::ExportFailed,
                                   store.error().toStdString());
+    broadcast_event(ServiceEvent::ExportComplete,
+                    {{"format", config.is_logic ? "csv_logic" : "csv_analog"},
+                     {"path", config.output_path}});
     return Result<void>::Success();
 }
 
@@ -3370,6 +3407,9 @@ Result<void> SessionService::export_binary(const ExportConfig &config) {
         file.close();
     }
 
+    broadcast_event(ServiceEvent::ExportComplete,
+                    {{"format", "binary"},
+                     {"path", config.output_path}});
     return Result<void>::Success();
 }
 
@@ -3496,6 +3536,9 @@ Result<void> SessionService::export_decoder_table(
     }
 
     file.close();
+    broadcast_event(ServiceEvent::ExportComplete,
+                    {{"format", "decoder_table_csv"},
+                     {"path", filepath}});
     return Result<void>::Success();
 }
 
@@ -3679,6 +3722,9 @@ Result<void> SessionService::enable_spectrum(int16_t channel_index,
     (void)enable;
 
     _session->spectrum_rebuild();
+    broadcast_event(ServiceEvent::ChannelConfigChanged,
+                    {{"feature", "spectrum"},
+                     {"enabled", enable ? "true" : "false"}});
     return Result<void>::Success();
 }
 
@@ -3690,6 +3736,9 @@ Result<void> SessionService::enable_lissajous(int16_t x_channel,
                                   "Session is null");
 
     _session->lissajous_rebuild(true, x_channel, y_channel, percent);
+    broadcast_event(ServiceEvent::ChannelConfigChanged,
+                    {{"feature", "lissajous"},
+                     {"enabled", "true"}});
     return Result<void>::Success();
 }
 
@@ -3727,6 +3776,9 @@ Result<void> SessionService::enable_math(int16_t ch1, int16_t ch2,
 
     auto type = static_cast<data::MathStack::MathType>(math_type);
     _session->math_rebuild(true, ch1, ch2, type);
+    broadcast_event(ServiceEvent::ChannelConfigChanged,
+                    {{"feature", "math"},
+                     {"enabled", "true"}});
     return Result<void>::Success();
 }
 
@@ -3978,6 +4030,20 @@ void SessionService::OnMessage(int msg) {
     case DSV_MSG_SAMPLE_COUNT_UPDATED:
         broadcast_event(ServiceEvent::DataUpdated,
                         {{"detail", "sample_count_updated"}});
+        break;
+
+    // Document / capture ownership changes
+    case DSV_MSG_ACTIVE_DOCUMENT_CHANGED:
+        broadcast_event(ServiceEvent::ChannelConfigChanged,
+                        {{"change", "active_document"}});
+        break;
+    case DSV_MSG_COPY_IN_PROGRESS_CHANGED:
+        broadcast_event(ServiceEvent::CaptureStateChanged,
+                        {{"change", "copy_in_progress"}});
+        break;
+    case DSV_MSG_CAPTURE_OWNER_CHANGED:
+        broadcast_event(ServiceEvent::CaptureStateChanged,
+                        {{"change", "capture_owner"}});
         break;
 
     // Trigger & save
