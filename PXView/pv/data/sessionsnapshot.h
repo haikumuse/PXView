@@ -50,11 +50,11 @@ public:
     SessionSnapshot();
     ~SessionSnapshot();
 
-    std::vector<SignalModel*>& get_signal_models() override;
-    std::vector<DecoderStack*>& get_decoder_stacks(
+    std::vector<std::shared_ptr<SignalModel>>& get_signal_models() override;
+    std::vector<std::shared_ptr<DecoderStack>>& get_decoder_stacks(
         SessionDocument *doc = nullptr) override;
-    std::vector<SpectrumStack*>& get_spectrum_stacks() override;
-    MathStack* get_math_stack() override;
+    std::vector<std::shared_ptr<SpectrumStack>>& get_spectrum_stacks() override;
+    std::shared_ptr<MathStack> get_math_stack() override;
     LissajousModel* get_lissajous_model() override;
     uint64_t cur_snap_samplerate() override;
     uint64_t cur_samplelimits() override;
@@ -96,10 +96,10 @@ private:
     AnalogSnapshot _analog;
     DsoSnapshot _dso;
 
-    std::vector<SignalModel*> _signal_models;
-    std::vector<DecoderStack*> _decoder_stacks;
-    std::vector<SpectrumStack*> _spectrum_stacks;
-    MathStack *_math_stack = nullptr;
+    std::vector<std::shared_ptr<SignalModel>> _signal_models;
+    std::vector<std::shared_ptr<DecoderStack>> _decoder_stacks;
+    std::vector<std::shared_ptr<SpectrumStack>> _spectrum_stacks;
+    std::shared_ptr<MathStack> _math_stack = nullptr;
     LissajousModel *_lissajous_model = nullptr;
     DecoderModel *_decoder_model;
 

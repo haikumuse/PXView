@@ -42,21 +42,21 @@ SessionSnapshot::SessionSnapshot()
 
 SessionSnapshot::~SessionSnapshot() {}
 
-std::vector<SignalModel *> &SessionSnapshot::get_signal_models() {
+std::vector<std::shared_ptr<SignalModel>> &SessionSnapshot::get_signal_models() {
   return _signal_models;
 }
 
-std::vector<DecoderStack *> &
+std::vector<std::shared_ptr<DecoderStack>> &
 SessionSnapshot::get_decoder_stacks(SessionDocument *doc) {
   (void)doc; // A SessionSnapshot always returns its own stacks.
   return _decoder_stacks;
 }
 
-std::vector<SpectrumStack *> &SessionSnapshot::get_spectrum_stacks() {
+std::vector<std::shared_ptr<SpectrumStack>> &SessionSnapshot::get_spectrum_stacks() {
   return _spectrum_stacks;
 }
 
-MathStack *SessionSnapshot::get_math_stack() { return _math_stack; }
+std::shared_ptr<MathStack> SessionSnapshot::get_math_stack() { return _math_stack; }
 
 LissajousModel *SessionSnapshot::get_lissajous_model() {
   return _lissajous_model;

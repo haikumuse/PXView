@@ -89,7 +89,7 @@ void TabContext::activate()
             // reload 内部虽从 old_model 保留 trig_type (sigsession.cpp:1141)，
             // 但 old_model 是上一个 tab 的，需覆盖为当前 tab 的配置。
             for (const auto &ch : _document->_signal_config.channels) {
-                data::SignalModel *m = _session->get_signal_by_index(ch.index);
+                auto m = _session->get_signal_by_index(ch.index);
                 if (m)
                     m->set_trig_type(ch.trig_type);
             }

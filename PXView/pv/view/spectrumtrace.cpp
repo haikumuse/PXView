@@ -80,7 +80,7 @@ const int SpectrumTrace::HoverPointSize = 3;
 const double SpectrumTrace::VerticalRate = 1.0 / 2000.0;
 
 SpectrumTrace::SpectrumTrace(pv::SigSession *session,
-    pv::data::SpectrumStack *spectrum_stack, int index) :
+    std::shared_ptr<pv::data::SpectrumStack> spectrum_stack, int index) :
     Trace("FFT("+QString::number(index)+")", index, SR_CHANNEL_FFT),
     _session(session), 
     _enable(false),
@@ -104,7 +104,6 @@ SpectrumTrace::SpectrumTrace(pv::SigSession *session,
 
 SpectrumTrace::~SpectrumTrace()
 {
-    DESTROY_OBJECT(_spectrum_stack);
 }
 
 bool SpectrumTrace::enabled()
@@ -137,7 +136,7 @@ std::vector<QString> SpectrumTrace::get_view_modes_support()
     return modes;
 }
 
-pv::data::SpectrumStack* SpectrumTrace::get_spectrum_stack()
+std::shared_ptr<pv::data::SpectrumStack> SpectrumTrace::get_spectrum_stack()
 {
     return _spectrum_stack;
 }

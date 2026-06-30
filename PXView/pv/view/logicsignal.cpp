@@ -106,7 +106,7 @@ void LogicSignal::set_trig(int trig)
     //       本函数同步时不会产生递归。值不同时 emit 会回调本函数一次，但第二次
     //       进入时 model 值已更新，early return，递归终止（最多 1 层）。
     if (session) {
-        data::SignalModel *model = session->get_signal_by_index(_probe->index);
+        auto model = session->get_signal_by_index(_probe->index);
         if (model)
             model->set_trig_type(static_cast<int>(_trig));
     }

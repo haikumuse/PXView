@@ -23,6 +23,8 @@
 #ifndef PXVIEW_PV_VIEW_SIGNALFACTORY_H
 #define PXVIEW_PV_VIEW_SIGNALFACTORY_H
 
+#include <memory>
+
 #include <vector>
 #include <map>
 
@@ -77,7 +79,7 @@ public:
      * @param session The SigSession for device access.
      * @return The created Signal, or nullptr if type is unknown.
      */
-    static Signal* create_signal(data::SignalModel *model, SigSession *session);
+    static Signal* create_signal(std::shared_ptr<data::SignalModel> model, SigSession *session);
 
     /**
      * Create all signals from a DataSource's signal models.

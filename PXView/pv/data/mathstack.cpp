@@ -86,10 +86,10 @@ static data::SignalModel *lookup_dso_model(pv::SigSession *session, int index)
 {
     if (!session)
         return nullptr;
-    for (auto *m : session->get_signal_models()) {
+    for (auto m : session->get_signal_models()) {
         if (m && m->index() == index &&
             m->type() == pv::api::ChannelType::Dso) {
-            return m;
+            return m.get();
         }
     }
     return nullptr;

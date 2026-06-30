@@ -114,16 +114,16 @@ public:
 
   void clear();
 
-  std::vector<DecoderStack *> &
+  std::vector<std::shared_ptr<DecoderStack>> &
   get_decoder_stacks(SessionDocument *doc = nullptr) override;
-  void add_decoder_stack(DecoderStack *stack);
-  void remove_decoder_stack(DecoderStack *stack);
+  void add_decoder_stack(std::shared_ptr<DecoderStack> stack);
+  void remove_decoder_stack(std::shared_ptr<DecoderStack> stack);
   DecoderModel *get_decoder_model() override;
   void set_decoder_model(DecoderModel *model);
 
-  std::vector<SignalModel *> &get_signal_models() override;
-  std::vector<SpectrumStack *> &get_spectrum_stacks() override;
-  MathStack *get_math_stack() override;
+  std::vector<std::shared_ptr<SignalModel>> &get_signal_models() override;
+  std::vector<std::shared_ptr<SpectrumStack>> &get_spectrum_stacks() override;
+  std::shared_ptr<MathStack> get_math_stack() override;
   LissajousModel *get_lissajous_model() override;
   uint64_t cur_snap_samplerate() override;
   uint64_t cur_samplelimits() override;
@@ -135,7 +135,7 @@ public:
   void signal_config_from_json(const QJsonObject &obj);
   void save_signal_config(
       DeviceAgent *agent, const std::map<int, bool> &channel_visibility = {},
-      const std::vector<SignalModel *> &signal_models = {},
+      const std::vector<std::shared_ptr<SignalModel>> &signal_models = {},
       const std::map<int, ChannelLayoutState> &channel_layout = {});
   void apply_signal_config(DeviceAgent *agent);
   void apply_pending_config(DeviceAgent *agent);
@@ -156,11 +156,11 @@ private:
   uint64_t _samplerate;
   uint64_t _samplelimits;
   uint64_t _trigger_pos;
-  std::vector<DecoderStack *> _decoder_stacks;
+  std::vector<std::shared_ptr<DecoderStack>> _decoder_stacks;
   DecoderModel *_decoder_model;
-  std::vector<SignalModel *> _signal_models;
-  std::vector<SpectrumStack *> _spectrum_stacks;
-  MathStack *_math_stack = nullptr;
+  std::vector<std::shared_ptr<SignalModel>> _signal_models;
+  std::vector<std::shared_ptr<SpectrumStack>> _spectrum_stacks;
+  std::shared_ptr<MathStack> _math_stack = nullptr;
   LissajousModel *_lissajous_model = nullptr;
   SignalConfig _signal_config;
   SignalConfig _pending_device_config;

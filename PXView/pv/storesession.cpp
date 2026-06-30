@@ -1406,7 +1406,7 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
     {
         QJsonObject dec_obj = dec_value.toObject();
         pxv_info("StoreSession::load_decoders: processing decoder %s", dec_obj["id"].toString().toStdString().c_str());
-        std::vector<pv::data::DecoderStack*> &pre_dsigs = _session->get_decoder_stacks();
+        auto &pre_dsigs = _session->get_decoder_stacks();
         std::list<pv::data::decode::Decoder*> sub_decoders;
 
         //get sub decoders
@@ -1455,7 +1455,7 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
 
         std::list<int> bind_indexs;
 
-        std::vector<pv::data::DecoderStack*> &aft_dsigs = _session->get_decoder_stacks();
+        auto &aft_dsigs = _session->get_decoder_stacks();
         pxv_info("StoreSession::load_decoders: pre_dsigs.size()=%d, aft_dsigs.size()=%d", (int)pre_dsigs.size(), (int)aft_dsigs.size());
 
         if (aft_dsigs.size() >= pre_dsigs.size()) {

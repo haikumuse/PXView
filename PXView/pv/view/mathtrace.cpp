@@ -36,7 +36,7 @@ using namespace std;
 namespace pv {
 namespace view {
 
-MathTrace::MathTrace(bool enable,data::MathStack *math_stack,
+MathTrace::MathTrace(bool enable,std::shared_ptr<data::MathStack> math_stack,
                      view::DsoSignal *dsoSig1,
                      view::DsoSignal *dsoSig2):
     Trace("M", dsoSig1->get_index(), SR_CHANNEL_MATH),
@@ -62,7 +62,6 @@ MathTrace::MathTrace(bool enable,data::MathStack *math_stack,
 
 MathTrace::~MathTrace()
 {
-    DESTROY_OBJECT(_math_stack);
 }
 
 bool MathTrace::enabled()
@@ -533,7 +532,7 @@ QString MathTrace::get_time(double t)
     return str;
 }
 
-pv::data::MathStack* MathTrace::get_math_stack()
+std::shared_ptr<pv::data::MathStack> MathTrace::get_math_stack()
 {
    return _math_stack;
 }

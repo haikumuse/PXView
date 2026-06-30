@@ -69,7 +69,7 @@ ProtocolList::ProtocolList(QWidget *parent, SigSession *session) :
         // TODO: adapt — DecoderStack no longer exposes a UI label; use the
         // root decoder id as the display name.
         _protocol_combobox->addItem(QString::fromUtf8(d->get_root_decoder_id()));
-        if (decoder_model->getDecoderStack() == d)
+        if (decoder_model->getDecoderStack() == d.get())
             _protocol_combobox->setCurrentIndex(index);
         index++;
     }
@@ -139,7 +139,7 @@ void ProtocolList::set_protocol(int index)
 
     for(auto d : decode_sigs) {
         if (index == cur_index) {
-            decoder_stack = d;
+            decoder_stack = d.get();
             break;
         }
         cur_index++;
@@ -181,7 +181,7 @@ void ProtocolList::on_row_check(bool show)
 
     for(auto d : decode_sigs) {
         if (cur_index == _protocol_combobox->currentIndex()) {
-            decoder_stack = d;
+            decoder_stack = d.get();
             break;
         }
         cur_index++;

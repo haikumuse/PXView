@@ -66,7 +66,7 @@ private:
     static const double VerticalRate;
 
 public:
-    SpectrumTrace(pv::SigSession *session, pv::data::SpectrumStack *spectrum_stack, int index);
+    SpectrumTrace(pv::SigSession *session, std::shared_ptr<pv::data::SpectrumStack> spectrum_stack, int index);
     ~SpectrumTrace();
 
     bool enabled();
@@ -91,7 +91,7 @@ public:
     void set_view_mode(unsigned int mode);
     std::vector<QString> get_view_modes_support();
 
-    pv::data::SpectrumStack* get_spectrum_stack();
+    std::shared_ptr<pv::data::SpectrumStack> get_spectrum_stack();
 
     static QString format_freq(double freq, unsigned precision = Pricision);
 
@@ -136,7 +136,7 @@ private slots:
 
 private:
     pv::SigSession *_session;
-    pv::data::SpectrumStack *_spectrum_stack;
+    std::shared_ptr<pv::data::SpectrumStack> _spectrum_stack;
 
     bool _enable;
     int _view_mode;

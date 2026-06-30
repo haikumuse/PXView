@@ -116,6 +116,12 @@ public:
     void set_snapshot(void *snapshot);
 
 signals:
+    /// Emitted when visual properties (name, color, vdiv, etc.) change.
+    void appearance_changed();
+
+    /// Emitted when the enabled/disabled state changes.
+    void visibility_changed();
+
     /// Emitted when set_trig_type() changes the trigger type.
     /// View layer LogicSignal connects to this to auto-sync its local _trig copy.
     void trig_type_changed(int trig_type);

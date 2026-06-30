@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <cmath>
+#include <memory>
 #include <limits.h>
 #include <string.h>
 
@@ -631,7 +632,7 @@ void View::compute_signal_groups() {
     DecodeBinding binding;
     binding.trace = dtrace;
 
-    pv::data::DecoderStack *decoder_stack = dtrace->decoder();
+    auto decoder_stack = dtrace->decoder();
     if (decoder_stack) {
       for (auto decoder : decoder_stack->stack()) {
         auto probe_list = decoder->binded_probe_list();
@@ -2267,7 +2268,7 @@ void View::rebuild_signals() {
 bool View::add_decoder(srd_decoder *const dec, bool silent,
                        DecoderStatus *dstatus,
                        std::list<pv::data::decode::Decoder *> &sub_decoders,
-                       pv::data::DecoderStack *&out_stack) {
+                       std::shared_ptr<pv::data::DecoderStack> &out_stack) {
   if (!_session)
     return false;
 
@@ -2400,7 +2401,7 @@ void View::remove_decoder(DecodeTrace *trace) {
   if (it == _own_decode_traces.end())
     return;
 
-  pv::data::DecoderStack *stack = trace->decoder();
+  auto stack = trace->decoder();
   void *key_handel = stack ? stack->get_key_handel() : nullptr;
 
   // 1. View deletes its DecodeTrace (View-owned). The DecodeTrace
@@ -2603,8 +2604,10 @@ void View::sync_derived_traces() {
   // Remove DecodeTrace whose DecoderStack no longer exists.
   for (auto it = _own_decode_traces.begin(); it != _own_decode_traces.end();) {
     DecodeTrace *dt = *it;
-    if (std::find(decoder_stacks.begin(), decoder_stacks.end(),
-                  dt->decoder()) == decoder_stacks.end()) {
+    auto target = dt->decoder().get();
+    auto it_stack = std::find_if(decoder_stacks.begin(), decoder_stacks.end(),
+        [target](const std::shared_ptr<pv::data::DecoderStack>& s) { return s.get() == target; });
+    if (it_stack == decoder_stacks.end()) {
       delete dt;
       it = _own_decode_traces.erase(it);
     } else {
@@ -2614,10 +2617,10 @@ void View::sync_derived_traces() {
 
   // Add DecodeTrace for new DecoderStacks that have no wrapper yet.
   int decode_index = 0;
-  for (auto *stack : decoder_stacks) {
+  for (auto stack : decoder_stacks) {
     bool exists = false;
     for (auto *dt : _own_decode_traces) {
-      if (dt->decoder() == stack) {
+      if (dt->decoder().get() == stack.get()) {
         exists = true;
         break;
       }
@@ -2646,8 +2649,10 @@ void View::sync_derived_traces() {
   for (auto it = _own_spectrum_traces.begin();
        it != _own_spectrum_traces.end();) {
     SpectrumTrace *st = *it;
-    if (std::find(spectrum_stacks.begin(), spectrum_stacks.end(),
-                  st->get_spectrum_stack()) == spectrum_stacks.end()) {
+    auto target = st->get_spectrum_stack().get();
+    auto it_stack = std::find_if(spectrum_stacks.begin(), spectrum_stacks.end(),
+        [target](const std::shared_ptr<pv::data::SpectrumStack>& s) { return s.get() == target; });
+    if (it_stack == spectrum_stacks.end()) {
       delete st;
       it = _own_spectrum_traces.erase(it);
     } else {
@@ -2656,10 +2661,10 @@ void View::sync_derived_traces() {
   }
 
   // Add SpectrumTrace for new SpectrumStacks that have no wrapper yet.
-  for (auto *stack : spectrum_stacks) {
+  for (auto stack : spectrum_stacks) {
     bool exists = false;
     for (auto *st : _own_spectrum_traces) {
-      if (st->get_spectrum_stack() == stack) {
+      if (st->get_spectrum_stack().get() == stack.get()) {
         exists = true;
         break;
       }
@@ -2671,9 +2676,9 @@ void View::sync_derived_traces() {
   }
 
   // ---- Sync MathTrace from MathStack ----
-  auto *math_stack = source->get_math_stack();
+  auto math_stack = source->get_math_stack();
   if (math_stack) {
-    if (!_own_math_trace || _own_math_trace->get_math_stack() != math_stack) {
+    if (!_own_math_trace || _own_math_trace->get_math_stack().get() != math_stack.get()) {
       // Tear down any stale MathTrace bound to a previous MathStack.
       if (_own_math_trace) {
         delete _own_math_trace;

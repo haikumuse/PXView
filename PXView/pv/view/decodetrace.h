@@ -85,7 +85,7 @@ public:
 
   static const int MaxAnnType = 100;
 
-  DecodeTrace(pv::SigSession *session, pv::data::DecoderStack *decoder_stack,
+  DecodeTrace(pv::SigSession *session, std::shared_ptr<pv::data::DecoderStack> decoder_stack,
               int index);
 
 public:
@@ -93,7 +93,7 @@ public:
 
   bool enabled();
 
-  inline pv::data::DecoderStack *decoder() { return _decoder_stack; }
+  inline std::shared_ptr<pv::data::DecoderStack> decoder() { return _decoder_stack; }
 
   void set_view(pv::view::View *view);
 
@@ -173,7 +173,7 @@ public:
 
 private:
   pv::SigSession *_session;
-  pv::data::DecoderStack *_decoder_stack;
+  std::shared_ptr<pv::data::DecoderStack> _decoder_stack;
   
   uint64_t _decode_cursor1; // the cursor key, sample start index
   uint64_t _decode_cursor2;

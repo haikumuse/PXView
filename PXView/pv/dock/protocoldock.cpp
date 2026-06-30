@@ -488,7 +488,7 @@ bool ProtocolDock::add_protocol_by_id(
     protocolId = QString((*it)->decoder()->id);
   }
 
-  pv::data::DecoderStack *stack = NULL;
+  std::shared_ptr<pv::data::DecoderStack> stack;
 
   // Route through the View layer so the View can create its own DecodeTrace
   // wrapper for the newly created DecoderStack. The View internally calls
@@ -509,7 +509,7 @@ bool ProtocolDock::add_protocol_by_id(
   _top_layout->insertLayout(_protocol_lay_items.size(), layer);
   layer->m_decoderStatus = dstatus;
   layer->m_protocolId = protocolId;
-  layer->_trace = stack;
+  layer->_trace = stack.get();
   layer->SetVisibilityState(true);
 
   // set current protocol format
@@ -523,9 +523,9 @@ bool ProtocolDock::add_protocol_by_id(
   // progress connection
   protocol_updated();
   if (stack) {
-    connect(stack, &data::DecoderStack::new_decode_data, this,
+    connect(stack.get(), &data::DecoderStack::new_decode_data, this,
             &ProtocolDock::on_decoder_progress);
-    connect(stack, &data::DecoderStack::decode_done, this,
+    connect(stack.get(), &data::DecoderStack::decode_done, this,
             &ProtocolDock::on_decoder_progress);
   }
 
@@ -569,7 +569,7 @@ void ProtocolDock::rebuild_protocol_layers() {
     _top_layout->insertLayout(_protocol_lay_items.size(), layer);
     layer->m_decoderStatus = dstatus;
     layer->m_protocolId = protocolId;
-    layer->_trace = stack;
+    layer->_trace = stack.get();
     layer->SetVisibilityState(decoders.front()->shown());
 
     static const char *formatNames[] = {"hex", "dec", "oct", "bin", "ascii"};
@@ -587,9 +587,9 @@ void ProtocolDock::rebuild_protocol_layers() {
       layer->enable_format(dstatus->m_bNumeric);
     }
 
-    connect(stack, &data::DecoderStack::new_decode_data, this,
+    connect(stack.get(), &data::DecoderStack::new_decode_data, this,
             &ProtocolDock::on_decoder_progress);
-    connect(stack, &data::DecoderStack::decode_done, this,
+    connect(stack.get(), &data::DecoderStack::decode_done, this,
             &ProtocolDock::on_decoder_progress);
   }
 
@@ -693,18 +693,18 @@ void ProtocolDock::update_model() {
   if (decode_sigs.size() == 0)
     decoder_model->setDecoderStack(NULL);
   else if (!decoder_model->getDecoderStack())
-    decoder_model->setDecoderStack(decode_sigs.at(0));
+    decoder_model->setDecoderStack(decode_sigs.at(0).get());
   else {
     unsigned int index = 0;
     for (auto d : decode_sigs) {
-      if (d == decoder_model->getDecoderStack()) {
-        decoder_model->setDecoderStack(d);
+      if (d.get() == decoder_model->getDecoderStack()) {
+        decoder_model->setDecoderStack(d.get());
         break;
       }
       index++;
     }
     if (index >= decode_sigs.size())
-      decoder_model->setDecoderStack(decode_sigs.at(0));
+      decoder_model->setDecoderStack(decode_sigs.at(0).get());
   }
   _model_proxy.setSourceModel(decoder_model);
   search_done();
@@ -1133,7 +1133,7 @@ void ProtocolDock::OnProtocolVisibilityChanged(void *handle) {
           if (_view) {
             auto &traces = _view->get_own_decode_traces();
             for (auto *dt : traces) {
-              if (dt && dt->decoder() == stack) {
+              if (dt && dt->decoder().get() == stack) {
                 dt->set_visible(new_shown);
                 break;
               }

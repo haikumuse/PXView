@@ -340,7 +340,7 @@ public:
    */
   bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
                    std::list<pv::data::decode::Decoder *> &sub_decoders,
-                   pv::data::DecoderStack *&out_stack);
+                   std::shared_ptr<pv::data::DecoderStack> &out_stack);
 
   /**
    * Removes a protocol decoder.
