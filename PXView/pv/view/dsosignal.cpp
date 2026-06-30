@@ -301,7 +301,6 @@ bool DsoSignal::go_vDialPre(bool manul)
         if (session) {
             auto m = session->get_signal_by_index(_probe->index);
             if (m) m->set_vdiv((double)_vDial->get_value());
-            session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         }
         return true;
     }
@@ -342,7 +341,6 @@ bool DsoSignal::go_vDialNext(bool manul)
         if (session) {
             auto m = session->get_signal_by_index(_probe->index);
             if (m) m->set_vdiv((double)_vDial->get_value());
-            session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         }
         return true;
     }
@@ -487,7 +485,6 @@ void DsoSignal::set_acCoupling(uint8_t coupling)
         if (session) {
             auto m = session->get_signal_by_index(_probe->index);
             if (m) m->set_coupling((int)coupling);
-            session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         }
     }
 }
@@ -623,7 +620,6 @@ void DsoSignal::set_factor(uint64_t factor)
             if (session) {
                 auto m = session->get_signal_by_index(_probe->index);
                 if (m) m->set_vfactor((double)factor);
-                session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
             }
         }
     }
