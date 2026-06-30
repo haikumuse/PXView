@@ -2328,32 +2328,30 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   //    the DecodeTrace we just added.
   _derived_traces_dirty = false;
 
-  // 5. Start the decode task now that the user has configured channels via
-  //    create_popup() (or this is the silent/MCP path where channels were
-  //    pre-configured by the caller). Core no longer auto-starts the decode
-  //    task from inside SigSession::add_decoder() — that was a timing bug
-  //    because the dialog had not been shown yet, so the decode thread ran
-  //    with empty probes. If there is no view data yet (decoder added before
+  // 5. Broadcast first so that SigSession::OnMessage can run reload() before
+  //    we start the decode task. The broadcast is synchronous (direct function
+  //    call, not Qt queued signal), so reload() will clear SignalModel snapshots
+  //    immediately. We then call add_decode_task() which internally calls
+  //    attach_data_to_signal() to restore the snapshot pointers. If we called
+  //    add_decode_task() before broadcast_msg(), the snapshot would be set and
+  //    then cleared by reload(), causing "没有设置需要解码哪些通道的数据".
+  //    This broadcast also notifies MCP/WebSocket clients (SessionService maps
+  //    DSV_MSG_DEVICE_OPTIONS_UPDATED to DeviceConfigChanged).
+  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+
+  // 6. Now start the decode task after reload() has completed. The
+  //    add_decode_task() helper will call attach_data_to_signal() to restore
+  //    snapshot pointers. If there is no view data yet (decoder added before
   //    capture), the capture pipeline will start the decode for us via
   //    DSV_MSG_COPY_TO_DOC_DONE → frame_ended() + add_decode_task().
   if (!silent && _session->have_view_data()) {
     _session->add_decode_task(out_stack);
   }
 
-  // 6. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
+  // 7. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
   //    at the top, but since the DecodeTrace list is already in sync, the
   //    subsequent sync_derived_traces() will be a no-op for decoders.
   signals_changed(NULL);
-
-  // 7. Broadcast so the API layer (SessionService::OnMessage) can push a
-  //    ServiceEvent to MCP/WebSocket clients. View cannot call
-  //    SessionService::broadcast_event directly (View does not depend on the
-  //    API layer), so we forward via SigSession::broadcast_msg. There is no
-  //    dedicated DSV_MSG_DECODER_ADDED; DSV_MSG_DEVICE_OPTIONS_UPDATED is
-  //    mapped by SessionService to DeviceConfigChanged, which triggers state
-  //    synchronization for remote clients. (The MCP add_analyzer path already
-  //    broadcasts DecoderAdded directly; this covers the GUI-triggered path.)
-  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
 
   return true;
 }
@@ -2439,6 +2437,56 @@ void View::remove_decoder(int index) {
   if (index < 0 || index >= (int)_own_decode_traces.size())
     return;
   remove_decoder(_own_decode_traces[index]);
+}
+
+void View::remove_decoder_by_key_handel(void *key_handel) {
+  if (!_session || !key_handel)
+    return;
+
+  // Find the View-owned DecodeTrace that wraps the DecoderStack with this
+  // key_handel. This mirrors the pattern in rst_decoder_by_key_handel().
+  auto find_trace = [&]() -> DecodeTrace * {
+    for (auto *trace : _own_decode_traces) {
+      if (trace && trace->decoder() &&
+          trace->decoder()->get_key_handel() == key_handel)
+        return trace;
+    }
+    return nullptr;
+  };
+
+  DecodeTrace *target = find_trace();
+
+  // Fall back to lazy sync if not found (the list might be dirty).
+  if (!target) {
+    sync_derived_traces();
+    target = find_trace();
+  }
+
+  if (!target)
+    return;
+
+  remove_decoder(target);
+}
+
+void View::clear_all_decoders() {
+  if (!_session)
+    return;
+
+  // 1. Delete all View-owned DecodeTrace objects first.
+  for (auto *trace : _own_decode_traces) {
+    delete trace;
+  }
+  _own_decode_traces.clear();
+
+  // 2. Notify Core to clear all DecoderStacks.
+  //    Core's clear_all_decoder() will fire signals_changed() callback
+  //    which triggers View::signals_changed(), but since we already
+  //    deleted all DecodeTrace, the subsequent sync_derived_traces()
+  //    will be a no-op.
+  _session->clear_all_decoder(true);
+
+  // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
+  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
 }
 
 void View::on_signals_changed() {

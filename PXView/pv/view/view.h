@@ -358,6 +358,25 @@ public:
   void remove_decoder(int index);
 
   /**
+   * Removes a protocol decoder by the key handle of its DecoderStack.
+   * This is the primary entry point for GUI components (e.g., ProtocolDock)
+   * that hold the key_handle but not the DecodeTrace pointer. The method
+   * finds the matching DecodeTrace, deletes it, then notifies Core to
+   * delete the DecoderStack.
+   *
+   * @param key_handel The key handle returned by DecoderStack::get_key_handel().
+   */
+  void remove_decoder_by_key_handel(void *key_handel);
+
+  /**
+   * Removes all protocol decoders from this View.
+   * The View deletes all its DecodeTrace objects first, then notifies Core
+   * to clear all DecoderStacks. This is the View layer entry point for
+   * ProtocolDock::del_all_protocol().
+   */
+  void clear_all_decoders();
+
+  /**
    * Resets (re-opens options dialog + re-runs decode) a protocol decoder
    * by its DecoderStack key handle.
    *

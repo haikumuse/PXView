@@ -615,7 +615,15 @@ void ProtocolDock::on_del_all_protocol() {
 
 void ProtocolDock::del_all_protocol() {
   if (_protocol_lay_items.size() > 0) {
-    _session->clear_all_decoder();
+    // Call View layer to delete all DecodeTrace, then View will notify Core
+    // to clear all DecoderStacks. Directly calling _session->clear_all_decoder()
+    // would bypass View and leave DecodeTrace objects orphaned, causing stale UI.
+    if (_view) {
+      _view->clear_all_decoders();
+    } else {
+      // Headless fallback: directly call Core if no View exists
+      _session->clear_all_decoder();
+    }
 
     for (auto it = _protocol_lay_items.begin(); it != _protocol_lay_items.end();
          it++) {
@@ -1103,7 +1111,15 @@ void ProtocolDock::OnProtocolDelete(void *handle) {
       void *key_handel = lay->get_protocol_key_handel();
       _protocol_lay_items.erase(it);
       DESTROY_QT_LATER(lay);
-      _session->remove_decoder_by_key_handel(key_handel);
+      // Call View layer to delete DecodeTrace, then View will notify Core
+      // to delete DecoderStack. Directly calling _session->remove_decoder_by_key_handel()
+      // would bypass View and leave the DecodeTrace orphaned, causing stale UI.
+      if (_view) {
+        _view->remove_decoder_by_key_handel(key_handel);
+      } else {
+        // Headless fallback: directly call Core if no View exists
+        _session->remove_decoder_by_key_handel(key_handel);
+      }
       protocol_updated();
       break;
     }

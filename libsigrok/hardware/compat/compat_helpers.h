@@ -360,8 +360,9 @@ SR_PRIV void sr_parse_probe_names(const char *str, const char *defaults[],
     int ch_max, struct sr_channel **channels);
 
 /**
- * Soft trigger logic - stub implementation for compat drivers.
- * PXView does not have soft trigger support, so these are stubs.
+ * Soft trigger logic - simplified implementation for compat drivers.
+ * PXView does not have full soft trigger support, so this provides
+ * basic edge detection functionality.
  */
 struct sr_trigger; /* Forward declaration */
 
@@ -378,6 +379,7 @@ SR_PRIV struct soft_trigger_logic *soft_trigger_logic_new(
 SR_PRIV void soft_trigger_logic_free(struct soft_trigger_logic *stl);
 SR_PRIV int soft_trigger_logic_check(struct soft_trigger_logic *stl,
     uint8_t *buf, size_t buflen, int *pre_trigger_samples);
+SR_PRIV void soft_trigger_logic_reset(struct soft_trigger_logic *stl);
 
 /**
  * sr_session_trigger_get stub - PXView does not have trigger support.

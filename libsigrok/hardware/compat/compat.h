@@ -39,6 +39,7 @@
 #include "compat_config.h"
 #include "compat_helpers.h"
 #include "compat_serial.h"
+#include "compat_scpi.h"
 
 /* Standard sigrok type aliases */
 #define sr_dev_driver_std sr_dev_driver
@@ -47,6 +48,38 @@
 #ifndef sr_spew
 #define sr_spew(fmt, args...) sr_dbg(fmt, ## args)
 #endif
+
+/* Standard sigrok error code compatibility
+ * Standard sigrok uses negative error codes. PXView uses positive values.
+ * These macros provide standard sigrok-compatible error code names.
+ * Note: The actual enum values in libsigrok.h are positive, but these
+ * names are provided for driver compatibility.
+ */
+#ifndef SR_OK                 /* Already defined in libsigrok.h */
+#define SR_OK                 0
+#define SR_ERR                1
+#define SR_ERR_MALLOC         2
+#define SR_ERR_ARG            3
+#define SR_ERR_BUG            4
+#define SR_ERR_SAMPLERATE     5
+#define SR_ERR_NA             6
+#define SR_ERR_DEVICE_CLOSED  7
+#define SR_ERR_CALL_STATUS    8
+#endif
+
+/* Additional standard sigrok error codes (not in PXView) */
+#define SR_ERR_IO             100   /**< I/O error */
+#define SR_ERR_NO_SESSION     101   /**< No session */
+#define SR_ERR_SAMPLERATE_UNS 102   /**< Unsupported samplerate */
+#define SR_ERR_DATA           103   /**< Data error */
+
+/* For drivers that expect negative error codes (standard sigrok style) */
+#define SR_OK_NEG             0
+#define SR_ERR_NEG            (-1)
+#define SR_ERR_MALLOC_NEG     (-2)
+#define SR_ERR_ARG_NEG        (-3)
+#define SR_ERR_BUG_NEG        (-4)
+#define SR_ERR_NA_NEG         (-6)
 
 /* Standard sigrok inst_type values */
 enum sr_inst_type {
@@ -85,10 +118,41 @@ SR_PRIV gboolean usb_match_manuf_prod(libusb_device *dev,
 SR_PRIV int usb_get_port_path(libusb_device *dev, char *path, int path_len);
 
 /* Standard sigrok's SR_REGISTER_DEV_DRIVER replacement */
-/* In standard sigrok, this macro auto-registers a driver. In PXView compat,
- * we just declare the driver_info struct. Registration is done manually. */
+/* In standard sigrok, this macro auto-registers a driver via constructor
+ * attribute. PXView does not support constructor attributes, so we provide
+ * multiple variants:
+ *
+ * 1. SR_REGISTER_DEV_DRIVER(name) - Declare driver_info extern (for use in
+ *    header files or when driver is defined in another file)
+ *
+ * 2. SR_DEFINE_DEV_DRIVER(name, ...) - Define driver_info struct inline
+ *
+ * 3. SR_REGISTER_DEV_DRIVER_FULL(name) - Declare and provide registration
+ *    function pointer (advanced use)
+ *
+ * Registration is done manually by calling sr_driver_register() during init.
+ */
 #define SR_REGISTER_DEV_DRIVER(name) \
     extern struct sr_dev_driver name##_driver_info
+
+/* Define a driver_info struct with auto-generated registration function name */
+#define SR_DEFINE_DEV_DRIVER(name, ...) \
+    struct sr_dev_driver name##_driver_info = { \
+        __VA_ARGS__ \
+    }; \
+    static struct sr_dev_driver *name##_driver_ptr = &name##_driver_info
+
+/* Declare driver pointer for wrapper use (used by compat drivers) */
+#define SR_DECLARE_DRIVER_PTR(name) \
+    static struct sr_dev_driver *name##_driver_ptr
+
+/* Set driver pointer during init */
+#define SR_SET_DRIVER_PTR(name) \
+    name##_driver_ptr = &name##_driver_info
+
+/* Get driver pointer for wrapper callbacks */
+#define SR_GET_DRIVER_PTR(name) \
+    name##_driver_ptr
 
 /* Standard sigrok uses driver->context for private data; PXView uses priv */
 #define DRIVER_CONTEXT(drv) ((drv)->priv)

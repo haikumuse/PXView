@@ -211,6 +211,32 @@ SR_PRIV int std_dev_clear(const struct sr_dev_driver *driver)
     return SR_OK;
 }
 
+/*--- Standard sigrok std_session_send_df_header ---------------------------*/
+
+SR_PRIV int std_session_send_df_header(const struct sr_dev_inst *sdi,
+    const char *prefix)
+{
+    struct sr_datafeed_packet packet;
+    struct sr_datafeed_header header;
+    int ret;
+
+    (void)prefix;
+
+    /* Create header packet with device info */
+    header.feed_version = 1;
+    header.sdi = sdi;
+    header.num_logic_channels = g_slist_length(sdi->channels);
+    header.num_analog_channels = 0;  /* TODO: count analog channels */
+    header.samplerate = 0;  /* Should be set by driver */
+
+    packet.type = SR_DF_HEADER;
+    packet.payload = &header;
+
+    ret = ds_data_forward(sdi, &packet);
+
+    return ret;
+}
+
 /*--- Standard sigrok std_session_send_df_end ------------------------------*/
 
 SR_PRIV int std_session_send_df_end(const struct sr_dev_inst *sdi,
@@ -390,7 +416,7 @@ SR_PRIV int std_bool_idx(const struct sr_dev_inst *sdi, uint32_t key,
     return SR_OK;
 }
 
-/*--- Soft trigger logic stubs ---------------------------------------------*/
+/*--- Soft trigger logic ---------------------------------------------------*/
 
 SR_PRIV struct soft_trigger_logic *soft_trigger_logic_new(
     const struct sr_dev_inst *sdi, struct sr_trigger *trigger,
@@ -399,6 +425,9 @@ SR_PRIV struct soft_trigger_logic *soft_trigger_logic_new(
     struct soft_trigger_logic *stl;
 
     stl = g_malloc0(sizeof(struct soft_trigger_logic));
+    if (!stl)
+        return NULL;
+
     stl->sdi = sdi;
     stl->trigger = trigger;
     stl->pre_trigger_samples = pre_trigger_samples;
@@ -409,21 +438,102 @@ SR_PRIV struct soft_trigger_logic *soft_trigger_logic_new(
 
 SR_PRIV void soft_trigger_logic_free(struct soft_trigger_logic *stl)
 {
+    if (!stl)
+        return;
+
     g_free(stl);
 }
 
+/**
+ * Check if trigger conditions are met in the given logic data buffer.
+ *
+ * This is a simplified implementation that provides basic trigger matching.
+ * Full trigger logic requires parsing the trigger structure (sr_trigger),
+ * which has stages, matches, and channel associations.
+ *
+ * For now, this implementation:
+ * - Returns -1 if trigger condition not met (no trigger)
+ * - Returns 0 if trigger fires immediately at buffer start
+ * - Returns positive offset if trigger fires mid-buffer
+ *
+ * @param stl Soft trigger logic state
+ * @param buf Logic sample buffer (one sample per bit, packed)
+ * @param buflen Buffer length in bytes
+ * @param pre_trigger_samples Output: number of pre-trigger samples captured
+ *
+ * @return Trigger offset in samples, or -1 if not triggered
+ */
 SR_PRIV int soft_trigger_logic_check(struct soft_trigger_logic *stl,
     uint8_t *buf, size_t buflen, int *pre_trigger_samples)
 {
-    (void)stl;
-    (void)buf;
-    (void)buflen;
+    size_t i;
+    uint8_t prev_sample, cur_sample;
+    size_t sample_count;
 
+    if (!stl || !buf || buflen == 0)
+        return -1;
+
+    /* Set pre_trigger_samples output if provided */
     if (pre_trigger_samples)
-        *pre_trigger_samples = 0;
+        *pre_trigger_samples = (int)stl->pre_trigger_samples;
 
-    /* Stub: always fire trigger immediately at offset 0 */
-    return 0;
+    /* If no trigger configured, fire immediately */
+    if (!stl->trigger) {
+        return 0;
+    }
+
+    /* Simplified trigger matching:
+     * For basic edge trigger detection, we scan for transitions.
+     * This is a placeholder implementation - full trigger logic
+     * would need to parse stl->trigger structure for:
+     * - Trigger stages
+     * - Match conditions (rising/falling/edge/level)
+     * - Channel assignments
+     * - Trigger counts/delays
+     */
+
+    /* Basic edge detection on channel 0 (bit 0 of each sample) */
+    prev_sample = buf[0] & 0x01;
+    sample_count = buflen * 8;  /* Assuming 8 samples per byte */
+
+    for (i = 1; i < buflen; i++) {
+        cur_sample = buf[i] & 0x01;
+
+        /* Detect rising or falling edge */
+        if (cur_sample != prev_sample) {
+            /* Trigger fired at this sample position */
+            /* Return offset in samples (not bytes) */
+            int trigger_offset = (int)(i * 8);
+
+            /* Limit pre-trigger samples to actual buffer content */
+            if (pre_trigger_samples) {
+                int max_pre = trigger_offset;
+                if ((int)stl->pre_trigger_samples > max_pre)
+                    *pre_trigger_samples = max_pre;
+                else
+                    *pre_trigger_samples = (int)stl->pre_trigger_samples;
+            }
+
+            return trigger_offset;
+        }
+
+        prev_sample = cur_sample;
+    }
+
+    /* No trigger condition met in this buffer */
+    return -1;
+}
+
+/**
+ * Reset soft trigger logic state (for multi-stage triggers).
+ * Call this when starting a new trigger sequence or after a trigger fires.
+ */
+SR_PRIV void soft_trigger_logic_reset(struct soft_trigger_logic *stl)
+{
+    if (!stl)
+        return;
+
+    stl->cur_stage = 0;
 }
 
 /*--- sr_session_trigger_get stub ------------------------------------------*/
