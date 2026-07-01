@@ -82,6 +82,28 @@
 #include <string.h>
 #include <strings.h>
 
+/*
+ * Local byte-order helpers for the recordings path. compat_config.h
+ * provides read_u8_inc/read_u16le/read_u16le_inc but not the plain u8
+ * read nor the u24 little-endian variants used by the BM52x recordings
+ * parser. Define them here to avoid implicit-declaration errors.
+ */
+static inline uint8_t read_u8(const uint8_t *p)
+{
+	return *p;
+}
+static inline uint32_t read_u24le(const uint8_t *p)
+{
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
+}
+static inline uint32_t read_u24le_inc(const uint8_t **p)
+{
+	uint32_t v = read_u24le(*p);
+	*p += 3;
+	return v;
+}
+
+#undef LOG_PREFIX
 #define LOG_PREFIX "brymen-bm52x"
 
 /*
@@ -895,9 +917,9 @@ static int bm52x_rec_prep_feed(uint8_t bfunc, uint8_t bsel, uint8_t bstat,
 {
 	struct sr_channel *ch;
 	gboolean is_amp, is_deg_f;
-	enum sr_mq *mq1, *mq2;
-	enum sr_unit *unit1, *unit2;
-	enum sr_mqflag *mqf1, *mqf2;
+	int *mq1, *mq2;
+	int *unit1, *unit2;
+	uint64_t *mqf1, *mqf2;
 	enum sr_unit unit_c_f;
 	const int *r_a_ma;
 
@@ -1227,13 +1249,10 @@ static int bm52x_rec_read_page_int(const struct sr_dev_inst *sdi,
 	uint32_t meas_data;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog1, analog2;
-	struct sr_analog_encoding encoding1, encoding2;
-	struct sr_analog_meaning meaning1, meaning2;
-	struct sr_analog_spec spec1, spec2;
 	int digits, ret;
 	double values[2];
 	const int *ranges1, *ranges2;
-	enum sr_configkey key;
+	uint32_t key;
 	uint64_t num;
 
 	sr_dbg("progress: %s, %s", __func__, skip ? "skip" : "feed");
@@ -1263,8 +1282,16 @@ static int bm52x_rec_read_page_int(const struct sr_dev_inst *sdi,
 		ival, has_sec_disp ? "dual" : "main", meas_count);
 
 	/* Prepare feed to the sigrok session. Send rate/interval. */
-	sr_analog_init(&analog1, &encoding1, &meaning1, &spec1, 0);
-	sr_analog_init(&analog2, &encoding2, &meaning2, &spec2, 0);
+	/*
+	 * PXView's sr_datafeed_analog is the flat layout (no sr_analog_init()
+	 * helper, no encoding/meaning/spec sub-struct pointers). Zero the
+	 * structs here; bm52x_rec_prep_feed() then assigns data, num_samples,
+	 * probes, mq, unit, mqflags directly. The upstream 'digits' field
+	 * (formerly spec->digits) does not exist in the flat struct, so the
+	 * computed digits value is intentionally discarded below.
+	 */
+	memset(&analog1, 0, sizeof(analog1));
+	memset(&analog2, 0, sizeof(analog2));
 	ret = bm52x_rec_prep_feed(bfunc, bsel, bstat,
 		&analog1, &analog2, &values[0], &values[1],
 		&ranges1, &ranges2, sdi);

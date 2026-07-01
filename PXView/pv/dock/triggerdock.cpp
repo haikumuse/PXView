@@ -1520,6 +1520,10 @@ void TriggerDock::UpdateFont() {
 }
 
 void TriggerDock::bind_context(TabContext *ctx) {
+  if (!ctx) {
+    pxv_warn("%s", "TriggerDock::bind_context: ctx is NULL");
+    return;
+  }
   assert(ctx);
   _context = ctx;
   _session = ctx->session();

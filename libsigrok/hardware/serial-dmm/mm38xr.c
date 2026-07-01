@@ -47,6 +47,7 @@
 #include <math.h>
 #include <string.h>
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "mm38xr"
 
 #define METERMAN_DIGITS_OVERLOAD 0xb0dd

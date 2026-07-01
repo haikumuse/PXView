@@ -203,6 +203,10 @@ void DeviceOptions::bind_enum(const QString &name, const QString label, int key,
 	GVariantIter iter;
 	std::vector< pair<GVariant*, QString> > values;
 
+	if (!gvar_list) {
+		pxv_warn("%s", "DeviceOptions::bind_enum: gvar_list is NULL");
+		return;
+	}
 	assert(gvar_list);
 
 	g_variant_iter_init (&iter, gvar_list);
@@ -260,6 +264,10 @@ void DeviceOptions::bind_samplerate(const QString &name, const QString label,
 {
 	GVariant *gvar_list_samplerates;
 
+	if (!gvar_list) {
+		pxv_warn("%s", "DeviceOptions::bind_samplerate: gvar_list is NULL");
+		return;
+	}
 	assert(gvar_list);
 
 	if ((gvar_list_samplerates = g_variant_lookup_value(gvar_list,
@@ -346,8 +354,16 @@ void DeviceOptions::bind_bandwidths(const QString &name, const QString label, in
 	std::vector< pair<GVariant*, QString> > values;
 	struct sr_list_item *plist;
 
+	if (!gvar_list) {
+		pxv_warn("%s", "DeviceOptions::bind_bandwidths: gvar_list is NULL");
+		return;
+	}
 	assert(gvar_list);
 	plist = (struct sr_list_item*)g_variant_get_uint64(gvar_list);
+	if (!plist) {
+		pxv_warn("%s", "DeviceOptions::bind_bandwidths: plist is NULL");
+		return;
+	}
 	assert(plist);
 
 	_device_agent->get_config_bool(SR_CONF_BANDWIDTH, bw_limit);
@@ -376,8 +392,16 @@ void DeviceOptions::bind_list(const QString &name, const QString label, int key,
 	std::vector< pair<GVariant*, QString> > values;
 	struct sr_list_item *plist;
 
+	if (!gvar_list) {
+		pxv_warn("%s", "DeviceOptions::bind_list: gvar_list is NULL");
+		return;
+	}
 	assert(gvar_list);
 	plist = (struct sr_list_item*)g_variant_get_uint64(gvar_list);
+	if (!plist) {
+		pxv_warn("%s", "DeviceOptions::bind_list: plist is NULL");
+		return;
+	}
 	assert(plist);
 
 	while (plist && plist->id >= 0)

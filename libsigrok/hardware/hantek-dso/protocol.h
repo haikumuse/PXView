@@ -235,8 +235,7 @@ SR_PRIV int dso_get_channeldata(const struct sr_dev_inst *sdi,
 SR_PRIV int dso_set_trigger_samplerate(const struct sr_dev_inst *sdi);
 SR_PRIV int dso_set_voffsets(const struct sr_dev_inst *sdi);
 
-/* Frame begin/end compat stubs - implemented in protocol.c */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 /* usb_source_remove compat - maps to PXView's sr_session_source_remove */
 #define usb_source_remove(session, ctx) sr_session_source_remove(-1)

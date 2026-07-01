@@ -30,6 +30,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "es519xx"
 
 /* Exponents for the respective measurement mode. */

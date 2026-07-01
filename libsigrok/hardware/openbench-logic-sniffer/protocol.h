@@ -143,7 +143,7 @@ SR_PRIV uint32_t ols_channel_mask(const struct sr_dev_inst *sdi);
 SR_PRIV int ols_get_metadata(struct sr_dev_inst *sdi);
 SR_PRIV int ols_set_samplerate(const struct sr_dev_inst *sdi,
 			       uint64_t samplerate);
-SR_PRIV void abort_acquisition(const struct sr_dev_inst *sdi);
+SR_PRIV void ols_abort_acquisition(const struct sr_dev_inst *sdi);
 SR_PRIV int ols_receive_data(int fd, int revents, const struct sr_dev_inst *sdi);
 
 #endif

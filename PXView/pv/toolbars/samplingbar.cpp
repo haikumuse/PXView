@@ -301,6 +301,10 @@ QWidget *SamplingBar::createSamplingSettingsWidget(QWidget *parent) {
 }
 
 void SamplingBar::bind_context(TabContext *ctx) {
+  if (!ctx) {
+    pxv_warn("%s", "SamplingBar::bind_context: ctx is NULL");
+    return;
+  }
   assert(ctx);
   _context = ctx;
   _session = ctx->session();

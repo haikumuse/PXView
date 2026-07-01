@@ -74,25 +74,15 @@ SR_PRIV void siglent_sdl10x0_send_value(const struct sr_dev_inst *sdi, float val
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-	analog.meaning->channels = sdi->channels;
+	memset(&analog, 0, sizeof(analog));
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
 	analog.data = &value;
-	analog.encoding->unitsize = sizeof(value);
-	analog.encoding->is_float = TRUE;
-	/* Are we on a little or big endian system? */
-#ifdef WORDS_BIGENDIAN
-		analog.encoding->is_bigendian = TRUE;
-#else
-		analog.encoding->is_bigendian = FALSE;
-#endif
-	analog.meaning->mq = mq;
-	analog.meaning->unit = unit;
-	analog.meaning->mqflags = mqflags;
+	analog.mq = mq;
+	analog.unit = unit;
+	analog.mqflags = mqflags;
+	analog.unit_bits = 32;
 
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
@@ -184,31 +174,4 @@ SR_PRIV int siglent_sdl10x0_handle_events(int fd, int revents,
 	return TRUE;
 }
 
-/*
- * Local replacements for standard sigrok's std_session_send_df_frame_begin/end().
- * PXView's libsigrok only provides std_session_send_df_header/end (with a
- * prefix argument), not the frame variants. The siglent-sdl10x0 driver wraps
- * each sample set in a frame, so provide local implementations here. Same
- * pattern as itech-it8500, lecroy-xstream, hameg-hmo compat drivers.
- */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
-
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
+/* std_session_send_df_frame_begin/end() are provided by compat_helpers.c. */

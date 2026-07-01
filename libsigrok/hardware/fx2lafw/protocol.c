@@ -40,19 +40,7 @@ struct cmd_start_acquisition {
 
 #define USB_TIMEOUT 100
 
-/*
- * Compat stubs for frame begin/end packet sending.
- * PXView has SR_DF_FRAME_BEGIN/SR_DF_FRAME_END packet types,
- * so we can send them directly via ds_data_forward.
- */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
+/* std_session_send_df_frame_end() is provided by compat_helpers.c. */
 
 static int command_get_fw_version(libusb_device_handle *devhdl,
 				  struct version_info *vi)

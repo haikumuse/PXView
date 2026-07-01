@@ -26,6 +26,7 @@
 #include <math.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "brymen-bm25x"
 
 #define MAX_DIGITS 4

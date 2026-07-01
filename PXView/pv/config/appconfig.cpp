@@ -571,6 +571,10 @@ std::string AppConfig::GetProtocolFormat(const std::string &protocolName)
 
 void AppConfig::GetFontSizeRange(float *minSize, float *maxSize)
 {
+    if (!minSize || !maxSize) {
+        pxv_warn("%s", "AppConfig::GetFontSizeRange: minSize or maxSize is NULL");
+        return;
+    }
     assert(minSize);
     assert(maxSize);
 

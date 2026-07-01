@@ -575,7 +575,18 @@ private:
   void make_cursors_order();
 
 public:
-  data::DataSource *effective_data_source();
+  /**
+   * Returns the DataSource for snapshot data only. When the bound
+   * SessionDocument has captured data (_document->has_data()), returns
+   * _document so snapshot/samplerate/sampletime queries read the
+   * per-tab captured data; otherwise falls back to _data_source (the
+   * SigSession DataSource).
+   *
+   * SignalModels are NOT available through this — SessionDocument's
+   * _signal_models is never populated. Use _data_source directly for
+   * SignalModel access (e.g. SignalFactory::create_signals/update_signals).
+   */
+  data::DataSource *document_snapshot_source();
 
   /**
    * Per-tab UI state cache for dock widgets and the sampling toolbar.
@@ -600,6 +611,11 @@ private:
   pv::data::SessionDocument *_document;
   pv::toolbars::SamplingBar *_sampling_bar;
   DockUiState _dock_ui_state;
+  // Re-entrancy guard for rebuild_signals_from_config(). Set while a rebuild
+  // is in progress so a nested broadcast (e.g. DSV_MSG_DEVICE_OPTIONS_UPDATED)
+  // cannot recurse into another rebuild and stack-overflow. The RAII guard in
+  // rebuild_signals_from_config() resets it on all exit paths.
+  bool _rebuild_in_progress = false;
   std::vector<Signal *> _own_signals;
   // View-owned wrapper traces for derived types. Synced lazily from the
   // Core layer's Stack/Model objects via sync_derived_traces().

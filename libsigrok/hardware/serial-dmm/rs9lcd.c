@@ -34,6 +34,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "rs9lcd"
 
 /* Byte 1 of the packet, and the modes it represents */

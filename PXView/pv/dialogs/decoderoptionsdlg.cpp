@@ -75,6 +75,9 @@ DecoderOptionsDlg::~DecoderOptionsDlg()
 
 void DecoderOptionsDlg::load_options(view::DecodeTrace *trace)
 {
+    if (!trace) {
+        return;
+    }
     assert(trace);
     _trace = trace;
 
@@ -264,8 +267,9 @@ void DecoderOptionsDlg::load_options_view()
 
 void DecoderOptionsDlg::load_decoder_forms(QWidget *container)
 {
-	using pv::data::decode::Decoder; 
-	assert(container); 
+	using pv::data::decode::Decoder;
+	if (!container) return;
+	assert(container);
 
     int dex = 0;
  
@@ -289,6 +293,7 @@ DsComboBox* DecoderOptionsDlg::create_probe_selector(
     QWidget *parent, const data::decode::Decoder *dec,
 	const srd_channel *const pdch)
 {
+	if (!dec || !_trace) return nullptr;
 	assert(dec);
     assert(_trace);
 
@@ -329,7 +334,8 @@ void DecoderOptionsDlg::on_region_set(int index)
 }
 
 void DecoderOptionsDlg::update_decode_range()
-{ 
+{
+    if (!_trace) return;
     assert(_trace);
     const uint64_t last_samples = _trace->get_view()->session().cur_samplelimits() - 1;
     const int index1 = _start_comboBox->currentIndex();
@@ -393,8 +399,10 @@ void DecoderOptionsDlg::create_decoder_form(
 {
 	const GSList *l;
 
-    assert(dec);     
+    if (!dec) return;
+    assert(dec);
 	const srd_decoder *const decoder = dec->decoder();
+	if (!decoder) return;
 	assert(decoder);
 
     QFont font = theme_font_dialog();
@@ -493,6 +501,7 @@ void DecoderOptionsDlg::commit_probes()
 
 void DecoderOptionsDlg::commit_decoder_probes(data::decode::Decoder *dec)
 {
+	if (!dec || !_trace) return;
 	assert(dec);
     assert(_trace);
 
@@ -537,6 +546,7 @@ void DecoderOptionsDlg::on_accept()
 void DecoderOptionsDlg::on_trans_pramas()
 {
     QCheckBox *ck_box = dynamic_cast<QCheckBox*>(sender());
+    if (!ck_box) return;
     assert(ck_box);
 
     AppConfig::Instance().appOptions.transDecoderDlg = ck_box->isChecked();

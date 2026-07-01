@@ -424,7 +424,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 
 static int dev_acquisition_stop(struct sr_dev_inst *sdi)
 {
-	abort_acquisition(sdi);
+	ols_abort_acquisition(sdi);
 	return SR_OK;
 }
 

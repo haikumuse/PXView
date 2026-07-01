@@ -74,6 +74,39 @@
 #include "dmm_parsers.h"
 #include <string.h>
 
+/* Local replacement for upstream sr_atod_ascii_digits (unavailable in
+ * PXView's 0.2.0 libsigrok fork). Parses a decimal string into a double
+ * and counts significant digits. The standard sigrok helper instead
+ * returns the exponent of an "E<exp>" suffix, but in this driver the
+ * 'digits' value is only used for a dBm adjustment that is subsequently
+ * discarded (the flat sr_datafeed_analog has no spec->digits field), so
+ * the exact semantic does not affect behaviour here. */
+static int local_sr_atod_ascii_digits(const char *str, double *val, int *digits)
+{
+	char *end = NULL;
+	*val = g_ascii_strtod(str, &end);
+	if (end == str)
+		return SR_ERR_ARG;
+	/* Count significant digits: walk the string, skip leading zeros/sign/dot. */
+	int d = 0;
+	gboolean seen_digit = FALSE;
+	for (const char *p = str; *p; p++) {
+		if (*p >= '0' && *p <= '9') {
+			if (*p != '0' || seen_digit) {
+				seen_digit = TRUE;
+				d++;
+			}
+		} else if (*p == '.' || *p == '-' || *p == '+') {
+			continue;
+		} else {
+			break;
+		}
+	}
+	*digits = d;
+	return SR_OK;
+}
+
+#undef LOG_PREFIX
 #define LOG_PREFIX "brymen-bm85x"
 
 #define STX 0x02
@@ -307,7 +340,7 @@ static int bm85x_parse_value(char *txt, double *val, int *digits)
 	}
 	*dst = '\0';
 
-	ret = sr_atod_ascii_digits(txt, val, digits);
+	ret = local_sr_atod_ascii_digits(txt, val, digits);
 	if (ret != SR_OK)
 		return ret;
 

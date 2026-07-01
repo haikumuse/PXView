@@ -44,6 +44,7 @@
 #include <math.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "digitech-qm1578"
 
 /* Number of digits the meter supports */

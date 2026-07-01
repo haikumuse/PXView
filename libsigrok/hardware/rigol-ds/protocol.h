@@ -172,7 +172,6 @@ SR_PRIV int rigol_ds_receive(int fd, int revents, const struct sr_dev_inst *sdi)
 SR_PRIV int rigol_ds_get_dev_cfg(const struct sr_dev_inst *sdi);
 SR_PRIV int rigol_ds_get_dev_cfg_vertical(const struct sr_dev_inst *sdi);
 
-/* Frame end compat stub (frame_begin is canonical in compat_helpers.c). */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 #endif

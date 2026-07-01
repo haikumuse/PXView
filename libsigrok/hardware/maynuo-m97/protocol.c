@@ -59,66 +59,8 @@ static uint16_t maynuo_m97_crc16(uint16_t seed, const uint8_t *data, size_t len)
 #define SR_CRC16_DEFAULT_INIT 0xFFFF
 
 /* ===========================================================================
- * Local sr_session_send_meta() replacement.
- * Sends a META packet with a single config key/value pair (same pattern as
- * korad-kaxxxxp/rdtech-dps/protocol.c).
+ * std_session_send_df_frame_begin/end() are provided by compat_helpers.c.
  * =========================================================================== */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data)
-{
-	struct sr_datafeed_packet packet;
-	struct sr_datafeed_meta meta;
-	struct sr_config *src;
-
-	if (!sdi || !data)
-		return SR_ERR_ARG;
-
-	src = sr_config_new((int)key, data);
-	if (!src)
-		return SR_ERR;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_META;
-	packet.status = SR_PKT_OK;
-	packet.payload = &meta;
-	meta.config = g_slist_append(NULL, src);
-
-	ds_data_forward(sdi, &packet);
-
-	sr_config_free(src);
-	g_slist_free(meta.config);
-
-	return SR_OK;
-}
-
-/* ===========================================================================
- * Local replacements for std_session_send_df_frame_begin/end().
- * PXView's libsigrok only provides std_session_send_df_header/end (with a
- * prefix argument), not the frame variants. The maynuo-m97 driver wraps
- * each sample set in a frame, so provide local implementations here. Same
- * pattern as itech-it8500, hameg-hmo, lecroy-xstream compat drivers.
- * =========================================================================== */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
-
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
 
 /* ===========================================================================
  * Local Modbus serial RTU layer.
@@ -374,7 +316,7 @@ SR_PRIV struct sr_modbus_dev_inst *modbus_dev_inst_new(const char *resource,
 			sr_modbus_free(modbus);
 			modbus = NULL;
 		}
-		g_strfree(params);
+		g_strfreev(params);
 	}
 
 	return modbus;
@@ -826,22 +768,20 @@ static void maynuo_m97_session_send_value(const struct sr_dev_inst *sdi,
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-	analog.meaning->channels = g_slist_append(NULL, ch);
+	memset(&analog, 0, sizeof(analog));
+	analog.probes = g_slist_append(NULL, ch);
 	analog.num_samples = 1;
 	analog.data = &value;
-	analog.meaning->mq = mq;
-	analog.meaning->unit = unit;
-	analog.meaning->mqflags = SR_MQFLAG_DC;
+	analog.mq = mq;
+	analog.unit = unit;
+	analog.mqflags = SR_MQFLAG_DC;
+	analog.unit_bits = 32;
 
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 }
 
 /*

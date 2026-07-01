@@ -92,6 +92,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "ms2115b"
 
 static void handle_flags(struct sr_datafeed_analog *analog, float *floatval,

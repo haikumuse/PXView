@@ -25,6 +25,18 @@
 #include <glib.h>
 #include "hardware/compat/compat.h"
 
+/*
+ * PXView does not define SR_CONF_HOLD_MAX / SR_CONF_HOLD_MIN. Provide them
+ * locally in the reserved extended config range (matching the rigol-dg
+ * convention for non-standard SR_CONF keys).
+ */
+#ifndef SR_CONF_HOLD_MAX
+#define SR_CONF_HOLD_MAX           30210
+#endif
+#ifndef SR_CONF_HOLD_MIN
+#define SR_CONF_HOLD_MIN           30211
+#endif
+
 #define LOG_PREFIX "cem-dt-885x"
 
 /* When retrieving samples from device memory, group this many

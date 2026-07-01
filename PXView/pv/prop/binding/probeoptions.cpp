@@ -132,6 +132,10 @@ void ProbeOptions::bind_enum(const QString &name, const QString label, int key,
 	GVariantIter iter;
 	std::vector< pair<GVariant*, QString> > values;
 
+	if (!gvar_list) {
+		pxv_warn("%s", "ProbeOptions::bind_enum: gvar_list is NULL");
+		return;
+	}
 	assert(gvar_list);
 
 	g_variant_iter_init (&iter, gvar_list);
@@ -168,7 +172,11 @@ void ProbeOptions::bind_vdiv(const QString &name, const QString label,
 {
     GVariant *gvar_list_vdivs;
 
-	assert(gvar_list);
+	if (!gvar_list) {
+		pxv_warn("%s", "ProbeOptions::bind_vdiv: gvar_list is NULL");
+		return;
+	}
+    assert(gvar_list);
 
     if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list,
             "vdivs", G_VARIANT_TYPE("at"))))
@@ -184,6 +192,10 @@ void ProbeOptions::bind_coupling(const QString &name, const QString label,
 {
     GVariant *gvar_list_coupling;
 
+	if (!gvar_list) {
+		pxv_warn("%s", "ProbeOptions::bind_coupling: gvar_list is NULL");
+		return;
+	}
     assert(gvar_list);
 
     if ((gvar_list_coupling = g_variant_lookup_value(gvar_list,

@@ -289,7 +289,7 @@ public:
     void delay_prop_msg(QString strMsg) override;
 
     // ---- IMessageListener ----
-    void OnMessage(int msg) override;
+    void OnMessage(int msg, int param = 0) override;
 
 private:
     void broadcast_event(ServiceEvent event,

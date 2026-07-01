@@ -450,7 +450,7 @@ void View::clone_signals_for_document(pv::data::SessionDocument *doc) {
   set_data_document(doc);
 }
 
-data::DataSource *View::effective_data_source() {
+data::DataSource *View::document_snapshot_source() {
   if (_document && _document->has_data())
     return _document;
   return _data_source;
@@ -473,7 +473,7 @@ void View::capture_init() {
   else if (!_session->is_repeating())
     show_trig_cursor(false);
 
-  double sampletime = effective_data_source()->cur_sampletime();
+  double sampletime = document_snapshot_source()->cur_sampletime();
   if (sampletime > 0) {
     _maxscale = sampletime / (width * MaxViewRate);
 
@@ -816,8 +816,8 @@ void View::set_scale_offset(double scale, int64_t offset) {
 void View::limit_scale_offset() {
   if (get_work_mode() != DSO) {
     int width = get_view_width();
-    double sampletime = effective_data_source()->cur_sampletime();
-    uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
+    double sampletime = document_snapshot_source()->cur_sampletime();
+    uint64_t samplerate = document_snapshot_source()->cur_snap_samplerate();
     if (sampletime > 0 && samplerate > 0 && width > 0) {
       _maxscale = sampletime / (width * MaxViewRate);
       _minscale = (1.0 / samplerate) / MaxPixelsPerSample;
@@ -956,7 +956,7 @@ void View::receive_end() {
       ret = _device_agent->get_config_uint64(SR_CONF_ACTUAL_SAMPLES,
                                              actual_samples);
       if (ret) {
-        if (actual_samples != effective_data_source()->cur_samplelimits()) {
+        if (actual_samples != document_snapshot_source()->cur_samplelimits()) {
           _viewbottom->set_rle_depth(actual_samples);
         }
       }
@@ -969,13 +969,13 @@ void View::receive_end() {
 
 void View::receive_trigger(quint64 trig_pos1) {
   (void)trig_pos1;
-  uint64_t trig_pos = effective_data_source()->get_trigger_pos();
+  uint64_t trig_pos = document_snapshot_source()->get_trigger_pos();
   set_trig_cursor_posistion(trig_pos);
 }
 
 void View::set_trig_cursor_posistion(uint64_t trig_pos) {
   const double time =
-      trig_pos * 1.0 / effective_data_source()->cur_snap_samplerate();
+      trig_pos * 1.0 / document_snapshot_source()->cur_snap_samplerate();
   _trig_cursor->set_index(trig_pos);
 
   int width = get_view_width();
@@ -996,7 +996,7 @@ void View::set_trig_cursor_posistion(uint64_t trig_pos) {
 }
 
 void View::set_trig_pos(int percent) {
-  uint64_t index = effective_data_source()->cur_samplelimits() * percent / 100;
+  uint64_t index = document_snapshot_source()->cur_samplelimits() * percent / 100;
 
   if (_session->have_view_data() == false || _session->is_working()) {
     set_trig_cursor_posistion(index);
@@ -1008,7 +1008,7 @@ void View::set_search_pos(uint64_t search_pos, bool hit) {
   fore.setAlpha(View::BackAlpha);
 
   const double time =
-      search_pos * 1.0 / effective_data_source()->cur_snap_samplerate();
+      search_pos * 1.0 / document_snapshot_source()->cur_snap_samplerate();
   _search_pos = search_pos;
   _search_hit = hit;
   _search_cursor->set_index(search_pos);
@@ -1045,7 +1045,7 @@ void View::normalize_layout() {
 }
 
 void View::get_scroll_layout(int64_t &length, int64_t &offset) {
-  length = ceil(effective_data_source()->cur_snap_sampletime() / _scale);
+  length = ceil(document_snapshot_source()->cur_snap_sampletime() / _scale);
   offset = _offset;
 }
 
@@ -1101,8 +1101,8 @@ void View::update_scale_offset() {
   }
 
   if (get_work_mode() != DSO) {
-    double sampletime = effective_data_source()->cur_sampletime();
-    uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
+    double sampletime = document_snapshot_source()->cur_sampletime();
+    uint64_t samplerate = document_snapshot_source()->cur_snap_samplerate();
     if (sampletime > 0 && samplerate > 0) {
       _maxscale = sampletime / (width * MaxViewRate);
       _minscale = (1.0 / samplerate) / MaxPixelsPerSample;
@@ -1129,7 +1129,7 @@ void View::update_scale_offset() {
 
 void View::mode_changed() {
   if (_device_agent->is_virtual()) {
-    uint64_t samplerate = effective_data_source()->cur_snap_samplerate();
+    uint64_t samplerate = document_snapshot_source()->cur_snap_samplerate();
     if (samplerate > 0)
       _scale = WellSamplesPerPixel * 1.0 / samplerate;
   }
@@ -1469,7 +1469,7 @@ void View::resizeEvent(QResizeEvent *event) {
 
   if (get_work_mode() != DSO) {
     _maxscale =
-        effective_data_source()->cur_sampletime() / (width * MaxViewRate);
+        document_snapshot_source()->cur_sampletime() / (width * MaxViewRate);
     if (_scale > _maxscale) {
       _scale = _maxscale;
     }
@@ -1528,7 +1528,7 @@ void View::data_updated() {
   // active data source swaps its backing snapshots (e.g. after a capture,
   // glitch filter, or document switch). Re-bind the latest snapshots from
   // the effective data source.
-  auto *source = effective_data_source();
+  auto *source = document_snapshot_source();
   if (source) {
     for (auto sig : _own_signals) {
       int type = sig->signal_type();
@@ -1704,7 +1704,7 @@ void View::set_cursor_middle(int index) {
   }
 
   set_scale_offset(
-      _scale, (*i)->index() / (effective_data_source()->cur_snap_samplerate() *
+      _scale, (*i)->index() / (document_snapshot_source()->cur_snap_samplerate() *
                                _scale) -
                   (width / 2));
 }
@@ -1723,7 +1723,7 @@ QString View::get_measure(QString option) {
 
 QString View::get_cm_time(int index) {
   uint64_t sampleIndex = get_cursor_samples(index);
-  uint64_t sampleRate = effective_data_source()->cur_snap_samplerate();
+  uint64_t sampleRate = document_snapshot_source()->cur_snap_samplerate();
   return _ruler->format_real_time(sampleIndex, sampleRate);
 }
 
@@ -1736,7 +1736,7 @@ QString View::get_cm_delta(int index1, int index2) {
   uint64_t delta_sample =
       (samples1 > samples2) ? samples1 - samples2 : samples2 - samples1;
   return _ruler->format_real_time(
-      delta_sample, effective_data_source()->cur_snap_samplerate());
+      delta_sample, document_snapshot_source()->cur_snap_samplerate());
 }
 
 QString View::get_index_delta(uint64_t start, uint64_t end) {
@@ -1745,7 +1745,7 @@ QString View::get_index_delta(uint64_t start, uint64_t end) {
 
   uint64_t delta_sample = (start > end) ? start - end : end - start;
   return _ruler->format_real_time(
-      delta_sample, effective_data_source()->cur_snap_samplerate());
+      delta_sample, document_snapshot_source()->cur_snap_samplerate());
 }
 
 uint64_t View::get_cursor_samples(int index) {
@@ -1838,7 +1838,7 @@ int64_t View::get_max_offset() {
   int width = get_view_width();
   assert(width > 0);
 
-  return ceil((effective_data_source()->cur_snap_sampletime() / _scale) -
+  return ceil((document_snapshot_source()->cur_snap_sampletime() / _scale) -
               (width * MaxViewRate));
 }
 
@@ -1914,19 +1914,19 @@ void View::show_region(uint64_t start, uint64_t end, bool keep) {
     update();
   } else if (_session->get_map_zoom() == 0) {
     const double ideal_scale = (end - start) * 2.0 /
-                               effective_data_source()->cur_snap_samplerate() /
+                               document_snapshot_source()->cur_snap_samplerate() /
                                width;
     const double new_scale = max(min(ideal_scale, _maxscale), _minscale);
     const double new_off =
         (start + end) * 0.5 /
-            (effective_data_source()->cur_snap_samplerate() * new_scale) -
+            (document_snapshot_source()->cur_snap_samplerate() * new_scale) -
         (width / 2);
     set_scale_offset(new_scale, new_off);
   } else {
     const double new_scale = scale();
     const double new_off =
         (start + end) * 0.5 /
-            (effective_data_source()->cur_snap_samplerate() * new_scale) -
+            (document_snapshot_source()->cur_snap_samplerate() * new_scale) -
         (width / 2);
     set_scale_offset(new_scale, new_off);
   }
@@ -1991,7 +1991,7 @@ void View::show_captured_progress(bool triggered, int progress) {
 bool View::get_dso_trig_moved() { return _time_viewport->get_dso_trig_moved(); }
 
 double View::index2pixel(uint64_t index, bool has_hoff) {
-  const uint64_t rateValue = effective_data_source()->cur_snap_samplerate();
+  const uint64_t rateValue = document_snapshot_source()->cur_snap_samplerate();
   const double scaleValue = scale();
   const int64_t offsetValue = offset();
   const double hoffValue = trig_hoff();
@@ -2018,7 +2018,7 @@ double View::index2pixel(uint64_t index, bool has_hoff) {
 }
 
 uint64_t View::pixel2index(double pixel) {
-  const uint64_t rateValue = effective_data_source()->cur_snap_samplerate();
+  const uint64_t rateValue = document_snapshot_source()->cur_snap_samplerate();
   const double scaleValue = scale();
   const int64_t offsetValue = offset();
   const double hoffValue = trig_hoff();
@@ -2056,6 +2056,19 @@ int View::get_cursor_index_by_key(uint64_t key) {
 }
 
 void View::rebuild_signals_from_config(const data::SignalConfig &config) {
+  // Re-entrancy guard: if a nested broadcast (e.g. DSV_MSG_DEVICE_OPTIONS_UPDATED
+  // from within this function) triggers OnMessage → rebuild_signals() →
+  // rebuild_signals_from_config() again, abort immediately to prevent
+  // infinite recursion / stack overflow.
+  if (_rebuild_in_progress)
+    return;
+  _rebuild_in_progress = true;
+  struct RebuildGuard {
+    bool &flag;
+    RebuildGuard(bool &f) : flag(f) {}
+    ~RebuildGuard() { flag = false; }
+  } _rebuild_guard(_rebuild_in_progress);
+
   qDebug() << "View::rebuild_signals_from_config() work_mode="
            << config.work_mode << "ch_count=" << config.channels.size()
            << "is_valid=" << config.is_valid;
@@ -2375,13 +2388,14 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   //    DSV_MSG_DEVICE_OPTIONS_UPDATED to DeviceConfigChanged).
   _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
 
-  // 6. Now start the decode task after reload() has completed. The
-  //    add_decode_task() helper will call attach_data_to_signal() to restore
-  //    snapshot pointers. If there is no view data yet (decoder added before
-  //    capture), the capture pipeline will start the decode for us via
-  //    DSV_MSG_COPY_TO_DOC_DONE → frame_ended() + add_decode_task().
+  // 6. Now start the decode task after reload() has completed. The public
+  //    start_all_decode_tasks() funnel calls attach_data_to_signal() before
+  //    starting tasks, restoring snapshot pointers. If there is no view data
+  //    yet (decoder added before capture), the capture pipeline will start
+  //    the decode for us via DSV_MSG_COPY_TO_DOC_DONE → frame_ended() +
+  //    start_all_decode_tasks().
   if (!silent && _session->have_view_data()) {
-    _session->add_decode_task(out_stack);
+    _session->start_all_decode_tasks();
   }
 
   // 7. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
@@ -2532,9 +2546,10 @@ void View::on_signals_changed() {
   //
   // IMPORTANT: SignalModels ALWAYS live in SigSession (_data_source), never
   // in SessionDocument. SessionDocument::_signal_models is never populated
-  // (it only stores data snapshots via _logic/_analog/_dso). Using
-  // effective_data_source() here was a bug: when _document->has_data() is
-  // true (after a capture), effective_data_source() returns _document, and
+  // (it only stores data snapshots via _logic/_analog/_dso). Using the
+  // snapshot-source accessor (the former effective_data_source(), now
+  // document_snapshot_source()) here was a bug: when _document->has_data() is
+  // true (after a capture), document_snapshot_source() returns _document, and
   // create_signals(_document) reads the empty _signal_models vector,
   // returning an empty list. AllReplaced then deletes all existing view
   // signals and creates 0 new ones, clearing the waveform tracks
@@ -2622,7 +2637,7 @@ void View::set_scale(double scale) {
 }
 
 void View::auto_set_max_scale() {
-  const double limitTime = effective_data_source()->cur_sampletime();
+  const double limitTime = document_snapshot_source()->cur_sampletime();
   const int width = get_view_width();
 
   if (width > 0) {
@@ -2721,7 +2736,7 @@ void View::sync_derived_traces() {
 
   _derived_traces_dirty = false;
 
-  auto *source = effective_data_source();
+  auto *source = document_snapshot_source();
   if (!source)
     return;
 

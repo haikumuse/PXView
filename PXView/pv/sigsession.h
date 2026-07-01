@@ -27,6 +27,7 @@
 #include <QDateTime>
 #include <QString>
 #include <algorithm>
+#include <atomic>
 #include <list>
 #include <set>
 #include <stdint.h>
@@ -349,7 +350,7 @@ public:
   struct ds_device_base_info *get_device_list(int &out_count,
                                               int &actived_index);
   void add_msg_listener(IMessageListener *ln);
-  void broadcast_msg(int msg);
+  void broadcast_msg(int msg, int param = 0);
   bool have_new_realtime_refresh(bool keep);
   std::shared_ptr<data::DecoderStack> get_decoder_trace(int index,
                                         data::SessionDocument *doc = nullptr);
@@ -381,7 +382,6 @@ public:
 
   void update_dso_data_scale();
 
-  void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
   void remove_decode_task(std::shared_ptr<data::DecoderStack> stack);
 
   inline sr_status get_dso_status() { return _dso_status; }
@@ -547,6 +547,7 @@ private:
     clear_all_decode_task(run_dex);
   }
 
+  void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
   void decode_single_task(std::shared_ptr<data::DecoderStack> task);
 
   void capture_init();
@@ -561,7 +562,7 @@ private:
   inline void set_session_time(QDateTime time) { _session_time = time; }
 
   // IMessageListener
-  void OnMessage(int msg) override;
+  void OnMessage(int msg, int param = 0) override;
 
   // IDeviceAgentCallback
   void DeviceConfigChanged() override;
@@ -696,6 +697,11 @@ private:
   data::SessionDocument *_capture_owner_document;
   std::thread _copy_thread;
   data::TriggerConfig _trigger_config;
+
+  // Monotonically-increasing handle id allocator for DecoderStack instances.
+  // A brand-new stack always receives a fresh id via fetch_add so the API/MCP
+  // layer can distinguish re-created stacks from reused ones.
+  std::atomic<uint64_t> _next_decoder_handle_id{1};
 };
 
 } // namespace pv

@@ -181,14 +181,22 @@ void StoreProgress::accept()
         int dex2 = _end_cursor->currentIndex();
 
         if (dex1 > 0)
-        {   
+        {
             auto c = _view->get_cursor_by_index(dex1-1);
+            if (!c) {
+                pxv_warn("%s", "StoreProgress::accept: start cursor is NULL");
+                return;
+            }
             assert(c);
             start_index = c->get_index();
         }
 
         if (dex2 > 0){
             auto c = _view->get_cursor_by_index(dex2-1);
+            if (!c) {
+                pxv_warn("%s", "StoreProgress::accept: end cursor is NULL");
+                return;
+            }
             assert(c);
             end_index = c->get_index();
         }

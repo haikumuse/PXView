@@ -436,6 +436,11 @@ struct sr_datafeed_analog {
   /** The analog value(s). The data is interleaved according to
    * the probes list. */
   void *data;
+  /** Effective decimal digits for ADC resolution (e.g. hantek-dso).
+   *  Set by drivers that can compute it; memset=0 keeps backward behavior. */
+  int8_t digits;
+  /** Spec decimal digits (display hint). Same source as digits. */
+  int8_t spec_digits;
 };
 
 /** Input (file) format struct. */

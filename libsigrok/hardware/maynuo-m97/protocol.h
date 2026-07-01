@@ -299,23 +299,7 @@ SR_PRIV GSList *sr_modbus_scan(struct sr_dev_driver *di, GSList *options,
 		struct sr_dev_inst *(*probe_device)(struct sr_modbus_dev_inst *modbus));
 #endif /* MAYNUO_M97_MODBUS_DEFINED */
 
-/*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair. Implemented
- * in protocol.c (same pattern as korad-kaxxxxp/rdtech-dps).
- */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data);
-
-/*
- * Local replacements for standard sigrok's std_session_send_df_frame_begin/end().
- * PXView's libsigrok only provides std_session_send_df_header/end with a
- * prefix argument, not the frame variants. The maynuo-m97 driver wraps
- * each sample set in a frame, so provide local implementations here. Same
- * pattern as itech-it8500, hameg-hmo, lecroy-xstream compat drivers.
- */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 struct maynuo_m97_model {
 	unsigned int id;

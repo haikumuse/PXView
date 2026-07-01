@@ -105,7 +105,7 @@ static int siglent_sds_event_wait(const struct sr_dev_inst *sdi)
 
 			if (sr_scpi_get_string(sdi->conn, ":INR?", &buf) != SR_OK)
 				return SR_ERR;
-			sr_atoi(buf, &out);
+			local_sr_atoi(buf, &out);
 			g_free(buf);
 			g_usleep(s);
 		} while (out == 0);
@@ -131,7 +131,7 @@ static int siglent_sds_event_wait(const struct sr_dev_inst *sdi)
 			}
 			if (sr_scpi_get_string(sdi->conn, ":INR?", &buf) != SR_OK)
 				return SR_ERR;
-			sr_atoi(buf, &out);
+			local_sr_atoi(buf, &out);
 			g_free(buf);
 			g_usleep(s);
 		/* XXX
@@ -200,7 +200,7 @@ SR_PRIV int siglent_sds_capture_start(const struct sr_dev_inst *sdi)
 				return SR_ERR;
 			if (sr_scpi_get_string(sdi->conn, ":INR?", &buf) != SR_OK)
 				return SR_ERR;
-			sr_atoi(buf, &out);
+			local_sr_atoi(buf, &out);
 			g_free(buf);
 			if (out == DEVICE_STATE_TRIG_RDY) {
 				siglent_sds_set_wait_event(devc, WAIT_TRIGGER);
@@ -250,7 +250,7 @@ SR_PRIV int siglent_sds_capture_start(const struct sr_dev_inst *sdi)
 				return SR_ERR;
 			if (sr_scpi_get_string(sdi->conn, ":INR?", &buf) != SR_OK)
 				return SR_ERR;
-			sr_atoi(buf, &out);
+			local_sr_atoi(buf, &out);
 			g_free(buf);
 			if (out == DEVICE_STATE_TRIG_RDY) {
 				siglent_sds_set_wait_event(devc, WAIT_TRIGGER);
@@ -984,12 +984,4 @@ SR_PRIV int siglent_sds_get_dev_cfg_horizontal(const struct sr_dev_inst *sdi)
 	return SR_OK;
 }
 
-/* Frame end stub implementation kept locally (frame_begin is canonical in compat_helpers.c). */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-	packet.type = SR_DF_FRAME_END;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
+/* std_session_send_df_frame_end() is provided by compat_helpers.c. */

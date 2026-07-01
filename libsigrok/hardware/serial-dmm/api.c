@@ -42,6 +42,21 @@
 #include "protocol.h"
 #include "dmm_parsers.h"
 
+/*
+ * The packet_request and after_open hooks are only compiled when
+ * HAVE_SERIAL_COMM is defined (which requires libserialport). On builds
+ * without serial support (e.g. Windows without libserialport), pass NULL
+ * so the dmm_table still compiles; protocol.c and api.c both NULL-check
+ * these before invoking.
+ */
+#ifdef HAVE_SERIAL_COMM
+#define SERIAL_REQ(fn) (fn)
+#define SERIAL_OPEN(fn) (fn)
+#else
+#define SERIAL_REQ(fn) (NULL)
+#define SERIAL_OPEN(fn) (NULL)
+#endif
+
 static const uint32_t scanopts[] = {
 	SR_CONF_CONN,
 	SR_CONF_SERIALCOMM,
@@ -129,12 +144,12 @@ static struct dmm_info dmm_table[] = {
 	/* bm52x (BM520s and BM820s share the parser) */
 	DMM_CONN(brymen_bm52x, "Brymen", "BM52x",
 		"hid/bu86x", NULL, BRYMEN_BM52X_PACKET_SIZE, 4000, 500,
-		sr_brymen_bm52x_packet_request,
+		SERIAL_REQ(sr_brymen_bm52x_packet_request),
 		sr_brymen_bm52x_packet_valid, sr_brymen_bm52x_parse,
 		NULL),
 	DMM_CONN(brymen_bm52x, "Brymen", "BM82x",
 		"hid/bu86x", NULL, BRYMEN_BM52X_PACKET_SIZE, 4000, 500,
-		sr_brymen_bm82x_packet_request,
+		SERIAL_REQ(sr_brymen_bm82x_packet_request),
 		sr_brymen_bm82x_packet_valid, sr_brymen_bm52x_parse,
 		NULL),
 
@@ -143,14 +158,14 @@ static struct dmm_info dmm_table[] = {
 		NULL, "9600/8n1/dtr=1/rts=1",
 		BRYMEN_BM85x_PACKET_SIZE_MIN, 2000, 400,
 		NULL, NULL,
-		brymen_bm85x_after_open, brymen_bm85x_packet_request,
+		SERIAL_OPEN(brymen_bm85x_after_open), SERIAL_REQ(brymen_bm85x_packet_request),
 		brymen_bm85x_packet_valid, brymen_bm85x_parse,
 		NULL),
 
 	/* bm86x */
 	DMM_CONN(brymen_bm86x, "Brymen", "BM86x",
 		"hid/bu86x", NULL, BRYMEN_BM86X_PACKET_SIZE, 500, 100,
-		sr_brymen_bm86x_packet_request,
+		SERIAL_REQ(sr_brymen_bm86x_packet_request),
 		sr_brymen_bm86x_packet_valid, sr_brymen_bm86x_parse,
 		NULL),
 
@@ -280,63 +295,63 @@ static struct dmm_info dmm_table[] = {
 
 	/* metex14 */
 	DMM(metex14, "MASTECH", "MAS345", "600/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Metex", "M-3640D", "1200/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Metex", "M-3860M", "9600/7n2/rts=0/dtr=1",
-		4 * METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		4 * METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_4packets_valid, sr_metex14_4packets_parse,
 		NULL),
 	DMM(metex14, "Metex", "M-4650CR", "1200/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Metex", "ME-21", "2400/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Metex", "ME-31", "600/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "PeakTech", "3410", "600/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "PeakTech", "4370", "1200/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "PeakTech", "4390A", "9600/7n2/rts=0/dtr=1",
-		4 * METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		4 * METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_4packets_valid, sr_metex14_4packets_parse,
 		NULL),
 	DMM(metex14, "RadioShack", "22-168", "1200/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "RadioShack", "22-805", "600/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Voltcraft", "M-3650CR", "1200/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 150, 20, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 150, 20, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Voltcraft", "M-3650D", "1200/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Voltcraft", "M-4650CR", "1200/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 0, 0, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 	DMM(metex14, "Voltcraft", "ME-42", "600/7n2/rts=0/dtr=1",
-		METEX14_PACKET_SIZE, 250, 60, sr_metex14_packet_request,
+		METEX14_PACKET_SIZE, 250, 60, SERIAL_REQ(sr_metex14_packet_request),
 		sr_metex14_packet_valid, sr_metex14_parse,
 		NULL),
 

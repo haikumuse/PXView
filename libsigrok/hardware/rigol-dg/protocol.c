@@ -22,103 +22,10 @@
 #include "protocol.h"
 
 /*
- * PXView does not provide the sr_sw_limits helpers. Implement them here
- * (matching standard sigrok semantics) so this self-contained driver
- * compiles and behaves correctly.
+ * The sr_sw_limits helpers and std_session_send_df_frame_end() are now
+ * provided as static inline in protocol.h and via compat_helpers.c
+ * respectively, so no local definitions are needed here.
  */
-
-SR_PRIV void sr_sw_limits_init(struct sr_sw_limits *limits)
-{
-	memset(limits, 0, sizeof(*limits));
-}
-
-SR_PRIV int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
-		uint32_t key, GVariant **data)
-{
-	if (!limits || !data)
-		return SR_ERR_ARG;
-
-	switch (key) {
-	case SR_CONF_LIMIT_SAMPLES:
-		*data = g_variant_new_uint64(limits->limit_samples);
-		break;
-	case SR_CONF_LIMIT_MSEC:
-		*data = g_variant_new_uint64(limits->limit_msec);
-		break;
-	default:
-		return SR_ERR;
-	}
-
-	return SR_OK;
-}
-
-SR_PRIV int sr_sw_limits_config_set(struct sr_sw_limits *limits,
-		uint32_t key, GVariant *data)
-{
-	if (!limits || !data)
-		return SR_ERR_ARG;
-
-	switch (key) {
-	case SR_CONF_LIMIT_SAMPLES:
-		limits->limit_samples = g_variant_get_uint64(data);
-		break;
-	case SR_CONF_LIMIT_MSEC:
-		limits->limit_msec = g_variant_get_uint64(data);
-		break;
-	default:
-		return SR_ERR;
-	}
-
-	return SR_OK;
-}
-
-SR_PRIV void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
-{
-	if (!limits)
-		return;
-	limits->starttime_ms = g_get_real_time() / 1000;
-	limits->samples_read = 0;
-}
-
-SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
-		uint64_t count)
-{
-	if (!limits)
-		return;
-	limits->samples_read += count;
-}
-
-SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
-{
-	uint64_t elapsed_ms;
-
-	if (!limits)
-		return FALSE;
-
-	if (limits->limit_msec) {
-		elapsed_ms = (uint64_t)(g_get_real_time() / 1000) -
-				(uint64_t)limits->starttime_ms;
-		if (elapsed_ms >= limits->limit_msec)
-			return TRUE;
-	}
-
-	if (limits->limit_samples && limits->samples_read >= limits->limit_samples)
-		return TRUE;
-
-	return FALSE;
-}
-
-/* Frame end stub kept locally; frame_begin is canonical in compat_helpers.c. */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-
-	return ds_data_forward(sdi, &packet);
-}
 
 SR_PRIV int rigol_dg_string_to_waveform(
 		const struct channel_spec *ch, const char *s, enum waveform_type *wf)

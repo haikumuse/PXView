@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <glib.h>
+#include <string.h>
 #include "hardware/compat/compat.h"
 
 #undef LOG_PREFIX
@@ -64,8 +65,13 @@
 
 /*
  * PXView does not provide struct sr_sw_limits or the sr_sw_limits_*
- * helpers. Define them here so this self-contained driver compiles.
- * The layout matches standard sigrok so behaviour is preserved.
+ * helpers. Define them locally as static inline so this driver is
+ * self-contained and cannot clash with copies living in other compat
+ * drivers at link time (PXView's SR_PRIV macro is empty, so non-static
+ * definitions would yield multiple-definition link errors). Both
+ * protocol.c and api.c include this header, so each translation unit
+ * gets its own copy. The layout matches standard sigrok so behaviour
+ * is preserved.
  */
 #ifndef SR_SW_LIMITS_DEFINED
 #define SR_SW_LIMITS_DEFINED
@@ -76,19 +82,93 @@ struct sr_sw_limits {
 	uint64_t samples_read;
 };
 
-SR_PRIV void sr_sw_limits_init(struct sr_sw_limits *limits);
-SR_PRIV int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
-		uint32_t key, GVariant **data);
-SR_PRIV int sr_sw_limits_config_set(struct sr_sw_limits *limits,
-		uint32_t key, GVariant *data);
-SR_PRIV void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits);
-SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
-		uint64_t count);
-SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits);
+static inline void sr_sw_limits_init(struct sr_sw_limits *limits)
+{
+	memset(limits, 0, sizeof(*limits));
+}
+
+static inline int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
+		uint32_t key, GVariant **data)
+{
+	if (!limits || !data)
+		return SR_ERR_ARG;
+
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		*data = g_variant_new_uint64(limits->limit_samples);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		*data = g_variant_new_uint64(limits->limit_msec);
+		break;
+	default:
+		return SR_ERR;
+	}
+
+	return SR_OK;
+}
+
+static inline int sr_sw_limits_config_set(struct sr_sw_limits *limits,
+		uint32_t key, GVariant *data)
+{
+	if (!limits || !data)
+		return SR_ERR_ARG;
+
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		limits->limit_samples = g_variant_get_uint64(data);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		limits->limit_msec = g_variant_get_uint64(data);
+		break;
+	default:
+		return SR_ERR;
+	}
+
+	return SR_OK;
+}
+
+static inline void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
+{
+	if (!limits)
+		return;
+	limits->starttime_ms = g_get_real_time() / 1000;
+	limits->samples_read = 0;
+}
+
+static inline void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
+		uint64_t count)
+{
+	if (!limits)
+		return;
+	limits->samples_read += count;
+}
+
+static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
+{
+	uint64_t elapsed_ms;
+
+	if (!limits)
+		return FALSE;
+
+	if (limits->limit_msec) {
+		elapsed_ms = (uint64_t)(g_get_real_time() / 1000) -
+				(uint64_t)limits->starttime_ms;
+		if (elapsed_ms >= limits->limit_msec)
+			return TRUE;
+	}
+
+	if (limits->limit_samples && limits->samples_read >= limits->limit_samples)
+		return TRUE;
+
+	return FALSE;
+}
 #endif /* SR_SW_LIMITS_DEFINED */
 
-/* Frame end compat stub (implemented in protocol.c; frame_begin is canonical in compat_helpers.c). */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/*
+ * std_session_send_df_frame_end() is provided centrally by
+ * hardware/compat/compat_helpers.{h,c} (included via compat.h).
+ * No local declaration or definition is needed here.
+ */
 
 enum psg_commands {
 	PSG_CMD_SETUP_REMOTE,

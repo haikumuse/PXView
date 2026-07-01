@@ -131,8 +131,7 @@ SR_PRIV struct dev_context *fx2lafw_dev_new(void);
 SR_PRIV int fx2lafw_start_acquisition(const struct sr_dev_inst *sdi);
 SR_PRIV void fx2lafw_abort_acquisition(struct dev_context *devc);
 
-/* Frame begin/end compat stubs */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 /* usb_source_remove compat */
 #define usb_source_remove(session, ctx) sr_session_source_remove(-1)

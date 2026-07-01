@@ -36,6 +36,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "fs9721"
 
 static int parse_digit(uint8_t b)

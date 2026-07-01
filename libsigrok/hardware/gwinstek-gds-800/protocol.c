@@ -85,16 +85,12 @@ static int read_data(struct sr_dev_inst *sdi,
 	}
 }
 
-SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
+SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	struct sr_dev_inst *sdi;
 	struct sr_scpi_dev_inst *scpi;
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	char command[32];
 	char *response;
 	float volts_per_division;
@@ -105,7 +101,7 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
 
 	(void)fd;
 
-	if (!(sdi = cb_data))
+	if (!sdi)
 		return TRUE;
 
 	if (!(devc = sdi->priv))
@@ -265,17 +261,18 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
 			samples[i] = ((float) ((int16_t) (RB16(&devc->rcv_buffer[i*2])))) * vbit;
 
 		/* Fill frame. */
-		sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-		analog.meaning->channels = g_slist_append(NULL, g_slist_nth_data(sdi->channels, devc->cur_acq_channel));
+		memset(&analog, 0, sizeof(analog));
+		analog.probes = g_slist_append(NULL, g_slist_nth_data(sdi->channels, devc->cur_acq_channel));
 		analog.num_samples = num_samples;
 		analog.data = samples;
-		analog.meaning->mq = SR_MQ_VOLTAGE;
-		analog.meaning->unit = SR_UNIT_VOLT;
-		analog.meaning->mqflags = 0;
+		analog.mq = SR_MQ_VOLTAGE;
+		analog.unit = SR_UNIT_VOLT;
+		analog.mqflags = 0;
+		analog.unit_bits = 32;
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;
 		sr_session_send(sdi, &packet);
-		g_slist_free(analog.meaning->channels);
+		g_slist_free(analog.probes);
 
 		/* All channels acquired. */
 		if (devc->cur_acq_channel == ANALOG_CHANNELS - 1) {
@@ -307,18 +304,4 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
 	return TRUE;
 }
 
-/* Frame begin/end stub implementations for compat layer.
- * PXView's compat layer provides std_session_send_df_header/end with a
- * (sdi, prefix) signature, but standard sigrok drivers call the frame
- * begin/end variants with a single (sdi) argument. These local stubs
- * emit the SR_DF_FRAME_BEGIN/END packets directly. */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_END;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-
-	return SR_OK;
-}
+/* std_session_send_df_frame_begin/end() are provided by compat_helpers.c. */

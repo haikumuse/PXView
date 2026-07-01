@@ -193,6 +193,16 @@ public:
     void set_owner_document(data::SessionDocument *doc) { _owner_document = doc; }
     data::SessionDocument* get_owner_document() { return _owner_document; }
 
+    // Unique handle id assigned by SigSession when the stack is created.
+    // Allows the API/MCP layer to stably reference a decoder stack across
+    // re-creation (a brand-new stack always gets a fresh handle_id). The
+    // version is bumped when an existing stack is re-created in place (e.g.
+    // by restart_decoders) so consumers can invalidate cached results.
+    inline uint64_t handle_id() const { return _handle_id; }
+    inline uint64_t version() const { return _version; }
+    inline void set_handle_id(uint64_t id) { _handle_id = id; }
+    inline void bump_version() { _version++; }
+
     // Set by callers (e.g. SigSession) to mark a stack for asynchronous
     // deletion by the decode thread. Mirrors the legacy
     // view::DecodeTrace::_delete_flag mechanism.
@@ -219,6 +229,8 @@ private:
   
     SigSession      *_session;
     data::SessionDocument *_owner_document;
+    uint64_t        _handle_id = 0;
+    uint64_t        _version = 0;
     decode_state    _decode_state;
     volatile bool   _options_changed;
     volatile bool   _no_memory;

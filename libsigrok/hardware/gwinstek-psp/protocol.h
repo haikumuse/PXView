@@ -159,14 +159,6 @@ static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
 }
 #endif /* GWINSTEK_PSP_SR_SW_LIMITS_DEFINED */
 
-/*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair. Implemented
- * in protocol.c.
- */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data);
-
 /* Information on single model */
 struct gwinstek_psp_model {
 	const char *vendor;    /**< Vendor name */

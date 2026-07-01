@@ -23,6 +23,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "vc870"
 
 /* Exponents for the respective measurement mode. */

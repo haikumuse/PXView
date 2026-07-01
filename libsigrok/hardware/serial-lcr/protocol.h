@@ -24,7 +24,7 @@
  * The upstream driver is split across src/hardware/serial-lcr/ (the
  * device driver shell: api.c/protocol.c/protocol.h) and src/lcr/
  * (the chipset-specific packet parsers es51919.c and vc4080.c, plus
- * the shared struct lcr_parse_info and the ES51919_*/VC4080_* macros
+ * the shared struct lcr_parse_info and the ES51919_ and VC4080_ macro families
  * that live in libsigrok-internal.h). PXView does not ship any of
  * those, so the chipset parsers are inlined into protocol.c below
  * and the missing macros/types are defined here.
@@ -266,10 +266,6 @@ struct dev_context {
 	const char *circuit_model;
 	int64_t req_next_at;
 };
-
-/* Local META packet helper (PXView does not provide sr_session_send_meta). */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data);
 
 /*
  * PXView's sr_receive_data_callback_t is

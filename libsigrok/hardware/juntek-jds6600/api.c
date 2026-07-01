@@ -449,7 +449,7 @@ static int config_list(uint32_t key, GVariant **data,
 		 * GVariant "as") instead of standard sigrok's
 		 * std_gvar_array_str(). Both have identical semantics.
 		 */
-		*data = std_gvar_tuple_array(waves->names, waves->names_count);
+		*data = std_gvar_array_str(waves->names, waves->names_count);
 		return SR_OK;
 	case SR_CONF_OUTPUT_FREQUENCY:
 		/* Announce range as tuple of min, max, step. */

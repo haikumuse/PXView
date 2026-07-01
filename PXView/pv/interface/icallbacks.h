@@ -156,7 +156,7 @@ public:
 class IMessageListener
 {
 public:
-    virtual void OnMessage(int msg)=0;
+    virtual void OnMessage(int msg, int param = 0) = 0;
 };
 
 class IDecoderPannel

@@ -433,7 +433,7 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
         return;
     }
 
-    data::DataSource *ds = _view.effective_data_source();
+    data::DataSource *ds = _view.document_snapshot_source();
     if (!ds) {
         return;
     }

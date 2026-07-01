@@ -54,6 +54,18 @@ DecoderStack::DecoderStack(pv::SigSession *session,
                            const srd_decoder *const dec,
                            DecoderStatus *decoder_status)
     : _session(session) {
+  if (!session) {
+    pxv_warn("%s", "DecoderStack::DecoderStack: session is NULL");
+    throw std::invalid_argument("DecoderStack: session is NULL");
+  }
+  if (!dec) {
+    pxv_warn("%s", "DecoderStack::DecoderStack: dec is NULL");
+    throw std::invalid_argument("DecoderStack: dec is NULL");
+  }
+  if (!decoder_status) {
+    pxv_warn("%s", "DecoderStack::DecoderStack: decoder_status is NULL");
+    throw std::invalid_argument("DecoderStack: decoder_status is NULL");
+  }
   assert(session);
   assert(dec);
   assert(decoder_status);
@@ -101,6 +113,10 @@ DecoderStack::~DecoderStack() {
 }
 
 void DecoderStack::add_sub_decoder(decode::Decoder *decoder) {
+  if (!decoder) {
+    pxv_warn("%s", "DecoderStack::add_sub_decoder: decoder is NULL");
+    return;
+  }
   assert(decoder);
   _stack.push_back(decoder);
   build_row();
@@ -176,6 +192,10 @@ void DecoderStack::build_row() {
     for (const GSList *l = decc->annotation_rows; l; l = l->next) {
       const srd_decoder_annotation_row *const ann_row =
           (srd_decoder_annotation_row *)l->data;
+      if (!ann_row) {
+        pxv_warn("%s", "DecoderStack::build_row: ann_row is NULL, skipping");
+        continue;
+      }
       assert(ann_row);
 
       const Row row(decc, ann_row, order);
@@ -519,6 +539,10 @@ void DecoderStack::decode_data(const uint64_t decode_start,
     }
   }
 
+  if (!logic_di) {
+    pxv_warn("%s", "DecoderStack::decode_data: logic_di is NULL");
+    return;
+  }
   assert(logic_di);
 
   uint64_t entry_cnt = 0;
@@ -681,6 +705,10 @@ void DecoderStack::execute_decode_stack() {
   uint64_t decode_start = 0;
   uint64_t decode_end = 0;
 
+  if (!_snapshot) {
+    pxv_warn("%s", "DecoderStack::execute_decode_stack: _snapshot is NULL");
+    return;
+  }
   assert(_snapshot);
 
   // Create the session
@@ -776,12 +804,24 @@ uint64_t DecoderStack::sample_rate() { return _samplerate; }
 
 // the decode callback, annotation object will be create
 void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
+  if (!pdata) {
+    pxv_warn("%s", "DecoderStack::annotation_callback: pdata is NULL");
+    return;
+  }
+  if (!self) {
+    pxv_warn("%s", "DecoderStack::annotation_callback: self is NULL");
+    return;
+  }
   assert(pdata);
   assert(self);
 
   struct decode_task_status *st = (decode_task_status *)self;
 
   DecoderStack *const d = st->_decoder;
+  if (!d) {
+    pxv_warn("%s", "DecoderStack::annotation_callback: d is NULL");
+    return;
+  }
   assert(d);
 
   if (st->_bStop) {
@@ -807,6 +847,10 @@ void DecoderStack::annotation_callback(srd_proto_data *pdata, void *self) {
   assert(pdata->pdo);
   assert(pdata->pdo->di);
   const srd_decoder *const decc = pdata->pdo->di->decoder;
+  if (!decc) {
+    pxv_warn("%s", "DecoderStack::annotation_callback: decc is NULL");
+    return;
+  }
   assert(decc);
 
   auto row_iter = d->_rows.end();

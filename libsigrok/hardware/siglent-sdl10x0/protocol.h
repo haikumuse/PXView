@@ -258,13 +258,6 @@ SR_PRIV int siglent_sdl10x0_receive_data(struct sr_dev_inst *sdi);
 SR_PRIV int siglent_sdl10x0_handle_events(int fd, int revents,
 		const struct sr_dev_inst *sdi);
 
-/*
- * Local replacements for standard sigrok's std_session_send_df_frame_begin/end().
- * PXView's libsigrok only provides std_session_send_df_header/end (with a
- * prefix argument), not the frame variants. Implemented in protocol.c
- * (same pattern as itech-it8500, lecroy-xstream, etc.).
- */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 #endif
