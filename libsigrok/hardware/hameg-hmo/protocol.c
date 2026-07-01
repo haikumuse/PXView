@@ -872,6 +872,27 @@ static struct scope_config scope_models[] = {
 	},
 };
 
+/*
+ * Local helper: format a rational period (p/q seconds) as a human-readable
+ * string. PXView's sr_period_string() takes a single frequency value and
+ * cannot represent sub-Hz periods (e.g. 2 s), so provide a local version
+ * with the standard sigrok (p, q) rational signature.
+ */
+static char *local_period_string(uint64_t p, uint64_t q)
+{
+	double period = (q != 0) ? ((double)p / (double)q) : 0.0;
+
+	if (period >= 1.0)
+		return g_strdup_printf("%.3g s", period);
+	if (period >= 1e-3)
+		return g_strdup_printf("%.3g ms", period * 1e3);
+	if (period >= 1e-6)
+		return g_strdup_printf("%.3g us", period * 1e6);
+	if (period >= 1e-9)
+		return g_strdup_printf("%.3g ns", period * 1e9);
+	return g_strdup_printf("%.3g ps", period * 1e12);
+}
+
 static void scope_state_dump(const struct scope_config *config,
 			     struct scope_state *state)
 {
@@ -904,7 +925,7 @@ static void scope_state_dump(const struct scope_config *config,
 				(*config->logic_threshold)[state->digital_pods[i].threshold]);
 	}
 
-	tmp = sr_period_string((*config->timebases)[state->timebase][0],
+	tmp = local_period_string((*config->timebases)[state->timebase][0],
 			       (*config->timebases)[state->timebase][1]);
 	sr_info("Current timebase: %s", tmp);
 	g_free(tmp);
@@ -949,6 +970,9 @@ static int scope_state_get_array_option(struct sr_scpi_dev_inst *scpi,
  * This function takes a value of the form "2.000E-03" and returns the index
  * of an array where a matching pair was found.
  *
+ * PXView's libsigrok does not provide sr_rational/sr_parse_rational, so the
+ * rational comparison is done with floating point and a small epsilon.
+ *
  * @param value The string to be parsed.
  * @param array The array of s/f pairs.
  * @param array_len The number of pairs in the array.
@@ -959,15 +983,14 @@ static int scope_state_get_array_option(struct sr_scpi_dev_inst *scpi,
 static int array_float_get(gchar *value, const uint64_t array[][2],
 		int array_len, unsigned int *result)
 {
-	struct sr_rational rval;
-	struct sr_rational aval;
+	double rval, aval;
+	unsigned int i;
 
-	if (sr_parse_rational(value, &rval) != SR_OK)
-		return SR_ERR;
+	rval = g_ascii_strtod(value, NULL);
 
-	for (int i = 0; i < array_len; i++) {
-		sr_rational_set(&aval, array[i][0], array[i][1]);
-		if (sr_rational_eq(&rval, &aval)) {
+	for (i = 0; i < (unsigned int)array_len; i++) {
+		aval = (double)array[i][0] / (double)array[i][1];
+		if (fabs(aval - rval) < (fabs(aval) * 1e-6 + 1e-15)) {
 			*result = i;
 			return SR_OK;
 		}
@@ -1488,9 +1511,6 @@ SR_PRIV int hmo_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 	struct sr_datafeed_packet packet;
 	GByteArray *data;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_datafeed_logic logic;
 	size_t group;
 
@@ -1534,26 +1554,26 @@ SR_PRIV int hmo_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 
 		packet.type = SR_DF_ANALOG;
 
+		/* TODO: Use proper 'digits' value for this device (and its modes). */
+		memset(&analog, 0, sizeof(analog));
 		analog.data = data->data;
 		analog.num_samples = data->len / sizeof(float);
 		/* Truncate acquisition if a smaller number of samples has been requested. */
 		if (devc->samples_limit > 0 && analog.num_samples > devc->samples_limit)
 			analog.num_samples = devc->samples_limit;
-		/* TODO: Use proper 'digits' value for this device (and its modes). */
-		sr_analog_init(&analog, &encoding, &meaning, &spec, 2);
-		encoding.is_signed = TRUE;
 		if (state->analog_channels[ch->index].probe_unit == 'V') {
-			meaning.mq = SR_MQ_VOLTAGE;
-			meaning.unit = SR_UNIT_VOLT;
+			analog.mq = SR_MQ_VOLTAGE;
+			analog.unit = SR_UNIT_VOLT;
 		} else {
-			meaning.mq = SR_MQ_CURRENT;
-			meaning.unit = SR_UNIT_AMPERE;
+			analog.mq = SR_MQ_CURRENT;
+			analog.unit = SR_UNIT_AMPERE;
 		}
-		meaning.channels = g_slist_append(NULL, ch);
+		analog.probes = g_slist_append(NULL, ch);
+		analog.unit_bits = 32;
 		packet.payload = &analog;
 		sr_session_send(sdi, &packet);
 		devc->num_samples = data->len / sizeof(float);
-		g_slist_free(meaning.channels);
+		g_slist_free(analog.probes);
 		g_byte_array_free(data, TRUE);
 		data = NULL;
 		break;
@@ -1640,18 +1660,4 @@ SR_PRIV int hmo_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 	return TRUE;
 }
 
-/*
- * Frame begin/end helpers. PXView's compat layer does not provide
- * std_session_send_df_frame_begin/end, so define them locally (same pattern
- * used by rigol-ds, lecroy-xstream, siglent-sds, etc.).
- */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
+/* std_session_send_df_frame_begin/end() are provided by compat_helpers.c. */

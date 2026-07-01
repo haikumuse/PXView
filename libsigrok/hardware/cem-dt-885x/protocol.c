@@ -67,9 +67,6 @@ static void process_mset(const struct sr_dev_inst *sdi)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	GString *dbg;
 	float fvalue;
 	int i;
@@ -134,13 +131,14 @@ static void process_mset(const struct sr_dev_inst *sdi)
 				break;
 			}
 		}
-		sr_analog_init(&analog, &encoding, &meaning, &spec, 1);
-		analog.meaning->mq = SR_MQ_SOUND_PRESSURE_LEVEL;
-		analog.meaning->mqflags = devc->cur_mqflags;
-		analog.meaning->unit = SR_UNIT_DECIBEL_SPL;
-		analog.meaning->channels = sdi->channels;
+		memset(&analog, 0, sizeof(analog));
+		analog.mq = SR_MQ_SOUND_PRESSURE_LEVEL;
+		analog.mqflags = devc->cur_mqflags;
+		analog.unit = SR_UNIT_DECIBEL_SPL;
+		analog.probes = sdi->channels;
 		analog.num_samples = 1;
 		analog.data = &devc->last_spl;
+		analog.unit_bits = 32;
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;
 		sr_session_send(sdi, &packet);
@@ -181,9 +179,6 @@ static void send_data(const struct sr_dev_inst *sdi, unsigned char *data,
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	float fbuf[SAMPLES_PER_PACKET];
 	unsigned int i;
 
@@ -195,13 +190,14 @@ static void send_data(const struct sr_dev_inst *sdi, unsigned char *data,
 		fbuf[i] += ((data[i * 2 + 1] & 0xf0) >> 4);
 		fbuf[i] += (data[i * 2 + 1] & 0x0f) / 10.0;
 	}
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 1);
-	analog.meaning->mq = SR_MQ_SOUND_PRESSURE_LEVEL;
-	analog.meaning->mqflags = devc->cur_mqflags;
-	analog.meaning->unit = SR_UNIT_DECIBEL_SPL;
-	analog.meaning->channels = sdi->channels;
+	memset(&analog, 0, sizeof(analog));
+	analog.mq = SR_MQ_SOUND_PRESSURE_LEVEL;
+	analog.mqflags = devc->cur_mqflags;
+	analog.unit = SR_UNIT_DECIBEL_SPL;
+	analog.probes = sdi->channels;
 	analog.num_samples = num_samples;
 	analog.data = fbuf;
+	analog.unit_bits = 32;
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);

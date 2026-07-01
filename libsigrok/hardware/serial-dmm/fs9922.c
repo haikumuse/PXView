@@ -27,6 +27,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "fs9922"
 
 static gboolean flags_valid(const struct fs9922_info *info)

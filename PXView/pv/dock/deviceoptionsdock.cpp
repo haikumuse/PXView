@@ -48,6 +48,7 @@
 #include "../deviceagent.h"
 #include "../dsvdef.h"
 #include "../interface/icallbacks.h"
+#include "../log.h"
 #include "../prop/property.h"
 #include "../prop/string.h"
 #include "../sigsession.h"
@@ -190,6 +191,10 @@ void DeviceOptionsDock::commit_channels() {
     int index = 0;
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
       sr_channel *const probe = (sr_channel *)l->data;
+      if (!probe) {
+        pxv_warn("%s", "DeviceOptionsDock: probe is NULL in channel loop, skipping");
+        continue;
+      }
       assert(probe);
       probe->enabled = _probes_checkBox_list.at(index)->isChecked();
       index++;
@@ -587,6 +592,10 @@ void DeviceOptionsDock::mode_check_timeout() {
 
 void DeviceOptionsDock::channel_check() {
   QRadioButton *bt = dynamic_cast<QRadioButton *>(sender());
+  if (!bt) {
+    pxv_warn("%s", "DeviceOptionsDock::channel_check: bt is NULL");
+    return;
+  }
   assert(bt);
 
   int mode_index = -1;
@@ -731,6 +740,10 @@ void DeviceOptionsDock::analog_probes(QGridLayout &layout) {
 
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
     sr_channel *const probe = (sr_channel *)l->data;
+    if (!probe) {
+      pxv_warn("%s", "DeviceOptionsDock: probe is NULL in dso channel loop, skipping");
+      continue;
+    }
     assert(probe);
 
     _dso_channel_list.push_back(probe);
@@ -827,6 +840,10 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
 
   if (mode == LOGIC) {
     QVBoxLayout *grid = dynamic_cast<QVBoxLayout *>(lay);
+    if (!grid) {
+      pxv_warn("%s", "DeviceOptionsDock::dynamic_widget: grid is NULL (LOGIC)");
+      return QString();
+    }
     assert(grid);
     logic_probes(*grid);
     return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHANNEL), "Channel");
@@ -835,6 +852,10 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
 
     if (_device_agent->get_config_bool(SR_CONF_HAVE_ZERO, have_zero)) {
       QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
+      if (!grid) {
+        pxv_warn("%s", "DeviceOptionsDock::dynamic_widget: grid is NULL (DSO)");
+        return QString();
+      }
       assert(grid);
 
       QFont contentFont = dock_font_content();
@@ -870,6 +891,10 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
     }
   } else if (mode == ANALOG) {
     QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
+    if (!grid) {
+      pxv_warn("%s", "DeviceOptionsDock::dynamic_widget: grid is NULL (ANALOG)");
+      return QString();
+    }
     assert(grid);
     analog_probes(*grid);
     return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHANNEL), "Channel");

@@ -63,12 +63,20 @@ void DeviceAgent::update()
 
  sr_dev_inst* DeviceAgent::inst()
  {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::inst: _dev_handle is NULL");
+        return nullptr;
+    }
     assert(_dev_handle);
     return _di;
  }
 
 bool DeviceAgent::enable_probe(const sr_channel *probe, bool enable)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::enable_probe: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     if (ds_enable_device_channel(probe, enable) == SR_OK){
@@ -80,6 +88,10 @@ bool DeviceAgent::enable_probe(const sr_channel *probe, bool enable)
 
 bool DeviceAgent::enable_probe(int probe_index, bool enable)
 {
+     if (!_dev_handle) {
+         pxv_warn("%s", "DeviceAgent::enable_probe: _dev_handle is NULL");
+         return false;
+     }
      assert(_dev_handle);
 
      if (ds_enable_device_channel_index(probe_index, enable) == SR_OK){
@@ -91,8 +103,12 @@ bool DeviceAgent::enable_probe(int probe_index, bool enable)
 
 bool DeviceAgent::set_channel_name(int ch_index, const char *name)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_channel_name: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
-    
+
     if (ds_set_device_channel_name(ch_index, name) == SR_OK){
         config_changed();
         return true;
@@ -102,6 +118,10 @@ bool DeviceAgent::set_channel_name(int ch_index, const char *name)
 
 uint64_t DeviceAgent::get_sample_limit()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_sample_limit: _dev_handle is NULL");
+        return 0;
+    }
     assert(_dev_handle);
 
     uint64_t v;
@@ -122,6 +142,10 @@ uint64_t DeviceAgent::get_sample_limit()
 
 uint64_t DeviceAgent::get_sample_rate()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_sample_rate: _dev_handle is NULL");
+        return 0;
+    }
     assert(_dev_handle);
 
     uint64_t v;
@@ -142,6 +166,10 @@ uint64_t DeviceAgent::get_sample_rate()
 
 uint64_t DeviceAgent::get_time_base()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_time_base: _dev_handle is NULL");
+        return 0;
+    }
     assert(_dev_handle);
 
     uint64_t v;
@@ -162,6 +190,10 @@ uint64_t DeviceAgent::get_time_base()
 
 double DeviceAgent::get_sample_time()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_sample_time: _dev_handle is NULL");
+        return 0;
+    }
     assert(_dev_handle);
 
     uint64_t sample_rate = get_sample_rate();
@@ -178,12 +210,20 @@ double DeviceAgent::get_sample_time()
 
 const GSList* DeviceAgent::get_device_mode_list()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_device_mode_list: _dev_handle is NULL");
+        return nullptr;
+    }
     assert(_dev_handle);
     return ds_get_actived_device_mode_list();
 }
 
 bool DeviceAgent::is_trigger_enabled()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::is_trigger_enabled: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
     if (ds_trigger_is_enabled() > 0){
         return true;
@@ -193,6 +233,10 @@ bool DeviceAgent::is_trigger_enabled()
 
 bool DeviceAgent::start()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::start: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     if (ds_start_collect() == SR_OK){
@@ -203,6 +247,10 @@ bool DeviceAgent::start()
 
 bool DeviceAgent::stop()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::stop: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     if (ds_stop_collect() == SR_OK){
@@ -218,6 +266,10 @@ void DeviceAgent::release()
 
 bool DeviceAgent::have_enabled_channel()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::have_enabled_channel: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
     return ds_channel_is_enabled() > 0;
 }
@@ -254,7 +306,11 @@ const struct sr_config_info *DeviceAgent::get_config_info(int key)
 }
 
 bool DeviceAgent::get_device_status(struct sr_status &status, gboolean prg)
-{   
+{
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_device_status: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     if (ds_get_actived_device_status(&status, prg) == SR_OK)
@@ -281,12 +337,20 @@ bool DeviceAgent::is_collecting()
 
 GSList *DeviceAgent::get_channels()
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_channels: _dev_handle is NULL");
+        return nullptr;
+    }
     assert(_dev_handle);
     return ds_get_actived_device_channels();
 }
 
  int DeviceAgent::get_hardware_operation_mode()
  {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_hardware_operation_mode: _dev_handle is NULL");
+        return -1;
+    }
     assert(_dev_handle);
 
     if (is_compat_device()) {
@@ -310,6 +374,10 @@ GSList *DeviceAgent::get_channels()
 
  bool DeviceAgent::check_firmware_version()
  {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::check_firmware_version: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     if (is_compat_device()) {
@@ -327,6 +395,10 @@ GSList *DeviceAgent::get_channels()
 
  QString DeviceAgent::get_demo_operation_mode()
  {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_demo_operation_mode: _dev_handle is NULL");
+        return QString();
+    }
     assert(_dev_handle);
 
     if (is_demo() == false){
@@ -343,6 +415,10 @@ GSList *DeviceAgent::get_channels()
 
 GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_config_list: _dev_handle is NULL");
+        return nullptr;
+    }
     assert(_dev_handle);
 
     GVariant *data = NULL;
@@ -363,7 +439,11 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
 
 GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channel_group *cg)
 {
-    assert(_dev_handle); 
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::get_config: _dev_handle is NULL");
+        return nullptr;
+    }
+    assert(_dev_handle);
     GVariant *data = NULL;
     
     int ret = ds_get_actived_device_config(ch, cg, key, &data);
@@ -388,6 +468,10 @@ bool DeviceAgent::have_config(int key, const sr_channel *ch, const sr_channel_gr
 
 bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, const sr_channel_group *cg)
  {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     int ret = ds_set_actived_device_config(ch, cg, key, data);
@@ -417,6 +501,10 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
 
  bool DeviceAgent::set_config_int32(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
  {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_int32: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_int32(value);
@@ -448,6 +536,14 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
 
  bool DeviceAgent::set_config_string(int key, const char *value, const sr_channel *ch, const sr_channel_group *cg)
  {
+    if (!value) {
+        pxv_warn("%s", "DeviceAgent::set_config_string: value is NULL");
+        return false;
+    }
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_string: _dev_handle is NULL");
+        return false;
+    }
     assert(value);
     assert(_dev_handle);
 
@@ -480,6 +576,10 @@ bool DeviceAgent::get_config_bool(int key, bool &value, const sr_channel *ch, co
 
 bool DeviceAgent::set_config_bool(int key, bool value, const sr_channel *ch, const sr_channel_group *cg)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_bool: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_boolean(value);
@@ -510,6 +610,10 @@ bool DeviceAgent::get_config_uint64(int key, uint64_t &value, const sr_channel *
 
 bool DeviceAgent::set_config_uint64(int key, uint64_t value, const sr_channel *ch, const sr_channel_group *cg)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_uint64: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_uint64(value);
@@ -540,6 +644,10 @@ bool DeviceAgent::get_config_uint16(int key, int &value, const sr_channel *ch, c
 
 bool DeviceAgent::set_config_uint16(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_uint16: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_uint16(value);
@@ -570,6 +678,10 @@ bool DeviceAgent::get_config_uint32(int key, uint32_t &value, const sr_channel *
 
 bool DeviceAgent::set_config_uint32(int key, uint32_t value, const sr_channel *ch, const sr_channel_group *cg)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_uint32: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_uint32(value);
@@ -600,6 +712,10 @@ bool DeviceAgent::get_config_int16(int key, int &value, const sr_channel *ch, co
 
 bool DeviceAgent::set_config_int16(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_int16: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_int16(value);
@@ -630,6 +746,10 @@ bool DeviceAgent::get_config_byte(int key, int &value, const sr_channel *ch, con
 
 bool DeviceAgent::set_config_byte(int key, int value, const sr_channel *ch, const sr_channel_group *cg)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_byte: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_byte((uint8_t)value);
@@ -660,6 +780,10 @@ bool DeviceAgent::get_config_double(int key, double &value, const sr_channel *ch
 
 bool DeviceAgent::set_config_double(int key, double value, const sr_channel *ch, const sr_channel_group *cg)
 {
+    if (!_dev_handle) {
+        pxv_warn("%s", "DeviceAgent::set_config_double: _dev_handle is NULL");
+        return false;
+    }
     assert(_dev_handle);
 
     GVariant *gvar = g_variant_new_double(value);

@@ -74,6 +74,24 @@ void SignalModel::set_name(const std::string &name) {
 
 void SignalModel::set_type(api::ChannelType type) { _type = type; }
 
+int SignalModel::sr_type() const {
+    // Map api::ChannelType (Logic=0/Analog=1/Dso=2) to the SR_CHANNEL_*
+    // constants (10000+) that libsigrok and the Trace base class expect.
+    // Mirrors the file-static api_type_to_sr_channel_type() helpers in
+    // signal.cpp / storesession.cpp, but exposed as a member so call sites
+    // cannot forget the conversion.
+    switch (_type) {
+    case api::ChannelType::Logic:
+        return SR_CHANNEL_LOGIC;
+    case api::ChannelType::Analog:
+        return SR_CHANNEL_ANALOG;
+    case api::ChannelType::Dso:
+        return SR_CHANNEL_DSO;
+    default:
+        return SR_CHANNEL_LOGIC;
+    }
+}
+
 void SignalModel::set_enabled(bool enabled) {
     if (_enabled != enabled) {
         _enabled = enabled;

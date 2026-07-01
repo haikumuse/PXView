@@ -52,62 +52,14 @@ SR_PRIV int reloadpro_serial_timeout(struct sr_serial_dev_inst *serial,
 }
 
 /*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair. PXView's compat
- * layer does not provide this helper. Defined as static so this driver is
- * self-contained and cannot clash with copies living in other compat
- * drivers at link time. Same approach as the itech-it8500 and
- * gwinstek-psp compat drivers.
+ * sr_session_send_meta() and std_session_send_df_frame_end() are provided by
+ * the compat layer (compat_helpers.c, declared SR_PRIV in compat_helpers.h).
+ * They were previously defined as static here, which conflicted with the
+ * SR_PRIV (non-static) declarations in compat_helpers.h ("static declaration
+ * follows non-static declaration"). The local copies have been removed and
+ * the compat-layer implementations are used directly instead. This mirrors
+ * the atorch and gwinstek-gpd compat drivers.
  */
-static int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data)
-{
-	struct sr_datafeed_packet packet;
-	struct sr_datafeed_meta meta;
-	struct sr_config *src;
-
-	if (!sdi || !data)
-		return SR_ERR_ARG;
-
-	src = sr_config_new((int)key, data);
-	if (!src)
-		return SR_ERR;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_META;
-	packet.status = SR_PKT_OK;
-	packet.payload = &meta;
-	meta.config = g_slist_append(NULL, src);
-
-	ds_data_forward(sdi, &packet);
-
-	sr_config_free(src);
-	g_slist_free(meta.config);
-
-	return SR_OK;
-}
-
-/*
- * Local replacement for standard sigrok's std_session_send_df_frame_end().
- * PXView's compat layer only provides std_session_send_df_frame_begin()
- * (from compat_helpers.c) and std_session_send_df_end(sdi, prefix), not the
- * frame_end variant. Defined as static so this driver is self-contained and
- * cannot clash with copies living in other compat drivers at link time.
- * Note: std_session_send_df_frame_begin() is NOT defined locally -- it is
- * provided by the compat layer (compat_helpers.c) and called directly.
- */
-static int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-
-	return ds_data_forward(sdi, &packet);
-}
-
 static int send_cmd(const struct sr_dev_inst *sdi, const char *cmd,
 		char *replybuf, int replybufsize)
 {
@@ -353,9 +305,6 @@ static void handle_packet(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct dev_context *devc;
 	char **tokens;
 	GSList *l;
@@ -425,20 +374,28 @@ static void handle_packet(const struct sr_dev_inst *sdi)
 	/* Begin frame. Compat layer provides std_session_send_df_frame_begin. */
 	std_session_send_df_frame_begin(sdi);
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 4);
-
+	/*
+	 * PXView uses the flat struct sr_datafeed_analog (analog.probes /
+	 * analog.mq / analog.unit / analog.mqflags / analog.data) instead of
+	 * standard sigrok's encoding/meaning/spec sub-structs. Same pattern as
+	 * the atorch compat driver's feed_queue_analog_flush().
+	 */
+	memset(&analog, 0, sizeof(analog));
+	memset(&packet, 0, sizeof(packet));
 	packet.type = SR_DF_ANALOG;
+	packet.status = SR_PKT_OK;
 	packet.payload = &analog;
 	analog.num_samples = 1;
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 
 	/* Voltage */
 	l = g_slist_copy(sdi->channels);
 	l = g_slist_remove_link(l, g_slist_nth(l, 1));
-	meaning.channels = l;
-	meaning.mq = SR_MQ_VOLTAGE;
-	meaning.mqflags = SR_MQFLAG_DC;
-	meaning.unit = SR_UNIT_VOLT;
-	encoding.digits = 3;
+	analog.probes = l;
+	analog.mq = SR_MQ_VOLTAGE;
+	analog.mqflags = SR_MQFLAG_DC;
+	analog.unit = SR_UNIT_VOLT;
 	analog.data = &devc->voltage;
 	sr_session_send(sdi, &packet);
 	g_slist_free(l);
@@ -446,16 +403,15 @@ static void handle_packet(const struct sr_dev_inst *sdi)
 	/* Current */
 	l = g_slist_copy(sdi->channels);
 	l = g_slist_remove_link(l, g_slist_nth(l, 0));
-	meaning.channels = l;
-	meaning.mq = SR_MQ_CURRENT;
-	meaning.mqflags = SR_MQFLAG_DC;
-	meaning.unit = SR_UNIT_AMPERE;
-	encoding.digits = 3;
+	analog.probes = l;
+	analog.mq = SR_MQ_CURRENT;
+	analog.mqflags = SR_MQFLAG_DC;
+	analog.unit = SR_UNIT_AMPERE;
 	analog.data = &devc->current;
 	sr_session_send(sdi, &packet);
 	g_slist_free(l);
 
-	/* End frame. Local static helper (compat provides frame_begin only). */
+	/* End frame. Compat layer provides std_session_send_df_frame_end. */
 	std_session_send_df_frame_end(sdi);
 
 	sr_sw_limits_update_samples_read(&devc->limits, 1);

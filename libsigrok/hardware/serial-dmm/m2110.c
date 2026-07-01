@@ -30,6 +30,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "m2110"
 
 SR_PRIV gboolean sr_m2110_packet_valid(const uint8_t *buf)

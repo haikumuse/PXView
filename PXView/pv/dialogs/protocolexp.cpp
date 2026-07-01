@@ -331,9 +331,13 @@ void ProtocolExp::save_proc()
     file.close();
 }
 
-bool ProtocolExp::compare_ann_index(const data::decode::Annotation *a, 
+bool ProtocolExp::compare_ann_index(const data::decode::Annotation *a,
                     const data::decode::Annotation *b)
-{   
+{
+    if (!a || !b) {
+        pxv_warn("%s", "ProtocolExp::compare_ann_index: annotation pointer is NULL");
+        return false;
+    }
     assert(a);
     assert(b);
     return a->start_sample() < b->start_sample();

@@ -565,9 +565,6 @@ SR_PRIV int lecroy_xstream_init_device(struct sr_dev_inst *sdi)
 static int lecroy_waveform_2_x_to_analog(GByteArray *data,
 		struct lecroy_wavedesc *desc, struct sr_datafeed_analog *analog)
 {
-	struct sr_analog_encoding *encoding = analog->encoding;
-	struct sr_analog_meaning *meaning = analog->meaning;
-	struct sr_analog_spec *spec = analog->spec;
 	float *data_float;
 	int16_t *waveform_data;
 	unsigned int i, num_samples;
@@ -584,32 +581,23 @@ static int lecroy_waveform_2_x_to_analog(GByteArray *data,
 			* desc->version_2_x.vertical_gain
 			+ desc->version_2_x.vertical_offset;
 
+	/* PXView uses a flat sr_datafeed_analog (no encoding/meaning/spec
+	 * sub-structs). Set the direct fields instead. */
 	analog->data = data_float;
 	analog->num_samples = num_samples;
-
-	encoding->unitsize = sizeof(float);
-	encoding->is_signed = TRUE;
-	encoding->is_float = TRUE;
-	encoding->is_bigendian = FALSE;
-	encoding->scale.p = 1;
-	encoding->scale.q = 1;
-	encoding->offset.p = 0;
-	encoding->offset.q = 1;
-
-	encoding->digits = 6;
-	encoding->is_digits_decimal = FALSE;
+	analog->unit_bits = 8 * sizeof(float); /* float samples */
+	analog->unit_pitch = 0;
 
 	if (strcmp(desc->version_2_x.vertunit, "A")) {
-		meaning->mq = SR_MQ_CURRENT;
-		meaning->unit = SR_UNIT_AMPERE;
+		analog->mq = SR_MQ_CURRENT;
+		analog->unit = SR_UNIT_AMPERE;
 	} else {
 		/* Default to voltage. */
-		meaning->mq = SR_MQ_VOLTAGE;
-		meaning->unit = SR_UNIT_VOLT;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
 	}
 
-	meaning->mqflags = 0;
-	spec->spec_digits = 3;
+	analog->mqflags = 0;
 
 	return SR_OK;
 }
@@ -643,9 +631,6 @@ SR_PRIV int lecroy_xstream_receive_data(int fd, int revents,
 	struct sr_datafeed_packet packet;
 	GByteArray *data;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 
 	(void)fd;
 	(void)revents;
@@ -669,9 +654,7 @@ SR_PRIV int lecroy_xstream_receive_data(int fd, int revents,
 		return TRUE;
 	}
 
-	analog.encoding = &encoding;
-	analog.meaning = &meaning;
-	analog.spec = &spec;
+	memset(&analog, 0, sizeof(analog));
 
 	if (lecroy_waveform_to_analog(data, &analog) != SR_OK)
 		return SR_ERR;
@@ -703,15 +686,16 @@ SR_PRIV int lecroy_xstream_receive_data(int fd, int revents,
 	if (devc->current_channel == devc->enabled_channels)
 		std_session_send_df_frame_begin(sdi);
 
-	meaning.channels = g_slist_append(NULL, ch);
+	analog.probes = g_slist_append(NULL, ch);
 	packet.payload = &analog;
 	packet.type = SR_DF_ANALOG;
+	packet.status = SR_PKT_OK;
 	sr_session_send(sdi, &packet);
 
 	g_byte_array_free(data, TRUE);
 	data = NULL;
 
-	g_slist_free(meaning.channels);
+	g_slist_free(analog.probes);
 	g_free(analog.data);
 
 	/*
@@ -748,14 +732,4 @@ SR_PRIV int lecroy_xstream_receive_data(int fd, int revents,
 	return TRUE;
 }
 
-/* Frame end helper kept locally; frame_begin is canonical in compat_helpers.c. */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
+/* std_session_send_df_frame_end() is provided by compat_helpers.c. */

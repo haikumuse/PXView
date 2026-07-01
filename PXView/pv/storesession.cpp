@@ -65,22 +65,6 @@
  
 namespace pv {
 
-// Convert the API-level ChannelType enum (Logic=0, Analog=1, Dso=2) used by
-// SignalModel::type() to the libsigrok SR_CHANNEL_* enum
-// (SR_CHANNEL_LOGIC=10000, SR_CHANNEL_DSO=10001, SR_CHANNEL_ANALOG=10002)
-// expected by SigSession::get_snapshot() and friends.
-// Without this conversion, get_snapshot(ChannelType::Logic=0) falls through
-// to the `else` branch and returns NULL, producing "No data to save." even
-// when the snapshot has data.
-static int api_type_to_sr_channel_type(api::ChannelType t) {
-    switch (t) {
-    case api::ChannelType::Logic:  return SR_CHANNEL_LOGIC;
-    case api::ChannelType::Analog: return SR_CHANNEL_ANALOG;
-    case api::ChannelType::Dso:    return SR_CHANNEL_DSO;
-    default:                       return SR_CHANNEL_LOGIC;
-    }
-}
-
 StoreSession::StoreSession(SigSession *session) :
 	_session(session),
     _outModule(NULL),
@@ -109,6 +93,10 @@ void StoreSession::get_progress(uint64_t *writed, uint64_t *total)
 {
     assert(writed);
     assert(total);
+    if (!writed || !total) {
+        pxv_warn("StoreSession::get_progress called with NULL out-parameter.");
+        return;
+    }
 
     *writed = _units_stored;
     *total = _unit_count;
@@ -150,12 +138,17 @@ QList<QString> StoreSession::getSuportedExportFormats(){
 }
 
 bool StoreSession::save_start()
-{ 
+{
     assert(_sessionDataGetter);
+    if (!_sessionDataGetter) {
+        pxv_warn("StoreSession::save_start called with no _sessionDataGetter.");
+        _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR2), "No data to save.");
+        return false;
+    }
 
     std::set<int> type_set;
     for(auto m : _session->get_signal_models()) {
-        type_set.insert(api_type_to_sr_channel_type(m->type()));
+        type_set.insert(m->sr_type());
     }
 
     if (type_set.size() > 1) {
@@ -175,6 +168,11 @@ bool StoreSession::save_start()
 
     const auto snapshot = _session->get_snapshot(*type_set.begin());
 	assert(snapshot);
+    if (!snapshot) {
+        pxv_warn("StoreSession::save_start: get_snapshot returned NULL.");
+        _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR2), "No data to save.");
+        return false;
+    }
     // Check we have data
     if (snapshot->empty()) {
         _error = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_STORESESS_SAVESTART_ERROR2), "No data to save.");
@@ -529,6 +527,10 @@ void StoreSession::save_dso(pv::data::DsoSnapshot *dso_snapshot)
 void StoreSession::save_proc(data::Snapshot *snapshot)
 {
 	assert(snapshot);
+    if (!snapshot) {
+        pxv_warn("StoreSession::save_proc called with NULL snapshot.");
+        return;
+    }
 
     data::LogicSnapshot *logic_snapshot = NULL;
     data::AnalogSnapshot *analog_snapshot = NULL;
@@ -818,7 +820,7 @@ bool StoreSession::export_start()
         } else if (_export_channel_type >= 0 && (int)m->type() != _export_channel_type) {
             continue;
         }
-        int _tp = api_type_to_sr_channel_type(m->type());
+        int _tp = m->sr_type();
         type_set.insert(_tp);
     }
 
@@ -894,6 +896,12 @@ void StoreSession::export_proc(data::Snapshot *snapshot)
 void StoreSession::export_exec(data::Snapshot *snapshot)
 {
     assert(snapshot);
+    if (!snapshot) {
+        pxv_warn("StoreSession::export_exec called with NULL snapshot.");
+        _has_error = true;
+        _error = L_S(STR_PAGE_DLG, S_ID(IDS_MSG_STORESESS_EXPORTSTART_ERROR2), "No data to save.");
+        return;
+    }
 
         //set export all data flag
     AppConfig &app = AppConfig::Instance();
@@ -1418,6 +1426,10 @@ bool StoreSession::load_decoders(dock::ProtocolDock *widget, QJsonArray &dec_arr
                     for(; dl; dl = dl->next) {
                         const srd_decoder *const d = (srd_decoder*)dl->data;
                         assert(d);
+                        if (!d) {
+                            pxv_warn("StoreSession::load_decoders: srd_decoder list node has NULL data, skipping.");
+                            continue;
+                        }
 
                         if (QString::fromUtf8(d->id) == stacked_obj["id"].toString()) {
                             sub_decoders.push_back(new data::decode::Decoder(d));
@@ -1649,6 +1661,10 @@ double StoreSession::get_integer(GVariant *var)
     double val = 0;
     const GVariantType *const type = g_variant_get_type(var);
     assert(type);
+    if (!type) {
+        pxv_warn("StoreSession::get_integer: g_variant_get_type returned NULL.");
+        return 0.0;
+    }
 
     if (g_variant_type_equal(type, G_VARIANT_TYPE_BYTE))
         val = g_variant_get_byte(var);

@@ -109,24 +109,7 @@ SR_PRIV void atorch_sr_hexdump_free(GString *gstr)
 		g_string_free(gstr, TRUE);
 }
 
-/* ===========================================================================
- * Local std_session_send_df_frame_end.
- *
- * PXView's compat layer provides std_session_send_df_frame_begin() as a
- * single canonical implementation (compat_helpers.c) but does NOT provide
- * the frame_end variant. Define it locally as a file-scoped static, same
- * pattern as arachnid-labs-re-load-pro/protocol.c and rdtech-um/protocol.c.
- * =========================================================================== */
-static int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
+/* std_session_send_df_frame_end() is provided by compat_helpers.h (non-static). */
 
 /* ===========================================================================
  * Local feed_queue_analog implementation.

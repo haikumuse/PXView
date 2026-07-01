@@ -1558,6 +1558,10 @@ bool LogicSnapshot::block_pre_edge(uint64_t *lbp, uint64_t &index,
   const uint64_t last = last_sample ? ~0ULL : 0ULL;
   uint64_t block_start = index & ~LeafMask;
 
+  if (!lbp) {
+    pxv_warn("%s", "LogicSnapshot::block_pre_edge: lbp is NULL");
+    return false;
+  }
   assert(lbp);
 
   //----- Search Next Edge Within Current LeafBlock -----//
@@ -1923,6 +1927,10 @@ void LogicSnapshot::push_to_free_list(void* ptr) {
 }
 
 void LogicSnapshot::free_decode_lpb(void *lbp) {
+  if (!lbp) {
+    pxv_warn("%s", "LogicSnapshot::free_decode_lpb: lbp is NULL");
+    return;
+  }
   assert(lbp);
 
   std::lock_guard<std::mutex> lock(_mutex);
@@ -1958,6 +1966,10 @@ void LogicSnapshot::free_head_blocks(int count) {
 }
 
 int LogicSnapshot::get_block_with_sample(uint64_t index, uint64_t *out_offset) {
+  if (!out_offset) {
+    pxv_warn("%s", "LogicSnapshot::get_block_with_sample: out_offset is NULL");
+    return -1;
+  }
   assert(out_offset);
 
   int block = index / LeafBlockSamples;

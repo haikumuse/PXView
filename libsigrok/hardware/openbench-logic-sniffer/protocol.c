@@ -370,7 +370,7 @@ SR_PRIV int ols_set_samplerate(const struct sr_dev_inst *sdi,
 	return SR_OK;
 }
 
-SR_PRIV void abort_acquisition(const struct sr_dev_inst *sdi)
+SR_PRIV void ols_abort_acquisition(const struct sr_dev_inst *sdi)
 {
 	struct sr_serial_dev_inst *serial;
 
@@ -567,7 +567,7 @@ SR_PRIV int ols_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 		g_free(devc->raw_sample_buf);
 
 		serial_flush(serial);
-		abort_acquisition(sdi);
+		ols_abort_acquisition(sdi);
 	}
 
 	return TRUE;

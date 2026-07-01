@@ -91,7 +91,7 @@ static void bkprecision_1856d_send_input_sel(const struct sr_dev_inst *sdi)
     }
 
     if (serial_write_blocking(serial, cmd, LENGHT_OF_CMD,
-            serial_timeout(serial, LENGHT_OF_CMD)) < 1) {
+            serial_timeout(serial, 0, LENGHT_OF_CMD)) < 1) {
         sr_err("unable to send function %c command",
                 devc->sel_input == InputA ? 'A' : 'C' );
     }
@@ -132,7 +132,7 @@ static void bkprecision_1856d_send_gate_time(const struct sr_dev_inst *sdi)
     sr_info("%s", cfg->info);
 
     if (serial_write_blocking(serial, cfg->cmd, LENGHT_OF_CMD,
-            serial_timeout(serial, LENGHT_OF_CMD)) < 1) {
+            serial_timeout(serial, 0, LENGHT_OF_CMD)) < 1) {
         sr_err("unable to send gate time command");
     }
     g_usleep(cfg->sleep_time);
@@ -154,7 +154,7 @@ static void bkprecision_1856d_request_data(const struct sr_dev_inst *sdi)
     sr_spew("requesting data");
 
     if (serial_write_blocking(serial, DATA_REQ, LENGHT_OF_CMD,
-            serial_timeout(serial, LENGHT_OF_CMD)) < 1) {
+            serial_timeout(serial, 0, LENGHT_OF_CMD)) < 1) {
         sr_err("unable to send request data command");
     }
 }

@@ -62,8 +62,18 @@ public:
     inline const std::string &name() const { return _name; }
     void set_name(const std::string &name);
 
+    // Returns api::ChannelType (Logic=0/Analog=1/Dso=2) for UI use. Do NOT
+    // pass directly to libsigrok APIs — use sr_type() instead.
     inline api::ChannelType type() const { return _type; }
     void set_type(api::ChannelType type);
+
+    /// Returns the libsigrok SR_CHANNEL_* value (LOGIC=10000/DSO=10001/
+    /// ANALOG=10002) for this channel. Use this whenever a channel type is
+    /// passed to libsigrok-style APIs (ds_*, get_snapshot, Trace base class,
+    /// etc.) — type() returns the api::ChannelType enum which does NOT match
+    /// the SR_CHANNEL_* constants and would cause NULL snapshots or wrong
+    /// type dispatch.
+    int sr_type() const;
 
     inline bool enabled() const { return _enabled; }
     void set_enabled(bool enabled);

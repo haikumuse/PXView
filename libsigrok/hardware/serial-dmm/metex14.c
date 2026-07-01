@@ -35,6 +35,7 @@
 #include <glib.h>
 #include "dmm_parsers.h"
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "metex14"
 
 /** Parse value from buf, byte 2-8. */

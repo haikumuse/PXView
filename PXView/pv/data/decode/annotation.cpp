@@ -24,6 +24,7 @@
 
 #include <vector>
 #include <assert.h>
+#include <stdexcept>
 
 #include "annotation.h"
 #include "annotationrestable.h"
@@ -43,10 +44,19 @@ namespace decode {
  
 Annotation::Annotation(const srd_proto_data *const pdata, DecoderStatus *status)
 {
+	if (!pdata) {
+		throw std::invalid_argument("Annotation: pdata is NULL");
+	}
 	assert(pdata);
 	const srd_proto_data_annotation *const pda =
 		(const srd_proto_data_annotation*)pdata->data;
+	if (!pda) {
+		throw std::invalid_argument("Annotation: pda is NULL");
+	}
 	assert(pda);
+	if (!status) {
+		throw std::invalid_argument("Annotation: status is NULL");
+	}
 	assert(status);
 
 	_start_sample =	pdata->start_sample;
@@ -118,7 +128,11 @@ Annotation::~Annotation()
   
 const std::vector<QString>& Annotation::annotations() const
 {  
-	 AnnotationSourceItem *pobj = _status->m_resTable.GetItem(_resIndex);	 
+	 AnnotationSourceItem *pobj = _status->m_resTable.GetItem(_resIndex);
+	 if (!pobj) {
+		 static const std::vector<QString> empty_vec;
+		 return empty_vec;
+	 }
 	 assert(pobj);
 	
      AnnotationSourceItem &resItem = *pobj;
@@ -155,14 +169,16 @@ const std::vector<QString>& Annotation::annotations() const
 				 assert(textlen > 0);
 
 				 if (textlen >= text_format_buf_len)
-				 {
-					if (text_format_buf)
-						free(text_format_buf);
-					text_format_buf = (char*)malloc(textlen + 8);
-					text_format_buf_len = textlen + 8;
+					{
+						if (text_format_buf)
+							free(text_format_buf);
+						text_format_buf = (char*)malloc(textlen + 8);
+						text_format_buf_len = textlen + 8;
 
-					assert(text_format_buf);
-				 }
+						if (!text_format_buf)
+							break;
+						assert(text_format_buf);
+					}
 				 
 				 sprintf(text_format_buf, src_str, num_str);
 				 resItem.cvt_lines.push_back(QString(text_format_buf));

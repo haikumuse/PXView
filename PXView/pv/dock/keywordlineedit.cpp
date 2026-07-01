@@ -229,6 +229,10 @@ void PopupLineEditInput::onCheckPositionTimeout() {
 }
 
 void PopupLineEditInput::Popup(QWidget *editline) {
+  if (!editline) {
+    pxv_warn("%s", "PopupLineEditInput::Popup: editline is NULL");
+    return;
+  }
   assert(editline);
   _line = editline;
 

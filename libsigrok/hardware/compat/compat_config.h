@@ -155,6 +155,19 @@ enum sr_channel_change {
 #define SR_CONF_SWAP               30159
 #endif
 
+/*
+ * Standard sigrok DMM config keys for measured quantity and measurement range.
+ * Used by DMM drivers (uni-t-ut181a, ...). PXView has no direct equivalents,
+ * so they get unique values in the reserved compat range (30160+, immediately
+ * following SR_CONF_SWAP at 30159).
+ */
+#ifndef SR_CONF_MEASURED_QUANTITY
+#define SR_CONF_MEASURED_QUANTITY  30160
+#endif
+#ifndef SR_CONF_RANGE
+#define SR_CONF_RANGE              30161
+#endif
+
 /* Byte order macros for reading/writing little-endian and big-endian values.
  * These are used by standard sigrok drivers for serial/USB communication.
  */

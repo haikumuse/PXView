@@ -47,24 +47,7 @@ static int ebd_serial_timeout(struct sr_serial_dev_inst *serial, int bytes)
 	return serial_timeout(serial, baudrate, bytes);
 }
 
-/*
- * Local replacement for standard sigrok's std_session_send_df_frame_end().
- * PXView's libsigrok provides std_session_send_df_frame_begin() (in
- * compat_helpers.c) but not the frame_end variant. The zketech-ebd-usb
- * driver wraps each sample set in a frame, so provide a local frame_end
- * implementation here. Same pattern as itech-it8500, siglent-sdl10x0,
- * maynuo-m97 and other compat drivers.
- */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
+/* std_session_send_df_frame_end() is provided by compat_helpers.c. */
 
 /* Log a byte-array as hex values. */
 static void log_buf(const char *message, uint8_t buf[], size_t count)
@@ -291,27 +274,39 @@ SR_PRIV int ebd_read_message(struct sr_serial_dev_inst *serial, size_t length,
 	return ret;
 }
 
+/*
+ * PXView note: PXView's sr_datafeed_analog uses the old flat layout
+ * (probes, mq, unit, mqflags, data, unit_bits, ...). There is no
+ * sr_analog_init() helper and no encoding/meaning/spec sub-structs, so
+ * the fields are initialized directly, matching the gwinstek-gpd /
+ * atorch / rdtech-um compat driver pattern. The probes GSList is built
+ * fresh per packet and freed after sending, mirroring the
+ * meaning.channels handling in the original.
+ */
 static void ebd_send_value(const struct sr_dev_inst *sdi, struct sr_channel *ch,
 	float value, enum sr_mq mq, enum sr_unit unit, int digits)
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-	analog.meaning->channels = g_slist_append(NULL, ch);
+	(void)digits;
+
+	memset(&analog, 0, sizeof(analog));
 	analog.num_samples = 1;
+	analog.probes = g_slist_append(NULL, ch);
+	analog.mq = mq;
+	analog.unit = unit;
+	analog.mqflags = SR_MQFLAG_DC;
 	analog.data = &value;
-	analog.meaning->mq = mq;
-	analog.meaning->unit = unit;
-	analog.meaning->mqflags = SR_MQFLAG_DC;
+	analog.unit_bits = 32; /* sizeof(float) */
+	analog.unit_pitch = 0;
 
+	memset(&packet, 0, sizeof(packet));
 	packet.type = SR_DF_ANALOG;
+	packet.status = SR_PKT_OK;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 }
 
 /*

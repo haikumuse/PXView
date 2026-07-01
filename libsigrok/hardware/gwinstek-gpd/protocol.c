@@ -37,7 +37,7 @@ SR_PRIV int gpd_send_cmd(struct sr_serial_dev_inst *serial, const char *cmd, ...
 	g_free(cmd_esc);
 
 	ret = serial_write_blocking(serial, cmdbuf, strlen(cmdbuf),
-				    serial_timeout(serial, strlen(cmdbuf)));
+				    serial_timeout(serial, 0, strlen(cmdbuf)));
 	if (ret < 0) {
 		sr_err("Error sending command: %d.", ret);
 		return ret;

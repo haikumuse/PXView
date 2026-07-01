@@ -747,6 +747,12 @@ static void send_chunk(struct sr_dev_inst *sdi, unsigned char *buf,
 			continue;
 
 		float range = ((float)vdivs[devc->voltage[ch]][0] / vdivs[devc->voltage[ch]][1]) * 8;
+		/* 8-bit ADC -> 255 levels. Compute effective decimal digits
+		 * (upstream sigrok formula). */
+		float vdivlog = log10f(range / 255);
+		int digits = -(int)vdivlog + (vdivlog < 0.0);
+		analog.digits = digits;
+		analog.spec_digits = digits;
 		analog.probes = g_slist_append(NULL, channels->data);
 
 		for (int i = 0; i < num_samples; i++) {

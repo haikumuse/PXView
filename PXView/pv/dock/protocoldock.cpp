@@ -86,6 +86,10 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
 
   for (; l; l = l->next) {
     const srd_decoder *const d = (srd_decoder *)l->data;
+    if (!d) {
+      pxv_warn("%s", "ProtocolDock: decoder list item d is NULL, skipping");
+      continue;
+    }
     assert(d);
     (void)d;
 
@@ -306,6 +310,10 @@ ProtocolDock::~ProtocolDock() {
 void ProtocolDock::set_view(view::View *view) { _view = view; }
 
 void ProtocolDock::bind_context(TabContext *ctx) {
+  if (!ctx) {
+    pxv_warn("%s", "ProtocolDock::bind_context: ctx is NULL");
+    return;
+  }
   assert(ctx);
   _context = ctx;
   _session = ctx->session();

@@ -120,3 +120,58 @@ PXView 的 libsigrok 已与标准 sigrok 深度分叉，核心数据结构（`sr
 
 ### Requirement: ds_* API 设备类型判断
 现有 `ds_*` API SHALL 增加设备类型判断逻辑，对兼容驱动设备跳过 DSL 专有操作（如零点校准、VGA 增益、PWM 输出等）。
+
+### Requirement: compat 层扩展覆盖范围
+
+> **更新（2026-07-02，由 `tiered-driver-compat-fix` spec 完成）**：compat 层（`hardware/compat/`）的覆盖范围在原有基础上大幅扩展，集中了多驱动（≥3）共用的缺失 API 与常量定义，消除驱动本地重复。
+
+compat 层 SHALL 在 `compat_config.h` / `compat_helpers.h` / `compat_helpers.c` 中提供以下扩展实现：
+
+**常量与枚举（compat_config.h）**：
+- 缺失 `SR_MQ_*` 值（`SR_MQ_TIME`=10100 等，使用 PXView 保留值避开冲突）
+- 缺失 `SR_UNIT_*` 值（`SR_UNIT_REVOLUTIONS_PER_MINUTE` 等）
+- 缺失 `SR_MQFLAG_*` 值（`SR_MQFLAG_DURATION`=0x20000 / `SR_MQFLAG_AVG`=0x40000 / `REFERENCE` / `UNSTABLE` / `FOUR_WIRE`）
+- `SR_PACKET_INVALID`(-1) / `SR_PACKET_VALID`(0) / `SR_PACKET_NEED_RX`(1)
+- `SR_CONF_SWAP`=30159 / `SR_CONF_MEASURED_QUANTITY`=30160 / `SR_CONF_RANGE`=30161
+- `SR_ERR_CHANNEL_GROUP`（映射到 `SR_ERR_ARG`）
+
+**增量读写函数（compat_config.h，`#ifndef compat_*_defined` 守卫）**：
+- `read_u16le_inc` / `read_u8_inc` / `read_u32le_inc`
+- `write_u16le_inc` / `write_u32le_inc` / `write_u24le_inc` / `write_u40le_inc` / `write_u8_inc`
+
+**资源加载（compat_helpers.h/.c，`#ifndef SR_RESOURCE_STRUCT_DEFINED` / `COMPAT_SR_RESOURCE_DECLARED` 守卫）**：
+- `struct sr_resource` + `#define SR_RESOURCE_FIRMWARE 1`
+- `sr_resource_open` / `sr_resource_read` / `sr_resource_close`（用 `DS_RES_PATH` + fopen/fread/fclose）
+
+**日志与调试（compat_helpers.h/.c）**：
+- `#define SR_LOG_SPEW 5`（`#ifndef SR_LOG_SPEW` 守卫）
+- `sr_log_loglevel_get`（返回 `SR_LOG_DBG`）
+- `sr_hexdump_new` / `sr_hexdump_free`（桩实现，调试用）
+
+**字符串与错误处理（compat_helpers.h/.c）**：
+- `sr_strerror`（`#ifndef COMPAT_SR_STRERROR_DECLARED` 守卫）
+- `sr_atoi` / `sr_atof_ascii` / `sr_atol`
+
+**std_* 辅助函数（compat_helpers.h/.c，3 参规范签名）**：
+- `std_str_idx` / `std_u64_idx`（3 参版本：`(data, strs, count)`，非 5 参）
+- `std_u64_tuple_idx` / `std_cg_idx`
+- `std_dev_clear_callback` typedef + `std_dev_clear_with_callback`
+- `std_gvar_tuple_array`（`uint64[][2]` 规范签名）+ `std_gvar_array_str`（字符串数组，匹配 upstream 两个独立函数）
+
+#### Scenario: 驱动使用 compat 层扩展 API
+
+- **WHEN** 驱动需要固件加载（`sr_resource_*`）、增量读写（`*_inc`）、错误字符串（`sr_strerror`）或 std_* 辅助函数
+- **THEN** SHALL `#include "hardware/compat/compat.h"` 并调用 compat 层提供的规范版本
+- **AND** SHALL NOT 在驱动本地重复定义这些符号（除非是驱动特有包装器，如 `sigma_sr_resource_load`）
+
+#### Scenario: compat 层常量值安全
+
+- **WHEN** compat 层补全 `SR_MQ_*` / `SR_UNIT_*` / `SR_MQFLAG_*` / `SR_CONF_*` 缺失值
+- **THEN** 该值 SHALL 使用 PXView 保留区，不与 `libsigrok.h` 已有枚举冲突
+- **AND** SHALL 在注释中标注 "canonical sigrok value = X, PXView reserved value = Y"
+
+#### Scenario: 保持驱动本地的 shim
+
+- **WHEN** 仅 1-2 个驱动需要某 API（如 `sr_sw_limits`、`feed_queue_logic`）
+- **THEN** 该 shim SHALL 保持驱动 `protocol.h` 的 `static inline` 本地副本
+- **AND** SHALL NOT 提取到 compat 层（避免与现有 `static inline` 副本符号冲突）

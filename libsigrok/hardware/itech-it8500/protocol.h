@@ -372,21 +372,7 @@ struct dev_context {
 	GMutex mutex;
 };
 
-/*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair. Implemented
- * in protocol.c (same approach as the korad-kaxxxxp compat driver).
- */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data);
-
-/*
- * Local replacements for standard sigrok's std_session_send_df_frame_begin/end().
- * PXView's libsigrok only provides std_session_send_df_header/end with a
- * prefix argument, not the frame variants. Implemented in protocol.c.
- */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 /*
  * Local wrapper around PXView's 3-arg serial_timeout(). Standard sigrok's

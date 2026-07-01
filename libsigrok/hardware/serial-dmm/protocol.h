@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "serial-dmm"
 
 /*
@@ -126,22 +127,6 @@ static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
 	return FALSE;
 }
 #endif /* SERIAL_DMM_SR_SW_LIMITS_DEFINED */
-
-/*
- * Standard sigrok's packet validation result codes. PXView's libsigrok
- * does not define these (it uses a simpler serial_stream_detect API).
- * They are used by the length-based packet validation path in
- * protocol.c's handle_new_data() for DMMs that provide packet_valid_len.
- */
-#ifndef SR_PACKET_NEED_RX
-#define SR_PACKET_NEED_RX   0
-#endif
-#ifndef SR_PACKET_VALID
-#define SR_PACKET_VALID     1
-#endif
-#ifndef SR_PACKET_INVALID
-#define SR_PACKET_INVALID   2
-#endif
 
 struct dmm_info {
 	/** libsigrok driver info struct. */

@@ -1633,7 +1633,7 @@ static void resubmit_transfer(struct libusb_transfer* transfer)
 }
 
 /* Callback handling data */
-SR_PRIV void abort_acquisition(struct PX_context* devc);
+SR_PRIV void pxlogic_abort_acquisition(struct PX_context* devc);
 static void receive_transfer(struct libusb_transfer* transfer)
 {
     struct PX_context* devc = transfer->user_data;
@@ -1675,7 +1675,7 @@ static void receive_transfer(struct libusb_transfer* transfer)
     case LIBUSB_TRANSFER_STALL:
     case LIBUSB_TRANSFER_NO_DEVICE:
         // free_transfer(transfer);
-        abort_acquisition(devc);
+        pxlogic_abort_acquisition(devc);
         free_transfer(transfer);
 
         return;
@@ -1768,12 +1768,12 @@ static void receive_transfer(struct libusb_transfer* transfer)
         // devc->op_mode == OP_BUFFER
     ) {
         sr_dbg("last  transfer");
-        // abort_acquisition(devc);
+        // pxlogic_abort_acquisition(devc);
         // free_transfer(transfer);
         devc->stop = TRUE;
 
         // free_transfer(transfer);
-        abort_acquisition(devc);
+        pxlogic_abort_acquisition(devc);
         free_transfer(transfer);
     } else if (devc->stop != TRUE) {
 
@@ -1794,7 +1794,7 @@ static void receive_transfer(struct libusb_transfer* transfer)
         }
     }
 }
-SR_PRIV void abort_acquisition(struct PX_context* devc)
+SR_PRIV void pxlogic_abort_acquisition(struct PX_context* devc)
 {
     int i;
 
@@ -2717,7 +2717,7 @@ static void finish_acquisition(struct sr_dev_inst* sdi)
     //  if(devc->buf != NULL){
     //     g_free(devc->buf);
     //  }
-    // abort_acquisition(devc);
+    // pxlogic_abort_acquisition(devc);
 
     /* Send last packet. */
 
@@ -2760,7 +2760,7 @@ static int hw_dev_acquisition_stop(const struct sr_dev_inst* sdi, void* cb_data)
     (void)cb_data;
 
     struct PX_context* const devc = sdi->priv;
-    abort_acquisition(devc);
+    pxlogic_abort_acquisition(devc);
     sr_dbg("Stopping acquisition.");
 
     return SR_OK;

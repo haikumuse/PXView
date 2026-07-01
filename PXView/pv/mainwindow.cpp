@@ -59,6 +59,7 @@
 #include <algorithm>
 #include <functional>
 #include <libusb-1.0/libusb.h>
+#include <stdexcept>
 
 #include "log.h"
 #include "mainwindow.h"
@@ -285,6 +286,14 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   _category_display_index = -1;
   _category_help_index = -1;
 
+  if (!title_bar) {
+    pxv_warn("%s", "MainWindow::MainWindow: title_bar is NULL");
+    throw std::invalid_argument("MainWindow: title_bar is NULL");
+  }
+  if (!_frame) {
+    pxv_warn("%s", "MainWindow::MainWindow: _frame is NULL");
+    throw std::invalid_argument("MainWindow: _frame is NULL");
+  }
   assert(title_bar);
   assert(_frame);
 
@@ -1588,6 +1597,10 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   if (mode == DSO) {
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
       sr_channel *const probe = (sr_channel *)l->data;
+      if (!probe) {
+        pxv_warn("%s", "MainWindow: probe is NULL in DSO channel loop, skipping");
+        continue;
+      }
       assert(probe);
 
       for (const QJsonValue &value : sessionObj["channel"].toArray()) {
@@ -1610,6 +1623,10 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   } else {
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
       sr_channel *const probe = (sr_channel *)l->data;
+      if (!probe) {
+        pxv_warn("%s", "MainWindow: probe is NULL in channel loop, skipping");
+        continue;
+      }
       assert(probe);
       bool isEnabled = false;
 
@@ -2803,13 +2820,16 @@ void MainWindow::update_toolbar_view_status() {
   }
 }
 
-void MainWindow::OnMessage(int msg) {
+void MainWindow::OnMessage(int msg, int param) {
   // Task 1.1: marshal to GUI thread — OnMessage touches QWidget/QDockWidget and
   // must run on qApp->thread(). Broadcasts may originate from Core worker
-  // threads; re-invoke via QueuedConnection and return immediately.
+  // threads; re-invoke via QueuedConnection and return immediately. The int
+  // param payload (e.g. is_working flag for CAPTURE_OWNER_CHANGED) is forwarded
+  // across the thread hop.
   if (QThread::currentThread() != qApp->thread()) {
     QMetaObject::invokeMethod(
-        this, [this, msg]() { OnMessage(msg); }, Qt::QueuedConnection);
+        this, [this, msg, param]() { OnMessage(msg, param); },
+        Qt::QueuedConnection);
     return;
   }
   switch (msg) {
@@ -3285,7 +3305,14 @@ void MainWindow::OnMessage(int msg) {
     // 设置 owner 后 广播本消息，此时 activate() 会 rebuild_signals_from_config
     // + signals_changed，导致正在显示的波形轨道被重建消失。owner 清除（tab
     // 关闭/ 采集结束）时 is_working 为 false，activate() 正常刷新。
-    if (current_context() && !_session->is_working())
+    //
+    // Task 7: the is_working flag is now carried by the broadcast's int param
+    // (param == 1 => capture in progress, param == 0 => idle) instead of being
+    // re-queried via _session->is_working(). Using the param avoids a race
+    // where is_working() flips between the broadcaster sending and us reading.
+    if (param == 1)
+      break; // capture in progress — skip activate()
+    if (current_context())
       current_context()->activate();
     break;
   }

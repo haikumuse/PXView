@@ -51,6 +51,8 @@ void Binding::commit()
 
 void Binding::add_properties_to_form(QFormLayout *layout, bool auto_commit, QFont font)
 {
+    if (!layout)
+        return;
     assert(layout);
 
     for(auto p : _properties)

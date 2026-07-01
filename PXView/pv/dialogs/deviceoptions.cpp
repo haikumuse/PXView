@@ -131,6 +131,9 @@ void ChannelLabel::mousePressEvent(QMouseEvent *event) {
 }
 
 void ChannelLabel::on_checked() {
+  if (!_checked) {
+    return;
+  }
   assert(_checked);
   _checked->ChannelChecked(_index, _box);
 }
@@ -257,6 +260,7 @@ void DeviceOptions::accept() {
     int index = 0;
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
       sr_channel *const probe = (sr_channel *)l->data;
+      if (!probe) continue;
       assert(probe);
       probe->enabled = _probes_checkBox_list.at(index)->isChecked();
       index++;
@@ -598,6 +602,7 @@ void DeviceOptions::mode_check_timeout() {
 
 void DeviceOptions::channel_check() {
   QRadioButton *bt = dynamic_cast<QRadioButton *>(sender());
+  if (!bt) return;
   assert(bt);
 
   int mode_index = -1;
@@ -734,6 +739,7 @@ void DeviceOptions::analog_probes(QGridLayout &layout) {
 
   for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
     sr_channel *const probe = (sr_channel *)l->data;
+    if (!probe) continue;
     assert(probe);
 
     _dso_channel_list.push_back(probe);
@@ -830,6 +836,7 @@ QString DeviceOptions::dynamic_widget(QLayout *lay) {
 
   if (mode == LOGIC) {
     QVBoxLayout *grid = dynamic_cast<QVBoxLayout *>(lay);
+    if (!grid) return QString();
     assert(grid);
     logic_probes(*grid);
     // tr
@@ -839,6 +846,7 @@ QString DeviceOptions::dynamic_widget(QLayout *lay) {
 
     if (_device_agent->get_config_bool(SR_CONF_HAVE_ZERO, have_zero)) {
       QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
+      if (!grid) return QString();
       assert(grid);
 
       QFont font = theme_font_dialog();
@@ -874,6 +882,7 @@ QString DeviceOptions::dynamic_widget(QLayout *lay) {
     }
   } else if (mode == ANALOG) {
     QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
+    if (!grid) return QString();
     assert(grid);
     analog_probes(*grid);
     // tr

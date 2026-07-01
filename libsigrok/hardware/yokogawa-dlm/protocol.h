@@ -119,7 +119,6 @@ SR_PRIV int dlm_scope_state_query(struct sr_dev_inst *sdi);
 SR_PRIV int dlm_sample_rate_query(const struct sr_dev_inst *sdi);
 SR_PRIV int dlm_channel_data_request(const struct sr_dev_inst *sdi);
 
-/* Frame end stub kept locally (frame_begin is canonical in compat_helpers.c). */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 #endif

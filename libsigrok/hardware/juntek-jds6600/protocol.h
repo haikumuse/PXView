@@ -44,6 +44,32 @@
 #include "hardware/compat/compat.h"
 
 /*
+ * PXView does not define the signal-generator config keys this driver needs.
+ * Provide them locally with values matching rigol-dg (30200-30205 range).
+ */
+#ifndef SR_CONF_SIGNAL_GENERATOR
+#define SR_CONF_SIGNAL_GENERATOR   10020
+#endif
+#ifndef SR_CONF_ENABLED
+#define SR_CONF_ENABLED            30200
+#endif
+#ifndef SR_CONF_OUTPUT_FREQUENCY
+#define SR_CONF_OUTPUT_FREQUENCY   30201
+#endif
+#ifndef SR_CONF_AMPLITUDE
+#define SR_CONF_AMPLITUDE          30202
+#endif
+#ifndef SR_CONF_OFFSET
+#define SR_CONF_OFFSET             30203
+#endif
+#ifndef SR_CONF_PHASE
+#define SR_CONF_PHASE              30204
+#endif
+#ifndef SR_CONF_DUTY_CYCLE
+#define SR_CONF_DUTY_CYCLE         30205
+#endif
+
+/*
  * ATTR_FMT_PRINTF is not defined in PXView's libsigrok-internal.h (standard
  * sigrok provides it there). Define locally with a guard so the printf format
  * attribute annotations on the va_list helpers in protocol.c compile cleanly.

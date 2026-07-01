@@ -202,7 +202,7 @@ SR_PRIV int std_session_send_df_end(const struct sr_dev_inst *sdi,
  *
  * This is the single canonical implementation for compat drivers. Previously
  * each driver defined its own local copy (fx2lafw, gwinstek-gds-800, hameg-hmo,
- * hantek-dso, hung-chang-dso-2100), but since SR_PRIV is empty on Windows
+ * hantek-dso), but since SR_PRIV is empty on Windows
  * those were global symbols that caused multiple-definition link errors when
  * two such drivers were enabled simultaneously. Consolidating here removes
  * that hazard; call sites are unchanged (same 1-arg signature).
@@ -212,6 +212,38 @@ SR_PRIV int std_session_send_df_end(const struct sr_dev_inst *sdi,
  * @return SR_OK on success.
  */
 SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
+
+/**
+ * Standard sigrok's std_session_send_df_frame_end - send DF_FRAME_END packet.
+ *
+ * Same centralization rationale as frame_begin: 16 drivers each defined their
+ * own local copy, but since SR_PRIV is empty on Windows those were global
+ * symbols that caused multiple-definition link errors. Consolidating here
+ * removes that hazard; call sites are unchanged (same 1-arg signature).
+ *
+ * @param sdi The device instance.
+ *
+ * @return SR_OK on success.
+ */
+SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+
+/**
+ * Standard sigrok's sr_session_send_meta - send a META packet with a single
+ * config key/value pair.
+ *
+ * Previously 8 drivers (gwinstek-psp, uni-t-ut181a, itech-it8500,
+ * korad-kaxxxxp, maynuo-m97, rdtech-dps, scpi-pps, serial-lcr) each defined
+ * their own identical copy. Centralized here to avoid multiple-definition
+ * link errors (SR_PRIV is empty on Windows).
+ *
+ * @param sdi The device instance.
+ * @param key The config key (uint32_t, cast to int for sr_config_new).
+ * @param data The GVariant value (ownership taken).
+ *
+ * @return SR_OK on success, SR_ERR_ARG if sdi/data is NULL.
+ */
+SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
+    uint32_t key, GVariant *data);
 
 /**
  * Standard sigrok's std_config_list - handle SR_CONF_DEVICE_OPTIONS etc.

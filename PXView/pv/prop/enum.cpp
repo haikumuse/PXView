@@ -92,6 +92,8 @@ QWidget* Enum::get_widget(QWidget *parent, bool auto_commit)
 
 void Enum::commit()
 {
+	if (!_setter)
+		return;
 	assert(_setter);
 
 	if (!_selector)

@@ -101,6 +101,17 @@
 #include "libsigrok/libsigrok.h"
 #include "dmm_parsers.h"
 
+/*
+ * compat_config.h provides RB16/RB32/RL16/RL32 but not R8 (the plain
+ * single-byte read). Standard sigrok defines R8 in libsigrok-internal.h
+ * which PXView's fork does not ship, so define it locally. The #ifndef
+ * guard keeps this compatible if R8 ever becomes available upstream.
+ */
+#ifndef R8
+#define R8(p) (*(const uint8_t *)(p))
+#endif
+
+#undef LOG_PREFIX
 #define LOG_PREFIX "eev121gw"
 
 /*

@@ -30,8 +30,7 @@
 #include <time.h>
 #include "protocol.h"
 
-/* Frame end declared locally; frame_begin is canonical in compat_helpers.c. */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 /*
  * Local replacement for standard sigrok's sr_atof_ascii, which PXView's
@@ -1038,12 +1037,4 @@ SR_PRIV int rigol_ds_get_dev_cfg_vertical(const struct sr_dev_inst *sdi)
 	return SR_OK;
 }
 
-/* Frame end stub kept locally; frame_begin is canonical in compat_helpers.c. */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-	packet.type = SR_DF_FRAME_END;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
+/* std_session_send_df_frame_end() is provided by compat_helpers.c. */

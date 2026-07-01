@@ -22,7 +22,6 @@
  */
 
 #include "signal.h"
-#include "../api/types.h"
 #include "../data/signalmodel.h"
 #include "../dsvdef.h"
 #include "../sigsession.h"
@@ -32,27 +31,10 @@
 namespace pv {
 namespace view {
 
-// Convert api::ChannelType (Logic=0/Analog=1/Dso=2) to the SR_CHANNEL_*
-// constants (10000+) that Trace's base class expects. Inlined here because
-// the existing helper in storesession.cpp is a file-static.
-static int api_type_to_sr_channel_type(api::ChannelType t) {
-  switch (t) {
-  case api::ChannelType::Logic:
-    return SR_CHANNEL_LOGIC;
-  case api::ChannelType::Analog:
-    return SR_CHANNEL_ANALOG;
-  case api::ChannelType::Dso:
-    return SR_CHANNEL_DSO;
-  default:
-    return SR_CHANNEL_LOGIC;
-  }
-}
-
 Signal::Signal(std::shared_ptr<data::SignalModel> model, SigSession *session)
     : Trace(QString::fromStdString(model ? model->name() : std::string()),
             static_cast<uint16_t>(model ? model->index() : 0),
-            api_type_to_sr_channel_type(model ? model->type()
-                                              : api::ChannelType::Logic)),
+            model ? model->sr_type() : SR_CHANNEL_LOGIC),
       _model(model), session(session) {
   // Establish Qt signal connections directly from _model — no need to
   // query the session for the model by index (the model is injected).

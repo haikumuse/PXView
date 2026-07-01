@@ -261,9 +261,6 @@ extern SR_PRIV struct sr_dev_driver uni_t_ut32x_driver_info;
 #ifdef HAVE_DRIVER_UNI_T_DMM
 extern SR_PRIV struct sr_dev_driver uni_t_dmm_driver_info;
 #endif
-#ifdef HAVE_DRIVER_HUNG_CHANG_DSO_2100
-extern SR_PRIV struct sr_dev_driver hung_chang_dso_2100_driver_info;
-#endif
 #ifdef HAVE_DRIVER_LINK_MSO19
 extern SR_PRIV struct sr_dev_driver link_mso19_driver_info;
 #endif
@@ -520,9 +517,6 @@ static struct sr_dev_driver *drivers_list[] = {
 #endif
 #ifdef HAVE_DRIVER_UNI_T_DMM
     &uni_t_dmm_driver_info,
-#endif
-#ifdef HAVE_DRIVER_HUNG_CHANG_DSO_2100
-    &hung_chang_dso_2100_driver_info,
 #endif
 #ifdef HAVE_DRIVER_LINK_MSO19
     &link_mso19_driver_info,

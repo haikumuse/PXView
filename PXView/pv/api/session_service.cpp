@@ -197,6 +197,85 @@ inline Result<void> run_void_on_main_thread(
 }
 
 // ---------------------------------------------------------------------------
+// Generic main-thread dispatch helper
+// ---------------------------------------------------------------------------
+//
+// invoke_or_call() invokes a callable on the Qt main thread. If the caller is
+// already on the main thread, the callable runs inline (no event-loop posting,
+// no blocking). Otherwise it is dispatched via Qt::BlockingQueuedConnection so
+// the caller blocks until the callable returns.
+//
+// This replaces the ad-hoc `QMetaObject::invokeMethod(qApp, lambda,
+// Qt::QueuedConnection)` + `std::condition_variable::wait()` pattern that
+// DEADLOCKS when the caller is already on the main thread (the posted lambda
+// can never run because the main thread is blocked waiting on the cv).
+template <typename F>
+inline void invoke_or_call(QObject *ctx, F &&fn) {
+    if (on_main_thread()) {
+        fn();
+        return;
+    }
+    QMetaObject::invokeMethod(ctx, std::forward<F>(fn),
+                              Qt::BlockingQueuedConnection);
+}
+
+// ---------------------------------------------------------------------------
+// Decoder instance_id helpers (<handle_id>:<version>)
+// ---------------------------------------------------------------------------
+//
+// Decoder stacks are identified to MCP/API callers by a stable
+// "<handle_id>:<version>" string. The handle_id is allocated by SigSession
+// when the stack is created and stays constant for the stack's lifetime; the
+// version is bumped when the stack is rebuilt. This replaces the previous
+// raw-pointer stringification which became stale whenever the stack vector
+// reallocated or the stack was rebuilt, causing get_decoder_annotations /
+// remove_decoder / export_decoder_table to fail to match the stack the caller
+// was holding.
+
+// Format a DecoderStack's stable instance identifier.
+inline std::string make_instance_id(const pv::data::DecoderStack *stack) {
+    if (!stack)
+        return std::string("0:0");
+    return std::to_string(stack->handle_id()) + ":" +
+           std::to_string(stack->version());
+}
+
+// Parse a "<handle_id>:<version>" instance identifier. Returns false on
+// malformed input (missing colon, empty fields, non-numeric values).
+inline bool parse_instance_id(const std::string &instance_id,
+                              uint64_t &handle_id, uint64_t &version) {
+    auto pos = instance_id.find(':');
+    if (pos == std::string::npos || pos == 0 || pos + 1 >= instance_id.size())
+        return false;
+    try {
+        size_t h_end = 0, v_end = 0;
+        handle_id = std::stoull(instance_id.substr(0, pos), &h_end, 10);
+        version = std::stoull(instance_id.substr(pos + 1), &v_end, 10);
+        if (h_end != pos || v_end != instance_id.size() - pos - 1)
+            return false;
+    } catch (...) {
+        return false;
+    }
+    return true;
+}
+
+// Find a decoder stack by instance_id ("<handle_id>:<version>") in a stacks
+// vector. Returns nullptr if instance_id is malformed or no stack matches.
+inline std::shared_ptr<pv::data::DecoderStack> find_stack_by_instance_id(
+    std::vector<std::shared_ptr<pv::data::DecoderStack>> &stacks,
+    const std::string &instance_id) {
+    uint64_t handle_id = 0, version = 0;
+    if (!parse_instance_id(instance_id, handle_id, version))
+        return nullptr;
+    for (auto &stack : stacks) {
+        if (stack && stack->handle_id() == handle_id &&
+            stack->version() == version)
+            return stack;
+    }
+    return nullptr;
+}
+
+// ---------------------------------------------------------------------------
 // Construction / destruction
 // ---------------------------------------------------------------------------
 
@@ -2122,8 +2201,7 @@ std::vector<DecoderInstance> SessionService::get_active_decoders() const {
             continue;
 
         DecoderInstance inst;
-        inst.instance_id = std::to_string(
-            reinterpret_cast<intptr_t>(stack.get()));
+        inst.instance_id = make_instance_id(stack.get());
         inst.row_index = static_cast<int32_t>(i);
 
         inst.is_running = stack->IsRunning();
@@ -2171,19 +2249,11 @@ Result<std::string> SessionService::add_decoder(
     // passes them to SigSession::add_decoder().
     if (!stack_on_analyzer_id.empty()) {
         auto do_stack = [this, dec, &options, &channel_map, &label, &stack_on_analyzer_id]() -> Result<std::string> {
-            // Find the parent DecoderStack by converting the analyzer ID
-            // (which is the string representation of the stack pointer)
+            // Find the parent DecoderStack by its stable
+            // "<handle_id>:<version>" instance identifier.
             auto &stacks = _session->get_decoder_stacks(_api_document);
-            std::shared_ptr<data::DecoderStack> parent_stack = nullptr;
-            for (auto stack : stacks) {
-                if (!stack) continue;
-                std::string tid =
-                    std::to_string(reinterpret_cast<intptr_t>(stack.get()));
-                if (tid == stack_on_analyzer_id) {
-                    parent_stack = stack;
-                    break;
-                }
-            }
+            std::shared_ptr<data::DecoderStack> parent_stack =
+                find_stack_by_instance_id(stacks, stack_on_analyzer_id);
 
             if (!parent_stack)
                 return Result<std::string>::Fail(ErrorCode::DecoderNotFound,
@@ -2299,8 +2369,7 @@ Result<std::string> SessionService::add_decoder(
 
             _session->rebuild_decoder_pannel();
 
-            std::string instance_id =
-                std::to_string(reinterpret_cast<intptr_t>(parent_stack.get()));
+            std::string instance_id = make_instance_id(parent_stack.get());
 
             broadcast_event(ServiceEvent::DecoderAdded,
                             {{"instance_id", instance_id},
@@ -2322,21 +2391,26 @@ Result<std::string> SessionService::add_decoder(
         // Start decode if data is ready and copy is not in progress
         {
             std::string instance_id = result.value();
-            std::shared_ptr<data::DecoderStack> decoder_stack;
             auto &stacks = _session->get_decoder_stacks(_api_document);
-            for (auto stack : stacks) {
-                if (std::to_string(reinterpret_cast<intptr_t>(stack.get())) == instance_id) {
-                    decoder_stack = stack;
-                    break;
-                }
-            }
+            std::shared_ptr<data::DecoderStack> decoder_stack =
+                find_stack_by_instance_id(stacks, instance_id);
 
             if (decoder_stack && decoder_stack->options_changed() &&
                 _session->have_view_data() &&
                 !_session->is_copy_in_progress()) {
                 QTimer::singleShot(0, qApp, [this, decoder_stack]() {
                     if (decoder_stack && !decoder_stack->_delete_flag) {
-                        _session->add_decode_task(decoder_stack);
+                        // add_decode_task() is now private; rst_decoder()
+                        // resets this single stack and attaches view data
+                        // before starting its decode task.
+                        auto &st = _session->get_decoder_stacks(_api_document);
+                        for (size_t i = 0; i < st.size(); i++) {
+                            if (st[i].get() == decoder_stack.get()) {
+                                _session->rst_decoder(static_cast<int>(i),
+                                                      _api_document);
+                                break;
+                            }
+                        }
                     }
                 });
             }
@@ -2719,8 +2793,7 @@ Result<std::string> SessionService::add_decoder(
         // Update the ProtocolDock so the new decoder appears in the GUI
         _session->rebuild_decoder_pannel();
 
-        std::string instance_id =
-            std::to_string(reinterpret_cast<intptr_t>(decoder_stack.get()));
+        std::string instance_id = make_instance_id(decoder_stack.get());
 
         broadcast_event(ServiceEvent::DecoderAdded,
                         {{"instance_id", instance_id},
@@ -2747,14 +2820,9 @@ Result<std::string> SessionService::add_decoder(
     // get a duplicate decode task.
     {
         std::string instance_id = result.value();
-        std::shared_ptr<data::DecoderStack> decoder_stack;
         auto &stacks = _session->get_decoder_stacks(_api_document);
-        for (auto stack : stacks) {
-            if (std::to_string(reinterpret_cast<intptr_t>(stack.get())) == instance_id) {
-                decoder_stack = stack;
-                break;
-            }
-        }
+        std::shared_ptr<data::DecoderStack> decoder_stack =
+            find_stack_by_instance_id(stacks, instance_id);
 
         // Only start decode if copy is NOT in progress.
         // If copy is in progress, DSV_MSG_COPY_TO_DOC_DONE handler
@@ -2767,7 +2835,17 @@ Result<std::string> SessionService::add_decoder(
             // (including the DecoderAdded broadcast) have been processed.
             QTimer::singleShot(0, qApp, [this, decoder_stack]() {
                 if (decoder_stack && !decoder_stack->_delete_flag) {
-                    _session->add_decode_task(decoder_stack);
+                    // add_decode_task() is now private; rst_decoder()
+                    // resets this single stack and attaches view data
+                    // before starting its decode task.
+                    auto &st = _session->get_decoder_stacks(_api_document);
+                    for (size_t i = 0; i < st.size(); i++) {
+                        if (st[i].get() == decoder_stack.get()) {
+                            _session->rst_decoder(static_cast<int>(i),
+                                                  _api_document);
+                            break;
+                        }
+                    }
                 }
             });
         }
@@ -2776,8 +2854,13 @@ Result<std::string> SessionService::add_decoder(
     // Wait for decoder completion if requested
     if (wait_for_completion && result.ok()) {
         std::string instance_id = result.value();
-        auto *decoder_stack = reinterpret_cast<data::DecoderStack*>(
-            std::stoll(instance_id));
+        // Look up the stack by its stable "<handle_id>:<version>" identifier.
+        // The previous code reinterpret_cast<std::stoll(instance_id)> which
+        // only worked when instance_id was a stringified raw pointer and was
+        // undefined behavior for the new handle:version format.
+        auto &stacks_for_wait = _session->get_decoder_stacks(_api_document);
+        std::shared_ptr<data::DecoderStack> decoder_stack =
+            find_stack_by_instance_id(stacks_for_wait, instance_id);
 
         if (decoder_stack) {
             QEventLoop loop;
@@ -2807,6 +2890,23 @@ Result<std::string> SessionService::add_decoder(
                     break;
             }
 
+            // Remove this decoder on the main thread. invoke_or_call() runs
+            // inline when the caller is already on the main thread (the common
+            // MCP case) and otherwise dispatches via BlockingQueuedConnection.
+            // This replaces the previous QueuedConnection + condition_variable
+            // wait pattern which DEADLOCKED when the caller blocked the main
+            // thread inside loop.exec()/wait().
+            auto remove_this_stack = [this, decoder_stack]() {
+                auto &stacks = _session->get_decoder_stacks(_api_document);
+                for (size_t i = 0; i < stacks.size(); i++) {
+                    if (stacks[i].get() == decoder_stack.get()) {
+                        _session->remove_decoder(static_cast<int>(i),
+                                                 _api_document);
+                        break;
+                    }
+                }
+            };
+
             // Poll until decode completes
             while (decoder_stack->IsRunning()) {
                 timer.start(100);
@@ -2814,31 +2914,7 @@ Result<std::string> SessionService::add_decoder(
 
                 if (!decoder_stack->error_message().isEmpty()) {
                     // Remove decoder with error on main thread.
-                    // Use QueuedConnection + condition_variable instead of
-                    // BlockingQueuedConnection to avoid event-loop deadlock.
-                    {
-                        std::mutex rm_mutex;
-                        std::condition_variable rm_cv;
-                        bool rm_done = false;
-
-                        QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
-                            auto &stacks = _session->get_decoder_stacks(_api_document);
-                            for (size_t i = 0; i < stacks.size(); i++) {
-                                if (stacks[i].get() == decoder_stack) {
-                                    _session->remove_decoder(static_cast<int>(i), _api_document);
-                                    break;
-                                }
-                            }
-                            {
-                                std::lock_guard<std::mutex> lk(rm_mutex);
-                                rm_done = true;
-                            }
-                            rm_cv.notify_one();
-                        }, Qt::QueuedConnection);
-
-                        std::unique_lock<std::mutex> lk(rm_mutex);
-                        rm_cv.wait(lk, [&rm_done]() { return rm_done; });
-                    }
+                    invoke_or_call(qApp, remove_this_stack);
                     return Result<std::string>::Fail(
                         ErrorCode::DecoderError,
                         decoder_stack->error_message().toStdString());
@@ -2847,29 +2923,7 @@ Result<std::string> SessionService::add_decoder(
 
             if (decoder_stack->get_progress() < 100) {
                 if (!decoder_stack->error_message().isEmpty()) {
-                    {
-                        std::mutex rm_mutex;
-                        std::condition_variable rm_cv;
-                        bool rm_done = false;
-
-                        QMetaObject::invokeMethod(qApp, [this, decoder_stack, &rm_mutex, &rm_cv, &rm_done]() {
-                            auto &stacks = _session->get_decoder_stacks(_api_document);
-                            for (size_t i = 0; i < stacks.size(); i++) {
-                                if (stacks[i].get() == decoder_stack) {
-                                    _session->remove_decoder(static_cast<int>(i), _api_document);
-                                    break;
-                                }
-                            }
-                            {
-                                std::lock_guard<std::mutex> lk(rm_mutex);
-                                rm_done = true;
-                            }
-                            rm_cv.notify_one();
-                        }, Qt::QueuedConnection);
-
-                        std::unique_lock<std::mutex> lk(rm_mutex);
-                        rm_cv.wait(lk, [&rm_done]() { return rm_done; });
-                    }
+                    invoke_or_call(qApp, remove_this_stack);
                     return Result<std::string>::Fail(
                         ErrorCode::DecoderError,
                         decoder_stack->error_message().toStdString());
@@ -2896,9 +2950,7 @@ Result<void> SessionService::remove_decoder(const std::string &instance_id) {
             if (!stack)
                 continue;
 
-            std::string tid =
-                std::to_string(reinterpret_cast<intptr_t>(stack.get()));
-            if (tid == instance_id) {
+            if (make_instance_id(stack.get()) == instance_id) {
                 _session->remove_decoder(static_cast<int>(i), _api_document);
 
                 broadcast_event(ServiceEvent::DecoderRemoved,
@@ -2928,8 +2980,7 @@ Result<void> SessionService::clear_all_decoders() {
     for (auto stack : stacks_before) {
         if (!stack)
             continue;
-        removed_ids.push_back(
-            std::to_string(reinterpret_cast<intptr_t>(stack.get())));
+        removed_ids.push_back(make_instance_id(stack.get()));
     }
 
     // bUpdateView=true so the View layer refreshes; we emit DecoderRemoved
@@ -2972,9 +3023,10 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
                 .arg(stacks.size());
             s_dbg.write(msg.toUtf8());
             for (auto stack : stacks) {
-                std::string tid = std::to_string(reinterpret_cast<intptr_t>(stack.get()));
-                msg = QString("  stack: ptr=%1, tid='%2'\n")
-                    .arg(reinterpret_cast<quintptr>(stack.get()))
+                std::string tid = make_instance_id(stack.get());
+                msg = QString("  stack: handle_id=%1, version=%2, tid='%3'\n")
+                    .arg(stack ? static_cast<qulonglong>(stack->handle_id()) : 0)
+                    .arg(stack ? static_cast<qulonglong>(stack->version()) : 0)
                     .arg(QString::fromStdString(tid));
                 s_dbg.write(msg.toUtf8());
             }
@@ -2982,17 +3034,11 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
         }
     }
 
-    std::shared_ptr<data::DecoderStack> target_stack = nullptr;
-    for (auto stack : stacks) {
-        if (!stack)
-            continue;
-        std::string tid =
-            std::to_string(reinterpret_cast<intptr_t>(stack.get()));
-        if (tid == instance_id) {
-            target_stack = stack;
-            break;
-        }
-    }
+    // Match by stable "<handle_id>:<version>" identifier. A malformed
+    // instance_id (no colon / non-numeric) yields DecoderNotFound rather
+    // than a crash.
+    std::shared_ptr<data::DecoderStack> target_stack =
+        find_stack_by_instance_id(stacks, instance_id);
 
     if (!target_stack)
         return Result<std::vector<DecoderAnnotation>>::Fail(
@@ -3452,9 +3498,7 @@ Result<void> SessionService::export_decoder_table(
         for (const auto &cfg : analyzers) {
             for (auto stack : stacks) {
                 if (!stack) continue;
-                std::string tid =
-                    std::to_string(reinterpret_cast<intptr_t>(stack.get()));
-                if (tid == cfg.analyzer_id) {
+                if (make_instance_id(stack.get()) == cfg.analyzer_id) {
                     selected.push_back(std::make_pair(stack, cfg.radix_type));
                     break;
                 }
@@ -3837,8 +3881,7 @@ void SessionService::data_updated() {
             if (!stack) continue;
             if (stack->IsRunning()) {
                 int progress = stack->get_progress();
-                std::string instance_id =
-                    std::to_string(reinterpret_cast<intptr_t>(stack.get()));
+                std::string instance_id = make_instance_id(stack.get());
                 broadcast_event(ServiceEvent::DecodeProgress,
                                 {{"instance_id", instance_id},
                                  {"progress", std::to_string(progress)}});
@@ -3933,7 +3976,7 @@ void SessionService::delay_prop_msg(QString strMsg) {
 // IMessageListener implementation
 // ===========================================================================
 
-void SessionService::OnMessage(int msg) {
+void SessionService::OnMessage(int msg, int param) {
     switch (msg) {
     // Collect lifecycle
     case DSV_MSG_START_COLLECT_WORK_PREV:
@@ -4054,8 +4097,12 @@ void SessionService::OnMessage(int msg) {
                         {{"change", "copy_in_progress"}});
         break;
     case DSV_MSG_CAPTURE_OWNER_CHANGED:
+        // param carries the is_working flag (1 = capture in progress,
+        // 0 = idle). Forward it to subscribers so they can decide whether
+        // to refresh immediately (idle) or defer until capture ends.
         broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"change", "capture_owner"}});
+                        {{"change", "capture_owner"},
+                         {"is_working", param ? "true" : "false"}});
         break;
 
     // Trigger & save

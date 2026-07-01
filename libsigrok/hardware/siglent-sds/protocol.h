@@ -159,13 +159,12 @@ SR_PRIV int siglent_sds_config_set(const struct sr_dev_inst *sdi,
 	const char *format, ...);
 SR_PRIV int siglent_sds_capture_start(const struct sr_dev_inst *sdi);
 SR_PRIV int siglent_sds_channel_start(const struct sr_dev_inst *sdi);
-SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data);
+SR_PRIV int siglent_sds_receive(int fd, int revents, const struct sr_dev_inst *sdi);
 SR_PRIV int siglent_sds_compat_receive(int fd, int revents, const struct sr_dev_inst *sdi);
 SR_PRIV int siglent_sds_get_dev_cfg(const struct sr_dev_inst *sdi);
 SR_PRIV int siglent_sds_get_dev_cfg_vertical(const struct sr_dev_inst *sdi);
 SR_PRIV int siglent_sds_get_dev_cfg_horizontal(const struct sr_dev_inst *sdi);
 
-/* Frame end compat stub (provided locally in protocol.c); frame_begin is canonical in compat_helpers.c. */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 #endif

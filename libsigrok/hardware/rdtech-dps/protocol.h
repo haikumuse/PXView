@@ -281,14 +281,6 @@ SR_PRIV GSList *sr_modbus_scan(struct sr_dev_driver *di, GSList *options,
 		struct sr_dev_inst *(*probe_device)(struct sr_modbus_dev_inst *modbus));
 #endif /* RDTECH_DPS_MODBUS_DEFINED */
 
-/*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair. Implemented
- * in protocol.c (same pattern as korad-kaxxxxp).
- */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data);
-
 enum rdtech_dps_model_type {
 	MODEL_NONE,
 	MODEL_DPS,

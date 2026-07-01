@@ -234,7 +234,7 @@ private:
     bool genSessionData(std::string &str) override;
 
     //IMessageListener
-    void OnMessage(int msg) override;
+    void OnMessage(int msg, int param = 0) override;
 
     //IServiceEventListener — receive View operation broadcasts from SessionService
     //(show_region, zoom_fit, zoom_in/out, cursor operations). In GUI mode these are

@@ -52,7 +52,8 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 	struct sr_dev_inst *sdi;
 	struct dev_context *devc;
 	struct sr_serial_dev_inst *serial;
-	GSList *devices;
+	GSList *devices, *l;
+	struct sr_config *src;
 	size_t i, ch_idx;
 	const char *conn, *serialcomm;
 	int ret;
@@ -63,10 +64,26 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 
 	devices = NULL;
 
-	/* Only scan for a device when conn= was specified. */
+	/*
+	 * PXView's libsigrok does not provide sr_serial_extract_options(),
+	 * so manually walk the options GSList looking for SR_CONF_CONN and
+	 * SR_CONF_SERIALCOMM (same pattern as conrad-digi-35-cpu, juntek-jds6600,
+	 * atorch, hp-59306a). Only scan for a device when conn= was specified.
+	 */
 	conn = NULL;
 	serialcomm = SERIALCOMM;
-	if (sr_serial_extract_options(options, &conn, &serialcomm) != SR_OK)
+	for (l = options; l; l = l->next) {
+		src = l->data;
+		switch (src->key) {
+		case SR_CONF_CONN:
+			conn = g_variant_get_string(src->data, NULL);
+			break;
+		case SR_CONF_SERIALCOMM:
+			serialcomm = g_variant_get_string(src->data, NULL);
+			break;
+		}
+	}
+	if (!conn)
 		return NULL;
 
 	serial = sr_serial_dev_inst_new(conn, serialcomm);

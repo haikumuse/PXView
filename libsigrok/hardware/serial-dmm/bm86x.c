@@ -33,6 +33,7 @@
 #include "dmm_parsers.h"
 #include <string.h>
 
+#undef LOG_PREFIX
 #define LOG_PREFIX "brymen-bm86x"
 
 #ifdef HAVE_SERIAL_COMM

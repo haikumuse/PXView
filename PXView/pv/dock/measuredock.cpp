@@ -267,6 +267,10 @@ void MeasureDock::set_view(view::View *view) {
 }
 
 void MeasureDock::bind_context(TabContext *ctx) {
+  if (!ctx) {
+    pxv_warn("%s", "MeasureDock::bind_context: ctx is NULL");
+    return;
+  }
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
@@ -579,6 +583,10 @@ void MeasureDock::add_dist_measure() {
 
 void MeasureDock::del_dist_measure() {
   auto src = dynamic_cast<QToolButton *>(sender());
+  if (!src) {
+    pxv_warn("%s", "MeasureDock::del_dist_measure: src is NULL");
+    return;
+  }
   assert(src);
 
   auto mode_rows = get_mode_rows();
@@ -747,6 +755,10 @@ void MeasureDock::add_edge_measure() {
 
 void MeasureDock::del_edge_measure() {
   QToolButton *src = dynamic_cast<QToolButton *>(sender());
+  if (!src) {
+    pxv_warn("%s", "MeasureDock::del_edge_measure: src is NULL");
+    return;
+  }
   assert(src);
   auto mode_rows = get_mode_rows();
 
@@ -805,6 +817,10 @@ void MeasureDock::popup_all_coursors() {
 }
 
 void MeasureDock::set_sel_cursor() {
+  if (!_sel_btn) {
+    pxv_warn("%s", "MeasureDock::set_sel_cursor: _sel_btn is NULL");
+    return;
+  }
   assert(_sel_btn);
   QPushButton *sel_cursor_bt = qobject_cast<QPushButton *>(sender());
   int type = 0;
@@ -831,6 +847,10 @@ void MeasureDock::set_sel_cursor() {
     }
   }
 
+  if (!inf) {
+    pxv_warn("%s", "MeasureDock::set_sel_cursor: inf is NULL");
+    return;
+  }
   assert(inf);
 
   _sel_btn->setText(sel_cursor_bt->text());
@@ -1023,6 +1043,10 @@ void MeasureDock::reCalc() {
 
 void MeasureDock::goto_cursor() {
   QPushButton *src = qobject_cast<QPushButton *>(sender());
+  if (!src) {
+    pxv_warn("%s", "MeasureDock::goto_cursor: src is NULL");
+    return;
+  }
   assert(src);
 
   int index = 0;
@@ -1158,6 +1182,10 @@ void MeasureDock::build_cursor_pannel() {
 
 void MeasureDock::del_cursor() {
   auto *src = qobject_cast<QToolButton *>(sender());
+  if (!src) {
+    pxv_warn("%s", "MeasureDock::del_cursor: src is NULL");
+    return;
+  }
   assert(src);
 
   Cursor *cursor = NULL;
@@ -1194,6 +1222,10 @@ void MeasureDock::UpdateFont() {
 }
 
 void MeasureDock::adjust_form_size(QWidget *wid) {
+  if (!wid) {
+    pxv_warn("%s", "MeasureDock::adjust_form_size: wid is NULL");
+    return;
+  }
   assert(wid);
 
   QFont labelFont = dock_font_label();

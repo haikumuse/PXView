@@ -376,14 +376,6 @@ SR_PRIV int scpi_pps_receive_data(int fd, int revents,
 		const struct sr_dev_inst *sdi);
 
 /*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair. Implemented
- * in protocol.c (same pattern as rdtech-dps/korad-kaxxxxp/itech-it8500).
- */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data);
-
-/*
  * Local replacement for standard sigrok's sr_atoi(), which PXView's
  * libsigrok does not provide. Implemented in profiles.c (where it is
  * used by the HP/Keysight status register parsers).

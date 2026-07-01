@@ -180,7 +180,7 @@ static int config_list(uint32_t key, GVariant **data,
 			*data = std_gvar_array_u32(ARRAY_AND_SIZE(devopts_cg));
 			break;
 		case SR_CONF_REGULATION:
-			*data = std_gvar_tuple_array(ARRAY_AND_SIZE(regulation));
+			*data = std_gvar_array_str(ARRAY_AND_SIZE(regulation));
 			break;
 		case SR_CONF_CURRENT_LIMIT:
 			*data = std_gvar_min_max_step(0.0, 6.0, 0.001);

@@ -385,7 +385,7 @@ json RpcDispatcher::get_tool_schemas() {
         // 8. add_analyzer
         {
             {"name", "add_analyzer"},
-            {"description", "Add a protocol analyzer/decoder. Best called BEFORE start_capture so auto-decode triggers on capture completion. Use list_analyzers to discover available decoders, get_analyzer_options to see required channels/options. Use stackOnAnalyzerId to stack decoders (e.g. i2c_c -> eeprom24c)."},
+            {"description", "Add a protocol analyzer/decoder. Best called BEFORE start_capture so auto-decode triggers on capture completion. Use list_analyzers to discover available decoders, get_analyzer_options to see required channels/options. Use stackOnAnalyzerId to stack decoders (e.g. i2c_c -> eeprom24c). Returns an analyzerId in the format '<handle_id>:<version>' that is stable across the stack's lifetime and used by get_analyzer_results / remove_analyzer / export_analyzer_table."},
             {"inputSchema", {
                 {"type", "object"},
                 {"properties", {
@@ -407,7 +407,7 @@ json RpcDispatcher::get_tool_schemas() {
                     }},
                     {"stackOnAnalyzerId", {
                         {"type", "string"},
-                        {"description", "ID of an existing analyzer to stack this decoder on top of (for stacked/hierarchical decoding)"}
+                        {"description", "Decoder instance identifier in the format '<handle_id>:<version>', returned by add_analyzer. Stable across the stack's lifetime; becomes invalid after the stack is destroyed/rebuilt. ID of an existing analyzer to stack this decoder on top of (for stacked/hierarchical decoding)"}
                     }}
                 }},
                 {"required", json::array({"analyzerName"})}
@@ -422,7 +422,7 @@ json RpcDispatcher::get_tool_schemas() {
                 {"properties", {
                     {"analyzerId", {
                         {"type", "string"},
-                        {"description", "ID of the analyzer instance to remove"}
+                        {"description", "Decoder instance identifier in the format '<handle_id>:<version>', returned by add_analyzer. Stable across the stack's lifetime; becomes invalid after the stack is destroyed/rebuilt."}
                     }}
                 }},
                 {"required", json::array({"analyzerId"})}
@@ -534,7 +534,7 @@ json RpcDispatcher::get_tool_schemas() {
                         {"items", {
                             {"type", "object"},
                             {"properties", {
-                                {"analyzerId", {{"type", "string"}, {"description", "Analyzer instance ID"}}},
+                                {"analyzerId", {{"type", "string"}, {"description", "Decoder instance identifier in the format '<handle_id>:<version>', returned by add_analyzer. Stable across the stack's lifetime; becomes invalid after the stack is destroyed/rebuilt."}}},
                                 {"radixType", {{"type", "integer"}, {"description", "Radix type: 1=Binary, 2=Decimal, 3=Hex, 4=Ascii"}}}
                             }}
                         }}
@@ -575,7 +575,7 @@ json RpcDispatcher::get_tool_schemas() {
                 {"properties", {
                     {"analyzerId", {
                         {"type", "string"},
-                        {"description", "ID of the analyzer instance"}
+                        {"description", "Decoder instance identifier in the format '<handle_id>:<version>', returned by add_analyzer. Stable across the stack's lifetime; becomes invalid after the stack is destroyed/rebuilt."}
                     }},
                     {"startSample", {
                         {"type", "integer"},

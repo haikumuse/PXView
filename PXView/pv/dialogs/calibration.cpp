@@ -154,6 +154,7 @@ void Calibration::update_device_info()
 
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
         sr_channel *const probe = (sr_channel*)l->data;
+        if (!probe) continue;
         assert(probe);
 
         uint64_t vgain = 0, vgain_default = 0;
@@ -256,6 +257,7 @@ void Calibration::set_value(int value)
 
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
         sr_channel *const probe = (sr_channel*)l->data;
+        if (!probe) continue;
         assert(probe);
         if (sc->objectName() == VGAIN+probe->index) {
             uint64_t vgain_default;
@@ -333,6 +335,7 @@ void Calibration::reload_value()
 {
     for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
         sr_channel *const probe = (sr_channel*)l->data;
+        if (!probe) continue;
         assert(probe);
 
         uint64_t vgain = 0, vgain_default = 0;

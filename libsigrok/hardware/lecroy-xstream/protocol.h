@@ -102,7 +102,6 @@ SR_PRIV int lecroy_xstream_channel_state_set(const struct sr_dev_inst *sdi,
 SR_PRIV int lecroy_xstream_update_sample_rate(const struct sr_dev_inst *sdi,
 		int num_of_samples);
 
-/* Frame end helper kept locally (frame_begin is canonical in compat_helpers.c). */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 
 #endif

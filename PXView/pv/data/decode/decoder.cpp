@@ -33,6 +33,10 @@ void Decoder::set_probes(std::map<const srd_channel *, int> probes) {
   
 void Decoder::set_option(const char *id, GVariant *value)
 {
+	if (!value) {
+		pxv_warn("%s", "Decoder::set_option: value is NULL");
+		return;
+	}
 	assert(value);
     if (_options[id]) {
         g_variant_unref(_options[id]);

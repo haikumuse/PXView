@@ -195,7 +195,11 @@ void DsoSnapshot::free_data()
 void DsoSnapshot::first_payload(const sr_datafeed_dso &dso, uint64_t total_sample_count,
                                 GSList *channels, bool instant, bool isFile)
 {
-    assert(channels);  
+    if (!channels) {
+        pxv_warn("%s", "DsoSnapshot::first_payload: channels is NULL");
+        return;
+    }
+    assert(channels);
 
     bool channel_changed = false;
     uint16_t channel_num = 0;

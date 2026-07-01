@@ -25,6 +25,71 @@
 #include <string.h>
 #include "hardware/compat/compat.h"
 
+/* ===========================================================================
+ * SCPI command enum — PXView's compat_scpi.h only defines SCPI_CMD_IDN/OPC
+ * as macros. The hameg-hmo driver indexes a per-model scpi_dialect[] string
+ * array by these enum values, so define the full enum locally (matches the
+ * upstream libsigrok src/scpi.h ordering, starting at 1).
+ * =========================================================================== */
+#ifndef SCPI_CMD_GET_TIMEBASE
+enum {
+	SCPI_CMD_GET_TIMEBASE = 1,
+	SCPI_CMD_SET_TIMEBASE,
+	SCPI_CMD_GET_HORIZONTAL_DIV,
+	SCPI_CMD_GET_VERTICAL_SCALE,
+	SCPI_CMD_SET_VERTICAL_SCALE,
+	SCPI_CMD_GET_TRIGGER_SOURCE,
+	SCPI_CMD_SET_TRIGGER_SOURCE,
+	SCPI_CMD_GET_TRIGGER_SLOPE,
+	SCPI_CMD_SET_TRIGGER_SLOPE,
+	SCPI_CMD_GET_TRIGGER_PATTERN,
+	SCPI_CMD_SET_TRIGGER_PATTERN,
+	SCPI_CMD_GET_HIGH_RESOLUTION,
+	SCPI_CMD_SET_HIGH_RESOLUTION,
+	SCPI_CMD_GET_PEAK_DETECTION,
+	SCPI_CMD_SET_PEAK_DETECTION,
+	SCPI_CMD_GET_COUPLING,
+	SCPI_CMD_SET_COUPLING,
+	SCPI_CMD_GET_HORIZ_TRIGGERPOS,
+	SCPI_CMD_SET_HORIZ_TRIGGERPOS,
+	SCPI_CMD_GET_ANALOG_CHAN_STATE,
+	SCPI_CMD_SET_ANALOG_CHAN_STATE,
+	SCPI_CMD_GET_DIG_CHAN_STATE,
+	SCPI_CMD_SET_DIG_CHAN_STATE,
+	SCPI_CMD_GET_VERTICAL_OFFSET,
+	SCPI_CMD_GET_DIG_POD_STATE,
+	SCPI_CMD_SET_DIG_POD_STATE,
+	SCPI_CMD_GET_ANALOG_DATA,
+	SCPI_CMD_GET_DIG_DATA,
+	SCPI_CMD_GET_SAMPLE_RATE,
+	SCPI_CMD_GET_PROBE_UNIT,
+	SCPI_CMD_GET_DIG_POD_THRESHOLD,
+	SCPI_CMD_SET_DIG_POD_THRESHOLD,
+	SCPI_CMD_GET_DIG_POD_USER_THRESHOLD,
+	SCPI_CMD_SET_DIG_POD_USER_THRESHOLD,
+};
+#endif
+
+/* ===========================================================================
+ * SR_CONF keys not defined in PXView's libsigrok.h. Use reserved compat
+ * range 40600+ to avoid conflicts with PXView-native keys.
+ * =========================================================================== */
+#ifndef SR_CONF_TRIGGER_PATTERN
+#define SR_CONF_TRIGGER_PATTERN        40600
+#endif
+#ifndef SR_CONF_HIGH_RESOLUTION
+#define SR_CONF_HIGH_RESOLUTION        40601
+#endif
+#ifndef SR_CONF_PEAK_DETECTION
+#define SR_CONF_PEAK_DETECTION        40602
+#endif
+#ifndef SR_CONF_LOGIC_THRESHOLD
+#define SR_CONF_LOGIC_THRESHOLD        40603
+#endif
+#ifndef SR_CONF_LOGIC_THRESHOLD_CUSTOM
+#define SR_CONF_LOGIC_THRESHOLD_CUSTOM 40604
+#endif
+
 #undef LOG_PREFIX
 #define LOG_PREFIX "hameg-hmo"
 
@@ -142,7 +207,6 @@ SR_PRIV void hmo_scope_state_free(struct scope_state *state);
 SR_PRIV int hmo_scope_state_get(struct sr_dev_inst *sdi);
 SR_PRIV int hmo_update_sample_rate(const struct sr_dev_inst *sdi);
 
-/* Frame begin/end helpers (PXView compat layer does not provide these). */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
+/* std_session_send_df_frame_begin/end() are provided by compat_helpers.c. */
 
 #endif

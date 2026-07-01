@@ -31,6 +31,7 @@
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
 #include "../data/sessiondocument.h"
+#include "../log.h"
 #include "../tabcontext.h"
 #include "../ui/dockfonts.h"
 #include "../ui/fn.h"
@@ -342,6 +343,10 @@ SearchDock::~SearchDock() {
 void SearchDock::set_view(view::View *view) { _view = view; }
 
 void SearchDock::bind_context(TabContext *ctx) {
+  if (!ctx) {
+    pxv_warn("%s", "SearchDock::bind_context: ctx is NULL");
+    return;
+  }
   assert(ctx);
   _context = ctx;
   _session = ctx->session();

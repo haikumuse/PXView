@@ -40,154 +40,32 @@
 #endif
 
 /*
- * Local implementations of sr_sw_limits helpers (PXView does not provide
- * them). Includes support for limit_frames / frames_read which this driver
- * uses for SR_CONF_LIMIT_FRAMES.
+ * RLFL macro for reading a 32-bit little-endian float (single precision) -
+ * not provided by PXView's compat layer. Mirrors standard sigrok's
+ * libsigrok-internal.h read_fltle()/RLFL() definition.
  */
-SR_PRIV void sr_sw_limits_init(struct sr_sw_limits *limits)
+#ifndef RLFL
+static inline float ut181a_read_fltle(const uint8_t *p)
 {
-	if (!limits)
-		return;
-	memset(limits, 0, sizeof(*limits));
+	/*
+	 * Implementor's note: Strictly speaking the "union" trick is not
+	 * portable. But this phrase was found to work on the project's
+	 * supported platforms, and serves well until a more appropriate
+	 * phrase is found.
+	 */
+	union { uint32_t u32; float flt; } u;
+	u.u32 = read_u32le(p);
+	return u.flt;
 }
-
-SR_PRIV int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
-		uint32_t key, GVariant **data)
-{
-	if (!limits || !data)
-		return SR_ERR_ARG;
-
-	switch (key) {
-	case SR_CONF_LIMIT_SAMPLES:
-		*data = g_variant_new_uint64(limits->limit_samples);
-		break;
-	case SR_CONF_LIMIT_MSEC:
-		*data = g_variant_new_uint64(limits->limit_msec);
-		break;
-	case SR_CONF_LIMIT_FRAMES:
-		*data = g_variant_new_uint64(limits->limit_frames);
-		break;
-	default:
-		return SR_ERR;
-	}
-
-	return SR_OK;
-}
-
-SR_PRIV int sr_sw_limits_config_set(struct sr_sw_limits *limits,
-		uint32_t key, GVariant *data)
-{
-	if (!limits || !data)
-		return SR_ERR_ARG;
-
-	switch (key) {
-	case SR_CONF_LIMIT_SAMPLES:
-		limits->limit_samples = g_variant_get_uint64(data);
-		break;
-	case SR_CONF_LIMIT_MSEC:
-		limits->limit_msec = g_variant_get_uint64(data);
-		break;
-	case SR_CONF_LIMIT_FRAMES:
-		limits->limit_frames = g_variant_get_uint64(data);
-		break;
-	default:
-		return SR_ERR;
-	}
-
-	return SR_OK;
-}
-
-SR_PRIV void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
-{
-	if (!limits)
-		return;
-	limits->starttime_ms = g_get_real_time() / 1000;
-	limits->samples_read = 0;
-	limits->frames_read = 0;
-}
-
-SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
-		uint64_t count)
-{
-	if (!limits)
-		return;
-	limits->samples_read += count;
-}
-
-SR_PRIV void sr_sw_limits_update_frames_read(struct sr_sw_limits *limits,
-		uint64_t count)
-{
-	if (!limits)
-		return;
-	limits->frames_read += count;
-}
-
-SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
-{
-	uint64_t elapsed_ms;
-
-	if (!limits)
-		return FALSE;
-
-	if (limits->limit_msec) {
-		elapsed_ms = (uint64_t)(g_get_real_time() / 1000) -
-				(uint64_t)limits->starttime_ms;
-		if (elapsed_ms >= limits->limit_msec)
-			return TRUE;
-	}
-
-	if (limits->limit_samples && limits->samples_read >= limits->limit_samples)
-		return TRUE;
-
-	if (limits->limit_frames && limits->frames_read >= limits->limit_frames)
-		return TRUE;
-
-	return FALSE;
-}
-
-/* Frame end compat stub kept locally; frame_begin is canonical in compat_helpers.c. */
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-
-	return ds_data_forward(sdi, &packet);
-}
+#define RLFL(x) ut181a_read_fltle((const uint8_t *)(x))
+#endif
 
 /*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair.
+ * The sr_sw_limits helpers are now provided as static inline in
+ * protocol.h. std_session_send_df_frame_end() and sr_session_send_meta()
+ * are provided centrally by hardware/compat/compat_helpers.c (included
+ * via compat.h). No local definitions are needed here.
  */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data)
-{
-	struct sr_datafeed_packet packet;
-	struct sr_datafeed_meta meta;
-	struct sr_config *src;
-
-	if (!sdi || !data)
-		return SR_ERR_ARG;
-
-	src = sr_config_new((int)key, data);
-	if (!src)
-		return SR_ERR;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_META;
-	packet.status = SR_PKT_OK;
-	packet.payload = &meta;
-	meta.config = g_slist_append(NULL, src);
-
-	ds_data_forward(sdi, &packet);
-
-	sr_config_free(src);
-	g_slist_free(meta.config);
-
-	return SR_OK;
-}
 
 /*
  * This driver depends on the user's enabling serial communication in
@@ -1565,19 +1443,20 @@ static int ut181a_feedbuff_initialize(struct feed_buffer *buff)
 	/*
 	 * NOTE: The 'digits' fields get updated later from sample data.
 	 * As do the MQ and unit fields and the channel list.
+	 *
+	 * PXView uses a flat sr_datafeed_analog (no encoding/meaning/spec
+	 * sub-structs), so initialize the direct fields here.
 	 */
-	memset(&buff->packet, 0, sizeof(buff->packet));
-	sr_analog_init(&buff->analog, &buff->encoding, &buff->meaning, &buff->spec, 0);
-	buff->analog.meaning->mq = 0;
-	buff->analog.meaning->mqflags = 0;
-	buff->analog.meaning->unit = 0;
-	buff->analog.meaning->channels = NULL;
-	buff->analog.encoding->unitsize = sizeof(buff->main_value);
-	buff->analog.encoding->digits = 0;
-	buff->analog.spec->spec_digits = 0;
+	buff->analog.mq = 0;
+	buff->analog.mqflags = 0;
+	buff->analog.unit = 0;
+	buff->analog.probes = NULL;
+	buff->analog.unit_bits = 8 * sizeof(buff->main_value); /* float */
+	buff->analog.unit_pitch = 0;
 	buff->analog.num_samples = 1;
 	buff->analog.data = &buff->main_value;
 	buff->packet.type = SR_DF_ANALOG;
+	buff->packet.status = SR_PKT_OK;
 	buff->packet.payload = &buff->analog;
 
 	return SR_OK;
@@ -1596,9 +1475,9 @@ static int ut181a_feedbuff_setup_unit(struct feed_buffer *buff, const char *text
 	if (ret < 0)
 		return ret;
 	buff->scale = scale.scale;
-	buff->analog.meaning->mq = scale.mq;
-	buff->analog.meaning->mqflags = scale.mqflags;
-	buff->analog.meaning->unit = scale.unit;
+	buff->analog.mq = scale.mq;
+	buff->analog.mqflags = scale.mqflags;
+	buff->analog.unit = scale.unit;
 
 	return SR_OK;
 }
@@ -1623,8 +1502,8 @@ static int ut181a_feedbuff_setup_value(struct feed_buffer *buff,
 		value->value = +INFINITY;
 
 	buff->main_value = value->value;
-	buff->analog.encoding->digits = value->digits;
-	buff->analog.spec->spec_digits = value->digits;
+	/* PXView's flat sr_datafeed_analog has no 'digits'/'spec_digits' fields.
+	 * The precision is irrelevant to data transport here; drop the assignment. */
 
 	return SR_OK;
 }
@@ -1638,11 +1517,9 @@ static int ut181a_feedbuff_setup_channel(struct feed_buffer *buff,
 
 	if (!buff || !sdi)
 		return SR_ERR_ARG;
-	if (!buff->analog.meaning)
-		return SR_ERR_ARG;
 
-	g_slist_free(buff->analog.meaning->channels);
-	buff->analog.meaning->channels = g_slist_append(NULL,
+	g_slist_free(buff->analog.probes);
+	buff->analog.probes = g_slist_append(NULL,
 		g_slist_nth_data(sdi->channels, ch));
 
 	return SR_OK;
@@ -1684,8 +1561,8 @@ static int ut181a_feedbuff_cleanup(struct feed_buffer *buff)
 	if (!buff)
 		return SR_ERR_ARG;
 
-	if (buff->analog.meaning)
-		g_slist_free(buff->analog.meaning->channels);
+	g_slist_free(buff->analog.probes);
+	buff->analog.probes = NULL;
 
 	return SR_OK;
 }
@@ -2173,7 +2050,7 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_MAIN, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= add_mqflags;
+			feedbuff.analog.mqflags |= add_mqflags;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 1);
@@ -2352,8 +2229,8 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_MAIN, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= add_mqflags;
-			feedbuff.analog.meaning->mqflags |= SR_MQFLAG_RELATIVE;
+			feedbuff.analog.mqflags |= add_mqflags;
+			feedbuff.analog.mqflags |= SR_MQFLAG_RELATIVE;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 1);
@@ -2383,7 +2260,7 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_AUX1, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= SR_MQFLAG_REFERENCE;
+			feedbuff.analog.mqflags |= SR_MQFLAG_REFERENCE;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 0);
@@ -2488,7 +2365,7 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_MAIN, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= add_mqflags;
+			feedbuff.analog.mqflags |= add_mqflags;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 1);
@@ -2501,7 +2378,7 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_AUX1, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= SR_MQFLAG_MAX;
+			feedbuff.analog.mqflags |= SR_MQFLAG_MAX;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 0);
@@ -2514,7 +2391,7 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_AUX2, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= SR_MQFLAG_AVG;
+			feedbuff.analog.mqflags |= SR_MQFLAG_AVG;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 0);
@@ -2527,7 +2404,7 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_AUX3, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= SR_MQFLAG_MIN;
+			feedbuff.analog.mqflags |= SR_MQFLAG_MIN;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 0);
@@ -2566,8 +2443,8 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_AUX1, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= add_mqflags; /* ??? */
-			feedbuff.analog.meaning->mqflags |= SR_MQFLAG_MAX;
+			feedbuff.analog.mqflags |= add_mqflags; /* ??? */
+			feedbuff.analog.mqflags |= SR_MQFLAG_MAX;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 1);
@@ -2596,7 +2473,7 @@ static int process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			ret = SR_OK;
 			ret |= ut181a_feedbuff_setup_channel(&feedbuff, UT181A_CH_AUX3, sdi);
 			ret |= ut181a_feedbuff_setup_unit(&feedbuff, unit_text);
-			feedbuff.analog.meaning->mqflags |= SR_MQFLAG_MIN;
+			feedbuff.analog.mqflags |= SR_MQFLAG_MIN;
 			ret |= ut181a_get_value_params(&value, vf, v8);
 			ret |= ut181a_feedbuff_setup_value(&feedbuff, &value);
 			ret |= ut181a_feedbuff_send_feed(&feedbuff, sdi, 0);

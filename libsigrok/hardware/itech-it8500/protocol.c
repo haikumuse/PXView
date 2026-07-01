@@ -22,67 +22,7 @@
 #include <string.h>
 #include "protocol.h"
 
-/*
- * Local replacement for standard sigrok's sr_session_send_meta().
- * Sends a META packet with a single config key/value pair. Same approach
- * as the korad-kaxxxxp compat driver.
- */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data)
-{
-	struct sr_datafeed_packet packet;
-	struct sr_datafeed_meta meta;
-	struct sr_config *src;
-
-	if (!sdi || !data)
-		return SR_ERR_ARG;
-
-	src = sr_config_new((int)key, data);
-	if (!src)
-		return SR_ERR;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_META;
-	packet.status = SR_PKT_OK;
-	packet.payload = &meta;
-	meta.config = g_slist_append(NULL, src);
-
-	ds_data_forward(sdi, &packet);
-
-	sr_config_free(src);
-	g_slist_free(meta.config);
-
-	return SR_OK;
-}
-
-/*
- * Local replacements for standard sigrok's std_session_send_df_frame_begin/end().
- * PXView's libsigrok only provides std_session_send_df_header/end (with a
- * prefix argument), not the frame variants. The itech-it8500 driver wraps
- * each sample set in a frame, so provide local implementations here. Same
- * pattern as hameg-hmo, lecroy-xstream, hung-chang-dso-2100 compat drivers.
- */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
-
-SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	return ds_data_forward(sdi, &packet);
-}
+/* std_session_send_df_frame_begin/end() are provided by compat_helpers.c. */
 
 /*
  * Parse the baudrate from a serialcomm string (format like "9600/8n1").
@@ -447,26 +387,22 @@ SR_PRIV void itech_it8500_channel_send_value(const struct sr_dev_inst *sdi,
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	double val;
 
 	val = value;
-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-	analog.meaning->channels = g_slist_append(NULL, ch);
+	memset(&analog, 0, sizeof(analog));
+	analog.probes = g_slist_append(NULL, ch);
 	analog.num_samples = 1;
 	analog.data = &val;
-	analog.encoding->unitsize = sizeof(val);
-	analog.encoding->is_float = TRUE;
-	analog.meaning->mq = mq;
-	analog.meaning->unit = unit;
-	analog.meaning->mqflags = mqflags;
+	analog.mq = mq;
+	analog.unit = unit;
+	analog.mqflags = mqflags;
+	analog.unit_bits = 32;
 
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 }
 
 /*

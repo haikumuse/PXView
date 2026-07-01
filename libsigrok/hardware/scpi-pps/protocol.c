@@ -63,39 +63,6 @@ SR_PRIV struct sr_channel *scpi_pps_next_enabled_channel(
 	return cur_channel;
 }
 
-/* ===========================================================================
- * Local sr_session_send_meta() replacement.
- * Sends a META packet with a single config key/value pair (same pattern as
- * rdtech-dps/korad-kaxxxxp/itech-it8500 protocol.c).
- * =========================================================================== */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data)
-{
-	struct sr_datafeed_packet packet;
-	struct sr_datafeed_meta meta;
-	struct sr_config *src;
-
-	if (!sdi || !data)
-		return SR_ERR_ARG;
-
-	src = sr_config_new((int)key, data);
-	if (!src)
-		return SR_ERR;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_META;
-	packet.status = SR_PKT_OK;
-	packet.payload = &meta;
-	meta.config = g_slist_append(NULL, src);
-
-	ds_data_forward(sdi, &packet);
-
-	sr_config_free(src);
-	g_slist_free(meta.config);
-
-	return SR_OK;
-}
-
 /*
  * PXView's sr_receive_data_callback_t passes the sdi directly as the third
  * argument (const struct sr_dev_inst *sdi) instead of the void *cb_data

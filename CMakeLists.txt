@@ -647,7 +647,6 @@ option(ENABLE_DRIVER_SCPI_PPS "Enable scpi-pps generic SCPI power supply driver"
 option(ENABLE_DRIVER_LECROY_XSTREAM "Enable lecroy-xstream SCPI oscilloscope driver" OFF)
 option(ENABLE_DRIVER_HAMEG_HMO "Enable hameg-hmo SCPI oscilloscope driver" OFF)
 option(ENABLE_DRIVER_YOKOGAWA_DLM "Enable yokogawa-dlm SCPI oscilloscope driver" OFF)
-option(ENABLE_DRIVER_HUNG_CHANG_DSO_2100 "Enable hung-chang-dso-2100 parallel port oscilloscope driver" OFF)
 option(ENABLE_DRIVER_UNI_T_UT181A "Enable uni-t-ut181a DMM driver" OFF)
 option(ENABLE_DRIVER_UNI_T_UT32X "Enable uni-t-ut32x thermometer driver" OFF)
 option(ENABLE_DRIVER_UNI_T_DMM "Enable uni-t-dmm USB-HID DMM driver" OFF)
@@ -848,20 +847,6 @@ if(ENABLE_COMPAT_DRIVERS)
     endif()
     if(ENABLE_DRIVER_UNI_T_DMM)
         add_definitions(-DHAVE_DRIVER_UNI_T_DMM)
-    endif()
-    if(ENABLE_DRIVER_HUNG_CHANG_DSO_2100)
-        # hung-chang-dso-2100 talks to the device over a parallel port using
-        # libieee1284. The library is Linux-specific and not available on
-        # MSYS2/Windows, so this driver can only be enabled on systems that
-        # provide it.
-        if(PkgConfig_FOUND)
-            pkg_check_modules(LIBIEEE1284 QUIET libieee1284)
-        endif()
-        if(NOT LIBIEEE1284_FOUND)
-            message(FATAL_ERROR "libieee1284 is required by the hung-chang-dso-2100 driver but was not found. Disable ENABLE_DRIVER_HUNG_CHANG_DSO_2100 or install libieee1284.")
-        endif()
-        include_directories(${LIBIEEE1284_INCLUDE_DIRS})
-        add_definitions(-DHAVE_DRIVER_HUNG_CHANG_DSO_2100)
     endif()
     if(ENABLE_DRIVER_LINK_MSO19)
         add_definitions(-DHAVE_DRIVER_LINK_MSO19)
@@ -1323,12 +1308,6 @@ if(ENABLE_COMPAT_DRIVERS)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/uni-t-dmm/api.c
             libsigrok/hardware/uni-t-dmm/protocol.c
-        )
-    endif()
-    if(ENABLE_DRIVER_HUNG_CHANG_DSO_2100)
-        list(APPEND libsigrok_SOURCES
-            libsigrok/hardware/hung-chang-dso-2100/api.c
-            libsigrok/hardware/hung-chang-dso-2100/protocol.c
         )
     endif()
     if(ENABLE_DRIVER_LINK_MSO19)

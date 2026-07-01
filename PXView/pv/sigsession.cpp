@@ -318,6 +318,10 @@ bool SigSession::set_file(QString name) {
 }
 
 void SigSession::close_file(ds_device_handle dev_handle) {
+  if (!dev_handle) {
+    pxv_warn("%s", "SigSession::close_file: dev_handle is NULL");
+    return;
+  }
   assert(dev_handle);
 
   if (dev_handle == _device_agent.handle() && _is_working) {
@@ -629,7 +633,7 @@ bool SigSession::action_start_capture(bool instant,
     _work_time_id++;
     _is_working = true;
     _capture_owner_document = owner ? owner : _active_document;
-    broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED);
+    broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED, is_working() ? 1 : 0);
     trigger_message(DSV_MSG_START_COLLECT_WORK);
 
     // Start a timer, for able to refresh the view per (1000 / 30)ms.
@@ -932,6 +936,10 @@ void SigSession::init_signals() {
 
   for (GSList *l = _device_agent.get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;
+    if (!probe) {
+      pxv_warn("%s", "SigSession: probe is NULL in channel loop, skipping");
+      continue;
+    }
     assert(probe);
 
     if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
@@ -1068,6 +1076,10 @@ void SigSession::reload() {
 
   for (GSList *l = _device_agent.get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;
+    if (!probe) {
+      pxv_warn("%s", "SigSession: probe is NULL in channel loop, skipping");
+      continue;
+    }
     assert(probe);
 
     if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
@@ -1413,6 +1425,14 @@ void SigSession::feed_in_analog(const sr_datafeed_analog &o) {
 
 void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
                               const struct sr_datafeed_packet *packet) {
+  if (!sdi) {
+    pxv_warn("%s", "SigSession::data_feed_in: sdi is NULL");
+    return;
+  }
+  if (!packet) {
+    pxv_warn("%s", "SigSession::data_feed_in: packet is NULL");
+    return;
+  }
   assert(sdi);
   assert(packet);
 
@@ -1502,6 +1522,10 @@ void SigSession::data_feed_in(const struct sr_dev_inst *sdi,
 void SigSession::data_feed_callback_ex(const struct sr_dev_inst *sdi,
                                        const struct sr_datafeed_packet *packet,
                                        void *user_data) {
+  if (!user_data) {
+    pxv_warn("%s", "SigSession::data_feed_callback_ex: user_data is NULL");
+    return;
+  }
   assert(user_data);
   static_cast<SigSession *>(user_data)->data_feed_in(sdi, packet);
 }
@@ -1572,6 +1596,10 @@ bool SigSession::add_decoder(
     auto decoder_stack =
         std::make_shared<data::DecoderStack>(this, dec, dstatus);
     assert(decoder_stack);
+    // Assign a unique handle id so the API/MCP layer can stably reference
+    // this stack. A re-created stack (e.g. via a future add_decoder call)
+    // always receives a fresh id, distinguishing it from reused stacks.
+    decoder_stack->set_handle_id(_next_decoder_handle_id.fetch_add(1));
 
     // Make a list of all the probes
     std::vector<const srd_channel *> all_probes;
@@ -2135,9 +2163,9 @@ void SigSession::remove_callback(ISessionCallbackBase *callback) {
     _callbacks.erase(it);
 }
 
-void SigSession::broadcast_msg(int msg) {
+void SigSession::broadcast_msg(int msg, int param) {
   for (IMessageListener *cb : _msg_listeners) {
-    cb->OnMessage(msg);
+    cb->OnMessage(msg, param);
   }
 }
 
@@ -2174,7 +2202,11 @@ void SigSession::repeat_wait_prog_timeout() {
     repeat_hold(_repeat_hold_prg);
 }
 
-void SigSession::OnMessage(int msg) {
+void SigSession::OnMessage(int msg, int param) {
+  (void)param; // Reserved for future per-message payloads; currently unused
+               // by SigSession's own handlers (e.g. the capture-owner-changed
+               // working flag is consumed by View/API listeners).
+
   switch (msg) {
   case DSV_MSG_DEVICE_OPTIONS_UPDATED:
     reload();
@@ -2416,6 +2448,10 @@ void SigSession::clear_view_data() {
 
 void SigSession::set_trace_name(std::shared_ptr<data::SignalModel> model,
                                 QString name) {
+  if (!model) {
+    pxv_warn("%s", "SigSession::set_trace_name: model is NULL");
+    return;
+  }
   assert(model);
 
   model->set_name(name.toStdString());
@@ -2818,6 +2854,15 @@ void SigSession::restart_decoders() {
       _capture_owner_document ? _capture_owner_document : _active_document;
   if (doc) {
     copy_data_to_document(doc);
+  }
+
+  // restart_decoders() reuses the existing DecoderStack instances in place
+  // (it does NOT create new ones, so they keep their handle_id). Bump the
+  // version on each stack so API/MCP consumers can invalidate any cached
+  // results bound to a prior version.
+  for (auto stack : decode_traces()) {
+    if (stack)
+      stack->bump_version();
   }
 
   start_all_decode_tasks();

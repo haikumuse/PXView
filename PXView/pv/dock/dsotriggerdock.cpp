@@ -559,6 +559,10 @@ void DsoTriggerDock::set_session(QJsonObject &obj) {
 }
 
 void DsoTriggerDock::bind_context(TabContext *ctx) {
+  if (!ctx) {
+    pxv_warn("%s", "DsoTriggerDock::bind_context: ctx is NULL");
+    return;
+  }
   assert(ctx);
   _context = ctx;
   _session = ctx->session();

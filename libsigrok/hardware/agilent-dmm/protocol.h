@@ -21,6 +21,7 @@
 #define LIBSIGROK_HARDWARE_AGILENT_DMM_PROTOCOL_H
 
 #include "hardware/compat/compat.h"
+#include <string.h>
 
 #define LOG_PREFIX "agilent-dmm"
 
@@ -72,9 +73,16 @@ enum {
 
 /*
  * PXView does not provide struct sr_sw_limits or the sr_sw_limits_*
- * helpers that standard sigrok offers. Define them locally with a unique
- * guard so this driver compiles standalone without clashing with other
- * compat drivers' own definitions.
+ * helpers that standard sigrok offers. Define them locally as static
+ * inline (with a unique guard) so this driver is self-contained and
+ * cannot clash with copies living in other compat drivers at link time
+ * (PXView's SR_PRIV macro is empty, so non-static definitions would
+ * yield multiple-definition link errors). Both protocol.c and api.c
+ * include this header, so each translation unit gets its own copy.
+ *
+ * Note: This driver uses g_get_monotonic_time() (not g_get_real_time())
+ * for the elapsed-time check, and returns SR_ERR_NA for unknown config
+ * keys. These differences from the standard sigrok helpers are preserved.
  */
 #ifndef AGDMM_SR_SW_LIMITS_DEFINED
 #define AGDMM_SR_SW_LIMITS_DEFINED
@@ -85,15 +93,71 @@ struct sr_sw_limits {
 	uint64_t samples_read;
 };
 
-SR_PRIV void sr_sw_limits_init(struct sr_sw_limits *limits);
-SR_PRIV int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
-		uint32_t key, GVariant **data);
-SR_PRIV int sr_sw_limits_config_set(struct sr_sw_limits *limits,
-		uint32_t key, GVariant *data);
-SR_PRIV void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits);
-SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
-		uint64_t count);
-SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits);
+static inline void sr_sw_limits_init(struct sr_sw_limits *limits)
+{
+	memset(limits, 0, sizeof(*limits));
+}
+
+static inline int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
+		uint32_t key, GVariant **data)
+{
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		*data = g_variant_new_uint64(limits->limit_samples);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		*data = g_variant_new_uint64(limits->limit_msec);
+		break;
+	default:
+		return SR_ERR_NA;
+	}
+
+	return SR_OK;
+}
+
+static inline int sr_sw_limits_config_set(struct sr_sw_limits *limits,
+		uint32_t key, GVariant *data)
+{
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		limits->limit_samples = g_variant_get_uint64(data);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		limits->limit_msec = g_variant_get_uint64(data);
+		break;
+	default:
+		return SR_ERR_NA;
+	}
+
+	return SR_OK;
+}
+
+static inline void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
+{
+	limits->starttime_ms = g_get_monotonic_time() / 1000;
+	limits->samples_read = 0;
+}
+
+static inline void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
+		uint64_t count)
+{
+	limits->samples_read += count;
+}
+
+static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
+{
+	int64_t now_ms;
+
+	if (limits->limit_samples > 0 && limits->samples_read >= limits->limit_samples)
+		return TRUE;
+	if (limits->limit_msec > 0) {
+		now_ms = g_get_monotonic_time() / 1000;
+		if ((now_ms - limits->starttime_ms) >= (int64_t)limits->limit_msec)
+			return TRUE;
+	}
+
+	return FALSE;
+}
 #endif /* AGDMM_SR_SW_LIMITS_DEFINED */
 
 /*

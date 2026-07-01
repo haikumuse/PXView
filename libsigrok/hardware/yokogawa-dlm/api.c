@@ -705,7 +705,20 @@ static int yokogawa_dlm_compat_config_set(int id, GVariant *data,
 	struct sr_dev_inst *sdi, struct sr_channel *ch,
 	struct sr_channel_group *cg)
 {
-	(void)ch;
+	int ret;
+
+	if (ch) {
+		/* Channel state change: propagate to hardware (Rule 10
+		 * config_channel_set merge). The original upstream
+		 * config_channel_set() delegates to dlm_channel_state_set()
+		 * in protocol.c; PXView's sr_dev_driver has no
+		 * config_channel_set callback field, so wire it through the
+		 * compat config_set(ch) path instead. */
+		ret = dlm_channel_state_set(sdi, ch->index, ch->enabled);
+		if (ret != SR_OK)
+			return ret;
+	}
+
 	return config_set((uint32_t)id, data, sdi, cg);
 }
 
@@ -736,8 +749,8 @@ static int yokogawa_dlm_compat_acquisition_stop(const struct sr_dev_inst *sdi,
  *
  * Note: PXView's sr_dev_driver has no config_channel_set callback field,
  * so the original config_channel_set() logic (which delegates to
- * dlm_channel_state_set() in protocol.c) is not wired up here. Channel
- * enable/disable is handled through the standard config_set path instead.
+ * dlm_channel_state_set() in protocol.c) is wired up through
+ * yokogawa_dlm_compat_config_set()'s ch != NULL branch instead.
  */
 struct sr_dev_driver yokogawa_dlm_driver_info = {
 	.name = "yokogawa-dlm",

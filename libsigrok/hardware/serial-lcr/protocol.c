@@ -39,59 +39,7 @@
 #include <string.h>
 #include "protocol.h"
 
-/* ===== Local sr_session_send_meta ======================================
- *
- * PXView's compat layer does not provide sr_session_send_meta(). Sends a
- * META datafeed packet carrying a single config key/value pair. Same
- * pattern as gwinstek-psp / arachnid-labs-re-load-pro. Has external
- * linkage (SR_PRIV) because protocol.h declares it and handle_frame_start
- * calls it; static would still be fine but the header decl uses SR_PRIV.
- */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data)
-{
-	struct sr_datafeed_packet packet;
-	struct sr_datafeed_meta meta;
-	struct sr_config *src;
-
-	if (!sdi || !data)
-		return SR_ERR_ARG;
-
-	src = sr_config_new((int)key, data);
-	if (!src)
-		return SR_ERR;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_META;
-	packet.status = SR_PKT_OK;
-	packet.payload = &meta;
-	meta.config = g_slist_append(NULL, src);
-
-	ds_data_forward(sdi, &packet);
-
-	sr_config_free(src);
-	g_slist_free(meta.config);
-
-	return SR_OK;
-}
-
-/* ===== Local std_session_send_df_frame_end =============================
- *
- * PXView only provides std_session_send_df_frame_begin() (1-arg, in
- * compat_helpers.c). The frame_end variant is missing, so provide it
- * locally (same approach as atorch / arachnid-labs-re-load-pro).
- */
-static int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_END;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-
-	return ds_data_forward(sdi, &packet);
-}
+/* std_session_send_df_frame_end() is provided by compat_helpers.h (non-static). */
 
 /* ===== Local sr_atof_ascii (used by the VC4080 parser) =================
  *

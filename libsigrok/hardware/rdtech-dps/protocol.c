@@ -62,39 +62,6 @@ static uint16_t rdtech_dps_crc16(uint16_t seed, const uint8_t *data, size_t len)
 #define SR_CRC16_DEFAULT_INIT 0xFFFF
 
 /* ===========================================================================
- * Local sr_session_send_meta() replacement.
- * Sends a META packet with a single config key/value pair (same pattern as
- * korad-kaxxxxp/protocol.c).
- * =========================================================================== */
-SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
-		uint32_t key, GVariant *data)
-{
-	struct sr_datafeed_packet packet;
-	struct sr_datafeed_meta meta;
-	struct sr_config *src;
-
-	if (!sdi || !data)
-		return SR_ERR_ARG;
-
-	src = sr_config_new((int)key, data);
-	if (!src)
-		return SR_ERR;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_META;
-	packet.status = SR_PKT_OK;
-	packet.payload = &meta;
-	meta.config = g_slist_append(NULL, src);
-
-	ds_data_forward(sdi, &packet);
-
-	sr_config_free(src);
-	g_slist_free(meta.config);
-
-	return SR_OK;
-}
-
-/* ===========================================================================
  * Local Modbus serial RTU layer.
  * Combines standard sigrok's modbus.c and modbus_serial_rtu.c into a single
  * self-contained implementation. PXView's libsigrok has no Modbus support.
