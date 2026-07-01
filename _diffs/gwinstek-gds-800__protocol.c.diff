@@ -1,0 +1,87 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\gwins
+tek-gds-800\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\gwinstek-gds-800\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\gwinstek-gds-800\\protocol.c"
+index 5feb25b..20f7561 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\gwinstek-gds-800\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\gwinstek-gds-800\\protocol.c"
+@@ -18,12 +18,36 @@
+  */
+ 
+ #include "protocol.h"
++#include <stdlib.h>
++#include <errno.h>
+ #include <math.h>
+ #include <string.h>
+ 
+ #define ANALOG_CHANNELS 2
+ #define VERTICAL_DIVISIONS 10
+ 
++/*
++ * Local replacement for standard sigrok's sr_atoi(), which is not provided by
++ * PXView's compat layer. Parses str as a base-10 integer into out.
++ * Returns SR_OK on success, SR_ERR on parse failure.
++ */
++static int gwinstek_atoi(const char *str, int *out)
++{
++	char *end;
++	long val;
++
++	if (!str || !out)
++		return SR_ERR_ARG;
++
++	errno = 0;
++	val = strtol(str, &end, 10);
++	if (errno != 0 || end == str || *end != '\0')
++		return SR_ERR;
++
++	*out = (int)val;
++	return SR_OK;
++}
++
+ static int read_data(struct sr_dev_inst *sdi,
+ 		struct sr_scpi_dev_inst *scpi, struct dev_context *devc,
+ 		int data_size)
+@@ -179,7 +203,7 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
+ 		if (read_data(sdi, scpi, devc, devc->data_size_digits) < 0)
+ 			break;
+ 		devc->rcv_buffer[devc->data_size_digits] = 0;
+-		if (sr_atoi(devc->rcv_buffer, &devc->data_size) != SR_OK) {
++		if (gwinstek_atoi(devc->rcv_buffer, &devc->data_size) != SR_OK) {
+ 			sr_err("Could not parse data size '%s'", devc->rcv_buffer);
+ 			sr_dev_acquisition_stop(sdi);
+ 			return TRUE;
+@@ -198,7 +222,7 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
+ 		devc->state = WAIT_FOR_TRANSFER_OF_CHANNEL_INDICATOR_COMPLETE;
+ 
+ 		if (!devc->df_started) {
+-			std_session_send_df_header(sdi);
++			std_session_send_df_header(sdi, NULL);
+ 			std_session_send_df_frame_begin(sdi);
+ 			devc->df_started = TRUE;
+ 		}
+@@ -282,3 +306,19 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
+ 
+ 	return TRUE;
+ }
++
++/* Frame begin/end stub implementations for compat layer.
++ * PXView's compat layer provides std_session_send_df_header/end with a
++ * (sdi, prefix) signature, but standard sigrok drivers call the frame
++ * begin/end variants with a single (sdi) argument. These local stubs
++ * emit the SR_DF_FRAME_BEGIN/END packets directly. */
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_END;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++
++	return SR_OK;
++}

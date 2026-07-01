@@ -1,0 +1,80 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-dso\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-dso\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-dso\\protocol.c"
+index 34a3935..eb01891 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-dso\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-dso\\protocol.c"
+@@ -19,14 +19,23 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
+-#include <string.h>
+-#include <glib.h>
+-#include <libusb.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
++#include "hardware/compat/compat.h"
+ #include "protocol.h"
+ 
++/*
++ * Compat stubs for frame begin/end packet sending.
++ * PXView has SR_DF_FRAME_BEGIN/SR_DF_FRAME_END packet types,
++ * so we can send them directly via ds_data_forward.
++ */
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++	packet.type = SR_DF_FRAME_END;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++	return ds_data_forward(sdi, &packet);
++}
++
+ static int send_begin(const struct sr_dev_inst *sdi)
+ {
+ 	struct sr_usb_dev_inst *usb;
+@@ -107,7 +116,7 @@ err:
+ SR_PRIV int dso_open(struct sr_dev_inst *sdi)
+ {
+ 	struct dev_context *devc;
+-	struct drv_context *drvc = sdi->driver->context;
++	struct compat_drv_context *drvc = sdi->driver->priv;
+ 	struct sr_usb_dev_inst *usb;
+ 	struct libusb_device_descriptor des;
+ 	libusb_device **devlist;
+@@ -146,7 +155,7 @@ SR_PRIV int dso_open(struct sr_dev_inst *sdi)
+ 				 */
+ 				usb->address = libusb_get_device_address(devlist[i]);
+ 
+-			if (!(devc->epin_maxpacketsize = dso_getmps(devlist[i])))
++			if (!(devc->epin_maxpackersize = dso_getmps(devlist[i])))
+ 				sr_err("Wrong endpoint profile.");
+ 			else {
+ 				sdi->status = SR_ST_ACTIVE;
+@@ -915,16 +924,16 @@ SR_PRIV int dso_get_channeldata(const struct sr_dev_inst *sdi,
+ 
+ 	/* TODO: DSO-2xxx only. */
+ 	num_transfers = devc->framesize *
+-			sizeof(unsigned short) / devc->epin_maxpacketsize;
++			sizeof(unsigned short) / devc->epin_maxpackersize;
+ 	sr_dbg("Queueing up %d transfers.", num_transfers);
+ 	for (i = 0; i < num_transfers; i++) {
+-		if (!(buf = g_try_malloc(devc->epin_maxpacketsize))) {
++		if (!(buf = g_try_malloc(devc->epin_maxpackersize))) {
+ 			sr_err("Failed to malloc USB endpoint buffer.");
+ 			return SR_ERR_MALLOC;
+ 		}
+ 		transfer = libusb_alloc_transfer(0);
+ 		libusb_fill_bulk_transfer(transfer, usb->devhdl, DSO_EP_IN, buf,
+-				devc->epin_maxpacketsize, cb, (void *)sdi, 40);
++				devc->epin_maxpackersize, cb, (void *)sdi, 40);
+ 		if ((ret = libusb_submit_transfer(transfer)) != 0) {
+ 			sr_err("Failed to submit transfer: %s.",
+ 			       libusb_error_name(ret));

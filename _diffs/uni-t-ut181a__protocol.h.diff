@@ -1,0 +1,76 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\uni-t
+-ut181a\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\uni-t-ut181a\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\uni-t-ut181a\\protocol.h"
+index e040696..9732049 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\uni-t-ut181a\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\uni-t-ut181a\\protocol.h"
+@@ -20,14 +20,49 @@
+ #ifndef LIBSIGROK_HARDWARE_UNI_T_UT181A_PROTOCOL_H
+ #define LIBSIGROK_HARDWARE_UNI_T_UT181A_PROTOCOL_H
+ 
+-#include <glib.h>
+-#include <libsigrok/libsigrok.h>
+-#include <stdint.h>
+-
+-#include "libsigrok-internal.h"
++#include "hardware/compat/compat.h"
+ 
+ #define LOG_PREFIX "uni-t-ut181a"
+ 
++/*
++ * PXView does not provide struct sr_sw_limits or the sr_sw_limits_* helpers.
++ * Define them here (matching standard sigrok semantics, including the
++ * limit_frames / frames_read fields that this driver uses) so this
++ * self-contained driver compiles and behaves correctly. A unique guard
++ * avoids conflicts with other compat drivers' own definitions.
++ */
++#ifndef UT181A_SR_SW_LIMITS_DEFINED
++#define UT181A_SR_SW_LIMITS_DEFINED
++struct sr_sw_limits {
++	uint64_t limit_samples;
++	uint64_t limit_msec;
++	uint64_t limit_frames;
++	int64_t starttime_ms;
++	uint64_t samples_read;
++	uint64_t frames_read;
++};
++
++SR_PRIV void sr_sw_limits_init(struct sr_sw_limits *limits);
++SR_PRIV int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
++		uint32_t key, GVariant **data);
++SR_PRIV int sr_sw_limits_config_set(struct sr_sw_limits *limits,
++		uint32_t key, GVariant *data);
++SR_PRIV void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits);
++SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
++		uint64_t count);
++SR_PRIV void sr_sw_limits_update_frames_read(struct sr_sw_limits *limits,
++		uint64_t count);
++SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits);
++#endif /* UT181A_SR_SW_LIMITS_DEFINED */
++
++/* Frame begin/end compat stubs (implemented in protocol.c). */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
++
++/* Local replacement for standard sigrok's sr_session_send_meta(). */
++SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
++		uint32_t key, GVariant *data);
++
+ /*
+  * Optional features. Tunables.
+  */
+@@ -429,7 +464,7 @@ SR_PRIV int ut181a_configure_waitfor(struct dev_context *devc,
+ 	gboolean want_save_count, gboolean want_sample_count);
+ SR_PRIV int ut181a_waitfor_response(const struct sr_dev_inst *sdi, int timeout_ms);
+ 
+-SR_PRIV int ut181a_handle_events(int fd, int revents, void *cb_data);
++SR_PRIV int ut181a_handle_events(int fd, int revents, const struct sr_dev_inst *sdi);
+ 
+ SR_PRIV GVariant *ut181a_get_ranges_list(void);
+ SR_PRIV const char *ut181a_get_range_from_packet_bytes(struct dev_context *devc);

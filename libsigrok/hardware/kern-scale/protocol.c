@@ -126,37 +126,37 @@ static void handle_flags(struct sr_datafeed_analog *analog, float *floatval,
 	(void)floatval;
 
 	/* Measured quantity: mass. */
-	analog->meaning->mq = SR_MQ_MASS;
+	analog->mq = SR_MQ_MASS;
 
 	/* Unit */
 	if (info->is_gram)
-		analog->meaning->unit = SR_UNIT_GRAM;
+		analog->unit = SR_UNIT_GRAM;
 	if (info->is_carat)
-		analog->meaning->unit = SR_UNIT_CARAT;
+		analog->unit = SR_UNIT_CARAT;
 	if (info->is_ounce)
-		analog->meaning->unit = SR_UNIT_OUNCE;
+		analog->unit = SR_UNIT_OUNCE;
 	if (info->is_pound)
-		analog->meaning->unit = SR_UNIT_POUND;
+		analog->unit = SR_UNIT_POUND;
 	if (info->is_troy_ounce)
-		analog->meaning->unit = SR_UNIT_TROY_OUNCE;
+		analog->unit = SR_UNIT_TROY_OUNCE;
 	if (info->is_pennyweight)
-		analog->meaning->unit = SR_UNIT_PENNYWEIGHT;
+		analog->unit = SR_UNIT_PENNYWEIGHT;
 	if (info->is_grain)
-		analog->meaning->unit = SR_UNIT_GRAIN;
+		analog->unit = SR_UNIT_GRAIN;
 	if (info->is_tael)
-		analog->meaning->unit = SR_UNIT_TAEL;
+		analog->unit = SR_UNIT_TAEL;
 	if (info->is_momme)
-		analog->meaning->unit = SR_UNIT_MOMME;
+		analog->unit = SR_UNIT_MOMME;
 	if (info->is_tola)
-		analog->meaning->unit = SR_UNIT_TOLA;
+		analog->unit = SR_UNIT_TOLA;
 	if (info->is_percentage)
-		analog->meaning->unit = SR_UNIT_PERCENTAGE;
+		analog->unit = SR_UNIT_PERCENTAGE;
 	if (info->is_piece)
-		analog->meaning->unit = SR_UNIT_PIECE;
+		analog->unit = SR_UNIT_PIECE;
 
 	/* Measurement related flags */
 	if (info->is_unstable)
-		analog->meaning->mqflags |= SR_MQFLAG_UNSTABLE;
+		analog->mqflags |= SR_MQFLAG_UNSTABLE;
 }
 
 SR_PRIV gboolean sr_kern_packet_valid(const uint8_t *buf)
@@ -221,8 +221,6 @@ SR_PRIV int sr_kern_parse(const uint8_t *buf, float *floatval,
 		return ret;
 	}
 
-	analog->encoding->digits = digits;
-	analog->spec->spec_digits = digits;
 
 	parse_flags(buf, info_local);
 	handle_flags(analog, floatval, info_local);
@@ -245,24 +243,22 @@ static void handle_packet(const uint8_t *buf, const struct sr_dev_inst *sdi,
 	float floatval;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct dev_context *devc;
 
 	devc = sdi->priv;
 
 	/* Note: digits/spec_digits will be overridden later. */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
-
-	analog.meaning->channels = sdi->channels;
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
-	analog.meaning->mq = 0;
+	analog.mq = 0;
 
 	sr_kern_parse(buf, &floatval, &analog, info);
 	analog.data = &floatval;
 
-	if (analog.meaning->mq != 0) {
+	if (analog.mq != 0) {
 		/* Got a measurement. */
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;

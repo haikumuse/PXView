@@ -1,0 +1,246 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\uni-t
+-ut181a\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\uni-t-ut181a\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\uni-t-ut181a\\protocol.c"
+index 93a71e3..3df09eb 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\uni-t-ut181a\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\uni-t-ut181a\\protocol.c"
+@@ -24,13 +24,185 @@
+  *   https://github.com/antage/ut181a/blob/master/Protocol.md
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <ctype.h>
++#include <errno.h>
+ #include <math.h>
+ #include <string.h>
+ 
+ #include "protocol.h"
+ 
++/*
++ * R8 macro for reading a single byte - not provided by PXView's compat layer.
++ */
++#ifndef R8
++#define R8(x) (*(const uint8_t *)(x))
++#endif
++
++/*
++ * Local implementations of sr_sw_limits helpers (PXView does not provide
++ * them). Includes support for limit_frames / frames_read which this driver
++ * uses for SR_CONF_LIMIT_FRAMES.
++ */
++SR_PRIV void sr_sw_limits_init(struct sr_sw_limits *limits)
++{
++	if (!limits)
++		return;
++	memset(limits, 0, sizeof(*limits));
++}
++
++SR_PRIV int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
++		uint32_t key, GVariant **data)
++{
++	if (!limits || !data)
++		return SR_ERR_ARG;
++
++	switch (key) {
++	case SR_CONF_LIMIT_SAMPLES:
++		*data = g_variant_new_uint64(limits->limit_samples);
++		break;
++	case SR_CONF_LIMIT_MSEC:
++		*data = g_variant_new_uint64(limits->limit_msec);
++		break;
++	case SR_CONF_LIMIT_FRAMES:
++		*data = g_variant_new_uint64(limits->limit_frames);
++		break;
++	default:
++		return SR_ERR;
++	}
++
++	return SR_OK;
++}
++
++SR_PRIV int sr_sw_limits_config_set(struct sr_sw_limits *limits,
++		uint32_t key, GVariant *data)
++{
++	if (!limits || !data)
++		return SR_ERR_ARG;
++
++	switch (key) {
++	case SR_CONF_LIMIT_SAMPLES:
++		limits->limit_samples = g_variant_get_uint64(data);
++		break;
++	case SR_CONF_LIMIT_MSEC:
++		limits->limit_msec = g_variant_get_uint64(data);
++		break;
++	case SR_CONF_LIMIT_FRAMES:
++		limits->limit_frames = g_variant_get_uint64(data);
++		break;
++	default:
++		return SR_ERR;
++	}
++
++	return SR_OK;
++}
++
++SR_PRIV void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
++{
++	if (!limits)
++		return;
++	limits->starttime_ms = g_get_real_time() / 1000;
++	limits->samples_read = 0;
++	limits->frames_read = 0;
++}
++
++SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
++		uint64_t count)
++{
++	if (!limits)
++		return;
++	limits->samples_read += count;
++}
++
++SR_PRIV void sr_sw_limits_update_frames_read(struct sr_sw_limits *limits,
++		uint64_t count)
++{
++	if (!limits)
++		return;
++	limits->frames_read += count;
++}
++
++SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
++{
++	uint64_t elapsed_ms;
++
++	if (!limits)
++		return FALSE;
++
++	if (limits->limit_msec) {
++		elapsed_ms = (uint64_t)(g_get_real_time() / 1000) -
++				(uint64_t)limits->starttime_ms;
++		if (elapsed_ms >= limits->limit_msec)
++			return TRUE;
++	}
++
++	if (limits->limit_samples && limits->samples_read >= limits->limit_samples)
++		return TRUE;
++
++	if (limits->limit_frames && limits->frames_read >= limits->limit_frames)
++		return TRUE;
++
++	return FALSE;
++}
++
++/*
++ * Frame begin/end compat stubs. PXView has SR_DF_FRAME_BEGIN/SR_DF_FRAME_END
++ * packet types, so emit them directly via ds_data_forward.
++ */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_BEGIN;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++
++	return ds_data_forward(sdi, &packet);
++}
++
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_END;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++
++	return ds_data_forward(sdi, &packet);
++}
++
++/*
++ * Local replacement for standard sigrok's sr_session_send_meta().
++ * Sends a META packet with a single config key/value pair.
++ */
++SR_PRIV int sr_session_send_meta(const struct sr_dev_inst *sdi,
++		uint32_t key, GVariant *data)
++{
++	struct sr_datafeed_packet packet;
++	struct sr_datafeed_meta meta;
++	struct sr_config *src;
++
++	if (!sdi || !data)
++		return SR_ERR_ARG;
++
++	src = sr_config_new((int)key, data);
++	if (!src)
++		return SR_ERR;
++
++	memset(&packet, 0, sizeof(packet));
++	packet.type = SR_DF_META;
++	packet.status = SR_PKT_OK;
++	packet.payload = &meta;
++	meta.config = g_slist_append(NULL, src);
++
++	ds_data_forward(sdi, &packet);
++
++	sr_config_free(src);
++	g_slist_free(meta.config);
++
++	return SR_OK;
++}
++
+ /*
+  * This driver depends on the user's enabling serial communication in
+  * the multimeter's menu system: SETUP -> Communication -> ON. The BLE
+@@ -1307,7 +1479,7 @@ SR_PRIV int ut181a_waitfor_response(const struct sr_dev_inst *sdi, int timeout_m
+ 		if (delay)
+ 			g_usleep(delay);
+ 		delay = 100;
+-		ut181a_handle_events(-1, G_IO_IN, (void *)sdi);
++		ut181a_handle_events(-1, G_IO_IN, sdi);
+ 		got_wanted = FALSE;
+ 		if (state->want_code && state->got_code)
+ 			got_wanted = TRUE;
+@@ -2876,15 +3048,13 @@ static int ut181a_receive_data(struct sr_dev_inst *sdi)
+ 	return 0;
+ }
+ 
+-SR_PRIV int ut181a_handle_events(int fd, int revents, void *cb_data)
++SR_PRIV int ut181a_handle_events(int fd, int revents, const struct sr_dev_inst *sdi)
+ {
+-	struct sr_dev_inst *sdi;
+ 	struct sr_serial_dev_inst *serial;
+ 	struct dev_context *devc;
+ 
+ 	(void)fd;
+ 
+-	sdi = cb_data;
+ 	if (!sdi)
+ 		return TRUE;
+ 	serial = sdi->conn;
+@@ -2893,16 +3063,16 @@ SR_PRIV int ut181a_handle_events(int fd, int revents, void *cb_data)
+ 	devc = sdi->priv;
+ 
+ 	if (revents & G_IO_IN)
+-		(void)ut181a_receive_data(sdi);
++		(void)ut181a_receive_data((struct sr_dev_inst *)sdi);
+ 
+ 	if (sdi->status == SR_ST_STOPPING) {
+ 		if (devc->data_source == DATA_SOURCE_LIVE) {
+-			sdi->status = SR_ST_INACTIVE;
++			((struct sr_dev_inst *)sdi)->status = SR_ST_INACTIVE;
+ 			(void)ut181a_send_cmd_monitor(serial, FALSE);
+ 			(void)ut181a_waitfor_response(sdi, 100);
+ 		}
+-		serial_source_remove(sdi->session, serial);
+-		std_session_send_df_end(sdi);
++		serial_source_remove(serial);
++		std_session_send_df_end(sdi, LOG_PREFIX);
+ 	}
+ 
+ 	return TRUE;

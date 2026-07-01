@@ -228,9 +228,6 @@ SR_PRIV void testo_receive_packet(const struct sr_dev_inst *sdi)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *ch;
 	GString *dbg;
 	float value;
@@ -252,9 +249,11 @@ SR_PRIV void testo_receive_packet(const struct sr_dev_inst *sdi)
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	/* TODO: Use proper 'digits' value for this device (and its modes). */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 2);
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 	analog.num_samples = 1;
-	analog.meaning->mqflags = 0;
+	analog.mqflags = 0;
 	analog.data = &value;
 	/* Decode 7-byte values */
 	for (i = 0; i < devc->reply[6]; i++) {
@@ -262,20 +261,20 @@ SR_PRIV void testo_receive_packet(const struct sr_dev_inst *sdi)
 		value = binary32_le_to_float(buf);
 		switch (buf[4]) {
 		case 1:
-			analog.meaning->mq = SR_MQ_TEMPERATURE;
-			analog.meaning->unit = SR_UNIT_CELSIUS;
+			analog.mq = SR_MQ_TEMPERATURE;
+			analog.unit = SR_UNIT_CELSIUS;
 			break;
 		case 3:
-			analog.meaning->mq = SR_MQ_RELATIVE_HUMIDITY;
-			analog.meaning->unit = SR_UNIT_HUMIDITY_293K;
+			analog.mq = SR_MQ_RELATIVE_HUMIDITY;
+			analog.unit = SR_UNIT_HUMIDITY_293K;
 			break;
 		case 5:
-			analog.meaning->mq = SR_MQ_WIND_SPEED;
-			analog.meaning->unit = SR_UNIT_METER_SECOND;
+			analog.mq = SR_MQ_WIND_SPEED;
+			analog.unit = SR_UNIT_METER_SECOND;
 			break;
 		case 24:
-			analog.meaning->mq = SR_MQ_PRESSURE;
-			analog.meaning->unit = SR_UNIT_HECTOPASCAL;
+			analog.mq = SR_MQ_PRESSURE;
+			analog.unit = SR_UNIT_HECTOPASCAL;
 			break;
 		default:
 			sr_dbg("Unsupported measurement unit %d.", buf[4]);
@@ -293,8 +292,8 @@ SR_PRIV void testo_receive_packet(const struct sr_dev_inst *sdi)
 			return;
 		}
 		ch = g_slist_nth_data(sdi->channels, i);
-		analog.meaning->channels = g_slist_append(NULL, ch);
+		analog.probes = g_slist_append(NULL, ch);
 		sr_session_send(sdi, &packet);
-		g_slist_free(analog.meaning->channels);
+		g_slist_free(analog.probes);
 	}
 }

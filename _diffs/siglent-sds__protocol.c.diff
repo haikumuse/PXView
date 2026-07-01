@@ -1,0 +1,122 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\sigle
+nt-sds\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\siglent-sds\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\siglent-sds\\protocol.c"
+index d59e52c..d1b9c3d 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\siglent-sds\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\siglent-sds\\protocol.c"
+@@ -22,7 +22,7 @@
+ 
+ #define _GNU_SOURCE
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <errno.h>
+ #include <glib.h>
+ #include <math.h>
+@@ -31,9 +31,6 @@
+ #include <string.h>
+ #include <time.h>
+ #include <unistd.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
+-#include "scpi.h"
+ #include "protocol.h"
+ 
+ /* Set the next event to wait for in siglent_sds_receive(). */
+@@ -544,7 +541,7 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+ 			if (len == -1) {
+ 				sr_err("Read error, aborting capture.");
+ 				std_session_send_df_frame_end(sdi);
+-				sdi->driver->dev_acquisition_stop(sdi);
++				sr_dev_acquisition_stop(sdi);
+ 				return TRUE;
+ 			}
+ 			devc->num_block_bytes = len;
+@@ -553,7 +550,7 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+ 			if (len == -1) {
+ 				sr_err("Read error, aborting capture.");
+ 				std_session_send_df_frame_end(sdi);
+-				sdi->driver->dev_acquisition_stop(sdi);
++				sr_dev_acquisition_stop(sdi);
+ 				return TRUE;
+ 			}
+ 
+@@ -570,7 +567,7 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+ 					if (len == -1) {
+ 						sr_err("Read error, aborting capture.");
+ 						std_session_send_df_frame_end(sdi);
+-						sdi->driver->dev_acquisition_stop(sdi);
++						sr_dev_acquisition_stop(sdi);
+ 						return TRUE;
+ 					}
+ 					devc->num_block_read++;
+@@ -617,7 +614,7 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+ 					if (!sr_scpi_read_complete(scpi)) {
+ 						sr_err("Read should have been completed.");
+ 						std_session_send_df_frame_end(sdi);
+-						sdi->driver->dev_acquisition_stop(sdi);
++						sr_dev_acquisition_stop(sdi);
+ 						return TRUE;
+ 					}
+ 					devc->num_block_read = 0;
+@@ -636,7 +633,7 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+ 				std_session_send_df_frame_end(sdi);
+ 				if (++devc->num_frames == devc->limit_frames) {
+ 					/* Last frame, stop capture. */
+-					sdi->driver->dev_acquisition_stop(sdi);
++					sr_dev_acquisition_stop(sdi);
+ 				} else {
+ 					/* Get the next frame, starting with the first channel. */
+ 					devc->channel_entry = devc->enabled_channels;
+@@ -657,11 +654,11 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+ 		packet.payload = &logic;
+ 		sr_session_send(sdi, &packet);
+ 		std_session_send_df_frame_end(sdi);
+-		sdi->driver->dev_acquisition_stop(sdi);
++		sr_dev_acquisition_stop(sdi);
+ 
+ 		if (++devc->num_frames == devc->limit_frames) {
+ 			/* Last frame, stop capture. */
+-			sdi->driver->dev_acquisition_stop(sdi);
++			sr_dev_acquisition_stop(sdi);
+ 		} else {
+ 			/* Get the next frame, starting with the first channel. */
+ 			devc->channel_entry = devc->enabled_channels;
+@@ -674,7 +671,7 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+ 
+ 	// sr_session_send(sdi, &packet);
+ 	// std_session_send_df_frame_end(sdi);
+-	// sdi->driver->dev_acquisition_stop(sdi);
++	// sr_dev_acquisition_stop(sdi);
+ 
+ 	return TRUE;
+ }
+@@ -946,3 +943,22 @@ SR_PRIV int siglent_sds_get_dev_cfg_horizontal(const struct sr_dev_inst *sdi)
+ 
+ 	return SR_OK;
+ }
++
++/* Frame begin/end stub implementations for compat layer */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++	packet.type = SR_DF_FRAME_BEGIN;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}
++
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++	packet.type = SR_DF_FRAME_END;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}

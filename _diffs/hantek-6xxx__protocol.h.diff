@@ -1,0 +1,35 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-6xxx\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-6xxx\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-6xxx\\protocol.h"
+index 35d2a97..1af3a30 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-6xxx\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-6xxx\\protocol.h"
+@@ -23,9 +23,10 @@
+ #include <stdint.h>
+ #include <string.h>
+ #include <glib.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
++#include <libusb.h>
++#include "hardware/compat/compat.h"
+ 
++#undef LOG_PREFIX
+ #define LOG_PREFIX "hantek-6xxx"
+ 
+ #define MAX_RENUM_DELAY_MS	3000
+@@ -161,4 +162,9 @@ SR_PRIV int hantek_6xxx_update_vdiv(const struct sr_dev_inst *sdi);
+ SR_PRIV int hantek_6xxx_update_channels(const struct sr_dev_inst *sdi);
+ SR_PRIV int hantek_6xxx_init(const struct sr_dev_inst *sdi);
+ 
++/* usb_source_remove compat - PXView's usb source removal uses a different
++ * signature. Map the standard sigrok (session, ctx) call to PXView's
++ * sr_session_source_remove(-1). */
++#define usb_source_remove(session, ctx) sr_session_source_remove(-1)
++
+ #endif

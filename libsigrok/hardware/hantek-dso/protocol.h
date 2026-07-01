@@ -236,7 +236,6 @@ SR_PRIV int dso_set_trigger_samplerate(const struct sr_dev_inst *sdi);
 SR_PRIV int dso_set_voffsets(const struct sr_dev_inst *sdi);
 
 /* Frame begin/end compat stubs - implemented in protocol.c */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 /* usb_source_remove compat - maps to PXView's sr_session_source_remove */

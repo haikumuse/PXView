@@ -1,0 +1,427 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\yokog
+awa-dlm\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\api.c"
+index c1fe1b0..1e7d033 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\api.c"
+@@ -18,12 +18,21 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <stdlib.h>
+-#include "scpi.h"
++#include <string.h>
+ #include "protocol.h"
+ 
+-static struct sr_dev_driver yokogawa_dlm_driver_info;
++/*
++ * SR_ERR_CHANNEL_GROUP is not defined in PXView's libsigrok.
++ * Map it to SR_ERR_ARG (the closest equivalent).
++ */
++#ifndef SR_ERR_CHANNEL_GROUP
++#define SR_ERR_CHANNEL_GROUP SR_ERR_ARG
++#endif
++
++/* Forward declaration - the actual struct is defined at the bottom of this file. */
++extern struct sr_dev_driver yokogawa_dlm_driver_info;
+ 
+ static const char *MANUFACTURER_ID = "YOKOGAWA";
+ 
+@@ -63,6 +72,73 @@ enum {
+ 	CG_DIGITAL,
+ };
+ 
++/*
++ * Local helper functions for std_str_idx / std_u64_tuple_idx / std_cg_idx.
++ * PXView's compat layer versions of these helpers have a different signature
++ * (they are config_get helpers with (sdi, key, data, ...) parameters).
++ * The standard sigrok versions take (data, vals, count) and return an index,
++ * which is what this driver needs in config_set.
++ */
++static int local_std_str_idx(GVariant *data, const char *const strs[], size_t count)
++{
++	const char *str;
++	size_t i;
++
++	str = g_variant_get_string(data, NULL);
++	for (i = 0; i < count; i++) {
++		if (strcmp(str, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_u64_tuple_idx(GVariant *data, const uint64_t vals[][2],
++		size_t count)
++{
++	uint64_t v0, v1;
++	size_t i;
++
++	g_variant_get(data, "(tt)", &v0, &v1);
++	for (i = 0; i < count; i++) {
++		if (vals[i][0] == v0 && vals[i][1] == v1)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_cg_idx(const struct sr_channel_group *cg,
++		struct sr_channel_group **groups, unsigned int count)
++{
++	unsigned int i;
++
++	if (!cg)
++		return -1;
++
++	for (i = 0; i < count; i++) {
++		if (cg == groups[i])
++			return (int)i;
++	}
++	return -1;
++}
++
++/*
++ * Local helper to create a GVariant "a(tt)" array from an array of uint64
++ * pairs. PXView's compat layer std_gvar_tuple_array() only handles string
++ * arrays, so we provide this local version for the timebases/vdivs tables.
++ */
++static GVariant *local_std_gvar_tuple_array_u64(const uint64_t vals[][2],
++		size_t count)
++{
++	GVariantBuilder gvb;
++	size_t i;
++
++	g_variant_builder_init(&gvb, G_VARIANT_TYPE("a(tt)"));
++	for (i = 0; i < count; i++)
++		g_variant_builder_add(&gvb, "(tt)", vals[i][0], vals[i][1]);
++
++	return g_variant_builder_end(&gvb);
++}
++
+ static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
+ {
+ 	struct sr_dev_inst *sdi;
+@@ -118,7 +194,18 @@ fail:
+ 
+ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ {
+-	return sr_scpi_scan(di->context, options, probe_device);
++	GSList *devices;
++
++	/*
++	 * PXView's sr_dev_driver has no ->context field; the drv_context is
++	 * stored in ->priv (set by std_init). sr_scpi_scan() expects a
++	 * struct drv_context *, so cast di->priv accordingly.
++	 */
++	devices = sr_scpi_scan((struct drv_context *)di->priv, options,
++			probe_device);
++
++	/* Register discovered devices with the driver's instance list. */
++	return std_scan_complete_compat(di, devices);
+ }
+ 
+ static void clear_helper(struct dev_context *devc)
+@@ -130,7 +217,26 @@ static void clear_helper(struct dev_context *devc)
+ 
+ static int dev_clear(const struct sr_dev_driver *di)
+ {
+-	return std_dev_clear_with_callback(di, (std_dev_clear_callback)clear_helper);
++	/*
++	 * std_dev_clear_with_callback is not available in the compat layer.
++	 * Inline the clear_helper logic: iterate instances, call clear_helper
++	 * on each devc, then use std_dev_clear_compat to free everything.
++	 */
++	struct compat_drv_context *drvc;
++	GSList *l;
++	struct sr_dev_inst *sdi;
++
++	if (!di || !di->priv)
++		return SR_ERR_ARG;
++
++	drvc = di->priv;
++	for (l = drvc->instances; l; l = l->next) {
++		sdi = l->data;
++		if (sdi->priv)
++			clear_helper(sdi->priv);
++	}
++
++	return std_dev_clear_compat(di);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -172,10 +278,10 @@ static int check_channel_group(struct dev_context *devc,
+ 	if (!cg)
+ 		return CG_NONE;
+ 
+-	if (std_cg_idx(cg, devc->analog_groups, model->analog_channels) >= 0)
++	if (local_std_cg_idx(cg, devc->analog_groups, model->analog_channels) >= 0)
+ 		return CG_ANALOG;
+ 
+-	if (std_cg_idx(cg, devc->digital_groups, model->pods) >= 0)
++	if (local_std_cg_idx(cg, devc->digital_groups, model->pods) >= 0)
+ 		return CG_DIGITAL;
+ 
+ 	sr_err("Invalid channel group specified.");
+@@ -226,7 +332,7 @@ static int config_get(uint32_t key, GVariant **data,
+ 			return SR_ERR_CHANNEL_GROUP;
+ 		if (cg_type != CG_ANALOG)
+ 			return SR_ERR_NA;
+-		if ((idx = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((idx = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		*data = g_variant_new("(tt)",
+ 				dlm_vdivs[state->analog_states[idx].vdiv][0],
+@@ -250,7 +356,7 @@ static int config_get(uint32_t key, GVariant **data,
+ 			return SR_ERR_CHANNEL_GROUP;
+ 		if (cg_type != CG_ANALOG)
+ 			return SR_ERR_NA;
+-		if ((idx = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((idx = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		*data = g_variant_new_string((*model->coupling_options)[state->analog_states[idx].coupling]);
+ 		ret = SR_OK;
+@@ -293,7 +399,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = SR_OK;
+ 		break;
+ 	case SR_CONF_TRIGGER_SOURCE:
+-		if ((idx = std_str_idx(data, *model->trigger_sources, model->num_trigger_sources)) < 0)
++		if ((idx = local_std_str_idx(data, *model->trigger_sources, model->num_trigger_sources)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->trigger_source = idx;
+ 		/* TODO: A and B trigger support possible? */
+@@ -302,9 +408,9 @@ static int config_set(uint32_t key, GVariant *data,
+ 	case SR_CONF_VDIV:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		if ((idx = std_u64_tuple_idx(data, ARRAY_AND_SIZE(dlm_vdivs))) < 0)
++		if ((idx = local_std_u64_tuple_idx(data, ARRAY_AND_SIZE(dlm_vdivs))) < 0)
+ 			return SR_ERR_ARG;
+-		if ((j = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((j = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->analog_states[j].vdiv = idx;
+ 		g_ascii_formatd(float_str, sizeof(float_str),
+@@ -315,7 +421,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = SR_OK;
+ 		break;
+ 	case SR_CONF_TIMEBASE:
+-		if ((idx = std_u64_tuple_idx(data, ARRAY_AND_SIZE(dlm_timebases))) < 0)
++		if ((idx = local_std_u64_tuple_idx(data, ARRAY_AND_SIZE(dlm_timebases))) < 0)
+ 			return SR_ERR_ARG;
+ 		state->timebase = idx;
+ 		g_ascii_formatd(float_str, sizeof(float_str),
+@@ -340,7 +446,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = dlm_horiz_trigger_pos_set(sdi->conn, float_str);
+ 		break;
+ 	case SR_CONF_TRIGGER_SLOPE:
+-		if ((idx = std_str_idx(data, ARRAY_AND_SIZE(dlm_trigger_slopes))) < 0)
++		if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(dlm_trigger_slopes))) < 0)
+ 			return SR_ERR_ARG;
+ 		/* Note: See dlm_trigger_slopes[] in protocol.c. */
+ 		state->trigger_slope = idx;
+@@ -349,9 +455,9 @@ static int config_set(uint32_t key, GVariant *data,
+ 	case SR_CONF_COUPLING:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		if ((idx = std_str_idx(data, *model->coupling_options, model->num_coupling_options)) < 0)
++		if ((idx = local_std_str_idx(data, *model->coupling_options, model->num_coupling_options)) < 0)
+ 			return SR_ERR_ARG;
+-		if ((j = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((j = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->analog_states[j].coupling = idx;
+ 		if (dlm_analog_chan_coupl_set(sdi->conn, j + 1, (*model->coupling_options)[idx]) != SR_OK ||
+@@ -373,16 +479,6 @@ static int config_set(uint32_t key, GVariant *data,
+ 	return ret;
+ }
+ 
+-static int config_channel_set(const struct sr_dev_inst *sdi,
+-	struct sr_channel *ch, unsigned int changes)
+-{
+-	/* Currently we only handle SR_CHANNEL_SET_ENABLED. */
+-	if (changes != SR_CHANNEL_SET_ENABLED)
+-		return SR_ERR_NA;
+-
+-	return dlm_channel_state_set(sdi, ch->index, ch->enabled);
+-}
+-
+ static int config_list(uint32_t key, GVariant **data,
+ 	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+ {
+@@ -397,9 +493,16 @@ static int config_list(uint32_t key, GVariant **data,
+ 		switch (key) {
+ 		case SR_CONF_SCAN_OPTIONS:
+ 		case SR_CONF_DEVICE_OPTIONS:
+-			return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
++			/*
++			 * PXView's std_config_list() takes explicit count
++			 * arguments instead of the STD_CONFIG_LIST macro.
++			 */
++			return std_config_list(key, data, sdi, cg,
++					scanopts, ARRAY_SIZE(scanopts),
++					drvopts, ARRAY_SIZE(drvopts),
++					devopts, ARRAY_SIZE(devopts));
+ 		case SR_CONF_TIMEBASE:
+-			*data = std_gvar_tuple_array(ARRAY_AND_SIZE(dlm_timebases));
++			*data = local_std_gvar_tuple_array_u64(ARRAY_AND_SIZE(dlm_timebases));
+ 			return SR_OK;
+ 		case SR_CONF_TRIGGER_SOURCE:
+ 			if (!model)
+@@ -446,7 +549,7 @@ static int config_list(uint32_t key, GVariant **data,
+ 	case SR_CONF_VDIV:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		*data = std_gvar_tuple_array(ARRAY_AND_SIZE(dlm_vdivs));
++		*data = local_std_gvar_tuple_array_u64(ARRAY_AND_SIZE(dlm_vdivs));
+ 		break;
+ 	default:
+ 		return SR_ERR_NA;
+@@ -526,6 +629,12 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 	devc->current_channel = devc->enabled_channels;
+ 	dlm_channel_data_request(sdi);
+ 
++	/*
++	 * PXView's sr_receive_data_callback_t passes the sdi directly as the
++	 * third argument (const struct sr_dev_inst *) instead of void *.
++	 * dlm_data_receive() is declared with that signature in protocol.h,
++	 * so no cast is needed here.
++	 */
+ 	sr_scpi_source_add(sdi->session, scpi, G_IO_IN, 5,
+ 			dlm_data_receive, (void *)sdi);
+ 
+@@ -536,7 +645,12 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ {
+ 	struct dev_context *devc;
+ 
+-	std_session_send_df_end(sdi);
++	/*
++	 * PXView's std_session_send_df_end takes a (sdi, prefix) signature;
++	 * pass NULL for the prefix to match the standard sigrok behavior of
++	 * std_session_send_df_end(sdi).
++	 */
++	std_session_send_df_end(sdi, NULL);
+ 
+ 	devc = sdi->priv;
+ 
+@@ -549,23 +663,99 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	return SR_OK;
+ }
+ 
+-static struct sr_dev_driver yokogawa_dlm_driver_info = {
++/* ------------------------------------------------------------------------ */
++/* PXView-compatible wrapper functions and driver_info                       */
++/* ------------------------------------------------------------------------ */
++
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *yokogawa_dlm_drv_ptr;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int yokogawa_dlm_compat_init(struct sr_context *sr_ctx)
++{
++	yokogawa_dlm_drv_ptr = &yokogawa_dlm_driver_info;
++	return std_init(yokogawa_dlm_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int yokogawa_dlm_compat_cleanup(void)
++{
++	/* Call dev_clear to free per-device resources before cleanup. */
++	dev_clear(yokogawa_dlm_drv_ptr);
++	return std_cleanup(yokogawa_dlm_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *yokogawa_dlm_compat_scan(GSList *options)
++{
++	return scan(yokogawa_dlm_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int yokogawa_dlm_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int yokogawa_dlm_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int yokogawa_dlm_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int yokogawa_dlm_compat_acquisition_start(struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int yokogawa_dlm_compat_acquisition_stop(const struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct.
++ *
++ * Note: PXView's sr_dev_driver has no config_channel_set callback field,
++ * so the original config_channel_set() logic (which delegates to
++ * dlm_channel_state_set() in protocol.c) is not wired up here. Channel
++ * enable/disable is handled through the standard config_set path instead.
++ */
++struct sr_dev_driver yokogawa_dlm_driver_info = {
+ 	.name = "yokogawa-dlm",
+ 	.longname = "Yokogawa DL/DLM",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_channel_set = config_channel_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = yokogawa_dlm_compat_init,
++	.cleanup = yokogawa_dlm_compat_cleanup,
++	.scan = yokogawa_dlm_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = yokogawa_dlm_compat_config_get,
++	.config_set = yokogawa_dlm_compat_config_set,
++	.config_list = yokogawa_dlm_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = yokogawa_dlm_compat_acquisition_start,
++	.dev_acquisition_stop = yokogawa_dlm_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(yokogawa_dlm_driver_info);

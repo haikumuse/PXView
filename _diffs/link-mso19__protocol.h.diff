@@ -1,0 +1,49 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\link-
+mso19\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\link-mso19\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\link-mso19\\protocol.h"
+index cda6338..d2de982 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\link-mso19\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\link-mso19\\protocol.h"
+@@ -26,11 +26,25 @@
+ #include <stdint.h>
+ #include <string.h>
+ #include <glib.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
++#include "hardware/compat/compat.h"
+ 
++#undef LOG_PREFIX
+ #define LOG_PREFIX "link-mso19"
+ 
++/*
++ * PXView does not define several standard sigrok config keys that this
++ * driver needs. Provide them here with unique values that do not collide
++ * with PXView's existing SR_CONF_* keys nor with other compat drivers.
++ * SR_CONF_OFFSET matches the value used by rigol-dg (30203).
++ * SR_CONF_LOGIC_THRESHOLD uses 30206 (next free after rigol-dg's 30205).
++ */
++#ifndef SR_CONF_OFFSET
++#define SR_CONF_OFFSET             30203
++#endif
++#ifndef SR_CONF_LOGIC_THRESHOLD
++#define SR_CONF_LOGIC_THRESHOLD    30206
++#endif
++
+ #define USB_VENDOR		0x3195
+ #define USB_PRODUCT		0xf190
+ 
+@@ -125,7 +139,7 @@ SR_PRIV int mso_read_status(struct sr_serial_dev_inst *serial,
+ SR_PRIV int mso_reset_adc(const struct sr_dev_inst *sdi);
+ SR_PRIV int mso_clkrate_out(struct sr_serial_dev_inst *serial, uint16_t val);
+ SR_PRIV int mso_configure_rate(const struct sr_dev_inst *sdi, uint32_t rate);
+-SR_PRIV int mso_receive_data(int fd, int revents, void *cb_data);
++SR_PRIV int mso_receive_data(int fd, int revents, const struct sr_dev_inst *sdi);
+ SR_PRIV int mso_configure_trigger(const struct sr_dev_inst *sdi);
+ SR_PRIV int mso_configure_threshold_level(const struct sr_dev_inst *sdi);
+ SR_PRIV int mso_read_buffer(struct sr_dev_inst *sdi);

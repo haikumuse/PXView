@@ -323,12 +323,12 @@
   - [ ] 41.6 Bluetooth 通信测试
 
 - [ ] Task 42: 迁移 scpi-dmm 驱动（通用 SCPI DMM）
-  - [ ] 42.1 复制驱动源码
-  - [ ] 42.2 适配 SCPI 通信层
-  - [ ] 42.3 适配 wrapper 函数
-  - [ ] 42.4 注册驱动
-  - [ ] 42.5 编译验证
-  - [ ] 42.6 SCPI 通信测试
+  - [x] 42.1 复制驱动源码（protocol.h/protocol.c/api.c 已创建于 libsigrok/hardware/scpi-dmm/）
+  - [x] 42.2 适配 SCPI 通信层（sr_scpi_scan 用 di->priv、sr_scpi_source_add 保持 sdi->session 参数）
+  - [x] 42.3 适配 wrapper 函数（8 个 compat 包装函数齐全：init/cleanup/scan/config_get/config_set/config_list/acquisition_start/acquisition_stop；driver_info 字段补全 driver_type/dev_mode_list/dev_destroy/dev_status_get/priv=NULL；移除 SR_REGISTER_DEV_DRIVER；扁平 sr_datafeed_analog 适配；本地 sr_sw_limits + sr_atoi/sr_atod_ascii/sr_atod_ascii_digits 实现；SR_CONF/SR_MQ/SR_MQFLAG 宏守卫；14 条转换规则全部应用并通过 grep 验证）
+  - [ ] 42.4 注册驱动（用户明确要求暂不修改 CMakeLists.txt/hwdriver.c，待后续批量注册）
+  - [ ] 42.5 编译验证（依赖 42.4）
+  - [ ] 42.6 SCPI 通信测试（依赖实际硬件）
 
 - [ ] Task 43: 迁移 serial-dmm 驱动（通用 Serial DMM）
   - [ ] 43.1 复制驱动源码

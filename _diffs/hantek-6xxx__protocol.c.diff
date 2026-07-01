@@ -1,0 +1,21 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-6xxx\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-6xxx\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-6xxx\\protocol.c"
+index 75d8ab9..b893a09 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-6xxx\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-6xxx\\protocol.c"
+@@ -23,7 +23,7 @@
+ SR_PRIV int hantek_6xxx_open(struct sr_dev_inst *sdi)
+ {
+ 	struct dev_context *devc;
+-	struct drv_context *drvc = sdi->driver->context;
++	struct drv_context *drvc = sdi->driver->priv;
+ 	struct sr_usb_dev_inst *usb;
+ 	struct libusb_device_descriptor des;
+ 	libusb_device **devlist;

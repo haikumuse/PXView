@@ -18,8 +18,79 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 #include "hardware/compat/compat.h"
 #include "protocol.h"
+
+/*
+ * Local replacement for standard sigrok's sr_resource_load(). PXView does
+ * not provide the sr_resource API. Reads an entire firmware file (located
+ * under the DS_RES_PATH directory) into a g_malloc'd buffer and returns it.
+ * On success *size is set to the file size; on failure NULL is returned.
+ * Mirrors the behaviour of saleae-logic16's sr_resource_open/read/close
+ * stubs which also use fopen/fread/fclose with DS_RES_PATH.
+ */
+SR_PRIV void *sr_resource_load(struct sr_context *ctx, int type,
+	const char *name, size_t *size, size_t max_size)
+{
+	char path[512];
+	FILE *fp;
+	long file_size;
+	size_t n_read;
+	void *buf;
+
+	(void)ctx;
+	(void)type;
+
+	if (DS_RES_PATH[0] != '\0')
+		snprintf(path, sizeof(path), "%s/%s", DS_RES_PATH, name);
+	else
+		snprintf(path, sizeof(path), "%s", name);
+
+	fp = fopen(path, "rb");
+	if (!fp) {
+		sr_err("Failed to open resource '%s'.", path);
+		return NULL;
+	}
+
+	if (fseek(fp, 0, SEEK_END) != 0) {
+		sr_err("Failed to seek resource '%s'.", path);
+		fclose(fp);
+		return NULL;
+	}
+	file_size = ftell(fp);
+	if (file_size < 0) {
+		sr_err("Failed to tell size of resource '%s'.", path);
+		fclose(fp);
+		return NULL;
+	}
+	rewind(fp);
+
+	if ((size_t)file_size > max_size) {
+		sr_err("Size %ld of '%s' exceeds limit %zu.", file_size, name, max_size);
+		fclose(fp);
+		return NULL;
+	}
+
+	buf = g_try_malloc((size_t)file_size);
+	if (!buf) {
+		sr_err("Failed to allocate buffer for '%s'.", name);
+		fclose(fp);
+		return NULL;
+	}
+
+	n_read = fread(buf, 1, (size_t)file_size, fp);
+	fclose(fp);
+
+	if (n_read != (size_t)file_size) {
+		sr_err("Failed to read '%s': premature end of file.", name);
+		g_free(buf);
+		return NULL;
+	}
+
+	*size = (size_t)file_size;
+	return buf;
+}
 
 #define COMMAND_START_CAPTURE	0x01
 #define COMMAND_STOP_CAPTURE	0x02

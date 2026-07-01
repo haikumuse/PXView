@@ -119,12 +119,7 @@ SR_PRIV int dlm_scope_state_query(struct sr_dev_inst *sdi);
 SR_PRIV int dlm_sample_rate_query(const struct sr_dev_inst *sdi);
 SR_PRIV int dlm_channel_data_request(const struct sr_dev_inst *sdi);
 
-/* Frame begin/end stub implementations for compat layer.
- * PXView's compat layer only provides std_session_send_df_header/end and
- * std_session_send_df_frame_begin/end with a prefix parameter; the standard
- * sigrok versions used by this driver take only sdi. These local
- * implementations bridge the gap. */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
+/* Frame end stub kept locally (frame_begin is canonical in compat_helpers.c). */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 #endif

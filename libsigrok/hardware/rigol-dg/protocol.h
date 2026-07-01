@@ -87,8 +87,7 @@ SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
 SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits);
 #endif /* SR_SW_LIMITS_DEFINED */
 
-/* Frame begin/end compat stubs (implemented in protocol.c). */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
+/* Frame end compat stub (implemented in protocol.c; frame_begin is canonical in compat_helpers.c). */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 enum psg_commands {

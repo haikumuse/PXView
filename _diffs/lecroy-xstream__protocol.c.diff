@@ -1,0 +1,147 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\lecro
+y-xstream\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\lecroy-xstream\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\lecroy-xstream\\protocol.c"
+index 81b2fd5..2e44137 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\lecroy-xstream\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\lecroy-xstream\\protocol.c"
+@@ -17,10 +17,9 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <math.h>
+ #include <stdlib.h>
+-#include "scpi.h"
+ #include "protocol.h"
+ 
+ struct lecroy_wavedesc_2_x {
+@@ -192,6 +191,27 @@ static const struct scope_config scope_models[] = {
+ 	},
+ };
+ 
++/*
++ * Local helper: format a rational period (p/q seconds) as a human-readable
++ * string. PXView's sr_period_string() takes a single frequency value and
++ * cannot represent sub-Hz periods (e.g. 2 s), so provide a local version
++ * with the standard sigrok (p, q) rational signature.
++ */
++static char *local_period_string(uint64_t p, uint64_t q)
++{
++	double period = (q != 0) ? ((double)p / (double)q) : 0.0;
++
++	if (period >= 1.0)
++		return g_strdup_printf("%.3g s", period);
++	if (period >= 1e-3)
++		return g_strdup_printf("%.3g ms", period * 1e3);
++	if (period >= 1e-6)
++		return g_strdup_printf("%.3g us", period * 1e6);
++	if (period >= 1e-9)
++		return g_strdup_printf("%.3g ns", period * 1e9);
++	return g_strdup_printf("%.3g ps", period * 1e12);
++}
++
+ static void scope_state_dump(const struct scope_config *config,
+ 		struct scope_state *state)
+ {
+@@ -207,7 +227,7 @@ static void scope_state_dump(const struct scope_config *config,
+ 				tmp, state->analog_channels[i].vertical_offset);
+ 	}
+ 
+-	tmp = sr_period_string((*config->timebases)[state->timebase][0],
++	tmp = local_period_string((*config->timebases)[state->timebase][0],
+ 			(*config->timebases)[state->timebase][1]);
+ 	sr_info("Current timebase: %s", tmp);
+ 	g_free(tmp);
+@@ -241,6 +261,9 @@ static int scope_state_get_array_option(const char *resp,
+  * This function takes a value of the form "2.000E-03" and returns the index
+  * of an array where a matching pair was found.
+  *
++ *PXView's libsigrok does not provide sr_rational/sr_parse_rational, so the
++ * rational comparison is done with floating point and a small epsilon.
++ *
+  * @param value The string to be parsed.
+  * @param array The array of s/f pairs.
+  * @param array_len The number of pairs in the array.
+@@ -251,15 +274,14 @@ static int scope_state_get_array_option(const char *resp,
+ static int array_float_get(gchar *value, const uint64_t array[][2],
+ 		int array_len, unsigned int *result)
+ {
+-	struct sr_rational rval;
+-	struct sr_rational aval;
++	double rval, aval;
++	unsigned int i;
+ 
+-	if (sr_parse_rational(value, &rval) != SR_OK)
+-		return SR_ERR;
++	rval = g_ascii_strtod(value, NULL);
+ 
+-	for (int i = 0; i < array_len; i++) {
+-		sr_rational_set(&aval, array[i][0], array[i][1]);
+-		if (sr_rational_eq(&rval, &aval)) {
++	for (i = 0; i < (unsigned int)array_len; i++) {
++		aval = (double)array[i][0] / (double)array[i][1];
++		if (fabs(aval - rval) < (fabs(aval) * 1e-6 + 1e-15)) {
+ 			*result = i;
+ 			return SR_OK;
+ 		}
+@@ -611,11 +633,11 @@ static int lecroy_waveform_to_analog(GByteArray *data,
+ 	return SR_ERR;
+ }
+ 
+-SR_PRIV int lecroy_xstream_receive_data(int fd, int revents, void *cb_data)
++SR_PRIV int lecroy_xstream_receive_data(int fd, int revents,
++		const struct sr_dev_inst *sdi)
+ {
+ 	char command[MAX_COMMAND_SIZE];
+ 	struct sr_channel *ch;
+-	struct sr_dev_inst *sdi;
+ 	struct dev_context *devc;
+ 	struct scope_state *state;
+ 	struct sr_datafeed_packet packet;
+@@ -628,7 +650,7 @@ SR_PRIV int lecroy_xstream_receive_data(int fd, int revents, void *cb_data)
+ 	(void)fd;
+ 	(void)revents;
+ 
+-	if (!(sdi = cb_data))
++	if (!sdi)
+ 		return TRUE;
+ 
+ 	if (!(devc = sdi->priv))
+@@ -725,3 +747,30 @@ SR_PRIV int lecroy_xstream_receive_data(int fd, int revents, void *cb_data)
+ 
+ 	return TRUE;
+ }
++
++/*
++ * Frame begin/end helpers. PXView's compat layer does not provide
++ * std_session_send_df_frame_begin/end, so define them locally (same pattern
++ * used by rigol-ds, siglent-sds, etc.).
++ */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_BEGIN;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}
++
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_END;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}

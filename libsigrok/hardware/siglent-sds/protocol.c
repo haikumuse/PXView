@@ -454,6 +454,11 @@ static int siglent_sds_get_digital(const struct sr_dev_inst *sdi, struct sr_chan
 	return len;
 }
 
+SR_PRIV int siglent_sds_compat_receive(int fd, int revents, const struct sr_dev_inst *sdi)
+{
+	return siglent_sds_receive(fd, revents, (void *)sdi);
+}
+
 SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
 {
 	struct sr_dev_inst *sdi;
@@ -944,16 +949,7 @@ SR_PRIV int siglent_sds_get_dev_cfg_horizontal(const struct sr_dev_inst *sdi)
 	return SR_OK;
 }
 
-/* Frame begin/end stub implementations for compat layer */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
-
+/* Frame end stub implementation kept locally (frame_begin is canonical in compat_helpers.c). */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;

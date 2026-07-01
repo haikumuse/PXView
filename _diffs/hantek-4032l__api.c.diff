@@ -1,0 +1,282 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-4032l\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-4032l\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-4032l\\api.c"
+index 7e823f8..abbf632 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-4032l\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-4032l\\api.c"
+@@ -25,6 +25,14 @@
+ #define USB_INTERFACE 0
+ #define NUM_CHANNELS 32
+ 
++/*
++ * SR_ERR_CHANNEL_GROUP is not defined in PXView's libsigrok. Map it to
++ * SR_ERR_ARG (the closest equivalent: invalid argument).
++ */
++#ifndef SR_ERR_CHANNEL_GROUP
++#define SR_ERR_CHANNEL_GROUP SR_ERR_ARG
++#endif
++
+ static const uint32_t scanopts[] = {
+ 	SR_CONF_CONN,
+ };
+@@ -167,11 +175,41 @@ static const uint64_t samplerates_hw[] = {
+ 	SR_MHZ(320),
+ };
+ 
+-static struct sr_dev_driver hantek_4032l_driver_info;
++/*
++ * Local helpers for string index lookup.
++ *
++ * The compat layer's std_str_idx() has a different signature (it is a
++ * config-get helper taking sdi/key/data). Standard sigrok's std_str_idx()
++ * and std_str_idx_s() are simple string-array lookups, so provide them
++ * locally to avoid the name collision.
++ */
++static int local_std_str_idx(GVariant *data, const char *const strs[], size_t count)
++{
++	const char *str;
++	size_t i;
++
++	str = g_variant_get_string(data, NULL);
++	for (i = 0; i < count; i++) {
++		if (strcmp(str, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_str_idx_s(const char *needle, const char *const strs[], size_t count)
++{
++	size_t i;
++
++	for (i = 0; i < count; i++) {
++		if (strcmp(needle, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
+ 
+ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ {
+-	struct drv_context *drvc = di->context;
++	struct compat_drv_context *drvc = di->priv;
+ 	GSList *l, *devices, *conn_devices;
+ 	libusb_device **devlist;
+ 	struct libusb_device_descriptor des;
+@@ -226,7 +264,6 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 			continue;
+ 
+ 		sdi = g_malloc0(sizeof(struct sr_dev_inst));
+-		sdi->driver = &hantek_4032l_driver_info;
+ 		sdi->vendor = g_strdup("Hantek");
+ 		sdi->model = g_strdup("4032L");
+ 		sdi->connection_id = g_strdup(connection_id);
+@@ -263,7 +300,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 		/* Create array of thresholds from min to max. */
+ 		GVariant *thresholds = std_gvar_min_max_step_thresholds(
+ 			H4032L_THR_VOLTAGE_MIN, H4032L_THR_VOLTAGE_MAX,
+-			H4032L_THR_VOLTAGE_STEP);
++			H4032L_THR_VOLTAGE_STEP, NULL, 0);
+ 		/* Take default threshold value from array (FP workaround). */
+ 		g_variant_get_child(thresholds, H4032L_THR_VOLTAGE_DEFAULT,
+ 			"(dd)", &devc->cur_threshold[0], &devc->cur_threshold[1]);
+@@ -281,7 +318,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 	g_slist_free_full(conn_devices, (GDestroyNotify)sr_usb_dev_inst_free);
+ 	libusb_free_device_list(devlist, 1);
+ 
+-	return std_scan_complete(di, devices);
++	return std_scan_complete_compat(di, devices);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -350,7 +387,7 @@ static int config_get(uint32_t key, GVariant **data,
+ 	case SR_CONF_VOLTAGE_THRESHOLD:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		if ((idx = std_str_idx_s(cg->name, ARRAY_AND_SIZE(cg_names))) < 0)
++		if ((idx = local_std_str_idx_s(cg->name, ARRAY_AND_SIZE(cg_names))) < 0)
+ 			return SR_ERR_CHANNEL_GROUP;
+ 		*data = std_gvar_tuple_double(
+ 			devc->cur_threshold[idx], devc->cur_threshold[idx]);
+@@ -424,7 +461,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 	case SR_CONF_VOLTAGE_THRESHOLD:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		if ((idx = std_str_idx_s(cg->name, ARRAY_AND_SIZE(cg_names))) < 0)
++		if ((idx = local_std_str_idx_s(cg->name, ARRAY_AND_SIZE(cg_names))) < 0)
+ 			return SR_ERR_CHANNEL_GROUP;
+ 		g_variant_get(data, "(dd)", &low, &high);
+ 		devc->cur_threshold[idx] = (low + high) / 2.0;
+@@ -433,12 +470,12 @@ static int config_set(uint32_t key, GVariant *data,
+ 		devc->external_clock = g_variant_get_boolean(data);
+ 		break;
+ 	case SR_CONF_EXTERNAL_CLOCK_SOURCE:
+-		if ((idx = std_str_idx(data, ARRAY_AND_SIZE(ext_clock_sources))) < 0)
++		if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(ext_clock_sources))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->external_clock_source = idx;
+ 		break;
+ 	case SR_CONF_CLOCK_EDGE:
+-		if ((idx = std_str_idx(data, ARRAY_AND_SIZE(signal_edges))) < 0)
++		if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(signal_edges))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->clock_edge = idx;
+ 		break;
+@@ -463,8 +500,14 @@ static int config_list(uint32_t key, GVariant **data,
+ 		}
+ 		/* Disable external clock and edges for FPGA version 0. */
+ 		if (devc && (!devc->fpga_version))
+-			return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts_fpga_zero);
+-		return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
++			return std_config_list(key, data, sdi, cg,
++				scanopts, ARRAY_SIZE(scanopts),
++				drvopts, ARRAY_SIZE(drvopts),
++				devopts_fpga_zero, ARRAY_SIZE(devopts_fpga_zero));
++		return std_config_list(key, data, sdi, cg,
++			scanopts, ARRAY_SIZE(scanopts),
++			drvopts, ARRAY_SIZE(drvopts),
++			devopts, ARRAY_SIZE(devopts));
+ 	case SR_CONF_SAMPLERATE:
+ 		*data = std_gvar_samplerates(ARRAY_AND_SIZE(samplerates));
+ 		break;
+@@ -473,7 +516,7 @@ static int config_list(uint32_t key, GVariant **data,
+ 		break;
+ 	case SR_CONF_VOLTAGE_THRESHOLD:
+ 		*data = std_gvar_min_max_step_thresholds(H4032L_THR_VOLTAGE_MIN,
+-			H4032L_THR_VOLTAGE_MAX, H4032L_THR_VOLTAGE_STEP);
++			H4032L_THR_VOLTAGE_MAX, H4032L_THR_VOLTAGE_STEP, NULL, 0);
+ 		break;
+ 	case SR_CONF_LIMIT_SAMPLES:
+ 		*data = std_gvar_tuple_u64(H4043L_NUM_SAMPLES_MIN, H4032L_NUM_SAMPLES_MAX);
+@@ -494,7 +537,7 @@ static int config_list(uint32_t key, GVariant **data,
+ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ {
+ 	struct sr_dev_driver *di = sdi->driver;
+-	struct drv_context *drvc = di->context;
++	struct compat_drv_context *drvc = di->priv;
+ 	struct dev_context *devc = sdi->priv;
+ 	struct sr_trigger *trigger = sr_session_trigger_get(sdi->session);
+ 	struct h4032l_cmd_pkt *cmd_pkt = &devc->cmd_pkt;
+@@ -591,8 +634,12 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 		cmd_pkt->trigger[0].data_range_max = range_value;
+ 	}
+ 
+-	usb_source_add(sdi->session, drvc->sr_ctx, 1000,
+-		h4032l_receive_data, sdi->driver->context);
++	/*
++	 * Compat layer's usb_source_add(ctx, timeout, cb, sdi) passes the
++	 * sdi as cb_data to the receive callback (h4032l_receive_data), which
++	 * derives the drv_context from sdi->driver->priv.
++	 */
++	usb_source_add(drvc->sr_ctx, 1000, h4032l_receive_data, sdi);
+ 
+ 	/* Start capturing. */
+ 	return h4032l_start(sdi);
+@@ -604,22 +651,88 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	return h4032l_stop(sdi);
+ }
+ 
+-static struct sr_dev_driver hantek_4032l_driver_info = {
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *hantek_4032l_drv_ptr;
++
++/* Forward declaration - defined at end of file */
++extern struct sr_dev_driver hantek_4032l_driver_info;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int hantek_4032l_compat_init(struct sr_context *sr_ctx)
++{
++	hantek_4032l_drv_ptr = &hantek_4032l_driver_info;
++	return std_init(hantek_4032l_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int hantek_4032l_compat_cleanup(void)
++{
++	return std_cleanup(hantek_4032l_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *hantek_4032l_compat_scan(GSList *options)
++{
++	return scan(hantek_4032l_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int hantek_4032l_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int hantek_4032l_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int hantek_4032l_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int hantek_4032l_compat_acquisition_start(struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int hantek_4032l_compat_acquisition_stop(const struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct */
++struct sr_dev_driver hantek_4032l_driver_info = {
+ 	.name = "hantek-4032l",
+ 	.longname = "Hantek 4032L",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = std_dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = hantek_4032l_compat_init,
++	.cleanup = hantek_4032l_compat_cleanup,
++	.scan = hantek_4032l_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = hantek_4032l_compat_config_get,
++	.config_set = hantek_4032l_compat_config_set,
++	.config_list = hantek_4032l_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = hantek_4032l_compat_acquisition_start,
++	.dev_acquisition_stop = hantek_4032l_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(hantek_4032l_driver_info);

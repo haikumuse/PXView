@@ -1,0 +1,61 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\rigol
+-ds\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-ds\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-ds\\protocol.c"
+index 05aaf11..2da500d 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-ds\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-ds\\protocol.c"
+@@ -19,7 +19,7 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <stdlib.h>
+ #include <stdarg.h>
+ #include <unistd.h>
+@@ -28,12 +28,12 @@
+ #include <math.h>
+ #include <ctype.h>
+ #include <time.h>
+-#include <glib.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
+-#include "scpi.h"
+ #include "protocol.h"
+ 
++/* Add missing frame begin/end function declarations */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
++
+ /*
+  * This is a unified protocol driver for the DS1000 and DS2000 series.
+  *
+@@ -1018,3 +1018,22 @@ SR_PRIV int rigol_ds_get_dev_cfg_vertical(const struct sr_dev_inst *sdi)
+ 
+ 	return SR_OK;
+ }
++
++/* Frame begin/end stub implementations for compat layer */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++	packet.type = SR_DF_FRAME_BEGIN;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}
++
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++	packet.type = SR_DF_FRAME_END;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}

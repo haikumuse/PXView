@@ -126,9 +126,6 @@ static void handle_qm_19x_data(const struct sr_dev_inst *sdi, char **tokens)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	float fvalue;
 	int digits;
 
@@ -139,7 +136,7 @@ static void handle_qm_19x_data(const struct sr_dev_inst *sdi, char **tokens)
 		 * is rather problematic, we'll cut through this here. */
 		fvalue = NAN;
 	} else {
-		if (sr_atof_ascii_digits(tokens[0], &fvalue, &digits) != SR_OK ||
+		if (local_sr_atof_ascii_digits(tokens[0], &fvalue, &digits) != SR_OK ||
 		    fvalue == 0.0) {
 			sr_err("Invalid float '%s'.", tokens[0]);
 			return;
@@ -160,13 +157,24 @@ static void handle_qm_19x_data(const struct sr_dev_inst *sdi, char **tokens)
 			fvalue = 1.0;
 	}
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-	analog.meaning->channels = sdi->channels;
+	/*
+	 * PXView's sr_datafeed_analog is the old flat layout (probes, mq,
+	 * unit, mqflags, data, ...). There is no sr_analog_init() helper and
+	 * no encoding/meaning/spec sub-structs, so initialize the fields
+	 * directly. The digits value is informational only (PXView's analog
+	 * struct has no digits field); keep it to preserve original parser
+	 * behaviour but mark it unused.
+	 */
+	(void)digits;
+	memset(&analog, 0, sizeof(analog));
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
 	analog.data = &fvalue;
-	analog.meaning->mq = devc->mq;
-	analog.meaning->unit = devc->unit;
-	analog.meaning->mqflags = 0;
+	analog.mq = devc->mq;
+	analog.unit = devc->unit;
+	analog.mqflags = 0;
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);

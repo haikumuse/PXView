@@ -1,0 +1,250 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\rigol
+-dg\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-dg\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-dg\\protocol.c"
+index 99f8bab..7ab8024 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-dg\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-dg\\protocol.c"
+@@ -17,11 +17,123 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <string.h>
+-#include "scpi.h"
+ #include "protocol.h"
+ 
++/*
++ * PXView does not provide the sr_sw_limits helpers. Implement them here
++ * (matching standard sigrok semantics) so this self-contained driver
++ * compiles and behaves correctly.
++ */
++
++SR_PRIV void sr_sw_limits_init(struct sr_sw_limits *limits)
++{
++	memset(limits, 0, sizeof(*limits));
++}
++
++SR_PRIV int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
++		uint32_t key, GVariant **data)
++{
++	if (!limits || !data)
++		return SR_ERR_ARG;
++
++	switch (key) {
++	case SR_CONF_LIMIT_SAMPLES:
++		*data = g_variant_new_uint64(limits->limit_samples);
++		break;
++	case SR_CONF_LIMIT_MSEC:
++		*data = g_variant_new_uint64(limits->limit_msec);
++		break;
++	default:
++		return SR_ERR;
++	}
++
++	return SR_OK;
++}
++
++SR_PRIV int sr_sw_limits_config_set(struct sr_sw_limits *limits,
++		uint32_t key, GVariant *data)
++{
++	if (!limits || !data)
++		return SR_ERR_ARG;
++
++	switch (key) {
++	case SR_CONF_LIMIT_SAMPLES:
++		limits->limit_samples = g_variant_get_uint64(data);
++		break;
++	case SR_CONF_LIMIT_MSEC:
++		limits->limit_msec = g_variant_get_uint64(data);
++		break;
++	default:
++		return SR_ERR;
++	}
++
++	return SR_OK;
++}
++
++SR_PRIV void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
++{
++	if (!limits)
++		return;
++	limits->starttime_ms = g_get_real_time() / 1000;
++	limits->samples_read = 0;
++}
++
++SR_PRIV void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
++		uint64_t count)
++{
++	if (!limits)
++		return;
++	limits->samples_read += count;
++}
++
++SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
++{
++	uint64_t elapsed_ms;
++
++	if (!limits)
++		return FALSE;
++
++	if (limits->limit_msec) {
++		elapsed_ms = (uint64_t)(g_get_real_time() / 1000) -
++				(uint64_t)limits->starttime_ms;
++		if (elapsed_ms >= limits->limit_msec)
++			return TRUE;
++	}
++
++	if (limits->limit_samples && limits->samples_read >= limits->limit_samples)
++		return TRUE;
++
++	return FALSE;
++}
++
++/*
++ * Frame begin/end stubs for the compat layer. PXView has the
++ * SR_DF_FRAME_BEGIN/SR_DF_FRAME_END packet types, so emit them directly.
++ */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_BEGIN;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++
++	return ds_data_forward(sdi, &packet);
++}
++
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_END;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++
++	return ds_data_forward(sdi, &packet);
++}
++
+ SR_PRIV int rigol_dg_string_to_waveform(
+ 		const struct channel_spec *ch, const char *s, enum waveform_type *wf)
+ {
+@@ -40,7 +152,7 @@ SR_PRIV int rigol_dg_string_to_waveform(
+ }
+ 
+ SR_PRIV const struct waveform_spec *rigol_dg_get_waveform_spec(
+-	const struct channel_spec *ch, enum waveform_type wf)
++		const struct channel_spec *ch, enum waveform_type wf)
+ {
+ 	const struct waveform_spec *spec;
+ 	unsigned int i;
+@@ -90,14 +202,15 @@ SR_PRIV int rigol_dg_get_double_param(const struct sr_dev_inst *sdi,
+ 		}
+ 	}
+ 
+-	g_variant_unref(data);
++	if (data)
++		g_variant_unref(data);
+ 	g_free(response);
+ 	g_strfreev(params);
+ 	return ret;
+ }
+ 
+ SR_PRIV int rigol_dg_get_channel_state(const struct sr_dev_inst *sdi,
+-	const struct sr_channel_group *cg)
++		const struct sr_channel_group *cg)
+ {
+ 	struct dev_context *devc;
+ 	struct sr_scpi_dev_inst *scpi;
+@@ -132,7 +245,10 @@ SR_PRIV int rigol_dg_get_channel_state(const struct sr_dev_inst *sdi,
+ 			G_VARIANT_TYPE_STRING, PSG_CMD_GET_SOURCE_NO_PARAM, cg->name);
+ 		if (ret != SR_OK)
+ 			goto done;
++		g_free(response);
+ 		response = g_variant_dup_string(data, NULL);
++		g_variant_unref(data);
++		data = NULL;
+ 		g_strstrip(response);
+ 		s = sr_scpi_unquote_string(response);
+ 		sr_spew("Channel state: '%s'", s);
+@@ -160,7 +276,10 @@ SR_PRIV int rigol_dg_get_channel_state(const struct sr_dev_inst *sdi,
+ 			G_VARIANT_TYPE_STRING, PSG_CMD_GET_SOURCE, cg->name);
+ 		if (ret != SR_OK)
+ 			goto done;
++		g_free(response);
+ 		response = g_variant_dup_string(data, NULL);
++		g_variant_unref(data);
++		data = NULL;
+ 		g_strstrip(response);
+ 		s = sr_scpi_unquote_string(response);
+ 		sr_spew("Channel state: '%s'", s);
+@@ -207,38 +326,49 @@ SR_PRIV int rigol_dg_get_channel_state(const struct sr_dev_inst *sdi,
+ 	}
+ 
+ done:
+-	g_variant_unref(data);
++	if (data)
++		g_variant_unref(data);
+ 	g_free(response);
+ 	g_strfreev(params);
+ 	return ret;
+ }
+ 
++/*
++ * Send a single analog sample for one channel.
++ *
++ * Adapted for PXView: PXView's sr_datafeed_analog uses a flat struct
++ * (probes/num_samples/data/mq/unit/mqflags/unit_bits/unit_pitch) instead
++ * of standard sigrok's encoding/meaning/spec sub-objects, and the packet
++ * requires a status field. Fill the flat struct directly.
++ */
+ static void rigol_dg_send_channel_value(const struct sr_dev_inst *sdi,
+ 		struct sr_channel *ch, double value, enum sr_mq mq,
+ 		enum sr_unit unit, int digits)
+ {
+ 	struct sr_datafeed_packet packet;
+ 	struct sr_datafeed_analog analog;
+-	struct sr_analog_encoding encoding;
+-	struct sr_analog_meaning meaning;
+-	struct sr_analog_spec spec;
+ 	double val;
+ 
++	(void)digits;
++
+ 	val = value;
+-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
+-	analog.meaning->channels = g_slist_append(NULL, ch);
++	memset(&analog, 0, sizeof(analog));
++	analog.probes = g_slist_append(NULL, ch);
+ 	analog.num_samples = 1;
+ 	analog.data = &val;
+-	analog.encoding->unitsize = sizeof(val);
+-	analog.encoding->is_float = TRUE;
+-	analog.encoding->digits = digits;
+-	analog.meaning->mq = mq;
+-	analog.meaning->unit = unit;
++	analog.unit_bits = 8 * sizeof(val); /* double */
++	analog.unit_pitch = 0;
++	analog.mq = mq;
++	analog.unit = unit;
++	analog.mqflags = 0;
+ 
+ 	packet.type = SR_DF_ANALOG;
++	packet.status = SR_PKT_OK;
+ 	packet.payload = &analog;
+-	sr_session_send(sdi, &packet);
+-	g_slist_free(analog.meaning->channels);
++	packet.bExportOriginalData = 0;
++
++	ds_data_forward(sdi, &packet);
++	g_slist_free(analog.probes);
+ }
+ 
+ SR_PRIV int rigol_dg_receive_data(int fd, int revents, void *cb_data)

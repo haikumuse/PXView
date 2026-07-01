@@ -198,6 +198,22 @@ SR_PRIV int std_session_send_df_end(const struct sr_dev_inst *sdi,
     const char *prefix);
 
 /**
+ * Standard sigrok's std_session_send_df_frame_begin - send DF_FRAME_BEGIN packet.
+ *
+ * This is the single canonical implementation for compat drivers. Previously
+ * each driver defined its own local copy (fx2lafw, gwinstek-gds-800, hameg-hmo,
+ * hantek-dso, hung-chang-dso-2100), but since SR_PRIV is empty on Windows
+ * those were global symbols that caused multiple-definition link errors when
+ * two such drivers were enabled simultaneously. Consolidating here removes
+ * that hazard; call sites are unchanged (same 1-arg signature).
+ *
+ * @param sdi The device instance.
+ *
+ * @return SR_OK on success.
+ */
+SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
+
+/**
  * Standard sigrok's std_config_list - handle SR_CONF_DEVICE_OPTIONS etc.
  *
  * @param key The config key.
@@ -517,5 +533,31 @@ SR_PRIV int std_opts_config_list(GSList *opts, int id, GVariant **data,
  * @param data The sr_usb_dev_inst pointer to free (passed as void *).
  */
 SR_PRIV void sr_usb_dev_inst_free_cb(void *data);
+
+/**
+ * Standard sigrok's sr_usb_open compat - open the libusb device handle.
+ * PXView's libsigrok does not provide sr_usb_open(); this shim wraps
+ * libusb_open() against the struct sr_usb_dev_inst fields (usb_dev and
+ * devhdl) populated at scan time.
+ *
+ * @param usb_ctx libusb context (unused; kept for API compatibility).
+ * @param usb The USB device instance to open. usb->usb_dev must be set;
+ *            on success usb->devhdl is populated.
+ *
+ * @return SR_OK on success, SR_ERR on failure.
+ */
+SR_PRIV int sr_usb_open(libusb_context *usb_ctx, struct sr_usb_dev_inst *usb);
+
+/**
+ * Standard sigrok's sr_usb_close compat - close the libusb device handle.
+ * PXView's libsigrok does not provide sr_usb_close(); this shim wraps
+ * libusb_close() and clears usb->devhdl. Callers are responsible for
+ * releasing any claimed interfaces before calling this.
+ *
+ * @param usb The USB device instance whose handle should be closed.
+ *
+ * @return SR_OK on success, SR_ERR_ARG on invalid argument.
+ */
+SR_PRIV int sr_usb_close(struct sr_usb_dev_inst *usb);
 
 #endif

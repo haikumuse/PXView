@@ -1,0 +1,417 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\lecro
+y-xstream\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\lecroy-xstream\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\lecroy-xstream\\api.c"
+index 8551351..bb76f2a 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\lecroy-xstream\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\lecroy-xstream\\api.c"
+@@ -17,12 +17,21 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <stdlib.h>
+-#include "scpi.h"
+ #include "protocol.h"
+ 
+-static struct sr_dev_driver lecroy_xstream_driver_info;
++/*
++ * SR_CONF_ENABLED is not defined by PXView's libsigrok nor by the compat
++ * layer. Provide a local fallback so the SR_CONF_ENABLED case in
++ * config_get() compiles. It is not advertised in any devopts[] array, so
++ * the value is never queried through the standard config path.
++ */
++#ifndef SR_CONF_ENABLED
++#define SR_CONF_ENABLED 30152
++#endif
++
++extern struct sr_dev_driver lecroy_xstream_driver_info;
+ 
+ static const char *manufacturers[] = {
+ 	"LECROY",
+@@ -52,6 +61,80 @@ static const uint32_t devopts_cg_analog[] = {
+ 	SR_CONF_COUPLING | SR_CONF_GET | SR_CONF_SET | SR_CONF_LIST,
+ };
+ 
++/*
++ * Local helpers for string/tuple/channel-group index lookups.
++ *
++ * The compat layer's std_str_idx() has a different signature (it is a
++ * config-get helper taking sdi/key/data). Standard sigrok's std_str_idx(),
++ * std_str_idx_s(), std_u64_tuple_idx() and std_cg_idx() are simple lookups,
++ * so provide them locally to avoid the name collision. std_gvar_tuple_array()
++ * in the compat layer only handles string arrays, so a local u64-pair variant
++ * is provided for the timebases/vdivs tables.
++ */
++static int local_std_str_idx(GVariant *data, const char *const strs[], size_t count)
++{
++	const char *str;
++	size_t i;
++
++	str = g_variant_get_string(data, NULL);
++	for (i = 0; i < count; i++) {
++		if (strcmp(str, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_str_idx_s(const char *needle, const char *const strs[], size_t count)
++{
++	size_t i;
++
++	for (i = 0; i < count; i++) {
++		if (strcmp(needle, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_u64_tuple_idx(GVariant *data, const uint64_t vals[][2], size_t count)
++{
++	uint64_t v0, v1;
++	size_t i;
++
++	g_variant_get(data, "(tt)", &v0, &v1);
++	for (i = 0; i < count; i++) {
++		if (vals[i][0] == v0 && vals[i][1] == v1)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_cg_idx(const struct sr_channel_group *cg,
++		struct sr_channel_group **groups, unsigned int num_groups)
++{
++	unsigned int i;
++
++	if (!cg)
++		return -1;
++
++	for (i = 0; i < num_groups; i++) {
++		if (groups[i] == cg)
++			return (int)i;
++	}
++	return -1;
++}
++
++static GVariant *local_std_gvar_tuple_array_u64(const uint64_t vals[][2], size_t count)
++{
++	GVariantBuilder gvb;
++	size_t i;
++
++	g_variant_builder_init(&gvb, G_VARIANT_TYPE("a(tt)"));
++	for (i = 0; i < count; i++)
++		g_variant_builder_add(&gvb, "(tt)", vals[i][0], vals[i][1]);
++
++	return g_variant_builder_end(&gvb);
++}
++
+ static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
+ {
+ 	struct sr_dev_inst *sdi;
+@@ -67,7 +150,7 @@ static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
+ 		goto fail;
+ 	}
+ 
+-	if (std_str_idx_s(hw_info->manufacturer, ARRAY_AND_SIZE(manufacturers)) < 0)
++	if (local_std_str_idx_s(hw_info->manufacturer, ARRAY_AND_SIZE(manufacturers)) < 0)
+ 		goto fail;
+ 
+ 	sdi = g_malloc0(sizeof(struct sr_dev_inst));
+@@ -100,7 +183,12 @@ fail:
+ 
+ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ {
+-	return sr_scpi_scan(di->context, options, probe_device);
++	GSList *devices;
++
++	devices = sr_scpi_scan((struct drv_context *)di->priv, options,
++			probe_device);
++
++	return std_scan_complete_compat(di, devices);
+ }
+ 
+ static void clear_helper(struct dev_context *devc)
+@@ -111,7 +199,26 @@ static void clear_helper(struct dev_context *devc)
+ 
+ static int dev_clear(const struct sr_dev_driver *di)
+ {
+-	return std_dev_clear_with_callback(di, (std_dev_clear_callback)clear_helper);
++	/*
++	 * std_dev_clear_with_callback is not available in the compat layer.
++	 * Inline the clear_helper logic: iterate instances, call clear_helper
++	 * on each devc, then use std_dev_clear_compat to free everything.
++	 */
++	struct compat_drv_context *drvc;
++	GSList *l;
++	struct sr_dev_inst *sdi;
++
++	if (!di || !di->priv)
++		return SR_ERR_ARG;
++
++	drvc = di->priv;
++	for (l = drvc->instances; l; l = l->next) {
++		sdi = l->data;
++		if (sdi->priv)
++			clear_helper(sdi->priv);
++	}
++
++	return std_dev_clear_compat(di);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -157,12 +264,12 @@ static int config_get(uint32_t key, GVariant **data,
+ 				(*model->timebases)[state->timebase][1]);
+ 		break;
+ 	case SR_CONF_NUM_VDIV:
+-		if (std_cg_idx(cg, devc->analog_groups, model->analog_channels) < 0)
++		if (local_std_cg_idx(cg, devc->analog_groups, model->analog_channels) < 0)
+ 			return SR_ERR_ARG;
+ 		*data = g_variant_new_int32(model->num_ydivs);
+ 		break;
+ 	case SR_CONF_VDIV:
+-		if ((idx = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((idx = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		*data = g_variant_new("(tt)",
+ 				(*model->vdivs)[state->analog_channels[idx].vdiv][0],
+@@ -178,7 +285,7 @@ static int config_get(uint32_t key, GVariant **data,
+ 		*data = g_variant_new_double(state->horiz_triggerpos);
+ 		break;
+ 	case SR_CONF_COUPLING:
+-		if ((idx = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((idx = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		*data = g_variant_new_string((*model->coupling_options)[state->analog_channels[idx].coupling]);
+ 		break;
+@@ -219,7 +326,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = SR_OK;
+ 		break;
+ 	case SR_CONF_TRIGGER_SOURCE:
+-		if ((idx = std_str_idx(data, *model->trigger_sources, model->num_trigger_sources)) < 0)
++		if ((idx = local_std_str_idx(data, *model->trigger_sources, model->num_trigger_sources)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->trigger_source = idx;
+ 		g_snprintf(command, sizeof(command),
+@@ -227,9 +334,9 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = sr_scpi_send(sdi->conn, command);
+ 		break;
+ 	case SR_CONF_VDIV:
+-		if ((idx = std_u64_tuple_idx(data, *model->vdivs, model->num_vdivs)) < 0)
++		if ((idx = local_std_u64_tuple_idx(data, *model->vdivs, model->num_vdivs)) < 0)
+ 			return SR_ERR_ARG;
+-		if ((j = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((j = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->analog_channels[j].vdiv = idx;
+ 		g_snprintf(command, sizeof(command),
+@@ -239,7 +346,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = SR_OK;
+ 		break;
+ 	case SR_CONF_TIMEBASE:
+-		if ((idx = std_u64_tuple_idx(data, *model->timebases, model->num_timebases)) < 0)
++		if ((idx = local_std_u64_tuple_idx(data, *model->timebases, model->num_timebases)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->timebase = idx;
+ 		g_snprintf(command, sizeof(command),
+@@ -263,7 +370,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = sr_scpi_send(sdi->conn, command);
+ 		break;
+ 	case SR_CONF_TRIGGER_SLOPE:
+-		if ((idx = std_str_idx(data, *model->trigger_slopes, model->num_trigger_slopes)) < 0)
++		if ((idx = local_std_str_idx(data, *model->trigger_slopes, model->num_trigger_slopes)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->trigger_slope = idx;
+ 		g_snprintf(command, sizeof(command),
+@@ -272,9 +379,9 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = sr_scpi_send(sdi->conn, command);
+ 		break;
+ 	case SR_CONF_COUPLING:
+-		if ((idx = std_str_idx(data, *model->coupling_options, model->num_coupling_options)) < 0)
++		if ((idx = local_std_str_idx(data, *model->coupling_options, model->num_coupling_options)) < 0)
+ 			return SR_ERR_ARG;
+-		if ((j = std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
++		if ((j = local_std_cg_idx(cg, devc->analog_groups, model->analog_channels)) < 0)
+ 			return SR_ERR_ARG;
+ 		state->analog_channels[j].coupling = idx;
+ 		g_snprintf(command, sizeof(command), "C%d:COUPLING %s",
+@@ -294,16 +401,6 @@ static int config_set(uint32_t key, GVariant *data,
+ 	return ret;
+ }
+ 
+-static int config_channel_set(const struct sr_dev_inst *sdi,
+-	struct sr_channel *ch, unsigned int changes)
+-{
+-	/* Currently we only handle SR_CHANNEL_SET_ENABLED. */
+-	if (changes != SR_CHANNEL_SET_ENABLED)
+-		return SR_ERR_NA;
+-
+-	return lecroy_xstream_channel_state_set(sdi, ch->index, ch->enabled);
+-}
+-
+ static int config_list(uint32_t key, GVariant **data,
+ 		const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+ {
+@@ -315,10 +412,16 @@ static int config_list(uint32_t key, GVariant **data,
+ 
+ 	switch (key) {
+ 	case SR_CONF_SCAN_OPTIONS:
+-		return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, NO_OPTS, NO_OPTS);
++		return std_config_list(key, data, sdi, cg,
++				scanopts, ARRAY_SIZE(scanopts),
++				NULL, 0,
++				NULL, 0);
+ 	case SR_CONF_DEVICE_OPTIONS:
+ 		if (!cg)
+-			return STD_CONFIG_LIST(key, data, sdi, cg, NO_OPTS, drvopts, devopts);
++			return std_config_list(key, data, sdi, cg,
++					NULL, 0,
++					drvopts, ARRAY_SIZE(drvopts),
++					devopts, ARRAY_SIZE(devopts));
+ 		*data = std_gvar_array_u32(ARRAY_AND_SIZE(devopts_cg_analog));
+ 		break;
+ 	case SR_CONF_COUPLING:
+@@ -339,12 +442,12 @@ static int config_list(uint32_t key, GVariant **data,
+ 	case SR_CONF_TIMEBASE:
+ 		if (!model)
+ 			return SR_ERR_ARG;
+-		*data = std_gvar_tuple_array(*model->timebases, model->num_timebases);
++		*data = local_std_gvar_tuple_array_u64(*model->timebases, model->num_timebases);
+ 		break;
+ 	case SR_CONF_VDIV:
+ 		if (!model)
+ 			return SR_ERR_ARG;
+-		*data = std_gvar_tuple_array(*model->vdivs, model->num_vdivs);
++		*data = local_std_gvar_tuple_array_u64(*model->vdivs, model->num_vdivs);
+ 		break;
+ 	default:
+ 		return SR_ERR_NA;
+@@ -456,7 +559,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 	sr_scpi_source_add(sdi->session, scpi, G_IO_IN, 50,
+ 			lecroy_xstream_receive_data, (void *)sdi);
+ 
+-	std_session_send_df_header(sdi);
++	std_session_send_df_header(sdi, NULL);
+ 
+ 	devc->current_channel = devc->enabled_channels;
+ 
+@@ -474,7 +577,7 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	struct dev_context *devc;
+ 	struct sr_scpi_dev_inst *scpi;
+ 
+-	std_session_send_df_end(sdi);
++	std_session_send_df_end(sdi, NULL);
+ 
+ 	devc = sdi->priv;
+ 
+@@ -487,23 +590,89 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	return SR_OK;
+ }
+ 
+-static struct sr_dev_driver lecroy_xstream_driver_info = {
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *lecroy_xstream_drv_ptr;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int lecroy_xstream_compat_init(struct sr_context *sr_ctx)
++{
++	lecroy_xstream_drv_ptr = &lecroy_xstream_driver_info;
++	return std_init(lecroy_xstream_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int lecroy_xstream_compat_cleanup(void)
++{
++	/* Call dev_clear to free per-device resources before cleanup */
++	dev_clear(lecroy_xstream_drv_ptr);
++	return std_cleanup(lecroy_xstream_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *lecroy_xstream_compat_scan(GSList *options)
++{
++	return scan(lecroy_xstream_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int lecroy_xstream_compat_config_get(int id, GVariant **data,
++		const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++		const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int lecroy_xstream_compat_config_set(int id, GVariant *data,
++		struct sr_dev_inst *sdi, struct sr_channel *ch,
++		struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int lecroy_xstream_compat_config_list(int info_id, GVariant **data,
++		const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int lecroy_xstream_compat_acquisition_start(struct sr_dev_inst *sdi,
++		void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int lecroy_xstream_compat_acquisition_stop(const struct sr_dev_inst *sdi,
++		void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct */
++struct sr_dev_driver lecroy_xstream_driver_info = {
+ 	.name = "lecroy-xstream",
+ 	.longname = "LeCroy X-Stream",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_channel_set = config_channel_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = lecroy_xstream_compat_init,
++	.cleanup = lecroy_xstream_compat_cleanup,
++	.scan = lecroy_xstream_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = lecroy_xstream_compat_config_get,
++	.config_set = lecroy_xstream_compat_config_set,
++	.config_list = lecroy_xstream_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = lecroy_xstream_compat_acquisition_start,
++	.dev_acquisition_stop = lecroy_xstream_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(lecroy_xstream_driver_info);

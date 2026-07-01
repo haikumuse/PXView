@@ -46,8 +46,14 @@ static int nma_send_req(const struct sr_dev_inst *sdi, int req, char *params)
 	devc->last_req = req;
 	devc->last_req_pending = TRUE;
 
+	/*
+	 * PXView's compat serial_timeout() takes 3 args:
+	 * serial_timeout(serial, baudrate, bytes). The original standard
+	 * sigrok used the 2-arg form serial_timeout(serial, bytes) which
+	 * read the baudrate from the serial port's own config.
+	 */
 	if (serial_write_blocking(serial, buf, len,
-			NMADMM_WRITE_TIMEOUT_MS) < 0) {
+			serial_timeout(serial, NMADMM_BAUDRATE, len)) < 0) {
 		sr_err("Unable to send request.");
 		devc->last_req_pending = FALSE;
 		return SR_ERR;
@@ -87,9 +93,6 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 	float value;	/* Measured value */
 	float scale;	/* Scaling factor depending on range and function */
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_datafeed_packet packet;
 
 	devc = sdi->priv;
@@ -115,11 +118,18 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 		}
 	}
 
-	/* Start decoding. */
+	/* Start decoding.
+	 *
+	 * PXView's sr_datafeed_analog is the old flat layout (probes, mq,
+	 * unit, mqflags, data, ...). There is no sr_analog_init() helper and
+	 * no encoding/meaning/spec sub-structs, so initialize the fields
+	 * directly. The original code passed digits=2 to sr_analog_init();
+	 * PXView's analog struct has no digits field, so that info is dropped
+	 * (same approach as fluke-dmm).
+	 */
 	value = 0.0;
 	scale = 1.0;
-	/* TODO: Use proper 'digits' value for this device (and its modes). */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 2);
+	memset(&analog, 0, sizeof(analog));
 
 	/*
 	 * The numbers are hex digits, starting from 0.
@@ -130,35 +140,35 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 	vt = xgittoint(devc->buf[2]);
 	switch (vt) {
 	case 0:
-		analog.meaning->mq = SR_MQ_VOLTAGE;
+		analog.mq = SR_MQ_VOLTAGE;
 		break;
 	case 1:
-		analog.meaning->mq = SR_MQ_CURRENT;	/* 2A */
+		analog.mq = SR_MQ_CURRENT;	/* 2A */
 		break;
 	case 2:
-		analog.meaning->mq = SR_MQ_RESISTANCE;
+		analog.mq = SR_MQ_RESISTANCE;
 		break;
 	case 3:
-		analog.meaning->mq = SR_MQ_CAPACITANCE;
+		analog.mq = SR_MQ_CAPACITANCE;
 		break;
 	case 4:
-		analog.meaning->mq = SR_MQ_TEMPERATURE;
+		analog.mq = SR_MQ_TEMPERATURE;
 		break;
 	case 5:
-		analog.meaning->mq = SR_MQ_FREQUENCY;
+		analog.mq = SR_MQ_FREQUENCY;
 		break;
 	case 6:
-		analog.meaning->mq = SR_MQ_CURRENT;	/* 10A */
+		analog.mq = SR_MQ_CURRENT;	/* 10A */
 		break;
 	case 7:
-		analog.meaning->mq = SR_MQ_GAIN;		/* TODO: Scale factor */
+		analog.mq = SR_MQ_GAIN;		/* TODO: Scale factor */
 		break;
 	case 8:
-		analog.meaning->mq = SR_MQ_GAIN;		/* Percentage */
+		analog.mq = SR_MQ_GAIN;		/* Percentage */
 		scale /= 100.0;
 		break;
 	case 9:
-		analog.meaning->mq = SR_MQ_GAIN;		/* dB */
+		analog.mq = SR_MQ_GAIN;		/* dB */
 		scale /= 100.0;
 		break;
 	default:
@@ -205,53 +215,53 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 	mmode = xgittoint(devc->buf[10]);
 	switch (mmode) {
 	case 0: /* Frequency */
-		analog.meaning->unit = SR_UNIT_HERTZ;
+		analog.unit = SR_UNIT_HERTZ;
 		break;
 	case 1: /* V TRMS, only type 5 */
-		analog.meaning->unit = SR_UNIT_VOLT;
-		analog.meaning->mqflags |= (SR_MQFLAG_AC | SR_MQFLAG_DC | SR_MQFLAG_RMS);
+		analog.unit = SR_UNIT_VOLT;
+		analog.mqflags |= (SR_MQFLAG_AC | SR_MQFLAG_DC | SR_MQFLAG_RMS);
 		break;
 	case 2: /* V AC */
-		analog.meaning->unit = SR_UNIT_VOLT;
-		analog.meaning->mqflags |= SR_MQFLAG_AC;
+		analog.unit = SR_UNIT_VOLT;
+		analog.mqflags |= SR_MQFLAG_AC;
 		if (devc->type >= 3)
-			analog.meaning->mqflags |= SR_MQFLAG_RMS;
+			analog.mqflags |= SR_MQFLAG_RMS;
 		break;
 	case 3: /* V DC */
-		analog.meaning->unit = SR_UNIT_VOLT;
-		analog.meaning->mqflags |= SR_MQFLAG_DC;
+		analog.unit = SR_UNIT_VOLT;
+		analog.mqflags |= SR_MQFLAG_DC;
 		break;
 	case 4: /* Ohm */
-		analog.meaning->unit = SR_UNIT_OHM;
+		analog.unit = SR_UNIT_OHM;
 		break;
 	case 5: /* Continuity */
-		analog.meaning->unit = SR_UNIT_BOOLEAN;
-		analog.meaning->mq = SR_MQ_CONTINUITY;
+		analog.unit = SR_UNIT_BOOLEAN;
+		analog.mq = SR_MQ_CONTINUITY;
 		/* TODO: Continuity handling is a bit odd in libsigrok. */
 		break;
 	case 6: /* Degree Celsius */
-		analog.meaning->unit = SR_UNIT_CELSIUS;
+		analog.unit = SR_UNIT_CELSIUS;
 		break;
 	case 7: /* Capacity */
-		analog.meaning->unit = SR_UNIT_FARAD;
+		analog.unit = SR_UNIT_FARAD;
 		break;
 	case 8: /* Current DC */
-		analog.meaning->unit = SR_UNIT_AMPERE;
-		analog.meaning->mqflags |= SR_MQFLAG_DC;
+		analog.unit = SR_UNIT_AMPERE;
+		analog.mqflags |= SR_MQFLAG_DC;
 		break;
 	case 9: /* Current AC */
-		analog.meaning->unit = SR_UNIT_AMPERE;
-		analog.meaning->mqflags |= SR_MQFLAG_AC;
+		analog.unit = SR_UNIT_AMPERE;
+		analog.mqflags |= SR_MQFLAG_AC;
 		if (devc->type >= 3)
-			analog.meaning->mqflags |= SR_MQFLAG_RMS;
+			analog.mqflags |= SR_MQFLAG_RMS;
 		break;
 	case 0xa: /* Current TRMS, only type 5 */
-		analog.meaning->unit = SR_UNIT_AMPERE;
-		analog.meaning->mqflags |= (SR_MQFLAG_AC | SR_MQFLAG_DC | SR_MQFLAG_RMS);
+		analog.unit = SR_UNIT_AMPERE;
+		analog.mqflags |= (SR_MQFLAG_AC | SR_MQFLAG_DC | SR_MQFLAG_RMS);
 		break;
 	case 0xb: /* Diode */
-		analog.meaning->unit = SR_UNIT_VOLT;
-		analog.meaning->mqflags |= (SR_MQFLAG_DIODE | SR_MQFLAG_DC);
+		analog.unit = SR_UNIT_VOLT;
+		analog.mqflags |= (SR_MQFLAG_DIODE | SR_MQFLAG_DC);
 		break;
 	default:
 		sr_err("Unknown mmode: 0x%02x.", mmode);
@@ -282,7 +292,7 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 	flags = (xgittoint(devc->buf[12]) << 8) | xgittoint(devc->buf[13]);
 	/* 0x80: PRINT TODO: Stop polling when discovered? */
 	/* 0x40: EXTR */
-	if (analog.meaning->mq == SR_MQ_CONTINUITY) {
+	if (analog.mq == SR_MQ_CONTINUITY) {
 		if (flags & 0x20)
 			value = 1.0; /* Beep */
 		else
@@ -291,26 +301,26 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 	/* 0x10: AVG */
 	/* 0x08: Diode */
 	if (flags & 0x04) /* REL */
-		analog.meaning->mqflags |= SR_MQFLAG_RELATIVE;
+		analog.mqflags |= SR_MQFLAG_RELATIVE;
 	/* 0x02: SHIFT	*/
 	if (flags & 0x01) /* % */
-		analog.meaning->unit = SR_UNIT_PERCENTAGE;
+		analog.unit = SR_UNIT_PERCENTAGE;
 
 	/* 14, 15 */
 	flags = (xgittoint(devc->buf[14]) << 8) | xgittoint(devc->buf[15]);
 	if (!(flags & 0x80))	/* MAN: Manual range */
-		analog.meaning->mqflags |= SR_MQFLAG_AUTORANGE;
+		analog.mqflags |= SR_MQFLAG_AUTORANGE;
 	if (flags & 0x40) /* LOBATT1: Low battery, measurement still within specs */
 		devc->lowbatt = 1;
 	/* 0x20: PEAK */
 	/* 0x10: COUNT */
 	if (flags & 0x08)	/* HOLD */
-		analog.meaning->mqflags |= SR_MQFLAG_HOLD;
+		analog.mqflags |= SR_MQFLAG_HOLD;
 	/* 0x04: LIMIT	*/
 	if (flags & 0x02) 	/* MAX */
-		analog.meaning->mqflags |= SR_MQFLAG_MAX;
+		analog.mqflags |= SR_MQFLAG_MAX;
 	if (flags & 0x01) 	/* MIN */
-		analog.meaning->mqflags |= SR_MQFLAG_MIN;
+		analog.mqflags |= SR_MQFLAG_MIN;
 
 	/* 16, 17 */
 	flags = (xgittoint(devc->buf[16]) << 8) | xgittoint(devc->buf[17]);
@@ -327,10 +337,10 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 		 * TODO: The Norma has an adjustable dB reference value. If
 		 * changed from default, this is not correct.
 		 */
-		if (analog.meaning->unit == SR_UNIT_VOLT)
-			analog.meaning->unit = SR_UNIT_DECIBEL_VOLT;
+		if (analog.unit == SR_UNIT_VOLT)
+			analog.unit = SR_UNIT_DECIBEL_VOLT;
 		else
-			analog.meaning->unit = SR_UNIT_UNITLESS;
+			analog.unit = SR_UNIT_UNITLESS;
 	}
 
 	/* 18, 19 */
@@ -358,9 +368,11 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 		(double)scale, (double)value);
 
 	/* Finish and send packet. */
-	analog.meaning->channels = sdi->channels;
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
 	analog.data = &value;
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 
 	memset(&packet, 0, sizeof(struct sr_datafeed_packet));
 	packet.type = SR_DF_ANALOG;
@@ -372,8 +384,14 @@ static void nma_process_line(const struct sr_dev_inst *sdi)
 	devc->buflen = 0;
 }
 
-SR_PRIV int norma_dmm_receive_data(int fd, int revents,
-		const struct sr_dev_inst *sdi)
+/*
+ * PXView's sr_receive_data_callback_t passes the sdi directly as the third
+ * argument (const struct sr_dev_inst *sdi) instead of the void *cb_data
+ * that standard sigrok uses. The original signature was:
+ *   int norma_dmm_receive_data(int fd, int revents, void *cb_data)
+ * with `if (!(sdi = cb_data)) return TRUE;` at the top.
+ */
+SR_PRIV int norma_dmm_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
 	struct dev_context *devc;
 	struct sr_serial_dev_inst *serial;

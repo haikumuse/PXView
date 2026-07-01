@@ -21,49 +21,39 @@
 #define LIBSIGROK_HARDWARE_NORMA_DMM_PROTOCOL_H
 
 #include "hardware/compat/compat.h"
+#include <stdint.h>
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <glib.h>
 
 #define LOG_PREFIX "norma-dmm"
 
-/* Sentinel terminator for arrays of zero-initialised structs. */
+/*
+ * ALL_ZERO sentinel for array terminators (standard sigrok idiom, not
+ * provided by PXView's libsigrok-internal.h).
+ */
+#ifndef ALL_ZERO
 #define ALL_ZERO { 0 }
+#endif
 
 #define NMADMM_BUFSIZE 256
 
 #define NMADMM_TIMEOUT_MS 2000 /**< Request timeout. */
 
 /*
- * Write timeout for serial writes. The Norma DM9x0 talks at 4800 baud
- * (default SERIALCOMM), so a short request of ~10 bytes takes roughly
- * 25 ms to transmit. 100 ms gives a comfortable safety margin and keeps
- * the code independent of the 3-arg serial_timeout() helper signature
- * used by PXView's compat serial layer.
+ * Serial baudrate for Norma DM9x0 / Siemens B102x DMMs. Used by the
+ * serial_timeout() calls (PXView's compat layer takes a 3-arg form:
+ * serial_timeout(serial, baudrate, bytes)).
  */
-#define NMADMM_WRITE_TIMEOUT_MS 100
-
-/** Norma DMM request types (used ones only, the DMMs support about 50). */
-enum {
-	NMADMM_REQ_IDN = 0,	/**< Request identity */
-	NMADMM_REQ_STATUS,	/**< Request device status (value + ...) */
-};
-
-/** Defines requests used to communicate with device. */
-struct nmadmm_req {
-	int req_type;		/**< Request type. */
-	const char *req_str;	/**< Request string. */
-};
-
-/** Strings for requests. */
-extern const struct nmadmm_req nmadmm_requests[];
+#define NMADMM_BAUDRATE 4800
 
 /*
  * PXView's libsigrok does not provide struct sr_sw_limits or the
  * sr_sw_limits_* helpers that standard sigrok's libsigrok-internal.h
  * exposes. Define them locally as static inline so this driver is
  * self-contained and cannot clash with copies living in other compat
- * drivers at link time.
+ * drivers at link time (same pattern as fluke-dmm).
  */
 struct sr_sw_limits {
 	uint64_t limit_samples;
@@ -74,6 +64,8 @@ struct sr_sw_limits {
 
 static inline void sr_sw_limits_init(struct sr_sw_limits *limits)
 {
+	if (!limits)
+		return;
 	memset(limits, 0, sizeof(*limits));
 }
 
@@ -153,6 +145,21 @@ static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
 	return FALSE;
 }
 
+/** Norma DMM request types (used ones only, the DMMs support about 50). */
+enum {
+	NMADMM_REQ_IDN = 0,	/**< Request identity */
+	NMADMM_REQ_STATUS,	/**< Request device status (value + ...) */
+};
+
+/** Defines requests used to communicate with device. */
+struct nmadmm_req {
+	int req_type;		/**< Request type. */
+	const char *req_str;	/**< Request string. */
+};
+
+/** Strings for requests. */
+extern const struct nmadmm_req nmadmm_requests[];
+
 struct dev_context {
 	int type;		/**< DM9x0, e.g. 5 = DM950 */
 
@@ -167,8 +174,12 @@ struct dev_context {
 	int buflen;			/**< Data len in buf */
 };
 
-SR_PRIV int norma_dmm_receive_data(int fd, int revents,
-		const struct sr_dev_inst *sdi);
+/*
+ * PXView's sr_receive_data_callback_t passes the sdi directly as the third
+ * argument (const struct sr_dev_inst *sdi) instead of the void *cb_data
+ * that standard sigrok uses.
+ */
+SR_PRIV int norma_dmm_receive_data(int fd, int revents, const struct sr_dev_inst *sdi);
 SR_PRIV int xgittoint(char xgit);
 
 #endif

@@ -659,7 +659,7 @@ SR_PRIV int rdtech_tc_receive_data(int fd, int revents, const struct sr_dev_inst
 	/* Handle availability of receive data. */
 	serial = sdi->conn;
 	if (revents == G_IO_IN) {
-		ret = recv_poll_data(sdi, serial);
+		ret = recv_poll_data((struct sr_dev_inst *)sdi, serial);
 		if (ret != SR_OK)
 			sr_dev_acquisition_stop(sdi);
 	}

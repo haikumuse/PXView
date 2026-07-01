@@ -30,8 +30,7 @@
 #include <time.h>
 #include "protocol.h"
 
-/* Add missing frame begin/end function declarations */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
+/* Frame end declared locally; frame_begin is canonical in compat_helpers.c. */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 /*
@@ -1019,16 +1018,7 @@ SR_PRIV int rigol_ds_get_dev_cfg_vertical(const struct sr_dev_inst *sdi)
 	return SR_OK;
 }
 
-/* Frame begin/end stub implementations for compat layer */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
-
+/* Frame end stub kept locally; frame_begin is canonical in compat_helpers.c. */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;

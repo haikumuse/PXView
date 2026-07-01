@@ -1,0 +1,260 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\yokog
+awa-dlm\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\protocol.c"
+index 06dae50..c76a435 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\protocol.c"
+@@ -18,10 +18,65 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
+-#include "scpi.h"
++#include "hardware/compat/compat.h"
++#include <errno.h>
++#include <ctype.h>
++#include <math.h>
+ #include "protocol.h"
+ 
++/*
++ * Local replacements for standard sigrok's sr_atof_ascii / sr_atoi which are
++ * not provided by PXView's libsigrok. These parse ASCII numeric strings in a
++ * locale-independent way and return SR_OK/SR_ERR.
++ */
++static int local_sr_atof_ascii(const char *str, float *ret)
++{
++	char *e;
++	double tmp;
++
++	errno = 0;
++	tmp = g_ascii_strtod(str, &e);
++	if (e == str || errno != 0)
++		return SR_ERR;
++	*ret = (float)tmp;
++	return SR_OK;
++}
++
++static int local_sr_atoi(const char *str, int *ret)
++{
++	char *e;
++	long tmp;
++
++	errno = 0;
++	tmp = strtol(str, &e, 10);
++	if (e == str || *e != '\0' || errno != 0)
++		return SR_ERR;
++	if (tmp > INT_MAX || tmp < INT_MIN)
++		return SR_ERR;
++	*ret = (int)tmp;
++	return SR_OK;
++}
++
++/*
++ * Local helper to format a timebase (given as a numerator/denominator pair of
++ * seconds) into a human-readable period string. Standard sigrok's
++ * sr_period_string() takes a (p, q) pair, but PXView's sr_period_string()
++ * takes a single frequency value. We instead compute the period in nanoseconds
++ * and delegate to PXView's sr_time_string().
++ */
++static char *dlm_period_string(uint64_t p, uint64_t q)
++{
++	uint64_t period_ns;
++
++	if (q == 0)
++		return g_strdup("? s");
++
++	/* period = p/q seconds = p*1e9/q nanoseconds.
++	 * The DLM timebase table uses values that keep this exact. */
++	period_ns = (uint64_t)((double)p * 1e9 / (double)q);
++	return sr_time_string(period_ns);
++}
++
+ static const char *coupling_options[] = {
+ 	"AC", "DC", "DC50", "GND",
+ };
+@@ -253,7 +308,7 @@ static void scope_state_dump(const struct scope_config *config,
+ 				state->pod_states[i] ? "On" : "Off");
+ 	}
+ 
+-	tmp = sr_period_string(dlm_timebases[state->timebase][0],
++	tmp = dlm_period_string(dlm_timebases[state->timebase][0],
+ 			dlm_timebases[state->timebase][1]);
+ 	sr_info("Current timebase: %s", tmp);
+ 	g_free(tmp);
+@@ -336,9 +391,9 @@ static int array_float_get(gchar *value, const uint64_t array[][2],
+ 	strncpy(ss, value, pos);
+ 	strncpy(es, &(value[pos+1]), 3);
+ 
+-	if (sr_atof_ascii(ss, &s) != SR_OK)
++	if (local_sr_atof_ascii(ss, &s) != SR_OK)
+ 		return SR_ERR;
+-	if (sr_atoi(es, &e) != SR_OK)
++	if (local_sr_atoi(es, &e) != SR_OK)
+ 		return SR_ERR;
+ 
+ 	/* Transform e.g. 10^-03 to 1000 as the array stores the inverse. */
+@@ -878,7 +933,7 @@ static int dlm_block_data_header_process(GArray *data, int *len)
+ 		s[i] = g_array_index(data, gchar, 2 + i);
+ 	s[i] = 0;
+ 
+-	if (sr_atoi(s, len) != SR_OK)
++	if (local_sr_atoi(s, len) != SR_OK)
+ 		return SR_ERR;
+ 
+ 	g_array_remove_range(data, 0, 2 + n);
+@@ -889,6 +944,9 @@ static int dlm_block_data_header_process(GArray *data, int *len)
+ /**
+  * Turns raw sample data into voltages and sends them off to the session bus.
+  *
++ * Adapted for PXView: uses PXView's sr_datafeed_analog struct (probes field
++ * instead of meaning->channels, no sr_analog_init/encoding/meaning/spec).
++ *
+  * @param data The raw sample data.
+  * @ch_state Pointer to the state of the channel whose data we're processing.
+  * @sdi The device instance.
+@@ -897,7 +955,7 @@ static int dlm_block_data_header_process(GArray *data, int *len)
+  */
+ static int dlm_analog_samples_send(GArray *data,
+ 		struct analog_channel_state *ch_state,
+-		struct sr_dev_inst *sdi)
++		const struct sr_dev_inst *sdi)
+ {
+ 	uint32_t i, samples;
+ 	float voltage, range, offset;
+@@ -906,9 +964,6 @@ static int dlm_analog_samples_send(GArray *data,
+ 	struct scope_state *model_state;
+ 	struct sr_channel *ch;
+ 	struct sr_datafeed_analog analog;
+-	struct sr_analog_encoding encoding;
+-	struct sr_analog_meaning meaning;
+-	struct sr_analog_spec spec;
+ 	struct sr_datafeed_packet packet;
+ 
+ 	devc = sdi->priv;
+@@ -937,17 +992,21 @@ static int dlm_analog_samples_send(GArray *data,
+ 	}
+ 
+ 	/* TODO: Use proper 'digits' value for this device (and its modes). */
+-	sr_analog_init(&analog, &encoding, &meaning, &spec, 2);
+-	analog.meaning->channels = g_slist_append(NULL, ch);
++	memset(&analog, 0, sizeof(analog));
++	analog.probes = g_slist_append(NULL, ch);
+ 	analog.num_samples = float_data->len;
+ 	analog.data = (float*)float_data->data;
+-	analog.meaning->mq = SR_MQ_VOLTAGE;
+-	analog.meaning->unit = SR_UNIT_VOLT;
+-	analog.meaning->mqflags = 0;
++	analog.unit_bits = 32; /* float */
++	analog.unit_pitch = 0;
++	analog.mq = SR_MQ_VOLTAGE;
++	analog.unit = SR_UNIT_VOLT;
++	analog.mqflags = 0;
++	memset(&packet, 0, sizeof(packet));
+ 	packet.type = SR_DF_ANALOG;
++	packet.status = SR_PKT_OK;
+ 	packet.payload = &analog;
+ 	sr_session_send(sdi, &packet);
+-	g_slist_free(analog.meaning->channels);
++	g_slist_free(analog.probes);
+ 
+ 	g_array_free(float_data, TRUE);
+ 	g_array_remove_range(data, 0, samples * sizeof(uint8_t));
+@@ -958,6 +1017,9 @@ static int dlm_analog_samples_send(GArray *data,
+ /**
+  * Sends logic sample data off to the session bus.
+  *
++ * Adapted for PXView: zeroes the sr_datafeed_logic struct and sets
++ * packet.status = SR_PKT_OK.
++ *
+  * @param data The raw sample data.
+  * @ch_state Pointer to the state of the channel whose data we're processing.
+  * @sdi The device instance.
+@@ -965,7 +1027,7 @@ static int dlm_analog_samples_send(GArray *data,
+  * @return SR_ERR when data is trucated, SR_OK otherwise.
+  */
+ static int dlm_digital_samples_send(GArray *data,
+-		struct sr_dev_inst *sdi)
++		const struct sr_dev_inst *sdi)
+ {
+ 	struct dev_context *devc;
+ 	struct scope_state *model_state;
+@@ -982,10 +1044,13 @@ static int dlm_digital_samples_send(GArray *data,
+ 		return SR_ERR;
+ 	}
+ 
++	memset(&logic, 0, sizeof(logic));
+ 	logic.length = samples;
+ 	logic.unitsize = 1;
+ 	logic.data = data->data;
++	memset(&packet, 0, sizeof(packet));
+ 	packet.type = SR_DF_LOGIC;
++	packet.status = SR_PKT_OK;
+ 	packet.payload = &logic;
+ 	sr_session_send(sdi, &packet);
+ 
+@@ -1005,9 +1070,8 @@ static int dlm_digital_samples_send(GArray *data,
+  * @return TRUE in case of success or a recoverable error,
+  *         FALSE when a fatal error was encountered.
+  */
+-SR_PRIV int dlm_data_receive(int fd, int revents, void *cb_data)
++SR_PRIV int dlm_data_receive(int fd, int revents, const struct sr_dev_inst *sdi)
+ {
+-	struct sr_dev_inst *sdi;
+ 	struct scope_state *model_state;
+ 	struct dev_context *devc;
+ 	struct sr_channel *ch;
+@@ -1017,7 +1081,7 @@ SR_PRIV int dlm_data_receive(int fd, int revents, void *cb_data)
+ 	(void)fd;
+ 	(void)revents;
+ 
+-	if (!(sdi = cb_data))
++	if (!sdi)
+ 		return FALSE;
+ 
+ 	if (!(devc = sdi->priv))
+@@ -1072,6 +1136,7 @@ SR_PRIV int dlm_data_receive(int fd, int revents, void *cb_data)
+ 		/* Don't care about return value here. */
+ 		dlm_acquisition_stop(sdi->conn);
+ 		g_array_free(data, TRUE);
++		data = NULL;
+ 		dlm_channel_data_request(sdi);
+ 		return TRUE;
+ 	}
+@@ -1128,3 +1193,31 @@ fail:
+ 
+ 	return FALSE;
+ }
++
++/* Frame begin/end stub implementations for compat layer.
++ * PXView's compat layer provides std_session_send_df_header/end (with a
++ * prefix argument) but not the frame begin/end variants. These local
++ * implementations send SR_DF_FRAME_BEGIN/END packets directly. */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	memset(&packet, 0, sizeof(packet));
++	packet.type = SR_DF_FRAME_BEGIN;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}
++
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	memset(&packet, 0, sizeof(packet));
++	packet.type = SR_DF_FRAME_END;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}

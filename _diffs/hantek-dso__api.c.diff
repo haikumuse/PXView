@@ -1,0 +1,465 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-dso\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-dso\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-dso\\api.c"
+index bfad5f7..add6bfc 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-dso\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-dso\\api.c"
+@@ -17,24 +17,19 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <math.h>
+ #include <stdio.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+-#include <sys/types.h>
+-#include <sys/stat.h>
+-#include <fcntl.h>
+-#include <unistd.h>
+ #include <string.h>
+-#include <sys/time.h>
+ #include <inttypes.h>
+-#include <glib.h>
+-#include <libusb.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
+ #include "protocol.h"
+ 
++#ifndef ALL_ZERO
++#define ALL_ZERO { 0 }
++#endif
++
+ /* Max time in ms before we want to check on USB events */
+ /* TODO tune this properly */
+ #define TICK 1
+@@ -44,6 +39,69 @@
+ 
+ #define NUM_BUFFER_SIZES 2
+ 
++/*
++ * Local helper functions for std_str_idx / std_u64_idx / std_u64_tuple_idx.
++ * The compat layer's versions of these helpers have a different signature
++ * (they are config_get helpers with (sdi, key, data, ...) parameters).
++ * The standard sigrok versions take (data, vals, count) and return an index,
++ * which is what this driver needs in config_set.
++ */
++static int local_std_str_idx(GVariant *data, const char *const strs[], size_t count)
++{
++	const char *str;
++	size_t i;
++
++	str = g_variant_get_string(data, NULL);
++	for (i = 0; i < count; i++) {
++		if (strcmp(str, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_u64_idx(GVariant *data, const uint64_t vals[], size_t count)
++{
++	uint64_t val;
++	size_t i;
++
++	val = g_variant_get_uint64(data);
++	for (i = 0; i < count; i++) {
++		if (vals[i] == val)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_u64_tuple_idx(GVariant *data, const uint64_t vals[][2], size_t count)
++{
++	uint64_t v0, v1;
++	size_t i;
++
++	g_variant_get(data, "(tt)", &v0, &v1);
++	for (i = 0; i < count; i++) {
++		if (vals[i][0] == v0 && vals[i][1] == v1)
++			return (int)i;
++	}
++	return -1;
++}
++
++/*
++ * Local helper to create a GVariant "a(tt)" array from an array of uint64
++ * pairs. The compat layer's std_gvar_tuple_array() only handles string
++ * arrays, so we provide this local version for timebases/vdivs tables.
++ */
++static GVariant *local_std_gvar_tuple_array_u64(const uint64_t vals[][2], size_t count)
++{
++	GVariantBuilder gvb;
++	size_t i;
++
++	g_variant_builder_init(&gvb, G_VARIANT_TYPE("a(tt)"));
++	for (i = 0; i < count; i++)
++		g_variant_builder_add(&gvb, "(tt)", vals[i][0], vals[i][1]);
++
++	return g_variant_builder_end(&gvb);
++}
++
+ static const uint32_t scanopts[] = {
+ 	SR_CONF_CONN,
+ };
+@@ -258,12 +316,31 @@ static void clear_helper(struct dev_context *devc)
+ 
+ static int dev_clear(const struct sr_dev_driver *di)
+ {
+-	return std_dev_clear_with_callback(di, (std_dev_clear_callback)clear_helper);
++	/*
++	 * std_dev_clear_with_callback is not available in the compat layer.
++	 * Inline the clear_helper logic: iterate instances, call clear_helper
++	 * on each devc, then use std_dev_clear_compat to free everything.
++	 */
++	struct compat_drv_context *drvc;
++	GSList *l;
++	struct sr_dev_inst *sdi;
++
++	if (!di || !di->priv)
++		return SR_ERR_ARG;
++
++	drvc = di->priv;
++	for (l = drvc->instances; l; l = l->next) {
++		sdi = l->data;
++		if (sdi->priv)
++			clear_helper(sdi->priv);
++	}
++
++	return std_dev_clear_compat(di);
+ }
+ 
+ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ {
+-	struct drv_context *drvc;
++	struct compat_drv_context *drvc;
+ 	struct dev_context *devc;
+ 	struct sr_dev_inst *sdi;
+ 	struct sr_usb_dev_inst *usb;
+@@ -276,7 +353,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 	const char *conn;
+ 	char connection_id[64];
+ 
+-	drvc = di->context;
++	drvc = di->priv;
+ 
+ 	devices = 0;
+ 
+@@ -326,7 +403,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 				sdi->connection_id = g_strdup(connection_id);
+ 				devices = g_slist_append(devices, sdi);
+ 				devc = sdi->priv;
+-				if (ezusb_upload_firmware(drvc->sr_ctx, devlist[i],
++				if (ezusb_upload_firmware(devlist[i],
+ 						USB_CONFIGURATION, prof->firmware) == SR_OK) {
+ 					/* Remember when the firmware on this device was updated */
+ 					devc->fw_updated = g_get_monotonic_time();
+@@ -359,7 +436,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 	}
+ 	libusb_free_device_list(devlist, 1);
+ 
+-	return std_scan_complete(di, devices);
++	return std_scan_complete_compat(di, devices);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -530,7 +607,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 				return SR_ERR;
+ 			break;
+ 		case SR_CONF_TRIGGER_SLOPE:
+-			if ((idx = std_str_idx(data, ARRAY_AND_SIZE(trigger_slopes))) < 0)
++			if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(trigger_slopes))) < 0)
+ 				return SR_ERR_ARG;
+ 			devc->triggerslope = idx;
+ 			break;
+@@ -538,24 +615,24 @@ static int config_set(uint32_t key, GVariant *data,
+ 			devc->capture_ratio = g_variant_get_uint64(data);
+ 			break;
+ 		case SR_CONF_BUFFERSIZE:
+-			if ((idx = std_u64_idx(data, devc->profile->buffersizes, NUM_BUFFER_SIZES)) < 0)
++			if ((idx = local_std_u64_idx(data, devc->profile->buffersizes, NUM_BUFFER_SIZES)) < 0)
+ 				return SR_ERR_ARG;
+ 			devc->framesize = devc->profile->buffersizes[idx];
+ 			break;
+ 		case SR_CONF_TIMEBASE:
+-			if ((idx = std_u64_tuple_idx(data, ARRAY_AND_SIZE(timebases))) < 0)
++			if ((idx = local_std_u64_tuple_idx(data, ARRAY_AND_SIZE(timebases))) < 0)
+ 				return SR_ERR_ARG;
+ 			devc->timebase = idx;
+ 			break;
+ 		case SR_CONF_SAMPLERATE:
+-			if ((idx = std_u64_idx(data, ARRAY_AND_SIZE(samplerates))) < 0)
++			if ((idx = local_std_u64_idx(data, ARRAY_AND_SIZE(samplerates))) < 0)
+ 				return SR_ERR_ARG;
+ 			devc->samplerate = samplerates[idx];
+ 			if (dso_set_trigger_samplerate(sdi) != SR_OK)
+ 				return SR_ERR;
+ 			break;
+ 		case SR_CONF_TRIGGER_SOURCE:
+-			if ((idx = std_str_idx(data, ARRAY_AND_SIZE(trigger_sources))) < 0)
++			if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(trigger_sources))) < 0)
+ 				return SR_ERR_ARG;
+ 			g_free(devc->triggersource);
+ 			devc->triggersource = g_strdup(trigger_sources[idx]);
+@@ -575,12 +652,12 @@ static int config_set(uint32_t key, GVariant *data,
+ 			devc->filter[ch_idx] = g_variant_get_boolean(data);
+ 			break;
+ 		case SR_CONF_VDIV:
+-			if ((idx = std_u64_tuple_idx(data, ARRAY_AND_SIZE(vdivs))) < 0)
++			if ((idx = local_std_u64_tuple_idx(data, ARRAY_AND_SIZE(vdivs))) < 0)
+ 				return SR_ERR_ARG;
+ 			devc->voltage[ch_idx] = idx;
+ 			break;
+ 		case SR_CONF_COUPLING:
+-			if ((idx = std_str_idx(data, ARRAY_AND_SIZE(coupling))) < 0)
++			if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(coupling))) < 0)
+ 				return SR_ERR_ARG;
+ 			devc->coupling[ch_idx] = idx;
+ 			break;
+@@ -601,7 +678,9 @@ static int config_list(uint32_t key, GVariant **data,
+ 		switch (key) {
+ 		case SR_CONF_SCAN_OPTIONS:
+ 		case SR_CONF_DEVICE_OPTIONS:
+-			return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
++			return std_config_list(key, data, sdi, cg, scanopts,
++				ARRAY_SIZE(scanopts), drvopts, ARRAY_SIZE(drvopts),
++				devopts, ARRAY_SIZE(devopts));
+ 		case SR_CONF_BUFFERSIZE:
+ 			if (!sdi)
+ 				return SR_ERR_ARG;
+@@ -612,7 +691,7 @@ static int config_list(uint32_t key, GVariant **data,
+ 			*data = std_gvar_samplerates(ARRAY_AND_SIZE(samplerates));
+ 			break;
+ 		case SR_CONF_TIMEBASE:
+-			*data = std_gvar_tuple_array(ARRAY_AND_SIZE(timebases));
++			*data = local_std_gvar_tuple_array_u64(ARRAY_AND_SIZE(timebases));
+ 			break;
+ 		case SR_CONF_TRIGGER_SOURCE:
+ 			*data = g_variant_new_strv(ARRAY_AND_SIZE(trigger_sources));
+@@ -632,7 +711,7 @@ static int config_list(uint32_t key, GVariant **data,
+ 			*data = g_variant_new_strv(ARRAY_AND_SIZE(coupling));
+ 			break;
+ 		case SR_CONF_VDIV:
+-			*data = std_gvar_tuple_array(ARRAY_AND_SIZE(vdivs));
++			*data = local_std_gvar_tuple_array_u64(ARRAY_AND_SIZE(vdivs));
+ 			break;
+ 		default:
+ 			return SR_ERR_NA;
+@@ -647,20 +726,19 @@ static void send_chunk(struct sr_dev_inst *sdi, unsigned char *buf,
+ {
+ 	struct sr_datafeed_packet packet;
+ 	struct sr_datafeed_analog analog;
+-	struct sr_analog_encoding encoding;
+-	struct sr_analog_meaning meaning;
+-	struct sr_analog_spec spec;
+ 	struct dev_context *devc = sdi->priv;
+ 	GSList *channels = devc->enabled_channels;
+ 
+ 	packet.type = SR_DF_ANALOG;
++	packet.status = SR_PKT_OK;
+ 	packet.payload = &analog;
+ 	/* TODO: support for 5xxx series 9-bit samples */
+-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
+ 	analog.num_samples = num_samples;
+-	analog.meaning->mq = SR_MQ_VOLTAGE;
+-	analog.meaning->unit = SR_UNIT_VOLT;
+-	analog.meaning->mqflags = 0;
++	analog.mq = SR_MQ_VOLTAGE;
++	analog.unit = SR_UNIT_VOLT;
++	analog.mqflags = 0;
++	analog.unit_bits = 32; /* float data */
++	analog.unit_pitch = 0;
+ 	/* TODO: Check malloc return value. */
+ 	analog.data = g_try_malloc(num_samples * sizeof(float));
+ 
+@@ -669,11 +747,7 @@ static void send_chunk(struct sr_dev_inst *sdi, unsigned char *buf,
+ 			continue;
+ 
+ 		float range = ((float)vdivs[devc->voltage[ch]][0] / vdivs[devc->voltage[ch]][1]) * 8;
+-		float vdivlog = log10f(range / 255);
+-		int digits = -(int)vdivlog + (vdivlog < 0.0);
+-		analog.encoding->digits = digits;
+-		analog.spec->spec_digits = digits;
+-		analog.meaning->channels = g_slist_append(NULL, channels->data);
++		analog.probes = g_slist_append(NULL, channels->data);
+ 
+ 		for (int i = 0; i < num_samples; i++) {
+ 			/*
+@@ -692,7 +766,7 @@ static void send_chunk(struct sr_dev_inst *sdi, unsigned char *buf,
+ 			((float *)analog.data)[i] = range / 255 * *(buf + i * 2 + 1 - ch) - range / 2;
+ 		}
+ 		sr_session_send(sdi, &packet);
+-		g_slist_free(analog.meaning->channels);
++		g_slist_free(analog.probes);
+ 
+ 		channels = channels->next;
+ 	}
+@@ -795,13 +869,11 @@ static void LIBUSB_CALL receive_transfer(struct libusb_transfer *transfer)
+ 	}
+ }
+ 
+-static int handle_event(int fd, int revents, void *cb_data)
++static int handle_event(int fd, int revents, const struct sr_dev_inst *sdi)
+ {
+-	const struct sr_dev_inst *sdi;
+ 	struct timeval tv;
+-	struct sr_dev_driver *di;
++	struct compat_drv_context *drvc;
+ 	struct dev_context *devc;
+-	struct drv_context *drvc;
+ 	int num_channels;
+ 	uint32_t trigger_offset;
+ 	uint8_t capturestate;
+@@ -809,9 +881,7 @@ static int handle_event(int fd, int revents, void *cb_data)
+ 	(void)fd;
+ 	(void)revents;
+ 
+-	sdi = cb_data;
+-	di = sdi->driver;
+-	drvc = di->context;
++	drvc = sdi->driver->priv;
+ 	devc = sdi->priv;
+ 	if (devc->dev_state == STOPPING) {
+ 		/* We've been told to wind up the acquisition. */
+@@ -822,7 +892,7 @@ static int handle_event(int fd, int revents, void *cb_data)
+ 		 */
+ 		usb_source_remove(sdi->session, drvc->sr_ctx);
+ 
+-		std_session_send_df_end(sdi);
++		std_session_send_df_end(sdi, LOG_PREFIX);
+ 
+ 		devc->dev_state = IDLE;
+ 
+@@ -914,7 +984,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ {
+ 	struct dev_context *devc;
+ 	struct sr_dev_driver *di = sdi->driver;
+-	struct drv_context *drvc = di->context;
++	struct compat_drv_context *drvc = di->priv;
+ 
+ 	devc = sdi->priv;
+ 
+@@ -930,9 +1000,9 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 		return SR_ERR;
+ 
+ 	devc->dev_state = CAPTURE;
+-	usb_source_add(sdi->session, drvc->sr_ctx, TICK, handle_event, (void *)sdi);
++	usb_source_add(drvc->sr_ctx, TICK, handle_event, sdi);
+ 
+-	std_session_send_df_header(sdi);
++	std_session_send_df_header(sdi, LOG_PREFIX);
+ 
+ 	return SR_OK;
+ }
+@@ -948,22 +1018,90 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	return SR_OK;
+ }
+ 
+-static struct sr_dev_driver hantek_dso_driver_info = {
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *hantek_dso_drv_ptr;
++
++/* Forward declaration - defined at end of file */
++extern struct sr_dev_driver hantek_dso_driver_info;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int hantek_dso_compat_init(struct sr_context *sr_ctx)
++{
++	hantek_dso_drv_ptr = &hantek_dso_driver_info;
++	return std_init(hantek_dso_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int hantek_dso_compat_cleanup(void)
++{
++	/* Call dev_clear to free per-device resources before cleanup */
++	dev_clear(hantek_dso_drv_ptr);
++	return std_cleanup(hantek_dso_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *hantek_dso_compat_scan(GSList *options)
++{
++	return scan(hantek_dso_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int hantek_dso_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int hantek_dso_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int hantek_dso_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int hantek_dso_compat_acquisition_start(struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int hantek_dso_compat_acquisition_stop(const struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct */
++struct sr_dev_driver hantek_dso_driver_info = {
+ 	.name = "hantek-dso",
+ 	.longname = "Hantek DSO",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = hantek_dso_compat_init,
++	.cleanup = hantek_dso_compat_cleanup,
++	.scan = hantek_dso_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = hantek_dso_compat_config_get,
++	.config_set = hantek_dso_compat_config_set,
++	.config_list = hantek_dso_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = hantek_dso_compat_acquisition_start,
++	.dev_acquisition_stop = hantek_dso_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(hantek_dso_driver_info);

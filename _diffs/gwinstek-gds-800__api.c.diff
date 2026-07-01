@@ -1,0 +1,166 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\gwins
+tek-gds-800\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\gwinstek-gds-800\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\gwinstek-gds-800\\api.c"
+index 6e9b85b..b387c7a 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\gwinstek-gds-800\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\gwinstek-gds-800\\api.c"
+@@ -17,6 +17,7 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include "hardware/compat/compat.h"
+ #include <string.h>
+ #include "protocol.h"
+ 
+@@ -34,7 +35,7 @@ static const uint32_t devopts[] = {
+ 	SR_CONF_SAMPLERATE | SR_CONF_GET,
+ };
+ 
+-static struct sr_dev_driver gwinstek_gds_800_driver_info;
++extern struct sr_dev_driver gwinstek_gds_800_driver_info;
+ 
+ static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
+ {
+@@ -85,7 +86,12 @@ static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
+ 
+ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ {
+-	return sr_scpi_scan(di->context, options, probe_device);
++	GSList *devices;
++
++	devices = sr_scpi_scan((struct drv_context *)di->priv, options,
++			probe_device);
++
++	return std_scan_complete_compat(di, devices);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -165,7 +171,10 @@ static int config_set(uint32_t key, GVariant *data,
+ static int config_list(uint32_t key, GVariant **data,
+ 	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+ {
+-	return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
++	return std_config_list(key, data, sdi, cg,
++		scanopts, ARRAY_SIZE(scanopts),
++		drvopts, ARRAY_SIZE(drvopts),
++		devopts, ARRAY_SIZE(devopts));
+ }
+ 
+ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+@@ -195,7 +204,7 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 
+ 	if (devc->df_started) {
+ 		std_session_send_df_frame_end(sdi);
+-		std_session_send_df_end(sdi);
++		std_session_send_df_end(sdi, NULL);
+ 		devc->df_started = FALSE;
+ 	}
+ 
+@@ -204,22 +213,88 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	return SR_OK;
+ }
+ 
+-static struct sr_dev_driver gwinstek_gds_800_driver_info = {
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *gwinstek_gds_800_drv_ptr;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int gwinstek_gds_800_compat_init(struct sr_context *sr_ctx)
++{
++	gwinstek_gds_800_drv_ptr = &gwinstek_gds_800_driver_info;
++	return std_init(gwinstek_gds_800_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int gwinstek_gds_800_compat_cleanup(void)
++{
++	std_dev_clear_compat(gwinstek_gds_800_drv_ptr);
++	return std_cleanup(gwinstek_gds_800_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *gwinstek_gds_800_compat_scan(GSList *options)
++{
++	return scan(gwinstek_gds_800_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int gwinstek_gds_800_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int gwinstek_gds_800_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int gwinstek_gds_800_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int gwinstek_gds_800_compat_acquisition_start(struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int gwinstek_gds_800_compat_acquisition_stop(const struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct */
++struct sr_dev_driver gwinstek_gds_800_driver_info = {
+ 	.name = "gwinstek-gds-800",
+ 	.longname = "GW Instek GDS-800 series",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = std_dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = gwinstek_gds_800_compat_init,
++	.cleanup = gwinstek_gds_800_compat_cleanup,
++	.scan = gwinstek_gds_800_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = gwinstek_gds_800_compat_config_get,
++	.config_set = gwinstek_gds_800_compat_config_set,
++	.config_list = gwinstek_gds_800_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = gwinstek_gds_800_compat_acquisition_start,
++	.dev_acquisition_stop = gwinstek_gds_800_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(gwinstek_gds_800_driver_info);

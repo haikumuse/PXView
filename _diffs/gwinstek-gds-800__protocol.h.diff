@@ -1,0 +1,35 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\gwins
+tek-gds-800\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\gwinstek-gds-800\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\gwinstek-gds-800\\protocol.h"
+index d5c2e5a..aa25762 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\gwinstek-gds-800\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\gwinstek-gds-800\\protocol.h"
+@@ -21,10 +21,8 @@
+ #define LIBSIGROK_HARDWARE_GWINSTEK_GDS_800_PROTOCOL_H
+ 
+ #include <stdint.h>
+-#include <glib.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
+-#include "scpi.h"
++#include <stdbool.h>
++#include "hardware/compat/compat.h"
+ 
+ #define LOG_PREFIX "gwinstek-gds-800"
+ 
+@@ -59,4 +57,9 @@ struct dev_context {
+ 
+ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data);
+ 
++/* Frame begin/end compat stubs (single-argument standard sigrok style).
++ * Implemented locally in protocol.c because PXView's compat layer only
++ * provides the two-argument std_session_send_df_header/end variants. */
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
++
+ #endif

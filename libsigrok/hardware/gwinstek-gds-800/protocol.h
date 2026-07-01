@@ -60,7 +60,6 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data);
 /* Frame begin/end compat stubs (single-argument standard sigrok style).
  * Implemented locally in protocol.c because PXView's compat layer only
  * provides the two-argument std_session_send_df_header/end variants. */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 #endif

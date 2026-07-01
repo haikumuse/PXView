@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
+#include "hardware/compat/compat.h"
 #include "protocol.h"
 
 static const uint32_t drvopts[] = {

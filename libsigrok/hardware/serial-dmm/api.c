@@ -19,10 +19,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * PXView compat layer adaptation of the standard sigrok serial-dmm driver.
+ *
+ * Architecture note: The original serial-dmm driver registers ~60 separate
+ * driver entries (one per DMM model) via SR_REGISTER_DEV_DRIVER_LIST. PXView's
+ * compat layer registers a single struct sr_dev_driver per driver. This
+ * adaptation keeps all DMM model definitions in a static array (dmm_table)
+ * and uses a single serial_dmm_driver_info driver struct. The active DMM
+ * model is selected by the g_active_dmm global pointer (defaults to the
+ * first entry). devc->dmm stores the per-device dmm_info pointer set during
+ * scan(), so config_get/set/list and the receive callback can retrieve the
+ * per-chipset function pointers without casting sdi->driver.
+ */
+
 #include "hardware/compat/compat.h"
 #include <glib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <string.h>
 #include "protocol.h"
+#include "dmm_parsers.h"
 
 static const uint32_t scanopts[] = {
 	SR_CONF_CONN,
@@ -40,423 +58,370 @@ static const uint32_t devopts[] = {
 };
 
 /*
- * ===========================================================================
- * Variant index enum.
- *
- * Each variant gets a sequential index that is used to look up its descriptor
- * in serial_dmm_devs[]. The SERIAL_DMM_DRV() macro generates per-variant
- * wrapper functions that pass the index to the shared scan/config/acquisition
- * helpers.
- * ===========================================================================
+ * DMM model entry macros. These mirror the original serial-dmm macros but
+ * populate a struct dmm_info whose .di member is left zero-initialized
+ * (the driver struct is not used per-entry in the PXView single-driver
+ * adaptation). The vendor/device/conn/serialcomm/packet_size and chipset
+ * function pointers are what scan() and the receive callback use.
  */
-enum {
-	/* ES519XX-based variants */
-#ifdef HAVE_DMM_PARSER_ES519XX
-	SERIAL_DMM_ISO_TECH_IDM103N,
-	SERIAL_DMM_TENMA_72_7750_SER,
-	SERIAL_DMM_UNI_T_UT60G_SER,
-	SERIAL_DMM_UNI_T_UT61E_SER,
-#endif
-	/* FS9721-based variants */
-#ifdef HAVE_DMM_PARSER_FS9721
-	SERIAL_DMM_DIGITEK_DT4000ZC,
-	SERIAL_DMM_MASTECH_MS8250B,
-	SERIAL_DMM_PCE_PCE_DM32,
-	SERIAL_DMM_PEAKTECH_3330,
-	SERIAL_DMM_TECPEL_DMM_8061_SER,
-	SERIAL_DMM_TEKPOWER_TP4000ZC,
-	SERIAL_DMM_TENMA_72_7745_SER,
-	SERIAL_DMM_UNI_T_UT60A_SER,
-	SERIAL_DMM_UNI_T_UT60E_SER,
-	SERIAL_DMM_VA_VA18B,
-	SERIAL_DMM_VA_VA40B,
-	SERIAL_DMM_VOLTCRAFT_VC820_SER,
-	SERIAL_DMM_VOLTCRAFT_VC840_SER,
-#endif
-	/* FS9922-based variants */
-#ifdef HAVE_DMM_PARSER_FS9922
-	SERIAL_DMM_GWINSTEK_GDM_397,
-	SERIAL_DMM_PEAKTECH_2025,
-	SERIAL_DMM_SPARKFUN_70C,
-	SERIAL_DMM_UNI_T_UT61B_SER,
-	SERIAL_DMM_UNI_T_UT61C_SER,
-	SERIAL_DMM_UNI_T_UT61D_SER,
-	SERIAL_DMM_VOLTCRAFT_VC830_SER,
-#endif
-	/* UT71X-based variants */
-#ifdef HAVE_DMM_PARSER_UT71X
-	SERIAL_DMM_TENMA_72_7730_SER,
-	SERIAL_DMM_TENMA_72_7732_SER,
-	SERIAL_DMM_TENMA_72_9380A_SER,
-	SERIAL_DMM_UNI_T_UT71A_SER,
-	SERIAL_DMM_UNI_T_UT71B_SER,
-	SERIAL_DMM_UNI_T_UT71C_SER,
-	SERIAL_DMM_UNI_T_UT71D_SER,
-	SERIAL_DMM_UNI_T_UT71E_SER,
-	SERIAL_DMM_UNI_T_UT804_SER,
-	SERIAL_DMM_VOLTCRAFT_VC920_SER,
-	SERIAL_DMM_VOLTCRAFT_VC940_SER,
-	SERIAL_DMM_VOLTCRAFT_VC960_SER,
-#endif
-	/* VC870-based variants */
-#ifdef HAVE_DMM_PARSER_VC870
-	SERIAL_DMM_VOLTCRAFT_VC870_SER,
-#endif
-};
+
+#define DMM_ENTRY(CHIPSET, VENDOR, MODEL, \
+		CONN, SERIALCOMM, PACKETSIZE, TIMEOUT, DELAY, \
+		OPEN, REQUEST, VALID, PARSE, DETAILS, \
+		INIT_STATE, FREE_STATE, VALID_LEN, PARSE_LEN, \
+		CFG_GET, CFG_SET, CFG_LIST, ACQ_START) \
+	{ \
+		{ 0 }, \
+		VENDOR, MODEL, CONN, SERIALCOMM, PACKETSIZE, TIMEOUT, DELAY, \
+		REQUEST, 1, NULL, VALID, PARSE, DETAILS, \
+		sizeof(struct CHIPSET##_info), \
+		NULL, INIT_STATE, FREE_STATE, \
+		OPEN, VALID_LEN, PARSE_LEN, \
+		CFG_GET, CFG_SET, CFG_LIST, ACQ_START, \
+	}
+
+#define DMM_CONN(CHIPSET, VENDOR, MODEL, \
+		CONN, SERIALCOMM, PACKETSIZE, TIMEOUT, DELAY, \
+		REQUEST, VALID, PARSE, DETAILS) \
+	DMM_ENTRY(CHIPSET, VENDOR, MODEL, \
+		CONN, SERIALCOMM, PACKETSIZE, TIMEOUT, DELAY, \
+		NULL, REQUEST, VALID, PARSE, DETAILS, \
+		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+
+#define DMM(CHIPSET, VENDOR, MODEL, SERIALCOMM, PACKETSIZE, TIMEOUT, \
+		DELAY, REQUEST, VALID, PARSE, DETAILS) \
+	DMM_CONN(CHIPSET, VENDOR, MODEL, \
+		NULL, SERIALCOMM, PACKETSIZE, TIMEOUT, DELAY, \
+		REQUEST, VALID, PARSE, DETAILS)
+
+#define DMM_LEN(CHIPSET, VENDOR, MODEL, \
+		CONN, SERIALCOMM, PACKETSIZE, TIMEOUT, DELAY, \
+		INIT, FREE, OPEN, REQUEST, VALID, PARSE, DETAILS) \
+	DMM_ENTRY(CHIPSET, VENDOR, MODEL, \
+		CONN, SERIALCOMM, PACKETSIZE, TIMEOUT, DELAY, \
+		OPEN, REQUEST, NULL, NULL, DETAILS, \
+		INIT, FREE, VALID, PARSE, NULL, NULL, NULL, NULL)
 
 /*
- * ===========================================================================
- * Variant descriptor table.
- *
- * Each entry describes one serial-DMM model: vendor/model strings, default
- * serial parameters, packet size, and the parser hooks (packet_valid /
- * packet_parse / dmm_details). Variants whose DMM parser has not been migrated
- * are excluded via #ifdef guards.
- *
- * NOTE: victor-dmm (FS9922-based, conn="hid/victor") is excluded because it
- * is a USB-HID device, not a pure serial device, and PXView's serial compat
- * layer does not handle HID conn paths.
- * ===========================================================================
+ * The table of all supported DMM models. Sorted by chipset then model name,
+ * matching the original serial-dmm driver. Each entry shares the same scan,
+ * config, and acquisition code paths but has its own packet format specs and
+ * chipset parser function pointers.
  */
-SR_PRIV const struct dmm_info serial_dmm_devs[] = {
-#ifdef HAVE_DMM_PARSER_ES519XX
-	{ /* SERIAL_DMM_ISO_TECH_IDM103N */
-		"ISO-TECH", "IDM103N", NULL, "2400/7o1/rts=0/dtr=1",
+static struct dmm_info dmm_table[] = {
+	/* qm1578 */
+	DMM(qm1578, "Digitech", "QM1578", "115200/8n1",
+		DIGITECH_QM1578_PACKET_SIZE, 0, 0, NULL,
+		sr_digitech_qm1578_packet_valid, sr_digitech_qm1578_parse,
+		NULL),
+
+	/* asycii */
+	DMM(asycii, "Metrix", "MX56C",
+		"2400/8n1", ASYCII_PACKET_SIZE, 0, 0, NULL,
+		sr_asycii_packet_valid, sr_asycii_parse, NULL),
+
+	/* bm25x */
+	DMM(bm25x, "Brymen", "BM25x", "9600/8n1/rts=1/dtr=1",
+		BRYMEN_BM25X_PACKET_SIZE, 0, 0, NULL,
+		sr_brymen_bm25x_packet_valid, sr_brymen_bm25x_parse,
+		NULL),
+
+	/* bm52x (BM520s and BM820s share the parser) */
+	DMM_CONN(brymen_bm52x, "Brymen", "BM52x",
+		"hid/bu86x", NULL, BRYMEN_BM52X_PACKET_SIZE, 4000, 500,
+		sr_brymen_bm52x_packet_request,
+		sr_brymen_bm52x_packet_valid, sr_brymen_bm52x_parse,
+		NULL),
+	DMM_CONN(brymen_bm52x, "Brymen", "BM82x",
+		"hid/bu86x", NULL, BRYMEN_BM52X_PACKET_SIZE, 4000, 500,
+		sr_brymen_bm82x_packet_request,
+		sr_brymen_bm82x_packet_valid, sr_brymen_bm52x_parse,
+		NULL),
+
+	/* bm85x (length-based packets, has after_open) */
+	DMM_LEN(brymen_bm85x, "Brymen", "BM85x",
+		NULL, "9600/8n1/dtr=1/rts=1",
+		BRYMEN_BM85x_PACKET_SIZE_MIN, 2000, 400,
+		NULL, NULL,
+		brymen_bm85x_after_open, brymen_bm85x_packet_request,
+		brymen_bm85x_packet_valid, brymen_bm85x_parse,
+		NULL),
+
+	/* bm86x */
+	DMM_CONN(brymen_bm86x, "Brymen", "BM86x",
+		"hid/bu86x", NULL, BRYMEN_BM86X_PACKET_SIZE, 500, 100,
+		sr_brymen_bm86x_packet_request,
+		sr_brymen_bm86x_packet_valid, sr_brymen_bm86x_parse,
+		NULL),
+
+	/* dtm0660 */
+	DMM(dtm0660, "PeakTech", "3415", "2400/8n1/rts=0/dtr=1",
+		DTM0660_PACKET_SIZE, 0, 0, NULL,
+		sr_dtm0660_packet_valid, sr_dtm0660_parse, NULL),
+	DMM(dtm0660, "Velleman", "DVM4100", "2400/8n1/rts=0/dtr=1",
+		DTM0660_PACKET_SIZE, 0, 0, NULL,
+		sr_dtm0660_packet_valid, sr_dtm0660_parse, NULL),
+
+	/* eev121gw */
+	DMM(eev121gw, "EEVblog", "121GW", "115200/8n1",
+		EEV121GW_PACKET_SIZE, 0, 0, NULL,
+		sr_eev121gw_packet_valid, sr_eev121gw_3displays_parse, NULL),
+
+	/* es519xx */
+	DMM(es519xx, "ISO-TECH", "IDM103N", "2400/7o1/rts=0/dtr=1",
 		ES519XX_11B_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_es519xx_2400_11b_packet_valid, sr_es519xx_2400_11b_parse, NULL,
-		sizeof(struct es519xx_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_TENMA_72_7750_SER */
-		"Tenma", "72-7750 (UT-D02 cable)", NULL, "19200/7o1/rts=0/dtr=1",
+		sr_es519xx_2400_11b_packet_valid, sr_es519xx_2400_11b_parse,
+		NULL),
+	DMM(es519xx, "Tenma", "72-7750 (UT-D02 cable)", "19200/7o1/rts=0/dtr=1",
 		ES519XX_11B_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_es519xx_19200_11b_packet_valid, sr_es519xx_19200_11b_parse, NULL,
-		sizeof(struct es519xx_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT60G_SER */
-		"UNI-T", "UT60G (UT-D02 cable)", NULL, "19200/7o1/rts=0/dtr=1",
+		sr_es519xx_19200_11b_packet_valid, sr_es519xx_19200_11b_parse,
+		NULL),
+	DMM(es519xx, "UNI-T", "UT60G (UT-D02 cable)", "19200/7o1/rts=0/dtr=1",
 		ES519XX_11B_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_es519xx_19200_11b_packet_valid, sr_es519xx_19200_11b_parse, NULL,
-		sizeof(struct es519xx_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT61E_SER */
-		"UNI-T", "UT61E (UT-D02 cable)", NULL, "19200/7o1/rts=0/dtr=1",
+		sr_es519xx_19200_11b_packet_valid, sr_es519xx_19200_11b_parse,
+		NULL),
+	DMM(es519xx, "UNI-T", "UT61E (UT-D02 cable)", "19200/7o1/rts=0/dtr=1",
 		ES519XX_14B_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_es519xx_19200_14b_packet_valid, sr_es519xx_19200_14b_parse, NULL,
-		sizeof(struct es519xx_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-#endif /* HAVE_DMM_PARSER_ES519XX */
+		sr_es519xx_19200_14b_packet_valid, sr_es519xx_19200_14b_parse,
+		NULL),
 
-#ifdef HAVE_DMM_PARSER_FS9721
-	{ /* SERIAL_DMM_DIGITEK_DT4000ZC */
-		"Digitek", "DT4000ZC", NULL, "2400/8n1/dtr=1",
+	/* fs9721 */
+	DMM(fs9721, "Digitek", "DT4000ZC", "2400/8n1/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_10_temp_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_MASTECH_MS8250B */
-		"MASTECH", "MS8250B", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_10_temp_c),
+	DMM(fs9721, "MASTECH", "MS8250B", "2400/8n1/rts=0/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, NULL,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_PCE_PCE_DM32 */
-		"PCE", "PCE-DM32", NULL, "2400/8n1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		NULL),
+	DMM(fs9721, "PCE", "PCE-DM32", "2400/8n1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_01_10_temp_f_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_PEAKTECH_3330 */
-		"PeakTech", "3330", NULL, "2400/8n1/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_01_10_temp_f_c),
+	DMM(fs9721, "PeakTech", "3330", "2400/8n1/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_01_10_temp_f_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_TECPEL_DMM_8061_SER */
-		"Tecpel", "DMM-8061 (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_01_10_temp_f_c),
+	DMM(fs9721, "Tecpel", "DMM-8061 (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_00_temp_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_TEKPOWER_TP4000ZC */
-		"TekPower", "TP4000ZC", NULL, "2400/8n1/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_00_temp_c),
+	DMM(fs9721, "TekPower", "TP4000ZC", "2400/8n1/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_10_temp_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_TENMA_72_7745_SER */
-		"Tenma", "72-7745 (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_10_temp_c),
+	DMM(fs9721, "Tenma", "72-7745 (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_00_temp_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT60A_SER */
-		"UNI-T", "UT60A (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_00_temp_c),
+	DMM(fs9721, "UNI-T", "UT60A (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, NULL,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT60E_SER */
-		"UNI-T", "UT60E (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		NULL),
+	DMM(fs9721, "UNI-T", "UT60E (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_00_temp_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VA_VA18B */
-		"V&A", "VA18B", NULL, "2400/8n1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_00_temp_c),
+	DMM(fs9721, "V&A", "VA18B", "2400/8n1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_01_temp_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VA_VA40B */
-		"V&A", "VA40B", NULL, "2400/8n1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_01_temp_c),
+	DMM(fs9721, "V&A", "VA40B", "2400/8n1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_max_c_min,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VOLTCRAFT_VC820_SER */
-		"Voltcraft", "VC-820 (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_max_c_min),
+	DMM(fs9721, "Voltcraft", "VC-820 (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, NULL,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VOLTCRAFT_VC840_SER */
-		"Voltcraft", "VC-840 (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		NULL),
+	DMM(fs9721, "Voltcraft", "VC-840 (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9721_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9721_packet_valid, sr_fs9721_parse, sr_fs9721_00_temp_c,
-		sizeof(struct fs9721_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-#endif /* HAVE_DMM_PARSER_FS9721 */
+		sr_fs9721_packet_valid, sr_fs9721_parse,
+		sr_fs9721_00_temp_c),
 
-#ifdef HAVE_DMM_PARSER_FS9922
-	{ /* SERIAL_DMM_GWINSTEK_GDM_397 */
-		"GW Instek", "GDM-397", NULL, "2400/8n1/rts=0/dtr=1",
+	/* fs9922 */
+	DMM(fs9922, "GW Instek", "GDM-397", "2400/8n1/rts=0/dtr=1",
 		FS9922_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9922_packet_valid, sr_fs9922_parse, NULL,
-		sizeof(struct fs9922_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_PEAKTECH_2025 */
-		"PeakTech", "2025", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9922_packet_valid, sr_fs9922_parse, NULL),
+	DMM(fs9922, "PeakTech", "2025", "2400/8n1/rts=0/dtr=1",
 		FS9922_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9922_packet_valid, sr_fs9922_parse, NULL,
-		sizeof(struct fs9922_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_SPARKFUN_70C */
-		"SparkFun", "70C", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9922_packet_valid, sr_fs9922_parse, NULL),
+	DMM(fs9922, "SparkFun", "70C", "2400/8n1/rts=0/dtr=1",
 		FS9922_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9922_packet_valid, sr_fs9922_parse, NULL,
-		sizeof(struct fs9922_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT61B_SER */
-		"UNI-T", "UT61B (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9922_packet_valid, sr_fs9922_parse, NULL),
+	DMM(fs9922, "UNI-T", "UT61B (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9922_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9922_packet_valid, sr_fs9922_parse, NULL,
-		sizeof(struct fs9922_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT61C_SER */
-		"UNI-T", "UT61C (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9922_packet_valid, sr_fs9922_parse, NULL),
+	DMM(fs9922, "UNI-T", "UT61C (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9922_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9922_packet_valid, sr_fs9922_parse, NULL,
-		sizeof(struct fs9922_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT61D_SER */
-		"UNI-T", "UT61D (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9922_packet_valid, sr_fs9922_parse, NULL),
+	DMM(fs9922, "UNI-T", "UT61D (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9922_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9922_packet_valid, sr_fs9922_parse, NULL,
-		sizeof(struct fs9922_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VOLTCRAFT_VC830_SER */
-		/*
-		 * Note: The VC830 doesn't set the 'volt' and 'diode' bits of
-		 * the FS9922 protocol. Instead, it only sets the user-defined
-		 * bit "z1" to indicate "diode mode" and "voltage".
-		 */
-		"Voltcraft", "VC-830 (UT-D02 cable)", NULL, "2400/8n1/rts=0/dtr=1",
+		sr_fs9922_packet_valid, sr_fs9922_parse, NULL),
+	DMM_CONN(fs9922, "Victor", "Victor DMMs",
+		"hid/victor", "2400/8n1", FS9922_PACKET_SIZE, 0, 0, NULL,
+		sr_fs9922_packet_valid, sr_fs9922_parse, NULL),
+	DMM(fs9922, "Voltcraft", "VC-830 (UT-D02 cable)", "2400/8n1/rts=0/dtr=1",
 		FS9922_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_fs9922_packet_valid, sr_fs9922_parse, &sr_fs9922_z1_diode,
-		sizeof(struct fs9922_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-#endif /* HAVE_DMM_PARSER_FS9922 */
+		sr_fs9922_packet_valid, sr_fs9922_parse,
+		&sr_fs9922_z1_diode),
 
-#ifdef HAVE_DMM_PARSER_UT71X
-	{ /* SERIAL_DMM_TENMA_72_7730_SER */
-		"Tenma", "72-7730 (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_TENMA_72_7732_SER */
-		"Tenma", "72-7732 (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_TENMA_72_9380A_SER */
-		"Tenma", "72-9380A (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT71A_SER */
-		"UNI-T", "UT71A (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT71B_SER */
-		"UNI-T", "UT71B (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT71C_SER */
-		"UNI-T", "UT71C (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT71D_SER */
-		"UNI-T", "UT71D (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT71E_SER */
-		"UNI-T", "UT71E (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_UNI_T_UT804_SER */
-		"UNI-T", "UT804", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VOLTCRAFT_VC920_SER */
-		"Voltcraft", "VC-920 (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VOLTCRAFT_VC940_SER */
-		"Voltcraft", "VC-940 (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-	{ /* SERIAL_DMM_VOLTCRAFT_VC960_SER */
-		"Voltcraft", "VC-960 (UT-D02 cable)", NULL, "2400/7o1/rts=0/dtr=1",
-		UT71X_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_ut71x_packet_valid, sr_ut71x_parse, NULL,
-		sizeof(struct ut71x_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-#endif /* HAVE_DMM_PARSER_UT71X */
+	/* m2110 */
+	DMM(m2110, "BBC Goertz Metrawatt", "M2110", "1200/7n2",
+		BBCGM_M2110_PACKET_SIZE, 0, 0, NULL,
+		sr_m2110_packet_valid, sr_m2110_parse,
+		NULL),
 
-#ifdef HAVE_DMM_PARSER_VC870
-	{ /* SERIAL_DMM_VOLTCRAFT_VC870_SER */
-		"Voltcraft", "VC-870 (UT-D02 cable)", NULL, "9600/8n1/rts=0/dtr=1",
+	/* meterman_38xr */
+	DMM(meterman_38xr, "Meterman", "38XR", "9600/8n1/rts=0/dtr=1",
+		METERMAN_38XR_PACKET_SIZE, 0, 0, NULL,
+		meterman_38xr_packet_valid, meterman_38xr_parse,
+		NULL),
+
+	/* metex14 */
+	DMM(metex14, "MASTECH", "MAS345", "600/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Metex", "M-3640D", "1200/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Metex", "M-3860M", "9600/7n2/rts=0/dtr=1",
+		4 * METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_4packets_valid, sr_metex14_4packets_parse,
+		NULL),
+	DMM(metex14, "Metex", "M-4650CR", "1200/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Metex", "ME-21", "2400/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Metex", "ME-31", "600/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "PeakTech", "3410", "600/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "PeakTech", "4370", "1200/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "PeakTech", "4390A", "9600/7n2/rts=0/dtr=1",
+		4 * METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_4packets_valid, sr_metex14_4packets_parse,
+		NULL),
+	DMM(metex14, "RadioShack", "22-168", "1200/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "RadioShack", "22-805", "600/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Voltcraft", "M-3650CR", "1200/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 150, 20, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Voltcraft", "M-3650D", "1200/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Voltcraft", "M-4650CR", "1200/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 0, 0, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+	DMM(metex14, "Voltcraft", "ME-42", "600/7n2/rts=0/dtr=1",
+		METEX14_PACKET_SIZE, 250, 60, sr_metex14_packet_request,
+		sr_metex14_packet_valid, sr_metex14_parse,
+		NULL),
+
+	/* ms2115b */
+	DMM(ms2115b, "MASTECH", "MS2115B", "1200/8n1",
+		MS2115B_PACKET_SIZE, 0, 0, NULL,
+		sr_ms2115b_packet_valid, sr_ms2115b_parse,
+		NULL),
+
+	/* ms8250d */
+	DMM(ms8250d, "MASTECH", "MS8250D", "2400/8n1/rts=0/dtr=1",
+		MS8250D_PACKET_SIZE, 0, 0, NULL,
+		sr_ms8250d_packet_valid, sr_ms8250d_parse,
+		NULL),
+
+	/* rs9lcd */
+	DMM(rs9lcd, "RadioShack", "22-812", "4800/8n1/rts=0/dtr=1",
+		RS9LCD_PACKET_SIZE, 0, 0, NULL,
+		sr_rs9lcd_packet_valid, sr_rs9lcd_parse,
+		NULL),
+
+	/* ut71x */
+	DMM(ut71x, "Tenma", "72-7730 (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "Tenma", "72-7732 (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "Tenma", "72-9380A (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "UNI-T", "UT71A (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "UNI-T", "UT71B (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "UNI-T", "UT71C (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "UNI-T", "UT71D (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "UNI-T", "UT71E (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "UNI-T", "UT804", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "Voltcraft", "VC-920 (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "Voltcraft", "VC-940 (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+	DMM(ut71x, "Voltcraft", "VC-960 (UT-D02 cable)", "2400/7o1/rts=0/dtr=1",
+		UT71X_PACKET_SIZE, 0, 0, NULL,
+		sr_ut71x_packet_valid, sr_ut71x_parse, NULL),
+
+	/* vc870 */
+	DMM(vc870, "Voltcraft", "VC-870 (UT-D02 cable)", "9600/8n1/rts=0/dtr=1",
 		VC870_PACKET_SIZE, 0, 0, NULL,
-		1, NULL,
-		sr_vc870_packet_valid, sr_vc870_parse, NULL,
-		sizeof(struct vc870_info),
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-	},
-#endif /* HAVE_DMM_PARSER_VC870 */
+		sr_vc870_packet_valid, sr_vc870_parse, NULL),
+
+	/* vc96 */
+	DMM(vc96, "Voltcraft", "VC-96", "1200/8n2",
+		VC96_PACKET_SIZE, 0, 0, NULL,
+		sr_vc96_packet_valid, sr_vc96_parse,
+		NULL),
 };
 
 /*
- * ===========================================================================
- * Shared driver functions.
- *
- * These are called by the per-variant wrapper functions generated by the
- * SERIAL_DMM_DRV macro. The variant index (idx) selects the descriptor from
- * serial_dmm_devs[].
- * ===========================================================================
+ * The active DMM model. Defaults to the first entry in dmm_table. In the
+ * original serial-dmm driver each DMM model was a separate driver, so the
+ * user selected the model by choosing the driver. In this PXView adaptation
+ * a single driver is registered, and the active model defaults to the first
+ * entry. The scan() function reads conn/serialcomm/packet specs from this
+ * entry (user-provided SR_CONF_CONN/SR_CONF_SERIALCOMM options override the
+ * entry's defaults).
  */
+static struct dmm_info *g_active_dmm = &dmm_table[0];
 
-/*
- * Probe a serial port for a valid DMM packet.
- *
- * Adapts the upstream scan() to PXView's serial_stream_detect signature
- * (7-arg: serial, buf, buflen, packet_size, is_valid, timeout_ms, baudrate).
- * PXView's version does not support packet_valid_len or packet_len output,
- * but all migrated variants use fixed-size packets so this is sufficient.
- */
-static GSList *serial_dmm_scan(struct sr_dev_driver *di, GSList *options, int idx)
+static GSList *scan(struct sr_dev_driver *di, GSList *options)
 {
-	const struct dmm_info *dmm;
+	struct dmm_info *dmm;
 	struct sr_config *src;
 	GSList *l, *devices;
 	const char *conn, *serialcomm;
@@ -464,13 +429,15 @@ static GSList *serial_dmm_scan(struct sr_dev_driver *di, GSList *options, int id
 	struct dev_context *devc;
 	struct sr_serial_dev_inst *serial;
 	int ret;
+	size_t dropped, len;
 	uint8_t buf[128];
-	size_t len;
+	size_t ch_idx;
+	char ch_name[12];
 
-	dmm = &serial_dmm_devs[idx];
+	(void)di;
+	dmm = g_active_dmm;
 	conn = dmm->conn;
 	serialcomm = dmm->serialcomm;
-
 	for (l = options; l; l = l->next) {
 		src = l->data;
 		switch (src->key) {
@@ -489,14 +456,12 @@ static GSList *serial_dmm_scan(struct sr_dev_driver *di, GSList *options, int id
 
 	if (serial_open(serial, SERIAL_RDWR) != SR_OK)
 		return NULL;
-
 	sr_info("Probing serial port %s.", conn);
 
 	if (dmm->after_open) {
 		ret = dmm->after_open(serial);
 		if (ret != SR_OK) {
 			sr_err("Activity after port open failed: %d.", ret);
-			serial_close(serial);
 			return NULL;
 		}
 	}
@@ -507,7 +472,6 @@ static GSList *serial_dmm_scan(struct sr_dev_driver *di, GSList *options, int id
 	if (dmm->packet_request) {
 		if ((ret = dmm->packet_request(serial)) < 0) {
 			sr_err("Failed to request packet: %d.", ret);
-			serial_close(serial);
 			return NULL;
 		}
 	}
@@ -517,23 +481,42 @@ static GSList *serial_dmm_scan(struct sr_dev_driver *di, GSList *options, int id
 	 * periodically (or upon request), so the best we can do is check if
 	 * the packets match the expected format.
 	 *
-	 * PXView's serial_stream_detect takes (serial, buf, &len, packet_size,
-	 * packet_valid, timeout_ms, baudrate). The baudrate parameter is unused
-	 * by PXView's implementation but required by the signature.
+	 * PXView's serial_stream_detect takes a simple packet_valid_t callback
+	 * (gboolean (*)(const uint8_t *)). It does NOT support the length-based
+	 * packet_valid_len callback. For DMMs that only have packet_valid_len
+	 * (e.g. bm85x), skip the stream detect and create the device directly
+	 * (the port opened successfully, which is sufficient evidence).
 	 */
-	len = sizeof(buf);
-	ret = serial_stream_detect(serial, buf, &len, dmm->packet_size,
+	if (dmm->packet_valid) {
+		len = sizeof(buf);
+		ret = serial_stream_detect(serial, buf, &len, dmm->packet_size,
 			dmm->packet_valid, 3000, 0);
-	if (ret != SR_OK)
-		goto scan_cleanup;
-
+		if (ret != SR_OK)
+			goto scan_cleanup;
+		dropped = len - dmm->packet_size;
+		if (dropped > 2 * dmm->packet_size)
+			sr_warn("Packet search dropped a lot of data.");
+	}
 	sr_info("Found device on port %s.", conn);
 
-	/* Initialize optional DMM state if the variant needs it. */
+	/*
+	 * Setup optional additional callbacks when sub device drivers
+	 * happen to provide them. (This is a compromise to do it here,
+	 * and not extend the DMM_CONN() et al set of macros.)
+	 */
+	if (dmm->packet_parse == sr_brymen_bm52x_parse) {
+		/* Applicable to BM520s but not to BM820s. */
+		dmm->dmm_state_init = brymen_bm52x_state_init;
+		dmm->dmm_state_free = brymen_bm52x_state_free;
+		dmm->config_get = brymen_bm52x_config_get;
+		dmm->config_set = brymen_bm52x_config_set;
+		dmm->config_list = brymen_bm52x_config_list;
+		dmm->acquire_start = brymen_bm52x_acquire_start;
+	}
 	if (dmm->dmm_state_init)
 		dmm->dmm_state = dmm->dmm_state_init();
 
-	/* Set up the device instance. */
+	/* Setup the device instance. */
 	sdi = g_malloc0(sizeof(*sdi));
 	sdi->status = SR_ST_INACTIVE;
 	sdi->vendor = g_strdup(dmm->vendor);
@@ -545,9 +528,34 @@ static GSList *serial_dmm_scan(struct sr_dev_driver *di, GSList *options, int id
 	sdi->conn = serial;
 	sdi->priv = devc;
 
-	/* Create channels. All migrated variants use a single channel. */
-	sr_channel_new(sdi, 0, SR_CHANNEL_ANALOG, TRUE, "P1");
+	/* Create (optionally device dependent) channel(s). */
+	dmm->channel_count = 1;
+	if (dmm->packet_parse == sr_brymen_bm52x_parse)
+		dmm->channel_count = BRYMEN_BM52X_DISPLAY_COUNT;
+	if (dmm->packet_parse == sr_brymen_bm86x_parse)
+		dmm->channel_count = BRYMEN_BM86X_DISPLAY_COUNT;
+	if (dmm->packet_parse == sr_eev121gw_3displays_parse) {
+		dmm->channel_count = EEV121GW_DISPLAY_COUNT;
+		dmm->channel_formats = eev121gw_channel_formats;
+	}
+	if (dmm->packet_parse == sr_metex14_4packets_parse)
+		dmm->channel_count = 4;
+	if (dmm->packet_parse == sr_ms2115b_parse) {
+		dmm->channel_count = MS2115B_DISPLAY_COUNT;
+		dmm->channel_formats = ms2115b_channel_formats;
+	}
+	for (ch_idx = 0; ch_idx < dmm->channel_count; ch_idx++) {
+		size_t ch_num;
+		const char *fmt;
+		fmt = "P%zu";
+		if (dmm->channel_formats && dmm->channel_formats[ch_idx])
+			fmt = dmm->channel_formats[ch_idx];
+		ch_num = ch_idx + 1;
+		snprintf(ch_name, sizeof(ch_name), fmt, ch_num);
+		sr_channel_new(sdi, ch_idx, SR_CHANNEL_ANALOG, TRUE, ch_name);
+	}
 
+	/* Add found device to result set. */
 	devices = g_slist_append(devices, sdi);
 
 scan_cleanup:
@@ -556,11 +564,11 @@ scan_cleanup:
 	return std_scan_complete_compat(di, devices);
 }
 
-static int serial_dmm_config_get(uint32_t key, GVariant **data,
-		const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+static int config_get(uint32_t key, GVariant **data,
+	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
 {
 	struct dev_context *devc;
-	const struct dmm_info *dmm;
+	struct dmm_info *dmm;
 
 	if (!sdi)
 		return SR_ERR_ARG;
@@ -568,6 +576,7 @@ static int serial_dmm_config_get(uint32_t key, GVariant **data,
 
 	switch (key) {
 	case SR_CONF_LIMIT_SAMPLES:
+	case SR_CONF_LIMIT_FRAMES:
 	case SR_CONF_LIMIT_MSEC:
 		return sr_sw_limits_config_get(&devc->limits, key, data);
 	default:
@@ -576,13 +585,14 @@ static int serial_dmm_config_get(uint32_t key, GVariant **data,
 			return SR_ERR_NA;
 		return dmm->config_get(dmm->dmm_state, key, data, sdi, cg);
 	}
+	/* UNREACH */
 }
 
-static int serial_dmm_config_set(uint32_t key, GVariant *data,
-		const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+static int config_set(uint32_t key, GVariant *data,
+	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
 {
 	struct dev_context *devc;
-	const struct dmm_info *dmm;
+	struct dmm_info *dmm;
 
 	if (!sdi)
 		return SR_ERR_ARG;
@@ -591,6 +601,7 @@ static int serial_dmm_config_set(uint32_t key, GVariant *data,
 
 	switch (key) {
 	case SR_CONF_LIMIT_SAMPLES:
+	case SR_CONF_LIMIT_FRAMES:
 	case SR_CONF_LIMIT_MSEC:
 		return sr_sw_limits_config_set(&devc->limits, key, data);
 	default:
@@ -601,10 +612,10 @@ static int serial_dmm_config_set(uint32_t key, GVariant *data,
 	}
 }
 
-static int serial_dmm_config_list(uint32_t key, GVariant **data,
-		const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+static int config_list(uint32_t key, GVariant **data,
+	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
 {
-	const struct dmm_info *dmm;
+	struct dmm_info *dmm;
 	int ret;
 
 	/* Use common logic for standard keys. */
@@ -612,7 +623,7 @@ static int serial_dmm_config_list(uint32_t key, GVariant **data,
 		return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
 
 	/*
-	 * Check for device-specific config_list handler. ERR_NA from
+	 * Check for device specific config_list handler. ERR N/A from
 	 * that handler is non-fatal, just falls back to common logic.
 	 */
 	dmm = ((struct dev_context *)sdi->priv)->dmm;
@@ -625,10 +636,12 @@ static int serial_dmm_config_list(uint32_t key, GVariant **data,
 	return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
 }
 
-static int serial_dmm_dev_acquisition_start(const struct sr_dev_inst *sdi)
+static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 {
 	struct dev_context *devc;
-	const struct dmm_info *dmm;
+	struct dmm_info *dmm;
+	sr_receive_data_callback_t cb_func;
+	int ret;
 	struct sr_serial_dev_inst *serial;
 
 	devc = sdi->priv;
@@ -636,228 +649,120 @@ static int serial_dmm_dev_acquisition_start(const struct sr_dev_inst *sdi)
 	sr_sw_limits_acquisition_start(&devc->limits);
 	std_session_send_df_header(sdi, LOG_PREFIX);
 
+	cb_func = receive_data;
 	dmm = devc->dmm;
-	/*
-	 * The acquire_start hook (used by brymen-bm52x etc.) can re-route
-	 * the receive callback. Not used by any migrated variant, but the
-	 * hook is checked for completeness.
-	 */
 	if (dmm && dmm->acquire_start) {
-		sr_receive_data_callback_t cb_func = serial_dmm_receive_data;
-		void *cb_data = (void *)sdi;
-		int ret = dmm->acquire_start(dmm->dmm_state, sdi, &cb_func, &cb_data);
+		ret = dmm->acquire_start(dmm->dmm_state, sdi, &cb_func);
 		if (ret < 0)
 			return ret;
 	}
 
 	serial = sdi->conn;
-	serial_source_add(serial, G_IO_IN, 50, serial_dmm_receive_data, sdi);
+	/*
+	 * PXView's serial_source_add takes 4 args (serial, events, timeout,
+	 * cb, sdi) - no session parameter. The callback receives the sdi
+	 * directly as the third argument (const struct sr_dev_inst *sdi).
+	 */
+	serial_source_add(serial, G_IO_IN, 50, cb_func, sdi);
 
 	return SR_OK;
 }
 
-/*
- * Local dev_acquisition_stop implementation.
- * PXView does not provide std_serial_dev_acquisition_stop, so we implement
- * the stop sequence locally: remove the serial source, close the serial
- * port, and send the DF_END packet.
- */
-static int serial_dmm_dev_acquisition_stop(const struct sr_dev_inst *sdi)
+static int dev_acquisition_stop(const struct sr_dev_inst *sdi)
 {
 	struct sr_serial_dev_inst *serial;
 
 	serial = sdi->conn;
-
 	serial_source_remove(serial);
 	serial_close(serial);
 
-	std_session_send_df_end(sdi, LOG_PREFIX);
+	std_session_send_df_end(sdi, NULL);
 
 	return SR_OK;
 }
 
-/*
- * ===========================================================================
- * SERIAL_DMM_DRV macro.
- *
- * Generates PXView-compatible wrapper functions and the driver_info struct
- * for one serial-DMM variant. Pattern follows mic-985xx's MIC_DRV macro.
- *
- * ID        - C identifier prefix for the variant (e.g. iso_tech_idm103n)
- * IDX       - enum value indexing into serial_dmm_devs[]
- * NAME      - short driver name string (e.g. "iso-tech-idm103n")
- * LONGNAME  - long driver name string (e.g. "ISO-TECH IDM103N")
- * ===========================================================================
- */
-#define SERIAL_DMM_DRV(ID, IDX, NAME, LONGNAME) \
-\
-static int ID##_compat_init(struct sr_context *sr_ctx) \
-{ \
-	return std_init(&ID##_driver_info, sr_ctx); \
-} \
-\
-static int ID##_compat_cleanup(void) \
-{ \
-	return std_cleanup(&ID##_driver_info); \
-} \
-\
-static GSList *ID##_compat_scan(GSList *options) \
-{ \
-	return serial_dmm_scan(&ID##_driver_info, options, IDX); \
-} \
-\
-static int ID##_compat_config_get(int id, GVariant **data, \
-		const struct sr_dev_inst *sdi, const struct sr_channel *ch, \
-		const struct sr_channel_group *cg) \
-{ \
-	(void)ch; \
-	return serial_dmm_config_get((uint32_t)id, data, sdi, cg); \
-} \
-\
-static int ID##_compat_config_set(int id, GVariant *data, \
-		struct sr_dev_inst *sdi, struct sr_channel *ch, \
-		struct sr_channel_group *cg) \
-{ \
-	(void)ch; \
-	return serial_dmm_config_set((uint32_t)id, data, sdi, cg); \
-} \
-\
-static int ID##_compat_config_list(int info_id, GVariant **data, \
-		const struct sr_dev_inst *sdi, const struct sr_channel_group *cg) \
-{ \
-	return serial_dmm_config_list((uint32_t)info_id, data, sdi, cg); \
-} \
-\
-static int ID##_compat_acquisition_start(struct sr_dev_inst *sdi, \
-		void *cb_data) \
-{ \
-	(void)cb_data; \
-	return serial_dmm_dev_acquisition_start(sdi); \
-} \
-\
-static int ID##_compat_acquisition_stop(const struct sr_dev_inst *sdi, \
-		void *cb_data) \
-{ \
-	(void)cb_data; \
-	return serial_dmm_dev_acquisition_stop(sdi); \
-} \
-\
-struct sr_dev_driver ID##_driver_info = { \
-	.name = NAME, \
-	.longname = LONGNAME, \
-	.api_version = 1, \
-	.driver_type = DRIVER_TYPE_HARDWARE, \
-	.init = ID##_compat_init, \
-	.cleanup = ID##_compat_cleanup, \
-	.scan = ID##_compat_scan, \
-	.dev_mode_list = compat_dev_mode_list_default, \
-	.config_get = ID##_compat_config_get, \
-	.config_set = ID##_compat_config_set, \
-	.config_list = ID##_compat_config_list, \
-	.dev_open = std_serial_dev_open, \
-	.dev_close = std_serial_dev_close, \
-	.dev_destroy = compat_dev_destroy_default, \
-	.dev_status_get = compat_dev_status_get_default, \
-	.dev_acquisition_start = ID##_compat_acquisition_start, \
-	.dev_acquisition_stop = ID##_compat_acquisition_stop, \
-	.priv = NULL, \
+/* Static driver pointer for wrapper functions */
+static struct sr_dev_driver *serial_dmm_drv_ptr;
+
+/* Forward declaration - defined at end of file */
+extern struct sr_dev_driver serial_dmm_driver_info;
+
+/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
+static int serial_dmm_compat_init(struct sr_context *sr_ctx)
+{
+	serial_dmm_drv_ptr = &serial_dmm_driver_info;
+	return std_init(serial_dmm_drv_ptr, sr_ctx);
+}
+
+/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
+static int serial_dmm_compat_cleanup(void)
+{
+	return std_cleanup(serial_dmm_drv_ptr);
+}
+
+/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
+static GSList *serial_dmm_compat_scan(GSList *options)
+{
+	return scan(serial_dmm_drv_ptr, options);
+}
+
+/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
+static int serial_dmm_compat_config_get(int id, GVariant **data,
+	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
+	const struct sr_channel_group *cg)
+{
+	(void)ch;
+	return config_get((uint32_t)id, data, sdi, cg);
+}
+
+/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
+static int serial_dmm_compat_config_set(int id, GVariant *data,
+	struct sr_dev_inst *sdi, struct sr_channel *ch,
+	struct sr_channel_group *cg)
+{
+	(void)ch;
+	return config_set((uint32_t)id, data, sdi, cg);
+}
+
+/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
+static int serial_dmm_compat_config_list(int info_id, GVariant **data,
+	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+{
+	return config_list((uint32_t)info_id, data, sdi, cg);
+}
+
+/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
+static int serial_dmm_compat_acquisition_start(struct sr_dev_inst *sdi, void *cb_data)
+{
+	(void)cb_data;
+	return dev_acquisition_start(sdi);
+}
+
+/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
+static int serial_dmm_compat_acquisition_stop(const struct sr_dev_inst *sdi, void *cb_data)
+{
+	(void)cb_data;
+	return dev_acquisition_stop(sdi);
+}
+
+/* PXView-compatible driver info struct */
+struct sr_dev_driver serial_dmm_driver_info = {
+	.name = "serial-dmm",
+	.longname = "Serial DMMs (multiple models)",
+	.api_version = 1,
+	.driver_type = DRIVER_TYPE_HARDWARE,
+	.init = serial_dmm_compat_init,
+	.cleanup = serial_dmm_compat_cleanup,
+	.scan = serial_dmm_compat_scan,
+	.dev_mode_list = compat_dev_mode_list_default,
+	.config_get = serial_dmm_compat_config_get,
+	.config_set = serial_dmm_compat_config_set,
+	.config_list = serial_dmm_compat_config_list,
+	.dev_open = std_serial_dev_open,
+	.dev_close = std_serial_dev_close,
+	.dev_destroy = compat_dev_destroy_default,
+	.dev_status_get = compat_dev_status_get_default,
+	.dev_acquisition_start = serial_dmm_compat_acquisition_start,
+	.dev_acquisition_stop = serial_dmm_compat_acquisition_stop,
+	.priv = NULL,
 };
-
-/*
- * ===========================================================================
- * Per-variant driver_info generation.
- *
- * Each line generates a complete set of wrapper functions + driver_info struct
- * for one variant. Guarded by the corresponding DMM parser macro so that
- * variants without a migrated parser are excluded.
- * ===========================================================================
- */
-
-#ifdef HAVE_DMM_PARSER_ES519XX
-SERIAL_DMM_DRV(iso_tech_idm103n, SERIAL_DMM_ISO_TECH_IDM103N,
-		"iso-tech-idm103n", "ISO-TECH IDM103N")
-SERIAL_DMM_DRV(tenma_72_7750_ser, SERIAL_DMM_TENMA_72_7750_SER,
-		"tenma-72-7750-ser", "Tenma 72-7750")
-SERIAL_DMM_DRV(uni_t_ut60g_ser, SERIAL_DMM_UNI_T_UT60G_SER,
-		"uni-t-ut60g-ser", "UNI-T UT60G")
-SERIAL_DMM_DRV(uni_t_ut61e_ser, SERIAL_DMM_UNI_T_UT61E_SER,
-		"uni-t-ut61e-ser", "UNI-T UT61E")
-#endif /* HAVE_DMM_PARSER_ES519XX */
-
-#ifdef HAVE_DMM_PARSER_FS9721
-SERIAL_DMM_DRV(digitek_dt4000zc, SERIAL_DMM_DIGITEK_DT4000ZC,
-		"digitek-dt4000zc", "Digitek DT4000ZC")
-SERIAL_DMM_DRV(mastech_ms8250b, SERIAL_DMM_MASTECH_MS8250B,
-		"mastech-ms8250b", "MASTECH MS8250B")
-SERIAL_DMM_DRV(pce_pce_dm32, SERIAL_DMM_PCE_PCE_DM32,
-		"pce-pce-dm32", "PCE PCE-DM32")
-SERIAL_DMM_DRV(peaktech_3330, SERIAL_DMM_PEAKTECH_3330,
-		"peaktech-3330", "PeakTech 3330")
-SERIAL_DMM_DRV(tecpel_dmm_8061_ser, SERIAL_DMM_TECPEL_DMM_8061_SER,
-		"tecpel-dmm-8061-ser", "Tecpel DMM-8061")
-SERIAL_DMM_DRV(tekpower_tp4000zc, SERIAL_DMM_TEKPOWER_TP4000ZC,
-		"tekpower-tp4000ZC", "TekPower TP4000ZC")
-SERIAL_DMM_DRV(tenma_72_7745_ser, SERIAL_DMM_TENMA_72_7745_SER,
-		"tenma-72-7745-ser", "Tenma 72-7745")
-SERIAL_DMM_DRV(uni_t_ut60a_ser, SERIAL_DMM_UNI_T_UT60A_SER,
-		"uni-t-ut60a-ser", "UNI-T UT60A")
-SERIAL_DMM_DRV(uni_t_ut60e_ser, SERIAL_DMM_UNI_T_UT60E_SER,
-		"uni-t-ut60e-ser", "UNI-T UT60E")
-SERIAL_DMM_DRV(va_va18b, SERIAL_DMM_VA_VA18B,
-		"va-va18b", "V&A VA18B")
-SERIAL_DMM_DRV(va_va40b, SERIAL_DMM_VA_VA40B,
-		"va-va40b", "V&A VA40B")
-SERIAL_DMM_DRV(voltcraft_vc820_ser, SERIAL_DMM_VOLTCRAFT_VC820_SER,
-		"voltcraft-vc820-ser", "Voltcraft VC-820")
-SERIAL_DMM_DRV(voltcraft_vc840_ser, SERIAL_DMM_VOLTCRAFT_VC840_SER,
-		"voltcraft-vc840-ser", "Voltcraft VC-840")
-#endif /* HAVE_DMM_PARSER_FS9721 */
-
-#ifdef HAVE_DMM_PARSER_FS9922
-SERIAL_DMM_DRV(gwinstek_gdm_397, SERIAL_DMM_GWINSTEK_GDM_397,
-		"gwinstek-gdm-397", "GW Instek GDM-397")
-SERIAL_DMM_DRV(peaktech_2025, SERIAL_DMM_PEAKTECH_2025,
-		"peaktech-2025", "PeakTech 2025")
-SERIAL_DMM_DRV(sparkfun_70c, SERIAL_DMM_SPARKFUN_70C,
-		"sparkfun-70c", "SparkFun 70C")
-SERIAL_DMM_DRV(uni_t_ut61b_ser, SERIAL_DMM_UNI_T_UT61B_SER,
-		"uni-t-ut61b-ser", "UNI-T UT61B")
-SERIAL_DMM_DRV(uni_t_ut61c_ser, SERIAL_DMM_UNI_T_UT61C_SER,
-		"uni-t-ut61c-ser", "UNI-T UT61C")
-SERIAL_DMM_DRV(uni_t_ut61d_ser, SERIAL_DMM_UNI_T_UT61D_SER,
-		"uni-t-ut61d-ser", "UNI-T UT61D")
-SERIAL_DMM_DRV(voltcraft_vc830_ser, SERIAL_DMM_VOLTCRAFT_VC830_SER,
-		"voltcraft-vc830-ser", "Voltcraft VC-830")
-#endif /* HAVE_DMM_PARSER_FS9922 */
-
-#ifdef HAVE_DMM_PARSER_UT71X
-SERIAL_DMM_DRV(tenma_72_7730_ser, SERIAL_DMM_TENMA_72_7730_SER,
-		"tenma-72-7730-ser", "Tenma 72-7730")
-SERIAL_DMM_DRV(tenma_72_7732_ser, SERIAL_DMM_TENMA_72_7732_SER,
-		"tenma-72-7732-ser", "Tenma 72-7732")
-SERIAL_DMM_DRV(tenma_72_9380a_ser, SERIAL_DMM_TENMA_72_9380A_SER,
-		"tenma-72-9380a-ser", "Tenma 72-9380A")
-SERIAL_DMM_DRV(uni_t_ut71a_ser, SERIAL_DMM_UNI_T_UT71A_SER,
-		"uni-t-ut71a-ser", "UNI-T UT71A")
-SERIAL_DMM_DRV(uni_t_ut71b_ser, SERIAL_DMM_UNI_T_UT71B_SER,
-		"uni-t-ut71b-ser", "UNI-T UT71B")
-SERIAL_DMM_DRV(uni_t_ut71c_ser, SERIAL_DMM_UNI_T_UT71C_SER,
-		"uni-t-ut71c-ser", "UNI-T UT71C")
-SERIAL_DMM_DRV(uni_t_ut71d_ser, SERIAL_DMM_UNI_T_UT71D_SER,
-		"uni-t-ut71d-ser", "UNI-T UT71D")
-SERIAL_DMM_DRV(uni_t_ut71e_ser, SERIAL_DMM_UNI_T_UT71E_SER,
-		"uni-t-ut71e-ser", "UNI-T UT71E")
-SERIAL_DMM_DRV(uni_t_ut804_ser, SERIAL_DMM_UNI_T_UT804_SER,
-		"uni-t-ut804-ser", "UNI-T UT804")
-SERIAL_DMM_DRV(voltcraft_vc920_ser, SERIAL_DMM_VOLTCRAFT_VC920_SER,
-		"voltcraft-vc920-ser", "Voltcraft VC-920")
-SERIAL_DMM_DRV(voltcraft_vc940_ser, SERIAL_DMM_VOLTCRAFT_VC940_SER,
-		"voltcraft-vc940-ser", "Voltcraft VC-940")
-SERIAL_DMM_DRV(voltcraft_vc960_ser, SERIAL_DMM_VOLTCRAFT_VC960_SER,
-		"voltcraft-vc960-ser", "Voltcraft VC-960")
-#endif /* HAVE_DMM_PARSER_UT71X */
-
-#ifdef HAVE_DMM_PARSER_VC870
-SERIAL_DMM_DRV(voltcraft_vc870_ser, SERIAL_DMM_VOLTCRAFT_VC870_SER,
-		"voltcraft-vc870-ser", "Voltcraft VC-870")
-#endif /* HAVE_DMM_PARSER_VC870 */

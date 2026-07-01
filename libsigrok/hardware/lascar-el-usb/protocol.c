@@ -389,9 +389,6 @@ static void lascar_el_usb_dispatch(struct sr_dev_inst *sdi, unsigned char *buf,
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *ch;
 	float *temp, *rh;
 	uint16_t s;
@@ -400,8 +397,9 @@ static void lascar_el_usb_dispatch(struct sr_dev_inst *sdi, unsigned char *buf,
 	devc = sdi->priv;
 
 	/* Note: digits/spec_digits will be overridden later. */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
-
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 	samples = buflen / devc->sample_size;
 	samples_left = devc->logged_samples - devc->rcvd_samples;
 	if (samples_left < samples)
@@ -410,7 +408,7 @@ static void lascar_el_usb_dispatch(struct sr_dev_inst *sdi, unsigned char *buf,
 	case LOG_TEMP_RH:
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;
-		analog.meaning->mqflags = 0;
+		analog.mqflags = 0;
 		temp = g_try_malloc(sizeof(float) * samples);
 		rh = g_try_malloc(sizeof(float) * samples);
 		if (!temp || !rh) {
@@ -437,32 +435,26 @@ static void lascar_el_usb_dispatch(struct sr_dev_inst *sdi, unsigned char *buf,
 
 		ch = sdi->channels->data;
 		if (ch->enabled) {
-			analog.meaning->channels = g_slist_append(NULL, ch);
-			analog.meaning->mq = SR_MQ_TEMPERATURE;
+			analog.probes = g_slist_append(NULL, ch);
+			analog.mq = SR_MQ_TEMPERATURE;
 			if (devc->temp_unit == 1) {
-				analog.meaning->unit = SR_UNIT_FAHRENHEIT;
-				analog.encoding->digits = 0;
-				analog.spec->spec_digits = 0;
+				analog.unit = SR_UNIT_FAHRENHEIT;
 			} else {
-				analog.meaning->unit = SR_UNIT_CELSIUS;
-				analog.encoding->digits = 1;
-				analog.spec->spec_digits = 1;
+				analog.unit = SR_UNIT_CELSIUS;
 			}
 			analog.data = (void *)temp;
 			sr_session_send(sdi, &packet);
-			g_slist_free(analog.meaning->channels);
+			g_slist_free(analog.probes);
 		}
 
 		ch = sdi->channels->next->data;
 		if (ch->enabled) {
-			analog.meaning->channels = g_slist_append(NULL, ch);
-			analog.meaning->mq = SR_MQ_RELATIVE_HUMIDITY;
-			analog.meaning->unit = SR_UNIT_PERCENTAGE;
-			analog.encoding->digits = 1;
-			analog.spec->spec_digits = 1;
+			analog.probes = g_slist_append(NULL, ch);
+			analog.mq = SR_MQ_RELATIVE_HUMIDITY;
+			analog.unit = SR_UNIT_PERCENTAGE;
 			analog.data = (void *)rh;
 			sr_session_send(sdi, &packet);
-			g_slist_free(analog.meaning->channels);
+			g_slist_free(analog.probes);
 		}
 
 		g_free(temp);
@@ -471,11 +463,11 @@ static void lascar_el_usb_dispatch(struct sr_dev_inst *sdi, unsigned char *buf,
 	case LOG_CO:
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;
-		analog.meaning->channels = sdi->channels;
+		analog.probes = sdi->channels;
 		analog.num_samples = samples;
-		analog.meaning->mq = SR_MQ_CARBON_MONOXIDE;
-		analog.meaning->unit = SR_UNIT_CONCENTRATION;
-		analog.meaning->mqflags = 0;
+		analog.mq = SR_MQ_CARBON_MONOXIDE;
+		analog.unit = SR_UNIT_CONCENTRATION;
+		analog.mqflags = 0;
 		if (!(analog.data = g_try_malloc(sizeof(float) * samples)))
 			break;
 		for (i = 0; i < samples; i++) {

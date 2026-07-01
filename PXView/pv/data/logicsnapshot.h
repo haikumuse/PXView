@@ -282,6 +282,11 @@ private:
     void push_to_free_list(void* ptr);
     void* allocate_block(uint16_t channel, uint64_t index0, uint64_t index1);
 
+    bool is_mmap_slot_fresh(uint16_t channel, uint64_t global_block_seq) const;
+    void mark_mmap_slot_written(uint16_t channel, uint64_t global_block_seq);
+    void clear_mmap_slot_written(uint16_t channel, uint64_t global_block_seq);
+    void clear_mmap_slot_by_abs(uint64_t abs_slot);
+
 private:
     std::vector<std::vector<struct RootNode>> _ch_data;
     uint8_t     _byte_fraction;
@@ -301,15 +306,25 @@ private:
     DiskCacheConfig _disk_cache_config;
     std::shared_ptr<MmapAllocator> _mmap_alloc;
     uint64_t _max_blocks_per_channel;
+    // per-slot 位图：标记 mmap 槽位当前是否持有已提交数据。
+    // 索引 = abs_slot = channel * _max_blocks_per_channel + (global_block_seq % _max_blocks_per_channel)
+    // abs_slot 直接对应 mmap 内的物理槽位序号（与 MmapAllocator::get_block_data 的寻址一致）。
+    std::vector<bool> _mmap_slot_written;
 
 
     struct AsyncPayload {
         int format;
         std::vector<uint8_t> data;
     };
+    // Backpressure watermarks for the async write queue (hysteresis):
+    // feed thread blocks above HIGH, unblocks below LOW.
+    static constexpr uint64_t ASYNC_HIGH_WATERMARK = 256ULL * 1024 * 1024;
+    static constexpr uint64_t ASYNC_LOW_WATERMARK  = 64ULL * 1024 * 1024;
+
     std::queue<AsyncPayload> _async_queue;
     std::mutex _async_mutex;
     std::condition_variable _async_cv;
+    std::condition_variable _async_drain_cv;  // feed waits on this when queue exceeds high watermark
     std::thread _async_thread;
     std::atomic<bool> _async_running;
     void async_write_worker();

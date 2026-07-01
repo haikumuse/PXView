@@ -1,0 +1,42 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-4032l\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-4032l\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-4032l\\protocol.h"
+index f0e46d3..b69bd1c 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-4032l\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-4032l\\protocol.h"
+@@ -25,9 +25,10 @@
+ #include <stdint.h>
+ #include <glib.h>
+ #include <string.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
++#include <libusb.h>
++#include "hardware/compat/compat.h"
+ 
++#undef LOG_PREFIX
+ #define LOG_PREFIX "hantek-4032l"
+ 
+ #define H4032L_USB_VENDOR 0x04b5
+@@ -173,7 +174,7 @@ struct dev_context {
+ 	uint32_t fpga_version;
+ };
+ 
+-SR_PRIV int h4032l_receive_data(int fd, int revents, void *cb_data);
++SR_PRIV int h4032l_receive_data(int fd, int revents, const struct sr_dev_inst *sdi);
+ SR_PRIV uint16_t h4032l_voltage2pwm(double voltage);
+ SR_PRIV void LIBUSB_CALL h4032l_usb_callback(struct libusb_transfer *transfer);
+ SR_PRIV void LIBUSB_CALL h4032l_data_transfer_callback(struct libusb_transfer *transfer);
+@@ -183,4 +184,7 @@ SR_PRIV int h4032l_stop(struct sr_dev_inst *sdi);
+ SR_PRIV int h4032l_dev_open(struct sr_dev_inst *sdi);
+ SR_PRIV int h4032l_get_fpga_version(const struct sr_dev_inst *sdi);
+ 
++/* usb_source_remove compat - standard sigrok signature (session, ctx) */
++#define usb_source_remove(session, ctx) sr_session_source_remove(-1)
++
+ #endif

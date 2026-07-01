@@ -144,9 +144,6 @@ static void mastech_ms6514_data(struct sr_dev_inst *sdi, const uint8_t *buf)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *ch;
 	float value;
 	int i, digits;
@@ -165,21 +162,23 @@ static void mastech_ms6514_data(struct sr_dev_inst *sdi, const uint8_t *buf)
 			continue;
 
 		value = mastech_ms6514_temperature(buf, i, &digits);
-		sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
+		memset(&analog, 0, sizeof(analog));
+		analog.unit_bits = 32; /* float */
+		analog.unit_pitch = 0;
 		analog.num_samples = 1;
 		analog.data = &value;
-		analog.meaning->mq = SR_MQ_TEMPERATURE;
-		analog.meaning->unit = mastech_ms6514_unit(buf);
-		analog.meaning->mqflags = mastech_ms6514_flags(buf, i);
+		analog.mq = SR_MQ_TEMPERATURE;
+		analog.unit = mastech_ms6514_unit(buf);
+		analog.mqflags = mastech_ms6514_flags(buf, i);
 
-		analog.meaning->channels = g_slist_append(NULL,
+		analog.probes = g_slist_append(NULL,
 			g_slist_nth_data(sdi->channels,
 			mastech_ms6514_channel_assignment(buf, i)));
 
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;
 		sr_session_send(sdi, &packet);
-		g_slist_free(analog.meaning->channels);
+		g_slist_free(analog.probes);
 	}
 
 	sr_sw_limits_update_samples_read(&devc->limits, 1);

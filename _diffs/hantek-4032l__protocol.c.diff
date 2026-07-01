@@ -1,0 +1,77 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-4032l\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-4032l\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-4032l\\protocol.c"
+index a5b90ac..ef86138 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-4032l\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-4032l\\protocol.c"
+@@ -56,9 +56,9 @@ static void abort_acquisition(struct dev_context *devc)
+ static void finish_acquisition(struct sr_dev_inst *sdi)
+ {
+ 	struct dev_context *devc = sdi->priv;
+-	struct drv_context *drvc = sdi->driver->context;
++	struct compat_drv_context *drvc = sdi->driver->priv;
+ 
+-	std_session_send_df_end(sdi);
++	std_session_send_df_end(sdi, LOG_PREFIX);
+ 	usb_source_remove(sdi->session, drvc->sr_ctx);
+ 
+ 	devc->num_transfers = 0;
+@@ -125,7 +125,7 @@ static void send_data(struct sr_dev_inst *sdi,
+ 			sr_session_send(sdi, &packet);
+ 
+ 		/* Send trigger position. */
+-		std_session_send_df_trigger(sdi);
++		std_session_send_df_trigger(sdi, LOG_PREFIX);
+ 
+ 		/* Send rest of data. */
+ 		logic.length = (sample_count - trigger_offset) * sizeof(uint32_t);
+@@ -139,15 +139,22 @@ static void send_data(struct sr_dev_inst *sdi,
+ 	devc->sent_samples += sample_count;
+ }
+ 
+-SR_PRIV int h4032l_receive_data(int fd, int revents, void *cb_data)
++SR_PRIV int h4032l_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
+ {
+ 	struct timeval tv;
+-	struct drv_context *drvc;
++	struct compat_drv_context *drvc;
+ 
+ 	(void)fd;
+ 	(void)revents;
+ 
+-	drvc = (struct drv_context *)cb_data;
++	/*
++	 * Compat layer's usb_source_add passes the sdi directly as the
++	 * callback data (sr_receive_data_callback_t signature). Derive the
++	 * drv_context from the sdi's driver private data.
++	 */
++	if (!sdi || !sdi->driver || !sdi->driver->priv)
++		return TRUE;
++	drvc = sdi->driver->priv;
+ 
+ 	tv.tv_sec = tv.tv_usec = 0;
+ 	libusb_handle_events_timeout(drvc->sr_ctx->libusb_ctx, &tv);
+@@ -271,7 +278,7 @@ void LIBUSB_CALL h4032l_usb_callback(struct libusb_transfer *transfer)
+ 	case H4032L_STATUS_CMD_GET:
+ 		devc->status = H4032L_STATUS_FIRST_TRANSFER;
+ 		/* Trigger has been captured. */
+-		std_session_send_df_header(sdi);
++		std_session_send_df_header(sdi, LOG_PREFIX);
+ 		break;
+ 	case H4032L_STATUS_FIRST_TRANSFER:
+ 		/* Drop packets until H4032L_START_PACKET_MAGIC. */
+@@ -461,7 +468,7 @@ SR_PRIV int h4032l_stop(struct sr_dev_inst *sdi)
+ 
+ SR_PRIV int h4032l_dev_open(struct sr_dev_inst *sdi)
+ {
+-	struct drv_context *drvc = sdi->driver->context;
++	struct compat_drv_context *drvc = sdi->driver->priv;
+ 	struct sr_usb_dev_inst *usb = sdi->conn;
+ 	struct libusb_device_descriptor des;
+ 	libusb_device **devlist;

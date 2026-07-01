@@ -14,7 +14,7 @@
  *
  * * Redistributions in binary form must reproduce the above copyright notice,
  *   this list of conditions and the following disclaimer in the documentation
- *   and/or other materials provided with the distribution.
+ *   and any other materials provided with the distribution.
  *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -72,6 +72,14 @@
 #define COMPRESSION_NONE	0x0001
 #define COMPRESSION_ENABLE	0x8001
 #define COMPRESSION_DOUBLE	0x8002
+
+/* Sentinel initializer for arrays of structs (all fields zero). */
+#define ALL_ZERO { 0 }
+
+typedef enum {
+	LAPC_CLOCK_EDGE_RISING,
+	LAPC_CLOCK_EDGE_FALLING,
+} ext_clock_edge_t;
 
 SR_PRIV void analyzer_set_ext_clock(int enable, ext_clock_edge_t edge);
 SR_PRIV void analyzer_set_freq(int freq, int scale);

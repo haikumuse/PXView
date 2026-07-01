@@ -95,9 +95,6 @@ static void appa_55ii_live_data(const struct sr_dev_inst *sdi, const uint8_t *bu
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *ch;
 	float value;
 	int i, digits;
@@ -114,18 +111,20 @@ static void appa_55ii_live_data(const struct sr_dev_inst *sdi, const uint8_t *bu
 
 		value = appa_55ii_temp(buf, i, &digits);
 
-		sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
+		memset(&analog, 0, sizeof(analog));
+		analog.unit_bits = 32; /* float */
+		analog.unit_pitch = 0;
 		analog.num_samples = 1;
 		analog.data = &value;
-		analog.meaning->mq = SR_MQ_TEMPERATURE;
-		analog.meaning->unit = SR_UNIT_CELSIUS;
-		analog.meaning->mqflags = appa_55ii_flags(buf);
-		analog.meaning->channels = g_slist_append(NULL, ch);
+		analog.mq = SR_MQ_TEMPERATURE;
+		analog.unit = SR_UNIT_CELSIUS;
+		analog.mqflags = appa_55ii_flags(buf);
+		analog.probes = g_slist_append(NULL, ch);
 
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;
 		sr_session_send(sdi, &packet);
-		g_slist_free(analog.meaning->channels);
+		g_slist_free(analog.probes);
 	}
 
 	sr_sw_limits_update_samples_read(&devc->limits, 1);
@@ -144,9 +143,6 @@ static void appa_55ii_log_data_parse(const struct sr_dev_inst *sdi)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *ch;
 	float values[APPA_55II_NUM_CHANNELS], *val_ptr;
 	const uint8_t *buf;
@@ -163,10 +159,12 @@ static void appa_55ii_log_data_parse(const struct sr_dev_inst *sdi)
 		/* FIXME: Timestamp should be sent in the packet. */
 		sr_dbg("Timestamp: %02d:%02d:%02d", buf[2], buf[3], buf[4]);
 
-		sr_analog_init(&analog, &encoding, &meaning, &spec, 1);
+		memset(&analog, 0, sizeof(analog));
+		analog.unit_bits = 32; /* float */
+		analog.unit_pitch = 0;
 		analog.num_samples = 1;
-		analog.meaning->mq = SR_MQ_TEMPERATURE;
-		analog.meaning->unit = SR_UNIT_CELSIUS;
+		analog.mq = SR_MQ_TEMPERATURE;
+		analog.unit = SR_UNIT_CELSIUS;
 		analog.data = values;
 
 		for (i = 0; i < APPA_55II_NUM_CHANNELS; i++) {
@@ -174,14 +172,14 @@ static void appa_55ii_log_data_parse(const struct sr_dev_inst *sdi)
 			ch = g_slist_nth_data(sdi->channels, i);
 			if (!ch->enabled)
 				continue;
-			analog.meaning->channels = g_slist_append(analog.meaning->channels, ch);
+			analog.probes = g_slist_append(analog.probes, ch);
 			*val_ptr++ = temp == 0x7FFF ? INFINITY : (float)temp / 10;
 		}
 
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;
 		sr_session_send(sdi, &packet);
-		g_slist_free(analog.meaning->channels);
+		g_slist_free(analog.probes);
 
 		sr_sw_limits_update_samples_read(&devc->limits, 1);
 		devc->log_buf_len -= 20;

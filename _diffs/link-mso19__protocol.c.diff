@@ -1,0 +1,116 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\link-
+mso19\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\link-mso19\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\link-mso19\\protocol.c"
+index e63b458..fbd2d33 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\link-mso19\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\link-mso19\\protocol.c"
+@@ -271,9 +271,9 @@ SR_PRIV void stop_acquisition(const struct sr_dev_inst *sdi)
+ 	struct dev_context *devc;
+ 
+ 	devc = sdi->priv;
+-	serial_source_remove(sdi->session, devc->serial);
++	serial_source_remove(devc->serial);
+ 
+-	std_session_send_df_end(sdi);
++	std_session_send_df_end(sdi, LOG_PREFIX);
+ }
+ 
+ SR_PRIV int mso_clkrate_out(struct sr_serial_dev_inst *serial, uint16_t val)
+@@ -352,16 +352,12 @@ SR_PRIV int mso_read_status(struct sr_serial_dev_inst *serial, uint8_t *status)
+ 	return ret;
+ }
+ 
+-SR_PRIV int mso_receive_data(int fd, int revents, void *cb_data)
++SR_PRIV int mso_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
+ {
+ 	struct sr_datafeed_packet packet;
+ 	struct sr_datafeed_logic logic;
+ 	struct sr_datafeed_analog analog;
+-	struct sr_analog_encoding encoding;
+-	struct sr_analog_meaning meaning;
+-	struct sr_analog_spec spec;
+ 
+-	struct sr_dev_inst *sdi;
+ 	struct dev_context *devc;
+ 	int i;
+ 	int trigger_sample;
+@@ -373,7 +369,6 @@ SR_PRIV int mso_receive_data(int fd, int revents, void *cb_data)
+ 	(void)fd;
+ 	(void)revents;
+ 
+-	sdi = cb_data;
+ 	if (!sdi)
+ 		return TRUE;
+ 
+@@ -432,21 +427,29 @@ SR_PRIV int mso_receive_data(int fd, int revents, void *cb_data)
+ 
+ 	logic.unitsize = sizeof(*logic_out);
+ 
+-	sr_analog_init(&analog, &encoding, &meaning, &spec, 3);
+-	analog.meaning->channels = g_slist_append(
+-			NULL, g_slist_nth_data(sdi->channels, 0));
+-	analog.meaning->mq = SR_MQ_VOLTAGE;
+-	analog.meaning->unit = SR_UNIT_VOLT;
+-	analog.meaning->mqflags = SR_MQFLAG_DC;
++	/*
++	 * Use PXView's simpler sr_datafeed_analog struct (no meaning/encoding
++	 * sub-objects). The analog channel is the first channel in sdi.
++	 */
++	analog.probes = g_slist_append(NULL, g_slist_nth_data(sdi->channels, 0));
++	analog.num_samples = 0;
++	analog.unit_bits = 32; /* float */
++	analog.unit_pitch = 0;
++	analog.mq = SR_MQ_VOLTAGE;
++	analog.unit = SR_UNIT_VOLT;
++	analog.mqflags = SR_MQFLAG_DC;
++	analog.data = analog_out;
+ 
+ 	if (pre_samples > 0) {
+ 		packet.type = SR_DF_LOGIC;
++		packet.status = SR_PKT_OK;
+ 		packet.payload = &logic;
+ 		logic.length = pre_samples * sizeof(*logic_out);
+ 		logic.data = logic_out;
+ 		sr_session_send(sdi, &packet);
+ 
+ 		packet.type = SR_DF_ANALOG;
++		packet.status = SR_PKT_OK;
+ 		packet.payload = &analog;
+ 		analog.num_samples = pre_samples;
+ 		analog.data = analog_out;
+@@ -454,25 +457,27 @@ SR_PRIV int mso_receive_data(int fd, int revents, void *cb_data)
+ 	}
+ 
+ 	if (pre_samples == trigger_sample) {
+-		std_session_send_df_trigger(sdi);
++		std_session_send_df_trigger(sdi, LOG_PREFIX);
+ 	}
+ 
+ 	post_samples = MSO_NUM_SAMPLES - pre_samples;
+ 
+ 	if (post_samples > 0) {
+ 		packet.type = SR_DF_LOGIC;
++		packet.status = SR_PKT_OK;
+ 		packet.payload = &logic;
+ 		logic.length = post_samples * sizeof(*logic_out);
+ 		logic.data = logic_out + pre_samples;
+ 		sr_session_send(sdi, &packet);
+ 
+ 		packet.type = SR_DF_ANALOG;
++		packet.status = SR_PKT_OK;
+ 		packet.payload = &analog;
+ 		analog.num_samples = post_samples;
+ 		analog.data = analog_out + pre_samples;
+ 		sr_session_send(sdi, &packet);
+ 	}
+-	g_slist_free(analog.meaning->channels);
++	g_slist_free(analog.probes);
+ 
+ 	devc->num_samples += MSO_NUM_SAMPLES;
+ 

@@ -1,0 +1,323 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\rigol
+-dg\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-dg\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-dg\\api.c"
+index 37679cd..440ff8c 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-dg\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-dg\\api.c"
+@@ -17,12 +17,24 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <string.h>
+-#include "scpi.h"
+ #include "protocol.h"
+ 
+-static struct sr_dev_driver rigol_dg_driver_info;
++/* ALL_ZERO terminator for scpi_command tables (standard sigrok idiom). */
++#ifndef ALL_ZERO
++#define ALL_ZERO { 0 }
++#endif
++
++/*
++ * Forward declaration. Must have external linkage (not static) so that
++ * hwdriver.c's drivers_list[] entry `&rigol_dg_driver_info` can resolve
++ * at link time. The actual definition is at the end of this file.
++ * (Matches the fx2lafw pattern; the original sigrok source used `static`
++ * here because it relied on SR_REGISTER_DEV_DRIVER section-based
++ * registration, which PXView does not use.)
++ */
++extern struct sr_dev_driver rigol_dg_driver_info;
+ 
+ static const uint32_t scanopts[] = {
+ 	SR_CONF_CONN,
+@@ -493,7 +505,12 @@ static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
+ 		ch = sr_channel_new(sdi, ch_idx++, SR_CHANNEL_ANALOG, TRUE,
+ 				device->channels[i].name);
+ 		snprintf(tmp, sizeof(tmp), "%u", i + 1);
+-		cg = sr_channel_group_new(sdi, tmp, NULL);
++		/*
++		 * PXView's compat_sr_channel_group_new() does not copy the
++		 * name string, so pass a g_strdup()'d copy to avoid a
++		 * dangling pointer once tmp goes out of scope.
++		 */
++		cg = sr_channel_group_new(sdi, g_strdup(tmp), NULL);
+ 		cg->channels = g_slist_append(cg->channels, ch);
+ 	}
+ 
+@@ -529,7 +546,12 @@ error:
+ 
+ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ {
+-	return sr_scpi_scan(di->context, options, probe_device);
++	/*
++	 * PXView's sr_dev_driver stores the driver context (a struct
++	 * drv_context *) in the priv field. The compat_drv_context layout
++	 * matches struct drv_context, so the cast is safe.
++	 */
++	return sr_scpi_scan((struct drv_context *)di->priv, options, probe_device);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -565,7 +587,6 @@ static int config_get(uint32_t key, GVariant **data,
+ 	struct sr_scpi_dev_inst *scpi;
+ 	struct sr_channel *ch;
+ 	struct channel_status *ch_status;
+-	const struct sr_key_info *kinfo;
+ 	uint32_t cmd;
+ 	int ret;
+ 
+@@ -575,7 +596,6 @@ static int config_get(uint32_t key, GVariant **data,
+ 	devc = sdi->priv;
+ 	scpi = sdi->conn;
+ 	ret = SR_OK;
+-	kinfo = sr_key_info_get(SR_KEY_CONFIG, key);
+ 
+ 	if (!cg) {
+ 		switch (key) {
+@@ -584,8 +604,7 @@ static int config_get(uint32_t key, GVariant **data,
+ 			ret = sr_sw_limits_config_get(&devc->limits, key, data);
+ 			break;
+ 		default:
+-			sr_dbg("%s: Unsupported key: %d (%s)", __func__,
+-				(int)key, (kinfo ? kinfo->name : "unknown"));
++			sr_dbg("%s: Unsupported key: %d", __func__, (int)key);
+ 			ret = SR_ERR_NA;
+ 			break;
+ 		}
+@@ -640,8 +659,7 @@ static int config_get(uint32_t key, GVariant **data,
+ 				G_VARIANT_TYPE_DOUBLE, cmd, cg->name);
+ 			break;
+ 		default:
+-			sr_dbg("%s: Unsupported (cg) key: %d (%s)", __func__,
+-				(int)key, (kinfo ? kinfo->name : "unknown"));
++			sr_dbg("%s: Unsupported (cg) key: %d", __func__, (int)key);
+ 			ret = SR_ERR_NA;
+ 			break;
+ 		}
+@@ -658,7 +676,6 @@ static int config_set(uint32_t key, GVariant *data,
+ 	struct sr_channel *ch;
+ 	const struct channel_spec *ch_spec;
+ 	struct channel_status *ch_status;
+-	const struct sr_key_info *kinfo;
+ 	int ret;
+ 	uint32_t cmd;
+ 	const char *mode, *new_mode;
+@@ -669,7 +686,6 @@ static int config_set(uint32_t key, GVariant *data,
+ 
+ 	devc = sdi->priv;
+ 	scpi = sdi->conn;
+-	kinfo = sr_key_info_get(SR_KEY_CONFIG, key);
+ 
+ 	ret = SR_OK;
+ 
+@@ -680,8 +696,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 			ret = sr_sw_limits_config_set(&devc->limits, key, data);
+ 			break;
+ 		default:
+-			sr_dbg("%s: Unsupported key: %d (%s)", __func__,
+-				(int)key, (kinfo ? kinfo->name : "unknown"));
++			sr_dbg("%s: Unsupported key: %d", __func__, (int)key);
+ 			ret = SR_ERR_NA;
+ 			break;
+ 		}
+@@ -770,8 +785,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 				cmd, cg->name, g_variant_get_double(data));
+ 			break;
+ 		default:
+-			sr_dbg("%s: Unsupported key: %d (%s)", __func__,
+-				(int)key, (kinfo ? kinfo->name : "unknown"));
++			sr_dbg("%s: Unsupported key: %d", __func__, (int)key);
+ 			ret = SR_ERR_NA;
+ 			break;
+ 		}
+@@ -800,11 +814,16 @@ static int config_list(uint32_t key, GVariant **data,
+ 		switch (key) {
+ 		case SR_CONF_SCAN_OPTIONS:
+ 		case SR_CONF_DEVICE_OPTIONS:
+-			return std_opts_config_list(key, data, sdi, cg,
+-				ARRAY_AND_SIZE(scanopts),
+-				ARRAY_AND_SIZE(drvopts),
++			/*
++			 * Use std_config_list() directly (PXView compat layer).
++			 * The original std_opts_config_list() / STD_CONFIG_LIST
++			 * macro are not available here.
++			 */
++			return std_config_list(key, data, sdi, cg,
++				scanopts, ARRAY_SIZE(scanopts),
++				drvopts, ARRAY_SIZE(drvopts),
+ 				(devc && devc->device) ? devc->device->devopts : NULL,
+-				(devc && devc->device) ? devc->device->num_devopts : 0);
++				(devc && devc->device) ? (size_t)devc->device->num_devopts : 0);
+ 		default:
+ 			return SR_ERR_NA;
+ 		}
+@@ -843,10 +862,14 @@ static int config_list(uint32_t key, GVariant **data,
+ 			fspec[0] = wf_spec->freq_min;
+ 			fspec[1] = wf_spec->freq_max;
+ 			fspec[2] = wf_spec->freq_step;
+-			*data = std_gvar_min_max_step_array(fspec);
++			/* PXView's std_gvar_min_max_step takes 3 doubles. */
++			*data = std_gvar_min_max_step(fspec[0], fspec[1], fspec[2]);
+ 			break;
+ 		case SR_CONF_PHASE:
+-			*data = std_gvar_min_max_step_array(ch_spec->phase_min_max_step);
++			*data = std_gvar_min_max_step(
++				ch_spec->phase_min_max_step[0],
++				ch_spec->phase_min_max_step[1],
++				ch_spec->phase_min_max_step[2]);
+ 			break;
+ 		default:
+ 			return SR_ERR_NA;
+@@ -890,6 +913,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 		else
+ 			devc->counter_enabled = FALSE;
+ 		g_free(response);
++		response = NULL;
+ 
+ 		if (!devc->counter_enabled) {
+ 			/*
+@@ -911,6 +935,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 					return SR_ERR_NA;
+ 				ch_active = g_variant_get_boolean(data);
+ 				g_variant_unref(data);
++				data = NULL;
+ 				if (ch_active) {
+ 					sr_scpi_get_opc(scpi);
+ 					ret = sr_scpi_cmd(sdi, devc->cmdset,
+@@ -936,7 +961,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 
+ 	if (ret == SR_OK) {
+ 		sr_sw_limits_acquisition_start(&devc->limits);
+-		ret = std_session_send_df_header(sdi);
++		ret = std_session_send_df_header(sdi, NULL);
+ 		if (ret == SR_OK) {
+ 			ret = sr_scpi_source_add(sdi->session, scpi,
+ 				G_IO_IN, 100, rigol_dg_receive_data,
+@@ -975,27 +1000,104 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	}
+ 
+ 	sr_scpi_source_remove(sdi->session, scpi);
+-	std_session_send_df_end(sdi);
++	std_session_send_df_end(sdi, NULL);
+ 
+ 	return ret;
+ }
+ 
+-static struct sr_dev_driver rigol_dg_driver_info = {
++/* ===========================================================================
++ * PXView compat wrapper layer
++ *
++ * PXView's sr_dev_driver callbacks have different signatures from standard
++ * sigrok's (int vs uint32_t key, extra ch parameter, cb_data in acquisition
++ * start/stop, no dev_list/dev_clear fields). These thin wrappers adapt the
++ * standard sigrok callbacks above to PXView's expected signatures.
++ * ==========================================================================*/
++
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *rigol_dg_drv_ptr;
++
++/* Forward declaration - defined at end of file */
++extern struct sr_dev_driver rigol_dg_driver_info;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int rigol_dg_compat_init(struct sr_context *sr_ctx)
++{
++	rigol_dg_drv_ptr = &rigol_dg_driver_info;
++	return std_init(rigol_dg_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int rigol_dg_compat_cleanup(void)
++{
++	/* Clear device instances before tearing down the driver context. */
++	std_dev_clear(rigol_dg_drv_ptr);
++	return std_cleanup(rigol_dg_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *rigol_dg_compat_scan(GSList *options)
++{
++	return scan(rigol_dg_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int rigol_dg_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int rigol_dg_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int rigol_dg_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int rigol_dg_compat_acquisition_start(struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int rigol_dg_compat_acquisition_stop(const struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct */
++struct sr_dev_driver rigol_dg_driver_info = {
+ 	.name = "rigol-dg",
+-	.longname = "Rigol DG Series",
++	.longname = "Rigol DG Series (SCPI signal generator driver)",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = std_dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = rigol_dg_compat_init,
++	.cleanup = rigol_dg_compat_cleanup,
++	.scan = rigol_dg_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = rigol_dg_compat_config_get,
++	.config_set = rigol_dg_compat_config_set,
++	.config_list = rigol_dg_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = rigol_dg_compat_acquisition_start,
++	.dev_acquisition_stop = rigol_dg_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(rigol_dg_driver_info);

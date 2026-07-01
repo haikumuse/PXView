@@ -60,9 +60,6 @@ static void teleinfo_send_value(const struct sr_dev_inst *sdi,
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *ch;
 
 	ch = teleinfo_find_channel(sdi, channel_name);
@@ -71,17 +68,19 @@ static void teleinfo_send_value(const struct sr_dev_inst *sdi,
 		return;
 
 	/* Note: digits/spec_digits is actually really 0 for this device! */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
-	analog.meaning->channels = g_slist_append(analog.meaning->channels, ch);
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
+	analog.probes = g_slist_append(analog.probes, ch);
 	analog.num_samples = 1;
-	analog.meaning->mq = mq;
-	analog.meaning->unit = unit;
+	analog.mq = mq;
+	analog.unit = unit;
 	analog.data = &value;
 
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 }
 
 static void teleinfo_handle_measurement(const struct sr_dev_inst *sdi,

@@ -98,7 +98,7 @@ struct sr_scpi_dev_inst {
 	int (*read_data)(void *priv, char *buf, int maxlen);
 	int (*write_data)(void *priv, char *buf, int len);
 	int (*read_complete)(void *priv);
-	int (*close)(struct sr_scpi_dev_inst *scpi);
+	int (*close_dev)(struct sr_scpi_dev_inst *scpi);
 	void (*free)(void *priv);
 	unsigned int read_timeout_us;
 	void *priv;

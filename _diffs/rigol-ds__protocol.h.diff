@@ -1,0 +1,35 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\rigol
+-ds\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-ds\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-ds\\protocol.h"
+index e2efffa..b09538d 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rigol-ds\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rigol-ds\\protocol.h"
+@@ -23,9 +23,9 @@
+ 
+ #include <stdint.h>
+ #include <stdbool.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
++#include "hardware/compat/compat.h"
+ 
++#undef LOG_PREFIX
+ #define LOG_PREFIX "rigol-ds"
+ 
+ /* Size of acquisition buffers */
+@@ -172,4 +172,8 @@ SR_PRIV int rigol_ds_receive(int fd, int revents, void *cb_data);
+ SR_PRIV int rigol_ds_get_dev_cfg(const struct sr_dev_inst *sdi);
+ SR_PRIV int rigol_ds_get_dev_cfg_vertical(const struct sr_dev_inst *sdi);
+ 
+-#endif
++/* Frame begin/end compat stubs */
++SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
++
++#endif
+\ No newline at end of file

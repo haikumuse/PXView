@@ -1,0 +1,26 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\yokog
+awa-dlm\protocol_wrappers.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\protocol_wrappers.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\protocol_wrappers.h"
+index 445ce97..0bb6b9a 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\protocol_wrappers.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\protocol_wrappers.h"
+@@ -20,12 +20,7 @@
+ #ifndef LIBSIGROK_HARDWARE_YOKOGAWA_DLM_PROTOCOL_WRAPPERS_H
+ #define LIBSIGROK_HARDWARE_YOKOGAWA_DLM_PROTOCOL_WRAPPERS_H
+ 
+-#include <glib.h>
+-#include <stdint.h>
+-#include <string.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
+-#include "scpi.h"
++#include "hardware/compat/compat.h"
+ #include "protocol.h"
+ 
+ extern int dlm_timebase_get(struct sr_scpi_dev_inst *scpi,

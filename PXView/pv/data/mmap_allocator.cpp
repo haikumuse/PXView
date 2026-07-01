@@ -1,10 +1,13 @@
 #include "mmap_allocator.h"
 #include <QDir>
 #include <QDebug>
+#include <QDateTime>
+#include <thread>
 #include "../log.h"
 
 #ifdef _WIN32
 #include <windows.h>
+#include <winioctl.h>
 #else
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -43,7 +46,9 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
         if (!dir.exists()) {
             dir.mkpath(".");
         }
-        _file_path = dir.absoluteFilePath("pxview_mmap_cache.dat");
+        const QString file_name = QString("pxview_mmap_cache_%1.dat")
+            .arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmsszzz"));
+        _file_path = dir.absoluteFilePath(file_name);
         
         _hFile = CreateFileA(_file_path.toUtf8().constData(),
                              GENERIC_READ | GENERIC_WRITE,
@@ -54,9 +59,17 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
                              NULL);
                              
         if (_hFile == INVALID_HANDLE_VALUE) {
-            pxv_err("MmapAllocator: Failed to create disk cache file %s, error %lu", 
+            pxv_err("MmapAllocator: Failed to create disk cache file %s, error %lu",
                     _file_path.toUtf8().constData(), GetLastError());
             return false;
+        }
+
+        // 将缓存文件标记为稀疏，使零区间不占磁盘空间（配合 LogicSnapshot 跳过 memset + decommit）。
+        DWORD bytes_returned = 0;
+        if (!DeviceIoControl(_hFile, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &bytes_returned, NULL)) {
+            pxv_warn("MmapAllocator: FSCTL_SET_SPARSE failed (file will be non-sparse), error %lu",
+                     GetLastError());
+            // 非致命：退化为非稀疏文件，功能正常但磁盘占用更高。
         }
     } else {
         _hFile = INVALID_HANDLE_VALUE; // Page file backed
@@ -95,7 +108,9 @@ bool MmapAllocator::configure(bool use_disk_file, const QString& disk_dir, uint6
         if (!dir.exists()) {
             dir.mkpath(".");
         }
-        _file_path = dir.absoluteFilePath("pxview_mmap_cache.dat");
+        const QString file_name = QString("pxview_mmap_cache_%1.dat")
+            .arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmsszzz"));
+        _file_path = dir.absoluteFilePath(file_name);
         _fd = open(_file_path.toUtf8().constData(), O_RDWR | O_CREAT | O_TRUNC, 0666);
         if (_fd < 0) {
             pxv_err("MmapAllocator: Failed to open disk cache file");
@@ -144,7 +159,64 @@ void* MmapAllocator::get_block_data(int channel, uint64_t block_index, uint64_t 
     return (uint8_t*)_base_ptr + global_offset;
 }
 
+bool MmapAllocator::decommit_block(void* ptr, uint64_t size) {
+    if (!ptr || !_base_ptr || !is_mmap_address(ptr)) return false;
+
+#ifdef _WIN32
+    // RAM 页：DiscardVirtualMemory 从工作集移除页（不写回脏页），后续读返回零。
+    // 适用于 mapped view（VirtualFree MEM_DECOMMIT 对 mapped view 无效）。
+    DWORD discard_res = DiscardVirtualMemory(ptr, size);
+    if (discard_res != ERROR_SUCCESS) {
+        pxv_warn("MmapAllocator: DiscardVirtualMemory failed, error %lu (non-fatal)",
+                 discard_res);
+    }
+
+    // 磁盘页：对文件区间 punch sparse zero hole，回收磁盘空间。
+    if (_hFile != INVALID_HANDLE_VALUE) {
+        LARGE_INTEGER file_offset;
+        file_offset.QuadPart = (LONGLONG)((uint8_t*)ptr - (uint8_t*)_base_ptr);
+        FILE_ZERO_DATA_INFORMATION fzdi;
+        fzdi.FileOffset = file_offset;
+        fzdi.BeyondFinalZero.QuadPart = file_offset.QuadPart + (LONGLONG)size;
+        DWORD bytes_returned = 0;
+        if (!DeviceIoControl(_hFile, FSCTL_SET_ZERO_DATA,
+                             &fzdi, sizeof(fzdi),
+                             NULL, 0, &bytes_returned, NULL)) {
+            pxv_warn("MmapAllocator: FSCTL_SET_ZERO_DATA failed, error %lu (non-fatal)",
+                     GetLastError());
+        }
+    }
+    return true;
+#else
+    // RAM 页：madvise MADV_DONTNEED 释放页，后续读返回零（匿名映射）。
+    if (madvise(ptr, size, MADV_DONTNEED) != 0) {
+        pxv_warn("MmapAllocator: madvise MADV_DONTNEED failed, errno %d (non-fatal)", errno);
+    }
+
+    // 磁盘页：fallocate PUNCH_HOLE 在文件中打洞，回收磁盘空间。
+    if (_fd >= 0) {
+        off_t offset = (off_t)((uint8_t*)ptr - (uint8_t*)_base_ptr);
+        if (fallocate(_fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+                      offset, (off_t)size) != 0) {
+            pxv_warn("MmapAllocator: fallocate PUNCH_HOLE failed, errno %d (non-fatal)", errno);
+        }
+    }
+    return true;
+#endif
+}
+
+bool MmapAllocator::block_absolute_slot(void* ptr, uint64_t block_size, uint64_t& slot) const {
+    if (!ptr || !_base_ptr || block_size == 0) return false;
+    if (!is_mmap_address(ptr)) return false;
+    slot = (uint64_t)((uint8_t*)ptr - (uint8_t*)_base_ptr) / block_size;
+    return true;
+}
+
 void MmapAllocator::clear() {
+    // Take the file path into a local variable before clearing the member,
+    // so the background delete thread never touches object state.
+    const QString file_to_delete = _file_path;
+
 #ifdef _WIN32
     if (_base_ptr) {
         UnmapViewOfFile(_base_ptr);
@@ -157,9 +229,6 @@ void MmapAllocator::clear() {
     if (_hFile != INVALID_HANDLE_VALUE) {
         CloseHandle(_hFile);
         _hFile = INVALID_HANDLE_VALUE;
-        if (!_file_path.isEmpty()) {
-            QFile::remove(_file_path);
-        }
     }
 #else
     if (_base_ptr && _base_ptr != MAP_FAILED) {
@@ -169,13 +238,31 @@ void MmapAllocator::clear() {
     if (_fd >= 0) {
         close(_fd);
         _fd = -1;
-        if (!_file_path.isEmpty()) {
-            QFile::remove(_file_path);
-        }
     }
 #endif
     _total_bytes = 0;
     _file_path.clear();
+
+    // Delete the on-disk cache file in the background. Large cache files
+    // (up to several GB / 16 GB by default) can take seconds to tens of
+    // seconds to delete, and clear() may be called from LogicSnapshot
+    // while holding its mutex, which would otherwise block feed/decode/UI
+    // threads. The handles above are already closed synchronously (fast),
+    // so the detached thread only needs to remove the file by path.
+    if (!file_to_delete.isEmpty()) {
+        std::thread([file_to_delete]() {
+            if (!QFile::exists(file_to_delete)) {
+                return;
+            }
+            if (QFile::remove(file_to_delete)) {
+                pxv_info("MmapAllocator: Background-deleted cache file %s",
+                         file_to_delete.toUtf8().constData());
+            } else {
+                pxv_err("MmapAllocator: Failed to background-delete cache file %s",
+                        file_to_delete.toUtf8().constData());
+            }
+        }).detach();
+    }
 }
 
 } // namespace data

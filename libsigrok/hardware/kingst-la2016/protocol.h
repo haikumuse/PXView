@@ -184,4 +184,8 @@ SR_PRIV int la2016_abort_acquisition(const struct sr_dev_inst *sdi);
 SR_PRIV int la2016_receive_data(int fd, int revents, void *cb_data);
 SR_PRIV void la2016_release_resources(const struct sr_dev_inst *sdi);
 
+/* usb_source_remove compat - PXView does not expose this. The session and
+ * ctx arguments are unused (matches the standard sigrok 2-arg call form). */
+#define usb_source_remove(session, ctx) sr_session_source_remove(-1)
+
 #endif

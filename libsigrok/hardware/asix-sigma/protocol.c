@@ -26,6 +26,7 @@
  */
 
 #include "hardware/compat/compat.h"
+#include <stdio.h>
 #include "protocol.h"
 
 /*
@@ -61,6 +62,7 @@ static const char *firmware_files[] = {
 };
 
 #define SIGMA_FIRMWARE_SIZE_LIMIT (256 * 1024)
+#define SR_RESOURCE_FIRMWARE 1
 
 static int sigma_ftdi_open(const struct sr_dev_inst *sdi)
 {
@@ -761,22 +763,147 @@ static int sigma_fpga_init_la(struct dev_context *devc)
 }
 
 /*
+ * Local static replacement for standard sigrok's sr_resource_load(). PXView
+ * does not provide the sr_resource API. Declared static to avoid multiple
+ * definition link errors with other compat drivers in the same libsigrok
+ * build unit (e.g. saleae-logic-pro). Reads an entire firmware file (located
+ * under the DS_RES_PATH directory) into a g_malloc'd buffer.
+ */
+static void *sigma_sr_resource_load(struct sr_context *ctx, int type,
+	const char *name, size_t *size, size_t max_size)
+{
+	char path[512];
+	FILE *fp;
+	long file_size;
+	size_t n_read;
+	void *buf;
+
+	(void)ctx;
+	(void)type;
+
+	if (DS_RES_PATH[0] != '\0')
+		snprintf(path, sizeof(path), "%s/%s", DS_RES_PATH, name);
+	else
+		snprintf(path, sizeof(path), "%s", name);
+
+	fp = fopen(path, "rb");
+	if (!fp) {
+		sr_err("Failed to open resource '%s'.", path);
+		return NULL;
+	}
+
+	if (fseek(fp, 0, SEEK_END) != 0) {
+		sr_err("Failed to seek resource '%s'.", path);
+		fclose(fp);
+		return NULL;
+	}
+	file_size = ftell(fp);
+	if (file_size < 0) {
+		sr_err("Failed to tell size of resource '%s'.", path);
+		fclose(fp);
+		return NULL;
+	}
+	rewind(fp);
+
+	if ((size_t)file_size > max_size) {
+		sr_err("Size %ld of '%s' exceeds limit %zu.", file_size, name, max_size);
+		fclose(fp);
+		return NULL;
+	}
+
+	buf = g_try_malloc((size_t)file_size);
+	if (!buf) {
+		sr_err("Failed to allocate buffer for '%s'.", name);
+		fclose(fp);
+		return NULL;
+	}
+
+	n_read = fread(buf, 1, (size_t)file_size, fp);
+	fclose(fp);
+
+	if (n_read != (size_t)file_size) {
+		sr_err("Failed to read '%s': premature end of file.", name);
+		g_free(buf);
+		return NULL;
+	}
+
+	*size = (size_t)file_size;
+	return buf;
+}
+
+/*
  * Read the firmware from a file and transform it into a series of bitbang
- * pulses used to program the FPGA.
- *
- * NOTE: sr_resource_load is stubbed in compat layer - firmware loading
- * needs alternative implementation or is disabled.
+ * pulses used to program the FPGA. Note that the *bb_cmd must be free()'d
+ * by the caller of this function.
  */
 static int sigma_fw_2_bitbang(struct sr_context *ctx, const char *name,
 	uint8_t **bb_cmd, size_t *bb_cmd_size)
 {
-	/* Stub implementation - firmware loading not available in compat layer */
-	(void)ctx;
-	(void)name;
-	*bb_cmd = NULL;
-	*bb_cmd_size = 0;
-	sr_err("Firmware loading not implemented in compat layer for asix-sigma.");
-	return SR_ERR_NA;
+	uint8_t *firmware;
+	size_t file_size;
+	uint8_t *p;
+	size_t l;
+	uint32_t imm;
+	size_t bb_size;
+	uint8_t *bb_stream, *bbs, byte, mask, v;
+
+	/* Retrieve the on-disk firmware file content. */
+	firmware = sigma_sr_resource_load(ctx, SR_RESOURCE_FIRMWARE, name,
+		&file_size, SIGMA_FIRMWARE_SIZE_LIMIT);
+	if (!firmware)
+		return SR_ERR_IO;
+
+	/* Unscramble the file content (XOR with "random" sequence). */
+	p = firmware;
+	l = file_size;
+	imm = 0x3f6df2ab;
+	while (l--) {
+		imm = (imm + 0xa853753) % 177 + (imm * 0x8034052);
+		*p++ ^= imm & 0xff;
+	}
+
+	/*
+	 * Generate a sequence of bitbang samples. With two samples per
+	 * FPGA configuration bit, providing the level for the DIN signal
+	 * as well as two edges for CCLK. See Xilinx UG332 for details
+	 * ("slave serial" mode).
+	 *
+	 * Note that CCLK is inverted in hardware. That's why the
+	 * respective bit is first set and then cleared in the bitbang
+	 * sample sets. So that the DIN level will be stable when the
+	 * data gets sampled at the rising CCLK edge, and the signals'
+	 * setup time constraint will be met.
+	 *
+	 * The caller will put the FPGA into download mode, will send
+	 * the bitbang samples, and release the allocated memory.
+	 */
+	bb_size = file_size * 8 * 2;
+	bb_stream = g_try_malloc(bb_size);
+	if (!bb_stream) {
+		sr_err("Memory allocation failed during firmware upload.");
+		g_free(firmware);
+		return SR_ERR_MALLOC;
+	}
+	bbs = bb_stream;
+	p = firmware;
+	l = file_size;
+	while (l--) {
+		byte = *p++;
+		mask = 0x80;
+		while (mask) {
+			v = (byte & mask) ? BB_PIN_DIN : 0;
+			mask >>= 1;
+			*bbs++ = v | BB_PIN_CCLK;
+			*bbs++ = v;
+		}
+	}
+	g_free(firmware);
+
+	/* The transformation completed successfully, return the result. */
+	*bb_cmd = bb_stream;
+	*bb_cmd_size = bb_size;
+
+	return SR_OK;
 }
 
 static int upload_firmware(struct sr_context *ctx, struct dev_context *devc,
@@ -881,7 +1008,8 @@ SR_PRIV int sigma_set_acquire_timeout(struct dev_context *devc)
 	devc->late_trigger_timeout = FALSE;
 
 	/* Get sample count limit, convert to msecs. */
-	ret = sr_config_get_compat(NULL, NULL, NULL, SR_CONF_LIMIT_SAMPLES, &data);
+	ret = sr_sw_limits_config_get(&devc->limit.config,
+		SR_CONF_LIMIT_SAMPLES, &data);
 	if (ret != SR_OK)
 		return ret;
 	user_count = g_variant_get_uint64(data);
@@ -895,7 +1023,8 @@ SR_PRIV int sigma_set_acquire_timeout(struct dev_context *devc)
 		count_msecs = 1000 * user_count / devc->clock.samplerate + 1;
 
 	/* Get time limit, which is in msecs. */
-	ret = sr_config_get_compat(NULL, NULL, NULL, SR_CONF_LIMIT_MSEC, &data);
+	ret = sr_sw_limits_config_get(&devc->limit.config,
+		SR_CONF_LIMIT_MSEC, &data);
 	if (ret != SR_OK)
 		return ret;
 	user_msecs = g_variant_get_uint64(data);
@@ -1085,7 +1214,8 @@ static int setup_submit_limit(struct dev_context *devc)
 
 	limits = &devc->limit.submit;
 
-	ret = sr_config_get_compat(NULL, NULL, NULL, SR_CONF_LIMIT_SAMPLES, &data);
+	ret = sr_sw_limits_config_get(&devc->limit.config,
+		SR_CONF_LIMIT_SAMPLES, &data);
 	if (ret != SR_OK)
 		return ret;
 	total = g_variant_get_uint64(data);

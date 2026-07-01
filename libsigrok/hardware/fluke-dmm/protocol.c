@@ -81,9 +81,8 @@ static void handle_line(const struct sr_dev_inst *sdi)
 	devc->buflen = 0;
 }
 
-SR_PRIV int fluke_receive_data(int fd, int revents, void *cb_data)
+SR_PRIV int fluke_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	struct sr_dev_inst *sdi;
 	struct dev_context *devc;
 	struct sr_serial_dev_inst *serial;
 	int len;
@@ -91,7 +90,7 @@ SR_PRIV int fluke_receive_data(int fd, int revents, void *cb_data)
 
 	(void)fd;
 
-	if (!(sdi = cb_data))
+	if (!sdi)
 		return TRUE;
 
 	if (!(devc = sdi->priv))

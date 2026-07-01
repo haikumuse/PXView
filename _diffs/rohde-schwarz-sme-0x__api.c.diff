@@ -1,0 +1,213 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\rohde
+-schwarz-sme-0x\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rohde-schwarz-sme-0x\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rohde-schwarz-sme-0x\\api.c"
+index d0d04d5..64dca74 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rohde-schwarz-sme-0x\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rohde-schwarz-sme-0x\\api.c"
+@@ -17,13 +17,20 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
+-#include <scpi.h>
++#include "hardware/compat/compat.h"
+ #include <string.h>
+ 
+ #include "protocol.h"
+ 
+-static struct sr_dev_driver rohde_schwarz_sme_0x_driver_info;
++/*
++ * Forward declaration. Must have external linkage (not static) so that
++ * hwdriver.c's drivers_list[] entry `&rohde_schwarz_sme_0x_driver_info`
++ * can resolve at link time. The actual definition is at the end of this
++ * file. (Matches the fx2lafw/rigol-dg pattern; the original sigrok source
++ * used `static` here because it relied on SR_REGISTER_DEV_DRIVER
++ * section-based registration, which PXView does not use.)
++ */
++extern struct sr_dev_driver rohde_schwarz_sme_0x_driver_info;
+ 
+ static const char *manufacturer = "Rohde&Schwarz";
+ 
+@@ -71,7 +78,7 @@ static const uint32_t scanopts[] = {
+ };
+ 
+ static const uint32_t drvopts[] = {
+-        SR_CONF_SIGNAL_GENERATOR,
++	SR_CONF_SIGNAL_GENERATOR,
+ };
+ 
+ static const uint32_t devopts[] = {
+@@ -136,6 +143,13 @@ static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
+ 
+ 	devc = g_malloc0(sizeof(struct dev_context));
+ 	sdi->priv = devc;
++	/*
++	 * From this point, sdi owns devc. Set the local pointer to NULL so
++	 * the fail path's g_free(devc) is a no-op. PXView's sr_dev_inst_free()
++	 * frees sdi->priv (unlike standard sigrok's), so without this a
++	 * rs_init_device() failure would double-free devc.
++	 */
++	devc = NULL;
+ 
+ 	if (rs_init_device(sdi) != SR_OK)
+ 		goto fail;
+@@ -151,7 +165,12 @@ fail:
+ 
+ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ {
+-	return sr_scpi_scan(di->context, options, probe_device);
++	/*
++	 * PXView stores the driver private data (struct drv_context *) in
++	 * di->priv. The original sigrok used di->context. sr_scpi_scan()
++	 * expects a struct drv_context *, so cast di->priv accordingly.
++	 */
++	return sr_scpi_scan((struct drv_context *)di->priv, options, probe_device);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -216,25 +235,125 @@ static int config_set(uint32_t key, GVariant *data,
+ static int config_list(uint32_t key, GVariant **data,
+ 	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+ {
+-	return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
++	/*
++	 * Use std_config_list() directly (PXView compat layer).
++	 * The original STD_CONFIG_LIST macro is mapped to a direct call
++	 * per PXView migration conventions.
++	 */
++	return std_config_list(key, data, sdi, cg,
++		scanopts, ARRAY_SIZE(scanopts),
++		drvopts, ARRAY_SIZE(drvopts),
++		devopts, ARRAY_SIZE(devopts));
++}
++
++/* ===========================================================================
++ * PXView compat wrapper layer
++ *
++ * PXView's sr_dev_driver callbacks have different signatures from standard
++ * sigrok's (int vs uint32_t key, extra ch parameter, cb_data in acquisition
++ * start/stop, no dev_list/dev_clear fields). These thin wrappers adapt the
++ * standard sigrok callbacks above to PXView's expected signatures.
++ *
++ * Note: This is a signal generator driver. The original sigrok source used
++ * std_dummy_dev_acquisition_start (no-op returning SR_OK) and
++ * std_serial_dev_acquisition_stop for the acquisition callbacks. Neither
++ * exists in the PXView compat layer, so the wrappers below are no-ops that
++ * simply return SR_OK, matching the original semantics.
++ * ==========================================================================*/
++
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *rohde_schwarz_sme_0x_drv_ptr;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int rohde_schwarz_sme_0x_compat_init(struct sr_context *sr_ctx)
++{
++	rohde_schwarz_sme_0x_drv_ptr = &rohde_schwarz_sme_0x_driver_info;
++	return std_init(rohde_schwarz_sme_0x_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int rohde_schwarz_sme_0x_compat_cleanup(void)
++{
++	/* Clear device instances before tearing down the driver context. */
++	std_dev_clear(rohde_schwarz_sme_0x_drv_ptr);
++	return std_cleanup(rohde_schwarz_sme_0x_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *rohde_schwarz_sme_0x_compat_scan(GSList *options)
++{
++	return scan(rohde_schwarz_sme_0x_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int rohde_schwarz_sme_0x_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int rohde_schwarz_sme_0x_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int rohde_schwarz_sme_0x_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/*
++ * Wrapper: PXView acquisition_start(sdi, cb_data).
++ * Original used std_dummy_dev_acquisition_start (no-op). This driver is a
++ * signal generator and does not perform data acquisition, so this is a no-op.
++ */
++static int rohde_schwarz_sme_0x_compat_acquisition_start(struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)sdi;
++	(void)cb_data;
++	return SR_OK;
++}
++
++/*
++ * Wrapper: PXView acquisition_stop(const sdi, cb_data).
++ * Original used std_serial_dev_acquisition_stop. This driver is a signal
++ * generator and does not perform data acquisition, so this is a no-op.
++ */
++static int rohde_schwarz_sme_0x_compat_acquisition_stop(const struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)sdi;
++	(void)cb_data;
++	return SR_OK;
+ }
+ 
+-static struct sr_dev_driver rohde_schwarz_sme_0x_driver_info = {
++/* PXView-compatible driver info struct */
++struct sr_dev_driver rohde_schwarz_sme_0x_driver_info = {
+ 	.name = "rohde-schwarz-sme-0x",
+ 	.longname = "Rohde&Schwarz SME-0x",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = std_dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = rohde_schwarz_sme_0x_compat_init,
++	.cleanup = rohde_schwarz_sme_0x_compat_cleanup,
++	.scan = rohde_schwarz_sme_0x_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = rohde_schwarz_sme_0x_compat_config_get,
++	.config_set = rohde_schwarz_sme_0x_compat_config_set,
++	.config_list = rohde_schwarz_sme_0x_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = std_dummy_dev_acquisition_start,
+-	.dev_acquisition_stop = std_serial_dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = rohde_schwarz_sme_0x_compat_acquisition_start,
++	.dev_acquisition_stop = rohde_schwarz_sme_0x_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(rohde_schwarz_sme_0x_driver_info);

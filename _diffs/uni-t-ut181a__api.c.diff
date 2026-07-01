@@ -1,0 +1,230 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\uni-t
+-ut181a\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\uni-t-ut181a\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\uni-t-ut181a\\api.c"
+index 53fdf18..be4e648 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\uni-t-ut181a\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\uni-t-ut181a\\api.c"
+@@ -17,9 +17,55 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
++#include <errno.h>
++#include <stdlib.h>
++#include <string.h>
+ #include "protocol.h"
+ 
++/*
++ * Local helper for string index lookup.
++ *
++ * The compat layer's std_str_idx() has a different signature (it is a
++ * config-get helper taking sdi/key/data). Standard sigrok's std_str_idx()
++ * is a simple string-array lookup, so provide it locally to avoid the
++ * name collision.
++ */
++static int local_std_str_idx(GVariant *data, const char *const strs[], size_t count)
++{
++	const char *str;
++	size_t i;
++
++	str = g_variant_get_string(data, NULL);
++	for (i = 0; i < count; i++) {
++		if (strcmp(str, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
++/*
++ * Local replacement for standard sigrok's sr_atoi(), which is not provided
++ * by PXView's compat layer. Parses str as a base-10 integer into out.
++ * Returns SR_OK on success, SR_ERR on parse failure.
++ */
++static int ut181a_atoi(const char *str, int *out)
++{
++	char *end;
++	long val;
++
++	if (!str || !out)
++		return SR_ERR_ARG;
++
++	errno = 0;
++	val = strtol(str, &end, 10);
++	if (errno != 0 || end == str || *end != '\0')
++		return SR_ERR;
++
++	*out = (int)val;
++	return SR_OK;
++}
++
+ static const uint32_t scanopts[] = {
+ 	SR_CONF_CONN,
+ 	SR_CONF_SERIALCOMM,
+@@ -271,7 +317,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 
+ 	devices = g_slist_append(devices, sdi);
+ 
+-	return std_scan_complete(di, devices);
++	return std_scan_complete_compat(di, devices);
+ }
+ 
+ static int config_get(uint32_t key, GVariant **data,
+@@ -358,7 +404,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		if (!devc)
+ 			return SR_ERR_ARG;
+ 		/* Prefer data source names for the lookup. */
+-		idx = std_str_idx(data, devc->data_source_names, devc->data_source_count);
++		idx = local_std_str_idx(data, devc->data_source_names, devc->data_source_count);
+ 		if (idx >= 0) {
+ 			devc->data_source = idx;
+ 			break;
+@@ -369,7 +415,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		 * previously stored name for each new recording, neither
+ 		 * automatically increments nor suggests timestamps).
+ 		 */
+-		if (sr_atoi(g_variant_get_string(data, NULL), &ret) != SR_OK)
++		if (ut181a_atoi(g_variant_get_string(data, NULL), &ret) != SR_OK)
+ 			return SR_ERR_ARG;
+ 		if (ret <= 0)
+ 			return SR_ERR_ARG;
+@@ -409,7 +455,7 @@ static int config_set(uint32_t key, GVariant *data,
+ 		ret = ut181a_send_cmd_setmode(sdi->conn, mode);
+ 		if (ret < 0)
+ 			return ret;
+-		ret = ut181a_waitfor_response(sdi->conn, 100);
++		ret = ut181a_waitfor_response(sdi, 100);
+ 		if (ret < 0)
+ 			return ret;
+ 		if (devc->info.rsp_head.rsp_type != RSP_TYPE_REPLY_CODE)
+@@ -437,7 +483,7 @@ static int config_list(uint32_t key, GVariant **data,
+ 	switch (key) {
+ 	case SR_CONF_SCAN_OPTIONS:
+ 	case SR_CONF_DEVICE_OPTIONS:
+-		return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
++		return std_config_list(key, data, sdi, cg, scanopts, ARRAY_SIZE(scanopts), drvopts, ARRAY_SIZE(drvopts), devopts, ARRAY_SIZE(devopts));
+ 	case SR_CONF_DATA_SOURCE:
+ 		if (!devc)
+ 			return SR_ERR_NA;
+@@ -541,10 +587,10 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 
+ 	sr_sw_limits_acquisition_start(&devc->limits);
+ 	devc->recv_count = 0;
+-	std_session_send_df_header(sdi);
++	std_session_send_df_header(sdi, LOG_PREFIX);
+ 
+-	serial_source_add(sdi->session, serial, G_IO_IN, 10,
+-		ut181a_handle_events, (void *)sdi);
++	serial_source_add(serial, G_IO_IN, 10,
++		ut181a_handle_events, sdi);
+ 
+ 	return SR_OK;
+ }
+@@ -558,22 +604,88 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ 	return SR_OK;
+ }
+ 
+-static struct sr_dev_driver uni_t_ut181a_driver_info = {
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *uni_t_ut181a_drv_ptr;
++
++/* Forward declaration - defined at end of file */
++extern struct sr_dev_driver uni_t_ut181a_driver_info;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int uni_t_ut181a_compat_init(struct sr_context *sr_ctx)
++{
++	uni_t_ut181a_drv_ptr = &uni_t_ut181a_driver_info;
++	return std_init(uni_t_ut181a_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int uni_t_ut181a_compat_cleanup(void)
++{
++	return std_cleanup(uni_t_ut181a_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *uni_t_ut181a_compat_scan(GSList *options)
++{
++	return scan(uni_t_ut181a_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int uni_t_ut181a_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int uni_t_ut181a_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int uni_t_ut181a_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int uni_t_ut181a_compat_acquisition_start(struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int uni_t_ut181a_compat_acquisition_stop(const struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct */
++struct sr_dev_driver uni_t_ut181a_driver_info = {
+ 	.name = "uni-t-ut181a",
+ 	.longname = "UNI-T UT181A",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = std_dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = uni_t_ut181a_compat_init,
++	.cleanup = uni_t_ut181a_compat_cleanup,
++	.scan = uni_t_ut181a_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = uni_t_ut181a_compat_config_get,
++	.config_set = uni_t_ut181a_compat_config_set,
++	.config_list = uni_t_ut181a_compat_config_list,
+ 	.dev_open = std_serial_dev_open,
+ 	.dev_close = std_serial_dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = uni_t_ut181a_compat_acquisition_start,
++	.dev_acquisition_stop = uni_t_ut181a_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(uni_t_ut181a_driver_info);

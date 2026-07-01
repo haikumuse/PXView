@@ -1,0 +1,55 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\yokog
+awa-dlm\protocol_wrappers.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\protocol_wrappers.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\protocol_wrappers.c"
+index e2a05be..00b7b2a 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\yokogawa-dlm\\protocol_wrappers.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\yokogawa-dlm\\protocol_wrappers.c"
+@@ -17,11 +17,32 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
++#include <errno.h>
++#include <limits.h>
+ #include "protocol_wrappers.h"
+ 
+ #define MAX_COMMAND_SIZE 64
+ 
++/*
++ * Local replacement for standard sigrok's sr_atol() which is not provided by
++ * PXView's libsigrok. Parses a base-10 long and returns SR_OK/SR_ERR.
++ */
++static int local_sr_atol(const char *str, long *ret)
++{
++	char *e;
++	long tmp;
++
++	errno = 0;
++	tmp = strtol(str, &e, 10);
++	if (e == str || *e != '\0' || errno != 0)
++		return SR_ERR;
++	if (tmp > LONG_MAX || tmp < LONG_MIN)
++		return SR_ERR;
++	*ret = tmp;
++	return SR_OK;
++}
++
+ /*
+  * DLM2000 comm spec:
+  * https://www.yokogawa.com/pdf/provide/E/GW/IM/0000022842/0/IM710105-17E.pdf
+@@ -280,7 +301,7 @@ int dlm_acq_length_get(struct sr_scpi_dev_inst *scpi,
+ 		if (!s)
+ 			return SR_ERR;
+ 
+-	if (sr_atol(s, &tmp) == SR_OK)
++	if (local_sr_atol(s, &tmp) == SR_OK)
+ 		ret = SR_OK;
+ 	else
+ 		ret = SR_ERR;

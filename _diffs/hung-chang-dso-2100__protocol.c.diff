@@ -1,0 +1,67 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hung-
+chang-dso-2100\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hung-chang-dso-2100\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hung-chang-dso-2100\\protocol.c"
+index 92d52c3..da1629a 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hung-chang-dso-2100\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hung-chang-dso-2100\\protocol.c"
+@@ -17,11 +17,25 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <math.h>
+ #include <ieee1284.h>
+ #include "protocol.h"
+ 
++/*
++ * Compat stubs for frame begin/end packet sending.
++ * PXView has SR_DF_FRAME_BEGIN/SR_DF_FRAME_END packet types,
++ * so we can send them directly via ds_data_forward.
++ */
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++	packet.type = SR_DF_FRAME_END;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++	return ds_data_forward(sdi, &packet);
++}
++
+ /* The firmware can be in the following states:
+  *  0x00	Temporary state during initialization
+  *  		Automatically transitions to state 0x01
+@@ -397,7 +411,7 @@ static int read_subframe(const struct sr_dev_inst *sdi, uint8_t *buf)
+ 				num *= 2;
+ 			if (!devc->step) {
+ 				push_samples(sdi, buf, 6);
+-				std_session_send_df_trigger(sdi);
++				std_session_send_df_trigger(sdi, NULL);
+ 				buf += 6;
+ 				num -= 6;
+ 			}
+@@ -413,16 +427,15 @@ static int read_subframe(const struct sr_dev_inst *sdi, uint8_t *buf)
+ 	return devc->step > 0;
+ }
+ 
+-SR_PRIV int hung_chang_dso_2100_poll(int fd, int revents, void *cb_data)
++SR_PRIV int hung_chang_dso_2100_poll(int fd, int revents, const struct sr_dev_inst *sdi)
+ {
+-	struct sr_dev_inst *sdi;
+ 	struct dev_context *devc;
+ 	uint8_t state, buf[1000];
+ 
+ 	(void)fd;
+ 	(void)revents;
+ 
+-	if (!(sdi = cb_data))
++	if (!sdi)
+ 		return TRUE;
+ 
+ 	if (!(devc = sdi->priv))

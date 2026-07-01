@@ -1,0 +1,43 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\rohde
+-schwarz-sme-0x\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rohde-schwarz-sme-0x\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rohde-schwarz-sme-0x\\protocol.h"
+index 65e5c6d..fc7373f 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\rohde-schwarz-sme-0x\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\rohde-schwarz-sme-0x\\protocol.h"
+@@ -22,11 +22,28 @@
+ 
+ #include <stdint.h>
+ #include <glib.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
++#include "hardware/compat/compat.h"
+ 
+ #define LOG_PREFIX "rohde-schwarz-sme-0x"
+ 
++/*
++ * PXView does not define several standard sigrok config keys that this
++ * driver needs. Provide them here with unique values that do not collide
++ * with PXView's existing SR_CONF_* keys (which occupy the 10000-10006
++ * device-type range, the 30000-30098 config range, and the 50000-50007
++ * acquisition range). These compat values live in reserved gaps and
++ * match the values used by the rigol-dg compat driver.
++ */
++#ifndef SR_CONF_SIGNAL_GENERATOR
++#define SR_CONF_SIGNAL_GENERATOR   10020
++#endif
++#ifndef SR_CONF_OUTPUT_FREQUENCY
++#define SR_CONF_OUTPUT_FREQUENCY   30201
++#endif
++#ifndef SR_CONF_AMPLITUDE
++#define SR_CONF_AMPLITUDE          30202
++#endif
++
+ struct rs_sme0x_info {
+ 	struct sr_dev_driver di;
+ 	char *vendor;

@@ -1,0 +1,47 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hante
+k-dso\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-dso\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-dso\\protocol.h"
+index 2113161..1b62f0b 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hantek-dso\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hantek-dso\\protocol.h"
+@@ -22,6 +22,14 @@
+ #ifndef LIBSIGROK_HARDWARE_HANTEK_DSO_PROTOCOL_H
+ #define LIBSIGROK_HARDWARE_HANTEK_DSO_PROTOCOL_H
+ 
++#include <glib.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++#include <libusb.h>
++#include "hardware/compat/compat.h"
++
++#undef LOG_PREFIX
+ #define LOG_PREFIX "hantek-dso"
+ 
+ #define USB_INTERFACE           0
+@@ -185,7 +193,7 @@ struct dev_context {
+ 	 * until a proper delay after the last device was upgraded.
+ 	 */
+ 	int64_t fw_updated;
+-	int epin_maxpacketsize;
++	int epin_maxpackersize;
+ 	int capture_empty_count;
+ 	int dev_state;
+ 
+@@ -227,4 +235,10 @@ SR_PRIV int dso_get_channeldata(const struct sr_dev_inst *sdi,
+ SR_PRIV int dso_set_trigger_samplerate(const struct sr_dev_inst *sdi);
+ SR_PRIV int dso_set_voffsets(const struct sr_dev_inst *sdi);
+ 
++/* Frame begin/end compat stubs - implemented in protocol.c */
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
++
++/* usb_source_remove compat - maps to PXView's sr_session_source_remove */
++#define usb_source_remove(session, ctx) sr_session_source_remove(-1)
++
+ #endif

@@ -1,0 +1,119 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hameg
+-hmo\protocol.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hameg-hmo\\protocol.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hameg-hmo\\protocol.c"
+index f355e2c..3823279 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hameg-hmo\\protocol.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hameg-hmo\\protocol.c"
+@@ -1,7 +1,7 @@
+ /*
+  * This file is part of the libsigrok project.
+  *
+- * Copyright (C) 2013 poljar (Damir Jelić) <poljarinho@gmail.com>
++ * Copyright (C) 2013 poljar (Damir Jelic) <poljarinho@gmail.com>
+  * Copyright (C) 2018 Guido Trentalancia <guido@trentalancia.com>
+  *
+  * This program is free software: you can redistribute it and/or modify
+@@ -18,10 +18,9 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <math.h>
+ #include <stdlib.h>
+-#include "scpi.h"
+ #include "protocol.h"
+ 
+ SR_PRIV void hmo_queue_logic_data(struct dev_context *devc,
+@@ -30,6 +29,24 @@ SR_PRIV void hmo_send_logic_packet(struct sr_dev_inst *sdi,
+ 				   struct dev_context *devc);
+ SR_PRIV void hmo_cleanup_logic_data(struct dev_context *devc);
+ 
++/*
++ * Local helper for string-array index lookup.
++ *
++ * The compat layer's std_str_idx() has a different signature (it is a
++ * config-get helper taking sdi/key/data). Standard sigrok's std_str_idx_s()
++ * is a simple lookup, so provide it locally to avoid the name collision.
++ */
++static int local_std_str_idx_s(const char *needle, const char *const strs[], size_t count)
++{
++	size_t i;
++
++	for (i = 0; i < count; i++) {
++		if (strcmp(needle, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
+ static const char *hameg_scpi_dialect[] = {
+ 	[SCPI_CMD_GET_DIG_DATA]		      = ":FORM UINT,8;:POD%d:DATA?",
+ 	[SCPI_CMD_GET_TIMEBASE]		      = ":TIM:SCAL?",
+@@ -916,7 +933,7 @@ static int scope_state_get_array_option(struct sr_scpi_dev_inst *scpi,
+ 	if (sr_scpi_get_string(scpi, command, &tmp) != SR_OK)
+ 		return SR_ERR;
+ 
+-	if ((idx = std_str_idx_s(tmp, *array, n)) < 0) {
++	if ((idx = local_std_str_idx_s(tmp, *array, n)) < 0) {
+ 		g_free(tmp);
+ 		return SR_ERR_ARG;
+ 	}
+@@ -1463,10 +1480,9 @@ SR_PRIV void hmo_cleanup_logic_data(struct dev_context *devc)
+ 	 */
+ }
+ 
+-SR_PRIV int hmo_receive_data(int fd, int revents, void *cb_data)
++SR_PRIV int hmo_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
+ {
+ 	struct sr_channel *ch;
+-	struct sr_dev_inst *sdi;
+ 	struct dev_context *devc;
+ 	struct scope_state *state;
+ 	struct sr_datafeed_packet packet;
+@@ -1481,7 +1497,7 @@ SR_PRIV int hmo_receive_data(int fd, int revents, void *cb_data)
+ 	(void)fd;
+ 	(void)revents;
+ 
+-	if (!(sdi = cb_data))
++	if (!sdi)
+ 		return TRUE;
+ 
+ 	if (!(devc = sdi->priv))
+@@ -1558,8 +1574,8 @@ SR_PRIV int hmo_receive_data(int fd, int revents, void *cb_data)
+ 		 * into memory in such a layout that all channel groups
+ 		 * get combined, and a unitsize larger than a single byte
+ 		 * applies. The "queue" logic transparently copes with
+-		 * any such configuration. This works around the lack
+-		 * of support for "meaning" to logic data, which is used
++		 * any such configuration. This works around the lack of
++		 * support for "meaning" to logic data, which is used
+ 		 * above for analog data.
+ 		 */
+ 		if (devc->pod_count == 1) {
+@@ -1623,3 +1639,19 @@ SR_PRIV int hmo_receive_data(int fd, int revents, void *cb_data)
+ 
+ 	return TRUE;
+ }
++
++/*
++ * Frame begin/end helpers. PXView's compat layer does not provide
++ * std_session_send_df_frame_begin/end, so define them locally (same pattern
++ * used by rigol-ds, lecroy-xstream, siglent-sds, etc.).
++ */
++SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
++{
++	struct sr_datafeed_packet packet;
++
++	packet.type = SR_DF_FRAME_END;
++	packet.status = SR_PKT_OK;
++	packet.payload = NULL;
++	sr_session_send(sdi, &packet);
++	return SR_OK;
++}

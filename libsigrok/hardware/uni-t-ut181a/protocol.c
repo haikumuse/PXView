@@ -145,21 +145,7 @@ SR_PRIV gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
 	return FALSE;
 }
 
-/*
- * Frame begin/end compat stubs. PXView has SR_DF_FRAME_BEGIN/SR_DF_FRAME_END
- * packet types, so emit them directly via ds_data_forward.
- */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-
-	return ds_data_forward(sdi, &packet);
-}
-
+/* Frame end compat stub kept locally; frame_begin is canonical in compat_helpers.c. */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;

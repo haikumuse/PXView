@@ -1,0 +1,33 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hung-
+chang-dso-2100\protocol.h', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hung-chang-dso-2100\\protocol.h" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hung-chang-dso-2100\\protocol.h"
+index 11de7b7..ab58d8a 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hung-chang-dso-2100\\protocol.h"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hung-chang-dso-2100\\protocol.h"
+@@ -20,10 +20,8 @@
+ #ifndef LIBSIGROK_HARDWARE_HUNG_CHANG_DSO_2100_PROTOCOL_H
+ #define LIBSIGROK_HARDWARE_HUNG_CHANG_DSO_2100_PROTOCOL_H
+ 
+-#include <stdint.h>
+-#include <glib.h>
+-#include <libsigrok/libsigrok.h>
+-#include "libsigrok-internal.h"
++#include "hardware/compat/compat.h"
++#include <ieee1284.h>
+ 
+ #define LOG_PREFIX "hung-chang-dso-2100"
+ 
+@@ -59,6 +57,6 @@ SR_PRIV gboolean hung_chang_dso_2100_check_id(struct parport *port);
+ SR_PRIV void hung_chang_dso_2100_write_mbox(struct parport *port, uint8_t val);
+ SR_PRIV uint8_t hung_chang_dso_2100_read_mbox(struct parport *port, float timeout);
+ SR_PRIV int hung_chang_dso_2100_move_to(const struct sr_dev_inst *sdi, uint8_t target);
+-SR_PRIV int hung_chang_dso_2100_poll(int fd, int revents, void *cb_data);
++SR_PRIV int hung_chang_dso_2100_poll(int fd, int revents, const struct sr_dev_inst *sdi);
+ 
+ #endif

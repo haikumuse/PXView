@@ -28,17 +28,14 @@ SR_PRIV void fluke_handle_qm_18x(const struct sr_dev_inst *sdi, char **tokens)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	float fvalue;
 	char *e, *u;
 	gboolean is_oor;
 	int digits;
 	int exponent;
-	enum sr_mq mq;
-	enum sr_unit unit;
-	enum sr_mqflag mqflags;
+	int mq;
+	int unit;
+	uint64_t mqflags;
 
 	devc = sdi->priv;
 
@@ -59,7 +56,7 @@ SR_PRIV void fluke_handle_qm_18x(const struct sr_dev_inst *sdi, char **tokens)
 		while (*e && *e != ' ')
 			e++;
 		*e++ = '\0';
-		if (sr_atof_ascii_digits(tokens[1], &fvalue, &digits) != SR_OK) {
+		if (local_sr_atof_ascii_digits(tokens[1], &fvalue, &digits) != SR_OK) {
 			/* Happens all the time, when switching modes. */
 			sr_dbg("Invalid float: '%s'", tokens[1]);
 			return;
@@ -155,13 +152,25 @@ SR_PRIV void fluke_handle_qm_18x(const struct sr_dev_inst *sdi, char **tokens)
 		digits -= exponent;
 		fvalue *= pow(10.0f, exponent);
 
-		sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
+		/*
+		 * PXView's sr_datafeed_analog is the old flat layout
+		 * (probes, mq, unit, mqflags, data, ...). There is no
+		 * sr_analog_init() helper and no encoding/meaning/spec
+		 * sub-structs, so initialize the fields directly. The digits
+		 * value is informational only (PXView's analog struct has no
+		 * digits field); keep it to preserve original parser
+		 * behaviour but mark it unused.
+		 */
+		(void)digits;
+		memset(&analog, 0, sizeof(analog));
 		analog.data = &fvalue;
 		analog.num_samples = 1;
-		analog.meaning->unit = unit;
-		analog.meaning->mq = mq;
-		analog.meaning->mqflags = mqflags;
-		analog.meaning->channels = sdi->channels;
+		analog.unit = unit;
+		analog.mq = mq;
+		analog.mqflags = mqflags;
+		analog.probes = sdi->channels;
+		analog.unit_bits = 32; /* float */
+		analog.unit_pitch = 0;
 
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;

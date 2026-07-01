@@ -224,9 +224,6 @@ SR_PRIV int gwinstek_psp_receive_data(int fd, int revents,
 	struct sr_serial_dev_inst *serial;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	gboolean otp_active_prev;
 	gboolean output_enabled_prev;
 	GSList *l;
@@ -273,22 +270,21 @@ SR_PRIV int gwinstek_psp_receive_data(int fd, int revents,
 	}
 
 	/* Note: digits/spec_digits will be overridden later. */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
-
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
-	meaning.mqflags = SR_MQFLAG_DC;
+	analog.mqflags = SR_MQFLAG_DC;
 	analog.num_samples = 1;
 
 	/* Voltage */
 	l = g_slist_copy(sdi->channels);
 	l = g_slist_remove_link(l, g_slist_nth(l, 1));
-	meaning.channels = l;
-	meaning.mq = SR_MQ_VOLTAGE;
-	meaning.mqflags = SR_MQFLAG_DC;
-	meaning.unit = SR_UNIT_VOLT;
-	encoding.digits = 2;
-	spec.spec_digits = 2;
+	analog.probes = l;
+	analog.mq = SR_MQ_VOLTAGE;
+	analog.mqflags = SR_MQFLAG_DC;
+	analog.unit = SR_UNIT_VOLT;
 	analog.data = &devc->voltage_or_0;
 	sr_session_send(sdi, &packet);
 	g_slist_free(l);
@@ -296,11 +292,9 @@ SR_PRIV int gwinstek_psp_receive_data(int fd, int revents,
 	/* Current */
 	l = g_slist_copy(sdi->channels);
 	l = g_slist_remove_link(l, g_slist_nth(l, 0));
-	meaning.channels = l;
-	meaning.mq = SR_MQ_CURRENT;
-	meaning.unit = SR_UNIT_AMPERE;
-	encoding.digits = 3;
-	spec.spec_digits = 3;
+	analog.probes = l;
+	analog.mq = SR_MQ_CURRENT;
+	analog.unit = SR_UNIT_AMPERE;
 	analog.data = &devc->current;
 	sr_session_send(sdi, &packet);
 	g_slist_free(l);

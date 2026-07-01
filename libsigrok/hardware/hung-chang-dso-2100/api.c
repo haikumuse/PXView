@@ -430,6 +430,25 @@ static int config_set(uint32_t key, GVariant *data,
 	int idx, ch = -1;
 	uint64_t u;
 
+	/* Merged from old config_channel_set(): PXView's compat layer has no
+	 * config_channel_set callback, so channel enable/disable must be handled
+	 * here. devc->channel is a bitmask (one bit per channel); exclusivity
+	 * enforces a single enabled channel, so devc->channel is a power of two
+	 * and (devc->channel - 1) yields the channel index used in
+	 * dev_acquisition_start(). */
+	if (cg) {
+		struct sr_channel *chan = cg->channels->data;
+		if (chan->enabled) {
+			uint8_t v = devc->channel | (1 << chan->index);
+			if (v & (v - 1))
+				return SR_ERR;
+			devc->channel = v;
+			devc->enabled_channel->data = chan;
+		} else {
+			devc->channel &= ~(1 << chan->index);
+		}
+	}
+
 	if (cg) /* sr_config_set will validate cg using config_list */
 		ch = ((struct sr_channel *)cg->channels->data)->index;
 

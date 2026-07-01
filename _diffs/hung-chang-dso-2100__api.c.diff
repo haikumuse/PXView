@@ -1,0 +1,420 @@
+﻿git.exe : warning: in the working copy of 'c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\hardware\hung-
+chang-dso-2100\api.c', LF will be replaced by CRLF the next time Git touches it
+At C:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\_audit_diff2.ps1:13 char:13
++             & git diff --no-index --no-color $oldFile $newFile 2>&1 | ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hung-chang-dso-2100\\api.c" "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hung-chang-dso-2100\\api.c"
+index 8842335..7473a4a 100644
+--- "a/C:\\Users\\admin\\Downloads\\old\\libsigrok\\src\\hardware\\hung-chang-dso-2100\\api.c"
++++ "b/c:\\Users\\admin\\Downloads\\DSView-main_2026_4_27cppnb\\libsigrok\\hardware\\hung-chang-dso-2100\\api.c"
+@@ -17,11 +17,89 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <config.h>
++#include "hardware/compat/compat.h"
+ #include <ieee1284.h>
+ #include <string.h>
+ #include "protocol.h"
+ 
++/*
++ * Local helper functions for std_str_idx / std_u64_idx / std_u64_tuple_idx /
++ * std_u8_idx_s / std_gvar_tuple_array.
++ *
++ * The compat layer's versions of std_str_idx / std_u64_idx have a different
++ * signature (they are config_get helpers with (sdi, key, data, ...) parameters),
++ * and std_u64_tuple_idx / std_u8_idx_s / std_gvar_tuple_array (uint64 tuple
++ * variant) are not provided at all. The standard sigrok versions take
++ * (data, vals, count) and return an index, which is what this driver needs in
++ * config_set and config_get.
++ */
++static int local_std_str_idx(GVariant *data, const char *const strs[], size_t count)
++{
++	const char *str;
++	size_t i;
++
++	str = g_variant_get_string(data, NULL);
++	for (i = 0; i < count; i++) {
++		if (strcmp(str, strs[i]) == 0)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_u64_idx(GVariant *data, const uint64_t vals[], size_t count)
++{
++	uint64_t val;
++	size_t i;
++
++	val = g_variant_get_uint64(data);
++	for (i = 0; i < count; i++) {
++		if (vals[i] == val)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_u64_tuple_idx(GVariant *data, const uint64_t vals[][2], size_t count)
++{
++	uint64_t v0, v1;
++	size_t i;
++
++	g_variant_get(data, "(tt)", &v0, &v1);
++	for (i = 0; i < count; i++) {
++		if (vals[i][0] == v0 && vals[i][1] == v1)
++			return (int)i;
++	}
++	return -1;
++}
++
++static int local_std_u8_idx_s(uint8_t val, const uint8_t vals[], size_t count)
++{
++	size_t i;
++
++	for (i = 0; i < count; i++) {
++		if (vals[i] == val)
++			return (int)i;
++	}
++	return -1;
++}
++
++/*
++ * Local helper to create a GVariant "a(tt)" array from an array of uint64
++ * pairs. The compat layer's std_gvar_tuple_array() only handles string
++ * arrays, so we provide this local version for the vdivs table.
++ */
++static GVariant *local_std_gvar_tuple_array_u64(const uint64_t vals[][2], size_t count)
++{
++	GVariantBuilder gvb;
++	size_t i;
++
++	g_variant_builder_init(&gvb, G_VARIANT_TYPE("a(tt)"));
++	for (i = 0; i < count; i++)
++		g_variant_builder_add(&gvb, "(tt)", vals[i][0], vals[i][1]);
++
++	return g_variant_builder_end(&gvb);
++}
++
+ static const uint32_t scanopts[] = {
+ 	SR_CONF_CONN,
+ };
+@@ -213,7 +291,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
+ 
+ 	ieee1284_free_ports(&ports);
+ 
+-	return std_scan_complete(di, devices);
++	return std_scan_complete_compat(di, devices);
+ }
+ 
+ static void clear_helper(struct dev_context *devc)
+@@ -223,18 +301,22 @@ static void clear_helper(struct dev_context *devc)
+ 
+ static int dev_clear(const struct sr_dev_driver *di)
+ {
+-	struct drv_context *drvc = di->context;
++	struct compat_drv_context *drvc;
+ 	struct sr_dev_inst *sdi;
+ 	GSList *l;
+ 
+-	if (drvc) {
+-		for (l = drvc->instances; l; l = l->next) {
+-			sdi = l->data;
+-			ieee1284_unref(sdi->conn);
+-		}
++	if (!di || !di->priv)
++		return SR_ERR_ARG;
++
++	drvc = di->priv;
++	for (l = drvc->instances; l; l = l->next) {
++		sdi = l->data;
++		ieee1284_unref(sdi->conn);
++		if (sdi->priv)
++			clear_helper(sdi->priv);
+ 	}
+ 
+-	return std_dev_clear_with_callback(di, (std_dev_clear_callback)clear_helper);
++	return std_dev_clear_compat(di);
+ }
+ 
+ static int dev_open(struct sr_dev_inst *sdi)
+@@ -303,7 +385,7 @@ static int config_get(uint32_t key, GVariant **data,
+ 		*data = g_variant_new_uint64(samplerates[devc->rate]);
+ 		break;
+ 	case SR_CONF_TRIGGER_SOURCE:
+-		if ((idx = std_u8_idx_s(devc->cctl[0] & 0xC0, ARRAY_AND_SIZE(trigger_sources_map))) < 0)
++		if ((idx = local_std_u8_idx_s(devc->cctl[0] & 0xC0, ARRAY_AND_SIZE(trigger_sources_map))) < 0)
+ 			return SR_ERR_BUG;
+ 		*data = g_variant_new_string(trigger_sources[idx]);
+ 		break;
+@@ -318,14 +400,14 @@ static int config_get(uint32_t key, GVariant **data,
+ 	case SR_CONF_VDIV:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		if ((idx = std_u8_idx_s(devc->cctl[ch] & 0x33, ARRAY_AND_SIZE(vdivs_map))) < 0)
++		if ((idx = local_std_u8_idx_s(devc->cctl[ch] & 0x33, ARRAY_AND_SIZE(vdivs_map))) < 0)
+ 			return SR_ERR_BUG;
+ 		*data = g_variant_new("(tt)", vdivs[idx][0], vdivs[idx][1]);
+ 		break;
+ 	case SR_CONF_COUPLING:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		if ((idx = std_u8_idx_s(devc->cctl[ch] & 0x0C, ARRAY_AND_SIZE(coupling_map))) < 0)
++		if ((idx = local_std_u8_idx_s(devc->cctl[ch] & 0x0C, ARRAY_AND_SIZE(coupling_map))) < 0)
+ 			return SR_ERR_BUG;
+ 		*data = g_variant_new_string(coupling[idx]);
+ 		break;
+@@ -356,22 +438,22 @@ static int config_set(uint32_t key, GVariant *data,
+ 		devc->frame_limit = g_variant_get_uint64(data);
+ 		break;
+ 	case SR_CONF_SAMPLERATE:
+-		if ((idx = std_u64_idx(data, ARRAY_AND_SIZE(samplerates))) < 0)
++		if ((idx = local_std_u64_idx(data, ARRAY_AND_SIZE(samplerates))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->rate = idx;
+ 		break;
+ 	case SR_CONF_TRIGGER_SOURCE:
+-		if ((idx = std_str_idx(data, ARRAY_AND_SIZE(trigger_sources))) < 0)
++		if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(trigger_sources))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->cctl[0] = (devc->cctl[0] & 0x3F) | trigger_sources_map[idx];
+ 		break;
+ 	case SR_CONF_TRIGGER_SLOPE:
+-		if ((idx = std_str_idx(data, ARRAY_AND_SIZE(trigger_slopes))) < 0)
++		if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(trigger_slopes))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->edge = idx;
+ 		break;
+ 	case SR_CONF_BUFFERSIZE:
+-		if ((idx = std_u64_idx(data, ARRAY_AND_SIZE(buffersizes))) < 0)
++		if ((idx = local_std_u64_idx(data, ARRAY_AND_SIZE(buffersizes))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->last_step = idx;
+ 		break;
+@@ -380,14 +462,14 @@ static int config_set(uint32_t key, GVariant *data,
+ 			return SR_ERR_CHANNEL_GROUP;
+ 		if (!g_variant_is_of_type(data, G_VARIANT_TYPE("(tt)")))
+ 			return SR_ERR_ARG;
+-		if ((idx = std_u64_tuple_idx(data, ARRAY_AND_SIZE(vdivs))) < 0)
++		if ((idx = local_std_u64_tuple_idx(data, ARRAY_AND_SIZE(vdivs))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->cctl[ch] = (devc->cctl[ch] & 0xCC) | vdivs_map[idx];
+ 		break;
+ 	case SR_CONF_COUPLING:
+ 		if (!cg)
+ 			return SR_ERR_CHANNEL_GROUP;
+-		if ((idx = std_str_idx(data, ARRAY_AND_SIZE(coupling))) < 0)
++		if ((idx = local_std_str_idx(data, ARRAY_AND_SIZE(coupling))) < 0)
+ 			return SR_ERR_ARG;
+ 		devc->cctl[ch] = (devc->cctl[ch] & 0xF3) | coupling_map[idx];
+ 		break;
+@@ -406,56 +488,6 @@ static int config_set(uint32_t key, GVariant *data,
+ 	return SR_OK;
+ }
+ 
+-static int config_channel_set(const struct sr_dev_inst *sdi,
+-	struct sr_channel *ch, unsigned int changes)
+-{
+-	struct dev_context *devc = sdi->priv;
+-	uint8_t v;
+-
+-	if (!(changes & SR_CHANNEL_SET_ENABLED))
+-		return SR_OK;
+-
+-	if (ch->enabled) {
+-		v = devc->channel | (1 << ch->index);
+-		if (v & (v - 1))
+-			return SR_ERR;
+-		devc->channel = v;
+-		devc->enabled_channel->data = ch;
+-	} else {
+-		devc->channel &= ~(1 << ch->index);
+-	}
+-
+-	return SR_OK;
+-}
+-
+-static int config_commit(const struct sr_dev_inst *sdi)
+-{
+-	uint8_t state = hung_chang_dso_2100_read_mbox(sdi->conn, 0.02);
+-	int ret;
+-
+-	switch (state) {
+-	case 0x03:
+-	case 0x14:
+-	case 0x21:
+-		/* we will travel the complete config path on our way to state 1 */
+-		break;
+-	case 0x00:
+-		state = 0x01;
+-		/* Fallthrough */
+-	default:
+-		ret = hung_chang_dso_2100_move_to(sdi, 1);
+-		if (ret != SR_OK)
+-			return ret;
+-		/* Fallthrough */
+-	case 0x01:
+-		hung_chang_dso_2100_write_mbox(sdi->conn, 4);
+-	}
+-	ret = hung_chang_dso_2100_move_to(sdi, 1);
+-	if (ret != SR_OK)
+-		return ret;
+-	return hung_chang_dso_2100_move_to(sdi, state);
+-}
+-
+ static int config_list(uint32_t key, GVariant **data,
+ 	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+ {
+@@ -488,10 +520,10 @@ static int config_list(uint32_t key, GVariant **data,
+ 
+ 	switch (key) {
+ 	case SR_CONF_SCAN_OPTIONS:
+-		return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, NO_OPTS, NO_OPTS);
++		return std_config_list(key, data, sdi, cg, scanopts, ARRAY_SIZE(scanopts), NULL, 0, NULL, 0);
+ 	case SR_CONF_DEVICE_OPTIONS:
+ 		if (!cg)
+-			return STD_CONFIG_LIST(key, data, sdi, cg, NO_OPTS, drvopts, devopts);
++			return std_config_list(key, data, sdi, cg, NULL, 0, drvopts, ARRAY_SIZE(drvopts), devopts, ARRAY_SIZE(devopts));
+ 		*data = std_gvar_array_u32(ARRAY_AND_SIZE(devopts_cg));
+ 		break;
+ 	case SR_CONF_SAMPLERATE:
+@@ -507,7 +539,7 @@ static int config_list(uint32_t key, GVariant **data,
+ 		*data = std_gvar_array_u64(ARRAY_AND_SIZE(buffersizes));
+ 		break;
+ 	case SR_CONF_VDIV:
+-		*data = std_gvar_tuple_array(ARRAY_AND_SIZE(vdivs));
++		*data = local_std_gvar_tuple_array_u64(ARRAY_AND_SIZE(vdivs));
+ 		break;
+ 	case SR_CONF_COUPLING:
+ 		*data = g_variant_new_strv(ARRAY_AND_SIZE(coupling));
+@@ -539,41 +571,108 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
+ 	if (ret != SR_OK)
+ 		return ret;
+ 
+-	std_session_send_df_header(sdi);
++	std_session_send_df_header(sdi, LOG_PREFIX);
+ 
+-	sr_session_source_add(sdi->session, -1, 0, 8,
+-			      hung_chang_dso_2100_poll, (void *)sdi);
++	sr_session_source_add(-1, 0, 8, hung_chang_dso_2100_poll, sdi);
+ 
+ 	return SR_OK;
+ }
+ 
+ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
+ {
+-	std_session_send_df_end(sdi);
+-	sr_session_source_remove(sdi->session, -1);
++	std_session_send_df_end(sdi, LOG_PREFIX);
++	sr_session_source_remove(-1);
+ 	hung_chang_dso_2100_move_to(sdi, 1);
+ 
+ 	return SR_OK;
+ }
+ 
+-static struct sr_dev_driver hung_chang_dso_2100_driver_info = {
++/* Static driver pointer for wrapper functions */
++static struct sr_dev_driver *hung_chang_dso_2100_drv_ptr;
++
++/* Forward declaration - defined at end of file */
++extern struct sr_dev_driver hung_chang_dso_2100_driver_info;
++
++/* Wrapper: PXView init(sr_ctx) -> standard init(driver, sr_ctx) */
++static int hung_chang_dso_2100_compat_init(struct sr_context *sr_ctx)
++{
++	hung_chang_dso_2100_drv_ptr = &hung_chang_dso_2100_driver_info;
++	return std_init(hung_chang_dso_2100_drv_ptr, sr_ctx);
++}
++
++/* Wrapper: PXView cleanup(void) -> standard cleanup(driver) */
++static int hung_chang_dso_2100_compat_cleanup(void)
++{
++	/* Call dev_clear to free per-device resources before cleanup */
++	dev_clear(hung_chang_dso_2100_drv_ptr);
++	return std_cleanup(hung_chang_dso_2100_drv_ptr);
++}
++
++/* Wrapper: PXView scan(options) -> standard scan(driver, options) */
++static GSList *hung_chang_dso_2100_compat_scan(GSList *options)
++{
++	return scan(hung_chang_dso_2100_drv_ptr, options);
++}
++
++/* Wrapper: PXView config_get(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int hung_chang_dso_2100_compat_config_get(int id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel *ch,
++	const struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_get((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_set(id,data,sdi,ch,cg) -> standard(key,data,sdi,cg) */
++static int hung_chang_dso_2100_compat_config_set(int id, GVariant *data,
++	struct sr_dev_inst *sdi, struct sr_channel *ch,
++	struct sr_channel_group *cg)
++{
++	(void)ch;
++	return config_set((uint32_t)id, data, sdi, cg);
++}
++
++/* Wrapper: PXView config_list(info_id,data,sdi,cg) -> standard(key,data,sdi,cg) */
++static int hung_chang_dso_2100_compat_config_list(int info_id, GVariant **data,
++	const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
++{
++	return config_list((uint32_t)info_id, data, sdi, cg);
++}
++
++/* Wrapper: PXView acquisition_start(sdi, cb_data) -> standard(sdi) */
++static int hung_chang_dso_2100_compat_acquisition_start(struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_start(sdi);
++}
++
++/* Wrapper: PXView acquisition_stop(const sdi, cb_data) -> standard(sdi) */
++static int hung_chang_dso_2100_compat_acquisition_stop(const struct sr_dev_inst *sdi,
++	void *cb_data)
++{
++	(void)cb_data;
++	return dev_acquisition_stop((struct sr_dev_inst *)sdi);
++}
++
++/* PXView-compatible driver info struct */
++struct sr_dev_driver hung_chang_dso_2100_driver_info = {
+ 	.name = "hung-chang-dso-2100",
+ 	.longname = "Hung-Chang DSO-2100",
+ 	.api_version = 1,
+-	.init = std_init,
+-	.cleanup = std_cleanup,
+-	.scan = scan,
+-	.dev_list = std_dev_list,
+-	.dev_clear = dev_clear,
+-	.config_get = config_get,
+-	.config_set = config_set,
+-	.config_channel_set = config_channel_set,
+-	.config_commit = config_commit,
+-	.config_list = config_list,
++	.driver_type = DRIVER_TYPE_HARDWARE,
++	.init = hung_chang_dso_2100_compat_init,
++	.cleanup = hung_chang_dso_2100_compat_cleanup,
++	.scan = hung_chang_dso_2100_compat_scan,
++	.dev_mode_list = compat_dev_mode_list_default,
++	.config_get = hung_chang_dso_2100_compat_config_get,
++	.config_set = hung_chang_dso_2100_compat_config_set,
++	.config_list = hung_chang_dso_2100_compat_config_list,
+ 	.dev_open = dev_open,
+ 	.dev_close = dev_close,
+-	.dev_acquisition_start = dev_acquisition_start,
+-	.dev_acquisition_stop = dev_acquisition_stop,
+-	.context = NULL,
++	.dev_destroy = compat_dev_destroy_default,
++	.dev_status_get = compat_dev_status_get_default,
++	.dev_acquisition_start = hung_chang_dso_2100_compat_acquisition_start,
++	.dev_acquisition_stop = hung_chang_dso_2100_compat_acquisition_stop,
++	.priv = NULL,
+ };
+-SR_REGISTER_DEV_DRIVER(hung_chang_dso_2100_driver_info);
