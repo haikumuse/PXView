@@ -34,8 +34,11 @@ struct ols_basic_trigger_desc {
  * parse it from the serialcomm string (format like "115200/8n1"). Falls back
  * to 0 when parsing fails (the compat layer will pick a conservative
  * default). Same pattern as colead-slm and atten-pps3xxx.
+ *
+ * Exposed (non-static) so api.c's scan() can use the same 2-arg calling
+ * convention for serial_read_blocking timeouts.
  */
-static int ols_serial_timeout(struct sr_serial_dev_inst *serial, int bytes)
+SR_PRIV int ols_serial_timeout(struct sr_serial_dev_inst *serial, int bytes)
 {
 	uint64_t baudrate = 0;
 	const char *sc;

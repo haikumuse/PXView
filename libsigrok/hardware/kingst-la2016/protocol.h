@@ -26,8 +26,200 @@
 
 #include "hardware/compat/compat.h"
 #include <stdint.h>
+#include <string.h>
 
 #define LOG_PREFIX	"kingst-la2016"
+
+/*
+ * PXView's libsigrok does not provide struct sr_sw_limits or the
+ * sr_sw_limits_* helpers that standard sigrok's libsigrok-internal.h
+ * exposes. Define them locally as static inline so this driver is
+ * self-contained and cannot clash with copies living in other compat
+ * drivers at link time. The guard SR_SW_LIMITS_DEFINED lets a future
+ * compat layer provide the same symbols by #defining it before this
+ * header is included.
+ */
+#ifndef SR_SW_LIMITS_DEFINED
+#define SR_SW_LIMITS_DEFINED
+
+struct sr_sw_limits {
+	uint64_t limit_samples;
+	uint64_t limit_msec;
+	int64_t starttime_ms;
+	uint64_t samples_read;
+};
+
+static inline void sr_sw_limits_init(struct sr_sw_limits *limits)
+{
+	if (!limits)
+		return;
+	memset(limits, 0, sizeof(*limits));
+}
+
+static inline int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
+		uint32_t key, GVariant **data)
+{
+	if (!limits || !data)
+		return SR_ERR_ARG;
+
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		*data = g_variant_new_uint64(limits->limit_samples);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		*data = g_variant_new_uint64(limits->limit_msec);
+		break;
+	default:
+		return SR_ERR;
+	}
+
+	return SR_OK;
+}
+
+static inline int sr_sw_limits_config_set(struct sr_sw_limits *limits,
+		uint32_t key, GVariant *data)
+{
+	if (!limits || !data)
+		return SR_ERR_ARG;
+
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		limits->limit_samples = g_variant_get_uint64(data);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		limits->limit_msec = g_variant_get_uint64(data);
+		break;
+	default:
+		return SR_ERR;
+	}
+
+	return SR_OK;
+}
+
+static inline void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
+{
+	if (!limits)
+		return;
+	limits->starttime_ms = g_get_real_time() / 1000;
+	limits->samples_read = 0;
+}
+
+static inline void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
+		uint64_t count)
+{
+	if (!limits)
+		return;
+	limits->samples_read += count;
+}
+
+static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
+{
+	uint64_t elapsed_ms;
+
+	if (!limits)
+		return FALSE;
+
+	if (limits->limit_msec) {
+		elapsed_ms = (uint64_t)(g_get_real_time() / 1000) -
+				(uint64_t)limits->starttime_ms;
+		if (elapsed_ms >= limits->limit_msec)
+			return TRUE;
+	}
+
+	if (limits->limit_samples && limits->samples_read >= limits->limit_samples)
+		return TRUE;
+
+	return FALSE;
+}
+
+/*
+ * Local sr_sw_limits_get_remain() helper. Standard sigrok exposes this
+ * from libsigrok-internal.h; PXView does not. The kingst-la2016 driver
+ * uses it in set_sample_config() to query the user-specified sample count
+ * limit so it can communicate the total to the hardware. Only the samples
+ * counter is consulted here (the source driver passes NULL for the
+ * frames/msecs/exceeded outputs).
+ */
+static inline int sr_sw_limits_get_remain(const struct sr_sw_limits *limits,
+		uint64_t *samples, uint64_t *frames, uint64_t *msecs,
+		gboolean *exceeded)
+{
+	if (!limits)
+		return SR_ERR_ARG;
+
+	if (exceeded)
+		*exceeded = FALSE;
+
+	if (samples) {
+		*samples = 0;
+		if (limits->limit_samples) {
+			if (limits->samples_read >= limits->limit_samples) {
+				if (exceeded)
+					*exceeded = TRUE;
+			} else {
+				*samples = limits->limit_samples - limits->samples_read;
+			}
+		}
+	}
+
+	if (frames)
+		*frames = 0;
+
+	if (msecs)
+		*msecs = 0;
+
+	return SR_OK;
+}
+
+#endif /* SR_SW_LIMITS_DEFINED */
+
+/*
+ * Forward declaration of the standard sigrok feed queue type.
+ *
+ * PXView's libsigrok does NOT provide the feed_queue_logic_* family of
+ * functions (the only driver that uses them in the upstream tree is this
+ * one). This driver therefore provides its own minimal local
+ * implementation in protocol.c, covering the five entry points that the
+ * acquisition path uses: alloc/submit_one/flush/send_trigger/free. The
+ * struct is opaque to api.c (which only holds a pointer in
+ * dev_context.feed_queue) so a forward declaration is sufficient here.
+ * The local static functions live in protocol.c.
+ */
+struct feed_queue_logic;
+SR_PRIV struct feed_queue_logic *feed_queue_logic_alloc(
+		const struct sr_dev_inst *sdi,
+		size_t sample_count, size_t unit_size);
+SR_PRIV void feed_queue_logic_free(struct feed_queue_logic *q);
+SR_PRIV int feed_queue_logic_submit_one(struct feed_queue_logic *q,
+		const uint8_t *data, size_t repeat_count);
+SR_PRIV int feed_queue_logic_flush(struct feed_queue_logic *q);
+SR_PRIV int feed_queue_logic_send_trigger(struct feed_queue_logic *q);
+
+/*
+ * Standard sigrok SR_CONF keys that PXView's libsigrok does not define.
+ * The kingst-la2016 driver advertises PWM signal generator capabilities
+ * (SR_CONF_SIGNAL_GENERATOR drvopt and SR_CONF_ENABLED /
+ * SR_CONF_OUTPUT_FREQUENCY / SR_CONF_DUTY_CYCLE per-channel-group devopts).
+ * Guarded with #ifndef so a future compat layer can provide canonical
+ * values without causing a redefinition warning.
+ *
+ * Values are picked in the standard sigrok extended config range (above
+ * the SR_CONF_DEVOPTS_OFFSET/ACQOPTS_OFFSET reservations used by
+ * compat_config.h) and match the constants used by other PWM-capable
+ * drivers in the upstream tree.
+ */
+#ifndef SR_CONF_SIGNAL_GENERATOR
+#define SR_CONF_SIGNAL_GENERATOR	747
+#endif
+#ifndef SR_CONF_ENABLED
+#define SR_CONF_ENABLED		979
+#endif
+#ifndef SR_CONF_OUTPUT_FREQUENCY
+#define SR_CONF_OUTPUT_FREQUENCY	1057
+#endif
+#ifndef SR_CONF_DUTY_CYCLE
+#define SR_CONF_DUTY_CYCLE		1117
+#endif
 
 #define LA2016_VID		0x77a1
 #define LA2016_PID		0x01a2
@@ -181,7 +373,13 @@ SR_PRIV int la2016_setup_acquisition(const struct sr_dev_inst *sdi,
 	double voltage);
 SR_PRIV int la2016_start_acquisition(const struct sr_dev_inst *sdi);
 SR_PRIV int la2016_abort_acquisition(const struct sr_dev_inst *sdi);
-SR_PRIV int la2016_receive_data(int fd, int revents, void *cb_data);
+/*
+ * PXView's sr_receive_data_callback_t passes the sdi directly as the
+ * third argument (const struct sr_dev_inst *sdi) instead of the
+ * void *cb_data that standard sigrok uses.
+ */
+SR_PRIV int la2016_receive_data(int fd, int revents,
+		const struct sr_dev_inst *sdi);
 SR_PRIV void la2016_release_resources(const struct sr_dev_inst *sdi);
 
 /* usb_source_remove compat - PXView does not expose this. The session and

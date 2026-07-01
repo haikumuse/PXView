@@ -661,6 +661,25 @@ option(ENABLE_DRIVER_PCE_322A "Enable pce-322a serial sound level meter driver" 
 option(ENABLE_DRIVER_CENTER_3XX "Enable center-3xx serial thermometer driver" OFF)
 option(ENABLE_DRIVER_TELEINFO "Enable teleinfo serial French power meter driver" OFF)
 option(ENABLE_DRIVER_KERN_SCALE "Enable kern-scale serial scale driver" OFF)
+option(ENABLE_DRIVER_CONRAD_DIGI_35_CPU "Enable conrad-digi-35-cpu driver" OFF)
+option(ENABLE_DRIVER_HP_59306A "Enable hp-59306a driver" OFF)
+option(ENABLE_DRIVER_COLEAD_SLM "Enable colead-slm driver" OFF)
+option(ENABLE_DRIVER_ICSTATION_USBRELAY "Enable icstation-usbrelay driver" OFF)
+option(ENABLE_DRIVER_ZKETECH_EBD_USB "Enable zketech-ebd-usb driver" OFF)
+option(ENABLE_DRIVER_ARACHNID_LABS_RE_LOAD_PRO "Enable arachnid-labs-re-load-pro driver" OFF)
+option(ENABLE_DRIVER_ASIX_OMEGA_RTM_CLI "Enable asix-omega-rtm-cli driver" OFF)
+option(ENABLE_DRIVER_KECHENG_KC_330B "Enable kecheng-kc-330b driver" OFF)
+option(ENABLE_DRIVER_HP_3457A "Enable hp-3457a driver" OFF)
+option(ENABLE_DRIVER_MICROCHIP_PICKIT2 "Enable microchip-pickit2 driver" OFF)
+option(ENABLE_DRIVER_HP_3478A "Enable hp-3478a driver" OFF)
+option(ENABLE_DRIVER_CEM_DT_885X "Enable cem-dt-885x driver" OFF)
+option(ENABLE_DRIVER_ATORCH "Enable atorch driver" OFF)
+option(ENABLE_DRIVER_BKPRECISION_1856D "Enable bkprecision-1856d driver" OFF)
+option(ENABLE_DRIVER_GWINSTEK_GPD "Enable gwinstek-gpd driver" OFF)
+option(ENABLE_DRIVER_SCPI_DMM "Enable scpi-dmm driver" OFF)
+option(ENABLE_DRIVER_SERIAL_LCR "Enable serial-lcr driver" OFF)
+option(ENABLE_DRIVER_JUNTEK_JDS6600 "Enable juntek-jds6600 driver" OFF)
+option(ENABLE_DRIVER_GMC_MH_1X_2X "Enable gmc-mh-1x-2x driver" OFF)
 
 if(ENABLE_COMPAT_DRIVERS)
     add_definitions(-DHAVE_COMPAT_DRIVERS)
@@ -873,6 +892,64 @@ if(ENABLE_COMPAT_DRIVERS)
     endif()
     if(ENABLE_DRIVER_KERN_SCALE)
         add_definitions(-DHAVE_DRIVER_KERN_SCALE)
+    endif()
+    if(ENABLE_DRIVER_CONRAD_DIGI_35_CPU)
+        add_definitions(-DHAVE_DRIVER_CONRAD_DIGI_35_CPU)
+    endif()
+    if(ENABLE_DRIVER_HP_59306A)
+        add_definitions(-DHAVE_DRIVER_HP_59306A)
+    endif()
+    if(ENABLE_DRIVER_COLEAD_SLM)
+        add_definitions(-DHAVE_DRIVER_COLEAD_SLM)
+    endif()
+    if(ENABLE_DRIVER_ICSTATION_USBRELAY)
+        add_definitions(-DHAVE_DRIVER_ICSTATION_USBRELAY)
+    endif()
+    if(ENABLE_DRIVER_ZKETECH_EBD_USB)
+        add_definitions(-DHAVE_DRIVER_ZKETECH_EBD_USB)
+    endif()
+    if(ENABLE_DRIVER_ARACHNID_LABS_RE_LOAD_PRO)
+        add_definitions(-DHAVE_DRIVER_ARACHNID_LABS_RE_LOAD_PRO)
+    endif()
+    if(ENABLE_DRIVER_ASIX_OMEGA_RTM_CLI)
+        add_definitions(-DHAVE_DRIVER_ASIX_OMEGA_RTM_CLI)
+    endif()
+    if(ENABLE_DRIVER_KECHENG_KC_330B)
+        add_definitions(-DHAVE_DRIVER_KECHENG_KC_330B)
+    endif()
+    if(ENABLE_DRIVER_HP_3457A)
+        add_definitions(-DHAVE_DRIVER_HP_3457A)
+    endif()
+    if(ENABLE_DRIVER_MICROCHIP_PICKIT2)
+        add_definitions(-DHAVE_DRIVER_MICROCHIP_PICKIT2)
+    endif()
+    if(ENABLE_DRIVER_HP_3478A)
+        add_definitions(-DHAVE_DRIVER_HP_3478A)
+    endif()
+    if(ENABLE_DRIVER_CEM_DT_885X)
+        add_definitions(-DHAVE_DRIVER_CEM_DT_885X)
+    endif()
+    if(ENABLE_DRIVER_ATORCH)
+        add_definitions(-DHAVE_DRIVER_ATORCH)
+    endif()
+    if(ENABLE_DRIVER_BKPRECISION_1856D)
+        add_definitions(-DHAVE_DRIVER_BKPRECISION_1856D)
+    endif()
+    if(ENABLE_DRIVER_GWINSTEK_GPD)
+        add_definitions(-DHAVE_DRIVER_GWINSTEK_GPD)
+    endif()
+    if(ENABLE_DRIVER_SCPI_DMM)
+        add_definitions(-DHAVE_DRIVER_SCPI_DMM)
+    endif()
+    if(ENABLE_DRIVER_SERIAL_LCR)
+        add_definitions(-DHAVE_DRIVER_SERIAL_LCR)
+    endif()
+    if(ENABLE_DRIVER_JUNTEK_JDS6600)
+        add_definitions(-DHAVE_DRIVER_JUNTEK_JDS6600)
+    endif()
+    if(ENABLE_DRIVER_GMC_MH_1X_2X)
+        add_definitions(-DHAVE_DRIVER_GMC_MH_1X_2X)
+        add_definitions(-DHAVE_DRIVER_GMC_MH_2X_BD232)
     endif()
 endif()
 
@@ -1312,6 +1389,120 @@ if(ENABLE_COMPAT_DRIVERS)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/kern-scale/api.c
             libsigrok/hardware/kern-scale/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_CONRAD_DIGI_35_CPU)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/conrad-digi-35-cpu/api.c
+            libsigrok/hardware/conrad-digi-35-cpu/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HP_59306A)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hp-59306a/api.c
+            libsigrok/hardware/hp-59306a/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_COLEAD_SLM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/colead-slm/api.c
+            libsigrok/hardware/colead-slm/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ICSTATION_USBRELAY)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/icstation-usbrelay/api.c
+            libsigrok/hardware/icstation-usbrelay/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ZKETECH_EBD_USB)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/zketech-ebd-usb/api.c
+            libsigrok/hardware/zketech-ebd-usb/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ARACHNID_LABS_RE_LOAD_PRO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/arachnid-labs-re-load-pro/api.c
+            libsigrok/hardware/arachnid-labs-re-load-pro/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ASIX_OMEGA_RTM_CLI)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/asix-omega-rtm-cli/api.c
+            libsigrok/hardware/asix-omega-rtm-cli/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_KECHENG_KC_330B)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/kecheng-kc-330b/api.c
+            libsigrok/hardware/kecheng-kc-330b/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HP_3457A)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hp-3457a/api.c
+            libsigrok/hardware/hp-3457a/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_MICROCHIP_PICKIT2)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/microchip-pickit2/api.c
+            libsigrok/hardware/microchip-pickit2/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HP_3478A)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hp-3478a/api.c
+            libsigrok/hardware/hp-3478a/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_CEM_DT_885X)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/cem-dt-885x/api.c
+            libsigrok/hardware/cem-dt-885x/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ATORCH)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/atorch/api.c
+            libsigrok/hardware/atorch/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_BKPRECISION_1856D)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/bkprecision-1856d/api.c
+            libsigrok/hardware/bkprecision-1856d/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_GWINSTEK_GPD)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/gwinstek-gpd/api.c
+            libsigrok/hardware/gwinstek-gpd/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SCPI_DMM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/scpi-dmm/api.c
+            libsigrok/hardware/scpi-dmm/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SERIAL_LCR)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/serial-lcr/api.c
+            libsigrok/hardware/serial-lcr/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_JUNTEK_JDS6600)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/juntek-jds6600/api.c
+            libsigrok/hardware/juntek-jds6600/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_GMC_MH_1X_2X)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/gmc-mh-1x-2x/api.c
+            libsigrok/hardware/gmc-mh-1x-2x/protocol.c
         )
     endif()
 endif()

@@ -62,7 +62,6 @@ static const char *firmware_files[] = {
 };
 
 #define SIGMA_FIRMWARE_SIZE_LIMIT (256 * 1024)
-#define SR_RESOURCE_FIRMWARE 1
 
 static int sigma_ftdi_open(const struct sr_dev_inst *sdi)
 {
@@ -261,35 +260,22 @@ static int sigma_write_sr(struct dev_context *devc, const void *buf, size_t size
  */
 #define SIGMA_MAX_REG_COUNT	16
 
-/* Byte read/write helpers for compat layer */
-static inline void write_u8_inc(uint8_t **ptr, uint8_t val) {
-	**ptr = val;
-	(*ptr)++;
-}
-
+/*
+ * Byte read/write helpers local to this TU.
+ *
+ * read_u8_inc, read_u16le_inc, write_u8_inc, write_u16le_inc are provided by
+ * compat_config.h (included via compat.h) and are NOT redefined here.
+ *
+ * write_u16be_inc and read_u24le_inc are NOT provided by the compat layer
+ * (compat_config.h only ships LE _inc variants plus write_u24le_inc), so this
+ * driver keeps its own local copies. They are static inline to avoid clashing
+ * with any future driver that may define the same names.
+ */
 static inline void write_u16be_inc(uint8_t **ptr, uint16_t val) {
 	**ptr = (val >> 8) & 0xff;
 	(*ptr)++;
 	**ptr = val & 0xff;
 	(*ptr)++;
-}
-
-static inline uint8_t read_u8_inc(const uint8_t **ptr) {
-	uint8_t val = **ptr;
-	(*ptr)++;
-	return val;
-}
-
-static inline uint16_t read_u16le_inc(const uint8_t **ptr) {
-	uint16_t val = **ptr;
-	(*ptr)++;
-	val |= ((uint16_t)(**ptr)) << 8;
-	(*ptr)++;
-	return val;
-}
-
-static inline uint16_t read_u16le(const uint8_t *ptr) {
-	return ptr[0] | ((uint16_t)ptr[1] << 8);
 }
 
 static inline uint32_t read_u24le_inc(const uint8_t **ptr) {
@@ -1854,15 +1840,13 @@ static int sigma_capture_mode(struct sr_dev_inst *sdi)
 	return TRUE;
 }
 
-SR_PRIV int sigma_receive_data(int fd, int revents, void *cb_data)
+SR_PRIV int sigma_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	struct sr_dev_inst *sdi;
 	struct dev_context *devc;
 
 	(void)fd;
 	(void)revents;
 
-	sdi = cb_data;
 	devc = sdi->priv;
 
 	if (devc->state == SIGMA_IDLE)

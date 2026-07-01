@@ -685,8 +685,8 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 		return ret;
 
 	/* Add capture source. */
-	ret = sr_session_source_add(sdi->session, -1, 0, 10,
-		sigma_receive_data, (void *)sdi);
+	ret = sr_session_source_add(-1, 0, 10,
+		sigma_receive_data, sdi);
 	if (ret != SR_OK)
 		return ret;
 
@@ -711,7 +711,7 @@ static int dev_acquisition_stop(struct sr_dev_inst *sdi)
 		devc->state = SIGMA_STOPPING;
 	} else {
 		devc->state = SIGMA_IDLE;
-		(void)sr_session_source_remove(sdi->session, -1);
+		(void)sr_session_source_remove(-1);
 	}
 
 	return SR_OK;

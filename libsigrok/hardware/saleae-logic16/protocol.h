@@ -106,12 +106,12 @@ SR_PRIV void LIBUSB_CALL logic16_receive_transfer(struct libusb_transfer *transf
 /* usb_source_remove compat */
 #define usb_source_remove(session, ctx) sr_session_source_remove(-1)
 
-/* sr_resource compat stubs - PXView does not have sr_resource API */
-SR_PRIV int sr_resource_open(struct sr_context *ctx, void *resource,
-	int type, const char *name);
-SR_PRIV ssize_t sr_resource_read(struct sr_context *ctx, void *resource,
-	void *buf, size_t count);
-SR_PRIV void sr_resource_close(struct sr_context *ctx, void *resource);
-#define SR_RESOURCE_FIRMWARE 1
+/*
+ * sr_resource API: PXView's libsigrok does not provide the sr_resource API,
+ * so the compat layer (compat_helpers.h, included via compat.h) provides
+ * SR_RESOURCE_FIRMWARE, struct sr_resource, and sr_resource_open/read/close
+ * with the canonical upstream signatures. This driver uses those compat
+ * versions directly — no local declarations or #defines here.
+ */
 
 #endif

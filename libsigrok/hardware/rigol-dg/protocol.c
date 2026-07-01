@@ -357,9 +357,8 @@ static void rigol_dg_send_channel_value(const struct sr_dev_inst *sdi,
 	g_slist_free(analog.probes);
 }
 
-SR_PRIV int rigol_dg_receive_data(int fd, int revents, void *cb_data)
+SR_PRIV int rigol_dg_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	struct sr_dev_inst *sdi;
 	struct sr_scpi_dev_inst *scpi;
 	struct dev_context *devc;
 	const char *cmd, *s;
@@ -373,7 +372,6 @@ SR_PRIV int rigol_dg_receive_data(int fd, int revents, void *cb_data)
 	response = NULL;
 	params = NULL;
 
-	sdi = cb_data;
 	if (!sdi)
 		return TRUE;
 	scpi = sdi->conn;

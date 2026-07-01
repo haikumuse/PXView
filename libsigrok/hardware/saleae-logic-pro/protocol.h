@@ -65,8 +65,15 @@ SR_PRIV void LIBUSB_CALL saleae_logic_pro_receive_data(struct libusb_transfer *t
 /* sr_resource compat stubs - PXView does not have the sr_resource API.
  * Local replacement for sr_resource_load() which reads an entire firmware
  * file (located under DS_RES_PATH) into a malloc'd buffer. Same approach
- * as saleae-logic16's sr_resource_open/read/close stubs. */
-#define SR_RESOURCE_FIRMWARE 1
+ * as saleae-logic16's sr_resource_open/read/close stubs.
+ *
+ * SR_RESOURCE_FIRMWARE is provided by compat_helpers.h (included via
+ * compat.h) under an #ifndef guard, so we no longer redefine it here.
+ *
+ * sr_resource_load() is a driver-specific convenience wrapper with a
+ * different signature from the compat layer's sr_resource_open/read/close
+ * (it reads the whole file in one shot). It is kept local because the
+ * compat layer does not provide a single-shot loader. */
 SR_PRIV void *sr_resource_load(struct sr_context *ctx, int type,
 	const char *name, size_t *size, size_t max_size);
 

@@ -1104,7 +1104,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 
 	devc->completion_seen = FALSE;
 	usb_source_add(ctx, 50,
-		la2016_receive_data, (void *)sdi);
+		la2016_receive_data, sdi);
 
 	std_session_send_df_header(sdi, NULL);
 

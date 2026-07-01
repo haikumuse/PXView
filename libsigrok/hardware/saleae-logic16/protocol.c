@@ -457,67 +457,23 @@ static int configure_led(const struct sr_dev_inst *sdi)
 	return set_led_mode(sdi, 1, 6250, 0, 1);
 }
 
-/* sr_resource compat stubs for PXView */
-struct sr_resource_compat {
-	FILE *fp;
-};
-
-SR_PRIV int sr_resource_open(struct sr_context *ctx, void *resource,
-	int type, const char *name)
-{
-	char path[512];
-	FILE *fp;
-
-	(void)ctx;
-	(void)type;
-
-	if (DS_RES_PATH[0] != '\0') {
-		snprintf(path, sizeof(path), "%s/%s", DS_RES_PATH, name);
-	} else {
-		snprintf(path, sizeof(path), "%s", name);
-	}
-
-	fp = fopen(path, "rb");
-	if (!fp) {
-		sr_err("Failed to open resource '%s'.", path);
-		return SR_ERR;
-	}
-
-	*(FILE **)resource = fp;
-	return SR_OK;
-}
-
-SR_PRIV ssize_t sr_resource_read(struct sr_context *ctx, void *resource,
-	void *buf, size_t count)
-{
-	(void)ctx;
-	FILE *fp = *(FILE **)resource;
-	size_t n;
-
-	n = fread(buf, 1, count, fp);
-	if (n == 0 && ferror(fp))
-		return -1;
-
-	return (ssize_t)n;
-}
-
-SR_PRIV void sr_resource_close(struct sr_context *ctx, void *resource)
-{
-	(void)ctx;
-	FILE *fp = *(FILE **)resource;
-	if (fp)
-		fclose(fp);
-}
+/*
+ * sr_resource API: the compat layer (compat_helpers.h, included via compat.h)
+ * provides sr_resource_open/read/close with the canonical upstream signatures
+ * taking `struct sr_resource *`. The local non-canonical stubs that used
+ * `void *resource` and a private `struct sr_resource_compat` have been
+ * removed; this driver now uses the compat versions directly.
+ */
 
 static int upload_fpga_bitstream(const struct sr_dev_inst *sdi,
 				 enum voltage_range vrange)
 {
 	uint64_t sum;
-	FILE *fp_res;
+	struct sr_resource res;
 	struct dev_context *devc;
 	struct drv_context *drvc;
 	const char *name;
-	ssize_t chunksize;
+	gssize chunksize;
 	int ret;
 	uint8_t command[64];
 
@@ -541,23 +497,23 @@ static int upload_fpga_bitstream(const struct sr_dev_inst *sdi,
 		}
 
 		sr_info("Uploading FPGA bitstream '%s'.", name);
-		ret = sr_resource_open(drvc->sr_ctx, &fp_res,
+		ret = sr_resource_open(drvc->sr_ctx, &res,
 				SR_RESOURCE_FIRMWARE, name);
 		if (ret != SR_OK)
 			return ret;
 
 		command[0] = COMMAND_FPGA_UPLOAD_INIT;
 		if ((ret = do_ep1_command(sdi, command, 1, NULL, 0)) != SR_OK) {
-			sr_resource_close(drvc->sr_ctx, &fp_res);
+			sr_resource_close(drvc->sr_ctx, &res);
 			return ret;
 		}
 
 		sum = 0;
 		while (1) {
-			chunksize = sr_resource_read(drvc->sr_ctx, &fp_res,
+			chunksize = sr_resource_read(drvc->sr_ctx, &res,
 					&command[2], sizeof(command) - 2);
 			if (chunksize < 0) {
-				sr_resource_close(drvc->sr_ctx, &fp_res);
+				sr_resource_close(drvc->sr_ctx, &res);
 				return SR_ERR;
 			}
 			if (chunksize == 0)
@@ -568,12 +524,12 @@ static int upload_fpga_bitstream(const struct sr_dev_inst *sdi,
 			ret = do_ep1_command(sdi, command, chunksize + 2,
 					NULL, 0);
 			if (ret != SR_OK) {
-				sr_resource_close(drvc->sr_ctx, &fp_res);
+				sr_resource_close(drvc->sr_ctx, &res);
 				return ret;
 			}
 			sum += chunksize;
 		}
-		sr_resource_close(drvc->sr_ctx, &fp_res);
+		sr_resource_close(drvc->sr_ctx, &res);
 		sr_info("FPGA bitstream upload (%" PRIu64 " bytes) done.", sum);
 	}
 

@@ -171,22 +171,6 @@ static inline int sr_sw_limits_get_remain(const struct sr_sw_limits *limits,
 }
 
 /*
- * Local read_u16le_inc() helper. The compat layer's compat_config.h
- * provides read_u16le() (without _inc) and write_u16le(). The source
- * driver's RLE decompression logic walks the receive buffer with the
- * _inc variant, so define it locally as a static inline.
- */
-static inline uint16_t read_u16le_inc(const uint8_t **ptr)
-{
-	uint16_t val;
-
-	val = (uint16_t)(*ptr)[0];
-	val |= ((uint16_t)(*ptr)[1]) << 8;
-	*ptr += 2;
-	return val;
-}
-
-/*
  * Forward declaration of the standard sigrok feed queue type.
  *
  * PXView's libsigrok does NOT provide the feed_queue_logic_* family of
