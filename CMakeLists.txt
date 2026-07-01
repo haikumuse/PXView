@@ -599,6 +599,55 @@ option(ENABLE_DRIVER_FX2LAFW "Enable fx2lafw driver" OFF)
 option(ENABLE_DRIVER_SALEAE_LOGIC16 "Enable saleae-logic16 driver" OFF)
 option(ENABLE_DRIVER_SALEAE_LOGIC_PRO "Enable saleae-logic-pro driver" OFF)
 option(ENABLE_DRIVER_RASPBERRYPI_PICO "Enable raspberrypi-pico driver" OFF)
+option(ENABLE_DRIVER_ASIX_SIGMA "Enable asix-sigma driver" OFF)
+option(ENABLE_DRIVER_CHRONOVU_LA "Enable chronovu-la driver" OFF)
+option(ENABLE_DRIVER_FTDI_LA "Enable ftdi-la driver" OFF)
+option(ENABLE_DRIVER_KINGST_LA2016 "Enable kingst-la2016 driver" OFF)
+option(ENABLE_DRIVER_SYSCLK_LWLA "Enable sysclk-lwla driver" OFF)
+option(ENABLE_DRIVER_SYSCLK_SLA5032 "Enable sysclk-sla5032 driver" OFF)
+option(ENABLE_DRIVER_FLUKE_DMM "Enable fluke-dmm driver" OFF)
+option(ENABLE_DRIVER_AGILENT_DMM "Enable agilent-dmm driver" OFF)
+option(ENABLE_DRIVER_APPA_55II "Enable appa-55ii driver" OFF)
+option(ENABLE_DRIVER_FLUKE_45 "Enable fluke-45 SCPI multimeter driver" OFF)
+option(ENABLE_DRIVER_RIGOL_DS "Enable rigol-ds SCPI oscilloscope driver" OFF)
+option(ENABLE_DRIVER_ROHDE_SCHWARZ_SME_0X "Enable rohde-schwarz-sme-0x SCPI signal generator driver" OFF)
+option(ENABLE_DRIVER_SIGLENT_SDS "Enable siglent-sds SCPI oscilloscope driver" OFF)
+option(ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER "Enable openbench-logic-sniffer (OLS) driver" OFF)
+option(ENABLE_DRIVER_IKALOGIC_SCANAPLUS "Enable ikalogic-scanaplus driver" OFF)
+option(ENABLE_DRIVER_ZEROPLUS_LOGIC_CUBE "Enable zeroplus-logic-cube driver" OFF)
+option(ENABLE_DRIVER_IKALOGIC_SCANALOGIC2 "Enable ikalogic-scanalogic2 driver" OFF)
+option(ENABLE_DRIVER_LECROY_LOGICSTUDIO "Enable lecroy-logicstudio driver" OFF)
+option(ENABLE_DRIVER_HANTEK_6XXX "Enable hantek-6xxx driver" OFF)
+option(ENABLE_DRIVER_HANTEK_4032L "Enable hantek-4032l driver" OFF)
+option(ENABLE_DRIVER_HANTEK_DSO "Enable hantek-dso driver" OFF)
+option(ENABLE_DRIVER_GWINSTEK_GDS_800 "Enable gwinstek-gds-800 SCPI oscilloscope driver" OFF)
+option(ENABLE_DRIVER_GWINSTEK_PSP "Enable gwinstek-psp power supply driver" OFF)
+option(ENABLE_DRIVER_KORAD_KAXXXXP "Enable korad-kaxxxxp power supply driver" OFF)
+option(ENABLE_DRIVER_ATTEN_PPS3XXX "Enable atten-pps3xxx power supply driver" OFF)
+option(ENABLE_DRIVER_MANSON_HCS_3XXX "Enable manson-hcs-3xxx power supply driver" OFF)
+option(ENABLE_DRIVER_MOTECH_LPS_30X "Enable motech-lps-30x power supply driver" OFF)
+option(ENABLE_DRIVER_RDTECH_DPS "Enable rdtech-dps power supply driver" OFF)
+option(ENABLE_DRIVER_ITECH_IT8500 "Enable itech-it8500 electronic load driver" OFF)
+option(ENABLE_DRIVER_MAYNUO_M97 "Enable maynuo-m97 electronic load driver" OFF)
+option(ENABLE_DRIVER_SIGLENT_SDL10X0 "Enable siglent-sdl10x0 electronic load driver" OFF)
+option(ENABLE_DRIVER_SCPI_PPS "Enable scpi-pps generic SCPI power supply driver" OFF)
+option(ENABLE_DRIVER_LECROY_XSTREAM "Enable lecroy-xstream SCPI oscilloscope driver" OFF)
+option(ENABLE_DRIVER_HAMEG_HMO "Enable hameg-hmo SCPI oscilloscope driver" OFF)
+option(ENABLE_DRIVER_YOKOGAWA_DLM "Enable yokogawa-dlm SCPI oscilloscope driver" OFF)
+option(ENABLE_DRIVER_HUNG_CHANG_DSO_2100 "Enable hung-chang-dso-2100 parallel port oscilloscope driver" OFF)
+option(ENABLE_DRIVER_UNI_T_UT181A "Enable uni-t-ut181a DMM driver" OFF)
+option(ENABLE_DRIVER_UNI_T_UT32X "Enable uni-t-ut32x thermometer driver" OFF)
+option(ENABLE_DRIVER_UNI_T_DMM "Enable uni-t-dmm USB-HID DMM driver" OFF)
+option(ENABLE_DRIVER_LINK_MSO19 "Enable link-mso19 mixed-signal oscilloscope driver" OFF)
+option(ENABLE_DRIVER_MASTECH_MS6514 "Enable mastech-ms6514 serial thermometer driver" OFF)
+option(ENABLE_DRIVER_TESTO "Enable testo serial thermometer/multimeter driver" OFF)
+option(ENABLE_DRIVER_LASCAR_EL_USB "Enable lascar-el-usb USB temperature/humidity/CO data logger driver" OFF)
+option(ENABLE_DRIVER_MIC_985XX "Enable mic-985xx serial temperature/humidity meter driver" OFF)
+option(ENABLE_DRIVER_TONDAJ_SL_814 "Enable tondaj-sl-814 serial sound level meter driver" OFF)
+option(ENABLE_DRIVER_PCE_322A "Enable pce-322a serial sound level meter driver" OFF)
+option(ENABLE_DRIVER_CENTER_3XX "Enable center-3xx serial thermometer driver" OFF)
+option(ENABLE_DRIVER_TELEINFO "Enable teleinfo serial French power meter driver" OFF)
+option(ENABLE_DRIVER_KERN_SCALE "Enable kern-scale serial scale driver" OFF)
 
 if(ENABLE_COMPAT_DRIVERS)
     add_definitions(-DHAVE_COMPAT_DRIVERS)
@@ -613,6 +662,17 @@ if(ENABLE_COMPAT_DRIVERS)
         include_directories(${LIBSERIALPORT_INCLUDE_DIRS})
     endif()
 
+    # Find libftdi1 for FTDI-based compat drivers (ftdi-la, chronovu-la, ikalogic-scanaplus)
+    if(ENABLE_DRIVER_FTDI_LA OR ENABLE_DRIVER_CHRONOVU_LA OR ENABLE_DRIVER_IKALOGIC_SCANAPLUS)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(LIBFTDI1 libftdi1)
+        endif()
+        if(NOT LIBFTDI1_FOUND)
+            message(FATAL_ERROR "libftdi1 is required by the ftdi-la/chronovu-la/ikalogic-scanaplus drivers but was not found. Disable ENABLE_DRIVER_FTDI_LA/ENABLE_DRIVER_CHRONOVU_LA/ENABLE_DRIVER_IKALOGIC_SCANAPLUS or install libftdi1.")
+        endif()
+        include_directories(${LIBFTDI1_INCLUDE_DIRS})
+    endif()
+
     if(ENABLE_DRIVER_FX2LAFW)
         add_definitions(-DHAVE_DRIVER_FX2LAFW)
     endif()
@@ -624,6 +684,161 @@ if(ENABLE_COMPAT_DRIVERS)
     endif()
     if(ENABLE_DRIVER_RASPBERRYPI_PICO)
         add_definitions(-DHAVE_DRIVER_RASPBERRYPI_PICO)
+    endif()
+    if(ENABLE_DRIVER_ASIX_SIGMA)
+        add_definitions(-DHAVE_DRIVER_ASIX_SIGMA)
+    endif()
+    if(ENABLE_DRIVER_CHRONOVU_LA)
+        add_definitions(-DHAVE_DRIVER_CHRONOVU_LA)
+    endif()
+    if(ENABLE_DRIVER_FTDI_LA)
+        add_definitions(-DHAVE_DRIVER_FTDI_LA)
+    endif()
+    if(ENABLE_DRIVER_KINGST_LA2016)
+        add_definitions(-DHAVE_DRIVER_KINGST_LA2016)
+    endif()
+    if(ENABLE_DRIVER_SYSCLK_LWLA)
+        add_definitions(-DHAVE_DRIVER_SYSCLK_LWLA)
+    endif()
+    if(ENABLE_DRIVER_SYSCLK_SLA5032)
+        add_definitions(-DHAVE_DRIVER_SYSCLK_SLA5032)
+    endif()
+    if(ENABLE_DRIVER_FLUKE_DMM)
+        add_definitions(-DHAVE_DRIVER_FLUKE_DMM)
+    endif()
+    if(ENABLE_DRIVER_AGILENT_DMM)
+        add_definitions(-DHAVE_DRIVER_AGILENT_DMM)
+    endif()
+    if(ENABLE_DRIVER_APPA_55II)
+        add_definitions(-DHAVE_DRIVER_APPA_55II)
+    endif()
+    if(ENABLE_DRIVER_FLUKE_45)
+        add_definitions(-DHAVE_DRIVER_FLUKE_45)
+    endif()
+    if(ENABLE_DRIVER_RIGOL_DS)
+        add_definitions(-DHAVE_DRIVER_RIGOL_DS)
+    endif()
+    if(ENABLE_DRIVER_ROHDE_SCHWARZ_SME_0X)
+        add_definitions(-DHAVE_DRIVER_ROHDE_SCHWARZ_SME_0X)
+    endif()
+    if(ENABLE_DRIVER_SIGLENT_SDS)
+        add_definitions(-DHAVE_DRIVER_SIGLENT_SDS)
+    endif()
+    if(ENABLE_DRIVER_RIGOL_DG)
+        add_definitions(-DHAVE_DRIVER_RIGOL_DG)
+    endif()
+    if(ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER)
+        add_definitions(-DHAVE_DRIVER_OPENBENCH_LOGIC_SNIFFER)
+    endif()
+    if(ENABLE_DRIVER_IKALOGIC_SCANAPLUS)
+        add_definitions(-DHAVE_DRIVER_IKALOGIC_SCANAPLUS)
+    endif()
+    if(ENABLE_DRIVER_IKALOGIC_SCANALOGIC2)
+        add_definitions(-DHAVE_DRIVER_IKALOGIC_SCANALOGIC2)
+    endif()
+    if(ENABLE_DRIVER_LECROY_LOGICSTUDIO)
+        add_definitions(-DHAVE_DRIVER_LECROY_LOGICSTUDIO)
+    endif()
+    if(ENABLE_DRIVER_HANTEK_6XXX)
+        add_definitions(-DHAVE_DRIVER_HANTEK_6XXX)
+    endif()
+    if(ENABLE_DRIVER_HANTEK_4032L)
+        add_definitions(-DHAVE_DRIVER_HANTEK_4032L)
+    endif()
+    if(ENABLE_DRIVER_HANTEK_DSO)
+        add_definitions(-DHAVE_DRIVER_HANTEK_DSO)
+    endif()
+    if(ENABLE_DRIVER_GWINSTEK_GDS_800)
+        add_definitions(-DHAVE_DRIVER_GWINSTEK_GDS_800)
+    endif()
+    if(ENABLE_DRIVER_GWINSTEK_PSP)
+        add_definitions(-DHAVE_DRIVER_GWINSTEK_PSP)
+    endif()
+    if(ENABLE_DRIVER_KORAD_KAXXXXP)
+        add_definitions(-DHAVE_DRIVER_KORAD_KAXXXXP)
+    endif()
+    if(ENABLE_DRIVER_ATTEN_PPS3XXX)
+        add_definitions(-DHAVE_DRIVER_ATTEN_PPS3XXX)
+    endif()
+    if(ENABLE_DRIVER_MANSON_HCS_3XXX)
+        add_definitions(-DHAVE_DRIVER_MANSON_HCS_3XXX)
+    endif()
+    if(ENABLE_DRIVER_MOTECH_LPS_30X)
+        add_definitions(-DHAVE_DRIVER_MOTECH_LPS_30X)
+    endif()
+    if(ENABLE_DRIVER_RDTECH_DPS)
+        add_definitions(-DHAVE_DRIVER_RDTECH_DPS)
+    endif()
+    if(ENABLE_DRIVER_ITECH_IT8500)
+        add_definitions(-DHAVE_DRIVER_ITECH_IT8500)
+    endif()
+    if(ENABLE_DRIVER_MAYNUO_M97)
+        add_definitions(-DHAVE_DRIVER_MAYNUO_M97)
+    endif()
+    if(ENABLE_DRIVER_SIGLENT_SDL10X0)
+        add_definitions(-DHAVE_DRIVER_SIGLENT_SDL10X0)
+    endif()
+    if(ENABLE_DRIVER_SCPI_PPS)
+        add_definitions(-DHAVE_DRIVER_SCPI_PPS)
+    endif()
+    if(ENABLE_DRIVER_LECROY_XSTREAM)
+        add_definitions(-DHAVE_DRIVER_LECROY_XSTREAM)
+    endif()
+    if(ENABLE_DRIVER_HAMEG_HMO)
+        add_definitions(-DHAVE_DRIVER_HAMEG_HMO)
+    endif()
+    if(ENABLE_DRIVER_UNI_T_UT181A)
+        add_definitions(-DHAVE_DRIVER_UNI_T_UT181A)
+    endif()
+    if(ENABLE_DRIVER_UNI_T_UT32X)
+        add_definitions(-DHAVE_DRIVER_UNI_T_UT32X)
+    endif()
+    if(ENABLE_DRIVER_UNI_T_DMM)
+        add_definitions(-DHAVE_DRIVER_UNI_T_DMM)
+    endif()
+    if(ENABLE_DRIVER_HUNG_CHANG_DSO_2100)
+        # hung-chang-dso-2100 talks to the device over a parallel port using
+        # libieee1284. The library is Linux-specific and not available on
+        # MSYS2/Windows, so this driver can only be enabled on systems that
+        # provide it.
+        if(PkgConfig_FOUND)
+            pkg_check_modules(LIBIEEE1284 QUIET libieee1284)
+        endif()
+        if(NOT LIBIEEE1284_FOUND)
+            message(FATAL_ERROR "libieee1284 is required by the hung-chang-dso-2100 driver but was not found. Disable ENABLE_DRIVER_HUNG_CHANG_DSO_2100 or install libieee1284.")
+        endif()
+        include_directories(${LIBIEEE1284_INCLUDE_DIRS})
+        add_definitions(-DHAVE_DRIVER_HUNG_CHANG_DSO_2100)
+    endif()
+    if(ENABLE_DRIVER_LINK_MSO19)
+        add_definitions(-DHAVE_DRIVER_LINK_MSO19)
+    endif()
+    if(ENABLE_DRIVER_MASTECH_MS6514)
+        add_definitions(-DHAVE_DRIVER_MASTECH_MS6514)
+    endif()
+    if(ENABLE_DRIVER_TESTO)
+        add_definitions(-DHAVE_DRIVER_TESTO)
+    endif()
+    if(ENABLE_DRIVER_LASCAR_EL_USB)
+        add_definitions(-DHAVE_DRIVER_LASCAR_EL_USB)
+    endif()
+    if(ENABLE_DRIVER_TONDAJ_SL_814)
+        add_definitions(-DHAVE_DRIVER_TONDAJ_SL_814)
+    endif()
+    if(ENABLE_DRIVER_PCE_322A)
+        add_definitions(-DHAVE_DRIVER_PCE_322A)
+    endif()
+    if(ENABLE_DRIVER_CENTER_3XX)
+        add_definitions(-DHAVE_DRIVER_CENTER_3XX)
+    endif()
+    if(ENABLE_DRIVER_MIC_985XX)
+        add_definitions(-DHAVE_DRIVER_MIC_985XX)
+    endif()
+    if(ENABLE_DRIVER_TELEINFO)
+        add_definitions(-DHAVE_DRIVER_TELEINFO)
+    endif()
+    if(ENABLE_DRIVER_KERN_SCALE)
+        add_definitions(-DHAVE_DRIVER_KERN_SCALE)
     endif()
 endif()
 
@@ -667,6 +882,7 @@ if(ENABLE_COMPAT_DRIVERS)
     list(APPEND libsigrok_SOURCES
         libsigrok/hardware/compat/compat_helpers.c
         libsigrok/hardware/compat/compat_serial.c
+        libsigrok/hardware/compat/compat_scpi.c
     )
     if(ENABLE_DRIVER_FX2LAFW)
         list(APPEND libsigrok_SOURCES
@@ -690,6 +906,317 @@ if(ENABLE_COMPAT_DRIVERS)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/raspberrypi-pico/api.c
             libsigrok/hardware/raspberrypi-pico/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ASIX_SIGMA)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/asix-sigma/api.c
+            libsigrok/hardware/asix-sigma/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_CHRONOVU_LA)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/chronovu-la/api.c
+            libsigrok/hardware/chronovu-la/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_FTDI_LA)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/ftdi-la/api.c
+            libsigrok/hardware/ftdi-la/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_KINGST_LA2016)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/kingst-la2016/api.c
+            libsigrok/hardware/kingst-la2016/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SYSCLK_LWLA)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/sysclk-lwla/api.c
+            libsigrok/hardware/sysclk-lwla/protocol.c
+            libsigrok/hardware/sysclk-lwla/lwla.c
+            libsigrok/hardware/sysclk-lwla/lwla1016.c
+            libsigrok/hardware/sysclk-lwla/lwla1034.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SYSCLK_SLA5032)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/sysclk-sla5032/api.c
+            libsigrok/hardware/sysclk-sla5032/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ZEROPLUS_LOGIC_CUBE)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/zeroplus-logic-cube/api.c
+            libsigrok/hardware/zeroplus-logic-cube/protocol.c
+            libsigrok/hardware/zeroplus-logic-cube/analyzer.c
+            libsigrok/hardware/zeroplus-logic-cube/gl_usb.c
+        )
+    endif()
+    if(ENABLE_DRIVER_FLUKE_DMM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/fluke-dmm/api.c
+            libsigrok/hardware/fluke-dmm/protocol.c
+            libsigrok/hardware/fluke-dmm/fluke-18x.c
+            libsigrok/hardware/fluke-dmm/fluke-28x.c
+            libsigrok/hardware/fluke-dmm/fluke-190.c
+        )
+    endif()
+    if(ENABLE_DRIVER_AGILENT_DMM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/agilent-dmm/api.c
+            libsigrok/hardware/agilent-dmm/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_FLUKE_45)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/fluke-45/api.c
+            libsigrok/hardware/fluke-45/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_APPA_55II)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/appa-55ii/api.c
+            libsigrok/hardware/appa-55ii/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_RIGOL_DS)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/rigol-ds/api.c
+            libsigrok/hardware/rigol-ds/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ROHDE_SCHWARZ_SME_0X)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/rohde-schwarz-sme-0x/api.c
+            libsigrok/hardware/rohde-schwarz-sme-0x/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SIGLENT_SDS)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/siglent-sds/api.c
+            libsigrok/hardware/siglent-sds/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/openbench-logic-sniffer/api.c
+            libsigrok/hardware/openbench-logic-sniffer/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_IKALOGIC_SCANAPLUS)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/ikalogic-scanaplus/api.c
+            libsigrok/hardware/ikalogic-scanaplus/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_IPDBG_LA)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/ipdbg-la/api.c
+            libsigrok/hardware/ipdbg-la/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_IKALOGIC_SCANALOGIC2)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/ikalogic-scanalogic2/api.c
+            libsigrok/hardware/ikalogic-scanalogic2/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_LECROY_LOGICSTUDIO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/lecroy-logicstudio/api.c
+            libsigrok/hardware/lecroy-logicstudio/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HANTEK_6XXX)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hantek-6xxx/api.c
+            libsigrok/hardware/hantek-6xxx/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HANTEK_4032L)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hantek-4032l/api.c
+            libsigrok/hardware/hantek-4032l/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HANTEK_DSO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hantek-dso/api.c
+            libsigrok/hardware/hantek-dso/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_GWINSTEK_GDS_800)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/gwinstek-gds-800/api.c
+            libsigrok/hardware/gwinstek-gds-800/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_GWINSTEK_PSP)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/gwinstek-psp/api.c
+            libsigrok/hardware/gwinstek-psp/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_KORAD_KAXXXXP)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/korad-kaxxxxp/api.c
+            libsigrok/hardware/korad-kaxxxxp/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ATTEN_PPS3XXX)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/atten-pps3xxx/api.c
+            libsigrok/hardware/atten-pps3xxx/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_MANSON_HCS_3XXX)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/manson-hcs-3xxx/api.c
+            libsigrok/hardware/manson-hcs-3xxx/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_MOTECH_LPS_30X)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/motech-lps-30x/api.c
+            libsigrok/hardware/motech-lps-30x/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_RDTECH_DPS)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/rdtech-dps/api.c
+            libsigrok/hardware/rdtech-dps/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_ITECH_IT8500)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/itech-it8500/api.c
+            libsigrok/hardware/itech-it8500/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_MAYNUO_M97)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/maynuo-m97/api.c
+            libsigrok/hardware/maynuo-m97/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SIGLENT_SDL10X0)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/siglent-sdl10x0/api.c
+            libsigrok/hardware/siglent-sdl10x0/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SCPI_PPS)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/scpi-pps/api.c
+            libsigrok/hardware/scpi-pps/protocol.c
+            libsigrok/hardware/scpi-pps/profiles.c
+        )
+    endif()
+    if(ENABLE_DRIVER_YOKOGAWA_DLM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/yokogawa-dlm/api.c
+            libsigrok/hardware/yokogawa-dlm/protocol.c
+            libsigrok/hardware/yokogawa-dlm/protocol_wrappers.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HAMEG_HMO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hameg-hmo/api.c
+            libsigrok/hardware/hameg-hmo/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_LECROY_XSTREAM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/lecroy-xstream/api.c
+            libsigrok/hardware/lecroy-xstream/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_UNI_T_UT181A)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/uni-t-ut181a/api.c
+            libsigrok/hardware/uni-t-ut181a/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_UNI_T_UT32X)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/uni-t-ut32x/api.c
+            libsigrok/hardware/uni-t-ut32x/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_UNI_T_DMM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/uni-t-dmm/api.c
+            libsigrok/hardware/uni-t-dmm/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_HUNG_CHANG_DSO_2100)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/hung-chang-dso-2100/api.c
+            libsigrok/hardware/hung-chang-dso-2100/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_LINK_MSO19)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/link-mso19/api.c
+            libsigrok/hardware/link-mso19/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_MASTECH_MS6514)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/mastech-ms6514/api.c
+            libsigrok/hardware/mastech-ms6514/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_TESTO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/testo/api.c
+            libsigrok/hardware/testo/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_LASCAR_EL_USB)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/lascar-el-usb/api.c
+            libsigrok/hardware/lascar-el-usb/protocol.c
+        )
+    endif()
+endif()
+    if(ENABLE_DRIVER_TONDAJ_SL_814)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/tondaj-sl-814/api.c
+            libsigrok/hardware/tondaj-sl-814/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_PCE_322A)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/pce-322a/api.c
+            libsigrok/hardware/pce-322a/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_CENTER_3XX)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/center-3xx/api.c
+            libsigrok/hardware/center-3xx/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_MIC_985XX)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/mic-985xx/api.c
+            libsigrok/hardware/mic-985xx/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_TELEINFO)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/teleinfo/api.c
+            libsigrok/hardware/teleinfo/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_KERN_SCALE)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/kern-scale/api.c
+            libsigrok/hardware/kern-scale/protocol.c
         )
     endif()
 endif()
@@ -846,8 +1373,14 @@ endif()
 
 # Add libserialport if found (for serial compat layer)
 if(LIBSERIALPORT_FOUND)
-	list(APPEND PXVIEW_LINK_LIBS ${LIBSERIALPORT_LIBRARIES})
-	link_directories(${LIBSERIALPORT_LIBRARY_DIRS})
+    list(APPEND PXVIEW_LINK_LIBS ${LIBSERIALPORT_LIBRARIES})
+    link_directories(${LIBSERIALPORT_LIBRARY_DIRS})
+endif()
+
+# Add libftdi1 if found (for FTDI-based compat drivers: ftdi-la, chronovu-la)
+if(LIBFTDI1_FOUND)
+    list(APPEND PXVIEW_LINK_LIBS ${LIBFTDI1_LIBRARIES})
+    link_directories(${LIBFTDI1_LIBRARY_DIRS})
 endif()
 
 #===============================================================================

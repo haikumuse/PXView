@@ -121,6 +121,154 @@ extern SR_PRIV struct sr_dev_driver saleae_logic_pro_driver_info;
 #ifdef HAVE_DRIVER_RASPBERRYPI_PICO
 extern SR_PRIV struct sr_dev_driver raspberrypi_pico_driver_info;
 #endif
+#ifdef HAVE_DRIVER_ASIX_SIGMA
+extern SR_PRIV struct sr_dev_driver asix_sigma_driver_info;
+#endif
+#ifdef HAVE_DRIVER_CHRONOVU_LA
+extern SR_PRIV struct sr_dev_driver chronovu_la_driver_info;
+#endif
+#ifdef HAVE_DRIVER_FTDI_LA
+extern SR_PRIV struct sr_dev_driver ftdi_la_driver_info;
+#endif
+#ifdef HAVE_DRIVER_KINGST_LA2016
+extern SR_PRIV struct sr_dev_driver kingst_la2016_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SYSCLK_LWLA
+extern SR_PRIV struct sr_dev_driver sysclk_lwla_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SYSCLK_SLA5032
+extern SR_PRIV struct sr_dev_driver sysclk_sla5032_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ZEROPLUS_LOGIC_CUBE
+extern SR_PRIV struct sr_dev_driver zeroplus_logic_cube_driver_info;
+#endif
+#ifdef HAVE_DRIVER_FLUKE_DMM
+extern SR_PRIV struct sr_dev_driver flukedmm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_AGILENT_DMM
+extern SR_PRIV struct sr_dev_driver agdmm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_APPA_55II
+extern SR_PRIV struct sr_dev_driver appa_55ii_driver_info;
+#endif
+#ifdef HAVE_DRIVER_RIGOL_DS
+extern SR_PRIV struct sr_dev_driver rigol_ds_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ROHDE_SCHWARZ_SME_0X
+extern SR_PRIV struct sr_dev_driver rohde_schwarz_sme_0x_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SIGLENT_SDS
+extern SR_PRIV struct sr_dev_driver siglent_sds_driver_info;
+#endif
+#ifdef HAVE_DRIVER_OPENBENCH_LOGIC_SNIFFER
+extern SR_PRIV struct sr_dev_driver ols_driver_info;
+#endif
+#ifdef HAVE_DRIVER_IKALOGIC_SCANAPLUS
+extern SR_PRIV struct sr_dev_driver ikalogic_scanaplus_driver_info;
+#endif
+#ifdef HAVE_DRIVER_IPDBG_LA
+extern SR_PRIV struct sr_dev_driver ipdbg_la_driver_info;
+#endif
+#ifdef HAVE_DRIVER_LECROY_LOGICSTUDIO
+extern SR_PRIV struct sr_dev_driver lecroy_logicstudio_driver_info;
+#endif
+#ifdef HAVE_DRIVER_IKALOGIC_SCANALOGIC2
+extern SR_PRIV struct sr_dev_driver ikalogic_scanalogic2_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HANTEK_6XXX
+extern SR_PRIV struct sr_dev_driver hantek_6xxx_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HANTEK_4032L
+extern SR_PRIV struct sr_dev_driver hantek_4032l_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HANTEK_DSO
+extern SR_PRIV struct sr_dev_driver hantek_dso_driver_info;
+#endif
+#ifdef HAVE_DRIVER_GWINSTEK_GDS_800
+extern SR_PRIV struct sr_dev_driver gwinstek_gds_800_driver_info;
+#endif
+#ifdef HAVE_DRIVER_GWINSTEK_PSP
+extern SR_PRIV struct sr_dev_driver gwinstek_psp_driver_info;
+#endif
+#ifdef HAVE_DRIVER_KORAD_KAXXXXP
+extern SR_PRIV struct sr_dev_driver korad_kaxxxxp_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ATTEN_PPS3XXX
+extern SR_PRIV struct sr_dev_driver atten_pps3xxx_driver_info;
+#endif
+#ifdef HAVE_DRIVER_MANSON_HCS_3XXX
+extern SR_PRIV struct sr_dev_driver manson_hcs_3xxx_driver_info;
+#endif
+#ifdef HAVE_DRIVER_MOTECH_LPS_30X
+extern SR_PRIV struct sr_dev_driver motech_lps_30x_driver_info;
+#endif
+#ifdef HAVE_DRIVER_RDTECH_DPS
+extern SR_PRIV struct sr_dev_driver rdtech_dps_driver_info;
+extern SR_PRIV struct sr_dev_driver rdtech_rd_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ITECH_IT8500
+extern SR_PRIV struct sr_dev_driver itech_it8500_driver_info;
+#endif
+#ifdef HAVE_DRIVER_MAYNUO_M97
+extern SR_PRIV struct sr_dev_driver maynuo_m97_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SIGLENT_SDL10X0
+extern SR_PRIV struct sr_dev_driver siglent_sdl10x0_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SCPI_PPS
+extern SR_PRIV struct sr_dev_driver scpi_pps_driver_info;
+extern SR_PRIV struct sr_dev_driver hp_ib_pps_driver_info;
+#endif
+#ifdef HAVE_DRIVER_LECROY_XSTREAM
+extern SR_PRIV struct sr_dev_driver lecroy_xstream_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HAMEG_HMO
+extern SR_PRIV struct sr_dev_driver hameg_hmo_driver_info;
+#endif
+#ifdef HAVE_DRIVER_UNI_T_UT181A
+extern SR_PRIV struct sr_dev_driver uni_t_ut181a_driver_info;
+#endif
+#ifdef HAVE_DRIVER_UNI_T_UT32X
+extern SR_PRIV struct sr_dev_driver uni_t_ut32x_driver_info;
+#endif
+#ifdef HAVE_DRIVER_UNI_T_DMM
+extern SR_PRIV struct sr_dev_driver uni_t_dmm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HUNG_CHANG_DSO_2100
+extern SR_PRIV struct sr_dev_driver hung_chang_dso_2100_driver_info;
+#endif
+#ifdef HAVE_DRIVER_LINK_MSO19
+extern SR_PRIV struct sr_dev_driver link_mso19_driver_info;
+#endif
+#ifdef HAVE_DRIVER_MASTECH_MS6514
+extern SR_PRIV struct sr_dev_driver mastech_ms6514_driver_info;
+#endif
+#ifdef HAVE_DRIVER_TESTO
+extern SR_PRIV struct sr_dev_driver testo_driver_info;
+#endif
+#ifdef HAVE_DRIVER_LASCAR_EL_USB
+extern SR_PRIV struct sr_dev_driver lascar_el_usb_driver_info;
+#endif
+#ifdef HAVE_DRIVER_TONDAJ_SL_814
+extern SR_PRIV struct sr_dev_driver tondaj_sl_814_driver_info;
+#endif
+#ifdef HAVE_DRIVER_PCE_322A
+extern SR_PRIV struct sr_dev_driver pce_322a_driver_info;
+#endif
+#ifdef HAVE_DRIVER_CENTER_3XX
+extern SR_PRIV struct sr_dev_driver center_309_driver_info;
+extern SR_PRIV struct sr_dev_driver voltcraft_k204_driver_info;
+#endif
+#ifdef HAVE_DRIVER_MIC_985XX
+extern SR_PRIV struct sr_dev_driver mic_98581_driver_info;
+extern SR_PRIV struct sr_dev_driver mic_98583_driver_info;
+#endif
+#ifdef HAVE_DRIVER_TELEINFO
+extern SR_PRIV struct sr_dev_driver teleinfo_driver_info;
+#endif
+#ifdef HAVE_DRIVER_KERN_SCALE
+extern SR_PRIV struct sr_dev_driver kern_ew_6200_2nm_driver_info;
+#endif
 #endif
 /** @endcond */
 
@@ -145,6 +293,163 @@ static struct sr_dev_driver *drivers_list[] = {
 #endif
 #ifdef HAVE_DRIVER_RASPBERRYPI_PICO
     &raspberrypi_pico_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ASIX_SIGMA
+    &asix_sigma_driver_info,
+#endif
+#ifdef HAVE_DRIVER_CHRONOVU_LA
+    &chronovu_la_driver_info,
+#endif
+#ifdef HAVE_DRIVER_FTDI_LA
+    &ftdi_la_driver_info,
+#endif
+#ifdef HAVE_DRIVER_KINGST_LA2016
+    &kingst_la2016_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SYSCLK_LWLA
+    &sysclk_lwla_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SYSCLK_SLA5032
+    &sysclk_sla5032_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ZEROPLUS_LOGIC_CUBE
+    &zeroplus_logic_cube_driver_info,
+#endif
+#ifdef HAVE_DRIVER_FLUKE_DMM
+    &flukedmm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_AGILENT_DMM
+    &agdmm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_FLUKE_45
+    &fluke_45_driver_info,
+#endif
+#ifdef HAVE_DRIVER_APPA_55II
+    &appa_55ii_driver_info,
+#endif
+#ifdef HAVE_DRIVER_RIGOL_DS
+    &rigol_ds_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ROHDE_SCHWARZ_SME_0X
+    &rohde_schwarz_sme_0x_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SIGLENT_SDS
+    &siglent_sds_driver_info,
+#endif
+#ifdef HAVE_DRIVER_RIGOL_DG
+    &rigol_dg_driver_info,
+#endif
+#ifdef HAVE_DRIVER_OPENBENCH_LOGIC_SNIFFER
+    &ols_driver_info,
+#endif
+#ifdef HAVE_DRIVER_IKALOGIC_SCANAPLUS
+    &ikalogic_scanaplus_driver_info,
+#endif
+#ifdef HAVE_DRIVER_IPDBG_LA
+    &ipdbg_la_driver_info,
+#endif
+#ifdef HAVE_DRIVER_LECROY_LOGICSTUDIO
+    &lecroy_logicstudio_driver_info,
+#endif
+#ifdef HAVE_DRIVER_IKALOGIC_SCANALOGIC2
+    &ikalogic_scanalogic2_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HANTEK_6XXX
+    &hantek_6xxx_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HANTEK_4032L
+    &hantek_4032l_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HANTEK_DSO
+    &hantek_dso_driver_info,
+#endif
+#ifdef HAVE_DRIVER_GWINSTEK_GDS_800
+    &gwinstek_gds_800_driver_info,
+#endif
+#ifdef HAVE_DRIVER_GWINSTEK_PSP
+    &gwinstek_psp_driver_info,
+#endif
+#ifdef HAVE_DRIVER_KORAD_KAXXXXP
+    &korad_kaxxxxp_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ATTEN_PPS3XXX
+    &atten_pps3xxx_driver_info,
+#endif
+#ifdef HAVE_DRIVER_MANSON_HCS_3XXX
+    &manson_hcs_3xxx_driver_info,
+#endif
+#ifdef HAVE_DRIVER_MOTECH_LPS_30X
+    &motech_lps_30x_driver_info,
+#endif
+#ifdef HAVE_DRIVER_RDTECH_DPS
+    &rdtech_dps_driver_info,
+    &rdtech_rd_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ITECH_IT8500
+    &itech_it8500_driver_info,
+#endif
+#ifdef HAVE_DRIVER_MAYNUO_M97
+    &maynuo_m97_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SIGLENT_SDL10X0
+    &siglent_sdl10x0_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SCPI_PPS
+    &scpi_pps_driver_info,
+    &hp_ib_pps_driver_info,
+#endif
+#ifdef HAVE_DRIVER_LECROY_XSTREAM
+    &lecroy_xstream_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HAMEG_HMO
+    &hameg_hmo_driver_info,
+#endif
+#ifdef HAVE_DRIVER_YOKOGAWA_DLM
+    &yokogawa_dlm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_UNI_T_UT181A
+    &uni_t_ut181a_driver_info,
+#endif
+#ifdef HAVE_DRIVER_UNI_T_UT32X
+    &uni_t_ut32x_driver_info,
+#endif
+#ifdef HAVE_DRIVER_UNI_T_DMM
+    &uni_t_dmm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HUNG_CHANG_DSO_2100
+    &hung_chang_dso_2100_driver_info,
+#endif
+#ifdef HAVE_DRIVER_LINK_MSO19
+    &link_mso19_driver_info,
+#endif
+#ifdef HAVE_DRIVER_MASTECH_MS6514
+    &mastech_ms6514_driver_info,
+#endif
+#ifdef HAVE_DRIVER_TESTO
+    &testo_driver_info,
+#endif
+#ifdef HAVE_DRIVER_LASCAR_EL_USB
+    &lascar_el_usb_driver_info,
+#endif
+#ifdef HAVE_DRIVER_TONDAJ_SL_814
+    &tondaj_sl_814_driver_info,
+#endif
+#ifdef HAVE_DRIVER_PCE_322A
+    &pce_322a_driver_info,
+#endif
+#ifdef HAVE_DRIVER_CENTER_3XX
+    &center_309_driver_info,
+    &voltcraft_k204_driver_info,
+#endif
+#ifdef HAVE_DRIVER_MIC_985XX
+    &mic_98581_driver_info,
+    &mic_98583_driver_info,
+#endif
+#ifdef HAVE_DRIVER_TELEINFO
+    &teleinfo_driver_info,
+#endif
+#ifdef HAVE_DRIVER_KERN_SCALE
+    &kern_ew_6200_2nm_driver_info,
 #endif
 #endif
 	NULL,

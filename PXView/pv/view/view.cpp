@@ -2259,6 +2259,42 @@ void View::rebuild_signals() {
     }
   }
 
+  // R9: restore persisted layout (view_index/v_offset/own_height) from
+  // SessionDocument. Without this, rebuild_signals() (called from
+  // DSV_MSG_DEVICE_OPTIONS_UPDATED handler after reload) creates Signals
+  // with default heights, wiping the user's custom layout.
+  // rebuild_signals_from_config() at line 2228 only runs when
+  // _data_source == _document; this second path runs when _data_source is
+  // _session (e.g., before/during capture), and must also restore layout.
+  if (_document && _document->has_signal_config()) {
+    const auto &cfg = _document->get_signal_config();
+    int view_index_seq = 0;
+    for (auto *sig : _own_signals) {
+      auto it = std::find_if(cfg.channels.begin(), cfg.channels.end(),
+                             [&](const data::ChannelConfig &ch) {
+                               return ch.index == sig->get_index();
+                             });
+      if (it != cfg.channels.end()) {
+        sig->set_v_offset(it->v_offset);
+        if (it->own_height >= 0) {
+          sig->set_own_height(it->own_height);
+        } else if (cfg.work_mode == DSO || cfg.work_mode == ANALOG) {
+          sig->set_own_height(-1);
+        }
+        if (it->view_index >= 0) {
+          sig->set_view_index(it->view_index);
+        } else if (it->enabled) {
+          sig->set_view_index(view_index_seq++);
+        } else {
+          sig->set_view_index(-1);
+        }
+        pxv_info("View::rebuild_signals: restored channel %d from config: view_index=%d, v_offset=%d, own_height=%d",
+                 sig->get_index(), sig->get_view_index(),
+                 sig->get_v_offset(), sig->get_own_height());
+      }
+    }
+  }
+
   if (_document && _document->has_data()) {
     set_data_document(_document);
   }

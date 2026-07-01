@@ -340,11 +340,18 @@ void SessionDocument::save_signal_config(
       cfg.view_index = layout_it->second.view_index;
       cfg.v_offset = layout_it->second.v_offset;
       cfg.own_height = layout_it->second.own_height;
+      pxv_info("SessionDocument::save_signal_config: channel %d layout saved: view_index=%d, v_offset=%d, own_height=%d",
+               cfg.index, cfg.view_index, cfg.v_offset, cfg.own_height);
+    } else {
+      pxv_info("SessionDocument::save_signal_config: channel %d NOT in channel_layout map, keeping defaults (view_index=-1, v_offset=0, own_height=-1)",
+               cfg.index);
     }
 
     _signal_config.channels.push_back(cfg);
   }
 
+  pxv_info("SessionDocument::save_signal_config() done, work_mode=%d ch_count=%d, channel_layout param size=%d",
+           mode, (int)_signal_config.channels.size(), (int)channel_layout.size());
   _signal_config.is_valid = true;
 }
 

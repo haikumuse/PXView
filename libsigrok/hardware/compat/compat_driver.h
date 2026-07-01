@@ -289,4 +289,31 @@ static inline int std_dev_clear_compat(const struct sr_dev_driver *driver)
  *   }
  */
 
+/*
+ * NO_OPTS: empty options list. Pass to STD_CONFIG_LIST() for option arrays
+ * that a driver does not provide (most commonly the scan options array).
+ * std_config_list() treats a NULL array as empty.
+ */
+#define NO_OPTS NULL
+
+/*
+ * STD_CONFIG_LIST: convenience macro that expands to a std_config_list()
+ * call with ARRAY_SIZE() computed automatically for each option array.
+ *
+ * Usage:
+ *   return STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts);
+ *   return STD_CONFIG_LIST(key, data, sdi, cg, NO_OPTS, drvopts, devopts);
+ *
+ * The macro relies on std_config_list() clamping NULL arrays (NO_OPTS) to
+ * a zero count, because ARRAY_SIZE(NULL) does not yield 0.
+ *
+ * ARRAY_SIZE is provided by libsigrok-internal.h, which compat.h includes
+ * before this header.
+ */
+#define STD_CONFIG_LIST(key, data, sdi, cg, scanopts, drvopts, devopts) \
+	std_config_list((key), (data), (sdi), (cg), \
+		(scanopts), ARRAY_SIZE(scanopts), \
+		(drvopts), ARRAY_SIZE(drvopts), \
+		(devopts), ARRAY_SIZE(devopts))
+
 #endif

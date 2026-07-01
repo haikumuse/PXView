@@ -222,14 +222,16 @@ SR_PRIV int std_session_send_df_header(const struct sr_dev_inst *sdi,
 
     (void)prefix;
 
-    /* Create header packet with device info */
+    /*
+     * PXView's sr_datafeed_header only has feed_version and starttime
+     * (standard sigrok's sdi/num_logic_channels/num_analog_channels/
+     * samplerate members do not exist here).
+     */
     header.feed_version = 1;
-    header.sdi = sdi;
-    header.num_logic_channels = g_slist_length(sdi->channels);
-    header.num_analog_channels = 0;  /* TODO: count analog channels */
-    header.samplerate = 0;  /* Should be set by driver */
+    gettimeofday(&header.starttime, NULL);
 
     packet.type = SR_DF_HEADER;
+    packet.status = SR_PKT_OK;
     packet.payload = &header;
 
     ret = ds_data_forward(sdi, &packet);
@@ -246,6 +248,7 @@ SR_PRIV int std_session_send_df_end(const struct sr_dev_inst *sdi,
     (void)prefix;
 
     packet.type = SR_DF_END;
+    packet.status = SR_PKT_OK;
     packet.payload = NULL;
 
     return ds_data_forward(sdi, &packet);
@@ -261,6 +264,19 @@ SR_PRIV int std_config_list(uint32_t key, GVariant **data,
 {
     (void)sdi;
     (void)cg;
+
+    /*
+     * Treat NULL option arrays as empty. This supports the NO_OPTS
+     * macro (which is NULL) passed through STD_CONFIG_LIST: ARRAY_SIZE()
+     * on NULL yields a bogus count, so we must clamp it to 0 here before
+     * the array is accessed by std_gvar_array_u32().
+     */
+    if (!scanopts)
+        num_scanopts = 0;
+    if (!drvopts)
+        num_drvopts = 0;
+    if (!devopts)
+        num_devopts = 0;
 
     switch (key) {
     case SR_CONF_SCAN_OPTIONS:
@@ -574,4 +590,126 @@ SR_PRIV int usb_get_port_path(libusb_device *dev, char *path, int path_len)
     (void)path_len;
     /* Stub - returns error */
     return SR_ERR_NA;
+}
+
+/*--- std_gvar_tuple_double ------------------------------------------------*/
+
+SR_PRIV GVariant *std_gvar_tuple_double(double first, double second)
+{
+    GVariant *vals[2];
+
+    vals[0] = g_variant_new_double(first);
+    vals[1] = g_variant_new_double(second);
+
+    return g_variant_new_tuple(vals, 2);
+}
+
+/*--- std_double_tuple_idx -------------------------------------------------*/
+
+SR_PRIV int std_double_tuple_idx(GVariant *data, const double (*vals)[2],
+    int count)
+{
+    double low, high;
+    int i;
+
+    if (!data || !vals || count <= 0)
+        return -1;
+
+    g_variant_get(data, "(dd)", &low, &high);
+
+    for (i = 0; i < count; i++) {
+        if (vals[i][0] == low && vals[i][1] == high)
+            return i;
+    }
+
+    return -1;
+}
+
+/*--- std_gvar_thresholds --------------------------------------------------*/
+
+SR_PRIV GVariant *std_gvar_thresholds(const double (*thresholds)[2],
+    int count)
+{
+    GVariantBuilder gvb;
+    GVariant *gvar;
+    int i;
+
+    g_variant_builder_init(&gvb, G_VARIANT_TYPE("a(dd)"));
+    if (thresholds) {
+        for (i = 0; i < count; i++) {
+            g_variant_builder_add(&gvb, "(dd)",
+                thresholds[i][0], thresholds[i][1]);
+        }
+    }
+    gvar = g_variant_builder_end(&gvb);
+
+    return gvar;
+}
+
+/*--- std_gvar_min_max_step_thresholds -------------------------------------*/
+
+SR_PRIV GVariant *std_gvar_min_max_step_thresholds(double min, double max,
+    double step, const double *thresholds, int count)
+{
+    GVariantBuilder gvb;
+    GVariant *gvar;
+    int i;
+
+    g_variant_builder_init(&gvb, G_VARIANT_TYPE("a(dd)"));
+    if (thresholds) {
+        /* Use provided threshold pairs (flat array: low0, high0, ...). */
+        for (i = 0; i < count; i++) {
+            g_variant_builder_add(&gvb, "(dd)",
+                thresholds[i * 2], thresholds[i * 2 + 1]);
+        }
+    } else if (step > 0.0) {
+        /*
+         * Generate single-value pairs (v, v) from min to max in steps of
+         * step. The half-step margin guards against floating-point drift
+         * dropping the final entry.
+         */
+        double v;
+        for (v = min; v <= max + step * 0.5; v += step) {
+            double t = (v > max) ? max : v;
+            g_variant_builder_add(&gvb, "(dd)", t, t);
+        }
+    }
+    gvar = g_variant_builder_end(&gvb);
+
+    return gvar;
+}
+
+/*--- std_opts_config_list -------------------------------------------------*/
+
+SR_PRIV int std_opts_config_list(GSList *opts, int id, GVariant **data,
+    const struct sr_dev_inst *sdi, const struct sr_channel_group *cg)
+{
+    (void)sdi;
+    (void)cg;
+
+    switch (id) {
+    case SR_CONF_DEVICE_OPTIONS:
+    case SR_CONF_SCAN_OPTIONS:
+        if (data) {
+            GVariantBuilder gvb;
+            GSList *l;
+
+            g_variant_builder_init(&gvb, G_VARIANT_TYPE("au"));
+            for (l = opts; l; l = l->next)
+                g_variant_builder_add(&gvb, "u", GPOINTER_TO_UINT(l->data));
+            *data = g_variant_builder_end(&gvb);
+        }
+        break;
+    default:
+        return SR_ERR_NA;
+    }
+
+    return SR_OK;
+}
+
+/*--- sr_usb_dev_inst_free_cb ----------------------------------------------*/
+
+SR_PRIV void sr_usb_dev_inst_free_cb(void *data)
+{
+    sr_usb_dev_inst_free((struct sr_usb_dev_inst *)data);
 }
