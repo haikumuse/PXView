@@ -35,8 +35,10 @@
 
 #include "../api/types.h"
 #include "../data/datasource.h"
+#include "../data/sessiondocument.h"
 #include "../data/signalmodel.h"
 #include "../deviceagent.h"
+#include "../log.h"
 #include "../sigsession.h"
 
 namespace pv {
@@ -215,7 +217,35 @@ void SignalFactory::update_signals(std::vector<Signal *> &current_signals,
 
     current_signals = create_signals(source, session);
 
+    // R8: restore_ui_state restores UI state saved from the OLD Signal objects.
+    // This preserves the user's custom layout (view_index/v_offset/own_height)
+    // across model rebuilds triggered by reload().
     restore_ui_state(current_signals, saved_state);
+
+    // If there is a SessionDocument with a valid SignalConfig, apply its
+    // persisted layout state to override the saved_state. This ensures that
+    // layouts persisted via .pxc files are restored even if the old Signal
+    // objects had default layouts (e.g., after a previous capture reset).
+    auto *doc = session->get_active_document();
+    if (doc && doc->get_signal_config().is_valid) {
+      const auto &cfg = doc->get_signal_config();
+      for (auto *sig : current_signals) {
+        auto it = std::find_if(cfg.channels.begin(), cfg.channels.end(),
+                               [&](const data::ChannelConfig &ch) {
+                                 return ch.index == sig->get_index();
+                               });
+        if (it != cfg.channels.end()) {
+          if (it->view_index >= 0)
+            sig->set_view_index(it->view_index);
+          sig->set_v_offset(it->v_offset);
+          if (it->own_height >= 0)
+            sig->set_own_height(it->own_height);
+          pxv_info("SignalFactory::update_signals(AllReplaced): restored from SessionDocument channel %d: view_index=%d, v_offset=%d, own_height=%d",
+                   sig->get_index(), sig->get_view_index(),
+                   sig->get_v_offset(), sig->get_own_height());
+        }
+      }
+    }
 
     break;
   }

@@ -363,8 +363,30 @@ SR_PRIV void sr_parse_probe_names(const char *str, const char *defaults[],
  * Soft trigger logic - simplified implementation for compat drivers.
  * PXView does not have full soft trigger support, so this provides
  * basic edge detection functionality.
+ *
+ * Full definitions of sr_trigger / sr_trigger_stage / sr_trigger_match
+ * are provided here (matching standard sigrok's layout) so that compat
+ * drivers which inspect trigger stages (e.g. chronovu-la, hantek-4032l,
+ * kingst-la2016) compile even though sr_session_trigger_get() is stubbed
+ * to return NULL and the trigger path is dead at runtime.
+ *
+ * struct sr_channel is already fully defined via libsigrok-internal.h
+ * (included before this header by compat.h).
  */
-struct sr_trigger; /* Forward declaration */
+struct sr_trigger_match {
+    struct sr_channel *channel;
+    int match;
+};
+
+struct sr_trigger_stage {
+    int stage;
+    GSList *matches;
+};
+
+struct sr_trigger {
+    char *name;
+    GSList *stages;
+};
 
 struct soft_trigger_logic {
     const struct sr_dev_inst *sdi;
@@ -411,5 +433,89 @@ SR_PRIV gboolean usb_match_manuf_prod(libusb_device *dev,
  * @return SR_OK on success, SR_ERR on failure.
  */
 SR_PRIV int usb_get_port_path(libusb_device *dev, char *path, int path_len);
+
+/**
+ * Create a GVariant tuple of two double values.
+ * Like std_gvar_tuple_u64() but for the double type.
+ *
+ * @param first First value.
+ * @param second Second value.
+ *
+ * @return GVariant containing the (first, second) tuple.
+ */
+SR_PRIV GVariant *std_gvar_tuple_double(double first, double second);
+
+/**
+ * Find the index of a GVariant double tuple in an array of double pairs.
+ *
+ * The input GVariant is expected to be a (dd) tuple. The function searches
+ * the provided array of {low, high} pairs for a matching entry.
+ *
+ * @param data The GVariant (dd) tuple to search for.
+ * @param vals Array of double pairs (vals[count][2]) to search in.
+ * @param count Number of pairs in vals.
+ *
+ * @return Index of the matching pair, or -1 if not found / on error.
+ */
+SR_PRIV int std_double_tuple_idx(GVariant *data, const double (*vals)[2],
+    int count);
+
+/**
+ * Create a GVariant array of double-pair thresholds ("a(dd)").
+ *
+ * @param thresholds Array of double pairs (thresholds[count][2]). May be
+ *                   NULL, in which case an empty array is returned.
+ * @param count Number of threshold pairs.
+ *
+ * @return GVariant containing the thresholds array.
+ */
+SR_PRIV GVariant *std_gvar_thresholds(const double (*thresholds)[2],
+    int count);
+
+/**
+ * Create a GVariant array of double-pair thresholds combining a
+ * min/max/step range and optional explicit threshold presets.
+ *
+ * When @a thresholds is non-NULL, the provided pairs are used directly
+ * (interpreted as a flat array: low0, high0, low1, high1, ...).
+ * When @a thresholds is NULL and @a step > 0, single-value pairs of the
+ * form (v, v) are generated for v from @a min to @a max in steps of
+ * @a step.
+ *
+ * @param min Minimum threshold value.
+ * @param max Maximum threshold value.
+ * @param step Step between generated threshold values.
+ * @param thresholds Optional flat array of threshold pairs (may be NULL).
+ * @param count Number of threshold pairs (0 if thresholds is NULL).
+ *
+ * @return GVariant containing the thresholds array ("a(dd)").
+ */
+SR_PRIV GVariant *std_gvar_min_max_step_thresholds(double min, double max,
+    double step, const double *thresholds, int count);
+
+/**
+ * Standard sigrok's std_opts_config_list - handle SR_CONF_DEVICE_OPTIONS
+ * (and SR_CONF_SCAN_OPTIONS) for a driver that keeps its option keys in a
+ * GSList.
+ *
+ * @param opts GSList of config option keys (stored via GUINT_TO_POINTER).
+ * @param id The config key being queried.
+ * @param data Output GVariant.
+ * @param sdi The device instance (may be NULL for scan options).
+ * @param cg The channel group (may be NULL).
+ *
+ * @return SR_OK on success, SR_ERR_NA if the key is not handled.
+ */
+SR_PRIV int std_opts_config_list(GSList *opts, int id, GVariant **data,
+    const struct sr_dev_inst *sdi, const struct sr_channel_group *cg);
+
+/**
+ * GDestroyNotify callback wrapper for sr_usb_dev_inst_free().
+ * Suitable for passing to g_slist_free_full() and similar APIs without
+ * an explicit (GDestroyNotify) cast at the call site.
+ *
+ * @param data The sr_usb_dev_inst pointer to free (passed as void *).
+ */
+SR_PRIV void sr_usb_dev_inst_free_cb(void *data);
 
 #endif

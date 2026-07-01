@@ -163,4 +163,39 @@ SR_PRIV int std_session_send_df_trigger(const struct sr_dev_inst *sdi,
  */
 SR_PRIV GVariant *std_gvar_tuple_u64(uint64_t first, uint64_t second);
 
+/**
+ * Read data from serial port without blocking.
+ * This is equivalent to serial_read_blocking with timeout_ms=0.
+ *
+ * @param serial The serial device instance.
+ * @param buf Buffer to read into.
+ * @param count Maximum number of bytes to read.
+ *
+ * @return Number of bytes read, or negative error code.
+ */
+SR_PRIV int serial_read_nonblocking(struct sr_serial_dev_inst *serial,
+		void *buf, size_t count);
+
+/**
+ * Check if serial port has data available to read.
+ *
+ * @param serial The serial device instance.
+ *
+ * @return 1 if data is available, 0 if not, negative on error.
+ */
+SR_PRIV int serial_has_receive_data(struct sr_serial_dev_inst *serial);
+
+/**
+ * std_gvar_samplerates_steps - create GVariant samplerate steps array.
+ * Standard sigrok uses this format for samplerates that are expressed
+ * as min/max/step values.
+ *
+ * @param steps Array of 3 uint64 values: [min, max, step].
+ * @param count Number of elements (should be 3).
+ *
+ * @return GVariant containing the samplerate steps.
+ */
+SR_PRIV GVariant *std_gvar_samplerates_steps(const uint64_t steps[],
+		size_t count);
+
 #endif

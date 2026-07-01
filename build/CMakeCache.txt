@@ -324,16 +324,49 @@ CPACK_BINARY_WIX:BOOL=OFF
 CPACK_BINARY_ZIP:BOOL=OFF
 
 //Enable standard sigrok compatible drivers
-ENABLE_COMPAT_DRIVERS:BOOL=OFF
+ENABLE_COMPAT_DRIVERS:BOOL=ON
+
+//Enable asix-sigma driver
+ENABLE_DRIVER_ASIX_SIGMA:BOOL=OFF
+
+//Enable chronovu-la driver
+ENABLE_DRIVER_CHRONOVU_LA:BOOL=OFF
+
+//Enable fluke-dmm driver
+ENABLE_DRIVER_FLUKE_DMM:BOOL=ON
+
+//Enable ftdi-la driver
+ENABLE_DRIVER_FTDI_LA:BOOL=ON
 
 //Enable fx2lafw driver
 ENABLE_DRIVER_FX2LAFW:BOOL=OFF
 
+//Enable kingst-la2016 driver
+ENABLE_DRIVER_KINGST_LA2016:BOOL=OFF
+
+//Enable openbench-logic-sniffer (OLS) driver
+ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER:BOOL=OFF
+
 //Enable raspberrypi-pico driver
 ENABLE_DRIVER_RASPBERRYPI_PICO:BOOL=OFF
 
+//Enable rigol-ds SCPI oscilloscope driver
+ENABLE_DRIVER_RIGOL_DS:BOOL=OFF
+
 //Enable saleae-logic16 driver
 ENABLE_DRIVER_SALEAE_LOGIC16:BOOL=OFF
+
+//Enable saleae-logic-pro driver
+ENABLE_DRIVER_SALEAE_LOGIC_PRO:BOOL=OFF
+
+//Enable sysclk-lwla driver
+ENABLE_DRIVER_SYSCLK_LWLA:BOOL=OFF
+
+//Enable sysclk-sla5032 driver
+ENABLE_DRIVER_SYSCLK_SLA5032:BOOL=ON
+
+//Enable zeroplus-logic-cube driver
+ENABLE_DRIVER_ZEROPLUS_LOGIC_CUBE:BOOL=ON
 
 //Path to a file.
 FFTW_INCLUDE_DIR:PATH=D:/msys64/mingw64/include
@@ -1098,8 +1131,14 @@ pkgcfg_lib_GLIB_glib-2.0:FILEPATH=D:/msys64/mingw64/lib/libglib-2.0.dll.a
 //Path to a library.
 pkgcfg_lib_GLIB_intl:FILEPATH=D:/msys64/mingw64/lib/libintl.dll.a
 
+//Path to a library.
+pkgcfg_lib_LIBFTDI1_ftdi1:FILEPATH=D:/msys64/mingw64/lib/libftdi1.dll.a
+
+//Path to a library.
+pkgcfg_lib_LIBFTDI1_usb-1.0:FILEPATH=D:/msys64/mingw64/lib/libusb-1.0.dll.a
+
 //Dependencies for the target
-pxview-core_LIB_DEPENDS:STATIC=general;Qt6::Core;general;Qt6::Gui;general;Qt6::Network;general;Qt6::Concurrent;general;Qt6::WebSockets;general;-lz;general;-lglib-2.0;general;D:/msys64/mingw64/lib/libusb-1.0.dll.a;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/Scoop/apps/python/3.14.4/libs/python314.lib;
+pxview-core_LIB_DEPENDS:STATIC=general;Qt6::Core;general;Qt6::Gui;general;Qt6::Network;general;Qt6::Concurrent;general;Qt6::WebSockets;general;-lz;general;-lglib-2.0;general;D:/msys64/mingw64/lib/libusb-1.0.dll.a;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/Scoop/apps/python/3.14.4/libs/python314.lib;general;ftdi1;general;usb-1.0;
 
 
 ########################
@@ -1361,6 +1400,66 @@ GLIB_glib-2.0_PREFIX:INTERNAL=
 GLIB_glib-2.0_VERSION:INTERNAL=
 //Test HAVE_STDATOMIC
 HAVE_STDATOMIC:INTERNAL=1
+LIBFTDI1_CFLAGS:INTERNAL=-ID:/msys64/mingw64/bin/../include/libftdi1;-ID:/msys64/mingw64/bin/../include/libusb-1.0
+LIBFTDI1_CFLAGS_I:INTERNAL=
+LIBFTDI1_CFLAGS_OTHER:INTERNAL=
+LIBFTDI1_FOUND:INTERNAL=1
+LIBFTDI1_INCLUDEDIR:INTERNAL=D:/msys64/mingw64/bin/../include/libftdi1
+LIBFTDI1_INCLUDE_DIRS:INTERNAL=D:/msys64/mingw64/bin/../include/libftdi1;D:/msys64/mingw64/bin/../include/libusb-1.0
+LIBFTDI1_LDFLAGS:INTERNAL=-LD:/msys64/mingw64/bin/../lib;-lftdi1;-lusb-1.0
+LIBFTDI1_LDFLAGS_OTHER:INTERNAL=
+LIBFTDI1_LIBDIR:INTERNAL=D:/msys64/mingw64/bin/../lib
+LIBFTDI1_LIBRARIES:INTERNAL=ftdi1;usb-1.0
+LIBFTDI1_LIBRARY_DIRS:INTERNAL=D:/msys64/mingw64/bin/../lib
+LIBFTDI1_LIBS:INTERNAL=
+LIBFTDI1_LIBS_L:INTERNAL=
+LIBFTDI1_LIBS_OTHER:INTERNAL=
+LIBFTDI1_LIBS_PATHS:INTERNAL=
+LIBFTDI1_MODULE_NAME:INTERNAL=libftdi1
+LIBFTDI1_PREFIX:INTERNAL=D:/msys64/mingw64/bin/..
+LIBFTDI1_STATIC_CFLAGS:INTERNAL=-ID:/msys64/mingw64/bin/../include/libftdi1;-ID:/msys64/mingw64/bin/../include/libusb-1.0
+LIBFTDI1_STATIC_CFLAGS_I:INTERNAL=
+LIBFTDI1_STATIC_CFLAGS_OTHER:INTERNAL=
+LIBFTDI1_STATIC_INCLUDE_DIRS:INTERNAL=D:/msys64/mingw64/bin/../include/libftdi1;D:/msys64/mingw64/bin/../include/libusb-1.0
+LIBFTDI1_STATIC_LDFLAGS:INTERNAL=-LD:/msys64/mingw64/bin/../lib;-lftdi1;-lusb-1.0
+LIBFTDI1_STATIC_LDFLAGS_OTHER:INTERNAL=
+LIBFTDI1_STATIC_LIBDIR:INTERNAL=
+LIBFTDI1_STATIC_LIBRARIES:INTERNAL=ftdi1;usb-1.0
+LIBFTDI1_STATIC_LIBRARY_DIRS:INTERNAL=D:/msys64/mingw64/bin/../lib
+LIBFTDI1_STATIC_LIBS:INTERNAL=
+LIBFTDI1_STATIC_LIBS_L:INTERNAL=
+LIBFTDI1_STATIC_LIBS_OTHER:INTERNAL=
+LIBFTDI1_STATIC_LIBS_PATHS:INTERNAL=
+LIBFTDI1_VERSION:INTERNAL=1.5
+LIBFTDI1_libftdi1_INCLUDEDIR:INTERNAL=
+LIBFTDI1_libftdi1_LIBDIR:INTERNAL=
+LIBFTDI1_libftdi1_PREFIX:INTERNAL=
+LIBFTDI1_libftdi1_VERSION:INTERNAL=
+LIBSERIALPORT_CFLAGS:INTERNAL=
+LIBSERIALPORT_CFLAGS_I:INTERNAL=
+LIBSERIALPORT_CFLAGS_OTHER:INTERNAL=
+LIBSERIALPORT_FOUND:INTERNAL=
+LIBSERIALPORT_INCLUDEDIR:INTERNAL=
+LIBSERIALPORT_LIBDIR:INTERNAL=
+LIBSERIALPORT_LIBS:INTERNAL=
+LIBSERIALPORT_LIBS_L:INTERNAL=
+LIBSERIALPORT_LIBS_OTHER:INTERNAL=
+LIBSERIALPORT_LIBS_PATHS:INTERNAL=
+LIBSERIALPORT_MODULE_NAME:INTERNAL=
+LIBSERIALPORT_PREFIX:INTERNAL=
+LIBSERIALPORT_STATIC_CFLAGS:INTERNAL=
+LIBSERIALPORT_STATIC_CFLAGS_I:INTERNAL=
+LIBSERIALPORT_STATIC_CFLAGS_OTHER:INTERNAL=
+LIBSERIALPORT_STATIC_LIBDIR:INTERNAL=
+LIBSERIALPORT_STATIC_LIBS:INTERNAL=
+LIBSERIALPORT_STATIC_LIBS_L:INTERNAL=
+LIBSERIALPORT_STATIC_LIBS_OTHER:INTERNAL=
+LIBSERIALPORT_STATIC_LIBS_PATHS:INTERNAL=
+LIBSERIALPORT_VERSION:INTERNAL=
+LIBSERIALPORT_libserialport_INCLUDEDIR:INTERNAL=
+LIBSERIALPORT_libserialport_LIBDIR:INTERNAL=
+LIBSERIALPORT_libserialport_PREFIX:INTERNAL=
+LIBSERIALPORT_libserialport_VERSION:INTERNAL=
 //ADVANCED property for variable: PKG_CONFIG_ARGN
 PKG_CONFIG_ARGN-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: PKG_CONFIG_EXECUTABLE
@@ -2299,10 +2398,17 @@ _Python3_LIBRARY_RELEASE:INTERNAL=D:/Scoop/apps/python/3.14.4/libs/python314.lib
 _Python3_NumPy_REASON_FAILURE:INTERNAL=
 //Path to a library.
 _Python3_RUNTIME_LIBRARY_RELEASE:INTERNAL=D:/Scoop/apps/python/3.14.4/python314.dll
+__pkg_config_arguments_LIBFTDI1:INTERNAL=libftdi1
 __pkg_config_checked_GLIB:INTERNAL=1
+__pkg_config_checked_LIBFTDI1:INTERNAL=1
+__pkg_config_checked_LIBSERIALPORT:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_GLIB_glib-2.0
 pkgcfg_lib_GLIB_glib-2.0-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_GLIB_intl
 pkgcfg_lib_GLIB_intl-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_LIBFTDI1_ftdi1
+pkgcfg_lib_LIBFTDI1_ftdi1-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_LIBFTDI1_usb-1.0
+pkgcfg_lib_LIBFTDI1_usb-1.0-ADVANCED:INTERNAL=1
 prefix_result:INTERNAL=D:/msys64/mingw64/bin/../lib
 

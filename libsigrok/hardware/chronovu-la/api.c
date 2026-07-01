@@ -506,7 +506,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 		return SR_ERR;
 	}
 
-	std_session_send_df_header(sdi);
+	std_session_send_df_header(sdi, NULL);
 
 	/* Time when we should be done (for detecting trigger timeouts). */
 	devc->done = (devc->divcount + 1) * devc->prof->trigger_constant +
@@ -523,7 +523,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 static int dev_acquisition_stop(struct sr_dev_inst *sdi)
 {
 	sr_session_source_remove(sdi->session, -1);
-	std_session_send_df_end(sdi);
+	std_session_send_df_end(sdi, NULL);
 
 	return SR_OK;
 }

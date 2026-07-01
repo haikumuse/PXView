@@ -739,3 +739,85 @@ SR_PRIV GVariant *std_gvar_tuple_u64(uint64_t first, uint64_t second)
 
 	return g_variant_new_tuple(vals, 2);
 }
+
+/*--- serial_read_nonblocking ------------------------------------------------*/
+
+SR_PRIV int serial_read_nonblocking(struct sr_serial_dev_inst *serial,
+		void *buf, size_t count)
+{
+#ifdef HAVE_LIBSERIALPORT
+	struct sp_port *port;
+	int ret;
+
+	port = serial_get_sp(serial);
+	if (!port)
+		return SR_ERR;
+
+	/* Non-blocking read: timeout = 0 */
+	ret = sp_nonblocking_read(port, buf, count);
+	if (ret < 0)
+		return SR_ERR;
+
+	return ret;
+#else
+	(void)serial;
+	(void)buf;
+	(void)count;
+	return SR_ERR;
+#endif
+}
+
+/*--- serial_has_receive_data -----------------------------------------------*/
+
+SR_PRIV int serial_has_receive_data(struct sr_serial_dev_inst *serial)
+{
+#ifdef HAVE_LIBSERIALPORT
+	struct sp_port *port;
+	int ret;
+
+	port = serial_get_sp(serial);
+	if (!port)
+		return SR_ERR;
+
+	/* Check if there are bytes waiting in the input buffer */
+	ret = sp_input_waiting(port);
+	if (ret < 0)
+		return SR_ERR;
+
+	return (ret > 0) ? 1 : 0;
+#else
+	(void)serial;
+	return 0;
+#endif
+}
+
+/*--- std_gvar_samplerates_steps ---------------------------------------------*/
+
+SR_PRIV GVariant *std_gvar_samplerates_steps(const uint64_t steps[],
+		size_t count)
+{
+	GVariant *gvar;
+	GVariantBuilder gvb;
+
+	/* Create a tuple of min/max/step */
+	g_variant_builder_init(&gvb, G_VARIANT_TYPE("(ttt)"));
+
+	if (count >= 1)
+		g_variant_builder_add_value(&gvb, g_variant_new_uint64(steps[0]));
+	else
+		g_variant_builder_add_value(&gvb, g_variant_new_uint64(0));
+
+	if (count >= 2)
+		g_variant_builder_add_value(&gvb, g_variant_new_uint64(steps[1]));
+	else
+		g_variant_builder_add_value(&gvb, g_variant_new_uint64(0));
+
+	if (count >= 3)
+		g_variant_builder_add_value(&gvb, g_variant_new_uint64(steps[2]));
+	else
+		g_variant_builder_add_value(&gvb, g_variant_new_uint64(1));
+
+	gvar = g_variant_builder_end(&gvb);
+
+	return gvar;
+}

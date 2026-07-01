@@ -252,4 +252,18 @@ SR_PRIV int std_str_idx(const struct sr_dev_inst *sdi, uint32_t key,
 SR_PRIV int std_bool_idx(const struct sr_dev_inst *sdi, uint32_t key,
     GVariant **data, const gboolean vals[], size_t count);
 
+/* FTDI compatibility macros (for chronovu-la and other FTDI-based drivers) */
+#define PURGE_FTDI_BOTH(ftdic) ftdi_usb_purge_buffers(ftdic)
+
+/* Standard sigrok's sr_dev_acquisition_stop compat.
+ * PXView doesn't expose this function. Standard sigrok drivers call it from
+ * within receive callbacks to stop acquisition for a device. This shim
+ * dispatches to the driver's dev_acquisition_stop callback. */
+static inline int sr_dev_acquisition_stop(const struct sr_dev_inst *sdi)
+{
+    if (sdi && sdi->driver && sdi->driver->dev_acquisition_stop)
+        return sdi->driver->dev_acquisition_stop(sdi, NULL);
+    return SR_ERR;
+}
+
 #endif

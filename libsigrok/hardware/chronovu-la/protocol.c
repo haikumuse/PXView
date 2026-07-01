@@ -494,7 +494,7 @@ SR_PRIV void cv_send_block_to_session_bus(const struct sr_dev_inst *sdi, int blo
 	/* Send the SR_DF_TRIGGER packet to the session bus. */
 	sr_spew("Sending SR_DF_TRIGGER packet, sample = %d.",
 		(block * BS) + trigger_point);
-	std_session_send_df_trigger(sdi);
+	std_session_send_df_trigger(sdi, NULL);
 
 	/* If at least one sample is located after the trigger... */
 	if (trigger_point < (BS - 1)) {

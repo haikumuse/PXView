@@ -22,6 +22,9 @@
 /* saleae-logic16 driver support */
 /* #undef HAVE_DRIVER_SALEAE_LOGIC16 */
 
+/* rigol-ds driver support */
+/* #undef HAVE_DRIVER_RIGOL_DS */
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 

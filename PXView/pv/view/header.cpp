@@ -40,6 +40,7 @@
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
+#include "../data/sessiondocument.h"
 #include "../dsvdef.h"
 #include "../log.h"
 #include "../sigsession.h"
@@ -444,6 +445,33 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
   _mouse_is_down = false;
 
   if (_resize_trace_upper || _resize_trace_lower) {
+    // Height adjustment completed - persist the new layout to SessionDocument
+    pxv_info("Header::mouseReleaseEvent: HEIGHT ADJUSTMENT completed, persisting layout");
+    auto &session = _view.session();
+    auto *doc = session.get_active_document();
+    if (doc && session.get_device() && session.get_device()->have_instance()) {
+      std::map<int, bool> channel_visibility;
+      std::map<int, pv::data::ChannelLayoutState> channel_layout;
+      for (auto *sig : _view.get_own_signals()) {
+        channel_visibility[sig->get_index()] = sig->visible();
+        pv::data::ChannelLayoutState layout;
+        layout.view_index = sig->get_view_index();
+        layout.v_offset = sig->get_v_offset();
+        layout.own_height = sig->get_own_height();
+        channel_layout[sig->get_index()] = layout;
+        pxv_info("  sig index=%d, view_index=%d, v_offset=%d, own_height=%d, visible=%d",
+                 sig->get_index(), layout.view_index, layout.v_offset,
+                 layout.own_height, sig->visible());
+      }
+      doc->save_signal_config(session.get_device(), channel_visibility,
+                              session.get_signal_models(), channel_layout);
+      pxv_info("Header::mouseReleaseEvent: save_signal_config called, saved %d channels",
+               (int)channel_layout.size());
+    } else {
+      pxv_info("Header::mouseReleaseEvent: SKIPPED save_signal_config (doc=%p, device=%p, have_instance=%d)",
+               doc, session.get_device(),
+               session.get_device() ? session.get_device()->have_instance() : 0);
+    }
     _resize_trace_upper = NULL;
     _resize_trace_lower = NULL;
     return;
@@ -526,6 +554,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
   }
 
   if (_moveFlag) {
+    pxv_info("Header::mouseReleaseEvent: MOVE FLAG set, persisting layout");
     _drag_traces.clear();
     _view.signals_changed(mTrace);
     _view.set_all_update(true);
@@ -535,6 +564,36 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
 
     for (auto t : traces) {
       t->select(false);
+    }
+
+    // Persist channel layout (view_index/v_offset/own_height) to
+    // SessionDocument so that subsequent capture-triggered rebuilds can
+    // restore the user's custom layout. Without this, every reload() wipes
+    // the layout state and resets to default.
+    auto &session = _view.session();
+    auto *doc = session.get_active_document();
+    if (doc && session.get_device() && session.get_device()->have_instance()) {
+      std::map<int, bool> channel_visibility;
+      std::map<int, pv::data::ChannelLayoutState> channel_layout;
+      for (auto *sig : _view.get_own_signals()) {
+        channel_visibility[sig->get_index()] = sig->visible();
+        pv::data::ChannelLayoutState layout;
+        layout.view_index = sig->get_view_index();
+        layout.v_offset = sig->get_v_offset();
+        layout.own_height = sig->get_own_height();
+        channel_layout[sig->get_index()] = layout;
+        pxv_info("  sig index=%d, view_index=%d, v_offset=%d, own_height=%d, visible=%d",
+                 sig->get_index(), layout.view_index, layout.v_offset,
+                 layout.own_height, sig->visible());
+      }
+      doc->save_signal_config(session.get_device(), channel_visibility,
+                              session.get_signal_models(), channel_layout);
+      pxv_info("Header::mouseReleaseEvent: save_signal_config called, saved %d channels",
+               (int)channel_layout.size());
+    } else {
+      pxv_info("Header::mouseReleaseEvent: SKIPPED save_signal_config (doc=%p, device=%p, have_instance=%d)",
+               doc, session.get_device(),
+               session.get_device() ? session.get_device()->have_instance() : 0);
     }
   } else if (!_drag_traces.empty()) {
     _drag_traces.clear();
