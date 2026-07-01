@@ -14,6 +14,9 @@
 # EXTERNAL cache entries
 ########################
 
+//Path to a program.
+ADDR2LINE_EXE:FILEPATH=D:/msys64/mingw64/bin/addr2line.exe
+
 //Build the C decoder test program
 BUILD_DECODER_TEST:BOOL=OFF
 
@@ -28,7 +31,7 @@ CMAKE_AR:FILEPATH=D:/msys64/usr/bin/ar.exe
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=RELEASE
+CMAKE_BUILD_TYPE:STRING=Release
 
 //No help, variable specified on the command line.
 CMAKE_CXX_COMPILER:UNINITIALIZED=D:/msys64/mingw64/bin/g++.exe
@@ -326,11 +329,26 @@ CPACK_BINARY_ZIP:BOOL=OFF
 //Enable standard sigrok compatible drivers
 ENABLE_COMPAT_DRIVERS:BOOL=ON
 
+//Enable agilent-dmm driver
+ENABLE_DRIVER_AGILENT_DMM:BOOL=ON
+
+//Enable appa-55ii driver
+ENABLE_DRIVER_APPA_55II:BOOL=ON
+
 //Enable asix-sigma driver
 ENABLE_DRIVER_ASIX_SIGMA:BOOL=OFF
 
+//Enable atten-pps3xxx power supply driver
+ENABLE_DRIVER_ATTEN_PPS3XXX:BOOL=OFF
+
+//Enable center-3xx serial thermometer driver
+ENABLE_DRIVER_CENTER_3XX:BOOL=ON
+
 //Enable chronovu-la driver
 ENABLE_DRIVER_CHRONOVU_LA:BOOL=OFF
+
+//Enable fluke-45 SCPI multimeter driver
+ENABLE_DRIVER_FLUKE_45:BOOL=ON
 
 //Enable fluke-dmm driver
 ENABLE_DRIVER_FLUKE_DMM:BOOL=ON
@@ -339,31 +357,158 @@ ENABLE_DRIVER_FLUKE_DMM:BOOL=ON
 ENABLE_DRIVER_FTDI_LA:BOOL=ON
 
 //Enable fx2lafw driver
-ENABLE_DRIVER_FX2LAFW:BOOL=OFF
+ENABLE_DRIVER_FX2LAFW:BOOL=ON
+
+//Enable gwinstek-gds-800 SCPI oscilloscope driver
+ENABLE_DRIVER_GWINSTEK_GDS_800:BOOL=OFF
+
+//Enable gwinstek-psp power supply driver
+ENABLE_DRIVER_GWINSTEK_PSP:BOOL=ON
+
+//Enable hameg-hmo SCPI oscilloscope driver
+ENABLE_DRIVER_HAMEG_HMO:BOOL=OFF
+
+//Enable hantek-4032l driver
+ENABLE_DRIVER_HANTEK_4032L:BOOL=OFF
+
+//Enable hantek-6xxx driver
+ENABLE_DRIVER_HANTEK_6XXX:BOOL=OFF
+
+//Enable hantek-dso driver
+ENABLE_DRIVER_HANTEK_DSO:BOOL=OFF
+
+//Enable hung-chang-dso-2100 parallel port oscilloscope driver
+ENABLE_DRIVER_HUNG_CHANG_DSO_2100:BOOL=OFF
+
+//Enable ikalogic-scanalogic2 driver
+ENABLE_DRIVER_IKALOGIC_SCANALOGIC2:BOOL=OFF
+
+//Enable ikalogic-scanaplus driver
+ENABLE_DRIVER_IKALOGIC_SCANAPLUS:BOOL=OFF
+
+//Enable ipdbg-la logic analyzer driver
+ENABLE_DRIVER_IPDBG_LA:BOOL=ON
+
+//Enable itech-it8500 electronic load driver
+ENABLE_DRIVER_ITECH_IT8500:BOOL=OFF
+
+//Enable kern-scale serial scale driver
+ENABLE_DRIVER_KERN_SCALE:BOOL=ON
 
 //Enable kingst-la2016 driver
 ENABLE_DRIVER_KINGST_LA2016:BOOL=OFF
 
+//Enable korad-kaxxxxp power supply driver
+ENABLE_DRIVER_KORAD_KAXXXXP:BOOL=OFF
+
+//Enable lascar-el-usb USB temperature/humidity/CO data logger
+// driver
+ENABLE_DRIVER_LASCAR_EL_USB:BOOL=ON
+
+//Enable lecroy-logicstudio driver
+ENABLE_DRIVER_LECROY_LOGICSTUDIO:BOOL=OFF
+
+//Enable lecroy-xstream SCPI oscilloscope driver
+ENABLE_DRIVER_LECROY_XSTREAM:BOOL=ON
+
+//Enable link-mso19 mixed-signal oscilloscope driver
+ENABLE_DRIVER_LINK_MSO19:BOOL=OFF
+
+//Enable manson-hcs-3xxx power supply driver
+ENABLE_DRIVER_MANSON_HCS_3XXX:BOOL=OFF
+
+//Enable mastech-ms6514 serial thermometer driver
+ENABLE_DRIVER_MASTECH_MS6514:BOOL=ON
+
+//Enable maynuo-m97 electronic load driver
+ENABLE_DRIVER_MAYNUO_M97:BOOL=OFF
+
+//Enable mic-985xx serial temperature/humidity meter driver
+ENABLE_DRIVER_MIC_985XX:BOOL=ON
+
+//Enable motech-lps-30x power supply driver
+ENABLE_DRIVER_MOTECH_LPS_30X:BOOL=OFF
+
+//Enable norma-dmm DMM driver
+ENABLE_DRIVER_NORMA_DMM:BOOL=ON
+
 //Enable openbench-logic-sniffer (OLS) driver
-ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER:BOOL=OFF
+ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER:BOOL=ON
+
+//Enable pce-322a serial sound level meter driver
+ENABLE_DRIVER_PCE_322A:BOOL=ON
+
+//Enable pipistrello-ols logic analyzer (OLS) driver
+ENABLE_DRIVER_PIPISTRELLO_OLS:BOOL=ON
 
 //Enable raspberrypi-pico driver
 ENABLE_DRIVER_RASPBERRYPI_PICO:BOOL=OFF
 
+//Enable rdtech-dps power supply driver
+ENABLE_DRIVER_RDTECH_DPS:BOOL=OFF
+
+//Enable rdtech-tc USB power meter driver
+ENABLE_DRIVER_RDTECH_TC:BOOL=OFF
+
+//Enable rdtech-um USB power meter driver
+ENABLE_DRIVER_RDTECH_UM:BOOL=OFF
+
+//Enable rigol-dg SCPI signal generator driver
+ENABLE_DRIVER_RIGOL_DG:BOOL=ON
+
 //Enable rigol-ds SCPI oscilloscope driver
-ENABLE_DRIVER_RIGOL_DS:BOOL=OFF
+ENABLE_DRIVER_RIGOL_DS:BOOL=ON
+
+//Enable rohde-schwarz-sme-0x SCPI signal generator driver
+ENABLE_DRIVER_ROHDE_SCHWARZ_SME_0X:BOOL=OFF
 
 //Enable saleae-logic16 driver
 ENABLE_DRIVER_SALEAE_LOGIC16:BOOL=OFF
 
 //Enable saleae-logic-pro driver
-ENABLE_DRIVER_SALEAE_LOGIC_PRO:BOOL=OFF
+ENABLE_DRIVER_SALEAE_LOGIC_PRO:BOOL=ON
+
+//Enable scpi-pps generic SCPI power supply driver
+ENABLE_DRIVER_SCPI_PPS:BOOL=OFF
+
+//Enable serial-dmm driver
+ENABLE_DRIVER_SERIAL_DMM:BOOL=ON
+
+//Enable siglent-sdl10x0 electronic load driver
+ENABLE_DRIVER_SIGLENT_SDL10X0:BOOL=OFF
+
+//Enable siglent-sds SCPI oscilloscope driver
+ENABLE_DRIVER_SIGLENT_SDS:BOOL=ON
+
+//Enable sipeed-slogic-analyzer logic analyzer driver
+ENABLE_DRIVER_SIPEED_SLOGIC_ANALYZER:BOOL=ON
 
 //Enable sysclk-lwla driver
 ENABLE_DRIVER_SYSCLK_LWLA:BOOL=OFF
 
 //Enable sysclk-sla5032 driver
 ENABLE_DRIVER_SYSCLK_SLA5032:BOOL=ON
+
+//Enable teleinfo serial French power meter driver
+ENABLE_DRIVER_TELEINFO:BOOL=ON
+
+//Enable testo serial thermometer/multimeter driver
+ENABLE_DRIVER_TESTO:BOOL=ON
+
+//Enable tondaj-sl-814 serial sound level meter driver
+ENABLE_DRIVER_TONDAJ_SL_814:BOOL=ON
+
+//Enable uni-t-dmm USB-HID DMM driver
+ENABLE_DRIVER_UNI_T_DMM:BOOL=OFF
+
+//Enable uni-t-ut181a DMM driver
+ENABLE_DRIVER_UNI_T_UT181A:BOOL=ON
+
+//Enable uni-t-ut32x thermometer driver
+ENABLE_DRIVER_UNI_T_UT32X:BOOL=ON
+
+//Enable yokogawa-dlm SCPI oscilloscope driver
+ENABLE_DRIVER_YOKOGAWA_DLM:BOOL=ON
 
 //Enable zeroplus-logic-cube driver
 ENABLE_DRIVER_ZEROPLUS_LOGIC_CUBE:BOOL=ON
@@ -1435,6 +1580,31 @@ LIBFTDI1_libftdi1_INCLUDEDIR:INTERNAL=
 LIBFTDI1_libftdi1_LIBDIR:INTERNAL=
 LIBFTDI1_libftdi1_PREFIX:INTERNAL=
 LIBFTDI1_libftdi1_VERSION:INTERNAL=
+LIBIEEE1284_CFLAGS:INTERNAL=
+LIBIEEE1284_CFLAGS_I:INTERNAL=
+LIBIEEE1284_CFLAGS_OTHER:INTERNAL=
+LIBIEEE1284_FOUND:INTERNAL=
+LIBIEEE1284_INCLUDEDIR:INTERNAL=
+LIBIEEE1284_LIBDIR:INTERNAL=
+LIBIEEE1284_LIBS:INTERNAL=
+LIBIEEE1284_LIBS_L:INTERNAL=
+LIBIEEE1284_LIBS_OTHER:INTERNAL=
+LIBIEEE1284_LIBS_PATHS:INTERNAL=
+LIBIEEE1284_MODULE_NAME:INTERNAL=
+LIBIEEE1284_PREFIX:INTERNAL=
+LIBIEEE1284_STATIC_CFLAGS:INTERNAL=
+LIBIEEE1284_STATIC_CFLAGS_I:INTERNAL=
+LIBIEEE1284_STATIC_CFLAGS_OTHER:INTERNAL=
+LIBIEEE1284_STATIC_LIBDIR:INTERNAL=
+LIBIEEE1284_STATIC_LIBS:INTERNAL=
+LIBIEEE1284_STATIC_LIBS_L:INTERNAL=
+LIBIEEE1284_STATIC_LIBS_OTHER:INTERNAL=
+LIBIEEE1284_STATIC_LIBS_PATHS:INTERNAL=
+LIBIEEE1284_VERSION:INTERNAL=
+LIBIEEE1284_libieee1284_INCLUDEDIR:INTERNAL=
+LIBIEEE1284_libieee1284_LIBDIR:INTERNAL=
+LIBIEEE1284_libieee1284_PREFIX:INTERNAL=
+LIBIEEE1284_libieee1284_VERSION:INTERNAL=
 LIBSERIALPORT_CFLAGS:INTERNAL=
 LIBSERIALPORT_CFLAGS_I:INTERNAL=
 LIBSERIALPORT_CFLAGS_OTHER:INTERNAL=
@@ -2401,6 +2571,7 @@ _Python3_RUNTIME_LIBRARY_RELEASE:INTERNAL=D:/Scoop/apps/python/3.14.4/python314.
 __pkg_config_arguments_LIBFTDI1:INTERNAL=libftdi1
 __pkg_config_checked_GLIB:INTERNAL=1
 __pkg_config_checked_LIBFTDI1:INTERNAL=1
+__pkg_config_checked_LIBIEEE1284:INTERNAL=1
 __pkg_config_checked_LIBSERIALPORT:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_GLIB_glib-2.0
 pkgcfg_lib_GLIB_glib-2.0-ADVANCED:INTERNAL=1

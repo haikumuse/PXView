@@ -24,6 +24,21 @@
 #include "hardware/compat/compat.h"
 #include "protocol.h"
 
+/*
+ * Compat stub for frame end packet sending. PXView has SR_DF_FRAME_END
+ * packet type, send it directly via ds_data_forward. The compat layer
+ * provides std_session_send_df_frame_begin() but not the _end variant,
+ * so define it locally here (same approach as fx2lafw).
+ */
+SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
+{
+	struct sr_datafeed_packet packet;
+	packet.type = SR_DF_FRAME_END;
+	packet.status = SR_PKT_OK;
+	packet.payload = NULL;
+	return ds_data_forward(sdi, &packet);
+}
+
 /* USB PID dependent MCU firmware. Model dependent FPGA bitstream. */
 #define MCU_FWFILE_FMT	"kingst-la-%04x.fw"
 #define FPGA_FWFILE_FMT	"kingst-%s-fpga.bitstream"

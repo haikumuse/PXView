@@ -71,17 +71,16 @@ static void send_data(const struct sr_dev_inst *sdi, float sample)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 
 	devc = sdi->priv;
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 1);
-	meaning.mq = SR_MQ_SOUND_PRESSURE_LEVEL;
-	meaning.mqflags = devc->cur_mqflags;
-	meaning.unit = SR_UNIT_DECIBEL_SPL;
-	meaning.channels = sdi->channels;
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
+	analog.mq = SR_MQ_SOUND_PRESSURE_LEVEL;
+	analog.mqflags = devc->cur_mqflags;
+	analog.unit = SR_UNIT_DECIBEL_SPL;
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
 	analog.data = &sample;
 	packet.type = SR_DF_ANALOG;

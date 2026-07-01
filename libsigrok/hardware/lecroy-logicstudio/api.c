@@ -468,6 +468,16 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 
 	drvc = sdi->driver->priv;
 
+	/*
+	 * Setup FPGA bitstream, threshold/channel/trigger registers.
+	 * Standard sigrok calls this via .config_commit, which PXView's
+	 * sr_dev_driver struct does not have, so invoke it here before
+	 * starting the acquisition. Without this the device is not
+	 * configured before acquisition starts.
+	 */
+	if ((ret = lls_setup_acquisition(sdi)) < 0)
+		return ret;
+
 	if ((ret = lls_start_acquisition(sdi)) < 0)
 		return ret;
 

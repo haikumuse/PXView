@@ -21,13 +21,9 @@
 #define LIBSIGROK_HARDWARE_ZEROPLUS_LOGIC_CUBE_PROTOCOL_H
 
 #include "hardware/compat/compat.h"
+#include "analyzer.h"
 
 #define LOG_PREFIX "zeroplus-logic-cube"
-
-typedef enum {
-	LAPC_CLOCK_EDGE_RISING,
-	LAPC_CLOCK_EDGE_FALLING,
-} ext_clock_edge_t;
 
 struct zp_model;
 struct dev_context {

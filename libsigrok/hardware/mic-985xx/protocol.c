@@ -99,9 +99,6 @@ static int handle_packet(const uint8_t *buf, const struct sr_dev_inst *sdi, int 
 	float temperature, humidity;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct dev_context *devc;
 	GSList *l;
 	int ret;
@@ -116,8 +113,9 @@ static int handle_packet(const uint8_t *buf, const struct sr_dev_inst *sdi, int 
 		return SR_ERR;
 	}
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 1);
-
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 	/* Common values for both channels. */
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
@@ -126,9 +124,9 @@ static int handle_packet(const uint8_t *buf, const struct sr_dev_inst *sdi, int 
 	/* Temperature. */
 	l = g_slist_copy(sdi->channels);
 	l = g_slist_remove_link(l, g_slist_nth(l, 1));
-	meaning.channels = l;
-	meaning.mq = SR_MQ_TEMPERATURE;
-	meaning.unit = SR_UNIT_CELSIUS; /* TODO: Use C/F correctly. */
+	analog.probes = l;
+	analog.mq = SR_MQ_TEMPERATURE;
+	analog.unit = SR_UNIT_CELSIUS; /* TODO: Use C/F correctly. */
 	analog.data = &temperature;
 	sr_session_send(sdi, &packet);
 	g_slist_free(l);
@@ -137,9 +135,9 @@ static int handle_packet(const uint8_t *buf, const struct sr_dev_inst *sdi, int 
 	if (mic_devs[idx].has_humidity) {
 		l = g_slist_copy(sdi->channels);
 		l = g_slist_remove_link(l, g_slist_nth(l, 0));
-		meaning.channels = l;
-		meaning.mq = SR_MQ_RELATIVE_HUMIDITY;
-		meaning.unit = SR_UNIT_PERCENTAGE;
+		analog.probes = l;
+		analog.mq = SR_MQ_RELATIVE_HUMIDITY;
+		analog.unit = SR_UNIT_PERCENTAGE;
 		analog.data = &humidity;
 		sr_session_send(sdi, &packet);
 		g_slist_free(l);

@@ -22,12 +22,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include <glib.h>
 #include "protocol.h"
 
 static void log_dmm_packet(const uint8_t *buf, size_t len)
 {
 	GString *text;
+
+	if (sr_log_loglevel_get() < SR_LOG_DBG)
+		return;
 
 	text = sr_hexdump_new(buf, len);
 	sr_dbg("DMM packet: %s", text->str);
@@ -37,15 +39,12 @@ static void log_dmm_packet(const uint8_t *buf, size_t len)
 static void handle_packet(struct sr_dev_inst *sdi,
 	const uint8_t *buf, size_t len, void *info)
 {
+	struct dmm_info *dmm;
 	struct dev_context *devc;
-	const struct dmm_info *dmm;
 	float floatval;
 	double doubleval;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	gboolean sent_sample;
 	struct sr_channel *channel;
 	size_t ch_idx;
@@ -58,37 +57,53 @@ static void handle_packet(struct sr_dev_inst *sdi,
 	sent_sample = FALSE;
 	memset(info, 0, dmm->info_size);
 	for (ch_idx = 0; ch_idx < dmm->channel_count; ch_idx++) {
-		/* Note: digits/spec_digits will be overridden by the DMM parsers. */
-		sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
+		/*
+		 * PXView's sr_datafeed_analog is the old flat layout (probes,
+		 * mq, unit, mqflags, data, num_samples, unit_bits, unit_pitch).
+		 * There is no sr_analog_init() helper and no
+		 * encoding/meaning/spec sub-struct pointers, so initialize the
+		 * fields directly. The parsers assign analog.mq, analog.unit,
+		 * analog.mqflags (and may adjust floatval).
+		 */
+		memset(&analog, 0, sizeof(analog));
+		analog.num_samples = 1;
+		analog.mq = 0;
+		analog.mqflags = 0;
 
 		channel = g_slist_nth_data(sdi->channels, ch_idx);
-		analog.meaning->channels = g_slist_append(NULL, channel);
-		analog.num_samples = 1;
-		analog.meaning->mq = 0;
+		/*
+		 * Build a single-element GSList for the current channel so the
+		 * frontend knows which channel the measurement belongs to. The
+		 * list is freed after the packet is sent.
+		 */
+		analog.probes = g_slist_append(NULL, channel);
 
 		if (dmm->packet_parse) {
 			dmm->packet_parse(buf, &floatval, &analog, info);
 			analog.data = &floatval;
-			analog.encoding->unitsize = sizeof(floatval);
+			analog.unit_bits = sizeof(floatval) * 8;
 		} else if (dmm->packet_parse_len) {
 			dmm->packet_parse_len(dmm->dmm_state, buf, len,
 				&doubleval, &analog, info);
 			analog.data = &doubleval;
-			analog.encoding->unitsize = sizeof(doubleval);
+			analog.unit_bits = sizeof(doubleval) * 8;
 		}
 
 		/* If this DMM needs additional handling, call the resp. function. */
 		if (dmm->dmm_details)
 			dmm->dmm_details(&analog, info);
 
-		if (analog.meaning->mq != 0 && channel->enabled) {
+		if (analog.mq != 0 && channel->enabled) {
 			/* Got a measurement. */
 			packet.type = SR_DF_ANALOG;
 			packet.payload = &analog;
 			sr_session_send(sdi, &packet);
-			g_slist_free(analog.meaning->channels);
 			sent_sample = TRUE;
 		}
+
+		/* Free the per-channel probes list. */
+		g_slist_free(analog.probes);
+		analog.probes = NULL;
 	}
 
 	if (sent_sample) {
@@ -99,8 +114,8 @@ static void handle_packet(struct sr_dev_inst *sdi,
 /** Request packet, if required. */
 SR_PRIV int req_packet(struct sr_dev_inst *sdi)
 {
+	struct dmm_info *dmm;
 	struct dev_context *devc;
-	const struct dmm_info *dmm;
 	struct sr_serial_dev_inst *serial;
 	uint64_t now, left, next;
 	int ret;
@@ -136,8 +151,8 @@ SR_PRIV int req_packet(struct sr_dev_inst *sdi)
 
 static void handle_new_data(struct sr_dev_inst *sdi, void *info)
 {
+	struct dmm_info *dmm;
 	struct dev_context *devc;
-	const struct dmm_info *dmm;
 	struct sr_serial_dev_inst *serial;
 	int ret;
 	size_t read_len, check_pos, check_len, pkt_size, copy_len;
@@ -146,6 +161,7 @@ static void handle_new_data(struct sr_dev_inst *sdi, void *info)
 
 	devc = sdi->priv;
 	dmm = devc->dmm;
+
 	serial = sdi->conn;
 
 	/* Add the maximum available RX data we can get to the local buffer. */
@@ -229,11 +245,15 @@ static void handle_new_data(struct sr_dev_inst *sdi, void *info)
 	}
 }
 
-SR_PRIV int serial_dmm_receive_data(int fd, int revents,
-		const struct sr_dev_inst *sdi)
+/*
+ * PXView's sr_receive_data_callback_t passes the sdi directly as the
+ * third argument (const struct sr_dev_inst *sdi) instead of the
+ * void *cb_data that standard sigrok uses.
+ */
+SR_PRIV int receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
 	struct dev_context *devc;
-	const struct dmm_info *dmm;
+	struct dmm_info *dmm;
 	void *info;
 
 	(void)fd;

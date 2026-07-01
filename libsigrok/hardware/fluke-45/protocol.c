@@ -44,9 +44,9 @@ SR_PRIV int fl45_get_status(const struct sr_dev_inst *sdi,
 		return TRUE;
 
 	/* Default settings. */
-	analog[idx].meaning->mq = 0;
-	analog[idx].meaning->unit = 0;
-	analog[idx].meaning->mqflags = 0;
+	analog[idx].mq = 0;
+	analog[idx].unit = 0;
+	analog[idx].mqflags = 0;
 
 	/* Get a response to the FUNC? command. */
 	res = fl45_scpi_get_response(sdi, cmd);
@@ -58,43 +58,43 @@ SR_PRIV int fl45_get_status(const struct sr_dev_inst *sdi,
 	if (res == SR_OK && devc->response != NULL) {
 		func = devc->response;
 		if (strcmp(func, "AAC") == 0) {
-			analog[idx].meaning->mq = SR_MQ_CURRENT;
-			analog[idx].meaning->unit = SR_UNIT_AMPERE;
-			analog[idx].meaning->mqflags = SR_MQFLAG_AC;
+			analog[idx].mq = SR_MQ_CURRENT;
+			analog[idx].unit = SR_UNIT_AMPERE;
+			analog[idx].mqflags = SR_MQFLAG_AC;
 		} else if (strcmp(func, "AACDC") == 0) {
-			analog[idx].meaning->mq = SR_MQ_CURRENT;
-			analog[idx].meaning->unit = SR_UNIT_AMPERE;
-			analog[idx].meaning->mqflags = SR_MQFLAG_AC;
+			analog[idx].mq = SR_MQ_CURRENT;
+			analog[idx].unit = SR_UNIT_AMPERE;
+			analog[idx].mqflags = SR_MQFLAG_AC;
 		} else if (strcmp(func, "ADC") == 0) {
-			analog[idx].meaning->mq = SR_MQ_CURRENT;
-			analog[idx].meaning->unit = SR_UNIT_AMPERE;
-			analog[idx].meaning->mqflags = SR_MQFLAG_DC;
+			analog[idx].mq = SR_MQ_CURRENT;
+			analog[idx].unit = SR_UNIT_AMPERE;
+			analog[idx].mqflags = SR_MQFLAG_DC;
 		} else if (strcmp(func, "CONT") == 0) {
-			analog[idx].meaning->mq = SR_MQ_CONTINUITY;
-			analog->meaning->unit = SR_UNIT_BOOLEAN;
+			analog[idx].mq = SR_MQ_CONTINUITY;
+			analog->unit = SR_UNIT_BOOLEAN;
 		} else if (strcmp(func, "DIODE") == 0) {
-			analog[idx].meaning->mq = SR_MQ_VOLTAGE;
-			analog[idx].meaning->unit = SR_UNIT_VOLT;
-			analog[idx].meaning->mqflags = SR_MQFLAG_DIODE;
+			analog[idx].mq = SR_MQ_VOLTAGE;
+			analog[idx].unit = SR_UNIT_VOLT;
+			analog[idx].mqflags = SR_MQFLAG_DIODE;
 		} else if (strcmp(func, "FREQ") == 0) {
-			analog[idx].meaning->mq = SR_MQ_FREQUENCY;
-			analog[idx].meaning->unit = SR_UNIT_HERTZ;
+			analog[idx].mq = SR_MQ_FREQUENCY;
+			analog[idx].unit = SR_UNIT_HERTZ;
 		} else if (strcmp(func, "OHMS") == 0) {
-			analog[idx].meaning->mq = SR_MQ_RESISTANCE;
-			analog[idx].meaning->unit = SR_UNIT_OHM;
+			analog[idx].mq = SR_MQ_RESISTANCE;
+			analog[idx].unit = SR_UNIT_OHM;
 		} else if (strcmp(func, "VAC") == 0) {
-			analog[idx].meaning->mq = SR_MQ_VOLTAGE;
-			analog[idx].meaning->unit = SR_UNIT_VOLT;
-			analog[idx].meaning->mqflags = SR_MQFLAG_AC;
+			analog[idx].mq = SR_MQ_VOLTAGE;
+			analog[idx].unit = SR_UNIT_VOLT;
+			analog[idx].mqflags = SR_MQFLAG_AC;
 		} else if (strcmp(func, "VACDC") == 0) {
-			analog[idx].meaning->mq = SR_MQ_VOLTAGE;
-			analog[idx].meaning->unit = SR_UNIT_VOLT;
-			analog[idx].meaning->mqflags |= SR_MQFLAG_AC;
-			analog[idx].meaning->mqflags |= SR_MQFLAG_DC;
+			analog[idx].mq = SR_MQ_VOLTAGE;
+			analog[idx].unit = SR_UNIT_VOLT;
+			analog[idx].mqflags |= SR_MQFLAG_AC;
+			analog[idx].mqflags |= SR_MQFLAG_DC;
 		} else if (strcmp(func, "VDC") == 0) {
-			analog[idx].meaning->mq = SR_MQ_VOLTAGE;
-			analog[idx].meaning->unit = SR_UNIT_VOLT;
-			analog[idx].meaning->mqflags = SR_MQFLAG_DC;
+			analog[idx].mq = SR_MQ_VOLTAGE;
+			analog[idx].unit = SR_UNIT_VOLT;
+			analog[idx].mqflags = SR_MQFLAG_DC;
 		}
 	}
 
@@ -105,7 +105,7 @@ SR_PRIV int fl45_get_status(const struct sr_dev_inst *sdi,
 	sr_dbg("Response to AUTO: %s.", devc->response);
 	if (res == SR_OK && devc->response != NULL) {
 		if (strcmp(devc->response, "1") == 0)
-			analog[idx].meaning->mqflags |= SR_MQFLAG_AUTORANGE;
+			analog[idx].mqflags |= SR_MQFLAG_AUTORANGE;
 	}
 
 	return SR_OK;
@@ -128,36 +128,32 @@ SR_PRIV int fl45_get_modifiers(const struct sr_dev_inst *sdi,
 	if (res == SR_OK && devc->response != NULL) {
 		mod = atoi(devc->response);
 		if (mod & 0x01) {
-			analog[idx].meaning->mqflags |= SR_MQFLAG_MIN;
+			analog[idx].mqflags |= SR_MQFLAG_MIN;
 			sr_dbg("MIN bit set: %s.", "1");
 		}
 		if (mod & 0x02) {
-			analog[idx].meaning->mqflags |= SR_MQFLAG_MAX;
+			analog[idx].mqflags |= SR_MQFLAG_MAX;
 			sr_dbg("MAX bit set: %s.", "2");
 		}
 		if (mod & 0x04) {
-			analog[idx].meaning->mqflags |= SR_MQFLAG_HOLD;
+			analog[idx].mqflags |= SR_MQFLAG_HOLD;
 			sr_dbg("HOLD bit set: %s.", "4");
 		}
 		if (mod & 0x08) {
 			sr_dbg("dB bit set: %s.", "8");
-			analog[idx].meaning->mq = SR_MQ_POWER_FACTOR;
-			analog[idx].meaning->unit = SR_UNIT_DECIBEL_MW;
-			analog[idx].meaning->mqflags = 0;
-			analog[idx].encoding->digits = 2;
-			analog[idx].spec->spec_digits = 2;
-		}
+			analog[idx].mq = SR_MQ_POWER_FACTOR;
+			analog[idx].unit = SR_UNIT_DECIBEL_MW;
+			analog[idx].mqflags = 0;
+								}
 		if (mod & 0x10) {
 			sr_dbg("dB Power mod bit set: %s.", "16");
-			analog[idx].meaning->mq = SR_MQ_POWER;
-			analog[idx].meaning->unit = SR_UNIT_DECIBEL_SPL;
-			analog[idx].meaning->mqflags = 0;
-			analog[idx].encoding->digits = 2;
-			analog[idx].spec->spec_digits = 2;
-		}
+			analog[idx].mq = SR_MQ_POWER;
+			analog[idx].unit = SR_UNIT_DECIBEL_SPL;
+			analog[idx].mqflags = 0;
+								}
 		if (mod & 0x20) {
 			sr_dbg("REL bit set: %s.", "32");
-			analog[idx].meaning->mqflags |= SR_MQFLAG_HOLD;
+			analog[idx].mqflags |= SR_MQFLAG_HOLD;
 		}
 	}
 
@@ -211,9 +207,6 @@ SR_PRIV int fl45_scpi_receive_data(int fd, int revents,
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog[2];
-	struct sr_analog_encoding encoding[2];
-	struct sr_analog_meaning meaning[2];
-	struct sr_analog_spec spec[2];
 	struct sr_channel *channel;
 	char *reading;
 	float fv;
@@ -236,7 +229,9 @@ SR_PRIV int fl45_scpi_receive_data(int fd, int revents,
 	/* Process the list of channels. */
 	for (i = 0; i < devc->num_channels; i++) {
 		/* Note: digits/spec_digits will be overridden later. */
-		sr_analog_init(&analog[i], &encoding[i], &meaning[i], &spec[i], 0);
+		memset(&analog[i], 0, sizeof(analog[i]));
+		analog[i].unit_bits = 32; /* float */
+		analog[i].unit_pitch = 0;
 
 		/* Detect current meter function. */
 		res = fl45_get_status(sdi, analog, i);
@@ -248,7 +243,7 @@ SR_PRIV int fl45_scpi_receive_data(int fd, int revents,
 			channel = sdi->channels->next->data;
 
 		/* Is channel enabled? */
-		if (analog[i].meaning->mq != 0 && channel->enabled) {
+		if (analog[i].mq != 0 && channel->enabled) {
 			/* Then get a reading from it. */
 			if (i == 0)
 				res = fl45_scpi_get_response(sdi, "VAL1?");
@@ -267,8 +262,7 @@ SR_PRIV int fl45_scpi_receive_data(int fd, int revents,
 				sr_dbg("Meter reading string: %s.", reading);
 				fv = g_ascii_strtod(reading, NULL);
 				digits = get_reading_dd(reading, strlen(reading));
-				analog[i].encoding->digits = digits;
-				analog[i].spec->spec_digits = digits;
+				(void)digits; /* PXView flat analog has no digits field */
 
 			} else {
 				sr_dbg("Invalid float string: '%s'.", reading);
@@ -277,9 +271,7 @@ SR_PRIV int fl45_scpi_receive_data(int fd, int revents,
 
 			/* Are we on a little or big endian system? */
 #ifdef WORDS_BIGENDIAN
-			analog[i].encoding->is_bigendian = TRUE;
 #else
-			analog[i].encoding->is_bigendian = FALSE;
 #endif
 
 			/* Apply any modifiers. */
@@ -291,14 +283,14 @@ SR_PRIV int fl45_scpi_receive_data(int fd, int revents,
 			/* Set up analog object. */
 			analog[i].num_samples = 1;
 			analog[i].data = &fv;
-			analog[i].meaning->channels = g_slist_append(NULL, channel);
+			analog[i].probes = g_slist_append(NULL, channel);
 
 			packet.type = SR_DF_ANALOG;
 			packet.payload = &analog[i];
 
 			sr_session_send(sdi, &packet);
 
-			g_slist_free(analog[i].meaning->channels);
+			g_slist_free(analog[i].probes);
 		}
 	}
 

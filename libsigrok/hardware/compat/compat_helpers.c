@@ -212,32 +212,9 @@ SR_PRIV int std_dev_clear(const struct sr_dev_driver *driver)
 }
 
 /*--- Standard sigrok std_session_send_df_header ---------------------------*/
-
-SR_PRIV int std_session_send_df_header(const struct sr_dev_inst *sdi,
-    const char *prefix)
-{
-    struct sr_datafeed_packet packet;
-    struct sr_datafeed_header header;
-    int ret;
-
-    (void)prefix;
-
-    /*
-     * PXView's sr_datafeed_header only has feed_version and starttime
-     * (standard sigrok's sdi/num_logic_channels/num_analog_channels/
-     * samplerate members do not exist here).
-     */
-    header.feed_version = 1;
-    gettimeofday(&header.starttime, NULL);
-
-    packet.type = SR_DF_HEADER;
-    packet.status = SR_PKT_OK;
-    packet.payload = &header;
-
-    ret = ds_data_forward(sdi, &packet);
-
-    return ret;
-}
+/* Note: std_session_send_df_header is provided by libsigrok/std.c (same
+ * 2-arg signature). Do not redefine here to avoid multiple-definition
+ * link errors. */
 
 /*--- Standard sigrok std_session_send_df_end ------------------------------*/
 
@@ -248,6 +225,19 @@ SR_PRIV int std_session_send_df_end(const struct sr_dev_inst *sdi,
     (void)prefix;
 
     packet.type = SR_DF_END;
+    packet.status = SR_PKT_OK;
+    packet.payload = NULL;
+
+    return ds_data_forward(sdi, &packet);
+}
+
+/*--- Standard sigrok std_session_send_df_frame_begin ----------------------*/
+
+SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
+{
+    struct sr_datafeed_packet packet;
+
+    packet.type = SR_DF_FRAME_BEGIN;
     packet.status = SR_PKT_OK;
     packet.payload = NULL;
 
@@ -711,5 +701,50 @@ SR_PRIV int std_opts_config_list(GSList *opts, int id, GVariant **data,
 
 SR_PRIV void sr_usb_dev_inst_free_cb(void *data)
 {
-    sr_usb_dev_inst_free((struct sr_usb_dev_inst *)data);
+	sr_usb_dev_inst_free((struct sr_usb_dev_inst *)data);
+}
+
+/*--- sr_usb_open / sr_usb_close compat ------------------------------------*/
+
+SR_PRIV int sr_usb_open(libusb_context *usb_ctx, struct sr_usb_dev_inst *usb)
+{
+	int ret;
+
+	(void)usb_ctx;
+
+	if (!usb || !usb->usb_dev)
+		return SR_ERR_ARG;
+
+	/* Already open. */
+	if (usb->devhdl)
+		return SR_OK;
+
+	ret = libusb_open(usb->usb_dev, &usb->devhdl);
+	if (ret != 0) {
+		sr_err("Failed to open USB device (%d.%d): %s.",
+			usb->bus, usb->address, libusb_error_name(ret));
+		usb->devhdl = NULL;
+		return SR_ERR;
+	}
+
+	return SR_OK;
+}
+
+SR_PRIV int sr_usb_close(struct sr_usb_dev_inst *usb)
+{
+	if (!usb)
+		return SR_ERR_ARG;
+
+	if (usb->devhdl) {
+		/*
+		 * Callers (e.g. scpi_usbtmc_libusb_close) are expected to
+		 * release any claimed interfaces before reaching here, since
+		 * the interface number is driver-private and not stored in
+		 * struct sr_usb_dev_inst. We only release the handle.
+		 */
+		libusb_close(usb->devhdl);
+		usb->devhdl = NULL;
+	}
+
+	return SR_OK;
 }

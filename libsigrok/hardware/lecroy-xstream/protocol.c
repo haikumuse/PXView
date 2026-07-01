@@ -748,22 +748,7 @@ SR_PRIV int lecroy_xstream_receive_data(int fd, int revents,
 	return TRUE;
 }
 
-/*
- * Frame begin/end helpers. PXView's compat layer does not provide
- * std_session_send_df_frame_begin/end, so define them locally (same pattern
- * used by rigol-ds, siglent-sds, etc.).
- */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
-
+/* Frame end helper kept locally; frame_begin is canonical in compat_helpers.c. */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;

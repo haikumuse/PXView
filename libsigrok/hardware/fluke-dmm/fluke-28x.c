@@ -79,11 +79,18 @@ static const struct attribute_mapping attribute_map[] = {
 	{ "HIGH_CURRENT", MEAS_A_HIGH_CURRENT },
 };
 
+/*
+ * PXView's libsigrok.h declares SR_MQ_*, SR_UNIT_*, SR_MQFLAG_* via anonymous
+ * enums; the matching fields on struct sr_datafeed_analog are int/int/
+ * uint64_t. Mirror that layout here so unit_map[] entries stay
+ * type-correct without needing a local "enum sr_mq/sr_unit/sr_mqflag" tag
+ * declaration.
+ */
 struct unit_mapping {
 	const char *name;
-	enum sr_mq mq;
-	enum sr_unit unit;
-	enum sr_mqflag mqflags;
+	int mq;
+	int unit;
+	uint64_t mqflags;
 };
 
 static const struct unit_mapping unit_map[] = {
@@ -164,9 +171,6 @@ SR_PRIV void fluke_handle_qm_28x(const struct sr_dev_inst *sdi, char **tokens)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 
 	float fvalue;
 	int digits;
@@ -179,7 +183,7 @@ SR_PRIV void fluke_handle_qm_28x(const struct sr_dev_inst *sdi, char **tokens)
 	/* We should have received four values:
 	 * value, unit, state, attribute
 	 */
-	if (sr_atof_ascii_digits(tokens[0], &fvalue, &digits) != SR_OK) {
+	if (local_sr_atof_ascii_digits(tokens[0], &fvalue, &digits) != SR_OK) {
 		sr_err("Invalid float '%s'.", tokens[0]);
 		return;
 	}
@@ -193,13 +197,24 @@ SR_PRIV void fluke_handle_qm_28x(const struct sr_dev_inst *sdi, char **tokens)
 	state = parse_measurement_state(tokens[2]);
 	attr = parse_attribute(tokens[3]);
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
+	/*
+	 * PXView's sr_datafeed_analog is the old flat layout (probes, mq,
+	 * unit, mqflags, data, ...). There is no sr_analog_init() helper and
+	 * no encoding/meaning/spec sub-structs, so initialize the fields
+	 * directly. The digits value is informational only (PXView's analog
+	 * struct has no digits field); keep it to preserve original parser
+	 * behaviour but mark it unused.
+	 */
+	(void)digits;
+	memset(&analog, 0, sizeof(analog));
 	analog.data = &fvalue;
-	analog.meaning->channels = sdi->channels;
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
-	analog.meaning->mq = unit->mq;
-	analog.meaning->mqflags = unit->mqflags;
-	analog.meaning->unit = unit->unit;
+	analog.mq = unit->mq;
+	analog.mqflags = unit->mqflags;
+	analog.unit = unit->unit;
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 
 	if (unit->mq == SR_MQ_RESISTANCE) {
 		switch (attr) {
@@ -209,12 +224,12 @@ SR_PRIV void fluke_handle_qm_28x(const struct sr_dev_inst *sdi, char **tokens)
 		case MEAS_A_OPEN_CIRCUIT:
 		case MEAS_A_SHORT_CIRCUIT:
 			/* Continuity measurement */
-			analog.meaning->mq = SR_MQ_CONTINUITY;
-			analog.meaning->unit = SR_UNIT_BOOLEAN;
+			analog.mq = SR_MQ_CONTINUITY;
+			analog.unit = SR_UNIT_BOOLEAN;
 			fvalue = attr == MEAS_A_OPEN_CIRCUIT ? 0.0 : 1.0;
 			break;
 		default:
-			analog.meaning->mq = 0;
+			analog.mq = 0;
 			break;
 		};
 	}
@@ -236,11 +251,11 @@ SR_PRIV void fluke_handle_qm_28x(const struct sr_dev_inst *sdi, char **tokens)
 		break;
 
 	default:
-		analog.meaning->mq = 0;
+		analog.mq = 0;
 		break;
 	}
 
-	if (analog.meaning->mq) {
+	if (analog.mq) {
 		/* Got a measurement. */
 		packet.type = SR_DF_ANALOG;
 		packet.payload = &analog;

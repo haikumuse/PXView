@@ -419,6 +419,8 @@ if(WIN32)
 		PXView/pv/winnativewidget.cpp
 		PXView/pv/winshadow.cpp
 		PXView/pv/wintaskbarprogress.cpp
+		PXView/pv/crash/crash_handler.cpp
+		PXView/pv/crash/crash_reporter.cpp
 	)
 	list(APPEND PXView_HEADERS
 		PXView/pv/wintaskbarprogress.h
@@ -550,6 +552,9 @@ set(PXView_HEADERS
     PXView/pv/api/rpc_dispatcher.h
     PXView/pv/api/ws_transport.h
     PXView/pv/api/mcp_transport.h
+    PXView/pv/crash/crash_log.h
+    PXView/pv/crash/crash_handler.h
+    PXView/pv/crash/crash_reporter.h
     ${UI_HEADERS}
 )
  
@@ -607,16 +612,22 @@ option(ENABLE_DRIVER_SYSCLK_LWLA "Enable sysclk-lwla driver" OFF)
 option(ENABLE_DRIVER_SYSCLK_SLA5032 "Enable sysclk-sla5032 driver" OFF)
 option(ENABLE_DRIVER_FLUKE_DMM "Enable fluke-dmm driver" OFF)
 option(ENABLE_DRIVER_AGILENT_DMM "Enable agilent-dmm driver" OFF)
+option(ENABLE_DRIVER_NORMA_DMM "Enable norma-dmm DMM driver" OFF)
+option(ENABLE_DRIVER_SERIAL_DMM "Enable serial-dmm driver" OFF)
 option(ENABLE_DRIVER_APPA_55II "Enable appa-55ii driver" OFF)
 option(ENABLE_DRIVER_FLUKE_45 "Enable fluke-45 SCPI multimeter driver" OFF)
 option(ENABLE_DRIVER_RIGOL_DS "Enable rigol-ds SCPI oscilloscope driver" OFF)
 option(ENABLE_DRIVER_ROHDE_SCHWARZ_SME_0X "Enable rohde-schwarz-sme-0x SCPI signal generator driver" OFF)
 option(ENABLE_DRIVER_SIGLENT_SDS "Enable siglent-sds SCPI oscilloscope driver" OFF)
+option(ENABLE_DRIVER_RIGOL_DG "Enable rigol-dg SCPI signal generator driver" OFF)
 option(ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER "Enable openbench-logic-sniffer (OLS) driver" OFF)
 option(ENABLE_DRIVER_IKALOGIC_SCANAPLUS "Enable ikalogic-scanaplus driver" OFF)
 option(ENABLE_DRIVER_ZEROPLUS_LOGIC_CUBE "Enable zeroplus-logic-cube driver" OFF)
 option(ENABLE_DRIVER_IKALOGIC_SCANALOGIC2 "Enable ikalogic-scanalogic2 driver" OFF)
 option(ENABLE_DRIVER_LECROY_LOGICSTUDIO "Enable lecroy-logicstudio driver" OFF)
+option(ENABLE_DRIVER_IPDBG_LA "Enable ipdbg-la logic analyzer driver" OFF)
+option(ENABLE_DRIVER_PIPISTRELLO_OLS "Enable pipistrello-ols logic analyzer (OLS) driver" OFF)
+option(ENABLE_DRIVER_SIPEED_SLOGIC_ANALYZER "Enable sipeed-slogic-analyzer logic analyzer driver" OFF)
 option(ENABLE_DRIVER_HANTEK_6XXX "Enable hantek-6xxx driver" OFF)
 option(ENABLE_DRIVER_HANTEK_4032L "Enable hantek-4032l driver" OFF)
 option(ENABLE_DRIVER_HANTEK_DSO "Enable hantek-dso driver" OFF)
@@ -627,6 +638,8 @@ option(ENABLE_DRIVER_ATTEN_PPS3XXX "Enable atten-pps3xxx power supply driver" OF
 option(ENABLE_DRIVER_MANSON_HCS_3XXX "Enable manson-hcs-3xxx power supply driver" OFF)
 option(ENABLE_DRIVER_MOTECH_LPS_30X "Enable motech-lps-30x power supply driver" OFF)
 option(ENABLE_DRIVER_RDTECH_DPS "Enable rdtech-dps power supply driver" OFF)
+option(ENABLE_DRIVER_RDTECH_TC "Enable rdtech-tc USB power meter driver" OFF)
+option(ENABLE_DRIVER_RDTECH_UM "Enable rdtech-um USB power meter driver" OFF)
 option(ENABLE_DRIVER_ITECH_IT8500 "Enable itech-it8500 electronic load driver" OFF)
 option(ENABLE_DRIVER_MAYNUO_M97 "Enable maynuo-m97 electronic load driver" OFF)
 option(ENABLE_DRIVER_SIGLENT_SDL10X0 "Enable siglent-sdl10x0 electronic load driver" OFF)
@@ -662,13 +675,13 @@ if(ENABLE_COMPAT_DRIVERS)
         include_directories(${LIBSERIALPORT_INCLUDE_DIRS})
     endif()
 
-    # Find libftdi1 for FTDI-based compat drivers (ftdi-la, chronovu-la, ikalogic-scanaplus)
-    if(ENABLE_DRIVER_FTDI_LA OR ENABLE_DRIVER_CHRONOVU_LA OR ENABLE_DRIVER_IKALOGIC_SCANAPLUS)
+    # Find libftdi1 for FTDI-based compat drivers (ftdi-la, chronovu-la, ikalogic-scanaplus, pipistrello-ols)
+    if(ENABLE_DRIVER_FTDI_LA OR ENABLE_DRIVER_CHRONOVU_LA OR ENABLE_DRIVER_IKALOGIC_SCANAPLUS OR ENABLE_DRIVER_PIPISTRELLO_OLS)
         if(PkgConfig_FOUND)
             pkg_check_modules(LIBFTDI1 libftdi1)
         endif()
         if(NOT LIBFTDI1_FOUND)
-            message(FATAL_ERROR "libftdi1 is required by the ftdi-la/chronovu-la/ikalogic-scanaplus drivers but was not found. Disable ENABLE_DRIVER_FTDI_LA/ENABLE_DRIVER_CHRONOVU_LA/ENABLE_DRIVER_IKALOGIC_SCANAPLUS or install libftdi1.")
+            message(FATAL_ERROR "libftdi1 is required by the ftdi-la/chronovu-la/ikalogic-scanaplus/pipistrello-ols drivers but was not found. Disable ENABLE_DRIVER_FTDI_LA/ENABLE_DRIVER_CHRONOVU_LA/ENABLE_DRIVER_IKALOGIC_SCANAPLUS/ENABLE_DRIVER_PIPISTRELLO_OLS or install libftdi1.")
         endif()
         include_directories(${LIBFTDI1_INCLUDE_DIRS})
     endif()
@@ -709,6 +722,12 @@ if(ENABLE_COMPAT_DRIVERS)
     if(ENABLE_DRIVER_AGILENT_DMM)
         add_definitions(-DHAVE_DRIVER_AGILENT_DMM)
     endif()
+    if(ENABLE_DRIVER_NORMA_DMM)
+        add_definitions(-DHAVE_DRIVER_NORMA_DMM)
+    endif()
+    if(ENABLE_DRIVER_SERIAL_DMM)
+        add_definitions(-DHAVE_DRIVER_SERIAL_DMM)
+    endif()
     if(ENABLE_DRIVER_APPA_55II)
         add_definitions(-DHAVE_DRIVER_APPA_55II)
     endif()
@@ -739,6 +758,15 @@ if(ENABLE_COMPAT_DRIVERS)
     if(ENABLE_DRIVER_LECROY_LOGICSTUDIO)
         add_definitions(-DHAVE_DRIVER_LECROY_LOGICSTUDIO)
     endif()
+    if(ENABLE_DRIVER_IPDBG_LA)
+        add_definitions(-DHAVE_DRIVER_IPDBG_LA)
+    endif()
+    if(ENABLE_DRIVER_PIPISTRELLO_OLS)
+        add_definitions(-DHAVE_DRIVER_PIPISTRELLO_OLS)
+    endif()
+    if(ENABLE_DRIVER_SIPEED_SLOGIC_ANALYZER)
+        add_definitions(-DHAVE_DRIVER_SIPEED_SLOGIC_ANALYZER)
+    endif()
     if(ENABLE_DRIVER_HANTEK_6XXX)
         add_definitions(-DHAVE_DRIVER_HANTEK_6XXX)
     endif()
@@ -768,6 +796,12 @@ if(ENABLE_COMPAT_DRIVERS)
     endif()
     if(ENABLE_DRIVER_RDTECH_DPS)
         add_definitions(-DHAVE_DRIVER_RDTECH_DPS)
+    endif()
+    if(ENABLE_DRIVER_RDTECH_TC)
+        add_definitions(-DHAVE_DRIVER_RDTECH_TC)
+    endif()
+    if(ENABLE_DRIVER_RDTECH_UM)
+        add_definitions(-DHAVE_DRIVER_RDTECH_UM)
     endif()
     if(ENABLE_DRIVER_ITECH_IT8500)
         add_definitions(-DHAVE_DRIVER_ITECH_IT8500)
@@ -970,6 +1004,38 @@ if(ENABLE_COMPAT_DRIVERS)
             libsigrok/hardware/agilent-dmm/protocol.c
         )
     endif()
+    if(ENABLE_DRIVER_NORMA_DMM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/norma-dmm/api.c
+            libsigrok/hardware/norma-dmm/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SERIAL_DMM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/serial-dmm/api.c
+            libsigrok/hardware/serial-dmm/protocol.c
+            libsigrok/hardware/serial-dmm/asycii.c
+            libsigrok/hardware/serial-dmm/bm25x.c
+            libsigrok/hardware/serial-dmm/bm52x.c
+            libsigrok/hardware/serial-dmm/bm85x.c
+            libsigrok/hardware/serial-dmm/bm86x.c
+            libsigrok/hardware/serial-dmm/dtm0660.c
+            libsigrok/hardware/serial-dmm/eev121gw.c
+            libsigrok/hardware/serial-dmm/es519xx.c
+            libsigrok/hardware/serial-dmm/fs9721.c
+            libsigrok/hardware/serial-dmm/fs9922.c
+            libsigrok/hardware/serial-dmm/m2110.c
+            libsigrok/hardware/serial-dmm/metex14.c
+            libsigrok/hardware/serial-dmm/mm38xr.c
+            libsigrok/hardware/serial-dmm/ms2115b.c
+            libsigrok/hardware/serial-dmm/ms8250d.c
+            libsigrok/hardware/serial-dmm/qm1578.c
+            libsigrok/hardware/serial-dmm/rs9lcd.c
+            libsigrok/hardware/serial-dmm/ut71x.c
+            libsigrok/hardware/serial-dmm/vc870.c
+            libsigrok/hardware/serial-dmm/vc96.c
+        )
+    endif()
     if(ENABLE_DRIVER_FLUKE_45)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/fluke-45/api.c
@@ -1000,6 +1066,12 @@ if(ENABLE_COMPAT_DRIVERS)
             libsigrok/hardware/siglent-sds/protocol.c
         )
     endif()
+    if(ENABLE_DRIVER_RIGOL_DG)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/rigol-dg/api.c
+            libsigrok/hardware/rigol-dg/protocol.c
+        )
+    endif()
     if(ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/openbench-logic-sniffer/api.c
@@ -1016,6 +1088,18 @@ if(ENABLE_COMPAT_DRIVERS)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/ipdbg-la/api.c
             libsigrok/hardware/ipdbg-la/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_PIPISTRELLO_OLS)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/pipistrello-ols/api.c
+            libsigrok/hardware/pipistrello-ols/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_SIPEED_SLOGIC_ANALYZER)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/sipeed-slogic-analyzer/api.c
+            libsigrok/hardware/sipeed-slogic-analyzer/protocol.c
         )
     endif()
     if(ENABLE_DRIVER_IKALOGIC_SCANALOGIC2)
@@ -1088,6 +1172,18 @@ if(ENABLE_COMPAT_DRIVERS)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/rdtech-dps/api.c
             libsigrok/hardware/rdtech-dps/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_RDTECH_TC)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/rdtech-tc/api.c
+            libsigrok/hardware/rdtech-tc/protocol.c
+        )
+    endif()
+    if(ENABLE_DRIVER_RDTECH_UM)
+        list(APPEND libsigrok_SOURCES
+            libsigrok/hardware/rdtech-um/api.c
+            libsigrok/hardware/rdtech-um/protocol.c
         )
     endif()
     if(ENABLE_DRIVER_ITECH_IT8500)
@@ -1182,7 +1278,6 @@ if(ENABLE_COMPAT_DRIVERS)
             libsigrok/hardware/lascar-el-usb/protocol.c
         )
     endif()
-endif()
     if(ENABLE_DRIVER_TONDAJ_SL_814)
         list(APPEND libsigrok_SOURCES
             libsigrok/hardware/tondaj-sl-814/api.c
@@ -1337,8 +1432,11 @@ endif()
 #-------------------------------------------------------------------------------
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
     set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-    add_compile_options(-O3)
+    # -g embeds DWARF debug info so addr2line can symbolicate crash stacks.
+    # Without it the crash report dialog can only show raw addresses.
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -g")
+    set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -g")
+    add_compile_options(-O3 -g)
 endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
@@ -1603,6 +1701,29 @@ endif()
 #===============================================================================
 #= Installation
 #-------------------------------------------------------------------------------
+
+# Crash report symbolication tool (Windows only). addr2line.exe from mingw
+# binutils translates runtime addresses into function/file:line using the
+# DWARF debug info embedded in PXView.exe — dbghelp cannot read DWARF, so
+# this is the only way to symbolicate MinGW-built binaries on Windows.
+if(WIN32)
+	find_program(ADDR2LINE_EXE
+		NAMES addr2line.exe addr2line
+		HINTS
+			"$ENV{MSYSTEM_PREFIX}/bin"
+			"$ENV{MINGW_PREFIX}/bin"
+			"D:/msys64/mingw64/bin"
+			"C:/msys64/mingw64/bin"
+		PATH_SUFFIXES bin
+	)
+	if(ADDR2LINE_EXE)
+		message(STATUS "addr2line found: ${ADDR2LINE_EXE}")
+		install(PROGRAMS "${ADDR2LINE_EXE}" DESTINATION bin RENAME addr2line.exe)
+	else()
+		message(WARNING "addr2line.exe not found — crash report symbolication disabled. "
+				"Install mingw binutils or copy addr2line.exe to bin/ manually.")
+	endif()
+endif()
 
 # Install the executable.
 if(APPLE)

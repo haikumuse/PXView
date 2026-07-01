@@ -46,6 +46,29 @@
 #include <unistd.h>
 #endif
 
+/* Byte read/write helpers for USBTMC and TCP header packing.
+ * These mirror the macros used by other sigrok SCPI drivers
+ * (e.g. lecroy-logicstudio/protocol.h). Defined here locally so the
+ * compat SCPI module does not depend on their availability elsewhere. */
+#ifndef W8
+#define W8(p, x) do { *(uint8_t *)(p) = (uint8_t)(x); } while (0)
+#endif
+#ifndef R8
+#define R8(p) (*(const uint8_t *)(p))
+#endif
+#ifndef WL16
+#define WL16(p, x) do { *(uint16_t *)(p) = GUINT16_TO_LE(x); } while (0)
+#endif
+#ifndef WL32
+#define WL32(p, x) do { *(uint32_t *)(p) = GUINT32_TO_LE(x); } while (0)
+#endif
+#ifndef RL16
+#define RL16(p) (GUINT16_FROM_LE(*(const uint16_t *)(p)))
+#endif
+#ifndef RL32
+#define RL32(p) (GUINT32_FROM_LE(*(const uint32_t *)(p)))
+#endif
+
 #define LOG_PREFIX "scpi"
 
 #define SCPI_READ_RETRIES 100
@@ -312,7 +335,7 @@ const struct sr_scpi_dev_inst scpi_tcp_raw_dev = {
 	.read_data     = scpi_tcp_raw_read_data,
 	.write_data    = scpi_tcp_raw_write_data,
 	.read_complete = scpi_tcp_read_complete,
-	.close         = scpi_tcp_close,
+	.close_dev     = scpi_tcp_close,
 	.free          = scpi_tcp_free,
 };
 
@@ -331,7 +354,7 @@ const struct sr_scpi_dev_inst scpi_tcp_rigol_dev = {
 	.read_begin    = scpi_tcp_read_begin,
 	.read_data     = scpi_tcp_rigol_read_data,
 	.read_complete = scpi_tcp_read_complete,
-	.close         = scpi_tcp_close,
+	.close_dev     = scpi_tcp_close,
 	.free          = scpi_tcp_free,
 };
 
@@ -859,7 +882,7 @@ const struct sr_scpi_dev_inst scpi_usbtmc_libusb_dev = {
 	.read_begin    = scpi_usbtmc_libusb_read_begin,
 	.read_data     = scpi_usbtmc_libusb_read_data,
 	.read_complete = scpi_usbtmc_libusb_read_complete,
-	.close         = scpi_usbtmc_libusb_close,
+	.close_dev     = scpi_usbtmc_libusb_close,
 	.free          = scpi_usbtmc_libusb_free,
 };
 
@@ -1035,7 +1058,7 @@ const struct sr_scpi_dev_inst scpi_serial_dev = {
 	.read_begin    = scpi_serial_read_begin,
 	.read_data     = scpi_serial_read_data,
 	.read_complete = scpi_serial_read_complete,
-	.close         = scpi_serial_close,
+	.close_dev     = scpi_serial_close,
 	.free          = scpi_serial_free,
 };
 
@@ -1225,7 +1248,8 @@ SR_PRIV int sr_tcp_source_add(struct sr_session *session,
 	if (!tcp || tcp->sock_fd < 0)
 		return SR_ERR_ARG;
 
-	return sr_session_source_add(session, tcp->sock_fd,
+	(void)session;
+	return sr_session_source_add(tcp->sock_fd,
 		events, timeout, cb, cb_data);
 }
 
@@ -1235,7 +1259,8 @@ SR_PRIV int sr_tcp_source_remove(struct sr_session *session,
 	if (!tcp || tcp->sock_fd < 0)
 		return SR_ERR_ARG;
 
-	return sr_session_source_remove(session, tcp->sock_fd);
+	(void)session;
+	return sr_session_source_remove(tcp->sock_fd);
 }
 
 /*===========================================================================
@@ -1254,7 +1279,7 @@ static int scpi_send_variadic(struct sr_scpi_dev_inst *scpi,
 	va_end(args_copy);
 
 	buf = g_malloc0(len + 2);
-	g_vsprintf(buf, format, args);
+	g_vsnprintf(buf, len + 2, format, args);
 	if (buf[len - 1] != '\n')
 		buf[len] = '\n';
 
@@ -1390,7 +1415,7 @@ SR_PRIV int sr_scpi_close(struct sr_scpi_dev_inst *scpi)
 	int ret;
 
 	g_mutex_lock(&scpi->scpi_mutex);
-	ret = scpi->close(scpi);
+	ret = scpi->close_dev(scpi);
 	g_mutex_unlock(&scpi->scpi_mutex);
 	g_mutex_clear(&scpi->scpi_mutex);
 
@@ -1841,9 +1866,18 @@ SR_PRIV int sr_scpi_cmd(const struct sr_dev_inst *sdi,
 			g_strcmp0(channel_name, scpi->actual_channel_name)) {
 		g_free(scpi->actual_channel_name);
 		scpi->actual_channel_name = g_strdup(channel_name);
-		ret = scpi_send_variadic(scpi, channel_cmd, (va_list){...});
-		if (ret != SR_OK)
+		/*
+		 * channel_cmd carries no format arguments of its own; wrap it
+		 * in a va_start/va_end pair over the variadic parameter so the
+		 * caller's arguments remain untouched for the main cmd below.
+		 */
+		va_start(args, command);
+		ret = scpi_send_variadic(scpi, channel_cmd, args);
+		va_end(args);
+		if (ret != SR_OK) {
+			g_mutex_unlock(&scpi->scpi_mutex);
 			return ret;
+		}
 	}
 
 	va_start(args, command);

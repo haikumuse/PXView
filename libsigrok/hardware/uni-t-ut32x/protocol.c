@@ -155,9 +155,6 @@ static void process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	GString *spew;
 	float temp;
 	gboolean is_valid;
@@ -186,18 +183,20 @@ static void process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 
 	if (is_valid) {
 		memset(&packet, 0, sizeof(packet));
-		sr_analog_init(&analog, &encoding, &meaning, &spec, 1);
-		analog.meaning->mq = SR_MQ_TEMPERATURE;
-		analog.meaning->mqflags = 0;
+		memset(&analog, 0, sizeof(analog));
+		analog.unit_bits = 32; /* float */
+		analog.unit_pitch = 0;
+		analog.mq = SR_MQ_TEMPERATURE;
+		analog.mqflags = 0;
 		switch (pkt[5] - '0') {
 		case 1:
-			analog.meaning->unit = SR_UNIT_CELSIUS;
+			analog.unit = SR_UNIT_CELSIUS;
 			break;
 		case 2:
-			analog.meaning->unit = SR_UNIT_FAHRENHEIT;
+			analog.unit = SR_UNIT_FAHRENHEIT;
 			break;
 		case 3:
-			analog.meaning->unit = SR_UNIT_KELVIN;
+			analog.unit = SR_UNIT_KELVIN;
 			break;
 		default:
 			/* We can still pass on the measurement, whatever it is. */
@@ -206,17 +205,17 @@ static void process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 		switch (pkt[13] - '0') {
 		case 0:
 			/* Channel T1. */
-			analog.meaning->channels = g_slist_append(NULL, g_slist_nth_data(sdi->channels, 0));
+			analog.probes = g_slist_append(NULL, g_slist_nth_data(sdi->channels, 0));
 			break;
 		case 1:
 			/* Channel T2. */
-			analog.meaning->channels = g_slist_append(NULL, g_slist_nth_data(sdi->channels, 1));
+			analog.probes = g_slist_append(NULL, g_slist_nth_data(sdi->channels, 1));
 			break;
 		case 2:
 		case 3:
 			/* Channel T1-T2. */
-			analog.meaning->channels = g_slist_append(NULL, g_slist_nth_data(sdi->channels, 2));
-			analog.meaning->mqflags |= SR_MQFLAG_RELATIVE;
+			analog.probes = g_slist_append(NULL, g_slist_nth_data(sdi->channels, 2));
+			analog.mqflags |= SR_MQFLAG_RELATIVE;
 			break;
 		default:
 			sr_err("Unknown channel 0x%.2x.", pkt[13]);
@@ -228,7 +227,7 @@ static void process_packet(struct sr_dev_inst *sdi, uint8_t *pkt, size_t len)
 			packet.type = SR_DF_ANALOG;
 			packet.payload = &analog;
 			sr_session_send(sdi, &packet);
-			g_slist_free(analog.meaning->channels);
+			g_slist_free(analog.probes);
 		}
 	}
 

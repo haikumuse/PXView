@@ -143,7 +143,6 @@ SR_PRIV int hmo_scope_state_get(struct sr_dev_inst *sdi);
 SR_PRIV int hmo_update_sample_rate(const struct sr_dev_inst *sdi);
 
 /* Frame begin/end helpers (PXView compat layer does not provide these). */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 #endif

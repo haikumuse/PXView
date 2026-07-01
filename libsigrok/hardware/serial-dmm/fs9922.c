@@ -25,7 +25,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <glib.h>
-#include "libsigrok-internal.h"
+#include "dmm_parsers.h"
 
 #define LOG_PREFIX "fs9922"
 
@@ -239,64 +239,64 @@ static void handle_flags(struct sr_datafeed_analog *analog, float *floatval,
 	/* Measurement modes */
 	if (info->is_volt || info->is_diode) {
 		/* Note: In "diode mode" both is_diode and is_volt are set. */
-		analog->meaning->mq = SR_MQ_VOLTAGE;
-		analog->meaning->unit = SR_UNIT_VOLT;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
 	}
 	if (info->is_ampere) {
-		analog->meaning->mq = SR_MQ_CURRENT;
-		analog->meaning->unit = SR_UNIT_AMPERE;
+		analog->mq = SR_MQ_CURRENT;
+		analog->unit = SR_UNIT_AMPERE;
 	}
 	if (info->is_ohm) {
-		analog->meaning->mq = SR_MQ_RESISTANCE;
-		analog->meaning->unit = SR_UNIT_OHM;
+		analog->mq = SR_MQ_RESISTANCE;
+		analog->unit = SR_UNIT_OHM;
 	}
 	if (info->is_hfe) {
-		analog->meaning->mq = SR_MQ_GAIN;
-		analog->meaning->unit = SR_UNIT_UNITLESS;
+		analog->mq = SR_MQ_GAIN;
+		analog->unit = SR_UNIT_UNITLESS;
 	}
 	if (info->is_hertz) {
-		analog->meaning->mq = SR_MQ_FREQUENCY;
-		analog->meaning->unit = SR_UNIT_HERTZ;
+		analog->mq = SR_MQ_FREQUENCY;
+		analog->unit = SR_UNIT_HERTZ;
 	}
 	if (info->is_farad) {
-		analog->meaning->mq = SR_MQ_CAPACITANCE;
-		analog->meaning->unit = SR_UNIT_FARAD;
+		analog->mq = SR_MQ_CAPACITANCE;
+		analog->unit = SR_UNIT_FARAD;
 	}
 	if (info->is_celsius) {
-		analog->meaning->mq = SR_MQ_TEMPERATURE;
-		analog->meaning->unit = SR_UNIT_CELSIUS;
+		analog->mq = SR_MQ_TEMPERATURE;
+		analog->unit = SR_UNIT_CELSIUS;
 	}
 	if (info->is_fahrenheit) {
-		analog->meaning->mq = SR_MQ_TEMPERATURE;
-		analog->meaning->unit = SR_UNIT_FAHRENHEIT;
+		analog->mq = SR_MQ_TEMPERATURE;
+		analog->unit = SR_UNIT_FAHRENHEIT;
 	}
 	if (info->is_beep) {
-		analog->meaning->mq = SR_MQ_CONTINUITY;
-		analog->meaning->unit = SR_UNIT_BOOLEAN;
+		analog->mq = SR_MQ_CONTINUITY;
+		analog->unit = SR_UNIT_BOOLEAN;
 		*floatval = (*floatval == INFINITY) ? 0.0 : 1.0;
 	}
 	if (info->is_percent) {
-		analog->meaning->mq = SR_MQ_DUTY_CYCLE;
-		analog->meaning->unit = SR_UNIT_PERCENTAGE;
+		analog->mq = SR_MQ_DUTY_CYCLE;
+		analog->unit = SR_UNIT_PERCENTAGE;
 	}
 
 	/* Measurement related flags */
 	if (info->is_ac)
-		analog->meaning->mqflags |= SR_MQFLAG_AC;
+		analog->mqflags |= SR_MQFLAG_AC;
 	if (info->is_dc)
-		analog->meaning->mqflags |= SR_MQFLAG_DC;
+		analog->mqflags |= SR_MQFLAG_DC;
 	if (info->is_auto)
-		analog->meaning->mqflags |= SR_MQFLAG_AUTORANGE;
+		analog->mqflags |= SR_MQFLAG_AUTORANGE;
 	if (info->is_diode)
-		analog->meaning->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
+		analog->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
 	if (info->is_hold)
-		analog->meaning->mqflags |= SR_MQFLAG_HOLD;
+		analog->mqflags |= SR_MQFLAG_HOLD;
 	if (info->is_max)
-		analog->meaning->mqflags |= SR_MQFLAG_MAX;
+		analog->mqflags |= SR_MQFLAG_MAX;
 	if (info->is_min)
-		analog->meaning->mqflags |= SR_MQFLAG_MIN;
+		analog->mqflags |= SR_MQFLAG_MIN;
 	if (info->is_rel)
-		analog->meaning->mqflags |= SR_MQFLAG_RELATIVE;
+		analog->mqflags |= SR_MQFLAG_RELATIVE;
 
 	/* Other flags */
 	if (info->is_apo)
@@ -367,8 +367,8 @@ SR_PRIV int sr_fs9922_parse(const uint8_t *buf, float *floatval,
 	parse_flags(buf, info_local);
 	handle_flags(analog, floatval, &exponent, info_local);
 
-	analog->encoding->digits = -exponent;
-	analog->spec->spec_digits = -exponent;
+	(void)(-exponent);
+	(void)(-exponent);
 
 	return SR_OK;
 }
@@ -381,8 +381,8 @@ SR_PRIV void sr_fs9922_z1_diode(struct sr_datafeed_analog *analog, void *info)
 
 	/* User-defined z1 flag means "diode mode". */
 	if (info_local->is_z1) {
-		analog->meaning->mq = SR_MQ_VOLTAGE;
-		analog->meaning->unit = SR_UNIT_VOLT;
-		analog->meaning->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
+		analog->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
 	}
 }

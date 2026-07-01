@@ -65,18 +65,18 @@ static void parse_packet(const uint8_t *buf, float *floatval,
 	/* The value on the display always has one digit after the comma. */
 	*floatval /= 10;
 
-	analog->meaning->mq = SR_MQ_SOUND_PRESSURE_LEVEL;
-	analog->meaning->unit = SR_UNIT_DECIBEL_SPL;
+	analog->mq = SR_MQ_SOUND_PRESSURE_LEVEL;
+	analog->unit = SR_UNIT_DECIBEL_SPL;
 
 	if (is_a)
-		analog->meaning->mqflags |= SR_MQFLAG_SPL_FREQ_WEIGHT_A;
+		analog->mqflags |= SR_MQFLAG_SPL_FREQ_WEIGHT_A;
 	else
-		analog->meaning->mqflags |= SR_MQFLAG_SPL_FREQ_WEIGHT_C;
+		analog->mqflags |= SR_MQFLAG_SPL_FREQ_WEIGHT_C;
 
 	if (is_fast)
-		analog->meaning->mqflags |= SR_MQFLAG_SPL_TIME_WEIGHT_F;
+		analog->mqflags |= SR_MQFLAG_SPL_TIME_WEIGHT_F;
 	else
-		analog->meaning->mqflags |= SR_MQFLAG_SPL_TIME_WEIGHT_S;
+		analog->mqflags |= SR_MQFLAG_SPL_TIME_WEIGHT_S;
 
 	/* TODO: How to handle level? */
 	(void)level;
@@ -86,20 +86,18 @@ static void decode_packet(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct dev_context *devc;
 	float floatval;
 
 	devc = sdi->priv;
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 1);
-
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
 	parse_packet(devc->buf, &floatval, &analog);
 
 	/* Send a sample packet with one analog value. */
-	analog.meaning->channels = sdi->channels;
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
 	analog.data = &floatval;
 	packet.type = SR_DF_ANALOG;

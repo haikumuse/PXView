@@ -312,17 +312,6 @@ SR_PRIV int gwinstek_gds_800_receive_data(int fd, int revents, void *cb_data)
  * (sdi, prefix) signature, but standard sigrok drivers call the frame
  * begin/end variants with a single (sdi) argument. These local stubs
  * emit the SR_DF_FRAME_BEGIN/END packets directly. */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-
-	return SR_OK;
-}
-
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;

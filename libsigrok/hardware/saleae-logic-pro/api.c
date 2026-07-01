@@ -380,12 +380,11 @@ static void dev_acquisition_abort(const struct sr_dev_inst *sdi)
 	}
 }
 
-static int dev_acquisition_handle(int fd, int revents, void *cb_data)
+static int dev_acquisition_handle(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	struct sr_dev_inst *sdi = cb_data;
 	struct sr_dev_driver *di = sdi->driver;
 	struct compat_drv_context *drvc = di->priv;
-	struct timeval tv = ALL_ZERO;
+	struct timeval tv = { 0 };
 
 	(void)fd;
 
@@ -436,7 +435,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 		devc->submitted_transfers++;
 	}
 
-	usb_source_add(drvc->sr_ctx, BUF_TIMEOUT, dev_acquisition_handle, (void *)sdi);
+	usb_source_add(drvc->sr_ctx, BUF_TIMEOUT, dev_acquisition_handle, sdi);
 
 	std_session_send_df_header(sdi, LOG_PREFIX);
 

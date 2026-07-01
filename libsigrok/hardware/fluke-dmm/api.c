@@ -140,7 +140,7 @@ static GSList *fluke_scan(struct sr_dev_driver *di, const char *conn,
 	if (!devices)
 		sr_serial_dev_inst_free(serial);
 
-	return std_scan_complete(di, devices);
+	return std_scan_complete_compat(di, devices);
 }
 
 static GSList *scan(struct sr_dev_driver *di, GSList *options)
@@ -208,11 +208,11 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 	devc = sdi->priv;
 
 	sr_sw_limits_acquisition_start(&devc->limits);
-	std_session_send_df_header(sdi, NULL);
+	std_session_send_df_header(sdi, LOG_PREFIX);
 
 	serial = sdi->conn;
 	serial_source_add(serial, G_IO_IN, 50,
-			fluke_receive_data, (void *)sdi);
+			fluke_receive_data, sdi);
 
 	if (serial_write_blocking(serial, "QM\r", 3, SERIAL_WRITE_TIMEOUT_MS) < 0) {
 		sr_err("Unable to send QM.");

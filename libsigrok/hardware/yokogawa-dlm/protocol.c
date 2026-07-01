@@ -1194,22 +1194,7 @@ fail:
 	return FALSE;
 }
 
-/* Frame begin/end stub implementations for compat layer.
- * PXView's compat layer provides std_session_send_df_header/end (with a
- * prefix argument) but not the frame begin/end variants. These local
- * implementations send SR_DF_FRAME_BEGIN/END packets directly. */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi)
-{
-	struct sr_datafeed_packet packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.type = SR_DF_FRAME_BEGIN;
-	packet.status = SR_PKT_OK;
-	packet.payload = NULL;
-	sr_session_send(sdi, &packet);
-	return SR_OK;
-}
-
+/* Frame end stub kept locally; frame_begin is canonical in compat_helpers.c. */
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
 {
 	struct sr_datafeed_packet packet;

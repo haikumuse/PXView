@@ -21,6 +21,28 @@
 #include "analyzer.h"
 #include "protocol.h"
 
+/*
+ * The compat layer's std_str_idx() has a different signature (it is a
+ * config-get helper taking sdi/key/data). Standard sigrok's std_str_idx(),
+ * as used in config_set(), takes (data, strs, count) and returns the
+ * index of the matching string. Provide a local replacement here.
+ */
+static int local_std_str_idx(GVariant *data, const char *const strs[], size_t count)
+{
+	const char *str;
+	size_t i;
+
+	if (!data || !strs || count == 0)
+		return -1;
+
+	str = g_variant_get_string(data, NULL);
+	for (i = 0; i < count; i++) {
+		if (strcmp(str, strs[i]) == 0)
+			return (int)i;
+	}
+	return -1;
+}
+
 #define USB_INTERFACE			0
 #define USB_CONFIGURATION		1
 #define NUM_TRIGGER_STAGES		4
@@ -427,7 +449,7 @@ static int config_set(uint32_t key, GVariant *data,
 		analyzer_set_ext_clock(devc->use_ext_clock, (ext_clock_edge_t)devc->ext_clock_edge);
 		break;
 	case SR_CONF_CLOCK_EDGE:
-		idx = std_str_idx(data, ARRAY_AND_SIZE(ext_clock_edges));
+		idx = local_std_str_idx(data, ARRAY_AND_SIZE(ext_clock_edges));
 		if (idx < 0)
 			return SR_ERR_ARG;
 		devc->ext_clock_edge = (ext_clock_edge_t)idx;

@@ -58,4 +58,16 @@ SR_PRIV int saleae_logic_pro_start(const struct sr_dev_inst *sdi);
 SR_PRIV int saleae_logic_pro_stop(const struct sr_dev_inst *sdi);
 SR_PRIV void LIBUSB_CALL saleae_logic_pro_receive_data(struct libusb_transfer *transfer);
 
+/* usb_source_remove compat - PXView does not expose this. The single ctx
+ * argument is unused (matches the 1-arg call form used in this driver). */
+#define usb_source_remove(ctx) sr_session_source_remove(-1)
+
+/* sr_resource compat stubs - PXView does not have the sr_resource API.
+ * Local replacement for sr_resource_load() which reads an entire firmware
+ * file (located under DS_RES_PATH) into a malloc'd buffer. Same approach
+ * as saleae-logic16's sr_resource_open/read/close stubs. */
+#define SR_RESOURCE_FIRMWARE 1
+SR_PRIV void *sr_resource_load(struct sr_context *ctx, int type,
+	const char *name, size_t *size, size_t max_size);
+
 #endif

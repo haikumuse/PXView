@@ -518,57 +518,63 @@ static int la_cfg_fpga_done(const struct sr_usb_dev_inst *usb, unsigned int addr
 /*
  * Load a bitstream file into memory. Returns a newly allocated array
  * consisting of a 32-bit length field followed by the bitstream data.
+ *
+ * PXView's libsigrok does not provide the sr_resource_* API, so the
+ * firmware file is read directly via g_file_get_contents(), resolving
+ * the name against the DS_RES_PATH firmware resource directory.
  */
 static unsigned char *load_bitstream(struct sr_context *ctx,
 					const char *name, int *length_p)
 {
-	struct sr_resource fw;
-	unsigned char *stream, *fw_data;
-	ssize_t length, count;
+	gchar *raw_data, *path;
+	unsigned char *fw_data;
+	gsize raw_len;
+	ssize_t length;
 
-	if (sr_resource_open(ctx, &fw, SR_RESOURCE_FIRMWARE, name) != SR_OK)
+	(void)ctx;
+
+	if (DS_RES_PATH[0] != '\0')
+		path = g_strdup_printf("%s/%s", DS_RES_PATH, name);
+	else
+		path = g_strdup(name);
+
+	if (!path) {
+		sr_err("Failed to allocate bitstream path buffer.");
 		return NULL;
+	}
 
-	if (fw.size <= BITSTREAM_HEADER_SIZE || fw.size > BITSTREAM_MAX_SIZE) {
+	if (!g_file_get_contents(path, &raw_data, &raw_len, NULL)) {
+		sr_err("Failed to read firmware file '%s'.", path);
+		g_free(path);
+		return NULL;
+	}
+	g_free(path);
+
+	if (raw_len <= BITSTREAM_HEADER_SIZE || raw_len > BITSTREAM_MAX_SIZE) {
 		sr_err("Refusing to load bitstream of unreasonable size "
-			   "(%" PRIu64 " bytes).", fw.size);
-		sr_resource_close(ctx, &fw);
+			   "(%" G_GSIZE_FORMAT " bytes).", raw_len);
+		g_free(raw_data);
 		return NULL;
 	}
 
-	stream = g_try_malloc(fw.size);
-	if (!stream) {
-		sr_err("Failed to allocate bitstream buffer.");
-		sr_resource_close(ctx, &fw);
-		return NULL;
-	}
-
-	count = sr_resource_read(ctx, &fw, stream, fw.size);
-	sr_resource_close(ctx, &fw);
-
-	if (count != (ssize_t)fw.size) {
-		sr_err("Failed to read bitstream '%s'.", name);
-		g_free(stream);
-		return NULL;
-	}
-
-	if (RB32(stream + BITSTREAM_HEADER_SIZE) != XILINX_SYNC_WORD) {
+	if (RB32((const unsigned char *)raw_data + BITSTREAM_HEADER_SIZE) != XILINX_SYNC_WORD) {
 		sr_err("Invalid bitstream signature.");
-		g_free(stream);
+		g_free(raw_data);
 		return NULL;
 	}
 
-	length = fw.size - BITSTREAM_HEADER_SIZE + 0x100;
+	length = raw_len - BITSTREAM_HEADER_SIZE + 0x100;
 	fw_data = g_try_malloc(length);
 	if (!fw_data) {
 		sr_err("Failed to allocate bitstream aligned buffer.");
+		g_free(raw_data);
 		return NULL;
 	}
 
 	memset(fw_data, 0xFF, 0x100);
-	memcpy(fw_data + 0x100, stream + BITSTREAM_HEADER_SIZE,
-			fw.size - BITSTREAM_HEADER_SIZE);
-	g_free(stream);
+	memcpy(fw_data + 0x100, raw_data + BITSTREAM_HEADER_SIZE,
+			raw_len - BITSTREAM_HEADER_SIZE);
+	g_free(raw_data);
 
 	*length_p = length;
 

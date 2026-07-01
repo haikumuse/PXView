@@ -132,7 +132,6 @@ SR_PRIV int fx2lafw_start_acquisition(const struct sr_dev_inst *sdi);
 SR_PRIV void fx2lafw_abort_acquisition(struct dev_context *devc);
 
 /* Frame begin/end compat stubs */
-SR_PRIV int std_session_send_df_frame_begin(const struct sr_dev_inst *sdi);
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 /* usb_source_remove compat */

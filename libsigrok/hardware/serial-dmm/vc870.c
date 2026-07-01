@@ -21,7 +21,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <glib.h>
-#include "libsigrok-internal.h"
+#include "dmm_parsers.h"
 
 #define LOG_PREFIX "vc870"
 
@@ -283,95 +283,95 @@ static void handle_flags(struct sr_datafeed_analog *analog,
 
 	/* Measurement modes */
 	if (info->is_voltage) {
-		analog->meaning->mq = SR_MQ_VOLTAGE;
-		analog->meaning->unit = SR_UNIT_VOLT;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
 	}
 	if (info->is_current) {
-		analog->meaning->mq = SR_MQ_CURRENT;
-		analog->meaning->unit = SR_UNIT_AMPERE;
+		analog->mq = SR_MQ_CURRENT;
+		analog->unit = SR_UNIT_AMPERE;
 	}
 	if (info->is_resistance) {
-		analog->meaning->mq = SR_MQ_RESISTANCE;
-		analog->meaning->unit = SR_UNIT_OHM;
+		analog->mq = SR_MQ_RESISTANCE;
+		analog->unit = SR_UNIT_OHM;
 	}
 	if (info->is_frequency) {
-		analog->meaning->mq = SR_MQ_FREQUENCY;
-		analog->meaning->unit = SR_UNIT_HERTZ;
+		analog->mq = SR_MQ_FREQUENCY;
+		analog->unit = SR_UNIT_HERTZ;
 	}
 	if (info->is_capacitance) {
-		analog->meaning->mq = SR_MQ_CAPACITANCE;
-		analog->meaning->unit = SR_UNIT_FARAD;
+		analog->mq = SR_MQ_CAPACITANCE;
+		analog->unit = SR_UNIT_FARAD;
 	}
 	if (info->is_temperature) {
-		analog->meaning->mq = SR_MQ_TEMPERATURE;
-		analog->meaning->unit = SR_UNIT_CELSIUS;
+		analog->mq = SR_MQ_TEMPERATURE;
+		analog->unit = SR_UNIT_CELSIUS;
 		/* TODO: Handle Fahrenheit in auxiliary display. */
-		// analog->meaning->unit = SR_UNIT_FAHRENHEIT;
+		// analog->unit = SR_UNIT_FAHRENHEIT;
 	}
 	if (info->is_continuity) {
-		analog->meaning->mq = SR_MQ_CONTINUITY;
-		analog->meaning->unit = SR_UNIT_BOOLEAN;
+		analog->mq = SR_MQ_CONTINUITY;
+		analog->unit = SR_UNIT_BOOLEAN;
 		/* Vendor docs: "< 20 Ohm acoustic" */
 		*floatval = (*floatval < 0.0 || *floatval > 20.0) ? 0.0 : 1.0;
 	}
 	if (info->is_diode) {
-		analog->meaning->mq = SR_MQ_VOLTAGE;
-		analog->meaning->unit = SR_UNIT_VOLT;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
 	}
 	if (info->is_loop_current) {
 		/* 4mA = 0%, 20mA = 100% */
-		analog->meaning->mq = SR_MQ_CURRENT;
-		analog->meaning->unit = SR_UNIT_PERCENTAGE;
+		analog->mq = SR_MQ_CURRENT;
+		analog->unit = SR_UNIT_PERCENTAGE;
 	}
 	if (info->is_power) {
-		analog->meaning->mq = SR_MQ_POWER;
-		analog->meaning->unit = SR_UNIT_WATT;
+		analog->mq = SR_MQ_POWER;
+		analog->unit = SR_UNIT_WATT;
 	}
 	if (info->is_power_apparent_power) {
-		analog->meaning->mq = SR_MQ_POWER;
-		analog->meaning->unit = SR_UNIT_WATT;
+		analog->mq = SR_MQ_POWER;
+		analog->unit = SR_UNIT_WATT;
 		/* TODO: Handle apparent power. */
-		// analog->meaning->mq = SR_MQ_APPARENT_POWER;
-		// analog->meaning->unit = SR_UNIT_VOLT_AMPERE;
+		// analog->mq = SR_MQ_APPARENT_POWER;
+		// analog->unit = SR_UNIT_VOLT_AMPERE;
 	}
 	if (info->is_power_factor_freq) {
-		analog->meaning->mq = SR_MQ_POWER_FACTOR;
-		analog->meaning->unit = SR_UNIT_UNITLESS;
+		analog->mq = SR_MQ_POWER_FACTOR;
+		analog->unit = SR_UNIT_UNITLESS;
 		/* TODO: Handle frequency. */
-		// analog->meaning->mq = SR_MQ_FREQUENCY;
-		// analog->meaning->unit = SR_UNIT_HERTZ;
+		// analog->mq = SR_MQ_FREQUENCY;
+		// analog->unit = SR_UNIT_HERTZ;
 	}
 	if (info->is_v_a_rms_value) {
-		analog->meaning->mqflags |= SR_MQFLAG_RMS;
-		analog->meaning->mq = SR_MQ_VOLTAGE;
-		analog->meaning->unit = SR_UNIT_VOLT;
+		analog->mqflags |= SR_MQFLAG_RMS;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
 		/* TODO: Handle effective current value */
-		// analog->meaning->mq = SR_MQ_CURRENT;
-		// analog->meaning->unit = SR_UNIT_AMPERE;
+		// analog->mq = SR_MQ_CURRENT;
+		// analog->unit = SR_UNIT_AMPERE;
 	}
 
 	/* Measurement related flags */
 	if (info->is_ac)
-		analog->meaning->mqflags |= SR_MQFLAG_AC;
+		analog->mqflags |= SR_MQFLAG_AC;
 	if (info->is_dc)
-		analog->meaning->mqflags |= SR_MQFLAG_DC;
+		analog->mqflags |= SR_MQFLAG_DC;
 	if (info->is_auto)
-		analog->meaning->mqflags |= SR_MQFLAG_AUTORANGE;
+		analog->mqflags |= SR_MQFLAG_AUTORANGE;
 	if (info->is_diode)
-		analog->meaning->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
+		analog->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
 	if (info->is_hold)
 		/*
 		 * Note: HOLD only affects the number displayed on the LCD,
 		 * but not the value sent via the protocol! It also does not
 		 * affect the bargraph on the LCD.
 		 */
-		analog->meaning->mqflags |= SR_MQFLAG_HOLD;
+		analog->mqflags |= SR_MQFLAG_HOLD;
 	if (info->is_max)
-		analog->meaning->mqflags |= SR_MQFLAG_MAX;
+		analog->mqflags |= SR_MQFLAG_MAX;
 	if (info->is_min)
-		analog->meaning->mqflags |= SR_MQFLAG_MIN;
+		analog->mqflags |= SR_MQFLAG_MIN;
 	if (info->is_rel)
-		analog->meaning->mqflags |= SR_MQFLAG_RELATIVE;
+		analog->mqflags |= SR_MQFLAG_RELATIVE;
 
 	/* Other flags */
 	if (info->is_batt)
@@ -426,8 +426,8 @@ SR_PRIV int sr_vc870_parse(const uint8_t *buf, float *floatval,
 
 	handle_flags(analog, floatval, info_local);
 
-	analog->encoding->digits = -exponent;
-	analog->spec->spec_digits = -exponent;
+	(void)(-exponent);
+	(void)(-exponent);
 
 	return SR_OK;
 }

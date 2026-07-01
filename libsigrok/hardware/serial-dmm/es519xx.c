@@ -28,7 +28,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <glib.h>
-#include "libsigrok-internal.h"
+#include "dmm_parsers.h"
 
 #define LOG_PREFIX "es519xx"
 
@@ -447,73 +447,73 @@ static void handle_flags(struct sr_datafeed_analog *analog,
 
 	/* Measurement modes */
 	if (info->is_voltage) {
-		analog->meaning->mq = SR_MQ_VOLTAGE;
-		analog->meaning->unit = SR_UNIT_VOLT;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
 	}
 	if (info->is_current) {
-		analog->meaning->mq = SR_MQ_CURRENT;
-		analog->meaning->unit = SR_UNIT_AMPERE;
+		analog->mq = SR_MQ_CURRENT;
+		analog->unit = SR_UNIT_AMPERE;
 	}
 	if (info->is_resistance) {
-		analog->meaning->mq = SR_MQ_RESISTANCE;
-		analog->meaning->unit = SR_UNIT_OHM;
+		analog->mq = SR_MQ_RESISTANCE;
+		analog->unit = SR_UNIT_OHM;
 	}
 	if (info->is_frequency) {
-		analog->meaning->mq = SR_MQ_FREQUENCY;
-		analog->meaning->unit = SR_UNIT_HERTZ;
+		analog->mq = SR_MQ_FREQUENCY;
+		analog->unit = SR_UNIT_HERTZ;
 	}
 	if (info->is_capacitance) {
-		analog->meaning->mq = SR_MQ_CAPACITANCE;
-		analog->meaning->unit = SR_UNIT_FARAD;
+		analog->mq = SR_MQ_CAPACITANCE;
+		analog->unit = SR_UNIT_FARAD;
 	}
 	if (info->is_temperature && info->is_celsius) {
-		analog->meaning->mq = SR_MQ_TEMPERATURE;
-		analog->meaning->unit = SR_UNIT_CELSIUS;
+		analog->mq = SR_MQ_TEMPERATURE;
+		analog->unit = SR_UNIT_CELSIUS;
 	}
 	if (info->is_temperature && info->is_fahrenheit) {
-		analog->meaning->mq = SR_MQ_TEMPERATURE;
-		analog->meaning->unit = SR_UNIT_FAHRENHEIT;
+		analog->mq = SR_MQ_TEMPERATURE;
+		analog->unit = SR_UNIT_FAHRENHEIT;
 	}
 	if (info->is_continuity) {
-		analog->meaning->mq = SR_MQ_CONTINUITY;
-		analog->meaning->unit = SR_UNIT_BOOLEAN;
+		analog->mq = SR_MQ_CONTINUITY;
+		analog->unit = SR_UNIT_BOOLEAN;
 		*floatval = (*floatval < 0.0 || *floatval > 25.0) ? 0.0 : 1.0;
 	}
 	if (info->is_diode) {
-		analog->meaning->mq = SR_MQ_VOLTAGE;
-		analog->meaning->unit = SR_UNIT_VOLT;
+		analog->mq = SR_MQ_VOLTAGE;
+		analog->unit = SR_UNIT_VOLT;
 	}
 	if (info->is_rpm) {
-		analog->meaning->mq = SR_MQ_FREQUENCY;
-		analog->meaning->unit = SR_UNIT_REVOLUTIONS_PER_MINUTE;
+		analog->mq = SR_MQ_FREQUENCY;
+		analog->unit = SR_UNIT_REVOLUTIONS_PER_MINUTE;
 	}
 	if (info->is_duty_cycle) {
-		analog->meaning->mq = SR_MQ_DUTY_CYCLE;
-		analog->meaning->unit = SR_UNIT_PERCENTAGE;
+		analog->mq = SR_MQ_DUTY_CYCLE;
+		analog->unit = SR_UNIT_PERCENTAGE;
 	}
 
 	/* Measurement related flags */
 	if (info->is_ac)
-		analog->meaning->mqflags |= SR_MQFLAG_AC;
+		analog->mqflags |= SR_MQFLAG_AC;
 	if (info->is_dc)
-		analog->meaning->mqflags |= SR_MQFLAG_DC;
+		analog->mqflags |= SR_MQFLAG_DC;
 	if (info->is_auto)
-		analog->meaning->mqflags |= SR_MQFLAG_AUTORANGE;
+		analog->mqflags |= SR_MQFLAG_AUTORANGE;
 	if (info->is_diode)
-		analog->meaning->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
+		analog->mqflags |= SR_MQFLAG_DIODE | SR_MQFLAG_DC;
 	if (info->is_hold)
 		/*
 		* Note: HOLD only affects the number displayed on the LCD,
 		* but not the value sent via the protocol! It also does not
 		* affect the bargraph on the LCD.
 		*/
-		analog->meaning->mqflags |= SR_MQFLAG_HOLD;
+		analog->mqflags |= SR_MQFLAG_HOLD;
 	if (info->is_max)
-		analog->meaning->mqflags |= SR_MQFLAG_MAX;
+		analog->mqflags |= SR_MQFLAG_MAX;
 	if (info->is_min)
-		analog->meaning->mqflags |= SR_MQFLAG_MIN;
+		analog->mqflags |= SR_MQFLAG_MIN;
 	if (info->is_rel)
-		analog->meaning->mqflags |= SR_MQFLAG_RELATIVE;
+		analog->mqflags |= SR_MQFLAG_RELATIVE;
 
 	/* Other flags */
 	if (info->is_judge)
@@ -613,8 +613,8 @@ static int sr_es519xx_parse(const uint8_t *buf, float *floatval,
 	if ((ret = parse_range(buf[0], floatval, info)) != SR_OK)
 		return ret;
 
-	analog->encoding->digits  = info->digits;
-	analog->spec->spec_digits = info->digits;
+	(void)(info->digits);
+	(void)(info->digits);
 
 	handle_flags(analog, floatval, info);
 	return SR_OK;

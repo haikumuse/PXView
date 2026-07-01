@@ -148,6 +148,12 @@ extern SR_PRIV struct sr_dev_driver flukedmm_driver_info;
 #ifdef HAVE_DRIVER_AGILENT_DMM
 extern SR_PRIV struct sr_dev_driver agdmm_driver_info;
 #endif
+#ifdef HAVE_DRIVER_NORMA_DMM
+extern SR_PRIV struct sr_dev_driver norma_dmm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SERIAL_DMM
+extern SR_PRIV struct sr_dev_driver serial_dmm_driver_info;
+#endif
 #ifdef HAVE_DRIVER_APPA_55II
 extern SR_PRIV struct sr_dev_driver appa_55ii_driver_info;
 #endif
@@ -160,6 +166,9 @@ extern SR_PRIV struct sr_dev_driver rohde_schwarz_sme_0x_driver_info;
 #ifdef HAVE_DRIVER_SIGLENT_SDS
 extern SR_PRIV struct sr_dev_driver siglent_sds_driver_info;
 #endif
+#ifdef HAVE_DRIVER_RIGOL_DG
+extern SR_PRIV struct sr_dev_driver rigol_dg_driver_info;
+#endif
 #ifdef HAVE_DRIVER_OPENBENCH_LOGIC_SNIFFER
 extern SR_PRIV struct sr_dev_driver ols_driver_info;
 #endif
@@ -168,6 +177,12 @@ extern SR_PRIV struct sr_dev_driver ikalogic_scanaplus_driver_info;
 #endif
 #ifdef HAVE_DRIVER_IPDBG_LA
 extern SR_PRIV struct sr_dev_driver ipdbg_la_driver_info;
+#endif
+#ifdef HAVE_DRIVER_PIPISTRELLO_OLS
+extern SR_PRIV struct sr_dev_driver pipistrello_ols_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SIPEED_SLOGIC_ANALYZER
+extern SR_PRIV struct sr_dev_driver sipeed_slogic_analyzer_driver_info;
 #endif
 #ifdef HAVE_DRIVER_LECROY_LOGICSTUDIO
 extern SR_PRIV struct sr_dev_driver lecroy_logicstudio_driver_info;
@@ -205,6 +220,12 @@ extern SR_PRIV struct sr_dev_driver motech_lps_30x_driver_info;
 #ifdef HAVE_DRIVER_RDTECH_DPS
 extern SR_PRIV struct sr_dev_driver rdtech_dps_driver_info;
 extern SR_PRIV struct sr_dev_driver rdtech_rd_driver_info;
+#endif
+#ifdef HAVE_DRIVER_RDTECH_TC
+extern SR_PRIV struct sr_dev_driver rdtech_tc_driver_info;
+#endif
+#ifdef HAVE_DRIVER_RDTECH_UM
+extern SR_PRIV struct sr_dev_driver rdtech_um_driver_info;
 #endif
 #ifdef HAVE_DRIVER_ITECH_IT8500
 extern SR_PRIV struct sr_dev_driver itech_it8500_driver_info;
@@ -321,6 +342,12 @@ static struct sr_dev_driver *drivers_list[] = {
 #ifdef HAVE_DRIVER_AGILENT_DMM
     &agdmm_driver_info,
 #endif
+#ifdef HAVE_DRIVER_NORMA_DMM
+    &norma_dmm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SERIAL_DMM
+    &serial_dmm_driver_info,
+#endif
 #ifdef HAVE_DRIVER_FLUKE_45
     &fluke_45_driver_info,
 #endif
@@ -347,6 +374,12 @@ static struct sr_dev_driver *drivers_list[] = {
 #endif
 #ifdef HAVE_DRIVER_IPDBG_LA
     &ipdbg_la_driver_info,
+#endif
+#ifdef HAVE_DRIVER_PIPISTRELLO_OLS
+    &pipistrello_ols_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SIPEED_SLOGIC_ANALYZER
+    &sipeed_slogic_analyzer_driver_info,
 #endif
 #ifdef HAVE_DRIVER_LECROY_LOGICSTUDIO
     &lecroy_logicstudio_driver_info,
@@ -384,6 +417,12 @@ static struct sr_dev_driver *drivers_list[] = {
 #ifdef HAVE_DRIVER_RDTECH_DPS
     &rdtech_dps_driver_info,
     &rdtech_rd_driver_info,
+#endif
+#ifdef HAVE_DRIVER_RDTECH_TC
+    &rdtech_tc_driver_info,
+#endif
+#ifdef HAVE_DRIVER_RDTECH_UM
+    &rdtech_um_driver_info,
 #endif
 #ifdef HAVE_DRIVER_ITECH_IT8500
     &itech_it8500_driver_info,

@@ -577,9 +577,6 @@ static int recv_fetc(const struct sr_dev_inst *sdi, GMatchInfo *match)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *prev_chan;
 	float fvalue;
 	const char *s;
@@ -624,19 +621,19 @@ static int recv_fetc(const struct sr_dev_inst *sdi, GMatchInfo *match)
 		g_free(mstr);
 	}
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec,
-	               devc->cur_digits[i] - devc->cur_exponent[i]);
-	analog.meaning->mq = devc->cur_mq[i];
-	analog.meaning->unit = devc->cur_unit[i];
-	analog.meaning->mqflags = devc->cur_mqflags[i];
-	analog.meaning->channels = g_slist_append(NULL, devc->cur_channel);
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
+	analog.mq = devc->cur_mq[i];
+	analog.unit = devc->cur_unit[i];
+	analog.mqflags = devc->cur_mqflags[i];
+	analog.probes = g_slist_append(NULL, devc->cur_channel);
 	analog.num_samples = 1;
 	analog.data = &fvalue;
-	encoding.digits = devc->cur_encoding[i] - devc->cur_exponent[i];
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 
 	sr_sw_limits_update_samples_read(&devc->limits, 1);
 
@@ -984,9 +981,6 @@ static int recv_log(const struct sr_dev_inst *sdi, GMatchInfo *match,
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	char *mstr;
 	unsigned function;
 	int value, negative, overload, exponent, alternate_unit, mq, unit;
@@ -1048,17 +1042,19 @@ static int recv_log(const struct sr_dev_inst *sdi, GMatchInfo *match,
 	else
 		fvalue = negative * value * powf(10, exponent);
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, -exponent);
-	analog.meaning->mq = mq;
-	analog.meaning->unit = unit;
-	analog.meaning->mqflags = mqflags;
-	analog.meaning->channels = g_slist_append(NULL, devc->cur_channel);
+	memset(&analog, 0, sizeof(analog));
+	analog.unit_bits = 32; /* float */
+	analog.unit_pitch = 0;
+	analog.mq = mq;
+	analog.unit = unit;
+	analog.mqflags = mqflags;
+	analog.probes = g_slist_append(NULL, devc->cur_channel);
 	analog.num_samples = 1;
 	analog.data = &fvalue;
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	sr_session_send(sdi, &packet);
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 
 	sr_sw_limits_update_samples_read(&devc->limits, 1);
 	devc->cur_sample++;
