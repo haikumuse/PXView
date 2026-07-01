@@ -312,42 +312,23 @@ SR_PRIV GVariant *std_gvar_min_max_steps_uint64(uint64_t min, uint64_t max,
     const uint64_t steps[], size_t count);
 
 /**
- * Create a GVariant tuple array from string array.
+ * Create a GVariant array of uint64 tuples ("a(tt)") from a uint64_t[][2]
+ * array. Canonical libsigrok signature (libsigrok-internal.h:1942,
+ * std.c:595). Used by SCPI oscilloscope drivers (rigol-ds, siglent-sds,
+ * hameg-hmo, hantek-6xxx, kecheng-kc-330b, ...) to publish their
+ * vdivs/timebases/sample-intervals tables.
  *
- * @param strs Array of string pointers.
- * @param count Number of elements.
+ * The previous PXView compat signature took a string array and produced
+ * "as"; that was a non-canonical mis-naming. Drivers that need a string
+ * array should call std_gvar_array_str() (declared below) instead.
  *
- * @return GVariant containing the tuple array.
+ * @param a Array of uint64_t pairs (a[n][2]).
+ * @param n Number of pairs.
+ *
+ * @return GVariant containing the "a(tt)" tuple array.
  */
-SR_PRIV GVariant *std_gvar_tuple_array(const char *strs[], size_t count);
-
-/**
- * Config get helper for uint64 indexed values.
- *
- * @param sdi The device instance.
- * @param key The config key.
- * @param data Output GVariant.
- * @param vals Array of uint64 values.
- * @param count Number of values.
- *
- * @return SR_OK on success, SR_ERR_ARG on invalid arguments.
- */
-SR_PRIV int std_u64_idx(const struct sr_dev_inst *sdi, uint32_t key,
-    GVariant **data, const uint64_t vals[], size_t count);
-
-/**
- * Config get helper for string indexed values.
- *
- * @param sdi The device instance.
- * @param key The config key.
- * @param data Output GVariant.
- * @param strs Array of string pointers.
- * @param count Number of values.
- *
- * @return SR_OK on success, SR_ERR_ARG on invalid arguments.
- */
-SR_PRIV int std_str_idx(const struct sr_dev_inst *sdi, uint32_t key,
-    GVariant **data, const char *const strs[], size_t count);
+SR_PRIV GVariant *std_gvar_tuple_array(const uint64_t a[][2],
+	unsigned int n);
 
 /**
  * Config get helper for boolean indexed values.
@@ -559,5 +540,290 @@ SR_PRIV int sr_usb_open(libusb_context *usb_ctx, struct sr_usb_dev_inst *usb);
  * @return SR_OK on success, SR_ERR_ARG on invalid argument.
  */
 SR_PRIV int sr_usb_close(struct sr_usb_dev_inst *usb);
+
+/**
+ * @name Standard sigrok log levels
+ *
+ * PXView's libsigrok.h does not define the SR_LOG_* enum (it uses xlog
+ * internally instead). Standard sigrok drivers (kingst-la2016, uni-t-ut181a,
+ * uni-t-ut32x, testo, cem-dt-885x, colead-slm, rdtech-tc, serial-dmm,
+ * hantek-dso) use these constants for conditional debug output, typically
+ * in the form `if (sr_log_loglevel_get() >= SR_LOG_SPEW) { ... }`.
+ *
+ * Defined here with #ifndef guards so that drivers or headers with their
+ * own fallback definitions don't conflict. Canonical values from upstream
+ * libsigrok.h:
+ *   SR_LOG_NONE = 0, SR_LOG_ERR = 1, SR_LOG_WARN = 2,
+ *   SR_LOG_INFO = 3, SR_LOG_DBG = 4, SR_LOG_SPEW = 5
+ */
+#ifndef SR_LOG_NONE
+#define SR_LOG_NONE  0
+#endif
+#ifndef SR_LOG_ERR
+#define SR_LOG_ERR   1
+#endif
+#ifndef SR_LOG_WARN
+#define SR_LOG_WARN  2
+#endif
+#ifndef SR_LOG_INFO
+#define SR_LOG_INFO  3
+#endif
+#ifndef SR_LOG_DBG
+#define SR_LOG_DBG   4
+#endif
+#ifndef SR_LOG_SPEW
+#define SR_LOG_SPEW  5
+#endif
+
+/**
+ * Standard sigrok resource type constants.
+ *
+ * PXView's libsigrok (based on upstream 0.2.0) lacks the sr_resource API
+ * (introduced upstream 2015-10). Standard sigrok drivers that upload
+ * firmware (kingst-la2016, lecroy-logicstudio, sysclk-lwla) use
+ * SR_RESOURCE_FIRMWARE together with the sr_resource_open/read/close
+ * functions declared below.
+ *
+ * Guarded with #ifndef so that drivers with their own local definitions
+ * (e.g. saleae-logic16's `#define SR_RESOURCE_FIRMWARE 1` in protocol.h)
+ * don't get a redefinition warning.
+ */
+#ifndef SR_RESOURCE_FIRMWARE
+#define SR_RESOURCE_FIRMWARE 1
+#endif
+
+/**
+ * Standard sigrok resource descriptor.
+ *
+ * PXView's libsigrok does not define struct sr_resource. Drivers that use
+ * the sr_resource_open/read/close API need this struct to hold the file
+ * handle and size across the open/read/close sequence. The layout matches
+ * upstream libsigrok.h exactly so that drivers using `res->size`,
+ * `res->handle`, `res->type` compile unchanged.
+ *
+ * Guarded so that future drivers providing their own definition can
+ * suppress this one by #defining SR_RESOURCE_STRUCT_DEFINED before
+ * including compat.h.
+ */
+#ifndef SR_RESOURCE_STRUCT_DEFINED
+#define SR_RESOURCE_STRUCT_DEFINED
+struct sr_resource {
+    /** Size of resource in bytes; set by sr_resource_open(). */
+    uint64_t size;
+    /** File handle or equivalent; set by sr_resource_open(). */
+    void *handle;
+    /** Resource type (SR_RESOURCE_FIRMWARE, ...). */
+    int type;
+};
+#endif
+
+/**
+ * Standard sigrok's sr_resource API - open/read/close firmware resources.
+ *
+ * PXView's libsigrok does not provide these functions. Previously each
+ * driver that needed firmware upload rolled its own local copy
+ * (saleae-logic16 with a non-canonical `void *resource` signature, plus
+ * asix-sigma and saleae-logic-pro with local `sr_resource_load` variants).
+ * This centralized implementation uses the canonical upstream signatures
+ * so that drivers (kingst-la2016, lecroy-logicstudio, sysclk-lwla) which
+ * already call sr_resource_open/read/close with `struct sr_resource *`
+ * link without modification.
+ *
+ * The implementation opens files from the DS_RES_PATH directory (matching
+ * the local copies it replaces) using fopen/fread/fclose.
+ *
+ * Declared inside an #ifndef guard so that drivers which still carry their
+ * own local declarations (saleae-logic16, OFF in the default build) can
+ * suppress these by #defining COMPAT_SR_RESOURCE_DECLARED before including
+ * compat.h. Task 13 will remove those local copies.
+ */
+#ifndef COMPAT_SR_RESOURCE_DECLARED
+#define COMPAT_SR_RESOURCE_DECLARED
+SR_PRIV int sr_resource_open(struct sr_context *sr_ctx,
+        struct sr_resource *res, int type, const char *name);
+SR_PRIV int sr_resource_close(struct sr_context *sr_ctx,
+        struct sr_resource *res);
+SR_PRIV gssize sr_resource_read(struct sr_context *sr_ctx,
+        const struct sr_resource *res, void *buf, size_t count);
+#endif
+
+/**
+ * Get the current libsigrok log level.
+ *
+ * PXView's libsigrok does not expose the log level (it stores it in a
+ * static variable inside log.c). This stub returns SR_LOG_DBG (4) so that
+ * conditional spew output (level 5) is suppressed while regular debug
+ * output is visible, matching the behaviour drivers expect when no
+ * verbose-logging flag has been set.
+ *
+ * @return The current log level (always SR_LOG_DBG).
+ */
+SR_PRIV int sr_log_loglevel_get(void);
+
+/**
+ * Standard sigrok's sr_hexdump_new/free - debug hex dump helpers.
+ *
+ * PXView's libsigrok does not provide these. Standard sigrok drivers
+ * (kingst-la2016, uni-t-ut181a, uni-t-ut32x, testo, uni-t-dmm,
+ * serial-dmm/bm52x, colead-slm, cem-dt-885x) use them to format raw byte
+ * buffers for debug logging. This centralized implementation matches the
+ * canonical upstream signature (GString-returning).
+ *
+ * The declarations are NOT inside a #ifndef guard because some drivers
+ * (atorch, asix-omega-rtm-cli, microchip-pickit2, rdtech-tc) redirect
+ * calls to their own helpers via `#define sr_hexdump_new(...)`. Those
+ * #defines take effect in the driver translation unit AFTER compat.h is
+ * included, so the centralized declaration is seen first (as a plain
+ * function prototype) and the later #define only affects call sites.
+ * The centralized definition in compat_helpers.c lives in its own
+ * translation unit where the macro is not visible, so it compiles
+ * normally; the resulting unused extern symbol is harmless.
+ *
+ * @param data Pointer to the byte sequence to print.
+ * @param len Number of bytes to print.
+ *
+ * @return Newly allocated GString containing the hex dump, or NULL on
+ *         error. Caller must free with sr_hexdump_free().
+ */
+SR_PRIV GString *sr_hexdump_new(const uint8_t *data, const size_t len);
+
+/**
+ * Free a hex dump GString created by sr_hexdump_new().
+ *
+ * @param s The GString to release (may be NULL).
+ */
+SR_PRIV void sr_hexdump_free(GString *s);
+
+/*
+ * Standard sigrok's sr_strerror - return human-readable error string.
+ *
+ * Canonical libsigrok (error.c:53) provides this as SR_API. PXView's
+ * libsigrok does not expose it. Multiple standard drivers (fluke-45,
+ * rigol-ds, siglent-sds, atten-pps3xxx, gwinstek-gds-800, motech-lps-30x,
+ * scpi-dmm) log `sr_strerror(ret)` after a failed API call. This compact
+ * implementation covers the SR_* codes that PXView defines plus the few
+ * additional standard sigrok codes the compat layer emulates; unknown
+ * codes return "unknown error" exactly like the upstream version.
+ *
+ * Declared with #ifndef guard so that future additions to PXView's
+ * libsigrok.h (or driver-local fallbacks) don't conflict.
+ */
+#ifndef COMPAT_SR_STRERROR_DECLARED
+#define COMPAT_SR_STRERROR_DECLARED
+const char *sr_strerror(int error_code);
+#endif
+
+/*
+ * Standard sigrok's std_gvar_array_str - build a GVariant "as" array
+ * of strings. Canonical libsigrok (libsigrok-internal.h:1956, std.c:747).
+ *
+ * PXView's compat layer previously named this std_gvar_tuple_array and
+ * gave it the wrong signature (string array). That collided with the
+ * canonical std_gvar_tuple_array which takes uint64_t[][2] (see below).
+ * This declaration provides the canonical string-array helper so that
+ * drivers wanting a string array ("as") can call it by its standard
+ * sigrok name; the driver-fixing task redirects the previously-misnamed
+ * string callers (juntek-jds6600, arachnid-labs-re-load-pro,
+ * siglent-sdl10x0) to this function.
+ */
+#ifndef COMPAT_STD_GVAR_ARRAY_STR_DECLARED
+#define COMPAT_STD_GVAR_ARRAY_STR_DECLARED
+SR_PRIV GVariant *std_gvar_array_str(const char *a[], unsigned int n);
+#endif
+
+/*
+ * Standard sigrok's std_str_idx / std_u64_idx - lookup a GVariant value's
+ * index in an array. Canonical libsigrok (libsigrok-internal.h:1960/1961,
+ * std.c): both take (GVariant *data, const T a[], unsigned int n) and
+ * return the matching index, or -1 on no match / invalid argument.
+ *
+ * PXView's compat layer previously declared these with a 5-argument
+ * config-get signature (sdi/key/data/vals/count) that no driver uses.
+ * All call sites in the tree (rigol-ds, siglent-sds, hantek-6xxx, plus
+ * the local_ prefixed copies in many other drivers) use the 3-argument
+ * canonical form. Grep across libsigrok/ confirmed: zero callers use
+ * the 5-argument form. The signatures below match canonical sigrok
+ * exactly so drivers compile unchanged.
+ */
+#ifndef COMPAT_STD_IDX_DECLARED
+#define COMPAT_STD_IDX_DECLARED
+SR_PRIV int std_str_idx(GVariant *data, const char *a[], unsigned int n);
+SR_PRIV int std_u64_idx(GVariant *data, const uint64_t a[], unsigned int n);
+#endif
+
+/*
+ * Standard sigrok's std_u64_tuple_idx / std_cg_idx.
+ *
+ * std_u64_tuple_idx (libsigrok-internal.h:1967, std.c:867): given a
+ * GVariant "(tt)" tuple and an array of uint64_t pairs, return the
+ * index of the matching pair, or -1.
+ *
+ * std_cg_idx (libsigrok-internal.h:1971, std.c:906): given a channel
+ * group pointer and an array of channel group pointers, return the
+ * index of the matching pointer, or -1. Used by SCPI oscilloscope
+ * drivers (hameg-hmo, lecroy-xstream, rigol-ds, siglent-sds) to map
+ * a cg back to its analog/digital channel-group index.
+ *
+ * Guarded so that future driver-local fallbacks don't conflict.
+ */
+#ifndef COMPAT_STD_TUPLE_CG_IDX_DECLARED
+#define COMPAT_STD_TUPLE_CG_IDX_DECLARED
+SR_PRIV int std_u64_tuple_idx(GVariant *data, const uint64_t a[][2],
+	unsigned int n);
+SR_PRIV int std_cg_idx(const struct sr_channel_group *cg,
+	struct sr_channel_group *a[], unsigned int n);
+#endif
+
+/*
+ * Standard sigrok's std_dev_clear_with_callback + std_dev_clear_callback.
+ *
+ * Canonical libsigrok (libsigrok-internal.h:1907/1924, std.c:405):
+ *   typedef void (*std_dev_clear_callback)(void *priv);
+ *   int std_dev_clear_with_callback(const struct sr_dev_driver *driver,
+ *       std_dev_clear_callback clear_private);
+ *
+ * Iterates driver->context (PXView: driver->priv via compat_drv_context)
+ * instance list; for each sdi calls dev_close() if active, then invokes
+ * clear_private(sdi->priv) if non-NULL, frees sdi->priv, and frees the
+ * sdi itself. PXView's compat layer previously only provided the 2-arg
+ * std_dev_clear; several compat drivers (asix-sigma, hameg-hmo,
+ * lecroy-xstream, juntek-jds6600, atorch, ikalogic-scanalogic2, ...)
+ * call std_dev_clear_with_callback to release per-device resources
+ * before the sdi is torn down.
+ *
+ * Note: the typedef's actual canonical signature is
+ * `void (*)(void *priv)` (NOT the int-returning form mentioned in some
+ * task notes). This matches upstream libsigrok-internal.h:1907 exactly.
+ */
+#ifndef COMPAT_STD_DEV_CLEAR_CALLBACK_DECLARED
+#define COMPAT_STD_DEV_CLEAR_CALLBACK_DECLARED
+typedef void (*std_dev_clear_callback)(void *priv);
+#endif
+
+#ifndef COMPAT_STD_DEV_CLEAR_WITH_CB_DECLARED
+#define COMPAT_STD_DEV_CLEAR_WITH_CB_DECLARED
+SR_PRIV int std_dev_clear_with_callback(const struct sr_dev_driver *driver,
+	std_dev_clear_callback clear_private);
+#endif
+
+/*
+ * Standard sigrok's ASCII numeric parsers - locale-independent.
+ *
+ * Canonical libsigrok (strutil.c): sr_atol/sr_atoi/sr_atof_ascii parse
+ * base-10 numeric strings strictly (whole string must be a valid number)
+ * and return SR_OK/SR_ERR. PXView's libsigrok does not provide them.
+ * SCPI/DMM drivers (rigol-ds, siglent-sds, fluke-45, gwinstek-gds-800,
+ * agilent-dmm, ...) use them to parse instrument responses without
+ * being affected by the user's locale (g_ascii_strtod is C-locale).
+ *
+ * Implementation mirrors canonical strutil.c with PXView's SR_OK/SR_ERR
+ * (positive) error codes.
+ */
+#ifndef COMPAT_SR_ATOI_DECLARED
+#define COMPAT_SR_ATOI_DECLARED
+SR_PRIV int sr_atol(const char *str, long *ret);
+SR_PRIV int sr_atoi(const char *str, int *ret);
+SR_PRIV int sr_atof_ascii(const char *str, float *ret);
+#endif
 
 #endif

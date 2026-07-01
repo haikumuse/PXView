@@ -132,6 +132,7 @@ struct dev_context {
 
 SR_PRIV extern const char *ols_channel_names[];
 
+SR_PRIV int ols_serial_timeout(struct sr_serial_dev_inst *serial, int bytes);
 SR_PRIV int send_shortcommand(struct sr_serial_dev_inst *serial,
 			      uint8_t command);
 SR_PRIV int send_longcommand(struct sr_serial_dev_inst *serial, uint8_t command,

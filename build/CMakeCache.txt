@@ -335,17 +335,38 @@ ENABLE_DRIVER_AGILENT_DMM:BOOL=ON
 //Enable appa-55ii driver
 ENABLE_DRIVER_APPA_55II:BOOL=ON
 
+//Enable arachnid-labs-re-load-pro driver
+ENABLE_DRIVER_ARACHNID_LABS_RE_LOAD_PRO:BOOL=OFF
+
+//Enable asix-omega-rtm-cli driver
+ENABLE_DRIVER_ASIX_OMEGA_RTM_CLI:BOOL=OFF
+
 //Enable asix-sigma driver
-ENABLE_DRIVER_ASIX_SIGMA:BOOL=OFF
+ENABLE_DRIVER_ASIX_SIGMA:BOOL=ON
+
+//Enable atorch driver
+ENABLE_DRIVER_ATORCH:BOOL=OFF
 
 //Enable atten-pps3xxx power supply driver
 ENABLE_DRIVER_ATTEN_PPS3XXX:BOOL=OFF
+
+//Enable bkprecision-1856d driver
+ENABLE_DRIVER_BKPRECISION_1856D:BOOL=OFF
+
+//Enable cem-dt-885x driver
+ENABLE_DRIVER_CEM_DT_885X:BOOL=OFF
 
 //Enable center-3xx serial thermometer driver
 ENABLE_DRIVER_CENTER_3XX:BOOL=ON
 
 //Enable chronovu-la driver
 ENABLE_DRIVER_CHRONOVU_LA:BOOL=OFF
+
+//Enable colead-slm driver
+ENABLE_DRIVER_COLEAD_SLM:BOOL=OFF
+
+//Enable conrad-digi-35-cpu driver
+ENABLE_DRIVER_CONRAD_DIGI_35_CPU:BOOL=OFF
 
 //Enable fluke-45 SCPI multimeter driver
 ENABLE_DRIVER_FLUKE_45:BOOL=ON
@@ -359,8 +380,14 @@ ENABLE_DRIVER_FTDI_LA:BOOL=ON
 //Enable fx2lafw driver
 ENABLE_DRIVER_FX2LAFW:BOOL=ON
 
+//Enable gmc-mh-1x-2x driver
+ENABLE_DRIVER_GMC_MH_1X_2X:BOOL=OFF
+
 //Enable gwinstek-gds-800 SCPI oscilloscope driver
 ENABLE_DRIVER_GWINSTEK_GDS_800:BOOL=OFF
+
+//Enable gwinstek-gpd driver
+ENABLE_DRIVER_GWINSTEK_GPD:BOOL=OFF
 
 //Enable gwinstek-psp power supply driver
 ENABLE_DRIVER_GWINSTEK_PSP:BOOL=ON
@@ -377,8 +404,20 @@ ENABLE_DRIVER_HANTEK_6XXX:BOOL=OFF
 //Enable hantek-dso driver
 ENABLE_DRIVER_HANTEK_DSO:BOOL=OFF
 
+//Enable hp-3457a driver
+ENABLE_DRIVER_HP_3457A:BOOL=OFF
+
+//Enable hp-3478a driver
+ENABLE_DRIVER_HP_3478A:BOOL=OFF
+
+//Enable hp-59306a driver
+ENABLE_DRIVER_HP_59306A:BOOL=OFF
+
 //Enable hung-chang-dso-2100 parallel port oscilloscope driver
 ENABLE_DRIVER_HUNG_CHANG_DSO_2100:BOOL=OFF
+
+//Enable icstation-usbrelay driver
+ENABLE_DRIVER_ICSTATION_USBRELAY:BOOL=OFF
 
 //Enable ikalogic-scanalogic2 driver
 ENABLE_DRIVER_IKALOGIC_SCANALOGIC2:BOOL=OFF
@@ -392,11 +431,17 @@ ENABLE_DRIVER_IPDBG_LA:BOOL=ON
 //Enable itech-it8500 electronic load driver
 ENABLE_DRIVER_ITECH_IT8500:BOOL=OFF
 
+//Enable juntek-jds6600 driver
+ENABLE_DRIVER_JUNTEK_JDS6600:BOOL=OFF
+
+//Enable kecheng-kc-330b driver
+ENABLE_DRIVER_KECHENG_KC_330B:BOOL=OFF
+
 //Enable kern-scale serial scale driver
 ENABLE_DRIVER_KERN_SCALE:BOOL=ON
 
 //Enable kingst-la2016 driver
-ENABLE_DRIVER_KINGST_LA2016:BOOL=OFF
+ENABLE_DRIVER_KINGST_LA2016:BOOL=ON
 
 //Enable korad-kaxxxxp power supply driver
 ENABLE_DRIVER_KORAD_KAXXXXP:BOOL=OFF
@@ -423,6 +468,9 @@ ENABLE_DRIVER_MASTECH_MS6514:BOOL=ON
 //Enable maynuo-m97 electronic load driver
 ENABLE_DRIVER_MAYNUO_M97:BOOL=OFF
 
+//Enable microchip-pickit2 driver
+ENABLE_DRIVER_MICROCHIP_PICKIT2:BOOL=OFF
+
 //Enable mic-985xx serial temperature/humidity meter driver
 ENABLE_DRIVER_MIC_985XX:BOOL=ON
 
@@ -430,7 +478,7 @@ ENABLE_DRIVER_MIC_985XX:BOOL=ON
 ENABLE_DRIVER_MOTECH_LPS_30X:BOOL=OFF
 
 //Enable norma-dmm DMM driver
-ENABLE_DRIVER_NORMA_DMM:BOOL=ON
+ENABLE_DRIVER_NORMA_DMM:BOOL=OFF
 
 //Enable openbench-logic-sniffer (OLS) driver
 ENABLE_DRIVER_OPENBENCH_LOGIC_SNIFFER:BOOL=ON
@@ -468,11 +516,17 @@ ENABLE_DRIVER_SALEAE_LOGIC16:BOOL=OFF
 //Enable saleae-logic-pro driver
 ENABLE_DRIVER_SALEAE_LOGIC_PRO:BOOL=ON
 
+//Enable scpi-dmm driver
+ENABLE_DRIVER_SCPI_DMM:BOOL=OFF
+
 //Enable scpi-pps generic SCPI power supply driver
 ENABLE_DRIVER_SCPI_PPS:BOOL=OFF
 
 //Enable serial-dmm driver
-ENABLE_DRIVER_SERIAL_DMM:BOOL=ON
+ENABLE_DRIVER_SERIAL_DMM:BOOL=OFF
+
+//Enable serial-lcr driver
+ENABLE_DRIVER_SERIAL_LCR:BOOL=OFF
 
 //Enable siglent-sdl10x0 electronic load driver
 ENABLE_DRIVER_SIGLENT_SDL10X0:BOOL=OFF
@@ -512,6 +566,9 @@ ENABLE_DRIVER_YOKOGAWA_DLM:BOOL=ON
 
 //Enable zeroplus-logic-cube driver
 ENABLE_DRIVER_ZEROPLUS_LOGIC_CUBE:BOOL=ON
+
+//Enable zketech-ebd-usb driver
+ENABLE_DRIVER_ZKETECH_EBD_USB:BOOL=OFF
 
 //Path to a file.
 FFTW_INCLUDE_DIR:PATH=D:/msys64/mingw64/include

@@ -20,6 +20,10 @@
 #include "compat.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <limits.h>
+#include <ctype.h>
 
 /**
  * @file
@@ -369,44 +373,68 @@ SR_PRIV GVariant *std_gvar_min_max_steps_uint64(uint64_t min, uint64_t max,
     return g_variant_new_tuple(range, 3);
 }
 
-SR_PRIV GVariant *std_gvar_tuple_array(const char *strs[], size_t count)
+SR_PRIV GVariant *std_gvar_tuple_array(const uint64_t a[][2],
+	unsigned int n)
 {
-    GVariantBuilder gvb;
-    size_t i;
+	GVariant *rational[2];
+	GVariantBuilder gvb;
+	unsigned int i;
 
-    g_variant_builder_init(&gvb, G_VARIANT_TYPE("as"));
-    for (i = 0; i < count; i++)
-        g_variant_builder_add(&gvb, "s", strs[i]);
+	/* Canonical libsigrok implementation (std.c:595): builds "a(tt)"
+	 * from a uint64_t[][2] array. Used by SCPI oscilloscope drivers
+	 * (rigol-ds, siglent-sds, hameg-hmo, hantek-6xxx, ...) for their
+	 * vdivs/timebases tables. */
+	g_variant_builder_init(&gvb, G_VARIANT_TYPE("a(tt)"));
 
-    return g_variant_builder_end(&gvb);
+	for (i = 0; i < n; i++) {
+		rational[0] = g_variant_new_uint64(a[i][0]);
+		rational[1] = g_variant_new_uint64(a[i][1]);
+		g_variant_builder_add_value(&gvb,
+			g_variant_new_tuple(rational, 2));
+	}
+
+	return g_variant_builder_end(&gvb);
 }
 
-/*--- Config get helpers ---------------------------------------------------*/
+/*--- Config get helpers (3-arg canonical form) ---------------------------*/
 
-SR_PRIV int std_u64_idx(const struct sr_dev_inst *sdi, uint32_t key,
-    GVariant **data, const uint64_t vals[], size_t count)
+SR_PRIV int std_u64_idx(GVariant *data, const uint64_t a[], unsigned int n)
 {
-    (void)sdi;
-    (void)key;
+	uint64_t v;
+	unsigned int i;
 
-    if (!data || !vals || count == 0)
-        return SR_ERR_ARG;
+	/* Canonical libsigrok (std.c): look up a GVariant uint64 in an
+	 * array of uint64 values, return the matching index or -1. */
+	if (!data || !a || n == 0)
+		return -1;
 
-    *data = g_variant_new_uint64(vals[0]);
-    return SR_OK;
+	v = g_variant_get_uint64(data);
+	for (i = 0; i < n; i++)
+		if (a[i] == v)
+			return (int)i;
+
+	return -1;
 }
 
-SR_PRIV int std_str_idx(const struct sr_dev_inst *sdi, uint32_t key,
-    GVariant **data, const char *const strs[], size_t count)
+SR_PRIV int std_str_idx(GVariant *data, const char *a[], unsigned int n)
 {
-    (void)sdi;
-    (void)key;
+	const char *s;
+	unsigned int i;
 
-    if (!data || !strs || count == 0)
-        return SR_ERR_ARG;
+	/* Canonical libsigrok (std.c): look up a GVariant string in an
+	 * array of strings, return the matching index or -1. */
+	if (!data || !a || n == 0)
+		return -1;
 
-    *data = g_variant_new_string(strs[0]);
-    return SR_OK;
+	s = g_variant_get_string(data, NULL);
+	if (!s)
+		return -1;
+
+	for (i = 0; i < n; i++)
+		if (a[i] && g_strcmp0(s, a[i]) == 0)
+			return (int)i;
+
+	return -1;
 }
 
 SR_PRIV int std_bool_idx(const struct sr_dev_inst *sdi, uint32_t key,
@@ -746,5 +774,429 @@ SR_PRIV int sr_usb_close(struct sr_usb_dev_inst *usb)
 		usb->devhdl = NULL;
 	}
 
+	return SR_OK;
+}
+
+/*--- sr_resource_open / read / close compat --------------------------------*/
+/*
+ * PXView's libsigrok (based on upstream 0.2.0) lacks the sr_resource API
+ * (introduced upstream 2015-10). Standard sigrok drivers that upload
+ * firmware (kingst-la2016, lecroy-logicstudio, sysclk-lwla) call
+ * sr_resource_open/read/close with `struct sr_resource *` and need these
+ * functions to link.
+ *
+ * The implementation mirrors the local copies that previously existed in
+ * saleae-logic16/protocol.c and asix-sigma/protocol.c: it opens files from
+ * the DS_RES_PATH directory using fopen/fread/fclose. DS_RES_PATH is an
+ * `extern char[500]` declared in libsigrok-internal.h and defined in
+ * lib_main.c; it is visible here via compat.h -> libsigrok-internal.h.
+ */
+
+SR_PRIV int sr_resource_open(struct sr_context *sr_ctx,
+        struct sr_resource *res, int type, const char *name)
+{
+	char path[512];
+	FILE *fp;
+	long file_size;
+
+	(void)sr_ctx;
+	(void)type;
+
+	if (!res || !name)
+		return SR_ERR_ARG;
+
+	res->size = 0;
+	res->handle = NULL;
+	res->type = type;
+
+	if (DS_RES_PATH[0] != '\0')
+		snprintf(path, sizeof(path), "%s/%s", DS_RES_PATH, name);
+	else
+		snprintf(path, sizeof(path), "%s", name);
+
+	fp = fopen(path, "rb");
+	if (!fp) {
+		sr_err("Failed to open resource '%s'.", path);
+		return SR_ERR;
+	}
+
+	if (fseek(fp, 0, SEEK_END) != 0) {
+		sr_err("Failed to seek resource '%s'.", path);
+		fclose(fp);
+		return SR_ERR;
+	}
+	file_size = ftell(fp);
+	if (file_size < 0) {
+		sr_err("Failed to tell size of resource '%s'.", path);
+		fclose(fp);
+		return SR_ERR;
+	}
+	rewind(fp);
+
+	res->size = (uint64_t)file_size;
+	res->handle = fp;
+
+	return SR_OK;
+}
+
+SR_PRIV gssize sr_resource_read(struct sr_context *sr_ctx,
+        const struct sr_resource *res, void *buf, size_t count)
+{
+	FILE *fp;
+	size_t n_read;
+
+	(void)sr_ctx;
+
+	if (!res || !buf)
+		return SR_ERR_ARG_NEG;
+
+	fp = (FILE *)res->handle;
+	if (!fp)
+		return SR_ERR_ARG_NEG;
+
+	n_read = fread(buf, 1, count, fp);
+	if (n_read == 0 && ferror(fp))
+		return SR_ERR_NEG;
+
+	return (gssize)n_read;
+}
+
+SR_PRIV int sr_resource_close(struct sr_context *sr_ctx,
+        struct sr_resource *res)
+{
+	FILE *fp;
+
+	(void)sr_ctx;
+
+	if (!res)
+		return SR_ERR_ARG;
+
+	fp = (FILE *)res->handle;
+	if (fp) {
+		fclose(fp);
+		res->handle = NULL;
+	}
+	res->size = 0;
+
+	return SR_OK;
+}
+
+/*--- sr_log_loglevel_get compat --------------------------------------------*/
+/*
+ * PXView's libsigrok does not expose the log level (it stores it in a static
+ * variable inside log.c). Return SR_LOG_DBG (4) so that conditional spew
+ * output (level 5) is suppressed while regular debug output is visible.
+ * Drivers that gate debug dumps on `sr_log_loglevel_get() >= SR_LOG_SPEW`
+ * will skip the dump, matching the default-no-verbose-logging behaviour.
+ */
+
+SR_PRIV int sr_log_loglevel_get(void)
+{
+	return SR_LOG_DBG;
+}
+
+/*--- sr_hexdump_new / free compat ------------------------------------------*/
+/*
+ * PXView's libsigrok does not provide these debug helpers. The canonical
+ * upstream implementation (strutil.c) returns a GString; drivers assign the
+ * result to `GString *` variables and feed it to sr_dbg/sr_spew. This
+ * matches that signature exactly so all driver call sites compile and link
+ * without modification.
+ */
+
+SR_PRIV GString *sr_hexdump_new(const uint8_t *data, const size_t len)
+{
+	GString *s;
+	size_t i;
+	size_t cap;
+
+	if (!data && len)
+		return NULL;
+
+	/* "XX " per byte, plus a space every 8 and a newline every 16. */
+	cap = 3 * len + len / 8 + len / 16 + 1;
+	s = g_string_sized_new(cap);
+	if (!s)
+		return NULL;
+
+	for (i = 0; i < len; i++) {
+		if (i)
+			g_string_append_c(s, ' ');
+		if (i && (i % 8) == 0)
+			g_string_append_c(s, ' ');
+		if (i && (i % 16) == 0)
+			g_string_append_c(s, ' ');
+		g_string_append_printf(s, "%02x", data[i]);
+	}
+
+	return s;
+}
+
+SR_PRIV void sr_hexdump_free(GString *s)
+{
+	if (s)
+		g_string_free(s, TRUE);
+}
+
+/*--- std_gvar_array_str compat ---------------------------------------------*/
+/*
+ * Canonical libsigrok (std.c:747): build a GVariant "as" (array of strings)
+ * from a const char * array. Previously PXView's compat layer mis-named this
+ * std_gvar_tuple_array and gave it a string-array signature; that collided
+ * with the canonical uint64_t[][2] std_gvar_tuple_array. Drivers that need
+ * a string array should call this function by its canonical name.
+ */
+
+SR_PRIV GVariant *std_gvar_array_str(const char *a[], unsigned int n)
+{
+	GVariantBuilder gvb;
+	unsigned int i;
+
+	g_variant_builder_init(&gvb, G_VARIANT_TYPE("as"));
+	for (i = 0; i < n; i++)
+		g_variant_builder_add(&gvb, "s", a[i]);
+
+	return g_variant_builder_end(&gvb);
+}
+
+/*--- std_u64_tuple_idx / std_cg_idx compat ---------------------------------*/
+/*
+ * Canonical libsigrok (std.c:867): given a GVariant "(tt)" tuple and an
+ * array of uint64_t pairs, return the index of the matching pair or -1.
+ * Used by SCPI oscilloscope drivers (rigol-ds, siglent-sds, hameg-hmo,
+ * hantek-6xxx, kecheng-kc-330b) to validate config_set values against
+ * the driver's vdivs/timebases/sample-intervals tables.
+ */
+
+SR_PRIV int std_u64_tuple_idx(GVariant *data, const uint64_t a[][2],
+	unsigned int n)
+{
+	uint64_t low, high;
+	unsigned int i;
+
+	if (!data || !a || n == 0)
+		return -1;
+
+	g_variant_get(data, "(tt)", &low, &high);
+
+	for (i = 0; i < n; i++)
+		if (a[i][0] == low && a[i][1] == high)
+			return (int)i;
+
+	return -1;
+}
+
+/*
+ * Canonical libsigrok (std.c:906): given a channel group pointer and an
+ * array of channel group pointers, return the index of the matching
+ * pointer or -1. Used by SCPI oscilloscope drivers (hameg-hmo,
+ * lecroy-xstream, rigol-ds, siglent-sds) to map a cg back to its
+ * analog/digital channel-group index.
+ */
+
+SR_PRIV int std_cg_idx(const struct sr_channel_group *cg,
+	struct sr_channel_group *a[], unsigned int n)
+{
+	unsigned int i;
+
+	if (!cg || !a || n == 0)
+		return -1;
+
+	for (i = 0; i < n; i++)
+		if (cg == a[i])
+			return (int)i;
+
+	return -1;
+}
+
+/*--- std_dev_clear_with_callback compat ------------------------------------*/
+/*
+ * Canonical libsigrok (std.c:405): iterate the driver's instance list; for
+ * each sdi call dev_close() if it is SR_ST_ACTIVE, then invoke the callback
+ * on sdi->priv (so the driver can release per-device resources), then free
+ * sdi->priv and the sdi itself.
+ *
+ * PXView mapping:
+ *   - driver->context (canonical) -> driver->priv (PXView) which holds a
+ *     struct compat_drv_context * with an ->instances GSList.
+ *   - sdi->conn / sdi->inst_type / sdi->status / sdi->priv all exist on
+ *     PXView's sr_dev_inst (libsigrok-internal.h:141), so the canonical
+ *     cleanup logic translates directly. PXView does not have
+ *     sr_serial_dev_inst_free / sr_usb_dev_inst_free / sr_scpi_free /
+ *     sr_modbus_free as free-standing symbols available here, and the
+ *     existing std_dev_clear() in this file does not free sdi->conn
+ *     either; to stay consistent with the surrounding compat code we
+ *     skip the conn-type-specific free and only call the driver's
+ *     dev_close() callback plus the clear_private hook. The callback
+ *     itself is responsible for any per-device teardown it needs.
+ */
+SR_PRIV int std_dev_clear_with_callback(const struct sr_dev_driver *driver,
+	std_dev_clear_callback clear_private)
+{
+	struct compat_drv_context *drvc;
+	struct sr_dev_inst *sdi;
+	GSList *l;
+	int ret;
+
+	if (!driver) {
+		sr_err("%s: Invalid argument.", __func__);
+		return SR_ERR_ARG;
+	}
+
+	if (!driver->priv)
+		return SR_OK;
+
+	drvc = driver->priv;
+
+	ret = SR_OK;
+	for (l = drvc->instances; l; l = l->next) {
+		if (!(sdi = l->data)) {
+			sr_err("%s: Invalid device instance.", __func__);
+			ret = SR_ERR_BUG;
+			continue;
+		}
+
+		/* Close the device if it is currently active. Cast away const
+		 * because dev_close takes a non-const sdi (PXView matches
+		 * canonical sigrok here). */
+		if (driver->dev_close && sdi->status == SR_ST_ACTIVE)
+			driver->dev_close(sdi);
+
+		/* Let the driver release per-device private resources. */
+		if (clear_private)
+			clear_private(sdi->priv);
+
+		/* Free the device context (devc) and then the sdi itself. */
+		g_free(sdi->priv);
+		sr_dev_inst_free(sdi);
+	}
+
+	g_slist_free(drvc->instances);
+	drvc->instances = NULL;
+
+	return ret;
+}
+
+/*--- sr_strerror compat ---------------------------------------------------*/
+/*
+ * Canonical libsigrok (error.c:53): return a human-readable error string
+ * for the given error code. PXView's libsigrok does not expose this; many
+ * standard drivers (fluke-45, rigol-ds, siglent-sds, atten-pps3xxx,
+ * gwinstek-gds-800, motech-lps-30x, scpi-dmm) log sr_strerror(ret) on
+ * failure. This implementation covers the SR_* codes PXView defines
+ * (positive values 0-12) plus the additional standard sigrok codes the
+ * compat layer emulates; unknown codes return "unknown error" exactly
+ * like the upstream version.
+ *
+ * Note: PXView uses positive error codes (SR_ERR=1, SR_ERR_ARG=3, ...),
+ * so the switch below uses those positive values, not the canonical
+ * negative ones. Drivers that compare against the named SR_* macros
+ * work either way because the macros expand to the same positive values
+ * in PXView.
+ */
+const char *sr_strerror(int error_code)
+{
+	switch (error_code) {
+	case SR_OK:
+		return "no error";
+	case SR_ERR:
+		return "generic/unspecified error";
+	case SR_ERR_MALLOC:
+		return "memory allocation error";
+	case SR_ERR_ARG:
+		return "invalid argument";
+	case SR_ERR_BUG:
+		return "internal error";
+	case SR_ERR_SAMPLERATE:
+		return "invalid samplerate";
+	case SR_ERR_NA:
+		return "not applicable";
+	case SR_ERR_DEVICE_CLOSED:
+		return "device closed but should be open";
+	case SR_ERR_CALL_STATUS:
+		return "function call status error";
+	case SR_ERR_IO:
+		return "input/output error";
+	case SR_ERR_DATA:
+		return "data is invalid";
+	default:
+		return "unknown error";
+	}
+}
+
+/*--- sr_atol / sr_atoi / sr_atof_ascii compat -----------------------------*/
+/*
+ * Canonical libsigrok (strutil.c:73/216/372): strict, locale-independent
+ * ASCII numeric parsers. PXView's libsigrok does not provide them; SCPI/DMM
+ * drivers (rigol-ds, siglent-sds, fluke-45, gwinstek-gds-800, agilent-dmm,
+ * ...) use them to parse instrument responses without being affected by
+ * the user's locale. Implementation mirrors canonical strutil.c with
+ * PXView's positive SR_OK/SR_ERR codes.
+ */
+
+SR_PRIV int sr_atol(const char *str, long *ret)
+{
+	long tmp;
+	char *endptr = NULL;
+
+	if (!str || !ret)
+		return SR_ERR_ARG;
+
+	errno = 0;
+	tmp = strtol(str, &endptr, 10);
+
+	while (endptr && isspace((unsigned char)*endptr))
+		endptr++;
+
+	if (!endptr || *endptr || errno) {
+		if (!errno)
+			errno = EINVAL;
+		return SR_ERR;
+	}
+
+	*ret = tmp;
+	return SR_OK;
+}
+
+SR_PRIV int sr_atoi(const char *str, int *ret)
+{
+	long tmp;
+
+	if (!str || !ret)
+		return SR_ERR_ARG;
+
+	if (sr_atol(str, &tmp) != SR_OK)
+		return SR_ERR;
+
+	if ((int)tmp != tmp) {
+		errno = ERANGE;
+		return SR_ERR;
+	}
+
+	*ret = (int)tmp;
+	return SR_OK;
+}
+
+SR_PRIV int sr_atof_ascii(const char *str, float *ret)
+{
+	double tmp;
+	char *endptr = NULL;
+
+	if (!str || !ret)
+		return SR_ERR_ARG;
+
+	errno = 0;
+	tmp = g_ascii_strtod(str, &endptr);
+
+	while (endptr && isspace((unsigned char)*endptr))
+		endptr++;
+
+	if (!endptr || *endptr || errno) {
+		if (!errno)
+			errno = EINVAL;
+		return SR_ERR;
+	}
+
+	*ret = (float)tmp;
 	return SR_OK;
 }

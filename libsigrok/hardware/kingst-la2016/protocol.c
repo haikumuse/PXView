@@ -39,6 +39,151 @@ SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi)
 	return ds_data_forward(sdi, &packet);
 }
 
+/* ===========================================================================
+ * Local feed_queue_logic implementation.
+ *
+ * PXView's libsigrok does NOT provide the feed_queue_logic_* family of
+ * functions that standard sigrok exposes via libsigrok-internal.h. This
+ * driver therefore provides its own minimal local implementation covering
+ * the five entry points that the acquisition path uses:
+ *
+ *   - alloc(sdi, sample_count, unit_size)
+ *   - submit_one(q, data, repeat_count)
+ *   - flush(q)
+ *   - send_trigger(q)
+ *   - free(q)
+ *
+ * The implementation maintains a flat byte buffer of (sample_count *
+ * unit_size) bytes. submit_one() appends the given sample repeated
+ * repeat_count times, auto-flushing when the buffer fills up (which is
+ * the behaviour the source driver relies on for the RLE path, where a
+ * single submit_one() call can carry a large repetition count derived
+ * from the 8-bit repeat counter in the Kingst wire format). flush()
+ * sends whatever is pending as a single SR_DF_LOGIC packet via
+ * sr_session_send() (which the compat layer maps to PXView's
+ * ds_data_forward()).
+ *
+ * Note: PXView's sr_datafeed_logic.length is a BYTE count (samples *
+ * unitsize), not a sample count -- this differs from standard sigrok
+ * but matches what fx2lafw, asix-sigma and the demo driver all do.
+ * The format field is set to LA_CROSS_DATA to match the demo driver.
+ * ========================================================================== */
+
+struct feed_queue_logic {
+	const struct sr_dev_inst *sdi;
+	size_t unit_size;
+	size_t cap_samples;   /* max samples the buffer can hold */
+	size_t count_samples;  /* samples currently buffered */
+	uint8_t *data;         /* flat sample buffer */
+	struct sr_datafeed_packet packet;
+	struct sr_datafeed_logic logic;
+};
+
+SR_PRIV struct feed_queue_logic *feed_queue_logic_alloc(
+		const struct sr_dev_inst *sdi,
+		size_t sample_count, size_t unit_size)
+{
+	struct feed_queue_logic *q;
+
+	if (!sdi || !unit_size || !sample_count)
+		return NULL;
+
+	q = g_malloc0(sizeof(*q));
+	q->sdi = sdi;
+	q->unit_size = unit_size;
+	q->cap_samples = sample_count;
+	q->count_samples = 0;
+	q->data = g_try_malloc(sample_count * unit_size);
+	if (!q->data) {
+		g_free(q);
+		return NULL;
+	}
+
+	memset(&q->packet, 0, sizeof(q->packet));
+	memset(&q->logic, 0, sizeof(q->logic));
+	q->packet.type = SR_DF_LOGIC;
+	q->packet.status = SR_PKT_OK;
+	q->packet.payload = &q->logic;
+	q->logic.format = LA_CROSS_DATA;
+	q->logic.unitsize = (uint16_t)unit_size;
+	q->logic.data = q->data;
+
+	return q;
+}
+
+SR_PRIV int feed_queue_logic_flush(struct feed_queue_logic *q)
+{
+	if (!q)
+		return SR_ERR_ARG;
+	if (q->count_samples == 0)
+		return SR_OK;
+
+	q->logic.length = q->count_samples * q->unit_size;
+	if (sr_session_send(q->sdi, &q->packet) != SR_OK)
+		return SR_ERR;
+	q->count_samples = 0;
+
+	return SR_OK;
+}
+
+SR_PRIV int feed_queue_logic_submit_one(struct feed_queue_logic *q,
+		const uint8_t *data, size_t repeat_count)
+{
+	uint8_t *wrptr;
+	size_t avail, to_copy;
+
+	if (!q || !data)
+		return SR_ERR_ARG;
+
+	while (repeat_count > 0) {
+		avail = q->cap_samples - q->count_samples;
+		if (avail == 0) {
+			/* Buffer full: flush and continue. */
+			if (feed_queue_logic_flush(q) != SR_OK)
+				return SR_ERR;
+			avail = q->cap_samples;
+		}
+		to_copy = (repeat_count < avail) ? repeat_count : avail;
+		wrptr = &q->data[q->count_samples * q->unit_size];
+		while (to_copy > 0) {
+			memcpy(wrptr, data, q->unit_size);
+			wrptr += q->unit_size;
+			q->count_samples++;
+			to_copy--;
+			repeat_count--;
+		}
+	}
+
+	return SR_OK;
+}
+
+SR_PRIV int feed_queue_logic_send_trigger(struct feed_queue_logic *q)
+{
+	int ret;
+
+	if (!q)
+		return SR_ERR_ARG;
+
+	/* Flush pending samples first so the trigger marker lands in order. */
+	ret = feed_queue_logic_flush(q);
+	if (ret != SR_OK)
+		return ret;
+
+	return std_session_send_df_trigger(q->sdi, NULL);
+}
+
+SR_PRIV void feed_queue_logic_free(struct feed_queue_logic *q)
+{
+	if (!q)
+		return;
+	/* Flush any pending samples before releasing the buffer. */
+	(void)feed_queue_logic_flush(q);
+	g_free(q->data);
+	q->data = NULL;
+	q->sdi = NULL;
+	g_free(q);
+}
+
 /* USB PID dependent MCU firmware. Model dependent FPGA bitstream. */
 #define MCU_FWFILE_FMT	"kingst-la-%04x.fw"
 #define FPGA_FWFILE_FMT	"kingst-%s-fpga.bitstream"
@@ -1018,6 +1163,8 @@ SR_PRIV int la2016_upload_firmware(const struct sr_dev_inst *sdi,
 	char *fw;
 	int ret;
 
+	(void)sr_ctx; /* Unused after ezusb_upload_firmware moved to 3-arg form. */
+
 	devc = sdi ? sdi->priv : NULL;
 	if (!devc || !devc->usb_pid)
 		return SR_ERR_ARG;
@@ -1030,7 +1177,7 @@ SR_PRIV int la2016_upload_firmware(const struct sr_dev_inst *sdi,
 	if (skip_upload)
 		ret = SR_OK;
 	else
-		ret = ezusb_upload_firmware(sr_ctx, dev, USB_CONFIGURATION, fw);
+		ret = ezusb_upload_firmware(dev, USB_CONFIGURATION, fw);
 	g_free(fw);
 	if (ret != SR_OK)
 		return ret;
@@ -1597,9 +1744,9 @@ static void LIBUSB_CALL receive_transfer(struct libusb_transfer *transfer)
 	}
 }
 
-SR_PRIV int la2016_receive_data(int fd, int revents, void *cb_data)
+SR_PRIV int la2016_receive_data(int fd, int revents,
+	const struct sr_dev_inst *sdi)
 {
-	const struct sr_dev_inst *sdi;
 	struct dev_context *devc;
 	struct sr_dev_driver *di;
 	struct compat_drv_context *drvc;
@@ -1609,7 +1756,6 @@ SR_PRIV int la2016_receive_data(int fd, int revents, void *cb_data)
 	(void)fd;
 	(void)revents;
 
-	sdi = cb_data;
 	devc = sdi->priv;
 	di = sdi->driver;
 	drvc = di->priv;

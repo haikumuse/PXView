@@ -33,6 +33,40 @@
 #include <unistd.h>
 #include "protocol.h"
 
+/*
+ * Local replacements for standard sigrok's sr_atof_ascii / sr_atoi, which
+ * PXView's libsigrok does not provide. Parse ASCII numeric strings in a
+ * locale-independent way and return SR_OK/SR_ERR. Modelled on the
+ * agilent-dmm compat implementation.
+ */
+static int local_sr_atof_ascii(const char *str, float *ret)
+{
+	char *e;
+	double tmp;
+
+	errno = 0;
+	tmp = g_ascii_strtod(str, &e);
+	if (e == str || errno != 0)
+		return SR_ERR;
+	*ret = (float)tmp;
+	return SR_OK;
+}
+
+static int local_sr_atoi(const char *str, int *ret)
+{
+	char *e;
+	long tmp;
+
+	errno = 0;
+	tmp = strtol(str, &e, 10);
+	if (e == str || *e != '\0' || errno != 0)
+		return SR_ERR;
+	if (tmp > INT_MAX || tmp < INT_MIN)
+		return SR_ERR;
+	*ret = (int)tmp;
+	return SR_OK;
+}
+
 /* Set the next event to wait for in siglent_sds_receive(). */
 static void siglent_sds_set_wait_event(struct dev_context *devc, enum wait_events event)
 {
@@ -456,19 +490,15 @@ static int siglent_sds_get_digital(const struct sr_dev_inst *sdi, struct sr_chan
 
 SR_PRIV int siglent_sds_compat_receive(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	return siglent_sds_receive(fd, revents, (void *)sdi);
+	return siglent_sds_receive(fd, revents, sdi);
 }
 
-SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
+SR_PRIV int siglent_sds_receive(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	struct sr_dev_inst *sdi;
 	struct sr_scpi_dev_inst *scpi;
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_datafeed_logic logic;
 	struct sr_channel *ch;
 	int len, i;
@@ -477,7 +507,7 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
 
 	(void)fd;
 
-	if (!(sdi = cb_data))
+	if (!sdi)
 		return TRUE;
 
 	if (!(devc = sdi->priv))
@@ -597,17 +627,22 @@ SR_PRIV int siglent_sds_receive(int fd, int revents, void *cb_data)
 					}
 					vdivlog = log10f(vdiv);
 					digits = -(int) vdivlog + (vdivlog < 0.0);
-					sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-					analog.meaning->channels = g_slist_append(NULL, ch);
+					(void)vdivlog;
+					(void)digits;
+					memset(&analog, 0, sizeof(analog));
+					analog.unit_bits = 8 * sizeof(float); /* float */
+					analog.unit_pitch = 0;
+					analog.probes = g_slist_append(NULL, ch);
 					analog.num_samples = float_data->len;
 					analog.data = (float *)float_data->data;
-					analog.meaning->mq = SR_MQ_VOLTAGE;
-					analog.meaning->unit = SR_UNIT_VOLT;
-					analog.meaning->mqflags = 0;
+					analog.mq = SR_MQ_VOLTAGE;
+					analog.unit = SR_UNIT_VOLT;
+					analog.mqflags = 0;
 					packet.type = SR_DF_ANALOG;
+					packet.status = SR_PKT_OK;
 					packet.payload = &analog;
 					sr_session_send(sdi, &packet);
-					g_slist_free(analog.meaning->channels);
+					g_slist_free(analog.probes);
 					g_array_free(data, TRUE);
 				}
 				len = 0;
@@ -902,7 +937,7 @@ SR_PRIV int siglent_sds_get_dev_cfg_horizontal(const struct sr_dev_inst *sdi)
 		}
 		if (g_strstr_len(sample_points_string, -1, "Mpts") != NULL) {
 			sample_points_string[strlen(sample_points_string) - 4] = '\0';
-			if (sr_atof_ascii(sample_points_string, &fvalue) != SR_OK) {
+			if (local_sr_atof_ascii(sample_points_string, &fvalue) != SR_OK) {
 				sr_dbg("Invalid float converted from scope response.");
 				g_free(sample_points_string);
 				return SR_ERR;
@@ -910,7 +945,7 @@ SR_PRIV int siglent_sds_get_dev_cfg_horizontal(const struct sr_dev_inst *sdi)
 			samplerate_scope = fvalue * 1000000;
 		} else if (g_strstr_len(sample_points_string, -1, "Kpts") != NULL) {
 			sample_points_string[strlen(sample_points_string) - 4] = '\0';
-			if (sr_atof_ascii(sample_points_string, &fvalue) != SR_OK) {
+			if (local_sr_atof_ascii(sample_points_string, &fvalue) != SR_OK) {
 				sr_dbg("Invalid float converted from scope response.");
 				g_free(sample_points_string);
 				return SR_ERR;

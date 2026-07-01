@@ -145,6 +145,9 @@ extern SR_PRIV struct sr_dev_driver zeroplus_logic_cube_driver_info;
 #ifdef HAVE_DRIVER_FLUKE_DMM
 extern SR_PRIV struct sr_dev_driver flukedmm_driver_info;
 #endif
+#ifdef HAVE_DRIVER_FLUKE_45
+extern SR_PRIV struct sr_dev_driver fluke_45_driver_info;
+#endif
 #ifdef HAVE_DRIVER_AGILENT_DMM
 extern SR_PRIV struct sr_dev_driver agdmm_driver_info;
 #endif
@@ -153,6 +156,9 @@ extern SR_PRIV struct sr_dev_driver norma_dmm_driver_info;
 #endif
 #ifdef HAVE_DRIVER_SERIAL_DMM
 extern SR_PRIV struct sr_dev_driver serial_dmm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_FLUKE_45
+extern SR_PRIV struct sr_dev_driver fluke_45_driver_info;
 #endif
 #ifdef HAVE_DRIVER_APPA_55II
 extern SR_PRIV struct sr_dev_driver appa_55ii_driver_info;
@@ -289,6 +295,66 @@ extern SR_PRIV struct sr_dev_driver teleinfo_driver_info;
 #endif
 #ifdef HAVE_DRIVER_KERN_SCALE
 extern SR_PRIV struct sr_dev_driver kern_ew_6200_2nm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_CONRAD_DIGI_35_CPU
+extern SR_PRIV struct sr_dev_driver conrad_digi_35_cpu_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HP_59306A
+extern SR_PRIV struct sr_dev_driver hp_59306a_driver_info;
+#endif
+#ifdef HAVE_DRIVER_COLEAD_SLM
+extern SR_PRIV struct sr_dev_driver colead_slm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ICSTATION_USBRELAY
+extern SR_PRIV struct sr_dev_driver icstation_usbrelay_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ZKETECH_EBD_USB
+extern SR_PRIV struct sr_dev_driver zketech_ebd_usb_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ARACHNID_LABS_RE_LOAD_PRO
+extern SR_PRIV struct sr_dev_driver arachnid_labs_re_load_pro_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ASIX_OMEGA_RTM_CLI
+extern SR_PRIV struct sr_dev_driver asix_omega_rtm_cli_driver_info;
+#endif
+#ifdef HAVE_DRIVER_KECHENG_KC_330B
+extern SR_PRIV struct sr_dev_driver kecheng_kc_330b_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HP_3457A
+extern SR_PRIV struct sr_dev_driver hp_3457a_driver_info;
+#endif
+#ifdef HAVE_DRIVER_MICROCHIP_PICKIT2
+extern SR_PRIV struct sr_dev_driver microchip_pickit2_driver_info;
+#endif
+#ifdef HAVE_DRIVER_HP_3478A
+extern SR_PRIV struct sr_dev_driver hp_3478a_driver_info;
+#endif
+#ifdef HAVE_DRIVER_CEM_DT_885X
+extern SR_PRIV struct sr_dev_driver cem_dt_885x_driver_info;
+#endif
+#ifdef HAVE_DRIVER_ATORCH
+extern SR_PRIV struct sr_dev_driver atorch_driver_info;
+#endif
+#ifdef HAVE_DRIVER_BKPRECISION_1856D
+extern SR_PRIV struct sr_dev_driver bkprecision_1856d_driver_info;
+#endif
+#ifdef HAVE_DRIVER_GWINSTEK_GPD
+extern SR_PRIV struct sr_dev_driver gwinstek_gpd_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SCPI_DMM
+extern SR_PRIV struct sr_dev_driver scpi_dmm_driver_info;
+#endif
+#ifdef HAVE_DRIVER_SERIAL_LCR
+extern SR_PRIV struct sr_dev_driver serial_lcr_driver_info;
+#endif
+#ifdef HAVE_DRIVER_JUNTEK_JDS6600
+extern SR_PRIV struct sr_dev_driver juntek_jds6600_driver_info;
+#endif
+#ifdef HAVE_DRIVER_GMC_MH_1X_2X
+extern SR_PRIV struct sr_dev_driver gmc_mh_1x_2x_rs232_driver_info;
+#endif
+#ifdef HAVE_DRIVER_GMC_MH_2X_BD232
+extern SR_PRIV struct sr_dev_driver gmc_mh_2x_bd232_driver_info;
 #endif
 #endif
 /** @endcond */
@@ -489,6 +555,66 @@ static struct sr_dev_driver *drivers_list[] = {
 #endif
 #ifdef HAVE_DRIVER_KERN_SCALE
     &kern_ew_6200_2nm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_CONRAD_DIGI_35_CPU
+    &conrad_digi_35_cpu_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HP_59306A
+    &hp_59306a_driver_info,
+#endif
+#ifdef HAVE_DRIVER_COLEAD_SLM
+    &colead_slm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ICSTATION_USBRELAY
+    &icstation_usbrelay_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ZKETECH_EBD_USB
+    &zketech_ebd_usb_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ARACHNID_LABS_RE_LOAD_PRO
+    &arachnid_labs_re_load_pro_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ASIX_OMEGA_RTM_CLI
+    &asix_omega_rtm_cli_driver_info,
+#endif
+#ifdef HAVE_DRIVER_KECHENG_KC_330B
+    &kecheng_kc_330b_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HP_3457A
+    &hp_3457a_driver_info,
+#endif
+#ifdef HAVE_DRIVER_MICROCHIP_PICKIT2
+    &microchip_pickit2_driver_info,
+#endif
+#ifdef HAVE_DRIVER_HP_3478A
+    &hp_3478a_driver_info,
+#endif
+#ifdef HAVE_DRIVER_CEM_DT_885X
+    &cem_dt_885x_driver_info,
+#endif
+#ifdef HAVE_DRIVER_ATORCH
+    &atorch_driver_info,
+#endif
+#ifdef HAVE_DRIVER_BKPRECISION_1856D
+    &bkprecision_1856d_driver_info,
+#endif
+#ifdef HAVE_DRIVER_GWINSTEK_GPD
+    &gwinstek_gpd_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SCPI_DMM
+    &scpi_dmm_driver_info,
+#endif
+#ifdef HAVE_DRIVER_SERIAL_LCR
+    &serial_lcr_driver_info,
+#endif
+#ifdef HAVE_DRIVER_JUNTEK_JDS6600
+    &juntek_jds6600_driver_info,
+#endif
+#ifdef HAVE_DRIVER_GMC_MH_1X_2X
+    &gmc_mh_1x_2x_rs232_driver_info,
+#endif
+#ifdef HAVE_DRIVER_GMC_MH_2X_BD232
+    &gmc_mh_2x_bd232_driver_info,
 #endif
 #endif
 	NULL,

@@ -201,6 +201,6 @@ SR_PRIV int rigol_dg_get_double_param(const struct sr_dev_inst *sdi,
 		const struct sr_channel_group *cg, int psg_cmd, double *value);
 SR_PRIV int rigol_dg_get_channel_state(const struct sr_dev_inst *sdi,
 		const struct sr_channel_group *cg);
-SR_PRIV int rigol_dg_receive_data(int fd, int revents, void *cb_data);
+SR_PRIV int rigol_dg_receive_data(int fd, int revents, const struct sr_dev_inst *sdi);
 
 #endif

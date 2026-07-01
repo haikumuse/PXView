@@ -176,6 +176,105 @@ struct dmm_channel_group {
 	uint64_t features;
 };
 
+/*
+ * PXView does not provide struct sr_sw_limits or the sr_sw_limits_*
+ * helpers that standard sigrok exposes. Define them locally as static
+ * inline so this driver is self-contained and cannot clash with copies
+ * living in other compat drivers at link time. Guard with SR_SW_LIMITS_DEFINED
+ * (same macro used by other compat drivers) to avoid redefinition if this
+ * header ever gets pulled into a translation unit that already saw it.
+ */
+#ifndef SR_SW_LIMITS_DEFINED
+#define SR_SW_LIMITS_DEFINED
+struct sr_sw_limits {
+	uint64_t limit_samples;
+	uint64_t limit_msec;
+	int64_t starttime_ms;
+	uint64_t samples_read;
+};
+
+static inline void sr_sw_limits_init(struct sr_sw_limits *limits)
+{
+	memset(limits, 0, sizeof(*limits));
+}
+
+static inline int sr_sw_limits_config_get(const struct sr_sw_limits *limits,
+		uint32_t key, GVariant **data)
+{
+	if (!limits || !data)
+		return SR_ERR_ARG;
+
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		*data = g_variant_new_uint64(limits->limit_samples);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		*data = g_variant_new_uint64(limits->limit_msec);
+		break;
+	default:
+		return SR_ERR;
+	}
+
+	return SR_OK;
+}
+
+static inline int sr_sw_limits_config_set(struct sr_sw_limits *limits,
+		uint32_t key, GVariant *data)
+{
+	if (!limits || !data)
+		return SR_ERR_ARG;
+
+	switch (key) {
+	case SR_CONF_LIMIT_SAMPLES:
+		limits->limit_samples = g_variant_get_uint64(data);
+		break;
+	case SR_CONF_LIMIT_MSEC:
+		limits->limit_msec = g_variant_get_uint64(data);
+		break;
+	default:
+		return SR_ERR;
+	}
+
+	return SR_OK;
+}
+
+static inline void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
+{
+	if (!limits)
+		return;
+	limits->starttime_ms = g_get_real_time() / 1000;
+	limits->samples_read = 0;
+}
+
+static inline void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits,
+		uint64_t count)
+{
+	if (!limits)
+		return;
+	limits->samples_read += count;
+}
+
+static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
+{
+	uint64_t elapsed_ms;
+
+	if (!limits)
+		return FALSE;
+
+	if (limits->limit_msec) {
+		elapsed_ms = (uint64_t)(g_get_real_time() / 1000) -
+				(uint64_t)limits->starttime_ms;
+		if (elapsed_ms >= limits->limit_msec)
+			return TRUE;
+	}
+
+	if (limits->limit_samples && limits->samples_read >= limits->limit_samples)
+		return TRUE;
+
+	return FALSE;
+}
+#endif /* SR_SW_LIMITS_DEFINED */
+
 struct dev_context {
 	struct sr_sw_limits limits;
 	unsigned int num_channels;

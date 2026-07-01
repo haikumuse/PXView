@@ -211,44 +211,6 @@ static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
 #endif /* ITECH_IT8500_SR_SW_LIMITS_DEFINED */
 
 /*
- * Local read/write helpers that auto-advance the pointer. Standard
- * sigrok provides read_uXXle_inc() helpers but PXView's libsigrok does
- * not. Define them locally as static inline with a guard macro so they
- * do not clash with copies in other compat drivers at link time.
- */
-#ifndef ITECH_IT8500_READ_INC_HELPERS_DEFINED
-#define ITECH_IT8500_READ_INC_HELPERS_DEFINED
-static inline uint8_t itech_it8500_read_u8_inc(const uint8_t **ptr)
-{
-	uint8_t val = **ptr;
-	(*ptr)++;
-	return val;
-}
-
-static inline uint16_t itech_it8500_read_u16le_inc(const uint8_t **ptr)
-{
-	uint16_t val = (uint16_t)(*ptr)[0] | ((uint16_t)(*ptr)[1] << 8);
-	*ptr += 2;
-	return val;
-}
-
-static inline uint32_t itech_it8500_read_u32le_inc(const uint8_t **ptr)
-{
-	uint32_t val = (uint32_t)(*ptr)[0] |
-			((uint32_t)(*ptr)[1] << 8) |
-			((uint32_t)(*ptr)[2] << 16) |
-			((uint32_t)(*ptr)[3] << 24);
-	*ptr += 4;
-	return val;
-}
-
-/* Convenience aliases that match the names used by the upstream driver. */
-#define read_u8_inc(p)    itech_it8500_read_u8_inc(p)
-#define read_u16le_inc(p) itech_it8500_read_u16le_inc(p)
-#define read_u32le_inc(p) itech_it8500_read_u32le_inc(p)
-#endif /* ITECH_IT8500_READ_INC_HELPERS_DEFINED */
-
-/*
  * Unit uses 26 byte binary packets for communications.
  * Packets have fixed format:
  *

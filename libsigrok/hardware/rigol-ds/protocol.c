@@ -34,6 +34,25 @@
 SR_PRIV int std_session_send_df_frame_end(const struct sr_dev_inst *sdi);
 
 /*
+ * Local replacement for standard sigrok's sr_atof_ascii, which PXView's
+ * libsigrok does not provide. Parse an ASCII numeric string in a
+ * locale-independent way and return SR_OK/SR_ERR. Modelled on the
+ * agilent-dmm compat implementation.
+ */
+static int local_sr_atof_ascii(const char *str, float *ret)
+{
+	char *e;
+	double tmp;
+
+	errno = 0;
+	tmp = g_ascii_strtod(str, &e);
+	if (e == str || errno != 0)
+		return SR_ERR;
+	*ret = (float)tmp;
+	return SR_OK;
+}
+
+/*
  * This is a unified protocol driver for the DS1000 and DS2000 series.
  *
  * DS1000 support tested with a Rigol DS1102D.
@@ -604,16 +623,12 @@ static int rigol_ds_read_header(struct sr_dev_inst *sdi)
 	return ret;
 }
 
-SR_PRIV int rigol_ds_receive(int fd, int revents, void *cb_data)
+SR_PRIV int rigol_ds_receive(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	struct sr_dev_inst *sdi;
 	struct sr_scpi_dev_inst *scpi;
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_datafeed_logic logic;
 	double vdiv, offset, origin;
 	int len, i, vref;
@@ -622,7 +637,7 @@ SR_PRIV int rigol_ds_receive(int fd, int revents, void *cb_data)
 
 	(void)fd;
 
-	if (!(sdi = cb_data))
+	if (!sdi)
 		return TRUE;
 
 	if (!(devc = sdi->priv))
@@ -750,17 +765,22 @@ SR_PRIV int rigol_ds_receive(int fd, int revents, void *cb_data)
 				devc->data[i] = (128 - devc->buffer[i]) * vdiv - offset;
 		float vdivlog = log10f(vdiv);
 		int digits = -(int)vdivlog + (vdivlog < 0.0);
-		sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-		analog.meaning->channels = g_slist_append(NULL, ch);
+		(void)vdivlog;
+		(void)digits;
+		memset(&analog, 0, sizeof(analog));
+		analog.unit_bits = 8 * sizeof(float); /* float */
+		analog.unit_pitch = 0;
+		analog.probes = g_slist_append(NULL, ch);
 		analog.num_samples = len;
 		analog.data = devc->data;
-		analog.meaning->mq = SR_MQ_VOLTAGE;
-		analog.meaning->unit = SR_UNIT_VOLT;
-		analog.meaning->mqflags = 0;
+		analog.mq = SR_MQ_VOLTAGE;
+		analog.unit = SR_UNIT_VOLT;
+		analog.mqflags = 0;
 		packet.type = SR_DF_ANALOG;
+		packet.status = SR_PKT_OK;
 		packet.payload = &analog;
 		sr_session_send(sdi, &packet);
-		g_slist_free(analog.meaning->channels);
+		g_slist_free(analog.probes);
 	} else {
 		logic.length = len;
 		// TODO: For the MSO1000Z series, we need a way to express that
@@ -926,7 +946,7 @@ SR_PRIV int rigol_ds_get_dev_cfg(const struct sr_dev_inst *sdi)
 		if (response[len-1] == 'X')
 			response[len-1] = 0;
 
-		res = sr_atof_ascii(response, &devc->attenuation[i]);
+		res = local_sr_atof_ascii(response, &devc->attenuation[i]);
 		g_free(response);
 		g_free(cmd);
 		if (res != SR_OK)

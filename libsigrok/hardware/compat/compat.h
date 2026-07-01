@@ -242,13 +242,13 @@ SR_PRIV GVariant *std_gvar_array_u64(const uint64_t vals[], size_t count);
 SR_PRIV GVariant *std_gvar_min_max_step(double min, double max, double step);
 SR_PRIV GVariant *std_gvar_min_max_steps_uint64(uint64_t min, uint64_t max,
     const uint64_t steps[], size_t count);
-SR_PRIV GVariant *std_gvar_tuple_array(const char *strs[], size_t count);
+SR_PRIV GVariant *std_gvar_tuple_array(const uint64_t a[][2],
+	unsigned int n);
 
-/* Config get helpers (standard sigrok style) */
-SR_PRIV int std_u64_idx(const struct sr_dev_inst *sdi, uint32_t key,
-    GVariant **data, const uint64_t vals[], size_t count);
-SR_PRIV int std_str_idx(const struct sr_dev_inst *sdi, uint32_t key,
-    GVariant **data, const char *const strs[], size_t count);
+/* Config get helpers (standard sigrok style - 3-arg canonical form).
+ * The previous 5-arg sdi/key/data form was unused; see compat_helpers.h. */
+SR_PRIV int std_u64_idx(GVariant *data, const uint64_t a[], unsigned int n);
+SR_PRIV int std_str_idx(GVariant *data, const char *a[], unsigned int n);
 SR_PRIV int std_bool_idx(const struct sr_dev_inst *sdi, uint32_t key,
     GVariant **data, const gboolean vals[], size_t count);
 

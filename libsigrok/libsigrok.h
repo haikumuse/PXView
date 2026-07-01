@@ -226,6 +226,8 @@ enum {
   SR_MQ_SOUND_PRESSURE_LEVEL,
   SR_MQ_CARBON_MONOXIDE,
   SR_MQ_RELATIVE_HUMIDITY,
+  /** Harmonic ratio (e.g. THD as a percentage). */
+  SR_MQ_HARMONIC_RATIO,
 };
 
 /** Values for sr_datafeed_analog.unit. */
@@ -310,6 +312,8 @@ enum {
   /** Sound pressure level represented as a percentage of measurements
    * that were over a preset alarm level. */
   SR_MQFLAG_SPL_PCT_OVER_ALARM = 0x10000,
+  /** Device is in averaging mode. */
+  SR_MQFLAG_AVG = 0x20000,
 };
 
 enum DSLOGIC_OPERATION_MODE {

@@ -139,7 +139,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 		return NULL;
 	}
 
-	num_read = serial_read_blocking(serial, buf, 4, serial_timeout(serial, 4));
+	num_read = serial_read_blocking(serial, buf, 4, ols_serial_timeout(serial, 4));
 	if (num_read < 0) {
 		serial_close(serial);
 		sr_err("Getting ID reply failed (%d).", num_read);
