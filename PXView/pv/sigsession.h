@@ -427,6 +427,15 @@ public:
   // (IMessageListener and IEventListener) run in parallel during the migration.
   void broadcast_msg(int msg, int param = 0);
 
+  // Defer a broadcast_msg to the next event-loop iteration via Qt::QueuedConnection.
+  // Use this for notifications that immediately follow Core SignalModel wholesale
+  // rebuild (init_signals/reload/switch_work_mode) so handlers run AFTER the
+  // synchronous View rebuild (signals_changed -> on_signals_changed) completes.
+  // SigSession itself is NOT a QObject, so the invocation is queued on qApp
+  // (QCoreApplication singleton), which always has a running event loop in both
+  // GUI and headless modes.
+  void broadcast_msg_deferred(int msg, int param = 0);
+
   // --- Typed event bus ----------------------------------------------------
   // Register/unregister a typed event listener. A listener may be registered
   // on at most one SigSession. Removal is O(n); callers must unregister before
@@ -631,6 +640,14 @@ private:
     broadcast_msg(msg);
   }
 
+  // Defer a trigger_message to the next event-loop iteration. Use this for
+  // trigger_message calls that immediately follow Core SignalModel wholesale
+  // rebuild (e.g. set_device -> init_signals) so both the ITriggerCallback
+  // dispatch and broadcast_msg run AFTER the synchronous View rebuild
+  // (signals_changed -> on_signals_changed) completes. trigger_message itself
+  // is left untouched because it is also used on non-rebuild paths.
+  void trigger_message_deferred(int msg);
+
   // ISessionStateCallback dispatch helpers
   inline void signals_changed() {
     dispatch_to<ISessionStateCallback>(
@@ -677,6 +694,26 @@ private:
 
   // IDeviceAgentCallback
   void DeviceConfigChanged() override;
+
+private:
+  // RAII guard to suppress DeviceConfigChanged broadcasts during batch config
+  // restore (e.g. load_config_from_json). Prevents nested reload -> UAF.
+  // Declared private but exposed via public SuppressConfigBroadcast() factory.
+  friend class SuppressConfigBroadcastGuard;
+  bool _suppress_config_broadcast = false;
+
+public:
+  class SuppressConfigBroadcastGuard {
+    SigSession &_s;
+    bool _prev;
+  public:
+    explicit SuppressConfigBroadcastGuard(SigSession &s) : _s(s), _prev(s._suppress_config_broadcast) {
+      s._suppress_config_broadcast = true;
+    }
+    ~SuppressConfigBroadcastGuard() { _s._suppress_config_broadcast = _prev; }
+    SuppressConfigBroadcastGuard(const SuppressConfigBroadcastGuard&) = delete;
+    SuppressConfigBroadcastGuard& operator=(const SuppressConfigBroadcastGuard&) = delete;
+  };
 
 private:
   /**

@@ -349,14 +349,18 @@ void AnalogSignal::set_zero_ratio(double ratio) {
   if (_view->session().is_running_status())
     return;
 
+  // Same nested-broadcast guard as DsoSignal::set_zero_ratio: set_config_uint16
+  // triggers synchronous config_changed -> broadcast_msg, which may delete this
+  // AnalogSignal mid-method.
+  auto model = _model;
   _zero_offset = ratio2value(ratio);
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
   session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET, _zero_offset,
                                            probe, NULL);
   // Task 7.3: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
   // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
-  if (_model) {
-    _model->set_zero_offset((double)_zero_offset);
+  if (model) {
+    model->set_zero_offset((double)_zero_offset);
   }
 }
 

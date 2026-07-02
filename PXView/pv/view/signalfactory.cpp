@@ -144,8 +144,31 @@ SignalFactory::SignalChangeEvent SignalFactory::compute_change_event(
   }
 
   // Check if index sets are identical → Modified (properties may have changed)
-  if (current_indices == model_indices)
+  if (current_indices == model_indices) {
+    // Pointer-identity check: even when channel indices match, if any existing
+    // Signal's _model points to a SignalModel object that is NOT in the new
+    // models list (by raw pointer identity), Core has rebuilt the SignalModels
+    // wholesale (init_signals/reload/switch_work_mode). The shared_ptr stored
+    // in view::Signal keeps the old SignalModel alive so this .get() read is
+    // safe, but the View must fully rebuild (AllReplaced) so each Signal
+    // rebinds its _model to the new SignalModel. Without this, the stale
+    // _model causes UAF (this=0xfeeefeeefeeefeee) when handlers later access it
+    // (e.g. DsoSignal::set_zero_ratio -> SignalModel::set_zero_offset).
+    std::set<data::SignalModel *> model_ptrs;
+    for (auto &model : models) {
+      if (model)
+        model_ptrs.insert(model.get());
+    }
+    for (auto *sig : current_signals) {
+      if (!sig)
+        continue;
+      auto sig_model = sig->model();
+      if (sig_model && model_ptrs.find(sig_model.get()) == model_ptrs.end()) {
+        return AllReplaced;
+      }
+    }
     return Modified;
+  }
 
   // Check if models is pure superset of current → Added
   // (all current indices exist in models, and models has extra indices)

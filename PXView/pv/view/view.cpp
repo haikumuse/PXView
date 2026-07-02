@@ -2653,6 +2653,17 @@ void View::signals_modified_refresh() {
   // enabling Math/Spectrum/Lissajous via their option dialogs does not show the
   // trace until the user switches tabs (which triggers sync_derived_traces).
   mark_derived_traces_dirty();
+
+  // Rebuild _signal_groups before any paint. When a decoder is removed via
+  // remove_decoder() or clear_all_decoders(), the DecodeTrace is deleted
+  // directly (not through sync_derived_traces()), and on_signals_changed()
+  // returns Modified (DecoderStacks aren't in _signal_models). Without this
+  // rebuild, _signal_groups retains dangling Trace* pointers, causing SIGSEGV
+  // in Header::paintEvent. compute_signal_groups() calls get_traces() which
+  // calls sync_derived_traces() first (safe: _derived_traces_dirty was just
+  // set above, so it runs once, then the flag is cleared).
+  compute_signal_groups();
+
   viewport_update();
   header_updated();
 }
@@ -2787,6 +2798,12 @@ void View::sync_derived_traces() {
   if (!source)
     return;
 
+  // Track whether any trace was added or removed. If so, _signal_groups
+  // (which caches raw Trace* pointers) must be rebuilt to avoid dangling
+  // pointers. Header::paintEvent reads _signal_groups via get_signal_groups(),
+  // and a stale pointer there causes SIGSEGV (UAF).
+  bool changed = false;
+
   // ---- Sync DecodeTrace list from DecoderStack list ----
   auto &decoder_stacks = source->get_decoder_stacks();
 
@@ -2802,6 +2819,7 @@ void View::sync_derived_traces() {
     if (it_stack == decoder_stacks.end()) {
       delete dt;
       it = _own_decode_traces.erase(it);
+      changed = true;
     } else {
       ++it;
     }
@@ -2830,6 +2848,7 @@ void View::sync_derived_traces() {
       // causes incorrect layout ordering in LOGIC mode signals_changed.
       dt->set_view_index((int)_own_signals.size() + decode_index);
       _own_decode_traces.push_back(dt);
+      changed = true;
     }
     decode_index++;
   }
@@ -2850,6 +2869,7 @@ void View::sync_derived_traces() {
     if (it_stack == spectrum_stacks.end()) {
       delete st;
       it = _own_spectrum_traces.erase(it);
+      changed = true;
     } else {
       ++it;
     }
@@ -2867,6 +2887,7 @@ void View::sync_derived_traces() {
     if (!exists) {
       auto *st = new SpectrumTrace(_session, stack, stack->get_index());
       _own_spectrum_traces.push_back(st);
+      changed = true;
     }
   }
 
@@ -2879,6 +2900,7 @@ void View::sync_derived_traces() {
       if (_own_math_trace) {
         delete _own_math_trace;
         _own_math_trace = nullptr;
+        changed = true;
       }
 
       // MathStack now exposes the source channel indices. Look up the
@@ -2901,6 +2923,7 @@ void View::sync_derived_traces() {
 
       if (dso1 && dso2) {
         _own_math_trace = new MathTrace(true, math_stack, dso1, dso2);
+        changed = true;
       } else {
         pxv_warn("View::sync_derived_traces: DsoSignal not found for "
                  "math src1=%d or src2=%d — MathTrace creation skipped.",
@@ -2911,6 +2934,7 @@ void View::sync_derived_traces() {
     if (_own_math_trace) {
       delete _own_math_trace;
       _own_math_trace = nullptr;
+      changed = true;
     }
   }
 
@@ -2922,12 +2946,25 @@ void View::sync_derived_traces() {
       _own_lissajous_trace = new LissajousTrace(
           lissajous_model->enabled(), snapshot, lissajous_model->x_index(),
           lissajous_model->y_index(), lissajous_model->percent());
+      changed = true;
     }
   } else {
     if (_own_lissajous_trace) {
       delete _own_lissajous_trace;
       _own_lissajous_trace = nullptr;
+      changed = true;
     }
+  }
+
+  // Rebuild _signal_groups if any trace was added or removed.
+  // _signal_groups caches raw Trace* pointers; without this rebuild, a
+  // deleted trace's pointer becomes dangling, causing SIGSEGV in
+  // Header::paintEvent when it iterates group.traces.
+  // Safe against recursion: _derived_traces_dirty is already false, so
+  // compute_signal_groups() -> get_traces() -> get_own_decode_traces() ->
+  // sync_derived_traces() returns immediately.
+  if (changed) {
+    compute_signal_groups();
   }
 }
 
