@@ -1,0 +1,10 @@
+- [x] `SigSession::broadcast_msg_deferred(int, int)` 已实现，通过 `QMetaObject::invokeMethod(qApp, ..., Qt::QueuedConnection)` 投递到下一事件循环（SigSession 非 QObject，用 qApp）
+- [x] `switch_work_mode` 中 `DSV_MSG_DEVICE_MODE_CHANGED` 广播已改为 `broadcast_msg_deferred`；`set_device` 的 `DSV_MSG_CURRENT_DEVICE_CHANGED` 改为 `trigger_message_deferred`
+- [x] `sigsession.cpp` 所有 `broadcast_msg`/`trigger_message` 调用点已按语义分类（37 处：2 处重建类延迟，35 处属性类同步）
+- [x] **`reload()` 末尾已补 `signals_changed()`**（真正根因修复——reload 全量重建 SignalModel 后必须通知 View 重绑 _model）
+- [x] Core 全量重建 SignalModel 时 View 走 `AllReplaced` 全量重建（`compute_change_event` 指针身份判定：旧 `_model.get()` 不在新 models 中 → AllReplaced），所有 `view::Signal::_model` 重绑到新 SignalModel
+- [x] `View::on_signals_changed` 后无任何 `_model` 指向已释放内存（shared_ptr 保活 + AllReplaced 全量重绑）
+- [x] `mainwindow.cpp` `DSV_MSG_DEVICE_MODE_CHANGED` case 内的手动 `rebuild_signals()` 补丁及 CRITICAL 注释已删除，替换为说明注释
+- [x] `cd build; ninja -j 16; ninja install` 编译通过（exit_code=0）
+- [x] `AGENTS.md` State Sync Conventions 已补充"SignalModel wholesale rebuild sync"约束，总行数 76 ≤85
+- [ ] 待用户验证：GUI 模式手动切换 DSO 模式不再崩溃，波形/触发/零点配置正常加载

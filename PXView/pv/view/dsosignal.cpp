@@ -464,7 +464,9 @@ uint64_t DsoSignal::get_vDialValue() { return _vDial->get_value(); }
 uint16_t DsoSignal::get_vDialSel() { return _vDial->get_sel(); }
 
 void DsoSignal::set_acCoupling(uint8_t coupling) {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  // Same nested-broadcast guard as set_zero_ratio.
+  auto model = _model;
+  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
 
   if (enabled()) {
     _acCoupling = coupling;
@@ -473,8 +475,8 @@ void DsoSignal::set_acCoupling(uint8_t coupling) {
                                              _acCoupling, probe, NULL);
     // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press AC/DC
     // 切换）。
-    if (_model) {
-      _model->set_coupling((int)coupling);
+    if (model) {
+      model->set_coupling((int)coupling);
     }
   }
 }
@@ -511,7 +513,10 @@ void DsoSignal::set_trig_vpos(int pos, bool delta_change) {
 }
 
 void DsoSignal::set_trig_ratio(double ratio, bool delta_change) {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  // Same nested-broadcast guard as set_zero_ratio: set_config_byte triggers
+  // synchronous config_changed -> broadcast_msg, which may delete this DsoSignal.
+  auto model = _model;
+  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
   double delta = ratio;
 
   if (session->get_device()->is_hardware_logic()) {
@@ -535,8 +540,8 @@ void DsoSignal::set_trig_ratio(double ratio, bool delta_change) {
                                            probe, NULL);
   // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
   // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
-  if (_model) {
-    _model->set_trig_value((double)_trig_value);
+  if (model) {
+    model->set_trig_value((double)_trig_value);
   }
 }
 
@@ -564,20 +569,29 @@ void DsoSignal::set_zero_vpos(int pos) {
 }
 
 void DsoSignal::set_zero_ratio(double ratio) {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  // CRITICAL: Copy _model to a local shared_ptr BEFORE calling set_config_*.
+  // set_config_uint16 -> config_changed -> broadcast_msg(SAMPLE_COUNT_UPDATED)
+  // is SYNCHRONOUS and can trigger nested reload -> signals_changed -> View
+  // AllReplaced rebuild, which DELETES this DsoSignal (and its _model member).
+  // After set_config returns, _model may be dangling. The local copy keeps the
+  // SignalModel alive even if `this` is deleted mid-method.
+  auto model = _model;
+  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
   _zero_offset = ratio2value(ratio);
   if (probe)
     session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET, _zero_offset,
                                              probe, NULL);
   // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
   // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
-  if (_model) {
-    _model->set_zero_offset((double)_zero_offset);
+  if (model) {
+    model->set_zero_offset((double)_zero_offset);
   }
 }
 
 void DsoSignal::set_factor(uint64_t factor) {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  // Same nested-broadcast guard as set_zero_ratio.
+  auto model = _model;
+  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
 
   if (enabled()) {
     uint64_t prefactor = 0;
@@ -591,7 +605,7 @@ void DsoSignal::set_factor(uint64_t factor) {
         return;
       }
     } else {
-      prefactor = _model ? _model->vfactor() : 1;
+      prefactor = model ? model->vfactor() : 1;
     }
 
     if (prefactor != factor) {
@@ -603,8 +617,8 @@ void DsoSignal::set_factor(uint64_t factor) {
       _view->update();
       // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press
       // X1/X10/X100）。
-      if (_model) {
-        _model->set_vfactor((double)factor);
+      if (model) {
+        model->set_vfactor((double)factor);
       }
     }
   }

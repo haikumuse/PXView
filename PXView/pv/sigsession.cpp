@@ -39,7 +39,9 @@
 #include "data/signalmodel.h"
 #include "data/spectrumstack.h"
 
+#include <QCoreApplication>
 #include <QDir>
+#include <QObject>
 #include <QString>
 #include <assert.h>
 #include <chrono>
@@ -269,7 +271,11 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   set_cur_samplelimits(_device_agent.get_sample_limit());
 
   // The current device changed.
-  trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGED);
+  // Deferred: init_signals() above rebuilt Core SignalModels; trigger_message
+  // (ITriggerCallback dispatch + broadcast_msg) must run AFTER the View
+  // signals_changed rebuild so handlers (on_device_changed -> load_device_config
+  // -> DsoSignal::set_zero_ratio) see valid view::Signal::_model pointers.
+  trigger_message_deferred(DSV_MSG_CURRENT_DEVICE_CHANGED);
 
   if (ds_get_last_error() == SR_ERR_DEVICE_FIRMWARE_VERSION_LOW) {
     QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_RECONNECT_FOR_FIRMWARE),
@@ -1105,6 +1111,10 @@ void SigSession::reload() {
       continue;
     }
 
+    if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
+      continue;
+    }
+
     bool should_create = false;
     api::ChannelType ch_type = api::ChannelType::Logic;
 
@@ -1114,6 +1124,11 @@ void SigSession::reload() {
         should_create = true;
         ch_type = api::ChannelType::Logic;
       }
+      break;
+
+    case SR_CHANNEL_DSO:
+      should_create = true;
+      ch_type = api::ChannelType::Dso;
       break;
 
     case SR_CHANNEL_ANALOG:
@@ -1146,7 +1161,8 @@ void SigSession::reload() {
       model->set_session(this);
       model->set_sr_channel(probe);
 
-      if (ch_type == api::ChannelType::Analog) {
+      if (ch_type == api::ChannelType::Dso ||
+          ch_type == api::ChannelType::Analog) {
         uint64_t vdiv = 0;
         if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
                                             NULL))
@@ -1195,12 +1211,30 @@ void SigSession::reload() {
     std::vector<std::shared_ptr<data::SignalModel>>().swap(_signal_models);
     _signal_models = models;
     make_channels_view_index();
-  } else if (mode == LOGIC || mode == ANALOG) {
+  } else if (mode == LOGIC || mode == ANALOG || mode == DSO) {
     pxv_info("ERROR: Unable to create any channel.");
     clear_signals();
   }
 
   spectrum_rebuild();
+
+  // CRITICAL: reload() wholesale-replaces _signal_models (new shared_ptr
+  // objects, old ones destroyed). Without signals_changed(), the View's
+  // DsoSignal/AnalogSignal keep stale _model pointers to the freed
+  // SignalModels (0xfeeefeee), and any subsequent access UAFs. This is
+  // symmetric with init_signals() which also ends with signals_changed().
+  // Trigger path: load_config_from_json -> _session->reload() -> [here]
+  // -> immediately after, load_config_from_json iterates
+  // current_view()->get_own_signals() and calls DsoSignal::set_zero_ratio ->
+  // _model->set_zero_offset. Without this notification the _model is dangling.
+  // compute_change_event detects the pointer identity change and returns
+  // AllReplaced, so View fully rebinds _model to the new SignalModels.
+  // NOTE: reload() now handles DSO mode (case SR_CHANNEL_DSO), same as
+  // init_signals(). Previously reload() skipped DSO channels entirely, making
+  // it a no-op in DSO mode — so load_config_from_json's probe property
+  // updates (vdiv/coupling/vfactor) were never reflected in SignalModel, and
+  // the View kept stale _model pointers.
+  signals_changed();
 }
 
 void SigSession::refresh(int holdtime) {
@@ -2232,6 +2266,32 @@ void SigSession::broadcast_msg(int msg, int param) {
   }
 }
 
+void SigSession::broadcast_msg_deferred(int msg, int param) {
+  // Queue the broadcast to the next event-loop iteration. This guarantees the
+  // broadcast arrives AFTER any signals_changed() -> View rebuild triggered by
+  // init_signals()/reload() in the same call stack. Without this, a synchronous
+  // broadcast_msg would reach handlers (e.g. on_device_options ->
+  // load_device_config -> DsoSignal::set_zero_ratio) before the View has
+  // rebound view::Signal::_model to the new SignalModels, causing UAF
+  // (this=0xfeeefeeefeeefeee).
+  // SigSession is not a QObject, so we queue on qApp (the QCoreApplication
+  // singleton) which lives on the main thread and always runs an event loop.
+  QMetaObject::invokeMethod(qApp, [this, msg, param]() {
+    broadcast_msg(msg, param);
+  }, Qt::QueuedConnection);
+}
+
+void SigSession::trigger_message_deferred(int msg) {
+  // Queue the full trigger_message (ITriggerCallback dispatch + broadcast_msg)
+  // to the next event-loop iteration. Used after Core SignalModel wholesale
+  // rebuild (e.g. set_device -> init_signals) so handlers run AFTER the View
+  // has rebound view::Signal::_model to the new SignalModels. trigger_message
+  // itself is left synchronous for non-rebuild paths.
+  QMetaObject::invokeMethod(qApp, [this, msg]() {
+    trigger_message(msg);
+  }, Qt::QueuedConnection);
+}
+
 void SigSession::set_collect_mode(DEVICE_COLLECT_MODE m) {
   assert(!_is_working);
 
@@ -2573,6 +2633,11 @@ void SigSession::OnMessage(int msg, int param) {
 }
 
 void SigSession::DeviceConfigChanged() {
+  // Suppress during JSON restore to avoid nested broadcast -> reload ->
+  // signals_changed -> View AllReplaced deleting the DsoSignal mid-method.
+  // See _suppress_config_broadcast comment in sigsession.h.
+  if (_suppress_config_broadcast)
+    return;
   // Notify UI that device config changed (e.g. disk cache toggle),
   // so sampling duration can be recalculated from SR_CONF_HW_DEPTH
   broadcast_msg(DSV_MSG_SAMPLE_COUNT_UPDATED);
@@ -2612,7 +2677,8 @@ bool SigSession::switch_work_mode(int mode) {
 
     pxv_info("Switch work mode to:%d", mode);
 
-    broadcast_msg(DSV_MSG_DEVICE_MODE_CHANGED);
+    // Deferred: View must finish signals_changed rebuild before handlers access view::Signal::_model
+    broadcast_msg_deferred(DSV_MSG_DEVICE_MODE_CHANGED);
 
     return true;
   }

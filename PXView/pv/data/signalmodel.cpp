@@ -24,6 +24,7 @@
 
 #include "../sigsession.h"
 #include "../deviceagent.h"
+#include "../log.h"
 
 namespace pv {
 namespace data {

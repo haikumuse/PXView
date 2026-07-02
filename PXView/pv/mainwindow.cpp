@@ -1506,6 +1506,14 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
 bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   haveDecoder = false;
 
+  // Suppress DeviceConfigChanged broadcasts during batch config restore.
+  // set_config_* calls below (via DsoSignal::set_zero_ratio etc.) would
+  // otherwise synchronously trigger on_device_options -> load_device_config
+  // -> reload -> signals_changed -> View AllReplaced, deleting the DsoSignal
+  // mid-method (UAF in the next set_trig_ratio call on the same `this`).
+  // Device config is still written; reload() at the end rebuilds from it.
+  SigSession::SuppressConfigBroadcastGuard guard(*_session);
+
   QJsonObject sessionObj = doc.object();
 
   int mode = _device_agent->get_work_mode();
@@ -1691,6 +1699,12 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
     }
   }
 
+  // reload() rebuilds SignalModels from the (just-updated) sr_channel state
+  // (probe->enabled/name/vdiv/coupling/vfactor set above). The DSO loop below
+  // then operates on the NEW DsoSignal + NEW _model. Note: set_zero_ratio etc.
+  // now use a local shared_ptr copy of _model (see dsosignal.cpp), so even if
+  // set_config_* triggers a synchronous nested broadcast that deletes this
+  // DsoSignal mid-method, the local copy keeps the SignalModel alive.
   _session->reload();
 
   // load signal setting
@@ -3241,18 +3255,11 @@ void MainWindow::on_device_options(int msg, int param) {
     break;
   }
   case DSV_MSG_DEVICE_MODE_CHANGED: {
-    // CRITICAL: switch_work_mode() already called init_signals() which rebuilt
-    // Core-side SignalModels (old ones deleted, memory filled with 0xfeeefeee
-    // by Windows debug heap). The View-side signals_changed() notification is
-    // delivered via Qt queued signal (async), so it has NOT been processed yet
-    // when this synchronous broadcast_msg handler runs. Without rebuilding View
-    // signals first, _own_signals still hold stale SignalModel pointers, and
-    // any access below (load_device_config -> load_config_from_json ->
-    // DsoSignal::set_zero_ratio -> _model->set_zero_offset) dereferences freed
-    // memory -> SIGSEGV (this=0xfeeefeeefeeefeee).
-    // Rebuild synchronously here so all subsequent handlers see valid pointers.
-    current_view()->rebuild_signals();
-
+    // switch_work_mode() now broadcasts DSV_MSG_DEVICE_MODE_CHANGED via
+    // broadcast_msg_deferred, so this handler runs AFTER the View has finished
+    // its signals_changed rebuild (which rebinds view::Signal::_model to the
+    // new SignalModels via compute_change_event pointer-identity check). No
+    // manual rebuild_signals() is needed here.
     current_view()->mode_changed();
     reset_all_view();
     load_device_config();
