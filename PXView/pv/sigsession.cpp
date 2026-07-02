@@ -153,6 +153,12 @@ SigSession::SigSession() {
 SigSession::SigSession(SigSession &o) { (void)o; }
 
 SigSession::~SigSession() {
+  // A3 fix: ensure Close() has been called so background threads (decode/copy/
+  // glitch_filter/signal_invert) are joined before we destroy _data_list.
+  // Close() is idempotent (_bClose guard), so calling it here is safe even
+  // if already called via uninit().
+  Close();
+
   for (auto p : _data_list) {
     p->clear();
     delete p;
@@ -1919,6 +1925,26 @@ void SigSession::Close() {
   pxv_info("SigSession::Close(), stop capture");
   stop_capture();
 
+  // A3 fix: Stop glitch filter and signal invert background threads before
+  // tearing down data. Set running flags false first so the task functions
+  // know no new work should be accepted, then join the thread if still
+  // joinable. Without this, a joinable std::thread would std::terminate on
+  // destruction.
+  _glitch_filter_running = false;
+  if (_glitch_filter_thread) {
+    if (_glitch_filter_thread->joinable())
+      _glitch_filter_thread->join();
+    delete _glitch_filter_thread;
+    _glitch_filter_thread = nullptr;
+  }
+  _signal_invert_running = false;
+  if (_signal_invert_thread) {
+    if (_signal_invert_thread->joinable())
+      _signal_invert_thread->join();
+    delete _signal_invert_thread;
+    _signal_invert_thread = nullptr;
+  }
+
   // Join any in-flight background copy thread before tearing down data
   // (a joinable std::thread would otherwise std::terminate on destruction).
   join_copy_thread();
@@ -2059,6 +2085,12 @@ void SigSession::decode_single_task(std::shared_ptr<data::DecoderStack> task) {
       if (_view_data != nullptr && _view_data->get_logic() != nullptr) {
         _view_data->get_logic()->decode_end();
       }
+      // B1.2: emit the typed DecodeDone event so IEventListener consumers
+      // (e.g. a future headless decode-done handler) can react without going
+      // through the legacy ISessionStateCallback::decode_done path (which is
+      // currently invoked only from DecodeTrace::on_decode_done in the View
+      // layer).
+      broadcast<interface::DecodeDone>({});
     }
   }
 
@@ -2240,11 +2272,14 @@ void SigSession::OnMessage(int msg, int param) {
   // BEFORE the legacy switch below so both listener kinds (IMessageListener via
   // the switch, IEventListener via broadcast) are notified in parallel.
   //
-  // Core-internal state-machine messages (DSV_MSG_REV_END_PACKET,
-  // DSV_MSG_TRIG_NEXT_COLLECT, DSV_MSG_COLLECT_END, DS_EV_DEVICE_SPEED_NOT_MATCH)
-  // are intentionally NOT translated: they drive SigSession's own state machine
-  // in the switch below and must not be re-broadcast to typed listeners (which
-  // could create a feedback loop if a typed listener calls back into Core).
+  // The translation table covers all 38 user-facing notification codes; only
+  // the 5 "prev" pre/post ordering codes (REV_END_PACKET, START_COLLECT_WORK_PREV,
+  // END_COLLECT_WORK_PREV, CURRENT_DEVICE_CHANGE_PREV, STORE_CONF_PREV) are
+  // skipped — they drive SigSession's own state machine in the legacy switch
+  // below and have no semantic meaning for typed listeners. There is no
+  // feedback-loop risk: broadcast<T>() only invokes IEventListener::on_event
+  // overrides (never OnMessage itself), and the thread-local re-entrancy guard
+  // short-circuits any nested broadcast.
   //
   // Known compat-layer limitations (resolved when call sites migrate to direct
   // broadcast<T>() in Task 5):
@@ -2303,9 +2338,85 @@ void SigSession::OnMessage(int msg, int param) {
   case DSV_MSG_SAVE_COMPLETE:
     broadcast<interface::SaveComplete>({});
     break;
+  case DSV_MSG_START_COLLECT_WORK:
+    broadcast<interface::StartCollectWork>({});
+    break;
+  case DSV_MSG_COLLECT_START:
+    broadcast<interface::CollectStart>({});
+    break;
+  case DSV_MSG_COLLECT_END:
+    broadcast<interface::CollectEnd>({});
+    break;
+  case DSV_MSG_END_COLLECT_WORK:
+    broadcast<interface::EndCollectWork>({});
+    break;
+  case DSV_MSG_END_DEVICE_OPTIONS:
+    broadcast<interface::EndDeviceOptions>({});
+    break;
+  case DSV_MSG_DEVICE_DURATION_UPDATED:
+    broadcast<interface::SampleRateChanged>({});
+    break;
+  case DSV_MSG_DEVICE_CONFIG_UPDATED:
+    broadcast<interface::DeviceConfigUpdated>({});
+    break;
+  case DSV_MSG_DEMO_OPERATION_MODE_CHNAGED:
+    broadcast<interface::DemoModeChanged>({});
+    break;
+  case DSV_MSG_DATA_POOL_CHANGED:
+    broadcast<interface::DataPoolChanged>({});
+    break;
+  case DSV_MSG_SIMPLE_TRIGGER_CHANGED:
+    broadcast<interface::SimpleTriggerChanged>({});
+    break;
+  case DSV_MSG_GLITCH_FILTER_STARTED:
+    broadcast<interface::GlitchFilterStarted>({});
+    break;
+  case DSV_MSG_GLITCH_FILTER_PROGRESS:
+    broadcast<interface::GlitchFilterProgress>({param});
+    break;
+  case DSV_MSG_GLITCH_FILTER_COMPLETED:
+    broadcast<interface::GlitchFilterCompleted>({});
+    break;
+  case DSV_MSG_GLITCH_FILTER_CLEARED:
+    broadcast<interface::GlitchFilterCleared>({});
+    break;
+  case DSV_MSG_SIGNAL_INVERT_STARTED:
+    broadcast<interface::SignalInvertStarted>({});
+    break;
+  case DSV_MSG_SIGNAL_INVERT_COMPLETED:
+    broadcast<interface::SignalInvertCompleted>({});
+    break;
+  case DSV_MSG_SIGNAL_INVERT_CLEARED:
+    broadcast<interface::SignalInvertCleared>({});
+    break;
+  case DSV_MSG_COPY_IN_PROGRESS_CHANGED:
+    broadcast<interface::CopyInProgressChanged>({is_copy_in_progress()});
+    break;
+  case DSV_MSG_TRIG_NEXT_COLLECT:
+    broadcast<interface::TrigNextCollect>({});
+    break;
+  case DSV_MSG_CLEAR_DECODE_DATA:
+    broadcast<interface::ClearDecodeData>({});
+    break;
+  case DSV_MSG_APP_OPTIONS_CHANGED:
+    broadcast<interface::AppOptionsChanged>({});
+    break;
+  case DSV_MSG_FONT_OPTIONS_CHANGED:
+    broadcast<interface::FontOptionsChanged>({});
+    break;
+  case DSV_MSG_SHORTCUT_CHANGED:
+    broadcast<interface::ShortcutChanged>({});
+    break;
+  case DSV_MSG_STYLE_CHANGED:
+    broadcast<interface::StyleChanged>({});
+    break;
   default:
     // Core-internal state-machine messages (or messages with no typed
     // equivalent): no translation, fall through to the legacy switch only.
+    // The 5 "prev" notification pairs (REV_END_PACKET, START_COLLECT_WORK_PREV,
+    // END_COLLECT_WORK_PREV, CURRENT_DEVICE_CHANGE_PREV, STORE_CONF_PREV) are
+    // intentionally not typed — they drive pre/post ordering of state-machine
+    // transitions and have no semantic meaning for typed listeners.
     break;
   }
 
@@ -2398,17 +2509,27 @@ void SigSession::OnMessage(int msg, int param) {
       if (bAddDecoder && _active_document) {
         // Move copy_data_to_document to a background thread
         // so the UI thread is not blocked by the deep copy.
-        _copy_in_progress = true;
+        // C4 fix: lock _capture_state_mutex to make the snapshot of
+        // _copy_in_progress + _capture_owner_document atomic with respect
+        // to CaptureOwnerGuard ctor/dtor and clear_capture_owner_document.
+        data::SessionDocument *doc;
+        {
+          std::lock_guard<std::mutex> lock(_capture_state_mutex);
+          _copy_in_progress = true;
+          doc = _capture_owner_document ? _capture_owner_document
+                                        : _active_document;
+        }
         trigger_message(DSV_MSG_COPY_IN_PROGRESS_CHANGED);
-        auto doc = _capture_owner_document ? _capture_owner_document
-                                           : _active_document;
 
         if (_copy_thread.joinable()) {
           _copy_thread.join(); // 等待上一个 copy 完成
         }
         _copy_thread = std::thread([this, doc]() {
           copy_data_to_document(doc);
-          _copy_in_progress = false;
+          {
+            std::lock_guard<std::mutex> lock(_capture_state_mutex);
+            _copy_in_progress = false;
+          }
           trigger_message(DSV_MSG_COPY_IN_PROGRESS_CHANGED);
           trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
         });
@@ -2417,7 +2538,12 @@ void SigSession::OnMessage(int msg, int param) {
         // to a SessionDocument and start the decoders directly. The decoders
         // read their snapshots from _view_data via get_signal_models(), so
         // they don't need a SessionDocument to be set up.
-        _capture_owner_document = nullptr;
+        // C4 fix: lock the mutex to clear _capture_owner_document atomically
+        // with respect to CaptureOwnerGuard lifecycle.
+        {
+          std::lock_guard<std::mutex> lock(_capture_state_mutex);
+          _capture_owner_document = nullptr;
+        }
         start_all_decode_tasks();
       }
 
@@ -2688,9 +2814,21 @@ void SigSession::clear_capture_owner_document(data::SessionDocument *doc) {
   // Task 4: Guard-managed — reset the guard when the caller asks to clear the
   // document that is currently the capture owner. Guard destructor handles
   // join_copy_thread() + owner clear + _is_working=false + broadcast.
-  if (_capture_owner_guard && _capture_owner_document == doc) {
-    _capture_owner_guard.reset();
+  // C4 fix: lock the mutex to get a consistent snapshot of
+  // _capture_owner_guard and _capture_owner_document. The guard.reset() call
+  // happens OUTSIDE the lock — the guard destructor calls join_copy_thread()
+  // which could block, and we must not hold the mutex during that (the copy
+  // thread may need to acquire _capture_state_mutex in copy_to_doc_done).
+  std::unique_ptr<CaptureOwnerGuard> guard_to_reset;
+  {
+    std::lock_guard<std::mutex> lock(_capture_state_mutex);
+    if (_capture_owner_guard && _capture_owner_document == doc) {
+      guard_to_reset = std::move(_capture_owner_guard);
+    }
   }
+  // Reset outside the lock — guard destructor calls join_copy_thread()
+  // which could block, and we don't want to hold the mutex during that.
+  guard_to_reset.reset();
 }
 
 void SigSession::join_copy_thread() {

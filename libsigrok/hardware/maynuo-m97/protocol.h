@@ -226,78 +226,12 @@ static inline void maynuo_m97_write_fltbe(uint8_t *p, float x)
 #endif /* MAYNUO_M97_FLTBE_HELPERS_DEFINED */
 
 /*
- * Local Modbus RTU support.
- *
- * PXView's libsigrok does not provide the sr_modbus_* API or
- * struct sr_modbus_dev_inst. The maynuo-m97 driver talks to its hardware
- * over Modbus RTU on a serial port, so we implement a small self-contained
- * Modbus serial-RTU layer here, modelled on standard sigrok's modbus.c and
- * modbus_serial_rtu.c. The struct layout and the public function names
- * mirror standard sigrok so the original protocol logic compiles with
- * minimal changes.
- *
- * Differences from standard sigrok:
- *  - sr_modbus_source_add/remove do NOT take a session parameter (PXView's
- *    serial_source_add/remove are session-less too).
- *  - sr_modbus_scan takes a struct sr_dev_driver * (uses di->priv as the
- *    drv_context) instead of a bare struct drv_context *.
- *
- * The implementation mirrors the rdtech-dps compat driver's Modbus layer
- * but adds sr_modbus_read_coils() and sr_modbus_write_coil() which the
- * maynuo-m97 driver needs (it queries status bits via Modbus coils).
+ * Local Modbus RTU support is provided centrally by compat_helpers.h/c
+ * (struct sr_modbus_dev_inst, struct modbus_serial_rtu, sr_modbus_*).
+ * The maynuo-m97 driver includes compat.h (which pulls in compat_helpers.h)
+ * at the top of this file, so all sr_modbus_* declarations and the
+ * struct definitions are available without a local copy.
  */
-#ifndef MAYNUO_M97_MODBUS_DEFINED
-#define MAYNUO_M97_MODBUS_DEFINED
-
-/* Modbus serial RTU private state. */
-struct modbus_serial_rtu {
-	struct sr_serial_dev_inst *serial;
-	uint8_t slave_addr;
-	uint16_t crc;
-};
-
-/* Modbus device instance (mirrors standard sigrok's struct sr_modbus_dev_inst). */
-struct sr_modbus_dev_inst {
-	const char *name;
-	const char *prefix;
-	size_t priv_size;
-	GSList *(*scan)(int modbusaddr);
-	int (*dev_inst_new)(void *priv, const char *resource, char **params,
-			const char *serialcomm, int modbusaddr);
-	int (*open)(void *priv);
-	int (*source_add)(void *priv, int events, int timeout,
-			sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi);
-	int (*source_remove)(void *priv);
-	int (*send)(void *priv, const uint8_t *buffer, int buffer_size);
-	int (*read_begin)(void *priv, uint8_t *function_code);
-	int (*read_data)(void *priv, uint8_t *buf, int maxlen);
-	int (*read_end)(void *priv);
-	int (*close)(void *priv);
-	void (*free)(void *priv);
-	void *priv;
-	int read_timeout_ms;
-};
-
-SR_PRIV struct sr_modbus_dev_inst *modbus_dev_inst_new(const char *resource,
-		const char *serialcomm, int modbusaddr);
-SR_PRIV int sr_modbus_open(struct sr_modbus_dev_inst *modbus);
-SR_PRIV int sr_modbus_close(struct sr_modbus_dev_inst *modbus);
-SR_PRIV void sr_modbus_free(struct sr_modbus_dev_inst *modbus);
-SR_PRIV int sr_modbus_source_add(struct sr_modbus_dev_inst *modbus,
-		int events, int timeout, sr_receive_data_callback_t cb,
-		const struct sr_dev_inst *sdi);
-SR_PRIV int sr_modbus_source_remove(struct sr_modbus_dev_inst *modbus);
-SR_PRIV int sr_modbus_read_coils(struct sr_modbus_dev_inst *modbus,
-		int address, int nb_coils, uint8_t *coils);
-SR_PRIV int sr_modbus_write_coil(struct sr_modbus_dev_inst *modbus,
-		int address, int value);
-SR_PRIV int sr_modbus_read_holding_registers(struct sr_modbus_dev_inst *modbus,
-		int address, int nb_registers, uint16_t *registers);
-SR_PRIV int sr_modbus_write_multiple_registers(struct sr_modbus_dev_inst *modbus,
-		int address, int nb_registers, uint16_t *registers);
-SR_PRIV GSList *sr_modbus_scan(struct sr_dev_driver *di, GSList *options,
-		struct sr_dev_inst *(*probe_device)(struct sr_modbus_dev_inst *modbus));
-#endif /* MAYNUO_M97_MODBUS_DEFINED */
 
 /* std_session_send_df_frame_begin/end are provided by compat_helpers.c. */
 

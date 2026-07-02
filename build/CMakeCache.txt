@@ -368,6 +368,12 @@ ENABLE_DRIVER_COLEAD_SLM:BOOL=ON
 //Enable conrad-digi-35-cpu driver
 ENABLE_DRIVER_CONRAD_DIGI_35_CPU:BOOL=ON
 
+//Enable dcttech-usbrelay driver
+ENABLE_DRIVER_DCTTECH_USBRELAY:BOOL=ON
+
+//Enable devantech-eth008 driver
+ENABLE_DRIVER_DEVANTECH_ETH008:BOOL=ON
+
 //Enable fluke-45 SCPI multimeter driver
 ENABLE_DRIVER_FLUKE_45:BOOL=ON
 
@@ -382,6 +388,9 @@ ENABLE_DRIVER_FX2LAFW:BOOL=ON
 
 //Enable gmc-mh-1x-2x driver
 ENABLE_DRIVER_GMC_MH_1X_2X:BOOL=ON
+
+//Enable greatfet driver
+ENABLE_DRIVER_GREATFET:BOOL=ON
 
 //Enable gwinstek-gds-800 SCPI oscilloscope driver
 ENABLE_DRIVER_GWINSTEK_GDS_800:BOOL=ON

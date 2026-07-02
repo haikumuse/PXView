@@ -389,8 +389,35 @@ void View::set_signal_data_from_source(pv::data::DataSource *source) {
 }
 
 void View::set_data_document(pv::data::SessionDocument *doc) {
-  if (!doc)
+  // A2 fix: handle nullptr to detach the document pointer. Without this, the
+  // early return left _document pointing at a soon-to-be-destroyed object,
+  // causing use-after-free when the View received paint events before its
+  // deleteLater() was processed.
+  if (!doc) {
+    _document = nullptr;
+    // Clear signal data pointers so paint events don't dereference freed data.
+    for (auto sig : _own_signals) {
+      int type = sig->signal_type();
+      switch (type) {
+      case SR_CHANNEL_LOGIC: {
+        view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
+        s->set_data(nullptr);
+        break;
+      }
+      case SR_CHANNEL_ANALOG: {
+        view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
+        s->set_data(nullptr);
+        break;
+      }
+      case SR_CHANNEL_DSO: {
+        view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
+        s->set_data(nullptr);
+        break;
+      }
+      }
+    }
     return;
+  }
 
   _document = doc;
   mark_derived_traces_dirty();
@@ -980,7 +1007,23 @@ void View::set_trig_cursor_posistion(uint64_t trig_pos) {
   int width = get_view_width();
   assert(width > 0);
 
-  if (ds_trigger_get_en() || _device_agent->is_virtual() ||
+  // B2 fix: query Core trigger state instead of ds_trigger_get_en().
+  // Trigger is enabled if any logic channel has a non-NONTRIG trig_type
+  // (Simple mode), or if trigger_config mode is Adv/Serial (always enabled).
+  bool trigger_enabled = false;
+  const auto &trig_cfg = _session->trigger_config();
+  if (trig_cfg.mode() != pv::data::TriggerConfig::Simple) {
+    trigger_enabled = true;
+  } else {
+    for (const auto &m : _session->get_signal_models()) {
+      if (m && m->type() == pv::api::ChannelType::Logic &&
+          m->trig_type() != pv::data::SignalModel::NONTRIG) {
+        trigger_enabled = true;
+        break;
+      }
+    }
+  }
+  if (trigger_enabled || _device_agent->is_virtual() ||
       get_work_mode() == DSO) {
     _show_trig_cursor = true;
 
@@ -2605,6 +2648,11 @@ void View::signals_removed_layout() {
 void View::signals_modified_refresh() {
   // Only property changes, no layout changes needed.
   // Just repaint the signals without calling signals_changed(NULL).
+  // A1 fix: mark derived traces (Math/Spectrum/Lissajous/Decode) dirty so
+  // sync_derived_traces() recreates them on the next paint cycle. Without this,
+  // enabling Math/Spectrum/Lissajous via their option dialogs does not show the
+  // trace until the user switches tabs (which triggers sync_derived_traces).
+  mark_derived_traces_dirty();
   viewport_update();
   header_updated();
 }

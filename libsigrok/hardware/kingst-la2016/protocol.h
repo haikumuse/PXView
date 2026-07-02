@@ -186,10 +186,10 @@ static inline int sr_sw_limits_get_remain(const struct sr_sw_limits *limits,
  * The local static functions live in protocol.c.
  */
 struct feed_queue_logic;
-SR_PRIV struct feed_queue_logic *feed_queue_logic_alloc(
+SR_PRIV struct feed_queue_logic *kingst_la2016_feed_queue_logic_alloc(
 		const struct sr_dev_inst *sdi,
 		size_t sample_count, size_t unit_size);
-SR_PRIV void feed_queue_logic_free(struct feed_queue_logic *q);
+SR_PRIV void kingst_la2016_feed_queue_logic_free(struct feed_queue_logic *q);
 SR_PRIV int feed_queue_logic_submit_one(struct feed_queue_logic *q,
 		const uint8_t *data, size_t repeat_count);
 SR_PRIV int feed_queue_logic_flush(struct feed_queue_logic *q);

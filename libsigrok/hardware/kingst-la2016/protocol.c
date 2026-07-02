@@ -66,7 +66,7 @@ struct feed_queue_logic {
 	struct sr_datafeed_logic logic;
 };
 
-SR_PRIV struct feed_queue_logic *feed_queue_logic_alloc(
+SR_PRIV struct feed_queue_logic *kingst_la2016_feed_queue_logic_alloc(
 		const struct sr_dev_inst *sdi,
 		size_t sample_count, size_t unit_size)
 {
@@ -159,7 +159,7 @@ SR_PRIV int feed_queue_logic_send_trigger(struct feed_queue_logic *q)
 	return std_session_send_df_trigger(q->sdi, NULL);
 }
 
-SR_PRIV void feed_queue_logic_free(struct feed_queue_logic *q)
+SR_PRIV void kingst_la2016_feed_queue_logic_free(struct feed_queue_logic *q)
 {
 	if (!q)
 		return;
@@ -1842,7 +1842,7 @@ SR_PRIV int la2016_receive_data(int fd, int revents,
 		libusb_handle_events_timeout(drvc->sr_ctx->libusb_ctx, &tv);
 
 		feed_queue_logic_flush(devc->feed_queue);
-		feed_queue_logic_free(devc->feed_queue);
+		kingst_la2016_feed_queue_logic_free(devc->feed_queue);
 		devc->feed_queue = NULL;
 		if (devc->frame_begin_sent) {
 			std_session_send_df_frame_end(sdi);

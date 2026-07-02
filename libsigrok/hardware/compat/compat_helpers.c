@@ -1243,3 +1243,584 @@ SR_PRIV int sr_atof_ascii(const char *str, float *ret)
 	*ret = (float)tmp;
 	return SR_OK;
 }
+
+/* ===========================================================================
+ * Local Modbus serial RTU layer.
+ *
+ * PXView's libsigrok does not provide the sr_modbus_* API. Standard sigrok
+ * drivers (maynuo-m97, rdtech-dps) talk to their hardware over Modbus RTU
+ * on a serial port. This implementation combines standard sigrok's
+ * modbus.c and modbus_serial_rtu.c into a single self-contained module.
+ *
+ * Previously each driver defined its own copy of these functions, but since
+ * SR_PRIV is empty on Windows those were global symbols that caused
+ * multiple-definition link errors when both drivers were enabled.
+ * Centralizing here removes that hazard.
+ *
+ * Differences from standard sigrok:
+ *  - sr_modbus_source_add/remove do NOT take a session parameter (PXView's
+ *    serial_source_add/remove are session-less too).
+ *  - sr_modbus_scan takes a struct sr_dev_driver * (uses di->priv as the
+ *    drv_context) instead of a bare struct drv_context *.
+ *
+ * sr_serial_dev_inst_new/free, serial_open/close, serial_source_add/remove,
+ * serial_write_blocking, serial_read_blocking/nonblocking all come from
+ * libsigrok-internal.h (included via compat.h). WB16 comes from
+ * compat_config.h (also via compat.h).
+ * =========================================================================== */
+
+/* Local byte-access macros (W8 / R8) used by the Modbus layer.
+ * compat_config.h provides WB16 but not W8/R8. */
+#ifndef W8
+#define W8(p, x) do { *(uint8_t *)(p) = (uint8_t)(x); } while (0)
+#endif
+#ifndef R8
+#define R8(x) (*(const uint8_t *)(x))
+#endif
+
+/* Local CRC-16 implementation (Modbus polynomial 0xA001).
+ * PXView's libsigrok does not provide sr_crc16(). */
+static uint16_t modbus_crc16(uint16_t seed, const uint8_t *data, size_t len)
+{
+	uint16_t crc = seed;
+	size_t i;
+	int j;
+
+	for (i = 0; i < len; i++) {
+		crc ^= data[i];
+		for (j = 0; j < 8; j++) {
+			if (crc & 1)
+				crc = (crc >> 1) ^ 0xA001;
+			else
+				crc >>= 1;
+		}
+	}
+
+	return crc;
+}
+
+#define SR_CRC16_DEFAULT_INIT 0xFFFF
+
+#define MODBUS_READ_COILS              0x01
+#define MODBUS_READ_HOLDING_REGISTERS  0x03
+#define MODBUS_WRITE_COIL              0x05
+#define MODBUS_WRITE_MULTIPLE_REGISTERS 0x10
+
+/* --- modbus_serial_rtu.c --- */
+
+static int modbus_serial_rtu_dev_inst_new(void *priv, const char *resource,
+		char **params, const char *serialcomm, int modbusaddr)
+{
+	struct modbus_serial_rtu *modbus = priv;
+
+	(void)params;
+
+	modbus->serial = sr_serial_dev_inst_new(resource, serialcomm);
+	modbus->slave_addr = modbusaddr;
+
+	return SR_OK;
+}
+
+static int modbus_serial_rtu_open(void *priv)
+{
+	struct modbus_serial_rtu *modbus = priv;
+	struct sr_serial_dev_inst *serial = modbus->serial;
+
+	if (serial_open(serial, SERIAL_RDWR) != SR_OK)
+		return SR_ERR;
+
+	return SR_OK;
+}
+
+static int modbus_serial_rtu_source_add(void *priv, int events, int timeout,
+		sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi)
+{
+	struct modbus_serial_rtu *modbus = priv;
+	struct sr_serial_dev_inst *serial = modbus->serial;
+
+	return serial_source_add(serial, events, timeout, cb, sdi);
+}
+
+static int modbus_serial_rtu_source_remove(void *priv)
+{
+	struct modbus_serial_rtu *modbus = priv;
+	struct sr_serial_dev_inst *serial = modbus->serial;
+
+	return serial_source_remove(serial);
+}
+
+static int modbus_serial_rtu_send(void *priv,
+		const uint8_t *buffer, int buffer_size)
+{
+	int result;
+	struct modbus_serial_rtu *modbus = priv;
+	struct sr_serial_dev_inst *serial = modbus->serial;
+	uint8_t slave_addr = modbus->slave_addr;
+	uint16_t crc;
+
+	result = serial_write_blocking(serial, &slave_addr, sizeof(slave_addr), 0);
+	if (result < 0)
+		return SR_ERR;
+
+	result = serial_write_blocking(serial, buffer, buffer_size, 0);
+	if (result < 0)
+		return SR_ERR;
+
+	crc = modbus_crc16(SR_CRC16_DEFAULT_INIT, &slave_addr, sizeof(slave_addr));
+	crc = modbus_crc16(crc, buffer, buffer_size);
+
+	result = serial_write_blocking(serial, &crc, sizeof(crc), 0);
+	if (result < 0)
+		return SR_ERR;
+
+	return SR_OK;
+}
+
+static int modbus_serial_rtu_read_begin(void *priv, uint8_t *function_code)
+{
+	struct modbus_serial_rtu *modbus = priv;
+	uint8_t slave_addr;
+	int ret;
+
+	ret = serial_read_blocking(modbus->serial, &slave_addr, 1, 500);
+	if (ret != 1 || slave_addr != modbus->slave_addr)
+		return SR_ERR;
+
+	ret = serial_read_blocking(modbus->serial, function_code, 1, 100);
+	if (ret != 1)
+		return SR_ERR;
+
+	modbus->crc = modbus_crc16(SR_CRC16_DEFAULT_INIT, &slave_addr, sizeof(slave_addr));
+	modbus->crc = modbus_crc16(modbus->crc, function_code, 1);
+
+	return SR_OK;
+}
+
+static int modbus_serial_rtu_read_data(void *priv, uint8_t *buf, int maxlen)
+{
+	struct modbus_serial_rtu *modbus = priv;
+	int ret;
+
+	ret = serial_read_nonblocking(modbus->serial, buf, maxlen);
+	if (ret < 0)
+		return ret;
+	modbus->crc = modbus_crc16(modbus->crc, buf, ret);
+	return ret;
+}
+
+static int modbus_serial_rtu_read_end(void *priv)
+{
+	struct modbus_serial_rtu *modbus = priv;
+	uint16_t crc;
+	int ret;
+
+	ret = serial_read_blocking(modbus->serial, &crc, sizeof(crc), 100);
+	if (ret != 2)
+		return SR_ERR;
+
+	if (crc != modbus->crc) {
+		sr_err("CRC error (0x%04X vs 0x%04X).", crc, modbus->crc);
+		return SR_ERR_DATA;
+	}
+
+	return SR_OK;
+}
+
+static int modbus_serial_rtu_close(void *priv)
+{
+	struct modbus_serial_rtu *modbus = priv;
+
+	return serial_close(modbus->serial);
+}
+
+static void modbus_serial_rtu_free(void *priv)
+{
+	struct modbus_serial_rtu *modbus = priv;
+
+	sr_serial_dev_inst_free(modbus->serial);
+}
+
+/* The single supported Modbus transport (serial RTU). */
+static const struct sr_modbus_dev_inst modbus_serial_rtu_dev = {
+	.name          = "serial_rtu",
+	.prefix        = "",
+	.priv_size     = sizeof(struct modbus_serial_rtu),
+	.scan          = NULL,
+	.dev_inst_new  = modbus_serial_rtu_dev_inst_new,
+	.open          = modbus_serial_rtu_open,
+	.source_add    = modbus_serial_rtu_source_add,
+	.source_remove = modbus_serial_rtu_source_remove,
+	.send          = modbus_serial_rtu_send,
+	.read_begin    = modbus_serial_rtu_read_begin,
+	.read_data     = modbus_serial_rtu_read_data,
+	.read_end      = modbus_serial_rtu_read_end,
+	.close         = modbus_serial_rtu_close,
+	.free          = modbus_serial_rtu_free,
+};
+
+/* --- modbus.c --- */
+
+static struct sr_dev_inst *sr_modbus_scan_resource(const char *resource,
+		const char *serialcomm, int modbusaddr,
+		struct sr_dev_inst *(*probe_device)(struct sr_modbus_dev_inst *modbus))
+{
+	struct sr_modbus_dev_inst *modbus;
+	struct sr_dev_inst *sdi;
+
+	if (!(modbus = modbus_dev_inst_new(resource, serialcomm, modbusaddr)))
+		return NULL;
+
+	if (sr_modbus_open(modbus) != SR_OK) {
+		sr_info("Couldn't open Modbus device.");
+		sr_modbus_free(modbus);
+		return NULL;
+	}
+
+	sdi = probe_device(modbus);
+
+	sr_modbus_close(modbus);
+
+	if (!sdi)
+		sr_modbus_free(modbus);
+
+	return sdi;
+}
+
+SR_PRIV GSList *sr_modbus_scan(struct sr_dev_driver *di, GSList *options,
+		struct sr_dev_inst *(*probe_device)(struct sr_modbus_dev_inst *modbus))
+{
+	GSList *l, *devices;
+	struct sr_dev_inst *sdi;
+	const char *resource = NULL;
+	const char *serialcomm = NULL;
+	int modbusaddr = 1;
+
+	(void)di;
+
+	for (l = options; l; l = l->next) {
+		struct sr_config *src = l->data;
+		switch (src->key) {
+		case SR_CONF_CONN:
+			resource = g_variant_get_string(src->data, NULL);
+			break;
+		case SR_CONF_SERIALCOMM:
+			serialcomm = g_variant_get_string(src->data, NULL);
+			break;
+		case SR_CONF_MODBUSADDR:
+			modbusaddr = g_variant_get_uint64(src->data);
+			break;
+		}
+	}
+
+	devices = NULL;
+
+	/* serial_rtu_dev.scan is NULL, so the resource-listing branch is skipped. */
+
+	if (!devices && resource) {
+		sdi = sr_modbus_scan_resource(resource, serialcomm, modbusaddr,
+				probe_device);
+		if (sdi)
+			devices = g_slist_append(NULL, sdi);
+	}
+
+	return devices;
+}
+
+SR_PRIV struct sr_modbus_dev_inst *modbus_dev_inst_new(const char *resource,
+		const char *serialcomm, int modbusaddr)
+{
+	struct sr_modbus_dev_inst *modbus = NULL;
+	const struct sr_modbus_dev_inst *modbus_dev;
+	gchar **params;
+
+	/* Only serial RTU is supported. */
+	modbus_dev = &modbus_serial_rtu_dev;
+	if (!strncmp(resource, modbus_dev->prefix, strlen(modbus_dev->prefix))) {
+		sr_dbg("Opening %s device %s.", modbus_dev->name, resource);
+		modbus = g_malloc(sizeof(*modbus));
+		*modbus = *modbus_dev;
+		modbus->priv = g_malloc0(modbus->priv_size);
+		modbus->read_timeout_ms = 1000;
+		params = g_strsplit(resource, "/", 0);
+		if (modbus->dev_inst_new(modbus->priv, resource,
+				params, serialcomm, modbusaddr) != SR_OK) {
+			sr_modbus_free(modbus);
+			modbus = NULL;
+		}
+		g_strfreev(params);
+	}
+
+	return modbus;
+}
+
+SR_PRIV int sr_modbus_open(struct sr_modbus_dev_inst *modbus)
+{
+	return modbus->open(modbus->priv);
+}
+
+SR_PRIV int sr_modbus_source_add(struct sr_modbus_dev_inst *modbus,
+		int events, int timeout, sr_receive_data_callback_t cb,
+		const struct sr_dev_inst *sdi)
+{
+	return modbus->source_add(modbus->priv, events, timeout, cb, sdi);
+}
+
+SR_PRIV int sr_modbus_source_remove(struct sr_modbus_dev_inst *modbus)
+{
+	return modbus->source_remove(modbus->priv);
+}
+
+static int sr_modbus_request(struct sr_modbus_dev_inst *modbus,
+		uint8_t *request, int request_size)
+{
+	if (!request || request_size < 1)
+		return SR_ERR_ARG;
+
+	return modbus->send(modbus->priv, request, request_size);
+}
+
+static int sr_modbus_reply(struct sr_modbus_dev_inst *modbus,
+		uint8_t *reply, int reply_size)
+{
+	int len, ret;
+	gint64 laststart;
+	unsigned int elapsed_ms;
+
+	if (!reply || reply_size < 2)
+		return SR_ERR_ARG;
+
+	laststart = g_get_monotonic_time();
+
+	ret = modbus->read_begin(modbus->priv, reply);
+	if (ret != SR_OK)
+		return ret;
+	if (*reply & 0x80)
+		reply_size = 2;
+
+	reply++;
+	reply_size--;
+
+	while (reply_size > 0) {
+		len = modbus->read_data(modbus->priv, reply, reply_size);
+		if (len < 0) {
+			sr_err("Incompletely read Modbus response.");
+			return SR_ERR;
+		} else if (len > 0) {
+			laststart = g_get_monotonic_time();
+		}
+		reply += len;
+		reply_size -= len;
+		elapsed_ms = (g_get_monotonic_time() - laststart) / 1000;
+		if (elapsed_ms >= (unsigned int)modbus->read_timeout_ms) {
+			sr_err("Timed out waiting for Modbus response.");
+			return SR_ERR;
+		}
+	}
+
+	ret = modbus->read_end(modbus->priv);
+	if (ret != SR_OK)
+		return ret;
+
+	return SR_OK;
+}
+
+static int sr_modbus_request_reply(struct sr_modbus_dev_inst *modbus,
+		uint8_t *request, int request_size, uint8_t *reply, int reply_size)
+{
+	int ret;
+	ret = sr_modbus_request(modbus, request, request_size);
+	if (ret != SR_OK)
+		return ret;
+	return sr_modbus_reply(modbus, reply, reply_size);
+}
+
+static int sr_modbus_error_check(const uint8_t *reply)
+{
+	const char *function = "UNKNOWN";
+	const char *error = NULL;
+	char buf[8];
+
+	if (!(reply[0] & 0x80))
+		return FALSE;
+
+	switch (reply[0] & ~0x80) {
+	case MODBUS_READ_COILS:
+		function = "MODBUS_READ_COILS";
+		break;
+	case MODBUS_READ_HOLDING_REGISTERS:
+		function = "READ_HOLDING_REGISTERS";
+		break;
+	case MODBUS_WRITE_COIL:
+		function = "WRITE_COIL";
+		break;
+	case MODBUS_WRITE_MULTIPLE_REGISTERS:
+		function = "WRITE_MULTIPLE_REGISTERS";
+		break;
+	}
+
+	switch (reply[1]) {
+	case 0x01: error = "ILLEGAL FUNCTION"; break;
+	case 0x02: error = "ILLEGAL DATA ADDRESS"; break;
+	case 0x03: error = "ILLEGAL DATA VALUE"; break;
+	case 0x04: error = "SLAVE DEVICE FAILURE"; break;
+	case 0x05: error = "ACKNOWLEDGE"; break;
+	case 0x06: error = "SLAVE DEVICE BUSY"; break;
+	case 0x08: error = "MEMORY PARITY ERROR"; break;
+	case 0x0A: error = "GATEWAY PATH UNAVAILABLE"; break;
+	case 0x0B: error = "GATEWAY TARGET DEVICE FAILED TO RESPOND"; break;
+	}
+	if (!error) {
+		snprintf(buf, sizeof(buf), "0x%X", reply[1]);
+		error = buf;
+	}
+
+	sr_err("%s error executing %s function.", error, function);
+
+	return TRUE;
+}
+
+/*
+ * Read `nb_coils` coils starting at `address`. The result is packed
+ * bit-by-bit into the least significant bits of the `coils` output buffer
+ * (one coil per byte, matching standard sigrok's convention).
+ *
+ * Note: Standard sigrok's sr_modbus_read_coils() packs coils as bits into
+ * bytes (8 coils per byte). The maynuo-m97 driver only ever reads one coil
+ * at a time and inspects `coils[0] & 1`, so the packing convention does not
+ * matter for correctness here. We replicate the bit-packed behavior to
+ * match standard sigrok's API exactly.
+ */
+SR_PRIV int sr_modbus_read_coils(struct sr_modbus_dev_inst *modbus,
+		int address, int nb_coils, uint8_t *coils)
+{
+	uint8_t request[5], reply[2 + ((nb_coils + 7) / 8)];
+	int ret, i, byte_count;
+	uint8_t mask;
+
+	if (address < 0 || address > 0xFFFF
+			|| nb_coils < 1 || nb_coils > 2000 || !coils)
+		return SR_ERR_ARG;
+
+	W8(request + 0, MODBUS_READ_COILS);
+	WB16(request + 1, address);
+	WB16(request + 3, nb_coils);
+
+	ret = sr_modbus_request_reply(modbus, request, sizeof(request),
+			reply, sizeof(reply));
+	if (ret != SR_OK)
+		return ret;
+	if (sr_modbus_error_check(reply))
+		return SR_ERR_DATA;
+	if (reply[0] != request[0])
+		return SR_ERR_DATA;
+	byte_count = R8(reply + 1);
+	if (byte_count != (nb_coils + 7) / 8)
+		return SR_ERR_DATA;
+
+	/* Unpack bits into one-coil-per-byte layout for caller convenience. */
+	for (i = 0; i < nb_coils; i++) {
+		mask = 1 << (i & 7);
+		coils[i] = (reply[2 + (i / 8)] & mask) ? 1 : 0;
+	}
+
+	return SR_OK;
+}
+
+SR_PRIV int sr_modbus_write_coil(struct sr_modbus_dev_inst *modbus,
+		int address, int value)
+{
+	uint8_t request[5], reply[5];
+	int ret;
+
+	if (address < 0 || address > 0xFFFF)
+		return SR_ERR_ARG;
+
+	W8(request + 0, MODBUS_WRITE_COIL);
+	WB16(request + 1, address);
+	WB16(request + 3, value ? 0xFF00 : 0x0000);
+
+	ret = sr_modbus_request_reply(modbus, request, sizeof(request),
+			reply, sizeof(reply));
+	if (ret != SR_OK)
+		return ret;
+	if (sr_modbus_error_check(reply))
+		return SR_ERR_DATA;
+	if (memcmp(request, reply, sizeof(reply)))
+		return SR_ERR_DATA;
+
+	return SR_OK;
+}
+
+SR_PRIV int sr_modbus_read_holding_registers(struct sr_modbus_dev_inst *modbus,
+		int address, int nb_registers, uint16_t *registers)
+{
+	uint8_t request[5], reply[2 + (2 * nb_registers)];
+	int ret;
+
+	if (address < -1 || address > 0xFFFF
+	    || nb_registers < 1 || nb_registers > 125)
+		return SR_ERR_ARG;
+
+	W8(request + 0, MODBUS_READ_HOLDING_REGISTERS);
+	WB16(request + 1, address);
+	WB16(request + 3, nb_registers);
+
+	if (address >= 0) {
+		ret = sr_modbus_request(modbus, request, sizeof(request));
+		if (ret != SR_OK)
+			return ret;
+	}
+
+	if (registers) {
+		ret = sr_modbus_reply(modbus, reply, sizeof(reply));
+		if (ret != SR_OK)
+			return ret;
+		if (sr_modbus_error_check(reply))
+			return SR_ERR_DATA;
+		if (reply[0] != request[0] || R8(reply + 1) != (uint8_t)(2 * nb_registers))
+			return SR_ERR_DATA;
+		memcpy(registers, reply + 2, 2 * nb_registers);
+	}
+
+	return SR_OK;
+}
+
+SR_PRIV int sr_modbus_write_multiple_registers(struct sr_modbus_dev_inst *modbus,
+		int address, int nb_registers, uint16_t *registers)
+{
+	uint8_t request[6 + (2 * nb_registers)], reply[5];
+	int ret;
+
+	if (address < 0 || address > 0xFFFF
+	    || nb_registers < 1 || nb_registers > 123 || !registers)
+		return SR_ERR_ARG;
+
+	W8(request + 0, MODBUS_WRITE_MULTIPLE_REGISTERS);
+	WB16(request + 1, address);
+	WB16(request + 3, nb_registers);
+	W8(request + 5, 2 * nb_registers);
+	memcpy(request + 6, registers, 2 * nb_registers);
+
+	ret = sr_modbus_request_reply(modbus, request, sizeof(request),
+			reply, sizeof(reply));
+	if (ret != SR_OK)
+		return ret;
+	if (sr_modbus_error_check(reply))
+		return SR_ERR_DATA;
+	if (memcmp(request, reply, sizeof(reply)))
+		return SR_ERR_DATA;
+
+	return SR_OK;
+}
+
+SR_PRIV int sr_modbus_close(struct sr_modbus_dev_inst *modbus)
+{
+	return modbus->close(modbus->priv);
+}
+
+SR_PRIV void sr_modbus_free(struct sr_modbus_dev_inst *modbus)
+{
+	modbus->free(modbus->priv);
+	g_free(modbus->priv);
+	g_free(modbus);
+}

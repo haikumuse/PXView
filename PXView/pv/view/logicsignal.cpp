@@ -118,23 +118,12 @@ void LogicSignal::set_trig(int trig) {
 }
 
 bool LogicSignal::commit_trig() {
-  if (_trig == NONTRIG) {
-    ds_trigger_probe_set(_index_list.front(), 'X', 'X');
-    return false;
-  } else {
-    ds_trigger_set_en(true);
-    if (_trig == POSTRIG)
-      ds_trigger_probe_set(_index_list.front(), 'R', 'X');
-    else if (_trig == HIGTRIG)
-      ds_trigger_probe_set(_index_list.front(), '1', 'X');
-    else if (_trig == NEGTRIG)
-      ds_trigger_probe_set(_index_list.front(), 'F', 'X');
-    else if (_trig == LOWTRIG)
-      ds_trigger_probe_set(_index_list.front(), '0', 'X');
-    else if (_trig == EDGTRIG)
-      ds_trigger_probe_set(_index_list.front(), 'C', 'X');
-    return true;
-  }
+  // B2 fix: View layer must not call ds_trigger_* directly. The trigger state
+  // was already written to SignalModel::set_trig_type() by set_trig(). The
+  // actual libsigrok sync happens in SigSession::sync_trigger_to_libsigrok()
+  // at capture start, which reads SignalModel::trig_type() and calls
+  // ds_trigger_probe_set + ds_trigger_set_en for all logic channels at once.
+  return _trig != NONTRIG;
 }
 
 void LogicSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
