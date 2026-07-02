@@ -10,6 +10,12 @@
 set(PXVIEW_CORE_SOURCES
     # Core session/orchestration
     PXView/pv/log.cpp
+    PXView/pv/core/eventbus.cpp
+    PXView/pv/core/filterprocessor.cpp
+    PXView/pv/core/decodetaskmanager.cpp
+    PXView/pv/core/datafeedparser.cpp
+    PXView/pv/core/documentregistry.cpp
+    PXView/pv/core/capturemanager.cpp
     PXView/pv/sigsession.cpp
     PXView/pv/sessionmanager.cpp
     PXView/pv/deviceagent.cpp
@@ -30,6 +36,7 @@ set(PXVIEW_CORE_SOURCES
     PXView/pv/data/analogsnapshot.cpp
     PXView/pv/data/sessionsnapshot.cpp
     PXView/pv/data/sessiondocument.cpp
+    PXView/pv/data/signalconfigstore.cpp
     PXView/pv/data/decoderstack.cpp
     PXView/pv/data/decodermodel.cpp
     PXView/pv/data/mathstack.cpp

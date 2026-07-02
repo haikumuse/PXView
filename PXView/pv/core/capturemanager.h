@@ -1,0 +1,161 @@
+#ifndef PXVIEW_CORE_CAPTUREMANAGER_H
+#define PXVIEW_CORE_CAPTUREMANAGER_H
+
+#include <QDateTime>
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <vector>
+
+#include "../data/disk_cache_config.h"
+#include "../dstimer.h"
+#include "../dsvdef.h" // DEVICE_COLLECT_MODE / DEVICE_STATUS_TYPE
+
+namespace pv {
+
+class SigSession;
+class SessionData;
+
+namespace data {
+class SessionDocument;
+} // namespace data
+
+namespace core {
+
+class EventBus;
+
+/**
+ * CaptureManager — owns the capture lifecycle (start/stop/exec/exit),
+ * the DsTimer instances that drive data-feed/refresh/repeat cadence, and
+ * the related flags/counters (_is_instant, _is_stream_mode, _is_action,
+ * _clt_mode, _noData_cnt, _data_lock, _data_updated, _data_auto_lock,
+ * _repeat_intvl, _repeat_hold_prg, _repeat_wait_prog_step, _work_time_id,
+ * _capture_times, _confirm_store_time_id, _rt_refresh_time_id,
+ * _rt_ck_refresh_time_id, _dso_packet_count, _disk_cache_config).
+ * Extracted from SigSession (SubTask 10.6) as a mechanical refactoring:
+ * no behavior change, just code movement.
+ *
+ * Holds an injected EventBus* (for broadcast_msg / trigger_message /
+ * dispatch_to<Iface>) and a SigSession* (for accessing _device_agent /
+ * _capture_data / _view_data / _signal_models / _document_registry /
+ * _is_working / _device_status / _is_triged / _trig_time / etc.).
+ * Declared as a friend of SigSession so it can touch private members.
+ */
+class CaptureManager {
+public:
+  CaptureManager(EventBus *bus, SigSession *session);
+  ~CaptureManager();
+
+  // --- Capture lifecycle ---
+  bool start_capture(bool instant, data::SessionDocument *owner = nullptr);
+  bool stop_capture();
+  bool exec_capture();
+  void exit_capture();
+  void capture_init();
+
+  // --- action wrappers (set _is_action around the inner call) ---
+  bool action_start_capture(bool instant,
+                            data::SessionDocument *owner = nullptr);
+  bool action_stop_capture();
+
+  // --- Status queries ---
+  bool get_capture_status(bool &triggered, int &progress);
+  int get_repeat_hold();
+  bool is_first_store_confirm();
+  bool is_realtime_refresh();
+  bool have_new_realtime_refresh(bool keep);
+  bool is_repeating();
+  bool is_single_mode();
+  bool is_repeat_mode();
+  bool is_loop_mode();
+  int get_collect_mode();
+  void set_collect_mode(DEVICE_COLLECT_MODE m);
+
+  inline bool is_instant() { return _is_instant; }
+  inline bool is_stream_mode() { return _is_stream_mode; }
+  inline bool is_action() { return _is_action; }
+  inline double get_repeat_intvl() { return _repeat_intvl; }
+  inline void set_repeat_intvl(double interval) { _repeat_intvl = interval; }
+
+  inline void clear_store_confirm_flag() {
+    _confirm_store_time_id = _work_time_id;
+  }
+
+  // --- Data lock state (migrated from SigSession) ---
+  inline bool is_data_lock() { return _data_lock; }
+  inline void data_lock() { _data_lock = true; }
+  inline void data_unlock() { _data_lock = false; }
+  void data_auto_lock(int lock);
+  void data_auto_unlock();
+  bool get_data_auto_lock();
+
+  // --- Decode result clearing (tightly coupled with capture start) ---
+  void clear_decode_result();
+
+  // --- DsTimer callback targets ---
+  void feed_timeout();
+  void nodata_timeout();
+  void repeat_capture_wait_timeout();
+  void repeat_wait_prog_timeout();
+  void realtime_refresh_timeout();
+  void trig_check_timeout();
+
+  // --- DsTimer-driven data update check ---
+  void check_update();
+
+  // --- Re-initialize data buffers ---
+  void refresh(int holdtime);
+
+  // --- Auto-end hook (View-layer responsibility; kept as a no-op stub) ---
+  void auto_end();
+
+private:
+  EventBus *_event_bus;
+  SigSession *_session;
+
+  data::DiskCacheConfig _disk_cache_config;
+
+  DsTimer _feed_timer;
+  DsTimer _out_timer;
+  DsTimer _repeat_timer;
+  DsTimer _repeat_wait_prog_timer;
+  DsTimer _refresh_rt_timer;
+  DsTimer _trig_check_timer;
+
+  int _noData_cnt;
+  bool _data_lock;
+  bool _data_updated;
+  int _data_auto_lock;
+
+  double _repeat_intvl; // The progress wait timer interval.
+  int _repeat_hold_prg; // The time sleep progress
+  int _repeat_wait_prog_step;
+  bool _is_instant;
+  int _work_time_id;
+  int _capture_times;
+  int _confirm_store_time_id;
+  uint64_t _rt_refresh_time_id;
+  uint64_t _rt_ck_refresh_time_id;
+  DEVICE_COLLECT_MODE _clt_mode;
+  bool _is_stream_mode;
+
+  bool _is_action;
+  uint64_t _dso_packet_count;
+
+  // SigSession accesses _is_instant / _clt_mode / _data_lock / _data_updated
+  // / _is_stream_mode / _repeat_intvl / _repeat_hold_prg / _repeat_timer /
+  // _repeat_wait_prog_timer / _repeat_wait_prog_step / _capture_times /
+  // _trig_check_timer / _dso_packet_count / _disk_cache_config /
+  // _work_time_id / _confirm_store_time_id / _rt_refresh_time_id /
+  // _rt_ck_refresh_time_id / _noData_cnt / _data_auto_lock directly via
+  // friend access from its own state-machine methods (OnMessage,
+  // switch_work_mode, etc.) and from DataFeedParser (feed_in_*).
+  friend class pv::SigSession;
+  friend class DataFeedParser;
+};
+
+} // namespace core
+} // namespace pv
+
+#endif // PXVIEW_CORE_CAPTUREMANAGER_H

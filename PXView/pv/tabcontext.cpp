@@ -83,12 +83,12 @@ void TabContext::activate()
             pxv_info("TabContext::activate() applying signal config, work_mode=%d ch_count=%d",
                 _document->get_signal_config().work_mode,
                 (int)_document->get_signal_config().channels.size());
-            _document->apply_signal_config(_session->get_device());
+            _document->apply_signal_config();
             _session->reload();
             // R2: reload 重建 SignalModel 后，从 _signal_config 恢复 trig_type。
             // reload 内部虽从 old_model 保留 trig_type (sigsession.cpp:1141)，
             // 但 old_model 是上一个 tab 的，需覆盖为当前 tab 的配置。
-            for (const auto &ch : _document->_signal_config.channels) {
+            for (const auto &ch : _document->get_channels()) {
                 auto m = _session->get_signal_by_index(ch.index);
                 if (m)
                     m->set_trig_type(ch.trig_type);
@@ -100,7 +100,7 @@ void TabContext::activate()
             _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
         } else {
             pxv_info("TabContext::activate() session working, saving pending config");
-            _document->_pending_device_config = _document->_signal_config;
+            _document->set_pending_config(_document->get_signal_config());
         }
         _view->rebuild_signals_from_config(_document->get_signal_config());
         pxv_info("TabContext::activate() rebuild_signals_from_config done, own_signals=%d",
@@ -153,7 +153,7 @@ void TabContext::deactivate()
         }
         // R2: 传入 SignalModel 列表，保存 Logic 通道 trig_type
         // UI 布局状态经 channel_layout 持久化到 ChannelConfig
-        _document->save_signal_config(_session->get_device(), channel_visibility,
+        _document->save_signal_config(channel_visibility,
                                       _session->get_signal_models(),
                                       channel_layout);
     }

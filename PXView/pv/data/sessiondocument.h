@@ -17,18 +17,20 @@
 #include "dsosnapshot.h"
 #include "lissajousmodel.h"
 #include "logicsnapshot.h"
+#include "signalconfigstore.h"
 #include "signalmodel.h"
 #include "triggerconfig.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
 #include <map>
+#include <memory>
 #include <stdint.h>
 #include <vector>
 
-class DeviceAgent;
-
 namespace pv {
+
+class SigSession;
 class TabContext;
 
 namespace data {
@@ -38,53 +40,15 @@ class SpectrumStack;
 class MathStack;
 class DecoderModel;
 
-struct ChannelLayoutState {
-  int view_index;
-  int v_offset;
-  int own_height;
-  ChannelLayoutState() : view_index(-1), v_offset(0), own_height(-1) {}
-};
-
-struct ChannelConfig {
-  int index;
-  bool enabled;
-  bool visible;
-  uint64_t vdiv;
-  int coupling;
-  bool map_default;
-  uint16_t hw_offset;
-  uint16_t offset;
-  uint16_t zero_offset;
-  int trig_type;  // R2: Logic 通道触发类型 (SignalModel::LogicTrigType)，仅
-                  // LOGIC 模式有意义
-  int view_index; // UI 布局：通道在视图中的顺序，-1
-                  // 表示未设置（按启用顺序派生）
-  int v_offset;   // UI 布局：垂直偏移
-  int own_height; // UI 布局：轨道高度，-1 表示自动高度
-
-  ChannelConfig()
-      : index(0), enabled(false), visible(true), vdiv(0), coupling(0),
-        map_default(true), hw_offset(0), offset(0), zero_offset(0),
-        trig_type(0), view_index(-1), v_offset(0), own_height(-1) {}
-};
-
-struct SignalConfig {
-  int work_mode;
-  int operation_mode;
-  int channel_mode;
-  bool is_demo;
-  QString demo_operation_mode;
-  std::vector<ChannelConfig> channels;
-  bool is_valid;
-
-  SignalConfig()
-      : work_mode(0), operation_mode(0), channel_mode(0), is_demo(false),
-        is_valid(false) {}
-};
-
+// SessionDocument is now a pure data container. Signal/pending config and
+// DeviceAgent interaction have been extracted to SignalConfigStore
+// (accessed via signal_config_store()). trigger_config remains here as a
+// SessionDocument-owned field. The SigSession* is injected so SignalConfigStore
+// can reach DeviceAgent via _session->get_device() without SessionDocument
+// itself depending on DeviceAgent.
 class SessionDocument : public DataSource {
 public:
-  SessionDocument();
+  explicit SessionDocument(SigSession *session);
   ~SessionDocument();
 
   LogicSnapshot *get_logic_snapshot() override;
@@ -131,17 +95,42 @@ public:
   double cur_snap_sampletime() override;
   data::Snapshot *get_snapshot(int type) override;
 
+  // --- Signal config forwarding (delegated to SignalConfigStore) ---
+  // signal_config_to_json/from_json wrap the store's version and merge in
+  // triggerConfig from _trigger_config to keep .pxc format unchanged.
   QJsonObject signal_config_to_json() const;
   void signal_config_from_json(const QJsonObject &obj);
   void save_signal_config(
-      DeviceAgent *agent, const std::map<int, bool> &channel_visibility = {},
+      const std::map<int, bool> &channel_visibility = {},
       const std::vector<std::shared_ptr<SignalModel>> &signal_models = {},
-      const std::map<int, ChannelLayoutState> &channel_layout = {});
-  void apply_signal_config(DeviceAgent *agent);
-  void apply_pending_config(DeviceAgent *agent);
-  bool has_signal_config() const;
-  bool has_pending_config() const;
-  const SignalConfig &get_signal_config() const { return _signal_config; }
+      const std::map<int, ChannelLayoutState> &channel_layout = {}) {
+    _signal_config_store->save_signal_config(channel_visibility, signal_models,
+                                             channel_layout);
+  }
+  void apply_signal_config() { _signal_config_store->apply_signal_config(); }
+  void apply_pending_config() {
+    _signal_config_store->apply_pending_config();
+  }
+  bool has_signal_config() const {
+    return _signal_config_store->has_signal_config();
+  }
+  bool has_pending_config() const {
+    return _signal_config_store->has_pending_config();
+  }
+  const SignalConfig &get_signal_config() const {
+    return _signal_config_store->get_signal_config();
+  }
+  // For TabContext to restore trig_type after reload (replaces friend access).
+  const std::vector<ChannelConfig> &get_channels() const {
+    return _signal_config_store->get_channels();
+  }
+  // For TabContext to save pending config (replaces friend access).
+  void set_pending_config(const SignalConfig &cfg) {
+    _signal_config_store->set_pending_config(cfg);
+  }
+  SignalConfigStore *signal_config_store() {
+    return _signal_config_store.get();
+  }
 
   inline const data::TriggerConfig &trigger_config() const {
     return _trigger_config;
@@ -162,11 +151,8 @@ private:
   std::vector<std::shared_ptr<SpectrumStack>> _spectrum_stacks;
   std::shared_ptr<MathStack> _math_stack = nullptr;
   LissajousModel *_lissajous_model = nullptr;
-  SignalConfig _signal_config;
-  SignalConfig _pending_device_config;
+  std::unique_ptr<SignalConfigStore> _signal_config_store;
   data::TriggerConfig _trigger_config;
-
-  friend class pv::TabContext;
 };
 
 } // namespace data

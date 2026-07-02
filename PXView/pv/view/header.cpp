@@ -462,7 +462,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
                  sig->get_index(), layout.view_index, layout.v_offset,
                  layout.own_height, sig->visible());
       }
-      doc->save_signal_config(session.get_device(), channel_visibility,
+      doc->save_signal_config(channel_visibility,
                               session.get_signal_models(), channel_layout);
       pxv_info("Header::mouseReleaseEvent: save_signal_config called, saved %d channels",
                (int)channel_layout.size());
@@ -585,7 +585,7 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
                  sig->get_index(), layout.view_index, layout.v_offset,
                  layout.own_height, sig->visible());
       }
-      doc->save_signal_config(session.get_device(), channel_visibility,
+      doc->save_signal_config(channel_visibility,
                               session.get_signal_models(), channel_layout);
       pxv_info("Header::mouseReleaseEvent: save_signal_config called, saved %d channels",
                (int)channel_layout.size());

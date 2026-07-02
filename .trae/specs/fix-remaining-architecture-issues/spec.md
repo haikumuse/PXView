@@ -7,49 +7,56 @@
 2. **2 项上一轮 spec 半成品（P1-P2）**：类型化事件总线是死代码（0 消费者、0 直接发射点）、View 层仍直调 `ds_trigger_*`（违反 AGENTS.md 明文约定）
 3. **5 项结构性技术债（P2-P3）**：跨线程标志全为 `volatile bool` UB、SigSession 上帝类（3219 行/49 成员）、CMakeLists.txt 1889 行单文件、SessionDocument 6 角色混淆、MainWindow::OnMessage 504 行上帝方法
 
-本 spec 收口全部，按优先级分 4 阶段实施。P3 阶段为长期演进，可分批执行。
+**二轮崩溃复盘追加（2026-07-02）**：DSO 模式 `set_zero_ratio` UAF + LOGIC 模式 `Header::paintEvent` UAF，根因均为 Core→View 状态同步的"同步/异步混合模式"——`init_signals` 同步重建 + `signals_changed` 同步回调 + `broadcast_msg` 同步派发 + `broadcast_msg_deferred` 异步派发四者混用，导致嵌套广播重入时对象被中途删除。补丁层（`SuppressConfigBroadcastGuard` + `compute_signal_groups` 重建）已堵住两个具体洞，但根治需统一为全异步单一通道。
+
+本 spec 收口全部，按优先级分 4 阶段实施。阶段 1-3 已完成，阶段 4 解除延期，纳入单通道同步统一。
 
 ## What Changes
 
-### 阶段 1（P0 紧急 bug 修复）
-- **A1**: `View::signals_modified_refresh` 末尾调 `mark_derived_traces_dirty()`，修复 Math/Spectrum/Lissajous 波形不显示（当前需切 Tab 才出现）
-- **A2**: `MainWindow::remove_tab` 销毁顺序修复 —— `destroy_context` 前加 `clear_all_documents_decoders(doc)` 停 decoder 线程；`deleteLater` 前加 `view->set_data_document(nullptr)` 解绑
-- **A3**: `SigSession::Close()` + `~SigSession()` join glitch_filter/signal_invert 线程 + delete 对象；`_glitch_filter_running`/`_signal_invert_running` 改 `std::atomic<bool>`
+### 阶段 1（P0 紧急 bug 修复）— 已完成
+- **A1**: `View::signals_modified_refresh` 末尾调 `mark_derived_traces_dirty()` + `compute_signal_groups()`
+- **A2**: `MainWindow::remove_tab` 销毁顺序修复
+- **A3**: `SigSession::Close()` + `~SigSession()` join 线程 + atomic 标志
 
-### 阶段 2（P1 分层与并发加固）
-- **B2**: `LogicSignal::commit_trig` 移除 7 处 `ds_trigger_*` 直调，只写 `SignalModel::set_trig_type()`；`view.cpp:983` `ds_trigger_get_en()` 改查 Core `trigger_config()`
-- **C4**: `volatile bool _is_working`/`_copy_in_progress`/`volatile int _device_status` 改 `std::atomic`；CaptureOwnerGuard 内用锁统一更新三态，消除中间态窗口
+### 阶段 2（P1 分层与并发加固）— 已完成
+- **B2**: `LogicSignal::commit_trig` 移除 `ds_trigger_*` 直调
+- **C4**: volatile→atomic + `_capture_state_mutex` 组合状态保护
 
-### 阶段 3（P2 半成品收口）
-- **B1.1**: 更新 AGENTS.md/project_memory.md，承认类型化事件总线当前是前置基础设施（0 消费者），移除"新代码必须用 IEventListener"的误导性硬约束
-- **B1.2**（依赖 C5）: MainWindow 拆分后的子组件注册为 IEventListener；补全 26 个未翻译 DSV_MSG_* 的事件结构体与翻译表；处理 4 个双重死代码事件
+### 阶段 3（P2 半成品收口）— 已完成
+- **B1.1**: AGENTS.md 事件总线措辞修正
+- **B1.2**: 事件结构体补全 + MainWindow IEventListener 注册
 
-### 阶段 4（P3 结构性重构，长期演进）
-- **C5**: `MainWindow::OnMessage` 按职责拆分为多个处理器方法（设备切换/采集状态/UI 选项/数据更新/毛刺反相/触发/解码），OnMessage 退化为路由 switch
-- **C1**: `SigSession` 拆分为 CaptureManager/DecodeTaskManager/DataFeedParser/DocumentRegistry/EventBus/FilterProcessor，SigSession 退化为 facade
-- **C2**: `CMakeLists.txt` 拆分为 `cmake/deps.cmake`/`core_sources.cmake`/`gui_sources.cmake`/`decoders.cmake`/`install_packaging.cmake`，主文件用 `include()` 组装
-- **C3**: `SessionDocument` 拆分为 SessionDocument（纯数据）+ SignalConfigStore（序列化），移除 DeviceAgent 耦合，UI 布局字段下沉 View 层 DockUiState，移除 `friend class TabContext`
+### 阶段 4（P3 结构性重构）— 已完成
+- **C5**: `MainWindow::OnMessage` 拆分 — 已完成
+- **C2**: `CMakeLists.txt` 拆分 — 已完成（主文件 134 行，8 个子模块）
+- **C1**: `SigSession` 拆分为 CaptureManager/DecodeTaskManager/DataFeedParser/DocumentRegistry/EventBus/FilterProcessor，SigSession 退化为 facade — 已完成（sigsession.h 284 行）
+- **C1+**: **Core→View 状态同步单通道统一** — 已完成。EventBus 提取时将 `broadcast_msg` 全部改为 `Qt::QueuedConnection` 异步派发，消除同步/异步混合导致的重入 UAF
+- **C3**: `SessionDocument` 拆分为 SessionDocument（纯数据）+ SignalConfigStore（序列化），移除 DeviceAgent 耦合，移除 `friend class TabContext` — 已完成。UI 布局字段下沉 View 层 DockUiState **延后**（.pxc 序列化需要，迁移需扩展格式）
 
 ## Impact
 - **Affected specs**: `fix-all-architecture-issues`（B1 揭示 Task 3 是死代码，需修正其 spec 描述）、`decouple-core-from-view-v2`（C1/C3 延续 Core/View 分离）
 - **Affected code**:
-  - `PXView/pv/view/view.cpp`（A1、B2）
-  - `PXView/pv/mainwindow.cpp`（A2、C5）
-  - `PXView/pv/sigsession.h/.cpp`（A3、C1、C4）
-  - `PXView/pv/view/logicsignal.cpp`（B2）
-  - `PXView/pv/data/sessiondocument.h/.cpp`（C3）
-  - `CMakeLists.txt` + `cmake/*.cmake`（C2）
-  - `PXView/pv/interface/events.h`、`icallbacks.h`（B1.2）
-  - `AGENTS.md`、`project_memory.md`（B1.1）
+  - `PXView/pv/view/view.cpp`（A1、B2 — 已完成）
+  - `PXView/pv/mainwindow.cpp`（A2、C5 — 已完成）
+  - `PXView/pv/sigsession.h/.cpp`（A3、C4 — 已完成；C1+C1+ — 本次）
+  - `PXView/pv/view/logicsignal.cpp`（B2 — 已完成）
+  - `PXView/pv/data/sessiondocument.h/.cpp`（C3 — 本次）
+  - `CMakeLists.txt` + `CMake/*.cmake`（C2 — 已完成）
+  - `PXView/pv/interface/events.h`、`icallbacks.h`（B1.2 — 已完成；C1+ — 本次扩展）
+  - `AGENTS.md`、`project_memory.md`（B1.1 — 已完成；C1+/C3 完成后更新）
 
 ## ADDED Requirements
 
 ### Requirement: 派生 Trace 懒同步触发
-The system SHALL ensure `View::signals_modified_refresh` marks derived traces dirty, so Math/Spectrum/Lissajous traces are created immediately after `math_rebuild`/`spectrum_rebuild`/`lissajous_rebuild`.
+The system SHALL ensure `View::signals_modified_refresh` marks derived traces dirty AND rebuilds `_signal_groups`, so Math/Spectrum/Lissajous traces are created immediately and Header::paintEvent never reads stale Trace pointers.
 
 #### Scenario: Math 重建后波形立即显示
 - **WHEN** 用户在 MathOptions 对话框确认启用 Math
 - **THEN** MathTrace 立即创建并显示，无需切换 Tab
+
+#### Scenario: 删除解码器后 Header 绘制无 UAF
+- **WHEN** 用户删除一个 DecodeTrace 后 Header::paintEvent 触发
+- **THEN** `_signal_groups` 已在 `signals_modified_refresh` 或 `sync_derived_traces` 中重建，无悬垂指针
 
 ### Requirement: Tab 关闭无悬垂指针
 The system SHALL ensure Tab removal joins decoder threads, detaches View→Document pointer, and deletes document before View receives any paint event.
@@ -79,19 +86,36 @@ The system SHALL use `std::atomic` for all cross-thread state flags (_is_working
 - **WHEN** GUI 线程读取 is_working() 而 worker 线程写入
 - **THEN** 无数据竞争 UB，弱内存架构上可见性正确
 
+### Requirement: Core→View 状态同步单一异步通道
+The system SHALL dispatch all Core→View state-change notifications through a single asynchronous channel. Synchronous `broadcast_msg` and asynchronous `broadcast_msg_deferred` MUST NOT coexist for the same notification path. All notifications MUST be queued via `Qt::QueuedConnection` and processed in FIFO order on the GUI thread, eliminating re-entrant broadcast UAF.
+
+**Rationale**: The DSO `set_zero_ratio` UAF and LOGIC `Header::paintEvent` UAF both stem from synchronous broadcasts triggering nested `reload()` → View AllReplaced → deleting `this` mid-method. A single async channel ensures the caller's stack frame completes before any consumer mutates state.
+
+#### Scenario: set_config_* 不再触发同步嵌套广播
+- **WHEN** `DsoSignal::set_zero_ratio` 调用 `set_config_uint16(SR_CONF_PROBE_OFFSET)`
+- **THEN** `DeviceConfigChanged` 广播被异步排队，`set_zero_ratio` 方法栈完整结束后消费者才处理
+
+#### Scenario: init_signals 重建不删除正在执行的调用方
+- **WHEN** `load_config_from_json` 触发 `reload()` → `signals_changed()` → View AllReplaced
+- **THEN** AllReplaced 重建被异步排队，`load_config_from_json` 方法栈完整结束后 View 才重建
+
+#### Scenario: 类型化事件携带重建完成上下文
+- **WHEN** Core 完成一次 SignalModel wholesale rebuild
+- **THEN** `SignalsChangedEvent` 携带 `rebuild_kind` 枚举（AllReplaced/Modified/Added/Removed）+ `new_model_ptrs` 列表，消费者无需回查 session 状态
+
 ## MODIFIED Requirements
 
 ### Requirement: 类型化事件总线（fix-all-architecture-issues Task 3）
 [原：18 事件结构体 + IEventListener + broadcast<T>，新代码强制用]
-修改为：当前为前置基础设施（0 消费者、0 直接发射点）。B1.1 修正 AGENTS.md 措辞为"推荐接口，待 MainWindow 拆分后迁移"；B1.2 在 C5 完成后真正迁移并恢复硬约束。
+修改为：B1.2 已完成 41 个事件结构体 + 38/43 翻译表 + MainWindow IEventListener 注册。C1+ 完成后，`broadcast_msg` 全异步化，`broadcast<T>` 成为唯一派发通道，恢复硬约束。
 
 ### Requirement: MainWindow::OnMessage
 [原：504 行/39 case 上帝方法，直接操控 10+ widget]
-修改为：按职责拆分为多个处理器方法，每个处理器注册为 IEventListener 消费对应类型化事件；OnMessage 退化为 < 80 行路由 switch。
+修改为：已完成拆分，OnMessage 79 行路由 switch + 7 个处理器方法。
 
 ### Requirement: SigSession
 [原：3219 行/49 成员/20+ 职责上帝类]
-修改为：拆分为 CaptureManager/DecodeTaskManager/DataFeedParser/DocumentRegistry/EventBus/FilterProcessor，SigSession 退化为协调 facade，持有各 manager 的 unique_ptr。
+修改为：拆分为 CaptureManager/DecodeTaskManager/DataFeedParser/DocumentRegistry/EventBus/FilterProcessor，SigSession 退化为协调 facade，持有各 manager 的 unique_ptr。**EventBus 提取时必须将 broadcast_msg 改为 Qt::QueuedConnection 异步派发**（C1+ 要求）。
 
 ### Requirement: SessionDocument
 [原：6 角色混淆 + DeviceAgent 耦合 + UI 布局字段 + friend TabContext]
@@ -99,10 +123,14 @@ The system SHALL use `std::atomic` for all cross-thread state flags (_is_working
 
 ### Requirement: CMakeLists.txt
 [原：1889 行单文件混合依赖/源清单/安装/打包/测试]
-修改为：拆分为 `cmake/*.cmake` 多文件，主 CMakeLists.txt 用 `include()` 组装，行数 < 100。
+修改为：已完成拆分，主文件 134 行 + 8 个 `CMake/*.cmake` 子模块。spec 原 < 100 行目标放宽至 < 150 行（GPL 头 21 行 + 目标定义 50 行属必须留在主文件）。
 
 ## REMOVED Requirements
 
 ### Requirement: AGENTS.md "新代码必须用 IEventListener" 硬约束
 **Reason**: 调研发现 0 消费者、0 直接发射点，硬约束误导开发者认为已生效。
-**Migration**: B1.1 改为"推荐接口，待 C5 拆分后迁移"；B1.2 在 C5 完成后真正迁移并恢复硬约束。
+**Migration**: B1.1 改为"推荐接口，待 C1+ 完成后恢复硬约束"。
+
+### Requirement: broadcast_msg_deferred / trigger_message_deferred 双轨制
+**Reason**: 同步 `broadcast_msg` 与异步 `broadcast_msg_deferred` 并存导致开发者需记忆每个消息该用哪个，混合使用导致 UAF。
+**Migration**: C1+ 完成后，所有 `broadcast_msg` 统一为 `Qt::QueuedConnection` 异步，`*_deferred` 变体删除。

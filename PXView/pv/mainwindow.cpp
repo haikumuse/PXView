@@ -414,10 +414,10 @@ void MainWindow::setup_ui() {
 
   pv::view::View *initial_view =
       new pv::view::View(_session, _sampling_bar, this);
-  pv::data::SessionDocument *initial_doc = new pv::data::SessionDocument();
+  pv::data::SessionDocument *initial_doc = new pv::data::SessionDocument(_session);
 
   if (_device_agent && _device_agent->have_instance()) {
-    initial_doc->save_signal_config(_device_agent, {},
+    initial_doc->save_signal_config({},
                                     _session->get_signal_models(), {});
     pxv_info("MainWindow::setup_ui() saved initial signal config, mode=%d "
              "ch_count=%d",
@@ -860,7 +860,7 @@ void MainWindow::setup_ui() {
                 }
                 if (!existing_ctx) {
                   pv::data::SessionDocument *doc =
-                      new pv::data::SessionDocument();
+                      new pv::data::SessionDocument(_session);
                   pv::TabContext *ctx =
                       SessionManager::instance()->create_context(view, _session,
                                                                  doc);
@@ -983,7 +983,7 @@ void MainWindow::retranslateUi() {
 
 void MainWindow::on_load_file(QString file_name) {
   pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
-  pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
+  pv::data::SessionDocument *new_doc = new pv::data::SessionDocument(_session);
   pv::TabContext *ctx =
       SessionManager::instance()->create_context(new_view, _session, new_doc);
   _session->register_document(new_doc);
@@ -1506,13 +1506,13 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
 bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   haveDecoder = false;
 
-  // Suppress DeviceConfigChanged broadcasts during batch config restore.
-  // set_config_* calls below (via DsoSignal::set_zero_ratio etc.) would
-  // otherwise synchronously trigger on_device_options -> load_device_config
-  // -> reload -> signals_changed -> View AllReplaced, deleting the DsoSignal
-  // mid-method (UAF in the next set_trig_ratio call on the same `this`).
-  // Device config is still written; reload() at the end rebuilds from it.
-  SigSession::SuppressConfigBroadcastGuard guard(*_session);
+  // DeviceConfigChanged broadcasts are now ASYNC (queued on qApp via
+  // Qt::QueuedConnection by EventBus), so the previous
+  // SuppressConfigBroadcastGuard (which prevented nested reload ->
+  // signals_changed -> View AllReplaced deleting the DsoSignal mid-method) is
+  // no longer needed: the caller's stack frame completes before any listener
+  // processes the message. Device config is still written; reload() at the
+  // end rebuilds from it.
 
   QJsonObject sessionObj = doc.object();
 
@@ -2500,7 +2500,7 @@ void MainWindow::on_frame_ended() {
                "waiting for DSV_MSG_COPY_TO_DOC_DONE");
     }
     ctx->document()->save_signal_config(
-        _session->get_device(), build_channel_visibility(current_view()),
+        build_channel_visibility(current_view()),
         _session->get_signal_models(), build_channel_layout(current_view()));
     ctx->activate();
   }
@@ -2996,7 +2996,7 @@ void MainWindow::on_device_changed(int msg, int param) {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(
-            _session->get_device(), build_channel_visibility(current_view()),
+            build_channel_visibility(current_view()),
             _session->get_signal_models(),
             build_channel_layout(current_view()));
         current_view()->rebuild_signals();
@@ -3185,7 +3185,7 @@ void MainWindow::on_capture_state(int msg, int param) {
 
     pv::TabContext *ctx = current_context();
     if (ctx && ctx->document() && ctx->document()->has_pending_config()) {
-      ctx->document()->apply_pending_config(_session->get_device());
+      ctx->document()->apply_pending_config();
       // Task 2.6 (R2): apply_pending_config 触发 reload 重建 SignalModel，
       // 从 _signal_config 回写 trig_type 到新建的 SignalModel（参考
       // tabcontext.cpp:86-95）。
@@ -3237,7 +3237,7 @@ void MainWindow::on_device_options(int msg, int param) {
     pv::TabContext *ctx = current_context();
     if (ctx && ctx->document()) {
       ctx->document()->save_signal_config(
-          _session->get_device(), build_channel_visibility(current_view()),
+          build_channel_visibility(current_view()),
           _session->get_signal_models(), build_channel_layout(current_view()));
     }
 
@@ -3255,11 +3255,12 @@ void MainWindow::on_device_options(int msg, int param) {
     break;
   }
   case DSV_MSG_DEVICE_MODE_CHANGED: {
-    // switch_work_mode() now broadcasts DSV_MSG_DEVICE_MODE_CHANGED via
-    // broadcast_msg_deferred, so this handler runs AFTER the View has finished
-    // its signals_changed rebuild (which rebinds view::Signal::_model to the
-    // new SignalModels via compute_change_event pointer-identity check). No
-    // manual rebuild_signals() is needed here.
+    // switch_work_mode() broadcasts DSV_MSG_DEVICE_MODE_CHANGED via
+    // broadcast_msg, which is now ALWAYS async (queued on qApp via
+    // Qt::QueuedConnection by EventBus), so this handler runs AFTER the View
+    // has finished its signals_changed rebuild (which rebinds
+    // view::Signal::_model to the new SignalModels via compute_change_event
+    // pointer-identity check). No manual rebuild_signals() is needed here.
     current_view()->mode_changed();
     reset_all_view();
     load_device_config();
@@ -3274,7 +3275,7 @@ void MainWindow::on_device_options(int msg, int param) {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(
-            _session->get_device(), build_channel_visibility(current_view()),
+            build_channel_visibility(current_view()),
             _session->get_signal_models(),
             build_channel_layout(current_view()));
         current_view()->rebuild_signals();
@@ -3891,10 +3892,10 @@ void MainWindow::on_tab_attached(QWidget *widget, const QString &title) {
 
 void MainWindow::on_new_tab_requested() {
   pv::view::View *new_view = new pv::view::View(_session, _sampling_bar, this);
-  pv::data::SessionDocument *new_doc = new pv::data::SessionDocument();
+  pv::data::SessionDocument *new_doc = new pv::data::SessionDocument(_session);
 
   if (_device_agent && _device_agent->have_instance()) {
-    new_doc->save_signal_config(_device_agent, {},
+    new_doc->save_signal_config({},
                                 _session->get_signal_models(), {});
     pxv_info("MainWindow::on_new_tab_requested() saved signal config, mode=%d "
              "ch_count=%d",
