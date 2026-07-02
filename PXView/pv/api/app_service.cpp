@@ -58,10 +58,11 @@ Result<void> AppService::initialize()
         // for MCP operations, decoupled from the UI's _active_document cursor.
         // This runs on the AppControl::Start() path, which is shared by both
         // headless (--headless) and GUI modes, so _api_document is ready in
-        // either case. SessionDocument has a no-argument constructor.
+        // either case. SessionDocument takes the owning SigSession* so its
+        // SignalConfigStore can reach DeviceAgent via session->get_device().
         // Ownership of the document transfers to the SessionService (released
         // in its destructor); SigSession::register_document() is non-owning.
-        auto* api_doc = new pv::data::SessionDocument();
+        auto* api_doc = new pv::data::SessionDocument(session);
         session->register_document(api_doc);
         svc->set_api_document(api_doc);
 
@@ -297,7 +298,7 @@ Result<int> AppService::create_session(
     // This branch is only reached when no SessionService exists yet; the
     // common path returns early above, reusing the SessionService created in
     // initialize() which already has its _api_document set.
-    auto* api_doc = new pv::data::SessionDocument();
+    auto* api_doc = new pv::data::SessionDocument(session);
     session->register_document(api_doc);
     svc->set_api_document(api_doc);
 

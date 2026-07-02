@@ -50,7 +50,9 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <QString>
+#include <vector>
 
 #include "../data/triggerconfig.h"  // for pv::data::TriggerConfig (complete type)
 
@@ -77,6 +79,7 @@ namespace pv {
 // Core data headers; a pointer member only needs the forward declaration.
 namespace data {
 class SessionDocument;
+class SignalModel;
 }
 
 namespace interface {
@@ -139,7 +142,16 @@ struct CopyToDocDone {
 struct DecodeDone {};
 
 // Signal list changed.
-struct SignalsChanged {};
+struct SignalsChanged {
+    enum class RebuildKind {
+        AllReplaced,
+        Modified,
+        Added,
+        Removed
+    };
+    RebuildKind rebuild_kind = RebuildKind::AllReplaced;
+    std::vector<std::shared_ptr<data::SignalModel>> new_model_ptrs;
+};
 
 // Underlying sample data updated.
 struct DataUpdated {};

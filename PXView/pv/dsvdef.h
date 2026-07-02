@@ -35,6 +35,18 @@ enum View_type {
     ALL_VIEW
 };
 
+enum DEVICE_COLLECT_MODE {
+    COLLECT_SINGLE = 0,
+    COLLECT_REPEAT = 1,
+    COLLECT_LOOP = 2,
+};
+
+enum DEVICE_STATUS_TYPE {
+  ST_INIT = 0,
+  ST_RUNNING = 1,
+  ST_STOPPED = 2,
+};
+
 
 #ifdef DS_DEBUG_TRACE
     void ds_print(const char *s);

@@ -29,6 +29,7 @@
 #include <math.h>
 
 #include "../sigsession.h"
+#include "../data/lissajousmodel.h"
 #include "../view/view.h"
 #include "../view/lissajoustrace.h"
 #include "../ui/langresource.h"
