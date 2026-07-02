@@ -27,6 +27,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifndef ALL_ZERO
+#define ALL_ZERO { 0 }
+#endif
+
 #define LOG_PREFIX "chronovu-la"
 
 #define SDRAM_SIZE			(8 * 1024 * 1024)

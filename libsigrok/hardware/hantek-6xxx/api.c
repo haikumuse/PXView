@@ -21,6 +21,10 @@
 #include <math.h>
 #include "protocol.h"
 
+#ifndef ALL_ZERO
+#define ALL_ZERO { 0 }
+#endif
+
 /* Max time in ms before we want to check on USB events */
 #define TICK 200
 
@@ -289,7 +293,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 				sdi->connection_id = g_strdup(connection_id);
 				devices = g_slist_append(devices, sdi);
 				devc = sdi->priv;
-				if (ezusb_upload_firmware(drvc->sr_ctx, devlist[i],
+				if (ezusb_upload_firmware(devlist[i],
 						USB_CONFIGURATION, prof->firmware) == SR_OK) {
 					/* Remember when the firmware on this device was updated. */
 					devc->fw_updated = g_get_monotonic_time();
@@ -572,24 +576,21 @@ static void send_chunk(struct sr_dev_inst *sdi, unsigned char *buf,
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct dev_context *devc = sdi->priv;
 	GSList *channels = devc->enabled_channels;
 
 	const float ch_bit[] = { RANGE(0) / 255, RANGE(1) / 255 };
 	const float ch_center[] = { RANGE(0) / 2, RANGE(1) / 2 };
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
+	memset(&analog, 0, sizeof(analog));
 
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 
 	analog.num_samples = num_samples;
-	analog.meaning->mq = SR_MQ_VOLTAGE;
-	analog.meaning->unit = SR_UNIT_VOLT;
-	analog.meaning->mqflags = 0;
+	analog.mq = SR_MQ_VOLTAGE;
+	analog.unit = SR_UNIT_VOLT;
+	analog.mqflags = 0;
 
 	analog.data = g_try_malloc(num_samples * sizeof(float));
 	if (!analog.data) {
@@ -604,9 +605,9 @@ static void send_chunk(struct sr_dev_inst *sdi, unsigned char *buf,
 
 		float vdivlog = log10f(ch_bit[ch]);
 		int digits = -(int)vdivlog + (vdivlog < 0.0);
-		analog.encoding->digits = digits;
-		analog.spec->spec_digits = digits;
-		analog.meaning->channels = g_slist_append(NULL, channels->data);
+		analog.digits = digits;
+		analog.spec_digits = digits;
+		analog.probes = g_slist_append(NULL, channels->data);
 
 		for (int i = 0; i < num_samples; i++) {
 			/*
@@ -624,7 +625,7 @@ static void send_chunk(struct sr_dev_inst *sdi, unsigned char *buf,
 		}
 
 		sr_session_send(sdi, &packet);
-		g_slist_free(analog.meaning->channels);
+		g_slist_free(analog.probes);
 
 		channels = channels->next;
 	}

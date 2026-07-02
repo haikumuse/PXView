@@ -260,9 +260,8 @@ static void clear_acquisition_state(const struct sr_dev_inst *sdi)
 }
 
 /* USB I/O source callback. */
-static int transfer_event(int fd, int revents, void *cb_data)
+static int transfer_event(int fd, int revents, const struct sr_dev_inst *sdi)
 {
-	const struct sr_dev_inst *sdi;
 	struct dev_context *devc;
 	struct drv_context *drvc;
 	struct timeval tv;
@@ -270,7 +269,6 @@ static int transfer_event(int fd, int revents, void *cb_data)
 
 	(void)fd;
 
-	sdi = cb_data;
 	devc = sdi->priv;
 	drvc = sdi->driver->priv;
 
@@ -551,8 +549,8 @@ SR_PRIV int lwla_start_acquisition(const struct sr_dev_inst *sdi)
 		return ret;
 	}
 	/* Register event source for asynchronous USB I/O. */
-	ret = usb_source_add(sdi->session, drvc->sr_ctx, poll_interval_ms,
-			     &transfer_event, (struct sr_dev_inst *)sdi);
+	ret = usb_source_add(drvc->sr_ctx, poll_interval_ms,
+			     &transfer_event, sdi);
 	if (ret != SR_OK) {
 		clear_acquisition_state(sdi);
 		return ret;

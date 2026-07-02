@@ -294,17 +294,16 @@ SR_PRIV int scanaplus_start_acquisition(struct dev_context *devc)
 	return SR_OK;
 }
 
-SR_PRIV int scanaplus_receive_data(int fd, int revents, void *cb_data)
+SR_PRIV int scanaplus_receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
 	int bytes_read;
-	struct sr_dev_inst *sdi;
 	struct dev_context *devc;
 	uint64_t max, n;
 
 	(void)fd;
 	(void)revents;
 
-	if (!(sdi = cb_data))
+	if (!sdi)
 		return TRUE;
 
 	if (!(devc = sdi->priv))

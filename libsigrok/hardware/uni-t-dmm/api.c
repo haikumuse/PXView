@@ -143,13 +143,11 @@ static const struct dmm_info uni_t_dmm_models[] = {
 		sr_fs9922_packet_valid, sr_fs9922_parse,
 		&sr_fs9922_z1_diode),
 	/* }}} */
-	/* {{{ ut372 */
-	/* uni-t-ut372 */
-	DMM(ut372, "UNI-T", "UT372", 2400,
-		UT372_PACKET_SIZE,
-		sr_ut372_packet_valid, sr_ut372_parse,
-		NULL),
-	/* }}} */
+	/*
+	 * ut372 entry disabled: the ut372 parser (sr_ut372_packet_valid /
+	 * sr_ut372_parse) was never migrated into PXView (no dmm/ut372.c).
+	 * Re-enable when the ut372 parser is ported.
+	 */
 	/* {{{ ut71x */
 	/* tenma-72-7730 */
 	DMM(ut71x, "Tenma", "72-7730", 2400,
