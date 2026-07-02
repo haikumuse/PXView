@@ -51,6 +51,6 @@ SR_PRIV int scanaplus_close(struct dev_context *devc);
 SR_PRIV int scanaplus_get_device_id(struct dev_context *devc);
 SR_PRIV int scanaplus_init(struct dev_context *devc);
 SR_PRIV int scanaplus_start_acquisition(struct dev_context *devc);
-SR_PRIV int scanaplus_receive_data(int fd, int revents, void *cb_data);
+SR_PRIV int scanaplus_receive_data(int fd, int revents, const struct sr_dev_inst *sdi);
 
 #endif

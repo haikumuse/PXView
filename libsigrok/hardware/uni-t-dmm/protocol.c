@@ -55,9 +55,6 @@ static void decode_packet(struct sr_dev_inst *sdi, const uint8_t *buf)
 	const struct dmm_info *dmm;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	float floatval;
 	void *info;
 	int ret;
@@ -65,7 +62,7 @@ static void decode_packet(struct sr_dev_inst *sdi, const uint8_t *buf)
 	devc = sdi->priv;
 	dmm = devc->dmm;
 	/* Note: digits/spec_digits will be overridden by the DMM parsers. */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
+	memset(&analog, 0, sizeof(analog));
 	info = g_malloc(dmm->info_size);
 
 	/* Parse the protocol packet. */
@@ -83,7 +80,7 @@ static void decode_packet(struct sr_dev_inst *sdi, const uint8_t *buf)
 	g_free(info);
 
 	/* Send a sample packet with one analog value. */
-	analog.meaning->channels = sdi->channels;
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
 	analog.data = &floatval;
 	packet.type = SR_DF_ANALOG;

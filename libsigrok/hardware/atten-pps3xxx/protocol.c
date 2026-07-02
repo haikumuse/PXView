@@ -62,28 +62,24 @@ static void handle_packet(const struct sr_dev_inst *sdi)
 	struct dev_context *devc;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	float value, data[MAX_CHANNELS];
 	int offset, i;
 
 	devc = sdi->priv;
 	dump_packet("received", devc->packet);
 
-	/* Note: digits/spec_digits will be overridden later. */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
+	memset(&analog, 0, sizeof(analog));
 
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
-	analog.meaning->channels = sdi->channels;
+	analog.probes = sdi->channels;
 	analog.num_samples = 1;
 
-	analog.meaning->mq = SR_MQ_VOLTAGE;
-	analog.meaning->unit = SR_UNIT_VOLT;
-	analog.meaning->mqflags = SR_MQFLAG_DC;
-	analog.encoding->digits = 2;
-	analog.spec->spec_digits = 2;
+	analog.mq = SR_MQ_VOLTAGE;
+	analog.unit = SR_UNIT_VOLT;
+	analog.mqflags = SR_MQFLAG_DC;
+	analog.digits = 2;
+	analog.spec_digits = 2;
 	analog.data = data;
 	for (i = 0; i < devc->model->num_channels; i++) {
 		offset = 2 + i * 4;
@@ -93,11 +89,11 @@ static void handle_packet(const struct sr_dev_inst *sdi)
 	}
 	sr_session_send(sdi, &packet);
 
-	analog.meaning->mq = SR_MQ_CURRENT;
-	analog.meaning->unit = SR_UNIT_AMPERE;
-	analog.meaning->mqflags = 0;
-	analog.encoding->digits = 3;
-	analog.spec->spec_digits = 3;
+	analog.mq = SR_MQ_CURRENT;
+	analog.unit = SR_UNIT_AMPERE;
+	analog.mqflags = 0;
+	analog.digits = 3;
+	analog.spec_digits = 3;
 	analog.data = data;
 	for (i = 0; i < devc->model->num_channels; i++) {
 		offset = 4 + i * 4;

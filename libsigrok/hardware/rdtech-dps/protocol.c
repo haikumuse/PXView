@@ -314,7 +314,7 @@ SR_PRIV struct sr_modbus_dev_inst *modbus_dev_inst_new(const char *resource,
 			sr_modbus_free(modbus);
 			modbus = NULL;
 		}
-		g_strfree(params);
+		g_strfreev(params);
 	}
 
 	return modbus;
@@ -771,24 +771,22 @@ static int send_value(const struct sr_dev_inst *sdi,
 {
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	int ret;
 
-	sr_analog_init(&analog, &encoding, &meaning, &spec, digits);
-	analog.meaning->channels = g_slist_append(NULL, ch);
+	memset(&analog, 0, sizeof(analog));
+	analog.digits = digits;
+	analog.probes = g_slist_append(NULL, ch);
 	analog.num_samples = 1;
 	analog.data = &value;
-	analog.meaning->mq = mq;
-	analog.meaning->mqflags = mqflags;
-	analog.meaning->unit = unit;
+	analog.mq = mq;
+	analog.mqflags = mqflags;
+	analog.unit = unit;
 
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
 	ret = sr_session_send(sdi, &packet);
 
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 
 	return ret;
 }

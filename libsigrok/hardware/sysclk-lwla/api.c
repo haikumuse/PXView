@@ -487,7 +487,7 @@ static int prepare_trigger_masks(const struct sr_dev_inst *sdi)
 	struct sr_trigger_match *match;
 	const GSList *node;
 	int idx;
-	enum sr_trigger_matches trg;
+	enum sr_trigger_match_type trg;
 
 	devc = sdi->priv;
 

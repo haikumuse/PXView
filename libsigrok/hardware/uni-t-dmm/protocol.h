@@ -173,6 +173,66 @@ struct dmm_info {
 
 #define DMM_BUFSIZE		256
 
+/*
+ * Software acquisition limits shim.
+ *
+ * PXView's libsigrok-internal.h does not declare sr_sw_limits or the
+ * sr_sw_limits_* helpers that several upstream DMM drivers use. Mirror the
+ * agilent-dmm/protocol.h inline implementation here so the uni-t-dmm driver
+ * compiles standalone.
+ */
+#ifndef UNI_T_DMM_SR_SW_LIMITS_DEFINED
+#define UNI_T_DMM_SR_SW_LIMITS_DEFINED
+struct sr_sw_limits {
+	uint64_t limit_samples;
+	uint64_t limit_msec;
+	int64_t starttime_ms;
+	uint64_t samples_read;
+};
+static inline void sr_sw_limits_init(struct sr_sw_limits *limits)
+{ memset(limits, 0, sizeof(*limits)); }
+static inline int sr_sw_limits_config_set(struct sr_sw_limits *limits,
+		uint32_t key, GVariant *data)
+{
+	if (key == SR_CONF_LIMIT_SAMPLES) {
+		limits->limit_samples = g_variant_get_uint64(data);
+		return SR_OK;
+	} else if (key == SR_CONF_LIMIT_MSEC) {
+		limits->limit_msec = g_variant_get_uint64(data);
+		return SR_OK;
+	}
+	return SR_ERR_NA;
+}
+static inline int sr_sw_limits_config_get(struct sr_sw_limits *limits,
+		uint32_t key, GVariant **data)
+{
+	if (key == SR_CONF_LIMIT_SAMPLES) {
+		*data = g_variant_new_uint64(limits->limit_samples);
+		return SR_OK;
+	} else if (key == SR_CONF_LIMIT_MSEC) {
+		*data = g_variant_new_uint64(limits->limit_msec);
+		return SR_OK;
+	}
+	return SR_ERR_NA;
+}
+static inline void sr_sw_limits_acquisition_start(struct sr_sw_limits *limits)
+{ limits->starttime_ms = g_get_monotonic_time() / 1000; limits->samples_read = 0; }
+static inline void sr_sw_limits_update_samples_read(struct sr_sw_limits *limits, uint64_t count)
+{ limits->samples_read += count; }
+static inline gboolean sr_sw_limits_check(const struct sr_sw_limits *limits)
+{
+	if (limits->limit_msec) {
+		if ((g_get_monotonic_time() / 1000 - limits->starttime_ms) > (int64_t)limits->limit_msec)
+			return TRUE;
+	}
+	if (limits->limit_samples) {
+		if (limits->samples_read >= limits->limit_samples)
+			return TRUE;
+	}
+	return FALSE;
+}
+#endif
+
 struct dev_context {
 	struct sr_sw_limits limits;
 

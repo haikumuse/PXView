@@ -310,14 +310,14 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 	std_session_send_df_header(sdi, NULL);
 
 	/* Hook up a dummy handler to receive data from the device. */
-	sr_session_source_add(sdi->session, -1, 0, 0, scanaplus_receive_data, (void *)sdi);
+	sr_session_source_add(-1, 0, 0, scanaplus_receive_data, sdi);
 
 	return SR_OK;
 }
 
 static int dev_acquisition_stop(struct sr_dev_inst *sdi)
 {
-	sr_session_source_remove(sdi->session, -1);
+	sr_session_source_remove(-1);
 	std_session_send_df_end(sdi, NULL);
 
 	return SR_OK;

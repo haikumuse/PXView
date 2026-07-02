@@ -255,6 +255,7 @@ static void mso_set_offset_value(struct dev_context *devc, double offset)
 
 }
 
+#ifdef HAVE_LIBSERIALPORT
 static GSList* scan_handle_port(GSList *devices, struct sp_port *port)
 {
 	int usb_vid, usb_pid;
@@ -342,6 +343,7 @@ static GSList* scan_handle_port(GSList *devices, struct sp_port *port)
 
 	return devices;
 }
+#endif /* HAVE_LIBSERIALPORT */
 
 static GSList *scan(struct sr_dev_driver *di, GSList *options)
 {
@@ -361,6 +363,7 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 		}
 	}
 
+#ifdef HAVE_LIBSERIALPORT
 	if (conn) {
 		struct sp_port *port;
 		if (sp_get_port_by_name(conn, &port) == SP_OK) {
@@ -377,6 +380,10 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 			sp_free_port_list(port_list);
 		}
 	}
+#else
+	(void)conn;
+	sr_dbg("link-mso19: serial port scanning requires libserialport, not available.");
+#endif
 
 	return std_scan_complete_compat(di, devices);
 }

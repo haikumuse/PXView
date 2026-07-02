@@ -22,6 +22,10 @@
 
 #include "hardware/compat/compat.h"
 
+#ifndef usb_source_remove
+#define usb_source_remove(session, ctx) sr_session_source_remove(-1)
+#endif
+
 #define LOG_PREFIX "sysclk-lwla"
 
 /* Maximum configurable sample count limit.

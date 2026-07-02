@@ -105,10 +105,27 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 {
 	const char *conn;
 	const char *serialcomm;
+	GSList *l;
+	struct sr_config *src;
 
 	conn = NULL;
 	serialcomm = RDTECH_UM_SERIALCOMM;
-	(void)sr_serial_extract_options(options, &conn, &serialcomm);
+	/*
+	 * PXView's libsigrok does not provide sr_serial_extract_options(), so
+	 * manually walk the options GSList looking for SR_CONF_CONN and
+	 * SR_CONF_SERIALCOMM.
+	 */
+	for (l = options; l; l = l->next) {
+		src = l->data;
+		switch (src->key) {
+		case SR_CONF_CONN:
+			conn = g_variant_get_string(src->data, NULL);
+			break;
+		case SR_CONF_SERIALCOMM:
+			serialcomm = g_variant_get_string(src->data, NULL);
+			break;
+		}
+	}
 	if (!conn)
 		return NULL;
 

@@ -76,9 +76,6 @@ SR_PRIV int scpi_pps_receive_data(int fd, int revents,
 	const struct scpi_pps *device;
 	struct sr_datafeed_packet packet;
 	struct sr_datafeed_analog analog;
-	struct sr_analog_encoding encoding;
-	struct sr_analog_meaning meaning;
-	struct sr_analog_spec spec;
 	struct sr_channel *cur_acquisition_channel;
 	int channel_group_cmd;
 	const char *channel_group_name;
@@ -155,34 +152,33 @@ SR_PRIV int scpi_pps_receive_data(int fd, int revents,
 	}
 	packet.type = SR_DF_ANALOG;
 	packet.payload = &analog;
-	/* Note: digits/spec_digits will be overridden later. */
-	sr_analog_init(&analog, &encoding, &meaning, &spec, 0);
-	analog.meaning->channels = g_slist_append(NULL, cur_acquisition_channel);
+	memset(&analog, 0, sizeof(analog));
+	analog.probes = g_slist_append(NULL, cur_acquisition_channel);
 	analog.num_samples = 1;
-	analog.meaning->mq = pch->mq;
-	analog.meaning->mqflags = pch->mqflags;
+	analog.mq = pch->mq;
+	analog.mqflags = pch->mqflags;
 	if (pch->mq == SR_MQ_VOLTAGE) {
-		analog.meaning->unit = SR_UNIT_VOLT;
-		analog.encoding->digits = ch_spec->voltage[4];
-		analog.spec->spec_digits = ch_spec->voltage[3];
+		analog.unit = SR_UNIT_VOLT;
+		analog.digits = ch_spec->voltage[4];
+		analog.spec_digits = ch_spec->voltage[3];
 	} else if (pch->mq == SR_MQ_CURRENT) {
-		analog.meaning->unit = SR_UNIT_AMPERE;
-		analog.encoding->digits = ch_spec->current[4];
-		analog.spec->spec_digits = ch_spec->current[3];
+		analog.unit = SR_UNIT_AMPERE;
+		analog.digits = ch_spec->current[4];
+		analog.spec_digits = ch_spec->current[3];
 	} else if (pch->mq == SR_MQ_POWER) {
-		analog.meaning->unit = SR_UNIT_WATT;
-		analog.encoding->digits = ch_spec->power[4];
-		analog.spec->spec_digits = ch_spec->power[3];
+		analog.unit = SR_UNIT_WATT;
+		analog.digits = ch_spec->power[4];
+		analog.spec_digits = ch_spec->power[3];
 	} else if (pch->mq == SR_MQ_FREQUENCY) {
-		analog.meaning->unit = SR_UNIT_HERTZ;
-		analog.encoding->digits = ch_spec->frequency[4];
-		analog.spec->spec_digits = ch_spec->frequency[3];
+		analog.unit = SR_UNIT_HERTZ;
+		analog.digits = ch_spec->frequency[4];
+		analog.spec_digits = ch_spec->frequency[3];
 	}
 	f = (float)g_variant_get_double(gvdata);
 	g_variant_unref(gvdata);
 	analog.data = &f;
 	sr_session_send(sdi, &packet);
-	g_slist_free(analog.meaning->channels);
+	g_slist_free(analog.probes);
 
 	/* Next channel. */
 	if (g_slist_length(sdi->channels) > 1) {

@@ -157,12 +157,25 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 	struct libusb_device_handle *hdl;
 	char product[64], serial_num[64], connection_id[64];
 	int model;
+	struct sr_config *src;
 
 	drvc = di->priv;
 	devices = NULL;
 
 	conn = NULL;
-	(void)sr_serial_extract_options(options, &conn, NULL);
+	/*
+	 * PXView's libsigrok does not provide sr_serial_extract_options(), so
+	 * manually walk the options GSList looking for SR_CONF_CONN and
+	 * SR_CONF_SERIALCOMM.
+	 */
+	for (l = options; l; l = l->next) {
+		src = l->data;
+		switch (src->key) {
+		case SR_CONF_CONN:
+			conn = g_variant_get_string(src->data, NULL);
+			break;
+		}
+	}
 	conn_devices = NULL;
 	if (conn)
 		conn_devices = sr_usb_find(drvc->sr_ctx->libusb_ctx, conn);
@@ -400,17 +413,16 @@ static int config_list(uint32_t key, GVariant **data,
 	return SR_OK;
 }
 
-static int receive_data(int fd, int revents, void *cb_data)
+static int receive_data(int fd, int revents, const struct sr_dev_inst *sdi)
 {
 	int i, ret;
-	struct sr_dev_inst *sdi;
 	struct dev_context *devc;
 
 	(void)fd;
 	(void)revents;
 
-	if (!(sdi = cb_data)) {
-		sr_err("cb_data was NULL.");
+	if (!sdi) {
+		sr_err("sdi was NULL.");
 		return FALSE;
 	}
 
@@ -515,14 +527,14 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 	devc->trigger_found = 0;
 
 	/* Hook up a dummy handler to receive data from the device. */
-	sr_session_source_add(sdi->session, -1, 0, 0, receive_data, (void *)sdi);
+	sr_session_source_add(-1, 0, 0, receive_data, sdi);
 
 	return SR_OK;
 }
 
 static int dev_acquisition_stop(struct sr_dev_inst *sdi)
 {
-	sr_session_source_remove(sdi->session, -1);
+	sr_session_source_remove(-1);
 	std_session_send_df_end(sdi, NULL);
 
 	return SR_OK;
