@@ -3241,6 +3241,18 @@ void MainWindow::on_device_options(int msg, int param) {
     break;
   }
   case DSV_MSG_DEVICE_MODE_CHANGED: {
+    // CRITICAL: switch_work_mode() already called init_signals() which rebuilt
+    // Core-side SignalModels (old ones deleted, memory filled with 0xfeeefeee
+    // by Windows debug heap). The View-side signals_changed() notification is
+    // delivered via Qt queued signal (async), so it has NOT been processed yet
+    // when this synchronous broadcast_msg handler runs. Without rebuilding View
+    // signals first, _own_signals still hold stale SignalModel pointers, and
+    // any access below (load_device_config -> load_config_from_json ->
+    // DsoSignal::set_zero_ratio -> _model->set_zero_offset) dereferences freed
+    // memory -> SIGSEGV (this=0xfeeefeeefeeefeee).
+    // Rebuild synchronously here so all subsequent handlers see valid pointers.
+    current_view()->rebuild_signals();
+
     current_view()->mode_changed();
     reset_all_view();
     load_device_config();
