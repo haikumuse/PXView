@@ -353,6 +353,15 @@ extern SR_PRIV struct sr_dev_driver gmc_mh_1x_2x_rs232_driver_info;
 #ifdef HAVE_DRIVER_GMC_MH_2X_BD232
 extern SR_PRIV struct sr_dev_driver gmc_mh_2x_bd232_driver_info;
 #endif
+#ifdef HAVE_DRIVER_GREATFET
+extern SR_PRIV struct sr_dev_driver greatfet_driver_info;
+#endif
+#ifdef HAVE_DRIVER_DCTTECH_USBRELAY
+extern SR_PRIV struct sr_dev_driver dcttech_usbrelay_driver_info;
+#endif
+#ifdef HAVE_DRIVER_DEVANTECH_ETH008
+extern SR_PRIV struct sr_dev_driver devantech_eth008_driver_info;
+#endif
 #endif
 /** @endcond */
 
@@ -609,6 +618,15 @@ static struct sr_dev_driver *drivers_list[] = {
 #endif
 #ifdef HAVE_DRIVER_GMC_MH_2X_BD232
     &gmc_mh_2x_bd232_driver_info,
+#endif
+#ifdef HAVE_DRIVER_GREATFET
+    &greatfet_driver_info,
+#endif
+#ifdef HAVE_DRIVER_DCTTECH_USBRELAY
+    &dcttech_usbrelay_driver_info,
+#endif
+#ifdef HAVE_DRIVER_DEVANTECH_ETH008
+    &devantech_eth008_driver_info,
 #endif
 #endif
 	NULL,

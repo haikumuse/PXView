@@ -91,6 +91,7 @@
 #include "dock/triggerdock.h"
 
 
+#include "data/decoderstack.h"
 #include "data/sessiondocument.h"
 #include "interface/icontextaware.h"
 #include "sessionmanager.h"
@@ -138,6 +139,17 @@
 #include <QScrollArea>
 #include <QTabBar>
 #include <map>
+
+// The Windows SDK (pulled in transitively via mainframe.h -> wintaskbarprogress.h
+// -> shobjidl.h, included below mainwindow.h) defines `interface` as a
+// preprocessor macro. events.h (included via mainwindow.h) clears it, but only
+// if it was defined at that point — in this TU mainframe.h is included AFTER
+// mainwindow.h, so the macro is defined after events.h's #undef runs. Clear it
+// again here so `pv::interface::` qualified names in the code below parse
+// correctly. PXView does not use the `interface` COM macro anywhere.
+#ifdef interface
+#  undef interface
+#endif
 
 namespace pv {
 
@@ -303,6 +315,10 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   _session->add_callback(this);
   _device_agent = _session->get_device();
   _session->add_msg_listener(this);
+  // B1.2: register as a typed event listener. OnMessage remains the primary
+  // dispatch path during the migration; on_event(CaptureStateChanged) is a
+  // proof-of-concept that re-dispatches to OnMessage for that one code.
+  _session->add_event_listener(this);
 
   _is_auto_switch_device = false;
   _is_save_confirm_msg = false;
@@ -331,7 +347,15 @@ MainWindow::MainWindow(toolbars::TitleBar *title_bar, QWidget *parent)
   }
 }
 
-MainWindow::~MainWindow() {}
+MainWindow::~MainWindow() {
+  // B1.2: unregister the typed event listener before destruction. The
+  // SigSession outlives this MainWindow (it is owned by AppControl), so
+  // failing to unregister would leave a dangling pointer in the listener
+  // vector.
+  if (_session) {
+    _session->remove_event_listener(this);
+  }
+}
 
 void MainWindow::setup_ui() {
   setObjectName(QString::fromUtf8("MainWindow"));
@@ -716,8 +740,11 @@ void MainWindow::setup_ui() {
           Qt::QueuedConnection);
   connect(&_event, &EventObject::decode_done, this,
           &MainWindow::on_decode_done);
+  // C5 fix: on_data_updated is now overloaded — on_data_updated() (no-arg slot,
+  // this connection) vs on_data_updated(int,int) (message handler dispatched by
+  // OnMessage). Use QOverload<>::of to select the no-arg slot.
   connect(&_event, &EventObject::data_updated, this,
-          &MainWindow::on_data_updated);
+          QOverload<>::of(&MainWindow::on_data_updated));
   connect(&_event, &EventObject::cur_snap_samplerate_changed, this,
           &MainWindow::on_cur_snap_samplerate_changed);
   connect(&_event, &EventObject::receive_data_len, this,
@@ -2820,6 +2847,18 @@ void MainWindow::update_toolbar_view_status() {
   }
 }
 
+void MainWindow::on_event(const pv::interface::CaptureStateChanged &e) {
+  // B1.2 proof-of-concept: receive the typed CaptureStateChanged event and
+  // dispatch to the existing OnMessage handler. This demonstrates the
+  // IEventListener migration path. Once all OnMessage cases are migrated to
+  // typed on_event overrides, OnMessage can be removed entirely.
+  //
+  // Note: broadcast<T>() runs synchronously on whatever thread emitted the
+  // event — typically a Core worker thread. We forward to OnMessage, which
+  // performs its own GUI-thread marshal via QueuedConnection.
+  OnMessage(DSV_MSG_CAPTURE_STATE_CHANGED, e.is_working ? 1 : 0);
+}
+
 void MainWindow::OnMessage(int msg, int param) {
   // Task 1.1: marshal to GUI thread — OnMessage touches QWidget/QDockWidget and
   // must run on qApp->thread(). Broadcasts may originate from Core worker
@@ -2832,73 +2871,89 @@ void MainWindow::OnMessage(int msg, int param) {
         Qt::QueuedConnection);
     return;
   }
+  // C5 fix: OnMessage is now a thin router — dispatches to per-responsibility
+  // handlers (see mainwindow.h). Each handler owns its message group's logic.
+  switch (msg) {
+  // Device management
+  case DSV_MSG_DEVICE_LIST_UPDATED:
+  case DSV_MSG_CURRENT_DEVICE_CHANGE_PREV:
+  case DSV_MSG_CURRENT_DEVICE_CHANGED:
+  case DSV_MSG_CURRENT_DEVICE_DETACHED:
+  case DSV_MSG_NEW_USB_DEVICE:
+    on_device_changed(msg, param);
+    break;
+  // Capture state
+  case DSV_MSG_START_COLLECT_WORK_PREV:
+  case DSV_MSG_START_COLLECT_WORK:
+  case DSV_MSG_CAPTURE_STATE_CHANGED:
+  case DSV_MSG_COLLECT_END:
+  case DSV_MSG_END_COLLECT_WORK:
+  case DSV_MSG_COLLECT_START:
+  case DSV_MSG_TRIG_NEXT_COLLECT:
+    on_capture_state(msg, param);
+    break;
+  // Device options
+  case DSV_MSG_DEVICE_OPTIONS_UPDATED:
+  case DSV_MSG_DEVICE_DURATION_UPDATED:
+  case DSV_MSG_SAMPLE_COUNT_UPDATED:
+  case DSV_MSG_DEVICE_MODE_CHANGED:
+  case DSV_MSG_COLLECT_MODE_CHANGED:
+  case DSV_MSG_END_DEVICE_OPTIONS:
+  case DSV_MSG_DEMO_OPERATION_MODE_CHNAGED:
+    on_device_options(msg, param);
+    break;
+  // UI options
+  case DSV_MSG_APP_OPTIONS_CHANGED:
+  case DSV_MSG_FONT_OPTIONS_CHANGED:
+  case DSV_MSG_SHORTCUT_CHANGED:
+  case DSV_MSG_STYLE_CHANGED:
+    on_ui_options(msg, param);
+    break;
+  // Data / capture owner
+  case DSV_MSG_DATA_POOL_CHANGED:
+  case DSV_MSG_COPY_IN_PROGRESS_CHANGED:
+  case DSV_MSG_ACTIVE_DOCUMENT_CHANGED:
+  case DSV_MSG_CAPTURE_OWNER_CHANGED:
+  case DSV_MSG_SAVE_COMPLETE:
+  case DSV_MSG_CLEAR_DECODE_DATA:
+  case DSV_MSG_STORE_CONF_PREV:
+    on_data_updated(msg, param);
+    break;
+  // Filter / invert
+  case DSV_MSG_GLITCH_FILTER_COMPLETED:
+  case DSV_MSG_GLITCH_FILTER_CLEARED:
+  case DSV_MSG_SIGNAL_INVERT_COMPLETED:
+  case DSV_MSG_SIGNAL_INVERT_CLEARED:
+  case DSV_MSG_GLITCH_FILTER_STARTED:
+  case DSV_MSG_GLITCH_FILTER_PROGRESS:
+  case DSV_MSG_SIGNAL_INVERT_STARTED:
+    on_filter_completed(msg, param);
+    break;
+  // Trigger
+  case DSV_MSG_SIMPLE_TRIGGER_CHANGED:
+  case DSV_MSG_TRIGGER_CONFIG_CHANGED:
+    on_trigger_changed(msg, param);
+    break;
+  default:
+    break;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// C5 fix: per-responsibility handlers split out of the former OnMessage God
+// method. Each handler contains the original switch cases for its message
+// group, verbatim (same logic, same order, same comments, same fall-through
+// patterns). Early `return;` statements inside a case are preserved — they now
+// return from the handler, which is equivalent since OnMessage does nothing
+// after dispatching.
+// ---------------------------------------------------------------------------
+
+// Device management: device list / current device switch / attach / detach.
+void MainWindow::on_device_changed(int msg, int param) {
+  (void)param;
   switch (msg) {
   case DSV_MSG_DEVICE_LIST_UPDATED: {
     _sampling_bar->update_device_list();
-    break;
-  }
-  case DSV_MSG_SIMPLE_TRIGGER_CHANGED: {
-    if (_trigger_widget) {
-      _trigger_widget->select_simple_trigger();
-    }
-    break;
-  }
-  case DSV_MSG_START_COLLECT_WORK_PREV: {
-    if (_device_agent->get_work_mode() == LOGIC)
-      _trigger_widget->try_commit_trigger();
-    else if (_device_agent->get_work_mode() == DSO)
-      _dso_trigger_widget->check_setting();
-
-    current_view()->capture_init();
-    current_view()->on_state_changed(false);
-    break;
-  }
-  case DSV_MSG_START_COLLECT_WORK: {
-    update_toolbar_view_status();
-    current_view()->on_state_changed(false);
-    _protocol_widget->update_view_status();
-    _device_options_widget->update_widgets_status();
-    _signal_processing_widget->update_widgets_status();
-    break;
-  }
-  case DSV_MSG_CAPTURE_STATE_CHANGED: {
-    update_toolbar_view_status();
-    _device_options_widget->update_widgets_status();
-    _signal_processing_widget->update_widgets_status();
-    break;
-  }
-  case DSV_MSG_COLLECT_END: {
-    prgRate(0);
-    current_view()->repeat_unshow();
-    current_view()->on_state_changed(true);
-    break;
-  }
-  case DSV_MSG_END_COLLECT_WORK: {
-    update_toolbar_view_status();
-    _protocol_widget->update_view_status();
-
-    pv::TabContext *ctx = current_context();
-    if (ctx && ctx->document() && ctx->document()->has_pending_config()) {
-      ctx->document()->apply_pending_config(_session->get_device());
-      // Task 2.6 (R2): apply_pending_config 触发 reload 重建 SignalModel，
-      // 从 _signal_config 回写 trig_type 到新建的 SignalModel（参考
-      // tabcontext.cpp:86-95）。
-      for (const auto &ch : ctx->document()->get_signal_config().channels) {
-        auto m = _session->get_signal_by_index(ch.index);
-        if (m)
-          m->set_trig_type(ch.trig_type);
-      }
-      _device_options_widget->update_view();
-      _signal_processing_widget->update_view();
-    } else {
-      _device_options_widget->update_widgets_status();
-      _signal_processing_widget->update_widgets_status();
-    }
-    // R6: activate 在 working 时跳过了 set_active_document，工作结束后
-    // 显式恢复当前 tab 的 active_document 归属。
-    if (ctx) {
-      _session->set_active_document(ctx->document());
-    }
     break;
   }
   case DSV_MSG_CURRENT_DEVICE_CHANGE_PREV: {
@@ -2989,78 +3044,6 @@ void MainWindow::OnMessage(int msg, int param) {
 
     break;
   }
-  case DSV_MSG_DEVICE_OPTIONS_UPDATED: {
-    _trigger_widget->device_updated();
-    _device_options_widget->device_updated();
-    _signal_processing_widget->device_updated();
-    _measure_widget->reload();
-    current_view()->check_calibration();
-
-    pv::TabContext *ctx = current_context();
-    if (ctx && ctx->document()) {
-      ctx->document()->save_signal_config(
-          _session->get_device(), build_channel_visibility(current_view()),
-          _session->get_signal_models(), build_channel_layout(current_view()));
-    }
-
-    current_view()->rebuild_signals();
-    current_view()->signals_changed(NULL);
-    break;
-  }
-  case DSV_MSG_DEVICE_DURATION_UPDATED: {
-    _trigger_widget->device_updated();
-    current_view()->timebase_changed();
-    break;
-  }
-  case DSV_MSG_SAMPLE_COUNT_UPDATED: {
-    _sampling_bar->update_sample_count_selector();
-    break;
-  }
-  case DSV_MSG_DEVICE_MODE_CHANGED: {
-    current_view()->mode_changed();
-    reset_all_view();
-    load_device_config();
-    update_title_bar_text();
-    current_view()->hide_calibration();
-
-    update_toolbar_view_status();
-    _sampling_bar->update_sample_rate_list();
-
-    // Save signal config for current tab and rebuild signals
-    {
-      pv::TabContext *ctx = current_context();
-      if (ctx && ctx->document()) {
-        ctx->document()->save_signal_config(
-            _session->get_device(), build_channel_visibility(current_view()),
-            _session->get_signal_models(),
-            build_channel_layout(current_view()));
-        current_view()->rebuild_signals();
-        pxv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
-                 "signals for current tab");
-      }
-    }
-
-    if (_device_agent->is_hardware())
-      _session->on_load_config_end();
-
-    if (_device_agent->get_work_mode() == LOGIC)
-      current_view()->auto_set_max_scale();
-
-    if (_device_agent->is_demo()) {
-      _pattern_mode = _device_agent->get_demo_operation_mode();
-      _protocol_widget->del_all_protocol();
-
-      if (_device_agent->get_work_mode() == LOGIC) {
-        if (_pattern_mode != "random") {
-          _device_agent->update();
-          load_demo_decoder_config(_pattern_mode);
-        }
-      }
-    }
-
-    calc_min_height();
-    break;
-  }
   case DSV_MSG_NEW_USB_DEVICE: {
     if (_msg != NULL) {
       _msg->close();
@@ -3145,31 +3128,161 @@ void MainWindow::OnMessage(int msg, int param) {
     }
     break;
   }
-  case DSV_MSG_SAVE_COMPLETE: {
-    _session->clear_store_confirm_flag();
+  }
+}
 
-    if (_is_auto_switch_device) {
-      _is_auto_switch_device = false;
-      _session->set_default_device();
+// Capture state: collect lifecycle + status bar hints.
+void MainWindow::on_capture_state(int msg, int param) {
+  (void)param;
+  switch (msg) {
+  case DSV_MSG_START_COLLECT_WORK_PREV: {
+    if (_device_agent->get_work_mode() == LOGIC)
+      _trigger_widget->try_commit_trigger();
+    else if (_device_agent->get_work_mode() == DSO)
+      _dso_trigger_widget->check_setting();
+
+    current_view()->capture_init();
+    current_view()->on_state_changed(false);
+    break;
+  }
+  case DSV_MSG_START_COLLECT_WORK: {
+    update_toolbar_view_status();
+    current_view()->on_state_changed(false);
+    _protocol_widget->update_view_status();
+    _device_options_widget->update_widgets_status();
+    _signal_processing_widget->update_widgets_status();
+    break;
+  }
+  case DSV_MSG_CAPTURE_STATE_CHANGED: {
+    update_toolbar_view_status();
+    _device_options_widget->update_widgets_status();
+    _signal_processing_widget->update_widgets_status();
+    break;
+  }
+  case DSV_MSG_COLLECT_END: {
+    prgRate(0);
+    current_view()->repeat_unshow();
+    current_view()->on_state_changed(true);
+    break;
+  }
+  case DSV_MSG_END_COLLECT_WORK: {
+    update_toolbar_view_status();
+    _protocol_widget->update_view_status();
+
+    pv::TabContext *ctx = current_context();
+    if (ctx && ctx->document() && ctx->document()->has_pending_config()) {
+      ctx->document()->apply_pending_config(_session->get_device());
+      // Task 2.6 (R2): apply_pending_config 触发 reload 重建 SignalModel，
+      // 从 _signal_config 回写 trig_type 到新建的 SignalModel（参考
+      // tabcontext.cpp:86-95）。
+      for (const auto &ch : ctx->document()->get_signal_config().channels) {
+        auto m = _session->get_signal_by_index(ch.index);
+        if (m)
+          m->set_trig_type(ch.trig_type);
+      }
+      _device_options_widget->update_view();
+      _signal_processing_widget->update_view();
     } else {
-      ds_device_handle devh = _sampling_bar->get_next_device_handle();
-      if (devh != NULL_HANDLE) {
-        pxv_info("Auto switch to the selected device.");
-        _session->set_device(devh);
+      _device_options_widget->update_widgets_status();
+      _signal_processing_widget->update_widgets_status();
+    }
+    // R6: activate 在 working 时跳过了 set_active_document，工作结束后
+    // 显式恢复当前 tab 的 active_document 归属。
+    if (ctx) {
+      _session->set_active_document(ctx->document());
+    }
+    break;
+  }
+  // R8: 补齐此前未被 GUI 订阅的消息，避免状态栏/标题栏等 UI 不更新。
+  case DSV_MSG_COLLECT_START: {
+    // 状态栏提示"采集中"
+    statusBar()->showMessage(tr("采集中..."), 3000);
+    break;
+  }
+  case DSV_MSG_TRIG_NEXT_COLLECT: {
+    // 状态栏提示"等待下一次采集"
+    statusBar()->showMessage(tr("等待下一次采集..."), 3000);
+    break;
+  }
+  }
+}
+
+// Device options: option/duration/sample-count/mode/collect-mode/demo-mode
+// updates. NOTE: DSV_MSG_END_DEVICE_OPTIONS and DSV_MSG_DEMO_OPERATION_MODE_CHNAGED
+// share a fall-through body that branches on `msg` internally — preserved as-is.
+void MainWindow::on_device_options(int msg, int param) {
+  (void)param;
+  switch (msg) {
+  case DSV_MSG_DEVICE_OPTIONS_UPDATED: {
+    _trigger_widget->device_updated();
+    _device_options_widget->device_updated();
+    _signal_processing_widget->device_updated();
+    _measure_widget->reload();
+    current_view()->check_calibration();
+
+    pv::TabContext *ctx = current_context();
+    if (ctx && ctx->document()) {
+      ctx->document()->save_signal_config(
+          _session->get_device(), build_channel_visibility(current_view()),
+          _session->get_signal_models(), build_channel_layout(current_view()));
+    }
+
+    current_view()->rebuild_signals();
+    current_view()->signals_changed(NULL);
+    break;
+  }
+  case DSV_MSG_DEVICE_DURATION_UPDATED: {
+    _trigger_widget->device_updated();
+    current_view()->timebase_changed();
+    break;
+  }
+  case DSV_MSG_SAMPLE_COUNT_UPDATED: {
+    _sampling_bar->update_sample_count_selector();
+    break;
+  }
+  case DSV_MSG_DEVICE_MODE_CHANGED: {
+    current_view()->mode_changed();
+    reset_all_view();
+    load_device_config();
+    update_title_bar_text();
+    current_view()->hide_calibration();
+
+    update_toolbar_view_status();
+    _sampling_bar->update_sample_rate_list();
+
+    // Save signal config for current tab and rebuild signals
+    {
+      pv::TabContext *ctx = current_context();
+      if (ctx && ctx->document()) {
+        ctx->document()->save_signal_config(
+            _session->get_device(), build_channel_visibility(current_view()),
+            _session->get_signal_models(),
+            build_channel_layout(current_view()));
+        current_view()->rebuild_signals();
+        pxv_info("DSV_MSG_DEVICE_MODE_CHANGED: saved config and rebuilt "
+                 "signals for current tab");
       }
     }
-    break;
-  }
-  case DSV_MSG_CLEAR_DECODE_DATA: {
+
+    if (_device_agent->is_hardware())
+      _session->on_load_config_end();
+
     if (_device_agent->get_work_mode() == LOGIC)
-      _protocol_widget->reset_view();
-    break;
-  }
-  case DSV_MSG_STORE_CONF_PREV: {
-    if (_device_agent->is_hardware() &&
-        _session->have_hardware_data() == false) {
-      _sampling_bar->commit_settings();
+      current_view()->auto_set_max_scale();
+
+    if (_device_agent->is_demo()) {
+      _pattern_mode = _device_agent->get_demo_operation_mode();
+      _protocol_widget->del_all_protocol();
+
+      if (_device_agent->get_work_mode() == LOGIC) {
+        if (_pattern_mode != "random") {
+          _device_agent->update();
+          load_demo_decoder_config(_pattern_mode);
+        }
+      }
     }
+
+    calc_min_height();
     break;
   }
   case DSV_MSG_COLLECT_MODE_CHANGED: {
@@ -3209,6 +3322,13 @@ void MainWindow::OnMessage(int msg, int param) {
     calc_min_height();
     break;
   }
+  }
+}
+
+// UI options: app/font/shortcut/style option changes.
+void MainWindow::on_ui_options(int msg, int param) {
+  (void)param;
+  switch (msg) {
   case DSV_MSG_APP_OPTIONS_CHANGED: {
     update_title_bar_text();
     break;
@@ -3227,65 +3347,20 @@ void MainWindow::OnMessage(int msg, int param) {
     }
     break;
   }
+  }
+}
+
+// Data / capture owner: data pool, copy indicator, active document, capture
+// owner, save completion, decode clear, store-config-prev. This handler uses
+// `param` (CAPTURE_OWNER_CHANGED carries the is_working flag in param).
+void MainWindow::on_data_updated(int msg, int param) {
+  switch (msg) {
   case DSV_MSG_DATA_POOL_CHANGED: {
     current_view()->check_measure();
     // Auto-apply signal processing settings on new data
     if (_signal_processing_widget) {
       _signal_processing_widget->auto_apply_settings();
     }
-    break;
-  }
-  case DSV_MSG_GLITCH_FILTER_COMPLETED:
-  case DSV_MSG_GLITCH_FILTER_CLEARED: {
-    pv::TabContext *ctx = current_context();
-    if (ctx && ctx->document()) {
-      _session->copy_data_to_document(ctx->document());
-    }
-    if (_signal_processing_widget) {
-      _signal_processing_widget->update_glitch_filter_state();
-    }
-    // Restart decoders after data change
-    _session->restart_decoders();
-    break;
-  }
-  case DSV_MSG_SIGNAL_INVERT_COMPLETED:
-  case DSV_MSG_SIGNAL_INVERT_CLEARED: {
-    pv::TabContext *ctx2 = current_context();
-    if (ctx2 && ctx2->document()) {
-      _session->copy_data_to_document(ctx2->document());
-    }
-    if (_signal_processing_widget) {
-      _signal_processing_widget->update_invert_state();
-    }
-    // Restart decoders after data change
-    _session->restart_decoders();
-    break;
-  }
-  // R8: 补齐此前未被 GUI 订阅的消息，避免状态栏/标题栏等 UI 不更新。
-  case DSV_MSG_COLLECT_START: {
-    // 状态栏提示"采集中"
-    statusBar()->showMessage(tr("采集中..."), 3000);
-    break;
-  }
-  case DSV_MSG_TRIG_NEXT_COLLECT: {
-    // 状态栏提示"等待下一次采集"
-    statusBar()->showMessage(tr("等待下一次采集..."), 3000);
-    break;
-  }
-  case DSV_MSG_GLITCH_FILTER_STARTED: {
-    // 复用磁盘缓存状态标签显示毛刺滤波处理中指示
-    if (_disk_cache_status_label)
-      _disk_cache_status_label->setText(tr("毛刺滤波处理中..."));
-    break;
-  }
-  case DSV_MSG_GLITCH_FILTER_PROGRESS: {
-    // 进度信息未携带百分比载荷，仅刷新状态栏提示
-    statusBar()->showMessage(tr("毛刺滤波进行中..."), 2000);
-    break;
-  }
-  case DSV_MSG_SIGNAL_INVERT_STARTED: {
-    if (_disk_cache_status_label)
-      _disk_cache_status_label->setText(tr("信号反相处理中..."));
     break;
   }
   case DSV_MSG_COPY_IN_PROGRESS_CHANGED: {
@@ -3314,6 +3389,95 @@ void MainWindow::OnMessage(int msg, int param) {
       break; // capture in progress — skip activate()
     if (current_context())
       current_context()->activate();
+    break;
+  }
+  case DSV_MSG_SAVE_COMPLETE: {
+    _session->clear_store_confirm_flag();
+
+    if (_is_auto_switch_device) {
+      _is_auto_switch_device = false;
+      _session->set_default_device();
+    } else {
+      ds_device_handle devh = _sampling_bar->get_next_device_handle();
+      if (devh != NULL_HANDLE) {
+        pxv_info("Auto switch to the selected device.");
+        _session->set_device(devh);
+      }
+    }
+    break;
+  }
+  case DSV_MSG_CLEAR_DECODE_DATA: {
+    if (_device_agent->get_work_mode() == LOGIC)
+      _protocol_widget->reset_view();
+    break;
+  }
+  case DSV_MSG_STORE_CONF_PREV: {
+    if (_device_agent->is_hardware() &&
+        _session->have_hardware_data() == false) {
+      _sampling_bar->commit_settings();
+    }
+    break;
+  }
+  }
+}
+
+// Filter / invert: glitch filter + signal invert start/progress/completed/clear.
+void MainWindow::on_filter_completed(int msg, int param) {
+  (void)param;
+  switch (msg) {
+  case DSV_MSG_GLITCH_FILTER_COMPLETED:
+  case DSV_MSG_GLITCH_FILTER_CLEARED: {
+    pv::TabContext *ctx = current_context();
+    if (ctx && ctx->document()) {
+      _session->copy_data_to_document(ctx->document());
+    }
+    if (_signal_processing_widget) {
+      _signal_processing_widget->update_glitch_filter_state();
+    }
+    // Restart decoders after data change
+    _session->restart_decoders();
+    break;
+  }
+  case DSV_MSG_SIGNAL_INVERT_COMPLETED:
+  case DSV_MSG_SIGNAL_INVERT_CLEARED: {
+    pv::TabContext *ctx2 = current_context();
+    if (ctx2 && ctx2->document()) {
+      _session->copy_data_to_document(ctx2->document());
+    }
+    if (_signal_processing_widget) {
+      _signal_processing_widget->update_invert_state();
+    }
+    // Restart decoders after data change
+    _session->restart_decoders();
+    break;
+  }
+  case DSV_MSG_GLITCH_FILTER_STARTED: {
+    // 复用磁盘缓存状态标签显示毛刺滤波处理中指示
+    if (_disk_cache_status_label)
+      _disk_cache_status_label->setText(tr("毛刺滤波处理中..."));
+    break;
+  }
+  case DSV_MSG_GLITCH_FILTER_PROGRESS: {
+    // 进度信息未携带百分比载荷，仅刷新状态栏提示
+    statusBar()->showMessage(tr("毛刺滤波进行中..."), 2000);
+    break;
+  }
+  case DSV_MSG_SIGNAL_INVERT_STARTED: {
+    if (_disk_cache_status_label)
+      _disk_cache_status_label->setText(tr("信号反相处理中..."));
+    break;
+  }
+  }
+}
+
+// Trigger: simple trigger + trigger config change.
+void MainWindow::on_trigger_changed(int msg, int param) {
+  (void)param;
+  switch (msg) {
+  case DSV_MSG_SIMPLE_TRIGGER_CHANGED: {
+    if (_trigger_widget) {
+      _trigger_widget->select_simple_trigger();
+    }
     break;
   }
   case DSV_MSG_TRIGGER_CONFIG_CHANGED: {
@@ -3519,7 +3683,28 @@ void MainWindow::remove_tab(int index) {
   // clear_capture_owner_document() resets the guard, whose destructor joins the
   // copy thread + clears owner + broadcasts. No need for manual join_copy_thread.
   _session->clear_capture_owner_document(ctx->document());
+
+  // A2 fix: stop decoder threads working on this document's stacks before the
+  // document is destroyed. Without this, a running decode thread would access
+  // freed DecoderStack memory. We stop each stack individually rather than
+  // calling clear_all_documents_decoders() (which would stop ALL tabs' decoders).
+  auto doc = ctx->document();
+  if (doc) {
+    for (auto &stack : doc->get_decoder_stacks()) {
+      if (stack && stack->IsRunning()) {
+        stack->stop_decode_work();
+      }
+    }
+  }
+
   _session->unregister_document(ctx->document());
+
+  // A2 fix: detach View→Document pointer BEFORE deleteLater(). deleteLater is
+  // async — the View may receive paint events before actual deletion. Without
+  // this detach, those paint events would dereference the soon-to-be-destroyed
+  // document pointer (use-after-free).
+  ctx->view()->set_data_document(nullptr);
+
   ctx->view()->deleteLater();
   SessionManager::instance()->destroy_context(ctx);
 

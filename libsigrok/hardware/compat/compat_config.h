@@ -168,6 +168,31 @@ enum sr_channel_change {
 #define SR_CONF_RANGE              30161
 #endif
 
+/*
+ * Standard sigrok device-class and enable/disable config keys used by relay
+ * / multiplexer drivers (dcttech-usbrelay, hp-59306a, icstation-usbrelay,
+ * devantech-eth008, ...). PXView's libsigrok.h does not define either key.
+ *
+ * SR_CONF_MULTIPLEXER is a drvopt (device class identifier) marking a device
+ * as a relay multiplexer. SR_CONF_ENABLED is a get/set devopt that controls
+ * whether a relay (or all relays in a channel group) is on or off.
+ *
+ * Canonical sigrok places SR_CONF_MULTIPLEXER in the 10000 device-class
+ * range and SR_CONF_ENABLED in the 30000 config range. Several previously
+ * migrated drivers carry local #ifndef-guarded fallbacks for these (e.g.
+ * SR_CONF_MULTIPLEXER=10010, SR_CONF_ENABLED=30200). Centralising them here
+ * in the 30300+ reserved range lets those local guards defer to the single
+ * definition, while keeping the values clear of every PXView-native key
+ * (which top out at 30107 in the demo/demo-change block, with 50000+ used
+ * only for acquisition options).
+ */
+#ifndef SR_CONF_MULTIPLEXER
+#define SR_CONF_MULTIPLEXER        30300
+#endif
+#ifndef SR_CONF_ENABLED
+#define SR_CONF_ENABLED            30301
+#endif
+
 /* Byte order macros for reading/writing little-endian and big-endian values.
  * These are used by standard sigrok drivers for serial/USB communication.
  */

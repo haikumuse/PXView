@@ -31,7 +31,8 @@
 #include <QTranslator> 
 #include "dialogs/dsmessagebox.h"
 #include "interface/icallbacks.h"
-#include "eventobject.h" 
+#include "interface/events.h"
+#include "eventobject.h"
 #include <QJsonDocument>
 #include <chrono>
 #include <QTimer>
@@ -102,7 +103,8 @@ class MainWindow :
     public IMainForm,
     public ISessionDataGetter,
     public IMessageListener,
-    public pv::api::IServiceEventListener
+    public pv::api::IServiceEventListener,
+    public pv::interface::IEventListener
 {
 	Q_OBJECT
 
@@ -236,11 +238,35 @@ private:
     //IMessageListener
     void OnMessage(int msg, int param = 0) override;
 
+    // C5 fix: per-responsibility handlers dispatched by OnMessage. Each handler
+    // owns the switch cases for its message group; OnMessage is now a thin
+    // router. The (int msg, int param) signature is preserved so handlers can
+    // differentiate fall-through cases (e.g. END_DEVICE_OPTIONS vs
+    // DEMO_OPERATION_MODE_CHNAGED) and use the param payload (e.g.
+    // CAPTURE_OWNER_CHANGED's is_working flag).
+    // NOTE: on_data_updated(int,int) intentionally overloads the no-arg Qt slot
+    // on_data_updated() (connected to EventObject::data_updated); the connect
+    // site uses QOverload<>::of(...) to disambiguate.
+    void on_device_changed(int msg, int param);
+    void on_capture_state(int msg, int param);
+    void on_device_options(int msg, int param);
+    void on_ui_options(int msg, int param);
+    void on_data_updated(int msg, int param);
+    void on_filter_completed(int msg, int param);
+    void on_trigger_changed(int msg, int param);
+
     //IServiceEventListener — receive View operation broadcasts from SessionService
     //(show_region, zoom_fit, zoom_in/out, cursor operations). In GUI mode these are
     //routed to the active View; in Headless mode there is no MainWindow so these
     //events are simply not consumed.
     void on_service_event(const pv::api::ServiceEventData &data) override;
+
+    //IEventListener (B1.2 proof-of-concept) — typed event bus consumer. Only
+    //CaptureStateChanged is overridden here to demonstrate the migration path;
+    //once MainWindow::OnMessage is split into per-responsibility handlers
+    //(Task 9/C5), each handler can move to a typed on_event override and the
+    //legacy IMessageListener path can be retired.
+    void on_event(const pv::interface::CaptureStateChanged &e) override;
 
 private: 
 	pv::ui::DraggableTabWidget *_tab_widget;

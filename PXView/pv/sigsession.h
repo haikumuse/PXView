@@ -30,6 +30,7 @@
 #include <atomic>
 #include <list>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <stdint.h>
 #include <string>
@@ -184,6 +185,7 @@ public:
   public:
     CaptureOwnerGuard(SigSession *s, data::SessionDocument *doc)
         : _session(s), _doc(doc) {
+      std::lock_guard<std::mutex> lock(_session->_capture_state_mutex);
       _session->_capture_owner_document = _doc;
       _session->_is_working = true;
       _session->broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED,
@@ -191,9 +193,16 @@ public:
     }
     ~CaptureOwnerGuard() {
       if (_session) {
+        // join_copy_thread() MUST be outside the lock — the copy thread may
+        // need to acquire _capture_state_mutex (e.g. in copy_to_doc_done).
         _session->join_copy_thread();
-        _session->_capture_owner_document = nullptr;
-        _session->_is_working = false;
+        {
+          std::lock_guard<std::mutex> lock(_session->_capture_state_mutex);
+          _session->_capture_owner_document = nullptr;
+          _session->_is_working = false;
+        }
+        // Broadcast outside the lock to minimize critical section and avoid
+        // listener callbacks re-entering the mutex.
         _session->broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED, 0);
       }
     }
@@ -208,9 +217,13 @@ public:
     CaptureOwnerGuard &operator=(CaptureOwnerGuard &&o) noexcept {
       if (this != &o) {
         if (_session) {
+          // join_copy_thread() MUST be outside the lock — see destructor note.
           _session->join_copy_thread();
-          _session->_capture_owner_document = nullptr;
-          _session->_is_working = false;
+          {
+            std::lock_guard<std::mutex> lock(_session->_capture_state_mutex);
+            _session->_capture_owner_document = nullptr;
+            _session->_is_working = false;
+          }
           _session->broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED, 0);
         }
         _session = o._session;
@@ -622,6 +635,10 @@ private:
   inline void signals_changed() {
     dispatch_to<ISessionStateCallback>(
         [](ISessionStateCallback *cb) { cb->signals_changed(); });
+    // B1.2: also emit the typed SignalsChanged event so IEventListener
+    // consumers can react. This helper has no DSV_MSG_* counterpart; the typed
+    // broadcast is fired alongside the legacy ISessionStateCallback dispatch.
+    broadcast<interface::SignalsChanged>({});
   }
 
   inline void session_error() {
@@ -751,13 +768,13 @@ private:
 
   uint64_t _save_start;
   uint64_t _save_end;
-  volatile bool _is_working;
+  std::atomic<bool> _is_working;
   double _repeat_intvl; // The progress wait timer interval.
   int _repeat_hold_prg; // The time sleep progress
   int _repeat_wait_prog_step;
   bool _is_saving;
   bool _is_instant;
-  volatile int _device_status;
+  std::atomic<int> _device_status;
   int _work_time_id;
   int _capture_times;
   int _confirm_store_time_id;
@@ -787,10 +804,15 @@ private:
   bool _dso_status_valid;
 
   std::thread *_glitch_filter_thread;
-  bool _glitch_filter_running;
+  std::atomic<bool> _glitch_filter_running;
   std::thread *_signal_invert_thread;
-  bool _signal_invert_running;
-  volatile bool _copy_in_progress;
+  std::atomic<bool> _signal_invert_running;
+  // C4 fix: mutex protecting the combined state of _capture_owner_document,
+  // _is_working, and _copy_in_progress. Individual fields are atomic, but the
+  // COMBINED state needs a lock to prevent intermediate-state windows
+  // (e.g. is_working=true but owner=nullptr).
+  mutable std::mutex _capture_state_mutex;
+  std::atomic<bool> _copy_in_progress;
   data::SessionDocument *_capture_owner_document;
   std::unique_ptr<CaptureOwnerGuard> _capture_owner_guard;
   std::thread _copy_thread;

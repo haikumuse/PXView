@@ -1071,7 +1071,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 		} else {
 			return SR_ERR_ARG;
 		}
-		devc->feed_queue = feed_queue_logic_alloc(sdi,
+		devc->feed_queue = kingst_la2016_feed_queue_logic_alloc(sdi,
 			LA2016_CONVBUFFER_SIZE, unitsize);
 		if (!devc->feed_queue) {
 			sr_err("Cannot allocate buffer for session feed.");
@@ -1089,7 +1089,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 	voltage = threshold_voltage(sdi, NULL);
 	ret = la2016_setup_acquisition(sdi, voltage);
 	if (ret != SR_OK) {
-		feed_queue_logic_free(devc->feed_queue);
+		kingst_la2016_feed_queue_logic_free(devc->feed_queue);
 		devc->feed_queue = NULL;
 		return ret;
 	}
@@ -1097,7 +1097,7 @@ static int dev_acquisition_start(const struct sr_dev_inst *sdi)
 	ret = la2016_start_acquisition(sdi);
 	if (ret != SR_OK) {
 		la2016_abort_acquisition(sdi);
-		feed_queue_logic_free(devc->feed_queue);
+		kingst_la2016_feed_queue_logic_free(devc->feed_queue);
 		devc->feed_queue = NULL;
 		return ret;
 	}
