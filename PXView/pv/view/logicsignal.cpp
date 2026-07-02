@@ -225,6 +225,49 @@ void LogicSignal::paint_mid_align(QPainter &p, int left, int right, QColor fore,
 
   p.setPen(_colour.isValid() ? _colour : fore);
   p.drawLines(wave_lines.data(), wave_lines.size());
+
+  // === Glitch filter overlay (Task 8) ===
+  // Coordinate mapping: pixel x = sample_index / samples_per_pixel - offset
+  // (offset is the pixel offset of the left edge; matches the edge/pulse
+  // pixel coordinates produced by get_display_edges above).
+  const int sig_idx = _model ? _model->index() : 0;
+
+  // (1) Already-filtered ranges (red overlay). Drawn when the snapshot has
+  //     been glitch-filtered; takes precedence over the live preview.
+  if (_data && _data->is_glitch_filtered()) {
+    const auto &ranges = _data->get_filtered_ranges(sig_idx);
+    if (!ranges.empty()) {
+      p.setBrush(QColor(255, 82, 82, 90));
+      p.setPen(Qt::NoPen);
+      for (const auto &r : ranges) {
+        if (r.end < start_index || r.start > end_index)
+          continue;  // off-screen cull
+        int x1 = (int)(r.start / samples_per_pixel - offset);
+        int x2 = (int)(r.end / samples_per_pixel - offset);
+        if (x2 <= x1)
+          x2 = x1 + 1;
+        p.drawRect(x1, high_offset, x2 - x1, low_offset - high_offset);
+      }
+    }
+  }
+  // (2) Live preview ranges (orange overlay). Only shown while the popup is
+  //     open and the snapshot is not yet actually filtered.
+  else if (_view) {
+    auto *preview = _view->get_preview_ranges(this);
+    if (preview && !preview->empty()) {
+      p.setBrush(QColor(255, 183, 77, 70));
+      p.setPen(Qt::NoPen);
+      for (const auto &pulse : *preview) {
+        if (pulse.end < start_index || pulse.start > end_index)
+          continue;
+        int x1 = (int)(pulse.start / samples_per_pixel - offset);
+        int x2 = (int)(pulse.end / samples_per_pixel - offset);
+        if (x2 <= x1)
+          x2 = x1 + 1;
+        p.drawRect(x1, high_offset, x2 - x1, low_offset - high_offset);
+      }
+    }
+  }
 }
 
 void LogicSignal::paint_caps(QPainter &p, QLineF *const lines,

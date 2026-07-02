@@ -25,6 +25,7 @@
 #define PXVIEW_PV_VIEW_VIEW_H
 
 #include <list>
+#include <map>
 #include <set>
 #include <stdint.h>
 #include <vector>
@@ -37,6 +38,7 @@
 #include <QSplitter>
 
 #include "../data/datasource.h"
+#include "../data/pulse_analyzer.h"
 #include "../data/signaldata.h"
 #include "../dsvdef.h"
 #include "../interface/icallbacks.h"
@@ -87,6 +89,8 @@ class DecodeTrace;
 class SpectrumTrace;
 class MathTrace;
 class LissajousTrace;
+class GlitchFilterPopup;
+class LogicSignal;
 
 struct SignalGroup {
   int group_id;
@@ -442,6 +446,42 @@ public:
 
   bool view_is_ready();
 
+  /**
+   * Glitch filter preview ranges cached per-signal for overlay rendering.
+   * Populated by on_glitch_preview_changed() while the GlitchFilterPopup is
+   * open; consumed by LogicSignal::paint_mid_align() via get_preview_ranges().
+   * Returns nullptr when no preview is cached for the given signal.
+   */
+  const std::vector<pv::data::PulseAnalyzer::Pulse> *
+  get_preview_ranges(LogicSignal *sig) const;
+
+  /**
+   * Undo stack snapshot for the glitch filter. Records the activation state
+   * and the prior thresholds/modes before each apply so the user can undo
+   * (Ctrl+Z) the most recent filter application. undo_filter() restores the
+   * exact previous state: if was_active==true, set_glitch_filter(thresholds,
+   * modes) is called; if was_active==false, clear_glitch_filter() is called.
+   */
+  struct FilterSnapshot {
+    std::vector<uint32_t> thresholds;
+    std::vector<GlitchFilterMode> modes;
+    bool was_active;
+  };
+
+  void undo_filter();
+  bool can_undo_filter() const { return !_filter_undo_stack.empty(); }
+
+  /**
+   * Forwards glitch filter completion/clearing notifications (originating
+   * from FilterProcessor via MainWindow::on_filter_completed) to the
+   * GlitchFilterPopup. If the popup is currently open for a LogicSignal,
+   * it will recompute the histogram to reflect the updated LogicSnapshot
+   * data (filtered pulses become long pulses after applying the filter).
+   * No-op when the popup is closed.
+   */
+  void on_glitch_filter_completed();
+  void on_glitch_filter_cleared();
+
 signals:
   void hover_point_changed();
   void cursor_update();
@@ -549,6 +589,11 @@ public slots:
 
   void mode_changed();
 
+  // -- glitch filter popup handlers (Task 7)
+  void on_show_glitch_filter_popup(pv::view::LogicSignal *sig);
+  void on_clear_glitch_filter_requested(bool all_channels);
+  void on_toggle_invert_requested(pv::view::LogicSignal *sig);
+
 private slots:
 
   void h_scroll_value_changed(int value);
@@ -564,6 +609,14 @@ private slots:
   void splitterMoved(int pos, int index);
   void on_calibration_closed();
   void on_header_collapse_changed(bool collapsed);
+
+  // -- glitch filter popup internal handlers (Task 7)
+  void
+  on_glitch_preview_changed(pv::view::LogicSignal *sig, uint32_t threshold,
+                            GlitchFilterMode mode);
+  void on_glitch_apply_requested(pv::view::LogicSignal *sig, uint32_t threshold,
+                                 GlitchFilterMode mode, bool all_channels);
+  void on_glitch_popup_closed();
 
 public slots:
   void set_trig_pos(int percent);
@@ -680,6 +733,15 @@ private:
   bool _destroying = false;
   DeviceAgent *_device_agent;
   QElapsedTimer _data_updated_timer;
+
+  // -- glitch filter popup (View-owned, Task 7)
+  GlitchFilterPopup *_glitch_filter_popup = nullptr;
+  // Per-signal cached preview ranges (orange overlay) while the popup is open.
+  std::map<LogicSignal *, std::vector<pv::data::PulseAnalyzer::Pulse>>
+      _preview_ranges;
+  // Undo stack for glitch filter applications (Task 9). Accessed only on the
+  // GUI thread (slots + Ctrl+Z handler), so no synchronization needed.
+  std::vector<FilterSnapshot> _filter_undo_stack;
 };
 
 } // namespace view

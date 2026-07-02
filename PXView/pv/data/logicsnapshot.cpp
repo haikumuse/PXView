@@ -60,6 +60,8 @@ const uint64_t LogicSnapshot::LevelOffset[LogicSnapshot::ScaleLevel] = {
     (uint64_t)pow(Scale, 3) + (uint64_t)pow(Scale, 2) + (uint64_t)pow(Scale, 1),
 };
 
+const std::vector<LogicSnapshot::FillRange> LogicSnapshot::_empty_filtered_ranges;
+
 LogicSnapshot::LogicSnapshot() : Snapshot(1, 0, 0) {
   _channel_num = 0;
   _total_sample_count = 0;
@@ -2209,11 +2211,10 @@ void LogicSnapshot::apply_glitch_filter(
            sig_index, threshold, (unsigned long long)max_sample,
            accepted_level, (int)filter_mode);
 
-  struct FillRange {
-    uint64_t start;
-    uint64_t end;
-    bool level;
-  };
+  // 重新滤波从空白开始累积持久化区间，防止重复累积
+  _filtered_ranges_per_channel[sig_index].clear();
+
+  // FillRange 已提升为 public 嵌套类型 LogicSnapshot::FillRange
   std::vector<FillRange> fills;
   // 预分配批处理空间，防止频繁申请内存
   fills.reserve(65536);
@@ -2352,6 +2353,9 @@ void LogicSnapshot::apply_glitch_filter(
           // 判断为毛刺：它是一个短暂偏离基准 accepted_level 的窄脉冲
           // 用 accepted_level 覆盖这段毛刺区间
           fills.push_back({pulse_start, pulse_end, accepted_level});
+          // 同步写入持久化区间（apply_batch 仅清空局部 fills，持久化存储累积保留）
+          _filtered_ranges_per_channel[sig_index].push_back(
+              {pulse_start, pulse_end, accepted_level});
           glitch_count++;
 
           if (glitch_count <= 5 || glitch_count % 1000 == 0) {
@@ -2474,6 +2478,20 @@ bool LogicSnapshot::is_glitch_filtered() { return _glitch_filtered; }
 
 void LogicSnapshot::set_glitch_filtered(bool filtered) {
   _glitch_filtered = filtered;
+}
+
+const std::vector<LogicSnapshot::FillRange>&
+LogicSnapshot::get_filtered_ranges(int sig_index) const {
+  auto it = _filtered_ranges_per_channel.find(sig_index);
+  if (it == _filtered_ranges_per_channel.end() || it->second.empty()) {
+    return _empty_filtered_ranges;
+  }
+  return it->second;
+}
+
+void LogicSnapshot::clear_filtered_ranges() {
+  std::lock_guard<std::mutex> lock(_mutex);
+  _filtered_ranges_per_channel.clear();
 }
 
 } // namespace data

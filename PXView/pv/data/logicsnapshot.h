@@ -101,6 +101,13 @@ private:
 public:
     typedef std::pair<uint64_t, bool> EdgePair;
 
+    // 持久化的滤波区间信息（apply_glitch_filter 滤除的区间），供 View 层渲染 overlay
+    struct FillRange {
+        uint64_t start;
+        uint64_t end;
+        bool level;
+    };
+
 private:
     void init_all();
 
@@ -148,6 +155,10 @@ public:
         const std::vector<GlitchFilterMode> &filter_modes = {});
     bool is_glitch_filtered();
     void set_glitch_filtered(bool filtered);
+
+    // 持久化访问 apply_glitch_filter 滤除的区间列表，供 View 层渲染 overlay
+    const std::vector<FillRange>& get_filtered_ranges(int sig_index) const;
+    void clear_filtered_ranges();
 
     void set_disk_cache_config(const DiskCacheConfig &config);
     bool is_disk_cache_active();
@@ -302,6 +313,10 @@ private:
     struct BlockIndex _cur_ref_block_indexs[CHANNEL_MAX_COUNT];
     int         _lst_free_block_index;
     bool        _glitch_filtered;
+
+    // 持久化的每通道滤波区间列表（apply_glitch_filter 累积写入，clear_filtered_ranges 清空）
+    std::map<int, std::vector<FillRange>> _filtered_ranges_per_channel;
+    static const std::vector<FillRange> _empty_filtered_ranges;  // 空时返回引用，避免悬垂引用
 
     DiskCacheConfig _disk_cache_config;
     std::shared_ptr<MmapAllocator> _mmap_alloc;

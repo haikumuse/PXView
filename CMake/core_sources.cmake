@@ -32,6 +32,8 @@ set(PXVIEW_CORE_SOURCES
     PXView/pv/data/triggerconfig.cpp
     PXView/pv/data/lissajousmodel.cpp
     PXView/pv/data/logicsnapshot.cpp
+    PXView/pv/data/pulse_analyzer.cpp
+    PXView/pv/data/pulse_analyzer.h
     PXView/pv/data/dsosnapshot.cpp
     PXView/pv/data/analogsnapshot.cpp
     PXView/pv/data/sessionsnapshot.cpp
