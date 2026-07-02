@@ -354,22 +354,19 @@ void TriggerDock::select_simple_trigger() {
 }
 
 bool TriggerDock::commit_trigger() {
-  // trigger position update
-  ds_trigger_set_pos(_position_slider->value());
-
   // trigger mode update
   if (_simple_radioButton->isChecked()) {
     // Task 8.4: mirror simple-mode state into Core TriggerConfig.
+    // sync_trigger_to_libsigrok() in start_capture will push it to ds_trigger_*.
     data::TriggerConfig cfg;
     cfg.set_mode(data::TriggerConfig::Simple);
     cfg.set_trigger_pos(_position_slider->value());
     _session->set_trigger_config(cfg);
-    ds_trigger_set_mode(SIMPLE_TRIGGER);
     return false;
   } else {
     // Task 8.4: build Core TriggerConfig so headless/API layers can read
-    // the same trigger state without touching the UI. The ds_trigger_* calls
-    // below remain to keep the libsigrok driver in sync.
+    // the same trigger state without touching the UI. sync_trigger_to_libsigrok()
+    // in start_capture pushes cfg to ds_trigger_* as the single sync point.
     data::TriggerConfig cfg;
     std::vector<data::TriggerConfig::Stage> stages;
     cfg.set_trigger_pos(_position_slider->value());
@@ -387,15 +384,6 @@ bool TriggerDock::commit_trigger() {
       cfg.set_serial_value(_serial_value_lineEdit->text());
     }
 
-    ds_trigger_set_en(true);
-    if (_adv_tabWidget->currentIndex() == 0)
-      ds_trigger_set_mode(ADV_TRIGGER);
-    else if (_adv_tabWidget->currentIndex() == 1)
-      ds_trigger_set_mode(SERIAL_TRIGGER);
-
-    // trigger stage update
-    ds_trigger_set_stage(stage_n - 1);
-
     // trigger value update
     if (_adv_tabWidget->currentIndex() == 0) {
       for (int i = 0; i < stage_n; i++) {
@@ -409,9 +397,6 @@ bool TriggerDock::commit_trigger() {
           value0_str = _value0_lineEdit_list.at(i)->text();
           value1_str = _value1_lineEdit_list.at(i)->text();
         }
-        ds_trigger_stage_set_value(i, _cur_ch_num,
-                                   value0_str.toLocal8Bit().data(),
-                                   value1_str.toLocal8Bit().data());
         data::TriggerConfig::Stage st;
         st.value0 = value0_str;
         st.value1 = value1_str;
@@ -434,10 +419,6 @@ bool TriggerDock::commit_trigger() {
         edge_str = _serial_edge_lineEdit->text();
         comp_str = _value1_lineEdit_list.at(1)->text();
       }
-      ds_trigger_stage_set_value(0, _cur_ch_num, start_str.toLocal8Bit().data(),
-                                 stop_str.toLocal8Bit().data());
-      ds_trigger_stage_set_value(1, _cur_ch_num, edge_str.toLocal8Bit().data(),
-                                 comp_str.toLocal8Bit().data());
 
       //_serial_data_comboBox
       const int data_channel = _serial_data_comboBox->currentText().toInt();
@@ -451,12 +432,6 @@ bool TriggerDock::commit_trigger() {
       } else {
         channel.replace(30 - 2 * data_channel, 1, '0');
       }
-      ds_trigger_stage_set_value(2, TriggerProbes, channel.toLocal8Bit().data(),
-                                 channel_ext32.toLocal8Bit().data());
-      ds_trigger_stage_set_value(
-          STriggerDataStage, TriggerProbes,
-          _serial_value_lineEdit->text().toLocal8Bit().data(),
-          _value1_lineEdit_list.at(3)->text().toLocal8Bit().data());
 
       // SERIAL stages: 0=start/stop, 1=edge/comp, 2=channel/channel_ext32,
       // 3=data/comp_ext32
@@ -482,16 +457,12 @@ bool TriggerDock::commit_trigger() {
     for (int i = 0; i < stage_n; i++) {
       const char logic = (_contiguous_checkbox_list.at(i)->isChecked() << 1) +
                          _logic_comboBox_list.at(i)->currentIndex();
-      ds_trigger_stage_set_logic(i, TriggerProbes, logic);
       if (i < (int)stages.size())
         stages[i].logic = logic;
     }
 
     // trigger inv update
     for (int i = 0; i < stage_n; i++) {
-      ds_trigger_stage_set_inv(i, TriggerProbes,
-                               _inv0_comboBox_list.at(i)->currentIndex(),
-                               _inv1_comboBox_list.at(i)->currentIndex());
       if (i < (int)stages.size()) {
         stages[i].inv0 = _inv0_comboBox_list.at(i)->currentIndex();
         stages[i].inv1 = _inv1_comboBox_list.at(i)->currentIndex();
@@ -501,22 +472,16 @@ bool TriggerDock::commit_trigger() {
     // trigger count update
     if (_adv_tabWidget->currentIndex() == 0) {
       for (int i = 0; i < stage_n; i++) {
-        ds_trigger_stage_set_count(i, TriggerProbes,
-                                   _count_spinBox_list.at(i)->value(), 0);
         if (i < (int)stages.size()) {
           stages[i].count0 = _count_spinBox_list.at(i)->value();
           stages[i].count1 = 0;
         }
       }
     } else if (_adv_tabWidget->currentIndex() == 1) {
-      ds_trigger_stage_set_count(1, TriggerProbes, 1, 0);
       if (1 < (int)stages.size()) {
         stages[1].count0 = 1;
         stages[1].count1 = 0;
       }
-      ds_trigger_stage_set_count(
-          3, TriggerProbes, _serial_bits_comboBox->currentText().toInt() - 1,
-          0);
       if (3 < (int)stages.size()) {
         stages[3].count0 = _serial_bits_comboBox->currentText().toInt() - 1;
         stages[3].count1 = 0;
@@ -1333,15 +1298,9 @@ void TriggerDock::try_commit_trigger() {
   int mode = _session->get_device()->get_work_mode();
   bool bInstant = _session->is_instant();
 
-  // If trigger was preconfigured by MCP/API, skip GUI commit to avoid
-  // overwriting the externally-set trigger state with ds_trigger_reset().
-  if (_session->is_trigger_preconfigured()) {
-    _session->set_trigger_preconfigured(false);
-    return;
-  }
-
-  ds_trigger_reset();
-
+  // ds_trigger_reset() removed: sync_trigger_to_libsigrok() in start_capture
+  // is now the single sync point that resets + pushes _trigger_config to
+  // ds_trigger_*, eliminating GUI/MCP cross-overwrites.
   if (mode != LOGIC || bInstant) {
     return;
   }

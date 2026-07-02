@@ -33,6 +33,7 @@
 #include "../data/decode/decoder.h"
 #include "../data/decode/annotation.h"
 #include "../data/decode/row.h"
+#include "../data/triggerconfig.h"
 #include "../storesession.h"
 #include "../log.h"
 
@@ -566,6 +567,13 @@ Result<int> SessionService::configure_and_start(
         }
     };
 
+    // Pulse-width trigger counts have no Core field in Simple mode (TriggerConfig
+    // Stage is only populated for Adv/Serial). Parameters retained in the API
+    // signature for ABI stability; explicit (void) cast silences unused-param
+    // warnings. See TODO in the trigger config block below.
+    (void)min_pulse_width_seconds;
+    (void)max_pulse_width_seconds;
+
     dbg_log("configure_and_start: step 0 - ensure logic mode");
 
     // 0. Ensure device is in Logic mode if digital channels are requested.
@@ -663,51 +671,45 @@ Result<int> SessionService::configure_and_start(
         _device->set_config_string(SR_CONF_CHANNEL_MODE, channel_mode.c_str());
     }
 
-    // 2b. Configure logic trigger if specified
-    ds_trigger_reset();
-
+    // 2b. Configure logic trigger if specified.
+    // Core TriggerConfig is the single source of truth; sync_trigger_to_libsigrok()
+    // in start_capture pushes it to ds_trigger_*. Here we only write Core cfg
+    // and SignalModel trig types (the latter drives UI rendering).
     if (trigger_channel_index >= 0) {
-        ds_trigger_set_en(1);
-        ds_trigger_set_mode(SIMPLE_TRIGGER);
+        // Construct Core TriggerConfig (Simple mode).
+        pv::data::TriggerConfig cfg;
+        cfg.set_mode(pv::data::TriggerConfig::Simple);
 
-        // Mark trigger as preconfigured so TriggerDock::try_commit_trigger()
-        // won't overwrite our settings with ds_trigger_reset() at capture start.
-        _session->set_trigger_preconfigured(true);
-
-        // Map trigger_type to ds_trigger_probe_set values and SignalModel types
-        // (following LogicSignal::commit_trig() pattern)
-        int model_trig = pv::data::SignalModel::EDGTRIG;
-        if (trigger_type == "rising") {
-            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'R', 'X');
-            model_trig = pv::data::SignalModel::POSTRIG;
-        } else if (trigger_type == "falling") {
-            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'F', 'X');
-            model_trig = pv::data::SignalModel::NEGTRIG;
-        } else if (trigger_type == "pulse_high") {
-            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), '1', 'X');
-            model_trig = pv::data::SignalModel::HIGTRIG;
-        } else if (trigger_type == "pulse_low") {
-            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), '0', 'X');
-            model_trig = pv::data::SignalModel::LOWTRIG;
-        } else {
-            // Default to edge trigger
-            ds_trigger_probe_set(static_cast<uint16_t>(trigger_channel_index), 'C', 'X');
-        }
-
-        // Set linked channel conditions (additional channels with required state)
-        for (const auto &lc : linked_channels) {
-            if (lc.second == "high") {
-                ds_trigger_probe_set(static_cast<uint16_t>(lc.first), '1', 'X');
-            } else if (lc.second == "low") {
-                ds_trigger_probe_set(static_cast<uint16_t>(lc.first), '0', 'X');
+        // Set trigger position based on afterTriggerSeconds
+        if (after_trigger_seconds > 0.0) {
+            uint64_t rate = (digital_sample_rate > 0) ? digital_sample_rate : _device->get_sample_rate();
+            uint64_t sample_limit = _device->get_sample_limit();
+            if (rate > 0 && sample_limit > 0) {
+                uint64_t after_samples = static_cast<uint64_t>(
+                    after_trigger_seconds * static_cast<double>(rate));
+                uint16_t pos = static_cast<uint16_t>(
+                    (after_samples * 100) / sample_limit);
+                if (pos > 100) pos = 100;
+                cfg.set_trigger_pos(pos);
             }
         }
+        _session->set_trigger_config(cfg);
 
-        // Update SignalModels so the UI renders the trigger
+        // SignalModel trig types still need to be set to drive UI rendering.
+        int model_trig = pv::data::SignalModel::EDGTRIG;
+        if (trigger_type == "rising") {
+            model_trig = pv::data::SignalModel::POSTRIG;
+        } else if (trigger_type == "falling") {
+            model_trig = pv::data::SignalModel::NEGTRIG;
+        } else if (trigger_type == "pulse_high") {
+            model_trig = pv::data::SignalModel::HIGTRIG;
+        } else if (trigger_type == "pulse_low") {
+            model_trig = pv::data::SignalModel::LOWTRIG;
+        }
+
         for (auto model : _session->get_signal_models()) {
             if (model->type() != api::ChannelType::Logic)
                 continue;
-                
             if (model->index() == trigger_channel_index) {
                 pxv_info("API start_capture: MATCHED index %d, setting to %d", model->index(), model_trig);
                 model->set_trig_type(model_trig);
@@ -727,35 +729,16 @@ Result<int> SessionService::configure_and_start(
             }
         }
 
-        // Set trigger position based on afterTriggerSeconds
-        if (after_trigger_seconds > 0.0) {
-            uint64_t rate = (digital_sample_rate > 0) ? digital_sample_rate : _device->get_sample_rate();
-            uint64_t sample_limit = _device->get_sample_limit();
-            if (rate > 0 && sample_limit > 0) {
-                uint64_t after_samples = static_cast<uint64_t>(
-                    after_trigger_seconds * static_cast<double>(rate));
-                uint16_t pos = static_cast<uint16_t>(
-                    (after_samples * 100) / sample_limit);
-                if (pos > 100) pos = 100;
-                ds_trigger_set_pos(pos);
-            }
-        }
-
-        // Configure pulse width trigger counts if specified
-        if ((trigger_type == "pulse_high" || trigger_type == "pulse_low") &&
-            (min_pulse_width_seconds > 0.0 || max_pulse_width_seconds > 0.0)) {
-            uint64_t rate = (digital_sample_rate > 0) ? digital_sample_rate : _device->get_sample_rate();
-            if (rate > 0) {
-                uint32_t min_count = static_cast<uint32_t>(
-                    min_pulse_width_seconds * static_cast<double>(rate));
-                uint32_t max_count = static_cast<uint32_t>(
-                    max_pulse_width_seconds * static_cast<double>(rate));
-                ds_trigger_stage_set_count(0, 1, min_count, max_count);
-            }
-        }
-    } else {
-        ds_trigger_set_en(0);
+        // NOTE: pulse width trigger counts have no Core field in Simple mode
+        // (TriggerConfig Stage is only populated for Adv/Serial modes). The
+        // original ds_trigger_stage_set_count call has been removed; if pulse
+        // width triggering is required, TriggerConfig must be extended to
+        // support Simple-mode stage counts. Currently sync_trigger_to_libsigrok
+        // does not emit stage counts in Simple mode.
     }
+    // trigger_channel_index < 0: do not write cfg; sync_trigger_to_libsigrok()
+    // will call ds_trigger_set_en(0) in Simple mode when no channel has a
+    // non-NONTRIG trig_type.
 
     // 2. Rebuild signal list to reflect the new channel enable/disable state.
     // This is critical: action_start_capture() checks _signals.empty() and

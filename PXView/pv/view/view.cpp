@@ -44,7 +44,6 @@
 #include "decodetrace.h"
 #include "devmode.h"
 #include "dsosignal.h"
-#include "groupsignal.h"
 #include "header.h"
 #include "lissajoustrace.h"
 #include "logicsignal.h"

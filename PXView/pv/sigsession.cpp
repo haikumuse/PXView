@@ -112,7 +112,6 @@ SigSession::SigSession() {
   _decoder_pannel = NULL;
   _active_document = nullptr;
   _is_triged = false;
-  _trigger_preconfigured = false;
   _dso_status_valid = false;
   _glitch_filter_thread = nullptr;
   _glitch_filter_running = false;
@@ -631,9 +630,11 @@ bool SigSession::action_start_capture(bool instant,
 
   if (exec_capture()) {
     _work_time_id++;
-    _is_working = true;
-    _capture_owner_document = owner ? owner : _active_document;
-    broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED, is_working() ? 1 : 0);
+    // CaptureOwnerGuard manages _is_working + _capture_owner_document +
+    // CaptureOwnerChanged broadcast as a single RAII unit. Replaces the
+    // manual _is_working=true / _capture_owner_document=... / broadcast_msg.
+    _capture_owner_guard = std::make_unique<CaptureOwnerGuard>(
+        this, owner ? owner : _active_document);
     trigger_message(DSV_MSG_START_COLLECT_WORK);
 
     // Start a timer, for able to refresh the view per (1000 / 30)ms.
@@ -750,6 +751,10 @@ bool SigSession::exec_capture() {
   // bind to the old, cleared document snapshot and fail to show results.
   attach_data_to_signal(_capture_data);
 
+  // Core→libsigrok 触发配置唯一同步点。在 ds_start_collect 前一次性同步，
+  // 消除 TriggerDock/SessionService 各自调 ds_trigger_* 导致的互相覆盖。
+  sync_trigger_to_libsigrok();
+
   if (_device_agent.start() == false) {
     pxv_err("Start collect error!");
     return false;
@@ -787,6 +792,8 @@ bool SigSession::action_stop_capture() {
     _repeat_wait_prog_timer.Stop();
     _refresh_rt_timer.Stop();
     exit_capture();
+    // Task 4: RAII cleanup — join copy thread + clear owner + broadcast.
+    _capture_owner_guard.reset();
     return true;
   }
 
@@ -797,9 +804,6 @@ bool SigSession::action_stop_capture() {
 
   if (!wait_upload) {
     _is_working = false;
-    if (!_copy_in_progress) {
-      _capture_owner_document = nullptr;
-    }
     _repeat_timer.Stop();
     _repeat_wait_prog_timer.Stop();
     _refresh_rt_timer.Stop();
@@ -819,6 +823,11 @@ bool SigSession::action_stop_capture() {
       trigger_message(DSV_MSG_END_COLLECT_WORK);
     }
 
+    // Task 4: RAII cleanup — join copy thread + clear owner + _is_working=false
+    // (redundant here, set above) + CaptureOwnerChanged broadcast. Replaces the
+    // old manual `_capture_owner_document = nullptr` (gated on !_copy_in_progress)
+    // — the guard always joins the copy thread first, which is safer.
+    _capture_owner_guard.reset();
     return true;
   } else {
     pxv_info("Data is uploading from device data buffer, waiting for stop.");
@@ -2157,6 +2166,28 @@ void SigSession::add_msg_listener(IMessageListener *ln) {
   _msg_listeners.push_back(ln);
 }
 
+// Re-entrancy guard for broadcast<T>(). Per-thread so concurrent broadcasts on
+// different threads never trip each other. Defined here per the
+// static thread_local member declaration in sigsession.h.
+thread_local int SigSession::_broadcast_depth = 0;
+
+void SigSession::add_event_listener(interface::IEventListener *l) {
+  if (!l)
+    return;
+  // Defensive: avoid double-registration so a listener cannot be notified
+  // twice for the same event.
+  if (std::find(_event_listeners.begin(), _event_listeners.end(), l) !=
+      _event_listeners.end())
+    return;
+  _event_listeners.push_back(l);
+}
+
+void SigSession::remove_event_listener(interface::IEventListener *l) {
+  auto it = std::find(_event_listeners.begin(), _event_listeners.end(), l);
+  if (it != _event_listeners.end())
+    _event_listeners.erase(it);
+}
+
 void SigSession::remove_callback(ISessionCallbackBase *callback) {
   auto it = std::find(_callbacks.begin(), _callbacks.end(), callback);
   if (it != _callbacks.end())
@@ -2203,10 +2234,86 @@ void SigSession::repeat_wait_prog_timeout() {
 }
 
 void SigSession::OnMessage(int msg, int param) {
-  (void)param; // Reserved for future per-message payloads; currently unused
-               // by SigSession's own handlers (e.g. the capture-owner-changed
-               // working flag is consumed by View/API listeners).
+  // --- Typed event translation (compat layer) ------------------------------
+  // Translate every notification-style DSV_MSG_* into the matching typed event
+  // and dispatch it to IEventListener registrants via broadcast<T>(). This runs
+  // BEFORE the legacy switch below so both listener kinds (IMessageListener via
+  // the switch, IEventListener via broadcast) are notified in parallel.
+  //
+  // Core-internal state-machine messages (DSV_MSG_REV_END_PACKET,
+  // DSV_MSG_TRIG_NEXT_COLLECT, DSV_MSG_COLLECT_END, DS_EV_DEVICE_SPEED_NOT_MATCH)
+  // are intentionally NOT translated: they drive SigSession's own state machine
+  // in the switch below and must not be re-broadcast to typed listeners (which
+  // could create a feedback loop if a typed listener calls back into Core).
+  //
+  // Known compat-layer limitations (resolved when call sites migrate to direct
+  // broadcast<T>() in Task 5):
+  //   * CaptureOwnerChanged.old_owner / ActiveDocumentChanged.old_doc are
+  //     nullptr — the legacy (int,int) call sites mutate state before
+  //     broadcasting and cannot recover the previous value.
+  //   * CopyToDocDone.doc is nullptr — the legacy call site does not pass the
+  //     doc pointer through (int param).
+  //   * DeviceModeChanged.mode / CollectModeChanged.mode carry `param`, which
+  //     is 0 at the current broadcast sites; consumers needing the actual mode
+  //     should query the session. Direct broadcast sites will pass the real
+  //     value.
+  // The broadcast<T>() re-entrancy guard ensures that even if a typed listener
+  // synchronously re-emits an event, the nested dispatch is short-circuited.
+  switch (msg) {
+  case DSV_MSG_CAPTURE_STATE_CHANGED:
+    broadcast<interface::CaptureStateChanged>({is_working(), _device_status});
+    break;
+  case DSV_MSG_CAPTURE_OWNER_CHANGED:
+    broadcast<interface::CaptureOwnerChanged>({nullptr, _capture_owner_document});
+    break;
+  case DSV_MSG_TRIGGER_CONFIG_CHANGED:
+    broadcast<interface::TriggerConfigChanged>({&_trigger_config});
+    break;
+  case DSV_MSG_SAMPLE_COUNT_UPDATED:
+    broadcast<interface::SampleCountUpdated>(
+        {(uint64_t)get_ring_sample_count()});
+    break;
+  case DSV_MSG_DEVICE_OPTIONS_UPDATED:
+    broadcast<interface::DeviceOptionsUpdated>({});
+    break;
+  case DSV_MSG_ACTIVE_DOCUMENT_CHANGED:
+    broadcast<interface::ActiveDocumentChanged>({nullptr, _active_document});
+    break;
+  case DSV_MSG_COPY_TO_DOC_DONE:
+    broadcast<interface::CopyToDocDone>({nullptr});
+    break;
+  case DSV_MSG_DEVICE_MODE_CHANGED:
+    broadcast<interface::DeviceModeChanged>({param});
+    break;
+  case DSV_MSG_COLLECT_MODE_CHANGED:
+    broadcast<interface::CollectModeChanged>({param});
+    break;
+  case DSV_MSG_DEVICE_LIST_UPDATED:
+    broadcast<interface::DeviceListUpdated>({});
+    break;
+  case DSV_MSG_CURRENT_DEVICE_CHANGED:
+    broadcast<interface::CurrentDeviceChanged>({});
+    break;
+  case DSV_MSG_NEW_USB_DEVICE:
+    broadcast<interface::UsbDeviceArrived>({});
+    break;
+  case DSV_MSG_CURRENT_DEVICE_DETACHED:
+    broadcast<interface::DeviceDetached>({});
+    break;
+  case DSV_MSG_SAVE_COMPLETE:
+    broadcast<interface::SaveComplete>({});
+    break;
+  default:
+    // Core-internal state-machine messages (or messages with no typed
+    // equivalent): no translation, fall through to the legacy switch only.
+    break;
+  }
 
+  // --- Legacy state-machine handling ---------------------------------------
+  // Original switch retained verbatim for backward compatibility. Handles
+  // Core-internal state transitions (reload, repeat-collect scheduling,
+  // capture-end packet processing, copy-to-doc completion, etc.) that the
+  // typed event bus deliberately does NOT replicate.
   switch (msg) {
   case DSV_MSG_DEVICE_OPTIONS_UPDATED:
     reload();
@@ -2322,9 +2429,11 @@ void SigSession::OnMessage(int msg, int param) {
     break;
 
   case DSV_MSG_COPY_TO_DOC_DONE: {
-    // Background copy_data_to_document has completed.
-    // NOW we can safely start the decoders!
-    _capture_owner_document = nullptr;
+    // Background copy_data_to_document has completed. Start decoders.
+    // NOTE: _capture_owner_document is NOT cleared here — it is now managed
+    // by CaptureOwnerGuard for the whole capture session. In repeat mode the
+    // owner persists across frames; the guard is reset only on stop_capture
+    // or tab close (clear_capture_owner_document).
     start_all_decode_tasks();
     pxv_info("Background copy_data_to_document completed. Decoders started.");
   } break;
@@ -2576,9 +2685,11 @@ void SigSession::set_active_document(data::SessionDocument *doc) {
 }
 
 void SigSession::clear_capture_owner_document(data::SessionDocument *doc) {
-  if (_capture_owner_document == doc) {
-    _capture_owner_document = nullptr;
-    broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED);
+  // Task 4: Guard-managed — reset the guard when the caller asks to clear the
+  // document that is currently the capture owner. Guard destructor handles
+  // join_copy_thread() + owner clear + _is_working=false + broadcast.
+  if (_capture_owner_guard && _capture_owner_document == doc) {
+    _capture_owner_guard.reset();
   }
 }
 
@@ -2591,6 +2702,98 @@ void SigSession::join_copy_thread() {
 void SigSession::set_trigger_config(const data::TriggerConfig &cfg) {
   _trigger_config = cfg;
   broadcast_msg(DSV_MSG_TRIGGER_CONFIG_CHANGED);
+}
+
+void SigSession::sync_trigger_to_libsigrok() {
+  // Core→libsigrok 触发配置唯一同步点。在 start_capture 内部 ds_start_collect 前调用。
+  // 消除 TriggerDock::commit_trigger / SessionService::start_capture /
+  // TriggerDock::try_commit_trigger 各自调 ds_trigger_* 导致的互相覆盖。
+  //
+  // probes 参数 = Logic 类型 SignalModel 数量（参考 triggerdock.cpp 的 _cur_ch_num
+  // 与 session_service.cpp 的处理）。计算一次保存为局部变量。
+  uint16_t probes = 0;
+  for (const auto &m : _signal_models) {
+    if (m && m->type() == api::ChannelType::Logic)
+      probes++;
+  }
+
+  const auto &cfg = _trigger_config;
+  const int trig_pos = cfg.trigger_pos();
+
+  if (cfg.mode() == data::TriggerConfig::Simple) {
+    // Simple 模式：遍历 SignalModel.trig_type() 映射到 ds_trigger_probe_set。
+    ds_trigger_reset();
+
+    bool any_triggered = false;
+    for (const auto &m : _signal_models) {
+      if (!m || m->type() != api::ChannelType::Logic)
+        continue;
+      const uint16_t probe = static_cast<uint16_t>(m->index());
+      char c0 = 'X';
+      switch (m->trig_type()) {
+      case data::SignalModel::POSTRIG: c0 = 'R'; any_triggered = true; break;
+      case data::SignalModel::NEGTRIG: c0 = 'F'; any_triggered = true; break;
+      case data::SignalModel::HIGTRIG: c0 = '1'; any_triggered = true; break;
+      case data::SignalModel::LOWTRIG: c0 = '0'; any_triggered = true; break;
+      case data::SignalModel::EDGTRIG: c0 = 'C'; any_triggered = true; break;
+      case data::SignalModel::NONTRIG:
+      default: c0 = 'X'; break;
+      }
+      ds_trigger_probe_set(probe, c0, 'X');
+    }
+
+    if (any_triggered) {
+      ds_trigger_set_en(1);
+      ds_trigger_set_mode(SIMPLE_TRIGGER);
+    } else {
+      ds_trigger_set_en(0);
+    }
+    ds_trigger_set_pos(trig_pos);
+  } else if (cfg.mode() == data::TriggerConfig::Adv) {
+    // Adv 模式：从 _trigger_config.stages() 一次性同步到 ds_trigger_*。
+    ds_trigger_reset();
+    ds_trigger_set_en(true);
+    ds_trigger_set_mode(ADV_TRIGGER);
+    ds_trigger_set_pos(trig_pos);
+
+    const int stage_count = cfg.stage_count();
+    if (stage_count > 0) {
+      ds_trigger_set_stage(stage_count - 1);
+      const auto &stages = cfg.stages();
+      for (int i = 0; i < stage_count && i < (int)stages.size(); ++i) {
+        const auto &st = stages[i];
+        QByteArray v0 = st.value0.toLocal8Bit();
+        QByteArray v1 = st.value1.toLocal8Bit();
+        ds_trigger_stage_set_value(i, probes, v0.data(), v1.data());
+        ds_trigger_stage_set_logic(i, probes, st.logic);
+        ds_trigger_stage_set_inv(i, probes, st.inv0, st.inv1);
+        ds_trigger_stage_set_count(i, probes, st.count0, st.count1);
+      }
+    }
+  } else if (cfg.mode() == data::TriggerConfig::Serial) {
+    // Serial 模式：与 Adv 相同的 stage 同步，仅 mode 不同。
+    // stages[1].count0 应为 1，stages[3].count0 应为 serial_bits-1
+    // （这些在 commit_trigger 时已写入 TriggerConfig，sync 时直接用 stage.count0/count1）
+    ds_trigger_reset();
+    ds_trigger_set_en(true);
+    ds_trigger_set_mode(SERIAL_TRIGGER);
+    ds_trigger_set_pos(trig_pos);
+
+    const int stage_count = cfg.stage_count();
+    if (stage_count > 0) {
+      ds_trigger_set_stage(stage_count - 1);
+      const auto &stages = cfg.stages();
+      for (int i = 0; i < stage_count && i < (int)stages.size(); ++i) {
+        const auto &st = stages[i];
+        QByteArray v0 = st.value0.toLocal8Bit();
+        QByteArray v1 = st.value1.toLocal8Bit();
+        ds_trigger_stage_set_value(i, probes, v0.data(), v1.data());
+        ds_trigger_stage_set_logic(i, probes, st.logic);
+        ds_trigger_stage_set_inv(i, probes, st.inv0, st.inv1);
+        ds_trigger_stage_set_count(i, probes, st.count0, st.count1);
+      }
+    }
+  }
 }
 
 void SigSession::copy_data_to_document(data::SessionDocument *doc) {

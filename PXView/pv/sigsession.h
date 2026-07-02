@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <atomic>
 #include <list>
+#include <memory>
 #include <set>
 #include <stdint.h>
 #include <string>
@@ -49,6 +50,8 @@
 #include "dstimer.h"
 #include "eventobject.h"
 #include "interface/icallbacks.h"
+#include "interface/events.h"
+#include "log.h"
 #include <libsigrok.h>
 
 struct srd_decoder;
@@ -167,6 +170,62 @@ public:
   bool stop_capture();
   bool switch_work_mode(int mode);
 
+  // RAII guard for _capture_owner_document + _is_working lifecycle.
+  // Constructed in start_capture on success; destructed in stop_capture /
+  // clear_capture_owner_document (tab close). Manages owner field + _is_working
+  // flag + join_copy_thread + CaptureOwnerChanged broadcast as a single unit,
+  // eliminating manual clear_capture_owner_document() calls and use-after-free
+  // risk on the background copy thread.
+  //
+  // NOTE: copy_to_doc_done does NOT reset this guard — in repeat mode the owner
+  // field is cleared per-frame but _is_working must stay true across frames.
+  // The guard persists for the whole capture session.
+  class CaptureOwnerGuard {
+  public:
+    CaptureOwnerGuard(SigSession *s, data::SessionDocument *doc)
+        : _session(s), _doc(doc) {
+      _session->_capture_owner_document = _doc;
+      _session->_is_working = true;
+      _session->broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED,
+                              _session->is_working() ? 1 : 0);
+    }
+    ~CaptureOwnerGuard() {
+      if (_session) {
+        _session->join_copy_thread();
+        _session->_capture_owner_document = nullptr;
+        _session->_is_working = false;
+        _session->broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED, 0);
+      }
+    }
+    // Disable copy
+    CaptureOwnerGuard(const CaptureOwnerGuard &) = delete;
+    CaptureOwnerGuard &operator=(const CaptureOwnerGuard &) = delete;
+    // Allow move
+    CaptureOwnerGuard(CaptureOwnerGuard &&o) noexcept
+        : _session(o._session), _doc(o._doc) {
+      o._session = nullptr;
+    }
+    CaptureOwnerGuard &operator=(CaptureOwnerGuard &&o) noexcept {
+      if (this != &o) {
+        if (_session) {
+          _session->join_copy_thread();
+          _session->_capture_owner_document = nullptr;
+          _session->_is_working = false;
+          _session->broadcast_msg(DSV_MSG_CAPTURE_OWNER_CHANGED, 0);
+        }
+        _session = o._session;
+        _doc = o._doc;
+        o._session = nullptr;
+      }
+      return *this;
+    }
+    inline data::SessionDocument *doc() const { return _doc; }
+
+  private:
+    SigSession *_session;
+    data::SessionDocument *_doc;
+  };
+
   uint64_t cur_samplerate();
   uint64_t cur_snap_samplerate() override;
   uint64_t cur_samplelimits() override;
@@ -244,8 +303,6 @@ public:
 
   inline bool trigd() { return _trigger_flag; }
   inline uint8_t trigd_ch() { return _trigger_ch; }
-  inline void set_trigger_preconfigured(bool v) { _trigger_preconfigured = v; }
-  inline bool is_trigger_preconfigured() { return _trigger_preconfigured; }
 
   data::Snapshot *get_snapshot(int type) override;
 
@@ -350,7 +407,40 @@ public:
   struct ds_device_base_info *get_device_list(int &out_count,
                                               int &actived_index);
   void add_msg_listener(IMessageListener *ln);
+  // Deprecated: use broadcast<T>(const T&) with typed events instead.
+  // New code MUST use the typed event interface. Kept as a compatibility shim:
+  // SigSession::OnMessage() translates each relevant DSV_MSG_* into the matching
+  // typed event and re-broadcasts it via broadcast<T>(), so both listener kinds
+  // (IMessageListener and IEventListener) run in parallel during the migration.
   void broadcast_msg(int msg, int param = 0);
+
+  // --- Typed event bus ----------------------------------------------------
+  // Register/unregister a typed event listener. A listener may be registered
+  // on at most one SigSession. Removal is O(n); callers must unregister before
+  // the listener is destroyed.
+  void add_event_listener(interface::IEventListener *l);
+  void remove_event_listener(interface::IEventListener *l);
+
+  // Broadcast a typed event to every registered IEventListener. Carries a
+  // thread-local re-entrancy guard: if a listener synchronously re-emits an
+  // event (directly or indirectly), the nested broadcast is logged and
+  // short-circuited (listeners are NOT called) to prevent infinite recursion
+  // and stack overflow. The guard is per-thread so broadcasts on different
+  // threads never interfere.
+  template <typename EventType> void broadcast(const EventType &ev) {
+    ++_broadcast_depth;
+    if (_broadcast_depth > 1) {
+      pxv_err("Event broadcast loop detected (depth=%d), suppressing",
+              _broadcast_depth);
+      assert(_broadcast_depth <= 1 && "Event broadcast loop detected");
+      --_broadcast_depth;
+      return; // short-circuit: do not dispatch to listeners
+    }
+    for (auto *l : _event_listeners) {
+      l->on_event(ev);
+    }
+    --_broadcast_depth;
+  }
   bool have_new_realtime_refresh(bool keep);
   std::shared_ptr<data::DecoderStack> get_decoder_trace(int index,
                                         data::SessionDocument *doc = nullptr);
@@ -453,6 +543,10 @@ private:
 
   bool exec_capture();
   void exit_capture();
+
+  /// Core→libsigrok 触发配置唯一同步点。在 start_capture 内部 ds_start_collect 前调用。
+  /// 根据 _trigger_config.mode() 一次性同步 Simple/Adv/Serial 三模式到 ds_trigger_*。
+  void sync_trigger_to_libsigrok();
 
   // Dispatch helper: invokes fn on every registered callback that
   // implements the given sub-interface (using dynamic_cast).
@@ -648,7 +742,6 @@ private:
   bool _is_triged;
   bool _trigger_flag;
   uint8_t _trigger_ch;
-  bool _trigger_preconfigured;  // set by MCP/API when trigger is configured externally
   bool _hw_replied;
 
   SESSION_ERROR_STATUS _error;
@@ -679,6 +772,10 @@ private:
   std::vector<ISessionCallbackBase*> _callbacks;
   DeviceAgent _device_agent;
   std::vector<IMessageListener *> _msg_listeners;
+  std::vector<interface::IEventListener *> _event_listeners;
+  // Re-entrancy guard for broadcast<T>(). Per-thread so concurrent broadcasts
+  // on different threads don't trip each other. Defined in sigsession.cpp.
+  static thread_local int _broadcast_depth;
   DeviceEventObject _device_event;
   SessionData *_view_data;
   SessionData *_capture_data;
@@ -695,6 +792,7 @@ private:
   bool _signal_invert_running;
   volatile bool _copy_in_progress;
   data::SessionDocument *_capture_owner_document;
+  std::unique_ptr<CaptureOwnerGuard> _capture_owner_guard;
   std::thread _copy_thread;
   data::TriggerConfig _trigger_config;
 

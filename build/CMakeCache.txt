@@ -413,9 +413,6 @@ ENABLE_DRIVER_HP_3478A:BOOL=ON
 //Enable hp-59306a driver
 ENABLE_DRIVER_HP_59306A:BOOL=ON
 
-//Enable hung-chang-dso-2100 parallel port oscilloscope driver
-ENABLE_DRIVER_HUNG_CHANG_DSO_2100:BOOL=OFF
-
 //Enable icstation-usbrelay driver
 ENABLE_DRIVER_ICSTATION_USBRELAY:BOOL=ON
 

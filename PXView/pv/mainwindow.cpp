@@ -3380,6 +3380,21 @@ void MainWindow::on_service_event(const pv::api::ServiceEventData &data) {
     view->clear_cursors();
     break;
   }
+  case pv::api::ServiceEvent::DecoderAdded:
+  case pv::api::ServiceEvent::DecoderRemoved:
+  case pv::api::ServiceEvent::SignalsChanged: {
+    // Core data changed via MCP/API (decoder added/removed or signals
+    // changed). Trigger lazy sync so View creates/removes the
+    // corresponding DecodeTrace by Core Stack identity comparison.
+    // signals_changed(NULL) internally calls mark_derived_traces_dirty()
+    // then get_traces() -> get_own_decode_traces() -> sync_derived_traces(),
+    // which performs the Stack-pointer-identity-based reconciliation.
+    // The explicit mark_derived_traces_dirty() is kept for clarity and
+    // defensive purposes (idempotent).
+    view->mark_derived_traces_dirty();
+    view->signals_changed(NULL);
+    break;
+  }
   default:
     // Not a View event; ignore.
     break;
@@ -3500,10 +3515,9 @@ void MainWindow::remove_tab(int index) {
   disconnect(_tab_widget, &pv::ui::DraggableTabWidget::currentChanged, this,
              &MainWindow::on_tab_changed);
   _tab_widget->removeTab(index);
-  // Task 4.5: 在销毁 ctx/document 之前清理 capture owner 引用并 join 后台 copy
-  // 线程， 避免后台线程访问已释放的 SessionDocument（见
-  // SigSession::copy_data_to_document）。
-  _session->join_copy_thread();
+  // Task 4.3: capture owner cleanup is now RAII-managed by CaptureOwnerGuard.
+  // clear_capture_owner_document() resets the guard, whose destructor joins the
+  // copy thread + clears owner + broadcasts. No need for manual join_copy_thread.
   _session->clear_capture_owner_document(ctx->document());
   _session->unregister_document(ctx->document());
   ctx->view()->deleteLater();
