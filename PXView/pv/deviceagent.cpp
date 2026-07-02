@@ -305,6 +305,15 @@ const struct sr_config_info *DeviceAgent::get_config_info(int key)
     return ds_get_actived_device_config_info(key);
 }
 
+int DeviceAgent::option_value_to_code(int work_mode, int config_id, const char *value)
+{
+    if (!value) {
+        pxv_warn("%s", "DeviceAgent::option_value_to_code: value is NULL");
+        return -1;
+    }
+    return ds_dsl_option_value_to_code(work_mode, config_id, value);
+}
+
 bool DeviceAgent::get_device_status(struct sr_status &status, gboolean prg)
 {
     if (!_dev_handle) {

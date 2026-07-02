@@ -21,7 +21,7 @@
  */
 
 #include "protocollist.h"
- 
+
 
 #include <QFormLayout>
 #include <QListWidget>
@@ -30,7 +30,7 @@
 #include "../data/decoderstack.h"
 #include "../data/decode/row.h"
 #include "../view/decodetrace.h"
-#include "../data/decodermodel.h"
+#include "../view/decodermodel.h"
 #include "../eventobject.h"
 
 #include "../ui/langresource.h"
@@ -41,14 +41,13 @@ using namespace std;
 namespace pv {
 namespace dialogs {
 
-ProtocolList::ProtocolList(QWidget *parent, SigSession *session) :
+ProtocolList::ProtocolList(QWidget *parent, SigSession *session, pv::view::DecoderModel *decoder_model) :
     DSDialog(parent),
     _session(session),
+    _decoder_model(decoder_model),
     _button_box(QDialogButtonBox::Ok,
         Qt::Horizontal, this)
 {
-    pv::data::DecoderModel* decoder_model = _session->get_decoder_model();
-
     _map_zoom_combobox = new DsComboBox(this);
     _map_zoom_combobox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FIT_TO_WINDOW), "Fit to Window"));
     _map_zoom_combobox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FIXED), "Fixed"));
@@ -146,11 +145,11 @@ void ProtocolList::set_protocol(int index)
     }
 
     if (!decoder_stack){
-        _session->get_decoder_model()->setDecoderStack(NULL);
+        _decoder_model->setDecoderStack(NULL);
         return;
     }
 
-    _session->get_decoder_model()->setDecoderStack(decoder_stack);
+    _decoder_model->setDecoderStack(decoder_stack);
     int row_index = 0;
     const auto rows = decoder_stack->get_rows_lshow();
 
@@ -199,7 +198,7 @@ void ProtocolList::on_row_check(bool show)
         }
     }
 
-    _session->get_decoder_model()->setDecoderStack(decoder_stack);
+    _decoder_model->setDecoderStack(decoder_stack);
 }
 
  void ProtocolList::on_set_map_zoom(int index)

@@ -450,21 +450,18 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
     auto &session = _view.session();
     auto *doc = session.get_active_document();
     if (doc && session.get_device() && session.get_device()->have_instance()) {
-      std::map<int, bool> channel_visibility;
       std::map<int, pv::data::ChannelLayoutState> channel_layout;
       for (auto *sig : _view.get_own_signals()) {
-        channel_visibility[sig->get_index()] = sig->visible();
         pv::data::ChannelLayoutState layout;
         layout.view_index = sig->get_view_index();
         layout.v_offset = sig->get_v_offset();
         layout.own_height = sig->get_own_height();
         channel_layout[sig->get_index()] = layout;
-        pxv_info("  sig index=%d, view_index=%d, v_offset=%d, own_height=%d, visible=%d",
+        pxv_info("  sig index=%d, view_index=%d, v_offset=%d, own_height=%d",
                  sig->get_index(), layout.view_index, layout.v_offset,
-                 layout.own_height, sig->visible());
+                 layout.own_height);
       }
-      doc->save_signal_config(channel_visibility,
-                              session.get_signal_models(), channel_layout);
+      doc->save_signal_config(session.get_signal_models(), channel_layout);
       pxv_info("Header::mouseReleaseEvent: save_signal_config called, saved %d channels",
                (int)channel_layout.size());
     } else {
@@ -573,21 +570,18 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
     auto &session = _view.session();
     auto *doc = session.get_active_document();
     if (doc && session.get_device() && session.get_device()->have_instance()) {
-      std::map<int, bool> channel_visibility;
       std::map<int, pv::data::ChannelLayoutState> channel_layout;
       for (auto *sig : _view.get_own_signals()) {
-        channel_visibility[sig->get_index()] = sig->visible();
         pv::data::ChannelLayoutState layout;
         layout.view_index = sig->get_view_index();
         layout.v_offset = sig->get_v_offset();
         layout.own_height = sig->get_own_height();
         channel_layout[sig->get_index()] = layout;
-        pxv_info("  sig index=%d, view_index=%d, v_offset=%d, own_height=%d, visible=%d",
+        pxv_info("  sig index=%d, view_index=%d, v_offset=%d, own_height=%d",
                  sig->get_index(), layout.view_index, layout.v_offset,
-                 layout.own_height, sig->visible());
+                 layout.own_height);
       }
-      doc->save_signal_config(channel_visibility,
-                              session.get_signal_models(), channel_layout);
+      doc->save_signal_config(session.get_signal_models(), channel_layout);
       pxv_info("Header::mouseReleaseEvent: save_signal_config called, saved %d channels",
                (int)channel_layout.size());
     } else {

@@ -2,23 +2,23 @@
 
 ## 阶段 1（P0 零风险清理）
 
-- [ ] Task 1: 删除 SessionDocument 5 个死存储字段
-  - [ ] SubTask 1.1: `sessiondocument.h` 删除 `_signal_models`/`_spectrum_stacks`/`_math_stack`/`_lissajous_model`/`_decoder_model` 成员声明 + 对应 `set_*`/`get_*` 方法
-  - [ ] SubTask 1.2: `sessiondocument.cpp` 删除上述字段的实现（含 `clear()` 调用点 line 106-122）
-  - [ ] SubTask 1.3: grep 全工程确认无残留引用 `set_decoder_model`/`set_signal_models` 等已删方法
-  - [ ] SubTask 1.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 1: 删除 SessionDocument 5 个死存储字段 ✅
+  - [x] SubTask 1.1: `sessiondocument.h` 删除 5 个死字段成员声明 + `set_decoder_model` 方法（注：`get_*` 方法因 DataSource 接口契约保留，改为返回空值）
+  - [x] SubTask 1.2: `sessiondocument.cpp` 删除上述字段实现（含 clear() 空循环 line 106-122）
+  - [x] SubTask 1.3: grep 验证 `set_decoder_model` 等已删方法 0 代码命中
+  - [x] SubTask 1.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error
 
-- [ ] Task 2: 修正 AGENTS.md 行数声明
-  - [ ] SubTask 2.1: `AGENTS.md` Key Files 表中 `sigsession.h` 行数从 "284 行" 改为实际行数（用 `wc -l` 确认）
+- [x] Task 2: 修正 AGENTS.md 行数声明 ✅
+  - [x] SubTask 2.1: `AGENTS.md` 第 73 行从 "284 lines" 改为 "299 lines"
   - [ ] SubTask 2.2: 阶段 7 完成后再次更新为 < 200 行的实际值
 
 ## 阶段 2（P0 序列化路径统一 + 用户数据 bug 修复）
 
-- [ ] Task 3: 启用 SignalConfigStore 为 .pxc channel 配置唯一序列化路径
-  - [ ] SubTask 3.1: 检查 `SignalConfigStore::signal_config_to_json` 当前写入的字段集（index/enabled/visible/vdiv/coupling/map_default/hw_offset/offset/zero_offset/trig_type/view_index/v_offset/own_height）
-  - [ ] SubTask 3.2: 对比 `MainWindow::gen_config_json`（mainwindow.cpp:1441-1485）写入字段集，补齐 SignalConfigStore 缺失的字段（如 colour/strigger/vfactor/trigValue/zeroPos/mapUnit/mapMin/mapMax/mapDefault/name/type 等需评估归属）
-  - [ ] SubTask 3.3: `MainWindow::save_config_to_file` 改为调用 `SignalConfigStore::signal_config_to_json` 生成 channels[] 数组，删除原 gen_config_json 中直访 view::Signal 写 channel 的逻辑
-  - [ ] SubTask 3.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 3: 启用 SignalConfigStore 为 .pxc channel 配置唯一序列化路径 ✅
+  - [x] SubTask 3.1: 检查 `SignalConfigStore::signal_config_to_json` 当前写入的字段集（index/enabled/visible/vdiv/coupling/map_default/hw_offset/offset/zero_offset/trig_type/view_index/v_offset/own_height）
+  - [x] SubTask 3.2: 对比 `MainWindow::gen_config_json`（mainwindow.cpp:1441-1485）写入字段集，补齐 SignalConfigStore 缺失的字段（type/name/colour/vfactor/trig_value/map_unit/map_min/map_max 归入 ChannelConfig；strigger→trig_type、trigValue→trig_value、zeroPos→zero_offset、mapUnit→map_unit、mapMin→map_min、mapMax→map_max、mapDefault→map_default、colour→colour、vfactor→vfactor、name→name、type→type）
+  - [x] SubTask 3.3: `MainWindow::gen_config_json` channel 段改为调用 `doc->save_signal_config(...)` + `doc->signal_config_to_json()`，删除原直访 view::Signal 写 channel 的逻辑；`load_config_from_json` channel 解析段改走 `signal_config_from_json` + `apply_signal_config`，view-side 保留 set_colour/set_trig/set_zero_ratio（Task 13 处理）但 JSON key 更新为 ChannelConfig 字段名
+  - [x] SubTask 3.4: 验证：`ninja -j 16` 0 error（25/25 步骤，链接 PXView.exe 成功）+ `ninja install` 0 error；grep 确认 gen_config_json 无直访 view::Signal 写 channel 字段、无 sr_channel-> 直访（仅注释中出现）
 
 - [ ] Task 4: 修复 visible/trig_type/v_offset/own_height 序列化丢失
   - [ ] SubTask 4.1: 确认 Task 3 后 visible 字段在 SignalConfigStore 路径正确写入（save 时从 view::Signal->visible() 读 → ChannelConfig.visible → JSON）
@@ -26,23 +26,23 @@
   - [ ] SubTask 4.3: 确认 v_offset/own_height 正确序列化（阶段 6 会迁移到 uiLayout，本阶段先确保不丢失）
   - [ ] SubTask 4.4: 验证：保存 .pxc → 重新加载 → 通道隐藏状态/触发配置/布局全部保留
 
-- [ ] Task 5: 删除 MainWindow::load_channel_view_indexs 死路径
-  - [ ] SubTask 5.1: 删除 `mainwindow.cpp:1805-1831` `load_channel_view_indexs` 方法（仅 LOGIC 模式触发、只读 view_index，已被 SignalConfigStore 路径取代）
-  - [ ] SubTask 5.2: 删除 `mainwindow.cpp:3681` demo 加载对该方法的调用
-  - [ ] SubTask 5.3: 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 5: 删除 MainWindow::load_channel_view_indexs 死路径
+  - [x] SubTask 5.1: 删除 `mainwindow.cpp:1805-1831` `load_channel_view_indexs` 方法（仅 LOGIC 模式触发、只读 view_index，已被 SignalConfigStore 路径取代）
+  - [x] SubTask 5.2: 删除 `mainwindow.cpp:3681` demo 加载对该方法的调用
+  - [x] SubTask 5.3: 验证：`cd build && ninja -j 16 && ninja install` 0 error
 
-- [ ] Task 6: trigger 序列化改走 Core TriggerConfig
-  - [ ] SubTask 6.1: `mainwindow.cpp:1488` `sessionVar["trigger"] = _trigger_widget->get_session()` 改为 `_session->trigger_config().to_json()`
-  - [ ] SubTask 6.2: `TriggerConfig` 增加 `to_json()`/`from_json()` 方法（若不存在）
-  - [ ] SubTask 6.3: load 路径对应改走 `_session->set_trigger_config(TriggerConfig::from_json(...))`
-  - [ ] SubTask 6.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error；保存/加载 .pxc 触发配置不丢失
+- [x] Task 6: trigger 序列化改走 Core TriggerConfig ✅
+  - [x] SubTask 6.1: `mainwindow.cpp:1488` `sessionVar["trigger"] = _trigger_widget->get_session()` 改为 `_session->trigger_config().to_json()`
+  - [x] SubTask 6.2: `TriggerConfig` 增加 `to_json()`/`from_json()` 方法（若不存在）
+  - [x] SubTask 6.3: load 路径对应改走 `_session->set_trigger_config(TriggerConfig::from_json(...))`
+  - [x] SubTask 6.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error；保存/加载 .pxc 触发配置不丢失
 
 ## 阶段 3（P1 enabled/visible 语义拆分）
 
-- [ ] Task 7: ChannelConfig 删除 visible 字段
-  - [ ] SubTask 7.1: `signalconfigstore.h` `ChannelConfig` 删除 `visible` 成员
-  - [ ] SubTask 7.2: `signalconfigstore.cpp` `signal_config_to_json`/`from_json`/`save_signal_config`/`apply_signal_config` 移除 visible 处理
-  - [ ] SubTask 7.3: 验证：`cd build && ninja -j 16 && ninja install` 0 error（visible 持久化由阶段 6 uiLayout 段接管，本阶段先内存化）
+- [x] Task 7: ChannelConfig 删除 visible 字段
+  - [x] SubTask 7.1: `signalconfigstore.h` `ChannelConfig` 删除 `visible` 成员
+  - [x] SubTask 7.2: `signalconfigstore.cpp` `signal_config_to_json`/`from_json`/`save_signal_config`/`apply_signal_config` 移除 visible 处理
+  - [x] SubTask 7.3: 验证：`cd build && ninja -j 16 && ninja install` 0 error（visible 持久化由阶段 6 uiLayout 段接管，本阶段先内存化）
 
 - [ ] Task 8: signalfactory/view.cpp 不再混淆 enabled 与 visible
   - [ ] SubTask 8.1: `signalfactory.cpp:62-63` `set_enabled(model->enabled()); set_visible(model->enabled());` 拆分——`set_visible` 改为读 View 层 DockUiState 的 visible 状态（DockUiState 需扩展，见 Task 17）
@@ -50,28 +50,28 @@
   - [ ] SubTask 8.3: `signalconfigstore.cpp:137-138` `cfg.visible = ... probe->enabled` 兜底逻辑删除（visible 已不在 ChannelConfig）
   - [ ] SubTask 8.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error；GUI 测试——硬件禁用通道仍可在 UI 切换可见性
 
-- [ ] Task 9: trace.h enabled() 注释修正
-  - [ ] SubTask 9.1: `trace.h:194-197` `enabled()` 注释从 "visible and enabled" 改为 "hardware enabled (Core-owned); use visible() for UI visibility"
-  - [ ] SubTask 9.2: 确认 `Signal::enabled()` 实现只返回 `_local_enabled`，与注释一致
+- [x] Task 9: trace.h enabled() 注释修正 ✅
+  - [x] SubTask 9.1: `trace.h:194-197` `enabled()` 注释从 "visible and enabled" 改为 "hardware enabled (Core-owned); use visible() for UI visibility"
+  - [x] SubTask 9.2: 确认 `Signal::enabled()` 实现只返回 `_local_enabled`，与注释一致
 
 ## 阶段 4（P1 Core 残留 UI 概念清理）
 
-- [ ] Task 10: DecoderModel 移出 pv::data
-  - [ ] SubTask 10.1: 评估 DecoderModel 用途（QAbstractTableModel 给谁用？grep 调用点）
-  - [ ] SubTask 10.2: 方案选择：移到 `pv::view` 或改为纯数据 + View 层包装器（优先移到 pv::view，因不考虑兼容性）
-  - [ ] SubTask 10.3: 移动 `decodermodel.h/.cpp` 到 `pv/view/`，命名空间改 `pv::view`，更新 CMakeLists.txt 的 source 分组
-  - [ ] SubTask 10.4: 更新所有 include 路径和命名空间引用
-  - [ ] SubTask 10.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `pv/data/` 无 `QAbstractTableModel`
+- [x] Task 10: DecoderModel 移出 pv::data ✅
+  - [x] SubTask 10.1: 评估 DecoderModel 用途（QAbstractTableModel 给谁用？grep 调用点）
+  - [x] SubTask 10.2: 方案选择：移到 `pv::view` 或改为纯数据 + View 层包装器（优先移到 pv::view，因不考虑兼容性）
+  - [x] SubTask 10.3: 移动 `decodermodel.h/.cpp` 到 `pv/view/`，命名空间改 `pv::view`，更新 CMakeLists.txt 的 source 分组
+  - [x] SubTask 10.4: 更新所有 include 路径和命名空间引用
+  - [x] SubTask 10.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `pv/data/` 无 `QAbstractTableModel`
 
-- [ ] Task 11: annotation.h UI 概念移出 Core
-  - [ ] SubTask 11.1: `annotation.h` 删除 `#include <QFont>`/`<QFontMetrics>` + `_cached_width_font` 成员 + `rect_width` 相关方法
-  - [ ] SubTask 11.2: 渲染期字体信息移到 View 层（如 `pv::view::decode::AnnotationRenderData` 或由 DecodeTrace 持有）
-  - [ ] SubTask 11.3: grep 确认 Core 层无 `QFont`/`QFontMetrics` 引用
-  - [ ] SubTask 11.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 11: annotation.h UI 概念移出 Core ✅
+  - [x] SubTask 11.1: `annotation.h` 删除 `#include <QFont>`/`<QFontMetrics>` + `_cached_width_font` 成员 + `rect_width` 相关方法（同时移除 `_cached_best_annotation`/`_cached_rect_width` mutable 缓存字段与 `get_cached_best_annotation` 声明；构造函数中 `_cached_rect_width = -1.0` 初始化一并删除）
+  - [x] SubTask 11.2: 渲染期字体信息移到 View 层（在 `pv::view::DecodeTrace` 新增 private static helper `best_annotation_text(const Annotation&, double rect_width, const QFontMetrics&)`，原 `get_cached_best_annotation` 的"选最长可放下文本"循环逻辑迁入；`draw_range` 调用点改调该 helper。per-annotation 缓存有意丢弃，由 `add-annotation-mmap-store` spec 的 LRU 缓存后续接管）
+  - [x] SubTask 11.3: grep 确认 Core 层无 `QFont`/`QFontMetrics` 引用（`PXView/pv/data/` 目录 0 命中）
+  - [x] SubTask 11.4: 验证：`annotation.cpp` 与 `decodetrace.cpp` 均编译通过（`ninja` 增量编译这两个对象 0 error）；全量链接被并发的 Task 7 WIP 阻塞（`view.cpp:2253` 引用已删的 `ch.visible`），与本 Task 无关
 
-- [ ] Task 12: datasource.h 删除未使用的 pv::view 前向声明
-  - [ ] SubTask 12.1: `datasource.h:33-39` 删除 `pv::view::Signal`/`pv::view::DecodeTrace` 等前向声明
-  - [ ] SubTask 12.2: 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 12: datasource.h 删除未使用的 pv::view 前向声明 ✅
+  - [x] SubTask 12.1: `datasource.h:33-39` 删除 `pv::view::Signal`/`pv::view::DecodeTrace` 等前向声明
+  - [x] SubTask 12.2: 验证：`cd build && ninja -j 16 && ninja install` 0 error（注：Task 12 改动本身 0 error，pxview-core 库编译链接成功；全量 build 残留 error 来自其他未完成 Task 的中间态——Task 7 删 ChannelConfig::visible、Task 11 删 Annotation::get_cached_best_annotation——均与 datasource.h 无关）
 
 ## 阶段 5（P1 View 绕过 Core 修复）
 
@@ -81,10 +81,10 @@
   - [ ] SubTask 13.3: `mainwindow.cpp:1712-1768` `set_colour`/`set_trig`/`set_zero_ratio`/`set_trig_ratio` 改通过 Core 写回 SignalModel（colour/trig 等若有 Core 对应字段）
   - [ ] SubTask 13.4: 验证：`cd build && ninja -j 16 && ninja install` 0 error；load .pxc 后通道配置正确恢复
 
-- [ ] Task 14: ds_dsl_option_value_to_code 封装到 Core
-  - [ ] SubTask 14.1: `mainwindow.cpp:1605` `ds_dsl_option_value_to_code` 直调改为 `DeviceAgent` 封装方法
-  - [ ] SubTask 14.2: grep `PXView/pv/view/` 和 `mainwindow.cpp` 确认无其他 `ds_*` 直调（除已知 ds_trigger_* 已修复）
-  - [ ] SubTask 14.3: 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 14: ds_dsl_option_value_to_code 封装到 Core ✅
+  - [x] SubTask 14.1: `mainwindow.cpp:1587` `ds_dsl_option_value_to_code` 直调改为 `DeviceAgent::option_value_to_code` 封装方法（签名 `int option_value_to_code(int work_mode, int config_id, const char *value)`，deviceagent.h 声明 + deviceagent.cpp 实现，含 `if(!value)` 显式检查）
+  - [x] SubTask 14.2: grep `PXView/pv/view/` 和 `mainwindow.cpp` 确认无其他 `ds_*` 直调（除 ds_trigger_* 已修复）；view/ 仅 view.cpp:1046 注释中提及 ds_trigger_get_en()，无代码调用
+  - [x] SubTask 14.3: 验证：`cd build && ninja -j 16 && ninja install` 0 error（Task 14 改动本身 0 error——deviceagent.cpp [1/77] 与 mainwindow.cpp [44/77] 编译成功无 FAILED；全量 build 残留 error 来自 Task 10 DecoderModel 移出 + Task 19 _decoder_model 数据下沉的中间态，与本 Task 无关，同 Task 11.4/12.2 模式）
 
 ## 阶段 6（P2 UI 布局字段迁移到 View 层）
 

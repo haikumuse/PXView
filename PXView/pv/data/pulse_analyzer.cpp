@@ -92,16 +92,25 @@ std::vector<PulseAnalyzer::Pulse> PulseAnalyzer::find_pulses(
 }
 
 PulseAnalyzer::Histogram PulseAnalyzer::build_histogram(
-    const std::vector<Pulse> &pulses, uint32_t max_width)
+    const std::vector<Pulse> &pulses, uint32_t max_width_cap)
 {
     Histogram hist;
-    hist.max_width = max_width;
+    // max_width 从实际数据中 ≤ cap 的脉冲计算(非 cap 本身)。
+    // cap 用于过滤空闲状态产生的超长脉冲(几千~几万采样点),
+    // 避免直方图被拉散、窄毛刺挤在最左边不可见。
+    // 默认 cap=30(可由 popup 的上限输入框调整)。
+    // 如果数据中最宽的短脉冲只有 18,则 max_width=18,柱子和滑块只到 18。
+    hist.max_width = 0;
 
     for (const Pulse &p : pulses) {
         const uint32_t w = p.width();
-        // 仅统计有效短脉冲(宽度>0 且 <=max_width),长脉冲非毛刺候选
-        if (w > 0 && w <= max_width)
-            hist.width_counts[w]++;
+        if (w == 0)
+            continue;
+        if (max_width_cap > 0 && w > max_width_cap)
+            continue;  // 超过 cap 的长脉冲(空闲状态等)不计入
+        hist.width_counts[w]++;
+        if (w > hist.max_width)
+            hist.max_width = w;  // 实际最大短脉冲宽度
     }
 
     return hist;

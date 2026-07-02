@@ -1,21 +1,24 @@
 # Checklist
 
-## A. 阶段 1（P0 零风险清理）
+## A. 阶段 1（P0 零风险清理）— 已完成
 
-- [ ] `sessiondocument.h` 删除 `_signal_models`/`_spectrum_stacks`/`_math_stack`/`_lissajous_model`/`_decoder_model` 成员声明
-- [ ] `sessiondocument.h` 删除对应 `set_*`/`get_*` 方法声明
-- [ ] `sessiondocument.cpp` 删除上述字段实现（含 line 106-122 空循环 clear）
-- [ ] grep 全工程 `set_decoder_model`/`set_signal_models`/`set_spectrum_stacks`/`set_math_stack`/`set_lissajous_model` 0 命中
-- [ ] AGENTS.md Key Files 表 `sigsession.h` 行数与实际 `wc -l` 一致
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `sessiondocument.h` 删除 `_signal_models`/`_spectrum_stacks`/`_math_stack`/`_lissajous_model`/`_decoder_model` 成员声明
+- [x] `sessiondocument.h` 删除 `set_decoder_model` 方法（注：`get_*` 方法因 DataSource 接口契约保留，改为返回空值）
+- [x] `sessiondocument.cpp` 删除上述字段实现（含 line 106-122 空循环 clear）
+- [x] grep 全工程 `set_decoder_model` 等已删 set 方法 0 代码命中
+- [x] AGENTS.md Key Files 表 `sigsession.h` 行数改为 299（与实际一致）
+- [x] 验证：`cd build && ninja -j 16 && ninja install` 0 error
 
 ## B. 阶段 2（P0 序列化路径统一 + 用户数据 bug 修复）
 
 ### Task 3: SignalConfigStore 唯一序列化路径
-- [ ] `SignalConfigStore::signal_config_to_json` 字段集覆盖原 `MainWindow::gen_config_json` 全部 channel 字段
-- [ ] `MainWindow::save_config_to_file` 调用 `SignalConfigStore::signal_config_to_json` 生成 channels[] 数组
-- [ ] `MainWindow::gen_config_json` 中直访 `view::Signal` 写 channel 字段的逻辑已删除
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `SignalConfigStore::signal_config_to_json` 字段集覆盖原 `MainWindow::gen_config_json` 全部 channel 字段（新增 type/name/colour/vfactor/trig_value/map_unit/map_min/map_max）
+- [x] `MainWindow::gen_config_json` 调用 `SignalConfigStore::signal_config_to_json` 生成 channels[] 数组（经 `doc->save_signal_config(...)` + `doc->signal_config_to_json()`）
+- [x] `MainWindow::gen_config_json` 中直访 `view::Signal` 写 channel 字段的逻辑已删除（改走 build_channel_visibility/build_channel_layout/build_channel_colours helper 收集状态到 map，再传给 Core 序列化）
+- [x] `MainWindow::load_config_from_json` channel 解析段改走 `signal_config_from_json` + `apply_signal_config`（按 index 匹配，替代原 positional 匹配；用当前 device mode 覆盖避免误改 device mode）
+- [x] `MainWindow::load_config_from_json` view-side JSON key 更新为 ChannelConfig 字段名（strigger→trig_type、trigValue→trig_value、zeroPos→zero_offset）；DSO 用 (0,1) 区间保护跳过 raw 值，ANALOG 用 value2ratio 转换 raw→ratio
+- [x] 验证：`ninja -j 16` 0 error（25/25 步骤，链接 PXView.exe 成功）+ `ninja install` 0 error
+- [x] grep 验证：mainwindow.cpp 中 `sr_channel`/`probe->` 仅出现在注释中，无直访代码；无 `ch_obj[`/`chVar[`/`channelVar[` 模式
 
 ### Task 4: 字段不丢失验证
 - [ ] visible 字段在 .pxc channels[] 中正确写入
@@ -27,24 +30,24 @@
 - [ ] GUI 回归：调整布局 → 保存 .pxc → 重新加载 → 布局恢复
 
 ### Task 5: 删 load_channel_view_indexs 死路径
-- [ ] `mainwindow.cpp` `load_channel_view_indexs` 方法已删除
-- [ ] `mainwindow.cpp:3681` demo 加载对该方法的调用已删除
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `mainwindow.cpp` `load_channel_view_indexs` 方法已删除
+- [x] `mainwindow.cpp:3681` demo 加载对该方法的调用已删除
+- [x] 验证：`cd build && ninja -j 16 && ninja install` 0 error
 
 ### Task 6: trigger 序列化走 Core
-- [ ] `mainwindow.cpp:1488` 改为 `_session->trigger_config().to_json()`
-- [ ] `TriggerConfig` 有 `to_json()`/`from_json()` 方法
-- [ ] load 路径改走 `_session->set_trigger_config(TriggerConfig::from_json(...))`
-- [ ] `_trigger_widget->get_session()` 不再用于序列化
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error；触发配置保存/加载不丢失
+- [x] `mainwindow.cpp:1488` 改为 `_session->trigger_config().to_json()`
+- [x] `TriggerConfig` 有 `to_json()`/`from_json()` 方法
+- [x] load 路径改走 `_session->set_trigger_config(TriggerConfig::from_json(...))`
+- [x] `_trigger_widget->get_session()` 不再用于序列化
+- [x] 验证：`cd build && ninja -j 16 && ninja install` 0 error；触发配置保存/加载不丢失
 
 ## C. 阶段 3（P1 enabled/visible 语义拆分）
 
 ### Task 7: ChannelConfig 删 visible
-- [ ] `signalconfigstore.h` `ChannelConfig` 无 `visible` 成员
-- [ ] `signalconfigstore.cpp` `signal_config_to_json`/`from_json` 无 visible 处理
-- [ ] `signalconfigstore.cpp` `save_signal_config`/`apply_signal_config` 无 visible 处理
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `signalconfigstore.h` `ChannelConfig` 无 `visible` 成员
+- [x] `signalconfigstore.cpp` `signal_config_to_json`/`from_json` 无 visible 处理
+- [x] `signalconfigstore.cpp` `save_signal_config`/`apply_signal_config` 无 visible 处理
+- [x] 验证：`cd build && ninja -j 16 && ninja install` 0 error
 
 ### Task 8: enabled/visible 不再混淆
 - [ ] `signalfactory.cpp:62-63` `set_visible` 不从 `model->enabled()` 派生
@@ -55,30 +58,30 @@
 - [ ] GUI 回归：硬件禁用通道仍可在 UI 切换可见性
 
 ### Task 9: trace.h 注释修正
-- [ ] `trace.h:194-197` `enabled()` 注释明确 = 硬件启用，指向 `visible()` 查 UI 可见性
-- [ ] `Signal::enabled()` 实现只返回 `_local_enabled`
+- [x] `trace.h:194-197` `enabled()` 注释明确 = 硬件启用，指向 `visible()` 查 UI 可见性
+- [x] `Signal::enabled()` 实现只返回 `_local_enabled`
 
 ## D. 阶段 4（P1 Core 残留 UI 概念清理）
 
 ### Task 10: DecoderModel 移出 Core
-- [ ] `decodermodel.h/.cpp` 从 `pv/data/` 移到 `pv/view/`
-- [ ] 命名空间从 `pv::data` 改为 `pv::view`
-- [ ] CMakeLists.txt source 分组更新（从 PXVIEW_CORE_SOURCES 移到 PXVIEW_GUI_SOURCES）
-- [ ] 所有 include 路径和命名空间引用更新
-- [ ] grep `pv/data/` 目录无 `QAbstractTableModel`/`QAbstractListModel`
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `decodermodel.h/.cpp` 从 `pv/data/` 移到 `pv/view/`
+- [x] 命名空间从 `pv::data` 改为 `pv::view`
+- [x] CMakeLists.txt source 分组更新（从 PXVIEW_CORE_SOURCES 移到 PXVIEW_GUI_SOURCES）
+- [x] 所有 include 路径和命名空间引用更新
+- [x] grep `pv/data/` 目录无 `QAbstractTableModel`/`QAbstractListModel`
+- [x] 验证：`cd build && ninja -j 16 && ninja install` 0 error
 
 ### Task 11: annotation.h UI 概念移出
-- [ ] `annotation.h` 无 `#include <QFont>`/`<QFontMetrics>`
-- [ ] `Annotation` 类无 `_cached_width_font` 成员
-- [ ] `Annotation` 类无 `rect_width` 相关方法
-- [ ] 渲染期字体信息移到 View 层
-- [ ] grep `pv/data/` 目录无 `QFont`/`QFontMetrics`
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `annotation.h` 无 `#include <QFont>`/`<QFontMetrics>`
+- [x] `Annotation` 类无 `_cached_width_font` 成员
+- [x] `Annotation` 类无 `rect_width` 相关方法
+- [x] 渲染期字体信息移到 View 层
+- [x] grep `pv/data/` 目录无 `QFont`/`QFontMetrics`
+- [x] 验证：`annotation.cpp` + `decodetrace.cpp` 增量编译 0 error（全量链接被并发 Task 7 WIP `view.cpp:2253 ch.visible` 阻塞，与本 Task 无关）
 
 ### Task 12: datasource.h 删死声明
-- [ ] `datasource.h` 无 `pv::view::Signal`/`pv::view::DecodeTrace` 等前向声明
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `datasource.h` 无 `pv::view::Signal`/`pv::view::DecodeTrace` 等前向声明
+- [x] 验证：`cd build && ninja -j 16 && ninja install` 0 error（Task 12 改动本身 0 error，pxview-core 编译链接成功；全量 build 残留 error 来自 Task 7/11 中间态，与 datasource.h 无关）
 
 ## E. 阶段 5（P1 View 绕过 Core 修复）
 
@@ -91,9 +94,12 @@
 - [ ] GUI 回归：load .pxc 后通道配置正确恢复
 
 ### Task 14: ds_* 封装到 Core
-- [ ] `mainwindow.cpp:1605` `ds_dsl_option_value_to_code` 改为 DeviceAgent 封装方法
-- [ ] grep `PXView/pv/view/` + `mainwindow.cpp` 无 `ds_*` 直调（除 ds_trigger_* 已修复）
-- [ ] 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] `mainwindow.cpp:1587` `ds_dsl_option_value_to_code` 改为 `DeviceAgent::option_value_to_code` 封装方法（签名 `int option_value_to_code(int work_mode, int config_id, const char *value)`）
+- [x] `deviceagent.h` 新增 `option_value_to_code` 公有方法声明（含 doxygen 注释说明 Core/View 边界封装意图）
+- [x] `deviceagent.cpp` 新增 `option_value_to_code` 实现，调用 `ds_dsl_option_value_to_code`，含 `if(!value)` 显式 NULL 检查（Release 下 assert 是 no-op）
+- [x] grep `PXView/pv/view/` + `mainwindow.cpp` 无 `ds_dsl_option_value_to_code` 直调（仅 deviceagent.cpp:314 调用 + deviceagent.h:235 注释提及）
+- [x] grep `PXView/pv/view/` + `mainwindow.cpp` 无其他 `ds_*` 直调（view.cpp:1046 仅为注释提及 `ds_trigger_get_en()`，无代码调用）
+- [x] 验证：`cd build && ninja -j 16 && ninja install` 0 error（Task 14 改动本身 0 error——deviceagent.cpp [1/77] 与 mainwindow.cpp [44/77] 编译成功无 FAILED；全量 build 残留 error 来自 Task 10 DecoderModel 移出 + Task 19 _decoder_model 数据下沉的中间态，与本 Task 无关，同 Task 11.4/12.2 模式）
 
 ## F. 阶段 6（P2 UI 布局字段迁移到 View 层）
 

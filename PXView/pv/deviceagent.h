@@ -225,9 +225,23 @@ private:
 
     //---------------device config-----------/
 public:
-  int get_work_mode(); 
+  int get_work_mode();
 
   const struct sr_config_info* get_config_info(int key);
+
+  /**
+   * @brief Converts a session-file option value text to its numeric code.
+   *
+   * Encapsulates the libsigrok C API `ds_dsl_option_value_to_code` so the
+   * View layer does not call libsigrok directly (Core/View boundary).
+   *
+   * @param work_mode The device work mode (e.g. conf_dev_mode from .pxc).
+   * @param config_id The sr_conf key (info->key).
+   * @param value     The option value text from the session file.
+   * @return The numeric code on success, or -1 on failure (matches the
+   *  underlying C API contract).
+   */
+  int option_value_to_code(int work_mode, int config_id, const char *value);
 
   bool get_device_status(struct sr_status &status, gboolean prg);
 

@@ -70,7 +70,7 @@ The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_S
 | File | Purpose |
 |------|---------|
 | `PXView/main.cpp` | Entry point, `--headless` branch |
-| `PXView/pv/sigsession.h` | Coordination facade (Core, 284 lines) — holds 6 manager `unique_ptr`s, public methods forward to managers |
+| `PXView/pv/sigsession.h` | Coordination facade (Core, 299 lines) — holds 6 manager `unique_ptr`s, public methods forward to managers |
 | `PXView/pv/core/eventbus.h` | Central dispatch hub — ALL `broadcast_msg`/`trigger_message` are ASYNC (`Qt::QueuedConnection` on `qApp`); `broadcast<T>()` is SYNC (typed events) |
 | `PXView/pv/core/capturemanager.h` | Capture lifecycle (start/stop/exec/exit), 6 DsTimers, collect mode, repeat/refresh logic |
 | `PXView/pv/core/decodetaskmanager.h` | Decode thread pool, `add_decode_task`/`start_all_decode_tasks`/`rst_decoder` |

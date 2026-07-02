@@ -21,12 +21,12 @@
  */
 
 #include "protocoldock.h"
-#include "../data/decodermodel.h"
 #include "../data/decoderstack.h"
 #include "../dialogs/protocolexp.h"
 #include "../dialogs/protocollist.h"
 #include "../sigsession.h"
 #include "../view/decodetrace.h"
+#include "../view/decodermodel.h"
 #include "../view/view.h"
 #include "../widgets/hoversplitter.h"
 #include "../widgets/smoothtablehelper.h"
@@ -78,6 +78,9 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   _cur_search_index = -1;
   _search_edited = false;
   _pro_add_button = NULL;
+  // View-owned DecoderModel (Task 10): was previously a Core singleton
+  // owned by SigSession. Qt parent ownership (this) handles destruction.
+  _decoder_model = new pv::view::DecoderModel(this);
 
   //-----------------------------get protocol list
   GSList *l = const_cast<GSList *>(srd_decoder_list());
@@ -200,7 +203,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   _ann_search_edit->setFixedHeight(_pre_button->sizeHint().height());
 
   _table_view = new QTableView(bot_panel);
-  _table_view->setModel(_session->get_decoder_model());
+  _table_view->setModel(_decoder_model);
   _table_view->setObjectName("dock_protocol_table_view");
   _table_view->setShowGrid(false);
   _table_view->horizontalHeader()->setStretchLastSection(true);
@@ -318,8 +321,8 @@ void ProtocolDock::bind_context(TabContext *ctx) {
   _context = ctx;
   _session = ctx->session();
   _view = ctx->view();
-  _table_view->setModel(_session->get_decoder_model());
-  _model_proxy.setSourceModel(_session->get_decoder_model());
+  _table_view->setModel(_decoder_model);
+  _model_proxy.setSourceModel(_decoder_model);
   rebuild_protocol_layers();
   update_view_status();
 
@@ -688,10 +691,10 @@ void ProtocolDock::on_decoder_progress() {
 
 void ProtocolDock::set_model() {
   pv::dialogs::ProtocolList *protocollist_dlg =
-      new pv::dialogs::ProtocolList(this, _session);
+      new pv::dialogs::ProtocolList(this, _session, _decoder_model);
   protocollist_dlg->exec();
-  resize_table_view(_session->get_decoder_model());
-  _model_proxy.setSourceModel(_session->get_decoder_model());
+  resize_table_view(_decoder_model);
+  _model_proxy.setSourceModel(_decoder_model);
   search_done();
 
   // clear mark_index of all DecoderStacks
@@ -703,7 +706,7 @@ void ProtocolDock::set_model() {
 }
 
 void ProtocolDock::update_model() {
-  pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+  pv::view::DecoderModel *decoder_model = _decoder_model;
   const auto &decode_sigs = _session->get_decoder_stacks();
 
   if (decode_sigs.size() == 0)
@@ -727,7 +730,7 @@ void ProtocolDock::update_model() {
   resize_table_view(decoder_model);
 }
 
-void ProtocolDock::resize_table_view(data::DecoderModel *decoder_model) {
+void ProtocolDock::resize_table_view(view::DecoderModel *decoder_model) {
   if (decoder_model->getDecoderStack()) {
     int column_count = decoder_model->columnCount(QModelIndex()) - 1;
     int row_count = decoder_model->rowCount(QModelIndex());
@@ -769,7 +772,7 @@ void ProtocolDock::resize_table_view(data::DecoderModel *decoder_model) {
 }
 
 void ProtocolDock::item_clicked(const QModelIndex &index) {
-  pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+  pv::view::DecoderModel *decoder_model = _decoder_model;
 
   auto decoder_stack = decoder_model->getDecoderStack();
 
@@ -834,7 +837,7 @@ void ProtocolDock::column_resize(int index, int old_size, int new_size) {
   (void)index;
   (void)old_size;
   (void)new_size;
-  pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+  pv::view::DecoderModel *decoder_model = _decoder_model;
   if (decoder_model->getDecoderStack()) {
     int top_row = _table_view->rowAt(0);
     int bom_row = _table_view->rowAt(_table_view->height());
@@ -847,13 +850,13 @@ void ProtocolDock::column_resize(int index, int old_size, int new_size) {
 
 void ProtocolDock::export_table_view() {
   pv::dialogs::ProtocolExp *protocolexp_dlg =
-      new pv::dialogs::ProtocolExp(this, _session);
+      new pv::dialogs::ProtocolExp(this, _session, _decoder_model);
   protocolexp_dlg->exec();
 }
 
 void ProtocolDock::nav_table_view() {
   uint64_t row_index = 0;
-  pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+  pv::view::DecoderModel *decoder_model = _decoder_model;
 
   auto decoder_stack = decoder_model->getDecoderStack();
   if (decoder_stack) {
@@ -910,7 +913,7 @@ void ProtocolDock::search_pre() {
   int i = 0;
   uint64_t rowCount = _model_proxy.rowCount();
   QModelIndex matchingIndex;
-  pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+  pv::view::DecoderModel *decoder_model = _decoder_model;
 
   auto decoder_stack = decoder_model->getDecoderStack();
   do {
@@ -975,7 +978,7 @@ void ProtocolDock::search_nxt() {
   int i = 0;
   uint64_t rowCount = _model_proxy.rowCount();
   QModelIndex matchingIndex;
-  pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+  pv::view::DecoderModel *decoder_model = _decoder_model;
   auto decoder_stack = decoder_model->getDecoderStack();
 
   if (decoder_stack == NULL) {
@@ -1052,7 +1055,7 @@ void ProtocolDock::search_update() {
   if (!_search_edited)
     return;
 
-  pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+  pv::view::DecoderModel *decoder_model = _decoder_model;
 
   auto decoder_stack = decoder_model->getDecoderStack();
   if (!decoder_stack)

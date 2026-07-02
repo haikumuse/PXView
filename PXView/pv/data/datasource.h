@@ -30,20 +30,11 @@
 
 namespace pv {
 
-namespace view {
-class Signal;
-class DecodeTrace;
-class SpectrumTrace;
-class LissajousTrace;
-class MathTrace;
-}
-
 namespace data {
 
 class LogicSnapshot;
 class AnalogSnapshot;
 class DsoSnapshot;
-class DecoderModel;
 class Snapshot;
 class SignalModel;
 class LissajousModel;
@@ -74,7 +65,6 @@ public:
     virtual data::AnalogSnapshot* get_analog_snapshot() = 0;
     virtual data::DsoSnapshot* get_dso_snapshot() = 0;
     virtual data::Snapshot* get_snapshot(int type) = 0;
-    virtual data::DecoderModel* get_decoder_model() = 0;
     virtual uint64_t get_trigger_pos() = 0;
 };
 

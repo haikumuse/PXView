@@ -40,6 +40,8 @@ class QHBoxLayout;
 class QKeyEvent;
 class QCloseEvent;
 class QShowEvent;
+class QSpinBox;
+class QCheckBox;
 
 namespace pv {
 
@@ -75,8 +77,9 @@ public:
     LogicSignal* target_signal() const { return _target_sig; }
 
     // 重新计算直方图与默认值,并同步直方图控件/统计显示。
-    // 底层 LogicSnapshot 数据变化(如毛刺滤波完成/清除)后调用,
-    // 让 popup 反映滤波后的脉冲分布。保留用户当前阈值滑块位置。
+    // 注意:不重新扫描 LogicSnapshot — 滤波后 snapshot 中短脉冲已被滤除,
+    // 重新扫描会得到错误的分布。始终使用 open_for_signal 时缓存的原始脉冲数据。
+    // 仅更新 UI 控件状态(阈值线、统计数字)。
     void refresh();
 
 public slots:
@@ -104,6 +107,8 @@ private slots:
     void on_apply_all_clicked();
     void on_cancel_clicked();
     void on_preset_changed(int index);
+    void on_max_changed(int val);
+    void on_auto_apply_toggled(bool checked);
 
 private:
     void build_ui();
@@ -111,6 +116,7 @@ private:
     void update_histogram_coloring();
     void update_stats();
     void refresh_from_signal();  // 重新计算直方图与默认值
+    void rebuild_histogram();    // 用当前 _max_spinbox 值作为 cap 重建直方图+滑块范围
 
     uint32_t current_threshold() const;
     GlitchFilterMode current_mode() const;
@@ -132,6 +138,8 @@ private:
     QComboBox* _mode_combo = nullptr;
     QSlider* _threshold_slider = nullptr;
     QLabel* _threshold_value_lbl = nullptr;
+    QSpinBox* _max_spinbox = nullptr;  // 用户自定义统计上限(默认 30)
+    QCheckBox* _auto_apply_chk = nullptr;  // 采集后自动重新应用
     QComboBox* _preset_combo = nullptr;
     QPushButton* _apply_one_btn = nullptr;
     QPushButton* _apply_all_btn = nullptr;

@@ -42,7 +42,6 @@ namespace data {
 class DecoderStack;
 class SpectrumStack;
 class MathStack;
-class DecoderModel;
 
 class SessionSnapshot : public DataSource
 {
@@ -64,7 +63,6 @@ public:
     data::AnalogSnapshot* get_analog_snapshot() override;
     data::DsoSnapshot* get_dso_snapshot() override;
     data::Snapshot* get_snapshot(int type) override;
-    data::DecoderModel* get_decoder_model() override;
     uint64_t get_trigger_pos() override;
 
     void set_samplerate(uint64_t rate);
@@ -101,7 +99,6 @@ private:
     std::vector<std::shared_ptr<SpectrumStack>> _spectrum_stacks;
     std::shared_ptr<MathStack> _math_stack = nullptr;
     LissajousModel *_lissajous_model = nullptr;
-    DecoderModel *_decoder_model;
 
     QDateTime _timestamp;
     QString _file_path;

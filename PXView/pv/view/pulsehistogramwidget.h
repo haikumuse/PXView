@@ -63,6 +63,7 @@ private:
     uint32_t _current_threshold = 0;
     uint32_t _filter_threshold = 0;
     bool _has_data = false;
+    int _num_bars;  // 自适应柱子数,由 setData 根据 hist.max_width 设置
 };
 
 } // namespace view

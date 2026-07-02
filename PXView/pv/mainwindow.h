@@ -199,7 +199,6 @@ private:
     bool gen_config_json(QJsonObject &sessionVar);
     void save_config();
     bool save_config_to_file(QString file);
-    void load_channel_view_indexs(QJsonDocument &doc); 
     QJsonDocument get_config_json_from_data_file(QString file, bool &bSucesss);
     QJsonArray get_decoder_json_from_data_file(QString file, bool &bSucesss);
     void check_config_file_version(); 
