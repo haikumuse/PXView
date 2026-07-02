@@ -37,6 +37,7 @@ namespace view {
 
 class Trace;
 class View;
+class LogicSignal;
 
 //the left panel of main graph
 //created by View
@@ -65,6 +66,7 @@ private:
 	void leaveEvent(QEvent *event);
     void wheelEvent(QWheelEvent *event);
     void contextMenuEvent(QContextMenuEvent *event);
+    void keyPressEvent(QKeyEvent *event) override;
 
     void changeName(QMouseEvent *event);
     void changeColor(QMouseEvent *event);
@@ -90,6 +92,10 @@ private slots:
     void on_reset_all_row_height();
     void on_set_channel_height();
     void on_batch_set_height();
+    void on_filter_glitches_triggered();
+    void on_clear_channel_filter_triggered();
+    void on_clear_all_filter_triggered();
+    void on_toggle_invert_triggered();
 
 signals:
     void traces_moved();
@@ -97,6 +103,9 @@ signals:
     void vDial_changed(quint16);
     void acdc_changed(quint16);
     void ch_changed(quint16);
+    void show_glitch_filter_popup(pv::view::LogicSignal* sig);
+    void clear_glitch_filter_requested(bool all_channels);
+    void toggle_signal_invert_requested(pv::view::LogicSignal* sig);
 
 private:
 	View &_view;

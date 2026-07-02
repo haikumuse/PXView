@@ -48,7 +48,11 @@ public:
     // ---- Async broadcast (queues to qApp event loop) ----
     // These are the PUBLIC API. They always queue the dispatch.
     void broadcast_msg(int msg, int param = 0);
-    void trigger_message(int msg);
+    // param is forwarded to IMessageListener::OnMessage (e.g. glitch-filter
+    // progress percent). ITriggerCallback::trigger_message(int) is dispatched
+    // without param — extend that interface separately if a trigger-callback
+    // consumer ever needs the payload.
+    void trigger_message(int msg, int param = 0);
 
     // ---- Sync typed event broadcast ----
     // Called from within async-dispatched OnMessage. Stays sync because
@@ -81,7 +85,7 @@ public:
 private:
     // ---- Internal sync dispatch (called from queued lambda) ----
     void broadcast_msg_sync(int msg, int param);
-    void trigger_message_sync(int msg);
+    void trigger_message_sync(int msg, int param);
 
     std::vector<ISessionCallbackBase *> _callbacks;
     std::vector<IMessageListener *> _msg_listeners;

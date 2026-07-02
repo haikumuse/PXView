@@ -27,6 +27,7 @@
 #include <QColorDialog>
 #include <QFont>
 #include <QInputDialog>
+#include <QKeyEvent>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
@@ -844,45 +845,159 @@ QMenu *Header::create_height_submenu(bool is_batch) {
   return menu;
 }
 
-void Header::contextMenuEvent(QContextMenuEvent *event) {
-  (void)event;
+void Header::keyPressEvent(QKeyEvent *event) {
+  // F/I shortcuts (Task 4.6): only when no popup is currently open, and
+  // only when a LogicSignal is selected as the context trace. The Glitch
+  // Filter popup itself grabs keyboard focus while open, so these shortcuts
+  // are naturally disabled while it is visible; the activePopupWidget check
+  // is an extra guard against any other modal popup (QMenu, QInputDialog,
+  // QColorDialog, etc.) that may be open.
+  if (QApplication::activePopupWidget() == nullptr && _context_trace) {
+    auto *sig = dynamic_cast<LogicSignal *>(_context_trace);
+    if (sig) {
+      if (event->key() == Qt::Key_F && sig->data()) {
+        emit show_glitch_filter_popup(sig);
+        event->accept();
+        return;
+      }
+      if (event->key() == Qt::Key_I) {
+        emit toggle_signal_invert_requested(sig);
+        event->accept();
+        return;
+      }
+    }
+  }
+  QWidget::keyPressEvent(event);
+}
 
+void Header::contextMenuEvent(QContextMenuEvent *event) {
   if (_view.get_work_mode() != LOGIC)
     return;
 
-  int action;
-  const auto t = get_mTrace(action, _mouse_point);
+  const QPoint pt = event->pos() + QPoint(0, _view.get_vOffset());
+  int action = 0;
+  const auto t = get_mTrace(action, pt);
 
-  if (!t || action != Trace::LABEL)
+  // 两段区域分别弹不同菜单:
+  //  - LABEL (右侧边缘小方块):行高菜单(还原原始行为)
+  //  - NAME/COLOR 或行内其他位置 (D0 名称区域):滤波菜单
+  // pt_in_rect 的 NAME 矩形较小可能漏判,action==0 时用 y 坐标兜底
+  // 判定为名称区域(滤波菜单)。
+  Trace *target = t;
+  if (!target || action == 0) {
+    const int clickY = event->pos().y() + _view.get_vOffset();
+    std::vector<Trace *> traces;
+    _view.get_traces(ALL_VIEW, traces);
+    for (auto tr : traces) {
+      const int y = tr->get_v_offset();
+      const int halfH = tr->get_totalHeight() / 2 + View::SignalMargin;
+      if (clickY >= y - halfH && clickY <= y + halfH) {
+        target = tr;
+        action = Trace::NAME;  // 兜底归为名称区域
+        break;
+      }
+    }
+    if (!target)
+      return;
+  }
+
+  _context_trace = target;
+
+  // ===== Zone B: 右侧 LABEL 区域 → 行高菜单(原始行为) =====
+  if (action == Trace::LABEL) {
+    QMenu menu(this);
+    menu.addAction(
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RESET_ROW_HEIGHT), "Reset Row Height"),
+        this, &Header::on_reset_row_height);
+    menu.addAction(
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RESET_ALL_ROW_HEIGHT),
+            "Reset All Row Heights"),
+        this, &Header::on_reset_all_row_height);
+    menu.addSeparator();
+
+    QMenu *channelMenu = create_height_submenu(false);
+    channelMenu->setTitle(
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SET_CHANNEL_HEIGHT),
+            "Set Channel Height"));
+    menu.addMenu(channelMenu);
+
+    QMenu *batchMenu = create_height_submenu(true);
+    batchMenu->setTitle(
+        L_S(STR_PAGE_DLG, S_ID(IDS_DLG_BATCH_SET_HEIGHT), "Batch Set"));
+    menu.addMenu(batchMenu);
+
+    menu.exec(event->globalPos());
+    return;
+  }
+
+  // ===== Zone A: D0 名称区域 → 滤波菜单 =====
+  auto *logic_sig = dynamic_cast<LogicSignal *>(target);
+  if (!logic_sig || !logic_sig->data())
     return;
 
-  _context_trace = t;
+  auto &session = _view.session();
+  const bool any_filtered = session.is_glitch_filter_active();
 
   QMenu menu(this);
-
   menu.addAction(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RESET_ROW_HEIGHT), "Reset Row Height"),
-      this, &Header::on_reset_row_height);
-
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_FILTER_GLITCHES",
+          "🔍 Filter Glitches..."),
+      this, &Header::on_filter_glitches_triggered);
   menu.addAction(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_RESET_ALL_ROW_HEIGHT),
-          "Reset All Row Heights"),
-      this, &Header::on_reset_all_row_height);
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_TOGGLE_SIGNAL_INVERT",
+          "↔ Invert Signal"),
+      this, &Header::on_toggle_invert_triggered);
 
-  menu.addSeparator();
+  auto *clear_act = menu.addAction(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_CLEAR_CHANNEL_FILTER",
+          "✕ Clear Channel Filter"),
+      this, &Header::on_clear_channel_filter_triggered);
+  const bool channel_filtered = [&logic_sig]() {
+    if (!logic_sig || !logic_sig->data())
+      return false;
+    const auto model = logic_sig->model();
+    if (!model)
+      return false;
+    const int sig_index = model->index();
+    return !logic_sig->data()->get_filtered_ranges(sig_index).empty();
+  }();
+  clear_act->setEnabled(channel_filtered);
 
-  QMenu *channelMenu = create_height_submenu(false);
-  channelMenu->setTitle(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SET_CHANNEL_HEIGHT),
-          "Set Channel Height"));
-  menu.addMenu(channelMenu);
-
-  QMenu *batchMenu = create_height_submenu(true);
-  batchMenu->setTitle(
-      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_BATCH_SET_HEIGHT), "Batch Set"));
-  menu.addMenu(batchMenu);
+  auto *clear_all_act = menu.addAction(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_CLEAR_ALL_FILTER",
+          "✕ Clear All Filters"),
+      this, &Header::on_clear_all_filter_triggered);
+  clear_all_act->setEnabled(any_filtered);
 
   menu.exec(event->globalPos());
+}
+
+void Header::on_filter_glitches_triggered() {
+  if (!_context_trace)
+    return;
+  auto *sig = dynamic_cast<LogicSignal *>(_context_trace);
+  if (!sig)
+    return;
+  emit show_glitch_filter_popup(sig);
+}
+
+void Header::on_clear_channel_filter_triggered() {
+  if (!_context_trace)
+    return;
+  emit clear_glitch_filter_requested(false);
+}
+
+void Header::on_clear_all_filter_triggered() {
+  emit clear_glitch_filter_requested(true);
+}
+
+void Header::on_toggle_invert_triggered() {
+  if (!_context_trace)
+    return;
+  auto *sig = dynamic_cast<LogicSignal *>(_context_trace);
+  if (!sig)
+    return;
+  emit toggle_signal_invert_requested(sig);
 }
 
 void Header::on_reset_row_height() {

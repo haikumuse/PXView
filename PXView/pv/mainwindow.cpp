@@ -2101,6 +2101,19 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event) {
 
     int modifier = ke->modifiers();
 
+    // Ctrl+Z — undo the most recent glitch filter application (Task 9).
+    // Handled here before the generic shortcut resolver because the
+    // configurable shortcut system does not define an Undo action; the
+    // generic path below would otherwise consume Ctrl+Z (returns true for
+    // unrecognized Ctrl combos) and swallow the keystroke.
+    if ((modifier & Qt::ControlModifier) && ke->key() == Qt::Key_Z) {
+      pv::view::View *view = current_view();
+      if (view && view->can_undo_filter()) {
+        view->undo_filter();
+        return true;
+      }
+    }
+
     int action = resolveShortcutAction(ke->key(), (int)modifier);
     if (action == 0) {
       if (modifier & Qt::ControlModifier || modifier & Qt::AltModifier) {
@@ -3443,7 +3456,6 @@ void MainWindow::on_data_updated(int msg, int param) {
 
 // Filter / invert: glitch filter + signal invert start/progress/completed/clear.
 void MainWindow::on_filter_completed(int msg, int param) {
-  (void)param;
   switch (msg) {
   case DSV_MSG_GLITCH_FILTER_COMPLETED:
   case DSV_MSG_GLITCH_FILTER_CLEARED: {
@@ -3456,6 +3468,15 @@ void MainWindow::on_filter_completed(int msg, int param) {
     }
     // Restart decoders after data change
     _session->restart_decoders();
+
+    // 若 GlitchFilterPopup 已打开,刷新其直方图与默认值(底层
+    // LogicSnapshot 数据已变化,直方图应反映滤波后的脉冲分布)。
+    if (auto *v = current_view()) {
+      if (msg == DSV_MSG_GLITCH_FILTER_COMPLETED)
+        v->on_glitch_filter_completed();
+      else
+        v->on_glitch_filter_cleared();
+    }
     break;
   }
   case DSV_MSG_SIGNAL_INVERT_COMPLETED:
@@ -3478,8 +3499,16 @@ void MainWindow::on_filter_completed(int msg, int param) {
     break;
   }
   case DSV_MSG_GLITCH_FILTER_PROGRESS: {
-    // 进度信息未携带百分比载荷，仅刷新状态栏提示
-    statusBar()->showMessage(tr("毛刺滤波进行中..."), 2000);
+    // FilterProcessor now forwards the 0-100 progress percent through
+    // EventBus::trigger_message(msg, param) → IMessageListener::OnMessage.
+    // SigSession::OnMessage also re-broadcasts it as the typed
+    // GlitchFilterProgress{param} event for IEventListener consumers.
+    if (param < 0)
+      param = 0;
+    if (param > 100)
+      param = 100;
+    statusBar()->showMessage(
+        tr("毛刺滤波进行中... %1%").arg(param), 2000);
     break;
   }
   case DSV_MSG_SIGNAL_INVERT_STARTED: {

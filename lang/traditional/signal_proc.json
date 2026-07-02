@@ -58,5 +58,21 @@
     {
         "id": "IDS_FILTER_ACTIVE",
         "text": "已濾波"
+    },
+    {
+        "id": "IDS_FILTER_GLITCHES",
+        "text": "🔍 濾除毛刺..."
+    },
+    {
+        "id": "IDS_TOGGLE_SIGNAL_INVERT",
+        "text": "↔ 信號取反"
+    },
+    {
+        "id": "IDS_CLEAR_CHANNEL_FILTER",
+        "text": "✕ 清除此通道濾波"
+    },
+    {
+        "id": "IDS_CLEAR_ALL_FILTER",
+        "text": "✕ 清除所有通道濾波"
     }
 ]

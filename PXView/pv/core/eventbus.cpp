@@ -53,11 +53,11 @@ void EventBus::broadcast_msg(int msg, int param) {
     }, Qt::QueuedConnection);
 }
 
-void EventBus::trigger_message(int msg) {
+void EventBus::trigger_message(int msg, int param) {
     // Queue the full trigger_message (ITriggerCallback dispatch + broadcast_msg)
     // to the next event-loop iteration.
-    QMetaObject::invokeMethod(qApp, [this, msg]() {
-        trigger_message_sync(msg);
+    QMetaObject::invokeMethod(qApp, [this, msg, param]() {
+        trigger_message_sync(msg, param);
     }, Qt::QueuedConnection);
 }
 
@@ -68,12 +68,17 @@ void EventBus::broadcast_msg_sync(int msg, int param) {
     }
 }
 
-void EventBus::trigger_message_sync(int msg) {
-    // ITriggerCallback dispatch (MainWindow via EventObject, SessionService)
+void EventBus::trigger_message_sync(int msg, int param) {
+    // ITriggerCallback dispatch (MainWindow via EventObject, SessionService).
+    // ITriggerCallback::trigger_message(int) does not take a param — extend
+    // that interface if a trigger-callback consumer ever needs the payload.
     dispatch_to<ITriggerCallback>(
         [msg](ITriggerCallback *cb) { cb->trigger_message(msg); });
-    // IMessageListener dispatch (SigSession::OnMessage, MainWindow, SessionService)
-    broadcast_msg_sync(msg, 0);
+    // IMessageListener dispatch (SigSession::OnMessage, MainWindow,
+    // SessionService) — param is forwarded so typed-event translators (e.g.
+    // SigSession::OnMessage DSV_MSG_GLITCH_FILTER_PROGRESS branch) can populate
+    // event structs like GlitchFilterProgress{param}.
+    broadcast_msg_sync(msg, param);
 }
 
 } // namespace core

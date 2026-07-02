@@ -232,6 +232,13 @@ public:
   void set_glitch_filter(const std::vector<uint32_t> &thresholds, const std::vector<GlitchFilterMode> &filter_modes = {});
   void clear_glitch_filter();
   bool is_glitch_filter_active();
+  // Per-channel glitch filter state (Task 9 / I4): public read accessors for
+  // the current thresholds/modes so the View layer can snapshot prior state
+  // before applying a new filter, then restore it via set_glitch_filter() on
+  // undo_filter(). Returns references to the view-data vectors; callers must
+  // copy if they need a stable snapshot. Safe to call from the GUI thread.
+  const std::vector<uint32_t>& glitch_filter_thresholds() const { return _view_data->_glitch_filter_thresholds; }
+  const std::vector<GlitchFilterMode>& glitch_filter_modes() const { return _view_data->_glitch_filter_modes; }
   void set_signal_invert(const std::vector<bool> &channels);
   void clear_signal_invert();
   bool is_signal_invert_active();

@@ -89,6 +89,11 @@ void FilterProcessor::glitch_filter_task(
         *_session->_view_data->_logic_backup);
   }
 
+  // 重新滤波前清空持久化区间（apply_glitch_filter 会重新累积，避免残留）
+  if (_session->_view_data->get_logic()) {
+    _session->_view_data->get_logic()->clear_filtered_ranges();
+  }
+
   // If signal invert is active, apply invert before glitch filter
   if (_session->_view_data->_signal_invert_active) {
     int ch_idx = 0;
@@ -108,8 +113,7 @@ void FilterProcessor::glitch_filter_task(
   _session->_view_data->get_logic()->apply_glitch_filter_all(
       thresholds,
       [this](int progress) {
-        (void)progress;
-        _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS);
+        _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS, progress);
       },
       filter_modes);
 
@@ -134,6 +138,11 @@ void FilterProcessor::clear_glitch_filter() {
         *_session->_view_data->_logic_backup);
     delete _session->_view_data->_logic_backup;
     _session->_view_data->_logic_backup = nullptr;
+  }
+
+  // 清除滤波后清空持久化区间，恢复原始数据无 overlay
+  if (_session->_view_data->get_logic()) {
+    _session->_view_data->get_logic()->clear_filtered_ranges();
   }
 
   _session->_view_data->_glitch_filter_active = false;

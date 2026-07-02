@@ -27,10 +27,12 @@
 #include <memory>
 #include <string.h>
 
+#include <QCursor>
 #include <QEvent>
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QScreen>
 #include <QScrollBar>
 #include <QtGlobal>
 #include <algorithm>
@@ -39,15 +41,19 @@
 #include "../data/decode/decoder.h"
 #include "../data/decode/decoderstatus.h"
 #include "../data/decoderstack.h"
+#include "../data/pulse_analyzer.h"
 #include "../data/signalmodel.h"
+#include "../ui/toast.h"
 #include "analogsignal.h"
 #include "decodetrace.h"
 #include "devmode.h"
 #include "dsosignal.h"
+#include "glitchfilterpopup.h"
 #include "header.h"
 #include "lissajoustrace.h"
 #include "logicsignal.h"
 #include "mathtrace.h"
+#include "pulsehistogramwidget.h"
 #include "ruler.h"
 #include "signal.h"
 #include "signalfactory.h"
@@ -264,8 +270,25 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
 
   connect(_header, &Header::traces_moved, this, &View::on_traces_moved);
   connect(_header, &Header::header_updated, this, &View::header_updated);
+  connect(_header, &Header::show_glitch_filter_popup, this,
+          &View::on_show_glitch_filter_popup);
+  connect(_header, &Header::clear_glitch_filter_requested, this,
+          &View::on_clear_glitch_filter_requested);
+  connect(_header, &Header::toggle_signal_invert_requested, this,
+          &View::on_toggle_invert_requested);
   connect(_devmode, &DevMode::header_collapse_changed, this,
           &View::on_header_collapse_changed);
+
+  // Glitch filter popup (View-owned). Created up-front and reused via
+  // open_for_signal() so the histogram cache persists across open/close.
+  _glitch_filter_popup = new GlitchFilterPopup(*this, this);
+  _glitch_filter_popup->hide();
+  connect(_glitch_filter_popup, &GlitchFilterPopup::preview_changed, this,
+          &View::on_glitch_preview_changed);
+  connect(_glitch_filter_popup, &GlitchFilterPopup::apply_requested, this,
+          &View::on_glitch_apply_requested);
+  connect(_glitch_filter_popup, &GlitchFilterPopup::closed, this,
+          &View::on_glitch_popup_closed);
 
   ADD_UI(this);
 }
@@ -277,6 +300,9 @@ View::~View() {
   // to prevent callbacks on partially-destroyed View
   disconnect(_header, nullptr, this, nullptr);
   disconnect(_devmode, nullptr, this, nullptr);
+  if (_glitch_filter_popup) {
+    disconnect(_glitch_filter_popup, nullptr, this, nullptr);
+  }
   _header->removeEventFilter(this);
   _ruler->removeEventFilter(this);
   _devmode->removeEventFilter(this);
@@ -286,6 +312,8 @@ View::~View() {
   for (auto sig : _own_signals)
     delete sig;
   _own_signals.clear();
+  // Drop preview-range cache keys (LogicSignal pointers now dangling).
+  _preview_ranges.clear();
 
   // Clean up View-owned wrapper traces (these wrap Core layer Stack/Model
   // objects and are owned by the View, not by the data source).
@@ -305,6 +333,14 @@ View::~View() {
   if (_own_lissajous_trace) {
     delete _own_lissajous_trace;
     _own_lissajous_trace = nullptr;
+  }
+
+  // Destroy the glitch filter popup (View-owned QWidget). Qt would also
+  // delete it as a child widget, but explicit deletion here guarantees the
+  // closed() signal cannot fire mid-destruction.
+  if (_glitch_filter_popup) {
+    delete _glitch_filter_popup;
+    _glitch_filter_popup = nullptr;
   }
 
   DESTROY_OBJECT(_trig_cursor);
@@ -2966,6 +3002,237 @@ void View::sync_derived_traces() {
   if (changed) {
     compute_signal_groups();
   }
+}
+
+// =============================================================================
+// Glitch filter popup handlers (Task 7 + 9)
+// =============================================================================
+
+void View::on_show_glitch_filter_popup(pv::view::LogicSignal *sig) {
+  if (!sig)
+    return;
+  if (!_glitch_filter_popup)
+    return;
+
+  // Anchor at the right edge of the header, vertically centered on the
+  // signal's row. sig->get_y() returns the v_offset which is the y position
+  // in the header's coordinate system.
+  int anchor_x = _header ? _header->width() + 8 : 0;
+  int anchor_y = sig->get_y() + sig->get_totalHeight() / 2;
+  QPoint anchor = _header ? _header->mapToGlobal(QPoint(anchor_x, anchor_y))
+                          : QCursor::pos();
+
+  // Keep the popup on screen (assume ~420x500 popup size).
+  QScreen *screen = QGuiApplication::screenAt(anchor);
+  if (screen) {
+    QRect geo = screen->availableGeometry();
+    if (anchor.x() + 420 > geo.right())
+      anchor.setX(geo.right() - 420);
+    if (anchor.y() + 500 > geo.bottom())
+      anchor.setY(geo.bottom() - 500);
+    if (anchor.x() < geo.left())
+      anchor.setX(geo.left());
+    if (anchor.y() < geo.top())
+      anchor.setY(geo.top());
+  }
+
+  _glitch_filter_popup->open_for_signal(sig, anchor);
+}
+
+void View::on_clear_glitch_filter_requested(bool all_channels) {
+  // Core's clear_glitch_filter() is global (clears all channels); the
+  // all_channels flag only affects the toast message. A per-channel clear
+  // would require a Core API extension.
+  session().clear_glitch_filter();
+  _preview_ranges.clear();
+  if (_time_viewport)
+    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  pv::ui::Toast::show(this,
+                      all_channels ? tr("已清除所有通道滤波")
+                                   : tr("已清除通道滤波"),
+                      pv::ui::Toast::Info);
+}
+
+void View::on_toggle_invert_requested(pv::view::LogicSignal *sig) {
+  if (!sig)
+    return;
+
+  auto &sess = session();
+
+  // SigSession exposes no per-channel invert getter, so a true per-channel
+  // toggle is not possible in this version. Toggle at the session level:
+  // if any invert is active, clear all; otherwise apply invert to the
+  // target channel only.
+  if (sess.is_signal_invert_active()) {
+    sess.clear_signal_invert();
+    pv::ui::Toast::show(this, tr("已清除信号取反"), pv::ui::Toast::Info);
+    if (_time_viewport)
+      _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    return;
+  }
+
+  // Build the channels vector indexed by enabled-logic-channel ordinal.
+  std::vector<LogicSignal *> logic_sigs;
+  for (auto s : _own_signals) {
+    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
+      logic_sigs.push_back(static_cast<LogicSignal *>(s));
+  }
+  std::vector<bool> channels(logic_sigs.size(), false);
+  auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
+  if (it == logic_sigs.end())
+    return;
+  channels[std::distance(logic_sigs.begin(), it)] = true;
+
+  sess.set_signal_invert(channels);
+  pv::ui::Toast::show(this,
+                      tr("已对通道 %1 取反").arg(sig->get_name()),
+                      pv::ui::Toast::Info);
+  if (_time_viewport)
+    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+}
+
+void View::on_glitch_preview_changed(pv::view::LogicSignal *sig,
+                                     uint32_t threshold,
+                                     GlitchFilterMode mode) {
+  if (!sig)
+    return;
+  auto *snap = sig->data();
+  if (!snap)
+    return;
+  int sig_index = sig->model() ? sig->model()->index() : 0;
+  auto pulses = pv::data::PulseAnalyzer::find_pulses(snap, sig_index);
+  _preview_ranges[sig] =
+      pv::data::PulseAnalyzer::preview_filter(pulses, threshold, mode);
+  if (_time_viewport)
+    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+}
+
+void View::on_glitch_apply_requested(pv::view::LogicSignal *sig,
+                                     uint32_t threshold,
+                                     GlitchFilterMode mode,
+                                     bool all_channels) {
+  if (!sig)
+    return;
+  auto &sess = session();
+
+  // Push the current state onto the undo stack (Task 9 / I4). Capture the
+  // prior thresholds/modes BEFORE the new apply so undo_filter() can restore
+  // the exact previous state instead of always clearing.
+  FilterSnapshot snap;
+  snap.was_active = sess.is_glitch_filter_active();
+  if (snap.was_active) {
+    snap.thresholds = sess.glitch_filter_thresholds();
+    snap.modes = sess.glitch_filter_modes();
+  }
+  _filter_undo_stack.push_back(snap);
+  if (_filter_undo_stack.size() > 20)
+    _filter_undo_stack.erase(_filter_undo_stack.begin());
+
+  // Build thresholds/modes indexed by enabled-logic-channel ordinal (matches
+  // LogicSnapshot::_ch_index order, which is what apply_glitch_filter_all
+  // iterates).
+  std::vector<LogicSignal *> logic_sigs;
+  for (auto s : _own_signals) {
+    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
+      logic_sigs.push_back(static_cast<LogicSignal *>(s));
+  }
+  int n = (int)logic_sigs.size();
+  if (n == 0)
+    return;
+
+  std::vector<uint32_t> thresholds(n, 0);
+  std::vector<GlitchFilterMode> modes(n, GLITCH_FILTER_BOTH);
+  if (all_channels) {
+    for (int i = 0; i < n; i++) {
+      thresholds[i] = threshold;
+      modes[i] = mode;
+    }
+  } else {
+    auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
+    if (it == logic_sigs.end())
+      return;
+    int target_idx = (int)std::distance(logic_sigs.begin(), it);
+    thresholds[target_idx] = threshold;
+    modes[target_idx] = mode;
+  }
+
+  sess.set_glitch_filter(thresholds, modes);
+
+  // Clear preview overlay once the real filter is applied.
+  _preview_ranges.clear();
+
+  if (all_channels) {
+    pv::ui::Toast::show(this,
+                        tr("已对所有逻辑通道应用滤波 (阈值 %1)").arg(threshold),
+                        pv::ui::Toast::Info);
+  } else {
+    pv::ui::Toast::show(this,
+                        tr("已对通道 %1 应用滤波 (阈值 %2)")
+                            .arg(sig->get_name())
+                            .arg(threshold),
+                        pv::ui::Toast::Info);
+  }
+}
+
+void View::on_glitch_popup_closed() {
+  _preview_ranges.clear();
+  if (_time_viewport)
+    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+}
+
+const std::vector<pv::data::PulseAnalyzer::Pulse> *
+View::get_preview_ranges(LogicSignal *sig) const {
+  if (!sig)
+    return nullptr;
+  auto it = _preview_ranges.find(sig);
+  if (it == _preview_ranges.end())
+    return nullptr;
+  return &it->second;
+}
+
+void View::undo_filter() {
+  if (_filter_undo_stack.empty())
+    return;
+  auto &sess = session();
+  FilterSnapshot snap = _filter_undo_stack.back();
+  _filter_undo_stack.pop_back();
+  // I4: restore the prior state captured at apply time. If the filter was
+  // active before the now-undone apply, re-apply the previous thresholds/
+  // modes; otherwise clear the filter entirely.
+  if (snap.was_active) {
+    sess.set_glitch_filter(snap.thresholds, snap.modes);
+  } else {
+    sess.clear_glitch_filter();
+  }
+  _preview_ranges.clear();
+  if (_time_viewport)
+    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  pv::ui::Toast::show(this, tr("已撤销滤波"), pv::ui::Toast::Info);
+}
+
+void View::on_glitch_filter_completed() {
+  // FilterProcessor completed a glitch filter application. If the popup is
+  // currently open, refresh its histogram so it reflects the filtered
+  // LogicSnapshot (filtered pulses are now long pulses; previously-filtered
+  // short pulses are gone). Also clear stale preview ranges — the red
+  // overlay from get_filtered_ranges() now shows the actual filtered state.
+  _preview_ranges.clear();
+  if (_time_viewport)
+    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_glitch_filter_popup && _glitch_filter_popup->is_open())
+    _glitch_filter_popup->on_filter_completed();
+}
+
+void View::on_glitch_filter_cleared() {
+  // FilterProcessor cleared the glitch filter. Refresh the popup's histogram
+  // so it reflects the unfiltered LogicSnapshot, and clear preview ranges so
+  // the orange overlay disappears (red overlay already gone because
+  // get_filtered_ranges() returns empty after clear_filtered_ranges()).
+  _preview_ranges.clear();
+  if (_time_viewport)
+    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  if (_glitch_filter_popup && _glitch_filter_popup->is_open())
+    _glitch_filter_popup->on_filter_cleared();
 }
 
 } // namespace view
