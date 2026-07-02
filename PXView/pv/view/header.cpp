@@ -50,7 +50,6 @@
 #include "analogsignal.h"
 #include "decodetrace.h"
 #include "dsosignal.h"
-#include "groupsignal.h"
 #include "logicsignal.h"
 #include "mathtrace.h"
 #include "trace.h"

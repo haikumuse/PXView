@@ -83,7 +83,6 @@ class DevMode;
 class Ruler;
 class Trace;
 class Viewport;
-class LissajousFigure;
 class DecodeTrace;
 class SpectrumTrace;
 class MathTrace;
@@ -631,7 +630,6 @@ private:
   Viewport *_time_viewport;
   Viewport *_fft_viewport;
   Viewport *_active_viewport;
-  LissajousFigure *_lissajous;
   std::list<QWidget *> _viewport_list;
   std::map<int, int> _trace_view_map;
   Ruler *_ruler;

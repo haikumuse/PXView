@@ -1380,6 +1380,12 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
       return false;
     }
 
+    // User interaction changed device options (vDial/acdc/factor). Broadcast
+    // so MCP/WS clients receive a push notification. The individual setters
+    // (set_factor/set_acCoupling/go_vDial*) deliberately do NOT broadcast
+    // because they are also called from JSON restore paths (rebuild loop
+    // risk); mouse_press is the user-interaction entry point per AGENTS.md.
+    session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
     return true;
   }
   return false;

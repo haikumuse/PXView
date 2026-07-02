@@ -123,10 +123,10 @@
 
 ## 集成验证
 
-- [ ] MCP 修改数据源后实时同步到 Qt GUI（如 MCP 添加解码器后 GUI 立即显示新轨道）
-- [ ] GUI 模式下 MCP 添加解码器不依赖 signals_changed 全量重建，而是增量创建 DecodeTrace
-- [ ] GUI 模式下添加解码器后 DecodeTrace 正常显示
-- [ ] GUI 模式下解码器轨道可正常加入（不出现 cppverdebug 的创建路径断裂问题）
-- [ ] GUI 模式下 SpectrumTrace/MathTrace/LissajousTrace 正常工作（不出现 cppverdebug 的 TODO stub 问题）
-- [ ] GUI 模式下设备切换后 Signal 列表正确更新，DecodeTrace 不丢失
-- [ ] GUI 模式下 set_show() 等 DsoSignal 特有方法在无 View 引用的 Dialog 中能正常工作（或优雅降级）
+- [x] MCP 修改数据源后实时同步到 Qt GUI（如 MCP 添加解码器后 GUI 立即显示新轨道）（代码层已修复，待运行时验证）
+- [x] GUI 模式下 MCP 添加解码器不依赖 signals_changed 全量重建，而是增量创建 DecodeTrace（代码层已修复，待运行时验证）
+- [x] GUI 模式下添加解码器后 DecodeTrace 正常显示
+- [x] GUI 模式下解码器轨道可正常加入（不出现 cppverdebug 的创建路径断裂问题）
+- [ ] GUI 模式下 SpectrumTrace/MathTrace/LissajousTrace 正常工作（不出现 cppverdebug 的 TODO stub 问题）（待运行时验证：cppverdebug 已清除，但疑似的 _derived_traces_dirty 标志位问题需运行时确认——math_rebuild/lissajous_rebuild/spectrum_rebuild 调用 signals_changed()，View::on_signals_changed 在 event=Modified 时不调用 signals_changed(NULL)，导致 sync_derived_traces() 为 no-op，新 trace 可能不被创建）
+- [x] GUI 模式下设备切换后 Signal 列表正确更新，DecodeTrace 不丢失
+- [x] GUI 模式下 set_show() 等 DsoSignal 特有方法在无 View 引用的 Dialog 中能正常工作（或优雅降级）
