@@ -787,10 +787,22 @@ void SamplingBar::update_sample_count_selector() {
       }
     }
   }
-  _updating_sample_count = false;
 
+  // NOTE: keep _updating_sample_count = true across the manual on_samplecount_sel
+  // call below. on_samplecount_sel -> apply_sample_count -> commit_hori_res ->
+  // set_config_uint64(SR_CONF_TIMEBASE) -> DeviceAgent::config_changed (sync) ->
+  // SigSession::DeviceConfigChanged -> broadcast_msg(DSV_MSG_SAMPLE_COUNT_UPDATED)
+  // -> MainWindow::on_device_options -> update_sample_count_selector (re-entry).
+  // The entry guard at the top of this function (line 650) breaks the loop ONLY
+  // if _updating_sample_count is still true on re-entry. Clearing the flag here
+  // (as the previous code did) defeats the guard and causes unbounded recursion
+  // -> stack overflow -> SIGSEGV (visible crash frame in MeasureDock::adjust_form_size).
+  // update_sample_count_selector_value() below early-returns while the flag is
+  // true; that is intentional and safe — the combo index was just set above by
+  // set_sample_count_index, so no device re-sync is needed at this point.
   update_sample_count_selector_value();
   on_samplecount_sel(_sample_count->currentIndex());
+  _updating_sample_count = false;
 
   connect(_sample_count, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &SamplingBar::on_samplecount_sel);
