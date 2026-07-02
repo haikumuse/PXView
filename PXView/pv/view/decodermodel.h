@@ -20,23 +20,31 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef PXVIEW_PV_DATA_DECODERMODEL_H
-#define PXVIEW_PV_DATA_DECODERMODEL_H
+// Moved from pv::data to pv::view (purify-architecture-concepts Task 10):
+// DecoderModel is a QAbstractTableModel subclass that returns Qt::DisplayRole
+// / Qt::AlignLeft etc. — Qt Model/View UI concepts that do not belong in the
+// Core data layer. It now lives in the View layer alongside the QTableView
+// that consumes it (ProtocolDock). Core (SigSession/SessionDocument/
+// SessionSnapshot) no longer holds or exposes a DecoderModel pointer.
+
+#ifndef PXVIEW_PV_VIEW_DECODERMODEL_H
+#define PXVIEW_PV_VIEW_DECODERMODEL_H
 
 #include <QAbstractTableModel>
-  
-#include "decode/rowdata.h"
+
+#include "../data/decode/rowdata.h"
 
 namespace pv {
 namespace data {
-
 class DecoderStack;
-
 namespace decode {
 class Annotation;
 class Decoder;
 class Row;
-}
+} // namespace decode
+} // namespace data
+
+namespace view {
 
 class DecoderModel : public QAbstractTableModel
 {
@@ -49,17 +57,17 @@ public:
     QVariant data(const QModelIndex &index, int role) const;
     QVariant headerData(int section, Qt::Orientation orientation,int role) const;
 
-    void setDecoderStack(DecoderStack *decoder_stack);
+    void setDecoderStack(pv::data::DecoderStack *decoder_stack);
 
-    inline  DecoderStack* getDecoderStack(){
+    inline  pv::data::DecoderStack* getDecoderStack(){
         return _decoder_stack;
     }
 
 private:
-    DecoderStack   *_decoder_stack;
+    pv::data::DecoderStack   *_decoder_stack;
 };
 
-} // namespace data
+} // namespace view
 } // namespace pv
 
-#endif // PXVIEW_PV_DATA_DECODERMODEL_H
+#endif // PXVIEW_PV_VIEW_DECODERMODEL_H

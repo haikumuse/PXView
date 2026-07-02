@@ -23,7 +23,6 @@
 
 #include "sessionsnapshot.h"
 #include "analogsnapshot.h"
-#include "decodermodel.h"
 #include "dsosnapshot.h"
 #include "logicsnapshot.h"
 #include "snapshot.h"
@@ -38,7 +37,7 @@ namespace pv {
 namespace data {
 
 SessionSnapshot::SessionSnapshot()
-    : _samplerate(0), _samplelimits(0), _trig_pos(0), _decoder_model(NULL) {}
+    : _samplerate(0), _samplelimits(0), _trig_pos(0) {}
 
 SessionSnapshot::~SessionSnapshot() {}
 
@@ -99,10 +98,6 @@ data::Snapshot *SessionSnapshot::get_snapshot(int type) {
     return &_dso;
   else
     return NULL;
-}
-
-data::DecoderModel *SessionSnapshot::get_decoder_model() {
-  return _decoder_model;
 }
 
 uint64_t SessionSnapshot::get_trigger_pos() { return _trig_pos; }

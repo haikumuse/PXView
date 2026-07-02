@@ -142,6 +142,9 @@ bool CaptureManager::action_start_capture(bool instant,
 
   _session->_capture_data->clear();
   _session->_view_data->clear();
+  // 清除毛刺滤波状态(backup 悬垂、active 标志过期),保留 thresholds/modes
+  // 供 auto-apply 使用
+  _session->clear_glitch_filter_state_for_capture();
   _is_stream_mode = false;
   _capture_times = 0;
   _dso_packet_count = 0;

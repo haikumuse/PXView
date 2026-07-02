@@ -108,22 +108,29 @@ QJsonObject TriggerConfig::to_json() const
     return obj;
 }
 
-void TriggerConfig::from_json(const QJsonObject& obj)
+// Task 6: 静态工厂——构造新 TriggerConfig 并从 JSON 填充。
+// 供 SessionDocument / MainWindow load 路径使用：
+//   `_trigger_config = TriggerConfig::from_json(obj)`
+//   `set_trigger_config(TriggerConfig::from_json(obj))`
+TriggerConfig TriggerConfig::from_json(const QJsonObject &obj)
 {
+    TriggerConfig cfg;
+
     if (obj.contains("mode")) {
-        _mode = static_cast<Mode>(obj.value("mode").toInt(static_cast<int>(Simple)));
+        cfg._mode = static_cast<Mode>(
+            obj.value("mode").toInt(static_cast<int>(Simple)));
     }
     if (obj.contains("trigger_pos")) {
-        _trigger_pos = obj.value("trigger_pos").toInt(0);
+        cfg._trigger_pos = obj.value("trigger_pos").toInt(0);
     }
     if (obj.contains("stage_count")) {
-        _stage_count = obj.value("stage_count").toInt(0);
+        cfg._stage_count = obj.value("stage_count").toInt(0);
     }
 
     if (obj.contains("stages")) {
         QJsonArray stages_arr = obj.value("stages").toArray();
-        _stages.clear();
-        _stages.reserve(stages_arr.size());
+        cfg._stages.clear();
+        cfg._stages.reserve(stages_arr.size());
         for (int i = 0; i < stages_arr.size(); ++i) {
             QJsonObject s = stages_arr.at(i).toObject();
             Stage st;
@@ -134,25 +141,27 @@ void TriggerConfig::from_json(const QJsonObject& obj)
             st.inv1 = s.value("inv1").toInt(0);
             st.count0 = s.value("count0").toInt(0);
             st.count1 = s.value("count1").toInt(0);
-            _stages.push_back(st);
+            cfg._stages.push_back(st);
         }
     }
 
     if (obj.contains("adv_enabled")) {
-        _adv_enabled = obj.value("adv_enabled").toBool(false);
+        cfg._adv_enabled = obj.value("adv_enabled").toBool(false);
     }
     if (obj.contains("adv_tab_index")) {
-        _adv_tab_index = obj.value("adv_tab_index").toInt(0);
+        cfg._adv_tab_index = obj.value("adv_tab_index").toInt(0);
     }
     if (obj.contains("serial_data_channel")) {
-        _serial_data_channel = obj.value("serial_data_channel").toInt(0);
+        cfg._serial_data_channel = obj.value("serial_data_channel").toInt(0);
     }
     if (obj.contains("serial_bits")) {
-        _serial_bits = obj.value("serial_bits").toInt(0);
+        cfg._serial_bits = obj.value("serial_bits").toInt(0);
     }
     if (obj.contains("serial_value")) {
-        _serial_value = obj.value("serial_value").toString();
+        cfg._serial_value = obj.value("serial_value").toString();
     }
+
+    return cfg;
 }
 
 } // namespace data

@@ -40,7 +40,6 @@ set(PXVIEW_CORE_SOURCES
     PXView/pv/data/sessiondocument.cpp
     PXView/pv/data/signalconfigstore.cpp
     PXView/pv/data/decoderstack.cpp
-    PXView/pv/data/decodermodel.cpp
     PXView/pv/data/mathstack.cpp
     PXView/pv/data/spectrumstack.cpp
     PXView/pv/data/disk_buffer_manager.cpp

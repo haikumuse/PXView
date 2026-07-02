@@ -33,7 +33,6 @@
 #include "core/capturemanager.h"
 #include "data/analogsnapshot.h"
 #include "data/decode/decoder.h"
-#include "data/decodermodel.h"
 #include "data/decoderstack.h"
 #include "data/disk_cache_config.h"
 #include "data/dsosnapshot.h"
@@ -204,8 +203,6 @@ SigSession::SigSession() {
   // action_start_capture calls _document_registry->acquire_capture_owner().
   _capture_manager = std::make_unique<core::CaptureManager>(_event_bus.get(),
                                                             this);
-
-  _decoder_model = new pv::data::DecoderModel(NULL);
 
   _lissajous_model = nullptr;
   _math_stack = nullptr;
@@ -1610,6 +1607,15 @@ void SigSession::OnMessage(int msg, int param) {
         start_all_decode_tasks();
       }
 
+      // 采集完成后自动重新应用毛刺滤波(若用户启用了 auto-apply)
+      if (_view_data->_glitch_filter_auto_apply &&
+          !_view_data->_glitch_filter_thresholds.empty() &&
+          _view_data->get_logic() && !_view_data->get_logic()->empty()) {
+        _filter_processor->set_glitch_filter(
+            _view_data->_glitch_filter_thresholds,
+            _view_data->_glitch_filter_modes);
+      }
+
       frame_ended();
     }
   } break;
@@ -1976,6 +1982,20 @@ void SigSession::clear_glitch_filter() {
 }
 bool SigSession::is_glitch_filter_active() {
   return _filter_processor->is_glitch_filter_active();
+}
+
+void SigSession::clear_glitch_filter_state_for_capture() {
+  // 新采集开始时调用:清除滤波激活状态和 backup,
+  // 但保留 thresholds/modes(供 auto-apply 使用)。
+  // 不恢复数据 — _view_data->get_logic() 已被 clear(),无数据可恢复。
+  if (_view_data->_logic_backup) {
+    delete _view_data->_logic_backup;
+    _view_data->_logic_backup = nullptr;
+  }
+  if (_view_data->_glitch_filter_active) {
+    _view_data->_glitch_filter_active = false;
+    _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
+  }
 }
 void SigSession::set_signal_invert(const std::vector<bool> &channels) {
   _filter_processor->set_signal_invert(channels);

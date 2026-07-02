@@ -38,7 +38,6 @@ namespace data {
 class DecoderStack;
 class SpectrumStack;
 class MathStack;
-class DecoderModel;
 
 // SessionDocument is now a pure data container. Signal/pending config and
 // DeviceAgent interaction have been extracted to SignalConfigStore
@@ -82,8 +81,13 @@ public:
   get_decoder_stacks(SessionDocument *doc = nullptr) override;
   void add_decoder_stack(std::shared_ptr<DecoderStack> stack);
   void remove_decoder_stack(std::shared_ptr<DecoderStack> stack);
-  DecoderModel *get_decoder_model() override;
-  void set_decoder_model(DecoderModel *model);
+  // get_signal_models()/get_spectrum_stacks()/get_math_stack()/
+  // get_lissajous_model() below are DataSource overrides returning
+  // empty/null because SessionDocument never populated these fields (only
+  // SigSession holds the live copies). See view.cpp comment near line 2625.
+  // (purify-architecture-concepts Task 10) get_decoder_model() was removed
+  // from the DataSource interface entirely — DecoderModel now lives in the
+  // View layer (pv::view) and is owned by ProtocolDock.
 
   std::vector<std::shared_ptr<SignalModel>> &get_signal_models() override;
   std::vector<std::shared_ptr<SpectrumStack>> &get_spectrum_stacks() override;
@@ -101,11 +105,11 @@ public:
   QJsonObject signal_config_to_json() const;
   void signal_config_from_json(const QJsonObject &obj);
   void save_signal_config(
-      const std::map<int, bool> &channel_visibility = {},
       const std::vector<std::shared_ptr<SignalModel>> &signal_models = {},
-      const std::map<int, ChannelLayoutState> &channel_layout = {}) {
-    _signal_config_store->save_signal_config(channel_visibility, signal_models,
-                                             channel_layout);
+      const std::map<int, ChannelLayoutState> &channel_layout = {},
+      const std::map<int, std::string> &channel_colours = {}) {
+    _signal_config_store->save_signal_config(signal_models, channel_layout,
+                                             channel_colours);
   }
   void apply_signal_config() { _signal_config_store->apply_signal_config(); }
   void apply_pending_config() {
@@ -146,11 +150,11 @@ private:
   uint64_t _samplelimits;
   uint64_t _trigger_pos;
   std::vector<std::shared_ptr<DecoderStack>> _decoder_stacks;
-  DecoderModel *_decoder_model;
-  std::vector<std::shared_ptr<SignalModel>> _signal_models;
-  std::vector<std::shared_ptr<SpectrumStack>> _spectrum_stacks;
-  std::shared_ptr<MathStack> _math_stack = nullptr;
-  LissajousModel *_lissajous_model = nullptr;
+  // Dead storage removed (purify-architecture-concepts Task 1):
+  // _decoder_model / _signal_models / _spectrum_stacks / _math_stack /
+  // _lissajous_model were never populated (only clear()-ed) and shadowed the
+  // live copies in SigSession. The DataSource get_* overrides above now return
+  // empty/null literals. set_decoder_model (zero callers) was deleted.
   std::unique_ptr<SignalConfigStore> _signal_config_store;
   data::TriggerConfig _trigger_config;
 };

@@ -29,6 +29,7 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/view/trace.cpp
     PXView/pv/view/selectableitem.cpp
     PXView/pv/view/decodetrace.cpp
+    PXView/pv/view/decodermodel.cpp
     PXView/pv/view/mathtrace.cpp
     PXView/pv/view/spectrumtrace.cpp
     PXView/pv/view/lissajoustrace.cpp
@@ -184,6 +185,7 @@ set(PXView_HEADERS
     PXView/pv/view/selectableitem.h
     PXView/pv/data/decoderstack.h
     PXView/pv/view/decodetrace.h
+    PXView/pv/view/decodermodel.h
     PXView/pv/widgets/fakelineedit.h
     PXView/pv/widgets/searchpatterninput.h
     PXView/pv/widgets/decodermenu.h
@@ -219,7 +221,6 @@ set(PXView_HEADERS
     PXView/pv/view/lissajoustrace.h
     PXView/pv/view/spectrumtrace.h
     PXView/pv/data/spectrumstack.h
-    PXView/pv/data/decodermodel.h
     PXView/pv/data/datasource.h
     PXView/pv/data/signalmodel.h
     PXView/pv/data/sessionsnapshot.h

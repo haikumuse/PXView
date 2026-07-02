@@ -60,8 +60,8 @@ public:
 
     /*
      * 短脉冲宽度直方图:
-     *   width_counts  宽度 -> 出现次数(仅含 width>0 且 width<=max_width 的脉冲)
-     *   max_width     纳入统计的宽度上界
+     *   width_counts  宽度 -> 出现次数(仅含 width>0 的脉冲)
+    *   max_width     数据中实际最大脉冲宽度(自适应,非固定值)
      */
     struct Histogram {
         std::map<uint32_t, int> width_counts;
@@ -81,7 +81,7 @@ public:
      * (长脉冲非毛刺候选,予以忽略)。
      */
     static Histogram build_histogram(const std::vector<Pulse> &pulses,
-                                     uint32_t max_width = 30);
+                                     uint32_t max_width_cap = 30);
 
     /*
      * 最大间隙启发式推荐毛刺宽度阈值:

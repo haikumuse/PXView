@@ -76,9 +76,12 @@ public:
     void set_serial_bits(int bits);
     void set_serial_value(const QString& v);
 
-    // JSON 序列化（供 SessionDocument 持久化）
+    // JSON 序列化（供 SessionDocument 持久化 / MainWindow .pxc 读写）
+    // Task 6: from_json 改为静态工厂（返回新对象），消除 View 层经
+    // _trigger_widget->get_session() 产出旧 JSON 的旁路；MainWindow load 路径
+    // 直接 `set_trigger_config(TriggerConfig::from_json(obj))`。
     QJsonObject to_json() const;
-    void from_json(const QJsonObject& obj);
+    static TriggerConfig from_json(const QJsonObject& obj);
 
 private:
     Mode                 _mode = Simple;

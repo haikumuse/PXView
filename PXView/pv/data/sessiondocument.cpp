@@ -23,11 +23,9 @@ namespace pv {
 namespace data {
 
 class DecoderStack;
-class DecoderModel;
 
 SessionDocument::SessionDocument(SigSession *session)
     : _samplerate(0), _samplelimits(0), _trigger_pos(0),
-      _decoder_model(nullptr),
       _signal_config_store(std::make_unique<SignalConfigStore>(session)) {}
 
 SessionDocument::~SessionDocument() {}
@@ -102,24 +100,9 @@ void SessionDocument::clear() {
   _samplerate = 0;
   _samplelimits = 0;
   _trigger_pos = 0;
-
-  for (auto m : _signal_models) {
-  }
-  _signal_models.clear();
-
-  for (auto s : _spectrum_stacks) {
-  }
-  _spectrum_stacks.clear();
-
-  if (_math_stack) {
-    _math_stack.reset();
-    _math_stack = nullptr;
-  }
-
-  if (_lissajous_model) {
-    delete _lissajous_model;
-    _lissajous_model = nullptr;
-  }
+  // Dead storage (_signal_models / _spectrum_stacks / _math_stack /
+  // _lissajous_model / _decoder_model) has been removed; the empty clear
+  // loops and null resets that used to live here are no longer needed.
 }
 
 std::vector<std::shared_ptr<DecoderStack>> &
@@ -139,25 +122,26 @@ void SessionDocument::remove_decoder_stack(std::shared_ptr<DecoderStack> stack) 
     _decoder_stacks.erase(it);
 }
 
-DecoderModel *SessionDocument::get_decoder_model() { return _decoder_model; }
-
-void SessionDocument::set_decoder_model(DecoderModel *model) {
-  _decoder_model = model;
-}
+// DataSource pure-virtual overrides. SessionDocument does NOT own live copies
+// of these — SigSession holds the single source of truth. These always return
+// empty/null (matching the prior behavior when the dead fields existed but were
+// never populated). See view.cpp comment near line 2625.
+// (purify-architecture-concepts Task 10) get_decoder_model() was removed from
+// the DataSource interface — DecoderModel now lives in pv::view.
 
 std::vector<std::shared_ptr<SignalModel>> &SessionDocument::get_signal_models() {
-  return _signal_models;
+  static std::vector<std::shared_ptr<SignalModel>> empty;
+  return empty;
 }
 
 std::vector<std::shared_ptr<SpectrumStack>> &SessionDocument::get_spectrum_stacks() {
-  return _spectrum_stacks;
+  static std::vector<std::shared_ptr<SpectrumStack>> empty;
+  return empty;
 }
 
-std::shared_ptr<MathStack> SessionDocument::get_math_stack() { return _math_stack; }
+std::shared_ptr<MathStack> SessionDocument::get_math_stack() { return nullptr; }
 
-LissajousModel *SessionDocument::get_lissajous_model() {
-  return _lissajous_model;
-}
+LissajousModel *SessionDocument::get_lissajous_model() { return nullptr; }
 
 uint64_t SessionDocument::cur_snap_samplerate() { return _samplerate; }
 
@@ -194,7 +178,9 @@ QJsonObject SessionDocument::signal_config_to_json() const {
 void SessionDocument::signal_config_from_json(const QJsonObject &obj) {
   _signal_config_store->signal_config_from_json(obj);
   if (obj.contains("triggerConfig")) {
-    _trigger_config.from_json(obj["triggerConfig"].toObject());
+    // Task 6: from_json 改为静态工厂（返回新对象），用赋值替代原成员调用。
+    _trigger_config = data::TriggerConfig::from_json(
+        obj["triggerConfig"].toObject());
   }
 }
 

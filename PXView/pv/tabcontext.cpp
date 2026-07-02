@@ -136,14 +136,14 @@ void TabContext::deactivate()
 {
     pxv_info("TabContext::deactivate() doc=%p", _document);
     if (_document) {
-        // Collect per-channel visibility AND UI layout state from the View
-        // layer so that save_signal_config can persist them as the single
-        // source of truth for channel layout (view_index/v_offset/own_height).
-        std::map<int, bool> channel_visibility;
+        // Collect UI layout state from the View layer so that
+        // save_signal_config can persist view_index/v_offset/own_height as the
+        // single source of truth for channel layout. (Task 7: visible is no
+        // longer a Core-serialized field; it will be owned by View-layer
+        // DockUiState in a later task.)
         std::map<int, data::ChannelLayoutState> channel_layout;
         if (_view) {
             for (auto *sig : _view->get_own_signals()) {
-                channel_visibility[sig->get_index()] = sig->visible();
                 data::ChannelLayoutState layout;
                 layout.view_index = sig->get_view_index();
                 layout.v_offset = sig->get_v_offset();
@@ -153,8 +153,7 @@ void TabContext::deactivate()
         }
         // R2: 传入 SignalModel 列表，保存 Logic 通道 trig_type
         // UI 布局状态经 channel_layout 持久化到 ChannelConfig
-        _document->save_signal_config(channel_visibility,
-                                      _session->get_signal_models(),
+        _document->save_signal_config(_session->get_signal_models(),
                                       channel_layout);
     }
     _state = HISTORICAL;

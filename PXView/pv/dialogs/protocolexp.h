@@ -47,6 +47,10 @@ class Annotation;
 }
 }
 
+namespace view {
+class DecoderModel;
+}
+
 namespace dialogs {
 
 class ProtocolExp : public DSDialog
@@ -63,13 +67,13 @@ private:
     };
 
 public:
-    ProtocolExp(QWidget *parent, SigSession *session);
+    ProtocolExp(QWidget *parent, SigSession *session, pv::view::DecoderModel *decoder_model);
 
 protected:
     void accept();
     void reject();
     void save_proc();
-    static bool compare_ann_index(const data::decode::Annotation *a, 
+    static bool compare_ann_index(const data::decode::Annotation *a,
                     const data::decode::Annotation *b);
 
 signals:
@@ -80,6 +84,10 @@ private slots:
 
 private:
     SigSession *_session;
+    // View-owned DecoderModel passed in from ProtocolDock (Task 10): the
+    // dialog reads the current decoder stack from this instance to know
+    // which protocol to export.
+    pv::view::DecoderModel *_decoder_model;
 
     toolbars::TitleBar *_titlebar;
     DsComboBox *_format_combobox;

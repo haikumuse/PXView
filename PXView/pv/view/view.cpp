@@ -2247,10 +2247,11 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
 
     if (signal) {
       signal->set_enabled(ch.enabled);
-      // Use persisted visibility from SignalConfig (saved at deactivate time).
-      // For newly created channels not yet in the config, default visible
-      // to enabled.
-      signal->set_visible(ch.visible);
+      // Task 7 (purify-architecture-concepts): visible is no longer a
+      // Core-serialized field. In-memory visible state across rebuilds is
+      // preserved by SignalFactory::save_ui_state/restore_ui_state. Persistence
+      // will be handled by View-layer DockUiState (Task 17) writing the
+      // uiLayout section of .pxc.
 
       // UI 布局状态从 ChannelConfig 恢复（单一持久化状态源）：
       // - view_index: 配置值 >= 0 时使用，否则按启用顺序派生（向后兼容）

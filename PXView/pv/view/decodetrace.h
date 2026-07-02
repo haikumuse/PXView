@@ -160,6 +160,14 @@ private:
   void draw_unshown_row(QPainter &p, int y, int h, int left, int right,
                         QString info, QColor fore, QColor back);
 
+  // View-layer helper: picks the best-fitting annotation text for the given
+  // rect width using the supplied font metrics. Moved here from
+  // pv::data::decode::Annotation so the Core Annotation class stays a pure
+  // data class free of QFont/QFontMetrics dependencies.
+  static QString best_annotation_text(
+      const pv::data::decode::Annotation &a, double rect_width,
+      const QFontMetrics &fm);
+
 signals:
   void decoded_progress(int progress);
 

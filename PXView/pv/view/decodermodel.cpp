@@ -21,17 +21,17 @@
  */
 
 #include <libsigrokdecode.h>
-  
-#include "decode/annotation.h"
-#include "decode/rowdata.h"
-#include "decoderstack.h"
+
+#include "../data/decode/annotation.h"
+#include "../data/decode/rowdata.h"
+#include "../data/decoderstack.h"
 #include "decodermodel.h"
 
 using namespace boost;
 using namespace std;
 
 namespace pv {
-namespace data {
+namespace view {
 
 DecoderModel::DecoderModel(QObject *parent)
     : QAbstractTableModel(parent),
@@ -39,13 +39,13 @@ DecoderModel::DecoderModel(QObject *parent)
 {
 }
 
-void DecoderModel::setDecoderStack(DecoderStack *decoder_stack)
+void DecoderModel::setDecoderStack(pv::data::DecoderStack *decoder_stack)
 {
     beginResetModel();
     _decoder_stack = decoder_stack;
     endResetModel();
 }
- 
+
 int DecoderModel::rowCount(const QModelIndex & /* parent */) const
 {
     if (_decoder_stack)
@@ -98,5 +98,5 @@ QVariant DecoderModel::headerData(int section,
     return QVariant();
 }
 
-} // namespace data
+} // namespace view
 } // namespace pv

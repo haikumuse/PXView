@@ -25,7 +25,6 @@
 
 #include <QComboBox>
 #include <QFrame>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -36,6 +35,8 @@
 #include <QScreen>
 #include <QGuiApplication>
 #include <QSlider>
+#include <QSpinBox>
+#include <QCheckBox>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -58,15 +59,15 @@ GlitchFilterPopup::GlitchFilterPopup(View& view, QWidget* parent)
     setAttribute(Qt::WA_StyledBackground, true);
     setFixedWidth(420);
 
+    // 显式设置字体:避免继承 app 全局字体(CJK 字体在小字号下模糊)。
+    // QGraphicsDropShadowEffect 会让 widget 先渲染到 pixmap 再投影,导致
+    // 文字栅格化模糊,因此不使用 graphics effect,改用 paintEvent 画边框。
+    QFont popupFont("Segoe UI", 9);
+    popupFont.setStyleStrategy(QFont::PreferAntialias);
+    setFont(popupFont);
+
     build_ui();
     apply_qss();
-
-    // 阴影 (对应 HTML box-shadow: 0 16px 48px rgba(0,0,0,.6))
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(48);
-    shadow->setColor(QColor(0, 0, 0, 153));
-    shadow->setOffset(0, 16);
-    setGraphicsEffect(shadow);
 }
 
 uint32_t GlitchFilterPopup::current_threshold() const
@@ -180,7 +181,7 @@ void GlitchFilterPopup::build_ui()
         thrLbl->setFixedWidth(50);
         _threshold_slider = new QSlider(Qt::Horizontal, body);
         _threshold_slider->setMinimum(1);
-        _threshold_slider->setMaximum(20);
+        _threshold_slider->setMaximum(30);
         _threshold_slider->setValue(_recommended_threshold);
         _threshold_value_lbl = new QLabel(QString::number(_recommended_threshold), body);
         _threshold_value_lbl->setObjectName(QStringLiteral("thresholdValue"));
@@ -195,6 +196,29 @@ void GlitchFilterPopup::build_ui()
         bLay->addLayout(thrRow);
         connect(_threshold_slider, &QSlider::valueChanged,
                 this, &GlitchFilterPopup::on_slider_moved);
+    }
+
+    // 2e2. 上限行(用户自定义统计范围上限)
+    {
+        auto* maxRow = new QHBoxLayout();
+        maxRow->setSpacing(12);
+        auto* maxLbl = new QLabel(QStringLiteral("上限"), body);
+        maxLbl->setObjectName(QStringLiteral("controlLabel"));
+        maxLbl->setFixedWidth(50);
+        _max_spinbox = new QSpinBox(body);
+        _max_spinbox->setRange(10, 500);
+        _max_spinbox->setValue(30);
+        _max_spinbox->setFixedWidth(70);
+        _max_spinbox->setSuffix(QStringLiteral(" cyc"));
+        auto* maxHint = new QLabel(QStringLiteral("(统计范围,超出不计入)"), body);
+        maxHint->setObjectName(QStringLiteral("thresholdUnit"));
+        maxRow->addWidget(maxLbl);
+        maxRow->addWidget(_max_spinbox);
+        maxRow->addWidget(maxHint);
+        maxRow->addStretch();
+        bLay->addLayout(maxRow);
+        connect(_max_spinbox, QOverload<int>::of(&QSpinBox::valueChanged),
+                this, &GlitchFilterPopup::on_max_changed);
     }
 
     // 2f. 分隔线
@@ -226,6 +250,20 @@ void GlitchFilterPopup::build_ui()
                 this, SLOT(on_preset_changed(int)));
     }
 
+    // 2g2. 自动应用行
+    {
+        auto* row = new QHBoxLayout();
+        row->setSpacing(12);
+        _auto_apply_chk = new QCheckBox(
+            QStringLiteral("采集后自动应用滤波"), body);
+        _auto_apply_chk->setObjectName(QStringLiteral("autoApply"));
+        row->addStretch();
+        row->addWidget(_auto_apply_chk);
+        bLay->addLayout(row);
+        connect(_auto_apply_chk, &QCheckBox::toggled,
+                this, &GlitchFilterPopup::on_auto_apply_toggled);
+    }
+
     // 2h. 底部按钮行
     {
         auto* btnRow = new QHBoxLayout();
@@ -252,53 +290,77 @@ void GlitchFilterPopup::build_ui()
 
 void GlitchFilterPopup::apply_qss()
 {
-    // 完全复刻参考实现 FilterPopup.cpp 的 QSS
+    // 所有规则以 GlitchFilterPopup 为前缀,确保不被 app 全局 QSS 覆盖。
+    // 颜色完全复刻参考实现 FilterPopup.cpp,不使用任何 theme token。
     setStyleSheet(QStringLiteral(R"(
         GlitchFilterPopup {
             background: #252932;
             border: 1px solid #3a3f4b;
             border-radius: 8px;
         }
-        QLabel { color: #e0e0e0; }
-        QLabel#sectionTitle { color: #9e9e9e; font-size: 11px; }
-        QLabel#statsLabel   { color: #e0e0e0; font-size: 12px; }
-        QLabel#controlLabel { color: #9e9e9e; font-size: 12px; }
-        QLabel#thresholdValue { color: #42a5f5; font-family: Consolas, monospace; font-size: 13px; }
-        QLabel#thresholdUnit  { color: #9e9e9e; font-size: 11px; }
-        QLabel#filterCount { color: #ff5252; font-weight: 600; font-size: 14px; }
-        QLabel#remainCount { color: #81c784; font-weight: 600; font-size: 14px; }
-        QLabel#title       { color: #e0e0e0; font-weight: 600; font-size: 13px; }
-        QPushButton {
+        GlitchFilterPopup QLabel { color: #e0e0e0; }
+        GlitchFilterPopup QLabel#sectionTitle { color: #9e9e9e; font-size: 11px; }
+        GlitchFilterPopup QLabel#statsLabel   { color: #e0e0e0; font-size: 12px; }
+        GlitchFilterPopup QLabel#controlLabel { color: #9e9e9e; font-size: 12px; }
+        GlitchFilterPopup QLabel#thresholdValue { color: #42a5f5; font-family: Consolas, monospace; font-size: 13px; }
+        GlitchFilterPopup QLabel#thresholdUnit  { color: #9e9e9e; font-size: 11px; }
+        GlitchFilterPopup QLabel#filterCount { color: #ff5252; font-weight: 600; font-size: 14px; }
+        GlitchFilterPopup QLabel#remainCount { color: #81c784; font-weight: 600; font-size: 14px; }
+        GlitchFilterPopup QLabel#title       { color: #e0e0e0; font-weight: 600; font-size: 13px; }
+        GlitchFilterPopup QPushButton {
             background: #2d323d; border: 1px solid #3a3f4b; color: #e0e0e0;
             padding: 6px 14px; border-radius: 4px; font-size: 12px;
         }
-        QPushButton:hover   { background: #3a3f4b; border-color: #4a5060; }
-        QPushButton:pressed { background: #2a2f38; }
-        QPushButton#primary { background: #1976d2; border-color: #1976d2; color: #ffffff; }
-        QPushButton#primary:hover { background: #2196f3; border-color: #2196f3; }
-        QPushButton#close { background: transparent; border: none; color: #9e9e9e; font-size: 18px; padding: 0 4px; }
-        QPushButton#close:hover { color: #e0e0e0; }
-        QComboBox {
+        GlitchFilterPopup QPushButton:hover   { background: #3a3f4b; border-color: #4a5060; }
+        GlitchFilterPopup QPushButton:pressed { background: #2a2f38; }
+        GlitchFilterPopup QPushButton#primary { background: #1976d2; border-color: #1976d2; color: #ffffff; }
+        GlitchFilterPopup QPushButton#primary:hover { background: #2196f3; border-color: #2196f3; }
+        GlitchFilterPopup QPushButton#close { background: transparent; border: none; color: #9e9e9e; font-size: 18px; padding: 0 4px; }
+        GlitchFilterPopup QPushButton#close:hover { color: #e0e0e0; }
+        GlitchFilterPopup QComboBox {
             background: #1a1d24; border: 1px solid #3a3f4b; color: #e0e0e0;
             padding: 5px 8px; border-radius: 4px; font-size: 12px;
         }
-        QComboBox::drop-down { border: none; width: 18px; }
-        QComboBox QAbstractItemView {
+        GlitchFilterPopup QComboBox::drop-down { border: none; width: 18px; }
+        GlitchFilterPopup QComboBox QAbstractItemView {
             background: #1a1d24; border: 1px solid #3a3f4b; color: #e0e0e0;
             selection-background-color: #3a3f4b;
         }
-        QSlider::groove:horizontal { height: 4px; background: #3a3f4b; border-radius: 2px; }
-        QSlider::handle:horizontal {
+        GlitchFilterPopup QSpinBox {
+            background: #1a1d24; border: 1px solid #3a3f4b; color: #42a5f5;
+            padding: 3px 6px; border-radius: 4px; font-size: 12px;
+        }
+        GlitchFilterPopup QSpinBox::up-button, GlitchFilterPopup QSpinBox::down-button {
+            background: #2d323d; border: none; width: 16px;
+        }
+        GlitchFilterPopup QSpinBox::up-button:hover, GlitchFilterPopup QSpinBox::down-button:hover {
+            background: #3a3f4b;
+        }
+        GlitchFilterPopup QSpinBox::up-arrow { image: none; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 5px solid #9e9e9e; width: 0; height: 0; }
+        GlitchFilterPopup QSpinBox::down-arrow { image: none; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #9e9e9e; width: 0; height: 0; }
+        GlitchFilterPopup QSlider::groove:horizontal { height: 4px; background: #3a3f4b; border-radius: 2px; }
+        GlitchFilterPopup QSlider::handle:horizontal {
             background: #42a5f5; width: 14px; height: 14px; margin: -6px 0;
             border-radius: 7px; border: 2px solid #ffffff;
         }
-        QSlider::handle:horizontal:hover { background: #64b5f6; }
-        QFrame#header {
+        GlitchFilterPopup QSlider::handle:horizontal:hover { background: #64b5f6; }
+        GlitchFilterPopup QFrame#header {
             background: #2d323d; border-bottom: 1px solid #3a3f4b;
             border-top-left-radius: 8px; border-top-right-radius: 8px;
         }
-        QFrame#statsBox { background: #1a1d24; border: 1px solid #2a2f38; border-radius: 4px; }
-        QFrame#divider { background: #3a3f4b; max-height: 1px; min-height: 1px; }
+        GlitchFilterPopup QFrame#statsBox { background: #1a1d24; border: 1px solid #2a2f38; border-radius: 4px; }
+        GlitchFilterPopup QFrame#divider { background: #3a3f4b; max-height: 1px; min-height: 1px; }
+        GlitchFilterPopup QCheckBox { color: #e0e0e0; font-size: 12px; spacing: 6px; }
+        GlitchFilterPopup QCheckBox::indicator {
+            width: 14px; height: 14px;
+            border: 1px solid #3a3f4b; border-radius: 3px;
+            background: #1a1d24;
+        }
+        GlitchFilterPopup QCheckBox::indicator:hover { border-color: #42a5f5; }
+        GlitchFilterPopup QCheckBox::indicator:checked {
+            background: #1976d2; border-color: #1976d2;
+            image: none;
+        }
     )"));
 }
 
@@ -323,9 +385,26 @@ void GlitchFilterPopup::refresh_from_signal()
     }
     int sig_index = model->index();
 
+    // 扫描原始脉冲数据(只在 open_for_signal 时调用一次)。
+    // 注意:若此时 glitch filter 已激活,snapshot 中短脉冲已被滤除,
+    // 直方图会缺少短脉冲。但滤波器每次从 backup 恢复再应用,
+    // 所以滤波后重新打开 popup 时看到的是滤波后数据 —— 这是已知限制,
+    // 用户应先清除滤波再打开 popup 查看原始分布。
     _cached_pulses = pv::data::PulseAnalyzer::find_pulses(snap, sig_index);
-    _cached_hist = pv::data::PulseAnalyzer::build_histogram(_cached_pulses);
+    rebuild_histogram();
+}
+
+void GlitchFilterPopup::rebuild_histogram()
+{
+    const uint32_t cap = _max_spinbox ? (uint32_t)_max_spinbox->value() : 30;
+    _cached_hist = pv::data::PulseAnalyzer::build_histogram(_cached_pulses, cap);
     _recommended_threshold = pv::data::PulseAnalyzer::recommend_threshold(_cached_hist);
+
+    // 滑块上限 = 直方图柱子数 = max(20, hist.max_width),保证同步
+    const int upper = std::max(20, (int)_cached_hist.max_width);
+    if (_threshold_slider) {
+        _threshold_slider->setRange(1, upper);
+    }
 }
 
 void GlitchFilterPopup::refresh()
@@ -334,18 +413,14 @@ void GlitchFilterPopup::refresh()
         return;
     }
 
-    // 重新计算缓存的脉冲数据 / 直方图 / 推荐阈值
-    refresh_from_signal();
-
-    // 同步直方图控件:新数据 + 推荐阈值线 + 当前滤波阈值(着色)
-    // 保留用户当前滑块位置(current_threshold()),只更新推荐阈值线
+    // 不重新扫描 LogicSnapshot — 滤波后 snapshot 中短脉冲已被滤除,
+    // 重新扫描会得到错误的分布。始终使用 open_for_signal 时缓存的原始脉冲。
+    // 仅更新 UI 控件状态(阈值线、统计数字)。
     if (_histogram) {
         _histogram->setData(_cached_hist);
         _histogram->setThresholds(_recommended_threshold, current_threshold());
         _histogram->setFilterThreshold(current_threshold());
     }
-
-    // 重新计算"将滤除/剩余有效"脉冲数(基于新数据 + 当前阈值)
     update_stats();
 }
 
@@ -393,16 +468,13 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
     if (sig->model()) {
         if (sig->model()->glitch_filter_enabled() && sig->model()->glitch_filter_width() > 0) {
             int w = sig->model()->glitch_filter_width();
-            if (w >= 1 && w <= 50) {
+            if (w >= 1 && w <= (int)_cached_hist.max_width) {
                 initial_threshold = (uint32_t)w;
             }
         }
     }
 
-    // 动态设置滑块范围:至少 20,推荐值 + 5 保证推荐值不在右边缘
-    // (对应参考实现 m_thresholdSlider->setRange(1, std::max(20, m_recommended + 5)))
-    const int slider_max = std::max(20, (int)_recommended_threshold + 5);
-    _threshold_slider->setRange(1, slider_max);
+    // 滑块范围已由 refresh_from_signal → rebuild_histogram 设置,这里只需同步值
 
     // 同步控件状态(注意:setValue 会触发 valueChanged -> on_slider_moved,
     // 但此时 _cached_pulses 已就绪,统计可正确计算)
@@ -418,6 +490,13 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
     _preset_combo->blockSignals(true);
     _preset_combo->setCurrentIndex(0);
     _preset_combo->blockSignals(false);
+
+    // 同步 auto-apply 复选框状态(从 Core SessionData 读取,避免触发 toggled 信号)
+    if (_auto_apply_chk) {
+        _auto_apply_chk->blockSignals(true);
+        _auto_apply_chk->setChecked(_view.session().glitch_filter_auto_apply());
+        _auto_apply_chk->blockSignals(false);
+    }
 
     // 初次着色与统计
     _histogram->setFilterThreshold(initial_threshold);
@@ -548,6 +627,43 @@ void GlitchFilterPopup::on_preset_changed(int index)
     _preset_combo->blockSignals(true);
     _preset_combo->setCurrentIndex(0);
     _preset_combo->blockSignals(false);
+}
+
+void GlitchFilterPopup::on_max_changed(int val)
+{
+    (void)val;
+    // 用户修改了统计上限 → 用新 cap 重建直方图 + 更新滑块范围
+    rebuild_histogram();
+
+    // 直方图控件更新
+    if (_histogram) {
+        _histogram->setData(_cached_hist);
+        _histogram->setThresholds(_recommended_threshold, current_threshold());
+        _histogram->setFilterThreshold(current_threshold());
+    }
+
+    // 当前滑块值可能超出新上限,clamp 到有效范围
+    const int new_max = std::max(20, (int)_cached_hist.max_width);
+    if ((int)current_threshold() > new_max) {
+        _threshold_slider->blockSignals(true);
+        _threshold_slider->setValue(new_max);
+        _threshold_slider->blockSignals(false);
+        _threshold_value_lbl->setText(QString::number(new_max));
+    }
+
+    update_stats();
+    if (_target_sig) {
+        emit preview_changed(_target_sig, current_threshold(), current_mode());
+    }
+}
+
+void GlitchFilterPopup::on_auto_apply_toggled(bool checked)
+{
+    // 用户勾选后,将标志写入 Core SessionData。
+    // 实际的"采集完成后重新应用"逻辑在 SigSession 的
+    // DSV_MSG_REV_END_PACKET handler 中执行:检测到 _glitch_filter_auto_apply
+    // 且 thresholds/modes 非空时调用 _filter_processor->set_glitch_filter()。
+    _view.session().set_glitch_filter_auto_apply(checked);
 }
 
 void GlitchFilterPopup::update_histogram_coloring()

@@ -25,7 +25,6 @@
 
 #include <libsigrokdecode.h>
 
-#include "../data/decodermodel.h"
 #include "../interface/icallbacks.h"
 #include "../interface/icontextaware.h"
 #include "../ui/uimanager.h"
@@ -35,6 +34,7 @@
 #include "protocolitemlayer.h"
 #include "searchcombobox.h"
 #include "../ui/dscombobox.h"
+#include "../view/decodermodel.h"
 #include <QDockWidget>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -57,7 +57,6 @@ namespace pv {
 class SigSession;
 
 namespace data {
-class DecoderModel;
 namespace decode {
 class Decoder;
 }
@@ -65,6 +64,7 @@ class Decoder;
 
 namespace view {
 class View;
+class DecoderModel;
 }
 
 namespace dock {
@@ -108,7 +108,7 @@ private:
   int get_output_protocol_by_id(QString id);
 
   static int decoder_name_cmp(const void *a, const void *b);
-  void resize_table_view(data::DecoderModel *decoder_model);
+  void resize_table_view(view::DecoderModel *decoder_model);
   static bool protocol_sort_callback(const DecoderInfoItem *o1,
                                      const DecoderInfoItem *o2);
 
@@ -165,6 +165,12 @@ private:
   view::View *_view;
   TabContext *_context;
   QSortFilterProxyModel _model_proxy;
+  // View-owned DecoderModel (purify-architecture-concepts Task 10): was
+  // previously a Core singleton exposed via SigSession::get_decoder_model().
+  // ProtocolDock now owns it as a QObject child (Qt parent ownership handles
+  // destruction). ProtocolList/ProtocolExp dialogs receive a raw pointer via
+  // their constructors so they can read/setDecoderStack on the same instance.
+  view::DecoderModel *_decoder_model;
   int _cur_search_index;
   QStringList _str_list;
 

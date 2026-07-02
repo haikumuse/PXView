@@ -156,17 +156,6 @@ namespace pv {
 namespace {
 QString tmp_file;
 
-/** Build a channel-index → visibility map from the View's signal list. */
-std::map<int, bool> build_channel_visibility(pv::view::View *view) {
-  std::map<int, bool> vis;
-  if (view) {
-    for (auto *sig : view->get_own_signals()) {
-      vis[sig->get_index()] = sig->visible();
-    }
-  }
-  return vis;
-}
-
 /** Build a channel-index → ChannelLayoutState map from the View's signal list.
  * Task 7 (unify-signal-layout-state): persists per-signal UI layout so the
  * session can restore view_index / v_offset / own_height after reload. */
@@ -183,6 +172,23 @@ build_channel_layout(pv::view::View *view) {
     }
   }
   return layout;
+}
+
+/** Build a channel-index → colour-string map from the View's signal list.
+ * Task 3 (purify-architecture-concepts): collects per-signal colour so
+ * SignalConfigStore can serialize it as the single .pxc channel config path
+ * (replaces the old MainWindow::gen_config_json direct view::Signal access).
+ * Returns QColor::name() (hex "#RRGGBB") or "default" when invalid. */
+std::map<int, std::string>
+build_channel_colours(pv::view::View *view) {
+  std::map<int, std::string> colours;
+  if (view) {
+    for (auto *sig : view->get_own_signals()) {
+      QColor c = sig->get_colour();
+      colours[sig->get_index()] = c.isValid() ? c.name().toStdString() : "default";
+    }
+  }
+  return colours;
 }
 } // namespace
 
@@ -417,8 +423,7 @@ void MainWindow::setup_ui() {
   pv::data::SessionDocument *initial_doc = new pv::data::SessionDocument(_session);
 
   if (_device_agent && _device_agent->have_instance()) {
-    initial_doc->save_signal_config({},
-                                    _session->get_signal_models(), {});
+    initial_doc->save_signal_config(_session->get_signal_models(), {});
     pxv_info("MainWindow::setup_ui() saved initial signal config, mode=%d "
              "ch_count=%d",
              initial_doc->get_signal_config().work_mode,
@@ -1382,7 +1387,6 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
   QString title = QApplication::applicationName() + " v" +
                   QApplication::applicationVersion();
 
-  QJsonArray channelVar;
   sessionVar["Version"] = QJsonValue::fromVariant(SESSION_FORMAT_VERSION);
   sessionVar["Device"] = QJsonValue::fromVariant(_device_agent->driver_name());
   sessionVar["DeviceMode"] =
@@ -1438,54 +1442,32 @@ bool MainWindow::gen_config_json(QJsonObject &sessionVar) {
     }
   }
 
-  for (auto s : current_view()->get_own_signals()) {
-    QJsonObject s_obj;
-    s_obj["index"] = s->get_index();
-    s_obj["view_index"] = s->get_view_index();
-    s_obj["type"] = s->get_type();
-    s_obj["enabled"] = s->enabled();
-    s_obj["name"] = s->get_name();
-
-    if (s->get_colour().isValid())
-      s_obj["colour"] = QJsonValue::fromVariant(s->get_colour());
-    else
-      s_obj["colour"] = QJsonValue::fromVariant("default");
-
-    view::LogicSignal *logicSig = NULL;
-    if ((logicSig = dynamic_cast<view::LogicSignal *>(s))) {
-      s_obj["strigger"] = logicSig->get_trig();
-    }
-
-    if (s->signal_type() == SR_CHANNEL_DSO) {
-      view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-      s_obj["vdiv"] = QJsonValue::fromVariant(
-          static_cast<qulonglong>(dsoSig->get_vDialValue()));
-      s_obj["vfactor"] = QJsonValue::fromVariant(
-          static_cast<qulonglong>(dsoSig->get_factor()));
-      s_obj["coupling"] = dsoSig->get_acCoupling();
-      s_obj["trigValue"] = dsoSig->get_trig_vrate();
-      s_obj["zeroPos"] = dsoSig->get_zero_ratio();
-    }
-
-    if (s->signal_type() == SR_CHANNEL_ANALOG) {
-      view::AnalogSignal *analogSig = (view::AnalogSignal *)s;
-      s_obj["vdiv"] = QJsonValue::fromVariant(
-          static_cast<qulonglong>(analogSig->get_vdiv()));
-      s_obj["vfactor"] = QJsonValue::fromVariant(
-          static_cast<qulonglong>(analogSig->get_factor()));
-      s_obj["coupling"] = analogSig->get_acCoupling();
-      s_obj["zeroPos"] = analogSig->get_zero_ratio();
-      s_obj["mapUnit"] = analogSig->get_mapUnit();
-      s_obj["mapMin"] = analogSig->get_mapMin();
-      s_obj["mapMax"] = analogSig->get_mapMax();
-      s_obj["mapDefault"] = analogSig->get_mapDefault();
-    }
-    channelVar.append(s_obj);
+  // Task 3 (purify-architecture-concepts): channel 段改为通过 SignalConfigStore
+  // 序列化（单一序列化路径），不再直访 view::Signal。先调用 save_signal_config
+  // 从当前 device + View 状态填充 _signal_config，再 signal_config_to_json 产出
+  // channels[] 数组。顶层 key 仍为 "channel"（单数）以保持 .pxc 外层结构不变；
+  // 数组内字段统一使用 ChannelConfig 字段名（不保留 strigger/trigValue/zeroPos/
+  // mapUnit/mapMin/mapMax/mapDefault/colour/type/name/vfactor 等 MainWindow 旧 key）。
+  pv::TabContext *ctx = current_context();
+  pv::data::SessionDocument *doc = ctx ? ctx->document() : nullptr;
+  if (doc) {
+    doc->save_signal_config(_session->get_signal_models(),
+                            build_channel_layout(current_view()),
+                            build_channel_colours(current_view()));
+    QJsonObject sig_cfg = doc->signal_config_to_json();
+    sessionVar["channel"] = sig_cfg["channels"].toArray();
+  } else {
+    pxv_warn("MainWindow::gen_config_json: no active document, writing empty "
+             "channel array");
+    sessionVar["channel"] = QJsonArray();
   }
-  sessionVar["channel"] = channelVar;
 
   if (_device_agent->get_work_mode() == LOGIC) {
-    sessionVar["trigger"] = _trigger_widget->get_session();
+    // Task 6 (purify-architecture-concepts): trigger 序列化改走 Core
+    // TriggerConfig（唯一真相源），不再调用 _trigger_widget->get_session()
+    // 经 View 层产出旧 JSON key。to_json() 写入 mode/trigger_pos/stage_count/
+    // stages[]/adv_enabled/adv_tab_index/serial_* 新结构。
+    sessionVar["trigger"] = _session->trigger_config().to_json();
   }
 
   StoreSession ss(_session);
@@ -1602,7 +1584,7 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
         } else {
           const char *fd_key =
               sessionObj[info->name].toString().toLocal8Bit().data();
-          id = ds_dsl_option_value_to_code(conf_dev_mode, info->key, fd_key);
+          id = _device_agent->option_value_to_code(conf_dev_mode, info->key, fd_key);
           if (id == -1) {
             pxv_err("Convert failed, key:\"%s\", value:\"%s\"", info->name,
                     fd_key);
@@ -1629,73 +1611,34 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   }
 
   // load channel settings
-  if (mode == DSO) {
-    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
-      sr_channel *const probe = (sr_channel *)l->data;
-      if (!probe) {
-        pxv_warn("%s", "MainWindow: probe is NULL in DSO channel loop, skipping");
-        continue;
-      }
-      assert(probe);
-
-      for (const QJsonValue &value : sessionObj["channel"].toArray()) {
-        QJsonObject obj = value.toObject();
-        if (QString(probe->name) == obj["name"].toString() &&
-            probe->type == obj["type"].toDouble()) {
-          probe->vdiv = obj["vdiv"].toDouble();
-          probe->coupling = obj["coupling"].toDouble();
-          probe->vfactor = obj["vfactor"].toDouble();
-          probe->trig_value = obj["trigValue"].toDouble();
-          probe->map_unit =
-              g_strdup(obj["mapUnit"].toString().toStdString().c_str());
-          probe->map_min = obj["mapMin"].toDouble();
-          probe->map_max = obj["mapMax"].toDouble();
-          probe->enabled = obj["enabled"].toBool();
-          break;
-        }
-      }
-    }
-  } else {
-    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
-      sr_channel *const probe = (sr_channel *)l->data;
-      if (!probe) {
-        pxv_warn("%s", "MainWindow: probe is NULL in channel loop, skipping");
-        continue;
-      }
-      assert(probe);
-      bool isEnabled = false;
-
-      for (const QJsonValue &value : sessionObj["channel"].toArray()) {
-        QJsonObject obj = value.toObject();
-
-        if ((probe->index == obj["index"].toInt()) &&
-            (probe->type == obj["type"].toInt())) {
-          isEnabled = true;
-          QString chan_name = obj["name"].toString().trimmed();
-          if (chan_name == "") {
-            chan_name = QString::number(probe->index);
-          }
-
-          probe->enabled = obj["enabled"].toBool();
-          probe->name = g_strdup(chan_name.toStdString().c_str());
-          probe->vdiv = obj["vdiv"].toDouble();
-          probe->coupling = obj["coupling"].toDouble();
-          probe->vfactor = obj["vfactor"].toDouble();
-          probe->trig_value = obj["trigValue"].toDouble();
-          probe->map_unit =
-              g_strdup(obj["mapUnit"].toString().toStdString().c_str());
-          probe->map_min = obj["mapMin"].toDouble();
-          probe->map_max = obj["mapMax"].toDouble();
-
-          if (obj.contains("mapDefault")) {
-            probe->map_default = obj["mapDefault"].toBool();
-          }
-
-          break;
-        }
-      }
-      if (!isEnabled)
-        probe->enabled = false;
+  // Task 3 (purify-architecture-concepts): channel 段改走 SignalConfigStore 单一
+  // 路径。原代码按 DSO/非 DSO 两分支直改 sr_channel->vdiv/coupling/vfactor/
+  // trig_value/map_*/enabled/name，现统一为：signal_config_from_json 解析
+  // channels[] 数组到 _signal_config，apply_signal_config 应用到 sr_channel。
+  // 顶层 key 仍是 "channel"（单数），此处包成 {"channels": [...]} 喂给 store。
+  // work_mode/operation_mode/channel_mode/is_demo 取当前 device 已应用的值，
+  // 避免 apply_signal_config 误改 device mode（device settings 循环已设置）。
+  if (sessionObj.contains("channel")) {
+    pv::TabContext *ctx = current_context();
+    pv::data::SessionDocument *doc = ctx ? ctx->document() : nullptr;
+    if (doc) {
+      QJsonObject sig_obj;
+      sig_obj["channels"] = sessionObj["channel"].toArray();
+      doc->signal_config_from_json(sig_obj);
+      // 用当前 device 已应用的 mode/op_mode/ch_mode/is_demo 覆盖，保证
+      // apply_signal_config 不会改变 device mode（仅应用 per-channel 字段）。
+      auto &cfg = doc->signal_config_store()->get_signal_config();
+      cfg.work_mode = _device_agent->get_work_mode();
+      int tmp_mode;
+      if (_device_agent->get_config_int16(SR_CONF_OPERATION_MODE, tmp_mode))
+        cfg.operation_mode = tmp_mode;
+      if (_device_agent->get_config_int16(SR_CONF_CHANNEL_MODE, tmp_mode))
+        cfg.channel_mode = tmp_mode;
+      cfg.is_demo = _device_agent->is_demo();
+      doc->apply_signal_config();
+    } else {
+      pxv_warn("MainWindow::load_config_from_json: no active document, "
+               "skipping channel apply");
     }
   }
 
@@ -1708,6 +1651,14 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   _session->reload();
 
   // load signal setting
+  // Task 3: set_colour/set_trig(set_trig_type)/set_zero_ratio/set_trig_ratio
+  // 等 view::Signal 调用予以保留（Task 13 进一步改走 SignalModel）。仅将 JSON
+  // key 从 MainWindow 旧名（strigger/zeroPos/trigValue）改为 ChannelConfig 字段
+  // 名（trig_type/zero_offset/trig_value）。其中 zero_offset/trig_value 在新格式
+  // 下存的是 sr_channel 原始值（uint16_t/uint8_t），而 set_zero_ratio/
+  // set_trig_ratio 期望 [0,1] 比例；apply_signal_config + load_settings 已从
+  // probe 原始值恢复 _zero_offset/_trig_value，故仅当值落在 (0,1) 区间（旧比例
+  // 格式）时才调用 set_*/set_trig_ratio，避免把原始值当比例写入导致错乱。
   if (mode == DSO) {
     for (auto s : current_view()->get_own_signals()) {
       for (const QJsonValue &value : sessionObj["channel"].toArray()) {
@@ -1720,8 +1671,12 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
           if (s->signal_type() == SR_CHANNEL_DSO) {
             view::DsoSignal *dsoSig = (view::DsoSignal *)s;
             dsoSig->load_settings();
-            dsoSig->set_zero_ratio(obj["zeroPos"].toDouble());
-            dsoSig->set_trig_ratio(obj["trigValue"].toDouble());
+            double zr = obj["zero_offset"].toDouble();
+            if (zr > 0.0 && zr < 1.0)
+              dsoSig->set_zero_ratio(zr);
+            double tr = obj["trig_value"].toDouble();
+            if (tr > 0.0 && tr < 1.0)
+              dsoSig->set_trig_ratio(tr);
             dsoSig->commit_settings();
           }
           break;
@@ -1744,20 +1699,34 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
 
           view::LogicSignal *logicSig = NULL;
           if ((logicSig = dynamic_cast<view::LogicSignal *>(s))) {
-            logicSig->set_trig(obj["strigger"].toDouble());
+            // strigger → trig_type（ChannelConfig 字段名，int）
+            logicSig->set_trig(obj["trig_type"].toInt());
           }
 
           if (s->signal_type() == SR_CHANNEL_DSO) {
             view::DsoSignal *dsoSig = (view::DsoSignal *)s;
             dsoSig->load_settings();
-            dsoSig->set_zero_ratio(obj["zeroPos"].toDouble());
-            dsoSig->set_trig_ratio(obj["trigValue"].toDouble());
+            double zr = obj["zero_offset"].toDouble();
+            if (zr > 0.0 && zr < 1.0)
+              dsoSig->set_zero_ratio(zr);
+            double tr = obj["trig_value"].toDouble();
+            if (tr > 0.0 && tr < 1.0)
+              dsoSig->set_trig_ratio(tr);
             dsoSig->commit_settings();
           }
 
           if (s->signal_type() == SR_CHANNEL_ANALOG) {
             view::AnalogSignal *analogSig = (view::AnalogSignal *)s;
-            analogSig->set_zero_ratio(obj["zeroPos"].toDouble());
+            // AnalogSignal 无 load_settings()，且构造函数读 model->vertical_offset
+            // (reload 未从 probe->zero_offset 填充)，故 _zero_offset 不会由
+            // apply_signal_config + reload 自动恢复。这里把存为原始 uint16_t 的
+            // zero_offset 经 value2ratio 转成比例后用 set_zero_ratio 还原。
+            // 若值落在 (0,1)（旧比例格式）则直接当比例用（无兼容性要求，仅稳健）。
+            double zv = obj["zero_offset"].toDouble();
+            double ratio_z = (zv > 0.0 && zv < 1.0)
+                                 ? zv
+                                 : analogSig->value2ratio((int)zv);
+            analogSig->set_zero_ratio(ratio_z);
             analogSig->commit_settings();
           }
 
@@ -1773,8 +1742,14 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   current_view()->header_updated();
 
   // load trigger settings
+  // Task 6: trigger 反序列化改走 Core TriggerConfig（唯一真相源）。
+  // from_json() 读 to_json() 写入的新结构；set_trigger_config() 广播
+  // DSV_MSG_TRIGGER_CONFIG_CHANGED；随后 refresh_ui_from_core() 把 Core
+  // 状态映射到 TriggerDock 控件（View 层不再解析 trigger JSON）。
   if (sessionObj.contains("trigger")) {
-    _trigger_widget->set_session(sessionObj["trigger"].toObject());
+    _session->set_trigger_config(
+        data::TriggerConfig::from_json(sessionObj["trigger"].toObject()));
+    _trigger_widget->refresh_ui_from_core();
   }
 
   // load decoders
@@ -1797,37 +1772,7 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
   if (gvar_opts != NULL)
     g_variant_unref(gvar_opts);
 
-  load_channel_view_indexs(doc);
-
   return true;
-}
-
-void MainWindow::load_channel_view_indexs(QJsonDocument &doc) {
-  QJsonObject sessionObj = doc.object();
-
-  int mode = _device_agent->get_work_mode();
-  if (mode != LOGIC)
-    return;
-
-  // Match view_index by channel index, not by position.
-  // The JSON channel order may differ from the signal list order
-  // (e.g. after user drag-reordered channels), so sequential
-  // assignment would assign view_index values to wrong channels.
-  bool any_loaded = false;
-  for (auto s : current_view()->get_own_signals()) {
-    for (const QJsonValue &value : sessionObj["channel"].toArray()) {
-      QJsonObject obj = value.toObject();
-      if (s->get_index() == obj["index"].toInt() &&
-          obj.contains("view_index")) {
-        s->set_view_index(obj["view_index"].toInt());
-        any_loaded = true;
-        break;
-      }
-    }
-  }
-
-  if (any_loaded)
-    current_view()->update_all_trace_postion();
 }
 
 bool MainWindow::on_store_session(QString name) {
@@ -2513,7 +2458,6 @@ void MainWindow::on_frame_ended() {
                "waiting for DSV_MSG_COPY_TO_DOC_DONE");
     }
     ctx->document()->save_signal_config(
-        build_channel_visibility(current_view()),
         _session->get_signal_models(), build_channel_layout(current_view()));
     ctx->activate();
   }
@@ -3009,7 +2953,6 @@ void MainWindow::on_device_changed(int msg, int param) {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(
-            build_channel_visibility(current_view()),
             _session->get_signal_models(),
             build_channel_layout(current_view()));
         current_view()->rebuild_signals();
@@ -3250,7 +3193,6 @@ void MainWindow::on_device_options(int msg, int param) {
     pv::TabContext *ctx = current_context();
     if (ctx && ctx->document()) {
       ctx->document()->save_signal_config(
-          build_channel_visibility(current_view()),
           _session->get_signal_models(), build_channel_layout(current_view()));
     }
 
@@ -3288,7 +3230,6 @@ void MainWindow::on_device_options(int msg, int param) {
       pv::TabContext *ctx = current_context();
       if (ctx && ctx->document()) {
         ctx->document()->save_signal_config(
-            build_channel_visibility(current_view()),
             _session->get_signal_models(),
             build_channel_layout(current_view()));
         current_view()->rebuild_signals();
@@ -3676,11 +3617,6 @@ void MainWindow::load_demo_decoder_config(QString optname) {
     ss.load_decoders(_protocol_widget, deArray);
   }
 
-  QJsonDocument doc = get_config_json_from_data_file(file, bLoadSurccess);
-  if (bLoadSurccess) {
-    load_channel_view_indexs(doc);
-  }
-
   current_view()->update_all_trace_postion();
 }
 
@@ -3924,8 +3860,7 @@ void MainWindow::on_new_tab_requested() {
   pv::data::SessionDocument *new_doc = new pv::data::SessionDocument(_session);
 
   if (_device_agent && _device_agent->have_instance()) {
-    new_doc->save_signal_config({},
-                                _session->get_signal_models(), {});
+    new_doc->save_signal_config(_session->get_signal_models(), {});
     pxv_info("MainWindow::on_new_tab_requested() saved signal config, mode=%d "
              "ch_count=%d",
              new_doc->get_signal_config().work_mode,

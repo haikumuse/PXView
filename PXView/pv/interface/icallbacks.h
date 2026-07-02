@@ -24,6 +24,9 @@
 #ifndef _I_CALLBACKS_
 #define _I_CALLBACKS_
 
+#include <QString>
+#include <cstdint>
+#include <string>
 
 // Common base for all session callback sub-interfaces.
 // Provides a virtual destructor so that dynamic_cast can be used to query

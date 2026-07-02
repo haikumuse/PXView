@@ -43,7 +43,6 @@ struct ChannelLayoutState {
 struct ChannelConfig {
   int index;
   bool enabled;
-  bool visible;
   uint64_t vdiv;
   int coupling;
   bool map_default;
@@ -56,11 +55,25 @@ struct ChannelConfig {
                   // 表示未设置（按启用顺序派生）
   int v_offset;   // UI 布局：垂直偏移
   int own_height; // UI 布局：轨道高度，-1 表示自动高度
+  // purify-architecture-concepts Task 3: 补齐原 MainWindow::gen_config_json
+  // 直访 view::Signal 写入的字段，使 SignalConfigStore 成为 .pxc channel 配置
+  // 唯一序列化路径。下述字段统一使用 ChannelConfig 字段名，不再保留 MainWindow
+  // 路径的 JSON key（strigger/trigValue/zeroPos/mapUnit/mapMin/mapMax/mapDefault
+  // /colour/view_index/type/name/vfactor）。
+  int type;            // 通道类型 (SR_CHANNEL_LOGIC/DSO/ANALOG)，元数据
+  std::string name;    // 通道名（元数据）
+  std::string colour;  // 信号颜色（View 概念，过渡存放，阶段 6 迁移到 uiLayout）
+  uint64_t vfactor;    // 电压因子 (DSO/ANALOG)
+  uint8_t trig_value;  // DSO 触发电平原始值 (probe->trig_value)
+  std::string map_unit; // Analog 映射单位
+  double map_min;      // Analog 映射最小值
+  double map_max;      // Analog 映射最大值
 
   ChannelConfig()
-      : index(0), enabled(false), visible(true), vdiv(0), coupling(0),
+      : index(0), enabled(false), vdiv(0), coupling(0),
         map_default(true), hw_offset(0), offset(0), zero_offset(0),
-        trig_type(0), view_index(-1), v_offset(0), own_height(-1) {}
+        trig_type(0), view_index(-1), v_offset(0), own_height(-1), type(0),
+        vfactor(0), trig_value(0), map_min(0.0), map_max(0.0) {}
 };
 
 struct SignalConfig {
@@ -94,9 +107,9 @@ public:
   void signal_config_from_json(const QJsonObject &obj);
 
   void save_signal_config(
-      const std::map<int, bool> &channel_visibility = {},
       const std::vector<std::shared_ptr<SignalModel>> &signal_models = {},
-      const std::map<int, ChannelLayoutState> &channel_layout = {});
+      const std::map<int, ChannelLayoutState> &channel_layout = {},
+      const std::map<int, std::string> &channel_colours = {});
   void apply_signal_config();
   void apply_pending_config();
   bool has_signal_config() const;

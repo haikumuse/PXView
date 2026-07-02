@@ -527,6 +527,31 @@ void DecodeTrace::draw_instant(const pv::data::decode::Annotation &a,
   }
 }
 
+QString DecodeTrace::best_annotation_text(
+    const pv::data::decode::Annotation &a, double rect_width,
+    const QFontMetrics &fm) {
+  const std::vector<QString> &ann_list = a.annotations();
+  if (ann_list.empty())
+    return QString();
+
+  // Try to find an annotation that will fit; pick the longest one that fits.
+  QString best_annotation;
+  int best_width = 0;
+
+  for (auto &txt : ann_list) {
+    const int w = fm.boundingRect(QRect(), 0, txt).width();
+    if (w <= rect_width && w > best_width) {
+      best_annotation = txt;
+      best_width = w;
+    }
+  }
+
+  if (best_annotation.isEmpty())
+    best_annotation = ann_list.back();
+
+  return best_annotation;
+}
+
 void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
                              QColor fill, QColor outline, QColor text_color,
                              int h, double start, double end, int y,
@@ -572,9 +597,11 @@ void DecodeTrace::draw_range(const pv::data::decode::Annotation &a, QPainter &p,
   QFont dec_font = theme_font_decoder();
   p.setFont(dec_font);
 
-  // Get best annotation representation using the new high-performance cache
+  // Pick the best-fitting annotation text for this rect width. The width
+  // computation is a View-layer concern (uses QFontMetrics); the Core
+  // Annotation class is now a pure data class.
   const QString best_annotation =
-      a.get_cached_best_annotation(rect.width(), p.font(), p.fontMetrics());
+      best_annotation_text(a, rect.width(), p.fontMetrics());
 
   const QString elided =
       p.fontMetrics().elidedText(best_annotation, Qt::ElideRight, rect.width());

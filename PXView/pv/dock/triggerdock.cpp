@@ -674,7 +674,14 @@ void TriggerDock::set_session(QJsonObject ses) {
   cfg.set_stages(stages);
   _session->set_trigger_config(cfg);
 
-  // ---- Fill UI from Core cfg ----
+  // Task 6: UI 填充统一走 refresh_ui_from_core()，不再内联读 JSON。
+  refresh_ui_from_core();
+}
+
+void TriggerDock::refresh_ui_from_core() {
+  // Task 6: 纯 UI 刷新——从 Core TriggerConfig 重新填充所有触发控件。
+  // View 层不再解析 .pxc trigger 段 JSON；反序列化由 Core from_json 完成，
+  // 本方法只负责把 Core 状态映射到 QWidget 控件。
   const auto &tcfg = _session->trigger_config();
   _position_slider->setValue(tcfg.trigger_pos());
   stages_comboBox->setCurrentIndex(tcfg.stage_count() - 1);
@@ -684,8 +691,8 @@ void TriggerDock::set_session(QJsonObject ses) {
   else
     _simple_radioButton->click();
 
-  // Per-stage UI: for ADV mode read from Core stages; otherwise fall back to
-  // the raw JSON keys to preserve any pre-existing per-stage input.
+  // Per-stage UI: ADV mode reads from Core stages; otherwise defaults。
+  // （Simple 模式下 stages 为空，per-stage 控件本就隐藏，填默认值无害。）
   for (int i = 0; i < stages_comboBox->count(); i++) {
     QString v0_low, v1_low, v0_ext, v1_ext;
     int inv0 = 0, inv1 = 0, logic_index = 0, count0 = 1;
@@ -700,22 +707,6 @@ void TriggerDock::set_session(QJsonObject ses) {
       logic_index = s.logic & 1;
       conti = (s.logic >> 1) & 1;
       count0 = s.count0;
-    } else {
-      v0_low = ses.value("stageTriggerValue0" + QString::number(i)).toString();
-      v1_low = ses.value("stageTriggerValue1" + QString::number(i)).toString();
-      if (_cur_ch_num == 32) {
-        v0_ext = ses.value("stageTriggerExt32Value0" + QString::number(i))
-                     .toString();
-        v1_ext = ses.value("stageTriggerExt32Value1" + QString::number(i))
-                     .toString();
-      }
-      inv0 = ses.value("stageTriggerInv0" + QString::number(i)).toInt(0);
-      inv1 = ses.value("stageTriggerInv1" + QString::number(i)).toInt(0);
-      logic_index =
-          ses.value("stageTriggerLogic" + QString::number(i)).toInt(0);
-      count0 = ses.value("stageTriggerCount" + QString::number(i)).toInt(1);
-      conti = ses.value("stageTriggerContiguous" + QString::number(i))
-                  .toBool(false);
     }
 
     _value0_lineEdit_list.at(i)->setText(v0_low);
@@ -729,39 +720,24 @@ void TriggerDock::set_session(QJsonObject ses) {
     _contiguous_checkbox_list.at(i)->setChecked(conti);
 
     if (_cur_ch_num == 32) {
-      if (ses.contains("stageTriggerExt32Value0" + QString::number(i)) ||
-          !v0_ext.isEmpty()) {
+      if (!v0_ext.isEmpty()) {
         _value0_ext32_lineEdit_list.at(i)->setText(v0_ext);
         lineEdit_highlight(_value0_ext32_lineEdit_list.at(i));
       }
-      if (ses.contains("stageTriggerExt32Value1" + QString::number(i)) ||
-          !v1_ext.isEmpty()) {
+      if (!v1_ext.isEmpty()) {
         _value1_ext32_lineEdit_list.at(i)->setText(v1_ext);
         lineEdit_highlight(_value1_ext32_lineEdit_list.at(i));
       }
     }
   }
 
-  // Serial UI: for SERIAL mode read from Core stages; otherwise fall back to
-  // JSON.
+  // Serial UI: SERIAL mode reads from Core stages; otherwise defaults。
   QString s_start_low, s_stop_low, s_edge_low, s_start_ext, s_stop_ext,
       s_edge_ext;
   if (tcfg.mode() == data::TriggerConfig::Serial && tcfg.stages().size() >= 2) {
     split_trigger_value(tcfg.stages()[0].value0, s_start_ext, s_start_low);
     split_trigger_value(tcfg.stages()[0].value1, s_stop_ext, s_stop_low);
     split_trigger_value(tcfg.stages()[1].value0, s_edge_ext, s_edge_low);
-  } else {
-    s_start_low = ses.value("serialTriggerStart").toString();
-    s_stop_low = ses.value("serialTriggerStop").toString();
-    s_edge_low = ses.value("serialTriggerClock").toString();
-    if (_cur_ch_num == 32) {
-      if (ses.contains("serialTriggerExt32Start"))
-        s_start_ext = ses.value("serialTriggerExt32Start").toString();
-      if (ses.contains("serialTriggerExt32Stop"))
-        s_stop_ext = ses.value("serialTriggerExt32Stop").toString();
-      if (ses.contains("serialTriggerExt32Clock"))
-        s_edge_ext = ses.value("serialTriggerExt32Clock").toString();
-    }
   }
   _serial_start_lineEdit->setText(s_start_low);
   lineEdit_highlight(_serial_start_lineEdit);

@@ -56,7 +56,7 @@ typedef std::lock_guard<std::mutex> ds_lock_guard;
 namespace pv {
 namespace data {
 class SignalData; class Snapshot; class LissajousModel; class SessionDocument;
-class DecoderStack; class SpectrumStack; class DecoderModel;
+class DecoderStack; class SpectrumStack;
 namespace decode { class Decoder; }
 } // namespace data
 namespace core {
@@ -74,6 +74,7 @@ public:
   uint64_t _cur_snap_samplerate, _cur_samplelimits, _trig_pos;
   data::LogicSnapshot *_logic_backup;
   bool _glitch_filter_active, _signal_invert_active;
+  bool _glitch_filter_auto_apply = false;  // 采集后自动重新应用滤波
   std::vector<uint32_t> _glitch_filter_thresholds;
   std::vector<GlitchFilterMode> _glitch_filter_modes;
   std::vector<bool> _signal_invert_channels;
@@ -126,7 +127,6 @@ public:
   std::vector<std::shared_ptr<data::DecoderStack>> &get_decoder_stacks(data::SessionDocument *doc = nullptr) override;
   void rst_decoder(int index, data::SessionDocument *doc = nullptr);
   void rst_decoder_by_key_handel(void *handel, data::SessionDocument *doc = nullptr);
-  pv::data::DecoderModel *get_decoder_model() override { return _decoder_model; }
   std::vector<std::shared_ptr<data::SpectrumStack>> &get_spectrum_stacks() override { return _spectrum_stacks; }
   data::LissajousModel *get_lissajous_model() override { return _lissajous_model; }
   std::shared_ptr<data::MathStack> get_math_stack() override { return _math_stack; }
@@ -239,6 +239,11 @@ public:
   // copy if they need a stable snapshot. Safe to call from the GUI thread.
   const std::vector<uint32_t>& glitch_filter_thresholds() const { return _view_data->_glitch_filter_thresholds; }
   const std::vector<GlitchFilterMode>& glitch_filter_modes() const { return _view_data->_glitch_filter_modes; }
+  // 采集后自动重新应用滤波(保留上次阈值/模式)
+  void set_glitch_filter_auto_apply(bool en) { _view_data->_glitch_filter_auto_apply = en; }
+  bool glitch_filter_auto_apply() const { return _view_data->_glitch_filter_auto_apply; }
+  // 新采集开始时清除滤波状态(不恢复数据,因为数据已被 clear)
+  void clear_glitch_filter_state_for_capture();
   void set_signal_invert(const std::vector<bool> &channels);
   void clear_signal_invert();
   bool is_signal_invert_active();
@@ -269,7 +274,6 @@ private:
   mutable std::mutex _sampling_mutex, _data_mutex;
   std::vector<std::shared_ptr<data::SignalModel>> _signal_models;
   static std::vector<std::shared_ptr<data::DecoderStack>> _empty_decoder_stacks;
-  pv::data::DecoderModel *_decoder_model;
   std::vector<std::shared_ptr<data::SpectrumStack>> _spectrum_stacks;
   data::LissajousModel *_lissajous_model = nullptr;
   std::shared_ptr<data::MathStack> _math_stack = nullptr;
