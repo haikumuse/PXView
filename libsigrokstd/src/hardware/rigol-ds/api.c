@@ -293,7 +293,7 @@ static const struct rigol_ds_model supported_models[] = {
 	{SERIES(MSO7000A), "MSO7034A", {2, 1000000000}, CH_INFO(4, false), mso7000a_cmd},
 };
 
-struct sr_dev_driver rigol_ds_driver_info;
+static struct sr_dev_driver rigol_ds_driver_info;
 
 static int analog_frame_size(const struct sr_dev_inst *);
 

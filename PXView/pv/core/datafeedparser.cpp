@@ -132,7 +132,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     }
   }
 
-  _session->_capture_manager->dso_packet_count_ref()++;
+  _session->_capture_manager->inc_dso_packet_count();
 
   if (!_session->_is_triged && o.num_samples > 0) {
     _session->_is_triged = true;
@@ -157,7 +157,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   }
 
   if (o.num_samples != 0 && (!_session->_capture_manager->is_instant() ||
-                             _session->_capture_manager->dso_packet_count_ref() == 1)) {
+                             _session->_capture_manager->dso_packet_count() == 1)) {
     // update current sample rate
     _session->set_cur_snap_samplerate(_session->_device_agent.get_sample_rate());
   }

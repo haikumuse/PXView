@@ -111,7 +111,7 @@ static const struct maynuo_m97_model supported_models[] = {
 //	{ 102, "M9812B"    ,   15, 500,    300 },
 };
 
-struct sr_dev_driver maynuo_m97_driver_info;
+static struct sr_dev_driver maynuo_m97_driver_info;
 
 static struct sr_dev_inst *probe_device(struct sr_modbus_dev_inst *modbus)
 {

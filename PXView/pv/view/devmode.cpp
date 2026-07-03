@@ -25,12 +25,13 @@
 #include "trace.h"
 #include "../sigsession.h" 
 
-#include <assert.h> 
-#include <QStyleOption>
+#include <assert.h>
+#include <QHBoxLayout>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QRect>
-#include <QHBoxLayout>
+#include <QStyleOption>
 
 #include "../config/appconfig.h"
 #include "../ui/msgbox.h"
@@ -59,7 +60,7 @@ DevMode::DevMode(QWidget *parent, SigSession *session) :
     _header_collapsed = false;
 
     _session = session;
-    _device_agent = session->get_device();
+    _device_agent = session->device();
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setSpacing(0);
@@ -196,8 +197,9 @@ void DevMode::on_mode_change()
 {
     if (_device_agent->have_instance() == false){
         assert(false);
+        return;
     }
-    
+
     QAction *action = qobject_cast<QAction *>(sender());
 
     if (_device_agent->get_work_mode() == _mode_list[action]->mode){
@@ -244,6 +246,7 @@ void DevMode::on_close()
 {
    if (_device_agent->have_instance() == false){
         assert(false);
+        return;
     }
 
     if (_bFile && MsgBox::Confirm(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_CLOSE_DEVICE), "Are you sure to close the device?"))){

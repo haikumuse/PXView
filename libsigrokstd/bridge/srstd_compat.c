@@ -2,9 +2,8 @@
  * srstd_compat.c - Compatibility shims for functions missing from
  *                  upstream libsigrok 0.6.0 but used by newer drivers.
  *
- * This file is compiled WITH -include srstd_rename.h (part of the main
- * libsigrokstd target via SRSTD_BRIDGE_SOURCES), so any sr_* references
- * are macro-renamed to srstd_*.
+ * Phase 1/2 removed srstd_rename.h, so any sr_* references in this file
+ * resolve directly to the real upstream symbols.
  *
  * Functions provided:
  *   std_i32_idx() — added in upstream libsigrok 0.6.1; missing from 0.6.0.
@@ -16,7 +15,7 @@
  *                          is unsupported in this build anyway.
  */
 
-#include "srstd.h"
+#include <libsigrok/libsigrok.h>
 #include "libsigrok-internal.h"
 
 /*

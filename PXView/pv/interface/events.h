@@ -22,25 +22,37 @@
 
 // Typed event bus for PXView.
 //
-// STATUS (B1.1 fix): This is currently FRONT-INFRASTRUCTURE with 0 IEventListener
-// consumers and 0 direct broadcast<T>() emission points. The OnMessage() translation
-// table covers 14 of 43 DSV_MSG_* codes. 4 event structs (DecodeDone/SignalsChanged/
-// DataUpdated/SampleRateChanged) are double dead-code (no emitter AND no consumer).
-// The "new code MUST use IEventListener" hard constraint has been REMOVED from
-// AGENTS.md — this interface is now RECOMMENDED, not mandatory. Full migration
-// (registering MainWindow sub-components as IEventListener consumers) is deferred
-// until MainWindow::OnMessage is split into per-responsibility handlers (Task 9/C5).
+// STATUS (modernize-core-layer-final Task 1 — updated):
+//   * 40 direct broadcast<T>() emission points exist across the codebase
+//     (39 in sigsession.cpp OnMessage() translation table + 1 in
+//     decodetaskmanager.cpp for DecodeDone).
+//   * MainWindow is registered as the sole IEventListener consumer.
+//   * MainWindow overrides ALL 41 on_event(const T&) virtuals (see
+//     mainwindow.h lines 272-312). Each override routes to one of the 7
+//     per-responsibility handlers split out of the former OnMessage God
+//     method (on_data_updated / on_capture_state / on_signals_changed /
+//     on_trigger_changed / on_device_options_updated / on_session_state /
+//     on_decode_done).
+//   * OnMessage() is reduced to a 5-case fallback handling only the pre/post
+//     ordering codes (CURRENT_DEVICE_CHANGE_PREV / START_COLLECT_WORK_PREV /
+//     STORE_CONF_PREV / CAPTURE_OWNER_CHANGED + default log) that drive
+//     SigSession's own state machine and require synchronous pre-broadcast.
+//   * The "new code MUST use IEventListener" hard constraint is in effect
+//     (see AGENTS.md "Typed event bus (HARD CONSTRAINT — C1+ complete)").
+//   * DataUpdated is the only struct without a direct emitter (no clear
+//     "underlying sample data updated" emission point has been wired yet —
+//     see note below); its on_event override is currently a no-op.
 //
 // This header defines a set of semantic event structs (one per DSV_MSG_*
 // notification) and the IEventListener interface. Each event carries its full
 // context as typed fields rather than a bare (int msg, int param) pair, so
 // consumers cannot accidentally mis-handle a message code or forget a payload.
 //
-// New code SHOULD register an IEventListener with SigSession and override only
+// New code MUST register an IEventListener with SigSession and override only
 // the event handlers it cares about. The legacy IMessageListener / DSV_MSG_*
-// path (interface/icallbacks.h) is retained as a compatibility shim: SigSession
-// translates every relevant DSV_MSG_* into the matching typed event inside
-// OnMessage(), so both listener kinds run in parallel during the migration.
+// path (interface/icallbacks.h) is retained as a compatibility shim solely
+// for the 5 pre/post ordering codes that must run synchronously BEFORE the
+// state mutation; all other notifications are dispatched via broadcast<T>().
 //
 // Layer: this is a Core-layer header. It may depend only on Qt6::Core and the
 // STL — it MUST NOT include QWidget/QMainWindow/QDialog or any pv/view/*.h.

@@ -20,7 +20,7 @@
 #include <config.h>
 #include "protocol.h"
 
-struct sr_dev_driver atorch_driver_info;
+static struct sr_dev_driver atorch_driver_info;
 
 static const uint32_t scanopts[] = {
 	SR_CONF_CONN,

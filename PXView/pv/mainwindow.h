@@ -260,12 +260,56 @@ private:
     //events are simply not consumed.
     void on_service_event(const pv::api::ServiceEventData &data) override;
 
-    //IEventListener (B1.2 proof-of-concept) — typed event bus consumer. Only
-    //CaptureStateChanged is overridden here to demonstrate the migration path;
-    //once MainWindow::OnMessage is split into per-responsibility handlers
-    //(Task 9/C5), each handler can move to a typed on_event override and the
-    //legacy IMessageListener path can be retired.
-    void on_event(const pv::interface::CaptureStateChanged &e) override;
+    //IEventListener (Task 8) — typed event bus consumer. All 41 event structs
+    //have a typed override below. Overrides that correspond to a former OnMessage
+    //case dispatch to the per-responsibility handler (on_device_changed /
+    //on_capture_state / on_device_options / on_ui_options / on_data_updated /
+    //on_filter_completed / on_trigger_changed). Overrides for events with no
+    //OnMessage counterpart (CopyToDocDone/DecodeDone/SignalsChanged/DataUpdated/
+    //DeviceConfigUpdated) are empty. CaptureOwnerChanged is also empty because
+    //its is_working flag is carried by the legacy (int param) path and is not
+    //present in the typed event struct — that case is retained in OnMessage.
+    void on_event(const pv::interface::CaptureStateChanged &) override;
+    void on_event(const pv::interface::CaptureOwnerChanged &) override;
+    void on_event(const pv::interface::TriggerConfigChanged &) override;
+    void on_event(const pv::interface::SampleCountUpdated &) override;
+    void on_event(const pv::interface::DeviceOptionsUpdated &) override;
+    void on_event(const pv::interface::ActiveDocumentChanged &) override;
+    void on_event(const pv::interface::CopyToDocDone &) override;
+    void on_event(const pv::interface::DecodeDone &) override;
+    void on_event(const pv::interface::SignalsChanged &) override;
+    void on_event(const pv::interface::DataUpdated &) override;
+    void on_event(const pv::interface::DeviceModeChanged &) override;
+    void on_event(const pv::interface::CollectModeChanged &) override;
+    void on_event(const pv::interface::DeviceListUpdated &) override;
+    void on_event(const pv::interface::CurrentDeviceChanged &) override;
+    void on_event(const pv::interface::UsbDeviceArrived &) override;
+    void on_event(const pv::interface::DeviceDetached &) override;
+    void on_event(const pv::interface::SampleRateChanged &) override;
+    void on_event(const pv::interface::SaveComplete &) override;
+    void on_event(const pv::interface::StartCollectWork &) override;
+    void on_event(const pv::interface::CollectStart &) override;
+    void on_event(const pv::interface::CollectEnd &) override;
+    void on_event(const pv::interface::EndCollectWork &) override;
+    void on_event(const pv::interface::EndDeviceOptions &) override;
+    void on_event(const pv::interface::DeviceConfigUpdated &) override;
+    void on_event(const pv::interface::DemoModeChanged &) override;
+    void on_event(const pv::interface::DataPoolChanged &) override;
+    void on_event(const pv::interface::SimpleTriggerChanged &) override;
+    void on_event(const pv::interface::GlitchFilterStarted &) override;
+    void on_event(const pv::interface::GlitchFilterProgress &) override;
+    void on_event(const pv::interface::GlitchFilterCompleted &) override;
+    void on_event(const pv::interface::GlitchFilterCleared &) override;
+    void on_event(const pv::interface::SignalInvertStarted &) override;
+    void on_event(const pv::interface::SignalInvertCompleted &) override;
+    void on_event(const pv::interface::SignalInvertCleared &) override;
+    void on_event(const pv::interface::CopyInProgressChanged &) override;
+    void on_event(const pv::interface::TrigNextCollect &) override;
+    void on_event(const pv::interface::ClearDecodeData &) override;
+    void on_event(const pv::interface::AppOptionsChanged &) override;
+    void on_event(const pv::interface::FontOptionsChanged &) override;
+    void on_event(const pv::interface::ShortcutChanged &) override;
+    void on_event(const pv::interface::StyleChanged &) override;
 
 private: 
 	pv::ui::DraggableTabWidget *_tab_widget;

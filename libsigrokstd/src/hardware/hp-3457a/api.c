@@ -37,7 +37,7 @@ static const uint32_t devopts[] = {
 	SR_CONF_ADC_POWERLINE_CYCLES | SR_CONF_SET | SR_CONF_GET,
 };
 
-struct sr_dev_driver hp_3457a_driver_info;
+static struct sr_dev_driver hp_3457a_driver_info;
 
 static int create_front_channel(struct sr_dev_inst *sdi, int chan_idx)
 {

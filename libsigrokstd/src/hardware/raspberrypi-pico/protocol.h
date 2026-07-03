@@ -25,7 +25,6 @@
 #include <stdint.h>
 #include <glib.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 /* This is used by sr_dbg/log etc to indicate where a printout came from */

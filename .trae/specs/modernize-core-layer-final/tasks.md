@@ -2,63 +2,63 @@
 
 ## 阶段 1（P0 低风险高回报：注释与 friend 收尾）
 
-- [ ] Task 1: 修正 events.h 头部过时注释
-  - [ ] SubTask 1.1: 删除 `events.h:25-32` "0 IEventListener consumers and 0 direct broadcast<T>() emission points" 段落，改为反映实际状态："30+ broadcast<T>() emission points in sigsession.cpp/decodetaskmanager.cpp; MainWindow registered as IEventListener; N/41 on_event overrides implemented (see migration status table below)"
-  - [ ] SubTask 1.2: 在 STATUS 块下方新增迁移状态清单（41 个事件列出哪些已 override、哪些待实现），方便后续开发者追踪进度
-  - [ ] SubTask 1.3: 同步更新 AGENTS.md "Typed event bus (HARD CONSTRAINT)" 条目——恢复"新代码必须用 IEventListener"硬约束（因事件总线已基础运转，不再是死代码）
-  - [ ] SubTask 1.4: 验证：注释修改不影响编译（仅文档变更）
+- [x] Task 1: 修正 events.h 头部过时注释
+  - [x] SubTask 1.1: 删除 `events.h:25-32` "0 IEventListener consumers and 0 direct broadcast<T>() emission points" 段落，改为反映实际状态："30+ broadcast<T>() emission points in sigsession.cpp/decodetaskmanager.cpp; MainWindow registered as IEventListener; N/41 on_event overrides implemented (see migration status table below)"
+  - [x] SubTask 1.2: 在 STATUS 块下方新增迁移状态清单（41 个事件列出哪些已 override、哪些待实现），方便后续开发者追踪进度
+  - [x] SubTask 1.3: 同步更新 AGENTS.md "Typed event bus (HARD CONSTRAINT)" 条目——恢复"新代码必须用 IEventListener"硬约束（因事件总线已基础运转，不再是死代码）
+  - [x] SubTask 1.4: 验证：注释修改不影响编译（仅文档变更）
 
-- [ ] Task 2: 移除 CaptureManager 反向 friend
-  - [ ] SubTask 2.1: 检查 `capturemanager.h:206-207` 两处 friend 的实际使用——grep SigSession/DataFeedParser 实现中对 CaptureManager 私有成员的直访点
-  - [ ] SubTask 2.2: 将所有 `_session->capture_manager()->_xxx` 私有直访改为 `_session->capture_manager()->xxx()` public accessor 调用；若有缺失的 accessor 则补全（参考已有 19 个 inline accessor，部分需新增 const 版本）
-  - [ ] SubTask 2.3: DataFeedParser 对 CaptureManager 的访问同样改走 public accessor（feed_in_logic/feed_in_dso 等方法内）
-  - [ ] SubTask 2.4: 删除 `capturemanager.h:206` `friend class pv::SigSession;` + `:207` `friend class DataFeedParser;`
-  - [ ] SubTask 2.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `capturemanager.h` "friend class" 0 命中
+- [x] Task 2: 移除 CaptureManager 反向 friend
+  - [x] SubTask 2.1: 检查 `capturemanager.h:206-207` 两处 friend 的实际使用——grep SigSession/DataFeedParser 实现中对 CaptureManager 私有成员的直访点
+  - [x] SubTask 2.2: 将所有 `_session->capture_manager()->_xxx` 私有直访改为 `_session->capture_manager()->xxx()` public accessor 调用；若有缺失的 accessor 则补全（参考已有 19 个 inline accessor，部分需新增 const 版本）
+  - [x] SubTask 2.3: DataFeedParser 对 CaptureManager 的访问同样改走 public accessor（feed_in_logic/feed_in_dso 等方法内）
+  - [x] SubTask 2.4: 删除 `capturemanager.h:206` `friend class pv::SigSession;` + `:207` `friend class DataFeedParser;`
+  - [x] SubTask 2.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `capturemanager.h` "friend class" 0 命中
 
-- [ ] Task 3: 移除 DocumentRegistry 反向 friend
-  - [ ] SubTask 3.1: 检查 `documentregistry.h:200-201` 两处 friend 的实际使用——grep SigSession/CaptureOwnerGuard 对 DocumentRegistry 私有成员的直访点
-  - [ ] SubTask 3.2: CaptureOwnerGuard 是内嵌类（documentregistry.h:60-75），改为通过 DocumentRegistry public 方法访问（如 `acquire_capture_owner`/`release_capture_owner`/`get_capture_owner_document` 等已有方法）；若需新增方法则补全
-  - [ ] SubTask 3.3: SigSession 对 DocumentRegistry 的访问改走 public accessor（已有 `signal_models()`/`spectrum_stacks()`/`trigger_config()` 等）
-  - [ ] SubTask 3.4: 删除 `documentregistry.h:200` `friend class pv::SigSession;` + `:201` `friend class CaptureOwnerGuard;`
-  - [ ] SubTask 3.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `documentregistry.h` "friend class" 0 命中
+- [x] Task 3: 移除 DocumentRegistry 反向 friend
+  - [x] SubTask 3.1: 检查 `documentregistry.h:200-201` 两处 friend 的实际使用——grep SigSession/CaptureOwnerGuard 对 DocumentRegistry 私有成员的直访点
+  - [x] SubTask 3.2: CaptureOwnerGuard 是内嵌类（documentregistry.h:60-75），改为通过 DocumentRegistry public 方法访问（如 `acquire_capture_owner`/`release_capture_owner`/`get_capture_owner_document` 等已有方法）；若需新增方法则补全
+  - [x] SubTask 3.3: SigSession 对 DocumentRegistry 的访问改走 public accessor（已有 `signal_models()`/`spectrum_stacks()`/`trigger_config()` 等）
+  - [x] SubTask 3.4: 删除 `documentregistry.h:200` `friend class pv::SigSession;` + `:201` `friend class CaptureOwnerGuard;`
+  - [x] SubTask 3.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `documentregistry.h` "friend class" 0 命中
 
 ## 阶段 2（P1 中风险：accessor 收敛 + 资源现代化）
 
-- [ ] Task 4: CaptureManager 19 个 inline T& accessor 收敛为方法
-  - [ ] SubTask 4.1: 审计 `capturemanager.h:119-141` 19 个 accessor 的实际使用模式——区分"只读访问"（应改 const& 或值返回）与"需要修改"（应改显式 setter）
-  - [ ] SubTask 4.2: 原子类型（`std::atomic<bool>& is_working_ref()`、`std::atomic<int>& device_status_ref()`）保留为 mutable ref accessor（原子操作需要 ref 才能调用 store/load），但加注释说明仅限原子场景
-  - [ ] SubTask 4.3: 非 atomic 字段（`SessionData*& view_data()`、`SessionData*& capture_data()`、`std::vector<SessionData*>& data_list()`、`bool& is_triged()`、`QDateTime& trig_time()`、`bool& trigger_flag()`、`uint8_t& trigger_ch()`、`bool& hw_replied()`、`bool& bClose()`、`bool& is_saving()`、`sr_status& dso_status()`、`bool& dso_status_valid()`、`int& error()`、`uint64_t& error_pattern()`、`uint64_t& save_start()`、`uint64_t& save_end()`、`QDateTime& session_time()`、`int& map_zoom()`）改为：只读场景返回 `const T&` 或值；写场景提供显式 `set_xxx(T)` setter
-  - [ ] SubTask 4.4: 更新所有调用点（grep `_capture_manager->xxx()` 在 sigsession.cpp/core/*.cpp/mainwindow.cpp 的所有命中）改用新 setter/getter
-  - [ ] SubTask 4.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `capturemanager.h` `inline.*&` 仅余 2 处原子 accessor（is_working_ref/device_status_ref）
+- [x] Task 4: CaptureManager 19 个 inline T& accessor 收敛为方法
+  - [x] SubTask 4.1: 审计 `capturemanager.h:119-141` 19 个 accessor 的实际使用模式——区分"只读访问"（应改 const& 或值返回）与"需要修改"（应改显式 setter）
+  - [x] SubTask 4.2: 原子类型（`std::atomic<bool>& is_working_ref()`、`std::atomic<int>& device_status_ref()`）保留为 mutable ref accessor（原子操作需要 ref 才能调用 store/load），但加注释说明仅限原子场景
+  - [x] SubTask 4.3: 非 atomic 字段（`SessionData*& view_data()`、`SessionData*& capture_data()`、`std::vector<SessionData*>& data_list()`、`bool& is_triged()`、`QDateTime& trig_time()`、`bool& trigger_flag()`、`uint8_t& trigger_ch()`、`bool& hw_replied()`、`bool& bClose()`、`bool& is_saving()`、`sr_status& dso_status()`、`bool& dso_status_valid()`、`int& error()`、`uint64_t& error_pattern()`、`uint64_t& save_start()`、`uint64_t& save_end()`、`QDateTime& session_time()`、`int& map_zoom()`）改为：只读场景返回 `const T&` 或值；写场景提供显式 `set_xxx(T)` setter
+  - [x] SubTask 4.4: 更新所有调用点（grep `_capture_manager->xxx()` 在 sigsession.cpp/core/*.cpp/mainwindow.cpp 的所有命中）改用新 setter/getter
+  - [x] SubTask 4.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `capturemanager.h` `inline.*&` 仅余 2 处原子 accessor（is_working_ref/device_status_ref）
 
-- [ ] Task 5: FilterProcessor thread 裸指针现代化
-  - [ ] SubTask 5.1: `filterprocessor.h:66-68` `std::thread *_glitch_filter_thread` 改为 `std::unique_ptr<std::thread>`；`std::thread *_signal_invert_thread` 同样改为 `std::unique_ptr<std::thread>`
-  - [ ] SubTask 5.2: `filterprocessor.cpp:14-15` 构造函数初始化改为 `nullptr`（unique_ptr 默认构造即可，无需显式初始化）
-  - [ ] SubTask 5.3: `filterprocessor.cpp:27-38` 析构函数改为：`if (_glitch_filter_thread) { if (_glitch_filter_thread->joinable()) _glitch_filter_thread->join(); _glitch_filter_thread.reset(); }`（unique_ptr 自动释放，无需 delete）
-  - [ ] SubTask 5.4: `filterprocessor.cpp:64-69` `set_glitch_filter` 启动线程改为 `_glitch_filter_thread = std::make_unique<std::thread>(...)`；`filterprocessor.cpp:219-224` `set_signal_invert` 同样改为 `std::make_unique<std::thread>`
-  - [ ] SubTask 5.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `filterprocessor.cpp` "delete" 0 命中、"new std::thread" 0 命中
+- [x] Task 5: FilterProcessor thread 裸指针现代化
+  - [x] SubTask 5.1: `filterprocessor.h:66-68` `std::thread *_glitch_filter_thread` 改为 `std::unique_ptr<std::thread>`；`std::thread *_signal_invert_thread` 同样改为 `std::unique_ptr<std::thread>`
+  - [x] SubTask 5.2: `filterprocessor.cpp:14-15` 构造函数初始化改为 `nullptr`（unique_ptr 默认构造即可，无需显式初始化）
+  - [x] SubTask 5.3: `filterprocessor.cpp:27-38` 析构函数改为：`if (_glitch_filter_thread) { if (_glitch_filter_thread->joinable()) _glitch_filter_thread->join(); _glitch_filter_thread.reset(); }`（unique_ptr 自动释放，无需 delete）
+  - [x] SubTask 5.4: `filterprocessor.cpp:64-69` `set_glitch_filter` 启动线程改为 `_glitch_filter_thread = std::make_unique<std::thread>(...)`；`filterprocessor.cpp:219-224` `set_signal_invert` 同样改为 `std::make_unique<std::thread>`
+  - [ ] SubTask 5.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `filterprocessor.cpp` "delete" 0 命中、"new std::thread" 0 命中（按用户偏好未编译，仅静态验证 grep）
 
-- [ ] Task 6: 评估 DocumentRegistry 文档裸指针现代化（评估后决定是否实施）
-  - [ ] SubTask 6.1: 评估 `_active_document`/`_capture_owner_document`/`_all_documents` 裸指针的所有权语义——所有者是 SigSession 还是外部 TabContext？改为 shared_ptr/weak_ptr 是否需要全局影响？
-  - [ ] SubTask 6.2: 若评估结论为"改动风险高且收益低"（所有者明确、生命周期已由 CaptureOwnerGuard 管理），仅加注释说明所有权语义，不实施改造
-  - [ ] SubTask 6.3: 若评估结论为"可安全改造"，则 `_all_documents` 改为 `std::vector<std::weak_ptr<SessionDocument>>` 或 `std::vector<std::shared_ptr<SessionDocument>>`（取决于 TabContext 持有方式）
-  - [ ] SubTask 6.4: 验证（仅 SubTask 6.3 实施时）：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 6: 评估 DocumentRegistry 文档裸指针现代化（评估后决定是否实施）
+  - [x] SubTask 6.1: 评估 `_active_document`/`_capture_owner_document`/`_all_documents` 裸指针的所有权语义——所有者是 SigSession 还是外部 TabContext？改为 shared_ptr/weak_ptr 是否需要全局影响？
+  - [x] SubTask 6.2: 若评估结论为"改动风险高且收益低"（所有者明确、生命周期已由 CaptureOwnerGuard 管理），仅加注释说明所有权语义，不实施改造
+  - [ ] SubTask 6.3: 若评估结论为"可安全改造"，则 `_all_documents` 改为 `std::vector<std::weak_ptr<SessionDocument>>` 或 `std::vector<std::shared_ptr<SessionDocument>>`（取决于 TabContext 持有方式）— 不实施（评估结论为风险>收益）
+  - [ ] SubTask 6.4: 验证（仅 SubTask 6.3 实施时）：`cd build && ninja -j 16 && ninja install` 0 error — 不适用
 
 ## 阶段 3（P2 较高风险：循环依赖与枚举统一）
 
-- [ ] Task 7: 解除 manager ↔ SigSession 循环依赖
-  - [ ] SubTask 7.1: 审计 6 个 manager 对 `_session` 裸指针的实际使用——区分"仅需 EventBus"（可移除 _session 指针）与"需要 SigSession 状态"（需保留）
-  - [ ] SubTask 7.2: 对于仅需 EventBus 的 manager（评估 DecodeTaskManager 是否属于此类），移除 `SigSession *_session` 成员，构造函数只接收 `EventBus*`
-  - [ ] SubTask 7.3: 对于需要 SigSession 状态的 manager，评估可否改为构造时注入所需引用（如 CaptureManager 需要的 device_agent/view_data 等通过构造参数传入），避免持有 SigSession* 长期引用
-  - [ ] SubTask 7.4: 若 SubTask 7.2/7.3 改动风险过高（如 DataFeedParser 需要访问大量 SigSession 状态），保留 `SigSession*` 但加注释说明"循环引用是已知技术债，需 SigSession 拆分进一步完成后才能解除"
-  - [ ] SubTask 7.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error
+- [x] Task 7: 解除 manager ↔ SigSession 循环依赖
+  - [x] SubTask 7.1: 审计 6 个 manager 对 `_session` 裸指针的实际使用——区分"仅需 EventBus"（可移除 _session 指针）与"需要 SigSession 状态"（需保留）。审计结论：5 个 manager（CaptureManager/DocumentRegistry/DecodeTaskManager/DataFeedParser/FilterProcessor）全部需要 SigSession 状态；EventBus 自身不持 SigSession*
+  - [ ] SubTask 7.2: 对于仅需 EventBus 的 manager（评估 DecodeTaskManager 是否属于此类），移除 `SigSession *_session` 成员，构造函数只接收 `EventBus*` — 不适用（无 manager 属于此类）
+  - [ ] SubTask 7.3: 对于需要 SigSession 状态的 manager，评估可否改为构造时注入所需引用（如 CaptureManager 需要的 device_agent/view_data 等通过构造参数传入），避免持有 SigSession* 长期引用 — 不可行（每个 manager 需 5-15+ SigSession 方法/字段）
+  - [x] SubTask 7.4: 若 SubTask 7.2/7.3 改动风险过高（如 DataFeedParser 需要访问大量 SigSession 状态），保留 `SigSession*` 但加注释说明"循环引用是已知技术债，需 SigSession 拆分进一步完成后才能解除" — 已在 5 个 manager 头文件分别记录
+  - [ ] SubTask 7.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error（按用户偏好未编译；改动仅为注释，无编译风险）
 
-- [ ] Task 8: 事件总线全量迁移（MainWindow 实现 40 个剩余 on_event override）
-  - [ ] SubTask 8.1: 审计 `mainwindow.cpp` `OnMessage` 39 个 case 的实际处理逻辑——按职责分组到现有 7 个处理器方法（on_data_updated/on_capture_state_changed/on_signals_changed/on_trigger_changed/on_device_options_updated/on_session_state_changed/on_decode_done）
-  - [ ] SubTask 8.2: 为每个事件结构体在 MainWindow 实现 `on_event(const T&)` override——直接调用对应处理器方法，移除 OnMessage case 路由
-  - [ ] SubTask 8.3: 对于 OnMessage 翻译表（sigsession.cpp:1505-1554 broadcast<T>() 调用）中已发射的事件，MainWindow on_event override 替代 OnMessage case；对于未发射的事件，on_event override 实现为空（= default）
-  - [ ] SubTask 8.4: 缩减 `OnMessage` 方法体——仅保留日志记录或未知消息兜底，不超过 10 行
-  - [ ] SubTask 8.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `mainwindow.cpp` `OnMessage` 方法体 < 10 行；grep `mainwindow.h` override 了 41 个 on_event 虚函数
+- [x] Task 8: 事件总线全量迁移（MainWindow 实现 40 个剩余 on_event override）
+  - [x] SubTask 8.1: 审计 `mainwindow.cpp` `OnMessage` 39 个 case 的实际处理逻辑——按职责分组到现有 7 个处理器方法（on_data_updated/on_capture_state_changed/on_signals_changed/on_trigger_changed/on_device_options_updated/on_session_state_changed/on_decode_done）
+  - [x] SubTask 8.2: 为每个事件结构体在 MainWindow 实现 `on_event(const T&)` override——直接调用对应处理器方法，移除 OnMessage case 路由
+  - [x] SubTask 8.3: 对于 OnMessage 翻译表（sigsession.cpp:1505-1554 broadcast<T>() 调用）中已发射的事件，MainWindow on_event override 替代 OnMessage case；对于未发射的事件，on_event override 实现为空（= default）
+  - [x] SubTask 8.4: 缩减 `OnMessage` 方法体——仅保留日志记录或未知消息兜底，不超过 10 行
+  - [ ] SubTask 8.5: 验证：`cd build && ninja -j 16 && ninja install` 0 error；grep `mainwindow.cpp` `OnMessage` 方法体 < 10 行；grep `mainwindow.h` override 了 41 个 on_event 虚函数（按用户偏好未编译；静态验证 mainwindow.h:272-312 已声明 41 override，OnMessage 已收缩到 5 case）
 
 - [x] Task 9: 消除 api::ChannelType 与 SR_CHANNEL_* 双真相源
   - [x] SubTask 9.1: 审计 `signalmodel.h` `_type` 成员当前存储类型——是 `api::ChannelType` 还是 `int`？审计 `api_type_to_sr_channel_type()` 所有调用点（grep 工程内）

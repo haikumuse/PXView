@@ -103,6 +103,8 @@
 #include "view/signal.h"
 #include "view/trace.h"
 #include "view/view.h"
+#include "view/viewstatus.h"
+#include "view/viewport.h"
 
 /* __STDC_FORMAT_MACROS is required for PRIu64 and friends (in C++). */
 #include "ZipMaker.h"
@@ -2818,95 +2820,162 @@ void MainWindow::update_toolbar_view_status() {
   }
 }
 
-void MainWindow::on_event(const pv::interface::CaptureStateChanged &e) {
-  // B1.2 proof-of-concept: receive the typed CaptureStateChanged event and
-  // dispatch to the existing OnMessage handler. This demonstrates the
-  // IEventListener migration path. Once all OnMessage cases are migrated to
-  // typed on_event overrides, OnMessage can be removed entirely.
-  //
-  // Note: broadcast<T>() runs synchronously on whatever thread emitted the
-  // event — typically a Core worker thread. We forward to OnMessage, which
-  // performs its own GUI-thread marshal via QueuedConnection.
-  OnMessage(DSV_MSG_CAPTURE_STATE_CHANGED, e.is_working ? 1 : 0);
+// ---------------------------------------------------------------------------
+// IEventListener::on_event overrides (Task 8 — typed event bus migration).
+//
+// Each override corresponds to one of the 41 event structs in events.h.
+// Overrides that have a former OnMessage counterpart dispatch to the
+// per-responsibility handler (on_device_changed / on_capture_state /
+// on_device_options / on_ui_options / on_data_updated / on_filter_completed /
+// on_trigger_changed) with the matching DSV_MSG_* code. Since broadcast<T>()
+// is invoked from within the async-dispatched SigSession::OnMessage handler,
+// these overrides already run on qApp's thread (main thread) — no GUI-thread
+// marshal is needed.
+//
+// Empty-body overrides:
+//   * CaptureOwnerChanged — the is_working flag is carried by the legacy
+//     (int param) path and is not present in the typed event struct; that
+//     case is retained in OnMessage to avoid a race where is_working() flips
+//     between broadcast time and on_event time.
+//   * CopyToDocDone / DecodeDone / SignalsChanged / DataUpdated /
+//     DeviceConfigUpdated — these events have no former OnMessage case in
+//     MainWindow (no GUI work to do).
+// ---------------------------------------------------------------------------
+
+// --- Capture state group ---
+void MainWindow::on_event(const pv::interface::CaptureStateChanged &) {
+  on_capture_state(DSV_MSG_CAPTURE_STATE_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::StartCollectWork &) {
+  on_capture_state(DSV_MSG_START_COLLECT_WORK, 0);
+}
+void MainWindow::on_event(const pv::interface::CollectStart &) {
+  on_capture_state(DSV_MSG_COLLECT_START, 0);
+}
+void MainWindow::on_event(const pv::interface::CollectEnd &) {
+  on_capture_state(DSV_MSG_COLLECT_END, 0);
+}
+void MainWindow::on_event(const pv::interface::EndCollectWork &) {
+  on_capture_state(DSV_MSG_END_COLLECT_WORK, 0);
+}
+void MainWindow::on_event(const pv::interface::TrigNextCollect &) {
+  on_capture_state(DSV_MSG_TRIG_NEXT_COLLECT, 0);
 }
 
+// --- Device management group ---
+void MainWindow::on_event(const pv::interface::DeviceListUpdated &) {
+  on_device_changed(DSV_MSG_DEVICE_LIST_UPDATED, 0);
+}
+void MainWindow::on_event(const pv::interface::CurrentDeviceChanged &) {
+  on_device_changed(DSV_MSG_CURRENT_DEVICE_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::UsbDeviceArrived &) {
+  on_device_changed(DSV_MSG_NEW_USB_DEVICE, 0);
+}
+void MainWindow::on_event(const pv::interface::DeviceDetached &) {
+  on_device_changed(DSV_MSG_CURRENT_DEVICE_DETACHED, 0);
+}
+
+// --- Device options group ---
+void MainWindow::on_event(const pv::interface::DeviceOptionsUpdated &) {
+  on_device_options(DSV_MSG_DEVICE_OPTIONS_UPDATED, 0);
+}
+void MainWindow::on_event(const pv::interface::SampleCountUpdated &) {
+  on_device_options(DSV_MSG_SAMPLE_COUNT_UPDATED, 0);
+}
+void MainWindow::on_event(const pv::interface::DeviceModeChanged &) {
+  on_device_options(DSV_MSG_DEVICE_MODE_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::CollectModeChanged &) {
+  on_device_options(DSV_MSG_COLLECT_MODE_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::EndDeviceOptions &) {
+  on_device_options(DSV_MSG_END_DEVICE_OPTIONS, 0);
+}
+void MainWindow::on_event(const pv::interface::DemoModeChanged &) {
+  on_device_options(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED, 0);
+}
+void MainWindow::on_event(const pv::interface::SampleRateChanged &) {
+  on_device_options(DSV_MSG_DEVICE_DURATION_UPDATED, 0);
+}
+
+// --- UI options group ---
+void MainWindow::on_event(const pv::interface::AppOptionsChanged &) {
+  on_ui_options(DSV_MSG_APP_OPTIONS_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::FontOptionsChanged &) {
+  on_ui_options(DSV_MSG_FONT_OPTIONS_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::ShortcutChanged &) {
+  on_ui_options(DSV_MSG_SHORTCUT_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::StyleChanged &) {
+  on_ui_options(DSV_MSG_STYLE_CHANGED, 0);
+}
+
+// --- Data / capture owner group ---
+void MainWindow::on_event(const pv::interface::DataPoolChanged &) {
+  on_data_updated(DSV_MSG_DATA_POOL_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::CopyInProgressChanged &) {
+  on_data_updated(DSV_MSG_COPY_IN_PROGRESS_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::ActiveDocumentChanged &) {
+  on_data_updated(DSV_MSG_ACTIVE_DOCUMENT_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::SaveComplete &) {
+  on_data_updated(DSV_MSG_SAVE_COMPLETE, 0);
+}
+void MainWindow::on_event(const pv::interface::ClearDecodeData &) {
+  on_data_updated(DSV_MSG_CLEAR_DECODE_DATA, 0);
+}
+
+// --- Filter / invert group ---
+void MainWindow::on_event(const pv::interface::GlitchFilterStarted &) {
+  on_filter_completed(DSV_MSG_GLITCH_FILTER_STARTED, 0);
+}
+void MainWindow::on_event(const pv::interface::GlitchFilterProgress &e) {
+  on_filter_completed(DSV_MSG_GLITCH_FILTER_PROGRESS, e.progress);
+}
+void MainWindow::on_event(const pv::interface::GlitchFilterCompleted &) {
+  on_filter_completed(DSV_MSG_GLITCH_FILTER_COMPLETED, 0);
+}
+void MainWindow::on_event(const pv::interface::GlitchFilterCleared &) {
+  on_filter_completed(DSV_MSG_GLITCH_FILTER_CLEARED, 0);
+}
+void MainWindow::on_event(const pv::interface::SignalInvertStarted &) {
+  on_filter_completed(DSV_MSG_SIGNAL_INVERT_STARTED, 0);
+}
+void MainWindow::on_event(const pv::interface::SignalInvertCompleted &) {
+  on_filter_completed(DSV_MSG_SIGNAL_INVERT_COMPLETED, 0);
+}
+void MainWindow::on_event(const pv::interface::SignalInvertCleared &) {
+  on_filter_completed(DSV_MSG_SIGNAL_INVERT_CLEARED, 0);
+}
+
+// --- Trigger group ---
+void MainWindow::on_event(const pv::interface::SimpleTriggerChanged &) {
+  on_trigger_changed(DSV_MSG_SIMPLE_TRIGGER_CHANGED, 0);
+}
+void MainWindow::on_event(const pv::interface::TriggerConfigChanged &) {
+  on_trigger_changed(DSV_MSG_TRIGGER_CONFIG_CHANGED, 0);
+}
+
+// --- Empty-body overrides (no former OnMessage case / no GUI work) ---
+void MainWindow::on_event(const pv::interface::CaptureOwnerChanged &) {}
+void MainWindow::on_event(const pv::interface::CopyToDocDone &) {}
+void MainWindow::on_event(const pv::interface::DecodeDone &) {}
+void MainWindow::on_event(const pv::interface::SignalsChanged &) {}
+void MainWindow::on_event(const pv::interface::DataUpdated &) {}
+void MainWindow::on_event(const pv::interface::DeviceConfigUpdated &) {}
+
 void MainWindow::OnMessage(int msg, int param) {
-  // Task 1.1: marshal to GUI thread — OnMessage touches QWidget/QDockWidget and
-  // must run on qApp->thread(). Broadcasts may originate from Core worker
-  // threads; re-invoke via QueuedConnection and return immediately. The int
-  // param payload (e.g. is_working flag for CAPTURE_OWNER_CHANGED) is forwarded
-  // across the thread hop.
-  if (QThread::currentThread() != qApp->thread()) {
-    QMetaObject::invokeMethod(
-        this, [this, msg, param]() { OnMessage(msg, param); },
-        Qt::QueuedConnection);
-    return;
-  }
-  // C5 fix: OnMessage is now a thin router — dispatches to per-responsibility
-  // handlers (see mainwindow.h). Each handler owns its message group's logic.
   switch (msg) {
-  // Device management
-  case DSV_MSG_DEVICE_LIST_UPDATED:
-  case DSV_MSG_CURRENT_DEVICE_CHANGE_PREV:
-  case DSV_MSG_CURRENT_DEVICE_CHANGED:
-  case DSV_MSG_CURRENT_DEVICE_DETACHED:
-  case DSV_MSG_NEW_USB_DEVICE:
-    on_device_changed(msg, param);
-    break;
-  // Capture state
-  case DSV_MSG_START_COLLECT_WORK_PREV:
-  case DSV_MSG_START_COLLECT_WORK:
-  case DSV_MSG_CAPTURE_STATE_CHANGED:
-  case DSV_MSG_COLLECT_END:
-  case DSV_MSG_END_COLLECT_WORK:
-  case DSV_MSG_COLLECT_START:
-  case DSV_MSG_TRIG_NEXT_COLLECT:
-    on_capture_state(msg, param);
-    break;
-  // Device options
-  case DSV_MSG_DEVICE_OPTIONS_UPDATED:
-  case DSV_MSG_DEVICE_DURATION_UPDATED:
-  case DSV_MSG_SAMPLE_COUNT_UPDATED:
-  case DSV_MSG_DEVICE_MODE_CHANGED:
-  case DSV_MSG_COLLECT_MODE_CHANGED:
-  case DSV_MSG_END_DEVICE_OPTIONS:
-  case DSV_MSG_DEMO_OPERATION_MODE_CHNAGED:
-    on_device_options(msg, param);
-    break;
-  // UI options
-  case DSV_MSG_APP_OPTIONS_CHANGED:
-  case DSV_MSG_FONT_OPTIONS_CHANGED:
-  case DSV_MSG_SHORTCUT_CHANGED:
-  case DSV_MSG_STYLE_CHANGED:
-    on_ui_options(msg, param);
-    break;
-  // Data / capture owner
-  case DSV_MSG_DATA_POOL_CHANGED:
-  case DSV_MSG_COPY_IN_PROGRESS_CHANGED:
-  case DSV_MSG_ACTIVE_DOCUMENT_CHANGED:
-  case DSV_MSG_CAPTURE_OWNER_CHANGED:
-  case DSV_MSG_SAVE_COMPLETE:
-  case DSV_MSG_CLEAR_DECODE_DATA:
-  case DSV_MSG_STORE_CONF_PREV:
-    on_data_updated(msg, param);
-    break;
-  // Filter / invert
-  case DSV_MSG_GLITCH_FILTER_COMPLETED:
-  case DSV_MSG_GLITCH_FILTER_CLEARED:
-  case DSV_MSG_SIGNAL_INVERT_COMPLETED:
-  case DSV_MSG_SIGNAL_INVERT_CLEARED:
-  case DSV_MSG_GLITCH_FILTER_STARTED:
-  case DSV_MSG_GLITCH_FILTER_PROGRESS:
-  case DSV_MSG_SIGNAL_INVERT_STARTED:
-    on_filter_completed(msg, param);
-    break;
-  // Trigger
-  case DSV_MSG_SIMPLE_TRIGGER_CHANGED:
-  case DSV_MSG_TRIGGER_CONFIG_CHANGED:
-    on_trigger_changed(msg, param);
-    break;
-  default:
-    break;
+  case DSV_MSG_CURRENT_DEVICE_CHANGE_PREV: on_device_changed(msg, param); break;
+  case DSV_MSG_START_COLLECT_WORK_PREV: on_capture_state(msg, param); break;
+  case DSV_MSG_STORE_CONF_PREV: on_data_updated(msg, param); break;
+  case DSV_MSG_CAPTURE_OWNER_CHANGED: on_data_updated(msg, param); break;
+  default: pxv_dbg("OnMessage fallback: msg=%d param=%d", msg, param); break;
   }
 }
 

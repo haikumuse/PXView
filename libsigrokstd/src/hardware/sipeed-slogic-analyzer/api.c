@@ -133,12 +133,7 @@ static const int32_t trigger_matches[] = {
 	SR_TRIGGER_FALLING, SR_TRIGGER_EDGE,
 };
 
-/* Note: non-static so srstd_init_shared() can reference it to force-include
- * this translation unit when libsigrokstd is linked as a static archive.
- * On Windows PE/COFF, static-library object files are only pulled in when
- * they resolve an undefined symbol; the section-based SR_REGISTER_DEV_DRIVER
- * mechanism alone is insufficient. */
-struct sr_dev_driver sipeed_slogic_analyzer_driver_info;
+static struct sr_dev_driver sipeed_slogic_analyzer_driver_info;
 
 static struct slogic_model *const support_models_ptr;
 

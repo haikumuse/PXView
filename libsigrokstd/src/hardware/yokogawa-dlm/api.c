@@ -23,7 +23,7 @@
 #include "scpi.h"
 #include "protocol.h"
 
-struct sr_dev_driver yokogawa_dlm_driver_info;
+static struct sr_dev_driver yokogawa_dlm_driver_info;
 
 static const char *MANUFACTURER_ID = "YOKOGAWA";
 

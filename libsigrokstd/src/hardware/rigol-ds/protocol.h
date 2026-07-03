@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "rigol-ds"

@@ -78,7 +78,7 @@ static const struct devantech_eth008_model *find_model(uint8_t code)
 	return NULL;
 }
 
-struct sr_dev_driver devantech_eth008_driver_info;
+static struct sr_dev_driver devantech_eth008_driver_info;
 
 static struct sr_dev_inst *probe_device_conn(const char *conn)
 {

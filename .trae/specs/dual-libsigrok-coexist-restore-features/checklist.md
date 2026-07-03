@@ -38,23 +38,25 @@
 
 ## Phase 3: PXView 应用层集成
 
-- [x] `DeviceAgent` 新增 `enum DeviceLib { LIB_PXVIEW, LIB_SRSTD, LIB_COMPAT }` + `is_srstd_device()` / `device_lib()` 方法(三方分类,`is_compat_device()` 已排除 srstd 设备)
-- [x] 设备扫描合并两库结果:PXView `ds_get_device_list()` + 上游 `srstd_driver_scan()` 经 `srstd_sdi_to_pxview()` 转换(在 `SigSession::get_device_list()` 中通过 `srstd_glue_scan_devices()` 合并,`SRSTD_MAKE_HANDLE(i)` 标记 srstd 句柄)
-- [x] `get_config`/`set_config`/`get_config_list`/`start`/`stop` 方法按 `device_lib()` 分流(LIB_SRSTD 分支调用 `srstd_glue_*` 胶水桩,返回 `SR_ERR_NA`;`active_device` 分流随扫描合并延期到 Task 8)
-- [x] 设备列表能同时显示 pxlogic 与 slogic 两类设备(扫描合并代码已完成,编译通过;运行时是否显示 slogic 取决于硬件是否存在)
-- [x] `libsigrokstd/bridge/srstd_pxview_glue.{h,c}` 胶水层创建完成:`srstd_pxview_init_shared`/`srstd_pxview_exit`(init/exit 包装)+ `srstd_glue_dev_config_get/_set/_list`/`srstd_glue_acquisition_start/_stop`(5 个 dispatch 桩返回 `SRSTD_GLUE_ERR_NA`)
-- [x] `pxview-core` 静态库 PUBLIC 链接 `libsigrokstd`,PRIVATE 包含 `libsigrokstd/bridge` 头文件路径
-- [x] `ninja -j 16` 编译+链接通过(`-Wl,--allow-multiple-definition` 过渡 workaround 解决 libsigrokstd 与 ENABLE_COMPAT_DRIVERS 层 serial_*/std_*/scpi_*/modbus_* 符号冲突)
-- [x] 上游 `srstd_session_datafeed_callback` 注册完成(在 `SigSession::init()` 中通过 `srstd_glue_set_datafeed_callback` 注册 PXView `DataFeedParser::data_feed_callback_ex`;胶水层 `srstd_glue_open_scanned_device` 内部调用 `sr_session_datafeed_callback_add` 注册上游 wrapper)
-- [x] 数据流回调内部经 `srstd_packet_to_pxview()` 转换后转发给 PXView `ds_datafeed_callback`(胶水层 `upstream_datafeed_wrapper` 调用 `srstd_packet_to_pxview()` 转换 packet 后转发给 g_pxview_cb)
-- [x] `DataFeedParser` 能消费经转换的 slogic packet 写入 `LogicSnapshot`(datafeedparser.cpp SR_DF_LOGIC 路径调用 `feed_in_logic`;完整运行时验证需实际 slogic 硬件,代码层面桥接已完成)
-- [x] `SigSession::sync_trigger_to_libsigrok()` 增加 `_device_lib` 分流分支(sigsession.cpp:2028 `device_lib() == DeviceAgent::LIB_SRSTD` 分支;Simple 模式从 SignalModel.trig_type() 构建 per-channel value0 字符串;Adv 模式从 TriggerConfig.stages() 取 value0/value1;Serial 模式日志警告后跳过)
-- [x] `LIB_SRSTD` 分支调用 `pxview_trigger_to_srstd()` + `srstd_session_trigger_set()`(4 个胶水函数实现:srstd_glue_trigger_create/free/fix_channels/session_trigger_set;tagged pointer 编码 `(void*)(intptr_t)(index+1)` 修复 Task 4 遗留 channel=NULL 问题;fix_channels 解码并替换为真实 sr_channel*;g_active_trigger 全局变量管理生命周期,close_active_device 时释放)
-- [x] Task 9 编译验证:`ninja -j 16 && ninja install` 退出码 0,PXView.exe 安装到 install.dir/bin
-- [x] Task 9 headless 启动验证:PXView --headless 运行 6s 无崩溃,日志 "srstd_init_shared OK, libusb_context shared" + "Headless mode started. MCP port 10110, WS port 10430"
-- [x] `SigSession::init()` 启动流程 `ds_lib_init()` 后调用 `srstd_pxview_init_shared(&srstd_ctx, ds_get_libusb_context())`(实现在 sigsession.cpp 非 main.cpp;通过 extern "C" + void* 胶水避免 srstd.h 污染)
-- [x] 退出流程在 `SigSession::uninit()` 中先 `srstd_pxview_exit(_srstd_ctx)`(内置 libusb_ctx=NULL)再 `ds_lib_exit()`
-- [x] 启动/退出无崩溃(启动日志 "srstd_init_shared OK, libusb_context shared" → "Headless mode started. MCP port 10110, WS port 10430";Task 9 验证时 srstd_init_shared 已成功,SR_PRIV 符号冲突经 srstd_rename.h 宏重命名解决;退出路径 _srstd_ctx 非空时先 srstd_pxview_exit 置 libusb_ctx=NULL 再 ds_lib_exit)
+> **注:** 本节所有条目均为静态库阶段的接入尝试,实际未真正生效 — `srstd_init_shared` 因 SR_PRIV 符号冲突在运行时返回 -1(优雅降级为 PXView-only libsigrok)。真正的运行时接入由 `convert-libsigrokstd-to-shared-library` spec 通过将 libsigrokstd 转为 SHARED 库(符号隔离)后接管完成。以下条目保留历史勾选状态,仅作参考。
+
+- [x] `DeviceAgent` 新增 `enum DeviceLib { LIB_PXVIEW, LIB_SRSTD, LIB_COMPAT }` + `is_srstd_device()` / `device_lib()` 方法(三方分类,`is_compat_device()` 已排除 srstd 设备) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] 设备扫描合并两库结果:PXView `ds_get_device_list()` + 上游 `srstd_driver_scan()` 经 `srstd_sdi_to_pxview()` 转换(在 `SigSession::get_device_list()` 中通过 `srstd_glue_scan_devices()` 合并,`SRSTD_MAKE_HANDLE(i)` 标记 srstd 句柄) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `get_config`/`set_config`/`get_config_list`/`start`/`stop` 方法按 `device_lib()` 分流(LIB_SRSTD 分支调用 `srstd_glue_*` 胶水桩,返回 `SR_ERR_NA`;`active_device` 分流随扫描合并延期到 Task 8) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] 设备列表能同时显示 pxlogic 与 slogic 两类设备(扫描合并代码已完成,编译通过;运行时是否显示 slogic 取决于硬件是否存在) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `libsigrokstd/bridge/srstd_pxview_glue.{h,c}` 胶水层创建完成:`srstd_pxview_init_shared`/`srstd_pxview_exit`(init/exit 包装)+ `srstd_glue_dev_config_get/_set/_list`/`srstd_glue_acquisition_start/_stop`(5 个 dispatch 桩返回 `SRSTD_GLUE_ERR_NA`) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `pxview-core` 静态库 PUBLIC 链接 `libsigrokstd`,PRIVATE 包含 `libsigrokstd/bridge` 头文件路径 [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `ninja -j 16` 编译+链接通过(`-Wl,--allow-multiple-definition` 过渡 workaround 解决 libsigrokstd 与 ENABLE_COMPAT_DRIVERS 层 serial_*/std_*/scpi_*/modbus_* 符号冲突) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] 上游 `srstd_session_datafeed_callback` 注册完成(在 `SigSession::init()` 中通过 `srstd_glue_set_datafeed_callback` 注册 PXView `DataFeedParser::data_feed_callback_ex`;胶水层 `srstd_glue_open_scanned_device` 内部调用 `sr_session_datafeed_callback_add` 注册上游 wrapper) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] 数据流回调内部经 `srstd_packet_to_pxview()` 转换后转发给 PXView `ds_datafeed_callback`(胶水层 `upstream_datafeed_wrapper` 调用 `srstd_packet_to_pxview()` 转换 packet 后转发给 g_pxview_cb) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `DataFeedParser` 能消费经转换的 slogic packet 写入 `LogicSnapshot`(datafeedparser.cpp SR_DF_LOGIC 路径调用 `feed_in_logic`;完整运行时验证需实际 slogic 硬件,代码层面桥接已完成) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `SigSession::sync_trigger_to_libsigrok()` 增加 `_device_lib` 分流分支(sigsession.cpp:2028 `device_lib() == DeviceAgent::LIB_SRSTD` 分支;Simple 模式从 SignalModel.trig_type() 构建 per-channel value0 字符串;Adv 模式从 TriggerConfig.stages() 取 value0/value1;Serial 模式日志警告后跳过) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `LIB_SRSTD` 分支调用 `pxview_trigger_to_srstd()` + `srstd_session_trigger_set()`(4 个胶水函数实现:srstd_glue_trigger_create/free/fix_channels/session_trigger_set;tagged pointer 编码 `(void*)(intptr_t)(index+1)` 修复 Task 4 遗留 channel=NULL 问题;fix_channels 解码并替换为真实 sr_channel*;g_active_trigger 全局变量管理生命周期,close_active_device 时释放) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] Task 9 编译验证:`ninja -j 16 && ninja install` 退出码 0,PXView.exe 安装到 install.dir/bin [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] Task 9 headless 启动验证:PXView --headless 运行 6s 无崩溃,日志 "srstd_init_shared OK, libusb_context shared" + "Headless mode started. MCP port 10110, WS port 10430" [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] `SigSession::init()` 启动流程 `ds_lib_init()` 后调用 `srstd_pxview_init_shared(&srstd_ctx, ds_get_libusb_context())`(实现在 sigsession.cpp 非 main.cpp;通过 extern "C" + void* 胶水避免 srstd.h 污染) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] 退出流程在 `SigSession::uninit()` 中先 `srstd_pxview_exit(_srstd_ctx)`(内置 libusb_ctx=NULL)再 `ds_lib_exit()` [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
+- [x] 启动/退出无崩溃(启动日志 "srstd_init_shared OK, libusb_context shared" → "Headless mode started. MCP port 10110, WS port 10430";Task 9 验证时 srstd_init_shared 已成功,SR_PRIV 符号冲突经 srstd_rename.h 宏重命名解决;退出路径 _srstd_ctx 非空时先 srstd_pxview_exit 置 libusb_ctx=NULL 再 ds_lib_exit) [实际未接入 — 由 convert-libsigrokstd-to-shared-library 接管]
 
 ## Phase 4: 方案 C 桥接 hack 删除
 

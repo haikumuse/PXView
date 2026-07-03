@@ -4,11 +4,17 @@ restore_drivers_from_srstd.py - Restore migrated drivers to upstream state.
 
 Reverses the changes made by migrate_drivers_to_srstd.py:
   1. Removes '#include "srstd.h"' from protocol.h
-  2. Restores 'static' keyword before <driver>_driver_info struct in api.c
+  2. Removes 'static' keyword before <driver>_driver_info struct in api.c
 
 This is needed because the dynamic library approach (convert-libsigrokstd-to-shared-library spec)
-uses -fvisibility=hidden instead of macro renaming, so drivers no longer need
-the srstd.h include or the static removal workaround.
+uses -fvisibility=hidden instead of macro renaming. The driver_registry.c
+references each driver_info via `extern struct sr_dev_driver xxx_driver_info;`,
+which requires a non-static global symbol. The -fvisibility=hidden flag hides
+the symbol from the DLL export table, so 'static' is no longer needed for
+isolation. Keeping 'static' would (a) conflict with the non-static forward
+declaration `struct sr_dev_driver xxx_driver_info;` at the top of api.c (added
+by the migrate script) causing a compile error, and (b) make the symbol
+invisible to driver_registry.c's extern reference causing a link error.
 
 Usage:
     python tools/restore_drivers_from_srstd.py --all
@@ -40,22 +46,26 @@ def restore_protocol_h(path: Path) -> bool:
 
 
 def restore_api_c(path: Path) -> bool:
-    """Restore 'static' before <driver>_driver_info struct in api.c.
-    The migrate script removed 'static' to allow manual registration.
-    In the dynamic library approach, internal static symbols are hidden
-    by -fvisibility=hidden, so static can be restored.
+    """Remove 'static' before <driver>_driver_info struct definition in api.c.
+    The migrate script added a non-static forward declaration
+    `struct sr_dev_driver <name>_driver_info;` at the top of api.c so that
+    driver_registry.c can reference it via extern. The definition at the
+    bottom of api.c must therefore also be non-static to match the linkage
+    of the forward declaration (otherwise C99 6.2.2p7 raises a linkage
+    conflict compile error). Symbol isolation is provided by -fvisibility=hidden
+    in libsigrokstd/CMakeLists.txt, so 'static' is not needed for isolation.
     Returns True if changed."""
     if not path.exists():
         return False
     text = path.read_text(encoding='utf-8', errors='replace')
-    # The migrate script removed 'static' before 'struct sr_dev_driver <name>_driver_info'
-    # Restore it. Match: 'struct sr_dev_driver <name>_driver_info = {'
-    # Avoid matching if 'static' is already present.
+    # Match: 'static struct sr_dev_driver <name>_driver_info ='
+    # (only at start of line, with the 'static' keyword to be removed).
+    # Capture everything after 'static ' so it can be kept as-is.
     pattern = re.compile(
-        r'^(?!\s*static\s)struct\s+sr_dev_driver\s+(\w+)_driver_info\s*=',
+        r'^static\s+(struct\s+sr_dev_driver\s+\w+_driver_info\s*=)',
         re.MULTILINE
     )
-    new_text = pattern.sub(r'static struct sr_dev_driver \1_driver_info =', text)
+    new_text = pattern.sub(r'\1', text)
     if new_text != text:
         path.write_text(new_text, encoding='utf-8')
         return True
@@ -129,7 +139,7 @@ def main():
             print(f"  {name}: protocol.h - removed #include \"srstd.h\"")
             changed_protocol += 1
         if restore_api_c(api_c):
-            print(f"  {name}: api.c - restored static before _driver_info")
+            print(f"  {name}: api.c - removed static before _driver_info")
             changed_api += 1
 
     print(f"\nDone. Modified {changed_protocol} protocol.h and {changed_api} api.c files.")

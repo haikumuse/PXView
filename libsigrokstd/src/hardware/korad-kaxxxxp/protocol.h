@@ -25,7 +25,6 @@
 #include <string.h>
 #include <glib.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "korad-kaxxxxp"

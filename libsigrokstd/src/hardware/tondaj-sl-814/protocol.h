@@ -22,7 +22,6 @@
 
 #include <stdint.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "tondaj-sl-814"

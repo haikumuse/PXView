@@ -26,12 +26,16 @@
 #include <QWidget>
 #include <QLabel>
 #include <QDateTime>
-#include <QPushButton> 
-#include <libsigrok.h> 
+#include <QPushButton>
+#include <libsigrok.h>
+
+#include "../data/datasource.h"
 
 namespace pv {
 
 class SigSession;
+
+namespace data { class DataSource; }
 
 namespace view {
 class View;
@@ -66,6 +70,7 @@ public slots:
 
 private:
     SigSession *_session;
+    data::DataSource *_data_source;
     View &_view;
     int _hit_rect;
 

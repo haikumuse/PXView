@@ -201,6 +201,24 @@ SR_PRIV int lib_extern_init(struct sr_context *ctx){
 #endif
 
 /**
+ * Get the libusb_context used by PXView's libsigrok, so an external shared
+ * library (libsigrokstd) can share the SAME libusb_context to avoid USB
+ * device discovery / hotplug isolation between two libusb instances.
+ *
+ * Returns NULL if libsigrok is not initialized yet (ds_lib_init not called
+ * or failed). The returned pointer is owned by libsigrok; the caller must
+ * NOT libusb_exit() it.
+ */
+SR_API void *ds_get_libusb_context()
+{
+	if (lib_ctx.sr_ctx == NULL)
+	{
+		return NULL;
+	}
+	return lib_ctx.sr_ctx->libusb_ctx;
+}
+
+/**
  * Free all resource before program exits
  */
 SR_API int ds_lib_exit()

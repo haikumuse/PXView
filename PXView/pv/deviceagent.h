@@ -40,6 +40,14 @@ class DeviceAgent
 public:
     DeviceAgent();
 
+    /**
+     * Which libsigrok instance backs this device.
+     * LIB_PXVIEW — PXView's forked libsigrok (ds_* API).
+     * LIB_SRSTD  — upstream libsigrok 0.6.0 shared library (srstd_glue_* API).
+     * Set by SigSession::set_device based on the SRSTD handle bit.
+     */
+    enum DeviceLib { LIB_PXVIEW, LIB_SRSTD };
+
     void update();
 
     inline bool have_instance(){
@@ -176,6 +184,20 @@ public:
         return _is_new_device;
     }
 
+    /**
+     * Returns which libsigrok instance backs the active device. Dispatch
+     * parameter for get_config/set_config/start/stop/etc. — when LIB_SRSTD,
+     * these methods forward to srstd_glue_* instead of ds_*.
+     */
+    inline DeviceLib device_lib() const { return _device_lib; }
+
+    /**
+     * Set which libsigrok instance backs the active device. Called by
+     * SigSession::set_device() based on the SRSTD handle bit. Public because
+     * SigSession owns a DeviceAgent but is not a friend.
+     */
+    inline void set_device_lib(DeviceLib lib) { _device_lib = lib; }
+
     bool channel_is_enable(int index);
 
     int get_hardware_operation_mode();
@@ -256,8 +278,9 @@ private:
     QString     _driver_name;
     QString     _path;
     bool        _is_new_device;
-    struct sr_dev_inst  *_di; 
+    struct sr_dev_inst  *_di;
     IDeviceAgentCallback *_callback;
+    DeviceLib   _device_lib = LIB_PXVIEW;
 };
 
 

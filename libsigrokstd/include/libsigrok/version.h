@@ -1,8 +1,10 @@
 /*
- * version.h — Static version definitions for libsigrokstd.
+ * version.h -- Static version definitions for libsigrokstd.
  *
  * Generated from version.h.in for the upstream libsigrok 0.6.0 build.
  * Hardcoded values replace the autotools #undef placeholders.
+ * This file replaces version.h.in (which is the autotools template) so
+ * that no configure_file step is needed in CMake.
  */
 
 #ifndef LIBSIGROK_VERSION_H

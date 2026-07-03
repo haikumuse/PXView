@@ -34,33 +34,31 @@
 #include <QPainter>
 #include <QScreen>
 #include <QScrollBar>
+#include <QSizeF>
 #include <QtGlobal>
 #include <algorithm>
 
 #include "../api/types.h"
-#include "../data/decode/decoder.h"
-#include "../data/decode/decoderstatus.h"
-#include "../data/decoderstack.h"
-#include "../data/pulse_analyzer.h"
-#include "../data/signalmodel.h"
-#include "../ui/toast.h"
-#include "analogsignal.h"
 #include "decodetrace.h"
 #include "devmode.h"
-#include "dsosignal.h"
 #include "glitchfilterpopup.h"
 #include "header.h"
 #include "lissajoustrace.h"
-#include "logicsignal.h"
 #include "mathtrace.h"
-#include "pulsehistogramwidget.h"
 #include "ruler.h"
 #include "signal.h"
-#include "signalfactory.h"
 #include "spectrumtrace.h"
 #include "trace.h"
 #include "view.h"
+#include "view_cursors.h"
+#include "view_data_sync.h"
+#include "view_derived_traces.h"
+#include "view_glitch_filter.h"
+#include "view_layout.h"
+#include "view_signal_sync.h"
+#include "viewstatus.h"
 #include "viewport.h"
+#include "../toolbars/samplingbar.h"
 
 #include "../appcontrol.h"
 #include "../config/appconfig.h"
@@ -95,59 +93,6 @@ const QColor View::CursorAreaColour(220, 231, 243);
 const QSizeF View::LabelPadding(4, 4);
 const QString View::Unknown_Str = "########";
 
-QColor View::Red = AppConfig::Instance().GetThemeColor("@signal-red").isValid()
-                       ? AppConfig::Instance().GetThemeColor("@signal-red")
-                       : QColor(213, 15, 37, 255);
-QColor View::Orange =
-    AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
-        ? AppConfig::Instance().GetThemeColor("@signal-orange")
-        : QColor(238, 178, 17, 255);
-QColor View::Blue =
-    AppConfig::Instance().GetThemeColor("@signal-blue").isValid()
-        ? AppConfig::Instance().GetThemeColor("@signal-blue")
-        : QColor(17, 133, 209, 255);
-QColor View::Green =
-    AppConfig::Instance().GetThemeColor("@signal-green").isValid()
-        ? AppConfig::Instance().GetThemeColor("@signal-green")
-        : QColor(0, 153, 37, 255);
-QColor View::Purple =
-    AppConfig::Instance().GetThemeColor("@signal-purple").isValid()
-        ? AppConfig::Instance().GetThemeColor("@signal-purple")
-        : QColor(109, 50, 156, 255);
-QColor View::LightBlue =
-    AppConfig::Instance().GetThemeColor("@signal-light-blue").isValid()
-        ? AppConfig::Instance().GetThemeColor("@signal-light-blue")
-        : QColor(17, 133, 209, 200);
-QColor View::LightRed =
-    AppConfig::Instance().GetThemeColor("@signal-light-red").isValid()
-        ? AppConfig::Instance().GetThemeColor("@signal-light-red")
-        : QColor(213, 15, 37, 200);
-
-void View::refreshSignalColors() {
-  Red = AppConfig::Instance().GetThemeColor("@signal-red").isValid()
-            ? AppConfig::Instance().GetThemeColor("@signal-red")
-            : QColor(213, 15, 37, 255);
-  Orange = AppConfig::Instance().GetThemeColor("@signal-orange").isValid()
-               ? AppConfig::Instance().GetThemeColor("@signal-orange")
-               : QColor(238, 178, 17, 255);
-  Blue = AppConfig::Instance().GetThemeColor("@signal-blue").isValid()
-             ? AppConfig::Instance().GetThemeColor("@signal-blue")
-             : QColor(17, 133, 209, 255);
-  Green = AppConfig::Instance().GetThemeColor("@signal-green").isValid()
-              ? AppConfig::Instance().GetThemeColor("@signal-green")
-              : QColor(0, 153, 37, 255);
-  Purple = AppConfig::Instance().GetThemeColor("@signal-purple").isValid()
-               ? AppConfig::Instance().GetThemeColor("@signal-purple")
-               : QColor(109, 50, 156, 255);
-  LightBlue =
-      AppConfig::Instance().GetThemeColor("@signal-light-blue").isValid()
-          ? AppConfig::Instance().GetThemeColor("@signal-light-blue")
-          : QColor(17, 133, 209, 200);
-  LightRed = AppConfig::Instance().GetThemeColor("@signal-light-red").isValid()
-                 ? AppConfig::Instance().GetThemeColor("@signal-light-red")
-                 : QColor(213, 15, 37, 200);
-}
-
 View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
            QWidget *parent)
     : QScrollArea(parent), _sampling_bar(sampling_bar), _scale(10),
@@ -164,7 +109,20 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   _session = session;
   _data_source = session;
   _document = nullptr;
-  _device_agent = session->get_device();
+  _device_agent = session->device();
+
+  // Phase E: initialise the three delegate classes. Must happen before any
+  // call that forwards through the inline facades (e.g. headerWidth() →
+  // get_traces() → get_own_decode_traces() → sync_derived_traces()).
+  _layout = std::make_unique<ViewLayout>(this);
+  _cursors = std::make_unique<ViewCursors>(this);
+  _derived = std::make_unique<ViewDerivedTraces>(this);
+  // Phase J: initialise the three new delegate classes (signal-sync /
+  // glitch-filter / data-sync). Must happen before any call that forwards
+  // through the inline facades (e.g. signals_changed → _signal_sync).
+  _signal_sync = std::make_unique<ViewSignalSync>(this);
+  _glitch_filter = std::make_unique<ViewGlitchFilter>(this);
+  _data_sync = std::make_unique<ViewDataSync>(this);
 
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
   setStyleSheet(
@@ -279,13 +237,13 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   connect(_devmode, &DevMode::header_collapse_changed, this,
           &View::on_header_collapse_changed);
   connect(_devmode, &DevMode::mode_change_requested, this,
-          [this](int mode) { _session->switch_work_mode(mode); });
+          [this](int mode) { _data_source->switch_work_mode(mode); });
   connect(_devmode, &DevMode::stop_capture_requested, this,
-          [this]() { _session->stop_capture(); });
+          [this]() { _data_source->stop_capture(); });
   connect(_devmode, &DevMode::save_session_requested, this,
-          [this]() { _session->session_save(); });
+          [this]() { _data_source->session_save(); });
   connect(_devmode, &DevMode::close_file_requested, this,
-          [this](ds_device_handle dev_handle) { _session->close_file(dev_handle); });
+          [this](ds_device_handle dev_handle) { _data_source->close_file(dev_handle); });
 
   // Glitch filter popup (View-owned). Created up-front and reused via
   // open_for_signal() so the histogram cache persists across open/close.
@@ -357,212 +315,32 @@ View::~View() {
 }
 
 void View::set_data_source(pv::data::DataSource *source) {
-  _data_source = source;
-  mark_derived_traces_dirty();
-  rebuild_signals();
-
-  if (_time_viewport) {
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  if (_fft_viewport) {
-    _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  update();
+  _data_sync->set_data_source(source);
 }
 
-void View::clear_signal_data() {
-  for (auto sig : _own_signals) {
-    int type = sig->signal_type();
-    switch (type) {
-    case SR_CHANNEL_LOGIC: {
-      view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-      s->set_data(nullptr);
-      break;
-    }
-    case SR_CHANNEL_ANALOG: {
-      view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-      s->set_data(nullptr);
-      break;
-    }
-    case SR_CHANNEL_DSO: {
-      view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-      s->set_data(nullptr);
-      break;
-    }
-    }
-  }
-
-  if (_time_viewport) {
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  if (_fft_viewport) {
-    _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  update();
-}
+void View::clear_signal_data() { _data_sync->clear_signal_data(); }
 
 void View::set_signal_data_from_source(pv::data::DataSource *source) {
-  for (auto sig : _own_signals) {
-    int type = sig->signal_type();
-    switch (type) {
-    case SR_CHANNEL_LOGIC: {
-      view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-      s->set_data(source->get_logic_snapshot());
-      break;
-    }
-    case SR_CHANNEL_ANALOG: {
-      view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-      s->set_data(source->get_analog_snapshot());
-      break;
-    }
-    case SR_CHANNEL_DSO: {
-      view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-      s->set_data(source->get_dso_snapshot());
-      break;
-    }
-    }
-  }
-
-  if (_time_viewport) {
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  if (_fft_viewport) {
-    _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  update();
+  _data_sync->set_signal_data_from_source(source);
 }
 
 void View::set_data_document(pv::data::SessionDocument *doc) {
-  // A2 fix: handle nullptr to detach the document pointer. Without this, the
-  // early return left _document pointing at a soon-to-be-destroyed object,
-  // causing use-after-free when the View received paint events before its
-  // deleteLater() was processed.
-  if (!doc) {
-    _document = nullptr;
-    // Clear signal data pointers so paint events don't dereference freed data.
-    for (auto sig : _own_signals) {
-      int type = sig->signal_type();
-      switch (type) {
-      case SR_CHANNEL_LOGIC: {
-        view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-        s->set_data(nullptr);
-        break;
-      }
-      case SR_CHANNEL_ANALOG: {
-        view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-        s->set_data(nullptr);
-        break;
-      }
-      case SR_CHANNEL_DSO: {
-        view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-        s->set_data(nullptr);
-        break;
-      }
-      }
-    }
-    return;
-  }
-
-  _document = doc;
-  mark_derived_traces_dirty();
-
-  if (!doc->has_data())
-    return;
-
-  if (_own_signals.empty()) {
-    auto created_sigs = SignalFactory::create_signals(_data_source, _data_source);
-    for (auto sig : created_sigs) {
-      _own_signals.push_back(sig);
-    }
-  }
-
-  for (auto sig : _own_signals) {
-    int type = sig->signal_type();
-    switch (type) {
-    case SR_CHANNEL_LOGIC: {
-      view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-      s->set_data(doc->get_active_logic());
-      break;
-    }
-    case SR_CHANNEL_ANALOG: {
-      view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-      s->set_data(doc->get_active_analog());
-      break;
-    }
-    case SR_CHANNEL_DSO: {
-      view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-      s->set_data(doc->get_active_dso());
-      break;
-    }
-    }
-  }
-
-  if (_time_viewport) {
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  if (_fft_viewport) {
-    _fft_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  }
-  update();
+  _data_sync->set_data_document(doc);
 }
 
 void View::clone_signals_for_document(pv::data::SessionDocument *doc) {
-  if (!doc)
-    return;
-
-  _own_signals.clear();
-
-  auto created_sigs = SignalFactory::create_signals(_data_source, _data_source);
-  for (auto sig : created_sigs) {
-    _own_signals.push_back(sig);
-  }
-
-  set_data_document(doc);
+  _data_sync->clone_signals_for_document(doc);
 }
 
 data::DataSource *View::document_snapshot_source() {
-  if (_document && _document->has_data())
-    return _document;
-  return _data_source;
+  return _data_sync->document_snapshot_source();
 }
 
 void View::show_wait_trigger() { _time_viewport->show_wait_trigger(); }
 
 void View::set_device() { _devmode->set_device(); }
 
-void View::capture_init() {
-  int width = get_view_width();
-  if (width == 0) {
-    return;
-  }
-
-  int mode = get_work_mode();
-
-  if (mode == DSO)
-    show_trig_cursor(true);
-  else if (!_data_source->is_repeating())
-    show_trig_cursor(false);
-
-  double sampletime = document_snapshot_source()->cur_sampletime();
-  if (sampletime > 0) {
-    _maxscale = sampletime / (width * MaxViewRate);
-
-    if (mode == ANALOG) {
-      set_scale_offset(_maxscale, 0);
-    }
-  }
-
-  status_clear();
-
-  _trig_hoff = 0;
-}
-
-void View::zoom(double steps) {
-  int width = get_view_width();
-  if (width > 0) {
-    zoom(steps, width / 2);
-  }
-}
+void View::capture_init() { _data_sync->capture_init(); }
 
 void View::set_update(Viewport *viewport, bool need_update) {
   viewport->set_need_update(need_update);
@@ -581,423 +359,44 @@ void View::update_hori_res() {
   }
 }
 
-bool View::zoom(double steps, int offset) {
-  int width = get_view_width();
-  if (width == 0) {
-    return false;
-  }
+void View::zoom_vertical(double steps) { _signal_sync->zoom_vertical(steps); }
 
-  bool ret = true;
-  _preScale = _scale;
-  _preOffset = _offset;
-
-  if (get_work_mode() != DSO) {
-    _scale *= std::pow(3.0 / 2.0, -steps);
-    _scale = max(min(_scale, _maxscale), _minscale);
-  } else {
-    if (_data_source->is_running_status() && _data_source->is_instant()) {
-      return ret;
-    }
-
-    double hori_res = -1;
-    if (steps > 0.5)
-      hori_res = _sampling_bar->hori_knob(-1);
-    else if (steps < -0.5)
-      hori_res = _sampling_bar->hori_knob(1);
-
-    if (hori_res > 0) {
-      const double scale = _data_source->cur_view_time() / width;
-      _scale = max(min(scale, _maxscale), _minscale);
-    } else {
-      ret = false;
-    }
-  }
-
-  _offset = floor((_offset + offset) * (_preScale / _scale) - offset);
-  _offset = max(min(_offset, get_max_offset()), get_min_offset());
-
-  if (_scale != _preScale || _offset != _preOffset) {
-    _header->update();
-    _ruler->update();
-    viewport_update();
-    update_scroll();
-  }
-
-  return ret;
-}
-
-void View::zoom_vertical(double steps) {
-  int step = 10;
-  int oldHeight = _signalHeightScale;
-  if (steps > 0)
-    _signalHeightScale += step;
-  else
-    _signalHeightScale -= step;
-  _signalHeightScale =
-      max(MinSignalHeight, min(_signalHeightScale, MaxSignalHeight));
-  if (_signalHeightScale != oldHeight) {
-    double scale = (double)_signalHeightScale / oldHeight;
-    std::vector<Trace *> traces;
-    get_traces(ALL_VIEW, traces);
-    for (auto t : traces) {
-      if (t->get_own_height() > 0) {
-        t->set_own_height(
-            max(MinSignalHeight, (int)(t->get_own_height() * scale)));
-      }
-    }
-    signals_changed(NULL);
-    update_scroll();
-    viewport_update();
-  }
-}
-
-void View::compute_signal_groups() {
-  _signal_groups.clear();
-
-  if (get_work_mode() != LOGIC) {
-    return;
-  }
-
-  std::vector<Trace *> all_traces;
-  get_traces(ALL_VIEW, all_traces);
-
-  std::vector<Trace *> decode_traces;
-  std::vector<Trace *> logic_traces;
-
-  for (auto t : all_traces) {
-    if (t->get_type() == SR_CHANNEL_DECODER && t->enabled())
-      decode_traces.push_back(t);
-    else if (t->get_type() == SR_CHANNEL_LOGIC && t->enabled())
-      logic_traces.push_back(t);
-  }
-
-  // 按 view_index 排序，确保分组顺序与布局顺序一致
-  sort(decode_traces.begin(), decode_traces.end(), [](Trace *a, Trace *b) {
-    return a->get_view_index() < b->get_view_index();
-  });
-  sort(logic_traces.begin(), logic_traces.end(), [](Trace *a, Trace *b) {
-    return a->get_view_index() < b->get_view_index();
-  });
-
-  std::set<int> assigned_signals;
-  int group_id = 0;
-
-  // 第一阶段：收集每个解码通道绑定的逻辑通道索引集合
-  struct DecodeBinding {
-    DecodeTrace *trace;
-    std::set<int> bound_logic_indices;
-  };
-  std::vector<DecodeBinding> decode_bindings;
-
-  for (auto dt : decode_traces) {
-    DecodeTrace *dtrace = dynamic_cast<DecodeTrace *>(dt);
-    if (!dtrace)
-      continue;
-
-    DecodeBinding binding;
-    binding.trace = dtrace;
-
-    auto decoder_stack = dtrace->decoder();
-    if (decoder_stack) {
-      for (auto decoder : decoder_stack->stack()) {
-        auto probe_list = decoder->binded_probe_list();
-        for (auto probe : probe_list) {
-          int binded_index = decoder->binded_probe_index(probe);
-          binding.bound_logic_indices.insert(binded_index);
-        }
-      }
-    }
-
-    decode_bindings.push_back(binding);
-  }
-
-  // 第二阶段：将绑定到相同逻辑通道的解码通道合并到同一组
-  std::vector<bool> grouped(decode_bindings.size(), false);
-
-  for (size_t i = 0; i < decode_bindings.size(); i++) {
-    if (grouped[i])
-      continue;
-
-    SignalGroup group;
-    group.group_id = group_id++;
-    group.traces.push_back(decode_bindings[i].trace);
-    grouped[i] = true;
-
-    // 收集该组的所有逻辑通道
-    std::set<int> group_logic_indices = decode_bindings[i].bound_logic_indices;
-
-    // 查找其他绑定到相同逻辑通道的解码通道并合并
-    for (size_t j = i + 1; j < decode_bindings.size(); j++) {
-      if (grouped[j])
-        continue;
-
-      // 检查是否有共同的逻辑通道绑定
-      bool shares_logic = false;
-      for (int logic_idx : decode_bindings[j].bound_logic_indices) {
-        if (group_logic_indices.find(logic_idx) != group_logic_indices.end()) {
-          shares_logic = true;
-          break;
-        }
-      }
-
-      if (shares_logic) {
-        group.traces.push_back(decode_bindings[j].trace);
-        grouped[j] = true;
-        // 合并逻辑通道集合
-        group_logic_indices.insert(
-            decode_bindings[j].bound_logic_indices.begin(),
-            decode_bindings[j].bound_logic_indices.end());
-      }
-    }
-
-    // 将逻辑通道加入组（按原始顺序）
-    for (auto lt : logic_traces) {
-      int logic_index = lt->get_index();
-      if (group_logic_indices.find(logic_index) != group_logic_indices.end() &&
-          assigned_signals.find(logic_index) == assigned_signals.end()) {
-        group.traces.push_back(lt);
-        assigned_signals.insert(logic_index);
-      }
-    }
-
-    _signal_groups.push_back(group);
-  }
-
-  std::vector<Trace *> unassigned;
-  for (auto lt : logic_traces) {
-    if (assigned_signals.find(lt->get_index()) == assigned_signals.end()) {
-      unassigned.push_back(lt);
-    }
-  }
-  sort(unassigned.begin(), unassigned.end(), [](Trace *a, Trace *b) {
-    return a->get_view_index() < b->get_view_index();
-  });
-  // 连续的未分配逻辑通道合并成一个组，不连续的单独成组
-  if (!unassigned.empty()) {
-    SignalGroup group;
-    group.group_id = group_id++;
-    group.traces.push_back(unassigned[0]);
-    for (size_t i = 1; i < unassigned.size(); i++) {
-      // 检查是否连续（view_index 相差1）
-      if (unassigned[i]->get_view_index() ==
-          unassigned[i - 1]->get_view_index() + 1) {
-        group.traces.push_back(unassigned[i]);
-      } else {
-        // 不连续，创建新组
-        _signal_groups.push_back(group);
-        group = SignalGroup();
-        group.group_id = group_id++;
-        group.traces.push_back(unassigned[i]);
-      }
-    }
-    _signal_groups.push_back(group);
-  }
-
-  for (auto &group : _signal_groups) {
-    sort(group.traces.begin(), group.traces.end(), [](Trace *a, Trace *b) {
-      return a->get_v_offset() < b->get_v_offset();
-    });
-  }
-}
+void View::compute_signal_groups() { _signal_sync->compute_signal_groups(); }
 
 QColor View::get_group_card_color() {
-  QColor c = AppConfig::Instance().GetThemeColor("@group-card-bg");
-  if (c.isValid())
-    return c;
-  AppConfig &app = AppConfig::Instance();
-  if (app.IsDarkStyle())
-    return QColor(0x1a, 0x1a, 0x1a);
-  else
-    return QColor(0xfa, 0xfa, 0xfa);
+  return _signal_sync->get_group_card_color();
 }
 
 bool View::is_colored_card_mode() {
-  QString val = AppConfig::Instance().GetThemeTokenValue("@group-card-colored");
-  return val == "true";
+  return _signal_sync->is_colored_card_mode();
 }
 
 QColor View::get_group_card_color(int group_index) {
-  if (is_colored_card_mode()) {
-    const auto &groups = get_signal_groups();
-    if (group_index >= 0 && group_index < (int)groups.size()) {
-      const auto &group = groups[group_index];
-      if (!group.traces.empty()) {
-        auto *trace = group.traces[0];
-        return get_trace_card_color(trace);
-      }
-    }
-  }
-  return get_group_card_color();
+  return _signal_sync->get_group_card_color(group_index);
 }
 
 QColor View::get_trace_card_color(Trace *trace) {
-  if (is_colored_card_mode() && trace) {
-    auto index_list = trace->get_index_list();
-    if (!index_list.empty()) {
-      int idx = *index_list.begin() % 8;
-      QString token = QString("@logic-channel-%1").arg(idx);
-      QColor signalColor = AppConfig::Instance().GetThemeColor(token);
-      if (!signalColor.isValid())
-        signalColor = Trace::PROBE_COLORS[idx];
-      // PulseView style: signal color + 8% alpha
-      QColor bgColor = signalColor;
-      bgColor.setAlpha(8 * 255 / 100);
-      return bgColor;
-    }
-  }
-  return get_group_card_color();
+  return _signal_sync->get_trace_card_color(trace);
 }
 
-void View::timebase_changed() {
-  int width = get_view_width();
-  if (width == 0) {
-    return;
-  }
-
-  if (get_work_mode() != DSO) {
-    return;
-  }
-
-  double scale = this->scale();
-  double hori_res = _sampling_bar->get_hori_res();
-
-  if (hori_res > 0) {
-    scale = _data_source->cur_view_time() / width;
-  }
-
-  set_scale_offset(scale, this->offset());
-}
-
-void View::set_scale_offset(double scale, int64_t offset) {
-  _preScale = _scale;
-  _preOffset = _offset;
-
-  _scale = max(scale, _minscale);
-  _offset = floor(max(offset, get_min_offset()));
-
-  if (_scale != _preScale || _offset != _preOffset) {
-    update_scroll();
-    _header->update();
-    _ruler->update();
-    viewport_update();
-  }
-}
-
-void View::limit_scale_offset() {
-  if (get_work_mode() != DSO) {
-    int width = get_view_width();
-    double sampletime = document_snapshot_source()->cur_sampletime();
-    uint64_t samplerate = document_snapshot_source()->cur_snap_samplerate();
-    if (sampletime > 0 && samplerate > 0 && width > 0) {
-      _maxscale = sampletime / (width * MaxViewRate);
-      _minscale = (1.0 / samplerate) / MaxPixelsPerSample;
-    }
-    _scale = max(min(_scale, _maxscale), _minscale);
-    _offset = max(min(_offset, get_max_offset()), get_min_offset());
-    update_scroll();
-    _ruler->update();
-    viewport_update();
-  }
-}
+void View::timebase_changed() { _data_sync->timebase_changed(); }
 
 void View::set_preScale_preOffset() { set_scale_offset(_preScale, _preOffset); }
 
 void View::get_traces(int type, std::vector<Trace *> &traces) {
-  assert(_session);
-
-  auto &sigs = _own_signals;
-
-  auto &decode_sigs = get_own_decode_traces();
-
-  auto &spectrums = get_own_spectrum_traces();
-
-  for (auto t : sigs) {
-    if (type == ALL_VIEW || _trace_view_map[t->get_type()] == type)
-      traces.push_back(t);
-  }
-
-  for (auto t : decode_sigs) {
-    if (type == ALL_VIEW || _trace_view_map[t->get_type()] == type)
-      traces.push_back(t);
-  }
-
-  for (auto t : spectrums) {
-    if (type == ALL_VIEW || _trace_view_map[t->get_type()] == type)
-      traces.push_back(t);
-  }
-
-  auto lissajous = get_own_lissajous_trace();
-  if (lissajous && lissajous->enabled() &&
-      (type == ALL_VIEW || _trace_view_map[lissajous->get_type()] == type)) {
-    traces.push_back(lissajous);
-  }
-
-  auto math = get_own_math_trace();
-  if (math && math->enabled() &&
-      (type == ALL_VIEW || _trace_view_map[math->get_type()] == type)) {
-    traces.push_back(math);
-  }
-
-  sort(traces.begin(), traces.end(), compare_trace_v_offsets);
+  _signal_sync->get_traces(type, traces);
 }
 
 bool View::compare_trace_v_offsets(const Trace *a, const Trace *b) {
-  assert(a);
-  assert(b);
-
-  Trace *a1 = const_cast<Trace *>(a);
-  Trace *b1 = const_cast<Trace *>(b);
-  int v1 = 0;
-  int v2 = 0;
-
-  if (a1->get_type() != b1->get_type()) {
-    v1 = a1->get_type();
-    v2 = b1->get_type();
-  } else if (a1->get_type() == SR_CHANNEL_DSO ||
-             a1->get_type() == SR_CHANNEL_ANALOG) {
-    v1 = a1->get_index();
-    v2 = b1->get_index();
-  } else {
-    v1 = a1->get_v_offset();
-    v2 = b1->get_v_offset();
-  }
-  return v1 < v2;
+  return ViewSignalSync::compare_trace_v_offsets(a, b);
 }
 
 bool View::compare_trace_view_index(const Trace *a, const Trace *b) {
-  assert(a);
-  assert(b);
-
-  Trace *a1 = const_cast<Trace *>(a);
-  Trace *b1 = const_cast<Trace *>(b);
-  return a1->get_view_index() < b1->get_view_index();
+  return ViewSignalSync::compare_trace_view_index(a, b);
 }
 
 bool View::compare_trace_y(const Trace *a, const Trace *b) {
-  assert(a);
-  assert(b);
-
-  Trace *a1 = const_cast<Trace *>(a);
-  Trace *b1 = const_cast<Trace *>(b);
-  return a1->get_v_offset() < b1->get_v_offset();
-}
-
-void View::show_cursors(bool show) {
-  _show_cursors = show;
-  _ruler->update();
-  viewport_update();
-}
-
-void View::show_trig_cursor(bool show) {
-  _show_trig_cursor = show;
-  _ruler->update();
-  viewport_update();
-}
-
-void View::show_search_cursor(bool show) {
-  _show_search_cursor = show;
-  _ruler->update();
-  viewport_update();
+  return ViewSignalSync::compare_trace_y(a, b);
 }
 
 void View::status_clear() {
@@ -1008,77 +407,12 @@ void View::status_clear() {
 
 void View::repeat_unshow() { _viewbottom->repeat_unshow(); }
 
-void View::frame_began() {
-  _search_hit = false;
-  _search_pos = 0;
-  set_search_pos(_search_pos, _search_hit);
-}
+void View::frame_began() { _data_sync->frame_began(); }
 
-void View::receive_end() {
-  if (get_work_mode() == LOGIC) {
-    bool rle = false;
-    uint64_t actual_samples;
-    bool ret;
-
-    ret = _device_agent->get_config_bool(SR_CONF_RLE, rle);
-
-    if (ret && rle) {
-      ret = _device_agent->get_config_uint64(SR_CONF_ACTUAL_SAMPLES,
-                                             actual_samples);
-      if (ret) {
-        if (actual_samples != document_snapshot_source()->cur_samplelimits()) {
-          _viewbottom->set_rle_depth(actual_samples);
-        }
-      }
-    }
-  }
-  _time_viewport->unshow_wait_trigger();
-
-  limit_scale_offset();
-}
+void View::receive_end() { _data_sync->receive_end(); }
 
 void View::receive_trigger(quint64 trig_pos1) {
-  (void)trig_pos1;
-  uint64_t trig_pos = document_snapshot_source()->get_trigger_pos();
-  set_trig_cursor_posistion(trig_pos);
-}
-
-void View::set_trig_cursor_posistion(uint64_t trig_pos) {
-  const double time =
-      trig_pos * 1.0 / document_snapshot_source()->cur_snap_samplerate();
-  _trig_cursor->set_index(trig_pos);
-
-  int width = get_view_width();
-  assert(width > 0);
-
-  // B2 fix: query Core trigger state instead of ds_trigger_get_en().
-  // Trigger is enabled if any logic channel has a non-NONTRIG trig_type
-  // (Simple mode), or if trigger_config mode is Adv/Serial (always enabled).
-  bool trigger_enabled = false;
-  const auto &trig_cfg = _data_source->trigger_config();
-  if (trig_cfg.mode() != pv::data::TriggerConfig::Simple) {
-    trigger_enabled = true;
-  } else {
-    for (const auto &m : _data_source->get_signal_models()) {
-      if (m && m->type() == SR_CHANNEL_LOGIC &&
-          m->trig_type() != pv::data::SignalModel::NONTRIG) {
-        trigger_enabled = true;
-        break;
-      }
-    }
-  }
-  if (trigger_enabled || _device_agent->is_virtual() ||
-      get_work_mode() == DSO) {
-    _show_trig_cursor = true;
-
-    AppConfig &app = AppConfig::Instance();
-    if (app.appOptions.trigPosDisplayInMid) {
-      set_scale_offset(_scale, (time / _scale) - (width / 2));
-    }
-  }
-
-  _ruler->update();
-  viewport_update();
+  _data_sync->receive_trigger(trig_pos1);
 }
 
 void View::set_trig_pos(int percent) {
@@ -1089,390 +423,16 @@ void View::set_trig_pos(int percent) {
   }
 }
 
-void View::set_search_pos(uint64_t search_pos, bool hit) {
-  QColor fore(QWidget::palette().color(QWidget::foregroundRole()));
-  fore.setAlpha(View::BackAlpha);
+void View::normalize_layout() { _signal_sync->normalize_layout(); }
 
-  const double time =
-      search_pos * 1.0 / document_snapshot_source()->cur_snap_samplerate();
-  _search_pos = search_pos;
-  _search_hit = hit;
-  _search_cursor->set_index(search_pos);
-  _search_cursor->set_colour(hit ? View::Blue : fore);
-
-  int width = get_view_width();
-  assert(width);
-
-  if (hit) {
-    set_scale_offset(_scale, (time / _scale) - (width / 2));
-    _ruler->update();
-    viewport_update();
-  }
-}
-
-void View::normalize_layout() {
-  int v_min = INT_MAX;
-  std::vector<Trace *> traces;
-  get_traces(ALL_VIEW, traces);
-
-  for (auto t : traces) {
-    v_min = min(t->get_v_offset(), v_min);
-  }
-
-  const int delta = -min(v_min, 0);
-
-  for (auto t : traces) {
-    t->set_v_offset(t->get_v_offset() + delta);
-  }
-
-  _vOffset = 0;
-  verticalScrollBar()->setSliderPosition(0);
-  v_scroll_value_changed(0);
-}
-
-void View::get_scroll_layout(int64_t &length, int64_t &offset) {
-  length = ceil(document_snapshot_source()->cur_snap_sampletime() / _scale);
-  offset = _offset;
-}
-
-void View::update_scroll() {
-  assert(_viewcenter);
-
-  int width = get_view_width();
-  if (width == 0) {
-    return;
-  }
-
-  const QSize areaSize = QSize(width, get_view_height());
-
-  // Set the horizontal scroll bar
-  int64_t length = 0;
-  int64_t offset = 0;
-  get_scroll_layout(length, offset);
-  length = max(length - areaSize.width(), (int64_t)0);
-
-  horizontalScrollBar()->setPageStep(areaSize.width() / 2);
-
-  _updating_scroll = true;
-
-  if (length < MaxScrollValue) {
-    horizontalScrollBar()->setRange(0, length);
-    horizontalScrollBar()->setSliderPosition(offset);
-  } else {
-    horizontalScrollBar()->setRange(0, MaxScrollValue);
-    horizontalScrollBar()->setSliderPosition(_offset * 1.0 / length *
-                                             MaxScrollValue);
-  }
-
-  _updating_scroll = false;
-
-  // Set the vertical scrollbar
-  int totalContentHeight = 0;
-  if (_time_viewport)
-    totalContentHeight = _time_viewport->get_total_height();
-  int vRange = max(0, totalContentHeight - areaSize.height());
-  if (vRange > 0)
-    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-  else
-    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  verticalScrollBar()->setPageStep(areaSize.height());
-  verticalScrollBar()->setRange(0, vRange);
-  verticalScrollBar()->setSliderPosition(_vOffset);
-}
-
-void View::update_scale_offset() {
-  int width = get_view_width();
-  if (width == 0) {
-    return;
-  }
-
-  if (get_work_mode() != DSO) {
-    double sampletime = document_snapshot_source()->cur_sampletime();
-    uint64_t samplerate = document_snapshot_source()->cur_snap_samplerate();
-    if (sampletime > 0 && samplerate > 0) {
-      _maxscale = sampletime / (width * MaxViewRate);
-      _minscale = (1.0 / samplerate) / MaxPixelsPerSample;
-    } else {
-      _maxscale = 1e9;
-      _minscale = 1e-15;
-    }
-    _scale = max(_scale, _minscale);
-  } else {
-    _scale = _data_source->cur_view_time() / width;
-    _maxscale = 1e9;
-    _minscale = 1e-15;
-    _scale = max(_scale, _minscale);
-  }
-
-  _offset = max(_offset, get_min_offset());
-
-  _preScale = _scale;
-  _preOffset = _offset;
-
-  _ruler->update();
-  viewport_update();
-}
-
-void View::mode_changed() {
-  if (_device_agent->is_virtual()) {
-    uint64_t samplerate = document_snapshot_source()->cur_snap_samplerate();
-    if (samplerate > 0)
-      _scale = WellSamplesPerPixel * 1.0 / samplerate;
-  }
-  _scale = max(min(_scale, _maxscale), _minscale);
-}
+void View::mode_changed() { _data_sync->mode_changed(); }
 
 void View::signals_changed(const Trace *eventTrace) {
-  mark_derived_traces_dirty();
-  double actualMargin = SignalMargin;
-  int total_rows = 0;
-  int label_size = 0;
-  std::vector<Trace *> time_traces;
-  std::vector<Trace *> fft_traces;
-  std::vector<Trace *> traces;
-  std::vector<Trace *> logic_traces;
-  std::vector<Trace *> decoder_traces;
-
-  (void)eventTrace;
-
-  compute_signal_groups();
-
-  if (get_work_mode() == LOGIC && !_signal_groups.empty()) {
-    std::vector<size_t> group_order(_signal_groups.size());
-    for (size_t i = 0; i < _signal_groups.size(); i++)
-      group_order[i] = i;
-    sort(group_order.begin(), group_order.end(), [this](size_t a, size_t b) {
-      int minA = INT_MAX, minB = INT_MAX;
-      for (auto gt : _signal_groups[a].traces) {
-        if (gt->get_view_index() >= 0)
-          minA = min(minA, gt->get_view_index());
-      }
-      for (auto gt : _signal_groups[b].traces) {
-        if (gt->get_view_index() >= 0)
-          minB = min(minB, gt->get_view_index());
-      }
-      return minA < minB;
-    });
-
-    int new_index = 0;
-    for (size_t gi : group_order) {
-      sort(_signal_groups[gi].traces.begin(), _signal_groups[gi].traces.end(),
-           [](Trace *a, Trace *b) {
-             return a->get_view_index() < b->get_view_index();
-           });
-      for (auto gt : _signal_groups[gi].traces) {
-        gt->set_view_index(new_index++);
-      }
-    }
-  }
-
-  get_traces(ALL_VIEW, traces);
-
-  for (auto t : traces) {
-    if (_trace_view_map[t->get_type()] == TIME_VIEW) {
-      time_traces.push_back(t);
-    } else if (_trace_view_map[t->get_type()] == FFT_VIEW) {
-      if (t->enabled())
-        fft_traces.push_back(t);
-    }
-
-    if (t->get_type() == SR_CHANNEL_LOGIC)
-      logic_traces.push_back(t);
-    else if (t->get_type() == SR_CHANNEL_DECODER)
-      decoder_traces.push_back(t);
-  }
-
-  if (!fft_traces.empty()) {
-    if (!_fft_viewport->isVisible()) {
-      _fft_viewport->setVisible(true);
-      _fft_viewport->clear_measure();
-      _viewport_list.push_back(_fft_viewport);
-      _vsplitter->refresh();
-    }
-
-    for (auto t : fft_traces) {
-      t->set_view(this);
-      t->set_viewport(_fft_viewport);
-      t->set_totalHeight(_fft_viewport->height());
-      t->set_v_offset(_fft_viewport->geometry().bottom());
-    }
-  } else {
-    _fft_viewport->setVisible(false);
-    _vsplitter->refresh();
-
-    // Find the _fft_viewport in the stack
-    std::list<QWidget *>::iterator iter = _viewport_list.begin();
-
-    for (unsigned int i = 0; i < _viewport_list.size(); i++, iter++) {
-      if ((*iter) == _fft_viewport)
-        break;
-    }
-
-    // Delete the element
-    if (iter != _viewport_list.end())
-      _viewport_list.erase(iter);
-  }
-
-  if (!time_traces.empty() && _time_viewport) {
-    for (auto t : time_traces) {
-      if (dynamic_cast<DsoSignal *>(t) || t->visible())
-        total_rows += t->rows_size();
-      if (t->rows_size() != 0)
-        label_size++;
-    }
-
-    const double height =
-        (_time_viewport->height() - 2 * actualMargin * label_size) * 1.0 /
-        total_rows;
-
-    if (_device_agent->have_instance() == false) {
-      assert(false);
-    }
-
-    int mode = get_work_mode();
-
-    if (mode == LOGIC) {
-      _signalHeight = _signalHeightScale;
-    } else if (get_work_mode() == DSO) {
-      // PXView's _viewbottom is hidden and overlaid on viewport,
-      // so _header->height() is ~DsoStatusHeight larger than original DSView.
-      // Subtract DsoStatusHeight to match the original signal height.
-      _signalHeight =
-          (_header->height() - DsoStatusHeight -
-           horizontalScrollBar()->height() - 2 * actualMargin * label_size) *
-          1.0 / total_rows;
-    } else {
-      _signalHeight = (int)((height <= 0) ? 1 : height);
-    }
-
-    _spanY = _signalHeight + 2 * actualMargin;
-    double next_v_offset = actualMargin;
-
-    if (mode == LOGIC) {
-      time_traces.clear();
-
-      std::vector<Trace *> all_traces;
-
-      for (auto t : logic_traces) {
-        all_traces.push_back(t);
-      }
-
-      for (auto t : decoder_traces) {
-        if (t->get_view_index() != -1)
-          all_traces.push_back(t);
-        else
-          time_traces.push_back(t);
-      }
-
-      sort(all_traces.begin(), all_traces.end(), compare_trace_view_index);
-
-      for (auto t : all_traces) {
-        time_traces.push_back(t);
-      }
-    }
-
-    int current_group_id = -1;
-
-    for (auto t : time_traces) {
-      t->set_view(this);
-      t->set_viewport(_time_viewport);
-
-      if (t->rows_size() == 0)
-        continue;
-
-      if (!dynamic_cast<DsoSignal *>(t) && !t->visible())
-        continue;
-
-      int trace_group_id = -1;
-      for (auto &group : _signal_groups) {
-        for (auto gt : group.traces) {
-          if (gt == t) {
-            trace_group_id = group.group_id;
-            break;
-          }
-        }
-        if (trace_group_id != -1)
-          break;
-      }
-
-      if (current_group_id != -1 && trace_group_id != current_group_id) {
-        next_v_offset += GroupGap + 5;
-      }
-      current_group_id = trace_group_id;
-
-      double traceHeight;
-      if (t->get_own_height() > 0) {
-        traceHeight = t->get_own_height();
-      } else {
-        traceHeight = _signalHeight * t->rows_size();
-      }
-      t->set_totalHeight((int)traceHeight);
-      t->set_v_offset(qRound(next_v_offset + 0.5 * traceHeight + actualMargin));
-      next_v_offset += traceHeight + 2 * actualMargin;
-
-      if (t->signal_type() == SR_CHANNEL_DSO) {
-        auto sig = dynamic_cast<view::DsoSignal *>(t);
-        // PXView's _viewbottom is hidden and overlaid on viewport,
-        // so viewport height is ~DsoStatusHeight larger than original DSView.
-        // Subtract DsoStatusHeight to match the original scale.
-        const int scale_height =
-            sig->get_view_rect().height() - DsoStatusHeight;
-        sig->set_scale(scale_height > 0 ? scale_height
-                                        : sig->get_view_rect().height());
-      } else if (t->signal_type() == SR_CHANNEL_ANALOG) {
-        auto sig = dynamic_cast<view::AnalogSignal *>(t);
-        sig->set_scale(sig->get_totalHeight());
-      }
-    }
-    _time_viewport->clear_measure();
-    _data_source->update_dso_data_scale();
-  }
-
-  normalize_layout();
-
-  for (auto &group : _signal_groups) {
-    sort(group.traces.begin(), group.traces.end(), [](Trace *a, Trace *b) {
-      return a->get_v_offset() < b->get_v_offset();
-    });
-  }
-
-  header_updated();
-  update_scale_offset();
-  data_updated();
+  _signal_sync->signals_changed(eventTrace);
 }
 
 bool View::eventFilter(QObject *object, QEvent *event) {
-  if (_destroying)
-    return QObject::eventFilter(object, event);
-
-  const QEvent::Type type = event->type();
-  if (type == QEvent::MouseMove) {
-    const QMouseEvent *const mouse_event = (QMouseEvent *)event;
-    if (object == _ruler || object == _time_viewport ||
-        object == _fft_viewport) {
-      //_hover_point = QPoint(mouse_event->x(), 0);
-      double cur_periods = (mouse_event->position().toPoint().x() + _offset) *
-                           _scale / _ruler->get_min_period();
-      int integer_x =
-          round(cur_periods) * _ruler->get_min_period() / _scale - _offset;
-      double cur_deviate_x =
-          qAbs(mouse_event->position().toPoint().x() - integer_x);
-      if (get_work_mode() == LOGIC && cur_deviate_x < 10)
-        _hover_point = QPoint(integer_x, mouse_event->position().toPoint().y());
-      else
-        _hover_point = mouse_event->position().toPoint();
-    } else if (object == _header)
-      _hover_point = QPoint(0, (int)mouse_event->position().y());
-    else
-      _hover_point = QPoint(-1, -1);
-
-    hover_point_changed();
-  } else if (type == QEvent::Leave) {
-    _hover_point = QPoint(-1, -1);
-    hover_point_changed();
-  }
-
-  return QObject::eventFilter(object, event);
+  return _data_sync->eventFilter(object, event);
 }
 
 bool View::viewportEvent(QEvent *e) {
@@ -1491,29 +451,7 @@ bool View::viewportEvent(QEvent *e) {
   }
 }
 
-int View::headerWidth() {
-  if (_header_collapsed) {
-    int w = Trace::SquareWidth + 2 * Trace::Margin + 10;
-    setViewportMargins(w, RulerHeight, 0, 0);
-    return w;
-  }
-
-  int headerWidth = _header->get_nameEditWidth();
-
-  std::vector<Trace *> traces;
-  get_traces(ALL_VIEW, traces);
-
-  if (!traces.empty()) {
-    for (auto t : traces) {
-      int w = t->get_name_width() + t->get_leftWidth() + t->get_rightWidth();
-      headerWidth = max(w, headerWidth);
-    }
-  }
-
-  setViewportMargins(headerWidth, RulerHeight, 0, 0);
-
-  return headerWidth;
-}
+int View::headerWidth() { return _signal_sync->headerWidth(); }
 
 void View::paintEvent(QPaintEvent *event) { QScrollArea::paintEvent(event); }
 
@@ -1523,75 +461,7 @@ void View::scrollContentsBy(int dx, int dy) {
 }
 
 void View::resizeEvent(QResizeEvent *event) {
-  (void)event;
-  int width = get_view_width();
-
-  if (width == 0) {
-    return;
-  }
-
-  // 优化：如果只是高度变化（如 TitleBar Ribbon 展开/折叠），且宽度不变，
-  // 则跳过大部分重计算，因为 viewport 只是被平移，内容没有变化
-  bool widthChanged = (_lastWidth != width);
-  _lastWidth = width;
-
-  if (!widthChanged && get_work_mode() != DSO) {
-    setViewportMargins(headerWidth(), RulerHeight, 0, 0);
-    _header->header_resize();
-    update_scroll();
-    viewport_update();
-    return;
-  }
-
-  reconstruct();
-  setViewportMargins(headerWidth(), RulerHeight, 0, 0);
-  update_margins();
-  update_scroll();
-  signals_changed(NULL);
-
-  if (get_work_mode() == DSO) {
-    _scale = _data_source->cur_view_time() / width;
-  }
-
-  if (get_work_mode() != DSO) {
-    _maxscale =
-        document_snapshot_source()->cur_sampletime() / (width * MaxViewRate);
-    if (_scale > _maxscale) {
-      _scale = _maxscale;
-    }
-  } else {
-    _maxscale = 1e9;
-  }
-
-  _ruler->update();
-  _header->header_resize();
-  set_update(_time_viewport, true);
-  set_update(_fft_viewport, true);
-  resize();
-}
-
-void View::h_scroll_value_changed(int value) {
-  if (_updating_scroll)
-    return;
-
-  _preOffset = _offset;
-
-  const int range = horizontalScrollBar()->maximum();
-  if (range < MaxScrollValue)
-    _offset = value;
-  else {
-    int64_t length = 0;
-    int64_t offset = 0;
-    get_scroll_layout(length, offset);
-    _offset = floor(value * 1.0 / MaxScrollValue * length);
-  }
-
-  _offset = max(min(_offset, get_max_offset()), get_min_offset());
-
-  if (_offset != _preOffset) {
-    _ruler->update();
-    viewport_update();
-  }
+  _data_sync->resizeEvent(event);
 }
 
 void View::v_scroll_value_changed(int value) {
@@ -1600,82 +470,7 @@ void View::v_scroll_value_changed(int value) {
   viewport_update();
 }
 
-void View::data_updated() {
-  // Deduplicate rapid calls: if called within 16ms of the last execution,
-  // only mark viewports dirty without doing full update cycle
-  if (_data_updated_timer.isValid() && _data_updated_timer.elapsed() < 16) {
-    set_update(_time_viewport, true);
-    set_update(_fft_viewport, true);
-    return;
-  }
-
-  // Refresh data pointers in render objects (does NOT rebuild them).
-  // Signals hold raw snapshot pointers that may become stale when the
-  // active data source swaps its backing snapshots (e.g. after a capture,
-  // glitch filter, or document switch). Re-bind the latest snapshots from
-  // the effective data source.
-  auto *source = document_snapshot_source();
-  if (source) {
-    for (auto sig : _own_signals) {
-      int type = sig->signal_type();
-      switch (type) {
-      case SR_CHANNEL_LOGIC: {
-        view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-        s->set_data(source->get_logic_snapshot());
-        break;
-      }
-      case SR_CHANNEL_ANALOG: {
-        view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-        s->set_data(source->get_analog_snapshot());
-        break;
-      }
-      case SR_CHANNEL_DSO: {
-        view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-        s->set_data(source->get_dso_snapshot());
-        break;
-      }
-      }
-    }
-
-    // LissajousTrace holds a DsoSnapshot pointer directly.
-    if (_own_lissajous_trace) {
-      _own_lissajous_trace->set_data(source->get_dso_snapshot());
-    }
-    // Note: DecodeTrace / SpectrumTrace / MathTrace wrap Core-owned
-    // Stack objects which manage their own snapshot pointers internally,
-    // so no explicit refresh is needed here.
-  }
-
-  setViewportMargins(headerWidth(), RulerHeight, 0, 0);
-  update_margins();
-
-  // Update the scroll bars
-  update_scroll();
-
-  // update scale & offset
-  update_scale_offset();
-
-  // Repaint the view
-  _time_viewport->unshow_wait_trigger();
-  set_update(_time_viewport, true);
-  set_update(_fft_viewport, true);
-  viewport_update();
-  _ruler->update();
-
-  _data_updated_timer.start();
-}
-
-void View::update_margins() {
-  int width = get_view_width();
-
-  if (width > 0) {
-    _ruler->setGeometry(_viewcenter->x(), 0, this->width() - _viewcenter->x(),
-                        _viewcenter->y());
-    _header->setGeometry(0, _viewcenter->y(), _viewcenter->x(),
-                         _viewcenter->height());
-    _devmode->setGeometry(0, 0, _viewcenter->x(), _viewcenter->y());
-  }
-}
+void View::data_updated() { _data_sync->data_updated(); }
 
 void View::header_updated() {
   headerWidth();
@@ -1709,92 +504,6 @@ void View::on_traces_moved() {
   viewport_update();
 }
 
-void View::make_cursors_order() {
-  int dex = 1;
-
-  for (auto cursor : get_cursorList()) {
-    cursor->set_order(dex++);
-  }
-
-  dex = 1;
-  for (auto cursor : get_xcursorList()) {
-    cursor->set_order(dex++);
-  }
-}
-
-void View::add_cursor(QColor color, uint64_t sampleIndex) {
-  (void)color;
-  Cursor *newCursor = new Cursor(*this, -1, sampleIndex);
-  get_cursorList().push_back(newCursor);
-  make_cursors_order();
-  cursor_update();
-}
-
-void View::add_cursor(uint64_t sampleIndex) {
-  static int lastOrder = 1;
-  Cursor *newCursor = new Cursor(*this, lastOrder++, sampleIndex);
-  get_cursorList().push_back(newCursor);
-  make_cursors_order();
-  cursor_update();
-}
-
-void View::del_cursor(Cursor *cursor) {
-  assert(cursor);
-
-  get_cursorList().remove(cursor);
-  delete cursor;
-  make_cursors_order();
-
-  cursor_update();
-}
-
-void View::clear_cursors() {
-  auto &lst = get_cursorList();
-  for (auto c : lst) {
-    delete c;
-  }
-
-  lst.clear();
-}
-
-void View::add_xcursor(double value0, double value1) {
-  static int lastXCursorOrder = 1;
-  XCursor *newXCursor = new XCursor(*this, lastXCursorOrder++, value0, value1);
-  _xcursorList.push_back(newXCursor);
-  make_cursors_order();
-  xcursor_update();
-}
-
-void View::del_xcursor(XCursor *xcursor) {
-  assert(xcursor);
-
-  _xcursorList.remove(xcursor);
-  delete xcursor;
-  make_cursors_order();
-  xcursor_update();
-}
-
-void View::set_cursor_middle(int index) {
-  auto &lst = get_cursorList();
-  int size = lst.size();
-  (void)size;
-  assert(index < size);
-
-  int width = get_view_width();
-  // if (width > 0);
-
-  auto i = lst.begin();
-
-  while (index-- != 0) {
-    i++;
-  }
-
-  set_scale_offset(
-      _scale, (*i)->index() / (document_snapshot_source()->cur_snap_samplerate() *
-                               _scale) -
-                  (width / 2));
-}
-
 void View::on_measure_updated() {
   _active_viewport = dynamic_cast<Viewport *>(sender());
   measure_updated();
@@ -1807,46 +516,8 @@ QString View::get_measure(QString option) {
   return Unknown_Str;
 }
 
-QString View::get_cm_time(int index) {
-  uint64_t sampleIndex = get_cursor_samples(index);
-  uint64_t sampleRate = document_snapshot_source()->cur_snap_samplerate();
-  return _ruler->format_real_time(sampleIndex, sampleRate);
-}
-
-QString View::get_cm_delta(int index1, int index2) {
-  if (index1 == index2)
-    return "0";
-
-  uint64_t samples1 = get_cursor_samples(index1);
-  uint64_t samples2 = get_cursor_samples(index2);
-  uint64_t delta_sample =
-      (samples1 > samples2) ? samples1 - samples2 : samples2 - samples1;
-  return _ruler->format_real_time(
-      delta_sample, document_snapshot_source()->cur_snap_samplerate());
-}
-
 QString View::get_index_delta(uint64_t start, uint64_t end) {
-  if (start == end)
-    return "0";
-
-  uint64_t delta_sample = (start > end) ? start - end : end - start;
-  return _ruler->format_real_time(
-      delta_sample, document_snapshot_source()->cur_snap_samplerate());
-}
-
-uint64_t View::get_cursor_samples(int index) {
-  auto &lst = get_cursorList();
-  assert(index < (int)lst.size());
-
-  uint64_t ret = 0;
-  int curIndex = 0;
-  for (list<Cursor *>::iterator i = lst.begin(); i != lst.end(); i++) {
-    if (index == curIndex) {
-      ret = (*i)->index();
-    }
-    curIndex++;
-  }
-  return ret;
+  return _data_sync->get_index_delta(start, end);
 }
 
 void View::set_measure_en(int enable) {
@@ -1862,16 +533,7 @@ void View::on_state_changed(bool stop) {
   update_scale_offset();
 }
 
-QRect View::get_view_rect() {
-  if (get_work_mode() == DSO) {
-    const auto &sigs = _own_signals;
-    if (sigs.size() > 0) {
-      return sigs[0]->get_view_rect();
-    }
-  }
-
-  return _viewcenter->rect();
-}
+QRect View::get_view_rect() { return _data_sync->get_view_rect(); }
 
 int View::get_work_mode() const {
   if (_document && _document->has_signal_config()) {
@@ -1880,106 +542,28 @@ int View::get_work_mode() const {
   return _device_agent->get_work_mode();
 }
 
-int View::get_view_width() {
-  int view_width = 0;
-  if (get_work_mode() == DSO) {
-    for (auto s : _own_signals) {
-      view_width = max(view_width, s->get_view_rect().width());
-    }
-  } else {
-    view_width = _viewcenter->width();
-  }
+int View::get_view_width() { return _data_sync->get_view_width(); }
 
-  if (view_width == 0) {
-    view_width = 1;
-  }
-
-  return view_width;
-}
-
-int View::get_view_height() {
-  int view_height = 0;
-  if (get_work_mode() == DSO) {
-    for (auto s : _own_signals) {
-      view_height = max(view_height, s->get_view_rect().height());
-    }
-  } else {
-    view_height = _time_viewport ? _time_viewport->height() : 0;
-  }
-
-  return view_height;
-}
-
-int64_t View::get_min_offset() {
-  int width = get_view_width();
-  assert(width > 0);
-
-  if (MaxViewRate > 1)
-    return floor(width * (1 - MaxViewRate));
-  else
-    return 0;
-}
-
-int64_t View::get_max_offset() {
-  int width = get_view_width();
-  assert(width > 0);
-
-  return ceil((document_snapshot_source()->cur_snap_sampletime() / _scale) -
-              (width * MaxViewRate));
-}
+int View::get_view_height() { return _data_sync->get_view_height(); }
 
 int64_t View::get_logic_lst_data_offset() {
-  int width = get_view_width();
-  assert(width > 0);
-
-  return ceil((_data_source->get_logic_data_view_time() / _scale) -
-              (width * MaxViewRate));
+  return _data_sync->get_logic_lst_data_offset();
 }
 
 void View::scroll_to_logic_last_data_time() {
-  set_scale_offset(scale(), get_logic_lst_data_offset() + 10);
+  _data_sync->scroll_to_logic_last_data_time();
 }
 
 // -- calibration dialog
-void View::show_calibration() {
-  if (_cali != NULL) {
-    _cali->deleteLater();
-    _cali = NULL;
-  }
+void View::show_calibration() { _data_sync->show_calibration(); }
 
-  _cali = new pv::dialogs::Calibration(_session, this);
-  connect(_cali, &pv::dialogs::Calibration::sig_closed, this,
-          &View::on_calibration_closed);
-  _cali->update_device_info();
-  _cali->show();
-}
-
-void View::on_calibration_closed() {
-  if (_cali != NULL) {
-    _cali->deleteLater();
-    _cali = NULL;
-  }
-}
+void View::on_calibration_closed() { _data_sync->on_calibration_closed(); }
 
 void View::hide_calibration() { on_calibration_closed(); }
 
-void View::vDial_updated() {
-  if (_cali != NULL) {
-    _cali->update_device_info();
-  }
+void View::vDial_updated() { _data_sync->vDial_updated(); }
 
-  auto math_trace = get_own_math_trace();
-  if (math_trace && math_trace->enabled()) {
-    math_trace->update_vDial();
-  }
-}
-
-void View::dso_factor_updated() {
-  auto math_trace = get_own_math_trace();
-  if (math_trace && math_trace->enabled()) {
-    math_trace->update_vDial();
-  }
-}
+void View::dso_factor_updated() { _data_sync->dso_factor_updated(); }
 
 // -- lissajous figure
 void View::show_lissajous(bool show) {
@@ -1988,34 +572,7 @@ void View::show_lissajous(bool show) {
 }
 
 void View::show_region(uint64_t start, uint64_t end, bool keep) {
-  assert(start <= end);
-
-  int width = get_view_width();
-  if (width == 0) {
-    return;
-  }
-
-  if (keep) {
-    set_all_update(true);
-    update();
-  } else if (_data_source->get_map_zoom() == 0) {
-    const double ideal_scale = (end - start) * 2.0 /
-                               document_snapshot_source()->cur_snap_samplerate() /
-                               width;
-    const double new_scale = max(min(ideal_scale, _maxscale), _minscale);
-    const double new_off =
-        (start + end) * 0.5 /
-            (document_snapshot_source()->cur_snap_samplerate() * new_scale) -
-        (width / 2);
-    set_scale_offset(new_scale, new_off);
-  } else {
-    const double new_scale = scale();
-    const double new_off =
-        (start + end) * 0.5 /
-            (document_snapshot_source()->cur_snap_samplerate() * new_scale) -
-        (width / 2);
-    set_scale_offset(new_scale, new_off);
-  }
+  _data_sync->show_region(start, end, keep);
 }
 
 void View::viewport_update() {
@@ -2077,680 +634,34 @@ void View::show_captured_progress(bool triggered, int progress) {
 bool View::get_dso_trig_moved() { return _time_viewport->get_dso_trig_moved(); }
 
 double View::index2pixel(uint64_t index, bool has_hoff) {
-  const uint64_t rateValue = document_snapshot_source()->cur_snap_samplerate();
-  const double scaleValue = scale();
-  const int64_t offsetValue = offset();
-  const double hoffValue = trig_hoff();
-
-  double pixels = 0;
-
-  const double samples_per_pixel = rateValue * scaleValue;
-
-  if (has_hoff) {
-    pixels =
-        index / samples_per_pixel - offsetValue + hoffValue / samples_per_pixel;
-  } else {
-    pixels = index / samples_per_pixel - offsetValue;
-  }
-
-  /*
-  const double samples_per_pixel = _data_source->cur_snap_samplerate() *
-  scale(); double pixels; if (has_hoff) pixels = index/samples_per_pixel -
-  offset() + trig_hoff()/samples_per_pixel; else pixels =
-  index/samples_per_pixel - offset();
-      */
-
-  return pixels;
+  return _data_sync->index2pixel(index, has_hoff);
 }
 
 uint64_t View::pixel2index(double pixel) {
-  const uint64_t rateValue = document_snapshot_source()->cur_snap_samplerate();
-  const double scaleValue = scale();
-  const int64_t offsetValue = offset();
-  const double hoffValue = trig_hoff();
-
-  const double samples_per_pixel = rateValue * scaleValue;
-  const double index = (pixel + offsetValue) * samples_per_pixel - hoffValue;
-
-  const uint64_t sampleIndex = (uint64_t)std::round(index);
-
-  return sampleIndex;
-
-  // const double samples_per_pixel = session().cur_snap_samplerate() * scale();
-  // uint64_t index = (pixel + offset()) * samples_per_pixel - trig_hoff();
+  return _data_sync->pixel2index(pixel);
 }
 
-void View::set_receive_len(uint64_t len) {
-  if (_time_viewport)
-    _time_viewport->set_receive_len(len);
-
-  if (_fft_viewport && _device_agent->get_work_mode() == DSO)
-    _fft_viewport->set_receive_len(len);
-}
-
-int View::get_cursor_index_by_key(uint64_t key) {
-  auto &lst = get_cursorList();
-
-  int dex = 0;
-  for (auto c : lst) {
-    if (c->get_key() == key) {
-      return dex;
-    }
-    ++dex;
-  }
-  return -1;
-}
+void View::set_receive_len(uint64_t len) { _data_sync->set_receive_len(len); }
 
 void View::rebuild_signals_from_config(const data::SignalConfig &config) {
-  // Re-entrancy guard: if a nested broadcast (e.g. DSV_MSG_DEVICE_OPTIONS_UPDATED
-  // from within this function) triggers OnMessage → rebuild_signals() →
-  // rebuild_signals_from_config() again, abort immediately to prevent
-  // infinite recursion / stack overflow.
-  if (_rebuild_in_progress)
-    return;
-  _rebuild_in_progress = true;
-  struct RebuildGuard {
-    bool &flag;
-    RebuildGuard(bool &f) : flag(f) {}
-    ~RebuildGuard() { flag = false; }
-  } _rebuild_guard(_rebuild_in_progress);
-
-  qDebug() << "View::rebuild_signals_from_config() work_mode="
-           << config.work_mode << "ch_count=" << config.channels.size()
-           << "is_valid=" << config.is_valid;
-
-  std::vector<Signal *> old_signals = _own_signals;
-  _own_signals.clear();
-
-  int channel_type;
-  switch (config.work_mode) {
-  case LOGIC:
-    channel_type = SR_CHANNEL_LOGIC;
-    break;
-  case DSO:
-    channel_type = SR_CHANNEL_DSO;
-    break;
-  case ANALOG:
-    channel_type = SR_CHANNEL_ANALOG;
-    break;
-  default:
-    for (auto sig : old_signals)
-      delete sig;
-    signals_changed(NULL);
-    return;
-  }
-
-  int view_index = 0;
-  for (const auto &ch : config.channels) {
-    // Create a temporary SignalModel for the channel configuration.
-    // This SignalModel is not connected to a real device (no sr_channel),
-    // but it allows the View layer to create Signal objects using the new
-    // constructor signature.
-    auto model = std::make_shared<data::SignalModel>();
-    model->set_index(ch.index);
-    model->set_enabled(ch.enabled);
-    model->set_name(std::to_string(ch.index));
-
-    // Set channel type based on work mode
-    switch (config.work_mode) {
-    case LOGIC:
-      model->set_type(SR_CHANNEL_LOGIC);
-      break;
-    case DSO:
-      model->set_type(SR_CHANNEL_DSO);
-      model->set_vdiv(ch.vdiv);
-      model->set_coupling(ch.coupling);
-      model->set_hw_offset(ch.hw_offset);
-      model->set_vertical_offset(ch.offset);
-      model->set_zero_offset(ch.zero_offset);
-      break;
-    case ANALOG:
-      model->set_type(SR_CHANNEL_ANALOG);
-      model->set_vdiv(ch.vdiv);
-      model->set_coupling(ch.coupling);
-      model->set_hw_offset(ch.hw_offset);
-      model->set_vertical_offset(ch.offset);
-      model->set_zero_offset(ch.zero_offset);
-      break;
-    }
-
-    // Set session for the model (so it can call session methods if needed)
-    model->set_session(_session);
-
-    Signal *old_signal = nullptr;
-    for (auto os : old_signals) {
-      if (os->get_index() == ch.index && os->signal_type() == channel_type) {
-        old_signal = os;
-        break;
-      }
-    }
-
-    Signal *signal = nullptr;
-    switch (config.work_mode) {
-    case LOGIC:
-      if (old_signal) {
-        signal = new LogicSignal(static_cast<LogicSignal *>(old_signal),
-                                 nullptr, model, _data_source);
-      } else {
-        signal = new LogicSignal(nullptr, model, _data_source);
-      }
-      break;
-    case DSO:
-      if (old_signal) {
-        signal = new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr,
-                               model, _data_source);
-      } else {
-        signal = new DsoSignal(nullptr, model, _data_source);
-      }
-      break;
-    case ANALOG:
-      if (old_signal) {
-        signal = new AnalogSignal(static_cast<AnalogSignal *>(old_signal),
-                                  nullptr, model, _data_source);
-      } else {
-        signal = new AnalogSignal(nullptr, model, _data_source);
-      }
-      break;
-    }
-
-    if (signal) {
-      signal->set_enabled(ch.enabled);
-      // Task 7 (purify-architecture-concepts): visible is no longer a
-      // Core-serialized field. In-memory visible state across rebuilds is
-      // preserved by SignalFactory::save_ui_state/restore_ui_state. Persistence
-      // will be handled by View-layer DockUiState (Task 17) writing the
-      // uiLayout section of .pxc.
-
-      // UI 布局状态从 ChannelConfig 恢复（单一持久化状态源）：
-      // - view_index: 配置值 >= 0 时使用，否则按启用顺序派生（向后兼容）
-      // - v_offset: 直接使用配置值
-      // - own_height: 配置值 >= 0 时使用，否则 DSO/Analog 保持 -1（自动高度），
-      //   Logic 不调用 set_own_height（由 Trace 构造函数处理主题默认）
-      signal->set_v_offset(ch.v_offset);
-      if (ch.own_height >= 0) {
-        signal->set_own_height(ch.own_height);
-      } else if (config.work_mode == DSO || config.work_mode == ANALOG) {
-        signal->set_own_height(-1);
-      }
-      if (ch.view_index >= 0) {
-        signal->set_view_index(ch.view_index);
-      } else if (ch.enabled) {
-        signal->set_view_index(view_index++);
-      } else {
-        signal->set_view_index(-1);
-      }
-      _own_signals.push_back(signal);
-    }
-  }
-
-  for (auto sig : old_signals)
-    delete sig;
-
-  if (_document && _document->has_data()) {
-    for (auto sig : _own_signals) {
-      int type = sig->signal_type();
-      switch (type) {
-      case SR_CHANNEL_LOGIC: {
-        view::LogicSignal *s = static_cast<view::LogicSignal *>(sig);
-        s->set_data(_document->get_active_logic());
-        break;
-      }
-      case SR_CHANNEL_ANALOG: {
-        view::AnalogSignal *s = static_cast<view::AnalogSignal *>(sig);
-        s->set_data(_document->get_active_analog());
-        break;
-      }
-      case SR_CHANNEL_DSO: {
-        view::DsoSignal *s = static_cast<view::DsoSignal *>(sig);
-        s->set_data(_document->get_active_dso());
-        break;
-      }
-      }
-    }
-  }
-
-  signals_changed(NULL);
+  _signal_sync->rebuild_signals_from_config(config);
 }
 
-void View::rebuild_signals() {
-  mark_derived_traces_dirty();
+void View::rebuild_signals() { _signal_sync->rebuild_signals(); }
 
-  if (_data_source == _document && _document &&
-      _document->has_signal_config()) {
-    const auto &config = _document->get_signal_config();
-    // 检查配置的通道数是否与设备当前的通道数匹配
-    // 如果不匹配，说明通道模式已切换，需要从设备重新创建信号
-    int device_ch_count = 0;
-    for (const GSList *l = _device_agent->get_channels(); l; l = l->next) {
-      device_ch_count++;
-    }
-    if (config.channels.size() == (size_t)device_ch_count) {
-      rebuild_signals_from_config(config);
-      SignalFactory::update_signals(_own_signals, _data_source, _data_source,
-                                    SignalFactory::Modified);
-      // Only property changes, no layout needed - use incremental refresh
-      signals_modified_refresh();
-      return;
-    }
-  }
+void View::on_signals_changed() { _signal_sync->on_signals_changed(); }
 
-  if (!_data_source)
-    return;
+void View::signals_added_layout() { _signal_sync->signals_added_layout(); }
 
-  auto created_sigs = SignalFactory::create_signals(_data_source, _data_source);
-  if (created_sigs.empty())
-    return;
-
-  for (auto sig : _own_signals)
-    delete sig;
-  _own_signals.clear();
-
-  for (auto sig : created_sigs) {
-    // create_signals 新建的信号已使用 Trace 构造函数的默认高度，
-    // 无需在此二次重置。DSO/Analog 的自动高度由 set_data_document 路径处理。
-    _own_signals.push_back(sig);
-  }
-
-  for (auto sig : _own_signals) {
-    auto s = dynamic_cast<Signal *>(sig);
-    if (s && s->model()) {
-      s->set_enabled(s->model()->enabled());
-      sig->set_visible(s->model()->enabled());
-    }
-  }
-
-  // R9: restore persisted layout (view_index/v_offset/own_height) from
-  // SessionDocument. Without this, rebuild_signals() (called from
-  // DSV_MSG_DEVICE_OPTIONS_UPDATED handler after reload) creates Signals
-  // with default heights, wiping the user's custom layout.
-  // rebuild_signals_from_config() at line 2228 only runs when
-  // _data_source == _document; this second path runs when _data_source is
-  // _session (e.g., before/during capture), and must also restore layout.
-  if (_document && _document->has_signal_config()) {
-    const auto &cfg = _document->get_signal_config();
-    int view_index_seq = 0;
-    for (auto *sig : _own_signals) {
-      auto it = std::find_if(cfg.channels.begin(), cfg.channels.end(),
-                             [&](const data::ChannelConfig &ch) {
-                               return ch.index == sig->get_index();
-                             });
-      if (it != cfg.channels.end()) {
-        sig->set_v_offset(it->v_offset);
-        if (it->own_height >= 0) {
-          sig->set_own_height(it->own_height);
-        } else if (cfg.work_mode == DSO || cfg.work_mode == ANALOG) {
-          sig->set_own_height(-1);
-        }
-        if (it->view_index >= 0) {
-          sig->set_view_index(it->view_index);
-        } else if (it->enabled) {
-          sig->set_view_index(view_index_seq++);
-        } else {
-          sig->set_view_index(-1);
-        }
-        pxv_info("View::rebuild_signals: restored channel %d from config: view_index=%d, v_offset=%d, own_height=%d",
-                 sig->get_index(), sig->get_view_index(),
-                 sig->get_v_offset(), sig->get_own_height());
-      }
-    }
-  }
-
-  if (_document && _document->has_data()) {
-    set_data_document(_document);
-  }
-
-  signals_changed(NULL);
-}
-
-bool View::add_decoder(srd_decoder *const dec, bool silent,
-                       DecoderStatus *dstatus,
-                       std::list<pv::data::decode::Decoder *> &sub_decoders,
-                       std::shared_ptr<pv::data::DecoderStack> &out_stack) {
-  if (!_session)
-    return false;
-
-  out_stack = nullptr;
-
-  // 1. Core layer creates the DecoderStack and adds it to the active
-  //    document's stack list. Core owns the DecoderStack.
-  if (!_data_source->add_decoder(dec, silent, dstatus, sub_decoders, out_stack))
-    return false;
-
-  if (!out_stack)
-    return false;
-
-  // 2. View directly creates its DecodeTrace wrapper for the new
-  //    DecoderStack. We do NOT rely on the signals_changed event callback
-  //    (which would only lazily sync via sync_derived_traces()) because the
-  //    caller may need to interact with the DecodeTrace immediately after
-  //    this method returns (e.g. to attach protocol layer items).
-  //    The index used here is the position in the View's own list, matching
-  //    the pattern in sync_derived_traces().
-  int decode_index = (int)_own_decode_traces.size();
-  auto *trace = new DecodeTrace(_session, out_stack, decode_index);
-  // Set initial view_index: place after all signal tracks (same pattern
-  // as sync_derived_traces). Without this, view_index defaults to -1 and
-  // causes incorrect layout ordering in LOGIC mode.
-  trace->set_view_index((int)_own_signals.size() + decode_index);
-  // CRITICAL: set_view(this) must be called BEFORE create_popup() because
-  // the dialog accesses _trace->get_view() to get session and signal_models.
-  trace->set_view(this);
-
-  // 3. If silent is false, show the decoder options dialog so the user can
-  //    configure channel mappings, decode range, etc. This was previously
-  //    done inside SigSession::add_decoder() via DecodeTrace::create_popup();
-  //    it was moved here during de-view-ization because Core must not depend
-  //    on Qt Widgets. If the user cancels (or fails to set required probes),
-  //    roll back: delete the DecodeTrace and ask Core to delete the
-  //    DecoderStack so we don't leave an unconfigured decoder around.
-  pxv_info("View: before create_popup(true), silent=%d", silent);
-  if (!silent) {
-    bool settings_changed = trace->create_popup(true);
-    pxv_info("View: create_popup returned %d", settings_changed);
-    if (!settings_changed) {
-      delete trace;
-      void *key = out_stack->get_key_handel();
-      _data_source->remove_decoder_by_key_handel(key);
-      out_stack = nullptr;
-      pxv_info("View: rollback complete, returning false");
-      return false;
-    }
-  }
-
-  _own_decode_traces.push_back(trace);
-
-  // 4. Mark derived traces NOT dirty since we just synced the DecodeTrace
-  //    list manually. This prevents sync_derived_traces() from recreating
-  //    the DecodeTrace we just added.
-  _derived_traces_dirty = false;
-
-  // 5. Broadcast first so that SigSession::OnMessage can run reload() before
-  //    we start the decode task. The broadcast is synchronous (direct function
-  //    call, not Qt queued signal), so reload() will clear SignalModel snapshots
-  //    immediately. We then call add_decode_task() which internally calls
-  //    attach_data_to_signal() to restore the snapshot pointers. If we called
-  //    add_decode_task() before broadcast_msg(), the snapshot would be set and
-  //    then cleared by reload(), causing "没有设置需要解码哪些通道的数据".
-  //    This broadcast also notifies MCP/WebSocket clients (SessionService maps
-  //    DSV_MSG_DEVICE_OPTIONS_UPDATED to DeviceConfigChanged).
-  // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
-  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
-
-  // 6. Now start the decode task after reload() has completed. The public
-  //    start_all_decode_tasks() funnel calls attach_data_to_signal() before
-  //    starting tasks, restoring snapshot pointers. If there is no view data
-  //    yet (decoder added before capture), the capture pipeline will start
-  //    the decode for us via DSV_MSG_COPY_TO_DOC_DONE → frame_ended() +
-  //    start_all_decode_tasks().
-  if (!silent && _data_source->have_view_data()) {
-    _data_source->start_all_decode_tasks();
-  }
-
-  // 7. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
-  //    at the top, but since the DecodeTrace list is already in sync, the
-  //    subsequent sync_derived_traces() will be a no-op for decoders.
-  signals_changed(NULL);
-
-  return true;
-}
-
-bool View::rst_decoder_by_key_handel(void *handel) {
-  if (!_session || !handel)
-    return false;
-
-  // Find the View-owned DecodeTrace that wraps this DecoderStack.
-  auto find_trace = [&]() -> DecodeTrace * {
-    for (auto *trace : _own_decode_traces) {
-      if (trace && trace->decoder() &&
-          trace->decoder()->get_key_handel() == handel)
-        return trace;
-    }
-    return nullptr;
-  };
-
-  DecodeTrace *target = find_trace();
-
-  // Fall back to lazy sync if not found (the list might be dirty).
-  if (!target) {
-    sync_derived_traces();
-    target = find_trace();
-  }
-
-  if (!target)
-    return false;
-
-  // Re-open the options dialog. If the user cancels (no settings change),
-  // do NOT reset the decoder — keep the existing configuration. This
-  // restores the pre-de-view-ization behavior where SigSession bailed out
-  // of rst_decoder() when create_popup() returned false.
-  bool settings_changed = target->create_popup(false);
-  if (!settings_changed)
-    return false;
-
-  // Forward to Core to clear the existing decode task and re-add it.
-  _data_source->rst_decoder_by_key_handel(handel);
-  return true;
-}
-
-void View::remove_decoder(DecodeTrace *trace) {
-  if (!trace)
-    return;
-
-  auto it =
-      std::find(_own_decode_traces.begin(), _own_decode_traces.end(), trace);
-  if (it == _own_decode_traces.end())
-    return;
-
-  auto stack = trace->decoder();
-  void *key_handel = stack ? stack->get_key_handel() : nullptr;
-
-  // 1. View deletes its DecodeTrace (View-owned). The DecodeTrace
-  //    destructor does NOT delete the DecoderStack (Core owns it).
-  _own_decode_traces.erase(it);
-  delete trace;
-
-  // 2. Notify Core layer to delete the corresponding DecoderStack.
-  //    Core's remove_decoder_by_key_handel() will remove the stack from
-  //    its list and delete it (immediately if no decode thread holds it,
-  //    otherwise asynchronously via _delete_flag). Core fires
-  //    signals_changed() callback which triggers View::signals_changed(NULL)
-  //    — at that point sync_derived_traces() will find no DecodeTrace to
-  //    remove (we already deleted it), so no double-free occurs.
-  if (key_handel) {
-    _data_source->remove_decoder_by_key_handel(key_handel);
-  }
-
-  // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
-  //    View cannot call SessionService::broadcast_event directly (View does
-  //    not depend on the API layer), so we forward via
-  //    SigSession::broadcast_msg. There is no dedicated
-  //    DSV_MSG_DECODER_REMOVED; DSV_MSG_DEVICE_OPTIONS_UPDATED is mapped by
-  //    SessionService to DeviceConfigChanged, which triggers state
-  //    synchronization. (The MCP remove_analyzer path already broadcasts
-  //    DecoderRemoved directly; this covers the GUI-triggered path.)
-  // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
-  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
-}
-
-void View::remove_decoder(int index) {
-  if (index < 0 || index >= (int)_own_decode_traces.size())
-    return;
-  remove_decoder(_own_decode_traces[index]);
-}
-
-void View::remove_decoder_by_key_handel(void *key_handel) {
-  if (!_session || !key_handel)
-    return;
-
-  // Find the View-owned DecodeTrace that wraps the DecoderStack with this
-  // key_handel. This mirrors the pattern in rst_decoder_by_key_handel().
-  auto find_trace = [&]() -> DecodeTrace * {
-    for (auto *trace : _own_decode_traces) {
-      if (trace && trace->decoder() &&
-          trace->decoder()->get_key_handel() == key_handel)
-        return trace;
-    }
-    return nullptr;
-  };
-
-  DecodeTrace *target = find_trace();
-
-  // Fall back to lazy sync if not found (the list might be dirty).
-  if (!target) {
-    sync_derived_traces();
-    target = find_trace();
-  }
-
-  if (!target)
-    return;
-
-  remove_decoder(target);
-}
-
-void View::clear_all_decoders() {
-  if (!_session)
-    return;
-
-  // 1. Delete all View-owned DecodeTrace objects first.
-  for (auto *trace : _own_decode_traces) {
-    delete trace;
-  }
-  _own_decode_traces.clear();
-
-  // 2. Notify Core to clear all DecoderStacks.
-  //    Core's clear_all_decoder() will fire signals_changed() callback
-  //    which triggers View::signals_changed(), but since we already
-  //    deleted all DecodeTrace, the subsequent sync_derived_traces()
-  //    will be a no-op.
-  _data_source->clear_all_decoder(true);
-
-  // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
-  // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
-  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
-}
-
-void View::on_signals_changed() {
-  // Incrementally update _own_signals to match the Core's SignalModel
-  // list. Uses compute_change_event to detect the minimal update type,
-  // avoiding full object recreation for minor changes.
-  //
-  // IMPORTANT: SignalModels ALWAYS live in SigSession (_data_source), never
-  // in SessionDocument. SessionDocument::_signal_models is never populated
-  // (it only stores data snapshots via _logic/_analog/_dso). Using the
-  // snapshot-source accessor (the former effective_data_source(), now
-  // document_snapshot_source()) here was a bug: when _document->has_data() is
-  // true (after a capture), document_snapshot_source() returns _document, and
-  // create_signals(_document) reads the empty _signal_models vector,
-  // returning an empty list. AllReplaced then deletes all existing view
-  // signals and creates 0 new ones, clearing the waveform tracks
-  // (Header::paintEvent shows traces=1).
-  //
-  // This does NOT directly touch _own_decode_traces / _own_spectrum_traces
-  // / _own_math_trace / _own_lissajous_trace. Those are derived traces
-  // that wrap Core-owned Stack/Model objects and are synced lazily via
-  // sync_derived_traces() based on the Stack pointer identity (not the
-  // Signal list).
-
-  if (!_data_source)
-    return;
-
-  auto &models = _data_source->get_signal_models();
-  auto event = SignalFactory::compute_change_event(_own_signals, models);
-
-  SignalFactory::update_signals(_own_signals, _data_source, _data_source, event);
-
-  // Dispatch to appropriate layout method based on event type.
-  switch (event) {
-  case SignalFactory::Added:
-    // New signals added, layout needs adjustment
-    signals_added_layout();
-    break;
-  case SignalFactory::Removed:
-    signals_removed_layout();
-    break;
-  case SignalFactory::Modified:
-    // Only property changes, no layout needed
-    signals_modified_refresh();
-    break;
-  case SignalFactory::AllReplaced:
-    // Full rebuild, need full layout
-    signals_changed(NULL);
-    break;
-  }
-}
-
-void View::signals_added_layout() {
-  // Layout recalculation is O(N) but relatively cheap compared to object
-  // recreation. SignalFactory::update_signals(Added) already added the new
-  // Signal objects without recreating existing ones.
-  signals_changed(NULL);
-}
-
-void View::signals_removed_layout() {
-  // Layout recalculation is O(N) but relatively cheap compared to object
-  // recreation. SignalFactory::update_signals(Removed) already removed the
-  // Signal objects without recreating existing ones.
-  signals_changed(NULL);
-}
+void View::signals_removed_layout() { _signal_sync->signals_removed_layout(); }
 
 void View::signals_modified_refresh() {
-  // Only property changes, no layout changes needed.
-  // Just repaint the signals without calling signals_changed(NULL).
-  // A1 fix: mark derived traces (Math/Spectrum/Lissajous/Decode) dirty so
-  // sync_derived_traces() recreates them on the next paint cycle. Without this,
-  // enabling Math/Spectrum/Lissajous via their option dialogs does not show the
-  // trace until the user switches tabs (which triggers sync_derived_traces).
-  mark_derived_traces_dirty();
-
-  // Rebuild _signal_groups before any paint. When a decoder is removed via
-  // remove_decoder() or clear_all_decoders(), the DecodeTrace is deleted
-  // directly (not through sync_derived_traces()), and on_signals_changed()
-  // returns Modified (DecoderStacks aren't in _signal_models). Without this
-  // rebuild, _signal_groups retains dangling Trace* pointers, causing SIGSEGV
-  // in Header::paintEvent. compute_signal_groups() calls get_traces() which
-  // calls sync_derived_traces() first (safe: _derived_traces_dirty was just
-  // set above, so it runs once, then the flag is cleared).
-  compute_signal_groups();
-
-  viewport_update();
-  header_updated();
+  _signal_sync->signals_modified_refresh();
 }
 
-void View::check_calibration() {
-  if (get_work_mode() == DSO) {
-    bool cali = false;
-    _device_agent->get_config_bool(SR_CONF_CALI, cali);
+void View::check_calibration() { _data_sync->check_calibration(); }
 
-    if (cali) {
-      show_calibration();
-    }
-  }
-}
-
-void View::set_scale(double scale) {
-  if (scale < _minscale)
-    scale = _minscale;
-  if (scale > _maxscale)
-    scale = _maxscale;
-
-  if (_scale != scale) {
-    _scale = scale;
-    _header->update();
-    _ruler->update();
-    viewport_update();
-    update_scroll();
-  }
-}
-
-void View::auto_set_max_scale() {
-  const double limitTime = document_snapshot_source()->cur_sampletime();
-  const int width = get_view_width();
-
-  if (width > 0) {
-    _maxscale = limitTime / (width * MaxViewRate);
-    set_scale(_maxscale);
-  }
-}
+void View::auto_set_max_scale() { _data_sync->auto_set_max_scale(); }
 
 int View::get_body_width() {
   if (_time_viewport != NULL)
@@ -2776,56 +687,11 @@ void View::check_measure() {
   _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
 }
 
-std::list<Cursor *> &View::get_cursorList() {
-  if (_device_agent->get_work_mode() == LOGIC) {
-    return _logic_cursors;
-  } else {
-    return _dso_cursors;
-  }
-}
-
 bool View::header_is_draging() { return _header->mouse_is_down(); }
-
-Cursor *View::get_cursor_by_index(int index) {
-  int dex = 0;
-  auto &cursors = get_cursorList();
-
-  for (auto c : cursors) {
-    if (dex == index) {
-      return c;
-    }
-    dex++;
-  }
-  return NULL;
-}
 
 void View::UpdateLanguage() {}
 
-void View::UpdateTheme() {
-  refreshSignalColors();
-
-  QString heightStr =
-      AppConfig::Instance().GetThemeTokenValue("@logic-channel-height");
-  bool ok;
-  int h = heightStr.toInt(&ok);
-  if (ok && h > 0) {
-    _signalHeightScale = h;
-    _signalHeight = h;
-
-    std::vector<Trace *> traces;
-    get_traces(ALL_VIEW, traces);
-    for (Trace *t : traces) {
-      if (t && (t->get_type() == SR_CHANNEL_LOGIC ||
-                t->get_type() == SR_CHANNEL_GROUP)) {
-        t->set_totalHeight(h);
-        t->set_own_height(h);
-      }
-    }
-    update_all_trace_postion();
-  }
-
-  viewport_update();
-}
+void View::UpdateTheme() { _signal_sync->UpdateTheme(); }
 
 void View::UpdateFont() { update_font(); }
 
@@ -2834,418 +700,97 @@ bool View::view_is_ready() {
   return w > 0;
 }
 
-void View::mark_derived_traces_dirty() { _derived_traces_dirty = true; }
-
-void View::sync_derived_traces() {
-  if (!_derived_traces_dirty)
-    return;
-
-  _derived_traces_dirty = false;
-
-  auto *source = document_snapshot_source();
-  if (!source)
-    return;
-
-  // Track whether any trace was added or removed. If so, _signal_groups
-  // (which caches raw Trace* pointers) must be rebuilt to avoid dangling
-  // pointers. Header::paintEvent reads _signal_groups via get_signal_groups(),
-  // and a stale pointer there causes SIGSEGV (UAF).
-  bool changed = false;
-
-  // ---- Sync DecodeTrace list from DecoderStack list ----
-  auto &decoder_stacks = source->get_decoder_stacks();
-
-  // Remove DecodeTrace whose DecoderStack no longer exists.
-  for (auto it = _own_decode_traces.begin(); it != _own_decode_traces.end();) {
-    DecodeTrace *dt = *it;
-    auto target = dt->decoder().get();
-    auto it_stack = std::find_if(
-        decoder_stacks.begin(), decoder_stacks.end(),
-        [target](const std::shared_ptr<pv::data::DecoderStack> &s) {
-          return s.get() == target;
-        });
-    if (it_stack == decoder_stacks.end()) {
-      delete dt;
-      it = _own_decode_traces.erase(it);
-      changed = true;
-    } else {
-      ++it;
-    }
-  }
-
-  // Add DecodeTrace for new DecoderStacks that have no wrapper yet.
-  int decode_index = 0;
-  for (auto stack : decoder_stacks) {
-    bool exists = false;
-    for (auto *dt : _own_decode_traces) {
-      if (dt->decoder().get() == stack.get()) {
-        exists = true;
-        break;
-      }
-    }
-    if (!exists) {
-      auto *dt = new DecodeTrace(_session, stack, decode_index);
-      // Sync _visible from Decoder::_shown so that a decoder the user
-      // previously hid stays hidden after tab switch (sync_derived_traces
-      // is called lazily when the DecodeTrace list is accessed).
-      if (!stack->stack().empty() && !stack->stack().front()->shown()) {
-        dt->set_visible(false);
-      }
-      // Set initial view_index: place after all signal tracks.
-      // Without this, view_index defaults to -1 (trace.h:81) and
-      // causes incorrect layout ordering in LOGIC mode signals_changed.
-      dt->set_view_index((int)_own_signals.size() + decode_index);
-      _own_decode_traces.push_back(dt);
-      changed = true;
-    }
-    decode_index++;
-  }
-
-  // ---- Sync SpectrumTrace list from SpectrumStack list ----
-  auto &spectrum_stacks = source->get_spectrum_stacks();
-
-  // Remove SpectrumTrace whose SpectrumStack no longer exists.
-  for (auto it = _own_spectrum_traces.begin();
-       it != _own_spectrum_traces.end();) {
-    SpectrumTrace *st = *it;
-    auto target = st->get_spectrum_stack().get();
-    auto it_stack = std::find_if(
-        spectrum_stacks.begin(), spectrum_stacks.end(),
-        [target](const std::shared_ptr<pv::data::SpectrumStack> &s) {
-          return s.get() == target;
-        });
-    if (it_stack == spectrum_stacks.end()) {
-      delete st;
-      it = _own_spectrum_traces.erase(it);
-      changed = true;
-    } else {
-      ++it;
-    }
-  }
-
-  // Add SpectrumTrace for new SpectrumStacks that have no wrapper yet.
-  for (auto stack : spectrum_stacks) {
-    bool exists = false;
-    for (auto *st : _own_spectrum_traces) {
-      if (st->get_spectrum_stack().get() == stack.get()) {
-        exists = true;
-        break;
-      }
-    }
-    if (!exists) {
-      auto *st = new SpectrumTrace(_session, stack, stack->get_index());
-      _own_spectrum_traces.push_back(st);
-      changed = true;
-    }
-  }
-
-  // ---- Sync MathTrace from MathStack ----
-  auto math_stack = source->get_math_stack();
-  if (math_stack) {
-    if (!_own_math_trace ||
-        _own_math_trace->get_math_stack().get() != math_stack.get()) {
-      // Tear down any stale MathTrace bound to a previous MathStack.
-      if (_own_math_trace) {
-        delete _own_math_trace;
-        _own_math_trace = nullptr;
-        changed = true;
-      }
-
-      // MathStack now exposes the source channel indices. Look up the
-      // matching DsoSignal instances in _own_signals so the MathTrace can
-      // read DSO-specific UI state (ref_min/ref_max, view rect, etc.).
-      DsoSignal *dso1 = nullptr;
-      DsoSignal *dso2 = nullptr;
-      const int idx1 = math_stack->ch1_index();
-      const int idx2 = math_stack->ch2_index();
-      for (auto *sig : _own_signals) {
-        if (!sig || sig->signal_type() != SR_CHANNEL_DSO)
-          continue;
-        if (sig->get_index() == idx1)
-          dso1 = dynamic_cast<DsoSignal *>(sig);
-        if (sig->get_index() == idx2)
-          dso2 = dynamic_cast<DsoSignal *>(sig);
-        if (dso1 && dso2)
-          break;
-      }
-
-      if (dso1 && dso2) {
-        _own_math_trace = new MathTrace(true, math_stack, dso1, dso2);
-        changed = true;
-      } else {
-        pxv_warn("View::sync_derived_traces: DsoSignal not found for "
-                 "math src1=%d or src2=%d — MathTrace creation skipped.",
-                 idx1, idx2);
-      }
-    }
-  } else {
-    if (_own_math_trace) {
-      delete _own_math_trace;
-      _own_math_trace = nullptr;
-      changed = true;
-    }
-  }
-
-  // ---- Sync LissajousTrace from LissajousModel ----
-  auto *lissajous_model = source->get_lissajous_model();
-  if (lissajous_model && lissajous_model->enabled()) {
-    if (!_own_lissajous_trace) {
-      auto *snapshot = source->get_dso_snapshot();
-      _own_lissajous_trace = new LissajousTrace(
-          lissajous_model->enabled(), snapshot, lissajous_model->x_index(),
-          lissajous_model->y_index(), lissajous_model->percent());
-      changed = true;
-    }
-  } else {
-    if (_own_lissajous_trace) {
-      delete _own_lissajous_trace;
-      _own_lissajous_trace = nullptr;
-      changed = true;
-    }
-  }
-
-  // Rebuild _signal_groups if any trace was added or removed.
-  // _signal_groups caches raw Trace* pointers; without this rebuild, a
-  // deleted trace's pointer becomes dangling, causing SIGSEGV in
-  // Header::paintEvent when it iterates group.traces.
-  // Safe against recursion: _derived_traces_dirty is already false, so
-  // compute_signal_groups() -> get_traces() -> get_own_decode_traces() ->
-  // sync_derived_traces() returns immediately.
-  if (changed) {
-    compute_signal_groups();
-  }
-}
 
 // =============================================================================
 // Glitch filter popup handlers (Task 7 + 9)
 // =============================================================================
 
 void View::on_show_glitch_filter_popup(pv::view::LogicSignal *sig) {
-  if (!sig)
-    return;
-  if (!_glitch_filter_popup)
-    return;
-
-  // Anchor at the right edge of the header, vertically centered on the
-  // signal's row. sig->get_y() returns the v_offset which is the y position
-  // in the header's coordinate system.
-  int anchor_x = _header ? _header->width() + 8 : 0;
-  int anchor_y = sig->get_y() + sig->get_totalHeight() / 2;
-  QPoint anchor = _header ? _header->mapToGlobal(QPoint(anchor_x, anchor_y))
-                          : QCursor::pos();
-
-  // Keep the popup on screen (assume ~420x500 popup size).
-  QScreen *screen = QGuiApplication::screenAt(anchor);
-  if (screen) {
-    QRect geo = screen->availableGeometry();
-    if (anchor.x() + 420 > geo.right())
-      anchor.setX(geo.right() - 420);
-    if (anchor.y() + 500 > geo.bottom())
-      anchor.setY(geo.bottom() - 500);
-    if (anchor.x() < geo.left())
-      anchor.setX(geo.left());
-    if (anchor.y() < geo.top())
-      anchor.setY(geo.top());
-  }
-
-  _glitch_filter_popup->open_for_signal(sig, anchor);
+  _glitch_filter->on_show_glitch_filter_popup(sig);
 }
 
 void View::on_clear_glitch_filter_requested(bool all_channels) {
-  // Core's clear_glitch_filter() is global (clears all channels); the
-  // all_channels flag only affects the toast message. A per-channel clear
-  // would require a Core API extension.
-  session().clear_glitch_filter();
-  _preview_ranges.clear();
-  if (_time_viewport)
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  pv::ui::Toast::show(this,
-                      all_channels ? tr("已清除所有通道滤波")
-                                   : tr("已清除通道滤波"),
-                      pv::ui::Toast::Info);
+  _glitch_filter->on_clear_glitch_filter_requested(all_channels);
 }
 
 void View::on_toggle_invert_requested(pv::view::LogicSignal *sig) {
-  if (!sig)
-    return;
-
-  auto &sess = session();
-
-  // SigSession exposes no per-channel invert getter, so a true per-channel
-  // toggle is not possible in this version. Toggle at the session level:
-  // if any invert is active, clear all; otherwise apply invert to the
-  // target channel only.
-  if (sess.is_signal_invert_active()) {
-    sess.clear_signal_invert();
-    pv::ui::Toast::show(this, tr("已清除信号取反"), pv::ui::Toast::Info);
-    if (_time_viewport)
-      _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-    return;
-  }
-
-  // Build the channels vector indexed by enabled-logic-channel ordinal.
-  std::vector<LogicSignal *> logic_sigs;
-  for (auto s : _own_signals) {
-    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
-      logic_sigs.push_back(static_cast<LogicSignal *>(s));
-  }
-  std::vector<bool> channels(logic_sigs.size(), false);
-  auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
-  if (it == logic_sigs.end())
-    return;
-  channels[std::distance(logic_sigs.begin(), it)] = true;
-
-  sess.set_signal_invert(channels);
-  pv::ui::Toast::show(this,
-                      tr("已对通道 %1 取反").arg(sig->get_name()),
-                      pv::ui::Toast::Info);
-  if (_time_viewport)
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  _glitch_filter->on_toggle_invert_requested(sig);
 }
 
 void View::on_glitch_preview_changed(pv::view::LogicSignal *sig,
                                      uint32_t threshold,
                                      GlitchFilterMode mode) {
-  if (!sig)
-    return;
-  auto *snap = sig->data();
-  if (!snap)
-    return;
-  int sig_index = sig->model() ? sig->model()->index() : 0;
-  auto pulses = pv::data::PulseAnalyzer::find_pulses(snap, sig_index);
-  _preview_ranges[sig] =
-      pv::data::PulseAnalyzer::preview_filter(pulses, threshold, mode);
-  if (_time_viewport)
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  _glitch_filter->on_glitch_preview_changed(sig, threshold, mode);
 }
 
 void View::on_glitch_apply_requested(pv::view::LogicSignal *sig,
                                      uint32_t threshold,
                                      GlitchFilterMode mode,
                                      bool all_channels) {
-  if (!sig)
-    return;
-  auto &sess = session();
-
-  // Push the current state onto the undo stack (Task 9 / I4). Capture the
-  // prior thresholds/modes BEFORE the new apply so undo_filter() can restore
-  // the exact previous state instead of always clearing.
-  FilterSnapshot snap;
-  snap.was_active = sess.is_glitch_filter_active();
-  if (snap.was_active) {
-    snap.thresholds = sess.glitch_filter_thresholds();
-    snap.modes = sess.glitch_filter_modes();
-  }
-  _filter_undo_stack.push_back(snap);
-  if (_filter_undo_stack.size() > 20)
-    _filter_undo_stack.erase(_filter_undo_stack.begin());
-
-  // Build thresholds/modes indexed by enabled-logic-channel ordinal (matches
-  // LogicSnapshot::_ch_index order, which is what apply_glitch_filter_all
-  // iterates).
-  std::vector<LogicSignal *> logic_sigs;
-  for (auto s : _own_signals) {
-    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
-      logic_sigs.push_back(static_cast<LogicSignal *>(s));
-  }
-  int n = (int)logic_sigs.size();
-  if (n == 0)
-    return;
-
-  std::vector<uint32_t> thresholds(n, 0);
-  std::vector<GlitchFilterMode> modes(n, GLITCH_FILTER_BOTH);
-  if (all_channels) {
-    for (int i = 0; i < n; i++) {
-      thresholds[i] = threshold;
-      modes[i] = mode;
-    }
-  } else {
-    auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
-    if (it == logic_sigs.end())
-      return;
-    int target_idx = (int)std::distance(logic_sigs.begin(), it);
-    thresholds[target_idx] = threshold;
-    modes[target_idx] = mode;
-  }
-
-  sess.set_glitch_filter(thresholds, modes);
-
-  // Clear preview overlay once the real filter is applied.
-  _preview_ranges.clear();
-
-  if (all_channels) {
-    pv::ui::Toast::show(this,
-                        tr("已对所有逻辑通道应用滤波 (阈值 %1)").arg(threshold),
-                        pv::ui::Toast::Info);
-  } else {
-    pv::ui::Toast::show(this,
-                        tr("已对通道 %1 应用滤波 (阈值 %2)")
-                            .arg(sig->get_name())
-                            .arg(threshold),
-                        pv::ui::Toast::Info);
-  }
+  _glitch_filter->on_glitch_apply_requested(sig, threshold, mode,
+                                            all_channels);
 }
 
 void View::on_glitch_popup_closed() {
-  _preview_ranges.clear();
-  if (_time_viewport)
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+  _glitch_filter->on_glitch_popup_closed();
 }
 
 const std::vector<pv::data::PulseAnalyzer::Pulse> *
 View::get_preview_ranges(LogicSignal *sig) const {
-  if (!sig)
-    return nullptr;
-  auto it = _preview_ranges.find(sig);
-  if (it == _preview_ranges.end())
-    return nullptr;
-  return &it->second;
+  return _glitch_filter->get_preview_ranges(sig);
 }
 
-void View::undo_filter() {
-  if (_filter_undo_stack.empty())
-    return;
-  auto &sess = session();
-  FilterSnapshot snap = _filter_undo_stack.back();
-  _filter_undo_stack.pop_back();
-  // I4: restore the prior state captured at apply time. If the filter was
-  // active before the now-undone apply, re-apply the previous thresholds/
-  // modes; otherwise clear the filter entirely.
-  if (snap.was_active) {
-    sess.set_glitch_filter(snap.thresholds, snap.modes);
-  } else {
-    sess.clear_glitch_filter();
-  }
-  _preview_ranges.clear();
-  if (_time_viewport)
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  pv::ui::Toast::show(this, tr("已撤销滤波"), pv::ui::Toast::Info);
-}
+void View::undo_filter() { _glitch_filter->undo_filter(); }
 
 void View::on_glitch_filter_completed() {
-  // FilterProcessor completed a glitch filter application. If the popup is
-  // currently open, refresh its histogram so it reflects the filtered
-  // LogicSnapshot (filtered pulses are now long pulses; previously-filtered
-  // short pulses are gone). Also clear stale preview ranges — the red
-  // overlay from get_filtered_ranges() now shows the actual filtered state.
-  _preview_ranges.clear();
-  if (_time_viewport)
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  if (_glitch_filter_popup && _glitch_filter_popup->is_open())
-    _glitch_filter_popup->on_filter_completed();
+  _glitch_filter->on_glitch_filter_completed();
 }
 
 void View::on_glitch_filter_cleared() {
-  // FilterProcessor cleared the glitch filter. Refresh the popup's histogram
-  // so it reflects the unfiltered LogicSnapshot, and clear preview ranges so
-  // the orange overlay disappears (red overlay already gone because
-  // get_filtered_ranges() returns empty after clear_filtered_ranges()).
-  _preview_ranges.clear();
-  if (_time_viewport)
-    _time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
-  if (_glitch_filter_popup && _glitch_filter_popup->is_open())
-    _glitch_filter_popup->on_filter_cleared();
+  _glitch_filter->on_glitch_filter_cleared();
 }
 
+// Phase K: out-of-line forwarders extracted from view.h (delegate to Phase E/J helpers).
+int64_t View::get_min_offset() { return _layout->get_min_offset(); }
+int64_t View::get_max_offset() { return _layout->get_max_offset(); }
+void View::zoom(double steps) { _layout->zoom(steps); }
+bool View::zoom(double steps, int offset) { return _layout->zoom(steps, offset); }
+void View::set_scale_offset(double scale, int64_t offset) { _layout->set_scale_offset(scale, offset); }
+void View::limit_scale_offset() { _layout->limit_scale_offset(); }
+void View::get_scroll_layout(int64_t &length, int64_t &offset) { _layout->get_scroll_layout(length, offset); }
+void View::update_scroll() { _layout->update_scroll(); }
+void View::update_margins() { _layout->update_margins(); }
+void View::set_scale(double scale) { _layout->set_scale(scale); }
+void View::update_scale_offset() { _layout->update_scale_offset(); }
+void View::h_scroll_value_changed(int value) { _layout->h_scroll_value_changed(value); }
+void View::show_cursors(bool show) { _cursors->show_cursors(show); }
+void View::show_trig_cursor(bool show) { _cursors->show_trig_cursor(show); }
+void View::show_search_cursor(bool show) { _cursors->show_search_cursor(show); }
+std::list<Cursor *> &View::get_cursorList() { return _cursors->get_cursorList(); }
+void View::add_cursor(QColor color, uint64_t sampleIndex) { _cursors->add_cursor(color, sampleIndex); }
+void View::add_cursor(uint64_t sampleIndex) { _cursors->add_cursor(sampleIndex); }
+void View::del_cursor(Cursor *cursor) { _cursors->del_cursor(cursor); }
+void View::add_xcursor(double value0, double value1) { _cursors->add_xcursor(value0, value1); }
+void View::del_xcursor(XCursor *xcursor) { _cursors->del_xcursor(xcursor); }
+void View::clear_cursors() { _cursors->clear_cursors(); }
+void View::set_cursor_middle(int index) { _cursors->set_cursor_middle(index); }
+Cursor *View::get_cursor_by_index(int index) { return _cursors->get_cursor_by_index(index); }
+void View::set_search_pos(uint64_t search_pos, bool hit) { _cursors->set_search_pos(search_pos, hit); }
+uint64_t View::get_cursor_samples(int index) { return _cursors->get_cursor_samples(index); }
+QString View::get_cm_time(int index) { return _cursors->get_cm_time(index); }
+QString View::get_cm_delta(int index1, int index2) { return _cursors->get_cm_delta(index1, index2); }
+int View::get_cursor_index_by_key(uint64_t key) { return _cursors->get_cursor_index_by_key(key); }
+void View::set_trig_cursor_posistion(uint64_t percent) { _cursors->set_trig_cursor_posistion(percent); }
+void View::make_cursors_order() { _cursors->make_cursors_order(); }
+bool View::add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus, std::list<pv::data::decode::Decoder *> &sub_decoders, std::shared_ptr<pv::data::DecoderStack> &out_stack) {
+  return _derived->add_decoder(dec, silent, dstatus, sub_decoders, out_stack);
+}
+void View::remove_decoder(DecodeTrace *trace) { _derived->remove_decoder(trace); }
+void View::remove_decoder(int index) { _derived->remove_decoder(index); }
+void View::remove_decoder_by_key_handel(void *key_handel) { _derived->remove_decoder_by_key_handel(key_handel); }
+void View::clear_all_decoders() { _derived->clear_all_decoders(); }
+bool View::rst_decoder_by_key_handel(void *handel) { return _derived->rst_decoder_by_key_handel(handel); }
+void View::sync_derived_traces() { _derived->sync_derived_traces(); }
+void View::mark_derived_traces_dirty() { _derived->mark_derived_traces_dirty(); }
 } // namespace view
 } // namespace pv

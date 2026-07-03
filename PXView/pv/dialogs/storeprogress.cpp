@@ -20,10 +20,12 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include "storeprogress.h" 
+#include "storeprogress.h"
 #include "../sigsession.h"
+#include <QCloseEvent>
 #include <QGridLayout>
 #include <QDialogButtonBox>
+#include <QKeyEvent>
 #include <QTextEdit>
 #include <QPushButton>
 #include <QRadioButton>

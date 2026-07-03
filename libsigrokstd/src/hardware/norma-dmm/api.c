@@ -39,8 +39,8 @@ static const uint32_t devopts[] = {
 
 #define SERIALCOMM "4800/8n1/dtr=1/rts=0/flow=1"
 
-struct sr_dev_driver norma_dmm_driver_info;
-struct sr_dev_driver siemens_b102x_driver_info;
+static struct sr_dev_driver norma_dmm_driver_info;
+static struct sr_dev_driver siemens_b102x_driver_info;
 
 static const char *get_brandstr(struct sr_dev_driver *drv)
 {

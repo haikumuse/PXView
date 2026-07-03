@@ -21,6 +21,9 @@
  */
 
 #include "dsosignal.h"
+#include "dso_hardware_config.h"
+#include "dso_trigger_config.h"
+#include "dso_measure.h"
 #include <QApplication>
 #include <QTimer>
 #include <functional>
@@ -35,6 +38,7 @@
 #include "../sigsession.h"
 #include "../ui/langresource.h"
 #include "view.h"
+#include "viewport.h"
 
 using namespace std;
 
@@ -71,13 +75,6 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
     : Signal(model, data_source), _data(data),
       _cached_hw_offset(model ? model->hw_offset() : 128),
       _hover_point(QPointF(-1, -1)) {
-  QVector<uint64_t> vValue;
-  QVector<QString> vUnit;
-
-  for (uint64_t i = 0; i < vDialUnitCount; i++) {
-    vUnit.append(vDialUnit[i]);
-  }
-
   _vDial = NULL;
   _period = 0;
   _pcount = 0;
@@ -95,31 +92,13 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
   _hover_index = 0;
   _hover_value = 0;
 
-  GVariant *gvar_list, *gvar_list_vdivs;
+  _hw_config = std::make_unique<DsoHardwareConfig>(this);
+  _trig_config = std::make_unique<DsoTriggerConfig>(this);
+  _measure = std::make_unique<DsoMeasure>(this);
 
-  gvar_list = _data_source->device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
-
-  if (gvar_list != NULL) {
-    assert(gvar_list);
-    if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list, "vdivs",
-                                                  G_VARIANT_TYPE("at")))) {
-      GVariant *gvar;
-      GVariantIter iter;
-      g_variant_iter_init(&iter, gvar_list_vdivs);
-
-      while (NULL != (gvar = g_variant_iter_next_value(&iter))) {
-        vValue.push_back(g_variant_get_uint64(gvar));
-        g_variant_unref(gvar);
-      }
-
-      g_variant_unref(gvar_list_vdivs);
-      g_variant_unref(gvar_list);
-    }
-  }
-  _vDial = new dslDial(vValue.count(), vDialValueStep, vValue, vUnit, false);
+  _hw_config->init_vDial();
   _colour = getSignalColor(model ? model->index() : 0);
-
-  load_settings();
+  _hw_config->load_settings();
 }
 
 DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data,
@@ -136,36 +115,13 @@ DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data,
       _high_time(0), _burst_time(0), _pcount(0), _autoV(false), _autoH(false),
       _autoV_over(false), _auto_cnt(0), _hover_en(false), _hover_index(0),
       _hover_point(QPointF(-1, -1)), _hover_value(0) {
-  QVector<uint64_t> vValue;
-  QVector<QString> vUnit;
+  _vDial = NULL;
 
-  for (uint64_t i = 0; i < vDialUnitCount; i++) {
-    vUnit.append(vDialUnit[i]);
-  }
+  _hw_config = std::make_unique<DsoHardwareConfig>(this);
+  _trig_config = std::make_unique<DsoTriggerConfig>(this);
+  _measure = std::make_unique<DsoMeasure>(this);
 
-  GVariant *gvar_list, *gvar_list_vdivs;
-  gvar_list = _data_source->device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
-
-  if (gvar_list != NULL) {
-    assert(gvar_list);
-    if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list, "vdivs",
-                                                  G_VARIANT_TYPE("at")))) {
-      GVariant *gvar;
-      GVariantIter iter;
-      g_variant_iter_init(&iter, gvar_list_vdivs);
-
-      while (NULL != (gvar = g_variant_iter_next_value(&iter))) {
-        vValue.push_back(g_variant_get_uint64(gvar));
-        g_variant_unref(gvar);
-      }
-
-      g_variant_unref(gvar_list_vdivs);
-      g_variant_unref(gvar_list);
-    }
-  }
-  _vDial = new dslDial(vValue.count(), vDialValueStep, vValue, vUnit, false);
-  _vDial->set_sel(s->_vDial->get_sel());
-  _vDial->set_factor(s->_vDial->get_factor());
+  _hw_config->init_vDial(s);
 }
 
 DsoSignal *DsoSignal::clone() const {
@@ -176,567 +132,61 @@ DsoSignal *DsoSignal::clone() const {
   return cloned;
 }
 
-DsoSignal::~DsoSignal() { DESTROY_OBJECT(_vDial); }
+DsoSignal::~DsoSignal() {
+  // Delegate unique_ptrs auto-destroy here (complete types visible in this TU).
+  DESTROY_OBJECT(_vDial);
+}
 
 void DsoSignal::set_scale(int height) {
   _scale = height / (_ref_max - _ref_min) * _stop_scale;
 }
 
-void DsoSignal::set_enable(bool enable) {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  if (!probe)
-    return;
-
-  if (_data_source->device()->is_hardware_logic() && get_index() == 0) {
-    return;
-  }
-
-  _en_lock = true;
-  bool cur_enable = _model->enabled();
-  if (cur_enable == enable) {
-    _en_lock = false;
-    return;
-  }
-
-  bool running = false;
-
-  if (_view->session().is_running_status()) {
-    running = true;
-    _view->session().stop_capture();
-  }
-
-  while (_view->session().is_running_status())
-    QCoreApplication::processEvents();
-
-  set_vDialActive(false);
-  _model->set_probe_enabled(enable, probe);
-
-  _view->update_hori_res();
-
-  if (running) {
-    _view->session().stop_capture();
-    _view->session().start_capture(false);
-  }
-
-  _view->set_update(_viewport, true);
-  _view->update();
-  _en_lock = false;
-}
-
-void DsoSignal::set_vDialActive(bool active) {
-  if (enabled())
-    _vDialActive = active;
-}
-
-bool DsoSignal::go_vDialPre(bool manul) {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-
-  if (_autoV && manul)
-    autoV_end();
-
-  if (enabled() && !_vDial->isMin()) {
-    if (_view->session().is_running_status())
-      _view->session().refresh(RefreshShort);
-
-    const double pre_vdiv = _vDial->get_value();
-    _vDial->set_sel(_vDial->get_sel() - 1);
-
-    if (_view->session().is_stopped_status()) {
-      set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));
-      set_scale(get_view_rect().height());
-    }
-    if (probe)
-      _model->set_probe_offset((uint16_t)_zero_offset, probe);
-
-    _view->vDial_updated();
-    _view->set_update(_viewport, true);
-    _view->update();
-    // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press /
-    // 键盘快捷键）。
-    if (_model) {
-      _model->set_vdiv((double)_vDial->get_value());
-    }
-    return true;
-  } else {
-    if (_autoV && !_autoV_over)
-      autoV_end();
-    return false;
-  }
-}
-
-bool DsoSignal::go_vDialNext(bool manul) {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-
-  if (_autoV && manul)
-    autoV_end();
-
-  if (enabled() && !_vDial->isMax()) {
-    if (_view->session().is_running_status())
-      _view->session().refresh(RefreshShort);
-
-    const double pre_vdiv = _vDial->get_value();
-    _vDial->set_sel(_vDial->get_sel() + 1);
-
-    if (_view->session().is_stopped_status()) {
-      set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));
-      set_scale(get_view_rect().height());
-    }
-    if (probe)
-      _model->set_probe_offset((uint16_t)_zero_offset, probe);
-
-    _view->vDial_updated();
-    _view->set_update(_viewport, true);
-    _view->update();
-    // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press /
-    // 键盘快捷键）。
-    if (_model) {
-      _model->set_vdiv((double)_vDial->get_value());
-    }
-    return true;
-  } else {
-    if (_autoV && !_autoV_over)
-      autoV_end();
-    return false;
-  }
-}
-
-bool DsoSignal::load_settings() {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  int v;
-  uint32_t ui32;
-  bool ret;
-
-  // dso channel bits
-  ret = _data_source->device()->get_config_byte(SR_CONF_UNIT_BITS, v);
-  if (ret) {
-    _bits = (uint8_t)v;
-  } else {
-    _bits = DefaultBits;
-    pxv_warn(
-        "%s%d",
-        "Warning: config_get SR_CONF_UNIT_BITS failed, set to %d(default).",
-        DefaultBits);
-
-    if (_data_source->device()->is_hardware())
-      return false;
-  }
-
-  ret = _data_source->device()->get_config_uint32(SR_CONF_REF_MIN, ui32);
-  if (ret)
-    _ref_min = (double)ui32;
-  else
-    _ref_min = 1;
-
-  ret = _data_source->device()->get_config_uint32(SR_CONF_REF_MAX, ui32);
-  if (ret)
-    _ref_max = (double)ui32;
-  else
-    _ref_max = ((1 << _bits) - 1);
-
-  // -- vdiv
-  uint64_t vdiv;
-  uint64_t vfactor;
-  if (probe) {
-    ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv,
-                                                   probe, NULL);
-    if (!ret) {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_VDIV failed.");
-      return false;
-    }
-
-    ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
-                                                   vfactor, probe, NULL);
-    if (!ret) {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
-      return false;
-    }
-  } else {
-    vdiv = _model ? _model->vdiv() : 0;
-    vfactor = _model ? _model->vfactor() : 1;
-  }
-
-  _vDial->set_value(vdiv);
-  _vDial->set_factor(vfactor);
-
-  // -- coupling
-  if (probe) {
-    ret = _data_source->device()->get_config_byte(SR_CONF_PROBE_COUPLING, v,
-                                                 probe, NULL);
-    if (ret) {
-      _acCoupling = uint8_t(v);
-    } else {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_COUPLING failed.");
-      return false;
-    }
-  } else {
-    _acCoupling = _model ? _model->coupling() : 0;
-  }
-
-  // -- vpos
-  if (probe) {
-    ret = _data_source->device()->get_config_uint16(SR_CONF_PROBE_OFFSET,
-                                                   _zero_offset, probe, NULL);
-    if (!ret) {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
-      return false;
-    }
-  } else {
-    _zero_offset = _model ? (int)_model->vertical_offset() : 0;
-  }
-
-  // -- trig_value
-  if (probe) {
-    ret = _data_source->device()->get_config_byte(SR_CONF_TRIGGER_VALUE,
-                                                 _trig_value, probe, NULL);
-    if (ret) {
-      _trig_delta = get_trig_vrate() - get_zero_ratio();
-    } else {
-      pxv_err("ERROR: config_get SR_CONF_TRIGGER_VALUE failed.");
-
-      if (_data_source->device()->is_hardware())
-        return false;
-    }
-  } else {
-    _trig_value = _model ? _model->trig_value() : 0;
-    _trig_delta = get_trig_vrate() - get_zero_ratio();
-  }
-
-  if (_view) {
-    _view->set_update(_viewport, true);
-    _view->update();
-  }
-  return true;
-}
-
-int DsoSignal::commit_settings() {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  if (!probe)
-    return 0;
-
-  // -- enable
-  _model->set_probe_enabled(enabled(), probe);
-
-  // -- vdiv
-  _model->set_vdiv((double)_vDial->get_value());
-  _model->set_probe_factor(_vDial->get_factor(), probe);
-
-  // -- coupling
-  _model->set_coupling((int)_acCoupling);
-
-  // -- offset
-  _model->set_probe_offset((uint16_t)_zero_offset, probe);
-
-  // -- trig_value
-  _model->set_trigger_value((double)_trig_value, probe);
-
-  return 1;
-}
-
-uint64_t DsoSignal::get_vDialValue() { return _vDial->get_value(); }
-
-uint16_t DsoSignal::get_vDialSel() { return _vDial->get_sel(); }
-
-void DsoSignal::set_acCoupling(uint8_t coupling) {
-  // Same nested-broadcast guard as set_zero_ratio.
-  auto model = _model;
-
-  if (enabled()) {
-    _acCoupling = coupling;
-    // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press AC/DC
-    // 切换）。
-    if (model) {
-      model->set_coupling((int)coupling);
-    }
-  }
-}
-
-int DsoSignal::ratio2value(double ratio) {
-  return ratio * (_ref_max - _ref_min) + _ref_min;
-}
-
-int DsoSignal::ratio2pos(double ratio) {
-  return ratio * get_view_rect().height() + get_view_rect().top();
-}
-
-double DsoSignal::value2ratio(int value) {
-  return max(0.0, (value - _ref_min) / (_ref_max - _ref_min));
-}
-
-double DsoSignal::pos2ratio(int pos) {
-  return min(max(pos - get_view_rect().top(), 0), get_view_rect().height()) *
-         1.0 / get_view_rect().height();
-}
-
-double DsoSignal::get_trig_vrate() {
-  if (_data_source->device()->is_hardware_logic())
-    return value2ratio(_trig_value - ratio2value(0.5)) + get_zero_ratio();
-  else
-    return value2ratio(_trig_value);
-}
-
-void DsoSignal::set_trig_vpos(int pos, bool delta_change) {
-  assert(_view);
-  if (enabled()) {
-    set_trig_ratio(pos2ratio(pos), delta_change);
-  }
-}
-
-void DsoSignal::set_trig_ratio(double ratio, bool delta_change) {
-  // Same nested-broadcast guard as set_zero_ratio: set_config_byte triggers
-  // synchronous config_changed -> broadcast_msg, which may delete this DsoSignal.
-  auto model = _model;
-  double delta = ratio;
-
-  if (_data_source->device()->is_hardware_logic()) {
-    delta = delta - get_zero_ratio();
-    delta = min(delta, 0.5);
-    delta = max(delta, -0.5);
-    _trig_value = ratio2value(delta + 0.5);
-  } else {
-    if (delta < 0.06f)
-      delta = 0.06f;
-    if (delta > 0.945f)
-      delta = 0.945f;
-
-    _trig_value = ratio2value(delta);
-  }
-
-  if (delta_change)
-    _trig_delta = get_trig_vrate() - get_zero_ratio();
-  // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
-  // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
-  if (model) {
-    model->set_trig_value((double)_trig_value);
-  }
-}
-
-int DsoSignal::get_zero_vpos() { return ratio2pos(get_zero_ratio()); }
-
-double DsoSignal::get_zero_ratio() { return value2ratio(_zero_offset); }
-
-int DsoSignal::get_hw_offset() {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  if (_view->session().is_running_status()) {
-    int hw_offset = _cached_hw_offset;
-    if (probe && _data_source->device()->get_config_uint16(
-                     SR_CONF_PROBE_HW_OFFSET, hw_offset, probe, NULL)) {
-      _cached_hw_offset = hw_offset;
-    }
-  }
-  return _cached_hw_offset;
-}
-
-void DsoSignal::set_zero_vpos(int pos) {
-  if (enabled()) {
-    set_zero_ratio(pos2ratio(pos));
-    set_trig_ratio(_trig_delta + get_zero_ratio(), false);
-  }
-}
-
-void DsoSignal::set_zero_ratio(double ratio) {
-  // CRITICAL: Copy _model to a local shared_ptr BEFORE calling set_config_*.
-  // set_config_uint16 -> config_changed -> broadcast_msg(SAMPLE_COUNT_UPDATED)
-  // is SYNCHRONOUS and can trigger nested reload -> signals_changed -> View
-  // AllReplaced rebuild, which DELETES this DsoSignal (and its _model member).
-  // After set_config returns, _model may be dangling. The local copy keeps the
-  // SignalModel alive even if `this` is deleted mid-method.
-  auto model = _model;
-  _zero_offset = ratio2value(ratio);
-  // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
-  // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
-  if (model) {
-    model->set_zero_offset((double)_zero_offset);
-  }
-}
-
-void DsoSignal::set_factor(uint64_t factor) {
-  // Same nested-broadcast guard as set_zero_ratio.
-  auto model = _model;
-  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
-
-  if (enabled()) {
-    uint64_t prefactor = 0;
-    bool ret;
-
-    if (probe) {
-      ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
-                                                     prefactor, probe, NULL);
-      if (!ret) {
-        pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
-        return;
-      }
-    } else {
-      prefactor = model ? model->vfactor() : 1;
-    }
-
-    if (prefactor != factor) {
-      _vDial->set_factor(factor);
-      _view->set_update(_viewport, true);
-      _view->update();
-      // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press
-      // X1/X10/X100）。
-      if (model) {
-        model->set_vfactor((double)factor);
-      }
-    }
-  }
-}
-
-uint64_t DsoSignal::get_factor() {
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  uint64_t factor;
-
-  if (probe) {
-    bool ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
-                                                        factor, probe, NULL);
-    if (ret) {
-      return factor;
-    } else {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
-      return 1;
-    }
-  } else {
-    return _model ? _model->vfactor() : 1;
-  }
-}
-
-QString DsoSignal::get_measure(enum DSO_MEASURE_TYPE type) {
-  const QString mNone = "--";
-  QString mString;
-
-  if (!_data || _data->empty()) {
-    return mNone;
-  }
-
-  if (_mValid) {
-    const int hw_offset = get_hw_offset();
-
-    switch (type) {
-    case DSO_MS_AMPT:
-      if (_level_valid)
-        mString = get_voltage(_high - _low, 2);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_VHIG:
-      if (_level_valid)
-        mString = get_voltage(hw_offset - _low, 2);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_VLOW:
-      if (_level_valid)
-        mString = get_voltage(hw_offset - _high, 2);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_VP2P:
-      mString = get_voltage(_max - _min, 2);
-      break;
-    case DSO_MS_VMAX:
-      mString = get_voltage(hw_offset - _min, 2);
-      break;
-    case DSO_MS_VMIN:
-      mString = get_voltage(hw_offset - _max, 2);
-      break;
-    case DSO_MS_PERD:
-      mString = get_time(_period);
-      break;
-    case DSO_MS_FREQ:
-      if (_period == 0)
-        mString = mNone;
-      else if (abs(_period) > 1000000)
-        mString = QString::number(1000000000 / _period, 'f', 2) + "Hz";
-      else if (abs(_period) > 1000)
-        mString = QString::number(1000000 / _period, 'f', 2) + "kHz";
-      else
-        mString = QString::number(1000 / _period, 'f', 2) + "MHz";
-      break;
-    case DSO_MS_VRMS:
-      mString = get_voltage(_rms, 2);
-      break;
-    case DSO_MS_VMEA:
-      mString = get_voltage(_mean, 2);
-      break;
-    case DSO_MS_NOVR:
-      if (_level_valid && (_high - _low != 0))
-        mString =
-            QString::number((_max - _high) * 100.0 / (_high - _low), 'f', 2) +
-            "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_POVR:
-      if (_level_valid && (_high - _low != 0))
-        mString =
-            QString::number((_low - _min) * 100.0 / (_high - _low), 'f', 2) +
-            "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_PDUT:
-      if (_level_valid && _period != 0)
-        mString = QString::number(_high_time / _period * 100, 'f', 2) + "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_NDUT:
-      if (_level_valid && _period != 0)
-        mString =
-            QString::number(100 - _high_time / _period * 100, 'f', 2) + "%";
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_PWDT:
-      if (_level_valid)
-        mString = get_time(_high_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_NWDT:
-      if (_level_valid)
-        mString = get_time(_period - _high_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_RISE:
-      if (_level_valid)
-        mString = get_time(_rise_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_FALL:
-      if (_level_valid)
-        mString = get_time(_fall_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_BRST:
-      if (_level_valid)
-        mString = get_time(_burst_time);
-      else
-        mString = mNone;
-      break;
-    case DSO_MS_PCNT:
-      if (_level_valid)
-        mString =
-            (_pcount > 1000000
-                 ? QString::number((double)_pcount / 1000000.0, 'f', 6) + "M"
-             : _pcount > 1000
-                 ? QString::number((double)_pcount / 1000.0, 'f', 3) + "K"
-                 : QString::number((double)_pcount, 'f', 0));
-      else
-        mString = mNone;
-      break;
-    default:
-      mString = "Error";
-      break;
-    }
-  } else {
-    mString = mNone;
-  }
-  return mString;
-}
+//============================== Phase G facades ==============================
+// The following methods forward to the three delegate classes. Public API is
+// preserved; only the implementation moved.
+
+// -- DsoHardwareConfig --
+void DsoSignal::set_enable(bool enable) { _hw_config->set_enable(enable); }
+void DsoSignal::set_vDialActive(bool active) { _hw_config->set_vDialActive(active); }
+bool DsoSignal::go_vDialPre(bool manul) { return _hw_config->go_vDialPre(manul); }
+bool DsoSignal::go_vDialNext(bool manul) { return _hw_config->go_vDialNext(manul); }
+uint64_t DsoSignal::get_vDialValue() { return _hw_config->get_vDialValue(); }
+uint16_t DsoSignal::get_vDialSel() { return _hw_config->get_vDialSel(); }
+void DsoSignal::set_acCoupling(uint8_t coupling) { _hw_config->set_acCoupling(coupling); }
+void DsoSignal::set_factor(uint64_t factor) { _hw_config->set_factor(factor); }
+uint64_t DsoSignal::get_factor() { return _hw_config->get_factor(); }
+int DsoSignal::get_zero_vpos() { return _hw_config->get_zero_vpos(); }
+double DsoSignal::get_zero_ratio() { return _hw_config->get_zero_ratio(); }
+int DsoSignal::get_hw_offset() { return _hw_config->get_hw_offset(); }
+void DsoSignal::set_zero_vpos(int pos) { _hw_config->set_zero_vpos(pos); }
+void DsoSignal::set_zero_ratio(double ratio) { _hw_config->set_zero_ratio(ratio); }
+int DsoSignal::ratio2value(double ratio) { return _hw_config->ratio2value(ratio); }
+int DsoSignal::ratio2pos(double ratio) { return _hw_config->ratio2pos(ratio); }
+double DsoSignal::value2ratio(int value) { return _hw_config->value2ratio(value); }
+double DsoSignal::pos2ratio(int pos) { return _hw_config->pos2ratio(pos); }
+bool DsoSignal::load_settings() { return _hw_config->load_settings(); }
+int DsoSignal::commit_settings() { return _hw_config->commit_settings(); }
+
+// -- DsoTriggerConfig --
+double DsoSignal::get_trig_vrate() { return _trig_config->get_trig_vrate(); }
+void DsoSignal::set_trig_vpos(int pos, bool delta_change) { _trig_config->set_trig_vpos(pos, delta_change); }
+void DsoSignal::set_trig_ratio(double ratio, bool delta_change) { _trig_config->set_trig_ratio(ratio, delta_change); }
+
+// -- DsoMeasure --
+QString DsoSignal::get_measure(enum DSO_MEASURE_TYPE type) { return _measure->get_measure(type); }
+bool DsoSignal::measure(const QPointF &p) { return _measure->measure(p); }
+bool DsoSignal::get_hover(uint64_t &index, QPointF &p, double &value) { return _measure->get_hover(index, p, value); }
+QPointF DsoSignal::get_point(uint64_t index, float &value) { return _measure->get_point(index, value); }
+double DsoSignal::get_voltage(uint64_t index) { return _measure->get_voltage(index); }
+QString DsoSignal::get_voltage(double v, int p, bool scaled) { return _measure->get_voltage(v, p, scaled); }
+QString DsoSignal::get_time(double t) { return _measure->get_time(t); }
+void DsoSignal::auto_set() { _measure->auto_set(); }
+void DsoSignal::autoV_end() { _measure->autoV_end(); }
+void DsoSignal::autoH_end() { _measure->autoH_end(); }
+void DsoSignal::auto_end() { _measure->auto_end(); }
+void DsoSignal::auto_start() { _measure->auto_start(); }
+
+//============================== Paint + coordination ==============================
 
 QRect DsoSignal::get_view_rect() {
   assert(_viewport);
@@ -750,8 +200,8 @@ void DsoSignal::paint_prepare() {
   if (!_data || _data->empty() || !_data->has_data(get_index()))
     return;
 
-  if (_view->session().trigd()) {
-    if (get_index() == _view->session().trigd_ch()) {
+  if (_data_source->trigd()) {
+    if (get_index() == _data_source->trigd_ch()) {
       uint8_t slope = DSO_TRIGGER_RISING;
       int v;
       bool ret;
@@ -925,76 +375,8 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
                      pixels_offset, samples_per_pixel, enabled_channels);
     }
 
-    sr_status status;
-
-    if (_view->session().dso_status_is_valid()) {
-      _mValid = true;
-      status = _view->session().get_dso_status();
-
-      if (status.measure_valid) {
-        _min = (index == 0) ? status.ch0_min : status.ch1_min;
-        _max = (index == 0) ? status.ch0_max : status.ch1_max;
-
-        _level_valid =
-            (index == 0) ? status.ch0_level_valid : status.ch1_level_valid;
-        _low = (index == 0) ? status.ch0_low_level : status.ch1_low_level;
-        _high = (index == 0) ? status.ch0_high_level : status.ch1_high_level;
-
-        const uint32_t count =
-            (index == 0) ? status.ch0_cyc_cnt : status.ch1_cyc_cnt;
-        const bool plevel =
-            (index == 0) ? status.ch0_plevel : status.ch1_plevel;
-        const bool startXORend = (index == 0) ? (status.ch0_cyc_llen == 0)
-                                              : (status.ch1_cyc_llen == 0);
-        uint16_t total_channels =
-            g_slist_length(_data_source->device()->get_channels());
-
-        if (total_channels == 1 && _data->is_file()) {
-          total_channels++;
-        }
-
-        const double tfactor =
-            (total_channels / enabled_channels) * SR_GHZ(1) * 1.0 / samplerate;
-
-        double samples =
-            (index == 0) ? status.ch0_cyc_tlen : status.ch1_cyc_tlen;
-        _period = ((count == 0) ? 0 : samples / count) * tfactor;
-
-        samples = (index == 0) ? status.ch0_cyc_flen : status.ch1_cyc_flen;
-        _rise_time =
-            ((count == 0)
-                 ? 0
-                 : samples / ((plevel && startXORend) ? count : count + 1)) *
-            tfactor;
-        samples = (index == 0) ? status.ch0_cyc_rlen : status.ch1_cyc_rlen;
-        _fall_time =
-            ((count == 0)
-                 ? 0
-                 : samples / ((!plevel && startXORend) ? count : count + 1)) *
-            tfactor;
-
-        samples = (index == 0)
-                      ? (status.ch0_plevel
-                             ? status.ch0_cyc_plen - status.ch0_cyc_llen
-                             : status.ch0_cyc_tlen - status.ch0_cyc_plen +
-                                   status.ch0_cyc_llen)
-                      : (status.ch1_plevel
-                             ? status.ch1_cyc_plen - status.ch1_cyc_llen
-                             : status.ch1_cyc_tlen - status.ch1_cyc_plen +
-                                   status.ch1_cyc_llen);
-        _high_time = ((count == 0) ? 0 : samples / count) * tfactor;
-
-        samples = (index == 0) ? status.ch0_cyc_tlen + status.ch0_cyc_llen
-                               : status.ch1_cyc_flen + status.ch1_cyc_llen;
-        _burst_time = samples * tfactor;
-
-        _pcount = count + (plevel & !startXORend);
-        _rms = (index == 0) ? status.ch0_acc_square : status.ch1_acc_square;
-        _rms = sqrt(_rms / _data->get_sample_count());
-        _mean = (index == 0) ? status.ch0_acc_mean : status.ch1_acc_mean;
-        _mean = hw_offset - _mean / _data->get_sample_count();
-      }
-    }
+    // Per-frame measurement status update (extracted to DsoMeasure).
+    _measure->update_measure_status(index, hw_offset, enabled_channels, samplerate);
   }
 }
 
@@ -1081,7 +463,7 @@ void DsoSignal::paint_fore(QPainter &p, int left, int right, QColor fore,
                Qt::AlignCenter | Qt::AlignVCenter | Qt::TextDontClip, "T");
 
     // Paint measure
-    if (_view->session().is_stopped_status())
+    if (_data_source->is_stopped_status())
       paint_hover_measure(p, fore, back);
 
     // autoset
@@ -1172,7 +554,6 @@ void DsoSignal::paint_envelope(QPainter &p,
     return;
 
   p.setPen(QPen(NoPen));
-  // p.setPen(QPen(_colour, 2, Qt::SolidLine));
   QColor envelope_colour = _colour;
   envelope_colour.setAlpha(View::ForeAlpha);
   p.setBrush(envelope_colour);
@@ -1208,7 +589,6 @@ void DsoSignal::paint_envelope(QPainter &p,
   p.drawRects(rects, e.length);
 
   delete[] rects;
-  // delete[] e.samples;
 }
 
 void DsoSignal::paint_type_options(QPainter &p, int right, const QPoint pt,
@@ -1272,20 +652,7 @@ void DsoSignal::paint_type_options(QPainter &p, int right, const QPoint pt,
   }
 
   // paint the probe factor selector
-  uint64_t factor;
-  bool ret;
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-
-  if (probe) {
-    ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR, factor,
-                                                   probe, NULL);
-    if (!ret) {
-      pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
-      return;
-    }
-  } else {
-    factor = _model ? _model->vfactor() : 1;
-  }
+  uint64_t factor = get_factor();
 
   p.setPen(Qt::transparent);
   p.setBrush((enabled() && (factor == 100))
@@ -1357,7 +724,7 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
     // (set_factor/set_acCoupling/go_vDial*) deliberately do NOT broadcast
     // because they are also called from JSON restore paths (rebuild loop
     // risk); mouse_press is the user-interaction entry point per AGENTS.md.
-    _view->session().broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+    _data_source->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
     return true;
   }
   return false;
@@ -1418,297 +785,8 @@ QRectF DsoSignal::get_rect(DsoSetRegions type, int y, int right) {
 }
 
 void DsoSignal::paint_hover_measure(QPainter &p, QColor fore, QColor back) {
-  const int hw_offset = get_hw_offset();
-  // Hover measure
-  if (_hover_en && _hover_point != QPointF(-1, -1)) {
-    QString hover_str = get_voltage(hw_offset - _hover_value, 2);
-    const int hover_width =
-        p.boundingRect(0, 0, INT_MAX, INT_MAX, Qt::AlignLeft | Qt::AlignTop,
-                       hover_str)
-            .width() +
-        10;
-    const int hover_height =
-        p.boundingRect(0, 0, INT_MAX, INT_MAX, Qt::AlignLeft | Qt::AlignTop,
-                       hover_str)
-            .height();
-    QRectF hover_rect(_hover_point.x(), _hover_point.y() - hover_height / 2,
-                      hover_width, hover_height);
-    if (hover_rect.right() > get_view_rect().right())
-      hover_rect.moveRight(_hover_point.x());
-    if (hover_rect.top() < get_view_rect().top())
-      hover_rect.moveTop(_hover_point.y());
-    if (hover_rect.bottom() > get_view_rect().bottom())
-      hover_rect.moveBottom(_hover_point.y());
-
-    p.setPen(fore);
-    p.setBrush(back);
-    p.drawRect(_hover_point.x() - 1, _hover_point.y() - 1, HoverPointSize,
-               HoverPointSize);
-    p.drawText(hover_rect, Qt::AlignCenter | Qt::AlignTop | Qt::TextDontClip,
-               hover_str);
-  }
-
-  auto &cursor_list = _view->get_cursorList();
-  auto i = cursor_list.begin();
-
-  while (i != cursor_list.end()) {
-    float pt_value;
-
-    int chan_index = (*i)->index();
-    if (!_data || _data->has_data(chan_index) == false) {
-      i++;
-      continue;
-    }
-
-    const QPointF pt = get_point(chan_index, pt_value);
-    if (pt == QPointF(-1, -1)) {
-      i++;
-      continue;
-    }
-
-    QString pt_str = get_voltage(hw_offset - pt_value, 2);
-    const int pt_width = p.boundingRect(0, 0, INT_MAX, INT_MAX,
-                                        Qt::AlignLeft | Qt::AlignTop, pt_str)
-                             .width() +
-                         10;
-    const int pt_height = p.boundingRect(0, 0, INT_MAX, INT_MAX,
-                                         Qt::AlignLeft | Qt::AlignTop, pt_str)
-                              .height();
-    QRectF pt_rect(pt.x(), pt.y() - pt_height / 2, pt_width, pt_height);
-    if (pt_rect.right() > get_view_rect().right())
-      pt_rect.moveRight(pt.x());
-    if (pt_rect.top() < get_view_rect().top())
-      pt_rect.moveTop(pt.y());
-    if (pt_rect.bottom() > get_view_rect().bottom())
-      pt_rect.moveBottom(pt.y());
-
-    p.drawRect(pt.x() - 1, pt.y() - 1, 2, 2);
-    p.drawLine(pt.x() - 2, pt.y() - 2, pt.x() + 2, pt.y() + 2);
-    p.drawLine(pt.x() + 2, pt.y() - 2, pt.x() - 2, pt.y() + 2);
-    p.drawText(pt_rect, Qt::AlignCenter | Qt::AlignTop | Qt::TextDontClip,
-               pt_str);
-
-    i++;
-  }
+  _measure->paint_hover_measure(p, fore, back);
 }
-
-void DsoSignal::auto_set() {
-  if (_view->session().is_stopped_status()) {
-    if (_autoV)
-      autoV_end();
-    if (_autoH)
-      autoH_end();
-  } else {
-    if (_autoH && _autoV && get_zero_ratio() != 0.5) {
-      set_zero_ratio(0.5);
-    }
-    if (_mValid && !_view->session().get_data_auto_lock()) {
-      if (_autoH) {
-        bool roll = false;
-        _data_source->device()->get_config_bool(SR_CONF_ROLL, roll);
-
-        const double hori_res = _view->get_hori_res();
-        if (_level_valid &&
-            ((!roll && _pcount < 3) || _period > 4 * hori_res)) {
-          _view->zoom(-1);
-        } else if (_level_valid && _pcount > 6 && _period < 1.5 * hori_res) {
-          _view->zoom(1);
-        } else if (_level_valid) {
-          autoH_end();
-        }
-      }
-      if (_autoV) {
-        const bool over_flag = _max == 0xff || _min == 0x0;
-        const bool out_flag = _max >= 0xE0 || _min <= 0x20;
-        const bool under_flag = _max <= 0xA0 && _min >= 0x60;
-        if (over_flag) {
-          if (!_autoV_over)
-            _auto_cnt = 0;
-          _autoV_over = true;
-          go_vDialNext(false);
-        } else if (out_flag) {
-          go_vDialNext(false);
-        } else if (!_autoV_over && under_flag) {
-          go_vDialPre(false);
-        } else if (!_autoH) {
-          autoV_end();
-        }
-
-        if (_autoV_over && under_flag) {
-          if (_auto_cnt++ > 16)
-            _autoV_over = false;
-        } else {
-          _auto_cnt = 0;
-        }
-
-        if (_level_valid) {
-          _trig_value = (_min + _max) / 2;
-          set_trig_vpos(ratio2pos(get_trig_vrate()));
-        }
-      }
-      if (_autoH || _autoV)
-        _view->session().data_auto_lock(AutoLock);
-    }
-  }
-}
-
-void DsoSignal::autoV_end() {
-  _autoV = false;
-  _autoV_over = false;
-  _view->auto_trig(get_index());
-  _trig_value = (_min + _max) / 2;
-  set_trig_vpos(ratio2pos(get_trig_vrate()));
-  _view->set_update(_viewport, true);
-  _view->update();
-}
-
-void DsoSignal::autoH_end() {
-  _autoH = false;
-  _view->set_update(_viewport, true);
-  _view->update();
-}
-
-void DsoSignal::auto_end() {
-  if (_autoV)
-    autoV_end();
-  if (_autoH)
-    autoH_end();
-}
-
-void DsoSignal::auto_start() {
-  if (_autoV || _autoH)
-    return;
-
-  if (_view->session().is_running_status()) {
-    _view->session().data_auto_lock(AutoLock);
-    _autoV = true;
-    _autoH = true;
-    _view->auto_trig(get_index());
-    _end_timer.TimeOut(AutoTime, std::bind(&DsoSignal::call_auto_end,
-                                           this)); // start a timeout
-  }
-}
-
-bool DsoSignal::measure(const QPointF &p) {
-  _hover_en = false;
-
-  if (!enabled() || !show())
-    return false;
-
-  if (_view->session().is_stopped_status() == false)
-    return false;
-
-  const QRectF window = get_view_rect();
-  if (!window.contains(p))
-    return false;
-
-  if (!_data || _data->empty())
-    return false;
-
-  _hover_index = _view->pixel2index(p.x());
-  if (_hover_index >= _data->get_sample_count())
-    return false;
-
-  int chan_index = get_index();
-  if (_data->has_data(chan_index) == false) {
-    pxv_err("channel %d have no data.", chan_index);
-    return false;
-  }
-
-  _hover_point = get_point(_hover_index, _hover_value);
-  _hover_en = true;
-  return true;
-}
-
-bool DsoSignal::get_hover(uint64_t &index, QPointF &p, double &value) {
-  if (_hover_en) {
-    index = _hover_index;
-    p = _hover_point;
-    value = _hover_value;
-    return true;
-  }
-  return false;
-}
-
-QPointF DsoSignal::get_point(uint64_t index, float &value) {
-  QPointF pt = QPointF(-1, -1);
-
-  if (!enabled() || !_data)
-    return pt;
-
-  if (_data->empty())
-    return pt;
-
-  if (index >= _data->get_sample_count())
-    return pt;
-
-  value = *_data->get_samples(index, index, get_index());
-  const float top = get_view_rect().top();
-  const float bottom = get_view_rect().bottom();
-  const int hw_offset = get_hw_offset();
-  const float x = _view->index2pixel(index);
-  const float y =
-      min(max(top, get_zero_vpos() + (value - hw_offset) * _scale), bottom);
-  pt = QPointF(x, y);
-
-  return pt;
-}
-
-double DsoSignal::get_voltage(uint64_t index) {
-  if (!enabled() || !_data)
-    return 1;
-
-  if (_data->empty())
-    return 1;
-
-  if (index >= _data->get_sample_count())
-    return 1;
-
-  const double value = *_data->get_samples(index, index, get_index());
-  const int hw_offset = get_hw_offset();
-  uint64_t k = _data->get_measure_voltage_factor(this->get_index());
-  float data_scale = _data->get_data_scale(this->get_index());
-
-  return (hw_offset - value) * data_scale * k * _vDial->get_factor() *
-         DS_CONF_DSO_VDIVS / get_view_rect().height();
-}
-
-QString DsoSignal::get_voltage(double v, int p, bool scaled) {
-  if (_vDial == NULL) {
-    assert(false);
-  }
-
-  if (get_view_rect().height() == 0) {
-    assert(false);
-  }
-
-  if (!_data)
-    return QString("--");
-
-  uint64_t k = _data->get_measure_voltage_factor(this->get_index());
-  float data_scale = _data->get_data_scale(this->get_index());
-
-  if (scaled)
-    v = v * k * _vDial->get_factor() * DS_CONF_DSO_VDIVS /
-        get_view_rect().height();
-  else
-    v = v * data_scale * k * _vDial->get_factor() * DS_CONF_DSO_VDIVS /
-        get_view_rect().height();
-
-  return abs(v) >= 1000 ? QString::number(v / 1000.0, 'f', p) + "V"
-                        : QString::number(v, 'f', p) + "mV";
-}
-
-QString DsoSignal::get_time(double t) {
-  QString str =
-      (abs(t) > 1000000000 ? QString::number(t / 1000000000, 'f', 2) + "S"
-       : abs(t) > 1000000  ? QString::number(t / 1000000, 'f', 2) + "mS"
-       : abs(t) > 1000     ? QString::number(t / 1000, 'f', 2) + "uS"
-                           : QString::number(t, 'f', 2) + "nS");
-  return str;
-}
-
-void DsoSignal::call_auto_end() { _view->session().auto_end(); }
 
 void DsoSignal::set_data(data::DsoSnapshot *data) { _data = data; }
 

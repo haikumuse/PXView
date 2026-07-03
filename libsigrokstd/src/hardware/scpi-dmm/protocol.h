@@ -25,7 +25,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 #include "scpi.h"
 

@@ -85,7 +85,7 @@ static const char *default_serial_parameters[] = {
 	NULL,
 };
 
-struct sr_dev_driver itech_it8500_driver_info;
+static struct sr_dev_driver itech_it8500_driver_info;
 
 static GSList *scan(struct sr_dev_driver *di, GSList *options)
 {

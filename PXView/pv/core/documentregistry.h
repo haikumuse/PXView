@@ -27,7 +27,33 @@ class EventBus;
  * trigger_message) and a SigSession* (for accessing _is_working / is_working()
  * and other session state). Declared as a friend of SigSession so it can touch
  * private members.
- */
+ *
+ * ---------------------- modernize-core-layer-final Task 6 ----------------------
+ * OWNERSHIP SEMANTICS (final evaluation, no code change):
+ *
+ * `_active_document` / `_capture_owner_document` / `_all_documents` are
+ * NON-OWNING pointers. The actual owners are external to DocumentRegistry:
+ *   * TabContext (View layer, see tabcontext.cpp:52 `delete _document`)
+ *     owns the per-tab SessionDocument and drives its full lifecycle.
+ *   * SessionService (API layer, see session_service.cpp:307/322
+ *     `delete _api_document`) owns MCP-created API documents.
+ *
+ * DocumentRegistry only registers/unregisters these externally-owned
+ * documents into its tracking list and (for the capture owner) guards the
+ * cross-layer hand-off via CaptureOwnerGuard RAII. Converting to
+ * shared_ptr/weak_ptr would require touching TabContext + SessionService —
+ * both OUTSIDE the Core layer and outside this spec's scope — and would
+ * force the View/API layers to also adopt shared_ptr semantics, breaking
+ * the current "TabContext owns document, SigSession borrows it" contract
+ * that .pxc save/restore and tab close rely on.
+ *
+ * Conclusion: risk > reward. The pointers stay raw, with the ownership
+ * contract documented here. CaptureOwnerGuard already eliminates the
+ * historical UAF on _capture_owner_document. The only mutation paths are
+ * register_document/unregister_document/set_active_document/
+ * acquire_capture_owner/release_capture_owner — all go through public
+ * methods, no external code mutates the raw pointers directly.
+ * --------------------------------------------------------------------------- */
 class DocumentRegistry {
 public:
   // RAII guard for _capture_owner_document + _is_working lifecycle.
@@ -99,6 +125,13 @@ public:
 
 private:
   EventBus *_event_bus;
+  // Circular reference: CaptureOwnerGuard (nested class) writes the
+  // SigSession::_is_working flag and reads SigSession::is_working(). That
+  // flag is also read/written directly by CaptureManager and DataFeedParser,
+  // so moving _is_working into DocumentRegistry would require coordinated
+  // updates across all three managers plus SigSession — too risky for this
+  // task. This is a known tech debt tracked by modernize-core-layer-final
+  // Task 7.
   SigSession *_session;
 
   // Document list

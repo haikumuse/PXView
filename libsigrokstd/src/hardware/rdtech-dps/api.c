@@ -142,8 +142,8 @@ static const struct rdtech_dps_model supported_models[] = {
 	{ MODEL_RD, 60241, "RD6024" , ARRAY_AND_SIZE(ranges_rd6024),  },
 };
 
-struct sr_dev_driver rdtech_dps_driver_info;
-struct sr_dev_driver rdtech_rd_driver_info;
+static struct sr_dev_driver rdtech_dps_driver_info;
+static struct sr_dev_driver rdtech_rd_driver_info;
 
 static struct sr_dev_inst *probe_device(struct sr_modbus_dev_inst *modbus,
 	enum rdtech_dps_model_type model_type)

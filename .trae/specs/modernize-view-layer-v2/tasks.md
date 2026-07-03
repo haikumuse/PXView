@@ -95,53 +95,53 @@
 
 ## Phase F: view::Viewport God class 拆分（P1）
 
-- [ ] Task F1: 新增 ViewportPainter 类承接 paint 职责
-  - [ ] F1.1 新建 `viewport_painter.h`/`viewport_painter.cpp`
-  - [ ] F1.2 迁移 paint 方法：`paintEvent`/`doPaint`/`paintCursors`/`paintSignals`/`paintProgress`/`paintMeasure`/`paintMask`/`paintSearch`
-  - [ ] F1.3 Viewport 持有 `unique_ptr<ViewportPainter> _painter`
+- [x] Task F1: 新增 ViewportPainter 类承接 paint 职责
+  - [x] F1.1 新建 `viewport_painter.h`/`viewport_painter.cpp`
+  - [x] F1.2 迁移 paint 方法：`paintEvent`/`doPaint`/`paintCursors`/`paintSignals`/`paintProgress`/`paintMeasure`（`paintMask`/`paintSearch` 在原代码中不存在，N/A）
+  - [x] F1.3 Viewport 持有 `unique_ptr<ViewportPainter> _painter`
   - [ ] F1.4 编译验证通过（最后统一编译）
 
-- [ ] Task F2: 新增 ViewportInteraction 类承接事件处理
-  - [ ] F2.1 新建 `viewport_interaction.h`/`viewport_interaction.cpp`
-  - [ ] F2.2 迁移事件方法：`mousePressEvent`/`mouseMoveEvent`/`mouseReleaseEvent`/`wheelEvent`/`keyPressEvent`/`gestureEvent` + 3 种模式 release
-  - [ ] F2.3 Viewport 持有 `unique_ptr<ViewportInteraction> _interaction`
+- [x] Task F2: 新增 ViewportInteraction 类承接事件处理
+  - [x] F2.1 新建 `viewport_interaction.h`/`viewport_interaction.cpp`
+  - [x] F2.2 迁移事件方法：`mousePressEvent`/`mouseMoveEvent`/`mouseReleaseEvent`/`mouseDoubleClickEvent`/`wheelEvent`/`keyPressEvent`/`gestureEvent`/`leaveEvent` + 3 种模式 release + edge nav
+  - [x] F2.3 Viewport 持有 `unique_ptr<ViewportInteraction> _interaction`
   - [ ] F2.4 编译验证通过（最后统一编译）
 
-- [ ] Task F3: 新增 ViewportDrag 类承接 drag frame 职责
-  - [ ] F3.1 新建 `viewport_drag.h`/`viewport_drag.cpp`
-  - [ ] F3.2 迁移 drag 方法：`applyDragFrame`/`on_drag_timer`/drag 状态
-  - [ ] F3.3 Viewport 持有 `unique_ptr<ViewportDrag> _drag`
+- [x] Task F3: 新增 ViewportDrag 类承接 drag frame 职责
+  - [x] F3.1 新建 `viewport_drag.h`/`viewport_drag.cpp`
+  - [x] F3.2 迁移 drag 方法：`applyDragFrame`/`on_drag_timer`/drag 状态
+  - [x] F3.3 Viewport 持有 `unique_ptr<ViewportDrag> _drag`
   - [ ] F3.4 编译验证通过（最后统一编译）
 
-- [ ] Task F4: Viewport 退化为协调者验证
-  - [ ] F4.1 验证 viewport.cpp 行数 < 1000
-  - [ ] F4.2 验证 Viewport 不再直接包含 paint/event/drag 实现代码
+- [x] Task F4: Viewport 退化为协调者验证
+  - [x] F4.1 验证 viewport.cpp 行数 < 1000（实际 596 行，原 2903 行）
+  - [x] F4.2 验证 Viewport 不再直接包含 paint/event/drag 实现代码（仅保留 thin forwarder）
   - [ ] F4.3 编译验证通过（最后统一编译）
 
 ## Phase G: view::DsoSignal God class 拆分（P1）
 
-- [ ] Task G1: 新增 DsoHardwareConfig 类
-  - [ ] G1.1 新建 `dso_hardware_config.h`/`dso_hardware_config.cpp`
-  - [ ] G1.2 迁移硬件配置方法：`set_vdiv`/`set_coupling`/`set_factor`/`set_zero_offset`/`commit_hardware_config`
-  - [ ] G1.3 所有方法内部走 `_model->set_xxx()`（已在 Task D3 迁移）
-  - [ ] G1.4 DsoSignal 持有 `unique_ptr<DsoHardwareConfig> _hw_config`
+- [x] Task G1: 新增 DsoHardwareConfig 类
+  - [x] G1.1 新建 `dso_hardware_config.h`/`dso_hardware_config.cpp`
+  - [x] G1.2 迁移硬件配置方法：`set_vdiv`/`set_coupling`/`set_factor`/`set_zero_offset`/`commit_hardware_config`（实际方法名：set_enable/set_vDialActive/go_vDialPre/go_vDialNext/get_vDialValue/get_vDialSel/init_vDial/set_acCoupling/set_factor/get_factor/get_zero_vpos/get_zero_ratio/get_hw_offset/set_zero_vpos/set_zero_ratio/ratio2value/ratio2pos/value2ratio/pos2ratio/load_settings/commit_settings）
+  - [x] G1.3 所有方法内部走 `_model->set_xxx()`（已在 Task D3 迁移）
+  - [x] G1.4 DsoSignal 持有 `unique_ptr<DsoHardwareConfig> _hw_config`
   - [ ] G1.5 编译验证通过（最后统一编译）
 
-- [ ] Task G2: 新增 DsoTriggerConfig 类
-  - [ ] G2.1 新建 `dso_trigger_config.h`/`dso_trigger_config.cpp`
-  - [ ] G2.2 迁移触发方法：`set_trig_vrate`/`set_trig_vpos`/`set_trig_ratio`/`get_trig_*`
-  - [ ] G2.3 DsoSignal 持有 `unique_ptr<DsoTriggerConfig> _trig_config`
+- [x] Task G2: 新增 DsoTriggerConfig 类
+  - [x] G2.1 新建 `dso_trigger_config.h`/`dso_trigger_config.cpp`
+  - [x] G2.2 迁移触发方法：`set_trig_vrate`/`set_trig_vpos`/`set_trig_ratio`/`get_trig_*`（实际方法名：get_trig_vrate/set_trig_vpos/set_trig_ratio）
+  - [x] G2.3 DsoSignal 持有 `unique_ptr<DsoTriggerConfig> _trig_config`
   - [ ] G2.4 编译验证通过（最后统一编译）
 
-- [ ] Task G3: 新增 DsoMeasure 类
-  - [ ] G3.1 新建 `dso_measure.h`/`dso_measure.cpp`
-  - [ ] G3.2 迁移测量方法：`get_measure`/`measure`/`get_hover_measure`/`get_voltage`/`get_time`/`auto_set`/`autoV_end`/`autoH_end`/`auto_end`/`auto_start`
-  - [ ] G3.3 DsoSignal 持有 `unique_ptr<DsoMeasure> _measure`
+- [x] Task G3: 新增 DsoMeasure 类
+  - [x] G3.1 新建 `dso_measure.h`/`dso_measure.cpp`
+  - [x] G3.2 迁移测量方法：`get_measure`/`measure`/`get_hover_measure`/`get_voltage`/`get_time`/`auto_set`/`autoV_end`/`autoH_end`/`auto_end`/`auto_start`（含 update_measure_status/paint_hover_measure/call_auto_end）
+  - [x] G3.3 DsoSignal 持有 `unique_ptr<DsoMeasure> _measure`
   - [ ] G3.4 编译验证通过（最后统一编译）
 
-- [ ] Task G4: DsoSignal 退化为 paint + 协调验证
-  - [ ] G4.1 验证 dsosignal.cpp 行数 < 800
-  - [ ] G4.2 验证 DsoSignal 只保留 paint_back/mid/fore/trace/envelope/type_options/hover_measure + 协调方法
+- [x] Task G4: DsoSignal 退化为 paint + 协调验证
+  - [x] G4.1 验证 dsosignal.cpp 行数 < 800（实际 683 行）
+  - [x] G4.2 验证 DsoSignal 只保留 paint_back/mid/fore/trace/envelope/type_options/hover_measure + 协调方法
   - [ ] G4.3 编译验证通过（最后统一编译）
 
 ## Phase H: view.h God header 治理（P1，与 Phase E 协同）

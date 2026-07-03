@@ -23,10 +23,12 @@
 #include "dsomeasure.h"
 #include "../sigsession.h"
 #include "../view/view.h"
+#include "../view/viewstatus.h"
 
 #include <QCheckBox>
 #include <QVariant>
 #include <QLabel>
+#include <QPushButton>
 #include <QTabBar>
 #include <QBitmap>
  

@@ -26,34 +26,39 @@
 
 #include <list>
 #include <map>
-#include <set>
+#include <memory>
 #include <stdint.h>
 #include <vector>
 
-#include <QDateTime>
 #include <QElapsedTimer>
-#include <QPaintEvent>
 #include <QScrollArea>
-#include <QSizeF>
-#include <QSplitter>
 
-#include "../data/datasource.h"
 #include "../data/pulse_analyzer.h"
-#include "../data/signaldata.h"
-#include "../dsvdef.h"
-#include "../interface/icallbacks.h"
-#include "../toolbars/samplingbar.h"
 #include "../ui/uimanager.h"
-#include "../view/viewport.h"
-#include "cursor.h"
 #include "dock_ui_state.h"
-#include "signal.h"
-#include "viewstatus.h"
-#include "xcursor.h"
+#include "view_cursors.h"
+#include "view_glitch_filter.h"
+
+// Forward declarations (replaces the former includes of signal.h, viewport.h,
+// cursor.h, xcursor.h, viewstatus.h, view_derived_traces.h, view_layout.h,
+// datasource.h, signaldata.h, samplingbar.h, icallbacks.h
+// — Phase H header hygiene; Phase K additionally forward-declares the
+// unique_ptr delegate types ViewLayout / ViewDataSync /
+// ViewDerivedTraces / ViewSignalSync and the value-type QSizeF used only
+// as a static data member declaration).
+// Pointers/references to these types are used as members/function params
+// only, so forward declarations suffice; the full definitions are pulled in
+// by view.cpp (and other consumers) as needed. unique_ptr members require
+// the complete type only at the point of View's destructor definition
+// (defined out-of-line in view.cpp).
+QT_BEGIN_NAMESPACE
+class QPaintEvent;
+class QSizeF;
+class QSplitter;
+QT_END_NAMESPACE
 
 struct srd_decoder;
 class DecoderStatus;
-
 class DeviceAgent;
 
 namespace pv {
@@ -68,6 +73,7 @@ class Lissajous;
 } // namespace dialogs
 
 namespace data {
+class DataSource;
 class SessionDocument;
 struct SignalConfig;
 class DecoderStack;
@@ -91,6 +97,21 @@ class MathTrace;
 class LissajousTrace;
 class GlitchFilterPopup;
 class LogicSignal;
+class Cursor;
+class XCursor;
+class ViewStatus;
+class Signal;
+
+// Phase K forward declarations for the unique_ptr delegate types. Full
+// definitions live in view_layout.h / view_data_sync.h /
+// view_derived_traces.h / view_signal_sync.h, which are
+// included by view.cpp (and by other TUs that touch the delegate types
+// directly). view_cursors.h is included directly above because Cursor /
+// XCursor are used by too many TUs as complete types.
+class ViewLayout;
+class ViewDataSync;
+class ViewDerivedTraces;
+class ViewSignalSync;
 
 struct SignalGroup {
   int group_id;
@@ -104,14 +125,8 @@ class View : public QScrollArea, public IUiWindow {
   Q_PROPERTY(QColor groupCardColor READ get_group_card_color WRITE
                  set_group_card_color)
 
-private:
-  static const int LabelMarginWidth;
-  static const int RulerHeight;
-
-  static const int MaxScrollValue;
-  static const int MaxHeightUnit;
-
 public:
+  // ---- Public static constants ----
   static const int MinSignalHeight;
   static const int MaxSignalHeight;
   static const int GroupGap = 10;
@@ -142,20 +157,40 @@ public:
   static QColor LightBlue;
   static QColor LightRed;
 
+  // ---- Public static methods ----
   static void refreshSignalColors();
+  static bool compare_trace_v_offsets(const Trace *a, const Trace *b);
+  static bool compare_trace_view_index(const Trace *a, const Trace *b);
+  static bool compare_trace_y(const Trace *a, const Trace *b);
 
-public:
+  // ---- Construction ----
   explicit View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
                 QWidget *parent = 0);
 
   ~View();
 
+  // ---- Data source / document binding ----
   void set_data_source(pv::data::DataSource *source);
+  inline pv::data::DataSource* data_source() { return _data_source; }
   void set_data_document(pv::data::SessionDocument *doc);
   void clone_signals_for_document(pv::data::SessionDocument *doc);
   void set_signal_data_from_source(pv::data::DataSource *source);
   void clear_signal_data();
 
+  /**
+   * Returns the DataSource for snapshot data only. When the bound
+   * SessionDocument has captured data (_document->has_data()), returns
+   * _document so snapshot/samplerate/sampletime queries read the
+   * per-tab captured data; otherwise falls back to _data_source (the
+   * SigSession DataSource).
+   *
+   * SignalModels are NOT available through this — SessionDocument's
+   * _signal_models is never populated. Use _data_source directly for
+   * SignalModel access (e.g. SignalFactory::create_signals/update_signals).
+   */
+  data::DataSource *document_snapshot_source();
+
+  // ---- Session / scale / offset accessors ----
   inline SigSession &session() { return *_session; }
 
   /**
@@ -187,6 +222,7 @@ public:
 
   void capture_init();
 
+  // ---- Scale / offset mutation (delegate to ViewLayout) ----
   void zoom(double steps);
   bool zoom(double steps, int offset);
 
@@ -199,8 +235,10 @@ public:
   void limit_scale_offset();
   void set_preScale_preOffset();
 
+  // ---- Traces access ----
   void get_traces(int type, std::vector<Trace *> &traces);
 
+  // ---- Cursor visibility ----
   /**
    * Returns true if cursors are displayed. false otherwise.
    */
@@ -210,6 +248,20 @@ public:
 
   inline bool search_cursor_shown() { return _show_search_cursor; }
 
+  /**
+   * Shows or hides the cursors.
+   */
+  void show_cursors(bool show = true);
+
+  inline const QPoint &hover_point() { return _hover_point; }
+
+  void normalize_layout();
+
+  void show_trig_cursor(bool show = true);
+
+  void show_search_cursor(bool show = true);
+
+  // ---- Vertical layout ----
   inline int get_spanY() { return _spanY; }
 
   inline int get_signalHeight() { return _signalHeight; }
@@ -231,19 +283,7 @@ public:
 
   inline Ruler *get_ruler() { return _ruler; }
 
-  /**
-   * Shows or hides the cursors.
-   */
-  void show_cursors(bool show = true);
-
-  inline const QPoint &hover_point() { return _hover_point; }
-
-  void normalize_layout();
-
-  void show_trig_cursor(bool show = true);
-
-  void show_search_cursor(bool show = true);
-
+  // ---- Cursors list management (delegate to ViewCursors) ----
   /*
    * cursorList
    */
@@ -281,6 +321,7 @@ public:
 
   inline std::list<XCursor *> &get_xcursorList() { return _xcursorList; }
 
+  // ---- Viewport update ----
   void set_update(Viewport *viewport, bool need_update);
   void set_all_update(bool need_update);
 
@@ -327,6 +368,7 @@ public:
   void rebuild_signals();
   void rebuild_signals_from_config(const data::SignalConfig &config);
 
+  // ---- Decoder management (delegate to ViewDerivedTraces) ----
   /**
    * Adds a protocol decoder.
    * Calls Core layer (SigSession::add_decoder) to create the DecoderStack,
@@ -482,37 +524,23 @@ public:
   void on_glitch_filter_completed();
   void on_glitch_filter_cleared();
 
-signals:
-  void hover_point_changed();
-  void cursor_update();
-  void xcursor_update();
-  void cursor_moving();
-  void cursor_moved();
-  void measure_updated();
-  void prgRate(int progress);
-  void resize();
-  void auto_trig(int index);
+  /**
+   * Per-tab UI state cache for dock widgets and the sampling toolbar.
+   * View is per-tab and survives tab switches without destruction, so
+   * hosting DockUiState here gives docks/toolbar a stable per-tab store
+   * accessed via `ctx->view()->dock_ui_state()`. Replaces the former
+   * `_dock_*` fields on SessionDocument (Core layer).
+   */
+  DockUiState &dock_ui_state() { return _dock_ui_state; }
+  const DockUiState &dock_ui_state() const { return _dock_ui_state; }
 
-private:
-  static bool compare_trace_v_offsets(const Trace *a, const Trace *b);
-  void get_scroll_layout(int64_t &length, int64_t &offset);
-  void update_scroll();
-  void update_margins();
-  void set_scale(double scale);
+  void show_wait_trigger();
+  void set_device();
+  void set_receive_len(uint64_t len);
+  int get_body_width();
+  int get_body_height();
 
-  void clear();
-  void reconstruct();
-  bool eventFilter(QObject *object, QEvent *event);
-  bool viewportEvent(QEvent *e);
-  void paintEvent(QPaintEvent *event);
-  void resizeEvent(QResizeEvent *e);
-  void scrollContentsBy(int dx, int dy);
-
-public:
-  static bool compare_trace_view_index(const Trace *a, const Trace *b);
-
-  static bool compare_trace_y(const Trace *a, const Trace *b);
-
+  // ---- Signal lifecycle (signals_changed event family) ----
   void signals_changed(const Trace *eventTrace);
 
   /**
@@ -594,8 +622,22 @@ public slots:
   void on_clear_glitch_filter_requested(bool all_channels);
   void on_toggle_invert_requested(pv::view::LogicSignal *sig);
 
-private slots:
+  // -- trig pos / lissajous
+  void set_trig_pos(int percent);
+  void show_lissajous(bool show);
 
+signals:
+  void hover_point_changed();
+  void cursor_update();
+  void xcursor_update();
+  void cursor_moving();
+  void cursor_moved();
+  void measure_updated();
+  void prgRate(int progress);
+  void resize();
+  void auto_trig(int index);
+
+private slots:
   void h_scroll_value_changed(int value);
   void v_scroll_value_changed(int value);
 
@@ -618,46 +660,52 @@ private slots:
                                  GlitchFilterMode mode, bool all_channels);
   void on_glitch_popup_closed();
 
-public slots:
-  void set_trig_pos(int percent);
-  void show_lissajous(bool show);
-
 private:
+  // ---- Private static constants ----
+  static const int LabelMarginWidth;
+  static const int RulerHeight;
+  static const int MaxScrollValue;
+  static const int MaxHeightUnit;
+
+  // ---- Internal helpers (delegate to ViewLayout / ViewCursors) ----
+  void get_scroll_layout(int64_t &length, int64_t &offset);
+  void update_scroll();
+  void update_margins();
+  void set_scale(double scale);
+
   void set_trig_cursor_posistion(uint64_t percent);
   void make_cursors_order();
 
-public:
-  /**
-   * Returns the DataSource for snapshot data only. When the bound
-   * SessionDocument has captured data (_document->has_data()), returns
-   * _document so snapshot/samplerate/sampletime queries read the
-   * per-tab captured data; otherwise falls back to _data_source (the
-   * SigSession DataSource).
-   *
-   * SignalModels are NOT available through this — SessionDocument's
-   * _signal_models is never populated. Use _data_source directly for
-   * SignalModel access (e.g. SignalFactory::create_signals/update_signals).
-   */
-  data::DataSource *document_snapshot_source();
+  void clear();
+  void reconstruct();
+  bool eventFilter(QObject *object, QEvent *event);
+  bool viewportEvent(QEvent *e);
+  void paintEvent(QPaintEvent *event);
+  void resizeEvent(QResizeEvent *e);
+  void scrollContentsBy(int dx, int dy);
 
-  /**
-   * Per-tab UI state cache for dock widgets and the sampling toolbar.
-   * View is per-tab and survives tab switches without destruction, so
-   * hosting DockUiState here gives docks/toolbar a stable per-tab store
-   * accessed via `ctx->view()->dock_ui_state()`. Replaces the former
-   * `_dock_*` fields on SessionDocument (Core layer).
-   */
-  DockUiState &dock_ui_state() { return _dock_ui_state; }
-  const DockUiState &dock_ui_state() const { return _dock_ui_state; }
+  // ---- Friends (delegates touch View's private state directly) ----
+  // Phase E delegates — friend classes so they can touch View's private
+  // state (_scale / _offset / _own_decode_traces / _trig_cursor / …)
+  // directly. Each delegate owns *behaviour*; the state still lives on View.
+  friend class ViewLayout;
+  friend class ViewCursors;
+  friend class ViewDerivedTraces;
+  // Phase J delegates — signal-sync / glitch-filter / data-sync behaviour
+  // extracted from the View God-class during modernize-view-layer-v3.
+  friend class ViewSignalSync;
+  friend class ViewGlitchFilter;
+  friend class ViewDataSync;
 
-public:
-  void show_wait_trigger();
-  void set_device();
-  void set_receive_len(uint64_t len);
-  int get_body_width();
-  int get_body_height();
+  // ---- Delegate members (Phase E + J) ----
+  std::unique_ptr<ViewLayout> _layout;
+  std::unique_ptr<ViewCursors> _cursors;
+  std::unique_ptr<ViewDerivedTraces> _derived;
+  std::unique_ptr<ViewSignalSync> _signal_sync;
+  std::unique_ptr<ViewGlitchFilter> _glitch_filter;
+  std::unique_ptr<ViewDataSync> _data_sync;
 
-private:
+  // ---- Session / data source ----
   SigSession *_session;
   pv::data::DataSource *_data_source;
   pv::data::SessionDocument *_document;
@@ -668,6 +716,8 @@ private:
   // cannot recurse into another rebuild and stack-overflow. The RAII guard in
   // rebuild_signals_from_config() resets it on all exit paths.
   bool _rebuild_in_progress = false;
+
+  // ---- View-owned signal/trace wrappers ----
   std::vector<Signal *> _own_signals;
   // View-owned wrapper traces for derived types. Synced lazily from the
   // Core layer's Stack/Model objects via sync_derived_traces().
@@ -677,6 +727,7 @@ private:
   LissajousTrace *_own_lissajous_trace = nullptr;
   bool _derived_traces_dirty = true;
 
+  // ---- Viewport / widgets ----
   QWidget *_viewcenter;
   ViewStatus *_viewbottom;
   QSplitter *_vsplitter;
@@ -690,6 +741,7 @@ private:
   DevMode *_devmode;
   bool _header_collapsed;
 
+  // ---- Scale / offset ----
   /// The view time scale in seconds per pixel.
   double _scale;
   double _preScale;
@@ -711,6 +763,7 @@ private:
   // trigger position fix
   double _trig_hoff;
 
+  // ---- Cursors ----
   bool _show_cursors;
   std::list<Cursor *> _logic_cursors;
   std::list<Cursor *> _dso_cursors;
@@ -724,6 +777,7 @@ private:
   bool _show_xcursors;
   std::list<XCursor *> _xcursorList;
 
+  // ---- Misc ----
   QPoint _hover_point;
   dialogs::Calibration *_cali;
 
@@ -734,7 +788,7 @@ private:
   DeviceAgent *_device_agent;
   QElapsedTimer _data_updated_timer;
 
-  // -- glitch filter popup (View-owned, Task 7)
+  // ---- Glitch filter popup (View-owned, Task 7) ----
   GlitchFilterPopup *_glitch_filter_popup = nullptr;
   // Per-signal cached preview ranges (orange overlay) while the popup is open.
   std::map<LogicSignal *, std::vector<pv::data::PulseAnalyzer::Pulse>>

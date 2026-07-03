@@ -40,8 +40,8 @@ static const uint32_t devopts[] = {
 	SR_CONF_LIMIT_MSEC | SR_CONF_SET,
 };
 
-struct sr_dev_driver mic_98581_driver_info;
-struct sr_dev_driver mic_98583_driver_info;
+static struct sr_dev_driver mic_98581_driver_info;
+static struct sr_dev_driver mic_98583_driver_info;
 
 SR_PRIV const struct mic_dev_info mic_devs[] = {
 	{
@@ -185,7 +185,7 @@ static int dev_acquisition_start_##X(const struct sr_dev_inst *sdi \
 HW_SCAN(ID_UPPER) \
 HW_CONFIG_LIST(ID_UPPER) \
 HW_DEV_ACQUISITION_START(ID_UPPER) \
-struct sr_dev_driver ID##_driver_info = { \
+static struct sr_dev_driver ID##_driver_info = { \
 	.name = NAME, \
 	.longname = LONGNAME, \
 	.api_version = 1, \

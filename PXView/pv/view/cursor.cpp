@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "../dsvdef.h"
+#include "../sigsession.h"
 #include "ruler.h"
 
 namespace pv {

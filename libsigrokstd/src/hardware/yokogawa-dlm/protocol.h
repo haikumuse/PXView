@@ -27,7 +27,6 @@
 #include <string.h>
 #include <math.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 #include "protocol_wrappers.h"
 

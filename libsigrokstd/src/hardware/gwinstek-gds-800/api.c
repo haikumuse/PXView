@@ -34,7 +34,7 @@ static const uint32_t devopts[] = {
 	SR_CONF_SAMPLERATE | SR_CONF_GET,
 };
 
-struct sr_dev_driver gwinstek_gds_800_driver_info;
+static struct sr_dev_driver gwinstek_gds_800_driver_info;
 
 static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
 {

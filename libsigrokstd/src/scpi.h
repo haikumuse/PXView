@@ -180,8 +180,8 @@ SR_PRIV int sr_scpi_cmd_resp(const struct sr_dev_inst *sdi,
 
 /*--- GPIB only functions ---------------------------------------------------*/
 
-/* Declared unconditionally: when HAVE_LIBGPIB is undefined, a stub returning
- * SR_ERR is provided in bridge/srstd_compat.c so hp-3478a and scpi-pps link. */
+#ifdef HAVE_LIBGPIB
 SR_PRIV int sr_scpi_gpib_spoll(struct sr_scpi_dev_inst *scpi, char *buf);
+#endif
 
 #endif

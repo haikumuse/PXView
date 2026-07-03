@@ -82,9 +82,13 @@ public:
   inline void set_repeat_hold_prg(int v) { _repeat_hold_prg = v; }
   inline void set_repeat_wait_prog_step(int v) { _repeat_wait_prog_step = v; }
   inline int capture_times() const { return _capture_times; }
-  inline DsTimer &repeat_timer() { return _repeat_timer; }
-  inline DsTimer &repeat_wait_prog_timer() { return _repeat_wait_prog_timer; }
-  inline DsTimer &trig_check_timer() { return _trig_check_timer; }
+  // DsTimer Start/Stop are non-const, so expose typed wrapper methods
+  // instead of leaking mutable refs to the timer sub-objects.
+  inline void start_repeat_timer(int ms) { _repeat_timer.Start(ms); }
+  inline void start_repeat_wait_prog_timer(int ms) {
+    _repeat_wait_prog_timer.Start(ms);
+  }
+  inline void stop_trig_check_timer() { _trig_check_timer.Stop(); }
 
   inline void clear_store_confirm_flag() {
     _confirm_store_time_id = _work_time_id;
@@ -99,7 +103,8 @@ public:
   bool get_data_auto_lock();
 
   inline void set_data_updated(bool v) { _data_updated = v; }
-  inline uint64_t &dso_packet_count_ref() { return _dso_packet_count; }
+  inline uint64_t dso_packet_count() const { return _dso_packet_count; }
+  inline void inc_dso_packet_count() { ++_dso_packet_count; }
 
   // --- Decode result clearing (tightly coupled with capture start) ---
   void clear_decode_result();
@@ -123,6 +128,17 @@ public:
 
 private:
   EventBus *_event_bus;
+  // Circular reference: this manager needs many SigSession state fields and
+  // methods (_device_agent / _capture_data / _view_data / _signal_models /
+  // _document_registry / _is_working / _device_status / _is_triged /
+  // _trigger_flag / _bClose / _data_mutex / decode_traces() /
+  // attach_data_to_signal() / sync_trigger_to_libsigrok() /
+  // clear_all_decode_task2() / add_decode_task() / set_cur_snap_samplerate() /
+  // set_cur_samplelimits() / set_session_time() / update_capture() /
+  // repeat_hold() / trigger_message() / clear_glitch_filter_state_for_capture() /
+  // get_ch_num() / cur_samplelimits()) and cannot be easily decoupled without
+  // further SigSession splitting. This is a known tech debt tracked by
+  // modernize-core-layer-final Task 7.
   SigSession *_session;
 
   data::DiskCacheConfig _disk_cache_config;

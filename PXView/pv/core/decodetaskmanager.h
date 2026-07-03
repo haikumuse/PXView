@@ -59,6 +59,13 @@ public:
 
 private:
   EventBus *_event_bus;
+  // Circular reference: this manager needs SigSession state and methods
+  // (_signal_models / _view_data / _document_registry / _bClose /
+  // decode_traces() / get_decoder_trace() / get_trace_index_by_key_handel() /
+  // data_updated() / signals_changed()) that cannot be provided by EventBus*
+  // or DocumentRegistry* alone, so the spec-hypothesized EventBus* +
+  // DocumentRegistry* injection is not feasible. This is a known tech debt
+  // tracked by modernize-core-layer-final Task 7.
   SigSession *_session;
 
   mutable std::mutex _running_tasks_mutex;

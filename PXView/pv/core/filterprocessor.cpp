@@ -11,8 +11,8 @@ namespace pv {
 namespace core {
 
 FilterProcessor::FilterProcessor(EventBus *bus, SigSession *session)
-    : _event_bus(bus), _session(session), _glitch_filter_thread(nullptr),
-      _glitch_filter_running(false), _signal_invert_thread(nullptr),
+    : _event_bus(bus), _session(session),
+      _glitch_filter_running(false),
       _signal_invert_running(false) {}
 
 FilterProcessor::~FilterProcessor() { stop(); }
@@ -23,19 +23,20 @@ void FilterProcessor::stop() {
   // know no new work should be accepted, then join the thread if still
   // joinable. Without this, a joinable std::thread would std::terminate on
   // destruction.
+  //
+  // modernize-core-layer-final Task 5: threads are now held by unique_ptr.
+  // No manual delete — reset() releases the thread object after join().
   _glitch_filter_running = false;
   if (_glitch_filter_thread) {
     if (_glitch_filter_thread->joinable())
       _glitch_filter_thread->join();
-    delete _glitch_filter_thread;
-    _glitch_filter_thread = nullptr;
+    _glitch_filter_thread.reset();
   }
   _signal_invert_running = false;
   if (_signal_invert_thread) {
     if (_signal_invert_thread->joinable())
       _signal_invert_thread->join();
-    delete _signal_invert_thread;
-    _signal_invert_thread = nullptr;
+    _signal_invert_thread.reset();
   }
 }
 
@@ -63,10 +64,10 @@ void FilterProcessor::set_glitch_filter(
 
   if (_glitch_filter_thread) {
     _glitch_filter_thread->join();
-    delete _glitch_filter_thread;
+    _glitch_filter_thread.reset();
   }
 
-  _glitch_filter_thread = new std::thread(
+  _glitch_filter_thread = std::make_unique<std::thread>(
       &FilterProcessor::glitch_filter_task, this, thresholds, filter_modes);
 }
 
@@ -179,11 +180,12 @@ void FilterProcessor::set_signal_invert(const std::vector<bool> &channels) {
 
   if (_signal_invert_thread) {
     _signal_invert_thread->join();
-    delete _signal_invert_thread;
+    _signal_invert_thread.reset();
   }
 
   _signal_invert_thread =
-      new std::thread(&FilterProcessor::signal_invert_task, this, channels);
+      std::make_unique<std::thread>(
+          &FilterProcessor::signal_invert_task, this, channels);
 }
 
 void FilterProcessor::signal_invert_task(const std::vector<bool> channels) {

@@ -117,6 +117,17 @@ if(APPLE)
 else()
     install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 endif()
+
+# Install libsigrokstd shared library (upstream libsigrok 0.6.0 as DLL/SO/dylib).
+# Windows: libsigrokstd.dll -> bin/ (alongside PXView.exe so the loader finds it)
+# Linux:   libsigrokstd.so  -> lib/
+# macOS:   libsigrokstd.dylib -> lib/ (Framework bundling handled separately if needed)
+# Windows .dll.a import library -> lib/ (development only, not required at runtime)
+install(TARGETS libsigrokstd
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
 install(DIRECTORY PXView/res DESTINATION ${MAC_RES_PREFIX}share/PXView)
 install(DIRECTORY PXView/demo DESTINATION ${MAC_RES_PREFIX}share/PXView)
 install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME logo.svg)
