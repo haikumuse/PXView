@@ -38,7 +38,7 @@ static const uint32_t devopts[] = {
 	SR_CONF_DATA_SOURCE   | SR_CONF_GET | SR_CONF_SET | SR_CONF_LIST,
 };
 
-struct sr_dev_driver bkprecision_1856d_driver_info;
+static struct sr_dev_driver bkprecision_1856d_driver_info;
 
 const uint64_t timebases[][2] = {
 	/*miliseconds*/

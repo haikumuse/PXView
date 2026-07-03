@@ -167,7 +167,7 @@ static const uint64_t samplerates_hw[] = {
 	SR_MHZ(320),
 };
 
-struct sr_dev_driver hantek_4032l_driver_info;
+static struct sr_dev_driver hantek_4032l_driver_info;
 
 static GSList *scan(struct sr_dev_driver *di, GSList *options)
 {

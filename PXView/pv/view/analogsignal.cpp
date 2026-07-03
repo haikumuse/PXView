@@ -172,7 +172,7 @@ bool AnalogSignal::measure(const QPointF &p) {
   if (!enabled())
     return false;
 
-  if (_view->session().is_stopped_status() == false)
+  if (_data_source->is_stopped_status() == false)
     return false;
 
   const QRectF window = get_view_rect();
@@ -186,7 +186,7 @@ bool AnalogSignal::measure(const QPointF &p) {
   if (scale <= 0)
     return false;
   const int64_t pixels_offset = _view->offset();
-  const double samplerate = _view->session().cur_snap_samplerate();
+  const double samplerate = _data_source->cur_snap_samplerate();
   const double samples_per_pixel = samplerate * scale;
 
   _hover_index = floor((p.x() + pixels_offset) * samples_per_pixel + 0.5);
@@ -222,7 +222,7 @@ QPointF AnalogSignal::get_point(uint64_t index, float &value) {
   if (scale <= 0)
     return pt;
   const int64_t pixels_offset = _view->offset();
-  const double samplerate = _view->session().cur_snap_samplerate();
+  const double samplerate = _data_source->cur_snap_samplerate();
   const double samples_per_pixel = samplerate * scale;
 
   if (index >= _data->get_sample_count())
@@ -317,7 +317,7 @@ void AnalogSignal::set_zero_vpos(int pos) {
 int AnalogSignal::get_zero_vpos() { return ratio2pos(get_zero_ratio()); }
 
 void AnalogSignal::set_zero_ratio(double ratio) {
-  if (_view->session().is_running_status())
+  if (_data_source->is_running_status())
     return;
 
   // Same nested-broadcast guard as DsoSignal::set_zero_ratio: set_config_uint16
@@ -479,7 +479,7 @@ void AnalogSignal::paint_fore(QPainter &p, int left, int right, QColor fore,
   fore.setAlpha(View::ForeAlpha);
   if (enabled()) {
     // Paint measure
-    if (_view->session().is_stopped_status())
+    if (_data_source->is_stopped_status())
       paint_hover_measure(p, fore, back);
   }
 }
@@ -570,7 +570,7 @@ void AnalogSignal::paint_envelope(
   float x = start_pixel;
   for (uint64_t sample = 0; sample < e.length; sample++) {
     const uint64_t ring_index =
-        (e.start + sample) % (_view->session().cur_samplelimits() / e.scale);
+        (e.start + sample) % (_data_source->cur_samplelimits() / e.scale);
     if (sample != 0 && ring_index == ring_end)
       break;
 

@@ -21,7 +21,6 @@
 #define LIBSIGROK_HARDWARE_RDTECH_TC_PROTOCOL_H
 
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "rdtech-tc"

@@ -14,8 +14,17 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/submainframe.cpp
     # View layer rendering objects
     PXView/pv/view/viewport.cpp
+    PXView/pv/view/viewport_painter.cpp
+    PXView/pv/view/viewport_interaction.cpp
+    PXView/pv/view/viewport_drag.cpp
     PXView/pv/view/edge_nav_button.cpp
     PXView/pv/view/view.cpp
+    PXView/pv/view/view_layout.cpp
+    PXView/pv/view/view_cursors.cpp
+    PXView/pv/view/view_derived_traces.cpp
+    PXView/pv/view/view_signal_sync.cpp
+    PXView/pv/view/view_glitch_filter.cpp
+    PXView/pv/view/view_data_sync.cpp
     PXView/pv/view/timemarker.cpp
     PXView/pv/view/signal.cpp
     PXView/pv/view/signalfactory.cpp
@@ -25,6 +34,9 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/view/logicsignal.cpp
     PXView/pv/view/analogsignal.cpp
     PXView/pv/view/dsosignal.cpp
+    PXView/pv/view/dso_hardware_config.cpp
+    PXView/pv/view/dso_trigger_config.cpp
+    PXView/pv/view/dso_measure.cpp
     PXView/pv/view/dsldial.cpp
     PXView/pv/view/trace.cpp
     PXView/pv/view/selectableitem.cpp
@@ -160,6 +172,9 @@ set(PXView_HEADERS
     PXView/pv/prop/bool.h
     PXView/pv/toolbars/samplingbar.h
     PXView/pv/view/viewport.h
+    PXView/pv/view/viewport_painter.h
+    PXView/pv/view/viewport_interaction.h
+    PXView/pv/view/viewport_drag.h
     PXView/pv/view/edge_nav_button.h
     PXView/pv/view/view.h
     PXView/pv/view/dock_ui_state.h
@@ -233,7 +248,10 @@ set(PXView_HEADERS
     PXView/pv/view/signal.h
     PXView/pv/view/logicsignal.h
     PXView/pv/view/analogsignal.h
-    PXView/pv/view/dsosignal.h 
+    PXView/pv/view/dsosignal.h
+    PXView/pv/view/dso_hardware_config.h
+    PXView/pv/view/dso_trigger_config.h
+    PXView/pv/view/dso_measure.h
     PXView/pv/dock/protocoldock.h
     PXView/pv/data/decoderstack.h
     PXView/pv/view/decodetrace.h

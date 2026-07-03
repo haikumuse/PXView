@@ -56,11 +56,12 @@
 
 #include "srstd_pxview_glue.h"
 
-/* srstd.h pulls in upstream libsigrok.h + srstd_rename.h; needed for
- * srstd_init_shared() and struct sr_context (renamed to srstd_context).
+/* libsigrok/libsigrok.h is the upstream version (resolved via libsigrokstd's
+ * BEFORE include path). srstd_rename.h has been removed in Phase 1/2, so all
+ * sr_* tokens below reference the real upstream symbols directly.
  * libsigrok-internal.h provides the full struct sr_context definition
  * (including the libusb_ctx field accessed in srstd_pxview_exit). */
-#include "srstd.h"
+#include <libsigrok/libsigrok.h>
 #include "libsigrok-internal.h"
 
 /* srstd_bridge.h declares the data-structure conversion functions
@@ -77,6 +78,10 @@
 
 #include <stdio.h>   /* snprintf */
 #include <string.h>
+
+/* Forward declaration — defined in srstd_init_shared.c (same library).
+ * Previously declared in srstd.h (deleted in Phase 1/2). */
+int srstd_init_shared(struct sr_context **ctx, libusb_context *shared_usb_ctx);
 
 /* ===== Glue layer state =====
  *

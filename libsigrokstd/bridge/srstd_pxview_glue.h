@@ -54,6 +54,7 @@
 #define SRSTD_PXVIEW_GLUE_H_
 
 #include <glib.h>      /* GVariant */
+#include "srstd_export.h"  /* SRSTD_API export macro */
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,14 +105,14 @@ extern "C" {
  *
  * Returns SR_OK (0) on success, negative SR_ERR_* on failure.
  */
-int  srstd_pxview_init_shared(void **ctx_out, void *shared_usb_ctx);
+SRSTD_API int  srstd_pxview_init_shared(void **ctx_out, void *shared_usb_ctx);
 
 /*
  * srstd_pxview_exit — tear down an upstream srstd_context created by
  * srstd_pxview_init_shared. Internally sets libusb_ctx=NULL before calling
  * srstd_exit so the shared PXView libusb_context is NOT released.
  */
-void srstd_pxview_exit(void *ctx);
+SRSTD_API void srstd_pxview_exit(void *ctx);
 
 /* ===== Driver-name lookup (Task 5) =====
  *
@@ -129,7 +130,7 @@ void srstd_pxview_exit(void *ctx);
  *                   NULL terminator). Pass NULL if not needed.
  * @return NULL-terminated array of const char*, or NULL if not initialized.
  */
-const char** srstd_glue_get_driver_names(int* count_out);
+SRSTD_API const char** srstd_glue_get_driver_names(int* count_out);
 
 /* ===== Device config/acquisition dispatch wrappers =====
  *
@@ -152,14 +153,14 @@ const char** srstd_glue_get_driver_names(int* count_out);
  * SRSTD_GLUE_ERR_NA. Task 8/9 replaces them with real srstd_config_get/set
  * / srstd_dev_acquisition_* calls.
  */
-int srstd_glue_dev_config_get(void *sdi, void *ch, void *cg,
+SRSTD_API int srstd_glue_dev_config_get(void *sdi, void *ch, void *cg,
                               int key, GVariant **data);
-int srstd_glue_dev_config_set(void *sdi, void *ch, void *cg,
+SRSTD_API int srstd_glue_dev_config_set(void *sdi, void *ch, void *cg,
                               int key, GVariant *data);
-int srstd_glue_dev_config_list(void *sdi, void *cg,
+SRSTD_API int srstd_glue_dev_config_list(void *sdi, void *cg,
                                int key, GVariant **data);
-int srstd_glue_acquisition_start(void *sdi);
-int srstd_glue_acquisition_stop(void *sdi);
+SRSTD_API int srstd_glue_acquisition_start(void *sdi);
+SRSTD_API int srstd_glue_acquisition_stop(void *sdi);
 
 /* ===== Device scan + datafeed callback (Task 8 Part 3) =====
  *
@@ -203,7 +204,7 @@ typedef void (*srstd_glue_datafeed_cb_t)(const void *sdi,
  * forwarding. Call once during SigSession::init (after
  * srstd_pxview_init_shared succeeds). Pass cb=NULL to unregister.
  */
-void srstd_glue_set_datafeed_callback(srstd_glue_datafeed_cb_t cb,
+SRSTD_API void srstd_glue_set_datafeed_callback(srstd_glue_datafeed_cb_t cb,
                                        void *user_data);
 
 /*
@@ -212,13 +213,13 @@ void srstd_glue_set_datafeed_callback(srstd_glue_datafeed_cb_t cb,
  * Returns device count (0 if no devices or srstd not initialized).
  * Safe to call multiple times (frees previous scan results first).
  */
-int srstd_glue_scan_devices(void);
+SRSTD_API int srstd_glue_scan_devices(void);
 
 /*
  * srstd_glue_get_scanned_device_name — fill buf with the human-readable
  * device name (e.g., "Sipeed SLogic"). Returns SR_OK on success.
  */
-int srstd_glue_get_scanned_device_name(int index, char *buf, int buf_size);
+SRSTD_API int srstd_glue_get_scanned_device_name(int index, char *buf, int buf_size);
 
 /*
  * srstd_glue_open_scanned_device — open the device at the given scan index,
@@ -227,28 +228,28 @@ int srstd_glue_get_scanned_device_name(int index, char *buf, int buf_size);
  * wrapper. Closes any previously active srstd device first.
  * Returns SR_OK on success.
  */
-int srstd_glue_open_scanned_device(int index);
+SRSTD_API int srstd_glue_open_scanned_device(int index);
 
 /*
  * srstd_glue_close_active_device — close the active srstd device, stop
  * acquisition if running, destroy the upstream session. Safe to call when
  * no srstd device is active (no-op).
  */
-int srstd_glue_close_active_device(void);
+SRSTD_API int srstd_glue_close_active_device(void);
 
 /*
  * srstd_glue_get_active_device_name — fill name/driver buffers for the
  * active srstd device. Returns SR_OK if a srstd device is active, SR_ERR
  * otherwise (so DeviceAgent::update falls back to ds_get_actived_device_info).
  */
-int srstd_glue_get_active_device_name(char *name_buf, int name_buf_size,
+SRSTD_API int srstd_glue_get_active_device_name(char *name_buf, int name_buf_size,
                                        char *driver_buf, int driver_buf_size);
 
 /*
  * srstd_glue_get_active_handle — returns the tagged handle of the active
  * srstd device (SRSTD_MAKE_HANDLE(index)), or 0 if none active.
  */
-unsigned long long srstd_glue_get_active_handle(void);
+SRSTD_API unsigned long long srstd_glue_get_active_handle(void);
 
 /*
  * srstd_glue_get_active_sdi_shadow — returns the PXView sr_dev_inst* shadow
@@ -258,7 +259,7 @@ unsigned long long srstd_glue_get_active_handle(void);
  * and DeviceAgent::get_channels() reads channels from it via
  * srstd_glue_get_active_channels().
  */
-void *srstd_glue_get_active_sdi_shadow(void);
+SRSTD_API void *srstd_glue_get_active_sdi_shadow(void);
 
 /*
  * srstd_glue_get_active_channels — returns the channels GSList* from the
@@ -267,14 +268,14 @@ void *srstd_glue_get_active_sdi_shadow(void);
  * srstd_sdi_to_pxview(). DeviceAgent::get_channels() calls this for
  * LIB_SRSTD devices instead of ds_get_actived_device_channels().
  */
-GSList *srstd_glue_get_active_channels(void);
+SRSTD_API GSList *srstd_glue_get_active_channels(void);
 
 /*
  * srstd_glue_is_collecting — returns 1 if the srstd session thread is
  * running (acquisition in progress), 0 otherwise. DeviceAgent::is_collecting()
  * calls this for LIB_SRSTD devices instead of ds_is_collecting().
  */
-int srstd_glue_is_collecting(void);
+SRSTD_API int srstd_glue_is_collecting(void);
 
 /* ===== Trigger synchronization (Task 9) =====
  *
@@ -317,14 +318,14 @@ int srstd_glue_is_collecting(void);
  * srstd_glue_trigger_create — allocate an upstream sr_trigger (zero-init,
  * empty stages list). Returns NULL on allocation failure.
  */
-void *srstd_glue_trigger_create(void);
+SRSTD_API void *srstd_glue_trigger_create(void);
 
 /*
  * srstd_glue_trigger_free — free an upstream sr_trigger and all its
  * stages/matches (calls upstream sr_trigger_free, renamed to
  * srstd_trigger_free). Safe to call with NULL (no-op).
  */
-void srstd_glue_trigger_free(void *trigger);
+SRSTD_API void srstd_glue_trigger_free(void *trigger);
 
 /*
  * srstd_glue_trigger_fix_channels — replace tagged channel pointers in
@@ -332,7 +333,7 @@ void srstd_glue_trigger_free(void *trigger);
  * sdi's channel list. Must be called AFTER pxview_trigger_to_srstd and
  * BEFORE srstd_glue_session_trigger_set. No-op if no active sdi.
  */
-void srstd_glue_trigger_fix_channels(void *trigger);
+SRSTD_API void srstd_glue_trigger_fix_channels(void *trigger);
 
 /*
  * srstd_glue_session_trigger_set — set the trigger on the upstream session.
@@ -340,7 +341,7 @@ void srstd_glue_trigger_fix_channels(void *trigger);
  * trigger if one was set. Returns SR_OK (0) on success, SR_ERR if no
  * active session (trigger is freed internally in that case).
  */
-int srstd_glue_session_trigger_set(void *trigger);
+SRSTD_API int srstd_glue_session_trigger_set(void *trigger);
 
 #ifdef __cplusplus
 }

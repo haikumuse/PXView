@@ -1,4 +1,10 @@
-/* config.h — Build configuration for libsigrokstd. */
+/* config.h -- Build configuration for libsigrokstd.
+ *
+ * This is NOT an upstream file (upstream generates config.h via autoconf).
+ * libsigrokstd provides its own config.h to satisfy #include <config.h>
+ * directives in upstream src/ files. The upstream source files remain
+ * unmodified; only this local config.h is libsigrokstd's own copy.
+ */
 
 #ifndef SRSTD_CONFIG_H
 #define SRSTD_CONFIG_H

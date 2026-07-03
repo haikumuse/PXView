@@ -229,7 +229,7 @@ static const struct siglent_sds_model supported_models[] = {
 	{ SERIES(SDS2000X), "SDS2304X", { 2, 1000000000 }, 4, FALSE, 0 },
 };
 
-struct sr_dev_driver siglent_sds_driver_info;
+static struct sr_dev_driver siglent_sds_driver_info;
 
 static void clear_helper(void *priv)
 {

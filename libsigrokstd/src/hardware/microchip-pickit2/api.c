@@ -64,7 +64,7 @@
 #define PICKIT2_DEFAULT_ADDRESS	"04d8.0033"
 #define PICKIT2_USB_INTERFACE	0
 
-struct sr_dev_driver microchip_pickit2_driver_info;
+static struct sr_dev_driver microchip_pickit2_driver_info;
 
 static const char *channel_names[] = {
 	"pin4", "pin5", "pin6",

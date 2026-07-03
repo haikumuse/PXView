@@ -107,7 +107,7 @@ static const char *digits_map[] = {
 	"", "", "", "", "3.5", "4.5", "5.5",
 };
 
-struct sr_dev_driver hp_3478a_driver_info;
+static struct sr_dev_driver hp_3478a_driver_info;
 
 static int create_front_channel(struct sr_dev_inst *sdi, int chan_idx)
 {

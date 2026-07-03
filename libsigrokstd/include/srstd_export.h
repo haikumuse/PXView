@@ -4,21 +4,29 @@
 /*
  * srstd_export.h - Cross-platform export macro for libsigrokstd shared library.
  *
- * SRSTD_API marks functions exported from libsigrokstd.dll/.so/.dylib.
- * When compiling libsigrokstd itself, SRSTD_BUILDING_DLL must be defined
- * (done by CMake target_compile_definitions) so SRSTD_API expands to
- * __declspec(dllexport) on Windows. When consuming code (PXView) includes
- * this header without SRSTD_BUILDING_DLL, SRSTD_API expands to
- * __declspec(dllimport) on Windows. On Linux/macOS,
- * __attribute__((visibility("default"))) is used regardless.
+ * IMPORTANT (Windows behavior):
+ *   On Windows, SRSTD_API is intentionally EMPTY. This mirrors upstream
+ *   libsigrok's SR_API/SR_PRIV macros, which are also empty on _WIN32
+ *   (upstream uses autotools/libtool for DLL export, not __declspec).
+ *
+ *   The actual DLL export is handled by CMake's WINDOWS_EXPORT_ALL_SYMBOLS=ON,
+ *   which auto-generates a .def file from all global symbols and passes
+ *   -Wl,--export-all-symbols to the linker.
+ *
+ *   CRITICAL: If ANY object file in the link contains __declspec(dllexport)
+ *   annotations, MinGW's ld SILENTLY DISABLES --export-all-symbols, causing
+ *   only the dllexport-annotated symbols to be exported. By keeping SRSTD_API
+ *   empty on Windows, we ensure no dllexport annotations exist anywhere in
+ *   the build, so --export-all-symbols correctly exports ALL global symbols
+ *   (sr_init, sr_exit, sr_driver_list, srstd_glue_*, srstd_pxview_*, etc.).
+ *
+ * On Linux/macOS, __attribute__((visibility("default"))) is used so that
+ * only SRSTD_API-annotated symbols are exported (paired with
+ * -fvisibility=hidden in CMakeLists.txt).
  */
 
 #if defined(_WIN32)
-  #if defined(SRSTD_BUILDING_DLL)
-    #define SRSTD_API __declspec(dllexport)
-  #else
-    #define SRSTD_API __declspec(dllimport)
-  #endif
+  #define SRSTD_API
 #else
   #define SRSTD_API __attribute__((visibility("default")))
 #endif

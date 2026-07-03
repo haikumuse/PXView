@@ -23,7 +23,7 @@
 #include "scpi.h"
 #include "protocol.h"
 
-struct sr_dev_driver hameg_hmo_driver_info;
+static struct sr_dev_driver hameg_hmo_driver_info;
 
 static const char *manufacturers[] = {
 	"HAMEG",

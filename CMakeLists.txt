@@ -68,6 +68,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/gui_sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/libsigrok.cmake)
 
 #===============================================================================
+#= libsigrokstd — upstream libsigrok 0.6.0 as a SHARED library (100% unmodified
+#= upstream source). Driver registration via upstream SR_REGISTER_DEV_DRIVER
+#= section mechanism. Linked by PXView to expose 81 additional drivers.
+add_subdirectory(libsigrokstd)
+
+#===============================================================================
 #= pxview-core static library — Core layer (no Qt Widgets dependency)
 #-------------------------------------------------------------------------------
 # Compiles the Core layer sources (SigSession, DeviceAgent, Data layer, API
@@ -81,6 +87,15 @@ target_link_libraries(pxview-core PUBLIC
 	${QT_CORE_LIBS}
 	${PXVIEW_LINK_LIBS}
 	nlohmann_json::nlohmann_json
+)
+# Expose libsigrokstd/bridge/ and libsigrokstd/include/ headers so
+# sigsession.cpp / deviceagent.cpp (compiled into pxview-core) can include
+# "srstd_pxview_glue.h" (which itself includes "srstd_export.h").
+# PUBLIC so the executable inherits the include path too (currently unused
+# there, but harmless and forward-compatible).
+target_include_directories(pxview-core PUBLIC
+	${CMAKE_SOURCE_DIR}/libsigrokstd/bridge
+	${CMAKE_SOURCE_DIR}/libsigrokstd/include
 )
 
 #===============================================================================
@@ -100,8 +115,13 @@ add_executable(${PROJECT_NAME}
 # Executable links pxview-core (which transitively provides Qt Core/Gui/Network
 # /WebSockets + external libs + nlohmann_json via PUBLIC linkage) and adds the
 # Qt Widgets + Svg modules that the View layer needs.
+# libsigrokstd is a SHARED library; linking it pulls in the import library for
+# libsigrokstd.dll. The bridge/ include path is added to pxview-core (PUBLIC)
+# so sigsession.cpp / deviceagent.cpp (compiled into pxview-core) can find
+# "bridge/srstd_pxview_glue.h"; PUBLIC propagates to the executable too.
 target_link_libraries(${PROJECT_NAME}
 	pxview-core
+	libsigrokstd
 	${QT_GUI_LIBS}
 )
 

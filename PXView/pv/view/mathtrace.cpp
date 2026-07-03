@@ -30,6 +30,7 @@
 #include "../sigsession.h"
 #include "../view/dsosignal.h"
 #include "../dsvdef.h"
+#include "viewport.h"
   
 using namespace std;
 

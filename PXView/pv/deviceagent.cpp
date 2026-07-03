@@ -24,6 +24,10 @@
 #include <assert.h>
 #include "log.h"
 
+// libsigrokstd glue layer (upstream libsigrok 0.6.0 shared library).
+// Header resolved via libsigrokstd/bridge/ in the pxview-core include path.
+#include "srstd_pxview_glue.h"
+
 
 DeviceAgent::DeviceAgent()
 {
@@ -43,6 +47,30 @@ void DeviceAgent::update()
     _dev_type = 0;
     _is_new_device = false;
 
+    // LIB_SRSTD branch: pull device identity from the glue layer instead of
+    // PXView's ds_get_actived_device_info (which only knows about PXView
+    // fork devices). The glue layer tracks the active upstream sdi set by
+    // srstd_glue_open_scanned_device().
+    if (_device_lib == LIB_SRSTD) {
+        unsigned long long handle = srstd_glue_get_active_handle();
+        if (handle == 0) {
+            return;  // no active srstd device
+        }
+        _dev_handle = handle;
+        _dev_type = DEV_TYPE_USB;  // upstream drivers are all USB/SCPI
+
+        char name_buf[160] = {0};
+        char driver_buf[64] = {0};
+        if (srstd_glue_get_active_device_name(name_buf, sizeof(name_buf),
+                                              driver_buf, sizeof(driver_buf)) == 0) {
+            _dev_name = QString::fromLocal8Bit(name_buf);
+            _driver_name = QString::fromLocal8Bit(driver_buf);
+        }
+        _di = (struct sr_dev_inst *)srstd_glue_get_active_sdi_shadow();
+        _is_new_device = true;  // upstream devices always treated as new
+        return;
+    }
+
     struct ds_device_full_info info;
 
     if (ds_get_actived_device_info(&info) == SR_OK)
@@ -57,7 +85,7 @@ void DeviceAgent::update()
 
         if (info.path[0] != '\0'){
             _path = QString::fromLocal8Bit(info.path);
-        } 
+        }
     }
 }
 
@@ -239,6 +267,11 @@ bool DeviceAgent::start()
     }
     assert(_dev_handle);
 
+    // LIB_SRSTD: start upstream acquisition (sr_session_start + thread).
+    if (_device_lib == LIB_SRSTD) {
+        return srstd_glue_acquisition_start(nullptr) == SR_OK;
+    }
+
     if (ds_start_collect() == SR_OK){
         return true;
     }
@@ -253,6 +286,11 @@ bool DeviceAgent::stop()
     }
     assert(_dev_handle);
 
+    // LIB_SRSTD: stop upstream acquisition (sr_session_stop + join thread).
+    if (_device_lib == LIB_SRSTD) {
+        return srstd_glue_acquisition_stop(nullptr) == SR_OK;
+    }
+
     if (ds_stop_collect() == SR_OK){
         return true;
     }
@@ -261,6 +299,11 @@ bool DeviceAgent::stop()
 
 void DeviceAgent::release()
 {
+    // LIB_SRSTD: close the active upstream device + destroy session.
+    if (_device_lib == LIB_SRSTD) {
+        srstd_glue_close_active_device();
+        return;
+    }
     ds_release_actived_device();
 }
 
@@ -341,6 +384,10 @@ void DeviceAgent::free_config(struct sr_config *src)
 
 bool DeviceAgent::is_collecting()
 {
+    // LIB_SRSTD: query upstream session thread state.
+    if (_device_lib == LIB_SRSTD) {
+        return srstd_glue_is_collecting() > 0;
+    }
     return ds_is_collecting() > 0;
 }
 
@@ -351,6 +398,12 @@ GSList *DeviceAgent::get_channels()
         return nullptr;
     }
     assert(_dev_handle);
+
+    // LIB_SRSTD: return channels from the PXView shadow sdi (filled by
+    // srstd_sdi_to_pxview when the device was opened).
+    if (_device_lib == LIB_SRSTD) {
+        return srstd_glue_get_active_channels();
+    }
     return ds_get_actived_device_channels();
 }
 
@@ -430,15 +483,26 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
     }
     assert(_dev_handle);
 
+    // LIB_SRSTD: forward to the upstream glue layer. The active sdi is
+    // tracked internally by the glue (set by srstd_glue_open_scanned_device).
+    if (_device_lib == LIB_SRSTD) {
+        GVariant *data = NULL;
+        int ret = srstd_glue_dev_config_list(nullptr, (void *)group, key, &data);
+        if (ret != SR_OK && ret != SR_ERR_NA) {
+            pxv_detail("%s%d", "WARNING: Failed to get config list (srstd), key:", key);
+        }
+        return data;
+    }
+
     GVariant *data = NULL;
 
     int ret = ds_get_actived_device_config_list(group, key, &data);
     if (ret != SR_OK){
         if (ret != SR_ERR_NA)
-            pxv_detail("%s%d", "WARNING: Failed to get config list, key:", key); 
-        
+            pxv_detail("%s%d", "WARNING: Failed to get config list, key:", key);
+
         if (data != NULL){
-            pxv_warn("%s%d", "WARNING: Failed to get config list, but data is not null. key:", key); 
+            pxv_warn("%s%d", "WARNING: Failed to get config list, but data is not null. key:", key);
         }
         data = NULL;
     }
@@ -453,8 +517,18 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
         return nullptr;
     }
     assert(_dev_handle);
+
+    // LIB_SRSTD: forward to the upstream glue layer. ch/cg passed as NULL
+    // (channel bridging not yet wired — the glue uses the active sdi's
+    // channel list internally).
+    if (_device_lib == LIB_SRSTD) {
+        GVariant *data = NULL;
+        srstd_glue_dev_config_get(nullptr, (void *)ch, (void *)cg, key, &data);
+        return data;
+    }
+
     GVariant *data = NULL;
-    
+
     int ret = ds_get_actived_device_config(ch, cg, key, &data);
     if (ret != SR_OK)
     {
@@ -482,6 +556,18 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
         return false;
     }
     assert(_dev_handle);
+
+    // LIB_SRSTD: forward to the upstream glue layer.
+    if (_device_lib == LIB_SRSTD) {
+        int ret = srstd_glue_dev_config_set(nullptr, (void *)ch, (void *)cg, key, data);
+        if (ret != SR_OK) {
+            if (ret != SR_ERR_NA)
+                pxv_err("%s%d", "ERROR:DeviceAgent::set_config(srstd), Failed to set value of config id:", key);
+            return false;
+        }
+        config_changed();
+        return true;
+    }
 
     int ret = ds_set_actived_device_config(ch, cg, key, data);
     if (ret != SR_OK)

@@ -72,7 +72,7 @@ static const char *regulation[] = {
 	"RESISTANCE"
 };
 
-struct sr_dev_driver siglent_sdl10x0_driver_info;
+static struct sr_dev_driver siglent_sdl10x0_driver_info;
 
 static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
 {

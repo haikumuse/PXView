@@ -105,10 +105,10 @@ public:
   void set_callback(ISessionCallbackBase *callback) { add_callback(callback); }
   bool init(); void uninit(); void Open(); void Close();
   bool set_default_device(); bool set_device(ds_device_handle dev_handle);
-  bool set_file(QString name); void close_file(ds_device_handle dev_handle);
-  bool start_capture(bool instant = false, data::SessionDocument *owner = nullptr) { return _capture_manager->start_capture(instant, owner); }
-  bool stop_capture() { return _capture_manager->stop_capture(); }
-  bool switch_work_mode(int mode);
+  bool set_file(QString name); void close_file(ds_device_handle dev_handle) override;
+  bool start_capture(bool instant = false, data::SessionDocument *owner = nullptr) override { return _capture_manager->start_capture(instant, owner); }
+  bool stop_capture() override { return _capture_manager->stop_capture(); }
+  bool switch_work_mode(int mode) override;
   uint64_t cur_samplerate();
   uint64_t cur_snap_samplerate() override;
   uint64_t cur_samplelimits() override;
@@ -157,7 +157,7 @@ public:
   uint64_t get_error_pattern() { return _error_pattern; }
   double get_repeat_intvl() { return _capture_manager->get_repeat_intvl(); }
   void set_repeat_intvl(double interval) { _capture_manager->set_repeat_intvl(interval); }
-  int get_repeat_hold() { return _capture_manager->get_repeat_hold(); }
+  int get_repeat_hold() override { return _capture_manager->get_repeat_hold(); }
   void set_save_start(uint64_t start) { _save_start = start; }
   uint64_t get_save_start() { return _save_start; }
   void set_save_end(uint64_t end) { _save_end = end; }
@@ -176,9 +176,9 @@ public:
   bool is_loop_mode() { return _capture_manager->is_loop_mode(); }
   bool is_realtime_refresh() { return _capture_manager->is_realtime_refresh(); }
   bool is_repeating() override { return _capture_manager->is_repeating(); }
-  void session_save() { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->session_save(); }); }
+  void session_save() override { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->session_save(); }); }
   void show_region(uint64_t start, uint64_t end, bool keep) { dispatch_to<ICaptureCallback>([start, end, keep](ICaptureCallback *cb) { cb->show_region(start, end, keep); }); }
-  void decode_done() { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->decode_done(); }); }
+  void decode_done() override { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->decode_done(); }); }
   bool is_saving() { return _is_saving; }
   void set_saving(bool flag) { _is_saving = flag; }
   DeviceEventObject *device_event_object() { return &_device_event; }
@@ -301,6 +301,11 @@ private:
   std::unique_ptr<core::DocumentRegistry> _document_registry;
   std::unique_ptr<core::CaptureManager> _capture_manager;
   data::TriggerConfig _trigger_config;
+  // libsigrokstd opaque context (upstream libsigrok 0.6.0 shared library).
+  // void* because sigsession.h includes PXView's libsigrok.h, NOT upstream's
+  // (the two have incompatible struct definitions). The glue layer
+  // (bridge/srstd_pxview_glue.h) treats this as struct sr_context* internally.
+  void *_srstd_ctx = nullptr;
 };
 
 } // namespace pv

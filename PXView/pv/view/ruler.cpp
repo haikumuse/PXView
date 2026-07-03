@@ -236,7 +236,7 @@ void Ruler::paintEvent(QPaintEvent*)
     SigSession *session = &_view.session();
 
     // Draw tick mark
-    if (session->get_device()->get_work_mode() == DSO)
+    if (session->device()->get_work_mode() == DSO)
         draw_osc_tick_mark(p);
     else
         draw_logic_tick_mark(p);
@@ -424,7 +424,7 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
 {
     using namespace Qt;
 
-    if (_view.session().get_device()->have_instance() == false){
+    if (_view.data_source()->device()->have_instance() == false){
         return;
     }
 
@@ -542,7 +542,7 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
 
     // Draw the cursors
     auto &cursor_list = _view.get_cursorList();
-    bool bWorkStoped = _view.session().is_stopped_status();
+    bool bWorkStoped = _view.data_source()->is_stopped_status();
 
     for (auto cursor : cursor_list)
     {
@@ -582,7 +582,7 @@ void Ruler::draw_osc_tick_mark(QPainter &p)
 
     // Find tick spacing, and number formatting that does not cause
     // value to collide.
-    _min_period = _view.session().get_device()->get_time_base() * std::pow(10.0, -9.0);
+    _min_period = _view.data_source()->device()->get_time_base() * std::pow(10.0, -9.0);
 
     const int order = (int)floorf(log10f(scale * _view.get_view_width()));
     //const double order_decimal = pow(10, order);
@@ -669,7 +669,7 @@ void Ruler::draw_osc_tick_mark(QPainter &p)
     auto &cursor_list = _view.get_cursorList();
 
     if (!cursor_list.empty()) {
-        bool bWorkStoped = _view.session().is_stopped_status();
+        bool bWorkStoped = _view.data_source()->is_stopped_status();
 
         for (auto cursor : cursor_list) {
             cursor->paint_label(p, rect(), prefix, bWorkStoped);

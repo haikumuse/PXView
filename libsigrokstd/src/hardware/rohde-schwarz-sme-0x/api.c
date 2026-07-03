@@ -23,7 +23,7 @@
 
 #include "protocol.h"
 
-struct sr_dev_driver rohde_schwarz_sme_0x_driver_info;
+static struct sr_dev_driver rohde_schwarz_sme_0x_driver_info;
 
 static const char *manufacturer = "Rohde&Schwarz";
 

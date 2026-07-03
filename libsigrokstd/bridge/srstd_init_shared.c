@@ -4,29 +4,32 @@
  * 让上游 libsigrokstd 库共享 PXView 已创建的 libusb_context,
  * 避免两库各自 libusb_init() 导致的设备发现/热插拔隔离。
  *
- * 本文件编译时也通过 -include srstd_rename.h 注入宏,
- * 所以源码中写 sr_init/sr_exit/struct sr_context 等原符号名,
- * 预处理后会变成 srstd_init/srstd_exit/struct srstd_context。
- * srstd_init_shared 函数名本身不匹配 sr_* 模式,不会被重命名。
- * SR_OK/SR_ERR_ARG 是 enum 值(非 enum 标签),也不会被重命名。
- * libusb_* 不在重命名范围内。
+ * Phase 1/2 已删除 srstd_rename.h,源码中所有 sr_* token 直接引用
+ * 上游真实符号(sr_init/sr_exit/struct sr_context 等)。
+ * srstd_init_shared 函数名本身不匹配 sr_* 模式,保持原名。
+ * SR_OK/SR_ERR_ARG 是 enum 值(非 enum 标签),也不受 rename 影响。
+ * libusb_* 不在 sr_* 命名范围内,不受影响。
  */
 
-#include "srstd.h"              /* 包含 libsigrok.h + srstd_rename.h */
-#include "libsigrok-internal.h" /* struct sr_context 完整定义(含 libusb_ctx 字段) */
+#include <libsigrok/libsigrok.h>  /* 上游 libsigrok.h,通过 libsigrokstd BEFORE include path */
+#include "libsigrok-internal.h"   /* struct sr_context 完整定义(含 libusb_ctx 字段) */
 #include <libusb.h>
 
 /*
- * srstd_get_all_drivers() 定义在 src/driver_registry.c(由
- * tools/migrate_drivers_to_srstd.py 自动生成)。
- * 返回一个 NULL 终止的 driver_info 指针数组,包含所有已迁移的硬件驱动。
+ * Driver registration: libsigrokstd is now built as a SHARED library with
+ * the upstream SR_REGISTER_DEV_DRIVER section mechanism. driver_list_start.c
+ * and driver_list_stop.c define the section boundaries; each driver's api.c
+ * registers itself via SR_REGISTER_DEV_DRIVER(<name>_driver_info), which
+ * places a pointer to the driver_info struct in the __sr_driver_list section.
  *
- * 该函数名以 srstd_ 开头(非 sr_),因此不会被 srstd_rename.h 重命名。
- * 返回的数组元素类型为 struct sr_dev_driver *,在本文件中(经
- * srstd_rename.h 宏展开)变为 struct srstd_dev_driver *,与
- * driver_registry.c(同样经 srstd_rename.h 编译)中的类型一致。
+ * sr_drivers_init() (called inside sr_init()) iterates from
+ * sr_driver_list__start + 1 to sr_driver_list__stop (exclusive) and builds
+ * ctx->driver_list automatically. This requires HAVE_DRIVERS to be defined
+ * at compile time (done by CMake target_compile_definitions).
+ *
+ * The previous driver_registry.c + srstd_get_all_drivers() batch-registration
+ * approach has been removed in favor of the unmodified upstream mechanism.
  */
-extern struct sr_dev_driver **srstd_get_all_drivers(void);
 
 /*
  * srstd_init_shared: 创建上游 sr_context,但共享已有的 libusb_context
@@ -74,47 +77,17 @@ int srstd_init_shared(struct sr_context **ctx, libusb_context *shared_usb_ctx)
     (*ctx)->libusb_ctx = shared_usb_ctx;
 
     /*
-     * 步骤 4: 批量注册所有已迁移驱动到 driver_list。
+     * 步骤 4: 驱动注册由上游 section 机制自动完成。
      *
-     * driver_registry.c(由 tools/migrate_drivers_to_srstd.py 自动生成)
-     * 提供 srstd_get_all_drivers(),返回一个 NULL 终止的 driver_info
-     * 指针数组,涵盖所有已迁移到 libsigrokstd/src/hardware/ 下的驱动。
+     * sr_init() 内部已调用 sr_drivers_init(ctx),后者在 HAVE_DRIVERS 已
+     * 定义的前提下,遍历 __sr_driver_list section(由 driver_list_start.c
+     * 和 driver_list_stop.c 定界,各驱动 api.c 通过 SR_REGISTER_DEV_DRIVER
+     * 宏登记),将所有驱动指针填入 ctx->driver_list。
      *
-     * 上游 libsigrok 用 SR_REGISTER_DEV_DRIVER 宏 + ELF section 机制自动
-     * 注册驱动。但 libsigrokstd 编译为 Windows 静态库,PE/COFF 格式下:
-     *   1) 静态库中只有被引用的 object 文件才会被链接器拉入;
-     *   2) PE/COFF 不自动生成 __start_/__stop_ section 边界符号;
-     *   3) section 内顺序依赖链接顺序,不可靠。
-     * 因此 HAVE_DRIVERS 未定义,section 机制禁用,改为在 sr_init() 之后
-     * 调用 srstd_get_all_drivers() 取得驱动数组,计数后分配新的
-     * driver_list 并把所有指针拷贝进去。
-     *
-     * driver_registry.c 中对每个 <name>_driver_info 的 extern 引用会
-     * 强制链接器将对应 api.o 从静态库中拉入(否则其代码和数据都会被丢弃)。
+     * 因 libsigrokstd 现为 SHARED 库,所有 object 文件均参与链接(不存在
+     * 静态库选择性拉入问题),section 边界符号由 start/stop 文件显式定义
+     * (不依赖 PE/COFF 自动生成)。故无需在此手动注册。
      */
-    {
-        struct sr_dev_driver **migrated = srstd_get_all_drivers();
-        if (migrated) {
-            int count = 0;
-            struct sr_dev_driver **old_list;
-            struct sr_dev_driver **new_list;
-            int i;
-
-            while (migrated[count])
-                count++;
-
-            old_list = (*ctx)->driver_list;
-            /* old_list 来自 sr_drivers_init() 的 g_array_free(array, FALSE),
-             * HAVE_DRIVERS 未定义时为仅含 NULL 终止符的空数组(1 个槽位)。
-             * 重新分配为 count+1 个槽位: count 个驱动 + NULL 终止符。 */
-            new_list = g_malloc((count + 1) * sizeof(struct sr_dev_driver *));
-            for (i = 0; i < count; i++)
-                new_list[i] = migrated[i];
-            new_list[count] = NULL;
-            (*ctx)->driver_list = new_list;
-            g_free(old_list);
-        }
-    }
 
     return SR_OK;
 }

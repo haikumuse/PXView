@@ -131,7 +131,7 @@ DecodeTrace::DecodeTrace(pv::SigSession *session,
   _colour = getChannelColor(index % 16);
 
   _decoder_stack = decoder_stack;
-  _session = session;
+  _data_source = session;
   _delete_flag = false;
   _decode_cursor1 = 0;
   _decode_cursor2 = 0;
@@ -178,11 +178,11 @@ void DecodeTrace::paint_back(QPainter &p, int left, int right, QColor fore,
 
   // --draw decode region control
   uint64_t doc_samplerate = 0;
-  if (_session->get_active_document()) {
-    doc_samplerate = _session->get_active_document()->cur_snap_samplerate();
+  if (_data_source->get_active_document()) {
+    doc_samplerate = _data_source->get_active_document()->cur_snap_samplerate();
   }
   const double samples_per_pixel =
-      (doc_samplerate > 0 ? doc_samplerate : _session->cur_snap_samplerate()) *
+      (doc_samplerate > 0 ? doc_samplerate : _data_source->cur_snap_samplerate()) *
       _view->scale();
 
   uint64_t d_start = 0;
@@ -698,7 +698,7 @@ void DecodeTrace::on_new_decode_data() {
   // Do NOT call data_updated() which rebuilds headers, margins, scrollbars,
   // and marks the entire pixmap cache dirty. Decode data changes only affect
   // the decode trace rendering, not view layout or logic signal cache.
-  if (_view && _view->session().is_stopped_status()) {
+  if (_view && _data_source->is_stopped_status()) {
     _view->viewport_update();
   }
 }
@@ -725,11 +725,11 @@ void DecodeTrace::on_decode_done() {
     _view->signals_changed(NULL);
   }
 
-  if (_view && _view->session().is_stopped_status()) {
+  if (_view && _data_source->is_stopped_status()) {
     _view->viewport_update();
   }
 
-  _session->decode_done();
+  _data_source->decode_done();
 }
 
 int DecodeTrace::rows_size() {

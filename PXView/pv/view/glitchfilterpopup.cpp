@@ -47,6 +47,7 @@
 #include "../data/logicsnapshot.h"
 #include "../data/pulse_analyzer.h"
 #include "../data/signalmodel.h"
+#include "../sigsession.h"
 
 namespace pv {
 namespace view {

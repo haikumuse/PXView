@@ -42,7 +42,7 @@ static const uint32_t devopts_cg[] = {
 	SR_CONF_ENABLED | SR_CONF_GET | SR_CONF_SET,
 };
 
-struct sr_dev_driver dcttech_usbrelay_driver_info;
+static struct sr_dev_driver dcttech_usbrelay_driver_info;
 
 static struct sr_dev_inst *probe_device_common(const char *path,
 	uint16_t vid, uint16_t pid, const char *want_serno,

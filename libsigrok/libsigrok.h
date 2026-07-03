@@ -1465,6 +1465,14 @@ SR_API void ds_set_firmware_resource_dir(const char *dir);
 SR_API void ds_set_user_data_dir(const char *dir);
 
 /**
+ * Get the libusb_context* used by PXView's libsigrok (after ds_lib_init).
+ * Returns NULL before ds_lib_init or after ds_lib_exit. The returned pointer
+ * is owned by libsigrok; callers must NOT libusb_exit() it. Used by external
+ * shared libraries (libsigrokstd) to share the same libusb_context.
+ */
+SR_API void *ds_get_libusb_context();
+
+/**
  * Get the device list, if the field _handle is 0, the list visited to end.
  * User need call free() to release the buffer. If the list is empty, the
  * out_list is null.

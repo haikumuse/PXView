@@ -24,8 +24,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <libsigrok/libsigrok.h>
-#include "srstd.h"
-
 #include "libsigrok-internal.h"
 #include "scpi.h"
 #include "protocol.h"

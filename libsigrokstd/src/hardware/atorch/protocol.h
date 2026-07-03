@@ -24,7 +24,6 @@
 #include <libsigrok/libsigrok.h>
 #include <stdint.h>
 
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "atorch"

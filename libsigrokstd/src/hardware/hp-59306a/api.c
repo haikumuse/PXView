@@ -38,7 +38,7 @@ static const uint32_t devopts_cg[] = {
 	SR_CONF_ENABLED | SR_CONF_SET,
 };
 
-struct sr_dev_driver hp_59306a_driver_info;
+static struct sr_dev_driver hp_59306a_driver_info;
 
 static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
 {

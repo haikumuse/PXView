@@ -2,6 +2,7 @@
 #define PXVIEW_CORE_FILTERPROCESSOR_H
 
 #include <atomic>
+#include <memory>
 #include <thread>
 #include <vector>
 #include <cstdint>
@@ -50,11 +51,21 @@ private:
   void signal_invert_task(const std::vector<bool> channels);
 
   EventBus *_event_bus;
+  // Circular reference: this manager needs SigSession state and methods
+  // (_view_data / _device_agent / data_updated()). Note _view_data is a
+  // direct SigSession private member, not accessible via CaptureManager, so
+  // the spec-hypothesized EventBus* + CaptureManager* injection is not
+  // feasible. This is a known tech debt tracked by modernize-core-layer-final
+  // Task 7.
   SigSession *_session;
 
-  std::thread *_glitch_filter_thread;
+  // modernize-core-layer-final Task 5: RAII-managed background threads.
+  // unique_ptr replaces raw std::thread* + manual new/delete. The destructor
+  // path joins (if joinable) and resets the pointer automatically — no
+  // `delete` calls remain in the .cpp.
+  std::unique_ptr<std::thread> _glitch_filter_thread;
   std::atomic<bool> _glitch_filter_running;
-  std::thread *_signal_invert_thread;
+  std::unique_ptr<std::thread> _signal_invert_thread;
   std::atomic<bool> _signal_invert_running;
 };
 

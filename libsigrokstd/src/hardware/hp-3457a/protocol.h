@@ -21,7 +21,6 @@
 #define LIBSIGROK_HARDWARE_HP_3457A_PROTOCOL_H
 
 #include <stdint.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "hp-3457a"

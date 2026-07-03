@@ -22,7 +22,7 @@
 #include "scpi.h"
 #include "protocol.h"
 
-struct sr_dev_driver lecroy_xstream_driver_info;
+static struct sr_dev_driver lecroy_xstream_driver_info;
 
 static const char *manufacturers[] = {
 	"LECROY",

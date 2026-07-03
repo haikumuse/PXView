@@ -28,9 +28,9 @@
 #include <vector>
 #include <memory>
 #include <list>
-#include <libsigrok.h>
 
 struct srd_decoder;
+struct sr_status;  // forward declaration; full definition only needed in datasource.cpp / callers
 class DecoderStatus;
 class DeviceAgent;  // forward declaration (global namespace); defined in deviceagent.h
 
@@ -76,16 +76,20 @@ public:
     virtual std::shared_ptr<MathStack> get_math_stack() = 0;
     virtual LissajousModel* get_lissajous_model() = 0;
 
-    // ---- Data access (unchanged) ----
-    virtual uint64_t cur_snap_samplerate() = 0;
-    virtual uint64_t cur_samplelimits() = 0;
-    virtual double cur_sampletime() = 0;
+    // ---- Data access ----
+    // cur_snap_samplerate/cur_samplelimits/cur_sampletime/get_trigger_pos
+    // have out-of-line default implementations (return 0) in datasource.cpp
+    // so SessionDocument/SessionSnapshot stubs may inherit the defaults if
+    // they do not need real values. SigSession overrides with real data.
+    virtual uint64_t cur_snap_samplerate();
+    virtual uint64_t cur_samplelimits();
+    virtual double cur_sampletime();
     virtual double cur_snap_sampletime() = 0;
     virtual data::LogicSnapshot* get_logic_snapshot() = 0;
     virtual data::AnalogSnapshot* get_analog_snapshot() = 0;
     virtual data::DsoSnapshot* get_dso_snapshot() = 0;
     virtual data::Snapshot* get_snapshot(int type) = 0;
-    virtual uint64_t get_trigger_pos() = 0;
+    virtual uint64_t get_trigger_pos();
 
     // ---- Facade data/status queries (Task D6: route View away from
     //      SigSession facade via DataSource). These let the View layer
@@ -93,31 +97,54 @@ public:
     //      SigSession* for anything other than broadcast/facade. Only
     //      SigSession provides meaningful implementations; SessionDocument
     //      and SessionSnapshot provide no-op/default stubs.
-    virtual double cur_view_time() = 0;
+    virtual double cur_view_time();
     virtual int get_map_zoom() = 0;
     virtual double get_logic_data_view_time() = 0;
     virtual const TriggerConfig& trigger_config() const = 0;
     virtual bool is_repeating() = 0;
-    virtual bool is_running_status() = 0;
+    virtual bool is_running_status();
     virtual bool is_instant() = 0;
     virtual bool have_view_data() = 0;
     virtual bool is_working() = 0;
+    // Repeat-mode hold percentage (0..100). Default 0; SigSession overrides
+    // to forward to CaptureManager. Used by ViewStatus to draw the repeat
+    // progress bar.
+    virtual int get_repeat_hold();
 
     // ---- Session facade operations (route View's session-level operations
     //      through DataSource so view::Signal subclasses do not hold a
     //      SigSession* directly). Only SigSession performs real work;
-    //      SessionDocument / SessionSnapshot stubs inherit no-op defaults.
-    virtual bool is_stopped_status() { return false; }
-    virtual void refresh(int holdtime) { (void)holdtime; }
-    virtual void broadcast_msg(int msg, int param = 0) { (void)msg; (void)param; }
-    virtual bool trigd() { return false; }
-    virtual uint8_t trigd_ch() { return 0; }
-    virtual bool dso_status_is_valid() { return false; }
-    virtual sr_status get_dso_status() { return sr_status{}; }
-    virtual bool get_data_auto_lock() { return false; }
-    virtual void data_auto_lock(int lock) { (void)lock; }
-    virtual void auto_end() {}
-    virtual data::SessionDocument* get_active_document() { return nullptr; }
+    //      SessionDocument / SessionSnapshot stubs inherit the no-op
+    //      defaults defined out-of-line in datasource.cpp (kept out of the
+    //      header so `<libsigrok.h>` does not leak into every includer).
+    virtual bool is_stopped_status();
+    virtual void refresh(int holdtime);
+    // capture 生命周期控制（默认 no-op，仅 SigSession 真正实现）
+    virtual bool stop_capture();
+    virtual bool start_capture(bool instant = false, data::SessionDocument *owner = nullptr);
+    // Work-mode / session-save / file-close hooks invoked by the DevMode
+    // toolbar signals (Task D6.1: route View's DevMode signal forwards
+    // through DataSource instead of holding a SigSession*). Default no-op;
+    // only SigSession overrides with real behaviour. close_file takes the
+    // raw `unsigned long long` handle (libsigrok's `ds_device_handle` is a
+    // typedef of this) so datasource.h does not need to include libsigrok.h.
+    virtual bool switch_work_mode(int mode);
+    virtual void session_save();
+    virtual void close_file(unsigned long long dev_handle);
+    virtual void broadcast_msg(int msg, int param = 0);
+    virtual bool trigd();
+    virtual uint8_t trigd_ch();
+    virtual bool dso_status_is_valid();
+    virtual sr_status get_dso_status();
+    virtual bool get_data_auto_lock();
+    virtual void data_auto_lock(int lock);
+    virtual void auto_end();
+    virtual data::SessionDocument* get_active_document();
+
+    // ---- Decode task completion notification (Task L5: route View's
+    //      DecodeTrace::on_decode_done away from holding a SigSession*).
+    //      Default no-op; SigSession overrides to dispatch to listeners.
+    virtual void decode_done();
 
     // ---- Decoder business calls (Task D6: route View's decoder mutation
     //      calls through DataSource so the View layer does not reach into

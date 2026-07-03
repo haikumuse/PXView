@@ -25,7 +25,6 @@
 #include <glib.h>
 #include <ftdi.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "pipistrello-ols"

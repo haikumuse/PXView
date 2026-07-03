@@ -45,6 +45,7 @@ class SigSession;
 
 namespace data {
 class DecoderStack;
+class DataSource;
 
 namespace decode {
 class Annotation;
@@ -180,7 +181,7 @@ public:
   volatile bool _delete_flag; // destroy it when deocde task end
 
 private:
-  pv::SigSession *_session;
+  data::DataSource *_data_source = nullptr;
   std::shared_ptr<pv::data::DecoderStack> _decoder_stack;
   
   uint64_t _decode_cursor1; // the cursor key, sample start index

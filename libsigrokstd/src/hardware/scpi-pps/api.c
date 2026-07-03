@@ -24,8 +24,8 @@
 #include "scpi.h"
 #include "protocol.h"
 
-struct sr_dev_driver scpi_pps_driver_info;
-struct sr_dev_driver hp_ib_pps_driver_info;
+static struct sr_dev_driver scpi_pps_driver_info;
+static struct sr_dev_driver hp_ib_pps_driver_info;
 
 static const uint32_t scanopts[] = {
 	SR_CONF_CONN,

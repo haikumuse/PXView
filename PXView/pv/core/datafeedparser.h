@@ -43,6 +43,16 @@ private:
   void feed_in_analog(const sr_datafeed_analog &o);
 
   EventBus *_event_bus;
+  // Circular reference: this manager needs many SigSession state fields and
+  // methods (_capture_data / _view_data / _device_agent / _is_triged /
+  // _trig_time / _trigger_flag / _trigger_ch / _hw_replied / _dso_status_valid /
+  // _dso_status / _error / _data_mutex / _decode_task_manager /
+  // _capture_manager / _spectrum_stacks / _math_stack / receive_header() /
+  // receive_trigger() / frame_began() / frame_ended() / session_error() /
+  // set_receive_data_len() / set_cur_snap_samplerate() / set_session_time() /
+  // data_lock() / get_ch_num()) and cannot be easily decoupled without
+  // further SigSession splitting. This is a known tech debt tracked by
+  // modernize-core-layer-final Task 7.
   SigSession *_session;
 };
 

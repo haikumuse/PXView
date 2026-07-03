@@ -50,6 +50,9 @@
 #include <QString>
 #include <assert.h>
 #include <chrono>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
 #include <functional>
 #include <map>
 #include <stdexcept>
@@ -62,6 +65,12 @@
 #include "ui/langresource.h"
 #include "ui/msgbox.h"
 #include "utility/path.h"
+
+// libsigrokstd glue layer (upstream libsigrok 0.6.0 shared library).
+// Header is in libsigrokstd/bridge/ (added to include path by CMake).
+// Uses void* opaque pointers so PXView's libsigrok.h (already included
+// via sigsession.h) and upstream's libsigrok.h never coexist in one TU.
+#include "srstd_pxview_glue.h"
 
 namespace pv {
 SessionData::SessionData() {
@@ -248,11 +257,37 @@ bool SigSession::init() {
     return false;
   }
 
+  // Initialize libsigrokstd (upstream libsigrok 0.6.0 shared library).
+  // Share PXView's already-created libusb_context so both libraries see the
+  // same USB devices / hotplug events (avoids two libusb_init instances
+  // competing for device discovery).
+  void *libusb_ctx = ds_get_libusb_context();
+  if (libusb_ctx &&
+      srstd_pxview_init_shared(&_srstd_ctx, libusb_ctx) == 0 /* SR_OK */) {
+    srstd_glue_set_datafeed_callback(
+        reinterpret_cast<srstd_glue_datafeed_cb_t>(
+            &core::DataFeedParser::data_feed_callback_ex),
+        _data_feed_parser.get());
+    pxv_info("libsigrokstd initialized (upstream drivers available)");
+  } else {
+    pxv_err("libsigrokstd init failed, upstream drivers unavailable");
+    _srstd_ctx = nullptr;
+  }
+
   return true;
 }
 
 void SigSession::uninit() {
   this->Close();
+
+  // Tear down libsigrokstd BEFORE PXView's libsigrok exits: the glue layer
+  // shares PXView's libusb_context (must not be released by srstd_exit —
+  // srstd_pxview_exit internally clears libusb_ctx=NULL before sr_exit).
+  if (_srstd_ctx) {
+    srstd_glue_close_active_device();
+    srstd_pxview_exit(_srstd_ctx);
+    _srstd_ctx = nullptr;
+  }
 
   ds_lib_exit();
 }
@@ -300,13 +335,28 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   ds_device_handle old_dev = _device_agent.handle();
 
   trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGE_PREV);
-  // Release the old device.
+  // Release the old device. DeviceAgent::release() dispatches based on the
+  // CURRENT _device_lib (i.e. the OLD device's lib) — srstd → srstd_glue_close,
+  // pxview → ds_release_actived_device.
   _device_agent.release();
   _device_status = ST_INIT;
 
-  if (ds_active_device(dev_handle) != SR_OK) {
-    pxv_err("Switch device error!");
-    return false;
+  // ===== Dispatch based on handle tag (srstd devices have high bit set) =====
+  if (SRSTD_IS_HANDLE(dev_handle)) {
+    // libsigrokstd upstream device.
+    int idx = SRSTD_HANDLE_INDEX(dev_handle);
+    if (srstd_glue_open_scanned_device(idx) != 0 /* SR_OK */) {
+      pxv_err("Switch srstd device error (index %d)!", idx);
+      return false;
+    }
+    _device_agent.set_device_lib(DeviceAgent::LIB_SRSTD);
+  } else {
+    // PXView fork device.
+    _device_agent.set_device_lib(DeviceAgent::LIB_PXVIEW);
+    if (ds_active_device(dev_handle) != SR_OK) {
+      pxv_err("Switch device error!");
+      return false;
+    }
   }
 
   _device_agent.update();
@@ -339,35 +389,40 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   // view::Signal::_model pointers. No separate _deferred variant is needed.
   trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGED);
 
-  if (ds_get_last_error() == SR_ERR_DEVICE_FIRMWARE_VERSION_LOW) {
-    QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_RECONNECT_FOR_FIRMWARE),
-                         "Please reconnect the device!");
-    delay_prop_msg(strMsg);
-    return false;
-  }
-
-  if (ds_get_last_error() == SR_ERR_FIRMWARE_NOT_EXIST) {
-    QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FIRMWARE_NOT_EXIST),
-                         "Firmware not exist!");
-    delay_prop_msg(strMsg);
-    return false;
-  }
-
-  if (ds_get_last_error() == SR_ERR_DEVICE_USB_IO_ERROR) {
-    QString strMsg =
-        L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_USB_IO_ERROR), "USB io error!");
-    delay_prop_msg(strMsg);
-    return false;
-  }
-
-  if (ds_get_last_error() == SR_ERR_DEVICE_IS_EXCLUSIVE) {
-    QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_BUSY_SWITCH_FAILED),
-                         "Device is busy!");
-    if (old_dev != NULL_HANDLE)
-      MsgBox::Show(strMsg);
-    else
+  // Firmware error checks are PXView-fork-specific (DSLogic/DSCope firmware
+  // version / USB I/O / exclusivity). Skip them for srstd upstream devices,
+  // which don't use PXView's firmware loading path.
+  if (_device_agent.device_lib() == DeviceAgent::LIB_PXVIEW) {
+    if (ds_get_last_error() == SR_ERR_DEVICE_FIRMWARE_VERSION_LOW) {
+      QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_RECONNECT_FOR_FIRMWARE),
+                           "Please reconnect the device!");
       delay_prop_msg(strMsg);
-    return false;
+      return false;
+    }
+
+    if (ds_get_last_error() == SR_ERR_FIRMWARE_NOT_EXIST) {
+      QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FIRMWARE_NOT_EXIST),
+                           "Firmware not exist!");
+      delay_prop_msg(strMsg);
+      return false;
+    }
+
+    if (ds_get_last_error() == SR_ERR_DEVICE_USB_IO_ERROR) {
+      QString strMsg =
+          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_USB_IO_ERROR), "USB io error!");
+      delay_prop_msg(strMsg);
+      return false;
+    }
+
+    if (ds_get_last_error() == SR_ERR_DEVICE_IS_EXCLUSIVE) {
+      QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_BUSY_SWITCH_FAILED),
+                           "Device is busy!");
+      if (old_dev != NULL_HANDLE)
+        MsgBox::Show(strMsg);
+      else
+        delay_prop_msg(strMsg);
+      return false;
+    }
   }
 
   return true;
@@ -425,11 +480,61 @@ struct ds_device_base_info *SigSession::get_device_list(int &out_count,
   actived_index = -1;
   struct ds_device_base_info *array = NULL;
 
-  if (ds_get_device_list(&array, &out_count) == SR_OK) {
+  // 1. Get PXView fork device list (DSLogic/DSCope/PXLogic/demo/file).
+  // ds_get_device_list allocates a buffer of (num+1) entries; the last entry
+  // has handle=0 as a sentinel. The buffer is owned by the caller (must free).
+  int pxv_count = 0;
+  if (ds_get_device_list(&array, &pxv_count) != SR_OK) {
+    return NULL;
+  }
+
+  // 2. Scan libsigrokstd upstream drivers and append their devices.
+  // Each srstd device gets a tagged handle (high bit set) so set_device()
+  // can distinguish srstd handles from PXView handles at dispatch time.
+  int srstd_count = 0;
+  if (_srstd_ctx) {
+    srstd_count = srstd_glue_scan_devices();
+  }
+
+  if (srstd_count <= 0) {
+    out_count = pxv_count;
     actived_index = ds_get_actived_device_index();
     return array;
   }
-  return NULL;
+
+  // Reallocate to fit pxv_count + srstd_count + 1 sentinel.
+  // The original buffer was malloc'd by libsigrok, so use realloc.
+  struct ds_device_base_info *merged = (struct ds_device_base_info *)
+      realloc(array, sizeof(struct ds_device_base_info) * (pxv_count + srstd_count + 1));
+  if (!merged) {
+    // realloc failed; original array is still valid, return it as-is.
+    out_count = pxv_count;
+    actived_index = ds_get_actived_device_index();
+    return array;
+  }
+
+  // Append srstd devices after the PXView devices (overwriting the sentinel
+  // at index pxv_count, then writing a new sentinel at the end).
+  for (int i = 0; i < srstd_count; i++) {
+    struct ds_device_base_info *entry = &merged[pxv_count + i];
+    entry->handle = SRSTD_MAKE_HANDLE(i);
+    char name_buf[150] = {0};
+    if (srstd_glue_get_scanned_device_name(i, name_buf, sizeof(name_buf)) == 0) {
+      strncpy(entry->name, name_buf, sizeof(entry->name) - 1);
+      entry->name[sizeof(entry->name) - 1] = '\0';
+    } else {
+      snprintf(entry->name, sizeof(entry->name), "srstd-device-%d", i);
+    }
+  }
+
+  // New sentinel.
+  struct ds_device_base_info *sentinel = &merged[pxv_count + srstd_count];
+  sentinel->handle = 0;
+  sentinel->name[0] = '\0';
+
+  out_count = pxv_count + srstd_count;
+  actived_index = ds_get_actived_device_index();
+  return merged;
 }
 
 uint64_t SigSession::cur_samplerate() {
@@ -1493,7 +1598,7 @@ void SigSession::OnMessage(int msg, int param) {
     if (_is_working && is_repeat_mode()) {
       if (_capture_manager->get_repeat_intvl() > 0) {
         _capture_manager->set_repeat_hold_prg(100);
-        _capture_manager->repeat_timer().Start(_capture_manager->get_repeat_intvl() * 1000);
+        _capture_manager->start_repeat_timer(_capture_manager->get_repeat_intvl() * 1000);
         int intvl = _capture_manager->get_repeat_intvl() * 1000 / 20;
 
         if (intvl >= 100) {
@@ -1506,7 +1611,7 @@ void SigSession::OnMessage(int msg, int param) {
           _capture_manager->set_repeat_wait_prog_step(20);
         }
 
-        _capture_manager->repeat_wait_prog_timer().Start(intvl);
+        _capture_manager->start_repeat_wait_prog_timer(intvl);
       } else {
         _capture_manager->set_repeat_hold_prg(0);
         _capture_manager->exec_capture();
@@ -1549,7 +1654,7 @@ void SigSession::OnMessage(int msg, int param) {
         _capture_manager->clear_decode_result();
       }
 
-      _capture_manager->trig_check_timer().Stop();
+      _capture_manager->stop_trig_check_timer();
 
       // Switch the caputrued data buffer to view.
       if (bSwapBuffer) {

@@ -51,7 +51,7 @@ static const struct fluke_scpi_dmm_model supported_models[] = {
 	{ "FLUKE", "45", 2, 0 },
 };
 
-struct sr_dev_driver fluke_45_driver_info;
+static struct sr_dev_driver fluke_45_driver_info;
 
 static struct sr_dev_inst *probe_device(struct sr_scpi_dev_inst *scpi)
 {

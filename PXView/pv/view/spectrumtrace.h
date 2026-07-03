@@ -36,6 +36,7 @@ class SigSession;
 
 namespace data{
 class SpectrumStack;
+class DataSource;
 }
 
 namespace view {
@@ -135,7 +136,7 @@ private:
 private slots:
 
 private:
-    pv::SigSession *_session;
+    data::DataSource *_data_source = nullptr;
     std::shared_ptr<pv::data::SpectrumStack> _spectrum_stack;
 
     bool _enable;

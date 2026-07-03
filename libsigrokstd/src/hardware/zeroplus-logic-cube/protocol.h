@@ -25,7 +25,6 @@
 #include <glib.h>
 #include <libusb.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "zeroplus-logic-cube"

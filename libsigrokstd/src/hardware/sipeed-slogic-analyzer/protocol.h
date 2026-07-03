@@ -25,6 +25,7 @@
 #include <libusb.h>
 #include <stdint.h>
 
+#include <libsigrok/libsigrok.h>
 
 #include "libsigrok-internal.h"
 
@@ -114,9 +115,5 @@ struct dev_context {
 
 SR_PRIV int sipeed_slogic_acquisition_start(const struct sr_dev_inst *sdi);
 SR_PRIV int sipeed_slogic_acquisition_stop(struct sr_dev_inst *sdi);
-
-/* Compat: std_i32_idx is missing from upstream libsigrok 0.6.0 (added in 0.6.1).
- * Provided by bridge/srstd_compat.c in libsigrokstd. */
-SR_PRIV int std_i32_idx(GVariant *data, const int32_t a[], unsigned int n);
 
 #endif

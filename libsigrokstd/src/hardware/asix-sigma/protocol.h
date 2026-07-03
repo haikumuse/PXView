@@ -29,7 +29,6 @@
 #include <ftdi.h>
 #include <string.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "asix-sigma"

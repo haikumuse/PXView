@@ -26,7 +26,6 @@
 #include <glib.h>
 #include <string.h>
 #include <libsigrok/libsigrok.h>
-
 #include "libsigrok-internal.h"
 
 #define LOG_PREFIX "hantek-4032l"
