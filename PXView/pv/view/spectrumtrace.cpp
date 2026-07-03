@@ -92,7 +92,7 @@ SpectrumTrace::SpectrumTrace(pv::SigSession *session,
     _typeWidth = 0;
 
     for(auto m : _session->get_signal_models()) {
-        if (m->type() == pv::api::ChannelType::Dso && index == m->index()){
+        if (m->type() == SR_CHANNEL_DSO && index == m->index()){
             _colour = QColor(QString::fromStdString(m->color()));
         }
     }

@@ -187,7 +187,7 @@ void WaitingDialog::changeText()
             if (_device_agent->get_config_bool(SR_CONF_ZERO_COMB_FGAIN, zero_fgain) && zero_fgain) {                 
                                         
                 for(auto m : _session->get_signal_models()){
-                    if (m->type() == pv::api::ChannelType::Dso){
+                    if (m->type() == SR_CHANNEL_DSO){
                         _device_agent->enable_probe(m->index(), m->index() == 0);
                     }
                 }

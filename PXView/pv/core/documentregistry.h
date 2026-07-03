@@ -112,12 +112,9 @@ private:
   std::unique_ptr<CaptureOwnerGuard> _capture_owner_guard;
   std::thread _copy_thread;
 
-  // SigSession accesses _copy_in_progress / _copy_thread /
-  // _capture_state_mutex / _capture_owner_document directly for the
-  // copy_to_doc_done flow (legacy code path that's tightly coupled to
-  // trigger_message / copy_data_to_document / start_all_decode_tasks).
-  friend class pv::SigSession;
-  friend class CaptureOwnerGuard;
+  // CaptureOwnerGuard is a nested class of DocumentRegistry, so under C++11+
+  // rules it has implicit access to private members without an explicit
+  // friend declaration. SigSession uses only public accessors.
 };
 
 } // namespace core

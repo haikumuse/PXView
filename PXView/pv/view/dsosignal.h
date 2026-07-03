@@ -36,6 +36,7 @@ class SigSession;
 namespace data {
 class DsoSnapshot;
 class SignalModel;
+class DataSource;
 }
 
 namespace view {
@@ -91,12 +92,12 @@ private:
 public:
     DsoSignal(pv::data::DsoSnapshot *data,
               std::shared_ptr<data::SignalModel> model,
-              SigSession *session);
+              data::DataSource *data_source);
 
     DsoSignal(DsoSignal *s,
               pv::data::DsoSnapshot *data,
               std::shared_ptr<data::SignalModel> model,
-              SigSession *session);
+              data::DataSource *data_source);
 
     virtual ~DsoSignal();
 

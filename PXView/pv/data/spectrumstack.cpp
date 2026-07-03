@@ -139,7 +139,7 @@ void SpectrumStack::calc_fft()
     std::shared_ptr<pv::data::SignalModel> model;
 
     for(auto m : _session->get_signal_models()) {
-        if (m->type() == pv::api::ChannelType::Dso) {
+        if (m->type() == SR_CHANNEL_DSO) {
             if (m->index() == _index && m->enabled()) {
                 data = (pv::data::DsoSnapshot*)m->snapshot();
                 model = m;

@@ -71,7 +71,7 @@ FftOptions::FftOptions(QWidget *parent, SigSession *session) :
  
     // setup _ch_combobox
     for(auto m : _session->get_signal_models()) {
-        if (m->type() == pv::api::ChannelType::Dso) {
+        if (m->type() == SR_CHANNEL_DSO) {
             _ch_combobox->addItem(QString::fromStdString(m->name()), QVariant::fromValue(m->index()));
         }
     }

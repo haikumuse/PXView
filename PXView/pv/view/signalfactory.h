@@ -43,6 +43,7 @@ class DsoSnapshot;
 namespace view {
 
 class Signal;
+struct DockUiState;
 
 /**
  * SignalFactory creates view::Signal objects from SignalModel.
@@ -76,18 +77,20 @@ public:
     /**
      * Create a single Signal from a SignalModel.
      * @param model The SignalModel to create from.
-     * @param session The SigSession for device access.
+     * @param data_source The DataSource for data/snapshot access.
      * @return The created Signal, or nullptr if type is unknown.
      */
-    static Signal* create_signal(std::shared_ptr<data::SignalModel> model, SigSession *session);
+    static Signal* create_signal(std::shared_ptr<data::SignalModel> model, data::DataSource *data_source);
 
     /**
      * Create all signals from a DataSource's signal models.
      * @param source The DataSource to read signal models from.
-     * @param session The SigSession for device access.
+     * @param data_source The DataSource for snapshot access (typically the
+     *                    same object as source; kept as a separate param for
+     *                    the SigSession->DataSource migration).
      * @return Vector of created Signal pointers.
      */
-    static std::vector<Signal*> create_signals(data::DataSource *source, SigSession *session);
+    static std::vector<Signal*> create_signals(data::DataSource *source, data::DataSource *data_source);
 
     /**
      * Compute the change event type by comparing current signals with new models.
@@ -105,13 +108,19 @@ public:
      * that survive the update.
      * @param current_signals Current signal list (will be modified in place).
      * @param source The DataSource to read signal models from.
-     * @param session The SigSession for device access.
+     * @param data_source The DataSource for snapshot access (typically the
+     *                    same object as source).
      * @param event Type of change that triggered the update.
+     * @param ui_state Optional View-layer DockUiState. When non-null and event
+     *                is AllReplaced, persisted per-channel layout
+     *                (view_index/v_offset/own_height/visible) is restored
+     *                from ui_state->channel_layouts after recreation.
      */
     static void update_signals(std::vector<Signal*> &current_signals,
                                data::DataSource *source,
-                               SigSession *session,
-                               SignalChangeEvent event);
+                               data::DataSource *data_source,
+                               SignalChangeEvent event,
+                               DockUiState *ui_state = nullptr);
 
 private:
     /**
@@ -126,11 +135,11 @@ private:
                                   const std::map<int, SignalUiState> &saved_state);
 
     /**
-     * Get the snapshot for a signal type from the session.
+     * Get the snapshot for a signal type from the data source.
      */
-    static data::LogicSnapshot* get_logic_snapshot(SigSession *session);
-    static data::AnalogSnapshot* get_analog_snapshot(SigSession *session);
-    static data::DsoSnapshot* get_dso_snapshot(SigSession *session);
+    static data::LogicSnapshot* get_logic_snapshot(data::DataSource *data_source);
+    static data::AnalogSnapshot* get_analog_snapshot(data::DataSource *data_source);
+    static data::DsoSnapshot* get_dso_snapshot(data::DataSource *data_source);
 };
 
 } // namespace view

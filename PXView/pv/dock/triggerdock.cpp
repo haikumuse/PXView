@@ -1297,7 +1297,7 @@ void TriggerDock::try_commit_trigger() {
     } else {
       auto &sigs = _session->get_signal_models();
       for (auto s : sigs) {
-        if (s->type() == api::ChannelType::Logic) {
+        if (s->type() == SR_CHANNEL_LOGIC) {
           if (s->commit_trig())
             num++;
         }
@@ -1338,7 +1338,7 @@ void TriggerDock::try_commit_trigger() {
         } else {
           auto &sigs = _session->get_signal_models();
           for (auto s : sigs) {
-            if (s->type() == api::ChannelType::Logic) {
+            if (s->type() == SR_CHANNEL_LOGIC) {
               s->set_trig_type(data::SignalModel::NONTRIG);
               s->commit_trig();
             }

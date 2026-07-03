@@ -45,13 +45,13 @@ void DecodeTaskManager::attach_data_to_signal(SessionData *data) {
   // based on SignalModel::type().
   for (auto m : _session->_signal_models) {
     switch (m->type()) {
-    case api::ChannelType::Logic:
+    case SR_CHANNEL_LOGIC:
       m->set_snapshot(data->get_logic());
       break;
-    case api::ChannelType::Analog:
+    case SR_CHANNEL_ANALOG:
       m->set_snapshot(data->get_analog());
       break;
-    case api::ChannelType::Dso:
+    case SR_CHANNEL_DSO:
       m->set_snapshot(data->get_dso());
       break;
     }

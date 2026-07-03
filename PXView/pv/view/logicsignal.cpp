@@ -43,8 +43,8 @@ const int LogicSignal::StateRound = 5;
 
 LogicSignal::LogicSignal(data::LogicSnapshot *data,
                          std::shared_ptr<data::SignalModel> model,
-                         SigSession *session)
-    : Signal(model, session), _data(data) {
+                         data::DataSource *data_source)
+    : Signal(model, data_source), _data(data) {
   _trig = NONTRIG;
   _paint_align_sample_count = 0;
 
@@ -59,8 +59,8 @@ LogicSignal::LogicSignal(data::LogicSnapshot *data,
 
 LogicSignal::LogicSignal(view::LogicSignal *s, data::LogicSnapshot *data,
                          std::shared_ptr<data::SignalModel> model,
-                         SigSession *session)
-    : Signal(*s, model, session), _data(data), _trig(s->get_trig()) {
+                         data::DataSource *data_source)
+    : Signal(*s, model, data_source), _data(data), _trig(s->get_trig()) {
   _paint_align_sample_count = 0;
 
   QString heightStr =
@@ -74,7 +74,7 @@ LogicSignal::LogicSignal(view::LogicSignal *s, data::LogicSnapshot *data,
 
 LogicSignal *LogicSignal::clone() const {
   LogicSignal *cloned = new LogicSignal(const_cast<LogicSignal *>(this),
-                                        nullptr, _model, session);
+                                        nullptr, _model, _data_source);
   cloned->_local_enabled = _local_enabled;
   cloned->_visible = _visible;
   return cloned;
@@ -306,7 +306,7 @@ void LogicSignal::paint_type_options(QPainter &p, int right, const QPoint pt,
   if (true) {
     QColor color = View::Blue;
 
-    if (session->is_loop_mode()) {
+    if (_view && _view->session().is_loop_mode()) {
       color = QColor(0x70, 0x70, 0x70, 255);
     }
 

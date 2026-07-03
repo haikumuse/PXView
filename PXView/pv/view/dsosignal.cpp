@@ -67,8 +67,8 @@ const float DsoSignal::EnvelopeThreshold = 256.0f;
 
 DsoSignal::DsoSignal(data::DsoSnapshot *data,
                      std::shared_ptr<data::SignalModel> model,
-                     SigSession *session)
-    : Signal(model, session), _data(data),
+                     data::DataSource *data_source)
+    : Signal(model, data_source), _data(data),
       _cached_hw_offset(model ? model->hw_offset() : 128),
       _hover_point(QPointF(-1, -1)) {
   QVector<uint64_t> vValue;
@@ -97,7 +97,7 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
 
   GVariant *gvar_list, *gvar_list_vdivs;
 
-  gvar_list = session->get_device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
+  gvar_list = _data_source->device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
 
   if (gvar_list != NULL) {
     assert(gvar_list);
@@ -124,8 +124,8 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
 
 DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data,
                      std::shared_ptr<data::SignalModel> model,
-                     SigSession *session)
-    : Signal(*s, model, session), _data(data), _scale(s->_scale),
+                     data::DataSource *data_source)
+    : Signal(*s, model, data_source), _data(data), _scale(s->_scale),
       _stop_scale(s->_stop_scale), _en_lock(false), _show(s->_show),
       _vDialActive(s->_vDialActive), _acCoupling(s->_acCoupling),
       _bits(s->_bits), _ref_min(s->_ref_min), _ref_max(s->_ref_max),
@@ -144,7 +144,7 @@ DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data,
   }
 
   GVariant *gvar_list, *gvar_list_vdivs;
-  gvar_list = session->get_device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
+  gvar_list = _data_source->device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
 
   if (gvar_list != NULL) {
     assert(gvar_list);
@@ -170,7 +170,7 @@ DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data,
 
 DsoSignal *DsoSignal::clone() const {
   DsoSignal *cloned =
-      new DsoSignal(const_cast<DsoSignal *>(this), nullptr, _model, session);
+      new DsoSignal(const_cast<DsoSignal *>(this), nullptr, _model, _data_source);
   cloned->_local_enabled = _local_enabled;
   cloned->_visible = _visible;
   return cloned;
@@ -187,21 +187,12 @@ void DsoSignal::set_enable(bool enable) {
   if (!probe)
     return;
 
-  if (session->get_device()->is_hardware_logic() && get_index() == 0) {
+  if (_data_source->device()->is_hardware_logic() && get_index() == 0) {
     return;
   }
 
   _en_lock = true;
-  bool cur_enable;
-  bool ret;
-  ret = session->get_device()->get_config_bool(SR_CONF_PROBE_EN, cur_enable,
-                                               probe, NULL);
-
-  if (!ret) {
-    pxv_err("ERROR: config_get SR_CONF_PROBE_EN failed.");
-    _en_lock = false;
-    return;
-  }
+  bool cur_enable = _model->enabled();
   if (cur_enable == enable) {
     _en_lock = false;
     return;
@@ -209,22 +200,22 @@ void DsoSignal::set_enable(bool enable) {
 
   bool running = false;
 
-  if (session->is_running_status()) {
+  if (_view->session().is_running_status()) {
     running = true;
-    session->stop_capture();
+    _view->session().stop_capture();
   }
 
-  while (session->is_running_status())
+  while (_view->session().is_running_status())
     QCoreApplication::processEvents();
 
   set_vDialActive(false);
-  session->get_device()->set_config_bool(SR_CONF_PROBE_EN, enable, probe, NULL);
+  _model->set_probe_enabled(enable, probe);
 
   _view->update_hori_res();
 
   if (running) {
-    session->stop_capture();
-    session->start_capture(false);
+    _view->session().stop_capture();
+    _view->session().start_capture(false);
   }
 
   _view->set_update(_viewport, true);
@@ -244,23 +235,18 @@ bool DsoSignal::go_vDialPre(bool manul) {
     autoV_end();
 
   if (enabled() && !_vDial->isMin()) {
-    if (session->is_running_status())
-      session->refresh(RefreshShort);
+    if (_view->session().is_running_status())
+      _view->session().refresh(RefreshShort);
 
     const double pre_vdiv = _vDial->get_value();
     _vDial->set_sel(_vDial->get_sel() - 1);
 
-    if (probe)
-      session->get_device()->set_config_uint64(
-          SR_CONF_PROBE_VDIV, _vDial->get_value(), probe, NULL);
-
-    if (session->is_stopped_status()) {
+    if (_view->session().is_stopped_status()) {
       set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));
       set_scale(get_view_rect().height());
     }
     if (probe)
-      session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET,
-                                               _zero_offset, probe, NULL);
+      _model->set_probe_offset((uint16_t)_zero_offset, probe);
 
     _view->vDial_updated();
     _view->set_update(_viewport, true);
@@ -285,23 +271,18 @@ bool DsoSignal::go_vDialNext(bool manul) {
     autoV_end();
 
   if (enabled() && !_vDial->isMax()) {
-    if (session->is_running_status())
-      session->refresh(RefreshShort);
+    if (_view->session().is_running_status())
+      _view->session().refresh(RefreshShort);
 
     const double pre_vdiv = _vDial->get_value();
     _vDial->set_sel(_vDial->get_sel() + 1);
 
-    if (probe)
-      session->get_device()->set_config_uint64(
-          SR_CONF_PROBE_VDIV, _vDial->get_value(), probe, NULL);
-
-    if (session->is_stopped_status()) {
+    if (_view->session().is_stopped_status()) {
       set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));
       set_scale(get_view_rect().height());
     }
     if (probe)
-      session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET,
-                                               _zero_offset, probe, NULL);
+      _model->set_probe_offset((uint16_t)_zero_offset, probe);
 
     _view->vDial_updated();
     _view->set_update(_viewport, true);
@@ -326,7 +307,7 @@ bool DsoSignal::load_settings() {
   bool ret;
 
   // dso channel bits
-  ret = session->get_device()->get_config_byte(SR_CONF_UNIT_BITS, v);
+  ret = _data_source->device()->get_config_byte(SR_CONF_UNIT_BITS, v);
   if (ret) {
     _bits = (uint8_t)v;
   } else {
@@ -336,17 +317,17 @@ bool DsoSignal::load_settings() {
         "Warning: config_get SR_CONF_UNIT_BITS failed, set to %d(default).",
         DefaultBits);
 
-    if (session->get_device()->is_hardware())
+    if (_data_source->device()->is_hardware())
       return false;
   }
 
-  ret = session->get_device()->get_config_uint32(SR_CONF_REF_MIN, ui32);
+  ret = _data_source->device()->get_config_uint32(SR_CONF_REF_MIN, ui32);
   if (ret)
     _ref_min = (double)ui32;
   else
     _ref_min = 1;
 
-  ret = session->get_device()->get_config_uint32(SR_CONF_REF_MAX, ui32);
+  ret = _data_source->device()->get_config_uint32(SR_CONF_REF_MAX, ui32);
   if (ret)
     _ref_max = (double)ui32;
   else
@@ -356,14 +337,14 @@ bool DsoSignal::load_settings() {
   uint64_t vdiv;
   uint64_t vfactor;
   if (probe) {
-    ret = session->get_device()->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv,
+    ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv,
                                                    probe, NULL);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_VDIV failed.");
       return false;
     }
 
-    ret = session->get_device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
+    ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
                                                    vfactor, probe, NULL);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
@@ -379,7 +360,7 @@ bool DsoSignal::load_settings() {
 
   // -- coupling
   if (probe) {
-    ret = session->get_device()->get_config_byte(SR_CONF_PROBE_COUPLING, v,
+    ret = _data_source->device()->get_config_byte(SR_CONF_PROBE_COUPLING, v,
                                                  probe, NULL);
     if (ret) {
       _acCoupling = uint8_t(v);
@@ -393,7 +374,7 @@ bool DsoSignal::load_settings() {
 
   // -- vpos
   if (probe) {
-    ret = session->get_device()->get_config_uint16(SR_CONF_PROBE_OFFSET,
+    ret = _data_source->device()->get_config_uint16(SR_CONF_PROBE_OFFSET,
                                                    _zero_offset, probe, NULL);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
@@ -405,14 +386,14 @@ bool DsoSignal::load_settings() {
 
   // -- trig_value
   if (probe) {
-    ret = session->get_device()->get_config_byte(SR_CONF_TRIGGER_VALUE,
+    ret = _data_source->device()->get_config_byte(SR_CONF_TRIGGER_VALUE,
                                                  _trig_value, probe, NULL);
     if (ret) {
       _trig_delta = get_trig_vrate() - get_zero_ratio();
     } else {
       pxv_err("ERROR: config_get SR_CONF_TRIGGER_VALUE failed.");
 
-      if (session->get_device()->is_hardware())
+      if (_data_source->device()->is_hardware())
         return false;
     }
   } else {
@@ -432,31 +413,23 @@ int DsoSignal::commit_settings() {
   if (!probe)
     return 0;
 
-  int ret;
-
   // -- enable
-  ret = session->get_device()->set_config_bool(SR_CONF_PROBE_EN, enabled(),
-                                               probe, NULL);
+  _model->set_probe_enabled(enabled(), probe);
 
   // -- vdiv
-  ret = session->get_device()->set_config_uint64(
-      SR_CONF_PROBE_VDIV, _vDial->get_value(), probe, NULL);
-  ret = session->get_device()->set_config_uint64(
-      SR_CONF_PROBE_FACTOR, _vDial->get_factor(), probe, NULL);
+  _model->set_vdiv((double)_vDial->get_value());
+  _model->set_probe_factor(_vDial->get_factor(), probe);
 
   // -- coupling
-  ret = session->get_device()->set_config_byte(SR_CONF_PROBE_COUPLING,
-                                               _acCoupling, probe, NULL);
+  _model->set_coupling((int)_acCoupling);
 
   // -- offset
-  ret = session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET,
-                                                 _zero_offset, probe, NULL);
+  _model->set_probe_offset((uint16_t)_zero_offset, probe);
 
   // -- trig_value
-  session->get_device()->set_config_byte(SR_CONF_TRIGGER_VALUE, _trig_value,
-                                         probe, NULL);
+  _model->set_trigger_value((double)_trig_value, probe);
 
-  return ret;
+  return 1;
 }
 
 uint64_t DsoSignal::get_vDialValue() { return _vDial->get_value(); }
@@ -466,13 +439,9 @@ uint16_t DsoSignal::get_vDialSel() { return _vDial->get_sel(); }
 void DsoSignal::set_acCoupling(uint8_t coupling) {
   // Same nested-broadcast guard as set_zero_ratio.
   auto model = _model;
-  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
 
   if (enabled()) {
     _acCoupling = coupling;
-    if (probe)
-      session->get_device()->set_config_byte(SR_CONF_PROBE_COUPLING,
-                                             _acCoupling, probe, NULL);
     // Task 7.2: 写回 Core SignalModel + 广播（用户交互入口：mouse_press AC/DC
     // 切换）。
     if (model) {
@@ -499,7 +468,7 @@ double DsoSignal::pos2ratio(int pos) {
 }
 
 double DsoSignal::get_trig_vrate() {
-  if (session->get_device()->is_hardware_logic())
+  if (_data_source->device()->is_hardware_logic())
     return value2ratio(_trig_value - ratio2value(0.5)) + get_zero_ratio();
   else
     return value2ratio(_trig_value);
@@ -516,10 +485,9 @@ void DsoSignal::set_trig_ratio(double ratio, bool delta_change) {
   // Same nested-broadcast guard as set_zero_ratio: set_config_byte triggers
   // synchronous config_changed -> broadcast_msg, which may delete this DsoSignal.
   auto model = _model;
-  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
   double delta = ratio;
 
-  if (session->get_device()->is_hardware_logic()) {
+  if (_data_source->device()->is_hardware_logic()) {
     delta = delta - get_zero_ratio();
     delta = min(delta, 0.5);
     delta = max(delta, -0.5);
@@ -535,9 +503,6 @@ void DsoSignal::set_trig_ratio(double ratio, bool delta_change) {
 
   if (delta_change)
     _trig_delta = get_trig_vrate() - get_zero_ratio();
-  if (probe)
-    session->get_device()->set_config_byte(SR_CONF_TRIGGER_VALUE, _trig_value,
-                                           probe, NULL);
   // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
   // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
   if (model) {
@@ -551,9 +516,9 @@ double DsoSignal::get_zero_ratio() { return value2ratio(_zero_offset); }
 
 int DsoSignal::get_hw_offset() {
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  if (session->is_running_status()) {
+  if (_view->session().is_running_status()) {
     int hw_offset = _cached_hw_offset;
-    if (probe && session->get_device()->get_config_uint16(
+    if (probe && _data_source->device()->get_config_uint16(
                      SR_CONF_PROBE_HW_OFFSET, hw_offset, probe, NULL)) {
       _cached_hw_offset = hw_offset;
     }
@@ -576,11 +541,7 @@ void DsoSignal::set_zero_ratio(double ratio) {
   // After set_config returns, _model may be dangling. The local copy keeps the
   // SignalModel alive even if `this` is deleted mid-method.
   auto model = _model;
-  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
   _zero_offset = ratio2value(ratio);
-  if (probe)
-    session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET, _zero_offset,
-                                             probe, NULL);
   // Task 7.2: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
   // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
   if (model) {
@@ -598,7 +559,7 @@ void DsoSignal::set_factor(uint64_t factor) {
     bool ret;
 
     if (probe) {
-      ret = session->get_device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
+      ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
                                                      prefactor, probe, NULL);
       if (!ret) {
         pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
@@ -609,9 +570,6 @@ void DsoSignal::set_factor(uint64_t factor) {
     }
 
     if (prefactor != factor) {
-      if (probe)
-        session->get_device()->set_config_uint64(SR_CONF_PROBE_FACTOR, factor,
-                                                 probe, NULL);
       _vDial->set_factor(factor);
       _view->set_update(_viewport, true);
       _view->update();
@@ -629,7 +587,7 @@ uint64_t DsoSignal::get_factor() {
   uint64_t factor;
 
   if (probe) {
-    bool ret = session->get_device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
+    bool ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
                                                         factor, probe, NULL);
     if (ret) {
       return factor;
@@ -792,13 +750,13 @@ void DsoSignal::paint_prepare() {
   if (!_data || _data->empty() || !_data->has_data(get_index()))
     return;
 
-  if (session->trigd()) {
-    if (get_index() == session->trigd_ch()) {
+  if (_view->session().trigd()) {
+    if (get_index() == _view->session().trigd_ch()) {
       uint8_t slope = DSO_TRIGGER_RISING;
       int v;
       bool ret;
 
-      ret = session->get_device()->get_config_byte(SR_CONF_TRIGGER_SLOPE, v);
+      ret = _data_source->device()->get_config_byte(SR_CONF_TRIGGER_SLOPE, v);
       if (ret) {
         slope = (uint8_t)v;
       }
@@ -854,8 +812,8 @@ void DsoSignal::paint_back(QPainter &p, int left, int right, QColor fore,
   fore.setAlpha(View::ForeAlpha);
   p.setPen(fore);
 
-  const uint64_t sample_len = session->cur_samplelimits();
-  const double samplerate = session->cur_snap_samplerate();
+  const uint64_t sample_len = _data_source->cur_samplelimits();
+  const double samplerate = _data_source->cur_snap_samplerate();
   const double samples_per_pixel = samplerate * _view->scale();
   const double shown_rate =
       min(samples_per_pixel * width * 1.0 / sample_len, 1.0);
@@ -969,9 +927,9 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
 
     sr_status status;
 
-    if (session->dso_status_is_valid()) {
+    if (_view->session().dso_status_is_valid()) {
       _mValid = true;
-      status = session->get_dso_status();
+      status = _view->session().get_dso_status();
 
       if (status.measure_valid) {
         _min = (index == 0) ? status.ch0_min : status.ch1_min;
@@ -989,7 +947,7 @@ void DsoSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
         const bool startXORend = (index == 0) ? (status.ch0_cyc_llen == 0)
                                               : (status.ch1_cyc_llen == 0);
         uint16_t total_channels =
-            g_slist_length(session->get_device()->get_channels());
+            g_slist_length(_data_source->device()->get_channels());
 
         if (total_channels == 1 && _data->is_file()) {
           total_channels++;
@@ -1123,7 +1081,7 @@ void DsoSignal::paint_fore(QPainter &p, int left, int right, QColor fore,
                Qt::AlignCenter | Qt::AlignVCenter | Qt::TextDontClip, "T");
 
     // Paint measure
-    if (session->is_stopped_status())
+    if (_view->session().is_stopped_status())
       paint_hover_measure(p, fore, back);
 
     // autoset
@@ -1304,7 +1262,7 @@ void DsoSignal::paint_type_options(QPainter &p, int right, const QPoint pt,
              : (_acCoupling == SR_DC_COUPLING) ? strings[3]
                                                : strings[4]);
 
-  if (session->get_device()->is_hardware()) {
+  if (_data_source->device()->is_hardware()) {
     p.setPen(Qt::transparent);
     p.setBrush(enabled() ? (auto_rect.contains(pt) ? _colour.darker() : _colour)
                          : foreBack);
@@ -1319,7 +1277,7 @@ void DsoSignal::paint_type_options(QPainter &p, int right, const QPoint pt,
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
 
   if (probe) {
-    ret = session->get_device()->get_config_uint64(SR_CONF_PROBE_FACTOR, factor,
+    ret = _data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR, factor,
                                                    probe, NULL);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
@@ -1362,7 +1320,7 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
   const QRectF x100_rect = get_rect(DSO_X100, y, right);
 
   if (chEn_rect.contains(pt)) {
-    if (session->get_device()->is_file() == false && !_en_lock) {
+    if (_data_source->device()->is_file() == false && !_en_lock) {
       set_enable(!enabled());
     }
     return true;
@@ -1372,14 +1330,14 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
         go_vDialNext(true);
       else
         go_vDialPre(true);
-    } else if (session->get_device()->is_file() == false &&
+    } else if (_data_source->device()->is_file() == false &&
                acdc_rect.contains(pt)) {
-      if (session->get_device()->is_hardware_logic())
+      if (_data_source->device()->is_hardware_logic())
         set_acCoupling((get_acCoupling() + 1) % 2);
       else
         set_acCoupling((get_acCoupling() + 1) % 2);
     } else if (auto_rect.contains(pt)) {
-      if (session->get_device()->is_hardware())
+      if (_data_source->device()->is_hardware())
         auto_start();
     } else if (x1_rect.contains(pt)) {
       set_factor(1);
@@ -1399,7 +1357,7 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
     // (set_factor/set_acCoupling/go_vDial*) deliberately do NOT broadcast
     // because they are also called from JSON restore paths (rebuild loop
     // risk); mouse_press is the user-interaction entry point per AGENTS.md.
-    session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+    _view->session().broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
     return true;
   }
   return false;
@@ -1535,7 +1493,7 @@ void DsoSignal::paint_hover_measure(QPainter &p, QColor fore, QColor back) {
 }
 
 void DsoSignal::auto_set() {
-  if (session->is_stopped_status()) {
+  if (_view->session().is_stopped_status()) {
     if (_autoV)
       autoV_end();
     if (_autoH)
@@ -1544,10 +1502,10 @@ void DsoSignal::auto_set() {
     if (_autoH && _autoV && get_zero_ratio() != 0.5) {
       set_zero_ratio(0.5);
     }
-    if (_mValid && !session->get_data_auto_lock()) {
+    if (_mValid && !_view->session().get_data_auto_lock()) {
       if (_autoH) {
         bool roll = false;
-        session->get_device()->get_config_bool(SR_CONF_ROLL, roll);
+        _data_source->device()->get_config_bool(SR_CONF_ROLL, roll);
 
         const double hori_res = _view->get_hori_res();
         if (_level_valid &&
@@ -1589,7 +1547,7 @@ void DsoSignal::auto_set() {
         }
       }
       if (_autoH || _autoV)
-        session->data_auto_lock(AutoLock);
+        _view->session().data_auto_lock(AutoLock);
     }
   }
 }
@@ -1621,8 +1579,8 @@ void DsoSignal::auto_start() {
   if (_autoV || _autoH)
     return;
 
-  if (session->is_running_status()) {
-    session->data_auto_lock(AutoLock);
+  if (_view->session().is_running_status()) {
+    _view->session().data_auto_lock(AutoLock);
     _autoV = true;
     _autoH = true;
     _view->auto_trig(get_index());
@@ -1637,7 +1595,7 @@ bool DsoSignal::measure(const QPointF &p) {
   if (!enabled() || !show())
     return false;
 
-  if (session->is_stopped_status() == false)
+  if (_view->session().is_stopped_status() == false)
     return false;
 
   const QRectF window = get_view_rect();
@@ -1750,7 +1708,7 @@ QString DsoSignal::get_time(double t) {
   return str;
 }
 
-void DsoSignal::call_auto_end() { session->auto_end(); }
+void DsoSignal::call_auto_end() { _view->session().auto_end(); }
 
 void DsoSignal::set_data(data::DsoSnapshot *data) { _data = data; }
 

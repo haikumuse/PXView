@@ -37,6 +37,7 @@ class SigSession;
 namespace data {
     class LogicSnapshot;
     class SignalModel;
+    class DataSource;
 }
 
 namespace view {
@@ -69,12 +70,12 @@ public:
 public:
     LogicSignal(data::LogicSnapshot *data,
                 std::shared_ptr<data::SignalModel> model,
-                SigSession *session);
+                data::DataSource *data_source);
 
     LogicSignal(view::LogicSignal *s,
                 data::LogicSnapshot *data,
                 std::shared_ptr<data::SignalModel> model,
-                SigSession *session);
+                data::DataSource *data_source);
 
 	virtual ~LogicSignal();
 

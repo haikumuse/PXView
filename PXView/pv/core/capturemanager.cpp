@@ -308,7 +308,7 @@ bool CaptureManager::exec_capture() {
   if (mode == DSO || mode == ANALOG) {
     // reset measure of dso signal
     for (auto m : _session->_signal_models) {
-      if (m->type() == api::ChannelType::Dso) {
+      if (m->type() == SR_CHANNEL_DSO) {
         // TODO: verify - view::DsoSignal::set_mValid(false) was a UI method.
         // Validity reset should be handled by the View layer.
       }

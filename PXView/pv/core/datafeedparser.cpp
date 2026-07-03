@@ -114,7 +114,7 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
   _session->set_receive_data_len(o.length * 8 /
                                  _session->get_ch_num(SR_CHANNEL_LOGIC));
 
-  _session->_capture_manager->_data_updated = true;
+  _session->_capture_manager->set_data_updated(true);
 }
 
 void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
@@ -123,7 +123,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     return; // This dso packet was not expected.
   }
 
-  if (_session->_capture_manager->_is_instant == false) {
+  if (_session->_capture_manager->is_instant() == false) {
     sr_status status;
 
     if (_session->_device_agent.get_device_status(status, false)) {
@@ -132,7 +132,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     }
   }
 
-  _session->_capture_manager->_dso_packet_count++;
+  _session->_capture_manager->dso_packet_count_ref()++;
 
   if (!_session->_is_triged && o.num_samples > 0) {
     _session->_is_triged = true;
@@ -148,7 +148,7 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     // first payload
     _session->_capture_data->get_dso()->first_payload(
         o, _session->_device_agent.get_sample_limit(),
-        _session->_device_agent.get_channels(), _session->_capture_manager->_is_instant,
+        _session->_device_agent.get_channels(), _session->_capture_manager->is_instant(),
         _session->_device_agent.is_file());
     _session->frame_began();
   } else {
@@ -156,8 +156,8 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
     _session->_capture_data->get_dso()->append_payload(o);
   }
 
-  if (o.num_samples != 0 && (!_session->_capture_manager->_is_instant ||
-                             _session->_capture_manager->_dso_packet_count == 1)) {
+  if (o.num_samples != 0 && (!_session->_capture_manager->is_instant() ||
+                             _session->_capture_manager->dso_packet_count_ref() == 1)) {
     // update current sample rate
     _session->set_cur_snap_samplerate(_session->_device_agent.get_sample_rate());
   }
@@ -191,10 +191,10 @@ void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
   // Trigger update()
   _session->set_receive_data_len(o.num_samples);
 
-  if (!_session->_capture_manager->_is_instant)
+  if (!_session->_capture_manager->is_instant())
     _session->data_lock();
 
-  _session->_capture_manager->_data_updated = true;
+  _session->_capture_manager->set_data_updated(true);
 }
 
 void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
@@ -224,7 +224,7 @@ void DataFeedParser::feed_in_analog(const sr_datafeed_analog &o) {
   }
 
   _session->set_receive_data_len(o.num_samples);
-  _session->_capture_manager->_data_updated = true;
+  _session->_capture_manager->set_data_updated(true);
 }
 
 void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
@@ -242,7 +242,7 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
 
   ds_lock_guard lock(_session->_data_mutex);
 
-  if (_session->_capture_manager->_data_lock && packet->type != SR_DF_END)
+  if (_session->_capture_manager->is_data_lock() && packet->type != SR_DF_END)
     return;
 
   if (packet->type != SR_DF_END && packet->status != SR_PKT_OK) {
@@ -305,7 +305,7 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
       if (mode == LOGIC) {
         _event_bus->trigger_message(DSV_MSG_REV_END_PACKET);
       } else {
-        if (mode == DSO && _session->_capture_manager->_is_instant) {
+        if (mode == DSO && _session->_capture_manager->is_instant()) {
           sr_status status;
 
           if (_session->_device_agent.get_device_status(status, false)) {

@@ -429,7 +429,7 @@ void DsoTriggerDock::update_view() {
   _channel_comboBox->clear();
 
   for (auto s : _session->get_signal_models()) {
-    if (s->type() == api::ChannelType::Dso) {
+    if (s->type() == SR_CHANNEL_DSO) {
       _channel_comboBox->addItem(QString::fromStdString(s->name()),
                                  QVariant::fromValue(s->index()));
     }

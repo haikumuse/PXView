@@ -99,6 +99,31 @@ public:
   double cur_snap_sampletime() override;
   data::Snapshot *get_snapshot(int type) override;
 
+  // Task D6: DataSource facade/business overrides — stubs returning
+  // defaults because SessionDocument does not own the live session state
+  // (SigSession is the single source of truth). Only SigSession performs
+  // real work for these; the View layer routes through DataSource so it
+  // does not reach into the SigSession facade directly.
+  double cur_view_time() override;
+  int get_map_zoom() override;
+  double get_logic_data_view_time() override;
+  bool is_repeating() override;
+  bool is_running_status() override;
+  bool is_instant() override;
+  bool have_view_data() override;
+  bool is_working() override;
+  bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
+                   std::list<decode::Decoder *> &sub_decoders,
+                   std::shared_ptr<DecoderStack> &out_stack,
+                   SessionDocument *doc = nullptr) override;
+  void remove_decoder_by_key_handel(void *handel,
+                                    SessionDocument *doc = nullptr) override;
+  void rst_decoder_by_key_handel(void *handel,
+                                 SessionDocument *doc = nullptr) override;
+  void clear_all_decoder(bool bUpdateView = true) override;
+  void start_all_decode_tasks() override;
+  void update_dso_data_scale() override;
+
   // --- Signal config forwarding (delegated to SignalConfigStore) ---
   // signal_config_to_json/from_json wrap the store's version and merge in
   // triggerConfig from _trigger_config to keep .pxc format unchanged.
@@ -136,7 +161,7 @@ public:
     return _signal_config_store.get();
   }
 
-  inline const data::TriggerConfig &trigger_config() const {
+  inline const data::TriggerConfig &trigger_config() const override {
     return _trigger_config;
   }
   inline data::TriggerConfig &trigger_config() { return _trigger_config; }

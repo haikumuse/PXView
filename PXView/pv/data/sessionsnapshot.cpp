@@ -28,6 +28,7 @@
 #include "snapshot.h"
 #include "signalmodel.h"
 #include "lissajousmodel.h"
+#include "triggerconfig.h"
 
 #include <libsigrok.h>
 #include <stdlib.h>
@@ -101,6 +102,48 @@ data::Snapshot *SessionSnapshot::get_snapshot(int type) {
 }
 
 uint64_t SessionSnapshot::get_trigger_pos() { return _trig_pos; }
+
+// Task D6: DataSource facade/business stubs. SessionSnapshot is a frozen
+// data snapshot, not the live session — these return defaults. Only
+// SigSession performs real work for these operations.
+
+double SessionSnapshot::cur_view_time() { return cur_sampletime(); }
+
+int SessionSnapshot::get_map_zoom() { return 0; }
+
+double SessionSnapshot::get_logic_data_view_time() { return 0.0; }
+
+const TriggerConfig& SessionSnapshot::trigger_config() const {
+    static TriggerConfig default_cfg;
+    return default_cfg;
+}
+
+bool SessionSnapshot::is_repeating() { return false; }
+
+bool SessionSnapshot::is_running_status() { return false; }
+
+bool SessionSnapshot::is_instant() { return false; }
+
+bool SessionSnapshot::have_view_data() { return true; }
+
+bool SessionSnapshot::is_working() { return false; }
+
+bool SessionSnapshot::add_decoder(srd_decoder *const, bool, DecoderStatus *,
+                                  std::list<decode::Decoder *> &,
+                                  std::shared_ptr<DecoderStack> &,
+                                  SessionDocument *) {
+    return false;
+}
+
+void SessionSnapshot::remove_decoder_by_key_handel(void *, SessionDocument *) {}
+
+void SessionSnapshot::rst_decoder_by_key_handel(void *, SessionDocument *) {}
+
+void SessionSnapshot::clear_all_decoder(bool) {}
+
+void SessionSnapshot::start_all_decode_tasks() {}
+
+void SessionSnapshot::update_dso_data_scale() {}
 
 void SessionSnapshot::set_samplerate(uint64_t rate) {
   _samplerate = rate;

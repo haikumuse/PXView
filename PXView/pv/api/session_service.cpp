@@ -708,7 +708,7 @@ Result<int> SessionService::configure_and_start(
         }
 
         for (auto model : _session->get_signal_models()) {
-            if (model->type() != api::ChannelType::Logic)
+            if (model->type() != SR_CHANNEL_LOGIC)
                 continue;
             if (model->index() == trigger_channel_index) {
                 pxv_info("API start_capture: MATCHED index %d, setting to %d", model->index(), model_trig);
@@ -755,7 +755,7 @@ Result<int> SessionService::configure_and_start(
     if (trigger_channel_index >= 0) {
         auto &sigs = _session->get_signal_models();
         for (auto m : sigs) {
-            if (!m || m->type() != api::ChannelType::Logic)
+            if (!m || m->type() != SR_CHANNEL_LOGIC)
                 continue;
 
             if (m->index() == trigger_channel_index) {
@@ -1773,7 +1773,7 @@ std::vector<SignalInfo> SessionService::get_signal_list() const {
         SignalInfo info;
         info.index = m->index();
         info.name = m->name();
-        info.type = m->type();
+        info.type = sr_channel_type_to_api(m->type());
         info.enabled = m->enabled();
         info.color = m->color();
 
@@ -2159,7 +2159,7 @@ Result<json> SessionService::get_decoder_options(const std::string& decoder_id) 
             if (!m || !m->enabled())
                 continue;
             // Only logic signals can be mapped to decoder channels
-            if (m->type() != ChannelType::Logic)
+            if (m->type() != SR_CHANNEL_LOGIC)
                 continue;
             json sig;
             sig["index"] = m->index();
@@ -3292,16 +3292,15 @@ Result<void> SessionService::export_data(const ExportConfig &config) {
     store.SetDataRange(config.start_sample, config.end_sample);
     
     // Set specific channels and type for export.
-    // NOTE: SignalModel::type() returns the pv::api::ChannelType enum
-    // (Logic=0, Analog=1, Dso=2), NOT the libsigrok SR_CHANNEL_* enum
-    // (SR_CHANNEL_LOGIC=10000, SR_CHANNEL_ANALOG=10002). Using the wrong
-    // enum here causes every channel to be filtered out in export_start()
-    // (the type check `_export_channel_type != (int)m->type()` always fails),
-    // producing "No data to save." even when data exists.
+    // SignalModel::type() now returns the libsigrok SR_CHANNEL_* value
+    // (SR_CHANNEL_LOGIC=10000, SR_CHANNEL_ANALOG=10002) as the single source
+    // of truth, so set_export_channel_type must use SR_CHANNEL_* values to
+    // match the type check `_export_channel_type != m->type()` in
+    // export_start().
     store.set_export_channels(config.channels);
     store.set_export_channel_type(config.is_logic
-        ? static_cast<int>(ChannelType::Logic)
-        : static_cast<int>(ChannelType::Analog));
+        ? SR_CHANNEL_LOGIC
+        : SR_CHANNEL_ANALOG);
 
     // Apply analog downsample ratio if > 1
     if (config.analog_downsample_ratio > 1) {
@@ -3378,7 +3377,7 @@ Result<void> SessionService::export_binary(const ExportConfig &config) {
         ChannelType ch_type = ChannelType::Logic;
         for (auto m : sig_list) {
             if (m && m->index() == ch_idx) {
-                ch_type = m->type();
+                ch_type = sr_channel_type_to_api(m->type());
                 break;
             }
         }
@@ -3804,7 +3803,7 @@ Result<void> SessionService::enable_math(int16_t ch1, int16_t ch2,
     auto &sig_list = _session->get_signal_models();
     for (auto m : sig_list) {
         if (!m) continue;
-        if (m->type() != ChannelType::Dso) continue;
+        if (m->type() != SR_CHANNEL_DSO) continue;
         if (m->index() == ch1) found_ch1 = true;
         if (m->index() == ch2) found_ch2 = true;
     }

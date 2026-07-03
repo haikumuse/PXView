@@ -96,6 +96,10 @@ public:
   explicit SigSession();
   ~SigSession();
   DeviceAgent *get_device() { return &_device_agent; }
+  // Task D4: DataSource::device() override — exposes the DeviceAgent to the
+  // View layer for device-level capability/probe queries that have no
+  // SignalModel getter. Aliases get_device() (single device per session).
+  DeviceAgent* device() override { return &_device_agent; }
   void add_callback(ISessionCallbackBase *callback) { _event_bus->add_callback(callback); }
   void remove_callback(ISessionCallbackBase *callback) { _event_bus->remove_callback(callback); }
   void set_callback(ISessionCallbackBase *callback) { add_callback(callback); }
@@ -110,7 +114,7 @@ public:
   uint64_t cur_samplelimits() override;
   double cur_sampletime() override;
   double cur_snap_sampletime() override;
-  double cur_view_time();
+  double cur_view_time() override;
   bool re_start() { if (_is_working) stop_capture(); return start_capture(_capture_manager->is_instant()); }
   QDateTime get_session_time() { return _session_time; }
   QDateTime get_trig_time() { return _trig_time; }
@@ -120,13 +124,13 @@ public:
   bool get_capture_status(bool &triggered, int &progress) { return _capture_manager->get_capture_status(triggered, progress); }
   void clear_store_confirm_flag() { _capture_manager->clear_store_confirm_flag(); }
   std::vector<std::shared_ptr<data::SignalModel>> &get_signal_models() override;
-  bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus, std::list<pv::data::decode::Decoder *> &sub_decoders, std::shared_ptr<data::DecoderStack> &out_stack, data::SessionDocument *doc = nullptr);
+  bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus, std::list<pv::data::decode::Decoder *> &sub_decoders, std::shared_ptr<data::DecoderStack> &out_stack, data::SessionDocument *doc = nullptr) override;
   int get_trace_index_by_key_handel(void *handel, data::SessionDocument *doc = nullptr);
   void remove_decoder(int index, data::SessionDocument *doc = nullptr);
-  void remove_decoder_by_key_handel(void *handel, data::SessionDocument *doc = nullptr);
+  void remove_decoder_by_key_handel(void *handel, data::SessionDocument *doc = nullptr) override;
   std::vector<std::shared_ptr<data::DecoderStack>> &get_decoder_stacks(data::SessionDocument *doc = nullptr) override;
   void rst_decoder(int index, data::SessionDocument *doc = nullptr);
-  void rst_decoder_by_key_handel(void *handel, data::SessionDocument *doc = nullptr);
+  void rst_decoder_by_key_handel(void *handel, data::SessionDocument *doc = nullptr) override;
   std::vector<std::shared_ptr<data::SpectrumStack>> &get_spectrum_stacks() override { return _spectrum_stacks; }
   data::LissajousModel *get_lissajous_model() override { return _lissajous_model; }
   std::shared_ptr<data::MathStack> get_math_stack() override { return _math_stack; }
@@ -134,15 +138,15 @@ public:
   bool is_data_lock() { return _capture_manager->is_data_lock(); }
   void data_lock() { _capture_manager->data_lock(); }
   void data_unlock() { _capture_manager->data_unlock(); }
-  void data_auto_lock(int lock) { _capture_manager->data_auto_lock(lock); }
+  void data_auto_lock(int lock) override { _capture_manager->data_auto_lock(lock); }
   void data_auto_unlock() { _capture_manager->data_auto_unlock(); }
-  bool get_data_auto_lock() { return _capture_manager->get_data_auto_lock(); }
+  bool get_data_auto_lock() override { return _capture_manager->get_data_auto_lock(); }
   void spectrum_rebuild();
   void lissajous_rebuild(bool enable, int xindex, int yindex, double percent);
   void lissajous_disable();
   void math_rebuild(bool enable, int ch1_index, int ch2_index, data::MathStack::MathType type);
-  bool trigd() { return _trigger_flag; }
-  uint8_t trigd_ch() { return _trigger_ch; }
+  bool trigd() override { return _trigger_flag; }
+  uint8_t trigd_ch() override { return _trigger_ch; }
   data::Snapshot *get_snapshot(int type) override;
   data::LogicSnapshot *get_logic_snapshot() override;
   data::AnalogSnapshot *get_analog_snapshot() override;
@@ -158,20 +162,20 @@ public:
   uint64_t get_save_start() { return _save_start; }
   void set_save_end(uint64_t end) { _save_end = end; }
   uint64_t get_save_end() { return _save_end; }
-  void clear_all_decoder(bool bUpdateView = true);
+  void clear_all_decoder(bool bUpdateView = true) override;
   bool is_closed() { return _bClose; }
-  bool is_instant() { return _capture_manager->is_instant(); }
-  bool is_working() { return _is_working || _device_status == ST_RUNNING; }
+  bool is_instant() override { return _capture_manager->is_instant(); }
+  bool is_working() override { return _is_working || _device_status == ST_RUNNING; }
   bool is_init_status() { return _device_status == ST_INIT; }
-  bool is_running_status() { return _device_status == ST_RUNNING; }
-  bool is_stopped_status() { return _device_status == ST_STOPPED; }
+  bool is_running_status() override { return _device_status == ST_RUNNING; }
+  bool is_stopped_status() override { return _device_status == ST_STOPPED; }
   void set_collect_mode(DEVICE_COLLECT_MODE m) { _capture_manager->set_collect_mode(m); }
   int get_collect_mode() { return _capture_manager->get_collect_mode(); }
   bool is_repeat_mode() { return _capture_manager->is_repeat_mode(); }
   bool is_single_mode() { return _capture_manager->is_single_mode(); }
   bool is_loop_mode() { return _capture_manager->is_loop_mode(); }
   bool is_realtime_refresh() { return _capture_manager->is_realtime_refresh(); }
-  bool is_repeating() { return _capture_manager->is_repeating(); }
+  bool is_repeating() override { return _capture_manager->is_repeating(); }
   void session_save() { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->session_save(); }); }
   void show_region(uint64_t start, uint64_t end, bool keep) { dispatch_to<ICaptureCallback>([start, end, keep](ICaptureCallback *cb) { cb->show_region(start, end, keep); }); }
   void decode_done() { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->decode_done(); }); }
@@ -179,24 +183,24 @@ public:
   void set_saving(bool flag) { _is_saving = flag; }
   DeviceEventObject *device_event_object() { return &_device_event; }
   void reload();
-  void refresh(int holdtime) { _capture_manager->refresh(holdtime); }
+  void refresh(int holdtime) override { _capture_manager->refresh(holdtime); }
   void check_update() { _capture_manager->check_update(); }
   void set_map_zoom(int index) { _map_zoom = index; }
-  int get_map_zoom() { return _map_zoom; }
+  int get_map_zoom() override { return _map_zoom; }
   bool is_single_buffer() { return _view_data == _capture_data; }
   void update_view() { dispatch_to<IDataCallback>([](IDataCallback *cb) { cb->data_updated(); }); }
-  void auto_end() { _capture_manager->auto_end(); }
+  void auto_end() override { _capture_manager->auto_end(); }
   bool have_hardware_data();
   struct ds_device_base_info *get_device_list(int &out_count, int &actived_index);
   void add_msg_listener(IMessageListener *ln) { _event_bus->add_msg_listener(ln); }
-  void broadcast_msg(int msg, int param = 0) { _event_bus->broadcast_msg(msg, param); }
+  void broadcast_msg(int msg, int param = 0) override { _event_bus->broadcast_msg(msg, param); }
   void add_event_listener(interface::IEventListener *l) { _event_bus->add_event_listener(l); }
   void remove_event_listener(interface::IEventListener *l) { _event_bus->remove_event_listener(l); }
   template <typename EventType> void broadcast(const EventType &ev) { _event_bus->broadcast(ev); }
   bool have_new_realtime_refresh(bool keep) { return _capture_manager->have_new_realtime_refresh(keep); }
   std::shared_ptr<data::DecoderStack> get_decoder_trace(int index, data::SessionDocument *doc = nullptr);
   std::shared_ptr<data::SignalModel> get_signal_by_index(int index);
-  bool have_view_data() { return get_signal_snapshot()->have_data(); }
+  bool have_view_data() override { return get_signal_snapshot()->have_data(); }
   bool is_copy_in_progress() const;
   data::SessionDocument *get_capture_owner_document() const;
   void clear_capture_owner_document(data::SessionDocument *doc);
@@ -209,18 +213,18 @@ public:
   void set_decoder_row_label(int index, QString label);
   void set_decoder_pannel(IDecoderPannel *pannel) { _decoder_pannel = pannel; }
   void rebuild_decoder_pannel() { if (_decoder_pannel) _decoder_pannel->rebuild_layers(); }
-  void update_dso_data_scale();
+  void update_dso_data_scale() override;
   void remove_decode_task(std::shared_ptr<data::DecoderStack> stack);
-  sr_status get_dso_status() { return _dso_status; }
-  bool dso_status_is_valid() { return _dso_status_valid; }
-  double get_logic_data_view_time();
+  sr_status get_dso_status() override { return _dso_status; }
+  bool dso_status_is_valid() override { return _dso_status_valid; }
+  double get_logic_data_view_time() override;
   int64_t get_ring_sample_count();
   bool dso_data_is_out_off_range() { return _view_data->get_dso()->data_is_out_off_range(); }
   void set_active_document(data::SessionDocument *doc);
-  data::SessionDocument *get_active_document();
+  data::SessionDocument *get_active_document() override;
   void copy_data_to_document(data::SessionDocument *doc);
   void attach_data_to_signal(SessionData *data);
-  const data::TriggerConfig& trigger_config() const { return _trigger_config; }
+  const data::TriggerConfig& trigger_config() const override { return _trigger_config; }
   void set_trigger_config(const data::TriggerConfig& cfg);
   void register_document(data::SessionDocument *doc);
   void unregister_document(data::SessionDocument *doc);
@@ -248,7 +252,7 @@ public:
   void clear_signal_invert();
   bool is_signal_invert_active();
   void restart_decoders();
-  void start_all_decode_tasks();
+  void start_all_decode_tasks() override;
   size_t get_disk_write_queue_depth();
   double get_disk_write_speed_mbps();
   bool is_disk_write_disk_full();

@@ -278,6 +278,14 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
           &View::on_toggle_invert_requested);
   connect(_devmode, &DevMode::header_collapse_changed, this,
           &View::on_header_collapse_changed);
+  connect(_devmode, &DevMode::mode_change_requested, this,
+          [this](int mode) { _session->switch_work_mode(mode); });
+  connect(_devmode, &DevMode::stop_capture_requested, this,
+          [this]() { _session->stop_capture(); });
+  connect(_devmode, &DevMode::save_session_requested, this,
+          [this]() { _session->session_save(); });
+  connect(_devmode, &DevMode::close_file_requested, this,
+          [this](ds_device_handle dev_handle) { _session->close_file(dev_handle); });
 
   // Glitch filter popup (View-owned). Created up-front and reused via
   // open_for_signal() so the histogram cache persists across open/close.
@@ -462,7 +470,7 @@ void View::set_data_document(pv::data::SessionDocument *doc) {
     return;
 
   if (_own_signals.empty()) {
-    auto created_sigs = SignalFactory::create_signals(_data_source, _session);
+    auto created_sigs = SignalFactory::create_signals(_data_source, _data_source);
     for (auto sig : created_sigs) {
       _own_signals.push_back(sig);
     }
@@ -504,7 +512,7 @@ void View::clone_signals_for_document(pv::data::SessionDocument *doc) {
 
   _own_signals.clear();
 
-  auto created_sigs = SignalFactory::create_signals(_data_source, _session);
+  auto created_sigs = SignalFactory::create_signals(_data_source, _data_source);
   for (auto sig : created_sigs) {
     _own_signals.push_back(sig);
   }
@@ -532,7 +540,7 @@ void View::capture_init() {
 
   if (mode == DSO)
     show_trig_cursor(true);
-  else if (!_session->is_repeating())
+  else if (!_data_source->is_repeating())
     show_trig_cursor(false);
 
   double sampletime = document_snapshot_source()->cur_sampletime();
@@ -587,7 +595,7 @@ bool View::zoom(double steps, int offset) {
     _scale *= std::pow(3.0 / 2.0, -steps);
     _scale = max(min(_scale, _maxscale), _minscale);
   } else {
-    if (_session->is_running_status() && _session->is_instant()) {
+    if (_data_source->is_running_status() && _data_source->is_instant()) {
       return ret;
     }
 
@@ -598,7 +606,7 @@ bool View::zoom(double steps, int offset) {
       hori_res = _sampling_bar->hori_knob(1);
 
     if (hori_res > 0) {
-      const double scale = _session->cur_view_time() / width;
+      const double scale = _data_source->cur_view_time() / width;
       _scale = max(min(scale, _maxscale), _minscale);
     } else {
       ret = false;
@@ -854,7 +862,7 @@ void View::timebase_changed() {
   double hori_res = _sampling_bar->get_hori_res();
 
   if (hori_res > 0) {
-    scale = _session->cur_view_time() / width;
+    scale = _data_source->cur_view_time() / width;
   }
 
   set_scale_offset(scale, this->offset());
@@ -1047,12 +1055,12 @@ void View::set_trig_cursor_posistion(uint64_t trig_pos) {
   // Trigger is enabled if any logic channel has a non-NONTRIG trig_type
   // (Simple mode), or if trigger_config mode is Adv/Serial (always enabled).
   bool trigger_enabled = false;
-  const auto &trig_cfg = _session->trigger_config();
+  const auto &trig_cfg = _data_source->trigger_config();
   if (trig_cfg.mode() != pv::data::TriggerConfig::Simple) {
     trigger_enabled = true;
   } else {
-    for (const auto &m : _session->get_signal_models()) {
-      if (m && m->type() == pv::api::ChannelType::Logic &&
+    for (const auto &m : _data_source->get_signal_models()) {
+      if (m && m->type() == SR_CHANNEL_LOGIC &&
           m->trig_type() != pv::data::SignalModel::NONTRIG) {
         trigger_enabled = true;
         break;
@@ -1076,7 +1084,7 @@ void View::set_trig_cursor_posistion(uint64_t trig_pos) {
 void View::set_trig_pos(int percent) {
   uint64_t index = document_snapshot_source()->cur_samplelimits() * percent / 100;
 
-  if (_session->have_view_data() == false || _session->is_working()) {
+  if (_data_source->have_view_data() == false || _data_source->is_working()) {
     set_trig_cursor_posistion(index);
   }
 }
@@ -1190,7 +1198,7 @@ void View::update_scale_offset() {
     }
     _scale = max(_scale, _minscale);
   } else {
-    _scale = _session->cur_view_time() / width;
+    _scale = _data_source->cur_view_time() / width;
     _maxscale = 1e9;
     _minscale = 1e-15;
     _scale = max(_scale, _minscale);
@@ -1417,7 +1425,7 @@ void View::signals_changed(const Trace *eventTrace) {
       }
     }
     _time_viewport->clear_measure();
-    _session->update_dso_data_scale();
+    _data_source->update_dso_data_scale();
   }
 
   normalize_layout();
@@ -1542,7 +1550,7 @@ void View::resizeEvent(QResizeEvent *event) {
   signals_changed(NULL);
 
   if (get_work_mode() == DSO) {
-    _scale = _session->cur_view_time() / width;
+    _scale = _data_source->cur_view_time() / width;
   }
 
   if (get_work_mode() != DSO) {
@@ -1924,7 +1932,7 @@ int64_t View::get_logic_lst_data_offset() {
   int width = get_view_width();
   assert(width > 0);
 
-  return ceil((_session->get_logic_data_view_time() / _scale) -
+  return ceil((_data_source->get_logic_data_view_time() / _scale) -
               (width * MaxViewRate));
 }
 
@@ -1990,7 +1998,7 @@ void View::show_region(uint64_t start, uint64_t end, bool keep) {
   if (keep) {
     set_all_update(true);
     update();
-  } else if (_session->get_map_zoom() == 0) {
+  } else if (_data_source->get_map_zoom() == 0) {
     const double ideal_scale = (end - start) * 2.0 /
                                document_snapshot_source()->cur_snap_samplerate() /
                                width;
@@ -2116,7 +2124,7 @@ void View::set_receive_len(uint64_t len) {
   if (_time_viewport)
     _time_viewport->set_receive_len(len);
 
-  if (_fft_viewport && _session->get_device()->get_work_mode() == DSO)
+  if (_fft_viewport && _device_agent->get_work_mode() == DSO)
     _fft_viewport->set_receive_len(len);
 }
 
@@ -2186,10 +2194,10 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     // Set channel type based on work mode
     switch (config.work_mode) {
     case LOGIC:
-      model->set_type(api::ChannelType::Logic);
+      model->set_type(SR_CHANNEL_LOGIC);
       break;
     case DSO:
-      model->set_type(api::ChannelType::Dso);
+      model->set_type(SR_CHANNEL_DSO);
       model->set_vdiv(ch.vdiv);
       model->set_coupling(ch.coupling);
       model->set_hw_offset(ch.hw_offset);
@@ -2197,7 +2205,7 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
       model->set_zero_offset(ch.zero_offset);
       break;
     case ANALOG:
-      model->set_type(api::ChannelType::Analog);
+      model->set_type(SR_CHANNEL_ANALOG);
       model->set_vdiv(ch.vdiv);
       model->set_coupling(ch.coupling);
       model->set_hw_offset(ch.hw_offset);
@@ -2222,25 +2230,25 @@ void View::rebuild_signals_from_config(const data::SignalConfig &config) {
     case LOGIC:
       if (old_signal) {
         signal = new LogicSignal(static_cast<LogicSignal *>(old_signal),
-                                 nullptr, model, _session);
+                                 nullptr, model, _data_source);
       } else {
-        signal = new LogicSignal(nullptr, model, _session);
+        signal = new LogicSignal(nullptr, model, _data_source);
       }
       break;
     case DSO:
       if (old_signal) {
         signal = new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr,
-                               model, _session);
+                               model, _data_source);
       } else {
-        signal = new DsoSignal(nullptr, model, _session);
+        signal = new DsoSignal(nullptr, model, _data_source);
       }
       break;
     case ANALOG:
       if (old_signal) {
         signal = new AnalogSignal(static_cast<AnalogSignal *>(old_signal),
-                                  nullptr, model, _session);
+                                  nullptr, model, _data_source);
       } else {
-        signal = new AnalogSignal(nullptr, model, _session);
+        signal = new AnalogSignal(nullptr, model, _data_source);
       }
       break;
     }
@@ -2318,7 +2326,7 @@ void View::rebuild_signals() {
     }
     if (config.channels.size() == (size_t)device_ch_count) {
       rebuild_signals_from_config(config);
-      SignalFactory::update_signals(_own_signals, _session, _session,
+      SignalFactory::update_signals(_own_signals, _data_source, _data_source,
                                     SignalFactory::Modified);
       // Only property changes, no layout needed - use incremental refresh
       signals_modified_refresh();
@@ -2329,7 +2337,7 @@ void View::rebuild_signals() {
   if (!_data_source)
     return;
 
-  auto created_sigs = SignalFactory::create_signals(_data_source, _session);
+  auto created_sigs = SignalFactory::create_signals(_data_source, _data_source);
   if (created_sigs.empty())
     return;
 
@@ -2405,7 +2413,7 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
 
   // 1. Core layer creates the DecoderStack and adds it to the active
   //    document's stack list. Core owns the DecoderStack.
-  if (!_session->add_decoder(dec, silent, dstatus, sub_decoders, out_stack))
+  if (!_data_source->add_decoder(dec, silent, dstatus, sub_decoders, out_stack))
     return false;
 
   if (!out_stack)
@@ -2442,7 +2450,7 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
     if (!settings_changed) {
       delete trace;
       void *key = out_stack->get_key_handel();
-      _session->remove_decoder_by_key_handel(key);
+      _data_source->remove_decoder_by_key_handel(key);
       out_stack = nullptr;
       pxv_info("View: rollback complete, returning false");
       return false;
@@ -2465,6 +2473,7 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   //    then cleared by reload(), causing "没有设置需要解码哪些通道的数据".
   //    This broadcast also notifies MCP/WebSocket clients (SessionService maps
   //    DSV_MSG_DEVICE_OPTIONS_UPDATED to DeviceConfigChanged).
+  // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
   _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
 
   // 6. Now start the decode task after reload() has completed. The public
@@ -2473,8 +2482,8 @@ bool View::add_decoder(srd_decoder *const dec, bool silent,
   //    yet (decoder added before capture), the capture pipeline will start
   //    the decode for us via DSV_MSG_COPY_TO_DOC_DONE → frame_ended() +
   //    start_all_decode_tasks().
-  if (!silent && _session->have_view_data()) {
-    _session->start_all_decode_tasks();
+  if (!silent && _data_source->have_view_data()) {
+    _data_source->start_all_decode_tasks();
   }
 
   // 7. Refresh layout. signals_changed(NULL) calls mark_derived_traces_dirty()
@@ -2519,7 +2528,7 @@ bool View::rst_decoder_by_key_handel(void *handel) {
     return false;
 
   // Forward to Core to clear the existing decode task and re-add it.
-  _session->rst_decoder_by_key_handel(handel);
+  _data_source->rst_decoder_by_key_handel(handel);
   return true;
 }
 
@@ -2548,7 +2557,7 @@ void View::remove_decoder(DecodeTrace *trace) {
   //    — at that point sync_derived_traces() will find no DecodeTrace to
   //    remove (we already deleted it), so no double-free occurs.
   if (key_handel) {
-    _session->remove_decoder_by_key_handel(key_handel);
+    _data_source->remove_decoder_by_key_handel(key_handel);
   }
 
   // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
@@ -2559,6 +2568,7 @@ void View::remove_decoder(DecodeTrace *trace) {
   //    SessionService to DeviceConfigChanged, which triggers state
   //    synchronization. (The MCP remove_analyzer path already broadcasts
   //    DecoderRemoved directly; this covers the GUI-triggered path.)
+  // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
   _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
 }
 
@@ -2612,9 +2622,10 @@ void View::clear_all_decoders() {
   //    which triggers View::signals_changed(), but since we already
   //    deleted all DecodeTrace, the subsequent sync_derived_traces()
   //    will be a no-op.
-  _session->clear_all_decoder(true);
+  _data_source->clear_all_decoder(true);
 
   // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
+  // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
   _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
 }
 
@@ -2646,7 +2657,7 @@ void View::on_signals_changed() {
   auto &models = _data_source->get_signal_models();
   auto event = SignalFactory::compute_change_event(_own_signals, models);
 
-  SignalFactory::update_signals(_own_signals, _data_source, _session, event);
+  SignalFactory::update_signals(_own_signals, _data_source, _data_source, event);
 
   // Dispatch to appropriate layout method based on event type.
   switch (event) {
@@ -2766,7 +2777,7 @@ void View::check_measure() {
 }
 
 std::list<Cursor *> &View::get_cursorList() {
-  if (_session->get_device()->get_work_mode() == LOGIC) {
+  if (_device_agent->get_work_mode() == LOGIC) {
     return _logic_cursors;
   } else {
     return _dso_cursors;
