@@ -1,0 +1,37 @@
+- [x] View.h 在 Q_SIGNALS 区新增 `void visible_range_changed()` 信号
+- [x] View.h 新增 `QTimer *_viewport_change_timer` 成员（单触发 100ms）
+- [x] View.cpp 构造函数初始化 debounce timer 并 connect timeout 到 emit 信号
+- [x] View::set_scale_offset 在 scale/offset 实际改变时启动 debounce timer
+- [x] View::h_scroll_value_changed 在 _offset 赋值后启动 debounce timer
+- [x] View::update_scale_offset 末尾启动 debounce timer
+- [x] View::limit_scale_offset 末尾启动 debounce timer
+- [x] 连续 drag/zoom 期间 debounce timer 反复重启，仅最后一次触发 emit
+- [x] DecoderModel.h 新增 `_visible_start_row` / `_visible_end_row` 成员（默认 -1）
+- [x] DecoderModel.h 新增 `set_visible_range(int64_t, int64_t)` / `clear_visible_range()` public 接口
+- [x] DecoderModel.cpp set_visible_range 保存参数并调 beginResetModel/endResetModel
+- [x] DecoderModel.cpp clear_visible_range 设 _visible_start_row = -1 并 reset
+- [x] DecoderModel::rowCount 在 _visible_start_row >= 0 时返回切片行数
+- [x] DecoderModel::data 在 _visible_start_row >= 0 时按 _visible_start_row + index.row() 查询
+- [x] DecoderModel 在 _visible_start_row = -1 时行为与改动前完全一致（向后兼容）
+- [x] ProtocolDock.h 新增 `_follow_viewport_btn` / `_follow_viewport` / `_jumping_to_row` 成员
+- [x] ProtocolDock.h 新增 `on_follow_viewport_toggled` / `on_visible_range_changed` 槽
+- [x] ProtocolDock 工具栏新增"列表跟随视口"toggle 按钮（checkable，默认 checked）
+- [x] toggle 按钮 tooltip 显示 "列表跟随波形可视范围过滤"
+- [x] ProtocolDock 默认 connect View::visible_range_changed 到 on_visible_range_changed
+- [x] 用户关闭开关时 disconnect 信号 + clear_visible_range
+- [x] 用户重新开启开关时 connect 信号 + 立即触发一次 on_visible_range_changed
+- [x] on_visible_range_changed 槽正确计算 start_sample / end_sample（参考 nav_table_view 算法）
+- [x] on_visible_range_changed 调用 RowData::get_visible_range 取 [start_idx, end_idx)
+- [x] on_visible_range_changed 调用 _decoder_model->set_visible_range
+- [x] 无 DecoderStack 绑定时槽函数直接 return
+- [x] samplerate 为 0 时槽函数直接 return
+- [x] mark_index 行不在切片范围时豁免过滤（扩展 end_idx 包含）
+- [x] item_clicked 跳转前设置 _jumping_to_row = true
+- [x] on_visible_range_changed 在 _jumping_to_row 为 true 时保留当前选中行
+- [x] 跳转完成后（150ms 后）清除 _jumping_to_row 标志
+- [x] cd build && ninja -j 16 编译通过
+- [x] ninja install 安装成功
+- [ ] 启动 PXView.exe 加载解码数据验证开关 ON 时列表跟随波形拖动
+- [ ] 验证开关 OFF 时列表恢复全量展示
+- [ ] 验证点击列表项跳转波形后选中行不丢失
+- [ ] 验证多 decoder stack 切换时过滤逻辑正常

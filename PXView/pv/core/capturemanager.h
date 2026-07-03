@@ -73,10 +73,18 @@ public:
   void set_collect_mode(DEVICE_COLLECT_MODE m);
 
   inline bool is_instant() { return _is_instant; }
+  inline void set_is_instant(bool v) { _is_instant = v; }
   inline bool is_stream_mode() { return _is_stream_mode; }
+  inline void set_is_stream_mode(bool v) { _is_stream_mode = v; }
   inline bool is_action() { return _is_action; }
   inline double get_repeat_intvl() { return _repeat_intvl; }
   inline void set_repeat_intvl(double interval) { _repeat_intvl = interval; }
+  inline void set_repeat_hold_prg(int v) { _repeat_hold_prg = v; }
+  inline void set_repeat_wait_prog_step(int v) { _repeat_wait_prog_step = v; }
+  inline int capture_times() const { return _capture_times; }
+  inline DsTimer &repeat_timer() { return _repeat_timer; }
+  inline DsTimer &repeat_wait_prog_timer() { return _repeat_wait_prog_timer; }
+  inline DsTimer &trig_check_timer() { return _trig_check_timer; }
 
   inline void clear_store_confirm_flag() {
     _confirm_store_time_id = _work_time_id;
@@ -89,6 +97,9 @@ public:
   void data_auto_lock(int lock);
   void data_auto_unlock();
   bool get_data_auto_lock();
+
+  inline void set_data_updated(bool v) { _data_updated = v; }
+  inline uint64_t &dso_packet_count_ref() { return _dso_packet_count; }
 
   // --- Decode result clearing (tightly coupled with capture start) ---
   void clear_decode_result();
@@ -143,16 +154,9 @@ private:
   bool _is_action;
   uint64_t _dso_packet_count;
 
-  // SigSession accesses _is_instant / _clt_mode / _data_lock / _data_updated
-  // / _is_stream_mode / _repeat_intvl / _repeat_hold_prg / _repeat_timer /
-  // _repeat_wait_prog_timer / _repeat_wait_prog_step / _capture_times /
-  // _trig_check_timer / _dso_packet_count / _disk_cache_config /
-  // _work_time_id / _confirm_store_time_id / _rt_refresh_time_id /
-  // _rt_ck_refresh_time_id / _noData_cnt / _data_auto_lock directly via
-  // friend access from its own state-machine methods (OnMessage,
-  // switch_work_mode, etc.) and from DataFeedParser (feed_in_*).
-  friend class pv::SigSession;
-  friend class DataFeedParser;
+  // External access to the fields above is via public accessors only
+  // (no friend declarations). SigSession / DataFeedParser call accessor
+  // methods instead of touching private members directly.
 };
 
 } // namespace core

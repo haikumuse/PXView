@@ -216,9 +216,9 @@ void DevMode::on_mode_change()
                 break;
             }
             
-            _session->stop_capture();            
-            _session->session_save();                                    
-            _session->switch_work_mode(mode);
+            emit stop_capture_requested();
+            emit save_session_requested();
+            emit mode_change_requested(mode);
 
             auto *mode_name = get_mode_name(mode);
             QString icon_fname = iconPath + "/" + QString::fromLocal8Bit(mode_name->_logo);
@@ -247,7 +247,7 @@ void DevMode::on_close()
     }
 
     if (_bFile && MsgBox::Confirm(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_CLOSE_DEVICE), "Are you sure to close the device?"))){
-        _session->close_file(_device_agent->handle());
+        emit close_file_requested(_device_agent->handle());
     }
 }
 

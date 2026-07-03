@@ -86,7 +86,7 @@ MathOptions::MathOptions(SigSession *session, QWidget *parent) :
     type_layout->setContentsMargins(5, 15, 5, 5);
 
     for(auto m : _session->get_signal_models()) {
-        if (m->type() == pv::api::ChannelType::Dso) {
+        if (m->type() == SR_CHANNEL_DSO) {
             QString index_str = QString::number(m->index());
             QRadioButton *xradio = new QRadioButton(index_str, _src1_group);
             xradio->setProperty("index", m->index());

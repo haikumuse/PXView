@@ -65,6 +65,30 @@ public:
     data::Snapshot* get_snapshot(int type) override;
     uint64_t get_trigger_pos() override;
 
+    // Task D6: DataSource facade/business overrides — stubs returning
+    // defaults because SessionSnapshot is a frozen data snapshot, not the
+    // live session. Only SigSession performs real work for these.
+    double cur_view_time() override;
+    int get_map_zoom() override;
+    double get_logic_data_view_time() override;
+    const TriggerConfig& trigger_config() const override;
+    bool is_repeating() override;
+    bool is_running_status() override;
+    bool is_instant() override;
+    bool have_view_data() override;
+    bool is_working() override;
+    bool add_decoder(srd_decoder *const dec, bool silent, DecoderStatus *dstatus,
+                     std::list<decode::Decoder *> &sub_decoders,
+                     std::shared_ptr<DecoderStack> &out_stack,
+                     SessionDocument *doc = nullptr) override;
+    void remove_decoder_by_key_handel(void *handel,
+                                      SessionDocument *doc = nullptr) override;
+    void rst_decoder_by_key_handel(void *handel,
+                                   SessionDocument *doc = nullptr) override;
+    void clear_all_decoder(bool bUpdateView = true) override;
+    void start_all_decode_tasks() override;
+    void update_dso_data_scale() override;
+
     void set_samplerate(uint64_t rate);
     void set_samplelimits(uint64_t limits);
     void set_trigger_pos(uint64_t pos);

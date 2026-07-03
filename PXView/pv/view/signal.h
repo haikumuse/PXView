@@ -40,6 +40,7 @@ namespace pv {
 namespace data {
 class SignalData;
 class SignalModel;
+class DataSource;
 }
 
 class SigSession;
@@ -64,19 +65,20 @@ public slots:
 
 protected:
     /**
-     * Constructor accepting a SignalModel and session reference.
+     * Constructor accepting a SignalModel and DataSource.
      * @param model The Core-layer SignalModel that backs this view::Signal.
-     * @param session The SigSession for device access.
+     * @param data_source The DataSource for data/snapshot access (typically
+     *                    the SigSession, which implements DataSource).
      */
-    Signal(std::shared_ptr<data::SignalModel> model, SigSession *session);
+    Signal(std::shared_ptr<data::SignalModel> model, data::DataSource *data_source);
 
     /**
      * Copy constructor for cloning in new views.
      * @param s The Signal to copy from.
      * @param model The SignalModel for the new Signal (shared with the original).
-     * @param session The SigSession for the new view.
+     * @param data_source The DataSource for the new view.
      */
-    Signal(const Signal &s, std::shared_ptr<data::SignalModel> model, SigSession *session);
+    Signal(const Signal &s, std::shared_ptr<data::SignalModel> model, data::DataSource *data_source);
 
 public:
     virtual ~Signal() {}
@@ -121,7 +123,7 @@ public:
 
 protected:
     std::shared_ptr<data::SignalModel> _model;
-    SigSession      *session;
+    data::DataSource *_data_source = nullptr;
     bool _local_enabled = true;
 };
 

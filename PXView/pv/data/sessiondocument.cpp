@@ -166,6 +166,45 @@ data::Snapshot *SessionDocument::get_snapshot(int type) {
     return nullptr;
 }
 
+// Task D6: DataSource facade/business stubs. SessionDocument is a pure data
+// container — it does not own the live session state or decoder lifecycle.
+// These return sensible defaults; only SigSession performs real work. The
+// View layer calls these through DataSource* so it never reaches into the
+// SigSession facade for data/business operations.
+
+double SessionDocument::cur_view_time() { return cur_sampletime(); }
+
+int SessionDocument::get_map_zoom() { return 0; }
+
+double SessionDocument::get_logic_data_view_time() { return 0.0; }
+
+bool SessionDocument::is_repeating() { return false; }
+
+bool SessionDocument::is_running_status() { return false; }
+
+bool SessionDocument::is_instant() { return false; }
+
+bool SessionDocument::have_view_data() { return has_data(); }
+
+bool SessionDocument::is_working() { return false; }
+
+bool SessionDocument::add_decoder(srd_decoder *const, bool, DecoderStatus *,
+                                  std::list<decode::Decoder *> &,
+                                  std::shared_ptr<DecoderStack> &,
+                                  SessionDocument *) {
+  return false;
+}
+
+void SessionDocument::remove_decoder_by_key_handel(void *, SessionDocument *) {}
+
+void SessionDocument::rst_decoder_by_key_handel(void *, SessionDocument *) {}
+
+void SessionDocument::clear_all_decoder(bool) {}
+
+void SessionDocument::start_all_decode_tasks() {}
+
+void SessionDocument::update_dso_data_scale() {}
+
 // Wrap SignalConfigStore's serialization and merge in triggerConfig from
 // _trigger_config to keep .pxc format unchanged (trigger_config remains a
 // SessionDocument-owned field).

@@ -148,7 +148,7 @@ bool StoreSession::save_start()
 
     std::set<int> type_set;
     for(auto m : _session->get_signal_models()) {
-        type_set.insert(m->sr_type());
+        type_set.insert(m->type());
     }
 
     if (type_set.size() > 1) {
@@ -293,7 +293,7 @@ void StoreSession::save_logic(pv::data::LogicSnapshot *logic_snapshot)
     for(auto m : _session->get_signal_models())
     {
         auto ch_type = m->type();
-        if (ch_type == pv::api::ChannelType::Logic) {
+        if (ch_type == SR_CHANNEL_LOGIC) {
             int ch_index = m->index();
             if (!m->enabled() || !logic_snapshot->has_data(ch_index))
                 continue;
@@ -477,7 +477,7 @@ void StoreSession::save_dso(pv::data::DsoSnapshot *dso_snapshot)
 
     for(auto m : _session->get_signal_models())
     {
-        if (m->type() == pv::api::ChannelType::Dso) {
+        if (m->type() == SR_CHANNEL_DSO) {
             int ch_index = m->index();
 
             if (!dso_snapshot->has_data(ch_index))
@@ -820,7 +820,7 @@ bool StoreSession::export_start()
         } else if (_export_channel_type >= 0 && (int)m->type() != _export_channel_type) {
             continue;
         }
-        int _tp = m->sr_type();
+        int _tp = m->type();
         type_set.insert(_tp);
     }
 
@@ -1096,7 +1096,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                     continue;
                 }
                 auto ch_type = m->type();
-                if (ch_type == pv::api::ChannelType::Logic) {
+                if (ch_type == SR_CHANNEL_LOGIC) {
                     int ch_index = m->index();
                     if (!logic_snapshot->has_data(ch_index))
                         continue;
@@ -1174,7 +1174,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
             // Make the cross data buffer.
            for(auto m : _session->get_signal_models())
             {
-                if (m->type() != pv::api::ChannelType::Dso)
+                if (m->type() != SR_CHANNEL_DSO)
                     continue;
 
                 if (!dso_snapshot->has_data(m->index()))
@@ -1848,7 +1848,7 @@ bool StoreSession::IsLogicDataType()
 
     if (type_set.size()){
         int type = *(type_set.begin());
-        return type == (int)pv::api::ChannelType::Logic;
+        return type == (int)SR_CHANNEL_LOGIC;
     }
 
     return false;

@@ -27,7 +27,6 @@
 
 #include <libsigrok.h>
 #include <QObject>
-#include "pv/api/types.h"
 
 namespace pv {
 
@@ -62,18 +61,14 @@ public:
     inline const std::string &name() const { return _name; }
     void set_name(const std::string &name);
 
-    // Returns api::ChannelType (Logic=0/Analog=1/Dso=2) for UI use. Do NOT
-    // pass directly to libsigrok APIs — use sr_type() instead.
-    inline api::ChannelType type() const { return _type; }
-    void set_type(api::ChannelType type);
-
     /// Returns the libsigrok SR_CHANNEL_* value (LOGIC=10000/DSO=10001/
-    /// ANALOG=10002) for this channel. Use this whenever a channel type is
-    /// passed to libsigrok-style APIs (ds_*, get_snapshot, Trace base class,
-    /// etc.) — type() returns the api::ChannelType enum which does NOT match
-    /// the SR_CHANNEL_* constants and would cause NULL snapshots or wrong
-    /// type dispatch.
-    int sr_type() const;
+    /// ANALOG=10002) for this channel — the single source of truth. Use this
+    /// for all internal comparisons and for passing to libsigrok-style APIs
+    /// (ds_*, get_snapshot, Trace base class, etc.). For the external MCP/JSON
+    /// api::ChannelType contract, convert at the API boundary via
+    /// SessionService::sr_channel_type_to_api().
+    inline int type() const { return _type; }
+    void set_type(int type);
 
     inline bool enabled() const { return _enabled; }
     void set_enabled(bool enabled);
@@ -94,12 +89,27 @@ public:
     inline bool map_default() const { return _map_default; }
     void set_map_default(bool map_default);
 
+    // ---- Probe configuration (explicit sr_channel override) ----
+    // These forward to DeviceAgent set_config_* with the same key/type as
+    // DsoSignal/AnalogSignal previously called directly via
+    // session->get_device()->set_config_*. The optional |probe| parameter
+    // overrides the model's _sr_channel when non-null (used by call sites
+    // that operate on a channel other than the model's own).
+    void set_probe_enabled(bool enabled, struct sr_channel *probe = nullptr);
+    void set_probe_offset(uint16_t offset, struct sr_channel *probe = nullptr);
+    void set_probe_factor(uint64_t factor, struct sr_channel *probe = nullptr);
+
     // ---- Trigger ----
     inline int trig_type() const { return _trig_type; }
     void set_trig_type(int trig_type);
 
     inline double trig_value() const { return _trig_value; }
     void set_trig_value(double v);
+
+    /// Forward SR_CONF_TRIGGER_VALUE via set_config_byte. Unlike set_trig_value
+    /// (which always targets _sr_channel), this accepts an explicit |probe|
+    /// override for call sites that need to write a different sr_channel.
+    void set_trigger_value(double value, struct sr_channel *probe = nullptr);
 
     bool commit_trig();
 
@@ -161,7 +171,7 @@ signals:
 private:
     int                 _index;
     std::string         _name;
-    api::ChannelType    _type;
+    int                 _type;  // SR_CHANNEL_LOGIC / SR_CHANNEL_DSO / SR_CHANNEL_ANALOG
     bool                _enabled;
     std::string         _color;
 

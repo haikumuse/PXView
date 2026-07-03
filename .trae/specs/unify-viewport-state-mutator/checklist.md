@@ -1,0 +1,32 @@
+- [x] view.h private 方法区新增 `apply_scale_offset(double, int64_t)` 声明
+- [x] view.h private 方法区新增 `apply_scale(double)` 声明
+- [x] view.h private 方法区新增 `apply_offset(int64_t)` 声明
+- [x] view.cpp 实现 `apply_scale_offset`：clamp scale → clamp offset → 比较是否改变 → 写入 + 启动 timer
+- [x] view.cpp 实现 `apply_scale`：委托 `apply_scale_offset(scale, _offset)`
+- [x] view.cpp 实现 `apply_offset`：委托 `apply_scale_offset(_scale, offset)`
+- [x] mutator 不调用 viewport_update/update_scroll（副作用由外层负责）
+- [x] mutator 仅在 _scale/_offset 实际改变时启动 timer
+- [x] set_scale_offset 内部替换为 apply_scale_offset 调用
+- [x] set_scale_offset 删除手动 _viewport_change_timer->start()
+- [x] set_scale 内部替换为 apply_scale 调用
+- [x] set_scale 删除手动 _viewport_change_timer->start()
+- [x] zoom 内部 4 处赋值替换为 mutator 调用
+- [x] zoom 删除手动 _viewport_change_timer->start()
+- [x] zoom 的 offset 计算顺序正确（先 apply_scale 更新 _scale，再算 offset，再 apply_offset）
+- [x] limit_scale_offset 内部替换为 apply_scale_offset 调用
+- [x] limit_scale_offset 删除手动 _viewport_change_timer->start()
+- [x] update_scale_offset 内部 4 处赋值替换为 mutator 调用
+- [x] update_scale_offset 删除手动 _viewport_change_timer->start()
+- [x] mode_changed 内部 2 处赋值替换为 apply_scale 调用
+- [x] mode_changed 修复原漏 timer 的 bug（mutator 自动启动）
+- [x] resizeEvent 内部 2 处赋值替换为 apply_scale 调用
+- [x] resizeEvent 删除手动 _viewport_change_timer->start()
+- [x] h_scroll_value_changed 内部 3 处赋值替换为 apply_offset 调用
+- [x] h_scroll_value_changed 删除手动 _viewport_change_timer->start()
+- [x] grep 验证 view.cpp 无 _scale/_offset 成员直接赋值（仅注释和局部变量）
+- [x] cd build && ninja -j 16 编译通过
+- [x] ninja install 安装成功
+- [ ] 启动 PXView.exe 验证滚轮缩放波形时解码 dock 列表跟随更新
+- [ ] 启动 PXView.exe 验证窗口缩放时解码 dock 列表跟随更新
+- [ ] 启动 PXView.exe 验证滚动条拖动时解码 dock 列表跟随更新
+- [ ] 启动 PXView.exe 验证模式切换（mode_changed）时解码 dock 列表跟随更新

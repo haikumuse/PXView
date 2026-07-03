@@ -22,6 +22,7 @@
  */
 
 #include "signal.h"
+#include "../data/datasource.h"
 #include "../data/signalmodel.h"
 #include "../dsvdef.h"
 #include "../sigsession.h"
@@ -31,11 +32,11 @@
 namespace pv {
 namespace view {
 
-Signal::Signal(std::shared_ptr<data::SignalModel> model, SigSession *session)
+Signal::Signal(std::shared_ptr<data::SignalModel> model, data::DataSource *data_source)
     : Trace(QString::fromStdString(model ? model->name() : std::string()),
             static_cast<uint16_t>(model ? model->index() : 0),
-            model ? model->sr_type() : SR_CHANNEL_LOGIC),
-      _model(model), session(session) {
+            model ? model->type() : SR_CHANNEL_LOGIC),
+      _model(model), _data_source(data_source) {
   // Establish Qt signal connections directly from _model — no need to
   // query the session for the model by index (the model is injected).
   if (_model) {
@@ -47,8 +48,8 @@ Signal::Signal(std::shared_ptr<data::SignalModel> model, SigSession *session)
 }
 
 Signal::Signal(const Signal &s, std::shared_ptr<data::SignalModel> model,
-               SigSession *session)
-    : Trace((const Trace &)s), _model(model), session(session),
+               data::DataSource *data_source)
+    : Trace((const Trace &)s), _model(model), _data_source(data_source),
       _local_enabled(s._local_enabled) {
   if (_model) {
     connect(_model.get(), &data::SignalModel::appearance_changed, this,

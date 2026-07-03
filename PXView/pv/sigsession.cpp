@@ -478,7 +478,7 @@ void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
 
   if (mode == DSO) {
     for (auto m : _signal_models) {
-      if (m->type() == api::ChannelType::Dso) {
+      if (m->type() == SR_CHANNEL_DSO) {
         // TODO: verify - vfactor and vdiv replace view::DsoSignal getters.
         _capture_data->get_dso()->set_measure_voltage_factor(
             (uint64_t)m->vfactor(), m->index());
@@ -579,25 +579,25 @@ void SigSession::init_signals() {
     }
 
     bool should_create = false;
-    api::ChannelType ch_type = api::ChannelType::Logic;
+    int ch_type = SR_CHANNEL_LOGIC;
 
     switch (probe->type) {
     case SR_CHANNEL_LOGIC:
       if (probe->enabled) {
         should_create = true;
-        ch_type = api::ChannelType::Logic;
+        ch_type = SR_CHANNEL_LOGIC;
       }
       break;
 
     case SR_CHANNEL_DSO:
       should_create = true;
-      ch_type = api::ChannelType::Dso;
+      ch_type = SR_CHANNEL_DSO;
       break;
 
     case SR_CHANNEL_ANALOG:
       if (probe->enabled) {
         should_create = true;
-        ch_type = api::ChannelType::Analog;
+        ch_type = SR_CHANNEL_ANALOG;
       }
       break;
     }
@@ -622,8 +622,8 @@ void SigSession::init_signals() {
       //   - vfactor    <- SR_CONF_PROBE_FACTOR    (DsoSignal::get_factor)
       //   - hw_offset  <- SR_CONF_PROBE_HW_OFFSET (DsoSignal::get_hw_offset)
       //   - zero_offset<- SR_CONF_PROBE_OFFSET    (DsoSignal::load_settings)
-      if (ch_type == api::ChannelType::Dso ||
-          ch_type == api::ChannelType::Analog) {
+      if (ch_type == SR_CHANNEL_DSO ||
+          ch_type == SR_CHANNEL_ANALOG) {
         uint64_t vdiv = 0;
         if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
                                             NULL))
@@ -719,25 +719,25 @@ void SigSession::reload() {
     }
 
     bool should_create = false;
-    api::ChannelType ch_type = api::ChannelType::Logic;
+    int ch_type = SR_CHANNEL_LOGIC;
 
     switch (probe->type) {
     case SR_CHANNEL_LOGIC:
       if (probe->enabled) {
         should_create = true;
-        ch_type = api::ChannelType::Logic;
+        ch_type = SR_CHANNEL_LOGIC;
       }
       break;
 
     case SR_CHANNEL_DSO:
       should_create = true;
-      ch_type = api::ChannelType::Dso;
+      ch_type = SR_CHANNEL_DSO;
       break;
 
     case SR_CHANNEL_ANALOG:
       if (probe->enabled) {
         should_create = true;
-        ch_type = api::ChannelType::Analog;
+        ch_type = SR_CHANNEL_ANALOG;
       }
       break;
     }
@@ -764,8 +764,8 @@ void SigSession::reload() {
       model->set_session(this);
       model->set_sr_channel(probe);
 
-      if (ch_type == api::ChannelType::Dso ||
-          ch_type == api::ChannelType::Analog) {
+      if (ch_type == SR_CHANNEL_DSO ||
+          ch_type == SR_CHANNEL_ANALOG) {
         uint64_t vdiv = 0;
         if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
                                             NULL))
@@ -851,11 +851,11 @@ uint16_t SigSession::get_ch_num(int type) {
       if (!m->enabled())
         continue;
 
-      if (m->type() == api::ChannelType::Logic)
+      if (m->type() == SR_CHANNEL_LOGIC)
         logic_ch_num++;
-      else if (m->type() == api::ChannelType::Dso)
+      else if (m->type() == SR_CHANNEL_DSO)
         dso_ch_num++;
-      else if (m->type() == api::ChannelType::Analog)
+      else if (m->type() == SR_CHANNEL_ANALOG)
         analog_ch_num++;
     }
   }
@@ -1050,7 +1050,7 @@ void SigSession::spectrum_rebuild() {
   bool has_dso_signal = false;
 
   for (auto m : _signal_models) {
-    if (m->type() == api::ChannelType::Dso) {
+    if (m->type() == SR_CHANNEL_DSO) {
       has_dso_signal = true;
       // check already have
       auto iter = _spectrum_stacks.begin();
@@ -1282,7 +1282,7 @@ void SigSession::on_device_lib_event(int event) {
       trigger_message(DSV_MSG_TRIG_NEXT_COLLECT);
     } else {
       _is_working = false;
-      _capture_manager->_is_instant = false;
+      _capture_manager->set_is_instant(false);
       trigger_message(DSV_MSG_END_COLLECT_WORK);
     }
   } break;
@@ -1491,24 +1491,24 @@ void SigSession::OnMessage(int msg, int param) {
 
   case DSV_MSG_TRIG_NEXT_COLLECT: {
     if (_is_working && is_repeat_mode()) {
-      if (_capture_manager->_repeat_intvl > 0) {
-        _capture_manager->_repeat_hold_prg = 100;
-        _capture_manager->_repeat_timer.Start(_capture_manager->_repeat_intvl * 1000);
-        int intvl = _capture_manager->_repeat_intvl * 1000 / 20;
+      if (_capture_manager->get_repeat_intvl() > 0) {
+        _capture_manager->set_repeat_hold_prg(100);
+        _capture_manager->repeat_timer().Start(_capture_manager->get_repeat_intvl() * 1000);
+        int intvl = _capture_manager->get_repeat_intvl() * 1000 / 20;
 
         if (intvl >= 100) {
-          _capture_manager->_repeat_wait_prog_step = 5;
-        } else if (_capture_manager->_repeat_intvl >= 1) {
-          intvl = _capture_manager->_repeat_intvl * 1000 / 10;
-          _capture_manager->_repeat_wait_prog_step = 10;
+          _capture_manager->set_repeat_wait_prog_step(5);
+        } else if (_capture_manager->get_repeat_intvl() >= 1) {
+          intvl = _capture_manager->get_repeat_intvl() * 1000 / 10;
+          _capture_manager->set_repeat_wait_prog_step(10);
         } else {
-          intvl = _capture_manager->_repeat_intvl * 1000 / 5;
-          _capture_manager->_repeat_wait_prog_step = 20;
+          intvl = _capture_manager->get_repeat_intvl() * 1000 / 5;
+          _capture_manager->set_repeat_wait_prog_step(20);
         }
 
-        _capture_manager->_repeat_wait_prog_timer.Start(intvl);
+        _capture_manager->repeat_wait_prog_timer().Start(intvl);
       } else {
-        _capture_manager->_repeat_hold_prg = 0;
+        _capture_manager->set_repeat_hold_prg(0);
         _capture_manager->exec_capture();
       }
     }
@@ -1520,13 +1520,13 @@ void SigSession::OnMessage(int msg, int param) {
       bool bSwapBuffer = false;
 
       if (is_single_mode()) {
-        if (!_capture_manager->_is_stream_mode)
+        if (!_capture_manager->is_stream_mode())
           bAddDecoder = true;
       } else if (is_repeat_mode()) {
-        if (!_capture_manager->_is_stream_mode) {
+        if (!_capture_manager->is_stream_mode()) {
           bAddDecoder = true;
           bSwapBuffer = true;
-        } else if (_capture_manager->_capture_times > 1) {
+        } else if (_capture_manager->capture_times() > 1) {
           bAddDecoder = true;
           bSwapBuffer = true;
         }
@@ -1537,7 +1537,7 @@ void SigSession::OnMessage(int msg, int param) {
       if (is_repeat_mode()) {
         AppConfig &app = AppConfig::Instance();
         bool swapBackBufferAlways = app.appOptions.swapBackBufferAlways;
-        if (!swapBackBufferAlways && !_is_working && _capture_manager->_capture_times > 1) {
+        if (!swapBackBufferAlways && !_is_working && _capture_manager->capture_times() > 1) {
           bAddDecoder = false;
           bSwapBuffer = false;
           _capture_data->clear();
@@ -1549,7 +1549,7 @@ void SigSession::OnMessage(int msg, int param) {
         _capture_manager->clear_decode_result();
       }
 
-      _capture_manager->_trig_check_timer.Stop();
+      _capture_manager->trig_check_timer().Stop();
 
       // Switch the caputrued data buffer to view.
       if (bSwapBuffer) {
@@ -1666,12 +1666,12 @@ bool SigSession::switch_work_mode(int mode) {
       _capture_manager->clear_decode_result();
     }
 
-    _capture_manager->_is_stream_mode = false;
+    _capture_manager->set_is_stream_mode(false);
     if (mode == LOGIC) {
       if (_device_agent.is_hardware()) {
-        _capture_manager->_is_stream_mode = _device_agent.is_stream_mode();
+        _capture_manager->set_is_stream_mode(_device_agent.is_stream_mode());
       } else if (_device_agent.is_demo()) {
-        _capture_manager->_is_stream_mode = true;
+        _capture_manager->set_is_stream_mode(true);
       }
     }
 
@@ -1733,8 +1733,8 @@ void SigSession::set_trace_name(std::shared_ptr<data::SignalModel> model,
 
   // SignalModel covers Logic/Analog/Dso channel types. The decoder case is
   // handled separately via set_decoder_row_label().
-  if (model->type() == api::ChannelType::Logic ||
-      model->type() == api::ChannelType::Analog) {
+  if (model->type() == SR_CHANNEL_LOGIC ||
+      model->type() == SR_CHANNEL_ANALOG) {
     _device_agent.set_channel_name(model->index(), name.toUtf8());
   }
 }
@@ -1871,7 +1871,7 @@ void SigSession::sync_trigger_to_libsigrok() {
   // 与 session_service.cpp 的处理）。计算一次保存为局部变量。
   uint16_t probes = 0;
   for (const auto &m : _signal_models) {
-    if (m && m->type() == api::ChannelType::Logic)
+    if (m && m->type() == SR_CHANNEL_LOGIC)
       probes++;
   }
 
@@ -1884,7 +1884,7 @@ void SigSession::sync_trigger_to_libsigrok() {
 
     bool any_triggered = false;
     for (const auto &m : _signal_models) {
-      if (!m || m->type() != api::ChannelType::Logic)
+      if (!m || m->type() != SR_CHANNEL_LOGIC)
         continue;
       const uint16_t probe = static_cast<uint16_t>(m->index());
       char c0 = 'X';

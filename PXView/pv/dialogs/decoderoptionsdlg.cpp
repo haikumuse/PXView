@@ -311,7 +311,7 @@ DsComboBox* DecoderOptionsDlg::create_probe_selector(
     {
         dex++;
 
-        if (s->type() == pv::api::ChannelType::Logic && s->enabled()){
+        if (s->type() == SR_CHANNEL_LOGIC && s->enabled()){
 			selector->addItem(QString::fromStdString(s->name()), QVariant::fromValue(s->index()));
 
             if (binded_index == s->index()){

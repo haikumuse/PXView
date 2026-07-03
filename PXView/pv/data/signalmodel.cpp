@@ -31,7 +31,7 @@ namespace data {
 
 SignalModel::SignalModel()
     : _index(0)
-    , _type(api::ChannelType::Logic)
+    , _type(SR_CHANNEL_LOGIC)
     , _enabled(false)
     , _vdiv(0.0)
     , _coupling(0)
@@ -73,25 +73,7 @@ void SignalModel::set_name(const std::string &name) {
     }
 }
 
-void SignalModel::set_type(api::ChannelType type) { _type = type; }
-
-int SignalModel::sr_type() const {
-    // Map api::ChannelType (Logic=0/Analog=1/Dso=2) to the SR_CHANNEL_*
-    // constants (10000+) that libsigrok and the Trace base class expect.
-    // Mirrors the file-static api_type_to_sr_channel_type() helpers in
-    // signal.cpp / storesession.cpp, but exposed as a member so call sites
-    // cannot forget the conversion.
-    switch (_type) {
-    case api::ChannelType::Logic:
-        return SR_CHANNEL_LOGIC;
-    case api::ChannelType::Analog:
-        return SR_CHANNEL_ANALOG;
-    case api::ChannelType::Dso:
-        return SR_CHANNEL_DSO;
-    default:
-        return SR_CHANNEL_LOGIC;
-    }
-}
+void SignalModel::set_type(int type) { _type = type; }
 
 void SignalModel::set_enabled(bool enabled) {
     if (_enabled != enabled) {
@@ -173,6 +155,59 @@ void SignalModel::set_map_default(bool map_default) {
     }
 }
 
+// ---- Probe configuration (explicit sr_channel override) ----
+// Pattern: follow set_vdiv — use the explicit |probe| if non-null, else
+// fall back to the model's _sr_channel. In headless mode (no sr_channel and
+// no session), only update the model field without touching libsigrok.
+
+void SignalModel::set_probe_enabled(bool enabled, struct sr_channel *probe) {
+    if (_enabled != enabled) {
+        _enabled = enabled;
+        struct sr_channel *ch = probe ? probe : _sr_channel;
+        if (ch && _session) {
+            DeviceAgent *device = _session->get_device();
+            if (device && device->have_instance()) {
+                device->set_config_bool(SR_CONF_PROBE_EN, enabled, ch, NULL);
+            }
+        }
+        if (_sr_channel) {
+            _sr_channel->enabled = enabled ? TRUE : FALSE;
+        }
+        emit visibility_changed();
+    }
+}
+
+void SignalModel::set_probe_offset(uint16_t offset, struct sr_channel *probe) {
+    struct sr_channel *ch = probe ? probe : _sr_channel;
+    if (ch && _session) {
+        DeviceAgent *device = _session->get_device();
+        if (device && device->have_instance()) {
+            device->set_config_uint16(SR_CONF_PROBE_OFFSET, (int)offset,
+                                      ch, NULL);
+        }
+    }
+    // Also mirror to the model's own sr_channel struct when targeting it.
+    if (!probe && _sr_channel) {
+        _sr_channel->zero_offset = offset;
+    }
+}
+
+void SignalModel::set_probe_factor(uint64_t factor, struct sr_channel *probe) {
+    struct sr_channel *ch = probe ? probe : _sr_channel;
+    if (ch && _session) {
+        DeviceAgent *device = _session->get_device();
+        if (device && device->have_instance()) {
+            device->set_config_uint64(SR_CONF_PROBE_FACTOR, factor,
+                                      ch, NULL);
+        }
+    }
+    // Also mirror to the model's own sr_channel struct when targeting it.
+    if (!probe && _sr_channel) {
+        _sr_channel->vfactor = factor;
+    }
+    emit appearance_changed();
+}
+
 void SignalModel::set_trig_type(int trig_type) {
     if (_trig_type != trig_type) {
         _trig_type = trig_type;
@@ -195,6 +230,23 @@ void SignalModel::set_trig_value(double v) {
     // Note: existing behavior — set_trig_value did not emit appearance_changed
     // and DsoSignal::set_trig_vrate does its own view refresh, so we keep the
     // same no-emit contract here.
+}
+
+void SignalModel::set_trigger_value(double value, struct sr_channel *probe) {
+    // Update the model field regardless of probe override.
+    _trig_value = value;
+    struct sr_channel *ch = probe ? probe : _sr_channel;
+    if (ch && _session) {
+        DeviceAgent *device = _session->get_device();
+        if (device && device->have_instance()) {
+            device->set_config_byte(SR_CONF_TRIGGER_VALUE,
+                                    (int)(uint8_t)value, ch, NULL);
+        }
+    }
+    // Mirror to the model's own sr_channel struct when targeting it.
+    if (!probe && _sr_channel) {
+        _sr_channel->trig_value = (uint8_t)value;
+    }
 }
 
 bool SignalModel::commit_trig()

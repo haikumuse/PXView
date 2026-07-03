@@ -35,6 +35,7 @@ class SigSession;
 namespace data {
 class AnalogSnapshot;
 class SignalModel;
+class DataSource;
 }
 
 namespace view {
@@ -57,12 +58,12 @@ private:
 public:
     AnalogSignal(data::AnalogSnapshot *data,
                  std::shared_ptr<data::SignalModel> model,
-                 SigSession *session);
+                 data::DataSource *data_source);
 
     AnalogSignal(view::AnalogSignal* s,
                  data::AnalogSnapshot *data,
                  std::shared_ptr<data::SignalModel> model,
-                 SigSession *session);
+                 data::DataSource *data_source);
 
 	virtual ~AnalogSignal();
 

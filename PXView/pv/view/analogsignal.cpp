@@ -57,8 +57,8 @@ const float AnalogSignal::EnvelopeThreshold = 16.0f;
 
 AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
                            std::shared_ptr<data::SignalModel> model,
-                           SigSession *session)
-    : Signal(model, session), _data(data), _rects(NULL),
+                           data::DataSource *data_source)
+    : Signal(model, data_source), _data(data), _rects(NULL),
       _cached_hw_offset(model ? model->hw_offset() : 128), _hover_en(false),
       _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0) {
   _typeWidth = 5;
@@ -67,7 +67,7 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
   uint32_t ui32;
 
   // channel bits
-  bool ret = session->get_device()->get_config_byte(SR_CONF_UNIT_BITS, _bits);
+  bool ret = _data_source->device()->get_config_byte(SR_CONF_UNIT_BITS, _bits);
   if (!ret) {
     _bits = DefaultBits;
     pxv_warn(
@@ -76,13 +76,13 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
         DefaultBits);
   }
 
-  ret = session->get_device()->get_config_uint32(SR_CONF_REF_MIN, ui32);
+  ret = _data_source->device()->get_config_uint32(SR_CONF_REF_MIN, ui32);
   if (ret)
     _ref_min = (double)ui32;
   else
     _ref_min = 1;
 
-  ret = session->get_device()->get_config_uint32(SR_CONF_REF_MAX, ui32);
+  ret = _data_source->device()->get_config_uint32(SR_CONF_REF_MAX, ui32);
   if (ret)
     _ref_max = (double)ui32;
   else
@@ -92,8 +92,8 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
   if (_model) {
     _zero_offset = (int)_model->vertical_offset();
   } else {
-    ret = session->get_device()->get_config_uint16(SR_CONF_PROBE_OFFSET,
-                                                   _zero_offset, NULL, NULL);
+    ret = _data_source->device()->get_config_uint16(SR_CONF_PROBE_OFFSET,
+                                                    _zero_offset, NULL, NULL);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
     }
@@ -103,8 +103,8 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
 AnalogSignal::AnalogSignal(view::AnalogSignal *s,
                            pv::data::AnalogSnapshot *data,
                            std::shared_ptr<data::SignalModel> model,
-                           SigSession *session)
-    : Signal(*s, model, session), _data(data), _rects(NULL),
+                           data::DataSource *data_source)
+    : Signal(*s, model, data_source), _data(data), _rects(NULL),
       _cached_hw_offset(s->_cached_hw_offset), _hover_en(false),
       _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0) {
   _typeWidth = 5;
@@ -118,7 +118,7 @@ AnalogSignal::AnalogSignal(view::AnalogSignal *s,
 
 AnalogSignal *AnalogSignal::clone() const {
   AnalogSignal *cloned = new AnalogSignal(const_cast<AnalogSignal *>(this),
-                                          nullptr, _model, session);
+                                          nullptr, _model, _data_source);
   cloned->_local_enabled = _local_enabled;
   cloned->_visible = _visible;
   return cloned;
@@ -132,10 +132,10 @@ AnalogSignal::~AnalogSignal() {
 }
 
 int AnalogSignal::get_hw_offset() {
-  if (session->is_running_status()) {
+  if (_data_source->is_running_status()) {
     int hw_offset = _cached_hw_offset;
     sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-    if (probe && session->get_device()->get_config_uint16(
+    if (probe && _data_source->device()->get_config_uint16(
                      SR_CONF_PROBE_HW_OFFSET, hw_offset, probe, NULL)) {
       _cached_hw_offset = hw_offset;
     }
@@ -148,30 +148,23 @@ int AnalogSignal::commit_settings() {
   if (!probe)
     return 0;
 
-  int ret;
-
   // -- enable
-  ret = session->get_device()->set_config_bool(SR_CONF_PROBE_EN, enabled(),
-                                               probe);
+  _model->set_probe_enabled(enabled(), probe);
 
   // -- vdiv
-  ret = session->get_device()->set_config_uint64(
-      SR_CONF_PROBE_VDIV, _model ? _model->vdiv() : 0, probe, NULL);
+  _model->set_vdiv(_model ? _model->vdiv() : 0);
 
   // -- coupling
-  ret = session->get_device()->set_config_byte(
-      SR_CONF_PROBE_COUPLING, _model ? _model->coupling() : 0, probe, NULL);
+  _model->set_coupling(_model ? _model->coupling() : 0);
 
   // -- offset
-  ret = session->get_device()->set_config_uint16(
-      SR_CONF_PROBE_OFFSET, _model ? (uint16_t)_model->vertical_offset() : 0,
-      probe, NULL);
+  _model->set_probe_offset(_model ? (uint16_t)_model->vertical_offset() : 0,
+                           probe);
 
   // -- trig_value
-  session->get_device()->set_config_byte(
-      SR_CONF_TRIGGER_VALUE, _model ? _model->trig_value() : 0, probe, NULL);
+  _model->set_trigger_value(_model ? _model->trig_value() : 0, probe);
 
-  return ret;
+  return 1;
 }
 
 bool AnalogSignal::measure(const QPointF &p) {
@@ -256,65 +249,43 @@ QPointF AnalogSignal::get_point(uint64_t index, float &value) {
  * Probe options
  **/
 uint64_t AnalogSignal::get_vdiv() {
-  uint64_t vdiv = 0;
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  session->get_device()->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
-                                           NULL);
-  return vdiv;
+  return _model ? (uint64_t)_model->vdiv() : 0;
 }
 
 uint8_t AnalogSignal::get_acCoupling() {
-  int coupling = 0;
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  session->get_device()->get_config_byte(SR_CONF_PROBE_COUPLING, coupling,
-                                         probe, NULL);
-  return coupling;
+  return _model ? (uint8_t)_model->coupling() : 0;
 }
 
 bool AnalogSignal::get_mapDefault() {
-  bool isDefault = true;
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  session->get_device()->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, isDefault,
-                                         probe, NULL);
-  return isDefault;
+  return _model ? _model->map_default() : true;
 }
 
 QString AnalogSignal::get_mapUnit() {
   QString unit;
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  session->get_device()->get_config_string(SR_CONF_PROBE_MAP_UNIT, unit, probe,
-                                           NULL);
+  _data_source->device()->get_config_string(SR_CONF_PROBE_MAP_UNIT, unit, probe,
+                                            NULL);
   return unit;
 }
 
 double AnalogSignal::get_mapMin() {
   double min = -1;
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  session->get_device()->get_config_double(SR_CONF_PROBE_MAP_MIN, min, probe,
-                                           NULL);
+  _data_source->device()->get_config_double(SR_CONF_PROBE_MAP_MIN, min, probe,
+                                            NULL);
   return min;
 }
 
 double AnalogSignal::get_mapMax() {
   double max = 1;
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  session->get_device()->get_config_double(SR_CONF_PROBE_MAP_MAX, max, probe,
-                                           NULL);
+  _data_source->device()->get_config_double(SR_CONF_PROBE_MAP_MAX, max, probe,
+                                            NULL);
   return max;
 }
 
 uint64_t AnalogSignal::get_factor() {
-  uint64_t factor;
-  bool ret;
-  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
-  ret = session->get_device()->get_config_uint64(SR_CONF_PROBE_FACTOR, factor,
-                                                 probe, NULL);
-  if (ret) {
-    return factor;
-  } else {
-    pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
-    return 1;
-  }
+  return _model ? (uint64_t)_model->vfactor() : 1;
 }
 
 int AnalogSignal::ratio2value(double ratio) {
@@ -355,12 +326,18 @@ void AnalogSignal::set_zero_ratio(double ratio) {
   auto model = _model;
   _zero_offset = ratio2value(ratio);
   sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
-  session->get_device()->set_config_uint16(SR_CONF_PROBE_OFFSET, _zero_offset,
-                                           probe, NULL);
-  // Task 7.3: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
-  // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
   if (model) {
+    // set_probe_offset always pushes SR_CONF_PROBE_OFFSET to the device (no
+    // "if changed" guard), preserving the original unconditional
+    // set_config_uint16 semantics. set_zero_offset below pushes it again when
+    // the model field actually changes (same double-push as before).
+    model->set_probe_offset((uint16_t)_zero_offset, probe);
+    // Task 7.3: 写回 Core SignalModel。不广播：本方法亦被 mainwindow JSON
+    // 恢复路径 (mainwindow.cpp restore_session) 调用，广播会触发 rebuild 循环。
     model->set_zero_offset((double)_zero_offset);
+  } else {
+    _data_source->device()->set_config_uint16(SR_CONF_PROBE_OFFSET,
+                                              _zero_offset, probe, NULL);
   }
 }
 

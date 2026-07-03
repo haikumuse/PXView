@@ -462,11 +462,11 @@ void DecoderStack::do_decode_work() {
 
       for (auto m : _session->get_signal_models()) {
         bool index_match = (m->index() == probe_idx);
-        bool type_match = (m->type() == pv::api::ChannelType::Logic);
+        bool type_match = (m->type() == SR_CHANNEL_LOGIC);
         bool snapshot_ok = (m->snapshot() != NULL);
 
         pxv_info("  model: index=%d, type=%d (Logic=%d), snapshot=%p, index_match=%d, type_match=%d, snapshot_ok=%d",
-                 m->index(), (int)m->type(), (int)pv::api::ChannelType::Logic,
+                 m->index(), (int)m->type(), (int)SR_CHANNEL_LOGIC,
                  m->snapshot(), index_match, type_match, snapshot_ok);
 
         if (index_match && type_match) {

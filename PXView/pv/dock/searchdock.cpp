@@ -383,7 +383,7 @@ void SearchDock::unbind_context() {
 void SearchDock::rebuild_pattern() {
   int count = 0;
   for (auto s : _session->get_signal_models()) {
-    if (s->type() == api::ChannelType::Logic)
+    if (s->type() == SR_CHANNEL_LOGIC)
       count++;
   }
 
@@ -394,7 +394,7 @@ void SearchDock::rebuild_pattern() {
 
   std::set<uint16_t> active_indices;
   for (auto s : _session->get_signal_models()) {
-    if (s->type() == api::ChannelType::Logic)
+    if (s->type() == SR_CHANNEL_LOGIC)
       active_indices.insert(s->index());
   }
   for (auto it = _pattern.begin(); it != _pattern.end();) {

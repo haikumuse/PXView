@@ -76,20 +76,20 @@ static void apply_model_properties(Signal *signal,
 }
 
 Signal *SignalFactory::create_signal(std::shared_ptr<data::SignalModel> model,
-                                     SigSession *session) {
-  if (!model || !session)
+                                     data::DataSource *data_source) {
+  if (!model || !data_source)
     return nullptr;
 
   Signal *signal = nullptr;
   switch (model->type()) {
-  case api::ChannelType::Logic:
-    signal = new LogicSignal(get_logic_snapshot(session), model, session);
+  case SR_CHANNEL_LOGIC:
+    signal = new LogicSignal(get_logic_snapshot(data_source), model, data_source);
     break;
-  case api::ChannelType::Analog:
-    signal = new AnalogSignal(get_analog_snapshot(session), model, session);
+  case SR_CHANNEL_ANALOG:
+    signal = new AnalogSignal(get_analog_snapshot(data_source), model, data_source);
     break;
-  case api::ChannelType::Dso:
-    signal = new DsoSignal(get_dso_snapshot(session), model, session);
+  case SR_CHANNEL_DSO:
+    signal = new DsoSignal(get_dso_snapshot(data_source), model, data_source);
     break;
   default:
     return nullptr;
@@ -100,15 +100,15 @@ Signal *SignalFactory::create_signal(std::shared_ptr<data::SignalModel> model,
 }
 
 std::vector<Signal *> SignalFactory::create_signals(data::DataSource *source,
-                                                    SigSession *session) {
+                                                    data::DataSource *data_source) {
   std::vector<Signal *> result;
-  if (!source || !session)
+  if (!source || !data_source)
     return result;
 
   auto &models = source->get_signal_models();
   result.reserve(models.size());
   for (auto model : models) {
-    Signal *s = create_signal(model, session);
+    Signal *s = create_signal(model, data_source);
     if (s)
       result.push_back(s);
   }
@@ -216,9 +216,10 @@ SignalFactory::SignalChangeEvent SignalFactory::compute_change_event(
 
 void SignalFactory::update_signals(std::vector<Signal *> &current_signals,
                                    data::DataSource *source,
-                                   SigSession *session,
-                                   SignalChangeEvent event) {
-  if (!source || !session) {
+                                   data::DataSource *data_source,
+                                   SignalChangeEvent event,
+                                   DockUiState *ui_state) {
+  if (!source || !data_source) {
     if (event == AllReplaced) {
       for (auto *s : current_signals)
         delete s;
@@ -238,7 +239,7 @@ void SignalFactory::update_signals(std::vector<Signal *> &current_signals,
       delete s;
     current_signals.clear();
 
-    current_signals = create_signals(source, session);
+    current_signals = create_signals(source, data_source);
 
     // R8: restore_ui_state restores UI state saved from the OLD Signal objects.
     // This preserves the user's custom layout (view_index/v_offset/own_height)
@@ -249,7 +250,7 @@ void SignalFactory::update_signals(std::vector<Signal *> &current_signals,
     // persisted layout state to override the saved_state. This ensures that
     // layouts persisted via .pxc files are restored even if the old Signal
     // objects had default layouts (e.g., after a previous capture reset).
-    auto *doc = session->get_active_document();
+    auto *doc = source->get_active_document();
     if (doc && doc->get_signal_config().is_valid) {
       const auto &cfg = doc->get_signal_config();
       for (auto *sig : current_signals) {
@@ -284,7 +285,7 @@ void SignalFactory::update_signals(std::vector<Signal *> &current_signals,
         }
       }
       if (!exists) {
-        Signal *new_sig = create_signal(model, session);
+        Signal *new_sig = create_signal(model, data_source);
         if (new_sig)
           current_signals.push_back(new_sig);
       }
@@ -367,22 +368,22 @@ void SignalFactory::restore_ui_state(
   }
 }
 
-data::LogicSnapshot *SignalFactory::get_logic_snapshot(SigSession *session) {
-  if (!session)
+data::LogicSnapshot *SignalFactory::get_logic_snapshot(data::DataSource *data_source) {
+  if (!data_source)
     return nullptr;
-  return session->get_logic_snapshot();
+  return data_source->get_logic_snapshot();
 }
 
-data::AnalogSnapshot *SignalFactory::get_analog_snapshot(SigSession *session) {
-  if (!session)
+data::AnalogSnapshot *SignalFactory::get_analog_snapshot(data::DataSource *data_source) {
+  if (!data_source)
     return nullptr;
-  return session->get_analog_snapshot();
+  return data_source->get_analog_snapshot();
 }
 
-data::DsoSnapshot *SignalFactory::get_dso_snapshot(SigSession *session) {
-  if (!session)
+data::DsoSnapshot *SignalFactory::get_dso_snapshot(data::DataSource *data_source) {
+  if (!data_source)
     return nullptr;
-  return session->get_dso_snapshot();
+  return data_source->get_dso_snapshot();
 }
 
 } // namespace view
