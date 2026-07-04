@@ -256,85 +256,77 @@ void SessionStateContext::set_cur_samplelimits(uint64_t samplelimits) {
 }
 
 void SessionStateContext::sync_trigger_to_libsigrok() {
-  // Core→libsigrok 触发配置唯一同步点。
-  uint16_t probes = 0;
-  for (const auto &m : _signal_models) {
-    if (m && m->type() == SR_CHANNEL_LOGIC)
-      probes++;
-  }
-
+  // Core→libsigrok 触发配置唯一同步点。在 sr_session_start 前一次性同步。
+  //
+  // Fork libsigrok 删除后，ds_trigger_* API 不复存在。改用上游 sr_trigger_*
+  // API 同步 simple trigger。Adv/Serial trigger 字段保留在 TriggerConfig 中
+  // 但暂不下发（UI 保留供 PXLogic 驱动未来扩展）。
   const auto &cfg = _trigger_config;
-  const int trig_pos = cfg.trigger_pos();
 
-  if (cfg.mode() == data::TriggerConfig::Simple) {
-    ds_trigger_reset();
+  // Only Simple trigger mode is synced to the driver. Adv/Serial trigger
+  // configurations are retained in TriggerConfig for future PXLogic driver
+  // extension but not currently synced (stub).
+  if (cfg.mode() != data::TriggerConfig::Simple) {
+    pxv_info("sync_trigger_to_libsigrok: Adv/Serial trigger not synced (stub)");
+    return;
+  }
 
-    bool any_triggered = false;
-    for (const auto &m : _signal_models) {
-      if (!m || m->type() != SR_CHANNEL_LOGIC)
-        continue;
-      const uint16_t probe = static_cast<uint16_t>(m->index());
-      char c0 = 'X';
-      switch (m->trig_type()) {
-      case data::SignalModel::POSTRIG: c0 = 'R'; any_triggered = true; break;
-      case data::SignalModel::NEGTRIG: c0 = 'F'; any_triggered = true; break;
-      case data::SignalModel::HIGTRIG: c0 = '1'; any_triggered = true; break;
-      case data::SignalModel::LOWTRIG: c0 = '0'; any_triggered = true; break;
-      case data::SignalModel::EDGTRIG: c0 = 'C'; any_triggered = true; break;
-      case data::SignalModel::NONTRIG:
-      default: c0 = 'X'; break;
-      }
-      ds_trigger_probe_set(probe, c0, 'X');
-    }
+  // Build an upstream sr_trigger from the SignalModel trig_type fields.
+  struct sr_trigger *trig = sr_trigger_new("pxview");
+  if (!trig) {
+    pxv_err("sync_trigger_to_libsigrok: sr_trigger_new failed");
+    return;
+  }
 
-    if (any_triggered) {
-      ds_trigger_set_en(1);
-      ds_trigger_set_mode(SIMPLE_TRIGGER);
-    } else {
-      ds_trigger_set_en(0);
-    }
-    ds_trigger_set_pos(trig_pos);
-  } else if (cfg.mode() == data::TriggerConfig::Adv) {
-    ds_trigger_reset();
-    ds_trigger_set_en(true);
-    ds_trigger_set_mode(ADV_TRIGGER);
-    ds_trigger_set_pos(trig_pos);
+  struct sr_trigger_stage *stage = sr_trigger_stage_add(trig);
+  if (!stage) {
+    sr_trigger_free(trig);
+    return;
+  }
 
-    const int stage_count = cfg.stage_count();
-    if (stage_count > 0) {
-      ds_trigger_set_stage(stage_count - 1);
-      const auto &stages = cfg.stages();
-      for (int i = 0; i < stage_count && i < (int)stages.size(); ++i) {
-        const auto &st = stages[i];
-        QByteArray v0 = st.value0.toLocal8Bit();
-        QByteArray v1 = st.value1.toLocal8Bit();
-        ds_trigger_stage_set_value(i, probes, v0.data(), v1.data());
-        ds_trigger_stage_set_logic(i, probes, st.logic);
-        ds_trigger_stage_set_inv(i, probes, st.inv0, st.inv1);
-        ds_trigger_stage_set_count(i, probes, st.count0, st.count1);
+  bool any_triggered = false;
+  for (const auto &m : _signal_models) {
+    if (!m || m->type() != SR_CHANNEL_LOGIC)
+      continue;
+
+    // Find the sr_channel for this SignalModel index.
+    struct sr_channel *ch = nullptr;
+    for (const GSList *l = _device_agent.get_channels(); l; l = l->next) {
+      struct sr_channel *probe = (struct sr_channel *)l->data;
+      if (probe && probe->index == m->index()) {
+        ch = probe;
+        break;
       }
     }
-  } else if (cfg.mode() == data::TriggerConfig::Serial) {
-    ds_trigger_reset();
-    ds_trigger_set_en(true);
-    ds_trigger_set_mode(SERIAL_TRIGGER);
-    ds_trigger_set_pos(trig_pos);
+    if (!ch)
+      continue;
 
-    const int stage_count = cfg.stage_count();
-    if (stage_count > 0) {
-      ds_trigger_set_stage(stage_count - 1);
-      const auto &stages = cfg.stages();
-      for (int i = 0; i < stage_count && i < (int)stages.size(); ++i) {
-        const auto &st = stages[i];
-        QByteArray v0 = st.value0.toLocal8Bit();
-        QByteArray v1 = st.value1.toLocal8Bit();
-        ds_trigger_stage_set_value(i, probes, v0.data(), v1.data());
-        ds_trigger_stage_set_logic(i, probes, st.logic);
-        ds_trigger_stage_set_inv(i, probes, st.inv0, st.inv1);
-        ds_trigger_stage_set_count(i, probes, st.count0, st.count1);
-      }
+    int match = 0;
+    switch (m->trig_type()) {
+    case data::SignalModel::POSTRIG:  match = SR_TRIGGER_RISING;  any_triggered = true; break;
+    case data::SignalModel::NEGTRIG:  match = SR_TRIGGER_FALLING; any_triggered = true; break;
+    case data::SignalModel::HIGTRIG:  match = SR_TRIGGER_ONE;     any_triggered = true; break;
+    case data::SignalModel::LOWTRIG:  match = SR_TRIGGER_ZERO;    any_triggered = true; break;
+    case data::SignalModel::EDGTRIG:  match = SR_TRIGGER_EDGE;    any_triggered = true; break;
+    case data::SignalModel::NONTRIG:
+    default: continue; // skip non-trigger channels
+    }
+
+    if (sr_trigger_match_add(stage, ch, match, 0.0f) != SR_OK) {
+      pxv_warn("sync_trigger_to_libsigrok: sr_trigger_match_add failed for ch %d", m->index());
     }
   }
+
+  if (any_triggered && _device_agent.sr_session()) {
+    sr_session_trigger_set(_device_agent.sr_session(), trig);
+    pxv_info("sync_trigger_to_libsigrok: simple trigger synced (%d matches)",
+             stage->matches ? g_slist_length(stage->matches) : 0);
+  } else {
+    pxv_info("sync_trigger_to_libsigrok: no trigger matches, trigger disabled");
+  }
+
+  // sr_session_trigger_set copies the trigger; free our copy.
+  sr_trigger_free(trig);
 }
 
 void SessionStateContext::clear_glitch_filter_state_for_capture() {

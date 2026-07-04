@@ -66,11 +66,8 @@
 #include "ui/msgbox.h"
 #include "utility/path.h"
 
-// libsigrokstd glue layer (upstream libsigrok 0.6.0 shared library).
-// Header is in libsigrokstd/bridge/ (added to include path by CMake).
-// Uses void* opaque pointers so PXView's libsigrok.h (already included
-// via sigsession.h) and upstream's libsigrok.h never coexist in one TU.
-#include "srstd_pxview_glue.h"
+// Upstream libsigrok 0.6.0 is now the sole libsigrok (fork + bridge removed).
+// All ds_* fork APIs are replaced by sr_* upstream APIs.
 
 namespace pv {
 SessionData::SessionData() {
@@ -173,6 +170,12 @@ SigSession::SigSession() {
   _state->set_filter_processor(_filter_processor.get());
 
   _state->device_agent().set_callback(this);
+  // Wire the datafeed callback so DeviceAgent registers it with sr_session
+  // when open_by_handle creates the session. The callback trampoline lives
+  // on DataFeedParser (static method); user_data is the parser instance.
+  _state->device_agent().set_datafeed_callback(
+      &core::DataFeedParser::data_feed_callback_ex,
+      _data_feed_parser.get());
 }
 
 SigSession::SigSession(SigSession &o) { (void)o; }
@@ -196,59 +199,28 @@ SigSession::~SigSession() {
 }
 
 bool SigSession::init() {
-  ds_log_set_context(pxv_log_context());
-
-  // Register callbacks using the _ex API to pass `this` as user data,
-  // so the static trampolines can dispatch to the instance method without
-  // relying on a static singleton pointer.
-  ds_set_event_callback_ex(device_lib_event_callback_ex, this);
-
-  ds_set_datafeed_callback_ex(core::DataFeedParser::data_feed_callback_ex,
-                              _data_feed_parser.get());
-
-  // firmware resource directory
-  QString resdir = GetFirmwareDir();
-  std::string res_path = pv::path::ToUnicodePath(resdir);
-  ds_set_firmware_resource_dir(res_path.c_str());
-
-  if (ds_lib_init() != SR_OK) {
-    pxv_err("PXView run ERROR: collect lib init failed.");
+  // Upstream libsigrok 0.6.0 initialization (sole libsigrok after fork removal).
+  // sr_init creates the sr_context which holds the libusb_context, driver list,
+  // and resource hooks. The datafeed callback is registered per-session in
+  // start_capture via sr_session_datafeed_callback_add.
+  if (sr_init(&_sr_ctx) != SR_OK) {
+    pxv_err("PXView run ERROR: libsigrok init failed.");
     return false;
   }
 
-  // Initialize libsigrokstd (upstream libsigrok 0.6.0 shared library).
-  // Share PXView's already-created libusb_context so both libraries see the
-  // same USB devices / hotplug events (avoids two libusb_init instances
-  // competing for device discovery).
-  void *libusb_ctx = ds_get_libusb_context();
-  if (libusb_ctx &&
-      srstd_pxview_init_shared(&_srstd_ctx, libusb_ctx) == 0 /* SR_OK */) {
-    srstd_glue_set_datafeed_callback(
-        reinterpret_cast<srstd_glue_datafeed_cb_t>(
-            &core::DataFeedParser::data_feed_callback_ex),
-        _data_feed_parser.get());
-    pxv_info("libsigrokstd initialized (upstream drivers available)");
-  } else {
-    pxv_err("libsigrokstd init failed, upstream drivers unavailable");
-    _srstd_ctx = nullptr;
-  }
-
+  pxv_info("libsigrok initialized (upstream 0.6.0, sole library)");
   return true;
 }
 
 void SigSession::uninit() {
   this->Close();
 
-  // Tear down libsigrokstd BEFORE PXView's libsigrok exits: the glue layer
-  // shares PXView's libusb_context (must not be released by srstd_exit —
-  // srstd_pxview_exit internally clears libusb_ctx=NULL before sr_exit).
-  if (_srstd_ctx) {
-    srstd_glue_close_active_device();
-    srstd_pxview_exit(_srstd_ctx);
-    _srstd_ctx = nullptr;
+  // DeviceAgent owns sr_session; it is destroyed in release()/destructor.
+  // Just tear down the sr_context here.
+  if (_sr_ctx) {
+    sr_exit(_sr_ctx);
+    _sr_ctx = nullptr;
   }
-
-  ds_lib_exit();
 }
 
 bool SigSession::set_default_device() {
@@ -261,20 +233,20 @@ bool SigSession::set_default_device() {
     stop_capture();
   }
 
-  struct ds_device_base_info *array = NULL;
+  // Use the device list to pick the last device (matches fork behavior:
+  // the most recently scanned device becomes the default).
   int count = 0;
-
-  pxv_info("Set default device.");
-
-  if (ds_get_device_list(&array, &count) != SR_OK) {
-    pxv_err("Get device list error!");
-    return false;
-  }
+  int actived_index = -1;
+  struct ds_device_base_info *array = get_device_list(count, actived_index);
   if (count < 1 || array == NULL) {
     pxv_err("Error! Device list is empty, can't set default device.");
+    if (array)
+      free(array);
     return false;
   }
 
+  // Pick the last device (matches fork ds_get_device_list behavior where
+  // the last entry is the most recently scanned/added device).
   struct ds_device_base_info *dev = (array + count - 1);
   ds_device_handle dev_handle = dev->handle;
 
@@ -291,35 +263,19 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   assert(!_state->is_working());
   assert(_event_bus && _event_bus->has_callbacks());
 
-  ds_device_handle old_dev = _state->device_agent().handle();
-
   // modernize-core-layer-radical Task 11: pre-broadcast synchronously so
   // MainWindow can close modal dialogs / hide calibration / delete protocols
   // / reload the view BEFORE the old device is released below.
   // Caller (set_device) is on the main thread (user-initiated action).
   _event_bus->broadcast_sync<interface::CurrentDeviceChangePrev>({});
-  // Release the old device. DeviceAgent::release() dispatches based on the
-  // CURRENT _device_lib (i.e. the OLD device's lib) — srstd → srstd_glue_close,
-  // pxview → ds_release_actived_device.
+  // Release the old device.
   _state->device_agent().release();
   _state->set_device_status(ST_INIT);
 
-  // ===== Dispatch based on handle tag (srstd devices have high bit set) =====
-  if (SRSTD_IS_HANDLE(dev_handle)) {
-    // libsigrokstd upstream device.
-    int idx = SRSTD_HANDLE_INDEX(dev_handle);
-    if (srstd_glue_open_scanned_device(idx) != 0 /* SR_OK */) {
-      pxv_err("Switch srstd device error (index %d)!", idx);
-      return false;
-    }
-    _state->device_agent().set_device_lib(DeviceAgent::LIB_SRSTD);
-  } else {
-    // PXView fork device.
-    _state->device_agent().set_device_lib(DeviceAgent::LIB_PXVIEW);
-    if (ds_active_device(dev_handle) != SR_OK) {
-      pxv_err("Switch device error!");
-      return false;
-    }
+  // Open the new device via DeviceAgent (handles sr_dev_open + channel setup).
+  if (!_state->device_agent().open_by_handle(dev_handle, _sr_ctx)) {
+    pxv_err("Switch device error!");
+    return false;
   }
 
   _state->device_agent().update();
@@ -344,49 +300,7 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   set_cur_samplelimits(_state->device_agent().get_sample_limit());
 
   // The current device changed.
-  // broadcast_async<CurrentDeviceChanged> is queued on qApp via
-  // Qt::QueuedConnection: init_signals() above rebuilt Core SignalModels, and
-  // the ITriggerCallback dispatch + typed event will run AFTER the View
-  // signals_changed rebuild so handlers (on_event(CurrentDeviceChanged) ->
-  // load_device_config -> DsoSignal::set_zero_ratio) see valid
-  // view::Signal::_model pointers. No separate _deferred variant is needed.
   _event_bus->broadcast_async<interface::CurrentDeviceChanged>({});
-
-  // Firmware error checks are PXView-fork-specific (DSLogic/DSCope firmware
-  // version / USB I/O / exclusivity). Skip them for srstd upstream devices,
-  // which don't use PXView's firmware loading path.
-  if (_state->device_agent().device_lib() == DeviceAgent::LIB_PXVIEW) {
-    if (ds_get_last_error() == SR_ERR_DEVICE_FIRMWARE_VERSION_LOW) {
-      QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_RECONNECT_FOR_FIRMWARE),
-                           "Please reconnect the device!");
-      delay_prop_msg(strMsg);
-      return false;
-    }
-
-    if (ds_get_last_error() == SR_ERR_FIRMWARE_NOT_EXIST) {
-      QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_FIRMWARE_NOT_EXIST),
-                           "Firmware not exist!");
-      delay_prop_msg(strMsg);
-      return false;
-    }
-
-    if (ds_get_last_error() == SR_ERR_DEVICE_USB_IO_ERROR) {
-      QString strMsg =
-          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_USB_IO_ERROR), "USB io error!");
-      delay_prop_msg(strMsg);
-      return false;
-    }
-
-    if (ds_get_last_error() == SR_ERR_DEVICE_IS_EXCLUSIVE) {
-      QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_BUSY_SWITCH_FAILED),
-                           "Device is busy!");
-      if (old_dev != NULL_HANDLE)
-        MsgBox::Show(strMsg);
-      else
-        delay_prop_msg(strMsg);
-      return false;
-    }
-  }
 
   return true;
 }
@@ -398,12 +312,22 @@ bool SigSession::set_file(QString name) {
   std::string file_name = pv::path::ToUnicodePath(name);
   pxv_info("Load file: \"%s\"", file_name.c_str());
 
-  std::string file_str = name.toUtf8().toStdString();
-
-  if (ds_device_from_file(file_str.c_str()) != SR_OK) {
+  // Use upstream sr_input API to load session files.
+  const struct sr_input *in = nullptr;
+  if (sr_input_scan_file(file_name.c_str(), &in) != SR_OK) {
     pxv_err("Load file error!");
     return false;
   }
+
+  // Get the device instance from the input and register it via DeviceAgent.
+  struct sr_dev_inst *sdi = sr_input_dev_inst_get(in);
+  if (!sdi) {
+    pxv_err("Load file error: no device instance!");
+    return false;
+  }
+
+  // Register the file-loaded device with DeviceAgent.
+  _state->device_agent().set_file_device(sdi, name);
 
   return set_default_device();
 }
@@ -413,7 +337,6 @@ void SigSession::close_file(ds_device_handle dev_handle) {
     pxv_warn("%s", "SigSession::close_file: dev_handle is NULL");
     return;
   }
-  assert(dev_handle);
 
   if (dev_handle == _state->device_agent().handle() && _state->is_working()) {
     pxv_err("The virtual device is running, can't remove it.");
@@ -421,9 +344,8 @@ void SigSession::close_file(ds_device_handle dev_handle) {
   }
   bool isCurrent = dev_handle == _state->device_agent().handle();
 
-  if (ds_remove_device(dev_handle) != SR_OK) {
-    pxv_err("Remove virtual deivice error!");
-  }
+  // Remove the device from DeviceAgent's tracked list.
+  _state->device_agent().remove_device(dev_handle);
 
   if (isCurrent)
     set_default_device();
@@ -441,63 +363,93 @@ struct ds_device_base_info *SigSession::get_device_list(int &out_count,
                                                         int &actived_index) {
   out_count = 0;
   actived_index = -1;
-  struct ds_device_base_info *array = NULL;
 
-  // 1. Get PXView fork device list (DSLogic/DSCope/PXLogic/demo/file).
-  // ds_get_device_list allocates a buffer of (num+1) entries; the last entry
-  // has handle=0 as a sentinel. The buffer is owned by the caller (must free).
-  int pxv_count = 0;
-  if (ds_get_device_list(&array, &pxv_count) != SR_OK) {
-    return NULL;
+  // Scan all upstream drivers via sr_driver_list + sr_driver_scan.
+  // Build a ds_device_base_info array compatible with the existing API.
+  if (!_sr_ctx) {
+    return nullptr;
   }
 
-  // 2. Scan libsigrokstd upstream drivers and append their devices.
-  // Each srstd device gets a tagged handle (high bit set) so set_device()
-  // can distinguish srstd handles from PXView handles at dispatch time.
-  int srstd_count = 0;
-  if (_srstd_ctx) {
-    srstd_count = srstd_glue_scan_devices();
+  struct sr_dev_driver **drivers = sr_driver_list(_sr_ctx);
+  if (!drivers) {
+    return nullptr;
   }
 
-  if (srstd_count <= 0) {
-    out_count = pxv_count;
-    actived_index = ds_get_actived_device_index();
-    return array;
-  }
-
-  // Reallocate to fit pxv_count + srstd_count + 1 sentinel.
-  // The original buffer was malloc'd by libsigrok, so use realloc.
-  struct ds_device_base_info *merged = (struct ds_device_base_info *)
-      realloc(array, sizeof(struct ds_device_base_info) * (pxv_count + srstd_count + 1));
-  if (!merged) {
-    // realloc failed; original array is still valid, return it as-is.
-    out_count = pxv_count;
-    actived_index = ds_get_actived_device_index();
-    return array;
-  }
-
-  // Append srstd devices after the PXView devices (overwriting the sentinel
-  // at index pxv_count, then writing a new sentinel at the end).
-  for (int i = 0; i < srstd_count; i++) {
-    struct ds_device_base_info *entry = &merged[pxv_count + i];
-    entry->handle = SRSTD_MAKE_HANDLE(i);
-    char name_buf[150] = {0};
-    if (srstd_glue_get_scanned_device_name(i, name_buf, sizeof(name_buf)) == 0) {
-      strncpy(entry->name, name_buf, sizeof(entry->name) - 1);
-      entry->name[sizeof(entry->name) - 1] = '\0';
-    } else {
-      snprintf(entry->name, sizeof(entry->name), "srstd-device-%d", i);
+  // Collect all scanned devices into a temporary vector.
+  std::vector<struct sr_dev_inst *> all_sdi;
+  for (int i = 0; drivers[i]; i++) {
+    struct sr_dev_driver *drv = drivers[i];
+    if (!drv)
+      continue;
+    // Initialize driver on first use.
+    if (sr_driver_init(_sr_ctx, drv) != SR_OK)
+      continue;
+    GSList *devs = sr_driver_scan(drv, nullptr);
+    for (GSList *l = devs; l; l = l->next) {
+      struct sr_dev_inst *sdi = (struct sr_dev_inst *)l->data;
+      if (sdi)
+        all_sdi.push_back(sdi);
     }
+    // Note: sr_driver_scan returns a list owned by the driver; do not free.
   }
 
-  // New sentinel.
-  struct ds_device_base_info *sentinel = &merged[pxv_count + srstd_count];
-  sentinel->handle = 0;
-  sentinel->name[0] = '\0';
+  // Also include any file-loaded devices tracked by DeviceAgent.
+  auto &file_devs = _state->device_agent().file_devices();
+  for (auto sdi : file_devs) {
+    if (sdi)
+      all_sdi.push_back(sdi);
+  }
 
-  out_count = pxv_count + srstd_count;
-  actived_index = ds_get_actived_device_index();
-  return merged;
+  if (all_sdi.empty()) {
+    return nullptr;
+  }
+
+  // Allocate (count + 1) entries; last entry is a sentinel with handle=0.
+  int count = (int)all_sdi.size();
+  struct ds_device_base_info *array = (struct ds_device_base_info *)
+      calloc(count + 1, sizeof(struct ds_device_base_info));
+  if (!array) {
+    return nullptr;
+  }
+
+  // Fill entries. Handle = index+1 (0 is reserved for NULL_HANDLE sentinel).
+  for (int i = 0; i < count; i++) {
+    struct ds_device_base_info *entry = &array[i];
+    entry->handle = (ds_device_handle)(i + 1);
+
+    // Build display name from vendor/model/conn fields.
+    const char *vendor = sr_dev_inst_vendor_get(all_sdi[i]);
+    const char *model = sr_dev_inst_model_get(all_sdi[i]);
+    const char *conn = sr_dev_inst_connid_get(all_sdi[i]);
+
+    char name_buf[150] = {0};
+    if (vendor && model) {
+      snprintf(name_buf, sizeof(name_buf), "%s %s", vendor, model);
+    } else if (model) {
+      snprintf(name_buf, sizeof(name_buf), "%s", model);
+    } else if (conn) {
+      snprintf(name_buf, sizeof(name_buf), "%s", conn);
+    } else {
+      snprintf(name_buf, sizeof(name_buf), "device-%d", i);
+    }
+    strncpy(entry->name, name_buf, sizeof(entry->name) - 1);
+    entry->name[sizeof(entry->name) - 1] = '\0';
+  }
+
+  // Sentinel.
+  array[count].handle = 0;
+  array[count].name[0] = '\0';
+
+  out_count = count;
+  // actived_index: track via DeviceAgent's current handle.
+  ds_device_handle cur = _state->device_agent().handle();
+  actived_index = (cur > 0 && cur <= (ds_device_handle)count) ? (int)(cur - 1) : -1;
+
+  // Register the scanned SDI list with DeviceAgent so set_device() can
+  // open the right device by handle (index+1).
+  _state->device_agent().set_scanned_devices(all_sdi);
+
+  return array;
 }
 
 uint64_t SigSession::cur_samplerate() {
@@ -729,16 +681,16 @@ void SigSession::init_signals() {
                                       probe, NULL);
         model->set_map_default(map_default);
 
-        // hw_offset: prefer live SR_CONF_PROBE_HW_OFFSET (matches
-        // DsoSignal::get_hw_offset), fall back to the cached channel value.
-        int hw_offset = probe ? probe->hw_offset : 0;
+        // hw_offset: live SR_CONF_PROBE_HW_OFFSET (fork sr_channel.hw_offset
+        // field removed in upstream libsigrokstd — default 0).
+        int hw_offset = 0;
         _state->device_agent().get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
                                         probe, NULL);
         model->set_hw_offset(hw_offset);
 
-        // zero_offset: prefer live SR_CONF_PROBE_OFFSET (matches
-        // DsoSignal::load_settings), fall back to the cached channel value.
-        int zero_offset = probe ? probe->zero_offset : 0;
+        // zero_offset: live SR_CONF_PROBE_OFFSET (fork sr_channel.zero_offset
+        // field removed in upstream libsigrokstd — default 0).
+        int zero_offset = 0;
         _state->device_agent().get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
                                         probe, NULL);
         model->set_zero_offset(zero_offset);
@@ -882,12 +834,12 @@ void SigSession::reload() {
                                       probe, NULL);
         model->set_map_default(map_default);
 
-        int hw_offset = probe ? probe->hw_offset : 0;
+        int hw_offset = 0;
         _state->device_agent().get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
                                         probe, NULL);
         model->set_hw_offset(hw_offset);
 
-        int zero_offset = probe ? probe->zero_offset : 0;
+        int zero_offset = 0;
         _state->device_agent().get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
                                         probe, NULL);
         model->set_zero_offset(zero_offset);
@@ -1323,91 +1275,13 @@ Snapshot *SigSession::get_signal_snapshot() {
     return _state->view_data()->get_logic();
 }
 
-void SigSession::device_lib_event_callback_ex(int event, void *user_data) {
-  if (user_data == NULL) {
-    pxv_err("Error!Event callback user_data is null.");
-    return;
-  }
-  static_cast<SigSession *>(user_data)->on_device_lib_event(event);
-}
-
-void SigSession::on_device_lib_event(int event) {
-  if (!_event_bus || !_event_bus->has_callbacks()) {
-    pxv_detail("The callback list is empty, so the device event was ignored.");
-    return;
-  }
-
-  switch (event) {
-  case DS_EV_DEVICE_RUNNING:
-    _state->set_device_status(ST_RUNNING);
-    set_receive_data_len(0);
-    break;
-
-  case DS_EV_DEVICE_STOPPED:
-    _state->set_device_status(ST_STOPPED);
-    // Confirm that SR_DF_END was received
-    if (!_state->capture_data()->get_logic()->last_ended() ||
-        !_state->capture_data()->get_dso()->last_ended() ||
-        !_state->capture_data()->get_analog()->last_ended()) {
-      pxv_err("Error!The data is not completed.");
-    }
-    break;
-
-  case DS_EV_COLLECT_TASK_START:
-    _event_bus->broadcast_async<interface::CollectStart>({});
-    break;
-
-  case DS_EV_COLLECT_TASK_END:
-  case DS_EV_COLLECT_TASK_END_BY_ERROR:
-  case DS_EV_COLLECT_TASK_END_BY_DETACHED: {
-    _event_bus->broadcast_async<interface::CollectEnd>({});
-
-    if (_state->capture_data()->get_logic()->last_ended() == false)
-      pxv_err("The collected data is error!");
-
-    if (_state->capture_data()->get_dso()->last_ended() == false)
-      pxv_err("The collected data is error!");
-
-    if (_state->capture_data()->get_analog()->last_ended() == false)
-      pxv_err("The collected data is error!");
-
-    // trig next collect
-    if (is_repeat_mode() && _state->is_working() && event == DS_EV_COLLECT_TASK_END) {
-      _event_bus->broadcast_async<interface::TrigNextCollect>({});
-    } else {
-      _state->set_is_working(false);
-      _capture_manager->set_is_instant(false);
-      _event_bus->broadcast_async<interface::EndCollectWork>({});
-    }
-  } break;
-
-  case DS_EV_NEW_DEVICE_ATTACH:
-    _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
-    break;
-
-  case DS_EV_CURRENT_DEVICE_DETACH: {
-    if (_state->is_working()) {
-      pxv_info("SigSession::on_device_lib_event,DS_EV_CURRENT_DEVICE_DETACH, "
-               "stop capture");
-      stop_capture();
-    }
-
-    _event_bus->broadcast_async<interface::DeviceDetached>({});
-  } break;
-
-  case DS_EV_INACTIVE_DEVICE_DETACH:
-    _event_bus->broadcast_async<interface::DeviceListUpdated>({}); // Update list only.
-    break;
-
-  case DS_EV_DEVICE_SPEED_NOT_MATCH:
-    _event_bus->broadcast_async<interface::DeviceSpeedNotMatch>({});
-    break;
-
-  default:
-    pxv_err("Error!Unknown device event.");
-    break;
-  }
-}
+// Note: device_lib_event_callback_ex / on_device_lib_event removed.
+// Fork libsigrok's ds_set_event_callback_ex API is gone; upstream libsigrok
+// uses sr_session_stopped_callback for session-end notification and the
+// datafeed callback for packet events. Hotplug (DS_EV_NEW_DEVICE_ATTACH etc.)
+// is not supported in this migration (would need libusb hotplug API directly).
+// The CollectStart/CollectEnd/EndCollectWork events are now emitted by
+// CaptureManager which owns the capture lifecycle.
 
 // Note: add_event_listener / remove_event_listener / remove_callback /
 // broadcast<T>() / broadcast_sync<T>() / broadcast_async<T>() /
@@ -1797,95 +1671,77 @@ void SigSession::set_trigger_config(const data::TriggerConfig &cfg) {
 }
 
 void SigSession::sync_trigger_to_libsigrok() {
-  // Core→libsigrok 触发配置唯一同步点。在 start_capture 内部 ds_start_collect 前调用。
-  // 消除 TriggerDock::commit_trigger / SessionService::start_capture /
-  // TriggerDock::try_commit_trigger 各自调 ds_trigger_* 导致的互相覆盖。
+  // Core→libsigrok 触发配置唯一同步点。在 start_capture 内部 sr_session_start 前调用。
   //
-  // probes 参数 = Logic 类型 SignalModel 数量（参考 triggerdock.cpp 的 _cur_ch_num
-  // 与 session_service.cpp 的处理）。计算一次保存为局部变量。
-  uint16_t probes = 0;
-  for (const auto &m : _state->signal_models()) {
-    if (m && m->type() == SR_CHANNEL_LOGIC)
-      probes++;
-  }
-
+  // Fork libsigrok 删除后，ds_trigger_* API 不复存在。改用上游 sr_trigger_* API
+  // 同步 simple trigger。Adv/Serial trigger 字段保留在 TriggerConfig 中但暂不下发
+  // （UI 保留供 PXLogic 驱动未来扩展）。
   const auto &cfg = _state->trigger_config();
-  const int trig_pos = cfg.trigger_pos();
 
-  if (cfg.mode() == data::TriggerConfig::Simple) {
-    // Simple 模式：遍历 SignalModel.trig_type() 映射到 ds_trigger_probe_set。
-    ds_trigger_reset();
+  // Only Simple trigger mode is synced to the driver. Adv/Serial trigger
+  // configurations are retained in TriggerConfig for future PXLogic driver
+  // extension but not currently synced (stub).
+  if (cfg.mode() != data::TriggerConfig::Simple) {
+    pxv_info("sync_trigger_to_libsigrok: Adv/Serial trigger not synced (stub)");
+    return;
+  }
 
-    bool any_triggered = false;
-    for (const auto &m : _state->signal_models()) {
-      if (!m || m->type() != SR_CHANNEL_LOGIC)
-        continue;
-      const uint16_t probe = static_cast<uint16_t>(m->index());
-      char c0 = 'X';
-      switch (m->trig_type()) {
-      case data::SignalModel::POSTRIG: c0 = 'R'; any_triggered = true; break;
-      case data::SignalModel::NEGTRIG: c0 = 'F'; any_triggered = true; break;
-      case data::SignalModel::HIGTRIG: c0 = '1'; any_triggered = true; break;
-      case data::SignalModel::LOWTRIG: c0 = '0'; any_triggered = true; break;
-      case data::SignalModel::EDGTRIG: c0 = 'C'; any_triggered = true; break;
-      case data::SignalModel::NONTRIG:
-      default: c0 = 'X'; break;
-      }
-      ds_trigger_probe_set(probe, c0, 'X');
-    }
+  // Build an upstream sr_trigger from the SignalModel trig_type fields.
+  // The trigger is attached to the session via sr_session_trigger_set().
+  struct sr_trigger *trig = sr_trigger_new("pxview");
+  if (!trig) {
+    pxv_err("sync_trigger_to_libsigrok: sr_trigger_new failed");
+    return;
+  }
 
-    if (any_triggered) {
-      ds_trigger_set_en(1);
-      ds_trigger_set_mode(SIMPLE_TRIGGER);
-    } else {
-      ds_trigger_set_en(0);
-    }
-    ds_trigger_set_pos(trig_pos);
-  } else if (cfg.mode() == data::TriggerConfig::Adv) {
-    // Adv 模式：从 _trigger_config.stages() 一次性同步到 ds_trigger_*。
-    ds_trigger_reset();
-    ds_trigger_set_en(true);
-    ds_trigger_set_mode(ADV_TRIGGER);
-    ds_trigger_set_pos(trig_pos);
+  struct sr_trigger_stage *stage = sr_trigger_stage_add(trig);
+  if (!stage) {
+    sr_trigger_free(trig);
+    return;
+  }
 
-    const int stage_count = cfg.stage_count();
-    if (stage_count > 0) {
-      ds_trigger_set_stage(stage_count - 1);
-      const auto &stages = cfg.stages();
-      for (int i = 0; i < stage_count && i < (int)stages.size(); ++i) {
-        const auto &st = stages[i];
-        QByteArray v0 = st.value0.toLocal8Bit();
-        QByteArray v1 = st.value1.toLocal8Bit();
-        ds_trigger_stage_set_value(i, probes, v0.data(), v1.data());
-        ds_trigger_stage_set_logic(i, probes, st.logic);
-        ds_trigger_stage_set_inv(i, probes, st.inv0, st.inv1);
-        ds_trigger_stage_set_count(i, probes, st.count0, st.count1);
+  bool any_triggered = false;
+  for (const auto &m : _state->signal_models()) {
+    if (!m || m->type() != SR_CHANNEL_LOGIC)
+      continue;
+
+    // Find the sr_channel for this SignalModel index.
+    struct sr_channel *ch = nullptr;
+    for (const GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
+      struct sr_channel *probe = (struct sr_channel *)l->data;
+      if (probe && probe->index == m->index()) {
+        ch = probe;
+        break;
       }
     }
-  } else if (cfg.mode() == data::TriggerConfig::Serial) {
-    // Serial 模式：与 Adv 相同的 stage 同步，仅 mode 不同。
-    // stages[1].count0 应为 1，stages[3].count0 应为 serial_bits-1
-    // （这些在 commit_trigger 时已写入 TriggerConfig，sync 时直接用 stage.count0/count1）
-    ds_trigger_reset();
-    ds_trigger_set_en(true);
-    ds_trigger_set_mode(SERIAL_TRIGGER);
-    ds_trigger_set_pos(trig_pos);
+    if (!ch)
+      continue;
 
-    const int stage_count = cfg.stage_count();
-    if (stage_count > 0) {
-      ds_trigger_set_stage(stage_count - 1);
-      const auto &stages = cfg.stages();
-      for (int i = 0; i < stage_count && i < (int)stages.size(); ++i) {
-        const auto &st = stages[i];
-        QByteArray v0 = st.value0.toLocal8Bit();
-        QByteArray v1 = st.value1.toLocal8Bit();
-        ds_trigger_stage_set_value(i, probes, v0.data(), v1.data());
-        ds_trigger_stage_set_logic(i, probes, st.logic);
-        ds_trigger_stage_set_inv(i, probes, st.inv0, st.inv1);
-        ds_trigger_stage_set_count(i, probes, st.count0, st.count1);
-      }
+    int match = 0;
+    switch (m->trig_type()) {
+    case data::SignalModel::POSTRIG:  match = SR_TRIGGER_RISING;  any_triggered = true; break;
+    case data::SignalModel::NEGTRIG:  match = SR_TRIGGER_FALLING; any_triggered = true; break;
+    case data::SignalModel::HIGTRIG:  match = SR_TRIGGER_ONE;     any_triggered = true; break;
+    case data::SignalModel::LOWTRIG:  match = SR_TRIGGER_ZERO;    any_triggered = true; break;
+    case data::SignalModel::EDGTRIG:  match = SR_TRIGGER_EDGE;    any_triggered = true; break;
+    case data::SignalModel::NONTRIG:
+    default: continue; // skip non-trigger channels
+    }
+
+    if (sr_trigger_match_add(stage, ch, match, 0.0f) != SR_OK) {
+      pxv_warn("sync_trigger_to_libsigrok: sr_trigger_match_add failed for ch %d", m->index());
     }
   }
+
+  if (any_triggered && _state->device_agent().sr_session()) {
+    sr_session_trigger_set(_state->device_agent().sr_session(), trig);
+    pxv_info("sync_trigger_to_libsigrok: simple trigger synced (%d matches)", stage->matches ? g_slist_length(stage->matches) : 0);
+  } else {
+    pxv_info("sync_trigger_to_libsigrok: no trigger matches, trigger disabled");
+  }
+
+  // sr_session_trigger_set copies the trigger; free our copy.
+  sr_trigger_free(trig);
 }
 
 void SigSession::copy_data_to_document(data::SessionDocument *doc) {

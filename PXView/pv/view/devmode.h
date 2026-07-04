@@ -33,8 +33,9 @@
 #include <QVector> 
 #include <QLabel>
 #include <QIcon>
-#include <libsigrok.h> 
+#include <libsigrok/libsigrok.h>
 
+#include "../dsvdef.h"
 #include "../interface/icallbacks.h"
 #include "../ui/xtoolbutton.h"
 #include "../ui/uimanager.h"

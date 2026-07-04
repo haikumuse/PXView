@@ -6,7 +6,6 @@
 #include "sessionstatecontext.h"
 #include "../sigsession.h"  // SessionData full definition
 #include "../data/analogsnapshot.h"
-#include "../data/dsosnapshot.h"
 #include "../data/logicsnapshot.h"
 #include "../data/mathstack.h"
 #include "../data/spectrumstack.h"
@@ -43,36 +42,21 @@ void DataFeedParser::feed_in_meta(const sr_dev_inst *sdi,
   }
 }
 
-void DataFeedParser::feed_in_trigger(const ds_trigger_pos &trigger_pos) {
+void DataFeedParser::feed_in_trigger() {
+  // Upstream SR_DF_TRIGGER has NO payload (fork ds_trigger_pos removed).
+  // We can no longer read the trigger sample position from the packet.
+  // Set hw_replied + trigger_flag; the trigger position remains 0 (start
+  // of capture) unless the driver provides it via another mechanism.
   _state->set_hw_replied(true);
 
   if (_state->device_agent().get_work_mode() != DSO) {
-    _state->set_trigger_flag((trigger_pos.status & 0x01) != 0);
-    if (_state->trigger_flag()) {
-      _state->capture_data()->_trig_pos = trigger_pos.real_pos;
+    _state->set_trigger_flag(true);
+    _state->capture_data()->_trig_pos = 0;
 
-      // Update trig position for current view.
-      if (_state->capture_data() == _state->view_data()) {
-        _state->receive_trigger(_state->capture_data()->_trig_pos);
-      }
+    // Update trig position for current view.
+    if (_state->capture_data() == _state->view_data()) {
+      _state->receive_trigger(_state->capture_data()->_trig_pos);
     }
-  } else {
-    int probe_count = 0;
-    int probe_en_count = 0;
-
-    for (const GSList *l = _state->device_agent().get_channels(); l;
-         l = l->next) {
-      const sr_channel *const probe = (const sr_channel *)l->data;
-      if (probe->type == SR_CHANNEL_DSO) {
-        probe_count++;
-        if (probe->enabled)
-          probe_en_count++;
-      }
-    }
-
-    _state->capture_data()->_trig_pos =
-        trigger_pos.real_pos * probe_count / probe_en_count;
-    _state->receive_trigger(_state->capture_data()->_trig_pos);
   }
 }
 
@@ -123,89 +107,6 @@ void DataFeedParser::feed_in_logic(const sr_datafeed_logic &o) {
   // feed_in_logic runs on the libsigrok data-feed thread; use broadcast_async
   // to queue on_event(DataUpdated) onto qApp's event loop, so MainWindow's
   // handler runs on the main thread (safe to touch QWidget).
-  _event_bus->broadcast_async<interface::DataUpdated>({});
-}
-
-void DataFeedParser::feed_in_dso(const sr_datafeed_dso &o) {
-  if (_state->capture_data()->get_dso()->memory_failed()) {
-    pxv_err("Unexpected dso packet");
-    return; // This dso packet was not expected.
-  }
-
-  if (_state->capture_manager()->is_instant() == false) {
-    sr_status status;
-
-    if (_state->device_agent().get_device_status(status, false)) {
-      _state->set_dso_status_valid(true);
-      _state->set_dso_status(status);
-    }
-  }
-
-  _state->capture_manager()->inc_dso_packet_count();
-
-  if (!_state->is_triged() && o.num_samples > 0) {
-    _state->set_is_triged(true);
-    _state->set_trig_time(QDateTime::currentDateTime());
-    _state->set_session_time(_state->trig_time());
-  }
-
-  if (_state->capture_data()->get_dso()->last_ended()) {
-    // In multi-tab architecture, SigSession::_signals do not have a viewport,
-    // so we cannot and should not call get_view_rect() on them.
-    // The View's own cloned signals will handle their own rendering scales.
-
-    // first payload
-    _state->capture_data()->get_dso()->first_payload(
-        o, _state->device_agent().get_sample_limit(),
-        _state->device_agent().get_channels(), _state->capture_manager()->is_instant(),
-        _state->device_agent().is_file());
-    _state->frame_began();
-  } else {
-    // Append to the existing data snapshot
-    _state->capture_data()->get_dso()->append_payload(o);
-  }
-
-  if (o.num_samples != 0 && (!_state->capture_manager()->is_instant() ||
-                             _state->capture_manager()->dso_packet_count() == 1)) {
-    // update current sample rate
-    _state->set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
-  }
-
-  if (_state->capture_data()->get_dso()->memory_failed()) {
-    _state->set_error(SessionStateContext::Malloc_err);
-    _state->session_error();
-    return;
-  }
-
-  // calculate related spectrum results
-  for (auto m : _state->spectrum_stacks()) {
-    // TODO: verify - view::SpectrumTrace::enabled() check was removed.
-    // SpectrumStack has no enabled flag; calc_fft checks internal state.
-    m->calc_fft();
-  }
-
-  // calculate related math results
-  if (_state->math_stack()) {
-    // TODO: verify - MathStack::calc_math requires vDialfactor from
-    // view::MathTrace. Need to determine how to obtain this value after
-    // de-view-ization.
-    _state->math_stack()->realloc(_state->device_agent().get_sample_limit());
-    // _state->math_stack()->calc_math(factor); // TODO: re-enable after
-    // MathStack de-view-ization
-  }
-
-  _state->set_trigger_flag(o.trig_flag);
-  _state->set_trigger_ch(o.trig_ch);
-
-  // Trigger update()
-  _state->set_receive_data_len(o.num_samples);
-
-  if (!_state->capture_manager()->is_instant())
-    _state->capture_manager()->data_lock();
-
-  _state->capture_manager()->set_data_updated(true);
-
-  // modernize-core-layer-radical Task 13: emit DataUpdated (async, worker thread).
   _event_bus->broadcast_async<interface::DataUpdated>({});
 }
 
@@ -260,11 +161,9 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
   if (_state->capture_manager()->is_data_lock() && packet->type != SR_DF_END)
     return;
 
-  if (packet->type != SR_DF_END && packet->status != SR_PKT_OK) {
-    _state->set_error(SessionStateContext::Pkt_data_err);
-    _state->session_error();
-    return;
-  }
+  // Upstream sr_datafeed_packet has no `status` field (fork-only).
+  // Error checking is now done via SR_DF_END handling and session stopped
+  // callback.
 
   switch (packet->type) {
   case SR_DF_HEADER:
@@ -277,8 +176,8 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     break;
 
   case SR_DF_TRIGGER:
-    assert(packet->payload);
-    feed_in_trigger(*(const ds_trigger_pos *)packet->payload);
+    // Upstream SR_DF_TRIGGER has NO payload.
+    feed_in_trigger();
     break;
 
   case SR_DF_LOGIC:
@@ -286,23 +185,11 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     feed_in_logic(*(const sr_datafeed_logic *)packet->payload);
     break;
 
-  case SR_DF_DSO:
-    assert(packet->payload);
-    feed_in_dso(*(const sr_datafeed_dso *)packet->payload);
-    break;
-
   case SR_DF_ANALOG:
     assert(packet->payload);
     feed_in_analog(*(const sr_datafeed_analog *)packet->payload);
     break;
 
-  case SR_DF_OVERFLOW: {
-    if (_state->error() == SessionStateContext::No_err) {
-      _state->set_error(SessionStateContext::Data_overflow);
-      _state->session_error();
-    }
-    break;
-  }
   case SR_DF_END: {
     pxv_info("------------SR_DF_END packet.");
 
@@ -310,27 +197,13 @@ void DataFeedParser::data_feed_in(const struct sr_dev_inst *sdi,
     _state->capture_data()->get_dso()->capture_ended();
     _state->capture_data()->get_analog()->capture_ended();
 
-    if (packet->status != SR_PKT_OK) {
-      _state->set_error(SessionStateContext::Pkt_data_err);
-      _state->session_error();
+    int mode = _state->device_agent().get_work_mode();
+
+    // Post a message to start all decode tasks.
+    if (mode == LOGIC) {
+      _event_bus->broadcast_async<interface::RevEndPacket>({});
     } else {
-      int mode = _state->device_agent().get_work_mode();
-
-      // Post a message to start all decode tasks.
-      if (mode == LOGIC) {
-        _event_bus->broadcast_async<interface::RevEndPacket>({});
-      } else {
-        if (mode == DSO && _state->capture_manager()->is_instant()) {
-          sr_status status;
-
-          if (_state->device_agent().get_device_status(status, false)) {
-            _state->set_dso_status_valid(true);
-            _state->set_dso_status(status);
-          }
-        }
-
-        _state->frame_ended();
-      }
+      _state->frame_ended();
     }
 
     break;

@@ -15,7 +15,7 @@
 #include "../data/triggerconfig.h"
 #include "../deviceagent.h"
 #include "../dsvdef.h"
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 namespace pv {
 

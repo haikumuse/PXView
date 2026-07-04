@@ -23,7 +23,7 @@
 #include "../config/appconfig.h"
 #include "../data/sessiondocument.h"
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include <algorithm>
 
 namespace pv {

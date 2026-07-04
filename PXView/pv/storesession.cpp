@@ -124,12 +124,17 @@ QList<QString> StoreSession::getSuportedExportFormats(){
     while(*supportedModules){
         if(*supportedModules == NULL)
             break;
+        // Upstream libsigrok makes sr_output_module opaque — use accessor
+        // functions sr_output_id_get() / sr_output_description_get() instead
+        // of direct field access (fork libsigrok exposed ->id / ->desc).
+        const char *mod_id = sr_output_id_get(*supportedModules);
+        const char *mod_desc = sr_output_description_get(*supportedModules);
         if (_session->get_device()->get_work_mode() != LOGIC &&
-            strcmp((*supportedModules)->id, "csv"))
+            strcmp(mod_id, "csv"))
             break;
-        QString format((*supportedModules)->desc);
+        QString format(mod_desc ? mod_desc : "");
         format.append(" (*.");
-        format.append((*supportedModules)->id);
+        format.append(mod_id ? mod_id : "");
         format.append(")");
         list.append(format);
         supportedModules++;
@@ -697,24 +702,39 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             str += meta;
         }
 
-        if (probe->trigger){
-            sprintf(meta, " trigger%d = %s\n", probecnt, probe->trigger); 
-            str += meta;
+        // Fork sr_channel.trigger field removed in upstream libsigrokstd.
+        // Trigger config is now in Core TriggerConfig (SigSession::_trigger_config),
+        // not per-channel. Skip trigger string write — DSO mode is deprecated.
+
+        // Find matching SignalModel by probe->index for fork field replacements.
+        std::shared_ptr<data::SignalModel> matched_model;
+        for (auto m : _session->get_signal_models()) {
+            if (m && m->index() == probe->index) {
+                matched_model = m;
+                break;
+            }
         }
 
         if (mode == DSO)
         {
             sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
             str += meta;
-            sprintf(meta, " coupling%d = %d\n", probecnt, probe->coupling);
+            // Fork sr_channel.coupling/vdiv/vfactor/hw_offset/trig_value removed
+            // in upstream libsigrokstd — read from matched SignalModel instead.
+            int coupling = matched_model ? matched_model->coupling() : 0;
+            double vdiv = matched_model ? matched_model->vdiv() : 0;
+            double vfactor = matched_model ? matched_model->vfactor() : 1;
+            double hw_offset = matched_model ? matched_model->hw_offset() : 0;
+            double trig_value = matched_model ? matched_model->trig_value() : 0;
+            sprintf(meta, " coupling%d = %d\n", probecnt, coupling);
             str += meta;
-            sprintf(meta, " vDiv%d = %" PRIu64 "\n", probecnt, probe->vdiv);
+            sprintf(meta, " vDiv%d = %" PRIu64 "\n", probecnt, (uint64_t)vdiv);
             str += meta;
-            sprintf(meta, " vFactor%d = %" PRIu64 "\n", probecnt, probe->vfactor);
+            sprintf(meta, " vFactor%d = %" PRIu64 "\n", probecnt, (uint64_t)vfactor);
             str += meta;
-            sprintf(meta, " vOffset%d = %d\n", probecnt, probe->hw_offset);
+            sprintf(meta, " vOffset%d = %d\n", probecnt, (int)hw_offset);
             str += meta;
-            sprintf(meta, " vTrig%d = %d\n", probecnt, probe->trig_value);
+            sprintf(meta, " vTrig%d = %d\n", probecnt, (int)trig_value);
             str += meta;
 
             if (_session->dso_status_is_valid())
@@ -789,17 +809,24 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
         {
             sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
             str += meta;
-            sprintf(meta, " coupling%d = %d\n", probecnt, probe->coupling);
+            // Fork sr_channel.coupling/vdiv/hw_offset removed in upstream
+            // libsigrokstd — read from matched SignalModel instead.
+            int coupling = matched_model ? matched_model->coupling() : 0;
+            double vdiv = matched_model ? matched_model->vdiv() : 0;
+            double hw_offset = matched_model ? matched_model->hw_offset() : 0;
+            sprintf(meta, " coupling%d = %d\n", probecnt, coupling);
             str += meta;
-            sprintf(meta, " vDiv%d = %" PRIu64 "\n", probecnt, probe->vdiv);
+            sprintf(meta, " vDiv%d = %" PRIu64 "\n", probecnt, (uint64_t)vdiv);
             str += meta;
-            sprintf(meta, " vOffset%d = %d\n", probecnt, probe->hw_offset);
+            sprintf(meta, " vOffset%d = %d\n", probecnt, (int)hw_offset);
             str += meta;
-            sprintf(meta, " mapUnit%d = %s\n", probecnt, probe->map_unit);
+            // Fork sr_channel.map_unit/map_min/map_max removed in upstream
+            // libsigrokstd. Analog mapping UI is being deprecated — stub defaults.
+            sprintf(meta, " mapUnit%d = %s\n", probecnt, "");
             str += meta;
-            sprintf(meta, " mapMax%d = %lf\n", probecnt, probe->map_max);
+            sprintf(meta, " mapMax%d = %lf\n", probecnt, 0.0);
             str += meta;
-            sprintf(meta, " mapMin%d = %lf\n", probecnt, probe->map_min);
+            sprintf(meta, " mapMin%d = %lf\n", probecnt, 0.0);
             str += meta;
         }
         probecnt++;
@@ -856,7 +883,10 @@ bool StoreSession::export_start()
     {
         if (*supportedModules == NULL)
             break;
-        if (!strcmp((*supportedModules)->id, _suffix.toUtf8().data()))
+        // Upstream libsigrok makes sr_output_module opaque — use sr_output_id_get()
+        // instead of direct field access (fork libsigrok exposed ->id).
+        const char *mod_id = sr_output_id_get(*supportedModules);
+        if (mod_id && !strcmp(mod_id, _suffix.toUtf8().data()))
         {
             _outModule = *supportedModules;
             break;
@@ -903,9 +933,9 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         return;
     }
 
-        //set export all data flag
-    AppConfig &app = AppConfig::Instance();
-    int origin_flag = app.appOptions.originalData ? 1 : 0;
+    // Fork sr_datafeed_packet.bExportOriginalData field removed in upstream
+    // libsigrokstd — "export original data" flag is no longer carried per-packet.
+    // AppConfig::appOptions.originalData is still respected by other paths.
 
     data::LogicSnapshot *logic_snapshot = NULL;
     data::AnalogSnapshot *analog_snapshot = NULL;
@@ -930,11 +960,22 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     GVariant* typeGVariant = g_variant_new_int16(channel_type);
     g_hash_table_insert(params, (char*)"type", typeGVariant);
 
-    struct sr_output output;
-    output.module = (sr_output_module*) _outModule;
-    output.sdi = _session->get_device()->inst();
-    output.param = NULL;
-    output.start_sample_index = 0;
+    // Upstream libsigrok makes sr_output opaque — use sr_output_new() to create
+    // an instance instead of stack-allocating and manually assigning fields
+    // (fork libsigrok exposed module/sdi/param/start_sample_index on sr_output).
+    // sr_output_new() calls the module's init handler internally.
+    // Note: fork sr_output.start_sample_index (used for logic start offset) has
+    // no upstream equivalent — dropped (acceptable for stub).
+    const struct sr_output *output = sr_output_new(_outModule, params,
+                                                   _session->get_device()->inst(),
+                                                   _file_name.toUtf8().data());
+    if (!output) {
+        pxv_err("Failed to init export module (sr_output_new returned NULL).");
+        g_hash_table_destroy(params);
+        if (filenameGVariant != NULL)
+            g_variant_unref(filenameGVariant);
+        return;
+    }
 
     struct ChannelStateRestorer {
         GSList *channels;
@@ -963,22 +1004,12 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
         }
     } restorer(_session->get_device()->get_channels(), _export_channels);
 
-    if (channel_type == SR_CHANNEL_LOGIC){
-        output.start_sample_index = _start_index;
-    }
-
-    if(_outModule->init){
-       if(_outModule->init(&output, params) != SR_OK){
-        pxv_err("Failed to init export module.");
-        return;
-       }
-    }
-
     QFile file(_file_name);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        sr_output_free(output);
         return;
     }
-    QTextStream out(&file); 
+    QTextStream out(&file);
     encoding::set_utf8(out);
     //out.setGenerateByteOrderMark(true);  // UTF-8 without BOM
 
@@ -1007,7 +1038,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     if (gvar != NULL) {
         src = _session->get_device()->new_config(SR_CONF_REF_MIN, gvar);
         g_variant_unref(gvar);
-    } 
+    }
     else {
         src = _session->get_device()->new_config(SR_CONF_REF_MIN, g_variant_new_uint32(1));
     }
@@ -1024,11 +1055,11 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     }
     meta.config = g_slist_append(meta.config, src);
 
+    // Fork sr_datafeed_packet.status / bExportOriginalData fields removed in
+    // upstream libsigrokstd — only type and payload remain.
     p.type = SR_DF_META;
-    p.status = SR_PKT_OK;
     p.payload = &meta;
-    p.bExportOriginalData = 0;
-    _outModule->receive(&output, &p, &data_out);
+    sr_output_send(output, &p, &data_out);
 
     if(data_out){
         out << QString::fromUtf8((char*) data_out->str);
@@ -1135,10 +1166,8 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                 lp.length = size * unitsize;
                 lp.unitsize = unitsize;
                 p.type = SR_DF_LOGIC;
-                p.status = SR_PKT_OK;
                 p.payload = &lp;
-                p.bExportOriginalData = origin_flag;
-                _outModule->receive(&output, &p, &data_out);
+                sr_output_send(output, &p, &data_out);
 
                 if(data_out){
                     out << QString::fromUtf8((char*) data_out->str);
@@ -1196,10 +1225,8 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
             dp.data = ch_data_buffer;
             dp.num_samples = size;
             p.type = SR_DF_DSO;
-            p.status = SR_PKT_OK;
             p.payload = &dp;
-            p.bExportOriginalData = 0;
-            _outModule->receive(&output, &p, &data_out);
+            sr_output_send(output, &p, &data_out);
 
             if(data_out){
                 out << (char*) data_out->str;
@@ -1256,10 +1283,8 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
                 ap.data = (unsigned char*)block_buffer[j] + i * ch_count;
                 ap.num_samples = size;
                 p.type = SR_DF_ANALOG;
-                p.status = SR_PKT_OK;
                 p.payload = &ap;
-                p.bExportOriginalData = 0;
-                _outModule->receive(&output, &p, &data_out);
+                sr_output_send(output, &p, &data_out);
 
                 if(data_out){
                     out << (char*) data_out->str;
@@ -1276,7 +1301,8 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
 
     // optional, as QFile destructor will already do it:
     file.close();
-    _outModule->cleanup(&output);
+    // Upstream libsigrok: sr_output_free() replaces fork _outModule->cleanup().
+    sr_output_free(output);
     g_hash_table_destroy(params);
     if (filenameGVariant != NULL)
         g_variant_unref(filenameGVariant);

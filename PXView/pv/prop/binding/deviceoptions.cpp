@@ -334,7 +334,7 @@ QString DeviceOptions::print_timebase(GVariant *const gvar)
 {
 	uint64_t p, q;
 	g_variant_get(gvar, "(tt)", &p, &q);
-	return QString(sr_period_string(p * q));
+	return QString(sr_period_string(p, q));
 }
 
 QString DeviceOptions::print_vdiv(GVariant *const gvar)

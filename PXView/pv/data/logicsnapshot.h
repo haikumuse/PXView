@@ -25,7 +25,7 @@
 #ifndef PXVIEW_PV_DATA_LOGICSNAPSHOT_H
 #define PXVIEW_PV_DATA_LOGICSNAPSHOT_H
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include "snapshot.h"
 #include "mmap_allocator.h"
 #include "disk_cache_config.h"
@@ -222,7 +222,7 @@ private:
 
     void calc_mipmap(unsigned int order, uint8_t index0, uint8_t index1, uint64_t samples, bool isEnd);
 
-    void append_cross_payload(const sr_datafeed_logic &logic);
+    void append_payload_impl(const sr_datafeed_logic &logic);
 
     bool lbp_nxt_edge(uint64_t &index, uint64_t root_index, uint64_t lbp_tog, uint8_t lbp_tog_pos,
                       bool aft_tog, uint8_t aft_pos, bool last_sample, int sig_index);

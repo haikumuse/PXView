@@ -194,10 +194,10 @@ void SignalModel::set_probe_offset(uint16_t offset, struct sr_channel *probe) {
                                       ch, NULL);
         }
     }
-    // Also mirror to the model's own sr_channel struct when targeting it.
-    if (!probe && _sr_channel) {
-        _sr_channel->zero_offset = offset;
-    }
+    // Fork libsigrok's sr_channel had a `zero_offset` field; upstream
+    // libsigrokstd does not. The hardware sync above (via set_config_uint16)
+    // is sufficient — model state is tracked in _zero_offset via
+    // set_zero_offset().
 }
 
 void SignalModel::set_probe_factor(uint64_t factor, struct sr_channel *probe) {
@@ -209,10 +209,9 @@ void SignalModel::set_probe_factor(uint64_t factor, struct sr_channel *probe) {
                                       ch, NULL);
         }
     }
-    // Also mirror to the model's own sr_channel struct when targeting it.
-    if (!probe && _sr_channel) {
-        _sr_channel->vfactor = factor;
-    }
+    // Fork libsigrok's sr_channel had a `vfactor` field; upstream
+    // libsigrokstd does not. Hardware sync above is sufficient — model state
+    // is tracked in _vfactor via set_vfactor().
     emit appearance_changed();
 }
 
@@ -251,57 +250,28 @@ void SignalModel::set_trigger_value(double value, struct sr_channel *probe) {
                                     (int)(uint8_t)value, ch, NULL);
         }
     }
-    // Mirror to the model's own sr_channel struct when targeting it.
-    if (!probe && _sr_channel) {
-        _sr_channel->trig_value = (uint8_t)value;
-    }
+    // Fork libsigrok's sr_channel had a `trig_value` field; upstream
+    // libsigrokstd does not. Hardware sync above is sufficient — model state
+    // is tracked in _trig_value.
 }
 
 bool SignalModel::commit_trig()
 {
-    const uint16_t probe = static_cast<uint16_t>(_index);
-
-    if (_trig_type == NONTRIG) {
-        ds_trigger_probe_set(probe, 'X', 'X');
-        return false;
-    }
-
-    ds_trigger_set_en(true);
-
-    switch (_trig_type) {
-    case POSTRIG:
-        ds_trigger_probe_set(probe, 'R', 'X');
-        break;
-    case HIGTRIG:
-        ds_trigger_probe_set(probe, '1', 'X');
-        break;
-    case NEGTRIG:
-        ds_trigger_probe_set(probe, 'F', 'X');
-        break;
-    case LOWTRIG:
-        ds_trigger_probe_set(probe, '0', 'X');
-        break;
-    case EDGTRIG:
-        ds_trigger_probe_set(probe, 'C', 'X');
-        break;
-    default:
-        ds_trigger_probe_set(probe, 'X', 'X');
-        return false;
-    }
-
-    return true;
+    // Fork libsigrok's ds_trigger_probe_set/ds_trigger_set_en are gone.
+    // The trigger state is stored in _trig_type and synced to upstream
+    // libsigrok via SessionStateContext::sync_trigger_to_libsigrok() at
+    // capture start, which reads trig_type() and builds an sr_trigger.
+    // This method is retained for backward compat with TriggerDock callers.
+    return _trig_type != NONTRIG;
 }
 
 void SignalModel::set_vertical_offset(double offset) {
     if (_vertical_offset == offset) return;
     _vertical_offset = offset;
-    // sr_channel.offset is a uint16 field used by the driver for the
-    // vertical position. There is no separate SR_CONF_PROBE_* key for it
-    // (SR_CONF_PROBE_OFFSET maps to sr_channel.zero_offset, see
-    // set_zero_offset) — so we write the struct field directly.
-    if (_sr_channel) {
-        _sr_channel->offset = (uint16_t)offset;
-    }
+    // Fork libsigrok's sr_channel had an `offset` field (uint16, vertical
+    // position). Upstream libsigrokstd does not expose this — model state is
+    // tracked in _vertical_offset. Driver-side vertical position is set via
+    // SR_CONF_PROBE_OFFSET (see set_zero_offset).
 }
 
 void SignalModel::set_zero_offset(double offset) {
@@ -341,7 +311,7 @@ void SignalModel::commit_to_device()
     // Headless-mode no-op: without a sr_channel there is nothing to sync to.
     if (_sr_channel == nullptr) return;
 
-    // ---- Direct sr_channel struct fields ----
+    // ---- Direct sr_channel struct fields (upstream-compatible only) ----
     // name: free old g_strdup'd string and replace.
     if (_sr_channel->name) {
         g_free(_sr_channel->name);
@@ -350,13 +320,13 @@ void SignalModel::commit_to_device()
     _sr_channel->name = g_strdup(_name.c_str());
 
     _sr_channel->enabled = _enabled ? TRUE : FALSE;
-    _sr_channel->offset = (uint16_t)_vertical_offset;
-    _sr_channel->zero_offset = (uint16_t)_zero_offset;
-    _sr_channel->hw_offset = (uint16_t)_hw_offset;
-    _sr_channel->vdiv = (uint64_t)_vdiv;
-    _sr_channel->vfactor = (uint64_t)_vfactor;
-    _sr_channel->coupling = (uint8_t)_coupling;
-    _sr_channel->trig_value = (uint8_t)_trig_value;
+
+    // Fork libsigrok's sr_channel had extra fields (offset, zero_offset,
+    // hw_offset, vdiv, vfactor, coupling, trig_value) that upstream
+    // libsigrokstd does not expose. Those are synced to the driver via the
+    // DeviceAgent set_config_* calls below — model state lives in the
+    // _vertical_offset / _zero_offset / _hw_offset / _vdiv / _vfactor /
+    // _coupling / _trig_value fields on this object.
 
     // ---- Hardware-relevant fields via DeviceAgent set_config_* ----
     // Same keys/types as DsoSignal::commit_settings() so the driver receives

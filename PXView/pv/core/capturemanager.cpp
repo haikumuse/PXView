@@ -26,7 +26,7 @@
 #include <stdexcept>
 #include <thread>
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 namespace pv {
 namespace core {
@@ -487,38 +487,12 @@ void CaptureManager::exit_capture() {
 }
 
 bool CaptureManager::get_capture_status(bool &triggered, int &progress) {
-  uint64_t sample_limits = _state->cur_samplelimits();
-  sr_status status;
-
-  if (_state->device_agent().get_device_status(status, true)) {
-    triggered = status.trig_hit & 0x01;
-    uint64_t captured_cnt = status.trig_hit >> 2;
-
-    captured_cnt =
-        ((uint64_t)status.captured_cnt0 +
-         ((uint64_t)status.captured_cnt1 << 8) +
-         ((uint64_t)status.captured_cnt2 << 16) +
-         ((uint64_t)status.captured_cnt3 << 24) + (captured_cnt << 32));
-
-    int mode = _state->device_agent().get_work_mode();
-
-    if (mode == DSO)
-      captured_cnt =
-          captured_cnt * _state->signal_models().size() /
-          _state->get_ch_num(SR_CHANNEL_DSO);
-
-    if (triggered)
-      progress = (sample_limits - captured_cnt) * 100.0 / sample_limits;
-    else
-      progress = captured_cnt * 100.0 / sample_limits;
-
-    if (progress == 100 && mode == LOGIC &&
-        _state->capture_data()->get_logic()->have_data() == false) {
-      progress = 0;
-    }
-
-    return true;
-  }
+  // Fork libsigrok's ds_get_actived_device_status + sr_status struct are
+  // gone. Upstream libsigrok does not expose per-sample capture progress.
+  // Return false to indicate progress tracking is unavailable; callers
+  // fall back to non-percentage-based waiting.
+  (void)triggered;
+  (void)progress;
   return false;
 }
 

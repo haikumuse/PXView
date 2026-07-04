@@ -68,32 +68,17 @@ list(FILTER SRSTD_UPSTREAM_SOURCES EXCLUDE REGEX
 #                         declared under #ifdef HAVE_BLUETOOTH. Without
 #                         HAVE_BLUETOOTH, compilation fails.
 
-# -- Bridge sources (libsigrokstd/bridge/, NOT upstream) ----------------------
-# srstd_init_shared.c -- libusb_context sharing wrapper (calls sr_init, replaces
-#                        libusb_ctx with PXView's shared context)
-# srstd_compat.c      -- compat shims for functions missing from upstream 0.6.0
-# srstd_pxview_glue.c -- void* wrappers so PXView C++ can call upstream sr_*
-#                        API WITHOUT including upstream headers directly
-set(SRSTD_BRIDGE_SOURCES
-    bridge/srstd_init_shared.c
-    bridge/srstd_compat.c
-    bridge/srstd_pxview_glue.c
-)
-# NOTE: bridge/srstd_bridge.c is NOT in this list -- it must be compiled
-# WITHOUT libsigrokstd's BEFORE include paths (it includes PXView's libsigrok.h
-# directly). It is built as a separate OBJECT library below and merged in.
-
 # -- Combined source list with correct link ordering --------------------------
 # Order: driver_list_start.c FIRST, then all upstream sources, then
-# driver_list_stop.c LAST, then bridge sources. The start/stop ordering
-# matters for the __sr_driver_list section layout (start defines the section
-# head with a dummy NULL, stop defines the section tail with a dummy NULL;
+# driver_list_stop.c LAST. The start/stop ordering matters for the
+# __sr_driver_list section layout (start defines the section head with a
+# dummy NULL, stop defines the section tail with a dummy NULL;
 # sr_drivers_init iterates from start+1 to stop exclusive).
+# srstd_compat.c (in src/) is picked up by GLOB_RECURSE automatically.
 set(libsigrokstd_SOURCES
     ${SRSTD_DRIVER_LIST_START}
     ${SRSTD_UPSTREAM_SOURCES}
     ${SRSTD_DRIVER_LIST_STOP}
-    ${SRSTD_BRIDGE_SOURCES}
 )
 
 # -- Shared library target -----------------------------------------------------
@@ -104,10 +89,6 @@ add_library(libsigrokstd SHARED ${libsigrokstd_SOURCES})
 #                         (100% unmodified upstream copies) + srstd_export.h
 # libsigrokstd/src      -- config.h (local), libsigrok-internal.h, scpi.h,
 #                         serial_hid.h (all upstream)
-# IMPORTANT: Use BEFORE to place these paths AHEAD of the global include_directories
-# from deps.cmake (which includes ./libsigrok -- PXView's forked 0.2.0 headers).
-# Without BEFORE, #include <config.h> and #include <libsigrok/libsigrok.h> would
-# resolve to PXView's headers first, causing enum/struct mismatches.
 target_include_directories(libsigrokstd BEFORE PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -205,39 +186,16 @@ target_link_libraries(libsigrokstd PUBLIC
     -lnettle
 )
 
-# -- Bridge OBJECT library: srstd_bridge.c WITHOUT libsigrokstd include paths --
-# srstd_bridge.c implements the dual-library data structure conversion layer.
-# It includes PXView's libsigrok.h / libsigrok-internal.h directly (NOT the
-# upstream headers), so it MUST NOT have libsigrokstd's BEFORE include paths
-# (which would make #include "libsigrok.h" resolve to the upstream version).
-# By using a separate OBJECT library with no target_include_directories override,
-# only the global include paths (./libsigrok from deps.cmake) apply, so
-# #include "libsigrok.h" correctly resolves to PXView's ./libsigrok/libsigrok.h.
-add_library(libsigrokstd_bridge OBJECT bridge/srstd_bridge.c)
-# Only the bridge/ directory is added (for srstd_bridge.h). The global
-# include_directories from deps.cmake provides ./libsigrok (PXView headers),
-# ./common (ds_types.h), glib, and libusb paths.
-target_include_directories(libsigrokstd_bridge PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/bridge
-)
-set_target_properties(libsigrokstd_bridge PROPERTIES
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
-)
-# Merge the bridge objects into the main shared library so consumers linking
-# libsigrokstd get srstd_bridge_* symbols without an extra link dependency.
-target_sources(libsigrokstd PRIVATE $<TARGET_OBJECTS:libsigrokstd_bridge>)
-
 # -- Compat declaration injection for sipeed-slogic-analyzer -------------------
 # sipeed-slogic-analyzer/api.c (from the slogic-dev branch) calls std_i32_idx()
 # which was added in upstream libsigrok 0.6.1 but is missing from 0.6.0. The
-# implementation is in bridge/srstd_compat.c; the declaration lives in
-# bridge/srstd_compat.h. To avoid modifying the upstream api.c source, the
+# implementation is in src/srstd_compat.c; the declaration lives in
+# src/srstd_compat.h. To avoid modifying the upstream api.c source, the
 # declaration is force-injected via -include ONLY into this one file.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/hardware/sipeed-slogic-analyzer/api.c"
     PROPERTIES
-    COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/bridge/srstd_compat.h"
+    COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/src/srstd_compat.h"
 )
 
 # =============================================================================
@@ -283,7 +241,6 @@ add_executable(test_srstd_bridge EXCLUDE_FROM_ALL tests/test_srstd_bridge.c)
 target_include_directories(test_srstd_bridge BEFORE PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/bridge
 )
 target_compile_definitions(test_srstd_bridge PRIVATE
     HAVE_LIBUSB_1_0
@@ -310,7 +267,6 @@ add_executable(test_srstd_trigger EXCLUDE_FROM_ALL tests/test_srstd_trigger.c)
 target_include_directories(test_srstd_trigger BEFORE PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/bridge
 )
 target_compile_definitions(test_srstd_trigger PRIVATE
     HAVE_LIBUSB_1_0

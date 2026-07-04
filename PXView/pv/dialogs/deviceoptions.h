@@ -25,7 +25,7 @@
 #ifndef PXVIEW_PV_DEVICEOPTIONS_H
 #define PXVIEW_PV_DEVICEOPTIONS_H
 
-#include <libsigrok.h> 
+#include <libsigrok/libsigrok.h> 
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QGroupBox>

@@ -30,7 +30,7 @@
 #include "lissajousmodel.h"
 #include "triggerconfig.h"
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include <stdlib.h>
 #include <string.h>
 

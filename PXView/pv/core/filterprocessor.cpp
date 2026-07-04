@@ -6,7 +6,7 @@
 #include "../data/logicsnapshot.h"
 #include "../log.h"
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 namespace pv {
 namespace core {

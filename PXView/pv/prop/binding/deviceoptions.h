@@ -29,7 +29,7 @@
 #include <boost/optional.hpp>
 
 #include <QString>
-#include <libsigrok.h> 
+#include <libsigrok/libsigrok.h> 
 #include "binding.h" 
 
 class DeviceAgent;
