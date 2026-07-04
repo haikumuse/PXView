@@ -80,8 +80,9 @@ The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_S
 | `PXView/pv/data/signalconfigstore.h` | Channel/Signal config structs + save/apply/json serialization (extracted from SessionDocument) |
 | `PXView/pv/data/sessiondocument.h` | Pure data document (snapshots, decoder stacks, signal models, trigger config) |
 | `PXView/pv/data/signalmodel.h` | Core channel model (no QObject/QWidget) |
-| `PXView/pv/data/logicsnapshot.h` | Logic snapshot storage/query/glitch-filter/loop-mode (DiskCacheWriter extracted to leaf module) |
+| `PXView/pv/data/logicsnapshot.h` | Logic snapshot storage/query/diagnostics/loop-mode (DiskCacheWriter + GlitchFilter extracted to leaf modules) |
 | `PXView/pv/data/logicsnapshot_diskcache_writer.h` | Disk cache async writer extracted from LogicSnapshot God class (~600 lines, friend back-pointer to LogicSnapshot) |
+| `PXView/pv/data/logicsnapshot_glitch_filter.h` | Glitch filter extracted from LogicSnapshot (~505 lines, friend back-pointer to LogicSnapshot; orphaned set_sample_range/clone_data deleted) |
 | `PXView/pv/view/view.h` | View container — owns rendering objects, drives decoder popup |
 | `PXView/pv/view/signalfactory.h` | Bridge: SignalModel → view::Signal (no `ui_state` param — feature was never implemented) |
 | `PXView/pv/interface/icallbacks.h` | Split callbacks: IDataCallback/ICaptureCallback/ITriggerCallback/ISessionStateCallback (legacy `IMessageListener` + `DSV_MSG_*` macros REMOVED) |
@@ -102,7 +103,7 @@ The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_S
 - ISessionCallback was split into 4 sub-interfaces (IDataCallback/ICaptureCallback/ITriggerCallback/ISessionStateCallback) — no backward-compat shim.
 - **View-layer device access:** use `_view.data_source()->device()` (returns `DeviceAgent*`, may be null) — do NOT call `session.get_device()` / `session().get_device()` from View code. Always null-check the returned pointer.
 - **DeviceAgent typed wrappers:** prefer `device->is_roll_mode(v)` / `device->get_channel_count()` / `device->get_probe_vdiv(v, ch)` / `device->get_probe_vdiv_list()` over raw `get_config_*(SR_CONF_*, ...)` — pushes libsigrok.h dependence into Core so View files can drop the include.
-- **CMake leaf libraries:** `pv/interface/` (INTERFACE), `pv/utility/` (STATIC), `pv/config/` (STATIC) are extracted as independent targets linked PUBLIC by `pxview-core`. New leaf-utility code should land in the appropriate leaf module, not in `core_sources.cmake`.
+- **CMake leaf libraries:** `pv/interface/` (INTERFACE), `pv/utility/` (STATIC), `pv/config/` (STATIC), `pv/data/` (STATIC, `pxview-data`) are extracted as independent targets linked PUBLIC by `pxview-core`. New leaf-utility code should land in the appropriate leaf module, not in `core_sources.cmake`.
 
 ## State Sync Conventions
 

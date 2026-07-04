@@ -1355,7 +1355,10 @@ pkgcfg_lib_LIBZIP_zip:FILEPATH=D:/msys64/mingw64/lib/libzip.dll.a
 pxview-config_LIB_DEPENDS:STATIC=general;Qt6::Core;
 
 //Dependencies for the target
-pxview-core_LIB_DEPENDS:STATIC=general;Qt6::Core;general;Qt6::Gui;general;Qt6::Network;general;Qt6::Concurrent;general;Qt6::WebSockets;general;-lz;general;-lglib-2.0;general;D:/msys64/mingw64/lib/libusb-1.0.dll.a;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/Scoop/apps/python/3.14.4/libs/python314.lib;general;pxview-utility;general;pxview-config;
+pxview-core_LIB_DEPENDS:STATIC=general;Qt6::Core;general;Qt6::Gui;general;Qt6::Network;general;Qt6::Concurrent;general;Qt6::WebSockets;general;-lz;general;-lglib-2.0;general;D:/msys64/mingw64/lib/libusb-1.0.dll.a;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/Scoop/apps/python/3.14.4/libs/python314.lib;general;pxview-utility;general;pxview-config;general;pxview-data;
+
+//Dependencies for the target
+pxview-data_LIB_DEPENDS:STATIC=general;Qt6::Core;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;-lglib-2.0;
 
 //Dependencies for the target
 pxview-utility_LIB_DEPENDS:STATIC=general;Qt6::Core;
@@ -1503,7 +1506,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=5
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=6
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

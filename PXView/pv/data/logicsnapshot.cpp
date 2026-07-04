@@ -41,6 +41,7 @@
 #include "leaf_block_pool.h"
 #include "logicsnapshot.h"
 #include "logicsnapshot_diskcache_writer.h"
+#include "logicsnapshot_glitch_filter.h"
 #include <map>
 
 using namespace std;
@@ -61,18 +62,16 @@ const uint64_t LogicSnapshot::LevelOffset[LogicSnapshot::ScaleLevel] = {
     (uint64_t)pow(Scale, 3) + (uint64_t)pow(Scale, 2) + (uint64_t)pow(Scale, 1),
 };
 
-const std::vector<LogicSnapshot::FillRange> LogicSnapshot::_empty_filtered_ranges;
-
 LogicSnapshot::LogicSnapshot() : Snapshot(1, 0, 0) {
   _channel_num = 0;
   _total_sample_count = 0;
   _is_loop = false;
   _loop_offset = 0;
   _able_free = true;
-  _glitch_filtered = false;
   _mmap_alloc = nullptr;
   _max_blocks_per_channel = 0;
   _disk_cache_writer = std::make_unique<LogicSnapshotDiskCacheWriter>(this);
+  _glitch_filter = std::make_unique<LogicSnapshotGlitchFilter>(this);
 }
 LogicSnapshot::~LogicSnapshot() {
   // The async writer thread is joined by _disk_cache_writer's destructor
@@ -1784,519 +1783,42 @@ int LogicSnapshot::get_block_with_sample(uint64_t index, uint64_t *out_offset) {
   return block;
 }
 
-void LogicSnapshot::set_sample_range(uint64_t start, uint64_t end, bool level,
-                                     int sig_index) {
-  std::lock_guard<std::mutex> lock(_mutex);
-
-  start += _loop_offset;
-  end += _loop_offset;
-
-  int order = get_ch_order(sig_index);
-  if (order == -1 || (unsigned int)order >= _ch_data.size())
-    return;
-
-  uint64_t max_sample = _ring_sample_count + _loop_offset;
-  if (end > max_sample)
-    end = max_sample;
-  if (start >= end)
-    return;
-
-  for (uint64_t pos = start; pos < end;) {
-    uint64_t index0 = pos >> (LeafBlockPower + RootScalePower);
-    uint64_t index1 = (pos & RootMask) >> LeafBlockPower;
-
-    if (index0 >= _ch_data[order].size())
-      break;
-
-    uint64_t block_start = (index0 << (LeafBlockPower + RootScalePower)) +
-                           (index1 << LeafBlockPower);
-    uint64_t block_end = block_start + LeafBlockSamples;
-    uint64_t seg_end = min(end, block_end);
-
-    if (_ch_data[order][index0].lbp[index1] == NULL) {
-      bool const_val = (_ch_data[order][index0].first & (1ULL << index1)) != 0;
-
-      void *lbp = LeafBlockPool::instance().acquire(LeafBlockSpace);
-      if (lbp == NULL) {
-        _memory_failed = true;
-        return;
-      }
-
-      if (const_val)
-        memset(lbp, 0xFF, LeafBlockSamples / 8);
-      else
-        memset(lbp, 0, LeafBlockSamples / 8);
-
-      memset((uint8_t *)lbp + LeafBlockSamples / 8, 0,
-             LeafBlockSpace - LeafBlockSamples / 8);
-
-      _ch_data[order][index0].lbp[index1] = lbp;
-      _ch_data[order][index0].tog &= ~(1ULL << index1);
-    }
-
-    uint8_t *lbp = (uint8_t *)_ch_data[order][index0].lbp[index1];
-
-    for (uint64_t i = pos; i < seg_end; i++) {
-      uint64_t bit_offset = i & LeafMask;
-      uint64_t byte_offset = bit_offset / 8;
-      uint8_t bit_mask = 1ULL << (bit_offset % 8);
-
-      if (level)
-        lbp[byte_offset] |= bit_mask;
-      else
-        lbp[byte_offset] &= ~bit_mask;
-    }
-
-    pos = seg_end;
-  }
-}
-
 void LogicSnapshot::invert_channel(int sig_index) {
-  std::lock_guard<std::mutex> lock(_mutex);
-
-  int order = get_ch_order(sig_index);
-  if (order == -1 || (unsigned int)order >= _ch_data.size())
-    return;
-
-  if (_ring_sample_count == 0)
-    return;
-
-
-
-  for (uint64_t i = 0; i < _ch_data[order].size(); i++) {
-    RootNode &rn = _ch_data[order][i];
-
-    for (uint64_t j = 0; j < Scale; j++) {
-      uint64_t pos_mask = 1ULL << j;
-
-      if (rn.lbp[j] != NULL) {
-        // Block has actual data — XOR all sample bytes with 0xFF
-        uint8_t *lbp = (uint8_t *)rn.lbp[j];
-        uint64_t sample_bytes = LeafBlockSamples / 8;
-
-        for (uint64_t k = 0; k < sample_bytes; k++) {
-          lbp[k] ^= 0xFF;
-        }
-
-        // Rebuild mipmap for this block
-        recalc_mipmap(order, i, j);
-      } else {
-        // Compressed block (constant value) — flip first and last bits
-        rn.first ^= pos_mask;
-        rn.last ^= pos_mask;
-      }
-    }
-  }
-}
-
-void LogicSnapshot::recalc_mipmap(unsigned int order, uint64_t index0,
-                                  uint64_t index1) {
-  void *lbp = _ch_data[order][index0].lbp[index1];
-
-  if (lbp == NULL)
-    return;
-
-  if (index1 > 0) {
-    void* prev_ptr = _ch_data[order][index0].lbp[index1 - 1];
-    if (prev_ptr != NULL) {
-      uint64_t *prev_lbp = (uint64_t *)prev_ptr;
-      _last_sample[order] =
-          (prev_lbp[LeafBlockSamples / Scale - 1] & MSB) ? ~0ULL : 0ULL;
-    } else {
-      bool prev_val =
-          (_ch_data[order][index0].last & (1ULL << (index1 - 1))) != 0;
-      _last_sample[order] = prev_val ? ~0ULL : 0ULL;
-    }
-  } else if (index0 > 0) {
-    bool prev_val = (_ch_data[order][index0 - 1].last & MSB) != 0;
-    _last_sample[order] = prev_val ? ~0ULL : 0ULL;
-  } else {
-    _last_sample[order] = 0;
-  }
-
-  memset((uint8_t *)lbp + LeafBlockSamples / 8, 0,
-         LeafBlockSpace - LeafBlockSamples / 8);
-
-  _ch_data[order][index0].tog &= ~(1ULL << index1);
-  _ch_data[order][index0].first &= ~(1ULL << index1);
-  _ch_data[order][index0].last &= ~(1ULL << index1);
-
-  _last_calc_count[order] = 0;
-
-  calc_mipmap(order, index0, index1, LeafBlockSamples, true);
-}
-
-LogicSnapshot *LogicSnapshot::clone_data() {
-  std::lock_guard<std::mutex> lock(_mutex);
-
-  ensure_all_blocks_hot();
-
-  LogicSnapshot *clone = new LogicSnapshot();
-
-  clone->_capacity = _capacity;
-  clone->_channel_num = _channel_num;
-  clone->_sample_count = _sample_count;
-  clone->_total_sample_count = _total_sample_count;
-  clone->_ring_sample_count = _ring_sample_count;
-  clone->_unit_size = _unit_size;
-  clone->_unit_bytes = _unit_bytes;
-  clone->_unit_pitch = _unit_pitch;
-  clone->_memory_failed = _memory_failed;
-  clone->_last_ended = _last_ended;
-  clone->_samplerate = _samplerate;
-  clone->_ch_index = _ch_index;
-
-  clone->_glitch_filtered = _glitch_filtered;
-
-  clone->_is_loop = _is_loop;
-  clone->_loop_offset = _loop_offset;
-  clone->_able_free = _able_free;
-  clone->_byte_fraction = _byte_fraction;
-  clone->_ch_fraction = _ch_fraction;
-  clone->_lst_free_block_index = _lst_free_block_index;
-
-  memcpy(clone->_last_sample, _last_sample, sizeof(_last_sample));
-  memcpy(clone->_last_calc_count, _last_calc_count, sizeof(_last_calc_count));
-  memcpy(clone->_cur_ref_block_indexs, _cur_ref_block_indexs,
-         sizeof(_cur_ref_block_indexs));
-
-  clone->_ch_data.resize(_ch_data.size());
-  for (size_t ch = 0; ch < _ch_data.size(); ch++) {
-    clone->_ch_data[ch].resize(_ch_data[ch].size());
-    for (size_t rn = 0; rn < _ch_data[ch].size(); rn++) {
-      clone->_ch_data[ch][rn] = _ch_data[ch][rn];
-      for (size_t lb = 0; lb < Scale; lb++) {
-        if (_ch_data[ch][rn].lbp[lb] != NULL) {
-          void *new_lbp = LeafBlockPool::instance().acquire(LeafBlockSpace);
-          if (new_lbp == NULL) {
-            clone->_memory_failed = true;
-            return clone;
-          }
-          memcpy(new_lbp, _ch_data[ch][rn].lbp[lb], LeafBlockSpace);
-          clone->_ch_data[ch][rn].lbp[lb] = new_lbp;
-        }
-      }
-    }
-  }
-
-  clone->_dest_ptr = NULL;
-
-  return clone;
+  _glitch_filter->invert_channel(sig_index);
 }
 
 void LogicSnapshot::apply_glitch_filter(
     int sig_index, uint32_t threshold,
     std::function<void(int)> progress_callback,
     GlitchFilterMode filter_mode) {
-  if (threshold == 0)
-    return;
-
-  int order = get_ch_order(sig_index);
-  if (order == -1 || (unsigned int)order >= _ch_data.size())
-    return;
-
-  uint64_t max_sample = _ring_sample_count;
-  if (max_sample == 0)
-    return;
-
-  std::lock_guard<std::mutex> lock(_mutex);
-
-  // 转换为绝对偏移坐标系
-  _ring_sample_count += _loop_offset;
-
-  uint64_t end_pos = max_sample + _loop_offset;
-  uint64_t scan_pos = _loop_offset;
-
-  // 状态机记录当前确认的"稳定"电平状态
-  bool accepted_level = get_sample_self(scan_pos, sig_index);
-  int last_progress = -1;
-
-  pxv_info("[GlitchFilter] START sig_index=%d threshold=%u max_sample=%llu "
-           "accepted_level=%d filter_mode=%d",
-           sig_index, threshold, (unsigned long long)max_sample,
-           accepted_level, (int)filter_mode);
-
-  // 重新滤波从空白开始累积持久化区间，防止重复累积
-  _filtered_ranges_per_channel[sig_index].clear();
-
-  // FillRange 已提升为 public 嵌套类型 LogicSnapshot::FillRange
-  std::vector<FillRange> fills;
-  // 预分配批处理空间，防止频繁申请内存
-  fills.reserve(65536);
-
-  uint64_t loop_count = 0;
-  uint64_t glitch_count = 0;
-  uint64_t stable_count = 0;
-
-  // 批量应用覆盖并重构 Mipmap（保证寻找下一边缘时，搜索树不失效）
-  auto apply_batch = [&]() {
-    if (fills.empty())
-      return;
-
-    uint64_t batch_start = fills.front().start;
-    uint64_t batch_end = fills.back().end;
-
-    pxv_info(
-        "[GlitchFilter] apply_batch fills=%zu batch_start=%llu batch_end=%llu",
-        fills.size(), (unsigned long long)batch_start,
-        (unsigned long long)batch_end);
-
-    for (const auto &r : fills) {
-      uint64_t start = r.start;
-      uint64_t end = r.end;
-      bool level = r.level;
-
-      for (uint64_t pos = start; pos < end;) {
-        uint64_t idx0 = pos >> (LeafBlockPower + RootScalePower);
-        uint64_t idx1 = (pos & RootMask) >> LeafBlockPower;
-
-        if (idx0 >= _ch_data[order].size())
-          break;
-
-        uint64_t block_start = (idx0 << (LeafBlockPower + RootScalePower)) +
-                               (idx1 << LeafBlockPower);
-        uint64_t block_end = block_start + LeafBlockSamples;
-        uint64_t seg_end = min(end, block_end);
-
-        // 如果该块尚未被实例化，则分配空间
-        if (_ch_data[order][idx0].lbp[idx1] == NULL) {
-          bool const_val = (_ch_data[order][idx0].first & (1ULL << idx1)) != 0;
-          void *lbp = LeafBlockPool::instance().acquire(LeafBlockSpace);
-          if (lbp == NULL) {
-            _memory_failed = true;
-            return;
-          }
-          if (const_val)
-            memset(lbp, 0xFF, LeafBlockSamples / 8);
-          else
-            memset(lbp, 0, LeafBlockSamples / 8);
-          memset((uint8_t *)lbp + LeafBlockSamples / 8, 0,
-                 LeafBlockSpace - LeafBlockSamples / 8);
-          _ch_data[order][idx0].lbp[idx1] = lbp;
-        }
-
-        uint8_t *lbp = (uint8_t *)_ch_data[order][idx0].lbp[idx1];
-
-        // 由于马上要改写内容，此处清除该块的跳变标志位
-        _ch_data[order][idx0].tog &= ~(1ULL << idx1);
-
-        for (uint64_t i = pos; i < seg_end; i++) {
-          uint64_t bit_offset = i & LeafMask;
-          uint64_t byte_offset = bit_offset / 8;
-          uint8_t bit_mask = 1ULL << (bit_offset % 8);
-          if (level)
-            lbp[byte_offset] |= bit_mask;
-          else
-            lbp[byte_offset] &= ~bit_mask;
-        }
-
-        pos = seg_end;
-      }
-    }
-
-    // 精准回写：只重新计算被改写过的叶子节点的 Mipmap
-    // 从而完美维护查找树的同步，且大量节省 CPU 耗时
-    uint64_t start_blk = batch_start / LeafBlockSamples;
-    uint64_t end_blk = (batch_end + LeafBlockSamples - 1) / LeafBlockSamples;
-
-    for (uint64_t blk = start_blk; blk < end_blk; ++blk) {
-      uint64_t idx0 = blk / RootScale;
-      uint64_t idx1 = blk % RootScale;
-      if (idx0 < _ch_data[order].size()) {
-        recalc_mipmap(order, idx0, idx1);
-      }
-    }
-
-    fills.clear();
-  };
-
-  while (scan_pos < end_pos) {
-    bool current_scan_level = get_sample_self(scan_pos, sig_index);
-
-    // 寻找下一个边缘（跳出当前电平）
-    uint64_t edge_pos = scan_pos;
-    bool found = get_nxt_edge_self(edge_pos, current_scan_level, end_pos - 1, 0,
-                                   sig_index);
-
-    if (!found) {
-      pxv_info("[GlitchFilter] no more edges at scan_pos=%llu",
-               (unsigned long long)scan_pos);
-      break;
-    }
-
-    uint64_t pulse_start = edge_pos;
-    uint64_t pulse_end = pulse_start;
-    // 寻找脉冲的结束边缘（电平回归原始位置）
-    bool found_end = get_nxt_edge_self(pulse_end, !current_scan_level,
-                                       end_pos - 1, 0, sig_index);
-
-    if (!found_end) {
-      pulse_end = end_pos;
-    }
-
-    uint64_t pulse_len = pulse_end - pulse_start;
-    loop_count++;
-
-    if (current_scan_level == accepted_level) {
-      if (pulse_len <= threshold) {
-        bool should_filter = false;
-        switch (filter_mode) {
-        case GLITCH_FILTER_BOTH:
-          should_filter = true;
-          break;
-        case GLITCH_FILTER_HIGH:
-          // Only filter when accepted_level is HIGH (remove low pulses on high level)
-          should_filter = accepted_level == true;
-          break;
-        case GLITCH_FILTER_LOW:
-          // Only filter when accepted_level is LOW (remove high pulses on low level)
-          should_filter = accepted_level == false;
-          break;
-        }
-
-        if (should_filter) {
-          // 判断为毛刺：它是一个短暂偏离基准 accepted_level 的窄脉冲
-          // 用 accepted_level 覆盖这段毛刺区间
-          fills.push_back({pulse_start, pulse_end, accepted_level});
-          // 同步写入持久化区间（apply_batch 仅清空局部 fills，持久化存储累积保留）
-          _filtered_ranges_per_channel[sig_index].push_back(
-              {pulse_start, pulse_end, accepted_level});
-          glitch_count++;
-
-          if (glitch_count <= 5 || glitch_count % 1000 == 0) {
-            pxv_info(
-                "[GlitchFilter] GLITCH #%llu scan=%llu pulse=[%llu,%llu) "
-                "len=%llu accepted=%d fills=%zu",
-                (unsigned long long)glitch_count, (unsigned long long)scan_pos,
-                (unsigned long long)pulse_start, (unsigned long long)pulse_end,
-                (unsigned long long)pulse_len, accepted_level, fills.size());
-          }
-
-          // 跳过毛刺段，由于脉冲结束时恢复到了
-          // accepted_level，直接从脉冲末尾继续扫描
-          scan_pos = pulse_end;
-
-          // 若堆积过多则刷入硬盘缓存及重建 Mipmap，避免占用过多内存
-          if (fills.size() >= 65536) {
-            apply_batch();
-            if (_memory_failed)
-              break;
-          }
-        } else {
-          // Not filtering this pulse, treat as stable transition
-          stable_count++;
-          pxv_info("[GlitchFilter] SKIP-FILTER #%llu scan=%llu pulse=[%llu,%llu) "
-                   "len=%llu old_accepted=%d -> new_accepted=%d (mode=%d)",
-                   (unsigned long long)stable_count, (unsigned long long)scan_pos,
-                   (unsigned long long)pulse_start, (unsigned long long)pulse_end,
-                   (unsigned long long)pulse_len, accepted_level,
-                   !accepted_level, (int)filter_mode);
-          accepted_level = !accepted_level;
-          scan_pos = pulse_start;
-        }
-      } else {
-        // 判断为稳定的状态迁移：新电平持续了足够长的时间
-        stable_count++;
-        pxv_info("[GlitchFilter] STABLE #%llu scan=%llu pulse=[%llu,%llu) "
-                 "len=%llu old_accepted=%d -> new_accepted=%d",
-                 (unsigned long long)stable_count, (unsigned long long)scan_pos,
-                 (unsigned long long)pulse_start, (unsigned long long)pulse_end,
-                 (unsigned long long)pulse_len, accepted_level,
-                 !accepted_level);
-        accepted_level = !accepted_level; // 确认新的基准电平状态
-        scan_pos =
-            pulse_start; // 将游标设于稳定脉冲开始处，在下一次循环中作为新基准点搜索
-      }
-    } else {
-      // 防御性设计：依照状态机逻辑不会跑到这
-      pxv_warn("[GlitchFilter] UNEXPECTED current_scan_level(%d) != "
-               "accepted_level(%d) at scan_pos=%llu",
-               current_scan_level, accepted_level,
-               (unsigned long long)scan_pos);
-      scan_pos = pulse_start;
-    }
-
-    int progress = (int)((scan_pos - _loop_offset) * 100 / max_sample);
-    if (progress != last_progress && progress_callback) {
-      progress_callback(progress);
-      last_progress = progress;
-    }
-  }
-
-  // 处理遗留的一批写操作
-  apply_batch();
-
-  // 验证：采样前100个点，确认数据确实被修改了
-  pxv_info(
-      "[GlitchFilter] VERIFY start: sampling first 100 points after filter");
-  for (int v = 0; v < 100; v++) {
-    uint64_t vpos = _loop_offset + v;
-    bool vlevel = get_sample_self(vpos, sig_index);
-    if (vlevel != accepted_level) {
-      pxv_info(
-          "[GlitchFilter] VERIFY pos=%llu level=%d (MISMATCH! expected=%d)",
-          (unsigned long long)vpos, vlevel, accepted_level);
-    }
-  }
-  pxv_info("[GlitchFilter] VERIFY: also sampling fills region boundaries");
-  if (!fills.empty()) {
-    for (size_t fi = 0; fi < fills.size() && fi < 5; fi++) {
-      uint64_t vpos = fills[fi].start;
-      bool vlevel = get_sample_self(vpos, sig_index);
-      pxv_info(
-          "[GlitchFilter] VERIFY fill[%zu] start_pos=%llu level=%d expected=%d",
-          fi, (unsigned long long)vpos, vlevel, fills[fi].level);
-    }
-  }
-
-  pxv_info("[GlitchFilter] END sig_index=%d loops=%llu glitches=%llu "
-           "stables=%llu fills_final=%zu",
-           sig_index, (unsigned long long)loop_count,
-           (unsigned long long)glitch_count, (unsigned long long)stable_count,
-           fills.size());
-
-  // 恢复坐标系
-  _ring_sample_count -= _loop_offset;
+  _glitch_filter->apply_glitch_filter(sig_index, threshold,
+                                      std::move(progress_callback), filter_mode);
 }
 
 void LogicSnapshot::apply_glitch_filter_all(
     const std::vector<uint32_t> &thresholds,
     std::function<void(int)> progress_callback,
     const std::vector<GlitchFilterMode> &filter_modes) {
-  for (int i = 0; i < (int)_ch_index.size(); i++) {
-    if (i < (int)thresholds.size() && thresholds[i] > 0) {
-      GlitchFilterMode mode = GLITCH_FILTER_BOTH;
-      if (i < (int)filter_modes.size()) {
-        mode = filter_modes[i];
-      }
-      apply_glitch_filter(_ch_index[i], thresholds[i], nullptr, mode);
-    }
-    if (progress_callback) {
-      int progress = (i + 1) * 100 / _ch_index.size();
-      progress_callback(progress);
-    }
-  }
-  _glitch_filtered = true;
+  _glitch_filter->apply_glitch_filter_all(thresholds,
+                                          std::move(progress_callback),
+                                          filter_modes);
 }
 
-bool LogicSnapshot::is_glitch_filtered() { return _glitch_filtered; }
+bool LogicSnapshot::is_glitch_filtered() {
+  return _glitch_filter->is_glitch_filtered();
+}
 
 void LogicSnapshot::set_glitch_filtered(bool filtered) {
-  _glitch_filtered = filtered;
+  _glitch_filter->set_glitch_filtered(filtered);
 }
 
 const std::vector<LogicSnapshot::FillRange>&
 LogicSnapshot::get_filtered_ranges(int sig_index) const {
-  auto it = _filtered_ranges_per_channel.find(sig_index);
-  if (it == _filtered_ranges_per_channel.end() || it->second.empty()) {
-    return _empty_filtered_ranges;
-  }
-  return it->second;
+  return _glitch_filter->get_filtered_ranges(sig_index);
 }
 
 void LogicSnapshot::clear_filtered_ranges() {
-  std::lock_guard<std::mutex> lock(_mutex);
-  _filtered_ranges_per_channel.clear();
+  _glitch_filter->clear_filtered_ranges();
 }
 
 } // namespace data

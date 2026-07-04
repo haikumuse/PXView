@@ -26,35 +26,7 @@ set(PXVIEW_CORE_SOURCES
     PXView/pv/ZipMaker.cpp
     PXView/pv/storesession.cpp
     PXView/pv/tabcontext.cpp
-    # Data layer (snapshots, models, stacks)
-    PXView/pv/data/snapshot.cpp
-    PXView/pv/data/signaldata.cpp
-    PXView/pv/data/signalmodel.cpp
-    PXView/pv/data/datasource.cpp
-    PXView/pv/data/triggerconfig.cpp
-    PXView/pv/data/lissajousmodel.cpp
-    PXView/pv/data/logicsnapshot.cpp
-    PXView/pv/data/logicsnapshot_diskcache_writer.cpp
-    PXView/pv/data/pulse_analyzer.cpp
-    PXView/pv/data/pulse_analyzer.h
-    PXView/pv/data/dsosnapshot.cpp
-    PXView/pv/data/analogsnapshot.cpp
-    PXView/pv/data/sessionsnapshot.cpp
-    PXView/pv/data/sessiondocument.cpp
-    PXView/pv/data/signalconfigstore.cpp
-    PXView/pv/data/decoderstack.cpp
-    PXView/pv/data/mathstack.cpp
-    PXView/pv/data/spectrumstack.cpp
-    PXView/pv/data/disk_buffer_manager.cpp
-    PXView/pv/data/disk_write_thread.cpp
-    PXView/pv/data/disk_read_cache.cpp
-    PXView/pv/data/mmap_allocator.cpp
-    PXView/pv/data/decode/rowdata.cpp
-    PXView/pv/data/decode/row.cpp
-    PXView/pv/data/decode/decoder.cpp
-    PXView/pv/data/decode/annotation.cpp
-    PXView/pv/data/decode/annotationrestable.cpp
-    PXView/pv/data/decode/decoderstatus.cpp
+    # NOTE: data/*.cpp live in pv/data/CMakeLists.txt (pxview-data STATIC lib)
     # API/remote-control layer (SessionService, transports, RPC dispatcher)
     PXView/pv/api/session_service.cpp
     PXView/pv/api/app_service.cpp
