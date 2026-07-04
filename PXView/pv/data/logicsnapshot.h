@@ -56,6 +56,13 @@ enum GlitchFilterMode {
 namespace pv {
 namespace data {
 
+// Extracted glitch-filter subsystem (cluster C). Defined in
+// logicsnapshot_glitch_filter.h/.cpp. Forward-declared here; LogicSnapshot
+// holds it via unique_ptr and forwards the public methods. Note: the
+// glitch-filter header includes this file (one-way) because its API references
+// the nested FillRange type.
+class LogicSnapshotGlitchFilter;
+
 class LogicSnapshot : public Snapshot
 {
 private:
@@ -143,9 +150,7 @@ public:
     bool get_pre_edge(uint64_t &index, bool last_sample,
                       double min_length, int sig_index);
 
-    void set_sample_range(uint64_t start, uint64_t end, bool level, int sig_index);
     void invert_channel(int sig_index);
-    LogicSnapshot* clone_data();
     void apply_glitch_filter(int sig_index, uint32_t threshold, std::function<void(int)> progress_callback,
         GlitchFilterMode filter_mode = GLITCH_FILTER_BOTH);
     void apply_glitch_filter_all(const std::vector<uint32_t> &thresholds, std::function<void(int)> progress_callback,
@@ -216,7 +221,6 @@ private:
     int get_ch_order(int sig_index);
 
     void calc_mipmap(unsigned int order, uint8_t index0, uint8_t index1, uint64_t samples, bool isEnd);
-    void recalc_mipmap(unsigned int order, uint64_t index0, uint64_t index1);
 
     void append_cross_payload(const sr_datafeed_logic &logic);
 
@@ -309,11 +313,6 @@ private:
     std::vector<void*> _free_block_list;
     struct BlockIndex _cur_ref_block_indexs[CHANNEL_MAX_COUNT];
     int         _lst_free_block_index;
-    bool        _glitch_filtered;
-
-    // 持久化的每通道滤波区间列表（apply_glitch_filter 累积写入，clear_filtered_ranges 清空）
-    std::map<int, std::vector<FillRange>> _filtered_ranges_per_channel;
-    static const std::vector<FillRange> _empty_filtered_ranges;  // 空时返回引用，避免悬垂引用
 
     // mmap-backed chunk allocator state (cluster A — heavily used by
     // allocate_block / copy_from / push_to_free_list / free_data / first_payload).
@@ -331,7 +330,13 @@ private:
     // call non-const writer methods.
     mutable std::unique_ptr<LogicSnapshotDiskCacheWriter> _disk_cache_writer;
 
+    // Extracted glitch-filter subsystem (cluster C). mutable so const
+    // forwarders (e.g. is_glitch_filtered / get_filtered_ranges) can call
+    // non-const methods on the helper.
+    mutable std::unique_ptr<LogicSnapshotGlitchFilter> _glitch_filter;
+
     friend class ::LogicSnapshotDiskCacheWriter;
+    friend class LogicSnapshotGlitchFilter;
 };
 
 } // namespace data

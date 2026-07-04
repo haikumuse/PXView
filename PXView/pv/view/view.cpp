@@ -493,11 +493,6 @@ void View::on_header_collapse_changed(bool collapsed) {
   _ruler->update();
 }
 
-void View::marker_time_changed() {
-  _ruler->update();
-  viewport_update();
-}
-
 void View::on_traces_moved() {
   update_scroll();
   set_update(_time_viewport, true);
@@ -555,8 +550,6 @@ void View::scroll_to_logic_last_data_time() {
 }
 
 // -- calibration dialog
-void View::show_calibration() { _data_sync->show_calibration(); }
-
 void View::on_calibration_closed() { _data_sync->on_calibration_closed(); }
 
 void View::hide_calibration() { on_calibration_closed(); }

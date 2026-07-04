@@ -641,11 +641,7 @@ private slots:
   void h_scroll_value_changed(int value);
   void v_scroll_value_changed(int value);
 
-  void marker_time_changed();
   void on_traces_moved();
-
-  // calibration for oscilloscope
-  void show_calibration();
   void on_measure_updated();
 
   void splitterMoved(int pos, int index);
@@ -661,6 +657,19 @@ private slots:
   void on_glitch_popup_closed();
 
 private:
+  // ---- Friends (delegates touch View's private state directly) ----
+  // Phase E delegates — friend classes so they can touch View's private
+  // state (_scale / _offset / _own_decode_traces / _trig_cursor / …)
+  // directly. Each delegate owns *behaviour*; the state still lives on View.
+  friend class ViewLayout;
+  friend class ViewCursors;
+  friend class ViewDerivedTraces;
+  // Phase J delegates — signal-sync / glitch-filter / data-sync behaviour
+  // extracted from the View God-class during modernize-view-layer-v3.
+  friend class ViewSignalSync;
+  friend class ViewGlitchFilter;
+  friend class ViewDataSync;
+
   // ---- Private static constants ----
   static const int LabelMarginWidth;
   static const int RulerHeight;
@@ -683,19 +692,6 @@ private:
   void paintEvent(QPaintEvent *event);
   void resizeEvent(QResizeEvent *e);
   void scrollContentsBy(int dx, int dy);
-
-  // ---- Friends (delegates touch View's private state directly) ----
-  // Phase E delegates — friend classes so they can touch View's private
-  // state (_scale / _offset / _own_decode_traces / _trig_cursor / …)
-  // directly. Each delegate owns *behaviour*; the state still lives on View.
-  friend class ViewLayout;
-  friend class ViewCursors;
-  friend class ViewDerivedTraces;
-  // Phase J delegates — signal-sync / glitch-filter / data-sync behaviour
-  // extracted from the View God-class during modernize-view-layer-v3.
-  friend class ViewSignalSync;
-  friend class ViewGlitchFilter;
-  friend class ViewDataSync;
 
   // ---- Delegate members (Phase E + J) ----
   std::unique_ptr<ViewLayout> _layout;

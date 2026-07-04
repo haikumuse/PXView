@@ -89,6 +89,11 @@ add_subdirectory(PXView/pv/utility)
 add_subdirectory(PXView/pv/config)
 
 #===============================================================================
+#= pxview-data: data layer (snapshots, models, stacks, decode/) — STATIC lib
+#-------------------------------------------------------------------------------
+add_subdirectory(PXView/pv/data)
+
+#===============================================================================
 #= pxview-core static library — Core layer (no Qt Widgets dependency)
 #-------------------------------------------------------------------------------
 # Compiles the Core layer sources (SigSession, DeviceAgent, Data layer, API
@@ -105,6 +110,7 @@ target_link_libraries(pxview-core PUBLIC
 	pxview-interface
 	pxview-utility
 	pxview-config
+	pxview-data
 )
 # Expose libsigrokstd/bridge/ and libsigrokstd/include/ headers so
 # sigsession.cpp / deviceagent.cpp (compiled into pxview-core) can include
