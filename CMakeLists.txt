@@ -74,6 +74,21 @@ include(${CMAKE_SOURCE_DIR}/cmake/libsigrok.cmake)
 add_subdirectory(libsigrokstd)
 
 #===============================================================================
+#= pxview-interface: callback + event interfaces (headers only, INTERFACE lib)
+#-------------------------------------------------------------------------------
+add_subdirectory(PXView/pv/interface)
+
+#===============================================================================
+#= pxview-utility: leaf utilities (encoding, path, array) — STATIC lib
+#-------------------------------------------------------------------------------
+add_subdirectory(PXView/pv/utility)
+
+#===============================================================================
+#= pxview-config: app config + shortcut definitions — STATIC lib
+#-------------------------------------------------------------------------------
+add_subdirectory(PXView/pv/config)
+
+#===============================================================================
 #= pxview-core static library — Core layer (no Qt Widgets dependency)
 #-------------------------------------------------------------------------------
 # Compiles the Core layer sources (SigSession, DeviceAgent, Data layer, API
@@ -87,6 +102,9 @@ target_link_libraries(pxview-core PUBLIC
 	${QT_CORE_LIBS}
 	${PXVIEW_LINK_LIBS}
 	nlohmann_json::nlohmann_json
+	pxview-interface
+	pxview-utility
+	pxview-config
 )
 # Expose libsigrokstd/bridge/ and libsigrokstd/include/ headers so
 # sigsession.cpp / deviceagent.cpp (compiled into pxview-core) can include

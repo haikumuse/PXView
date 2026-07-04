@@ -42,13 +42,10 @@
 #include <atomic>
 #define CHANNEL_MAX_COUNT 64
 
-namespace LogicSnapshotTest {
-class Pow2;
-class Basic;
-class LargeData;
-class Pulses;
-class LongPulses;
-}
+// Extracted disk-cache/async-writer subsystem (cluster D). Defined in
+// logicsnapshot_diskcache_writer.h/.cpp. Forward-declared here to avoid a
+// circular include; LogicSnapshot holds it via unique_ptr.
+class LogicSnapshotDiskCacheWriter;
 
 enum GlitchFilterMode {
     GLITCH_FILTER_BOTH = 0,
@@ -318,45 +315,23 @@ private:
     std::map<int, std::vector<FillRange>> _filtered_ranges_per_channel;
     static const std::vector<FillRange> _empty_filtered_ranges;  // 空时返回引用，避免悬垂引用
 
-    DiskCacheConfig _disk_cache_config;
+    // mmap-backed chunk allocator state (cluster A — heavily used by
+    // allocate_block / copy_from / push_to_free_list / free_data / first_payload).
+    // _disk_cache_config + _mmap_slot_written moved to LogicSnapshotDiskCacheWriter.
     std::shared_ptr<MmapAllocator> _mmap_alloc;
     uint64_t _max_blocks_per_channel;
-    // per-slot 位图：标记 mmap 槽位当前是否持有已提交数据。
-    // 索引 = abs_slot = channel * _max_blocks_per_channel + (global_block_seq % _max_blocks_per_channel)
-    // abs_slot 直接对应 mmap 内的物理槽位序号（与 MmapAllocator::get_block_data 的寻址一致）。
-    std::vector<bool> _mmap_slot_written;
 
-
-    struct AsyncPayload {
-        int format;
-        std::vector<uint8_t> data;
-    };
-    // Backpressure watermarks for the async write queue (hysteresis):
-    // feed thread blocks above HIGH, unblocks below LOW.
-    static constexpr uint64_t ASYNC_HIGH_WATERMARK = 256ULL * 1024 * 1024;
-    static constexpr uint64_t ASYNC_LOW_WATERMARK  = 64ULL * 1024 * 1024;
-
-    std::queue<AsyncPayload> _async_queue;
-    std::mutex _async_mutex;
-    std::condition_variable _async_cv;
-    std::condition_variable _async_drain_cv;  // feed waits on this when queue exceeds high watermark
-    std::thread _async_thread;
-    std::atomic<bool> _async_running;
-    void async_write_worker();
-
-    std::atomic<uint64_t> _async_bytes_written;
-    std::atomic<double> _async_write_speed_mbps;
-    std::atomic<size_t> _async_queue_depth;
-    std::atomic<uint64_t> _async_queue_bytes_size;
-    
     std::atomic<uint64_t> _last_pf_count{0};
     std::atomic<int64_t> _last_pf_time{0};
     std::atomic<uint64_t> _pf_per_sec{0};
-	friend class LogicSnapshotTest::Pow2;
-	friend class LogicSnapshotTest::Basic;
-	friend class LogicSnapshotTest::LargeData;
-	friend class LogicSnapshotTest::Pulses;
-	friend class LogicSnapshotTest::LongPulses;
+
+    // Extracted disk-cache/async-writer subsystem (cluster D). Declared LAST so
+    // its destructor (which joins the async writer thread) runs FIRST — before
+    // _mmap_alloc / _ch_data are destroyed. mutable so const forwarders can
+    // call non-const writer methods.
+    mutable std::unique_ptr<LogicSnapshotDiskCacheWriter> _disk_cache_writer;
+
+    friend class ::LogicSnapshotDiskCacheWriter;
 };
 
 } // namespace data

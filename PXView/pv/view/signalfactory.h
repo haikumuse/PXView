@@ -111,16 +111,11 @@ public:
      * @param data_source The DataSource for snapshot access (typically the
      *                    same object as source).
      * @param event Type of change that triggered the update.
-     * @param ui_state Optional View-layer DockUiState. When non-null and event
-     *                is AllReplaced, persisted per-channel layout
-     *                (view_index/v_offset/own_height/visible) is restored
-     *                from ui_state->channel_layouts after recreation.
      */
     static void update_signals(std::vector<Signal*> &current_signals,
                                data::DataSource *source,
                                data::DataSource *data_source,
-                               SignalChangeEvent event,
-                               DockUiState *ui_state = nullptr);
+                               SignalChangeEvent event);
 
 private:
     /**

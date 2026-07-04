@@ -448,8 +448,9 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
     // Height adjustment completed - persist the new layout to SessionDocument
     pxv_info("Header::mouseReleaseEvent: HEIGHT ADJUSTMENT completed, persisting layout");
     auto &session = _view.session();
+    auto *dev = _view.data_source()->device();
     auto *doc = session.get_active_document();
-    if (doc && session.get_device() && session.get_device()->have_instance()) {
+    if (doc && dev && dev->have_instance()) {
       std::map<int, pv::data::ChannelLayoutState> channel_layout;
       for (auto *sig : _view.get_own_signals()) {
         pv::data::ChannelLayoutState layout;
@@ -466,8 +467,8 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
                (int)channel_layout.size());
     } else {
       pxv_info("Header::mouseReleaseEvent: SKIPPED save_signal_config (doc=%p, device=%p, have_instance=%d)",
-               doc, session.get_device(),
-               session.get_device() ? session.get_device()->have_instance() : 0);
+               doc, dev,
+               dev ? dev->have_instance() : 0);
     }
     _resize_trace_upper = NULL;
     _resize_trace_lower = NULL;
@@ -568,8 +569,9 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
     // restore the user's custom layout. Without this, every reload() wipes
     // the layout state and resets to default.
     auto &session = _view.session();
+    auto *dev = _view.data_source()->device();
     auto *doc = session.get_active_document();
-    if (doc && session.get_device() && session.get_device()->have_instance()) {
+    if (doc && dev && dev->have_instance()) {
       std::map<int, pv::data::ChannelLayoutState> channel_layout;
       for (auto *sig : _view.get_own_signals()) {
         pv::data::ChannelLayoutState layout;
@@ -586,8 +588,8 @@ void Header::mouseReleaseEvent(QMouseEvent *event) {
                (int)channel_layout.size());
     } else {
       pxv_info("Header::mouseReleaseEvent: SKIPPED save_signal_config (doc=%p, device=%p, have_instance=%d)",
-               doc, session.get_device(),
-               session.get_device() ? session.get_device()->have_instance() : 0);
+               doc, dev,
+               dev ? dev->have_instance() : 0);
     }
   } else if (!_drag_traces.empty()) {
     _drag_traces.clear();

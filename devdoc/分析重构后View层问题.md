@@ -3617,9 +3617,9 @@ CSV 导出验证结果：
    - 问题：`export_start()` 在设置 "Invalid export format" 错误后，`_error.clear()` 在 `return false` 前清除了错误信息
    - 修复：重构 if/else 结构，错误时立即返回
 
-2. **ChannelType vs SR_CHANNEL_* 枚举不匹配**（核心 Bug）
-   - 问题：`SignalModel::type()` 返回 `ChannelType::Logic=0`，但 `get_snapshot()` 期望 `SR_CHANNEL_LOGIC=10000`，导致 `type_set` 中的值无法匹配，`get_snapshot()` 返回 NULL
-   - 修复：新增 `api_type_to_sr_channel_type()` 转换函数，在 `save_start()` 和 `export_start()` 构建 `type_set` 时转换
+2. **ChannelType vs SR_CHANNEL_* 枚举不匹配**（历史 Bug，已修复）
+   - 问题（历史）：`SignalModel::type()` 曾返回 `ChannelType::Logic=0`，但 `get_snapshot()` 期望 `SR_CHANNEL_LOGIC=10000`，导致 `type_set` 中的值无法匹配，`get_snapshot()` 返回 NULL
+   - 现状：`SignalModel::_type` 已改为 `int` 直接存 `SR_CHANNEL_*`，旧 `api_type_to_sr_channel_type()` 已移除；MCP 边界转换由 `SessionService::sr_channel_type_to_api()`（仅 MCP 边界）承担
    - 涉及文件：[storesession.cpp](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/PXView/pv/storesession.cpp#L68-L82)、[session_service.cpp](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/PXView/pv/api/session_service.cpp#L3096-L3106)
 
 3. **错误信息传播改进**（[session_service.cpp](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/PXView/pv/api/session_service.cpp#L3110-L3127)）

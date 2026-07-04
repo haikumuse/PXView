@@ -26,6 +26,8 @@
 #include "../deviceagent.h"
 #include "../log.h"
 
+#include <cassert>
+
 namespace pv {
 namespace data {
 
@@ -73,7 +75,13 @@ void SignalModel::set_name(const std::string &name) {
     }
 }
 
-void SignalModel::set_type(int type) { _type = type; }
+void SignalModel::set_type(int type) {
+    assert(type == SR_CHANNEL_LOGIC || type == SR_CHANNEL_DSO ||
+           type == SR_CHANNEL_ANALOG || type == SR_CHANNEL_DECODER ||
+           type == SR_CHANNEL_FFT || type == SR_CHANNEL_LISSAJOUS ||
+           type == SR_CHANNEL_MATH || type == SR_CHANNEL_GROUP);
+    _type = type;
+}
 
 void SignalModel::set_enabled(bool enabled) {
     if (_enabled != enabled) {

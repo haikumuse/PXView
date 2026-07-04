@@ -956,6 +956,7 @@ bool SigSession::add_decoder(
     std::list<pv::data::decode::Decoder *> &sub_decoders,
     std::shared_ptr<data::DecoderStack> &out_stack,
     data::SessionDocument *doc) {
+  (void)silent;
   if (dec == NULL) {
     pxv_err("Decoder instance is null!");
     assert(false);

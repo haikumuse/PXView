@@ -26,6 +26,8 @@
 #include <QString>
 #include <cstdint>
 
+struct sr_channel;
+
 namespace pv {
 namespace view {
 

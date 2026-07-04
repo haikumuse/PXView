@@ -217,8 +217,7 @@ SignalFactory::SignalChangeEvent SignalFactory::compute_change_event(
 void SignalFactory::update_signals(std::vector<Signal *> &current_signals,
                                    data::DataSource *source,
                                    data::DataSource *data_source,
-                                   SignalChangeEvent event,
-                                   DockUiState *ui_state) {
+                                   SignalChangeEvent event) {
   if (!source || !data_source) {
     if (event == AllReplaced) {
       for (auto *s : current_signals)

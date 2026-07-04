@@ -25,7 +25,6 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QTimer>
-#include <libsigrok.h>
 
 #include "../data/signalmodel.h"
 #include "../dsvdef.h"
@@ -162,7 +161,6 @@ bool DsoHardwareConfig::go_vDialNext(bool manul) {
 }
 
 void DsoHardwareConfig::init_vDial(DsoSignal *src) {
-  QVector<uint64_t> vValue;
   QVector<QString> vUnit;
 
   for (uint64_t i = 0; i < DsoSignal::vDialUnitCount; i++) {
@@ -171,26 +169,8 @@ void DsoHardwareConfig::init_vDial(DsoSignal *src) {
 
   _signal->_vDial = NULL;
 
-  GVariant *gvar_list, *gvar_list_vdivs;
-  gvar_list = _signal->_data_source->device()->get_config_list(NULL, SR_CONF_PROBE_VDIV);
+  QVector<uint64_t> vValue = _signal->_data_source->device()->get_probe_vdiv_list();
 
-  if (gvar_list != NULL) {
-    assert(gvar_list);
-    if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list, "vdivs",
-                                                  G_VARIANT_TYPE("at")))) {
-      GVariant *gvar;
-      GVariantIter iter;
-      g_variant_iter_init(&iter, gvar_list_vdivs);
-
-      while (NULL != (gvar = g_variant_iter_next_value(&iter))) {
-        vValue.push_back(g_variant_get_uint64(gvar));
-        g_variant_unref(gvar);
-      }
-
-      g_variant_unref(gvar_list_vdivs);
-      g_variant_unref(gvar_list);
-    }
-  }
   _signal->_vDial = new dslDial(vValue.count(), DsoSignal::vDialValueStep, vValue, vUnit, false);
 
   if (src) {
@@ -206,7 +186,7 @@ bool DsoHardwareConfig::load_settings() {
   bool ret;
 
   // dso channel bits
-  ret = _signal->_data_source->device()->get_config_byte(SR_CONF_UNIT_BITS, v);
+  ret = _signal->_data_source->device()->get_unit_bits(v);
   if (ret) {
     _signal->_bits = (uint8_t)v;
   } else {
@@ -220,13 +200,13 @@ bool DsoHardwareConfig::load_settings() {
       return false;
   }
 
-  ret = _signal->_data_source->device()->get_config_uint32(SR_CONF_REF_MIN, ui32);
+  ret = _signal->_data_source->device()->get_ref_min(ui32);
   if (ret)
     _signal->_ref_min = (double)ui32;
   else
     _signal->_ref_min = 1;
 
-  ret = _signal->_data_source->device()->get_config_uint32(SR_CONF_REF_MAX, ui32);
+  ret = _signal->_data_source->device()->get_ref_max(ui32);
   if (ret)
     _signal->_ref_max = (double)ui32;
   else
@@ -236,15 +216,13 @@ bool DsoHardwareConfig::load_settings() {
   uint64_t vdiv;
   uint64_t vfactor;
   if (probe) {
-    ret = _signal->_data_source->device()->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv,
-                                                   probe, NULL);
+    ret = _signal->_data_source->device()->get_probe_vdiv(vdiv, probe);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_VDIV failed.");
       return false;
     }
 
-    ret = _signal->_data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
-                                                   vfactor, probe, NULL);
+    ret = _signal->_data_source->device()->get_probe_factor(vfactor, probe);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
       return false;
@@ -259,8 +237,7 @@ bool DsoHardwareConfig::load_settings() {
 
   // -- coupling
   if (probe) {
-    ret = _signal->_data_source->device()->get_config_byte(SR_CONF_PROBE_COUPLING, v,
-                                                 probe, NULL);
+    ret = _signal->_data_source->device()->get_probe_coupling(v, probe);
     if (ret) {
       _signal->_acCoupling = uint8_t(v);
     } else {
@@ -273,8 +250,7 @@ bool DsoHardwareConfig::load_settings() {
 
   // -- vpos
   if (probe) {
-    ret = _signal->_data_source->device()->get_config_uint16(SR_CONF_PROBE_OFFSET,
-                                                   _signal->_zero_offset, probe, NULL);
+    ret = _signal->_data_source->device()->get_probe_offset(_signal->_zero_offset, probe);
     if (!ret) {
       pxv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
       return false;
@@ -285,8 +261,7 @@ bool DsoHardwareConfig::load_settings() {
 
   // -- trig_value
   if (probe) {
-    ret = _signal->_data_source->device()->get_config_byte(SR_CONF_TRIGGER_VALUE,
-                                                 _signal->_trig_value, probe, NULL);
+    ret = _signal->_data_source->device()->get_trigger_value(_signal->_trig_value, probe);
     if (ret) {
       _signal->_trig_delta = _signal->get_trig_vrate() - get_zero_ratio();
     } else {
@@ -374,8 +349,7 @@ int DsoHardwareConfig::get_hw_offset() {
   sr_channel *probe = _signal->_model ? _signal->_model->sr_channel_handle() : nullptr;
   if (_signal->_data_source->is_running_status()) {
     int hw_offset = _signal->_cached_hw_offset;
-    if (probe && _signal->_data_source->device()->get_config_uint16(
-                     SR_CONF_PROBE_HW_OFFSET, hw_offset, probe, NULL)) {
+    if (probe && _signal->_data_source->device()->get_probe_hw_offset(hw_offset, probe)) {
       _signal->_cached_hw_offset = hw_offset;
     }
   }
@@ -415,8 +389,7 @@ void DsoHardwareConfig::set_factor(uint64_t factor) {
     bool ret;
 
     if (probe) {
-      ret = _signal->_data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
-                                                     prefactor, probe, NULL);
+      ret = _signal->_data_source->device()->get_probe_factor(prefactor, probe);
       if (!ret) {
         pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
         return;
@@ -443,8 +416,7 @@ uint64_t DsoHardwareConfig::get_factor() {
   uint64_t factor;
 
   if (probe) {
-    bool ret = _signal->_data_source->device()->get_config_uint64(SR_CONF_PROBE_FACTOR,
-                                                        factor, probe, NULL);
+    bool ret = _signal->_data_source->device()->get_probe_factor(factor, probe);
     if (ret) {
       return factor;
     } else {
