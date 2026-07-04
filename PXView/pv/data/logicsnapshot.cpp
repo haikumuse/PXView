@@ -339,7 +339,11 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 }
 
 void LogicSnapshot::append_payload(const sr_datafeed_logic &logic) {
-  _disk_cache_writer->enqueue(logic.format, (const uint8_t *)logic.data, logic.length);
+  // Upstream libsigrok's sr_datafeed_logic has no `format` field — data is
+  // always sample-interleaved. The async writer re-derives unitsize from
+  // _channel_num and dispatches to append_payload_impl which deinterleaves
+  // per channel into the chunk tree.
+  _disk_cache_writer->enqueue((const uint8_t *)logic.data, logic.length);
 }
 
 bool LogicSnapshot::is_mmap_slot_fresh(uint16_t channel, uint64_t global_block_seq) const {
@@ -391,39 +395,35 @@ void* LogicSnapshot::allocate_block(uint16_t channel, uint64_t index0, uint64_t 
     return lbp;
 }
 
-void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
-  assert(logic.format == LA_CROSS_DATA);
-  assert(logic.length >= ScaleSize * _channel_num);
+void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
+  // Sample-interleaved input (upstream libsigrok 0.6 format).
+  // logic.data: logic.length bytes; unitsize = (_channel_num+7)/8 bytes per
+  // sample group. Sample s channel ch bit = src[s*unitsize + ch/8] bit (ch%8).
+  // Chunk tree stores per-channel data, 8 samples packed per byte (LSB-first).
+  // Process in 64-sample batches (Scale) to match mipmap granularity; residual
+  // 1-7 samples at the tail are tracked via _byte_fraction for continuation.
+
   assert(logic.data);
+  assert(_channel_num > 0);
 
-  if (logic.length % 128 != 0) {
-      pxv_warn("append_cross_payload: length %llu is NOT a multiple of 128!", (unsigned long long)logic.length);
-  }
+  if (logic.length == 0) return;
 
-  uint8_t *data_src_ptr = (uint8_t *)logic.data;
-  uint64_t len = logic.length;
-  uint64_t index0 = 0;
-  uint64_t index1 = 0;
-  uint64_t offset = 0;
-  void *lbp = NULL;
+  uint64_t unitsize = logic.unitsize;
+  if (unitsize == 0) unitsize = (_channel_num + 7) / 8;
+  uint64_t num_samples = logic.length / unitsize;
 
-  // samples not accurate, lead to a larger _sampole_count
-  // _sample_count should be fixed in the last packet
-  // so _total_sample_count must be align to LeafBlock
-  uint64_t samples = ceil(logic.length * 8.0 / _channel_num);
+  if (num_samples == 0) return;
 
-  if (_sample_count + samples < _total_sample_count) {
-    _sample_count += samples;
+  // Update _sample_count (cap at _total_sample_count)
+  if (_sample_count + num_samples < _total_sample_count) {
+    _sample_count += num_samples;
   } else {
     if (_sample_count == _total_sample_count && !_is_loop)
       return;
     _sample_count = _total_sample_count;
   }
 
-  // pxv_info("_loop_offset:%llu, _total_sample_count:%llu,
-  // _ring_sample_count:%llu, cur samples:%llu",
-  //     _loop_offset, _total_sample_count, _ring_sample_count, samples);
-
+  // Loop mode housekeeping (unchanged from channel-block version)
   if (_is_loop) {
     if (_loop_offset >= LeafBlockSamples * Scale) {
       move_first_node_to_last();
@@ -439,150 +439,219 @@ void LogicSnapshot::append_cross_payload(const sr_datafeed_logic &logic) {
 
   _ring_sample_count += _loop_offset;
 
-  // bit align
-  while ((_ch_fraction != 0 || _byte_fraction != 0) && len > 0) {
-    if (_dest_ptr == NULL)
-      assert(false);
+  const uint8_t *src = (const uint8_t *)logic.data;
+  uint64_t samples_left = num_samples;
 
-    do {
-      *_dest_ptr++ = *data_src_ptr++;
-      _byte_fraction = (_byte_fraction + 1) % 8;
-      len--;
-    } while (_byte_fraction != 0 && len > 0);
+  uint64_t align_sample_count = _ring_sample_count;
+  uint64_t index0 = align_sample_count / LeafBlockSamples / RootScale;
+  uint64_t index1 = (align_sample_count / LeafBlockSamples) % RootScale;
+  uint64_t offset = align_sample_count % LeafBlockSamples;
+  // Derive _byte_fraction from the persisted ring position (robust against
+  // copy_from / loop-mode state transitions).
+  _byte_fraction = (uint8_t)(offset % 8);
 
-    if (_byte_fraction == 0) {
-      index0 = _ring_sample_count / LeafBlockSamples / RootScale;
-      index1 = (_ring_sample_count / LeafBlockSamples) % RootScale;
-      offset = (_ring_sample_count % LeafBlockSamples) / 8;
+  if (index0 >= _ch_data[0].size()) {
+    pxv_err("append_payload_impl: index0 %llu out of range %zu",
+            (unsigned long long)index0, _ch_data[0].size());
+    _ring_sample_count = align_sample_count + offset - _loop_offset;
+    _ch_fraction = 0;
+    _dest_ptr = NULL;
+    return;
+  }
 
-      _ch_fraction = (_ch_fraction + 1) % _channel_num;
+  // Cache leaf block pointers per channel (re-allocated at leaf block boundary)
+  void *ch_lbp[CHANNEL_MAX_COUNT];
+  for (unsigned int ch = 0; ch < _channel_num; ch++) {
+    ch_lbp[ch] = allocate_block(ch, index0, index1);
+    if (ch_lbp[ch] == NULL) {
+      _ring_sample_count = align_sample_count + offset - _loop_offset;
+      _ch_fraction = 0;
+      _dest_ptr = NULL;
+      return;
+    }
+  }
 
-      lbp = allocate_block(_ch_fraction, index0, index1);
-      if (lbp == NULL) return;
+  // ---- Phase 1: complete the partial dest byte (if _byte_fraction != 0) ----
+  if (_byte_fraction != 0 && samples_left > 0) {
+    uint64_t need = 8 - _byte_fraction;
+    uint64_t have = (samples_left < need) ? samples_left : need;
 
-      _dest_ptr = (uint8_t *)lbp + offset;
+    for (unsigned int ch = 0; ch < _channel_num; ch++) {
+      uint8_t *dest_byte = (uint8_t *)ch_lbp[ch] + offset / 8;
+      uint8_t byte_pos = ch / 8;
+      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
+      for (uint64_t k = 0; k < have; k++) {
+        if (src[k * unitsize + byte_pos] & bit_mask)
+          *dest_byte |= (uint8_t)(1u << (_byte_fraction + (uint8_t)k));
+      }
+    }
 
-      // To the last channel.
-      if (_ch_fraction == 0) {
-        _ring_sample_count += Scale;
+    src += have * unitsize;
+    samples_left -= have;
+    offset += have;
+    _byte_fraction = (uint8_t)((_byte_fraction + (uint8_t)have) % 8);
 
-        if (_ring_sample_count % LeafBlockSamples == 0) {
-          calc_mipmap(_channel_num - 1, index0, index1, LeafBlockSamples, true);
+    if (_byte_fraction == 0 && offset == LeafBlockSamples) {
+      for (unsigned int ch = 0; ch < _channel_num; ch++)
+        calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, LeafBlockSamples, true);
+      align_sample_count += LeafBlockSamples;
+      index0 = align_sample_count / LeafBlockSamples / RootScale;
+      index1 = (align_sample_count / LeafBlockSamples) % RootScale;
+      offset = 0;
+      if (index0 >= _ch_data[0].size()) {
+        pxv_err("append_payload_impl: index0 %llu out of range (post-phase1)",
+                (unsigned long long)index0);
+        _ring_sample_count = align_sample_count + offset - _loop_offset;
+        _ch_fraction = 0;
+        _dest_ptr = NULL;
+        return;
+      }
+      for (unsigned int ch = 0; ch < _channel_num; ch++) {
+        ch_lbp[ch] = allocate_block(ch, index0, index1);
+        if (ch_lbp[ch] == NULL) {
+          _ring_sample_count = align_sample_count + offset - _loop_offset;
+          _ch_fraction = 0;
+          _dest_ptr = NULL;
+          return;
         }
-        break;
       }
     }
   }
 
-  // append data
-  assert(_ch_fraction == 0);
-  assert(_byte_fraction == 0);
-  assert(_ring_sample_count % Scale == 0);
-
-  uint64_t align_sample_count = _ring_sample_count;
-  uint64_t *read_ptr = (uint64_t *)data_src_ptr;
-  void *end_read_ptr = (uint8_t *)data_src_ptr + len;
-
-  uint64_t filled_sample = align_sample_count % LeafBlockSamples;
-  uint64_t old_filled_sample = filled_sample;
-  uint64_t *chans_read_addr[CHANNEL_MAX_COUNT];
-
-  for (unsigned int i = 0; i < _channel_num; i++) {
-    chans_read_addr[i] = (uint64_t *)data_src_ptr + i;
-  }
-
-  uint16_t fill_chan = _ch_fraction;
-  uint16_t last_chan = _ch_fraction;
-  index0 = align_sample_count / LeafBlockSamples / RootScale;
-  index1 = (align_sample_count / LeafBlockSamples) % RootScale;
-  offset = align_sample_count % LeafBlockSamples;
-
-  if (index0 >= _ch_data[0].size()) {
-    assert(false);
-  }
-
-  lbp = allocate_block(fill_chan, index0, index1);
-  if (lbp == NULL) return;
-
-  uint64_t *write_ptr = (uint64_t *)lbp + offset / Scale;
-
-  while (len >= 8) {
-    *write_ptr++ = *read_ptr;
-    read_ptr += _channel_num;
-    len -= 8;
-    filled_sample += Scale;
-
-    last_chan++;
-    if (last_chan == _channel_num) {
-      last_chan = 0;
+  // ---- Phase 2: process complete 64-sample batches (matches mipmap Scale) ----
+  while (samples_left >= Scale && _byte_fraction == 0) {
+    for (unsigned int ch = 0; ch < _channel_num; ch++) {
+      uint64_t *write_ptr = (uint64_t *)ch_lbp[ch] + offset / Scale;
+      uint64_t value = 0;
+      uint8_t byte_pos = ch / 8;
+      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
+      for (unsigned int m = 0; m < ScaleSize; m++) {
+        uint8_t byte = 0;
+        for (unsigned int k = 0; k < 8; k++) {
+          if (src[(m * 8 + k) * unitsize + byte_pos] & bit_mask)
+            byte |= (uint8_t)(1u << k);
+        }
+        value |= ((uint64_t)byte) << (m * 8);
+      }
+      *write_ptr = value;
     }
 
-    if (filled_sample == LeafBlockSamples) {
-      calc_mipmap(fill_chan, index0, index1, LeafBlockSamples, true);
+    src += Scale * unitsize;
+    samples_left -= Scale;
+    offset += Scale;
 
-      chans_read_addr[fill_chan] = read_ptr;
-      fill_chan = (fill_chan + 1) % _channel_num;
-
-      if (fill_chan == 0)
-        align_sample_count += (filled_sample - old_filled_sample);
-
+    if (offset == LeafBlockSamples) {
+      for (unsigned int ch = 0; ch < _channel_num; ch++)
+        calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, LeafBlockSamples, true);
+      align_sample_count += LeafBlockSamples;
       index0 = align_sample_count / LeafBlockSamples / RootScale;
       index1 = (align_sample_count / LeafBlockSamples) % RootScale;
-      offset = align_sample_count % LeafBlockSamples;
-      filled_sample = align_sample_count % LeafBlockSamples;
-      old_filled_sample = filled_sample;
-
-      lbp = allocate_block(fill_chan, index0, index1);
-      if (lbp == NULL) return;
-
-      write_ptr = (uint64_t *)lbp + offset / Scale;
-      read_ptr = chans_read_addr[fill_chan];
-    } else if (read_ptr >= end_read_ptr) {
-      calc_mipmap(fill_chan, index0, index1, filled_sample, false);
-
-      fill_chan = (fill_chan + 1) % _channel_num;
-
-      if (fill_chan == 0)
-        align_sample_count += (filled_sample - old_filled_sample);
-
-      index0 = align_sample_count / LeafBlockSamples / RootScale;
-      index1 = (align_sample_count / LeafBlockSamples) % RootScale;
-      offset = align_sample_count % LeafBlockSamples;
-      filled_sample = align_sample_count % LeafBlockSamples;
-      old_filled_sample = filled_sample;
-
-      lbp = allocate_block(fill_chan, index0, index1);
-      if (lbp == NULL) return;
-
-      write_ptr = (uint64_t *)lbp + offset / Scale;
-      read_ptr = chans_read_addr[fill_chan];
+      offset = 0;
+      if (index0 >= _ch_data[0].size()) {
+        pxv_err("append_payload_impl: index0 %llu out of range (post-phase2)",
+                (unsigned long long)index0);
+        samples_left = 0;
+        break;
+      }
+      for (unsigned int ch = 0; ch < _channel_num; ch++) {
+        ch_lbp[ch] = allocate_block(ch, index0, index1);
+        if (ch_lbp[ch] == NULL) {
+          samples_left = 0;
+          break;
+        }
+      }
+      if (ch_lbp[_channel_num - 1] == NULL) {
+        _ring_sample_count = align_sample_count + offset - _loop_offset;
+        _ch_fraction = 0;
+        _dest_ptr = NULL;
+        return;
+      }
     }
   }
 
-  _ring_sample_count = align_sample_count;
-  _ring_sample_count -= _loop_offset;
+  // ---- Phase 3: process remaining complete 8-sample bytes ----
+  while (samples_left >= 8 && _byte_fraction == 0) {
+    for (unsigned int ch = 0; ch < _channel_num; ch++) {
+      uint8_t *dest_byte = (uint8_t *)ch_lbp[ch] + offset / 8;
+      uint8_t byte = 0;
+      uint8_t byte_pos = ch / 8;
+      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
+      for (unsigned int k = 0; k < 8; k++) {
+        if (src[k * unitsize + byte_pos] & bit_mask)
+          byte |= (uint8_t)(1u << k);
+      }
+      *dest_byte = byte;
+    }
 
-  if (align_sample_count > _total_sample_count) {
-    _loop_offset = align_sample_count - _total_sample_count;
+    src += 8 * unitsize;
+    samples_left -= 8;
+    offset += 8;
+
+    if (offset == LeafBlockSamples) {
+      for (unsigned int ch = 0; ch < _channel_num; ch++)
+        calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, LeafBlockSamples, true);
+      align_sample_count += LeafBlockSamples;
+      index0 = align_sample_count / LeafBlockSamples / RootScale;
+      index1 = (align_sample_count / LeafBlockSamples) % RootScale;
+      offset = 0;
+      if (index0 >= _ch_data[0].size()) {
+        pxv_err("append_payload_impl: index0 %llu out of range (post-phase3)",
+                (unsigned long long)index0);
+        samples_left = 0;
+        break;
+      }
+      for (unsigned int ch = 0; ch < _channel_num; ch++) {
+        ch_lbp[ch] = allocate_block(ch, index0, index1);
+        if (ch_lbp[ch] == NULL) {
+          samples_left = 0;
+          break;
+        }
+      }
+      if (ch_lbp[_channel_num - 1] == NULL) {
+        _ring_sample_count = align_sample_count + offset - _loop_offset;
+        _ch_fraction = 0;
+        _dest_ptr = NULL;
+        return;
+      }
+    }
+  }
+
+  // ---- Phase 4: residual 1-7 samples (tracked via _byte_fraction) ----
+  if (samples_left > 0 && _byte_fraction == 0) {
+    for (unsigned int ch = 0; ch < _channel_num; ch++) {
+      uint8_t *dest_byte = (uint8_t *)ch_lbp[ch] + offset / 8;
+      uint8_t byte_pos = ch / 8;
+      uint8_t bit_mask = (uint8_t)(1u << (ch % 8));
+      for (uint64_t k = 0; k < samples_left; k++) {
+        if (src[k * unitsize + byte_pos] & bit_mask)
+          *dest_byte |= (uint8_t)(1u << (uint8_t)k);
+      }
+    }
+    _byte_fraction = (uint8_t)samples_left;
+    offset += samples_left;
+    samples_left = 0;
+  }
+
+  // ---- Phase 5: mipmap calc for partial leaf block (incremental rendering) ----
+  // calc_mipmap processes only complete 64-sample (Scale) chunks via integer
+  // division (samples / Scale), so partial bytes at the tail are not touched.
+  // _last_calc_count is saved (isEnd=false) for continuation on the next call.
+  if (offset > 0 && offset < LeafBlockSamples) {
+    for (unsigned int ch = 0; ch < _channel_num; ch++)
+      calc_mipmap(ch, (uint8_t)index0, (uint8_t)index1, offset, false);
+  }
+
+  // Finalize position
+  uint64_t absolute_position = align_sample_count + offset;
+  _ring_sample_count = absolute_position - _loop_offset;
+
+  if (absolute_position > _total_sample_count) {
+    _loop_offset = absolute_position - _total_sample_count;
     _ring_sample_count = _total_sample_count;
   }
 
-  _ch_fraction = last_chan;
-
-  lbp = allocate_block(_ch_fraction, index0, index1);
-  if (lbp == NULL) return;
-
-  _dest_ptr = (uint8_t *)lbp + offset / 8;
-
-  if (len > 0) {
-    uint8_t *src_ptr = (uint8_t *)end_read_ptr - len;
-    _byte_fraction += len;
-
-    while (len > 0) {
-      *_dest_ptr++ = *src_ptr++;
-      len--;
-    }
-  }
+  _ch_fraction = 0;
+  _dest_ptr = NULL;
 }
 
 void LogicSnapshot::capture_ended() {
@@ -591,7 +660,7 @@ void LogicSnapshot::capture_ended() {
   // finished writing all pending data), and the memset below would zero out
   // valid data that was still waiting in the queue.
   // We must NOT hold _mutex while waiting, because the async worker needs
-  // _mutex to call append_cross_payload().
+  // _mutex to call append_payload_impl().
   // Encapsulated in drain_queue_for_capture_end() (cluster D).
   _disk_cache_writer->drain_queue_for_capture_end();
 

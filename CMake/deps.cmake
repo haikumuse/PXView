@@ -3,7 +3,7 @@
 #-------------------------------------------------------------------------------
 include_directories(
    ./PXView
-   ./libsigrok
+   ./libsigrokstd/include
    ./libsigrokdecode
    ./common
 )
@@ -144,3 +144,19 @@ include_directories(${Boost_INCLUDE_DIRS})
 #-------------------------------------------------------------------------------
 
 find_package(Threads)
+
+#===============================================================================
+#= Aggregated link libraries for pxview-core / PXView executable
+# This was lost when the original monolithic CMakeLists.txt was split into
+# cmake/*.cmake modules. Restored here so pxview-core (CMakeLists.txt:107)
+# gets glib/FFTW/libusb/zlib/boost/Python3 link libs.
+#-------------------------------------------------------------------------------
+set(PXVIEW_LINK_LIBS
+	${GLIB_LIBRARIES}
+	${FFTW_LIBRARIES}
+	${LIBUSB_1_LIBRARIES}
+	${ZLIB_LIBRARIES}
+	${Boost_LIBRARIES}
+	${PY_LIB}
+	${CMAKE_THREAD_LIBS_INIT}
+)

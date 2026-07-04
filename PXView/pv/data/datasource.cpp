@@ -23,14 +23,15 @@
 
 #include "datasource.h"
 
-#include <libsigrok.h>
+#include "../dsvdef.h"
+#include <libsigrok/libsigrok.h>
 
 namespace pv {
 namespace data {
 
 // Out-of-line default implementations for the session-facade hooks declared
 // in datasource.h. Moving these here lets datasource.h drop its
-// `#include <libsigrok.h>` (Track A pollution regression) and use a forward
+// `#include <libsigrok/libsigrok.h>` (Track A pollution regression) and use a forward
 // declaration of `struct sr_status` instead — so the libsigrok header no
 // longer leaks into every translation unit that includes datasource.h.
 //

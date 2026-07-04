@@ -2,7 +2,7 @@
  * This file is part of the PXView project.
  * PXView is based on DSView.
  * PXView is based on PulseView.
- * 
+ *
  * Copyright (C) 2022 DreamSourceLab <support@dreamsourcelab.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,13 +22,15 @@
 
 #ifndef DEVICE_AGENT_H
 #define DEVICE_AGENT_H
- 
+
 #include <glib.h>
 #include <stdint.h>
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include <QString>
 #include <QVector>
 #include <vector>
+
+#include "dsvdef.h"
 
 class IDeviceAgentCallback
 {
@@ -36,182 +38,133 @@ class IDeviceAgentCallback
         virtual void DeviceConfigChanged()=0;
 };
 
+/**
+ * DeviceAgent — manages the active libsigrok device instance and acquisition
+ * session.
+ *
+ * After the fork libsigrok removal (Task 5-10), DeviceAgent is the sole owner
+ * of the sr_session and the active sr_dev_inst. It tracks scanned devices
+ * (from sr_driver_scan) and file-loaded devices (from sr_input_scan_file),
+ * and exposes handle-based access for SigSession's device-list API.
+ *
+ * Lifecycle:
+ *   1. SigSession::get_device_list() calls sr_driver_scan for all drivers,
+ *      registers the scanned SDIs via set_scanned_devices().
+ *   2. SigSession::set_device(handle) calls open_by_handle(handle, sr_ctx),
+ *      which finds the SDI by handle (index+1), opens it via sr_dev_open,
+ *      creates sr_session, adds the device, and registers the datafeed
+ *      callback.
+ *   3. CaptureManager::exec_capture() calls start() → sr_session_start.
+ *   4. CaptureManager::action_stop_capture() calls stop() → sr_session_stop.
+ *   5. SigSession::set_device() calls release() before opening a new device,
+ *      which destroys the session and closes the device.
+ *
+ * The datafeed callback is injected via set_datafeed_callback() by
+ * SessionStateContext (which owns the DataFeedParser).
+ */
 class DeviceAgent
 {
 public:
     DeviceAgent();
+    ~DeviceAgent();
 
-    /**
-     * Which libsigrok instance backs this device.
-     * LIB_PXVIEW — PXView's forked libsigrok (ds_* API).
-     * LIB_SRSTD  — upstream libsigrok 0.6.0 shared library (srstd_glue_* API).
-     * Set by SigSession::set_device based on the SRSTD handle bit.
-     */
-    enum DeviceLib { LIB_PXVIEW, LIB_SRSTD };
+    // --- Device list management ---
+    // Called by SigSession::get_device_list(). Registers scanned SDIs.
+    // Handle = index+1 (0 reserved for NULL_HANDLE).
+    void set_scanned_devices(const std::vector<struct sr_dev_inst*> &sdis);
 
+    // Called by SigSession::set_file(). Registers a file-loaded SDI.
+    void set_file_device(struct sr_dev_inst *sdi, const QString &name);
+
+    // Called by SigSession::close_file(). Removes a device by handle.
+    void remove_device(ds_device_handle handle);
+
+    // Called by SigSession::get_device_list(). Returns file-loaded devices.
+    std::vector<struct sr_dev_inst*> &file_devices() { return _file_sdi; }
+
+    // --- Lifecycle ---
+    // Opens the device by handle. Creates sr_session, adds device, registers
+    // datafeed callback. Returns false on failure.
+    bool open_by_handle(ds_device_handle handle, struct sr_context *ctx);
+
+    // Releases the active device: destroys session, closes device.
+    void release();
+
+    // Refresh device info (name/driver/type) from the active SDI.
     void update();
 
-    inline bool have_instance(){
-        return _dev_handle != NULL_HANDLE;
-    }
+    // --- Datafeed callback registration ---
+    void set_datafeed_callback(sr_datafeed_callback cb, void *user_data);
 
-    inline QString name(){
-        return _dev_name;
-    }
-
-    inline QString path(){
-        return _path;
-    }
-
-    inline QString driver_name(){
-        return _driver_name;
-    }
-
-    inline ds_device_handle handle(){
-        return _dev_handle;
-    }
+    // --- Accessors ---
+    inline bool have_instance() const { return _dev_handle != NULL_HANDLE; }
+    inline QString name() const { return _dev_name; }
+    inline QString path() const { return _path; }
+    inline QString driver_name() const { return _driver_name; }
+    inline ds_device_handle handle() const { return _dev_handle; }
 
     struct sr_dev_inst* inst();
+    struct sr_session* sr_session() { return _sr_session; }
 
-    inline bool is_file(){
-        return _dev_type == DEV_TYPE_FILELOG;
+    inline bool is_file() const { return _dev_type == DEV_TYPE_FILELOG; }
+    inline bool is_demo() const { return _dev_type == DEV_TYPE_DEMO; }
+    inline bool is_hardware() const { return _dev_type == DEV_TYPE_USB; }
+    inline bool is_virtual() const { return is_file() || is_demo(); }
+
+    inline bool is_hardware_logic() const {
+        return is_hardware() && (_driver_name == "DSLogic" ||
+                                 _driver_name.startsWith("px", Qt::CaseInsensitive));
     }
-
-    inline bool is_demo(){
-        return _dev_type == DEV_TYPE_DEMO;
-    }
-
-    inline bool is_hardware(){
-        return _dev_type == DEV_TYPE_USB;
-    }
-
-    inline bool is_virtual(){
-        return (is_file() || is_demo());
-    }
-
-    inline bool is_hardware_logic(){
-        return is_hardware() && (_driver_name == "DSLogic" || _driver_name.startsWith("px", Qt::CaseInsensitive));
-    }
-
-    inline bool is_hardware_dso(){
+    inline bool is_hardware_dso() const {
         return is_hardware() && _driver_name == "DSCope";
     }
-
-    inline bool is_dsl_device(){
-        return is_hardware() && (_driver_name == "DSLogic" || _driver_name == "DSCope" || _driver_name.startsWith("px", Qt::CaseInsensitive));
+    inline bool is_dsl_device() const {
+        return is_hardware() && (_driver_name == "DSLogic" ||
+                                 _driver_name == "DSCope" ||
+                                 _driver_name.startsWith("px", Qt::CaseInsensitive));
     }
-
-    inline bool is_compat_device(){
+    inline bool is_compat_device() const {
         return is_hardware() && !is_dsl_device();
     }
 
-    inline void set_callback(IDeviceAgentCallback *callback){
+    inline void set_callback(IDeviceAgentCallback *callback) {
         _callback = callback;
     }
 
-	bool enable_probe(const sr_channel *probe, bool enable);
-
+    // --- Channel operations ---
+    bool enable_probe(const sr_channel *probe, bool enable);
     bool enable_probe(int probe_index, bool enable);
-
     bool set_channel_name(int ch_index, const char *name);
+    bool channel_is_enable(int index);
+    GSList* get_channels();
+    int get_channel_count();
+    bool have_enabled_channel();
 
-    /**
-	 * @brief Gets the sample limit from the driver.
-	 *
-	 * @return The returned sample limit from the driver, or 0 if the
-	 * 	sample limit could not be read.
-	 */
-	uint64_t get_sample_limit();
-
-     /**
-     * @brief Gets the sample rate from the driver.
-     *
-     * @return The returned sample rate from the driver, or 0 if the
-     * 	sample rate could not be read.
-     */
+    // --- Sample config ---
+    uint64_t get_sample_limit();
     uint64_t get_sample_rate();
-
-       /**
-     * @brief Gets the time base from the driver.
-     *
-     * @return The returned time base from the driver, or 0 if the
-     * 	time base could not be read.
-     */
     uint64_t get_time_base();
-
-     /**
-     * @brief Gets the sample time from the driver.
-     *
-     * @return The returned sample time from the driver, or 0 if the
-     * 	sample time could not be read.
-     */
     double get_sample_time();
 
-    /**
-     * @brief Gets the device mode list from the driver.
-     *
-     * @return The returned device mode list from the driver, or NULL if the
-     * 	mode list could not be read.
-     */
-    const GSList *get_device_mode_list();
-
-    /**
-     * Check whether the trigger exists
-     */
-    bool is_trigger_enabled();
-
-    bool have_enabled_channel(); 
-
-    GSList* get_channels();
-
-    /**
-     * Start collect data.
-     */
-    bool start();
-
-    /**
-     * Stop collect
-     */
-    bool stop();
-
-    /**
-     * Stop and close.
-    */
-    void release();
-
-    bool is_collecting();
-
-    inline bool is_new_device(){
-        return _is_new_device;
-    }
-
-    /**
-     * Returns which libsigrok instance backs the active device. Dispatch
-     * parameter for get_config/set_config/start/stop/etc. — when LIB_SRSTD,
-     * these methods forward to srstd_glue_* instead of ds_*.
-     */
-    inline DeviceLib device_lib() const { return _device_lib; }
-
-    /**
-     * Set which libsigrok instance backs the active device. Called by
-     * SigSession::set_device() based on the SRSTD handle bit. Public because
-     * SigSession owns a DeviceAgent but is not a friend.
-     */
-    inline void set_device_lib(DeviceLib lib) { _device_lib = lib; }
-
-    bool channel_is_enable(int index);
-
+    // --- Mode ---
+    int get_work_mode();
+    const GSList* get_device_mode_list();
     int get_hardware_operation_mode();
-
     bool is_stream_mode();
-
+    QString get_demo_operation_mode();
     bool check_firmware_version();
 
-    QString get_demo_operation_mode(); 
+    // --- Trigger ---
+    bool is_trigger_enabled();
 
-public:
+    // --- Acquisition ---
+    bool start();
+    bool stop();
+    bool is_collecting();
+    inline bool is_new_device() const { return _is_new_device; }
+
+    // --- Config (via sdi->driver->config_get/set/list) ---
     GVariant* get_config_list(const sr_channel_group *group, int key);
-
     GVariant* get_config(int key, const sr_channel *ch = NULL, const sr_channel_group *cg = NULL);
     bool set_config(int key, GVariant *data, const sr_channel *ch = NULL, const sr_channel_group *cg = NULL);
     bool have_config(int key, const sr_channel *ch = NULL, const sr_channel_group *cg = NULL);
@@ -243,9 +196,22 @@ public:
     bool get_config_double(int key, double &value, const sr_channel *ch = NULL, const sr_channel_group *cg = NULL);
     bool set_config_double(int key, double value, const sr_channel *ch = NULL, const sr_channel_group *cg = NULL);
 
-    // -- Typed wrappers (View-layer convenience over get_config_*) --
+    // --- sr_config create/free (fork libsigrok API stub) ---
+    // Fork libsigrok exposed ds_new_config / ds_free_config for building
+    // sr_config entries to attach to sr_datafeed_meta packets (used by
+    // StoreSession export). Upstream libsigrok does not provide these —
+    // implement inline as simple g_new0/g_free wrappers.
+    struct sr_config *new_config(int key, GVariant *data);
+    void free_config(struct sr_config *src);
+
+    // --- option_value_to_code (fork libsigrok API stub) ---
+    // Fork libsigrok exposed ds_option_value_to_code for converting config
+    // option string values to integer codes. Upstream libsigrok does not
+    // provide this — stub returns -1 (caller handles as "conversion failed").
+    int option_value_to_code(int mode, int key, const char *value);
+
+    // --- Typed wrappers (View-layer convenience over get_config_*) ---
     bool is_roll_mode(bool &roll);
-    int get_channel_count();
     bool get_unit_bits(int &v);
     bool get_ref_min(uint32_t &v);
     bool get_ref_max(uint32_t &v);
@@ -257,46 +223,31 @@ public:
     bool get_trigger_value(int &v, sr_channel *probe);
     QVector<uint64_t> get_probe_vdiv_list();
 
+    // --- Config info ---
+    const struct sr_key_info* get_config_info(int key);
+
 private:
     void config_changed();
+    struct sr_dev_inst* find_sdi_by_handle(ds_device_handle handle);
 
-    //---------------device config-----------/
-public:
-  int get_work_mode();
-
-  const struct sr_config_info* get_config_info(int key);
-
-  /**
-   * @brief Converts a session-file option value text to its numeric code.
-   *
-   * Encapsulates the libsigrok C API `ds_dsl_option_value_to_code` so the
-   * View layer does not call libsigrok directly (Core/View boundary).
-   *
-   * @param work_mode The device work mode (e.g. conf_dev_mode from .pxc).
-   * @param config_id The sr_conf key (info->key).
-   * @param value     The option value text from the session file.
-   * @return The numeric code on success, or -1 on failure (matches the
-   *  underlying C API contract).
-   */
-  int option_value_to_code(int work_mode, int config_id, const char *value);
-
-  bool get_device_status(struct sr_status &status, gboolean prg);
-
-  struct sr_config* new_config(int key, GVariant *data);
-
-  void free_config(struct sr_config *src);
-
-private:
-    ds_device_handle _dev_handle;
-    int         _dev_type;
+    ds_device_handle _dev_handle = NULL_HANDLE;
+    int         _dev_type = 0;
     QString     _dev_name;
     QString     _driver_name;
     QString     _path;
-    bool        _is_new_device;
-    struct sr_dev_inst  *_di;
-    IDeviceAgentCallback *_callback;
-    DeviceLib   _device_lib = LIB_PXVIEW;
-};
+    bool        _is_new_device = false;
+    struct sr_dev_inst  *_di = nullptr;
+    struct sr_session   *_sr_session = nullptr;
+    struct sr_context   *_sr_ctx = nullptr;
+    IDeviceAgentCallback *_callback = nullptr;
 
+    // Datafeed callback (injected by SessionStateContext)
+    sr_datafeed_callback _datafeed_cb = nullptr;
+    void *_datafeed_cb_data = nullptr;
+
+    // Tracked devices: scanned (from sr_driver_scan) + file-loaded.
+    std::vector<struct sr_dev_inst*> _scanned_sdi;
+    std::vector<struct sr_dev_inst*> _file_sdi;
+};
 
 #endif

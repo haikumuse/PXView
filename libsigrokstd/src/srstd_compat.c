@@ -2,9 +2,6 @@
  * srstd_compat.c - Compatibility shims for functions missing from
  *                  upstream libsigrok 0.6.0 but used by newer drivers.
  *
- * Phase 1/2 removed srstd_rename.h, so any sr_* references in this file
- * resolve directly to the real upstream symbols.
- *
  * Functions provided:
  *   std_i32_idx() — added in upstream libsigrok 0.6.1; missing from 0.6.0.
  *                   The sipeed-slogic-analyzer driver uses it for int32

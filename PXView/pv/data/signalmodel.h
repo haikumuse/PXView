@@ -25,7 +25,7 @@
 
 #include <string>
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include <QObject>
 
 namespace pv {

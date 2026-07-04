@@ -22,7 +22,7 @@
 
 #include "appcontrol.h"
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include <libsigrokdecode.h>
 #include <QDir>
 #include <QCoreApplication>
@@ -82,8 +82,10 @@ bool AppControl::Init()
     qs = GetAppDataDir();
     cs = pv::path::ToUnicodePath(qs);
     pxv_info("GetAppDataDir:\"%s\"", cs.c_str());
+    // Fork libsigrok's ds_set_user_data_dir is gone. Upstream libsigrok uses
+    // sr_resource_set_hooks for resource path management. The pxlogic driver
+    // resolves firmware paths internally; no explicit set needed here.
     cs = pv::path::ConvertPath(qs);
-    ds_set_user_data_dir(cs.c_str());
 
     qs = GetFirmwareDir();
     cs = pv::path::ToUnicodePath(qs);

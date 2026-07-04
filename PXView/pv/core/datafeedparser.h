@@ -1,7 +1,7 @@
 #ifndef PXVIEW_CORE_DATAFEEDPARSER_H
 #define PXVIEW_CORE_DATAFEEDPARSER_H
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 namespace pv {
 
@@ -37,9 +37,8 @@ public:
 private:
   void feed_in_header(const sr_dev_inst *sdi);
   void feed_in_meta(const sr_dev_inst *sdi, const sr_datafeed_meta &meta);
-  void feed_in_trigger(const ds_trigger_pos &trigger_pos);
+  void feed_in_trigger();
   void feed_in_logic(const sr_datafeed_logic &o);
-  void feed_in_dso(const sr_datafeed_dso &o);
   void feed_in_analog(const sr_datafeed_analog &o);
 
   EventBus *_event_bus;

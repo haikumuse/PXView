@@ -17,7 +17,7 @@
 #include "signalmodel.h"
 #include "spectrumstack.h"
 #include <QDebug>
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 namespace pv {
 namespace data {

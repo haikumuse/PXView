@@ -27,8 +27,9 @@
 #include <QLabel>
 #include <QDateTime>
 #include <QPushButton>
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
+#include "../dsvdef.h"
 #include "../data/datasource.h"
 
 namespace pv {

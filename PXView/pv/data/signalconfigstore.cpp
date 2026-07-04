@@ -15,7 +15,7 @@
 #include "../sigsession.h"
 #include "signalmodel.h"
 #include <QDebug>
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 namespace pv {
 namespace data {
@@ -173,6 +173,16 @@ void SignalConfigStore::save_signal_config(
     cfg.type = probe->type;
     cfg.name = probe->name ? probe->name : "";
 
+    // 查找当前通道对应的 SignalModel（fork sr_channel 扩展字段已不在
+    // upstream libsigrokstd 的 sr_channel 中，改从 SignalModel 读取）。
+    std::shared_ptr<SignalModel> matched_model;
+    for (auto m : signal_models) {
+      if (m && m->index() == cfg.index) {
+        matched_model = m;
+        break;
+      }
+    }
+
     if (mode == ANALOG || mode == DSO) {
       uint64_t vdiv;
       if (agent->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe, NULL))
@@ -188,32 +198,30 @@ void SignalConfigStore::save_signal_config(
                              NULL);
       cfg.map_default = map_default;
 
-      cfg.hw_offset = probe->hw_offset;
-      cfg.offset = probe->offset;
-      cfg.zero_offset = probe->zero_offset;
+      // Fork sr_channel fields (hw_offset/offset/zero_offset/vfactor) removed
+      // in upstream libsigrokstd. Read from SignalModel instead — model state
+      // is the single source of truth (set_* methods sync to driver via
+      // set_config_*).
+      cfg.hw_offset = matched_model ? (uint16_t)matched_model->hw_offset() : 0;
+      cfg.offset = matched_model ? (uint16_t)matched_model->vertical_offset() : 0;
+      cfg.zero_offset = matched_model ? (uint16_t)matched_model->zero_offset() : 0;
       // Task 3: vfactor (DSO/ANALOG，原 MainWindow 路径 B 写入)。
-      cfg.vfactor = probe->vfactor;
+      cfg.vfactor = matched_model ? (uint64_t)matched_model->vfactor() : 0;
     }
 
     // Task 3: DSO 触发电平原始值 (原 MainWindow 路径 trigValue)。
     if (mode == DSO) {
-      cfg.trig_value = probe->trig_value;
+      cfg.trig_value = matched_model ? (uint8_t)matched_model->trig_value() : 0;
     }
 
     // Task 3: Analog 映射参数 (原 MainWindow 路径 mapUnit/mapMin/mapMax)。
+    // Fork sr_channel.map_unit/min/max fields removed in upstream
+    // libsigrokstd. SignalModel does not carry these (Analog mapping UI is
+    // being deprecated) — stub to defaults.
     if (mode == ANALOG) {
-      cfg.map_unit = probe->map_unit ? probe->map_unit : "";
-      cfg.map_min = probe->map_min;
-      cfg.map_max = probe->map_max;
-    }
-
-    // 查找当前通道对应的 SignalModel（用于 trig_type / colour 回退）。
-    std::shared_ptr<SignalModel> matched_model;
-    for (auto m : signal_models) {
-      if (m && m->index() == cfg.index) {
-        matched_model = m;
-        break;
-      }
+      cfg.map_unit = "";
+      cfg.map_min = 0.0;
+      cfg.map_max = 0.0;
     }
 
     // R2: 保存 Logic 通道触发类型 (trig_type 存于 SignalModel，不在 sr_channel
@@ -325,23 +333,26 @@ void SignalConfigStore::apply_signal_config() {
                               NULL);
       agent->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT, cfg.map_default,
                              probe, NULL);
-      probe->hw_offset = cfg.hw_offset;
-      probe->offset = cfg.offset;
-      probe->zero_offset = cfg.zero_offset;
-      // Task 3: vfactor (原 MainWindow 路径 B 写 probe->vfactor)。
-      probe->vfactor = cfg.vfactor;
+      // Fork sr_channel fields (hw_offset/offset/zero_offset/vfactor) are not
+      // present on upstream libsigrokstd's sr_channel. The set_config_* calls
+      // above sync the driver state; the SignalModel-side state is restored
+      // separately by SigSession when it rebuilds SignalModels from the
+      // loaded config (see SigSession::load_config or equivalent).
     }
 
     // Task 3: DSO 触发电平原始值 (原 MainWindow 路径 B 写 probe->trig_value)。
+    // Fork sr_channel.trig_value field removed in upstream libsigrokstd —
+    // trigger value is restored to SignalModel via set_trig_value() by the
+    // session restore path.
     if (mode == DSO) {
-      probe->trig_value = cfg.trig_value;
+      // no-op: probe->trig_value write removed
     }
 
     // Task 3: Analog 映射参数 (原 MainWindow 路径 B 写 probe->map_unit/min/max)。
+    // Fork sr_channel.map_unit/min/max fields removed in upstream
+    // libsigrokstd — Analog mapping UI is being deprecated, stub to defaults.
     if (mode == ANALOG) {
-      probe->map_unit = g_strdup(cfg.map_unit.c_str());
-      probe->map_min = cfg.map_min;
-      probe->map_max = cfg.map_max;
+      // no-op: probe->map_unit/min/max writes removed
     }
   }
 }

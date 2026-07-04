@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-**PXView** (binary: `PXView.exe`) is a Qt6 C++17 application for signal analysis with logic analyzers/oscilloscopes, forked from sigrok/PulseView. Supports DreamSourceLab/PXLogic hardware. GPLv3+. Version 1.5.0.
+**PXView** (binary: `PXView.exe`) is a Qt6 C++17 application for signal analysis with logic analyzers/oscilloscopes, forked from sigrok/PulseView. Supports PXLogic hardware (DSL hardware dropped). GPLv3+. Version 1.5.0.
 
-Four compiled components: `libsigrok/` (C11 hardware drivers), `libsigrokdecode/` (C11+Python decoder engine, 215 C decoder DLLs), `common/` (C utilities), `PXView/` (Qt6 app).
+Four compiled components: `libsigrokstd/` (upstream libsigrok 0.6.0 SHARED DLL, 81+ drivers including ported PXLogic at `src/hardware/pxlogic/`), `libsigrokdecode/` (PXView fork decode engine, C11+Python, 215 C decoder DLLs), `common/` (C utilities: xlog, minizip), `PXView/` (Qt6 app). The PXView fork `libsigrok/` (2014 fork from upstream 0.2.0) and the `libsigrokstd/bridge/` dual-library compatibility layer have been DELETED — Core layer now only calls upstream `sr_*` API. `PXView/pv/dsvdef.h` provides stub definitions for fork-only symbols (sr_status, ds_trigger_pos, DSO config keys 60040-60088) that are retained for UI/compile compat but have no fork backend.
 
 ## Build
 
@@ -95,7 +95,7 @@ The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_S
 
 ## Conventions
 
-- `ds_*` libsigrok API; `srd_*` libsigrokdecode API; typed events in `pv::interface` namespace (e.g. `CaptureStateChanged`, `DataUpdated`).
+- `sr_*` upstream libsigrok API (libsigrokstd 0.6.0); `srd_*` libsigrokdecode API; typed events in `pv::interface` namespace (e.g. `CaptureStateChanged`, `DataUpdated`). Fork `ds_*` API fully REMOVED — Core layer only calls upstream `sr_*`.
 - Singletons: `AppControl`, `AppConfig`, `SessionManager`.
 - JSON config: `.pxc` session files, `lang/` translations.
 - `assert()` is a no-op in Release — use explicit `if(!ptr)` checks.
@@ -116,7 +116,7 @@ The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_S
 - **Broadcast on state change:** any Core/View mutation that downstream layers track MUST broadcast a typed event (or `ServiceEvent` for MCP/WS). Broadcast only at user-interaction entry points, never from rebuild/restore paths (avoids loops).
 - **SignalModel wholesale rebuild sync:** `init_signals()`/`reload()` replace `_signal_models` with new `shared_ptr` objects (old ones freed → `0xfeeefeee`). Both MUST end with `signals_changed()` so `compute_change_event` detects pointer-identity change → `AllReplaced` → View rebinds `view::Signal::_model`. `switch_work_mode`/`set_device` emit `broadcast_async<DeviceModeChanged>` / `broadcast_async<CurrentDeviceChanged>` and the handlers run AFTER the synchronous View rebuild.
 - **`_capture_owner_document` lifecycle (CaptureOwnerGuard RAII):** managed by `CaptureOwnerGuard` (now in `core/DocumentRegistry`, extracted from `sigsession.h`). `start_capture` calls `_document_registry->acquire_capture_owner(doc)` which constructs `std::unique_ptr<CaptureOwnerGuard>` setting owner + `_is_working=true` + broadcasting `CaptureOwnerChanged{new_owner}`. `stop_capture`/`clear_capture_owner_document` call `release_capture_owner()` which resets the guard, joining copy thread + clearing owner + `_is_working=false` + broadcasting. No manual `join_copy_thread()`/owner clearing — guard destructor handles all. Repeat mode: guard persists across `CopyToDocDone` frames; only `stop_capture` or Tab close triggers destruction.
-- **Trigger config single source of truth:** Core `SigSession::_trigger_config` (`data::TriggerConfig`) is the ONLY source. `TriggerDock::commit_trigger()` and `SessionService` MCP path write Core only — NO direct `ds_trigger_*` calls. `SigSession::sync_trigger_to_libsigrok()` is the single Core→libsigrok sync point, called inside `exec_capture()` before `_device_agent.start()` (handles Simple/Adv/Serial). `is_trigger_preconfigured` flag removed (no longer needed). Broadcast `TriggerConfigChanged` on `set_trigger_config()`.
+- **Trigger config single source of truth:** Core `SigSession::_trigger_config` (`data::TriggerConfig`) is the ONLY source. `TriggerDock::commit_trigger()` and `SessionService` MCP path write Core only — NO direct `ds_trigger_*` calls (all fork trigger API calls REMOVED). `SigSession::sync_trigger_to_libsigrok()` is the single Core→libsigrok sync point, called inside `exec_capture()` before `_device_agent.start()` (handles Simple mode only — Adv/Serial trigger UI dock retained for future PXLogic extension, but their fork `ds_trigger_*` backend calls are deleted). `is_trigger_preconfigured` flag removed (no longer needed). Broadcast `TriggerConfigChanged` on `set_trigger_config()`.
 
 ## Remote Control API (MCP)
 

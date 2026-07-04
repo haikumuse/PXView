@@ -1,30 +1,42 @@
 # Tasks
 
-- [ ] Task 1: USB 协议代码 diff 验证固件版本兼容性
-  - [ ] SubTask 1.1: Diff `C:\Users\admin\Downloads\sigrok-git\libsigrok\src\hardware\scilogic\usb_ctrl.c` 与 `libsigrok/hardware/pxlogic/usb_ctrl.c`，记录寄存器地址/命令字/批量传输协议差异
-  - [ ] SubTask 1.2: Diff `scilogic/protocol.c` 与 `libsigrok/hardware/pxlogic/pxlogic.c` 的 USB transfer 接收/状态机逻辑，记录差异
-  - [ ] SubTask 1.3: 输出差异报告，决定是否需要把 fork 的 USB 协议改动合并到 scilogic（如分歧大，本 spec 暂停，先合并 USB 代码）
+- [x] Task 1: USB 协议代码 diff 验证固件版本兼容性 ✅
+  - [x] SubTask 1.1: Diff `C:\Users\admin\Downloads\sigrok-git\libsigrok\src\hardware\scilogic\usb_ctrl.c` 与 `libsigrok/hardware/pxlogic/usb_ctrl.c`，记录寄存器地址/命令字/批量传输协议差异
+  - [x] SubTask 1.2: Diff `scilogic/protocol.c` 与 `libsigrok/hardware/pxlogic/pxlogic.c` 的 USB transfer 接收/状态机逻辑，记录差异
+  - [x] SubTask 1.3: 输出差异报告，决定是否需要把 fork 的 USB 协议改动合并到 scilogic（如分歧大，本 spec 暂停，先合并 USB 代码）
 
-- [ ] Task 2: libsigrokstd 公共 API 扩展（17 个 SR_CONF_* key）
-  - [ ] SubTask 2.1: 在 `libsigrokstd/include/libsigrok/libsigrok.h` 的 `enum sr_configkey` 末尾新增 5 个 sigrok-git 已验证 key（SR_CONF_TRIGGER_OUT/SR_CONF_VTH/SR_CONF_EX_TRIGGER_MATCH/SR_CONF_CHANNEL_MODE/SR_CONF_OPERATION_MODE）
-  - [ ] SubTask 2.2: 验证 12 个 PXView fork 已有 key（SR_CONF_STREAM=30052/SR_CONF_ROLL=30053/SR_CONF_BUFFER_OPTIONS=30066/SR_CONF_LOOP_MODE=60001/SR_CONF_PWM0_EN=60004/PWM0_FREQ=60005/PWM0_DUTY=60006/SR_CONF_VLD_CH_NUM=30027/SR_CONF_HW_DEPTH=30075/SR_CONF_MAX_HEIGHT=30069/SR_CONF_DISK_CACHE_ENABLE=60011/DISK_CACHE_PATH=60012/STREAM_BUFF=60010/STREAM_MEM_BUFF=60013）已在 libsigrokstd.h 中存在，如缺失则补加（数值与 PXView fork 完全一致）
-  - [ ] SubTask 2.3: 在 `libsigrokstd/src/hwdriver.c` 的 `sr_key_info_config[]` 数组新增 17 行映射
-  - [ ] SubTask 2.4: 编译 libsigrokstd.dll 验证 enum 无冲突
+**Task 1 结论**：scilogic 0.5.2 **不能直接采用**。USB 寄存器层完全兼容（wr_reg/rd_reg 逐字节一致），但驱动上层严重分歧：
+- scilogic 缺失固件加载（firmware_config + hw_usb_open）
+- scilogic 缺失触发位置读取（command_ctl_rddata）
+- scilogic 缺失设备表（supported_PX[] + logic_check_conf_profile）
+- scilogic 缺失 PWM0/1 配置
+- scilogic 只有 4 级触发，pxlogic 有 16 级
+- scilogic 缺失 ch_num/trigger_pos_set 寄存器写入
+- scilogic 缺失启动脉冲三次序列
+- 架构差异：scilogic 驱动内 deinterleave + sr_session_send + sr_trigger_match；pxlogic 用 LA_CROSS_DATA + ds_data_forward + ds_trigger 全局对象
 
-- [ ] Task 3: 拷贝 scilogic 驱动到 libsigrokstd + 补全 config
-  - [ ] SubTask 3.1: 把 `C:\Users\admin\Downloads\sigrok-git\libsigrok\src\hardware\scilogic\` 5 文件拷贝到 `libsigrokstd/src/hardware/scilogic/`
-  - [ ] SubTask 3.2: 修改 `protocol.h` 中的 `FIRMWARE_VERSION` 从 `0x56900005` 改为 `0x56900027`
-  - [ ] SubTask 3.3: 在 `struct dev_context` 新增字段（roll_mode/is_loop/pwm0_*/disk_cache_*/stream_buff_size/stream_mem_buff_size）
-  - [ ] SubTask 3.4: 在 `api.c` 的 `config_get` 新增 17 个 case 分支（STREAM/ROLL/BUFFER_OPTIONS/VLD_CH_NUM/HW_DEPTH/MAX_HEIGHT/LOOP_MODE/PWM0_*/DISK_CACHE_*/STREAM_BUFF/STREAM_MEM_BUFF）
-  - [ ] SubTask 3.5: 在 `api.c` 的 `config_set` 新增 13 个 case 分支（除 SR_CONF_ROLL 只读外全部可写），PWM0 寄存器写入从 fork `pxlogic.c:1419-1476` 迁移
-  - [ ] SubTask 3.6: `config_get(SR_CONF_ROLL)` 推导逻辑实现（op_mode==OP_STREAM && samplerate>=50MHz）
-  - [ ] SubTask 3.7: `config_set(SR_CONF_LOOP_MODE)` + `scilogic_start_acquisition` OP_LPTEST 路径
-  - [ ] SubTask 3.8: `scilogic_dev_new()` 初始化新增 devc 字段默认值
-  - [ ] SubTask 3.9: CMake GLOB_RECURSE 拾取 scilogic 目录 + 编译验证
+**方案调整**：改为以 **pxlogic fork 为基础** port 到 libsigrokstd（不用 scilogic 0.5.2），适配上游 API。
+
+- [x] Task 2: libsigrokstd 公共 API 扩展（30 个 SR_CONF_* key） ✅
+  - [x] SubTask 2.1: 在 `libsigrokstd/include/libsigrok/libsigrok.h` 的 `enum sr_configkey` 末尾新增 30 个 key（13 fork 60001-60013 保持原值 + 17 fork 30000-range 重新分配到 60020+ 避免冲突）
+  - [x] SubTask 2.2: 在 `libsigrokstd/src/hwdriver.c` 的 `sr_key_info_config[]` 数组新增 30 行映射
+  - [x] SubTask 2.3: 编译 libsigrokstd.dll 验证 enum 无冲突（0 error，liblibsigrokstd.dll 生成）
+
+- [ ] Task 3: Port pxlogic fork 驱动到 libsigrokstd + 上游 API 适配
+  - [ ] SubTask 3.1: 把 `libsigrok/hardware/pxlogic/` 5 文件（api.c/protocol.c/protocol.h/usb_ctrl.c/usb_ctrl.h）拷贝到 `libsigrokstd/src/hardware/pxlogic/` 作为 port 起点
+  - [ ] SubTask 3.2: **USB 寄存器层零修改**（Task 1 已验证 wr_reg/rd_reg/wr_data_update/rd_data_update 与 scilogic 0.5.2 逐字节一致），保留 fork 的 `usb_ctrl.c` 原样
+  - [ ] SubTask 3.3: 头文件 include 适配：`#include "../../libsigrok-internal.h"` → `#include "libsigrok/libsigrok.h"` + `#include "libsigrok-internal.h"`（libsigrokstd 内部头）
+  - [ ] SubTask 3.4: 日志 API 替换：`ds_log_init`/`ds_log_free`/`ds_log_*` → 上游 `sr_dbg`/`sr_warn`/`sr_err`/`sr_info`
+  - [ ] SubTask 3.5: 数据流路径替换：`ds_data_forward(LA_CROSS_DATA, ...)` → 驱动内 deinterleave + `sr_session_send(sdi, packet)`（输出 sample-interleaved）
+  - [ ] SubTask 3.6: 触发对象迁移：fork 全局 `ds_trigger` 对象（trig_mask0/1/trig_value0/1/...）→ dev_context 内 16 级 stage 数组 + `struct sr_trigger` + `sr_trigger_match` 适配
+  - [ ] SubTask 3.7: 保留 fork 独有功能（Task 1 已确认 scilogic 缺失）：固件加载 `firmware_config` + `hw_usb_open`、ctl_data 命令路径、PWM0 寄存器写入、启动脉冲三次序列、设备表 `supported_PX[]` + `logic_check_conf_profile`、16 级触发 stage
+  - [ ] SubTask 3.8: 验证 30 个 SR_CONF_* key 的 config_get/set case 分支全部正常（key 由 Task 2 在 libsigrokstd.h 扩展）
+  - [ ] SubTask 3.9: 适配 libsigrokstd 的 `SR_REGISTER_DEV_DRIVER` 注册机制（section 机制，无需手动 hwdriver.c 注册）
+  - [ ] SubTask 3.10: CMake GLOB_RECURSE 拾取 pxlogic 目录 + 编译验证
 
 - [ ] Task 4: 固件资源路径配置
-  - [ ] SubTask 4.1: 把 fork `libsigrok/hardware/pxlogic/` 目录下的 `SCI_LOGIC.bin` 和 `hspi_ddr.bin`（或 `hspi_ddr_RST.bin`）拷贝到 libsigrokstd firmware 资源目录
-  - [ ] SubTask 4.2: 验证 `scilogic_ch569w_firmware_upload()` / `scilogic_fpga_firmware_upload()` 的 `sr_resource_open` 调用能正确加载固件
+  - [ ] SubTask 4.1: 把 fork `libsigrok/hardware/pxlogic/` 目录下的 `SCI_LOGIC.bin` / `SCI_LOGIC_BL.bin` / `hspi_ddr.bin` / `hspi_ddr_RST.bin` 拷贝到 libsigrokstd firmware 资源目录
+  - [ ] SubTask 4.2: 验证 port 后的 `firmware_config()` / `hw_usb_open()` / `sr_resource_open` 调用能正确加载固件
   - [ ] SubTask 4.3: 在 PXView 启动代码调用 `sr_resource_set_path()` 配置 libsigrokstd firmware 路径（如尚未配置）
 
 - [ ] Task 5: 删除 PXView fork libsigrok + bridge 层

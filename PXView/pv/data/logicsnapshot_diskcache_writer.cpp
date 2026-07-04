@@ -143,10 +143,9 @@ void LogicSnapshotDiskCacheWriter::ensure_all_blocks_hot()
 // Enqueue (called by LogicSnapshot::append_payload)
 // ----------------------------------------------------------------------------
 
-void LogicSnapshotDiskCacheWriter::enqueue(int format, const uint8_t *data, uint64_t length)
+void LogicSnapshotDiskCacheWriter::enqueue(const uint8_t *data, uint64_t length)
 {
     AsyncPayload payload;
-    payload.format = format;
     payload.data = std::vector<uint8_t>(data, data + length);
     size_t v_size = payload.data.size();
 
@@ -240,7 +239,7 @@ void LogicSnapshotDiskCacheWriter::drain_queue_for_capture_end()
     // finished writing all pending data), and the memset below would zero out
     // valid data that was still waiting in the queue.
     // We must NOT hold _mutex while waiting, because the async worker needs
-    // _mutex to call append_cross_payload().
+    // _mutex to call append_payload_impl().
     int drain_loops = 0;
     while (true) {
         {
@@ -316,16 +315,11 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
 
         sr_datafeed_logic logic;
         logic.length = payload.data.size();
-        logic.unitsize = 1;  // Assuming unitsize 1
+        // Sample-interleaved: unitsize = bytes per sample group, derived from
+        // the snapshot's channel count. _channel_num stays on Snapshot (base)
+        // — friend access through _owner.
+        logic.unitsize = (uint16_t)((_owner->_channel_num + 7) / 8);
         logic.data = payload.data.data();
-        logic.format = payload.format;
-
-        // Truncate incomplete chunks to prevent channel desynchronization.
-        // _channel_num stays on LogicSnapshot (Snapshot base) — friend access.
-        if (logic.format == LA_CROSS_DATA) {
-            uint64_t chunk_size = _owner->_channel_num * 8;  // Each channel gets 8 bytes (64 samples) per chunk
-            logic.length -= logic.length % chunk_size;       // Truncate to exact multiple
-        }
 
         static int packet_count = 0;
         if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
@@ -342,9 +336,9 @@ void LogicSnapshotDiskCacheWriter::async_write_worker()
 
         {
             // _mutex stays on Snapshot (base) — friend access through _owner.
-            // append_cross_payload is private on LogicSnapshot — friend access.
+            // append_payload_impl is private on LogicSnapshot — friend access.
             std::lock_guard<std::mutex> lock(_owner->_mutex);
-            _owner->append_cross_payload(logic);
+            _owner->append_payload_impl(logic);
         }
 
         auto end = std::chrono::steady_clock::now();

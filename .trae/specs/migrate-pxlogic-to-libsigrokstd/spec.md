@@ -26,14 +26,26 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 - 删除 `libsigrokstd/CMakeLists.txt` 的 bridge 源文件引用
 - 删除 `SRSTD_MAKE_HANDLE`/`SRSTD_IS_HANDLE`/`LIB_SRSTD`/`LIB_PXVIEW` 相关宏和 enum
 
-### C. PXLogic 迁移到 libsigrokstd（保留之前 spec 内容）
+### C. PXLogic 迁移到 libsigrokstd（基于 pxlogic fork port + 上游 API 适配）
 
-- 拷贝 `C:\Users\admin\Downloads\sigrok-git\libsigrok\src\hardware\scilogic\` 5 文件到 `libsigrokstd/src/hardware/scilogic/`
-- `FIRMWARE_VERSION 0x56900005` → `0x56900027`
-- libsigrokstd.h 扩展 17 个 SR_CONF_* key（5 sigrok-git 新增 + 12 PXView fork 复用）
-- `hwdriver.c` 的 `sr_key_info_config[]` 新增 17 行映射
-- 补全 scilogic 的 config_get/set 实现（stream/roll/loop/pwm/hw_query/app_stub）
-- 固件资源路径配置（`SCI_LOGIC.bin` / `hspi_ddr.bin`）
+> Task 1 关键结论：scilogic 0.5.2 不能直接采用（缺失固件加载/触发位置读取/设备表/PWM/16 级触发/ch_num 寄存器/启动脉冲序列），但 USB 寄存器层（wr_reg/rd_reg/wr_data_update/rd_data_update）与 pxlogic fork 逐字节一致。方案改为以 **pxlogic fork 为基础** port 到 libsigrokstd，适配上游 API。
+
+- 拷贝 `libsigrok/hardware/pxlogic/` 5 文件（api.c/protocol.c/protocol.h/usb_ctrl.c/usb_ctrl.h）到 `libsigrokstd/src/hardware/pxlogic/` 作为 port 起点
+- **USB 寄存器层零修改**（Task 1 已验证 wr_reg/rd_reg/wr_data_update/rd_data_update 与 scilogic 0.5.2 逐字节一致）
+- **驱动上层 API 适配**（fork API → 上游 API）：
+  - `ds_data_forward(LA_CROSS_DATA, ...)` → 驱动内 deinterleave + `sr_session_send(sdi, packet)`
+  - `ds_trigger` 全局对象（trig_mask0/1/trig_value0/1/...）→ `struct sr_trigger` + `sr_trigger_match`（保留 16 级 stage 数组到 dev_context，soft_trigger_logic 适配或保留 fork 触发逻辑）
+  - `ds_log_init`/`ds_log_free` 等 fork 日志 API → `sr_dbg`/`sr_warn`/`sr_err`（上游日志）
+  - `#include "../../libsigrok-internal.h"` → `#include "../libsigrok/libsigrok.h"` + `#include "libsigrok-internal.h"`（libsigrokstd 内部头）
+  - `SR_CONF_*` key 全部保留（30 个 key 由 Task 2 在 libsigrokstd.h 中扩展）
+  - 设备表 `supported_PX[]` + `logic_check_conf_profile` 保留（fork 独有，scilogic 缺失）
+  - 固件加载 `firmware_config` + `hw_usb_open` 保留（fork 独有，scilogic 缺失）
+  - PWM0 寄存器写入 + ctl_data 命令路径保留（fork 独有，scilogic 缺失）
+  - 启动脉冲三次序列保留（fork 独有，scilogic 缺失）
+- libsigrokstd.h 扩展 30 个 SR_CONF_* key（13 fork 60001-60013 保持原值 + 17 fork 30000-range 重新分配到 60020+）
+- `hwdriver.c` 的 `sr_key_info_config[]` 新增 30 行映射
+- 固件资源路径配置（`SCI_LOGIC.bin` / `hspi_ddr.bin` / `hspi_ddr_RST.bin`）
+- **保留 LA_CROSS_DATA 内部表示**：驱动内部仍用 channel-block 处理 USB 数据，但在 `sr_session_send` 前做 deinterleave 转换为 sample-interleaved 输出，Core 层不再见 LA_CROSS_DATA
 
 ### D. Core 层 ds_* → sr_* 全量替换（12 文件）
 
@@ -78,7 +90,7 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 - 删除 `LA_CROSS_DATA`/`LA_SPLIT_DATA` enum 引用
 - 删除 `logicsnapshot_diskcache_writer.cpp` 中的 cross data 处理路径
 - LogicSnapshot 只保留 sample-interleaved 路径（`append_payload`，标准 `sr_datafeed_logic`）
-- PXLogic（scilogic 驱动内 deinterleave）+ 上游驱动都输出 sample-interleaved，统一走 `append_payload`
+- PXLogic（pxlogic 驱动 port 后内 deinterleave）+ 上游驱动都输出 sample-interleaved，统一走 `append_payload`
 
 ### G. 删除 fork 扩展功能（16 文件）
 
@@ -101,7 +113,7 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 - 删除 `sigsession.cpp` 的 `ds_trigger_*` 调用（fork API 随 libsigrok 删除）
 - `SigSession::sync_trigger_to_libsigrok()` 只同步 simple trigger 部分（通过 `sr_trigger_*` 或驱动 config_set）
 - Adv/Serial trigger 字段保留在 TriggerConfig 中，但 sync 时暂不传递给驱动（stub）——待 PXLogic 驱动未来扩展
-- scilogic 驱动当前只用 simple trigger（5 种 match：ZERO/ONE/RISING/FALLING/EDGE）
+- pxlogic 驱动 port 后保留 16 级触发 stage 到 dev_context，当前 sync 只下发 simple trigger（5 种 match：ZERO/ONE/RISING/FALLING/EDGE），Adv/Serial stage 数组保留供未来扩展
 
 #### G4. DSO 模式
 - DSCope 硬件弃用，DSO 模式不再支持
@@ -118,7 +130,7 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 
 ### I. MCP API 适配
 
-- 删除 DSL 专属工具（如有 `set_adv_trigger`/`set_serial_trigger` 等）
+- 删除 DSL 专属 MCP 工具中直接调用 `ds_trigger_*` 的实现代码（如 `set_adv_trigger`/`set_serial_trigger` 工具内部实现），但**保留** TriggerConfig 写入路径（用户可通过 MCP 配置 Adv/Serial trigger 字段，sync 时 stub 不下发驱动）
 - 适配 `sr_*` 返回值
 - `SessionService` 的 `sr_channel_type_to_api()` 保留（上游 SR_CHANNEL_* 值与 fork 一致）
 
@@ -130,20 +142,20 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 - **View 层 fork 扩展引用清除**：16 文件
 - **DSL 硬件（DSLogic/DSCope）不再支持**
 - **DSO 模式整体移除**（无 DSCope 硬件）
-- **Adv/Serial trigger 整体移除**（只保留 simple trigger）
+- **Adv/Serial trigger 调用路径移除**（UI 和 TriggerConfig Core 结构保留供 PXLogic 未来扩展）
 
 ### 影响的 spec
 - `dual-libsigrok-coexist-restore-features` — 双库共存架构**完全废弃**
 - `migrate-all-sigrok-drivers` — 不再需要"迁移"，fork 直接删除
 - `modernize-core-layer-radical` — Core 层简化为单库单 API
-- `modernize-view-layer-v3` — View 层移除 DSO/Adv/Serial trigger UI
+- `modernize-view-layer-v3` — View 层移除 DSO UI，**保留** Adv/Serial trigger UI 供 PXLogic 未来扩展
 
 ### 影响的代码
 - `libsigrok/` — 整个目录删除
 - `libsigrokstd/bridge/` — 整个目录删除
-- `libsigrokstd/include/libsigrok/libsigrok.h` — 新增 17 个 SR_CONF_* key
-- `libsigrokstd/src/hwdriver.c` — `sr_key_info_config[]` 新增 17 行
-- `libsigrokstd/src/hardware/scilogic/` — 新增 5 个驱动源文件
+- `libsigrokstd/include/libsigrok/libsigrok.h` — 新增 30 个 SR_CONF_* key
+- `libsigrokstd/src/hwdriver.c` — `sr_key_info_config[]` 新增 30 行
+- `libsigrokstd/src/hardware/pxlogic/` — 新增 5 个驱动源文件（port from fork）
 - `PXView/pv/sigsession.cpp` / `sigsession.h` — ds_* → sr_* 替换
 - `PXView/pv/deviceagent.cpp` / `deviceagent.h` — 删除双分支 + fork 扩展 accessor
 - `PXView/pv/core/capturemanager.cpp` — ds_start/stop → sr_session_*
@@ -163,34 +175,44 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 
 ## ADDED Requirements
 
-### Requirement: libsigrokstd 0.6.0 扩展 17 个 SR_CONF_* key
+### Requirement: libsigrokstd 0.6.0 扩展 30 个 SR_CONF_* key
 
-系统 SHALL 在 `libsigrokstd/include/libsigrok/libsigrok.h` 的 `enum sr_configkey` 中新增/复用 17 个 key，覆盖 PXLogic 驱动所需的全部配置场景。
+系统 SHALL 在 `libsigrokstd/include/libsigrok/libsigrok.h` 的 `enum sr_configkey` 中新增 30 个 key，覆盖 PXLogic 驱动所需的全部配置场景。fork 60001-60013 保持原值（无冲突），fork 30000-range key 重新分配到 60020+（避免与上游 30000-range key 冲突）。
 
-#### Scenario: scilogic 驱动 config_get/set 全覆盖
+#### Scenario: pxlogic 驱动 config_get/set 全覆盖
 - **WHEN** PXView 上层调用 `DeviceAgent::get_config_*(key, ...)` 或 `set_config_*(key, ...)` 访问 PXLogic 设备
-- **THEN** scilogic 驱动的 `config_get`/`config_set` 函数 SHALL 返回 `SR_OK` 并正确读写 devc 字段
-- **AND** 17 个 key 全部有对应的 case 分支，无 `SR_ERR_NA` 默认返回
+- **THEN** pxlogic 驱动的 `config_get`/`config_set` 函数 SHALL 返回 `SR_OK` 并正确读写 devc 字段
+- **AND** 30 个 key 全部有对应的 case 分支，无 `SR_ERR_NA` 默认返回
+- **AND** fork 原有的所有 SR_CONF_* case 分支全部保留（port 不删功能）
 
-#### Scenario: enum 值与 PXView fork 完全对齐
+#### Scenario: enum 值在 libsigrokstd 范围内唯一
 - **WHEN** 编译 libsigrokstd 时
-- **THEN** 12 个复用 key 的 enum 值 SHALL 与 PXView fork `libsigrok/libsigrok.h` 中的值完全一致
-- **AND** 5 个新 key 的 enum 值 SHALL 与 sigrok-git 0.6.0 fork 中的位置一致
-- **AND** `sr_key_info_config[]` 数组 SHALL 包含全部 17 个 key 的字符串映射
+- **THEN** 13 个 fork 60001-60013 key 的 enum 值 SHALL 与 PXView fork 完全一致（无冲突）
+- **AND** 17 个 fork 30000-range key SHALL 重新分配到 60020+ 范围（避免与上游 SR_CONF_PATTERN_MODE=30002/SR_CONF_RLE=30003 等冲突）
+- **AND** `sr_key_info_config[]` 数组 SHALL 包含全部 30 个 key 的字符串映射
+- **AND** 编译零 "duplicate enum value" 错误
 
-### Requirement: scilogic 驱动移植到 libsigrokstd
+### Requirement: PXLogic 驱动 port 到 libsigrokstd
 
-系统 SHALL 在 `libsigrokstd/src/hardware/scilogic/` 目录提供完整的 PXLogic 驱动实现，基于 sigrok-git 0.5.2 scilogic 参考实现，适配当前 PXLogic 硬件固件版本（0x56900027）。
+系统 SHALL 在 `libsigrokstd/src/hardware/pxlogic/` 目录提供完整的 PXLogic 驱动实现，基于 PXView fork pxlogic 源码 port，适配上游 libsigrok 0.6.0 API，保留 fork 的全部硬件功能（固件加载/PWM/16 级触发/ctl_data/启动脉冲序列/设备表）。
 
 #### Scenario: 驱动注册成功
 - **WHEN** libsigrokstd.dll 加载时
-- **THEN** `SR_REGISTER_DEV_DRIVER(scilogic_driver_info)` SHALL 通过 section 机制自动注册
+- **THEN** `SR_REGISTER_DEV_DRIVER(pxlogic_driver_info)` SHALL 通过 section 机制自动注册
 - **AND** `sr_driver_list(ctx)` SHALL 包含 "PX Logic" 驱动
 
+#### Scenario: USB 寄存器层零修改
+- **WHEN** port pxlogic fork 的 `usb_ctrl.c` 到 libsigrokstd
+- **THEN** `wr_reg`/`rd_reg`/`wr_data_update`/`rd_data_update` 函数 SHALL 与 fork 逐字节一致（Task 1 已验证）
+- **AND** 固件加载 `firmware_config` + `hw_usb_open` 路径保留
+- **AND** PWM0 寄存器写入 + ctl_data 命令路径保留
+- **AND** 启动脉冲三次序列保留
+
 #### Scenario: 数据采集输出 sample-interleaved 格式
-- **WHEN** PXLogic 硬件通过 USB 发送 channel-block 数据
-- **THEN** scilogic 驱动 SHALL 调用 `deinterleave_buffer*` 函数转换为 sample-interleaved
+- **WHEN** PXLogic 硬件通过 USB 发送 channel-block（LA_CROSS_DATA）数据
+- **THEN** pxlogic 驱动 SHALL 在 `sr_session_send` 前做 deinterleave 转换为 sample-interleaved
 - **AND** 输出的 `sr_datafeed_logic.unitsize` SHALL 等于 `channel_count / 8`
+- **AND** 驱动内部仍可用 channel-block 处理，但 Core 层不再见 LA_CROSS_DATA
 - **AND** PXView `LogicSnapshot::append_payload` SHALL 直接处理
 
 ### Requirement: Core 层只支持上游 sr_* API
@@ -234,7 +256,7 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 - **AND** `TriggerConfig` Core 结构 SHALL 保留 Adv/Serial trigger 字段
 - **AND** `SigSession::sync_trigger_to_libsigrok()` SHALL 只同步 simple trigger 部分
 - **AND** 不存在 `ds_trigger_set_mask`/`ds_trigger_set_count` 等 fork API 调用
-- **AND** scilogic 驱动当前只用 simple trigger（待未来扩展 Adv/Serial）
+- **AND** pxlogic 驱动 port 后保留 16 级 stage 数组到 dev_context，sync 时通过 `sr_trigger_match` 适配或保留 fork 触发逻辑（待未来扩展 Adv/Serial 硬件触发）
 
 #### Scenario: 无 DSO 模式
 - **WHEN** PXView 启动
@@ -288,14 +310,16 @@ PXView fork libsigrok（2014 年从 upstream 0.2.0 fork）已深度偏离上游�
 2. 保留最后一个支持 DSL 的 PXView 版本 tag，供用户回退
 3. 提供迁移指南：DSLogic 用户可改用上游 fx2lafw 驱动（基础功能）
 
-### 风险 2：固件版本兼容性（中风险）
+### 风险 2：fork API → 上游 API 适配（中风险）
 
-scilogic 0.5.2 的 `FIRMWARE_VERSION = 0x56900005`，PXLogic fork 当前是 `0x56900027`。
+pxlogic fork 深度依赖 fork 全局状态（`ds_trigger` 全局对象、`ds_data_forward` LA_CROSS_DATA 通道、`ds_log_*` 日志 API），port 到 libsigrokstd 需要替换为 session-based 上游 API。
 
-**缓解**：
-1. Phase 1 先 diff `scilogic/usb_ctrl.c` 与 `libsigrok/hardware/pxlogic/usb_ctrl.c`
-2. 如有差异，把 fork 的 USB 协议改动合并到 scilogic
-3. 实测验证
+**缓解**（Task 1 已完成 USB 协议层验证）：
+1. USB 寄存器层（wr_reg/rd_reg/wr_data_update/rd_data_update）已验证与 scilogic 0.5.2 逐字节一致，零修改 port
+2. fork 全局 `ds_trigger` → dev_context 内 16 级 stage 数组 + `sr_trigger_match` 适配
+3. fork `ds_data_forward(LA_CROSS_DATA)` → 驱动内 deinterleave + `sr_session_send`（sample-interleaved 输出）
+4. fork `ds_log_*` → 上游 `sr_dbg`/`sr_warn`/`sr_err`
+5. 实测验证（Task 12 硬件回归）
 
 ### 风险 3：Core 层 ds_* → sr_* 语义转换（中风险）
 
@@ -327,13 +351,13 @@ scilogic 0.5.2 的 `FIRMWARE_VERSION = 0x56900005`，PXLogic fork 当前是 `0x5
 ### 范围内
 - 删除 `libsigrok/` 整个目录（fork）
 - 删除 `libsigrokstd/bridge/` 整个目录（双库桥接层）
-- PXLogic 迁移到 libsigrokstd（scilogic 驱动 + 17 key 扩展）
+- PXLogic 迁移到 libsigrokstd（基于 pxlogic fork port + 上游 API 适配 + 17 key 扩展）
 - Core 层 `ds_*` → `sr_*` 全量替换（12 文件）
 - DeviceAgent 简化（删除双分支 + LIB_PXVIEW/LIB_SRSTD enum）
 - 删除 LA_CROSS_DATA 路径
 - 删除 sr_status 50 字段使用
 - 删除 sr_channel 25 扩展字段使用
-- 删除 Adv/Serial trigger
+- 删除 Adv/Serial trigger 的 `ds_trigger_*` 调用路径（UI 和 TriggerConfig Core 结构保留）
 - 删除 DSO 模式（DsoSignal/DsoDock/DsoMeasure 移除或 stub）
 - View 层适配（TriggerDock/ChannelDock/Viewport）
 - 编译 + 功能 + 回归验证

@@ -1,30 +1,30 @@
 # Checklist
 
 ## Phase 1: USB 协议兼容性验证
-- [ ] Task 1 完成：scilogic 0.5.2 与 PXLogic fork 的 `usb_ctrl.c` diff 报告输出
-- [ ] Task 1 完成：scilogic 0.5.2 与 PXLogic fork 的 `protocol.c` USB transfer 逻辑 diff 报告输出
-- [ ] Task 1 完成：决策记录——是否需要合并 fork 的 USB 协议改动到 scilogic
+- [x] Task 1 完成：scilogic 0.5.2 与 PXLogic fork 的 `usb_ctrl.c` diff 报告输出（结论：USB 寄存器层逐字节一致）
+- [x] Task 1 完成：scilogic 0.5.2 与 PXLogic fork 的 `protocol.c` USB transfer 逻辑 diff 报告输出（结论：驱动上层严重分歧）
+- [x] Task 1 完成：决策记录——scilogic 0.5.2 不能直接采用，方案 pivot 为以 pxlogic fork 为基础 port 到 libsigrokstd
 
 ## Phase 2: libsigrokstd 公共 API 扩展
-- [ ] Task 2 完成：`libsigrokstd/include/libsigrok/libsigrok.h` 新增 5 个 sigrok-git 已验证 key
-- [ ] Task 2 完成：12 个 PXView fork 已有 key 在 libsigrokstd.h 中存在且 enum 值与 fork 完全一致
-- [ ] Task 2 完成：`libsigrokstd/src/hwdriver.c` 的 `sr_key_info_config[]` 数组新增 17 行映射
-- [ ] Task 2 完成：libsigrokstd.dll 编译通过，enum 无冲突
+- [x] Task 2 完成：`libsigrokstd/include/libsigrok/libsigrok.h` 新增 30 个 key（13 fork 60001-60013 + 17 fork 30000-range 重新分配到 60020+）
+- [x] Task 2 完成：`libsigrokstd/src/hwdriver.c` 的 `sr_key_info_config[]` 数组新增 30 行映射
+- [x] Task 2 完成：libsigrokstd.dll 编译通过，enum 无冲突（0 error）
 
-## Phase 3: scilogic 驱动拷贝 + config 补全
-- [ ] Task 3 完成：5 个文件拷贝到 `libsigrokstd/src/hardware/scilogic/`
-- [ ] Task 3 完成：`FIRMWARE_VERSION` 改为 `0x56900027`
-- [ ] Task 3 完成：`struct dev_context` 新增 11 个字段
-- [ ] Task 3 完成：`config_get` 新增 17 个 case 分支
-- [ ] Task 3 完成：`config_set` 新增 13 个 case 分支 + PWM0 寄存器写入
-- [ ] Task 3 完成：`config_get(SR_CONF_ROLL)` 推导逻辑
-- [ ] Task 3 完成：`config_set(SR_CONF_LOOP_MODE)` + OP_LPTEST 路径
-- [ ] Task 3 完成：`scilogic_dev_new()` 初始化默认值
+## Phase 3: pxlogic fork 驱动 port 到 libsigrokstd + 上游 API 适配
+- [ ] Task 3 完成：5 个文件拷贝到 `libsigrokstd/src/hardware/pxlogic/`（fork 源，不是 scilogic 0.5.2）
+- [ ] Task 3 完成：USB 寄存器层零修改（Task 1 已验证）
+- [ ] Task 3 完成：头文件 include 适配（libsigrok-internal.h → libsigrokstd 内部头）
+- [ ] Task 3 完成：日志 API 替换（ds_log_* → sr_dbg/sr_warn/sr_err/sr_info）
+- [ ] Task 3 完成：数据流路径替换（ds_data_forward LA_CROSS_DATA → 驱动内 deinterleave + sr_session_send sample-interleaved）
+- [ ] Task 3 完成：触发对象迁移（ds_trigger 全局对象 → dev_context 16 级 stage + sr_trigger_match）
+- [ ] Task 3 完成：fork 独有功能保留（firmware_config/hw_usb_open/ctl_data/PWM0/启动脉冲/supported_PX[]/16 级触发）
+- [ ] Task 3 完成：30 个 SR_CONF_* key 的 config_get/set case 分支验证
+- [ ] Task 3 完成：SR_REGISTER_DEV_DRIVER section 机制注册适配
 - [ ] Task 3 完成：CMake 拾取 + 编译验证
 
 ## Phase 4: 固件资源
-- [ ] Task 4 完成：`SCI_LOGIC.bin` / `hspi_ddr.bin` 拷贝到 libsigrokstd firmware 目录
-- [ ] Task 4 完成：`sr_resource_open` 能正确加载固件
+- [ ] Task 4 完成：`SCI_LOGIC.bin` / `SCI_LOGIC_BL.bin` / `hspi_ddr.bin` / `hspi_ddr_RST.bin` 拷贝到 libsigrokstd firmware 目录
+- [ ] Task 4 完成：port 后的 `firmware_config()` / `hw_usb_open()` / `sr_resource_open` 能正确加载固件
 - [ ] Task 4 完成：PXView 启动代码调用 `sr_resource_set_path()` 配置路径
 
 ## Phase 5: 删除 fork libsigrok + bridge
@@ -132,8 +132,8 @@
 - [ ] Adv/Serial trigger UI **保留**（后续 PXLogic 可扩展）
 - [ ] `TriggerConfig` Core 结构保留（含 Adv/Serial 字段）
 - [ ] DSO 模式已删除或 stub
-- [ ] 17 个 SR_CONF_* key 全部有 config_get/set case 分支
+- [ ] 30 个 SR_CONF_* key 全部有 config_get/set case 分支
 - [ ] 数据导出层零改动（sr_output API 100% 兼容）
-- [ ] enum 值与 PXView fork 完全对齐（12 个复用 key 数值不变）
-- [ ] PXLogic 设备通过 scilogic 驱动识别
+- [ ] enum 值在 libsigrokstd 范围内唯一（13 fork 60001-60013 保持原值 + 17 fork 30000-range 重新分配到 60020+）
+- [ ] PXLogic 设备通过 port 后的 pxlogic 驱动识别
 - [ ] DSL 硬件不再被识别（fork 已删）

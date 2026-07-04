@@ -26,7 +26,8 @@
 
 #include "signal.h"
 #include "../dstimer.h"
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
+#include "../dsvdef.h"
 #include <memory>
 
 namespace pv {

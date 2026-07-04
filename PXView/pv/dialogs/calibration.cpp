@@ -167,7 +167,7 @@ void Calibration::update_device_info()
         QSlider *gain_slider = new QSlider(Qt::Horizontal, this);
         gain_slider->setRange(-vgain_range/2, vgain_range/2);
         gain_slider->setValue(vgain - vgain_default);
-        gain_slider->setObjectName(VGAIN+probe->index);
+        gain_slider->setObjectName(VGAIN+QString::number(probe->index));
         QString gain_string = CHANNEL_LABEL + QString::number(probe->index) + VGAIN;
         QLabel *gain_label = new QLabel(gain_string, this);
         ui::adjust_label_size(gain_label, ui::ADJUST_HEIGHT);
@@ -191,7 +191,7 @@ void Calibration::update_device_info()
         QSlider *off_slider = new QSlider(Qt::Horizontal, this);
         off_slider->setRange(0, voff_range);
         off_slider->setValue(voff);
-        off_slider->setObjectName(VOFF+probe->index);
+        off_slider->setObjectName(VOFF+QString::number(probe->index));
         QString off_string = CHANNEL_LABEL + QString::number(probe->index) + VOFF;
         QLabel *off_label = new QLabel(off_string, this);
         ui::adjust_label_size(off_label, ui::ADJUST_HEIGHT);
@@ -211,7 +211,7 @@ void Calibration::update_device_info()
             QSlider *comp_slider = new QSlider(Qt::Horizontal, this);
             comp_slider->setRange(-127, 127);
             comp_slider->setValue(comb_comp);
-            comp_slider->setObjectName(VCOMB+probe->index);
+            comp_slider->setObjectName(VCOMB+QString::number(probe->index));
             QString comp_string = CHANNEL_LABEL + QString::number(probe->index) + VCOMB;
             QLabel *comp_label = new QLabel(comp_string, this);
             ui::adjust_label_size(comp_label, ui::ADJUST_HEIGHT);
@@ -259,7 +259,7 @@ void Calibration::set_value(int value)
         sr_channel *const probe = (sr_channel*)l->data;
         if (!probe) continue;
         assert(probe);
-        if (sc->objectName() == VGAIN+probe->index) {
+        if (sc->objectName() == VGAIN+QString::number(probe->index)) {
             uint64_t vgain_default;
             if (_device_agent->get_config_uint64(SR_CONF_PROBE_VGAIN_DEFAULT, vgain_default, probe))
             {
@@ -267,10 +267,10 @@ void Calibration::set_value(int value)
             }
             break;
         }
-        else if (sc->objectName() == VOFF+probe->index) {
+        else if (sc->objectName() == VOFF+QString::number(probe->index)) {
            _device_agent->set_config_uint16(SR_CONF_PROBE_PREOFF, value, probe); 
             break;
-        } else if (sc->objectName() == VCOMB+probe->index) {
+        } else if (sc->objectName() == VCOMB+QString::number(probe->index)) {
             _device_agent->set_config_int16(SR_CONF_PROBE_COMB_COMP, value, probe);
             break;
         }
@@ -352,10 +352,10 @@ void Calibration::reload_value()
 
         for(std::list<QSlider*>::iterator i = _slider_list.begin();
             i != _slider_list.end(); i++) {
-            if ((*i)->objectName() == VGAIN+probe->index) {
+            if ((*i)->objectName() == VGAIN+QString::number(probe->index)) {
                 (*i)->setRange(-vgain_range/2, vgain_range/2);
                 (*i)->setValue(vgain - vgain_default);
-            } else if ((*i)->objectName() == VOFF+probe->index) {
+            } else if ((*i)->objectName() == VOFF+QString::number(probe->index)) {
                 (*i)->setRange(0, voff_range);
                 (*i)->setValue(voff);
             }

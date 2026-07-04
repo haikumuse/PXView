@@ -1355,7 +1355,7 @@ pkgcfg_lib_LIBZIP_zip:FILEPATH=D:/msys64/mingw64/lib/libzip.dll.a
 pxview-config_LIB_DEPENDS:STATIC=general;Qt6::Core;
 
 //Dependencies for the target
-pxview-core_LIB_DEPENDS:STATIC=general;Qt6::Core;general;Qt6::Gui;general;Qt6::Network;general;Qt6::Concurrent;general;Qt6::WebSockets;general;-lz;general;-lglib-2.0;general;D:/msys64/mingw64/lib/libusb-1.0.dll.a;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/Scoop/apps/python/3.14.4/libs/python314.lib;general;pxview-utility;general;pxview-config;general;pxview-data;
+pxview-core_LIB_DEPENDS:STATIC=general;Qt6::Core;general;Qt6::Gui;general;Qt6::Network;general;Qt6::Concurrent;general;Qt6::WebSockets;general;glib-2.0;general;intl;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/msys64/mingw64/lib/libusb-1.0.dll.a;general;D:/msys64/mingw64/lib/libz.dll.a;general;D:/Scoop/apps/python/3.14.4/libs/python314.lib;general;pxview-utility;general;pxview-config;general;pxview-data;
 
 //Dependencies for the target
 pxview-data_LIB_DEPENDS:STATIC=general;Qt6::Core;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;D:/msys64/mingw64/lib/libfftw3.dll.a;general;-lglib-2.0;

@@ -47,12 +47,15 @@
 #include "core/eventbus.h"
 #include "core/capturemanager.h"
 #include "core/sessionstatecontext.h"
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 struct srd_decoder;
 struct srd_channel;
 class DecoderStatus;
 typedef std::lock_guard<std::mutex> ds_lock_guard;
+
+// Forward declarations for upstream libsigrok types (now the sole libsigrok).
+struct sr_context;
 
 namespace pv {
 namespace data {
@@ -328,7 +331,6 @@ private:
   void on_event(const interface::CopyToDocDone &) override;
   void on_event(const interface::DeviceSpeedNotMatch &) override;
   static sr_input_format *determine_input_file_format(const std::string &filename);
-  static void device_lib_event_callback_ex(int event, void *user_data); void on_device_lib_event(int event);
   data::Snapshot *get_signal_snapshot(); void clear_signals();
   std::shared_ptr<data::SignalModel> get_channel_by_index(int orgIndex);
   void make_channels_view_index(int start_dex = -1);
@@ -356,11 +358,12 @@ private:
   std::unique_ptr<core::DataFeedParser> _data_feed_parser;
   std::unique_ptr<core::DocumentRegistry> _document_registry;
   std::unique_ptr<core::CaptureManager> _capture_manager;
-  // libsigrokstd opaque context (upstream libsigrok 0.6.0 shared library).
-  // void* because sigsession.h includes PXView's libsigrok.h, NOT upstream's
-  // (the two have incompatible struct definitions). The glue layer
-  // (bridge/srstd_pxview_glue.h) treats this as struct sr_context* internally.
-  void *_srstd_ctx = nullptr;
+  // Upstream libsigrok 0.6.0 context (single-lib architecture).
+  // sr_context is created by sr_init() in init() and destroyed by sr_exit()
+  // in uninit(). sr_session is now owned by DeviceAgent (created in
+  // open_by_handle, destroyed in release) since the session lifecycle is
+  // tied to the active device.
+  struct sr_context *_sr_ctx = nullptr;
 };
 
 } // namespace pv

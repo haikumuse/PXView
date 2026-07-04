@@ -35,7 +35,7 @@
 #include <QRegularExpressionValidator>
 #include <QSplitter>
 #include <QVBoxLayout>
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include <math.h>
 
 

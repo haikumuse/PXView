@@ -164,7 +164,12 @@ void AnalogSnapshot::clear()
 void AnalogSnapshot::first_payload(const sr_datafeed_analog &analog, uint64_t total_sample_count, GSList *channels)
 {
     _total_sample_count = total_sample_count;
-    _unit_bytes = (analog.unit_bits + 7) / 8;
+    // Fork libsigrok's sr_datafeed_analog had a `unit_bits` field; upstream
+    // libsigrokstd carries this in `encoding->unitsize` (bytes per sample).
+    // Stub: hardcode 8-bit (matches EnvelopeSample uint8_t type and PXLogic
+    // hardware ADC resolution). DSO/Analog mode is deprecated — full cleanup
+    // will replace this with sr_analog_to_float conversion.
+    _unit_bytes = (8 + 7) / 8;
     if (_unit_bytes <= 0) {
         pxv_err("AnalogSnapshot: _unit_bytes<=0, aborting");
         return;
@@ -261,7 +266,10 @@ void AnalogSnapshot::first_payload(const sr_datafeed_analog &analog, uint64_t to
 void AnalogSnapshot::append_payload(const sr_datafeed_analog &analog)
 {
     std::lock_guard<std::mutex> lock(_mutex);
-    append_data(analog.data, analog.num_samples, analog.unit_pitch);
+    // Fork libsigrok's sr_datafeed_analog had a `unit_pitch` field (decimation
+    // factor: copy 1 sample every `pitch` samples). Upstream libsigrokstd does
+    // not carry this — stub to 1 (no decimation, packed format).
+    append_data(analog.data, analog.num_samples, 1);
 
 	// Generate the first mip-map from the data
     if (analog.num_samples != 0) // guarantee new samples to compute

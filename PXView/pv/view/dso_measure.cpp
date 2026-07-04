@@ -28,7 +28,7 @@
 // Retained: sr_status value-type dependency (lines ~482-553). Removal requires
 // introducing a Core DsoMeasureStatus mirror struct and changing
 // DataSource::get_dso_status() signature — deferred to a separate spec.
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 
 #include "../data/dsosnapshot.h"
 #include "../data/signalmodel.h"

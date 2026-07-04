@@ -65,7 +65,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/flags.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/core_sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/gui_sources.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/libsigrok.cmake)
 
 #===============================================================================
 #= libsigrokstd — upstream libsigrok 0.6.0 as a SHARED library (100% unmodified
@@ -112,14 +111,41 @@ target_link_libraries(pxview-core PUBLIC
 	pxview-config
 	pxview-data
 )
-# Expose libsigrokstd/bridge/ and libsigrokstd/include/ headers so
-# sigsession.cpp / deviceagent.cpp (compiled into pxview-core) can include
-# "srstd_pxview_glue.h" (which itself includes "srstd_export.h").
-# PUBLIC so the executable inherits the include path too (currently unused
-# there, but harmless and forward-compatible).
+# Expose libsigrokstd/include/ headers so sigsession.cpp / deviceagent.cpp
+# (compiled into pxview-core) can include <libsigrok/libsigrok.h>.
+# PUBLIC so the executable inherits the include path too.
 target_include_directories(pxview-core PUBLIC
-	${CMAKE_SOURCE_DIR}/libsigrokstd/bridge
 	${CMAKE_SOURCE_DIR}/libsigrokstd/include
+)
+
+#===============================================================================
+#= common + libsigrokdecode source lists
+# These were lost when the original monolithic CMakeLists.txt (~2000 lines) was
+# split into cmake/*.cmake modules. Restored here so common/log/xlog.c (pxv_log
+# backend) and the libsigrokdecode engine (srd_session_*, srd_inst_*) compile
+# into the executable. Without these the linker fails with undefined xlog_*
+# and srd_* references from decoderstack.cpp / decoder.cpp.
+#-------------------------------------------------------------------------------
+set(common_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/common/minizip/zip.c
+	${CMAKE_CURRENT_SOURCE_DIR}/common/minizip/unzip.c
+	${CMAKE_CURRENT_SOURCE_DIR}/common/minizip/ioapi.c
+	${CMAKE_CURRENT_SOURCE_DIR}/common/log/xlog.c
+)
+
+set(libsigrokdecode_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/decoder.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/instance.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/type_decoder.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/session.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/module_sigrokdecode.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/srd.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/log.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/dll_registry.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/version.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/util.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/exception.c
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode/error.c
 )
 
 #===============================================================================
@@ -132,8 +158,14 @@ add_executable(${PROJECT_NAME}
 	${PXView_HEADERS_NO_MOC}
 	${PXView_FORMS_HEADERS}
 	${PXView_RESOURCES_RCC}
-	${libsigrok_SOURCES}
 	${libsigrokdecode_SOURCES}
+)
+
+# Include dirs for common/ (xlog.h, ds_types.h) and libsigrokdecode/ (config.h,
+# libsigrokdecode.h, internal headers) so the sources above find their headers.
+target_include_directories(${PROJECT_NAME} PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/common
+	${CMAKE_CURRENT_SOURCE_DIR}/libsigrokdecode
 )
 
 # Executable links pxview-core (which transitively provides Qt Core/Gui/Network

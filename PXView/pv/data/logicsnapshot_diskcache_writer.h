@@ -69,7 +69,9 @@ public:
     void ensure_all_blocks_hot();
 
     // ---- Enqueue (called by LogicSnapshot::append_payload) ----
-    void enqueue(int format, const uint8_t *data, uint64_t length);
+    // Data is sample-interleaved (upstream libsigrok format); no format tag
+    // needed — append_payload_impl derives unitsize from _channel_num.
+    void enqueue(const uint8_t *data, uint64_t length);
 
     // ---- mmap slot state ----
     bool is_mmap_slot_fresh(uint16_t channel, uint64_t global_block_seq) const;
@@ -103,7 +105,6 @@ private:
     std::vector<bool> _mmap_slot_written;
 
     struct AsyncPayload {
-        int format;
         std::vector<uint8_t> data;
     };
 

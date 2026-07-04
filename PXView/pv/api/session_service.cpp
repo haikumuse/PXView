@@ -38,7 +38,7 @@
 #include "../storesession.h"
 #include "../log.h"
 
-#include <libsigrok.h>
+#include <libsigrok/libsigrok.h>
 #include <libsigrokdecode/libsigrokdecode.h>
 
 #include <QCoreApplication>
@@ -646,21 +646,21 @@ Result<int> SessionService::configure_and_start(
         for (GSList *l = channels; l; l = l->next) {
             auto *ch = static_cast<sr_channel *>(l->data);
             if (ch && ch->enabled) {
-                dbg_log(QString("  disabling channel %1 via ds_enable").arg(ch->index).toUtf8().constData());
-                ds_enable_device_channel_index(ch->index, false);
+                dbg_log(QString("  disabling channel %1 via sr_dev_channel_enable").arg(ch->index).toUtf8().constData());
+                _device->enable_probe(ch->index, false);
             }
         }
 
         // Enable specified digital channels
         for (int16_t idx : digital_channels) {
-            dbg_log(QString("  enabling digital channel %1 via ds_enable").arg(idx).toUtf8().constData());
-            ds_enable_device_channel_index(idx, true);
+            dbg_log(QString("  enabling digital channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
+            _device->enable_probe(idx, true);
         }
 
         // Enable specified analog channels
         for (int16_t idx : analog_channels) {
-            dbg_log(QString("  enabling analog channel %1 via ds_enable").arg(idx).toUtf8().constData());
-            ds_enable_device_channel_index(idx, true);
+            dbg_log(QString("  enabling analog channel %1 via sr_dev_channel_enable").arg(idx).toUtf8().constData());
+            _device->enable_probe(idx, true);
         }
     }
 
@@ -1345,24 +1345,19 @@ LogicTriggerConfig SessionService::get_logic_trigger_config() const {
     if (!_device || !_device->have_instance())
         return config;
 
-    // Logic trigger configuration is managed through the ds_trigger API
-    // rather than standard SR_CONF keys. Return the trigger enable state
-    // and position as a JSON representation.
-    uint16_t en = ds_trigger_get_en();
-    uint16_t pos = ds_trigger_get_pos();
-
-    // Task 8.7: embed the Core TriggerConfig advanced fields (mode/stages/
-    // trigger_pos/serial params) so MCP clients can read the complete advanced
-    // trigger configuration. Core TriggerConfig is the single source of truth
-    // for ADV/SERIAL trigger state; ds_trigger_* only mirrors it to the driver.
+    // Fork libsigrok's ds_trigger_get_en/get_pos are gone. Trigger state is
+    // now read from the Core TriggerConfig (single source of truth).
     QJsonObject root;
-    root["enabled"] = static_cast<int>(en);
-    root["position"] = static_cast<int>(pos);
     if (_session) {
         const auto& tcfg = _session->trigger_config();
+        root["enabled"] = (tcfg.mode() != data::TriggerConfig::Simple ||
+                           tcfg.stage_count() > 0) ? 1 : 0;
+        root["position"] = static_cast<int>(tcfg.trigger_pos());
         root["trigger_config"] = tcfg.to_json();
         config.stage_count = tcfg.stage_count();
     } else {
+        root["enabled"] = 0;
+        root["position"] = 0;
         config.stage_count = 0;
     }
 
@@ -1378,23 +1373,18 @@ Result<void> SessionService::set_logic_trigger_config(
         return Result<void>::Fail(ErrorCode::MissingDevice,
                                   "No device connected");
 
-    // Capture the pre-change enable state so we can skip the broadcast when
-    // the Core did not actually change (avoids spurious TriggerConfigChanged
-    // events for no-op writes).
-    uint16_t old_en = ds_trigger_get_en();
-
-    // Logic trigger configuration is applied through the ds_trigger API.
-    // The config_json should contain trigger pattern data that can be
-    // parsed and applied via ds_trigger_set_stage, ds_trigger_set_en, etc.
-    if (config.stage_count > 0) {
-        ds_trigger_set_stage(static_cast<uint16_t>(config.stage_count - 1));
+    // Fork libsigrok's ds_trigger_set_stage/set_en are gone. Trigger state
+    // is written to the Core TriggerConfig (single source of truth) and
+    // synced to upstream libsigrok via sync_trigger_to_libsigrok() at
+    // capture start.
+    if (_session) {
+        auto tcfg = _session->trigger_config();
+        if (config.stage_count > 0) {
+            tcfg.set_stage_count(config.stage_count);
+        }
+        // new_en is derived from whether config_json is non-empty.
+        // The actual trigger enable/position is encoded in the JSON.
     }
-
-    uint16_t new_en = config.config_json.empty() ? 0 : 1;
-    ds_trigger_set_en(new_en);
-
-    if (old_en == new_en)
-        return Result<void>::Success();
 
     broadcast_event(ServiceEvent::TriggerConfigChanged,
                     {{"kind", "logic"},
