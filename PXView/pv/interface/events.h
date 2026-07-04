@@ -22,37 +22,30 @@
 
 // Typed event bus for PXView.
 //
-// STATUS (modernize-core-layer-final Task 1 — updated):
-//   * 40 direct broadcast<T>() emission points exist across the codebase
-//     (39 in sigsession.cpp OnMessage() translation table + 1 in
-//     decodetaskmanager.cpp for DecodeDone).
-//   * MainWindow is registered as the sole IEventListener consumer.
-//   * MainWindow overrides ALL 41 on_event(const T&) virtuals (see
-//     mainwindow.h lines 272-312). Each override routes to one of the 7
-//     per-responsibility handlers split out of the former OnMessage God
-//     method (on_data_updated / on_capture_state / on_signals_changed /
-//     on_trigger_changed / on_device_options_updated / on_session_state /
-//     on_decode_done).
-//   * OnMessage() is reduced to a 5-case fallback handling only the pre/post
-//     ordering codes (CURRENT_DEVICE_CHANGE_PREV / START_COLLECT_WORK_PREV /
-//     STORE_CONF_PREV / CAPTURE_OWNER_CHANGED + default log) that drive
-//     SigSession's own state machine and require synchronous pre-broadcast.
+// STATUS (modernize-core-layer-radical — Task 12 complete):
+//   * The legacy IMessageListener / DSV_MSG_* / broadcast_msg / trigger_message
+//     infrastructure has been COMPLETELY REMOVED. All dispatch now goes through
+//     broadcast<T>() (sync), broadcast_sync<T>() (sync direct), or
+//     broadcast_async<T>() (async via Qt::QueuedConnection).
+//   * 4 pre/post ordering codes (CurrentDeviceChangePrev / StartCollectWorkPrev
+//     / EndCollectWorkPrev / StoreConfPrev) are emitted via broadcast_sync<T>()
+//     — synchronous direct dispatch, no Qt::QueuedConnection queue. Callers
+//     MUST be on the main thread.
+//   * MainWindow overrides ALL 45 on_event(const T&) virtuals (41 original +
+//     StoreConfPrev + CurrentDeviceChangePrev + StartCollectWorkPrev +
+//     EndCollectWorkPrev). Each override contains its handler body directly
+//     (no int dispatch, no switch).
+//   * DataUpdated is emitted by DataFeedParser::feed_in_* (radical Task 13).
 //   * The "new code MUST use IEventListener" hard constraint is in effect
 //     (see AGENTS.md "Typed event bus (HARD CONSTRAINT — C1+ complete)").
-//   * DataUpdated is the only struct without a direct emitter (no clear
-//     "underlying sample data updated" emission point has been wired yet —
-//     see note below); its on_event override is currently a no-op.
 //
-// This header defines a set of semantic event structs (one per DSV_MSG_*
-// notification) and the IEventListener interface. Each event carries its full
-// context as typed fields rather than a bare (int msg, int param) pair, so
-// consumers cannot accidentally mis-handle a message code or forget a payload.
+// This header defines a set of semantic event structs and the IEventListener
+// interface. Each event carries its full context as typed fields rather than a
+// bare (int msg, int param) pair, so consumers cannot accidentally mis-handle a
+// message code or forget a payload.
 //
 // New code MUST register an IEventListener with SigSession and override only
-// the event handlers it cares about. The legacy IMessageListener / DSV_MSG_*
-// path (interface/icallbacks.h) is retained as a compatibility shim solely
-// for the 5 pre/post ordering codes that must run synchronously BEFORE the
-// state mutation; all other notifications are dispatched via broadcast<T>().
+// the event handlers it cares about.
 //
 // Layer: this is a Core-layer header. It may depend only on Qt6::Core and the
 // STL — it MUST NOT include QWidget/QMainWindow/QDialog or any pv/view/*.h.
@@ -108,44 +101,41 @@ namespace interface {
 //     constants and are typed as int for the same reason.
 // ---------------------------------------------------------------------------
 
-// DSV_MSG_CAPTURE_STATE_CHANGED — capture started / stopped.
+// CaptureStateChanged — capture started / stopped.
 struct CaptureStateChanged {
     bool is_working;
     int  device_status;  // DEVICE_STATUS_TYPE (ST_INIT/ST_RUNNING/ST_STOPPED)
 };
 
-// DSV_MSG_CAPTURE_OWNER_CHANGED — the SessionDocument owning the live capture
-// changed. old_owner is nullptr when emitted from the OnMessage() compat path
-// because the legacy (int,int) call site has already mutated the owner before
-// broadcasting and cannot recover the previous value.
+// CaptureOwnerChanged — the SessionDocument owning the live capture changed.
 struct CaptureOwnerChanged {
     data::SessionDocument *old_owner;
     data::SessionDocument *new_owner;
 };
 
-// DSV_MSG_TRIGGER_CONFIG_CHANGED — advanced/serial trigger config was rewritten.
+// TriggerConfigChanged — advanced/serial trigger config was rewritten.
 // config points at SigSession::_trigger_config and is only valid for the
 // duration of the dispatch (do not store).
 struct TriggerConfigChanged {
     const data::TriggerConfig *config;
 };
 
-// DSV_MSG_SAMPLE_COUNT_UPDATED — sample-depth / sample-count metadata changed.
+// SampleCountUpdated — sample-depth / sample-count metadata changed.
 struct SampleCountUpdated {
     uint64_t sample_count;
 };
 
-// DSV_MSG_DEVICE_OPTIONS_UPDATED — device options changed; signals need reload.
+// DeviceOptionsUpdated — device options changed; signals need reload.
 struct DeviceOptionsUpdated {};
 
-// DSV_MSG_ACTIVE_DOCUMENT_CHANGED — the active SessionDocument switched.
+// ActiveDocumentChanged — the active SessionDocument switched.
 struct ActiveDocumentChanged {
     data::SessionDocument *old_doc;
     data::SessionDocument *new_doc;
 };
 
-// DSV_MSG_COPY_TO_DOC_DONE — background copy of capture data into a document
-// finished; decoders can now be started.
+// CopyToDocDone — background copy of capture data into a document finished;
+// decoders can now be started.
 struct CopyToDocDone {
     data::SessionDocument *doc;
 };
@@ -168,112 +158,132 @@ struct SignalsChanged {
 // Underlying sample data updated.
 struct DataUpdated {};
 
-// DSV_MSG_DEVICE_MODE_CHANGED — LOGIC/DSO/ANALOG work mode switched.
+// DeviceModeChanged — LOGIC/DSO/ANALOG work mode switched.
 struct DeviceModeChanged {
     int mode;  // LOGIC/DSO/ANALOG
 };
 
-// DSV_MSG_COLLECT_MODE_CHANGED — single/repeat/loop collect mode switched.
+// CollectModeChanged — single/repeat/loop collect mode switched.
 struct CollectModeChanged {
     int mode;  // DEVICE_COLLECT_MODE (COLLECT_SINGLE/COLLECT_REPEAT/COLLECT_LOOP)
 };
 
-// DSV_MSG_DEVICE_LIST_UPDATED — the device list changed.
+// DeviceListUpdated — the device list changed.
 struct DeviceListUpdated {};
 
-// DSV_MSG_CURRENT_DEVICE_CHANGED — the current device selection changed.
+// CurrentDeviceChanged — the current device selection changed.
 struct CurrentDeviceChanged {};
 
-// DSV_MSG_NEW_USB_DEVICE — a USB device arrived.
+// UsbDeviceArrived — a USB device arrived.
 struct UsbDeviceArrived {};
 
-// DSV_MSG_CURRENT_DEVICE_DETACHED — the current device was detached.
+// DeviceDetached — the current device was detached.
 struct DeviceDetached {};
 
-// DSV_MSG_DEVICE_DURATION_UPDATED / sample-rate changed.
+// SampleRateChanged — sample-rate / device duration changed.
 struct SampleRateChanged {};
 
-// DSV_MSG_SAVE_COMPLETE — save operation finished.
+// SaveComplete — save operation finished.
 struct SaveComplete {};
 
-// DSV_MSG_START_COLLECT_WORK — capture starting.
+// StartCollectWork — capture starting.
 struct StartCollectWork {};
 
-// DSV_MSG_COLLECT_START — collection started.
+// CollectStart — collection started.
 struct CollectStart {};
 
-// DSV_MSG_COLLECT_END — collection ended.
+// CollectEnd — collection ended.
 struct CollectEnd {};
 
-// DSV_MSG_END_COLLECT_WORK — capture fully stopped.
+// EndCollectWork — capture fully stopped.
 struct EndCollectWork {};
 
-// DSV_MSG_END_DEVICE_OPTIONS — device options batch update ended.
+// RevEndPacket — capture-end packet received from libsigrok; Core swaps the
+// capture/view buffer, kicks off copy-to-doc and starts decoders. Emitted from
+// the libsigrok data-feed worker thread (DataFeedParser).
+struct RevEndPacket {};
+
+// EndDeviceOptions — device options batch update ended.
 struct EndDeviceOptions {};
 
-// DSV_MSG_DEVICE_CONFIG_UPDATED — device config changed.
+// DeviceConfigUpdated — device config changed.
 struct DeviceConfigUpdated {};
 
-// DSV_MSG_DEMO_OPERATION_MODE_CHNAGED — demo mode changed.
+// DemoModeChanged — demo operation mode changed.
 struct DemoModeChanged {};
 
-// DSV_MSG_DATA_POOL_CHANGED — data pool swapped.
+// DataPoolChanged — data pool swapped.
 struct DataPoolChanged {};
 
-// DSV_MSG_SIMPLE_TRIGGER_CHANGED — simple trigger (edge) changed.
+// SimpleTriggerChanged — simple trigger (edge) changed.
 struct SimpleTriggerChanged {};
 
-// DSV_MSG_GLITCH_FILTER_STARTED — glitch filter task started.
+// GlitchFilterStarted — glitch filter task started.
 struct GlitchFilterStarted {};
 
-// DSV_MSG_GLITCH_FILTER_PROGRESS — glitch filter progress update.
+// GlitchFilterProgress — glitch filter progress update.
 struct GlitchFilterProgress {
     int progress;  // 0-100
 };
 
-// DSV_MSG_GLITCH_FILTER_COMPLETED — glitch filter task completed.
+// GlitchFilterCompleted — glitch filter task completed.
 struct GlitchFilterCompleted {};
 
-// DSV_MSG_GLITCH_FILTER_CLEARED — glitch filter cleared.
+// GlitchFilterCleared — glitch filter cleared.
 struct GlitchFilterCleared {};
 
-// DSV_MSG_SIGNAL_INVERT_STARTED — signal invert task started.
+// SignalInvertStarted — signal invert task started.
 struct SignalInvertStarted {};
 
-// DSV_MSG_SIGNAL_INVERT_COMPLETED — signal invert task completed.
+// SignalInvertCompleted — signal invert task completed.
 struct SignalInvertCompleted {};
 
-// DSV_MSG_SIGNAL_INVERT_CLEARED — signal invert cleared.
+// SignalInvertCleared — signal invert cleared.
 struct SignalInvertCleared {};
 
-// DSV_MSG_COPY_IN_PROGRESS_CHANGED — copy thread state changed.
+// CopyInProgressChanged — copy thread state changed.
 struct CopyInProgressChanged {
     bool in_progress;
 };
 
-// DSV_MSG_TRIG_NEXT_COLLECT — trigger next collection (repeat mode).
+// TrigNextCollect — trigger next collection (repeat mode).
 struct TrigNextCollect {};
 
-// DSV_MSG_CLEAR_DECODE_DATA — decode data cleared.
+// ClearDecodeData — decode data cleared.
 struct ClearDecodeData {};
 
-// DSV_MSG_APP_OPTIONS_CHANGED — app options changed.
+// AppOptionsChanged — app options changed.
 struct AppOptionsChanged {};
 
-// DSV_MSG_FONT_OPTIONS_CHANGED — font options changed.
+// FontOptionsChanged — font options changed.
 struct FontOptionsChanged {};
 
-// DSV_MSG_SHORTCUT_CHANGED — shortcut changed.
+// ShortcutChanged — shortcut changed.
 struct ShortcutChanged {};
 
-// DSV_MSG_STYLE_CHANGED — style changed.
+// StyleChanged — style changed.
 struct StyleChanged {};
 
-// Note on DataUpdated: this struct has no DSV_MSG_* counterpart and no
-// emitter yet. It is retained for future use; once a clear "underlying
-// sample data updated" emission point is identified (e.g. a snapshot
-// post-feed hook in SigSession), add a direct broadcast<DataUpdated>({})
-// there. Until then it remains dead-code.
+// DS_EV_DEVICE_SPEED_NOT_MATCH — device USB speed too low; Core surfaces a
+// delayed user-facing message. Emitted from the device event callback thread.
+struct DeviceSpeedNotMatch {};
+
+// modernize-core-layer-radical Task 10: StoreConfPrev pre-broadcast ordering
+// event. Emitted synchronously via broadcast_sync() BEFORE SigSession commits
+// a config-store mutation, so observers can read the pre-mutation state.
+struct StoreConfPrev {};
+
+// modernize-core-layer-radical Task 11: pre-broadcast ordering events for the
+// remaining 3 PREV codes. Each is emitted synchronously via broadcast_sync()
+// BEFORE the corresponding state mutation. Callers MUST be on the main thread
+// (broadcast_sync is synchronous direct dispatch, no Qt::QueuedConnection).
+struct CurrentDeviceChangePrev {};
+struct StartCollectWorkPrev {};
+struct EndCollectWorkPrev {};
+
+// Note on DataUpdated: modernize-core-layer-radical Task 13 wired the emitter.
+// It is now broadcast directly from DataFeedParser::feed_in_logic /
+// feed_in_dso / feed_in_analog after each successful sample-data feed-in.
 
 // ---------------------------------------------------------------------------
 // IEventListener — typed event consumer interface.
@@ -315,6 +325,7 @@ public:
     virtual void on_event(const CollectStart &) {}
     virtual void on_event(const CollectEnd &) {}
     virtual void on_event(const EndCollectWork &) {}
+    virtual void on_event(const RevEndPacket &) {}
     virtual void on_event(const EndDeviceOptions &) {}
     virtual void on_event(const DeviceConfigUpdated &) {}
     virtual void on_event(const DemoModeChanged &) {}
@@ -334,6 +345,11 @@ public:
     virtual void on_event(const FontOptionsChanged &) {}
     virtual void on_event(const ShortcutChanged &) {}
     virtual void on_event(const StyleChanged &) {}
+    virtual void on_event(const DeviceSpeedNotMatch &) {}
+    virtual void on_event(const StoreConfPrev &) {}
+    virtual void on_event(const CurrentDeviceChangePrev &) {}
+    virtual void on_event(const StartCollectWorkPrev &) {}
+    virtual void on_event(const EndCollectWorkPrev &) {}
 };
 
 } // namespace interface

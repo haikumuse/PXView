@@ -23,7 +23,10 @@
 #include "isession_service.h"
 #include <QtGlobal>
 #include <QString>
+#include <cstddef>
+#include <cstdint>
 #include "../interface/icallbacks.h"
+#include "../interface/events.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -49,7 +52,7 @@ class SessionService : public ISessionService,
                        public ICaptureCallback,
                        public ITriggerCallback,
                        public ISessionStateCallback,
-                       public IMessageListener {
+                       public pv::interface::IEventListener {
 public:
     explicit SessionService(SigSession *session, DeviceAgent *device);
     ~SessionService() override;
@@ -59,11 +62,14 @@ public:
     SessionService &operator=(const SessionService &) = delete;
 
     // ---- MCP document injection ----
-    // Injects the dedicated document used as the stable target container for
-    // MCP operations. Decouples MCP from the UI's _active_document cursor so
-    // the same target is available in both headless and GUI modes. Ownership
-    // of *doc transfers to this SessionService; it is released on destruction.
-    void set_api_document(pv::data::SessionDocument *doc);
+    // Injects the dedicated document (by owning index in DocumentRegistry)
+    // used as the stable target container for MCP operations. Decouples MCP
+    // from the UI's _active_document cursor so the same target is available
+    // in both headless and GUI modes.
+    // phase 2: the document is owned by DocumentRegistry; SessionService holds
+    // only the index. set_api_document() releases the previously-injected
+    // index (if any) before storing the new one.
+    void set_api_document(size_t doc_index);
 
     // ---- ISessionService: 1. Capture control ----
     Result<void> start_capture(bool instant = false) override;
@@ -285,11 +291,48 @@ public:
     void decode_done() override;
     void receive_data_len(quint64 len) override;
     void receive_header() override;
-    void trigger_message(int msg) override;
     void delay_prop_msg(QString strMsg) override;
 
-    // ---- IMessageListener ----
-    void OnMessage(int msg, int param = 0) override;
+    // ---- IEventListener ----
+    // Full migration: all notification events are wired to on_event handlers
+    // that re-broadcast as ServiceEvent for MCP/WS clients. The legacy
+    // int-message dispatch path is removed.
+    void on_event(const pv::interface::StoreConfPrev &) override;
+    void on_event(const pv::interface::CurrentDeviceChangePrev &) override;
+    void on_event(const pv::interface::StartCollectWorkPrev &) override;
+    void on_event(const pv::interface::EndCollectWorkPrev &) override;
+    void on_event(const pv::interface::StartCollectWork &) override;
+    void on_event(const pv::interface::CollectStart &) override;
+    void on_event(const pv::interface::CollectEnd &) override;
+    void on_event(const pv::interface::EndCollectWork &) override;
+    void on_event(const pv::interface::RevEndPacket &) override;
+    void on_event(const pv::interface::CaptureStateChanged &) override;
+    void on_event(const pv::interface::DeviceListUpdated &) override;
+    void on_event(const pv::interface::DeviceModeChanged &) override;
+    void on_event(const pv::interface::DeviceConfigUpdated &) override;
+    void on_event(const pv::interface::DeviceDetached &) override;
+    void on_event(const pv::interface::UsbDeviceArrived &) override;
+    void on_event(const pv::interface::CurrentDeviceChanged &) override;
+    void on_event(const pv::interface::DeviceOptionsUpdated &) override;
+    void on_event(const pv::interface::SampleRateChanged &) override;
+    void on_event(const pv::interface::CollectModeChanged &) override;
+    void on_event(const pv::interface::DataPoolChanged &) override;
+    void on_event(const pv::interface::SimpleTriggerChanged &) override;
+    void on_event(const pv::interface::GlitchFilterStarted &) override;
+    void on_event(const pv::interface::GlitchFilterProgress &) override;
+    void on_event(const pv::interface::GlitchFilterCompleted &) override;
+    void on_event(const pv::interface::GlitchFilterCleared &) override;
+    void on_event(const pv::interface::SignalInvertStarted &) override;
+    void on_event(const pv::interface::SignalInvertCompleted &) override;
+    void on_event(const pv::interface::SignalInvertCleared &) override;
+    void on_event(const pv::interface::CopyToDocDone &) override;
+    void on_event(const pv::interface::SampleCountUpdated &) override;
+    void on_event(const pv::interface::ActiveDocumentChanged &) override;
+    void on_event(const pv::interface::CopyInProgressChanged &) override;
+    void on_event(const pv::interface::CaptureOwnerChanged &) override;
+    void on_event(const pv::interface::TrigNextCollect &) override;
+    void on_event(const pv::interface::SaveComplete &) override;
+    void on_event(const pv::interface::ClearDecodeData &) override;
 
 private:
     void broadcast_event(ServiceEvent event,
@@ -300,6 +343,10 @@ private:
     // operations are no-ops and QEventLoop-based waits fall back to a plain
     // condition_variable + mutex.
     static bool is_gui_mode();
+    // phase 2: resolve the MCP-dedicated document weak pointer from the owning
+    // index in DocumentRegistry. Returns nullptr if no document is injected
+    // or the slot has been released.
+    pv::data::SessionDocument *api_document() const;
 
 private:
     SigSession *_session;
@@ -313,12 +360,11 @@ private:
     mutable std::mutex _wait_mutex;
     std::condition_variable _wait_cv;
 
-    // MCP-dedicated document. Owned by this SessionService (created by
-    // AppService and injected via set_api_document()). Registered with
-    // SigSession::register_document() (non-owning) so that session-wide
-    // lookups still see it; released in the destructor via unregister +
-    // delete.
-    pv::data::SessionDocument *_api_document = nullptr;
+    // MCP-dedicated document. phase 2: ownership is held by DocumentRegistry;
+    // SessionService stores only the owning index (SIZE_MAX == none). Created
+    // via DocumentRegistry::create_api_document() (called from AppService) and
+    // released in the destructor via release_document().
+    size_t _api_doc_index = SIZE_MAX;
 };
 
 } // namespace api

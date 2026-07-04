@@ -58,7 +58,6 @@ void DataSource::session_save() {}
 void DataSource::close_file(unsigned long long dev_handle) { (void)dev_handle; }
 // Task D6.2: repeat-hold percentage — default 0; SigSession overrides.
 int DataSource::get_repeat_hold() { return 0; }
-void DataSource::broadcast_msg(int msg, int param) { (void)msg; (void)param; }
 bool DataSource::trigd() { return false; }
 uint8_t DataSource::trigd_ch() { return 0; }
 bool DataSource::dso_status_is_valid() { return false; }

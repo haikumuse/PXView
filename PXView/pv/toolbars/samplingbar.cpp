@@ -791,7 +791,7 @@ void SamplingBar::update_sample_count_selector() {
   // NOTE: keep _updating_sample_count = true across the manual on_samplecount_sel
   // call below. on_samplecount_sel -> apply_sample_count -> commit_hori_res ->
   // set_config_uint64(SR_CONF_TIMEBASE) -> DeviceAgent::config_changed (sync) ->
-  // SigSession::DeviceConfigChanged -> broadcast_msg(DSV_MSG_SAMPLE_COUNT_UPDATED)
+  // SigSession::DeviceConfigChanged -> broadcast_async<SampleCountUpdated>
   // -> MainWindow::on_device_options -> update_sample_count_selector (re-entry).
   // The entry guard at the top of this function (line 650) breaks the loop ONLY
   // if _updating_sample_count is still true on re-entry. Clearing the flag here
@@ -861,7 +861,7 @@ void SamplingBar::apply_sample_count(double &hori_res) {
     }
   }
 
-  _session->broadcast_msg(DSV_MSG_DEVICE_DURATION_UPDATED);
+  _session->broadcast_async<interface::SampleRateChanged>({});
 }
 
 void SamplingBar::on_samplecount_sel(int index) {
@@ -898,7 +898,7 @@ double SamplingBar::hori_knob(int dir) {
 
     if (_session->have_view_data() == false) {
       _session->apply_samplerate();
-      _session->broadcast_msg(DSV_MSG_DEVICE_DURATION_UPDATED);
+      _session->broadcast_async<interface::SampleRateChanged>({});
     }
   } else if ((dir < 0) &&
              (_sample_count->currentIndex() < _sample_count->count() - 1)) {
@@ -907,7 +907,7 @@ double SamplingBar::hori_knob(int dir) {
 
     if (_session->have_view_data() == false) {
       _session->apply_samplerate();
-      _session->broadcast_msg(DSV_MSG_DEVICE_DURATION_UPDATED);
+      _session->broadcast_async<interface::SampleRateChanged>({});
     }
   }
 
@@ -973,12 +973,13 @@ void SamplingBar::commit_settings() {
         _device_agent->set_config_bool(SR_CONF_RLE, rle_mode);
       }
       // R3: 采样率/采样数已修改，广播通知其他 GUI 组件刷新
-      // (MainWindow::OnMessage -> rebuild_signals; SigSession::OnMessage ->
-      // reload) R7: 同时发布 DEVICE_CONFIG_UPDATED（sample_rate/sample_limit
-      // 属于 设备配置变化），触发 SessionService 中此前为死代码的对应 case。
+      // (MainWindow::on_event(DeviceOptionsUpdated) -> rebuild_signals;
+      // SigSession::on_event(DeviceOptionsUpdated) -> reload) R7: 同时发布
+      // DEVICE_CONFIG_UPDATED（sample_rate/sample_limit 属于 设备配置变化），
+      // 触发 SessionService 中此前为死代码的对应 case。
       if (_session) {
-        _session->broadcast_msg(DSV_MSG_DEVICE_CONFIG_UPDATED);
-        _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+        _session->broadcast_async<interface::DeviceConfigUpdated>({});
+        _session->broadcast_async<interface::DeviceOptionsUpdated>({});
       }
     }
   }
@@ -1207,7 +1208,7 @@ void SamplingBar::on_mode_radio_clicked(int id) {
     _session->set_collect_mode(COLLECT_SINGLE);
     if (_device_agent->is_demo()) {
       _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "protocol");
-      _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+      _session->broadcast_async<interface::DemoModeChanged>({});
     }
     if (_context && _context->view()) {
       _context->view()->dock_ui_state().dock_collect_mode =
@@ -1231,7 +1232,7 @@ void SamplingBar::on_mode_radio_clicked(int id) {
     }
     if (_device_agent->is_demo()) {
       _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
-      _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+      _session->broadcast_async<interface::DemoModeChanged>({});
     }
     if (_context && _context->view()) {
       _context->view()->dock_ui_state().dock_collect_mode =
@@ -1242,7 +1243,7 @@ void SamplingBar::on_mode_radio_clicked(int id) {
     _session->set_collect_mode(COLLECT_LOOP);
     if (_device_agent->is_demo()) {
       _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
-      _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+      _session->broadcast_async<interface::DemoModeChanged>({});
     }
     if (_context && _context->view()) {
       _context->view()->dock_ui_state().dock_collect_mode =
@@ -1261,7 +1262,7 @@ void SamplingBar::on_collect_mode() {
 
     if (_device_agent->is_demo()) {
       _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "protocol");
-      _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+      _session->broadcast_async<interface::DemoModeChanged>({});
     }
   } else if (act == _action_repeat) {
     if (_device_agent->is_stream_mode() || _device_agent->is_demo()) {
@@ -1281,14 +1282,14 @@ void SamplingBar::on_collect_mode() {
 
     if (_device_agent->is_demo()) {
       _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
-      _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+      _session->broadcast_async<interface::DemoModeChanged>({});
     }
   } else if (act == _action_loop) {
     _session->set_collect_mode(COLLECT_LOOP);
 
     if (_device_agent->is_demo()) {
       _device_agent->set_config_string(SR_CONF_PATTERN_MODE, "random");
-      _session->broadcast_msg(DSV_MSG_DEMO_OPERATION_MODE_CHNAGED);
+      _session->broadcast_async<interface::DemoModeChanged>({});
     }
   }
 

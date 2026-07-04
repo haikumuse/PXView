@@ -321,7 +321,7 @@ void AnalogSignal::set_zero_ratio(double ratio) {
     return;
 
   // Same nested-broadcast guard as DsoSignal::set_zero_ratio: set_config_uint16
-  // triggers synchronous config_changed -> broadcast_msg, which may delete this
+  // triggers synchronous config_changed -> broadcast_async<>, which may delete this
   // AnalogSignal mid-method.
   auto model = _model;
   _zero_offset = ratio2value(ratio);

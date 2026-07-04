@@ -11,6 +11,7 @@ set(PXVIEW_CORE_SOURCES
     # Core session/orchestration
     PXView/pv/log.cpp
     PXView/pv/core/eventbus.cpp
+    PXView/pv/core/sessionstatecontext.cpp
     PXView/pv/core/filterprocessor.cpp
     PXView/pv/core/decodetaskmanager.cpp
     PXView/pv/core/datafeedparser.cpp

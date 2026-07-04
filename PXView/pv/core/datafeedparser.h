@@ -5,25 +5,25 @@
 
 namespace pv {
 
-class SigSession;
-
 namespace core {
 
 class EventBus;
+class SessionStateContext;
 
 /**
  * DataFeedParser — owns the data feed callback trampoline and the feed_in_*
  * packet dispatch methods. Extracted from SigSession (SubTask 10.4) as a
  * mechanical refactoring: no behavior change.
  *
- * The parser holds an injected EventBus* (for trigger_message) and a
- * SigSession* (for accessing _capture_data / _view_data / _device_agent /
- * _is_triged / _data_lock / etc.). Declared as a friend of SigSession so it
- * can touch private members.
+ * The parser holds an injected EventBus* (for typed event dispatch via
+ * broadcast_async<T>/broadcast_sync<T>) and a SessionStateContext* (for
+ * accessing capture_data / view_data / device_agent / is_triged / data_lock
+ * / etc.). modernize-core-layer-radical phase 1 replaced the previous
+ * SigSession* + friend-declaration coupling.
  */
 class DataFeedParser {
 public:
-  DataFeedParser(EventBus *bus, SigSession *session);
+  DataFeedParser(EventBus *bus, SessionStateContext *state);
   ~DataFeedParser();
 
   // Static trampoline registered with libsigrok. user_data is a DataFeedParser*.
@@ -43,17 +43,16 @@ private:
   void feed_in_analog(const sr_datafeed_analog &o);
 
   EventBus *_event_bus;
-  // Circular reference: this manager needs many SigSession state fields and
-  // methods (_capture_data / _view_data / _device_agent / _is_triged /
-  // _trig_time / _trigger_flag / _trigger_ch / _hw_replied / _dso_status_valid /
-  // _dso_status / _error / _data_mutex / _decode_task_manager /
-  // _capture_manager / _spectrum_stacks / _math_stack / receive_header() /
+  // Shared session state (capture_data / view_data / device_agent /
+  // is_triged / trig_time / trigger_flag / trigger_ch / hw_replied /
+  // dso_status_valid / dso_status / error / data_mutex / decode_task_manager /
+  // capture_manager / spectrum_stacks / math_stack / receive_header() /
   // receive_trigger() / frame_began() / frame_ended() / session_error() /
   // set_receive_data_len() / set_cur_snap_samplerate() / set_session_time() /
-  // data_lock() / get_ch_num()) and cannot be easily decoupled without
-  // further SigSession splitting. This is a known tech debt tracked by
-  // modernize-core-layer-final Task 7.
-  SigSession *_session;
+  // data_lock() / get_ch_num()) accessed via SessionStateContext accessors.
+  // modernize-core-layer-radical phase 1 replaced the previous SigSession* +
+  // friend-declaration coupling.
+  SessionStateContext *_state;
 };
 
 } // namespace core

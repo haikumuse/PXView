@@ -21,6 +21,7 @@
 #include "session_service.h"
 
 #include "../sigsession.h"
+#include "../core/documentregistry.h"
 #include "../deviceagent.h"
 #include "../dsvdef.h"
 #include "../data/signalmodel.h"
@@ -62,6 +63,12 @@
 
 #ifdef WIN32
 #include <windows.h>
+// windows.h defines `interface` as a macro for COM interface declarations,
+// which conflicts with the `pv::interface` namespace used by events.h. The
+// events.h header undefs it at include time, but windows.h is included here
+// AFTER session_service.h, re-defining the macro. Undef again so the
+// on_event(const pv::interface::XxxPrev &) definitions below parse correctly.
+#undef interface
 #endif
 
 namespace pv {
@@ -283,29 +290,26 @@ inline std::shared_ptr<pv::data::DecoderStack> find_stack_by_instance_id(
 SessionService::SessionService(SigSession *session, DeviceAgent *device)
     : _session(session), _device(device),
       _capture_id(0), _wait_capture_stop_flag(false) {
-    // _api_document defaults to nullptr via its in-class default initializer.
+    // _api_doc_index defaults to SIZE_MAX via its in-class default initializer.
     // It is later injected via set_api_document() by AppService.
     if (_session) {
         _session->add_callback(this);
-        _session->add_msg_listener(this);
+        // Register as IEventListener to receive all typed events.
+        _session->add_event_listener(this);
     }
 }
 
 SessionService::~SessionService() {
     if (_session) {
         _session->remove_callback(this);
+        _session->remove_event_listener(this);
     }
-    // Release the MCP-dedicated document. register_document() is non-owning
-    // (SigSession::_all_documents only holds a raw pointer), so we must
-    // unregister it here to avoid dangling entries, then delete the object we
-    // own. This mirrors TabContext::~TabContext() which owns and deletes its
-    // own _document after the session has been told to unregister it.
-    if (_api_document) {
-        if (_session) {
-            _session->unregister_document(_api_document);
-        }
-        delete _api_document;
-        _api_document = nullptr;
+    // phase 2: release the MCP-dedicated document slot. Ownership is held by
+    // DocumentRegistry, so release_document() frees the document (marked
+    // deletion — slot stays, index stays stable). No manual unregister + delete.
+    if (_api_doc_index != SIZE_MAX && _session && _session->document_registry()) {
+        _session->document_registry()->release_document(_api_doc_index);
+        _api_doc_index = SIZE_MAX;
     }
 }
 
@@ -313,20 +317,24 @@ SessionService::~SessionService() {
 // MCP document injection
 // ---------------------------------------------------------------------------
 
-void SessionService::set_api_document(pv::data::SessionDocument *doc) {
+void SessionService::set_api_document(size_t doc_index) {
     // If a previous document was injected, release it first to avoid leaks.
-    if (_api_document && _api_document != doc) {
-        if (_session) {
-            _session->unregister_document(_api_document);
-        }
-        delete _api_document;
+    if (_api_doc_index != SIZE_MAX && _api_doc_index != doc_index &&
+        _session && _session->document_registry()) {
+        _session->document_registry()->release_document(_api_doc_index);
     }
-    _api_document = doc;
+    _api_doc_index = doc_index;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+pv::data::SessionDocument *SessionService::api_document() const {
+    if (_api_doc_index == SIZE_MAX || !_session || !_session->document_registry())
+        return nullptr;
+    return _session->document_registry()->get_document_by_index(_api_doc_index);
+}
 
 bool SessionService::is_gui_mode() {
     // Detects whether we're running inside the full GUI (QApplication) or
@@ -372,7 +380,7 @@ Result<void> SessionService::start_capture(bool instant) {
         return Result<void>::Fail(ErrorCode::CaptureInProgress,
                                  "Capture already in progress");
 
-    bool ok = _session->start_capture(instant, _api_document);
+    bool ok = _session->start_capture(instant, api_document());
     if (!ok)
         return Result<void>::Fail(ErrorCode::DeviceError,
                                  "Failed to start capture");
@@ -464,9 +472,9 @@ Result<void> SessionService::wait_capture_complete(uint64_t timeout_ms) {
                                  "Unexpected capture state");
 
     // Block until capture stops or timeout. In GUI mode we use QEventLoop so
-    // that ISessionCallback/IMessageListener callbacks (which arrive on the
-    // main thread) are processed; in headless mode we use a plain
-    // condition_variable + mutex because there is no event loop to pump.
+    // that ISessionCallback callbacks (which arrive on the main thread) are
+    // processed; in headless mode we use a plain condition_variable + mutex
+    // because there is no event loop to pump.
     _wait_capture_stop_flag = false;
 
     if (is_gui_mode()) {
@@ -660,7 +668,7 @@ Result<int> SessionService::configure_and_start(
     // Note: We do NOT clear existing decoders here anymore.
     // If the user added decoders before starting capture (the recommended
     // workflow for MCP), those decoders should be preserved so that
-    // DSV_MSG_COPY_TO_DOC_DONE can automatically start decoding for them
+    // CopyToDocDone can automatically start decoding for them
     // when the capture completes.
     //
     // If the user wants to clear decoders, they can call
@@ -937,7 +945,7 @@ Result<int> SessionService::configure_and_start(
     dbg_log("configure_and_start: step 8 - start capture");
 
     // 10. Start capture
-    bool ok = _session->start_capture(instant, _api_document);
+    bool ok = _session->start_capture(instant, api_document());
     if (!ok) {
         dbg_log("configure_and_start: start_capture FAILED");
         return Result<int>::Fail(ErrorCode::DeviceError,
@@ -2177,7 +2185,7 @@ std::vector<DecoderInstance> SessionService::get_active_decoders() const {
     if (!_session)
         return result;
 
-    auto &stacks = _session->get_decoder_stacks(_api_document);
+    auto &stacks = _session->get_decoder_stacks(api_document());
     for (size_t i = 0; i < stacks.size(); i++) {
         auto stack = stacks[i];
         if (!stack)
@@ -2234,7 +2242,7 @@ Result<std::string> SessionService::add_decoder(
         auto do_stack = [this, dec, &options, &channel_map, &label, &stack_on_analyzer_id]() -> Result<std::string> {
             // Find the parent DecoderStack by its stable
             // "<handle_id>:<version>" instance identifier.
-            auto &stacks = _session->get_decoder_stacks(_api_document);
+            auto &stacks = _session->get_decoder_stacks(api_document());
             std::shared_ptr<data::DecoderStack> parent_stack =
                 find_stack_by_instance_id(stacks, stack_on_analyzer_id);
 
@@ -2374,7 +2382,7 @@ Result<std::string> SessionService::add_decoder(
         // Start decode if data is ready and copy is not in progress
         {
             std::string instance_id = result.value();
-            auto &stacks = _session->get_decoder_stacks(_api_document);
+            auto &stacks = _session->get_decoder_stacks(api_document());
             std::shared_ptr<data::DecoderStack> decoder_stack =
                 find_stack_by_instance_id(stacks, instance_id);
 
@@ -2386,11 +2394,11 @@ Result<std::string> SessionService::add_decoder(
                         // add_decode_task() is now private; rst_decoder()
                         // resets this single stack and attaches view data
                         // before starting its decode task.
-                        auto &st = _session->get_decoder_stacks(_api_document);
+                        auto &st = _session->get_decoder_stacks(api_document());
                         for (size_t i = 0; i < st.size(); i++) {
                             if (st[i].get() == decoder_stack.get()) {
                                 _session->rst_decoder(static_cast<int>(i),
-                                                      _api_document);
+                                                      api_document());
                                 break;
                             }
                         }
@@ -2486,27 +2494,27 @@ Result<std::string> SessionService::add_decoder(
 
         // Do NOT call processEvents() or wait for _copy_in_progress here.
         // Calling processEvents() while inside do_add() on the main thread
-        // causes a crash: it processes DSV_MSG_COPY_TO_DOC_DONE which calls
+        // causes a crash: it processes CopyToDocDone which calls
         // add_decode_task(), starting a decode thread that emits
         // new_decode_data() signals. The main thread is still inside do_add()
         // (e.g., in rebuild_decoder_pannel), causing a race in Qt's signal
         // delivery mechanism (crash in Qt6Core.dll).
         //
         // Instead, if copy is in progress, we just set up the decoder and
-        // let DSV_MSG_COPY_TO_DOC_DONE start the decode task for us.
+        // let CopyToDocDone start the decode task for us.
         // If copy is NOT in progress, we defer the decode start to after
         // do_add() returns using QTimer::singleShot.
 
         // Do NOT call processEvents() or wait for _copy_in_progress here.
         // Calling processEvents() while inside do_add() on the main thread
-        // causes a crash: it processes DSV_MSG_COPY_TO_DOC_DONE which calls
+        // causes a crash: it processes CopyToDocDone which calls
         // add_decode_task(), starting a decode thread that emits
         // new_decode_data() signals. The main thread is still inside do_add()
         // (e.g., in rebuild_decoder_pannel), causing a race in Qt's signal
         // delivery mechanism (crash in Qt6Core.dll).
         //
         // Instead, if copy is in progress, we just set up the decoder and
-        // let DSV_MSG_COPY_TO_DOC_DONE start the decode task for us.
+        // let CopyToDocDone start the decode task for us.
         // If copy is NOT in progress, we defer the decode start to after
         // do_add() returns using QTimer::singleShot.
 
@@ -2518,7 +2526,7 @@ Result<std::string> SessionService::add_decoder(
         dstatus->m_format = (int)DecoderDataFormat::hex;
 
         bool ok = _session->add_decoder(dec, true, dstatus, sub_decoders,
-                                        decoder_stack, _api_document);
+                                        decoder_stack, api_document());
 
         if (!ok)
             return Result<std::string>::Fail(ErrorCode::DecoderError,
@@ -2752,12 +2760,12 @@ Result<std::string> SessionService::add_decoder(
             //
             // Three cases:
             // 1. No view data yet (added before capture): Just set
-            //    options_changed. When capture completes, DSV_MSG_REV_END_PACKET
-            //    → copy_data_to_document → DSV_MSG_COPY_TO_DOC_DONE will
+            //    options_changed. When capture completes, RevEndPacket
+            //    → copy_data_to_document → CopyToDocDone will
             //    automatically call frame_ended() + add_decode_task() for this
             //    decoder.
             // 2. Copy in progress (added during capture): Same as case 1 —
-            //    DSV_MSG_COPY_TO_DOC_DONE will start the decode for us.
+            //    CopyToDocDone will start the decode for us.
             // 3. Data is ready (added after capture): Set capture_end_flag and
             //    frame_ended(), then defer add_decode_task() to after do_add()
             //    returns via QTimer::singleShot.
@@ -2798,17 +2806,17 @@ Result<std::string> SessionService::add_decoder(
 
     // Now that do_add() has returned and the main thread is free,
     // start the decode task ONLY if copy was not in progress.
-    // If copy was in progress, DSV_MSG_COPY_TO_DOC_DONE will start
+    // If copy was in progress, CopyToDocDone will start
     // the decode for us — we must not start it ourselves or we'll
     // get a duplicate decode task.
     {
         std::string instance_id = result.value();
-        auto &stacks = _session->get_decoder_stacks(_api_document);
+        auto &stacks = _session->get_decoder_stacks(api_document());
         std::shared_ptr<data::DecoderStack> decoder_stack =
             find_stack_by_instance_id(stacks, instance_id);
 
         // Only start decode if copy is NOT in progress.
-        // If copy is in progress, DSV_MSG_COPY_TO_DOC_DONE handler
+        // If copy is in progress, CopyToDocDone handler
         // will iterate decoder_stacks() and start decode for us.
         if (decoder_stack && decoder_stack->options_changed() &&
             _session->have_view_data() &&
@@ -2821,11 +2829,11 @@ Result<std::string> SessionService::add_decoder(
                     // add_decode_task() is now private; rst_decoder()
                     // resets this single stack and attaches view data
                     // before starting its decode task.
-                    auto &st = _session->get_decoder_stacks(_api_document);
+                    auto &st = _session->get_decoder_stacks(api_document());
                     for (size_t i = 0; i < st.size(); i++) {
                         if (st[i].get() == decoder_stack.get()) {
                             _session->rst_decoder(static_cast<int>(i),
-                                                  _api_document);
+                                                  api_document());
                             break;
                         }
                     }
@@ -2841,7 +2849,7 @@ Result<std::string> SessionService::add_decoder(
         // The previous code reinterpret_cast<std::stoll(instance_id)> which
         // only worked when instance_id was a stringified raw pointer and was
         // undefined behavior for the new handle:version format.
-        auto &stacks_for_wait = _session->get_decoder_stacks(_api_document);
+        auto &stacks_for_wait = _session->get_decoder_stacks(api_document());
         std::shared_ptr<data::DecoderStack> decoder_stack =
             find_stack_by_instance_id(stacks_for_wait, instance_id);
 
@@ -2852,7 +2860,7 @@ Result<std::string> SessionService::add_decoder(
             QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
 
             // First, wait for copy_data_to_document to complete if it's
-            // still in progress. The DSV_MSG_COPY_TO_DOC_DONE handler will
+            // still in progress. The CopyToDocDone handler will
             // start the decode task for our new decoder.
             {
                 int wait_count = 0;
@@ -2880,11 +2888,11 @@ Result<std::string> SessionService::add_decoder(
             // wait pattern which DEADLOCKED when the caller blocked the main
             // thread inside loop.exec()/wait().
             auto remove_this_stack = [this, decoder_stack]() {
-                auto &stacks = _session->get_decoder_stacks(_api_document);
+                auto &stacks = _session->get_decoder_stacks(api_document());
                 for (size_t i = 0; i < stacks.size(); i++) {
                     if (stacks[i].get() == decoder_stack.get()) {
                         _session->remove_decoder(static_cast<int>(i),
-                                                 _api_document);
+                                                 api_document());
                         break;
                     }
                 }
@@ -2927,14 +2935,14 @@ Result<void> SessionService::remove_decoder(const std::string &instance_id) {
     // triggers signals, so it MUST run on the main thread.
 
     auto do_remove = [this, &instance_id]() -> Result<void> {
-        auto &stacks = _session->get_decoder_stacks(_api_document);
+        auto &stacks = _session->get_decoder_stacks(api_document());
         for (size_t i = 0; i < stacks.size(); i++) {
             auto stack = stacks[i];
             if (!stack)
                 continue;
 
             if (make_instance_id(stack.get()) == instance_id) {
-                _session->remove_decoder(static_cast<int>(i), _api_document);
+                _session->remove_decoder(static_cast<int>(i), api_document());
 
                 broadcast_event(ServiceEvent::DecoderRemoved,
                                 {{"instance_id", instance_id}});
@@ -2957,7 +2965,7 @@ Result<void> SessionService::clear_all_decoders() {
 
     // Snapshot the current decoder stacks BEFORE clearing so each removed
     // stack can be reported via DecoderRemoved events (mirrors remove_decoder).
-    auto &stacks_before = _session->get_decoder_stacks(_api_document);
+    auto &stacks_before = _session->get_decoder_stacks(api_document());
     std::vector<std::string> removed_ids;
     removed_ids.reserve(stacks_before.size());
     for (auto stack : stacks_before) {
@@ -2991,7 +2999,7 @@ Result<std::vector<DecoderAnnotation>> SessionService::get_decoder_annotations(
             ErrorCode::InternalError, "Session is null");
 
     // Find the decoder stack by instance_id
-    auto &stacks = _session->get_decoder_stacks(_api_document);
+    auto &stacks = _session->get_decoder_stacks(api_document());
 
     // MCP debug
     {
@@ -3461,7 +3469,7 @@ Result<void> SessionService::export_decoder_table(
         return Result<void>::Fail(ErrorCode::InternalError,
                                   "Session is null");
 
-    auto &stacks = _session->get_decoder_stacks(_api_document);
+    auto &stacks = _session->get_decoder_stacks(api_document());
     if (stacks.empty())
         return Result<void>::Fail(ErrorCode::NoData,
                                   "No active decoders");
@@ -3858,7 +3866,7 @@ void SessionService::data_updated() {
 
     // Check for decode progress and emit DecodeProgress events
     if (_session) {
-        auto &stacks = _session->get_decoder_stacks(_api_document);
+        auto &stacks = _session->get_decoder_stacks(api_document());
         for (auto stack : stacks) {
             if (!stack) continue;
             if (stack->IsRunning()) {
@@ -3944,179 +3952,187 @@ void SessionService::receive_header() {
                     {{"detail", "header_received"}});
 }
 
-void SessionService::trigger_message(int msg) {
-    broadcast_event(ServiceEvent::CaptureStateChanged,
-                    {{"trigger_msg", std::to_string(msg)}});
-}
-
 void SessionService::delay_prop_msg(QString strMsg) {
     broadcast_event(ServiceEvent::ErrorOccurred,
                     {{"message", strMsg.toStdString()}});
 }
 
 // ===========================================================================
-// IMessageListener implementation
+// IEventListener implementation
 // ===========================================================================
 
-void SessionService::OnMessage(int msg, int param) {
-    switch (msg) {
-    // Collect lifecycle
-    case DSV_MSG_START_COLLECT_WORK_PREV:
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"detail", "start_collect_prev"}});
-        break;
-    case DSV_MSG_START_COLLECT_WORK:
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"detail", "start_collect"}});
-        break;
-    case DSV_MSG_COLLECT_START:
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"detail", "collect_start"}});
-        break;
-    case DSV_MSG_COLLECT_END:
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"detail", "collect_end"}});
-        break;
-    case DSV_MSG_END_COLLECT_WORK_PREV:
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"detail", "end_collect_prev"}});
-        break;
-    case DSV_MSG_END_COLLECT_WORK:
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"detail", "end_collect"}});
-        break;
-    case DSV_MSG_REV_END_PACKET:
-        broadcast_event(ServiceEvent::DataUpdated,
-                        {{"detail", "end_packet"}});
-        break;
-    case DSV_MSG_CAPTURE_STATE_CHANGED:
-        broadcast_event(ServiceEvent::CaptureStateChanged);
-        break;
+// The 4 PREV ordering events are emitted via broadcast_sync<XxxPrev>({}).
+// The 32 notification events are emitted via broadcast_async<TypedEvent>({}).
+// Each handler re-broadcasts as a ServiceEvent for MCP/WS clients, mirroring
+// the former int-message switch cases verbatim.
 
-    // Device events
-    case DSV_MSG_DEVICE_LIST_UPDATED:
-        broadcast_event(ServiceEvent::DeviceListUpdated);
-        break;
-    case DSV_MSG_DEVICE_MODE_CHANGED:
-        broadcast_event(ServiceEvent::DeviceModeChanged);
-        break;
-    case DSV_MSG_DEVICE_CONFIG_UPDATED:
-        broadcast_event(ServiceEvent::DeviceConfigChanged);
-        break;
-    case DSV_MSG_CURRENT_DEVICE_DETACHED:
-        broadcast_event(ServiceEvent::DeviceDetached);
-        break;
-    case DSV_MSG_NEW_USB_DEVICE:
-        broadcast_event(ServiceEvent::NewUsbDevice);
-        break;
-    case DSV_MSG_CURRENT_DEVICE_CHANGED:
-        broadcast_event(ServiceEvent::DeviceModeChanged,
-                        {{"detail", "device_changed"}});
-        break;
-    case DSV_MSG_DEVICE_OPTIONS_UPDATED:
-        broadcast_event(ServiceEvent::DeviceConfigChanged,
-                        {{"detail", "options_updated"}});
-        break;
-    case DSV_MSG_DEVICE_DURATION_UPDATED:
-        broadcast_event(ServiceEvent::DeviceConfigChanged,
-                        {{"detail", "duration_updated"}});
-        break;
-    case DSV_MSG_COLLECT_MODE_CHANGED:
-        broadcast_event(ServiceEvent::DeviceConfigChanged,
-                        {{"detail", "collect_mode_changed"}});
-        break;
-    case DSV_MSG_DATA_POOL_CHANGED:
-        broadcast_event(ServiceEvent::DataUpdated,
-                        {{"detail", "data_pool_changed"}});
-        break;
-    case DSV_MSG_SIMPLE_TRIGGER_CHANGED:
-        broadcast_event(ServiceEvent::DeviceConfigChanged,
-                        {{"detail", "trigger_changed"}});
-        break;
+void SessionService::on_event(const pv::interface::StoreConfPrev &) {
+    broadcast_event(ServiceEvent::SaveComplete,
+                    {{"detail", "store_conf_prev"}});
+}
 
-    // Glitch filter
-    case DSV_MSG_GLITCH_FILTER_STARTED:
-        broadcast_event(ServiceEvent::GlitchFilterStarted);
-        break;
-    case DSV_MSG_GLITCH_FILTER_PROGRESS:
-        broadcast_event(ServiceEvent::GlitchFilterProgress);
-        break;
-    case DSV_MSG_GLITCH_FILTER_COMPLETED:
-        broadcast_event(ServiceEvent::GlitchFilterCompleted);
-        break;
-    case DSV_MSG_GLITCH_FILTER_CLEARED:
-        broadcast_event(ServiceEvent::GlitchFilterCleared);
-        break;
+void SessionService::on_event(const pv::interface::CurrentDeviceChangePrev &) {
+    // No former case for this code — SessionService did not handle
+    // CurrentDeviceChangePrev. Empty override satisfies the
+    // IEventListener virtual dispatch.
+}
 
-    // Signal invert
-    case DSV_MSG_SIGNAL_INVERT_STARTED:
-        broadcast_event(ServiceEvent::SignalInvertStarted);
-        break;
-    case DSV_MSG_SIGNAL_INVERT_COMPLETED:
-        broadcast_event(ServiceEvent::SignalInvertCompleted);
-        break;
-    case DSV_MSG_SIGNAL_INVERT_CLEARED:
-        broadcast_event(ServiceEvent::SignalInvertCleared);
-        break;
+void SessionService::on_event(const pv::interface::StartCollectWorkPrev &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"detail", "start_collect_prev"}});
+}
 
-    // Copy / sample count
-    case DSV_MSG_COPY_TO_DOC_DONE:
-        broadcast_event(ServiceEvent::DataUpdated,
-                        {{"detail", "copy_to_doc_done"}});
-        break;
-    case DSV_MSG_SAMPLE_COUNT_UPDATED:
-        broadcast_event(ServiceEvent::DataUpdated,
-                        {{"detail", "sample_count_updated"}});
-        break;
+void SessionService::on_event(const pv::interface::EndCollectWorkPrev &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"detail", "end_collect_prev"}});
+}
 
-    // Document / capture ownership changes
-    case DSV_MSG_ACTIVE_DOCUMENT_CHANGED:
-        broadcast_event(ServiceEvent::ChannelConfigChanged,
-                        {{"change", "active_document"}});
-        break;
-    case DSV_MSG_COPY_IN_PROGRESS_CHANGED:
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"change", "copy_in_progress"}});
-        break;
-    case DSV_MSG_CAPTURE_OWNER_CHANGED:
-        // param carries the is_working flag (1 = capture in progress,
-        // 0 = idle). Forward it to subscribers so they can decide whether
-        // to refresh immediately (idle) or defer until capture ends.
-        broadcast_event(ServiceEvent::CaptureStateChanged,
-                        {{"change", "capture_owner"},
-                         {"is_working", param ? "true" : "false"}});
-        break;
+void SessionService::on_event(const pv::interface::StartCollectWork &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"detail", "start_collect"}});
+}
 
-    // Trigger & save
-    case DSV_MSG_TRIG_NEXT_COLLECT:
-        broadcast_event(ServiceEvent::TriggerReceived,
-                        {{"detail", "next_collect"}});
-        break;
-    case DSV_MSG_SAVE_COMPLETE:
-        broadcast_event(ServiceEvent::SaveComplete);
-        break;
-    case DSV_MSG_STORE_CONF_PREV:
-        broadcast_event(ServiceEvent::SaveComplete,
-                        {{"detail", "store_conf_prev"}});
-        break;
+void SessionService::on_event(const pv::interface::CollectStart &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"detail", "collect_start"}});
+}
 
-    // Decode
-    case DSV_MSG_CLEAR_DECODE_DATA:
-        broadcast_event(ServiceEvent::DecodeDone,
-                        {{"detail", "clear_decode_data"}});
-        break;
+void SessionService::on_event(const pv::interface::CollectEnd &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"detail", "collect_end"}});
+}
 
-    // App options
-    case DSV_MSG_APP_OPTIONS_CHANGED:
-    case DSV_MSG_FONT_OPTIONS_CHANGED:
-    case DSV_MSG_SHORTCUT_CHANGED:
-    case DSV_MSG_STYLE_CHANGED:
-        // App-level events, not directly mapped to session events
-        break;
+void SessionService::on_event(const pv::interface::EndCollectWork &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"detail", "end_collect"}});
+}
 
-    default:
-        break;
-    }
+void SessionService::on_event(const pv::interface::RevEndPacket &) {
+    broadcast_event(ServiceEvent::DataUpdated,
+                    {{"detail", "end_packet"}});
+}
+
+void SessionService::on_event(const pv::interface::CaptureStateChanged &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged);
+}
+
+void SessionService::on_event(const pv::interface::DeviceListUpdated &) {
+    broadcast_event(ServiceEvent::DeviceListUpdated);
+}
+
+void SessionService::on_event(const pv::interface::DeviceModeChanged &) {
+    broadcast_event(ServiceEvent::DeviceModeChanged);
+}
+
+void SessionService::on_event(const pv::interface::DeviceConfigUpdated &) {
+    broadcast_event(ServiceEvent::DeviceConfigChanged);
+}
+
+void SessionService::on_event(const pv::interface::DeviceDetached &) {
+    broadcast_event(ServiceEvent::DeviceDetached);
+}
+
+void SessionService::on_event(const pv::interface::UsbDeviceArrived &) {
+    broadcast_event(ServiceEvent::NewUsbDevice);
+}
+
+void SessionService::on_event(const pv::interface::CurrentDeviceChanged &) {
+    broadcast_event(ServiceEvent::DeviceModeChanged,
+                    {{"detail", "device_changed"}});
+}
+
+void SessionService::on_event(const pv::interface::DeviceOptionsUpdated &) {
+    broadcast_event(ServiceEvent::DeviceConfigChanged,
+                    {{"detail", "options_updated"}});
+}
+
+void SessionService::on_event(const pv::interface::SampleRateChanged &) {
+    broadcast_event(ServiceEvent::DeviceConfigChanged,
+                    {{"detail", "duration_updated"}});
+}
+
+void SessionService::on_event(const pv::interface::CollectModeChanged &) {
+    broadcast_event(ServiceEvent::DeviceConfigChanged,
+                    {{"detail", "collect_mode_changed"}});
+}
+
+void SessionService::on_event(const pv::interface::DataPoolChanged &) {
+    broadcast_event(ServiceEvent::DataUpdated,
+                    {{"detail", "data_pool_changed"}});
+}
+
+void SessionService::on_event(const pv::interface::SimpleTriggerChanged &) {
+    broadcast_event(ServiceEvent::DeviceConfigChanged,
+                    {{"detail", "trigger_changed"}});
+}
+
+void SessionService::on_event(const pv::interface::GlitchFilterStarted &) {
+    broadcast_event(ServiceEvent::GlitchFilterStarted);
+}
+
+void SessionService::on_event(const pv::interface::GlitchFilterProgress &) {
+    broadcast_event(ServiceEvent::GlitchFilterProgress);
+}
+
+void SessionService::on_event(const pv::interface::GlitchFilterCompleted &) {
+    broadcast_event(ServiceEvent::GlitchFilterCompleted);
+}
+
+void SessionService::on_event(const pv::interface::GlitchFilterCleared &) {
+    broadcast_event(ServiceEvent::GlitchFilterCleared);
+}
+
+void SessionService::on_event(const pv::interface::SignalInvertStarted &) {
+    broadcast_event(ServiceEvent::SignalInvertStarted);
+}
+
+void SessionService::on_event(const pv::interface::SignalInvertCompleted &) {
+    broadcast_event(ServiceEvent::SignalInvertCompleted);
+}
+
+void SessionService::on_event(const pv::interface::SignalInvertCleared &) {
+    broadcast_event(ServiceEvent::SignalInvertCleared);
+}
+
+void SessionService::on_event(const pv::interface::CopyToDocDone &) {
+    broadcast_event(ServiceEvent::DataUpdated,
+                    {{"detail", "copy_to_doc_done"}});
+}
+
+void SessionService::on_event(const pv::interface::SampleCountUpdated &) {
+    broadcast_event(ServiceEvent::DataUpdated,
+                    {{"detail", "sample_count_updated"}});
+}
+
+void SessionService::on_event(const pv::interface::ActiveDocumentChanged &) {
+    broadcast_event(ServiceEvent::ChannelConfigChanged,
+                    {{"change", "active_document"}});
+}
+
+void SessionService::on_event(const pv::interface::CopyInProgressChanged &) {
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"change", "copy_in_progress"}});
+}
+
+void SessionService::on_event(const pv::interface::CaptureOwnerChanged &ev) {
+    // new_owner non-null = capture in progress, null = idle.
+    broadcast_event(ServiceEvent::CaptureStateChanged,
+                    {{"change", "capture_owner"},
+                     {"is_working", ev.new_owner ? "true" : "false"}});
+}
+
+void SessionService::on_event(const pv::interface::TrigNextCollect &) {
+    broadcast_event(ServiceEvent::TriggerReceived,
+                    {{"detail", "next_collect"}});
+}
+
+void SessionService::on_event(const pv::interface::SaveComplete &) {
+    broadcast_event(ServiceEvent::SaveComplete);
+}
+
+void SessionService::on_event(const pv::interface::ClearDecodeData &) {
+    broadcast_event(ServiceEvent::DecodeDone,
+                    {{"detail", "clear_decode_data"}});
 }
 
 } // namespace api

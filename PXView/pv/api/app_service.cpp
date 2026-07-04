@@ -18,6 +18,7 @@
 #include "session_service.h"
 #include "../appcontrol.h"
 #include "../sigsession.h"
+#include "../core/documentregistry.h"
 #include "../deviceagent.h"
 #include "../config/appconfig.h"
 #include "../data/sessiondocument.h"
@@ -57,14 +58,14 @@ Result<void> AppService::initialize()
         // Create the MCP-dedicated document used as the stable target container
         // for MCP operations, decoupled from the UI's _active_document cursor.
         // This runs on the AppControl::Start() path, which is shared by both
-        // headless (--headless) and GUI modes, so _api_document is ready in
+        // headless (--headless) and GUI modes, so the api document is ready in
         // either case. SessionDocument takes the owning SigSession* so its
         // SignalConfigStore can reach DeviceAgent via session->get_device().
-        // Ownership of the document transfers to the SessionService (released
-        // in its destructor); SigSession::register_document() is non-owning.
-        auto* api_doc = new pv::data::SessionDocument(session);
-        session->register_document(api_doc);
-        svc->set_api_document(api_doc);
+        // phase 2: document ownership is held by DocumentRegistry (created via
+        // create_api_document, which returns the owning index). SessionService
+        // stores the index and releases it in its destructor.
+        size_t api_doc_idx = session->document_registry()->create_api_document(session);
+        svc->set_api_document(api_doc_idx);
 
         _sessions[session_id] = svc;
         _active_session_id = session_id;
@@ -260,7 +261,7 @@ Result<int> AppService::create_session(
     } else if (!device_id.empty()) {
         // If a device_id is specified, connect to that device.
         // However, if the device is already the active device in SigSession,
-        // skip set_device() to avoid triggering DSV_MSG_CURRENT_DEVICE_CHANGED
+        // skip set_device() to avoid triggering CurrentDeviceChanged
         // which causes massive UI rebuilds that can crash/hang when invoked
         // from the MCP context.
         bool device_already_active = false;
@@ -297,16 +298,16 @@ Result<int> AppService::create_session(
     // Inject the MCP-dedicated document (same rationale as in initialize()).
     // This branch is only reached when no SessionService exists yet; the
     // common path returns early above, reusing the SessionService created in
-    // initialize() which already has its _api_document set.
-    auto* api_doc = new pv::data::SessionDocument(session);
-    session->register_document(api_doc);
-    svc->set_api_document(api_doc);
+    // initialize() which already has its api document set.
+    // phase 2: document owned by DocumentRegistry; SessionService stores index.
+    size_t api_doc_idx = session->document_registry()->create_api_document(session);
+    svc->set_api_document(api_doc_idx);
 
     _sessions[session_id] = svc;
     _active_session_id = session_id;
 
     // Note: Do NOT call _on_new_tab_requested() here.
-    // set_device() above already triggers DSV_MSG_CURRENT_DEVICE_CHANGED
+    // set_device() above already triggers CurrentDeviceChanged
     // which rebuilds signals for the current tab. Creating a new tab
     // from the MCP context can cause crashes due to UI callback conflicts.
 

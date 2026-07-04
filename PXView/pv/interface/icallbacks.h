@@ -72,7 +72,6 @@ class ITriggerCallback : public virtual ISessionCallbackBase
 public:
     virtual void receive_trigger(quint64 trigger_pos) = 0;
     virtual void show_wait_trigger() = 0;
-    virtual void trigger_message(int msg) = 0;
 };
 
 // Session state callbacks: invoked on session-wide events such as errors,
@@ -106,61 +105,6 @@ public:
     virtual void switchLanguage(int language)=0;
 };
 
-
-#define DSV_MSG_START_COLLECT_WORK_PREV 5001
-#define DSV_MSG_START_COLLECT_WORK      5002
-#define DSV_MSG_COLLECT_START           5003
-#define DSV_MSG_COLLECT_END             5004
-#define DSV_MSG_END_COLLECT_WORK_PREV   5005
-#define DSV_MSG_END_COLLECT_WORK        5006
-#define DSV_MSG_REV_END_PACKET          5007
-#define DSV_MSG_CAPTURE_STATE_CHANGED   5008
-
-#define DSV_MSG_DEVICE_LIST_UPDATED     6000
-#define DSV_MSG_END_DEVICE_OPTIONS      6002
-#define DSV_MSG_DEVICE_OPTIONS_UPDATED  6003
-#define DSV_MSG_DEVICE_DURATION_UPDATED 6004
-#define DSV_MSG_DEVICE_MODE_CHANGED     6005
-#define DSV_MSG_CURRENT_DEVICE_CHANGE_PREV  6006
-#define DSV_MSG_CURRENT_DEVICE_CHANGED  6007
-#define DSV_MSG_NEW_USB_DEVICE          6008
-#define DSV_MSG_CURRENT_DEVICE_DETACHED 6009
-#define DSV_MSG_DEVICE_CONFIG_UPDATED   6010
-#define DSV_MSG_DEMO_OPERATION_MODE_CHNAGED   6011
-#define DSV_MSG_COLLECT_MODE_CHANGED    6012
-#define DSV_MSG_DATA_POOL_CHANGED       6013
-#define DSV_MSG_SIMPLE_TRIGGER_CHANGED  6014
-#define DSV_MSG_ACTIVE_DOCUMENT_CHANGED 6015
-#define DSV_MSG_GLITCH_FILTER_STARTED   6020
-#define DSV_MSG_GLITCH_FILTER_PROGRESS  6021
-#define DSV_MSG_GLITCH_FILTER_COMPLETED 6022
-#define DSV_MSG_GLITCH_FILTER_CLEARED   6023
-#define DSV_MSG_SIGNAL_INVERT_STARTED   6024
-#define DSV_MSG_SIGNAL_INVERT_COMPLETED 6025
-#define DSV_MSG_SIGNAL_INVERT_CLEARED   6026
-
-#define DSV_MSG_COPY_TO_DOC_DONE      6030
-#define DSV_MSG_SAMPLE_COUNT_UPDATED  6031
-#define DSV_MSG_COPY_IN_PROGRESS_CHANGED 6032
-#define DSV_MSG_CAPTURE_OWNER_CHANGED  6033
-#define DSV_MSG_TRIGGER_CONFIG_CHANGED 6034
-
-#define DSV_MSG_TRIG_NEXT_COLLECT       7001
-#define DSV_MSG_SAVE_COMPLETE           7002
-#define DSV_MSG_STORE_CONF_PREV         7003
-
-#define DSV_MSG_CLEAR_DECODE_DATA       8001
-
-#define DSV_MSG_APP_OPTIONS_CHANGED     9001
-#define DSV_MSG_FONT_OPTIONS_CHANGED    9002
-#define DSV_MSG_SHORTCUT_CHANGED        9003
-#define DSV_MSG_STYLE_CHANGED           9004
-
-class IMessageListener
-{
-public:
-    virtual void OnMessage(int msg, int param = 0) = 0;
-};
 
 class IDecoderPannel
 {

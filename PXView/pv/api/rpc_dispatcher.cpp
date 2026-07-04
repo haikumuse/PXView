@@ -836,7 +836,7 @@ JsonRpcResponse RpcDispatcher::on_start_capture(int id, const json& params) {
             mcp_dbg_log("on_start_capture: session ready, processing events");
 
             // If create_session() called set_device() (device was not already active),
-            // it triggered DSV_MSG_CURRENT_DEVICE_CHANGED which causes massive UI rebuilds.
+            // it triggered CurrentDeviceChanged which causes massive UI rebuilds.
             // We must let the UI process all pending events before continuing, otherwise
             // configure_and_start() will conflict with the ongoing UI rebuild.
             QCoreApplication::processEvents();

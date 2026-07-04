@@ -14,7 +14,6 @@
 
 namespace pv {
 
-class SigSession;
 class SessionData;
 
 namespace data {
@@ -24,6 +23,7 @@ class SessionDocument;
 namespace core {
 
 class EventBus;
+class SessionStateContext;
 
 /**
  * CaptureManager — owns the capture lifecycle (start/stop/exec/exit),
@@ -36,15 +36,24 @@ class EventBus;
  * Extracted from SigSession (SubTask 10.6) as a mechanical refactoring:
  * no behavior change, just code movement.
  *
- * Holds an injected EventBus* (for broadcast_msg / trigger_message /
- * dispatch_to<Iface>) and a SigSession* (for accessing _device_agent /
- * _capture_data / _view_data / _signal_models / _document_registry /
- * _is_working / _device_status / _is_triged / _trig_time / etc.).
- * Declared as a friend of SigSession so it can touch private members.
+ * Holds an injected EventBus* (for typed event dispatch via
+ * broadcast_async<T>/broadcast_sync<T>) and a SessionStateContext* (for
+ * accessing shared session state: device_agent / capture_data / view_data /
+ * signal_models /
+ * document_registry / is_working / device_status / is_triged / trig_time /
+ * etc.).
  */
 class CaptureManager {
 public:
-  CaptureManager(EventBus *bus, SigSession *session);
+  // Timer cadence constants (migrated from SigSession so this manager no
+  // longer needs to include sigsession.h). SigSession re-exports them via
+  // using-declarations for backward compatibility with View-layer callers.
+  static constexpr int RefreshTime = 500;
+  static constexpr int RepeatHoldDiv = 20;
+  static constexpr int FeedInterval = 50;
+  static constexpr int WaitShowTime = 500;
+
+  CaptureManager(EventBus *bus, SessionStateContext *state);
   ~CaptureManager();
 
   // --- Capture lifecycle ---
@@ -128,18 +137,17 @@ public:
 
 private:
   EventBus *_event_bus;
-  // Circular reference: this manager needs many SigSession state fields and
-  // methods (_device_agent / _capture_data / _view_data / _signal_models /
-  // _document_registry / _is_working / _device_status / _is_triged /
-  // _trigger_flag / _bClose / _data_mutex / decode_traces() /
+  // Shared session state (device_agent / capture_data / view_data /
+  // signal_models / document_registry / is_working / device_status /
+  // is_triged / trigger_flag / bClose / data_mutex / decode_traces() /
   // attach_data_to_signal() / sync_trigger_to_libsigrok() /
   // clear_all_decode_task2() / add_decode_task() / set_cur_snap_samplerate() /
   // set_cur_samplelimits() / set_session_time() / update_capture() /
-  // repeat_hold() / trigger_message() / clear_glitch_filter_state_for_capture() /
-  // get_ch_num() / cur_samplelimits()) and cannot be easily decoupled without
-  // further SigSession splitting. This is a known tech debt tracked by
-  // modernize-core-layer-final Task 7.
-  SigSession *_session;
+  // repeat_hold() / clear_glitch_filter_state_for_capture() / get_ch_num() /
+  // cur_samplelimits()) is accessed via SessionStateContext accessors.
+  // modernize-core-layer-radical phase 1 broke the SigSession circular
+  // dependency.
+  SessionStateContext *_state;
 
   data::DiskCacheConfig _disk_cache_config;
 

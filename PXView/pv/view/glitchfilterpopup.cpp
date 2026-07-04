@@ -662,7 +662,7 @@ void GlitchFilterPopup::on_auto_apply_toggled(bool checked)
 {
     // 用户勾选后,将标志写入 Core SessionData。
     // 实际的"采集完成后重新应用"逻辑在 SigSession 的
-    // DSV_MSG_REV_END_PACKET handler 中执行:检测到 _glitch_filter_auto_apply
+    // RevEndPacket handler 中执行:检测到 _glitch_filter_auto_apply
     // 且 thresholds/modes 非空时调用 _filter_processor->set_glitch_filter()。
     _view.session().set_glitch_filter_auto_apply(checked);
 }
