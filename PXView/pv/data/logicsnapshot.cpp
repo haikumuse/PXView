@@ -271,8 +271,8 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     }
 
     if (_ch_index.size() == 0) {
-      pxv_info("ERROR: all channels disalbed");
-      assert(0);
+      pxv_err("LogicSnapshot: all channels disabled, aborting");
+      return;
     }
   } else {
     for (auto &iter : _ch_data) {

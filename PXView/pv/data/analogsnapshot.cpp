@@ -29,6 +29,7 @@
  
 #include "analogsnapshot.h"
 #include "../dsvdef.h"
+#include "../log.h"
 
 using namespace std;
 
@@ -164,7 +165,10 @@ void AnalogSnapshot::first_payload(const sr_datafeed_analog &analog, uint64_t to
 {
     _total_sample_count = total_sample_count;
     _unit_bytes = (analog.unit_bits + 7) / 8;
-    assert(_unit_bytes > 0);
+    if (_unit_bytes <= 0) {
+        pxv_err("AnalogSnapshot: _unit_bytes<=0, aborting");
+        return;
+    }
     assert(_unit_bytes <= sizeof(uint64_t));
 
     _channel_num = 0; // The enabled and disabled channels count.
@@ -176,6 +180,16 @@ void AnalogSnapshot::first_payload(const sr_datafeed_analog &analog, uint64_t to
         if (probe->type == SR_CHANNEL_ANALOG) {
             _channel_num ++;
         }
+    }
+
+    // 防止 _envelope_levels[DS_MAX_ANALOG_PROBES_NUM][ScaleStepCount] 固定数组越界:
+    // PXView fork 假设最多 DS_MAX_ANALOG_PROBES_NUM(=4) 个 analog 通道(硬件限制),
+    // 但 srstd 上游驱动可能返回更多通道。超出时截断并记录警告,避免越界写入破坏
+    // 后续成员(_enabled_channel_indexs 等)导致 SIGSEGV。
+    if (_channel_num > DS_MAX_ANALOG_PROBES_NUM) {
+        pxv_err("AnalogSnapshot: analog channel count %u exceeds DS_MAX_ANALOG_PROBES_NUM=%d, truncating (srstd device may report more channels than PXView fork expects)",
+                _channel_num, DS_MAX_ANALOG_PROBES_NUM);
+        _channel_num = DS_MAX_ANALOG_PROBES_NUM;
     }
 
     bool isOk = true;

@@ -259,6 +259,15 @@ int srstd_packet_to_pxview(const void *src, struct sr_datafeed_packet *dst)
         px_analog = g_new0(struct sr_datafeed_analog, 1);
         px_analog->data = sa->data; /* 共享指针 */
         px_analog->num_samples = (int)sa->num_samples;
+        
+        /* 提取 unitsize 转换给 PXView 的 unit_bits */
+        if (sa->encoding) {
+            uint32_t unitsize = *(const uint32_t *)sa->encoding;
+            px_analog->unit_bits = unitsize > 0 ? (int)(unitsize * 8) : 8;
+        } else {
+            px_analog->unit_bits = 8;
+        }
+        
         /* encoding/meaning/spec 布局不兼容,不转换;mq/unit 等保持 0 */
         dst->payload = px_analog;
     }

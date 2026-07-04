@@ -981,6 +981,7 @@ SR_API int ds_release_actived_device()
 	}	
 
 	close_device_instance(lib_ctx.actived_device_instance);
+	lib_ctx.actived_device_instance = NULL;
 
 	// Destroy current session.
 	sr_session_destroy();

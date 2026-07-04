@@ -50,8 +50,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include "pv/crash/crash_handler.h"
-#include "pv/crash/crash_reporter.h"
 #endif
 
 void usage()
@@ -278,12 +276,6 @@ int main(int argc, char *argv[])
 	//----------------------init log
 	pxv_log_init(); // Don't call before QApplication be inited
 
-#ifdef _WIN32
-	// Install crash handler BEFORE AppControl::Init() (which starts Python and
-	// may register CRT signal() handlers). SetUnhandledExceptionFilter is the
-	// main line of defense — Win32 layer, not affected by Python's CRT signals.
-	pv::crash::install_crash_handler();
-#endif
 
 	if (bStoreLog && logLevel < XLOG_LEVEL_DBG){
 		logLevel = XLOG_LEVEL_DBG;
@@ -363,14 +355,6 @@ int main(int argc, char *argv[])
 		w.ShowFormInit();
 		w.ShowHelpDocAsync();  //to show the dailog for open help document
 
-#ifdef _WIN32
-		// Defer the crash-report dialog so the main window paints first.
-		// Mirrors ShowHelpDocAsync()'s singleShot pattern; 800ms is later than
-		// help-doc's 300ms so the report never interrupts first paint.
-		QTimer::singleShot(800, &w, [&w]() {
-			pv::crash::show_crash_report_if_exists(&w);
-		});
-#endif
 
 		ret = a.exec(); //Run the application
 

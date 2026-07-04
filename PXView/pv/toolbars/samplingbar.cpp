@@ -722,7 +722,16 @@ void SamplingBar::update_sample_count_selector() {
   else
     duration = hw_duration;
 
-  assert(duration > 0);
+  if (duration <= 0) {
+    // Fallback for devices without hardware depth limits (like srstd demo)
+    duration = SR_SEC(1);
+  }
+
+  if (duration <= 0) {
+    pxv_err("update_sample_count_selector: duration<=0, aborting");
+    _updating_sample_count = false;
+    return;
+  }
   bool not_last = true;
 
   do {
