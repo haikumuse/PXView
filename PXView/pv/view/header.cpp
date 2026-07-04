@@ -397,6 +397,17 @@ void Header::mousePressEvent(QMouseEvent *event) {
     // Select the Trace if it has been clicked
     const auto mTrace = get_mTrace(action, event->position().toPoint());
     if (action == Trace::COLOR && mTrace) {
+      // LOGIC 模式:单击 COLOR 区直接打开滤波浮窗(对齐 HTML 原型交互)
+      // ANALOG/DSO 模式:保留原选色流程(主题菜单的 token 改色只覆盖
+      // LOGIC 全局色板,模拟/DSO 单通道颜色仍需此入口)
+      if (_view.get_work_mode() == LOGIC) {
+        auto *sig = dynamic_cast<LogicSignal *>(mTrace);
+        if (sig && sig->data()) {
+          _context_trace = mTrace;
+          emit show_glitch_filter_popup(sig);
+          return;
+        }
+      }
       _colorFlag = true;
     } else if (action == Trace::NAME && mTrace) {
       _nameFlag = true;
@@ -870,6 +881,34 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
   if (_view.get_work_mode() != LOGIC)
     return;
 
+  // 统一菜单样式:背景/文字/选中态/边框全部跟随主题 token,
+  // Zone A 滤波菜单与 Zone B 行高菜单(含子菜单)共用同一外观。
+  auto apply_menu_style = [](QMenu *m) {
+    if (!m)
+      return;
+    const auto token = [](const char *name) {
+      return AppConfig::Instance().GetThemeTokenValue(name);
+    };
+    const QString bg = token("@bg-overlay");
+    const QString fg = token("@fg-base");
+    const QString fgMuted = token("@fg-muted");
+    const QString border = token("@border-strong");
+    QString accent = token("@accent");
+    if (accent.isEmpty())
+      accent = token("@toolbtn-hover");
+    if (bg.isEmpty() || fg.isEmpty())
+      return;  // 主题未加载,回退系统默认外观
+    QString sheet =
+        QString(
+            "QMenu { background: %1; color: %2; border: 1px solid %3; }"
+            "QMenu::item { padding: 4px 18px; background: transparent; }"
+            "QMenu::item:selected { background: %4; color: %2; }"
+            "QMenu::item:disabled { color: %5; }"
+            "QMenu::separator { height: 1px; background: %3; margin: 4px 8px; }")
+            .arg(bg, fg, border, accent, fgMuted.isEmpty() ? fg : fgMuted);
+    m->setStyleSheet(sheet);
+  };
+
   const QPoint pt = event->pos() + QPoint(0, _view.get_vOffset());
   int action = 0;
   const auto t = get_mTrace(action, pt);
@@ -922,6 +961,9 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
         L_S(STR_PAGE_DLG, S_ID(IDS_DLG_BATCH_SET_HEIGHT), "Batch Set"));
     menu.addMenu(batchMenu);
 
+    apply_menu_style(&menu);
+    apply_menu_style(channelMenu);
+    apply_menu_style(batchMenu);
     menu.exec(event->globalPos());
     return;
   }
@@ -937,16 +979,16 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
   QMenu menu(this);
   menu.addAction(
       L_S(STR_PAGE_SIGNAL_PROC, "IDS_FILTER_GLITCHES",
-          "🔍 Filter Glitches..."),
+          "Filter Glitches..."),
       this, &Header::on_filter_glitches_triggered);
   menu.addAction(
       L_S(STR_PAGE_SIGNAL_PROC, "IDS_TOGGLE_SIGNAL_INVERT",
-          "↔ Invert Signal"),
+          "Invert Signal"),
       this, &Header::on_toggle_invert_triggered);
 
   auto *clear_act = menu.addAction(
       L_S(STR_PAGE_SIGNAL_PROC, "IDS_CLEAR_CHANNEL_FILTER",
-          "✕ Clear Channel Filter"),
+          "Clear Channel Filter"),
       this, &Header::on_clear_channel_filter_triggered);
   const bool channel_filtered = [&logic_sig]() {
     if (!logic_sig || !logic_sig->data())
@@ -961,10 +1003,11 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
 
   auto *clear_all_act = menu.addAction(
       L_S(STR_PAGE_SIGNAL_PROC, "IDS_CLEAR_ALL_FILTER",
-          "✕ Clear All Filters"),
+          "Clear All Filters"),
       this, &Header::on_clear_all_filter_triggered);
   clear_all_act->setEnabled(any_filtered);
 
+  apply_menu_style(&menu);
   menu.exec(event->globalPos());
 }
 

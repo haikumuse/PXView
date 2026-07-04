@@ -73,18 +73,18 @@
     },
     {
         "id": "IDS_FILTER_GLITCHES",
-        "text": "🔍 Filter Glitches..."
+        "text": "Filter Glitches..."
     },
     {
         "id": "IDS_TOGGLE_SIGNAL_INVERT",
-        "text": "↔ Invert Signal"
+        "text": "Invert Signal"
     },
     {
         "id": "IDS_CLEAR_CHANNEL_FILTER",
-        "text": "✕ Clear Channel Filter"
+        "text": "Clear Channel Filter"
     },
     {
         "id": "IDS_CLEAR_ALL_FILTER",
-        "text": "✕ Clear All Filters"
+        "text": "Clear All Filters"
     }
 ]

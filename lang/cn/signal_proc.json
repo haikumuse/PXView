@@ -73,18 +73,18 @@
     },
     {
         "id": "IDS_FILTER_GLITCHES",
-        "text": "🔍 滤除毛刺..."
+        "text": "滤除毛刺..."
     },
     {
         "id": "IDS_TOGGLE_SIGNAL_INVERT",
-        "text": "↔ 信号取反"
+        "text": "信号取反"
     },
     {
         "id": "IDS_CLEAR_CHANNEL_FILTER",
-        "text": "✕ 清除此通道滤波"
+        "text": "清除此通道滤波"
     },
     {
         "id": "IDS_CLEAR_ALL_FILTER",
-        "text": "✕ 清除所有通道滤波"
+        "text": "清除所有通道滤波"
     }
 ]
