@@ -283,7 +283,8 @@ void Viewport::set_receive_len(quint64 length) {
   int mode = _view.get_work_mode();
 
   if (mode == LOGIC) {
-    if (_view.session().get_device()->is_file() == false) {
+    auto *dev = _view.data_source()->device();
+    if (dev && !dev->is_file()) {
       if (!_is_checked_trig && _view.session().is_triged()) {
         _view.get_viewstatus()->set_trig_time(_view.session().get_trig_time());
         _view.get_viewstatus()->update();
@@ -505,8 +506,9 @@ void Viewport::on_trigger_timer() {
   _timer_cnt++;
 
   if (!_is_checked_trig) {
+    auto *dev = _view.data_source()->device();
     if (_view.get_work_mode() == LOGIC &&
-        _view.session().get_device()->is_file() == false) {
+        dev && !dev->is_file()) {
       if (_view.session().is_triged()) {
         _is_checked_trig = true;
         _view.get_viewstatus()->set_trig_time(_view.session().get_trig_time());

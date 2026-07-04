@@ -34,6 +34,7 @@ set(PXVIEW_CORE_SOURCES
     PXView/pv/data/triggerconfig.cpp
     PXView/pv/data/lissajousmodel.cpp
     PXView/pv/data/logicsnapshot.cpp
+    PXView/pv/data/logicsnapshot_diskcache_writer.cpp
     PXView/pv/data/pulse_analyzer.cpp
     PXView/pv/data/pulse_analyzer.h
     PXView/pv/data/dsosnapshot.cpp
@@ -60,10 +61,6 @@ set(PXVIEW_CORE_SOURCES
     PXView/pv/api/rpc_dispatcher.cpp
     PXView/pv/api/ws_transport.cpp
     PXView/pv/api/mcp_transport.cpp
-    # Utility + config (Core-only, no Qt Widgets)
-    PXView/pv/utility/encoding.cpp
-    PXView/pv/utility/path.cpp
-    PXView/pv/utility/array.cpp
-    PXView/pv/config/appconfig.cpp
-    PXView/pv/config/shortcutdefs.cpp
+    # NOTE: utility/*.cpp live in PXView/pv/utility/CMakeLists.txt (pxview-utility STATIC lib)
+    # NOTE: config/*.cpp live in PXView/pv/config/CMakeLists.txt (pxview-config STATIC lib)
 )

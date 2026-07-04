@@ -364,7 +364,8 @@ ChannelType SessionService::sr_channel_type_to_api(int sr_type) const {
     case SR_CHANNEL_DSO:
         return ChannelType::Dso;
     default:
-        return ChannelType::Logic;
+        pxv_info("sr_channel_type_to_api: unknown SR channel type %d", sr_type);
+        return ChannelType::Unknown;
     }
 }
 

@@ -894,5 +894,72 @@ bool DeviceAgent::set_config_double(int key, double value, const sr_channel *ch,
     return true;
 }
 
+// -- Typed wrappers (View-layer convenience over get_config_*) --
+
+bool DeviceAgent::is_roll_mode(bool &roll) {
+    return get_config_bool(SR_CONF_ROLL, roll);
+}
+
+int DeviceAgent::get_channel_count() {
+    return g_slist_length(get_channels());
+}
+
+bool DeviceAgent::get_unit_bits(int &v) {
+    return get_config_byte(SR_CONF_UNIT_BITS, v);
+}
+
+bool DeviceAgent::get_ref_min(uint32_t &v) {
+    return get_config_uint32(SR_CONF_REF_MIN, v);
+}
+
+bool DeviceAgent::get_ref_max(uint32_t &v) {
+    return get_config_uint32(SR_CONF_REF_MAX, v);
+}
+
+bool DeviceAgent::get_probe_vdiv(uint64_t &v, sr_channel *probe) {
+    return get_config_uint64(SR_CONF_PROBE_VDIV, v, probe, NULL);
+}
+
+bool DeviceAgent::get_probe_factor(uint64_t &v, sr_channel *probe) {
+    return get_config_uint64(SR_CONF_PROBE_FACTOR, v, probe, NULL);
+}
+
+bool DeviceAgent::get_probe_coupling(int &v, sr_channel *probe) {
+    return get_config_byte(SR_CONF_PROBE_COUPLING, v, probe, NULL);
+}
+
+bool DeviceAgent::get_probe_offset(int &v, sr_channel *probe) {
+    return get_config_uint16(SR_CONF_PROBE_OFFSET, v, probe, NULL);
+}
+
+bool DeviceAgent::get_probe_hw_offset(int &v, sr_channel *probe) {
+    return get_config_uint16(SR_CONF_PROBE_HW_OFFSET, v, probe, NULL);
+}
+
+bool DeviceAgent::get_trigger_value(int &v, sr_channel *probe) {
+    return get_config_byte(SR_CONF_TRIGGER_VALUE, v, probe, NULL);
+}
+
+QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
+    QVector<uint64_t> result;
+    GVariant *gvar_list = get_config_list(NULL, SR_CONF_PROBE_VDIV);
+    if (gvar_list != NULL) {
+        GVariant *gvar_list_vdivs;
+        if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list, "vdivs",
+                                                      G_VARIANT_TYPE("at")))) {
+            GVariant *gvar;
+            GVariantIter iter;
+            g_variant_iter_init(&iter, gvar_list_vdivs);
+            while (NULL != (gvar = g_variant_iter_next_value(&iter))) {
+                result.push_back(g_variant_get_uint64(gvar));
+                g_variant_unref(gvar);
+            }
+            g_variant_unref(gvar_list_vdivs);
+            g_variant_unref(gvar_list);
+        }
+    }
+    return result;
+}
+
 //---------------device config end -----------/
 

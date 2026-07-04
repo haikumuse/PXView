@@ -831,18 +831,17 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
 #endif
 
     // plot trigger information
+    auto *dev = _viewport->_view.data_source()->device();
     if (_viewport->_view.get_work_mode() == DSO &&
-        _viewport->_view.session().is_running_status()) {
+        _viewport->_view.session().is_running_status() && dev) {
       int type;
       bool roll = false;
       QString type_str = "";
       bool ret = false;
 
-      _viewport->_view.session().get_device()->get_config_bool(SR_CONF_ROLL,
-                                                               roll);
+      dev->get_config_bool(SR_CONF_ROLL, roll);
 
-      ret = _viewport->_view.session().get_device()->get_config_byte(
-          SR_CONF_TRIGGER_SOURCE, type);
+      ret = dev->get_config_byte(SR_CONF_TRIGGER_SOURCE, type);
       if (ret) {
         bool bDot = false;
 
@@ -898,7 +897,7 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
       p.drawText(_viewport->_view.get_view_rect(),
                  Qt::AlignLeft | Qt::AlignTop, type_str);
 
-      if (_viewport->_view.session().get_device()->is_hardware()) {
+      if (dev->is_hardware()) {
         if (_viewport->_view.session().dso_data_is_out_off_range()) {
           QString data_status = L_S(STR_PAGE_DLG,
                                     S_ID(IDS_DLG_DATA_OUT_OFF_RANGE),

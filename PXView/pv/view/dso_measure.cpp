@@ -25,6 +25,9 @@
 #include <QApplication>
 #include <functional>
 #include <math.h>
+// Retained: sr_status value-type dependency (lines ~482-553). Removal requires
+// introducing a Core DsoMeasureStatus mirror struct and changing
+// DataSource::get_dso_status() signature — deferred to a separate spec.
 #include <libsigrok.h>
 
 #include "../data/dsosnapshot.h"
@@ -316,7 +319,7 @@ void DsoMeasure::auto_set() {
     if (_signal->_mValid && !_signal->_data_source->get_data_auto_lock()) {
       if (_signal->_autoH) {
         bool roll = false;
-        _signal->_data_source->device()->get_config_bool(SR_CONF_ROLL, roll);
+        _signal->_data_source->device()->is_roll_mode(roll);
 
         const double hori_res = _signal->_view->get_hori_res();
         if (_signal->_level_valid &&
@@ -505,14 +508,14 @@ void DsoMeasure::update_measure_status(int index, int hw_offset, uint16_t enable
   const bool startXORend = (index == 0) ? (status.ch0_cyc_llen == 0)
                                         : (status.ch1_cyc_llen == 0);
   uint16_t total_channels =
-      g_slist_length(_signal->_data_source->device()->get_channels());
+      _signal->_data_source->device()->get_channel_count();
 
   if (total_channels == 1 && _signal->_data->is_file()) {
     total_channels++;
   }
 
   const double tfactor =
-      (total_channels / enabled_channels) * SR_GHZ(1) * 1.0 / samplerate;
+      (total_channels / enabled_channels) * 1000000000ULL * 1.0 / samplerate;
 
   double samples =
       (index == 0) ? status.ch0_cyc_tlen : status.ch1_cyc_tlen;

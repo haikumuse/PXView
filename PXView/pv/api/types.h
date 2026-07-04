@@ -35,9 +35,10 @@ enum class CollectMode : int8_t {
 };
 
 enum class ChannelType : int8_t {
-    Logic  = 0,
-    Analog = 1,
-    Dso    = 2
+    Logic   = 0,
+    Analog  = 1,
+    Dso     = 2,
+    Unknown = 99
 };
 
 enum class TriggerSlope : int8_t {

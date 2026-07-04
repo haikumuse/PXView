@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <libsigrok.h>
 #include <QString>
+#include <QVector>
 #include <vector>
 
 class IDeviceAgentCallback
@@ -242,8 +243,22 @@ public:
     bool get_config_double(int key, double &value, const sr_channel *ch = NULL, const sr_channel_group *cg = NULL);
     bool set_config_double(int key, double value, const sr_channel *ch = NULL, const sr_channel_group *cg = NULL);
 
+    // -- Typed wrappers (View-layer convenience over get_config_*) --
+    bool is_roll_mode(bool &roll);
+    int get_channel_count();
+    bool get_unit_bits(int &v);
+    bool get_ref_min(uint32_t &v);
+    bool get_ref_max(uint32_t &v);
+    bool get_probe_vdiv(uint64_t &v, sr_channel *probe);
+    bool get_probe_factor(uint64_t &v, sr_channel *probe);
+    bool get_probe_coupling(int &v, sr_channel *probe);
+    bool get_probe_offset(int &v, sr_channel *probe);
+    bool get_probe_hw_offset(int &v, sr_channel *probe);
+    bool get_trigger_value(int &v, sr_channel *probe);
+    QVector<uint64_t> get_probe_vdiv_list();
+
 private:
-    void config_changed(); 
+    void config_changed();
 
     //---------------device config-----------/
 public:

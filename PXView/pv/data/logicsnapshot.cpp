@@ -40,6 +40,7 @@
 #include "../utility/array.h"
 #include "leaf_block_pool.h"
 #include "logicsnapshot.h"
+#include "logicsnapshot_diskcache_writer.h"
 #include <map>
 
 using namespace std;
@@ -71,24 +72,16 @@ LogicSnapshot::LogicSnapshot() : Snapshot(1, 0, 0) {
   _glitch_filtered = false;
   _mmap_alloc = nullptr;
   _max_blocks_per_channel = 0;
-  _async_running = false;
-  _async_bytes_written = 0;
-  _async_write_speed_mbps = 0.0;
-  _async_queue_depth = 0;
-  _async_queue_bytes_size = 0;
+  _disk_cache_writer = std::make_unique<LogicSnapshotDiskCacheWriter>(this);
 }
 LogicSnapshot::~LogicSnapshot() {
-  if (_async_running) {
-    _async_running = false;
-    _async_cv.notify_one();
-    _async_drain_cv.notify_all();  // release any feed thread blocked on backpressure
-    if (_async_thread.joinable()) {
-      _async_thread.join();
-    }
-  }
+  // The async writer thread is joined by _disk_cache_writer's destructor
+  // (declared LAST — runs FIRST, before _mmap_alloc / _ch_data are freed).
+  // Explicit drain_and_join is also safe but redundant here.
 }
 void LogicSnapshot::free_data() {
-  _mmap_slot_written.clear();
+  // Clear the mmap slot bitmap via the writer (it owns _mmap_slot_written).
+  _disk_cache_writer->clear_all_mmap_slots();
   _mmap_alloc.reset();
 
   Snapshot::free_data();
@@ -127,21 +120,9 @@ void LogicSnapshot::init_all() {
 }
 
 void LogicSnapshot::clear() {
-  if (_async_running) {
-    _async_running = false;
-    _async_cv.notify_one();
-    _async_drain_cv.notify_all();  // release any feed thread blocked on backpressure
-    if (_async_thread.joinable()) {
-      _async_thread.join();
-    }
-  }
-  {
-    std::lock_guard<std::mutex> lock(_async_mutex);
-    while (!_async_queue.empty()) _async_queue.pop();
-    _async_queue_depth = 0;
-    _async_queue_bytes_size = 0;
-    _async_drain_cv.notify_all();  // final release for any straggler feed thread
-  }
+  // CRITICAL (Task 1): stop the async writer and drain its queue BEFORE
+  // free_data() resets the mmap allocator. Encapsulated in drain_and_join().
+  _disk_cache_writer->drain_and_join();
 
   std::lock_guard<std::mutex> lock(_mutex);
   free_data();
@@ -149,25 +130,23 @@ void LogicSnapshot::clear() {
 }
 
 void LogicSnapshot::set_disk_cache_config(const DiskCacheConfig &config) {
-  pxv_info("LogicSnapshot::set_disk_cache_config: enabled=%d, path=%s",
-           config.enabled, config.cache_path.c_str());
-  _disk_cache_config = config;
+  _disk_cache_writer->set_disk_cache_config(config);
 }
 
 bool LogicSnapshot::is_disk_cache_active() {
-  return _mmap_alloc && _disk_cache_config.enabled;
+  return _disk_cache_writer->is_disk_cache_active();
 }
 
 double LogicSnapshot::get_disk_write_speed_mbps() {
-  return _async_write_speed_mbps.load();
+  return _disk_cache_writer->get_disk_write_speed_mbps();
 }
 
 size_t LogicSnapshot::get_disk_write_queue_depth() {
-  return _async_queue_depth.load();
+  return _disk_cache_writer->get_disk_write_queue_depth();
 }
 
 uint64_t LogicSnapshot::get_disk_total_blocks_written() {
-  return _async_bytes_written.load() / LeafBlockSpace;
+  return _disk_cache_writer->get_disk_total_blocks_written();
 }
 
 uint64_t LogicSnapshot::get_page_fault_count() {
@@ -218,10 +197,11 @@ uint64_t LogicSnapshot::get_working_set_bytes() {
 }
 
 uint64_t LogicSnapshot::get_async_queue_bytes() {
-  return _async_queue_bytes_size.load();
+  return _disk_cache_writer->get_async_queue_bytes();
 }
 
 void LogicSnapshot::ensure_all_blocks_hot() {
+  _disk_cache_writer->ensure_all_blocks_hot();
 }
 
 void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
@@ -256,23 +236,8 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
     // free_data() resets the mmap allocator. Otherwise the async worker could
     // still be calling allocate_block()/_mmap_alloc->get_block_data() against
     // an allocator we are about to destroy, causing a use-after-free / crash.
-    // Mirrors the stop sequence in clear() (lines 125-138).
-    if (_async_running) {
-      _async_running = false;
-      _async_cv.notify_all();        // wake worker so it observes !_async_running
-      _async_drain_cv.notify_all();  // unblock any feed thread waiting on backpressure
-      if (_async_thread.joinable()) {
-        _async_thread.join();
-      }
-    }
-    {
-      std::lock_guard<std::mutex> q_lock(_async_mutex);
-      std::queue<AsyncPayload> empty;
-      _async_queue.swap(empty);
-      _async_queue_depth = 0;
-      _async_queue_bytes_size = 0;
-      _async_drain_cv.notify_all();  // release any feed thread still blocked on backpressure
-    }
+    // Mirrors the stop sequence in clear() — now encapsulated in drain_and_join().
+    _disk_cache_writer->drain_and_join();
 
     free_data();
     _ch_index.clear();
@@ -339,39 +304,35 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 
   pxv_info("LogicSnapshot::first_payload: disk_cache_config.enabled=%d, "
            "ch_data.size()=%zu",
-           _disk_cache_config.enabled, _ch_data.size());
+           _disk_cache_writer->disk_cache_config().enabled, _ch_data.size());
 
   if (_channel_num > 0) {
     // Create and configure MmapAllocator
     _mmap_alloc = std::make_shared<MmapAllocator>();
-    
+
     // Calculate total required memory based on total_sample_count + padding
     // For loop mode, _total_sample_count is the size of the ring buffer.
-    _max_blocks_per_channel = (_total_sample_count / LeafBlockSamples) + 16; 
+    _max_blocks_per_channel = (_total_sample_count / LeafBlockSamples) + 16;
     uint64_t total_bytes = _max_blocks_per_channel * LeafBlockSpace * _channel_num;
-    
-    bool use_disk = _disk_cache_config.enabled;
-    QString disk_dir = QString::fromStdString(_disk_cache_config.cache_path);
+
+    bool use_disk = _disk_cache_writer->disk_cache_config().enabled;
+    QString disk_dir = QString::fromStdString(_disk_cache_writer->disk_cache_config().cache_path);
     if (!_mmap_alloc->configure(use_disk, disk_dir, total_bytes)) {
         pxv_err("LogicSnapshot::first_payload: MmapAllocator configure failed! "
                "Falling back to LeafBlockPool in-memory allocation.");
         // Drop the failed allocator so allocate_block() takes the
         // LeafBlockPool::instance().acquire() fallback path instead of
         // dereferencing an unconfigured (NULL _base_ptr) allocator.
-        _mmap_slot_written.clear();
+        _disk_cache_writer->clear_all_mmap_slots();
         _mmap_alloc.reset();
     }
   }
 
   if (_mmap_alloc) {
-    _mmap_slot_written.assign(_channel_num * _max_blocks_per_channel, false);
+    _disk_cache_writer->setup_mmap_slots(_channel_num * _max_blocks_per_channel);
   }
 
-  if (!_async_running) {
-    _async_running = true;
-    _async_bytes_written = 0;
-    _async_thread = std::thread(&LogicSnapshot::async_write_worker, this);
-  }
+  _disk_cache_writer->start();
 
   lock.unlock();
   append_payload(logic);
@@ -379,137 +340,23 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 }
 
 void LogicSnapshot::append_payload(const sr_datafeed_logic &logic) {
-  AsyncPayload payload;
-  payload.format = logic.format;
-  payload.data = std::vector<uint8_t>((uint8_t*)logic.data, (uint8_t*)logic.data + logic.length);
-  size_t v_size = payload.data.size();
-
-  {
-    std::unique_lock<std::mutex> lock(_async_mutex);
-    // Backpressure (Task 3): if the async write queue is larger than the high
-    // watermark, block the feed thread here until the async worker drains it
-    // below the low watermark. This backs pressure up to the device driver
-    // instead of letting the queue grow unbounded and OOM under fast capture +
-    // slow disk. The `|| !_async_running` clause guarantees we never block
-    // forever when the async writer is being shut down (stop paths notify_all
-    // on _async_drain_cv). Hysteresis: block above HIGH, release below LOW.
-    if (_async_queue_bytes_size.load() > ASYNC_HIGH_WATERMARK) {
-      _async_drain_cv.wait(lock, [this] {
-        return _async_queue_bytes_size.load() <= ASYNC_LOW_WATERMARK
-            || !_async_running.load();
-      });
-      // If the writer was stopped while we were blocked, drop this payload:
-      // the stop path is about to (or already has) cleared the queue, so any
-      // push here would become an orphan entry referencing freed mmap state.
-      if (!_async_running.load()) {
-        pxv_warn("append_payload: async writer stopped during backpressure wait, "
-                 "dropping %llu bytes", (unsigned long long)v_size);
-        return;
-      }
-    }
-    _async_queue.push(std::move(payload));
-    _async_queue_depth = _async_queue.size();
-    _async_queue_bytes_size += v_size;
-  }
-  _async_cv.notify_one();
-}
-
-void LogicSnapshot::async_write_worker() {
-  while (_async_running) {
-    AsyncPayload payload;
-    {
-      std::unique_lock<std::mutex> lock(_async_mutex);
-      _async_cv.wait_for(lock, std::chrono::milliseconds(10), [this] {
-        return !_async_running || !_async_queue.empty();
-      });
-
-      if (!_async_running && _async_queue.empty()) break;
-      if (_async_queue.empty()) continue;
-
-      payload = std::move(_async_queue.front());
-      _async_queue.pop();
-      _async_queue_depth = _async_queue.size();
-      _async_queue_bytes_size -= payload.data.size();
-      // Backpressure (Task 3): if the queue has drained back below the low
-      // watermark, release one feed thread that is blocked in append_payload.
-      // notify_one (not notify_all) per spec to avoid thundering herd.
-      if (_async_queue_bytes_size.load() <= ASYNC_LOW_WATERMARK) {
-        _async_drain_cv.notify_one();
-      }
-    }
-    
-    sr_datafeed_logic logic;
-    logic.length = payload.data.size();
-    logic.unitsize = 1; // Assuming unitsize 1
-    logic.data = payload.data.data();
-    logic.format = payload.format;
-    
-    // Truncate incomplete chunks to prevent channel desynchronization
-    if (logic.format == LA_CROSS_DATA) {
-        uint64_t chunk_size = _channel_num * 8; // Each channel gets 8 bytes (64 samples) per chunk
-        logic.length -= logic.length % chunk_size; // Truncate to exact multiple
-    }
-    
-    static int packet_count = 0;
-    if (packet_count < 5 || logic.length % 128 != 0 || packet_count % 100 == 0) {
-        pxv_info("async_write_worker: pkt %d, len=%llu, first_bytes: %02x %02x %02x %02x", 
-                 packet_count, (unsigned long long)logic.length,
-                 logic.length > 0 ? ((uint8_t*)logic.data)[0] : 0,
-                 logic.length > 1 ? ((uint8_t*)logic.data)[1] : 0,
-                 logic.length > 2 ? ((uint8_t*)logic.data)[2] : 0,
-                 logic.length > 3 ? ((uint8_t*)logic.data)[3] : 0);
-    }
-    packet_count++;
-    
-    auto start = std::chrono::steady_clock::now();
-    
-    {
-      std::lock_guard<std::mutex> lock(_mutex);
-      append_cross_payload(logic);
-    }
-    
-    auto end = std::chrono::steady_clock::now();
-    _async_bytes_written += payload.data.size();
-    
-    double elapsed_s = std::chrono::duration<double>(end - start).count();
-    if (elapsed_s > 0) {
-       double mbps = (payload.data.size() / (1024.0 * 1024.0)) / elapsed_s;
-       // Exponential moving average for smoothing UI
-       double old = _async_write_speed_mbps.load();
-       if (old == 0.0) _async_write_speed_mbps = mbps;
-       else _async_write_speed_mbps = old * 0.8 + mbps * 0.2;
-    }
-  }
+  _disk_cache_writer->enqueue(logic.format, (const uint8_t *)logic.data, logic.length);
 }
 
 bool LogicSnapshot::is_mmap_slot_fresh(uint16_t channel, uint64_t global_block_seq) const {
-    if (_mmap_slot_written.empty()) return false;
-    uint64_t abs_slot = (uint64_t)channel * _max_blocks_per_channel
-                      + (global_block_seq % _max_blocks_per_channel);
-    if (abs_slot >= _mmap_slot_written.size()) return false;
-    return !_mmap_slot_written[abs_slot];
+    return _disk_cache_writer->is_mmap_slot_fresh(channel, global_block_seq);
 }
 
 void LogicSnapshot::mark_mmap_slot_written(uint16_t channel, uint64_t global_block_seq) {
-    if (_mmap_slot_written.empty()) return;
-    uint64_t abs_slot = (uint64_t)channel * _max_blocks_per_channel
-                      + (global_block_seq % _max_blocks_per_channel);
-    if (abs_slot >= _mmap_slot_written.size()) return;
-    _mmap_slot_written[abs_slot] = true;
+    _disk_cache_writer->mark_mmap_slot_written(channel, global_block_seq);
 }
 
 void LogicSnapshot::clear_mmap_slot_written(uint16_t channel, uint64_t global_block_seq) {
-    if (_mmap_slot_written.empty()) return;
-    uint64_t abs_slot = (uint64_t)channel * _max_blocks_per_channel
-                      + (global_block_seq % _max_blocks_per_channel);
-    if (abs_slot >= _mmap_slot_written.size()) return;
-    _mmap_slot_written[abs_slot] = false;
+    _disk_cache_writer->clear_mmap_slot_written(channel, global_block_seq);
 }
 
 void LogicSnapshot::clear_mmap_slot_by_abs(uint64_t abs_slot) {
-    if (_mmap_slot_written.empty()) return;
-    if (abs_slot >= _mmap_slot_written.size()) return;
-    _mmap_slot_written[abs_slot] = false;
+    _disk_cache_writer->clear_mmap_slot_by_abs(abs_slot);
 }
 
 void* LogicSnapshot::allocate_block(uint16_t channel, uint64_t index0, uint64_t index1) {
@@ -746,50 +593,8 @@ void LogicSnapshot::capture_ended() {
   // valid data that was still waiting in the queue.
   // We must NOT hold _mutex while waiting, because the async worker needs
   // _mutex to call append_cross_payload().
-  {
-    int drain_loops = 0;
-    while (true) {
-      {
-        std::lock_guard<std::mutex> lock(_async_mutex);
-        if (_async_queue.empty()) break;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      drain_loops++;
-      if (drain_loops > 10000) { // 10s safety timeout
-        pxv_err("capture_ended: async queue drain timeout!");
-        // Task 5: the async worker is stuck (e.g., disk stalled) and the
-        // queue is not draining. If we leave _async_running true and proceed,
-        // the subsequent first_payload()/re-capture races the still-running
-        // worker against the new mmap allocator. Force-stop the worker and
-        // drop the residual queue so capture_ended can complete safely.
-        // first_payload's `if (!_async_running)` restart will spin a fresh
-        // worker on the next capture.
-        _async_running = false;
-        _async_cv.notify_one();        // wake worker so it exits its wait_for
-        _async_drain_cv.notify_all();  // unblock any feed thread in backpressure wait
-        if (_async_thread.joinable()) {
-          _async_thread.join();
-        }
-        size_t dropped = 0;
-        {
-          std::lock_guard<std::mutex> q_lock(_async_mutex);
-          while (!_async_queue.empty()) {
-            dropped += _async_queue.front().data.size();
-            _async_queue.pop();
-          }
-          _async_queue_depth = 0;
-          _async_queue_bytes_size = 0;
-          _async_drain_cv.notify_all();  // final release for any straggler feed thread
-        }
-        pxv_warn("capture_ended: dropped %llu bytes from async queue after timeout",
-                 (unsigned long long)dropped);
-        break;
-      }
-    }
-    if (drain_loops > 0) {
-      pxv_info("capture_ended: drained async queue in %d ms", drain_loops);
-    }
-  }
+  // Encapsulated in drain_queue_for_capture_end() (cluster D).
+  _disk_cache_writer->drain_queue_for_capture_end();
 
   std::lock_guard<std::mutex> lock(_mutex);
 
@@ -861,7 +666,7 @@ void LogicSnapshot::copy_from(const LogicSnapshot &src) {
       _mmap_alloc = std::make_shared<MmapAllocator>();
       _mmap_alloc->configure(false, "", src._mmap_alloc->get_total_bytes());
   } else {
-      _mmap_slot_written.clear();
+      _disk_cache_writer->clear_all_mmap_slots();
       _mmap_alloc = nullptr;
   }
 
