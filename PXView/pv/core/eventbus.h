@@ -58,7 +58,9 @@ public:
         if (_broadcast_depth > 1) {
             pxv_err("Event broadcast loop detected (depth=%d), suppressing",
                     _broadcast_depth);
-            assert(_broadcast_depth <= 1 && "Event broadcast loop detected");
+            // 不触发 assert: EventBus 作为崩溃防线,自身不能成为模态弹窗的来源。
+            // Windows 模态断言弹窗会接管 qApp 消息循环,把排队的 async 事件强行派发,
+            // 造成 EventBus 自身被打穿。改为 early-return 即可阻断连锁。
             --_broadcast_depth;
             return;
         }
@@ -82,7 +84,9 @@ public:
         if (_broadcast_depth > 1) {
             pxv_err("Event broadcast_sync loop detected (depth=%d), suppressing",
                     _broadcast_depth);
-            assert(_broadcast_depth <= 1 && "Event broadcast_sync loop detected");
+            // 不触发 assert: EventBus 作为崩溃防线,自身不能成为模态弹窗的来源。
+            // Windows 模态断言弹窗会接管 qApp 消息循环,把排队的 async 事件强行派发,
+            // 造成 EventBus 自身被打穿。改为 early-return 即可阻断连锁。
             --_broadcast_depth;
             return;
         }

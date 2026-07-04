@@ -149,8 +149,6 @@ if(WIN32)
 		PXView/pv/winnativewidget.cpp
 		PXView/pv/winshadow.cpp
 		PXView/pv/wintaskbarprogress.cpp
-		PXView/pv/crash/crash_handler.cpp
-		PXView/pv/crash/crash_reporter.cpp
 	)
 	list(APPEND PXView_HEADERS
 		PXView/pv/wintaskbarprogress.h
@@ -290,9 +288,6 @@ set(PXView_HEADERS
     PXView/pv/api/rpc_dispatcher.h
     PXView/pv/api/ws_transport.h
     PXView/pv/api/mcp_transport.h
-    PXView/pv/crash/crash_log.h
-    PXView/pv/crash/crash_handler.h
-    PXView/pv/crash/crash_reporter.h
     ${UI_HEADERS}
 )
  

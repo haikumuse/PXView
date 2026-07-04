@@ -535,7 +535,10 @@ double SigSession::cur_view_time() {
 }
 
 void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
-  assert(samplerate != 0);
+  if (samplerate == 0) {
+    pxv_err("set_cur_snap_samplerate: samplerate=0, ignoring");
+    return;
+  }
 
   _state->capture_data()->_cur_snap_samplerate = samplerate;
   _state->capture_data()->get_logic()->set_samplerate(samplerate);
@@ -572,7 +575,10 @@ void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
 }
 
 void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
-  assert(samplelimits != 0);
+  if (samplelimits == 0) {
+    pxv_err("set_cur_samplelimits: samplelimits=0, ignoring");
+    return;
+  }
   _state->capture_data()->_cur_samplelimits = samplelimits;
   // R1: symmetric to set_cur_snap_samplerate which fires
   // cur_snap_samplerate_changed(); notify capture listeners that the
@@ -588,7 +594,8 @@ SigSession::get_signal_models() {
 
 void SigSession::init_signals() {
   if (_state->device_agent().have_instance() == false) {
-    assert(false);
+    pxv_err("init_signals: no device instance, aborting");
+    return;
   }
 
   std::vector<std::shared_ptr<data::SignalModel>> models;
@@ -625,6 +632,8 @@ void SigSession::init_signals() {
   }
 
   int mode = _state->device_agent().get_work_mode();
+  int channel_count = g_slist_length((GSList *)_state->device_agent().get_channels());
+  pxv_info("SigSession::init_signals() start. mode=%d, channel_count=%d", mode, channel_count);
 
   for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;
@@ -635,16 +644,22 @@ void SigSession::init_signals() {
     assert(probe);
 
     if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
+      pxv_info("init_signals probe skip: mode=LOGIC but probe->type=%d", probe->type);
       continue;
     }
 
     if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG) {
+      pxv_info("init_signals probe skip: mode=ANALOG but probe->type=%d", probe->type);
       continue;
     }
 
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
+      pxv_info("init_signals probe skip: mode=DSO but probe->type=%d", probe->type);
       continue;
     }
+
+    pxv_info("init_signals probe examine: index=%d name=%s type=%d enabled=%d", 
+             probe->index, probe->name ? probe->name : "null", probe->type, probe->enabled);
 
     bool should_create = false;
     int ch_type = SR_CHANNEL_LOGIC;
@@ -748,13 +763,16 @@ void SigSession::init_signals() {
   signals_changed();
 
   if (_state->signal_models().empty()) {
-    pxv_info("ERROR: Unable to create any channel.");
+    pxv_info("ERROR: Unable to create any channel. (models is empty)");
+  } else {
+    pxv_info("SigSession::init_signals() end. models.size()=%d", (int)_state->signal_models().size());
   }
 }
 
 void SigSession::reload() {
   if (_state->device_agent().have_instance() == false) {
-    assert(false);
+    pxv_err("reload: no device instance, aborting");
+    return;
   }
 
   if (_state->is_working())
@@ -762,6 +780,8 @@ void SigSession::reload() {
 
   std::vector<std::shared_ptr<data::SignalModel>> models;
   int mode = _state->device_agent().get_work_mode();
+  int channel_count = g_slist_length((GSList *)_state->device_agent().get_channels());
+  pxv_info("SigSession::reload() start. mode=%d, channel_count=%d", mode, channel_count);
 
   set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
   set_cur_samplelimits(_state->device_agent().get_sample_limit());
@@ -775,16 +795,22 @@ void SigSession::reload() {
     assert(probe);
 
     if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
+      pxv_info("reload probe skip: mode=LOGIC but probe->type=%d", probe->type);
       continue;
     }
 
     if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG) {
+      pxv_info("reload probe skip: mode=ANALOG but probe->type=%d", probe->type);
       continue;
     }
 
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
+      pxv_info("reload probe skip: mode=DSO but probe->type=%d", probe->type);
       continue;
     }
+
+    pxv_info("reload probe examine: index=%d name=%s type=%d enabled=%d", 
+             probe->index, probe->name ? probe->name : "null", probe->type, probe->enabled);
 
     bool should_create = false;
     int ch_type = SR_CHANNEL_LOGIC;
@@ -877,13 +903,13 @@ void SigSession::reload() {
   }
 
   if (!models.empty()) {
-    pxv_info("SigSession::reload(), clear signals");
+    pxv_info("SigSession::reload() end. clear signals, models.size()=%d", (int)models.size());
     clear_signals();
     std::vector<std::shared_ptr<data::SignalModel>>().swap(_state->signal_models());
     _state->signal_models() = models;
     make_channels_view_index();
   } else if (mode == LOGIC || mode == ANALOG || mode == DSO) {
-    pxv_info("ERROR: Unable to create any channel.");
+    pxv_info("ERROR: Unable to create any channel in reload(). channels is empty or all skipped.");
     clear_signals();
   }
 
@@ -959,7 +985,7 @@ bool SigSession::add_decoder(
   (void)silent;
   if (dec == NULL) {
     pxv_err("Decoder instance is null!");
-    assert(false);
+    return false;
   }
 
   data::SessionDocument *target = doc ? doc : _document_registry->get_active_document();
@@ -1283,7 +1309,7 @@ SigSession::get_decoder_trace(int index, data::SessionDocument *doc) {
   if (index >= 0 && index < (int)traces.size()) {
     return traces[index];
   }
-  assert(false);
+  pxv_err("get_decode_trace_by_index: index %d out of range (size=%d)", index, (int)traces.size());
   return nullptr;
 }
 
@@ -1324,7 +1350,6 @@ void SigSession::on_device_lib_event(int event) {
         !_state->capture_data()->get_dso()->last_ended() ||
         !_state->capture_data()->get_analog()->last_ended()) {
       pxv_err("Error!The data is not completed.");
-      assert(false);
     }
     break;
 
