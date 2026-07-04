@@ -125,7 +125,7 @@ void StoreProgress::closeEvent(QCloseEvent* event)
     }
    
     _store_session->session()->set_saving(false);
-    _store_session->session()->broadcast_msg(DSV_MSG_SAVE_COMPLETE);
+    _store_session->session()->broadcast_async<interface::SaveComplete>({});
 
     delete this;
 }

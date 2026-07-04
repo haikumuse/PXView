@@ -1577,8 +1577,7 @@ void ApplicationParamDlg::saveDisplayOptions() {
 
   if (bAppChanged) {
     app.SaveApp();
-    AppControl::Instance()->GetSession()->broadcast_msg(
-        DSV_MSG_APP_OPTIONS_CHANGED);
+    AppControl::Instance()->GetSession()->broadcast_async<interface::AppOptionsChanged>({});
   }
 }
 
@@ -1598,7 +1597,7 @@ void ApplicationParamDlg::saveShortcutOptions() {
   app.shortcutOptions.items = newItems;
   app.SaveShortcuts();
   app.flushPendingSaves();
-  AppControl::Instance()->GetSession()->broadcast_msg(DSV_MSG_SHORTCUT_CHANGED);
+  AppControl::Instance()->GetSession()->broadcast_async<interface::ShortcutChanged>({});
 
   _shortcut_original_keys = _shortcut_keys;
   updateShortcutButtons();
@@ -1740,7 +1739,7 @@ void ApplicationParamDlg::saveStyleOptions() {
     }
 
     app.SaveStyle();
-    AppControl::Instance()->GetSession()->broadcast_msg(DSV_MSG_STYLE_CHANGED);
+    AppControl::Instance()->GetSession()->broadcast_async<interface::StyleChanged>({});
   }
 }
 

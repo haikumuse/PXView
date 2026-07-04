@@ -2,7 +2,8 @@
 
 #include "documentregistry.h"
 #include "eventbus.h"
-#include "../sigsession.h"
+#include "sessionstatecontext.h"
+#include "../sigsession.h"  // SessionData full definition
 #include "../data/decoderstack.h"
 #include "../data/sessiondocument.h"
 #include "../data/signalmodel.h"
@@ -17,8 +18,8 @@
 namespace pv {
 namespace core {
 
-DecodeTaskManager::DecodeTaskManager(EventBus *bus, SigSession *session)
-    : _event_bus(bus), _session(session) {}
+DecodeTaskManager::DecodeTaskManager(EventBus *bus, SessionStateContext *state)
+    : _event_bus(bus), _state(state) {}
 
 DecodeTaskManager::~DecodeTaskManager() { stop(); }
 
@@ -43,7 +44,7 @@ void DecodeTaskManager::attach_data_to_signal(SessionData *data) {
   // Update each SignalModel's snapshot pointer so consumers of SignalModel
   // can access the most recent snapshot data. The void* type is resolved
   // based on SignalModel::type().
-  for (auto m : _session->_signal_models) {
+  for (auto m : _state->signal_models()) {
     switch (m->type()) {
     case SR_CHANNEL_LOGIC:
       m->set_snapshot(data->get_logic());
@@ -60,8 +61,8 @@ void DecodeTaskManager::attach_data_to_signal(SessionData *data) {
   // R1: snapshot pointers changed, so notify listeners that the data view
   // and the signal list need refreshing. Centralizing the notification here
   // removes the need for callers to manually re-fire these callbacks.
-  _session->data_updated();
-  _session->signals_changed();
+  _state->data_updated();
+  _state->signals_changed();
 }
 
 void DecodeTaskManager::add_decode_task(
@@ -71,7 +72,7 @@ void DecodeTaskManager::add_decode_task(
   // reload() during TabContext::activate()). Without this, decoders fail with
   // "没有设置需要解码哪些通道的数据". This matches the pattern in
   // start_all_decode_tasks() and rst_decoder().
-  attach_data_to_signal(_session->_view_data);
+  attach_data_to_signal(_state->view_data());
 
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
@@ -107,12 +108,12 @@ void DecodeTaskManager::clear_all_decode_task(int &runningDex) {
   }
 
   runningDex = -1;
-  for (auto doc : _session->_document_registry->get_all_documents()) {
+  for (auto doc : _state->document_registry()->get_all_documents()) {
     int dex = 0;
     for (auto stack : doc->get_decoder_stacks()) {
       if (stack->IsRunning()) {
         stack->stop_decode_work();
-        if (doc == _session->_document_registry->get_active_document())
+        if (doc == _state->document_registry()->get_active_document())
           runningDex = dex;
       }
       dex++;
@@ -148,8 +149,8 @@ void DecodeTaskManager::decode_single_task(
     pxv_info("destroy a decoder in task thread");
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (!_session->_bClose) {
-      _session->signals_changed();
+    if (!_state->bClose()) {
+      _state->signals_changed();
     }
   }
 
@@ -162,9 +163,9 @@ void DecodeTaskManager::decode_single_task(
     if (_running_tasks.empty()) {
       // Check if _view_data and its logic snapshot are valid before calling
       // decode_end
-      if (_session->_view_data != nullptr &&
-          _session->_view_data->get_logic() != nullptr) {
-        _session->_view_data->get_logic()->decode_end();
+      if (_state->view_data() != nullptr &&
+          _state->view_data()->get_logic() != nullptr) {
+        _state->view_data()->get_logic()->decode_end();
       }
       // B1.2: emit the typed DecodeDone event so IEventListener consumers
       // (e.g. a future headless decode-done handler) can react without going
@@ -186,9 +187,9 @@ void DecodeTaskManager::start_all_decode_tasks() {
   // Note: add_decode_task() also calls attach_data_to_signal internally for
   // single-stack callers. We call it here once before the loop for efficiency
   // (single attach instead of N attaches).
-  attach_data_to_signal(_session->_view_data);
+  attach_data_to_signal(_state->view_data());
 
-  for (auto stack : _session->decode_traces()) {
+  for (auto stack : _state->decode_traces()) {
     stack->set_capture_end_flag(true);
     stack->frame_ended();
     add_decode_task(stack);
@@ -196,14 +197,14 @@ void DecodeTaskManager::start_all_decode_tasks() {
 }
 
 void DecodeTaskManager::rst_decoder(int index, data::SessionDocument *doc) {
-  data::SessionDocument *target = doc ? doc : _session->_document_registry->get_active_document();
+  data::SessionDocument *target = doc ? doc : _state->document_registry()->get_active_document();
   // The decoder options dialog (DecodeTrace::create_popup(false)) is now
   // shown by the View layer (View::rst_decoder_by_key_handel) BEFORE this
   // function is called. If the user cancels the dialog, View does not
   // forward to Core at all, so this reset path only runs when the user has
   // already accepted new settings. Core then just clears the existing
   // decode task and re-adds it.
-  auto stack = _session->get_decoder_trace(index, target);
+  auto stack = _state->get_decoder_trace(index, target);
 
   if (stack) {
     remove_decode_task(stack); // remove old task
@@ -219,8 +220,8 @@ void DecodeTaskManager::rst_decoder(int index, data::SessionDocument *doc) {
 
 void DecodeTaskManager::rst_decoder_by_key_handel(void *handel,
                                                   data::SessionDocument *doc) {
-  data::SessionDocument *target = doc ? doc : _session->_document_registry->get_active_document();
-  int dex = _session->get_trace_index_by_key_handel(handel, target);
+  data::SessionDocument *target = doc ? doc : _state->document_registry()->get_active_document();
+  int dex = _state->get_trace_index_by_key_handel(handel, target);
   rst_decoder(dex, target);
 }
 

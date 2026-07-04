@@ -712,8 +712,8 @@ private:
   pv::toolbars::SamplingBar *_sampling_bar;
   DockUiState _dock_ui_state;
   // Re-entrancy guard for rebuild_signals_from_config(). Set while a rebuild
-  // is in progress so a nested broadcast (e.g. DSV_MSG_DEVICE_OPTIONS_UPDATED)
-  // cannot recurse into another rebuild and stack-overflow. The RAII guard in
+  // is in progress so a nested broadcast (e.g. DeviceOptionsUpdated) cannot
+  // recurse into another rebuild and stack-overflow. The RAII guard in
   // rebuild_signals_from_config() resets it on all exit paths.
   bool _rebuild_in_progress = false;
 

@@ -53,8 +53,8 @@ SignalRebuilder::~SignalRebuilder() {}
 
 void SignalRebuilder::rebuild_signals_from_config(
     const pv::data::SignalConfig &config) {
-  // Re-entrancy guard: if a nested broadcast (e.g. DSV_MSG_DEVICE_OPTIONS_UPDATED
-  // from within this function) triggers OnMessage → rebuild_signals() →
+  // Re-entrancy guard: if a nested broadcast (e.g. DeviceOptionsUpdated
+  // from within this function) triggers on_event → rebuild_signals() →
   // rebuild_signals_from_config() again, abort immediately to prevent
   // infinite recursion / stack overflow.
   if (_view->_rebuild_in_progress)

@@ -1,7 +1,8 @@
 #include "filterprocessor.h"
 
 #include "eventbus.h"
-#include "../sigsession.h"
+#include "sessionstatecontext.h"
+#include "../sigsession.h"  // SessionData full definition
 #include "../data/logicsnapshot.h"
 #include "../log.h"
 
@@ -10,8 +11,8 @@
 namespace pv {
 namespace core {
 
-FilterProcessor::FilterProcessor(EventBus *bus, SigSession *session)
-    : _event_bus(bus), _session(session),
+FilterProcessor::FilterProcessor(EventBus *bus, SessionStateContext *state)
+    : _event_bus(bus), _state(state),
       _glitch_filter_running(false),
       _signal_invert_running(false) {}
 
@@ -46,7 +47,7 @@ void FilterProcessor::set_glitch_filter(
   if (_glitch_filter_running)
     return;
 
-  if (_session->_view_data->get_logic()->empty())
+  if (_state->view_data()->get_logic()->empty())
     return;
 
   bool has_filter = false;
@@ -60,7 +61,7 @@ void FilterProcessor::set_glitch_filter(
     return;
 
   _glitch_filter_running = true;
-  _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_STARTED);
+  _event_bus->broadcast_async<interface::GlitchFilterStarted>({});
 
   if (_glitch_filter_thread) {
     _glitch_filter_thread->join();
@@ -74,95 +75,95 @@ void FilterProcessor::set_glitch_filter(
 void FilterProcessor::glitch_filter_task(
     const std::vector<uint32_t> thresholds,
     const std::vector<GlitchFilterMode> filter_modes) {
-  if (!_session->_view_data->_logic_backup) {
-    _session->_view_data->_logic_backup = new data::LogicSnapshot();
-    _session->_view_data->_logic_backup->copy_from(
-        *(_session->_view_data->get_logic()));
-    if (_session->_view_data->_logic_backup->memory_failed()) {
-      delete _session->_view_data->_logic_backup;
-      _session->_view_data->_logic_backup = nullptr;
+  if (!_state->view_data()->_logic_backup) {
+    _state->view_data()->_logic_backup = new data::LogicSnapshot();
+    _state->view_data()->_logic_backup->copy_from(
+        *(_state->view_data()->get_logic()));
+    if (_state->view_data()->_logic_backup->memory_failed()) {
+      delete _state->view_data()->_logic_backup;
+      _state->view_data()->_logic_backup = nullptr;
       _glitch_filter_running = false;
-      _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
+      _event_bus->broadcast_async<interface::GlitchFilterCompleted>({});
       return;
     }
   } else {
-    _session->_view_data->get_logic()->copy_from(
-        *_session->_view_data->_logic_backup);
+    _state->view_data()->get_logic()->copy_from(
+        *_state->view_data()->_logic_backup);
   }
 
   // 重新滤波前清空持久化区间（apply_glitch_filter 会重新累积，避免残留）
-  if (_session->_view_data->get_logic()) {
-    _session->_view_data->get_logic()->clear_filtered_ranges();
+  if (_state->view_data()->get_logic()) {
+    _state->view_data()->get_logic()->clear_filtered_ranges();
   }
 
   // If signal invert is active, apply invert before glitch filter
-  if (_session->_view_data->_signal_invert_active) {
+  if (_state->view_data()->_signal_invert_active) {
     int ch_idx = 0;
-    for (const GSList *l = _session->_device_agent.get_channels(); l;
+    for (const GSList *l = _state->device_agent().get_channels(); l;
          l = l->next) {
       sr_channel *const probe = (sr_channel *)l->data;
       if (probe->type != SR_CHANNEL_LOGIC)
         continue;
-      if (ch_idx < (int)_session->_view_data->_signal_invert_channels.size() &&
-          _session->_view_data->_signal_invert_channels[ch_idx]) {
-        _session->_view_data->get_logic()->invert_channel(probe->index);
+      if (ch_idx < (int)_state->view_data()->_signal_invert_channels.size() &&
+          _state->view_data()->_signal_invert_channels[ch_idx]) {
+        _state->view_data()->get_logic()->invert_channel(probe->index);
       }
       ch_idx++;
     }
   }
 
-  _session->_view_data->get_logic()->apply_glitch_filter_all(
+  _state->view_data()->get_logic()->apply_glitch_filter_all(
       thresholds,
       [this](int progress) {
-        _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_PROGRESS, progress);
+        _event_bus->broadcast_async<interface::GlitchFilterProgress>({progress});
       },
       filter_modes);
 
-  _session->_view_data->_glitch_filter_active = true;
-  _session->_view_data->_glitch_filter_thresholds = thresholds;
-  _session->_view_data->_glitch_filter_modes = filter_modes;
+  _state->view_data()->_glitch_filter_active = true;
+  _state->view_data()->_glitch_filter_thresholds = thresholds;
+  _state->view_data()->_glitch_filter_modes = filter_modes;
   _glitch_filter_running = false;
 
-  _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_COMPLETED);
-  _session->data_updated();
+  _event_bus->broadcast_async<interface::GlitchFilterCompleted>({});
+  _state->data_updated();
 }
 
 void FilterProcessor::clear_glitch_filter() {
   if (_glitch_filter_running)
     return;
 
-  if (!_session->_view_data->_glitch_filter_active)
+  if (!_state->view_data()->_glitch_filter_active)
     return;
 
-  if (_session->_view_data->_logic_backup) {
-    _session->_view_data->get_logic()->copy_from(
-        *_session->_view_data->_logic_backup);
-    delete _session->_view_data->_logic_backup;
-    _session->_view_data->_logic_backup = nullptr;
+  if (_state->view_data()->_logic_backup) {
+    _state->view_data()->get_logic()->copy_from(
+        *_state->view_data()->_logic_backup);
+    delete _state->view_data()->_logic_backup;
+    _state->view_data()->_logic_backup = nullptr;
   }
 
   // 清除滤波后清空持久化区间，恢复原始数据无 overlay
-  if (_session->_view_data->get_logic()) {
-    _session->_view_data->get_logic()->clear_filtered_ranges();
+  if (_state->view_data()->get_logic()) {
+    _state->view_data()->get_logic()->clear_filtered_ranges();
   }
 
-  _session->_view_data->_glitch_filter_active = false;
-  _session->_view_data->_glitch_filter_thresholds.clear();
-  _session->_view_data->_glitch_filter_modes.clear();
+  _state->view_data()->_glitch_filter_active = false;
+  _state->view_data()->_glitch_filter_thresholds.clear();
+  _state->view_data()->_glitch_filter_modes.clear();
 
-  _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
-  _session->data_updated();
+  _event_bus->broadcast_async<interface::GlitchFilterCleared>({});
+  _state->data_updated();
 }
 
 bool FilterProcessor::is_glitch_filter_active() {
-  return _session->_view_data->_glitch_filter_active;
+  return _state->view_data()->_glitch_filter_active;
 }
 
 void FilterProcessor::set_signal_invert(const std::vector<bool> &channels) {
   if (_signal_invert_running)
     return;
 
-  if (_session->_view_data->get_logic()->empty())
+  if (_state->view_data()->get_logic()->empty())
     return;
 
   bool has_invert = false;
@@ -176,7 +177,7 @@ void FilterProcessor::set_signal_invert(const std::vector<bool> &channels) {
     return;
 
   _signal_invert_running = true;
-  _event_bus->trigger_message(DSV_MSG_SIGNAL_INVERT_STARTED);
+  _event_bus->broadcast_async<interface::SignalInvertStarted>({});
 
   if (_signal_invert_thread) {
     _signal_invert_thread->join();
@@ -189,79 +190,79 @@ void FilterProcessor::set_signal_invert(const std::vector<bool> &channels) {
 }
 
 void FilterProcessor::signal_invert_task(const std::vector<bool> channels) {
-  if (!_session->_view_data->_logic_backup) {
-    _session->_view_data->_logic_backup = new data::LogicSnapshot();
-    _session->_view_data->_logic_backup->copy_from(
-        *(_session->_view_data->get_logic()));
-    if (_session->_view_data->_logic_backup->memory_failed()) {
-      delete _session->_view_data->_logic_backup;
-      _session->_view_data->_logic_backup = nullptr;
+  if (!_state->view_data()->_logic_backup) {
+    _state->view_data()->_logic_backup = new data::LogicSnapshot();
+    _state->view_data()->_logic_backup->copy_from(
+        *(_state->view_data()->get_logic()));
+    if (_state->view_data()->_logic_backup->memory_failed()) {
+      delete _state->view_data()->_logic_backup;
+      _state->view_data()->_logic_backup = nullptr;
       _signal_invert_running = false;
-      _event_bus->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
+      _event_bus->broadcast_async<interface::SignalInvertCompleted>({});
       return;
     }
   } else {
-    _session->_view_data->get_logic()->copy_from(
-        *_session->_view_data->_logic_backup);
+    _state->view_data()->get_logic()->copy_from(
+        *_state->view_data()->_logic_backup);
   }
 
   // Apply invert on each enabled channel
   int ch_idx = 0;
-  for (const GSList *l = _session->_device_agent.get_channels(); l; l = l->next) {
+  for (const GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
     sr_channel *const probe = (sr_channel *)l->data;
     if (probe->type != SR_CHANNEL_LOGIC)
       continue;
     if (ch_idx < (int)channels.size() && channels[ch_idx]) {
-      _session->_view_data->get_logic()->invert_channel(probe->index);
+      _state->view_data()->get_logic()->invert_channel(probe->index);
     }
     ch_idx++;
   }
 
   // If glitch filter is active, re-apply on the inverted data
-  if (_session->_view_data->_glitch_filter_active) {
-    _session->_view_data->get_logic()->apply_glitch_filter_all(
-        _session->_view_data->_glitch_filter_thresholds, nullptr,
-        _session->_view_data->_glitch_filter_modes);
+  if (_state->view_data()->_glitch_filter_active) {
+    _state->view_data()->get_logic()->apply_glitch_filter_all(
+        _state->view_data()->_glitch_filter_thresholds, nullptr,
+        _state->view_data()->_glitch_filter_modes);
   }
 
-  _session->_view_data->_signal_invert_active = true;
-  _session->_view_data->_signal_invert_channels = channels;
+  _state->view_data()->_signal_invert_active = true;
+  _state->view_data()->_signal_invert_channels = channels;
   _signal_invert_running = false;
 
-  _event_bus->trigger_message(DSV_MSG_SIGNAL_INVERT_COMPLETED);
-  _session->data_updated();
+  _event_bus->broadcast_async<interface::SignalInvertCompleted>({});
+  _state->data_updated();
 }
 
 void FilterProcessor::clear_signal_invert() {
   if (_signal_invert_running)
     return;
 
-  if (!_session->_view_data->_signal_invert_active)
+  if (!_state->view_data()->_signal_invert_active)
     return;
 
-  if (_session->_view_data->_logic_backup) {
-    _session->_view_data->get_logic()->copy_from(
-        *_session->_view_data->_logic_backup);
-    delete _session->_view_data->_logic_backup;
-    _session->_view_data->_logic_backup = nullptr;
+  if (_state->view_data()->_logic_backup) {
+    _state->view_data()->get_logic()->copy_from(
+        *_state->view_data()->_logic_backup);
+    delete _state->view_data()->_logic_backup;
+    _state->view_data()->_logic_backup = nullptr;
   }
 
   // If glitch filter is active, re-apply on the restored (non-inverted) data
-  if (_session->_view_data->_glitch_filter_active) {
-    _session->_view_data->get_logic()->apply_glitch_filter_all(
-        _session->_view_data->_glitch_filter_thresholds, nullptr,
-        _session->_view_data->_glitch_filter_modes);
+  if (_state->view_data()->_glitch_filter_active) {
+    _state->view_data()->get_logic()->apply_glitch_filter_all(
+        _state->view_data()->_glitch_filter_thresholds, nullptr,
+        _state->view_data()->_glitch_filter_modes);
   }
 
-  _session->_view_data->_signal_invert_active = false;
-  _session->_view_data->_signal_invert_channels.clear();
+  _state->view_data()->_signal_invert_active = false;
+  _state->view_data()->_signal_invert_channels.clear();
 
-  _event_bus->trigger_message(DSV_MSG_SIGNAL_INVERT_CLEARED);
-  _session->data_updated();
+  _event_bus->broadcast_async<interface::SignalInvertCleared>({});
+  _state->data_updated();
 }
 
 bool FilterProcessor::is_signal_invert_active() {
-  return _session->_view_data->_signal_invert_active;
+  return _state->view_data()->_signal_invert_active;
 }
 
 } // namespace core

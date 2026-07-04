@@ -131,7 +131,6 @@ public:
     virtual bool switch_work_mode(int mode);
     virtual void session_save();
     virtual void close_file(unsigned long long dev_handle);
-    virtual void broadcast_msg(int msg, int param = 0);
     virtual bool trigd();
     virtual uint8_t trigd_ch();
     virtual bool dso_status_is_valid();

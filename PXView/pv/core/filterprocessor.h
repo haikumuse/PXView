@@ -13,24 +13,25 @@
 
 namespace pv {
 
-class SigSession;
-
 namespace core {
 
 class EventBus;
+class SessionStateContext;
 
 /**
  * FilterProcessor — owns the glitch filter and signal invert background
  * threads and their running flags. Extracted from SigSession (SubTask 10.5)
  * as a mechanical refactoring: no behavior change, just code movement.
  *
- * The processor holds an injected EventBus* (for trigger_message) and a
- * SigSession* (for accessing _view_data / _device_agent / data_updated()).
- * It is declared as a friend of SigSession so it can touch private members.
+ * The processor holds an injected EventBus* (for typed event dispatch via
+ * broadcast_async<T>/broadcast_sync<T>) and a SessionStateContext* (for
+ * accessing view_data / device_agent / data_updated()).
+ * modernize-core-layer-radical phase 1 replaced the previous SigSession* +
+ * friend-declaration coupling.
  */
 class FilterProcessor {
 public:
-  FilterProcessor(EventBus *bus, SigSession *session);
+  FilterProcessor(EventBus *bus, SessionStateContext *state);
   ~FilterProcessor();
 
   void set_glitch_filter(const std::vector<uint32_t> &thresholds,
@@ -51,13 +52,10 @@ private:
   void signal_invert_task(const std::vector<bool> channels);
 
   EventBus *_event_bus;
-  // Circular reference: this manager needs SigSession state and methods
-  // (_view_data / _device_agent / data_updated()). Note _view_data is a
-  // direct SigSession private member, not accessible via CaptureManager, so
-  // the spec-hypothesized EventBus* + CaptureManager* injection is not
-  // feasible. This is a known tech debt tracked by modernize-core-layer-final
-  // Task 7.
-  SigSession *_session;
+  // Shared session state (view_data / device_agent / data_updated())
+  // accessed via SessionStateContext accessors. modernize-core-layer-radical
+  // phase 1 replaced the previous SigSession* + friend-declaration coupling.
+  SessionStateContext *_state;
 
   // modernize-core-layer-final Task 5: RAII-managed background threads.
   // unique_ptr replaces raw std::thread* + manual new/delete. The destructor

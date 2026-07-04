@@ -724,7 +724,7 @@ bool DsoSignal::mouse_press(int right, const QPoint pt) {
     // (set_factor/set_acCoupling/go_vDial*) deliberately do NOT broadcast
     // because they are also called from JSON restore paths (rebuild loop
     // risk); mouse_press is the user-interaction entry point per AGENTS.md.
-    _data_source->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+    _view->session().broadcast_async<interface::DeviceOptionsUpdated>({});
     return true;
   }
   return false;

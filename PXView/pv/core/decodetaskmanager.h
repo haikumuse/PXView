@@ -8,7 +8,6 @@
 
 namespace pv {
 
-class SigSession;
 class SessionData;
 
 namespace data {
@@ -19,20 +18,21 @@ class SessionDocument;
 namespace core {
 
 class EventBus;
+class SessionStateContext;
 
 /**
  * DecodeTaskManager — owns the decode thread pool (_decode_threads) and the
  * list of in-flight decode tasks (_running_tasks). Extracted from SigSession
  * (SubTask 10.3) as a mechanical refactoring: no behavior change.
  *
- * Holds an injected EventBus* (for broadcast<T>) and a SigSession* (for
- * accessing _signal_models / _view_data / _all_documents / _active_document /
- * decode_traces() / signals_changed() etc.). Declared as a friend of
- * SigSession so it can touch private members.
+ * Holds an injected EventBus* (for broadcast<T>) and a SessionStateContext*
+ * (for accessing signal_models / view_data / document_registry /
+ * decode_traces() / signals_changed() etc.). modernize-core-layer-radical
+ * phase 1 replaced the previous SigSession* + friend-declaration coupling.
  */
 class DecodeTaskManager {
 public:
-  DecodeTaskManager(EventBus *bus, SigSession *session);
+  DecodeTaskManager(EventBus *bus, SessionStateContext *state);
   ~DecodeTaskManager();
 
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
@@ -59,14 +59,12 @@ public:
 
 private:
   EventBus *_event_bus;
-  // Circular reference: this manager needs SigSession state and methods
-  // (_signal_models / _view_data / _document_registry / _bClose /
-  // decode_traces() / get_decoder_trace() / get_trace_index_by_key_handel() /
-  // data_updated() / signals_changed()) that cannot be provided by EventBus*
-  // or DocumentRegistry* alone, so the spec-hypothesized EventBus* +
-  // DocumentRegistry* injection is not feasible. This is a known tech debt
-  // tracked by modernize-core-layer-final Task 7.
-  SigSession *_session;
+  // Shared session state (signal_models / view_data / document_registry /
+  // bClose / decode_traces() / get_decoder_trace() /
+  // get_trace_index_by_key_handel() / data_updated() / signals_changed())
+  // accessed via SessionStateContext accessors. modernize-core-layer-radical
+  // phase 1 replaced the previous SigSession* + friend-declaration coupling.
+  SessionStateContext *_state;
 
   mutable std::mutex _running_tasks_mutex;
   std::vector<std::thread> _decode_threads;

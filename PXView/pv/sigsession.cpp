@@ -99,141 +99,100 @@ void SessionData::clear() {
   _signal_invert_channels.clear();
 }
 
-// --- Dispatch helpers (moved from inline in sigsession.h) ---
+// --- Dispatch helpers (forward to SessionStateContext) ---
+// These were migrated to SessionStateContext in modernize-core-layer-radical
+// phase 1. SigSession retains the methods for backward compat with View/API
+// callers, but just forwards to _state.
 
-void SigSession::data_updated() {
-  dispatch_to<IDataCallback>([](IDataCallback *cb) { cb->data_updated(); });
-}
+void SigSession::data_updated() { _state->data_updated(); }
+void SigSession::set_receive_data_len(quint64 len) { _state->set_receive_data_len(len); }
+void SigSession::receive_header() { _state->receive_header(); }
+void SigSession::cur_snap_samplerate_changed() { _state->cur_snap_samplerate_changed(); }
+void SigSession::frame_began() { _state->frame_began(); }
+void SigSession::frame_ended() { _state->frame_ended(); }
+void SigSession::update_capture() { _state->update_capture(); }
+void SigSession::repeat_hold(int percent) { _state->repeat_hold(percent); }
+void SigSession::receive_trigger(quint64 trigger_pos) { _state->receive_trigger(trigger_pos); }
+void SigSession::show_wait_trigger() { _state->show_wait_trigger(); }
+void SigSession::signals_changed() { _state->signals_changed(); }
+void SigSession::session_error() { _state->session_error(); }
+void SigSession::delay_prop_msg(QString strMsg) { _state->delay_prop_msg(strMsg); }
 
-void SigSession::set_receive_data_len(quint64 len) {
-  dispatch_to<IDataCallback>(
-      [len](IDataCallback *cb) { cb->receive_data_len(len); });
-}
-
-void SigSession::receive_header() {
-  dispatch_to<IDataCallback>([](IDataCallback *cb) { cb->receive_header(); });
-}
-
-void SigSession::cur_snap_samplerate_changed() {
-  dispatch_to<IDataCallback>(
-      [](IDataCallback *cb) { cb->cur_snap_samplerate_changed(); });
-}
-
-void SigSession::frame_began() {
-  dispatch_to<ICaptureCallback>([](ICaptureCallback *cb) { cb->frame_began(); });
-}
-
-void SigSession::frame_ended() {
-  dispatch_to<ICaptureCallback>([](ICaptureCallback *cb) { cb->frame_ended(); });
-}
-
-void SigSession::update_capture() {
-  dispatch_to<ICaptureCallback>(
-      [](ICaptureCallback *cb) { cb->update_capture(); });
-}
-
-void SigSession::repeat_hold(int percent) {
-  dispatch_to<ICaptureCallback>(
-      [percent](ICaptureCallback *cb) { cb->repeat_hold(percent); });
-}
-
-void SigSession::receive_trigger(quint64 trigger_pos) {
-  dispatch_to<ITriggerCallback>(
-      [trigger_pos](ITriggerCallback *cb) { cb->receive_trigger(trigger_pos); });
-}
-
-void SigSession::show_wait_trigger() {
-  dispatch_to<ITriggerCallback>(
-      [](ITriggerCallback *cb) { cb->show_wait_trigger(); });
-}
-
-void SigSession::trigger_message(int msg) {
-  dispatch_to<ITriggerCallback>(
-      [msg](ITriggerCallback *cb) { cb->trigger_message(msg); });
-  broadcast_msg(msg);
-}
-
-void SigSession::signals_changed() {
-  dispatch_to<ISessionStateCallback>(
-      [](ISessionStateCallback *cb) { cb->signals_changed(); });
-  broadcast<interface::SignalsChanged>({});
-}
-
-void SigSession::session_error() {
-  dispatch_to<ISessionStateCallback>(
-      [](ISessionStateCallback *cb) { cb->session_error(); });
-}
-
-void SigSession::delay_prop_msg(QString strMsg) {
-  dispatch_to<ISessionStateCallback>(
-      [strMsg](ISessionStateCallback *cb) { cb->delay_prop_msg(strMsg); });
-}
-
-std::vector<std::shared_ptr<data::DecoderStack>>
-    SigSession::_empty_decoder_stacks;
+// _empty_decoder_stacks static member removed: SessionStateContext now hosts
+// its own file-static _empty_decoder_stacks (see sessionstatecontext.cpp) and
+// exposes it via get_decoder_stacks(). SigSession::get_decoder_stacks forwards.
 
 SigSession::SigSession() {
-  _map_zoom = 0;
-  _error = No_err;
-  _is_working = false;
-  _is_saving = false;
-  _device_status = ST_INIT;
-  _view_data = NULL;
-  _capture_data = NULL;
   _decoder_pannel = NULL;
-  _is_triged = false;
-  _dso_status_valid = false;
 
-  _data_list.push_back(new SessionData());
-  _data_list.push_back(new SessionData());
-  _view_data = _data_list[0];
-  _capture_data = _data_list[0];
+  // SessionStateContext owns all shared mutable state (mutexes, signal models,
+  // device agent, view/capture data, atomic flags, trigger config, etc.).
+  // Its constructor initializes _sampling_mutex/_data_mutex (via make_unique),
+  // _data_list (with 2 SessionData entries), _view_data/_capture_data (both
+  // pointing to _data_list[0]), and all bool/atomic/numeric fields with their
+  // default values.
+  _state = std::make_unique<core::SessionStateContext>();
 
-  // EventBus must be constructed before add_msg_listener(this), since
-  // add_msg_listener forwards to _event_bus. All broadcast_msg /
-  // trigger_message calls are ASYNC (queued on qApp via QueuedConnection).
+  // EventBus must be constructed before add_event_listener(this), since
+  // add_event_listener forwards to _event_bus. All typed event dispatch goes
+  // through broadcast<T>() / broadcast_sync<T>() / broadcast_async<T>().
   _event_bus = std::make_unique<core::EventBus>();
-  this->add_msg_listener(this);
+  _state->set_event_bus(_event_bus.get());
+  // SigSession is now an IEventListener. It registers to receive the 5
+  // Core-internal state-machine typed events whose logic lives in on_event
+  // overrides (DeviceOptionsUpdated / TrigNextCollect / RevEndPacket /
+  // CopyToDocDone / DeviceSpeedNotMatch).
+  _event_bus->add_event_listener(this);
 
   // Managers are constructed after _event_bus (they hold a raw pointer to it)
-  // and after _view_data/_capture_data are initialized (FilterProcessor
-  // accesses _view_data).
+  // and after _state (they hold a raw pointer to it). FilterProcessor accesses
+  // _state->view_data(), which is already initialized by SessionStateContext's
+  // constructor.
   _filter_processor = std::make_unique<core::FilterProcessor>(_event_bus.get(),
-                                                              this);
+                                                              _state.get());
   _decode_task_manager = std::make_unique<core::DecodeTaskManager>(
-      _event_bus.get(), this);
+      _event_bus.get(), _state.get());
   _data_feed_parser = std::make_unique<core::DataFeedParser>(_event_bus.get(),
-                                                             this);
+                                                             _state.get());
   _document_registry = std::make_unique<core::DocumentRegistry>(
-      _event_bus.get(), this);
+      _event_bus.get(), _state.get());
   // CaptureManager owns the capture lifecycle + DsTimer instances + the
   // _is_instant / _clt_mode / _data_lock / _repeat_intvl / _dso_packet_count
   // / _disk_cache_config state. Constructed after _document_registry because
   // action_start_capture calls _document_registry->acquire_capture_owner().
   _capture_manager = std::make_unique<core::CaptureManager>(_event_bus.get(),
-                                                            this);
+                                                            _state.get());
 
-  _lissajous_model = nullptr;
-  _math_stack = nullptr;
-  _bClose = false;
+  // Inject manager back-pointers into _state so cross-manager helpers
+  // (decode_traces / attach_data_to_signal / sync_trigger_to_libsigrok /
+  // clear_all_decode_task2 / etc.) can dispatch to the right manager.
+  _state->set_capture_manager(_capture_manager.get());
+  _state->set_decode_task_manager(_decode_task_manager.get());
+  _state->set_data_feed_parser(_data_feed_parser.get());
+  _state->set_document_registry(_document_registry.get());
+  _state->set_filter_processor(_filter_processor.get());
 
-  _device_agent.set_callback(this);
+  _state->device_agent().set_callback(this);
 }
 
 SigSession::SigSession(SigSession &o) { (void)o; }
 
 SigSession::~SigSession() {
   // A3 fix: ensure Close() has been called so background threads (decode/copy/
-  // glitch_filter/signal_invert) are joined before we destroy _data_list.
+  // glitch_filter/signal_invert) are joined before we destroy _state.
   // Close() is idempotent (_bClose guard), so calling it here is safe even
   // if already called via uninit().
   Close();
 
-  for (auto p : _data_list) {
-    p->clear();
-    delete p;
-  }
-  _data_list.clear();
+  // Unregister as IEventListener before _event_bus is destroyed (unique_ptr
+  // member, destroyed after the destructor body runs).
+  if (_event_bus)
+    _event_bus->remove_event_listener(this);
+
+  // _state destructor clears _data_list entries. Managers (unique_ptrs) are
+  // destroyed before _state due to reverse declaration order in sigsession.h,
+  // so manager back-pointers in _state are already dangling-but-unused by the
+  // time _state is destroyed.
 }
 
 bool SigSession::init() {
@@ -293,9 +252,9 @@ void SigSession::uninit() {
 }
 
 bool SigSession::set_default_device() {
-  assert(!_is_saving);
+  assert(!_state->is_saving());
 
-  if (_is_working) {
+  if (_state->is_working()) {
     pxv_info("SigSession::set_default_device()，The current device is working, "
              "now to stop it.");
     pxv_info("SigSession::set_default_device(), stop capture");
@@ -328,18 +287,22 @@ bool SigSession::set_default_device() {
 }
 
 bool SigSession::set_device(ds_device_handle dev_handle) {
-  assert(!_is_saving);
-  assert(!_is_working);
+  assert(!_state->is_saving());
+  assert(!_state->is_working());
   assert(_event_bus && _event_bus->has_callbacks());
 
-  ds_device_handle old_dev = _device_agent.handle();
+  ds_device_handle old_dev = _state->device_agent().handle();
 
-  trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGE_PREV);
+  // modernize-core-layer-radical Task 11: pre-broadcast synchronously so
+  // MainWindow can close modal dialogs / hide calibration / delete protocols
+  // / reload the view BEFORE the old device is released below.
+  // Caller (set_device) is on the main thread (user-initiated action).
+  _event_bus->broadcast_sync<interface::CurrentDeviceChangePrev>({});
   // Release the old device. DeviceAgent::release() dispatches based on the
   // CURRENT _device_lib (i.e. the OLD device's lib) — srstd → srstd_glue_close,
   // pxview → ds_release_actived_device.
-  _device_agent.release();
-  _device_status = ST_INIT;
+  _state->device_agent().release();
+  _state->set_device_status(ST_INIT);
 
   // ===== Dispatch based on handle tag (srstd devices have high bit set) =====
   if (SRSTD_IS_HANDLE(dev_handle)) {
@@ -349,50 +312,50 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
       pxv_err("Switch srstd device error (index %d)!", idx);
       return false;
     }
-    _device_agent.set_device_lib(DeviceAgent::LIB_SRSTD);
+    _state->device_agent().set_device_lib(DeviceAgent::LIB_SRSTD);
   } else {
     // PXView fork device.
-    _device_agent.set_device_lib(DeviceAgent::LIB_PXVIEW);
+    _state->device_agent().set_device_lib(DeviceAgent::LIB_PXVIEW);
     if (ds_active_device(dev_handle) != SR_OK) {
       pxv_err("Switch device error!");
       return false;
     }
   }
 
-  _device_agent.update();
+  _state->device_agent().update();
   set_collect_mode(COLLECT_SINGLE);
 
-  if (_device_agent.is_file()) {
-    std::string dev_name = pv::path::ToUnicodePath(_device_agent.name());
+  if (_state->device_agent().is_file()) {
+    std::string dev_name = pv::path::ToUnicodePath(_state->device_agent().name());
     pxv_info("Switch to file \"%s\" done.", dev_name.c_str());
   } else
     pxv_info("Switch to device \"%s\" done.",
-             _device_agent.name().toUtf8().data());
+             _state->device_agent().name().toUtf8().data());
 
   clear_all_documents_decoders();
 
-  _view_data->clear();
-  _capture_data->clear();
-  _capture_data = _view_data;
+  _state->view_data()->clear();
+  _state->capture_data()->clear();
+  _state->set_capture_data(_state->view_data());
 
   init_signals();
 
-  set_cur_snap_samplerate(_device_agent.get_sample_rate());
-  set_cur_samplelimits(_device_agent.get_sample_limit());
+  set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
+  set_cur_samplelimits(_state->device_agent().get_sample_limit());
 
   // The current device changed.
-  // trigger_message is now ALWAYS async (queued on qApp via
-  // Qt::QueuedConnection): init_signals() above rebuilt Core SignalModels, and
-  // the ITriggerCallback dispatch + broadcast_msg will run AFTER the View
-  // signals_changed rebuild so handlers (on_device_changed ->
+  // broadcast_async<CurrentDeviceChanged> is queued on qApp via
+  // Qt::QueuedConnection: init_signals() above rebuilt Core SignalModels, and
+  // the ITriggerCallback dispatch + typed event will run AFTER the View
+  // signals_changed rebuild so handlers (on_event(CurrentDeviceChanged) ->
   // load_device_config -> DsoSignal::set_zero_ratio) see valid
   // view::Signal::_model pointers. No separate _deferred variant is needed.
-  trigger_message(DSV_MSG_CURRENT_DEVICE_CHANGED);
+  _event_bus->broadcast_async<interface::CurrentDeviceChanged>({});
 
   // Firmware error checks are PXView-fork-specific (DSLogic/DSCope firmware
   // version / USB I/O / exclusivity). Skip them for srstd upstream devices,
   // which don't use PXView's firmware loading path.
-  if (_device_agent.device_lib() == DeviceAgent::LIB_PXVIEW) {
+  if (_state->device_agent().device_lib() == DeviceAgent::LIB_PXVIEW) {
     if (ds_get_last_error() == SR_ERR_DEVICE_FIRMWARE_VERSION_LOW) {
       QString strMsg = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TO_RECONNECT_FOR_FIRMWARE),
                            "Please reconnect the device!");
@@ -429,8 +392,8 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
 }
 
 bool SigSession::set_file(QString name) {
-  assert(!_is_saving);
-  assert(!_is_working);
+  assert(!_state->is_saving());
+  assert(!_state->is_working());
 
   std::string file_name = pv::path::ToUnicodePath(name);
   pxv_info("Load file: \"%s\"", file_name.c_str());
@@ -452,11 +415,11 @@ void SigSession::close_file(ds_device_handle dev_handle) {
   }
   assert(dev_handle);
 
-  if (dev_handle == _device_agent.handle() && _is_working) {
+  if (dev_handle == _state->device_agent().handle() && _state->is_working()) {
     pxv_err("The virtual device is running, can't remove it.");
     return;
   }
-  bool isCurrent = dev_handle == _device_agent.handle();
+  bool isCurrent = dev_handle == _state->device_agent().handle();
 
   if (ds_remove_device(dev_handle) != SR_OK) {
     pxv_err("Remove virtual deivice error!");
@@ -467,7 +430,7 @@ void SigSession::close_file(ds_device_handle dev_handle) {
 }
 
 bool SigSession::have_hardware_data() {
-  if (_device_agent.have_instance() && _device_agent.is_hardware()) {
+  if (_state->device_agent().have_instance() && _state->device_agent().is_hardware()) {
     Snapshot *data = get_signal_snapshot();
     return data->have_data();
   }
@@ -539,19 +502,19 @@ struct ds_device_base_info *SigSession::get_device_list(int &out_count,
 
 uint64_t SigSession::cur_samplerate() {
   // samplerate for current viewport
-  if (_device_agent.get_work_mode() == DSO)
-    return _device_agent.get_sample_rate();
+  if (_state->device_agent().get_work_mode() == DSO)
+    return _state->device_agent().get_sample_rate();
   else
     return cur_snap_samplerate();
 }
 
 uint64_t SigSession::cur_snap_samplerate() {
   // samplerate for current snapshot
-  return _capture_data->_cur_snap_samplerate;
+  return _state->capture_data()->_cur_snap_samplerate;
 }
 
 uint64_t SigSession::cur_samplelimits() {
-  return _capture_data->_cur_samplelimits;
+  return _state->capture_data()->_cur_samplelimits;
 }
 
 double SigSession::cur_sampletime() {
@@ -563,31 +526,31 @@ double SigSession::cur_snap_sampletime() {
 }
 
 double SigSession::get_logic_data_view_time() {
-  return _view_data->get_logic()->get_ring_sample_count() * 1.0 /
+  return _state->view_data()->get_logic()->get_ring_sample_count() * 1.0 /
          cur_snap_samplerate();
 }
 
 double SigSession::cur_view_time() {
-  return _device_agent.get_time_base() * DS_CONF_DSO_HDIVS * 1.0 / SR_SEC(1);
+  return _state->device_agent().get_time_base() * DS_CONF_DSO_HDIVS * 1.0 / SR_SEC(1);
 }
 
 void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
   assert(samplerate != 0);
 
-  _capture_data->_cur_snap_samplerate = samplerate;
-  _capture_data->get_logic()->set_samplerate(samplerate);
-  _capture_data->get_analog()->set_samplerate(samplerate);
-  _capture_data->get_dso()->set_samplerate(samplerate);
+  _state->capture_data()->_cur_snap_samplerate = samplerate;
+  _state->capture_data()->get_logic()->set_samplerate(samplerate);
+  _state->capture_data()->get_analog()->set_samplerate(samplerate);
+  _state->capture_data()->get_dso()->set_samplerate(samplerate);
 
-  int mode = _device_agent.get_work_mode();
+  int mode = _state->device_agent().get_work_mode();
 
   if (mode == DSO) {
-    for (auto m : _signal_models) {
+    for (auto m : _state->signal_models()) {
       if (m->type() == SR_CHANNEL_DSO) {
         // TODO: verify - vfactor and vdiv replace view::DsoSignal getters.
-        _capture_data->get_dso()->set_measure_voltage_factor(
+        _state->capture_data()->get_dso()->set_measure_voltage_factor(
             (uint64_t)m->vfactor(), m->index());
-        _capture_data->get_dso()->set_data_scale(m->vdiv(), m->index());
+        _state->capture_data()->get_dso()->set_data_scale(m->vdiv(), m->index());
       }
     }
   }
@@ -598,10 +561,10 @@ void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
   }
 
   // Math
-  if (_math_stack)
-    _math_stack->set_samplerate(_device_agent.get_sample_rate());
+  if (_state->math_stack())
+    _state->math_stack()->set_samplerate(_state->device_agent().get_sample_rate());
   // SpectrumStack
-  for (auto m : _spectrum_stacks) {
+  for (auto m : _state->spectrum_stacks()) {
     m->set_samplerate(samplerate);
   }
 
@@ -610,7 +573,7 @@ void SigSession::set_cur_snap_samplerate(uint64_t samplerate) {
 
 void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
   assert(samplelimits != 0);
-  _capture_data->_cur_samplelimits = samplelimits;
+  _state->capture_data()->_cur_samplelimits = samplelimits;
   // R1: symmetric to set_cur_snap_samplerate which fires
   // cur_snap_samplerate_changed(); notify capture listeners that the
   // sample limit changed.
@@ -620,11 +583,11 @@ void SigSession::set_cur_samplelimits(uint64_t samplelimits) {
 
 std::vector<std::shared_ptr<data::SignalModel>> &
 SigSession::get_signal_models() {
-  return _signal_models;
+  return _state->signal_models();
 }
 
 void SigSession::init_signals() {
-  if (_device_agent.have_instance() == false) {
+  if (_state->device_agent().have_instance() == false) {
     assert(false);
   }
 
@@ -633,14 +596,14 @@ void SigSession::init_signals() {
   unsigned int dso_probe_count = 0;
   unsigned int analog_probe_count = 0;
 
-  _capture_data->clear();
-  _view_data->clear();
-  set_cur_snap_samplerate(_device_agent.get_sample_rate());
-  set_cur_samplelimits(_device_agent.get_sample_limit());
+  _state->capture_data()->clear();
+  _state->view_data()->clear();
+  set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
+  set_cur_samplelimits(_state->device_agent().get_sample_limit());
 
   // Detect what data types we will receive
-  if (_device_agent.have_instance()) {
-    for (const GSList *l = _device_agent.get_channels(); l; l = l->next) {
+  if (_state->device_agent().have_instance()) {
+    for (const GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
       const sr_channel *const probe = (const sr_channel *)l->data;
 
       switch (probe->type) {
@@ -661,9 +624,9 @@ void SigSession::init_signals() {
     }
   }
 
-  int mode = _device_agent.get_work_mode();
+  int mode = _state->device_agent().get_work_mode();
 
-  for (GSList *l = _device_agent.get_channels(); l; l = l->next) {
+  for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;
     if (!probe) {
       pxv_warn("%s", "SigSession: probe is NULL in channel loop, skipping");
@@ -730,38 +693,38 @@ void SigSession::init_signals() {
       if (ch_type == SR_CHANNEL_DSO ||
           ch_type == SR_CHANNEL_ANALOG) {
         uint64_t vdiv = 0;
-        if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
+        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
                                             NULL))
           model->set_vdiv((double)vdiv);
 
         uint64_t vfactor = 1;
-        if (_device_agent.get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
+        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
                                             probe, NULL))
           model->set_vfactor((double)vfactor);
         else
           model->set_vfactor(1.0);
 
         int coupling = 0;
-        if (_device_agent.get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
+        if (_state->device_agent().get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
                                            probe, NULL))
           model->set_coupling(coupling);
 
         bool map_default = true;
-        _device_agent.get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
+        _state->device_agent().get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
                                       probe, NULL);
         model->set_map_default(map_default);
 
         // hw_offset: prefer live SR_CONF_PROBE_HW_OFFSET (matches
         // DsoSignal::get_hw_offset), fall back to the cached channel value.
         int hw_offset = probe ? probe->hw_offset : 0;
-        _device_agent.get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
+        _state->device_agent().get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
                                         probe, NULL);
         model->set_hw_offset(hw_offset);
 
         // zero_offset: prefer live SR_CONF_PROBE_OFFSET (matches
         // DsoSignal::load_settings), fall back to the cached channel value.
         int zero_offset = probe ? probe->zero_offset : 0;
-        _device_agent.get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
+        _state->device_agent().get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
                                         probe, NULL);
         model->set_zero_offset(zero_offset);
       }
@@ -771,8 +734,8 @@ void SigSession::init_signals() {
   }
 
   clear_signals();
-  std::vector<std::shared_ptr<data::SignalModel>>().swap(_signal_models);
-  _signal_models = models;
+  std::vector<std::shared_ptr<data::SignalModel>>().swap(_state->signal_models());
+  _state->signal_models() = models;
   make_channels_view_index();
 
   spectrum_rebuild();
@@ -784,26 +747,26 @@ void SigSession::init_signals() {
   // deleted above) and never receive property-change notifications.
   signals_changed();
 
-  if (_signal_models.empty()) {
+  if (_state->signal_models().empty()) {
     pxv_info("ERROR: Unable to create any channel.");
   }
 }
 
 void SigSession::reload() {
-  if (_device_agent.have_instance() == false) {
+  if (_state->device_agent().have_instance() == false) {
     assert(false);
   }
 
-  if (_is_working)
+  if (_state->is_working())
     return;
 
   std::vector<std::shared_ptr<data::SignalModel>> models;
-  int mode = _device_agent.get_work_mode();
+  int mode = _state->device_agent().get_work_mode();
 
-  set_cur_snap_samplerate(_device_agent.get_sample_rate());
-  set_cur_samplelimits(_device_agent.get_sample_limit());
+  set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
+  set_cur_samplelimits(_state->device_agent().get_sample_limit());
 
-  for (GSList *l = _device_agent.get_channels(); l; l = l->next) {
+  for (GSList *l = _state->device_agent().get_channels(); l; l = l->next) {
     sr_channel *probe = (sr_channel *)l->data;
     if (!probe) {
       pxv_warn("%s", "SigSession: probe is NULL in channel loop, skipping");
@@ -850,7 +813,7 @@ void SigSession::reload() {
     if (should_create) {
       // Try to preserve settings from the existing model with the same index
       std::shared_ptr<data::SignalModel> old_model = nullptr;
-      for (auto &m : _signal_models) {
+      for (auto &m : _state->signal_models()) {
         if (m->index() == (int)probe->index) {
           old_model = m;
           break;
@@ -872,34 +835,34 @@ void SigSession::reload() {
       if (ch_type == SR_CHANNEL_DSO ||
           ch_type == SR_CHANNEL_ANALOG) {
         uint64_t vdiv = 0;
-        if (_device_agent.get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
+        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
                                             NULL))
           model->set_vdiv((double)vdiv);
 
         uint64_t vfactor = 1;
-        if (_device_agent.get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
+        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
                                             probe, NULL))
           model->set_vfactor((double)vfactor);
         else
           model->set_vfactor(1.0);
 
         int coupling = 0;
-        if (_device_agent.get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
+        if (_state->device_agent().get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
                                            probe, NULL))
           model->set_coupling(coupling);
 
         bool map_default = true;
-        _device_agent.get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
+        _state->device_agent().get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
                                       probe, NULL);
         model->set_map_default(map_default);
 
         int hw_offset = probe ? probe->hw_offset : 0;
-        _device_agent.get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
+        _state->device_agent().get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
                                         probe, NULL);
         model->set_hw_offset(hw_offset);
 
         int zero_offset = probe ? probe->zero_offset : 0;
-        _device_agent.get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
+        _state->device_agent().get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
                                         probe, NULL);
         model->set_zero_offset(zero_offset);
       }
@@ -916,8 +879,8 @@ void SigSession::reload() {
   if (!models.empty()) {
     pxv_info("SigSession::reload(), clear signals");
     clear_signals();
-    std::vector<std::shared_ptr<data::SignalModel>>().swap(_signal_models);
-    _signal_models = models;
+    std::vector<std::shared_ptr<data::SignalModel>>().swap(_state->signal_models());
+    _state->signal_models() = models;
     make_channels_view_index();
   } else if (mode == LOGIC || mode == ANALOG || mode == DSO) {
     pxv_info("ERROR: Unable to create any channel.");
@@ -926,7 +889,7 @@ void SigSession::reload() {
 
   spectrum_rebuild();
 
-  // CRITICAL: reload() wholesale-replaces _signal_models (new shared_ptr
+  // CRITICAL: reload() wholesale-replaces _state->signal_models() (new shared_ptr
   // objects, old ones destroyed). Without signals_changed(), the View's
   // DsoSignal/AnalogSignal keep stale _model pointers to the freed
   // SignalModels (0xfeeefeee), and any subsequent access UAFs. This is
@@ -951,8 +914,8 @@ uint16_t SigSession::get_ch_num(int type) {
   uint16_t dso_ch_num = 0;
   uint16_t analog_ch_num = 0;
 
-  if (_device_agent.have_instance()) {
-    for (auto m : _signal_models) {
+  if (_state->device_agent().have_instance()) {
+    for (auto m : _state->signal_models()) {
       if (!m->enabled())
         continue;
 
@@ -985,8 +948,7 @@ uint16_t SigSession::get_ch_num(int type) {
 
 std::vector<std::shared_ptr<data::DecoderStack>> &
 SigSession::get_decoder_stacks(data::SessionDocument *doc) {
-  data::SessionDocument *target = doc ? doc : _document_registry->get_active_document();
-  return target ? target->get_decoder_stacks() : _empty_decoder_stacks;
+  return _state->get_decoder_stacks(doc);
 }
 
 bool SigSession::add_decoder(
@@ -1014,7 +976,7 @@ bool SigSession::add_decoder(
     // Assign a unique handle id so the API/MCP layer can stably reference
     // this stack. A re-created stack (e.g. via a future add_decoder call)
     // always receives a fresh id, distinguishing it from reused stacks.
-    decoder_stack->set_handle_id(_next_decoder_handle_id.fetch_add(1));
+    decoder_stack->set_handle_id(_state->next_decoder_handle_id());
 
     // Make a list of all the probes
     std::vector<const srd_channel *> all_probes;
@@ -1084,7 +1046,7 @@ bool SigSession::add_decoder(
       //   - MCP path (SessionService::add_decoder): via
       //     QTimer::singleShot(0, ...) after do_add() returns to avoid
       //     Qt signal races during rebuild_decoder_pannel().
-      //   - Capture pipeline: when DSV_MSG_COPY_TO_DOC_DONE fires and the
+      //   - Capture pipeline: when CopyToDocDone fires and the
       //     stack was added before capture, frame_ended() + add_decode_task()
       //     is invoked by the message handler.
       data_updated();
@@ -1154,28 +1116,28 @@ void SigSession::remove_decoder_by_key_handel(void *handel,
 void SigSession::spectrum_rebuild() {
   bool has_dso_signal = false;
 
-  for (auto m : _signal_models) {
+  for (auto m : _state->signal_models()) {
     if (m->type() == SR_CHANNEL_DSO) {
       has_dso_signal = true;
       // check already have
-      auto iter = _spectrum_stacks.begin();
+      auto iter = _state->spectrum_stacks().begin();
 
-      for (unsigned int i = 0; i < _spectrum_stacks.size(); i++, iter++) {
+      for (unsigned int i = 0; i < _state->spectrum_stacks().size(); i++, iter++) {
         if ((*iter)->get_index() == m->index())
           break;
       }
 
       // if not, rebuild
-      if (iter == _spectrum_stacks.end()) {
+      if (iter == _state->spectrum_stacks().end()) {
         auto spectrum_stack =
             std::make_shared<data::SpectrumStack>(this, m->index());
-        _spectrum_stacks.push_back(spectrum_stack);
+        _state->spectrum_stacks().push_back(spectrum_stack);
       }
     }
   }
 
   if (!has_dso_signal) {
-    _spectrum_stacks.clear();
+    _state->spectrum_stacks().clear();
   }
 
   signals_changed();
@@ -1183,25 +1145,26 @@ void SigSession::spectrum_rebuild() {
 
 void SigSession::lissajous_rebuild(bool enable, int xindex, int yindex,
                                    double percent) {
-  DESTROY_OBJECT(_lissajous_model);
-  _lissajous_model = new data::LissajousModel();
-  _lissajous_model->set_enabled(enable);
-  _lissajous_model->set_x_index(xindex);
-  _lissajous_model->set_y_index(yindex);
-  _lissajous_model->set_percent((int)percent);
+  delete _state->lissajous_model();
+  auto *m = new data::LissajousModel();
+  m->set_enabled(enable);
+  m->set_x_index(xindex);
+  m->set_y_index(yindex);
+  m->set_percent((int)percent);
+  _state->set_lissajous_model(m);
   signals_changed();
 }
 
 void SigSession::lissajous_disable() {
-  if (_lissajous_model)
-    _lissajous_model->set_enabled(false);
+  if (_state->lissajous_model())
+    _state->lissajous_model()->set_enabled(false);
 }
 
 void SigSession::math_rebuild(bool enable, int ch1_index, int ch2_index,
                               data::MathStack::MathType type) {
-  ds_lock_guard lock(_data_mutex);
+  ds_lock_guard lock(_state->data_mutex());
 
-  _math_stack.reset();
+  _state->set_math_stack(nullptr);
 
   // The MathStack constructor now accepts channel indices and resolves the
   // DSO parameters (vdiv / vfactor / hw_offset / snapshot) through
@@ -1213,41 +1176,41 @@ void SigSession::math_rebuild(bool enable, int ch1_index, int ch2_index,
   // MathStack and do not create a new one. The View's sync_derived_traces
   // observes the null MathStack and tears down its MathTrace.
   if (enable) {
-    _math_stack =
-        std::make_shared<data::MathStack>(this, ch1_index, ch2_index, type);
+    _state->set_math_stack(
+        std::make_shared<data::MathStack>(this, ch1_index, ch2_index, type));
   }
 
   signals_changed();
 }
 
 void SigSession::math_disable() {
-  if (_math_stack)
-    _math_stack->init();
+  if (_state->math_stack())
+    _state->math_stack()->init();
 }
 
 data::Snapshot *SigSession::get_snapshot(int type) {
   if (type == SR_CHANNEL_LOGIC)
-    return _view_data->get_logic();
+    return _state->view_data()->get_logic();
   else if (type == SR_CHANNEL_ANALOG)
-    return _view_data->get_analog();
+    return _state->view_data()->get_analog();
   else if (type == SR_CHANNEL_DSO)
-    return _view_data->get_dso();
+    return _state->view_data()->get_dso();
   else
     return NULL;
 }
 
 void SigSession::clear_error() {
-  _error_pattern = 0;
-  _error = No_err;
+  _state->set_error_pattern(0);
+  _state->set_error(No_err);
 }
 
 void SigSession::Open() {}
 
 void SigSession::Close() {
-  if (_bClose)
+  if (_state->bClose())
     return;
 
-  _bClose = true;
+  _state->set_bClose(true);
 
   // Stop decode thread.
   clear_all_documents_decoders();
@@ -1266,7 +1229,7 @@ void SigSession::Close() {
   // (a joinable std::thread would otherwise std::terminate on destruction).
   join_copy_thread();
 
-  for (auto p : _data_list) {
+  for (auto p : _state->data_list()) {
     p->clear();
   }
 }
@@ -1290,7 +1253,7 @@ void SigSession::clear_all_decoder(bool bUpdateView) {
   // the document's list. No need to clear
   // _active_document->get_decoder_stacks() a second time.
 
-  if (!_bClose && bUpdateView)
+  if (!_state->bClose() && bUpdateView)
     signals_changed();
 }
 
@@ -1324,13 +1287,13 @@ SigSession::get_decoder_trace(int index, data::SessionDocument *doc) {
 }
 
 Snapshot *SigSession::get_signal_snapshot() {
-  int mode = _device_agent.get_work_mode();
+  int mode = _state->device_agent().get_work_mode();
   if (mode == ANALOG)
-    return _view_data->get_analog();
+    return _state->view_data()->get_analog();
   else if (mode == DSO)
-    return _view_data->get_dso();
+    return _state->view_data()->get_dso();
   else
-    return _view_data->get_logic();
+    return _state->view_data()->get_logic();
 }
 
 void SigSession::device_lib_event_callback_ex(int event, void *user_data) {
@@ -1349,69 +1312,69 @@ void SigSession::on_device_lib_event(int event) {
 
   switch (event) {
   case DS_EV_DEVICE_RUNNING:
-    _device_status = ST_RUNNING;
+    _state->set_device_status(ST_RUNNING);
     set_receive_data_len(0);
     break;
 
   case DS_EV_DEVICE_STOPPED:
-    _device_status = ST_STOPPED;
+    _state->set_device_status(ST_STOPPED);
     // Confirm that SR_DF_END was received
-    if (!_capture_data->get_logic()->last_ended() ||
-        !_capture_data->get_dso()->last_ended() ||
-        !_capture_data->get_analog()->last_ended()) {
+    if (!_state->capture_data()->get_logic()->last_ended() ||
+        !_state->capture_data()->get_dso()->last_ended() ||
+        !_state->capture_data()->get_analog()->last_ended()) {
       pxv_err("Error!The data is not completed.");
       assert(false);
     }
     break;
 
   case DS_EV_COLLECT_TASK_START:
-    trigger_message(DSV_MSG_COLLECT_START);
+    _event_bus->broadcast_async<interface::CollectStart>({});
     break;
 
   case DS_EV_COLLECT_TASK_END:
   case DS_EV_COLLECT_TASK_END_BY_ERROR:
   case DS_EV_COLLECT_TASK_END_BY_DETACHED: {
-    trigger_message(DSV_MSG_COLLECT_END);
+    _event_bus->broadcast_async<interface::CollectEnd>({});
 
-    if (_capture_data->get_logic()->last_ended() == false)
+    if (_state->capture_data()->get_logic()->last_ended() == false)
       pxv_err("The collected data is error!");
 
-    if (_capture_data->get_dso()->last_ended() == false)
+    if (_state->capture_data()->get_dso()->last_ended() == false)
       pxv_err("The collected data is error!");
 
-    if (_capture_data->get_analog()->last_ended() == false)
+    if (_state->capture_data()->get_analog()->last_ended() == false)
       pxv_err("The collected data is error!");
 
     // trig next collect
-    if (is_repeat_mode() && _is_working && event == DS_EV_COLLECT_TASK_END) {
-      trigger_message(DSV_MSG_TRIG_NEXT_COLLECT);
+    if (is_repeat_mode() && _state->is_working() && event == DS_EV_COLLECT_TASK_END) {
+      _event_bus->broadcast_async<interface::TrigNextCollect>({});
     } else {
-      _is_working = false;
+      _state->set_is_working(false);
       _capture_manager->set_is_instant(false);
-      trigger_message(DSV_MSG_END_COLLECT_WORK);
+      _event_bus->broadcast_async<interface::EndCollectWork>({});
     }
   } break;
 
   case DS_EV_NEW_DEVICE_ATTACH:
-    trigger_message(DSV_MSG_NEW_USB_DEVICE);
+    _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
     break;
 
   case DS_EV_CURRENT_DEVICE_DETACH: {
-    if (_is_working) {
+    if (_state->is_working()) {
       pxv_info("SigSession::on_device_lib_event,DS_EV_CURRENT_DEVICE_DETACH, "
                "stop capture");
       stop_capture();
     }
 
-    trigger_message(DSV_MSG_CURRENT_DEVICE_DETACHED);
+    _event_bus->broadcast_async<interface::DeviceDetached>({});
   } break;
 
   case DS_EV_INACTIVE_DEVICE_DETACH:
-    trigger_message(DSV_MSG_DEVICE_LIST_UPDATED); // Update list only.
+    _event_bus->broadcast_async<interface::DeviceListUpdated>({}); // Update list only.
     break;
 
   case DS_EV_DEVICE_SPEED_NOT_MATCH:
-    trigger_message(DS_EV_DEVICE_SPEED_NOT_MATCH);
+    _event_bus->broadcast_async<interface::DeviceSpeedNotMatch>({});
     break;
 
   default:
@@ -1420,351 +1383,194 @@ void SigSession::on_device_lib_event(int event) {
   }
 }
 
-// Note: add_msg_listener / add_event_listener / remove_event_listener /
-// remove_callback / broadcast_msg / trigger_message / broadcast<T>() /
+// Note: add_event_listener / remove_event_listener / remove_callback /
+// broadcast<T>() / broadcast_sync<T>() / broadcast_async<T>() /
 // dispatch_to<Iface>() are now inline forwarders in sigsession.h that delegate
 // to the EventBus owned by _event_bus. The _broadcast_depth guard and the
-// _callbacks / _msg_listeners / _event_listeners vectors live inside EventBus.
-// broadcast_msg_deferred and trigger_message_deferred have been removed:
-// broadcast_msg and trigger_message are now ALWAYS async (queued on qApp via
-// Qt::QueuedConnection), so the explicit _deferred variants are redundant.
+// _callbacks / _event_listeners vectors live inside EventBus.
 
-void SigSession::OnMessage(int msg, int param) {
-  // --- Typed event translation (compat layer) ------------------------------
-  // Translate every notification-style DSV_MSG_* into the matching typed event
-  // and dispatch it to IEventListener registrants via broadcast<T>(). This runs
-  // BEFORE the legacy switch below so both listener kinds (IMessageListener via
-  // the switch, IEventListener via broadcast) are notified in parallel.
-  //
-  // The translation table covers all 38 user-facing notification codes; only
-  // the 5 "prev" pre/post ordering codes (REV_END_PACKET, START_COLLECT_WORK_PREV,
-  // END_COLLECT_WORK_PREV, CURRENT_DEVICE_CHANGE_PREV, STORE_CONF_PREV) are
-  // skipped — they drive SigSession's own state machine in the legacy switch
-  // below and have no semantic meaning for typed listeners. There is no
-  // feedback-loop risk: broadcast<T>() only invokes IEventListener::on_event
-  // overrides (never OnMessage itself), and the thread-local re-entrancy guard
-  // short-circuits any nested broadcast.
-  //
-  // Known compat-layer limitations (resolved when call sites migrate to direct
-  // broadcast<T>() in Task 5):
-  //   * CaptureOwnerChanged.old_owner / ActiveDocumentChanged.old_doc are
-  //     nullptr — the legacy (int,int) call sites mutate state before
-  //     broadcasting and cannot recover the previous value.
-  //   * CopyToDocDone.doc is nullptr — the legacy call site does not pass the
-  //     doc pointer through (int param).
-  //   * DeviceModeChanged.mode / CollectModeChanged.mode carry `param`, which
-  //     is 0 at the current broadcast sites; consumers needing the actual mode
-  //     should query the session. Direct broadcast sites will pass the real
-  //     value.
-  // The broadcast<T>() re-entrancy guard ensures that even if a typed listener
-  // synchronously re-emits an event, the nested dispatch is short-circuited.
-  switch (msg) {
-  case DSV_MSG_CAPTURE_STATE_CHANGED:
-    broadcast<interface::CaptureStateChanged>({is_working(), _device_status});
-    break;
-  case DSV_MSG_CAPTURE_OWNER_CHANGED:
-    broadcast<interface::CaptureOwnerChanged>({nullptr, _document_registry->get_capture_owner_document()});
-    break;
-  case DSV_MSG_TRIGGER_CONFIG_CHANGED:
-    broadcast<interface::TriggerConfigChanged>({&_trigger_config});
-    break;
-  case DSV_MSG_SAMPLE_COUNT_UPDATED:
-    broadcast<interface::SampleCountUpdated>(
-        {(uint64_t)get_ring_sample_count()});
-    break;
-  case DSV_MSG_DEVICE_OPTIONS_UPDATED:
-    broadcast<interface::DeviceOptionsUpdated>({});
-    break;
-  case DSV_MSG_ACTIVE_DOCUMENT_CHANGED:
-    broadcast<interface::ActiveDocumentChanged>({nullptr, _document_registry->get_active_document()});
-    break;
-  case DSV_MSG_COPY_TO_DOC_DONE:
-    broadcast<interface::CopyToDocDone>({nullptr});
-    break;
-  case DSV_MSG_DEVICE_MODE_CHANGED:
-    broadcast<interface::DeviceModeChanged>({param});
-    break;
-  case DSV_MSG_COLLECT_MODE_CHANGED:
-    broadcast<interface::CollectModeChanged>({param});
-    break;
-  case DSV_MSG_DEVICE_LIST_UPDATED:
-    broadcast<interface::DeviceListUpdated>({});
-    break;
-  case DSV_MSG_CURRENT_DEVICE_CHANGED:
-    broadcast<interface::CurrentDeviceChanged>({});
-    break;
-  case DSV_MSG_NEW_USB_DEVICE:
-    broadcast<interface::UsbDeviceArrived>({});
-    break;
-  case DSV_MSG_CURRENT_DEVICE_DETACHED:
-    broadcast<interface::DeviceDetached>({});
-    break;
-  case DSV_MSG_SAVE_COMPLETE:
-    broadcast<interface::SaveComplete>({});
-    break;
-  case DSV_MSG_START_COLLECT_WORK:
-    broadcast<interface::StartCollectWork>({});
-    break;
-  case DSV_MSG_COLLECT_START:
-    broadcast<interface::CollectStart>({});
-    break;
-  case DSV_MSG_COLLECT_END:
-    broadcast<interface::CollectEnd>({});
-    break;
-  case DSV_MSG_END_COLLECT_WORK:
-    broadcast<interface::EndCollectWork>({});
-    break;
-  case DSV_MSG_END_DEVICE_OPTIONS:
-    broadcast<interface::EndDeviceOptions>({});
-    break;
-  case DSV_MSG_DEVICE_DURATION_UPDATED:
-    broadcast<interface::SampleRateChanged>({});
-    break;
-  case DSV_MSG_DEVICE_CONFIG_UPDATED:
-    broadcast<interface::DeviceConfigUpdated>({});
-    break;
-  case DSV_MSG_DEMO_OPERATION_MODE_CHNAGED:
-    broadcast<interface::DemoModeChanged>({});
-    break;
-  case DSV_MSG_DATA_POOL_CHANGED:
-    broadcast<interface::DataPoolChanged>({});
-    break;
-  case DSV_MSG_SIMPLE_TRIGGER_CHANGED:
-    broadcast<interface::SimpleTriggerChanged>({});
-    break;
-  case DSV_MSG_GLITCH_FILTER_STARTED:
-    broadcast<interface::GlitchFilterStarted>({});
-    break;
-  case DSV_MSG_GLITCH_FILTER_PROGRESS:
-    broadcast<interface::GlitchFilterProgress>({param});
-    break;
-  case DSV_MSG_GLITCH_FILTER_COMPLETED:
-    broadcast<interface::GlitchFilterCompleted>({});
-    break;
-  case DSV_MSG_GLITCH_FILTER_CLEARED:
-    broadcast<interface::GlitchFilterCleared>({});
-    break;
-  case DSV_MSG_SIGNAL_INVERT_STARTED:
-    broadcast<interface::SignalInvertStarted>({});
-    break;
-  case DSV_MSG_SIGNAL_INVERT_COMPLETED:
-    broadcast<interface::SignalInvertCompleted>({});
-    break;
-  case DSV_MSG_SIGNAL_INVERT_CLEARED:
-    broadcast<interface::SignalInvertCleared>({});
-    break;
-  case DSV_MSG_COPY_IN_PROGRESS_CHANGED:
-    broadcast<interface::CopyInProgressChanged>({is_copy_in_progress()});
-    break;
-  case DSV_MSG_TRIG_NEXT_COLLECT:
-    broadcast<interface::TrigNextCollect>({});
-    break;
-  case DSV_MSG_CLEAR_DECODE_DATA:
-    broadcast<interface::ClearDecodeData>({});
-    break;
-  case DSV_MSG_APP_OPTIONS_CHANGED:
-    broadcast<interface::AppOptionsChanged>({});
-    break;
-  case DSV_MSG_FONT_OPTIONS_CHANGED:
-    broadcast<interface::FontOptionsChanged>({});
-    break;
-  case DSV_MSG_SHORTCUT_CHANGED:
-    broadcast<interface::ShortcutChanged>({});
-    break;
-  case DSV_MSG_STYLE_CHANGED:
-    broadcast<interface::StyleChanged>({});
-    break;
-  default:
-    // Core-internal state-machine messages (or messages with no typed
-    // equivalent): no translation, fall through to the legacy switch only.
-    // The 5 "prev" notification pairs (REV_END_PACKET, START_COLLECT_WORK_PREV,
-    // END_COLLECT_WORK_PREV, CURRENT_DEVICE_CHANGE_PREV, STORE_CONF_PREV) are
-    // intentionally not typed — they drive pre/post ordering of state-machine
-    // transitions and have no semantic meaning for typed listeners.
-    break;
-  }
+// ============================================================================
+// IEventListener overrides — Core-internal state-machine events.
+// These 5 events were previously handled by the former OnMessage switch
+// (now removed). The logic is copied verbatim. The self-emits inside
+// on_event(RevEndPacket) now use broadcast_async<TypedEvent> (worker-thread
+// safe via qApp queue).
+// ============================================================================
 
-  // --- Legacy state-machine handling ---------------------------------------
-  // Original switch retained verbatim for backward compatibility. Handles
-  // Core-internal state transitions (reload, repeat-collect scheduling,
-  // capture-end packet processing, copy-to-doc completion, etc.) that the
-  // typed event bus deliberately does NOT replicate.
-  switch (msg) {
-  case DSV_MSG_DEVICE_OPTIONS_UPDATED:
-    reload();
-    break;
+void SigSession::on_event(const interface::DeviceOptionsUpdated &) {
+  reload();
+}
 
-  case DSV_MSG_TRIG_NEXT_COLLECT: {
-    if (_is_working && is_repeat_mode()) {
-      if (_capture_manager->get_repeat_intvl() > 0) {
-        _capture_manager->set_repeat_hold_prg(100);
-        _capture_manager->start_repeat_timer(_capture_manager->get_repeat_intvl() * 1000);
-        int intvl = _capture_manager->get_repeat_intvl() * 1000 / 20;
+void SigSession::on_event(const interface::TrigNextCollect &) {
+  if (_state->is_working() && is_repeat_mode()) {
+    if (_capture_manager->get_repeat_intvl() > 0) {
+      _capture_manager->set_repeat_hold_prg(100);
+      _capture_manager->start_repeat_timer(_capture_manager->get_repeat_intvl() * 1000);
+      int intvl = _capture_manager->get_repeat_intvl() * 1000 / 20;
 
-        if (intvl >= 100) {
-          _capture_manager->set_repeat_wait_prog_step(5);
-        } else if (_capture_manager->get_repeat_intvl() >= 1) {
-          intvl = _capture_manager->get_repeat_intvl() * 1000 / 10;
-          _capture_manager->set_repeat_wait_prog_step(10);
-        } else {
-          intvl = _capture_manager->get_repeat_intvl() * 1000 / 5;
-          _capture_manager->set_repeat_wait_prog_step(20);
-        }
-
-        _capture_manager->start_repeat_wait_prog_timer(intvl);
+      if (intvl >= 100) {
+        _capture_manager->set_repeat_wait_prog_step(5);
+      } else if (_capture_manager->get_repeat_intvl() >= 1) {
+        intvl = _capture_manager->get_repeat_intvl() * 1000 / 10;
+        _capture_manager->set_repeat_wait_prog_step(10);
       } else {
-        _capture_manager->set_repeat_hold_prg(0);
-        _capture_manager->exec_capture();
+        intvl = _capture_manager->get_repeat_intvl() * 1000 / 5;
+        _capture_manager->set_repeat_wait_prog_step(20);
       }
+
+      _capture_manager->start_repeat_wait_prog_timer(intvl);
+    } else {
+      _capture_manager->set_repeat_hold_prg(0);
+      _capture_manager->exec_capture();
     }
-  } break;
+  }
+}
 
-  case DSV_MSG_REV_END_PACKET: {
-    if (_device_agent.get_work_mode() == LOGIC) {
-      bool bAddDecoder = false;
-      bool bSwapBuffer = false;
+void SigSession::on_event(const interface::RevEndPacket &) {
+  if (_state->device_agent().get_work_mode() == LOGIC) {
+    bool bAddDecoder = false;
+    bool bSwapBuffer = false;
 
-      if (is_single_mode()) {
-        if (!_capture_manager->is_stream_mode())
-          bAddDecoder = true;
-      } else if (is_repeat_mode()) {
-        if (!_capture_manager->is_stream_mode()) {
-          bAddDecoder = true;
-          bSwapBuffer = true;
-        } else if (_capture_manager->capture_times() > 1) {
-          bAddDecoder = true;
-          bSwapBuffer = true;
-        }
-      } else if (is_loop_mode()) {
+    if (is_single_mode()) {
+      if (!_capture_manager->is_stream_mode())
         bAddDecoder = true;
+    } else if (is_repeat_mode()) {
+      if (!_capture_manager->is_stream_mode()) {
+        bAddDecoder = true;
+        bSwapBuffer = true;
+      } else if (_capture_manager->capture_times() > 1) {
+        bAddDecoder = true;
+        bSwapBuffer = true;
       }
-
-      if (is_repeat_mode()) {
-        AppConfig &app = AppConfig::Instance();
-        bool swapBackBufferAlways = app.appOptions.swapBackBufferAlways;
-        if (!swapBackBufferAlways && !_is_working && _capture_manager->capture_times() > 1) {
-          bAddDecoder = false;
-          bSwapBuffer = false;
-          _capture_data->clear();
-        }
-      }
-
-      if (bAddDecoder) {
-        clear_all_decode_task2();
-        _capture_manager->clear_decode_result();
-      }
-
-      _capture_manager->stop_trig_check_timer();
-
-      // Switch the caputrued data buffer to view.
-      if (bSwapBuffer) {
-        if (_view_data != _capture_data)
-          _view_data->clear();
-
-        _view_data = _capture_data;
-        attach_data_to_signal(_view_data);
-        set_session_time(_trig_time);
-
-        receive_trigger(_view_data->_trig_pos); // Update trig position.
-
-        trigger_message(DSV_MSG_DATA_POOL_CHANGED);
-      }
-
-      if (bAddDecoder && _document_registry->get_active_document()) {
-        // Move copy_data_to_document to a background thread
-        // so the UI thread is not blocked by the deep copy.
-        // C4 fix: lock _capture_state_mutex to make the snapshot of
-        // _copy_in_progress + _capture_owner_document atomic with respect
-        // to CaptureOwnerGuard ctor/dtor and clear_capture_owner_document.
-        data::SessionDocument *doc;
-        {
-          std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
-          _document_registry->copy_in_progress() = true;
-          doc = _document_registry->get_capture_owner_document()
-                    ? _document_registry->get_capture_owner_document()
-                    : _document_registry->get_active_document();
-        }
-        trigger_message(DSV_MSG_COPY_IN_PROGRESS_CHANGED);
-
-        if (_document_registry->copy_thread().joinable()) {
-          _document_registry->copy_thread().join(); // 等待上一个 copy 完成
-        }
-        _document_registry->copy_thread() = std::thread([this, doc]() {
-          copy_data_to_document(doc);
-          {
-            std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
-            _document_registry->copy_in_progress() = false;
-          }
-          trigger_message(DSV_MSG_COPY_IN_PROGRESS_CHANGED);
-          trigger_message(DSV_MSG_COPY_TO_DOC_DONE);
-        });
-      } else {
-        // No active document (typical in headless mode). Skip the deep copy
-        // to a SessionDocument and start the decoders directly. The decoders
-        // read their snapshots from _view_data via get_signal_models(), so
-        // they don't need a SessionDocument to be set up.
-        // C4 fix: lock the mutex to clear _capture_owner_document atomically
-        // with respect to CaptureOwnerGuard lifecycle.
-        {
-          std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
-          _document_registry->capture_owner_document() = nullptr;
-        }
-        start_all_decode_tasks();
-      }
-
-      // 采集完成后自动重新应用毛刺滤波(若用户启用了 auto-apply)
-      if (_view_data->_glitch_filter_auto_apply &&
-          !_view_data->_glitch_filter_thresholds.empty() &&
-          _view_data->get_logic() && !_view_data->get_logic()->empty()) {
-        _filter_processor->set_glitch_filter(
-            _view_data->_glitch_filter_thresholds,
-            _view_data->_glitch_filter_modes);
-      }
-
-      frame_ended();
+    } else if (is_loop_mode()) {
+      bAddDecoder = true;
     }
-  } break;
 
-  case DSV_MSG_COLLECT_END:
-    break;
+    if (is_repeat_mode()) {
+      AppConfig &app = AppConfig::Instance();
+      bool swapBackBufferAlways = app.appOptions.swapBackBufferAlways;
+      if (!swapBackBufferAlways && !_state->is_working() && _capture_manager->capture_times() > 1) {
+        bAddDecoder = false;
+        bSwapBuffer = false;
+        _state->capture_data()->clear();
+      }
+    }
 
-  case DSV_MSG_COPY_TO_DOC_DONE: {
-    // Background copy_data_to_document has completed. Start decoders.
-    // NOTE: _capture_owner_document is NOT cleared here — it is now managed
-    // by CaptureOwnerGuard for the whole capture session. In repeat mode the
-    // owner persists across frames; the guard is reset only on stop_capture
-    // or tab close (clear_capture_owner_document).
-    start_all_decode_tasks();
-    pxv_info("Background copy_data_to_document completed. Decoders started.");
-  } break;
+    if (bAddDecoder) {
+      clear_all_decode_task2();
+      _capture_manager->clear_decode_result();
+    }
 
-  case DS_EV_DEVICE_SPEED_NOT_MATCH: {
-    QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_SPEED_TOO_LOW),
-                       "Speed too low!"));
-    delay_prop_msg(strMsg);
-  } break;
+    _capture_manager->stop_trig_check_timer();
+
+    // Switch the caputrued data buffer to view.
+    if (bSwapBuffer) {
+      if (_state->view_data() != _state->capture_data())
+        _state->view_data()->clear();
+
+      _state->set_view_data(_state->capture_data());
+      attach_data_to_signal(_state->view_data());
+      _state->set_session_time(_state->trig_time());
+
+      receive_trigger(_state->view_data()->_trig_pos); // Update trig position.
+
+      _event_bus->broadcast_async<interface::DataPoolChanged>({});
+    }
+
+    if (bAddDecoder && _document_registry->get_active_document()) {
+      // Move copy_data_to_document to a background thread
+      // so the UI thread is not blocked by the deep copy.
+      // C4 fix: lock _capture_state_mutex to make the snapshot of
+      // _copy_in_progress + _capture_owner_document atomic with respect
+      // to CaptureOwnerGuard ctor/dtor and clear_capture_owner_document.
+      data::SessionDocument *doc;
+      {
+        std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
+        _document_registry->copy_in_progress() = true;
+        doc = _document_registry->get_capture_owner_document()
+                  ? _document_registry->get_capture_owner_document()
+                  : _document_registry->get_active_document();
+      }
+      _event_bus->broadcast_async<interface::CopyInProgressChanged>(
+          {is_copy_in_progress()});
+
+      if (_document_registry->copy_thread().joinable()) {
+        _document_registry->copy_thread().join(); // 等待上一个 copy 完成
+      }
+      _document_registry->copy_thread() = std::thread([this, doc]() {
+        copy_data_to_document(doc);
+        {
+          std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
+          _document_registry->copy_in_progress() = false;
+        }
+        _event_bus->broadcast_async<interface::CopyInProgressChanged>(
+            {is_copy_in_progress()});
+        _event_bus->broadcast_async<interface::CopyToDocDone>({nullptr});
+      });
+    } else {
+      // No active document (typical in headless mode). Skip the deep copy
+      // to a SessionDocument and start the decoders directly. The decoders
+      // read their snapshots from _view_data via get_signal_models(), so
+      // they don't need a SessionDocument to be set up.
+      // C4 fix: lock the mutex to clear _capture_owner_document atomically
+      // with respect to CaptureOwnerGuard lifecycle.
+      {
+        std::lock_guard<std::mutex> lock(_document_registry->capture_state_mutex());
+        // phase 2: capture owner is now tracked by index (SIZE_MAX == none).
+        _document_registry->set_capture_owner_index_locked(SIZE_MAX);
+      }
+      start_all_decode_tasks();
+    }
+
+    // 采集完成后自动重新应用毛刺滤波(若用户启用了 auto-apply)
+    if (_state->view_data()->_glitch_filter_auto_apply &&
+        !_state->view_data()->_glitch_filter_thresholds.empty() &&
+        _state->view_data()->get_logic() && !_state->view_data()->get_logic()->empty()) {
+      _filter_processor->set_glitch_filter(
+          _state->view_data()->_glitch_filter_thresholds,
+          _state->view_data()->_glitch_filter_modes);
+    }
+
+    frame_ended();
   }
+}
+
+void SigSession::on_event(const interface::CopyToDocDone &) {
+  // Background copy_data_to_document has completed. Start decoders.
+  // NOTE: _capture_owner_document is NOT cleared here — it is now managed
+  // by CaptureOwnerGuard for the whole capture session. In repeat mode the
+  // owner persists across frames; the guard is reset only on stop_capture
+  // or tab close (clear_capture_owner_document).
+  start_all_decode_tasks();
+  pxv_info("Background copy_data_to_document completed. Decoders started.");
+}
+
+void SigSession::on_event(const interface::DeviceSpeedNotMatch &) {
+  QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_SPEED_TOO_LOW),
+                     "Speed too low!"));
+  delay_prop_msg(strMsg);
 }
 
 void SigSession::DeviceConfigChanged() {
-  // broadcast_msg is now ASYNC (queued on qApp via Qt::QueuedConnection), so
-  // the previous _suppress_config_broadcast guard (which prevented nested
-  // reload -> signals_changed -> View AllReplaced UAF during JSON restore) is
-  // no longer needed: the caller's stack frame completes before any listener
-  // processes the message.
+  // broadcast_async<SampleCountUpdated> is queued on qApp via
+  // Qt::QueuedConnection, so the previous _suppress_config_broadcast guard
+  // (which prevented nested reload -> signals_changed -> View AllReplaced UAF
+  // during JSON restore) is no longer needed: the caller's stack frame
+  // completes before any listener processes the event.
   // Notify UI that device config changed (e.g. disk cache toggle),
   // so sampling duration can be recalculated from SR_CONF_HW_DEPTH
-  broadcast_msg(DSV_MSG_SAMPLE_COUNT_UPDATED);
+  _event_bus->broadcast_async<interface::SampleCountUpdated>(
+      {(uint64_t)get_ring_sample_count()});
 }
 
 bool SigSession::switch_work_mode(int mode) {
-  assert(!_is_working);
-  int cur_mode = _device_agent.get_work_mode();
+  assert(!_state->is_working());
+  int cur_mode = _state->device_agent().get_work_mode();
 
   if (cur_mode != mode) {
     set_collect_mode(COLLECT_SINGLE);
 
-    _device_agent.set_config_int16(SR_CONF_DEVICE_MODE, mode);
+    _state->device_agent().set_config_int16(SR_CONF_DEVICE_MODE, mode);
 
     if (cur_mode == LOGIC) {
       clear_all_decode_task2();
@@ -1773,29 +1579,29 @@ bool SigSession::switch_work_mode(int mode) {
 
     _capture_manager->set_is_stream_mode(false);
     if (mode == LOGIC) {
-      if (_device_agent.is_hardware()) {
-        _capture_manager->set_is_stream_mode(_device_agent.is_stream_mode());
-      } else if (_device_agent.is_demo()) {
+      if (_state->device_agent().is_hardware()) {
+        _capture_manager->set_is_stream_mode(_state->device_agent().is_stream_mode());
+      } else if (_state->device_agent().is_demo()) {
         _capture_manager->set_is_stream_mode(true);
       }
     }
 
-    _capture_data->clear();
-    _view_data->clear();
-    _capture_data = _view_data;
+    _state->capture_data()->clear();
+    _state->view_data()->clear();
+    _state->set_capture_data(_state->view_data());
 
     init_signals();
 
-    set_cur_snap_samplerate(_device_agent.get_sample_rate());
-    set_cur_samplelimits(_device_agent.get_sample_limit());
+    set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
+    set_cur_samplelimits(_state->device_agent().get_sample_limit());
 
     pxv_info("Switch work mode to:%d", mode);
 
-    // broadcast_msg is now ALWAYS async (queued on qApp via
-    // Qt::QueuedConnection), so View finishes its signals_changed rebuild
+    // broadcast_async<DeviceModeChanged> is queued on qApp via
+    // Qt::QueuedConnection, so View finishes its signals_changed rebuild
     // before handlers access view::Signal::_model. No separate _deferred
     // variant is needed.
-    broadcast_msg(DSV_MSG_DEVICE_MODE_CHANGED);
+    _event_bus->broadcast_async<interface::DeviceModeChanged>({});
 
     return true;
   }
@@ -1803,13 +1609,13 @@ bool SigSession::switch_work_mode(int mode) {
 }
 
 void SigSession::clear_signals() {
-  _math_stack.reset();
+  _state->set_math_stack(nullptr);
 
-  _signal_models.clear();
+  _state->signal_models().clear();
 }
 
 std::shared_ptr<data::SignalModel> SigSession::get_signal_by_index(int index) {
-  for (auto &m : _signal_models) {
+  for (auto &m : _state->signal_models()) {
     if (m->index() == index)
       return m;
   }
@@ -1817,12 +1623,12 @@ std::shared_ptr<data::SignalModel> SigSession::get_signal_by_index(int index) {
 }
 
 void SigSession::on_load_config_end() {
-  set_cur_snap_samplerate(_device_agent.get_sample_rate());
-  set_cur_samplelimits(_device_agent.get_sample_limit());
+  set_cur_snap_samplerate(_state->device_agent().get_sample_rate());
+  set_cur_samplelimits(_state->device_agent().get_sample_limit());
 }
 
 void SigSession::clear_view_data() {
-  _view_data->clear();
+  _state->view_data()->clear();
   data_updated();
 }
 
@@ -1840,7 +1646,7 @@ void SigSession::set_trace_name(std::shared_ptr<data::SignalModel> model,
   // handled separately via set_decoder_row_label().
   if (model->type() == SR_CHANNEL_LOGIC ||
       model->type() == SR_CHANNEL_ANALOG) {
-    _device_agent.set_channel_name(model->index(), name.toUtf8());
+    _state->device_agent().set_channel_name(model->index(), name.toUtf8());
   }
 }
 
@@ -1857,7 +1663,7 @@ void SigSession::set_decoder_row_label(int index, QString label) {
 
 std::shared_ptr<data::SignalModel>
 SigSession::get_channel_by_index(int orgIndex) {
-  for (auto &m : _signal_models) {
+  for (auto &m : _state->signal_models()) {
     if (m->index() == orgIndex) {
       return m;
     }
@@ -1874,7 +1680,7 @@ void SigSession::make_channels_view_index(int start_dex) {
 }
 
 void SigSession::update_dso_data_scale() {
-  int mode = _device_agent.get_work_mode();
+  int mode = _state->device_agent().get_work_mode();
 
   if (mode == DSO) {
     // TODO: view::DsoSignal::get_scale() returned a UI rendering scale
@@ -1888,13 +1694,13 @@ void SigSession::update_dso_data_scale() {
 }
 
 int64_t SigSession::get_ring_sample_count() {
-  int mode = _device_agent.get_work_mode();
+  int mode = _state->device_agent().get_work_mode();
   if (mode == LOGIC) {
-    return _view_data->get_logic()->get_ring_sample_count();
+    return _state->view_data()->get_logic()->get_ring_sample_count();
   } else if (mode == DSO) {
-    return _view_data->get_dso()->get_ring_sample_count();
+    return _state->view_data()->get_dso()->get_ring_sample_count();
   } else {
-    return _view_data->get_analog()->get_ring_sample_count();
+    return _state->view_data()->get_analog()->get_ring_sample_count();
   }
 }
 
@@ -1919,15 +1725,15 @@ bool SigSession::have_decoded_result() {
 void SigSession::apply_samplerate() { on_load_config_end(); }
 
 data::LogicSnapshot *SigSession::get_logic_snapshot() {
-  return _view_data->get_logic();
+  return _state->view_data()->get_logic();
 }
 
 data::AnalogSnapshot *SigSession::get_analog_snapshot() {
-  return _view_data->get_analog();
+  return _state->view_data()->get_analog();
 }
 
 data::DsoSnapshot *SigSession::get_dso_snapshot() {
-  return _view_data->get_dso();
+  return _state->view_data()->get_dso();
 }
 
 void SigSession::set_active_document(data::SessionDocument *doc) {
@@ -1954,17 +1760,14 @@ data::SessionDocument *SigSession::get_active_document() {
   return _document_registry->get_active_document();
 }
 
-void SigSession::register_document(data::SessionDocument *doc) {
-  _document_registry->register_document(doc);
-}
-
-void SigSession::unregister_document(data::SessionDocument *doc) {
-  _document_registry->unregister_document(doc);
-}
+// phase 2: SigSession::register_document / unregister_document removed.
+// Document ownership is now held by DocumentRegistry. Callers use
+// _session->document_registry()->take_document(...) / release_document(...).
 
 void SigSession::set_trigger_config(const data::TriggerConfig &cfg) {
-  _trigger_config = cfg;
-  broadcast_msg(DSV_MSG_TRIGGER_CONFIG_CHANGED);
+  _state->set_trigger_config(cfg);
+  _event_bus->broadcast_async<interface::TriggerConfigChanged>(
+      {&_state->trigger_config()});
 }
 
 void SigSession::sync_trigger_to_libsigrok() {
@@ -1975,12 +1778,12 @@ void SigSession::sync_trigger_to_libsigrok() {
   // probes 参数 = Logic 类型 SignalModel 数量（参考 triggerdock.cpp 的 _cur_ch_num
   // 与 session_service.cpp 的处理）。计算一次保存为局部变量。
   uint16_t probes = 0;
-  for (const auto &m : _signal_models) {
+  for (const auto &m : _state->signal_models()) {
     if (m && m->type() == SR_CHANNEL_LOGIC)
       probes++;
   }
 
-  const auto &cfg = _trigger_config;
+  const auto &cfg = _state->trigger_config();
   const int trig_pos = cfg.trigger_pos();
 
   if (cfg.mode() == data::TriggerConfig::Simple) {
@@ -1988,7 +1791,7 @@ void SigSession::sync_trigger_to_libsigrok() {
     ds_trigger_reset();
 
     bool any_triggered = false;
-    for (const auto &m : _signal_models) {
+    for (const auto &m : _state->signal_models()) {
       if (!m || m->type() != SR_CHANNEL_LOGIC)
         continue;
       const uint16_t probe = static_cast<uint16_t>(m->index());
@@ -2060,16 +1863,16 @@ void SigSession::sync_trigger_to_libsigrok() {
 }
 
 void SigSession::copy_data_to_document(data::SessionDocument *doc) {
-  if (!doc || !_view_data || !have_view_data())
+  if (!doc || !_state->view_data() || !have_view_data())
     return;
 
-  doc->set_samplerate(_view_data->_cur_snap_samplerate);
-  doc->set_samplelimits(_view_data->_cur_samplelimits);
-  doc->set_trigger_pos(_view_data->_trig_pos);
+  doc->set_samplerate(_state->view_data()->_cur_snap_samplerate);
+  doc->set_samplelimits(_state->view_data()->_cur_samplelimits);
+  doc->set_trigger_pos(_state->view_data()->_trig_pos);
 
-  doc->copy_from_logic(_view_data->get_logic());
-  doc->copy_from_analog(_view_data->get_analog());
-  doc->copy_from_dso(_view_data->get_dso());
+  doc->copy_from_logic(_state->view_data()->get_logic());
+  doc->copy_from_analog(_state->view_data()->get_analog());
+  doc->copy_from_dso(_state->view_data()->get_dso());
 }
 
 void SigSession::attach_data_to_signal(SessionData *data) {
@@ -2092,14 +1895,14 @@ bool SigSession::is_glitch_filter_active() {
 void SigSession::clear_glitch_filter_state_for_capture() {
   // 新采集开始时调用:清除滤波激活状态和 backup,
   // 但保留 thresholds/modes(供 auto-apply 使用)。
-  // 不恢复数据 — _view_data->get_logic() 已被 clear(),无数据可恢复。
-  if (_view_data->_logic_backup) {
-    delete _view_data->_logic_backup;
-    _view_data->_logic_backup = nullptr;
+  // 不恢复数据 — _state->view_data()->get_logic() 已被 clear(),无数据可恢复。
+  if (_state->view_data()->_logic_backup) {
+    delete _state->view_data()->_logic_backup;
+    _state->view_data()->_logic_backup = nullptr;
   }
-  if (_view_data->_glitch_filter_active) {
-    _view_data->_glitch_filter_active = false;
-    _event_bus->trigger_message(DSV_MSG_GLITCH_FILTER_CLEARED);
+  if (_state->view_data()->_glitch_filter_active) {
+    _state->view_data()->_glitch_filter_active = false;
+    _event_bus->broadcast_async<interface::GlitchFilterCleared>({});
   }
 }
 void SigSession::set_signal_invert(const std::vector<bool> &channels) {
@@ -2161,14 +1964,14 @@ void SigSession::remove_decode_task(
 }
 
 size_t SigSession::get_disk_write_queue_depth() {
-  if (_view_data->get_logic()->is_disk_cache_active())
-    return _view_data->get_logic()->get_disk_write_queue_depth();
+  if (_state->view_data()->get_logic()->is_disk_cache_active())
+    return _state->view_data()->get_logic()->get_disk_write_queue_depth();
   return 0;
 }
 
 double SigSession::get_disk_write_speed_mbps() {
-  if (_view_data->get_logic()->is_disk_cache_active())
-    return _view_data->get_logic()->get_disk_write_speed_mbps();
+  if (_state->view_data()->get_logic()->is_disk_cache_active())
+    return _state->view_data()->get_logic()->get_disk_write_speed_mbps();
   return 0.0;
 }
 

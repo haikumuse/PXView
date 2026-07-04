@@ -23,6 +23,7 @@
 
 #include "tabcontext.h"
 #include "sigsession.h"
+#include "core/documentregistry.h"
 #include "view/view.h"
 #include "view/signal.h"
 #include "data/sessiondocument.h"
@@ -34,10 +35,13 @@ namespace pv {
 
 int TabContext::_next_session_id = 1;
 
-TabContext::TabContext(view::View *view, SigSession *session, data::SessionDocument *doc) :
+TabContext::TabContext(view::View *view, SigSession *session, data::SessionDocument *doc,
+                       size_t doc_index, core::DocumentRegistry *registry) :
     _view(view),
     _session(session),
     _document(doc),
+    _doc_index(doc_index),
+    _doc_registry(registry),
     _title(QString("Session %1").arg(_next_session_id)),
     _file_path(""),
     _state(LIVE),
@@ -48,8 +52,11 @@ TabContext::TabContext(view::View *view, SigSession *session, data::SessionDocum
 
 TabContext::~TabContext()
 {
-    if (_document)
-        delete _document;
+    // phase 2: document ownership is held by DocumentRegistry. Release the
+    // slot (marked deletion — frees the document, keeps index stable) instead
+    // of delete. Safe to call with SIZE_MAX / nullptr registry (no-op).
+    if (_doc_registry && _doc_index != SIZE_MAX)
+        _doc_registry->release_document(_doc_index);
 }
 
 void TabContext::make_live()
@@ -94,10 +101,10 @@ void TabContext::activate()
                     m->set_trig_type(ch.trig_type);
             }
             // R3: 通道配置已修改 Core (probe->enabled 等)，广播通知其他 GUI
-            // 组件刷新。MainWindow::OnMessage 会调 rebuild_signals 重建 view::Signal，
-            // SigSession::OnMessage 会调 reload (二次 reload 从 old_model 保留 trig_type，
+            // 组件刷新。MainWindow::on_event 会调 rebuild_signals 重建 view::Signal，
+            // SigSession::on_event 会调 reload (二次 reload 从 old_model 保留 trig_type，
             // 不丢失)。tab 切换低频，二次重建开销可接受。
-            _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+            _session->broadcast_async<interface::DeviceOptionsUpdated>({});
         } else {
             pxv_info("TabContext::activate() session working, saving pending config");
             _document->set_pending_config(_document->get_signal_config());

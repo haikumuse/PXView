@@ -451,8 +451,8 @@ void ViewSignalSync::signals_changed(const Trace *eventTrace) {
 
 void ViewSignalSync::rebuild_signals_from_config(
     const pv::data::SignalConfig &config) {
-  // Re-entrancy guard: if a nested broadcast (e.g. DSV_MSG_DEVICE_OPTIONS_UPDATED
-  // from within this function) triggers OnMessage → rebuild_signals() →
+  // Re-entrancy guard: if a nested broadcast (e.g. DeviceOptionsUpdated
+  // from within this function) triggers on_event → rebuild_signals() →
   // rebuild_signals_from_config() again, abort immediately to prevent
   // infinite recursion / stack overflow.
   if (_view->_rebuild_in_progress)
@@ -673,7 +673,7 @@ void ViewSignalSync::rebuild_signals() {
 
   // R9: restore persisted layout (view_index/v_offset/own_height) from
   // SessionDocument. Without this, rebuild_signals() (called from
-  // DSV_MSG_DEVICE_OPTIONS_UPDATED handler after reload) creates Signals
+  // DeviceOptionsUpdated handler after reload) creates Signals
   // with default heights, wiping the user's custom layout.
   // rebuild_signals_from_config() at line 2228 only runs when
   // _data_source == _document; this second path runs when _data_source is

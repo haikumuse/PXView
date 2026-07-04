@@ -46,6 +46,7 @@
 #include "interface/icallbacks.h"
 #include "core/eventbus.h"
 #include "core/capturemanager.h"
+#include "core/sessionstatecontext.h"
 #include <libsigrok.h>
 
 struct srd_decoder;
@@ -84,22 +85,65 @@ private:
 
 using namespace pv::data;
 
-class SigSession : public IMessageListener, public IDeviceAgentCallback, public pv::data::DataSource {
-  friend class core::FilterProcessor; friend class core::DecodeTaskManager;
-  friend class core::DataFeedParser; friend class core::DocumentRegistry; friend class core::CaptureManager;
+/**
+ * SigSession — now a thin facade over SessionStateContext + 5 managers.
+ *
+ * modernize-core-layer-radical phase 1 broke the circular dependency between
+ * SigSession and its 5 managers (CaptureManager / DocumentRegistry /
+ * DecodeTaskManager / DataFeedParser / FilterProcessor). The managers
+ * previously held a `SigSession*` and reached into SigSession's private
+ * fields via friend declarations (263 direct `_session->_xxx` access sites).
+ * Now the managers hold a `SessionStateContext*` and use accessor methods,
+ * so SigSession no longer needs to friend the managers.
+ *
+ * SigSession retains ownership of: the EventBus (unique_ptr), the 5 manager
+ * unique_ptrs, the SessionStateContext unique_ptr, the DeviceEventObject,
+ * the IDecoderPannel pointer, the static _empty_decoder_stacks, and the
+ * libsigrokstd opaque context (_srstd_ctx). All shared mutable state
+ * (mutexes, signal models, device agent, view/capture data, atomic flags,
+ * trigger config, etc.) lives on SessionStateContext and is accessed via
+ * `_state->xxx()` accessors.
+ *
+ * Public API signatures are unchanged for backward compatibility with the
+ * View/API layers. Inline method bodies that previously touched private
+ * fields now forward to `_state->xxx()` accessors.
+ */
+class SigSession : public pv::interface::IEventListener, public IDeviceAgentCallback, public pv::data::DataSource {
 private:
   static constexpr float Oversampling = 2.0f;
   SigSession(SigSession &o);
 public:
-  static const int RefreshTime = 500, RepeatHoldDiv = 20, FeedInterval = 50, WaitShowTime = 500;
-  enum SESSION_ERROR_STATUS { No_err, Hw_err, Malloc_err, Test_timeout_err, Pkt_data_err, Data_overflow };
+  // Timer cadence constants — re-exported from CaptureManager for backward
+  // compatibility with View-layer callers (e.g. viewport.cpp uses
+  // SigSession::FeedInterval). modernize-core-layer-radical phase 1 moved
+  // the canonical definitions to CaptureManager since this manager owns the
+  // timer cadence; SigSession now just re-exports them.
+  static constexpr int RefreshTime = core::CaptureManager::RefreshTime;
+  static constexpr int RepeatHoldDiv = core::CaptureManager::RepeatHoldDiv;
+  static constexpr int FeedInterval = core::CaptureManager::FeedInterval;
+  static constexpr int WaitShowTime = core::CaptureManager::WaitShowTime;
+
+  // SESSION_ERROR_STATUS — re-exported from SessionStateContext for backward
+  // compatibility (mainwindow.cpp uses SigSession::Hw_err etc.). The enum
+  // definition lives on SessionStateContext; SigSession re-exports the type
+  // via a using-alias and the enum values via static constexpr (using-
+  // declarations would require SessionStateContext to be a base class, which
+  // it is not — SigSession holds it via unique_ptr).
+  using SESSION_ERROR_STATUS = core::SessionStateContext::SESSION_ERROR_STATUS;
+  static constexpr SESSION_ERROR_STATUS No_err = core::SessionStateContext::No_err;
+  static constexpr SESSION_ERROR_STATUS Hw_err = core::SessionStateContext::Hw_err;
+  static constexpr SESSION_ERROR_STATUS Malloc_err = core::SessionStateContext::Malloc_err;
+  static constexpr SESSION_ERROR_STATUS Test_timeout_err = core::SessionStateContext::Test_timeout_err;
+  static constexpr SESSION_ERROR_STATUS Pkt_data_err = core::SessionStateContext::Pkt_data_err;
+  static constexpr SESSION_ERROR_STATUS Data_overflow = core::SessionStateContext::Data_overflow;
+
   explicit SigSession();
   ~SigSession();
-  DeviceAgent *get_device() { return &_device_agent; }
+  DeviceAgent *get_device() { return &_state->device_agent(); }
   // Task D4: DataSource::device() override — exposes the DeviceAgent to the
   // View layer for device-level capability/probe queries that have no
   // SignalModel getter. Aliases get_device() (single device per session).
-  DeviceAgent* device() override { return &_device_agent; }
+  DeviceAgent* device() override { return &_state->device_agent(); }
   void add_callback(ISessionCallbackBase *callback) { _event_bus->add_callback(callback); }
   void remove_callback(ISessionCallbackBase *callback) { _event_bus->remove_callback(callback); }
   void set_callback(ISessionCallbackBase *callback) { add_callback(callback); }
@@ -115,11 +159,11 @@ public:
   double cur_sampletime() override;
   double cur_snap_sampletime() override;
   double cur_view_time() override;
-  bool re_start() { if (_is_working) stop_capture(); return start_capture(_capture_manager->is_instant()); }
-  QDateTime get_session_time() { return _session_time; }
-  QDateTime get_trig_time() { return _trig_time; }
-  bool is_triged() { return _is_triged; }
-  uint64_t get_trigger_pos() override { return _view_data->_trig_pos; }
+  bool re_start() { if (_state->is_working()) stop_capture(); return start_capture(_capture_manager->is_instant()); }
+  QDateTime get_session_time() { return _state->session_time(); }
+  QDateTime get_trig_time() { return _state->trig_time(); }
+  bool is_triged() { return _state->is_triged(); }
+  uint64_t get_trigger_pos() override { return _state->view_data()->_trig_pos; }
   bool is_first_store_confirm() { return _capture_manager->is_first_store_confirm(); }
   bool get_capture_status(bool &triggered, int &progress) { return _capture_manager->get_capture_status(triggered, progress); }
   void clear_store_confirm_flag() { _capture_manager->clear_store_confirm_flag(); }
@@ -131,9 +175,9 @@ public:
   std::vector<std::shared_ptr<data::DecoderStack>> &get_decoder_stacks(data::SessionDocument *doc = nullptr) override;
   void rst_decoder(int index, data::SessionDocument *doc = nullptr);
   void rst_decoder_by_key_handel(void *handel, data::SessionDocument *doc = nullptr) override;
-  std::vector<std::shared_ptr<data::SpectrumStack>> &get_spectrum_stacks() override { return _spectrum_stacks; }
-  data::LissajousModel *get_lissajous_model() override { return _lissajous_model; }
-  std::shared_ptr<data::MathStack> get_math_stack() override { return _math_stack; }
+  std::vector<std::shared_ptr<data::SpectrumStack>> &get_spectrum_stacks() override { return _state->spectrum_stacks(); }
+  data::LissajousModel *get_lissajous_model() override { return _state->lissajous_model(); }
+  std::shared_ptr<data::MathStack> get_math_stack() override { return _state->math_stack(); }
   uint16_t get_ch_num(int type);
   bool is_data_lock() { return _capture_manager->is_data_lock(); }
   void data_lock() { _capture_manager->data_lock(); }
@@ -145,30 +189,30 @@ public:
   void lissajous_rebuild(bool enable, int xindex, int yindex, double percent);
   void lissajous_disable();
   void math_rebuild(bool enable, int ch1_index, int ch2_index, data::MathStack::MathType type);
-  bool trigd() override { return _trigger_flag; }
-  uint8_t trigd_ch() override { return _trigger_ch; }
+  bool trigd() override { return _state->trigger_flag(); }
+  uint8_t trigd_ch() override { return _state->trigger_ch(); }
   data::Snapshot *get_snapshot(int type) override;
   data::LogicSnapshot *get_logic_snapshot() override;
   data::AnalogSnapshot *get_analog_snapshot() override;
   data::DsoSnapshot *get_dso_snapshot() override;
-  SESSION_ERROR_STATUS get_error() { return _error; }
-  void set_error(SESSION_ERROR_STATUS state) { _error = state; }
+  SESSION_ERROR_STATUS get_error() { return _state->error(); }
+  void set_error(SESSION_ERROR_STATUS state) { _state->set_error(state); }
   void clear_error();
-  uint64_t get_error_pattern() { return _error_pattern; }
+  uint64_t get_error_pattern() { return _state->error_pattern(); }
   double get_repeat_intvl() { return _capture_manager->get_repeat_intvl(); }
   void set_repeat_intvl(double interval) { _capture_manager->set_repeat_intvl(interval); }
   int get_repeat_hold() override { return _capture_manager->get_repeat_hold(); }
-  void set_save_start(uint64_t start) { _save_start = start; }
-  uint64_t get_save_start() { return _save_start; }
-  void set_save_end(uint64_t end) { _save_end = end; }
-  uint64_t get_save_end() { return _save_end; }
+  void set_save_start(uint64_t start) { _state->set_save_start(start); }
+  uint64_t get_save_start() { return _state->save_start(); }
+  void set_save_end(uint64_t end) { _state->set_save_end(end); }
+  uint64_t get_save_end() { return _state->save_end(); }
   void clear_all_decoder(bool bUpdateView = true) override;
-  bool is_closed() { return _bClose; }
+  bool is_closed() { return _state->bClose(); }
   bool is_instant() override { return _capture_manager->is_instant(); }
-  bool is_working() override { return _is_working || _device_status == ST_RUNNING; }
-  bool is_init_status() { return _device_status == ST_INIT; }
-  bool is_running_status() override { return _device_status == ST_RUNNING; }
-  bool is_stopped_status() override { return _device_status == ST_STOPPED; }
+  bool is_working() override { return _state->is_working() || _state->device_status() == ST_RUNNING; }
+  bool is_init_status() { return _state->device_status() == ST_INIT; }
+  bool is_running_status() override { return _state->device_status() == ST_RUNNING; }
+  bool is_stopped_status() override { return _state->device_status() == ST_STOPPED; }
   void set_collect_mode(DEVICE_COLLECT_MODE m) { _capture_manager->set_collect_mode(m); }
   int get_collect_mode() { return _capture_manager->get_collect_mode(); }
   bool is_repeat_mode() { return _capture_manager->is_repeat_mode(); }
@@ -179,24 +223,24 @@ public:
   void session_save() override { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->session_save(); }); }
   void show_region(uint64_t start, uint64_t end, bool keep) { dispatch_to<ICaptureCallback>([start, end, keep](ICaptureCallback *cb) { cb->show_region(start, end, keep); }); }
   void decode_done() override { dispatch_to<ISessionStateCallback>([](ISessionStateCallback *cb) { cb->decode_done(); }); }
-  bool is_saving() { return _is_saving; }
-  void set_saving(bool flag) { _is_saving = flag; }
+  bool is_saving() { return _state->is_saving(); }
+  void set_saving(bool flag) { _state->set_saving(flag); }
   DeviceEventObject *device_event_object() { return &_device_event; }
   void reload();
   void refresh(int holdtime) override { _capture_manager->refresh(holdtime); }
   void check_update() { _capture_manager->check_update(); }
-  void set_map_zoom(int index) { _map_zoom = index; }
-  int get_map_zoom() override { return _map_zoom; }
-  bool is_single_buffer() { return _view_data == _capture_data; }
+  void set_map_zoom(int index) { _state->set_map_zoom(index); }
+  int get_map_zoom() override { return _state->map_zoom(); }
+  bool is_single_buffer() { return _state->is_single_buffer(); }
   void update_view() { dispatch_to<IDataCallback>([](IDataCallback *cb) { cb->data_updated(); }); }
   void auto_end() override { _capture_manager->auto_end(); }
   bool have_hardware_data();
   struct ds_device_base_info *get_device_list(int &out_count, int &actived_index);
-  void add_msg_listener(IMessageListener *ln) { _event_bus->add_msg_listener(ln); }
-  void broadcast_msg(int msg, int param = 0) override { _event_bus->broadcast_msg(msg, param); }
   void add_event_listener(interface::IEventListener *l) { _event_bus->add_event_listener(l); }
   void remove_event_listener(interface::IEventListener *l) { _event_bus->remove_event_listener(l); }
   template <typename EventType> void broadcast(const EventType &ev) { _event_bus->broadcast(ev); }
+  template <typename EventType> void broadcast_sync(const EventType &ev) { _event_bus->broadcast_sync(ev); }
+  template <typename EventType> void broadcast_async(const EventType &ev) { _event_bus->broadcast_async(ev); }
   bool have_new_realtime_refresh(bool keep) { return _capture_manager->have_new_realtime_refresh(keep); }
   std::shared_ptr<data::DecoderStack> get_decoder_trace(int index, data::SessionDocument *doc = nullptr);
   std::shared_ptr<data::SignalModel> get_signal_by_index(int index);
@@ -215,21 +259,25 @@ public:
   void rebuild_decoder_pannel() { if (_decoder_pannel) _decoder_pannel->rebuild_layers(); }
   void update_dso_data_scale() override;
   void remove_decode_task(std::shared_ptr<data::DecoderStack> stack);
-  sr_status get_dso_status() override { return _dso_status; }
-  bool dso_status_is_valid() override { return _dso_status_valid; }
+  sr_status get_dso_status() override { return _state->dso_status(); }
+  bool dso_status_is_valid() override { return _state->dso_status_valid(); }
   double get_logic_data_view_time() override;
   int64_t get_ring_sample_count();
-  bool dso_data_is_out_off_range() { return _view_data->get_dso()->data_is_out_off_range(); }
+  bool dso_data_is_out_off_range() { return _state->view_data()->get_dso()->data_is_out_off_range(); }
   void set_active_document(data::SessionDocument *doc);
   data::SessionDocument *get_active_document() override;
   void copy_data_to_document(data::SessionDocument *doc);
   void attach_data_to_signal(SessionData *data);
-  const data::TriggerConfig& trigger_config() const override { return _trigger_config; }
+  const data::TriggerConfig& trigger_config() const override { return _state->trigger_config(); }
   void set_trigger_config(const data::TriggerConfig& cfg);
-  void register_document(data::SessionDocument *doc);
-  void unregister_document(data::SessionDocument *doc);
+  // modernize-core-layer-radical phase 2: register/unregister removed.
+  // Document ownership is now held by DocumentRegistry via take_document() /
+  // release_document(). Use document_registry()->take_document(
+  // make_unique<SessionDocument>(...)) to register, and
+  // document_registry()->release_document(index) to release.
+  core::DocumentRegistry *document_registry() { return _document_registry.get(); }
   void clear_all_documents_decoders();
-  std::vector<std::shared_ptr<data::DecoderStack>> &decode_traces(data::SessionDocument *doc = nullptr) { return get_decoder_stacks(doc); }
+  std::vector<std::shared_ptr<data::DecoderStack>> &decode_traces(data::SessionDocument *doc = nullptr) { return _state->decode_traces(doc); }
   void update_lang_text();
   bool have_decoded_result();
   void apply_samplerate();
@@ -241,11 +289,11 @@ public:
   // before applying a new filter, then restore it via set_glitch_filter() on
   // undo_filter(). Returns references to the view-data vectors; callers must
   // copy if they need a stable snapshot. Safe to call from the GUI thread.
-  const std::vector<uint32_t>& glitch_filter_thresholds() const { return _view_data->_glitch_filter_thresholds; }
-  const std::vector<GlitchFilterMode>& glitch_filter_modes() const { return _view_data->_glitch_filter_modes; }
+  const std::vector<uint32_t>& glitch_filter_thresholds() const { return _state->view_data()->_glitch_filter_thresholds; }
+  const std::vector<GlitchFilterMode>& glitch_filter_modes() const { return _state->view_data()->_glitch_filter_modes; }
   // 采集后自动重新应用滤波(保留上次阈值/模式)
-  void set_glitch_filter_auto_apply(bool en) { _view_data->_glitch_filter_auto_apply = en; }
-  bool glitch_filter_auto_apply() const { return _view_data->_glitch_filter_auto_apply; }
+  void set_glitch_filter_auto_apply(bool en) { _state->view_data()->_glitch_filter_auto_apply = en; }
+  bool glitch_filter_auto_apply() const { return _state->view_data()->_glitch_filter_auto_apply; }
   // 新采集开始时清除滤波状态(不恢复数据,因为数据已被 clear)
   void clear_glitch_filter_state_for_capture();
   void set_signal_invert(const std::vector<bool> &channels);
@@ -264,43 +312,50 @@ private:
   void cur_snap_samplerate_changed(); void frame_began(); void frame_ended();
   void update_capture(); void repeat_hold(int percent);
   void receive_trigger(quint64 trigger_pos); void show_wait_trigger();
-  void trigger_message(int msg); void signals_changed(); void session_error();
+  void signals_changed(); void session_error();
   void delay_prop_msg(QString strMsg);
   void clear_all_decode_task(int &runningDex); void clear_all_decode_task2();
   void add_decode_task(std::shared_ptr<data::DecoderStack> stack);
-  void set_session_time(QDateTime time) { _session_time = time; }
-  void OnMessage(int msg, int param = 0) override; void DeviceConfigChanged() override;
+  void DeviceConfigChanged() override;
+  // --- IEventListener overrides (Core-internal state-machine events) ---
+  // These 5 events drive SigSession's own state machine and were previously
+  // handled by the former OnMessage switch (now removed). The logic is copied
+  // verbatim from that switch. Other notification events have empty defaults
+  // in the base class and are consumed by MainWindow / SessionService.
+  void on_event(const interface::DeviceOptionsUpdated &) override;
+  void on_event(const interface::TrigNextCollect &) override;
+  void on_event(const interface::RevEndPacket &) override;
+  void on_event(const interface::CopyToDocDone &) override;
+  void on_event(const interface::DeviceSpeedNotMatch &) override;
   static sr_input_format *determine_input_file_format(const std::string &filename);
   static void device_lib_event_callback_ex(int event, void *user_data); void on_device_lib_event(int event);
   data::Snapshot *get_signal_snapshot(); void clear_signals();
   std::shared_ptr<data::SignalModel> get_channel_by_index(int orgIndex);
   void make_channels_view_index(int start_dex = -1);
-  mutable std::mutex _sampling_mutex, _data_mutex;
-  std::vector<std::shared_ptr<data::SignalModel>> _signal_models;
-  static std::vector<std::shared_ptr<data::DecoderStack>> _empty_decoder_stacks;
-  std::vector<std::shared_ptr<data::SpectrumStack>> _spectrum_stacks;
-  data::LissajousModel *_lissajous_model = nullptr;
-  std::shared_ptr<data::MathStack> _math_stack = nullptr;
-  QDateTime _session_time, _trig_time;
-  bool _is_triged, _trigger_flag, _hw_replied, _bClose, _is_saving, _dso_status_valid;
-  uint8_t _trigger_ch; SESSION_ERROR_STATUS _error;
-  uint64_t _error_pattern, _save_start, _save_end;
-  int _map_zoom;
-  std::atomic<bool> _is_working; std::atomic<int> _device_status;
-  std::atomic<uint64_t> _next_decoder_handle_id{1};
-  DeviceAgent _device_agent;
+
+  // --- Shared mutable state (migrated to SessionStateContext) ---
+  // All fields previously declared here (_sampling_mutex, _data_mutex,
+  // _signal_models, _spectrum_stacks, _lissajous_model, _math_stack,
+  // _session_time, _trig_time, _is_triged, _trigger_flag, _hw_replied,
+  // _bClose, _is_saving, _dso_status_valid, _trigger_ch, _error,
+  // _error_pattern, _save_start, _save_end, _map_zoom, _is_working,
+  // _device_status, _next_decoder_handle_id, _device_agent, _view_data,
+  // _capture_data, _data_list, _dso_status, _trigger_config) now live on
+  // SessionStateContext and are accessed via `_state->xxx()` accessors.
+  // The 5 managers no longer hold a SigSession* — they hold a
+  // SessionStateContext* and use the same accessors, eliminating the need
+  // for friend declarations.
+  std::unique_ptr<core::SessionStateContext> _state;
+
+  // --- SigSession-retained ownership ---
   std::unique_ptr<core::EventBus> _event_bus;
   DeviceEventObject _device_event;
-  SessionData *_view_data, *_capture_data;
-  std::vector<SessionData *> _data_list;
   IDecoderPannel *_decoder_pannel;
-  sr_status _dso_status;
   std::unique_ptr<core::FilterProcessor> _filter_processor;
   std::unique_ptr<core::DecodeTaskManager> _decode_task_manager;
   std::unique_ptr<core::DataFeedParser> _data_feed_parser;
   std::unique_ptr<core::DocumentRegistry> _document_registry;
   std::unique_ptr<core::CaptureManager> _capture_manager;
-  data::TriggerConfig _trigger_config;
   // libsigrokstd opaque context (upstream libsigrok 0.6.0 shared library).
   // void* because sigsession.h includes PXView's libsigrok.h, NOT upstream's
   // (the two have incompatible struct definitions). The glue layer

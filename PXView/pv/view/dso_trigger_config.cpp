@@ -53,7 +53,7 @@ void DsoTriggerConfig::set_trig_vpos(int pos, bool delta_change) {
 
 void DsoTriggerConfig::set_trig_ratio(double ratio, bool delta_change) {
   // Same nested-broadcast guard as set_zero_ratio: set_config_byte triggers
-  // synchronous config_changed -> broadcast_msg, which may delete this DsoSignal.
+  // synchronous config_changed -> broadcast_async<>, which may delete this DsoSignal.
   auto model = _signal->_model;
   double delta = ratio;
 

@@ -391,7 +391,7 @@ void DsoHardwareConfig::set_zero_vpos(int pos) {
 
 void DsoHardwareConfig::set_zero_ratio(double ratio) {
   // CRITICAL: Copy _model to a local shared_ptr BEFORE calling set_config_*.
-  // set_config_uint16 -> config_changed -> broadcast_msg(SAMPLE_COUNT_UPDATED)
+  // set_config_uint16 -> config_changed -> broadcast_async<SampleCountUpdated>
   // is SYNCHRONOUS and can trigger nested reload -> signals_changed -> View
   // AllReplaced rebuild, which DELETES this DsoSignal (and its _model member).
   // After set_config returns, _model may be dangling. The local copy keeps the

@@ -217,8 +217,8 @@ void DeviceOptionsDock::commit_channels() {
     }
 
     QTimer::singleShot(0, this, [this]() {
-      _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
-      _session->broadcast_msg(DSV_MSG_END_DEVICE_OPTIONS);
+      _session->broadcast_async<interface::DeviceOptionsUpdated>({});
+      _session->broadcast_async<interface::EndDeviceOptions>({});
       emit settings_applied();
     });
   } else {
@@ -613,8 +613,8 @@ void DeviceOptionsDock::channel_check() {
   try_resize_scroll();
 
   QTimer::singleShot(0, this, [this]() {
-    _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
-    _session->broadcast_msg(DSV_MSG_END_DEVICE_OPTIONS);
+    _session->broadcast_async<interface::DeviceOptionsUpdated>({});
+    _session->broadcast_async<interface::EndDeviceOptions>({});
     emit settings_applied();
   });
 }

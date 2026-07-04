@@ -102,7 +102,6 @@ class MainWindow :
     public ISessionStateCallback,
     public IMainForm,
     public ISessionDataGetter,
-    public IMessageListener,
     public pv::api::IServiceEventListener,
     public pv::interface::IEventListener
 {
@@ -145,7 +144,6 @@ private slots:
     void on_decode_done();
     void on_receive_data_len(quint64 len);
     void on_cur_snap_samplerate_changed();
-    void on_trigger_message(int msg);
     void on_delay_prop_msg();
     void on_load_device_first();
     void on_tab_changed(int index);
@@ -222,7 +220,6 @@ private:
     //ITriggerCallback
     void receive_trigger(quint64 trigger_pos) override;
     void show_wait_trigger() override;
-    void trigger_message(int msg) override;
 
     //ISessionStateCallback
     void session_error() override;
@@ -234,41 +231,20 @@ private:
     //ISessionDataGetter
     bool genSessionData(std::string &str) override;
 
-    //IMessageListener
-    void OnMessage(int msg, int param = 0) override;
-
-    // C5 fix: per-responsibility handlers dispatched by OnMessage. Each handler
-    // owns the switch cases for its message group; OnMessage is now a thin
-    // router. The (int msg, int param) signature is preserved so handlers can
-    // differentiate fall-through cases (e.g. END_DEVICE_OPTIONS vs
-    // DEMO_OPERATION_MODE_CHNAGED) and use the param payload (e.g.
-    // CAPTURE_OWNER_CHANGED's is_working flag).
-    // NOTE: on_data_updated(int,int) intentionally overloads the no-arg Qt slot
-    // on_data_updated() (connected to EventObject::data_updated); the connect
-    // site uses QOverload<>::of(...) to disambiguate.
-    void on_device_changed(int msg, int param);
-    void on_capture_state(int msg, int param);
-    void on_device_options(int msg, int param);
-    void on_ui_options(int msg, int param);
-    void on_data_updated(int msg, int param);
-    void on_filter_completed(int msg, int param);
-    void on_trigger_changed(int msg, int param);
-
     //IServiceEventListener — receive View operation broadcasts from SessionService
     //(show_region, zoom_fit, zoom_in/out, cursor operations). In GUI mode these are
     //routed to the active View; in Headless mode there is no MainWindow so these
     //events are simply not consumed.
     void on_service_event(const pv::api::ServiceEventData &data) override;
 
-    //IEventListener (Task 8) — typed event bus consumer. All 41 event structs
-    //have a typed override below. Overrides that correspond to a former OnMessage
-    //case dispatch to the per-responsibility handler (on_device_changed /
-    //on_capture_state / on_device_options / on_ui_options / on_data_updated /
-    //on_filter_completed / on_trigger_changed). Overrides for events with no
-    //OnMessage counterpart (CopyToDocDone/DecodeDone/SignalsChanged/DataUpdated/
-    //DeviceConfigUpdated) are empty. CaptureOwnerChanged is also empty because
-    //its is_working flag is carried by the legacy (int param) path and is not
-    //present in the typed event struct — that case is retained in OnMessage.
+    //IEventListener (Task 12) — typed event bus consumer. All 41 event structs
+    //have a typed override below. Each override contains its handler body
+    //directly (no int dispatch, no switch). The former per-responsibility
+    //(int,int) helpers and the legacy IMessageListener / DSV_MSG_* /
+    //broadcast_msg / trigger_message infrastructure have been removed.
+    //broadcast<T>() / broadcast_sync<T>() / broadcast_async<T>() are the only
+    //dispatch paths. Overrides for events with no GUI work (CopyToDocDone /
+    //DecodeDone / SignalsChanged / DataUpdated / DeviceConfigUpdated) are empty.
     void on_event(const pv::interface::CaptureStateChanged &) override;
     void on_event(const pv::interface::CaptureOwnerChanged &) override;
     void on_event(const pv::interface::TriggerConfigChanged &) override;
@@ -310,6 +286,10 @@ private:
     void on_event(const pv::interface::FontOptionsChanged &) override;
     void on_event(const pv::interface::ShortcutChanged &) override;
     void on_event(const pv::interface::StyleChanged &) override;
+    void on_event(const pv::interface::StoreConfPrev &) override;
+    void on_event(const pv::interface::CurrentDeviceChangePrev &) override;
+    void on_event(const pv::interface::StartCollectWorkPrev &) override;
+    void on_event(const pv::interface::EndCollectWorkPrev &) override;
 
 private: 
 	pv::ui::DraggableTabWidget *_tab_widget;

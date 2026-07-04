@@ -1173,7 +1173,7 @@ void ProtocolDock::OnProtocolVisibilityChanged(void *handle) {
     }
   }
 
-  _session->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+  _session->broadcast_async<interface::DeviceOptionsUpdated>({});
 }
 
 void ProtocolDock::OnProtocolFormatChanged(QString format, void *handle) {

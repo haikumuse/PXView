@@ -124,25 +124,24 @@ bool ViewDerivedTraces::add_decoder(
   //    the DecodeTrace we just added.
   _view->_derived_traces_dirty = false;
 
-  // 5. Broadcast first so that SigSession::OnMessage can run reload() before
-  //    we start the decode task. The broadcast is synchronous (direct function
-  //    call, not Qt queued signal), so reload() will clear SignalModel snapshots
-  //    immediately. We then call add_decode_task() which internally calls
-  //    attach_data_to_signal() to restore the snapshot pointers. If we called
-  //    add_decode_task() before broadcast_msg(), the snapshot would be set and
-  //    then cleared by reload(), causing "没有设置需要解码哪些通道的数据".
+  // 5. Broadcast first so that SigSession::on_event(DeviceOptionsUpdated)
+  //    can run reload() before we start the decode task. The broadcast is
+  //    synchronous (direct function call, not Qt queued signal), so reload()
+  //    will clear SignalModel snapshots immediately. We then call
+  //    add_decode_task() which internally calls attach_data_to_signal() to
+  //    restore the snapshot pointers. If we called add_decode_task() before
+  //    broadcast_async<>(), the snapshot would be set and then cleared by
+  //    reload(), causing "没有设置需要解码哪些通道的数据".
   //    This broadcast also notifies MCP/WebSocket clients (SessionService maps
-  //    DSV_MSG_DEVICE_OPTIONS_UPDATED to DeviceConfigChanged).
+  //    DeviceOptionsUpdated to DeviceConfigChanged).
   // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
-  // Task D6.3: routed through _data_source for consistency with the rest of
-  //    the View→Core boundary (DataSource::broadcast_msg is a virtual facade).
-  _view->_data_source->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+  _view->session().broadcast_async<interface::DeviceOptionsUpdated>({});
 
   // 6. Now start the decode task after reload() has completed. The public
   //    start_all_decode_tasks() funnel calls attach_data_to_signal() before
   //    starting tasks, restoring snapshot pointers. If there is no view data
   //    yet (decoder added before capture), the capture pipeline will start
-  //    the decode for us via DSV_MSG_COPY_TO_DOC_DONE → frame_ended() +
+  //    the decode for us via CopyToDocDone → frame_ended() +
   //    start_all_decode_tasks().
   if (!silent && _view->_data_source->have_view_data()) {
     _view->_data_source->start_all_decode_tasks();
@@ -225,14 +224,12 @@ void ViewDerivedTraces::remove_decoder(DecodeTrace *trace) {
   // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
   //    View cannot call SessionService::broadcast_event directly (View does
   //    not depend on the API layer), so we forward via
-  //    SigSession::broadcast_msg. There is no dedicated
-  //    DSV_MSG_DECODER_REMOVED; DSV_MSG_DEVICE_OPTIONS_UPDATED is mapped by
+  //    SigSession::broadcast_async. DeviceOptionsUpdated is mapped by
   //    SessionService to DeviceConfigChanged, which triggers state
   //    synchronization. (The MCP remove_analyzer path already broadcasts
   //    DecoderRemoved directly; this covers the GUI-triggered path.)
   // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
-  // Task D6.3: routed through _data_source for consistency.
-  _view->_data_source->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+  _view->session().broadcast_async<interface::DeviceOptionsUpdated>({});
 }
 
 void ViewDerivedTraces::remove_decoder(int index) {
@@ -289,8 +286,7 @@ void ViewDerivedTraces::clear_all_decoders() {
 
   // 3. Broadcast so the API layer can push a ServiceEvent to remote clients.
   // Task D6: kept — View as top-level container legitimately broadcasts via session facade.
-  // Task D6.3: routed through _data_source for consistency.
-  _view->_data_source->broadcast_msg(DSV_MSG_DEVICE_OPTIONS_UPDATED);
+  _view->session().broadcast_async<interface::DeviceOptionsUpdated>({});
 }
 
 void ViewDerivedTraces::sync_derived_traces() {

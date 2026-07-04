@@ -426,7 +426,7 @@ bool SessionConfigSerializer::load_config_from_json(QJsonDocument &doc,
   // load trigger settings
   // Task 6: trigger 反序列化改走 Core TriggerConfig（唯一真相源）。
   // from_json() 读 to_json() 写入的新结构；set_trigger_config() 广播
-  // DSV_MSG_TRIGGER_CONFIG_CHANGED；随后 refresh_ui_from_core() 把 Core
+  // TriggerConfigChanged；随后 refresh_ui_from_core() 把 Core
   // 状态映射到 TriggerDock 控件（View 层不再解析 trigger JSON）。
   if (sessionObj.contains("trigger")) {
     _session->set_trigger_config(
