@@ -33,6 +33,7 @@
 #include "view_glitch_filter.h"
 
 #include <algorithm>
+#include <set>
 #include <vector>
 
 #include <QCursor>
@@ -43,11 +44,14 @@
 
 #include "view.h"
 
+#include "../data/decode/decoder.h"
+#include "../data/decoderstack.h"
 #include "../data/pulse_analyzer.h"
 #include "../dsvdef.h"
 #include "../sigsession.h"
 #include "../ui/toast.h"
 
+#include "decodetrace.h"
 #include "glitchfilterpopup.h"
 #include "header.h"
 #include "logicsignal.h"
@@ -66,11 +70,13 @@ void ViewGlitchFilter::on_show_glitch_filter_popup(
   if (!_view->_glitch_filter_popup)
     return;
 
-  // Anchor at the right edge of the header, vertically centered on the
-  // signal's row. sig->get_y() returns the v_offset which is the y position
-  // in the header's coordinate system.
-  int anchor_x = _view->_header ? _view->_header->width() + 8 : 0;
-  int anchor_y = sig->get_y() + sig->get_totalHeight() / 2;
+  // 对齐 HTML 原型:弹窗紧贴 name 区右侧 (label-row.right + 8),
+  // 垂直方向对齐轨道上界(sig->get_y() - totalHeight/2)。
+  int name_right = _view->_header
+                       ? _view->_header->width() - sig->get_rightWidth()
+                       : 0;
+  int anchor_x = name_right + 8;
+  int anchor_y = sig->get_y() - sig->get_totalHeight() / 2;
   QPoint anchor = _view->_header
                       ? _view->_header->mapToGlobal(QPoint(anchor_x, anchor_y))
                       : QCursor::pos();
@@ -90,6 +96,77 @@ void ViewGlitchFilter::on_show_glitch_filter_popup(
   }
 
   _view->_glitch_filter_popup->open_for_signal(sig, anchor);
+}
+
+void ViewGlitchFilter::on_show_batch_glitch_filter_popup(
+    pv::view::DecodeTrace *trace) {
+  if (!trace)
+    return;
+  if (!_view->_glitch_filter_popup)
+    return;
+
+  // 从根解码器(stack().front())的 probes 提取绑定的逻辑通道索引,
+  // 然后在 _own_signals 中线性扫描匹配的 LogicSignal。
+  // probe index = SignalModel::index(),与 LogicSignal::model()->index() 一致。
+  auto decoder_stack = trace->decoder();
+  if (!decoder_stack)
+    return;
+  auto &stack = decoder_stack->stack();
+  if (stack.empty())
+    return;
+  auto *root_decoder = stack.front();
+  if (!root_decoder)
+    return;
+
+  std::vector<LogicSignal *> sigs;
+  std::set<int> seen;  // 去重(多个 probe 可能绑定同一通道)
+  auto probe_list = root_decoder->binded_probe_list();
+  for (auto *pdch : probe_list) {
+    int probe_index = root_decoder->binded_probe_index(pdch);
+    if (probe_index < 0 || seen.count(probe_index))
+      continue;
+    seen.insert(probe_index);
+    for (auto s : _view->_own_signals) {
+      if (!s || s->signal_type() != SR_CHANNEL_LOGIC)
+        continue;
+      auto *ls = static_cast<LogicSignal *>(s);
+      if (ls->model() && ls->model()->index() == probe_index) {
+        sigs.push_back(ls);
+        break;
+      }
+    }
+  }
+
+  if (sigs.empty()) {
+    pv::ui::Toast::show(_view, View::tr("该解码通道未绑定任何逻辑通道"),
+                        pv::ui::Toast::Warning);
+    return;
+  }
+
+  // 弹窗锚点:对齐解码轨道上界(与单通道模式一致的布局规则)
+  int name_right = _view->_header
+                       ? _view->_header->width() - trace->get_rightWidth()
+                       : 0;
+  int anchor_x = name_right + 8;
+  int anchor_y = trace->get_y() - trace->get_totalHeight() / 2;
+  QPoint anchor = _view->_header
+                      ? _view->_header->mapToGlobal(QPoint(anchor_x, anchor_y))
+                      : QCursor::pos();
+
+  QScreen *screen = QGuiApplication::screenAt(anchor);
+  if (screen) {
+    QRect geo = screen->availableGeometry();
+    if (anchor.x() + 420 > geo.right())
+      anchor.setX(geo.right() - 420);
+    if (anchor.y() + 500 > geo.bottom())
+      anchor.setY(geo.bottom() - 500);
+    if (anchor.x() < geo.left())
+      anchor.setX(geo.left());
+    if (anchor.y() < geo.top())
+      anchor.setY(geo.top());
+  }
+
+  _view->_glitch_filter_popup->open_for_batch(sigs, anchor);
 }
 
 void ViewGlitchFilter::on_clear_glitch_filter_requested(bool all_channels) {
@@ -230,6 +307,86 @@ void ViewGlitchFilter::on_glitch_apply_requested(
 
 void ViewGlitchFilter::on_glitch_popup_closed() {
   _view->_preview_ranges.clear();
+  if (_view->_time_viewport)
+    _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+}
+
+void ViewGlitchFilter::on_apply_batch_requested(
+    const std::vector<pv::view::LogicSignal *> &sigs, uint32_t threshold,
+    GlitchFilterMode mode) {
+  if (sigs.empty())
+    return;
+  auto &sess = _view->session();
+
+  // Push undo snapshot (与单通道 apply 一致的撤销栈逻辑)
+  View::FilterSnapshot snap;
+  snap.was_active = sess.is_glitch_filter_active();
+  if (snap.was_active) {
+    snap.thresholds = sess.glitch_filter_thresholds();
+    snap.modes = sess.glitch_filter_modes();
+  }
+  _view->_filter_undo_stack.push_back(snap);
+  if (_view->_filter_undo_stack.size() > 20)
+    _view->_filter_undo_stack.erase(_view->_filter_undo_stack.begin());
+
+  // 构建 thresholds/modes 向量(按 enabled-logic-channel 序号索引,
+  // 与 LogicSnapshot::_ch_index 顺序一致)
+  std::vector<LogicSignal *> logic_sigs;
+  for (auto s : _view->_own_signals) {
+    if (s && s->signal_type() == SR_CHANNEL_LOGIC)
+      logic_sigs.push_back(static_cast<LogicSignal *>(s));
+  }
+  int n = (int)logic_sigs.size();
+  if (n == 0)
+    return;
+
+  std::vector<uint32_t> thresholds(n, 0);
+  std::vector<GlitchFilterMode> modes(n, GLITCH_FILTER_BOTH);
+
+  // 对 batch 中每个 sig 设置对应序号的 threshold/mode
+  // (不在 logic_sigs 中的 sig 被忽略,避免越界)
+  for (auto *sig : sigs) {
+    if (!sig)
+      continue;
+    auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
+    if (it == logic_sigs.end())
+      continue;
+    int idx = (int)std::distance(logic_sigs.begin(), it);
+    thresholds[idx] = threshold;
+    modes[idx] = mode;
+  }
+
+  sess.set_glitch_filter(thresholds, modes);
+  _view->_preview_ranges.clear();
+
+  QString desc;
+  if (sigs.size() == 1) {
+    desc = View::tr("已对通道 %1 应用滤波 (阈值 %2)")
+               .arg(sigs[0]->get_name())
+               .arg(threshold);
+  } else {
+    desc = View::tr("已对 %1 个子通道应用滤波 (阈值 %2)")
+               .arg((int)sigs.size())
+               .arg(threshold);
+  }
+  pv::ui::Toast::show(_view, desc, pv::ui::Toast::Info);
+}
+
+void ViewGlitchFilter::on_preview_batch_changed(
+    const std::vector<pv::view::LogicSignal *> &sigs, uint32_t threshold,
+    GlitchFilterMode mode) {
+  // 为 batch 中每个 sig 更新预览 overlay
+  for (auto *sig : sigs) {
+    if (!sig)
+      continue;
+    auto *snap = sig->data();
+    if (!snap)
+      continue;
+    int sig_index = sig->model() ? sig->model()->index() : 0;
+    auto pulses = pv::data::PulseAnalyzer::find_pulses(snap, sig_index);
+    _view->_preview_ranges[sig] =
+        pv::data::PulseAnalyzer::preview_filter(pulses, threshold, mode);
+  }
   if (_view->_time_viewport)
     _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
 }

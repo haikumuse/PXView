@@ -104,7 +104,10 @@ void SessionStateContext::show_wait_trigger() {
 void SessionStateContext::signals_changed() {
   _event_bus->dispatch_to<ISessionStateCallback>(
       [](ISessionStateCallback *cb) { cb->signals_changed(); });
-  _event_bus->broadcast<interface::SignalsChanged>({});
+  // 异步广播:避免在 on_event handler 中(如 on_event(DeviceOptionsUpdated)
+  // → reload() → signals_changed())同步触发广播导致 _broadcast_depth>1 断言;
+  // 同时保证 task thread 调用时的线程安全(Qt::QueuedConnection marshal 到主线程)。
+  _event_bus->broadcast_async<interface::SignalsChanged>({});
 }
 
 void SessionStateContext::session_error() {

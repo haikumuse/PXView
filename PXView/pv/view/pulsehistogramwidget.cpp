@@ -23,6 +23,7 @@
 
 #include "pulsehistogramwidget.h"
 
+#include "../config/appconfig.h"
 #include <QBrush>
 #include <QColor>
 #include <QFont>
@@ -45,17 +46,21 @@ const int kPadTop = 20;      // 顶部留给"推荐/当前"标签
 const int kPadBottom = 18;   // 底部留给 X 轴标签
 const int kPadX = 8;
 
-const QColor kBgColor("#1a1d24");
-const QColor kBorderColor("#2a2f38");
-const QColor kBarColor("#4a5060");
+// 强调色保留固定值(跨主题一致,便于辨识)
 const QColor kFilterColor("#ff5252");
 const QColor kRecommendLine("#ff9800");
 const QColor kCurrentLine("#42a5f5");
-const QColor kTickColor("#9e9e9e");
+
+// 基础色从主题 token 取(跟随主题切换),缺失时回退深色
+QColor tokenColor(const char* name, const char* fallback) {
+    QString v = AppConfig::Instance().GetThemeTokenValue(name);
+    QColor c(v.isEmpty() ? QString::fromLatin1(fallback) : v);
+    return c.isValid() ? c : QColor(QString::fromLatin1(fallback));
+}
 } // namespace
 
 PulseHistogramWidget::PulseHistogramWidget(QWidget* parent)
-    : QWidget(parent), _num_bars(20)
+    : QWidget(parent), _num_bars(30)
 {
     setAttribute(Qt::WA_OpaquePaintEvent, false);
 }
@@ -64,11 +69,16 @@ void PulseHistogramWidget::setData(const pv::data::PulseAnalyzer::Histogram& his
 {
     _hist = hist;
     _has_data = true;
-    // 自适应柱子数:取数据实际 max_width,最低 20 根(与滑块下限一致)。
-    // cap 由 build_histogram 的 max_width_cap 参数控制(默认 30),
-    // 过滤空闲状态的长脉冲。柱子和滑块范围始终同步。
-    _num_bars = std::max(20, (int)hist.max_width);
-    if (_num_bars < 1) _num_bars = 20;
+    // _num_bars 由 setNumBars 单独控制(初始 30,调整上限后跟随 cap),
+    // setData 不重置,避免覆盖 on_max_changed 设置的新值。
+    update();
+}
+
+void PulseHistogramWidget::setNumBars(int n)
+{
+    // 柱子数 = cap(spinbox 值),与滑块上限同步。
+    // 初始 30,用户调整上限后跟随。
+    _num_bars = std::max(1, n);
     update();
 }
 
@@ -106,14 +116,20 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
 
+    // 基础色从主题 token 取(每次 paint 时刷新,跟随主题热切换)
+    const QColor bgColor = tokenColor("@bg-base", "#1a1d24");
+    const QColor borderColor = tokenColor("@border-strong", "#2a2f38");
+    const QColor barColor = tokenColor("@toolbtn-hover", "#4a5060");
+    const QColor tickColor = tokenColor("@fg-muted", "#9e9e9e");
+
     const QRect r = rect();
     const QRect barsArea(kPadX, kPadTop,
                          r.width() - 2 * kPadX,
                          r.height() - kPadTop - kPadBottom);
 
-    // 1) 背景 #1a1d24,边框 #2a2f38,圆角 4px
-    p.setPen(QPen(kBorderColor, 1));
-    p.setBrush(kBgColor);
+    // 1) 背景 + 边框 (token: @bg-base / @border-strong),圆角 4px
+    p.setPen(QPen(borderColor, 1));
+    p.setBrush(bgColor);
     p.drawRoundedRect(r.adjusted(0, 0, -1, -1), 4, 4);
 
     if (!barsArea.isValid() || barsArea.width() <= 0 || barsArea.height() <= 0)
@@ -159,15 +175,17 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
             if (it != _hist.width_counts.end())
                 count = it->second;
         }
-        double h = (count > 0) ? (double)count / maxCount * barsArea.height() : 0;
-        if (count > 0) h = std::max(h, 2.0);  // min-height 2px
+        // 对齐 HTML .histogram-bar { min-height: 2px }:
+        // count=0 也画 2px 高的小矩形,让用户看到所有宽度位置都有"槽位"
+        double h = (count > 0) ? (double)count / maxCount * barsArea.height() : 2.0;
+        h = std::max(h, 2.0);  // min-height 2px
 
         double x = barsArea.left() + i * (barW + gap);
         double y = barsArea.bottom() - h;
 
         QColor c = (_filter_threshold > 0 && w <= (int)_filter_threshold)
                        ? kFilterColor
-                       : kBarColor;
+                       : barColor;
         p.setBrush(c);
         p.drawRoundedRect(QRectF(x, y, barW, h), 2, 2, Qt::AbsoluteSize);
     }
@@ -176,8 +194,14 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
     QFont lblFont("Segoe UI", 7);
     QFontMetrics fm(lblFont);
 
-    if (_recommended_threshold >= 1 && _recommended_threshold <= (uint32_t)nBars) {
-        double recX = thresholdX((int)_recommended_threshold);
+    bool has_rec = (_recommended_threshold >= 1 && _recommended_threshold <= (uint32_t)nBars);
+    bool has_cur = (_current_threshold >= 1 && _current_threshold <= (uint32_t)nBars);
+    double recX = has_rec ? thresholdX((int)_recommended_threshold) : 0;
+    double curX = has_cur ? thresholdX((int)_current_threshold) : 0;
+    int recTextW = fm.horizontalAdvance(QStringLiteral("推荐")) + 8;
+    int curTextW = fm.horizontalAdvance(QStringLiteral("当前")) + 8;
+
+    if (has_rec) {
         p.setPen(QPen(kRecommendLine, 2));
         p.drawLine(QPointF(recX, barsArea.top()), QPointF(recX, barsArea.bottom()));
 
@@ -185,7 +209,6 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
         p.setBrush(kRecommendLine);
         p.setFont(lblFont);
         QString recText = QStringLiteral("推荐");
-        int recTextW = fm.horizontalAdvance(recText) + 8;
         QRectF recTag(recX - recTextW / 2.0, barsArea.top() - 16, recTextW, 12);
         p.drawRoundedRect(recTag, 2, 2);
         p.setPen(QColor("#000"));
@@ -193,32 +216,23 @@ void PulseHistogramWidget::paintEvent(QPaintEvent* /*event*/)
     }
 
     // 7) 当前阈值线 (蓝 #42a5f5, 2px, 带"当前"标签)
-    if (_current_threshold >= 1 && _current_threshold <= (uint32_t)nBars) {
-        double curX = thresholdX((int)_current_threshold);
+    // 重叠时:当前标签画在与推荐标签同一位置,后画覆盖推荐(用户偏好"当前覆盖推荐")
+    if (has_cur) {
         p.setPen(QPen(kCurrentLine, 2));
         p.drawLine(QPointF(curX, barsArea.top()), QPointF(curX, barsArea.bottom()));
 
         p.setPen(Qt::NoPen);
         p.setBrush(kCurrentLine);
         QString curText = QStringLiteral("当前");
-        int curTextW = fm.horizontalAdvance(curText) + 8;
+        // 标签始终在顶部 (barsArea.top() - 16),重叠时后画覆盖推荐
         QRectF curTag(curX - curTextW / 2.0, barsArea.top() - 16, curTextW, 12);
-        // 避免和推荐标签重叠
-        if (_recommended_threshold >= 1 && _recommended_threshold <= (uint32_t)nBars) {
-            double recX = thresholdX((int)_recommended_threshold);
-            int recTextW = fm.horizontalAdvance(QStringLiteral("推荐")) + 8;
-            if (std::abs(curX - recX) < (recTextW + curTextW) / 2.0 + 2 &&
-                _current_threshold != _recommended_threshold) {
-                curTag.moveLeft(recX + recTextW / 2.0 + 2);
-            }
-        }
         p.drawRoundedRect(curTag, 2, 2);
         p.setPen(QColor("#fff"));
         p.drawText(curTag, Qt::AlignCenter, curText);
     }
 
     // 8) X 轴标签:1 和每 5(或 nBars/4)一标
-    p.setPen(kTickColor);
+    p.setPen(tickColor);
     p.setFont(QFont("Segoe UI", 7));
     int step = std::max(1, nBars / 5);
     for (int w = 1; w <= nBars; ++w) {

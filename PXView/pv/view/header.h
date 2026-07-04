@@ -38,6 +38,7 @@ namespace view {
 class Trace;
 class View;
 class LogicSignal;
+class DecodeTrace;
 
 //the left panel of main graph
 //created by View
@@ -96,6 +97,7 @@ private slots:
     void on_clear_channel_filter_triggered();
     void on_clear_all_filter_triggered();
     void on_toggle_invert_triggered();
+    void on_change_color_triggered();
 
 signals:
     void traces_moved();
@@ -104,6 +106,7 @@ signals:
     void acdc_changed(quint16);
     void ch_changed(quint16);
     void show_glitch_filter_popup(pv::view::LogicSignal* sig);
+    void show_batch_glitch_filter_popup(pv::view::DecodeTrace* trace);
     void clear_glitch_filter_requested(bool all_channels);
     void toggle_signal_invert_requested(pv::view::LogicSignal* sig);
 

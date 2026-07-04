@@ -31,6 +31,7 @@
 #define PXVIEW_PV_VIEW_DECODERMODEL_H
 
 #include <QAbstractTableModel>
+#include <cstdint>
 
 #include "../data/decode/rowdata.h"
 
@@ -63,8 +64,18 @@ public:
         return _decoder_stack;
     }
 
+    // Visible-range slicing. When _visible_start_row >= 0, rowCount/data/
+    // headerData restrict to [_visible_start_row, _visible_end_row). Call
+    // clear_visible_range() to restore full-list behaviour.
+    void set_visible_range(int64_t start_row, int64_t end_row);
+    void clear_visible_range();
+    inline int64_t visible_start_row() const { return _visible_start_row; }
+
 private:
     pv::data::DecoderStack   *_decoder_stack;
+    // -1 means "full list" (backward-compatible default).
+    int64_t _visible_start_row = -1;
+    int64_t _visible_end_row = -1;
 };
 
 } // namespace view

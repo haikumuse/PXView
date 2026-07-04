@@ -171,6 +171,13 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   _dn_nav_button = new QPushButton(bot_panel);
   _dn_nav_button->setObjectName("dock_content");
   _dn_nav_button->setFlat(true);
+  _follow_viewport_btn = new QPushButton(bot_panel);
+  _follow_viewport_btn->setObjectName("dock_content");
+  _follow_viewport_btn->setFlat(true);
+  _follow_viewport_btn->setCheckable(true);
+  _follow_viewport_btn->setChecked(true);
+  _follow_viewport_btn->setToolTip(L_S(STR_PAGE_DLG,
+      S_ID(IDS_DLG_FOLLOW_VIEWPORT), "List follows waveform visible range"));
   _bot_title_label = new QLabel(bot_panel);
   _bot_title_label->setObjectName("dock_label");
 
@@ -180,6 +187,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   bot_title_layout->addWidget(_bot_save_button);
   bot_title_layout->addWidget(_bot_title_label, 1);
   bot_title_layout->addWidget(_dn_nav_button);
+  bot_title_layout->addWidget(_follow_viewport_btn);
 
   _pre_button = new QPushButton(bot_panel);
   _pre_button->setObjectName("dock_content");
@@ -293,6 +301,9 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   connect(_ann_search_edit, &QLineEdit::editingFinished, this,
           &ProtocolDock::search_changed);
 
+  connect(_follow_viewport_btn, &QPushButton::toggled, this,
+          &ProtocolDock::on_follow_viewport_toggled);
+
   ADD_UI(this);
 }
 
@@ -320,11 +331,29 @@ void ProtocolDock::bind_context(TabContext *ctx) {
   assert(ctx);
   _context = ctx;
   _session = ctx->session();
+  // Disconnect the previous View's visible-range signal before switching
+  // to the new tab's View (multi-tab scenario: the old View stays alive).
+  if (_view) {
+    disconnect(_view, &view::View::visible_range_changed, this,
+               &ProtocolDock::on_visible_range_changed);
+  }
   _view = ctx->view();
   _table_view->setModel(_decoder_model);
   _model_proxy.setSourceModel(_decoder_model);
   rebuild_protocol_layers();
   update_view_status();
+
+  // Wire visible-range notifications from the View to the filter handler.
+  // on_visible_range_changed() checks _follow_viewport internally so the
+  // connection can stay alive across toggle changes.
+  if (_view) {
+    connect(_view, &view::View::visible_range_changed, this,
+            &ProtocolDock::on_visible_range_changed);
+    // Apply the current viewport state immediately on tab switch.
+    if (_follow_viewport) {
+      on_visible_range_changed();
+    }
+  }
 
   if (ctx->view()) {
     auto &ui = ctx->view()->dock_ui_state();
@@ -362,6 +391,9 @@ void ProtocolDock::retranslateUi() {
   _bot_title_label->setText(L_S(STR_PAGE_DLG,
                                 S_ID(IDS_DLG_PROTOCOL_LIST_VIEWER),
                                 "Protocol List Viewer"));
+  _follow_viewport_btn->setToolTip(L_S(
+      STR_PAGE_DLG, S_ID(IDS_DLG_FOLLOW_VIEWPORT),
+      "List follows waveform visible range"));
   _pro_keyword_edit->ResetText();
 }
 
@@ -381,6 +413,8 @@ void ProtocolDock::reStyle() {
   _nxt_button->setIcon(IconCache::Instance().icon(iconPath + "/next.svg"));
   _ann_search_button->setIcon(
       IconCache::Instance().icon(iconPath + "/search.svg"));
+  _follow_viewport_btn->setIcon(
+      IconCache::Instance().icon(iconPath + "/display.svg"));
 
   for (auto item : _protocol_lay_items) {
     item->ResetStyle();
@@ -777,8 +811,16 @@ void ProtocolDock::item_clicked(const QModelIndex &index) {
   auto decoder_stack = decoder_model->getDecoderStack();
 
   if (decoder_stack) {
+    // When visible-range slicing is active, index.row() is a sliced (0-based)
+    // row number. Map it back to the full-list row number before querying
+    // the DecoderStack.
+    uint64_t query_row = index.row();
+    if (decoder_model->visible_start_row() >= 0) {
+      query_row = (uint64_t)(decoder_model->visible_start_row() + index.row());
+    }
+
     pv::data::decode::Annotation ann;
-    if (decoder_stack->list_annotation(&ann, index.column(), index.row())) {
+    if (decoder_stack->list_annotation(&ann, index.column(), query_row)) {
       const auto &decode_sigs = _session->get_decoder_stacks();
 
       for (auto d : decode_sigs) {
@@ -787,6 +829,11 @@ void ProtocolDock::item_clicked(const QModelIndex &index) {
 
       decoder_stack->set_mark_index((ann.start_sample() + ann.end_sample()) /
                                     2);
+
+      // Set the jump guard before show_region() so the async visible_range
+      // notification triggered by the view change preserves this row.
+      _jumping_to_row = true;
+      _jumping_target_row = (int64_t)query_row;
       _session->show_region(ann.start_sample(), ann.end_sample(), false);
     }
   }
@@ -1394,6 +1441,117 @@ bool ProtocolDock::eventFilter(QObject *obj, QEvent *event) {
     }
   }
   return QScrollArea::eventFilter(obj, event);
+}
+
+void ProtocolDock::on_follow_viewport_toggled(bool checked) {
+  _follow_viewport = checked;
+  if (!checked) {
+    _decoder_model->clear_visible_range();
+  } else {
+    // Immediately apply current viewport state; subsequent scale/offset
+    // changes arrive via visible_range_changed.
+    on_visible_range_changed();
+  }
+}
+
+void ProtocolDock::on_visible_range_changed() {
+  if (!_follow_viewport || !_view || !_decoder_model) {
+    return;
+  }
+
+  auto decoder_stack = _decoder_model->getDecoderStack();
+  if (!decoder_stack) {
+    return;
+  }
+
+  uint64_t samplerate = decoder_stack->samplerate();
+  if (samplerate == 0) {
+    return;
+  }
+
+  int viewport_width = _view->viewport()->width();
+  if (viewport_width <= 0) {
+    return;
+  }
+
+  // Reuse nav_table_view's sample-range computation:
+  //   offset (pixels) * samplerate (samples/s) * scale (s/pixel) = samples
+  double scale = _view->scale();
+  int64_t offset = _view->offset();
+  double samples_per_pixel = (double)samplerate * scale;
+
+  double start_sample_d = (double)offset * samples_per_pixel;
+  double end_sample_d = (double)(offset + viewport_width) * samples_per_pixel;
+  if (start_sample_d < 0)
+    start_sample_d = 0;
+  if (end_sample_d < 0)
+    end_sample_d = 0;
+
+  uint64_t start_sample = (uint64_t)start_sample_d;
+  uint64_t end_sample = (uint64_t)end_sample_d;
+  if (end_sample <= start_sample) {
+    return;
+  }
+
+  // Locate the protocol row currently selected by the proxy's
+  // filterKeyColumn (same algorithm as nav_table_view).
+  std::map<const pv::data::decode::Row, bool> rows =
+      decoder_stack->get_rows_lshow();
+  int column = _model_proxy.filterKeyColumn();
+  bool found_row = false;
+  pv::data::decode::Row target_row;
+  for (auto it = rows.begin(); it != rows.end(); ++it) {
+    if (it->second && column-- == 0) {
+      target_row = it->first;
+      found_row = true;
+      break;
+    }
+  }
+  if (!found_row) {
+    return;
+  }
+
+  auto range = decoder_stack->get_visible_range(target_row, start_sample,
+                                                end_sample);
+  int64_t start_idx = (int64_t)range.first;
+  int64_t end_idx = (int64_t)range.second;
+
+  // mark_index exemption: keep the marked annotation row visible so the
+  // user doesn't lose their selection after a jump.
+  int64_t mark = decoder_stack->get_mark_index();
+  if (mark >= 0) {
+    uint64_t mark_row_u = decoder_stack->get_annotation_index(target_row, mark);
+    int64_t mark_row = (int64_t)mark_row_u;
+    if (mark_row >= end_idx) {
+      end_idx = mark_row + 1;
+    } else if (mark_row < start_idx) {
+      start_idx = mark_row;
+    }
+  }
+
+  _decoder_model->set_visible_range(start_idx, end_idx);
+
+  // If we're in the middle of an item_clicked → show_region jump, restore
+  // the selection that was lost when set_visible_range reset the model.
+  if (_jumping_to_row && _jumping_target_row >= start_idx &&
+      _jumping_target_row < end_idx) {
+    int sliced_row = (int)(_jumping_target_row - start_idx);
+    QModelIndex new_index = _decoder_model->index(
+        sliced_row, _model_proxy.filterKeyColumn());
+    if (new_index.isValid()) {
+      _table_view->blockSignals(true);
+      _table_view->setCurrentIndex(new_index);
+      _table_view->scrollTo(new_index);
+      _table_view->blockSignals(false);
+    }
+  }
+
+  // Clear the jump guard shortly after; the show_region → view change →
+  // visible_range_changed chain completes within ~100ms (debounce) + one
+  // event loop tick. 150ms covers it with margin.
+  if (_jumping_to_row) {
+    QTimer::singleShot(150, this, [this]() { _jumping_to_row = false; });
+  }
 }
 
 } // namespace dock

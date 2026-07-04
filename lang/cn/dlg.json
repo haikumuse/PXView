@@ -345,6 +345,10 @@
         "text": "解码结果"
     },
     {
+        "id": "IDS_DLG_FOLLOW_VIEWPORT",
+        "text": "列表跟随波形可视范围"
+    },
+    {
         "id": "IDS_DLG_REGION",
         "text": "区域"
     },

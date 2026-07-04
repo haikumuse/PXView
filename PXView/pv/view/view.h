@@ -32,6 +32,7 @@
 
 #include <QElapsedTimer>
 #include <QScrollArea>
+#include <QTimer>
 
 #include "../data/pulse_analyzer.h"
 #include "../ui/uimanager.h"
@@ -619,6 +620,7 @@ public slots:
 
   // -- glitch filter popup handlers (Task 7)
   void on_show_glitch_filter_popup(pv::view::LogicSignal *sig);
+  void on_show_batch_glitch_filter_popup(pv::view::DecodeTrace *trace);
   void on_clear_glitch_filter_requested(bool all_channels);
   void on_toggle_invert_requested(pv::view::LogicSignal *sig);
 
@@ -636,6 +638,10 @@ signals:
   void prgRate(int progress);
   void resize();
   void auto_trig(int index);
+  // Emitted (after a 100ms debounce) whenever _scale / _offset / view_width
+  // changes in a way that alters the visible sample range. Listeners (e.g.
+  // ProtocolDock) use this to filter their list to the visible portion.
+  void visible_range_changed();
 
 private slots:
   void h_scroll_value_changed(int value);
@@ -655,6 +661,11 @@ private slots:
   void on_glitch_apply_requested(pv::view::LogicSignal *sig, uint32_t threshold,
                                  GlitchFilterMode mode, bool all_channels);
   void on_glitch_popup_closed();
+  // 批量模式:对一组逻辑通道统一应用/预览滤波
+  void on_apply_batch_requested(const std::vector<pv::view::LogicSignal *> &sigs,
+                                uint32_t threshold, GlitchFilterMode mode);
+  void on_preview_batch_changed(const std::vector<pv::view::LogicSignal *> &sigs,
+                                uint32_t threshold, GlitchFilterMode mode);
 
 private:
   // ---- Friends (delegates touch View's private state directly) ----
@@ -692,6 +703,11 @@ private:
   void paintEvent(QPaintEvent *event);
   void resizeEvent(QResizeEvent *e);
   void scrollContentsBy(int dx, int dy);
+
+  // Restart the visible-range debounce timer. Repeated calls while the
+  // timer is already running restart it (QTimer::start semantics), so only
+  // the last call in a burst of drag/zoom events fires visible_range_changed.
+  void schedule_visible_range_notify();
 
   // ---- Delegate members (Phase E + J) ----
   std::unique_ptr<ViewLayout> _layout;
@@ -755,6 +771,12 @@ private:
   std::vector<SignalGroup> _signal_groups;
   QColor _group_card_color;
   bool _updating_scroll;
+
+  // ---- Visible-range notify debounce ----
+  // Single-shot 100ms timer coalescing bursts of scale/offset/resize changes
+  // into a single visible_range_changed() emission. Owned by View (parent
+  // QObject) so it is destroyed automatically.
+  QTimer *_viewport_change_timer = nullptr;
 
   // trigger position fix
   double _trig_hoff;
