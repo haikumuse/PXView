@@ -65,6 +65,7 @@ void ViewLayout::set_scale_offset(double scale, int64_t offset) {
     _view->_ruler->update();
     _view->viewport_update();
   }
+  _view->schedule_visible_range_notify();
 }
 
 void ViewLayout::limit_scale_offset() {
@@ -83,6 +84,7 @@ void ViewLayout::limit_scale_offset() {
     _view->_ruler->update();
     _view->viewport_update();
   }
+  _view->schedule_visible_range_notify();
 }
 
 void ViewLayout::update_scale_offset() {
@@ -116,6 +118,7 @@ void ViewLayout::update_scale_offset() {
 
   _view->_ruler->update();
   _view->viewport_update();
+  _view->schedule_visible_range_notify();
 }
 
 void ViewLayout::set_scale(double scale) {
@@ -131,6 +134,7 @@ void ViewLayout::set_scale(double scale) {
     _view->viewport_update();
     update_scroll();
   }
+  _view->schedule_visible_range_notify();
 }
 
 void ViewLayout::zoom(double steps) {
@@ -184,6 +188,7 @@ bool ViewLayout::zoom(double steps, int offset) {
     _view->viewport_update();
     update_scroll();
   }
+  _view->schedule_visible_range_notify();
 
   return ret;
 }
@@ -211,6 +216,7 @@ void ViewLayout::h_scroll_value_changed(int value) {
     _view->_ruler->update();
     _view->viewport_update();
   }
+  _view->schedule_visible_range_notify();
 }
 
 void ViewLayout::get_scroll_layout(int64_t &length, int64_t &offset) {

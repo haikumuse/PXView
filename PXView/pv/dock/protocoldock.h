@@ -159,6 +159,8 @@ private slots:
   void search_changed();
   void search_update();
   void show_protocol_select();
+  void on_follow_viewport_toggled(bool checked);
+  void on_visible_range_changed();
 
 private:
   SigSession *_session;
@@ -193,6 +195,7 @@ private:
   QPushButton *_bot_save_button;
   QPushButton *_dn_nav_button;
   QPushButton *_ann_search_button;
+  QPushButton *_follow_viewport_btn;
   std::vector<DecoderInfoItem *> _decoderInfoList;
   KeywordLineEdit *_pro_keyword_edit;
   QString _selected_protocol_id;
@@ -200,6 +203,17 @@ private:
 
   mutable std::mutex _search_mutex;
   bool _search_edited;
+
+  // "List follows viewport" toggle state (default ON). When ON,
+  // on_visible_range_changed slices DecoderModel to the viewport's visible
+  // sample range. _jumping_to_row is set during item_clicked → show_region
+  // jumps so the handler can preserve the current selection.
+  // _jumping_target_row stores the full-list (un-sliced) row number of the
+  // clicked annotation so on_visible_range_changed can restore selection
+  // after the model reset.
+  bool _follow_viewport = true;
+  bool _jumping_to_row = false;
+  int64_t _jumping_target_row = -1;
 };
 
 } // namespace dock

@@ -397,6 +397,12 @@ void Header::mousePressEvent(QMouseEvent *event) {
     // Select the Trace if it has been clicked
     const auto mTrace = get_mTrace(action, event->position().toPoint());
     if (action == Trace::COLOR && mTrace) {
+      // 解码通道:单击 COLOR 区打开批量滤波浮窗(对其绑定的所有子逻辑通道统一滤波)
+      if (auto *dt = dynamic_cast<DecodeTrace *>(mTrace)) {
+        _context_trace = mTrace;
+        emit show_batch_glitch_filter_popup(dt);
+        return;
+      }
       // LOGIC 模式:单击 COLOR 区直接打开滤波浮窗(对齐 HTML 原型交互)
       // ANALOG/DSO 模式:保留原选色流程(主题菜单的 token 改色只覆盖
       // LOGIC 全局色板,模拟/DSO 单通道颜色仍需此入口)
@@ -878,9 +884,6 @@ void Header::keyPressEvent(QKeyEvent *event) {
 }
 
 void Header::contextMenuEvent(QContextMenuEvent *event) {
-  if (_view.get_work_mode() != LOGIC)
-    return;
-
   // 统一菜单样式:背景/文字/选中态/边框全部跟随主题 token,
   // Zone A 滤波菜单与 Zone B 行高菜单(含子菜单)共用同一外观。
   auto apply_menu_style = [](QMenu *m) {
@@ -912,6 +915,33 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
   const QPoint pt = event->pos() + QPoint(0, _view.get_vOffset());
   int action = 0;
   const auto t = get_mTrace(action, pt);
+
+  // 解码通道:任何模式下都弹"更改颜色"菜单(左键改色已删除,统一右键入口)
+  if (t && dynamic_cast<DecodeTrace *>(t)) {
+    _context_trace = t;
+    QMenu menu(this);
+    menu.addAction(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_CHANGE_COLOR", "Change Color"),
+        this, &Header::on_change_color_triggered);
+    apply_menu_style(&menu);
+    menu.exec(event->globalPos());
+    return;
+  }
+
+  // 非 LOGIC 模式的波形通道(ANALOG/DSO):右键改色菜单
+  // (LOGIC 模式波形通道走 Zone A 滤波菜单,内含改色项)
+  if (_view.get_work_mode() != LOGIC) {
+    if (!t)
+      return;
+    _context_trace = t;
+    QMenu menu(this);
+    menu.addAction(
+        L_S(STR_PAGE_SIGNAL_PROC, "IDS_CHANGE_COLOR", "Change Color"),
+        this, &Header::on_change_color_triggered);
+    apply_menu_style(&menu);
+    menu.exec(event->globalPos());
+    return;
+  }
 
   // 两段区域分别弹不同菜单:
   //  - LABEL (右侧边缘小方块):行高菜单(还原原始行为)
@@ -1007,6 +1037,11 @@ void Header::contextMenuEvent(QContextMenuEvent *event) {
       this, &Header::on_clear_all_filter_triggered);
   clear_all_act->setEnabled(any_filtered);
 
+  menu.addSeparator();
+  menu.addAction(
+      L_S(STR_PAGE_SIGNAL_PROC, "IDS_CHANGE_COLOR", "Change Color"),
+      this, &Header::on_change_color_triggered);
+
   apply_menu_style(&menu);
   menu.exec(event->globalPos());
 }
@@ -1037,6 +1072,21 @@ void Header::on_toggle_invert_triggered() {
   if (!sig)
     return;
   emit toggle_signal_invert_requested(sig);
+}
+
+void Header::on_change_color_triggered() {
+  // 解码通道右键"更改颜色":复用 changeColor 的 QColorDialog 流程,
+  // 但不依赖 QMouseEvent(右键菜单触发,无 mouse event 参数)
+  if (!_context_trace)
+    return;
+  const QColor new_color = QColorDialog::getColor(
+      _context_trace->get_colour(), this,
+      L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SET_CHANNEL_COLOUR),
+          "Set Channel Colour"));
+  if (new_color.isValid()) {
+    _context_trace->set_colour(new_color);
+    _view.set_all_update(true);
+  }
 }
 
 void Header::on_reset_row_height() {

@@ -73,8 +73,12 @@ public:
     explicit GlitchFilterPopup(View& view, QWidget* parent = nullptr);
 
     void open_for_signal(LogicSignal* sig, const QPoint& anchor_pos);
+    // 批量模式:对多个逻辑通道统一滤波(如 DecodeTrace 绑定的子通道)。
+    // 直方图合并(sum counts)各通道,应用时对所有 _target_sigs 设同一阈值。
+    void open_for_batch(const std::vector<LogicSignal*>& sigs, const QPoint& anchor_pos);
     bool is_open() const { return isVisible(); }
     LogicSignal* target_signal() const { return _target_sig; }
+    bool is_batch_mode() const { return _is_batch_mode; }
 
     // 重新计算直方图与默认值,并同步直方图控件/统计显示。
     // 注意:不重新扫描 LogicSnapshot — 滤波后 snapshot 中短脉冲已被滤除,
@@ -92,6 +96,10 @@ public slots:
 signals:
     void preview_changed(pv::view::LogicSignal* sig, uint32_t threshold, GlitchFilterMode mode);
     void apply_requested(pv::view::LogicSignal* sig, uint32_t threshold, GlitchFilterMode mode, bool all_channels);
+    // 批量模式应用:对 _target_sigs 中所有通道设同一阈值。
+    void apply_batch_requested(const std::vector<pv::view::LogicSignal*>& sigs, uint32_t threshold, GlitchFilterMode mode);
+    // 批量模式预览:对每个 sig 都更新 preview_ranges。
+    void preview_batch_changed(const std::vector<pv::view::LogicSignal*>& sigs, uint32_t threshold, GlitchFilterMode mode);
     void cleared(pv::view::LogicSignal* sig, bool all_channels);
     void closed();
 
@@ -106,7 +114,6 @@ private slots:
     void on_apply_one_clicked();
     void on_apply_all_clicked();
     void on_cancel_clicked();
-    void on_preset_changed(int index);
     void on_max_changed(int val);
     void on_auto_apply_toggled(bool checked);
 
@@ -117,12 +124,15 @@ private:
     void update_stats();
     void refresh_from_signal();  // 重新计算直方图与默认值
     void rebuild_histogram();    // 用当前 _max_spinbox 值作为 cap 重建直方图+滑块范围
+    void show_and_position(const QPoint& anchor_pos);  // 定位 + 淡入显示
 
     uint32_t current_threshold() const;
     GlitchFilterMode current_mode() const;
 
     View& _view;
-    LogicSignal* _target_sig = nullptr;
+    LogicSignal* _target_sig = nullptr;  // 单通道模式主信号(batch 模式 = _target_sigs[0])
+    std::vector<LogicSignal*> _target_sigs;  // 批量模式所有目标信号(单通道模式仅含 _target_sig)
+    bool _is_batch_mode = false;
 
     // 缓存的脉冲数据(打开时计算一次,预览时复用)
     std::vector<pv::data::PulseAnalyzer::Pulse> _cached_pulses;
@@ -140,7 +150,6 @@ private:
     QLabel* _threshold_value_lbl = nullptr;
     QSpinBox* _max_spinbox = nullptr;  // 用户自定义统计上限(默认 30)
     QCheckBox* _auto_apply_chk = nullptr;  // 采集后自动重新应用
-    QComboBox* _preset_combo = nullptr;
     QPushButton* _apply_one_btn = nullptr;
     QPushButton* _apply_all_btn = nullptr;
     QPushButton* _cancel_btn = nullptr;

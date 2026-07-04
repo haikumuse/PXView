@@ -76,6 +76,17 @@ void DecodeTaskManager::add_decode_task(
 
   {
     std::lock_guard<std::mutex> lock(_running_tasks_mutex);
+    // 防止重复添加:RevEndPacket 和 CopyToDocDone 都会调用
+    // start_all_decode_tasks(),若同一 stack 已在解码中,跳过避免
+    // begin_decode_work() 的 _decode_state == Stopped 断言失败。
+    for (const auto &s : _running_tasks) {
+      if (s == stack) {
+        pxv_info("DecodeTaskManager::add_decode_task: stack %p already "
+                 "running, skip duplicate",
+                 stack.get());
+        return;
+      }
+    }
     _running_tasks.push_back(stack);
   }
 

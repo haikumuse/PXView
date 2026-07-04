@@ -86,5 +86,9 @@
     {
         "id": "IDS_CLEAR_ALL_FILTER",
         "text": "清除所有通道滤波"
+    },
+    {
+        "id": "IDS_CHANGE_COLOR",
+        "text": "更改颜色"
     }
 ]

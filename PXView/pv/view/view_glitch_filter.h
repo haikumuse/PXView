@@ -35,6 +35,7 @@ namespace view {
 
 class View;
 class LogicSignal;
+class DecodeTrace;
 
 // ViewGlitchFilter — delegate for View's glitch-filter popup / preview /
 // apply / undo responsibilities. Extracted from the View God-class during
@@ -49,6 +50,7 @@ public:
 
   // -- popup lifecycle ---------------------------------------------------
   void on_show_glitch_filter_popup(pv::view::LogicSignal *sig);
+  void on_show_batch_glitch_filter_popup(pv::view::DecodeTrace *trace);
   void on_glitch_popup_closed();
 
   // -- filter apply / clear / invert ------------------------------------
@@ -57,11 +59,16 @@ public:
   void on_glitch_apply_requested(pv::view::LogicSignal *sig,
                                  uint32_t threshold,
                                  GlitchFilterMode mode, bool all_channels);
+  // 批量模式:对一组逻辑通道统一应用/预览滤波(如 DecodeTrace 根解码器绑定的子通道)
+  void on_apply_batch_requested(const std::vector<pv::view::LogicSignal *> &sigs,
+                                uint32_t threshold, GlitchFilterMode mode);
 
   // -- preview overlay ---------------------------------------------------
   void on_glitch_preview_changed(pv::view::LogicSignal *sig,
                                  uint32_t threshold,
                                  GlitchFilterMode mode);
+  void on_preview_batch_changed(const std::vector<pv::view::LogicSignal *> &sigs,
+                                uint32_t threshold, GlitchFilterMode mode);
   const std::vector<pv::data::PulseAnalyzer::Pulse> *
   get_preview_ranges(LogicSignal *sig) const;
 

@@ -255,6 +255,16 @@ uint64_t DecoderStack::get_annotation_index(const Row &row,
   return index;
 }
 
+std::pair<size_t, size_t> DecoderStack::get_visible_range(
+    const Row &row, uint64_t start_sample, uint64_t end_sample) {
+  std::pair<size_t, size_t> range{0, 0};
+  auto iter = _rows.find(row);
+  if (iter != _rows.end())
+    range = (*iter).second->get_visible_range(start_sample, end_sample);
+
+  return range;
+}
+
 uint64_t DecoderStack::get_max_annotation(const Row &row) {
   auto iter = _rows.find(row);
   if (iter != _rows.end())
@@ -397,7 +407,14 @@ void DecoderStack::stop_decode_work() {
 }
 
 void DecoderStack::begin_decode_work() {
-  assert(_decode_state == Stopped);
+  // 防御性检查:若已有解码线程在运行(RevEndPacket 与 CopyToDocDone 竞态,
+  // 或 add_decode_task 重复添加遗漏),直接返回避免状态被覆盖。
+  // assert 在 Release 下是空操作,必须显式 if 检查 + early return。
+  if (_decode_state != Stopped) {
+    pxv_warn("DecoderStack::begin_decode_work: _decode_state != Stopped "
+             "(already running), skip");
+    return;
+  }
 
   _error_message = "";
   _decode_state = Running;

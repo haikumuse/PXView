@@ -684,6 +684,7 @@ void ViewDataSync::resizeEvent(QResizeEvent *event) {
   _view->set_update(_view->_time_viewport, true);
   _view->set_update(_view->_fft_viewport, true);
   _view->resize();
+  _view->schedule_visible_range_notify();
 }
 
 } // namespace view

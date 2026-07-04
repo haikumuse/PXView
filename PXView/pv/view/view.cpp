@@ -124,6 +124,15 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   _glitch_filter = std::make_unique<ViewGlitchFilter>(this);
   _data_sync = std::make_unique<ViewDataSync>(this);
 
+  // Visible-range debounce timer: coalesce bursts of scale/offset/resize
+  // changes into a single visible_range_changed() emission so listeners
+  // (e.g. ProtocolDock) don't reset their model on every pixel of a drag.
+  _viewport_change_timer = new QTimer(this);
+  _viewport_change_timer->setSingleShot(true);
+  _viewport_change_timer->setInterval(100);
+  connect(_viewport_change_timer, &QTimer::timeout, this,
+          [this]() { emit visible_range_changed(); });
+
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
   setStyleSheet(
       QString("QScrollBar:vertical { margin-top: %1px; }").arg(RulerHeight));
@@ -230,6 +239,8 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
   connect(_header, &Header::header_updated, this, &View::header_updated);
   connect(_header, &Header::show_glitch_filter_popup, this,
           &View::on_show_glitch_filter_popup);
+  connect(_header, &Header::show_batch_glitch_filter_popup, this,
+          &View::on_show_batch_glitch_filter_popup);
   connect(_header, &Header::clear_glitch_filter_requested, this,
           &View::on_clear_glitch_filter_requested);
   connect(_header, &Header::toggle_signal_invert_requested, this,
@@ -255,6 +266,10 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
           &View::on_glitch_apply_requested);
   connect(_glitch_filter_popup, &GlitchFilterPopup::closed, this,
           &View::on_glitch_popup_closed);
+  connect(_glitch_filter_popup, &GlitchFilterPopup::apply_batch_requested, this,
+          &View::on_apply_batch_requested);
+  connect(_glitch_filter_popup, &GlitchFilterPopup::preview_batch_changed, this,
+          &View::on_preview_batch_changed);
 
   ADD_UI(this);
 }
@@ -382,6 +397,12 @@ QColor View::get_trace_card_color(Trace *trace) {
 void View::timebase_changed() { _data_sync->timebase_changed(); }
 
 void View::set_preScale_preOffset() { set_scale_offset(_preScale, _preOffset); }
+
+void View::schedule_visible_range_notify() {
+  if (_viewport_change_timer) {
+    _viewport_change_timer->start();
+  }
+}
 
 void View::get_traces(int type, std::vector<Trace *> &traces) {
   _signal_sync->get_traces(type, traces);
@@ -702,6 +723,10 @@ void View::on_show_glitch_filter_popup(pv::view::LogicSignal *sig) {
   _glitch_filter->on_show_glitch_filter_popup(sig);
 }
 
+void View::on_show_batch_glitch_filter_popup(pv::view::DecodeTrace *trace) {
+  _glitch_filter->on_show_batch_glitch_filter_popup(trace);
+}
+
 void View::on_clear_glitch_filter_requested(bool all_channels) {
   _glitch_filter->on_clear_glitch_filter_requested(all_channels);
 }
@@ -726,6 +751,16 @@ void View::on_glitch_apply_requested(pv::view::LogicSignal *sig,
 
 void View::on_glitch_popup_closed() {
   _glitch_filter->on_glitch_popup_closed();
+}
+
+void View::on_apply_batch_requested(const std::vector<pv::view::LogicSignal *> &sigs,
+                                    uint32_t threshold, GlitchFilterMode mode) {
+  _glitch_filter->on_apply_batch_requested(sigs, threshold, mode);
+}
+
+void View::on_preview_batch_changed(const std::vector<pv::view::LogicSignal *> &sigs,
+                                    uint32_t threshold, GlitchFilterMode mode) {
+  _glitch_filter->on_preview_batch_changed(sigs, threshold, mode);
 }
 
 const std::vector<pv::data::PulseAnalyzer::Pulse> *

@@ -345,6 +345,10 @@
         "text": "Decoding Results"
     },
     {
+        "id": "IDS_DLG_FOLLOW_VIEWPORT",
+        "text": "List follows waveform visible range"
+    },
+    {
         "id": "IDS_DLG_REGION",
         "text": "Region"
     },

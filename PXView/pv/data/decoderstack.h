@@ -118,6 +118,11 @@ public:
 
     uint64_t get_annotation_index(
         const decode::Row &row, uint64_t start_sample);
+    // Returns the half-open [start_idx, end_idx) annotation index range that
+    // overlaps [start_sample, end_sample] for the given row. Used by
+    // ProtocolDock to filter its list to the visible viewport portion.
+    std::pair<size_t, size_t> get_visible_range(
+        const decode::Row &row, uint64_t start_sample, uint64_t end_sample);
     uint64_t get_max_annotation(const decode::Row &row);
     uint64_t get_min_annotation(const decode::Row &row); // except instant(end=start) annotation
 

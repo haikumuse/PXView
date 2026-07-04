@@ -47,6 +47,7 @@ public:
     explicit PulseHistogramWidget(QWidget* parent = nullptr);
 
     void setData(const pv::data::PulseAnalyzer::Histogram& hist);
+    void setNumBars(int n);  // 设置柱子数(= cap),与滑块上限同步
     void setThresholds(uint32_t recommended, uint32_t current);
     void setFilterThreshold(uint32_t threshold);
     void setRecommendedThreshold(uint32_t recommended);
