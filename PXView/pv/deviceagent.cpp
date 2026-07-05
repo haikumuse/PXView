@@ -23,6 +23,7 @@
 #include "deviceagent.h"
 #include <assert.h>
 #include "log.h"
+#include "config/appconfig.h"
 
 // Upstream libsigrok 0.6.0 is now the sole libsigrok (fork + bridge removed).
 // All ds_* fork APIs are replaced by sr_* upstream APIs.
@@ -360,6 +361,11 @@ uint64_t DeviceAgent::get_sample_limit()
         v = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
     }
+    // 上游约定 limit_samples=0 表示"不限制"，PXView 应用层提供默认值 fallback
+    // (demo 设备 devc->limit_samples == 0 时走此路径)
+    if (v == 0) {
+        v = AppConfig::Instance().default_sample_limit();
+    }
     return v;
 }
 
@@ -414,6 +420,11 @@ int DeviceAgent::get_work_mode()
         pxv_warn("%s", "DeviceAgent::get_work_mode: _dev_handle is NULL");
         return 0;
     }
+    // Only DSL/PXLogic devices implement SR_CONF_DEVICE_MODE.
+    // demo/file/compat devices default to LOGIC mode (0) — querying
+    // DEVICE_MODE on them just produces "Option not available" noise.
+    if (!is_dsl_device())
+        return 0;  // LOGIC
     int mode = 0;
     get_config_int32(SR_CONF_DEVICE_MODE, mode);
     return mode;
@@ -530,12 +541,26 @@ bool DeviceAgent::is_collecting()
 
 // --- Config (via sdi->driver->config_get/set/list) ---
 
+// Fork-only config keys are defined in dsvdef.h range 60020-60088 (PXLogic
+// ext keys + analog probe keys + DSO residual stubs). Upstream libsigrok does
+// not know about them — querying returns SR_ERR_ARG ("Invalid key 600XX") and
+// floods the log on non-DSL devices (demo/fx2lafw). Block these queries at the
+// chokepoint so non-DSL devices never reach sr_config_* with fork keys.
+// DSL/PXLogic devices pass through (driver implements the keys).
+static inline bool is_fork_only_key(int key)
+{
+    return key >= 60020 && key <= 60088;
+}
+
 GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
 {
     if (!_dev_handle || !_di) {
         pxv_warn("%s", "DeviceAgent::get_config_list: no device instance");
         return nullptr;
     }
+
+    if (is_fork_only_key(key) && !is_dsl_device())
+        return nullptr;
 
     struct sr_dev_driver *drv = sr_dev_inst_driver_get(_di);
     if (!drv)
@@ -560,6 +585,9 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
         pxv_warn("%s", "DeviceAgent::get_config: no device instance");
         return nullptr;
     }
+
+    if (is_fork_only_key(key) && !is_dsl_device())
+        return nullptr;
 
     struct sr_dev_driver *drv = sr_dev_inst_driver_get(_di);
     if (!drv)
@@ -595,6 +623,9 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
         pxv_warn("%s", "DeviceAgent::set_config: no device instance");
         return false;
     }
+
+    if (is_fork_only_key(key) && !is_dsl_device())
+        return false;
 
     int ret = sr_config_set(_di, cg, (uint32_t)key, data);
     (void)ch;  // upstream sr_config_set does not take a channel parameter
@@ -858,61 +889,70 @@ bool DeviceAgent::is_roll_mode(bool &roll) {
     return get_config_bool(SR_CONF_ROLL, roll);
 }
 
+// Fork analog config keys (SR_CONF_UNIT_BITS / REF_MIN / REF_MAX / PROBE_OFFSET /
+// PROBE_HW_OFFSET / PROBE_FACTOR) only exist in PXView's fork libsigrok.h range
+// 60042-60047 plus the upstream SR_CONF_PROBE_FACTOR (40005). Upstream drivers
+// (demo/fx2lafw) do not implement them — querying returns SR_ERR_NA/invalid-key
+// and floods the log. Guard with is_dsl_device() so non-DSL devices skip the
+// query entirely. Callers (DsoSignal / AnalogSignal / MathTrace / capturemanager)
+// already handle a false return value gracefully (fall back to defaults).
 bool DeviceAgent::get_unit_bits(int &v) {
+    if (!is_dsl_device()) return false;
     return get_config_byte(SR_CONF_UNIT_BITS, v);
 }
 
 bool DeviceAgent::get_ref_min(uint32_t &v) {
+    if (!is_dsl_device()) return false;
     return get_config_uint32(SR_CONF_REF_MIN, v);
 }
 
 bool DeviceAgent::get_ref_max(uint32_t &v) {
+    if (!is_dsl_device()) return false;
     return get_config_uint32(SR_CONF_REF_MAX, v);
 }
 
 bool DeviceAgent::get_probe_vdiv(uint64_t &v, sr_channel *probe) {
-    return get_config_uint64(SR_CONF_PROBE_VDIV, v, probe, NULL);
+    (void)probe;
+    v = 0;
+    return false;
 }
 
 bool DeviceAgent::get_probe_factor(uint64_t &v, sr_channel *probe) {
+    if (!is_dsl_device()) return false;
     return get_config_uint64(SR_CONF_PROBE_FACTOR, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_coupling(int &v, sr_channel *probe) {
-    return get_config_byte(SR_CONF_PROBE_COUPLING, v, probe, NULL);
+    (void)probe;
+    v = 0;
+    return false;
 }
 
 bool DeviceAgent::get_probe_offset(int &v, sr_channel *probe) {
+    if (!is_dsl_device()) return false;
     return get_config_uint16(SR_CONF_PROBE_OFFSET, v, probe, NULL);
 }
 
 bool DeviceAgent::get_probe_hw_offset(int &v, sr_channel *probe) {
+    if (!is_dsl_device()) return false;
     return get_config_uint16(SR_CONF_PROBE_HW_OFFSET, v, probe, NULL);
 }
 
+bool DeviceAgent::get_probe_map_default(bool &v, sr_channel *probe) {
+    if (!is_dsl_device()) return false;
+    return get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, v, probe, NULL);
+}
+
 bool DeviceAgent::get_trigger_value(int &v, sr_channel *probe) {
-    return get_config_byte(SR_CONF_TRIGGER_VALUE, v, probe, NULL);
+    (void)probe;
+    v = 0;
+    return false;
 }
 
 QVector<uint64_t> DeviceAgent::get_probe_vdiv_list() {
-    QVector<uint64_t> result;
-    GVariant *gvar_list = get_config_list(NULL, SR_CONF_PROBE_VDIV);
-    if (gvar_list) {
-        GVariant *gvar_list_vdivs;
-        if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list, "vdivs",
-                                                      G_VARIANT_TYPE("at")))) {
-            GVariant *gvar;
-            GVariantIter iter;
-            g_variant_iter_init(&iter, gvar_list_vdivs);
-            while (NULL != (gvar = g_variant_iter_next_value(&iter))) {
-                result.push_back(g_variant_get_uint64(gvar));
-                g_variant_unref(gvar);
-            }
-            g_variant_unref(gvar_list_vdivs);
-            g_variant_unref(gvar_list);
-        }
-    }
-    return result;
+    // SR_CONF_PROBE_VDIV was a fork DSO key (deleted). DSO mode is deprecated;
+    // return empty list — DsoSignal::init_vDial handles this gracefully.
+    return {};
 }
 
 // --- Config info ---

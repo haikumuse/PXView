@@ -21,8 +21,8 @@
  */
 
 
-#ifndef PXVIEW_PV_DSDIALOG_H
-#define PXVIEW_PV_DSDIALOG_H
+#ifndef PXVIEW_PV_PXDIALOG_H
+#define PXVIEW_PV_PXDIALOG_H
 
 #include <QDialog>
 #include <QWidget>
@@ -41,16 +41,16 @@ namespace dialogs {
     class Shadow;
 
 //PXView any dialog base class
-class DSDialog : public QDialog
+class PxDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-    DSDialog();
-    DSDialog(QWidget *parent);
-    DSDialog(QWidget *parent, bool hasClose);
-    DSDialog(QWidget *parent, bool hasClose, bool bBaseButton);
-    virtual ~DSDialog();
+    PxDialog();
+    PxDialog(QWidget *parent);
+    PxDialog(QWidget *parent, bool hasClose);
+    PxDialog(QWidget *parent, bool hasClose, bool bBaseButton);
+    virtual ~PxDialog();
 
     inline void SetCallback(IDlgCallback *callback){m_callback = callback;}
     inline QVBoxLayout *layout(){return _main_layout;}
@@ -98,4 +98,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // PXVIEW_PV_DSDIALOG_H
+#endif // PXVIEW_PV_PXDIALOG_H

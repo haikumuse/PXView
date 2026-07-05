@@ -46,7 +46,7 @@ namespace dialogs {
 
 DsoMeasure::DsoMeasure(SigSession *session, View &parent,
                        unsigned int position, int last_sig_index) :
-    DSDialog((QWidget *)&parent),
+    PxDialog((QWidget *)&parent),
     _session(session),
     _view(parent),
     _position(position),

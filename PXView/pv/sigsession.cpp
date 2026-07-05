@@ -658,22 +658,15 @@ void SigSession::init_signals() {
     }
     assert(probe);
 
-    if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
-      pxv_info("init_signals probe skip: mode=LOGIC but probe->type=%d", probe->type);
-      continue;
-    }
-
-    if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG) {
-      pxv_info("init_signals probe skip: mode=ANALOG but probe->type=%d", probe->type);
-      continue;
-    }
-
+    // Allow LOGIC + ANALOG coexistence (PulseView native behavior).
+    // DSL hardware requiring mutual exclusion is dropped in PXView.
+    // DSO mode still filters (deprecated, hardware-specific).
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
       pxv_info("init_signals probe skip: mode=DSO but probe->type=%d", probe->type);
       continue;
     }
 
-    pxv_info("init_signals probe examine: index=%d name=%s type=%d enabled=%d", 
+    pxv_info("init_signals probe examine: index=%d name=%s type=%d enabled=%d",
              probe->index, probe->name ? probe->name : "null", probe->type, probe->enabled);
 
     bool should_create = false;
@@ -716,46 +709,32 @@ void SigSession::init_signals() {
       // Read probe configuration for DSO/ANALOG channels.
       // Sources must match view::DsoSignal/AnalogSignal getters so that the
       // SignalModel mirrors what the View layer reports:
-      //   - vdiv       <- SR_CONF_PROBE_VDIV      (DsoSignal::get_vDialValue)
       //   - vfactor    <- SR_CONF_PROBE_FACTOR    (DsoSignal::get_factor)
       //   - hw_offset  <- SR_CONF_PROBE_HW_OFFSET (DsoSignal::get_hw_offset)
       //   - zero_offset<- SR_CONF_PROBE_OFFSET    (DsoSignal::load_settings)
+      // vdiv / coupling were fork DSO keys (deleted); model defaults are used.
+      // Use typed wrappers (DeviceAgent::get_probe_factor / get_probe_hw_offset
+      // / get_probe_offset / get_probe_map_default) — they short-circuit on
+      // non-DSL devices (is_dsl_device() guard) so we don't flood the log with
+      // "Option 'probe_factor' not available" errors on demo/fx2lafw.
       if (ch_type == SR_CHANNEL_DSO ||
           ch_type == SR_CHANNEL_ANALOG) {
-        uint64_t vdiv = 0;
-        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
-                                            NULL))
-          model->set_vdiv((double)vdiv);
-
         uint64_t vfactor = 1;
-        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
-                                            probe, NULL))
+        if (_state->device_agent().get_probe_factor(vfactor, probe))
           model->set_vfactor((double)vfactor);
         else
           model->set_vfactor(1.0);
 
-        int coupling = 0;
-        if (_state->device_agent().get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
-                                           probe, NULL))
-          model->set_coupling(coupling);
-
         bool map_default = true;
-        _state->device_agent().get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
-                                      probe, NULL);
+        _state->device_agent().get_probe_map_default(map_default, probe);
         model->set_map_default(map_default);
 
-        // hw_offset: live SR_CONF_PROBE_HW_OFFSET (fork sr_channel.hw_offset
-        // field removed in upstream libsigrok — default 0).
         int hw_offset = 0;
-        _state->device_agent().get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
-                                        probe, NULL);
+        _state->device_agent().get_probe_hw_offset(hw_offset, probe);
         model->set_hw_offset(hw_offset);
 
-        // zero_offset: live SR_CONF_PROBE_OFFSET (fork sr_channel.zero_offset
-        // field removed in upstream libsigrok — default 0).
         int zero_offset = 0;
-        _state->device_agent().get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
-                                        probe, NULL);
+        _state->device_agent().get_probe_offset(zero_offset, probe);
         model->set_zero_offset(zero_offset);
       }
 
@@ -809,22 +788,15 @@ void SigSession::reload() {
     }
     assert(probe);
 
-    if (mode == LOGIC && probe->type != SR_CHANNEL_LOGIC) {
-      pxv_info("reload probe skip: mode=LOGIC but probe->type=%d", probe->type);
-      continue;
-    }
-
-    if (mode == ANALOG && probe->type != SR_CHANNEL_ANALOG) {
-      pxv_info("reload probe skip: mode=ANALOG but probe->type=%d", probe->type);
-      continue;
-    }
-
+    // Allow LOGIC + ANALOG coexistence (PulseView native behavior).
+    // DSL hardware requiring mutual exclusion is dropped in PXView.
+    // DSO mode still filters (deprecated, hardware-specific).
     if (mode == DSO && probe->type != SR_CHANNEL_DSO) {
       pxv_info("reload probe skip: mode=DSO but probe->type=%d", probe->type);
       continue;
     }
 
-    pxv_info("reload probe examine: index=%d name=%s type=%d enabled=%d", 
+    pxv_info("reload probe examine: index=%d name=%s type=%d enabled=%d",
              probe->index, probe->name ? probe->name : "null", probe->type, probe->enabled);
 
     bool should_create = false;
@@ -875,36 +847,25 @@ void SigSession::reload() {
 
       if (ch_type == SR_CHANNEL_DSO ||
           ch_type == SR_CHANNEL_ANALOG) {
-        uint64_t vdiv = 0;
-        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
-                                            NULL))
-          model->set_vdiv((double)vdiv);
-
+        // vdiv / coupling were fork DSO keys (deleted); model defaults are used.
+        // Use typed wrappers (is_dsl_device() guard) — non-DSL devices skip
+        // the queries entirely, avoiding "not available" log noise on demo.
         uint64_t vfactor = 1;
-        if (_state->device_agent().get_config_uint64(SR_CONF_PROBE_FACTOR, vfactor,
-                                            probe, NULL))
+        if (_state->device_agent().get_probe_factor(vfactor, probe))
           model->set_vfactor((double)vfactor);
         else
           model->set_vfactor(1.0);
 
-        int coupling = 0;
-        if (_state->device_agent().get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
-                                           probe, NULL))
-          model->set_coupling(coupling);
-
         bool map_default = true;
-        _state->device_agent().get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
-                                      probe, NULL);
+        _state->device_agent().get_probe_map_default(map_default, probe);
         model->set_map_default(map_default);
 
         int hw_offset = 0;
-        _state->device_agent().get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
-                                        probe, NULL);
+        _state->device_agent().get_probe_hw_offset(hw_offset, probe);
         model->set_hw_offset(hw_offset);
 
         int zero_offset = 0;
-        _state->device_agent().get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
-                                        probe, NULL);
+        _state->device_agent().get_probe_offset(zero_offset, probe);
         model->set_zero_offset(zero_offset);
       }
 
@@ -1533,7 +1494,13 @@ bool SigSession::switch_work_mode(int mode) {
   if (cur_mode != mode) {
     set_collect_mode(COLLECT_SINGLE);
 
-    _state->device_agent().set_config_int16(SR_CONF_DEVICE_MODE, mode);
+    // Only DSL/PXLogic devices implement SR_CONF_DEVICE_MODE.
+    // demo/file/compat devices have no mode switch — get_work_mode()
+    // always returns LOGIC for them, so this branch is unreachable for
+    // those devices, but guard defensively to avoid "Option not
+    // available" noise.
+    if (_state->device_agent().is_dsl_device())
+      _state->device_agent().set_config_int16(SR_CONF_DEVICE_MODE, mode);
 
     if (cur_mode == LOGIC) {
       clear_all_decode_task2();
@@ -1740,6 +1707,22 @@ void SigSession::sync_trigger_to_libsigrok() {
   // 同步 simple trigger。Adv/Serial trigger 字段保留在 TriggerConfig 中但暂不下发
   // （UI 保留供 PXLogic 驱动未来扩展）。
   const auto &cfg = _state->trigger_config();
+
+  // Always sync capture_ratio (trigger position as 0..100 percent) to the driver.
+  // pxlogic's set_trigger() reads devc->capture_ratio at acquisition start to
+  // compute trigger_pos_set; scilogic already supported SR_CONF_CAPTURE_RATIO.
+  // Previously pxlogic read from pxlogic_trigger_cfg.trigger_pos stub that nobody
+  // populated, leaving trigger_pos_set at zero — broken since the fork removal.
+  const int trig_pos = cfg.trigger_pos();
+  if (trig_pos >= 0 && trig_pos <= 100) {
+    if (!_state->device_agent().set_config_uint64(SR_CONF_CAPTURE_RATIO,
+                                                   (uint64_t)trig_pos)) {
+      pxv_warn("sync_trigger_to_libsigrok: set SR_CONF_CAPTURE_RATIO=%d failed",
+               trig_pos);
+    } else {
+      pxv_info("sync_trigger_to_libsigrok: capture_ratio=%d synced", trig_pos);
+    }
+  }
 
   // Only Simple trigger mode is synced to the driver. Adv/Serial trigger
   // configurations are retained in TriggerConfig for future PXLogic driver

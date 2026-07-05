@@ -79,18 +79,10 @@ ProbeOptions::ProbeOptions(SigSession *session, struct sr_channel *probe) :
 
 		switch(key)
 		{
-        case SR_CONF_PROBE_VDIV:
-            bind_vdiv(name, label, gvar_list);
-			break;
-
         case SR_CONF_PROBE_MAP_MIN:
         case SR_CONF_PROBE_MAP_MAX:
             bind_double(name, label, key, "",
                         pair<double, double>(-999999.99, 999999.99), 2, 0.01);
-            break;
-
-        case SR_CONF_PROBE_COUPLING:
-            bind_coupling(name, label, gvar_list);
             break;
 
         case SR_CONF_PROBE_MAP_UNIT:
@@ -170,41 +162,17 @@ void ProbeOptions::bind_double(const QString &name, const QString label, int key
 void ProbeOptions::bind_vdiv(const QString &name, const QString label,
     GVariant *const gvar_list)
 {
-    GVariant *gvar_list_vdivs;
-
-	if (!gvar_list) {
-		pxv_warn("%s", "ProbeOptions::bind_vdiv: gvar_list is NULL");
-		return;
-	}
-    assert(gvar_list);
-
-    if ((gvar_list_vdivs = g_variant_lookup_value(gvar_list,
-            "vdivs", G_VARIANT_TYPE("at"))))
-	{
-        bind_enum(name, label, SR_CONF_PROBE_VDIV,
-            gvar_list_vdivs, print_vdiv);
-        g_variant_unref(gvar_list_vdivs);
-	}
+    // SR_CONF_PROBE_VDIV fork DSO key deleted; vdiv binding no longer created.
+    // Stub kept for ABI compat with header declaration.
+    (void)name; (void)label; (void)gvar_list;
 }
 
 void ProbeOptions::bind_coupling(const QString &name, const QString label,
     GVariant *const gvar_list)
 {
-    GVariant *gvar_list_coupling;
-
-	if (!gvar_list) {
-		pxv_warn("%s", "ProbeOptions::bind_coupling: gvar_list is NULL");
-		return;
-	}
-    assert(gvar_list);
-
-    if ((gvar_list_coupling = g_variant_lookup_value(gvar_list,
-            "coupling", G_VARIANT_TYPE("ay"))))
-    {
-        bind_enum(name, label, SR_CONF_PROBE_COUPLING,
-            gvar_list_coupling, print_coupling);
-        g_variant_unref(gvar_list_coupling);
-    }
+    // SR_CONF_PROBE_COUPLING fork DSO key deleted; coupling binding no longer
+    // created. Stub kept for ABI compat with header declaration.
+    (void)name; (void)label; (void)gvar_list;
 }
 
 QString ProbeOptions::print_gvariant(GVariant *const gvar)

@@ -31,8 +31,8 @@
 #include <QCheckBox> 
  
 #include "../toolbars/titlebar.h"
-#include "dsdialog.h"
-#include "../ui/dscombobox.h"
+#include "pxdialog.h"
+#include "../ui/pxcombobox.h"
 
 namespace pv {
 
@@ -40,7 +40,7 @@ class SigSession;
 
 namespace dialogs {
 
-class FftOptions : public DSDialog
+class FftOptions : public PxDialog
 {
     Q_OBJECT
 
@@ -64,14 +64,14 @@ private:
     SigSession *_session;
     uint64_t _sample_limit;
  
-    DsComboBox *_len_combobox;
-    DsComboBox *_interval_combobox;
+    PxComboBox *_len_combobox;
+    PxComboBox *_interval_combobox;
     QCheckBox *_en_checkbox;
-    DsComboBox *_ch_combobox;
-    DsComboBox *_window_combobox;
+    PxComboBox *_ch_combobox;
+    PxComboBox *_window_combobox;
     QCheckBox *_dc_checkbox;
-    DsComboBox *_view_combobox;
-    DsComboBox *_dbv_combobox;
+    PxComboBox *_view_combobox;
+    PxComboBox *_dbv_combobox;
 
     QLabel *_hint_label;
     QGridLayout *_glayout;

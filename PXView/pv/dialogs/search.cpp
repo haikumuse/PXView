@@ -46,7 +46,7 @@ void SearchEdgeFlagEdit::focusInEvent(QFocusEvent *e)
 }
 
 Search::Search(QWidget *parent, SigSession *session, std::map<uint16_t, QString> pattern) :
-    DSDialog(parent),
+    PxDialog(parent),
     _session(session)
 {
 

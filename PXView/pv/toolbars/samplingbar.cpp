@@ -25,9 +25,8 @@
 #include "../data/sessiondocument.h"
 #include "../deviceagent.h"
 #include "../dialogs/deviceoptions.h"
-#include "../dialogs/dsmessagebox.h"
+#include "../dialogs/pxmessagebox.h"
 #include "../dialogs/interval.h"
-#include "../dialogs/waitingdialog.h"
 #include "../dsvdef.h"
 #include "../interface/icallbacks.h"
 #include "../log.h"
@@ -63,6 +62,42 @@ using std::max;
 using std::min;
 using std::string;
 
+namespace {
+
+// 按 1-2-5 序列在 [min_rate, max_rate] 范围生成离散采样率列表
+// 例如 [1Hz, 1GHz] → 1Hz/2Hz/5Hz/10Hz/.../1GHz（约 30 个点）
+QVector<uint64_t> generate_1_2_5_steps(uint64_t min_rate, uint64_t max_rate)
+{
+    QVector<uint64_t> steps;
+    if (min_rate == 0 || max_rate == 0 || min_rate > max_rate)
+        return steps;
+
+    // 1-2-5 序列的尾数
+    static const int mantissas[] = {1, 2, 5};
+    const int num_mantissas = sizeof(mantissas) / sizeof(mantissas[0]);
+
+    // 找到 >= min_rate 的起始点
+    uint64_t cur = 1;  // 10^0 * 1
+    while (cur < min_rate)
+        cur *= 10;
+
+    // 对每个十进制量级，生成 1×/2×/5× 三个点
+    while (cur <= max_rate) {
+        for (int i = 0; i < num_mantissas; ++i) {
+            uint64_t rate = cur * mantissas[i] / 1;  // cur 已是 10^n
+            if (rate >= min_rate && rate <= max_rate) {
+                // 去重（避免 10×1 == 1×10 重复）
+                if (steps.isEmpty() || steps.last() != rate)
+                    steps.append(rate);
+            }
+        }
+        cur *= 10;
+    }
+    return steps;
+}
+
+}  // namespace
+
 namespace pv {
 namespace toolbars {
 
@@ -72,9 +107,9 @@ const QString SamplingBar::DIVString = " / div";
 SamplingBar::SamplingBar(SigSession *session, QWidget *parent)
     : QToolBar("Sampling Bar", parent) {
   _device_type = new XToolButton(this);
-  _device_selector = new DsComboBox(this);
-  _sample_count = new DsComboBox(this);
-  _sample_rate = new DsComboBox(this);
+  _device_selector = new PxComboBox(this);
+  _sample_count = new PxComboBox(this);
+  _sample_rate = new PxComboBox(this);
   _mode_button = new XToolButton(this);
   _updating_device_list = false;
   _updating_sample_rate = false;
@@ -102,11 +137,11 @@ SamplingBar::SamplingBar(SigSession *session, QWidget *parent)
   _mode_button->setPopupMode(QToolButton::InstantPopup);
 
   _device_selector->setSizeAdjustPolicy(
-      DsComboBox::AdjustToMinimumContentsLengthWithIcon);
+      PxComboBox::AdjustToMinimumContentsLengthWithIcon);
   _sample_rate->setSizeAdjustPolicy(
-      DsComboBox::AdjustToMinimumContentsLengthWithIcon);
+      PxComboBox::AdjustToMinimumContentsLengthWithIcon);
   _sample_count->setSizeAdjustPolicy(
-      DsComboBox::AdjustToMinimumContentsLengthWithIcon);
+      PxComboBox::AdjustToMinimumContentsLengthWithIcon);
   _device_selector->setMinimumContentsLength(15);
   _sample_rate->setMinimumContentsLength(15);
   _sample_count->setMinimumContentsLength(15);
@@ -489,45 +524,9 @@ void SamplingBar::reStyle() {
 }
 
 void SamplingBar::zero_adj() {
-  if (!_view)
-    return;
-
-  for (auto s : _view->get_own_signals()) {
-    if (s->signal_type() == SR_CHANNEL_DSO) {
-      view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-      dsoSig->set_enable(true);
-    }
-  }
-
-  const int index_back = _sample_count->currentIndex();
-  int i = 0;
-
-  for (i = 0; i < _sample_count->count(); i++) {
-    if (_sample_count->itemData(i).value<uint64_t>() == ZeroTimeBase)
-      break;
-  }
-
-  set_sample_count_index(i);
-  commit_hori_res();
-
-  if (_session->is_working() == false)
-    _session->start_capture(false);
-
-  pv::dialogs::WaitingDialog wait(this, _session, SR_CONF_ZERO);
-  if (wait.start() == QDialog::Rejected) {
-    for (auto s : _view->get_own_signals()) {
-      if (s->signal_type() == SR_CHANNEL_DSO) {
-        view::DsoSignal *dsoSig = (view::DsoSignal *)s;
-        dsoSig->commit_settings();
-      }
-    }
-  }
-
-  if (_session->is_working())
-    _session->stop_capture();
-
-  set_sample_count_index(index_back);
-  commit_hori_res();
+  // DSO zero calibration removed: WaitingDialog and SR_CONF_ZERO fork key were
+  // deleted (DSO mode deprecated, DSCope hardware dropped). No-op stub kept
+  // so call sites in action_run()/action_instant_stop() compile.
 }
 
 void SamplingBar::set_sample_rate(uint64_t sample_rate) {
@@ -572,11 +571,13 @@ void SamplingBar::update_sample_rate_selector() {
     return;
   }
 
+  _sample_rate->clear();
+
+  // 优先处理离散列表格式（"samplerates"）
   if ((gvar_list = g_variant_lookup_value(gvar_dict, "samplerates",
                                           G_VARIANT_TYPE("at")))) {
     elements = (const uint64_t *)g_variant_get_fixed_array(
         gvar_list, &num_elements, sizeof(uint64_t));
-    _sample_rate->clear();
 
     for (unsigned int i = 0; i < num_elements; i++) {
       char *const s = sr_samplerate_string(elements[i]);
@@ -584,11 +585,28 @@ void SamplingBar::update_sample_rate_selector() {
       g_free(s);
     }
 
-    _sample_rate->show();
+    g_variant_unref(gvar_list);
+  }
+  // 回退处理 step 格式（"samplerate-steps"）—— demo 等上游驱动使用
+  else if ((gvar_list = g_variant_lookup_value(gvar_dict, "samplerate-steps",
+                                               G_VARIANT_TYPE("at")))) {
+    elements = (const uint64_t *)g_variant_get_fixed_array(
+        gvar_list, &num_elements, sizeof(uint64_t));
+
+    // step 格式为 [min, max, step]，在应用层按 1-2-5 序列生成离散列表
+    if (num_elements >= 2 && elements[0] > 0 && elements[1] > 0) {
+      QVector<uint64_t> rates = generate_1_2_5_steps(elements[0], elements[1]);
+      for (uint64_t r : rates) {
+        char *const s = sr_samplerate_string(r);
+        _sample_rate->addItem(QString(s), QVariant::fromValue(r));
+        g_free(s);
+      }
+    }
+
     g_variant_unref(gvar_list);
   }
 
-  // _sample_rate->setMinimumWidth(_sample_rate->sizeHint().width() + 15);
+  _sample_rate->show();
   _sample_rate->view()->setMinimumWidth(_sample_rate->sizeHint().width() + 30);
 
   _updating_sample_rate = false;
@@ -639,8 +657,6 @@ void SamplingBar::update_sample_count_selector() {
   uint64_t hw_depth = 0;
   uint64_t sw_depth;
   uint64_t rle_depth = 0;
-  uint64_t max_timebase = 0;
-  uint64_t min_timebase = SR_NS(10);
   double pre_duration = SR_SEC(1);
   double duration;
   bool rle_support = false;
@@ -680,10 +696,8 @@ void SamplingBar::update_sample_count_selector() {
     _device_agent->get_config_bool(SR_CONF_RLE_SUPPORT, rle_support);
     if (rle_support)
       rle_depth = min(hw_depth * SR_KB(1), sw_depth);
-  } else if (mode == DSO) {
-    _device_agent->get_config_uint64(SR_CONF_MAX_TIMEBASE, max_timebase);
-    _device_agent->get_config_uint64(SR_CONF_MIN_TIMEBASE, min_timebase);
   }
+  // DSO mode (max_timebase/min_timebase) was removed — DSO hardware dropped.
 
   if (0 != _sample_count->count())
     pre_duration =
@@ -694,9 +708,7 @@ void SamplingBar::update_sample_count_selector() {
   const double hw_duration =
       (samplerate > 0) ? (hw_depth / (samplerate * (1.0 / SR_SEC(1)))) : 0;
 
-  if (mode == DSO)
-    duration = max_timebase;
-  else if (stream_mode) {
+  if (stream_mode) {
     // Stream mode: data flows continuously via mmap, not limited by hardware
     // FIFO. mmap is backed by either memory (no disk cache) or disk file (with
     // cache). The two modes are mutually exclusive — not additive.
@@ -706,8 +718,9 @@ void SamplingBar::update_sample_count_selector() {
     if (ch_num <= 0)
       ch_num = 1;
     bool disk_cache_enabled = false;
-    _device_agent->get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
-                                   disk_cache_enabled);
+    if (_device_agent->is_dsl_device())
+      _device_agent->get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
+                                     disk_cache_enabled);
 
     double buff_gb = 16.0;
     if (disk_cache_enabled) {
@@ -768,7 +781,9 @@ void SamplingBar::update_sample_count_selector() {
                                                             : duration * 0.5);
 
     if (mode == DSO)
-      not_last = duration >= min_timebase;
+      // SR_CONF_MIN_TIMEBASE fork DSO key deleted; DSO mode is deprecated.
+      // Stop after the first option so the selector still has one entry.
+      not_last = false;
     else if (mode == ANALOG)
       not_last = (duration >= SR_MS(200)) &&
                  (duration / SR_SEC(1) * samplerate >= SR_KB(1));
@@ -931,13 +946,10 @@ double SamplingBar::commit_hori_res() {
       _sample_count->itemData(_sample_count->currentIndex()).value<double>();
 
   const uint64_t sample_limit = _device_agent->get_sample_limit();
-  uint64_t max_sample_rate;
-
-  if (_device_agent->get_config_uint64(SR_CONF_MAX_DSO_SAMPLERATE,
-                                       max_sample_rate) == false) {
-    pxv_err("ERROR: config_get SR_CONF_MAX_DSO_SAMPLERATE failed.");
-    return -1;
-  }
+  // SR_CONF_MAX_DSO_SAMPLERATE was a fork DSO stub key (deleted from
+  // dsvdef.h) with no driver backend. Fall back to the device's currently
+  // configured sample rate as the upper bound.
+  const uint64_t max_sample_rate = _device_agent->get_sample_rate();
 
   const uint64_t sample_rate = min(
       (uint64_t)(sample_limit * SR_SEC(1) / (hori_res * DS_CONF_DSO_HDIVS)),
@@ -953,7 +965,7 @@ double SamplingBar::commit_hori_res() {
 
 void SamplingBar::commit_settings() {
   bool test = false;
-  if (_device_agent->have_instance()) {
+  if (_device_agent->have_instance() && _device_agent->is_dsl_device()) {
     _device_agent->get_config_bool(SR_CONF_TEST, test);
   }
 
@@ -967,7 +979,7 @@ void SamplingBar::commit_settings() {
         _sample_rate->itemData(_sample_rate->currentIndex()).value<uint64_t>();
 
     if (_device_agent->have_instance()) {
-      if (sample_rate != _device_agent->get_sample_rate())
+      if (sample_rate != 0 && sample_rate != _device_agent->get_sample_rate())
         _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
 
       if (_device_agent->get_work_mode() != DSO) {
@@ -975,7 +987,7 @@ void SamplingBar::commit_settings() {
             ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
              SAMPLES_ALIGN) &
             ~SAMPLES_ALIGN;
-        if (sample_count != _device_agent->get_sample_limit())
+        if (sample_count != 0 && sample_count != _device_agent->get_sample_limit())
           _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
 
         bool rle_mode = _sample_count->currentText().contains(RLEString);
@@ -1021,26 +1033,8 @@ bool SamplingBar::action_run_stop() {
 
   commit_settings();
 
-  if (_device_agent->get_work_mode() == DSO) {
-    bool zero;
-
-    bool ret = _device_agent->get_config_bool(SR_CONF_ZERO, zero);
-    if (ret && zero) {
-      QString str1(
-          L_S(STR_PAGE_MSG, S_ID(IDS_MSG_AUTO_CALIB), "Auto Calibration"));
-      QString str2(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_ADJUST_SAVE),
-                       "Please adjust zero skew and save the result"));
-      bool bRet = MsgBox::Confirm(str1, str2);
-
-      if (bRet) {
-        zero_adj();
-      } else {
-        _device_agent->set_config_bool(SR_CONF_ZERO, false);
-        update_view_status();
-      }
-      return false;
-    }
-  }
+  // DSO zero-calibration check removed (SR_CONF_ZERO fork key deleted,
+  // DSO mode deprecated). zero_adj() is a no-op stub.
 
   if (_device_agent->get_work_mode() == LOGIC && _view != NULL) {
     if (_session->is_realtime_refresh())
@@ -1079,24 +1073,8 @@ bool SamplingBar::action_instant_stop() {
 
   commit_settings();
 
-  if (_device_agent->get_work_mode() == DSO) {
-    bool zero;
-
-    bool ret = _device_agent->get_config_bool(SR_CONF_ZERO, zero);
-    if (ret && zero) {
-      QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_AUTO_CALIB_START),
-                         "Auto Calibration program will be started. Don't "
-                         "connect any probes. \nIt can take a while!"));
-
-      if (MsgBox::Confirm(strMsg)) {
-        zero_adj();
-      } else {
-        _device_agent->set_config_bool(SR_CONF_ZERO, false);
-        update_view_status();
-      }
-      return false;
-    }
-  }
+  // DSO zero-calibration check removed (SR_CONF_ZERO fork key deleted,
+  // DSO mode deprecated). zero_adj() is a no-op stub.
 
   if (_device_agent->get_work_mode() == LOGIC &&
       _session->is_realtime_refresh()) {
@@ -1145,7 +1123,7 @@ void SamplingBar::on_device_selected() {
 void SamplingBar::enable_toggle(bool enable) {
   bool test = false;
 
-  if (_device_agent->have_instance()) {
+  if (_device_agent->have_instance() && _device_agent->is_dsl_device()) {
     _device_agent->get_config_bool(SR_CONF_TEST, test);
   }
   if (!test) {

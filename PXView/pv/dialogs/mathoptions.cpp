@@ -44,7 +44,7 @@ namespace pv {
 namespace dialogs {
 
 MathOptions::MathOptions(SigSession *session, QWidget *parent) :
-    DSDialog(parent),
+    PxDialog(parent),
     _session(session),
     _button_box(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
         Qt::Horizontal, this)

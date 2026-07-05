@@ -458,7 +458,7 @@ void SignalProcessingDock::build_glitch_filter_panel() {
     mode_label->setFont(labelFont);
     mode_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
-    DsComboBox *mode_combo = new DsComboBox(ch_container);
+    PxComboBox *mode_combo = new PxComboBox(ch_container);
     mode_combo->setObjectName("dock_content");
     mode_combo->setFont(contentFont);
     mode_combo->addItem(

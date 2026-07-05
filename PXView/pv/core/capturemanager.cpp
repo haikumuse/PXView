@@ -201,8 +201,9 @@ bool CaptureManager::action_start_capture(bool instant,
       {_state->is_working(), _state->device_status()});
 
   bool disk_cache_enabled = false;
-  _state->device_agent().get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
-                                          disk_cache_enabled);
+  if (_state->device_agent().is_dsl_device())
+    _state->device_agent().get_config_bool(SR_CONF_DISK_CACHE_ENABLE,
+                                            disk_cache_enabled);
   if (disk_cache_enabled) {
     QString cache_path;
     _state->device_agent().get_config_string(SR_CONF_DISK_CACHE_PATH,

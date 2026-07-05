@@ -55,14 +55,14 @@ namespace pv {
 namespace dialogs {
 
 ProtocolExp::ProtocolExp(QWidget *parent, SigSession *session, pv::view::DecoderModel *decoder_model) :
-    DSDialog(parent),
+    PxDialog(parent),
     _session(session),
     _decoder_model(decoder_model),
     _button_box(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
         Qt::Horizontal, this),
     _export_cancel(false)
 {
-    _format_combobox = new DsComboBox(this);
+    _format_combobox = new PxComboBox(this);
     //tr
     _format_combobox->addItem("Comma-Separated Values (*.csv)");
     _format_combobox->addItem("Text files (*.txt)");

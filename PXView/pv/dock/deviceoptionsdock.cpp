@@ -332,7 +332,19 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
 
   int row1 = 0;
   int row2 = 0;
+  // vld_ch_num: "当前 channel_mode 下可启用的最大通道数"。
+  //  - PXLogic: 由 SR_CONF_VLD_CH_NUM 返回（不同 channel_mode 对应不同硬件
+  //    资源上限，如 32ch@250MHz / 16ch@500MHz / 8ch@1GHz）。
+  //  - 上游驱动 (demo/fx2lafw/...): 不支持此键 — 回退到 sdi->channels 总数，
+  //    表示"可启用全部通道"，cur_ch_num 永远 ≤ vld_ch_num，禁用逻辑不触发。
+  //    比用 INT_MAX 魔法值更符合"驱动已知通道总数"的事实。
   int vld_ch_num = 0;
+  if (!_device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num) ||
+      vld_ch_num <= 0) {
+    vld_ch_num = 0;
+    for (const GSList *l = _device_agent->get_channels(); l; l = l->next)
+      vld_ch_num++;
+  }
   int cur_ch_num = 0;
   int contentHeight = 0;
 
@@ -524,23 +536,14 @@ void DeviceOptionsDock::disable_all_probes() {
 }
 
 void DeviceOptionsDock::zero_adj() {
-  commit_channels();
-
-  QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_AUTO_CALIB_START),
-                     "Auto Calibration program will be started. Don't connect "
-                     "any probes. \nIt can take a while!"));
-  bool bRet = MsgBox::Confirm(strMsg);
-
-  if (bRet) {
-    _device_agent->set_config_bool(SR_CONF_ZERO, true);
-  } else {
-    _device_agent->set_config_bool(SR_CONF_ZERO, false);
-  }
+  // DSO zero calibration removed: SR_CONF_ZERO fork key was deleted
+  // (DSO mode deprecated, DSCope hardware dropped). No-op stub kept so the
+  // signal-slot connection from the calibration button compiles.
 }
 
 void DeviceOptionsDock::on_calibration() {
-  commit_channels();
-  _device_agent->set_config_bool(SR_CONF_CALI, true);
+  // DSO manual calibration removed: SR_CONF_CALI fork key was deleted.
+  // No-op stub kept so the signal-slot connection compiles.
 }
 
 void DeviceOptionsDock::mode_check_timeout() {
@@ -848,47 +851,10 @@ QString DeviceOptionsDock::dynamic_widget(QLayout *lay) {
     logic_probes(*grid);
     return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHANNEL), "Channel");
   } else if (mode == DSO) {
-    bool have_zero;
-
-    if (_device_agent->get_config_bool(SR_CONF_HAVE_ZERO, have_zero)) {
-      QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
-      if (!grid) {
-        pxv_warn("%s", "DeviceOptionsDock::dynamic_widget: grid is NULL (DSO)");
-        return QString();
-      }
-      assert(grid);
-
-      QFont contentFont = dock_font_content();
-
-      if (have_zero) {
-        auto config_button =
-            new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AUTO_CALIBRATION),
-                                "Auto Calibration"),
-                            _container_panel);
-        config_button->setObjectName("dock_content");
-        config_button->setFont(contentFont);
-        grid->addWidget(config_button, 0, 0, 1, 1);
-        connect(config_button, &QPushButton::clicked, this,
-                &DeviceOptionsDock::zero_adj);
-
-        auto cali_button =
-            new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MANUAL_CALIBRATION),
-                                "Manual Calibration"),
-                            _container_panel);
-        cali_button->setObjectName("dock_content");
-        cali_button->setFont(contentFont);
-        grid->addWidget(cali_button, 1, 0, 1, 1);
-        connect(cali_button, &QPushButton::clicked, this,
-                &DeviceOptionsDock::on_calibration);
-
-        config_button->setFixedHeight(35);
-        cali_button->setFixedHeight(35);
-
-        _groupHeight2 = 135;
-
-        return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CALIBRATION), "Calibration");
-      }
-    }
+    // DSO calibration UI removed: SR_CONF_HAVE_ZERO fork key was deleted
+    // (DSO mode deprecated, DSCope hardware dropped). DSO mode shows no
+    // dynamic panel content.
+    (void)lay;
   } else if (mode == ANALOG) {
     QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
     if (!grid) {
@@ -1337,16 +1303,8 @@ QJsonObject DeviceOptionsDock::get_session() {
           }
         }
       } else {
-        uint64_t vdiv;
-        if (_device_agent->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe,
-                                             NULL))
-          ch_obj["vdiv"] = (qint64)vdiv;
-
-        int coupling;
-        if (_device_agent->get_config_int16(SR_CONF_PROBE_COUPLING, coupling,
-                                            probe, NULL))
-          ch_obj["coupling"] = coupling;
-
+        // PROBE_VDIV/PROBE_COUPLING fork DSO keys deleted; only map_default
+        // is queried (still in dsvdef.h, migrated in Phase 2).
         bool map_default = true;
         _device_agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default,
                                        probe, NULL);
@@ -1400,17 +1358,8 @@ void DeviceOptionsDock::set_session(QJsonObject &obj) {
         }
 
         if (mode == ANALOG || mode == DSO) {
-          if (ch_obj.contains("vdiv")) {
-            _device_agent->set_config_uint64(
-                SR_CONF_PROBE_VDIV,
-                (uint64_t)ch_obj["vdiv"].toVariant().toULongLong(), probe,
-                NULL);
-          }
-          if (ch_obj.contains("coupling")) {
-            _device_agent->set_config_int16(SR_CONF_PROBE_COUPLING,
-                                            ch_obj["coupling"].toInt(), probe,
-                                            NULL);
-          }
+          // PROBE_VDIV/PROBE_COUPLING fork DSO keys deleted; only
+          // map_default is restored (still in dsvdef.h, migrated in Phase 2).
           if (ch_obj.contains("map_default")) {
             _device_agent->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT,
                                            ch_obj["map_default"].toBool(),

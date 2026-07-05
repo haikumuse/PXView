@@ -65,7 +65,6 @@
 #include "../data/logicsnapshot.h"
 #include "../data/sessiondocument.h"
 #include "../data/spectrumstack.h"
-#include "../dialogs/calibration.h"
 #include "../dialogs/lissajousoptions.h"
 #include "../dsvdef.h"
 #include "../log.h"
@@ -104,7 +103,6 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar,
       _back_ready(false) {
   _trig_cursor = NULL;
   _search_cursor = NULL;
-  _cali = NULL;
 
   _session = session;
   _data_source = session;
@@ -570,11 +568,6 @@ void View::scroll_to_logic_last_data_time() {
   _data_sync->scroll_to_logic_last_data_time();
 }
 
-// -- calibration dialog
-void View::on_calibration_closed() { _data_sync->on_calibration_closed(); }
-
-void View::hide_calibration() { on_calibration_closed(); }
-
 void View::vDial_updated() { _data_sync->vDial_updated(); }
 
 void View::dso_factor_updated() { _data_sync->dso_factor_updated(); }
@@ -687,8 +680,6 @@ void View::signals_removed_layout() { _signal_sync->signals_removed_layout(); }
 void View::signals_modified_refresh() {
   _signal_sync->signals_modified_refresh();
 }
-
-void View::check_calibration() { _data_sync->check_calibration(); }
 
 void View::auto_set_max_scale() { _data_sync->auto_set_max_scale(); }
 

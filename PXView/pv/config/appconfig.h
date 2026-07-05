@@ -24,6 +24,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 #include <QString>
 #include <QByteArray>
 #include <QColor>
@@ -196,6 +197,11 @@ public:
   QColor GetThemeColor(const QString &tokenName) const;
   QString GetThemeTokenValue(const QString &tokenName) const;
 
+  // limit_samples 应用层 fallback：当驱动返回 0（上游约定"不限制"）时使用此默认值
+  // 默认 1000000 = SR_MHZ(1)（1M 采样点）
+  uint64_t default_sample_limit() const { return default_sample_limit_; }
+  void set_default_sample_limit(uint64_t v) { default_sample_limit_ = v; }
+
 public:
   AppOptions    appOptions;
   UserHistory   userHistory;
@@ -205,6 +211,8 @@ public:
 
 private:
   QHash<QString, QString> _themeTokens;
+
+  uint64_t default_sample_limit_ = 1000000ULL;  // SR_MHZ(1)
 
   QTimer *_saveFrameTimer;
   QTimer *_saveAppTimer;

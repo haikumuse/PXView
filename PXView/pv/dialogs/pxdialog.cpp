@@ -21,7 +21,7 @@
  */
 
 
-#include "dsdialog.h"
+#include "pxdialog.h"
 #include "shadow.h"
 
 #include <QObject>
@@ -38,22 +38,22 @@
 namespace pv {
 namespace dialogs {
 
-DSDialog::DSDialog() : 
- DSDialog(NULL, false, false)
+PxDialog::PxDialog() : 
+ PxDialog(NULL, false, false)
 {
 }
 
-DSDialog::DSDialog(QWidget *parent):
- DSDialog(parent, false, false)
+PxDialog::PxDialog(QWidget *parent):
+ PxDialog(parent, false, false)
 {
 }
 
-DSDialog::DSDialog(QWidget *parent, bool hasClose):
- DSDialog(parent, hasClose, false)
+PxDialog::PxDialog(QWidget *parent, bool hasClose):
+ PxDialog(parent, hasClose, false)
 {
 }
 
-DSDialog::DSDialog(QWidget *parent, bool hasClose, bool bBaseButton) :
+PxDialog::PxDialog(QWidget *parent, bool hasClose, bool bBaseButton) :
 #ifdef Q_OS_LINUX
     QDialog(NULL),  //enable the popup dialog draged.
 #else
@@ -79,7 +79,7 @@ DSDialog::DSDialog(QWidget *parent, bool hasClose, bool bBaseButton) :
     build_base(hasClose); 
 }
 
-DSDialog::~DSDialog()
+PxDialog::~PxDialog()
 { 
     DESTROY_QT_OBJECT(_base_layout);
     DESTROY_QT_OBJECT(_main_layout);
@@ -91,7 +91,7 @@ DSDialog::~DSDialog()
     PopupDlgList::RemoveDlgFromList(this);
 }
 
-void DSDialog::accept()
+void PxDialog::accept()
 {  
     _clickYes = true;
     if (m_callback){
@@ -102,7 +102,7 @@ void DSDialog::accept()
     QDialog::accept();
 }
 
-void DSDialog::reject()
+void PxDialog::reject()
 { 
     _clickYes = false;
 
@@ -113,19 +113,19 @@ void DSDialog::reject()
     QDialog::reject();
 }
   
-void DSDialog::setTitle(QString title)
+void PxDialog::setTitle(QString title)
 {
     if (_titlebar){
          _titlebar->setTitle(title);
     } 
 }
 
-void DSDialog::reload()
+void PxDialog::reload()
 {
     show();
 }
 
-int DSDialog::exec()
+int PxDialog::exec()
 { 
       //ok,cancel
     if (m_bBaseButton){
@@ -143,7 +143,7 @@ int DSDialog::exec()
     return QDialog::exec();
 }
 
- void DSDialog::SetTitleSpace(int h)
+ void PxDialog::SetTitleSpace(int h)
  {
      if (_titleSpaceLine != NULL){ 
          if (h > 0){
@@ -156,7 +156,7 @@ int DSDialog::exec()
      }
  }
 
-void DSDialog::build_base(bool hasClose)
+void PxDialog::build_base(bool hasClose)
 {    
     _main_widget = new QWidget(this);
     _main_layout = new QVBoxLayout(_main_widget);
@@ -184,7 +184,7 @@ void DSDialog::build_base(bool hasClose)
     _main_layout->setContentsMargins(10,5,10,10);   
 } 
 
-void DSDialog::update_font()
+void PxDialog::update_font()
 {
     QFont font = theme_font_dialog();
     ui::set_form_font(this, font);
@@ -194,7 +194,7 @@ void DSDialog::update_font()
     }
 }
 
-void DSDialog::show()
+void PxDialog::show()
 {
     update_font();
     

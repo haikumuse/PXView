@@ -262,6 +262,13 @@ bool AnalogSignal::get_mapDefault() {
 
 QString AnalogSignal::get_mapUnit() {
   QString unit;
+  // Fork analog probe-map keys (60059/60060/60061) only exist on DSL/PXLogic
+  // devices. Skipping the query on non-DSL devices avoids flooding the log with
+  // "Invalid key 600XX" errors during every paint cycle.
+  if (!_data_source || !_data_source->device() ||
+      !_data_source->device()->is_dsl_device()) {
+    return unit;
+  }
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
   _data_source->device()->get_config_string(SR_CONF_PROBE_MAP_UNIT, unit, probe,
                                             NULL);
@@ -270,6 +277,10 @@ QString AnalogSignal::get_mapUnit() {
 
 double AnalogSignal::get_mapMin() {
   double min = -1;
+  if (!_data_source || !_data_source->device() ||
+      !_data_source->device()->is_dsl_device()) {
+    return min;
+  }
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
   _data_source->device()->get_config_double(SR_CONF_PROBE_MAP_MIN, min, probe,
                                             NULL);
@@ -278,6 +289,10 @@ double AnalogSignal::get_mapMin() {
 
 double AnalogSignal::get_mapMax() {
   double max = 1;
+  if (!_data_source || !_data_source->device() ||
+      !_data_source->device()->is_dsl_device()) {
+    return max;
+  }
   sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
   _data_source->device()->get_config_double(SR_CONF_PROBE_MAP_MAX, max, probe,
                                             NULL);

@@ -29,7 +29,7 @@
 #include <vector>
 #include <QMainWindow>
 #include <QTranslator> 
-#include "dialogs/dsmessagebox.h"
+#include "dialogs/pxmessagebox.h"
 #include "interface/icallbacks.h"
 #include "interface/events.h"
 #include "eventobject.h"
@@ -77,7 +77,6 @@ class TitleBar;
 namespace dock{
 class ProtocolDock;
 class TriggerDock;
-class DsoTriggerDock;
 class MeasureDock;
 class SearchDock;
 class DeviceOptionsDock;
@@ -296,7 +295,7 @@ private:
 	pv::ui::DraggableTabWidget *_tab_widget;
     QList<pv::TabContext*> _tab_contexts;
     int _current_tab_index;
-    dialogs::DSMessageBox   *_msg;
+    dialogs::PxMessageBox   *_msg;
 
 	QWidget                 *_central_widget;
 	QVBoxLayout             *_vertical_layout;
@@ -311,9 +310,7 @@ private:
     QDockWidget             *_protocol_dock;
     dock::ProtocolDock      *_protocol_widget;
     QDockWidget             *_trigger_dock;
-    QDockWidget             *_dso_trigger_dock;
     dock::TriggerDock       *_trigger_widget;
-    dock::DsoTriggerDock    *_dso_trigger_widget;
     QDockWidget             *_measure_dock;
     dock::MeasureDock       *_measure_widget;
     QDockWidget             *_search_dock;
@@ -330,7 +327,6 @@ private:
     widgets::SlidingDrawer  *_sliding_drawer;
     int _drawer_page_protocol;
     int _drawer_page_trigger;
-    int _drawer_page_dso_trigger;
     int _drawer_page_measure;
     int _drawer_page_search;
     int _drawer_page_device_options;

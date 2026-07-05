@@ -90,15 +90,12 @@ DeviceOptions::DeviceOptions(SigSession *session)
 
 		case SR_CONF_PATTERN_MODE:
 		case SR_CONF_BUFFERSIZE:
-		case SR_CONF_TRIGGER_SOURCE:		
+		case SR_CONF_TRIGGER_SOURCE:
         case SR_CONF_MAX_HEIGHT:
         case SR_CONF_MAX_HEIGHT_VALUE:
-        case SR_CONF_PROBE_COUPLING:
         case SR_CONF_PROBE_EN:
-        case SR_CONF_ZERO:
         case SR_CONF_STREAM:
         case SR_CONF_TEST:
-        case SR_CONF_STATUS:
         case SR_CONF_PROBE_FACTOR:
             bind_enum(name, label, key, gvar_list);
 			break;
@@ -151,10 +148,6 @@ DeviceOptions::DeviceOptions(SigSession *session)
 		case SR_CONF_TIMEBASE:
             bind_enum(name, label, key, gvar_list, print_timebase);
 			break;
-
-        case SR_CONF_PROBE_VDIV:
-            bind_enum(name, label, key, gvar_list, print_vdiv);
-            break;
 
         case SR_CONF_BANDWIDTH_LIMIT:
             bind_bandwidths(name, label, key, gvar_list);

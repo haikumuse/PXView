@@ -1,4 +1,4 @@
-#include "dscombobox.h"
+#include "pxcombobox.h"
 #include <QFontMetrics>
 #include <QGuiApplication>
 #include <QScreen>
@@ -13,7 +13,7 @@
 #include <windows.h>
 #endif
 
-DsComboPopup::DsComboPopup(QComboBox *combo, QWidget *parent)
+PxComboPopup::PxComboPopup(QComboBox *combo, QWidget *parent)
     : QDialog(parent)
 {
     setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
@@ -49,7 +49,7 @@ DsComboPopup::DsComboPopup(QComboBox *combo, QWidget *parent)
             bt->setProperty("current", true);
         }
 
-        connect(bt, &QPushButton::clicked, this, &DsComboPopup::on_item_clicked);
+        connect(bt, &QPushButton::clicked, this, &PxComboPopup::on_item_clicked);
         _itemButtons.push_back(bt);
         listLay->addWidget(bt);
 
@@ -91,7 +91,7 @@ DsComboPopup::DsComboPopup(QComboBox *combo, QWidget *parent)
     }
 }
 
-void DsComboPopup::changeEvent(QEvent *event)
+void PxComboPopup::changeEvent(QEvent *event)
 {
     if (event->type() == QEvent::ActivationChange) {
         if (!this->isActiveWindow()) {
@@ -102,7 +102,7 @@ void DsComboPopup::changeEvent(QEvent *event)
     QDialog::changeEvent(event);
 }
 
-void DsComboPopup::showEvent(QShowEvent *event)
+void PxComboPopup::showEvent(QShowEvent *event)
 {
     QDialog::showEvent(event);
 
@@ -120,7 +120,7 @@ void DsComboPopup::showEvent(QShowEvent *event)
 #endif
 }
 
-void DsComboPopup::on_item_clicked()
+void PxComboPopup::on_item_clicked()
 {
     QPushButton *bt = qobject_cast<QPushButton *>(sender());
     if (!bt || !_combo)
@@ -134,18 +134,18 @@ void DsComboPopup::on_item_clicked()
     this->close();
 }
 
-DsComboBox::DsComboBox(QWidget *parent)
+PxComboBox::PxComboBox(QWidget *parent)
     : QComboBox(parent)
 {
     _bPopup = false;
     QComboBox::setSizeAdjustPolicy(QComboBox::AdjustToContents);
 }
 
-DsComboBox::~DsComboBox()
+PxComboBox::~PxComboBox()
 {
 }
 
-void DsComboBox::measureSize()
+void PxComboBox::measureSize()
 {
     int num = this->count();
     int maxWidth = 0;
@@ -161,7 +161,7 @@ void DsComboBox::measureSize()
     }
 }
 
-void DsComboBox::showPopup()
+void PxComboBox::showPopup()
 {
     _bPopup = true;
 
@@ -169,11 +169,11 @@ void DsComboBox::showPopup()
         return;
     }
 
-    DsComboPopup *popup = new DsComboPopup(this, this);
+    PxComboPopup *popup = new PxComboPopup(this, this);
     popup->show();
 }
 
-void DsComboBox::hidePopup()
+void PxComboBox::hidePopup()
 {
     QComboBox::hidePopup();
     _bPopup = false;

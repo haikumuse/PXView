@@ -833,7 +833,8 @@ void ViewportPainter::paintSignals(QPainter &p, QColor fore, QColor back) {
     // plot trigger information
     auto *dev = _viewport->_view.data_source()->device();
     if (_viewport->_view.get_work_mode() == DSO &&
-        _viewport->_view.session().is_running_status() && dev) {
+        _viewport->_view.session().is_running_status() && dev &&
+        dev->is_dsl_device()) {
       int type;
       bool roll = false;
       QString type_str = "";

@@ -29,12 +29,12 @@
 #include <QString>
 
 class QGridLayout;
-class DsComboBox;
+class PxComboBox;
 class QFormLayout;
 
 struct srd_channel;
 
-#include "dsdialog.h"
+#include "pxdialog.h"
 
 namespace pv {
     namespace data{
@@ -58,14 +58,14 @@ namespace pv {
 namespace dialogs {
  
 
-class DecoderOptionsDlg: public DSDialog
+class DecoderOptionsDlg: public PxDialog
 {
     Q_OBJECT
 
 private:
 	struct ProbeSelector
 	{
-		const DsComboBox *_combo;
+		const PxComboBox *_combo;
         const pv::data::decode::Decoder *_decoder;
 		const srd_channel *_pdch;
 	};
@@ -99,7 +99,7 @@ private:
 
     void load_decoder_forms(QWidget *container);  
 
-    DsComboBox* create_probe_selector(QWidget *parent, const data::decode::Decoder *dec,
+    PxComboBox* create_probe_selector(QWidget *parent, const data::decode::Decoder *dec,
             const srd_channel *const pdch);
  
     void create_decoder_form(pv::data::decode::Decoder *dec,
@@ -116,8 +116,8 @@ private slots:
 
 private: 
     std::vector<prop::binding::DecoderOptions*> _bindings;
-    DsComboBox 		*_start_comboBox;
-	DsComboBox 		*_end_comboBox;
+    PxComboBox 		*_start_comboBox;
+	PxComboBox 		*_end_comboBox;
     view::DecodeTrace   *_trace;
     uint64_t     _cursor1; //cursor key
     uint64_t     _cursor2;

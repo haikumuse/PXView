@@ -42,8 +42,8 @@
 #include "../prop/binding/deviceoptions.h"
 #include "../prop/binding/probeoptions.h"
 #include "../toolbars/titlebar.h"
-#include "../dialogs/dsdialog.h"
-#include "../ui/dscombobox.h"
+#include "../dialogs/pxdialog.h"
+#include "../ui/pxcombobox.h"
 
 class QScrollArea;
 
@@ -92,7 +92,7 @@ class SigSession;
 
 namespace dialogs {
 
-class DeviceOptions : public DSDialog, public IChannelCheck
+class DeviceOptions : public PxDialog, public IChannelCheck
 {
 	Q_OBJECT
 

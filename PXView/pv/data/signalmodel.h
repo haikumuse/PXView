@@ -106,7 +106,7 @@ public:
     inline double trig_value() const { return _trig_value; }
     void set_trig_value(double v);
 
-    /// Forward SR_CONF_TRIGGER_VALUE via set_config_byte. Unlike set_trig_value
+    /// Forward trig level via set_config_byte. Unlike set_trig_value
     /// (which always targets _sr_channel), this accepts an explicit |probe|
     /// override for call sites that need to write a different sr_channel.
     void set_trigger_value(double value, struct sr_channel *probe = nullptr);

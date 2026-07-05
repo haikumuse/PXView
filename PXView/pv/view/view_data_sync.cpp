@@ -52,7 +52,6 @@
 #include "../data/datasource.h"
 #include "../data/sessiondocument.h"
 #include "../data/signalmodel.h"
-#include "../dialogs/calibration.h"
 #include "../dsvdef.h"
 #include "../sigsession.h"
 #include "../toolbars/samplingbar.h"
@@ -545,42 +544,11 @@ void ViewDataSync::scroll_to_logic_last_data_time() {
   _view->set_scale_offset(_view->scale(), get_logic_lst_data_offset() + 10);
 }
 
-void ViewDataSync::show_calibration() {
-  if (_view->_cali != NULL) {
-    _view->_cali->deleteLater();
-    _view->_cali = NULL;
-  }
-
-  _view->_cali = new pv::dialogs::Calibration(_view->_session, _view);
-  QObject::connect(_view->_cali, &pv::dialogs::Calibration::sig_closed, _view,
-          &View::on_calibration_closed);
-  _view->_cali->update_device_info();
-  _view->_cali->show();
-}
-
-void ViewDataSync::on_calibration_closed() {
-  if (_view->_cali != NULL) {
-    _view->_cali->deleteLater();
-    _view->_cali = NULL;
-  }
-}
-
-void ViewDataSync::check_calibration() {
-  if (_view->get_work_mode() == DSO) {
-    bool cali = false;
-    _view->_device_agent->get_config_bool(SR_CONF_CALI, cali);
-
-    if (cali) {
-      show_calibration();
-    }
-  }
-}
+// DSO calibration dialog (show_calibration / on_calibration_closed /
+// check_calibration) removed: Calibration class and SR_CONF_CALI fork key
+// were deleted (DSO mode deprecated, DSCope hardware dropped).
 
 void ViewDataSync::vDial_updated() {
-  if (_view->_cali != NULL) {
-    _view->_cali->update_device_info();
-  }
-
   auto math_trace = _view->get_own_math_trace();
   if (math_trace && math_trace->enabled()) {
     math_trace->update_vDial();

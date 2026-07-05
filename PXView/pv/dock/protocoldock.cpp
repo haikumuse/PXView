@@ -139,7 +139,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View *view,
   _pro_keyword_edit = new KeywordLineEdit(top_panel, this);
   _pro_keyword_edit->setReadOnly(true);
 
-  _pro_type_combo = new DsComboBox(top_panel);
+  _pro_type_combo = new PxComboBox(top_panel);
   _pro_type_combo->setObjectName("dock_content");
   _pro_type_combo->addItem("All");
   _pro_type_combo->addItem("C");
