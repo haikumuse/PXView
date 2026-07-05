@@ -345,33 +345,39 @@ void DeviceOptions::bind_bandwidths(const QString &name, const QString label, in
 	bool bw_limit = false;
 	GVariant *gvar;
 	std::vector< pair<GVariant*, QString> > values;
-	struct sr_list_item *plist;
 
 	if (!gvar_list) {
 		pxv_warn("%s", "DeviceOptions::bind_bandwidths: gvar_list is NULL");
 		return;
 	}
 	assert(gvar_list);
-	plist = (struct sr_list_item*)g_variant_get_uint64(gvar_list);
-	if (!plist) {
-		pxv_warn("%s", "DeviceOptions::bind_bandwidths: plist is NULL");
+
+	/* Task 10.5: config_list now returns a GVariant string array
+	 * (g_variant_new_strv) instead of a uint64 bare-pointer cast.
+	 * Note: g_variant_get_strv returns const gchar** (the strings are
+	 * owned by the variant); only the array itself is freed via g_free. */
+	gsize n_items;
+	const gchar **strs = g_variant_get_strv(gvar_list, &n_items);
+	if (!strs) {
+		pxv_warn("%s", "DeviceOptions::bind_bandwidths: strs is NULL");
 		return;
 	}
-	assert(plist);
 
 	_device_agent->get_config_bool(SR_CONF_BANDWIDTH, bw_limit);
 
     if (bw_limit == false){
+        g_free((gpointer)strs);
         return;
 	}
 
-	while (plist && plist->id >= 0)
-	{ 
-		QString v = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, plist->name, plist->name);
-		gvar = g_variant_new_int16(plist->id);
+	for (gsize i = 0; i < n_items; i++)
+	{
+		QString v = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, strs[i], strs[i]);
+		gvar = g_variant_new_string(strs[i]);
 		values.push_back(make_pair(gvar, v));
-        plist++;
 	}
+
+	g_free((gpointer)strs);
 
 	_properties.push_back(
         new Enum(name, label, values,
@@ -383,27 +389,32 @@ void DeviceOptions::bind_list(const QString &name, const QString label, int key,
 {
 	GVariant *gvar;
 	std::vector< pair<GVariant*, QString> > values;
-	struct sr_list_item *plist;
 
 	if (!gvar_list) {
 		pxv_warn("%s", "DeviceOptions::bind_list: gvar_list is NULL");
 		return;
 	}
 	assert(gvar_list);
-	plist = (struct sr_list_item*)g_variant_get_uint64(gvar_list);
-	if (!plist) {
-		pxv_warn("%s", "DeviceOptions::bind_list: plist is NULL");
+
+	/* Task 10.5: config_list now returns a GVariant string array
+	 * (g_variant_new_strv) instead of a uint64 bare-pointer cast. The
+	 * selected string is passed to config_setter as a string GVariant,
+	 * which the driver validates via std_str_idx. */
+	gsize n_items;
+	const gchar **strs = g_variant_get_strv(gvar_list, &n_items);
+	if (!strs) {
+		pxv_warn("%s", "DeviceOptions::bind_list: strs is NULL");
 		return;
 	}
-	assert(plist);
 
-	while (plist && plist->id >= 0)
-	{ 
-		QString v = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, plist->name, plist->name);
-		gvar = g_variant_new_int16(plist->id);
+	for (gsize i = 0; i < n_items; i++)
+	{
+		QString v = LangResource::Instance()->get_lang_text(STR_PAGE_DSL, strs[i], strs[i]);
+		gvar = g_variant_new_string(strs[i]);
 		values.push_back(make_pair(gvar, v));
-        plist++;
 	}
+
+	g_free((gpointer)strs);
 
 	_properties.push_back(
         new Enum(name, label, values,

@@ -78,15 +78,20 @@ struct ChannelConfig {
 
 struct SignalConfig {
   int work_mode;
-  int operation_mode;
-  int channel_mode;
+  /* Task 10/Phase 3: operation_mode/channel_mode migrated from int to QString
+   * to match the driver's string-based config_get/config_set. The driver
+   * returns the mode string (e.g. "Buffer Mode", "Use 32 Channels (Max 250MHz)")
+   * via g_variant_new_string; this is stored verbatim and written back via
+   * set_config_string. */
+  QString operation_mode;
+  QString channel_mode;
   bool is_demo;
   QString demo_operation_mode;
   std::vector<ChannelConfig> channels;
   bool is_valid;
 
   SignalConfig()
-      : work_mode(0), operation_mode(0), channel_mode(0), is_demo(false),
+      : work_mode(0), operation_mode(), channel_mode(), is_demo(false),
         is_valid(false) {}
 };
 

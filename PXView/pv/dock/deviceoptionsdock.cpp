@@ -138,7 +138,7 @@ DeviceOptionsDock::DeviceOptionsDock(QWidget *parent, SigSession *session)
     mode_vbox->setAlignment(Qt::AlignTop);
     _container_lay->addWidget(mode_section);
 
-    _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
+    _device_agent->get_config_string(SR_CONF_OPERATION_MODE, _opt_mode);
 
     if (_device_agent->is_demo())
       _demo_operation_mode = _device_agent->get_demo_operation_mode();
@@ -357,23 +357,30 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
         _device_agent->get_config_list(NULL, SR_CONF_CHANNEL_MODE);
 
     if (gvar_opts != NULL) {
-      struct sr_list_item *plist =
-          (struct sr_list_item *)g_variant_get_uint64(gvar_opts);
+      /* Task 10.6: config_list now returns a GVariant string array
+       * (g_variant_new_strv) instead of a uint64 bare-pointer cast. */
+      gsize n_items;
+      const gchar **strs = g_variant_get_strv(gvar_opts, &n_items);
       g_variant_unref(gvar_opts);
 
-      int ch_mode = 0;
-      _device_agent->get_config_int16(SR_CONF_CHANNEL_MODE, ch_mode);
+      /* Task 10/Phase 3: driver config_get now returns the current channel
+       * mode as a string (channel_mode_str[ch_mode]). Compare against the
+       * filtered list strings to highlight the matching radio button —
+       * the filtered list index does NOT equal the PX_CHANNEL_ID, so the
+       * old `ch_mode == (int)i` comparison was wrong. */
+      QString cur_ch_mode;
+      _device_agent->get_config_string(SR_CONF_CHANNEL_MODE, cur_ch_mode);
       _channel_mode_indexs.clear();
 
-      while (plist != NULL && plist->id >= 0) {
+      for (gsize i = 0; i < n_items; i++) {
         row1++;
         QString mode_bt_text = LangResource::Instance()->get_lang_text(
-            STR_PAGE_DSL, plist->name, plist->name);
+            STR_PAGE_DSL, strs[i], strs[i]);
         QRadioButton *mode_button = new QRadioButton(mode_bt_text);
         mode_button->setFont(contentFont);
         ChannelModePair mode_index;
         mode_index.key = mode_button;
-        mode_index.value = plist->id;
+        mode_index.value = QString::fromUtf8(strs[i]);
         _channel_mode_indexs.push_back(mode_index);
 
         layout.addWidget(mode_button);
@@ -382,11 +389,11 @@ void DeviceOptionsDock::logic_probes(QVBoxLayout &layout) {
         connect(mode_button, &QRadioButton::clicked, this,
                 &DeviceOptionsDock::channel_check);
 
-        if (plist->id == ch_mode)
+        if (cur_ch_mode == QString::fromUtf8(strs[i]))
           mode_button->setChecked(true);
-
-        plist++;
       }
+
+      g_free((gpointer)strs);
     }
   }
 
@@ -552,10 +559,10 @@ void DeviceOptionsDock::mode_check_timeout() {
 
   if (_device_agent->is_hardware()) {
     DeviceAgent *agent = _device_agent;
-    int saved_opt_mode = _opt_mode;
+    QString saved_opt_mode = _opt_mode;
     QThreadPool::globalInstance()->start([this, agent, saved_opt_mode]() {
-      int mode;
-      bool got_mode = agent->get_config_int16(SR_CONF_OPERATION_MODE, mode);
+      QString mode;
+      bool got_mode = agent->get_config_string(SR_CONF_OPERATION_MODE, mode);
       if (!got_mode || mode == saved_opt_mode)
         return;
 
@@ -601,7 +608,9 @@ void DeviceOptionsDock::channel_check() {
   }
   assert(bt);
 
-  int mode_index = -1;
+  /* Task 10/Phase 3: ChannelModePair.value is now a QString (the channel
+   * mode string from config_list). Driver config_set expects a string. */
+  QString mode_index;
 
   for (auto p : _channel_mode_indexs) {
     if (p.key == bt) {
@@ -609,8 +618,12 @@ void DeviceOptionsDock::channel_check() {
       break;
     }
   }
-  assert(mode_index >= 0);
-  _device_agent->set_config_int16(SR_CONF_CHANNEL_MODE, mode_index);
+  if (mode_index.isEmpty()) {
+    pxv_warn("%s", "DeviceOptionsDock::channel_check: mode_index is empty");
+    return;
+  }
+  _device_agent->set_config_string(SR_CONF_CHANNEL_MODE,
+                                  mode_index.toUtf8().constData());
 
   build_dynamic_panel();
   try_resize_scroll();
@@ -1237,10 +1250,12 @@ QJsonObject DeviceOptionsDock::get_session() {
   int mode = _device_agent->get_work_mode();
   obj["work_mode"] = mode;
 
+  /* Task 10/Phase 3: operation_mode/channel_mode now stored as strings in
+   * JSON (driver config_get returns strings). */
   obj["operation_mode"] = _opt_mode;
 
   if (mode == LOGIC) {
-    int ch_mode = 0;
+    QString ch_mode;
     for (auto &p : _channel_mode_indexs) {
       QRadioButton *bt = static_cast<QRadioButton *>(p.key);
       if (bt->isChecked()) {
@@ -1325,14 +1340,18 @@ QJsonObject DeviceOptionsDock::get_session() {
 }
 
 void DeviceOptionsDock::set_session(QJsonObject &obj) {
+  /* Task 10/Phase 3: operation_mode/channel_mode now read as strings from
+   * JSON and written via set_config_string (driver config_set uses std_str_idx). */
   if (obj.contains("operation_mode")) {
-    _device_agent->set_config_int16(SR_CONF_OPERATION_MODE,
-                                    obj["operation_mode"].toInt());
+    QString op_mode = obj["operation_mode"].toString();
+    _device_agent->set_config_string(SR_CONF_OPERATION_MODE,
+                                     op_mode.toLocal8Bit().data());
   }
 
   if (obj.contains("channel_mode")) {
-    _device_agent->set_config_int16(SR_CONF_CHANNEL_MODE,
-                                    obj["channel_mode"].toInt());
+    QString ch_mode = obj["channel_mode"].toString();
+    _device_agent->set_config_string(SR_CONF_CHANNEL_MODE,
+                                     ch_mode.toLocal8Bit().data());
   }
 
   if (obj.contains("demo_operation_mode")) {
@@ -1371,7 +1390,7 @@ void DeviceOptionsDock::set_session(QJsonObject &obj) {
     }
   }
 
-  _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
+  _device_agent->get_config_string(SR_CONF_OPERATION_MODE, _opt_mode);
   if (_device_agent->is_demo())
     _demo_operation_mode = _device_agent->get_demo_operation_mode();
 }

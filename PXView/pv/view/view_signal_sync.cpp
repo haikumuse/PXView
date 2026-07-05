@@ -511,26 +511,22 @@ void ViewSignalSync::rebuild_signals_from_config(
            << config.work_mode << "ch_count=" << config.channels.size()
            << "is_valid=" << config.is_valid;
 
+  // DEBUG: 打印每个 ChannelConfig 的 type 字段，确认 ch.type 是否被正确加载
+  for (const auto &ch : config.channels) {
+    pxv_info("rebuild ch: index=%d name=%s type=%d enabled=%d",
+             ch.index, ch.name.c_str(), ch.type, (int)ch.enabled);
+  }
+
   std::vector<Signal *> old_signals = _view->_own_signals;
   _view->_own_signals.clear();
 
-  int channel_type;
-  switch (config.work_mode) {
-  case LOGIC:
-    channel_type = SR_CHANNEL_LOGIC;
-    break;
-  case DSO:
-    channel_type = SR_CHANNEL_DSO;
-    break;
-  case ANALOG:
-    channel_type = SR_CHANNEL_ANALOG;
-    break;
-  default:
-    for (auto sig : old_signals)
-      delete sig;
-    signals_changed(NULL);
-    return;
-  }
+  // CRITICAL FIX: 不再用 config.work_mode 一刀切决定 channel_type/Signal 类型。
+  // 上游 libsigrok 0.6 demo 设备在 work_mode=LOGIC 下同时存在 LOGIC + DSO
+  // (8 logic + 5 dso) 通道；旧代码用 work_mode 强制把所有通道创建为同一种
+  // Signal（LOGIC 模式下全部 LogicSignal），导致 DSO 通道被错误创建为
+  // LogicSignal，dso_count=0，模拟波形不渲染。
+  // 正确做法：以每个 ChannelConfig.type 作为单一真相源决定 Signal 子类。
+  int work_mode = config.work_mode;
 
   int view_index = 0;
   for (const auto &ch : config.channels) {
@@ -543,27 +539,31 @@ void ViewSignalSync::rebuild_signals_from_config(
     model->set_enabled(ch.enabled);
     model->set_name(std::to_string(ch.index));
 
-    // Set channel type based on work mode
-    switch (config.work_mode) {
-    case LOGIC:
-      model->set_type(SR_CHANNEL_LOGIC);
-      break;
-    case DSO:
-      model->set_type(SR_CHANNEL_DSO);
+    // CRITICAL FIX: 用 ch.type（来自 ChannelConfig 元数据，由
+    // SignalConfigStore::save_signal_config 从 SignalModel::type() 序列化）
+    // 决定 model type。fallback：若 ch.type 未初始化（旧 .pxc 文件），
+    // 用 work_mode 推断以保留向后兼容。
+    int ch_type = ch.type;
+    if (ch_type != SR_CHANNEL_LOGIC &&
+        ch_type != SR_CHANNEL_DSO &&
+        ch_type != SR_CHANNEL_ANALOG) {
+      // 旧配置文件未保存 ch.type，按 work_mode 推断
+      switch (work_mode) {
+      case LOGIC:  ch_type = SR_CHANNEL_LOGIC;  break;
+      case DSO:    ch_type = SR_CHANNEL_DSO;     break;
+      case ANALOG: ch_type = SR_CHANNEL_ANALOG;  break;
+      default:     ch_type = SR_CHANNEL_LOGIC;   break;
+      }
+    }
+    model->set_type(ch_type);
+
+    if (ch_type == SR_CHANNEL_DSO || ch_type == SR_CHANNEL_ANALOG) {
       model->set_vdiv(ch.vdiv);
       model->set_coupling(ch.coupling);
       model->set_hw_offset(ch.hw_offset);
       model->set_vertical_offset(ch.offset);
       model->set_zero_offset(ch.zero_offset);
-      break;
-    case ANALOG:
-      model->set_type(SR_CHANNEL_ANALOG);
-      model->set_vdiv(ch.vdiv);
-      model->set_coupling(ch.coupling);
-      model->set_hw_offset(ch.hw_offset);
-      model->set_vertical_offset(ch.offset);
-      model->set_zero_offset(ch.zero_offset);
-      break;
+      model->set_vfactor(ch.vfactor);
     }
 
     // Set session for the model (so it can call session methods if needed)
@@ -571,15 +571,15 @@ void ViewSignalSync::rebuild_signals_from_config(
 
     Signal *old_signal = nullptr;
     for (auto os : old_signals) {
-      if (os->get_index() == ch.index && os->signal_type() == channel_type) {
+      if (os->get_index() == ch.index && os->signal_type() == ch_type) {
         old_signal = os;
         break;
       }
     }
 
     Signal *signal = nullptr;
-    switch (config.work_mode) {
-    case LOGIC:
+    switch (ch_type) {
+    case SR_CHANNEL_LOGIC:
       if (old_signal) {
         signal = new LogicSignal(static_cast<LogicSignal *>(old_signal),
                                  nullptr, model, _view->_data_source);
@@ -587,7 +587,7 @@ void ViewSignalSync::rebuild_signals_from_config(
         signal = new LogicSignal(nullptr, model, _view->_data_source);
       }
       break;
-    case DSO:
+    case SR_CHANNEL_DSO:
       if (old_signal) {
         signal = new DsoSignal(static_cast<DsoSignal *>(old_signal), nullptr,
                                model, _view->_data_source);
@@ -595,13 +595,15 @@ void ViewSignalSync::rebuild_signals_from_config(
         signal = new DsoSignal(nullptr, model, _view->_data_source);
       }
       break;
-    case ANALOG:
+    case SR_CHANNEL_ANALOG:
       if (old_signal) {
         signal = new AnalogSignal(static_cast<AnalogSignal *>(old_signal),
                                   nullptr, model, _view->_data_source);
       } else {
         signal = new AnalogSignal(nullptr, model, _view->_data_source);
       }
+      break;
+    default:
       break;
     }
 

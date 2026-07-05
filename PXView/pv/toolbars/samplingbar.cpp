@@ -1362,13 +1362,13 @@ void SamplingBar::update_view_status() {
     _sample_count->setEnabled(bEnable);
 
     if (mode == LOGIC && _session->get_device()->is_hardware()) {
-      int mode_val = 0;
-      if (_session->get_device()->get_config_int16(SR_CONF_OPERATION_MODE,
-                                                   mode_val)) {
-        if (mode_val == LO_OP_INTEST) {
-          _sample_rate->setEnabled(false);
-          _sample_count->setEnabled(false);
-        }
+      /* Task 10/Phase 3: OPERATION_MODE config_get returns a string now;
+       * use the int helper that converts "Buffer Mode"/"Stream Mode"/
+       * "Internal Test" back to LO_OP_*. */
+      int mode_val = _session->get_device()->get_hardware_operation_mode();
+      if (mode_val == LO_OP_INTEST) {
+        _sample_rate->setEnabled(false);
+        _sample_count->setEnabled(false);
       }
     }
 

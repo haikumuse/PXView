@@ -218,7 +218,7 @@ DeviceOptions::DeviceOptions(SigSession *session, QWidget *parent)
       new QDialogButtonBox(QDialogButtonBox::Ok, Qt::Horizontal, this);
   this->layout()->addWidget(button_box);
 
-  _device_agent->get_config_int16(SR_CONF_OPERATION_MODE, _opt_mode);
+  _device_agent->get_config_string(SR_CONF_OPERATION_MODE, _opt_mode);
 
   if (_device_agent->is_demo())
     _demo_operation_mode = _device_agent->get_demo_operation_mode();
@@ -373,37 +373,40 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout) {
         _device_agent->get_config_list(NULL, SR_CONF_CHANNEL_MODE);
 
     if (gvar_opts != NULL) {
-      struct sr_list_item *plist =
-          (struct sr_list_item *)g_variant_get_uint64(gvar_opts);
+      /* Task 10.6/Phase 3: config_list now returns a GVariant string array
+       * (g_variant_new_strv). Read via g_variant_get_strv instead of the
+       * fork-style uint64 bare-pointer cast. Driver config_get also returns
+       * the current channel mode as a string, so highlight by string match. */
+      gsize n_items;
+      const gchar **strs = g_variant_get_strv(gvar_opts, &n_items);
       g_variant_unref(gvar_opts);
 
-      int ch_mode = 0;
-      _device_agent->get_config_int16(SR_CONF_CHANNEL_MODE, ch_mode);
+      QString cur_ch_mode;
+      _device_agent->get_config_string(SR_CONF_CHANNEL_MODE, cur_ch_mode);
       _channel_mode_indexs.clear();
 
-      while (plist != NULL && plist->id >= 0) {
+      for (gsize i = 0; i < n_items; i++) {
         row1++;
         QString mode_bt_text = LangResource::Instance()->get_lang_text(
-            STR_PAGE_DSL, plist->name, plist->name);
+            STR_PAGE_DSL, strs[i], strs[i]);
         QRadioButton *mode_button = new QRadioButton(mode_bt_text);
         mode_button->setFont(font);
         ChannelModePair mode_index;
         mode_index.key = mode_button;
-        mode_index.value = plist->id;
+        mode_index.value = QString::fromUtf8(strs[i]);
         _channel_mode_indexs.push_back(mode_index);
 
         layout.addWidget(mode_button);
-        contentHeight += mode_button->sizeHint().height(); // radio button
-                                                           // height
+        contentHeight += mode_button->sizeHint().height();
 
         connect(mode_button, &QRadioButton::pressed, this,
                 &DeviceOptions::channel_check);
 
-        if (plist->id == ch_mode)
+        if (cur_ch_mode == QString::fromUtf8(strs[i]))
           mode_button->setChecked(true);
-
-        plist++;
       }
+
+      g_free((gpointer)strs);
     }
   }
 
@@ -575,9 +578,9 @@ void DeviceOptions::mode_check_timeout() {
 
   if (_device_agent->is_hardware()) {
     bool test;
-    int mode;
+    QString mode;
 
-    if (_device_agent->get_config_int16(SR_CONF_OPERATION_MODE, mode)) {
+    if (_device_agent->get_config_string(SR_CONF_OPERATION_MODE, mode)) {
       if (mode != _opt_mode) {
         _opt_mode = mode;
         build_dynamic_panel();
@@ -610,7 +613,9 @@ void DeviceOptions::channel_check() {
   if (!bt) return;
   assert(bt);
 
-  int mode_index = -1;
+  /* Task 10/Phase 3: ChannelModePair.value is now a QString. Driver
+   * config_set expects a string. */
+  QString mode_index;
 
   for (auto p : _channel_mode_indexs) {
     if (p.key == bt) {
@@ -618,8 +623,10 @@ void DeviceOptions::channel_check() {
       break;
     }
   }
-  assert(mode_index >= 0);
-  _device_agent->set_config_int16(SR_CONF_CHANNEL_MODE, mode_index);
+  if (mode_index.isEmpty())
+    return;
+  _device_agent->set_config_string(SR_CONF_CHANNEL_MODE,
+                                  mode_index.toUtf8().constData());
 
   build_dynamic_panel();
   try_resize_scroll();
