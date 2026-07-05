@@ -620,7 +620,15 @@ void View::reload() {
 void View::clear() {
   show_trig_cursor(false);
 
-  if (get_work_mode() != DSO) {
+  // 设备切换早期（CurrentDeviceChangePrev 阶段）_dev_handle 可能为 NULL，
+  // 此时 work_mode 查询会失败。用 document 配置或默认值（非 DSO）避免警告刷屏。
+  int mode = LOGIC;
+  if (_document && _document->has_signal_config()) {
+    mode = _document->get_signal_config().work_mode;
+  } else if (_device_agent && _device_agent->have_instance()) {
+    mode = _device_agent->get_work_mode();
+  }
+  if (mode != DSO) {
     show_xcursors(false);
   } else {
     if (!get_xcursorList().empty())
@@ -629,7 +637,14 @@ void View::clear() {
 }
 
 void View::reconstruct() {
-  if (get_work_mode() == DSO)
+  // 同上：设备切换早期避免查询设备
+  int mode = LOGIC;
+  if (_document && _document->has_signal_config()) {
+    mode = _document->get_signal_config().work_mode;
+  } else if (_device_agent && _device_agent->have_instance()) {
+    mode = _device_agent->get_work_mode();
+  }
+  if (mode == DSO)
     _viewbottom->setFixedHeight(DsoStatusHeight);
   else
     _viewbottom->setFixedHeight(StatusHeight);

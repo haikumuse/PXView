@@ -3045,6 +3045,32 @@ void MainWindow::on_event(const pv::interface::DeviceDetached &) {
   }
 }
 
+void MainWindow::on_event(const pv::interface::DeviceOpenFailed &evt) {
+  // set_device() failed to open the new device via sr_dev_open. The old device
+  // was already released, so the UI is now blank. Show a user-facing message
+  // with the driver name and error reason so the user knows the device failed
+  // to open (e.g. USB interface claimed by another driver, firmware version
+  // mismatch, libusb permission issue) instead of staring at an empty window.
+  QString driver = QString::fromStdString(evt.driver_name);
+  QString err = QString::fromStdString(evt.error_message);
+  QString title = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_OPEN_FAILED),
+                       "Failed to open device");
+  QString text;
+  if (err.isEmpty()) {
+    text = L_S(STR_PAGE_MSG, S_ID(IDS_MSG_DEVICE_OPEN_FAILED_REASON),
+               "The device could not be opened. Check USB connection, "
+               "driver, and that no other program is using it.");
+  } else {
+    text = err;
+  }
+  if (!driver.isEmpty()) {
+    text = QString("[%1] %2").arg(driver, text);
+  }
+  pxv_err("DeviceOpenFailed: driver=%s reason=%s",
+          driver.toUtf8().constData(), err.toUtf8().constData());
+  MsgBox::Show(title, text, this);
+}
+
 // --- Device options group ---
 void MainWindow::on_event(const pv::interface::DeviceOptionsUpdated &) {
   _trigger_widget->device_updated();

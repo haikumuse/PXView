@@ -723,7 +723,7 @@ void SamplingBar::update_sample_count_selector() {
     duration = hw_duration;
 
   if (duration <= 0) {
-    // Fallback for devices without hardware depth limits (like srstd demo)
+    // Fallback for devices without hardware depth limits (like sr demo)
     duration = SR_SEC(1);
   }
 
@@ -1353,7 +1353,11 @@ void SamplingBar::config_device() {}
 
 void SamplingBar::update_view_status() {
   int bEnable = _session->is_working() == false;
-  int mode = _session->get_device()->get_work_mode();
+  // 设备未打开时用默认值 LOGIC，避免 _dev_handle NULL 警告
+  int mode = LOGIC;
+  if (_session->get_device()->have_instance()) {
+    mode = _session->get_device()->get_work_mode();
+  }
 
   _device_type->setEnabled(bEnable);
   _device_selector->setEnabled(bEnable);

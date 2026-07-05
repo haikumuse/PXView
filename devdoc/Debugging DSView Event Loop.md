@@ -834,17 +834,17 @@ std的demo采集后为什么会有这个问题
 
 *Grep searched codebase*
 
-*Viewed [srstd_pxview_glue.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrokstd/bridge/srstd_pxview_glue.c) *
+*Viewed [srstd_pxview_glue.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrok/bridge/srstd_pxview_glue.c) *
 
 *Viewed [capturemanager.cpp](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/PXView/pv/core/capturemanager.cpp) *
 
-*User accepted the command `dir /s /b c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrokstd\*.c`*
+*User accepted the command `dir /s /b c:\Users\admin\Downloads\DSView-main_2026_4_27cppnb\libsigrok\*.c`*
 
 *Checked command status*
 
 *Grep searched codebase*
 
-*Viewed [api.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrokstd/src/hardware/demo/api.c) *
+*Viewed [api.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrok/src/hardware/demo/api.c) *
 
 *Viewed [deviceagent.cpp](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/PXView/pv/deviceagent.cpp) *
 
@@ -862,7 +862,7 @@ std的demo采集后为什么会有这个问题
 
 *Grep searched codebase*
 
-*Viewed [api.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrokstd/src/hardware/demo/api.c) *
+*Viewed [api.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrok/src/hardware/demo/api.c) *
 
 *Viewed [samplingbar.cpp](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/PXView/pv/toolbars/samplingbar.cpp) *
 
@@ -962,7 +962,7 @@ failure, see the Visual C++ documentation on asserts
 
 *Grep searched codebase*
 
-*Viewed [srstd_bridge.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrokstd/bridge/srstd_bridge.c) *
+*Viewed [srstd_bridge.c](file:///c:/Users/admin/Downloads/DSView-main_2026_4_27cppnb/libsigrok/bridge/srstd_bridge.c) *
 
 *Grep searched codebase*
 
@@ -984,7 +984,7 @@ File: ... analogsnapshot.cpp
 Line:167
 Expression:_unit_bytes >0
 ```
-该错误发生在使用 libsigrokstd 兼容层采集“模拟(Analog)”数据时。在 PXView 的底层中，`AnalogSnapshot` 期望捕获数据中带有采样数据大小的元信息：
+该错误发生在使用 libsigrok 兼容层采集“模拟(Analog)”数据时。在 PXView 的底层中，`AnalogSnapshot` 期望捕获数据中带有采样数据大小的元信息：
 ```cpp
 _unit_bytes = (analog.unit_bits + 7) / 8;
 assert(_unit_bytes > 0);
@@ -993,7 +993,7 @@ assert(_unit_bytes > 0);
 由于结构体是被 `g_new0` 分配的，`unit_bits` 默认为 0。传给 `AnalogSnapshot` 后计算出来的 `_unit_bytes` 就等于 0，这立即触发了内存计算的 `assert`。
 
 ### 修复方法
-我已经修改了 `libsigrokstd\bridge\srstd_bridge.c` 中 `srstd_packet_to_pxview` 针对 `SR_DF_ANALOG` 的转换逻辑：
+我已经修改了 `libsigrok\bridge\srstd_bridge.c` 中 `srstd_packet_to_pxview` 针对 `SR_DF_ANALOG` 的转换逻辑：
 增加了解析上游 `sr_analog_encoding` 结构体，从中提取真实的 `unitsize`（比如如果是 `float` 数据则为 4），然后计算出对应的比特数赋值给 `px_analog->unit_bits`。如果提取不到，也会给一个默认值 8。
 
 这解决了从 `std demo` 发送模拟信号到界面时的打包截断问题。请您使用 `./build_incremental.cmd` 再次编译运行并测试采集功能！

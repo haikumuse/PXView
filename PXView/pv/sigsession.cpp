@@ -53,6 +53,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cstdarg>
 #include <functional>
 #include <map>
 #include <stdexcept>
@@ -198,6 +199,42 @@ SigSession::~SigSession() {
   // time _state is destroyed.
 }
 
+// libsigrok log callback: forward sr_err/sr_warn/sr_info/sr_dbg into PXView's
+// xlog system so driver-internal failures (e.g. fx2lafw_dev_open libusb errors,
+// firmware version mismatch, interface claim failures) are visible in PXView.log.
+// Without this, sr_err output goes to stderr and is invisible in a GUI app,
+// leaving only "sr_dev_open failed" with no root cause.
+static int sigrok_log_callback(void *cb_data, int loglevel,
+                               const char *format, va_list args)
+{
+  (void)cb_data;
+  char buf[1024];
+  vsnprintf(buf, sizeof(buf), format, args);
+  // Strip trailing newline added by sr_log_vprintf to keep xlog format clean.
+  size_t n = strlen(buf);
+  while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r'))
+    buf[--n] = 0;
+
+  switch (loglevel) {
+    case SR_LOG_ERR:
+      pxv_err("sr: %s", buf);
+      break;
+    case SR_LOG_WARN:
+      pxv_warn("sr: %s", buf);
+      break;
+    case SR_LOG_INFO:
+      pxv_info("sr: %s", buf);
+      break;
+    case SR_LOG_DBG:
+    case SR_LOG_SPEW:
+      pxv_dbg("sr: %s", buf);
+      break;
+    default:
+      break;
+  }
+  return 0;
+}
+
 bool SigSession::init() {
   // Upstream libsigrok 0.6.0 initialization (sole libsigrok after fork removal).
   // sr_init creates the sr_context which holds the libusb_context, driver list,
@@ -207,6 +244,26 @@ bool SigSession::init() {
     pxv_err("PXView run ERROR: libsigrok init failed.");
     return false;
   }
+
+  // Forward libsigrok internal logs (sr_err/sr_warn/sr_info/sr_dbg) into
+  // PXView's xlog so driver failures are observable in PXView.log. Without
+  // this, GUI mode swallows sr_err output and only "sr_dev_open failed"
+  // remains, hiding the root cause (libusb open/claim errors, fw version
+  // mismatch, etc.). Set to SR_LOG_DBG so device-open failures include the
+  // sr_dbg "Opening device instance" trace + driver sr_err details.
+  sr_log_callback_set(sigrok_log_callback, nullptr);
+  sr_log_loglevel_set(SR_LOG_DBG);
+
+  // Diagnostic: log every firmware search path libsigrok will consult, so
+  // "Failed to locate 'fx2lafw-cypress-fx2.fw'" can be cross-checked against
+  // this list. PulseView finds the same file in <appdir>/share/sigrok-firmware,
+  // so the question is whether g_get_system_data_dirs() returns that path.
+  GSList *fw_paths = sr_resourcepaths_get(SR_RESOURCE_FIRMWARE);
+  pxv_info("libsigrok firmware search paths:");
+  for (GSList *p = fw_paths; p; p = p->next) {
+    pxv_info("  -> %s", p->data ? (const char *)p->data : "(null)");
+  }
+  g_slist_free_full(fw_paths, g_free);
 
   pxv_info("libsigrok initialized (upstream 0.6.0, sole library)");
   return true;
@@ -275,6 +332,12 @@ bool SigSession::set_device(ds_device_handle dev_handle) {
   // Open the new device via DeviceAgent (handles sr_dev_open + channel setup).
   if (!_state->device_agent().open_by_handle(dev_handle, _sr_ctx)) {
     pxv_err("Switch device error!");
+    // Broadcast DeviceOpenFailed so MainWindow can show a user-facing message
+    // ("Failed to open device: <reason>") instead of leaving the UI blank.
+    // The old device was already released above and the new one never opened,
+    // so _dev_handle is NULL — without this event, the UI silently stays empty
+    // and "_dev_handle is NULL" warnings flood the log.
+    _event_bus->broadcast_async<interface::DeviceOpenFailed>({});
     return false;
   }
 
@@ -682,14 +745,14 @@ void SigSession::init_signals() {
         model->set_map_default(map_default);
 
         // hw_offset: live SR_CONF_PROBE_HW_OFFSET (fork sr_channel.hw_offset
-        // field removed in upstream libsigrokstd — default 0).
+        // field removed in upstream libsigrok — default 0).
         int hw_offset = 0;
         _state->device_agent().get_config_uint16(SR_CONF_PROBE_HW_OFFSET, hw_offset,
                                         probe, NULL);
         model->set_hw_offset(hw_offset);
 
         // zero_offset: live SR_CONF_PROBE_OFFSET (fork sr_channel.zero_offset
-        // field removed in upstream libsigrokstd — default 0).
+        // field removed in upstream libsigrok — default 0).
         int zero_offset = 0;
         _state->device_agent().get_config_uint16(SR_CONF_PROBE_OFFSET, zero_offset,
                                         probe, NULL);

@@ -50,7 +50,7 @@ enum DEVICE_STATUS_TYPE {
 
 // --- PXView-local device handle types ---
 // These were previously defined in PXView's fork libsigrok.h. After migrating
-// to upstream libsigrok 0.6.0 (libsigrokstd), they are defined locally here.
+// to upstream libsigrok 0.6.0 (libsigrok), they are defined locally here.
 // ds_device_handle is an opaque token used by SigSession's device-list API.
 // The actual device identity is carried by struct sr_dev_inst* in DeviceAgent.
 typedef uint64_t ds_device_handle;
@@ -257,21 +257,21 @@ struct sr_list_item {
 // samplingbar.cpp for time-base math: total_time = timebase * HDIVS / SR_SEC(1).
 #define SR_SEC(x)  ((uint64_t)(x) * 1000000000ULL)
 
-// Fork libsigrok DSO config keys not in upstream libsigrokstd. Used by
+// Fork libsigrok DSO config keys not in upstream libsigrok. Used by
 // capturemanager.cpp (wait-for-upload) and storesession.cpp (max/min
 // timebase). Defined as 60050+ to avoid conflict with 60040-60049 DSO keys.
 #define SR_CONF_WAIT_UPLOAD    60050
 #define SR_CONF_MAX_TIMEBASE   60051
 #define SR_CONF_MIN_TIMEBASE   60052
 
-// Fork libsigrok DSO trigger config keys not in upstream libsigrokstd. Used by
+// Fork libsigrok DSO trigger config keys not in upstream libsigrok. Used by
 // session_service.cpp DSO trigger get/set paths. DSO mode is deprecated; values
 // defined as 60053+ to avoid conflict with other stubs.
 #define SR_CONF_TRIGGER_HOLDOFF  60053
 #define SR_CONF_TRIGGER_MARGIN   60054
 #define SR_CONF_TRIGGER_CHANNEL  60055
 
-// Fork libsigrok config keys not in upstream libsigrokstd. Used by
+// Fork libsigrok config keys not in upstream libsigrok. Used by
 // view_data_sync.cpp (actual samples / calibration) and mainwindow.cpp
 // (file version). Defined as 60056+ to avoid conflict with other stubs.
 #define SR_CONF_ACTUAL_SAMPLES   60056
@@ -289,7 +289,7 @@ struct sr_list_item {
 
 // Fork libsigrok analog probe mapping config keys. Used by analogsignal.cpp
 // and probeoptions.cpp for analog channel unit/min/max mapping. Upstream
-// libsigrokstd does not expose these — defined as 60059+.
+// libsigrok does not expose these — defined as 60059+.
 #define SR_CONF_PROBE_MAP_UNIT   60059
 #define SR_CONF_PROBE_MAP_MIN    60060
 #define SR_CONF_PROBE_MAP_MAX    60061
@@ -311,14 +311,14 @@ struct sr_list_item {
 #define SR_CONF_PROBE_PREOFF           60078
 #define SR_CONF_PROBE_PREOFF_MARGIN    60079
 
-// Fork libsigrok USB config key. Upstream libsigrokstd only exposes
+// Fork libsigrok USB config key. Upstream libsigrok only exposes
 // SR_CONF_USB_SPEED / SR_CONF_USB30_SUPPORT. SR_CONF_USB is PXView-fork only.
 // (SR_CONF_STREAM / STREAM_BUFF / STREAM_MEM_BUFF / DISK_CACHE_ENABLE /
 // DISK_CACHE_PATH / HW_DEPTH / DEVICE_SESSIONS / USB_SPEED already exist
 // upstream — do NOT redefine.)
 #define SR_CONF_USB                 60088
 
-// Fork libsigrok misc config keys not in upstream libsigrokstd. Used by
+// Fork libsigrok misc config keys not in upstream libsigrok. Used by
 // probeoptions.cpp (PROBE_CONFIGS), deviceoptions.cpp (STATUS/CLOCK_TYPE/
 // BANDWIDTH_LIMIT/BANDWIDTH). Defined as 60080+ in the free range between
 // the DSO calibration keys (60067-60079) and SR_CONF_USB (60088).
@@ -341,7 +341,7 @@ struct sr_list_item {
 #define DSO_TRIGGER_RISING   0
 #define DSO_TRIGGER_FALLING  1
 
-// Fork libsigrok coupling enum values. Upstream libsigrokstd only exposes
+// Fork libsigrok coupling enum values. Upstream libsigrok only exposes
 // SR_CONF_COUPLING as an integer config key (no enum). Used by probeoptions.cpp
 // and dsosignal.cpp to decode the coupling value returned by
 // get_config_int16(SR_CONF_PROBE_COUPLING). Typical oscilloscope coupling modes.
@@ -351,7 +351,7 @@ struct sr_list_item {
 
 // Fork libsigrok SI unit multiplier macros. Used by samplingbar.h
 // (SR_GB/SR_Mn/SR_US for sample-depth constants) and lissajousoptions.h
-// (SR_Kn). Upstream libsigrokstd does not provide these — define as simple
+// (SR_Kn). Upstream libsigrok does not provide these — define as simple
 // uint64_t multipliers.
 #define SR_NS(x)  ((uint64_t)(x))
 #define SR_US(x)  ((uint64_t)(x) * 1000ULL)
@@ -368,7 +368,7 @@ struct sr_list_item {
 #define SR_HOUR(x) ((uint64_t)(x) * 3600ULL * 1000000000ULL)
 #define SR_DAY(x)  ((uint64_t)(x) * 86400ULL * 1000000000ULL)
 
-// Fork libsigrok time string formatter. Upstream libsigrokstd provides
+// Fork libsigrok time string formatter. Upstream libsigrok provides
 // sr_samplerate_string / sr_voltage_string but not sr_time_string. Stub
 // implementation in deviceagent.cpp formats duration (nanoseconds) as a
 // human-readable string. Caller must g_free() the returned pointer.
@@ -431,7 +431,7 @@ enum DSO_MEASURE_TYPE {
 #define sr_config_info sr_key_info
 
 // Fork libsigrok device-mode list entry (fork sr_dev_mode). Upstream
-// libsigrokstd does not expose a device-mode list (SR_CONF_DEVICE_MODE returns
+// libsigrok does not expose a device-mode list (SR_CONF_DEVICE_MODE returns
 // a GVariant, not a GSList of sr_dev_mode). DeviceAgent::get_device_mode_list()
 // already returns nullptr as a stub, so callers iterating the list are no-ops;
 // this struct exists only so the (const sr_dev_mode*) casts in
@@ -443,7 +443,7 @@ struct sr_dev_mode {
 
 // --- Fork DSO SR_CONF_* keys (temporary, removed in Task 10 with DSO paths) ---
 // These keys existed in PXView's fork libsigrok.h but are absent from upstream
-// libsigrokstd. Defined here as 60040+ (no conflict with 60001-60013/60020+
+// libsigrok. Defined here as 60040+ (no conflict with 60001-60013/60020+
 // PXLogic extension keys) so DSO typed wrappers in DeviceAgent compile until
 // the DSO code paths are deleted in Task 10.
 #define SR_CONF_PROBE_VDIV        60040

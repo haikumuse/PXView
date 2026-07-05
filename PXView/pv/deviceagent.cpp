@@ -112,9 +112,18 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
         return false;
     }
 
-    // Open the device via upstream sr_dev_open.
-    if (sr_dev_open(sdi) != SR_OK) {
-        pxv_err("DeviceAgent::open_by_handle: sr_dev_open failed");
+    // Open the device via upstream sr_dev_open. The driver's dev_open() may
+    // emit sr_err with details (e.g. fx2lafw "Unable to open device" /
+    // "Unable to claim USB interface" / "Expected firmware version X.x");
+    // those are forwarded to PXView.log by sigrok_log_callback registered in
+    // SigSession::init(). Emit a top-level failure marker here too so the
+    // caller-visible failure is unmistakable in the log.
+    struct sr_dev_driver *open_drv = sr_dev_inst_driver_get(sdi);
+    const char *drv_name = (open_drv && open_drv->name) ? open_drv->name : "?";
+    int open_ret = sr_dev_open(sdi);
+    if (open_ret != SR_OK) {
+        pxv_err("DeviceAgent::open_by_handle: sr_dev_open failed (ret=%d, %s) driver=%s",
+                open_ret, sr_strerror(open_ret), drv_name);
         return false;
     }
 
@@ -464,12 +473,16 @@ QString DeviceAgent::get_demo_operation_mode()
         pxv_warn("%s", "DeviceAgent::get_demo_operation_mode: _dev_handle is NULL");
         return QString();
     }
-    if (!is_demo())
-        assert(false);
+    if (!is_demo()) {
+        pxv_warn("%s", "DeviceAgent::get_demo_operation_mode: not a demo device");
+        return QString();
+    }
 
     QString pattern_mode;
-    if (!get_config_string(SR_CONF_PATTERN_MODE, pattern_mode))
-        assert(false);
+    if (!get_config_string(SR_CONF_PATTERN_MODE, pattern_mode)) {
+        pxv_warn("%s", "DeviceAgent::get_demo_operation_mode: SR_CONF_PATTERN_MODE not supported");
+        return QString();
+    }
     return pattern_mode;
 }
 
@@ -817,7 +830,7 @@ int DeviceAgent::option_value_to_code(int mode, int key, const char *value)
     (void)key;
     (void)value;
     // Fork libsigrok ds_option_value_to_code is not available in upstream
-    // libsigrokstd. Return -1 so caller falls back to default value.
+    // libsigrok. Return -1 so caller falls back to default value.
     return -1;
 }
 

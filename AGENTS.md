@@ -4,7 +4,7 @@
 
 **PXView** (binary: `PXView.exe`) is a Qt6 C++17 application for signal analysis with logic analyzers/oscilloscopes, forked from sigrok/PulseView. Supports PXLogic hardware (DSL hardware dropped). GPLv3+. Version 1.5.0.
 
-Four compiled components: `libsigrokstd/` (upstream libsigrok 0.6.0 SHARED DLL, 81+ drivers including ported PXLogic at `src/hardware/pxlogic/`), `libsigrokdecode/` (PXView fork decode engine, C11+Python, 215 C decoder DLLs), `common/` (C utilities: xlog, minizip), `PXView/` (Qt6 app). The PXView fork `libsigrok/` (2014 fork from upstream 0.2.0) and the `libsigrokstd/bridge/` dual-library compatibility layer have been DELETED — Core layer now only calls upstream `sr_*` API. `PXView/pv/dsvdef.h` provides stub definitions for fork-only symbols (sr_status, ds_trigger_pos, DSO config keys 60040-60088) that are retained for UI/compile compat but have no fork backend.
+Four compiled components: `libsigrok/` (upstream libsigrok 0.6.0 SHARED DLL, 81+ drivers including ported PXLogic at `src/hardware/pxlogic/`), `libsigrokdecode/` (PXView fork decode engine, C11+Python, 215 C decoder DLLs), `common/` (C utilities: xlog, minizip), `PXView/` (Qt6 app). The PXView fork `libsigrok/` (2014 fork from upstream 0.2.0) and the `libsigrok/bridge/` dual-library compatibility layer have been DELETED — Core layer now only calls upstream `sr_*` API. `PXView/pv/dsvdef.h` provides stub definitions for fork-only symbols (sr_status, ds_trigger_pos, DSO config keys 60040-60088) that are retained for UI/compile compat but have no fork backend.
 
 ## Build
 
@@ -95,7 +95,7 @@ The app is split into two compile-time layers, enforced by CMake (`PXVIEW_CORE_S
 
 ## Conventions
 
-- `sr_*` upstream libsigrok API (libsigrokstd 0.6.0); `srd_*` libsigrokdecode API; typed events in `pv::interface` namespace (e.g. `CaptureStateChanged`, `DataUpdated`). Fork `ds_*` API fully REMOVED — Core layer only calls upstream `sr_*`.
+- `sr_*` upstream libsigrok API (libsigrok 0.6.0); `srd_*` libsigrokdecode API; typed events in `pv::interface` namespace (e.g. `CaptureStateChanged`, `DataUpdated`). Fork `ds_*` API fully REMOVED — Core layer only calls upstream `sr_*`.
 - Singletons: `AppControl`, `AppConfig`, `SessionManager`.
 - JSON config: `.pxc` session files, `lang/` translations.
 - `assert()` is a no-op in Release — use explicit `if(!ptr)` checks.

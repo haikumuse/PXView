@@ -174,6 +174,16 @@ struct DeviceListUpdated {};
 // CurrentDeviceChanged — the current device selection changed.
 struct CurrentDeviceChanged {};
 
+// DeviceOpenFailed — set_device() failed to open the new device via sr_dev_open.
+// The old device has already been released (CurrentDeviceChangePrev ran), so
+// _dev_handle is NULL. Carries the driver name and error string for UI feedback.
+// Without this event, the UI stays blank and 1000+ "_dev_handle is NULL"
+// warnings flood the log with no actionable message.
+struct DeviceOpenFailed {
+    std::string driver_name;
+    std::string error_message;
+};
+
 // UsbDeviceArrived — a USB device arrived.
 struct UsbDeviceArrived {};
 
@@ -317,6 +327,7 @@ public:
     virtual void on_event(const CollectModeChanged &) {}
     virtual void on_event(const DeviceListUpdated &) {}
     virtual void on_event(const CurrentDeviceChanged &) {}
+    virtual void on_event(const DeviceOpenFailed &) {}
     virtual void on_event(const UsbDeviceArrived &) {}
     virtual void on_event(const DeviceDetached &) {}
     virtual void on_event(const SampleRateChanged &) {}

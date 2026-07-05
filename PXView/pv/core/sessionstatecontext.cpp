@@ -216,7 +216,10 @@ uint64_t SessionStateContext::cur_snap_samplerate() {
 }
 
 void SessionStateContext::set_cur_snap_samplerate(uint64_t samplerate) {
-  assert(samplerate != 0);
+  if (samplerate == 0) {
+    pxv_warn("SessionStateContext::set_cur_snap_samplerate: samplerate=0, ignoring (device may not support SR_CONF_SAMPLERATE)");
+    return;
+  }
 
   _capture_data->_cur_snap_samplerate = samplerate;
   _capture_data->get_logic()->set_samplerate(samplerate);
@@ -249,7 +252,10 @@ void SessionStateContext::set_cur_snap_samplerate(uint64_t samplerate) {
 }
 
 void SessionStateContext::set_cur_samplelimits(uint64_t samplelimits) {
-  assert(samplelimits != 0);
+  if (samplelimits == 0) {
+    pxv_warn("SessionStateContext::set_cur_samplelimits: samplelimits=0, ignoring (device may not support SR_CONF_LIMIT_SAMPLES)");
+    return;
+  }
   _capture_data->_cur_samplelimits = samplelimits;
   _event_bus->dispatch_to<ICaptureCallback>(
       [](ICaptureCallback *cb) { cb->cur_samplelimits_changed(); });

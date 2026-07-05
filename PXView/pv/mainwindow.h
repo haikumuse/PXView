@@ -259,6 +259,7 @@ private:
     void on_event(const pv::interface::CollectModeChanged &) override;
     void on_event(const pv::interface::DeviceListUpdated &) override;
     void on_event(const pv::interface::CurrentDeviceChanged &) override;
+    void on_event(const pv::interface::DeviceOpenFailed &) override;
     void on_event(const pv::interface::UsbDeviceArrived &) override;
     void on_event(const pv::interface::DeviceDetached &) override;
     void on_event(const pv::interface::SampleRateChanged &) override;

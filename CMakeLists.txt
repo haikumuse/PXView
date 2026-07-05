@@ -67,10 +67,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/core_sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/gui_sources.cmake)
 
 #===============================================================================
-#= libsigrokstd — upstream libsigrok 0.6.0 as a SHARED library (100% unmodified
+#= libsigrok — upstream libsigrok 0.6.0 as a SHARED library (100% unmodified
 #= upstream source). Driver registration via upstream SR_REGISTER_DEV_DRIVER
 #= section mechanism. Linked by PXView to expose 81 additional drivers.
-add_subdirectory(libsigrokstd)
+add_subdirectory(libsigrok)
 
 #===============================================================================
 #= pxview-interface: callback + event interfaces (headers only, INTERFACE lib)
@@ -111,11 +111,11 @@ target_link_libraries(pxview-core PUBLIC
 	pxview-config
 	pxview-data
 )
-# Expose libsigrokstd/include/ headers so sigsession.cpp / deviceagent.cpp
+# Expose libsigrok/include/ headers so sigsession.cpp / deviceagent.cpp
 # (compiled into pxview-core) can include <libsigrok/libsigrok.h>.
 # PUBLIC so the executable inherits the include path too.
 target_include_directories(pxview-core PUBLIC
-	${CMAKE_SOURCE_DIR}/libsigrokstd/include
+	${CMAKE_SOURCE_DIR}/libsigrok/include
 )
 
 #===============================================================================
@@ -171,13 +171,13 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # Executable links pxview-core (which transitively provides Qt Core/Gui/Network
 # /WebSockets + external libs + nlohmann_json via PUBLIC linkage) and adds the
 # Qt Widgets + Svg modules that the View layer needs.
-# libsigrokstd is a SHARED library; linking it pulls in the import library for
-# libsigrokstd.dll. The bridge/ include path is added to pxview-core (PUBLIC)
+# libsigrok is a SHARED library; linking it pulls in the import library for
+# libsigrok.dll. The bridge/ include path is added to pxview-core (PUBLIC)
 # so sigsession.cpp / deviceagent.cpp (compiled into pxview-core) can find
 # "bridge/srstd_pxview_glue.h"; PUBLIC propagates to the executable too.
 target_link_libraries(${PROJECT_NAME}
 	pxview-core
-	libsigrokstd
+	libsigrok
 	${QT_GUI_LIBS}
 )
 

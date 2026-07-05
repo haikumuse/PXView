@@ -102,7 +102,7 @@ using namespace pv::data;
  * SigSession retains ownership of: the EventBus (unique_ptr), the 5 manager
  * unique_ptrs, the SessionStateContext unique_ptr, the DeviceEventObject,
  * the IDecoderPannel pointer, the static _empty_decoder_stacks, and the
- * libsigrokstd opaque context (_srstd_ctx). All shared mutable state
+ * libsigrok opaque context (_srstd_ctx). All shared mutable state
  * (mutexes, signal models, device agent, view/capture data, atomic flags,
  * trigger config, etc.) lives on SessionStateContext and is accessed via
  * `_state->xxx()` accessors.

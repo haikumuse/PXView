@@ -1432,8 +1432,10 @@ void TriggerDock::UpdateFont() {
   int lineH = 30;
 
   for (auto o : edits) {
-    if (o != _serial_hex_lineEdit && o->text() != "") {
+    if (o != _serial_hex_lineEdit && !o->text().isEmpty()) {
       QRect rc = fm.boundingRect(o->text());
+      if (!rc.isValid())
+        continue;
       QSize size(rc.width() + 20, rc.height() + 6);
       o->setMinimumSize(size);
       lineH = size.height();

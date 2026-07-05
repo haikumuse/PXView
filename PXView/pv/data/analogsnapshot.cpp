@@ -165,7 +165,7 @@ void AnalogSnapshot::first_payload(const sr_datafeed_analog &analog, uint64_t to
 {
     _total_sample_count = total_sample_count;
     // Fork libsigrok's sr_datafeed_analog had a `unit_bits` field; upstream
-    // libsigrokstd carries this in `encoding->unitsize` (bytes per sample).
+    // libsigrok carries this in `encoding->unitsize` (bytes per sample).
     // Stub: hardcode 8-bit (matches EnvelopeSample uint8_t type and PXLogic
     // hardware ADC resolution). DSO/Analog mode is deprecated — full cleanup
     // will replace this with sr_analog_to_float conversion.
@@ -189,10 +189,10 @@ void AnalogSnapshot::first_payload(const sr_datafeed_analog &analog, uint64_t to
 
     // 防止 _envelope_levels[DS_MAX_ANALOG_PROBES_NUM][ScaleStepCount] 固定数组越界:
     // PXView fork 假设最多 DS_MAX_ANALOG_PROBES_NUM(=4) 个 analog 通道(硬件限制),
-    // 但 srstd 上游驱动可能返回更多通道。超出时截断并记录警告,避免越界写入破坏
+    // 但 sr 上游驱动可能返回更多通道。超出时截断并记录警告,避免越界写入破坏
     // 后续成员(_enabled_channel_indexs 等)导致 SIGSEGV。
     if (_channel_num > DS_MAX_ANALOG_PROBES_NUM) {
-        pxv_err("AnalogSnapshot: analog channel count %u exceeds DS_MAX_ANALOG_PROBES_NUM=%d, truncating (srstd device may report more channels than PXView fork expects)",
+        pxv_err("AnalogSnapshot: analog channel count %u exceeds DS_MAX_ANALOG_PROBES_NUM=%d, truncating (sr device may report more channels than PXView fork expects)",
                 _channel_num, DS_MAX_ANALOG_PROBES_NUM);
         _channel_num = DS_MAX_ANALOG_PROBES_NUM;
     }
@@ -267,7 +267,7 @@ void AnalogSnapshot::append_payload(const sr_datafeed_analog &analog)
 {
     std::lock_guard<std::mutex> lock(_mutex);
     // Fork libsigrok's sr_datafeed_analog had a `unit_pitch` field (decimation
-    // factor: copy 1 sample every `pitch` samples). Upstream libsigrokstd does
+    // factor: copy 1 sample every `pitch` samples). Upstream libsigrok does
     // not carry this — stub to 1 (no decimation, packed format).
     append_data(analog.data, analog.num_samples, 1);
 
