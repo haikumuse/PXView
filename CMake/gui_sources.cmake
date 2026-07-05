@@ -34,7 +34,6 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/view/logicsignal.cpp
     PXView/pv/view/analogsignal.cpp
     PXView/pv/view/dsosignal.cpp
-    PXView/pv/view/dso_hardware_config.cpp
     PXView/pv/view/dso_trigger_config.cpp
     PXView/pv/view/dso_measure.cpp
     PXView/pv/view/dsldial.cpp
@@ -59,7 +58,6 @@ set(PXVIEW_GUI_SOURCES
     # Docks
     PXView/pv/dock/protocoldock.cpp
     PXView/pv/dock/triggerdock.cpp
-    PXView/pv/dock/dsotriggerdock.cpp
     PXView/pv/dock/measuredock.cpp
     PXView/pv/dock/searchdock.cpp
     PXView/pv/dock/logdock.cpp
@@ -74,15 +72,13 @@ set(PXVIEW_GUI_SOURCES
     PXView/pv/dialogs/about.cpp
     PXView/pv/dialogs/search.cpp
     PXView/pv/dialogs/storeprogress.cpp
-    PXView/pv/dialogs/waitingdialog.cpp
     PXView/pv/dialogs/dsomeasure.cpp
-    PXView/pv/dialogs/calibration.cpp
     PXView/pv/dialogs/protocollist.cpp
     PXView/pv/dialogs/protocolexp.cpp
     PXView/pv/dialogs/fftoptions.cpp
-    PXView/pv/dialogs/dsmessagebox.cpp
+    PXView/pv/dialogs/pxmessagebox.cpp
     PXView/pv/dialogs/shadow.cpp
-    PXView/pv/dialogs/dsdialog.cpp
+    PXView/pv/dialogs/pxdialog.cpp
     PXView/pv/dialogs/interval.cpp
     PXView/pv/dialogs/lissajousoptions.cpp
     PXView/pv/dialogs/mathoptions.cpp
@@ -104,7 +100,7 @@ set(PXVIEW_GUI_SOURCES
     # UI utilities
     PXView/pv/ui/msgbox.cpp
     PXView/pv/ui/toast.cpp
-    PXView/pv/ui/dscombobox.cpp
+    PXView/pv/ui/pxcombobox.cpp
     PXView/pv/ui/dsspinbox.cpp
     PXView/pv/ui/langresource.cpp
     PXView/pv/ui/fn.cpp
@@ -193,7 +189,6 @@ set(PXView_HEADERS
     PXView/pv/toolbars/logobar.h
     PXView/pv/dialogs/about.h
     PXView/pv/dialogs/search.h
-    PXView/pv/dock/dsotriggerdock.h
     PXView/pv/view/trace.h
     PXView/pv/view/selectableitem.h
     PXView/pv/data/decoderstack.h
@@ -207,9 +202,7 @@ set(PXView_HEADERS
     PXView/pv/dialogs/storeprogress.h
     PXView/pv/storesession.h
     PXView/pv/view/devmode.h
-    PXView/pv/dialogs/waitingdialog.h
     PXView/pv/dialogs/dsomeasure.h
-    PXView/pv/dialogs/calibration.h
     PXView/pv/dialogs/protocollist.h
     PXView/pv/dialogs/protocolexp.h
     PXView/pv/dialogs/fftoptions.h
@@ -226,9 +219,9 @@ set(PXView_HEADERS
     PXView/pv/widgets/smoothtablehelper.h
     PXView/pv/widgets/sidebar.h
     PXView/pv/widgets/sidebarbutton.h
-    PXView/pv/dialogs/dsmessagebox.h
+    PXView/pv/dialogs/pxmessagebox.h
     PXView/pv/dialogs/shadow.h
-    PXView/pv/dialogs/dsdialog.h
+    PXView/pv/dialogs/pxdialog.h
     PXView/pv/dialogs/interval.h
     PXView/pv/dialogs/lissajousoptions.h
     PXView/pv/view/lissajoustrace.h
@@ -247,7 +240,6 @@ set(PXView_HEADERS
     PXView/pv/view/logicsignal.h
     PXView/pv/view/analogsignal.h
     PXView/pv/view/dsosignal.h
-    PXView/pv/view/dso_hardware_config.h
     PXView/pv/view/dso_trigger_config.h
     PXView/pv/view/dso_measure.h
     PXView/pv/dock/protocoldock.h
@@ -265,7 +257,7 @@ set(PXView_HEADERS
     PXView/pv/dock/protocolitemlayer.h
     PXView/pv/ui/msgbox.h
     PXView/pv/ui/toast.h
-    PXView/pv/ui/dscombobox.h
+    PXView/pv/ui/pxcombobox.h
     PXView/pv/ui/dsspinbox.h
     PXView/pv/dsvdef.h
     PXView/pv/dialogs/applicationpardlg.h

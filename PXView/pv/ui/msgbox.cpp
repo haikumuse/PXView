@@ -21,7 +21,7 @@
  */
 
 #include "msgbox.h"
-#include "../dialogs/dsmessagebox.h"
+#include "../dialogs/pxmessagebox.h"
 #include <assert.h>
 #include <QMessageBox>
 #include "../dsvdef.h"
@@ -49,13 +49,13 @@ void Show(const QString title, const QString text, const QString infoText)
 }
 
 void MsgBox::Show(const QString title, const QString text, 
-        QWidget *parent, pv::dialogs::DSMessageBox **box)
+        QWidget *parent, pv::dialogs::PxMessageBox **box)
 {
     MsgBox::Show(title, text, "", parent, box);
 }
 
 void MsgBox::Show(const QString title, const QString text, const QString infoText, 
-        QWidget *parent, pv::dialogs::DSMessageBox **box)
+        QWidget *parent, pv::dialogs::PxMessageBox **box)
 {
     assert(!text.isEmpty());
 
@@ -67,7 +67,7 @@ void MsgBox::Show(const QString title, const QString text, const QString infoTex
         parent = AppControl::Instance()->GetTopWindow();
     }
 
-    pv::dialogs::DSMessageBox msg(parent, title);
+    pv::dialogs::PxMessageBox msg(parent, title);
 
     if (box != NULL){
         *box = &msg;
@@ -90,7 +90,7 @@ bool MsgBox::Confirm(const QString text, QWidget *parent)
 }
 
 bool MsgBox::Confirm(const QString text, const QString infoText, 
-        pv::dialogs::DSMessageBox **box, QWidget *parent)
+        pv::dialogs::PxMessageBox **box, QWidget *parent)
 {
     assert(!text.isEmpty());
 
@@ -102,7 +102,7 @@ bool MsgBox::Confirm(const QString text, const QString infoText,
         parent = AppControl::Instance()->GetTopWindow();
     }
 
-    pv::dialogs::DSMessageBox msg(parent, "");
+    pv::dialogs::PxMessageBox msg(parent, "");
     msg.mBox()->setText(str);
     msg.mBox()->setStandardButtons(QMessageBox::Yes | QMessageBox::No);
     msg.mBox()->setIcon(QMessageBox::Question);

@@ -95,11 +95,6 @@ public:
   int64_t get_logic_lst_data_offset();
   void scroll_to_logic_last_data_time();
 
-  // -- calibration (Phase J additional) ---------------------------------
-  void show_calibration();
-  void on_calibration_closed();
-  void check_calibration();
-
   // -- dso / measure (Phase J additional) -------------------------------
   void vDial_updated();
   void dso_factor_updated();

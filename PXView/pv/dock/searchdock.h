@@ -48,7 +48,7 @@
 
 #include "../interface/icallbacks.h"
 #include "../interface/icontextaware.h"
-#include "../ui/dscombobox.h"
+#include "../ui/pxcombobox.h"
 #include "../ui/uimanager.h"
 #include "../widgets/searchpatterninput.h"
 #include "../widgets/smoothscrollarea.h"

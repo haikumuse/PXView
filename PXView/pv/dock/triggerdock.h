@@ -40,7 +40,7 @@
 #include <QHBoxLayout>
 #include <QScrollArea>
 #include <vector>
-#include "../ui/dscombobox.h"
+#include "../ui/pxcombobox.h"
 #include "../widgets/smoothscrollarea.h"
 #include "../interface/icallbacks.h"
 #include "../ui/uimanager.h"
@@ -124,20 +124,20 @@ private:
     QSlider *_position_slider;
 
     QLabel *_stages_label;
-    DsComboBox *stages_comboBox;
+    PxComboBox *stages_comboBox;
 
     QTabWidget *_stage_tabWidget;
 
     QVector <QWidget *> _stage_groupBox_list;
     QVector <QLabel *>    _mu_label_list;
-    QVector <DsComboBox *> _logic_comboBox_list;
+    QVector <PxComboBox *> _logic_comboBox_list;
     QVector <PopupLineEdit *> _value0_lineEdit_list;
     QVector <PopupLineEdit *> _value0_ext32_lineEdit_list;
     QVector <PopupLineEdit *> _count_spinBox_list;
-    QVector <DsComboBox *> _inv0_comboBox_list;
+    QVector <PxComboBox *> _inv0_comboBox_list;
     QVector <PopupLineEdit *> _value1_lineEdit_list;
     QVector <PopupLineEdit *> _value1_ext32_lineEdit_list;
-    QVector <DsComboBox *> _inv1_comboBox_list;
+    QVector <PxComboBox *> _inv1_comboBox_list;
     QVector <QCheckBox *> _contiguous_checkbox_list;
 
     QTabWidget *_adv_tabWidget;
@@ -152,10 +152,10 @@ private:
     PopupLineEdit *_serial_edge_lineEdit;
     PopupLineEdit *_serial_edge_ext32_lineEdit;
     QLabel *_serial_data_label;
-    DsComboBox *_serial_data_comboBox;
+    PxComboBox *_serial_data_comboBox;
     QLabel *_serial_value_label;
     PopupLineEdit *_serial_value_lineEdit;
-    DsComboBox *_serial_bits_comboBox;
+    PxComboBox *_serial_bits_comboBox;
     QLabel *_serial_hex_label;
     PopupLineEdit *_serial_hex_lineEdit;
     QLabel *_serial_hex_ck_label;

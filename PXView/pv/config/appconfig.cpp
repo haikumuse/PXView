@@ -423,6 +423,10 @@ void AppConfig::LoadAll()
     _loadShortcuts(shortcutOptions, st);
     _loadStyle(styleOptions, st);
 
+    st.beginGroup("Device");
+    default_sample_limit_ = st.value("defaultSampleLimit", 1000000ULL).toULongLong();
+    st.endGroup();
+
     //pxv_dbg("Config file path:\"%s\"", st.fileName().toUtf8().data());
 }
 
@@ -440,6 +444,10 @@ void AppConfig::doSaveApp()
 {
     QSettings st(QApplication::organizationName(), QApplication::applicationName());
     _saveApp(appOptions, st);
+
+    st.beginGroup("Device");
+    st.setValue("defaultSampleLimit", (qulonglong)default_sample_limit_);
+    st.endGroup();
 }
 
 void AppConfig::SaveHistory()

@@ -220,6 +220,7 @@ public:
     bool get_probe_coupling(int &v, sr_channel *probe);
     bool get_probe_offset(int &v, sr_channel *probe);
     bool get_probe_hw_offset(int &v, sr_channel *probe);
+    bool get_probe_map_default(bool &v, sr_channel *probe);
     bool get_trigger_value(int &v, sr_channel *probe);
     QVector<uint64_t> get_probe_vdiv_list();
 

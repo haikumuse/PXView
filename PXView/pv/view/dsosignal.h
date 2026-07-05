@@ -42,7 +42,6 @@ class DataSource;
 
 namespace view {
 
-class DsoHardwareConfig;
 class DsoTriggerConfig;
 class DsoMeasure;
 
@@ -51,14 +50,15 @@ class DsoMeasure;
 //
 // Phase G (modernize-view-layer-v2): DsoSignal is now a thin paint + facade
 // class. Hardware config / trigger / measure logic is delegated to
-// DsoHardwareConfig / DsoTriggerConfig / DsoMeasure respectively. The public
-// API is preserved via forwarding methods; the delegates are friends and
-// access DsoSignal private state through their _signal pointer.
+// DsoTriggerConfig / DsoMeasure respectively (DsoHardwareConfig was removed
+// when DSO mode was deprecated; the DSO-key backed methods are now no-op
+// stubs returning defaults). The public API is preserved via forwarding
+// methods; the delegates are friends and access DsoSignal private state
+// through their _signal pointer.
 class DsoSignal : public Signal
 {
     Q_OBJECT
 
-    friend class DsoHardwareConfig;
     friend class DsoTriggerConfig;
     friend class DsoMeasure;
 
@@ -294,6 +294,7 @@ private:
 
     void paint_hover_measure(QPainter &p, QColor fore, QColor back);
     void auto_set();
+    void init_vDial(DsoSignal *src = nullptr);
 
 private:
     pv::data::DsoSnapshot *_data;
@@ -343,7 +344,6 @@ private:
     // Phase G delegate handles. Declared as unique_ptr with forward-declared
     // types; the destructor is defined in dsosignal.cpp where the complete
     // types are available, so the unique_ptr deleters can run.
-    std::unique_ptr<DsoHardwareConfig> _hw_config;
     std::unique_ptr<DsoTriggerConfig> _trig_config;
     std::unique_ptr<DsoMeasure> _measure;
 };

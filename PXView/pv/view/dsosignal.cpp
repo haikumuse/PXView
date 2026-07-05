@@ -21,10 +21,10 @@
  */
 
 #include "dsosignal.h"
-#include "dso_hardware_config.h"
 #include "dso_trigger_config.h"
 #include "dso_measure.h"
 #include <QApplication>
+#include <QCoreApplication>
 #include <QTimer>
 #include <functional>
 #include <math.h>
@@ -92,13 +92,12 @@ DsoSignal::DsoSignal(data::DsoSnapshot *data,
   _hover_index = 0;
   _hover_value = 0;
 
-  _hw_config = std::make_unique<DsoHardwareConfig>(this);
   _trig_config = std::make_unique<DsoTriggerConfig>(this);
   _measure = std::make_unique<DsoMeasure>(this);
 
-  _hw_config->init_vDial();
+  init_vDial();
   _colour = getSignalColor(model ? model->index() : 0);
-  _hw_config->load_settings();
+  load_settings();
 }
 
 DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data,
@@ -117,11 +116,10 @@ DsoSignal::DsoSignal(DsoSignal *s, pv::data::DsoSnapshot *data,
       _hover_point(QPointF(-1, -1)), _hover_value(0) {
   _vDial = NULL;
 
-  _hw_config = std::make_unique<DsoHardwareConfig>(this);
   _trig_config = std::make_unique<DsoTriggerConfig>(this);
   _measure = std::make_unique<DsoMeasure>(this);
 
-  _hw_config->init_vDial(s);
+  init_vDial(s);
 }
 
 DsoSignal *DsoSignal::clone() const {
@@ -142,30 +140,388 @@ void DsoSignal::set_scale(int height) {
 }
 
 //============================== Phase G facades ==============================
-// The following methods forward to the three delegate classes. Public API is
-// preserved; only the implementation moved.
+// The following methods forward to the delegate classes. Public API is
+// preserved; only the implementation moved. DsoHardwareConfig was removed
+// (DSO mode deprecated); its DSO-key backed methods are now no-op stubs.
 
-// -- DsoHardwareConfig --
-void DsoSignal::set_enable(bool enable) { _hw_config->set_enable(enable); }
-void DsoSignal::set_vDialActive(bool active) { _hw_config->set_vDialActive(active); }
-bool DsoSignal::go_vDialPre(bool manul) { return _hw_config->go_vDialPre(manul); }
-bool DsoSignal::go_vDialNext(bool manul) { return _hw_config->go_vDialNext(manul); }
-uint64_t DsoSignal::get_vDialValue() { return _hw_config->get_vDialValue(); }
-uint16_t DsoSignal::get_vDialSel() { return _hw_config->get_vDialSel(); }
-void DsoSignal::set_acCoupling(uint8_t coupling) { _hw_config->set_acCoupling(coupling); }
-void DsoSignal::set_factor(uint64_t factor) { _hw_config->set_factor(factor); }
-uint64_t DsoSignal::get_factor() { return _hw_config->get_factor(); }
-int DsoSignal::get_zero_vpos() { return _hw_config->get_zero_vpos(); }
-double DsoSignal::get_zero_ratio() { return _hw_config->get_zero_ratio(); }
-int DsoSignal::get_hw_offset() { return _hw_config->get_hw_offset(); }
-void DsoSignal::set_zero_vpos(int pos) { _hw_config->set_zero_vpos(pos); }
-void DsoSignal::set_zero_ratio(double ratio) { _hw_config->set_zero_ratio(ratio); }
-int DsoSignal::ratio2value(double ratio) { return _hw_config->ratio2value(ratio); }
-int DsoSignal::ratio2pos(double ratio) { return _hw_config->ratio2pos(ratio); }
-double DsoSignal::value2ratio(int value) { return _hw_config->value2ratio(value); }
-double DsoSignal::pos2ratio(int pos) { return _hw_config->pos2ratio(pos); }
-bool DsoSignal::load_settings() { return _hw_config->load_settings(); }
-int DsoSignal::commit_settings() { return _hw_config->commit_settings(); }
+// -- DsoHardwareConfig (inlined; DSO-key backed parts stubbed) --
+void DsoSignal::set_enable(bool enable) {
+  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  if (!probe)
+    return;
+
+  if (_data_source->device()->is_hardware_logic() && get_index() == 0) {
+    return;
+  }
+
+  _en_lock = true;
+  bool cur_enable = _model->enabled();
+  if (cur_enable == enable) {
+    _en_lock = false;
+    return;
+  }
+
+  bool running = false;
+
+  if (_data_source->is_running_status()) {
+    running = true;
+    _data_source->stop_capture();
+  }
+
+  while (_data_source->is_running_status())
+    QCoreApplication::processEvents();
+
+  set_vDialActive(false);
+  _model->set_probe_enabled(enable, probe);
+
+  _view->update_hori_res();
+
+  if (running) {
+    _data_source->stop_capture();
+    _data_source->start_capture(false);
+  }
+
+  _view->set_update(_viewport, true);
+  _view->update();
+  _en_lock = false;
+}
+
+void DsoSignal::set_vDialActive(bool active) {
+  if (enabled())
+    _vDialActive = active;
+}
+
+bool DsoSignal::go_vDialPre(bool manul) {
+  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+
+  if (_autoV && manul)
+    autoV_end();
+
+  if (enabled() && !_vDial->isMin()) {
+    if (_data_source->is_running_status())
+      _data_source->refresh(DsoSignal::RefreshShort);
+
+    const double pre_vdiv = _vDial->get_value();
+    _vDial->set_sel(_vDial->get_sel() - 1);
+
+    if (_data_source->is_stopped_status()) {
+      set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));
+      set_scale(get_view_rect().height());
+    }
+    if (probe)
+      _model->set_probe_offset((uint16_t)_zero_offset, probe);
+
+    _view->vDial_updated();
+    _view->set_update(_viewport, true);
+    _view->update();
+    if (_model) {
+      _model->set_vdiv((double)_vDial->get_value());
+    }
+    return true;
+  } else {
+    if (_autoV && !_autoV_over)
+      autoV_end();
+    return false;
+  }
+}
+
+bool DsoSignal::go_vDialNext(bool manul) {
+  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+
+  if (_autoV && manul)
+    autoV_end();
+
+  if (enabled() && !_vDial->isMax()) {
+    if (_data_source->is_running_status())
+      _data_source->refresh(DsoSignal::RefreshShort);
+
+    const double pre_vdiv = _vDial->get_value();
+    _vDial->set_sel(_vDial->get_sel() + 1);
+
+    if (_data_source->is_stopped_status()) {
+      set_stop_scale(_stop_scale * (pre_vdiv / _vDial->get_value()));
+      set_scale(get_view_rect().height());
+    }
+    if (probe)
+      _model->set_probe_offset((uint16_t)_zero_offset, probe);
+
+    _view->vDial_updated();
+    _view->set_update(_viewport, true);
+    _view->update();
+    if (_model) {
+      _model->set_vdiv((double)_vDial->get_value());
+    }
+    return true;
+  } else {
+    if (_autoV && !_autoV_over)
+      autoV_end();
+    return false;
+  }
+}
+
+void DsoSignal::init_vDial(DsoSignal *src) {
+  QVector<QString> vUnit;
+
+  for (uint64_t i = 0; i < DsoSignal::vDialUnitCount; i++) {
+    vUnit.append(DsoSignal::vDialUnit[i]);
+  }
+
+  _vDial = NULL;
+
+  QVector<uint64_t> vValue = _data_source->device()->get_probe_vdiv_list();
+  if (vValue.isEmpty()) {
+    // SR_CONF_PROBE_VDIV was a fork DSO key (deleted). Provide a fallback
+    // single-entry dial so DsoSignal does not crash on paint.
+    vValue.push_back(1000);
+  }
+
+  _vDial = new dslDial(vValue.count(), DsoSignal::vDialValueStep, vValue, vUnit, false);
+
+  if (src) {
+    _vDial->set_sel(src->_vDial->get_sel());
+    _vDial->set_factor(src->_vDial->get_factor());
+  }
+}
+
+bool DsoSignal::load_settings() {
+  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  int v;
+  uint32_t ui32;
+  bool ret;
+
+  // dso channel bits
+  ret = _data_source->device()->get_unit_bits(v);
+  if (ret) {
+    _bits = (uint8_t)v;
+  } else {
+    _bits = DsoSignal::DefaultBits;
+    pxv_warn(
+        "%s%d",
+        "Warning: config_get SR_CONF_UNIT_BITS failed, set to %d(default).",
+        DsoSignal::DefaultBits);
+
+    if (_data_source->device()->is_hardware())
+      return false;
+  }
+
+  ret = _data_source->device()->get_ref_min(ui32);
+  if (ret)
+    _ref_min = (double)ui32;
+  else
+    _ref_min = 1;
+
+  ret = _data_source->device()->get_ref_max(ui32);
+  if (ret)
+    _ref_max = (double)ui32;
+  else
+    _ref_max = ((1 << _bits) - 1);
+
+  // -- vdiv (DSO-key backed; fall back to model value)
+  uint64_t vdiv;
+  uint64_t vfactor;
+  if (probe) {
+    ret = _data_source->device()->get_probe_vdiv(vdiv, probe);
+    if (!ret) {
+      // SR_CONF_PROBE_VDIV fork stub deleted; fall back to model.
+      vdiv = _model ? (uint64_t)_model->vdiv() : 0;
+    }
+
+    ret = _data_source->device()->get_probe_factor(vfactor, probe);
+    if (!ret) {
+      pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
+      return false;
+    }
+  } else {
+    vdiv = _model ? _model->vdiv() : 0;
+    vfactor = _model ? _model->vfactor() : 1;
+  }
+
+  _vDial->set_value(vdiv);
+  _vDial->set_factor(vfactor);
+
+  // -- coupling (DSO-key backed; fall back to model value)
+  if (probe) {
+    ret = _data_source->device()->get_probe_coupling(v, probe);
+    if (ret) {
+      _acCoupling = uint8_t(v);
+    } else {
+      // SR_CONF_PROBE_COUPLING fork stub deleted; fall back to model.
+      _acCoupling = _model ? (uint8_t)_model->coupling() : 0;
+    }
+  } else {
+    _acCoupling = _model ? _model->coupling() : 0;
+  }
+
+  // -- vpos
+  if (probe) {
+    ret = _data_source->device()->get_probe_offset(_zero_offset, probe);
+    if (!ret) {
+      pxv_err("ERROR: config_get SR_CONF_PROBE_OFFSET failed.");
+      return false;
+    }
+  } else {
+    _zero_offset = _model ? (int)_model->vertical_offset() : 0;
+  }
+
+  // -- trig_value (DSO-key backed; fall back to model value)
+  if (probe) {
+    ret = _data_source->device()->get_trigger_value(_trig_value, probe);
+    if (ret) {
+      _trig_delta = get_trig_vrate() - get_zero_ratio();
+    } else {
+      // SR_CONF_TRIGGER_VALUE fork stub deleted; fall back to model.
+      _trig_value = _model ? _model->trig_value() : 0;
+      _trig_delta = get_trig_vrate() - get_zero_ratio();
+    }
+  } else {
+    _trig_value = _model ? _model->trig_value() : 0;
+    _trig_delta = get_trig_vrate() - get_zero_ratio();
+  }
+
+  if (_view) {
+    _view->set_update(_viewport, true);
+    _view->update();
+  }
+  return true;
+}
+
+int DsoSignal::commit_settings() {
+  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  if (!probe)
+    return 0;
+
+  // -- enable
+  _model->set_probe_enabled(enabled(), probe);
+
+  // -- vdiv
+  _model->set_vdiv((double)_vDial->get_value());
+  _model->set_probe_factor(_vDial->get_factor(), probe);
+
+  // -- coupling
+  _model->set_coupling((int)_acCoupling);
+
+  // -- offset
+  _model->set_probe_offset((uint16_t)_zero_offset, probe);
+
+  // -- trig_value
+  _model->set_trigger_value((double)_trig_value, probe);
+
+  return 1;
+}
+
+uint64_t DsoSignal::get_vDialValue() { return _vDial->get_value(); }
+
+uint16_t DsoSignal::get_vDialSel() { return _vDial->get_sel(); }
+
+void DsoSignal::set_acCoupling(uint8_t coupling) {
+  auto model = _model;
+
+  if (enabled()) {
+    _acCoupling = coupling;
+    if (model) {
+      model->set_coupling((int)coupling);
+    }
+  }
+}
+
+int DsoSignal::ratio2value(double ratio) {
+  return ratio * (_ref_max - _ref_min) + _ref_min;
+}
+
+int DsoSignal::ratio2pos(double ratio) {
+  return ratio * get_view_rect().height() + get_view_rect().top();
+}
+
+double DsoSignal::value2ratio(int value) {
+  return max(0.0, (value - _ref_min) / (_ref_max - _ref_min));
+}
+
+double DsoSignal::pos2ratio(int pos) {
+  return min(max(pos - get_view_rect().top(), 0), get_view_rect().height()) *
+         1.0 / get_view_rect().height();
+}
+
+int DsoSignal::get_zero_vpos() { return ratio2pos(get_zero_ratio()); }
+
+double DsoSignal::get_zero_ratio() { return value2ratio(_zero_offset); }
+
+int DsoSignal::get_hw_offset() {
+  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  if (_data_source->is_running_status()) {
+    int hw_offset = _cached_hw_offset;
+    if (probe && _data_source->device()->get_probe_hw_offset(hw_offset, probe)) {
+      _cached_hw_offset = hw_offset;
+    }
+  }
+  return _cached_hw_offset;
+}
+
+void DsoSignal::set_zero_vpos(int pos) {
+  if (enabled()) {
+    set_zero_ratio(pos2ratio(pos));
+    set_trig_ratio(_trig_delta + get_zero_ratio(), false);
+  }
+}
+
+void DsoSignal::set_zero_ratio(double ratio) {
+  // CRITICAL: Copy _model to a local shared_ptr BEFORE calling set_config_*.
+  // set_config_uint16 -> config_changed -> broadcast_async<SampleCountUpdated>
+  // is SYNCHRONOUS and can trigger nested reload -> signals_changed -> View
+  // AllReplaced rebuild, which DELETES this DsoSignal (and its _model member).
+  // After set_config returns, _model may be dangling. The local copy keeps the
+  // SignalModel alive even if `this` is deleted mid-method.
+  auto model = _model;
+  _zero_offset = ratio2value(ratio);
+  if (model) {
+    model->set_zero_offset((double)_zero_offset);
+  }
+}
+
+void DsoSignal::set_factor(uint64_t factor) {
+  auto model = _model;
+  sr_channel *probe = model ? model->sr_channel_handle() : nullptr;
+
+  if (enabled()) {
+    uint64_t prefactor = 0;
+    bool ret;
+
+    if (probe) {
+      ret = _data_source->device()->get_probe_factor(prefactor, probe);
+      if (!ret) {
+        pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
+        return;
+      }
+    } else {
+      prefactor = model ? model->vfactor() : 1;
+    }
+
+    if (prefactor != factor) {
+      _vDial->set_factor(factor);
+      _view->set_update(_viewport, true);
+      _view->update();
+      if (model) {
+        model->set_vfactor((double)factor);
+      }
+    }
+  }
+}
+
+uint64_t DsoSignal::get_factor() {
+  sr_channel *probe = _model ? _model->sr_channel_handle() : nullptr;
+  uint64_t factor;
+
+  if (probe) {
+    bool ret = _data_source->device()->get_probe_factor(factor, probe);
+    if (ret) {
+      return factor;
+    } else {
+      pxv_err("ERROR: config_get SR_CONF_PROBE_FACTOR failed.");
+      return 1;
+    }
+  } else {
+    return _model ? _model->vfactor() : 1;
+  }
+}
 
 // -- DsoTriggerConfig --
 double DsoSignal::get_trig_vrate() { return _trig_config->get_trig_vrate(); }

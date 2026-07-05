@@ -104,15 +104,6 @@ void SignalModel::set_color(const std::string &color) {
 void SignalModel::set_vdiv(double vdiv) {
     if (_vdiv != vdiv) {
         _vdiv = vdiv;
-        // Push to libsigrok via DeviceAgent (uint64 key, matches
-        // DsoSignal::commit_settings which uses SR_CONF_PROBE_VDIV).
-        if (_sr_channel && _session) {
-            DeviceAgent *device = _session->get_device();
-            if (device && device->have_instance()) {
-                device->set_config_uint64(SR_CONF_PROBE_VDIV,
-                                          (uint64_t)vdiv, _sr_channel, NULL);
-            }
-        }
         emit appearance_changed();
     }
 }
@@ -120,16 +111,6 @@ void SignalModel::set_vdiv(double vdiv) {
 void SignalModel::set_coupling(int coupling) {
     if (_coupling != coupling) {
         _coupling = coupling;
-        // SR_CONF_PROBE_COUPLING is a byte-sized key (matches
-        // DsoSignal::set_acCoupling which uses set_config_byte).
-        if (_sr_channel && _session) {
-            DeviceAgent *device = _session->get_device();
-            if (device && device->have_instance()) {
-                device->set_config_byte(SR_CONF_PROBE_COUPLING,
-                                        (int)(uint8_t)coupling,
-                                        _sr_channel, NULL);
-            }
-        }
         emit appearance_changed();
     }
 }
@@ -225,15 +206,6 @@ void SignalModel::set_trig_type(int trig_type) {
 void SignalModel::set_trig_value(double v) {
     if (_trig_value == v) return;
     _trig_value = v;
-    // SR_CONF_TRIGGER_VALUE is a byte-sized key (matches
-    // DsoSignal::commit_settings which uses set_config_byte).
-    if (_sr_channel && _session) {
-        DeviceAgent *device = _session->get_device();
-        if (device && device->have_instance()) {
-            device->set_config_byte(SR_CONF_TRIGGER_VALUE,
-                                    (int)(uint8_t)v, _sr_channel, NULL);
-        }
-    }
     // Note: existing behavior — set_trig_value did not emit appearance_changed
     // and DsoSignal::set_trig_vrate does its own view refresh, so we keep the
     // same no-emit contract here.
@@ -242,14 +214,6 @@ void SignalModel::set_trig_value(double v) {
 void SignalModel::set_trigger_value(double value, struct sr_channel *probe) {
     // Update the model field regardless of probe override.
     _trig_value = value;
-    struct sr_channel *ch = probe ? probe : _sr_channel;
-    if (ch && _session) {
-        DeviceAgent *device = _session->get_device();
-        if (device && device->have_instance()) {
-            device->set_config_byte(SR_CONF_TRIGGER_VALUE,
-                                    (int)(uint8_t)value, ch, NULL);
-        }
-    }
     // Fork libsigrok's sr_channel had a `trig_value` field; upstream
     // libsigrok does not. Hardware sync above is sufficient — model state
     // is tracked in _trig_value.
@@ -336,18 +300,12 @@ void SignalModel::commit_to_device()
     if (device == nullptr || !device->have_instance()) return;
 
     device->set_config_bool(SR_CONF_PROBE_EN, _enabled, _sr_channel, NULL);
-    device->set_config_uint64(SR_CONF_PROBE_VDIV, (uint64_t)_vdiv,
-                              _sr_channel, NULL);
     device->set_config_uint64(SR_CONF_PROBE_FACTOR, (uint64_t)_vfactor,
                               _sr_channel, NULL);
-    device->set_config_byte(SR_CONF_PROBE_COUPLING, (int)(uint8_t)_coupling,
-                            _sr_channel, NULL);
     device->set_config_uint16(SR_CONF_PROBE_OFFSET, (int)_zero_offset,
                               _sr_channel, NULL);
     device->set_config_uint16(SR_CONF_PROBE_HW_OFFSET, (int)_hw_offset,
                               _sr_channel, NULL);
-    device->set_config_byte(SR_CONF_TRIGGER_VALUE, (int)(uint8_t)_trig_value,
-                            _sr_channel, NULL);
     device->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT, _map_default,
                             _sr_channel, NULL);
 }

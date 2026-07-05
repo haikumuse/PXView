@@ -21,7 +21,7 @@
  */
 
 
-#include "dsmessagebox.h"
+#include "pxmessagebox.h"
 #include "shadow.h"
 
 #include <QObject>
@@ -39,7 +39,7 @@
 namespace pv {
 namespace dialogs {
 
-DSMessageBox::DSMessageBox(QWidget *parent,const QString title) :
+PxMessageBox::PxMessageBox(QWidget *parent,const QString title) :
 #ifdef Q_OS_LINUX
     QDialog(NULL)  //enable the popup dialog draged.
 #else
@@ -89,11 +89,11 @@ DSMessageBox::DSMessageBox(QWidget *parent,const QString title) :
 
     setLayout(_layout); 
 
-    connect(_msg, &QMessageBox::buttonClicked, this, &DSMessageBox::on_button);
+    connect(_msg, &QMessageBox::buttonClicked, this, &PxMessageBox::on_button);
 }
 
 
-DSMessageBox::~DSMessageBox()
+PxMessageBox::~PxMessageBox()
 {
     DESTROY_QT_OBJECT(_layout);
     DESTROY_QT_OBJECT(_main_widget);
@@ -105,26 +105,26 @@ DSMessageBox::~DSMessageBox()
     PopupDlgList::RemoveDlgFromList(this);
 }
 
-void DSMessageBox::accept()
+void PxMessageBox::accept()
 {
     using namespace Qt;
 
     QDialog::accept();
 }
 
-void DSMessageBox::reject()
+void PxMessageBox::reject()
 {
     using namespace Qt;
 
     QDialog::reject();
 }
   
-QMessageBox* DSMessageBox::mBox()
+QMessageBox* PxMessageBox::mBox()
 {
     return _msg;
 }
   
-void DSMessageBox::on_button(QAbstractButton *btn)
+void PxMessageBox::on_button(QAbstractButton *btn)
 {
     QMessageBox::ButtonRole role = _msg->buttonRole(btn);
 
@@ -136,7 +136,7 @@ void DSMessageBox::on_button(QAbstractButton *btn)
         reject();
 }
 
-int DSMessageBox::exec()
+int PxMessageBox::exec()
 {
     QFont font = theme_font_dialog();
     ui::set_form_font(this, font);

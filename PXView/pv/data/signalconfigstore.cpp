@@ -184,15 +184,9 @@ void SignalConfigStore::save_signal_config(
     }
 
     if (mode == ANALOG || mode == DSO) {
-      uint64_t vdiv;
-      if (agent->get_config_uint64(SR_CONF_PROBE_VDIV, vdiv, probe, NULL))
-        cfg.vdiv = vdiv;
-
-      int coupling;
-      if (agent->get_config_int16(SR_CONF_PROBE_COUPLING, coupling, probe,
-                                  NULL))
-        cfg.coupling = coupling;
-
+      // SR_CONF_PROBE_VDIV / SR_CONF_PROBE_COUPLING fork DSO keys deleted;
+      // cfg.vdiv / cfg.coupling keep their defaults (0). map_default is still
+      // queried (key retained in dsvdef.h, migrated in Phase 2).
       bool map_default = true;
       agent->get_config_bool(SR_CONF_PROBE_MAP_DEFAULT, map_default, probe,
                              NULL);
@@ -328,9 +322,8 @@ void SignalConfigStore::apply_signal_config() {
     }
 
     if (mode == ANALOG || mode == DSO) {
-      agent->set_config_uint64(SR_CONF_PROBE_VDIV, cfg.vdiv, probe, NULL);
-      agent->set_config_int16(SR_CONF_PROBE_COUPLING, cfg.coupling, probe,
-                              NULL);
+      // SR_CONF_PROBE_VDIV / SR_CONF_PROBE_COUPLING fork DSO keys deleted;
+      // only map_default is restored (key retained in dsvdef.h).
       agent->set_config_bool(SR_CONF_PROBE_MAP_DEFAULT, cfg.map_default,
                              probe, NULL);
       // Fork sr_channel fields (hw_offset/offset/zero_offset/vfactor) are not

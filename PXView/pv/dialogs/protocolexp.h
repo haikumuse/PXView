@@ -33,8 +33,8 @@
  
 #include "../prop/binding/deviceoptions.h"
 #include "../toolbars/titlebar.h"
-#include "dsdialog.h"
-#include "../ui/dscombobox.h"
+#include "pxdialog.h"
+#include "../ui/pxcombobox.h"
 
 namespace pv {
 
@@ -53,7 +53,7 @@ class DecoderModel;
 
 namespace dialogs {
 
-class ProtocolExp : public DSDialog
+class ProtocolExp : public PxDialog
 {
     Q_OBJECT
 
@@ -90,7 +90,7 @@ private:
     pv::view::DecoderModel *_decoder_model;
 
     toolbars::TitleBar *_titlebar;
-    DsComboBox *_format_combobox;
+    PxComboBox *_format_combobox;
     std::list<QCheckBox *> _row_sel_list;
     std::list<QLabel *> _row_label_list;
     QFormLayout *_flayout;

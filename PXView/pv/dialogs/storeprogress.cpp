@@ -38,13 +38,13 @@
 #include "../view/view.h"
 #include "../view/cursor.h"
 #include "../ui/langresource.h"
-#include "../ui/dscombobox.h"
+#include "../ui/pxcombobox.h"
 
 namespace pv {
 namespace dialogs {
 
 StoreProgress::StoreProgress(SigSession *session, QWidget *parent) :
-    DSDialog(parent)
+    PxDialog(parent)
 {
     _fileLab = NULL;
     _ckOrigin = NULL;
@@ -277,8 +277,8 @@ void StoreProgress::save_run(ISessionDataGetter *getter)
     {
         QFormLayout *lay = new QFormLayout();
         lay->setContentsMargins(5, 0, 0, 0); 
-        _start_cursor = new DsComboBox();
-        _end_cursor = new DsComboBox();
+        _start_cursor = new PxComboBox();
+        _end_cursor = new PxComboBox();
    
         _start_cursor->addItem("-");
         _end_cursor->addItem("-");
@@ -317,8 +317,8 @@ void StoreProgress::export_run()
         _ckCompress->setText(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_COMPRESSED_DATA), "Compressed data"));
         _ckCompress->setChecked(!isOrg);
 
-        _start_cursor = new DsComboBox();
-        _end_cursor = new DsComboBox();
+        _start_cursor = new PxComboBox();
+        _end_cursor = new PxComboBox();
    
         _start_cursor->addItem("-");
         _end_cursor->addItem("-");

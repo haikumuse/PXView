@@ -1408,15 +1408,6 @@ DsoTriggerConfig SessionService::get_dso_trigger_config() const {
     if (_device->get_config_double(SR_CONF_HORIZ_TRIGGERPOS, dval))
         config.horiz_pos = dval;
 
-    if (_device->get_config_double(SR_CONF_TRIGGER_HOLDOFF, dval))
-        config.holdoff = dval;
-
-    if (_device->get_config_double(SR_CONF_TRIGGER_MARGIN, dval))
-        config.margin = dval;
-
-    if (_device->get_config_int32(SR_CONF_TRIGGER_CHANNEL, value))
-        config.channel = value;
-
     return config;
 }
 
@@ -1436,15 +1427,6 @@ Result<void> SessionService::set_dso_trigger_config(
         any_ok = true;
     if (_device->set_config_double(SR_CONF_HORIZ_TRIGGERPOS,
                                    config.horiz_pos))
-        any_ok = true;
-    if (_device->set_config_double(SR_CONF_TRIGGER_HOLDOFF,
-                                   config.holdoff))
-        any_ok = true;
-    if (_device->set_config_double(SR_CONF_TRIGGER_MARGIN,
-                                   config.margin))
-        any_ok = true;
-    if (_device->set_config_int32(SR_CONF_TRIGGER_CHANNEL,
-                                  config.channel))
         any_ok = true;
 
     if (!any_ok)
@@ -1480,20 +1462,10 @@ ProbeConfig SessionService::get_probe_config(int16_t channel) const {
     int ival = 0;
 
     if (target_ch) {
-        if (_device->get_config_double(SR_CONF_PROBE_VDIV, dval, target_ch))
-            config.vdiv = dval;
-
-        if (_device->get_config_int32(SR_CONF_PROBE_COUPLING, ival, target_ch))
-            config.coupling = (ival == 0) ? Coupling::AC : Coupling::DC;
-
         if (_device->get_config_double(SR_CONF_PROBE_FACTOR, dval, target_ch))
             config.vfactor = dval;
     } else {
         // Try without channel
-        if (_device->get_config_double(SR_CONF_PROBE_VDIV, dval))
-            config.vdiv = dval;
-        if (_device->get_config_int32(SR_CONF_PROBE_COUPLING, ival))
-            config.coupling = (ival == 0) ? Coupling::AC : Coupling::DC;
         if (_device->get_config_double(SR_CONF_PROBE_FACTOR, dval))
             config.vfactor = dval;
     }
@@ -1521,21 +1493,10 @@ Result<void> SessionService::set_probe_config(int16_t channel,
     bool any_ok = false;
 
     if (target_ch) {
-        if (_device->set_config_double(SR_CONF_PROBE_VDIV, config.vdiv, target_ch))
-            any_ok = true;
-        if (_device->set_config_int32(SR_CONF_PROBE_COUPLING,
-                                      config.coupling == Coupling::AC ? 0 : 1,
-                                      target_ch))
-            any_ok = true;
         if (_device->set_config_double(SR_CONF_PROBE_FACTOR, config.vfactor,
                                        target_ch))
             any_ok = true;
     } else {
-        if (_device->set_config_double(SR_CONF_PROBE_VDIV, config.vdiv))
-            any_ok = true;
-        if (_device->set_config_int32(SR_CONF_PROBE_COUPLING,
-                                      config.coupling == Coupling::AC ? 0 : 1))
-            any_ok = true;
         if (_device->set_config_double(SR_CONF_PROBE_FACTOR, config.vfactor))
             any_ok = true;
     }

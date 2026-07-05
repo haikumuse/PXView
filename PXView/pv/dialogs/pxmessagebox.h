@@ -21,8 +21,8 @@
  */
 
 
-#ifndef PXVIEW_PV_DSMESSAGEBOX_H
-#define PXVIEW_PV_DSMESSAGEBOX_H
+#ifndef PXVIEW_PV_PXMESSAGEBOX_H
+#define PXVIEW_PV_PXMESSAGEBOX_H
 
 #include <QDialog>
 #include <QWidget>
@@ -35,14 +35,14 @@ namespace dialogs {
 
      class Shadow;
 
-class DSMessageBox : public QDialog
+class PxMessageBox : public QDialog
 {
 	Q_OBJECT
 
 public:
-    DSMessageBox(QWidget *parent, const QString title=0);
+    PxMessageBox(QWidget *parent, const QString title=0);
 
-    virtual ~DSMessageBox();
+    virtual ~PxMessageBox();
 
     QMessageBox *mBox(); 
 
@@ -72,4 +72,4 @@ private:
 } // namespace dialogs
 } // namespace pv
 
-#endif // PXVIEW_PV_DSMESSAGEBOX_H
+#endif // PXVIEW_PV_PXMESSAGEBOX_H

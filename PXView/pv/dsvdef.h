@@ -257,35 +257,21 @@ struct sr_list_item {
 // samplingbar.cpp for time-base math: total_time = timebase * HDIVS / SR_SEC(1).
 #define SR_SEC(x)  ((uint64_t)(x) * 1000000000ULL)
 
-// Fork libsigrok DSO config keys not in upstream libsigrok. Used by
-// capturemanager.cpp (wait-for-upload) and storesession.cpp (max/min
-// timebase). Defined as 60050+ to avoid conflict with 60040-60049 DSO keys.
+// Fork libsigrok config keys not in upstream libsigrok. Used by
+// capturemanager.cpp (wait-for-upload). Defined as 60050+ to avoid conflict
+// with 60040-60049 DSO keys.
 #define SR_CONF_WAIT_UPLOAD    60050
-#define SR_CONF_MAX_TIMEBASE   60051
-#define SR_CONF_MIN_TIMEBASE   60052
-
-// Fork libsigrok DSO trigger config keys not in upstream libsigrok. Used by
-// session_service.cpp DSO trigger get/set paths. DSO mode is deprecated; values
-// defined as 60053+ to avoid conflict with other stubs.
-#define SR_CONF_TRIGGER_HOLDOFF  60053
-#define SR_CONF_TRIGGER_MARGIN   60054
-#define SR_CONF_TRIGGER_CHANNEL  60055
 
 // Fork libsigrok config keys not in upstream libsigrok. Used by
-// view_data_sync.cpp (actual samples / calibration) and mainwindow.cpp
-// (file version). Defined as 60056+ to avoid conflict with other stubs.
+// view_data_sync.cpp (actual samples) and mainwindow.cpp (file version).
+// Defined as 60056+ to avoid conflict with other stubs.
 #define SR_CONF_ACTUAL_SAMPLES   60056
-#define SR_CONF_CALI             60057
 #define SR_CONF_FILE_VERSION     60058
 
 // Fork libsigrok channel/zero config keys. Used by triggerdock.cpp
-// (total channel num), deviceoptions.cpp / deviceoptionsdock.cpp (zero/have_zero),
-// samplingbar.cpp (RLE support, max DSO samplerate).
+// (total channel num), samplingbar.cpp (RLE support).
 #define SR_CONF_TOTAL_CH_NUM       60062
-#define SR_CONF_ZERO               60063
-#define SR_CONF_HAVE_ZERO          60064
 #define SR_CONF_RLE_SUPPORT        60065
-#define SR_CONF_MAX_DSO_SAMPLERATE 60066
 
 // Fork libsigrok analog probe mapping config keys. Used by analogsignal.cpp
 // and probeoptions.cpp for analog channel unit/min/max mapping. Upstream
@@ -293,30 +279,6 @@ struct sr_list_item {
 #define SR_CONF_PROBE_MAP_UNIT   60059
 #define SR_CONF_PROBE_MAP_MIN    60060
 #define SR_CONF_PROBE_MAP_MAX    60061
-
-// Fork libsigrok DSO/zero calibration config keys. Used by calibration.cpp
-// (VGAIN/PREOFF/COMB_COMP), waitingdialog.cpp (ZERO_SET/ZERO_LOAD/ZERO_COMB),
-// fftoptions.cpp (MAX_DSO_SAMPLELIMITS). Defined as 60067+ to avoid conflict.
-#define SR_CONF_MAX_DSO_SAMPLELIMITS   60067
-#define SR_CONF_ZERO_SET               60068
-#define SR_CONF_ZERO_LOAD              60069
-#define SR_CONF_ZERO_COMB              60070
-#define SR_CONF_ZERO_COMB_FGAIN        60071
-#define SR_CONF_ZERO_DEFAULT           60072
-#define SR_CONF_PROBE_COMB_COMP        60073
-#define SR_CONF_PROBE_COMB_COMP_EN     60074
-#define SR_CONF_PROBE_VGAIN            60075
-#define SR_CONF_PROBE_VGAIN_DEFAULT    60076
-#define SR_CONF_PROBE_VGAIN_RANGE      60077
-#define SR_CONF_PROBE_PREOFF           60078
-#define SR_CONF_PROBE_PREOFF_MARGIN    60079
-
-// Fork libsigrok USB config key. Upstream libsigrok only exposes
-// SR_CONF_USB_SPEED / SR_CONF_USB30_SUPPORT. SR_CONF_USB is PXView-fork only.
-// (SR_CONF_STREAM / STREAM_BUFF / STREAM_MEM_BUFF / DISK_CACHE_ENABLE /
-// DISK_CACHE_PATH / HW_DEPTH / DEVICE_SESSIONS / USB_SPEED already exist
-// upstream — do NOT redefine.)
-#define SR_CONF_USB                 60088
 
 // Fork libsigrok misc config keys not in upstream libsigrok. Used by
 // probeoptions.cpp (PROBE_CONFIGS), deviceoptions.cpp (STATUS/CLOCK_TYPE/
@@ -441,20 +403,17 @@ struct sr_dev_mode {
     const char *acronym;
 };
 
-// --- Fork DSO SR_CONF_* keys (temporary, removed in Task 10 with DSO paths) ---
+// --- Fork Analog SR_CONF_* keys (temporary, removed by Task 4 migration) ---
 // These keys existed in PXView's fork libsigrok.h but are absent from upstream
 // libsigrok. Defined here as 60040+ (no conflict with 60001-60013/60020+
-// PXLogic extension keys) so DSO typed wrappers in DeviceAgent compile until
-// the DSO code paths are deleted in Task 10.
-#define SR_CONF_PROBE_VDIV        60040
-#define SR_CONF_PROBE_COUPLING    60041
+// PXLogic extension keys). DSO keys (PROBE_VDIV/PROBE_COUPLING/TRIGGER_VALUE)
+// removed; Analog scaling keys retained for Task 4 migration to DeviceAgent.
 #define SR_CONF_PROBE_OFFSET      60042
 #define SR_CONF_PROBE_HW_OFFSET   60043
 #define SR_CONF_PROBE_MAP_DEFAULT 60044
 #define SR_CONF_REF_MIN           60045
 #define SR_CONF_REF_MAX           60046
 #define SR_CONF_UNIT_BITS         60047
-#define SR_CONF_TRIGGER_VALUE     60048
 
 #define DESTROY_OBJECT(p) if((p)){delete (p); p = NULL;} 
 #define DESTROY_QT_OBJECT(p) if((p)){((p))->deleteLater(); p = NULL;}

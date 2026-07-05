@@ -38,7 +38,7 @@
 #include "../data/decoderstack.h"
 #include "../prop/binding/decoderoptions.h"
 #include "../data/decode/decoder.h"
-#include "../ui/dscombobox.h"
+#include "../ui/pxcombobox.h"
 #include "../view/logicsignal.h"
 #include "../sigsession.h"
 #include "../view/view.h"
@@ -56,7 +56,7 @@ namespace dialogs {
 
 
 DecoderOptionsDlg::DecoderOptionsDlg(QWidget *parent)
-:DSDialog(parent)
+:PxDialog(parent)
 {
     _cursor1 = 0;
     _cursor2 = 0;
@@ -93,7 +93,7 @@ void DecoderOptionsDlg::load_options(view::DecodeTrace *trace)
 
 void DecoderOptionsDlg::load_options_view()
 {   
-    DSDialog *dlg = this;   
+    PxDialog *dlg = this;   
 
     dlg->setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DECODER_OPTIONS), "Decoder Options"));   
 
@@ -123,8 +123,8 @@ void DecoderOptionsDlg::load_options_view()
     load_decoder_forms(container_panel);
  
     //Add region combobox
-    _start_comboBox = new DsComboBox(dlg);
-    _end_comboBox = new DsComboBox(dlg);
+    _start_comboBox = new PxComboBox(dlg);
+    _end_comboBox = new PxComboBox(dlg);
     _start_comboBox->addItem("Start");
     _end_comboBox->addItem("End"); 
     _start_comboBox->setMinimumContentsLength(7);
@@ -289,7 +289,7 @@ void DecoderOptionsDlg::load_decoder_forms(QWidget *container)
 }
  
 
-DsComboBox* DecoderOptionsDlg::create_probe_selector(
+PxComboBox* DecoderOptionsDlg::create_probe_selector(
     QWidget *parent, const data::decode::Decoder *dec,
 	const srd_channel *const pdch)
 {
@@ -301,7 +301,7 @@ DsComboBox* DecoderOptionsDlg::create_probe_selector(
 
     data::decode::Decoder *decoder = const_cast<data::decode::Decoder*>(dec);
 
-	DsComboBox *selector = new DsComboBox(parent);
+	PxComboBox *selector = new PxComboBox(parent);
     selector->addItem("-", QVariant::fromValue(-1));
 
     int dex = 0;
@@ -422,7 +422,7 @@ void DecoderOptionsDlg::create_decoder_form(
 	// Add the mandatory channels
 	for(l = decoder->channels; l; l = l->next) {
 		const struct srd_channel *const pdch = (struct srd_channel *)l->data;
-		DsComboBox *const combo = create_probe_selector(parent, dec, pdch);
+		PxComboBox *const combo = create_probe_selector(parent, dec, pdch);
 
         const char *desc_str = NULL;
         const char *lang_str = NULL;
@@ -450,7 +450,7 @@ void DecoderOptionsDlg::create_decoder_form(
 	// Add the optional channels
 	for(l = decoder->opt_channels; l; l = l->next) {
 		const struct srd_channel *const pdch = (struct srd_channel *)l->data;
-		DsComboBox *const combo = create_probe_selector(parent, dec, pdch);
+		PxComboBox *const combo = create_probe_selector(parent, dec, pdch);
 		
         const char *desc_str = NULL;
         const char *lang_str = NULL;

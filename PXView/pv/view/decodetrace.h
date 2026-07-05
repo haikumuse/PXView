@@ -30,14 +30,14 @@
 #include <list>
 #include <map>
 
-#include "../dialogs/dsdialog.h"
+#include "../dialogs/pxdialog.h"
 #include "../prop/binding/decoderoptions.h"
 #include "trace.h"
 
 struct srd_channel;
 struct srd_decoder;
 
-class DsComboBox;
+class PxComboBox;
 
 namespace pv {
 

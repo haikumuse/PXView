@@ -44,7 +44,7 @@
 #include "../ui/langresource.h"
 #include "../ui/msgbox.h"
 #include "../ui/toast.h"
-#include "dsmessagebox.h"
+#include "pxmessagebox.h"
 
 
 using namespace boost;
@@ -144,7 +144,7 @@ namespace pv {
 namespace dialogs {
 
 DeviceOptions::DeviceOptions(SigSession *session, QWidget *parent) 
-  : DSDialog(parent)
+  : PxDialog(parent)
   , _session(session)
   , _device_options_binding(session)
 {
@@ -347,7 +347,19 @@ void DeviceOptions::logic_probes(QVBoxLayout &layout) {
 
   int row1 = 0;
   int row2 = 0;
+  // vld_ch_num: "当前 channel_mode 下可启用的最大通道数"。
+  //  - PXLogic: 由 SR_CONF_VLD_CH_NUM 返回（不同 channel_mode 对应不同硬件
+  //    资源上限，如 32ch@250MHz / 16ch@500MHz / 8ch@1GHz）。
+  //  - 上游驱动 (demo/fx2lafw/...): 不支持此键 — 回退到 sdi->channels 总数，
+  //    表示"可启用全部通道"，cur_ch_num 永远 ≤ vld_ch_num，禁用逻辑不触发。
+  //    比用 INT_MAX 魔法值更符合"驱动已知通道总数"的事实。
   int vld_ch_num = 0;
+  if (!_device_agent->get_config_int16(SR_CONF_VLD_CH_NUM, vld_ch_num) ||
+      vld_ch_num <= 0) {
+    vld_ch_num = 0;
+    for (const GSList *l = _device_agent->get_channels(); l; l = l->next)
+      vld_ch_num++;
+  }
   int cur_ch_num = 0;
   int contentHeight = 0;
 
@@ -543,25 +555,18 @@ void DeviceOptions::enable_all_probes() {
 void DeviceOptions::disable_all_probes() { set_all_probes(false); }
 
 void DeviceOptions::zero_adj() {
+  // DSO zero calibration removed: SR_CONF_ZERO fork key was deleted
+  // (DSO mode deprecated, DSCope hardware dropped). No-op stub kept so the
+  // signal-slot connection from the calibration button compiles.
   using namespace Qt;
   QDialog::accept();
-
-  QString strMsg(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_AUTO_CALIB_START),
-                     "Auto Calibration program will be started. Don't connect "
-                     "any probes. \nIt can take a while!"));
-  bool bRet = MsgBox::Confirm(strMsg);
-
-  if (bRet) {
-    _device_agent->set_config_bool(SR_CONF_ZERO, true);
-  } else {
-    _device_agent->set_config_bool(SR_CONF_ZERO, false);
-  }
 }
 
 void DeviceOptions::on_calibration() {
+  // DSO manual calibration removed: SR_CONF_CALI fork key was deleted.
+  // No-op stub kept so the signal-slot connection compiles.
   using namespace Qt;
   QDialog::accept();
-  _device_agent->set_config_bool(SR_CONF_CALI, true);
 }
 
 void DeviceOptions::mode_check_timeout() {
@@ -842,44 +847,10 @@ QString DeviceOptions::dynamic_widget(QLayout *lay) {
     // tr
     return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CHANNEL), "Channel");
   } else if (mode == DSO) {
-    bool have_zero;
-
-    if (_device_agent->get_config_bool(SR_CONF_HAVE_ZERO, have_zero)) {
-      QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
-      if (!grid) return QString();
-      assert(grid);
-
-      QFont font = theme_font_dialog();
-
-      if (have_zero) {
-        auto config_button =
-            new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AUTO_CALIBRATION),
-                                "Auto Calibration"),
-                            this);
-        config_button->setFont(font);
-        grid->addWidget(config_button, 0, 0, 1, 1);
-        connect(config_button, &QPushButton::clicked, this,
-                &DeviceOptions::zero_adj);
-
-        auto cali_button =
-            new QPushButton(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_MANUAL_CALIBRATION),
-                                "Manual Calibration"),
-                            this);
-        cali_button->setFont(font);
-        grid->addWidget(cali_button, 1, 0, 1, 1);
-        connect(cali_button, &QPushButton::clicked, this,
-                &DeviceOptions::on_calibration);
-
-        config_button->setFixedHeight(35);
-        cali_button->setFixedHeight(35);
-
-        _groupHeight2 = 135;
-        _dynamic_panel->setFixedHeight(_groupHeight2);
-
-        // tr
-        return L_S(STR_PAGE_DLG, S_ID(IDS_DLG_CALIBRATION), "Calibration");
-      }
-    }
+    // DSO calibration UI removed: SR_CONF_HAVE_ZERO fork key was deleted
+    // (DSO mode deprecated, DSCope hardware dropped). DSO mode shows no
+    // dynamic panel content.
+    (void)lay;
   } else if (mode == ANALOG) {
     QGridLayout *grid = dynamic_cast<QGridLayout *>(lay);
     if (!grid) return QString();

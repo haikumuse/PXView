@@ -21,7 +21,7 @@
  */
 
 #include "triggerdock.h"
-#include "../dialogs/dsmessagebox.h"
+#include "../dialogs/pxmessagebox.h"
 #include "../sigsession.h"
 #include "../view/view.h"
 
@@ -111,7 +111,7 @@ TriggerDock::TriggerDock(QWidget *parent, SigSession *session)
   _stages_label = new QLabel(_widget);
   _stages_label->setObjectName("dock_label");
   _stages_label->setDisabled(true);
-  stages_comboBox = new DsComboBox(_widget);
+  stages_comboBox = new PxComboBox(_widget);
 
   for (int i = 1; i <= TriggerStages; i++) {
     stages_comboBox->addItem(QString::number(i));
@@ -807,7 +807,7 @@ void TriggerDock::setup_adv_tab() {
       new QRegularExpressionValidator(value_rx, _stage_tabWidget);
 
   for (int i = 0; i < TriggerStages; i++) {
-    DsComboBox *_logic_comboBox = new DsComboBox(_stage_tabWidget);
+    PxComboBox *_logic_comboBox = new PxComboBox(_stage_tabWidget);
     _logic_comboBox->setObjectName("dock_content");
     _logic_comboBox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_OR), "Or"));
     _logic_comboBox->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_AND), "And"));
@@ -829,7 +829,7 @@ void TriggerDock::setup_adv_tab() {
     _count_spinBox->setRange(1, INT32_MAX);
     //_count_spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
     _count_spinBox_list.push_back(_count_spinBox);
-    DsComboBox *_inv0_comboBox = new DsComboBox(_stage_tabWidget);
+    PxComboBox *_inv0_comboBox = new PxComboBox(_stage_tabWidget);
     _inv0_comboBox->setObjectName("dock_content");
     // tr
     _inv0_comboBox->addItem("==");
@@ -846,7 +846,7 @@ void TriggerDock::setup_adv_tab() {
     _value1_lineEdit->setSizePolicy(QSizePolicy::Preferred,
                                     QSizePolicy::Preferred);
     _value1_lineEdit_list.push_back(_value1_lineEdit);
-    DsComboBox *_inv1_comboBox = new DsComboBox(_stage_tabWidget);
+    PxComboBox *_inv1_comboBox = new PxComboBox(_stage_tabWidget);
     _inv1_comboBox->setObjectName("dock_content");
     // tr
     _inv1_comboBox->addItem("==");
@@ -1024,7 +1024,7 @@ void TriggerDock::setup_adv_tab() {
 
   _serial_data_label = new QLabel(_serial_groupBox);
   _serial_data_label->setObjectName("dock_label");
-  _serial_data_comboBox = new DsComboBox(_serial_groupBox);
+  _serial_data_comboBox = new PxComboBox(_serial_groupBox);
   _serial_data_comboBox->setObjectName("dock_content");
 
   for (int i = 0; i < _cur_ch_num; i++) {
@@ -1077,7 +1077,7 @@ void TriggerDock::setup_adv_tab() {
   connect(hex_ckbox, &QCheckBox::clicked, this,
           &TriggerDock::on_hex_checkbox_click);
 
-  _serial_bits_comboBox = new DsComboBox(_serial_groupBox);
+  _serial_bits_comboBox = new PxComboBox(_serial_groupBox);
   _serial_bits_comboBox->setObjectName("dock_content");
 
   for (int i = 1; i <= 16; i++) {
@@ -1305,7 +1305,7 @@ void TriggerDock::try_commit_trigger() {
     }
 
     if (app.appOptions.warnofMultiTrig && num > 1) {
-      dialogs::DSMessageBox msg(this);
+      dialogs::PxMessageBox msg(this);
       msg.mBox()->setText(L_S(STR_PAGE_MSG, S_ID(IDS_MSG_TRIGGER), "Trigger"));
       msg.mBox()->setInformativeText(
           L_S(STR_PAGE_MSG, S_ID(IDS_MSG_SET_TRI_MULTI_CHANNEL),

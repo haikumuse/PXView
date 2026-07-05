@@ -42,7 +42,7 @@ namespace pv {
 namespace dialogs {
 
 FftOptions::FftOptions(QWidget *parent, SigSession *session) :
-    DSDialog(parent),
+    PxDialog(parent),
     _session(session),
     _button_box(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
         Qt::Horizontal, this)
@@ -60,14 +60,14 @@ FftOptions::FftOptions(QWidget *parent, SigSession *session) :
     _layout = NULL;
 
     _en_checkbox = new QCheckBox(this);
-    _len_combobox = new DsComboBox(this);
-    _interval_combobox = new DsComboBox(this);
-    _ch_combobox = new DsComboBox(this);
-    _window_combobox = new DsComboBox(this);
+    _len_combobox = new PxComboBox(this);
+    _interval_combobox = new PxComboBox(this);
+    _ch_combobox = new PxComboBox(this);
+    _window_combobox = new PxComboBox(this);
     _dc_checkbox = new QCheckBox(this);
     _dc_checkbox->setChecked(true);
-    _view_combobox = new DsComboBox(this);
-    _dbv_combobox = new DsComboBox(this);
+    _view_combobox = new PxComboBox(this);
+    _dbv_combobox = new PxComboBox(this);
  
     // setup _ch_combobox
     for(auto m : _session->get_signal_models()) {
@@ -77,14 +77,11 @@ FftOptions::FftOptions(QWidget *parent, SigSession *session) :
     }
 
     // setup _window_combobox _len_combobox
-    _sample_limit = 0;
-    
-    if (_session->get_device()->get_config_uint64(SR_CONF_MAX_DSO_SAMPLELIMITS, _sample_limit)) {
-        _sample_limit = _sample_limit * 0.5;
-    }
-    else {
-        pxv_err("ERROR: config_get SR_CONF_MAX_DSO_SAMPLELIMITS failed.");
-    }
+    // SR_CONF_MAX_DSO_SAMPLELIMITS was a fork DSO stub key (deleted from
+    // dsvdef.h) with no driver backend. Default to a sensible upper bound
+    // (1 MSa) so the FFT length combo box still populates.
+    _sample_limit = SR_MHZ(1);
+    _sample_limit = _sample_limit * 0.5;
 
     std::vector<QString> windows;
     std::vector<uint64_t> length;

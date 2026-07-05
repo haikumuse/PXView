@@ -288,6 +288,28 @@ void ViewSignalSync::signals_changed(const Trace *eventTrace) {
       decoder_traces.push_back(t);
   }
 
+  // 兜底：为未分到 signal_groups 的 TIME_VIEW 通道（如 ANALOG/DSO/Lissajous/
+  // Math，在 demo 这种 LOGIC+ANALOG 混合设备上常见）补 view_index。
+  // compute_signal_groups() 只处理纯 LOGIC 模式下的 LOGIC + DECODER trace；
+  // 没有 group 的 trace 保留构造默认 _view_index=-1，导致 signals_changed 后
+  // 在 time_traces 里仍为 -1，被排除在布局之外，UI 看不到这些通道。
+  // 这里在分组流程之后，对 time_traces 里 view_index 仍为 -1 的可见 trace
+  // 按当前最大 view_index + 1 顺序补号，确保所有 time_traces 都有有效的
+  // view_index 进入后续布局循环。
+  {
+    int max_view_index = -1;
+    for (auto t : time_traces) {
+      if (t->get_view_index() > max_view_index)
+        max_view_index = t->get_view_index();
+    }
+    int next_index = max_view_index + 1;
+    for (auto t : time_traces) {
+      if (t->get_view_index() < 0 && t->enabled()) {
+        t->set_view_index(next_index++);
+      }
+    }
+  }
+
   if (!fft_traces.empty()) {
     if (!_view->_fft_viewport->isVisible()) {
       _view->_fft_viewport->setVisible(true);
@@ -357,12 +379,33 @@ void ViewSignalSync::signals_changed(const Trace *eventTrace) {
     double next_v_offset = actualMargin;
 
     if (mode == LOGIC) {
+      // 保留 time_traces 中所有非 LOGIC、非 DECODER 的 trace（典型如 ANALOG/
+      // DSO/Lissajous/Math）。在 demo 这类 LOGIC+ANALOG 混合设备上，ANALOG
+      // 通道也必须进入 time_traces 布局循环，否则 v_offset 保持构造默认
+      // INT_MAX，UI 看不到该通道。
+      std::vector<Trace *> non_logic_traces;
+
+      for (auto t : time_traces) {
+        if (t->get_type() != SR_CHANNEL_LOGIC &&
+            t->get_type() != SR_CHANNEL_DECODER) {
+          non_logic_traces.push_back(t);
+        }
+      }
+
       time_traces.clear();
 
       std::vector<Trace *> all_traces;
 
       for (auto t : logic_traces) {
         all_traces.push_back(t);
+      }
+
+      // 非 LOGIC/DECODER 的 time_trace 也按 view_index 排序加入 all_traces
+      for (auto t : non_logic_traces) {
+        if (t->get_view_index() != -1)
+          all_traces.push_back(t);
+        else
+          time_traces.push_back(t);
       }
 
       for (auto t : decoder_traces) {

@@ -269,31 +269,10 @@ view::dslDial* MathStack::get_vDial()
     QVector<uint64_t> vValue;
     QVector<QString> vUnit;
 
-    // Query the device for the list of available vdivs. Both input channels
-    // share the same vdiv list (they are DSO channels on the same device), so
-    // we can use either channel's list. We fetch it from the device config.
+    // SR_CONF_PROBE_VDIV fork DSO key deleted; DSO mode is deprecated and the
+    // vdiv list is no longer queried from the device. dial_values stays empty,
+    // so the math dial falls back to the full built-in vDialValue[] range.
     QVector<uint64_t> dial_values;
-    if (_session) {
-        DeviceAgent *dev = _session->get_device();
-        if (dev) {
-            GVariant *gvar_list = dev->get_config_list(NULL, SR_CONF_PROBE_VDIV);
-            if (gvar_list != NULL) {
-                GVariant *gvar_list_vdivs = g_variant_lookup_value(gvar_list,
-                        "vdivs", G_VARIANT_TYPE("at"));
-                if (gvar_list_vdivs != NULL) {
-                    GVariant *gvar;
-                    GVariantIter iter;
-                    g_variant_iter_init(&iter, gvar_list_vdivs);
-                    while (NULL != (gvar = g_variant_iter_next_value(&iter))) {
-                        dial_values.push_back(g_variant_get_uint64(gvar));
-                        g_variant_unref(gvar);
-                    }
-                    g_variant_unref(gvar_list_vdivs);
-                }
-                g_variant_unref(gvar_list);
-            }
-        }
-    }
 
     uint64_t dial1_min = 0, dial1_max = 0;
     uint64_t dial2_min = 0, dial2_max = 0;

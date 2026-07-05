@@ -33,7 +33,7 @@
 #include "keywordlineedit.h"
 #include "protocolitemlayer.h"
 #include "searchcombobox.h"
-#include "../ui/dscombobox.h"
+#include "../ui/pxcombobox.h"
 #include "../view/decodermodel.h"
 #include <QDockWidget>
 #include <QHBoxLayout>
@@ -199,7 +199,7 @@ private:
   std::vector<DecoderInfoItem *> _decoderInfoList;
   KeywordLineEdit *_pro_keyword_edit;
   QString _selected_protocol_id;
-  DsComboBox *_pro_type_combo;
+  PxComboBox *_pro_type_combo;
 
   mutable std::mutex _search_mutex;
   bool _search_edited;

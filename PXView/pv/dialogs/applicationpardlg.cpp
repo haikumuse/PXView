@@ -23,7 +23,7 @@
 #include "applicationpardlg.h"
 #include <QPainter>
 #include "../ui/widgetinspector.h"
-#include "dsdialog.h"
+#include "pxdialog.h"
 #include <QApplication>
 #include <QCheckBox>
 #include <QColorDialog>
@@ -71,7 +71,7 @@
 #include "../config/shortcutdefs.h"
 #include "../log.h"
 #include "../sigsession.h"
-#include "../ui/dscombobox.h"
+#include "../ui/pxcombobox.h"
 #include "../ui/langresource.h"
 #include "../ui/uimanager.h"
 
@@ -534,7 +534,7 @@ QWidget *ApplicationParamDlg::createStylePage() {
   QHBoxLayout *presetLay = new QHBoxLayout();
   QLabel *presetLbl = new QLabel(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_PRESET), "Preset Theme:"));
-  _preset_combo = new DsComboBox();
+  _preset_combo = new PxComboBox();
   _preset_combo->addItem(
       L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_CUSTOM), "Custom"), "");
   _preset_combo->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_STYLE_DARK), "Dark"),
@@ -1744,7 +1744,7 @@ void ApplicationParamDlg::saveStyleOptions() {
 }
 
 bool ApplicationParamDlg::ShowDlg(QWidget *parent) {
-  DSDialog dlg(parent, true, false);
+  PxDialog dlg(parent, true, false);
   dlg.setTitle(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_SETTINGS), "Settings"));
   dlg.setMinimumSize(520, 420);
 

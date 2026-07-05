@@ -69,7 +69,6 @@ class SamplingBar;
 }
 
 namespace dialogs {
-class Calibration;
 class Lissajous;
 } // namespace dialogs
 
@@ -365,7 +364,6 @@ public:
 
   int get_cursor_index_by_key(uint64_t key);
 
-  void check_calibration();
   void rebuild_signals();
   void rebuild_signals_from_config(const data::SignalConfig &config);
 
@@ -590,8 +588,6 @@ public slots:
   void data_updated();
   void update_scale_offset();
   void show_region(uint64_t start, uint64_t end, bool keep);
-  // -- calibration
-  void hide_calibration();
   void status_clear();
   void repeat_unshow();
 
@@ -651,7 +647,6 @@ private slots:
   void on_measure_updated();
 
   void splitterMoved(int pos, int index);
-  void on_calibration_closed();
   void on_header_collapse_changed(bool collapsed);
 
   // -- glitch filter popup internal handlers (Task 7)
@@ -797,7 +792,6 @@ private:
 
   // ---- Misc ----
   QPoint _hover_point;
-  dialogs::Calibration *_cali;
 
   bool _dso_auto;
   bool _show_lissajous;

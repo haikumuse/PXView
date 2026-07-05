@@ -43,8 +43,8 @@ class MainWindow;
 class WinNativeWidget;
 
 namespace dialogs {
-class DSMessageBox;
-class DSDialog;
+class PxMessageBox;
+class PxDialog;
 }
  
 struct Point

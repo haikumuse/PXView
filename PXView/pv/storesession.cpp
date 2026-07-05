@@ -643,14 +643,6 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             sprintf(meta, "hDiv = %" PRIu64 "\n", tmp_u64); str += meta;
         }
 
-        if (_session->get_device()->get_config_uint64(SR_CONF_MAX_TIMEBASE, tmp_u64)) {
-            sprintf(meta, "hDiv max = %" PRIu64 "\n", tmp_u64); str += meta;
-        }
-
-        if (_session->get_device()->get_config_uint64(SR_CONF_MIN_TIMEBASE, tmp_u64)) {
-            sprintf(meta, "hDiv min = %" PRIu64 "\n", tmp_u64); str += meta;
-        }
- 
         if (_session->get_device()->get_config_byte(SR_CONF_UNIT_BITS, tmp_u8)) {
             sprintf(meta, "bits = %d\n", tmp_u8); str += meta;
         }
