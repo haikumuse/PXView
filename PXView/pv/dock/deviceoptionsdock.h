@@ -106,7 +106,8 @@ private slots:
 private:
   std::vector<QCheckBox *> _probes_checkBox_list;
   QTimer _mode_check_timer;
-  int _opt_mode;
+  /* Task 10/Phase 3: OPERATION_MODE config_get returns a string now. */
+  QString _opt_mode;
   QWidget *_scroll_panel;
   QWidget *_container_panel;
   QVBoxLayout *_container_lay;

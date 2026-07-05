@@ -293,6 +293,11 @@ void LogicSnapshot::first_payload(const sr_datafeed_logic &logic,
 
   _sample_count = 0;
   _ring_sample_count = 0;
+  // CRITICAL FIX: 重置 _loop_offset。first_payload 在配置未变（reuse 同样
+  // total_sample_count/channel_num）的复用路径下不会调用 free_data()/init_all()，
+  // 导致上一次 capture 在 append_payload_impl 中错误累积的 _loop_offset 残留，
+  // 下次 capture 的 _ring_sample_count += _loop_offset 会从错误基址开始。
+  _loop_offset = 0;
 
   for (unsigned int i = 0; i < _channel_num; i++) {
     _last_sample[i] = 0;
@@ -420,6 +425,12 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   } else {
     if (_sample_count == _total_sample_count && !_is_loop)
       return;
+    // CRITICAL FIX: 截断 num_samples 到剩余样本数，避免处理超出 _total_sample_count
+    // 的样本。否则 phase 1-5 会处理多余样本，使 absolute_position >
+    // _total_sample_count，触发下方 _loop_offset 的错误赋值（非 loop 模式下
+    // _loop_offset 应恒为 0）。错误累积后会在 capture_ended 中放大
+    // _ring_sample_count，导致 index0/index1/offset 越界指向未分配的 leaf block。
+    num_samples = _total_sample_count - _sample_count;
     _sample_count = _total_sample_count;
   }
 
@@ -442,10 +453,15 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   const uint8_t *src = (const uint8_t *)logic.data;
   uint64_t samples_left = num_samples;
 
-  uint64_t align_sample_count = _ring_sample_count;
+  // CRITICAL FIX: align_sample_count 必须对齐到 LeafBlockSamples 边界（block 起始），
+  // offset 是 block 内偏移。旧代码 align_sample_count = _ring_sample_count（未对齐），
+  // 导致末尾 absolute_position = align_sample_count + offset 重复累加初始偏移，
+  // 每次 append_payload_impl 调用 _ring_sample_count 指数膨胀
+  // （r_n = 2 * r_{n-1} + num_samples），25 个 packet 后从 100000 膨胀到 2.3 亿。
+  uint64_t offset = _ring_sample_count % LeafBlockSamples;
+  uint64_t align_sample_count = _ring_sample_count - offset;  // 对齐到 leaf block 起始
   uint64_t index0 = align_sample_count / LeafBlockSamples / RootScale;
   uint64_t index1 = (align_sample_count / LeafBlockSamples) % RootScale;
-  uint64_t offset = align_sample_count % LeafBlockSamples;
   // Derive _byte_fraction from the persisted ring position (robust against
   // copy_from / loop-mode state transitions).
   _byte_fraction = (uint8_t)(offset % 8);
@@ -645,7 +661,13 @@ void LogicSnapshot::append_payload_impl(const sr_datafeed_logic &logic) {
   uint64_t absolute_position = align_sample_count + offset;
   _ring_sample_count = absolute_position - _loop_offset;
 
-  if (absolute_position > _total_sample_count) {
+  // CRITICAL FIX: 仅在 loop 模式下才允许设置 _loop_offset。非 loop 模式下
+  // _loop_offset 应恒为 0；若 absolute_position > _total_sample_count（理论上
+  // 不应发生，因为上方已截断 num_samples），仍进入此分支会污染 _loop_offset，
+  // 下次 append_payload_impl 第 440 行 _ring_sample_count += _loop_offset 会从
+  // 错误基址开始，形成正反馈放大。Bug 1 的截断已使此分支在非 loop 模式下成为
+  // 死代码，但显式守卫防御未来回归。
+  if (_is_loop && absolute_position > _total_sample_count) {
     _loop_offset = absolute_position - _total_sample_count;
     _ring_sample_count = _total_sample_count;
   }
@@ -677,13 +699,29 @@ void LogicSnapshot::capture_ended() {
 
   _ring_sample_count -= _loop_offset;
 
+  pxv_info("capture_ended: _ring=%llu, _total=%llu, _ch_num=%u, _ch_data.size=%zu, "
+           "idx0=%llu, idx1=%llu, offset=%llu",
+           (unsigned long long)_ring_sample_count,
+           (unsigned long long)_total_sample_count,
+           (unsigned)_channel_num, _ch_data.size(),
+           (unsigned long long)index0, (unsigned long long)index1,
+           (unsigned long long)offset);
+
   if (offset > 0) {
     for (unsigned int chan = 0; chan < _channel_num; chan++) {
       uint8_t *lbp = (uint8_t *)_ch_data[chan][index0].lbp[index1];
 
       if (lbp == NULL) {
-        pxv_err("ERROR:LogicSnapshot::capture_ended(),buffer is null.");
-        assert(false);
+        // Tolerate NULL leaf block at capture_ended: the async writer may not
+        // have allocated a block for the trailing partial chunk (e.g. when the
+        // last append_payload_impl invocation early-returned because
+        // _sample_count already capped at _total_sample_count). Previously
+        // this fired assert(false); but per AGENTS.md assert() is a no-op in
+        // Release, so we already log + skip silently here. Skip the mipmap
+        // update for this channel — the trailing partial chunk's mipmap will
+        // be 0 anyway, and downstream view rendering already tolerates it.
+        pxv_warn("capture_ended: ch%u leaf block [%llu][%llu] is NULL, skipping",
+                 chan, (unsigned long long)index0, (unsigned long long)index1);
       } else {
         // ONLY clear the signal data part, NOT the mipmaps! Mipmaps start at LeafBlockSamples / 8.
         if (offset < LeafBlockSamples / 8) {

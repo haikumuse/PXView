@@ -239,13 +239,9 @@ struct sr_datafeed_dso {
 #define TriggerProbes       16
 #define DS_MAX_TRIG_PERCENT 100
 
-// Fork libsigrok sr_list_item struct. Used by deviceoptions.cpp /
-// deviceoptionsdock.cpp to iterate channel mode lists returned by
-// SR_CONF_CHANNEL_MODE config_list. Array terminated by entry with id < 0.
-struct sr_list_item {
-    int id;
-    const char *name;
-};
+// Task 10.8: struct sr_list_item deleted — config_list now returns standard
+// GVariant string arrays via g_variant_new_strv. View layer reads via
+// g_variant_get_strv instead of casting uint64 to sr_list_item*.
 
 // Fork libsigrok DSO trigger source flag. DSO_TRIGGER_AUTO = auto-trigger
 // (no external trigger). Used by capturemanager.cpp / viewport_painter.cpp /

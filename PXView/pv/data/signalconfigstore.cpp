@@ -67,8 +67,8 @@ QJsonObject SignalConfigStore::signal_config_to_json() const {
 
 void SignalConfigStore::signal_config_from_json(const QJsonObject &obj) {
   _signal_config.work_mode = obj["work_mode"].toInt();
-  _signal_config.operation_mode = obj["operation_mode"].toInt();
-  _signal_config.channel_mode = obj["channel_mode"].toInt();
+  _signal_config.operation_mode = obj["operation_mode"].toString();
+  _signal_config.channel_mode = obj["channel_mode"].toString();
   _signal_config.is_demo = obj["is_demo"].toBool();
   _signal_config.demo_operation_mode = obj["demo_operation_mode"].toString();
 
@@ -145,13 +145,10 @@ void SignalConfigStore::save_signal_config(
 
   _signal_config.work_mode = agent->get_work_mode();
 
-  int opt_mode;
-  if (agent->get_config_int16(SR_CONF_OPERATION_MODE, opt_mode))
-    _signal_config.operation_mode = opt_mode;
-
-  int ch_mode;
-  if (agent->get_config_int16(SR_CONF_CHANNEL_MODE, ch_mode))
-    _signal_config.channel_mode = ch_mode;
+  /* Task 10/Phase 3: read operation_mode/channel_mode as strings (driver
+   * config_get now returns g_variant_new_string). */
+  agent->get_config_string(SR_CONF_OPERATION_MODE, _signal_config.operation_mode);
+  agent->get_config_string(SR_CONF_CHANNEL_MODE, _signal_config.channel_mode);
 
   _signal_config.is_demo = agent->is_demo();
 
@@ -272,19 +269,23 @@ void SignalConfigStore::apply_signal_config() {
     return;
   }
 
-  pxv_info("SignalConfigStore::apply_signal_config() work_mode=%d op_mode=%d "
-           "ch_mode=%d",
-           _signal_config.work_mode, _signal_config.operation_mode,
-           _signal_config.channel_mode);
+  pxv_info("SignalConfigStore::apply_signal_config() work_mode=%d op_mode=%s "
+           "ch_mode=%s",
+           _signal_config.work_mode,
+           _signal_config.operation_mode.toUtf8().constData(),
+           _signal_config.channel_mode.toUtf8().constData());
 
   int cur_mode = agent->get_work_mode();
   if (_signal_config.work_mode != cur_mode) {
     agent->set_config_int16(SR_CONF_DEVICE_MODE, _signal_config.work_mode);
   }
 
-  agent->set_config_int16(SR_CONF_OPERATION_MODE,
-                          _signal_config.operation_mode);
-  agent->set_config_int16(SR_CONF_CHANNEL_MODE, _signal_config.channel_mode);
+  /* Task 10/Phase 3: write operation_mode/channel_mode as strings (driver
+   * config_set uses std_str_idx). */
+  agent->set_config_string(SR_CONF_OPERATION_MODE,
+                          _signal_config.operation_mode.toUtf8().constData());
+  agent->set_config_string(SR_CONF_CHANNEL_MODE,
+                          _signal_config.channel_mode.toUtf8().constData());
 
   if (_signal_config.is_demo && !_signal_config.demo_operation_mode.isEmpty()) {
     agent->set_config_string(

@@ -28,6 +28,7 @@
 #include <libsigrok/libsigrok.h>
 #include <QString>
 #include <QVector>
+#include <thread>
 #include <vector>
 
 #include "dsvdef.h"
@@ -54,10 +55,17 @@ class IDeviceAgentCallback
  *      which finds the SDI by handle (index+1), opens it via sr_dev_open,
  *      creates sr_session, adds the device, and registers the datafeed
  *      callback.
- *   3. CaptureManager::exec_capture() calls start() → sr_session_start.
- *   4. CaptureManager::action_stop_capture() calls stop() → sr_session_stop.
+ *   3. CaptureManager::exec_capture() calls start() → sr_session_start +
+ *      spawns _session_thread running sr_session_run() (blocks until the
+ *      session stops). This mirrors the fork libsigrok collect_thread.
+ *      Upstream libsigrok 0.6.0's sr_session_start() registers event
+ *      sources but does NOT pump the GLib main context — without a thread
+ *      running g_main_loop, source callbacks (e.g. demo's prepare_data
+ *      timer) never fire and no SR_DF_LOGIC packets are emitted.
+ *   4. CaptureManager::action_stop_capture() calls stop() → sr_session_stop
+ *      (signals main loop to quit) + joins _session_thread.
  *   5. SigSession::set_device() calls release() before opening a new device,
- *      which destroys the session and closes the device.
+ *      which stops the thread, destroys the session and closes the device.
  *
  * The datafeed callback is injected via set_datafeed_callback() by
  * SessionStateContext (which owns the DataFeedParser).
@@ -230,6 +238,7 @@ public:
 private:
     void config_changed();
     struct sr_dev_inst* find_sdi_by_handle(ds_device_handle handle);
+    void stop_session_thread(); // join _session_thread if joinable
 
     ds_device_handle _dev_handle = NULL_HANDLE;
     int         _dev_type = 0;
@@ -245,6 +254,13 @@ private:
     // Datafeed callback (injected by SessionStateContext)
     sr_datafeed_callback _datafeed_cb = nullptr;
     void *_datafeed_cb_data = nullptr;
+
+    // Session run thread — pumps the GLib main loop so that event sources
+    // registered by sr_session_source_add() (e.g. demo's 100ms prepare_data
+    // timer) actually fire. Fork libsigrok did this internally via
+    // collect_thread/g_main_loop_run; upstream libsigrok 0.6.0 leaves it
+    // to the caller.
+    std::thread _session_thread;
 
     // Tracked devices: scanned (from sr_driver_scan) + file-loaded.
     std::vector<struct sr_dev_inst*> _scanned_sdi;

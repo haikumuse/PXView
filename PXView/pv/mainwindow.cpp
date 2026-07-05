@@ -1603,14 +1603,11 @@ bool MainWindow::load_config_from_json(QJsonDocument &doc, bool &haveDecoder) {
       // apply_signal_config 不会改变 device mode（仅应用 per-channel 字段）。
       auto &cfg = doc->signal_config_store()->get_signal_config();
       cfg.work_mode = _device_agent->get_work_mode();
-      int tmp_mode;
       // OPERATION_MODE/CHANNEL_MODE are PXLogic fork keys — only DSL/PXLogic
-      // devices implement them.
+      // devices implement them. Task 10/Phase 3: read as strings.
       if (_device_agent->is_dsl_device()) {
-        if (_device_agent->get_config_int16(SR_CONF_OPERATION_MODE, tmp_mode))
-          cfg.operation_mode = tmp_mode;
-        if (_device_agent->get_config_int16(SR_CONF_CHANNEL_MODE, tmp_mode))
-          cfg.channel_mode = tmp_mode;
+        _device_agent->get_config_string(SR_CONF_OPERATION_MODE, cfg.operation_mode);
+        _device_agent->get_config_string(SR_CONF_CHANNEL_MODE, cfg.channel_mode);
       }
       cfg.is_demo = _device_agent->is_demo();
       doc->apply_signal_config();

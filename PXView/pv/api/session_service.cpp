@@ -875,16 +875,23 @@ Result<int> SessionService::configure_and_start(
 
     // 5e. Set operation mode if specified
     if (!operation_mode.empty()) {
-        // Operation mode is a list-type config; try string first, then int16
+        /* Task 10/Phase 3: driver config_set uses std_str_idx and expects the
+         * full mode string ("Buffer Mode"/"Stream Mode"/"Internal Test").
+         * Try the raw input first (in case the client sent the full string),
+         * then retry with short-name → full-name mapping. The legacy int16
+         * fallback is removed because the driver no longer accepts int16. */
         if (!_device->set_config_string(SR_CONF_OPERATION_MODE, operation_mode.c_str())) {
-            // Some devices use int16 for operation mode
-            // Try common mappings: Buffer=0, Stream=1, InternalTest=2
-            int16_t mode_val = -1;
-            if (operation_mode == "Buffer" || operation_mode == "buffer") mode_val = 0;
-            else if (operation_mode == "Stream" || operation_mode == "stream") mode_val = 1;
-            else if (operation_mode == "Internal test" || operation_mode == "internal_test") mode_val = 2;
-            if (mode_val >= 0) {
-                _device->set_config_int16(SR_CONF_OPERATION_MODE, mode_val);
+            std::string full_name;
+            if (operation_mode == "Buffer" || operation_mode == "buffer")
+                full_name = "Buffer Mode";
+            else if (operation_mode == "Stream" || operation_mode == "stream")
+                full_name = "Stream Mode";
+            else if (operation_mode == "Internal test" ||
+                     operation_mode == "internal_test" ||
+                     operation_mode == "Internal Test")
+                full_name = "Internal Test";
+            if (!full_name.empty()) {
+                _device->set_config_string(SR_CONF_OPERATION_MODE, full_name.c_str());
             }
         }
     }

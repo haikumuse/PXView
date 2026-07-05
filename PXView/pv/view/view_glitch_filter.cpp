@@ -307,8 +307,10 @@ void ViewGlitchFilter::on_glitch_apply_requested(
 
 void ViewGlitchFilter::on_glitch_popup_closed() {
   _view->_preview_ranges.clear();
-  if (_view->_time_viewport)
+  if (_view->_time_viewport) {
     _view->_time_viewport->update(UpdateEventType::UPDATE_EV_GENERIC);
+    _view->_time_viewport->setFocus();
+  }
 }
 
 void ViewGlitchFilter::on_apply_batch_requested(

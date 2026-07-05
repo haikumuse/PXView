@@ -179,6 +179,11 @@ void DeviceAgent::release()
         if (sr_session_is_running(_sr_session)) {
             sr_session_stop(_sr_session);
         }
+        // Always join the worker thread BEFORE sr_session_destroy —
+        // the thread is blocked inside sr_session_run() which references
+        // the session object. Destroying the session underneath it would
+        // cause a use-after-free.
+        stop_session_thread();
         sr_session_destroy(_sr_session);
         _sr_session = nullptr;
     }
@@ -195,6 +200,13 @@ void DeviceAgent::release()
     _dev_type = 0;
     _is_new_device = false;
     _sr_ctx = nullptr;
+}
+
+void DeviceAgent::stop_session_thread()
+{
+    if (_session_thread.joinable()) {
+        _session_thread.join();
+    }
 }
 
 void DeviceAgent::update()
@@ -454,9 +466,21 @@ int DeviceAgent::get_hardware_operation_mode()
     if (is_compat_device())
         return -1;
 
-    int mode_val = 0;
-    if (get_config_int16(SR_CONF_OPERATION_MODE, mode_val))
-        return mode_val;
+    /* Task 10/Phase 3: driver config_get now returns the operation mode as
+     * a string ("Buffer Mode"/"Stream Mode"/"Internal Test"). Convert back
+     * to the LO_OP_* int value that callers (is_stream_mode / samplingbar)
+     * compare against. */
+    QString mode_str;
+    if (get_config_string(SR_CONF_OPERATION_MODE, mode_str)) {
+        if (mode_str == "Buffer Mode")
+            return LO_OP_BUFFER;
+        if (mode_str == "Stream Mode")
+            return LO_OP_STREAM;
+        if (mode_str == "Internal Test")
+            return LO_OP_INTEST;
+        pxv_warn("DeviceAgent::get_hardware_operation_mode: unknown mode '%s'",
+                 mode_str.toUtf8().constData());
+    }
     return -1;
 }
 
@@ -520,7 +544,31 @@ bool DeviceAgent::start()
         pxv_warn("%s", "DeviceAgent::start: no device/session");
         return false;
     }
-    return sr_session_start(_sr_session) == SR_OK;
+
+    // Defensive: a previous thread should have been joined in stop()/release().
+    // If one is somehow still alive, join it before starting a new run.
+    stop_session_thread();
+
+    if (sr_session_start(_sr_session) != SR_OK) {
+        pxv_err("DeviceAgent::start: sr_session_start failed");
+        return false;
+    }
+
+    // Upstream libsigrok 0.6.0's sr_session_start() only registers event
+    // sources (e.g. demo's 100ms prepare_data timer) — it does NOT pump the
+    // GLib main context. Fork libsigrok did the pumping internally via
+    // collect_thread/g_main_loop_run; upstream leaves it to the caller.
+    // Without a thread running g_main_loop, source callbacks never fire and
+    // no SR_DF_LOGIC packets are emitted (the demo device shows
+    // "Received SR_DF_HEADER" then hangs forever).
+    //
+    // Spawn a worker thread that blocks in sr_session_run() until
+    // sr_session_stop() causes the main loop to quit.
+    _session_thread = std::thread([this]() {
+        sr_session_run(_sr_session);
+    });
+
+    return true;
 }
 
 bool DeviceAgent::stop()
@@ -529,7 +577,16 @@ bool DeviceAgent::stop()
         pxv_warn("%s", "DeviceAgent::stop: no device/session");
         return false;
     }
-    return sr_session_stop(_sr_session) == SR_OK;
+
+    // Signal the session's main loop to quit. The worker thread will return
+    // from sr_session_run() shortly after.
+    if (sr_session_stop(_sr_session) != SR_OK) {
+        pxv_warn("%s", "DeviceAgent::stop: sr_session_stop failed");
+    }
+
+    // Join the worker thread so is_collecting() / start() see a clean state.
+    stop_session_thread();
+    return true;
 }
 
 bool DeviceAgent::is_collecting()
