@@ -3,7 +3,7 @@
 #-------------------------------------------------------------------------------
 include_directories(
    ./PXView
-   ./libsigrokstd/include
+   ./libsigrok/include
    ./libsigrokdecode
    ./common
 )

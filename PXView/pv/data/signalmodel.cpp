@@ -195,7 +195,7 @@ void SignalModel::set_probe_offset(uint16_t offset, struct sr_channel *probe) {
         }
     }
     // Fork libsigrok's sr_channel had a `zero_offset` field; upstream
-    // libsigrokstd does not. The hardware sync above (via set_config_uint16)
+    // libsigrok does not. The hardware sync above (via set_config_uint16)
     // is sufficient — model state is tracked in _zero_offset via
     // set_zero_offset().
 }
@@ -210,7 +210,7 @@ void SignalModel::set_probe_factor(uint64_t factor, struct sr_channel *probe) {
         }
     }
     // Fork libsigrok's sr_channel had a `vfactor` field; upstream
-    // libsigrokstd does not. Hardware sync above is sufficient — model state
+    // libsigrok does not. Hardware sync above is sufficient — model state
     // is tracked in _vfactor via set_vfactor().
     emit appearance_changed();
 }
@@ -251,7 +251,7 @@ void SignalModel::set_trigger_value(double value, struct sr_channel *probe) {
         }
     }
     // Fork libsigrok's sr_channel had a `trig_value` field; upstream
-    // libsigrokstd does not. Hardware sync above is sufficient — model state
+    // libsigrok does not. Hardware sync above is sufficient — model state
     // is tracked in _trig_value.
 }
 
@@ -269,7 +269,7 @@ void SignalModel::set_vertical_offset(double offset) {
     if (_vertical_offset == offset) return;
     _vertical_offset = offset;
     // Fork libsigrok's sr_channel had an `offset` field (uint16, vertical
-    // position). Upstream libsigrokstd does not expose this — model state is
+    // position). Upstream libsigrok does not expose this — model state is
     // tracked in _vertical_offset. Driver-side vertical position is set via
     // SR_CONF_PROBE_OFFSET (see set_zero_offset).
 }
@@ -323,7 +323,7 @@ void SignalModel::commit_to_device()
 
     // Fork libsigrok's sr_channel had extra fields (offset, zero_offset,
     // hw_offset, vdiv, vfactor, coupling, trig_value) that upstream
-    // libsigrokstd does not expose. Those are synced to the driver via the
+    // libsigrok does not expose. Those are synced to the driver via the
     // DeviceAgent set_config_* calls below — model state lives in the
     // _vertical_offset / _zero_offset / _hw_offset / _vdiv / _vfactor /
     // _coupling / _trig_value fields on this object.

@@ -702,7 +702,7 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             str += meta;
         }
 
-        // Fork sr_channel.trigger field removed in upstream libsigrokstd.
+        // Fork sr_channel.trigger field removed in upstream libsigrok.
         // Trigger config is now in Core TriggerConfig (SigSession::_trigger_config),
         // not per-channel. Skip trigger string write — DSO mode is deprecated.
 
@@ -720,7 +720,7 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
             str += meta;
             // Fork sr_channel.coupling/vdiv/vfactor/hw_offset/trig_value removed
-            // in upstream libsigrokstd — read from matched SignalModel instead.
+            // in upstream libsigrok — read from matched SignalModel instead.
             int coupling = matched_model ? matched_model->coupling() : 0;
             double vdiv = matched_model ? matched_model->vdiv() : 0;
             double vfactor = matched_model ? matched_model->vfactor() : 1;
@@ -810,7 +810,7 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             sprintf(meta, " enable%d = %d\n", probecnt, probe->enabled);
             str += meta;
             // Fork sr_channel.coupling/vdiv/hw_offset removed in upstream
-            // libsigrokstd — read from matched SignalModel instead.
+            // libsigrok — read from matched SignalModel instead.
             int coupling = matched_model ? matched_model->coupling() : 0;
             double vdiv = matched_model ? matched_model->vdiv() : 0;
             double hw_offset = matched_model ? matched_model->hw_offset() : 0;
@@ -821,7 +821,7 @@ bool StoreSession::meta_gen(data::Snapshot *snapshot, std::string &str)
             sprintf(meta, " vOffset%d = %d\n", probecnt, (int)hw_offset);
             str += meta;
             // Fork sr_channel.map_unit/map_min/map_max removed in upstream
-            // libsigrokstd. Analog mapping UI is being deprecated — stub defaults.
+            // libsigrok. Analog mapping UI is being deprecated — stub defaults.
             sprintf(meta, " mapUnit%d = %s\n", probecnt, "");
             str += meta;
             sprintf(meta, " mapMax%d = %lf\n", probecnt, 0.0);
@@ -934,7 +934,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     }
 
     // Fork sr_datafeed_packet.bExportOriginalData field removed in upstream
-    // libsigrokstd — "export original data" flag is no longer carried per-packet.
+    // libsigrok — "export original data" flag is no longer carried per-packet.
     // AppConfig::appOptions.originalData is still respected by other paths.
 
     data::LogicSnapshot *logic_snapshot = NULL;
@@ -1056,7 +1056,7 @@ void StoreSession::export_exec(data::Snapshot *snapshot)
     meta.config = g_slist_append(meta.config, src);
 
     // Fork sr_datafeed_packet.status / bExportOriginalData fields removed in
-    // upstream libsigrokstd — only type and payload remain.
+    // upstream libsigrok — only type and payload remain.
     p.type = SR_DF_META;
     p.payload = &meta;
     sr_output_send(output, &p, &data_out);

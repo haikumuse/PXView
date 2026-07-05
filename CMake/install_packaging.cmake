@@ -82,29 +82,6 @@ endif()
 #= Installation
 #-------------------------------------------------------------------------------
 
-# Crash report symbolication tool (Windows only). addr2line.exe from mingw
-# binutils translates runtime addresses into function/file:line using the
-# DWARF debug info embedded in PXView.exe — dbghelp cannot read DWARF, so
-# this is the only way to symbolicate MinGW-built binaries on Windows.
-if(WIN32)
-	find_program(ADDR2LINE_EXE
-		NAMES addr2line.exe addr2line
-		HINTS
-			"$ENV{MSYSTEM_PREFIX}/bin"
-			"$ENV{MINGW_PREFIX}/bin"
-			"D:/msys64/mingw64/bin"
-			"C:/msys64/mingw64/bin"
-		PATH_SUFFIXES bin
-	)
-	if(ADDR2LINE_EXE)
-		message(STATUS "addr2line found: ${ADDR2LINE_EXE}")
-		install(PROGRAMS "${ADDR2LINE_EXE}" DESTINATION bin RENAME addr2line.exe)
-	else()
-		message(WARNING "addr2line.exe not found — crash report symbolication disabled. "
-				"Install mingw binutils or copy addr2line.exe to bin/ manually.")
-	endif()
-endif()
-
 # Install the executable.
 if(APPLE)
     install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION .)
@@ -118,16 +95,55 @@ else()
     install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 endif()
 
-# Install libsigrokstd shared library (upstream libsigrok 0.6.0 as DLL/SO/dylib).
-# Windows: libsigrokstd.dll -> bin/ (alongside PXView.exe so the loader finds it)
-# Linux:   libsigrokstd.so  -> lib/
-# macOS:   libsigrokstd.dylib -> lib/ (Framework bundling handled separately if needed)
+# Install libsigrok shared library (upstream libsigrok 0.6.0 as DLL/SO/dylib).
+# Windows: libsigrok.dll -> bin/ (alongside PXView.exe so the loader finds it)
+# Linux:   libsigrok.so  -> lib/
+# macOS:   libsigrok.dylib -> lib/ (Framework bundling handled separately if needed)
 # Windows .dll.a import library -> lib/ (development only, not required at runtime)
-install(TARGETS libsigrokstd
+install(TARGETS libsigrok
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
+
+# Install sigrok firmware files (redistributable, from git submodules).
+# Sources (see sigrok-firmware/README and sigrok-firmware-fx2lafw/README):
+#   - asix-sigma + sysclk-lwla: sigrok-firmware submodule (vendor permits redistribution)
+#   - fx2lafw: sigrok-firmware-fx2lafw submodule, built with sdcc (GPLv2+, see build_fx2lafw.sh)
+# libsigrok's sr_resourcepaths_get() searches share/sigrok-firmware/ for firmware at runtime.
+#
+# asix-sigma + sysclk-lwla: install prebuilt .fw/.rbf directly from submodule
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/sigrok-firmware/asix-sigma/
+    DESTINATION share/sigrok-firmware
+    FILES_MATCHING PATTERN "*.fw" PATTERN "LICENSE.*"
+)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/sigrok-firmware/sysclk-lwla/
+    DESTINATION share/sigrok-firmware
+    FILES_MATCHING PATTERN "*.rbf" PATTERN "LICENSE.*"
+)
+
+# fx2lafw: if prebuilt .fw files exist in submodule (built by build_fx2lafw.sh), install them.
+# Otherwise warn the user — they need to run build_fx2lafw.sh (requires sdcc).
+file(GLOB FX2LAFW_PREBUILT_FW
+    "${CMAKE_SOURCE_DIR}/sigrok-firmware-fx2lafw/hw/*/fx2lafw-*.fw"
+)
+if(FX2LAFW_PREBUILT_FW)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/sigrok-firmware-fx2lafw/hw/
+        DESTINATION share/sigrok-firmware
+        FILES_MATCHING PATTERN "fx2lafw-*.fw"
+    )
+    install(FILES
+        ${CMAKE_SOURCE_DIR}/sigrok-firmware-fx2lafw/COPYING
+        ${CMAKE_SOURCE_DIR}/sigrok-firmware-fx2lafw/COPYING.LESSER
+        DESTINATION share/sigrok-firmware/fx2lafw-license
+    )
+else()
+    message(WARNING
+        "fx2lafw firmware not built. Run 'bash build_fx2lafw.sh' (requires sdcc) "
+        "to build 15 fx2lafw-*.fw files for Cypress FX2 devices. "
+        "Install will skip fx2lafw firmware; only asix-sigma + sysclk-lwla will be installed."
+    )
+endif()
 install(DIRECTORY PXView/res DESTINATION ${MAC_RES_PREFIX}share/PXView)
 install(DIRECTORY PXView/demo DESTINATION ${MAC_RES_PREFIX}share/PXView)
 install(FILES PXView/icons/logo.svg DESTINATION ${MAC_RES_PREFIX}share/PXView RENAME logo.svg)

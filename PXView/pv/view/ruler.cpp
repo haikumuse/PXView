@@ -224,6 +224,10 @@ void Ruler::rel_grabbed_cursor()
 
 void Ruler::paintEvent(QPaintEvent*)
 {   
+    if (_view.get_view_width() <= 0) {
+        return;
+    }
+
     QStyleOption o;
     o.initFrom(this);
     QPainter p(this);
@@ -442,6 +446,15 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
         return;
     }
 
+    double view_width = _view.get_view_width();
+    if (view_width <= 0) {
+        return;
+    }
+    double scale_width = scale * view_width;
+    if (scale_width <= 0) {
+        return;
+    }
+
     const double SpacingIncrement = 32.0;
     const double MinValueSpacing = 16.0;
     const int ValueMargin = 5;
@@ -456,17 +469,23 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
 
     _min_period = cur_period_scale * abs_min_period;
 
-    const int order = (int)floorf(log10f(scale * _view.get_view_width()));
-    const unsigned int prefix = (order - FirstSIPrefixPower) / 3;
+    const int order = (int)floorf(log10f(scale_width));
+    int prefix_val = (order - FirstSIPrefixPower) / 3;
+    if (prefix_val < 0) prefix_val = 0;
+    if (prefix_val >= (int)countof(SIPrefixes)) prefix_val = (int)countof(SIPrefixes) - 1;
+    const unsigned int prefix = prefix_val;
     _cur_prefix = prefix;
-    assert(prefix < countof(SIPrefixes));
     typical_width = p.boundingRect(0, 0, INT_MAX, INT_MAX,
         AlignLeft | AlignTop, format_time(offset * scale,
         prefix)).width() + MinValueSpacing;
+
+    int tick_period_loop_count = 0;
     do
     {
         tick_period += _min_period;
-
+        if (++tick_period_loop_count > 1000) {
+            break;
+        }
     } while(typical_width > tick_period / scale);
 
     if (tick_period <= 0) {
@@ -482,8 +501,10 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
 
     const double minor_tick_period = tick_period / MinPeriodScale;
     const int minor_order = (int)floorf(log10f(minor_tick_period));
-    const unsigned int minor_prefix = (minor_order - FirstSIPrefixPower) / 3;
-    assert(minor_prefix < countof(SIPrefixes));
+    int minor_prefix_val = (minor_order - FirstSIPrefixPower) / 3;
+    if (minor_prefix_val < 0) minor_prefix_val = 0;
+    if (minor_prefix_val >= (int)countof(SIPrefixes)) minor_prefix_val = (int)countof(SIPrefixes) - 1;
+    const unsigned int minor_prefix = minor_prefix_val;
 
     const double first_major_division =
         floor(offset * scale / tick_period);
@@ -498,17 +519,32 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
     const int tick_y2 = height();
     const int minor_tick_y1 = (major_tick_y1 + tick_y2) / 2;
 
-    int x;
+    int x = rect().left() - 1;
 
     const double inc_text_width = p.boundingRect(0, 0, INT_MAX, INT_MAX,
                                                  AlignLeft | AlignTop,
                                                  format_time(minor_tick_period,
                                                              minor_prefix)).width() + MinValueSpacing;
-    do {
+    int loop_count = 0;
+    while (true) {
         const double t = t0 + division * minor_tick_period;
         const double major_t = t0 + floor(division / MinPeriodScale) * tick_period;
 
-        x = t / scale - offset;
+        double x_double = t / scale - offset;
+        if (x_double > rect().right()) {
+            break;
+        }
+
+        if (++loop_count > 2000) {
+            break;
+        }
+
+        if (x_double < -1e6 || x_double > 1e6) {
+            division++;
+            continue;
+        }
+
+        x = (int)x_double;
 
         if (division % MinPeriodScale == 0)
         {
@@ -537,8 +573,7 @@ void Ruler::draw_logic_tick_mark(QPainter &p)
         }
 
         division++;
-
-    } while (x < rect().right());
+    }
 
     // Draw the cursors
     auto &cursor_list = _view.get_cursorList();
@@ -580,22 +615,37 @@ void Ruler::draw_osc_tick_mark(QPainter &p)
     double scale = _view.scale();
     int64_t offset = 0;
 
+    double view_width = _view.get_view_width();
+    if (view_width <= 0) {
+        return;
+    }
+    double scale_width = scale * view_width;
+    if (scale_width <= 0) {
+        return;
+    }
+
     // Find tick spacing, and number formatting that does not cause
     // value to collide.
     _min_period = _view.data_source()->device()->get_time_base() * std::pow(10.0, -9.0);
 
-    const int order = (int)floorf(log10f(scale * _view.get_view_width()));
+    const int order = (int)floorf(log10f(scale_width));
     //const double order_decimal = pow(10, order);
-    const unsigned int prefix = (order - FirstSIPrefixPower) / 3;
+    int prefix_val = (order - FirstSIPrefixPower) / 3;
+    if (prefix_val < 0) prefix_val = 0;
+    if (prefix_val >= (int)countof(SIPrefixes)) prefix_val = (int)countof(SIPrefixes) - 1;
+    const unsigned int prefix = prefix_val;
     _cur_prefix = prefix;
-    assert(prefix < countof(SIPrefixes));
     typical_width = p.boundingRect(0, 0, INT_MAX, INT_MAX,
         AlignLeft | AlignTop, format_time(offset * scale,
         prefix)).width() + MinValueSpacing;
+
+    int tick_period_loop_count = 0;
     do
     {
         tick_period += _min_period;
-
+        if (++tick_period_loop_count > 1000) {
+            break;
+        }
     } while(typical_width > tick_period / scale);
 
     const int text_height = p.boundingRect(0, 0, INT_MAX, INT_MAX,
@@ -609,8 +659,10 @@ void Ruler::draw_osc_tick_mark(QPainter &p)
     const double minor_tick_period = tick_period / MinPeriodScale;
     const int minor_order = (int)floorf(log10f(minor_tick_period));
     //const double minor_order_decimal = pow(10, minor_order);
-    const unsigned int minor_prefix = (minor_order - FirstSIPrefixPower) / 3;
-    assert(minor_prefix < countof(SIPrefixes));
+    int minor_prefix_val = (minor_order - FirstSIPrefixPower) / 3;
+    if (minor_prefix_val < 0) minor_prefix_val = 0;
+    if (minor_prefix_val >= (int)countof(SIPrefixes)) minor_prefix_val = (int)countof(SIPrefixes) - 1;
+    const unsigned int minor_prefix = minor_prefix_val;
 
     const double first_major_division =
         floor(offset * scale / tick_period);
@@ -625,17 +677,32 @@ void Ruler::draw_osc_tick_mark(QPainter &p)
     const int tick_y2 = height();
     const int minor_tick_y1 = (major_tick_y1 + tick_y2) / 2;
 
-    int x;
+    int x = rect().left() - 1;
 
     const double inc_text_width = p.boundingRect(0, 0, INT_MAX, INT_MAX,
                                                  AlignLeft | AlignTop,
                                                  format_time(minor_tick_period,
                                                              minor_prefix)).width() + MinValueSpacing;
-    do {
+    int loop_count = 0;
+    while (true) {
         const double t = t0 + division * minor_tick_period;
         const double major_t = t0 + floor(division / MinPeriodScale) * tick_period;
 
-        x = t / scale - offset;
+        double x_double = t / scale - offset;
+        if (x_double > rect().right()) {
+            break;
+        }
+
+        if (++loop_count > 2000) {
+            break;
+        }
+
+        if (x_double < -1e6 || x_double > 1e6) {
+            division++;
+            continue;
+        }
+
+        x = (int)x_double;
 
         if (division % MinPeriodScale == 0)
         {
@@ -662,8 +729,7 @@ void Ruler::draw_osc_tick_mark(QPainter &p)
         }
 
         division++;
-
-    } while (x < rect().right());
+    }
 
     // Draw the cursors
     auto &cursor_list = _view.get_cursorList();

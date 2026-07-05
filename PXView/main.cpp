@@ -50,7 +50,34 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <stdio.h>
+
+void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    const char *msg_str = msg.toUtf8().constData();
+    fprintf(stderr, "QtMsg: %s (file: %s, line: %d, function: %s)\n", 
+            msg_str ? msg_str : "", 
+            context.file ? context.file : "", 
+            context.line, 
+            context.function ? context.function : "");
+    fflush(stderr);
+
+    if (type == QtFatalMsg || (msg_str && strstr(msg_str, "ASSERT failure"))) {
+        fprintf(stderr, "=== FATAL/ASSERT BACKTRACE ===\n");
+        fprintf(stderr, "Base of PXView.exe: %p\n", GetModuleHandleW(NULL));
+        fprintf(stderr, "Base of Qt6Core.dll: %p\n", GetModuleHandleA("Qt6Core.dll"));
+        
+        void* backtrace[64];
+        USHORT frames = CaptureStackBackTrace(0, 64, backtrace, NULL);
+        for (USHORT i = 0; i < frames; ++i) {
+            fprintf(stderr, "  #%d: %p\n", i, backtrace[i]);
+        }
+        fprintf(stderr, "==============================\n");
+        fflush(stderr);
+    }
+}
 #endif
+
 
 void usage()
 {
@@ -72,6 +99,7 @@ void usage()
 int main(int argc, char *argv[])
 {
 #ifdef _WIN32
+    qInstallMessageHandler(myMessageHandler);
     // Disable Qt Accessibility to prevent UIAutomation from stalling the main thread during high-frequency data updates
     qputenv("QT_ACCESSIBILITY", "0");
 	    // Force FreeType font engine instead of DirectWrite/GDI.

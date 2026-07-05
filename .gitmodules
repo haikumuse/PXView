@@ -1,0 +1,17 @@
+[submodule "sigrok-firmware"]
+	path = sigrok-firmware
+	url = git://sigrok.org/sigrok-firmware
+[submodule "sigrok-firmware-fx2lafw"]
+	path = sigrok-firmware-fx2lafw
+	url = git://sigrok.org/sigrok-firmware-fx2lafw
+[submodule "sigrok-util"]
+	path = sigrok-util
+	url = git://sigrok.org/sigrok-util
+[submodule "libsigrok"]
+	path = libsigrok
+	url = C:\\Users\\admin\\Downloads\\workplace\\logic\\libsigrok
+	branch = pxview-fork
+[submodule "libsigrokdecode"]
+	path = libsigrokdecode
+	url = C:\\Users\\admin\\Downloads\\workplace\\logic\\libsigrokdecode
+	branch = pxview-fork
