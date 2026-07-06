@@ -81,6 +81,10 @@ public:
     // Handle = index+1 (0 reserved for NULL_HANDLE).
     void set_scanned_devices(const std::vector<struct sr_dev_inst*> &sdis);
 
+    // Returns the cached scanned SDI list (populated by set_scanned_devices).
+    // SigSession::get_device_list() uses this to avoid repeated sr_driver_scan.
+    const std::vector<struct sr_dev_inst*> &scanned_sdi() const { return _scanned_sdi; }
+
     // Called by SigSession::set_file(). Registers a file-loaded SDI.
     void set_file_device(struct sr_dev_inst *sdi, const QString &name);
 

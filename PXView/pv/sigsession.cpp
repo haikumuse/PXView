@@ -188,6 +188,16 @@ SigSession::~SigSession() {
   // if already called via uninit().
   Close();
 
+  // Stop the reconnect watchdog timer (if active) before _event_bus is
+  // torn down. QTimer has nullptr parent (SigSession is NOT a QObject), so
+  // explicit delete is required — deleteLater() would also work but direct
+  // delete is safer against in-flight timer events racing teardown.
+  if (reconnect_timer_) {
+    reconnect_timer_->stop();
+    delete reconnect_timer_;
+    reconnect_timer_ = nullptr;
+  }
+
   // Unregister as IEventListener before _event_bus is destroyed (unique_ptr
   // member, destroyed after the destructor body runs).
   if (_event_bus)
@@ -281,11 +291,37 @@ bool SigSession::init() {
   g_slist_free_full(fw_paths, g_free);
 
   pxv_info("libsigrok initialized (upstream 0.6.0, sole library)");
+
+  // 首次扫描所有驱动，缓存到 DeviceAgent。后续 get_device_list 复用缓存，
+  // 避免在设备 dev_open 后重复 sr_driver_scan 导致 LIBUSB_ERROR_ACCESS。
+  refresh_device_list();
+
+  // Register USB hotplug listener (libsigrok sr_listen_hotplug).
+  // The callback runs on a libsigrok internal GThread; hotplug_cb_ forwards
+  // to the main thread via QMetaObject::invokeMethod(Qt::QueuedConnection)
+  // so on_hotplug_event_() can safely touch Qt objects / the EventBus.
+  // sr_listen_hotplug returns SR_OK on success; non-fatal if unsupported.
+  if (_sr_ctx) {
+    int r = sr_listen_hotplug(_sr_ctx, &SigSession::hotplug_cb_, this);
+    if (r == SR_OK) {
+      pxv_info("Hotplug listener registered");
+    } else {
+      pxv_warn("Hotplug not available on this platform; manual refresh required");
+    }
+  }
+
   return true;
 }
 
 void SigSession::uninit() {
   this->Close();
+
+  // Stop hotplug listener before tearing down sr_context. sr_close_hotplug
+  // is idempotent (sr_exit internally calls it as well), so calling it here
+  // ensures the callback will not fire during sr_exit teardown.
+  if (_sr_ctx) {
+    sr_close_hotplug(_sr_ctx);
+  }
 
   // DeviceAgent owns sr_session; it is destroyed in release()/destructor.
   // Just tear down the sr_context here.
@@ -442,34 +478,15 @@ struct ds_device_base_info *SigSession::get_device_list(int &out_count,
   out_count = 0;
   actived_index = -1;
 
-  // Scan all upstream drivers via sr_driver_list + sr_driver_scan.
-  // Build a ds_device_base_info array compatible with the existing API.
   if (!_sr_ctx) {
     return nullptr;
   }
 
-  struct sr_dev_driver **drivers = sr_driver_list(_sr_ctx);
-  if (!drivers) {
-    return nullptr;
-  }
-
-  // Collect all scanned devices into a temporary vector.
-  std::vector<struct sr_dev_inst *> all_sdi;
-  for (int i = 0; drivers[i]; i++) {
-    struct sr_dev_driver *drv = drivers[i];
-    if (!drv)
-      continue;
-    // Initialize driver on first use.
-    if (sr_driver_init(_sr_ctx, drv) != SR_OK)
-      continue;
-    GSList *devs = sr_driver_scan(drv, nullptr);
-    for (GSList *l = devs; l; l = l->next) {
-      struct sr_dev_inst *sdi = (struct sr_dev_inst *)l->data;
-      if (sdi)
-        all_sdi.push_back(sdi);
-    }
-    // Note: sr_driver_scan returns a list owned by the driver; do not free.
-  }
+  // 复用 DeviceAgent 已缓存的扫描结果，避免重复 sr_driver_scan。
+  // 重复扫描会导致已 dev_open 的 USB 设备被 fx2lafw scan 再次 libusb_open，
+  // 触发 LIBUSB_ERROR_ACCESS（Windows 上 interface 已被 claim）。
+  // 需要重新扫描硬件（如热插拔）时调用 refresh_device_list()。
+  std::vector<struct sr_dev_inst *> all_sdi = _state->device_agent().scanned_sdi();
 
   // Also include any file-loaded devices tracked by DeviceAgent.
   auto &file_devs = _state->device_agent().file_devices();
@@ -523,11 +540,56 @@ struct ds_device_base_info *SigSession::get_device_list(int &out_count,
   ds_device_handle cur = _state->device_agent().handle();
   actived_index = (cur > 0 && cur <= (ds_device_handle)count) ? (int)(cur - 1) : -1;
 
-  // Register the scanned SDI list with DeviceAgent so set_device() can
-  // open the right device by handle (index+1).
-  _state->device_agent().set_scanned_devices(all_sdi);
-
   return array;
+}
+
+void SigSession::refresh_device_list() {
+  if (!_sr_ctx) {
+    return;
+  }
+
+  struct sr_dev_driver **drivers = sr_driver_list(_sr_ctx);
+  if (!drivers) {
+    pxv_err("refresh_device_list: sr_driver_list returned NULL");
+    return;
+  }
+
+  // Scan all upstream drivers via sr_driver_list + sr_driver_scan.
+  std::vector<struct sr_dev_inst *> all_sdi;
+  int drv_count = 0;
+  int init_fail_count = 0;
+  int scan_found_count = 0;
+  for (int i = 0; drivers[i]; i++) {
+    struct sr_dev_driver *drv = drivers[i];
+    if (!drv)
+      continue;
+    drv_count++;
+    // Initialize driver on first use.
+    if (sr_driver_init(_sr_ctx, drv) != SR_OK) {
+      init_fail_count++;
+      pxv_dbg("refresh_device_list: sr_driver_init failed for '%s'",
+              drv->name ? drv->name : "(null)");
+      continue;
+    }
+    GSList *devs = sr_driver_scan(drv, nullptr);
+    int found = g_slist_length(devs);
+    if (found > 0) {
+      scan_found_count += found;
+      pxv_info("refresh_device_list: driver '%s' found %d device(s)",
+               drv->name ? drv->name : "(null)", found);
+    }
+    for (GSList *l = devs; l; l = l->next) {
+      struct sr_dev_inst *sdi = (struct sr_dev_inst *)l->data;
+      if (sdi)
+        all_sdi.push_back(sdi);
+    }
+    // Note: sr_driver_scan returns a list owned by the driver; do not free.
+  }
+
+  pxv_info("refresh_device_list: total %d drivers, init_fail=%d, devices found=%d",
+           drv_count, init_fail_count, (int)all_sdi.size());
+
+  _state->device_agent().set_scanned_devices(all_sdi);
 }
 
 uint64_t SigSession::cur_samplerate() {
@@ -1949,5 +2011,128 @@ double SigSession::get_disk_write_speed_mbps() {
 }
 
 bool SigSession::is_disk_write_disk_full() { return false; }
+
+// ============================================================================
+// USB hotplug (libsigrok sr_listen_hotplug) — Tasks 9/10/11.
+//
+// Flow: libsigrok internal GThread -> hotplug_cb_ (static trampoline) ->
+//   QMetaObject::invokeMethod(Qt::QueuedConnection) ->
+//   on_hotplug_event_() (main thread, safe to touch Qt / EventBus).
+//
+// Reconnect tolerance: on DETACH during capture, start a 500ms watchdog.
+// If ATTACH arrives before timeout, the device is presumed re-enumerated
+// and capture continues. Otherwise stop_capture() + broadcast DeviceDetached.
+//
+// Note: libusb_hotplug callback signature does not pass the libusb_device*
+// to our sr_hotplug_callback (we deliberately ignored dev in hotplug.c), so
+// is_current_device_gone_() conservatively returns true and the watchdog
+// logic is the safety net for any DETACH event.
+// ============================================================================
+
+void SigSession::hotplug_cb_(int event, void *user_data) {
+  // Runs on a libsigrok internal GThread — MUST NOT touch Qt objects.
+  // Forward to the main thread via Qt::QueuedConnection so on_hotplug_event_
+  // can safely use QTimer / EventBus / DeviceAgent.
+  SigSession *self = static_cast<SigSession*>(user_data);
+  if (!self)
+    return;
+  // SigSession is NOT a QObject — use qApp (the QApplication singleton) as
+  // the receiver, mirroring EventBus::broadcast_async's pattern. `self` is
+  // safe to capture: SigSession outlives libusb hotplug thread (joined in
+  // uninit() before _state is destroyed).
+  QMetaObject::invokeMethod(qApp, [self, event]() {
+    self->on_hotplug_event_(event);
+  }, Qt::QueuedConnection);
+}
+
+void SigSession::on_hotplug_event_(int event) {
+  // Main thread — safe to touch Qt objects and the EventBus.
+  if (event == SR_HOTPLUG_ATTACH) {
+    // If the reconnect watchdog is active, this is the device returning
+    // during an in-flight capture — stop the watchdog and let capture
+    // continue (fx2lafw sdi handle is rebound by libusb internally).
+    if (reconnect_timer_ && reconnect_timer_->isActive()) {
+      reconnect_timer_->stop();
+      update_device_handle_();
+      pxv_info("Device reconnected, capture continues");
+      return;
+    }
+    pxv_info("Hotplug: device arrived");
+    refresh_device_list();
+    _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
+  } else if (event == SR_HOTPLUG_DETACH) {
+    pxv_info("Hotplug: device detached");
+    // libusb hotplug does not give us the libusb_device* in the callback
+    // signature, so we cannot tell which device left. Conservative policy:
+    // assume any DETACH may affect the current device and let the watchdog
+    // (during capture) or the immediate broadcast (idle) handle it.
+    if (!is_current_device_gone_()) {
+      // Conservatively treated as "current device may be gone": fall through
+      // to the current-device-gone branch. (is_current_device_gone_ always
+      // returns true in the simplified implementation, so this branch is
+      // currently unreachable but retained for future device-identifying
+      // implementations.)
+      refresh_device_list();
+      _event_bus->broadcast_async<interface::UsbDeviceArrived>({});
+      return;
+    }
+    // Current device (presumptively) gone.
+    if (_state->is_working()) {
+      // Capture in flight — give the device a 500ms grace period to
+      // re-enumerate (e.g. firmware re-download) before tearing down.
+      start_reconnect_watchdog_();
+    } else {
+      // Idle — refresh list and notify immediately.
+      refresh_device_list();
+      _event_bus->broadcast_async<interface::DeviceDetached>({});
+    }
+  }
+}
+
+void SigSession::start_reconnect_watchdog_() {
+  if (!reconnect_timer_) {
+    // SigSession is NOT a QObject — QTimer cannot be parented to `this`.
+    // Use nullptr parent; the timer is owned by reconnect_timer_ unique_ptr
+    // semantics (manually deleted in ~SigSession). The connect context
+    // argument uses qApp to ensure the lambda runs on the main thread.
+    reconnect_timer_ = new QTimer(nullptr);
+    reconnect_timer_->setSingleShot(true);
+    QObject::connect(reconnect_timer_, &QTimer::timeout, qApp, [this]() {
+      this->on_reconnect_timeout_();
+    });
+  }
+  reconnect_timer_->start(500);  // 500ms grace period
+  pxv_info("Device detached during capture, waiting 500ms for reconnect...");
+}
+
+void SigSession::on_reconnect_timeout_() {
+  pxv_info("Reconnect timeout, stopping capture");
+  if (_capture_manager) {
+    _capture_manager->stop_capture();
+  }
+  refresh_device_list();
+  _event_bus->broadcast_async<interface::DeviceDetached>({});
+}
+
+bool SigSession::is_current_device_gone_() {
+  // Simplified conservative implementation. The libusb_hotplug callback we
+  // registered in libsigrok/hotplug.c deliberately ignores the libusb_device*
+  // argument (our sr_hotplug_callback signature is `void(int, void*)`), so
+  // we cannot identify WHICH device left at this layer. Returning true
+  // forces the watchdog logic to apply to every DETACH, which is the safe
+  // default. The 500ms reconnect grace period limits false-positive damage.
+  return true;
+}
+
+void SigSession::update_device_handle_() {
+  // Phase 2 simplified stub. For fx2lafw devices, the libusb_device_handle
+  // inside the sdi is typically rebound by libusb's internal hotplug path
+  // when the same physical device re-enumerates with the same vid:pid, so
+  // the existing sdi remains valid and capture can continue without
+  // explicit re-open here. A full implementation would match vid:pid against
+  // the freshly scanned device list and rebind the DeviceAgent handle; that
+  // is deferred to a later phase. Log a warning so misbehavior is visible.
+  pxv_warn("update_device_handle_ not fully implemented, capture may need restart");
+}
 
 } // namespace pv

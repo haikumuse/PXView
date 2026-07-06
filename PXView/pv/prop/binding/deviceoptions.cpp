@@ -54,14 +54,24 @@ DeviceOptions::DeviceOptions(SigSession *session)
 	_device_agent = session->get_device();
 	_static_device_agent = _device_agent;
 
+    pxv_info("DeviceOptions binding: driver=%s, is_hardware=%d, is_dsl=%d, is_stream=%d",
+             _device_agent->driver_name().toUtf8().constData(),
+             _device_agent->is_hardware(),
+             _device_agent->is_dsl_device(),
+             _device_agent->is_stream_mode());
+
 	gvar_opts = _device_agent->get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
-	 
-    if (gvar_opts == NULL)
+
+    if (gvar_opts == NULL) {
+        pxv_warn("DeviceOptions binding: get_config_list(SR_CONF_DEVICE_OPTIONS) returned NULL");
 		/* Driver supports no device instance options. */
 		return;
+    }
 
 	const int *const options = (const int32_t *)g_variant_get_fixed_array(
 		gvar_opts, &num_opts, sizeof(int32_t));
+
+    pxv_info("DeviceOptions binding: num_opts=%zu", num_opts);
 	
 	for (unsigned int i = 0; i < num_opts; i++) {
 		const struct sr_config_info *const info =
@@ -162,6 +172,33 @@ DeviceOptions::DeviceOptions(SigSession *session)
 	}
     if (gvar_opts)
         g_variant_unref(gvar_opts);
+
+    // Fallback for upstream streaming devices (fx2lafw, etc.): these drivers
+    // don't declare fork keys (SR_CONF_STREAM / SR_CONF_OPERATION_MODE /
+    // SR_CONF_DISK_CACHE_ENABLE) in their devopts, so the Mode area would be
+    // nearly empty. Add app-layer controls so users can see the streaming
+    // state and configure disk cache without driver support.
+    // The disk cache feature itself lives in LogicSnapshotDiskCacheWriter +
+    // MmapAllocator (app layer), so it doesn't need driver config_get/set.
+    if (_device_agent->is_hardware() && !_device_agent->is_dsl_device()
+        && _device_agent->is_stream_mode()) {
+        pxv_info("DeviceOptions binding: adding app-layer stream/disk-cache controls");
+        // Disk cache enable checkbox. For non-DSL devices, the state is held
+        // by the app layer (CaptureManager reads it via get_config_bool which
+        // returns false on SR_ERR_NA, so default is off). User can toggle it
+        // and CaptureManager will honor the setting.
+        bind_bool("disk_cache_enable", "Disk Cache Enable",
+                  SR_CONF_DISK_CACHE_ENABLE);
+        // Stream buffer size (disk cache total depth in GB).
+        bind_double("stream_buff", "Stream Buffer", SR_CONF_STREAM_BUFF,
+                    "GB", pair<double, double>(1, 1024), 0, 1);
+    } else {
+        pxv_info("DeviceOptions binding: skipping app-layer controls "
+                 "(is_hardware=%d, is_dsl=%d, is_stream=%d)",
+                 _device_agent->is_hardware(),
+                 _device_agent->is_dsl_device(),
+                 _device_agent->is_stream_mode());
+    }
 }
 
 GVariant* DeviceOptions::config_getter(int key)

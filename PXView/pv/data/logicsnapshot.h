@@ -224,6 +224,12 @@ private:
 
     void append_payload_impl(const sr_datafeed_logic &logic);
 
+    /** Append raw channel-block (LA_CROSS_DATA) payload. v1.49 algorithm:
+     *  bit-copy raw bytes directly into per-channel chunk tree, no
+     *  deinterleave. Called by DiskCacheWriter async worker when
+     *  logic.format == LA_CROSS_DATA. */
+    void append_cross_payload(const sr_datafeed_logic &logic);
+
     bool lbp_nxt_edge(uint64_t &index, uint64_t root_index, uint64_t lbp_tog, uint8_t lbp_tog_pos,
                       bool aft_tog, uint8_t aft_pos, bool last_sample, int sig_index);
 

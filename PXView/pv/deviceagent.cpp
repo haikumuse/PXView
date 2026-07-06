@@ -22,6 +22,7 @@
 
 #include "deviceagent.h"
 #include <assert.h>
+#include <future>
 #include "log.h"
 #include "config/appconfig.h"
 
@@ -486,9 +487,39 @@ int DeviceAgent::get_hardware_operation_mode()
 
 bool DeviceAgent::is_stream_mode()
 {
-    if (is_compat_device())
-        return false;
-    return get_hardware_operation_mode() == LO_OP_STREAM;
+    // DSL/PXLogic devices: query SR_CONF_OPERATION_MODE (fork-specific key).
+    // These drivers export "Buffer Mode"/"Stream Mode"/"Internal Test" strings.
+    if (is_dsl_device())
+        return get_hardware_operation_mode() == LO_OP_STREAM;
+
+    // Upstream drivers (fx2lafw, demo, serial, ...): check SR_CONF_CONTINUOUS
+    // capability flag in the driver's devopts list. fx2lafw is a streaming
+    // device (FX2 chip has only ~8KB FIFO, must push data via USB bulk
+    // transfers continuously). SR_CONF_CONTINUOUS is a capability flag (no
+    // SR_CONF_GET bit), so get_config/have_config returns false — must
+    // inspect the devopts list directly via sr_config_list.
+    if (is_hardware()) {
+        GVariant *gvar = get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+        if (gvar) {
+            GVariantIter iter;
+            g_variant_iter_init(&iter, gvar);
+            guint32 key;
+            bool is_stream = false;
+            while (g_variant_iter_next(&iter, "u", &key)) {
+                if (key == SR_CONF_CONTINUOUS) {
+                    is_stream = true;
+                    break;
+                }
+            }
+            g_variant_unref(gvar);
+            return is_stream;
+        }
+    }
+
+    if (is_demo() || is_file())
+        return true;
+
+    return false;
 }
 
 bool DeviceAgent::check_firmware_version()
@@ -549,26 +580,41 @@ bool DeviceAgent::start()
     // If one is somehow still alive, join it before starting a new run.
     stop_session_thread();
 
-    if (sr_session_start(_sr_session) != SR_OK) {
-        pxv_err("DeviceAgent::start: sr_session_start failed");
-        return false;
-    }
-
-    // Upstream libsigrok 0.6.0's sr_session_start() only registers event
-    // sources (e.g. demo's 100ms prepare_data timer) — it does NOT pump the
-    // GLib main context. Fork libsigrok did the pumping internally via
-    // collect_thread/g_main_loop_run; upstream leaves it to the caller.
-    // Without a thread running g_main_loop, source callbacks never fire and
-    // no SR_DF_LOGIC packets are emitted (the demo device shows
-    // "Received SR_DF_HEADER" then hangs forever).
+    // CRITICAL: Both sr_session_start() and sr_session_run() MUST execute in
+    // the SAME thread. This is how PulseView does it (sample_thread_proc calls
+    // device_->start() then device_->run() sequentially).
     //
-    // Spawn a worker thread that blocks in sr_session_run() until
-    // sr_session_stop() causes the main loop to quit.
-    _session_thread = std::thread([this]() {
+    // Reason: sr_session_start() calls set_main_context() which captures the
+    // calling thread's GLib thread-default main context via
+    // g_main_context_ref_thread_default(). sr_session_run() then creates a
+    // GMainLoop bound to that context and runs g_main_loop_run(). If start()
+    // runs on the GUI thread but run() on a worker thread, the main context
+    // belongs to the wrong thread — on Windows this causes
+    // libusb_get_pollfds() to fail (NULL) and USB event sources are never
+    // properly dispatched, resulting in incomplete or no data capture.
+    //
+    // Use std::promise to synchronize the start result back to the caller.
+    std::promise<bool> start_promise;
+    std::future<bool> start_future = start_promise.get_future();
+
+    _session_thread = std::thread([this, &start_promise]() {
+        if (sr_session_start(_sr_session) != SR_OK) {
+            pxv_err("DeviceAgent::start: sr_session_start failed");
+            start_promise.set_value(false);
+            return;
+        }
+        start_promise.set_value(true);
+
+        // Block until sr_session_stop() causes the main loop to quit.
         sr_session_run(_sr_session);
     });
 
-    return true;
+    // Wait for the worker thread to report sr_session_start() result.
+    bool ok = start_future.get();
+    if (!ok) {
+        stop_session_thread();  // join the thread on failure
+    }
+    return ok;
 }
 
 bool DeviceAgent::stop()
@@ -604,6 +650,10 @@ bool DeviceAgent::is_collecting()
 // floods the log on non-DSL devices (demo/fx2lafw). Block these queries at the
 // chokepoint so non-DSL devices never reach sr_config_* with fork keys.
 // DSL/PXLogic devices pass through (driver implements the keys).
+//
+// SR_CONF_DEVICE_OPTIONS is now a public macro (0x7FFF0001, defined in
+// libsigrok.h) — not in the 60020-60088 fork range, so it naturally passes
+// through this guard. No explicit exemption needed.
 static inline bool is_fork_only_key(int key)
 {
     return key >= 60020 && key <= 60088;
@@ -616,7 +666,13 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
         return nullptr;
     }
 
-    if (is_fork_only_key(key) && !is_dsl_device())
+    const bool fork_only = is_fork_only_key(key);
+    const bool dsl = is_dsl_device();
+    if (key == SR_CONF_DEVICE_OPTIONS) {
+        pxv_info("get_config_list: key=SR_CONF_DEVICE_OPTIONS(%d), fork_only=%d, dsl=%d, _dev_handle=%p, _di=%p",
+                 key, fork_only, dsl, _dev_handle, _di);
+    }
+    if (fork_only && !dsl)
         return nullptr;
 
     struct sr_dev_driver *drv = sr_dev_inst_driver_get(_di);
@@ -625,6 +681,9 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
 
     GVariant *data = NULL;
     int ret = sr_config_list(drv, _di, group, (uint32_t)key, &data);
+    if (key == SR_CONF_DEVICE_OPTIONS) {
+        pxv_info("get_config_list: sr_config_list returned ret=%d, data=%p", ret, data);
+    }
     if (ret != SR_OK) {
         // SR_ERR_NA / SR_ERR_ARG 表示设备不支持该 key，静默处理避免日志噪音
         if (ret != SR_ERR_NA && ret != SR_ERR_ARG)

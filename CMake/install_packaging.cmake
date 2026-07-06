@@ -128,9 +128,14 @@ file(GLOB FX2LAFW_PREBUILT_FW
     "${CMAKE_SOURCE_DIR}/sigrok-firmware-fx2lafw/hw/*/fx2lafw-*.fw"
 )
 if(FX2LAFW_PREBUILT_FW)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/sigrok-firmware-fx2lafw/hw/
+    # Flatten all fx2lafw-*.fw files to the root of share/sigrok-firmware/.
+    # libsigrok's resource.c (try_open_file) only looks in the root directory
+    # (subdir=NULL), not in subdirectories. The sigrok-firmware-fx2lafw/hw/
+    # layout uses vendor subdirs (saleae-logic/, cypress-fx2/, ...), which
+    # would break firmware lookup if installed with DIRECTORY (preserving
+    # subdirs). Use FILES to install all .fw files flat into the root.
+    install(FILES ${FX2LAFW_PREBUILT_FW}
         DESTINATION share/sigrok-firmware
-        FILES_MATCHING PATTERN "fx2lafw-*.fw"
     )
     install(FILES
         ${CMAKE_SOURCE_DIR}/sigrok-firmware-fx2lafw/COPYING

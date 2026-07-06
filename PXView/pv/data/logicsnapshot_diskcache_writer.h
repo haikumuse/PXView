@@ -69,9 +69,12 @@ public:
     void ensure_all_blocks_hot();
 
     // ---- Enqueue (called by LogicSnapshot::append_payload) ----
-    // Data is sample-interleaved (upstream libsigrok format); no format tag
-    // needed — append_payload_impl derives unitsize from _channel_num.
-    void enqueue(const uint8_t *data, uint64_t length);
+    // `format` follows libsigrok's LA_DATA_FORMAT enum:
+    //   LA_SPLIT_DATA (0): sample-interleaved (upstream sigrok drivers)
+    //   LA_CROSS_DATA (1): channel-block raw (PXLogic/DSLogic fork drivers)
+    // The worker thread dispatches to append_payload_impl (SPLIT) or
+    // append_cross_payload (CROSS) accordingly.
+    void enqueue(const uint8_t *data, uint64_t length, int format);
 
     // ---- mmap slot state ----
     bool is_mmap_slot_fresh(uint16_t channel, uint64_t global_block_seq) const;
@@ -106,6 +109,7 @@ private:
 
     struct AsyncPayload {
         std::vector<uint8_t> data;
+        int format;  // LA_SPLIT_DATA or LA_CROSS_DATA
     };
 
     // Backpressure watermarks for the async write queue (hysteresis):
