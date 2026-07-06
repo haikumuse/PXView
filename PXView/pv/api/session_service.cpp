@@ -490,8 +490,17 @@ Result<void> SessionService::wait_capture_complete(uint64_t timeout_ms) {
 
         // Check capture state periodically via a repeating timer.
         QTimer check_timer;
+        int check_count = 0;
         QObject::connect(&check_timer, &QTimer::timeout, &loop, [&]() {
-            if (!_session->is_working() && !_session->is_running_status()) {
+            bool working = _session->is_working();
+            bool running = _session->is_running_status();
+            check_count++;
+            if (check_count % 10 == 1) { // log every ~1s
+                pxv_info("wait_capture check#%d: is_working=%d is_running=%d",
+                         check_count, working, running);
+            }
+            if (!working && !running) {
+                pxv_info("wait_capture: capture complete detected at check#%d", check_count);
                 _wait_capture_stop_flag = true;
                 loop.quit();
             }
@@ -3379,15 +3388,47 @@ Result<void> SessionService::export_binary(const ExportConfig &config) {
             if (!raw)
                 continue;
 
+            // CRITICAL FIX: 上游 libsigrok analog 数据布局是 interleaved：
+            //   [s0_ch0][s0_ch1]...[s0_chN][s1_ch0][s1_ch1]...
+            // 每个样本占 unit_bytes 字节（float=4, uint16=2, uint8=1）。
+            // 旧代码用 pitch=EnvelopeScaleFactor=16 + ch_idx（如 8）+ /255.0f
+            // 是 fork 时代码为 ADC 整数（0-255）写的，对上游 float 电压数据完全错误。
+            // 现在按正确的 interleaved 布局读取，并用 get_ch_order 把通道索引
+            // 映射到 snapshot 内部的 order（如 ch=8 在 5 通道 analog 中是 order=0）。
+            int order = snapshot->get_ch_order(ch_idx);
+            if (order < 0) {
+                pxv_warn("export_binary: channel %d not in analog snapshot, skipping", ch_idx);
+                continue;
+            }
+
+            uint32_t channel_num = snapshot->get_channel_num();
+            uint8_t unit_bytes = snapshot->get_unit_bytes();
+            bool is_float = snapshot->is_float();
+
+            // interleaved 步长：每个样本占 channel_num * unit_bytes 字节
+            uint64_t stride = (uint64_t)channel_num * unit_bytes;
+            uint64_t ch_offset = (uint64_t)order * unit_bytes;
+
             uint64_t count = end - start + 1;
-            int pitch = snapshot->get_scale_factor();
 
             // Apply downsample ratio
             uint64_t step = config.analog_downsample_ratio > 1
                                 ? config.analog_downsample_ratio : 1;
 
             for (uint64_t i = 0; i < count; i += step) {
-                float val = static_cast<float>(raw[i * pitch + ch_idx]) / 255.0f;
+                const uint8_t *p = raw + i * stride + ch_offset;
+                float val;
+                if (is_float && unit_bytes == sizeof(float)) {
+                    // float 电压数据：直接 memcpy 4 字节
+                    memcpy(&val, p, sizeof(float));
+                } else {
+                    // 整数数据：按 unit_bytes 拼接（little-endian）后转 float
+                    uint64_t iv = 0;
+                    for (uint8_t b = 0; b < unit_bytes; b++) {
+                        iv |= ((uint64_t)p[b]) << (b * 8);
+                    }
+                    val = static_cast<float>(iv);
+                }
                 file.write(reinterpret_cast<const char*>(&val), sizeof(float));
             }
         } else if (ch_type == ChannelType::Dso) {

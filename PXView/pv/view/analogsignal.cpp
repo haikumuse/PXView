@@ -30,6 +30,7 @@
 #include "../sigsession.h"
 #include "../view/view.h"
 #include <math.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -60,7 +61,8 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
                            data::DataSource *data_source)
     : Signal(model, data_source), _data(data), _rects(NULL),
       _cached_hw_offset(model ? model->hw_offset() : 128), _hover_en(false),
-      _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0) {
+      _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0),
+      _float_scale(1.0f) {
   _typeWidth = 5;
   _colour = getSignalColor(model ? model->index() : 0);
 
@@ -89,8 +91,15 @@ AnalogSignal::AnalogSignal(data::AnalogSnapshot *data,
     _ref_max = ((1 << _bits) - 1);
 
   // -- vpos (read from SignalModel if available, otherwise from device)
+  // FIX: 旧代码用 _model->vertical_offset() (UI 布局 y 像素位置，如 345) 设置
+  // _zero_offset (ADC 偏移值，范围 [_ref_min, _ref_max]，通常 [1,255])。这导致
+  // value2ratio(_zero_offset) 算出 1.354（远超 [0,1]），ratio2pos 又算出
+  // 365.5（超出信号区域 [333,357]），最终 float 波形只显示 3.5 像素高度
+  // （"迷你波形"问题）。
+  // 正确做法：使用 _model->zero_offset()（ADC 值），它是 SignalModel 中独立
+  // 于 UI 布局的字段；fallback 到设备 SR_CONF_PROBE_OFFSET。
   if (_model) {
-    _zero_offset = (int)_model->vertical_offset();
+    _zero_offset = (int)_model->zero_offset();
   } else {
     ret = _data_source->device()->get_config_uint16(SR_CONF_PROBE_OFFSET,
                                                     _zero_offset, NULL, NULL);
@@ -106,7 +115,8 @@ AnalogSignal::AnalogSignal(view::AnalogSignal *s,
                            data::DataSource *data_source)
     : Signal(*s, model, data_source), _data(data), _rects(NULL),
       _cached_hw_offset(s->_cached_hw_offset), _hover_en(false),
-      _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0) {
+      _hover_index(0), _hover_point(QPointF(-1, -1)), _hover_value(0),
+      _float_scale(s->_float_scale) {
   _typeWidth = 5;
   _bits = s->get_bits();
   _ref_min = s->get_ref_min();
@@ -231,15 +241,28 @@ QPointF AnalogSignal::get_point(uint64_t index, float &value) {
   const uint64_t ring_index =
       (uint64_t)(_data->get_ring_start() + floor(index)) %
       _data->get_sample_count();
-  value = *(_data->get_samples(ring_index) + order * _data->get_unit_bytes());
+  const uint8_t unit_bytes = _data->get_unit_bytes();
+  const uint8_t *samples = _data->get_samples(ring_index);
+  // get_samples(ring_index) 已返回该样本组起始地址，只需通道内 order 偏移
+  const uint64_t sample_offs = order * unit_bytes;
 
   const int height = get_totalHeight();
   const float top = get_y() - height * 0.5;
   const float bottom = get_y() + height * 0.5;
   const int hw_offset = get_hw_offset();
   const float x = (index / samples_per_pixel - pixels_offset);
-  const float y =
-      min(max(top, get_zero_vpos() + (value - hw_offset) * _scale), bottom);
+
+  float y;
+  if (_data->is_float() && unit_bytes == sizeof(float)) {
+    value = *reinterpret_cast<const float*>(samples + sample_offs);
+    y = min(max(top, get_zero_vpos() - value * _float_scale), bottom);
+  } else {
+    value = *(samples + sample_offs);
+    for (uint8_t i = 1; i < unit_bytes; i++) {
+      value += (samples[sample_offs + i] << i * 8);
+    }
+    y = min(max(top, get_zero_vpos() + (value - hw_offset) * _scale), bottom);
+  }
   pt = QPointF(x, y);
 
   return pt;
@@ -356,7 +379,21 @@ void AnalogSignal::set_zero_ratio(double ratio) {
   }
 }
 
-double AnalogSignal::get_zero_ratio() { return value2ratio(_zero_offset); }
+double AnalogSignal::get_zero_ratio() {
+  // FIX: 对 float 电压数据 (demo 驱动)，ADC 概念的 _zero_offset/_ref_min/_ref_max
+  // 不适用。初始 _zero_offset=0，而 _ref_min=1/_ref_max=255，value2ratio 内部
+  // 有 max(0.0,...) 保护会 clamp 到 0.0（顶部），导致 zeroY 在顶部而非中心。
+  // 修复：直接检查 _zero_offset 是否在 [_ref_min, _ref_max] 范围内，
+  // 不在范围内则返回中心 0.5，使波形上下对称填满显示区域。
+  // 用户手动拖动游标后 _zero_offset 会被设置为 ratio2value(ratio)（落入
+  // [_ref_min, _ref_max]），此时返回对应 ratio。
+  // 注意：采集前 _data 可能为 null 或 not is_float，但 _zero_offset=0 仍然
+  // 不在 [_ref_min, _ref_max] 范围内，统一返回 0.5 使初始化时游标也居中。
+  if (_zero_offset >= (int)_ref_min && _zero_offset <= (int)_ref_max) {
+    return (_zero_offset - _ref_min) / (_ref_max - _ref_min);
+  }
+  return 0.5;
+}
 
 /**
  * Event
@@ -437,6 +474,8 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
   const int height = get_totalHeight();
   const float top = get_y() - height * 0.5;
   const float bottom = get_y() + height * 0.5;
+  // zeroY 由 get_zero_ratio() 计算；float 数据路径已在 get_zero_ratio() 中
+  // 处理 _zero_offset 超界情况 (返回中心 0.5)。
   const float zeroY = ratio2pos(get_zero_ratio());
   const int width = right - left + 1;
 
@@ -455,6 +494,19 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
     return;
   }
 
+  // 上游 libsigrok analog 数据为 float 电压值时（encoding->is_float），
+  // PXView 原有的 ADC 整数路径（hw_offset + _scale）不再适用。
+  // 参考 PulseView perform_autoranging + scale_ = div_height / resolution：
+  // 根据数据实际 min/max 动态计算 _float_scale，使波形适配显示区域。
+  if (_data->is_float() && _data->has_float_range()) {
+    float fmin = 0.0f, fmax = 0.0f;
+    _data->get_float_min_max(fmin, fmax);
+    const float max_abs = std::max(fabsf(fmin), fabsf(fmax));
+    if (max_abs > 1e-6f) {
+      _float_scale = (height * 0.5f) / max_abs;
+    }
+  }
+
   const double pixels_offset = offset;
   const double samplerate = _data->samplerate();
   const int64_t cur_sample_count = _data->get_sample_count();
@@ -469,13 +521,30 @@ void AnalogSignal::paint_mid(QPainter &p, int left, int right, QColor fore,
 
   int64_t show_length = min(floor(cur_sample_count - floor(index_offset)),
                             ceil(width * samples_per_pixel + 1));
-  if (show_length <= 0)
+  if (show_length <= 0) {
     return;
+  }
 
   if (samples_per_pixel < EnvelopeThreshold) {
+    static int s_path_cnt = 0;
+    if (s_path_cnt++ < 10) {
+      pxv_info("PAINT_MID TRACE ch=%d spp=%.4f thr=%.1f show_len=%lld "
+               "start_idx=%llu start_px=%d zeroY=%d height=%d top=%.1f bottom=%.1f",
+               get_index(), samples_per_pixel, EnvelopeThreshold,
+               (long long)show_length, (unsigned long long)start_index,
+               start_pixel, zeroY, height, top, bottom);
+    }
     paint_trace(p, _data, zeroY, start_pixel, start_index, show_length,
                 samples_per_pixel, order, top, bottom, width);
   } else {
+    static int s_env_path_cnt = 0;
+    if (s_env_path_cnt++ < 10) {
+      pxv_info("PAINT_MID ENVELOPE ch=%d spp=%.4f thr=%.1f show_len=%lld "
+               "start_idx=%llu start_px=%d zeroY=%d height=%d top=%.1f bottom=%.1f",
+               get_index(), samples_per_pixel, EnvelopeThreshold,
+               (long long)show_length, (unsigned long long)start_index,
+               start_pixel, zeroY, height, top, bottom);
+    }
     paint_envelope(p, _data, zeroY, start_pixel, start_index, show_length,
                    samples_per_pixel, order, top, bottom, width);
   }
@@ -526,15 +595,35 @@ void AnalogSignal::paint_trace(
     float x = start_pixel;
     double pixels_per_sample = 1.0 / samples_per_pixel;
 
+    // CRITICAL FIX: 上游 libsigrok analog 数据可能是 float 格式
+    // (encoding->is_float=true, unitsize=4)。旧代码按 uint8 逐字节拼接，
+    // 对 float 数据完全错误。检查 _data->is_float() 决定读取方式。
+    const bool is_float = pshot->is_float();
+
     for (int64_t sample = 0; sample < sample_count; sample++) {
       uint64_t index = (yindex * channel_num + order) * unit_bytes;
-      float yvalue = samples[index];
-
-      for (uint8_t i = 1; i < unit_bytes; i++) {
-        yvalue += (samples[++index] << i * 8);
+      // 边界安全检查：防止读取越界导致 SIGSEGV
+      const uint64_t data_size = (uint64_t)pshot->get_sample_count() * channel_num * unit_bytes;
+      if (index + unit_bytes > data_size) {
+        break;
+      }
+      float yvalue;
+      if (is_float && unit_bytes == sizeof(float)) {
+        // float 数据：直接 reinterpret_cast
+        yvalue = *reinterpret_cast<const float*>(samples + index);
+        // 参考 PulseView: y - sample_value * scale_。
+        // float 电压值直接缩放，不减 hw_offset（hw_offset 是 ADC 整数路径的概念）。
+        yvalue = zeroY - yvalue * _float_scale;
+      } else {
+        // 整数数据：按 unit_bytes 逐字节拼接（原逻辑）
+        yvalue = samples[index];
+        for (uint8_t i = 1; i < unit_bytes; i++) {
+          yvalue += (samples[++index] << i * 8);
+        }
+        // ADC 整数路径：减 hw_offset 后按 _scale 缩放（原逻辑）
+        yvalue = zeroY + (yvalue - hw_offset) * _scale;
       }
 
-      yvalue = zeroY + (yvalue - hw_offset) * _scale;
       yvalue = min(max(yvalue, top), bottom);
       *point++ = QPointF(x, yvalue);
 
@@ -592,12 +681,26 @@ void AnalogSignal::paint_envelope(
     const AnalogSnapshot::EnvelopeSample *const ev =
         e.samples + ((e.start + sample) % e.samples_num);
 
-    const float b =
-        min(max((float)(zeroY + (ev->max - hw_offset) * _scale + 0.5), top),
-            bottom);
-    const float t =
-        min(max((float)(zeroY + (ev->min - hw_offset) * _scale + 0.5), top),
-            bottom);
+    // float 数据用 _float_scale 直接缩放（参考 PulseView y - value * scale_）；
+    // 整数数据用原 ADC 路径（hw_offset + _scale）。
+    // EnvelopeSample 现在是 float 类型（见 analogsnapshot.h），直接使用。
+    //
+    // 坐标方向约定（屏幕 Y 向下递增）：
+    //   整数路径: ev->max(高ADC) → 更大 Y(底部), ev->min(低ADC) → 更小 Y(顶部)
+    //            所以 b=底部(大Y), t=顶部(小Y), y_max=b, y_min=t, y_max>y_min ✓
+    //   Float 路径: ev->max(高电压) → 更小 Y(顶部), ev->min(低电压) → 更大 Y(底部)
+    //             若直接 b=顶部, t=底部 → y_max<y_min, 矩形高度为负 ✗
+    //   修复: Float 路径交换 b/t 赋值，使 b=底部(大Y), t=顶部(小Y)，与整数路径一致。
+    float b, t;
+    if (pshot->is_float()) {
+      t = min(max((float)(zeroY - ev->max * _float_scale), top), bottom);
+      b = min(max((float)(zeroY - ev->min * _float_scale), top), bottom);
+    } else {
+      b = min(max((float)(zeroY + (ev->max - hw_offset) * _scale + 0.5), top),
+              bottom);
+      t = min(max((float)(zeroY + (ev->min - hw_offset) * _scale + 0.5), top),
+              bottom);
+    }
 
     pre_px = px;
     if (px != floor(x)) {

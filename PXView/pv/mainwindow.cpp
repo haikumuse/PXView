@@ -2396,35 +2396,21 @@ void MainWindow::frame_ended() {
 }
 
 void MainWindow::on_frame_ended() {
-  pxv_info("MainWindow::on_frame_ended()");
+  pxv_info("MainWindow::on_frame_ended() [UI-only: Core handles copy+decode+guard]");
   _acq_count++;
   _side_bar->setItemRunning(SIDEBAR_RUNSTOP, false);
   _side_bar->setItemRunning(SIDEBAR_INSTANT, false);
   pv::TabContext *ctx = current_context();
   if (ctx && ctx->document()) {
-    // R6: 用 capture_owner_document 作为 copy 目标，避免错误地写到当前 tab。
-    // 异常情况（owner 为 nullptr）回退到当前 tab 的 document 并打日志。
-    pv::data::SessionDocument *owner_doc =
-        _session->get_capture_owner_document();
-    if (!owner_doc) {
-      qWarning("MainWindow::on_frame_ended: capture_owner_document is null, "
-               "falling back to current_context()->document()");
-      owner_doc = ctx->document();
-    }
-    // Task 5.1-5.3: 单一同步 copy 路径。原分支1（active_document != owner_doc
-    // 时同步 copy+start）会造成与后台 copy 的竞态：owner_doc 已是 active 时
-    // 仍可能在后台 copy，再发起同步 copy 会与后台线程冲突。
-    // 现统一为：仅当没有后台 copy 进行中时同步 copy+start，否则等待
-    // CopyToDocDone 事件处理 reactivation。
-    if (!_session->is_copy_in_progress()) {
-      pxv_info("MainWindow::on_frame_ended: Synchronous copy_data_to_document "
-               "(no bg copy in progress)");
-      _session->copy_data_to_document(owner_doc);
-      _session->start_all_decode_tasks();
-    } else {
-      pxv_info("MainWindow::on_frame_ended: Background copy is in progress, "
-               "waiting for CopyToDocDone");
-    }
+    // CRITICAL FIX: copy_data_to_document + start_all_decode_tasks are now
+    // handled exclusively by Core layer:
+    //   LOGIC mode: SigSession::on_event(RevEndPacket) → bg copy thread →
+    //               CopyToDocDone handler (or ELSE branch: direct decode +
+    //               guard release for stream mode).
+    //   non-LOGIC mode: DataFeedParser SR_DF_END else branch.
+    // MainWindow previously did a DUPLICATE synchronous copy here, which raced
+    // with the background copy thread and never released the CaptureOwnerGuard,
+    // causing wait_capture_complete to time out forever.
     ctx->document()->save_signal_config(
         _session->get_signal_models(), build_channel_layout(current_view()));
     ctx->activate();

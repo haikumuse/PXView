@@ -1,0 +1,61 @@
+name: macOS Build
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # 默认使用 GitHub 官方免费版提供的最新、最强 Apple Silicon 机器。
+    # 如果你的账号是企业/付费团队版，想用最高配(如 M2 Pro 12核)，可以改为: runs-on: macos-latest-xlarge
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies via Homebrew
+      run: |
+        brew update
+        brew install cmake ninja gettext glib libusb zlib boost fftw python3 qt pkg-config
+
+    - name: Setup Node.js (for Web UI)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        # 确保 CMake 能够找到 Homebrew 安装的 Qt
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" -DCMAKE_INSTALL_PREFIX=../install.dir
+
+    - name: Build and Package Web UI
+      run: |
+        cd build
+        ninja
+        ninja install-webui
+
+    - name: Install
+      run: |
+        cd build
+        ninja install
+      
+    - name: Create DMG using macdeployqt
+      run: |
+        # 查找 homebrew 下的 macdeployqt 工具
+        MACDEPLOYQT="$(brew --prefix qt)/bin/macdeployqt"
+        
+        # 将 Qt 相关的动态库(Frameworks)拷贝到 .app 包内，并打包成 dmg 文件
+        $MACDEPLOYQT install.dir/PXView.app -dmg
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PXView-macOS-ARM64
+        path: install.dir/*.dmg
+        if-no-files-found: error
