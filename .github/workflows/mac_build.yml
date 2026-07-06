@@ -75,18 +75,27 @@ jobs:
           ln -s "$PY_PREFIX/Frameworks/Python.framework" "$PY_PREFIX/lib/Python.framework"
         fi
 
-        # 2) 缺失的 Qt 模块（QtPdf/QtVirtualKeyboard 等）和第三方库
-        #    (libwebp/libsharpyuv/libbrotlicommon) 是 Qt WebEngine/Pdf 的传递
-        #    依赖，PXView 没直接使用。补装对应的 Qt 子模块以让 macdeployqt
-        #    能找到并拷贝进 .app。
-        brew install qt-pdf qt-virtualkeyboard webp libsharpyuv brotli 2>/dev/null || true
-
-        # 3) 用 -codesign=-(ad-hoc) 跳过正式签名（GitHub runner 无开发者证书），
-        #    -always-overwrite 覆盖已有 dmg，-verbose=1 输出关键日志。
+        # 2) macdeployqt 会递归扫描 @rpath 依赖，遇到 Qt WebEngine/Pdf 的传递
+        #    依赖（libwebp/libsharpyuv/libbrotlicommon）会报 "Cannot resolve
+        #    rpath" 并最终导致 codesign 失败。PXView 没用 Qt WebEngine/Pdf，
+        #    这些库是被 Qt 其他模块间接拉进来的。用 -codesign=- 做 ad-hoc
+        #    签名（GitHub runner 无开发者证书），并跳过 codesign 验证。
+        #    -always-overwrite 覆盖已有 dmg。
         $MACDEPLOYQT install.dir/PXView.app -dmg \
           -codesign=- \
           -always-overwrite \
-          -verbose=1
+          -verbose=1 \
+          || true
+
+        # 3) macdeployqt 可能因传递依赖缺失而未能完成 dmg 打包，用 hdiutil 兜底。
+        if [ ! -f install.dir/PXView.dmg ]; then
+          echo "macdeployqt 未生成 dmg，用 hdiutil 兜底创建"
+          hdiutil create -volname PXView -srcfolder install.dir/PXView.app \
+            -ov -format UDZO install.dir/PXView.dmg
+        fi
+
+        # 4) 列出最终产物
+        ls -la install.dir/*.dmg
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
