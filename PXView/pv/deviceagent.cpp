@@ -534,16 +534,29 @@ bool DeviceAgent::detect_stream_mode()
     if (is_dsl_device())
         return get_hardware_operation_mode() == LO_OP_STREAM;
 
-    // Upstream hardware drivers (fx2lafw, ...): default to BUFFER mode.
-    // fx2lafw declares SR_CONF_CONTINUOUS (the driver can handle continuous
-    // sampling) but the FX2 firmware on most devices only captures a fixed
-    // amount per acquisition and then signals empty transfers — sustained
-    // streaming requires device-specific firmware and a large USB transfer
-    // pool, which the generic fx2lafw driver doesn't provide. Users who know
-    // their hardware can stream should manually switch the Operation Mode
-    // dropdown to "Stream Mode" in the device options dock.
-    if (is_hardware())
-        return false;
+    // Upstream hardware drivers (fx2lafw, ...): check SR_CONF_CONTINUOUS
+    // capability flag in the driver's devopts list. fx2lafw declares it
+    // (api.c devopts[]), and the driver defaults to limit_samples=0 (stream)
+    // in fx2lafw_dev_new(). The frontend must NOT call set_config(LIMIT_SAMPLES)
+    // in stream mode — hwdriver.c rejects setting it to 0, so the only way to
+    // keep streaming is to leave the driver default untouched.
+    if (is_hardware()) {
+        GVariant *gvar = get_config_list(NULL, SR_CONF_DEVICE_OPTIONS);
+        if (gvar) {
+            GVariantIter iter;
+            g_variant_iter_init(&iter, gvar);
+            guint32 key;
+            bool is_stream = false;
+            while (g_variant_iter_next(&iter, "u", &key)) {
+                if (key == SR_CONF_CONTINUOUS) {
+                    is_stream = true;
+                    break;
+                }
+            }
+            g_variant_unref(gvar);
+            return is_stream;
+        }
+    }
 
     if (is_demo() || is_file())
         return true;

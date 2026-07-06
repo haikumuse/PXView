@@ -193,13 +193,25 @@ bool MmapAllocator::decommit_block(void* ptr, uint64_t size) {
         pxv_warn("MmapAllocator: madvise MADV_DONTNEED failed, errno %d (non-fatal)", errno);
     }
 
-    // 磁盘页：fallocate PUNCH_HOLE 在文件中打洞，回收磁盘空间。
+    // 磁盘页：在文件中打洞回收磁盘空间。
+    // Linux: fallocate PUNCH_HOLE；macOS: fcntl F_PUNCHHOLE；其他平台跳过
+    // (punch hole 仅是磁盘空间回收优化，缺失不影响功能正确性)
     if (_fd >= 0) {
         off_t offset = (off_t)((uint8_t*)ptr - (uint8_t*)_base_ptr);
+#ifdef __linux__
         if (fallocate(_fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
                       offset, (off_t)size) != 0) {
             pxv_warn("MmapAllocator: fallocate PUNCH_HOLE failed, errno %d (non-fatal)", errno);
         }
+#elif defined(__APPLE__)
+        struct fpunchhole fpunch;
+        fpunch.fp_flags = 0;
+        fpunch.fp_offset = offset;
+        fpunch.fp_length = (off_t)size;
+        if (fcntl(_fd, F_PUNCHHOLE, &fpunch) != 0) {
+            pxv_warn("MmapAllocator: fcntl F_PUNCHHOLE failed, errno %d (non-fatal)", errno);
+        }
+#endif
     }
     return true;
 #endif

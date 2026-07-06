@@ -986,12 +986,24 @@ void SamplingBar::commit_settings() {
       _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
 
     if (_device_agent->get_work_mode() != DSO) {
-      const uint64_t sample_count =
-          ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
-           SAMPLES_ALIGN) &
-          ~SAMPLES_ALIGN;
-      if (sample_count != 0 && sample_count != _device_agent->get_sample_limit())
-        _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
+      // Stream mode (fx2lafw etc.): do NOT call set_config(LIMIT_SAMPLES).
+      // The driver defaults to limit_samples=0 (= unlimited streaming) in
+      // fx2lafw_dev_new(). hwdriver.c rejects setting it to 0, so the only
+      // way to keep streaming is to leave the driver default untouched.
+      // get_sample_limit() returns a ring-buffer size from app-layer state
+      // for LogicSnapshot mmap allocation; the driver keeps 0 (stream).
+      // Non-stream (buffer) mode: set the user-selected sample count so
+      // buffered capture terminates normally.
+      const bool stream_mode = _device_agent->is_stream_mode();
+      if (!stream_mode) {
+        const uint64_t sample_count =
+            ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
+             SAMPLES_ALIGN) &
+            ~SAMPLES_ALIGN;
+        if (sample_count != 0 &&
+            sample_count != _device_agent->get_sample_limit())
+          _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
+      }
 
       // Only set RLE for devices that support it (DSL/PXLogic). fx2lafw and
       // other upstream drivers don't have SR_CONF_RLE_SUPPORT and would log
