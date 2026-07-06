@@ -177,6 +177,20 @@ DeviceOptions::DeviceOptions(SigSession *session)
     // Labels match dsl_label.json ids so LangResource translates them.
     if (_device_agent->is_hardware()) {
         pxv_info("DeviceOptions binding: adding app-layer stream/disk-cache controls");
+        // Non-DSL hardware devices (fx2lafw etc.): add a Buffer/Stream run-mode
+        // dropdown via SR_CONF_OPERATION_MODE. DeviceAgent serves the string
+        // list/get/set from app-layer state so the driver doesn't need to
+        // implement these. DSL/PXLogic devices already declare
+        // SR_CONF_OPERATION_MODE in their devopts and handled by the switch
+        // above (bind_list), so we only bind here for non-DSL devices.
+        if (!_device_agent->is_dsl_device()) {
+            GVariant *opmode_list = _device_agent->get_config_list(
+                NULL, SR_CONF_OPERATION_MODE);
+            bind_list("operation_mode", "Operation Mode",
+                      SR_CONF_OPERATION_MODE, opmode_list);
+            if (opmode_list)
+                g_variant_unref(opmode_list);
+        }
         bind_bool("disk_cache_enable", "Disk Cache Enable",
                   SR_CONF_DISK_CACHE_ENABLE);
         bind_string("disk_cache_path", "Disk Cache Path",

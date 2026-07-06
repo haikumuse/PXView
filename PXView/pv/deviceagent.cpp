@@ -171,6 +171,11 @@ bool DeviceAgent::open_by_handle(ds_device_handle handle, struct sr_context *ctx
     }
 
     _is_new_device = true;
+
+    // Reset app-layer stream mode cache — new device may have different
+    // SR_CONF_CONTINUOUS / OPERATION_MODE capability. Will be re-detected
+    // on first is_stream_mode() call.
+    _app_stream_mode_init = false;
     return true;
 }
 
@@ -374,10 +379,33 @@ uint64_t DeviceAgent::get_sample_limit()
         v = g_variant_get_uint64(gvar);
         g_variant_unref(gvar);
     }
-    // 上游约定 limit_samples=0 表示"不限制"，PXView 应用层提供默认值 fallback
-    // (demo 设备 devc->limit_samples == 0 时走此路径)
+    // 上游约定 limit_samples=0 表示"不限制"。
+    // - Stream 模式下（fx2lafw 等）：驱动持续采集直到用户停止，但应用层
+    //   需要一个 ring buffer 大小来分配 mmap 内存。从 stream_mem_buff 配置
+    //   （GB）+ 当前采样率计算 1 秒的样本数，取较大者作为 ring buffer 大小。
+    //   驱动侧 limit_samples 保持 0（不限制），应用层 get_sample_limit()
+    //   返回 ring buffer 大小供 LogicSnapshot 分配内存。
+    // - 非 stream 模式（demo 设备 devc->limit_samples == 0）：应用层提供
+    //   默认值 fallback，确保采集中止条件有定义。
     if (v == 0) {
-        v = AppConfig::Instance().default_sample_limit();
+        if (is_stream_mode()) {
+            // Ring buffer = max(1 second of samples, stream_mem_buff GB worth)
+            uint64_t samplerate = get_sample_rate();
+            double mem_buff_gb = _app_stream_mem_buff;
+            // 1 byte/sample for logic (8 channels packed)
+            uint64_t mem_buff_samples = (uint64_t)(mem_buff_gb * 1e9);
+            uint64_t one_sec_samples = samplerate;
+            v = (mem_buff_samples > one_sec_samples) ? mem_buff_samples
+                                                      : one_sec_samples;
+            if (v == 0)
+                v = AppConfig::Instance().default_sample_limit();
+            pxv_info("get_sample_limit: stream mode, ring_buffer=%llu "
+                     "(samplerate=%llu, mem_buff_gb=%.1f)",
+                     (unsigned long long)v,
+                     (unsigned long long)samplerate, mem_buff_gb);
+        } else {
+            v = AppConfig::Instance().default_sample_limit();
+        }
     }
     return v;
 }
@@ -486,6 +514,20 @@ int DeviceAgent::get_hardware_operation_mode()
 }
 
 bool DeviceAgent::is_stream_mode()
+{
+    // Lazy init: auto-detect on first call, cache the result so the user
+    // can later override it via set_config(SR_CONF_STREAM) and have the
+    // new value stick for subsequent is_stream_mode() calls.
+    if (_app_stream_mode_init)
+        return _app_stream_mode;
+    _app_stream_mode = detect_stream_mode();
+    _app_stream_mode_init = true;
+    pxv_info("is_stream_mode: auto-detected=%d (driver=%s, cached)",
+             _app_stream_mode, _driver_name.toUtf8().constData());
+    return _app_stream_mode;
+}
+
+bool DeviceAgent::detect_stream_mode()
 {
     // DSL/PXLogic devices: query SR_CONF_OPERATION_MODE (fork-specific key).
     // These drivers export "Buffer Mode"/"Stream Mode"/"Internal Test" strings.
@@ -666,6 +708,15 @@ GVariant* DeviceAgent::get_config_list(const sr_channel_group *group, int key)
         return nullptr;
     }
 
+    // App-layer OPERATION_MODE for non-DSL hardware devices (fx2lafw etc.):
+    // expose Buffer/Stream string list so the deviceoptions dock can show a
+    // run-mode dropdown without driver support. DSL/PXLogic devices forward
+    // to the driver (pxlogic.c implements the real list).
+    if (key == SR_CONF_OPERATION_MODE && is_hardware() && !is_dsl_device()) {
+        static const char *opmode_strs[] = { "Buffer Mode", "Stream Mode" };
+        return g_variant_new_strv(opmode_strs, 2);
+    }
+
     const bool fork_only = is_fork_only_key(key);
     const bool dsl = is_dsl_device();
     if (key == SR_CONF_DEVICE_OPTIONS) {
@@ -705,7 +756,8 @@ static inline bool is_app_layer_key(int key)
     return key == SR_CONF_DISK_CACHE_ENABLE ||
            key == SR_CONF_DISK_CACHE_PATH ||
            key == SR_CONF_STREAM_BUFF ||
-           key == SR_CONF_STREAM_MEM_BUFF;
+           key == SR_CONF_STREAM_MEM_BUFF ||
+           key == SR_CONF_STREAM;
 }
 
 GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channel_group *cg)
@@ -730,7 +782,18 @@ GVariant* DeviceAgent::get_config(int key, const sr_channel *ch, const sr_channe
             return g_variant_new_double(_app_stream_buff);
         case SR_CONF_STREAM_MEM_BUFF:
             return g_variant_new_double(_app_stream_mem_buff);
+        case SR_CONF_STREAM:
+            return g_variant_new_boolean(is_stream_mode());
         }
+    }
+
+    // App-layer OPERATION_MODE for non-DSL hardware devices: return the
+    // cached stream-mode selection as a "Buffer Mode"/"Stream Mode" string
+    // (matching the list exposed by get_config_list above). DSL/PXLogic
+    // devices forward to the driver.
+    if (key == SR_CONF_OPERATION_MODE && is_hardware() && !is_dsl_device()) {
+        const char *mode_str = is_stream_mode() ? "Stream Mode" : "Buffer Mode";
+        return g_variant_new_string(mode_str);
     }
 
     if (is_fork_only_key(key) && !is_dsl_device())
@@ -788,8 +851,30 @@ bool DeviceAgent::set_config(int key, GVariant *data, const sr_channel *ch, cons
         case SR_CONF_STREAM_MEM_BUFF:
             _app_stream_mem_buff = g_variant_get_double(data);
             break;
+        case SR_CONF_STREAM:
+            _app_stream_mode = g_variant_get_boolean(data);
+            _app_stream_mode_init = true;
+            break;
         }
         config_changed();
+        return true;
+    }
+
+    // App-layer OPERATION_MODE for non-DSL hardware devices: accept a
+    // "Buffer Mode"/"Stream Mode" string and sync the cached stream-mode
+    // flag so is_stream_mode() reflects the user's choice. DSL/PXLogic
+    // devices forward to the driver.
+    if (key == SR_CONF_OPERATION_MODE && is_hardware() && !is_dsl_device()) {
+        const gchar *mode_str = g_variant_get_string(data, NULL);
+        if (mode_str) {
+            _app_stream_mode = (strcmp(mode_str, "Stream Mode") == 0);
+            _app_stream_mode_init = true;
+            pxv_info("set_config: OPERATION_MODE='%s' -> _app_stream_mode=%d "
+                     "(driver=%s)",
+                     mode_str, _app_stream_mode,
+                     _driver_name.toUtf8().constData());
+            config_changed();
+        }
         return true;
     }
 

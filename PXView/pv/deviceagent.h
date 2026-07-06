@@ -163,6 +163,7 @@ public:
     const GSList* get_device_mode_list();
     int get_hardware_operation_mode();
     bool is_stream_mode();
+    bool detect_stream_mode();
     QString get_demo_operation_mode();
     bool check_firmware_version();
 
@@ -294,6 +295,15 @@ private:
     QString _app_disk_cache_path;
     double  _app_stream_buff = 16.0;       // GB, disk cache total depth
     double  _app_stream_mem_buff = 16.0;   // GB, in-memory ring buffer
+
+    // App-layer stream mode override (SR_CONF_STREAM). Lazy-initialized on
+    // first is_stream_mode() call from the driver's reported capability
+    // (SR_CONF_CONTINUOUS for upstream drivers, SR_CONF_OPERATION_MODE for
+    // DSL/PXLogic). User can toggle it via the deviceoptions panel — the
+    // cached value is then returned by is_stream_mode() so samplingbar's
+    // loop-mode button and sample-count list reflect the user's choice.
+    bool    _app_stream_mode = false;
+    bool    _app_stream_mode_init = false;
 };
 
 #endif

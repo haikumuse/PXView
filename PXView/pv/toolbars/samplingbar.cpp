@@ -986,12 +986,22 @@ void SamplingBar::commit_settings() {
       _device_agent->set_config_uint64(SR_CONF_SAMPLERATE, sample_rate);
 
     if (_device_agent->get_work_mode() != DSO) {
+      // Stream mode: set limit_samples=0 so the driver (fx2lafw etc.) keeps
+      // streaming indefinitely — the protocol layer treats 0 as "no limit"
+      // and never raises the frame_ended condition. Capture stops when the
+      // user clicks Stop. Non-stream (buffer) mode keeps the user-selected
+      // sample count so buffered capture still terminates normally.
+      const bool stream_mode = _device_agent->is_stream_mode();
       const uint64_t sample_count =
-          ((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
+          stream_mode ? 0 :
+          (((uint64_t)ceil(sample_duration / SR_SEC(1) * sample_rate) +
            SAMPLES_ALIGN) &
-          ~SAMPLES_ALIGN;
-      if (sample_count != 0 && sample_count != _device_agent->get_sample_limit())
+          ~SAMPLES_ALIGN);
+      if (!stream_mode && sample_count != 0 &&
+          sample_count != _device_agent->get_sample_limit())
         _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, sample_count);
+      else if (stream_mode && _device_agent->get_sample_limit() != 0)
+        _device_agent->set_config_uint64(SR_CONF_LIMIT_SAMPLES, 0);
 
       // Only set RLE for devices that support it (DSL/PXLogic). fx2lafw and
       // other upstream drivers don't have SR_CONF_RLE_SUPPORT and would log
@@ -1147,13 +1157,20 @@ void SamplingBar::reload() {
   bool show_loop = false;
   int mode = _device_agent->get_work_mode();
 
+  const bool stream_mode = _device_agent->is_stream_mode();
+  pxv_info("SamplingBar::reload: driver=%s, work_mode=%d, is_stream_mode=%d, "
+           "is_demo=%d, is_file=%d",
+           _device_agent->driver_name().toUtf8().constData(),
+           mode, stream_mode,
+           _device_agent->is_demo(), _device_agent->is_file());
+
   if (mode == LOGIC) {
     if (!_device_agent->is_file()) {
       show_mode_row = true;
-      if (_device_agent->is_stream_mode() || _device_agent->is_demo())
+      if (stream_mode || _device_agent->is_demo())
         show_loop = true;
 
-      if (_session->is_loop_mode() && !_device_agent->is_stream_mode() &&
+      if (_session->is_loop_mode() && !stream_mode &&
           _device_agent->is_hardware()) {
         _session->set_collect_mode(COLLECT_SINGLE);
       }
