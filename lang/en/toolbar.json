@@ -12,6 +12,10 @@
         "text": "Os&cilloscope"
     },
     {
+        "id": "IDS_DEVICE_MODE_MSO",
+        "text": "&Mixed Signal Oscilloscope"
+    },
+    {
         "id": "IDS_TOOLBAR_DEVICE_TYPE_DEMO",
         "text": "Demo"
     },

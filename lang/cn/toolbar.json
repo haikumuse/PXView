@@ -12,6 +12,10 @@
         "text": "示波器"
     },
     {
+        "id": "IDS_DEVICE_MODE_MSO",
+        "text": "混合示波器"
+    },
+    {
         "id": "IDS_TOOLBAR_DEVICE_TYPE_DEMO",
         "text": "演示"
     },

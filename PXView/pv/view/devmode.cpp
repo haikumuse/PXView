@@ -48,7 +48,7 @@ static const struct dev_mode_name dev_mode_name_list[] =
     {LOGIC,  "la.svg"},
     {ANALOG, "daq.svg"},
     {DSO,    "osc.svg"},
-    {MSO,    "modes.svg"},
+    {MSO,    "osc.svg"},
 };
 
 // Returns the localized display text for a work mode.
