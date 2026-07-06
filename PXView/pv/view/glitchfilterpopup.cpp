@@ -23,6 +23,8 @@
 
 #include "glitchfilterpopup.h"
 
+#include <algorithm>
+
 #include "../config/appconfig.h"
 #include <QComboBox>
 #include <QFrame>
@@ -473,10 +475,39 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
     _histogram->setThresholds(_recommended_threshold, _recommended_threshold);
     _histogram->setFilterThreshold(_recommended_threshold);
 
-    // 首版:若该 SignalModel 已开启 glitch_filter 且 width 有效,沿用其 width;
-    // 否则用推荐值。mode 不在 SignalModel 中持久化,默认 BOTH。
+    // 参数恢复:优先从 Core SessionData 中已应用的 threshold/mode 恢复
+    // (FilterProcessor 写入 _glitch_filter_thresholds/_modes,与 SignalModel
+    //  的 glitch_filter_width 不一定同步)。仅当滤波处于激活态且向量长度
+    // 足够时才取该通道的值;否则回退到推荐阈值 + BOTH 模式。
     uint32_t initial_threshold = _recommended_threshold;
-    if (sig->model()) {
+    GlitchFilterMode initial_mode = GLITCH_FILTER_BOTH;
+    auto &sess = _view.session();
+    if (sess.is_glitch_filter_active()) {
+        // 构建 logic_sigs(与 view_glitch_filter.cpp 一致的索引顺序)
+        std::vector<LogicSignal*> logic_sigs;
+        for (auto s : _view.get_own_signals()) {
+            if (s && s->signal_type() == SR_CHANNEL_LOGIC)
+                logic_sigs.push_back(static_cast<LogicSignal*>(s));
+        }
+        auto it = std::find(logic_sigs.begin(), logic_sigs.end(), sig);
+        if (it != logic_sigs.end()) {
+            int idx = (int)std::distance(logic_sigs.begin(), it);
+            const auto &th = sess.glitch_filter_thresholds();
+            const auto &md = sess.glitch_filter_modes();
+            if (idx < (int)th.size() && th[idx] > 0) {
+                // clamp 到当前滑块范围 [1, cap]
+                int cap = _max_spinbox ? _max_spinbox->value() : 30;
+                int v = (int)th[idx];
+                if (v < 1) v = 1;
+                if (v > cap) v = cap;
+                initial_threshold = (uint32_t)v;
+            }
+            if (idx < (int)md.size()) {
+                initial_mode = md[idx];
+            }
+        }
+    } else if (sig->model()) {
+        // 兼容旧路径:滤波未激活时若 SignalModel 有遗留 width,沿用之
         if (sig->model()->glitch_filter_enabled() && sig->model()->glitch_filter_width() > 0) {
             int w = sig->model()->glitch_filter_width();
             if (w >= 1 && w <= (int)_cached_hist.max_width) {
@@ -484,8 +515,6 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
             }
         }
     }
-
-    // 滑块范围已由 refresh_from_signal → rebuild_histogram 设置,这里只需同步值
 
     // 同步控件状态(注意:setValue 会触发 valueChanged -> on_slider_moved,
     // 但此时 _cached_pulses 已就绪,统计可正确计算)
@@ -495,7 +524,7 @@ void GlitchFilterPopup::open_for_signal(LogicSignal* sig, const QPoint& anchor_p
     _threshold_value_lbl->setText(QString::number(initial_threshold));
 
     _mode_combo->blockSignals(true);
-    _mode_combo->setCurrentIndex((int)GLITCH_FILTER_BOTH);
+    _mode_combo->setCurrentIndex((int)initial_mode);
     _mode_combo->blockSignals(false);
 
 
@@ -550,8 +579,54 @@ void GlitchFilterPopup::open_for_batch(const std::vector<LogicSignal*>& sigs, co
     _histogram->setThresholds(_recommended_threshold, _recommended_threshold);
     _histogram->setFilterThreshold(_recommended_threshold);
 
-    // 批量模式:用推荐值作为初始阈值(子通道间可能已有不同配置,统一用推荐)
+    // 批量模式参数恢复:若所有子通道在 SessionData 中已应用的 threshold/mode
+    // 一致,则恢复该共同值;否则回退到推荐阈值 + BOTH 模式(避免误用某通道值)。
     uint32_t initial_threshold = _recommended_threshold;
+    GlitchFilterMode initial_mode = GLITCH_FILTER_BOTH;
+    auto &sess = _view.session();
+    if (sess.is_glitch_filter_active()) {
+        std::vector<LogicSignal*> logic_sigs;
+        for (auto s : _view.get_own_signals()) {
+            if (s && s->signal_type() == SR_CHANNEL_LOGIC)
+                logic_sigs.push_back(static_cast<LogicSignal*>(s));
+        }
+        const auto &th = sess.glitch_filter_thresholds();
+        const auto &md = sess.glitch_filter_modes();
+        int cap = _max_spinbox ? _max_spinbox->value() : 30;
+
+        bool first = true;
+        bool consistent = true;
+        uint32_t common_th = 0;
+        GlitchFilterMode common_md = GLITCH_FILTER_BOTH;
+        for (auto *s : sigs) {
+            auto it = std::find(logic_sigs.begin(), logic_sigs.end(), s);
+            if (it == logic_sigs.end()) continue;
+            int idx = (int)std::distance(logic_sigs.begin(), it);
+            uint32_t t = (idx < (int)th.size()) ? th[idx] : 0;
+            GlitchFilterMode m = (idx < (int)md.size()) ? md[idx] : GLITCH_FILTER_BOTH;
+            if (first) {
+                first = false;
+                // clamp 到滑块范围
+                int v = (int)t;
+                if (v < 1) v = 1;
+                if (v > cap) v = cap;
+                common_th = (uint32_t)v;
+                common_md = m;
+            } else {
+                int v = (int)t;
+                if (v < 1) v = 1;
+                if (v > cap) v = cap;
+                if ((uint32_t)v != common_th || m != common_md) {
+                    consistent = false;
+                    break;
+                }
+            }
+        }
+        if (!first && consistent) {
+            initial_threshold = common_th;
+            initial_mode = common_md;
+        }
+    }
 
     _threshold_slider->blockSignals(true);
     _threshold_slider->setValue((int)initial_threshold);
@@ -559,7 +634,7 @@ void GlitchFilterPopup::open_for_batch(const std::vector<LogicSignal*>& sigs, co
     _threshold_value_lbl->setText(QString::number(initial_threshold));
 
     _mode_combo->blockSignals(true);
-    _mode_combo->setCurrentIndex((int)GLITCH_FILTER_BOTH);
+    _mode_combo->setCurrentIndex((int)initial_mode);
     _mode_combo->blockSignals(false);
 
     if (_auto_apply_chk) {

@@ -250,7 +250,10 @@ void SignalConfigStore::apply_signal_config() {
 
   int cur_mode = agent->get_work_mode();
   if (_signal_config.work_mode != cur_mode) {
-    agent->set_config_int16(SR_CONF_DEVICE_MODE, _signal_config.work_mode);
+    // SR_CONF_DEVICE_MODE 仅 DSL/PXLogic 硬件设备支持，demo/file/compat 设备
+    // 查询会触发 libsigrok 内部 sr_err 日志噪音
+    if (agent->is_dsl_device())
+      agent->set_config_int16(SR_CONF_DEVICE_MODE, _signal_config.work_mode);
   }
 
   /* Task 10/Phase 3: write operation_mode/channel_mode as strings (driver
